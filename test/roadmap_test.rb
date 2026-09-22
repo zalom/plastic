@@ -4,22 +4,21 @@
 require "minitest/autorun"
 
 # ACTION_4 (intent 124): hermetic structural tests for the roadmap feature.
-# Asserts the template's born-complete shape, the skill's frontmatter + slim
-# body + references, and the roadmaps chapter's contract invariants (moved out
-# of PLASTIC.md in intent 127, then out of PLASTIC-reference.md into
-# skills/conventions/references/roadmaps.md in intent 223). Reads ONLY in-repo
-# files; the live project-store roadmap instance (Action 05) is a runtime
+# Asserts the template's born-complete shape and the roadmaps chapter's
+# contract invariants (moved out of PLASTIC.md in intent 127, then out of
+# PLASTIC-reference.md into skills/conventions/references/roadmaps.md in
+# intent 223, out of the conventions skill into docs/help/roadmaps.md in
+# intent 372's family 4, then out of skills/roadmap/SKILL.md and its
+# references/ entirely in family 3: `plastic roadmap show/next/log/check` run
+# the scripts directly, so the skill's frontmatter, line budget and reference
+# chapters have no file left to assert against). Reads ONLY in-repo files;
+# the live project-store roadmap instance (Action 05) is a runtime
 # deliverable, not a test target, so this stays hermetic.
 class RoadmapTest < Minitest::Test
   ROOT = File.expand_path("..", __dir__)
   TEMPLATE = File.join(ROOT, "templates", "roadmap.md")
-  SKILL = File.join(ROOT, "skills", "roadmap", "SKILL.md")
-  REFERENCES_DIR = File.join(ROOT, "skills", "roadmap", "references")
-  FILE_FORMAT = File.join(REFERENCES_DIR, "file-format.md")
-  OPERATIONS = File.join(REFERENCES_DIR, "operations.md")
-  ROADMAPS_CHAPTER = File.join(ROOT, "skills", "conventions", "references", "roadmaps.md")
+  ROADMAPS_CHAPTER = File.join(ROOT, "docs", "help", "roadmaps.md")
   STATUS_TOKENS = %w[queued delivering delivered abandoned blocked].freeze
-  LINE_BUDGET = 500
 
   # --- templates/roadmap.md -------------------------------------------------
 
@@ -28,11 +27,14 @@ class RoadmapTest < Minitest::Test
     assert_match(/\A# Roadmap:/, body, "must open with a '# Roadmap:' header")
   end
 
+  # Intent 337 (n7): the template gained an optional "## Graph" section
+  # between Goal and Batches, teaching the edge grammar so a new roadmap is
+  # never born graphless.
   def test_template_has_the_four_sections_in_order
     body = File.read(TEMPLATE)
     headings = body.scan(/^## .+$/)
-    assert_equal ["## Goal", "## Batches", "## Log"], headings,
-                 "must contain ## Goal, ## Batches, ## Log in that order"
+    assert_equal ["## Goal", "## Graph", "## Batches", "## Log"], headings,
+                 "must contain ## Goal, ## Graph, ## Batches, ## Log in that order"
   end
 
   def test_template_waves_has_a_status_entry_line
@@ -76,108 +78,28 @@ class RoadmapTest < Minitest::Test
   # --- amendment (2026-07-06 human rulings 5+6): project-root location, HH:MM UTC log ---
 
   def test_docs_do_not_place_roadmaps_under_store
-    [SKILL, FILE_FORMAT, OPERATIONS, ROADMAPS_CHAPTER].each do |path|
-      body = File.read(path)
-      refute_match(%r{store/roadmaps}, body,
-                   "#{path} must not place roadmaps/ under store/")
-      refute_match(/store[- ]root/i, body,
-                   "#{path} must not describe roadmaps/ location as store-root")
-    end
+    body = File.read(ROADMAPS_CHAPTER)
+    refute_match(%r{store/roadmaps}, body, "#{ROADMAPS_CHAPTER} must not place roadmaps/ under store/")
+    refute_match(/store[- ]root/i, body, "#{ROADMAPS_CHAPTER} must not describe roadmaps/ location as store-root")
   end
 
   def test_docs_state_sibling_of_index_rule
-    [SKILL, FILE_FORMAT, OPERATIONS, ROADMAPS_CHAPTER].each do |path|
-      body = File.read(path)
-      assert_match(/sibling of\s+`?INDEX\.md`?/, body,
-                   "#{path} must state roadmaps/ is a sibling of INDEX.md")
-    end
+    body = File.read(ROADMAPS_CHAPTER)
+    assert_match(/sibling of\s+`?INDEX\.md`?/, body, "#{ROADMAPS_CHAPTER} must state roadmaps/ is a sibling of INDEX.md")
   end
 
-  # --- skills/roadmap/SKILL.md ----------------------------------------------
-
-  def test_skill_frontmatter_has_name_and_description
-    body = File.read(SKILL)
-    assert body.start_with?("---\n"), "frontmatter must open on the first line"
-    fm = body.split(/^---\s*$/)[1].to_s
-    assert_match(/^name:\s*plastic-roadmap\s*$/, fm, "name must be plastic-roadmap")
-    assert_match(/^description:\s*\S.+$/, fm, "description must be present and non-empty")
-  end
-
-  def test_skill_body_is_under_line_budget
-    lines = File.readlines(SKILL)
-    assert lines.length < LINE_BUDGET,
-           "SKILL.md must stay under #{LINE_BUDGET} lines, got #{lines.length}"
-  end
-
-  def test_skill_states_status_vocabulary_and_index_wins_rule
-    body = File.read(SKILL)
-    STATUS_TOKENS.each do |token|
-      assert_includes body, token, "SKILL.md must state status token '#{token}'"
-    end
-    assert_match(/INDEX wins/, body, "SKILL.md must state the INDEX-wins mirror rule")
-  end
-
-  def test_references_dir_exists_one_level_deep_with_markdown
-    assert File.directory?(REFERENCES_DIR), "skills/roadmap/references/ must exist"
-    md_files = Dir.glob(File.join(REFERENCES_DIR, "*.md"))
-    refute_empty md_files, "references/ must hold at least one .md file"
-    nested = Dir.glob(File.join(REFERENCES_DIR, "**", "*", "*.md"))
-    assert_empty nested, "references/ must stay one level deep"
-  end
-
-  def test_skill_documents_close_archive_verb
-    body = File.read(SKILL)
-    assert_match(/Close.*archive|Close \/ archive/i, body,
-                 "SKILL.md must list a Close/archive verb")
-    assert_match(%r{roadmaps/archived/}, body,
-                 "SKILL.md must name the roadmaps/archived/ destination")
-  end
-
-  # --- intent 135: roadmap mutating verbs must wire their own QMD reindex ---
-
-  ROADMAP_REINDEX_LINE = "qmd-sync reindex --store <roadmaps-dir> --async"
-  MUTATING_HEADINGS = [
-    "Create",
-    "Add / reorder entries",
-    "Sync status mirror",
-    "Append a log line",
-    "Close / archive",
-  ].freeze
-
-  def test_operations_doc_wires_roadmap_reindex_in_each_mutating_verb
-    body = File.read(OPERATIONS)
-    sections = body.split(/^## /).drop(1)
-
-    MUTATING_HEADINGS.each do |heading|
-      section = sections.find { |s| s.start_with?(heading) }
-      refute_nil section, "operations.md must contain a '## #{heading}' section"
-      assert_includes section, ROADMAP_REINDEX_LINE,
-                       "'## #{heading}' section must wire the roadmap reindex call"
-    end
-
-    read_section = sections.find { |s| s.start_with?("Read / consume") }
-    refute_nil read_section, "operations.md must contain a '## Read / consume' section"
-    refute_includes read_section, ROADMAP_REINDEX_LINE,
-                     "'## Read / consume' is non-mutating and must not wire a reindex call"
-  end
-
-  def test_references_document_close_archive_checkbox_and_log_formats
-    file_format = File.read(FILE_FORMAT)
-    operations = File.read(OPERATIONS)
-    assert_match(/\[x\]/, file_format, "file-format.md must document the checkbox syntax")
-    assert_match(/\[ \]/, file_format, "file-format.md must document the unchecked checkbox")
-    assert_match(/outcome\.md/, file_format, "file-format.md must document the outcome.md link")
-    assert_match(/EM-to-CTO|plain-language/i, file_format,
-                 "file-format.md must document the EM-to-CTO / plain-language log rule")
-    assert_match(%r{roadmaps/archived/}, file_format,
-                 "file-format.md must document the archived/ location")
-    assert_match(/close.*archive|archive/i, operations,
-                 "operations.md must document the close/archive operation")
-    assert_match(%r{roadmaps/archived/}, operations,
-                 "operations.md must document the move to roadmaps/archived/")
-    assert_match(/under a minute|human-comprehension/i, operations,
-                 "operations.md must state the human-comprehension goal")
-  end
+  # test_skill_frontmatter_has_name_and_description, test_skill_body_is_under_line_budget,
+  # test_skill_states_status_vocabulary_and_index_wins_rule, test_references_dir_exists_
+  # one_level_deep_with_markdown, test_skill_documents_close_archive_verb,
+  # test_operations_doc_wires_roadmap_reindex_in_each_mutating_verb and
+  # test_references_document_close_archive_checkbox_and_log_formats were retired by intent
+  # 372 (family 3): skills/roadmap/SKILL.md and its references/ (file-format.md,
+  # operations.md) are gone, moved into `plastic roadmap show/next/log/check`, thin
+  # command wrappers with no frontmatter, line budget or reference chapter of their own.
+  # The status vocabulary and INDEX-wins rule they checked stay covered below by
+  # test_plastic_md_states_index_wins_rule, reading the surviving docs/help/roadmaps.md
+  # chapter. The per-verb QMD reindex wiring they checked is exercised at the code level
+  # (scripts/lib/roadmap_savepoint.rb, scripts/roadmap-graph), not by a documentation read.
 
   # --- roadmaps chapter contract (moved out of PLASTIC.md in 127, then out of --
   # --- PLASTIC-reference.md into skills/conventions/references/roadmaps.md in 223

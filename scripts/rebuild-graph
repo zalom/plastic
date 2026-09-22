@@ -82,7 +82,7 @@ class RebuildGraph
   end
 
   # Registered projects.yml slugs with no store directory on disk (legal;
-  # plastic-store-provisioning exists for exactly this state). Reported in the audit
+  # the plastic-doctor provisioning section exists for exactly this state). Reported in the audit
   # (intent 189 D5) so this never looks like a silent empty store.
   def missing_stores
     discovery[:missing]

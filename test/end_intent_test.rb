@@ -7,8 +7,14 @@ require "fileutils"
 require "open3"
 require "date"
 require "json"
-require_relative "../scripts/lib/bridge"
+require_relative "../scripts/lib/savepoint"
 require_relative "../scripts/lib/lock"
+require_relative "../scripts/lib/report_screen"
+# end-intent has no .rb extension (it is a CLI, not a library), so
+# require_relative cannot resolve it; load its top-level function
+# hollow_report_reason directly for n6's unit tests below (its
+# `main(ARGV) if $PROGRAM_NAME == __FILE__` guard never fires here).
+load File.expand_path("../scripts/end-intent", __dir__)
 
 # end-intent (intent 161): the mechanical core of the Done procedure (D2 steps
 # 1-4). Drives the real script as a subprocess against a hermetic tmp home
@@ -18,7 +24,7 @@ require_relative "../scripts/lib/lock"
 # every fixture still lives under Dir.mktmpdir).
 class EndIntentTest < Minitest::Test
   SCRIPT = File.expand_path("../scripts/end-intent", __dir__)
-  SENTINEL = Bridge::PLACEHOLDER_SENTINEL
+  SENTINEL = Savepoint::PLACEHOLDER_SENTINEL
 
   def setup
     @home = Dir.mktmpdir("end-intent-home")
@@ -51,7 +57,8 @@ class EndIntentTest < Minitest::Test
 
   # --- fixture builders ------------------------------------------------------
 
-  def build_intent(id: "161", slug: "demo", outcome_disposition: "delivered", sentinel: false)
+  def build_intent(id: "161", slug: "demo", outcome_disposition: "delivered", sentinel: false,
+                   sentinel_docs: false)
     intent_dir = File.join(@store, "#{id}--#{slug}")
     FileUtils.mkdir_p(intent_dir)
     File.write(File.join(intent_dir, "#{id}--#{slug}.md"), <<~MD)
@@ -89,9 +96,17 @@ class EndIntentTest < Minitest::Test
     # runs ahead of the outcome guard and checks these are present too, so a fixture meant
     # to exercise ONLY the outcome-guard scenarios must otherwise present a clean, fully
     # delivered intent (matching the real shape end-intent is actually called against).
-    File.write(File.join(intent_dir, "spec.md"), "Tier: S\n\n# Spec: Demo intent\n")
+    File.write(File.join(intent_dir, "spec.md"), "# Spec: Demo intent\n")
     File.write(File.join(intent_dir, "plan.md"), "# Plan: Demo intent\n\n- [x] Step 1\n")
     File.write(File.join(intent_dir, "checklist.md"), "# Checklist: Demo intent\n\n- [x] Step 1\n")
+
+    # Intent 308: a fixture whose judgment documents are still the scaffold placeholders,
+    # the shape a direct-mode intent has at close before end-intent backfills them.
+    if sentinel_docs
+      %w[spec.md plan.md outcome.md].each { |f| File.write(File.join(intent_dir, f), "#{SENTINEL}\n") }
+      FileUtils.mkdir_p(File.join(intent_dir, "actions"))
+      File.write(File.join(intent_dir, "actions", ".gitkeep"), "")
+    end
 
     intent_dir
   end
@@ -116,21 +131,27 @@ class EndIntentTest < Minitest::Test
     File.exist?(path) ? File.read(path).lines.map(&:strip).reject(&:empty?) : []
   end
 
-  # Write a minimal, valid bridge JSON for `session`/`id` directly into the
-  # isolated @tmp_bridge dir (never through the real arm/auto seam - these
-  # fixtures stay fully hermetic and never touch the real /tmp). No "worktree" key by
-  # default, so Worktree.release's real git/HOME resolution is never reached
-  # (see scripts/lib/worktree.rb: `return bridge_data unless block.is_a?(Hash)`).
-  def write_bridge(session:, id:, slug: "demo")
-    data = {
-      "session" => session,
-      "intent" => { "id" => id, "dir" => "#{id}--#{slug}", "store" => @store, "name" => slug },
-      "build" => { "auto" => false },
-      "lock" => { "owner_session" => session, "acquired_at" => Time.now.utc.iso8601,
-                  "host" => "test", "type" => "delivery", "delegates" => [] },
-    }
-    File.write(File.join(@tmp_bridge, "plastic-#{session}--#{id}.json"), JSON.pretty_generate(data))
-  end
+def test_index_move_reads_a_hyphen_separated_entry
+  build_intent
+  File.write(@index, <<~MD)
+    # Index
+
+    ## Active
+    - [161 - Demo intent](store/161--demo/161--demo.md) - a hyphen-separated entry
+
+    ## Completed
+    _(none)_
+
+    ## Abandoned
+    _(none)_
+  MD
+
+  out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered",
+                                "--index", @index, "--no-commit")
+  assert_equal 0, status, out
+  assert_match(/^## Completed\n- \[161 /, File.read(@index))
+  refute_match(/^## Active\n- \[161 /, File.read(@index))
+end
 
   # --- (a) Done bookend lands once and is idempotent [AC3] -------------------
 
@@ -154,60 +175,171 @@ class EndIntentTest < Minitest::Test
     assert_equal 1, done_lines_after.length, "a second run must not duplicate the Done bookend"
   end
 
-  # --- (b) missing / placeholder outcome.md -> exit 6; wrong-disposition -> exit 2 [AC4] --
-  #
-  # Intent 222 executor note: the new per-intent structure gate (its intent_lifecycle_artifacts
-  # check) unconditionally verifies outcome.md PRESENCE via Bridge.stage_file_present?, and runs
-  # BEFORE the old outcome-only guard below. A missing or still-placeholder outcome.md is
-  # therefore now caught by the STRONGER, EARLIER gate (exit 6), not the old guard (exit 2):
-  # this is the intended artifact-completeness-at-close enforcement 219/222 call for, not a
-  # regression. The old guard's exit-2 path stays byte-identical for what it alone still
-  # owns: disposition MATCHING (see test_wrong_disposition_.../test_scaffolded_outcome_...
-  # below), since end-intent's own gate call deliberately omits `disposition:` (see
-  # scripts/end-intent's gate comment) so it never re-checks disposition itself.
+  # --- (b) backfill at close (intent 308): a missing or placeholder document is written
+  # from the record, and the structure check plus the outcome guard REPORT and proceed.
+  # Exit 6 (the structure gate, intent 222) and exit 2 (the outcome guard) were retired in
+  # 2.0 (intent 308): a close is never refused for a document end-intent can write itself.
 
-  def test_missing_outcome_refuses_with_exit_6_via_the_structure_gate
+  def test_bare_intent_dir_is_backfilled_reported_and_closed
     intent_dir = File.join(@store, "161--demo")
     FileUtils.mkdir_p(intent_dir)
     File.write(File.join(intent_dir, "161--demo.md"), "## Intent\nDemo\n")
     write_index
 
     out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered", "--index", @index)
-    assert_equal 6, status
-    assert_match(/missing/i, out)
-    assert_empty savepoint_lines(intent_dir)
+    assert_equal 0, status, out
+    %w[spec.md plan.md actions/ACTION_1.md outcome.md].each do |rel|
+      assert_match(/backfilled #{Regexp.escape(rel)}/, out)
+      assert Savepoint.stage_file_present?(File.join(intent_dir, rel)), "#{rel} must be real after the close"
+    end
+    assert_match(/structure check: intent_structure/, out, "the malformed intent file is reported, not refused")
+    assert_match(/^## Completed\n- \[161 /, File.read(@index))
+    assert(savepoint_lines(intent_dir).any? { |l| l.include?("Done") && l.include?("delivered") })
   end
 
-  def test_placeholder_outcome_refuses_with_exit_6_via_the_structure_gate
-    intent_dir = build_intent(sentinel: true, outcome_disposition: "delivered|abandoned")
+  def test_placeholder_docs_are_backfilled_from_the_record_and_never_overwrite_real_ones
+    intent_dir = build_intent(sentinel_docs: true)
+    File.write(File.join(intent_dir, "plan.md"), "# Plan: mine\n\n- [x] hand written\n")
+    write_index
+
+    out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered",
+                                  "--index", @index, "--outcome-summary", "Closed by the test.")
+    assert_equal 0, status, out
+    assert_match(/backfilled spec\.md/, out)
+    assert_match(/backfilled outcome\.md/, out)
+    refute_match(/backfilled plan\.md/, out)
+    assert_equal "# Plan: mine\n\n- [x] hand written\n", File.read(File.join(intent_dir, "plan.md"))
+    outcome = File.read(File.join(intent_dir, "outcome.md"))
+    assert_match(/\A---\ndisposition: delivered\n---\n/, outcome)
+    assert_includes outcome, "## Summary\nClosed by the test.\n"
+    assert_includes File.read(File.join(intent_dir, "spec.md")), "<!-- backfilled from the record by end-intent on "
+    refute_includes File.read(File.join(intent_dir, "spec.md")), SENTINEL
+  end
+
+  def test_dry_run_prints_would_backfill_and_writes_nothing
+    intent_dir = build_intent(sentinel_docs: true)
+    write_index
+
+    out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered",
+                                  "--index", @index, "--dry-run")
+    assert_equal 0, status, out
+    assert_match(%r{would backfill: spec\.md, plan\.md, actions/ACTION_1\.md, outcome\.md}, out)
+    refute_match(/structure check:/, out, "a dry run reports no gap the real run would have closed")
+    assert_equal "#{SENTINEL}\n", File.read(File.join(intent_dir, "spec.md"))
+    refute File.exist?(File.join(intent_dir, "actions", "ACTION_1.md"))
+  end
+
+  def test_fresh_foreign_lock_refuses_before_the_backfill
+    intent_dir = build_intent(sentinel_docs: true)
+    write_index
+    Lock.acquire(intent_dir, session: "owner-session")
+
+    _out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered",
+                                   "--index", @index, "--no-commit", session: "someone-else")
+    assert_equal 4, status
+    assert_equal "#{SENTINEL}\n", File.read(File.join(intent_dir, "spec.md"))
+    refute File.exist?(File.join(intent_dir, "actions", "ACTION_1.md"))
+  end
+
+  def test_stale_foreign_lock_is_taken_over_before_the_backfill_writes
+    intent_dir = build_intent(sentinel_docs: true)
+    write_index
+    Lock.acquire(intent_dir, session: "owner-session")
+    FileUtils.touch(Lock.path(intent_dir), mtime: Time.now - 4000)
+
+    out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered",
+                                  "--index", @index, "--no-commit", session: "someone-else")
+    assert_equal 0, status, out
+    lines = savepoint_lines(intent_dir)
+    takeover = lines.index { |l| l.include?("takeover") }
+    backfill = lines.index { |l| l.include?("backfilled spec.md") }
+    refute_nil takeover
+    refute_nil backfill
+    assert takeover < backfill, "the takeover audit must precede the backfill line: #{lines.inspect}"
+    assert Savepoint.stage_file_present?(File.join(intent_dir, "spec.md"))
+  end
+
+  def test_backfill_crash_warns_and_the_close_proceeds
+    intent_dir = build_intent(sentinel_docs: true)
+    File.delete(File.join(intent_dir, "checklist.md"))
+    FileUtils.mkdir_p(File.join(intent_dir, "checklist.md"))
     write_index
 
     out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered", "--index", @index)
-    assert_equal 6, status
-    assert_match(/placeholder/i, out)
-    assert_empty savepoint_lines(intent_dir)
+    assert_equal 0, status, out
+    assert_match(/backfill crashed .*; proceeding without it/, out)
+    assert_match(/^## Completed\n- \[161 /, File.read(@index))
   end
 
-  def test_scaffolded_outcome_is_refused_by_the_disposition_literal_too
-    # Belt-and-braces: even without the sentinel, the scaffold's literal
-    # "delivered|abandoned" frontmatter value fails the exact-match check.
+  def test_backfilled_files_land_in_the_store_commit
+    intent_dir = build_intent(sentinel_docs: true)
+    write_index
+    Open3.capture3("git", "init", "-q", @home)
+    Open3.capture3("git", "-C", @home, "add", "-A")
+    Open3.capture3("git", "-C", @home, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "seed")
+
+    _out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered", "--index", @index)
+    assert_equal 0, status
+    files, _err, st = Open3.capture3("git", "-C", @home, "show", "--name-only", "--format=", "HEAD")
+    assert st.success?
+    %w[spec.md plan.md actions/ACTION_1.md outcome.md].each do |rel|
+      assert_includes files, "store/161--demo/#{rel}", "the close commit must carry #{rel}"
+    end
+    refute File.exist?(File.join(intent_dir, "delivery.lock"))
+  end
+
+  # Intent 302 moved the intent-file content check to close time; intent 308 made it a
+  # report. A required frontmatter field missing from the intent file is named on stderr
+  # and the close still lands (Done line, INDEX moved).
+  def test_intent_file_missing_a_required_field_is_reported_and_the_close_proceeds
+    intent_dir = build_intent
+    ifile = File.join(intent_dir, "161--demo.md")
+    File.write(ifile, File.read(ifile).sub(/^author: .*\n/, ""))
+    write_index
+
+    out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered", "--index", @index)
+    assert_equal 0, status, out
+    assert_match(/structure check: intent_structure.*author/, out)
+    assert_match(/^## Completed\n- \[161 /, File.read(@index))
+    assert(savepoint_lines(intent_dir).any? { |l| l.include?("Done") && l.include?("delivered") })
+  end
+
+  def test_placeholder_outcome_is_backfilled_with_the_close_disposition
+    intent_dir = build_intent
+    template = File.read(File.expand_path("../templates/outcome.md", __dir__))
+    File.write(File.join(intent_dir, "outcome.md"), "#{SENTINEL}\n#{template}")
+    write_index
+
+    out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered", "--index", @index)
+    assert_equal 0, status, out
+    assert_match(/backfilled outcome\.md/, out)
+    assert_nil OutcomeGuard.reason(intent_dir, "delivered")
+    assert(savepoint_lines(intent_dir).any? { |l| l.include?("Done") && l.include?("delivered") })
+  end
+
+  def test_real_outcome_with_the_scaffold_disposition_literal_is_reported_not_refused
+    # Without the sentinel the file is real content: it is kept as written, the mismatch
+    # is reported, and the close still lands. doctor --intent keeps reporting it after.
     intent_dir = build_intent(outcome_disposition: "delivered|abandoned")
     write_index
+    before = File.read(File.join(intent_dir, "outcome.md"))
 
     out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered", "--index", @index)
-    assert_equal 2, status
-    assert_match(/disposition/i, out)
-    assert_empty savepoint_lines(intent_dir)
+    assert_equal 0, status, out
+    assert_match(/outcome\.md: .*disposition.*\(proceeding/i, out)
+    assert_equal before, File.read(File.join(intent_dir, "outcome.md"))
+    assert(savepoint_lines(intent_dir).any? { |l| l.include?("Done") && l.include?("delivered") })
   end
 
-  def test_wrong_disposition_outcome_refuses_with_exit_2_and_no_done_line
+  def test_wrong_disposition_outcome_is_reported_and_the_close_proceeds
     intent_dir = build_intent(outcome_disposition: "abandoned")
     write_index
 
     out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered", "--index", @index)
-    assert_equal 2, status
+    assert_equal 0, status, out
     assert_match(/disposition/i, out)
-    assert_empty savepoint_lines(intent_dir)
+    assert_match(/\A---\ndisposition: abandoned\n/, File.read(File.join(intent_dir, "outcome.md")))
+    assert_match(/^## Completed\n- \[161 /, File.read(@index))
   end
 
   # --- (c) INDEX line moves Active -> terminal, idempotently [AC5] -----------
@@ -240,12 +372,12 @@ class EndIntentTest < Minitest::Test
 
     _out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered",
                                    "--index", @index, "--no-commit",
-                                   "--index-note", "(guided, Tier S). Shipped end to end. Suite 42/100/0/0.")
+                                   "--index-note", "(auto). Shipped end to end. Suite 42/100/0/0.")
     assert_equal 0, status
 
     content = File.read(@index)
     expected_line = "- [161 — Demo intent](store/161--demo/161--demo.md) — " \
-                    "#{Date.today.iso8601} (guided, Tier S). Shipped end to end. Suite 42/100/0/0.\n"
+                    "#{Date.today.iso8601} (auto). Shipped end to end. Suite 42/100/0/0.\n"
     assert_includes content, expected_line
     completed_head = content.lines.drop_while { |l| l.strip != "## Completed" }.take(3).join
     refute_match(/_\(none\)_/, completed_head, "the placeholder must not survive alongside the rich entry")
@@ -254,7 +386,7 @@ class EndIntentTest < Minitest::Test
   def test_index_note_idempotency_holds_with_the_flag
     build_intent
     write_index
-    note = "(guided, Tier S). Shipped end to end. Suite 42/100/0/0."
+    note = "(auto). Shipped end to end. Suite 42/100/0/0."
 
     run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered",
                     "--index", @index, "--no-commit", "--index-note", note)
@@ -285,7 +417,7 @@ class EndIntentTest < Minitest::Test
   def test_dry_run_changes_nothing
     intent_dir = build_intent
     write_index
-    intent_file = Bridge.intent_file(intent_dir)
+    intent_file = Savepoint.intent_file(intent_dir)
     outcome_file = File.join(intent_dir, "outcome.md")
 
     before_intent = File.read(intent_file)
@@ -367,7 +499,7 @@ class EndIntentTest < Minitest::Test
     run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered", "--index", @index,
                     "--no-commit", "--outcome-summary", "Shipped the demo end to end.")
 
-    body = File.read(Bridge.intent_file(intent_dir))
+    body = File.read(Savepoint.intent_file(intent_dir))
     assert_includes body, "## Outcome\nShipped the demo end to end.\n"
   end
 
@@ -396,7 +528,6 @@ class EndIntentTest < Minitest::Test
     intent_dir = build_intent(id: "161")
     write_index(id: "161")
     Lock.acquire(intent_dir, session: "sess-1")
-    write_bridge(session: "sess-1", id: "161")
 
     _out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered",
                                    "--index", @index, "--no-commit", session: "sess-1")
@@ -408,7 +539,6 @@ class EndIntentTest < Minitest::Test
     intent_dir = build_intent(id: "161", outcome_disposition: "abandoned")
     write_index(id: "161")
     Lock.acquire(intent_dir, session: "sess-1")
-    write_bridge(session: "sess-1", id: "161")
 
     _out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "abandoned",
                                    "--index", @index, "--no-commit", session: "sess-1")
@@ -423,7 +553,7 @@ class EndIntentTest < Minitest::Test
     write_index(id: "161")
     Lock.acquire(intent_dir, session: "owner-session")
     before_index = File.read(@index)
-    before_intent_file = File.read(Bridge.intent_file(intent_dir))
+    before_intent_file = File.read(Savepoint.intent_file(intent_dir))
     before_outcome = File.read(File.join(intent_dir, "outcome.md"))
 
     out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered",
@@ -431,7 +561,7 @@ class EndIntentTest < Minitest::Test
     assert_equal 4, status
     assert_match(/held/i, out)
     assert_equal before_index, File.read(@index), "INDEX.md must be left untouched"
-    assert_equal before_intent_file, File.read(Bridge.intent_file(intent_dir))
+    assert_equal before_intent_file, File.read(Savepoint.intent_file(intent_dir))
     assert_equal before_outcome, File.read(File.join(intent_dir, "outcome.md"))
     assert_empty savepoint_lines(intent_dir), "savepoint.md must be left untouched"
     assert File.exist?(Lock.path(intent_dir)), "the foreign lock must be left exactly as found"
@@ -442,7 +572,6 @@ class EndIntentTest < Minitest::Test
     write_index(id: "161")
     Lock.acquire(intent_dir, session: "owner-session")
     FileUtils.touch(Lock.path(intent_dir), mtime: Time.now - 4000) # older than Lock::TTL_SECONDS (1800)
-    write_bridge(session: "someone-else", id: "161")
 
     _out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered",
                                    "--index", @index, "--no-commit", session: "someone-else")
@@ -507,20 +636,17 @@ class EndIntentTest < Minitest::Test
   # --- wiped /tmp or a resumed job under a new session id must never strand --
   # --- a committed, terminal intent still holding its lock) ------------------
 
-  def test_ac13_no_bridge_at_all_still_clears_an_owned_lock_with_a_loud_warning
+  def test_ac13_a_global_store_intent_with_no_worktree_still_clears_an_owned_lock
     intent_dir = build_intent(id: "161")
     write_index(id: "161")
     Lock.acquire(intent_dir, session: "sess-1")
-    # Deliberately NO write_bridge call: the /tmp bridge cannot resolve at all
-    # (a wiped /tmp, or a resumed job running under a new session id).
+    # A global-store intent resolves no project repo, so the derived worktree block is
+    # empty (the /tmp bridge this case once modelled was removed in 2.0, intent 307).
 
     out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered",
                                   "--index", @index, "--no-commit", session: "sess-1")
-    assert_equal 0, status, "AC13: no bridge must still exit 0 when the lock is directly releasable: #{out}"
-    refute File.exist?(Lock.path(intent_dir)), "AC13: the durable lock must be cleared even with no bridge"
-    assert_match(/no bridge resolved/i, out)
-    assert_match(/NOT removed/i, out)
-    assert_match(/orphaned worktree/i, out)
+    assert_equal 0, status, "AC13: an intent with no worktree must still exit 0: #{out}"
+    refute File.exist?(Lock.path(intent_dir)), "AC13: the durable lock must be cleared"
   end
 
   # --- AC4: a hyphen Active line moves; the write still emits a real em dash --
@@ -604,7 +730,7 @@ class EndIntentTest < Minitest::Test
     write_index(id: "161")
     File.write(Lock.path(intent_dir), "{ this is not valid json at all")
     before_index = File.read(@index)
-    before_intent_file = File.read(Bridge.intent_file(intent_dir))
+    before_intent_file = File.read(Savepoint.intent_file(intent_dir))
     before_outcome = File.read(File.join(intent_dir, "outcome.md"))
 
     out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered",
@@ -612,7 +738,7 @@ class EndIntentTest < Minitest::Test
     assert_equal 4, status, "a FRESH corrupt lock must refuse exactly like a fresh foreign lock: #{out}"
     assert_match(/corrupt/i, out)
     assert_equal before_index, File.read(@index), "INDEX.md must be left untouched"
-    assert_equal before_intent_file, File.read(Bridge.intent_file(intent_dir))
+    assert_equal before_intent_file, File.read(Savepoint.intent_file(intent_dir))
     assert_equal before_outcome, File.read(File.join(intent_dir, "outcome.md"))
     assert_empty savepoint_lines(intent_dir), "savepoint.md must be left untouched"
     assert File.exist?(Lock.path(intent_dir)), "the corrupt lock file must be left exactly as found"
@@ -688,13 +814,12 @@ class EndIntentTest < Minitest::Test
     assert_match(/^## Completed\n- \[161 — Demo intent\]/, content, "the first match must still have moved")
   end
 
-  # --- structure gate (intent 222): refuse-then-succeed end-to-end -----------
+  # --- structure check (intent 222; a report since intent 308) end-to-end -----------
 
-  # An unchecked checklist item is now a hard refusal (exit 6) at the structure gate, BEFORE
-  # any of steps 1-4 write anything; checking the box (the only change) then re-running the
-  # identical invocation must close normally: exit 0, INDEX moves, the savepoint gains the
-  # Done bookend, and the store commits.
-  def test_structure_gate_refuses_on_unchecked_checklist_item_then_succeeds_once_checked
+  # An unchecked checklist item is named on stderr and the close still lands: exit 0, INDEX
+  # moves, the savepoint gains the Done bookend, and the store commits. Nothing is refused
+  # for a gap end-intent cannot fix by writing a document (the box is the owner's).
+  def test_unchecked_checklist_item_is_reported_and_the_close_proceeds
     intent_dir = build_intent(id: "161")
     File.write(File.join(intent_dir, "checklist.md"), "# Checklist\n\n- [ ] finish the thing\n")
     write_index
@@ -703,32 +828,191 @@ class EndIntentTest < Minitest::Test
     Open3.capture3("git", "-C", @home, "-c", "user.name=t", "-c", "user.email=t@t",
                    "commit", "-q", "-m", "seed")
 
-    before_index = File.read(@index)
-    before_outcome = File.read(File.join(intent_dir, "outcome.md"))
-    before_intent_file = File.read(Bridge.intent_file(intent_dir))
-    refute File.exist?(File.join(intent_dir, "savepoint.md")), "no savepoint yet in this fixture"
-
     out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered", "--index", @index)
-    assert_equal 6, status, "an unchecked checklist item must refuse via the structure gate: #{out}"
-    assert_match(/intent_checklist_complete/, out)
-    assert_equal before_index, File.read(@index), "INDEX.md must be untouched by a refused close"
-    assert_equal before_outcome, File.read(File.join(intent_dir, "outcome.md")), "outcome.md must be untouched"
-    assert_equal before_intent_file, File.read(Bridge.intent_file(intent_dir)), "the intent file must be untouched"
-    refute File.exist?(File.join(intent_dir, "savepoint.md")), "a refused close must author no savepoint line"
-
-    File.write(File.join(intent_dir, "checklist.md"), "# Checklist\n\n- [x] finish the thing\n")
-
-    out2, status2 = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered", "--index", @index)
-    assert_equal 0, status2, "checking the box must let the identical invocation close cleanly: #{out2}"
+    assert_equal 0, status, out
+    assert_match(/structure check: intent_checklist_complete/, out)
+    assert_equal "# Checklist\n\n- [ ] finish the thing\n", File.read(File.join(intent_dir, "checklist.md")),
+                 "the checklist is the owner's record; end-intent never edits it"
     content = File.read(@index)
     refute_match(/^- \[161 /, content.lines.take_while { |l| l.strip != "## Completed" }.join,
                  "the Active section must no longer carry the 161 entry")
     assert_match(/^## Completed\n- \[161 /, content)
     assert(savepoint_lines(intent_dir).any? { |l| l.include?("Done") && l.include?("delivered") },
-           "the savepoint must gain the Done bookend on the successful close")
+           "the savepoint must gain the Done bookend")
 
     log, _err, log_status = Open3.capture3("git", "-C", @home, "log", "--oneline")
     assert log_status.success?
-    assert_match(/complete intent 161/, log, "the successful close must still commit the store")
+    assert_match(/complete intent 161/, log, "the close must still commit the store")
+  end
+
+  # --- n6 (334): the hollow-report gate reads nodes/ too (review A2/A3) --------
+
+  def node_intent_dir(delivered_label: "n1", node_heading: "## n1 failure-mode matrix")
+    dir = Dir.mktmpdir("hollow-gate-nodes")
+    FileUtils.mkdir_p(File.join(dir, "nodes"))
+    File.write(File.join(dir, "nodes", "n1.md"), <<~MD)
+      ---
+      node: n1
+      kind: work
+      files: [x.rb]
+      budget: 100000
+      ---
+      # n1 - a work node
+
+      #{node_heading}
+      | Operation | Failure mode | Test |
+      | --- | --- | --- |
+      | op | mode | some_test#test_x |
+
+      ## Steps
+      1. do it
+
+      ## Proven by
+      (filled at close)
+    MD
+    File.write(File.join(dir, "outcome.md"), <<~MD)
+      ---
+      disposition: delivered
+      ---
+      # Outcome: Demo
+
+      ## Summary
+      Did it.
+
+      ## Delivered
+      | Row | What |
+      | --- | --- |
+      | #{delivered_label} | shipped |
+
+      ## Verification
+      - suite green
+
+      ## Needs you
+      None
+
+      ## Follow-ups
+      None
+    MD
+    dir
+  end
+
+  def test_hollow_gate_engages_and_passes_on_a_node_intent
+    dir = node_intent_dir
+    assert_nil hollow_report_reason(dir, "delivered"),
+               "a correctly labeled node-delivered intent must pass the gate"
+
+    # Prove the gate actually looked at nodes/ rather than short-circuiting on
+    # an empty label set (review A2): a mismatched label must now be refused.
+    mismatched = node_intent_dir(delivered_label: "bogus")
+    refute_nil hollow_report_reason(mismatched, "delivered"),
+               "the gate must engage on a node intent and catch a real mismatch"
+  ensure
+    FileUtils.rm_rf(dir) if dir
+    FileUtils.rm_rf(mismatched) if mismatched
+  end
+
+  def test_node_id_labels_are_recognized
+    dir = node_intent_dir(delivered_label: "n1", node_heading: "## n1 failure-mode matrix")
+    assert_nil hollow_report_reason(dir, "delivered"),
+               "an outcome row labelled n1 must match the nodes/n1.md heading that carries n1"
+    refute_equal ReportScreen::NOT_RECORDED, ReportScreen.proven_by(dir, "n1"),
+                 "Proven-by must read the nodes/ matrix, not render not recorded"
+  ensure
+    FileUtils.rm_rf(dir) if dir
+  end
+
+  def test_heading_with_both_token_shapes_keeps_the_s_label
+    dir = Dir.mktmpdir("hollow-gate-legacy")
+    FileUtils.mkdir_p(File.join(dir, "actions"))
+    File.write(File.join(dir, "actions", "ACTION_1.md"), <<~MD)
+      # ACTION_1
+
+      ### The v2 rewrite (S3)
+      | Row | Failure mode | Test |
+      | --- | --- | --- |
+      | S3a | it breaks | a_test#test_y |
+    MD
+    File.write(File.join(dir, "outcome.md"), <<~MD)
+      ---
+      disposition: delivered
+      ---
+      # Outcome: Demo
+
+      ## Summary
+      Did it.
+
+      ## Delivered
+      | Row | What |
+      | --- | --- |
+      | S3 | shipped |
+
+      ## Verification
+      - suite green
+
+      ## Needs you
+      None
+
+      ## Follow-ups
+      None
+    MD
+    assert_nil hollow_report_reason(dir, "delivered"),
+               "a legacy heading carrying both a node-shaped token (v2) and an S-label must keep S3"
+  ensure
+    FileUtils.rm_rf(dir) if dir
+  end
+
+  # Post-execution review, blocking 2: the node-id grammar must never apply to
+  # actions/*.md headings. "v1" and "v2" are this repo's own house words for
+  # plan review and post-execution review, so an ordinary legacy heading whose
+  # prose names one must never manufacture a label and refuse a real close.
+  def test_actions_heading_prose_word_v2_never_manufactures_a_node_label
+    dir = Dir.mktmpdir("hollow-gate-legacy-v2-prose")
+    FileUtils.mkdir_p(File.join(dir, "actions"))
+    File.write(File.join(dir, "actions", "ACTION_1.md"), <<~MD)
+      # ACTION_1
+
+      ### Ship v2 of the reporting pipeline
+      | Row | Failure mode | Test |
+      | --- | --- | --- |
+      | 1 | it breaks | a_test#test_y |
+    MD
+    File.write(File.join(dir, "outcome.md"), <<~MD)
+      ---
+      disposition: delivered
+      ---
+      # Outcome: Demo
+
+      ## Summary
+      Did it.
+
+      ## Delivered
+      | Row | What |
+      | --- | --- |
+      | 1 | shipped |
+      | 2 | shipped too |
+
+      ## Verification
+      - suite green
+
+      ## Needs you
+      None
+
+      ## Follow-ups
+      None
+    MD
+    assert_nil hollow_report_reason(dir, "delivered"),
+               "a heading whose prose contains v2, with no S-label, must never refuse a legacy close"
+  ensure
+    FileUtils.rm_rf(dir) if dir
+  end
+
+  # Post-execution review, blocking 2: restricting the node-id grammar to
+  # nodes/*.md must not break the case it exists to serve.
+  def test_real_node_id_heading_in_nodes_dir_still_resolves
+    dir = node_intent_dir
+    assert_nil hollow_report_reason(dir, "delivered"),
+               "a real node-id heading in nodes/*.md must still resolve after the grammar split"
+  ensure
+    FileUtils.rm_rf(dir) if dir
   end
 end

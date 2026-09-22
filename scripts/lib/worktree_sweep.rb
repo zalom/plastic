@@ -1,8 +1,9 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 
+require_relative "store_layout"
 require_relative "worktree"
-require_relative "bridge"
+require_relative "index_entry"
 
 # WorktreeSweep -- the one-time orphan sweep for store worktrees retired by
 # intent 178 (D2). Pure candidate classification plus a thin apply step, both
@@ -55,14 +56,14 @@ module WorktreeSweep
   # Matching on the full name, not just the numeric id, sidesteps id
   # collisions across projects (ids are only unique WITHIN one store).
   def resolve_intent_dir(plastic_home, name)
-    candidates = [File.join(plastic_home, "store", name)] +
-                 Dir.glob(File.join(plastic_home, "projects", "*", "store", name))
+    candidates = [File.join(Plastic::StoreLayout.global_store(plastic_home), name)] +
+                 Dir.glob(File.join(Plastic::StoreLayout.projects_root(plastic_home), "*", "store", name))
     candidates.find { |d| Dir.exist?(d) }
   end
 
   # The INDEX.md section heading (e.g. "Active", "Completed") that lists this
   # intent dir, or nil if no INDEX.md entry links to it. Reuses
-  # Bridge.index_entry_match so this never drifts from the shared parser.
+  # IndexEntry.match so this never drifts from the shared parser.
   def index_status(intent_dir, name)
     store = File.dirname(intent_dir)
     index = File.join(File.dirname(store), "INDEX.md")
@@ -75,7 +76,7 @@ module WorktreeSweep
         section = stripped.sub(/\A##\s*/, "").strip
         next
       end
-      m = Bridge.index_entry_match(stripped)
+      m = IndexEntry.match(stripped)
       next unless m
       return section if m[3].to_s.include?(name)
     end

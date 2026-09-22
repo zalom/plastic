@@ -3,9 +3,9 @@ require "tmpdir"
 
 require_relative "../scripts/lib/installer_core"
 
-# SnappyDeliveryPackagingTest (intent 213): a packaging regression test for the nine files
-# this intent adds (four thin-CLI scripts under scripts/, five scripts/lib/ modules,
-# spec_header.rb counted once). Guards both directions:
+# SnappyDeliveryPackagingTest (intent 213): a packaging regression test for the files
+# this intent added (three thin-CLI scripts under scripts/ and their scripts/lib/ modules;
+# the spec header and start-intent were removed in 2.0, intent 304). Guards both directions:
 #
 #   1. Source with no manifest key: orphaned. The file ships in the repo but is never
 #      copied to ~/.plastic/scripts, so an installed script that requires it raises
@@ -13,20 +13,17 @@ require_relative "../scripts/lib/installer_core"
 #   2. Manifest key with no source file: DESTRUCTIVE. distribute prunes old_files minus
 #      the still-existing global_files, so a key whose source went away gets DELETED from
 #      every existing install on the next update. Parked intent 247 names this gap for the
-#      whole manifest; this file also closes it generally, not just for the nine files.
+#      whole manifest; this file also closes it generally, not just for these files.
 #
 # Hermetic: no network, no ~/.plastic read (plastic_home is a throwaway tmpdir), no eval.
 class SnappyDeliveryPackagingTest < Minitest::Test
   REPO = File.expand_path("../../", __FILE__)
 
   SNAPPY_FILES = %w[
-    scripts/lib/spec_header.rb
     scripts/lib/scaffold_intent.rb
     scripts/scaffold-intent
     scripts/lib/verify_intent.rb
     scripts/verify-intent
-    scripts/lib/start_intent.rb
-    scripts/start-intent
     scripts/lib/exec_worktree.rb
     scripts/exec-worktree
   ].freeze
@@ -34,14 +31,12 @@ class SnappyDeliveryPackagingTest < Minitest::Test
   SNAPPY_SCRIPTS = %w[
     scripts/scaffold-intent
     scripts/verify-intent
-    scripts/start-intent
     scripts/exec-worktree
   ].freeze
 
   SNAPPY_SCRIPT_LIBS = {
     "scripts/scaffold-intent" => "scaffold_intent",
     "scripts/verify-intent" => "verify_intent",
-    "scripts/start-intent" => "start_intent",
     "scripts/exec-worktree" => "exec_worktree",
   }.freeze
 
@@ -52,8 +47,8 @@ class SnappyDeliveryPackagingTest < Minitest::Test
   end
 
   def test_every_snappy_delivery_file_is_in_the_manifest
-    refute_empty SNAPPY_FILES, "the nine-file list must not go empty"
-    assert_equal 9, SNAPPY_FILES.length, "the nine-file list must stay at exactly nine entries"
+    refute_empty SNAPPY_FILES, "the six-file list must not go empty"
+    assert_equal 6, SNAPPY_FILES.length, "the six-file list must stay at exactly six entries"
 
     missing = SNAPPY_FILES.reject { |path| core_files.key?(path) }
     assert_empty missing,

@@ -42,11 +42,11 @@ Active/Future/Completed placement is managed in INDEX.md, not in frontmatter.
 
 ## Creating Tactical Intents
 
-Create through the `plastic-intent-creating` skill, which scaffolds with one call:
+Create through the `plastic intent new` command, which scaffolds with one call:
 `ruby ~/.plastic/scripts/new-intent --store .plastic/store --intent "<one-line>" --slug <slug> [--sources <governing-id>]`.
 It allocates the Folgezettel ID, creates `.plastic/store/ID--slug/ID--slug.md` born
-complete, and wires the links. Never hand-author the files: the write-time create gate
-rejects an incomplete or malformed intent file.
+complete, and wires the links. Never hand-author the files: `new-intent` validates the
+intent file it writes, and `end-intent` checks it again at close.
 
 ## Lifecycle Skills
 
@@ -54,17 +54,14 @@ Plastic has its own lifecycle skills. When a Plastic skill exists for the curren
 
 | Phase | Skill | Produces |
 |-------|-------|----------|
-| What | `plastic-intent-creating` | Intent file |
-| Why | `plastic-intent-brainstorming` | Enriched `## Context` + `### Decisions` |
-| Why | `plastic-intent-speccing` | `spec.md` |
-| Why | `plastic-intent-researching` | `resources/*.md` |
-| Why | `plastic-intent-grilling` | Deep interrogation |
-| How | `plastic-intent-planning` | `plan.md`, `checklist.md`, `actions/` |
-| Exec | `plastic-intent-executing` | Code + `outcome.md` |
-| Done | `plastic-intent-ending` | Lifecycle transition |
+| What | `plastic intent new` | Intent file |
+| Why | `plastic intent spec` | Rulings as insights, `resources/*.md`, `spec.md` |
+| How | `plastic intent spec` | `actions/`, `plan.md`, `checklist.md` |
+| Exec | `plastic intent step` | Code + `outcome.md` |
+| End | `plastic intent end` | Lifecycle transition |
 
 **Artifact convention:** ALL lifecycle artifacts go to the active intent directory (`store/{id}--{slug}/`). Never write specs to `docs/superpowers/specs/` or plans to `docs/superpowers/plans/`.
 
-## When You're Done
+## When the Project Wraps
 
 When this project satisfies the governing intent's goal, report back. The orchestrator will complete the strategic intent.

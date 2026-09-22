@@ -44,6 +44,17 @@ class SelectUpdateTargetTest < Minitest::Test
       '{"alpha":"1.1.0-alpha.2","latest":"1.0.0"}')
   end
 
+  # Intent 310: the check-update selector on a 1.14.1 install never proposes the 2.0 alpha,
+  # and on the alpha itself reads 2.0.0-alpha.1 as up to date.
+  def test_stable_install_never_sees_the_new_major_alpha
+    assert_equal "", select("1.14.1", '{"latest":"1.14.1","alpha":"2.0.0-alpha.1"}')
+  end
+
+  def test_new_major_alpha_is_up_to_date_on_its_own_channel
+    assert_equal "", select("2.0.0-alpha.1", '{"latest":"1.14.1","alpha":"2.0.0-alpha.1"}')
+    assert_equal "2.0.0-alpha.1", select("1.0.0-alpha.19", '{"latest":"1.14.1","alpha":"2.0.0-alpha.1"}')
+  end
+
   def test_malformed_json_yields_empty
     assert_equal "", select("1.0.0-alpha.12", "not json")
   end

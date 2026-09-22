@@ -1,6 +1,7 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 
+require_relative "store_layout"
 require "fileutils"
 require "yaml"
 
@@ -14,7 +15,7 @@ require "yaml"
 # `project.yml` (from templates/project.yml). Re-running never clobbers existing
 # files. The logic was migrated here from the orphaned
 # `InstallerCore#bootstrap_project_store` so there is one definition that the
-# `provision-project-store` CLI, the `plastic-store-provisioning` skill, the
+# `provision-project-store` CLI, the `plastic-doctor` skill's provisioning section, the
 # doctor fix hint, and the project skills all consult.
 #
 # Pure filesystem and dependency-injected: `provision` accepts an injectable
@@ -63,7 +64,7 @@ module StoreProvisioning
       }
     end
 
-    project_dir = File.join(plastic_home, "projects", slug)
+    project_dir = Plastic::StoreLayout.project_root(plastic_home, slug)
     store_dir = File.join(project_dir, "store")
     FileUtils.mkdir_p(store_dir)
 

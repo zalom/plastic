@@ -1,0 +1,211 @@
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# Handoff (intent 311): one session's hand-off, a pure rendering of its share
+# of a day ledger (checklist.md and savepoint.md), written into the day
+# directory as handoff--<session>.md at every tick, at PreCompact, and at
+# close. Derived and regenerable: every write renders in full, so a lost or
+# stale copy costs nothing. No environment reads; every path is injected.
+
+require "fileutils"
+require_relative "session_ledger"
+
+module Handoff
+  module_function
+
+  TRIGGERS = %w[tick precompact close].freeze
+  BUDGET = 6144
+  OPEN_CAP = 20
+  DONE_CAP = 10
+  RECENT_CAP = 10
+  OTHERS_CAP = 10
+  # Intent 340b (G7c, n4, D11/D12): runner-step.last is raw stdout+stderr,
+  # not a bounded list of items like every other section, so it gets a byte
+  # cap of its own rather than an item count.
+  RUNNER_CAP = 2048
+  # A ledger summary may run to 200 characters; a hand-off line shows the
+  # first 80, so the caps above are reachable inside the byte budget.
+  SUMMARY_MAX = 80
+  OPEN_STATES = %i[open pending].freeze
+  # Trimmed first when the budget is exceeded; Open is the last to shrink.
+  TRIM_ORDER = %i[others recent done open].freeze
+  RESUME = "Say continue; the day summary at boot and this file carry the state."
+
+  SAVEPOINT_TAIL_RE = /\A\[([^\]]*)\] \[([^\]]*)\] (.*)\z/m
+  private_constant :SAVEPOINT_TAIL_RE
+
+  def path_for(store, day, session)
+    File.join(SessionLedger.day_dir(store, day), "handoff--#{session}.md")
+  end
+
+  # The day this session's hand-off belongs to: the session's day from the
+  # day ledger (SessionLedger.session_day, graph.md D7), the same lookup
+  # SessionClose uses for the drop at close.
+  def day_for(store, session, today:)
+    SessionLedger.session_day(store, session, today: today)
+  end
+
+  def clip(summary)
+    text = summary.to_s
+    text.length > SUMMARY_MAX ? "#{text[0, SUMMARY_MAX]}..." : text
+  end
+
+  # --- readers ---------------------------------------------------------------------
+
+  def read_items(store, day)
+    SessionLedger.read_locked(SessionLedger.checklist_path(store, day))
+                 .each_line.filter_map { |l| SessionLedger.parse_checklist_line(l) }
+  end
+
+  # Parsed savepoint lines, file order: {time:, event:, session:, project:,
+  # summary:}. A line that does not follow the ledger grammar is skipped.
+  def read_savepoint(store, day)
+    SessionLedger.read_locked(SessionLedger.savepoint_path(store, day)).each_line.filter_map do |raw|
+      line = raw.chomp.scrub
+      next if line.empty?
+
+      time, event, rest = line.split(/\s{2,}/, 3)
+      next unless time && event && rest
+
+      match = SAVEPOINT_TAIL_RE.match(rest)
+      next unless match
+
+      { time: time, event: event, session: match[1], project: match[2], summary: match[3] }
+    end
+  end
+
+  # Raw text of the delivering intent's runner-step.last, or nil when there
+  # is no intent, the file is absent, or it cannot be read (row 4.41: a torn
+  # file must never raise a PreCompact hand-off out of existence).
+  def read_runner_last(intent)
+    return nil if intent.to_s.strip.empty?
+
+    path = File.join(intent, "runner-step.last")
+    return nil unless File.file?(path)
+
+    text = File.read(path)
+    text.strip.empty? ? nil : text
+  rescue StandardError
+    nil
+  end
+
+  # Omitted entirely when no intent resolves or the file is absent/empty
+  # (row 4.39); capped like every other section otherwise (row 4.40).
+  def runner_section(intent)
+    text = read_runner_last(intent)
+    return nil unless text
+
+    clipped = text.bytesize > RUNNER_CAP ? "#{text.byteslice(0, RUNNER_CAP)}\n(truncated)" : text
+    "## Runner\n#{clipped}\n"
+  end
+
+  # --- rendering, pure -----------------------------------------------------------
+
+  def render(store:, day:, session:, trigger:, now: Time.now, intent: nil)
+    raise ArgumentError, "unknown trigger: #{trigger.inspect}" unless TRIGGERS.include?(trigger)
+
+    items = read_items(store, day)
+    mine = items.select { |i| i[:session] == session }
+    lists = {
+      open: mine.select { |i| OPEN_STATES.include?(i[:state]) }.map { |i| item_line(i) },
+      done: mine.select { |i| i[:state] == :done }.map { |i| item_line(i) },
+      recent: read_savepoint(store, day).select { |e| e[:session] == session }.map { |e| recent_line(e) },
+      others: others_lines(items, session),
+    }
+    hidden = Hash.new(0)
+    cap!(lists, hidden, :open, OPEN_CAP)
+    cap!(lists, hidden, :done, DONE_CAP)
+    cap!(lists, hidden, :recent, RECENT_CAP)
+    if lists[:others].size > OTHERS_CAP
+      hidden[:others] += lists[:others].size - OTHERS_CAP
+      lists[:others] = lists[:others].first(OTHERS_CAP)
+    end
+
+    header = [
+      "# Hand-off: session #{session}, #{day}",
+      "",
+      "Written #{now.utc.strftime('%Y-%m-%dT%H:%M:%SZ')} at #{trigger}",
+      "",
+    ]
+    runner = runner_section(intent)
+    loop do
+      text = compose(header, lists, hidden, runner)
+      return text if text.bytesize <= BUDGET
+
+      key = TRIM_ORDER.find { |k| !lists[k].empty? }
+      return text unless key
+
+      # Open, Done, and Recent keep their newest entries; Others has no order.
+      key == :others ? lists[key].pop : lists[key].shift
+      hidden[key] += 1
+    end
+  end
+
+  # Keeps the newest `cap` lines (the file is chronological) and counts the rest.
+  def cap!(lists, hidden, key, cap)
+    return unless lists[key].size > cap
+
+    hidden[key] += lists[key].size - cap
+    lists[key] = lists[key].last(cap)
+  end
+
+  def compose(header, lists, hidden, runner = nil)
+    sections = [
+      section("Open", lists[:open], hidden[:open]),
+      section("Done", lists[:done], hidden[:done]),
+      section("Recent", lists[:recent], hidden[:recent]),
+      section("Others today", lists[:others], hidden[:others]),
+      runner,
+      "## Resume\n#{RESUME}\n",
+    ]
+    (header + sections.compact).join("\n")
+  end
+
+  def section(title, lines, hidden)
+    return nil if lines.empty? && hidden.zero?
+
+    body = lines.dup
+    body << "(+#{hidden} more)" if hidden.positive?
+    "## #{title}\n#{body.join("\n")}\n"
+  end
+
+  def item_line(item)
+    "- [#{item[:project]}] #{clip(item[:summary])}"
+  end
+
+  def recent_line(event)
+    "- #{event[:time][11, 5]}Z #{event[:event]} #{clip(event[:summary])}"
+  end
+
+  def others_lines(items, session)
+    items.reject { |i| i[:session] == session }
+         .group_by { |i| i[:session] }
+         .sort
+         .map do |sid, theirs|
+      open = theirs.count { |i| OPEN_STATES.include?(i[:state]) }
+      done = theirs.count { |i| i[:state] == :done }
+      "- #{sid}: #{open} open, #{done} done"
+    end
+  end
+
+  # --- writing -------------------------------------------------------------------
+
+  # Opens the day first (a tick after midnight never fails), renders, and
+  # writes through a per-process temp file and rename, so a crash leaves no
+  # partial hand-off and two writers for one session (a tick overlapping a
+  # PreCompact) never share a temp name. Returns the path. With
+  # `templates: nil` the day is not scaffolded, only its directory ensured.
+  def write(store:, day:, session:, trigger:, templates:, now: Time.now, intent: nil)
+    if templates
+      SessionLedger.open_day(store: store, day: day, templates: templates, author: session)
+    else
+      FileUtils.mkdir_p(SessionLedger.day_dir(store, day))
+    end
+    text = render(store: store, day: day, session: session, trigger: trigger, now: now, intent: intent)
+    target = path_for(store, day, session)
+    tmp = File.join(File.dirname(target), ".handoff-#{session}-#{Process.pid}-#{Thread.current.object_id}.tmp")
+    File.write(tmp, text)
+    File.rename(tmp, target)
+    target
+  end
+end

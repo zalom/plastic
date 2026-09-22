@@ -60,28 +60,33 @@ class DoctorCoreFlagTest < Minitest::Test
     end
   end
 
-  def test_core_run_is_exactly_the_five_liveness_groups
+  # Intent 331e added a sixth group, check_display_registration (D5: the
+  # settings.json/launcher liveness check for the MessageDisplay hook is
+  # cheap and belongs at --core; the other three display checks stay off the
+  # boot path, see scripts/doctor.rb).
+  def test_core_run_is_exactly_the_six_liveness_groups
     d = doctor
     expected = (d.check_agent_registration("claude") +
                 d.check_core_files("claude", include_drift: false) +
                 d.check_manifest_sync("claude") +
                 d.check_registered_project_paths +
-                d.check_global_store_available)
+                d.check_global_store_available +
+                d.check_display_registration("claude"))
                .map { |c| c[:name] }
     actual = d.run_core_checks("claude")[:checks].map { |c| c[:name] }
 
     assert_equal expected, actual,
       "--core must be exactly agent_registration + core_files(no drift) + manifest_sync + " \
-      "registered_project_paths + global_store_available, in order"
+      "registered_project_paths + global_store_available + display_registration, in order"
   end
 
   def test_core_run_only_has_liveness_categories
     result = doctor.run_core_checks("claude")
     categories = result[:checks].map { |c| c[:category] }.uniq
 
-    assert_equal %w[agent_registration core_files global_store manifest_sync project_stores],
+    assert_equal %w[agent_registration core_files display global_store manifest_sync project_stores],
       categories.sort,
-      "--core categories should be agent_registration, core_files, global_store, " \
+      "--core categories should be agent_registration, core_files, display, global_store, " \
       "manifest_sync, and project_stores"
   end
 
@@ -106,7 +111,7 @@ class DoctorCoreFlagTest < Minitest::Test
     result = doctor.run_checks("claude")
     categories = result[:checks].map { |c| c[:category] }.uniq
 
-    %w[global_store conventions deprecations].each do |cat|
+    %w[global_store conventions deprecations session_ledger done_signals].each do |cat|
       assert_includes categories, cat, "full doctor must still run '#{cat}' category"
     end
   end
@@ -274,10 +279,10 @@ class DoctorManifestSyncTest < Minitest::Test
     build_intact_install
     # Complete the rest of the liveness surface so nothing else fails.
     write_claude_hooks(File.join(DOCTOR_TEST_CLAUDE, "hooks"))
-    write_claude_dispatcher(DOCTOR_TEST_HOME)
     write_claude_settings(File.join(DOCTOR_TEST_CLAUDE, "settings.json"))
     write_skills(DOCTOR_TEST_CLAUDE)
     write_agents(DOCTOR_TEST_CLAUDE)
+    write_claude_compact_section(DOCTOR_TEST_CLAUDE)
     File.write(File.join(DOCTOR_TEST_HOME, "VERSION"), "1.0.0")
     write_core_scripts(File.join(DOCTOR_TEST_HOME, "scripts"))
     File.write(File.join(DOCTOR_TEST_HOME, "projects.yml"), YAML.dump("projects" => {}))
@@ -474,16 +479,17 @@ class DoctorAgentModelDriftTest < Minitest::Test
   end
 
   # Write an installed agent role file with an explicit frontmatter `model:`.
-  def write_agent_file(agent_dir, basename, model:)
+  def write_agent_file(agent_dir, basename, model:, effort: nil)
     agents_dir = File.join(agent_dir, "agents")
     FileUtils.mkdir_p(agents_dir)
     path = File.join(agents_dir, "#{basename}.md")
+    effort_line = effort ? "effort: #{effort}\n" : ""
     File.write(path, <<~MD)
       ---
       name: #{basename}
       description: test fixture
       model: #{model}
-      ---
+      #{effort_line}---
       # #{basename}
     MD
     path
@@ -511,12 +517,12 @@ class DoctorAgentModelDriftTest < Minitest::Test
   end
 
   def test_sanctioned_override_is_listed_as_pass_even_when_frontmatter_differs
-    default = AgentModels::TIER_DEFAULTS["plastic-brainstorming"]
-    write_agent_file(DOCTOR_TEST_CLAUDE, "plastic-brainstorming", model: default)
+    default = AgentModels::TIER_DEFAULTS["plastic-executor"]
+    write_agent_file(DOCTOR_TEST_CLAUDE, "plastic-executor", model: default)
     # Sanctioned override differs from both the shipped default and the
     # installed frontmatter (mirrors the real ~/.plastic/config.yml override,
-    # mihradesign intent 24: plastic-brainstorming -> fable).
-    write_global_config("plastic-brainstorming" => "fable")
+    # mihradesign intent 24: plastic-executor -> fable).
+    write_global_config("plastic-executor" => "fable")
 
     checks = doctor.check_agent_model_drift("claude")
     drift_check = checks.find { |c| c[:name] == "agent_model_drift" }
@@ -524,7 +530,7 @@ class DoctorAgentModelDriftTest < Minitest::Test
     refute_nil drift_check
     assert_equal "pass", drift_check[:status],
       "a sanctioned override must never be flagged, even if frontmatter has not caught up yet"
-    assert drift_check[:details].any? { |d| d.include?("plastic-brainstorming") && d.include?("fable") },
+    assert drift_check[:details].any? { |d| d.include?("plastic-executor") && d.include?("fable") },
       "expected the sanctioned override to be LISTED, got: #{drift_check[:details].inspect}"
   end
 
@@ -569,8 +575,8 @@ class DoctorAgentModelDriftTest < Minitest::Test
   end
 
   def test_consultation_agent_with_shipped_default_never_flagged_as_drift
-    write_agent_file(DOCTOR_TEST_CLAUDE, "plastic-advisor", model: "fable")
-    # No config.yml -> no override configured for plastic-advisor.
+    write_agent_file(DOCTOR_TEST_CLAUDE, "plastic-primary-advisor", model: "fable")
+    write_agent_file(DOCTOR_TEST_CLAUDE, "plastic-secondary-advisor", model: "fable", effort: "high")
 
     checks = doctor.check_agent_model_drift("claude")
     drift_check = checks.find { |c| c[:name] == "agent_model_drift" }
@@ -578,15 +584,17 @@ class DoctorAgentModelDriftTest < Minitest::Test
     refute_nil drift_check
     assert_equal "pass", drift_check[:status],
       "a consultation agent must never be flagged as drift; its model is user configuration"
-    assert drift_check[:details].any? { |d| d.include?("plastic-advisor") && d.include?("consultation") },
-      "expected plastic-advisor to be listed informationally as a consultation role, got: #{drift_check[:details].inspect}"
+    %w[plastic-primary-advisor plastic-secondary-advisor].each do |name|
+      assert drift_check[:details].any? { |d| d.include?(name) && d.include?("consultation") },
+        "expected #{name} to be listed informationally as a consultation role, got: #{drift_check[:details].inspect}"
+    end
   end
 
   def test_consultation_agent_model_change_is_still_not_flagged_as_drift
-    # plastic-advisor ships fable by default; installing it with a DIFFERENT
+    # A consultation advisor may carry a configured model; installing it with a different
     # model and no override must still never be treated as drift, because
     # bucket 3 never compares a consultation agent's frontmatter to anything.
-    write_agent_file(DOCTOR_TEST_CLAUDE, "plastic-advisor", model: "opus")
+    write_agent_file(DOCTOR_TEST_CLAUDE, "plastic-primary-advisor", model: "opus")
 
     checks = doctor.check_agent_model_drift("claude")
     drift_check = checks.find { |c| c[:name] == "agent_model_drift" }
@@ -660,5 +668,378 @@ class DoctorAgentModelDriftTest < Minitest::Test
     agent_version_dir = File.join(DOCTOR_TEST_CLAUDE, "plastic")
     FileUtils.mkdir_p(agent_version_dir)
     File.write(File.join(agent_version_dir, "VERSION"), "1.0.0")
+  end
+end
+
+# ===========================================================================
+# Row E (spec D8, spec 315b): doctor passed over ten stale 1.14.1 Codex
+# registrations because #check_core_files's version_match only ever checks
+# the SELECTED harness, and codex_hooks_registered_check's `want - got` scan
+# can only see a MISSING registration, never an extra one parked in a
+# retired event.
+# ===========================================================================
+
+class DoctorHarnessVersionsTest < Minitest::Test
+  include DoctorTestHelpers
+
+  def setup
+    FileUtils.rm_rf([DOCTOR_TEST_HOME, DOCTOR_TEST_CLAUDE, DOCTOR_TEST_CODEX])
+    FileUtils.mkdir_p(DOCTOR_TEST_HOME)
+    FileUtils.mkdir_p(DOCTOR_TEST_CLAUDE)
+    FileUtils.mkdir_p(DOCTOR_TEST_CODEX)
+    File.write(File.join(DOCTOR_TEST_HOME, "VERSION"), "2.0.0-alpha.5")
+  end
+
+  def teardown
+    FileUtils.rm_rf([DOCTOR_TEST_HOME, DOCTOR_TEST_CLAUDE, DOCTOR_TEST_CODEX])
+  end
+
+  def write_agent_version(dir, version)
+    FileUtils.mkdir_p(File.join(dir, "plastic"))
+    File.write(File.join(dir, "plastic", "VERSION"), version)
+  end
+
+  # E1: the comparison runs for every installed harness, not only the selected one.
+  def test_e1_version_match_runs_for_every_installed_harness
+    write_agent_version(DOCTOR_TEST_CLAUDE, "2.0.0-alpha.5")
+    write_agent_version(DOCTOR_TEST_CODEX, "1.14.1")
+
+    checks = doctor.check_harness_versions
+    names = checks.map { |c| c[:name] }
+    assert_includes names, "version_match_claude"
+    assert_includes names, "version_match_codex"
+
+    codex_check = checks.find { |c| c[:name] == "version_match_codex" }
+    assert_equal "warn", codex_check[:status]
+    assert_includes codex_check[:message], "2.0.0-alpha.5"
+    assert_includes codex_check[:message], "1.14.1"
+  end
+
+  def test_e1_matching_versions_pass
+    write_agent_version(DOCTOR_TEST_CLAUDE, "2.0.0-alpha.5")
+    checks = doctor.check_harness_versions
+    check = checks.find { |c| c[:name] == "version_match_claude" }
+    assert_equal "pass", check[:status]
+  end
+
+  # E4: nothing named version_match_* reaches the binary core tier.
+  def test_e4_run_core_checks_gains_no_version_match_prefixed_check
+    write_agent_version(DOCTOR_TEST_CLAUDE, "2.0.0-alpha.5")
+    write_agent_version(DOCTOR_TEST_CODEX, "1.14.1")
+    names = doctor.run_core_checks("claude")[:checks].map { |c| c[:name] }
+    refute names.any? { |n| n.start_with?("version_match_") },
+           "no per-harness version_match_* check may reach the binary core tier"
+  end
+end
+
+class DoctorCodexStaleRegistrationsTest < Minitest::Test
+  include DoctorTestHelpers
+
+  def setup
+    @home = Dir.mktmpdir("codex-stale-home")
+    @agent_dir = Dir.mktmpdir("codex-stale-agent")
+    @codex_home = File.join(@home, "codex-home")
+    FileUtils.mkdir_p(@codex_home)
+    @dispatcher_path = File.join(@home, "scripts", "codex-hook")
+    FileUtils.mkdir_p(File.dirname(@dispatcher_path))
+    File.write(@dispatcher_path, "#!/usr/bin/env ruby\n")
+    File.chmod(0o755, @dispatcher_path)
+  end
+
+  def teardown
+    FileUtils.rm_rf(@home)
+    FileUtils.rm_rf(@agent_dir)
+  end
+
+  def doctor_for
+    Doctor.new(plastic_home: @home,
+               agents: { "codex" => { name: "Codex CLI", dir: @agent_dir, home_dir: @codex_home } })
+  end
+
+  # E3: a stale registration parked in a RETIRED event (not in HookRegistry's
+  # expected key set at all) is invisible to `want - got` over `expected.each`,
+  # but visible over the union of expected and live event keys.
+  def test_e3_stale_registration_in_a_retired_event_is_reported
+    hooks = HookRegistry.codex_hooks_json(dispatcher_path: @dispatcher_path)
+    hooks["PreToolUse"] = [
+      { "matcher" => "apply_patch",
+        "hooks" => [{ "type" => "command", "command" => "\"#{@dispatcher_path}\" retired-gate" }] },
+    ]
+    File.write(File.join(@codex_home, "hooks.json"), JSON.pretty_generate({ "hooks" => hooks }))
+
+    checks = doctor_for.check_codex_stale_registrations
+    check = checks.find { |c| c[:name] == "codex_stale_registrations" }
+    refute_nil check
+    assert_equal "warn", check[:status]
+    details = Array(check[:details])
+    assert details.any? { |d| d.include?("retired-gate") }, details.inspect
+    assert details.any? { |d| d.include?("PreToolUse") }, details.inspect
+  end
+
+  def test_e3_no_stale_registrations_passes
+    hooks = HookRegistry.codex_hooks_json(dispatcher_path: @dispatcher_path)
+    File.write(File.join(@codex_home, "hooks.json"), JSON.pretty_generate({ "hooks" => hooks }))
+
+    checks = doctor_for.check_codex_stale_registrations
+    check = checks.find { |c| c[:name] == "codex_stale_registrations" }
+    assert_equal "pass", check[:status]
+  end
+
+  # A non-Plastic command under a retired event must not be flagged: only
+  # commands that match HookRegistry.codex_purge_command? are ours to police.
+  def test_e3_a_non_plastic_command_in_a_retired_event_is_not_flagged
+    hooks = HookRegistry.codex_hooks_json(dispatcher_path: @dispatcher_path)
+    hooks["PreToolUse"] = [
+      { "matcher" => "apply_patch",
+        "hooks" => [{ "type" => "command", "command" => "/usr/bin/some-other-tool" }] },
+    ]
+    File.write(File.join(@codex_home, "hooks.json"), JSON.pretty_generate({ "hooks" => hooks }))
+
+    checks = doctor_for.check_codex_stale_registrations
+    check = checks.find { |c| c[:name] == "codex_stale_registrations" }
+    assert_equal "pass", check[:status]
+  end
+
+  def test_e4_run_core_checks_gains_no_codex_stale_registrations_check
+    hooks = HookRegistry.codex_hooks_json(dispatcher_path: @dispatcher_path)
+    hooks["PreToolUse"] = [
+      { "matcher" => "apply_patch",
+        "hooks" => [{ "type" => "command", "command" => "\"#{@dispatcher_path}\" retired-gate" }] },
+    ]
+    File.write(File.join(@codex_home, "hooks.json"), JSON.pretty_generate({ "hooks" => hooks }))
+
+    names = doctor_for.run_core_checks("codex")[:checks].map { |c| c[:name] }
+    refute_includes names, "codex_stale_registrations"
+  end
+
+  # codex_hooks_trust always warns (Codex exposes no trust record to read), and the core
+  # roll-up is binary, so carrying it in core would fail every Codex boot check.
+  def test_run_core_checks_leaves_out_the_codex_hooks_trust_reminder
+    hooks = HookRegistry.codex_hooks_json(dispatcher_path: @dispatcher_path)
+    File.write(File.join(@codex_home, "hooks.json"), JSON.pretty_generate({ "hooks" => hooks }))
+
+    full_names = doctor_for.check_agent_registration("codex").map { |c| c[:name] }
+    assert_includes full_names, "codex_hooks_trust"
+
+    core_names = doctor_for.run_core_checks("codex")[:checks].map { |c| c[:name] }
+    refute_includes core_names, "codex_hooks_trust"
+  end
+
+  # --- SHOULD-FIX item 5: name-only comparison goes blind to two real cases --------
+
+  # (a) the SAME (event, name) pair registered twice: a name-only "is it expected"
+  # check can never see this, since the name alone is legitimately expected.
+  def test_should5a_a_duplicate_event_name_pair_is_reported
+    hooks = HookRegistry.codex_hooks_json(dispatcher_path: @dispatcher_path)
+    hooks["PostToolUse"].first["hooks"] << {
+      "type" => "command", "command" => "\"#{@dispatcher_path}\" record",
+    }
+    File.write(File.join(@codex_home, "hooks.json"), JSON.pretty_generate({ "hooks" => hooks }))
+
+    checks = doctor_for.check_codex_stale_registrations
+    check = checks.find { |c| c[:name] == "codex_stale_registrations" }
+    refute_nil check
+    assert_equal "warn", check[:status]
+    details = Array(check[:details])
+    assert details.any? { |d| d.include?("PostToolUse") && d.include?("record") }, details.inspect
+  end
+
+  # (b) a correctly-named command whose dispatcher path is an OLD install, different
+  # from the path every other Plastic entry in this same file actually uses.
+  def test_should5b_a_dispatcher_path_that_differs_from_the_files_other_entries_is_reported
+    old_dispatcher = File.join(@home, "old-install", "scripts", "codex-hook")
+    hooks = HookRegistry.codex_hooks_json(dispatcher_path: @dispatcher_path)
+    stale_check_update = { "type" => "command", "command" => "\"#{old_dispatcher}\" check-update" }
+    hooks["SessionStart"].first["hooks"] = hooks["SessionStart"].first["hooks"].map do |h|
+      h["command"].include?("check-update") ? stale_check_update : h
+    end
+    File.write(File.join(@codex_home, "hooks.json"), JSON.pretty_generate({ "hooks" => hooks }))
+
+    checks = doctor_for.check_codex_stale_registrations
+    check = checks.find { |c| c[:name] == "codex_stale_registrations" }
+    refute_nil check
+    assert_equal "warn", check[:status]
+    details = Array(check[:details])
+    assert details.any? { |d| d.include?("check-update") && d.include?("old-install") }, details.inspect
+  end
+
+  def test_should5_a_single_consistent_install_still_passes
+    hooks = HookRegistry.codex_hooks_json(dispatcher_path: @dispatcher_path)
+    File.write(File.join(@codex_home, "hooks.json"), JSON.pretty_generate({ "hooks" => hooks }))
+
+    checks = doctor_for.check_codex_stale_registrations
+    check = checks.find { |c| c[:name] == "codex_stale_registrations" }
+    assert_equal "pass", check[:status]
+  end
+
+  # --- NIT item 8: a non-Hash top-level hooks.json must not crash the doctor run ---
+  def test_nit8_a_non_hash_top_level_hooks_json_does_not_crash
+    File.write(File.join(@codex_home, "hooks.json"), JSON.generate([1, 2, 3]))
+
+    checks = doctor_for.check_codex_stale_registrations
+    assert_equal [], checks
+  end
+end
+
+# ===========================================================================
+# Unpromoted rule: findings (intent 341, G8, C37)
+# ===========================================================================
+
+class DoctorUnpromotedRulesTest < Minitest::Test
+  include DoctorTestHelpers
+
+  def setup
+    @store_dir = Dir.mktmpdir("doctor-unpromoted-rules-store")
+    @package_root = Dir.mktmpdir("doctor-unpromoted-rules-package")
+    @chapters_dir = File.join(@package_root, "docs", "help")
+    FileUtils.mkdir_p(@chapters_dir)
+  end
+
+  def teardown
+    FileUtils.rm_rf([@store_dir, @package_root])
+  end
+
+  def write_rule_intent(rule_text)
+    dir = File.join(@store_dir, "77--rule-source")
+    FileUtils.mkdir_p(dir)
+    File.write(File.join(dir, "77--rule-source.md"), <<~MD)
+      ---
+      id: "77"
+      intent: "Rule source"
+      ---
+
+      ## Insights
+      2026-09-12T10:00:00Z · Exec · test — rule: #{rule_text}
+    MD
+    [{ path: dir, name: "77--rule-source", scope: "global" }]
+  end
+
+  def test_unpromoted_rules_listed
+    intent_dirs = write_rule_intent("Never eval a prompt string")
+
+    result = doctor.unpromoted_rules_checks(intent_dirs, package_root: @package_root)
+    check = result.find { |c| c[:name] == "unpromoted_rules" }
+
+    refute_nil check
+    assert_equal "warn", check[:status]
+    assert check[:details].any? { |d| d.include?("Never eval a prompt string") }, check[:details].inspect
+  end
+
+  def test_promoted_rules_not_listed
+    intent_dirs = write_rule_intent("Never eval a prompt string")
+    File.write(File.join(@chapters_dir, "safety.md"), "# Safety\n\nNever eval a prompt string, ever.\n")
+
+    result = doctor.unpromoted_rules_checks(intent_dirs, package_root: @package_root)
+    check = result.find { |c| c[:name] == "unpromoted_rules" }
+
+    refute_nil check
+    assert_equal "pass", check[:status]
+  end
+
+  # --- 5.6: docs/help installs straight under PACKAGE_ROOT for every
+  # harness alike (~/.plastic/docs/help once installed), so the installed
+  # layout needs no separate home-based fixture: the same package_root:
+  # path covers both the repo checkout and the installed copy.
+  def test_promoted_rules_not_listed_from_installed_layout
+    installed_root = Dir.mktmpdir("doctor-unpromoted-rules-installed")
+    chapters_dir = File.join(installed_root, "docs", "help")
+    FileUtils.mkdir_p(chapters_dir)
+    File.write(File.join(chapters_dir, "safety.md"), "# Safety\n\nNever eval a prompt string, ever.\n")
+
+    intent_dirs = write_rule_intent("Never eval a prompt string")
+
+    result = doctor.unpromoted_rules_checks(intent_dirs, package_root: installed_root)
+    check = result.find { |c| c[:name] == "unpromoted_rules" }
+
+    refute_nil check
+    assert_equal "pass", check[:status]
+  ensure
+    FileUtils.rm_rf(installed_root)
+  end
+end
+
+# Row 4.4 (intent 341, G8 node n4): a graph intent (D1, no ceremonies) never carries
+# spec.md, plan.md, or checklist.md by design. Doctor's backfilled_complete check must
+# not warn about them on a graph intent; a legacy intent (no graph.md) keeps today's
+# behavior of warning on a real gap.
+class DoctorGraphIntentSpecOptionalTest < Minitest::Test
+  def setup
+    @home = Dir.mktmpdir("plastic-doctor-graph-spec-optional")
+  end
+
+  def teardown
+    FileUtils.remove_entry(@home) if @home && Dir.exist?(@home)
+  end
+
+  def store_dir = File.join(@home, "store")
+
+  def doctor = Doctor.new(plastic_home: @home)
+
+  def write_index(id)
+    body = +"# Index\n\n"
+    %w[Active Future Clusters Abandoned].each { |s| body << "## #{s}\n\n" }
+    body << "## Completed\n"
+    body << "- [#{id} - t](store/#{id}--slug/#{id}--slug.md) - 2026-09-12\n"
+    File.write(File.join(@home, "INDEX.md"), body)
+  end
+
+  def intent_dir(id) = File.join(store_dir, "#{id}--slug")
+
+  def write_common(id)
+    dir = intent_dir(id)
+    FileUtils.mkdir_p(dir)
+    File.write(File.join(dir, "#{id}--slug.md"), <<~MD)
+      ---
+      id: "#{id}"
+      intent: "Test intent"
+      sources: []
+      chain: []
+      created: 2026-09-12
+      author: test
+      tags: []
+      ---
+
+      ## Intent
+      Test intent.
+    MD
+    File.write(File.join(dir, "outcome.md"), "---\ndisposition: delivered\n---\n\n## Summary\nDone.\n")
+    File.write(File.join(dir, "savepoint.md"), "2026-09-12T00:00:00Z  Done  delivered\n")
+  end
+
+  def check(name)
+    doctor.check_done_signals.find { |c| c[:name] == name }
+  end
+
+  def test_missing_spec_is_not_a_warning
+    id = "341n4a"
+    write_index(id)
+    write_common(id)
+    dir = intent_dir(id)
+    File.write(File.join(dir, "graph.md"), "# Graph\n\n## Goal\nTest.\n")
+    FileUtils.mkdir_p(File.join(dir, "nodes"))
+    File.write(File.join(dir, "nodes", "n1.md"), "# n1\n\nreal node content.\n")
+
+    refute File.exist?(File.join(dir, "spec.md"))
+    refute File.exist?(File.join(dir, "plan.md"))
+    refute File.exist?(File.join(dir, "checklist.md"))
+
+    c = check("backfilled_complete")
+    assert_equal "pass", c[:status], c.inspect
+  end
+
+  def test_missing_spec_on_a_legacy_intent_still_warns
+    id = "341n4b"
+    write_index(id)
+    write_common(id)
+    dir = intent_dir(id)
+    FileUtils.mkdir_p(File.join(dir, "actions"))
+    File.write(File.join(dir, "actions", "ACTION_1.md"), "# Action 1\n\nreal content.\n")
+
+    refute File.exist?(File.join(dir, "spec.md"))
+    refute File.exist?(File.join(dir, "plan.md"))
+
+    c = check("backfilled_complete")
+    assert_equal "warn", c[:status], c.inspect
+    assert(c[:details].any? { |d| d.include?("spec.md") }, c[:details].inspect)
   end
 end

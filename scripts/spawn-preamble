@@ -22,8 +22,9 @@
 #
 # Exit codes: 0 (preamble emitted), 2 (usage).
 
-require_relative "lib/bridge"
+require_relative "lib/savepoint"
 require_relative "lib/worktree"
+require_relative "lib/intent_screen"
 
 # Verbatim honoring instruction. Kept as one constant so the contract doc and the
 # test assert against the exact same string.
@@ -43,7 +44,7 @@ WORKTREE_FALLBACK_INSTRUCTION =
   "directory, cd directly to the code worktree path above before editing project code."
 
 # Verbatim completion-report contract (intent 74). Kept as one constant so the
-# contract doc (skills/auto/references/agent-report-contract.md), the role prompts,
+# contract doc (docs/help/agent-report-contract.md), the role prompts,
 # and the test assert against the exact same string. SINGLE SOURCE OF TRUTH for the
 # report wording: the work output is lifecycle artifacts, the final message is a
 # structured report about them. Both are required and they do not contradict.
@@ -56,14 +57,14 @@ REPORT_CONTRACT =
   "insights field carrying 0..N durable nuggets (what I discovered worth keeping, " \
   "the most interesting residue of this turn; none if there were none); plus a " \
   "role-specific payload that fulfils your place in the What, Why, How, Exec cycle " \
-  "(for example the planner explains the plan back to the orchestrator). Populate " \
+  "(for example the executor reports what was built and the test result). Populate " \
   "the insights field even when you cannot write the intent file yourself: a " \
   "background or dispatched agent carries each nugget home in the report and the " \
   "orchestrator persists it via scripts/insight-append, so an insight never " \
   "depends on the discovering session's file-write access. Keep the report " \
   "prose-stripped: the envelope and payload only, no greeting, no preamble, " \
   "no end-recap, no restating of the task; reasoning stays in the thinking channel. " \
-  "See skills/auto/references/agent-report-contract.md for the per-role format."
+  "See docs/help/agent-report-contract.md for the per-role format."
 
 def parse_args(argv)
   role = nil
@@ -90,7 +91,7 @@ end
 # id/intent we report match what the rest of Plastic sees. Returns a Hash (possibly
 # empty) — never raises.
 def frontmatter_for(intent_dir)
-  ifile = Bridge.intent_file(intent_dir)
+  ifile = Savepoint.intent_file(intent_dir)
   return {} unless File.exist?(ifile)
 
   content = File.read(ifile)
@@ -115,13 +116,19 @@ STAGE_LABELS = {
   "exec" => "Exec", "done" => "Done"
 }.freeze
 
+# Intent 317, D6: a dispatched agent's "Current stage:" line must name the last
+# LIFECYCLE line (What/Why/How/Exec/Done), never a trailing Lock/Review/Commit
+# line - the bug spawn-preamble shared with IntentScreen.savepoint_fields
+# before this guard (plan review finding B1).
 def current_stage(intent_dir)
-  ledger = File.join(intent_dir, Bridge::SAVEPOINT_FILE)
+  ledger = File.join(intent_dir, Savepoint::SAVEPOINT_FILE)
   if File.exist?(ledger)
-    last = File.read(ledger).each_line.map(&:strip).reject(&:empty?).last
-    return last if last
+    lines = File.read(ledger).each_line.map(&:strip).reject(&:empty?)
+    lifecycle = lines.select { |l| IntentScreen.lifecycle_line?(l) }
+    return lifecycle.last if lifecycle.any?
+    return lines.last if lines.any?
   end
-  STAGE_LABELS.fetch(Bridge.derive_stage(intent_dir), Bridge.derive_stage(intent_dir))
+  STAGE_LABELS.fetch(Savepoint.derive_stage(intent_dir), Savepoint.derive_stage(intent_dir))
 end
 
 intent_dir_arg, role, step = parse_args(ARGV)

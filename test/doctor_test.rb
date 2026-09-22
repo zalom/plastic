@@ -32,6 +32,16 @@ module DoctorTestHelpers
     Doctor.new(plastic_home: plastic_home, agents: agents)
   end
 
+  # Intent 312: a healthy Claude install carries the compact-instructions block in
+  # <dir>/CLAUDE.md, so every "intact install" fixture writes it or the new
+  # claude_compact_instructions check correctly reports the install incomplete.
+  def write_claude_compact_section(agent_dir)
+    core = InstallerCore.new(package_root: File.expand_path("../../", __FILE__),
+                             plastic_home: DOCTOR_TEST_HOME)
+    FileUtils.mkdir_p(agent_dir)
+    File.write(File.join(agent_dir, "CLAUDE.md"), core.claude_compact_section)
+  end
+
   # Build a minimal valid INDEX.md with all required sections
   def write_index(path, extras: "", store_refs: [])
     refs = store_refs.map { |r| "- [intent](#{r})" }.join("\n")
@@ -98,23 +108,19 @@ module DoctorTestHelpers
     end
   end
 
-  # Build a minimal but structurally real scripts/hook-edit-gates, so
-  # claude_hooks_implemented_check (intent 244) has a `case gate` shape to
-  # read a `when "<gate>"` label for every HookRegistry::GATE_TOOLS key,
-  # matching how write_claude_hooks derives its launcher set from the
-  # registry rather than a hand-kept list.
-  def write_claude_dispatcher(plastic_home)
-    scripts_dir = File.join(plastic_home, "scripts")
-    FileUtils.mkdir_p(scripts_dir)
-    whens = HookRegistry::GATE_TOOLS.keys.map { |name| "  when \"#{name}\" then nil" }.join("\n")
-    path = File.join(scripts_dir, "hook-edit-gates")
+  # Intent 331e: doctor's display_hook_paints check replays the installed
+  # MessageDisplay launcher for real, so a "healthy install" fixture needs
+  # one that actually returns a painted screen; the generic exit-0 stub
+  # every other hook gets (write_claude_hooks, above) would report a
+  # legitimate display_hook_paints failure.
+  def write_working_display_hook(hooks_dir)
+    path = File.join(hooks_dir, "plastic-message-display")
     File.write(path, <<~RUBY)
       #!/usr/bin/env ruby
-      def route(gate, ctx)
-        case gate
-      #{whens}
-        end
-      end
+      require "json"
+      $stdin.read
+      puts JSON.generate("hookSpecificOutput" => { "hookEventName" => "MessageDisplay",
+        "displayContent" => "\\e[1mHello\\e[0m" })
     RUBY
     File.chmod(0o755, path)
   end
@@ -544,15 +550,85 @@ class DoctorAgentRegistrationTest < Minitest::Test
     File.write(agent_manifest, JSON.pretty_generate({ "files" => {} }))
 
     write_claude_hooks(hooks_dir)
-    write_claude_dispatcher(DOCTOR_TEST_HOME)
     write_claude_settings(File.join(DOCTOR_TEST_CLAUDE, "settings.json"))
     write_skills(DOCTOR_TEST_CLAUDE)
     write_agents(DOCTOR_TEST_CLAUDE)
+    write_claude_compact_section(DOCTOR_TEST_CLAUDE)
 
     checks = doctor.check_agent_registration("claude")
     statuses = checks.map { |c| c[:status] }
 
     assert statuses.all? { |s| s == "pass" }, "All checks should pass, got: #{checks.map { |c| [c[:name], c[:status]] }}"
+  end
+
+  # Intent 340b (G7c, n4, row 4.32): Stop's registration is static (it ships
+  # and registers even while runner.stop_hook defaults off), so it belongs
+  # in CLAUDE_HOOK_EVENTS beside every other required Claude event. An
+  # install missing it must be exactly as broken by hooks_registered as one
+  # missing PreCompact, so the two checks never disagree about it.
+  def test_stop_hook_reporting_is_consistent
+    hooks_dir = File.join(DOCTOR_TEST_CLAUDE, "hooks")
+    agent_manifest = File.join(DOCTOR_TEST_CLAUDE, "plastic", "manifest.json")
+    FileUtils.mkdir_p(File.dirname(agent_manifest))
+    File.write(agent_manifest, JSON.pretty_generate({ "files" => {} }))
+
+    write_claude_hooks(hooks_dir)
+    settings_path = File.join(DOCTOR_TEST_CLAUDE, "settings.json")
+    write_claude_settings(settings_path)
+    write_skills(DOCTOR_TEST_CLAUDE)
+    write_agents(DOCTOR_TEST_CLAUDE)
+    write_claude_compact_section(DOCTOR_TEST_CLAUDE)
+
+    assert_includes Doctor::CLAUDE_HOOK_EVENTS, "Stop"
+
+    settings = JSON.parse(File.read(settings_path))
+    settings["hooks"].delete("Stop")
+    File.write(settings_path, JSON.pretty_generate(settings))
+
+    checks = doctor.check_agent_registration("claude")
+    registered = checks.find { |c| c[:name] == "hooks_registered" }
+    matched = checks.find { |c| c[:name] == "hooks_match_registry" }
+
+    assert_equal "fail", registered[:status], "hooks_registered must require Stop"
+    assert_equal "fail", matched[:status], "hooks_match_registry must flag the missing Stop group"
+    assert_includes registered[:details].join, "Stop"
+  end
+
+  # --- intent 312: the compact-instructions block ---
+
+  def compact_check
+    doctor.check_claude_registration(DOCTOR_TEST_CLAUDE)
+          .find { |c| c[:name] == "claude_compact_instructions" }
+  end
+
+  def test_compact_instructions_pass_on_a_correct_section
+    write_claude_compact_section(DOCTOR_TEST_CLAUDE)
+    assert_equal "pass", compact_check[:status]
+  end
+
+  def test_compact_instructions_fail_when_claude_md_is_missing
+    FileUtils.mkdir_p(DOCTOR_TEST_CLAUDE)
+    c = compact_check
+    assert_equal "fail", c[:status]
+    assert c[:fixable]
+    assert_includes c[:fix_hint], "--claude"
+  end
+
+  def test_compact_instructions_fail_on_a_malformed_section
+    FileUtils.mkdir_p(DOCTOR_TEST_CLAUDE)
+    File.write(File.join(DOCTOR_TEST_CLAUDE, "CLAUDE.md"),
+               "#{InstallerCore::CLAUDE_SECTION_BEGIN_PREFIX} hash:deadbeef1234 -->\nhalf a block\n")
+    assert_equal "fail", compact_check[:status]
+  end
+
+  def test_compact_instructions_fail_on_a_stale_hash_from_an_older_version
+    write_claude_compact_section(DOCTOR_TEST_CLAUDE)
+    path = File.join(DOCTOR_TEST_CLAUDE, "CLAUDE.md")
+    File.write(path, File.read(path).sub(/hash:\w+/, "hash:0123456789ab"))
+
+    c = compact_check
+    assert_equal "fail", c[:status]
+    assert_match(/stale|current|older/i, c[:message])
   end
 
   def test_missing_hook_scripts_fails
@@ -628,23 +704,23 @@ class DoctorAgentRegistrationTest < Minitest::Test
     assert_equal "pass", registry_check[:status]
   end
 
-  def test_settings_missing_the_bash_group_fail_hooks_match_registry
+  def test_settings_missing_the_record_group_fail_hooks_match_registry
     write_claude_hooks(File.join(DOCTOR_TEST_CLAUDE, "hooks"))
     settings_path = File.join(DOCTOR_TEST_CLAUDE, "settings.json")
     write_claude_settings(settings_path)
     write_skills(DOCTOR_TEST_CLAUDE)
 
-    # Drop the bash-gate group: the exact divergence that shipped it dead.
+    # Drop the PostToolUse record group: the one write-path hook left (intent 302).
     settings = JSON.parse(File.read(settings_path))
-    settings["hooks"]["PreToolUse"].reject! { |g| g["matcher"] == "Bash" }
+    settings["hooks"].delete("PostToolUse")
     File.write(settings_path, JSON.pretty_generate(settings))
 
     checks = doctor.check_agent_registration("claude")
     registry_check = checks.find { |c| c[:name] == "hooks_match_registry" }
 
     assert_equal "fail", registry_check[:status]
-    assert registry_check[:details].any? { |d| d.include?("bash-gate") },
-           "the diff must name the missing bash-gate: #{registry_check[:details].inspect}"
+    assert registry_check[:details].any? { |d| d.include?("record") },
+           "the diff must name the missing record hook: #{registry_check[:details].inspect}"
   end
 
   # intent 115 (AC1): a foreign tool (Serena) occupies the FIRST SessionStart
@@ -1433,18 +1509,6 @@ class DoctorAgentRegistrationTest < Minitest::Test
     assert_empty Array(owned_check[:details])
   end
 
-  def test_missing_skills_directory_fails
-    hooks_dir = File.join(DOCTOR_TEST_CLAUDE, "hooks")
-    write_claude_hooks(hooks_dir)
-    write_claude_settings(File.join(DOCTOR_TEST_CLAUDE, "settings.json"))
-    # No skills directory
-
-    checks = doctor.check_agent_registration("claude")
-    skills_check = checks.find { |c| c[:name] == "skills_exist" }
-
-    assert_equal "fail", skills_check[:status]
-  end
-
   def test_missing_agents_directory_fails
     hooks_dir = File.join(DOCTOR_TEST_CLAUDE, "hooks")
     write_claude_hooks(hooks_dir)
@@ -1485,16 +1549,14 @@ class DoctorAgentRegistrationTest < Minitest::Test
   # --- hooks_exist / hooks_no_orphans derive from HookRegistry, not a
   # hand-kept list (intent 204) ---
 
-  # Under the old hand-kept CLAUDE_HOOK_SCRIPTS (7 names) this launcher was
-  # never inspected, so a missing gate launcher would have gone unnoticed.
-  # The derived set covers everything HookRegistry.events registers, so this
-  # still fails. Intent 244 collapsed the five edit-path gates into one
-  # registered launcher, edit-gates, which is now the launcher this test
-  # deletes to prove the derived check still catches a missing one.
-  def test_missing_previously_unchecked_gate_launcher_fails_hooks_exist
+  # The derived set covers everything HookRegistry.events registers, so a
+  # missing launcher fails. Since intent 302 the write-path launcher is record,
+  # which is the launcher this test deletes to prove the derived check still
+  # catches a missing one.
+  def test_missing_record_launcher_fails_hooks_exist
     hooks_dir = File.join(DOCTOR_TEST_CLAUDE, "hooks")
     write_claude_hooks(hooks_dir)
-    File.delete(File.join(hooks_dir, "plastic-edit-gates"))
+    File.delete(File.join(hooks_dir, "plastic-record"))
     write_claude_settings(File.join(DOCTOR_TEST_CLAUDE, "settings.json"))
     write_skills(DOCTOR_TEST_CLAUDE)
 
@@ -1502,7 +1564,7 @@ class DoctorAgentRegistrationTest < Minitest::Test
     hooks_check = checks.find { |c| c[:name] == "hooks_exist" }
 
     assert_equal "fail", hooks_check[:status]
-    assert_includes hooks_check[:details].join, "plastic-edit-gates"
+    assert_includes hooks_check[:details].join, "plastic-record"
   end
 
   def test_orphan_launcher_not_in_registry_fails_hooks_no_orphans
@@ -1552,13 +1614,39 @@ class DoctorAgentRegistrationTest < Minitest::Test
     exec_check = checks.find { |c| c[:name] == "hooks_executable" }
     orphan_check = checks.find { |c| c[:name] == "hooks_no_orphans" }
 
-    # Intent 244 collapsed the five edit-path gates (code-gate, lock-gate,
-    # savepoint-pre, links-gate, create-gate) into one registered launcher,
-    # edit-gates: 14 - 5 + 1 = 10.
-    assert_equal 10, HookRegistry.claude_launcher_names.size
+    # Intent 244 collapsed the five edit-path gates into one launcher (10),
+    # intent 298 collapsed three prompt hooks into capture and renamed
+    # gate-check to record (8), intent 301 added close (9), intent 302
+    # removed edit-gates and bash-gate (7), intent 309 retired power-tools (6),
+    # intent 316a added message-display (MessageDisplay, Claude only) (7),
+    # intent 355 n2 added call-budget (PreToolUse, Claude only) (8), and
+    # intent 340b added stop (Stop, Claude only): 9 launchers.
+    assert_equal 9, HookRegistry.claude_launcher_names.size
     assert_equal "pass", hooks_check[:status]
     assert_equal "pass", exec_check[:status]
     assert_equal "pass", orphan_check[:status]
+  end
+end
+
+# Intent 316a (matrix row 49): doctor_core.rb's CLAUDE_HOOK_EVENTS comment used
+# to say "the five-event map"; it grew to six events at intent 309 (SessionEnd)
+# without the comment catching up, then to seven at 316a (MessageDisplay). This
+# is a source-text guard, not a behavioral one: the comment is documentation,
+# but a comment nobody keeps honest is worse than no comment.
+class DoctorCoreHookEventsCommentTest < Minitest::Test
+  def test_the_hook_events_comment_names_the_real_count_not_five_event
+    src = File.read(File.expand_path("../scripts/lib/doctor_core.rb", __dir__))
+    refute_match(/five-event/, src, "CLAUDE_HOOK_EVENTS comment still says \"five-event\" (it is now #{Doctor::CLAUDE_HOOK_EVENTS.size})")
+  end
+
+  # Intent 340b (G7c, n4, row 4.33): CLAUDE_HOOK_EVENTS grew to eight with
+  # Stop on top of 355's PreToolUse; the comment beside it must name that
+  # count, not a stale six or seven.
+  def test_the_hook_events_comment_names_eight
+    src = File.read(File.expand_path("../scripts/lib/doctor_core.rb", __dir__))
+    refute_match(/(six|seven)-event/, src, "CLAUDE_HOOK_EVENTS comment names a stale count (it is now #{Doctor::CLAUDE_HOOK_EVENTS.size})")
+    assert_match(/eight-event/, src)
+    assert_equal 8, Doctor::CLAUDE_HOOK_EVENTS.size
   end
 end
 
@@ -1748,124 +1836,6 @@ class DoctorCodexHooksEntriesOwnedTest < Minitest::Test
   end
 end
 
-# ===========================================================================
-# 3a. claude_hooks_implemented_check (intent 244, the Claude twin of intent
-# 200's codex_hooks_implemented_check): scripts/hook-edit-gates now holds
-# every edit-path gate as a `case gate` branch, which is the exact shape
-# that let a registered gate ship with no dispatcher branch on Codex
-# (links-gate, intent 198). Mirrors CodexInstallTest's
-# codex_hooks_implemented fixtures in test/codex_install_test.rb: real
-# files distributed into a tmp plastic_home via InstallerCore, then
-# mutated on disk to force each failure mode.
-# ===========================================================================
-
-class DoctorClaudeHooksImplementedTest < Minitest::Test
-  WORKTREE = File.expand_path("../../", __FILE__)
-
-  def setup
-    @home = Dir.mktmpdir("claude-hooks-implemented-home")
-    @agent_dir = Dir.mktmpdir("claude-hooks-implemented-agent")
-    @agents = [{ key: "claude", name: "Claude Code", dir: @agent_dir, flag: "--claude", skill_prefix: "/" }]
-    @core = InstallerCore.new(package_root: WORKTREE, plastic_home: @home,
-                               agents: @agents, version: "1.0.0-test")
-  end
-
-  def teardown
-    FileUtils.rm_rf(@home)
-    FileUtils.rm_rf(@agent_dir)
-  end
-
-  def dispatcher_path
-    File.join(@home, "scripts", "hook-edit-gates")
-  end
-
-  def doctor_for(agent_dir)
-    Doctor.new(plastic_home: @home, agents: { "claude" => { name: "Claude Code", dir: agent_dir } })
-  end
-
-  def test_claude_hooks_implemented_passes_on_the_real_healthy_dispatcher
-    @core.distribute(:install) # copies the REAL scripts/hook-edit-gates into plastic_home
-    @core.install_for_agent("claude", false)
-
-    checks = doctor_for(@agent_dir).check_agent_registration("claude")
-    implemented_check = checks.find { |c| c[:name] == "claude_hooks_implemented" }
-
-    refute_nil implemented_check
-    assert_equal "pass", implemented_check[:status]
-  end
-
-  def test_claude_hooks_implemented_fails_when_a_registered_gate_has_no_dispatcher_branch
-    @core.distribute(:install)
-    @core.install_for_agent("claude", false)
-    content = File.read(dispatcher_path)
-    branch_start = content.index('when "links-gate"')
-    refute_nil branch_start, "fixture assumption: scripts/hook-edit-gates must still carry a links-gate branch"
-    # Remove just the links-gate `when` arm up to (not including) the next
-    # `when` or the case's closing `end`, whichever comes first.
-    next_when = content.index(/\n\s*when /, branch_start + 1)
-    end_line = content.index(/\n\s*end\b/, branch_start)
-    cut_end = [next_when, end_line].compact.min
-    refute_nil cut_end, "fixture assumption: the case statement must still be findable"
-    File.write(dispatcher_path, content[0...branch_start] + content[cut_end..])
-
-    checks = doctor_for(@agent_dir).check_agent_registration("claude")
-    implemented_check = checks.find { |c| c[:name] == "claude_hooks_implemented" }
-
-    refute_nil implemented_check
-    assert_equal "fail", implemented_check[:status]
-    assert(implemented_check[:details].any? { |d|
-      d.include?("links-gate") && d.include?("GATE_TOOLS") && d.include?("never blocks anything")
-    }, "expected a links-gate detail naming the direction and the fail-open runtime effect, got: #{implemented_check[:details].inspect}")
-  end
-
-  def test_claude_hooks_implemented_fails_when_the_dispatcher_has_a_branch_nobody_registers
-    @core.distribute(:install)
-    @core.install_for_agent("claude", false)
-    content = File.read(dispatcher_path)
-    marker = 'when "create-gate"'
-    idx = content.index(marker)
-    refute_nil idx, "fixture assumption: scripts/hook-edit-gates must still carry a create-gate branch"
-    updated = content[0...idx] + "when \"phantom-gate\"\n      nil\n    " + content[idx..]
-    File.write(dispatcher_path, updated)
-
-    checks = doctor_for(@agent_dir).check_agent_registration("claude")
-    implemented_check = checks.find { |c| c[:name] == "claude_hooks_implemented" }
-
-    refute_nil implemented_check
-    assert_equal "fail", implemented_check[:status]
-    assert(implemented_check[:details].any? { |d| d.include?("phantom-gate") && d.include?("dead code") },
-      "expected a phantom-gate detail naming it as dead/unreachable code, got: #{implemented_check[:details].inspect}")
-  end
-
-  def test_claude_hooks_implemented_fails_loudly_when_the_dispatcher_cannot_be_read
-    @core.distribute(:install)
-    @core.install_for_agent("claude", false)
-    reshaped = <<~RUBY
-      #!/usr/bin/env ruby
-      # Reshaped fixture: no `case gate` statement, so the extractor must find
-      # zero names and doctor must fail loudly rather than silently pass.
-      GATES = {
-        "code-gate" => ->(_x) { exit 0 },
-        "lock-gate" => ->(_x) { exit 0 },
-      }
-      handler = GATES[ARGV[0]] || ->(_x) { exit(0) }
-      handler.call(nil)
-    RUBY
-    File.write(dispatcher_path, reshaped)
-
-    checks = doctor_for(@agent_dir).check_agent_registration("claude")
-    implemented_check = checks.find { |c| c[:name] == "claude_hooks_implemented" }
-
-    refute_nil implemented_check
-    assert_equal "fail", implemented_check[:status]
-    assert_includes implemented_check[:message], "Could not read"
-  end
-
-  def test_claude_dispatcher_gate_names_returns_nil_on_no_recognizable_names
-    doctor = doctor_for(@agent_dir)
-    assert_nil doctor.claude_dispatcher_gate_names("# nothing recognizable here\nexit 0\n")
-  end
-end
 
 # ===========================================================================
 # 4. Core Files checks
@@ -2132,6 +2102,16 @@ class DoctorProjectStoresTest < Minitest::Test
     assert_equal "projects_yml", checks[0][:name]
     assert_equal "pass", checks[0][:status]
   end
+
+  def test_a_parent_intent_missing_from_the_global_store_is_a_warning
+    File.write(File.join(DOCTOR_TEST_HOME, "projects.yml"), YAML.dump({
+      "projects" => {"my-app" => {"path" => Dir.tmpdir, "parent" => "999"}}
+    }))
+    FileUtils.mkdir_p(File.join(@projects_dir, "my-app", "store"))
+    links = doctor.check_project_stores.select { |c| c[:name] == "cross_references" }
+
+    assert_equal ["warn"], links.map { |c| c[:status] }
+  end
 end
 
 # ===========================================================================
@@ -2230,11 +2210,18 @@ class DoctorIntegrationTest < Minitest::Test
     FileUtils.rm_rf(DOCTOR_TEST_CLAUDE)
     FileUtils.mkdir_p(DOCTOR_TEST_HOME)
     FileUtils.mkdir_p(DOCTOR_TEST_CLAUDE)
+    # display_hook_paints/display_not_defeated (intent 331e) read the
+    # ambient NO_COLOR by design (R3: the full run reports on THIS
+    # invocation's own environment). Neutralized here, save and restore, so
+    # "a healthy install is all-pass" does not flip to warn/fail on a
+    # runner that happens to export NO_COLOR.
+    @saved_no_color = ENV.delete("NO_COLOR")
   end
 
   def teardown
     FileUtils.rm_rf(DOCTOR_TEST_HOME)
     FileUtils.rm_rf(DOCTOR_TEST_CLAUDE)
+    ENV["NO_COLOR"] = @saved_no_color if @saved_no_color
   end
 
   def build_healthy_installation
@@ -2259,10 +2246,11 @@ class DoctorIntegrationTest < Minitest::Test
 
     # Agent registration
     write_claude_hooks(File.join(DOCTOR_TEST_CLAUDE, "hooks"))
-    write_claude_dispatcher(DOCTOR_TEST_HOME)
+    write_working_display_hook(File.join(DOCTOR_TEST_CLAUDE, "hooks"))
     write_claude_settings(File.join(DOCTOR_TEST_CLAUDE, "settings.json"))
     write_skills(DOCTOR_TEST_CLAUDE)
     write_agents(DOCTOR_TEST_CLAUDE)
+    write_claude_compact_section(DOCTOR_TEST_CLAUDE)
 
     # Agent-side VERSION
     agent_plastic = File.join(DOCTOR_TEST_CLAUDE, "plastic")
@@ -2302,10 +2290,23 @@ class DoctorIntegrationTest < Minitest::Test
     assert_equal result[:checks].size, summary[:total], "Summary total should match"
   end
 
+  # run_checks calls check_qmd with its default detector and runner, which query the
+  # machine's own qmd installation and its own index. The fixture store is never
+  # registered there, so the collections check warns on a healthy installation and the
+  # overall status turns on whatever the machine happens to have indexed. Reporting QMD
+  # as absent is the branch that says nothing about Plastic's health.
+  def without_qmd
+    original = QmdSync.method(:detect)
+    QmdSync.define_singleton_method(:detect) { |**| false }
+    yield
+  ensure
+    QmdSync.define_singleton_method(:detect, original)
+  end
+
   def test_healthy_installation_status_is_pass
     build_healthy_installation
 
-    result = doctor.run_checks("claude")
+    result = without_qmd { doctor.run_checks("claude") }
 
     assert_equal "pass", result[:status], "Healthy installation should have pass status, failures: #{
       result[:checks].reject { |c| c[:status] == "pass" }.map { |c| [c[:name], c[:status], c[:message]] }

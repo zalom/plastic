@@ -1,0 +1,345 @@
+#!/usr/bin/env ruby
+require "fileutils"
+require "open3"
+require "tmpdir"
+
+class VerifyChange
+  USAGE = <<~TEXT
+    Usage: bin/verify-change [BASE] [--test FILE]...
+
+    Checks only the code changed since the merge base of BASE and HEAD
+    (BASE defaults to origin/main, then main, then master):
+
+      1. lint on the changed Ruby files, in the project's style guide
+      2. the tests for the changed files, plus every --test FILE, with coverage on
+      3. patch coverage of the changed lines (simplecov patch)
+      4. mutation testing of the changed lines (mutineer, operators from .mutineer.yml)
+      5. CRAP scores of the changed methods (bin/crap)
+
+    Runs RSpec specs in a project with spec/ and .rspec, spec/spec_helper.rb,
+    or spec/rails_helper.rb, or with rspec, rspec-core, or rspec-rails under
+    DEPENDENCIES in Gemfile.lock, and Minitest tests otherwise. Warns when
+    both test/ and spec/ exist. Pass --test for the integration or system
+    tests of a feature the change touches.
+
+    A lint failure is reported but does not stop the other checks. Lint is
+    skipped, not failed, with no style guide, two style guides, no changed
+    Ruby files, or the linter gem missing from Gemfile.lock.
+
+    Every child runs under a throwaway HOME and PLASTIC_TMP, so a test or a
+    mutant that spawns an installer cannot reach the real home directory.
+
+    Exit codes: 0 verified, 1 a check failed, 2 usage or git error.
+  TEXT
+
+  PATCH_COVERAGE_MINIMUM = 100
+  MUTATION_THRESHOLD = 75
+  CRAP_THRESHOLD = 30
+  TESTS_STEP = "Tests with coverage"
+  LINT_STEP = "Lint"
+  DEFAULT_BASES = %w[origin/main main master].freeze
+  ALL_OPERATORS = %w[arithmetic comparison boolean_connector boolean_literal statement_removal return_nil
+                      literal_mutation condition_negation string_literal regex collection_method].freeze
+  SOURCE_PATH = %r{\A(app|lib|tools|scripts|bin/lib)/.+\.rb\z}
+  RSPEC_DEPENDENCY = /^  rspec(-core|-rails)?(\s|!|$)/
+
+  Suite = Data.define(:name, :folder, :test_path, :locations, :suffix)
+  MINITEST = Suite.new(name: "Minitest", folder: "test/", test_path: %r{\Atest/.+_test\.rb\z}, suffix: "_test.rb",
+                       locations: { %r{\Aapp/} => ["test/"], %r{\Alib/} => ["test/", "test/lib/"], %r{\Atools/} => ["test/tools/"],
+                                    %r{\Ascripts/lib/} => ["test/", "test/lib/"], %r{\Abin/lib/} => ["test/"], %r{\Ascripts/} => ["test/"] })
+  RSPEC = Suite.new(name: "RSpec", folder: "spec/", test_path: %r{\Aspec/.+_spec\.rb\z}, suffix: "_spec.rb",
+                    locations: { %r{\Aapp/} => ["spec/"], %r{\Alib/} => ["spec/", "spec/lib/"], %r{\Atools/} => ["spec/tools/"] })
+
+  Step = Struct.new(:title, :env, :command)
+  LintDecision = Struct.new(:step, :skip_reason)
+  Plan = Struct.new(:sources, :tests, :untested, :lint_files, :lint_decision, :steps)
+
+  def self.test_candidates(source, suite = MINITEST)
+    suite.locations.flat_map do |prefix, targets|
+      source.match?(prefix) ? targets.map { |target| source.sub(prefix, target).sub(/\.rb\z/, suite.suffix) } : []
+    end
+  end
+
+  def initialize(argv, root: Dir.pwd, out: $stdout, err: $stderr, git: nil, run: nil, sandbox: nil)
+    @argv = argv.dup
+    @root = root
+    @out = out
+    @err = err
+    @git = git || ->(*args) { Open3.capture2e("git", "-C", root, *args) }
+    @run = run || ->(env, command) { system(env, *command, chdir: root) }
+    @sandbox = sandbox
+    @owned_sandbox = sandbox.nil?
+  end
+
+  # A throwaway home for every child this script spawns. A gate step runs the
+  # project's own tests, and a test (or a mutant that defeats an injected
+  # runner) can spawn an installer, which resolves ~/.plastic and ~/.claude
+  # from HOME. Pointing HOME at a fresh directory is what keeps the real home
+  # out of reach; PLASTIC_TMP does the same for the session bridge files.
+  def sandbox
+    @sandbox ||= { "HOME" => Dir.mktmpdir("verify-change-home"),
+                   "PLASTIC_TMP" => Dir.mktmpdir("verify-change-tmp") }
+  end
+
+  def call
+    return usage(0) if @argv.include?("--help") || @argv.include?("-h")
+
+    requested_base, extra_tests = parse_arguments
+    return usage(2) unless requested_base
+
+    base = merge_base(requested_base)
+    return 2 unless base
+
+    report_untracked
+    chosen = suite
+    report_both_suites(chosen)
+    plan = plan(changed: changed_files(base), extra_tests: extra_tests, base: base, rails: rails?, suite: chosen)
+    execute(plan, requested_base)
+  ensure
+    discard_sandbox
+  end
+
+  def discard_sandbox
+    return unless @owned_sandbox && @sandbox
+
+    @sandbox.each_value { |dir| FileUtils.remove_entry(dir, true) }
+    @sandbox = nil
+  end
+
+  def plan(changed:, extra_tests:, base:, rails:, suite: MINITEST)
+    sources = changed.grep(SOURCE_PATH).select { |path| exist?(path) }
+    lint_files = changed.select { |path| File.extname(path) == ".rb" && exist?(path) }
+    mapped = sources.to_h { |source| [source, self.class.test_candidates(source, suite).select { |path| exist?(path) }] }
+    changed_tests = changed.grep(suite.test_path)
+    tests = (changed_tests + mapped.values.flatten + extra_tests).uniq.select { |path| exist?(path) }
+    covered_elsewhere = !extra_tests.empty? || changed_tests.any?
+    untested = covered_elsewhere ? [] : mapped.select { |_source, found| found.empty? }.keys
+    Plan.new(sources, tests, untested, lint_files, lint_decision(lint_files), steps(sources, tests, base, rails, suite))
+  end
+
+  private
+
+  def parse_arguments
+    base = nil
+    extra_tests = []
+    arguments = @argv.dup
+    until arguments.empty?
+      argument = arguments.shift
+      if argument == "--test"
+        file = arguments.shift
+        return [nil, []] unless file
+
+        extra_tests << file
+      elsif argument.start_with?("-") || base
+        return [nil, []]
+      else
+        base = argument
+      end
+    end
+    [base || default_base, extra_tests]
+  end
+
+  def default_base
+    DEFAULT_BASES.find { |ref| @git.call("rev-parse", "--verify", "--quiet", ref).last.success? } || DEFAULT_BASES.last
+  end
+
+  def merge_base(ref)
+    output, status = @git.call("merge-base", ref, "HEAD")
+    return output.strip if status.success?
+
+    @err.puts "Cannot find the merge base of #{ref} and HEAD: #{output.strip}"
+    nil
+  end
+
+  def changed_files(base)
+    @git.call("diff", "--name-only", base, "--", "*.rb").first.split("\n")
+  end
+
+  def report_untracked
+    untracked = @git.call("ls-files", "--others", "--exclude-standard", "--", "*.rb").first.split("\n")
+    return if untracked.empty?
+
+    @err.puts "Not checked, because git does not track them yet (run git add first): #{untracked.join(", ")}"
+  end
+
+  def report_both_suites(chosen)
+    return unless File.directory?(File.join(@root, "test")) && File.directory?(File.join(@root, "spec"))
+
+    skipped = chosen == RSPEC ? MINITEST : RSPEC
+    @err.puts "Both test/ and spec/ exist. Checking with #{chosen.name} only, so changed files under #{skipped.folder} do not run."
+  end
+
+  def steps(sources, tests, base, rails, suite)
+    steps = []
+    steps << step(TESTS_STEP, { "COVERAGE" => "1" }, test_command(tests, rails, suite)) unless tests.empty?
+    return steps if sources.empty?
+
+    steps << step("Patch coverage", {}, %W[bundle exec simplecov patch --base #{base} --minimum #{PATCH_COVERAGE_MINIMUM}])
+    steps << step("Mutation testing", {}, mutation_command(sources, tests, base, rails, suite))
+    steps << step("CRAP scores", {}, %W[bundle exec bin/crap --threshold #{CRAP_THRESHOLD} --since #{base}] + sources)
+  end
+
+  def step(title, env, command)
+    Step.new(title, sandbox.merge(env), command)
+  end
+
+  def test_command(tests, rails, suite)
+    return %w[bundle exec rspec] + tests if suite == RSPEC
+    return %w[bin/rails test] + tests if rails
+
+    %w[bundle exec ruby -Ilib -Itools -Itest -e] + [%(require "test_helper"; ARGV.each { |file| require File.expand_path(file) })] + tests
+  end
+
+  def lint_decision(lint_files)
+    return LintDecision.new(nil, "no changed Ruby files to lint") if lint_files.empty?
+    return LintDecision.new(nil, "two style guides found: .standard.yml and .rubocop.yml") if ambiguous_style_guide?
+
+    if rubocop_file?
+      return lint_gem_available?(:rubocop) ? LintDecision.new(lint_step(:rubocop, lint_files), nil) : LintDecision.new(nil, "the rubocop gem is not in Gemfile.lock")
+    end
+
+    if standard_file? || dependencies_section.match?(/^  standard(\s|!|$)/)
+      return lint_gem_available?(:standard) ? LintDecision.new(lint_step(:standard, lint_files), nil) : LintDecision.new(nil, "the standard gem is not in Gemfile.lock")
+    end
+
+    LintDecision.new(nil, "no style guide found")
+  end
+
+  # Local adaptation (intent 363): RuboCop reads .rubocop_with_todo.yml here, which
+  # is .rubocop.yml plus the generated todo. The todo holds this repository's 16,116
+  # pre-existing offences, so a lint run reports what the change did and nothing
+  # else. .rubocop.yml, the todo-free config, is what the repository is measured
+  # against as the todo shrinks.
+  def lint_step(guide, lint_files)
+    command = guide == :standard ? %w[bundle exec standardrb --force-exclusion] : rubocop_command
+    step(LINT_STEP, {}, command + lint_files)
+  end
+
+  def rubocop_command
+    base = %w[bundle exec rubocop --force-exclusion]
+    exist?(".rubocop_with_todo.yml") ? base + %w[--config .rubocop_with_todo.yml] : base
+  end
+
+  def lint_gem_available?(command_gem)
+    return true if command_gem == :rubocop && (dependencies_section.match?(/^  rubocop(\s|!|$)/) ||
+                    dependencies_section.match?(/^  standard(\s|!|$)/) || dependencies_section.match?(/^  rubocop-rails-omakase(\s|!|$)/))
+    return true if command_gem == :standard && dependencies_section.match?(/^  standard(\s|!|$)/)
+
+    false
+  end
+
+  def ambiguous_style_guide?
+    standard_file? && rubocop_file? && !rubocop_config_uses_standard?
+  end
+
+  def rubocop_config_uses_standard?
+    config = rubocop_config
+    return false if config.empty?
+
+    config.match?(/inherit_gem:\s*\{?\s*standard:/m) ||
+      config.match?(/^(plugins|require):\s*\n(?:[ \t]*-[ \t]*\S+[ \t]*\n)*?[ \t]*-[ \t]*standard[ \t]*$/m) ||
+      config.match?(/^(plugins|require):\s*\[[^\]]*\bstandard\b[^\]]*\]/m)
+  end
+
+  def rubocop_config
+    exist?(".rubocop.yml") ? File.read(File.join(@root, ".rubocop.yml")) : ""
+  end
+
+  def standard_file?
+    exist?(".standard.yml")
+  end
+
+  def rubocop_file?
+    exist?(".rubocop.yml")
+  end
+
+  def dependencies_section
+    return @dependencies_section if defined?(@dependencies_section)
+
+    lockfile = exist?("Gemfile.lock") ? File.read(File.join(@root, "Gemfile.lock")) : nil
+    unless lockfile
+      return @dependencies_section = ""
+    end
+
+    lines = lockfile.lines
+    start = lines.index { |line| line.strip == "DEPENDENCIES" }
+    unless start
+      return @dependencies_section = ""
+    end
+
+    section = []
+    lines[(start + 1)..].each do |line|
+      break if line.strip.empty?
+
+      section << line
+    end
+    @dependencies_section = section.join
+  end
+
+  def mutation_command(sources, tests, base, rails, suite)
+    %w[bundle exec mutineer run] + sources + tests.flat_map { |test| ["--test", test] } +
+      %W[--since #{base} --threshold #{MUTATION_THRESHOLD}] + (suite == RSPEC ? %w[--framework rspec] : []) +
+      (rails ? %w[--rails] : %w[--strategy redefine]) +
+      (exist?(".mutineer.yml") ? [] : ["--operators", ALL_OPERATORS.join(",")])
+  end
+
+  def execute(plan, requested_base)
+    if plan.sources.empty? && plan.tests.empty? && plan.lint_files.empty?
+      @out.puts "No changed Ruby files since #{requested_base}."
+      return 0
+    end
+    unless plan.untested.empty?
+      @err.puts "No test file found for: #{plan.untested.join(", ")}. Write one, or pass --test FILE for the tests that cover it."
+      return 1
+    end
+    unless exist?(".mutineer.yml") || plan.sources.empty?
+      @err.puts "Missing .mutineer.yml: passing all 11 operators on the command line instead."
+    end
+
+    @out.puts "Base:    #{requested_base}"
+    @out.puts "Sources: #{plan.sources.empty? ? "none" : plan.sources.join(", ")}"
+    @out.puts "Tests:   #{plan.tests.join(", ")}"
+    @out.puts "Home:    #{sandbox["HOME"]}"
+    FileUtils.rm_rf(File.join(@root, "coverage"))
+    failed = []
+    if plan.lint_decision.step
+      @out.puts "\n== #{LINT_STEP}"
+      failed << plan.lint_decision.step unless @run.call(plan.lint_decision.step.env, plan.lint_decision.step.command)
+    elsif plan.lint_decision.skip_reason
+      @out.puts "\nLint skipped: #{plan.lint_decision.skip_reason}"
+    end
+    plan.steps.each do |step|
+      @out.puts "\n== #{step.title}"
+      next if @run.call(step.env, step.command)
+
+      failed << step
+      next unless step.title == TESTS_STEP
+
+      @out.puts "\nThe tests are red, so the other checks did not run: a failing test kills every mutant."
+      break
+    end
+    @out.puts failed.empty? ? "\nChange verified" : "\nFailed: #{failed.map(&:title).join(", ")}"
+    failed.empty? ? 0 : 1
+  end
+
+  def rails?
+    exist?("config/application.rb")
+  end
+
+  def suite
+    listed = dependencies_section.match?(RSPEC_DEPENDENCY)
+    spec = File.directory?(File.join(@root, "spec")) && (exist?(".rspec") || exist?("spec/spec_helper.rb") || exist?("spec/rails_helper.rb"))
+    spec || listed ? RSPEC : MINITEST
+  end
+
+  def exist?(path)
+    File.exist?(File.join(@root, path))
+  end
+
+  def usage(code)
+    (code.zero? ? @out : @err).puts USAGE
+    code
+  end
+end
+
+exit VerifyChange.new(ARGV).call if $PROGRAM_NAME == __FILE__

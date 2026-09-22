@@ -193,7 +193,7 @@ class MaintenanceRunTest < Minitest::Test
   end
 
   # --- rebuild-savepoint (intent 211, D7): dry-run default, refuses without a real outcome.md,
-  # composes Bridge.rebuild_savepoint + Bridge.append_terminal_savepoint inside one scoped commit ---
+  # composes Savepoint.rebuild_savepoint + Savepoint.append_terminal_savepoint inside one scoped commit ---
 
   def write_outcome(dir, disposition: "delivered")
     File.write(File.join(dir, "outcome.md"),

@@ -2,7 +2,8 @@ require "minitest/autorun"
 require "tmpdir"
 require "fileutils"
 require "json"
-require_relative "../scripts/lib/bridge"
+require_relative "../scripts/lib/arm"
+require_relative "../scripts/lib/savepoint"
 require_relative "../scripts/lib/worktree"
 require_relative "../scripts/lib/lock"
 
@@ -88,29 +89,27 @@ class LockSystemTest < Minitest::Test
     File.write(File.join(File.dirname(@store), "INDEX.md"), lines.join("\n") + "\n")
   end
 
+  # Arm.arm (intent 307) returns a status instead of raising; the lock, the
+  # worktree stubs, and the tmp home are the same surface the bridge era armed.
   def arm(session, id: "96", dir: @dir96, auto: false)
-    args = { intent_id: id, intent_dir: dir, store: @store, name: "demo" }
-    auto ? Bridge.arm_auto(session, **args) : Bridge.arm_guided(session, **args)
-  end
-
-  def gate(file, session:)
-    Bridge.lock_gate_decision(nil, file, session: session, home: @home)
+    Arm.arm(intent_dir: dir, session: session, mode: auto ? "auto" : "guided", home: @home)
   end
 
   def repair(session)
-    Bridge.repair_lock(session, intent_id: "96", intent_dir: @dir96,
-                       store: @store, name: "demo", tmp: @tmp)
+    Arm.repair(intent_dir: @dir96, session: session, home: @home)
   end
 
   # --- 1. single owner ---------------------------------------------------------
 
   def test_single_owner_second_session_refused_owner_idempotent
     arm("a")
-    err = assert_raises(Bridge::LockHeldError) { arm("b") }
-    assert_includes err.message, "/plastic-doctor"
+    refused = arm("b")
+    assert_equal :held, refused[:status]
+    assert_equal "a", refused[:lock]["owner_session"]
 
     data = arm("a") # idempotent re-arm, :owned path
-    assert_equal "a", data["lock"]["owner_session"]
+    assert_equal :owned, data[:status]
+    assert_equal "a", data[:lock]["owner_session"]
     assert_equal "a", Lock.read(@dir96)["owner_session"]
   end
 
@@ -131,38 +130,35 @@ class LockSystemTest < Minitest::Test
 
   # --- 3. delegation end to end -------------------------------------------------
 
-  def test_delegate_passes_the_gate_stranger_denied_with_routing
+  def test_delegate_holds_the_lock_and_a_stranger_does_not
     arm("owner-a")
     assert Lock.add_delegate(@dir96, delegate: "sub", session: "owner-a")
-    assert_nil gate("#{@dir96}/plan.md", session: "sub")
-    reason = gate("#{@dir96}/plan.md", session: "stranger")
-    refute_nil reason
-    assert_includes reason, "plastic-lock delegate"
+    assert Lock.holds?(@dir96, session: "sub")
+    refute Lock.holds?(@dir96, session: "stranger")
   end
 
   # --- 4. session resolution: all three fallbacks -------------------------------
 
-  def test_explicit_session_keys_the_bridge
+  def test_explicit_session_keys_the_lock
     arm("explicit-sid")
-    assert File.exist?(File.join(@tmp, "plastic-explicit-sid--96.json"))
     assert_equal "explicit-sid", Lock.read(@dir96)["owner_session"]
   end
 
-  def test_env_session_keys_the_bridge_when_no_explicit
-    ENV["CLAUDE_CODE_SESSION_ID"] = "env-sid"
-    arm(nil)
-    assert File.exist?(File.join(@tmp, "plastic-env-sid--96.json"))
+  def test_env_session_keys_the_lock_when_no_explicit
+    # Arm reads no environment: the env id is an argument (intent 307), so the
+    # CLI is what passes CLAUDE_CODE_SESSION_ID through. The library contract
+    # is the resolution order itself.
+    key = Arm.resolve_session(nil, env: "env-sid", store: @store, intent_id: "96")
+    assert_equal "env-sid", key
+    Arm.arm(intent_dir: @dir96, session: key, mode: "guided", home: @home)
     assert_equal "env-sid", Lock.read(@dir96)["owner_session"]
-  ensure
-    ENV["CLAUDE_CODE_SESSION_ID"] = nil
   end
 
-  def test_derived_key_when_both_blank_and_warns
-    derived = Bridge.derive_key(@store, "96")
-    _out, err = capture_io { arm(nil) }
-    assert File.exist?(File.join(@tmp, "plastic-#{derived}--96.json"))
+  def test_derived_key_when_both_blank
+    derived = Arm.derive_key(@store, "96")
+    result = arm(nil)
     assert_equal derived, Lock.read(@dir96)["owner_session"]
-    assert_match(/derived bridge key/, err)
+    refute result.key?(:pointer), "a derived key gets no :pointer key: no hook would read it"
   end
 
   # --- 5. concurrent parallel sessions ------------------------------------------
@@ -171,10 +167,10 @@ class LockSystemTest < Minitest::Test
     arm("a", id: "96", dir: @dir96)
     arm("b", id: "97", dir: @dir97)
 
-    assert_nil gate("#{@dir96}/plan.md", session: "a")
-    assert_nil gate("#{@dir97}/plan.md", session: "b")
-    refute_nil gate("#{@dir96}/plan.md", session: "b"), "b must not write into a's intent"
-    refute_nil gate("#{@dir97}/plan.md", session: "a"), "a must not write into b's intent"
+    assert Lock.holds?(@dir96, session: "a")
+    assert Lock.holds?(@dir97, session: "b")
+    refute Lock.holds?(@dir96, session: "b"), "b does not hold a's intent"
+    refute Lock.holds?(@dir97, session: "a"), "a does not hold b's intent"
 
     assert Worktree.lock_held_by_other?(intent_id: "96", store: @store,
                                         current_session: "b", home: @home)
@@ -201,14 +197,7 @@ class LockSystemTest < Minitest::Test
     gitignore = File.read(File.join(@home, ".plastic", ".gitignore"))
     assert_includes gitignore.lines.map(&:strip), "*.lock"
 
-    # Enforcement: shared checkout blocked (names the worktree), worktree
-    # path allowed, outside-repo path allowed (ACTION-10 contract).
     bridge["session"] = "a"
-    shared = Bridge.worktree_gate_decision(bridge, File.join(@repo, "lib", "app.rb"), home: @home)
-    refute_nil shared
-    assert_includes shared, code_wt
-    assert_nil Bridge.worktree_gate_decision(bridge, File.join(code_wt, "lib", "app.rb"), home: @home)
-    assert_nil Bridge.worktree_gate_decision(bridge, File.join(@home, "elsewhere", "x.md"), home: @home)
 
     # Merge-remove: finish(merge: true) merges the code branch, then removes
     # the worktree and clears the block.
@@ -223,93 +212,15 @@ class LockSystemTest < Minitest::Test
     assert_nil result["worktree"]
   end
 
-  # --- 7. purge on terminal, with the lock guard ---------------------------------
-
-  def test_purge_terminal_respects_lock_and_current_session
-    write_index_active([]) # both intents are terminal now
-    seed = lambda do |session, id, dir|
-      Bridge.write(session, { "session" => session,
-                              "intent" => { "id" => id, "dir" => File.basename(dir),
-                                            "store" => @store, "name" => "demo" },
-                              "build" => { "auto" => false } }, tmp: @tmp)
-      Bridge.path(session, intent_id: id, tmp: @tmp)
-    end
-
-    terminal = seed.call("t-sess", "96", @dir96) # terminal, no lock -> purges
-    locked = seed.call("l-sess", "97", @dir97)   # terminal, lock held -> kept
-    current = seed.call("current", "96", @dir96)
-    Lock.acquire(@dir97, session: "l-sess")
-
-    removed = Bridge.purge_done_bridges(session: "current", tmp: @tmp)
-    assert_includes removed, terminal, "a terminal intent's bridge purges"
-    refute File.exist?(terminal)
-    assert File.exist?(current), "the current session's bridge never purges"
-    refute_includes removed, locked
-    assert File.exist?(locked), "a held delivery.lock blocks the purge (D6)"
-  end
-
-  # --- 8. per-gate deny/allow matrix ----------------------------------------------
-
-  def test_gate_matrix_denials_name_the_resolving_command
-    project_file = File.join(@home, "apps", "demo", "app.rb")
-
-    # code-gate: auto armed, pre-How -> deny naming the plan skills; post-How -> allow.
-    auto_bridge = arm("a", auto: true)
-    pre = Bridge.code_gate_decision(auto_bridge, project_file, home: @home)
-    refute_nil pre
-    assert_includes pre, "plastic-intent-planning"
-    File.write(File.join(@dir96, "plan.md"), "plan body\n")
-    FileUtils.mkdir_p(File.join(@dir96, "actions"))
-    File.write(File.join(@dir96, "actions", "ACTION_1.md"), "# Action 1\nreal\n")
-    File.write(File.join(@dir96, "checklist.md"), "- [ ] x\n")
-    assert_nil Bridge.code_gate_decision(auto_bridge, project_file, home: @home)
-
-    # lock-gate: no lock -> deny naming intent-starting; owner -> allow.
-    refute_nil gate("#{@dir97}/plan.md", session: "nobody")
-    assert_includes gate("#{@dir97}/plan.md", session: "nobody"), "/plastic-intent-starting"
-    assert_nil gate("#{@dir96}/plan.md", session: "a")
-
-    # bash-gate: interpreter write into another session's locked intent -> deny
-    # routed at plastic-lock; the escape tag is recognized.
-    cmd = "ruby -e 'File.write(#{"#{@dir96}/plan.md".inspect}, \"x\")'"
-    reason = Bridge.bash_gate_decision(nil, cmd, cwd: "/", session: "intruder")
-    refute_nil reason
-    assert_includes reason, "plastic-lock"
-    assert Bridge.bash_escape?("#{cmd} # plastic-ok")
-  end
-
   # --- 9-11. recovery ---------------------------------------------------------------
-
-  def test_corrupted_bridge_recovery
-    arm("a")
-    File.write(Bridge.path("a", intent_id: "96", tmp: @tmp), "}{ not json")
-    assert_nil gate("#{@dir96}/plan.md", session: "a"),
-               "a clobbered bridge cannot strand the owner: the lock file wins (D2)"
-    report = repair("a")
-    assert_equal "repaired", report["status"]
-    bridge = Bridge.read("a", intent_id: "96", tmp: @tmp)
-    assert_equal "96", bridge.dig("intent", "id")
-    assert_equal "a", bridge.dig("lock", "owner_session")
-  end
 
   def test_corrupted_lock_recovery
     File.write(Lock.path(@dir96), "{ nope")
-    reason = gate("#{@dir96}/plan.md", session: "a")
-    assert_includes reason, "/plastic-doctor fix the lock"
+    assert Lock.corrupt?(@dir96)
     report = repair("a")
     assert_equal "repaired", report["status"]
     assert_equal "a", Lock.read(@dir96)["owner_session"]
-    assert_nil gate("#{@dir96}/plan.md", session: "a")
-  end
-
-  def test_missing_bridge_tmp_wiped_recovery
-    arm("a")
-    File.delete(Bridge.path("a", intent_id: "96", tmp: @tmp))
-    assert_nil gate("#{@dir96}/plan.md", session: "a"),
-               "a wiped /tmp cannot strand the owner"
-    report = repair("a")
-    assert_equal "repaired", report["status"]
-    refute_nil Bridge.read("a", intent_id: "96", tmp: @tmp), "repair rebuilds the bridge cache"
+    assert Lock.holds?(@dir96, session: "a")
   end
 
   # --- 12. D9: lifecycle writes read only the MAIN store dir -----------------------
@@ -326,9 +237,9 @@ class LockSystemTest < Minitest::Test
 
     spec = File.join(@dir96, "spec.md")
     File.write(spec, "real spec content\n")
-    assert_equal "how", Bridge.derive_stage(@dir96),
+    assert_equal "how", Savepoint.derive_stage(@dir96),
                  "stage derivation reads the MAIN intent dir"
-    Bridge.append_savepoint(@dir96, spec)
+    Savepoint.append_savepoint(@dir96, spec)
     assert File.exist?(File.join(@dir96, "savepoint.md")),
            "the savepoint ledger lands in the MAIN intent dir"
   end

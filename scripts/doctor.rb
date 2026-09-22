@@ -9,9 +9,15 @@
 # Exit codes: 0 (all pass), 1 (warnings only), 2 (failures present)
 # Read-only — never modifies files.
 
+require_relative "lib/store_layout"
 require "date"
+require "open3"
+require "timeout"
+require "fileutils"
+require "tmpdir"
 
 require_relative "lib/doctor_core"
+require_relative "lib/hook_replay"
 
 require_relative "lib/doctor_exclusions"
 require_relative "lib/qmd_sync"
@@ -21,7 +27,11 @@ require_relative "lib/store_discovery"
 require_relative "lib/links_projection"
 require_relative "lib/links_section"
 require_relative "lib/lock"
-require_relative "lib/bridge"
+require_relative "lib/savepoint"
+require_relative "lib/node_ledger"
+require_relative "lib/ready_set"
+require_relative "lib/graph_measure_models"
+require_relative "lib/index_projection"
 require_relative "lib/agent_models"
 require_relative "lib/outcome_guard"
 require_relative "lib/skill_lint"
@@ -29,6 +39,9 @@ require_relative "lib/config_asks"
 require_relative "lib/power_tools"
 require_relative "lib/preflight"
 require_relative "lib/ruby_probe"
+require_relative "lib/doctor_session_ledger"
+require_relative "lib/intent_screen"
+require_relative "lib/store_sync"
 
 # Diagnostic engine, instantiable with an injected store/agent map so tests can
 # run it hermetically (no eval, no global-constant rewriting).
@@ -37,12 +50,20 @@ require_relative "lib/ruby_probe"
 # store, conventions, intent and CLI halves, so Doctor stays one class with one
 # public surface.
 class Doctor
+  include DoctorSessionLedger
 
   REQUIRED_INDEX_SECTIONS = ["## Active", "## Future", "## Clusters", "## Abandoned", "## Completed"].freeze
 
   # Single source of truth for the required-field list lives in IntentValidator
   # (intent 60). Alias it here so the two can never drift.
   REQUIRED_FRONTMATTER_FIELDS = IntentValidator::REQUIRED_FIELDS
+
+  # Repo root, for the three display checks below that read shipped, static
+  # package content (the fixture fallback, the harness-adapters doc) rather
+  # than a runtime plastic_home path. Same derivation as
+  # StoreProvisioning::PACKAGE_ROOT (intent 61): scripts/doctor.rb lives one
+  # level under the root.
+  PACKAGE_ROOT = File.expand_path("..", __dir__)
 
 
 
@@ -120,7 +141,7 @@ class Doctor
         --intent ID     Per-intent structure gate at intent-end (intent 222): one
                         closing intent only, never a store sweep. Pair with
                         --store <key> to disambiguate an id that collides across
-                        stores, and --disposition delivered|abandoned to fold in
+                        stores, and --disposition delivered|abandoned to include
                         the outcome.md disposition check. 3-state pass/warn/fail.
         -h, --help      Show this help
 
@@ -197,7 +218,7 @@ class Doctor
   def check_global_store
     checks = []
 
-    index_path = File.join(plastic_home, "INDEX.md")
+    index_path = File.join(Plastic::StoreLayout.global_root(plastic_home), "INDEX.md")
 
     # index_exists
     if File.exist?(index_path)
@@ -233,7 +254,7 @@ class Doctor
     end
 
     # orphaned_intents — directories in store/ not referenced in INDEX.md
-    store_dir = File.join(plastic_home, "store")
+    store_dir = Plastic::StoreLayout.global_store(plastic_home)
     if File.directory?(store_dir)
       intent_dirs = store_intent_dirs(store_dir)
       orphans = intent_dirs.reject { |d| content.include?("store/#{d}") }
@@ -259,7 +280,7 @@ class Doctor
     store_paths = content.scan(%r{store/\S+}).map { |ref| ref.gsub(/[)\]>].*/, "").chomp("/") }.uniq
 
     ghosts = store_paths.select do |ref|
-      full_path = File.join(plastic_home, ref)
+      full_path = File.join(Plastic::StoreLayout.global_root(plastic_home), ref)
       !File.exist?(full_path) && !File.directory?(full_path)
     end
 
@@ -286,6 +307,167 @@ class Doctor
   # content scanning. check_global_store (above) is store/full-scope and includes
   # orphaned_intents / ghost_references, both explicitly forbidden at core by D1.
 
+  # Row E (spec D8, spec 315b): #check_core_files's own `version_match` only ever
+  # compares the SELECTED harness's `<dir>/plastic/VERSION` against the global
+  # VERSION, so a second installed harness left behind on an old version is never
+  # version-checked at all -- exactly how ten stale 1.14.1 Codex registrations
+  # survived a `pass`. This runs the same comparison for EVERY installed harness
+  # (agent_dir on disk), named `version_match_<key>` so the existing `version_match`
+  # name and position stay reserved for the selected harness (pinned tests:
+  # test/doctor_test.rb:1846,1861,1873). Full tier only (`run_checks`); never
+  # `run_core_checks`, which is `binary: true` and runs on the session-start boot
+  # path, where a second-harness warn would become a boot-time error for every user.
+  def check_harness_versions
+    global_version = read_version
+    return [] unless global_version
+
+    agents.filter_map do |key, config|
+      next unless config.is_a?(Hash) && File.directory?(config[:dir].to_s)
+
+      agent_version_path = File.join(config[:dir], "plastic", "VERSION")
+      name = "version_match_#{key}"
+
+      if !File.exist?(agent_version_path)
+        check(
+          category: "core_files", name: name, status: "warn",
+          message: "#{config[:name]}'s agent-side VERSION file not found at #{tilde(agent_version_path)}",
+          fixable: true,
+          fix_hint: "Re-sync the stale harness: npx @zalom/plastic@latest install --reinstall <flag>, or `plastic rollback` to a prior version"
+        )
+      else
+        agent_version = File.read(agent_version_path).strip
+        if global_version == agent_version
+          check(
+            category: "core_files", name: name, status: "pass",
+            message: "Global VERSION (#{global_version}) matches #{config[:name]}'s agent-side VERSION"
+          )
+        else
+          check(
+            category: "core_files", name: name, status: "warn",
+            message: "Version mismatch for #{config[:name]}: global=#{global_version}, agent=#{agent_version}",
+            details: [
+              "#{tilde(File.join(plastic_home, "VERSION"))}: #{global_version}",
+              "#{tilde(agent_version_path)}: #{agent_version}",
+            ],
+            fixable: true,
+            fix_hint: "Re-sync the stale harness: npx @zalom/plastic@latest install --reinstall <flag>, or `plastic rollback` to a prior version"
+          )
+        end
+      end
+    end
+  end
+
+  # The Codex hook NAME expected per event, keyed off HookRegistry's own
+  # constants rather than a full built command string: naming it, not the
+  # literal dispatcher path, is what #check_codex_stale_registrations needs,
+  # so this never depends on plastic_home resolving to the same install the
+  # live hooks.json's commands were written under.
+  def codex_expected_names_by_event
+    names = {}
+    post_order = HookRegistry.events["PostToolUse"].flat_map { |g| g["hooks"].map { |h| h["name"] } }
+    names["PostToolUse"] = HookRegistry::CODEX_POST_HOOKS & post_order
+
+    HookRegistry::CODEX_LIVE_STATE_EVENTS.each do |event|
+      names[event] = HookRegistry.events[event].flat_map { |g| g["hooks"].map { |h| h["name"] } }
+    end
+
+    end_order = HookRegistry.events["SessionEnd"].flat_map { |g| g["hooks"].map { |h| h["name"] } }
+    names["SessionEnd"] = HookRegistry::CODEX_SESSION_END_HOOKS & end_order
+    names
+  end
+
+  # Row E (spec D8, spec 315b): #codex_hooks_registered_check computes
+  # `want - got` and iterates `expected.each`, so it can see a MISSING registration
+  # but never an EXTRA one, and it can never even visit an event `expected` does not
+  # list at all (a retired event such as PreToolUse, which a stale ~/.codex/hooks.json
+  # can still carry). This scans the UNION of expected and live event keys instead, so
+  # a stale registration parked in a retired event is visible. Compares hook NAMES
+  # (see #codex_expected_names_by_event), not full command strings: a full-command
+  # comparison would embed this Doctor instance's own `plastic_home` in the expected
+  # dispatcher path, which is only guaranteed to match the live hooks.json's own
+  # dispatcher path in a real, single install, never a test that fakes one without the
+  # other. Full tier only (`run_checks`); never `run_core_checks` (D8).
+  #
+  # Post-execution review item 5: name-only comparison alone is blind to two real
+  # cases, both closed here without reintroducing any plastic_home coupling: (a) the
+  # SAME (event, name) pair registered more than once (each copy's name is
+  # individually expected, so a "not in the expected set" scan never sees the
+  # duplicate), and (b) a correctly-named entry whose dispatcher path is an OLD
+  # install, different from the path every OTHER Plastic entry in this same file
+  # actually uses -- the "correct" path here is whichever path the file's own
+  # majority of entries already agrees on, never a path this Doctor instance derives
+  # from its own plastic_home.
+  def check_codex_stale_registrations
+    config = agents["codex"]
+    return [] unless config.is_a?(Hash) && File.directory?(config[:dir].to_s)
+
+    home_dir = config[:home_dir] || config[:dir]
+    hooks_json = File.join(home_dir, "hooks.json")
+    data = read_json_safe(hooks_json)
+    return [] if data.nil? || !data.is_a?(Hash)
+
+    expected_names = codex_expected_names_by_event
+    live = data["hooks"].is_a?(Hash) ? data["hooks"] : {}
+
+    # One pass over every live Plastic entry (event, hook name, and the literal
+    # dispatcher-path token it actually invokes), shared by all three checks below.
+    entries = []
+    (expected_names.keys | live.keys).each do |event|
+      Array(live[event]).each do |group|
+        Array(group["hooks"]).each do |h|
+          cmd = h["command"]
+          next unless HookRegistry.codex_purge_command?(cmd)
+
+          dispatcher_path = cmd.to_s.split(/\s+/).reject(&:empty?).first.to_s.delete("\"'")
+          name = HookRegistry.command_basenames(cmd).last
+          entries << { event: event, name: name, dispatcher_path: dispatcher_path, cmd: cmd }
+        end
+      end
+    end
+
+    stale = []
+
+    # Not in the expected name set for this event at all (the original check).
+    entries.each do |e|
+      want_names = Array(expected_names[e[:event]])
+      stale << "#{e[:event]}: #{e[:cmd]}" unless want_names.include?(e[:name])
+    end
+
+    # (a) the same (event, name) pair registered more than once.
+    entries.group_by { |e| [e[:event], e[:name]] }.each_value do |group|
+      next if group.size <= 1
+
+      group.each { |e| stale << "#{e[:event]}: #{e[:cmd]} (duplicate registration of #{e[:name]})" }
+    end
+
+    # (b) a dispatcher path that differs from the path every other Plastic entry in
+    # this same file actually uses.
+    unless entries.empty?
+      majority_path = entries.map { |e| e[:dispatcher_path] }.tally.max_by { |(_path, count)| count }&.first
+      entries.each do |e|
+        next if e[:dispatcher_path] == majority_path
+
+        stale << "#{e[:event]}: #{e[:cmd]} (dispatcher path #{e[:dispatcher_path]} differs from " \
+                  "this file's other Plastic entries at #{majority_path})"
+      end
+    end
+
+    stale.uniq!
+
+    if stale.empty?
+      [check(
+        category: "agent_registration", name: "codex_stale_registrations", status: "pass",
+        message: "No stale Plastic Codex registrations found outside the expected hook set"
+      )]
+    else
+      [check(
+        category: "agent_registration", name: "codex_stale_registrations", status: "warn",
+        message: "#{stale.size} stale Codex registration(s) found outside the expected hook set",
+        details: stale, fixable: true,
+        fix_hint: "Re-run the Plastic installer with --codex --reinstall to purge stale entries"
+      )]
+    end
+  end
   # --- Check category 2: Conventions ---
 
   # When `scopes` is a non-nil Array of scope strings (e.g. ["global"] or
@@ -431,9 +613,9 @@ class Doctor
         message: "#{bad_sections.size} intent file(s) have non-sanctioned ## sections",
         details: bad_sections.map { |b| "#{b[:dir]}: #{b[:issues].join(", ")}" },
         fixable: true,
-        fix_hint: "Dispatch plastic-store-curating to relocate each unsanctioned section into the " \
+        fix_hint: "Relocate each unsanctioned section into the " \
                   "intent's revisions.md via move-and-record (a missing required section is restored " \
-                  "or reprojected instead); see plastic-conventions > references/maintenance-and-revisions.md"
+                  "or reprojected instead); see `plastic help maintenance-and-revisions`"
       )
     end
 
@@ -443,6 +625,28 @@ class Doctor
     # I2 asymmetry (a relational chain entry with no reciprocal sources) is NEVER
     # flagged: validate_graph does not compute it.
     checks.concat(graph_invariant_checks(intent_dirs))
+
+    # node_graph - ReadySet's own view of every intent carrying a real graph.md
+    # (intent 336, n7): dead ends, stale done nodes, and expired running leases,
+    # none of which any other doctor rule surfaces. Lives here rather than
+    # doctor_core.rb because test/doctor_core_split_test.rb pins that file's
+    # boot path to exactly three project files and 781 bytes of headroom;
+    # ReadySet's own require chain is 65,648 bytes, far past that budget.
+    checks.concat(node_graph_checks(intent_dirs))
+
+    # model_requalification (D42, intent 343 G10 n7): a recorded model= that no
+    # longer matches what RunnerPolicy.model_for resolves for its role today
+    # means every measurement taken under the old model measured a different
+    # system. Lives here for the same reason node_graph_checks does: pins to
+    # test/doctor_core_split_test.rb's exact-set boot-path assertion, never
+    # doctor_core.rb (D11) - GraphMeasureModels' own require chain (NodeLedger,
+    # NodeFile, RunnerPolicy, AgentModels) is far past that file's byte budget.
+    checks.concat(model_requalification_checks(scopes: scopes))
+
+    # unpromoted_rules (intent 341, G8, C37): an Insights entry tagged
+    # `rule:` (via `insight-append --rule`) is a promise the rule will make
+    # it into project doctrine. Advisory only.
+    checks.concat(unpromoted_rules_checks(intent_dirs))
 
     # cross_store_resolution — RESOLVES (not just shape-checks) every cross-store
     # `store:id` ref against the FULL store family via the relocation map
@@ -503,14 +707,14 @@ class Doctor
     if scopes.nil? || scopes.include?("global")
       stores << {
         scope: "global",
-        index: File.join(plastic_home, "INDEX.md"),
-        store_dir: File.join(plastic_home, "store"),
+        index: File.join(Plastic::StoreLayout.global_root(plastic_home), "INDEX.md"),
+        store_dir: Plastic::StoreLayout.global_store(plastic_home),
       }
     end
 
-    projects_root = File.join(plastic_home, "projects")
+    projects_root = Plastic::StoreLayout.projects_root(plastic_home)
     if File.directory?(projects_root)
-      Dir.children(projects_root).sort.each do |project|
+      Plastic::StoreLayout.project_slugs(plastic_home).each do |project|
         scope = "project:#{project}"
         next unless scopes.nil? || scopes.include?(scope)
 
@@ -553,9 +757,9 @@ class Doctor
 # suppress) is exactly what makes the row dead.
 def done_signal_findings_for_dir(dir, label:, scope:, dirname:, terminal:, active:, excluded_rules: [])
   outcome = File.join(dir, "outcome.md")
-  outcome_real = Bridge.stage_file_present?(outcome)
+  outcome_real = Savepoint.stage_file_present?(outcome)
   findings = { conflict: nil, phantom: nil, gap: [], operational_gap: [], excluded: [],
-               excluded_rules_fired: [], stalled: nil }
+               excluded_rules_fired: [], stalled: nil, unbackfilled: [], excluded_backfill: [] }
 
   # HARD conflict: the deliverable exists but INDEX still says Active. This
   # is the one true INDEX-wins disagreement, so it stays a fail.
@@ -569,7 +773,7 @@ def done_signal_findings_for_dir(dir, label:, scope:, dirname:, terminal:, activ
   # the generic replacement for the frozen 170a amnesty list is simply "never suppress" -
   # the message already labels a terminal phantom report-only, so dropping the id-based
   # suppression is strictly more general and needs no per-store state at all).
-  phantom_lines = Bridge.savepoint_phantom_lines(dir)
+  phantom_lines = Savepoint.savepoint_phantom_lines(dir)
   if phantom_lines.any?
     detail = phantom_lines.map { |line, reason| "#{line} (#{reason})" }.join("; ")
     scope_note = terminal ? "terminal in INDEX, report-only (immutable history)" : "live intent, auto-rebuildable"
@@ -583,7 +787,7 @@ def done_signal_findings_for_dir(dir, label:, scope:, dirname:, terminal:, activ
   if terminal && !outcome_real
     state = File.exist?(outcome) ? "still a placeholder" : "missing"
     findings[:gap] << "#{label}: terminal in INDEX but outcome.md is #{state} " \
-                     "(delivery claim - never fabricated)"
+                     "(delivery claim; written at close by end-intent since intent 308)"
   end
 
   if terminal
@@ -602,6 +806,32 @@ def done_signal_findings_for_dir(dir, label:, scope:, dirname:, terminal:, activ
                 "`Done delivered|abandoned` line (operational - reconstructible)"
     end
     findings[:excluded_rules_fired] << "savepoint_operational" if suppressed && findings[:excluded].any?
+
+    # Unbackfilled documents (intent 308): spec.md or plan.md missing or still the
+    # placeholder, or no real action file, on a terminal intent. Every one of these is
+    # written from the record by `scaffold-intent backfill`, so this is repairable and
+    # reported as a fixable warn (backfilled_complete). Its exclusions go to their OWN
+    # bucket so savepoint_operational's consumed/dead-row bookkeeping above never sees them.
+    # A graph intent (real graph.md on disk) never carries spec.md or plan.md by design
+    # (D1, no ceremonies, intent 341): the graph IS the spec and the plan, so a missing one
+    # is never a gap here.
+    is_graph_intent = File.exist?(File.join(dir, "graph.md"))
+    backfill_gaps = is_graph_intent ? [] : %w[spec.md plan.md].reject { |f| Savepoint.stage_file_present?(File.join(dir, f)) }
+    # Name whichever directory the intent actually used (post-execution
+    # review, non-blocking 8), consistent with Savepoint.missing_for_stage:
+    # a nodes/ directory on disk means the intent chose the node-graph
+    # convention, so a gap here is a missing nodes/, never the literal
+    # actions/ has_real_action? no longer implies.
+    unless Savepoint.has_real_action?(dir)
+      backfill_gaps << (File.directory?(File.join(dir, "nodes")) ? "nodes/" : "actions/")
+    end
+    if backfill_gaps.any?
+      suppressed_backfill = excluded_rules.include?("backfilled_complete")
+      target = suppressed_backfill ? findings[:excluded_backfill] : findings[:unbackfilled]
+      target << "#{label}: terminal in INDEX but #{backfill_gaps.join(", ")} " \
+                "#{backfill_gaps.size == 1 ? "is" : "are"} missing or still a placeholder (backfillable)"
+      findings[:excluded_rules_fired] << "backfilled_complete" if suppressed_backfill
+    end
 
     # Stalled completion: unchanged, never consulted amnesty.
     if File.exist?(Lock.path(dir))
@@ -626,6 +856,12 @@ def check_done_signals(scopes: nil)
   dead_row_paths = []
   stalled = []
   phantoms = []
+  unbackfilled = []       # spec/plan/actions gaps on terminal intents (intent 308) - repairable
+  excluded_backfill = []  # backfill gaps knowingly exempted via doctor-exclusions (intent 308)
+  dead_rows_by_rule = Hash.new { |h, k| h[k] = [] }
+  index_drift = []        # intent 337 (G4): INDEX vs. the intent ledgers, scoped to what
+                           # savepoint_operational does not already report (row 6.7 - a silent or
+                           # absent ledger is already IndexProjection's own exclusion, row 5.13)
 
   done_signal_stores(scopes).each do |store|
     exclusions = DoctorExclusions.load(store[:index])
@@ -634,7 +870,15 @@ def check_done_signals(scopes: nil)
       exclusion_error_paths << exclusions[:path]
     end
 
-    consumed = { "savepoint_operational" => [] }
+    if File.exist?(store[:index])
+      projection = IndexProjection.analyze(store[:store_dir], index_path: store[:index])
+      projection[:drift].each do |row|
+        index_drift << "#{store[:scope]}: #{row[:id]} - INDEX says #{row[:index_status]}, " \
+                        "the ledger's last line says #{row[:ledger_status]}"
+      end
+    end
+
+    consumed = { "savepoint_operational" => [], "backfilled_complete" => [] }
     # `known_ids` (post-review fix): every intent id with a REAL DIRECTORY in this store, scanned
     # directly from disk - independent of INDEX.md. An id can have a directory on disk without
     # being listed in INDEX (a de-indexed "ghost"), and the walk below alone would never visit it;
@@ -672,6 +916,11 @@ def check_done_signals(scopes: nil)
       phantoms << findings[:phantom] if findings[:phantom]
       gaps.concat(findings[:gap])
       operational_gaps.concat(findings[:operational_gap])
+      unbackfilled.concat(findings[:unbackfilled])
+      if findings[:excluded_backfill].any?
+        excluded_backfill.concat(findings[:excluded_backfill])
+        exclusion_paths << exclusions[:path]
+      end
       if findings[:excluded].any?
         excluded.concat(findings[:excluded])
         exclusion_paths << exclusions[:path]
@@ -692,7 +941,9 @@ def check_done_signals(scopes: nil)
                else
                  "names an intent with no current #{row[:rule]} finding"
                end
-      dead_rows << "#{store[:scope]}: #{exclusions[:path]}: #{row[:rule]} #{row[:id]} - #{reason}"
+      dead_row = "#{store[:scope]}: #{exclusions[:path]}: #{row[:rule]} #{row[:id]} - #{reason}"
+      dead_rows << dead_row
+      dead_rows_by_rule[row[:rule]] << dead_row
       dead_row_paths << exclusions[:path]
     end
   end
@@ -733,7 +984,7 @@ def check_done_signals(scopes: nil)
     checks << check(
       category: "done_signals", name: "signals_complete", status: "pass",
       message: "#{gaps.size} terminal intent#{gaps.size == 1 ? "" : "s"} missing a real outcome.md " \
-               "(delivery claim - never fabricated; informational only, does not affect doctor's exit code)",
+               "(delivery claim; end-intent writes outcome.md at close since intent 308, so this is pre-308 history or a close outside end-intent; informational only, does not affect doctor's exit code)",
       details: gaps
     )
   end
@@ -743,17 +994,26 @@ def check_done_signals(scopes: nil)
   # rebuild-savepoint for most gaps, or knowingly excluded for the ones 219 D6 forbids ever
   # repairing (no real outcome.md to echo a disposition from). Three branches (spec D4/D5):
   # a malformed exclusion file can never report pass (loud), a clean remaining gap set reports
-  # pass with the exclusion count folded in, and a real remaining gap set stays warn, same as
-  # before intent 274, with the same count folded in when exclusions applied.
+  # pass with the exclusion count included, and a real remaining gap set stays warn, same as
+  # before intent 274, with the same count included when exclusions applied.
   #
-  # `dead_suffix` (intent 280) folds in a second, independent drift notice: exclusion rows that
+  # `dead_suffix` (intent 280) adds a second, independent drift notice: exclusion rows that
   # suppressed nothing this run. It is purely informational, exactly like `exclusion_suffix` - it
   # never changes status on any of the three branches below, because a stale governance-record row
   # is bookkeeping drift, not a store regression (219 D6 is untouched: no disposition is invented).
-  exclusion_suffix = excluded.empty? ? "" : " (#{excluded.size} excluded via #{exclusion_paths.join(", ")})"
-  dead_suffix = dead_rows.empty? ? "" : " (#{dead_rows.size} dead row#{dead_rows.size == 1 ? "" : "s"} " \
-                                        "in #{dead_row_paths.join(", ")}, suppressing nothing - prune with " \
-                                        "`maintenance-run --tool register-exclusions --prune`)"
+  # Per rule (intent 308): savepoint_operational and backfilled_complete each include only
+  # their own exclusions and dead rows, so one check never carries the other's counts.
+  suffixes = lambda do |excluded_rows, dead|
+    ex = excluded_rows.empty? ? "" : " (#{excluded_rows.size} excluded via #{exclusion_paths.join(", ")})"
+    dd = dead.empty? ? "" : " (#{dead.size} dead row#{dead.size == 1 ? "" : "s"} " \
+                            "in #{dead_row_paths.join(", ")}, suppressing nothing - prune with " \
+                            "`maintenance-run --tool register-exclusions --prune`)"
+    [ex, dd]
+  end
+  savepoint_dead = dead_rows_by_rule["savepoint_operational"]
+  backfill_dead = dead_rows_by_rule["backfilled_complete"]
+  exclusion_suffix, dead_suffix = suffixes.call(excluded, savepoint_dead)
+  backfill_exclusion_suffix, backfill_dead_suffix = suffixes.call(excluded_backfill, backfill_dead)
 
   if exclusion_errors.any?
     checks << check(
@@ -762,7 +1022,7 @@ def check_done_signals(scopes: nil)
                "missing an operational savepoint.md or its Done echo, and " \
                "#{exclusion_errors.size} doctor-exclusions error#{exclusion_errors.size == 1 ? "" : "s"} " \
                "(a malformed exclusion file never suppresses a finding)#{exclusion_suffix}#{dead_suffix}",
-      details: operational_gaps + exclusion_errors + dead_rows, fixable: true,
+      details: operational_gaps + exclusion_errors + savepoint_dead, fixable: true,
       fix_hint: "Fix the malformed doctor-exclusions file(s) (#{exclusion_error_paths.join(", ")}) - " \
                 "format `rule_name id id id`, blank lines and # comments ignored - then reconstruct " \
                 "any remaining real gap via `maintenance-run --tool rebuild-savepoint --intent <id> " \
@@ -774,7 +1034,7 @@ def check_done_signals(scopes: nil)
       category: "done_signals", name: "savepoint_operational", status: "pass",
       message: "No terminal intent is missing an operational savepoint.md or its Done echo" \
                "#{exclusion_suffix}#{dead_suffix}",
-      details: dead_rows
+      details: savepoint_dead
     )
   else
     checks << check(
@@ -782,10 +1042,47 @@ def check_done_signals(scopes: nil)
       message: "#{operational_gaps.size} terminal intent#{operational_gaps.size == 1 ? "" : "s"} " \
                "missing an operational savepoint.md or its Done echo (reconstructible)" \
                "#{exclusion_suffix}#{dead_suffix}",
-      details: operational_gaps + dead_rows, fixable: true,
+      details: operational_gaps + savepoint_dead, fixable: true,
       fix_hint: "Reconstruct the minimal two-line started/Done echo via " \
                 "`maintenance-run --tool rebuild-savepoint --intent <id> --apply` (197-conformant: " \
                 "receipt-before-write via RevisionsWriter, one intent per invocation, owner-approval-gated)."
+    )
+  end
+
+  # backfilled_complete (intent 308): spec.md, plan.md, or a real action file missing on a
+  # terminal intent. Same three branches as savepoint_operational: a malformed exclusion
+  # file is always loud, a clean set passes with its own exclusion and dead-row counts
+  # included, a real gap set warns with the backfill verb as the fix.
+  backfill_hint = "Write the missing documents from the record via " \
+                  "`scaffold-intent backfill --store <store> --id <id> --disposition " \
+                  "<delivered|abandoned>` (never touches real content, one intent per invocation)."
+  if exclusion_errors.any?
+    checks << check(
+      category: "done_signals", name: "backfilled_complete", status: "warn",
+      message: "#{unbackfilled.size} terminal intent#{unbackfilled.size == 1 ? "" : "s"} " \
+               "missing a backfillable document, and #{exclusion_errors.size} doctor-exclusions " \
+               "error#{exclusion_errors.size == 1 ? "" : "s"} (a malformed exclusion file never " \
+               "suppresses a finding)#{backfill_exclusion_suffix}#{backfill_dead_suffix}",
+      details: unbackfilled + exclusion_errors + backfill_dead, fixable: true,
+      fix_hint: "Fix the malformed doctor-exclusions file(s) (#{exclusion_error_paths.join(", ")}), " \
+                "then write the missing documents from the record via `scaffold-intent backfill " \
+                "--store <store> --id <id> --disposition <delivered|abandoned>`."
+    )
+  elsif unbackfilled.empty?
+    checks << check(
+      category: "done_signals", name: "backfilled_complete", status: "pass",
+      message: "Every terminal intent carries a real spec.md, plan.md, and action file" \
+               "#{backfill_exclusion_suffix}#{backfill_dead_suffix}",
+      details: backfill_dead
+    )
+  else
+    checks << check(
+      category: "done_signals", name: "backfilled_complete", status: "warn",
+      message: "#{unbackfilled.size} terminal intent#{unbackfilled.size == 1 ? "" : "s"} " \
+               "missing a backfillable document (spec.md, plan.md, or a real action file)" \
+               "#{backfill_exclusion_suffix}#{backfill_dead_suffix}",
+      details: unbackfilled + backfill_dead, fixable: true,
+      fix_hint: backfill_hint
     )
   end
 
@@ -818,10 +1115,34 @@ def check_done_signals(scopes: nil)
       message: "#{phantoms.size} intent#{phantoms.size == 1 ? "" : "s"} carry savepoint.md " \
                "line(s) contradicted by disk (advisory; terminal history stays report-only)",
       details: phantoms, fixable: true,
-      fix_hint: "For a live (Active) intent, run plastic-intent-savepoint to rebuild via " \
-                "Bridge.rebuild_savepoint. Terminal (Completed/Abandoned) intents are immutable: " \
+      fix_hint: "For a live (Active) intent, rebuild the ledger via " \
+                "Savepoint.rebuild_savepoint. Terminal (Completed/Abandoned) intents are immutable: " \
                 "a phantom there stays advisory unless an explicit human grant authorizes the " \
-                "124a manual Done-bookend repair."
+                "124a manual terminal-bookend repair."
+    )
+  end
+
+  # index_ledger_drift (intent 337, G4): a REAL terminal ledger line (Done
+  # delivered or abandoned) that disagrees with the INDEX section an intent
+  # currently sits in. Never fires for a silent or absent ledger - that gap
+  # is savepoint_operational's own concern, and IndexProjection's own drift
+  # computation already excludes it (row 5.13), so no id is ever double
+  # reported across the two checks (row 6.7). Warn+fixable: `index-projection
+  # <store_root> --write` is the repair, never invented here.
+  if index_drift.empty?
+    checks << check(
+      category: "done_signals", name: "index_ledger_drift", status: "pass",
+      message: "No INDEX section disagrees with an intent's own terminal ledger line"
+    )
+  else
+    checks << check(
+      category: "done_signals", name: "index_ledger_drift", status: "warn",
+      message: "#{index_drift.size} intent#{index_drift.size == 1 ? "" : "s"} whose terminal " \
+               "ledger line disagrees with the INDEX section it currently sits in",
+      details: index_drift, fixable: true,
+      fix_hint: "Reconcile via `index-projection <store_root> --write` (the ledger wins; only the " \
+                "conflicting entries move, every other byte of INDEX.md, including ## Clusters and " \
+                "## Relocated, is left untouched)."
     )
   end
 
@@ -909,7 +1230,7 @@ end
       "project-links --intent <id> --apply` over running project-links directly: it detects " \
       "(never acquires) the target's delivery lock, requires a clean store working tree, and " \
       "commits the scoped change plus its revisions.md receipt as one merged operation " \
-      "(plastic-conventions > references/maintenance-and-revisions.md)."
+      "(`plastic help maintenance-and-revisions`)."
     )
   end
 
@@ -927,9 +1248,12 @@ end
   #
   # Doctor's fourth check scope, invoked by `--intent <id>`. Never a store-wide sweep:
   # resolves exactly one intent directory (mirrors scripts/end-intent's resolve_intent_dir /
-  # scripts/project-links's --intent disambiguation) and returns five checks, four
-  # FAIL-severity, one WARN-severity (intent_savepoint_truthful stays WARN per intent 134's
-  # binding advisory-only ruling; see spec.md D2/D8 - do NOT escalate it to FAIL).
+  # scripts/project-links's --intent disambiguation) and returns seven checks, four
+  # FAIL-severity, three WARN-severity: intent_savepoint_truthful stays WARN per intent 134's
+  # binding advisory-only ruling (see spec.md D2/D8 - do NOT escalate it to FAIL),
+  # intent_ticks_lag is WARN-only per intent 329's ruling that a lagging tick warns rather
+  # than blocks, and intent_reports_printed is WARN-only per intent 331f (never re-litigates
+  # a ledger predating the Report kind).
   def check_intent_end(id, store: nil, disposition: nil)
     intent_dir, scope = resolve_single_intent_dir(id, store: store)
     unless intent_dir
@@ -951,6 +1275,8 @@ end
       intent_structure_check(intent_dir),
       intent_lifecycle_artifacts_check(intent_dir, disposition),
       intent_checklist_complete_check(intent_dir),
+      intent_ticks_lag_check(intent_dir),
+      intent_reports_printed_check(intent_dir),
       intent_links_projection_check_for(id, scope),
       intent_savepoint_truthful_check(intent_dir, index_path: index_path),
     ]
@@ -989,11 +1315,15 @@ end
   end
 
   INTENT_END_LIFECYCLE_FILES = %w[spec.md plan.md checklist.md outcome.md].freeze
+  # A graph intent (D1, no ceremonies, intent 341) never carries spec.md, plan.md, or
+  # checklist.md by design; the graph IS the spec and the plan. outcome.md stays mandatory.
+  GRAPH_INTENT_LIFECYCLE_FILES = %w[outcome.md].freeze
 
   def intent_lifecycle_artifacts_check(intent_dir, disposition)
-    missing = INTENT_END_LIFECYCLE_FILES.select { |f| !Bridge.stage_file_present?(File.join(intent_dir, f)) }
-    unless Bridge.stage_file_present?(Bridge.intent_file(intent_dir))
-      missing = [File.basename(Bridge.intent_file(intent_dir))] + missing
+    files = File.exist?(File.join(intent_dir, "graph.md")) ? GRAPH_INTENT_LIFECYCLE_FILES : INTENT_END_LIFECYCLE_FILES
+    missing = files.select { |f| !Savepoint.stage_file_present?(File.join(intent_dir, f)) }
+    unless Savepoint.stage_file_present?(Savepoint.intent_file(intent_dir))
+      missing = [File.basename(Savepoint.intent_file(intent_dir))] + missing
     end
 
     outcome_note = nil
@@ -1014,7 +1344,7 @@ end
 
   def intent_checklist_complete_check(intent_dir)
     path = File.join(intent_dir, "checklist.md")
-    unless Bridge.stage_file_present?(path)
+    unless Savepoint.stage_file_present?(path)
       return check(category: "intent_end", name: "intent_checklist_complete", status: "pass",
                     message: "n/a: checklist.md absent or placeholder (flagged above if that is a gap)")
     end
@@ -1026,6 +1356,80 @@ end
     else
       check(category: "intent_end", name: "intent_checklist_complete", status: "fail",
             message: "#{unchecked.size} unchecked checklist item(s) remain", details: unchecked)
+    end
+  end
+
+  # Intent 329: the checklist is the only input to the state screen's Progress bar, so an
+  # intent whose commit ledger has entries and whose checklist has no ticked item is
+  # reporting 0 progress on work that already landed. Advisory only (WARN), like
+  # intent_savepoint_truthful: a lagging tick is a lead's review finding, never a machine
+  # refusal. The commit count comes from this intent's own savepoint.md Commit ledger
+  # (intent 317 D17), never from git: git's detected base is the repo default branch, which
+  # is not the base a 2.0 intent branch forks from.
+  def intent_ticks_lag_check(intent_dir)
+    items = IntentScreen.checklist_items(intent_dir)
+    if items.empty?
+      return check(category: "intent_end", name: "intent_ticks_lag", status: "pass",
+                   message: "n/a: checklist.md has no items to tick")
+    end
+
+    ticked = items.count { |i| i[:done] }
+    commits = savepoint_commit_count(intent_dir)
+
+    if commits.positive? && ticked.zero?
+      check(category: "intent_end", name: "intent_ticks_lag", status: "warn",
+            message: "ticks lag the branch: #{commits} commit(s) recorded, " \
+                     "0 of #{items.size} checklist items ticked")
+    else
+      check(category: "intent_end", name: "intent_ticks_lag", status: "pass",
+            message: "#{ticked} of #{items.size} ticked, #{commits} commit(s) recorded")
+    end
+  end
+
+  # Intent 331f: every skill that shows state during Exec is bound to print a report screen and
+  # log a `Report` savepoint line (`savepoint-note --kind Report`). A commit landed with no
+  # Report line anywhere in the ledger is the exact defect this check exists to catch - the
+  # delivery ran but nothing on disk proves a screen was ever printed. WARN-only, like
+  # intent_ticks_lag: a lead's review finding, never a machine refusal. R6: never re-litigate
+  # history - an intent whose newest Commit line predates the day the Report kind shipped
+  # (Savepoint::REPORT_KIND_SINCE) passes, so every pre-existing ledger keeps passing
+  # `doctor --intent` (which exits 1 on an overall warn).
+  def intent_reports_printed_check(intent_dir)
+    path = File.join(intent_dir, "savepoint.md")
+    lines = File.exist?(path) ? File.readlines(path) : []
+    kinds = lines.filter_map { |l| l.strip.match(IntentScreen::SAVEPOINT_RE) }
+
+    commit_timestamps = kinds.select { |m| m[2] == "Commit" }.map { |m| m[1] }
+    if commit_timestamps.empty?
+      return check(category: "intent_end", name: "intent_reports_printed", status: "pass",
+                    message: "n/a: no commits recorded")
+    end
+
+    if kinds.any? { |m| m[2] == "Report" }
+      return check(category: "intent_end", name: "intent_reports_printed", status: "pass",
+                    message: "a Report line is recorded")
+    end
+
+    newest_commit_date = commit_timestamps.max[0, 10]
+    if newest_commit_date < Savepoint::REPORT_KIND_SINCE
+      return check(category: "intent_end", name: "intent_reports_printed", status: "pass",
+                    message: "n/a: newest commit (#{newest_commit_date}) predates the Report " \
+                             "kind (#{Savepoint::REPORT_KIND_SINCE})")
+    end
+
+    check(category: "intent_end", name: "intent_reports_printed", status: "warn",
+          message: "commits are recorded and no Report line exists")
+  end
+
+  # Count `Commit` lines in the intent's savepoint ledger, through the one regex that parses
+  # a savepoint line (IntentScreen::SAVEPOINT_RE; field 2 is the kind).
+  def savepoint_commit_count(intent_dir)
+    path = File.join(intent_dir, "savepoint.md")
+    return 0 unless File.exist?(path)
+
+    File.readlines(path).count do |line|
+      m = line.strip.match(IntentScreen::SAVEPOINT_RE)
+      m && m[2] == "Commit"
     end
   end
 
@@ -1074,7 +1478,8 @@ end
   # Terminal-gated (281 D3): done_signal_findings_for_dir only ever produces this finding
   # inside `if terminal`, so honoring the exclusion for a still-Active intent would suppress a
   # strictly larger set of facts than the rule id names - and would let a mistyped id silence
-  # the live, repairable warning scripts/end-intent's pre-write gate exists to raise.
+  # the live, repairable warning scripts/end-intent's structure self-check exists to raise
+  # (a report, never a refusal, since intent 308).
   #
   # Never raises: DoctorExclusions is fail-open by contract (274 D5) and index_sections_by_dir
   # returns an empty map for a missing INDEX.
@@ -1131,23 +1536,40 @@ end
     first_line = File.read(savepoint).each_line.find { |l| !l.strip.empty? }.to_s.strip
     parts = first_line.split(/\s{2,}/)
     born_pair = parts.length >= 3 ? [parts[1], parts[2]] : nil
-    expected_pair = Bridge.savepoint_milestone(intent_dir, File.basename(Bridge.intent_file(intent_dir)))
+    expected_pair = Savepoint.savepoint_milestone(intent_dir, File.basename(Savepoint.intent_file(intent_dir)))
 
-    phantoms = Bridge.savepoint_phantom_lines(intent_dir)
+    phantoms = Savepoint.savepoint_phantom_lines(intent_dir)
+    # Intent 335 (spec C2/C5): a torn or unattributed node/Intent transition
+    # line has no reader anywhere else in the tree, so this is where it
+    # surfaces. NodeLedger.anomalies never touches a stage line (its own
+    # transition-candidate gate excludes them), so this is purely additive
+    # beside the phantom check above.
+    transition_anomalies = NodeLedger.anomalies(savepoint)
     problems = []
     problems << "born line #{born_pair.inspect} does not match the expected #{expected_pair.inspect}" \
       if born_pair != expected_pair
     problems << "#{phantoms.size} phantom savepoint line(s): " \
                 "#{phantoms.map { |l, r| "#{l} (#{r})" }.join("; ")}" if phantoms.any?
+    problems << "#{transition_anomalies.size} torn/unattributed transition line(s): " \
+                "#{transition_anomalies.map { |a| "#{a[:line]} (#{a[:reason]})" }.join("; ")}" \
+      if transition_anomalies.any?
 
     if problems.empty?
       check(category: "intent_end", name: "intent_savepoint_truthful", status: "pass",
             message: "Savepoint born line and phantom-line state are truthful")
     else
+      # A torn or unattributed transition line's CONTENT cannot be repaired by
+      # a rebuild (rebuild_savepoint preserves it verbatim, spec D13), unlike a
+      # born-line mismatch or a stage phantom, which rebuild does fix. Say so
+      # explicitly rather than pointing at a fix that will not fix it.
+      fix_hint = "Rebuild the ledger via Savepoint.rebuild_savepoint"
+      fix_hint += "; note: rebuild preserves a torn or unattributed transition line " \
+                  "verbatim and does not repair one - hand-edit it or accept the finding" \
+        if transition_anomalies.any?
       check(category: "intent_end", name: "intent_savepoint_truthful", status: "warn",
             message: "#{problems.size} savepoint truthfulness issue(s) (advisory, never blocking)",
             details: problems,
-            fixable: true, fix_hint: "Run plastic-intent-savepoint to rebuild via Bridge.rebuild_savepoint")
+            fixable: true, fix_hint: fix_hint)
     end
   end
 
@@ -1270,9 +1692,9 @@ end
     checks << graph_finding_check(
       "graph_i4_danglers", i4,
       "Every sources/chain id resolves to a real intent (I4)",
-      "Dispatch plastic-store-curating to record the dangling sources/chain edge as a " \
+      "Record the dangling sources/chain edge as a " \
       "broken-source/broken-chain move-and-record entry in the intent's revisions.md (see " \
-      "plastic-conventions > references/maintenance-and-revisions.md), or restore the missing intent"
+      "`plastic help maintenance-and-revisions`), or restore the missing intent"
     )
     checks
   end
@@ -1293,21 +1715,213 @@ end
     end
   end
 
+  # ReadySet over every intent carrying a real graph.md (intent 336, n7):
+  # dead ends, stale done nodes, and expired running leases. An intent with
+  # no real graph.md is skipped entirely (never touches ReadySet); a
+  # malformed or cyclic one is reported by name, never raised out of doctor.
+  def node_graph_checks(intent_dirs)
+    dead_ends = []
+    stale = []
+    expired = []
+    malformed = []
+
+    intent_dirs.each do |d|
+      graph_path = File.join(d[:path], "graph.md")
+      next unless Savepoint.stage_file_present?(graph_path)
+
+      analysis = ReadySet.analyze(d[:path])
+      unless analysis[:ok]
+        malformed << "#{d[:name]}: #{analysis[:errors].join('; ')}"
+        next
+      end
+
+      savepoint_path = File.join(d[:path], "savepoint.md")
+      analysis[:nodes].each do |id, view|
+        dead_ends << "#{d[:name]}/#{id}" if view[:dead_end]
+        stale << "#{d[:name]}/#{id}" if view[:stale]
+        expired << "#{d[:name]}/#{id}" if view[:state] == "running" && expired_running_lease?(savepoint_path, id)
+      end
+    end
+
+    [
+      node_graph_finding_check(
+        "node_graph_dead_ends", dead_ends,
+        "No node waits on a need that resolves to superseded or abandoned",
+        "Re-plan or supersede the dead-end node's need chain, or abandon the node itself"
+      ),
+      node_graph_finding_check(
+        "node_graph_stale_done", stale,
+        "No done node rests on a need superseded after it finished",
+        "Re-verify the stale node against the superseding work, or record the staleness in revisions.md"
+      ),
+      node_graph_finding_check(
+        "node_graph_expired_running_lease", expired,
+        "No running node's lease has expired unreclaimed",
+        "Run `node-transition <intent_dir> --node <id> --state reclaimed --field holder=<h> " \
+        "--field expired=<iso>` to sweep it"
+      ),
+      node_graph_finding_check(
+        "node_graph_malformed", malformed,
+        "Every intent's graph.md parses cleanly",
+        "Fix the malformed graph.md or nodes/ file named in the details"
+      ),
+    ]
+  end
+
+  # True iff `id`'s last running line in the ledger at `savepoint_path` carries
+  # an `expires=` strictly in the past. An unparseable or absent expires=
+  # never counts as expired (fail milder than the bug).
+  def expired_running_lease?(savepoint_path, id, now: Time.now)
+    entry = NodeLedger.last_running(savepoint_path, id)
+    return false unless entry
+
+    expires_raw = (entry[:fields] || {})["expires"]
+    expiry = begin
+      expires_raw && Time.iso8601(expires_raw)
+    rescue ArgumentError
+      nil
+    end
+    !!(expiry && now > expiry)
+  end
+
+  # One node-graph check: pass when `findings` is empty, otherwise warn
+  # (never fail, matching graph_finding_check's own precedent - an existing
+  # store never turns red on an advisory graph finding).
+  def node_graph_finding_check(name, findings, pass_message, fix_hint)
+    if findings.empty?
+      check(category: "conventions", name: name, status: "pass", message: pass_message)
+    else
+      check(
+        category: "conventions", name: name, status: "warn",
+        message: "#{findings.size} #{name} violation(s)",
+        details: findings, fixable: false, fix_hint: fix_hint
+      )
+    end
+  end
+
+  # --- Check: re-qualification on model change (D42, intent 343 G10 n7) ---
+  #
+  # When the model behind a role changes, every measurement GraphMeasureModels
+  # took under the old model measured a different system, and the numbers
+  # need re-qualifying before anyone acts on them (D42). This warns, never
+  # fails (D10): a model change is routine, and a red doctor over it would
+  # train people to stop reading the report. The comparison itself is
+  # GraphMeasureModels' own (D16, via RunnerPolicy.model_for) - this method
+  # never re-derives it, it only names the drift rows GraphMeasureModels
+  # already computed.
+  #
+  # Runs once per discovered store (StoreDiscovery, shared with every other
+  # store-scoped check here), never per intent directory: GraphMeasureModels
+  # walks a whole store_dir itself in one pass. A store this process cannot
+  # read - or any other exception the store walk raises - is skipped, never
+  # fatal: one bad store must never take every other doctor check down with
+  # it.
+  #
+  # NEW-4 (v2 review, D22): this rule used to pass `project_config: {}` on
+  # purpose, reasoning there was no live project scope at doctor-run time -
+  # false: each discovered store DOES have a real sibling `config.yml`
+  # (`GraphMeasureModels.project_config_path`), the same file the `cohorts`
+  # verb resolves. Loading it here means the doctor and `cohorts` can never
+  # disagree about the same store's project-scope override again.
+  def model_requalification_checks(scopes: nil)
+    global_config = load_yaml_safe(File.join(plastic_home, "config.yml")) || {}
+    findings = []
+
+    store_discovery[:stores].each do |s|
+      next if scopes && !scopes.include?(s[:key])
+
+      project_config = load_yaml_safe(GraphMeasureModels.project_config_path(s[:store])) || {}
+      record = begin
+        GraphMeasureModels.read(s[:store], project_config: project_config, global_config: global_config)
+      rescue StandardError
+        next
+      end
+
+      %i[executor advisor].each do |role|
+        Array(record[:drift][role]).each do |row|
+          findings << "#{s[:key]}/#{row[:intent]}/#{row[:node]} (#{role}): recorded model=#{row[:recorded]}, " \
+                      "current config resolves #{row[:expected]} for kind #{row[:kind]} - re-qualify any " \
+                      "measurement taken while model=#{row[:recorded]} was in effect"
+        end
+      end
+    end
+
+    if findings.empty?
+      [check(
+        category: "conventions", name: "model_requalification", status: "pass",
+        message: "No recorded model= differs from what config resolves today for its role"
+      )]
+    else
+      [check(
+        category: "conventions", name: "model_requalification", status: "warn",
+        message: "#{findings.size} node(s) recorded a model that no longer matches the role's " \
+                 "config-resolved model",
+        details: findings, fixable: false,
+        fix_hint: "The old measurements were taken against a different model; re-qualify them under " \
+                  "the current model before acting on their numbers"
+      )]
+    end
+  end
+
+  # --- Check: unpromoted rule: findings (intent 341, G8, C37) ---------------
+  #
+  # `insight-append --rule` tags an entry "... - rule: <text>". A tag is a
+  # promise the rule will make it into project doctrine; until the exact
+  # rule text shows up in some docs/help/*.md chapter, it is only visible to
+  # a session that happens to read this one intent file, and the next
+  # session repeats the mistake the rule names. Advisory only (warn, never
+  # fail): a freshly tagged rule is not yet promoted by design, and nothing
+  # here can auto-promote it (that is an editorial call, not a mechanical
+  # one).
+  RULE_ENTRY_RE = /—\s*rule:\s*(.+?)\s*\z/.freeze
+
+  def unpromoted_rules_checks(intent_dirs, package_root: PACKAGE_ROOT)
+    # docs/help installs straight under PACKAGE_ROOT for every harness alike
+    # (~/.plastic/docs/help once installed, repo docs/help in a checkout), so
+    # a single path covers both the repo and the installed layout; unlike
+    # the old skills-based chapters, help topics are no longer agent-home
+    # specific, so this needs no `home:` split.
+    chapter_dir = File.join(package_root, "docs", "help")
+
+    chapters_text = Dir.glob(File.join(chapter_dir, "*.md"))
+                        .map { |f| File.read(f) }
+                        .join("\n\n")
+
+    unpromoted = []
+    intent_dirs.each do |d|
+      md_path = File.join(d[:path], "#{d[:name]}.md")
+      next unless File.exist?(md_path)
+
+      File.readlines(md_path).each do |line|
+        m = line.chomp.match(RULE_ENTRY_RE)
+        next unless m
+
+        rule_text = m[1].strip
+        next if rule_text.empty?
+
+        unpromoted << "#{tilde(d[:path])}: #{rule_text}" unless chapters_text.include?(rule_text)
+      end
+    end
+
+    if unpromoted.empty?
+      [check(
+        category: "conventions", name: "unpromoted_rules", status: "pass",
+        message: "Every tagged rule: finding is carried by a conventions chapter"
+      )]
+    else
+      [check(
+        category: "conventions", name: "unpromoted_rules", status: "warn",
+        message: "#{unpromoted.size} tagged rule(s) not yet carried by any conventions chapter",
+        details: unpromoted, fixable: false,
+        fix_hint: "Promote the rule into the right docs/help/*.md chapter, " \
+                  "or drop the tag if the finding does not belong in doctrine"
+      )]
+    end
+  end
+
   # --- Check category 3: Agent registration ---
 
 
-
-  # claude_hooks_implemented (intent 244, the Claude twin of intent 200's Codex
-  # check): the edit-path gates now live as branches inside one dispatcher,
-  # which is exactly the shape that let links-gate ship registered and dead on
-  # Codex. HookRegistry::GATE_TOOLS is the registry side; scripts/hook-edit-gates
-  # is the implementation side. Checked in BOTH directions, so a registered gate
-  # with no branch (always allows, silently) and a branch nobody registers
-  # (dead code) are both reported.
-  #
-  # Read as plain text, never required: the dispatcher has top-level side effects
-  # (it reads $stdin and exits), the same reason codex_dispatcher_gate_names reads
-  # scripts/codex-hook as text.
 
   # Plastic skills install as ~/.claude/skills/plastic-<name>/SKILL.md. Pass if at
   # least one such skill is present.
@@ -1316,8 +1930,7 @@ end
   # skill directory under agent_dir/skills that has NO corresponding entry in the
   # current install manifest is a stray (e.g. a leftover old-name copy the
   # install/update prune should have removed, or one it never saw because the
-  # manifest predates it). Complements flat_skills_check (which only confirms at
-  # least one skill exists). Defers to the manifest check when the manifest itself
+  # manifest predates it). Defers to the manifest check when the manifest itself
   # is missing or malformed, so the two checks never double-report the same gap.
 
   # Auto-mode role agents install as <dir>/agents/plastic-*.md. Pass if at least
@@ -1357,7 +1970,7 @@ end
   # dispatcher is an executable script with real top-level side effects (it reads
   # $stdin and may exit), so it can never be required or executed to introspect it,
   # only read as plain text, mirroring codex_agent_toml_well_formed? above. Pulls
-  # gate names from the STATE_HOOKS and SHELL_HOOKS %w[] literals, plus the `when
+  # hook names from the STATE_HOOKS %w[] literal, plus the `when
   # "<name>"` labels of the top-level `case gate` statement (stopping at its
   # trailing `else`). Line-shape dependent, not AST-safe, disclosed as such in
   # docs; the healthy-install pass test against the REAL dispatcher is what proves
@@ -1407,7 +2020,7 @@ end
   # Classification per installed agent basename, checked in this order:
   #   1. an `agents.models.<basename>` override IS configured -> sanctioned,
   #      pass/informational, LISTED regardless of whether frontmatter matches
-  #      (that mismatch is the override working, e.g. plastic-brainstorming: fable).
+  #      (that mismatch is the override working, e.g. plastic-executor: fable).
   #   2. no override AND basename is a TIER_DEFAULTS key -> compare frontmatter
   #      to that default; match is pass (clean), mismatch is real drift (warn).
   #   3. no override AND basename is a CONSULTATION_AGENTS member -> not a
@@ -1541,6 +2154,8 @@ end
 
     global_config = load_yaml_safe(File.join(plastic_home, "config.yml")) || {}
     overrides = AgentModels.override_map(project_config: {}, global_config: global_config, harness: "codex")
+    effort_overrides = AgentModels.effort_override_map(project_config: {}, global_config: global_config,
+                                                        harness: "codex")
 
     drifted = []
     sanctioned = []
@@ -1551,13 +2166,13 @@ end
       fields = codex_agent_toml_model_fields(File.read(path))
       override = overrides[basename]
 
-      if override
+      if override || effort_overrides[basename]
         sanctioned << "#{basename}: toml model=#{fields[:model].inspect}, " \
-                      "toml effort=#{fields[:effort].inspect}, sanctioned override=#{override.inspect}"
-      elsif AgentModels::TIER_DEFAULTS.key?(basename)
-        tier = AgentModels::TIER_DEFAULTS[basename]
-        expected_model = AgentModels.codex_model_for(tier)
-        expected_effort = AgentModels.effort_for(tier)
+                      "toml effort=#{fields[:effort].inspect}, sanctioned model override=#{override.inspect}, " \
+                      "effort override=#{effort_overrides[basename].inspect}"
+      elsif AgentModels::SHIPPED_MODEL_DEFAULTS.key?(basename)
+        expected_model = AgentModels.shipped_model_for(basename, harness: "codex")
+        expected_effort = AgentModels.shipped_effort_for(basename)
         mismatches = []
         if expected_model && fields[:model] != expected_model
           mismatches << "model=#{fields[:model].inspect}, resolved default model=#{expected_model.inspect}"
@@ -1569,7 +2184,7 @@ end
       else
         unclassified << "#{basename}: toml model=#{fields[:model].inspect}, " \
                         "toml effort=#{fields[:effort].inspect}, no resolved default (basename is in " \
-                        "neither AgentModels::TIER_DEFAULTS nor AgentModels::CONSULTATION_AGENTS in " \
+                        "AgentModels::SHIPPED_MODEL_DEFAULTS in " \
                         "scripts/lib/agent_models.rb; add it there, or set agents.models.codex.#{basename} " \
                         "to sanction a model explicitly)"
       end
@@ -1681,7 +2296,7 @@ end
   # project can be checked in isolation (used by `--store <slug>`).
   def check_project_store(slug, project_info)
     checks = []
-    project_dir = File.join(plastic_home, "projects", slug)
+    project_dir = Plastic::StoreLayout.project_root(plastic_home, slug)
 
     # project_dir_exists
     if File.directory?(project_dir)
@@ -1731,7 +2346,7 @@ end
     end
 
     # project_yml_exists
-    project_yml_path = File.join(plastic_home, "projects", slug, "project.yml")
+    project_yml_path = File.join(Plastic::StoreLayout.project_root(plastic_home, slug), "project.yml")
     project_yml_data = nil
 
     if File.exist?(project_yml_path)
@@ -1778,7 +2393,7 @@ end
     return checks unless parent_id
 
     # Find the intent directory for the parent ID
-    store_dir = File.join(plastic_home, "store")
+    store_dir = Plastic::StoreLayout.global_store(plastic_home)
     parent_dir = nil
     if File.directory?(store_dir)
       parent_dir = Dir.children(store_dir).find { |d| d.start_with?("#{parent_id}--") }
@@ -1935,7 +2550,7 @@ end
   # A config-asks warn in that tier would flip every post-update doctor to
   # "fail" on an otherwise healthy install until the question is answered,
   # re-noising the post-update surface intent 126 deliberately quieted. The
-  # recoverable-later path for a pending question is a full `/plastic-doctor`
+  # recoverable-later path for a pending question is a full `plastic doctor`
   # run, the declared maintenance front door; the moment-it-happens path is
   # update.rb#announce_pending_config_asks, which already runs on every hop.
   #
@@ -2165,6 +2780,250 @@ end
     end
   end
 
+  # --- Check category: display (intent 331e, D1) ---
+  #
+  # Three of the four `display` checks live HERE, not in doctor_core.rb: they
+  # need Open3/Timeout to spawn the installed hook as a real subprocess, and
+  # that must never attach to the SessionStart boot path
+  # (test/doctor_core_split_test.rb T2 pins doctor_core.rb's require set
+  # exactly). check_display_registration (the fourth, --core-scoped) lives in
+  # doctor_core.rb instead, alongside display_hook_launcher_name, which this
+  # file's check_display_paints reuses to name the SAME installed launcher.
+
+  # The ambient defeater active for THIS invocation, or nil. `no_color` is
+  # DI'd (default ENV["NO_COLOR"]) rather than read deep inside this method,
+  # so a test can force it on or off without touching the real process
+  # environment. Shared by check_display_paints (a defeater turns a
+  # would-be fail into a pass, R3) and check_display_not_defeated (a
+  # defeater is what it warns about).
+  def active_display_defeater(no_color: ENV["NO_COLOR"])
+    return "NO_COLOR" unless no_color.to_s.empty?
+
+    cfg = load_yaml_safe(File.join(plastic_home, "config.yml"))
+    display_cfg = cfg.is_a?(Hash) ? cfg["display"] : nil
+    return "display.ansi_screen: false in config.yml" if display_cfg.is_a?(Hash) &&
+                                                          display_cfg.fetch("ansi_screen", true) == false
+
+    nil
+  end
+
+  # The shipped fixture's path: plastic_home's own templates/ first (a real
+  # install), the package's own templates/ otherwise (running from a repo
+  # checkout, or an install whose templates/ predates this fixture). Neither
+  # existing means no fixture at all.
+  def display_fixture_path(package_root: PACKAGE_ROOT)
+    [File.join(plastic_home, "templates", "display-fixture.md"),
+     File.join(package_root, "templates", "display-fixture.md")].find { |p| File.file?(p) }
+  end
+
+  # The fixture's replayable text: its header comment (see
+  # templates/display-fixture.md) is for a human reading the file on disk,
+  # never sent through the hook.
+  def display_fixture_text(path)
+    File.read(path).sub(/\A<!--.*?-->\n\n?/m, "")
+  end
+
+  # display_hook_paints (D1, R1/R2/R3): replays the shipped fixture through
+  # the INSTALLED launcher (`<agent_dir>/hooks/plastic-message-display`,
+  # never this package's own hooks/message-display. That is R1's whole point: an
+  # installed launcher can predate the package's, and replaying the wrong
+  # one reports pass while the real stack is stale) and expects a painted
+  # (ANSI) screen back.
+  #
+  # A known defeater active (NO_COLOR, or display.ansi_screen: false) turns
+  # a no-SGR result into a PASS, naming the defeater and noting it reflects
+  # this invocation's own environment (R3). display_not_defeated is what
+  # warns about a defeater; this check never fails because of one.
+  def check_display_paints(agent_key, no_color: ENV["NO_COLOR"],
+                            tmp_dir_factory: -> { Dir.mktmpdir("plastic-doctor-display") },
+                            timeout_seconds: 10, package_root: PACKAGE_ROOT)
+    config = agents[agent_key]
+    unless agent_key == "claude"
+      return [check(
+        category: "display", name: "display_hook_paints", status: "pass",
+        message: "#{config[:name]} is plain by contract; no display hook to replay"
+      )]
+    end
+
+    fixture_path = display_fixture_path(package_root: package_root)
+    unless fixture_path
+      return [check(
+        category: "display", name: "display_hook_paints", status: "fail",
+        message: "Shipped display fixture is missing (templates/display-fixture.md)",
+        fixable: false
+      )]
+    end
+
+    agent_dir = config[:dir]
+    launcher_path = File.join(agent_dir, "hooks", display_hook_launcher_name)
+    unless File.file?(launcher_path) && File.executable?(launcher_path)
+      return [check(
+        category: "display", name: "display_hook_paints", status: "fail",
+        message: "Installed launcher #{tilde(launcher_path)} is missing or not executable; cannot replay",
+        fixable: true, fix_hint: DISPLAY_HOOK_FIX_HINT
+      )]
+    end
+
+    text = display_fixture_text(fixture_path)
+    tmp_dir = tmp_dir_factory.call
+    outs =
+      begin
+        HookReplay.replay(hook_path: launcher_path, tmp_root: tmp_dir, text: text,
+                           env: { "PLASTIC_HOME" => plastic_home }, timeout: timeout_seconds)
+      rescue StandardError => e
+        # Process.spawn (inside HookReplay) can raise before a pid ever
+        # exists: a permissions race, or a launcher that vanishes between the
+        # executable? check above and the spawn, or any other unexpected
+        # error. Unlike this codebase's defensive style elsewhere
+        # (read_json_safe, load_yaml_safe), nothing here degraded that into
+        # a clean check result, so an unlucky replay crashed the entire
+        # doctor run instead of failing just this one check (intent 331e,
+        # F6). `return` still runs the `ensure` below before unwinding.
+        return [check(
+          category: "display", name: "display_hook_paints", status: "fail",
+          message: "Replaying the installed launcher raised #{e.class}: #{e.message}",
+          fixable: false
+        )]
+      ensure
+        FileUtils.remove_entry(tmp_dir) if tmp_dir && File.exist?(tmp_dir)
+      end
+
+    if HookReplay.timed_out?(outs)
+      return [check(
+        category: "display", name: "display_hook_paints", status: "fail",
+        message: "Replaying the installed launcher timed out after #{timeout_seconds}s; painting could not be verified",
+        fixable: false
+      )]
+    end
+
+    defeater = active_display_defeater(no_color: no_color)
+    if defeater
+      return [check(
+        category: "display", name: "display_hook_paints", status: "pass",
+        message: "Painting is defeated by #{defeater} for this invocation; the replay's plain " \
+                  "output reflects that setting, not a broken hook"
+      )]
+    end
+
+    content = HookReplay.final_display_content(outs)
+    if content.to_s.include?("\e[")
+      [check(
+        category: "display", name: "display_hook_paints", status: "pass",
+        message: "The installed hook returned a painted (ANSI) screen"
+      )]
+    else
+      [check(
+        category: "display", name: "display_hook_paints", status: "fail",
+        message: "The installed hook returned no ANSI escape sequence; painting may be broken",
+        fixable: true, fix_hint: DISPLAY_HOOK_FIX_HINT
+      )]
+    end
+  end
+
+  # display_not_defeated (D1, R3/R4): warns, never fails, on each active
+  # defeater, naming the setting and its effect. Every result, pass or warn alike,
+  # names the verbose transcript view (Ctrl+O, R4): it redraws every
+  # screen as plain tables too, but it has no on-disk setting doctor can
+  # read, so its absence from these warnings is never proof that view paints.
+  def check_display_not_defeated(agent_key, no_color: ENV["NO_COLOR"])
+    config = agents[agent_key]
+    unless agent_key == "claude"
+      return [check(
+        category: "display", name: "display_not_defeated", status: "pass",
+        message: "#{config[:name]} is plain by contract; no display defeaters apply"
+      )]
+    end
+
+    warnings = []
+    warnings << "NO_COLOR is set: forces every screen to plain text for this invocation" unless no_color.to_s.empty?
+
+    cfg = load_yaml_safe(File.join(plastic_home, "config.yml"))
+    display_cfg = cfg.is_a?(Hash) ? cfg["display"] : nil
+    if display_cfg.is_a?(Hash) && display_cfg.fetch("ansi_screen", true) == false
+      warnings << "config.yml sets display.ansi_screen: false: forces every screen to plain text"
+    end
+
+    settings = read_json_safe(File.join(config[:dir], "settings.json"))
+    if settings.is_a?(Hash) && settings["verbose"] == true
+      warnings << "settings.json sets verbose: true: the verbose transcript view (Ctrl+O) redraws every screen as plain tables"
+    end
+
+    transcript_note = "The Ctrl+O verbose transcript view also redraws every screen as plain " \
+                      "tables and has no on-disk setting; its absence above is never proof that view paints."
+
+    if warnings.empty?
+      [check(
+        category: "display", name: "display_not_defeated", status: "pass",
+        message: "No known display defeaters active", details: [transcript_note]
+      )]
+    else
+      [check(
+        category: "display", name: "display_not_defeated", status: "warn",
+        message: "#{warnings.size} display defeater(s) active",
+        details: warnings + [transcript_note]
+      )]
+    end
+  end
+
+  # display_surfaces_documented (D1/D4): the harness-adapters doc names the
+  # three surface classes. Reads the package's own shipped doc: static
+  # content, not a runtime path, the same shape as check_skill_lint reading the
+  # package's own skills/ tree.
+  #
+  # `docs/` ships in NEITHER package.json's `files` list NOR
+  # InstallerCore's manifest (grep confirms zero references), so on every
+  # real install `package_root` resolves to a `~/.plastic` that has no
+  # `docs/` tree at all; only a repo checkout carries it. Absence of the
+  # doc there is therefore not a defect to report; it is this install
+  # having nothing to verify, the same skip-as-pass vocabulary D3 and R3
+  # already use elsewhere in this category. This check fails only when the
+  # doc DOES exist (a repo checkout) but has rotted: no `## Surfaces`
+  # section, or one missing a required literal.
+  def check_display_surfaces_documented(package_root: PACKAGE_ROOT)
+    doc_path = File.join(package_root, "docs", "reference", "harness-adapters.md")
+
+    unless File.file?(doc_path)
+      return [check(
+        category: "display", name: "display_surfaces_documented", status: "pass",
+        message: "Reference docs are not shipped to this install (#{tilde(doc_path)} absent); " \
+                  "nothing to verify"
+      )]
+    end
+
+    content = File.read(doc_path)
+    section = content[/^## Surfaces\n(.*?)(?=\n## |\z)/m, 1].to_s
+
+    required = ["Claude Code normal view", "agents view", "Codex", "claude -p", "verbose transcript view"]
+    missing = required.reject { |literal| section.include?(literal) }
+
+    if section.empty?
+      [check(
+        category: "display", name: "display_surfaces_documented", status: "fail",
+        message: "docs/reference/harness-adapters.md has no ## Surfaces section", fixable: false
+      )]
+    elsif missing.empty?
+      [check(
+        category: "display", name: "display_surfaces_documented", status: "pass",
+        message: "harness-adapters.md documents every display surface class"
+      )]
+    else
+      [check(
+        category: "display", name: "display_surfaces_documented", status: "fail",
+        message: "## Surfaces section is missing: #{missing.join(', ')}", details: missing, fixable: false
+      )]
+    end
+  end
+
+  def check_graph_links
+    return [] unless File.exist?(Plastic::WorkGraph.path(plastic_home))
+
+    orphans = Plastic::StoreSync.orphans(plastic_home)
+    return [check(category: "graph_links", name: "graph_links", status: "pass", message: "every stored file belongs to an intent in work_graph.db")] if orphans.empty?
+
+    [check(category: "graph_links", name: "graph_links", status: "warn", details: orphans, fixable: false,
+      message: "#{orphans.size} intent id(s) hold files and have no row in work_graph.db")]
+  end
+
   # --- Run all checks ---
 
   def run_checks(agent_key)
@@ -2173,13 +3032,21 @@ end
     all_checks += check_conventions(scopes: ["global"])
     all_checks += check_agent_registration(agent_key)
     all_checks += check_core_files(agent_key)
+    all_checks += check_harness_versions
+    all_checks += check_codex_stale_registrations
     all_checks += check_deprecations
     all_checks += check_config_asks(agent_key)
     all_checks += check_qmd
     all_checks += check_ruby_runtime
     all_checks += check_done_signals(scopes: ["global"])
+    all_checks += check_session_ledger(scopes: ["global"])
     all_checks += check_skill_lint
     all_checks += check_install_integrity
+    all_checks += check_graph_links
+    all_checks += check_display_registration(agent_key)
+    all_checks += check_display_paints(agent_key)
+    all_checks += check_display_not_defeated(agent_key)
+    all_checks += check_display_surfaces_documented
 
     summarize(all_checks, agent_key)
   end
@@ -2228,10 +3095,10 @@ end
       case store
       when :all
         check_global_store + check_project_stores + check_conventions + check_done_signals +
-          check_qmd(detector: qmd_detector, runner: qmd_runner)
+          check_session_ledger + check_qmd(detector: qmd_detector, runner: qmd_runner)
       when :global
         check_global_store + check_conventions(scopes: ["global"]) +
-          check_done_signals(scopes: ["global"]) +
+          check_done_signals(scopes: ["global"]) + check_session_ledger(scopes: ["global"]) +
           check_qmd(detector: qmd_detector, runner: qmd_runner, collection: "plastic-global")
       else
         all_checks_for_project_slug(store, qmd_detector: qmd_detector, qmd_runner: qmd_runner,

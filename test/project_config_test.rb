@@ -3,8 +3,8 @@ require "tmpdir"
 require "yaml"
 require "fileutils"
 
-BRIDGE_PATH = File.expand_path("../../scripts/lib/bridge.rb", __FILE__)
-require BRIDGE_PATH
+PROJECT_CONFIG_PATH = File.expand_path("../../scripts/lib/project_config.rb", __FILE__)
+require PROJECT_CONFIG_PATH
 
 PROJ_CONFIG_TEST_HOME = File.join(Dir.tmpdir, "plastic-projcfg-test-#{Process.pid}")
 
@@ -23,7 +23,7 @@ class ProjectConfigTest < Minitest::Test
   end
 
   def test_returns_defaults_when_file_missing
-    config = Bridge.read_project_config("nonexistent")
+    config = ProjectConfig.read("nonexistent")
     assert_equal ["AGENTS.md"], config["governing_docs"]
     assert_equal "commit", config["release"]["on_complete"]
   end
@@ -31,17 +31,17 @@ class ProjectConfigTest < Minitest::Test
   def test_returns_defaults_when_file_empty
     path = File.join(PROJ_CONFIG_TEST_HOME, ".plastic", "projects", "test-app", "project.yml")
     File.write(path, "")
-    config = Bridge.read_project_config("test-app")
+    config = ProjectConfig.read("test-app")
     assert_equal ["AGENTS.md"], config["governing_docs"]
     assert_equal "commit", config["release"]["on_complete"]
   end
 
-  def test_merges_partial_config_over_defaults
+  def test_read_merges_defaults_over_project_yml
     path = File.join(PROJ_CONFIG_TEST_HOME, ".plastic", "projects", "test-app", "project.yml")
     File.write(path, YAML.dump({
       "governing_docs" => ["CLAUDE.md"],
     }))
-    config = Bridge.read_project_config("test-app")
+    config = ProjectConfig.read("test-app")
     assert_equal ["CLAUDE.md"], config["governing_docs"]
     assert_equal "commit", config["release"]["on_complete"]
   end
@@ -51,7 +51,7 @@ class ProjectConfigTest < Minitest::Test
     File.write(path, YAML.dump({
       "release" => { "on_complete" => "commit_and_push", "verify" => "bin/rails test" },
     }))
-    config = Bridge.read_project_config("test-app")
+    config = ProjectConfig.read("test-app")
     assert_equal ["AGENTS.md"], config["governing_docs"]
     assert_equal "commit_and_push", config["release"]["on_complete"]
     assert_equal "bin/rails test", config["release"]["verify"]
@@ -70,7 +70,7 @@ class ProjectConfigTest < Minitest::Test
         "version_file" => "package.json",
       },
     }))
-    config = Bridge.read_project_config("test-app")
+    config = ProjectConfig.read("test-app")
     assert_equal ["AGENTS.md", "CLAUDE.md"], config["governing_docs"]
     assert_equal "commit_and_push", config["release"]["on_complete"]
     assert_equal ["github_release", "npm_publish"], config["release"]["on_green"]
@@ -79,10 +79,10 @@ class ProjectConfigTest < Minitest::Test
     assert_equal "package.json", config["release"]["version_file"]
   end
 
-  def test_handles_invalid_yaml
+  def test_read_returns_defaults_on_malformed_yaml
     path = File.join(PROJ_CONFIG_TEST_HOME, ".plastic", "projects", "test-app", "project.yml")
     File.write(path, "{{invalid yaml: [")
-    config = Bridge.read_project_config("test-app")
+    config = ProjectConfig.read("test-app")
     assert_equal ["AGENTS.md"], config["governing_docs"]
   end
 end

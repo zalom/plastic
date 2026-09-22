@@ -80,21 +80,18 @@ class RubyoptClearingTest < Minitest::Test
     scripts/link-suggest
     scripts/maintenance-run
     scripts/restore-intent-v1
-    scripts/hook-continue
+    scripts/hook-capture
     scripts/lib/verify_intent.rb
     scripts/codex-hook
   ].freeze
 
   # Rename guard only. The hooks scan below enumerates the directory, it does not read this.
   KNOWN_SHELL_LAUNCHERS = %w[
-    hooks/auto-arm
-    hooks/bash-gate
+    hooks/capture
     hooks/check-update
-    hooks/continue
-    hooks/edit-gates
-    hooks/future-intent-check
-    hooks/gate-check
-    hooks/power-tools
+    hooks/close
+    hooks/message-display
+    hooks/record
     hooks/session-start
   ].freeze
 
@@ -176,8 +173,15 @@ class RubyoptClearingTest < Minitest::Test
   def test_the_shell_detector_still_recognizes_the_spawn_sites_it_is_meant_to_cover
     recognized = shell_files.sum { |rel| scannable_lines(rel).count { |line, _i| line =~ SHELL_SPAWN_TOKEN } }
 
-    assert_equal 14, recognized,
-      "the shell scan should recognize 14 ruby command words across hooks/, all already " \
+    # Intent 298 replaced continue, future-intent-check, auto-arm, and gate-check
+    # with capture and record; intent 301 added close; intent 302 removed the
+    # edit-gates and bash-gate launchers, intent 309 retired power-tools, intent
+    # 311 turned savepoint into a launcher, intent 316a added message-display,
+    # intent 355 n2 added call-budget, and intent 340b added stop, so the baseline
+    # is 9 recognized spawn lines (call-budget, capture, check-update, close,
+    # message-display, record, savepoint, session-start, stop).
+    assert_equal 9, recognized,
+      "the shell scan should recognize 9 ruby command words across hooks/, all already " \
       "cleared; if this number drops, SHELL_SPAWN_TOKEN stopped matching and the hooks test " \
       "above is vacuous"
   end
@@ -205,11 +209,12 @@ class RubyoptClearingTest < Minitest::Test
       "scripts/link-suggest" => 1,
       "scripts/maintenance-run" => 5,
       "scripts/restore-intent-v1" => 1,
-      "scripts/hook-continue" => 2,
-      # 2, not 3: the third spawn site (the live-state branch) execs a BASH launcher, so its
-      # line names neither RbConfig.ruby nor "ruby" and ruby_spawn_line? does not see it. It is
-      # cleared anyway (intent 249), it just is not counted here.
-      "scripts/codex-hook" => 2,
+      "scripts/hook-capture" => 2,
+      # 1, not 2: the live-state branch execs a BASH launcher, so its line names neither
+      # RbConfig.ruby nor "ruby" and ruby_spawn_line? does not see it. It is cleared anyway
+      # (intent 249), it just is not counted here. The second ruby spawn (the bash-gate relay)
+      # left with the gates in intent 302.
+      "scripts/codex-hook" => 1,
     }
 
     expected.each do |rel, count|
@@ -218,23 +223,17 @@ class RubyoptClearingTest < Minitest::Test
     end
   end
 
-  # --- the node entry point ---
+  # --- the entry point ---
 
-  def test_bin_plastic_js_clears_rubyopt_in_its_child_env
-    source = File.read(File.join(REPO, "bin/plastic.js"))
+  # The npm entry point was `bin/plastic.js`, which spawned `ruby` from PATH and had to
+  # clear RUBYOPT so a global flag the found ruby did not know could not crash it. Intent
+  # 363 replaced it with `bin/plastic`, a Ruby launcher. A RUBYOPT the interpreter cannot
+  # read now fails before any Plastic code runs, and every child the launcher spawns runs
+  # the same interpreter under the same RUBYOPT, so there is nothing left to clear here.
+  def test_the_entry_point_is_ruby_and_spawns_no_interpreter_it_did_not_already_run_under
+    assert_path_exists File.join(REPO, "bin/plastic")
+    refute_path_exists File.join(REPO, "bin/plastic.js")
 
-    assert_includes source, "RUBYOPT: ''",
-      "bin/plastic.js must pass RUBYOPT: '' in the env object it hands to execFileSync"
-    env_line = source.lines.find { |l| l.include?("RUBYOPT: ''") }
-    assert_operator env_line.index("...process.env"), :<, env_line.index("RUBYOPT: ''"),
-      "RUBYOPT: '' must come after the ...process.env spread, or the spread overwrites it"
-  end
-
-  def test_bin_plastic_js_no_longer_claims_ruby_was_not_found_when_it_was
-    source = File.read(File.join(REPO, "bin/plastic.js"))
-
-    refute_includes source, "found not found",
-      "with RUBYOPT cleared, a too-old ruby runs and prints preflight's real message, so this " \
-      "hardcoded fallback text is both false and unreachable"
+    assert_includes File.read(File.join(REPO, "scripts/lib/cli/legacy.rb")), "RbConfig.ruby"
   end
 end

@@ -37,20 +37,17 @@ recognizes this as a new piece of work and scaffolds an intent file for you
 behind the scenes. Do not try to write the intent file by hand. Plastic always
 creates it through its own tool, so the file is complete and valid from the start.
 
-## Step 3: Board the intent
+## Step 3: Say "auto"
 
-Say "continue," or point at the intent you just created. Plastic will take a
-lock on it first (so no other session works on the same intent at the same
-time), and then ask you one question: "auto or guided?"
+Say "auto" on the intent you just created. Plastic takes a lock on it first (so no
+other team works on the same intent at the same time) and hands the whole cycle to
+a background team. It stops to ask you something only at a few important moments.
 
-- **Guided** means you walk through each stage with the agent, approving as you go.
-- **Auto** means the agent runs the whole cycle by itself and only stops you at
-  a few important moments.
+For your first intent, auto is the fastest way to see the whole shape of Plastic in
+one pass. The other two modes, direct (type the change and it happens) and thinking
+(a conversation first), are explained in [pick-your-mode.md](pick-your-mode.md).
 
-For your first intent, try auto. It is the fastest way to see the whole shape
-of Plastic in one pass.
-
-## Step 4: Say "auto"
+## Step 4: Read the result
 
 The agent now runs Why, then How, then Exec, one after another, without you
 needing to steer each step. When it finishes, it writes a file called
@@ -58,8 +55,8 @@ needing to steer each step. When it finishes, it writes a file called
 your work is done. Your intent also moves to the "Completed" section of the
 index, so you can find it again later.
 
-That is the whole loop: install once, describe what you want, board it, say
-"auto," and read the result.
+That is the whole loop: install once, describe what you want, say "auto," and
+read the result.
 
 ## What to read next
 

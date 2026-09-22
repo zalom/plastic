@@ -10,43 +10,48 @@
 module AgentModels
   # Claude Code aliases only (never pinned ids, never Fable). Keys are the agent
   # file basenames without the `.md` extension.
+  # The three per-kind node agents (intent 340b, G7c, n2), dispatched by
+  # HarnessAdapter::AGENT_TYPE_BY_KIND. work and research resolve the
+  # executor tier, verify the advisor tier, mirroring RunnerPolicy's
+  # model_role split (327 D12): work and research run on plastic-executor's
+  # own tier, and verify on the lifecycle advisor tier, never the cheap tier.
   TIER_DEFAULTS = {
     "plastic-enforcer" => "opus",
-    "plastic-brainstorming" => "opus",
-    "plastic-planner" => "opus",
-    "plastic-spec-specialist" => "sonnet",
     "plastic-executor" => "sonnet",
-    "plastic-intent-curator" => "sonnet",
-    "plastic-future-intent-researcher" => "sonnet",
-    "plastic-intent-discovery" => "sonnet"
+    "plastic-node-work" => "sonnet",
+    "plastic-node-verify" => "opus",
+    "plastic-node-research" => "sonnet"
   }.freeze
 
-  # The two advisor agents (intent 185 final design): plastic-advisor (the real
-  # advisor, ships `model: fable`) and plastic-faux-advisor (the imitation
-  # advisor, an ordinary model carrying the same reasoning discipline inline,
-  # ships `model: opus`). Both are shipped DEFAULTS in frontmatter, never a
+  # The two consultation agents are Primary Advisor and Secondary Advisor.
+  # Both ship Fable; Primary uses medium effort and Secondary uses high effort.
+  # Both are shipped defaults in frontmatter, never a
   # hard-wired identity: agents.models.claude.<name> (or the legacy flat form)
   # overrides either one through the same install-time frontmatter rewrite
   # every agent override uses. Neither is a lifecycle-stage role: never
-  # dispatched by the auto pipeline, not part of TIER_DEFAULTS. Claude-only for
-  # this release (generate_codex_agents skips both by name; the Codex advisor
-  # case is intent 186, not a permanent exclusion).
-  #
-  # Intent 186 DEFINES the advisor Codex pairing but keeps emission deferred: when the skip is
-  # lifted, plastic-advisor pairs to gpt-5.6-sol at xhigh (the deepest) and plastic-faux-advisor
-  # to gpt-5.6-terra at high (cheaper). Neither is in TIER_DEFAULTS and neither is auto-dispatched.
-  CONSULTATION_AGENTS = %w[plastic-advisor plastic-faux-advisor].freeze
+  # dispatched by the auto pipeline, not part of TIER_DEFAULTS. Codex installs
+  # generate both advisors with Astra and preserve each role's effort.
+  CONSULTATION_AGENTS = %w[plastic-primary-advisor plastic-secondary-advisor].freeze
 
-  # Codex reasoning-effort per tier alias (intent 102a). model_reasoning_effort is a
-  # depth-of-thinking dial independent of model selection (181 line 317-318), so mapping
-  # the tier here never encodes a rotting Codex model id (116 D1). opus is the deepest
-  # reasoning tier -> the deepest generally-safe effort (high, not the model-dependent
-  # xhigh); sonnet the mid execution tier -> medium; haiku the lightest -> low. minimal is
-  # unused.
+  SHIPPED_MODEL_DEFAULTS = TIER_DEFAULTS.merge(
+    "plastic-primary-advisor" => "fable",
+    "plastic-secondary-advisor" => "fable"
+  ).freeze
+
+  # Codex reasoning effort per tier alias. Model choice and reasoning effort are independent:
+  # aliases select the recommended OpenAI model, while every Plastic role starts at medium.
+  # A valid harness-scoped user override can still choose another effort for one agent.
   EFFORT_BY_ALIAS = {
-    "opus" => "high",
+    "opus" => "medium",
     "sonnet" => "medium",
-    "haiku" => "low"
+    "haiku" => "medium"
+  }.freeze
+
+  DEFAULT_EFFORT = "medium"
+
+  SHIPPED_EFFORT_DEFAULTS = {
+    "plastic-primary-advisor" => "medium",
+    "plastic-secondary-advisor" => "high"
   }.freeze
 
   # Codex model id per tier alias (intent 186). Codex has NO vendor alias layer: every model id
@@ -55,16 +60,25 @@ module AgentModels
   # centralizing every id in ONE map: Plastic owns the alias, so per-role identity costs a single
   # line to refresh on a Codex deprecation plus a Plastic release, and no per-role file carries a
   # raw id. opus (deepest reasoning tier) -> the flagship Sol; sonnet (execution tier) -> the
-  # balanced Terra; haiku (lightest) -> the fast/cheap Luna. Paired with EFFORT_BY_ALIAS so
-  # reasoning roles get a stronger model AND higher effort than executors. This is a shipped
-  # DEFAULT, fully overridable via agents.models.codex.<name>.
+  # balanced Terra; haiku (lightest) -> the fast/cheap Luna. This is a shipped
+  # DEFAULT, fully overridable via agents.models.codex.<name>. Model strength does not change
+  # effort: all three aliases use medium unless agents.efforts.codex.<name> overrides it.
   CODEX_MODEL_BY_ALIAS = {
     "opus" => "gpt-5.6-sol",
     "sonnet" => "gpt-5.6-terra",
     "haiku" => "gpt-5.6-luna"
   }.freeze
 
+  CODEX_MODEL_BY_AGENT = {
+    "plastic-primary-advisor" => "gpt-6-astra",
+    "plastic-secondary-advisor" => "gpt-6-astra"
+  }.freeze
+
   module_function
+
+  def shipped_effort_for(agent)
+    SHIPPED_EFFORT_DEFAULTS.fetch(agent.to_s, DEFAULT_EFFORT)
+  end
 
   # Pull { basename => model } out of a loaded config hash's `agents.models`
   # section, scoped to `harness` ("claude" or "codex"), tolerating a missing or
@@ -99,6 +113,17 @@ module AgentModels
     models_section(global_config, harness: harness).merge(models_section(project_config, harness: harness))
   end
 
+  def effort_override_map(project_config: {}, global_config: {}, harness: "claude")
+    efforts_section(global_config, harness).merge(efforts_section(project_config, harness))
+  end
+
+  def efforts_section(config, harness)
+    agents = config.is_a?(Hash) ? config["agents"] : nil
+    efforts = agents.is_a?(Hash) ? agents["efforts"] : nil
+    section = efforts.is_a?(Hash) ? efforts[harness] : nil
+    section.is_a?(Hash) ? section : {}
+  end
+
   # The model_reasoning_effort for a Plastic tier alias, or nil for any value that is not
   # one of the three shipped aliases (the caller treats nil as a literal Codex model id).
   def effort_for(value)
@@ -109,5 +134,12 @@ module AgentModels
   # shipped aliases (the caller then treats the value as a literal Codex model id, or omits it).
   def codex_model_for(value)
     CODEX_MODEL_BY_ALIAS[value.to_s]
+  end
+
+  def shipped_model_for(agent, harness: "claude")
+    value = SHIPPED_MODEL_DEFAULTS[agent.to_s]
+    return value unless harness.to_s == "codex"
+
+    CODEX_MODEL_BY_AGENT[agent.to_s] || codex_model_for(value) || value
   end
 end

@@ -32,7 +32,7 @@ config_asks:
     agents: ["claude"]
     question: "Which advisor should be the default?"
     options:
-      - label: "Faux Fable (recommended): Opus 4.8 carrying the frontier reasoning instructions. Much cheaper, available on any plan, reasons in the same disciplined way."
-        value: "plastic-faux-advisor"
-      - label: "Fable 5: the frontier model itself. The strongest reasoning available, billed through usage credits, so summon it for a few rounds and close it."
-        value: "plastic-advisor"
+      - label: "Primary Advisor (recommended): Fable at medium effort for normal consultation."
+        value: "plastic-primary-advisor"
+      - label: "Secondary Advisor: Fable at high effort for explicit escalation."
+        value: "plastic-secondary-advisor"

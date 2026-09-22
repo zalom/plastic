@@ -1,0 +1,249 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+require "json"
+require "yaml"
+require "date"
+require_relative "lib/savepoint"
+
+# graph-measure - the one read-only executable over the node ledger (intent
+# 343, G10, n2). A subcommand table over one library, following
+# scripts/runner's shape (327 spec): the public verbs are named up front even
+# before every module lands, a flag outside a verb's own vocabulary is
+# refused by name, and each verb's module is required LAZILY inside its own
+# branch so a verb whose module has not landed yet reports plainly instead of
+# taking `intent`, the verb an operator runs constantly, down with it.
+#
+# Usage:
+#   graph-measure <intent|budget|cohorts> <dir> [--format text|json]
+#
+# `intent` (n2) and `budget` (n4) take an INTENT directory. `cohorts` (n5,
+# its model section; n6 adds the rates, the latency and the bar to the same
+# verb) takes a STORE directory instead - the directory holding `id--slug/`
+# intent folders for one project - and is validated against that shape, not
+# `intent_directory?`.
+#
+# Exit codes:
+#   0 - a report rendered (anomalies never change this: a ledger with torn
+#       lines still renders, lists them, and exits 0)
+#   1 - the directory has no savepoint.md to measure at all, named
+#   2 - usage: no args, an unknown subcommand, an unknown flag, or the path
+#       is not the right shape for its verb (an intent directory for
+#       `intent`/`budget`, a store directory for `cohorts`)
+#   3 - the verb's module has not been delivered yet
+module GraphMeasureCLI
+  module_function
+
+  VERBS = %w[intent budget cohorts].freeze
+  SAVEPOINT_FILE = "savepoint.md"
+
+  # verb -> [[ModuleName, lib_file], ...], required lazily inside the verb's
+  # own branch (row 2.6). "budget" and "cohorts" name libraries n4 and n5
+  # ship; requiring them today raises LoadError, caught below.
+  LAZY_MODULES = {
+    "intent" => [["GraphMeasure", "graph_measure"], ["GraphMeasureReport", "graph_measure_report"]],
+    "budget" => [["GraphMeasureBudget", "graph_measure_budget"]],
+    "cohorts" => [["GraphMeasureModels", "graph_measure_models"], ["GraphMeasureCohorts", "graph_measure_cohorts"]],
+  }.freeze
+
+  KNOWN_FLAGS = {
+    "intent" => %w[--format],
+    "budget" => %w[--format],
+    "cohorts" => %w[--format],
+  }.freeze
+
+  # "intent" and "budget" take one intent directory; "cohorts" takes the
+  # store directory that holds many of them (row 5.15).
+  DIR_KIND = { "intent" => :intent, "budget" => :intent, "cohorts" => :store }.freeze
+
+  def usage
+    warn "Usage: graph-measure <#{VERBS.join('|')}> <dir> [--format text|json]"
+  end
+
+  def intent_directory?(dir)
+    dir && File.directory?(dir) && File.exist?(Savepoint.intent_file(dir))
+  end
+
+  def store_directory?(dir)
+    dir && File.directory?(dir)
+  end
+
+  def valid_dir?(verb, dir)
+    DIR_KIND.fetch(verb, :intent) == :store ? store_directory?(dir) : intent_directory?(dir)
+  end
+
+  def opt(args, name)
+    (i = args.index(name)) && args[i + 1]
+  end
+
+  def unrecognized_flag(verb, args)
+    allowed = KNOWN_FLAGS.fetch(verb, [])
+    args.find { |a| a.is_a?(String) && a.start_with?("--") && !allowed.include?(a) }
+  end
+
+  def main(argv)
+    args = argv.dup
+    verb = args.shift
+
+    unless verb
+      usage
+      return 2
+    end
+
+    unless VERBS.include?(verb)
+      warn "graph-measure: unknown subcommand #{verb.inspect}"
+      usage
+      return 2
+    end
+
+    dir_arg = args.shift
+    unless valid_dir?(verb, dir_arg && File.expand_path(dir_arg))
+      label = DIR_KIND.fetch(verb, :intent) == :store ? "not a store directory" : "not an intent directory"
+      warn "graph-measure: #{dir_arg.inspect} is #{label}"
+      usage
+      return 2
+    end
+    dir = File.expand_path(dir_arg)
+
+    bad_flag = unrecognized_flag(verb, args)
+    if bad_flag
+      warn "graph-measure: unknown flag #{bad_flag.inspect} for #{verb}"
+      usage
+      return 2
+    end
+
+    format = opt(args, "--format") || "text"
+    unless %w[text json].include?(format)
+      warn "graph-measure: unknown --format #{format.inspect} (use text or json)"
+      usage
+      return 2
+    end
+
+    run_lazy(verb, dir, format)
+  rescue StandardError => e
+    # Row 2.22: a malformed graph.md, a torn ledger, or invalid UTF-8 never
+    # raises out of GraphMeasure or GraphMeasureReport (both are built to
+    # resolve broken data to an anomaly, never an exception) - this is
+    # defence in depth so a defect in either never reaches the owner as a
+    # bare Ruby backtrace.
+    warn "graph-measure: internal error: #{e.message}"
+    1
+  end
+
+  def run_lazy(verb, dir, format)
+    LAZY_MODULES.fetch(verb, []).each { |(_name, file)| require_relative(File.join("lib", file)) }
+  rescue LoadError
+    warn "graph-measure: #{verb} is not yet delivered (its module has not landed)"
+    3
+  else
+    dispatch_lazy(verb, dir, format)
+  end
+
+  def dispatch_lazy(verb, dir, format)
+    case verb
+    when "intent"
+      run_intent(dir, format)
+    when "budget"
+      run_budget(dir, format)
+    when "cohorts"
+      run_cohorts(dir, format)
+    else
+      warn "graph-measure: #{verb}'s module loaded but no dispatcher is wired up yet"
+      3
+    end
+  end
+
+  # M1: the boundary's own config resolution, never GraphMeasureModels' or
+  # GraphMeasureCohorts' (spec D2, both modules' own DI convention). Mirrors
+  # scripts/doctor.rb's own `PLASTIC_HOME` fallback and `load_yaml_safe`
+  # shape exactly, so a missing or malformed config.yml/project.yml resolves
+  # to `{}` (the shipped-default chain), never an exception.
+  def plastic_home
+    ENV.fetch("PLASTIC_HOME") { File.join(Dir.home, ".plastic") }
+  end
+
+  def load_yaml_safe(path)
+    return {} unless path && File.exist?(path)
+
+    YAML.safe_load(File.read(path), permitted_classes: [Date, Time]) || {}
+  rescue StandardError
+    {}
+  end
+
+  def missing_savepoint(dir)
+    savepoint_path = File.join(dir, SAVEPOINT_FILE)
+    return nil if File.exist?(savepoint_path)
+
+    warn "graph-measure: #{savepoint_path} does not exist, nothing to measure"
+    savepoint_path
+  end
+
+  def run_intent(dir, format)
+    # Row 2.5: checked directly, ahead of GraphMeasure.read, which resolves a
+    # missing file to an empty (not absent) record by design (D3) - the CLI
+    # boundary is the only place that can still tell "nothing to measure"
+    # apart from "measured, and it is empty".
+    return 1 if missing_savepoint(dir)
+
+    record = GraphMeasure.read(dir)
+    puts format == "json" ? GraphMeasureReport.render_json(record) : GraphMeasureReport.render_text(record)
+    0
+  end
+
+  def run_budget(dir, format)
+    return 1 if missing_savepoint(dir)
+
+    record = GraphMeasureBudget.read(dir)
+    puts format == "json" ? GraphMeasureBudget.render_json(record) : GraphMeasureBudget.render_text(record)
+    0
+  end
+
+  # Row 2.5's "missing savepoint.md" check does not apply here: `dir` is a
+  # STORE directory (spec D1's "the directory holding id--slug/ intent
+  # folders"), which never carries a savepoint.md of its own.
+  #
+  # n6 adds the rates, the latency and the bar to this same verb, sourced
+  # from `GraphMeasureCohorts`. Its bar section reuses the one
+  # `GraphMeasureModels` walk's `qualified` counts (passed in here) rather
+  # than triggering a second store walk for the same numbers.
+  #
+  # M1 (v1 review): this call used to pass neither `project_config:` nor
+  # `global_config:`, so the model comparison always resolved against
+  # RunnerPolicy's shipped defaults only, never the real project-then-
+  # global-then-default chain the CHANGELOG describes and
+  # `scripts/doctor.rb`'s own `model_requalification_checks` actually reads.
+  # Reproduced: with a `plastic-executor:` override present in global
+  # config, `GraphMeasureModels.read` reports real drift rows while this
+  # verb (unpatched) always reported zero. `GraphMeasure`'s own modules stay
+  # config-free by design (D2's DI convention: they never read disk or ENV
+  # themselves) - this executable is the boundary that is allowed to, the
+  # same role `scripts/doctor.rb` already plays for the same two config
+  # files.
+  #
+  # NEW-4 (v2 review, D22): the project-scope half named `<store>/../project.yml`,
+  # a file whose template carries no `agents:` key at all, so a real
+  # operator override at the file that DOES exist in the wild - the store's
+  # sibling `config.yml` - was silently ignored. The path now comes from
+  # `GraphMeasureModels.project_config_path`, the one function
+  # `scripts/doctor.rb`'s own rule calls too, so the two commands cannot
+  # resolve a different file for the same store.
+  def run_cohorts(dir, format)
+    global_config = load_yaml_safe(File.join(plastic_home, "config.yml"))
+    project_config = load_yaml_safe(GraphMeasureModels.project_config_path(dir))
+
+    models_record = GraphMeasureModels.read(dir, project_config: project_config, global_config: global_config)
+    cohorts_record = GraphMeasureCohorts.read(dir, qualified: models_record[:qualified],
+                                                    project_config: project_config, global_config: global_config)
+    if format == "json"
+      combined = GraphMeasureModels.model(models_record).merge(GraphMeasureCohorts.model(cohorts_record))
+      puts JSON.generate(combined)
+    else
+      puts GraphMeasureModels.render_text(models_record)
+      puts GraphMeasureCohorts.render_text(cohorts_record)
+    end
+    0
+  end
+end
+
+exit GraphMeasureCLI.main(ARGV) if $PROGRAM_NAME == __FILE__

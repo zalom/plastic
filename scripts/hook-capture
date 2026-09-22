@@ -1,0 +1,156 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# Usage: hook-capture (reads the UserPromptSubmit stdin JSON payload)
+# Intent 298. One UserPromptSubmit process replacing hook-continue,
+# hook-future-intent-check, and hook-auto-arm: it appends a pending line to
+# the session day ledger and detects "continue" and "auto" prompts. Every job
+# runs in its own rescue and the hook always exits 0 (spec D2). Intent 345
+# (D7, 323) removed the per-prompt Future-intent hint step entirely.
+
+require_relative "lib/store_layout"
+require "json"
+require "open3"
+require "time"
+require "fileutils"
+require_relative "lib/session_ledger"
+require_relative "lib/dashboard_banner"
+require_relative "lib/active_delivery"
+
+raw = begin
+  $stdin.read
+rescue StandardError
+  nil
+end
+exit 0 if raw.nil? || raw.strip.empty?
+
+payload = begin
+  JSON.parse(raw)
+rescue StandardError
+  nil
+end
+exit 0 unless payload.is_a?(Hash)
+
+session_id = payload["session_id"].to_s
+prompt = payload["prompt"].to_s
+prompt = payload["user_prompt"].to_s if prompt.empty?
+cwd = payload["cwd"].to_s
+cwd = Dir.pwd if cwd.empty?
+
+plastic_home = File.expand_path(ENV["PLASTIC_HOME"] || "~/.plastic")
+store = Plastic::StoreLayout.global_store(plastic_home)
+templates = File.expand_path("../templates", __dir__)
+sid = SessionLedger.short_session_id(nil, session_id)
+today = SessionLedger.day_id
+
+def truncate(text, max)
+  return text if text.length <= max
+
+  "#{text[0, max - 3]}..."
+end
+
+# --- (a) heartbeat, guarded on the session tmp dir already existing --------
+# Session start creates `.tmp/<sid>/`; a capture with no such directory yet
+# means session start never ran for this session at all (a `-p` print
+# session, a resumed background job, an unregistered SessionStart hook), so
+# neither the directory nor its heartbeat is created HERE either.
+# UserPromptSubmit fires before PostToolUse, so capture is the FIRST place
+# this guard matters; hook-record carries the same guard for its own
+# (later) heartbeat write. (344 n2, D4-D5)
+begin
+  if Dir.exist?(SessionLedger.session_tmp_dir(store, sid))
+    File.write(SessionLedger.heartbeat_path(store, sid), "#{Time.now.utc.iso8601}\n")
+  end
+rescue StandardError
+  nil
+end
+
+# --- (b) a live delivery lock names this session (344 n2, D5, D12) ----------
+skip_day_ledger = false
+begin
+  full_session = session_id.empty? ? ENV["CLAUDE_CODE_SESSION_ID"].to_s : session_id
+  skip_day_ledger = !ActiveDelivery.resolve(
+    global_store: store,
+    project_roots: ActiveDelivery.project_roots(plastic_home),
+    session: full_session
+  ).nil?
+rescue StandardError
+  nil
+end
+
+# --- (c) pending checklist line -------------------------------------------
+# Gated on SessionLedger.capture_worthy?(prompt) (spec D2), a pure predicate
+# over the RAW prompt so it sees the true first character and multi-line
+# shape; the line text itself is still the sanitized, truncated copy.
+unless skip_day_ledger
+  begin
+    if SessionLedger.capture_worthy?(prompt)
+      project = SessionLedger.project_slug(cwd, plastic_home: plastic_home)
+      clean = truncate(SessionLedger.sanitize_summary(prompt), 120)
+      SessionLedger.open_day(store: store, day: today, templates: templates, author: sid)
+      line = SessionLedger.checklist_line(:pending, sid, project, clean)
+      SessionLedger.append_line(SessionLedger.checklist_path(store, today), line,
+                                 header: SessionLedger.checklist_header(today))
+    end
+  rescue StandardError
+    nil
+  end
+end
+
+context_parts = []
+system_message = nil
+
+# --- (d) "continue" cockpit -------------------------------------------------
+begin
+  if prompt.to_s.strip.downcase == "continue"
+    dashboard = File.expand_path("dashboard.rb", __dir__)
+    if File.exist?(dashboard)
+      cockpit, _err, status = Open3.capture3({ "RUBYOPT" => nil }, "ruby", dashboard, "continue")
+      if status.success? && !cockpit.strip.empty?
+        context_parts << (cockpit.rstrip +
+          "\n\nRun `plastic continue` to resume: " \
+          "if active intents exist, read their state and resume; otherwise surface the " \
+          "most-valuable next work and any stale or triage intents from the board above.")
+
+        begin
+          data_json, _data_err, data_status = Open3.capture3({ "RUBYOPT" => nil }, "ruby", dashboard,
+                                                               "continue", "--data")
+          if data_status.success?
+            banner = DashboardBanner.render(JSON.parse(data_json))
+            system_message = banner if banner
+          end
+        rescue StandardError
+          nil
+        end
+      end
+    end
+  end
+rescue StandardError
+  nil
+end
+
+# --- (e) auto-trigger steering (hook-auto-arm job 1 only) ------------------
+begin
+  message_lower = prompt.downcase
+  auto_triggers = ["take it from here", "deliver this", "/plastic-auto", "auto mode"].freeze
+  triggered = auto_triggers.any? { |p| message_lower.include?(p) } || message_lower.match?(/\bauto\b/)
+  if triggered
+    context_parts << "Auto-mode request detected. Run `plastic auto take ID` to deliver the " \
+                      "active intent autonomously - it takes the intent under a lock and a worktree " \
+                      "and points this session at it."
+  end
+rescue StandardError
+  nil
+end
+
+exit 0 if context_parts.empty?
+
+payload_out = {
+  "hookSpecificOutput" => {
+    "hookEventName" => "UserPromptSubmit",
+    "additionalContext" => context_parts.join("\n\n")
+  }
+}
+payload_out["systemMessage"] = system_message if system_message
+puts JSON.generate(payload_out)

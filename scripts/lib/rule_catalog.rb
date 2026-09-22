@@ -5,9 +5,9 @@
 # different axes so there is exactly one place to look up or register a rule name:
 #
 #   EXCLUDABLE_CHECKS - a doctor check `name` a per-store doctor-exclusions file may name. A
-#   check name says WHICH DIAGNOSTIC FIRED. v1 carries exactly one key, savepoint_operational
-#   (see spec D3): most doctor checks have no exclusion mechanism at all, and this is the only
-#   one the owner asked to make skippable.
+#   check name says WHICH DIAGNOSTIC FIRED. Two keys: savepoint_operational (274, spec D3) and
+#   backfilled_complete (308). Most doctor checks have no exclusion mechanism at all; these two
+#   are the ones whose gap can be a known, accepted fact on an old or migrated intent.
 #
 #   REVISION_RULES - the `[rule: <tag>]` vocabulary every revisions.md entry must carry
 #   (scripts/lib/revisions_writer.rb). A tag says WHY an intent's files were structurally
@@ -33,6 +33,9 @@ module RuleCatalog
                                "delivered|abandoned echo, on a terminal intent. Usually " \
                                "repairable via maintenance-run --tool rebuild-savepoint; " \
                                "excludable for the gaps 219 D6 forbids ever repairing.",
+    "backfilled_complete" => "spec.md or plan.md missing or still the placeholder, or no real " \
+                             "action file, on a terminal intent. Repairable via scaffold-intent " \
+                             "backfill; excludable for an old intent whose record was never kept.",
   }.freeze
 
   # Measured from live store data across all eight stores, 2026-08-24 (spec D1).

@@ -11,6 +11,7 @@ class InstallCodexHookTrustTest < Minitest::Test
   class FakeInstall < Install
     def distribute(mode) = nil
     def bootstrap = nil
+    def register_with_qmd(**) = nil
 
     # Mirrors the REAL install_for_agent's contract (result[:agent] =
     # config[:name]), not just the raw key, so the codex-detection logic in

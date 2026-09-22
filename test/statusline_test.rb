@@ -6,10 +6,9 @@ require "json"
 
 # Hermetic tests for hooks/statusline (intent 279: the line reports what this
 # session is spending, not which intent it is on). The repo script runs as a
-# subprocess with crafted stdin JSON and an isolated HOME plus CLAUDISH_LOCAL_DIR
-# (Dir.mktmpdir), so nothing touches the real store, /tmp, or the real claudish
-# ledger. Pure-bash dependency injection through the environment: no
-# monkeypatching, no eval.
+# subprocess with crafted stdin JSON and an isolated HOME (Dir.mktmpdir), so nothing
+# touches the real store or /tmp. Pure-bash dependency injection through the
+# environment: no monkeypatching, no eval.
 class StatuslineTest < Minitest::Test
   STATUSLINE = File.expand_path("../hooks/statusline", __dir__)
   YELLOW = "\e[33m"
@@ -17,7 +16,6 @@ class StatuslineTest < Minitest::Test
 
   def setup
     @home = Dir.mktmpdir("statusline-home")
-    @claudish = Dir.mktmpdir("statusline-claudish")
     @cwd = File.join(@home, "apps", "plastic")
     FileUtils.mkdir_p(@cwd)
     FileUtils.mkdir_p(File.join(@home, ".plastic"))
@@ -27,14 +25,13 @@ class StatuslineTest < Minitest::Test
 
   def teardown
     FileUtils.rm_rf(@home)
-    FileUtils.rm_rf(@claudish)
   end
 
   # --- helpers ---------------------------------------------------------------
 
   def render_raw(stdin_json)
     out = nil
-    IO.popen({ "HOME" => @home, "CLAUDISH_LOCAL_DIR" => @claudish },
+    IO.popen({ "HOME" => @home },
              [STATUSLINE], "r+") do |io|
       io.write(stdin_json)
       io.close_write
@@ -79,19 +76,6 @@ class StatuslineTest < Minitest::Test
       "cache_creation_input_tokens" => cache_creation,
       "cache_read_input_tokens" => cache_read,
     }
-  end
-
-  # One claudish ledger row. 11 tab separated columns, session id last; pass
-  # columns: 9 for a row written before that column existed.
-  def ledger_row(session_id, input, output, columns: 11)
-    row = [Time.now.to_i, "rewrite.sh", "anthropic", "200", input, output,
-           "", "", "", "", session_id]
-    row = row.first(9) if columns == 9
-    row.join("\t")
-  end
-
-  def write_ledger(*rows)
-    File.write(File.join(@claudish, "usage.log"), rows.join("\n") + "\n")
   end
 
   # --- cases -----------------------------------------------------------------
@@ -218,24 +202,9 @@ class StatuslineTest < Minitest::Test
     refute_includes render(raw), "$"
   end
 
-  def test_claudish_counts_only_this_session
-    write_ledger(ledger_row("sess-A", 1_000, 0),
-                 ledger_row("sess-B", 5_000, 0),
-                 ledger_row("sess-A", 2_000, 0),
-                 ledger_row("sess-A", 3_000, 0))
-    out = render(stdin_json(session_id: "sess-A"))
-    assert_includes out, "claudish 3 rw / 6k"
-
-    write_ledger(ledger_row("sess-A", 200, 50))
-    out = render(stdin_json(session_id: "sess-A"))
-    assert_includes out, "claudish 1 rw / 250"
-  end
-
-  def test_claudish_absent_for_legacy_rows_or_missing_ledger
-    write_ledger(ledger_row("sess-A", 1_000, 0, columns: 9))
-    refute_includes render(stdin_json(session_id: "sess-A")), "claudish"
-
-    FileUtils.rm_f(File.join(@claudish, "usage.log"))
+  def test_no_claudish_segment
+    code = File.read(STATUSLINE)
+    refute_includes code, "claudish", "the claudish segment was removed (owner ruling 2026-09-02)"
     refute_includes render(stdin_json(session_id: "sess-A")), "claudish"
   end
 
@@ -250,6 +219,57 @@ class StatuslineTest < Minitest::Test
   def test_header_declares_hook_version_4
     header = File.read(STATUSLINE).lines.first(6).join
     assert_includes header, "plastic-hook-version: 4.0.0"
+  end
+
+  # --- rate-limits cache (graph.md D11, 340a n4) ------------------------------
+
+  def cache_path
+    File.join(@home, ".plastic", ".cache", "rate-limits.json")
+  end
+
+  def test_rate_limits_cache_written_in_meter_watch_shape
+    render(stdin_json(rate_limits: {
+      "five_hour" => { "used_percentage" => 42.5, "resets_at" => "2026-09-13T10:00:00Z" },
+      "seven_day" => { "used_percentage" => 13 },
+    }))
+    cache = JSON.parse(File.read(cache_path))
+    assert_equal 42, cache["five_hour"]
+    assert_equal 13, cache["seven_day"]
+    assert_equal "2026-09-13T10:00:00Z", cache["resets_at"]
+    assert_match(/\A\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ\z/, cache["at"])
+  end
+
+  def test_rate_limits_cache_missing_meter_is_null
+    render(stdin_json(rate_limits: { "five_hour" => { "used_percentage" => 42 } }))
+    cache = JSON.parse(File.read(cache_path))
+    assert_equal 42, cache["five_hour"]
+    assert_nil cache["seven_day"]
+    assert_nil cache["resets_at"]
+  end
+
+  def test_rate_limits_cache_untouched_without_rate_limits
+    FileUtils.mkdir_p(File.dirname(cache_path))
+    stale = '{"five_hour":1,"seven_day":2,"resets_at":"x","at":"y"}'
+    File.write(cache_path, stale)
+    render(stdin_json)
+    assert_equal stale, File.read(cache_path)
+  end
+
+  def test_rate_limits_cache_write_is_atomic
+    code = File.read(STATUSLINE)
+    assert_match(/\.rate-limits\.json\.tmp/, code,
+                 "the cache must be written to a temp path under the cache dir, then mv'd")
+    assert_match(/\bmv\b.*rate-limits\.json/, code)
+  end
+
+  def test_meter_watch_reads_the_statusline_cache
+    render(stdin_json(rate_limits: {
+      "five_hour" => { "used_percentage" => 42, "resets_at" => "2026-09-13T10:00:00Z" },
+    }))
+    require_relative "../scripts/lib/meter_watch"
+    state = MeterWatch.new(home: File.join(@home, ".plastic")).tick
+    refute_equal "unavailable", state["state"]
+    assert_equal 42, state["five_hour"]
   end
 
   def test_no_ruby_or_jq_invoked

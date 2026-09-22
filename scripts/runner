@@ -1,0 +1,581 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+require "yaml"
+require "stringio"
+require_relative "lib/savepoint"
+require_relative "lib/ready_set"
+require_relative "lib/runner_core"
+require_relative "lib/harness_adapter"
+require_relative "lib/runner_proposals"
+
+# runner - the one executable over the graph-ready loop's declared node graph
+# (intent 340, G7, n1). A subcommand table: the public verbs (step, status,
+# answer) are the only ones the skill body ever names; the internal verbs
+# (ready, sweep, rewind, until-empty) route and work so `step` can compose
+# them and so each can be tested alone, but stay out of the usage text (327
+# spec, 340b n7).
+#
+# `step`, `sweep`, `answer`, `rewind` and `until-empty` route to modules
+# later nodes deliver (RunnerDispatch and RunnerAbsorb for `step`;
+# RunnerSweep, RunnerAnswer, RunnerRewind, RunnerUntilEmpty for the rest).
+# Each is required LAZILY, inside its own verb branch: a verb whose module
+# has not landed yet reports plainly and exits nonzero, and every other verb
+# - most importantly `status`, which an operator polls constantly across all
+# five of this intent's dispatches - keeps working.
+#
+# Usage:
+#   runner <step|status|answer> <intent_dir> [--node ID] [--answer TEXT]
+#
+# Exit codes (matching the family scripts/node-transition and
+# scripts/ready-set already use):
+#   0 - success
+#   1 - the verb ran but reports failure (an invalid graph for `ready`)
+#   2 - usage: unknown verb, or not an intent directory
+#   3 - a routed verb's module has not been delivered yet
+module Runner
+  module_function
+
+  PUBLIC_VERBS = %w[step status answer].freeze
+  INTERNAL_VERBS = %w[ready sweep rewind until-empty watch].freeze
+  VERBS = (PUBLIC_VERBS + INTERNAL_VERBS).freeze
+
+  # verb -> [[ModuleName, lib_file], ...], required lazily inside the verb's
+  # own branch (row 1.6). `step` composes two modules (dispatching new work,
+  # then absorbing what a sub-agent reported back); every other routed verb
+  # names exactly one.
+  LAZY_MODULES = {
+    "step" => [["RunnerSweep", "runner_sweep"], ["RunnerAbsorb", "runner_absorb"],
+               ["RunnerDispatch", "runner_dispatch"]],
+    "sweep" => [["RunnerSweep", "runner_sweep"]],
+    "answer" => [["RunnerAnswer", "runner_answer"]],
+    "rewind" => [["RunnerRewind", "runner_rewind"]],
+    "until-empty" => [["RunnerUntilEmpty", "runner_until_empty"]],
+    "watch" => [["RunnerWatch", "runner_watch"]],
+  }.freeze
+
+  def usage
+    warn "Usage: runner <#{PUBLIC_VERBS.join('|')}> <intent_dir> [--node ID] [--answer TEXT]"
+  end
+
+  def intent_directory?(dir)
+    dir && File.directory?(dir) && File.exist?(Savepoint.intent_file(dir))
+  end
+
+  def opt(args, name)
+    (i = args.index(name)) && args[i + 1]
+  end
+
+  # opt_all(args, name) -> every value given for a repeated flag, in the order
+  # they appear, or [] when the flag never occurs (intent 340, G7, n8, row
+  # 8.1-8.3). `run_step` needs this, not `opt`, for `--return`: one step may
+  # carry more than one `--return NODE=PATH` pair (one per node the session
+  # is reporting back on), and `opt`'s single-value semantics would silently
+  # keep only the first, absorbing one node while stranding the other's
+  # lease until it expires.
+  def opt_all(args, name)
+    args.each_index.select { |i| args[i] == name }.map { |i| args[i + 1] }.compact
+  end
+
+  # KNOWN_FLAGS (minor 2): the exact flag vocabulary each verb accepts. A
+  # flag not in a verb's own list is refused rather than silently ignored -
+  # a mistyped `--session` used to vanish with no effect and the runner
+  # simply acted as whichever session `CLAUDE_CODE_SESSION_ID` names.
+  KNOWN_FLAGS = {
+    "step" => %w[--return --allow-core-drift --harness],
+    "answer" => %w[--node --answer],
+    "rewind" => %w[--node --confirm],
+    "until-empty" => %w[--harness],
+    "watch" => %w[--dispatch --harness --install-timer --home],
+  }.freeze
+
+  # The explicit YAML document-end marker (intent 340b, G7c, n1, row 1.28)
+  # separating the dispatch plan `step` has always printed from the
+  # harness-rendered block underneath it: stdout has never been one YAML
+  # document (absorb/reclaim/extend/reap lines print before the plan,
+  # decision/park lines after it), so a reader splits on this marker rather
+  # than guessing where the plan ends.
+  DOCUMENT_BOUNDARY = "...".freeze
+
+  # unrecognized_flag(verb, args) -> the first token in `args` that looks
+  # like a flag (`--...`) and is not in `verb`'s own KNOWN_FLAGS, or nil. A
+  # verb absent from KNOWN_FLAGS (status, ready, sweep) accepts none.
+  def unrecognized_flag(verb, args)
+    allowed = KNOWN_FLAGS.fetch(verb, [])
+    args.find { |a| a.is_a?(String) && a.start_with?("--") && !allowed.include?(a) }
+  end
+
+  def main(argv)
+    args = argv.dup
+    verb = args.shift
+
+    unless VERBS.include?(verb)
+      warn "runner: unknown verb #{verb.inspect}"
+      usage
+      exit 2
+    end
+
+    intent_dir_arg = args.shift
+    unless intent_directory?(intent_dir_arg && File.expand_path(intent_dir_arg))
+      warn "runner: #{intent_dir_arg.inspect} is not an intent directory"
+      usage
+      exit 2
+    end
+    intent_dir = File.expand_path(intent_dir_arg)
+
+    bad_flag = unrecognized_flag(verb, args)
+    if bad_flag
+      warn "runner: unknown flag #{bad_flag.inspect} for #{verb}"
+      usage
+      exit 2
+    end
+
+    case verb
+    when "status"
+      run_status(intent_dir)
+    when "ready"
+      run_ready(intent_dir)
+    else
+      run_lazy(verb, intent_dir, args)
+    end
+  end
+
+  def run_status(intent_dir)
+    context = RunnerCore.context(intent_dir: intent_dir, env: ENV["CLAUDE_CODE_SESSION_ID"])
+    rows = RunnerCore.status(context)
+
+    if rows.empty?
+      puts "No declared nodes."
+    else
+      rows.each do |id, view|
+        puts "#{id}  kind=#{view[:kind]}  state=#{view[:state]}  ready=#{view[:ready]}"
+        last = view[:last_transition]
+        puts "  last: #{last[:raw]}" if last
+      end
+    end
+
+    graph = context.graph || {}
+    fixes = RunnerProposals.review_fix_count(graph[:edges] || {}, graph[:nodes] || {})
+    puts "review fixes: #{fixes} of #{RunnerProposals::REVIEW_FIX_CAP}"
+
+    complete = RunnerCore.complete?(context)
+    puts
+    puts complete ? "complete" : "stalled"
+    unless complete
+      rows.each do |id, view|
+        next if ReadySet::TERMINAL_STATES.include?(view[:state])
+
+        view[:blockers].each { |b| puts "#{id} blocked: #{b}" }
+      end
+    end
+
+    exit 0
+  end
+
+  def run_ready(intent_dir)
+    analysis = ReadySet.analyze(intent_dir)
+    unless analysis[:ok]
+      warn "runner: #{analysis[:errors].join('; ')}"
+      exit 1
+    end
+
+    if analysis[:ranked_ready].empty?
+      puts "Ready: (none)"
+    else
+      puts "Ready: #{analysis[:ranked_ready].map { |r| r[:id] }.join(', ')}"
+    end
+    exit 0
+  end
+
+  # Requires this verb's module(s) lazily, then hands off. Nothing in n1
+  # delivers runner_dispatch.rb, runner_absorb.rb, runner_sweep.rb,
+  # runner_answer.rb, or runner_rewind.rb, so every LAZY_MODULES require
+  # raises LoadError today and every routed verb reports "not yet
+  # delivered" - the only thing this node needs to prove (row 1.6). Once a
+  # later node ships its file, the require succeeds and falls through to
+  # dispatch_lazy, which that node replaces with the real call.
+  def run_lazy(verb, intent_dir, args)
+    # The require target below is a runtime value, never an inline quoted
+    # literal, so it falls outside test/install_packaging_test.rb's
+    # require-closure guard on purpose: every file LAZY_MODULES names is a
+    # genuine later-node deliverable, none of which core_files should track
+    # until that node actually lands it.
+    LAZY_MODULES.fetch(verb, []).each { |(_name, file)| require_relative(File.join("lib", file)) }
+  rescue LoadError
+    warn "runner: #{verb} is not yet delivered (its module has not landed)"
+    exit 3
+  else
+    dispatch_lazy(verb, intent_dir, args)
+  end
+
+  def dispatch_lazy(verb, intent_dir, args)
+    case verb
+    when "step"
+      run_step(intent_dir, args)
+    when "sweep"
+      run_sweep(intent_dir, args)
+    when "answer"
+      run_answer(intent_dir, args)
+    when "rewind"
+      run_rewind(intent_dir, args)
+    when "until-empty"
+      run_until_empty(intent_dir, args)
+    when "watch"
+      run_watch(intent_dir, args)
+    else
+      warn "runner: #{verb}'s module loaded but no dispatcher is wired up yet"
+      exit 3
+    end
+  end
+
+  # run_sweep (intent 340, G7, n8): the standalone `sweep` verb, unreachable
+  # from the CLI until this node - `dispatch_lazy` had no `when "sweep"` arm
+  # even though `RunnerSweep.run` (n2) is a complete, documented standalone
+  # entry point, exactly the shape a bare `runner sweep` call needs (abort
+  # check, THEN the lease heartbeat, THEN reclaim - RunnerSweep's own fixed
+  # order). `step` never calls this method: it composes `abort_if_merging`
+  # and `reclaim` itself, interleaved around absorb.
+  def run_sweep(intent_dir, args)
+    context = RunnerCore.context(intent_dir: intent_dir, env: ENV["CLAUDE_CODE_SESSION_ID"])
+    result = RunnerSweep.run(context)
+
+    unless result[:ok]
+      warn "runner: #{result[:error]}"
+      warn "runner: run `#{result[:recovery_command]}` before the next sweep can run" if result[:recovery_command]
+      exit 1
+    end
+
+    result[:reclaimed].each { |r| puts "reclaimed #{r[:node]} (holder=#{r[:holder]})" }
+    result[:extended].each { |e| puts "extended #{e[:node]} (head=#{e[:head]})" }
+    puts "nothing to sweep" if result[:reclaimed].empty? && result[:extended].empty?
+    exit 0
+  end
+
+  # run_answer (intent 340, G7, n6): closes a decision node or unparks a
+  # work node the runner parked at `needs_decision` (327 D22, C26), then
+  # prints what became ready so the owner knows the loop can continue.
+  def run_answer(intent_dir, args)
+    node = opt(args, "--node")
+    text = opt(args, "--answer")
+
+    unless node
+      warn "runner: answer requires --node ID"
+      exit 2
+    end
+
+    context = RunnerCore.context(intent_dir: intent_dir, env: ENV["CLAUDE_CODE_SESSION_ID"])
+    result = RunnerAnswer.answer(context, node: node, text: text.to_s)
+
+    unless result[:ok]
+      warn "runner: answer refused (#{result[:reason]})"
+      exit 1
+    end
+
+    puts "answered #{node}"
+    puts "respun to #{result[:respun_to]}" if result[:respun_to]
+    puts "newly ready: #{result[:newly_ready].join(', ')}" if result[:newly_ready].any?
+    exit 0
+  end
+
+  # run_rewind (intent 340, G7, n6): confirm-gated reset of the intent
+  # branch to a node's own recorded commit, superseding every downstream
+  # node and respinning the rewound node itself (327 D15's rewind clause).
+  def run_rewind(intent_dir, args)
+    node = opt(args, "--node")
+    confirm = args.include?("--confirm")
+
+    unless node
+      warn "runner: rewind requires --node ID"
+      exit 2
+    end
+
+    context = RunnerCore.context(intent_dir: intent_dir, env: ENV["CLAUDE_CODE_SESSION_ID"])
+    result = RunnerRewind.rewind(context, node: node, confirm: confirm)
+
+    unless result[:ok]
+      warn "runner: rewind refused (#{result[:reason]})"
+      exit 1
+    end
+
+    puts "reset #{node} to #{result[:reset_to]}"
+    puts "superseded: #{result[:superseded].join(', ')}" if result[:superseded].any?
+    puts "respun to #{result[:respun_to]}"
+    exit 0
+  end
+
+  # run_until_empty (intent 340b, G7c, n7): the Codex loop. Internal, like
+  # `rewind` (row 7.13) - `RunnerUntilEmpty.run` composes `step` and
+  # `node-run` itself, since Codex has no session on the other end to make
+  # the subagent calls `step` only ever prints a plan for. `--harness`
+  # threads into every turn the loop runs (row 7.5), never re-resolved per
+  # iteration from a literal. The lock check here is the same defence in
+  # depth `run_step_body` carries (B4): `RunnerUntilEmpty.step_once` refuses
+  # `lock_not_held` on its own first call regardless, so this exits before
+  # even constructing the loop's own state.
+  def run_until_empty(intent_dir, args)
+    harness_override = opt(args, "--harness")
+    context = RunnerCore.context(intent_dir: intent_dir, env: ENV["CLAUDE_CODE_SESSION_ID"])
+
+    unless context.session
+      warn "runner: until-empty refused (lock_not_held)"
+      exit 1
+    end
+
+    result = RunnerUntilEmpty.run(context, harness: harness_override)
+
+    case result[:status]
+    when "complete", "stalled", "needs_decision", "iteration_cap"
+      exit 0
+    else
+      exit 1
+    end
+  end
+
+  # run_watch (intent 340a, G7b, n2): one tick over disk truth. Internal,
+  # like until-empty and rewind - the timer that carries it lives outside
+  # this process (a local `/loop` on Claude Code, a launchd job on Codex,
+  # n3/n4). `--dispatch` is unattended start (graph.md D7): refused here,
+  # before RunnerWatch.tick ever takes the tick lock or writes anything,
+  # when the resolved harness's `HarnessAdapter.unattended_start?` is
+  # false, so a refusal never leaves a `watch.record` line behind that
+  # looks like a completed tick.
+  # --install-timer (intent 340a, G7b, n3, graph.md D9): the Codex carrier.
+  # Writes the plist and prints the path plus the `launchctl load` command;
+  # never runs `launchctl` itself, so the owner stays in control of when the
+  # job actually loads. `--home` defaults to the OS home, as
+  # `scripts/meter-watch --install-timer` already does.
+  def run_watch(intent_dir, args)
+    dispatch = args.include?("--dispatch")
+    harness_override = opt(args, "--harness")
+    context = RunnerCore.context(intent_dir: intent_dir, env: ENV["CLAUDE_CODE_SESSION_ID"])
+    agent_config = load_agent_config(context.plastic_home)
+    harness = HarnessAdapter.resolve_key(config: agent_config, override: harness_override)
+
+    if args.include?("--install-timer")
+      home = opt(args, "--home") || Dir.home
+      plist_path = RunnerWatch.install_timer(context, home: home, harness_key: harness)
+      puts "plist: #{plist_path}"
+      puts "launchctl load #{plist_path}"
+      exit 0
+    end
+
+    if dispatch && !HarnessAdapter.unattended_start?(harness)
+      warn HarnessAdapter::UNATTENDED_START_SENTENCE
+      exit 1
+    end
+
+    result = RunnerWatch.tick(context, dispatch: dispatch, harness: harness)
+
+    puts "class: #{result[:class]}"
+    result[:blockers].each { |b| puts "blocked: #{b}" }
+    puts "ready: #{result[:ready].empty? ? '(none)' : result[:ready].join(', ')}"
+    puts "dispatched: #{result[:dispatched].empty? ? '(none)' : result[:dispatched].join(', ')}"
+    exit 0
+  end
+
+  # run_step (intent 340, G7, n5): one turn of the loop. The real work lives
+  # in #run_step_body below; this wrapper (intent 340b, G7c, n1, rows
+  # 1.21-1.25 and 1.29-1.31) exists ONLY to capture every byte `step` prints
+  # - stdout and stderr both, refusals included - and persist it to
+  # `<intent_dir>/runner-step.last` before the process actually exits, so a
+  # PreCompact hand-off (n3) always has something to render, even after one
+  # of the three pre-plan refusals that used to warn to stderr alone.
+  #
+  # `run_step_body` still calls Kernel#exit(N) at every one of its own exit
+  # points, exactly as before this node; wrapping it in a rescue for
+  # SystemExit lets this method capture the intended status, persist the
+  # file, replay the captured output onto the REAL stdout/stderr (so a
+  # subprocess caller like Open3.capture3 sees byte-identical output to
+  # before this node), and only then perform the one real process exit.
+  def run_step(intent_dir, args)
+    out_buf = StringIO.new
+    err_buf = StringIO.new
+    real_stdout = $stdout
+    real_stderr = $stderr
+    exit_code = 0
+    begin
+      $stdout = out_buf
+      $stderr = err_buf
+      run_step_body(intent_dir, args)
+    rescue SystemExit => e
+      exit_code = e.status || 1
+    ensure
+      $stdout = real_stdout
+      $stderr = real_stderr
+    end
+
+    real_stdout.print(out_buf.string)
+    real_stderr.print(err_buf.string)
+    persist_runner_step_last(intent_dir, out_buf.string, err_buf.string)
+
+    exit(exit_code)
+  end
+
+  # Row 1.24: lives beside savepoint.md, never inside attempts/ (which the
+  # reaper treats as attempt evidence). Row 1.32: registers itself in the
+  # store's own top-level `.gitignore` (Worktree.ensure_gitignored's own
+  # idempotent, non-raising append) the same way `*.lock` already is, so a
+  # file rewritten on every step never dirties the store tree. Row 1.25:
+  # wrapped in its own rescue - an unwritable intent directory must never
+  # crash a step that has already written its transitions.
+  def persist_runner_step_last(intent_dir, stdout_text, stderr_text)
+    home_root = Arm.home_for(intent_dir)
+    Worktree.ensure_gitignored(File.join(home_root, ".plastic"), "runner-step.last")
+
+    path = File.join(intent_dir, "runner-step.last")
+    File.write(path, "#{stdout_text}#{stderr_text}")
+  rescue StandardError => e
+    warn "runner: could not persist runner-step.last: #{e.message}"
+  end
+
+  # Intent 340b, G7c, n1, row 1.1: the config `HarnessAdapter.resolve_key`
+  # reads `agent.type` from. `context.plastic_home` is derived from the
+  # intent_dir's OWN ancestry (Arm.home_for -> Worktree.home_from_store), so
+  # a sandboxed test fixture never reaches the real ~/.plastic/config.yml
+  # (Arm.home_for's own docstring: "a sandboxed store never resolves to the
+  # real Dir.home") - this stays hermetic for free, the same way every other
+  # `context.plastic_home` read in this file already does. A missing or
+  # unparseable config.yml reads as {}, never raises.
+  def load_agent_config(plastic_home)
+    path = File.join(plastic_home.to_s, "config.yml")
+    return {} unless File.exist?(path)
+
+    YAML.safe_load(File.read(path)) || {}
+  rescue StandardError
+    {}
+  end
+
+  # run_step_body (intent 340, G7, n5): one turn of the loop, in the fixed
+  # order 327 D14 and RunnerSweep's own docstring name - abort on a stuck
+  # merge, the delivery-lease heartbeat, absorb every `--return NODE=PATH`
+  # this call carries, THEN reclaim (so a node this very call just absorbed
+  # is never reclaimed out from under its own return, matrix row 2.19/2.20) -
+  # and only then dispatch whatever is left ready. Never spawns an agent (327
+  # D42): the session makes every subagent call from the plan this prints.
+  def run_step_body(intent_dir, args)
+    context = RunnerCore.context(intent_dir: intent_dir, env: ENV["CLAUDE_CODE_SESSION_ID"])
+
+    # v1 minor 3/row 11.18: RunnerSweep.abort_if_merging already prints the
+    # whole sentence itself (its own error PLUS the recovery command) - this
+    # used to print both halves again, so the operator read the same merge
+    # warning twice for one refusal.
+    abort_result = RunnerSweep.abort_if_merging(context)
+    exit 1 unless abort_result[:ok]
+
+    Lock.heartbeat(intent_dir, session: context.session) unless context.session.to_s.strip.empty?
+
+    # B4: this is the runner's ACTUAL lock check now - the absorb loop below
+    # writes node transitions, and RunnerDispatch's own check (row 5.31/5.32)
+    # runs too late to stop that: a session holding no lock would otherwise
+    # have every `--return` it carries written anyway, attributed to
+    # whichever session's holder= happens to be on the node's `running`
+    # line. RunnerDispatch keeps its own check too, as defence in depth for
+    # a caller that reaches it some other way.
+    unless context.session
+      warn "runner: step refused (lock_not_held)"
+      warn RunnerDispatch.rearm_command(intent_dir)
+      exit 1
+    end
+
+    # M3/row 10.1: `--allow-core-drift` (D11) - the one escape hatch letting
+    # Plastic's own repository, which legitimately drifts from the installed
+    # manifest, dogfood its own runner. Threaded straight into the absorb,
+    # never defaulted true.
+    allow_core_drift = args.include?("--allow-core-drift")
+
+    # Intent 340b, G7c, n1, row 1.2/1.4: `--harness KEY` overrides config
+    # `agent.type` for this one call - how one machine drives both adapters
+    # without editing config. `nil` when absent, so HarnessAdapter falls
+    # through to config's own value untouched.
+    harness_override = opt(args, "--harness")
+
+    returns = {}
+    opt_all(args, "--return").each do |pair|
+      node, path = pair.to_s.split("=", 2)
+      if node.to_s.empty? || path.to_s.empty?
+        warn "runner: malformed --return #{pair.inspect}, expected NODE=PATH"
+        exit 2
+      end
+      returns[node] = path
+    end
+
+    returns.each do |node, path|
+      absorbed = RunnerAbsorb.absorb(context, node: node, return_path: path, allow_core_drift: allow_core_drift)
+      puts "absorbed #{node}: #{absorbed[:state]}"
+      # M4/row 10.3: a refused proposal is surfaced here, not left to a
+      # savepoint comment the operator never sees - the exact reason the
+      # proposer's next attempt otherwise proposes the same thing again.
+      proposal = absorbed[:proposal]
+      puts "  proposal refused: #{Array(proposal[:errors]).join('; ')}" if proposal && !proposal[:ok]
+    end
+
+    swept = RunnerSweep.reclaim(context, skip: returns.keys)
+    swept[:reclaimed].each { |r| puts "reclaimed #{r[:node]} (holder=#{r[:holder]})" }
+    swept[:extended].each { |e| puts "extended #{e[:node]} (head=#{e[:head]})" }
+
+    # M5/row 10.4: NodeWorktree.reap runs once per step, right after the
+    # reclaim pass - D26's reaper, unreachable from anywhere until now.
+    reaped = NodeWorktree.reap(context)
+    reaped[:removed].each { |r| puts "reaped #{r[:node]} worktree" }
+
+    agent_config = load_agent_config(context.plastic_home)
+    result = RunnerDispatch.dispatch(context, config: agent_config, harness: harness_override)
+    unless result[:ok]
+      warn "runner: step refused (#{result[:reason]}): #{Array(result[:errors]).join('; ')}"
+      warn result[:rearm_command] if result[:rearm_command]
+      exit 1
+    end
+
+    case result[:status]
+    when "dispatched"
+      puts result[:plan]
+    when "queued"
+      puts "queued (concurrency ceiling reached)"
+    when "complete"
+      puts "complete"
+    when "needs_decision"
+      # printed below, alongside a dispatch plan when the same step also
+      # dispatched (M11/row 10.14) - `result[:stop]` is set whenever
+      # status is needs_decision.
+    else
+      puts "stalled"
+      result[:blockers].each { |b| puts "blocked: #{b}" }
+    end
+
+    # Intent 340b, G7c, n1, rows 1.6/1.13/1.14/1.27/1.28: the YAML plan keeps
+    # printing exactly as it did before this node (327's contract) - this is
+    # the rendered block UNDERNEATH it, for the harness `result[:harness]`
+    # resolved (config's `agent.type`, or this call's own `--harness`
+    # override), separated by an explicit YAML document-end marker so a
+    # reader splits on that marker rather than a heuristic. `render` returns
+    # nil for an empty dispatch list (row 1.14), so nothing extra ever
+    # prints when this step dispatched nothing.
+    block = HarnessAdapter.render(result[:dispatched], harness: result[:harness],
+                                   return_contract: RunnerDispatch::RETURN_CONTRACT)
+    if block
+      puts DOCUMENT_BOUNDARY
+      puts block
+    end
+
+    # M11/row 10.14: a `needs_decision` stop must print even when THIS SAME
+    # step also dispatched other nodes ahead of the decision node in ranked
+    # order - `result[:status]` reads "dispatched" in that case (dispatched
+    # takes priority in RunnerDispatch's own report), which used to swallow
+    # the stop and its `runner answer` command entirely.
+    if result[:stop]
+      stop = result[:stop]
+      puts "needs_decision: #{stop[:node]} - #{stop[:question]}"
+      puts stop[:answer_command]
+    end
+
+    result[:parked].each do |p|
+      puts "parked #{p[:node]} (#{p[:reason]}): #{p[:question]}"
+      puts p[:answer_command]
+    end
+
+    exit 0
+  end
+end
+
+Runner.main(ARGV) if $PROGRAM_NAME == __FILE__

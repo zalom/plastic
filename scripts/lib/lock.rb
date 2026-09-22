@@ -12,8 +12,8 @@ require "time"
 # savepoint.md (git-ignored, transient state). Ownership is session-keyed (D1):
 # the file records the owner session, never a pid. Liveness is a lease: the
 # owner's hooks touch the file mtime on tool calls (heartbeat); the lock is
-# stale only when that heartbeat is older than the TTL. The /tmp bridge is a
-# per-session CACHE of this state; on any disagreement the lock file wins (D2).
+# stale only when that heartbeat is older than the TTL. This lock file is
+# the sole truth of ownership (D2).
 #
 # Mutual-exclusion seam (D3): the schema carries a type ("delivery" now,
 # "maintenance" in a chained intent after 93) and acquire refuses while the
@@ -27,13 +27,12 @@ module Lock
   # Skill-invocation prefix per harness (intent 201, D2/D3). Claude Code invokes a
   # skill with a slash (/plastic-doctor); Codex CLI invokes explicitly with a
   # dollar ($plastic-doctor) and may also select one implicitly by matching the
-  # skill's description. This table is the actual source of truth for
-  # Bridge.skill_ref (bridge.rb requires lock.rb, never the reverse, so the
-  # table lives here rather than pulling Bridge into this dependency-free file
-  # just to render two characters). InstallerCore::DEFAULT_AGENTS carries the
-  # same values per adapter as documented config (see ACTION_2); this constant
-  # is not read from it at runtime, by the same reasoning bridge.rb/hook-*
-  # already stay clear of installer_core.rb (spec Alternatives Considered).
+  # skill's description. This table is the package-wide source of truth for
+  # `Lock.skill_ref`; every caller reaches it directly rather than duplicating
+  # the prefix table. InstallerCore::DEFAULT_AGENTS carries the same values per
+  # adapter as documented config (see ACTION_2); this constant is not read from
+  # it at runtime, by the same reasoning this file and hook-* already stay
+  # clear of installer_core.rb (spec Alternatives Considered).
   SKILL_PREFIXES = { "claude" => "/", "codex" => "$" }.freeze
 
   # Renders a skill reference for the given harness. Unset or unrecognized
@@ -49,11 +48,11 @@ module Lock
   DELEGATE_ACTIVITY_LIMIT = 20
   DELEGATE_STATUSES = %w[active finished failed].freeze
 
-  # Lease TTL. Heartbeats fire from the write-path hooks (PostToolUse
-  # gate-check and the lock-gate allow path), so a delivering session
-  # refreshes constantly; 30 minutes tolerates long read-only stretches
-  # without opening a takeover window mid-delivery. Reclaim is explicit
-  # either way (takeover), so the TTL only bounds WHEN takeover is allowed.
+  # Lease TTL. Heartbeats fire from the PostToolUse record hook on every write
+  # inside the intent dir (intent 302), so a delivering session refreshes
+  # constantly; 30 minutes tolerates long read-only stretches without opening
+  # a takeover window mid-delivery. Reclaim is explicit either way (takeover),
+  # so the TTL only bounds WHEN takeover is allowed.
   TTL_SECONDS = 1800
 
   # The write guard is a mutex, not a lock in the Plastic sense: it carries no
@@ -122,7 +121,7 @@ module Lock
     Array(data["delegates"]).map(&:to_s).include?(session.to_s)
   end
 
-  # The one question gates ask: does session hold this intent's lock?
+  # The one question the write path asks: does session hold this intent's lock?
   # Owner/delegate on an EXISTING lock counts even when stale (a stale lock is
   # still theirs until an explicit takeover replaces it); freshness only
   # guards AGAINST other sessions.
@@ -369,8 +368,8 @@ module Lock
   # file is inert: nothing reads it, it stays zero bytes, and
   # scripts/end-intent:558 keys its exit contract on Lock.path alone. This is
   # a requirement, not a guarantee the code enforces: the curator stray-file
-  # rule (skills/conventions/references/maintenance-and-revisions.md:155)
-  # has no *.lock carve-out today, so a wrongful delete there degrades one
+  # rule (docs/help/maintenance-and-revisions.md:155) has no *.lock
+  # carve-out today, so a wrongful delete there degrades one
   # write window to the pre-fix (unguarded) behavior, not a hard failure.
   def with_write_guard(intent_dir, type: "delivery",
                        guard_timeout: WRITE_GUARD_TIMEOUT_SECONDS,
@@ -676,24 +675,4 @@ module Claim
     end
   end
 
-  # Second, independent write gate at the artifact grain (intent 111 D7). Returns a
-  # deny reason String to BLOCK, or nil to ALLOW. Composes UNDER the delivery-lock
-  # gate: only reached after the session already holds the intent's delivery lock.
-  # ENGAGES only when a claim file exists (dormant otherwise, so single-owner flows
-  # and the existing suite stay green, AC7). Fails open on stale/corrupt via
-  # fail_open?, the named contract.
-  def claim_gate_reason(intent_dir, artifact, session:, ttl: Lock::TTL_SECONDS, now: Time.now,
-                        harness: :claude)
-    return nil if Lock.blank?(artifact)
-    return nil unless File.exist?(path(intent_dir, artifact))   # dormant: no claim
-    return nil if holds_claim?(intent_dir, artifact, session: session)  # you hold it
-    return nil if fail_open?(intent_dir, artifact, ttl: ttl, now: now)  # stale/corrupt: yield
-    data = read(intent_dir, artifact)
-    holder = data && data["owner_session"]
-    since = data && data["acquired_at"]
-    "artifact #{artifact} is claimed by #{holder} since #{since}; another writer holds " \
-      "it. Back off or run #{Lock.skill_ref('plastic-doctor', harness: harness)} check the " \
-      "lock status. If you are a distinct delegate, the owner must register you: " \
-      "plastic-lock delegate --intent-dir #{intent_dir} --session <your-session-id>"
-  end
 end

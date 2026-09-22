@@ -62,7 +62,7 @@ class WorktreeHermeticityTest < Minitest::Test
   # dir does not exist on this machine.
   def snapshot_real_worktrees
     dir = File.join(Dir.home, ".plastic", ".worktrees")
-    Dir.exist?(dir) ? Dir.children(dir).sort : nil
+    Dir.exist?(dir) ? Dir.children(dir).sort : []
   end
 
   def bridge_data

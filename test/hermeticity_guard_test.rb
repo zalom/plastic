@@ -15,7 +15,9 @@ require "tmpdir"
 # 166 got bitten). See test/worktree_hermeticity_test.rb (intent 169) for the
 # runtime behavioral counterpart.
 class HermeticityGuardTest < Minitest::Test
-  WRITERS = /Bridge\.(arm_auto|arm_guided|derive|write|disarm_auto|repair_lock)\b/.freeze
+  # Arm (intent 307) replaced the bridge writers; the old names stay in the regex so a
+  # resurrected call is caught too.
+  WRITERS = /Arm\.(arm|disarm|repair)\b|Bridge\.(arm_auto|arm_guided|derive|write|disarm_auto|repair_lock)\b/.freeze
   ISOLATION = /PLASTIC_TMP|tmp:\s|Dir\.mktmpdir/.freeze
   # This boundary is intentionally conservative. Dashboard calls Doctor's
   # store_health during every board load, so Doctor and its local dependency
@@ -86,7 +88,7 @@ class HermeticityGuardTest < Minitest::Test
     relative_paths = local_dependency_closure(root, AMBIENT_READ_BOUNDARY_ROOTS)
       .map { |path| path.delete_prefix("#{root}#{File::SEPARATOR}") }
 
-    %w[scripts/lib/bridge.rb scripts/lib/worktree.rb scripts/doctor.rb].each do |expected|
+    %w[scripts/lib/arm.rb scripts/lib/worktree.rb scripts/doctor.rb].each do |expected|
       assert_includes relative_paths, expected
     end
   end
@@ -162,14 +164,14 @@ class HermeticityGuardTest < Minitest::Test
     offenders = Dir[File.expand_path("../*_test.rb", __FILE__)].select do |f|
       next false if File.basename(f) == File.basename(__FILE__)
       src = File.read(f)
-      src.match?(/Bridge\.(arm_auto|arm_guided)\b/) &&
+      src.match?(/Arm\.arm\b|Bridge\.(arm_auto|arm_guided)\b/) &&
         !src.include?("CLAUDE_CODE_SESSION_ID")
     end
     assert_empty offenders,
       "these tests arm without handling the ambient session id: #{offenders.map { |f| File.basename(f) }.join(', ')}"
   end
 
-  # arm (and, since intent 136, repair_lock) run the REAL Worktree.provision,
+  # Arm.arm and Arm.repair (intent 307; before them Bridge.arm and repair_lock) run the REAL Worktree.provision,
   # whose plastic_home derives from HOME: unneutralized, a test plants a store
   # worktree in the LIVE ~/.plastic (observed: ~/.plastic/.worktrees/{52,80,96}
   # --demo). Every arm- or repair_lock-exercising test must stub provision or
@@ -178,25 +180,30 @@ class HermeticityGuardTest < Minitest::Test
     offenders = Dir[File.expand_path("../*_test.rb", __FILE__)].select do |f|
       next false if File.basename(f) == File.basename(__FILE__)
       src = File.read(f)
-      src.match?(/Bridge\.(arm_auto|arm_guided|repair_lock)\b/) &&
-        !src.match?(/define_singleton_method\(:provision|with_worktree\(:provision|"HOME"\s*=>/)
+      src.match?(/Arm\.(arm|repair)\b|Bridge\.(arm_auto|arm_guided|repair_lock)\b/) &&
+        !src.match?(/define_singleton_method\(:provision|with_worktree\(:provision|"HOME"\s*=>|runner:\s/)
     end
     assert_empty offenders,
       "these tests arm/repair without stubbing Worktree.provision or isolating HOME: " \
       "#{offenders.map { |f| File.basename(f) }.join(', ')}"
   end
 
-  # hook-session-start and hook-gate-check WRITE bridge state (derive /
-  # last_activity) keyed by the ambient session id. A test that spawns either
-  # without env isolation clobbers the live session's /tmp bridge (the exact
-  # 107/110 incident, reproduced by deprecation_display_test before this
-  # guard). Spawning tests must inject PLASTIC_TMP.
+  # hook-session-start and hook-record (formerly hook-gate-check, intent 298)
+  # WRITE bridge/ledger state (derive / last_activity / day-ledger heartbeat)
+  # keyed by the ambient session id. A test that spawns either without env
+  # isolation clobbers the live session's /tmp bridge (the exact 107/110
+  # incident, reproduced by deprecation_display_test before this guard).
+  # Spawning tests must inject PLASTIC_TMP. hook-message-display (intent
+  # 316a) joined this list: it buffers streamed chunks under
+  # <tmp_root>/plastic-message-display/<session_id>/<message_id>, and
+  # without PLASTIC_TMP a spawning test would write real buffer directories
+  # into the live session's own /tmp.
   def test_every_bridge_writing_hook_spawn_isolates_its_tmp
     offenders = Dir[File.expand_path("../*_test.rb", __FILE__)].select do |f|
       next false if File.basename(f) == File.basename(__FILE__)
       next false if NON_SPAWNING_SOURCE_SCANNERS.include?(File.basename(f))
       src = File.read(f)
-      src.match?(/hook-(session-start|gate-check)/) &&
+      src.match?(/hook-(session-start|record|message-display)/) &&
         src.match?(/Open3|IO\.popen|\bsystem\(/) &&
         !src.include?("PLASTIC_TMP")
     end

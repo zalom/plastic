@@ -1,6 +1,6 @@
 #!/bin/bash
-cat <<'HOOKJSON'
-{
-  "systemMessage": "PLASTIC SAVEPOINT — Context is being compacted.\n\nYou MUST perform the savepoint procedure NOW:\n1. Read .plastic/INDEX.md to find active intent(s)\n2. For each active intent in .plastic/store/ID--slug/:\n   a. Update checklist.md (check off completed items)\n   b. Create/update savepoint.md (in-progress work, next steps, blockers, discoveries)\n   c. Update intent.md Build/Observe sections with session work\n3. Update .plastic/INDEX.md active section\n4. Commit: git add .plastic/ && git commit -m 'chore: savepoint — [intent name]'\n5. Tell the user: 'Context is getting large. I have saved progress to the active intent. Please run /clear and say continue to resume.'\n\nDO NOT skip this. The user's work depends on it."
-}
-HOOKJSON
+INPUT=""
+[ -t 0 ] || INPUT=$(cat)
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+echo "$INPUT" | env -u RUBYOPT ruby "$SCRIPT_DIR/../scripts/hook-savepoint" "$HOME/.plastic"
+exit 0

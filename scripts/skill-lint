@@ -2,11 +2,13 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 
-# skill-lint: deterministic CLI over SkillLint (intent 85b).
+# skill-lint: deterministic CLI over SkillLint (intent 85b), plus one CLI-local
+# check (intent 341, G8, n1, C35).
 #
-# Runs the five structural skill checks (body-budget, frontmatter-validity,
-# bare-pointer, orphan-files, references-depth) over a directory of Agent
-# Skills and reports every violation. Mirrors `scripts/validate-intent`'s
+# Runs the five structural checks (body-budget, frontmatter-validity,
+# bare-pointer, orphan-files, references-depth) via SkillLint, then this
+# script's own refusal-restatement check, over a directory of Agent Skills,
+# and reports every violation. Mirrors `scripts/validate-intent`'s
 # CLI-over-lib shape and exit-code contract.
 #
 # Usage:
@@ -16,6 +18,112 @@
 # --skills-dir defaults to the repo skills/ directory next to this script.
 
 require_relative "lib/skill_lint"
+
+# RefusalRestatementCheck (C35): a skill body must not restate, past a short
+# run of words, a refusal rule the conventions chapter already carries; it
+# must link that chapter instead. No-op when <skills_dir>/conventions/references
+# does not exist, so an older tree or a fixture dir with no conventions chapter
+# is unaffected.
+#
+# Deliberately lives in this CLI, not in scripts/lib/skill_lint.rb: C35 is a
+# doctrine-duplication check, one level removed from SkillLint's five
+# structural checks, and keeping it here means adding it touches only the
+# files this change is scoped to.
+class RefusalRestatementCheck
+  REFUSAL_KEYWORD_RE = /\brefus(e|es|ed|ing|al)\b/i
+  CONVENTIONS_LINK_RE = %r{conventions/references/|plastic-conventions}i
+
+  # How many consecutive normalized words must match, verbatim, between a
+  # skill's refusal paragraph and the doctrine text before it counts as a
+  # restatement rather than a coincidental shared phrase.
+  NGRAM = 6
+
+  def initialize(skills_dir)
+    @skills_dir = skills_dir
+  end
+
+  def run
+    doctrine = doctrine_blob
+    return [] unless doctrine
+
+    skill_md_paths.flat_map do |skill_md|
+      skill_dir = File.dirname(skill_md)
+      next [] if File.basename(skill_dir) == "conventions" # the source never restates itself
+
+      check_skill(skill_dir, skill_md, File.read(skill_md), doctrine)
+    end
+  end
+
+  private
+
+  def skill_md_paths
+    Dir.glob(File.join(@skills_dir, "*", "SKILL.md")).sort
+  end
+
+  def doctrine_blob
+    chapters = Dir.glob(File.join(@skills_dir, "conventions", "references", "*.md")).sort
+    return nil if chapters.empty?
+
+    text = chapters.map { |f| File.read(f) }.join(" ")
+    " #{normalize_words(text).join(" ")} "
+  end
+
+  def normalize_words(text)
+    text.downcase.gsub("`", "").gsub(/[^a-z0-9\s-]/, " ").split(/\s+/).reject(&:empty?)
+  end
+
+  # Same split as SkillLint's own frontmatter/body divide: `content.split("---", 3)`.
+  def body_and_offset(content)
+    parts = content.split("---", 3)
+    return [content, 0] if parts.length < 3
+
+    prefix_len = parts[0].length + 3 + parts[1].length + 3
+    [parts[2], content[0...prefix_len].count("\n")]
+  end
+
+  # Blank-line-delimited paragraph blocks, so a refusal keyword and its
+  # doctrine echo are compared across the whole paragraph, not one line.
+  def paragraph_blocks(lines)
+    blocks = []
+    start = nil
+    lines.each_with_index do |line, i|
+      if line.strip.empty?
+        blocks << { start: start, text: lines[start..(i - 1)].join } if start
+        start = nil
+      else
+        start ||= i
+      end
+    end
+    blocks << { start: start, text: lines[start..].join } if start
+    blocks
+  end
+
+  def restated?(block_text, doctrine)
+    words = normalize_words(block_text)
+    return false if words.length < NGRAM
+
+    (0..(words.length - NGRAM)).any? do |i|
+      doctrine.include?(" #{words[i, NGRAM].join(" ")} ")
+    end
+  end
+
+  def check_skill(skill_dir, skill_md, content, doctrine)
+    name = File.basename(skill_dir)
+    body, offset = body_and_offset(content)
+
+    paragraph_blocks(body.lines).filter_map do |block|
+      next unless block[:text].match?(REFUSAL_KEYWORD_RE)
+      next if block[:text].match?(CONVENTIONS_LINK_RE) # links the chapter instead of restating
+      next unless restated?(block[:text], doctrine)
+
+      {
+        check: "refusal-restatement", skill: name, file: skill_md, line: offset + block[:start] + 1,
+        message: "this paragraph restates a refusal rule word-for-word from " \
+                  "skills/conventions/references/; link the chapter instead of repeating its text",
+      }
+    end
+  end
+end
 
 def resolve_skills_dir(args)
   if (i = args.index("--skills-dir"))
@@ -37,14 +145,15 @@ end
 
 dir = File.expand_path(resolve_skills_dir(ARGV))
 result = SkillLint.new(skills_dir: dir).run
+violations = result.violations + RefusalRestatementCheck.new(dir).run
 
-if result.ok?
+if violations.empty?
   puts "OK: #{dir}"
   exit 0
 end
 
 warn "VIOLATIONS: #{dir}"
-result.violations.each do |v|
+violations.each do |v|
   warn "#{v[:check]} #{v[:skill]} #{v[:file]}:#{v[:line].nil? ? "-" : v[:line]} #{v[:message]}"
 end
 exit 1

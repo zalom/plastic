@@ -1,14 +1,19 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 
+require_relative "store_layout"
 require "json"
 require "yaml"
 require "fileutils"
 require "digest"
 require "time"
+require "tmpdir"
 require_relative "hook_registry"
 require_relative "agent_models"
 require_relative "harness_text"
+require_relative "compact_instructions"
+require_relative "engine_permissions"
+require_relative "qmd_sync"
 
 # Shared installer machinery, instantiable with injected package root / store / agent
 # map so the verb scripts (install/update/uninstall/rollback) and their tests can run
@@ -33,23 +38,30 @@ class InstallerCore
   # Regex matching exactly one managed section (BEGIN line .. END line), non-greedy.
   CODEX_SECTION_RE = /^<!-- BEGIN PLASTIC INTEGRATION.*?-->\n.*?\n<!-- END PLASTIC INTEGRATION -->\n?/m
 
-  # Curated essentials plus a pointer to ~/.plastic/PLASTIC.md and the plastic-conventions
-  # skill, injected into ~/.codex/AGENTS.md. Not a slice of PLASTIC.md itself: AGENTS.md is
-  # a shared file Codex merges from multiple sources, so this block stays a small,
-  # hand-curated pointer rather than embedding the core wholesale, and it never drifts
-  # because it only ever points, never duplicates.
+  # Claude CLAUDE.md marked-section markers (intent 312). A pair of its own, not the
+  # Codex literals: the two managed files can be one file (a user who symlinks
+  # ~/.claude/CLAUDE.md at ~/.codex/AGENTS.md, or the reverse), and a shared literal
+  # would let one body silently replace the other and an uninstall of one strip both.
+  # doctor_core.rb matches these literals structurally, so keep the two in sync by hand.
+  CLAUDE_SECTION_BEGIN_PREFIX = "<!-- BEGIN PLASTIC COMPACT"
+  CLAUDE_SECTION_END = "<!-- END PLASTIC COMPACT -->"
+  CLAUDE_SECTION_RE = /^<!-- BEGIN PLASTIC COMPACT.*?-->\n.*?\n<!-- END PLASTIC COMPACT -->\n?/m
+
+  # Curated essentials plus a pointer to ~/.plastic/PLASTIC.md and the help topics
+  # `plastic help TOPIC` prints, injected into ~/.codex/AGENTS.md. Not a slice of
+  # PLASTIC.md itself: AGENTS.md is a shared file Codex merges from multiple sources,
+  # so this block stays a small, hand-curated pointer rather than embedding the core
+  # wholesale, and it never drifts because it only ever points, never duplicates.
   CODEX_AGENTS_MD_BODY = <<~MD.freeze
-    Plastic is installed for this agent. Plastic is intent-driven state management: all
-    work flows through an intent, moved through What, Why, How, then Exec. Do not jump
-    straight to code.
+    Plastic is installed for this agent. Plastic is intent-driven state management: work runs
+    in one of three modes, direct, thinking, or auto (a team drives the runner loop:
+    `runner step`, `status`, `answer`). Do not jump straight to code.
 
     Standing rules:
-    - Core conventions live in ~/.plastic/PLASTIC.md. Read it and follow it exactly. For
-      depth, read a chapter from ~/.agents/skills/plastic-conventions/references/ on demand.
-      Both are generated and overwritten on Plastic updates, so never edit them.
-    - Operational procedures are installed as skills under ~/.agents/skills/ (each
-      plastic-<name>/SKILL.md). Invoke one explicitly as $plastic-<name> (for example
-      $plastic-doctor), or let Codex pick one implicitly by matching its description.
+    - The command line is ~/.plastic/PLASTIC.md. Read it and follow it exactly. The
+      conventions are chapters `plastic help TOPIC` prints on demand. Both are
+      generated and overwritten on Plastic updates, so never edit them.
+    - Operational procedures are the `plastic` command line itself, run directly.
     - Intents, specs, plans, checklists, and outcomes live under ~/.plastic/, never in
       the project tree.
 
@@ -66,8 +78,25 @@ class InstallerCore
     @agents = agents
   end
 
+  # Reads the package version from `package.json` when present (the source
+  # tree, and any dev checkout), falling back to the bare `VERSION` file the
+  # installer copies to `~/.plastic` (row B, spec 315b): an installed system
+  # carries VERSION but never package.json, so `rollback.rb` and `update.rb`
+  # constructing an InstallerCore with `package_root: ~/.plastic` crashed with
+  # a raw Errno::ENOENT before this fallback existed. Raises a named error,
+  # not a bare ENOENT, when neither file exists, so the caller is not
+  # misdirected toward the wrong missing file.
   def read_package_version(root)
-    File.read(File.join(root, "package.json")).then { |s| JSON.parse(s)["version"] }
+    package_json = File.join(root, "package.json")
+    version_file = File.join(root, "VERSION")
+
+    if File.exist?(package_json)
+      JSON.parse(File.read(package_json))["version"]
+    elsif File.exist?(version_file)
+      File.read(version_file).strip
+    else
+      raise "cannot determine the package version: neither #{package_json} nor #{version_file} exists"
+    end
   end
 
   # --- Channel derivation (the channel is encoded in the version string) ---
@@ -174,13 +203,6 @@ class InstallerCore
     keys.uniq
   end
 
-  def channel_from(argv, default: "latest")
-    return "alpha" if argv.include?("--alpha")
-    return "beta" if argv.include?("--beta")
-    return "latest" if argv.include?("--latest")
-    default
-  end
-
   def prompt_agents(input: $stdin)
     return ["claude"] unless input.tty?
 
@@ -233,7 +255,10 @@ class InstallerCore
 
   # --- Distribution phase ---
 
-  def distribute(mode)
+  # `tmp_dirs:` defaults to the real system tmp directory plus `/tmp` (where a
+  # retired session-state leftover would sit); a test overrides it (often to
+  # `[]`) so the removal never scans the real filesystem's tmp directories.
+  def distribute(mode, tmp_dirs: [Dir.tmpdir, "/tmp"].uniq)
     puts "  \u{1f4e6} #{mode == :update ? "Updating" : "Installing"} core files to #{plastic_home}"
 
     manifest_path = File.join(plastic_home, "manifest.json")
@@ -275,6 +300,8 @@ class InstallerCore
     write_manifest(global_files, manifest_path)
 
     pruned = prune_removed_files(old_files - global_files, root: plastic_home)
+    removed = remove_retired_session_state(plastic_home: plastic_home, tmp_dirs: tmp_dirs)
+    puts "  \u{1f9f9} #{removed} retired session state file(s) removed" if removed.positive?
 
     puts "  \u{2705} Core files synced (v#{version})#{pruned.positive? ? ", #{pruned} stale file(s) pruned" : ""}"
   end
@@ -311,12 +338,50 @@ class InstallerCore
     end
   end
 
+  # Intent 331a (D6/R7): a screen kind file (scripts/lib/screens/<kind>.rb)
+  # must reach an installed ~/.plastic the same way a new template or hook
+  # does - glob-derived, so "add a file, not a diff" is actually true for an
+  # installed Plastic, not just an in-repo one. This repo ships none yet;
+  # the glob answers {} until one exists.
+  def screen_files
+    Dir.glob(File.join(package_root, "scripts", "lib", "screens", "*.rb")).each_with_object({}) do |path, acc|
+      next unless File.file?(path)
+
+      rel = File.join("scripts", "lib", "screens", File.basename(path))
+      acc[rel] = rel
+    end
+  end
+
+  # The command line (intent 363). Glob-derived for the reason screen_files is:
+  # a command is one row in scripts/lib/cli/table.rb plus one file, and a
+  # hand-written manifest would make it two files and a diff. The launcher
+  # bin/plastic requires scripts/lib/cli.rb by a relative path, so the whole
+  # subtree travels together or an installed copy LoadErrors on the first call.
+  def cli_files
+    Dir.glob(File.join(package_root, "scripts", "lib", "{cli,rlm}", "**", "*.rb")).each_with_object({}) do |path, acc|
+      rel = path.sub("#{package_root}/", "")
+      acc[rel] = rel
+    end
+  end
+
+  # `plastic help TOPIC` (intent 372, family 4) reads docs/help/TOPIC.md from
+  # package_root the same way it reads a command's file, so the chapter has to
+  # ship the same way a template does: glob-derived, one file added and it
+  # installs with no diff here.
+  def help_files
+    Dir.glob(File.join(package_root, "docs", "help", "*.md")).each_with_object({}) do |path, acc|
+      rel = File.join("docs", "help", File.basename(path))
+      acc[rel] = rel
+    end
+  end
+
   # Files copied into ~/.plastic on install/update. Every verb script + the shared lib
   # must be here so the installed ~/.plastic/scripts copy is self-complete (sync-guarded
-  # by install_sync_test). The templates half is glob-derived (template_files above); the
-  # rest stays a hand-written literal.
+  # by install_sync_test). The templates and screen-kind halves are glob-derived
+  # (template_files, screen_files above); the rest stays a hand-written literal.
   def core_files
-    hand_registered_files.merge(template_files).merge(hook_files)
+    hand_registered_files.merge(template_files).merge(hook_files).merge(screen_files).merge(cli_files)
+      .merge(help_files)
   end
 
   def hand_registered_files
@@ -329,25 +394,30 @@ class InstallerCore
       "scripts/write-config" => "scripts/write-config",
       "scripts/select-update-target" => "scripts/select-update-target",
       "scripts/hook-session-start" => "scripts/hook-session-start",
-      "scripts/hook-continue" => "scripts/hook-continue",
-      "scripts/hook-future-intent-check" => "scripts/hook-future-intent-check",
-      "scripts/hook-gate-check" => "scripts/hook-gate-check",
-      "scripts/hook-savepoint-pre" => "scripts/hook-savepoint-pre",
-      "scripts/hook-power-tools" => "scripts/hook-power-tools",
-      "scripts/lib/qmd_hook.rb" => "scripts/lib/qmd_hook.rb",
+      "scripts/hook-capture" => "scripts/hook-capture",
+      "scripts/hook-record" => "scripts/hook-record",
+      "scripts/hook-close" => "scripts/hook-close",
       "scripts/lib/power_tools.rb" => "scripts/lib/power_tools.rb",
       "scripts/lib/ruby_probe.rb" => "scripts/lib/ruby_probe.rb",
       "scripts/lib/agent_models.rb" => "scripts/lib/agent_models.rb",
       "scripts/lib/config_asks.rb" => "scripts/lib/config_asks.rb",
       "scripts/lib/release_guard.rb" => "scripts/lib/release_guard.rb",
-      "scripts/hook-code-gate" => "scripts/hook-code-gate",
-      "scripts/hook-lock-gate" => "scripts/hook-lock-gate",
-      "scripts/hook-bash-gate" => "scripts/hook-bash-gate",
-      "scripts/hook-auto-arm" => "scripts/hook-auto-arm",
-      "scripts/lib/bridge.rb" => "scripts/lib/bridge.rb",
+      "scripts/lib/index_entry.rb" => "scripts/lib/index_entry.rb",
+      "scripts/lib/project_config.rb" => "scripts/lib/project_config.rb",
+      "scripts/lib/savepoint.rb" => "scripts/lib/savepoint.rb",
+      "scripts/lib/guarded_append.rb" => "scripts/lib/guarded_append.rb",
+      "scripts/lib/node_ledger.rb" => "scripts/lib/node_ledger.rb",
+      "scripts/lib/node_input_compatibility.rb" => "scripts/lib/node_input_compatibility.rb",
+      "scripts/lib/node_progress.rb" => "scripts/lib/node_progress.rb",
+      "scripts/node-transition" => "scripts/node-transition",
+      "scripts/lib/arm.rb" => "scripts/lib/arm.rb",
       "scripts/lib/lock.rb" => "scripts/lib/lock.rb",
       "scripts/plastic-lock" => "scripts/plastic-lock",
       "scripts/lib/hook_registry.rb" => "scripts/lib/hook_registry.rb",
+      "scripts/lib/compact_instructions.rb" => "scripts/lib/compact_instructions.rb",
+      "scripts/lib/version_number.rb" => "scripts/lib/version_number.rb",
+      "scripts/lib/cli.rb" => "scripts/lib/cli.rb",
+      "bin/plastic" => "bin/plastic",
       "scripts/agent-report" => "scripts/agent-report",
       "scripts/lib/insights.rb" => "scripts/lib/insights.rb",
       "scripts/insight-append" => "scripts/insight-append",
@@ -363,6 +433,14 @@ class InstallerCore
       "scripts/lib/intent_validator.rb" => "scripts/lib/intent_validator.rb",
       "scripts/lib/graph_rebuild.rb" => "scripts/lib/graph_rebuild.rb",
       "scripts/lib/store_discovery.rb" => "scripts/lib/store_discovery.rb",
+      "scripts/lib/store_layout.rb" => "scripts/lib/store_layout.rb",
+      "scripts/lib/stores_move.rb" => "scripts/lib/stores_move.rb",
+      "scripts/lib/sqlite.rb" => "scripts/lib/sqlite.rb",
+      "scripts/lib/search_index.rb" => "scripts/lib/search_index.rb",
+      "scripts/lib/store_sync.rb" => "scripts/lib/store_sync.rb",
+      "scripts/lib/work_graph.rb" => "scripts/lib/work_graph.rb",
+      "scripts/lib/reference_archive.rb" => "scripts/lib/reference_archive.rb",
+      "scripts/lib/backup.rb" => "scripts/lib/backup.rb",
       "scripts/lib/frontmatter_writer.rb" => "scripts/lib/frontmatter_writer.rb",
       "scripts/lib/links_projection.rb" => "scripts/lib/links_projection.rb",
       "scripts/lib/links_section.rb" => "scripts/lib/links_section.rb",
@@ -380,16 +458,13 @@ class InstallerCore
       "scripts/validate-intent" => "scripts/validate-intent",
       "scripts/new-intent" => "scripts/new-intent",
       "scripts/end-intent" => "scripts/end-intent",
-      "scripts/hook-create-gate" => "scripts/hook-create-gate",
-      "scripts/hook-links-gate" => "scripts/hook-links-gate",
-      "scripts/lib/links_gate.rb" => "scripts/lib/links_gate.rb",
-      "scripts/lib/edit_gates.rb" => "scripts/lib/edit_gates.rb",
-      "scripts/hook-edit-gates" => "scripts/hook-edit-gates",
       "scripts/lib/apply_patch_envelope.rb" => "scripts/lib/apply_patch_envelope.rb",
-      "scripts/lib/codex_edit_gates.rb" => "scripts/lib/codex_edit_gates.rb",
       "scripts/lib/harness_text.rb" => "scripts/lib/harness_text.rb",
       "scripts/codex-hook" => "scripts/codex-hook",
       "scripts/spawn-preamble" => "scripts/spawn-preamble",
+      "scripts/lib/report_screen.rb" => "scripts/lib/report_screen.rb",
+      "scripts/report-screen" => "scripts/report-screen",
+      "scripts/savepoint-note" => "scripts/savepoint-note",
       "scripts/lib/store_provisioning.rb" => "scripts/lib/store_provisioning.rb",
       "scripts/provision-project-store" => "scripts/provision-project-store",
       "scripts/lib/project_validator.rb" => "scripts/lib/project_validator.rb",
@@ -401,37 +476,198 @@ class InstallerCore
       "scripts/uninstall.rb" => "scripts/uninstall.rb",
       "scripts/rollback.rb" => "scripts/rollback.rb",
       "scripts/lib/outcome_guard.rb" => "scripts/lib/outcome_guard.rb",
-      "scripts/lib/spec_header.rb" => "scripts/lib/spec_header.rb",
       "scripts/lib/scaffold_intent.rb" => "scripts/lib/scaffold_intent.rb",
+      "scripts/lib/backfill_intent.rb" => "scripts/lib/backfill_intent.rb",
       "scripts/scaffold-intent" => "scripts/scaffold-intent",
       "scripts/lib/verify_intent.rb" => "scripts/lib/verify_intent.rb",
       "scripts/verify-intent" => "scripts/verify-intent",
-      "scripts/lib/start_intent.rb" => "scripts/lib/start_intent.rb",
-      "scripts/start-intent" => "scripts/start-intent",
       "scripts/lib/exec_worktree.rb" => "scripts/lib/exec_worktree.rb",
       "scripts/exec-worktree" => "scripts/exec-worktree",
+      "scripts/lib/session_usage.rb" => "scripts/lib/session_usage.rb",
+      "scripts/session-usage" => "scripts/session-usage",
       "scripts/doctor.rb" => "scripts/doctor.rb",
       "scripts/lib/doctor_core.rb" => "scripts/lib/doctor_core.rb",
+      "scripts/lib/hook_replay.rb" => "scripts/lib/hook_replay.rb",
       "scripts/lib/rule_catalog.rb" => "scripts/lib/rule_catalog.rb",
       "scripts/lib/doctor_exclusions.rb" => "scripts/lib/doctor_exclusions.rb",
+      "scripts/lib/doctor_session_ledger.rb" => "scripts/lib/doctor_session_ledger.rb",
       "scripts/dashboard.rb" => "scripts/dashboard.rb",
       "scripts/skill-lint" => "scripts/skill-lint",
       "scripts/lib/skill_lint.rb" => "scripts/lib/skill_lint.rb",
       "scripts/feedback-report" => "scripts/feedback-report",
       "scripts/lib/feedback_report.rb" => "scripts/lib/feedback_report.rb",
+      "scripts/append-ledger" => "scripts/append-ledger",
+      "scripts/lib/session_ledger.rb" => "scripts/lib/session_ledger.rb",
+      "scripts/session-commit" => "scripts/session-commit",
+      "scripts/file-session-intent" => "scripts/file-session-intent",
+      "scripts/promote-session-item" => "scripts/promote-session-item",
+      "scripts/lib/session_backfill.rb" => "scripts/lib/session_backfill.rb",
+      "scripts/lib/session_close.rb" => "scripts/lib/session_close.rb",
+      "scripts/lib/session_git.rb" => "scripts/lib/session_git.rb",
+      "scripts/lib/handoff.rb" => "scripts/lib/handoff.rb",
+      "scripts/lib/day_summary.rb" => "scripts/lib/day_summary.rb",
+      "scripts/write-handoff" => "scripts/write-handoff",
+      "scripts/day-summary" => "scripts/day-summary",
+      "scripts/lib/intent_screen.rb" => "scripts/lib/intent_screen.rb",
+      "scripts/intent-screen" => "scripts/intent-screen",
+      "scripts/hook-savepoint" => "scripts/hook-savepoint",
+      # Intent 316a: hooks/* only glob-copies scripts/*, never scripts/lib/*
+      # (see hook_files above), so the two lib files a require_relative
+      # between themselves are unguarded there — these three literal
+      # entries are their only protection (test/install_sync_test.rb:23-29
+      # greps installer_core.rb's own source text for "scripts/<name>").
+      "scripts/lib/intent_screen_ansi.rb" => "scripts/lib/intent_screen_ansi.rb",
+      "scripts/lib/screen_paint.rb" => "scripts/lib/screen_paint.rb",
+      "scripts/lib/message_display.rb" => "scripts/lib/message_display.rb",
+      # Intent 331d (A1): scripts/dashboard.rb require_relatives this lib
+      # directly; templates/dashboard-screen.md and scripts/lib/screens/
+      # dashboard.rb are glob-derived (template_files, screen_files above)
+      # and need no entry here.
+      "scripts/lib/dashboard_screen.rb" => "scripts/lib/dashboard_screen.rb",
+      "scripts/hook-message-display" => "scripts/hook-message-display",
+      # Intent 334 (G1): the node file and graph.md library, plus its
+      # validator and CLI (327 D40/D41).
+      "scripts/lib/graph_edges.rb" => "scripts/lib/graph_edges.rb",
+      "scripts/lib/node_file.rb" => "scripts/lib/node_file.rb",
+      "scripts/lib/atomic_write.rb" => "scripts/lib/atomic_write.rb",
+      "scripts/lib/graph_file.rb" => "scripts/lib/graph_file.rb",
+      "scripts/lib/work_graph_validator.rb" => "scripts/lib/work_graph_validator.rb",
+      "scripts/validate-work-graph" => "scripts/validate-work-graph",
+      # Intent 335a: every id an intent has ever seen, so a deleted node's id
+      # is never reissued to a new node with the dead one's ledger history.
+      "scripts/lib/node_ids.rb" => "scripts/lib/node_ids.rb",
+      # Intent 339 (G6): the generated outcome.md library and its CLI.
+      "scripts/lib/outcome_report.rb" => "scripts/lib/outcome_report.rb",
+      "scripts/outcome-report" => "scripts/outcome-report",
+      # Intent 336 (G3): ReadySet, the one function that says what may run
+      # next, and its CLI. node-transition requires the lib as of n5;
+      # registered here (rather than waiting for n8's own CLI/doc unit) so
+      # test/install_sync_test.rb stays green across every intermediate unit.
+      "scripts/lib/ready_set.rb" => "scripts/lib/ready_set.rb",
+      "scripts/ready-set" => "scripts/ready-set",
+      # Intent 337 (G4): the roadmap graph model and its tree renderer,
+      # registered as they land (test/installer_core_test.rb requires every
+      # scripts/lib file to be manifest-covered as soon as it exists, not
+      # only once the CLI that ships it arrives at n4).
+      "scripts/lib/roadmap_graph.rb" => "scripts/lib/roadmap_graph.rb",
+      "scripts/lib/graph_tree.rb" => "scripts/lib/graph_tree.rb",
+      "scripts/lib/index_projection.rb" => "scripts/lib/index_projection.rb",
+      "scripts/lib/roadmap_render.rb" => "scripts/lib/roadmap_render.rb",
+      "scripts/lib/roadmap_migration.rb" => "scripts/lib/roadmap_migration.rb",
+      "scripts/roadmap-graph" => "scripts/roadmap-graph",
+      "scripts/index-projection" => "scripts/index-projection",
+      # Intent 338 (G5): the node input command - the trust-boundary wrapper,
+      # the five-block gatherer/assembler, and the CLI 340's runner calls.
+      "scripts/lib/data_boundary.rb" => "scripts/lib/data_boundary.rb",
+      "scripts/lib/node_input.rb" => "scripts/lib/node_input.rb",
+      "scripts/node-input" => "scripts/node-input",
+      # Intent 342 (G9): the backward shim that presents actions/*.md as a
+      # node graph for any legacy intent, so WorkGraphValidator can require
+      # it without going red on contact with install_sync_test.
+      "scripts/lib/action_graph_shim.rb" => "scripts/lib/action_graph_shim.rb",
+      # Intent 340 (G7, n1): the runner command - the subcommand table over
+      # the declared node graph, its shared context (RunnerCore), and the
+      # installed-core integrity check (CoreIntegrity) the runner's trust
+      # boundary and doctor will both call.
+      "scripts/runner" => "scripts/runner",
+      "scripts/lib/runner_core.rb" => "scripts/lib/runner_core.rb",
+      "scripts/lib/core_integrity.rb" => "scripts/lib/core_integrity.rb",
+      # Intent 340 (G7, n2): the merge abort, the reclaim, and the extension -
+      # the first thing every `step` does, routed from scripts/runner's `sweep`
+      # verb.
+      "scripts/lib/runner_sweep.rb" => "scripts/lib/runner_sweep.rb",
+      # Intent 340 (G7, n3): a work node's own git worktree, cut from the
+      # intent branch tip, merged back into the intent branch, and swept once
+      # its node is terminal.
+      "scripts/lib/node_worktree.rb" => "scripts/lib/node_worktree.rb",
+      # Intent 340 (G7, n4): the return schema (NodeReturn) and the six-check
+      # gate (RunnerAbsorb) that turns one executor return into exactly one
+      # node ledger transition, required lazily by scripts/runner's `step`.
+      "scripts/lib/node_return.rb" => "scripts/lib/node_return.rb",
+      "scripts/lib/runner_absorb.rb" => "scripts/lib/runner_absorb.rb",
+      # Intent 340 (G7, n5): validation, policy, leases and the dispatch plan
+      # - RunnerPolicy (the kind table) and RunnerDispatch, required lazily
+      # by scripts/runner's `step`.
+      "scripts/lib/runner_policy.rb" => "scripts/lib/runner_policy.rb",
+      "scripts/lib/runner_dispatch.rb" => "scripts/lib/runner_dispatch.rb",
+      # Intent 340b (G7c, n1): the harness seam - HarnessAdapter, required
+      # by scripts/lib/runner_dispatch.rb and by scripts/runner's `step`
+      # directly.
+      "scripts/lib/harness_adapter.rb" => "scripts/lib/harness_adapter.rb",
+      # Intent 340b (G7c, n6): the Codex leg - CodexAdapter (the `codex exec`
+      # argv, the sandbox per kind, and the bounded subprocess) and
+      # scripts/node-run, the CLI that runs one node's whole attempt over
+      # it and writes only a return file, never a ledger transition.
+      "scripts/lib/codex_adapter.rb" => "scripts/lib/codex_adapter.rb",
+      "scripts/node-run" => "scripts/node-run",
+      # Intent 340b (G7c, n3): the engine deny rule - the frozen permissions.deny
+      # entry list, merged into settings.json at install and removed surgically
+      # at uninstall.
+      "scripts/lib/engine_permissions.rb" => "scripts/lib/engine_permissions.rb",
+      # Intent 340b (G7c, n4): the Stop gate, the shared ActiveDelivery walk
+      # it and the PreCompact hand-off both call, and hook-stop, the Stop
+      # hook body scripts/hook-stop's launcher (hooks/stop) relays into.
+      "scripts/lib/stop_gate.rb" => "scripts/lib/stop_gate.rb",
+      "scripts/lib/active_delivery.rb" => "scripts/lib/active_delivery.rb",
+      "scripts/hook-stop" => "scripts/hook-stop",
+      # Intent 355 (n2): the call budget PreToolUse hook (RunnerPolicy.call_cap
+      # is its cap table, above); its launcher (hooks/call-budget) ships via
+      # hook_files' own glob, so only the hook script itself needs an entry.
+      "scripts/hook-call-budget" => "scripts/hook-call-budget",
+      "scripts/meter-watch" => "scripts/meter-watch",
+      "scripts/lib/meter_watch.rb" => "scripts/lib/meter_watch.rb",
+      # Intent 340 (G7, n6): answer (closes a decision node or unparks a
+      # work node parked at needs_decision), proposals (mints ids for what
+      # an executor proposed), and rewind (resets the intent branch to a
+      # node's own commit and respins it) - routed from scripts/runner's
+      # `answer` and `rewind` verbs.
+      "scripts/lib/runner_answer.rb" => "scripts/lib/runner_answer.rb",
+      "scripts/lib/runner_proposals.rb" => "scripts/lib/runner_proposals.rb",
+      "scripts/lib/runner_rewind.rb" => "scripts/lib/runner_rewind.rb",
+      # Intent 343 (G10, n1): the ledger reader - GraphMeasure.read turns one
+      # intent directory into one frozen measurement record. No CLI yet
+      # (scripts/graph-measure ships at n2); registered here so it is never
+      # a lib that exists on disk but never reaches an install.
+      "scripts/lib/graph_measure.rb" => "scripts/lib/graph_measure.rb",
+      # Intent 343 (G10, n2): the graph-measure command - the subcommand
+      # table over the ledger reader, and the two renderers (text, JSON)
+      # over the one record it returns.
+      "scripts/graph-measure" => "scripts/graph-measure",
+      "scripts/lib/graph_measure_report.rb" => "scripts/lib/graph_measure_report.rb",
+      # Intent 343 (G10, n4): the `budget` verb - whether the `budget:` a
+      # node's envelope declares (327 C19) is a ceiling that ever actually
+      # held, read from the ledger and the real input files.
+      "scripts/lib/graph_measure_budget.rb" => "scripts/lib/graph_measure_budget.rb",
+      # Intent 343 (G10, n5): the `cohorts` verb's model section - the store
+      # walk and whether a recorded model= still matches what config
+      # resolves today through RunnerPolicy.
+      "scripts/lib/graph_measure_models.rb" => "scripts/lib/graph_measure_models.rb",
+      # Intent 343 (G10, n6): the rest of the `cohorts` verb - approve-then-
+      # fix per verify model, hop on versus off, delivery latency, the
+      # evidence bar, and the two concurrency ceilings.
+      "scripts/lib/graph_measure_cohorts.rb" => "scripts/lib/graph_measure_cohorts.rb",
+      # Intent 340b (G7c, n7): the Codex loop - composes `step` and
+      # `node-run` itself (concurrency two, serial absorb, iteration-capped),
+      # routed from scripts/runner's internal `until-empty` verb.
+      "scripts/lib/runner_until_empty.rb" => "scripts/lib/runner_until_empty.rb",
+      # Intent 340a (G7b, n1): the delivery watch - one tick over disk truth,
+      # stalled and done-unreported classification, no CLI and no dispatch.
+      "scripts/lib/runner_watch.rb" => "scripts/lib/runner_watch.rb",
     }
   end
 
   def bootstrap
     puts "  \u{1f331} First install \u{2014} bootstrapping store..."
 
-    FileUtils.mkdir_p(File.join(plastic_home, "store"))
+    FileUtils.mkdir_p(Plastic::StoreLayout.global_store(plastic_home))
     FileUtils.mkdir_p(File.join(plastic_home, "projects"))
 
     write_if_missing(File.join(plastic_home, "config.yml"), <<~YAML)
       version: 3
       execution_mode: subagent-driven
       stale_threshold_days: 3
+      context_offer_tokens: 150000
+      context_insist_tokens: 250000
       hash_length: 6
       hash_algorithm: sha256-base36
       max_slug_words: 5
@@ -442,7 +678,7 @@ class InstallerCore
 
     write_if_missing(File.join(plastic_home, "projects.yml"), "---\nprojects: {}\n")
 
-    write_if_missing(File.join(plastic_home, "INDEX.md"), <<~MD)
+    write_if_missing(File.join(Plastic::StoreLayout.global_root(plastic_home), "INDEX.md"), <<~MD)
       # Index
 
       ## Active
@@ -460,7 +696,7 @@ class InstallerCore
       # Plastic: Agent Instructions
 
       Read `PLASTIC.md` in this directory for the core conventions; deeper doctrine lives
-      in the `plastic-conventions` skill's chapters. Follow it exactly. Never modify it:
+      in the chapters `plastic help TOPIC` prints. Follow it exactly. Never modify it:
       it is overwritten on plugin updates.
 
       This file (`AGENTS.md`) is where project-specific rules live.
@@ -469,6 +705,25 @@ class InstallerCore
     MD
 
     puts "  \u{2705} Store bootstrapped"
+  end
+
+  # Intent 372 (former install skill, lines 119-127): `~/.plastic` becomes its own
+  # git repository the first time it exists, so `update` can later commit the core
+  # files it re-syncs. Leaves an existing repository alone.
+  def git_init_if_absent(runner: ->(cmd) { system(*cmd) })
+    FileUtils.mkdir_p(plastic_home)
+    return if File.directory?(File.join(plastic_home, ".git"))
+    runner.call(["git", "-C", plastic_home, "init", "-q"])
+  end
+
+  # Intent 372 (former install skill, lines 167-179): register every Plastic store as
+  # a QMD collection. QmdSync.register already no-ops per store when QMD is absent;
+  # the detector is injected too so a run stays hermetic on a machine that happens to
+  # have the real `qmd` binary on PATH.
+  def register_with_qmd(runner: QmdSync.default_runner, detector: QmdSync.method(:detect))
+    QmdSync.enumerate_stores(plastic_home: plastic_home).each do |store|
+      QmdSync.register(collection: store[:collection], dir: store[:dir], runner: runner, detector: detector)
+    end
   end
 
   # --- Agent adapters ---
@@ -692,6 +947,111 @@ class InstallerCore
     removed
   end
 
+  # Intent 344 (G11, D10): leftovers from the retired per-session day pointer
+  # and the retired inter-hook coordination key. A `current` candidate is
+  # real only when reached with no symlink between plastic_home and the
+  # session directory: a store root's own real path must equal the plain
+  # join of plastic_home's real path with the store's lexical relative path
+  # (a symlinked store, or a symlinked projects/<slug> above it, breaks
+  # that equality), and neither the store's `.tmp` directory nor the
+  # session directory beneath it may itself be a symlink. A tmp-file
+  # candidate is judged by its containing directory's real path instead,
+  # so a symlinked tmp root such as macOS's real /tmp still works; its
+  # name is matched on raw bytes so an undecodable name never raises.
+  # Never opens or parses a candidate: a torn or malformed leftover is
+  # deleted by name alone, exactly like a well-formed one. Only a regular
+  # file that is not a symlink is ever a candidate for deletion. Returns
+  # the count removed; a delete failure warns once per path and the sync
+  # continues, since a stuck leftover must never fail an install.
+  def remove_retired_session_state(plastic_home:, tmp_dirs:)
+    candidates = []
+
+    real_store_roots(plastic_home).each do |store_root|
+      candidates.concat(current_candidates(store_root))
+    end
+
+    Array(tmp_dirs).compact.each do |dir|
+      candidates.concat(tmp_json_candidates(dir))
+    end
+
+    removed = 0
+    candidates.uniq.each do |candidate|
+      begin
+        next unless File.lstat(candidate).file?
+      rescue SystemCallError
+        next
+      end
+
+      begin
+        File.delete(candidate)
+        removed += 1
+      rescue SystemCallError => e
+        warn "  \u{26a0}\u{fe0f}  Could not remove retired session state #{candidate}: #{e.message}"
+      end
+    end
+    removed
+  rescue StandardError
+    removed || 0
+  end
+
+  # Every store root (the global store, plus each project store) whose real
+  # path is reached with no symlink between it and plastic_home.
+  def real_store_roots(plastic_home)
+    roots = [Plastic::StoreLayout.global_store(plastic_home)] +
+            Dir.glob(File.join(Plastic::StoreLayout.projects_root(plastic_home), "*", "store"))
+    roots.uniq.select { |root| real_store_root?(plastic_home, root) }
+  end
+
+  def real_store_root?(plastic_home, store_root)
+    return false unless File.directory?(store_root)
+
+    real_home = File.realpath(plastic_home)
+    relative = store_root.sub(/\A#{Regexp.escape(plastic_home)}\/?/, "")
+    File.realpath(store_root) == File.join(real_home, relative)
+  rescue SystemCallError
+    false
+  end
+
+  # `current` candidates under one validated store root: `.tmp` and every
+  # session directory beneath it must be real directories, never symlinks.
+  def current_candidates(store_root)
+    tmp_root = File.join(store_root, ".tmp")
+    return [] unless File.lstat(tmp_root).directory?
+
+    Dir.children(tmp_root).filter_map do |child|
+      begin
+        session_dir = File.join(tmp_root, child)
+        next unless File.lstat(session_dir).directory?
+
+        File.join(session_dir, "current")
+      rescue SystemCallError
+        nil
+      end
+    end
+  rescue SystemCallError
+    []
+  end
+
+  # Retired session-state leftover files sitting directly in `dir`, resolved through
+  # `dir`'s own real path so a symlinked tmp root (macOS's real /tmp) still
+  # works; the name match runs on raw bytes so an undecodable name is
+  # simply not a match, never a raised error.
+  def tmp_json_candidates(dir)
+    real = File.realpath(dir)
+    Dir.children(real).select { |name| retired_tmp_name?(name) }.map { |name| File.join(real, name) }
+  rescue SystemCallError
+    []
+  end
+
+  # True when `name`'s raw bytes match the retired session-state leftover shape
+  # (`plastic-<session>--<id>.json`). Runs on `name.b` so a name that is
+  # not valid UTF-8 is judged on bytes instead of raising.
+  def retired_tmp_name?(name)
+    name.b.match?(/\Aplastic-[^\/]+--[^\/]+\.json\z/n)
+  rescue StandardError
+    false
+  end
+
   # True when `path`, once expanded, is one of `roots` itself or lives underneath
   # one of them. String-prefix containment guarded by a trailing separator so a
   # sibling directory that merely shares a prefix (`/home/x-evil` vs root `/home/x`)
@@ -714,11 +1074,11 @@ class InstallerCore
   # fails milder than the bug it prevents, independent of what any caller's `root:` is or
   # what a hand-edited manifest claims.
   def store_roots
-    [File.join(plastic_home, "store"), File.join(plastic_home, "projects")].map { |p| File.expand_path(p) }
+    %w[store projects stores].map { |name| File.expand_path(File.join(plastic_home, name)) }
   end
 
   # `install_skills_flat` relocates any top-level underscore-prefixed markdown
-  # fragment (today: `_active-intent-gate.md`, `_decision-tables.md`) out of the
+  # fragment (today: `_decision-tables.md`) out of the
   # per-agent skills tree and into `plastic_home` directly, then lists them in
   # `installed`, so they are manifest-tracked and eligible for prune. But
   # `install_for_agent`'s prune roots are `[config[:dir], config[:home_dir]]`,
@@ -775,7 +1135,7 @@ class InstallerCore
     installed += install_skills_flat(skills_source, skills_root, exclude: skill_exclude) if File.directory?(skills_source)
 
     # Copy agent role files into <dir>/agents (manifest-tracked, pruned on update)
-    installed += install_agents(File.join(config[:dir], "agents"), models: agent_model_overrides, advisor_enabled: advisor_enabled?)
+    installed += install_agents(File.join(config[:dir], "agents"), models: agent_model_overrides, efforts: agent_effort_overrides, advisor_enabled: advisor_enabled?)
 
     # Write VERSION
     version_file = File.join(plastic_dir, "VERSION")
@@ -789,6 +1149,16 @@ class InstallerCore
     settings_path = File.join(config[:dir], "settings.json")
     choice = statusline_choice(settings_path, argv: argv, input: input, reinstall: reinstall)
     merge_claude_hooks(settings_path, choice: choice)
+
+    # The engine deny rule (intent 340b, G7c, n3, D4): a second ownership
+    # mechanism from the hook merge above, so it is its own call rather than a
+    # branch inside merge_claude_hooks.
+    merge_engine_permissions(settings_path)
+
+    # Instruction injection (intent 312): the compact-instructions block into
+    # ~/.claude/CLAUDE.md. A partial-ownership user file, so it is NOT manifest-tracked
+    # (stripped surgically on uninstall), the same treatment ~/.codex/AGENTS.md gets.
+    inject_claude_compact_md(File.join(config[:dir], "CLAUDE.md"))
 
     # Write manifest
     manifest_path = File.join(plastic_dir, "manifest.json")
@@ -816,7 +1186,12 @@ class InstallerCore
     # Codex-scoped overrides only (agents.models.codex.*): a literal Claude
     # model id set under agents.models.claude.* (or the legacy flat form,
     # which resolves as claude) must never reach a Codex TOML.
-    installed += generate_codex_agents(File.join(config[:home_dir], "agents"), models: agent_model_overrides(harness: "codex"))
+    installed += generate_codex_agents(
+      File.join(config[:home_dir], "agents"),
+      models: agent_model_overrides(harness: "codex"),
+      efforts: agent_effort_overrides(harness: "codex"),
+      advisor_enabled: advisor_enabled?
+    )
 
     # Instruction injection (L1): Plastic standing conventions into ~/.codex/AGENTS.md.
     # Partial-ownership file, so it is NOT manifest-tracked (stripped surgically on uninstall).
@@ -846,24 +1221,17 @@ class InstallerCore
   # a whole-file, Plastic-owned .toml per repo agents/*.md instead of copying markdown.
   # The returned paths append to `installed`, so they are manifest-tracked and pruned on
   # uninstall by the manifest whole-file-delete path, exactly like ~/.claude/agents/*.md.
-  def generate_codex_agents(agents_root, models: {})
+  def generate_codex_agents(agents_root, models: {}, efforts: {}, advisor_enabled: true)
     sources = Dir.glob(File.join(package_root, "agents", "*.md"))
     return [] if sources.empty?
 
     FileUtils.mkdir_p(agents_root)
     sources.filter_map do |src|
       basename = File.basename(src, ".md")
-      # Codex advisor support is out of scope for this release (intent 185): the
-      # owner has not evaluated the Codex reasoning-model ecosystem long enough to
-      # judge it. Skip every AgentModels::CONSULTATION_AGENTS file (both
-      # plastic-advisor and plastic-faux-advisor) by name, a deliberate and
-      # mechanical scope cut tracked at intent 186 (Codex advisor evaluation), not
-      # a permanent exclusion and not conditioned on any frontmatter or override
-      # value.
-      next if AgentModels::CONSULTATION_AGENTS.include?(basename)
+      next if !advisor_enabled && AgentModels::CONSULTATION_AGENTS.include?(basename)
 
       dest = File.join(agents_root, "#{basename}.toml")
-      write_text_atomic(dest, render_codex_agent_toml(src, models[basename]))
+      write_text_atomic(dest, render_codex_agent_toml(src, models[basename], efforts[basename]))
       dest
     end
   end
@@ -871,16 +1239,25 @@ class InstallerCore
   # Render one repo agents/*.md into a deterministic Codex agent TOML document. Fixed field
   # order (name, description, the model field(s) from codex_model_fields, developer_instructions)
   # so regenerate is byte-identical (idempotency).
-  def render_codex_agent_toml(source_path, override)
+  def render_codex_agent_toml(source_path, override, effort_override = nil)
     front, body = split_frontmatter(File.read(source_path))
     name = (front["name"] || File.basename(source_path, ".md")).to_s
     description = (front["description"] || "").to_s
-    effective = (override && !override.to_s.empty? ? override : front["model"]).to_s
+    effective = if override && !override.to_s.empty?
+                  override
+                else
+                  AgentModels.shipped_model_for(name, harness: "codex") || front["model"]
+                end
+    effort = if effort_override && !effort_override.to_s.empty?
+               effort_override
+             else
+               front["effort"] || AgentModels.shipped_effort_for(name)
+             end
 
     parts = []
     parts << %(name = "#{toml_inline_escape(name)}")
     parts << %(description = "#{toml_inline_escape(description)}")
-    parts << codex_model_fields(effective)
+    parts << codex_model_fields(effective, effort: effort)
     parts << "developer_instructions = \"\"\"\n#{toml_ml_escape(body.strip)}\n\"\"\""
     parts.reject(&:empty?).join("\n") + "\n"
   end
@@ -900,20 +1277,20 @@ class InstallerCore
   # The model-selection line(s). A known tier alias (opus/sonnet/haiku) emits BOTH a `model` line
   # (from AgentModels.codex_model_for, the intent-186 per-role Codex identity) and a
   # model_reasoning_effort line, model first for deterministic byte-identical regenerate. Any other
-  # non-empty value is a literal Codex model id emitted verbatim as `model` only. Empty -> no line
-  # (the agent inherits the session default). If an alias somehow lacks a mapped model, the effort
-  # line still emits alone (backward-safe).
-  def codex_model_fields(effective)
+  # non-empty value is a literal Codex model id. Every non-empty model also emits the resolved effort,
+  # medium by default or the harness-scoped override. Empty emits no model fields.
+  def codex_model_fields(effective, effort: AgentModels::DEFAULT_EFFORT)
     return "" if effective.nil? || effective.to_s.empty?
-    effort = AgentModels.effort_for(effective)
-    if effort
+    if AgentModels.effort_for(effective)
       lines = []
       model = AgentModels.codex_model_for(effective)
       lines << %(model = "#{toml_inline_escape(model)}") if model && !model.to_s.empty?
-      lines << %(model_reasoning_effort = "#{effort}")
+      lines << %(model_reasoning_effort = "#{toml_inline_escape(effort)}") unless effort.to_s.empty?
       lines.join("\n")
     else
-      %(model = "#{toml_inline_escape(effective.to_s)}")
+      lines = [%(model = "#{toml_inline_escape(effective.to_s)}")]
+      lines << %(model_reasoning_effort = "#{toml_inline_escape(effort)}") unless effort.to_s.empty?
+      lines.join("\n")
     end
   end
 
@@ -998,7 +1375,7 @@ class InstallerCore
     skills_source = File.join(package_root, "skills")
     skill_exclude = advisor_enabled? ? [] : ["agent-advisor"]
     installed += install_skills_flat(skills_source, File.join(config[:dir], "skills"), exclude: skill_exclude) if File.directory?(skills_source)
-    installed += install_agents(File.join(config[:dir], "agents"), models: agent_model_overrides, advisor_enabled: advisor_enabled?)
+    installed += install_agents(File.join(config[:dir], "agents"), models: agent_model_overrides, efforts: agent_effort_overrides, advisor_enabled: advisor_enabled?)
 
     # Uniform per-agent record (intent 210, D2): write VERSION alongside the manifest,
     # the same shape install_claude already writes.
@@ -1012,7 +1389,7 @@ class InstallerCore
 
   # Copy each skills/<name>/ to <skills_root>/plastic-<name>/ (flat, namespaced by
   # directory name -- the only personal-skill namespacing Claude Code supports).
-  # Any top-level underscore-prefixed markdown fragment (e.g. `_active-intent-gate.md`,
+  # Any top-level underscore-prefixed markdown fragment (e.g. `_decision-tables.md`,
   # `_decision-tables.md`) is a shared non-skill fragment and relocates to ~/.plastic/
   # instead, so every skill can read it from one shared location. `exclude` skips
   # named top-level skill directories entirely (intent 185: the agent-advisor skill
@@ -1046,10 +1423,9 @@ class InstallerCore
   # them to `installed` before write_manifest (manifest + prune are then automatic).
   # No-op safe: returns [] when the package has no agents dir or it is empty.
   # advisor_enabled: false (advisor.enabled config key) skips every
-  # AgentModels::CONSULTATION_AGENTS file entirely (both plastic-advisor and
-  # plastic-faux-advisor), so a user who declined the advisor never gets either
+  # AgentModels::CONSULTATION_AGENTS file entirely, so a user who declined the advisor never gets either
   # agent installed.
-  def install_agents(agents_root, models: {}, advisor_enabled: true)
+  def install_agents(agents_root, models: {}, efforts: {}, advisor_enabled: true)
     sources = Dir.glob(File.join(package_root, "agents", "*.md"))
     return [] if sources.empty?
 
@@ -1061,9 +1437,13 @@ class InstallerCore
     sources.map do |src|
       dest = File.join(agents_root, File.basename(src))
       basename = File.basename(src, ".md")
-      override = models[basename]
-      if override
-        File.write(dest, rewrite_model_line(File.read(src), override))
+      model = models[basename]
+      effort = efforts[basename]
+      if model || effort
+        content = File.read(src)
+        content = rewrite_model_line(content, model) if model
+        content = rewrite_effort_line(content, effort) if effort
+        File.write(dest, content)
       else
         FileUtils.cp(src, dest)
       end
@@ -1077,27 +1457,46 @@ class InstallerCore
     content.sub(/^model:[^\n]*$/, "model: #{model}")
   end
 
+  def rewrite_effort_line(content, effort)
+    return content.sub(/^effort:[^\n]*$/, "effort: #{effort}") if content.match?(/^effort:/)
+
+    content.sub(/^(model:[^\n]*)$/) { "#{Regexp.last_match(1)}\neffort: #{effort}" }
+  end
+
   # Resolve per-agent model overrides for this install: project config (when a
   # project dir is known) overlaid on global config, scoped to `harness`
   # ("claude" or "codex"). Defaults are NOT included, so unconfigured agents
   # keep their shipped frontmatter.
   #
-  # Both advisor agents (plastic-advisor, plastic-faux-advisor) resolve through
+  # Both advisor agents resolve through
   # this SAME generic map, like any other agent: a config author sets
-  # agents.models.claude.plastic-advisor (or the legacy flat
-  # agents.models.plastic-advisor, read as claude) to point either agent at a
+  # agents.models.claude.<agent> (or the legacy flat form, read as Claude) to point either agent at a
   # different literal model. There is no separate advisor-specific model key;
   # which agent the advisor SKILL routes to by default is a routing decision
   # (advisor.claude.default), never a model-selection one.
   def agent_model_overrides(project_dir = nil, harness: "claude")
-    global_config = load_config_yaml(File.join(plastic_home, "config.yml"))
+    global_path = File.join(plastic_home, "config.yml")
+    migrate_advisor_config_file(global_path)
+    global_config = load_config_yaml(global_path)
     project_config =
       if project_dir
-        load_config_yaml(File.join(project_dir, ".plastic_store", "config.yml"))
+        project_path = File.join(project_dir, ".plastic_store", "config.yml")
+        migrate_advisor_config_file(project_path)
+        load_config_yaml(project_path)
       else
         {}
       end
     AgentModels.override_map(project_config: project_config, global_config: global_config, harness: harness)
+  end
+
+  def agent_effort_overrides(project_dir = nil, harness: "claude")
+    global_path = File.join(plastic_home, "config.yml")
+    migrate_advisor_config_file(global_path)
+    global_config = load_config_yaml(global_path)
+    project_path = project_dir && File.join(project_dir, ".plastic_store", "config.yml")
+    migrate_advisor_config_file(project_path) if project_path
+    project_config = project_path ? load_config_yaml(project_path) : {}
+    AgentModels.effort_override_map(project_config: project_config, global_config: global_config, harness: harness)
   end
 
   # advisor.enabled: project overlays global, missing or malformed counts as
@@ -1111,10 +1510,14 @@ class InstallerCore
     value != false
   end
 
-  # Agent-name shorthands for the --advisor flag: the two shipped choices,
-  # named for the role (real advisor vs. the cheaper imitation), never a model
-  # name.
-  ADVISOR_SHORTHANDS = { "real" => "plastic-advisor", "faux" => "plastic-faux-advisor" }.freeze
+  ADVISOR_NAME_MIGRATIONS = {
+    "plastic-advisor" => "plastic-primary-advisor",
+    "plastic-faux-advisor" => "plastic-secondary-advisor"
+  }.freeze
+  ADVISOR_SHORTHANDS = {
+    "primary" => "plastic-primary-advisor", "secondary" => "plastic-secondary-advisor",
+    "real" => "plastic-primary-advisor", "faux" => "plastic-secondary-advisor"
+  }.freeze
 
   # Write advisor.enabled / advisor.claude.default into the global config.yml
   # from install-time flags. Absent flags change nothing: advisor.enabled
@@ -1122,7 +1525,7 @@ class InstallerCore
   # (the skill's own fallback chain applies) when missing.
   #   --no-advisor      -> advisor.enabled: false
   #   --advisor VALUE   -> advisor.claude.default: VALUE (an agent name, or the
-  #                        shorthand "real"/"faux")
+  #                        shorthand "primary"/"secondary")
   def apply_config_flags(argv)
     no_advisor = argv.include?("--no-advisor")
     advisor_idx = argv.index("--advisor")
@@ -1130,7 +1533,13 @@ class InstallerCore
     return unless no_advisor || advisor_value
 
     config_path = File.join(plastic_home, "config.yml")
-    config = load_config_yaml(config_path)
+    config = if File.exist?(config_path)
+               parsed = YAML.safe_load(File.read(config_path))
+               return false unless parsed.nil? || parsed.is_a?(Hash)
+               migrate_advisor_config(parsed || {})
+             else
+               {}
+             end
 
     if no_advisor
       config["advisor"] ||= {}
@@ -1145,6 +1554,9 @@ class InstallerCore
 
     FileUtils.mkdir_p(plastic_home)
     File.write(config_path, YAML.dump(config))
+    true
+  rescue StandardError
+    false
   end
 
   def load_config_yaml(path)
@@ -1152,6 +1564,45 @@ class InstallerCore
     YAML.safe_load(File.read(path)) || {}
   rescue StandardError
     {}
+  end
+
+  # Renames retired advisor keys without discarding a current key. It accepts
+  # malformed config sections and leaves unrelated values untouched.
+  def migrate_advisor_config(config)
+    return {} unless config.is_a?(Hash)
+    config = Marshal.load(Marshal.dump(config))
+    advisor = config["advisor"]
+    if advisor.is_a?(Hash) && advisor["claude"].is_a?(Hash)
+      default = advisor["claude"]["default"]
+      advisor["claude"]["default"] = ADVISOR_NAME_MIGRATIONS.fetch(default, default)
+    end
+    agents = config["agents"]
+    %w[models efforts].each do |section_name|
+      section = agents.is_a?(Hash) ? agents[section_name] : nil
+      next unless section.is_a?(Hash)
+      migrate_advisor_keys!(section)
+      %w[claude codex].each { |harness| migrate_advisor_keys!(section[harness]) if section[harness].is_a?(Hash) }
+    end
+    config
+  end
+
+  def migrate_advisor_config_file(path)
+    return false unless path && File.file?(path)
+    parsed = YAML.safe_load(File.read(path))
+    return false unless parsed.is_a?(Hash)
+    migrated = migrate_advisor_config(parsed)
+    return false if migrated == parsed
+    File.write(path, YAML.dump(migrated))
+    true
+  rescue StandardError
+    false
+  end
+
+  def migrate_advisor_keys!(section)
+    ADVISOR_NAME_MIGRATIONS.each do |legacy, current|
+      section[current] = section[legacy] if !section.key?(current) && section.key?(legacy)
+      section.delete(legacy)
+    end
   end
 
   # --- Legacy plugin migration ---
@@ -1250,7 +1701,7 @@ class InstallerCore
     puts "  \u{2139}\u{fe0f}  Kept #{kept.size} hook(s) Plastic does not own, named with the reserved plastic- prefix:"
     kept.each { |cmd| puts "     - #{tilde(cmd.to_s)}" }
     puts "     The plastic- prefix is reserved for Plastic's own hooks. Rename yours (for"
-    puts "     example ~/.claude/hooks/writing-style) so a future update never mistakes it."
+    puts "     example ~/.claude/hooks/plain-writing) so a future update never mistakes it."
   end
 
   # --- settings.json merge (read-modify-write, never clobber) ---
@@ -1273,8 +1724,8 @@ class InstallerCore
     plastic_hooks.each do |event, group|
       hooks[event] ||= []
 
-      # An event may map to a LIST of plastic groups (PreToolUse carries the
-      # code-gate AND the create-gate). The purge pass above already removed all
+      # An event may map to a LIST of plastic groups (none does since the edit-path
+      # gates left in 2.0, intent 302; the shape stays). The purge pass above already removed all
       # prior plastic groups, so appending each desired group fresh is idempotent
       # across re-runs and never collapses two matchers into one group.
       groups = group.is_a?(Array) ? group : [group]
@@ -1338,6 +1789,44 @@ class InstallerCore
     removed
   end
 
+  # --- The engine deny rule (intent 340b, G7c, n3) ---
+  #
+  # A second ownership mechanism from merge_claude_hooks above (D4, node n3): a
+  # permissions.deny entry is a bare string with no marker in it, so EnginePermissions
+  # owns its four entries by exact-string membership, not by a plastic- launcher
+  # basename. This pair only does the read-modify-write; EnginePermissions.merge_into
+  # and .remove_from are the pure transforms.
+
+  # Merges EnginePermissions::ENTRIES into settings.json. Unlike merge_claude_hooks,
+  # this refuses rather than starting from {} when the existing file cannot be
+  # parsed (row 3.11): a hand-edited settings file is never silently replaced.
+  # Returns true when it wrote, false when it refused.
+  def merge_engine_permissions(settings_path)
+    if File.exist?(settings_path)
+      settings = read_json_safe(settings_path)
+      return false if settings.nil?
+    else
+      settings = {}
+    end
+
+    write_json_atomic(settings_path, EnginePermissions.merge_into(settings))
+    true
+  end
+
+  # Removes exactly EnginePermissions::ENTRIES from settings.json, leaving every
+  # other deny entry (the owner's own, and any Plastic entry the owner has since
+  # edited) in place. Returns true when it wrote, false on a missing or
+  # unparseable file, or a permissions/deny shape it does not recognize.
+  def remove_engine_permissions(settings_path)
+    return false unless File.exist?(settings_path)
+
+    settings = read_json_safe(settings_path)
+    return false unless settings.is_a?(Hash)
+
+    write_json_atomic(settings_path, EnginePermissions.remove_from(settings))
+    true
+  end
+
   # --- Codex AGENTS.md marked-section injection (22a/Beads pattern) ---
   # New primitive: markdown marked-section merge, the analog of merge_claude_hooks'
   # JSON read-modify-write for a partial-ownership text file. Three states
@@ -1355,14 +1844,28 @@ class InstallerCore
     raise e
   end
 
-  def codex_section(body: CODEX_AGENTS_MD_BODY)
+  # A managed instruction file may be a symlink into a dotfiles repo. write_text_atomic
+  # renames a temp file over its argument, which would replace the link with a regular
+  # file and silently detach it, so every read and write resolves the link first and the
+  # change lands on its target (intent 312).
+  def resolve_managed_path(path)
+    File.symlink?(path) ? File.realpath(path) : path
+  rescue Errno::ENOENT
+    path
+  end
+
+  def marked_section(body: CODEX_AGENTS_MD_BODY, begin_prefix: CODEX_SECTION_BEGIN_PREFIX,
+                     end_marker: CODEX_SECTION_END)
     hash = Digest::SHA256.hexdigest(body)[0, 12]
-    "#{CODEX_SECTION_BEGIN_PREFIX} hash:#{hash} -->\n#{body.strip}\n#{CODEX_SECTION_END}\n"
+    "#{begin_prefix} hash:#{hash} -->\n#{body.strip}\n#{end_marker}\n"
   end
 
   # Returns :created / :appended / :replaced / :refused. Never raises on a normal user file.
-  def inject_codex_agents_md(path, body: CODEX_AGENTS_MD_BODY)
-    section = codex_section(body: body)
+  def inject_marked_section(path, body: CODEX_AGENTS_MD_BODY,
+                            begin_prefix: CODEX_SECTION_BEGIN_PREFIX,
+                            end_marker: CODEX_SECTION_END, section_re: CODEX_SECTION_RE)
+    section = marked_section(body: body, begin_prefix: begin_prefix, end_marker: end_marker)
+    path = resolve_managed_path(path)
 
     unless File.exist?(path)
       FileUtils.mkdir_p(File.dirname(path))
@@ -1371,14 +1874,14 @@ class InstallerCore
     end
 
     content = File.read(path)
-    has_begin = content.include?(CODEX_SECTION_BEGIN_PREFIX)
-    has_end = content.include?(CODEX_SECTION_END)
+    has_begin = content.include?(begin_prefix)
+    has_end = content.include?(end_marker)
 
     # 22a safety rule: never write if the existing section cannot be parsed.
     return :refused if has_begin && !has_end
 
     if has_begin
-      write_text_atomic(path, content.sub(CODEX_SECTION_RE, section))
+      write_text_atomic(path, content.sub(section_re, section))
       :replaced
     else
       base = content.end_with?("\n") ? content : content + "\n"
@@ -1387,18 +1890,41 @@ class InstallerCore
     end
   end
 
+  # --- The two blocks Plastic ships, each with its own marker pair ---
+
+  def codex_section(body: CODEX_AGENTS_MD_BODY)
+    marked_section(body: body)
+  end
+
+  def inject_codex_agents_md(path, body: CODEX_AGENTS_MD_BODY)
+    inject_marked_section(path, body: body)
+  end
+
+  # The compact-instructions block for ~/.claude/CLAUDE.md (intent 312).
+  def claude_compact_section(body: CompactInstructions::BODY)
+    marked_section(body: body, begin_prefix: CLAUDE_SECTION_BEGIN_PREFIX,
+                   end_marker: CLAUDE_SECTION_END)
+  end
+
+  def inject_claude_compact_md(path, body: CompactInstructions::BODY)
+    inject_marked_section(path, body: body, begin_prefix: CLAUDE_SECTION_BEGIN_PREFIX,
+                          end_marker: CLAUDE_SECTION_END, section_re: CLAUDE_SECTION_RE)
+  end
+
   # Remove exactly Plastic's managed section from a user-owned AGENTS.md. Preserve all other
   # content. Delete the file only if Plastic created it and nothing else remains. Returns the
   # path when it acted, nil on no-op. Mirrors remove_claude_hooks: dedicated surgical strip,
   # never the manifest whole-file-delete path.
-  def strip_codex_section(path)
+  def strip_marked_section(path, begin_prefix: CODEX_SECTION_BEGIN_PREFIX,
+                           section_re: CODEX_SECTION_RE)
+    path = resolve_managed_path(path)
     return nil unless File.exist?(path)
     content = File.read(path)
-    return nil unless content.include?(CODEX_SECTION_BEGIN_PREFIX)
+    return nil unless content.include?(begin_prefix)
 
     # Remove the section plus the single separator newline the append introduced, so a
     # standard user file round-trips byte-identical.
-    stripped = content.sub(/\n?#{CODEX_SECTION_RE}/, "")
+    stripped = content.sub(/\n?#{section_re}/, "")
 
     if stripped.strip.empty?
       File.delete(path)                 # Plastic-created file: nothing else left
@@ -1407,6 +1933,15 @@ class InstallerCore
       write_text_atomic(path, stripped)
     end
     path
+  end
+
+  def strip_codex_section(path)
+    strip_marked_section(path)
+  end
+
+  def strip_claude_compact_section(path)
+    strip_marked_section(path, begin_prefix: CLAUDE_SECTION_BEGIN_PREFIX,
+                         section_re: CLAUDE_SECTION_RE)
   end
 
   # --- Uninstall ---
@@ -1435,6 +1970,7 @@ class InstallerCore
     puts "     ls ~/.claude/skills | grep '^plastic-'      # → no output"
     puts "     ls ~/.claude/hooks | grep '^plastic-'       # → no output"
     puts "     grep -c plastic ~/.claude/settings.json     # → only hook refs gone"
+    puts "     grep 'PLASTIC COMPACT' ~/.claude/CLAUDE.md  # → no output"
     puts "\n  To also delete your intent store: rm -rf #{tilde(plastic_home)}\n\n"
   end
 
@@ -1480,7 +2016,13 @@ class InstallerCore
     if key == "claude"
       settings_path = File.join(config[:dir], "settings.json")
       remove_claude_hooks(settings_path) if File.exist?(settings_path)
+      remove_engine_permissions(settings_path) if File.exist?(settings_path)
       removed.concat(migrate_legacy_plugin(config[:dir]))
+
+      # The compact-instructions block in the user-owned CLAUDE.md (intent 312): a
+      # surgical strip, never the manifest whole-file-delete path above.
+      stripped = strip_claude_compact_section(File.join(config[:dir], "CLAUDE.md"))
+      removed << stripped if stripped
     end
 
     # Codex: surgically strip Plastic's marked section from the user-owned AGENTS.md
@@ -1623,11 +2165,22 @@ class InstallerCore
 
   def read_json_safe(path)
     return nil unless File.exist?(path)
+
     JSON.parse(File.read(path))
   rescue JSON::ParserError
-    # Try JSONC stripping (remove // comments and trailing commas)
-    content = File.read(path).gsub(%r{//[^\n]*}, "").gsub(/,(\s*[}\]])/, '\1')
-    JSON.parse(content)
+    # The comment/trailing-comma-stripped retry below can itself raise
+    # JSON::ParserError on genuinely malformed content (a truncated file, or
+    # plain garbage). A nested begin/rescue is required here because a
+    # method-level `rescue` clause never catches an exception raised from
+    # INSIDE a sibling rescue clause's own body (only from the main body);
+    # doctor_core.rb#read_json_safe carries the same fix for the same reason
+    # (intent 331e, F5).
+    begin
+      content = File.read(path).gsub(%r{//[^\n]*}, "").gsub(/,(\s*[}\]])/, '\1')
+      JSON.parse(content)
+    rescue
+      nil
+    end
   rescue
     nil
   end

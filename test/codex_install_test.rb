@@ -194,24 +194,29 @@ class CodexInstallTest < Minitest::Test
     refute_includes InstallerCore::CODEX_AGENTS_MD_BODY, "—"
   end
 
-  def test_body_teaches_dollar_prefix_invocation
+  # test_body_teaches_dollar_prefix_invocation was retired by intent 372 (family 5): the last
+  # four skills (auto, direct, agent-advisor, releasing) are gone, so the body no longer
+  # teaches `$plastic-<name>` invocation. The surviving line the body carries instead is
+  # pinned below.
+  def test_body_teaches_the_command_line_as_the_operational_procedure
     body = InstallerCore::CODEX_AGENTS_MD_BODY
-    assert_includes body, "$plastic-<name>"
-    assert_includes body, "$plastic-doctor"
-    assert_match(/implicitly.*description/, body)
+    assert_includes body, "Operational procedures are the `plastic` command line itself"
   end
 
   # --- Step 3: install_codex wiring ---
 
-  def test_install_codex_writes_agents_md_skills_and_generates_agent_tomls
+  def test_install_codex_writes_agents_md_and_generates_agent_tomls
     result = @core.install_for_agent("codex", false)
 
     assert result[:success]
     assert File.exist?(agents_md)
     assert_includes File.read(agents_md), InstallerCore::CODEX_SECTION_BEGIN_PREFIX
 
+    # Intent 372 (family 5) retired the last four skills; zero skills ship now, so the
+    # earlier `refute_empty skills, "skills must still be copied"` assertion this test
+    # carried is gone with them.
     skills = Dir.glob(File.join(@agent_dir, "skills", "plastic-*"))
-    refute_empty skills, "skills must still be copied"
+    assert_empty skills, "no skill ships any more; the last four were retired by family 5"
 
     agent_tomls = Dir.glob(File.join(@codex_home, "agents", "plastic-*.toml"))
     refute_empty agent_tomls, "codex agent role files must be generated as TOML under ~/.codex/agents"
@@ -227,18 +232,42 @@ class CodexInstallTest < Minitest::Test
   def test_install_codex_manifest_tracks_the_generated_tomls_one_per_source_agent
     @core.install_for_agent("codex", false)
 
-    # Consultation agents (intent 185) pin `fable` in authored frontmatter, and
-    # Codex has no fable alias, so generate_codex_agents skips them: one toml per
-    # shipped agent EXCEPT those three.
     sources = Dir.glob(File.join(WORKTREE, "agents", "*.md"))
-      .reject { |p| AgentModels::CONSULTATION_AGENTS.include?(File.basename(p, ".md")) }
     tomls = Dir.glob(File.join(@codex_home, "agents", "*.toml"))
-    assert_equal sources.size, tomls.size, "one generated toml per shipped agent .md, excluding consultation agents"
+    assert_equal sources.size, tomls.size, "one generated toml per shipped agent .md"
 
     manifest = JSON.parse(File.read(File.join(@agent_dir, "plastic", "manifest.json")))
     manifest_keys = manifest["files"].keys
     tomls.each do |t|
       assert_includes manifest_keys, t, "the manifest must track the generated toml #{t}"
+    end
+  end
+
+  # Intent 340b, G7c, n2, row 2.12: the three node-kind agents (not consultation
+  # agents) each generate a Codex TOML, mechanically, through the real
+  # generate_codex_agents path against the real shipped agents/*.md tree.
+  def test_node_agents_generate_codex_toml
+    @core.install_for_agent("codex", false)
+
+    %w[plastic-node-work plastic-node-verify plastic-node-research].each do |basename|
+      dest = File.join(@codex_home, "agents", "#{basename}.toml")
+      assert File.file?(dest), "codex: #{basename}.toml must be generated into #{@codex_home}/agents"
+      assert_includes File.read(dest), "developer_instructions"
+    end
+  end
+
+
+  def test_codex_agents_use_expected_default_models
+    @core.install_for_agent("codex", false)
+
+    expected = {
+      "plastic-primary-advisor" => "gpt-6-astra",
+      "plastic-secondary-advisor" => "gpt-6-astra"
+    }
+    expected.each do |basename, model|
+      toml = File.read(File.join(@codex_home, "agents", "#{basename}.toml"))
+      assert_includes toml, %(model = "#{model}")
+      assert_includes toml, %(model_reasoning_effort = "#{basename == "plastic-secondary-advisor" ? "high" : "medium"}")
     end
   end
 
@@ -353,10 +382,10 @@ class CodexInstallTest < Minitest::Test
   end
 
   def test_codex_model_fields_by_shape
-    assert_equal %(model = "gpt-5.6-sol"\nmodel_reasoning_effort = "high"), @core.codex_model_fields("opus")
+    assert_equal %(model = "gpt-5.6-sol"\nmodel_reasoning_effort = "medium"), @core.codex_model_fields("opus")
     assert_equal %(model = "gpt-5.6-terra"\nmodel_reasoning_effort = "medium"), @core.codex_model_fields("sonnet")
-    assert_equal %(model = "gpt-5.6-luna"\nmodel_reasoning_effort = "low"), @core.codex_model_fields("haiku")
-    assert_equal 'model = "gpt-5.4-codex"', @core.codex_model_fields("gpt-5.4-codex")
+    assert_equal %(model = "gpt-5.6-luna"\nmodel_reasoning_effort = "medium"), @core.codex_model_fields("haiku")
+    assert_equal %(model = "gpt-5.4-codex"\nmodel_reasoning_effort = "medium"), @core.codex_model_fields("gpt-5.4-codex")
     assert_equal "", @core.codex_model_fields("")
     assert_equal "", @core.codex_model_fields(nil)
   end
@@ -372,28 +401,28 @@ class CodexInstallTest < Minitest::Test
   def test_codex_tier_alias_emits_model_then_effort
     %w[opus sonnet haiku].each do |a|
       out = @core.codex_model_fields(a)
-      assert_match(/\Amodel = "gpt-5\.6-[a-z]+"\nmodel_reasoning_effort = "(high|medium|low)"\z/, out)
+      assert_match(/\Amodel = "gpt-5\.6-[a-z]+"\nmodel_reasoning_effort = "medium"\z/, out)
     end
   end
 
-  def test_reasoning_roles_get_stronger_model_and_higher_effort_than_executors
-    reasoning = @core.codex_model_fields(AgentModels::TIER_DEFAULTS["plastic-planner"])  # opus
+  def test_reasoning_roles_get_stronger_models_at_the_same_medium_effort
+    reasoning = @core.codex_model_fields(AgentModels::TIER_DEFAULTS["plastic-enforcer"])  # opus
     executor  = @core.codex_model_fields(AgentModels::TIER_DEFAULTS["plastic-executor"]) # sonnet
     assert_includes reasoning, 'model = "gpt-5.6-sol"'
-    assert_includes reasoning, 'model_reasoning_effort = "high"'
+    assert_includes reasoning, 'model_reasoning_effort = "medium"'
     assert_includes executor, 'model = "gpt-5.6-terra"'
     assert_includes executor, 'model_reasoning_effort = "medium"'
     refute_equal reasoning, executor
   end
 
   def test_agents_models_codex_tier_override_selects_model_and_effort
-    # override plastic-executor to the opus tier via agents.models.codex.*; expect sol/high to win.
+    # override plastic-executor to the opus tier via agents.models.codex.*; expect Sol at medium.
     File.write(File.join(@home, "config.yml"),
                "agents:\n  models:\n    codex:\n      plastic-executor: opus\n")
     @core.install_for_agent("codex", false)
     toml = File.read(File.join(@codex_home, "agents", "plastic-executor.toml"))
     assert_includes toml, 'model = "gpt-5.6-sol"'
-    assert_includes toml, 'model_reasoning_effort = "high"'
+    assert_includes toml, 'model_reasoning_effort = "medium"'
   end
 
   def test_render_codex_agent_toml_maps_frontmatter_and_carries_the_body_verbatim
@@ -435,14 +464,14 @@ class CodexInstallTest < Minitest::Test
 
     opus_toml = File.read(File.join(@codex_home, "agents", "plastic-enforcer.toml"))
     assert_includes opus_toml, 'model = "gpt-5.6-sol"'
-    assert_includes opus_toml, 'model_reasoning_effort = "high"'
+    assert_includes opus_toml, 'model_reasoning_effort = "medium"'
 
     sonnet_toml = File.read(File.join(@codex_home, "agents", "plastic-executor.toml"))
     assert_includes sonnet_toml, 'model = "gpt-5.6-terra"'
     assert_includes sonnet_toml, 'model_reasoning_effort = "medium"'
   end
 
-  def test_haiku_alias_maps_to_low_effort_via_synthetic_render
+  def test_haiku_alias_maps_to_medium_effort_via_synthetic_render
     dir = Dir.mktmpdir("codex-agent-src")
     begin
       src = File.join(dir, "plastic-haiku-sample.md")
@@ -457,7 +486,7 @@ class CodexInstallTest < Minitest::Test
       MD
 
       toml = @core.render_codex_agent_toml(src, nil)
-      assert_includes toml, 'model_reasoning_effort = "low"'
+      assert_includes toml, 'model_reasoning_effort = "medium"'
       assert_includes toml, 'model = "gpt-5.6-luna"'
     ensure
       FileUtils.rm_rf(dir)
@@ -467,7 +496,7 @@ class CodexInstallTest < Minitest::Test
   # Codex-scoped config (intent 185 final design): agents.models is
   # harness-scoped, so a Codex override must be written under
   # agents.models.codex.* to reach the Codex TOML render.
-  def test_override_with_a_codex_model_id_wins_as_a_literal_model_and_drops_effort
+  def test_override_with_a_codex_model_id_wins_and_keeps_medium_effort
     File.write(File.join(@home, "config.yml"),
                "agents:\n  models:\n    codex:\n      plastic-executor: gpt-5.4-codex\n")
 
@@ -475,7 +504,7 @@ class CodexInstallTest < Minitest::Test
 
     toml = File.read(File.join(@codex_home, "agents", "plastic-executor.toml"))
     assert_includes toml, 'model = "gpt-5.4-codex"'
-    refute_match(/^model_reasoning_effort = /, toml)
+    assert_includes toml, 'model_reasoning_effort = "medium"'
   end
 
   def test_override_with_a_tier_word_maps_to_model_and_effort
@@ -485,7 +514,7 @@ class CodexInstallTest < Minitest::Test
     @core.install_for_agent("codex", false)
 
     toml = File.read(File.join(@codex_home, "agents", "plastic-executor.toml"))
-    assert_includes toml, 'model_reasoning_effort = "low"'
+    assert_includes toml, 'model_reasoning_effort = "medium"'
     assert_includes toml, 'model = "gpt-5.6-luna"'
   end
 
@@ -611,7 +640,7 @@ class CodexInstallTest < Minitest::Test
 
     checks = doctor_for(@codex_home).check_agent_registration("codex")
 
-    assert checks.any? { |c| c[:name] == "skills_exist" }, "generic skills check must still run for codex"
+    assert checks.any? { |c| c[:name] == "stray_skills" }, "generic skills check must still run for codex"
     assert checks.any? { |c| c[:name] == "codex_agents_toml" }, "the codex TOML agents check must run"
     refute checks.any? { |c| c[:name] == "agents_exist" },
       "the flat .md agents check must no longer apply to codex"
@@ -845,13 +874,11 @@ class CodexInstallTest < Minitest::Test
 
     data = JSON.parse(File.read(hooks_json_path))
     commands = all_codex_hook_commands(data)
-    # Intent 251: the five per-gate commands collapsed into one edit-gates
-    # dispatcher command.
-    assert commands.any? { |c| c.include?("codex-hook") && c.include?("edit-gates") }
-    assert commands.any? { |c| c.include?("codex-hook") && c.include?("gate-check") }
+    # Intent 302: the edit-path gates are gone; record is the one apply_patch hook.
+    assert commands.any? { |c| c.include?("codex-hook") && c.include?("record") }
+    refute commands.any? { |c| c.include?("edit-gates") || c.include?("bash-gate") }
 
-    pre_group = data["hooks"]["PreToolUse"].find { |g| g["matcher"] == "apply_patch" }
-    refute_nil pre_group, "PreToolUse must register under the apply_patch matcher"
+    refute data["hooks"].key?("PreToolUse"), "no PreToolUse group may be registered (intent 302)"
     post_group = data["hooks"]["PostToolUse"].find { |g| g["matcher"] == "apply_patch" }
     refute_nil post_group, "PostToolUse must register under the apply_patch matcher"
   end
@@ -861,10 +888,13 @@ class CodexInstallTest < Minitest::Test
 
     data = JSON.parse(File.read(hooks_json_path))
     commands = all_codex_hook_commands(data)
-    %w[session-start check-update continue future-intent-check auto-arm power-tools savepoint].each do |name|
+    %w[session-start check-update capture savepoint close].each do |name|
       assert commands.any? { |c| c.include?("codex-hook") && c.include?(name) },
         "expected a codex-hook command for '#{name}', got: #{commands.inspect}"
     end
+    refute commands.any? { |c| c.include?("power-tools") }, "power-tools is retired (intent 309)"
+    end_group = data["hooks"]["SessionEnd"]&.find { |g| g["matcher"] == "" }
+    refute_nil end_group, "SessionEnd must register under an empty matcher (intent 309)"
 
     session_group = data["hooks"]["SessionStart"]&.find { |g| g["matcher"] == "" }
     refute_nil session_group, "SessionStart must register under an empty matcher"
@@ -892,8 +922,10 @@ class CodexInstallTest < Minitest::Test
     refute_nil user_group, "the pre-existing user hook group must survive the merge"
     assert_equal "/usr/local/bin/my-hook", user_group["hooks"].first["command"]
 
-    plastic_group = data["hooks"]["PreToolUse"].find { |g| g["matcher"] == "apply_patch" }
-    refute_nil plastic_group, "Plastic's apply_patch group must be added alongside the user's"
+    refute data["hooks"]["PreToolUse"].any? { |g| g["matcher"] == "apply_patch" },
+           "no Plastic apply_patch PreToolUse group may be added (intent 302)"
+    plastic_group = data["hooks"]["PostToolUse"].find { |g| g["matcher"] == "apply_patch" }
+    refute_nil plastic_group, "Plastic's apply_patch record group must be added alongside the user's"
   end
 
   def test_install_codex_is_idempotent_on_rerun
@@ -904,8 +936,8 @@ class CodexInstallTest < Minitest::Test
     second = JSON.parse(File.read(hooks_json_path))
 
     assert_equal first, second, "re-running install must not duplicate hook groups"
-    pre_groups = second["hooks"]["PreToolUse"].select { |g| g["matcher"] == "apply_patch" }
-    assert_equal 1, pre_groups.size, "exactly one apply_patch PreToolUse group after re-run"
+    post_groups = second["hooks"]["PostToolUse"].select { |g| g["matcher"] == "apply_patch" }
+    assert_equal 1, post_groups.size, "exactly one apply_patch PostToolUse group after re-run"
   end
 
   def test_install_codex_does_not_manifest_track_hooks_json
@@ -1013,12 +1045,12 @@ class CodexInstallTest < Minitest::Test
   def test_doctor_codex_hooks_registered_fails_when_drifted
     @core.install_for_agent("codex", false)
     data = JSON.parse(File.read(hooks_json_path))
-    # Simulate drift: drop the edit-gates command from the live file. Intent
-    # 251 collapsed the apply_patch PreToolUse matcher to this one command, so
-    # dropping it is the only way left to simulate a drifted apply_patch group.
-    data["hooks"]["PreToolUse"].each do |g|
+    # Simulate drift: drop the record command from the live file. Since intent
+    # 302 the apply_patch matcher carries only this one PostToolUse command, so
+    # dropping it is the way to simulate a drifted apply_patch group.
+    data["hooks"]["PostToolUse"].each do |g|
       next unless g["matcher"] == "apply_patch"
-      g["hooks"].reject! { |h| h["command"].include?("edit-gates") }
+      g["hooks"].reject! { |h| h["command"].include?("record") }
     end
     File.write(hooks_json_path, JSON.pretty_generate(data))
 
@@ -1027,7 +1059,7 @@ class CodexInstallTest < Minitest::Test
 
     refute_nil hooks_check
     assert_equal "fail", hooks_check[:status]
-    assert(hooks_check[:details].any? { |d| d.include?("edit-gates") })
+    assert(hooks_check[:details].any? { |d| d.include?("record") })
   end
 
   # --- Intent 200: doctor codex_hooks_implemented_check (registry vs. dispatcher) ---
@@ -1047,21 +1079,19 @@ class CodexInstallTest < Minitest::Test
     assert_equal "pass", implemented_check[:status]
   end
 
-  # Intent 251: the case statement's arms collapsed from five per-gate names
-  # to exactly two, edit-gates and gate-check (spec D8, the dispatcher-shape
-  # constraint doctor's extractor is read against). edit-gates is no longer
-  # the LAST arm before the trailing else (gate-check is), so this fixture
-  # cuts from the edit-gates arm's start to the NEXT when clause's start,
-  # removing only that one arm and leaving gate-check and else intact.
-  def test_doctor_codex_hooks_implemented_fails_when_a_registered_gate_has_no_dispatcher_branch
+  # Intent 302: the case statement carries exactly one arm, record (the edit-gates
+  # arm left with the gates), followed by the trailing else. This fixture cuts the
+  # record arm up to the else, so the registry names a hook the dispatcher has no
+  # branch for.
+  def test_doctor_codex_hooks_implemented_fails_when_a_registered_hook_has_no_dispatcher_branch
     @core.distribute(:install) # copies the REAL scripts/codex-hook into plastic_home
     @core.install_for_agent("codex", false)
     content = File.read(codex_hook_path)
-    branch_start = content.index('when "edit-gates"')
-    refute_nil branch_start, "fixture assumption: scripts/codex-hook must still carry an edit-gates branch"
-    next_when_start = content.index('when "gate-check"', branch_start)
-    refute_nil next_when_start, "fixture assumption: scripts/codex-hook must still carry a gate-check branch"
-    File.write(codex_hook_path, content[0...branch_start] + content[next_when_start..])
+    branch_start = content.index('when "record"')
+    refute_nil branch_start, "fixture assumption: scripts/codex-hook must still carry a record branch"
+    else_start = content.index(/^else\b/, branch_start)
+    refute_nil else_start, "fixture assumption: scripts/codex-hook must still carry a trailing else"
+    File.write(codex_hook_path, content[0...branch_start] + content[else_start..])
 
     checks = doctor_for(@codex_home).check_agent_registration("codex")
     implemented_check = checks.find { |c| c[:name] == "codex_hooks_implemented" }
@@ -1069,8 +1099,8 @@ class CodexInstallTest < Minitest::Test
     refute_nil implemented_check
     assert_equal "fail", implemented_check[:status]
     assert(implemented_check[:details].any? { |d|
-      d.include?("edit-gates") && d.include?("registered") && d.include?("allows")
-    }, "expected an edit-gates detail naming the direction and the fail-open runtime effect, got: #{implemented_check[:details].inspect}")
+      d.include?("record") && d.include?("registered") && d.include?("allows")
+    }, "expected a record detail naming the direction and the fail-open runtime effect, got: #{implemented_check[:details].inspect}")
   end
 
   def test_doctor_codex_hooks_implemented_fails_when_the_dispatcher_has_a_branch_nobody_registers
@@ -1078,10 +1108,10 @@ class CodexInstallTest < Minitest::Test
     @core.install_for_agent("codex", false)
     content = File.read(codex_hook_path)
     updated = content.sub(
-      "SHELL_HOOKS = %w[bash-gate].freeze",
-      "SHELL_HOOKS = %w[bash-gate phantom-gate].freeze"
+      "STATE_HOOKS = %w[session-start check-update capture savepoint close].freeze",
+      "STATE_HOOKS = %w[session-start check-update capture savepoint close phantom-gate].freeze"
     )
-    refute_equal content, updated, "fixture assumption: the SHELL_HOOKS literal must still match this exact text"
+    refute_equal content, updated, "fixture assumption: the STATE_HOOKS literal must still match this exact text"
     File.write(codex_hook_path, updated)
 
     checks = doctor_for(@codex_home).check_agent_registration("codex")
@@ -1093,12 +1123,32 @@ class CodexInstallTest < Minitest::Test
       "expected a phantom-gate detail naming it as dead/unreachable code, got: #{implemented_check[:details].inspect}")
   end
 
+  # Intent 309: close is expected in the dispatcher because CODEX_SESSION_END_HOOKS
+  # registers it; dropping it from STATE_HOOKS is a missing branch doctor must name.
+  def test_doctor_codex_hooks_implemented_fails_when_close_is_missing_from_the_dispatcher
+    @core.distribute(:install)
+    @core.install_for_agent("codex", false)
+    content = File.read(codex_hook_path)
+    updated = content.sub(
+      "STATE_HOOKS = %w[session-start check-update capture savepoint close].freeze",
+      "STATE_HOOKS = %w[session-start check-update capture savepoint].freeze"
+    )
+    refute_equal content, updated, "fixture assumption: the STATE_HOOKS literal must still match this exact text"
+    File.write(codex_hook_path, updated)
+
+    checks = doctor_for(@codex_home).check_agent_registration("codex")
+    implemented_check = checks.find { |c| c[:name] == "codex_hooks_implemented" }
+    assert_equal "fail", implemented_check[:status]
+    assert(implemented_check[:details].any? { |d| d.include?("close") && d.include?("no branch") },
+      "expected a detail naming close as a missing branch, got: #{implemented_check[:details].inspect}")
+  end
+
   def test_doctor_codex_hooks_implemented_fails_loudly_when_the_dispatcher_cannot_be_read
     @core.distribute(:install) # copies the REAL scripts/codex-hook into plastic_home
     @core.install_for_agent("codex", false)
     reshaped = <<~RUBY
       #!/usr/bin/env ruby
-      # Reshaped fixture: no STATE_HOOKS/SHELL_HOOKS constants, no `case gate`
+      # Reshaped fixture: no STATE_HOOKS constant, no `case gate`
       # statement, so the extractor must find zero names and doctor must fail
       # loudly rather than silently pass.
       GATES = {
@@ -1218,8 +1268,8 @@ class CodexInstallTest < Minitest::Test
 
   # --- Intent 249: the INSTALLED dispatcher must reach an INSTALLED launcher ---
   #
-  # scripts/codex-hook:66 resolves a live-state launcher at __dir__/../hooks/<gate>, which is
-  # ~/.plastic/hooks/<gate> once installed. Before intent 249 nothing created that directory:
+  # scripts/codex-hook:66 resolves a live-state launcher at __dir__/../hooks/<hook_name>, which is
+  # ~/.plastic/hooks/<hook_name> once installed. Before intent 249 nothing created that directory:
   # Open3.capture3 raised Errno::ENOENT, the rescue on line 72 swallowed it, and all seven
   # STATE_HOOKS silently exited 0 on every real Codex install. It went unseen because every
   # other test drives the dispatcher from the PACKAGE ROOT (test/codex_hooks_test.rb:24 pins
@@ -1266,8 +1316,9 @@ class CodexInstallTest < Minitest::Test
       "fixture assumption: scripts/codex-hook must still declare STATE_HOOKS as a %w[...] literal"
 
     names = literal.split
-    assert_operator names.size, :>=, 7,
-      "expected at least the seven live-state hooks, got: #{names.inspect}"
+    assert_operator names.size, :>=, 5,
+      "expected at least the five live-state hooks (intent 298 merged continue, " \
+      "future-intent-check, and auto-arm into capture), got: #{names.inspect}"
 
     names.each do |name|
       path = File.join(@home, "hooks", name)
@@ -1346,7 +1397,11 @@ class CodexPresenceProbeTest < Minitest::Test
 
     assert result[:success], "install must succeed once codex's OWN home is present: #{result[:reason]}"
     assert Dir.exist?(agent_dir), "install must CREATE ~/.agents, not demand it exist"
-    refute_empty Dir.glob(File.join(agent_dir, "skills", "plastic-*")), "skills must land under the newly-created dir"
+    # Intent 372 (family 5) retired the last four skills; zero skills ship, so the earlier
+    # `refute_empty ... skills must land` assertion is gone. The manifest is what lands
+    # under the newly-created dir now.
+    assert File.exist?(File.join(agent_dir, "plastic", "manifest.json")),
+      "the manifest must land under the newly-created dir"
     refute_empty Dir.glob(File.join(codex_home, "agents", "plastic-*.toml")), "agent TOMLs must be generated"
     assert File.exist?(File.join(codex_home, "hooks.json"))
     assert File.exist?(File.join(codex_home, "AGENTS.md"))

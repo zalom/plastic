@@ -11,7 +11,7 @@ require "rbconfig"
 require_relative "../scripts/lib/roadmap_queue"
 
 # Tests for the deterministic roadmap reader added in intent 148: the one implementation the
-# auto loop and plastic-roadmap-continuing both call. Hermetic (tmpdir, injected clock),
+# auto loop and plastic-intent-continuing both call. Hermetic (tmpdir, injected clock),
 # mirroring test/roadmap_savepoint_test.rb's structure. No eval, no ENV or global-config seam.
 class RoadmapQueueTest < Minitest::Test
   CLI = File.expand_path("../scripts/roadmap-next", __dir__)

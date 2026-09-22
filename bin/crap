@@ -1,0 +1,4 @@
+#!/usr/bin/env ruby
+require_relative "../tools/crap"
+
+exit Crap::CLI.new(ARGV, root: Dir.pwd).run

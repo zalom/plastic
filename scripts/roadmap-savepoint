@@ -18,6 +18,7 @@
 # rebuilds an empty ledger.
 
 require_relative "lib/roadmap_savepoint"
+require_relative "lib/guarded_append"
 
 def opt(args, name)
   (i = args.index(name)) && args[i + 1]
@@ -47,6 +48,12 @@ when "append"
   rescue ArgumentError => e
     warn "append: #{e.message}"
     exit 2
+  rescue GuardedAppend::Unavailable => e
+    # Intent 335 (spec D14): the write guard could not be taken; nothing was written. Exit 4
+    # rather than let a backtrace reach the six skill recipes that drive this CLI - it rescues
+    # ArgumentError alone today and would otherwise print one straight to the terminal.
+    warn "append: #{e.message}"
+    exit 4
   end
 
 when "rebuild"

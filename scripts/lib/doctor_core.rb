@@ -8,13 +8,15 @@
 # the store, conventions, intent and CLI halves, so Doctor stays one class with
 # one public surface and one definition of which checks are core (intent 36a).
 
+require_relative "store_layout"
 require "json"
 require "yaml"
 require "time"
 require "digest"
-require "rubygems"
 
+require_relative "version_number"
 require_relative "hook_registry"
+require_relative "compact_instructions"
 
 class Doctor
   DEFAULT_PLASTIC_HOME = File.join(Dir.home, ".plastic")
@@ -26,7 +28,16 @@ class Doctor
     "hermes" => { name: "Hermes",      dir: File.join(Dir.home, ".hermes") },
   }.freeze
 
-  CLAUDE_HOOK_EVENTS = %w[SessionStart PreCompact PostToolUse UserPromptSubmit].freeze
+  # The Claude events hooks_registered expects in settings.json: the eight-event map of
+  # cut-inventory 3b (intent 309 added SessionEnd, registered for close since intent 301;
+  # intent 316a added MessageDisplay, registered for message-display, Claude only; intent
+  # 355 added PreToolUse, registered for call-budget, Claude only; intent 340b added Stop,
+  # registered for stop, Claude only). Stop's registration is static (D5/D7) even though
+  # its runtime arm defaults off (D9, runner.stop_hook), so an install missing it is
+  # exactly as broken as one missing PreCompact, and this list keeps hooks_registered and
+  # hooks_match_registry agreeing on that (row 4.32).
+  CLAUDE_HOOK_EVENTS = %w[SessionStart PreToolUse PreCompact PostToolUse UserPromptSubmit SessionEnd
+                          MessageDisplay Stop].freeze
 
   # Launchers the installer places in the agent's hooks dir that are NOT hooks
   # (intent 204): plastic-statusline is the settings["statusLine"] command, wired
@@ -40,9 +51,8 @@ class Doctor
     folgezettel-id
     read-config
     hook-session-start
-    hook-continue
-    hook-future-intent-check
-    hook-gate-check
+    hook-capture
+    hook-record
     validate-intent
     doctor.rb
   ].freeze
@@ -88,8 +98,19 @@ class Doctor
 
     JSON.parse(File.read(path))
   rescue JSON::ParserError
-    content = File.read(path).gsub(%r{//[^\n]*}, "").gsub(/,(\s*[}\]])/, '\1')
-    JSON.parse(content)
+    # The comment/trailing-comma-stripped retry below can itself raise
+    # JSON::ParserError on genuinely malformed content (a truncated file, or
+    # plain garbage). A nested begin/rescue is required here because a
+    # method-level `rescue` clause never catches an exception raised from
+    # INSIDE a sibling rescue clause's own body (only from the main body).
+    # Without this nesting a malformed settings.json crashes doctor instead
+    # of reporting a clean fail (intent 331e, F5).
+    begin
+      content = File.read(path).gsub(%r{//[^\n]*}, "").gsub(/,(\s*[}\]])/, '\1')
+      JSON.parse(content)
+    rescue
+      nil
+    end
   rescue
     nil
   end
@@ -281,7 +302,7 @@ class Doctor
       return checks
     end
 
-    index_path = File.join(plastic_home, "INDEX.md")
+    index_path = File.join(Plastic::StoreLayout.global_root(plastic_home), "INDEX.md")
     if File.exist?(index_path)
       checks << check(
         category: "global_store", name: "global_index_reachable", status: "pass",
@@ -329,7 +350,7 @@ class Doctor
     hooks_dir = File.join(agent_dir, "hooks")
 
     # Derived from HookRegistry.events (intent 204), not a hand-kept list, so
-    # every registered hook (all 15, including the enforcement gates) is checked.
+    # every registered hook is checked.
     expected_launchers = HookRegistry.claude_launcher_names
 
     # hooks_exist
@@ -392,15 +413,9 @@ class Doctor
         fix_hint: "Re-run the Plastic installer: npx @zalom/plastic@latest --claude (prunes " \
                   "stale launchers). The plastic- prefix is reserved for Plastic's own hooks: " \
                   "if one of these is yours, rename it (for example to ~/.claude/hooks/" \
-                  "writing-style) and re-register it in settings.json before re-running."
+                  "plain-writing) and re-register it in settings.json before re-running."
       )
     end
-
-    # claude_hooks_implemented (intent 244): the edit-path gates now live as
-    # branches inside one dispatcher (scripts/hook-edit-gates), which is
-    # exactly the shape that let links-gate ship registered and dead on
-    # Codex (intent 200's failure class, one level up).
-    checks << claude_hooks_implemented_check
 
     # hooks_registered — settings.json has Plastic hooks for required events
     settings_path = File.join(agent_dir, "settings.json")
@@ -456,7 +471,7 @@ class Doctor
 
       # hooks_match_registry (intent 108, D7): the live settings must carry
       # EXACTLY the registrations HookRegistry defines; any drift (a missing
-      # gate, a stray plastic hook, a stale matcher) is how bash-gate shipped
+      # hook, a stray plastic hook, a stale matcher) is how a hook shipped
       # dead once already.
       expected = HookRegistry.claude_settings_hooks(hook_dir: hooks_dir)
       diffs = []
@@ -503,9 +518,6 @@ class Doctor
       checks << hooks_entries_owned_check(settings)
     end
 
-    # skills_exist — flat, hyphen-namespaced personal skills (plastic-<name>/)
-    checks << flat_skills_check(agent_dir, "--claude")
-
     # stray_skills — installed plastic-* skill dir with no manifest entry (a leftover,
     # e.g. an old-name copy after a rename; intent 158a AC15)
     checks << stray_skills_check(agent_dir, "--claude", File.join(agent_dir, "plastic", "manifest.json"))
@@ -513,7 +525,54 @@ class Doctor
     # agents_exist — auto-mode role files (plastic-*.md) synced into <dir>/agents
     checks << flat_agents_check(agent_dir, "--claude")
 
+    # compact-instructions block in CLAUDE.md (intent 312)
+    checks << claude_compact_instructions_check(agent_dir)
+
     checks
+  end
+
+  # Claude CLAUDE.md marker literals. Keep in sync with
+  # InstallerCore::CLAUDE_SECTION_BEGIN_PREFIX / CLAUDE_SECTION_END (doctor does not
+  # require installer_core, so the literals are duplicated, exactly as for Codex). The
+  # BODY and its hash are NOT duplicated: they come from the shared CompactInstructions.
+  CLAUDE_COMPACT_BEGIN_PREFIX = "<!-- BEGIN PLASTIC COMPACT"
+  CLAUDE_COMPACT_END = "<!-- END PLASTIC COMPACT -->"
+
+  # Present, well formed, and current. The Codex AGENTS.md check stops at well formed;
+  # this one also compares the hash in the BEGIN marker against the shipped body, so a
+  # block an older version left behind is reported rather than trusted.
+  def claude_compact_instructions_check(agent_dir)
+    claude_md = File.join(agent_dir, "CLAUDE.md")
+    name = "claude_compact_instructions"
+    hint = "Re-run the Plastic installer with --claude"
+
+    unless File.exist?(claude_md)
+      return check(category: "agent_registration", name: name, status: "fail",
+                   message: "CLAUDE.md not found at #{tilde(claude_md)}, so the compaction instructions are not installed",
+                   fixable: true, fix_hint: hint)
+    end
+
+    content = File.read(claude_md)
+    b = content.index(CLAUDE_COMPACT_BEGIN_PREFIX)
+    e = content.index(CLAUDE_COMPACT_END)
+    well_formed = b && e && e > b && content[b...e].include?("-->")
+
+    unless well_formed
+      return check(category: "agent_registration", name: name, status: "fail",
+                   message: "CLAUDE.md is missing the compact-instructions block or its section is malformed",
+                   fixable: true, fix_hint: hint)
+    end
+
+    installed_hash = content[b..][/hash:(\w+)/, 1]
+    if installed_hash != CompactInstructions.body_hash
+      return check(category: "agent_registration", name: name, status: "fail",
+                   message: "the compact-instructions block in CLAUDE.md is stale " \
+                            "(hash:#{installed_hash}, current is hash:#{CompactInstructions.body_hash})",
+                   fixable: true, fix_hint: hint)
+    end
+
+    check(category: "agent_registration", name: name, status: "pass",
+          message: "CLAUDE.md carries the current compact-instructions block")
   end
 
   # Unfiltered classification (intent 276, spec Approach table): mode (a)
@@ -567,89 +626,6 @@ class Doctor
       details: unowned + missing_launcher,
       fixable: true, fix_hint: hints.join(" ")
     )
-  end
-
-  def claude_dispatcher_gate_names(source)
-    case_start = source.index(/^\s*case gate\b/)
-    return nil unless case_start
-
-    case_body = source[case_start..-1]
-    end_idx = case_body.index(/^\s*end\b/)
-    scanned = end_idx ? case_body[0...end_idx] : case_body
-    names = scanned.scan(/^\s*when\s+"([^"]+)"/).flatten.uniq
-    names.empty? ? nil : names
-  end
-
-  def claude_hooks_implemented_check
-    dispatcher_path = File.join(plastic_home, "scripts", "hook-edit-gates")
-
-    unless File.exist?(dispatcher_path)
-      return check(
-        category: "agent_registration", name: "claude_hooks_implemented", status: "fail",
-        message: "scripts/hook-edit-gates not found at #{tilde(dispatcher_path)}; cannot verify " \
-                 "the edit-path gate registry and dispatcher agree",
-        fixable: true, fix_hint: "Re-run the Plastic installer"
-      )
-    end
-
-    dispatcher_names = claude_dispatcher_gate_names(File.read(dispatcher_path))
-
-    if dispatcher_names.nil?
-      return check(
-        category: "agent_registration", name: "claude_hooks_implemented", status: "fail",
-        message: "Could not read any gate names out of #{tilde(dispatcher_path)}: the `case gate` " \
-                 "statement no longer matches the shape this check expects, so the registry was " \
-                 "never actually checked against the real dispatcher. Update " \
-                 "claude_dispatcher_gate_names in doctor.rb to the file's new shape.",
-        fixable: false
-      )
-    end
-
-    registry_names = HookRegistry::GATE_TOOLS.keys
-    missing_branch = registry_names - dispatcher_names
-    dead_branch = dispatcher_names - registry_names
-
-    if missing_branch.empty? && dead_branch.empty?
-      return check(
-        category: "agent_registration", name: "claude_hooks_implemented", status: "pass",
-        message: "Every registered edit-path gate has a scripts/hook-edit-gates branch, and every " \
-                 "dispatcher branch is registered"
-      )
-    end
-
-    details = missing_branch.map do |name|
-      "#{name} is in HookRegistry::GATE_TOOLS but scripts/hook-edit-gates has no branch for it, " \
-        "so the dispatcher skips it on every edit and it never blocks anything"
-    end
-    details += dead_branch.map do |name|
-      "#{name} has a branch in scripts/hook-edit-gates but is not in HookRegistry::GATE_TOOLS, so " \
-        "the dispatcher never reaches it and it is dead code"
-    end
-
-    check(
-      category: "agent_registration", name: "claude_hooks_implemented", status: "fail",
-      message: "The edit-path gate registry and scripts/hook-edit-gates disagree on " \
-               "#{details.size} gate(s)",
-      details: details, fixable: false
-    )
-  end
-
-  def flat_skills_check(agent_dir, installer_flag)
-    skills_root = File.join(agent_dir, "skills")
-    found = Dir.glob(File.join(skills_root, "plastic-*", "SKILL.md"))
-
-    if !found.empty?
-      check(
-        category: "agent_registration", name: "skills_exist", status: "pass",
-        message: "#{found.size} plastic-* skill(s) installed in #{tilde(skills_root)}"
-      )
-    else
-      check(
-        category: "agent_registration", name: "skills_exist", status: "fail",
-        message: "No plastic-* skills found in #{tilde(skills_root)}",
-        fixable: true, fix_hint: "Re-run the Plastic installer: npx @zalom/plastic@latest #{installer_flag}"
-      )
-    end
   end
 
   # Manifest-diff stray-skill check (intent 158a), extended (intent 276) to
@@ -710,9 +686,6 @@ class Doctor
 
   def check_flat_skills_and_stray(agent_key, agent_dir)
     checks = []
-
-    # For codex/hermes: just check skills exist (no settings.json hooks)
-    checks << flat_skills_check(agent_dir, "--#{agent_key}")
 
     # stray_skills — installed plastic-* skill dir with no manifest entry (a leftover,
     # e.g. an old-name copy after a rename; intent 158a AC15)
@@ -907,22 +880,21 @@ class Doctor
   # by hand), or a dispatcher branch nobody registers (bash-gate's shape, intent
   # 203, in the opposite direction). This check closes both directions at once.
 
-  # The Codex gate names HookRegistry actually registers: the six apply_patch-gated
-  # names (CODEX_PRE_HOOKS + CODEX_POST_HOOKS), the two Bash-matcher shell gates
-  # (CODEX_BASH_HOOKS), and the live-state hook names Codex inherits whole from
-  # `events` (CODEX_LIVE_STATE_EVENTS). No parsing needed: these are HookRegistry's
-  # own Ruby constants.
+  # The Codex hook names HookRegistry actually registers: the apply_patch record
+  # hook (CODEX_POST_HOOKS) and the live-state hook names Codex inherits whole from
+  # `events` (CODEX_LIVE_STATE_EVENTS), plus the SessionEnd close hook (intent 309,
+  # CODEX_SESSION_END_HOOKS). The PreToolUse gate names left in 2.0 (intent 302). No
+  # parsing needed: these are HookRegistry's own Ruby constants.
   def codex_registry_gate_names
     live_state = HookRegistry::CODEX_LIVE_STATE_EVENTS.flat_map do |event|
       HookRegistry.events[event].flat_map { |g| g["hooks"].map { |h| h["name"] } }
     end
-    (HookRegistry::CODEX_PRE_HOOKS + HookRegistry::CODEX_POST_HOOKS +
-     HookRegistry::CODEX_BASH_HOOKS + live_state).uniq
+    (HookRegistry::CODEX_POST_HOOKS + live_state + HookRegistry::CODEX_SESSION_END_HOOKS).uniq
   end
 
   def codex_dispatcher_gate_names(source)
     names = []
-    %w[STATE_HOOKS SHELL_HOOKS].each do |const|
+    %w[STATE_HOOKS].each do |const|
       m = source.match(/^#{const}\s*=\s*%w\[([^\]]*)\]/)
       names.concat(m[1].split(/\s+/)) if m
     end
@@ -960,7 +932,7 @@ class Doctor
       return check(
         category: "agent_registration", name: "codex_hooks_implemented", status: "fail",
         message: "Could not read any gate names out of #{tilde(dispatcher_path)}: the " \
-                 "STATE_HOOKS/SHELL_HOOKS constants and the `case gate` statement no longer " \
+                 "STATE_HOOKS constant and the `case gate` statement no longer " \
                  "match the shape this check expects, so the registry could not be checked " \
                  "against the real dispatcher. This is exactly the silent-pass failure this " \
                  "check exists to prevent; update codex_dispatcher_gate_names in doctor.rb " \
@@ -1005,8 +977,8 @@ class Doctor
     toml = File.read(config_toml) rescue ""
     warns = []
     # guide Part 3: `codex_hooks` is a deprecated alias for `[features] hooks`; catch both.
-    warns << "hooks are disabled ([features] hooks = false); Plastic gates will not fire" if toml.match?(/^\s*(?:codex_)?hooks\s*=\s*false/)
-    warns << "sandbox_mode = \"read-only\"; apply_patch writes (and gates) cannot run" if toml.match?(/^\s*sandbox_mode\s*=\s*["']read-only["']/)
+    warns << "hooks are disabled ([features] hooks = false); Plastic hooks will not fire" if toml.match?(/^\s*(?:codex_)?hooks\s*=\s*false/)
+    warns << "sandbox_mode = \"read-only\"; apply_patch writes (and the record hook) cannot run" if toml.match?(/^\s*sandbox_mode\s*=\s*["']read-only["']/)
     return nil if warns.empty?
 
     check(
@@ -1066,9 +1038,7 @@ class Doctor
   end
 
   def safe_version(str)
-    Gem::Version.new(str.to_s)
-  rescue ArgumentError
-    nil
+    VersionNumber.parse(str)
   end
 
   def check_core_files(agent_key, include_drift: true)
@@ -1172,7 +1142,7 @@ class Doctor
               "#{tilde(agent_version_path)}: #{agent_version}",
             ],
             fixable: true,
-            fix_hint: "Re-sync the stale harness: npx @zalom/plastic@latest install --reinstall <flag>, or plastic-rollback to a prior version"
+            fix_hint: "Re-sync the stale harness: npx @zalom/plastic@latest install --reinstall <flag>, or `plastic rollback` to a prior version"
           )
         end
       else
@@ -1180,7 +1150,7 @@ class Doctor
           category: "core_files", name: "version_match", status: "warn",
           message: "Agent-side VERSION file not found at #{tilde(agent_version_path)}",
           fixable: true,
-          fix_hint: "Re-sync the stale harness: npx @zalom/plastic@latest install --reinstall <flag>, or plastic-rollback to a prior version"
+          fix_hint: "Re-sync the stale harness: npx @zalom/plastic@latest install --reinstall <flag>, or `plastic rollback` to a prior version"
         )
       end
     end
@@ -1262,13 +1232,97 @@ class Doctor
   # agent_model_drift, no store-content scanning).
   def run_core_checks(agent_key)
     all_checks = []
-    all_checks += check_agent_registration(agent_key)
+    all_checks += check_agent_registration(agent_key).reject { |c| c[:name] == "codex_hooks_trust" }
     all_checks += check_core_files(agent_key, include_drift: false)
     all_checks += check_manifest_sync(agent_key)
     all_checks += check_registered_project_paths
     all_checks += check_global_store_available
+    all_checks += check_display_registration(agent_key)
 
     summarize(all_checks, agent_key, binary: true)
+  end
+
+  # The single `hooks/<name>` launcher basename for the MessageDisplay event,
+  # derived from HookRegistry rather than hand-kept (intent 331e), so a
+  # future rename of the hook stays in one place. Shared by
+  # check_display_registration (below, boot path) and scripts/doctor.rb's
+  # check_display_paints (full run), which resolves the SAME name under the
+  # agent_dir it was given.
+  def display_hook_launcher_name
+    group = HookRegistry.events["MessageDisplay"].first
+    "plastic-#{group['hooks'].first['name']}"
+  end
+
+  DISPLAY_HOOK_FIX_HINT = "Re-run the Plastic installer to repair the hook registration: " \
+                          "npx @zalom/plastic@<channel> install --reinstall --claude " \
+                          "(plastic install --reinstall)".freeze
+
+  # display_hook_registered (intent 331e, D1, category "display"): the Claude
+  # settings carry the plastic-message-display command, on-disk, executable.
+  # Boot-path safe: resolves everything from the injected `agents` hash and
+  # `plastic_home`, never Dir.home or a real ~/.claude (E18). This is the same
+  # discipline check_claude_registration already follows.
+  #
+  # D3: a harness Doctor knows carries no display hook (Codex, Hermes) is a
+  # pass, not a fail, worded "plain by contract" like the paint check's own
+  # skip (scripts/doctor.rb's check_display_paints).
+  def check_display_registration(agent_key)
+    config = agents[agent_key]
+    unless agent_key == "claude"
+      return [check(
+        category: "display", name: "display_hook_registered", status: "pass",
+        message: "#{config[:name]} is plain by contract; no MessageDisplay hook to register"
+      )]
+    end
+
+    agent_dir = config[:dir]
+    settings_path = File.join(agent_dir, "settings.json")
+    settings = read_json_safe(settings_path)
+
+    if settings.nil?
+      return [check(
+        category: "display", name: "display_hook_registered", status: "fail",
+        message: "Cannot read #{tilde(settings_path)}: file missing or invalid",
+        fixable: true, fix_hint: DISPLAY_HOOK_FIX_HINT
+      )]
+    end
+
+    hooks = settings["hooks"].is_a?(Hash) ? settings["hooks"] : {}
+    commands = event_commands(hooks["MessageDisplay"])
+    launcher_name = display_hook_launcher_name
+
+    registered = commands.any? { |cmd| HookRegistry.command_basenames(cmd).include?(launcher_name) }
+
+    unless registered
+      return [check(
+        category: "display", name: "display_hook_registered", status: "fail",
+        message: "No MessageDisplay hook registered in #{tilde(settings_path)}",
+        fixable: true, fix_hint: DISPLAY_HOOK_FIX_HINT
+      )]
+    end
+
+    launcher_path = File.join(agent_dir, "hooks", launcher_name)
+
+    unless File.exist?(launcher_path)
+      return [check(
+        category: "display", name: "display_hook_registered", status: "fail",
+        message: "MessageDisplay is registered but #{tilde(launcher_path)} does not exist",
+        fixable: true, fix_hint: DISPLAY_HOOK_FIX_HINT
+      )]
+    end
+
+    unless File.executable?(launcher_path)
+      return [check(
+        category: "display", name: "display_hook_registered", status: "fail",
+        message: "#{tilde(launcher_path)} exists but is not executable",
+        fixable: true, fix_hint: DISPLAY_HOOK_FIX_HINT
+      )]
+    end
+
+    [check(
+      category: "display", name: "display_hook_registered", status: "pass",
+      message: "MessageDisplay hook registered and #{tilde(launcher_path)} is executable"
+    )]
   end
 
   def check_registered_project_paths

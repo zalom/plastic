@@ -4,7 +4,6 @@
 require "minitest/autorun"
 require "tmpdir"
 require "fileutils"
-require_relative "../scripts/lib/bridge"
 require_relative "../scripts/lib/lock"
 # `load`, not `require_relative`: the script has no .rb suffix, and Ruby's
 # require/require_relative feature resolution refuses to load an extension-
@@ -49,7 +48,7 @@ class EndIntentDisarmToctouTest < Minitest::Test
   def test_a_lock_acquired_by_another_session_during_close_is_never_deleted
     refute File.exist?(Lock.path(@intent_dir)), "no lock exists yet: this is the pre-flight-proceeded case"
 
-    racer_disarm = lambda do |_sess, _iid|
+    racer_disarm = lambda do |_sess, _dir|
       # Stands in for the real disarm call's window of vulnerability: another
       # live session acquires the delivery lock WHILE this close is running.
       Lock.acquire(@intent_dir, session: "attacker-session")
@@ -57,7 +56,7 @@ class EndIntentDisarmToctouTest < Minitest::Test
     end
 
     result = run_disarm(@intent_dir, "161", "sess-1", discard_worktree_changes: false,
-                         bridge_reader: ->(_sess, _iid) { nil },
+                         worktree_reader: ->(_dir) { nil },
                          disarm: racer_disarm)
 
     assert_equal :lock_remains, result, "a foreign lock acquired mid-close must never be silently deleted"
@@ -76,8 +75,8 @@ class EndIntentDisarmToctouTest < Minitest::Test
     Lock.add_delegate(@intent_dir, delegate: "delegate-session", session: "owner-session")
 
     result = run_disarm(@intent_dir, "161", "delegate-session", discard_worktree_changes: false,
-                         bridge_reader: ->(_sess, _iid) { nil },
-                         disarm: ->(_sess, _iid) { nil })
+                         worktree_reader: ->(_dir) { nil },
+                         disarm: ->(_sess, _dir) { nil })
 
     assert_equal :ok, result, "a legitimate delegate close must still succeed"
     refute File.exist?(Lock.path(@intent_dir)), "a delegate close must clear the lock, same as the owner"
@@ -90,25 +89,25 @@ class EndIntentDisarmToctouTest < Minitest::Test
     Lock.acquire(@intent_dir, session: "sess-1")
 
     result = run_disarm(@intent_dir, "161", "sess-1", discard_worktree_changes: false,
-                         bridge_reader: ->(_sess, _iid) { nil },
-                         disarm: ->(_sess, _iid) { nil })
+                         worktree_reader: ->(_dir) { nil },
+                         disarm: ->(_sess, _dir) { nil })
 
     assert_equal :ok, result
     refute File.exist?(Lock.path(@intent_dir))
   end
 
-  # --- structure gate fail-open on a crash (intent 222, D4) -------------------
+  # --- structure check fail-open on a crash (intent 222, D4; a report since 308) --------
   #
-  # The per-intent doctor gate end-intent's main calls before any write (run_structure_gate,
-  # scripts/end-intent) must never let a crash inside the gate call itself wedge a close: an
-  # unexpected exception is rescued, logged, and treated as a skipped gate. This cannot be
+  # The per-intent doctor check end-intent's main runs after the backfill (run_structure_check,
+  # scripts/end-intent) must never let a crash inside the check call itself wedge a close: an
+  # unexpected exception is rescued, logged, and treated as a skipped check. This cannot be
   # reproduced by spawning the real script as a subprocess (test/end_intent_test.rb's house
   # style): there is no eval/ENV/global seam available to make the gate crash from outside a
   # fresh child process without an actual on-disk trigger, and the one genuine trigger this
   # codebase has (resolve_single_intent_dir's cross-store ambiguity RuntimeError) collides
   # with end-intent's OWN, earlier resolve_intent_dir call whenever the decoy sits in the
   # same --store directory, since both scan that literal directory for "id--*" first. Only
-  # run_structure_gate's own injected `gate:` seam (mirrors run_disarm's bridge_reader:/
+  # run_structure_check's own injected `gate:` seam (mirrors run_disarm's worktree_reader:/
   # disarm: pattern above) gives a deterministic hook, exactly like every other test in this
   # file - hence its home here, not test/end_intent_test.rb (this file's own header comment
   # already reserves it as the one place that loads the script in-process).
@@ -116,10 +115,10 @@ class EndIntentDisarmToctouTest < Minitest::Test
     crashing_gate = ->(_gate_home, _gate_scope) { raise "boom (test-injected doctor crash)" }
 
     _stdout, stderr = capture_io do
-      run_structure_gate("161", store: File.join(@home, "store"), gate: crashing_gate)
+      run_structure_check("161", store: File.join(@home, "store"), gate: crashing_gate)
     end
 
-    assert_match(/structure gate crashed/i, stderr)
+    assert_match(/structure check crashed/i, stderr)
     assert_match(/boom \(test-injected doctor crash\)/, stderr)
   end
 
@@ -128,7 +127,7 @@ class EndIntentDisarmToctouTest < Minitest::Test
     passing_gate = ->(_gate_home, _gate_scope) { { status: "pass", checks: [] } }
 
     stdout, stderr = capture_io do
-      run_structure_gate("161", store: File.join(@home, "store"), gate: passing_gate)
+      run_structure_check("161", store: File.join(@home, "store"), gate: passing_gate)
     end
 
     assert_empty stdout
@@ -142,10 +141,24 @@ class EndIntentDisarmToctouTest < Minitest::Test
     warning_gate = ->(_gate_home, _gate_scope) { { status: "warn", checks: [warn_check] } }
 
     _stdout, stderr = capture_io do
-      run_structure_gate("161", store: File.join(@home, "store"), gate: warning_gate)
+      run_structure_check("161", store: File.join(@home, "store"), gate: warning_gate)
     end
 
-    assert_match(/structure gate warning \(proceeding\)/i, stderr)
+    assert_match(/structure check: intent_savepoint_truthful/i, stderr)
     assert_match(/savepoint\.md is missing/i, stderr)
+  end
+
+  # Intent 308: a "fail" verdict prints its named reasons and proceeds too. The exit 6
+  # refusal was retired in 2.0; nothing inside run_structure_check exits.
+  def test_structure_check_fail_verdict_prints_and_proceeds
+    fail_check = { name: "intent_checklist_complete", status: "fail", message: "1 unchecked item",
+                   details: ["- [ ] finish the thing"] }
+    failing_gate = ->(_gate_home, _gate_scope) { { status: "fail", checks: [fail_check] } }
+
+    _stdout, stderr = capture_io do
+      run_structure_check("161", store: File.join(@home, "store"), gate: failing_gate)
+    end
+
+    assert_match(/structure check: intent_checklist_complete: 1 unchecked item \(- \[ \] finish the thing\)/, stderr)
   end
 end

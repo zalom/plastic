@@ -3,10 +3,13 @@ require "tmpdir"
 require "fileutils"
 require "json"
 require "open3"
+require "json"
+require "fileutils"
+require_relative "../scripts/lib/session_ledger"
 require "rbconfig"
 require "stringio"
 require_relative "../scripts/lib/lock"
-require_relative "../scripts/lib/bridge"
+require_relative "../scripts/lib/arm"
 require_relative "../scripts/lib/worktree"
 
 # The one deterministic repair (intent 108, D5) and its CLI entry point.
@@ -38,9 +41,14 @@ class PlasticLockCliTest < Minitest::Test
     Worktree.define_singleton_method(:provision, @real_provision) if @real_provision
   end
 
-  def repair(session = "sess-1")
-    Bridge.repair_lock(session, intent_id: "96", intent_dir: @intent_dir,
-                       store: @store, name: "demo", tmp: @tmp)
+  def repair(session = "sess-1", **kw)
+    Arm.repair(intent_dir: @intent_dir, session: session, home: @home, **kw)
+  end
+
+  # The CLI without --intent-dir: the intent resolves via ActiveDelivery from the held lock.
+  def cli_bare(*args, session: "sess-1", chdir: @home)
+    Open3.capture3({ "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => nil, "HOME" => @home },
+                   RbConfig.ruby, CLI, *args, "--session", session, chdir: chdir)
   end
 
   def cli(*args, session: "sess-1")
@@ -71,18 +79,15 @@ class PlasticLockCliTest < Minitest::Test
 
   # --- repair_lock (library) --------------------------------------------------
 
-  def test_repair_is_idempotent_and_rebuilds_both_sides
+  def test_repair_is_idempotent_and_reports_the_stage
     2.times do
       report = repair
       assert_equal "repaired", report["status"]
+      assert(report["actions"].any? { |a| a.start_with?("stage ") }, "the report names the stage")
     end
     lock = Lock.read(@intent_dir)
     assert_equal "sess-1", lock["owner_session"]
-    bridge = Bridge.read("sess-1", intent_id: "96", tmp: @tmp)
-    refute_nil bridge
-    assert_equal "96", bridge.dig("intent", "id")
-    assert_equal "sess-1", bridge.dig("lock", "owner_session")
-    refute bridge["lock"].key?("pid")
+    refute lock.key?("pid")
   end
 
   def test_repair_backs_off_from_a_fresh_foreign_lock
@@ -103,8 +108,7 @@ class PlasticLockCliTest < Minitest::Test
   def test_repair_reports_stale_hint_with_dollar_prefix_for_codex_harness
     Lock.acquire(@intent_dir, session: "other")
     FileUtils.touch(Lock.path(@intent_dir), mtime: Time.now - 4000)
-    report = Bridge.repair_lock("sess-1", intent_id: "96", intent_dir: @intent_dir,
-                                store: @store, name: "demo", tmp: @tmp, harness: :codex)
+    report = repair(harness: :codex)
     assert_equal "stale", report["status"]
     assert_includes report["hint"], "$plastic-doctor reclaim the lock"
     refute_includes report["hint"], "/plastic-doctor"
@@ -117,38 +121,6 @@ class PlasticLockCliTest < Minitest::Test
     assert_equal "sess-1", Lock.read(@intent_dir)["owner_session"]
   end
 
-  def test_repair_migrates_legacy_tmp_only_pid_lock_state
-    # Legacy world: a /tmp bridge with a pid-stamped lock block and NO
-    # delivery.lock file (pre-108). Repair builds the durable file from disk
-    # truth and rewrites the cache without a pid.
-    legacy = {
-      "session" => "sess-1",
-      "intent" => { "id" => "96", "dir" => "96--demo", "store" => @store,
-                    "name" => "demo" },
-      "build" => { "stage" => "why", "auto" => false },
-      "lock" => { "owner_session" => "sess-1", "pid" => 12345,
-                  "acquired_at" => "2026-07-01T00:00:00Z", "host" => "old" },
-    }
-    Bridge.write("sess-1", legacy, tmp: @tmp)
-    report = repair
-    assert_equal "repaired", report["status"]
-    assert File.exist?(Lock.path(@intent_dir))
-    bridge = Bridge.read("sess-1", intent_id: "96", tmp: @tmp)
-    refute bridge["lock"].key?("pid"), "migration strips the legacy pid"
-  end
-
-  def test_repair_preserves_the_armed_auto_flag
-    legacy = {
-      "session" => "sess-1",
-      "intent" => { "id" => "96", "dir" => "96--demo", "store" => @store,
-                    "name" => "demo" },
-      "build" => { "stage" => "why", "auto" => true },
-    }
-    Bridge.write("sess-1", legacy, tmp: @tmp)
-    repair
-    assert_equal true, Bridge.read("sess-1", intent_id: "96", tmp: @tmp).dig("build", "auto")
-  end
-
   def test_repair_enriches_same_owner_legacy_lock_from_explicit_metadata
     acquired_at = Time.utc(2026, 7, 1, 12, 0, 0)
     Lock.acquire(@intent_dir, session: "sess-1", host: "original-host", now: acquired_at)
@@ -156,43 +128,20 @@ class PlasticLockCliTest < Minitest::Test
                       now: acquired_at + 1)
     original = Lock.read(@intent_dir)
     heartbeat_at = acquired_at + 60
-    report = Bridge.repair_lock("sess-1", intent_id: "96", intent_dir: @intent_dir,
-                                store: @store, name: "demo", tmp: @tmp,
-                                harness: :codex, agent: "plastic-enforcer",
-                                model: "gpt-5", thread: "thread-96", now: heartbeat_at)
+    report = repair(harness: :codex, agent: "plastic-enforcer",
+                    model: "gpt-5", thread: "thread-96", now: heartbeat_at)
     assert_equal "repaired", report["status"]
     lock = Lock.read(@intent_dir)
     assert_equal "codex", lock["owner_harness"]
     assert_equal "plastic-enforcer", lock["owner_agent"]
     assert_equal "gpt-5", lock["owner_model"]
     assert_equal "thread-96", lock["owner_thread"]
-    assert_nil lock["run_mode"], "repair without a bridge or explicit mode must not invent guided"
+    assert_nil lock["run_mode"], "repair without a mode on disk or in the call must not invent guided"
     assert_equal original["acquired_at"], lock["acquired_at"]
     assert_equal "original-host", lock["host"]
     assert_equal original["delegates"], lock["delegates"]
     assert_equal original["delegate_activity"], lock["delegate_activity"]
     assert_in_delta heartbeat_at.to_f, File.mtime(Lock.path(@intent_dir)).to_f, 0.001
-  end
-
-  def test_repair_without_metadata_keeps_identity_unknown_and_does_not_infer_cache
-    Lock.acquire(@intent_dir, session: "sess-1")
-    legacy = {
-      "session" => "sess-1",
-      "intent" => { "id" => "96", "dir" => "96--demo", "store" => @store,
-                    "name" => "demo" },
-      "build" => { "stage" => "why", "auto" => true },
-      "lock" => { "owner_session" => "sess-1", "owner_harness" => "codex",
-                  "owner_agent" => "cached-agent", "owner_model" => "cached-model",
-                  "owner_thread" => "cached-thread" },
-    }
-    Bridge.write("sess-1", legacy, tmp: @tmp)
-    repair
-    lock = Lock.read(@intent_dir)
-    assert_nil lock["owner_harness"]
-    assert_nil lock["owner_agent"]
-    assert_nil lock["owner_model"]
-    assert_nil lock["owner_thread"]
-    assert_equal "auto", lock["run_mode"], "mode derives only from the current bridge auto boolean"
   end
 
   def test_cli_fix_without_harness_keeps_owner_harness_unknown
@@ -214,67 +163,6 @@ class PlasticLockCliTest < Minitest::Test
   # Worktree.provision, so the rebuilt bridge keeps derive's default
   # worktree.code: nil and wipes any previously complete worktree block.
 
-  def test_repair_provisions_so_selection_keys_on_the_repaired_intent
-    repo = File.join(@home, "repo")
-    FileUtils.mkdir_p(repo)
-    File.write(File.join(@home, ".plastic", "projects.yml"),
-               "projects:\n  demo:\n    path: #{repo}\n")
-
-    code_wt = File.join(repo, ".claude", "worktrees", "96--demo")
-    sib_wt  = File.join(repo, ".claude", "worktrees", "97--sib")
-    FileUtils.mkdir_p(File.join(code_wt, "scripts"))
-    FileUtils.mkdir_p(sib_wt)
-    edited = File.join(code_wt, "scripts", "app.rb")
-
-    # Concurrent same-session sibling (97), fully armed, in its own worktree.
-    sibling = {
-      "session" => "sess-1",
-      "intent"  => { "id" => "97", "dir" => "97--sib", "store" => @store, "name" => "sib" },
-      "build"   => { "stage" => "how", "auto" => true, "last_activity" => Time.now.utc.iso8601 },
-      "worktree" => { "code" => sib_wt, "code_branch" => "plastic/97--sib",
-                      "store" => nil, "store_branch" => nil, "provisioned" => true },
-      "lock" => { "owner_session" => nil, "acquired_at" => nil, "host" => nil,
-                  "type" => nil, "delegates" => [] },
-    }
-    Bridge.write("sess-1", sibling, tmp: @tmp)
-
-    with_worktree(:provision, ->(d, *_a, **_kw) {
-      d["worktree"] = { "code" => code_wt, "code_branch" => "plastic/96--demo",
-                         "store" => nil, "store_branch" => nil, "provisioned" => true }
-      d
-    }) do
-      report = repair
-      assert_equal "repaired", report["status"]
-
-      after = Bridge.read("sess-1", intent_id: "96", tmp: @tmp)
-      assert_equal code_wt, after.dig("worktree", "code"),
-                   "AC1: the repaired bridge carries non-nil worktree.code"
-
-      ep = Bridge.discover_bridge(session: "sess-1", cwd: code_wt, tmp: @tmp, edited_path: edited)
-      assert_equal "96", ep&.dig("intent", "id"),
-                   "AC2: an edited-path write inside 96's worktree resolves to 96, not nil"
-
-      assert_equal 2, Bridge.bridge_cwd_tier(after, code_wt),
-                   "AC3: 96 tiers at 2 (worktree.code match) in its own worktree"
-
-      # Make the sibling the mtime winner; tier must still decide over it.
-      sib_file = Bridge.path("sess-1", intent_id: "97", tmp: @tmp)
-      File.utime(Time.now + 100, Time.now + 100, sib_file)
-      cwd_only = Bridge.discover_bridge(session: "sess-1", cwd: code_wt, tmp: @tmp)
-      assert_equal "96", cwd_only&.dig("intent", "id"),
-                   "AC3: from 96's own worktree cwd resolves to 96, not the newer sibling"
-    end
-  end
-
-  def test_repair_stamps_the_true_stage_not_why
-    File.write(File.join(@intent_dir, "spec.md"), "# Spec\nreal\n")
-    report = repair
-    assert_equal "repaired", report["status"]
-    bridge = Bridge.read("sess-1", intent_id: "96", tmp: @tmp)
-    assert_equal "how", bridge.dig("build", "stage"),
-                 "AC4: repair stamps the true derived stage, not a hardcoded why"
-  end
-
   def test_repair_provision_failure_still_repairs
     out = capture_stderr do
       with_worktree(:provision, ->(*_a, **_kw) { raise "boom" }) do
@@ -295,7 +183,7 @@ class PlasticLockCliTest < Minitest::Test
     def run(*args); @calls << args.map(&:to_s); Result.new(0, "", ""); end
   end
 
-  def test_released_repaired_bridge_removes_its_worktree
+  def test_released_repaired_intent_removes_its_worktree
     repo = File.join(@home, "repo")
     FileUtils.mkdir_p(repo)
     File.write(File.join(@home, ".plastic", "projects.yml"),
@@ -303,15 +191,9 @@ class PlasticLockCliTest < Minitest::Test
     code_wt = File.join(repo, ".claude", "worktrees", "96--demo")
     FileUtils.mkdir_p(code_wt)
 
-    after = nil
-    with_worktree(:provision, ->(d, *_a, **_kw) {
-      d["worktree"] = { "code" => code_wt, "code_branch" => "plastic/96--demo",
-                         "store" => nil, "store_branch" => nil, "provisioned" => true }
-      d
-    }) do
-      repair
-      after = Bridge.read("sess-1", intent_id: "96", tmp: @tmp)
-    end
+    with_worktree(:provision, ->(d, *_a, **_kw) { d }) { repair }
+    after = Arm.delivery(intent_dir: @intent_dir, home: @home)
+    assert_equal code_wt, after.dig("worktree", "code"), "the block is derived from projects.yml and the directory on disk"
 
     recorder = Recorder.new
     Worktree.release(after, home: @home, runner: recorder)
@@ -322,12 +204,95 @@ class PlasticLockCliTest < Minitest::Test
 
   # --- CLI verbs ---------------------------------------------------------------
 
-  def test_cli_status_reports_lock_and_bridge
+  def test_cli_status_reports_lock_worktree_and_delivering
     Lock.acquire(@intent_dir, session: "sess-1")
     out, _err, st = cli("status")
     assert st.success?
     assert_includes out, "sess-1"
     assert_includes out, "delivery"
+    report = JSON.parse(out)
+    assert report.key?("worktree")
+    assert_equal true, report["delivering"]
+    refute report.key?("bridge_present"), "the bridge cache fields left in 2.0 (intent 307)"
+  end
+
+  def test_status_names_the_intent_id_from_the_dir
+    out, _err, st = cli("status")
+    assert st.success?, out
+    report = JSON.parse(out)
+    assert_equal @intent_dir, report["intent_dir"]
+    assert_equal "sess-1", report["session"]
+  end
+  
+  # --- arm (intent 307) ---------------------------------------------------------
+
+  def test_cli_arm_takes_the_lock
+    out, err, st = cli("arm", "--mode", "auto", "--agent", "plastic-enforcer", "--harness", "claude")
+    assert st.success?, "#{out}\n#{err}"
+    lock = Lock.read(@intent_dir)
+    assert_equal "sess-1", lock["owner_session"]
+    assert_equal "auto", lock["run_mode"]
+    assert_equal "plastic-enforcer", lock["owner_agent"]
+    report = JSON.parse(out)
+    assert_equal "acquired", report["status"]
+    refute report.key?("pointer")
+    assert_equal false, report.dig("worktree", "provisioned"), "no repo is registered, so provisioning fails open"
+  end
+
+  def test_cli_arm_exits_1_on_a_held_lock_with_the_doctor_hint
+    Lock.acquire(@intent_dir, session: "other")
+    _out, err, st = cli("arm")
+    refute st.success?
+    assert_includes err, "held by session other"
+    assert_includes err, "/plastic-doctor"
+    assert_equal "other", Lock.read(@intent_dir)["owner_session"]
+  end
+
+  def test_cli_arm_needs_an_intent_dir
+    _out, err, st = cli_bare("arm")
+    refute st.success?
+    assert_includes err, "needs --intent-dir"
+  end
+
+  def test_release_writes_no_session_pointer
+    cli("arm")
+    _out, _err, st = cli("release")
+    assert st.success?
+    refute File.exist?(Lock.path(@intent_dir))
+    assert_empty Dir.glob(File.join(@home, ".plastic", "store", ".tmp", "**", "current"))
+  end
+
+  def test_status_without_intent_dir_resolves_the_held_lock
+    Lock.acquire(@intent_dir, session: "sess-1")
+    out, err, st = cli_bare("status")
+    assert st.success?, "#{out}\n#{err}"
+    assert_equal @intent_dir, JSON.parse(out)["intent_dir"]
+  end
+
+  def test_status_without_intent_dir_refuses_two_held_locks
+    other_dir = File.join(@store, "97--other")
+    FileUtils.mkdir_p(other_dir)
+    Lock.acquire(@intent_dir, session: "sess-1")
+    Lock.acquire(other_dir, session: "sess-1")
+    _out, err, st = cli_bare("status")
+    refute st.success?
+    assert_includes err, "more than one held delivery lock names this session"
+  end
+
+  def test_status_reports_delivering_not_pointer
+    Lock.acquire(@intent_dir, session: "sess-1")
+    out, _err, st = cli("status")
+    assert st.success?
+    report = JSON.parse(out)
+    assert_equal true, report["delivering"]
+    refute report.key?("pointer")
+    refute report.key?("pointer_names_intent")
+  end
+
+  def test_cli_reports_no_intent_when_no_lock_is_held
+    _out, err, st = cli_bare("status")
+    refute st.success?
+    assert_includes err, "no intent resolved"
   end
 
   def test_cli_who_renders_enriched_lock_claim_and_delegate_without_mutation
@@ -336,7 +301,7 @@ class PlasticLockCliTest < Minitest::Test
                  harness: "codex", agent: "plastic-enforcer", model: "gpt-5",
                  thread: "thread-a", run_mode: "auto")
     Lock.add_delegate(@intent_dir, delegate: "delegate-1", session: "sess-a", now: now,
-                      harness: "codex", agent: "plastic-planner", model: "gpt-5",
+                      harness: "codex", agent: "plastic-executor", model: "gpt-5",
                       thread: "thread-d")
     Claim.acquire_claim(@intent_dir, "plan.md", session: "sess-a",
                         delegate: "delegate-1", now: now)
@@ -355,7 +320,7 @@ class PlasticLockCliTest < Minitest::Test
       Session: sess-a
       Heartbeat: #{now.iso8601}
       Claims: plan.md by delegate-1
-      Delegate: plastic-planner via Codex, active
+      Delegate: plastic-executor via Codex, active
     TEXT
     paths.each do |path|
       assert_equal before[path][0], File.binread(path), "who changed bytes for #{path}"
@@ -401,7 +366,7 @@ class PlasticLockCliTest < Minitest::Test
   def test_cli_who_requires_explicit_intent_dir_instead_of_reading_bridge
     out, err, st = Open3.capture3({ "PLASTIC_TMP" => @tmp }, RbConfig.ruby, CLI, "who")
     refute st.success?, out
-    assert_includes err, "strictly durable-state only"
+    assert_includes err, "needs --intent-dir"
   end
 
   def test_cli_fix_is_idempotent
@@ -463,7 +428,7 @@ class PlasticLockCliTest < Minitest::Test
                  lock.values_at("owner_harness", "owner_agent", "owner_model", "owner_thread", "run_mode")
   end
 
-  def test_cli_fix_without_mode_preserves_known_durable_mode_when_bridge_is_missing
+  def test_cli_fix_without_mode_preserves_the_durable_mode
     Lock.acquire(@intent_dir, session: "sess-1", run_mode: "auto")
     _out, err, st = cli("fix")
     assert st.success?, err
@@ -491,18 +456,18 @@ class PlasticLockCliTest < Minitest::Test
   def test_cli_delegate_records_metadata_and_owner_marks_terminal_status
     Lock.acquire(@intent_dir, session: "sess-1")
     _out, err, st = cli("delegate", "--delegate", "sub-1", "--harness", "codex",
-                        "--agent", "plastic-planner", "--model", "gpt-5", "--thread", "thread-d")
+                        "--agent", "plastic-executor", "--model", "gpt-5", "--thread", "thread-d")
     assert st.success?, err
     activity = Lock.read(@intent_dir)["delegate_activity"].last
-    assert_equal %w[codex plastic-planner gpt-5 thread-d active],
+    assert_equal %w[codex plastic-executor gpt-5 thread-d active],
                  activity.values_at("harness", "agent", "model", "thread", "status")
 
     _out, err, st = cli("delegate", "--delegate", "sub-1", "--status", "finished",
-                        "--harness", "codex", "--agent", "plastic-planner",
+                        "--harness", "codex", "--agent", "plastic-executor",
                         "--model", "gpt-5", "--thread", "thread-d")
     assert st.success?, err
     activity = Lock.read(@intent_dir)["delegate_activity"].last
-    assert_equal %w[codex plastic-planner gpt-5 thread-d finished],
+    assert_equal %w[codex plastic-executor gpt-5 thread-d finished],
                  activity.values_at("harness", "agent", "model", "thread", "status")
     assert_includes Lock.read(@intent_dir)["delegates"], "sub-1"
   end

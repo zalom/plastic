@@ -3,7 +3,7 @@
 # frozen_string_literal: true
 
 # Plastic — `update` verb. Runs via `npx @zalom/plastic update` (bin/plastic.js) or directly.
-# Usage: ruby scripts/update.rb [--beta|--latest|--alpha] [--claude|--codex|--hermes|--all] [--help]
+# Usage: ruby scripts/update.rb [--beta|--latest|--alpha] [--yes] [--claude|--codex|--hermes|--all] [--help]
 #
 # Forward-only version transitions, sourced from npm dist-tags:
 #   - no flag                = next version on the CURRENT channel (derived from VERSION)
@@ -62,7 +62,7 @@ class Update < InstallerCore
       warn "No published version on the #{requested} channel."
       return 1
     when :ok
-      if res[:kind] == :cross_bleeding && !confirm_bleeding(iv, res[:target])
+      if res[:kind] == :cross_bleeding && !confirm_bleeding(iv, res[:target], argv)
         puts "Aborted."
         return 1
       end
@@ -222,18 +222,42 @@ class Update < InstallerCore
     nil
   end
 
-  def confirm_bleeding(current, target)
+  # --yes (intent 310) answers the bleeding-edge question without a tty, so a script or an
+  # agent can run `update --alpha --yes`; without it a non-tty run aborts as before.
+  def confirm_bleeding(current, target, argv = [])
+    return true if argv.include?("--yes")
     return false unless $stdin.tty?
     print "Switch from #{current} to the less-stable #{target}? [y/N]: "
     ($stdin.gets&.strip || "").downcase.start_with?("y")
   end
 
-  # Thin npx-exec glue (not unit-tested; the decision above is). Delegates the file-sync to
-  # the target version's install verb, recording the ledger action as `update`.
-  def perform_switch(target, agent_flags)
+  # Thin npx-exec glue (the decision above is unit-tested). Delegates the file-sync to
+  # the target version's install verb, recording the ledger action as `update`. On
+  # success, commits the re-synced core files and clears the update-check cache
+  # (former update skill, lines 124-125).
+  def perform_switch(target, agent_flags, switch_runner: ->(cmd) { system(*cmd) })
     cmd = ["npx", "#{PKG}@#{target}", "install", "--reinstall", "--ledger-action", "update", *agent_flags]
     puts "  $ #{cmd.join(" ")}"
-    system(*cmd) ? 0 : 1
+    return 1 unless switch_runner.call(cmd)
+
+    commit_core_files(target)
+    clear_update_check_cache
+    0
+  end
+
+  # Intent 372 (former update skill, lines 124-125): `~/.plastic` is its own git
+  # repository (install.rb's git_init_if_absent), so a successful update commits the
+  # core files it just re-synced. Empty commits are allowed: a same-version repair
+  # re-syncs nothing new, and that is still worth a ledger-adjacent commit.
+  def commit_core_files(target, runner: ->(cmd) { system(*cmd) })
+    runner.call(["git", "-C", plastic_home, "add", "PLASTIC.md", "scripts", "AGENTS.md", "VERSION",
+      "versions.json", "deprecations.yml", "config_asks.yml"])
+    runner.call(["git", "-C", plastic_home, "commit", "-m", "chore: update Plastic to #{target}",
+      "--allow-empty"])
+  end
+
+  def clear_update_check_cache
+    FileUtils.rm_f(File.join(plastic_home, ".cache", "update-check.json"))
   end
 
   def show_help
@@ -248,6 +272,7 @@ class Update < InstallerCore
         --latest      Switch to / advance the stable channel
         --beta        Switch to / advance the beta channel
         --alpha       Switch to / advance the alpha channel (bleeding edge — confirmed)
+        --yes         Confirm a switch toward bleeding edge without a prompt (scripts, agents)
 
       Agent options (default: --claude):
         --claude --codex --hermes --all

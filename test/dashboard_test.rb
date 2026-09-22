@@ -31,6 +31,10 @@ class DashboardTest < Minitest::Test
     FileUtils.remove_entry(@home) if @home && File.directory?(@home)
   end
 
+  def test_the_continue_board_names_the_auto_take_command
+    assert_includes render_continue([]), "plastic auto take ID"
+  end
+
   # --- helpers ---------------------------------------------------------------
 
   def run_dash(*args)
@@ -231,7 +235,7 @@ class DashboardTest < Minitest::Test
       assert data.key?(k), "missing #{k}"
     end
     refute data.key?("recently_worked"), "recently_worked is replaced by the prose summary (D6)"
-    # Global next_work is global-store intents only (no project intents folded in).
+    # Global next_work is global-store intents only (no project intents merged in).
     scopes = data["next_work"].map { |r| r["scope"] }.reject(&:empty?)
     assert(scopes.all? { |s| s == "global" }, "global next_work leaked non-global scope: #{scopes.uniq}")
   end
@@ -417,7 +421,7 @@ class DashboardTest < Minitest::Test
     Claim.acquire_claim(claude_dir, "spec.md", session: "claude-session",
                         delegate: "writer-session", now: now)
     Lock.acquire(File.join(demo, "x--codex-owner"), session: "codex-session",
-                 harness: "codex", agent: "plastic-planner", now: now)
+                 harness: "codex", agent: "plastic-executor", now: now)
     legacy_dir = File.join(demo, "l--legacy")
     File.write(File.join(legacy_dir, "delivery.lock"), JSON.generate(
       "type" => "delivery", "owner_session" => "legacy-session", "host" => "test",
@@ -450,7 +454,7 @@ class DashboardTest < Minitest::Test
       rows = JSON.parse(out)["active"].to_h { |row| [row["id"], row] }
       assert_equal "plastic-enforcer · Claude", rows["c"]["worker"]
       assert_equal "Fresh · writer writer-session", rows["c"]["activity"]
-      assert_equal "plastic-planner · Codex", rows["x"]["worker"]
+      assert_equal "plastic-executor · Codex", rows["x"]["worker"]
       assert_equal "Fresh", rows["x"]["activity"]
       assert_equal "Unknown · Unknown", rows["l"]["worker"]
       assert_equal "Fresh", rows["l"]["activity"]
@@ -530,26 +534,12 @@ class DashboardTest < Minitest::Test
     end
   end
 
-  def test_project_markdown_mechanical_fill_renders_five_active_columns_and_values
-    with_lock_visibility_fixture do
-      out, = run_dash("project", "demo", "--data")
-      data = JSON.parse(out)
-      template = File.read(File.expand_path("../skills/dashboard/templates/dashboard-project.md", __dir__))
-      rows = data["active"].map do |row|
-        "| #{row['id']} | #{row['what']} | #{row['stage']} | #{row['worker']} | #{row['activity']} |"
-      end.join("\n")
-      markdown = template.gsub("{{slug}}", data["slug"])
-                         .gsub("{{date}}", data["date"])
-                         .gsub("{{summary}}", data["summary"])
-                         .gsub("{{active.rows}}", rows)
-      assert_includes markdown, "| Id | What | Stage | Worker | Activity |"
-      assert_includes markdown, "| c | Claude enriched | Exec | plastic-enforcer · Claude | Fresh · writer writer-session |"
-      assert_includes markdown, "| x | Codex enriched | How | plastic-planner · Codex | Fresh |"
-      markdown.lines.grep(/^\| [cxl] \|/).each do |line|
-        assert_equal 6, line.count("|"), "expected exactly five Markdown cells: #{line.inspect}"
-      end
-    end
-  end
+  # test_project_markdown_mechanical_fill_renders_five_active_columns_and_values was retired
+  # by intent 372 (family 3): it filled skills/dashboard/templates/dashboard-project.md by
+  # hand from --data JSON, the mechanical-fill recipe the dashboard skill's prose instructed
+  # an agent to follow. That skill is gone (the board and ranking rules moved into `plastic
+  # status`, which renders directly, no hand fill), and the five-column shape it checked stays
+  # covered by the --plain and --data assertions elsewhere in this file.
 
   def test_project_render_uses_one_fixed_clock_at_the_ttl_boundary
     fixed_now = Time.utc(2026, 7, 14, 12, 0, 0)
@@ -599,15 +589,12 @@ class DashboardTest < Minitest::Test
     end
   end
 
-  def test_project_markdown_template_has_worker_and_activity_columns
-    template = File.read(File.expand_path("../skills/dashboard/templates/dashboard-project.md", __dir__))
-    assert_includes template, "| Id | What | Stage | Worker | Activity |"
-    assert_includes template, "| --- | --- | --- | --- | --- |"
-
-    contract = File.read(File.expand_path("../skills/dashboard/SKILL.md", __dir__))
-    assert_includes contract, "| {id} | {what} | {stage} | {worker} | {activity} |"
-    assert_includes contract, "| _(none)_ | | | |"
-  end
+  # test_project_markdown_template_has_worker_and_activity_columns and
+  # test_dashboard_board_templates_use_graph_id_and_intent (F29, intent 331f R1) were retired
+  # by intent 372 (family 3): both read skills/dashboard/templates/*.md and skills/dashboard/
+  # SKILL.md directly, the prose board and its fill rules the disposition dropped outright.
+  # `plastic status` never renders these templates; the column shape it prints stays covered
+  # by the --plain and --data assertions elsewhere in this file.
 
   def test_cell_escapes_pipe_in_intent
     rec = { id: "99", intent: "left | right\nmid", scope: "project:demo", lifecycle: "what",
@@ -870,7 +857,7 @@ class DashboardTest < Minitest::Test
   def test_completion_dates_parses_new_index_note_format
     completion_dates_fixture(
       "- [200 #{em} Doctor must verify hooks](store/200--doctor/200--doctor.md) #{em} " \
-      "2026-07-14 auto, M tier. Long note prose follows right after the date.\n"
+      "2026-07-14 auto. Long note prose follows right after the date.\n"
     ) do |path|
       dates = completion_dates(path)
       assert_equal "2026-07-14", dates["200"]
@@ -917,6 +904,68 @@ class DashboardTest < Minitest::Test
     end
   end
 
+  # --- row F: the wikilink completion-date form (mihradesign's INDEX.md shape) -------
+
+  def test_f1_completion_dates_parses_the_wikilink_form
+    completion_dates_fixture(
+      "- [[71]] retheme-admin-color-and-link-findings #{em} Admin retheme complete, " \
+      "rolled out to every surface (2026-07-11; auto M-tier, verified live).\n"
+    ) do |path|
+      dates = completion_dates(path)
+      assert_equal "2026-07-11", dates["71"]
+    end
+  end
+
+  def test_f2_completion_dates_parses_a_mixed_section_both_forms
+    completion_dates_fixture(
+      "- [200 #{em} Doctor must verify hooks](store/200--doctor/200--doctor.md) #{em} 2026-07-14 auto.\n" \
+      "- [[71]] retheme-admin-color-and-link-findings #{em} Admin retheme complete " \
+      "(2026-07-11; auto M-tier).\n"
+    ) do |path|
+      dates = completion_dates(path)
+      assert_equal "2026-07-14", dates["200"]
+      assert_equal "2026-07-11", dates["71"]
+    end
+  end
+
+  def test_f3_index_section_ids_parses_bare_ids_from_the_wikilink_form
+    Dir.mktmpdir("plastic-dash-index-section") do |dir|
+      path = File.join(dir, "INDEX.md")
+      File.write(path, "# Index\n## Completed\n- [[71]] retheme-admin-color-and-link-findings " \
+                       "#{em} done (2026-07-11; auto).\n")
+      assert_equal ["71"], index_section_ids(path, "## Completed")
+    end
+  end
+
+  def test_f4a_completion_dates_never_lets_a_parenthesized_note_date_beat_the_canonical_one
+    completion_dates_fixture(
+      "- [55 #{em} Something](store/55--x/55--x.md) #{em} 2026-07-10 note about an earlier " \
+      "attempt (2026-01-01) that failed.\n"
+    ) do |path|
+      dates = completion_dates(path)
+      assert_equal "2026-07-10", dates["55"]
+    end
+  end
+
+  def test_f4b_completion_dates_yields_nothing_for_a_link_entry_with_only_a_note_date
+    completion_dates_fixture(
+      "- [56 #{em} Something](store/56--x/56--x.md) referenced on (2026-02-02) previously.\n"
+    ) do |path|
+      dates = completion_dates(path)
+      assert_nil dates["56"]
+    end
+  end
+
+  def test_f5_index_section_ids_covers_active_and_future_wikilink_sections
+    Dir.mktmpdir("plastic-dash-index-section") do |dir|
+      path = File.join(dir, "INDEX.md")
+      File.write(path, "# Index\n## Active\n- [[80]] something active #{em} in progress\n" \
+                       "## Future\n- [[81]] something future #{em} queued\n")
+      assert_equal ["80"], index_section_ids(path, "## Active")
+      assert_equal ["81"], index_section_ids(path, "## Future")
+    end
+  end
+
   # Board-level proof: the reported bug named a stale intent from weeks earlier as "most
   # recently delivered" because a new-format entry's date was silently invisible to the
   # summary. With the fix, a new-format completion dated TODAY correctly outranks an
@@ -941,7 +990,7 @@ class DashboardTest < Minitest::Test
     File.write(File.join(@home, "projects", "demo", "INDEX.md"),
       "# Index\n## Active\n## Future\n## Clusters\n## Abandoned\n## Completed\n" \
       "- [31 #{em} Todays delivery](store/31--todays-delivery/31--todays-delivery.md) #{em} " \
-      "#{TODAY} auto, M tier. Delivered via end-intent --index-note today.\n" \
+      "#{TODAY} auto. Delivered via end-intent --index-note today.\n" \
       "- [30 #{em} Older delivery](store/30--older-delivery/30--older-delivery.md) #{em} 2026-05-01\n")
 
     yield

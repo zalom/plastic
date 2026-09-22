@@ -20,13 +20,42 @@ class ReadConfigTest < Minitest::Test
     FileUtils.rm_rf(@project_dir)
   end
 
-  def run_script(key, default: nil, global_dir: @global_dir, project_dir: nil)
+  def run_script(key, default: nil, global_dir: @global_dir, project_dir: nil, harness: nil)
     env = { "PLASTIC_HOME" => global_dir }
     args = [SCRIPT, key]
     args += ["--default", default] if default
     args += ["--project", project_dir] if project_dir
+    args += ["--harness", harness] if harness
     stdout, stderr, status = Open3.capture3(env, *args)
     [stdout.strip, stderr.strip, status]
+  end
+
+
+  def test_harness_selects_model_namespace
+    write_global_config(
+      "agents" => {
+        "models" => {
+          "claude" => { "plastic-executor" => "haiku" },
+          "codex" => { "plastic-executor" => "gpt-6-astra" }
+        },
+        "efforts" => {
+          "claude" => { "plastic-executor" => "low" },
+          "codex" => { "plastic-executor" => "high" }
+        }
+      }
+    )
+
+    assert_equal "haiku", run_script("agents.models.plastic-executor", harness: "claude").first
+    assert_equal "gpt-6-astra", run_script("agents.models.plastic-executor", harness: "codex").first
+    assert_equal "low", run_script("agents.efforts.plastic-executor", harness: "claude").first
+    assert_equal "high", run_script("agents.efforts.plastic-executor", harness: "codex").first
+  end
+
+  def test_harness_defaults_translate_codex_models_and_use_medium_effort
+    assert_equal "sonnet", run_script("agents.models.plastic-executor", harness: "claude").first
+    assert_equal "gpt-5.6-terra", run_script("agents.models.plastic-executor", harness: "codex").first
+    assert_equal "medium", run_script("agents.efforts.plastic-executor", harness: "claude").first
+    assert_equal "medium", run_script("agents.efforts.plastic-executor", harness: "codex").first
   end
 
   def write_global_config(data)
@@ -35,6 +64,25 @@ class ReadConfigTest < Minitest::Test
 
   def write_project_config(data)
     File.write(File.join(@project_store, "config.yml"), YAML.dump(data))
+  end
+
+  # Intent 312: the two absolute-token compaction thresholds resolve from DEFAULTS
+  # with no config file present, and a config value wins over them.
+  def test_context_defaults
+    out, _, status = run_script("context_offer_tokens")
+    assert status.success?
+    assert_equal "150000", out
+
+    out, _, status = run_script("context_insist_tokens")
+    assert status.success?
+    assert_equal "250000", out
+  end
+
+  def test_a_configured_context_threshold_wins_over_the_default
+    write_global_config("version" => 3, "context_offer_tokens" => 120_000,
+                        "context_insist_tokens" => 180_000)
+    assert_equal "120000", run_script("context_offer_tokens").first
+    assert_equal "180000", run_script("context_insist_tokens").first
   end
 
   def test_reads_top_level_key_from_global
@@ -101,6 +149,20 @@ class ReadConfigTest < Minitest::Test
   def test_exits_with_error_when_no_key_given
     _, _, status = run_script("")
     refute status.success?
+  end
+
+  # Intent 340b (G7c, n4, D9, row 4.6): runner.stop_hook defaults false with
+  # no config file present, so StopGate has something to parse and doctor
+  # has something to report, even on a fresh install.
+  def test_runner_stop_hook_defaults_false
+    out, _, status = run_script("runner.stop_hook")
+    assert status.success?
+    assert_equal "false", out
+  end
+
+  def test_a_configured_runner_stop_hook_wins_over_the_default
+    write_global_config("version" => 3, "runner" => { "stop_hook" => true })
+    assert_equal "true", run_script("runner.stop_hook").first
   end
 end
 

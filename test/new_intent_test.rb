@@ -4,7 +4,7 @@
 require "minitest/autorun"
 require "tmpdir"
 require "fileutils"
-require_relative "../scripts/lib/bridge"
+require_relative "../scripts/lib/savepoint"
 require_relative "../scripts/lib/intent_validator"
 require_relative "../scripts/lib/links_section"
 require_relative "../scripts/doctor"
@@ -32,6 +32,16 @@ class NewIntentTest < Minitest::Test
 
   def first_line(path)
     File.open(path, &:gets).to_s.chomp
+  end
+
+  # Nit 8: --day was added to the shared parser for --tmp's sake; the classic
+  # id-allocation path (no --tmp) must still reject it, the same strictness
+  # it gives every other unknown argument, rather than silently ignoring it.
+  def test_day_flag_is_rejected_on_the_classic_id_allocation_path
+    out, status = run_new_intent("--store", @store, "--intent", "Build the thing", "--slug", "build-thing",
+      "--day", "20260829")
+    refute_equal 0, status, "expected a non-zero exit, got: #{out}"
+    assert_includes out, "--day"
   end
 
   def test_single_invocation_scaffolds_complete_intent
@@ -84,7 +94,7 @@ class NewIntentTest < Minitest::Test
 
   def test_scaffolded_intent_never_advances_past_why
     dir, = run_new_intent("--store", @store, "--intent", "Demo", "--slug", "demo")
-    assert_equal "why", Bridge.derive_stage(dir)
+    assert_equal "why", Savepoint.derive_stage(dir)
   end
 
   def test_reciprocal_link_is_wired_and_idempotent
@@ -256,7 +266,7 @@ class NewIntentTest < Minitest::Test
   def test_sources_path_gets_child_in_chain_frontmatter
     # The related-but-not-spawned / created-from scenario: B is created with
     # --sources A (no --parent). A's frontmatter chain must gain B (I1), and B's
-    # sources must include A (the line-126 redundant-explicit fold).
+    # sources must include A (the line-126 redundant-explicit merge).
     a, = run_new_intent("--store", @store, "--intent", "Root A", "--slug", "root-a")
     a_id = File.basename(a).split("--").first
 
@@ -378,8 +388,8 @@ class NewIntentTest < Minitest::Test
   def test_born_savepoint_is_idempotent_with_later_append
     dir, = run_new_intent("--store", @store, "--intent", "Demo", "--slug", "demo")
     intent_file = File.join(dir, "#{File.basename(dir)}.md")
-    # A later gate fire on the same intent file must not add a duplicate What line.
-    Bridge.append_savepoint(dir, intent_file)
+    # A later hook fire on the same intent file must not add a duplicate What line.
+    Savepoint.append_savepoint(dir, intent_file)
     lines = File.read(File.join(dir, "savepoint.md")).split("\n").reject(&:empty?)
     assert_equal 1, lines.length
   end

@@ -2,6 +2,11 @@ version: 3
 project_roots:
   - ~/.plastic/projects
 stale_threshold_days: 3
+# When to compact. Absolute token counts for a 1M window (15 and 25 percent), not
+# percentages: models are reliable only to roughly 50 to 65 percent of advertised
+# context, so a percentage that is right at 200k floats to an untested size at 1M.
+context_offer_tokens: 150000
+context_insist_tokens: 250000
 execution_mode: subagent-driven
 hash_length: 6
 hash_algorithm: sha256-base36
@@ -29,18 +34,25 @@ architect:
 #       plastic-enforcer: opus
 #     codex:
 #       plastic-executor: gpt-5.6-terra
+#   efforts:
+#     claude:
+#       plastic-executor: medium
+#     codex:
+#       plastic-executor: medium
+# Every shipped agent defaults to medium reasoning effort on both harnesses.
+# An agents.efforts.<harness>.<agent> entry is an explicit per-agent override.
 
-# The advisor (intent 185): two consultation agents, plastic-advisor (the real
-# advisor, expensive, model fable by default) and plastic-faux-advisor (the
-# cheaper imitation, model opus by default, carrying the same reasoning
-# discipline inline). advisor.enabled defaults to enabled; missing or
+# The advisors: Primary Advisor and Secondary Advisor. Both use Fable on Claude
+# Code and gpt-6-astra on Codex. Primary uses medium effort; Secondary uses high.
+# advisor.enabled defaults to enabled; missing or
 # unreadable counts as enabled (fail-open). The claude.default value is an
 # AGENT NAME, never a model name, so it can point at
 # a locally registered agent instead. Set at install time via --no-advisor /
 # --advisor, or uncomment here directly. Each agent's actual model is a plain
-# agents.models.claude.<name> override, same mechanism as any other agent.
+# agents.models.claude.<name> override, same mechanism as any other agent. Codex
+# generates both advisors with their role-specific effort.
 # advisor:
 #   enabled: false               # skip installing both advisor agents and the
 #                                 # agent-advisor skill entirely
 #   claude:
-#     default: plastic-advisor         # which agent the advisor skill routes to
+#     default: plastic-primary-advisor # which agent the advisor skill routes to

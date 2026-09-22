@@ -1,10 +1,10 @@
 {
   "name": "@zalom/plastic",
-  "version": "1.14.1",
+  "version": "2.0.0",
   "description": "Intent-driven idea development system for AI coding agents",
   "type": "module",
   "bin": {
-    "plastic": "bin/plastic.js"
+    "plastic": "bin/plastic"
   },
   "engines": {
     "node": ">=18.0.0"
@@ -27,17 +27,19 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/zalom/plastic"
+    "url": "git+https://github.com/zalom/plastic.git"
   },
   "homepage": "https://github.com/zalom/plastic",
   "files": [
     "bin/",
     "scripts/",
     "skills/",
+    "docs/help/",
     "hooks/",
     "agents/",
     "templates/",
     "PLASTIC.md",
-    "deprecations.yml"
+    "deprecations.yml",
+    "config_asks.yml"
   ]
 }

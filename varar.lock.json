@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "oaths": {
+    "varar/next.md": {
+      "sourceHash": "fnv1a:791f3780",
+      "examples": [
+        {
+          "name": "Each row gives the roadmap, the exit code, the result and the reason:",
+          "line": 6
+        }
+      ]
+    }
+  }
+}

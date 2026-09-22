@@ -1,0 +1,69 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# hook-savepoint (intent 311): the PreCompact hook body. Reads the harness
+# payload from stdin (session_id, cwd), takes the Plastic home from argv,
+# writes this session's hand-off for the session's day from the day ledger,
+# and prints one
+# message: the fixed text, plus the written file's path when a session
+# resolved (both harnesses relay the same launcher and the Codex pin feeds
+# both sides the same payload, so the two stay equal). Always exits 0,
+# always prints the message.
+#
+# Usage: hook-savepoint <plastic_home>   (stdin: the hook JSON)
+
+require_relative "lib/store_layout"
+require "json"
+require_relative "lib/session_ledger"
+require_relative "lib/handoff"
+require_relative "lib/active_delivery"
+
+MESSAGE = "PLASTIC SAVEPOINT - context is being compacted. The hand-off for this " \
+          "session is written in today's day ledger " \
+          "(store/.sessions/<day>/handoff--<session>.md). " \
+          "After compaction say continue to resume from it."
+
+# The intent this session is delivering, resolved through the same walk the
+# Stop gate uses (row 4.38): read-config's project_roots, plus the global
+# store, glob for a live delivery.lock this session holds. Never raises
+# (ActiveDelivery.resolve rescues its own reads); a lookup failure just
+# means the Runner section is omitted, never that the hand-off is lost.
+def resolve_intent(plastic_home, session_id, read_config_path)
+  return nil if session_id.strip.empty?
+
+  global_store = Plastic::StoreLayout.global_store(plastic_home)
+  roots_raw = IO.popen({ "PLASTIC_HOME" => plastic_home }, [read_config_path, "project_roots"],
+                       err: File::NULL, &:read).to_s.strip
+  project_roots = roots_raw.empty? ? [] : Array(JSON.parse(roots_raw))
+  project_roots = project_roots.map { |root| File.expand_path(root.to_s) }
+  ActiveDelivery.resolve(global_store: global_store, project_roots: project_roots, session: session_id)
+rescue StandardError
+  nil
+end
+
+written = nil
+begin
+  plastic_home = ARGV[0].to_s
+  raw = $stdin.tty? ? "" : $stdin.read.to_s
+  payload = raw.strip.empty? ? {} : JSON.parse(raw)
+  payload = {} unless payload.is_a?(Hash)
+  session_id = payload["session_id"].to_s
+
+  unless plastic_home.empty? || session_id.strip.empty?
+    home = File.expand_path(plastic_home)
+    store = Plastic::StoreLayout.global_store(home)
+    session = SessionLedger.short_session_id(session_id, nil)
+    day = Handoff.day_for(store, session, today: SessionLedger.day_id)
+    read_config_path = File.expand_path("read-config", __dir__)
+    intent = resolve_intent(home, session_id, read_config_path)
+    written = Handoff.write(store: store, day: day, session: session, trigger: "precompact",
+                            templates: File.expand_path("../templates", __dir__), intent: intent)
+  end
+rescue StandardError, JSON::ParserError
+  nil
+end
+
+message = written ? "#{MESSAGE} This session's file: #{written}" : MESSAGE
+puts JSON.generate("systemMessage" => message)
+exit 0

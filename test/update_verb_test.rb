@@ -45,6 +45,108 @@ class UpdateVerbTest < Minitest::Test
     assert_equal :cross_bleeding, r[:kind]
   end
 
+  # Intent 310 (296 Open Question 6): a 2.0.0-alpha.1 resolves to the alpha channel with no
+  # prerelease case. A stable install is up to date with no flag (never nudged onto the
+  # alpha), reaches it only by asking (--alpha, a confirmed :cross_bleeding move), and the
+  # alpha itself is up to date on its own channel.
+  MAJOR_TAGS = { "latest" => "1.14.1", "alpha" => "2.0.0-alpha.1" }.freeze
+
+  def test_new_major_alpha_resolves_to_the_alpha_channel_as_the_code_stands
+    assert_equal "alpha", @u.channel_for("2.0.0-alpha.1")
+    assert_equal 1, @u.semver_compare("2.0.0-alpha.1", "1.14.1")
+
+    quiet = @u.compute_target(installed_version: "1.14.1", dist_tags: MAJOR_TAGS)
+    assert_equal :up_to_date, quiet[:status], "a stable install must never be nudged onto the alpha"
+
+    asked = @u.compute_target(installed_version: "1.14.1", dist_tags: MAJOR_TAGS, requested_channel: "alpha")
+    assert_equal :ok, asked[:status]
+    assert_equal "2.0.0-alpha.1", asked[:target]
+    assert_equal :cross_bleeding, asked[:kind]
+
+    on_alpha = @u.compute_target(installed_version: "2.0.0-alpha.1", dist_tags: MAJOR_TAGS)
+    assert_equal :up_to_date, on_alpha[:status]
+  end
+
+  # Intent 310: --yes confirms a bleeding-edge switch without a tty, so `update --alpha --yes`
+  # works from a script or an agent; without it a non-tty run still aborts.
+  def test_yes_confirms_bleeding_switch_without_a_tty
+    u = Update.new(package_root: ".", plastic_home: @home, version: "x")
+    assert u.send(:confirm_bleeding, "1.14.1", "2.0.0-alpha.1", ["--alpha", "--yes"])
+    refute u.send(:confirm_bleeding, "1.14.1", "2.0.0-alpha.1", ["--alpha"]), "no tty and no --yes must not confirm"
+
+    switched = nil
+    u.define_singleton_method(:installed_version) { "1.14.1" }
+    u.define_singleton_method(:fetch_dist_tags) { MAJOR_TAGS }
+    u.define_singleton_method(:perform_switch) { |target, _flags| switched = target; 0 }
+    u.define_singleton_method(:run_post_update_doctor) { |**_kwargs| nil }
+    u.define_singleton_method(:announce_pending_config_asks) { |**_kwargs| nil }
+    out, = capture_io { assert_equal 0, u.cli(["--alpha", "--yes"]) }
+    assert_equal "2.0.0-alpha.1", switched
+    refute_match(/Aborted/, out)
+  end
+
+  # Intent 372: the update skill's former step 124-125 (commit the core files in
+  # ~/.plastic, delete the update cache) becomes code, ported from the skill's own
+  # shell recipe. Hermetic: the git calls go through an injected runner, never real git.
+  def test_commit_core_files_shells_git_add_then_commit
+    calls = []
+    runner = ->(cmd) { calls << cmd; true }
+
+    @u.send(:commit_core_files, "1.0.0-alpha.19", runner: runner)
+
+    assert_equal 2, calls.length
+    add, commit = calls
+    assert_equal ["git", "-C", @home, "add", "PLASTIC.md", "scripts", "AGENTS.md", "VERSION",
+      "versions.json", "deprecations.yml", "config_asks.yml"], add
+    assert_equal ["git", "-C", @home, "commit", "-m", "chore: update Plastic to 1.0.0-alpha.19",
+      "--allow-empty"], commit
+  end
+
+  def test_clear_update_check_cache_deletes_the_file
+    cache_dir = File.join(@home, ".cache")
+    FileUtils.mkdir_p(cache_dir)
+    cache_file = File.join(cache_dir, "update-check.json")
+    File.write(cache_file, "{}")
+
+    @u.send(:clear_update_check_cache)
+
+    refute_path_exists cache_file
+  end
+
+  def test_clear_update_check_cache_is_a_noop_when_the_cache_is_absent
+    @u.send(:clear_update_check_cache)
+  end
+
+  class FakeUpdate < Update
+    attr_reader :committed_to, :cache_cleared
+    def commit_core_files(target, **) = (@committed_to = target)
+    def clear_update_check_cache = (@cache_cleared = true)
+  end
+
+  def test_perform_switch_commits_and_clears_cache_on_a_successful_switch
+    u = FakeUpdate.new(package_root: ".", plastic_home: @home, version: "x")
+
+    status = nil
+    capture_io { status = u.send(:perform_switch, "1.0.0-alpha.19", ["--claude"], switch_runner: ->(_cmd) { true }) }
+
+    assert_equal 0, status
+
+    assert_equal "1.0.0-alpha.19", u.committed_to
+    assert u.cache_cleared
+  end
+
+  def test_perform_switch_does_not_commit_or_clear_cache_on_a_failed_switch
+    u = FakeUpdate.new(package_root: ".", plastic_home: @home, version: "x")
+
+    status = nil
+    capture_io { status = u.send(:perform_switch, "1.0.0-alpha.19", ["--claude"], switch_runner: ->(_cmd) { false }) }
+
+    assert_equal 1, status
+
+    assert_nil u.committed_to
+    refute u.cache_cleared
+  end
+
   def test_unknown_channel_when_tag_absent
     r = @u.compute_target(installed_version: "1.0.0-alpha.18", dist_tags: { "alpha" => "1.0.0-alpha.18" }, requested_channel: "beta")
     assert_equal :unknown_channel, r[:status]
@@ -191,8 +293,8 @@ class UpdateVerbTest < Minitest::Test
       "introduced" => "1.3.0",
       "question" => "Which advisor should be the default?",
       "options" => [
-        { "label" => "Faux Fable", "value" => "plastic-faux-advisor" },
-        { "label" => "Fable 5", "value" => "plastic-advisor" },
+        { "label" => "Primary Advisor", "value" => "plastic-primary-advisor" },
+        { "label" => "Secondary Advisor", "value" => "plastic-secondary-advisor" },
       ],
     }
   end
@@ -229,16 +331,16 @@ class UpdateVerbTest < Minitest::Test
 
     output = buf.string
     assert_match(/Which advisor should be the default\?/, output)
-    assert_match(/Faux Fable/, output)
-    assert_match(/Fable 5/, output)
-    assert_match(/write-config advisor\.claude\.default plastic-faux-advisor/, output)
-    assert_match(/write-config advisor\.claude\.default plastic-advisor/, output)
+    assert_match(/Primary Advisor/, output)
+    assert_match(/Secondary Advisor/, output)
+    assert_match(/write-config advisor\.claude\.default plastic-primary-advisor/, output)
+    assert_match(/write-config advisor\.claude\.default plastic-secondary-advisor/, output)
     assert_match(/write-config config_asks_dismissed --push advisor-default/, output)
   end
 
   def test_announce_silent_when_key_already_set
     write_manifest([sample_config_ask_entry])
-    write_global_config("advisor" => { "claude" => { "default" => "plastic-advisor" } })
+    write_global_config("advisor" => { "claude" => { "default" => "plastic-primary-advisor" } })
 
     buf = StringIO.new
     @u.announce_pending_config_asks(out: buf)

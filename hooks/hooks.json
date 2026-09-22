@@ -17,6 +17,18 @@
         ]
       }
     ],
+    "PreToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook\" call-budget",
+            "statusMessage": ""
+          }
+        ]
+      }
+    ],
     "PreCompact": [
       {
         "matcher": "",
@@ -29,36 +41,26 @@
         ]
       }
     ],
-    "PreToolUse": [
+    "SessionEnd": [
       {
-        "matcher": "Write|Edit|NotebookEdit|mcp__serena__replace_content|mcp__serena__replace_symbol_body|mcp__serena__insert_after_symbol|mcp__serena__insert_before_symbol|mcp__serena__safe_delete_symbol|mcp__serena__rename_symbol",
+        "matcher": "",
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook\" edit-gates",
-            "statusMessage": "Checking Plastic gates..."
-          }
-        ]
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook\" bash-gate",
-            "statusMessage": "Checking lifecycle gate..."
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook\" close",
+            "statusMessage": "Closing the Plastic session..."
           }
         ]
       }
     ],
     "PostToolUse": [
       {
-        "matcher": "Write|Edit",
+        "matcher": "Write|Edit|NotebookEdit|mcp__serena__replace_content|mcp__serena__replace_symbol_body|mcp__serena__insert_after_symbol|mcp__serena__insert_before_symbol|mcp__serena__safe_delete_symbol|mcp__serena__rename_symbol",
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook\" gate-check",
-            "statusMessage": "Checking lifecycle gates..."
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook\" record",
+            "statusMessage": "Recording Plastic session state..."
           }
         ]
       }
@@ -69,38 +71,32 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook\" continue",
-            "statusMessage": "Checking for continue..."
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook\" capture",
+            "statusMessage": "Capturing prompt into the session ledger..."
           }
         ]
-      },
+      }
+    ],
+    "MessageDisplay": [
       {
         "matcher": "",
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/future-intent-check\"",
-            "statusMessage": "Checking future intents..."
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook\" message-display",
+            "statusMessage": ""
           }
         ]
-      },
+      }
+    ],
+    "Stop": [
       {
         "matcher": "",
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/auto-arm\"",
-            "statusMessage": "Checking auto mode..."
-          }
-        ]
-      },
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook\" power-tools",
-            "statusMessage": "Checking power tools..."
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook\" stop",
+            "statusMessage": ""
           }
         ]
       }

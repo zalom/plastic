@@ -1,5 +1,5 @@
 #!/usr/bin/env ruby
-# Usage: read-config <key> [--default VALUE] [--project PATH]
+# Usage: read-config <key> [--default VALUE] [--project PATH] [--harness claude|codex]
 # Resolves a config value: project -> global -> built-in defaults.
 # Nested keys use dot notation: agent.type, architect.style
 # Returns scalar values as strings, hash/array values as JSON.
@@ -14,6 +14,9 @@ require_relative "lib/agent_models"
 DEFAULTS = {
   "version" => 3,
   "stale_threshold_days" => 3,
+  # Absolute token counts for a 1M window, 15 and 25 percent (intent 355, n5, D7).
+  "context_offer_tokens" => 150_000,
+  "context_insist_tokens" => 250_000,
   "execution_mode" => "subagent-driven",
   "hash_length" => 6,
   "hash_algorithm" => "sha256-base36",
@@ -30,6 +33,12 @@ DEFAULTS = {
   },
   "architect" => {
     "style" => nil
+  },
+  # Intent 340b (G7c, n4, D9): the Stop hook's runtime arm. Off until the
+  # owner's C32 ruling; read-config emits it as the string "false", which
+  # StopGate parses as a boolean itself rather than trusting.
+  "runner" => {
+    "stop_hook" => false
   }
 }.freeze
 
@@ -37,6 +46,7 @@ def parse_args(argv)
   key = nil
   default_val = nil
   project_dir = nil
+  harness = nil
 
   i = 0
   while i < argv.length
@@ -49,13 +59,17 @@ def parse_args(argv)
       abort "Error: --project requires a value" unless argv[i + 1]
       project_dir = argv[i + 1]
       i += 2
+    when "--harness"
+      abort "Error: --harness requires a value" unless argv[i + 1]
+      harness = argv[i + 1]
+      i += 2
     else
       key = argv[i]
       i += 1
     end
   end
 
-  [key, default_val, project_dir]
+  [key, default_val, project_dir, harness]
 end
 
 def load_yaml(path)
@@ -110,10 +124,10 @@ if ARGV.include?("--migrate")
   exit 0
 end
 
-key, explicit_default, project_dir = parse_args(ARGV)
+key, explicit_default, project_dir, harness = parse_args(ARGV)
 
 if key.nil? || key.empty?
-  $stderr.puts "Usage: read-config <key> [--default VALUE] [--project PATH]"
+  $stderr.puts "Usage: read-config <key> [--default VALUE] [--project PATH] [--harness claude|codex]"
   exit 1
 end
 
@@ -126,9 +140,42 @@ if project_dir
   project_config = load_yaml(project_config_path)
 end
 
-value = dig_key(project_config, key)
-value = dig_key(global_config, key) if value.nil?
+def canonical_harness(value)
+  return nil if value.nil?
+  return "claude" if %w[claude claude-code].include?(value.to_s)
+  return "codex" if value.to_s == "codex"
+
+  abort "Error: --harness must be claude or codex"
+end
+
+def harness_agent_value(config, key, harness)
+  match = key.match(/\Aagents\.(models|efforts)\.([^.]+)\z/)
+  return nil unless match
+
+  section, agent = match.captures
+  if section == "models"
+    AgentModels.models_section(config, harness: harness)[agent]
+  else
+    AgentModels.efforts_section(config, harness)[agent]
+  end
+end
+
+harness = canonical_harness(harness)
+if harness
+  value = harness_agent_value(project_config, key, harness)
+  value = harness_agent_value(global_config, key, harness) if value.nil?
+else
+  value = dig_key(project_config, key)
+  value = dig_key(global_config, key) if value.nil?
+end
 value = explicit_default if value.nil? && explicit_default
+if value.nil? && harness && (match = key.match(/\Aagents\.(models|efforts)\.([^.]+)\z/))
+  value = if match[1] == "models"
+            AgentModels.shipped_model_for(match[2], harness: harness)
+          else
+            AgentModels::DEFAULT_EFFORT
+          end
+end
 value = dig_key(DEFAULTS, key) if value.nil?
 
 puts format_value(value)

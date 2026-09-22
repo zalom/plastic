@@ -2,6 +2,13 @@
 
 Intent-driven state management for AI coding sessions.
 
+## Broken data: fix it or remove it, never build around it
+
+Wrong data (a blank record, a junk field, a failed fetch or import) is fixed first. When it
+cannot be fixed, the erroneous records are removed. Never design, code, test, or screenshot
+around broken data. A legitimately absent value is not broken data. Owner ruling 2026-09-05,
+global rule.
+
 ## Stack
 - Language: Ruby (scripts), JavaScript/Node.js (npm package, installer)
 - Framework: npm package (CLI installer), flat personal skills
@@ -30,12 +37,10 @@ present, search it before re-deriving an existing decision, spec, or outcome.
 - **Search before re-deriving.** Look in the stores for prior decisions, specs, and
   outcomes before re-deriving them. The stores are the memory.
 - **Power tools are recommended when present.** When QMD (for intents), Enola, or Serena
-  (for code navigation) is present, prefer them: the UserPromptSubmit hook appends one
-  combined recommendation line covering QMD and at most one code-navigation tool,
-  Enola-first when both code-navigation tools are present (one code-navigation slot,
-  Enola wins over Serena), and the per-skill
-  QMD-first steps run `qmd-sync search` before grep/Read, then open the authoritative
-  intent file. Use the deterministic `scripts/qmd-sync search "<terms>"` helper, which
+  (for code navigation) is present, prefer them. `PLASTIC.md` carries that recommendation
+  (Enola-first when both code-navigation tools are present); no hook repeats it per prompt
+  (the power-tools hook was removed in 2.0, intent 309), and the per-skill QMD-first steps
+  run `qmd-sync search` before grep/Read, then open the authoritative intent file. Use the deterministic `scripts/qmd-sync search "<terms>"` helper, which
   scopes collections for you and is a clean no-op when QMD is absent.
 - **Completion fires an async reindex.** Intent delivery reindexes the delivering store's
   collection in the background (non-blocking), so the index stays fresh while
@@ -59,15 +64,15 @@ Rules for any agent (or human) contributing to this repository.
   `docs/internals.md` in the same change.
 - Keep the README light. It carries the pitch, install, and a pointer into `docs/`.
   Deeper material belongs in `docs/`.
-- Writing follows the `writing-style` skill. It owns the wording rules for every document in this repository; this file does not restate them.
+- Writing follows the `plain-writing` skill. It owns the wording rules for every document in this repository; this file does not restate them.
 
 ### Work
 - All work flows through an intent. Move it through What, Why, How, Exec. Do not jump
   straight to code.
 - Create intents through `scripts/new-intent` (or the `plastic-intent-creating` skill that
   wraps it), never by hand-authoring the files. One call scaffolds a born-complete intent
-  plus sentinel placeholder lifecycle files. The write-time create gate blocks an incomplete
-  or malformed intent file, so hand-authoring is both rejected and unnecessary.
+  plus sentinel placeholder lifecycle files. `new-intent` validates the file it writes and
+  `end-intent` checks it again at close, so hand-authoring is unnecessary.
 - Plans, specs, checklists, and outcomes live in the intent directory under `~/.plastic/`,
   never in the project tree.
 - A step becomes a script only when its output is a pure function of already-committed
@@ -75,7 +80,12 @@ Rules for any agent (or human) contributing to this repository.
   else stays judgment and stays with the agent. Make no exceptions for convenience.
 
 ### Testing
-- Run the full suite with:
+- Run each change's tests once, on the changed files only: `ruby bin/test --only test/FILE_test.rb`.
+  Then run the change gate once: `bin/verify-change origin/alpha`.
+- The full suite runs once for each pull request, just before the pull request opens, and again in CI.
+  Never run it after every change. When a deletion breaks tests widely, find them with a search
+  for the deleted names, not with the suite.
+- The full suite command is:
   ```
   ruby -Itest -e 'Dir["test/*_test.rb"].each { |f| require File.expand_path(f) }'
   ```
@@ -83,16 +93,15 @@ Rules for any agent (or human) contributing to this repository.
   and Ruby runs only the FIRST file as the program (the rest land in `ARGV`, unloaded), so
   Minitest reports just that one file's tests and you get a falsely small green run. The
   loader command above requires every `test/*_test.rb` file, so the whole suite runs.
-- Confirm green before committing code changes.
-- Lock and bridge tests must stay hermetic: inject `PLASTIC_TMP` plus explicit paths and
+- Confirm that the changed files' tests and the change gate are green before committing code changes.
+- Lock and worktree tests must stay hermetic: inject `PLASTIC_TMP` plus explicit paths and
   never write with the ambient session id (`test/hermeticity_guard_test.rb` enforces this).
 
 ### Worktrees and the single-owner lock
 - Single owner, mandatory. Exactly one session or agent develops an intent's delivery at a
   time. Ownership is a session-keyed `delivery.lock` file in the intent directory; liveness
   is a lease (the owner's hooks refresh the file mtime on tool activity, stale means the
-  heartbeat is older than the TTL). The /tmp session bridge is only a cache: on any
-  disagreement the lock file wins. If you find a fresh lock owned by another session, back
+  heartbeat is older than the TTL); the lock file is the truth of ownership. If you find a fresh lock owned by another session, back
   off. A stale lock is reclaimed only through `plastic-lock reclaim` (audited in
   savepoint.md); disarm clears the lock, and `plastic-lock fix` is the repair path for
   corrupt or legacy state.
@@ -117,13 +126,15 @@ Rules for any agent (or human) contributing to this repository.
   message, never work around the hook.
 - Use Conventional Commits (`feat:`, `fix:`, `docs:`, `refactor:`, `chore:`).
 - Bump all version files listed in Defaults on every fix or feature release.
-- Release through the `plastic-releasing` workflow (tag, GitHub release, npm publish).
-- Run the full test suite (see the Testing section) and confirm green before committing code changes.
+- A push to `alpha`, `beta` or `main` is the release (intent 376). `.github/workflows/publish.yml`
+  creates the tag, the GitHub release and the npm publish for a version with no tag yet (OIDC
+  trusted publishing, intent 347). Do not run `npm publish` or create a tag by hand.
+- Run the changed files' tests and the change gate before committing code changes (see the Testing section).
 - Never push `~/.plastic/`. The global store is local-only and may contain private data.
 - Core Plastic intents carry no release numbers; the intent schema stays release-agnostic. A release is a collection of intents: a cut (tag) bundles whichever intents have landed since the previous cut and completes them. Which release an intent lands in, and the shipped release history, live in `CHANGELOG.md` at the repo root, not in the intent file and not in PLASTIC.md.
 - Two release lanes exist: default (straight to main) and beta-verified (beta branch, beta
   channel, real-use verification, then main). Read
-  `skills/releasing/references/release-lines.md` for the routing rule, the stable-line
+  `docs/release-lines.md` for the routing rule, the stable-line
   guarantees, and the intent-41 re-land playbook.
 - Stable-line guarantees, in short: main stays always releasable with no pending revert awaiting
   re-land, a stable release always carries the GitHub Latest badge and no pre-release suffix,

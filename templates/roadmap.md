@@ -1,6 +1,6 @@
 # Roadmap: <name>
 
-(one-line meta: what this roadmap delivers, and which tier it lives in. `roadmaps/` is a sibling
+(one-line meta: what this roadmap delivers, and whether it is a project or the global roadmap. `roadmaps/` is a sibling
 of `INDEX.md` — a project's root or the global `~/.plastic/`, never inside `store/`. When this
 roadmap's goal is reached, move this file from `roadmaps/{slug}.md` to
 `roadmaps/archived/{slug}.md`; `roadmaps/` itself lists only live roadmaps.)
@@ -8,6 +8,19 @@ roadmap's goal is reached, move this file from `roadmaps/{slug}.md` to
 ## Goal
 (a checkable prose condition — one or a few sentences a human or coordinator reads to decide the
 roadmap is done. Not an executable checker.)
+
+## Graph
+Edges, `needs` only; the head needs the tail done. The literal target `nothing` declares a root
+(an entry needing nothing). Batches below are computed from these edges, not hand-ordered; run
+`roadmap-graph check <this file>` to see the computed batches and `roadmap-graph render <this
+file>` to write them back, or `roadmap-graph migrate <this file>` on an existing graphless
+roadmap to derive edges from its current batch order instead of hand-writing them here.
+
+Grammar (fenced below so this example is never read as a real edge):
+```
+- <intent-id> needs nothing
+- <intent-id> needs <intent-id>
+```
 
 ## Batches
 Entries in a batch are parallel-safe; batches run top to bottom. The checkbox is checked once an

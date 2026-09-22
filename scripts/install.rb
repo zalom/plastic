@@ -3,7 +3,11 @@
 # frozen_string_literal: true
 
 # Plastic — `install` verb. Runs via `npx @zalom/plastic install` (bin/plastic.js) or directly.
-# Usage: ruby scripts/install.rb [--claude|--codex|--hermes|--all] [--alpha|--beta|--latest] [--reinstall] [--force] [--help]
+# Usage: ruby scripts/install.rb [--claude|--codex|--hermes|--all] [--reinstall] [--force] [--help]
+#
+# The package version selects the channel: `npx @zalom/plastic@alpha install --claude` (or
+# a pinned `@2.0.0-alpha.1`). The channel flags this verb once listed never selected a
+# package and were removed in 2.0 (intent 310).
 #
 # One-shot by design:
 #   - no install present  -> fresh install + bootstrap store
@@ -71,12 +75,15 @@ class Install < InstallerCore
   # they are reported, never re-installed, so the summary line and the Codex
   # trust reminder only ever count agents that actually changed this run.
   def run(selected:, force: false, reinstall: false, ledger_action: nil, argv: ARGV, input: $stdin,
-          already_registered: [])
+          already_registered: [], qmd_runner: QmdSync.default_runner, qmd_detector: QmdSync.method(:detect))
     fresh = !installed?
     mode = fresh ? :install : :update # :update here means "re-sync, skip bootstrap"
 
     distribute(mode)
     bootstrap if fresh
+    git_init_if_absent
+    register_with_qmd(runner: qmd_runner, detector: qmd_detector)
+    migrate_advisor_config_file(File.join(plastic_home, "config.yml"))
     apply_config_flags(argv)
 
     results = selected.map do |key|
@@ -131,13 +138,13 @@ class Install < InstallerCore
   end
 
   def git_probe
-    !`command -v git`.strip.empty?
+    !`git --version`.strip.empty?
   rescue StandardError
     false
   end
 
   def mise_probe
-    !`command -v mise`.strip.empty?
+    !`mise --version`.strip.empty?
   rescue StandardError
     false
   end
@@ -206,7 +213,7 @@ class Install < InstallerCore
     return if codex_like.none? { |a| installed.any? { |r| r[:agent] == a[:name] } }
 
     puts "   Codex: open Codex, run /hooks, and trust the Plastic hook definitions."
-    puts "   Plastic's gates will not fire until you do.\n\n"
+    puts "   Plastic's hooks will not fire until you do.\n\n"
   end
 
   def show_help
@@ -223,10 +230,8 @@ class Install < InstallerCore
         --hermes      Install for Hermes
         --all         Install for all supported agents
 
-      Channel options:
-        --latest      Stable channel (default)
-        --beta        Beta channel
-        --alpha       Alpha channel
+      Channel: pin the package, e.g. `npx @zalom/plastic@alpha install --claude`
+        (@latest is stable and the default; @beta and @alpha are the other channels)
 
       Other options:
         --reinstall          Re-sync core files for the installed version (repair). Store untouched.
@@ -237,10 +242,9 @@ class Install < InstallerCore
         --no-advisor         Skip installing both advisor agents and the agent-advisor
                              skill (advisor.enabled: false)
         --advisor VALUE      Which advisor agent is the default: an agent name, or the
-                             shorthand "real" (plastic-advisor) or "faux"
-                             (plastic-faux-advisor). Writes advisor.claude.default. Left
-                             unset, the agent-advisor skill falls back to
-                             plastic-faux-advisor at consult time.
+                             shorthand "primary" or "secondary". Legacy "real" and
+                             "faux" aliases remain accepted. Writes advisor.claude.default.
+                             Left unset, the agent-advisor skill falls back to Primary Advisor.
         -h, --help           Show this help
 
       Notes:

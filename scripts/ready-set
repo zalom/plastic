@@ -1,0 +1,126 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# ready-set - the CLI over ReadySet (intent 336, G3). No computed field this
+# intent adds ships without a script that reads it (327 D18, C19): prints the
+# ready order, the blockers for every unready node, the batches, and every
+# maximal-length critical path; emits JSON for a caller like the runner (G7).
+#
+# Usage:
+#   ready-set <intent_dir> [--json] [--ranker finish-first|critical-path]
+#
+# Exit codes (matching scripts/validate-work-graph's shape):
+#   0 - printed (or emitted as JSON)
+#   1 - the graph is invalid (missing, cyclic, or a malformed node file)
+#   2 - usage: not an intent directory, or an unknown --ranker value
+
+require "json"
+require_relative "lib/ready_set"
+require_relative "lib/savepoint"
+
+module ReadySetCli
+  module_function
+
+  RANKERS = {
+    "finish-first" => -> { ReadySet::FinishFirstRanker.new },
+    "critical-path" => -> { ReadySet::CriticalPathRanker.new },
+  }.freeze
+
+  def usage
+    warn "Usage: ready-set <intent_dir> [--json] [--ranker #{RANKERS.keys.join('|')}]"
+  end
+
+  def intent_directory?(dir)
+    dir && File.directory?(dir) && File.exist?(Savepoint.intent_file(dir))
+  end
+
+  def main(argv)
+    args = argv.dup
+    json = !!args.delete("--json")
+
+    ranker_name = nil
+    if (i = args.index("--ranker"))
+      ranker_name = args[i + 1]
+      args.slice!(i, 2)
+    end
+
+    intent_dir_arg = args.shift
+    unless intent_directory?(intent_dir_arg && File.expand_path(intent_dir_arg))
+      warn "ready-set: #{intent_dir_arg.inspect} is not an intent directory"
+      usage
+      return 2
+    end
+    intent_dir = File.expand_path(intent_dir_arg)
+
+    ranker = nil
+    if ranker_name
+      factory = RANKERS[ranker_name]
+      unless factory
+        warn "ready-set: unknown ranker #{ranker_name.inspect} (use #{RANKERS.keys.join(', ')})"
+        return 2
+      end
+      ranker = factory.call
+    end
+
+    analysis = ReadySet.analyze(intent_dir, ranker: ranker)
+    unless analysis[:ok]
+      warn "ready-set: #{analysis[:errors].join('; ')}"
+      return 1
+    end
+
+    if json
+      puts JSON.pretty_generate(json_payload(analysis))
+    else
+      print_report(analysis)
+    end
+    0
+  end
+
+  def json_payload(analysis)
+    unready = analysis[:nodes].reject { |_, v| v[:ready] }
+    {
+      "ready" => analysis[:ranked_ready].map { |r| r[:id] },
+      "ranker" => analysis[:ranker_name],
+      "batches" => analysis[:batches],
+      "critical_path" => analysis[:critical_path],
+      "paths" => analysis[:paths],
+      "hops" => analysis[:hops],
+      "max_paths_total" => analysis[:max_paths_total],
+      "blockers" => unready.transform_values { |v| v[:blockers] },
+      "errors" => analysis[:errors],
+    }
+  end
+
+  def print_report(analysis)
+    unready = analysis[:nodes].reject { |_, v| v[:ready] }
+
+    puts "Ranker: #{analysis[:ranker_name]}"
+    puts
+    puts "Ready (#{analysis[:ranked_ready].length}):"
+    if analysis[:ranked_ready].empty?
+      puts "  (none)"
+    else
+      analysis[:ranked_ready].each { |r| puts "  #{r[:id]}" }
+    end
+    puts
+    puts "Blockers:"
+    if unready.empty?
+      puts "  (none)"
+    else
+      unready.each do |id, view|
+        puts "  #{id}:"
+        view[:blockers].each { |b| puts "    - #{b}" }
+      end
+    end
+    puts
+    puts "Batches:"
+    analysis[:batches].each_with_index { |batch, i| puts "  #{i + 1}: #{batch.join(', ')}" }
+    puts
+    puts "Critical path (#{analysis[:hops]} hops): #{(analysis[:critical_path] || []).join(' > ')}"
+    puts "Every maximal-length path (#{analysis[:max_paths_total]} total, #{analysis[:paths].length} shown):"
+    analysis[:paths].each { |p| puts "  #{p.join(' > ')}" }
+  end
+end
+
+exit(ReadySetCli.main(ARGV)) if $PROGRAM_NAME == __FILE__

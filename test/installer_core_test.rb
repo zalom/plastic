@@ -3,8 +3,10 @@ require "tmpdir"
 require "fileutils"
 require "json"
 require "digest"
+require "yaml"
 
 require_relative "../scripts/lib/installer_core"
+require_relative "../scripts/lib/engine_permissions"
 
 # Channel derivation, semver, and the append-only versions.json ledger (intent 30a1a).
 class InstallerCoreTest < Minitest::Test
@@ -143,7 +145,7 @@ class InstallerCoreTest < Minitest::Test
   # be require_relative'd but never installed, raising a LoadError in the live hook.
   def test_every_lib_file_is_in_the_manifest
     manifest = @core.core_files
-    lib_files = Dir[File.join(WORKTREE, "scripts/lib/*.rb")].map do |path|
+    lib_files = Dir[File.join(WORKTREE, "scripts/lib/**/*.rb")].map do |path|
       path.sub("#{WORKTREE}/", "")
     end
     refute_empty lib_files, "expected scripts/lib/*.rb files to exist in the package"
@@ -258,6 +260,67 @@ class InstallerCoreTest < Minitest::Test
     FileUtils.rm_rf(codex_dir)
   end
 
+  # --- intent 312: the seeded config and the compact-instructions block ---
+
+  def test_compaction_defaults_150k_250k
+    capture_io { @core.bootstrap }
+    config = YAML.safe_load(File.read(File.join(@home, "config.yml")))
+
+    assert_equal 150_000, config["context_offer_tokens"]
+    assert_equal 250_000, config["context_insist_tokens"]
+  end
+
+  def test_installer_does_not_install_timer
+    source = File.read(File.join(WORKTREE, "scripts", "lib", "installer_core.rb"))
+    refute_match(/install-timer/, source)
+    refute_match(/install_timer/, source)
+  end
+
+  def test_install_claude_injects_the_compact_block_and_never_tracks_claude_md
+    dir = Dir.mktmpdir("install-claude-compact")
+    capture_io { @core.install_claude({ name: "Claude Code", dir: dir }, false, argv: ["--no-statusline"]) }
+
+    claude_md = File.join(dir, "CLAUDE.md")
+    assert File.exist?(claude_md), "install_claude must write the compact-instructions block"
+    assert_includes File.read(claude_md), InstallerCore::CLAUDE_SECTION_BEGIN_PREFIX
+
+    manifest = JSON.parse(File.read(File.join(dir, "plastic", "manifest.json")))
+    tracked = (manifest["files"] || {}).keys
+    refute_includes tracked, claude_md,
+      "CLAUDE.md is a partial-ownership user file: tracking it would delete it wholesale on uninstall"
+  ensure
+    FileUtils.rm_rf(dir)
+  end
+
+  # Intent 340b (G7c, n3, row 3.16): the engine deny rule, driven end to end through
+  # the real install_claude / uninstall_agent wiring rather than the module's pure
+  # functions directly, against a settings.json that already carries the owner's own
+  # permissions. The round trip must land back exactly where it started.
+  def test_install_then_uninstall_leaves_settings_as_found
+    dir = Dir.mktmpdir("install-then-uninstall-permissions")
+    settings_path = File.join(dir, "settings.json")
+    found = {
+      "permissions" => {
+        "allow" => ["Bash(git status)"],
+        "deny" => ["Bash(curl:*)"],
+      },
+    }
+    File.write(settings_path, JSON.generate(found))
+
+    capture_io { @core.install_claude({ name: "Claude Code", dir: dir }, false, argv: ["--no-statusline"]) }
+
+    installed_deny = JSON.parse(File.read(settings_path)).dig("permissions", "deny")
+    EnginePermissions::ENTRIES.each { |entry| assert_includes installed_deny, entry }
+
+    capture_io { @core.uninstall_agent("claude", { name: "Claude Code", dir: dir }) }
+
+    final_permissions = JSON.parse(File.read(settings_path))["permissions"]
+    assert_equal found["permissions"]["allow"], final_permissions["allow"]
+    assert_equal found["permissions"]["deny"], final_permissions["deny"]
+  ensure
+    FileUtils.rm_rf(dir)
+  end
+
   def test_agent_version_for_reads_the_stripped_version_string
     dir = Dir.mktmpdir("agent-version-for")
     FileUtils.mkdir_p(File.join(dir, "plastic"))
@@ -275,5 +338,223 @@ class InstallerCoreTest < Minitest::Test
     assert_nil @core.agent_version_for({ dir: dir })
   ensure
     FileUtils.rm_rf(dir)
+  end
+
+  # --- read_package_version fallback (row B, spec 315b) -----------------------
+  #
+  # The installed rollback.rb/update.rb construct InstallerCore with
+  # package_root: ~/.plastic, which carries VERSION but never package.json
+  # (the installer never copies that file). Before this fallback,
+  # InstallerCore.new crashed there with a raw Errno::ENOENT.
+
+  def test_b1_reads_package_json_when_present
+    dir = Dir.mktmpdir("read-package-version-b1")
+    File.write(File.join(dir, "package.json"), JSON.generate("version" => "9.9.9"))
+
+    assert_equal "9.9.9", InstallerCore.new(package_root: dir, plastic_home: @home).version
+  ensure
+    FileUtils.rm_rf(dir)
+  end
+
+  def test_b2_falls_back_to_version_file_when_package_json_absent
+    dir = Dir.mktmpdir("read-package-version-b2")
+    File.write(File.join(dir, "VERSION"), "2.0.0-alpha.5\n")
+
+    assert_equal "2.0.0-alpha.5", InstallerCore.new(package_root: dir, plastic_home: @home).version
+  ensure
+    FileUtils.rm_rf(dir)
+  end
+
+  def test_b3_raises_a_named_error_when_neither_file_exists
+    dir = Dir.mktmpdir("read-package-version-b3")
+
+    error = assert_raises(RuntimeError) { InstallerCore.new(package_root: dir, plastic_home: @home) }
+    assert_includes error.message, "package.json"
+    assert_includes error.message, "VERSION"
+  ensure
+    FileUtils.rm_rf(dir)
+  end
+
+  def test_b4_constructor_succeeds_against_a_version_only_root
+    dir = Dir.mktmpdir("read-package-version-b4")
+    File.write(File.join(dir, "VERSION"), "1.14.1\n")
+
+    core = InstallerCore.new(package_root: dir, plastic_home: @home)
+    assert_equal "1.14.1", core.version
+  ensure
+    FileUtils.rm_rf(dir)
+  end
+  # --- remove_retired_session_state (intent 344, G11, D10) ---------------------------
+
+  def test_sync_removes_retired_session_pointer_files
+    global_current = File.join(@home, "store", ".tmp", "abcd1234", "current")
+    project_current = File.join(@home, "projects", "demo", "store", ".tmp", "efgh5678", "current")
+    FileUtils.mkdir_p(File.dirname(global_current))
+    FileUtils.mkdir_p(File.dirname(project_current))
+    File.write(global_current, "20260913\n")
+    File.write(project_current, "297\n")
+
+    removed = @core.remove_retired_session_state(plastic_home: @home, tmp_dirs: [])
+
+    assert_equal 2, removed
+    refute File.exist?(global_current)
+    refute File.exist?(project_current)
+  end
+
+  def test_sync_removes_retired_bridge_files_by_name
+    tmp = Dir.mktmpdir("bridge-leftovers")
+    bridge = File.join(tmp, "plastic-b7137962--311.json")
+    File.write(bridge, "{}")
+
+    removed = @core.remove_retired_session_state(plastic_home: @home, tmp_dirs: [tmp])
+
+    assert_equal 1, removed
+    refute File.exist?(bridge)
+  ensure
+    FileUtils.rm_rf(tmp)
+  end
+
+  def test_sync_keeps_heartbeats_and_unrelated_tmp_files
+    global_dir = File.join(@home, "store", ".tmp", "abcd1234")
+    FileUtils.mkdir_p(global_dir)
+    heartbeat = File.join(global_dir, "heartbeat")
+    File.write(heartbeat, Time.now.utc.iso8601)
+
+    tmp = Dir.mktmpdir("unrelated-tmp")
+    other = File.join(tmp, "some-other-tool.json")
+    File.write(other, "{}")
+    near_miss = File.join(tmp, "plastic-nodash.json")
+    File.write(near_miss, "{}")
+
+    removed = @core.remove_retired_session_state(plastic_home: @home, tmp_dirs: [tmp])
+
+    assert_equal 0, removed
+    assert File.exist?(heartbeat)
+    assert File.exist?(other)
+    assert File.exist?(near_miss)
+  ensure
+    FileUtils.rm_rf(tmp)
+  end
+
+  def test_sync_removes_a_malformed_bridge_file_without_reading_it
+    tmp = Dir.mktmpdir("torn-bridge")
+    torn = File.join(tmp, "plastic-b7137962--311.json")
+    File.write(torn, "{not json at all, torn mid-write")
+
+    removed = @core.remove_retired_session_state(plastic_home: @home, tmp_dirs: [tmp])
+
+    assert_equal 1, removed
+    refute File.exist?(torn)
+  ensure
+    FileUtils.rm_rf(tmp)
+  end
+
+  def test_retired_state_removal_failure_never_fails_the_sync
+    global_dir = File.join(@home, "store", ".tmp", "abcd1234")
+    FileUtils.mkdir_p(global_dir)
+    current = File.join(global_dir, "current")
+    File.write(current, "20260913\n")
+    File.chmod(0o500, global_dir)
+
+    removed = nil
+    begin
+      removed = @core.remove_retired_session_state(plastic_home: @home, tmp_dirs: [])
+    ensure
+      File.chmod(0o755, global_dir)
+    end
+
+    assert_equal 0, removed
+    assert File.exist?(current), "an undeletable candidate must be left in place, not raised over"
+  end
+
+  # Matrix 6.6: a `current` file reached only through a symlinked session
+  # directory is never a candidate.
+  def test_removal_skips_current_under_a_symlinked_session_dir
+    outside = Dir.mktmpdir("outside-session")
+    outside_current = File.join(outside, "current")
+    File.write(outside_current, "20260913
+")
+
+    tmp_root = File.join(@home, "store", ".tmp")
+    FileUtils.mkdir_p(tmp_root)
+    File.symlink(outside, File.join(tmp_root, "evil"))
+
+    removed = @core.remove_retired_session_state(plastic_home: @home, tmp_dirs: [])
+
+    assert_equal 0, removed
+    assert File.exist?(outside_current)
+  ensure
+    FileUtils.rm_rf(outside)
+  end
+
+  # Matrix 6.7: `current` files under a symlinked `.tmp`, store, or project
+  # store directory are never candidates, even one level up from the leaf.
+  def test_removal_skips_current_under_a_symlinked_store_path
+    outside_tmp = Dir.mktmpdir("outside-tmp")
+    tmp_current = File.join(outside_tmp, "sess1", "current")
+    FileUtils.mkdir_p(File.dirname(tmp_current))
+    File.write(tmp_current, "20260913
+")
+    FileUtils.mkdir_p(File.join(@home, "store"))
+    File.symlink(outside_tmp, File.join(@home, "store", ".tmp"))
+
+    outside_store = Dir.mktmpdir("outside-store")
+    store_current = File.join(outside_store, ".tmp", "sess2", "current")
+    FileUtils.mkdir_p(File.dirname(store_current))
+    File.write(store_current, "20260913
+")
+    FileUtils.mkdir_p(File.join(@home, "projects", "p"))
+    File.symlink(outside_store, File.join(@home, "projects", "p", "store"))
+
+    removed = @core.remove_retired_session_state(plastic_home: @home, tmp_dirs: [])
+
+    assert_equal 0, removed
+    assert File.exist?(tmp_current)
+    assert File.exist?(store_current)
+  ensure
+    FileUtils.rm_rf(outside_tmp)
+    FileUtils.rm_rf(outside_store)
+  end
+
+  # Matrix 6.8: the tmp-file name matcher runs on raw bytes and never raises
+  # on an undecodable name; remove_retired_session_state never raises over
+  # one either, on the platforms that let such a name reach the filesystem.
+  def test_retired_name_match_never_raises_on_invalid_bytes
+    bad_name = ("plastic-" + 255.chr + "--x.json").dup.force_encoding("UTF-8")
+
+    result = @core.retired_tmp_name?(bad_name)
+    assert_includes [true, false], result
+
+    tmp = Dir.mktmpdir("bad-byte-tmp")
+    begin
+      begin
+        File.write(File.join(tmp, bad_name), "{}")
+      rescue StandardError
+        return # this filesystem refuses the byte sequence; the assertion above already holds
+      end
+
+      removed = @core.remove_retired_session_state(plastic_home: @home, tmp_dirs: [tmp])
+      assert_equal 1, removed
+    ensure
+      FileUtils.rm_rf(tmp)
+    end
+  end
+
+  # Matrix 6.9: a real leftover is still removed when the tmp directory
+  # itself is a symlink (macOS's real `/tmp` is one).
+  def test_removal_follows_a_symlinked_tmp_dir_root
+    real_tmp = Dir.mktmpdir("real-tmp-root")
+    leftover = File.join(real_tmp, "plastic-abc--1.json")
+    File.write(leftover, "{}")
+    symlinked_root = File.join(Dir.mktmpdir("tmp-parent"), "tmp-link")
+    File.symlink(real_tmp, symlinked_root)
+
+    removed = @core.remove_retired_session_state(plastic_home: @home, tmp_dirs: [symlinked_root])
+
+    assert_equal 1, removed
+    refute File.exist?(leftover)
+  ensure
+    FileUtils.rm_rf(real_tmp)
+    FileUtils.rm_rf(File.dirname(symlinked_root)) if symlinked_root
   end
 end

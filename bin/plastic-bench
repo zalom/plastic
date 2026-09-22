@@ -1,0 +1,78 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# Plastic context budget bench (intent 313). Measures what a session boot costs
+# in context: the core block, the SessionStart injection, the skill catalog the
+# harness loads beside it, and the doctrine working set. Exits non-zero when a
+# ceiling is crossed or when repeated boots of a fixed fixture disagree.
+#
+# Maintainer tool: it reads this repository's own files and a fixture home it
+# builds with the real installer, so it is never installed into ~/.plastic.
+#
+# Usage: bin/plastic-bench [--repeat N] [--core-file PATH] [--repo PATH]
+#
+#   --repeat N       boots to run (default 5, minimum 1)
+#   --core-file PATH measure this file as the core block instead of the repo's
+#                    PLASTIC.md; the way a crossed ceiling is proved observable
+#                    without editing a real file
+#   --repo PATH      the Plastic checkout to measure (default: this one)
+#
+# Exit codes: 0 every ceiling holds, 1 a ceiling was crossed, 2 bad usage.
+
+require_relative "lib/context_budget"
+
+USAGE = <<~TEXT
+  usage: plastic-bench [--repeat N] [--core-file PATH] [--repo PATH]
+
+    --repeat N        boots to run against the fixture (default #{ContextBudget::DEFAULT_REPEAT}, minimum 1)
+    --core-file PATH  measure this file as the core block instead of PLASTIC.md
+    --repo PATH       the Plastic checkout to measure (default: this checkout)
+    --help            this message
+
+  Exits 0 when every ceiling holds, 1 when one is crossed, 2 on bad usage.
+TEXT
+
+def fail_usage(message)
+  warn "plastic-bench: #{message}"
+  warn USAGE
+  exit 2
+end
+
+repeat = ContextBudget::DEFAULT_REPEAT
+core_file = nil
+repo = File.expand_path("..", __dir__)
+
+argv = ARGV.dup
+until argv.empty?
+  case (flag = argv.shift)
+  when "--help", "-h"
+    puts USAGE
+    exit 0
+  when "--repeat"
+    value = argv.shift
+    fail_usage("--repeat needs a whole number of at least 1") unless value.to_s.match?(/\A\d+\z/)
+    repeat = value.to_i
+    fail_usage("--repeat needs a whole number of at least 1") if repeat < 1
+  when "--core-file"
+    core_file = argv.shift
+    fail_usage("--core-file needs a path") if core_file.to_s.empty?
+    fail_usage("--core-file #{core_file} does not exist") unless File.file?(core_file)
+  when "--repo"
+    repo = argv.shift
+    fail_usage("--repo needs a path") if repo.to_s.empty?
+    fail_usage("--repo #{repo} is not a directory") unless File.directory?(repo)
+  else
+    fail_usage("unknown argument #{flag}")
+  end
+end
+
+begin
+  report = ContextBudget.run(repo: repo, repeat: repeat, core_file: core_file)
+rescue StandardError => error
+  warn "plastic-bench: #{error.message}"
+  exit 1
+end
+
+print report.to_table
+exit(report.ok? ? 0 : 1)

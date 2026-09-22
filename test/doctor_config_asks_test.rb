@@ -44,8 +44,8 @@ class DoctorConfigAsksTest < Minitest::Test
       "introduced" => "1.3.0",
       "question" => "Which advisor should be the default?",
       "options" => [
-        { "label" => "Faux Fable", "value" => "plastic-faux-advisor" },
-        { "label" => "Fable 5", "value" => "plastic-advisor" },
+        { "label" => "Primary Advisor", "value" => "plastic-primary-advisor" },
+        { "label" => "Secondary Advisor", "value" => "plastic-secondary-advisor" },
       ],
     }
   end
@@ -75,7 +75,7 @@ class DoctorConfigAsksTest < Minitest::Test
 
   def test_pass_when_key_already_set
     write_manifest
-    write_global_config("advisor" => { "claude" => { "default" => "plastic-advisor" } })
+    write_global_config("advisor" => { "claude" => { "default" => "plastic-primary-advisor" } })
 
     checks = doctor.check_config_asks
     assert_equal "pass", checks.first[:status]

@@ -18,7 +18,7 @@ require "fileutils"
 # Trust model: this class never sends anything anywhere. `compose` returns a
 # Result carrying a local file path and a browser URL; only the human, in
 # their own authenticated browser, submits it. There is no send method here
-# and there must never be one (see skills/feedback/references/transport-and-privacy.md).
+# and there must never be one (see SECURITY.md).
 class FeedbackReport
   GITHUB_REPO = "zalom/plastic"
   CAP_BYTES = 7500

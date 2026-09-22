@@ -1,6 +1,7 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 
+require_relative "store_layout"
 require "json"
 require "yaml"
 require "socket"
@@ -108,16 +109,16 @@ module Worktree
 
   # --- provisioning ----------------------------------------------------------
 
-  # Resolve the slug from the bridge's intent.store, create code + store
+  # Resolve the slug from the delivery's intent.store, create code + store
   # worktrees (idempotent: reuse an existing worktree path, do not error), write
-  # the `worktree` block plus `provisioned: true` onto bridge_data, return it.
+  # the `worktree` block plus `provisioned: true` onto delivery, return it.
   #
   # Fails open with a stderr log when the repo is non-git or unresolvable:
   # sets `provisioned: false` and leaves `code: null`. All git ops use
   # `git -C <resolved path>` -- never cwd (decision D6).
-  def provision(bridge_data, home: Dir.home, runner: ShellRunner.new)
-    return bridge_data unless bridge_data.is_a?(Hash)
-    intent = bridge_data["intent"] || {}
+  def provision(delivery, home: Dir.home, runner: ShellRunner.new)
+    return delivery unless delivery.is_a?(Hash)
+    intent = delivery["intent"] || {}
     intent_id = intent["id"].to_s
     store = intent["store"].to_s
     intent_slug = slug_from_dir(intent["dir"]) || slug_from_dir(store)
@@ -173,15 +174,15 @@ module Worktree
     # replaced by the fresh unprovisioned block; the guard must not fail harder
     # than the bug it guards.
     if code_ok
-      bridge_data["worktree"] = block
+      delivery["worktree"] = block
     else
-      existing = bridge_data["worktree"]
+      existing = delivery["worktree"]
       keep = existing.is_a?(Hash) && !blank?(existing["code"]) &&
              Dir.exist?(existing["code"].to_s)
-      bridge_data["worktree"] = block unless keep
+      delivery["worktree"] = block unless keep
     end
 
-    bridge_data
+    delivery
   end
 
   # Remove the worktree (then `git worktree prune`), clear the worktree block.
@@ -189,21 +190,21 @@ module Worktree
   # policy on top via `finish`; this is the plain remove. Pass `remove: false` to
   # clear the block WITHOUT touching git (so `finish` can merge first, then call
   # release to drop the worktree once the code branch is integrated).
-  def release(bridge_data, home: Dir.home, runner: ShellRunner.new, remove: true)
-    return bridge_data unless bridge_data.is_a?(Hash)
-    block = bridge_data["worktree"]
-    return bridge_data unless block.is_a?(Hash)
+  def release(delivery, home: Dir.home, runner: ShellRunner.new, remove: true)
+    return delivery unless delivery.is_a?(Hash)
+    block = delivery["worktree"]
+    return delivery unless block.is_a?(Hash)
 
     if remove
-      slug = slug_for_store(bridge_data.dig("intent", "store").to_s, home: home)
+      slug = slug_for_store(delivery.dig("intent", "store").to_s, home: home)
       repo = repo_for(slug, home: home)
 
       remove_worktree(runner, repo: repo, worktree: block["code"]) if repo && block["code"]
       prune(runner, repo: repo) if repo
     end
 
-    bridge_data.delete("worktree")
-    bridge_data
+    delivery.delete("worktree")
+    delivery
   end
 
   # --- cleanup policy (merge-vs-remove) -------------------------------------
@@ -222,19 +223,19 @@ module Worktree
   # Fail-open and idempotent throughout: a missing block, missing branch, or any
   # git failure never raises and never blocks teardown. All git ops use
   # `git -C <path>`, never cwd (decision D6). No-op when nothing was provisioned.
-  def finish(bridge_data, home: Dir.home, runner: ShellRunner.new, merge: false)
-    return bridge_data unless bridge_data.is_a?(Hash)
-    block = bridge_data["worktree"]
-    return bridge_data unless block.is_a?(Hash)
+  def finish(delivery, home: Dir.home, runner: ShellRunner.new, merge: false)
+    return delivery unless delivery.is_a?(Hash)
+    block = delivery["worktree"]
+    return delivery unless block.is_a?(Hash)
 
     if merge
-      slug = slug_for_store(bridge_data.dig("intent", "store").to_s, home: home)
+      slug = slug_for_store(delivery.dig("intent", "store").to_s, home: home)
       repo = repo_for(slug, home: home)
       branch = block["code_branch"]
       merge_branch(runner, repo: repo, branch: branch) if repo && !blank?(branch)
     end
 
-    release(bridge_data, home: home, runner: runner, remove: true)
+    release(delivery, home: home, runner: runner, remove: true)
   end
 
   # Merge `branch` into the repo's default branch from the main checkout. The
@@ -298,8 +299,8 @@ module Worktree
   # --- lock ------------------------------------------------------------------
 
   # True iff ANOTHER session's delivery.lock is FRESH on this intent's dir
-  # (intent 108, D2): the durable lock file decides; /tmp bridges are not
-  # consulted and no pid is probed. current_session being the owner or a
+  # (intent 108, D2): the durable lock file decides alone, and no pid is
+  # probed. current_session being the owner or a
   # delegate does not count as "other". A stale lock does not hold (explicit
   # takeover reclaims it).
   def lock_held_by_other?(intent_id:, store:, current_session:, home: Dir.home,
@@ -377,14 +378,8 @@ module Worktree
   # (no project repo). Mirrors qmd_sync's slug_for_store fallback.
   def slug_for_store(store_dir, home: Dir.home)
     return nil if blank?(store_dir)
-    plastic_home = File.expand_path(File.join(home, ".plastic"))
-    store_dir = File.expand_path(store_dir)
-    return nil if store_dir == File.join(plastic_home, "store")
-
-    parts = store_dir.split(File::SEPARATOR)
-    idx = parts.rindex("projects")
-    return parts[idx + 1] if idx && parts[idx + 1] && parts[idx + 2] == "store"
-    nil
+    slug = Plastic::StoreLayout.locate(store_dir).last
+    (slug == Plastic::StoreLayout::GLOBAL) ? nil : slug
   end
 
   # Best-effort slug for the worktree dir-name from an intent dir/store path:

@@ -1,0 +1,10 @@
+body { max-width: 46rem; margin: 2rem auto; padding: 0 1rem; font: 16px/1.6 system-ui, sans-serif; color: #1f2933; background: #f4f5f7; }
+h1, h2, h3 { line-height: 1.25; }
+table { border-collapse: collapse; display: block; overflow-x: auto; }
+th, td { border: 1px solid #9aa5b1; padding: 0.3rem 0.6rem; text-align: left; }
+pre { background: #e4e7eb; padding: 0.8rem; overflow-x: auto; }
+code { font-family: ui-monospace, monospace; }
+@media (prefers-color-scheme: dark) {
+  body { color: #e4e7eb; background: #1f2933; }
+  pre { background: #323f4b; }
+}

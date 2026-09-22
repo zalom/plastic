@@ -1,6 +1,7 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 
+require_relative "store_layout"
 require "yaml"
 
 # ProjectValidator - the single source of truth for "is a project spawn
@@ -10,7 +11,7 @@ require "yaml"
 # missing the pieces a real project needs: project.yml, a root AGENTS.md.
 # The intent-26 spawn shipped exactly that shape and was caught only by a
 # much later, pull-only plastic-doctor sweep. This module lets
-# plastic-project-creating verify a spawn BEFORE announcing it as done,
+# `plastic project new` verify a spawn BEFORE announcing it as done,
 # mirroring how scripts/new-intent already runs IntentValidator before
 # announcing a new intent (validate-intent).
 #
@@ -23,6 +24,15 @@ require "yaml"
 # (D8). Invariant 4 (project-root AGENTS.md) has no existing check anywhere.
 module ProjectValidator
   module_function
+
+  # The two enumerated flow: knobs (intent 300, spec D2). Kept as a plain
+  # literal here rather than a require on SessionGit: this validator only
+  # reports a bad value in `errors` (project.yml is still "accepted", spec
+  # D2's matrix row), it never blocks spawn completeness, since a bad value
+  # degrades gracefully at commit time (SessionGit falls back with a Note)
+  # rather than blocking the spawn.
+  FLOW_MODES = %w[direct pull_request].freeze
+  FLOW_WORKSPACES = %w[checkout worktree].freeze
 
   def validate(slug, plastic_home: File.join(Dir.home, ".plastic"))
     missing = []
@@ -43,7 +53,7 @@ module ProjectValidator
       errors << "registered project directory does not exist: #{project_path}"
     end
 
-    project_dir = File.join(plastic_home, "projects", slug)
+    project_dir = Plastic::StoreLayout.project_root(plastic_home, slug)
 
     # Invariant 3: project.yml exists AND parses as YAML.
     project_yml_path = File.join(project_dir, "project.yml")
@@ -53,7 +63,9 @@ module ProjectValidator
       rescue StandardError
         nil
       end
-      unless parsed.is_a?(Hash)
+      if parsed.is_a?(Hash)
+        validate_flow_block(parsed, errors)
+      else
         missing << "project.yml (valid YAML)"
         errors << "project.yml exists at #{project_yml_path} but does not parse as YAML"
       end
@@ -86,6 +98,24 @@ module ProjectValidator
     end
 
     { ok: missing.empty?, missing: missing, errors: errors }
+  end
+
+  # Non-blocking: an unknown `mode` or `workspace` value in project.yml's
+  # `flow:` block, if present, is reported in `errors` but never added to
+  # `missing`, so it never flips `ok`.
+  def validate_flow_block(parsed, errors)
+    flow = parsed["flow"]
+    return unless flow.is_a?(Hash)
+
+    validate_flow_knob(flow, "mode", FLOW_MODES, errors)
+    validate_flow_knob(flow, "workspace", FLOW_WORKSPACES, errors)
+  end
+
+  def validate_flow_knob(flow, key, allowed, errors)
+    value = flow[key]
+    return if value.nil? || allowed.include?(value.to_s)
+
+    errors << "project.yml flow.#{key} is #{value.inspect}, must be one of #{allowed.join(", ")}"
   end
 
   # Invariant 1: registered in projects.yml with a 'path'. Returns the

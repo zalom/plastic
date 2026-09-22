@@ -28,34 +28,35 @@
 #      file that exists while no session identity resolves from ANY source
 #      also refuses (exit 4) rather than ever reaching Lock.takeover with a
 #      blank session, which would delete the lock file and then crash.
-#   1. Guard outcome.md (exit 2, authors nothing, on any failure), then stamp
-#      the intent file's `## Outcome` section with --outcome-summary if given.
+#   1. Backfill (intent 308): write spec.md, plan.md, actions/ACTION_1.md, and
+#      outcome.md from the record wherever a file is missing or still the
+#      placeholder (BackfillIntent; real content is never touched). Then run
+#      doctor's per-intent structure check and OutcomeGuard as a self-check
+#      that reports on stderr and proceeds. Then stamp the intent file's
+#      `## Outcome` section with --outcome-summary if given.
 #   2. Move the intent's INDEX.md line from `## Active` into `## Completed`
 #      (delivered) or `## Abandoned` (abandoned), dated today, appending
 #      --index-note (if given). Accepts a real em dash OR a plain hyphen as
-#      the id/title separator on READ (shared matcher, Bridge.index_entry_match);
+#      the id/title separator on READ (shared matcher, IndexEntry.match);
 #      always EMITS the real em dash on write. An id that resolves to neither
 #      `## Active` nor the terminal section is a loud failure (exit 1); an id
 #      already correctly in the terminal section is a quiet, idempotent success.
-#   3. Append the savepoint `Done` bookend (Bridge.append_terminal_savepoint).
+#   3. Append the savepoint `Done` bookend (Savepoint.append_terminal_savepoint).
 #   4. Commit the store repo, unless --no-commit.
-#   5. Disarm (intent 188, D2/D16): check the code worktree (resolved from the
-#      bridge) for uncommitted changes first (exit 5 if dirty, unless
-#      --discard-worktree-changes); call the disarm seam (default
-#      Bridge.disarm_auto); verify the durable lock file is actually gone
-#      afterward. The /tmp bridge is only a cache (AGENTS.md): when no bridge
-#      resolves at all (a wiped /tmp, a resumed job under a new session id),
-#      the durable lock file is released directly instead, LOUDLY (a warning
-#      that a worktree may be orphaned), rather than stranding a committed,
-#      terminal intent still holding its lock.
+#   5. Disarm (intent 188, D2/D16; intent 307): check the code worktree (derived
+#      from projects.yml and the intent id, Arm.worktree_block) for uncommitted
+#      changes first (exit 5 if dirty, unless --discard-worktree-changes); call the
+#      disarm seam (default Arm.disarm: worktree released, lock cleared); verify
+#      the durable lock file is actually gone afterward, and release it directly
+#      when a foreign-keyed disarm left it.
 #
 # Exit codes:
 #   0  ok - the intent is closed and no delivery.lock remains.
 #   1  usage/resolution failure, OR an id that resolves to neither ## Active
 #      nor the terminal section (D11). Deliberately double duty; see plan.md.
-#   2  the outcome.md guard refused; authors nothing.
+#   2  retired in 2.0 (intent 308): the outcome.md guard reports and proceeds.
 #   3  steps 1-4 already committed, but the delivery lock genuinely could not
-#      be cleared (not a bridge cache miss; see step 5 above).
+#      be cleared (see step 5 above).
 #   4  pre-flight refusal: a FRESH foreign lock is held by a live,
 #      non-delegate session; a FRESH lock that will not parse (corrupt); or a
 #      lock file with no resolvable session identity at all. Authors nothing.
@@ -63,19 +64,24 @@
 #      (git status itself failed: corrupt index, git missing, not a repo);
 #      refused before removal; pass --discard-worktree-changes to override
 #      deliberately.
-#   6  the doctor per-intent structure gate refused (checklist incomplete,
-#      links out of projection, intent-file malformed, or a lifecycle artifact
-#      missing/placeholder); named reasons on stderr; authors nothing
-#      (intent 222).
+#   6  retired in 2.0 (intent 308): the structure check reports and proceeds.
+#   7  hollow delivered report refused (317a D7) - intent 308's one deliberate
+#      exception to report-and-proceed; --allow-hollow-report overrides.
 
+require_relative "lib/store_layout"
 require "fileutils"
 require "date"
 require "open3"
 require "pathname"
-require_relative "lib/bridge"
+require_relative "lib/arm"
+require_relative "lib/index_entry"
+require_relative "lib/savepoint"
 require_relative "lib/lock"
 require_relative "lib/intent_validator"
 require_relative "lib/outcome_guard"
+require_relative "lib/report_screen"
+require_relative "lib/backfill_intent"
+require_relative "lib/outcome_report"
 
 DISPOSITIONS = %w[delivered abandoned].freeze
 
@@ -83,7 +89,7 @@ DISPOSITIONS = %w[delivered abandoned].freeze
 # dash (U+2014), the existing INDEX.md convention (store files are exempt from
 # the no-em-dash shipped-file rule). Built from the codepoint, not a literal
 # byte in this source file, so the script's own source stays em-dash free.
-# READING accepts a plain hyphen too, via the shared Bridge.index_entry_match
+# READING accepts a plain hyphen too, via the shared IndexEntry.match
 # (intent 188, D9/D12): see move_index_to_terminal below.
 EM_DASH = "\u2014"
 
@@ -93,10 +99,15 @@ class UnresolvedIndexEntry < StandardError; end
 
 # --- Explicit flag parsing (no eval, no global injection) -------------------
 
+def blank?(value)
+  value.nil? || value.to_s.strip.empty?
+end
+
 def parse_args(argv)
   opts = {
     store: nil, id: nil, disposition: nil, index: nil,
     outcome_summary: nil, index_note: nil, no_commit: false, dry_run: false,
+    allow_hollow_report: false,
     session: nil, discard_worktree_changes: false,
   }
   i = 0
@@ -113,6 +124,7 @@ def parse_args(argv)
     when "--discard-worktree-changes" then opts[:discard_worktree_changes] = true
     when "--no-commit"                then opts[:no_commit] = true
     when "--dry-run"                  then opts[:dry_run] = true
+    when "--allow-hollow-report"      then opts[:allow_hollow_report] = true
     else
       usage_abort("unknown argument #{arg.inspect}")
     end
@@ -159,54 +171,102 @@ end
 # "projects" (the StoreDiscovery convention, scripts/lib/store_discovery.rb), never by
 # hardcoding ".plastic" as a name.
 def resolve_plastic_home_and_scope(store)
-  parent = File.dirname(store)
-  grandparent = File.dirname(parent)
-  if File.basename(grandparent) == "projects"
-    slug = File.basename(parent)
-    [File.dirname(grandparent), "project:#{slug}"]
-  else
-    [parent, "global"]
-  end
+  Plastic::StoreLayout.home_and_scope(store)
 end
 
-# Doctor's per-intent structure gate (intent 222), a pre-write step: FAIL refuses the close
-# (exit 6, authors nothing), WARN prints an advisory note and proceeds, PASS proceeds
-# silently, and an unexpected exception from the gate call itself is rescued and treated as
-# a skipped gate (fail-open on a crash: a broken gate must never wedge a close).
+# --- outcome generation, before the backfill (intent 339, G6, spec D10) -----
 #
-# `gate:` is an injected seam (mirrors run_disarm's own bridge_reader:/disarm: pattern
-# below) defaulting to the real Doctor.new(...).run_intent_check(...) call; tests load this
-# script in-process (as test/end_intent_disarm_toctou_test.rb already does for run_disarm)
-# and inject a raising stub to prove the fail-open contract, with no eval/ENV/global seam.
+# Generates outcome.md from graph.md, nodes/, and the ledger, BEFORE the
+# backfill step runs, and only into a file that is missing or still the
+# scaffold placeholder (`Savepoint.stage_file_present?` false) - a real,
+# hand-written outcome.md is never touched (row 7.2). Only when a graph.md
+# exists at all (row 7.3): every intent without one closes exactly as it did
+# before this intent. The model is parsed AFTER the `stage_file_present?`
+# guard, not before: a real hand-written outcome.md returns at that guard
+# regardless of graph.md's own health, so a close that was never going to
+# generate anything must never print a parse warning about it. Refuses a
+# report model that reports itself broken (row v1f.2, B2): a malformed
+# `## Graph` fails `model[:ok]` and the close falls straight through to the
+# backfill, rather than adopting parse damage as delivery fact - agreeing
+# with the shipped `outcome-report` CLI, which exits 3 on the same
+# directory. The generated text is then checked against
+# BOTH close gates - `OutcomeGuard` and the hollow-report gate below - before
+# being adopted (row 7.4); when either would refuse it, the write is
+# reverted and the close falls through to intent 308's unchanged backfill
+# (row 7.5), so no close gains an exit 7 it did not have before this intent.
+# Fails open on any exception (row 7.6), the same report-and-proceed shape
+# every other close step in this file uses. `generator:` is the injectable
+# seam (mirrors run_structure_check's `gate:`).
+def run_generate_outcome(intent_dir, disposition:, generator: OutcomeReport.method(:write))
+  graph_path = File.join(intent_dir, "graph.md")
+  return unless File.exist?(graph_path)
+
+  outcome_path = File.join(intent_dir, "outcome.md")
+  return if Savepoint.stage_file_present?(outcome_path)
+
+  report_model = OutcomeReport.model(intent_dir)
+  unless report_model[:ok]
+    warn "end-intent: graph.md failed to parse (#{report_model[:errors].join('; ')}); falling back to the backfill"
+    return
+  end
+
+  original_exists = File.exist?(outcome_path)
+  original_content = original_exists ? File.read(outcome_path) : nil
+
+  generator.call(intent_dir, disposition: disposition)
+
+  guard_reason = OutcomeGuard.reason(intent_dir, disposition)
+  hollow = hollow_report_reason(intent_dir, disposition)
+  if guard_reason || hollow
+    if original_exists
+      File.write(outcome_path, original_content)
+    elsif File.exist?(outcome_path)
+      File.delete(outcome_path)
+    end
+    warn "end-intent: generated outcome.md would be refused (#{[guard_reason, hollow].compact.join('; ')}); " \
+         "falling back to the backfill"
+  else
+    warn "end-intent: outcome.md generated from graph.md and the ledger"
+  end
+rescue StandardError => e
+  warn "end-intent: outcome generation crashed (#{e.message}); proceeding without it"
+end
+
+# Backfill (intent 308): write the judgment documents that are missing or still the
+# placeholder from the record (BackfillIntent). Fail-open: a crash here warns and the
+# close proceeds, the same contract as the structure check below.
+def run_backfill(intent_dir, store:, id:, disposition:, summary:)
+  result = BackfillIntent.run(intent_dir: intent_dir, store: store, id: id,
+                              disposition: disposition, summary: summary)
+  result[:written].each { |rel| warn "end-intent: backfilled #{rel} from the record" }
+  result[:notes].each { |note| warn "end-intent: backfill note: #{note}" }
+rescue StandardError => e
+  warn "end-intent: backfill crashed (#{e.message}); proceeding without it"
+end
+
+# Doctor's per-intent structure check (intent 222; a self-check since intent 308). Runs
+# after the backfill and REPORTS: every FAIL or WARN check prints its named reason on
+# stderr and the close proceeds. Nothing here exits; a gap end-intent cannot write itself
+# (an unchecked box, a malformed intent file, links out of projection) is the owner's to
+# fix afterward, and doctor --intent keeps reporting it. A crash is rescued the same way.
+# Injected `gate:` seam: tests drive the real Doctor against a hermetic home, or a raising
+# stub to prove the fail-open contract, with no eval/ENV/global seam.
 #
-# Disposition is deliberately NOT passed to the real gate call (intent 222 executor
-# decision): the existing outcome-only guard immediately following this call already owns
-# disposition-matching (exit 2), and intent_lifecycle_artifacts unconditionally checks
-# outcome.md PRESENCE via Bridge.stage_file_present? regardless of disposition, so passing
-# it here would make this gate re-check the SAME disposition match the old guard already
-# owns, needlessly widening which exit-2 fixtures become exit-6. doctor.rb --intent called
-# directly (with --disposition) still exercises the fold-in per D2/acceptance criteria.
-def run_structure_gate(id, store:, gate: ->(gate_home, gate_scope) {
+# Disposition is deliberately NOT passed to the real gate call: OutcomeGuard.reason,
+# called right after this in main, already owns disposition-matching, and
+# intent_lifecycle_artifacts checks outcome.md PRESENCE regardless of disposition.
+def run_structure_check(id, store:, gate: ->(gate_home, gate_scope) {
   require_relative "doctor"
   Doctor.new(plastic_home: gate_home).run_intent_check(id, store: gate_scope)
 })
   gate_home, gate_scope = resolve_plastic_home_and_scope(store)
-  gate_verdict = gate.call(gate_home, gate_scope)
-  case gate_verdict[:status]
-  when "fail"
-    gate_verdict[:checks].select { |c| c[:status] == "fail" }.each do |c|
-      detail = Array(c[:details]).any? ? " (#{Array(c[:details]).join("; ")})" : ""
-      warn "end-intent: structure gate refused: #{c[:name]}: #{c[:message]}#{detail}"
-    end
-    exit 6
-  when "warn"
-    gate_verdict[:checks].select { |c| c[:status] == "warn" }.each do |c|
-      detail = Array(c[:details]).any? ? " (#{Array(c[:details]).join("; ")})" : ""
-      warn "end-intent: structure gate warning (proceeding): #{c[:name]}: #{c[:message]}#{detail}"
-    end
+  verdict = gate.call(gate_home, gate_scope)
+  verdict[:checks].select { |c| %w[fail warn].include?(c[:status]) }.each do |c|
+    detail = Array(c[:details]).any? ? " (#{Array(c[:details]).join("; ")})" : ""
+    warn "end-intent: structure check: #{c[:name]}: #{c[:message]}#{detail}"
   end
 rescue StandardError => e
-  warn "end-intent: structure gate crashed (#{e.message}); proceeding without it"
+  warn "end-intent: structure check crashed (#{e.message}); proceeding without it"
 end
 
 # outcome.md guard: see OutcomeGuard.reason (scripts/lib/outcome_guard.rb, extracted intent 222)
@@ -216,7 +276,137 @@ end
 # Replace the body of the intent file's `## Outcome` section with `summary`,
 # leaving every other section and the frontmatter untouched. No-op (returns
 # content unchanged) when summary is blank or the section is not found.
+# 317a S9 (D7): the self-render gate. Renders the delivered screen's sources on
+# the intent's own record and names what would come out hollow. This is intent
+# 308's ONE deliberate exception to report-and-proceed: a hollow DELIVERED
+# close is refused with exit 7 (--allow-hollow-report overrides), because 317
+# closed exactly this way and the owner read a screen full of "not recorded".
+# Abandoned closes and machine-backfilled outcomes (the backfill marker) are
+# exempt: the reader cannot expect labels the writer never had.
+#
+# Intent 334 (G1, review A3; post-execution review, blocking 2): the legacy
+# "S3" label grammar applies only to actions/*.md headings, and the node id
+# grammar (kind prefix n/v/d/r plus digits, D1r) applies only to nodes/*.md
+# headings - never both over both directories. This repo's own house words
+# for plan review and post-execution review are "v1" and "v2"; widening the
+# node-id alternative onto actions/ headings turned that prose into a
+# manufactured label and refused legitimate legacy closes at exit 7.
+ACTION_ID_LABEL_RE = /\AS\d+\z/.freeze
+NODE_ID_LABEL_RE = /\A[nvdr][1-9]\d*\z/.freeze
+
+# The id-shaped tokens found in `paths`' headings, matched against
+# `id_label_re` only - the caller picks the grammar for the directory.
+def heading_id_labels(paths, id_label_re)
+  paths.flat_map do |path|
+    ReportScreen.split_by_headings(File.read(path)).flat_map do |heading, _body|
+      heading.to_s.sub(/\A#+\s*/, "").split(/[^A-Za-z0-9]+/).select { |tok| tok.match?(id_label_re) }
+    end
+  end
+end
+
+# 339 S9 (D18): a node id counts as a label in an actions/*.md heading too,
+# but only when it stands alone as one of the heading's " - "-delimited
+# segments - this repo's own convention, "### S1 - n1 - Title" (this action
+# file's own headings, post-merge) or the bare "### n1 - Title". Never as a
+# free word inside ordinary prose: the comment above ACTION_ID_LABEL_RE
+# records exactly why intent 334 restricted the node-id grammar to
+# nodes/*.md headings in the first place, and that reasoning does not change
+# here - a word-scan widened onto actions/ headings would let this repo's own
+# house words ("v1", "v2" for plan review and post-execution review)
+# manufacture a label out of ordinary prose and refuse a legitimate legacy
+# close. Segment position is what a word-scan cannot see: "v2" embedded
+# mid-sentence is never its own " - "-delimited segment, but a heading built
+# to this convention always puts the node id in one.
+def heading_node_id_segments(paths, id_label_re)
+  paths.flat_map do |path|
+    ReportScreen.split_by_headings(File.read(path)).flat_map do |heading, _body|
+      heading.to_s.sub(/\A#+\s*/, "").split(/\s+-\s+/).map(&:strip).select { |seg| seg.match?(id_label_re) }
+    end
+  end
+end
+
+def hollow_report_reason(intent_dir, disposition)
+  return nil unless disposition == "delivered"
+
+  outcome = File.join(intent_dir, "outcome.md")
+  return nil unless File.exist?(outcome)
+  text = File.read(outcome)
+  return nil if text.include?("<!-- backfilled from the record by end-intent on ")
+
+  # The gate's evidence bar (A7/B7): it judges only records that CLAIM a
+  # labeled convention - at least one actions/*.md heading carrying an
+  # S-label or a node-id segment, or at least one nodes/*.md heading carrying
+  # a node id ("n1", "v2", "d3", "r4"). A terse legacy close with no labeled
+  # matrix stays report-and-proceed (intent 334, G1, D10r).
+  #
+  # Every matching token per heading is kept, not just the first (review A3):
+  # a legacy actions/ heading can carry BOTH an S-label and prose that reads
+  # like a node id ("### The v2 rewrite (S3)"). Restricting the word-scan
+  # node-id grammar to nodes/*.md headings (post-execution review, blocking
+  # 2) means "v2" in that heading is never even tested against it, so the
+  # heading's real "S3" label is never at risk.
+  #
+  # 339 S9 (D18): a graph-era action file headed by node id alone ("### n1 -
+  # Title", no S-label) used to yield an empty label set here and the gate
+  # returned before judging anything - every such record closed unjudged by
+  # silent exemption. `heading_node_id_segments` widens the actions/*.md side
+  # to see that shape without reopening the word-scan hole above: it matches
+  # a node id only when the heading's own " - "-delimited segments carry one,
+  # never a free word in prose. The node_paths call stays exactly as it was;
+  # nodes/*.md headings already resolve node ids correctly (test_node_id_
+  # labels_are_recognized) and their heading grammar is controlled, so a
+  # word-scan there carries none of the prose risk.
+  action_paths = Dir.glob(File.join(intent_dir, "actions", "*.md")).sort
+  node_paths = Dir.glob(File.join(intent_dir, "nodes", "*.md")).sort
+  heading_labels = (heading_id_labels(action_paths, ACTION_ID_LABEL_RE) +
+                     heading_node_id_segments(action_paths, NODE_ID_LABEL_RE) +
+                     heading_id_labels(node_paths, NODE_ID_LABEL_RE)).uniq
+  return nil if heading_labels.empty?
+
+  rows = ReportScreen.delivered_rows(intent_dir)
+  return "outcome.md ## Delivered renders no rows although a labeled action matrix exists" if rows.empty?
+
+  needs = ReportScreen.section_of(text, "## Needs you").gsub(/<!--.*?-->/m, "").strip
+  if !needs.empty? && needs != "None" && ReportScreen.needs_you_rows(intent_dir).empty?
+    return "## Needs you has content that would render as None"
+  end
+
+  labels = rows.map { |r| r[:label] }
+  if (labels & heading_labels).empty?
+    return "delivered row labels (#{labels.first(3).join(', ')}...) match no action-file heading (#{heading_labels.first(3).join(', ')}...)"
+  end
+  if rows.all? { |r| ReportScreen.proven_by(intent_dir, r[:label]) == ReportScreen::NOT_RECORDED }
+    return "every Proven-by cell renders not recorded although labeled action headings exist"
+  end
+
+  nil
+rescue StandardError => e
+  warn "end-intent: hollow-report gate crashed (#{e.message}); proceeding without it"
+  nil
+end
+
+# 317a S7 (D5, A8): stamp the live lock's run_mode into outcome.md frontmatter
+# INSIDE the close step - after the gate, before the INDEX move and the store
+# commit - so the stamped file rides the close commit and mode survives disarm.
+def stamp_outcome_mode(intent_dir)
+  data = Lock.read(intent_dir)
+  run_mode = data && data["run_mode"].to_s
+  return if run_mode.nil? || run_mode.empty?
+
+  path = File.join(intent_dir, "outcome.md")
+  return unless File.exist?(path)
+  text = File.read(path)
+  return unless text.start_with?("---")
+  head, body = text[3..].split("---", 2)
+  return if body.nil? || head.match?(/^mode:/)
+
+  File.write(path, "---#{head}mode: #{run_mode}\n---#{body}")
+rescue StandardError => e
+  warn "end-intent: mode stamp failed (#{e.message}); proceeding without it"
+end
+
 def stamp_outcome_summary(content, summary)
+
   return content if summary.nil? || summary.to_s.strip.empty?
 
   lines = content.lines
@@ -245,10 +435,10 @@ def section_stop(lines, heading_idx)
   stop
 end
 
-# Shared matcher (Bridge.index_entry_match, intent 188 D12): accepts a real em
+# Shared matcher (IndexEntry.match, intent 188 D12): accepts a real em
 # dash OR a plain hyphen as the id/title separator on READ.
 def active_line_id(line)
-  m = Bridge.index_entry_match(line)
+  m = IndexEntry.match(line)
   m && m[1]
 end
 
@@ -327,7 +517,7 @@ def move_index_to_terminal(content, id, disposition, today:, index_note: nil)
     raise UnresolvedIndexEntry, "INDEX.md has no #{target_heading} heading; cannot complete the move"
   end
 
-  m = Bridge.index_entry_match(lines[entry_idx])
+  m = IndexEntry.match(lines[entry_idx])
   title, link = m[2], m[3]
   note_suffix = (index_note && !index_note.to_s.strip.empty?) ? " #{index_note.to_s.strip}" : ""
   new_entry = "- [#{id} #{EM_DASH} #{title}](#{link}) #{EM_DASH} #{today}#{note_suffix}\n"
@@ -416,13 +606,13 @@ end
 # exclusion with a raw backtrace. nil is the only safe "could not resolve"
 # signal; main refuses explicitly on it rather than ever reaching takeover.
 def resolve_end_session(explicit, intent_dir)
-  return explicit.to_s.strip unless Bridge.blank?(explicit)
+  return explicit.to_s.strip unless blank?(explicit)
   env = ENV["CLAUDE_CODE_SESSION_ID"]
-  return env.to_s.strip unless Bridge.blank?(env)
+  return env.to_s.strip unless blank?(env)
   lock = Lock.read(intent_dir)
   return nil unless lock
   owner = lock["owner_session"].to_s
-  Bridge.blank?(owner) ? nil : owner
+  blank?(owner) ? nil : owner
 end
 
 # Read-only pre-flight verdict (D4). Returns [:proceed, lock_or_nil],
@@ -459,21 +649,21 @@ end
 
 # --- step 5: disarm (D2/D16, intent 188) ------------------------------------
 #
-# Injected seams (D2): bridge_reader defaults to the real Bridge.read (so the
-# dirty-worktree check can resolve the code worktree path without disarming
-# first), disarm defaults to the real Bridge.disarm_auto. Tests may inject
+# Injected seams (D2, re-pointed by intent 307): worktree_reader defaults to
+# Arm.worktree_block (so the dirty-worktree check can resolve the code worktree
+# path without disarming first), disarm defaults to Arm.disarm. Tests may inject
 # fakes for in-process unit coverage of this function; the subprocess-driven
 # end-to-end tests exercise the real defaults against a hermetic tmp home.
 #
 # Returns :ok, :dirty (exit 5), or :lock_remains (exit 3). A blank session
 # (D3's "no lock at all" fallback case) is a clean no-op: :ok, nothing touched.
 def run_disarm(intent_dir, id, session, discard_worktree_changes:,
-               bridge_reader: ->(sess, iid) { Bridge.read(sess, intent_id: iid) },
-               disarm: ->(sess, iid) { Bridge.disarm_auto(sess, intent_id: iid) })
-  return :ok if Bridge.blank?(session)
+               worktree_reader: ->(dir) { Arm.worktree_block(intent_dir: dir) },
+               disarm: ->(sess, dir) { Arm.disarm(intent_dir: dir, session: sess) })
+  return :ok if blank?(session)
 
-  data = bridge_reader.call(session, id)
-  worktree_code = data.is_a?(Hash) ? data.dig("worktree", "code") : nil
+  block = worktree_reader.call(intent_dir)
+  worktree_code = block.is_a?(Hash) ? block["code"] : nil
 
   if worktree_code && Dir.exist?(worktree_code)
     begin
@@ -505,16 +695,15 @@ def run_disarm(intent_dir, id, session, discard_worktree_changes:,
     end
   end
 
-  disarm.call(session, id)
+  disarm.call(session, intent_dir)
 
-  # The /tmp bridge is only a cache; the durable lock file is the truth
-  # (AGENTS.md). `disarm_auto` no-ops entirely when no bridge resolves (a wiped
-  # /tmp, a resumed job under a new session id), which would otherwise strand a
-  # committed, terminal intent still holding its lock: the exact stalled
-  # completion this intent forbids. Pre-flight has already established that this
-  # session is the owner, a delegate, or the post-takeover owner, so clearing
-  # the durable lock directly IS safe, PROVIDED the lock actually present here
-  # is still ours to clear.
+  # The durable lock file is the truth (AGENTS.md). Arm.disarm releases as the
+  # lock's recorded owner, so a lock a delegate or a post-takeover owner is
+  # closing under a different key can survive it; that would strand a committed,
+  # terminal intent still holding its lock, the exact stalled completion this
+  # intent forbids. Pre-flight has already established that this session is the
+  # owner, a delegate, or the post-takeover owner, so clearing the durable lock
+  # directly IS safe, PROVIDED the lock actually present here is still ours to clear.
   #
   # TOCTOU fix (post-review hardening, intent 188): the first version of this
   # fallback read the lock's OWN recorded owner and handed it straight back to
@@ -556,8 +745,8 @@ def run_disarm(intent_dir, id, session, discard_worktree_changes:,
   end
 
   unless File.exist?(Lock.path(intent_dir))
-    if data.nil?
-      warn "end-intent: no bridge resolved for session #{session.inspect} (intent #{id}); " \
+    if block.nil?
+      warn "end-intent: no worktree block could be derived for intent #{id}; " \
            "the delivery lock was cleared directly from disk, but any worktree this intent " \
            "provisioned was NOT removed. Run /plastic-doctor to check for an orphaned worktree."
     end
@@ -596,7 +785,7 @@ def main(argv)
   # Lock.takeover (blank session reaches Lock.acquire's blank? guard AFTER the
   # existing lock file was already deleted) or silently mis-arbitrate. Refuse
   # rather than guess; nothing has been written yet.
-  if Bridge.blank?(session) && File.exist?(Lock.path(intent_dir))
+  if blank?(session) && File.exist?(Lock.path(intent_dir))
     warn "end-intent: a delivery lock exists at #{Lock.path(intent_dir)} but no session " \
          "identity could be resolved (--session, CLAUDE_CODE_SESSION_ID, and the lock's " \
          "own recorded owner are all blank); refusing rather than guessing. Pass " \
@@ -621,16 +810,10 @@ def main(argv)
     exit 4
   end
 
-  run_structure_gate(id, store: store)
-
-  reason = OutcomeGuard.reason(intent_dir, disposition)
-  if reason
-    warn "end-intent: #{reason}"
-    exit 2
-  end
-
   if opts[:dry_run]
     puts "end-intent: dry run for #{File.basename(intent_dir)} (#{disposition})"
+    targets = BackfillIntent.targets_for(intent_dir)
+    puts "  would backfill: #{targets.empty? ? "(nothing)" : targets.join(", ")}"
     puts "  would stamp ## Outcome: #{opts[:outcome_summary].inspect}" if opts[:outcome_summary]
     puts "  would move INDEX.md entry from ## Active to #{index_target_heading(disposition)} (#{index_path})"
     puts "  would append index note: #{opts[:index_note].inspect}" if opts[:index_note]
@@ -653,9 +836,43 @@ def main(argv)
     end
   end
 
+  # 0a. Generate outcome.md from graph.md and the ledger, when there is one
+  # (intent 339, G6, spec D10) - before the backfill, so a real graph never
+  # falls through to the terse backfill it exists to replace.
+  run_generate_outcome(intent_dir, disposition: disposition)
+
+  # 1. Backfill from the record (intent 308), then the structure self-check and the
+  # outcome guard, both report-only since 308.
+  run_backfill(intent_dir, store: store, id: id, disposition: disposition,
+               summary: opts[:outcome_summary])
+  run_structure_check(id, store: store)
+
+  reason = OutcomeGuard.reason(intent_dir, disposition)
+  warn "end-intent: outcome.md: #{reason} (proceeding; doctor --intent #{id} reports it)" if reason
+
+  # 1a2. The self-render gate (317a S9, D7): refuse a hollow delivered close
+  # BEFORE any terminal mutation - INDEX, savepoint, and store stay untouched
+  # on exit 7 (A9).
+  hollow = hollow_report_reason(intent_dir, disposition)
+  if hollow
+    if opts[:allow_hollow_report]
+      warn "end-intent: hollow delivered report overridden (--allow-hollow-report): #{hollow}"
+    else
+      warn "end-intent: refusing a hollow delivered close: #{hollow}"
+      warn "end-intent: write outcome.md's ## Delivered as the labeled | Row | What | table " \
+           "matching the action-file headings (templates/outcome.md shows the shape), " \
+           "or pass --allow-hollow-report to close anyway"
+      exit 7
+    end
+  end
+
+  # 1a3. Mode stamp (317a S7, D5): run_mode into outcome frontmatter while the
+  # lock still exists, so the stamped file rides the close commit.
+  stamp_outcome_mode(intent_dir)
+
   # 1b. Intent-file `## Outcome` summary stamp (no-op unless given).
   if opts[:outcome_summary]
-    intent_file = Bridge.intent_file(intent_dir)
+    intent_file = Savepoint.intent_file(intent_dir)
     if File.exist?(intent_file)
       original = File.read(intent_file)
       updated = stamp_outcome_summary(original, opts[:outcome_summary])
@@ -682,7 +899,7 @@ def main(argv)
   end
 
   # 3. Savepoint Done bookend (idempotent).
-  Bridge.append_terminal_savepoint(intent_dir, disposition)
+  Savepoint.append_terminal_savepoint(intent_dir, disposition)
 
   # 4. Store auto-commit, unless --no-commit. Scoped to this intent's own paths (D17):
   # never git add -A.

@@ -405,4 +405,36 @@ class VerifyIntentTest < Minitest::Test
     assert_equal "fail", verdict[:checks][:doctor][:status]
     assert_equal 2, verdict[:exit_code]
   end
+
+  # --- 13 (F17, intent 331f): Report savepoint lines surface in the verdict -----
+
+  def test_verify_intent_lists_report_lines
+    dir = build_intent_dir
+    File.write(File.join(dir, "savepoint.md"), <<~SP)
+      2026-09-05T12:00:00Z  What  213--demo.md
+      2026-09-05T12:05:00Z  Report  state
+      2026-09-05T12:10:00Z  Report  delivered
+    SP
+    runner = FakeRunner.new(diff_text: clean_diff)
+
+    verdict = VerifyIntent.run(store: @store, id: "213", home: @home, git_runner: runner,
+                                doctor: passing_doctor)
+
+    assert_equal "pass", verdict[:checks][:report][:status]
+    assert_equal 2, verdict[:checks][:report][:lines].length
+    joined = verdict[:lines].join("\n")
+    assert_includes joined, "Report  state"
+    assert_includes joined, "Report  delivered"
+  end
+
+  def test_verify_intent_report_check_passes_with_no_report_lines
+    build_intent_dir
+    runner = FakeRunner.new(diff_text: clean_diff)
+
+    verdict = VerifyIntent.run(store: @store, id: "213", home: @home, git_runner: runner,
+                                doctor: passing_doctor)
+
+    assert_equal "pass", verdict[:checks][:report][:status]
+    assert_equal [], verdict[:checks][:report][:lines]
+  end
 end

@@ -3,6 +3,9 @@ require "tmpdir"
 require "json"
 require "fileutils"
 require "digest"
+require "open3"
+require "rbconfig"
+require "yaml"
 
 # Intent 29: Plastic ships as flat, hyphen-namespaced personal skills
 # (plastic-<name>/) with NO Claude Code plugin/marketplace registration, a
@@ -42,7 +45,7 @@ class InstallPackagingTest < Minitest::Test
     assert_nil settings["extraKnownMarketplaces"], "must not write a marketplace source"
   end
 
-  # --- Flat hyphen skill layout + gate relocation ---
+  # --- Flat hyphen skill layout + shared-fragment relocation ---
 
   def test_install_skills_flat_produces_hyphen_dirs
     src = File.join(@dir, "skills-src")
@@ -50,7 +53,7 @@ class InstallPackagingTest < Minitest::Test
     FileUtils.mkdir_p(File.join(src, "auto"))
     File.write(File.join(src, "doctor", "SKILL.md"), "doc")
     File.write(File.join(src, "auto", "SKILL.md"), "auto")
-    File.write(File.join(src, "_active-intent-gate.md"), "gate")
+    File.write(File.join(src, "_probe-fragment.md"), "gate")
     File.write(File.join(src, "_decision-tables.md"), "tables")
 
     skills_root = File.join(@dir, "skills")
@@ -59,11 +62,11 @@ class InstallPackagingTest < Minitest::Test
     assert File.file?(File.join(skills_root, "plastic-doctor", "SKILL.md"))
     assert File.file?(File.join(skills_root, "plastic-auto", "SKILL.md"))
     refute File.directory?(File.join(skills_root, "plastic")), "no nested plastic/ dir"
-    # gate file is relocated to PLASTIC_HOME, not the skills tree
-    assert File.file?(File.join(PKG_TEST_HOME, "_active-intent-gate.md"))
-    refute File.exist?(File.join(skills_root, "_active-intent-gate.md"))
-    assert_includes installed, File.join(PKG_TEST_HOME, "_active-intent-gate.md")
-    # any top-level underscore markdown fragment relocates the same way, not just the gate
+    # an underscore fragment is relocated to PLASTIC_HOME, not the skills tree
+    assert File.file?(File.join(PKG_TEST_HOME, "_probe-fragment.md"))
+    refute File.exist?(File.join(skills_root, "_probe-fragment.md"))
+    assert_includes installed, File.join(PKG_TEST_HOME, "_probe-fragment.md")
+    # any top-level underscore markdown fragment relocates the same way
     assert File.file?(File.join(PKG_TEST_HOME, "_decision-tables.md"))
     refute File.exist?(File.join(skills_root, "_decision-tables.md"))
     assert_includes installed, File.join(PKG_TEST_HOME, "_decision-tables.md")
@@ -173,7 +176,7 @@ class InstallPackagingTest < Minitest::Test
   # under plastic_home, not under store/ or projects/ (like the shared underscore
   # fragments install_skills_flat relocates there), stays prunable.
   def test_prune_removed_files_still_prunes_a_file_directly_under_plastic_home
-    fragment = File.join(PKG_TEST_HOME, "_active-intent-gate.md")
+    fragment = File.join(PKG_TEST_HOME, "_probe-fragment.md")
     File.write(fragment, "gate")
 
     removed = @installer.prune_removed_files([fragment], root: [PKG_TEST_HOME, fragment])
@@ -327,7 +330,7 @@ class InstallPackagingTest < Minitest::Test
   def test_install_agents_copies_and_returns_every_agent
     pkg_root = File.join(@dir, "pkg")
     FileUtils.mkdir_p(File.join(pkg_root, "agents"))
-    %w[plastic-planner.md plastic-enforcer.md].each do |name|
+    %w[plastic-executor.md plastic-enforcer.md].each do |name|
       File.write(File.join(pkg_root, "agents", name), "# #{name}")
     end
     installer = InstallerCore.new(package_root: pkg_root, plastic_home: PKG_TEST_HOME, version: "1.0.0-test")
@@ -335,7 +338,7 @@ class InstallPackagingTest < Minitest::Test
     agents_root = File.join(@dir, "agents")
     installed = installer.install_agents(agents_root)
 
-    %w[plastic-planner.md plastic-enforcer.md].each do |name|
+    %w[plastic-executor.md plastic-enforcer.md].each do |name|
       dest = File.join(agents_root, name)
       assert File.file?(dest), "#{name} must be copied into the agent dir"
       assert_includes installed, dest, "returned paths must include #{name}"
@@ -399,9 +402,7 @@ class InstallPackagingTest < Minitest::Test
     agents_root = File.join(home_dir, "agents")
     manifest = JSON.parse(File.read(File.join(codex_dir, "plastic", "manifest.json")))["files"]
 
-    # Codex has no fable alias: consultation agents (intent 185) are excluded from
-    # generation, checked separately below.
-    codex_expected = agent_basenames - AgentModels::CONSULTATION_AGENTS
+    codex_expected = agent_basenames
 
     codex_expected.each do |basename|
       dest = File.join(agents_root, "#{basename}.toml")
@@ -415,7 +416,7 @@ class InstallPackagingTest < Minitest::Test
       "codex: the dead ~/.agents/agents/*.md copy must not be written"
   end
 
-  def test_generate_codex_agents_skips_consultation_agents_by_name
+  def test_generate_codex_agents_includes_consultation_agents_with_openai_models
     installer = InstallerCore.new(package_root: REPO, plastic_home: PKG_TEST_HOME, version: "1.0.0-test")
     agents_root = File.join(@dir, "codex-agents")
 
@@ -423,17 +424,16 @@ class InstallPackagingTest < Minitest::Test
 
     AgentModels::CONSULTATION_AGENTS.each do |basename|
       dest = File.join(agents_root, "#{basename}.toml")
-      refute File.exist?(dest), "codex: #{basename}.toml must not be generated (no Codex advisor this release, intent 186)"
-      refute_includes installed, dest
+      assert File.exist?(dest), "codex: #{basename}.toml must be generated"
+      assert_includes installed, dest
+      expected_effort = basename == "plastic-secondary-advisor" ? "high" : "medium"
+      assert_includes File.read(dest), %(model_reasoning_effort = "#{expected_effort}")
     end
   end
 
-  # Regression guard: the Codex skip is unconditional and name-based
-  # (AgentModels::CONSULTATION_AGENTS), never a peek at the authored or
-  # overridden model value, so a models: override that flips an advisor's
-  # model must NOT accidentally un-skip it. There is no Codex advisor path,
-  # full stop.
-  def test_generate_codex_agents_skip_survives_a_model_override
+  # Regression guard: consultation agents remain outside the auto lifecycle,
+  # while a Codex-scoped model override still changes their installed TOML.
+  def test_generate_codex_agents_consultation_model_override_is_honored
     installer = InstallerCore.new(package_root: REPO, plastic_home: PKG_TEST_HOME, version: "1.0.0-test")
     agents_root = File.join(@dir, "codex-agents-override")
 
@@ -442,8 +442,9 @@ class InstallPackagingTest < Minitest::Test
 
     AgentModels::CONSULTATION_AGENTS.each do |basename|
       dest = File.join(agents_root, "#{basename}.toml")
-      refute File.exist?(dest), "codex: #{basename}.toml must stay skipped even under a models: override"
-      refute_includes installed, dest
+      assert File.exist?(dest), "codex: #{basename}.toml must be generated under a model override"
+      assert_includes installed, dest
+      assert_includes File.read(dest), 'model = "gpt-5.6-sol"'
     end
   end
 
@@ -456,30 +457,137 @@ class InstallPackagingTest < Minitest::Test
   def test_skills_dir_is_packaged_for_distribution
     pkg = JSON.parse(File.read(File.join(REPO, "package.json")))
     assert_includes pkg["files"], "skills/",
-      "skills/ must be in package.json `files` so the agent-advisor skill and its references ship to consumers"
+      "skills/ must be in package.json `files` so its contents ship to consumers"
   end
 
   # --- The advisor agents and the shipped Advisor Protocol reference ship with
-  # no injection surface (intent 185 final design): the faux advisor inlines
+  # no injection surface: the Secondary Advisor inlines
   # the Operating Manual in its own body, and the Advisor Protocol ships as a
   # skill reference. These guards fail loudly if either moves or disappears.
 
   def test_advisor_agent_files_exist_in_repo
-    %w[plastic-advisor.md plastic-faux-advisor.md].each do |name|
+    %w[plastic-primary-advisor.md plastic-secondary-advisor.md].each do |name|
       assert File.file?(File.join(REPO, "agents", name)), "agents/#{name} must exist in the repo"
     end
   end
 
-  def test_faux_advisor_inlines_the_operating_manual
-    body = File.read(File.join(REPO, "agents", "plastic-faux-advisor.md"))
+  def test_secondary_advisor_inlines_the_operating_manual
+    body = File.read(File.join(REPO, "agents", "plastic-secondary-advisor.md"))
     assert_includes body, "# The Operating Manual",
-      "plastic-faux-advisor.md must inline the full Operating Manual in its own body"
+      "plastic-secondary-advisor.md must inline the full Operating Manual in its own body"
     assert_includes body, "The five-question self-test"
   end
 
+  # test_advisor_skill_routes_configured_default_and_explicit_roles was retired by intent
+  # 372 (family 5): skills/agent-advisor/SKILL.md is gone with no successor prose. Its
+  # references/advisor-protocol.md moved to docs/help/ verbatim (test_advisor_protocol_
+  # reference_exists_in_repo above), but the role-routing wording this test pinned
+  # ("If unset, use plastic-primary-advisor", the explicit-role override, the
+  # advisor.enabled=false path) lived only in the SKILL.md body itself and did not move.
+
+  def test_claude_update_prunes_retired_advisor_files_in_both_advisor_states
+    [true, false].each do |enabled|
+      FileUtils.rm_f(File.join(PKG_TEST_HOME, "config.yml"))
+      unless enabled
+        File.write(File.join(PKG_TEST_HOME, "config.yml"), YAML.dump("advisor" => { "enabled" => false }))
+      end
+      dir = File.join(@dir, "claude-#{enabled}")
+      FileUtils.mkdir_p(File.join(dir, "agents"))
+      retired = %w[plastic-advisor.md plastic-faux-advisor.md].map { |name| File.join(dir, "agents", name) }
+      retired.each { |path| File.write(path, "retired") }
+      manifest_dir = File.join(dir, "plastic")
+      FileUtils.mkdir_p(manifest_dir)
+      File.write(File.join(manifest_dir, "manifest.json"), JSON.generate(
+        "files" => retired.to_h { |path| [path, Digest::SHA256.file(path).hexdigest] },
+      ))
+      installer = InstallerCore.new(
+        package_root: REPO,
+        plastic_home: PKG_TEST_HOME,
+        agents: [{ key: "claude", name: "Claude Code", dir: dir, flag: "--claude" }],
+        version: "1.0.0-test",
+      )
+
+      installer.install_for_agent("claude", false)
+
+      retired.each { |path| refute File.exist?(path), "retired Claude advisor must be pruned" }
+      current = %w[plastic-primary-advisor.md plastic-secondary-advisor.md]
+      current.each do |name|
+        assert_equal enabled, File.exist?(File.join(dir, "agents", name)), "advisor enablement must control #{name}"
+      end
+    end
+  end
+
+  def test_codex_update_prunes_retired_advisor_files_in_both_advisor_states
+    [true, false].each do |enabled|
+      FileUtils.rm_f(File.join(PKG_TEST_HOME, "config.yml"))
+      unless enabled
+        File.write(File.join(PKG_TEST_HOME, "config.yml"), YAML.dump("advisor" => { "enabled" => false }))
+      end
+      dir = File.join(@dir, "codex-shared-#{enabled}")
+      home_dir = File.join(@dir, "codex-home-#{enabled}")
+      FileUtils.mkdir_p(File.join(home_dir, "agents"))
+      retired = %w[plastic-advisor.toml plastic-faux-advisor.toml].map { |name| File.join(home_dir, "agents", name) }
+      retired.each { |path| File.write(path, "retired") }
+      manifest_dir = File.join(dir, "plastic")
+      FileUtils.mkdir_p(manifest_dir)
+      File.write(File.join(manifest_dir, "manifest.json"), JSON.generate(
+        "files" => retired.to_h { |path| [path, Digest::SHA256.file(path).hexdigest] },
+      ))
+      installer = InstallerCore.new(
+        package_root: REPO,
+        plastic_home: PKG_TEST_HOME,
+        agents: [{ key: "codex", name: "Codex CLI", dir: dir, home_dir: home_dir, flag: "--codex" }],
+        version: "1.0.0-test",
+      )
+
+      installer.install_for_agent("codex", false)
+
+      retired.each { |path| refute File.exist?(path), "retired Codex advisor must be pruned" }
+      current = %w[plastic-primary-advisor.toml plastic-secondary-advisor.toml]
+      current.each do |name|
+        assert_equal enabled, File.exist?(File.join(home_dir, "agents", name)), "advisor enablement must control #{name}"
+      end
+    end
+  end
+
+  # Retargeted by intent 372 (family 5): skills/agent-advisor/references/advisor-protocol.md
+  # moved (git mv, content unchanged) to docs/help/advisor-protocol.md when the skill it lived
+  # under was retired.
   def test_advisor_protocol_reference_exists_in_repo
-    assert File.file?(File.join(REPO, "skills", "agent-advisor", "references", "advisor-protocol.md")),
-      "skills/agent-advisor/references/advisor-protocol.md must exist in the repo"
+    assert File.file?(File.join(REPO, "docs", "help", "advisor-protocol.md")),
+      "docs/help/advisor-protocol.md must exist in the repo"
+  end
+
+  # Intent 340b, G7c, n2, row 2.13: the command-line proof, the program run the way
+  # the owner would. A real subprocess of `scripts/install.rb --claude` against a
+  # throwaway HOME, never a synthetic fixture, must copy the three new node-kind
+  # agent definitions; a real subprocess of `scripts/read-config` against that same
+  # HOME must then answer the tier `read-config agents.models.plastic-node-verify`
+  # names (D23: every public script this intent adds gets a subprocess test).
+  def test_real_agent_roster_installs
+    Dir.mktmpdir("n2-real-install-home") do |fake_home|
+      # install_for_agent probes the agent's own dir as the presence signal (intent 198,
+      # D1): a real machine only gets this far because Claude Code itself already created
+      # ~/.claude, so the fixture pre-creates it the same way codex_install_test does for
+      # ~/.codex.
+      FileUtils.mkdir_p(File.join(fake_home, ".claude"))
+      env = { "HOME" => fake_home, "RUBYOPT" => nil, "CLAUDE_CODE_SESSION_ID" => nil,
+               "PLASTIC_HOME" => nil, "PLASTIC_PACKAGE_ROOT" => nil }
+
+      out, err, status = Open3.capture3(env, RbConfig.ruby, File.join(REPO, "scripts", "install.rb"),
+                                         "--claude", chdir: REPO)
+      assert status.success?, "install.rb --claude failed:\n#{out}\n#{err}"
+
+      %w[plastic-node-work plastic-node-verify plastic-node-research].each do |basename|
+        dest = File.join(fake_home, ".claude", "agents", "#{basename}.md")
+        assert File.file?(dest), "the real installer must copy #{basename}.md into ~/.claude/agents"
+      end
+
+      out2, err2, status2 = Open3.capture3(env, RbConfig.ruby, File.join(REPO, "scripts", "read-config"),
+                                            "agents.models.plastic-node-verify", chdir: REPO)
+      assert status2.success?, "read-config failed: #{err2}"
+      assert_equal AgentModels::TIER_DEFAULTS.fetch("plastic-node-verify"), out2.strip
+    end
   end
 
   # --- Require-closure guard (intent 274): a new scripts/lib/*.rb that is required by a
@@ -505,6 +613,13 @@ class InstallPackagingTest < Minitest::Test
       next unless File.file?(abs_path)
 
       File.read(abs_path).scan(/require_relative\s+["']([^"']+)["']/) do |(target)|
+        # A target built from a variable, as the CLI dispatcher's
+        # `require_relative "cli/#{file}"` is, has no static answer and a literal
+        # path with a dollar-brace in it is not a file. The CLI subtree is
+        # registered by glob (InstallerCore#cli_files) and walked row by row by
+        # test/cli/table_test.rb, so nothing hides behind this skip.
+        next if target.include?('#{')
+
         target = "#{target}.rb" unless target.end_with?(".rb")
         abs_target = File.expand_path(File.join(REPO, File.dirname(repo_relative_path), target))
         resolved = abs_target.sub("#{REPO}/", "")

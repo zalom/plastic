@@ -9,7 +9,7 @@ require "json"
 require_relative "../scripts/doctor"
 
 # Intent 110 - the section_structure and graph_i4_danglers doctor checks must
-# route to the sanctioned 107 remedy: dispatch plastic-store-curating to relocate
+# route to the sanctioned 107 remedy: relocate
 # the item into the intent's revisions.md via move-and-record. doctor.rb stays
 # read-only (emits fix_hint only). Hermetic temp homes, no eval, no ENV seam.
 class DoctorRevisionsRemedyTest < Minitest::Test
@@ -47,8 +47,8 @@ class DoctorRevisionsRemedyTest < Minitest::Test
   end
 
   # An unsanctioned ## section makes section_structure a fixable warn whose
-  # fix_hint names the curator + revisions.md move-and-record remedy.
-  def test_unsanctioned_section_yields_curator_revisions_fix_hint
+  # fix_hint names the revisions.md move-and-record remedy (the curator agent left in 2.0).
+  def test_unsanctioned_section_yields_revisions_fix_hint
     write_index(File.join(@home, "INDEX.md"))
     write_intent("11", extra_section: "Scratchpad")
 
@@ -58,12 +58,12 @@ class DoctorRevisionsRemedyTest < Minitest::Test
     assert_equal true, check[:fixable]
     assert check[:fix_hint], "expected a fix_hint on the section_structure warn"
     assert_includes check[:fix_hint], "revisions.md"
-    assert_includes check[:fix_hint], "plastic-store-curating"
+    assert_includes check[:fix_hint], "move-and-record"
   end
 
   # A dangling chain/sources edge makes graph_i4_danglers a warn whose fix_hint
-  # names the curator + revisions.md move-and-record remedy.
-  def test_dangling_chain_ref_yields_curator_revisions_fix_hint
+  # names the revisions.md move-and-record remedy (the curator agent left in 2.0).
+  def test_dangling_chain_ref_yields_revisions_fix_hint
     write_index(File.join(@home, "INDEX.md"))
     write_intent("11", chain: ["999"]) # 999 does not exist -> dangler
 
@@ -73,7 +73,7 @@ class DoctorRevisionsRemedyTest < Minitest::Test
     assert_equal true, check[:fixable]
     assert check[:fix_hint], "expected a fix_hint on the graph_i4_danglers warn"
     assert_includes check[:fix_hint], "revisions.md"
-    assert_includes check[:fix_hint], "plastic-store-curating"
+    assert_includes check[:fix_hint], "move-and-record"
   end
 
   # A clean store keeps both checks green (no false positives from the fixtures).

@@ -1,0 +1,1044 @@
+require "minitest/autorun"
+require "tmpdir"
+require "fileutils"
+require "time"
+require_relative "../scripts/lib/report_screen"
+
+# Intent 317, D10/D19/D20: the record readers behind the three report screens.
+# Every reader takes an explicit intent_dir (plus DI for the clock and git tag
+# reading) and returns a string or an array; a missing source renders exactly
+# "not recorded" (D14), never a guess or a blank.
+class ReportScreenReadersTest < Minitest::Test
+  def setup
+    @root = Dir.mktmpdir("report-screen-readers")
+    @dir = File.join(@root, "12--slug")
+    FileUtils.mkdir_p(File.join(@dir, "actions"))
+  end
+
+  def teardown
+    FileUtils.rm_rf(@root)
+  end
+
+  def write(name, body)
+    path = File.join(@dir, name)
+    FileUtils.mkdir_p(File.dirname(path))
+    File.write(path, body)
+  end
+
+  def base_intent_file(body_intent: "Demo intent")
+    write("12--slug.md", <<~MD)
+      ---
+      id: "12"
+      intent: "Demo intent"
+      sources: []
+      chain: []
+      created: 2026-08-30
+      author: human
+      tags: [demo]
+      ---
+
+      ## Intent
+      #{body_intent}
+
+      ## Context
+      some context
+
+      ## Insights
+    MD
+  end
+
+  # --- row 21: asked() reads ## Intent only -----------------------------------
+
+  def test_asked_reads_intent_section_body_only_stopping_at_next_header
+    base_intent_file(body_intent: "Fix regressions, tests first, shipped as alpha.5")
+    text = ReportScreen.asked(@dir)
+    assert_equal "Fix regressions, tests first, shipped as alpha.5", text
+    refute_includes text, "some context"
+  end
+
+  def test_asked_missing_intent_section_renders_not_recorded
+    write("12--slug.md", "---\nid: \"12\"\n---\n\n## Context\nno intent section\n")
+    assert_equal "not recorded", ReportScreen.asked(@dir)
+  end
+
+  # --- row 22: decision_count only counts ## Decisions bullets ----------------
+
+  def test_decision_count_counts_only_decisions_section
+    base_intent_file
+    write("spec.md", <<~MD)
+      # Spec
+
+      ## Goals
+      - not a decision
+      - also not a decision
+
+      ## Decisions
+      - D1 first
+      - D2 second
+      - D3 third
+
+      ## Alternatives Considered
+      - not a decision either
+    MD
+    assert_equal 3, ReportScreen.decision_count(@dir)
+  end
+
+  def test_decision_count_missing_spec_renders_not_recorded
+    assert_equal "not recorded", ReportScreen.decision_count(@dir)
+  end
+
+  # --- row 23: delivered_rows, table form -------------------------------------
+
+  def test_delivered_rows_from_a_table_preserves_labels
+    write("outcome.md", <<~MD)
+      ---
+      disposition: delivered
+      ---
+      # Outcome
+
+      ## Delivered
+      Merged to `alpha`.
+
+      | Row | What shipped |
+      |---|---|
+      | A | first thing |
+      | B | second thing |
+      | C | third thing |
+      | E | fourth thing |
+      | F | fifth thing |
+
+      ## Verification
+      - ok
+    MD
+    rows = ReportScreen.delivered_rows(@dir)
+    assert_equal %w[A B C E F], rows.map { |r| r[:label] }
+    assert_equal "first thing", rows.first[:text]
+  end
+
+  # --- row 24: delivered_rows, bullet form ------------------------------------
+
+  def test_delivered_rows_from_bullets_also_parse
+    write("outcome.md", <<~MD)
+      ---
+      disposition: delivered
+      ---
+      # Outcome
+
+      ## Delivered
+      - Ledger captures only actionable work
+      - Doctor catches stale registrations
+
+      ## Verification
+      - ok
+    MD
+    rows = ReportScreen.delivered_rows(@dir)
+    assert_equal 2, rows.length
+    assert_equal "1", rows[0][:label]
+    assert_equal "Ledger captures only actionable work", rows[0][:text]
+  end
+
+  # --- row 25/26/27: proven_by (D19) -------------------------------------------
+
+  def test_proven_by_matches_standalone_token_only
+    write("actions/ACTION_1.md", <<~MD)
+      # Action
+
+      ### Row A — first thing
+
+      | # | Operation | Failure mode | Test |
+      |---|---|---|---|
+      | 1 | x | y | z |
+      | 2 | x | y | z |
+
+      ### Row AB — a different row entirely
+
+      | # | Operation | Failure mode | Test |
+      |---|---|---|---|
+      | 1 | x | y | z |
+    MD
+    assert_equal "2 tests", ReportScreen.proven_by(@dir, "A")
+    assert_equal "1 test", ReportScreen.proven_by(@dir, "AB")
+  end
+
+  def test_proven_by_no_match_renders_not_recorded
+    write("actions/ACTION_1.md", "# Action\n\n### Row Z — something\n\n| # |\n|---|\n| 1 |\n")
+    assert_equal "not recorded", ReportScreen.proven_by(@dir, "Q")
+  end
+
+  def test_proven_by_counts_only_the_matched_sections_rows
+    write("actions/ACTION_1.md", <<~MD)
+      # Action
+
+      ### S1 — first section
+
+      | # | Op |
+      |---|---|
+      | 1 | a |
+      | 2 | b |
+      | 3 | c |
+
+      ### S2 — second section
+
+      | # | Op |
+      |---|---|
+      | 1 | a |
+    MD
+    assert_equal "3 tests", ReportScreen.proven_by(@dir, "S1")
+    assert_equal "1 test", ReportScreen.proven_by(@dir, "S2")
+  end
+
+  # --- intent 322 S1: the heading that OWNS the matrix table proves the row --
+
+  def test_proven_by_skips_a_token_heading_that_owns_no_table
+    write("actions/ACTION_1.md", <<~MD)
+      # Action
+
+      ## S1 design pins
+
+      Prose about the design, no table here.
+
+      ### S1 - Closure notice dedupe
+
+      | # | Operation | Failure mode | Test |
+      |---|---|---|---|
+      | 1 | a | b | c |
+      | 2 | a | b | c |
+      | 3 | a | b | c |
+    MD
+    assert_equal "3 tests", ReportScreen.proven_by(@dir, "S1")
+  end
+
+  def test_proven_by_skips_a_heading_whose_table_has_no_data_rows
+    write("actions/ACTION_1.md", <<~MD)
+      # Action
+
+      ## S1 pins
+
+      | # | Operation |
+      |---|---|
+
+      ### S1 - real
+
+      | # | Operation |
+      |---|---|
+      | 1 | a |
+    MD
+    assert_equal "1 test", ReportScreen.proven_by(@dir, "S1")
+
+    write("actions/ACTION_1.md", <<~MD)
+      # Action
+
+      ## S1 pins
+
+      | # | Operation |
+      |---|---|
+    MD
+    assert_equal "not recorded", ReportScreen.proven_by(@dir, "S1")
+  end
+
+  def test_proven_by_first_table_owning_heading_wins
+    write("actions/ACTION_1.md", <<~MD)
+      # Action
+
+      ## S1 notes
+
+      Prose only, no table.
+
+      ### S1 - first
+
+      | # | Operation |
+      |---|---|
+      | 1 | a |
+      | 2 | a |
+
+      ### S1 - second
+
+      | # | Operation |
+      |---|---|
+      | 1 | a |
+      | 2 | a |
+      | 3 | a |
+      | 4 | a |
+    MD
+    assert_equal "2 tests", ReportScreen.proven_by(@dir, "S1")
+  end
+
+  def test_proven_by_crosses_files_in_path_order
+    write("actions/ACTION_1.md", <<~MD)
+      # Action
+
+      ## S1 notes
+
+      Prose only, no table.
+    MD
+    write("actions/ACTION_2.md", <<~MD)
+      # Action
+
+      ### S1 - real
+
+      | # | Operation |
+      |---|---|
+      | 1 | a |
+    MD
+    assert_equal "1 test", ReportScreen.proven_by(@dir, "S1")
+  end
+
+  def test_proven_by_path_order_is_lexicographic
+    write("actions/ACTION_10.md", <<~MD)
+      # Action
+
+      ### S1 - ten
+
+      | # | Operation |
+      |---|---|
+      | 1 | a |
+    MD
+    write("actions/ACTION_2.md", <<~MD)
+      # Action
+
+      ### S1 - two
+
+      | # | Operation |
+      |---|---|
+      | 1 | a |
+      | 2 | a |
+      | 3 | a |
+    MD
+    assert_equal "1 test", ReportScreen.proven_by(@dir, "S1")
+  end
+
+  def test_proven_by_never_matches_s1_inside_s10_or_s11
+    write("actions/ACTION_1.md", <<~MD)
+      # Action
+
+      ### S10 - ten section
+
+      | # | Operation |
+      |---|---|
+      | 1 | a |
+      | 2 | a |
+
+      ### S11 - eleven section
+
+      | # | Operation |
+      |---|---|
+      | 1 | a |
+    MD
+    assert_equal "not recorded", ReportScreen.proven_by(@dir, "S1")
+    assert_equal "2 tests", ReportScreen.proven_by(@dir, "S10")
+    assert_equal "1 test", ReportScreen.proven_by(@dir, "S11")
+  end
+
+  def test_proven_by_never_matches_s1_inside_s1a
+    write("actions/ACTION_1.md", <<~MD)
+      # Action
+
+      ### S1a - lettered section
+
+      | # | Operation |
+      |---|---|
+      | 1 | a |
+    MD
+    assert_equal "not recorded", ReportScreen.proven_by(@dir, "S1")
+    assert_equal "1 test", ReportScreen.proven_by(@dir, "S1a")
+  end
+
+  def test_proven_by_token_match_is_case_sensitive
+    write("actions/ACTION_1.md", <<~MD)
+      # Action
+
+      ### s1 - lower
+
+      | # | Operation |
+      |---|---|
+      | 1 | a |
+    MD
+    assert_equal "not recorded", ReportScreen.proven_by(@dir, "S1")
+    assert_equal "1 test", ReportScreen.proven_by(@dir, "s1")
+  end
+
+  def test_proven_by_matches_token_followed_by_a_word
+    write("actions/ACTION_1.md", <<~MD)
+      # Action
+
+      ### S1 pins the resolver
+
+      | # | Operation |
+      |---|---|
+      | 1 | a |
+      | 2 | a |
+    MD
+    assert_equal "2 tests", ReportScreen.proven_by(@dir, "S1")
+  end
+
+  def test_proven_by_matches_token_at_end_of_heading
+    write("actions/ACTION_1.md", <<~MD)
+      # Action
+
+      ### Resolver order, S1
+
+      | # | Operation |
+      |---|---|
+      | 1 | a |
+      | 2 | a |
+    MD
+    assert_equal "2 tests", ReportScreen.proven_by(@dir, "S1")
+  end
+
+  def test_proven_by_no_owning_heading_renders_not_recorded
+    write("actions/ACTION_1.md", <<~MD)
+      # Action
+
+      ## S1 design pins
+
+      Prose only, no table anywhere in this file.
+    MD
+    assert_equal "not recorded", ReportScreen.proven_by(@dir, "S1")
+  end
+
+  # 322 recorded fence-blindness as a Non-Goal: a "#" line inside a fenced code
+  # block opened a pseudo-section and orphaned the table that followed it, so
+  # this pinned "not recorded" as the accepted wrong answer.
+  #
+  # Merge note (322 into alpha, 2026-09-05): intent 330 (D12) shipped the shared
+  # fence walker that feeds both split_by_headings and table_rows, which is
+  # exactly the fix 322 declined to make. The table now belongs to its real
+  # heading, so the count is 2. The Non-Goal is superseded, not regressed; the
+  # test is kept, with its expectation flipped, so the improvement stays pinned.
+  def test_proven_by_sees_a_table_after_a_fenced_heading_comment
+    write("actions/ACTION_1.md", <<~MD)
+      # Action
+
+      ### S1 - fenced
+
+      ```ruby
+      # frozen_string_literal: true
+      ```
+
+      | # | Operation |
+      |---|---|
+      | 1 | a |
+      | 2 | a |
+    MD
+    assert_equal "2 tests", ReportScreen.proven_by(@dir, "S1")
+  end
+
+  # 322 follow-up (spec.md Non-Goals): table_rows does not stop at the end of
+  # the first table, so a second table in the same section inflates that
+  # section's count. Fixing this would move counts on records this intent
+  # never examined; pinned here instead.
+  def test_proven_by_counts_a_second_table_in_the_same_section
+    write("actions/ACTION_1.md", <<~MD)
+      # Action
+
+      ### S1 - two tables
+
+      | # | Operation |
+      |---|---|
+      | 1 | a |
+      | 2 | a |
+
+      | # | Other |
+      |---|---|
+      | 1 | b |
+    MD
+    assert_equal "5 tests", ReportScreen.proven_by(@dir, "S1")
+  end
+
+  # --- intent 322 S2: a label with no letter never resolves (D7) --------------
+
+  def test_proven_by_numeric_label_never_matches_a_numbered_heading
+    write("actions/ACTION_1.md", <<~MD)
+      # Action
+
+      ## 1. What this intent is
+
+      | # | Operation |
+      |---|---|
+      | 1 | a |
+      | 2 | a |
+      | 3 | a |
+    MD
+    assert_equal "not recorded", ReportScreen.proven_by(@dir, "1")
+  end
+
+  def test_proven_by_numeric_label_never_takes_the_row_cell_fallback
+    write("actions/ACTION_1.md", <<~MD)
+      # Action
+
+      ## Failure-mode matrix
+
+      | # | Operation |
+      |---|---|
+      | 1 | a |
+      | 2 | b |
+    MD
+    assert_equal "not recorded", ReportScreen.proven_by(@dir, "1")
+  end
+
+  # --- intent 322 S3: the row-cell fallback, restricted to a matrix heading --
+
+  def test_proven_by_falls_back_to_the_matrix_row_cell
+    write("actions/ACTION_1.md", <<~MD)
+      # Action
+
+      ## Failure-mode matrix
+
+      | Label | Operation |
+      |---|---|
+      | C1 | a |
+      | C2 | a |
+      | C3 | a |
+      | C4 | a |
+      | C5 | a |
+      | C6 | a |
+      | C7 | a |
+      | C8 | a |
+      | C9 | a |
+    MD
+    assert_equal "1 test", ReportScreen.proven_by(@dir, "C1")
+    assert_equal "1 test", ReportScreen.proven_by(@dir, "C9")
+  end
+
+  def test_proven_by_row_cell_fallback_ignores_a_non_matrix_table
+    write("actions/ACTION_1.md", <<~MD)
+      # Action
+
+      ## S1 design pins
+
+      Prose only, no table.
+
+      ## How to run this action
+
+      | Label | Step |
+      |---|---|
+      | S1 | write tests |
+      | S2 | implement |
+    MD
+    assert_equal "not recorded", ReportScreen.proven_by(@dir, "S1")
+  end
+
+  def test_proven_by_matrix_heading_match_is_case_insensitive
+    write("actions/ACTION_1.md", <<~MD)
+      # Action
+
+      ## Coverage Matrix
+
+      | Label | Operation |
+      |---|---|
+      | C1 | a |
+    MD
+    assert_equal "1 test", ReportScreen.proven_by(@dir, "C1")
+  end
+
+  def test_proven_by_heading_beats_row_cell
+    write("actions/ACTION_1.md", <<~MD)
+      # Action
+
+      ### S1 - section
+
+      | # | Operation |
+      |---|---|
+      | 1 | a |
+      | 2 | a |
+      | 3 | a |
+
+      ## Failure-mode matrix
+
+      | Label | Operation |
+      |---|---|
+      | S1 | a |
+    MD
+    assert_equal "3 tests", ReportScreen.proven_by(@dir, "S1")
+  end
+
+  def test_proven_by_row_cell_fallback_counts_across_files
+    write("actions/ACTION_1.md", <<~MD)
+      # Action
+
+      ## Failure-mode matrix
+
+      | Label | Operation |
+      |---|---|
+      | C1 | a |
+    MD
+    write("actions/ACTION_2.md", <<~MD)
+      # Action
+
+      ## Coverage matrix
+
+      | Label | Operation |
+      |---|---|
+      | C1 | a |
+    MD
+    assert_equal "2 tests", ReportScreen.proven_by(@dir, "C1")
+  end
+
+  def test_proven_by_row_cell_is_exact
+    write("actions/ACTION_1.md", <<~MD)
+      # Action
+
+      ## Failure-mode matrix
+
+      | Label | Operation |
+      |---|---|
+      | C1 | a |
+      | C10 | a |
+    MD
+    assert_equal "1 test", ReportScreen.proven_by(@dir, "C1")
+    assert_equal "1 test", ReportScreen.proven_by(@dir, "C10")
+  end
+
+  def test_proven_by_row_cell_strips_emphasis
+    write("actions/ACTION_1.md", <<~MD)
+      # Action
+
+      ## Failure-mode matrix
+
+      | Label | Operation |
+      |---|---|
+      | **C1** | a |
+      | `C2` | a |
+    MD
+    assert_equal "1 test", ReportScreen.proven_by(@dir, "C1")
+    assert_equal "1 test", ReportScreen.proven_by(@dir, "C2")
+  end
+
+  def test_proven_by_fallback_absent_renders_not_recorded
+    write("actions/ACTION_1.md", <<~MD)
+      # Action
+
+      ## Failure-mode matrix
+
+      | Label | Operation |
+      |---|---|
+      | C1 | a |
+      | C2 | a |
+    MD
+    assert_equal "not recorded", ReportScreen.proven_by(@dir, "C3")
+  end
+
+  # --- row 28: evidence_rows - suite -------------------------------------------
+
+  def test_evidence_suite_round_trips_real_wording
+    write("outcome.md", <<~MD)
+      ---
+      disposition: delivered
+      ---
+      # Outcome
+
+      ## Verification
+      - **Suite green** - 2460 runs, 12852 assertions, 0 failures, run by the lead.
+    MD
+    rows = ReportScreen.evidence_rows(@dir)
+    suite = rows.find { |r| r[:kind] == "suite" }
+    refute_nil suite
+    assert_equal "2460 runs · 12852 assertions · 0 failures", suite[:what]
+  end
+
+  def test_evidence_suite_absent_omits_the_row
+    write("outcome.md", "---\ndisposition: delivered\n---\n\n## Verification\n- nothing here\n")
+    rows = ReportScreen.evidence_rows(@dir)
+    assert_nil rows.find { |r| r[:kind] == "suite" }
+  end
+
+  # --- row 29: evidence_rows - red ---------------------------------------------
+
+  def test_evidence_red_sha_comes_from_outcome_only
+    write("outcome.md", <<~MD)
+      ---
+      disposition: delivered
+      ---
+      ## Verification
+      - a temporary detached worktree at `d08a3ee` proved that commit is test-only and red.
+    MD
+    rows = ReportScreen.evidence_rows(@dir)
+    red = rows.find { |r| r[:kind] == "red" }
+    refute_nil red
+    assert_includes red[:what], "d08a3ee"
+  end
+
+  def test_evidence_red_absent_when_outcome_never_names_it
+    write("outcome.md", "---\ndisposition: delivered\n---\n\n## Verification\n- suite green\n")
+    rows = ReportScreen.evidence_rows(@dir)
+    assert_nil rows.find { |r| r[:kind] == "red" }
+  end
+
+  # --- row 30: evidence_rows - ship (D20) ---------------------------------------
+
+  def test_evidence_ship_sha_matched_anywhere_version_from_tag_reader
+    write("outcome.md", <<~MD)
+      ---
+      disposition: delivered
+      ---
+      ## Delivered
+      Merged to `alpha` at **06bd20d**, released as **v2.0.0-alpha.5** (`e21809e`).
+    MD
+    rows = ReportScreen.evidence_rows(@dir, tag_reader: ->(_dir) { "2.0.0-alpha.5" })
+    ship = rows.find { |r| r[:kind] == "ship" }
+    refute_nil ship
+    assert_includes ship[:what], "06bd20d"
+    assert_includes ship[:what], "v2.0.0-alpha.5"
+  end
+
+  def test_evidence_ship_absent_when_neither_sha_nor_version_found
+    write("outcome.md", "---\ndisposition: delivered\n---\n\n## Delivered\nnothing shipped yet\n")
+    rows = ReportScreen.evidence_rows(@dir, tag_reader: ->(_dir) { nil })
+    assert_nil rows.find { |r| r[:kind] == "ship" }
+  end
+
+  # --- fix (2026-09-01): the shipped version comes from the RECORD first --------
+  # The delivered screen printed "not recorded" for 317a1 although outcome.md says
+  # "Shipped as `v2.0.0-alpha.10`". The record is the truth of delivery; git is the
+  # fallback, never the first source (D14: never a guess).
+
+  def test_shipped_version_reads_the_record_before_the_tag_reader
+    write("outcome.md", <<~MD)
+      ---
+      disposition: delivered
+      ---
+      ## Delivered
+      - Shipped as `v2.0.0-alpha.10`: merged into `alpha` as `17cf928`, tagged, pushed.
+    MD
+    rows = ReportScreen.evidence_rows(@dir, tag_reader: ->(_dir) { nil })
+    ship = rows.find { |r| r[:kind] == "ship" }
+    refute_nil ship
+    assert_includes ship[:what], "17cf928"
+    assert_includes ship[:what], "v2.0.0-alpha.10"
+    refute_includes ship[:what], "not recorded"
+  end
+
+  def test_shipped_version_parses_every_phrasing_the_real_outcomes_use
+    {
+      "Shipped as `v2.0.0-alpha.10`: merged into alpha" => "2.0.0-alpha.10",
+      "shipped as 2.0.0-alpha.7 (merge bb32ab8)" => "2.0.0-alpha.7",
+      "Shipped in v2.0.0-alpha.8 on 2026-08-31" => "2.0.0-alpha.8",
+      "Merged to `alpha` at **06bd20d**, released as **v2.0.0-alpha.5** (`e21809e`)." => "2.0.0-alpha.5",
+      "Merged --no-ff into alpha (604b87f); released v2.0.0-alpha.9" => "2.0.0-alpha.9",
+      "Shipped as 2.0.0-alpha.6" => "2.0.0-alpha.6",
+      "Tagged v1.14.1 and published" => "1.14.1",
+      "Delivered in v2.0.0-alpha.4. On continue, the screen prints" => "2.0.0-alpha.4",
+      "Release v2.0.0-alpha.4 (b8bfadb): tag, GitHub Latest, npm alpha" => "2.0.0-alpha.4",
+    }.each do |line, expected|
+      write("outcome.md", "---\ndisposition: delivered\n---\n\n## Delivered\n- #{line}\n")
+      assert_equal expected, ReportScreen.shipped_version(@dir), "phrase not parsed: #{line.inspect}"
+    end
+  end
+
+  def test_shipped_version_record_wins_over_the_tag_reader
+    write("outcome.md", "---\ndisposition: delivered\n---\n\n## Delivered\n- shipped as 2.0.0-alpha.7 (merge bb32ab8)\n")
+    rows = ReportScreen.evidence_rows(@dir, tag_reader: ->(_dir) { "2.0.0-alpha.9" })
+    ship = rows.find { |r| r[:kind] == "ship" }
+    assert_includes ship[:what], "v2.0.0-alpha.7"
+    refute_includes ship[:what], "alpha.9"
+  end
+
+  def test_shipped_version_falls_back_to_the_tag_reader_when_the_record_is_silent
+    write("outcome.md", "---\ndisposition: delivered\n---\n\n## Delivered\n- Merged into alpha at 06bd20d.\n")
+    rows = ReportScreen.evidence_rows(@dir, tag_reader: ->(_dir) { "2.0.0-alpha.3" })
+    ship = rows.find { |r| r[:kind] == "ship" }
+    assert_includes ship[:what], "06bd20d"
+    assert_includes ship[:what], "v2.0.0-alpha.3"
+  end
+
+  def test_shipped_version_ignores_version_strings_without_a_ship_verb
+    write("outcome.md", "---\ndisposition: delivered\n---\n\n## Verification\n- Updated the install from 1.14.1 to the alpha channel; merged at 06bd20d.\n")
+    assert_nil ReportScreen.shipped_version(@dir)
+    rows = ReportScreen.evidence_rows(@dir, tag_reader: ->(_dir) { nil })
+    ship = rows.find { |r| r[:kind] == "ship" }
+    # Intent 330 D10: with no version anywhere, the segment is omitted rather
+    # than filled with NOT_RECORDED. Before 330 this cell read
+    # "06bd20d -> alpha . not recorded"; the subject of this test is the
+    # assert_nil above, and the row now says only what it knows.
+    assert_equal "06bd20d", ship[:what]
+  end
+
+  def test_merge_sha_reads_the_merge_line_and_is_nil_without_one
+    write("outcome.md", "---\ndisposition: delivered\n---\n\n## Delivered\n- Shipped as `v2.0.0-alpha.10`: merged into `alpha` as `17cf928`.\n")
+    assert_equal "17cf928", ReportScreen.merge_sha(@dir)
+    write("outcome.md", "---\ndisposition: delivered\n---\n\n## Delivered\n- nothing shipped yet\n")
+    assert_nil ReportScreen.merge_sha(@dir)
+  end
+
+  def test_render_delivered_header_carries_the_record_version
+    base_intent_file
+    write("spec.md", "# Spec\n\n## Decisions\n- D1 x\n")
+    write("savepoint.md", "2026-08-30T12:00:00Z  What  12--slug.md\n2026-08-30T12:10:00Z  Done  delivered\n")
+    write("outcome.md", "---\ndisposition: delivered\n---\n\n## Delivered\n- Shipped as `v2.0.0-alpha.10`: merged into `alpha` as `17cf928`.\n")
+    out = ReportScreen.render_delivered(intent_dir: @dir, tag_reader: ->(_dir) { nil })
+    assert_includes out.lines[1], "v2.0.0-alpha.10"
+    assert_equal "v2.0.0-alpha.10", out.lines[1].split(" · ").last.strip
+  end
+
+  # --- row 31: evidence_rows - doctor --------------------------------------------
+
+  def test_evidence_doctor_counts_round_trip_including_zero_fail
+    write("outcome.md", "---\ndisposition: delivered\n---\n\n## Verification\n- Full doctor: **47 pass, 3 warn, 0 fail**.\n")
+    rows = ReportScreen.evidence_rows(@dir)
+    doctor = rows.find { |r| r[:kind] == "doctor" }
+    refute_nil doctor
+    assert_equal "47 pass · 3 warn · 0 fail", doctor[:what]
+  end
+
+  # --- row 32: evidence_rows - deviates (D20) ------------------------------------
+
+  def test_evidence_deviates_only_from_named_bullet
+    write("outcome.md", <<~MD)
+      ---
+      disposition: delivered
+      ---
+      ## Verification
+      - Deviation: executor rebuilt the red/green split via stash; outcome verified instead.
+    MD
+    rows = ReportScreen.evidence_rows(@dir)
+    dev = rows.find { |r| r[:kind] == "deviates" }
+    refute_nil dev
+    assert_includes dev[:what], "executor rebuilt the red/green split via stash"
+  end
+
+  def test_evidence_deviates_absent_from_ordinary_prose
+    write("outcome.md", "---\ndisposition: delivered\n---\n\n## Verification\n- the executor deviated on process, see below\n")
+    rows = ReportScreen.evidence_rows(@dir)
+    assert_nil rows.find { |r| r[:kind] == "deviates" }
+  end
+
+  # --- row 33: evidence_rows ordering ---------------------------------------------
+
+  def test_evidence_rows_are_ordered_suite_red_ship_doctor_deviates
+    write("outcome.md", <<~MD)
+      ---
+      disposition: delivered
+      ---
+      ## Delivered
+      Merged to `alpha` at **06bd20d**.
+
+      ## Verification
+      - Deviation: something changed.
+      - Full doctor: **1 pass, 0 warn, 0 fail**.
+      - a worktree at `d08a3ee` is test-only and red.
+      - **Suite green** - 10 runs, 20 assertions, 0 failures.
+    MD
+    rows = ReportScreen.evidence_rows(@dir, tag_reader: ->(_d) { "1.0.0" })
+    assert_equal %w[suite red ship doctor deviates], rows.map { |r| r[:kind] }
+  end
+
+  # --- row 34: needs_you_rows -----------------------------------------------------
+
+  def test_needs_you_rows_numbered_sequentially
+    write("outcome.md", <<~MD)
+      ---
+      disposition: delivered
+      ---
+      ## Needs you
+      | N | What | Why |
+      | --- | --- | --- |
+      | N1 | Run /hooks in Codex | Codex hooks dormant until then |
+      | N2 | Split the delegate message | small intent |
+    MD
+    rows = ReportScreen.needs_you_rows(@dir)
+    assert_equal %w[N1 N2], rows.map { |r| r[:n] }
+    assert_equal "Run /hooks in Codex", rows[0][:what]
+    assert_equal "Codex hooks dormant until then", rows[0][:why]
+  end
+
+  def test_needs_you_rows_missing_section_yields_empty_array
+    write("outcome.md", "---\ndisposition: delivered\n---\n\n## Summary\nx\n")
+    assert_equal [], ReportScreen.needs_you_rows(@dir)
+  end
+
+  # --- row 35: duration -------------------------------------------------------------
+
+  def test_duration_from_first_to_last_savepoint
+    write("savepoint.md", <<~SP)
+      2026-08-30T19:00:37Z  What  12--slug.md
+      2026-08-30T20:51:42Z  Done  delivered
+    SP
+    assert_equal "1 h 51 min", ReportScreen.duration(@dir)
+  end
+
+  def test_duration_under_an_hour_renders_minutes_only
+    write("savepoint.md", <<~SP)
+      2026-08-30T19:00:00Z  What  12--slug.md
+      2026-08-30T19:35:00Z  Done  delivered
+    SP
+    assert_equal "35 min", ReportScreen.duration(@dir)
+  end
+
+  # --- row 36: mode (D20) -------------------------------------------------------------
+
+  def test_mode_reads_the_live_locks_run_mode
+    File.write(File.join(@dir, "delivery.lock"), { "owner_session" => "abc", "run_mode" => "auto" }.to_json)
+    assert_equal "auto", ReportScreen.mode(@dir)
+  end
+
+  def test_mode_absent_lock_renders_not_recorded
+    assert_equal "not recorded", ReportScreen.mode(@dir)
+  end
+
+  # --- row 37: research swap (D12) -----------------------------------------------------
+
+  def test_research_intent_swaps_ship_for_deposits_and_verdict
+    write("12--slug.md", <<~MD)
+      ---
+      id: "41"
+      intent: "Research something"
+      tags: ["research"]
+      ---
+
+      ## Intent
+      Research something
+    MD
+    write("outcome.md", <<~MD)
+      ---
+      disposition: delivered
+      ---
+      ## Delivered
+      Deposited to `resources/research-report.md`. Verdict: proceed.
+    MD
+    rows = ReportScreen.evidence_rows(@dir, tag_reader: ->(_d) { nil })
+    refute(rows.any? { |r| r[:kind] == "ship" }, "a research intent must never carry a ship row")
+  end
+
+  # --- row 38: the "not recorded" rule, generically -------------------------------------
+
+  def test_every_reader_with_an_absent_source_returns_the_exact_string
+    assert_equal "not recorded", ReportScreen.mode(@dir)
+    assert_equal "not recorded", ReportScreen.decision_count(@dir)
+    write("12--slug.md", "---\nid: \"12\"\n---\n\n## Context\nx\n")
+    assert_equal "not recorded", ReportScreen.asked(@dir)
+  end
+
+  # --- n6 (334): the three action-heading readers glob nodes/ too (D10r/D15r) ---
+
+  def test_matching_heading_reads_the_nodes_dir
+    FileUtils.rm_rf(File.join(@dir, "actions"))
+    write("nodes/n1.md", <<~MD)
+      ---
+      node: n1
+      kind: work
+      files: []
+      budget: 100000
+      ---
+      # n1 - a work node
+
+      ## n1 failure-mode matrix
+      | Operation | Failure mode | Test |
+      | --- | --- | --- |
+      | op | mode | a_test#test_x |
+    MD
+    heading, body = ReportScreen.matching_action_heading(@dir, "n1")
+    refute_nil heading, "the delivered screen must find a heading for a node row"
+    assert_equal 1, ReportScreen.table_rows(body).length
+  end
+
+  def test_matrix_row_fallback_reads_the_nodes_dir
+    FileUtils.rm_rf(File.join(@dir, "actions"))
+    write("nodes/n1.md", <<~MD)
+      ---
+      node: n1
+      kind: work
+      files: []
+      budget: 100000
+      ---
+      # n1 - a work node
+
+      ## Failure-mode matrix
+      | Label | Operation |
+      |---|---|
+      | n1 | a |
+    MD
+    assert_equal 1, ReportScreen.matching_matrix_rows(@dir, "n1")
+  end
+
+  # Post-execution review, non-blocking 6: an intent whose nodes/ files
+  # restate ACTION_1's matrix under the same label must count once, not
+  # twice, matching the heading walk's first-hit rule.
+  def test_matrix_row_fallback_counts_once_when_both_dirs_have_the_same_row
+    write("actions/ACTION_1.md", <<~MD)
+      # Action
+
+      ## Failure-mode matrix
+      | Label | Operation |
+      |---|---|
+      | n1 | a |
+    MD
+    write("nodes/n1.md", <<~MD)
+      ---
+      node: n1
+      kind: work
+      files: []
+      budget: 100000
+      ---
+      # n1 - a work node
+
+      ## Failure-mode matrix
+      | Label | Operation |
+      |---|---|
+      | n1 | a |
+    MD
+    assert_equal 1, ReportScreen.matching_matrix_rows(@dir, "n1"),
+                 "an identical row restated in both directories must count once"
+  end
+
+  def test_action_file_for_reads_the_nodes_dir
+    FileUtils.rm_rf(File.join(@dir, "actions"))
+    write("nodes/n1--slug.md", <<~MD)
+      ---
+      node: n1
+      kind: work
+      files: []
+      budget: 100000
+      ---
+      # n1 - a work node
+
+      ## n1 failure-mode matrix
+      | Operation | Failure mode | Test |
+      | --- | --- | --- |
+      | op | mode | a_test#test_x |
+    MD
+    assert_equal "n1--slug", ReportScreen.action_file_for(@dir, "n1")
+  end
+
+  def test_actions_dir_still_matches
+    write("actions/ACTION_1.md", <<~MD)
+      # Action
+
+      ### S1 - real
+      | # | Operation |
+      |---|---|
+      | 1 | a |
+    MD
+    heading, body = ReportScreen.matching_action_heading(@dir, "S1")
+    refute_nil heading, "an actions/-only intent must keep resolving exactly as before"
+    assert_equal 1, ReportScreen.table_rows(body).length
+  end
+
+  def test_actions_resolve_before_nodes
+    write("actions/ACTION_1.md", <<~MD)
+      # Action
+
+      ### n1 - from actions
+      | # | Operation |
+      |---|---|
+      | 1 | a |
+      | 2 | a |
+    MD
+    write("nodes/n1.md", <<~MD)
+      ---
+      node: n1
+      kind: work
+      files: []
+      budget: 100000
+      ---
+      # n1 - from nodes
+
+      ## n1 failure-mode matrix
+      | Operation | Failure mode | Test |
+      | --- | --- | --- |
+      | op | mode | a_test#test_x |
+    MD
+    heading, body = ReportScreen.matching_action_heading(@dir, "n1")
+    assert_includes heading, "from actions"
+    assert_equal 2, ReportScreen.table_rows(body).length
+  end
+end

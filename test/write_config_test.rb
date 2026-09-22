@@ -41,24 +41,24 @@ class WriteConfigTest < Minitest::Test
   end
 
   def test_sets_nested_key_creating_intermediate_hashes
-    _out, _err, status = run_script("advisor.claude.default", "plastic-faux-advisor")
+    _out, _err, status = run_script("advisor.claude.default", "plastic-primary-advisor")
     assert status.success?
 
     config = read_config
-    assert_equal "plastic-faux-advisor", config["advisor"]["claude"]["default"]
+    assert_equal "plastic-primary-advisor", config["advisor"]["claude"]["default"]
   end
 
   def test_preserves_existing_unrelated_keys
     write_config("version" => 3, "stale_threshold_days" => 3, "agent" => { "type" => "claude-code" })
 
-    _out, _err, status = run_script("advisor.claude.default", "plastic-advisor")
+    _out, _err, status = run_script("advisor.claude.default", "plastic-primary-advisor")
     assert status.success?
 
     config = read_config
     assert_equal 3, config["version"]
     assert_equal 3, config["stale_threshold_days"]
     assert_equal "claude-code", config["agent"]["type"]
-    assert_equal "plastic-advisor", config["advisor"]["claude"]["default"]
+    assert_equal "plastic-primary-advisor", config["advisor"]["claude"]["default"]
   end
 
   def test_push_appends_and_dedupes
@@ -92,13 +92,13 @@ class WriteConfigTest < Minitest::Test
   # NOTE on write-config safety (intent 194): the owner's real config.yml has
   # no comments (it is machine-generated), so a whole-file YAML.dump rewrite
   # loses nothing. It does carry a legacy flat key
-  # (agents.models.plastic-brainstorming: fable) and a nil
+  # (agents.models.plastic-executor: fable) and a nil
   # (architect.style:). This proves both survive a write-config round trip
   # untouched.
   def test_preserves_legacy_flat_key_and_nil_value
     write_config(
       "version" => 3,
-      "agents" => { "models" => { "plastic-brainstorming" => "fable" } },
+      "agents" => { "models" => { "plastic-executor" => "fable" } },
       "architect" => { "style" => nil },
     )
 
@@ -106,7 +106,7 @@ class WriteConfigTest < Minitest::Test
     assert status.success?
 
     config = read_config
-    assert_equal "fable", config["agents"]["models"]["plastic-brainstorming"]
+    assert_equal "fable", config["agents"]["models"]["plastic-executor"]
     assert config["architect"].key?("style")
     assert_nil config["architect"]["style"]
   end

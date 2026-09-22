@@ -149,7 +149,7 @@ module IntentValidator
 
   # PURE: combine the frontmatter result with section-structure findings for a
   # content STRING. Returns the frontmatter result hash extended with
-  # :section_missing, :section_unknown, and folded section errors; :ok is the AND
+  # :section_missing, :section_unknown, and merged section errors; :ok is the AND
   # of frontmatter and sections. Lets the create gate validate proposed content
   # (no file on disk) with the same definition as the CLI and doctor.
   def validate_content(content, known_stores: nil)
@@ -158,7 +158,7 @@ module IntentValidator
     merge_sections(fm_result, sections)
   end
 
-  # Fold section findings into a frontmatter result hash (shared by validate and
+  # Merge section findings into a frontmatter result hash (shared by validate and
   # validate_content). Does not mutate the input.
   def merge_sections(fm_result, sections)
     errors = fm_result[:errors].dup

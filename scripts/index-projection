@@ -1,0 +1,74 @@
+#!/usr/bin/env ruby
+# encoding: UTF-8
+# frozen_string_literal: true
+
+# index-projection - the CLI over IndexProjection (intent 337, G4): prints
+# the drift between INDEX.md and the intent ledgers for one store root
+# (INDEX.md plus a store/ directory), exits non-zero when any drift exists.
+# --write renders INDEX.md's four status sections from the projection
+# through AtomicWrite; every other byte, including ## Clusters and
+# ## Relocated, is untouched.
+#
+# Usage:
+#   index-projection <store_root> [--write]
+#
+# Exit codes:
+#   0 - no drift (or, with --write, the write landed cleanly)
+#   1 - drift exists (a real terminal-ledger conflict, an INDEX entry with
+#       no directory, or a directory INDEX does not list)
+#   2 - usage: no argument, or the path is not a store root
+
+require_relative "lib/index_projection"
+
+module IndexProjectionCli
+  module_function
+
+  def usage
+    warn "Usage: index-projection <store_root> [--write]"
+  end
+
+  def main(argv)
+    args = argv.dup
+    write = !!args.delete("--write")
+
+    root = args.shift
+    unless root && Dir.exist?(root)
+      warn "index-projection: #{root.inspect} is not a store root"
+      usage
+      return 2
+    end
+
+    index_path = File.join(root, "INDEX.md")
+    store_dir = File.join(root, "store")
+    unless File.exist?(index_path)
+      warn "index-projection: no INDEX.md at #{index_path}"
+      return 2
+    end
+
+    if write
+      result = IndexProjection.write(store_dir, index_path: index_path)
+      unless result[:ok]
+        warn "index-projection: #{result[:error]}"
+        return 2
+      end
+      puts "index-projection: wrote #{index_path} (#{result[:moved].length} moved)"
+      return 0
+    end
+
+    analysis = IndexProjection.analyze(store_dir, index_path: index_path)
+    print_report(analysis)
+
+    (analysis[:drift].empty? && analysis[:index_only].empty? && analysis[:directory_only].empty?) ? 0 : 1
+  end
+
+  def print_report(analysis)
+    puts "Drift (#{analysis[:drift].length}):"
+    analysis[:drift].each { |r| puts "  #{r[:id]}: INDEX=#{r[:index_status]} ledger=#{r[:ledger_status]}" }
+    puts "INDEX-only (#{analysis[:index_only].length}):"
+    analysis[:index_only].each { |r| puts "  #{r[:id]} (#{r[:index_status]})" }
+    puts "Directory-only (#{analysis[:directory_only].length}):"
+    analysis[:directory_only].each { |r| puts "  #{r[:id]}" }
+  end
+end
+
+exit(IndexProjectionCli.main(ARGV)) if $PROGRAM_NAME == __FILE__

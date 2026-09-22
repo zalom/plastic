@@ -2,8 +2,8 @@
 # plastic-hook-version: 4.0.0
 # StatusLine hook - Plastic owns the full statusline (no chaining).
 # Renders: {model} - ctx {pct}% ({used}/{size}) - 5h {p}% - 7d {p}% - ${cost}
-#          - claudish {n} rw / {tok} - Plastic {version}[ -> {next}] - {path}
-# Every segment but claudish and the Plastic version comes from the stdin payload.
+#          - Plastic {version}[ -> {next}] - {path}
+# Every segment but the Plastic version comes from the stdin payload.
 # Pure bash (macOS 3.2 compatible). No ruby, no jq. Reads stdin once; small file reads
 # only. The stdin JSON is walked in a single awk pass (below); nothing else in this
 # script forks a second process per field, which is what keeps a render cheap.
@@ -17,7 +17,6 @@ C_OK=''                             # default   - meter below 70%
 C_WARN=$'\033[33m'                  # yellow    - meter at 70% and above
 C_CRIT=$'\033[38;2;231;76;60m'      # red       - meter at 90% and above
 C_COST=$'\033[37m'                  # white     - session cost
-C_CLAUDISH=$'\033[38;2;249;140;30m' # orange    - claudish rewrites
 C_VER=$'\033[37m'                   # white     - "Plastic {version}" and update arrow
 C_NEXT=$'\033[33m'                  # yellow    - next version
 C_PATH=$'\033[38;2;128;134;144m'    # gray      - path (matches dim UI text)
@@ -188,6 +187,7 @@ FIELDS=$(printf '%s' "$INPUT" | awk '
     wanted["context_window.current_usage.cache_read_input_tokens"] = 1
     wanted["cost.total_cost_usd"] = 1
     wanted["rate_limits.five_hour.used_percentage"] = 1
+    wanted["rate_limits.five_hour.resets_at"] = 1
     wanted["rate_limits.seven_day.used_percentage"] = 1
   }
   { buf = buf $0 " " }
@@ -210,6 +210,7 @@ CU_CC=""
 CU_CR=""
 COST_RAW=""
 M5_PCT=""
+M5_RESETS=""
 M7_PCT=""
 
 while IFS=$'\t' read -r k v; do
@@ -225,6 +226,7 @@ while IFS=$'\t' read -r k v; do
     context_window.current_usage.cache_read_input_tokens) CU_CR="$v" ;;
     cost.total_cost_usd) COST_RAW="$v" ;;
     rate_limits.five_hour.used_percentage) M5_PCT="$v" ;;
+    rate_limits.five_hour.resets_at) M5_RESETS="$v" ;;
     rate_limits.seven_day.used_percentage) M7_PCT="$v" ;;
   esac
 done <<FIELDS_EOF
@@ -302,6 +304,31 @@ meter_seg() {   # $1 = label, $2 = raw percentage
 M5=$(meter_seg "5h" "$M5_PCT")
 M7=$(meter_seg "7d" "$M7_PCT")
 
+# --- Rate-limits cache for MeterWatch (graph.md D11) ---
+# Written only when the payload carries a meter at all; an API-key session
+# with no rate_limits section leaves the cache untouched. A present meter
+# with no matching value writes null rather than dropping the key, so
+# MeterWatch always sees the same three fields. Temp file in the cache
+# directory, then mv, so MeterWatch never reads a half-written file.
+if [ -n "$M5_PCT" ] || [ -n "$M7_PCT" ]; then
+  CACHE_DIR="$HOME/.plastic/.cache"
+  mkdir -p "$CACHE_DIR"
+  CACHE5=$(to_int "$M5_PCT")
+  CACHE7=$(to_int "$M7_PCT")
+  [ -z "$CACHE5" ] && CACHE5=null
+  [ -z "$CACHE7" ] && CACHE7=null
+  if [ -n "$M5_RESETS" ]; then
+    RESETS_JSON="\"$M5_RESETS\""
+  else
+    RESETS_JSON=null
+  fi
+  CACHE_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  CACHE_TMP="$CACHE_DIR/.rate-limits.json.tmp.$$"
+  printf '{"five_hour":%s,"seven_day":%s,"resets_at":%s,"at":"%s"}\n' \
+    "$CACHE5" "$CACHE7" "$RESETS_JSON" "$CACHE_AT" > "$CACHE_TMP"
+  mv "$CACHE_TMP" "$CACHE_DIR/rate-limits.json"
+fi
+
 # --- Session cost (stdin cost.total_cost_usd); hidden when it renders as $0.00 ---
 COST_SEG=""
 if [ -n "$COST_RAW" ]; then
@@ -309,40 +336,18 @@ if [ -n "$COST_RAW" ]; then
   [ -n "$COST_FMT" ] && [ "$COST_FMT" != "0.00" ] && COST_SEG="${C_COST}\$${COST_FMT}${RST}"
 fi
 
-# --- claudish rewrites for THIS session (fork ledger, optional) ---
-# Tab separated, one call per line; column 11 is the session id. Rows written
-# before that column existed have 9 or 10 fields and never match, so an old
-# ledger renders no segment instead of a wrong one.
-CL_SEG=""
-CL_LOG="${CLAUDISH_LOCAL_DIR:-$HOME/.claude/claudish-local}/usage.log"
-if [ -n "$SID" ] && [ -f "$CL_LOG" ]; then
-  CL=$(awk -F'\t' -v sid="$SID" '
-    NF >= 11 && $11 == sid { n++; t += $5 + $6 }
-    END {
-      if (n > 0) {
-        if (t >= 1000) {
-          s = sprintf("%.1f", t / 1000); sub(/\.0$/, "", s); printf "%d %sk", n, s
-        } else {
-          printf "%d %d", n, t
-        }
-      }
-    }' "$CL_LOG" 2>/dev/null)
-  [ -n "$CL" ] && CL_SEG="${C_CLAUDISH}claudish ${CL%% *} rw / ${CL#* }${RST}"
-fi
-
 # --- Assemble segments in order, joined by " . " ---
 PARTS=""
 add() { [ -z "$1" ] && return; if [ -z "$PARTS" ]; then PARTS="$1"; else PARTS="$PARTS$SEP$1"; fi; }
 
-# Order: identity first (model), then this session's spend (context, meters, cost,
-# rewrites), then the volatile-length values last (version, path) so the line does
+# Order: identity first (model), then this session's spend (context, meters, cost),
+# then the volatile-length values last (version, path) so the line does
 # not visually jump as they change.
 [ -n "$MODEL" ] && add "${C_MODEL}${MODEL}${RST}"
 add "$CTX_SEG"
 add "$M5"
 add "$M7"
 add "$COST_SEG"
-add "$CL_SEG"
 if [ -n "$VERSION" ]; then
   vseg="${C_VER}Plastic ${VERSION}${RST}"
   [ -n "$NEXT" ] && vseg="${vseg}${C_VER} "$'\342\206\222'" ${RST}${C_NEXT}${NEXT}${RST}"

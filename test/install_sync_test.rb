@@ -57,6 +57,23 @@ class InstallSyncTest < Minitest::Test
       "scripts require_relative lib files missing from core_files (installed boot would LoadError): #{missing.join(", ")}"
   end
 
+  # 317a (B1): the scan above sees only scripts/* -> lib requires; a
+  # lib-to-lib require (message_display -> screen_paint -> intent_screen_ansi)
+  # was invisible, so a new lib could pass the whole suite while absent from
+  # every real install. Walk the libs too.
+  def test_every_lib_to_lib_require_is_distributed
+    missing = []
+    Dir.glob(File.join(REPO, "scripts", "lib", "*.rb")).each do |path|
+      next unless core_lib.include?(%("scripts/lib/#{File.basename(path)}"))
+      File.read(path).scan(/require_relative\s+["'](\w+)["']/).flatten.uniq.each do |libname|
+        rel = "scripts/lib/#{libname}.rb"
+        missing << "#{File.basename(path)} -> #{rel}" unless core_lib.include?(%("#{rel}"))
+      end
+    end
+    assert_empty missing,
+      "registered libs require_relative lib files missing from core_files: #{missing.join(", ")}"
+  end
+
   # Every hook wrapper that delegates to ../scripts/hook-<name> must reference a
   # script that actually exists in the repo.
   def test_every_wrapper_references_an_existing_script
@@ -82,6 +99,79 @@ class InstallSyncTest < Minitest::Test
     assert core.core_files.key?("scripts/insight-append"),
       "scripts/insight-append missing from core_files (installed wrapper would point at nothing)"
     assert_equal "scripts/insight-append", core.core_files["scripts/insight-append"]
+  ensure
+    FileUtils.rm_rf(home)
+  end
+
+  # Regression guard (intent 339, G6, row 7.7): scripts/lib/outcome_report.rb is pulled in
+  # transitively (report_screen.rb require_relatives it), but nothing forces the new
+  # top-level scripts/outcome-report COMMAND to be registered - it could ship absent from
+  # every install with a fully green suite otherwise.
+  def test_outcome_report_command_is_registered_for_install
+    home = Dir.mktmpdir("core-test")
+    core = InstallerCore.new(package_root: REPO, plastic_home: home, version: "1.0.0-test")
+    assert core.core_files.key?("scripts/outcome-report"),
+      "scripts/outcome-report missing from core_files (installed wrapper would point at nothing)"
+    assert core.core_files.key?("scripts/lib/outcome_report.rb"),
+      "scripts/lib/outcome_report.rb missing from core_files"
+  ensure
+    FileUtils.rm_rf(home)
+  end
+
+  # Regression guard (intent 340, G7, n1, row 1.21; extended n4, row 4.45):
+  # scripts/runner requires scripts/lib/runner_core.rb, which requires
+  # scripts/lib/core_integrity.rb's sibling deliverable, and scripts/runner's
+  # `step` verb lazily requires scripts/lib/runner_absorb.rb, which requires
+  # scripts/lib/node_return.rb; the generic require_relative scans above
+  # already catch a drifted require, but this names every file explicitly so
+  # the installer manifest goes red the moment any one of them is dropped
+  # from core_files, not just when a require trips over it.
+  def test_core_files_match_disk
+    home = Dir.mktmpdir("core-test")
+    core = InstallerCore.new(package_root: REPO, plastic_home: home, version: "1.0.0-test")
+    %w[scripts/runner scripts/lib/runner_core.rb scripts/lib/core_integrity.rb
+       scripts/lib/node_return.rb scripts/lib/runner_absorb.rb
+       scripts/lib/runner_policy.rb scripts/lib/runner_dispatch.rb
+       scripts/lib/runner_answer.rb scripts/lib/runner_proposals.rb
+       scripts/lib/runner_rewind.rb
+       scripts/lib/graph_measure.rb scripts/graph-measure scripts/lib/graph_measure_report.rb
+       scripts/lib/graph_measure_budget.rb scripts/lib/graph_measure_models.rb
+       scripts/lib/graph_measure_cohorts.rb
+       scripts/lib/node_progress.rb
+       scripts/session-usage scripts/lib/session_usage.rb
+       scripts/hook-call-budget
+       scripts/meter-watch scripts/lib/meter_watch.rb].each do |rel|
+      assert core.core_files.key?(rel), "#{rel} missing from core_files (installed ~/.plastic would lack it)"
+      assert_equal rel, core.core_files[rel]
+      assert File.exist?(File.join(REPO, rel)), "#{rel} registered in core_files but missing on disk"
+    end
+
+    # matrix 2.12: the hook AND its launcher both reach an installed
+    # ~/.plastic - the launcher via hook_files' own glob over hooks/*, never
+    # a second hand-written entry.
+    assert core.core_files.key?("hooks/call-budget"),
+           "hooks/call-budget launcher missing from core_files (installed ~/.plastic would lack it)"
+    assert File.exist?(File.join(REPO, "hooks", "call-budget")), "hooks/call-budget missing on disk"
+  ensure
+    FileUtils.rm_rf(home)
+  end
+
+  # Intent 340b (G7c, n4, row 4.35): the Stop gate, the shared ActiveDelivery
+  # walk, and scripts/hook-stop must all be registered for install, or the
+  # installed hooks/plastic-stop launcher points at a require that is not
+  # there. test_every_hook_script_is_registered_for_install and
+  # test_every_required_lib_is_distributed already glob scripts/hook-* and
+  # scan require_relative respectively, so those two alone would already go
+  # red without this; this names the three explicitly so a future rename
+  # trips a message that says exactly what is missing.
+  def test_n4_stop_gate_files_are_registered_for_install
+    home = Dir.mktmpdir("core-test")
+    core = InstallerCore.new(package_root: REPO, plastic_home: home, version: "1.0.0-test")
+    %w[scripts/lib/stop_gate.rb scripts/lib/active_delivery.rb scripts/hook-stop].each do |rel|
+      assert core.core_files.key?(rel), "#{rel} missing from core_files (installed ~/.plastic would lack it)"
+      assert_equal rel, core.core_files[rel]
+      assert File.exist?(File.join(REPO, rel)), "#{rel} registered in core_files but missing on disk"
+    end
   ensure
     FileUtils.rm_rf(home)
   end
@@ -126,5 +216,23 @@ class InstallSyncTest < Minitest::Test
     missing = real_refs.reject { |ref| core_lib.include?(%("#{ref}")) }
     assert_empty missing,
       "skill-referenced scripts missing from core_files (installed skills would point at nothing): #{missing.join(", ")}"
+  end
+  # Regression guard (intent 344, G11, D10, matrix row 3.14): the core sync path
+  # (InstallerCore#distribute) must actually call remove_retired_session_state
+  # after it prunes removed core files, or no installed machine is ever cleaned
+  # of leftover session pointers. tmp_dirs: [] keeps this hermetic (no scan of
+  # the real system tmp directory or /tmp).
+  def test_sync_calls_the_retired_session_state_removal
+    home = Dir.mktmpdir("sync-retired-state")
+    core = InstallerCore.new(package_root: REPO, plastic_home: home, version: "1.0.0-test")
+    current = File.join(home, "store", ".tmp", "abcd1234", "current")
+    FileUtils.mkdir_p(File.dirname(current))
+    File.write(current, "20260913\n")
+
+    core.distribute(:install, tmp_dirs: [])
+
+    refute File.exist?(current), "distribute must call remove_retired_session_state and remove leftover pointers"
+  ensure
+    FileUtils.rm_rf(home)
   end
 end

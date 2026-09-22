@@ -4,10 +4,10 @@
 
 # roadmap-next - thin CLI over RoadmapQueue (intent 148).
 #
-# The auto loop and plastic-roadmap-continuing both call this instead of ranking roadmap
+# The auto loop and plastic-intent-continuing both call this instead of ranking roadmap
 # liveness in prose. Queue mode (default) is for the auto loop: it breaks a tie
 # deterministically and reports the winner's frontier state. Which mode (--which) is for
-# plastic-roadmap-continuing: it returns tie_candidates so the skill's single ask can resolve
+# plastic-intent-continuing: it returns tie_candidates so the skill's roadmap route can resolve
 # a genuine tie.
 #
 # Usage:

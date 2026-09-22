@@ -8,6 +8,7 @@ require "json"
 require "stringio"
 require_relative "../scripts/lib/worktree"
 require_relative "../scripts/lib/lock"
+require_relative "../scripts/lib/arm"
 
 # Hermetic tests for the Worktree module (intent 73c1). No real git runs: a
 # FakeRunner records calls and returns scripted results. projects.yml is built
@@ -102,6 +103,24 @@ class WorktreeTest < Minitest::Test
     }
   end
 
+  
+  def test_provision_takes_the_delivery_hash
+    intent_dir = File.join(@store, "73c1--worktree-x")
+    FileUtils.mkdir_p(intent_dir)
+    data = Arm.delivery(intent_dir: intent_dir, home: @home, with_worktree: false)
+    runner = FakeRunner.new do |args|
+      if args[1] == @repo && args[2] == "rev-parse"
+        next Worktree::ShellRunner::Result.new(0, "true\n", "")
+      end
+      Worktree::ShellRunner::Result.new(0, "", "")
+    end
+    result = Worktree.provision(data, home: @home, runner: runner)
+    wt = result["worktree"]
+    assert_equal true, wt["provisioned"]
+    assert_equal File.join(@repo, ".claude", "worktrees", "73c1--worktree-x"), wt["code"]
+    assert_equal "plastic/73c1--worktree-x", wt["code_branch"]
+  end
+  
   def test_provision_creates_the_code_worktree_with_git_C
     runner = FakeRunner.new do |args|
       # rev-parse probe must report a git repo
