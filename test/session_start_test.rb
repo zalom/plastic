@@ -1021,3 +1021,69 @@ class SessionStartShimLayoutTest < Minitest::Test
     refute_includes trace, "hook-session-start"
   end
 end
+
+# A deprecation notice named the release that removes the feature, and nothing
+# read that field: the PLASTIC-reference.md notice, removal 1.11.0, still fired
+# at every boot on 2.0.0-alpha.29. A notice whose removal is behind the
+# installed version has nothing left to say, unless it is critical.
+class SessionStartDeprecationAgeTest < Minitest::Test
+  HOOK = File.expand_path("../scripts/hook-session-start", __dir__)
+
+  def setup
+    @home = Dir.mktmpdir("plastic-deprecation-age")
+    @tmp = Dir.mktmpdir("plastic-deprecation-tmp")
+    File.write(File.join(@home, "INDEX.md"), "# Index\n\n## Active\n\n## Future\n")
+    File.write(File.join(@home, "PLASTIC.md"), "# Plastic: Conventions\n")
+    File.write(File.join(@home, "VERSION"), "2.0.0-alpha.29\n")
+  end
+
+  def teardown
+    FileUtils.rm_rf(@home)
+    FileUtils.rm_rf(@tmp)
+  end
+
+  def write_deprecation(removal:, severity: "info")
+    File.write(File.join(@home, "deprecations.yml"), <<~YAML)
+      deprecations:
+        - id: a-notice
+          severity: #{severity}
+          summary: "Something moved."
+          migration_steps:
+            - "No action is required."
+          introduced: "1.9.0"
+          removal: "#{removal}"
+    YAML
+  end
+
+  def context
+    out, _err, status = Open3.capture3({"PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => nil},
+      "ruby", HOOK, File.join(@home, "INDEX.md"), @home, "global")
+
+    assert_equal 0, status.exitstatus
+    JSON.parse(out).dig("hookSpecificOutput", "additionalContext").to_s
+  end
+
+  def test_a_notice_whose_removal_already_shipped_is_gone
+    write_deprecation(removal: "1.11.0")
+
+    refute_includes context, "Something moved."
+  end
+
+  def test_a_notice_removed_in_the_installed_version_still_shows
+    write_deprecation(removal: "2.0.0-alpha.29")
+
+    assert_includes context, "Something moved."
+  end
+
+  def test_a_notice_removed_in_a_later_version_still_shows
+    write_deprecation(removal: "2.1.0")
+
+    assert_includes context, "Something moved."
+  end
+
+  def test_a_critical_notice_outlives_its_own_removal
+    write_deprecation(removal: "1.11.0", severity: "critical")
+
+    assert_includes context, "Something moved."
+  end
+end
