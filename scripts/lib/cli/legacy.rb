@@ -30,6 +30,8 @@ module Plastic
         [out, exit_code(process)]
       end
 
+      NON_OWNER_EXIT_THREE = %w[verify-intent runner].freeze
+
       def self.exit_code(status)
         return Command::OK if status.success?
 
@@ -58,14 +60,18 @@ module Plastic
         else
           status = @runner.call(script_path(script), arguments)
         end
-        raise Command::Refusal, "#{script} needs the owner" if status == Command::REFUSED
+        raise Command::Refusal, "#{script} needs the owner" if owner_refusal?(script, status)
 
         status
       end
 
+      def owner_refusal?(script, status)
+        status == Command::REFUSED && !NON_OWNER_EXIT_THREE.include?(script)
+      end
+
       def capture(script, *arguments)
         out, status = @runner.call(script_path(script), arguments, capture: true)
-        raise Command::Refusal, "#{script} needs the owner" if status == Command::REFUSED
+        raise Command::Refusal, "#{script} needs the owner" if owner_refusal?(script, status)
 
         [out, status]
       end

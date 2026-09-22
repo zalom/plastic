@@ -21,3 +21,13 @@ jobs:
         run: bundle install
       - name: Run the full suite
         run: ruby bin/test
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Verify the packaged executable
+        run: |
+          package_dir=$(mktemp -d)
+          archive=$(npm pack --silent --pack-destination "$package_dir")
+          tar -xzf "$package_dir/$archive" -C "$package_dir"
+          PLASTIC_ACCEPTANCE_BIN="$package_dir/package/bin/plastic" ruby bin/test --only test/cli/release_contract_test.rb

@@ -60,6 +60,14 @@ class CliLegacyTest < Minitest::Test
     assert_includes error.message, "uninstall.rb"
   end
 
+  def test_verification_findings_are_not_owner_refusals
+    assert_equal 3, legacy(3).run("verify-intent")
+  end
+
+  def test_an_unimplemented_runner_verb_is_not_an_owner_refusal
+    assert_equal 3, legacy(3).run("runner")
+  end
+
   def test_a_run_that_exits_two_answers_two_rather_than_refusing
     assert_equal 2, legacy(2).run("install.rb")
   end

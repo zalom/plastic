@@ -13,7 +13,7 @@ class CliReleaseContractTest < Minitest::Test
     @fixture = CliFixture.new(@dir).global_store.project("sample")
     @env = @fixture.env("HOME" => @fixture.home, "PLASTIC_TMP" => File.join(@dir, "tmp"),
       "CLAUDE_CODE_SESSION_ID" => "release-contract-test")
-    @bin = File.expand_path("../../bin/plastic", __dir__)
+    @bin = ENV.fetch("PLASTIC_ACCEPTANCE_BIN") { File.expand_path("../../bin/plastic", __dir__) }
   end
 
   def teardown
