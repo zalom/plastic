@@ -8,8 +8,7 @@ require_relative "../scripts/lib/preflight"
 require_relative "../scripts/install"
 
 # Hermetic tests for the pure pre-flight decision table (intent 38) and for the
-# `install.rb#preflight_gate` wiring around it. No eval, no ENV seam, no shelling
-# out: every probe is injected.
+# `install.rb#preflight_gate` wiring around it, plus isolated executable probes.
 class PreflightTest < Minitest::Test
   WORKTREE = File.expand_path("../../", __FILE__)
 
@@ -130,6 +129,25 @@ class PreflightTest < Minitest::Test
   end
 
   # --- install.rb#preflight_gate wiring ---
+
+  def test_executable_probes_work_without_an_external_command_program
+    Dir.mktmpdir("preflight-probes") do |dir|
+      %w[git mise].each do |name|
+        path = File.join(dir, name)
+        File.write(path, "#!/bin/sh\nprintf 'test version\\n'\n")
+        File.chmod(0o755, path)
+      end
+      install = Install.new(package_root: WORKTREE, plastic_home: dir)
+      original_path = ENV["PATH"]
+      begin
+        ENV["PATH"] = dir
+        assert install.send(:git_probe)
+        assert install.send(:mise_probe)
+      ensure
+        ENV["PATH"] = original_path
+      end
+    end
+  end
 
   def test_preflight_gate_returns_1_and_prints_the_offer_on_fatal_ruby
     install = Install.new(package_root: WORKTREE, plastic_home: Dir.mktmpdir("preflight-gate"))

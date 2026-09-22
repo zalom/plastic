@@ -138,13 +138,13 @@ class Install < InstallerCore
   end
 
   def git_probe
-    !`command -v git`.strip.empty?
+    !`git --version`.strip.empty?
   rescue StandardError
     false
   end
 
   def mise_probe
-    !`command -v mise`.strip.empty?
+    !`mise --version`.strip.empty?
   rescue StandardError
     false
   end
