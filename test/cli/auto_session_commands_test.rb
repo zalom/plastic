@@ -259,6 +259,13 @@ class CliAutoSessionCommandsTest < Minitest::Test
     assert_includes @fixture.printed, "held by abc"
   end
 
+  def test_lock_status_accepts_a_lock_that_is_not_a_hash
+    @captured = JSON.generate("intent_dir" => "/store/372", "lock" => "abc", "lock_fresh" => true)
+    command("auto lock", "status", "372")
+
+    assert_includes @fixture.printed, "held by abc"
+  end
+
   def test_lock_status_marks_a_stale_lock_stale
     @captured = JSON.generate("intent_dir" => "/store/372", "lock" => {"session" => "abc"},
       "lock_fresh" => false)
