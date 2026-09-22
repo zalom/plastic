@@ -63,11 +63,11 @@ class CliStatusTest < Minitest::Test
     assert_includes @fixture.printed, "because: plastic holds the most active work, 2 intents"
   end
 
-  def test_the_global_store_needs_no_project_flag
+  def test_the_global_store_keeps_its_scope_in_the_next_command
     @fixture.global_store(active: [["41", "Security first"]]).project("plastic", active: [])
     status
 
-    assert_includes @fixture.printed, "next: plastic continue\n"
+    assert_includes @fixture.printed, "next: plastic continue --project global\n"
   end
 
   def test_a_tie_is_broken_the_same_way_on_every_run

@@ -3,6 +3,14 @@
 Release history for Plastic, one line per cut. Commit-level detail lives in
 [GitHub Releases](https://github.com/zalom/plastic/releases).
 
+## 2.0.0
+
+- The public `plastic` command carries workflow guidance, project scope, and next actions. Agent instructions point to the command and its help chapters.
+- Direct intents advance through lifecycle preparation, checklist work, verification, and closure. Graph intents use the existing file-backed runner and delivery ownership checks.
+- Search, sync, checkout, and backup operate on the store databases. The retrieval library provides deterministic question search; recursive RLM and database-backed graph execution remain subsequent work.
+- Intent 383 repairs JSON output from script adapters, preserves project scope in next commands, respects blocked and completed work, and removes unnecessary mutation advice from reads. Packaged executable checks run in CI.
+- Ruby 4.0 or later is required. Release publication runs from the channel branches after the suite and version guard pass.
+
 ## Unreleased
 
 - Intent 360: every Plastic agent now defaults to medium reasoning effort on Claude Code and Codex. Codex dispatch passes literal OpenAI model IDs and effort into `codex exec`, Codex installs OpenAI equivalents for both advisors, `read-config` is harness-aware, and read-only research nodes can return one declared Markdown report for the runner to write under the intent's `resources/` directory.
