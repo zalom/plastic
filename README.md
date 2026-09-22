@@ -209,6 +209,7 @@ plastic project links                 # Rebuild every Links section from frontma
 plastic roadmap next                  # The roadmap most worth continuing
 plastic roadmap show SLUG             # The state screen of one roadmap
 plastic roadmap check SLUG            # Find cycles and dangling ids in the graph
+plastic roadmap migrate SLUG          # Write the graph section from the batches
 plastic roadmap log SLUG EVENT "TEXT" # Append a line to the roadmap ledger
 ```
 

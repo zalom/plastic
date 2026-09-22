@@ -46,6 +46,7 @@ module Plastic
       "roadmap" => ["commands/roadmap", "Roadmap", "List the roadmap subcommands"],
       "roadmap check" => ["commands/roadmap_check", "RoadmapCheck", "Check a roadmap's graph for cycles and dangling ids"],
       "roadmap log" => ["commands/roadmap_log", "RoadmapLog", "Append a savepoint line to a roadmap's ledger"],
+      "roadmap migrate" => ["commands/roadmap_migrate", "RoadmapMigrate", "Write a roadmap's Graph section from its batches"],
       "roadmap next" => ["commands/roadmap_next", "RoadmapNext", "Name the roadmap most worth continuing"],
       "roadmap show" => ["commands/roadmap_show", "RoadmapShow", "Print a roadmap's state screen"],
       "rollback" => ["commands/rollback", "Rollback", "Move to a Plastic version this machine has run before"],

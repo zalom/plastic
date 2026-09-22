@@ -3,10 +3,18 @@
 require_relative "../test_helper"
 require "stringio"
 require "tmpdir"
+require "json"
 require_relative "../lib/cli_fixture"
 require_relative "../../scripts/lib/cli"
 
 class CliAutoSessionCommandsTest < Minitest::Test
+  LOCK_REPORT = JSON.generate(
+    "intent_dir" => "/store/372--skills-to-commands", "session" => "s1",
+    "lock" => nil, "lock_fresh" => false, "lock_corrupt" => false,
+    "worktree" => {"code" => nil, "code_branch" => nil, "provisioned" => false},
+    "delivering" => false, "claims" => []
+  )
+
   REPO = File.expand_path("../..", __dir__)
 
   def setup
@@ -24,9 +32,11 @@ class CliAutoSessionCommandsTest < Minitest::Test
   def command(verb, *argv, status: 0, directory: "/nowhere")
     file, const, = Plastic::CLI::TABLE.fetch(verb)
     require File.expand_path("../../scripts/lib/cli/#{file}", __dir__)
-    runner = lambda do |path, arguments|
+    runner = lambda do |path, arguments, capture: false|
       @calls << [path, arguments]
-      status
+      next status unless capture
+
+      [@captured || LOCK_REPORT, status]
     end
     Plastic::CLI::Commands.const_get(const).call(argv, directory: directory, runner: runner, **@fixture.streams)
   end
@@ -228,8 +238,82 @@ class CliAutoSessionCommandsTest < Minitest::Test
     assert_equal 1, command("auto lock", "status", "999")
   end
 
-  def test_a_failing_lock_exits_one
+  def test_lock_status_prints_a_screen_not_the_document
+    command("auto lock", "status", "372")
+
+    refute_includes @fixture.printed, "lock_corrupt"
+  end
+
+  def test_lock_status_screen_names_the_intent_and_an_open_lock
+    command("auto lock", "status", "372")
+
+    assert_includes @fixture.printed, "372--skills-to-commands"
+    assert_includes @fixture.printed, "lock        none"
+  end
+
+  def test_lock_status_names_the_session_that_holds_a_fresh_lock
+    @captured = JSON.generate("intent_dir" => "/store/372", "lock" => {"session" => "abc"},
+      "lock_fresh" => true, "delivering" => true)
+    command("auto lock", "status", "372")
+
+    assert_includes @fixture.printed, "held by abc"
+  end
+
+  def test_lock_status_marks_a_stale_lock_stale
+    @captured = JSON.generate("intent_dir" => "/store/372", "lock" => {"session" => "abc"},
+      "lock_fresh" => false)
+    command("auto lock", "status", "372")
+
+    assert_includes @fixture.printed, "held by abc, stale"
+  end
+
+  def test_lock_status_names_fix_for_a_corrupt_lock
+    @captured = JSON.generate("intent_dir" => "/store/372", "lock" => {}, "lock_corrupt" => true)
+    command("auto lock", "status", "372")
+
+    assert_includes @fixture.printed, "plastic auto lock fix 372 rewrites it"
+  end
+
+  def test_lock_status_shows_a_provisioned_worktree
+    @captured = JSON.generate("intent_dir" => "/store/372", "lock" => nil,
+      "worktree" => {"code" => "/wt/372", "code_branch" => "wt-372", "provisioned" => true})
+    command("auto lock", "status", "372")
+
+    assert_includes @fixture.printed, "/wt/372  on  wt-372"
+  end
+
+  def test_lock_status_lists_the_claims
+    @captured = JSON.generate("intent_dir" => "/store/372", "lock" => nil, "claims" => ["a.rb"])
+    command("auto lock", "status", "372")
+
+    assert_includes @fixture.printed, "a.rb"
+  end
+
+  def test_a_failing_lock_status_exits_one
     assert_equal 1, command("auto lock", "status", "372", status: 5)
+  end
+
+  def test_a_failing_lock_status_names_the_exit_code
+    command("auto lock", "status", "372", status: 5)
+
+    assert_includes @fixture.warned, "plastic-lock exited 5"
+  end
+
+  def test_lock_status_with_an_unreadable_report_exits_one
+    @captured = "not a report"
+
+    assert_equal 1, command("auto lock", "status", "372")
+  end
+
+  def test_lock_status_with_an_unreadable_report_says_so
+    @captured = "not a report"
+    command("auto lock", "status", "372")
+
+    assert_includes @fixture.warned, "plastic-lock did not print a report"
+  end
+
+  def test_a_failing_lock_release_exits_one
+    assert_equal 1, command("auto lock", "release", "372", status: 5)
   end
 
   # --- session commit --------------------------------------------------------------
