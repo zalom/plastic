@@ -22,6 +22,7 @@ module Plastic
         ].freeze
 
         def call
+          raise Usage, "choose only one of --delivered or --abandoned" if options[:delivered] && options[:abandoned]
           raise Usage, "one of --delivered or --abandoned is required" unless disposition
           raise Usage, SUMMARY_GUIDANCE.join("\n") if options[:summary].to_s.empty?
 

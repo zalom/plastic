@@ -11,7 +11,7 @@ module Plastic
   class CLI
     module Commands
       class IntentStep < IntentCommand
-        USAGE_LINE = "plastic intent step ID [--json]"
+        USAGE_LINE = "plastic intent step ID [--return NODE=PATH] [--harness NAME] [--allow-core-drift] [--json]"
 
         SCRIPT = "runner"
         AFTER = "plastic intent step ID"
@@ -38,6 +38,12 @@ module Plastic
 
         private
 
+        def switches(parser)
+          parser.on("--return NODE=PATH") { |pair| (@options[:returns] ||= []) << pair }
+          parser.on("--harness NAME") { |name| @options[:harness] = name }
+          parser.on("--allow-core-drift") { @options[:allow_core_drift] = true }
+        end
+
         def graph_owner?
           session = RunnerCore.resolve_owning_session(intent_dir, explicit: nil,
             env_session: @env["CLAUDE_CODE_SESSION_ID"], store: scope.store, intent_id: id)
@@ -53,7 +59,11 @@ module Plastic
         end
 
         def script_arguments
-          ["step", intent_dir]
+          args = ["step", intent_dir]
+          Array(options[:returns]).each { |pair| args.concat(["--return", pair]) }
+          args.concat(["--harness", options[:harness]]) if options[:harness]
+          args << "--allow-core-drift" if options[:allow_core_drift]
+          args
         end
       end
     end

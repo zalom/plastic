@@ -659,8 +659,10 @@ class InstallerCore
   def bootstrap
     puts "  \u{1f331} First install \u{2014} bootstrapping store..."
 
+    legacy = %w[store projects INDEX.md roadmaps].any? { |entry| File.exist?(File.join(plastic_home, entry)) }
+    FileUtils.mkdir_p(File.join(plastic_home, "stores", "global")) unless legacy
     FileUtils.mkdir_p(Plastic::StoreLayout.global_store(plastic_home))
-    FileUtils.mkdir_p(File.join(plastic_home, "projects"))
+    FileUtils.mkdir_p(Plastic::StoreLayout.projects_root(plastic_home))
 
     write_if_missing(File.join(plastic_home, "config.yml"), <<~YAML)
       version: 3
