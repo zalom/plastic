@@ -19,7 +19,7 @@ module Plastic
         def call
           raise Usage, "the one-line intent statement is required" if line.to_s.empty?
 
-          status = Legacy.new(env: @env, runner: @runner).run("new-intent", *new_intent_arguments)
+          status = Legacy.new(env: @env, runner: @runner, output: @output, json: options[:json]).run("new-intent", *new_intent_arguments)
           raise Failure, "new-intent exited #{status}" unless status.zero?
 
           IndexEntry.add_active(scope.index_path, dir_name: dir_name, title: line)

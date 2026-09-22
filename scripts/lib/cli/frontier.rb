@@ -57,16 +57,18 @@ module Plastic
 
       def because
         return "#{@scope.slug} has no roadmap" if state == NONE
+        return "#{roadmap} has blocked work: #{blocked_ids.join(", ")}" if id.nil? && !blocked_ids.empty?
+        return "#{roadmap} has an invalid graph: #{heading}" if state == "error"
         return "every entry on #{roadmap} is delivered" if id.nil?
 
         "#{id} is first on the frontier of #{roadmap}"
       end
 
       def next_step
-        return "plastic status" unless id
+        return "none" unless id
 
         plan = @scope.intent_dir(id)
-        plan ? "read #{File.join(plan, "plan.md")}" : "plastic status"
+        plan ? "plastic intent show #{id}" : "plastic status"
       end
 
       private

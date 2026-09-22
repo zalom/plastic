@@ -191,7 +191,7 @@ class RoadmapQueue
     case index_status_map[id]
     when "delivered" then "delivered"
     when "abandoned" then "abandoned"
-    when "queued" then "queued"
+    when "queued" then raw_status == "blocked" ? "blocked" : "queued"
     when :active then raw_status == "delivered" ? "delivering" : raw_status
     else raw_status
     end

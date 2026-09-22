@@ -227,7 +227,7 @@ class CliAutoSessionCommandsTest < Minitest::Test
   def test_lock_names_the_next_verb_by_current_verb
     command("auto lock", "status", "372")
 
-    assert_includes @fixture.printed, "next: plastic auto lock fix 372"
+    assert_includes @fixture.printed, "next: none"
   end
 
   def test_lock_with_an_unknown_verb_exits_two

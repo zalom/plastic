@@ -1805,3 +1805,20 @@ confirms a run exists (`gh run list --workflow publish.yml`), follows it (`gh ru
 verifies the registry (`npm view <package> dist-tags`) rather than running `npm publish` itself.
 Plastic's own `~/.plastic/projects/plastic/project.yml` is the only project that names the new
 action; every other project's `on_green` list is untouched.
+
+## CLI adapter contract
+
+`Legacy` captures child stdout for JSON commands and passes it to `Output` for
+one final envelope. Child output remains an array of strings under
+`result.output`; it is not presented as parsed domain state. Text commands retain
+the existing script display. Usage errors, failures, and owner refusals keep their
+exit codes and stderr diagnostics, with an error object for JSON callers.
+
+`IntentProgress` reads lifecycle prerequisites and checklist items through the
+existing screen reader. A direct step prints its first incomplete item without
+starting the graph runner. A graph step uses the runner's ownership resolver
+before dispatch. Lock inspection and search end with `next: none`.
+
+`test/cli/release_contract_test.rb` exercises the actual executable with isolated
+stores, including creation, screens, project scope, direct progression, graph
+lock prerequisites, and blocked Future work.

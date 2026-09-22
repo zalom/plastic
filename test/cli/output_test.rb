@@ -119,4 +119,10 @@ class CliOutputTest < Minitest::Test
 
     assert_equal "project  plastic\n", @out.string
   end
+
+  def test_raw_text_is_preserved_in_text_mode
+    @output.raw("A rendered screen")
+
+    assert_equal "A rendered screen\n", @out.string
+  end
 end

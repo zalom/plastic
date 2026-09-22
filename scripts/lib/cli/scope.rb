@@ -24,7 +24,7 @@ module Plastic
         @env = env
         @home = home
         @requested = slug
-        @directory = directory
+        @directory = canonical_path(File.expand_path(directory))
       end
 
       def plastic_home
@@ -101,14 +101,21 @@ module Plastic
       end
 
       def project_for_directory
-        repositories
+        (repositories + stores.map { |store| [store[:slug], store[:root]] })
           .select { |_slug, path| inside?(path) }
           .max_by { |_slug, path| path.length }
           &.first
       end
 
       def inside?(path)
+        path = canonical_path(File.expand_path(path))
         @directory == path || @directory.start_with?("#{path}#{File::SEPARATOR}")
+      end
+
+      def canonical_path(path)
+        return File.realpath(path) if File.exist?(path)
+
+        File.join(canonical_path(File.dirname(path)), File.basename(path))
       end
 
       def repositories

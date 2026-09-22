@@ -18,6 +18,7 @@ module Plastic
 
       def self.call(...)
         command = new(...)
+        command.validate_scope
         command.call
         command.flush
         OK
@@ -39,14 +40,19 @@ module Plastic
         @env = env
         @home = home
         @directory = directory
-        @output = Output.new(out: out, err: err)
+        @output = Output.new(out: out, err: err, json: @argv.include?("--json"))
       end
 
       def call
         raise NoMethodError, "#{self.class} must define call"
       end
 
+      def validate_scope
+        scope.slug if @argv.grep(/\A--project(?:=|$)/).any?
+      end
+
       def flush
+        @output.project = scope.slug
         @output.flush(json: options[:json])
       end
 
@@ -69,6 +75,7 @@ module Plastic
         @parser ||= OptionParser.new do |o|
           o.banner = self.class::USAGE_LINE
           o.on("--json") { @options[:json] = true }
+          o.on("--project SLUG") { |slug| @options[:project] = slug }
           switches(o)
         end
       end

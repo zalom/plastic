@@ -18,7 +18,7 @@ module Plastic
           rows = options[:ask] ? RLM::Query.new(RLM::Probe.new(corpus, limit: limit)).call(arguments.join(" ")) : found(arguments, limit)
           rows.each { |row| @output.row(row["path"], row["excerpt"].gsub(/\s+/, " ").strip) }
           @output.row("result", "no match") if rows.empty?
-          @output.next_step("plastic index", because: "the index was built #{File.mtime(database).strftime("%Y-%m-%d %H:%M")}; rebuild it when the stores have changed")
+          @output.next_step("none", because: "the search is complete")
         rescue Sqlite::Error => e
           raise Failure, e.message
         end

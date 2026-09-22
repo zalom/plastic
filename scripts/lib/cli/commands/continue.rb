@@ -44,7 +44,7 @@ module Plastic
         end
 
         def decision
-          return [frontier.next_step, frontier.because] if frontier.id
+          return [frontier.next_step, frontier.because] if frontier.roadmap
 
           id = scope.active_ids.first
           return [plan_for(id), "#{id} is the first active intent in #{scope.slug}"] if id
@@ -54,7 +54,7 @@ module Plastic
 
         def plan_for(id)
           dir = scope.intent_dir(id)
-          dir ? "read #{File.join(dir, "plan.md")}" : "plastic status"
+          dir ? "plastic intent show #{id}" : "plastic status"
         end
 
         def frontier

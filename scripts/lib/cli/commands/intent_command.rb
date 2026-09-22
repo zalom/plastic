@@ -41,7 +41,7 @@ module Plastic
         end
 
         def legacy
-          @legacy ||= Legacy.new(env: @env, runner: @runner)
+          @legacy ||= Legacy.new(env: @env, runner: @runner, output: @output, json: options[:json])
         end
 
         def script_arguments

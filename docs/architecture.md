@@ -312,3 +312,15 @@ The dashboard is the work cockpit. It answers three questions: where we are (a s
 - **Auto-mode contract**: `--json` still emits the machine readable manifest (`dispatchable_queue`, `human_only`, `next_big_thing`) that `plastic-auto` consumes; unchanged by intent 202. The plain ASCII cockpit (`continue`/`project <slug>`/`all`, no flag) also stays untouched. Roadmaps are the primary planning surface (intent 148): when a tier has a mid-flight roadmap, `plastic-auto` consults `scripts/roadmap-next` first and dispatches its frontier batch; the dashboard `dispatchable_queue` is the fallback, used only when `roadmap-next` reports `none` or `exhausted` (no roadmap, or nothing left to dispatch). The dashboard stays the state view, not the planning surface.
 
 The skill-authoring guides left the installed skill tree in 2.0 (intent 304). The general standard now lives in the `skill-creating` and `skill-evaluating` skills at [zalom/agent-skills](https://github.com/zalom/agent-skills), and `docs/skill-authoring.md` keeps the Plastic-only rules.
+
+## CLI output and progression
+
+The command layer owns project scope and next actions. Scoped commands accept
+`--project`; emitted commands retain the resolved project. Repository paths and
+store paths both resolve scope, including filesystem aliases.
+
+JSON commands capture script stdout under `result.output` and emit one document.
+Diagnostics remain on stderr. Direct intents use their specification, plan, and
+checklist to select work. Graph execution first checks ownership and names the
+public lock command when ownership is absent. Completed intents have no next
+action. A Future index entry does not remove an explicit roadmap block.

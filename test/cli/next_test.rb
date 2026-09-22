@@ -51,7 +51,7 @@ class CliNextTest < Minitest::Test
     next_command
 
     assert_includes @fixture.printed,
-      "next: read #{File.join(@fixture.intent_dir("plastic", "363"), "plan.md")}"
+      "next: plastic intent show 363 --project plastic"
   end
 
   def test_a_dispatchable_frontier_says_why_that_entry
@@ -144,5 +144,34 @@ class CliNextTest < Minitest::Test
 
     assert_includes @fixture.printed, "next: plastic status"
     assert_includes @fixture.printed, "because: 999 is first on the frontier of cli-and-rlm"
+  end
+
+  def test_blocked_future_work_keeps_its_block
+    path = File.join(@fixture.plastic_home, "projects", "plastic", "INDEX.md")
+    File.write(path, "# Index\n## Future\n- [363 — The command line](store/363--the-command-line/363--the-command-line.md)\n")
+    @fixture.roadmap("plastic", "cli-and-rlm", ROADMAP.gsub("— queued", "— blocked"))
+    next_command("--json")
+    payload = JSON.parse(@fixture.printed)
+
+    assert_equal "none", payload.fetch("next")
+    assert_equal "cli-and-rlm has blocked work: 363, 367, 368", payload.fetch("because")
+  end
+
+  def test_future_queued_work_is_dispatchable
+    path = File.join(@fixture.plastic_home, "projects", "plastic", "INDEX.md")
+    File.write(path, "# Index\n## Future\n- [363 — The command line](store/363--the-command-line/363--the-command-line.md)\n")
+    @fixture.roadmap("plastic", "cli-and-rlm", ROADMAP)
+    next_command("--json")
+
+    assert_equal "plastic intent show 363 --project plastic", JSON.parse(@fixture.printed).fetch("next")
+  end
+
+  def test_cyclic_roadmap_has_no_next_action
+    @fixture.roadmap("plastic", "cli-and-rlm", ROADMAP + "\n## Graph\n- 363 needs 367\n- 367 needs 363\n")
+    next_command("--json")
+    payload = JSON.parse(@fixture.printed)
+
+    assert_equal "none", payload.fetch("next")
+    assert_includes payload.fetch("because"), "invalid graph"
   end
 end

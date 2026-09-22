@@ -36,7 +36,9 @@ module Plastic
         status.exitstatus || Command::FAILED
       end
 
-      def initialize(env:, runner: nil)
+      def initialize(env:, runner: nil, output: nil, json: false)
+        @output = output
+        @json = json
         @env = env
         @runner = runner || DEFAULT_RUNNER
       end
@@ -50,7 +52,12 @@ module Plastic
       end
 
       def run(script, *arguments)
-        status = @runner.call(script_path(script), arguments)
+        if @json
+          text, status = @runner.call(script_path(script), arguments, capture: true)
+          @output.raw(text) unless text.empty?
+        else
+          status = @runner.call(script_path(script), arguments)
+        end
         raise Command::Refusal, "#{script} needs the owner" if status == Command::REFUSED
 
         status

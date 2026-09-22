@@ -1,11 +1,12 @@
 # frozen_string_literal: true
 
 require_relative "intent_command"
+require_relative "../intent_progress"
+require_relative "../../runner_core"
 
 # `plastic intent step` - runs the graph's next ready step (`runner step`, run
-# through Legacy). An intent with no `graph.md` gets the four-line non-graph
-# procedure printed alongside it, since there is no graph for `step` itself
-# to drive.
+# through Legacy). Direct intents report their next checklist item. Graph
+# execution requires ownership, resolved by the same rules as the runner.
 module Plastic
   class CLI
     module Commands
@@ -16,19 +17,36 @@ module Plastic
         AFTER = "plastic intent step ID"
         BECAUSE = "call step again after each dispatched node returns"
 
-        NON_GRAPH_WORK = [
-          "no graph.md: dispatch ONE plastic-executor subagent with the whole consolidated action pasted in, never a file reference",
-          "it writes the matrix's tests and commits them red, implements the action in order, and drives the suite green",
-          "a tick is two edits made together: mark the item's box [x], and move it from ## In Progress to ## Completed",
-          "add one ## Session Log row per tick; never batch several tasks into one later edit"
-        ].freeze
-
         def call
-          super
-          @output.row("non-graph work", NON_GRAPH_WORK) unless graph?
+          intent_dir
+          command, reason = IntentProgress.new(scope, id).decision
+          return @output.next_step(command, because: reason) if command == "none"
+
+          if graph?
+            return unless graph_owner?
+
+            super
+          elsif command == "plastic intent step #{id}"
+            item = IntentScreen.checklist_items(intent_dir).find { |entry| !entry[:done] }
+            @output.row("work", item[:text])
+            @output.row("checklist", File.join(intent_dir, "checklist.md"))
+            @output.next_step("none", because: "perform this checklist item, record its verification, then run plastic intent show #{id} --project #{scope.slug}")
+          else
+            @output.next_step(command, because: reason)
+          end
         end
 
         private
+
+        def graph_owner?
+          session = RunnerCore.resolve_owning_session(intent_dir, explicit: nil,
+            env_session: @env["CLAUDE_CODE_SESSION_ID"], store: scope.store, intent_id: id)
+          return true if session
+          raise Refusal, "intent #{id} is held by another session; inspect with plastic auto lock status #{id} --project #{scope.slug}" if Lock.read(intent_dir)
+
+          @output.next_step("plastic auto take #{id}", because: "graph execution requires this session to take the delivery lock")
+          false
+        end
 
         def graph?
           File.exist?(File.join(intent_dir, "graph.md"))

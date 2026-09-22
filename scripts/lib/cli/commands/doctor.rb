@@ -48,7 +48,7 @@ module Plastic
 
         def document(report)
           @document_printed = true
-          @output.raw(JSON.pretty_generate(report))
+          @output.document(report)
         end
 
         def findings(report)

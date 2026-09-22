@@ -90,7 +90,7 @@ class CliSearchCommandsTest < Minitest::Test
     plastic("index")
     plastic("search", "river")
 
-    assert_match(/because: the index was built \d{4}-\d{2}-\d{2}/, @fixture.printed)
+    assert_includes @fixture.printed, "because: the search is complete"
   end
 
   def test_search_honors_limit

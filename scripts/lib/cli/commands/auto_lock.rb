@@ -18,9 +18,9 @@ module Plastic
         USAGE_LINE = "plastic auto lock status|fix|release ID [--json]"
 
         VERBS = %w[status fix release].freeze
-        AFTER = {"status" => "plastic auto lock fix ID", "fix" => "plastic auto brief ID",
+        AFTER = {"status" => "none", "fix" => "plastic auto brief ID",
                  "release" => "plastic session summary"}.freeze
-        BECAUSE = {"status" => "a stale or held lock is repaired by fix, not by re-arming",
+        BECAUSE = {"status" => "inspection is complete; a held lock does not authorize repair",
                    "fix" => "a repaired lock is ready for the preamble again",
                    "release" => "the summary is what a freed lock leads to"}.freeze
 
@@ -91,7 +91,7 @@ module Plastic
         end
 
         def legacy
-          @legacy ||= Legacy.new(env: @env, runner: @runner)
+          @legacy ||= Legacy.new(env: @env, runner: @runner, output: @output, json: options[:json])
         end
       end
     end

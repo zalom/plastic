@@ -68,7 +68,7 @@ class CliIntentCommandsTest < Minitest::Test
   def test_show_names_the_id_in_its_next_step
     command("intent show", "372")
 
-    assert_includes @fixture.printed, "next: plastic intent step 372"
+    assert_includes @fixture.printed, "next: plastic intent spec 372"
   end
 
   def test_a_failing_script_exits_one
@@ -133,6 +133,9 @@ class CliIntentCommandsTest < Minitest::Test
   # --- intent step -------------------------------------------------------------
 
   def test_step_runs_runner_step
+    File.write(File.join(intent_dir, "graph.md"), "# graph\n")
+    require_relative "../../scripts/lib/arm"
+    Lock.acquire(intent_dir, session: Arm.derive_key(store, "372"))
     command("intent step", "372")
 
     assert_equal [script("runner")], @calls.map(&:first)
@@ -142,7 +145,8 @@ class CliIntentCommandsTest < Minitest::Test
   def test_step_with_no_graph_prints_the_non_graph_procedure
     command("intent step", "372")
 
-    assert_includes @fixture.printed, "dispatch ONE plastic-executor subagent"
+    assert_empty @calls
+    assert_includes @fixture.printed, "next: plastic intent spec 372"
   end
 
   def test_step_with_a_graph_does_not_print_the_non_graph_procedure
@@ -346,5 +350,12 @@ class CliIntentCommandsTest < Minitest::Test
     Plastic::CLI::TABLE.keys.select { |name| name.start_with?("intent ") }.each do |name|
       assert_includes @fixture.warned, name
     end
+  end
+
+  def test_an_unknown_project_is_rejected_before_a_mutation
+    status = command("intent rule", "372", "a ruling", "--project", "missing")
+
+    assert_equal 2, status
+    assert_empty @calls
   end
 end

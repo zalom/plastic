@@ -70,7 +70,7 @@ class CliContinueTest < Minitest::Test
     continue("--project", "plastic")
 
     assert_includes @fixture.printed,
-      "next: read #{File.join(@fixture.intent_dir("plastic", "363"), "plan.md")}"
+      "next: plastic intent show 363 --project plastic"
     assert_includes @fixture.printed, "because: 363 is first on the frontier of cli-and-rlm"
   end
 
@@ -78,7 +78,7 @@ class CliContinueTest < Minitest::Test
     continue("--project", "plastic")
 
     assert_includes @fixture.printed,
-      "next: read #{File.join(@fixture.intent_dir("plastic", "363"), "plan.md")}"
+      "next: plastic intent show 363 --project plastic"
     assert_includes @fixture.printed, "because: 363 is the first active intent in plastic"
   end
 
