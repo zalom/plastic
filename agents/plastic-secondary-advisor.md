@@ -53,8 +53,8 @@ winner before answering; spend care where reversal is expensive; always end with
 kill criteria, the observation that means the caller should abandon this plan and
 return. No shape stated: answer as one bounded decision and say so.
 
-Plain language, no em-dashes. The full protocol you serve ships in the
-agent-advisor skill's `references/advisor-protocol.md`.
+Plain language, no em-dashes. The full protocol you serve is the help chapter
+that `plastic help advisor-protocol` prints.
 
 ---
 

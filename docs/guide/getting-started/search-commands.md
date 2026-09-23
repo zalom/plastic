@@ -30,7 +30,7 @@ quotation marks to match the words together:
 
 ```text
 $ plastic search "byte budget" --project plastic --limit 1
-projects/plastic/store/372--skills-and-hooks-to-commands/spec.md  ... Each removal lowers the [byte-budget] test's target ...
+stores/plastic/store/372--skills-and-hooks-to-commands/spec.md  ... Each removal lowers the [byte-budget] test's target ...
 
 next: plastic index
 because: the index was built 2026-09-21 14:40; rebuild it when the stores have changed

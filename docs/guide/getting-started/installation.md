@@ -27,7 +27,7 @@ records. To move an installed Plastic to another channel, run `plastic update --
 
 ## What uninstall removes
 
-`plastic uninstall` removes the skills, agents and hooks that the installer wrote into your
+`plastic uninstall` removes the agents and hooks that the installer wrote into your
 agent's directory, and the managed block in `CLAUDE.md` or `AGENTS.md`. It keeps `~/.plastic`,
 which holds your stores. To delete the stores as well, remove `~/.plastic` yourself.
 

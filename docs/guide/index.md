@@ -24,4 +24,5 @@ This guide is for a person who uses Plastic. To change Plastic, read
 ## Task guides
 
 The task guides from before the command line stay in [docs/guides/](../guides/index.md). They
-describe the skills, which still ship in this batch.
+were written for the 1.x skills. The workflow skills no longer ship; where a guide names a skill, use the
+`plastic` command that the guide index names instead.

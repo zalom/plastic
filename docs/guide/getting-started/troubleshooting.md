@@ -24,19 +24,23 @@ command exits with code 2.
 
 ## Repair a broken install
 
-Skills are missing, hooks do not fire, or an old plugin layout is left over. Run the installer
-again:
+Hooks do not fire, agents are missing, or an old plugin layout is left over. Run the installer
+again from the package:
 
 ```bash
-plastic install --reinstall --claude
+npx -y @zalom/plastic install --reinstall --claude
 ```
+
+In 2.0.2, the installed `plastic install --reinstall` stops with `same file` because it copies
+`PLASTIC.md` onto itself. Run it through `npx`.
 
 The installer is safe to repeat. It removes files that Plastic no longer ships and any old
 plugin layout.
 
 ## Check the installation
 
-Run `plastic doctor`. It checks the install and every store, and prints the findings as JSON.
+Run `plastic doctor`. It checks the install and every store, and prints one line for each
+finding. Add `--json` for the full report as data.
 Each finding that is not a pass names its own repair.
 
 The following table lists the three forms of the command:

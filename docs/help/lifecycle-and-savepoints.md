@@ -16,8 +16,10 @@ happened:
 - the commits on the intent's branch.
 
 The four judgment documents (spec.md, plan.md, actions/, outcome.md) are written when
-there is something to say. In thinking mode an agent writes them during Why and How. In
-direct mode they usually stay as the scaffold placeholder until the close, and
+there is something to say. In thinking mode an agent writes them during Why and How; the
+`plastic intent` Next row asks for `spec.md`, then `plan.md` and `checklist.md`, before it
+points at execution. In direct mode they usually stay as the scaffold placeholder until the
+close, and
 `scripts/end-intent` then backfills each one still missing or still a placeholder from
 the live record (intent 308): `## Problem` from `## Intent`, `## Decisions` from
 `### Decisions`, `## Acceptance Criteria`, `## Steps`, `## Items`, `## Delivered`, and
@@ -32,7 +34,7 @@ for the doctor fix hint `backfilled_complete`.
 The close never refuses for a document it can write itself. Doctor's per-intent structure
 check runs after the backfill as a report: an unchecked box, a malformed intent file, or
 a wrong-disposition outcome.md is named on stderr, the close proceeds, and
-`/plastic-doctor --intent <id>` keeps reporting it until fixed.
+`plastic intent verify <id>` keeps reporting it until fixed.
 
 ## Insights from a writer that cannot write the file
 
@@ -41,5 +43,7 @@ each nugget home in the completion report's `insights:` field, and the orchestra
 agent that can write the file) persists it via the helper. A session that cannot write the
 intent file still returns its report, so the insight survives.
 
-For the stage table (What/Why/How/Exec, deliverable, owning skill), see PLASTIC.md's Lifecycle
-Stages section; each named skill's own `references/` holds that stage's own depth.
+The stages map to commands: What is `plastic intent new`, Why is `plastic intent spec` and
+`plastic intent rule`, How is the spec, plan and checklist (or `graph.md`) the agent writes,
+and Exec is `plastic intent step`, `plastic intent verify` and `plastic intent end`.
+`plastic help tutorial` walks all of them once.

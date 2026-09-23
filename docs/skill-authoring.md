@@ -12,7 +12,7 @@ This page keeps only the rules for Plastic's own tree. Read it alongside those s
 
 ## Names
 
-The `plastic-` prefix is reserved for skills and hooks that Plastic itself ships. Doctor's ownership check (`stray_skills`) and the installer's purge both key off the prefix, so a skill authored outside Plastic's tree takes a different name.
+The `plastic-` prefix is reserved for skills, agents and hooks that Plastic itself ships. Doctor's ownership check (`stray_skills`) and the installer's purge both key off the prefix, so a skill authored outside Plastic's tree takes a different name.
 
 ## Defaults first
 
@@ -27,11 +27,11 @@ Plastic stands on its own. Skills and agents use Plastic's own defaults, and an 
 
 - Scripts ship in Ruby, and a worked example that shows a script shows Ruby.
 - A shell script runs under macOS `/bin/bash` 3.2: no `bash` 4.x features (no associative arrays, no `mapfile`, no `${var^^}`), and no heredocs inside `$(...)`.
-- `scripts/skill-lint` checks the skill tree mechanically: `ruby scripts/skill-lint --skills-dir skills`.
+- `scripts/skill-lint` checks a skill tree mechanically: `ruby scripts/skill-lint --skills-dir skills`. The shipped `skills/` holds no skill directory today, only `_decision-tables.md`, so it reports OK.
 
 ## Hooks
 
-Plastic registers its hooks in `hooks/hooks.json`. Before you author a new hook, read an existing one of the same shape: `scripts/hook-session-start` for SessionStart, or `scripts/hook-savepoint` for PreCompact.
+Plastic registers its hooks in `scripts/lib/hook_registry.rb`, the one source of truth: the installer builds the agent's hook settings from it, and a test pins `hooks/hooks.json`, the legacy plugin surface, to it. Before you author a new hook, read an existing one of the same shape: `scripts/hook-session-start` for SessionStart, or `scripts/hook-savepoint` for PreCompact.
 
 ## Dashes
 

@@ -7,10 +7,11 @@ Plastic tracks work on your machine, in files you own. It collects no usage data
 | Install ledger | `~/.plastic/versions.json`, one JSON object per line | Install, update, rollback, reinstall |
 | Intent ledger | `savepoint.md` in each intent directory | Each stage event of an intent |
 | Roadmap ledger | `roadmaps/<slug>.savepoint.md` | Dispatch, merge, park and hand-off of a batch |
-| Day ledger | `~/.plastic/store/.sessions/<day>/` | During each session |
+| Day ledger | `.sessions/<day>/` in the global store: `~/.plastic/stores/global/store/.sessions/<day>/`, or `~/.plastic/store/.sessions/<day>/` in a home not yet moved | During each session |
 
-The `plastic` command reads these records. In this batch only the installer commands write
-one, the install ledger.
+The `plastic` command reads these records and writes them too: the installer commands write the
+install ledger, `plastic intent note` appends to an intent's `savepoint.md`, `plastic roadmap
+log` appends to a roadmap ledger, and `plastic session handoff` writes into the day ledger.
 
 ## Standing context
 

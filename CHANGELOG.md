@@ -3,6 +3,14 @@
 Release history for Plastic, one line per cut. Commit-level detail lives in
 [GitHub Releases](https://github.com/zalom/plastic/releases).
 
+## 2.0.3
+
+- Documentation follows the public CLI and distinguishes implemented behavior from proposals.
+
+- The CLI tutorial walks a Ruby change from intent creation through Git integration and delivered closure.
+
+- Future intents can be closed directly. The preview and real close reject an unresolvable INDEX entry before changing lifecycle files.
+
 ## 2.0.2
 
 - Updates and rollbacks verify the installed version and refuse packages that cannot read the stores layout.
@@ -20,6 +28,8 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 - Packaged Varar checks read the generated archive directly, so npm 12 can run the release checks.
 
 ## 2.0.0
+
+This version was not published separately. Its changes shipped with 2.0.1.
 
 - The public `plastic` command carries workflow guidance, project scope, and next actions. Agent instructions point to the command and its help chapters.
 - Direct intents advance through lifecycle preparation, checklist work, verification, and closure. Graph intents use the existing file-backed runner and delivery ownership checks.

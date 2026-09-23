@@ -1,7 +1,7 @@
 # Reference
 
-Skills, commands, and configuration reference.
-Placeholder. Content fills in over time.
+Reference material. It holds one page so far; content fills in over time. For the commands,
+run `plastic help` or read the [guide](../guide/index.md).
 
 ## Contents
 

@@ -239,10 +239,12 @@ install when it does not yet exist (`install_skills_flat` and `generate_codex_ag
 AgentSkills-compliant tool no longer aborts on a missing directory it never owned (intent 198).
 
 Skills copy flat and unmodified to `~/.agents/skills/plastic-<name>/` (copy-not-transform,
-settled by 23 and reconfirmed by 181). Plastic's standing conventions inject into
+settled by 23 and reconfirmed by 181); 2.0 ships no skill directories (only the shared
+`skills/_decision-tables.md`), so no skill is copied. Plastic's standing conventions inject into
 `~/.codex/AGENTS.md` as a marked section: a small curated body (work flows through intents,
-`~/.plastic/PLASTIC.md` is the source of truth and is never edited, skills are the operational
-procedures, intent artifacts live under `~/.plastic/`), wrapped in
+`~/.plastic/PLASTIC.md` is the command line and is never edited, the conventions are chapters
+`plastic help TOPIC` prints, the `plastic` command line is the operational procedure, intent
+artifacts live under `~/.plastic/`), wrapped in
 `<!-- BEGIN PLASTIC INTEGRATION hash:... -->` and `<!-- END PLASTIC INTEGRATION -->` markers.
 The injector is three-state (create the file, append the section, or replace it in place) and
 idempotent: re-injecting the same body reproduces the file byte for byte. Uninstall strips

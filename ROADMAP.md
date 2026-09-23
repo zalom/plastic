@@ -1,9 +1,8 @@
 # Roadmap
 
-Plastic plans and tracks delivery in waves: a roadmap is a collection of
-intents ordered toward one plain goal, delivered wave by wave. This file
-mirrors the live roadmap of the current line; the shipped detail per release
-lives in [CHANGELOG.md](CHANGELOG.md).
+This file is history: the roadmap toward the 1.0 stable line, kept as it stood. It is not
+updated for 2.0. The shipped detail per release lives in [CHANGELOG.md](CHANGELOG.md), and
+project roadmaps now live in each store's `roadmaps/` directory (see `plastic help roadmaps`).
 
 ## Stable 1.0
 

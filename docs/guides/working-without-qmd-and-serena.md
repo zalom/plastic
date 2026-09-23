@@ -45,15 +45,15 @@ Two small things, both about convenience, not capability:
 
 - A one-line reminder that these tools exist, shown once after install if
   they are detected on your system.
-- A recommendation line in the core conventions (`PLASTIC.md`), plus a per-prompt
-  reminder hook, suggesting you search through QMD instead of scanning files.
-  Neither blocks anything; the search always runs.
+- A recommendation to search through QMD instead of scanning files. It blocks
+  nothing; the search always runs. (The per-prompt reminder hook was removed in
+  2.0, intent 309.)
 
 ## What still works, no matter what
 
 - Reading and searching the intent stores, through the built-in fallback
   (scanning the index and files directly).
-- Every lifecycle skill: creating intents, direct and thinking work, auto
+- Every lifecycle command: creating intents, direct and thinking work, auto
   delivery.
 - The delivery lock and the record hook. These do not know or care whether QMD
   or Serena exist. Where the record lands is described in

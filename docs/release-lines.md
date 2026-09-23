@@ -1,7 +1,11 @@
 # Release Lines and Channels
 
-The two release lanes, the version-line map, and the intent-41 re-land playbook: the deep
-material behind SKILL.md's "Release lines and channels" section.
+The two release lanes, the version-line map, and the intent-41 re-land playbook. This page
+was written for the 1.x releasing skill, which intent 372 retired. In 2.0 a push to `alpha`,
+`beta`, or `main` is the release: `.github/workflows/publish.yml` creates the tag, the GitHub
+release, and the npm publish for a version that has no tag yet. The lanes, the routing rule,
+and the stable-line guarantees still apply. The version-line map and the intent-41 playbook
+are 1.x history, kept as they stood.
 
 ## Table of Contents
 
@@ -13,15 +17,15 @@ material behind SKILL.md's "Release lines and channels" section.
 
 ## The two lanes
 
-**Default lane.** Branch, merge to `main` with `--no-ff`, cut stable, publish to npm `latest`.
-This is the workflow SKILL.md documents step by step. It is the path for additive,
+**Default lane.** Branch, merge to `main` with `--no-ff`, bump the version files, and push:
+the push to `main` publishes to npm `latest`. It is the path for additive,
 suite-verifiable, low-blast-radius work: new skills, prose, deterministic scripts, anything a
 green Minitest run can fully vouch for.
 
 **Beta-verified lane.** Branch, merge to the `beta` branch, publish to the npm `beta` dist-tag,
-verify in real use, then merge `beta` into `main` and cut stable. It sits on top of the existing
-promotion mechanics (agent-performed channel promotion, linear only, see
-`promotion-and-tagging.md`); it names when to use them, not new machinery.
+verify in real use, then merge `beta` into `main` and cut stable. It sits on top of the
+promotion mechanics (a push to each branch in turn, linear only); it names when to use them,
+not new machinery.
 
 ## Routing rule
 

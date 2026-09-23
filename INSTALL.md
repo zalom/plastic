@@ -40,11 +40,14 @@ plastic status
 
 ## Repair an install
 
-Run the installer again when skills are missing or hooks do not fire:
+Run the installer again from the package when hooks or agents are missing:
 
 ```bash
-plastic install --reinstall --claude
+npx -y @zalom/plastic install --reinstall --claude
 ```
+
+Run it through `npx`, not through the installed `plastic` command. In 2.0.2 the installed copy
+stops with `same file` when it reinstalls onto itself.
 
 The installer is safe to repeat.
 
@@ -61,7 +64,8 @@ The installer checks the Ruby version before it writes anything.
 
 ## Install without npm
 
-`install.sh` always installs the latest stable release. It downloads that release's archive,
+`install.sh` installs the newest release on the stable channel, or on the channel that
+`PLASTIC_CHANNEL` names. It downloads that release's archive,
 unpacks it under `~/.local/share/plastic` and links `~/.local/bin/plastic`. It needs Ruby and
 curl.
 
@@ -73,7 +77,7 @@ plastic install --claude
 To move an installed Plastic to another channel, run `plastic update --beta` or
 `plastic update --alpha`.
 
-No stable release carries the archive yet. Until the first one does, the script reports
-that and exits, and npm is the way to install.
+When no release on the channel carries the archive, the script reports that and exits, and
+npm is the way to install.
 
 For what the installer writes on your machine, see [SECURITY.md](SECURITY.md).

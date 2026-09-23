@@ -11,7 +11,8 @@ Every command ends with two lines. The `next:` line names the command to run
 now, and you run it unless the person asks for something else. The `because:`
 line gives the rule that chose it.
 
-Add `--json` to any command to get the same result as data.
+Add `--json` to any command except the installer commands (`install`, `update`,
+`uninstall`, `rollback`) and `plastic hook` to get the same result as data.
 
 Exit codes: 0 succeeded, 1 failed, 2 called wrongly, 3 refused. Exit code 3
 means the step belongs to the owner. Report what was refused and stop. Never

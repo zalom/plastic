@@ -3,8 +3,7 @@
 
 # RevisionsWriter - the shared append-only revisions.md writer (intent 107's convention,
 # generalized from restore_intent_v1.rb's proven pattern, intent 197). Every tool that
-# performs structural maintenance on an intent (project-links, rebuild-graph,
-# restore-intent-v1) must record it here: PLASTIC.md's `revisions.md` contract is that a
+# uses this writer (project-links, rebuild-graph, or rebuild-savepoint) records changes here: PLASTIC.md's `revisions.md` contract is that a
 # structural change and its receipt are never separated. This module owns rendering ONE
 # entry's text and appending it correctly; it does no git operations (that is
 # lib/maintenance_git.rb's job) and never overwrites a prior entry.

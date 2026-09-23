@@ -41,6 +41,7 @@ its `SLUG`. The following table shows each roadmap command and what it does:
 | `plastic roadmap show SLUG` | Prints the state of one roadmap: its goal, its progress and its entries. |
 | `plastic roadmap log SLUG EVENT "TEXT"` | Appends one dated line to the roadmap's ledger. |
 | `plastic roadmap check SLUG` | Checks the Graph section of the roadmap file. |
+| `plastic roadmap migrate SLUG [--dry-run]` | Writes the Graph section from the batch headings the roadmap already has. It is the repair that `check` names when the section is missing. |
 
 `EVENT` is one word from a fixed list, such as `dispatched`, `merged` or `handoff`. A word
 outside the list exits with status 1, and the message prints the whole list.

@@ -19,8 +19,9 @@ and nothing to type next; the next prompt is the next item.
 Thinking is a conversation before the work. The agent asks one question at a
 time and records each answer as an insight in the intent, then writes the
 action files that say how the work will be done, then works as in direct. You
-can close the conversation into `spec.md` with `plastic intent spec`, and
-the intent with `plastic intent end` once Exec is done. This is
+write the result into `spec.md`, `plan.md` and `checklist.md` (`plastic intent spec`
+prints the rules for that conversation; it does not write the files), and
+close the intent with `plastic intent end` once Exec is done. This is
 deliberately slower. It is the right choice when you want to watch each
 decision as it happens.
 
@@ -55,8 +56,9 @@ that gets read and edited as work moves forward.
 
 ### A real example
 
-The roadmap that shipped this very guide is a working example:
-`roadmaps/stable-1-0.md`. Its Goal reads, in short: every intent in the plan
+The roadmap that shipped this guide for Plastic 1.0 is a working example:
+`roadmaps/stable-1-0.md` in the maintainer's Plastic store (it is not part of
+this repository). Its Goal reads, in short: every intent in the plan
 delivered or clearly abandoned, the test suite green, and a 1.0 release cut
 together with the project's owner. It is organized into seven waves, from
 early foundations through trust fixes for new users, process simplifications,
@@ -70,8 +72,9 @@ brief someone checking in on progress.
 Two Claude Code harness commands, not Plastic skills, keep a session moving
 without you restarting it each time. `/loop` repeats a prompt or command on a
 fixed time interval, until you stop it or Claude decides the work is done. A
-delivery loop runs `/loop` over `runner watch <intent_dir>`, the prompt it
-repeats to check a delivery and dispatch it when it is ready.
+delivery loop can run `/loop` over the internal script
+`ruby ~/.plastic/scripts/runner watch <intent_dir>`, which checks a graph
+delivery and dispatches it when it is ready. No public `plastic` command wraps it.
 `/goal` works differently: you give it a condition instead of an interval, it
 sets that as the completion condition, and Claude keeps working, turn after
 turn, until a fast checker model confirms from what Claude has actually
