@@ -3,23 +3,19 @@
 require_relative "savepoint"
 require_relative "backfill_intent"
 
-# UntouchedScaffold (acceptance finding N3) - names an intent that is still
-# exactly what new-intent scaffolded, so end-intent can refuse to close it as
-# delivered. The backfill (intent 308) writes a delivered record from whatever
-# the intent carries; on a scaffold nobody touched that record is invented
-# work, with no verification behind it.
+# Finds an intent that is still exactly what new-intent created, so
+# end-intent can refuse to close it as delivered.
 #
-# The test is deliberately narrow, so every legacy close keeps working:
+# The rule is narrow so older intents still close. An intent is untouched
+# only when all of these hold:
 #
-#   - all four lifecycle files exist and are still the sentinel placeholder,
-#     with nothing written under the sentinel (a legacy intent whose files are
-#     missing never matches);
-#   - no real action or node file, and no graph.md;
-#   - savepoint.md exists and holds only the scaffold's own What lines;
-#   - the code worktree, when one exists, has no changes.
+#   - spec.md, plan.md, checklist.md and outcome.md exist and are still
+#     unedited placeholders, with no ticked checklist item;
+#   - there is no action, node or graph file;
+#   - savepoint.md holds only What lines;
+#   - the code worktree, if there is one, has no changes.
 #
-# Abandoned closes never ask. Pure apart from reading the intent directory;
-# the worktree check is injected as `worktree_changed:`.
+# An older intent with missing files is never untouched.
 module UntouchedScaffold
   module_function
 

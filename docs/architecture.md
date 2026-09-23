@@ -363,4 +363,4 @@ files still close through the backfill.
 
 `--dry-run` runs the same refusals as the real close and writes nothing. It
 refuses an untouched scaffold, a hollow delivered report and a dirty code
-worktree. When nothing would refuse, its `next:` line names the real close.
+worktree. A passing dry run ends with `next: none`.

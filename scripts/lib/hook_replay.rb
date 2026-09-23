@@ -3,7 +3,6 @@
 
 require "json"
 require "open3"
-require "timeout"
 
 # HookReplay (intent 331a, T1; promoted to a production lib in 331e) - streams
 # text through a MessageDisplay launcher the way Claude Code streams an
@@ -31,14 +30,9 @@ module HookReplay
   # environment. Default `{}` keeps every existing caller's behavior
   # unchanged: this is an extension, not a fork.
   #
-  # `timeout` (intent 331e): when given, bounds EACH chunk's spawn to that
-  # many seconds. A bare `Timeout.timeout` around `Open3.capture3` does not
-  # reliably bound a genuinely hanging child: capture3's own wait still
-  # blocks on Process.waitpid for the child regardless of the raised
-  # Timeout::Error (the same gotcha scripts/hook-record works around), so a
-  # timeout here spawns directly and kills the child on expiry instead.
-  # Default `nil` keeps every existing caller on the original unbounded
-  # Open3.capture3 path.
+  # `timeout` (intent 331e): when given, bounds each chunk's whole exchange to
+  # that many seconds (see run_bounded). Default `nil` keeps every existing
+  # caller on the original unbounded Open3.capture3 path.
   def replay(hook_path:, tmp_root:, text:, chunk: 40, session_id: "s-replay", message_id: "replay",
               env: {}, timeout: nil)
     chunks = text.scan(/.{1,#{chunk}}/m)
@@ -168,46 +162,58 @@ module HookReplay
     [out, err, status.exitstatus]
   end
 
-  # Spawn directly (never Open3.capture3) so a timeout can actually kill the
-  # child, with stdin/stdout/stderr routed through scratch files under the
-  # caller's own tmp_root, and never pipes, so a stalled or oversized write can
-  # never deadlock the read side, and never anywhere outside tmp_root, so a
-  # bounded replay carries the same "writes only under the injected tmp
-  # root" guarantee as the unbounded path.
-  def run_bounded(hook_path, payload, full_env, tmp_root, timeout)
-    token = "#{Process.pid}-#{(Time.now.to_f * 1_000_000).to_i}-#{rand(1_000_000)}"
-    in_path = File.join(tmp_root, ".hook-replay-in-#{token}")
-    out_path = File.join(tmp_root, ".hook-replay-out-#{token}")
-    err_path = File.join(tmp_root, ".hook-replay-err-#{token}")
-    File.write(in_path, JSON.generate(payload))
-
-    pid = Process.spawn(full_env, hook_path, in: in_path, out: out_path, err: err_path)
-    exitstatus =
-      begin
-        Timeout.timeout(timeout) { Process.wait(pid) }
-        $?.exitstatus
-      rescue Timeout::Error
-        kill_and_reap(pid)
-        nil # nil exitstatus is the caller's signal that this chunk timed out
-      end
-
-    out = File.exist?(out_path) ? File.read(out_path) : ""
-    err = File.exist?(err_path) ? File.read(err_path) : ""
-    [out, err, exitstatus]
+  # Bounded run over pipes (acceptance N9). Scratch files for the child's
+  # stdin and stdout broke on Snap Ruby: the launcher's `ruby` could neither
+  # read nor write them, so every chunk came back empty with exit 1. Pipes
+  # work there, as the unbounded path already shows.
+  #
+  # One deadline covers the whole exchange: the launcher's exit, feeding
+  # stdin, and draining stdout and stderr. A launcher can exit while a child
+  # it started keeps the pipes open, so waiting for the launcher alone is not
+  # enough. A writer thread feeds stdin and reader threads drain both outputs
+  # at the same time, so large input or output cannot block.
+  #
+  # The launcher leads its own process group. When the deadline passes, the
+  # whole group is killed, the pipes are closed, and the result carries the
+  # output read so far with a nil exitstatus: the caller's signal that this
+  # chunk timed out. Nothing is written under tmp_root.
+  def run_bounded(hook_path, payload, full_env, _tmp_root, timeout)
+    deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
+    stdin, stdout, stderr, wait = Open3.popen3(full_env, hook_path, pgroup: true)
+    buffers = [String.new, String.new]
+    threads = [Thread.new { feed(stdin, JSON.generate(payload)) }] +
+      [stdout, stderr].zip(buffers).map { |io, buffer| Thread.new { drain(io, buffer) } }
+    finished = [wait, *threads].all? { |thread| thread.join(remaining(deadline)) }
+    kill_group(wait.pid) unless finished
+    buffers.map { |buffer| buffer.force_encoding(Encoding.default_external) } +
+      [finished ? wait.value.exitstatus : nil]
   ensure
-    [in_path, out_path, err_path].each { |p| File.delete(p) if p && File.exist?(p) }
+    [stdin, stdout, stderr].compact.each { |io| io.close unless io.closed? }
+    threads&.each { |thread| thread.join(1) }
   end
 
-  def kill_and_reap(pid)
-    Process.kill("KILL", pid)
-  rescue StandardError
-    nil
+  def remaining(deadline)
+    [deadline - Process.clock_gettime(Process::CLOCK_MONOTONIC), 0].max
+  end
+
+  def feed(io, data)
+    io.write(data)
+  rescue IOError, SystemCallError
+    # the hook exited without reading its input, or the deadline closed the pipe
   ensure
-    begin
-      Process.wait(pid)
-    rescue StandardError
-      nil
-    end
+    io.close unless io.closed?
+  end
+
+  def drain(io, buffer)
+    loop { buffer << io.readpartial(65_536) }
+  rescue IOError, SystemCallError
+    # end of output, or the deadline closed the pipe
+  end
+
+  def kill_group(pid)
+    Process.kill("KILL", -pid)
+  rescue SystemCallError
+    nil # the whole group has already exited
   end
 
   # The final chunk's parsed displayContent, or nil when it emitted nothing

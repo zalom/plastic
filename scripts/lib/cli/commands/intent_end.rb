@@ -39,8 +39,7 @@ module Plastic
           raise Failure, REFUSED.fetch(status) { "end-intent exited #{status}" } unless status.zero?
 
           if options[:dry_run]
-            @output.next_step("plastic intent end #{id} --#{disposition} --summary #{options[:summary].inspect}",
-              because: "the dry run found nothing that would refuse the close")
+            @output.next_step("none", because: "the dry run wrote nothing and found nothing that would refuse the close")
           else
             @output.next_step("plastic status", because: "the intent moved out of Active")
           end

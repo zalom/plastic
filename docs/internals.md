@@ -1871,3 +1871,17 @@ same outcome generation and backfill on that copy, then applies the
 hollow-report gate (exit 7). The dirty-worktree guard is shared by the dry run
 and the disarm step (exit 5). `plastic intent end` names exits 7 and 8 in its
 failure message.
+
+### Bounded display replay
+
+`HookReplay.run_bounded` feeds the hook and reads its output through pipes.
+It used scratch files before. On Snap Ruby the launcher's `ruby` could not use
+those files, so the doctor paint check saw empty output and failed.
+
+One deadline covers the whole exchange. It covers the launcher's exit, feeding
+stdin, and draining stdout and stderr. A launcher can exit while a child it
+started still holds the pipes, so waiting for the launcher alone is not enough.
+A writer thread and two reader threads work at the same time, so large input or
+output cannot block. The hook leads its own process group. When the deadline
+passes, the whole group is killed and the pipes are closed. The chunk keeps the
+output read so far, with a nil exit status. The bounded run writes no files.

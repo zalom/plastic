@@ -276,12 +276,11 @@ class CliIntentCommandsTest < Minitest::Test
     assert_includes @fixture.warned, "--abandoned"
   end
 
-  def test_end_a_passing_dry_run_points_at_the_real_close
-    command("intent end", "372", "--delivered", "--summary", "shipped it", "--dry-run")
+  def test_end_a_passing_dry_run_names_no_next_command
+    command("intent end", "372", "--delivered", "--summary", "$(touch x)", "--dry-run")
 
-    assert_includes @fixture.printed, "next: plastic intent end 372 --delivered --summary"
-    assert_includes @fixture.printed, "because: the dry run found nothing that would refuse the close"
-    refute_includes @fixture.printed, "moved out of Active"
+    assert_equal "next: none\nbecause: the dry run wrote nothing and found nothing that would refuse the close\n",
+      @fixture.printed
   end
 
   def test_end_a_real_close_points_at_status
