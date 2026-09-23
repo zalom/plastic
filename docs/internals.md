@@ -1855,3 +1855,19 @@ the selected target.
 write files. `ProjectLinks` resolves audit paths through `StoreLayout` and
 skips audit writes during previews. Packaged Varar scenarios exercise update
 refusal, rollback refusal, and link previews separately for Claude and Codex.
+
+### Close refusals shared with the dry run
+
+`scripts/lib/untouched_scaffold.rb` decides whether an intent is still its
+new-intent scaffold. The check is narrow on purpose. All four lifecycle files
+must exist as untouched placeholders. There must be no ticked checklist item, no
+action, node or graph file, and no savepoint line past What. The code worktree
+must have no uncommitted changes and no commits past its base. When the
+worktree cannot be read, the intent counts as worked. `end-intent` exits 8 on a
+delivered close of such an intent, before any write.
+
+`end-intent --dry-run` copies the intent to a scratch directory. It runs the
+same outcome generation and backfill on that copy, then applies the
+hollow-report gate (exit 7). The dirty-worktree guard is shared by the dry run
+and the disarm step (exit 5). `plastic intent end` names exits 7 and 8 in its
+failure message.

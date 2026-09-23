@@ -352,3 +352,15 @@ Legacy homes retain their existing rollback behavior.
 `resources/` directory. Its dry-run writes no files. Use
 `plastic doctor --agent claude`, `--agent codex`, or `--agent hermes` to select
 the harness being diagnosed.
+
+### Closing checks
+
+`plastic intent end --delivered` refuses an untouched scaffold. An untouched
+scaffold has only placeholder lifecycle files, no action or graph, no savepoint
+entries after the first What line, and no changes in its code worktree. Close it
+with `--abandoned`, or do the work first. Legacy intents with missing lifecycle
+files still close through the backfill.
+
+`--dry-run` runs the same refusals as the real close and writes nothing. It
+refuses an untouched scaffold, a hollow delivered report and a dirty code
+worktree. When nothing would refuse, its `next:` line names the real close.

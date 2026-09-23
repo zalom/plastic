@@ -39,7 +39,7 @@ module StoreLayoutAcceptance
       @env = {"HOME" => home, "PLASTIC_HOME" => @plastic, "PLASTIC_TMP" => File.join(home, "tmp"),
               "CODEX_HOME" => File.join(home, ".codex"), "CLAUDE_CONFIG_DIR" => File.join(home, ".claude"),
               "XDG_CONFIG_HOME" => File.join(home, ".config"), "XDG_CACHE_HOME" => File.join(home, ".cache"),
-              "PLASTIC_PACKAGE_ROOT" => StoreLayoutAcceptance.package, "RUBYOPT" => nil,
+              "PLASTIC_PACKAGE_ROOT" => StoreLayoutAcceptance.package, "RUBYOPT" => nil, "BUNDLER_SETUP" => nil,
               "GIT_CONFIG_GLOBAL" => File.join(home, ".gitconfig"), "GIT_CONFIG_SYSTEM" => "/dev/null"}
     end
 

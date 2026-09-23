@@ -1,6 +1,15 @@
 {
   "version": 2,
   "oaths": {
+    "varar/intent-end.md": {
+      "sourceHash": "fnv1a:89038af1",
+      "examples": [
+        {
+          "name": "Each row gives the record, the mode, the exit and the index section:",
+          "line": 9
+        }
+      ]
+    },
     "varar/next.md": {
       "sourceHash": "fnv1a:1fac258c",
       "examples": [

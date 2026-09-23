@@ -67,11 +67,21 @@
 #   6  retired in 2.0 (intent 308): the structure check reports and proceeds.
 #   7  hollow delivered report refused (317a D7) - intent 308's one deliberate
 #      exception to report-and-proceed; --allow-hollow-report overrides.
+#   8  delivered close of an untouched scaffold refused (acceptance N3):
+#      nothing was worked, so there is nothing to deliver. Close it as
+#      abandoned, or do the work first. Authors nothing.
+#
+# --dry-run runs the same refusals as the real close (exits 8, 7 and 5 with
+# a "would refuse" line) and writes nothing: the hollow-report gate is judged
+# on a scratch copy that went through the same outcome generation and
+# backfill.
 
 require_relative "lib/store_layout"
 require "fileutils"
 require "date"
 require "open3"
+require "stringio"
+require "tmpdir"
 require "pathname"
 require_relative "lib/arm"
 require_relative "lib/index_entry"
@@ -82,6 +92,8 @@ require_relative "lib/outcome_guard"
 require_relative "lib/report_screen"
 require_relative "lib/backfill_intent"
 require_relative "lib/outcome_report"
+require_relative "lib/untouched_scaffold"
+require_relative "lib/scaffold_intent"
 
 DISPOSITIONS = %w[delivered abandoned].freeze
 
@@ -665,32 +677,10 @@ def run_disarm(intent_dir, id, session, discard_worktree_changes:,
   block = worktree_reader.call(intent_dir)
   worktree_code = block.is_a?(Hash) ? block["code"] : nil
 
-  if worktree_code && Dir.exist?(worktree_code)
-    begin
-      out, err, status = Open3.capture3("git", "-C", worktree_code, "status", "--porcelain")
-    rescue StandardError => e
-      out, err, status = nil, e.message, nil
-    end
-
-    # Fail CLOSED (intent 188, post-review hardening). A failed or impossible
-    # `git status` (corrupt per-worktree index, git missing from PATH, not a
-    # repo) means we cannot PROVE the worktree is clean, and the removal below
-    # force-removes on a plain `git worktree remove` failure, which destroys
-    # uncommitted work. Never force-remove an unproven worktree: the guard
-    # exists to protect uncommitted code, so an inconclusive check must refuse,
-    # not silently proceed as if it were clean.
-    if status.nil? || !status.success?
-      unless discard_worktree_changes
-        warn "end-intent: could not inspect the code worktree at #{worktree_code} " \
-             "(git status failed: #{err.to_s.strip}); refusing to remove it, because " \
-             "removal would force-discard any uncommitted work. Pass " \
-             "--discard-worktree-changes to remove it anyway, or repair the worktree."
-        return :dirty
-      end
-    elsif !out.strip.empty? && !discard_worktree_changes
-      warn "end-intent: code worktree #{worktree_code} has uncommitted changes; refusing " \
-           "to remove it. Pass --discard-worktree-changes to force the close deliberately, " \
-           "or commit/stash the changes and re-run."
+  unless discard_worktree_changes
+    refusal = worktree_refusal(worktree_code)
+    if refusal
+      warn refusal
       return :dirty
     end
   end
@@ -758,6 +748,83 @@ def run_disarm(intent_dir, id, session, discard_worktree_changes:,
   :lock_remains
 end
 
+# The disarm step's dirty-worktree guard, as a message (nil when the worktree
+# is clean or absent). Shared by run_disarm and --dry-run so the preview
+# refuses exactly what the close refuses.
+#
+# Fail CLOSED (intent 188, post-review hardening). A failed or impossible
+# `git status` (corrupt per-worktree index, git missing from PATH, not a
+# repo) means we cannot PROVE the worktree is clean, and the removal
+# force-removes on a plain `git worktree remove` failure, which destroys
+# uncommitted work. Never force-remove an unproven worktree: the guard
+# exists to protect uncommitted code, so an inconclusive check must refuse,
+# not silently proceed as if it were clean.
+def worktree_refusal(worktree_code)
+  return nil unless worktree_code && Dir.exist?(worktree_code)
+
+  begin
+    out, err, status = Open3.capture3("git", "-C", worktree_code, "status", "--porcelain")
+  rescue StandardError => e
+    out, err, status = nil, e.message, nil
+  end
+
+  if status.nil? || !status.success?
+    "end-intent: could not inspect the code worktree at #{worktree_code} " \
+      "(git status failed: #{err.to_s.strip}); refusing to remove it, because " \
+      "removal would force-discard any uncommitted work. Pass " \
+      "--discard-worktree-changes to remove it anyway, or repair the worktree."
+  elsif !out.strip.empty?
+    "end-intent: code worktree #{worktree_code} has uncommitted changes; refusing " \
+      "to remove it. Pass --discard-worktree-changes to force the close deliberately, " \
+      "or commit/stash the changes and re-run."
+  end
+end
+
+# True when the intent's code worktree carries any work: uncommitted changes
+# or commits past its base branch. Anything that cannot be proven reads as
+# changed, so an unreadable worktree never turns a close into a refusal.
+def worktree_changed?(intent_dir)
+  block = Arm.worktree_block(intent_dir: intent_dir)
+  code = block.is_a?(Hash) ? block["code"] : nil
+  return false unless code && Dir.exist?(code)
+
+  out, status = Open3.capture2e("git", "-C", code, "status", "--porcelain")
+  return true unless status.success? && out.strip.empty?
+
+  base = ScaffoldIntent.detect_base_branch(code)
+  return true if base.nil?
+
+  ahead, status = Open3.capture2e("git", "-C", code, "rev-list", "--count", "#{base}..HEAD")
+  !status.success? || ahead.strip != "0"
+rescue StandardError
+  true
+end
+
+# The hollow-report verdict the real close would reach, judged on a scratch
+# copy of the intent after the same outcome generation and backfill, so the
+# dry run writes nothing.
+def predicted_hollow_reason(intent_dir, store:, id:, disposition:, summary:)
+  return nil unless disposition == "delivered"
+
+  Dir.mktmpdir("end-intent-dry-run") do |scratch|
+    copy = File.join(scratch, File.basename(intent_dir))
+    FileUtils.cp_r(intent_dir, copy)
+    quietly do
+      run_generate_outcome(copy, disposition: disposition)
+      run_backfill(copy, store: store, id: id, disposition: disposition, summary: summary)
+    end
+    hollow_report_reason(copy, disposition)
+  end
+end
+
+def quietly
+  saved = $stderr
+  $stderr = StringIO.new
+  yield
+ensure
+  $stderr = saved
+end
+
 # --- main --------------------------------------------------------------------
 
 def main(argv)
@@ -810,7 +877,34 @@ def main(argv)
     exit 4
   end
 
+  # Nothing worked, nothing to deliver (acceptance N3). Before the dry run and
+  # before any write, so the preview and the close refuse together.
+  if disposition == "delivered"
+    untouched = UntouchedScaffold.reason(intent_dir, templates: BackfillIntent.load_templates,
+                                                     worktree_changed: method(:worktree_changed?))
+    if untouched
+      warn "end-intent: refusing to deliver an untouched scaffold: #{untouched}"
+      warn "end-intent: do the work first, or close it with --disposition abandoned"
+      exit 8
+    end
+  end
+
   if opts[:dry_run]
+    hollow = predicted_hollow_reason(intent_dir, store: store, id: id, disposition: disposition,
+                                                 summary: opts[:outcome_summary])
+    if hollow && !opts[:allow_hollow_report]
+      warn "end-intent: dry run: would refuse a hollow delivered close: #{hollow}"
+      exit 7
+    end
+    unless blank?(session) || opts[:discard_worktree_changes]
+      block = Arm.worktree_block(intent_dir: intent_dir)
+      refusal = worktree_refusal(block.is_a?(Hash) ? block["code"] : nil)
+      if refusal
+        warn "end-intent: dry run: would refuse at disarm (exit 5), after the store commit: " \
+             "#{refusal.delete_prefix("end-intent: ")}"
+        exit 5
+      end
+    end
     puts "end-intent: dry run for #{File.basename(intent_dir)} (#{disposition})"
     targets = BackfillIntent.targets_for(intent_dir)
     puts "  would backfill: #{targets.empty? ? "(nothing)" : targets.join(", ")}"

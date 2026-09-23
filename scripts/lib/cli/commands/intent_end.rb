@@ -15,6 +15,14 @@ module Plastic
 
         REFUSAL_STATUS = 4
 
+        # end-intent's own refusals the agent can act on: the reason is theirs to
+        # fix, so they stay failures (exit 1), but each is named rather than
+        # surfaced as a bare exit code.
+        REFUSED = {
+          7 => "end-intent refused a hollow delivered close: write outcome.md's ## Delivered rows to match the action headings",
+          8 => "end-intent refused to deliver an untouched scaffold: do the work first, or close it with --abandoned"
+        }.freeze
+
         SUMMARY_GUIDANCE = [
           "a good summary is written for the reader deciding whether to merge, release, or accept",
           "delivered: what shipped, impact and risk first, in plain language, never the checklist",
@@ -28,9 +36,14 @@ module Plastic
 
           status = legacy.run("end-intent", *end_intent_arguments)
           raise Refusal, "end-intent needs the owner: the delivery lock is held" if status == REFUSAL_STATUS
-          raise Failure, "end-intent exited #{status}" unless status.zero?
+          raise Failure, REFUSED.fetch(status) { "end-intent exited #{status}" } unless status.zero?
 
-          @output.next_step("plastic status", because: "the intent moved out of Active")
+          if options[:dry_run]
+            @output.next_step("plastic intent end #{id} --#{disposition} --summary #{options[:summary].inspect}",
+              because: "the dry run found nothing that would refuse the close")
+          else
+            @output.next_step("plastic status", because: "the intent moved out of Active")
+          end
         end
 
         private

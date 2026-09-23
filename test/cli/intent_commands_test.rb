@@ -265,6 +265,37 @@ class CliIntentCommandsTest < Minitest::Test
     assert_equal 1, command("intent end", "372", "--delivered", "--summary", "text", status: 2)
   end
 
+  def test_end_names_the_hollow_report_refusal
+    assert_equal 1, command("intent end", "372", "--delivered", "--summary", "text", status: 7)
+    assert_includes @fixture.warned, "hollow delivered close"
+  end
+
+  def test_end_names_the_untouched_scaffold_refusal
+    assert_equal 1, command("intent end", "372", "--delivered", "--summary", "text", status: 8)
+    assert_includes @fixture.warned, "untouched scaffold"
+    assert_includes @fixture.warned, "--abandoned"
+  end
+
+  def test_end_a_passing_dry_run_points_at_the_real_close
+    command("intent end", "372", "--delivered", "--summary", "shipped it", "--dry-run")
+
+    assert_includes @fixture.printed, "next: plastic intent end 372 --delivered --summary"
+    assert_includes @fixture.printed, "because: the dry run found nothing that would refuse the close"
+    refute_includes @fixture.printed, "moved out of Active"
+  end
+
+  def test_end_a_real_close_points_at_status
+    command("intent end", "372", "--delivered", "--summary", "shipped it")
+
+    assert_includes @fixture.printed, "next: plastic status\nbecause: the intent moved out of Active"
+  end
+
+  def test_end_an_unnamed_failure_names_the_exit_code
+    command("intent end", "372", "--delivered", "--summary", "text", status: 2)
+
+    assert_includes @fixture.warned, "end-intent exited 2"
+  end
+
   # --- intent new ----------------------------------------------------------------
 
   def new_fresh_idea

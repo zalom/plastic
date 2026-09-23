@@ -8,6 +8,10 @@ require "varar/minitest"
 Varar::Minitest.generate_tests(Object, root: File.expand_path("..", __dir__))
 
 class VararCoverageTest < Minitest::Test
+  def test_intent_end_keeps_every_record_and_mode
+    assert_equal 6, Var_varar_intent_end_md.runnable_methods.grep(/\Atest_the_record_/).length
+  end
+
   def test_project_links_keeps_both_harnesses_and_both_modes
     assert_equal 4, Var_varar_project_links_md.runnable_methods.grep(/\Atest_the_harness_/).length
   end
