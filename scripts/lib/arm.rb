@@ -182,13 +182,19 @@ module Arm
 
   # --- repair ------------------------------------------------------------------
 
+  # A stale foreign lock is reclaimed only by an audited owner step, never by
+  # the session that found it.
+  def stale_hint(intent_id)
+    "reclaiming a stale lock is the owner's audited step; plastic auto lock status #{intent_id} shows it"
+  end
+
   # One idempotent repair (the lock half of the repair path):
   # remove a corrupt lock, back off from a fresh foreign lock (`held`), report
   # a stale foreign lock (`stale`) for the explicit reclaim verb, keep and
   # enrich an own lock, heartbeat a delegated one, acquire when none, and
   # provision the worktree so the repaired intent has its checkout.
   def repair(intent_dir:, session:, home: Dir.home, now: Time.now, harness: nil,
-             agent: nil, model: nil, thread: nil, run_mode: nil, hint_harness: nil,
+             agent: nil, model: nil, thread: nil, run_mode: nil,
              runner: Worktree::ShellRunner.new)
     dir = File.expand_path(intent_dir)
     h = home_for(dir, home: home)
@@ -208,11 +214,18 @@ module Arm
       end
       return { "status" => "stale", "owner" => lock["owner_session"],
                "actions" => actions, "session" => key,
-               "hint" => "run #{Lock.skill_ref('plastic-doctor', harness: hint_harness || harness)} " \
-                         "reclaim the lock to take over with an audit" }
+               "hint" => stale_hint(intent_id_for(dir)) }
     end
 
-    mode = blank?(run_mode) ? (lock && lock["run_mode"]) : run_mode.to_s
+    # A lock rebuilt from nothing (none, or a corrupt one removed) is an auto
+    # delivery's lock again; a kept lock keeps whatever mode it had.
+    mode = if !blank?(run_mode)
+      run_mode.to_s
+    elsif lock
+      lock["run_mode"]
+    else
+      "auto"
+    end
     if lock
       if lock["owner_session"].to_s == key.to_s
         lock_data = lock.dup

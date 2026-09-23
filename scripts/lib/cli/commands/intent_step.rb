@@ -16,6 +16,7 @@ module Plastic
         SCRIPT = "runner"
         AFTER = "plastic intent step ID"
         BECAUSE = "call step again after each dispatched node returns"
+        COMPLETE = "every node in the graph has finished"
 
         def call
           intent_dir
@@ -53,6 +54,12 @@ module Plastic
 
           @output.next_step("plastic auto take #{id}", because: "graph execution requires this session to take the delivery lock")
           false
+        end
+
+        def after_run
+          return super unless RunnerCore.complete?(RunnerCore.context(intent_dir: intent_dir, home: File.dirname(scope.plastic_home)))
+
+          ["plastic intent verify #{id}", COMPLETE]
         end
 
         def graph?

@@ -36,6 +36,10 @@ module NodeInput
   # reports is not provisioned.
   STOP_DIRECTIVE = "STOP: no lease is recorded for this node. Do not edit files or run any command until a runner dispatches this node with a holder, an expiry and a model."
 
+  # A work node whose worktree is missing gets its own reason (acceptance
+  # N12): the lease may be fine, and saying it is missing contradicts it.
+  WORKTREE_STOP_DIRECTIVE = "STOP: no worktree is provisioned for this node. Do not edit files until a runner dispatches it into one."
+
   # Pinned so `input=<sha>` is a function of the repo's history alone
   # (post-execution review finding B4): unpinned, `git log --stat` varies
   # with the terminal's COLUMNS (abbreviates paths, narrows the graph
@@ -386,12 +390,17 @@ module NodeInput
 
   # --- block 5: where to work (instruction) ---------------------------------
 
+  # A node kind that needs no worktree (research, verify) is marked
+  # `read_only` by the runner: it reads the repository and edits nothing, so
+  # the absent worktree is expected and carries no stop directive.
   def worktree_block(intent_dir:, worktree_reader: Arm.method(:worktree_block))
     info = worktree_reader.call(intent_dir: intent_dir)
     if info && info["provisioned"]
       "worktree: #{info['code']} (branch #{info['code_branch']})"
+    elsif info && info["read_only"]
+      "worktree: none; this node reads the repository and edits nothing"
     else
-      "worktree: none provisioned\n#{STOP_DIRECTIVE}"
+      "worktree: none provisioned\n#{WORKTREE_STOP_DIRECTIVE}"
     end
   end
 
@@ -445,9 +454,8 @@ module NodeInput
 
   # `lease_missing` (post-execution review finding A1) hoists C7's stop
   # directive here, block 5 (instruction, spec D3), whenever the node input
-  # carries no lease. `worktree_block` already renders its own copy when the
-  # worktree is unprovisioned; the two conditions often fire together, so a
-  # directive already present is never repeated.
+  # carries no lease. A missing worktree has its own directive, so each stop
+  # line names its own reason.
   #
   # `call_cap` (intent 355, n2, D2): one sentence naming this attempt's tool
   # call cap and the return it hits at, so the executor learns the number
@@ -458,7 +466,7 @@ module NodeInput
                            files: [])
     wt = worktree_block(intent_dir: intent_dir, worktree_reader: worktree_reader)
     parts = [wt, test_command_block(intent_dir: intent_dir, files: files, project_reader: project_reader)]
-    parts << STOP_DIRECTIVE if lease_missing && !wt.include?(STOP_DIRECTIVE)
+    parts << STOP_DIRECTIVE if lease_missing
     parts << call_cap_sentence(call_cap) if call_cap
     parts.join("\n")
   end

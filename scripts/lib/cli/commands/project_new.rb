@@ -9,12 +9,17 @@ require_relative "../../store_provisioning"
 # `plastic project new` - registers a project in projects.yml, then provisions
 # and validates its store (`provision-project-store`, `validate-project`, run
 # through Legacy). The project directory must already exist; this command
-# never makes one, and a slug already registered is a Failure.
+# never makes one. A slug is lowercase letters, digits and hyphens, starting
+# with a letter or digit, and never `global`. A slug or a path already
+# registered is a Failure.
 module Plastic
   class CLI
     module Commands
       class ProjectNew < Command
         USAGE_LINE = "plastic project new SLUG --path PATH [--parent ID] [--json]"
+
+        SLUG = /\A[a-z0-9][a-z0-9-]*\z/
+        RESERVED = "global"
 
         def initialize(argv, runner: nil, **streams)
           super(argv, **streams)
@@ -24,9 +29,14 @@ module Plastic
         def call
           raise Usage, "SLUG is required" if slug.to_s.empty?
           raise Usage, "--path is required" if options[:path].to_s.empty?
+          unless slug.match?(SLUG) && slug != RESERVED
+            raise Usage, "SLUG must be lowercase letters, digits and hyphens, start with a letter or digit, and not be global"
+          end
           raise Failure, "#{options[:path]} does not exist" unless Dir.exist?(options[:path])
           raise Failure, "#{options[:path]} has no AGENTS.md; write one first" unless File.file?(File.join(options[:path], "AGENTS.md"))
           raise Failure, "#{slug} is already registered" if StoreProvisioning.registered?(slug, scope.plastic_home)
+          owner = slug_for_path
+          raise Failure, "#{options[:path]} is already registered as #{owner}" if owner
 
           register
           run("provision-project-store", slug, "--home", scope.plastic_home)
@@ -43,6 +53,19 @@ module Plastic
         def switches(parser)
           parser.on("--path PATH") { |v| @options[:path] = v }
           parser.on("--parent ID") { |v| @options[:parent] = v }
+        end
+
+        def slug_for_path
+          path = File.realpath(options[:path])
+          projects.find do |_slug, info|
+            registered = info.is_a?(Hash) && info["path"].is_a?(String) && info["path"]
+            registered && Dir.exist?(registered) && File.realpath(registered) == path
+          end&.first
+        end
+
+        def projects
+          data = File.exist?(projects_yml) ? YAML.safe_load_file(projects_yml) : nil
+          (data.is_a?(Hash) && data["projects"].is_a?(Hash)) ? data["projects"] : {}
         end
 
         def projects_yml

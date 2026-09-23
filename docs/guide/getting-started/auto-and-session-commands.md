@@ -10,15 +10,18 @@ The following table shows each auto command and what it does:
 
 | Command | What it does |
 | ------- | ------------ |
-| `plastic auto take ID` | Arms the delivery lock of intent `ID` for this session. |
+| `plastic auto take ID [--harness NAME] [--agent NAME] [--model MODEL] [--thread ID]` | Arms the delivery lock of intent `ID` for this session and prints the lock and the code worktree. The flags record who delivers; under Claude Code the harness defaults to `claude`. |
 | `plastic auto brief ID [--role ROLE]` | Prints the text that a spawned agent starts from. With `--role advisor`, it adds the advisor shapes. |
 | `plastic auto report ID [--role ROLE]` | Prints the intent's completion report, then the rules for a review by risk. |
 | `plastic auto lock status ID` | Prints who holds the delivery lock and how fresh it is. |
-| `plastic auto lock fix ID` | Repairs a corrupt or old-format lock. |
+| `plastic auto lock fix ID` | Repairs a corrupt or old-format lock and prints what it did. |
 | `plastic auto lock release ID` | Releases the lock. |
 
 Every command takes `--json`. `plastic auto` alone lists the subcommands. An unknown intent
-exits 1, and an unknown lock verb exits 2.
+exits 1, and an unknown lock verb exits 2. A lock that belongs to another session exits 3:
+`take` and `lock fix` refuse a held or stale lock, and `lock release` refuses a session that
+does not own the lock. The refusal names `plastic auto lock status ID`, which shows the owner.
+Reclaiming a stale lock is the owner's step.
 
 ## Session commands
 

@@ -46,9 +46,9 @@ module RunnerDispatch
 
   HARD_CAP_RE = /\Ais at its dispatch cap \((\d+)\/(\d+)\)\z/.freeze
 
-  # D8 (355, n6): the agent every dispatched, non-decision node names - a
-  # role, never a harness (matrix 6.5), and never a consultation advisor, which
-  # stays a deliberate, never-auto-dispatched consultation agent.
+  # The spawn block's default agent. A dispatched node names its own kind's
+  # node agent instead (HarnessAdapter.agent_type_for_kind), the same agent
+  # the dispatch line under it names (acceptance N12).
   SPAWN_AGENT = "plastic-executor"
 
   # matrix 6.1/6.2: one spawn block per dispatched node - agent, the model
@@ -237,7 +237,8 @@ module RunnerDispatch
     provisioned = RunnerPolicy.worktree?(kind) ? worktree.provision(context, node: node, kind: kind, runner: runner)
                                                 : unprovisioned
     node_reader = lambda do |intent_dir:|
-      { "code" => provisioned[:path], "code_branch" => provisioned[:branch], "provisioned" => !!provisioned[:provisioned] }
+      { "code" => provisioned[:path], "code_branch" => provisioned[:branch], "provisioned" => !!provisioned[:provisioned],
+        "read_only" => !RunnerPolicy.worktree?(kind) }
     end
 
     # Row 5.18: build the node input BEFORE writing `running` - a `running` line
@@ -289,7 +290,7 @@ module RunnerDispatch
 
     test_command = NodeInput.test_command_block(intent_dir: intent_dir, files: (nodes_decl[node] || {})[:files])
     spawn = spawn_block(model: model, effort: effort, input: build_result[:path], test_command: test_command,
-                        call_cap: calls_cap)
+                        call_cap: calls_cap, agent: HarnessAdapter.agent_type_for_kind(kind))
 
     {
       ok: true,
@@ -409,9 +410,9 @@ module RunnerDispatch
   end
 
   # Row 5.32: re-arms delivery.lock for a resumed session with a new id -
-  # `plastic-lock arm` is the shipped command that takes ownership again.
+  # `plastic auto take` is the public command that takes ownership again.
   def rearm_command(intent_dir)
-    "plastic-lock arm --intent-dir #{intent_dir}"
+    "plastic auto take #{File.basename(intent_dir.to_s).split("--").first}"
   end
 
   # --- refusals and the report -------------------------------------------------

@@ -224,18 +224,26 @@ class RoadmapQueue
 
   # --- liveness ranking (ports plastic-intent-continuing's read-time algorithm) -
 
+  # A roadmap whose graph has a cycle cannot compute a frontier, so it ranks
+  # after every healthy one (acceptance N8). It still wins when nothing else
+  # is left, and the payload then reports the cycle as an error.
   def rank_candidates(parsed_list)
     parsed_list.map do |c|
       entries = c[:waves].flat_map { |w| w[:entries] }
       live = entries.any? { |e| %w[delivering blocked].include?(e[:status]) }
-      c.merge(live: live, last_event: last_event_time(c[:path]))
-    end.sort_by { |c| [c[:live] ? 0 : 1, -c[:last_event].to_i, c[:slug]] }
+      cyclic = !!(c[:graph_edges] && GraphEdges.cycle(c[:graph_edges][:edges]))
+      c.merge(live: live, cyclic: cyclic, last_event: last_event_time(c[:path]))
+    end.sort_by { |c| rank_key(c) + [c[:slug]] }
+  end
+
+  def rank_key(candidate)
+    [candidate[:cyclic] ? 1 : 0, candidate[:live] ? 0 : 1, -candidate[:last_event].to_i]
   end
 
   def tied_group(ranked)
     return [] if ranked.empty?
-    top_key = [ranked.first[:live], ranked.first[:last_event].to_i]
-    ranked.select { |c| [c[:live], c[:last_event].to_i] == top_key }
+    top_key = rank_key(ranked.first)
+    ranked.select { |c| rank_key(c) == top_key }
   end
 
   def last_event_time(path)

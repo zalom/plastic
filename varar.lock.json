@@ -28,6 +28,15 @@
         }
       ]
     },
+    "varar/project-new.md": {
+      "sourceHash": "fnv1a:cf974b54",
+      "examples": [
+        {
+          "name": "Each row gives the slug, the path, the exit and the registered slugs:",
+          "line": 9
+        }
+      ]
+    },
     "varar/store-layout.md": {
       "sourceHash": "fnv1a:8aac771e",
       "examples": [

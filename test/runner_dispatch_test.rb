@@ -494,13 +494,27 @@ class RunnerDispatchTest < Minitest::Test
     result = RunnerDispatch.dispatch(ctx)
     entry = result[:dispatched].first
     refute_nil entry[:spawn], "a dispatched node must carry its own spawn block"
-    assert_includes entry[:spawn], "agent: #{RunnerDispatch::SPAWN_AGENT}"
+    assert_includes entry[:spawn], "agent: plastic-node-work"
     assert_includes entry[:spawn], "input: #{entry[:input]}"
     assert_includes entry[:spawn], "ruby bin/test --only test/x_test.rb"
     assert_includes entry[:spawn], RunnerPolicy.call_cap("work").to_s
 
     plan = YAML.safe_load(result[:plan])
     assert_equal entry[:spawn], plan["spawn"].first
+  end
+
+  # Acceptance N12: the spawn block and the dispatch line name one agent, and
+  # a research node, which reads only, is not told to stop for a lease it has.
+  def test_a_research_node_spawns_the_research_node_agent
+    write_graph("- r1 needs nothing\n")
+    write_node("r1.md", node: "r1", kind: "research", files: ["test/x_test.rb"],
+      body: "# r1 - research\n\n## Question\nWhat is there?\n\n## Deposit\nresources/report--r1.md\n")
+
+    entry = RunnerDispatch.dispatch(build_context)[:dispatched].first
+
+    assert_includes entry[:spawn], "agent: plastic-node-research"
+    refute_includes entry[:spawn], "plastic-executor"
+    refute_includes File.read(entry[:input]), "STOP:"
   end
 
   # --- n6, 6.2: the spawn block's model comes from RunnerPolicy.model_for ---
@@ -696,7 +710,8 @@ class RunnerDispatchTest < Minitest::Test
     ctx = build_context(session: nil)
 
     result = RunnerDispatch.dispatch(ctx)
-    assert_match(/\Aplastic-lock arm --intent-dir #{Regexp.escape(@dir)}\z/, result[:rearm_command])
+    id = File.basename(@dir).split("--").first
+    assert_equal "plastic auto take #{id}", result[:rearm_command]
   end
 
   # --- 5.33: the overlap refusal comes from ReadySet, re-checked within a step -

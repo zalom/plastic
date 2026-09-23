@@ -24,7 +24,7 @@ module Plastic
           status = legacy.run("session-commit", "--cwd", @directory, "--summary", summary)
           raise Failure, "session-commit exited #{status}" unless status.zero?
 
-          @output.next_step("plastic session handoff", because: "a handoff after a commit keeps the day ledger current")
+          @output.next_step("plastic session handoff", because: "the line above says whether a commit landed; a handoff keeps the day ledger current")
         end
 
         private

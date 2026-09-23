@@ -7,6 +7,7 @@ require_relative "worktree"
 require_relative "scaffold_intent"
 require_relative "session_ledger"
 require_relative "active_delivery"
+require_relative "lock"
 
 # SessionGit - the branch model and per-repo flow settings behind
 # `scripts/session-commit` (intent 300), which is how a checklist item
@@ -306,6 +307,44 @@ module SessionGit
     parts.each_cons(2).any? { |a, b| a == ".claude" && b == "worktrees" }
   end
 
+  # Why an agent-owned branch was left alone, named from the real delivery
+  # lock (acceptance N5). The branch or worktree name gives the intent id; the
+  # repository's slug in projects.yml gives its store. A branch whose intent
+  # cannot be found is still left alone, and says so plainly.
+  def delivery_state(repo, branch, plastic_home, session)
+    intent_dir = delivery_intent_dir(repo, branch, plastic_home)
+    return "it is an intent delivery branch" if intent_dir.nil?
+
+    id = File.basename(intent_dir)[/\A\d+/]
+    owner = Lock.read(intent_dir).to_h["owner_session"].to_s
+    return "it is intent #{id}'s delivery branch and no delivery lock is held" if owner.empty?
+    if !blank?(session) && owner.start_with?(session.to_s)
+      return "this session holds intent #{id}'s delivery lock; commit delivery work there with git"
+    end
+
+    "intent #{id}'s delivery lock is held by #{owner}"
+  end
+
+  def delivery_intent_dir(repo, branch, plastic_home)
+    parts = File.expand_path(repo.to_s).split(File::SEPARATOR)
+    at = parts.each_cons(2).find_index { |a, b| a == ".claude" && b == "worktrees" }
+    name = branch.to_s.start_with?("plastic/") ? branch.to_s.delete_prefix("plastic/") : parts.last
+    main = at ? parts[0...at].join(File::SEPARATOR) : File.expand_path(repo.to_s)
+    id = name[/\A(\d+)--/, 1]
+    slug = slug_for_repo(main, plastic_home)
+    return nil if id.nil? || slug.nil?
+
+    Dir.glob(File.join(Plastic::StoreLayout.root(plastic_home, slug), "store", "#{id}--*")).first
+  end
+
+  def slug_for_repo(main, plastic_home)
+    projects = YAML.safe_load_file(File.join(plastic_home, "projects.yml")).fetch("projects")
+    target = File.realpath(main)
+    projects.find { |_slug, info| File.exist?(info["path"].to_s) && File.realpath(info["path"]) == target }&.first
+  rescue StandardError
+    nil
+  end
+
   def stage_and_commit(dir, subject, runner:, body: nil)
     runner.run("-C", dir, "add", "-A")
     args = ["-C", dir, "commit", "-m", subject]
@@ -340,7 +379,9 @@ module SessionGit
 
     branch_now = current_branch(repo, runner: runner)
     return note("detached HEAD: no commit") if branch_now == "HEAD"
-    return note("left branch #{branch_now} untouched: agent lock") if agent_owned?(repo, branch_now)
+    if agent_owned?(repo, branch_now)
+      return note("left branch #{branch_now} untouched: #{delivery_state(repo, branch_now, plastic_home, session)}")
+    end
     return note("repository has no commits yet: no commit") unless has_commits?(repo, runner: runner)
 
     flow, flow_notes = load_flow(cwd: cwd, repo: repo, plastic_home: plastic_home, runner: runner)

@@ -105,13 +105,13 @@ class PlasticLockCliTest < Minitest::Test
     assert_includes report["hint"], "reclaim"
   end
 
-  def test_repair_reports_stale_hint_with_dollar_prefix_for_codex_harness
+  def test_repair_points_a_stale_lock_at_the_public_status_command
     Lock.acquire(@intent_dir, session: "other")
     FileUtils.touch(Lock.path(@intent_dir), mtime: Time.now - 4000)
     report = repair(harness: :codex)
     assert_equal "stale", report["status"]
-    assert_includes report["hint"], "$plastic-doctor reclaim the lock"
-    refute_includes report["hint"], "/plastic-doctor"
+    assert_includes report["hint"], "plastic auto lock status 96"
+    refute_includes report["hint"], "plastic-doctor"
   end
 
   def test_repair_removes_a_corrupt_lock_and_rebuilds
@@ -239,12 +239,12 @@ class PlasticLockCliTest < Minitest::Test
     assert_equal false, report.dig("worktree", "provisioned"), "no repo is registered, so provisioning fails open"
   end
 
-  def test_cli_arm_exits_1_on_a_held_lock_with_the_doctor_hint
+  def test_cli_arm_refuses_a_held_lock_with_exit_3_and_the_status_hint
     Lock.acquire(@intent_dir, session: "other")
     _out, err, st = cli("arm")
-    refute st.success?
+    assert_equal 3, st.exitstatus
     assert_includes err, "held by session other"
-    assert_includes err, "/plastic-doctor"
+    assert_includes err, "plastic auto lock status 96 shows it"
     assert_equal "other", Lock.read(@intent_dir)["owner_session"]
   end
 
@@ -378,20 +378,43 @@ class PlasticLockCliTest < Minitest::Test
     assert_includes out2, "repaired"
   end
 
-  def test_cli_fix_exits_nonzero_when_held_elsewhere
+  def test_cli_fix_refuses_with_exit_3_when_held_elsewhere
     Lock.acquire(@intent_dir, session: "other")
     _out, err, st = cli("fix")
-    refute st.success?
+    assert_equal 3, st.exitstatus
     assert_includes err, "held"
   end
 
-  def test_cli_fix_reports_stale_hint_with_dollar_prefix_when_harness_flag_is_codex
+  def test_cli_fix_refuses_a_stale_foreign_lock_with_the_public_hint
     Lock.acquire(@intent_dir, session: "other")
     FileUtils.touch(Lock.path(@intent_dir), mtime: Time.now - 4000)
     _out, err, st = cli("fix", "--harness", "codex")
-    refute_equal 0, st.exitstatus
-    assert_includes err, "$plastic-doctor reclaim the lock"
-    refute_includes err, "/plastic-doctor"
+    assert_equal 3, st.exitstatus
+    assert_includes err, "stale by other (reclaiming a stale lock is the owner's audited step"
+    refute_includes err, "plastic-doctor"
+  end
+
+  def test_cli_arm_refuses_a_stale_lock_with_exit_3
+    Lock.acquire(@intent_dir, session: "other")
+    FileUtils.touch(Lock.path(@intent_dir), mtime: Time.now - 4000)
+    _out, err, st = cli("arm")
+    assert_equal 3, st.exitstatus
+    assert_includes err, "is stale (owner other); reclaiming a stale lock is the owner's audited step"
+  end
+
+  def test_cli_arm_reports_a_corrupt_lock_as_a_failure_with_the_fix_command
+    File.write(Lock.path(@intent_dir), "{ nope")
+    _out, err, st = cli("arm")
+    assert_equal 1, st.exitstatus
+    assert_includes err, "unreadable; plastic auto lock fix 96 rewrites it"
+  end
+
+  def test_cli_release_by_a_non_owner_refuses_with_exit_3
+    Lock.acquire(@intent_dir, session: "other")
+    _out, err, st = cli("release")
+    assert_equal 3, st.exitstatus
+    assert_includes err, "not the owner; plastic auto lock status 96 shows who is"
+    assert_equal "other", Lock.read(@intent_dir)["owner_session"]
   end
 
   def test_cli_release_clears_the_lock
@@ -413,7 +436,7 @@ class PlasticLockCliTest < Minitest::Test
   def test_cli_reclaim_refuses_a_fresh_foreign_lock
     Lock.acquire(@intent_dir, session: "other")
     _out, err, st = cli("reclaim")
-    refute st.success?
+    assert_equal 3, st.exitstatus
     assert_includes err, "back off"
     assert_equal "other", Lock.read(@intent_dir)["owner_session"]
   end

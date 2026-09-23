@@ -149,6 +149,29 @@ class CliIntentCommandsTest < Minitest::Test
     assert_equal [["step", intent_dir]], @calls.map(&:last)
   end
 
+  def graph_with_one_node(state)
+    FileUtils.mkdir_p(File.join(intent_dir, "nodes"))
+    File.write(File.join(intent_dir, "nodes", "n1.md"), "---\nnode: n1\nkind: work\nfiles: []\nbudget: 1000\n---\n")
+    File.write(File.join(intent_dir, "graph.md"), "# graph\n\n## Graph\n- n1 needs nothing\n")
+    File.write(File.join(intent_dir, "savepoint.md"), "2026-09-10T06:33:16Z  n1  #{state} holder=h model=m\n")
+    require_relative "../../scripts/lib/arm"
+    Lock.acquire(intent_dir, session: Arm.derive_key(store, "372"))
+  end
+
+  def test_step_on_a_finished_graph_names_verify_next
+    graph_with_one_node("done gates=integrity commit=abc1234")
+    command("intent step", "372")
+
+    assert_includes @fixture.printed, "next: plastic intent verify 372"
+  end
+
+  def test_step_on_an_unfinished_graph_names_step_again
+    graph_with_one_node("running expires=2099-01-01T00:00:00Z packet=abc")
+    command("intent step", "372")
+
+    assert_includes @fixture.printed, "next: plastic intent step 372"
+  end
+
   def test_step_with_no_graph_prints_the_non_graph_procedure
     command("intent step", "372")
 

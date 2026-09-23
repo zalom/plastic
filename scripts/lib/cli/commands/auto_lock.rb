@@ -9,8 +9,9 @@ require_relative "../legacy"
 # Legacy). The verb comes first, then the id, since the verb is what the
 # table's two-token match consumes as part of the command name.
 #
-# `status` speaks JSON, so this command renders it as a screen and leaves the
-# document to `--json`. `fix` and `release` already report in prose.
+# `status` and `fix` speak JSON, so this command renders them as a screen and
+# leaves the document to `--json`. `release` already reports in prose. A lock
+# another session owns exits 3, which travels as a refusal.
 module Plastic
   class CLI
     module Commands
@@ -32,7 +33,11 @@ module Plastic
         def call
           raise Usage, "VERB must be one of #{VERBS.join(", ")}" unless VERBS.include?(verb)
 
-          (verb == "status") ? screen(report) : run_verb
+          case verb
+          when "status" then screen(report("status"))
+          when "fix" then options[:json] ? run_verb : fix_screen(report("fix"))
+          else run_verb
+          end
           @output.next_step(AFTER.fetch(verb).sub("ID", id.to_s), because: BECAUSE.fetch(verb))
         end
 
@@ -43,8 +48,8 @@ module Plastic
           raise Failure, "plastic-lock exited #{status}" unless status.zero?
         end
 
-        def report
-          text, status = legacy.capture("plastic-lock", "status", "--intent-dir", intent_dir)
+        def report(name)
+          text, status = legacy.capture("plastic-lock", name, "--intent-dir", intent_dir)
           raise Failure, "plastic-lock exited #{status}" unless status.zero?
 
           JSON.parse(text)
@@ -58,6 +63,13 @@ module Plastic
           @output.row("worktree", worktree_line(report["worktree"]))
           @output.row("delivering", report["delivering"] ? "yes" : "no")
           @output.row("claims", Array(report["claims"]).map(&:to_s))
+        end
+
+        def fix_screen(report)
+          lock = report["lock"] || {}
+          @output.row("lock", "#{report["status"]} by #{lock["owner_session"] || report["session"]}, " \
+                              "#{lock["run_mode"]} mode")
+          @output.row("actions", Array(report["actions"]).map(&:to_s))
         end
 
         def lock_line(report)

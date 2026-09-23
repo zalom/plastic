@@ -908,6 +908,19 @@ own isolation instead, deterministic and cwd-independent.
   like `/tmp/x/.plastic` works; an arbitrarily named root does not, and
   `provision` falls back to the passed `home:`).
 
+- **Foreign locks refuse with exit 3**: `plastic-lock` exits 3 when the lock
+  belongs to someone else: `arm` on a held, stale, or excluded lock, `fix` that
+  cannot repair a held or stale lock, `release` by a session that is not the
+  owner, and `reclaim` on a fresh lock. Each refusal prints a hint that names a
+  public command (`plastic auto lock status ID`); `Arm.stale_hint` carries the
+  stale wording. `arm` on an unreadable lock exits 1 and names `plastic auto
+  lock fix ID`. `Arm.repair` stamps `run_mode: auto` on a lock it rebuilds from
+  nothing, and keeps the mode of a lock it keeps. `plastic auto take` passes
+  `--harness`, `--agent`, `--model`, and `--thread` through, infers the
+  `claude` harness from `CLAUDE_CODE_SESSION_ID`, and prints the lock and the
+  worktree unless `--json` is given. The runner's re-arm hint is
+  `plastic auto take ID`.
+
 - **Three distinct evidence layers and bounded delegate history** (intent 108a):
   the controller record proves whole-intent authority; a registered delegate record
   authorizes one child session under that controller; a claim record identifies
@@ -1885,3 +1898,17 @@ A writer thread and two reader threads work at the same time, so large input or
 output cannot block. The hook leads its own process group. When the deadline
 passes, the whole group is killed and the pipes are closed. The chunk keeps the
 output read so far, with a nil exit status. The bounded run writes no files.
+
+### Command surface repairs
+
+`IntentCommand#after_run` returns the `next:` command and its reason after the
+script succeeds. `IntentStep` overrides it: when `RunnerCore.complete?` holds
+for the intent's graph, the next command is `plastic intent verify ID`.
+`RunnerDispatch` passes `HarnessAdapter.agent_type_for_kind` into the spawn
+line, and `NodeInput` marks nodes without a worktree as read-only.
+
+`RoadmapQueue` ranks a roadmap with a cyclic graph after every healthy one.
+`roadmap-graph` reports graph ids no batch lists even when it also finds a
+cycle. `SessionGit` reads the intent's `delivery.lock` to say who holds a
+delivery branch. `plastic sync` lists a missing `work_graph.db` or
+`references.db` under `build`.

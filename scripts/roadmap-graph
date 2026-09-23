@@ -62,6 +62,7 @@ module RoadmapGraphCli
     end
     if result[:cycle]
       warn "roadmap-graph check: cyclic graph: #{result[:cycle].join(' > ')}"
+      warn_dangling(result[:dangling])
       return 1
     end
     if result[:reason]
@@ -73,12 +74,17 @@ module RoadmapGraphCli
     puts "Ready: #{result[:ready].join(', ')}"
     puts "Dead ends: #{result[:dead_ends].join(', ')}" unless result[:dead_ends].empty?
 
-    unless result[:dangling].empty?
-      warn "roadmap-graph check: graph names #{result[:dangling].map(&:inspect).join(', ')}, no batch entry"
-      return 1
-    end
+    return 1 if warn_dangling(result[:dangling])
 
     0
+  end
+
+  # Names every graph id no batch lists; true when there was one.
+  def warn_dangling(dangling)
+    return false if dangling.to_a.empty?
+
+    warn "roadmap-graph check: graph names #{dangling.map(&:inspect).join(', ')}, no batch entry"
+    true
   end
 
   def render(path, dry_run)

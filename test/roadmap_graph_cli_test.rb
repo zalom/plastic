@@ -65,6 +65,23 @@ class RoadmapGraphCliTest < Minitest::Test
     assert_match(/101.*>.*102.*>.*101/, out + err)
   end
 
+  def test_check_on_a_cyclic_roadmap_also_names_a_graph_id_no_batch_lists
+    write_roadmap(basic(<<~B, <<~G))
+      ### Batch 1
+      - [ ] 101 First - queued
+      - [ ] 102 Second - queued
+    B
+      - 101 needs 102
+      - 102 needs 101
+      - 109 needs 101
+    G
+    _out, err, status = run_cli("check", roadmap_path)
+
+    assert_equal 1, status.exitstatus
+    assert_includes err, "cyclic graph: 101 > 102 > 101"
+    assert_includes err, "graph names \"109\", no batch entry"
+  end
+
   # --- 4.10: --dry-run writes nothing and prints the diff ----------------------
 
   def test_dry_run_writes_nothing_and_prints_the_diff

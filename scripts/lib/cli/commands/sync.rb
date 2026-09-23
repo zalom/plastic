@@ -10,9 +10,14 @@ module Plastic
       class Sync < Command
         USAGE_LINE = "plastic sync [--dry-run] [--json]"
 
+        # Rebuilt on every sync; a missing one is named in the plan, so the
+        # preview and the sync report the same work (acceptance N7).
+        DERIVED = [WorkGraph, ReferenceArchive].freeze
+
         def call
           home = scope.plastic_home
           plan = File.exist?(SearchIndex.path(home)) ? StoreSync.plan(home) : [["build", SearchIndex::NAME]]
+          plan += DERIVED.reject { |database| File.exist?(database.path(home)) }.map { |database| ["build", database::NAME] }
           refuse(home, plan.filter_map { |action, path| path if action == "conflict" })
           plan.group_by(&:first).each { |action, pairs| @output.row(action, pairs.map(&:last)) }
           @output.row("result", "nothing to do") if plan.empty?
@@ -36,7 +41,11 @@ module Plastic
         end
 
         def apply(home, plan)
-          (plan == [["build", SearchIndex::NAME]]) ? SearchIndex.build(home) : StoreSync.apply(home, plan)
+          if plan.include?(["build", SearchIndex::NAME])
+            SearchIndex.build(home)
+          else
+            StoreSync.apply(home, plan.reject { |step| step.first == "build" })
+          end
           WorkGraph.build(home)
           ReferenceArchive.build(home)
         end

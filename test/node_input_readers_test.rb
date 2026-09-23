@@ -277,10 +277,10 @@ class NodeInputReadersTest < Minitest::Test
     refute_includes text, NodeInput::STOP_DIRECTIVE
   end
 
-  def test_where_to_work_block_never_repeats_the_directive_the_worktree_block_already_carries
+  def test_where_to_work_block_names_each_missing_thing_once
     unprovisioned = ->(intent_dir:) { { "code" => nil, "code_branch" => nil, "provisioned" => false } }
     text = NodeInput.where_to_work_block(intent_dir: @dir, worktree_reader: unprovisioned, lease_missing: true)
-    assert_equal 1, text.scan(NodeInput::STOP_DIRECTIVE).length
+    assert_equal [1, 1], [text.scan(NodeInput::STOP_DIRECTIVE).length, text.scan(NodeInput::WORKTREE_STOP_DIRECTIVE).length]
   end
 
   # --- 2.12-2.14: landed commits ---------------------------------------------
@@ -622,7 +622,15 @@ class NodeInputReadersTest < Minitest::Test
     reader = ->(intent_dir:) { { "code" => nil, "code_branch" => nil, "provisioned" => false } }
     text = NodeInput.worktree_block(intent_dir: @dir, worktree_reader: reader)
     refute_includes text, "code:  " # never an empty path rendered bare
-    assert_includes text, NodeInput::STOP_DIRECTIVE
+    assert_includes text, NodeInput::WORKTREE_STOP_DIRECTIVE
+    refute_includes text, "no lease"
+  end
+
+  # Acceptance N12: a research node reads only, so no worktree is expected.
+  def test_a_read_only_node_carries_no_stop_directive
+    reader = ->(intent_dir:) { { "code" => nil, "code_branch" => nil, "provisioned" => false, "read_only" => true } }
+    text = NodeInput.worktree_block(intent_dir: @dir, worktree_reader: reader)
+    assert_equal "worktree: none; this node reads the repository and edits nothing", text
   end
 
   # 2.1: the module carrying this render is renamed (D1-D3), and neither a

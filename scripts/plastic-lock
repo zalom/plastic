@@ -15,8 +15,9 @@
 #   arm           take the intent for this session (intent 307): acquire
 #                 delivery.lock stamped with --mode (default auto) and the
 #                 provenance flags, provision the code worktree, and point the
-#                 session at the intent; exit 1 on a held, stale, excluded, or
-#                 corrupt lock with the resolving doctor hint
+#                 session at the intent; exit 3 on a held, stale, or excluded
+#                 lock (another owner's), exit 1 on a corrupt one, each with the
+#                 public command that resolves it
 #   who           compact, read-only durable owner/activity view
 #   status        report the lock file, its freshness, the derived worktree,
 #                 whether this session is the one delivering the intent, and
@@ -36,7 +37,8 @@
 # configured project roots): exactly one fresh lock this session owns or
 # delegates for. Session resolution no longer reads any per-session state
 # file; that path was retired in 2.0 (intent 307) and 344 G11.
-# Exit 0 on success/report; exit 1 when the verb is blocked.
+# Exit 0 on success/report; exit 3 when another session owns the lock (arm,
+# fix, release, reclaim); exit 1 when the verb is otherwise blocked.
 
 require_relative "lib/store_layout"
 require "json"
@@ -82,7 +84,6 @@ usage! if opts[:mode] && !%w[auto guided].include?(opts[:mode])
 session = opts[:session]
 session = ENV["CLAUDE_CODE_SESSION_ID"] if session.nil? || session.strip.empty?
 harness = opts[:harness]
-hint_harness = harness || "claude"
 # The plastic home every hook uses (PLASTIC_HOME, else ~/.plastic); Arm takes the
 # OS home above it, the same convention Worktree resolves projects.yml from.
 plastic_home_env = ENV["PLASTIC_HOME"].to_s.strip
@@ -149,8 +150,11 @@ intent_id = Arm.intent_id_for(dir)
 store = File.dirname(dir)
 key = Arm.resolve_session(session, store: store, intent_id: intent_id)
 
-def doctor_hint(verb_text, harness)
-  "run #{Lock.skill_ref('plastic-doctor', harness: harness)} #{verb_text}"
+# Exit 3 is Plastic's refusal: the lock belongs to another session, and only
+# its owner (or the person who owns the work) may resolve it.
+def refuse(message)
+  warn "plastic-lock: #{message}"
+  exit 3
 end
 
 case verb
@@ -167,19 +171,16 @@ when "arm"
       "worktree" => wt
     )
   when :held
-    warn "plastic-lock: delivery lock for intent #{intent_id} is held by session " \
-         "#{result[:lock] && result[:lock]['owner_session']}; #{doctor_hint('check the lock status', hint_harness)}"
-    exit 1
+    refuse "delivery lock for intent #{intent_id} is held by session " \
+           "#{result[:lock] && result[:lock]['owner_session']}; plastic auto lock status #{intent_id} shows it"
   when :stale
-    warn "plastic-lock: delivery lock for intent #{intent_id} is stale (owner " \
-         "#{result[:lock] && result[:lock]['owner_session']}); #{doctor_hint('reclaim the lock to take it over with an audit', hint_harness)}"
-    exit 1
+    refuse "delivery lock for intent #{intent_id} is stale (owner " \
+           "#{result[:lock] && result[:lock]['owner_session']}); #{Arm.stale_hint(intent_id)}"
   when :excluded
-    warn "plastic-lock: a #{result[:lock] && result[:lock]['type']} lock is active on intent " \
-         "#{intent_id}; #{doctor_hint('check the lock status', hint_harness)}"
-    exit 1
+    refuse "a #{result[:lock] && result[:lock]['type']} lock is active on intent " \
+           "#{intent_id}; plastic auto lock status #{intent_id} shows it"
   when :corrupt
-    warn "plastic-lock: delivery.lock for intent #{intent_id} is unreadable; #{doctor_hint('fix the lock', hint_harness)}"
+    warn "plastic-lock: delivery.lock for intent #{intent_id} is unreadable; plastic auto lock fix #{intent_id} rewrites it"
     exit 1
   when :inline_refused
     warn "plastic-lock: refusing to arm intent #{intent_id} from a conversation session " \
@@ -207,32 +208,27 @@ when "status"
 when "fix"
   report = Arm.repair(intent_dir: dir, session: key, home: home, harness: harness,
                       agent: opts[:agent], model: opts[:model], thread: opts[:thread],
-                      run_mode: opts[:mode], hint_harness: hint_harness)
+                      run_mode: opts[:mode])
   puts JSON.pretty_generate(report)
   unless report["status"] == "repaired"
-    warn "plastic-lock: #{report['status']} by #{report['owner']}" \
-         "#{report['hint'] ? " (#{report['hint']})" : ''}"
-    exit 1
+    refuse "#{report['status']} by #{report['owner']}" \
+           "#{report['hint'] ? " (#{report['hint']})" : ''}"
   end
 when "release"
   result = Lock.release(dir, session: key)
-  if result == :not_owner
-    warn "plastic-lock: not the owner; run plastic-lock status"
-    exit 1
-  end
+  refuse "not the owner; plastic auto lock status #{intent_id} shows who is" if result == :not_owner
   puts "released (#{result})"
 when "reclaim"
   status, lock_data = Lock.takeover(dir, session: key, harness: harness,
                                     agent: opts[:agent], model: opts[:model],
                                     thread: opts[:thread], run_mode: opts[:mode])
   if status == :fresh
-    warn "plastic-lock: lock is FRESH and held by #{lock_data['owner_session']}; " \
-         "back off (no silent reclaim)"
-    exit 1
+    refuse "lock is FRESH and held by #{lock_data['owner_session']}; " \
+           "back off (no silent reclaim)"
   end
   report = Arm.repair(intent_dir: dir, session: key, home: home, harness: harness,
                       agent: opts[:agent], model: opts[:model], thread: opts[:thread],
-                      run_mode: opts[:mode], hint_harness: hint_harness)
+                      run_mode: opts[:mode])
   puts JSON.pretty_generate(report)
 when "delegate"
   usage! if opts[:delegate].nil?
