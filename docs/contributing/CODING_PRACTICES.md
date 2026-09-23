@@ -34,7 +34,8 @@ list for the older scripts is empty.
 2. Write the code.
 3. Run the named tests for the change, then the gates once.
 
-- Unit tests use Minitest. Acceptance tests use Varar documents under `test/varar/`.
+- Unit tests use Minitest. Acceptance tests are Varar documents under `varar/`, with their
+  step files under `test/varar/`.
 - A test never writes under the real `~/.claude` or `~/.plastic`.
   `test/real_home_guard_test.rb` enforces this.
 - A test that cannot fail proves nothing. Show once that a new guard fails.

@@ -1,10 +1,10 @@
 ## Numbered Decision Tables
 
 The shared procedure for collecting owner rulings during any stage (Why, How, Exec).
-Any stage skill that needs the owner to choose between options or rule on a batch of
-open questions follows this procedure instead of improvising its own format.
+An agent that needs the owner to choose between options or rule on a batch of open
+questions follows this procedure instead of improvising its own format.
 
-Read this when a stage skill's own text says to.
+The installer copies this file to `~/.plastic/_decision-tables.md`.
 
 ### The procedure
 

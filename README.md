@@ -40,18 +40,20 @@ Plastic keeps the shape of the work fixed and leaves the thinking to you and you
 | You want to | What Plastic does |
 |-------------|-------------------|
 | Start from a rough idea | Creates one intent directory with an id, a slug and a born-complete intent file |
-| Keep the reasons | Records each ruling in the intent, then consolidates them into `spec.md` |
-| Plan the work | Holds the plan as a graph of nodes, and names the next ready step |
+| Keep the reasons | Appends each ruling to the Insights section of the intent file |
+| Plan the work | Holds the plan as a checklist or as a graph of nodes, and names the next step |
 | Resume tomorrow | Prints where a project stands and the next action in one line |
 | Hand work to an agent team | Arms a delivery lock, briefs each role and reports the result |
-| Close the work | Generates `outcome.md` from the record and moves the intent to Completed |
+| Close the work | Checks the merge and the records, fills placeholder records, and moves the intent to Completed |
 | Find an old decision | Searches every store, ranked, with one excerpt for each match |
 | Run many projects | Keeps one store for each project, plus a global store, all in plain Markdown and Git |
 | Steer a long delivery | Reads a roadmap as a graph and names the entry most worth continuing |
-| Protect the record | Writes one archive of the three databases and the config |
+| Protect the record | Writes one archive of the three databases, as of the last `plastic sync`, with `config.yml`, `projects.yml` and `INDEX.md` |
 
 Every result ends with a `next:` line and a `because:` line. The `--json` option prints the
-same result as data with stable keys.
+same result as data with stable keys. Every command takes it except the installer commands
+(`install`, `update`, `uninstall`, `rollback`) and `plastic hook EVENT`, which runs a hook
+script for the harness.
 
 ## How the record is built
 
@@ -155,12 +157,12 @@ Restart your agent after the install. For the full path, read
 ## How it works
 
 ```
-  You or your agent                 plastic                        ~/.plastic
-  -----------------                 -------                        ----------
-  plastic intent new "..."   -->    creates the intent      -->    store/12--slug/12--slug.md
-  plastic intent rule 12     -->    records a ruling        -->    the intent file, then spec.md
-  plastic intent step 12     -->    runs the next node      -->    graph.md, nodes/, savepoint.md
-  plastic intent end 12      -->    generates the outcome   -->    outcome.md, INDEX.md
+  You or your agent              plastic                     ~/.plastic/stores/SLUG/store
+  -----------------              -------                     ----------------------------
+  plastic intent new "..."  -->  creates the intent     -->  12--slug/12--slug.md
+  plastic intent rule 12    -->  records a ruling       -->  Insights in 12--slug/12--slug.md
+  plastic intent step 12    -->  names the next step    -->  checklist.md, or graph.md and nodes/
+  plastic intent end 12     -->  closes the intent      -->  outcome.md, INDEX.md
 
         ^                                                              |
         |            next: one command       because: one reason       |
@@ -194,7 +196,7 @@ plastic intent show 12                # Print the state screen
 plastic intent spec 12                # State screen, then the speccing rules
 plastic intent rule 12 "TEXT"         # Record a ruling in Insights
 plastic intent note 12 "TEXT"         # Append a savepoint note
-plastic intent step 12                # Run the next ready step of the graph
+plastic intent step 12                # Name the next checklist item, or run the next graph step
 plastic intent answer 12 --node n3 --decision "TEXT"   # Answer a node that needs a decision
 plastic intent verify 12              # Run the merge-gate checks
 plastic intent end 12 --delivered --summary "TEXT"     # Close as delivered
@@ -286,7 +288,7 @@ plastic feedback "TITLE" < report.md  # Save a problem report and print a link t
 --project SLUG  # Name a project other than the one the working directory is in
 ```
 
-The installer commands do not take `--json`. `plastic doctor` does, and prints its full
+The installer commands and `plastic hook EVENT` do not take `--json`. `plastic doctor` does, and prints its full
 report as the document.
 
 ## Examples
@@ -314,8 +316,8 @@ because: 9 is the first active intent in shop
 **The installed version:**
 ```
 $ plastic version
-version  2.0.0-alpha.28
-source   ~/.local/share/plastic/package.json
+version  2.0.2
+source   ~/.plastic/VERSION
 
 next: plastic status
 because: the command line works, so read the work next
@@ -353,9 +355,6 @@ agents for work, verification and research, and two advisors for hard decisions.
 `~/.plastic/config.yml`:
 
 ```yaml
-project_roots:                       # Parent folders searched for this session's delivery locks
-  - ~/.plastic/projects
-  - ~/.plastic/stores
 stale_threshold_days: 3              # Age at which a future intent is shown for triage
 context_offer_tokens: 150000         # Context size at which the agent offers to compact
 context_insist_tokens: 250000        # Context size at which the agent insists
@@ -363,6 +362,10 @@ agent:
   type: claude-code                  # The agent that runs Plastic
   parallel_mode: agent-teams         # agent-teams or linear
 ```
+
+The installer writes these keys and a few more. It does not write `project_roots`, the list of
+parent folders searched for this session's delivery locks. Without it, Plastic searches
+`~/.plastic/projects` and `~/.plastic/stores`.
 
 Install-time choices:
 
@@ -386,14 +389,15 @@ Your stores under `~/.plastic` stay.
 
 Plastic 2.0 moves from prose skills to one command with direct results.
 
-- **One `plastic` command.** More than 40 commands replace the skills. The package ships no skill directories.
-- **Direct results.** Every command ends with `next:` and `because:`, and takes `--json`.
+- **One `plastic` command.** More than 40 commands replace the former workflow skills, which no longer ship.
+- **Direct results.** Every command ends with `next:` and `because:`. Every command except the
+  installer commands and `plastic hook` takes `--json`.
 - **Plans are graphs.** An intent holds nodes and edges, and a ready set names what runs next.
 - **A ledger with refusals.** Node transitions are appended to `savepoint.md`, and an invalid transition is refused.
-- **Generated outcomes.** `outcome.md` is built from the graph, the nodes and the ledger at the close.
+- **Generated outcomes.** When a graph intent closes with `outcome.md` still a placeholder, the close builds it from the graph, the nodes and the ledger. An `outcome.md` you wrote is kept.
 - **Roadmaps are graphs too.** `plastic roadmap check` finds cycles and dangling ids.
 - **Search without a service.** One SQLite file holds a full-text index of every store.
-- **Three databases.** `work_graph.db`, `knowledge_graph.db` and `references.db` hold the record, and the files are a checkout of it.
+- **Three databases.** The Markdown files stay the record that commands write and read. `plastic sync` reads changed files into `knowledge_graph.db`, writes changed rows back out, refuses when both changed, and rebuilds `work_graph.db` and `references.db`. `plastic checkout` restores missing files from the databases and never overwrites a changed file.
 - **Backup and migrate.** One archive command, and a store move that runs behind a full copy of the home.
 - **Two advisors, medium effort by default.** Summon the Primary Advisor or the Secondary Advisor on purpose.
 - **Codex CLI as a second agent.** The same install, with OpenAI model ids for each role.

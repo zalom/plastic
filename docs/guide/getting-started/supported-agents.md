@@ -4,7 +4,7 @@
 | ----- | ------------ | ----- |
 | Claude Code | `--claude` | Supported |
 | Codex CLI | `--codex` | Supported |
-| Hermes | none | A packaging target only |
+| Hermes | `--hermes` | A packaging target only: it copies Plastic's agent files into `~/.hermes` and wires no hooks |
 
 The `plastic` command itself needs no agent. It runs in any shell with Ruby 4.0 or later.
 

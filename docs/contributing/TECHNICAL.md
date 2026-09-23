@@ -1,8 +1,7 @@
 # Technical reference
 
-The internals of the whole system are in [docs/internals.md](../internals.md). That page
-moves into this slot when the scripts and tests that name its path change, in intent 372.
-This page covers the tools around the `plastic` command.
+The internals of the whole system are in [docs/internals.md](../internals.md). This page
+covers the tools around the `plastic` command.
 
 ## The gates
 
@@ -17,7 +16,7 @@ bundle exec ruby bin/verify-change <base commit>
 | Lint | RuboCop reports no offense on the changed files. |
 | Tests | The tests for the changed files pass. |
 | Patch coverage | Every changed line and branch is covered. |
-| Mutation | Mutineer kills the mutants on the changed code. |
+| Mutation | Mutineer kills at least 75 percent of the mutants on the changed code. |
 | CRAP | No changed method scores above 30. |
 
 Every step runs under a new `HOME` and `PLASTIC_TMP`. A mutant can turn an injected runner
@@ -32,7 +31,8 @@ measure lines that the branch did not change.
 bin/test
 ```
 
-Run it once per change, at the end. CI runs it on every push.
+Run it once per pull request, just before the pull request opens. CI runs it on every push to
+`main` and `alpha` and on every pull request into them.
 
 ## The byte budget
 
@@ -47,5 +47,6 @@ included. `test/context_budget_bench_test.rb` fails when a surface crosses its c
 | `scripts/lib/cli.rb` | The dispatcher. |
 | `scripts/lib/cli/` | The shared classes. |
 | `scripts/lib/cli/commands/` | One file per command. |
-| `test/cli/` | One test file per class. |
-| `test/varar/` | The acceptance documents. |
+| `test/cli/` | The tests for the dispatcher, the shared classes and the commands. |
+| `varar/` | The acceptance documents. |
+| `test/varar/` | The step files for the acceptance documents. |

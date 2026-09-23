@@ -2,7 +2,8 @@
 
 `plastic migrate stores` moves every store under one `stores/` directory. The global store
 becomes `~/.plastic/stores/global/`, and each project store becomes `~/.plastic/stores/<slug>/`.
-You run it once. Until you run it, Plastic keeps reading the old layout.
+You run it once, on a home that still has the old layout. A fresh install already creates
+`stores/`, so it needs no move. Until you run it, Plastic keeps reading the old layout.
 
 ## Commands
 

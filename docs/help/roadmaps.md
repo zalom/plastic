@@ -7,20 +7,24 @@ This chapter holds the full roadmap file format and its relationship to INDEX.md
 Roadmaps exist for planned parallel delivery of intents in a coherent and organized way. A roadmap
 is a named, ordered, delivery-side collection of intents: the delivery-side counterpart to a
 release (completion-side, tracked in `CHANGELOG.md`). Create one by hand from the template, then
-use `plastic roadmap show`, `next`, `log`, and `check` to read, drive, and audit it.
+use `plastic roadmap show`, `next`, `log`, `check`, and `migrate` to read, drive, audit, and
+upgrade it.
 
 File location: `roadmaps/{slug}.md`, a sibling of `INDEX.md`, wherever `INDEX.md` lives, never
 inside `store/` (store holds intent directories, not project artifacts). For a project that is its
 root, `~/.plastic/stores/{slug}/roadmaps/`, beside `project.yml`; for the global store it is
 `~/.plastic/stores/global/roadmaps/`, beside its `INDEX.md`. Legacy homes keep their
 previous paths until `plastic migrate stores` moves them. `roadmaps/` lists only live (open or
-in-flight) roadmaps: once a roadmap's goal is reached, it moves to `roadmaps/archived/{slug}.md`,
-a sibling subdirectory scaffolded once with a `.gitkeep`.
+in-flight) roadmaps: once a roadmap's goal is reached, move it by hand to
+`roadmaps/archived/{slug}.md`. Its ledger and its screens still resolve it there.
 
-A roadmap file has four sections, in order: a title/meta header, `## Goal`, `## Batches`, and an
-append-only dated `## Log`. `## Goal` is a checkable prose condition read by a human or agent, not
-an executable checker. `## Batches` holds ordered batches; entries inside a batch are
-parallel-safe, batches run sequentially, top to bottom. A roadmap written before owner ruling 145
+A roadmap file from the template has five sections, in order: a title/meta header, `## Goal`,
+`## Graph`, `## Batches`, and an append-only dated `## Log`.
+`## Goal` is a checkable prose condition read by a human or agent, not an executable checker.
+`## Graph` holds the `needs` edges between entries, and the batches are computed from them;
+`plastic roadmap migrate` writes a Graph section for a roadmap that has none, from its current
+batch order. `## Batches` holds ordered batches; entries inside a batch are parallel-safe,
+batches run sequentially, top to bottom. A roadmap written before owner ruling 145
 may instead use the legacy `## Waves` heading; the tooling accepts both, but never renames an
 existing roadmap file to migrate it.
 
@@ -39,7 +43,7 @@ next in under a minute.
 
 **Relationship to loop engineering (intent 69).** A roadmap is the planning half of the work; the
 loop is its runtime. Batches lay out the parallelism plan: what can run together, and in what order.
-Loop engineering (intent 69, not yet delivered) is expected to consume that plan and supply the
+Loop engineering (intent 69) is expected to consume that plan and supply the
 running parts, the heartbeat, how many dispatches run at once, checking the goal, and resuming
 after a stop. This section only states the relationship and points to intent 69 as the future
 consumer; it does not change intent 69's own design.

@@ -47,15 +47,17 @@ Every role report, whatever the stage, carries these fields:
 
 ## Per-role payload
 
-Multi-item payload fields (ordered actions, insights, checklist deltas) default to tables per
-`PLASTIC.md` (## Tabular-First Reporting, intent 160); single fields stay prose.
+Multi-item payload fields (ordered actions, insights, checklist deltas) default to tables;
+single fields stay prose.
 
 Each role appends a payload that fulfils its place in the What, Why, How, Exec cycle (decision
 D2). The payload is what makes the report useful to the orchestrator beyond the envelope.
 
 The stage-agent role sections (brainstorming, spec-specialist, planner) were removed in 2.0
 (intent 304): the orchestrator writes the Why and How artifacts itself and reports nothing to
-itself. Two dispatched roles remain.
+itself. The lead dispatches three roles: the plan reviewer, the executor, and the
+post-execution reviewer. The plan reviewer returns the shape in `plastic help
+plan-reviewer-prompt`; the other two carry the payloads below.
 
 ### executor (Exec)
 - Actions implemented this turn, mapped to checklist items checked off (checked / total).
@@ -64,7 +66,7 @@ itself. Two dispatched roles remain.
 - Insights reported in the `insights:` field (each with the `(autonomous)` marker); the
   executor or the orchestrator persists them to `## Insights` via the `insight-append` helper.
 
-### final reviewer (final gate)
+### post-execution reviewer
 - Verdict: `pass` or `blockers found`.
 - Each acceptance criterion checked, with the evidence that confirms or refutes it.
 - Gaps or risks found, ranked, with a recommended disposition.

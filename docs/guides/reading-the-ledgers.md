@@ -59,8 +59,8 @@ a stage, and a milestone, separated by two spaces.
   intent screen's `Savepoint` field shows, since that field answers "when did this ledger
   last move," not "what stage is this."
 - The file is rebuildable from the files on disk. If it looks wrong, run `plastic doctor`
-  rather than editing the file by hand. It reports a savepoint gap as repairable and names
-  the repair.
+  rather than editing the file by hand. On a closed intent, it reports a missing savepoint or a
+  missing `Done` line as a repairable warning.
 
 ## The day ledger
 

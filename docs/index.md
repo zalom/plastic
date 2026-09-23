@@ -16,10 +16,11 @@ Start here, then follow the area you need.
   breakdown, and the harness system.
 
 ## Areas (growing)
-- [concepts/](concepts/): the model behind Plastic (intent lifecycle, the coordinator loop).
-- [guides/](guides/): task-oriented walkthroughs (creating intents, releasing, auto mode).
-- [reference/](reference/): skills, commands, and configuration.
-- [adr/](adr/): architecture decision records, numbered.
+- [concepts/](concepts/): the model behind Plastic (how intents are sourced and chained).
+- [guides/](guides/): task-oriented walkthroughs (your first intent, picking a mode, reading
+  the ledgers and a delivered intent).
+- [reference/](reference/): the harness adapters.
+- [adr/](adr/): architecture decision records, numbered. It holds no record yet.
 
-These areas are stubs for now and fill in over time. The README covers the pitch and
-install; this folder covers how Plastic works and how to work with it.
+These areas fill in over time. The README covers the pitch and install; this folder covers
+how Plastic works and how to work with it.

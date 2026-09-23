@@ -4,9 +4,9 @@
 
 | Option | Effect |
 | ------ | ------ |
-| `--json` | Prints the result as data with stable keys. The installer commands do not take it. |
+| `--json` | Prints the result as data with stable keys. The installer commands and `plastic hook` do not take it. |
 | `--help`, `-h` | Prints the usage line of the command. |
-| `--project SLUG` | On `continue` and `next`, names a project other than the one in the current directory. |
+| `--project SLUG` | On a command that works on one project, names a project other than the one in the current directory. The installer commands and `plastic hook` do not take it. |
 
 ## Choices at install time
 

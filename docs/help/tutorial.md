@@ -5,12 +5,13 @@
 This tutorial takes one small change to a Ruby project from a new intent to a delivered
 close. You create the intent, record a ruling, write the spec, plan, and checklist, make the
 change on a branch with a failing test first, merge the branch, and close the intent as
-delivered. At the end, the intent sits under `## Completed` with an `outcome.md` generated from
-the record.
+delivered. At the end, the intent sits under `## Completed` with the `outcome.md` you wrote and
+a verification that passed.
 
 The tutorial uses the checklist path, which needs no hooks, no lock, and no agent team. Every
-command here was run in a disposable `HOME` and `PLASTIC_HOME`. The output shown is the
-output those runs printed.
+command here was run in a disposable `HOME` and `PLASTIC_HOME`. The output blocks come from
+that run, and some are shortened. Paths, times, commit hashes, and lock names differ on your
+machine: `/home/you` stands for your home directory.
 
 Plastic records the work. It does not write the spec, the code, or the Git history for you.
 Each step says who does it:
@@ -22,18 +23,28 @@ Each step says who does it:
 
 - Plastic is installed. `plastic version` prints a version.
 - Ruby and Git are on your `PATH`.
-- To try the tutorial without touching your real stores, point `HOME` and `PLASTIC_HOME` at a
-  scratch directory and install there first:
+- To try the tutorial without touching your real stores, open a new shell, point `HOME` and
+  `PLASTIC_HOME` at a scratch directory, and install there first. Type `exit` at the end to
+  return to your normal `HOME`:
 
   ```sh
+  bash
   export HOME=/tmp/plastic-tutorial/home
   export PLASTIC_HOME="$HOME/.plastic"
+  export PATH="$PLASTIC_HOME/bin:$PATH"
   mkdir -p "$HOME/.claude"
   npx -y @zalom/plastic install --claude
+  hash -r
+  command -v plastic
   ```
 
   The installer needs an existing `~/.claude` directory. It stops with `.claude not found`
-  otherwise.
+  otherwise. It places the `plastic` command at `$PLASTIC_HOME/bin/plastic`, and
+  `command -v plastic` must print that path. If it prints another path, the commands below
+  would run your normal installation.
+- In that shell, check that Ruby can load Minitest: `ruby -e 'require "minitest"'`. Some Ruby
+  builds do not include it, and gems installed under your normal `HOME` may not be found from
+  the scratch one. Run `gem install minitest` if the check fails.
 
 ## 1. Create a small Ruby project
 
@@ -67,10 +78,13 @@ end
 Add an `AGENTS.md` file at the repository root. `plastic project new` refuses to register a
 repository without one. A line or two describing the project is enough.
 
-Commit everything on `main`:
+Commit everything on `main`. A scratch `HOME` has no Git identity, so set one for this
+repository first, with your own name and email:
 
 ```sh
 git init -b main
+git config user.name "Your Name"
+git config user.email "you@example.com"
 git add .
 git commit -m "chore: greeter"
 ```
@@ -120,12 +134,9 @@ recommendation, and every ruling recorded the moment it lands.
 plastic intent rule 1 "Keep the default greeting Hello so existing callers are unchanged"
 ```
 
-The ruling is appended to the intent file's `## Insights` section, stamped with the time, the
-`Why` stage, and the `human` author:
-
-```text
-appended: 2026-09-23T10:32:15Z · Why · human — Keep the default greeting Hello so existing callers are unchanged
-```
+The command prints one `appended:` line. The ruling is appended to the intent file's
+`## Insights` section, stamped with the time, the `Why` stage, and the `human` author, followed
+by the ruling text.
 
 `intent rule` writes only to `## Insights`. If you keep a `### Decisions` list in the intent
 file, write it yourself.
@@ -224,8 +235,8 @@ ArgumentError: wrong number of arguments (given 2, expected 1)
 2 runs, 1 assertions, 0 failures, 1 errors, 0 skips
 ```
 
-Commit the red test. Then tick the item in `checklist.md`: change `- [ ]` to `- [x]`, in the same
-commit as the work when the checklist lives in the repository, or right after it otherwise.
+Commit the red test. Then tick the item in `checklist.md` in the intent directory: change
+`- [ ]` to `- [x]`.
 
 Run `plastic intent step 1` again for the second item. Change `lib/greeter.rb`:
 
@@ -246,32 +257,70 @@ Run the tests again. Both pass:
 Commit, and tick the second item. `plastic intent show 1` now points at
 `plastic intent verify 1`, because every checklist item is complete.
 
-To keep the commit on the record, add a note to the savepoint:
+To keep the commit on the record, add a note to the savepoint. Replace `<sha>` with the commit
+hash:
 
 ```sh
 plastic intent note 1 "<sha> greeting keyword, tests green" --kind Commit
 ```
 
-## 7. Verify
+## 7. Write the outcome and verify
 
-**Plastic.** Run `plastic intent verify 1`. It runs the per-intent doctor check, the em-dash
-guard, and a diffstat of the code branch against `main`.
+**You or your agent** replace the `outcome.md` placeholder in the intent directory. The shape
+follows `templates/outcome.md`. The `disposition` must match the close you plan, and each
+`## Delivered` row names one checklist step:
 
-Before the close, the doctor check fails on this checklist intent, and the command exits 1:
+```markdown
+---
+disposition: delivered
+---
+# Outcome: Let Greeter.greet take an optional greeting word
+
+## Summary
+Greeter.greet takes an optional greeting word; the default stays Hello.
+
+## Delivered
+| Row | What |
+| --- | --- |
+| S1 | A test for the greeting keyword |
+| S2 | The greeting keyword on Greeter.greet |
+
+## Verification
+- The new test passes and the old test still passes: `ruby -Ilib test/greeter_test.rb` printed 2 runs, 0 failures.
+
+## Needs you
+None
+
+## Follow-ups
+None
+```
+
+**Plastic.** Record what you verified as a report note:
+
+```sh
+plastic intent note 1 "Both greeter tests pass on the branch; outcome.md written" --kind Report
+```
+
+`--kind` takes `Review`, `Commit`, or `Report`. Without it, the note is a `Report`.
+
+Then run `plastic intent verify 1`. It runs the per-intent doctor check, the em-dash guard,
+and a diffstat of the code branch against `main`. Every check passes, and the command exits 0:
 
 ```text
-doctor: FAIL intent_lifecycle_artifacts: 1 lifecycle-artifact gap(s)
+doctor: pass
 em-dash guard: pass (0 violations)
 diffstat against main:
  lib/greeter.rb       | 4 ++--
  test/greeter_test.rb | 4 ++++
  2 files changed, 6 insertions(+), 2 deletions(-)
-plastic: verify-intent exited 2
+report lines:
+2026-09-23T11:50:28Z  Report  Both greeter tests pass on the branch; outcome.md written
+next: plastic intent end 1 --delivered --summary "TEXT" --project greeter
+because: a clean verify is what makes the close trustworthy
 ```
 
-The gap is `outcome.md`, which is still a placeholder. `plastic intent end` generates it at
-the close, so this failure is expected at this point. Read the diffstat and the em-dash
-result, and go on.
+If a check fails, fix what it names and run `plastic intent verify 1` again. Do not close the
+intent while verify fails.
 
 ## 8. Merge the code (Git)
 
@@ -316,11 +365,10 @@ because: the dry run wrote nothing and found nothing that would refuse the close
 ```
 
 Run the same command without `--dry-run`. The close fills the records that are still
-placeholders from the record itself:
+placeholders from the record itself. Here that is the action file:
 
 ```text
 end-intent: backfilled actions/ACTION_1.md from the record
-end-intent: backfilled outcome.md from the record
 ```
 
 `plastic intent show 1` now shows both steps done:
@@ -330,7 +378,8 @@ next: none
 because: the intent is completed
 ```
 
-Read `outcome.md` in the intent directory. Its Summary is the `--summary` text you gave.
+`outcome.md` keeps what you wrote. The close writes the `--summary` text into the intent file's
+`## Outcome` section.
 
 ## The same change in auto mode
 

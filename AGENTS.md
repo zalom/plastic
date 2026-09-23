@@ -11,9 +11,10 @@ global rule.
 
 ## Stack
 - Language: Ruby (scripts), JavaScript/Node.js (npm package, installer)
-- Framework: npm package (CLI installer), flat personal skills
+- Framework: npm package that ships the installer and the `plastic` command (`bin/plastic`). The
+  former workflow skills no longer ship; `skills/` keeps only the shared `_decision-tables.md`.
 - Testing: Minitest. See the Testing section below for the correct full-suite command.
-- Source: /Users/zlatko/apps/personal/plastic
+- Source: this repository. The source command line runs as `ruby bin/plastic`.
 - Remote: git@github.com:zalom/plastic.git
 
 ## Defaults
@@ -30,16 +31,17 @@ Plastic works without it (ripgrep over the store files is the fallback). When QM
 present, search it before re-deriving an existing decision, spec, or outcome.
 
 - **Collections.** Plastic indexes into the DEFAULT qmd index, one collection per store,
-  all `plastic-` prefixed: `plastic-global` for `~/.plastic/store`, and `plastic-<slug>`
-  for each project store (slugs come from `projects.yml`).
+  all `plastic-` prefixed: `plastic-global` for the global store (`~/.plastic/stores/global/store`,
+  or `~/.plastic/store` in a home that has not moved to `stores/`), and `plastic-<slug>` for each
+  project store (slugs come from `projects.yml`).
 - **Scope a search.** One project: `-c plastic-<slug>`. All of Plastic: target the
   `plastic-*` collections. Pick the narrowest scope that answers the question.
 - **Search before re-deriving.** Look in the stores for prior decisions, specs, and
   outcomes before re-deriving them. The stores are the memory.
 - **Power tools are recommended when present.** When QMD (for intents), Enola, or Serena
-  (for code navigation) is present, prefer them. `PLASTIC.md` carries that recommendation
-  (Enola-first when both code-navigation tools are present); no hook repeats it per prompt
-  (the power-tools hook was removed in 2.0, intent 309). Search before grep/Read, then open
+  (for code navigation) is present, prefer them. This file is where that recommendation lives:
+  `PLASTIC.md` is the short command contract and does not name these tools, and no hook repeats
+  it per prompt (the power-tools hook was removed in 2.0, intent 309). Search before grep/Read, then open
   the authoritative intent file. Use `plastic search TERMS` for the store search index, or the
   deterministic `scripts/qmd-sync search "<terms>"` helper for QMD, which
   scopes collections for you and is a clean no-op when QMD is absent.

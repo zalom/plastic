@@ -17,7 +17,7 @@ The following table lists the commands in the order that an intent uses them:
 | `plastic intent note ID "TEXT"` | Appends a note to the savepoint ledger of the intent. |
 | `plastic intent step ID` | On a graph intent, runs the next ready step of the graph; this session must hold the delivery lock. On a checklist intent, prints the next unchecked item and runs nothing. |
 | `plastic intent answer ID --node NODE --decision "TEXT"` | Answers a step that waits for a decision. |
-| `plastic intent verify ID` | Runs the per-intent doctor check and the em-dash guard, and prints the diffstat of the code branch. On a checklist intent it fails until `outcome.md` exists, which `plastic intent end` writes. |
+| `plastic intent verify ID` | Runs the per-intent doctor check and the em-dash guard, and prints the diffstat of the code branch. Its doctor check fails while `outcome.md` is still a placeholder, so write `outcome.md` before you verify. |
 | `plastic intent end ID --delivered --summary "TEXT"` | Closes the intent. Use `--abandoned` to close it without delivery. |
 
 Run `plastic intent` alone to print this list. Run `plastic help intent new` for the full
@@ -48,13 +48,16 @@ the line in `INDEX.md`. `--dry-run` previews the close and writes nothing.
 
 Exit code 3 means that another session holds the intent. Report it to the owner and stop.
 
-A delivered close also exits 1, writes nothing, and names the reason, in three cases:
+A delivered close also exits 1 and names the reason in three cases. In the first two, it
+writes nothing:
 
 - The code branch `plastic/ID--slug` or its worktree exists, and the branch is not merged, or the
   repository checkout is still on it. Merge the branch, then close again.
 - The intent is an untouched scaffold: the lifecycle files are placeholders and no work was
   recorded. Do the work, or close it with `--abandoned`.
-- `outcome.md` lists fewer delivered rows than there are action files.
+- `outcome.md` lists fewer delivered rows than there are action files. This check runs after
+  Plastic fills in placeholder records, so `outcome.md` or an action file may already be
+  written. `INDEX.md`, the savepoint ledger, and the store commit stay unchanged.
 
 Plastic does not merge. `plastic help tutorial` shows the merge and the close together.
 

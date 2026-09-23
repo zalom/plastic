@@ -65,7 +65,8 @@ is already sitting in `## Insights`, in writing.
 ### 4. How, write the graph
 
 In the same conversation, the agent turns the rulings into the graph. It writes `graph.md` from
-`templates/graph.md`; no command writes it.
+`templates/graph.md`. No command creates it; once it exists, the runner behind
+`plastic intent step` and `plastic intent answer` updates it.
 
 Artifact: `graph.md` (nodes, edges, dispatch policy) and one `nodes/N.md` file per node this
 small delivery needs. A delivery this size is one node; many independent tasks instead get

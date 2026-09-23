@@ -1,6 +1,7 @@
 # Features
 
-This page lists what the `plastic` command does today. Every later batch appends to it.
+This page describes how the `plastic` command behaves. `plastic help` lists every command, and
+`plastic help COMMAND` prints one command's usage.
 
 ## One command, direct results
 
@@ -17,8 +18,9 @@ it. The order of steps that the skills used to carry in prose lives in these two
 
 ## The same result as data
 
-Add `--json` to `help`, `version`, `status`, `continue` or `next`. The keys are stable, so a
-script can read them.
+Add `--json` to any command except `install`, `update`, `rollback`, `uninstall` and `hook`.
+`doctor` reads the flag itself and prints its report as a JSON document. The keys are stable, so
+a script can read them.
 
 ## Scope
 
@@ -35,12 +37,14 @@ outer one. With neither, the global store answers.
 | `plastic next` | The next action in one line. `--why` adds the rule behind it. |
 
 `continue` and `next` read the same frontier: the liveliest roadmap, its open batch, and the
-entries that are ready, in flight or blocked.
+entries that are ready, in flight or blocked. With no roadmap, both name the first active
+intent instead.
 
 ## Installer commands
 
 `plastic install`, `plastic update`, `plastic rollback` and `plastic uninstall` run the
-installer scripts and hand back their exit status. See [INSTALL.md](../../INSTALL.md).
+installer scripts as child processes. A script that exits 3 makes the command exit 3, and any
+other failure exits 1. See [INSTALL.md](../../INSTALL.md).
 
 ## Help that costs nothing
 

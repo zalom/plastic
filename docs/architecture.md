@@ -2,7 +2,7 @@
 
 ## overview
 
-Plastic is an intent store plus a thin tooling layer over it. The store is plain files (folders, Markdown, YAML frontmatter) that capture desires and carry them through a fixed lifecycle; the tooling (skills, hooks, scripts, templates) keeps the store well-shaped and automates the deterministic parts. This document describes the system structure. For how the cycles actually execute (operational mechanics, harness detail), see [internals](internals.md). For the pitch and quick start, see the [README](../README.md).
+Plastic is an intent store plus a thin tooling layer over it. The store is plain files (folders, Markdown, YAML frontmatter) that capture desires and carry them through a fixed lifecycle; the tooling (the `plastic` command, hooks, scripts, agents, templates) keeps the store well-shaped and automates the deterministic parts. This document describes the system structure. For how the cycles actually execute (operational mechanics, harness detail), see [internals](internals.md). For the pitch and quick start, see the [README](../README.md).
 
 ## the two processes
 
@@ -37,50 +37,34 @@ Each intent keeps an append-only work log in the `## Insights` section of its in
 
 A store is a folder of intents. There are two scopes, structurally identical, differing only in location and purpose.
 
-- **Global store** (`~/.plastic/`): one per person, holding strategic intents (personal goals, research, framework work). It also holds person-level configuration: a preferences file (`config.yml`) and a project registry (`projects.yml`).
-- **Project stores** (`~/.plastic/projects/{slug}/store/` in the earlier layout, `~/.plastic/stores/{slug}/store/` in the stores layout a fresh install creates; see below): one per project, holding tactical intents (concrete work items inside that project). A project store adds one defaults file (`AGENTS.md`) for project-scoped rules.
+- **Global store**: one per person, holding strategic intents (personal goals, research, framework work). Person-level configuration sits in the Plastic home, `~/.plastic/`: a preferences file (`config.yml`) and a project registry (`projects.yml`).
+- **Project stores**: one per project, holding tactical intents (concrete work items inside that project). A project store root adds one settings file, `project.yml`, copied from `templates/project.yml`.
 
-Each store has exactly one `INDEX.md` and a `store/` folder holding one directory per intent:
+Each store root has exactly one `INDEX.md` and a `store/` folder holding one directory per intent. A store root can also hold a `roadmaps/` folder. A fresh install creates the stores layout, where every store root sits under `~/.plastic/stores/` and the global store is the root named `global`:
 
 ```
 ~/.plastic/
-  INDEX.md
   config.yml
   projects.yml
-  store/
-    ID--slug/
-
-~/.plastic/projects/{slug}/
-  INDEX.md
-  AGENTS.md
-  store/
-    ID--slug/
+  stores/
+    global/
+      INDEX.md
+      roadmaps/
+      store/
+        ID--slug/
+    {slug}/
+      INDEX.md
+      project.yml
+      roadmaps/
+      store/
+        ID--slug/
 ```
 
-The rule of thumb: if the work changes a specific project's code it is tactical and belongs in that project's store; otherwise it is strategic and belongs in the global store. When in doubt, global. Stores are personal and local; the global store is git-tracked locally but never pushed to a remote.
+So the global store is `~/.plastic/stores/global/store/`, and a project store is `~/.plastic/stores/{slug}/store/`.
 
-### The stores layout after the move
+Homes created before the stores layout use the legacy layout. There the global store root is `~/.plastic/` itself (`~/.plastic/INDEX.md` and `~/.plastic/store/`), and project store roots sit at `~/.plastic/projects/{slug}/`. Plastic reads the stores layout when `~/.plastic/stores/` exists, and reads the legacy layout when it does not. The installer bootstraps the legacy layout only when the home already holds a legacy `store`, `projects`, `INDEX.md` or `roadmaps` entry. An existing home keeps its layout until `plastic migrate stores` moves every store under `stores/`. Reinstalling does not move user data.
 
-`plastic migrate stores` moves every store under one directory. Each store root then has the
-same shape, and the global store is the root named `global`:
-
-```
-~/.plastic/stores/global/
-  INDEX.md
-  roadmaps/
-  store/
-    ID--slug/
-
-~/.plastic/stores/{slug}/
-  INDEX.md
-  roadmaps/
-  store/
-    ID--slug/
-```
-
-Plastic reads this layout when `~/.plastic/stores/` exists and reads the earlier layout when it
-does not. A fresh install creates `stores/global/` by default. Existing homes retain their
-layout until the explicit migration runs; reinstalling does not move user data.
+The rule of thumb: if the work changes a specific project's code it is tactical and belongs in that project's store; otherwise it is strategic and belongs in the global store. When in doubt, global. Stores are personal and local; the Plastic home is git-tracked locally but never pushed to a remote.
 
 `varar/store-layout.md` checks fresh installation and legacy migration separately for
 Claude Code and Codex. Its Ruby fixtures execute an npm archive in disposable homes,
@@ -90,38 +74,39 @@ all-command acceptance.
 
 ### intent directory contents
 
-Every intent is a folder named `ID--slug/`. Only the intent file is required; every other artifact appears once its lifecycle stage is reached.
+Every intent is a folder named `ID--slug/` inside a store's `store/` folder. Lifecycle artifacts (spec, plan, checklist, outcome) always live in this intent directory in the store, never in the project repository.
 
 ```
 ID--slug/
-  ID--slug.md     # required, the intent file (its base name equals the folder name)
+  ID--slug.md     # the intent file (its base name equals the folder name)
   spec.md         # the Why deliverable
   plan.md         # the How deliverable (planning)
   checklist.md    # the How deliverable (execution registry)
-  outcome.md      # the Exec deliverable (mandatory at every terminal; a disposition: delivered|abandoned header)
+  outcome.md      # the Exec deliverable (a disposition: delivered|abandoned header at close)
   savepoint.md    # deterministic cycle-step ledger, written automatically
+  graph.md        # the node graph `plastic intent step` runs (Goal, Decisions, Graph, Status)
+  nodes/          # one file per graph node
+  delivery.lock   # the delivery lock, present while a session owns the delivery
   revisions.md    # optional structural-maintenance audit trail (present only after maintenance)
-  actions/        # real action files, at least one per planned intent (one consolidated file at S/M, one per task at L)
+  actions/        # action files
   resources/      # research, references, snapshots, diagrams
 ```
 
-Lifecycle artifacts use those exact reserved names and live directly in the intent folder, never in subfolders and never renamed. All other supporting material goes in `resources/`. State is not stored in a status field; it is derived from which files and sections exist (for example, an empty `## Context` means the intent is still fleeting, and the presence of `outcome.md` means it is done). `revisions.md` is not a lifecycle artifact: it appears only when structural maintenance relocated a misplaced section, file, or ref out of a delivered intent, so its existence signals structural (not conceptual) change.
+`plastic intent new` runs `scripts/new-intent`, which creates the intent file, `actions/`, `resources/`, the born `What` line in `savepoint.md`, and placeholder copies of `spec.md`, `plan.md`, `checklist.md` and `outcome.md`. Each placeholder starts with `<!-- plastic:placeholder -->`, so a file that still carries that line is not a real artifact. The other files appear when the command that uses them first runs. At close, `plastic intent end` backfills `spec.md`, `plan.md`, `actions/ACTION_1.md` and `outcome.md` from the record wherever a file is missing or still a placeholder.
+
+Lifecycle artifacts use those exact reserved names and live directly in the intent folder, never in subfolders and never renamed. All other supporting material goes in `resources/`. State is not stored in a status field. The INDEX.md terminal sections are the canonical done marker (see "intent done and the end tail" below), and the stage is derived from which artifacts carry real content. `revisions.md` is not a lifecycle artifact: it appears only when structural maintenance relocated a misplaced section, file, or ref out of a delivered intent, so its existence signals structural (not conceptual) change.
 
 ### the session day ledger
 
-Alongside a store's intent directories, the global store carries two dot-prefixed paths (intent 297): `.sessions/`, one shared day ledger per calendar date, and `.tmp/`, a per-session scratch area. Both are invisible to every store walker precisely because of the leading dot, so neither one is, or ever becomes, an intent:
+Inside the global store folder sit two dot-prefixed paths (intent 297): `.sessions/`, one shared day ledger per calendar date, and `.tmp/`, a per-session scratch area. Both are invisible to every store walker precisely because of the leading dot, so neither one is, or ever becomes, an intent. In the stores layout the global store folder is `~/.plastic/stores/global/store/`; in the legacy layout it is `~/.plastic/store/`:
 
 ```
-~/.plastic/
-  INDEX.md
-  config.yml
-  projects.yml
-  store/
-    ID--slug/
-    .sessions/
-      YYYYMMDD/
-    .tmp/
-      <session-id>/
+~/.plastic/stores/global/store/
+  ID--slug/
+  .sessions/
+    YYYYMMDD/
+  .tmp/
+    <session-id>/
 ```
 
 A day directory's members appear in order as the day is used, not all at once:
@@ -133,7 +118,7 @@ A day directory's members appear in order as the day is used, not all at once:
   savepoint.md   # on the first append, no header
 ```
 
-The day id is the local wall-clock date, digits only with no hyphen, so it satisfies every id pattern in the store with no special case. One day directory is shared by every session that touches that day, project agnostic, with each checklist and savepoint line tagged by session and project. A day ledger has no `INDEX.md` entry. `scripts/append-ledger` is the only writer of `checklist.md` and `savepoint.md` inside a day directory.
+The day id is the local wall-clock date, digits only with no hyphen, so it satisfies every id pattern in the store with no special case. One day directory is shared by every session that touches that day, project agnostic, with each checklist and savepoint line tagged by session and project. A day ledger has no `INDEX.md` entry. `SessionLedger` (`scripts/lib/session_ledger.rb`) performs every write to `checklist.md` and `savepoint.md` inside a day directory. `scripts/append-ledger` is its command-line front, and the hooks call the library directly.
 
 ### the session close path and the next-day sweep
 
@@ -164,7 +149,7 @@ Intents form a double-linked graph, recorded in two mirrored places:
 - **Frontmatter** (the machine-followable graph): `sources` are backward links (what influenced this intent) and `chain` are forward links (what this intent spawned). If `B` lists `A` in its `sources`, then `A` should list `B` in its `chain`.
 - **Prose** (the human-readable graph): wikilinks under `## Links`, written `[[ID]]` or `[[ID|display text]]`. A tactical intent links back to its governing strategic intent with `[[global:ID]]`.
 
-The frontmatter graph drifts over time as it is edited by hand, so two pieces of machinery keep it honest. `scripts/rebuild-graph` is a deterministic, idempotent maintenance tool that repairs the `sources`/`chain` graph across all three stores in one pass: it dedupes each array, enforces the I-invariants one-directionally (a formative edge wins over a duplicate; missing in-store backlinks are added; relational forward links survive), and resolves cross-store refs against a multi-hop relocation map built from every store's `## Relocated` log, so a relocated target is repointed (and collapsed to a bare id when it now lives in the referring store) and a coincidentally-reused id never wins over a recorded relocation. Every change is written to a per-store before/after audit, and a re-run over a repaired store is a no-op. Complementing it, `doctor.rb` carries a `graph_cross_store_resolution` check that resolves every cross-store ref against the full store family (not just shape-checks it), so a well-formed ref pointing at a relocated or deleted intent is caught rather than silently accepted. See [internals](internals.md) for the module split and the named id-reuse hazard.
+The frontmatter graph drifts over time as it is edited by hand, so two pieces of machinery keep it honest. `scripts/rebuild-graph` is a deterministic, idempotent maintenance tool that repairs the `sources`/`chain` graph across every store `StoreDiscovery` finds, in one pass: it dedupes each array, enforces the I-invariants one-directionally (a formative edge wins over a duplicate; missing in-store backlinks are added; relational forward links survive), and resolves cross-store refs against a multi-hop relocation map built from every store's `## Relocated` log, so a relocated target is repointed (and collapsed to a bare id when it now lives in the referring store) and a coincidentally-reused id never wins over a recorded relocation. Every change is written to a per-store before/after audit, and a re-run over a repaired store is a no-op. Complementing it, `doctor.rb` carries a `graph_cross_store_resolution` check that resolves every cross-store ref against the full store family (not just shape-checks it), so a well-formed ref pointing at a relocated or deleted intent is caught rather than silently accepted. See [internals](internals.md) for the module split and the named id-reuse hazard.
 
 Each store's `INDEX.md` is a structure note, not a table of contents: it groups intents by meaning and records where each one sits in the person's attention (`## Active`, `## Future`, `## Clusters`, `## Abandoned`, `## Completed`). It does not record lifecycle stage, since that is derived from the files.
 
@@ -172,40 +157,28 @@ Each store's `INDEX.md` is a structure note, not a table of contents: it groups 
 
 The tooling layer is thin and sits on top of the store. The parts that supply determinism do so by construction, never by judgement.
 
-- **Skills**: the workflows agents follow (routing a prompt in direct mode via `plastic-direct`, creating intents, brainstorming, writing plans, executing, releasing, indexing, and authoring skills, agents, and hooks via `plastic-skill-creating`). They produce the lifecycle artifacts in their fixed forms. (removed in 2.0, intent 304)
-- **Agents**: role files shipped in `agents/` that the installer syncs into each harness agent directory (Claude, codex, hermes) and tracks in that harness's manifest, so they prune on update and uninstall cleanly. In auto mode they form a two-role team (one team per intent): a plastic-enforcer that leads, writes the record, and reviews handoffs, and a plastic-executor that builds (the four stage agents were removed in 2.0, intent 304). See `docs/help/agent-architecture.md` for the team model.
-- **Hooks**: lifecycle event handlers. A SessionStart hook detects the active project by matching the working directory and loads the core context; a UserPromptSubmit hook captures the prompt into the day ledger; a PreCompact hook saves intent state; a SessionEnd hook closes the session; and one PostToolUse hook, `record` (`hooks/record` -> `scripts/hook-record`, on Write, Edit, NotebookEdit, and the six Serena edit tools), appends the savepoint line, refreshes the delivery-lock lease, and promotes the day-ledger line. The edit-path gates and the stage-transition gates were removed in 2.0 (intent 302): no hook blocks a write, and doctor checks replace enforcement. Codex reaches the same hooks through one dispatcher, `scripts/codex-hook`, registered in `~/.codex/hooks.json` from the same `HookRegistry` source of truth. The command `plastic hook EVENT` runs the same launcher for one event (`call-budget`, `capture`, `close`, `record`, `savepoint`, `session-start` or `stop`). It passes standard input through, prints nothing of its own and returns the launcher exit status unchanged. The registered hook entries still call the launchers directly (intent 372).
-- **Scripts**: small deterministic Ruby programs that encode mechanical rules, for example assigning the next Folgezettel ID from the existing IDs in a store. Intent creation has a one-call contract here: `scripts/new-intent` allocates the id, creates the directory tree, renders the born-complete intent file, writes the sentinel placeholder lifecycle files, wires the reciprocal links, and self-validates, so the sanctioned path is one CLI call rather than several hand-authored writes (intent 60b). It does not touch INDEX.md, git, or project creation; those stay in the creating-intent skill. `scripts/lib/feedback_report.rb` plus the thin `scripts/feedback-report` CLI (intent 174) back the user-only `plastic-feedback` skill: they redact secrets, write a local report file, and build a prefilled GitHub issue URL, with no send path anywhere in the code. Four scripts wrap the deterministic steps of intent delivery: `scripts/start-intent` arms the lock and prints the resume station, `scripts/scaffold-intent` writes the mechanically derivable parts of spec.md, checklist.md, and outcome.md, `scripts/verify-intent` merges doctor, an added-line em-dash diff guard, a diffstat, and an optional caller-supplied suite command into one verdict, and `scripts/exec-worktree` wraps `Worktree.finish` behind a friendly order precondition. Deterministic by construction. (removed in 2.0, intent 304)
+- **Skills**: no workflow skill ships in 2.0. Intents 304 and 372 retired the former `SKILL.md` packages into the `plastic` command and the `docs/help/*.md` chapters. The `skills/` directory still holds one shared fragment, `skills/_decision-tables.md`; the installer copies top-level `_`-prefixed Markdown fragments into `~/.plastic/` rather than into a skill directory. The general skill-authoring standard lives in the `skill-creating` and `skill-evaluating` skills at [zalom/agent-skills](https://github.com/zalom/agent-skills), and `docs/skill-authoring.md` keeps the Plastic-only rules.
+- **Agents**: role files shipped in `agents/` that the installer syncs into each harness agent directory (Claude, Codex, Hermes) and tracks in that harness's manifest, so they prune on update and uninstall cleanly. Seven ship. In auto mode `plastic-enforcer` leads and reviews and `plastic-executor` builds, one team per intent. `plastic-node-work`, `plastic-node-research` and `plastic-node-verify` run the nodes the graph runner dispatches. `plastic-primary-advisor` and `plastic-secondary-advisor` are consultation agents. See `docs/help/agent-architecture.md` for the team model.
+- **Hooks**: lifecycle event handlers, registered from one source of truth, `HookRegistry` (`scripts/lib/hook_registry.rb`). On Claude Code, SessionStart runs `session-start` (core doctor, boot banner, day summary) and `check-update`; UserPromptSubmit runs `capture`, which captures the prompt into the day ledger; PreToolUse runs `call-budget`; PreCompact runs `savepoint`, which saves intent state; SessionEnd runs `close`, which closes the session; Stop runs `stop`; MessageDisplay runs `message-display`; and one PostToolUse hook, `record` (`hooks/record` -> `scripts/hook-record`, on Write, Edit, NotebookEdit, and the six Serena edit tools), appends the savepoint line, refreshes the delivery-lock lease, and promotes the day-ledger line. The edit-path gates and the stage-transition gates were removed in 2.0 (intent 302): no hook blocks a write, and doctor checks replace enforcement. Codex reaches a subset of these hooks through one dispatcher, `scripts/codex-hook`, registered in `~/.codex/hooks.json` from the same `HookRegistry`. The command `plastic hook EVENT` runs the same launcher for one event (`call-budget`, `capture`, `close`, `record`, `savepoint`, `session-start` or `stop`). It passes standard input through, prints nothing of its own and returns the launcher exit status unchanged. The registered hook entries still call the launchers directly (intent 372).
+- **Scripts**: small deterministic Ruby programs that encode mechanical rules, for example assigning the next Folgezettel ID from the existing IDs in a store. Most `plastic` commands run one of them. `plastic intent new` runs `scripts/new-intent`, which allocates the id, creates the directory tree, renders the born-complete intent file, writes the placeholder lifecycle files, wires the reciprocal links, and self-validates (intent 60b); the command then adds the intent's line to `## Active` in INDEX.md. `new-intent` touches neither git nor project creation. `plastic intent verify` runs `scripts/verify-intent`, which merges doctor, an added-line em-dash diff guard, a diffstat, and an optional caller-supplied suite command into one verdict. `plastic intent end` runs `scripts/end-intent`, `plastic auto take` and `plastic auto lock` run `scripts/plastic-lock`, and `plastic intent step` and `plastic intent answer` run `scripts/runner`. `plastic feedback` runs `scripts/feedback-report`, backed by `scripts/lib/feedback_report.rb` (intent 174): it redacts secrets, writes a local report file, and builds a prefilled GitHub issue URL, with no send path anywhere in the code. Deterministic by construction.
 - **Templates**: the fixed FORM of each artifact (its sections, their order, frontmatter fields, file name). Two people following the same template produce artifacts of identical shape even when the words differ. Deterministic by construction.
-- **Evals**: checks that verify skills produce convention-compliant output and that descriptions trigger correctly.
-- **Conventions**: Plastic's own doctrine ships in three tiers (intent 223), not one file. `PLASTIC.md` (installed at `~/.plastic/PLASTIC.md`) is the always-on core, injected at every session start, held under 200 lines, 1,600 estimated tokens and 8,192 bytes by a dedicated Minitest test (`test/plastic_core_budget_test.rb`) and measured by `bin/plastic-bench` (intent 313), the regrowth-enforcement mechanism after two prior splits each shrank it once with nothing holding the boundary. In 1.x, `skills/conventions/` (installed as `plastic-conventions`, `user-invocable: false`) was a thin router skill covered by skill-lint's five checks like any other skill; intent 372 retired it, and its chapters now ship as `docs/help/*.md`, printed by `plastic help TOPIC`. Doctrine used by more than one skill lives in its 6 `references/*.md` chapters, each reached only by a consuming skill's own bound load line; an unbound chapter, or a load line pointing at a chapter that does not exist, is caught by the same test. `skill-lint`'s own scope stays `skills/*/SKILL.md`; it does not read `PLASTIC.md`.
+- **Conventions**: `PLASTIC.md` (installed at `~/.plastic/PLASTIC.md`) is the always-on core. On Claude Code, the installer's managed block in `~/.claude/CLAUDE.md` imports it with an `@~/.plastic/PLASTIC.md` line; on Codex, the managed block in `~/.codex/AGENTS.md` points at it. A dedicated Minitest test (`test/plastic_core_budget_test.rb`) holds it under 200 lines, 1,600 estimated tokens and 8,192 bytes, and `bin/plastic-bench` measures it (intents 223 and 313). Deeper doctrine ships as the `docs/help/*.md` chapters, which `plastic help TOPIC` prints on demand. Intent 372 retired the 1.x conventions skill and its chapter load lines.
 
 For the operational detail behind these parts (determinism coverage, harness taxonomy, upgrade backlog), see [internals](internals.md).
 
-### per-agent models and stage coverage
+### per-agent models
 
-Every stage of the intent lifecycle has exactly one dispatchable background agent, plus the enforcer that orchestrates them:
-
-| Stage | Agent |
-|---|---|
-| What | `plastic-intent-discovery` | (removed in 2.0, intent 304)
-| Why | `plastic-brainstorming` + `plastic-spec-specialist` | (removed in 2.0, intent 304)
-| How | `plastic-planner` | (removed in 2.0, intent 304)
-| Exec | `plastic-executor` |
-| Done | `plastic-intent-curator` | (removed in 2.0, intent 304)
-
-Final code review stays an ad-hoc subagent the enforcer dispatches on request, not a standing role.
-
-`plastic-intent-discovery` is the What-stage agent (see the `plastic-intent-discovering` skill): it fires at intent activation, after the delivery lock is armed and before Why begins, running under that lock as the owner session, runs QMD discovery over the intent's `chain`/`sources` and related parked intents, and deposits its findings to `resources/discovery--<slug>.md` only. It never writes the intent file; the Why-stage `plastic-brainstorming` agent reads its deposit and enriches `## Context`. (removed in 2.0, intent 304)
-
-Every lifecycle agent in `agents/*.md` pins an explicit Claude Code model alias (`opus` or `sonnet`) in its frontmatter: never `inherit`, never Fable by default, unless an explicit `agents.models.<name>` config override names Fable for that role, in which case the override is honored as written. Primary Advisor and Secondary Advisor are not lifecycle stage roles. Neither is ever dispatched by the auto pipeline. Both use Fable on Claude Code and Astra on Codex; Primary uses medium effort, and Secondary uses high effort. The tier is by role weight, not by stage:
+Every shipped agent in `agents/*.md` pins an explicit model alias and effort in its frontmatter, never `inherit`. The installer passes that frontmatter through unless an `agents.models.<name>` config override names another model, in which case the override is honored as written. The shipped tiers are:
 
 | Agent | Model |
 |---|---|
-| `plastic-enforcer`, `plastic-brainstorming`, `plastic-planner` | `opus` | (removed in 2.0, intent 304)
-| `plastic-spec-specialist`, `plastic-executor`, `plastic-intent-curator`, `plastic-future-intent-researcher`, `plastic-intent-discovery` | `sonnet` | (removed in 2.0, intent 304)
+| `plastic-enforcer`, `plastic-node-verify` | `opus` |
+| `plastic-executor`, `plastic-node-work`, `plastic-node-research` | `sonnet` |
+| `plastic-primary-advisor`, `plastic-secondary-advisor` | `fable` |
 
-A project or the global store can override any agent's tier through `agents.models.<basename>` config; see [internals](internals.md) for the config precedence and the installer mechanism that applies it. Every dispatch site also resolves and passes the target agent's model explicitly at dispatch time, belt-and-braces on top of the frontmatter pin, since reading frontmatter at dispatch is a harness detail rather than a Plastic-owned contract. At auto-mode start, the orchestrator advises (never gates) that the user run the main session on the best available thinking model for the sharpest synthesis; this is the one context where Fable is named as an acceptable choice, since it concerns the human's session, not a subagent.
+The enforcer dispatches a plan reviewer before code and a post-execution reviewer when a review rule fires; neither reviewer is a standing agent file. Primary Advisor and Secondary Advisor are not lifecycle roles, and the auto pipeline never dispatches either. Both use Fable on Claude Code and Astra on Codex; Primary uses medium effort, and Secondary uses high effort. Every other agent ships at medium effort.
+
+A project or the global store can override any agent's tier through `agents.models.<basename>` config; see [internals](internals.md) for the config precedence and the installer mechanism that applies it. The graph runner's dispatch line also names the model it resolved for each node, so a dispatch does not depend on the harness reading frontmatter.
 
 ### the advisor: two consultation agents, never injected (intent 185)
 
@@ -213,11 +186,11 @@ Two consultation role files are tracked separately from lifecycle tiers by `Agen
 
 The `plastic-agent-advisor` skill was the front door until intent 372 retired it; `plastic help advisor-protocol` now carries when consulting is worth the money, and the configured advisor agent is called directly. Lifecycle agents and Primary Advisor ship at medium effort. Secondary Advisor ships at high effort. `agents.efforts.<harness>.<name>` is the explicit override, with project config over global.
 
-Config uses keys matching `InstallerCore::DEFAULT_AGENTS` exactly (`claude`, `codex`, never `claude_code`). `advisor.enabled: false` skips both advisor agents and the `agent-advisor` skill on every harness. `advisor.claude.default` names an agent, never a model. Install asks which advisor is the default: Primary Advisor at medium effort, or Secondary Advisor at high effort. An unset value resolves to Primary Advisor. Installer flags are `--no-advisor` and `--advisor VALUE`, where `VALUE` is an agent name or the `primary` or `secondary` shorthand. Retired agent values migrate on install and update.
+Config uses keys matching `InstallerCore::DEFAULT_AGENTS` exactly (`claude`, `codex`, never `claude_code`). `advisor.enabled: false` skips both advisor agents on every harness. `advisor.claude.default` names an agent, never a model. Install asks which advisor is the default: Primary Advisor at medium effort, or Secondary Advisor at high effort. An unset value resolves to Primary Advisor. Installer flags are `--no-advisor` and `--advisor VALUE`, where `VALUE` is an agent name or the `primary` or `secondary` shorthand. Retired agent values migrate on install and update.
 
 `agents.models` is harness-scoped from this release: `agents.models.claude.*` and `agents.models.codex.*`, with the pre-existing flat form (`agents.models.<name>: value`, no harness nesting) still honored as the claude harness, and nested winning over flat for the same agent. `AgentModels.models_section(config, harness:)` implements this: for `harness: "claude"` it merges the flat scalar entries with the `claude` sub-hash (nested wins); for any other harness it reads ONLY that harness's own nested sub-hash, never the flat entries. This closes a real latent bug: previously the same override map fed both `install_agents`' Claude frontmatter rewrite and `generate_codex_agents`' TOML `model` line, so a literal Claude model id set under the flat form could leak straight into a Codex config. `install_codex` now calls `agent_model_overrides(harness: "codex")`, so a model named under `claude` is never emitted to `codex`; a regression test (`test_agent_model_overrides_never_leaks_a_claude_model_id_into_codex`) pins this. Stage-agent tier translation to Codex reasoning effort (`AgentModels::EFFORT_BY_ALIAS`) is unchanged by this scoping.
 
-`InstallerCore#generate_codex_agents` renders every shipped role, including consultation agents. `advisor.enabled: false` still omits both advisor roles and their skill on every harness.
+`InstallerCore#generate_codex_agents` renders every shipped role, including consultation agents. `advisor.enabled: false` still omits both advisor roles on every harness.
 
 Codex per-role model identity (intent 186): Codex has no vendor alias layer, so `AgentModels::CODEX_MODEL_BY_ALIAS` centralizes every Codex model id in one place, paired with the existing `AgentModels::EFFORT_BY_ALIAS` tier. A generated Codex agent TOML for a tier alias carries both lines, model first:
 
@@ -233,7 +206,7 @@ Model and effort are shipped defaults, independently overridable through `agents
 
 QMD is an optional, recommended local markdown search engine layered over the stores. Plastic functions without it (ripgrep over the store files is the fallback), so the integration adds search without becoming a dependency. The topology is one collection per store in the default qmd index, all `plastic-` prefixed: `plastic-global` for the global store and `plastic-<slug>` for each project store (slugs from `projects.yml`). Plastic delegates all index mechanics to the qmd CLI through a single helper (`scripts/lib/qmd_sync.rb`, exposed as the `scripts/qmd-sync` CLI, with verbs for detect, register, reindex, status, and a read-only `search`) and never reimplements qmd commands. Index mutation is tied to lifecycle events only, never ad-hoc. In 2.0 the session-start hook suggests `qmd-sync register --all` when stores are not indexed, and only the internal `scripts/promote-session-item` reindexes. `plastic project new` registers no collection, and no public close path reindexes: the reindex step `scripts/end-intent` names lived in a retired skill. This is a known gap. Session start is report-only and never mutates the index. Query craft itself is owned by the installed `qmd` skill, not by Plastic.
 
-The recommendation to prefer these tools lives in `PLASTIC.md`, loaded once at session start (intent 305): "QMD is available: prefer `qmd search` / `qmd query`" for intents, and one code-navigation slot naming Enola, or Serena when Enola is absent (the owner's Enola-first ruling). These are recommendations, not obligations (intent 108, D8); reads and searches are never gated. The per-prompt power-tools hook that used to repeat the line was removed in 2.0 (intent 309), along with its decision module; tool presence for doctor's readiness checks is still computed by `scripts/lib/power_tools.rb` (`PowerTools.qmd?`, `PowerTools.serena?`, `PowerTools.enola?`: PATH and marker-file walks with no subprocess). Intent 225 measured per-prompt hit injection at 0.24 intent-level recall@3 against a plain ripgrep control at 0.18, while agent-driven `qmd query` scored 0.71, so intent 246 removed the injection first and 309 the reminder. `QmdSync.search` is untouched and still backs the `scripts/qmd-sync search` CLI verb. The per-skill QMD-first steps reinforce the same discipline: search qmd first, then open the authoritative intent file, with a no-op fallback when qmd is absent.
+`PLASTIC.md` carries no tool recommendation: it names only the `plastic` command. The per-prompt power-tools hook that used to repeat a QMD line was removed in 2.0 (intent 309), along with its decision module. When QMD is present, the session-start hook adds one report-only line to the model context: the number of indexed Plastic collections, or a hint to run `qmd-sync register --all`. Tool presence is computed by `scripts/lib/power_tools.rb` (`PowerTools.qmd?`, `PowerTools.serena?`, `PowerTools.enola?`: PATH and marker-file walks with no subprocess), and doctor's readiness checks call it for Serena and Enola. Intent 225 measured per-prompt hit injection at 0.24 intent-level recall@3 against a plain ripgrep control at 0.18, while agent-driven `qmd query` scored 0.71, so intent 246 removed the injection first and 309 the reminder. `QmdSync.search` is untouched and still backs the `scripts/qmd-sync search` CLI verb.
 
 ### intent born-complete validation
 
@@ -241,26 +214,22 @@ A single validator library, `scripts/lib/intent_validator.rb`, defines whether a
 
 ### project store provisioning
 
-Project store creation has a single source of truth: the `scripts/provision-project-store` verb, backed by `scripts/lib/store_provisioning.rb`. It is pure filesystem and idempotent: it makes the store directory at the project root's `store/` (`~/.plastic/stores/{slug}/store` in the stores layout), then writes, only if missing, `.gitkeep`, `INDEX.md` (from `templates/index.md`), and `project.yml` (from `templates/project.yml`). It requires the project to already be registered in `projects.yml` (an unregistered slug exits non-zero and creates nothing) and performs no qmd mutation, so any caller (including a doctor fix) stays deterministic. The `plastic intent new` and `plastic project new` commands call it instead of an inline `mkdir`, and `plastic doctor` reports a missing store for an already-registered project; the internal `provision-project-store {slug}` creates it, and registering its QMD collection stays a separate, optional `qmd-sync register` step. Doctor's additive `project_store_dir` check warns (fixable) when a registered project's store directory is missing, naming `provision-project-store {slug}` as the fix.
+Project store creation has a single source of truth: the `scripts/provision-project-store` verb, backed by `scripts/lib/store_provisioning.rb`. It is pure filesystem and idempotent. It makes the store directory `store/` under the project root (`~/.plastic/stores/{slug}/store` in the stores layout, `~/.plastic/projects/{slug}/store` in the legacy layout). Then it writes, only if missing, `.gitkeep` in the store directory, and `INDEX.md` (from `templates/index.md`) and `project.yml` (from `templates/project.yml`) in the project root. It requires the project to already be registered in `projects.yml` (an unregistered slug exits non-zero and creates nothing) and performs no qmd mutation, so any caller (including a doctor fix) stays deterministic. `plastic project new` calls it, then runs `validate-project`. `plastic doctor` reports a missing store for an already-registered project; the internal `provision-project-store {slug}` creates it, and registering its QMD collection stays a separate, optional `qmd-sync register` step. Doctor's additive `project_store_dir` check warns (fixable) when a registered project's store directory is missing, naming `provision-project-store {slug}` as the fix.
 
 ## session boot
 
 Boot is owned by hooks, so it runs by construction on every session start, not as prose a skill follows (intent 36a):
 
 1. **Core doctor**: `hook-session-start` runs `doctor.rb --core` in-process, reusing the `Doctor` class so there is one source of truth for core health. The core check is binary (pass or error, never warn): it compares every core file against the SHA256 recorded in the install manifests (`~/.plastic/manifest.json` for global scripts and PLASTIC.md; `~/.claude/plastic/manifest.json` for agent-side files), and also confirms hooks are registered, scripts are executable, and the installed version matches.
-2. **Load core**: the same hook injects only the core conventions (`PLASTIC.md`); deeper doctrine is loaded on demand, by whichever skill runs, from that skill's own bound `plastic-conventions` chapter, not primed at boot. The hook also reads the store INDEX.md and projects.yml, detects the current project by matching the working directory, and loads that project's state.
-3. **Boot banner and version**: the result of the core check drives a binary banner. On pass: `Plastic Core loaded - v{version} | doctor --core run: success`. On error: `Plastic Core loaded - v{version} | doctor --core run: error - run /plastic-doctor`. The banner is emitted on both the `hookSpecificOutput.additionalContext` channel (model-facing) and the top-level `systemMessage` channel (visible in the user's terminal). One `BootBanner` renderer feeds both channels so they cannot drift (intent 54). The hook never blocks (always exits 0).
-4. **Statusline**: the always-on `plastic-statusline` StatusLine hook sets the statusline (a distinct hook event that cannot be set from SessionStart). This is the render-time behavior once Plastic's statusline is configured; whether it gets configured at all is an install-time decision (see below).
+2. **Load context**: the hook does not inject `PLASTIC.md` (intent 341). The harness loads it through the installer's managed instruction block (see Conventions above). The hook reads the store INDEX.md and projects.yml, detects the current project by matching the working directory, and adds the project banner, the QMD line, deprecation and update notices, the first-boot sweep result, and the day summary. Deeper doctrine is printed on demand by `plastic help TOPIC`, not primed at boot.
+3. **Boot banner and version**: the result of the core check drives a binary banner. It names the installed version and ends in `doctor --core run: success` on pass, or `doctor --core run: error` plus a pointer to doctor on error. The banner is emitted on both the `hookSpecificOutput.additionalContext` channel (model-facing) and the top-level `systemMessage` channel (visible in the user's terminal). One `BootBanner` renderer feeds both channels so they cannot drift (intent 54). The hook never blocks (always exits 0).
+4. **Statusline**: the `plastic-statusline` command renders the statusline. It is not a hook event: the installer writes it as Claude Code's `statusLine` setting, and only when the install-time choice below selects Plastic's line.
 
 Install-time statusline choice is separate from the render-time hook above: `InstallerCore#statusline_choice` decides, once per install, whether to write Plastic's statusline over an existing one. A fresh settings file with no statusline gets Plastic's line with no prompt. An existing non-Plastic line triggers a keep-or-switch prompt in an interactive session, honors `--statusline keep|plastic` to skip the prompt, defaults to keeping the user's line in a non-interactive session, and is never re-asked on `--reinstall` (a repair keeps whatever is already configured). `merge_claude_hooks` still backs up the prior line to `~/.plastic/.cache/original-statusline.json` regardless of the choice, so a later switch or an uninstall can restore it.
 
-The `plastic continue` command is the front door that then continues work: it is a thin router, deciding among three routes and dispatching to exactly one. The project route (`plastic continue`) is the default for a bare "continue": it lands on the board (the project board when a project is loaded, otherwise the global board, invoking the renderer rather than rendering itself), presents choices, and stops. The intent route (`plastic continue`) fires when a specific intent is named to resume: it reads that intent's `savepoint.md` ledger FIRST (intent 81) and hands off to `plastic continue`, which takes the lock and runs the cycle from there. The roadmap route (`plastic continue`) resumes a mid-flight roadmap by calling `scripts/roadmap-next` (intent 148), which liveness-ranks the tier's roadmap files and selects the frontier batch deterministically, rather than ranking by eye. None of the three routes run the health check, load core, or set the statusline, all of which the hooks already did, and none drive work autonomously on their own (that is `plastic-auto`, reached only through `plastic continue`'s or `plastic continue`'s auto branch). On the intent route, the last ledger line classifies the state (a cycle position, or `Done delivered|abandoned` for a terminal intent), and it verifies only that last line's artifact before continuing, rebuilding the ledger from files on drift. The ledger's fixed bookends, a born `What created` first line and a `Done` last line, make state a single read instead of a filesystem probe.
+`plastic status` and `plastic continue` then orient the session. Neither runs the health check, loads core, or sets the statusline, since the hooks already did. `plastic continue [--project SLUG]` prints the project, its store root, its active intents, and its liveliest roadmap with that roadmap's frontier batch. It then names one next step: the frontier's step when a roadmap exists, else `plastic intent show ID` for the first active intent, else `plastic help`. `plastic next` prints the same next action on one line. Both read it through one `Frontier` class over `RoadmapQueue`, which ranks roadmaps deterministically rather than by eye (intent 148).
 
-### direct mode
-
-Intent 372 retired the `plastic-direct` skill; this section records how it worked. A booted session rests in direct mode, where the prompt itself is the action and the work runs inline rather than through a dispatched agent. The `plastic-direct` skill routed each prompt in a single read, on a time estimate made from the prompt alone: a bounded change of about five minutes or less runs now, a prompt that one answer would settle gets one clarifying question and then runs, anything that stays vague is offered a thinking intent (`plastic intent spec`) rather than guessed at, and a bounded change over the budget is offered a dedicated intent. An explicit "auto" hands off to `plastic-auto`. The skill itself ships no wiring: intent 298 owns the capture hook, the session-start mode line, and the per-session day-ledger pointer, and intent 305 owns the `PLASTIC.md` core block that states every session starts in direct mode. Until both land, `plastic-direct` is installed but nothing steers prompts to it.
-
-Each roadmap carries the same kind of ledger for the same reason (intent 134): a name-paired `roadmaps/<slug>.savepoint.md`, the machine counterpart to the human `## Log`, following its roadmap into `roadmaps/archived/` on close. The `plastic roadmap log` command appends to it at the closing steps (created, dispatched, parked, merged, release, handoff, closed), and `plastic continue` reads its last line as a cheap last-event signal on resume. Like the intent-dir ledger, it is derived and rebuildable from source, never a status source: `INDEX.md` stays the single writer of intent status.
+Each roadmap carries a ledger (intent 134): a name-paired `roadmaps/<slug>.savepoint.md`, the machine counterpart to the human `## Log`, which follows its roadmap into `roadmaps/archived/` on close. `plastic roadmap log SLUG EVENT "TEXT"` appends to it (the events are created, dispatched, parked, merged, release, handoff, closed, added, reordered, wave and batch), and `RoadmapQueue` reads its last line as the roadmap's last-event time when it ranks roadmaps. The ledger is never a status source: `INDEX.md` stays the source of intent status.
 
 ## the delivery lock and the record hook
 
@@ -276,7 +245,7 @@ Session resolution feeds the arm, disarm, and repair paths and the spawn preambl
 
 Removed in 2.0 (intent 302): the edit-path gates (edit, bash, code, lock, links), the create gate, and the stage-transition gates are gone with their code. The paragraphs and list items of this section that described them were removed with them; what remains is the `record` hook (savepoint line, lock heartbeat, day ledger) and the doctor checks that replace enforcement (intent 308).
 
-An intent whose delivery touches code runs in its own git worktree, and an intent's delivery is single-owner: exactly one session develops it at a time. Both properties are owned by Plastic, not the harness (intents 73c and 108). The lock is a durable `delivery.lock` JSON file inside the intent directory, acquired atomically (O_EXCL) at arm time. Its `owner_session` is the sole authorization identity. Controller provenance (`harness`, `agent`, `model`, `thread`, and `mode`) is descriptive only, accepts explicit values from the harness, and is never inferred from transcripts or paths; legacy omissions render as `Unknown`. Liveness is a lease: write-path hooks refresh the file mtime on owner activity, and that mtime is the sole heartbeat and freshness truth against the 1800-second TTL. A fresh foreign lock means back off; a stale one is taken only by explicit takeover, which appends an audit line to savepoint.md and replaces the prior controller. Rearming the same session refreshes known provenance without changing authority. Repair is one idempotent function exposed by the `plastic-lock` CLI (`who`, status, fix, release, reclaim, delegate) and by the boarding skill; it also migrates legacy lock files that still carry a pid. `who` is a read-only durable-files view of controller, mtime heartbeat, delegates, and claims. `Arm.delivery` is the hash `Worktree.provision`, `release`, and `finish` take, and it records the code worktree path and branch plus a `provisioned` flag.
+An intent whose delivery touches code runs in its own git worktree, and an intent's delivery is single-owner: exactly one session develops it at a time. Both properties are owned by Plastic, not the harness (intents 73c and 108). The lock is a durable `delivery.lock` JSON file inside the intent directory, acquired atomically (O_EXCL) at arm time. Its `owner_session` is the sole authorization identity. Controller provenance (`harness`, `agent`, `model`, `thread`, and `mode`) is descriptive only, accepts explicit values from the harness, and is never inferred from transcripts or paths; legacy omissions render as `Unknown`. Liveness is a lease: write-path hooks refresh the file mtime on owner activity, and that mtime is the sole heartbeat and freshness truth against the 1800-second TTL. A fresh foreign lock means back off; a stale one is taken only by explicit takeover, which appends an audit line to savepoint.md and replaces the prior controller. Rearming the same session refreshes known provenance without changing authority. The internal `plastic-lock` CLI exposes the lock verbs (`arm`, `status`, `who`, `fix`, `release`, `reclaim`, `delegate`, `claim`, `release-claim`), and the public `plastic auto lock` command runs its `status`, `fix` and `release` verbs. `fix` is the idempotent repair; it also migrates legacy lock files that still carry a pid. `who` is a read-only durable-files view of controller, mtime heartbeat, delegates, and claims. `Arm.delivery` is the hash `Worktree.provision`, `release`, and `finish` take, and it records the code worktree path and branch plus a `provisioned` flag.
 
 Provisioning is deterministic and cwd-independent. Plastic resolves the project repo from `projects.yml` and runs `git -C <repo> worktree add`, so it never relies on the current directory (this is the fix for the cwd-not-repo-root gap that silently degraded the harness worktree tool). One worktree is created per project intent, named `{id}--{slug}`: the code worktree at `<repo>/.claude/worktrees/{id}--{slug}` on branch `plastic/{id}--{slug}`, where all code edits happen. A second, store worktree used to exist; intent 178 retired it, and store-write safety for lifecycle-doc commits now comes from intent 197's branch-from-main plus scoped-commit mechanism. Creation is idempotent: an existing worktree path is reused, not re-created. Disarming releases the worktree (`git worktree remove` then `git worktree prune`) and clears the block.
 
@@ -290,9 +259,9 @@ Controller, delegate, and claim records answer different questions. The controll
 
 Done is one law with three signals that must agree. The INDEX `## Completed` or `## Abandoned` section is the single canonical terminal marker (the store-wide ledger a fresh session reads first), so it wins on any conflict. `outcome.md` is the deliverable-exists signal, mandatory at every terminal (delivered and abandoned alike) and self-declaring through a `disposition: delivered|abandoned` frontmatter header. The savepoint `Done delivered|abandoned` line is the audit echo. When the three disagree, INDEX is authoritative and `doctor` (the `done_signals` check) reports the mismatch.
 
-The audit echo can itself drift, so a pure, disk-only detector (`Savepoint.savepoint_phantom_lines`, intent 134; the ledger code lives in `scripts/lib/savepoint.rb` since intent 303) checks it: a savepoint line is a phantom when its file-landing milestone is absent or still a sentinel placeholder, its `(stage, milestone)` pair is a duplicate, or a state line's stage prerequisite is missing on disk. A live (INDEX Active) intent auto-rebuilds through `plastic-intent-savepoint`; a terminal (Completed/Abandoned) intent is immutable, so a phantom there is report-only, surfaced as a `doctor` `check_done_signals` advisory that warns, never fails. (removed in 2.0, intent 304)
+The audit echo can itself drift, so a pure, disk-only detector (`Savepoint.savepoint_phantom_lines`, intent 134; the ledger code lives in `scripts/lib/savepoint.rb` since intent 303) checks it: a savepoint line is a phantom when its file-landing milestone is absent or still a sentinel placeholder, its `(stage, milestone)` pair is a duplicate, or a state line's stage prerequisite is missing on disk. Doctor's `savepoint_truthful` check (in `done_signals`) reports phantoms as a warning, never a failure. For a live (INDEX Active) intent its fix hint names `Savepoint.rebuild_savepoint`; a terminal (Completed/Abandoned) intent is immutable, so a phantom there stays report-only.
 
-The End tail runs in a fixed order: `outcome.md`, then the INDEX terminal move, then the savepoint `Done` line, then the commit, then disarm (worktree release, then `Lock.release`). The design put a QMD reindex last, after disarm, so the index never references a released lock; `scripts/end-intent` does not run it in 2.0 (a known gap). The post-done access window is bounded by the delivery lock, `[INDEX terminal to Lock.release]`: while the lock is held the completing session keeps full access, and once the lock is released the directory is frozen (writable again only on an explicit owner grant; there is no maintenance lock, the one intent 112 proposed was abandoned).
+The End tail runs in a fixed order: `outcome.md`, then the INDEX terminal move, then the savepoint `Done` line, then the commit, then disarm (worktree release, then `Lock.release`). The design put a QMD reindex last, after disarm, so the index never references a released lock; `scripts/end-intent` does not run it in 2.0, and no public close path reindexes (a known gap). No hook freezes the intent directory after the lock is released: since intent 302 no hook blocks a write, and doctor's `done_signals` checks report drift instead.
 
 Since intent 188, `scripts/end-intent` performs disarm itself, as its own step 5 after the
 outcome/INDEX/savepoint/commit steps commit: the script's exit code 0 now means both "the
@@ -311,29 +280,25 @@ checks with `git merge-base --is-ancestor` that the code is an ancestor of the r
 checkout's current branch. It checks the HEAD commit of the code worktree, whether that
 worktree is on its own branch, a renamed branch, or a detached HEAD. It also checks the code
 branch, which still matters after the worktree is removed. The checkout must be on a branch
-other than the code branch. If the code isn't merged, or Git can't answer, the close and its dry run exit 9 and change nothing. `end-intent` never
+other than the code branch. If the code isn't merged, or Git can't answer, `end-intent` and its dry run exit 9 and change nothing, and `plastic intent end` reports that as exit 1 with the reason. `end-intent` never
 merges: the owner merges or releases the work and runs the close again. An abandoned close
 and a store-only intent skip the check.
 
-## dashboard
+## status and the dashboard
 
-The dashboard is the work cockpit. It answers three questions: where we are (a short prose summary of recent delivery, plus capped active work), where we go next (the most-valuable next work, ranked), and how to conduct each item (a disposition). The split keeps determinism while reaching a Markdown UI:
+`plastic status` prints one row per store this machine holds: the store's slug, its count of active intents, and their ids (for example `global  2 active  7, 9`). It then names one store to continue: the store whose repository holds the working directory when that store has active work, else the store with the most active intents, else `plastic help` when no store has active work. `--json` returns the same rows as a `result` hash of slug to summary. It renders no board, table, prose summary or ranking.
 
-- **Heavy script, mechanical fill**: `dashboard.rb --data [continue|project <slug>]` emits one complete JSON payload (a prose summary, the capped active list, the ranked next-work list, counts, project summaries, an honest-totals footer). A prose skill once filled a Markdown template from that payload by hand; `plastic status` now renders the board directly, with no template fill and no reasoning step. Same store state gives the same payload regardless of model.
-- **Markdown surface, short by default (intent 202)**: the board is Markdown because the user's UI renders Markdown natively but collapses raw tool-call stdout. The skill templates (`dashboard-global.md`, `dashboard-project.md`) were retired with the skill; `plastic status` renders the board itself. The project board shows, and shows only, a 2-3 sentence prose summary of what was delivered most recently, an Active table capped at 3 (ordered lifecycle-stage descending, a later savepoint breaking a tie within a stage), a Next-work table capped at 5, and a one-line footer stating true totals. The global board gets the same treatment: the prose summary replaces its recently-worked table, and the same honest-totals footer sits beside its next-work table. The raw Future table (which duplicated Next-work, ranked) is gone from the project board, and the recently-worked table is gone from both.
-- **Entry flow**: the board is the menu: the user replies in free prose with an intent id, a project name (which re-runs the script for that project), or a request to start something new. No capped multiple choice picker.
-- **Worker visibility**: active intent rows derive Worker and Activity from the same durable lock view as `plastic-lock who`. They show explicit controller harness and agent values, freshness from the lock file mtime, and `Unknown` for absent legacy provenance. The dashboard never searches harness transcripts or guesses from session-id shape.
-- **Heuristics**: value is high for an explicit `value: high` field, a human authored root, or an intent that is a source of another (it has spawned follow-on work). A purely relational chain entry alone is not a value signal (intent 68). The `unblocked` flag fires only when a future intent has all of its sources done AND at least one source's completion date is strictly later than the intent's own created date (a genuine wait, not a birth-time default); `in-progress` requires real post-birth savepoint activity, not just the creation stamp; `stale` only on aging future intents, so flags stay low noise.
-- **Caps, explicit and honest (intent 202)**: the Active cap (3) and Next-work cap (5) are `dashboard.rb` defaults, overridable per section with `--limit-active`/`--limit-next`, or lifted entirely with `--all`; each entry's text is truncated to 120 characters with a trailing ellipsis. The payload always reports the true total alongside whatever is shown, so the footer states an honest count ("3 of 12 active, 5 of 47 next work") instead of a silent "+N more" row. Two paging mechanisms ship together: conversational paging (the skill re-invokes the producer with a larger `--limit-*` or `--all` when the user types "more"/"all", carrying no state on disk), and `--plain`, a plain-text, uncapped mode meant to pipe into a real pager (`less`).
-- **Auto-mode contract**: `--json` still emits the machine readable manifest (`dispatchable_queue`, `human_only`, `next_big_thing`) that `plastic-auto` consumes; unchanged by intent 202. The plain ASCII cockpit (`continue`/`project <slug>`/`all`, no flag) also stays untouched. Roadmaps are the primary planning surface (intent 148): when a tier has a mid-flight roadmap, `plastic-auto` consults `scripts/roadmap-next` first and dispatches its frontier batch; the dashboard `dispatchable_queue` is the fallback, used only when `roadmap-next` reports `none` or `exhausted` (no roadmap, or nothing left to dispatch). The dashboard stays the state view, not the planning surface.
+`scripts/dashboard.rb` still ships as an internal, read-only script. The `capture` hook runs it when a prompt is exactly `continue`: it adds the plain-text cockpit (`dashboard.rb continue`) to the model context, and a banner built from `dashboard.rb continue --data` to the user's terminal. The script's modes are:
 
-The skill-authoring guides left the installed skill tree in 2.0 (intent 304). The general standard now lives in the `skill-creating` and `skill-evaluating` skills at [zalom/agent-skills](https://github.com/zalom/agent-skills), and `docs/skill-authoring.md` keeps the Plastic-only rules.
+- `--data`: one JSON payload with the capped active list (3 by default, `--limit-active N`), the ranked next-work list (5 by default, `--limit-next N`), and the true totals; `--all` lifts both caps, and entry text is truncated to 120 characters.
+- `--json`: the machine-readable manifest (`dispatchable_queue`, `human_only`, `next_big_thing`).
+- `--plain`: the full, uncapped board as plain text, meant to pipe into a pager.
+
+Same store state gives the same output regardless of model. Roadmaps are the planning surface: `plastic next` and `plastic continue` read the roadmap frontier through `RoadmapQueue`, and the dashboard stays a state view.
 
 ## CLI output and progression
 
-The command layer owns project scope and next actions. Scoped commands accept
-`--project`; emitted commands retain the resolved project. Repository paths and
-store paths both resolve scope, including filesystem aliases.
+The command layer owns project scope and next actions. The command table is `scripts/lib/cli/table.rb` (intent 363): one frozen hash maps each command name to its file, its class, and the line `plastic help` prints. Help topics are the `docs/help/*.md` files, printed by `plastic help TOPIC`. Every command parses `--json` and `--project SLUG` through the shared `Command` parser, except the installer verbs (`install`, `update`, `uninstall`, `rollback`), which accept only their own flags, and `plastic hook EVENT`, which hands the event straight to its launcher. Emitted commands retain the resolved project. Repository paths and store paths both resolve scope, including filesystem aliases.
 
 JSON commands capture script stdout under `result.output` and emit one document.
 Diagnostics remain on stderr. Direct intents use their specification, plan, and
@@ -373,6 +338,14 @@ files still close through the backfill.
 `--dry-run` runs the same refusals as the real close and writes nothing. It
 refuses an untouched scaffold, a hollow delivered report and a dirty code
 worktree. A passing dry run ends with `next: none`.
+
+A real delivered close refuses an untouched scaffold and unmerged code before
+it writes anything. The hollow-report refusal runs later, after outcome
+generation and the backfill, so a close it refuses may already have written
+`outcome.md` or action files. INDEX.md, the savepoint `Done` line and the store
+commit stay untouched in that case. A dirty code worktree refuses at disarm,
+after the store commit. `plastic intent end` reports each of these refusals as
+exit 1 with the reason.
 
 ### Project registration
 
@@ -417,3 +390,13 @@ A dispatch line names the agent type for the node's kind. A research or verify
 node has no worktree, and its dispatch line and input both say it is read-only.
 When a step leaves every node in a finished state, `plastic intent step` names
 `plastic intent verify ID` as the next command instead of another step.
+
+## History: the 1.x skill design
+
+This section describes Plastic 1.x. It is not current behavior.
+
+- **Skills.** In 1.x the workflows were `SKILL.md` packages: direct-mode routing, intent creation, brainstorming, planning, executing, releasing, indexing, and a conventions router skill whose chapters each consuming skill loaded on demand. Intents 304 and 372 retired them into the `plastic` command and `docs/help/*.md`.
+- **Direct mode.** A booted session rested in direct mode, and the `plastic-direct` skill routed each prompt on a time estimate. A change of about five minutes ran inline, a vague prompt was offered a thinking intent, and a larger change was offered a dedicated intent. Intent 372 retired the skill.
+- **Stage agents.** Each lifecycle stage had its own agent: discovery for What, brainstorming and spec agents for Why, a planner for How, the executor for Exec, and a curator for Done. Intent 304 removed all of them except `plastic-executor`.
+- **The dashboard skill.** A prose skill filled Markdown board templates from the `dashboard.rb --data` payload. It was retired with the other skills.
+- **The continue router.** A continue skill chose among a project route, an intent route that read the intent's savepoint first, and a roadmap route. `plastic continue` replaced it.

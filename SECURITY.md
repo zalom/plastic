@@ -12,7 +12,7 @@ downloads the package through `npx`. `plastic session commit` in a project whose
 | Place | What is written |
 | ----- | --------------- |
 | `~/.plastic/` | Scripts, hooks, templates, `PLASTIC.md`, the install ledger `versions.json`, and your stores. |
-| `~/.claude/agents/`, `~/.claude/hooks`, `~/.claude/plastic/` | The Plastic agents and hooks for Claude Code, and the install record (`manifest.json`, `VERSION`). No skills ship; the installer may leave an empty `~/.claude/skills`. |
+| `~/.claude/agents/`, `~/.claude/hooks`, `~/.claude/plastic/` | The Plastic agents and hooks for Claude Code, and the install record (`manifest.json`, `VERSION`). No workflow skills ship: the package's `skills/` holds only the shared `_decision-tables.md`, which the installer places in `~/.plastic/`, and `~/.claude/skills` may be left empty. |
 | `~/.claude/settings.json` | Hook entries, and the status line when you choose it. |
 | `~/.claude/CLAUDE.md` | One managed block between the `BEGIN PLASTIC` and `END PLASTIC` markers. |
 | `~/.codex/AGENTS.md`, `~/.codex/hooks.json`, `~/.codex/agents/` | The same, for Codex CLI. |

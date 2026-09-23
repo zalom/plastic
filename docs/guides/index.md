@@ -4,7 +4,7 @@ Task-oriented walkthroughs for people meeting Plastic for the first time,
 through choosing a way of working, to understanding the bigger picture.
 
 These guides were written for Plastic 1.x, when each step was a skill invoked as
-`/plastic-<name>` or `$plastic-<name>`. No skills ship in 2.0. Every step is now a `plastic`
+`/plastic-<name>` or `$plastic-<name>`. Those workflow skills no longer ship in 2.0. Every step is now a `plastic`
 command, and `plastic help` lists them. For a tested walk from a new intent to merged code, run
 `plastic help tutorial`.
 

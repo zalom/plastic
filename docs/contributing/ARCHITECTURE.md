@@ -1,8 +1,7 @@
 # Architecture
 
 This page covers the `plastic` command. The system architecture, with the two processes and
-the store layout, is in [docs/architecture.md](../architecture.md). That page moves into this
-slot when the scripts and tests that name its path change, in intent 372.
+the store layout, is in [docs/architecture.md](../architecture.md).
 
 ## The life of a command
 
@@ -19,7 +18,7 @@ bin/plastic
 
 ## The shared classes
 
-All of them live under `scripts/lib/cli/`.
+`CLI` lives in `scripts/lib/cli.rb`; the rest live under `scripts/lib/cli/`.
 
 | Class | Job |
 | ----- | --- |
@@ -30,6 +29,7 @@ All of them live under `scripts/lib/cli/`.
 | `Scope` | Decides which store a command works on. |
 | `Frontier` | Reads what comes next in a scope, for `next` and `continue`. |
 | `Legacy` | Runs a script that has no library behind it, and hands back its exit status. |
+| `IntentProgress` | Picks the next command for one intent, for `intent show` and `intent step`. |
 
 ## Errors and exit codes
 
@@ -48,8 +48,10 @@ A command receives its streams, environment, home directory and working director
 arguments. No command reads `ENV`, `Dir.home` or `$stdout` directly, so a test never touches
 the real store.
 
-## The three graphs
+## The three databases
 
-The knowledge graph, the work graph and the retrieval graph each get a home on disk and a
-command family. This batch ships the foundation only. Batch 3 of the roadmap adds the
-databases and the retrieval commands, and this page gains their sections then.
+Three SQLite databases sit at the top of the Plastic home: `knowledge_graph.db`,
+`work_graph.db` and `references.db`. `plastic sync` builds them from the store files and keeps
+them level, `plastic index` rebuilds the search index in `knowledge_graph.db`, `plastic search`
+and `plastic query` read that index, `plastic checkout` restores missing store files from the
+databases, and `plastic backup` archives them.
