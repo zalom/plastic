@@ -22,8 +22,19 @@ savepoint line -> commit -> disarm (Worktree.release -> Lock.release) -> QMD rei
 reindex always LAST. Running the reindex last keeps the index from ever referencing a lock
 that disarm just removed.
 
+`scripts/end-intent` never merges code. Before a delivered close writes anything, it checks
+that the intent's code is already merged into the current branch of the repo checkout. It
+checks the commit the code worktree is on, even when that worktree is on a renamed branch or
+a detached HEAD, and it checks the code branch after the worktree is gone. The repo checkout
+must be on the branch you release from, not detached and not on the code branch. If the code
+isn't merged, or Git can't tell, the close exits 9 and changes nothing: INDEX, the savepoint, the
+lock, and the worktree all stay as they were. `--dry-run` refuses the same way. The refusal
+names the merge to run, for example `git -C <repo> merge plastic/<id>--<slug>`. Run that
+ordinary merge, or release the work through your usual process, and then run the close
+again. An abandoned close and an intent with no code repository skip this check.
+
 `scripts/end-intent` performs this order's disarm step (verify the code worktree is clean,
-then merge/remove worktrees, then clear the lock) as its own step 5, mechanically, since
+then remove the worktree, then clear the lock) as its own step 5, mechanically, since
 intent 188: a session no longer needs a separate one-liner for it, and the script's own
 exit code (0) is the single fact a caller needs that the intent is closed AND its delivery
 lock is gone. A pre-flight lock guard runs before anything is written (refuses a live

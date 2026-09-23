@@ -306,6 +306,15 @@ flag overrides it. `end-intent`'s own INDEX-move parser and `IndexEntry.active?`
 one matcher that accepts a real em dash or a plain hyphen as the id/title separator on read,
 while every write still emits the real em dash.
 
+A delivered close requires its code to be merged already. Before any write, `end-intent`
+checks with `git merge-base --is-ancestor` that the code is an ancestor of the repo
+checkout's current branch. It checks the HEAD commit of the code worktree, whether that
+worktree is on its own branch, a renamed branch, or a detached HEAD. It also checks the code
+branch, which still matters after the worktree is removed. The checkout must be on a branch
+other than the code branch. If the code isn't merged, or Git can't answer, the close and its dry run exit 9 and change nothing. `end-intent` never
+merges: the owner merges or releases the work and runs the close again. An abandoned close
+and a store-only intent skip the check.
+
 ## dashboard
 
 The dashboard is the work cockpit. It answers three questions: where we are (a short prose summary of recent delivery, plus capped active work), where we go next (the most-valuable next work, ranked), and how to conduct each item (a disposition). The split keeps determinism while reaching a Markdown UI:

@@ -187,6 +187,12 @@ class ArmTest < Minitest::Test
     assert_equal true, block["provisioned"]
   end
 
+  def test_code_paths_name_the_worktree_before_it_exists
+    p = Worktree.paths(slug: "demo", intent_id: "96", intent_slug: "demo", home: @home)
+    assert_equal p, Arm.code_paths(intent_dir: @dir, home: @home)
+    refute Dir.exist?(p["code"])
+  end
+
   def test_delivery_carries_the_intent_and_worktree_blocks
     data = Arm.delivery(intent_dir: @dir, home: @home)
     assert_equal({ "id" => "96", "dir" => "96--demo", "store" => @store }, data["intent"])

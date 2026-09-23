@@ -50,6 +50,10 @@
 #      the durable lock file is actually gone afterward, and release it directly
 #      when a foreign-keyed disarm left it.
 #
+# A delivered close never merges code. Its code branch must already be merged
+# into the repo checkout's current branch, or the close refuses before any
+# write (exit 9).
+#
 # Exit codes:
 #   0  ok - the intent is closed and no delivery.lock remains.
 #   1  usage/resolution failure, OR an id that resolves to neither ## Active
@@ -70,8 +74,11 @@
 #   8  delivered close of an untouched scaffold refused (acceptance N3):
 #      nothing was worked, so there is nothing to deliver. Close it as
 #      abandoned, or do the work first. Authors nothing.
+#   9  delivered close refused because its code branch is not merged into the
+#      repo checkout's current branch. Refused before any write: nothing is
+#      merged, written, or released. Merge the branch, then run the close again.
 #
-# --dry-run runs the same refusals as the real close (exits 8, 7 and 5 with
+# --dry-run runs the same refusals as the real close (exits 8, 9, 7 and 5 with
 # a "would refuse" line) and writes nothing: the hollow-report gate is judged
 # on a scratch copy that went through the same outcome generation and
 # backfill.
@@ -84,6 +91,7 @@ require "stringio"
 require "tmpdir"
 require "pathname"
 require_relative "lib/arm"
+require_relative "lib/exec_worktree"
 require_relative "lib/index_entry"
 require_relative "lib/savepoint"
 require_relative "lib/lock"
@@ -800,6 +808,96 @@ rescue StandardError
   true
 end
 
+# A delivered close whose code is not on the repo checkout's current branch,
+# as a refusal message (nil when it is, or for a store-only project).
+# end-intent never merges: the owner merges or releases the work, then runs
+# the close again. A real code worktree must prove that its HEAD commit is
+# merged, so a detached or renamed branch is still checked. The code branch
+# must be merged too, even after its worktree is gone. A git failure refuses.
+# A directory that is not a working git worktree, with no code branch, is left
+# to the dirty-worktree guard, which refuses what it cannot inspect.
+def unmerged_refusal(intent_dir, runner: Worktree::ShellRunner.new)
+  paths = Arm.code_paths(intent_dir: intent_dir)
+  code = paths["code"]
+  return nil if code.nil?
+
+  repo = ExecWorktree.repo_from_worktree_code(code)
+  unless runner.run("-C", repo, "rev-parse", "--git-dir").success?
+    # No .git at all is a project without code; a .git that Git cannot read is not.
+    return nil unless File.exist?(File.join(repo, ".git"))
+
+    return "could not inspect the Git repository #{repo}, so the code cannot be shown to be merged. " \
+      "Check the repository, then run the close again"
+  end
+
+  unmerged_worktree_head(runner, code, repo, paths["code_branch"]) ||
+    unmerged_branch(runner, repo, paths["code_branch"])
+end
+
+# True when `code` is the top of its own git work tree, not a plain
+# directory inside the repo or a broken checkout.
+def real_worktree?(runner, code)
+  return false unless File.directory?(code)
+
+  top = runner.run("-C", code, "rev-parse", "--show-toplevel")
+  top.success? && File.realpath(top.stdout.strip) == File.realpath(code)
+rescue SystemCallError
+  false
+end
+
+def unmerged_worktree_head(runner, code, repo, branch)
+  return nil unless real_worktree?(runner, code)
+
+  head = runner.run("-C", code, "rev-parse", "--verify", "--quiet", "HEAD^{commit}")
+  unless head.success?
+    return "could not read the HEAD commit of the code worktree #{code}, so its work cannot be " \
+      "shown to be merged. Commit it, merge it into the current branch of #{repo}, then run the close again"
+  end
+  sha = head.stdout.strip
+  on = runner.run("-C", code, "symbolic-ref", "--quiet", "--short", "HEAD")
+  name = on.success? ? on.stdout.strip : nil
+  ref = (name == branch) ? branch : sha[0, 12]
+  where = name ? "on branch #{name}" : "detached"
+  ancestry_refusal(runner, repo, sha, ref, "the code worktree #{code} (#{where} at #{sha[0, 12]})", branch)
+end
+
+def unmerged_branch(runner, repo, branch)
+  found = runner.run("-C", repo, "show-ref", "--verify", "--quiet", "refs/heads/#{branch}")
+  return nil if found.status == 1
+  unless found.success?
+    return "could not look up code branch #{branch} in #{repo}. Check the repository, then run the close again"
+  end
+  ancestry_refusal(runner, repo, branch, branch, "code branch #{branch}", branch)
+end
+
+# nil when `rev` is an ancestor of the branch the repo checkout is on, else a
+# refusal naming `what` and the ordinary merge of `ref` that fixes it.
+def ancestry_refusal(runner, repo, rev, ref, what, branch)
+  target = target_refusal(runner, repo, branch)
+  return target if target
+
+  check = runner.run("-C", repo, "merge-base", "--is-ancestor", rev, "HEAD")
+  return nil if check.success?
+
+  verdict = (check.status == 1) ? "is not merged into" : "could not be checked against"
+  "#{what} #{verdict} the current branch of #{repo}. " \
+    "Merge it there first (git -C #{repo} merge #{ref}), then run the close again"
+end
+
+# Integration means merged into a branch other than the code branch, so a
+# detached checkout, or one on the code branch itself, proves nothing.
+def target_refusal(runner, repo, branch)
+  on = runner.run("-C", repo, "symbolic-ref", "--quiet", "--short", "HEAD")
+  unless on.success?
+    return "the repo checkout #{repo} is not on a branch, so no branch holds the merged code. " \
+      "Check out the branch you release from, merge #{branch} into it, then run the close again"
+  end
+  return nil unless on.stdout.strip == branch
+
+  "the repo checkout #{repo} is on the code branch #{branch} itself, so the code is not merged anywhere. " \
+    "Check out the branch you release from, merge #{branch} into it, then run the close again"
+end
+
 # The hollow-report verdict the real close would reach, judged on a scratch
 # copy of the intent after the same outcome generation and backfill, so the
 # dry run writes nothing.
@@ -886,6 +984,13 @@ def main(argv)
       warn "end-intent: refusing to deliver an untouched scaffold: #{untouched}"
       warn "end-intent: do the work first, or close it with --disposition abandoned"
       exit 8
+    end
+
+    unmerged = unmerged_refusal(intent_dir)
+    if unmerged
+      warn "end-intent: #{opts[:dry_run] ? "dry run: would refuse" : "refusing"} a delivered close: #{unmerged}"
+      warn "end-intent: nothing was merged, written, or released"
+      exit 9
     end
   end
 

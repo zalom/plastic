@@ -81,12 +81,7 @@ module Arm
   # `{code, code_branch, provisioned}` derived from projects.yml and the
   # intent id: the same path provision creates, `provisioned` iff it exists.
   def worktree_block(intent_dir:, home: Dir.home)
-    dir = File.expand_path(intent_dir)
-    store = store_for(dir)
-    h = home_for(dir, home: home)
-    slug = Worktree.slug_for_store(store, home: h)
-    p = Worktree.paths(slug: slug, intent_id: intent_id_for(dir),
-                       intent_slug: Worktree.slug_from_dir(dir), home: h)
+    p = code_paths(intent_dir: intent_dir, home: home)
     code = p["code"]
     provisioned = !blank?(code) && Dir.exist?(code)
     {
@@ -94,6 +89,16 @@ module Arm
       "code_branch" => provisioned ? p["code_branch"] : nil,
       "provisioned" => provisioned,
     }
+  end
+
+  # The code worktree path and branch this intent would have, whether or not
+  # the worktree exists on disk (blank code for a store-only project).
+  def code_paths(intent_dir:, home: Dir.home)
+    dir = File.expand_path(intent_dir)
+    h = home_for(dir, home: home)
+    slug = Worktree.slug_for_store(store_for(dir), home: h)
+    Worktree.paths(slug: slug, intent_id: intent_id_for(dir),
+                   intent_slug: Worktree.slug_from_dir(dir), home: h)
   end
 
   # Owner rule 2026-08-31: has this session already started a conversation?

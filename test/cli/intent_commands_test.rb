@@ -38,9 +38,9 @@ class CliIntentCommandsTest < Minitest::Test
   def command(verb, *argv, status: 0, directory: "/nowhere")
     file, const, = Plastic::CLI::TABLE.fetch(verb)
     require File.expand_path("../../scripts/lib/cli/#{file}", __dir__)
-    runner = lambda do |path, arguments|
+    runner = lambda do |path, arguments, capture: false|
       @calls << [path, arguments]
-      status
+      capture ? [@captured.to_s, status] : status
     end
     Plastic::CLI::Commands.const_get(const).call(argv, directory: directory, runner: runner, **@fixture.streams)
   end
@@ -297,6 +297,27 @@ class CliIntentCommandsTest < Minitest::Test
     assert_equal 1, command("intent end", "372", "--delivered", "--summary", "text", status: 8)
     assert_includes @fixture.warned, "untouched scaffold"
     assert_includes @fixture.warned, "--abandoned"
+  end
+
+  def test_end_names_the_unmerged_branch_refusal
+    assert_equal 1, command("intent end", "372", "--delivered", "--summary", "text", status: 9)
+    assert_includes @fixture.warned, "whose code is not merged: run the git merge it names"
+  end
+
+  def test_end_reports_the_unmerged_refusal_as_a_json_failure
+    assert_equal 1, command("intent end", "372", "--delivered", "--summary", "text", "--json", status: 9)
+
+    error = JSON.parse(@fixture.printed).dig("result", "error")
+
+    assert_equal "failed", error.fetch("kind")
+    assert_includes error.fetch("message"), "whose code is not merged: run the git merge it names"
+  end
+
+  def test_end_keeps_the_unmerged_refusal_detail_in_json_output
+    @captured = "end-intent: refusing a delivered close: code branch plastic/1--x is not merged\n"
+    command("intent end", "372", "--delivered", "--summary", "text", "--json", status: 9)
+
+    assert_includes JSON.parse(@fixture.printed).dig("result", "output").join, "code branch plastic/1--x is not merged"
   end
 
   def test_end_a_passing_dry_run_names_no_next_command

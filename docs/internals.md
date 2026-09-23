@@ -1879,11 +1879,35 @@ must have no uncommitted changes and no commits past its base. When the
 worktree cannot be read, the intent counts as worked. `end-intent` exits 8 on a
 delivered close of such an intent, before any write.
 
+`unmerged_refusal` in `scripts/end-intent` runs next, also before any write, for
+a delivered close. `Arm.code_paths` names the code worktree and branch the
+intent would have, whether or not the worktree exists. The check fails closed:
+
+- When the code directory is the top of a real Git worktree, the commit at its
+  HEAD must be an ancestor of the repo checkout's HEAD. This covers a renamed
+  branch and a detached HEAD. A HEAD that `git rev-parse` can't read refuses.
+- When the code branch exists, it must be an ancestor too, so a removed
+  worktree doesn't hide unmerged work. A failed branch lookup refuses.
+- When the repo checkout is detached, or is on the code branch itself, no
+  other branch holds the code, so the close refuses. `target_refusal` checks
+  this before each ancestry check.
+- When `git merge-base --is-ancestor` itself fails, the close refuses the same
+  as when the code isn't merged.
+- When the repo has a `.git` entry but `git rev-parse --git-dir` fails there,
+  the close refuses.
+
+A refusal exits 9 and names the ordinary merge to run. `end-intent` never
+merges. A store-only project and a repo path with no `.git` entry skip the
+check. So does a code directory that isn't a real worktree and has no branch.
+The dirty-worktree guard refuses that last case (exit 5) because it can't
+inspect it.
+
 `end-intent --dry-run` copies the intent to a scratch directory. It runs the
 same outcome generation and backfill on that copy, then applies the
 hollow-report gate (exit 7). The dirty-worktree guard is shared by the dry run
-and the disarm step (exit 5). `plastic intent end` names exits 7 and 8 in its
-failure message.
+and the disarm step (exit 5). The dry run also refuses exits 8 and 9 exactly as
+the real close does. `plastic intent end` names exits 7, 8, and 9 in its failure
+message.
 
 ### Bounded display replay
 
