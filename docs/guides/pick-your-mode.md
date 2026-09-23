@@ -26,7 +26,7 @@ line. The owner's rule of thumb is about five minutes of work.
 You are not sure yet what the right change is, or the change is too big to hold in one prompt.
 Thinking is a conversation first: the agent asks one question at a time, records each ruling you
 make as an insight in the intent with `plastic intent rule`, and then writes `spec.md`,
-`plan.md` and `checklist.md`, which say how the work will be done. `plastic intent spec` prints
+`plan.md`, and `checklist.md`, which say how the work will be done. `plastic intent spec` prints
 the rules of that conversation. After that it works through the checklist. Choose it when the work is delicate, new,
 or you want to reason it through before anything is built. Ask to be grilled if you want the
 questions to be hard.

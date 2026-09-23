@@ -44,11 +44,11 @@ Plastic keeps the shape of the work fixed and leaves the thinking to you and you
 | Plan the work | Holds the plan as a checklist or as a graph of nodes, and names the next step |
 | Resume tomorrow | Prints where a project stands and the next action in one line |
 | Hand work to an agent team | Arms a delivery lock, briefs each role and reports the result |
-| Close the work | Checks the merge and the records, fills placeholder records, and moves the intent to Completed |
+| Close the work | Checks the merge and the records, fills placeholder records, and moves the intent to Completed or Abandoned |
 | Find an old decision | Searches every store, ranked, with one excerpt for each match |
 | Run many projects | Keeps one store for each project, plus a global store, all in plain Markdown and Git |
 | Steer a long delivery | Reads a roadmap as a graph and names the entry most worth continuing |
-| Protect the record | Writes one archive of the three databases, as of the last `plastic sync`, with `config.yml`, `projects.yml` and `INDEX.md` |
+| Protect the record | Writes one archive of the three databases, as of the last `plastic sync`, with `config.yml`, `projects.yml`, and `INDEX.md` |
 
 Every result ends with a `next:` line and a `because:` line. The `--json` option prints the
 same result as data with stable keys. Every command takes it except the installer commands

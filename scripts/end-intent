@@ -582,7 +582,7 @@ def warn_if_active_duplicate_remains(content, id)
 
   warn "end-intent: intent #{id} still has an entry under ## Active after the move " \
        "(a duplicate ## Active line for this id); INDEX.md needs manual cleanup. Check " \
-       "INDEX.md directly, or run /plastic-doctor."
+       "INDEX.md directly, or run `plastic doctor`."
 end
 
 # The dry-run line for the INDEX move the close will make, resolved on the
@@ -770,7 +770,7 @@ def run_disarm(intent_dir, id, session, discard_worktree_changes:,
         # let the caller sort it out.
         warn "end-intent: the delivery lock at #{Lock.path(intent_dir)} is now held by " \
              "#{current['owner_session'].inspect}, which acquired it during this close; " \
-             "refusing to delete another session's lock. Run /plastic-doctor to check the " \
+             "refusing to delete another session's lock. Run `plastic doctor` to check the " \
              "lock status."
       end
       # current.nil? here means the lock is corrupt/unparseable; nothing to
@@ -785,13 +785,13 @@ def run_disarm(intent_dir, id, session, discard_worktree_changes:,
     if block.nil?
       warn "end-intent: no worktree block could be derived for intent #{id}; " \
            "the delivery lock was cleared directly from disk, but any worktree this intent " \
-           "provisioned was NOT removed. Run /plastic-doctor to check for an orphaned worktree."
+           "provisioned was NOT removed. Run `plastic doctor` to check for an orphaned worktree."
     end
     return :ok
   end
 
   warn "end-intent: the delivery lock at #{Lock.path(intent_dir)} is still present after " \
-       "disarm and a direct release attempt. Run /plastic-doctor to check the lock status."
+       "disarm and a direct release attempt. Run `plastic doctor` to check the lock status."
   :lock_remains
 end
 
@@ -993,7 +993,7 @@ def main(argv)
     warn "end-intent: a delivery lock exists at #{Lock.path(intent_dir)} but no session " \
          "identity could be resolved (--session, CLAUDE_CODE_SESSION_ID, and the lock's " \
          "own recorded owner are all blank); refusing rather than guessing. Pass " \
-         "--session explicitly, or run /plastic-doctor check the lock status."
+         "--session explicitly, or run `plastic doctor` to check the lock status."
     exit 4
   end
 
@@ -1001,7 +1001,7 @@ def main(argv)
 
   if verdict == :refuse
     warn "end-intent: delivery lock for #{id} is held by a live session " \
-         "(#{lock_data['owner_session']}); refusing to close. Run /plastic-doctor check " \
+         "(#{lock_data['owner_session']}); refusing to close. Run `plastic doctor` to check " \
          "the lock status"
     exit 4
   end
@@ -1009,7 +1009,7 @@ def main(argv)
   if verdict == :refuse_corrupt
     warn "end-intent: the delivery lock at #{Lock.path(intent_dir)} exists and is fresh, " \
          "but its content will not parse (corrupt); refusing to close since another " \
-         "session may be actively heartbeating it. Run /plastic-doctor check the lock " \
+         "session may be actively heartbeating it. Run `plastic doctor` to check the lock " \
          "status, or plastic-lock fix once it is confirmed safe."
     exit 4
   end
@@ -1074,7 +1074,7 @@ def main(argv)
     takeover_status, = Lock.takeover(intent_dir, session: session)
     unless takeover_status == :taken
       warn "end-intent: could not take over the stale delivery lock for #{id} " \
-           "(status: #{takeover_status}); run /plastic-doctor fix the lock"
+           "(status: #{takeover_status}); run `plastic doctor` to inspect the lock"
       exit 4
     end
   end

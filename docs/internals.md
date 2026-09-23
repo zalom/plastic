@@ -52,12 +52,12 @@ Seven agent role files ship in `agents/`: `plastic-enforcer`, `plastic-executor`
 `plastic-node-work`, `plastic-node-verify`, `plastic-node-research`,
 `plastic-primary-advisor`, and `plastic-secondary-advisor`. They are handoff contracts,
 not free-prose producers: each names what it consumes and produces. The installer copies
-`agents/*.md` into each harness agent directory, and the manifest tracks the copies, so
-they prune on update and uninstall. The team model is `plastic help agent-architecture`.
+`agents/*.md` into the Claude and Hermes agent directories and renders each one as TOML for
+Codex. The manifest tracks the installed files, so they prune on update and uninstall. The team model is `plastic help agent-architecture`.
 
 ## the-harness-system
 
-No hook blocks an edit in 2.0. Intent 302 removed the edit-path gates, the create gate,
+No hook gates an edit on its content or stage in 2.0. Intent 302 removed the edit-path gates, the create gate,
 and the stage-transition gates. The one `PreToolUse` hook, `call-budget`, caps tool calls
 for a dispatched node subagent. The `record` hook writes the savepoint line, refreshes
 the lock heartbeat, and updates the day ledger. Doctor checks and the close checks in
@@ -100,8 +100,9 @@ defined by reference to the human behaviour it mirrors. Two mechanisms:
 - **Hook + instruction**: constrains an agent's reasoning at runtime. A trigger
   that fires on a runtime event and injects a steering instruction. It mirrors the
   human behaviours of *knowing the lifecycle order*, *feeling when to save state*,
-  and *leaving yourself a note when too tired to continue*. In 2.0 no hook blocks
-  an edit; the hooks record state and inject context.
+  and *leaving yourself a note when too tired to continue*. In 2.0 no hook gates
+  an edit on its content or stage; the hooks record state, inject context, and cap a
+  dispatched node's tool calls.
 
 **The three constrainable points.** A brain step has exactly three points where
 form can be constrained, and the mechanisms partition them:
@@ -153,8 +154,8 @@ mtime drifts forward as `## Insights` are appended through the lifecycle.
 `revisions.md` is a sibling per-intent ledger of structural maintenance. It records each
 move-and-record change: the misplaced section, file, or ref, where it came from, the rule it
 broke, and its prior content. `scripts/lib/revisions_writer.rb` (`RevisionsWriter`) appends
-one entry per change for the maintenance tools (`project-links`, `rebuild-graph`,
-`restore-intent-v1`), and `scripts/maintenance-run` commits the change and its receipt as one
+one entry per change for `project-links`, `rebuild-graph`, and the `rebuild-savepoint` tool;
+`restore-intent-v1` writes its own entry. `scripts/maintenance-run` commits the change and its receipt as one
 scoped store commit. A hand edit that moves content records its entry the same way; `plastic
 help maintenance-and-revisions` has the format. The file exists only when maintenance
 happened, so its presence is itself the signal.
@@ -224,8 +225,8 @@ can leave a phantom or dropped line that nothing previously detected. `doctor.rb
 `check_done_signals` carries a `savepoint_truthful` advisory (pass when clean, warn and never
 fail, mirroring `signals_complete`) that runs the detector across every intent dir the check
 already visits. Nothing rebuilds a ledger on its own. For a live (INDEX Active) intent the
-repair is `scripts/maintenance-run --tool rebuild-savepoint --intent <id> --apply`, which calls
-`Savepoint.rebuild_savepoint` and commits the change with its `revisions.md` receipt. A terminal
+repair is `Savepoint.rebuild_savepoint`, which doctor's fix hint names; no command wraps it for a
+live intent. A terminal
 (Completed/Abandoned) intent is immutable: doctor reports and stops, and the 124a manual
 Done-bookend repair (rebuild the skeleton, then re-append the terminal line from git or mtime
 evidence) stays reserved for an explicit human grant.
@@ -338,8 +339,8 @@ intent. `plastic intent show ID` prints that intent's state screen.
   (hooks, scripts, PLASTIC.md, VERSION, version match) and compares each
   file's content against its SHA256 in the install manifests. The global manifest
   (`~/.plastic/manifest.json`) covers PLASTIC.md and global scripts; the agent-side
-  manifest (`~/.claude/plastic/manifest.json`) covers agent scripts, hooks,
-  and the installed `agents/` role files, so `--core` SHA-verifies the role files too.
+  manifest (`~/.claude/plastic/manifest.json`) covers hooks, the shared
+  `_decision-tables.md`, and the installed `agents/` role files, so `--core` SHA-verifies the role files too.
   Agent registration also runs an `agents_exist` check that passes when at least one
   `plastic-*.md` role file is present in the harness agent directory. The
   installer writes both manifests on every install or update. `--core` skips all
@@ -437,8 +438,9 @@ with verbs `detect`, `register`, `reindex` (with an `--async` variant), `status`
 and a read-only `search`) does all the work by delegating to the qmd CLI. Each
 trigger lives at a fixed point:
 
-- **install and project creation**: `plastic install` and `plastic project new` register
-  nothing. The session-start hook suggests `qmd-sync register --all` when QMD is present
+- **install and project creation**: `plastic install` registers every store as a QMD
+  collection (`register_with_qmd`, a no-op when QMD is absent); `plastic project new`
+  registers nothing. The session-start hook suggests `qmd-sync register --all` when QMD is present
   and the stores are not indexed yet.
 - **intent delivery**: no public close path reindexes. `scripts/end-intent` stops at
   disarm, and its header says the reindex step stayed in a retired skill. This is a known
@@ -578,9 +580,10 @@ hook blocks a hand-authored intent file in 2.0; `validate-intent` and doctor's
 `AGENTS.md` states the classification rule: a step becomes a script only when its output is
 a pure function of already-committed artifacts (spec.md, plan.md, checklist.md, outcome.md,
 test results, the diff). Everything else stays judgment and stays with the agent. Intent 213
-applied that rule with thin CLIs over `scripts/lib/` modules. Two of them remain,
-`scripts/scaffold-intent` and `scripts/verify-intent`, and `scripts/end-intent` runs the
-same backfill at close. The arm step is `plastic auto take ID`.
+applied that rule with thin CLIs over `scripts/lib/` modules. Three of them remain:
+`scripts/scaffold-intent`, `scripts/verify-intent`, and `scripts/exec-worktree`, which
+finishes the code worktree. `scripts/end-intent` runs the same backfill as
+`scaffold-intent` at close. The arm step is `plastic auto take ID`.
 
 `scripts/scaffold-intent` is one CLI with one verb, `backfill` (its `spec`, `checklist`, and
 `outcome` subcommands were removed in 2.0, intent 308). It runs `BackfillIntent`
@@ -1397,8 +1400,8 @@ is 0. The rows stay so that a skill added later is measured.
 **Why the working set is reported and not enforced.** Its median term steps by about a
 kilobyte whenever a skill is added or removed, so a ceiling there would turn the suite red on a
 step nobody ruled. The bench prints the number and its gap to the 15,000 target on every run.
-The ceilings stay on the boot injection and the standing surface, which every boot reads and
-the bench measures exactly.
+The ceilings stay on the core block, the boot injection, the boot injection plus the skill
+catalog, and the standing surface, which every boot reads and the bench measures exactly.
 
 The bench is a maintainer tool. It lives under `bin/` beside `bin/test`, is deliberately absent
 from `installer_core.rb`'s manifest, and is never installed into `~/.plastic`: it reads this

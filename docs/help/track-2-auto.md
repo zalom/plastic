@@ -41,7 +41,7 @@ retry with another flag on your own.
 `plastic auto lock status ID` shows who holds the lock.
 
 Checkpoint: name the one precondition auto needs before it will start: the intent you name
-must already exist and be active, in a registered project.
+must already exist in the store the command resolves to.
 
 ### 2. What auto does, and what stays with the user
 
