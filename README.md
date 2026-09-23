@@ -57,14 +57,21 @@ script for the harness.
 
 ## How the record is built
 
-Each intent is one directory. It carries the same small set of files at every stage.
+Each intent is one directory. Its record grows from the original intention through decisions,
+a plan, and delivery. The execution plan can use a checklist or a graph of dependent nodes.
 
 | Stage | Question | File on disk |
 |-------|----------|--------------|
 | What | What is the intention? | `{id}--slug.md` |
-| Why | What context, evidence and decisions shape it? | `spec.md` |
-| How | What is the plan? | `plan.md`, `checklist.md`, `actions/` |
-| Exec | What was delivered? | `outcome.md` |
+| Why | What context, evidence, and decisions shape it? | `spec.md` |
+| How | What is the plan? | `plan.md`; `checklist.md` and `actions/`, or `graph.md` and `nodes/` |
+| Exec | What happened, and what was delivered? | `savepoint.md`, `outcome.md` |
+
+For graph work, `graph.md` links nodes by their dependencies, and `nodes/` holds the
+instructions for each node. Plastic uses those dependencies and the node transitions in
+`savepoint.md` to determine which work is ready. `plastic intent step ID` runs the next
+graph step once the session holds the delivery lock. For checklist work, the same command
+reports the next unfinished item.
 
 The files are plain Markdown in a Git repository that you own. See
 [the architecture](docs/architecture.md) for the full store layout.
