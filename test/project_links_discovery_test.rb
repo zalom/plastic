@@ -80,7 +80,7 @@ class ProjectLinksDiscoveryTest < Minitest::Test
                YAML.dump({ "projects" => { "ghost-project" => { "path" => "/tmp/ghost" } } }))
 
     audit = File.join(@home, "audit.md")
-    results = ProjectLinks.new(plastic_home: @home, dry_run: true, audit_path: audit).run
+    results = ProjectLinks.new(plastic_home: @home, dry_run: false, audit_path: audit).run
     refute_nil results
 
     audit_text = File.read(audit)
@@ -112,7 +112,7 @@ class ProjectLinksDiscoveryTest < Minitest::Test
     write_index(File.join(@home, "projects", "realproj", "INDEX.md"))
 
     audit = File.join(@home, "audit.md")
-    results = ProjectLinks.new(plastic_home: @home, dry_run: true, audit_path: audit).run
+    results = ProjectLinks.new(plastic_home: @home, dry_run: false, audit_path: audit).run
 
     dead_entry = results["global"][:entries].find { |e| e[:id] == "1" }
     unknown_entry = results["global"][:entries].find { |e| e[:id] == "2" }

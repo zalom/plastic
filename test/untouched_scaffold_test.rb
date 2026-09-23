@@ -1,6 +1,7 @@
 require_relative "test_helper"
 require "tmpdir"
 require "fileutils"
+require_relative "../scripts/lib/savepoint"
 require_relative "../scripts/lib/untouched_scaffold"
 
 # UntouchedScaffold.reason names an intent that is still exactly its new-intent

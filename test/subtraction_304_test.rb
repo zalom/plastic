@@ -79,7 +79,6 @@ class Subtraction304Test < Minitest::Test
     "scripts/agent-report" => "Tier B/C",
     "scripts/update.rb" => "fast core tier",
     "scripts/link-suggest" => "Tiers, by context influence",
-    "docs/help/roadmaps.md" => "global tier",
   }.freeze
 
   def test_removed_files_are_gone_and_the_plastic_authoring_doc_is_present

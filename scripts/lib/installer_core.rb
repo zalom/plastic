@@ -416,6 +416,7 @@ class InstallerCore
       "scripts/lib/index_entry.rb" => "scripts/lib/index_entry.rb",
       "scripts/lib/project_config.rb" => "scripts/lib/project_config.rb",
       "scripts/lib/savepoint.rb" => "scripts/lib/savepoint.rb",
+      "scripts/lib/untouched_scaffold.rb" => "scripts/lib/untouched_scaffold.rb",
       "scripts/lib/guarded_append.rb" => "scripts/lib/guarded_append.rb",
       "scripts/lib/node_ledger.rb" => "scripts/lib/node_ledger.rb",
       "scripts/lib/node_input_compatibility.rb" => "scripts/lib/node_input_compatibility.rb",

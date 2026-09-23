@@ -166,7 +166,7 @@ class CliIntentCommandsTest < Minitest::Test
   end
 
   def test_step_on_an_unfinished_graph_names_step_again
-    graph_with_one_node("running expires=2099-01-01T00:00:00Z packet=abc")
+    graph_with_one_node("running expires=2099-01-01T00:00:00Z input=abc")
     command("intent step", "372")
 
     assert_includes @fixture.printed, "next: plastic intent step 372"
