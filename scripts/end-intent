@@ -34,13 +34,15 @@
 #      doctor's per-intent structure check and OutcomeGuard as a self-check
 #      that reports on stderr and proceeds. Then stamp the intent file's
 #      `## Outcome` section with --outcome-summary if given.
-#   2. Move the intent's INDEX.md line from `## Active` into `## Completed`
-#      (delivered) or `## Abandoned` (abandoned), dated today, appending
-#      --index-note (if given). Accepts a real em dash OR a plain hyphen as
-#      the id/title separator on READ (shared matcher, IndexEntry.match);
-#      always EMITS the real em dash on write. An id that resolves to neither
-#      `## Active` nor the terminal section is a loud failure (exit 1); an id
-#      already correctly in the terminal section is a quiet, idempotent success.
+#   2. Move the intent's INDEX.md line from `## Active` or `## Future` into
+#      `## Completed` (delivered) or `## Abandoned` (abandoned), dated today,
+#      appending --index-note (if given). Accepts a real em dash OR a plain
+#      hyphen as the id/title separator on READ (shared matcher,
+#      IndexEntry.match); always EMITS the real em dash on write. The move is
+#      resolved before step 1 writes anything (intent 385): an id that
+#      resolves to neither an open section nor the terminal section is a loud
+#      failure (exit 1) that writes nothing, in the dry run too; an id already
+#      correctly in the terminal section is a quiet, idempotent success.
 #   3. Append the savepoint `Done` bookend (Savepoint.append_terminal_savepoint).
 #   4. Commit the store repo, unless --no-commit.
 #   5. Disarm (intent 188, D2/D16; intent 307): check the code worktree (derived
@@ -56,8 +58,9 @@
 #
 # Exit codes:
 #   0  ok - the intent is closed and no delivery.lock remains.
-#   1  usage/resolution failure, OR an id that resolves to neither ## Active
-#      nor the terminal section (D11). Deliberately double duty; see plan.md.
+#   1  usage/resolution failure, OR an id that resolves to neither ## Active,
+#      ## Future, nor the terminal section (D11). Deliberately double duty;
+#      see plan.md. Refused before any write.
 #   2  retired in 2.0 (intent 308): the outcome.md guard reports and proceeds.
 #   3  steps 1-4 already committed, but the delivery lock genuinely could not
 #      be cleared (see step 5 above).
@@ -78,7 +81,7 @@
 #      repo checkout's current branch. Refused before any write: nothing is
 #      merged, written, or released. Merge the branch, then run the close again.
 #
-# --dry-run runs the same refusals as the real close (exits 8, 9, 7 and 5 with
+# --dry-run runs the same refusals as the real close (exits 1, 8, 9, 7 and 5 with
 # a "would refuse" line) and writes nothing: the hollow-report gate is judged
 # on a scratch copy that went through the same outcome generation and
 # backfill.
@@ -113,9 +116,14 @@ DISPOSITIONS = %w[delivered abandoned].freeze
 # (intent 188, D9/D12): see move_index_to_terminal below.
 EM_DASH = "\u2014"
 
-# Raised internally when the INDEX id resolves to neither `## Active` nor the
-# terminal section (D11): the caller (main) rescues this and exits 1.
+# Raised internally when the INDEX id resolves to neither an open section nor
+# the terminal section (D11): the caller (main) rescues this and exits 1.
 class UnresolvedIndexEntry < StandardError; end
+
+# The INDEX sections an intent can still be closed from, searched in order
+# (intent 385): a Future intent is retired through the same path as an
+# Active one.
+OPEN_HEADINGS = ["## Active", "## Future"].freeze
 
 # --- Explicit flag parsing (no eval, no global injection) -------------------
 
@@ -467,19 +475,32 @@ def section_contains_id?(lines, heading_idx, id)
   (heading_idx + 1...stop).any? { |i| active_line_id(lines[i]) == id }
 end
 
-# Remove the entry at entry_idx from the `## Active` section. When no real
+# The first open section holding the id's entry, as [heading, heading_idx,
+# entry_idx], or nil when no open section holds it.
+def find_open_entry(lines, id)
+  OPEN_HEADINGS.each do |heading|
+    start = lines.index { |l| l.rstrip == heading }
+    next unless start
+
+    entry_idx = (start + 1...section_stop(lines, start)).find { |i| active_line_id(lines[i]) == id }
+    return [heading, start, entry_idx] if entry_idx
+  end
+  nil
+end
+
+# Remove the entry at entry_idx from its open section. When no real
 # entries remain, install the canonical "_(none)_" placeholder (the same
 # empty-state convention INDEX.md already uses).
-def remove_active_entry(lines, active_start, entry_idx)
+def remove_open_entry(lines, section_start, entry_idx)
   new_lines = lines.dup
   new_lines.delete_at(entry_idx)
-  stop = section_stop(new_lines, active_start)
-  remaining = (active_start + 1...stop).reject { |i| new_lines[i].strip.empty? }
+  stop = section_stop(new_lines, section_start)
+  remaining = (section_start + 1...stop).reject { |i| new_lines[i].strip.empty? }
   if remaining.empty?
     # Keep the blank-line separator before the next heading (if any); only
     # collapse the section body to the placeholder, never the spacing.
     placeholder = (stop < new_lines.length) ? ["_(none)_\n", "\n"] : ["_(none)_\n"]
-    new_lines[(active_start + 1)...stop] = placeholder
+    new_lines[(section_start + 1)...stop] = placeholder
   end
   new_lines
 end
@@ -503,34 +524,30 @@ def insert_terminal_entry(lines, target_start, new_entry)
   new_lines
 end
 
-# Move the intent's `## Active` line into the terminal section. Returns the
-# new INDEX.md content on success. Raises UnresolvedIndexEntry (D11) when the
-# id resolves to NEITHER `## Active` NOR the terminal section (including the
-# degenerate case where one of the two headings is missing from INDEX.md
-# entirely); returns the content UNCHANGED (a quiet, idempotent success) when
-# the id is already correctly present in the terminal section, whether or not
-# a stray duplicate also still sits under `## Active` (that duplicate is
-# cleaned up too, when found, matching the pre-188 idempotent-cleanup
-# behavior for the ordinary already-moved re-run case).
+# Move the intent's `## Active` or `## Future` line into the terminal
+# section. Returns the new INDEX.md content on success. Raises
+# UnresolvedIndexEntry (D11) when the id resolves to NEITHER an open section
+# NOR the terminal section (including the degenerate case where the headings
+# are missing from INDEX.md entirely); returns the content UNCHANGED (a quiet,
+# idempotent success) when the id is already correctly present in the
+# terminal section, whether or not a stray duplicate also still sits in an
+# open section (that duplicate is cleaned up too, when found, matching the
+# pre-188 idempotent-cleanup behavior for the ordinary already-moved re-run
+# case).
 def move_index_to_terminal(content, id, disposition, today:, index_note: nil)
   target_heading = index_target_heading(disposition)
   lines = content.lines
 
   target_start = lines.index { |l| l.rstrip == target_heading }
-  active_start = lines.index { |l| l.rstrip == "## Active" }
   already_in_target = target_start && section_contains_id?(lines, target_start, id)
 
-  entry_idx = nil
-  if active_start
-    active_stop = section_stop(lines, active_start)
-    entry_idx = (active_start + 1...active_stop).find { |i| active_line_id(lines[i]) == id }
-  end
+  _heading, source_start, entry_idx = find_open_entry(lines, id)
 
   if entry_idx.nil?
     return content if already_in_target # true idempotency (D11): quiet success
     raise UnresolvedIndexEntry,
-          "intent #{id} could not be resolved: not found under ## Active, and not already " \
-          "present in #{target_heading} (check INDEX.md for a malformed or missing entry)"
+          "intent #{id} could not be resolved: not found under #{OPEN_HEADINGS.join(' or ')}, and not " \
+          "already present in #{target_heading} (check INDEX.md for a malformed or missing entry)"
   end
 
   if target_start.nil?
@@ -542,7 +559,7 @@ def move_index_to_terminal(content, id, disposition, today:, index_note: nil)
   note_suffix = (index_note && !index_note.to_s.strip.empty?) ? " #{index_note.to_s.strip}" : ""
   new_entry = "- [#{id} #{EM_DASH} #{title}](#{link}) #{EM_DASH} #{today}#{note_suffix}\n"
 
-  lines = remove_active_entry(lines, active_start, entry_idx)
+  lines = remove_open_entry(lines, source_start, entry_idx)
   target_start = lines.index { |l| l.rstrip == target_heading }
   lines = insert_terminal_entry(lines, target_start, new_entry) unless already_in_target
 
@@ -564,6 +581,26 @@ def warn_if_active_duplicate_remains(content, id)
   warn "end-intent: intent #{id} still has an entry under ## Active after the move " \
        "(a duplicate ## Active line for this id); INDEX.md needs manual cleanup. Check " \
        "INDEX.md directly, or run /plastic-doctor."
+end
+
+# The dry-run line for the INDEX move the close will make, resolved on the
+# current INDEX.md before anything is written (intent 385), so the preview
+# and the real close refuse the same unresolvable entry. Exits 1 on
+# UnresolvedIndexEntry, exactly as step 2 would, but before step 1 writes.
+def preflight_index_move(index_path, id, disposition, today:, index_note:)
+  target = index_target_heading(disposition)
+  return "INDEX.md not found at #{index_path}, would skip the terminal move" unless File.exist?(index_path)
+
+  content = File.read(index_path)
+  move_index_to_terminal(content, id, disposition, today: today, index_note: index_note)
+  source, = find_open_entry(content.lines, id)
+  return "INDEX.md entry already in #{target}, would leave it (#{index_path})" unless source
+
+  "would move INDEX.md entry from #{source} to #{target} (#{index_path})"
+rescue UnresolvedIndexEntry => e
+  warn "end-intent: #{e.message}"
+  warn "end-intent: nothing was written"
+  exit 1
 end
 
 # --- store auto-commit (D2 step 4) ------------------------------------------
@@ -994,6 +1031,11 @@ def main(argv)
     end
   end
 
+  # Resolve the INDEX move before any write (intent 385), in the dry run and the
+  # real close alike: an entry the move cannot find refuses here, not after the
+  # backfill has already written into the intent directory.
+  index_move = preflight_index_move(index_path, id, disposition, today: today, index_note: opts[:index_note])
+
   if opts[:dry_run]
     hollow = predicted_hollow_reason(intent_dir, store: store, id: id, disposition: disposition,
                                                  summary: opts[:outcome_summary])
@@ -1014,7 +1056,7 @@ def main(argv)
     targets = BackfillIntent.targets_for(intent_dir)
     puts "  would backfill: #{targets.empty? ? "(nothing)" : targets.join(", ")}"
     puts "  would stamp ## Outcome: #{opts[:outcome_summary].inspect}" if opts[:outcome_summary]
-    puts "  would move INDEX.md entry from ## Active to #{index_target_heading(disposition)} (#{index_path})"
+    puts "  #{index_move}"
     puts "  would append index note: #{opts[:index_note].inspect}" if opts[:index_note]
     puts "  would append savepoint bookend: Done  #{disposition}"
     puts(opts[:no_commit] ? "  would skip store commit (--no-commit)" : "  would commit the store repo")

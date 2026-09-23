@@ -679,7 +679,7 @@ end
   # --- AC5: unresolved id is loud (exit 1); already-terminal id is quiet (exit 0) --
 
   def test_ac5_unresolved_id_exits_1
-    build_intent(id: "161")
+    build_intent(id: "161", sentinel_docs: true)
     File.write(@index, <<~MD)
       # Index
 
@@ -697,7 +697,36 @@ end
                                   "--index", @index, "--no-commit")
     assert_equal 1, status
     assert_match(/could not be resolved/i, out)
+    assert_equal "#{SENTINEL}\n", File.read(File.join(@store, "161--demo", "spec.md")), "an unresolved entry must refuse before the backfill"
   end
+
+# --- intent 385: a Future entry is an open entry the close can move --------
+
+def test_index_move_takes_a_future_entry_and_leaves_the_placeholder
+  content = "## Active\n- [7 \u2014 Other](store/7--o/7--o.md)\n\n## Future\n- [161 - Demo intent](store/161--demo/161--demo.md)\n\n" \
+            "## Abandoned\n_(none)_\n"
+
+  moved = move_index_to_terminal(content, "161", "abandoned", today: "2026-09-23", index_note: "superseded")
+
+  assert_equal "## Active\n- [7 \u2014 Other](store/7--o/7--o.md)\n\n## Future\n_(none)_\n\n" \
+               "## Abandoned\n- [161 \u2014 Demo intent](store/161--demo/161--demo.md) \u2014 2026-09-23 superseded\n", moved
+end
+
+def test_index_move_prefers_the_active_entry_over_a_future_duplicate
+  content = "## Active\n- [161 - A](a.md)\n\n## Future\n- [161 - F](f.md)\n\n## Completed\n"
+
+  moved = move_index_to_terminal(content, "161", "delivered", today: "2026-09-23")
+
+  assert_equal "## Active\n_(none)_\n\n## Future\n- [161 - F](f.md)\n\n## Completed\n- [161 \u2014 A](a.md) \u2014 2026-09-23\n", moved
+end
+
+def test_index_move_names_both_open_sections_when_the_entry_is_missing
+  error = assert_raises(UnresolvedIndexEntry) do
+    move_index_to_terminal("## Active\n\n## Future\n\n## Abandoned\n", "161", "abandoned", today: "2026-09-23")
+  end
+
+  assert_includes error.message, "not found under ## Active or ## Future, and not already present in ## Abandoned"
+end
 
   def test_ac5_id_already_in_terminal_section_is_a_quiet_success
     build_intent(id: "161")
