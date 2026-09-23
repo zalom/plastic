@@ -88,13 +88,12 @@ class ProjectLinksTest < Minitest::Test
 
   # --- assertions ---
 
-  def test_dry_run_changes_no_files_but_writes_audit
+  def test_dry_run_changes_no_files_or_audit
     before = read("projects/plastic/store/11--child/11--child.md")
     run_tool(dry_run: true)
     after = read("projects/plastic/store/11--child/11--child.md")
     assert_equal before, after, "dry run must not rewrite intent files"
-    assert File.exist?(@audit)
-    assert_includes File.read(@audit), "(DRY RUN)"
+    refute_path_exists @audit
   end
 
   def test_apply_projects_same_store_source
@@ -169,17 +168,29 @@ class ProjectLinksTest < Minitest::Test
   def test_audit_reports_counts_and_failed
     run_tool
     audit = File.read(@audit)
-    assert_includes audit, "# Audit: store-wide ## Links projection (intent 72)"
+    assert_includes audit, "# Audit: store-wide Links projection"
     assert_includes audit, "FAILED"
     assert_includes audit, "99:"
   end
 
-  def test_dry_run_default_audit_writes_sibling_not_canonical
-    canonical = File.join(@home, ProjectLinks::DEFAULT_AUDIT_REL)
-    sibling = canonical.sub(/\.md\z/, ".dry-run.md")
+  def test_dry_run_preserves_all_files_and_directories
+    before = Dir.glob(File.join(@home, "**", "*"), File::FNM_DOTMATCH).sort
     ProjectLinks.new(plastic_home: @home, dry_run: true).run
-    assert File.exist?(sibling), "dry run writes the .dry-run.md sibling"
-    refute File.exist?(canonical), "dry run must not write the canonical audit"
+
+    assert_equal before, Dir.glob(File.join(@home, "**", "*"), File::FNM_DOTMATCH).sort
+  end
+
+  def test_migrated_home_keeps_audit_outside_legacy_projects_and_intents
+    FileUtils.mkdir_p(File.join(@home, "stores", "global"))
+    FileUtils.mv(File.join(@home, "store"), File.join(@home, "stores", "global", "store"))
+    FileUtils.mv(File.join(@home, "projects", "plastic"), File.join(@home, "stores", "plastic"))
+    FileUtils.rm_rf(File.join(@home, "projects"))
+    tool = ProjectLinks.new(plastic_home: @home)
+    tool.run
+
+    assert_equal File.join(@home, "stores", "global", "resources", "audit--links-projection.md"), tool.audit_path
+    assert_path_exists tool.audit_path
+    refute_path_exists File.join(@home, "projects")
   end
 
   def file_snapshot

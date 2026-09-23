@@ -11,8 +11,9 @@ use `plastic roadmap show`, `next`, `log`, and `check` to read, drive, and audit
 
 File location: `roadmaps/{slug}.md`, a sibling of `INDEX.md`, wherever `INDEX.md` lives, never
 inside `store/` (store holds intent directories, not project artifacts). For a project that is its
-root, `~/.plastic/projects/{slug}/roadmaps/`, beside `project.yml`; for the global tier it is
-`~/.plastic/roadmaps/`, beside `~/.plastic/INDEX.md`. `roadmaps/` lists only live (open or
+root, `~/.plastic/stores/{slug}/roadmaps/`, beside `project.yml`; for the global store it is
+`~/.plastic/stores/global/roadmaps/`, beside its `INDEX.md`. Legacy homes keep their
+previous paths until `plastic migrate stores` moves them. `roadmaps/` lists only live (open or
 in-flight) roadmaps: once a roadmap's goal is reached, it moves to `roadmaps/archived/{slug}.md`,
 a sibling subdirectory scaffolded once with a `.gitkeep`.
 

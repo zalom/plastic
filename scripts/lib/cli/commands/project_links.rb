@@ -20,7 +20,11 @@ module Plastic
           status = legacy.run("project-links", "--plastic-home", scope.plastic_home, *dry_run_flag)
           raise Failure, "project-links exited #{status}" unless status.zero?
 
-          @output.next_step("plastic status", because: "the Links sections just rebuilt across every store")
+          if options[:dry_run]
+            @output.next_step("none", because: "the preview wrote no files")
+          else
+            @output.next_step("plastic status", because: "the Links sections just rebuilt across every store")
+          end
         end
 
         private

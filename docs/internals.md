@@ -1842,3 +1842,16 @@ read `owner_session`, with the older `session` field as a compatibility fallback
 The renderer supports both the RDoc 7 constructor with options and RDoc 8's
 keyword constructor, so an installed package does not depend on the development
 bundle's RDoc version.
+
+### Package and store safety checks
+
+`bin/plastic` sets the package root from its own location. This prevents the
+old updater's environment from routing a newly downloaded command back to an
+older installer. The update and rollback subprocesses also clear that variable.
+A successful subprocess is insufficient: the installed `VERSION` must equal
+the selected target.
+
+`InstallerCore` checks store-layout compatibility before either switch can
+write files. `ProjectLinks` resolves audit paths through `StoreLayout` and
+skips audit writes during previews. Packaged Varar scenarios exercise update
+refusal, rollback refusal, and link previews separately for Claude and Codex.

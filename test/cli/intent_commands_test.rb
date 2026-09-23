@@ -174,6 +174,16 @@ class CliIntentCommandsTest < Minitest::Test
     refute_includes @fixture.printed, "dispatch ONE plastic-executor subagent"
   end
 
+  def test_graph_return_requires_ownership
+    File.write(File.join(intent_dir, "graph.md"), "# graph\n")
+
+    status = run_cli("intent", "step", "372", "--return", "n1=/tmp/return.yml")
+
+    assert_equal 3, status
+    assert_empty @calls
+    refute_path_exists File.join(intent_dir, "delivery.lock")
+  end
+
   # --- intent answer -----------------------------------------------------------
 
   def test_answer_runs_runner_answer

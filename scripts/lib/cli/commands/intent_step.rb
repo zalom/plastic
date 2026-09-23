@@ -49,6 +49,7 @@ module Plastic
             env_session: @env["CLAUDE_CODE_SESSION_ID"], store: scope.store, intent_id: id)
           return true if session
           raise Refusal, "intent #{id} is held by another session; inspect with plastic auto lock status #{id} --project #{scope.slug}" if Lock.read(intent_dir)
+          raise Refusal, "return not accepted: take intent #{id} with plastic auto take #{id} --project #{scope.slug} before submitting it" unless Array(options[:returns]).empty?
 
           @output.next_step("plastic auto take #{id}", because: "graph execution requires this session to take the delivery lock")
           false

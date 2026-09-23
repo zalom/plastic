@@ -337,3 +337,18 @@ Graph steps accept repeated `--return NODE=PATH` arguments and a harness overrid
 so the public command can complete the runner's dispatch and absorption cycle.
 Conversation sessions still require explicit owner approval for inline delivery;
 `auto take --allow-inline` carries that approval to the existing lock guard.
+
+### Safe package transitions
+
+The executable resolves its own package root, even when an older updater passes
+an inherited package path. Update and rollback clear that inherited path when
+launching npm and verify the installed version before reporting success.
+
+Homes using `stores/` cannot switch to versions before `2.0.0-alpha.28`, which
+introduced that layout. This refusal happens before installation or hook cleanup.
+Legacy homes retain their existing rollback behavior.
+
+`plastic project links` saves its audit under the current global store's
+`resources/` directory. Its dry-run writes no files. Use
+`plastic doctor --agent claude`, `--agent codex`, or `--agent hermes` to select
+the harness being diagnosed.

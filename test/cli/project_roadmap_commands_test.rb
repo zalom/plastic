@@ -213,6 +213,7 @@ class CliProjectRoadmapCommandsTest < Minitest::Test
     command("project links", "--dry-run")
 
     assert_equal [["--plastic-home", @fixture.plastic_home, "--dry-run"]], @calls.map(&:last)
+    assert_includes @fixture.printed, "next: none"
   end
 
   def test_links_names_status_in_its_next_step

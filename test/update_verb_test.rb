@@ -127,7 +127,7 @@ class UpdateVerbTest < Minitest::Test
     u = FakeUpdate.new(package_root: ".", plastic_home: @home, version: "x")
 
     status = nil
-    capture_io { status = u.send(:perform_switch, "1.0.0-alpha.19", ["--claude"], switch_runner: ->(_cmd) { true }) }
+    capture_io { status = u.send(:perform_switch, "1.0.0-alpha.19", ["--claude"], switch_runner: ->(_cmd) { File.write(File.join(@home, "VERSION"), "1.0.0-alpha.19"); true }) }
 
     assert_equal 0, status
 
