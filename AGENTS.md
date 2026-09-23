@@ -39,15 +39,17 @@ present, search it before re-deriving an existing decision, spec, or outcome.
 - **Power tools are recommended when present.** When QMD (for intents), Enola, or Serena
   (for code navigation) is present, prefer them. `PLASTIC.md` carries that recommendation
   (Enola-first when both code-navigation tools are present); no hook repeats it per prompt
-  (the power-tools hook was removed in 2.0, intent 309), and the per-skill QMD-first steps
-  run `qmd-sync search` before grep/Read, then open the authoritative intent file. Use the deterministic `scripts/qmd-sync search "<terms>"` helper, which
+  (the power-tools hook was removed in 2.0, intent 309). Search before grep/Read, then open
+  the authoritative intent file. Use `plastic search TERMS` for the store search index, or the
+  deterministic `scripts/qmd-sync search "<terms>"` helper for QMD, which
   scopes collections for you and is a clean no-op when QMD is absent.
-- **Completion fires an async reindex.** Intent delivery reindexes the delivering store's
-  collection in the background (non-blocking), so the index stays fresh while
-  "index mutation is lifecycle-only" stays true. Never reindex ad-hoc.
-- **Index mutation is lifecycle-only.** The index changes only on Plastic lifecycle events
-  (install registers all stores, project creation registers the new project store, intent
-  delivery reindexes the delivering store's collection). Never reindex ad-hoc.
+- **Completion does not reindex.** In 2.0 no public close path calls `qmd-sync`:
+  `scripts/end-intent` stops at the disarm step, and the reindex step it names lived in a
+  retired skill. Only the internal `scripts/promote-session-item` reindexes. This is a known
+  gap; do not describe completion as reindexing until it is wired again.
+- **Index mutation is lifecycle-only.** Never reindex ad-hoc. The session-start hook names
+  `qmd-sync register --all` when QMD is present and the stores are not indexed yet;
+  `plastic project new` does not register the new store's collection.
 - **Query craft lives in the qmd skill.** Use the installed `qmd` skill for structured
   `qmd query` (intent/lex/vec/hyde) and BM25 `qmd search`. Two notes: structured queries
   need ANSI-C `$'...'` quoting so `\n` becomes a real newline, and `qmd search` (BM25)
@@ -69,8 +71,8 @@ Rules for any agent (or human) contributing to this repository.
 ### Work
 - All work flows through an intent. Move it through What, Why, How, Exec. Do not jump
   straight to code.
-- Create intents through `scripts/new-intent` (or the `plastic-intent-creating` skill that
-  wraps it), never by hand-authoring the files. One call scaffolds a born-complete intent
+- Create intents through `plastic intent new` (which wraps `scripts/new-intent`), never by
+  hand-authoring the files. One call scaffolds a born-complete intent
   plus sentinel placeholder lifecycle files. `new-intent` validates the file it writes and
   `end-intent` checks it again at close, so hand-authoring is unnecessary.
 - Plans, specs, checklists, and outcomes live in the intent directory under `~/.plastic/`,
@@ -102,11 +104,14 @@ Rules for any agent (or human) contributing to this repository.
   time. Ownership is a session-keyed `delivery.lock` file in the intent directory; liveness
   is a lease (the owner's hooks refresh the file mtime on tool activity, stale means the
   heartbeat is older than the TTL); the lock file is the truth of ownership. If you find a fresh lock owned by another session, back
-  off. A stale lock is reclaimed only through `plastic-lock reclaim` (audited in
+  off. The public commands refuse a foreign lock with exit 3; inspect it with
+  `plastic auto lock status ID`. A stale lock is reclaimed only through the internal
+  `plastic-lock reclaim`, an owner step (audited in
   savepoint.md); disarm clears the lock, and `plastic-lock fix` is the repair path for
   corrupt or legacy state.
 - Every code-touching intent gets its own worktree named `{id}--{slug}`, and code edits happen
-  only inside it. Plastic provisions this automatically at arm time by resolving the repo from
+  only inside it. Plastic provisions this automatically at arm time (`plastic auto take ID`, the
+  only public arm) by resolving the repo from
   `projects.yml` and running `git -C <repo> worktree add`, so isolation does not depend on the
   current directory. The code worktree lives at `<repo>/.claude/worktrees/{id}--{slug}` on
   branch `plastic/{id}--{slug}`. It is the only worktree: store-write safety for lifecycle
@@ -131,7 +136,7 @@ Rules for any agent (or human) contributing to this repository.
   trusted publishing, intent 347). Do not run `npm publish` or create a tag by hand.
 - Run the changed files' tests and the change gate before committing code changes (see the Testing section).
 - Never push `~/.plastic/`. The global store is local-only and may contain private data.
-- Core Plastic intents carry no release numbers; the intent schema stays release-agnostic. A release is a collection of intents: a cut (tag) bundles whichever intents have landed since the previous cut and completes them. Which release an intent lands in, and the shipped release history, live in `CHANGELOG.md` at the repo root, not in the intent file and not in PLASTIC.md.
+- Core Plastic intents carry no release numbers; the intent schema stays release-agnostic. A release is a collection of intents: a cut (tag) bundles whichever intents have landed since the previous cut. The cut does not close them: CI never sees the stores, and each intent is closed with `plastic intent end` after its code merges. Which release an intent lands in, and the shipped release history, live in `CHANGELOG.md` at the repo root, not in the intent file and not in PLASTIC.md.
 - Two release lanes exist: default (straight to main) and beta-verified (beta branch, beta
   channel, real-use verification, then main). Read
   `docs/release-lines.md` for the routing rule, the stable-line

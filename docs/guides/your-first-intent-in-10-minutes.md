@@ -31,17 +31,26 @@ of them, and the rules your agent will follow.
 
 ## Step 2: Create your first intent
 
-Just say what you want, in plain words. For example: "I want to add a `--version`
-flag to the CLI." You do not need to write a special file yourself. Plastic
-recognizes this as a new piece of work and scaffolds an intent file for you
-behind the scenes. Do not try to write the intent file by hand. Plastic always
-creates it through its own tool, so the file is complete and valid from the start.
+Register the repository once, then create the intent from one line:
 
-## Step 3: Say "auto"
+```
+plastic project new my-app --path "$PWD"
+plastic intent new "Add a --version flag that prints the current version"
+```
 
-Say "auto" on the intent you just created. Plastic takes a lock on it first (so no
-other team works on the same intent at the same time) and hands the whole cycle to
-a background team. It stops to ask you something only at a few important moments.
+Do not write the intent file by hand. `plastic intent new` scaffolds it, so the file is
+complete and valid from the start. Every command ends with a `next:` line that names the
+command to run after it.
+
+## Step 3: Hand it to auto
+
+Ask your agent to deliver the intent in auto mode. The agent runs `plastic auto take ID`,
+which takes the delivery lock (so no other team works on the same intent at the same time)
+and makes a Git worktree for the code. It then spawns the `plastic-enforcer` lead, which
+writes the record, dispatches an executor, and reviews by risk. It stops to ask you something
+only at a few important moments.
+
+To do the same cycle yourself, one step at a time, follow `plastic help tutorial`.
 
 For your first intent, auto is the fastest way to see the whole shape of Plastic in
 one pass. The other two modes, direct (type the change and it happens) and thinking
@@ -50,12 +59,13 @@ one pass. The other two modes, direct (type the change and it happens) and think
 ## Step 4: Read the result
 
 The agent now runs Why, then How, then Exec, one after another, without you
-needing to steer each step. When it finishes, it writes a file called
-`outcome.md` that records exactly what was delivered. That file is the proof
+needing to steer each step. When it closes the intent with `plastic intent end`, the close writes
+`outcome.md`, which records what was delivered. The close refuses code that is not
+merged, so the merge comes first. That file is the proof
 your work is done. Your intent also moves to the "Completed" section of the
 index, so you can find it again later.
 
-That is the whole loop: install once, describe what you want, say "auto," and
+That is the whole loop: install once, create the intent, hand it to auto, and
 read the result.
 
 ## What to read next

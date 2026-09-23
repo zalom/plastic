@@ -12,6 +12,6 @@ finished intent.
 | Question | Command |
 | -------- | ------- |
 | Which version is installed, and from which file was it read? | `plastic version` |
-| Which versions has this machine run? | `plastic rollback --list` |
+| Which versions has this machine run? | `plastic rollback` (with no flags it only prints the history) |
 | What is active in every store? | `plastic status --json` |
 | Why is this the next action? | `plastic next --why` |

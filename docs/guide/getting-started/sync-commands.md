@@ -42,7 +42,7 @@ the command prints the same lines and writes nothing:
 
 ```text
 $ plastic sync --dry-run
-read  projects/plastic/store/368--search-index-in-knowledge-graph-db/spec.md
+read  stores/plastic/store/368--search-index-in-knowledge-graph-db/spec.md
 
 next: plastic search TERMS
 because: a changed file is read into its row, a changed row is written out, and both changed is yours to settle

@@ -31,7 +31,8 @@ delivery, delegate registration authorizes a child session, and a claim selects 
 writer for one artifact. Disarm clears the lock; the End tail is ordered: verify, merge and
 remove worktrees, then clear the lock. Repair
 is one idempotent function with two entry points: the `plastic-lock` command (`who`, status,
-fix, release, reclaim, delegate) and the `plastic-doctor` skill's lock section, so repair
+fix, release, reclaim, delegate) and the public `plastic auto lock status|fix|release ID`
+commands that wrap it, so repair
 self-heals. `who` is read-only and reports the controller, mtime heartbeat, delegates, and
 claims from durable files. This is mandatory for auto teams, not a convention.
 
@@ -94,12 +95,12 @@ what gets written down.
 
 | Station | Delivered artifact | Lock steps | Record |
 |---|---|---|---|
-| Start (board) | none (a procedure, not a stage) | `plastic-lock fix` self-heals stale, corrupt, or legacy state; arm acquires `delivery.lock` (O_EXCL, session-keyed), provisions the code worktree | savepoint confirms the boarding station |
+| Start (board) | none (a procedure, not a stage) | `plastic-lock fix` self-heals stale, corrupt, or legacy state; arm (`plastic auto take ID`, the only public entry) acquires `delivery.lock` (O_EXCL, session-keyed), provisions the code worktree | savepoint confirms the boarding station |
 | What (create) | `<id>--<slug>.md`, born complete | no lock yet; `new-intent` validates the file it writes (`scripts/validate-intent`) | savepoint `What` line; intent listed in INDEX `## Active` |
 | Why | `spec.md` | owner writes refresh the lease (lock file mtime heartbeat) | savepoint `Why started`, `Why spec.md created` |
 | How | `plan.md`, `actions/ACTION_N.md` (at least one), `checklist.md` | heartbeat on writes | savepoint `How started`, `How plan.md created`, `How checklist.md created`, `Exec started` |
 | Exec | code on the intent branch, checklist checked off | heartbeat; code edits confined to the provisioned worktree; delegates write under the owner's lock | checklist boxes; savepoint milestones; the day-ledger line promotes when a project file lands |
-| End (done) | mandatory `outcome.md` (`disposition: delivered\|abandoned`), INDEX moves to Completed or Abandoned | ordered End tail: verify, merge and remove worktrees, disarm clears `delivery.lock`, and the QMD reindex runs LAST; `end-intent` backfills a placeholder `outcome.md` from the record and its structure check reports (never refuses) | the savepoint's terminal `delivered` (or `abandoned`) line; takeover audits, if any, remain in savepoint.md |
+| End (done) | mandatory `outcome.md` (`disposition: delivered\|abandoned`), INDEX moves to Completed or Abandoned | ordered End tail: verify the code is merged (Plastic never merges it), remove the worktree, disarm clears `delivery.lock`; no QMD reindex runs; `end-intent` backfills a placeholder `outcome.md` from the record and its structure check reports (never refuses) | the savepoint's terminal `delivered` (or `abandoned`) line; takeover audits, if any, remain in savepoint.md |
 | Maintenance (Future, Terminal, or Active-with-a-stale-or-no-lock) | `revisions.md` move-and-record entries | detects (never acquires) `delivery.lock`; defers and reports while the target's lock is FRESH (`Lock.fresh?`); a stale or absent lock is not-active, maintenance proceeds | append-only, rule-tagged `revisions.md` entry written in the same operation as the change, or the change is refused; lands via a fresh branch off store main merged back as one closed op, never `git add -A` |
 
 ## The write guard is not residue

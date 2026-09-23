@@ -37,5 +37,5 @@ plastic help next
 
 ## Start your first intent
 
-Intents are still created through the agent in this batch. Follow
-[your first intent in 10 minutes](../../guides/your-first-intent-in-10-minutes.md).
+Create an intent with `plastic intent new "LINE"`. `plastic help tutorial` walks one small
+change from that first line to merged code and a delivered close.

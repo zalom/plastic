@@ -10,7 +10,7 @@ The following table shows each auto command and what it does:
 
 | Command | What it does |
 | ------- | ------------ |
-| `plastic auto take ID [--harness NAME] [--agent NAME] [--model MODEL] [--thread ID]` | Arms the delivery lock of intent `ID` for this session and prints the lock and the code worktree. The flags record who delivers; under Claude Code the harness defaults to `claude`. |
+| `plastic auto take ID [--allow-inline] [--harness NAME] [--agent NAME] [--model MODEL] [--thread ID]` | Arms the delivery lock of intent `ID` for this session and prints the lock and the code worktree. The flags record who delivers; under Claude Code the harness defaults to `claude`. From a conversation session, `take` refuses with exit 3 unless you pass `--allow-inline` with the owner's approval. |
 | `plastic auto brief ID [--role ROLE]` | Prints the text that a spawned agent starts from. With `--role advisor`, it adds the advisor shapes. |
 | `plastic auto report ID [--role ROLE]` | Prints the intent's completion report, then the rules for a review by risk. |
 | `plastic auto lock status ID` | Prints who holds the delivery lock and how fresh it is. |
@@ -37,8 +37,8 @@ Every command takes `--json`. `plastic session commit` with no summary exits 2.
 
 ## Where the longer text lives
 
-The rules that the auto skill carried are now help chapters. The following table shows where
-to read each one:
+The rules for the auto team are help chapters. The following table shows where to read each
+one:
 
 | Topic | Command |
 | ----- | ------- |

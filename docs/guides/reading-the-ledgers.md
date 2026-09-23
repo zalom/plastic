@@ -6,9 +6,8 @@ work, and wants to know where that work was written down and how to read it.
 After this guide you will be able to open the two ledgers Plastic keeps, read every line in
 them, and tell at a glance what an intent or a day has reached.
 
-Commands below use Claude Code's slash form. On Codex CLI, invoke the same skill with a dollar
-prefix instead (for example `$plastic-doctor`), or let Codex select one implicitly by matching
-its description.
+Commands below are `plastic` commands. They run the same way in every agent and in a plain
+shell.
 
 ## Two ledgers, not one
 
@@ -17,7 +16,8 @@ Plastic writes two kinds of ledger, and nothing else records work:
 - **The intent ledger**, `savepoint.md` inside an intent's directory. One line per milestone
   of that one intent.
 - **The day ledger**, one directory per calendar day under the global store,
-  `~/.plastic/store/.sessions/<YYYYMMDD>/`. It records every session's requests for that day,
+  `~/.plastic/stores/global/store/.sessions/<YYYYMMDD>/` (`~/.plastic/store/.sessions/` in a
+  home that has not run `plastic migrate stores`). It records every session's requests for that day,
   whichever project they touched.
 
 Both are append-only, written by hooks, and never blocked: Plastic records what you did, it
@@ -47,8 +47,8 @@ a stage, and a milestone, separated by two spaces.
   not checkpoints you had to pass.
 - Two more kinds record delivery mechanics rather than a stage: `Review` (one line per
   plan-review or post-execution-review verdict) and `Commit` (one line per commit landing
-  during Exec), written through `scripts/savepoint-note --kind Review|Commit --text "..."`
-  (intent 317). They keep the same line shape as every other kind and feed the delay report
+  during Exec), written through `plastic intent note ID "TEXT" --kind Review|Commit`, which
+  wraps the internal `scripts/savepoint-note` (intent 317). They keep the same line shape as every other kind and feed the delay report
   (`report-screen delay`); readers that pick the current STAGE (the dashboard, the spawn
   preamble, `report-screen state`) skip over them and use the last lifecycle line instead.
   `report-screen archive <store_root>` (intent 339) is the read-only counterpart for a whole
@@ -58,8 +58,9 @@ a stage, and a milestone, separated by two spaces.
   what the dashboard and the spawn preamble read. The last line of ANY kind is still what the
   intent screen's `Savepoint` field shows, since that field answers "when did this ledger
   last move," not "what stage is this."
-- The file is rebuildable from the files on disk. If it looks wrong, run `/plastic-doctor` and
-  ask it to rebuild the savepoint rather than editing the file by hand.
+- The file is rebuildable from the files on disk. If it looks wrong, run `plastic doctor`
+  rather than editing the file by hand. It reports a savepoint gap as repairable and names
+  the repair.
 
 ## The day ledger
 
@@ -95,7 +96,7 @@ interleave a line.
 
 ## The heartbeat
 
-Each live session keeps one small file under `~/.plastic/store/.tmp/<session>/`, where
+Each live session keeps one small file under the global store's `.tmp/<session>/`, where
 `<session>` is the first eight characters of the session id:
 
 - `heartbeat`, a timestamp the hooks refresh. It is how a later session tells whether this one
@@ -128,11 +129,12 @@ lost or stale copy costs nothing.
 
 ## When you see a lock
 
-`delivery.lock` appears in an intent directory only when an auto team is delivering that
-intent. It names the owning session and stays fresh while that session's hooks touch it. An
-interactive session working on its own never takes one. To inspect a lock, run
-`/plastic-doctor check the lock status`; to take over one whose owner has gone quiet, ask
-`/plastic-doctor` to reclaim it, which is recorded in the intent's `savepoint.md`.
+`delivery.lock` appears in an intent directory when `plastic auto take` arms it for an auto
+team. It names the owning session and stays fresh while that session's hooks touch it. An
+interactive session takes one only with `plastic auto take ID --allow-inline` and the owner's
+approval. To inspect a lock, run `plastic auto lock status ID`. Taking over a lock whose owner
+has gone quiet is the owner's step: the internal `plastic-lock reclaim` does it and records it
+in the intent's `savepoint.md`. The public commands refuse a foreign lock with exit 3.
 
 ## What to read next
 

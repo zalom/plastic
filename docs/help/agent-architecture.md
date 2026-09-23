@@ -28,10 +28,11 @@ in 2.0, intent 304; the lead writes the Why and How record itself):
   reviewed before code; dispatches the executor; applies the risk rule; closes.
 - **plastic-executor** (Exec): commits the matrix's tests red, writes the code, checks off
   `checklist.md`, appends `## Insights`, and drives the suite green.
-- **the plan reviewer**: a fresh agent on the auto skill's
-  `references/plan-reviewer-prompt.md`, an optional dispatch before any code exists.
-- **the post-execution reviewer**: a fresh agent on `references/code-quality-reviewer-prompt.md`,
-  dispatched only when the auto skill's risk rule fires; never the maker.
+- **the plan reviewer**: a fresh agent on the prompt that `plastic help plan-reviewer-prompt`
+  prints, an optional dispatch before any code exists.
+- **the post-execution reviewer**: a fresh agent on the prompt that
+  `plastic help code-quality-reviewer-prompt` prints, dispatched only when a review rule from
+  `plastic auto report ID` fires; never the maker.
 
 One agent boot (the executor) is the minimum delivery; the plan reviewer is a second,
 optional boot when the lead calls for review before code, and the post-execution reviewer is
@@ -99,21 +100,21 @@ worktree, and the record are how the team keeps one delivery in one place.
 ### The risk list
 
 The post-execution reviewer runs when the executor's diff touches any of these paths, or when
-the auto skill's other two risk clauses fire:
+one of the other two review rules that `plastic auto report ID` prints fires:
 
 - `hooks/`, `scripts/hook-*`, `scripts/lib/hook_registry.rb`
 - `scripts/lib/lock.rb`, `scripts/lib/arm.rb`, `scripts/plastic-lock`, `scripts/end-intent`
 - `scripts/lib/installer_core.rb`, `scripts/install*`, `scripts/update.rb`
 - `package.json`, `.claude-plugin/*.json`, `CHANGELOG.md`
 
-Grow this list here, not in the skill body.
+Grow this list here and in the `REVIEW_RULES` text of `plastic auto report`.
 
 ### Headless Note
 
 In a headless or background run the session id may be unset. `plastic-lock arm` then keys the
 lock by a derived session key, the record hook still writes the savepoint ledger from the
-written path, and the lead verifies state from the files (`plastic-lock status`,
-`savepoint.md`, the diff) rather than from a hook it assumes fired.
+written path, and the lead verifies state from the files (`plastic auto lock status ID`,
+which wraps `plastic-lock status`, `savepoint.md`, the diff) rather than from a hook it assumes fired.
 
 ### Delegation
 

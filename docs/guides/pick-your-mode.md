@@ -24,17 +24,19 @@ line. The owner's rule of thumb is about five minutes of work.
 ## Thinking
 
 You are not sure yet what the right change is, or the change is too big to hold in one prompt.
-Thinking is a conversation first: Plastic asks one question at a time, records each ruling you
-make as an insight in the intent, and then writes the action files that say how the work will
-be done. After that it works exactly as in direct. Choose it when the work is delicate, new,
+Thinking is a conversation first: the agent asks one question at a time, records each ruling you
+make as an insight in the intent with `plastic intent rule`, and then writes `spec.md`,
+`plan.md` and `checklist.md`, which say how the work will be done. `plastic intent spec` prints
+the rules of that conversation. After that it works through the checklist. Choose it when the work is delicate, new,
 or you want to reason it through before anything is built. Ask to be grilled if you want the
 questions to be hard.
 
 ## Auto
 
-You say "auto" on a registered intent with a clear prompt. Plastic hands the whole cycle to a
-background team: a lead that writes the record and an executor that builds, under a lock and
-in its own git worktree, with a reviewer only if you ask for one. It stops to ask you something
+You ask for auto on a registered intent with a clear prompt. The agent takes the intent with
+`plastic auto take ID` and hands the whole cycle to a background team: a lead that writes the
+record and an executor that builds, under a lock and in its own git worktree. The lead chooses
+a review by risk; `plastic auto report ID` prints the rules it follows. It stops to ask you something
 at a few designed moments: confirming a project path, or before an action with no safe undo.
 Choose it for well-scoped work you are comfortable delegating.
 

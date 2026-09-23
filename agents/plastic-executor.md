@@ -24,7 +24,8 @@ valid lifecycle artifacts. Honor it as your live state; do not re-derive or cont
 3. **Tick with the commit** - commit after each logical unit of work, and in the same step
    tick the checklist item that unit lands: mark its box `[x]` and move the line to
    `## Completed`, then append the savepoint `Commit` line
-   (`scripts/savepoint-note <intent_dir> --kind Commit --text "<sha> <what it proves>"`). A
+   (`scripts/savepoint-note <intent_dir> --kind Commit --text "<sha> <what it proves>"`, or its
+   public wrapper `plastic intent note ID "<sha> <what it proves>" --kind Commit`). A
    commit without its tick is incomplete.
 4. **Record insights** - capture durable discoveries and report them in the `insights:` field;
    persist each to `## Insights` via the `insight-append` helper

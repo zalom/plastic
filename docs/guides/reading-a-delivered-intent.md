@@ -31,8 +31,9 @@ through, `disposition: abandoned`, and the file explains why.
    anything else disagrees with this line, the index wins.
 2. **`outcome.md`.** Read its four sections: Summary (what was delivered, in
    a sentence or two), Delivered (the concrete list of changes), Verification
-   (each acceptance criterion and how it was checked), and Follow-ups (what
-   comes next, if anything).
+   (how it was checked; a generated outcome shows the diffstat of the code
+   worktree, or says `Diffstat unavailable` when the intent had none), and
+   Follow-ups (what comes next, if anything).
 3. **The intent file's own `## Outcome` section.** A short, one or two line
    recap living in the intent file itself, for a quick glance without opening
    `outcome.md`.
@@ -46,8 +47,9 @@ prove the intention became reality.
 
 ## Why it works this way
 
-Plastic will not let an intent finish, delivered or abandoned, without a
-matching `outcome.md`. This keeps the three signals of "done" in agreement:
+Plastic always closes an intent, delivered or abandoned, with a matching
+`outcome.md`: `plastic intent end` generates it from the record when it is
+missing or still a placeholder. This keeps the three signals of "done" in agreement:
 the index status, the outcome file, and a short automatic log entry. If any of
 these disagree, something is wrong, and the index status is the one to trust.
 

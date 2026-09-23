@@ -88,9 +88,10 @@ mkdir -p ~/.local/bin
 ln -sf ~/.plastic/bin/plastic ~/.local/bin/plastic
 ```
 
-### Alpha channel
+### Other channels
 
-Plastic 2.0 is on the alpha channel.
+The stable channel carries Plastic 2.0. To install the alpha or beta channel, name it as the
+package version:
 
 ```bash
 npx -y @zalom/plastic@alpha install --claude
@@ -110,9 +111,9 @@ channel is stable; `PLASTIC_CHANNEL` picks another:
 curl -fsSL https://raw.githubusercontent.com/zalom/plastic/main/install.sh | PLASTIC_CHANNEL=alpha sh
 ```
 
-No stable 2.0 release carries the archive yet, so the default channel still installs the 1.x
-line. Use the alpha channel for the `plastic` command, or npm. To move an installed Plastic
-to another channel later, run `plastic update --beta` or `plastic update --alpha`.
+Every release that the publish workflow creates carries the archive, stable ones included. To
+move an installed Plastic to another channel later, run `plastic update --beta` or
+`plastic update --alpha`.
 
 ### A clean Mac
 
@@ -134,9 +135,9 @@ plastic doctor      # Checks the install and the stores
 
 ```bash
 # 1. Install for your agent
-npx -y @zalom/plastic@alpha install --claude    # Claude Code
-npx -y @zalom/plastic@alpha install --codex     # Codex CLI
-npx -y @zalom/plastic@alpha install --all       # Every supported agent
+npx -y @zalom/plastic install --claude    # Claude Code
+npx -y @zalom/plastic install --codex     # Codex CLI
+npx -y @zalom/plastic install --all       # Every supported agent
 
 # 2. See what is open
 plastic status
@@ -257,7 +258,7 @@ plastic render FILE                   # Print one Markdown file as an HTML page
 ### Product
 ```bash
 plastic install --claude              # Install into Claude Code
-plastic install --reinstall --claude  # Repair an install
+npx -y @zalom/plastic install --reinstall --claude  # Repair an install
 plastic update                        # Next version on the current channel
 plastic update --alpha                # Move to the alpha channel
 plastic rollback                      # List the versions this machine has run
@@ -282,7 +283,7 @@ plastic feedback "TITLE" < report.md  # Save a problem report and print a link t
 ```bash
 --json          # Print the result as data with stable keys
 -h, --help      # Print the usage line of the command
---project SLUG  # On continue, next and search, name a project other than the current one
+--project SLUG  # Name a project other than the one the working directory is in
 ```
 
 The installer commands do not take `--json`. `plastic doctor` does, and prints its full
@@ -306,8 +307,8 @@ because: the working directory is inside shop
 $ plastic next
 next work  9  in Batch 2: checkout flow
 
-next: read ~/.plastic/projects/shop/store/9--checkout-flow/plan.md
-because: 9 is first on the frontier of the roadmap
+next: plastic intent show 9 --project shop
+because: 9 is the first active intent in shop
 ```
 
 **The installed version:**
@@ -331,7 +332,7 @@ loads the conventions and prints the open items of the day. Each hook calls one 
 plastic hook EVENT      # The agent calls this, not you
 ```
 
-Run `plastic install --reinstall --claude` when hooks do not fire.
+Run `npx -y @zalom/plastic install --reinstall --claude` when hooks do not fire.
 
 ## Supported AI tools
 
@@ -352,7 +353,9 @@ agents for work, verification and research, and two advisors for hard decisions.
 `~/.plastic/config.yml`:
 
 ```yaml
-project_roots: ~/.plastic/projects   # Where Plastic looks for projects
+project_roots:                       # Parent folders searched for this session's delivery locks
+  - ~/.plastic/projects
+  - ~/.plastic/stores
 stale_threshold_days: 3              # Age at which a future intent is shown for triage
 context_offer_tokens: 150000         # Context size at which the agent offers to compact
 context_insist_tokens: 250000        # Context size at which the agent insists

@@ -3,7 +3,7 @@
 ## Who it is for and what you will have done
 
 For someone who has seen the stages once (track 1) and now wants to hand the work to the
-agent, watch it move through the gates and reports on its own, and learn how to check in on
+agent, watch it move through the stages and reports on its own, and learn how to check in on
 it and step back in later. After this track, one small intent will have been delivered by the
 agent end to end, and pausing and resuming that delivery will feel familiar.
 
@@ -22,12 +22,26 @@ track touches a real project.
 Start from an active intent (create one first with `plastic intent new` if none
 exists, the same way as track 1 station 1). Run `plastic auto take ID`.
 
-Artifact: the delivery lock arms, and the agent announces it is taking over the intent for
-autonomous delivery.
+Artifact: the delivery lock arms (`delivery.lock` in the intent directory) and the code
+worktree is made at `<repo>/.claude/worktrees/ID--slug` on branch `plastic/ID--slug`. The
+command prints both:
 
-Checkpoint: name the one precondition auto needs before it will start: an active intent must
-already exist for the intent you name. (Say "auto" with nothing named, and it can pick a
-queued intent from the dashboard's queue itself.)
+```text
+intent    2--shout
+lock      acquired by auto-9184f6c4fa, auto mode
+worktree  /home/you/greeter/.claude/worktrees/2--shout
+```
+
+Run from inside a conversation session, `plastic auto take` refuses with exit 3: an intent is
+not delivered inline. The owner may approve an inline take with `--allow-inline`. Otherwise
+the harness spawns the team, and the team takes the intent. Exit 3 means stop and report; never
+retry with another flag on your own.
+
+`plastic auto brief ID` prints the preamble the spawned lead starts from, and
+`plastic auto lock status ID` shows who holds the lock.
+
+Checkpoint: name the one precondition auto needs before it will start: the intent you name
+must already exist and be active, in a registered project.
 
 ### 2. What auto does, and what stays with the user
 
@@ -39,7 +53,7 @@ working copy with the main line before touching anything, ticks each task the mo
 lands rather than batching several into one later edit, and independently verifies its own
 work (running the test suite, or checking the changed file) before presenting anything back
 to you. For a task shaped like an audit or a sweep, checking many files rather than building
-one artifact, it also drops a short methods report into `resources/` before the gate, so you
+one artifact, it also drops a short methods report into `resources/` before the close, so you
 can review how it checked, not just what it found.
 
 The user keeps two things: the rulings made along the way, and the review points, moments
@@ -76,12 +90,23 @@ line.
 
 Run `plastic continue`.
 
-Artifact: the current state, presented and then the session stops. If a specific intent is
-named, the agent reads its stage and savepoint and resumes exactly there, rather than
-starting over.
+Artifact: where the project stands and a `next:` line naming what runs next. `plastic
+continue` only reads: it takes no lock and changes no file. To resume one intent, run
+`plastic intent show ID`; its Next row names the step it resumes at, read from the files on
+disk.
 
 Checkpoint: after stepping away and running this command, name the stage the intent resumed
 at and how that matched what was actually on disk.
+
+### 6. The close
+
+The lead closes the intent with `plastic intent end ID --delivered --summary "TEXT"`. The
+close checks that the code branch is merged and refuses with exit 1 when it is not; Plastic
+does not merge. It also refuses to deliver an untouched scaffold. On success it writes
+`outcome.md` from the record, moves the intent to `## Completed`, and releases the lock and
+the worktree.
+
+Checkpoint: open `outcome.md` and read its Summary.
 
 ## Wrap and where to go next
 

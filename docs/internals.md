@@ -5,6 +5,18 @@ README states the idea; this document explains the operational mechanics: how
 Plastic makes work come out the same shape no matter who or what produces it,
 how tight that guarantee actually is today, and what is still missing.
 
+Status note for 2.0: no skills ship any more (intent 372 retired the last ones into
+`plastic` commands and `plastic help` chapters). Sections that name a skill, a
+`skills/...` path, or a `/plastic-...` slash command describe the 1.x design and are kept as
+history. For current behavior, `plastic help COMMAND` and the chapters under `docs/help/`
+are the reference.
+
+Status note for 2.0: no skills ship any more (intent 372 retired the last ones into
+`plastic` commands and `plastic help` chapters). Sections that name a skill, a
+`skills/...` path, or a `/plastic-...` slash command describe the 1.x design and are kept as
+history. For current behavior, `plastic help COMMAND` and the chapters under `docs/help/`
+are the reference.
+
 ## deterministic-by-design
 
 Plastic splits every unit of work into two parts.
@@ -401,7 +413,7 @@ autonomous execution.
 
 - **Full run (no flag)**: three-state. Walks every check category (global store,
   conventions across all intents, agent registration, core files, project stores,
-  deprecations, runtime, display). This is what `/plastic-doctor` invokes. It also runs
+  deprecations, runtime, display). This is what `plastic doctor` runs. It also runs
   automatically after every `plastic update` (informational: prints the report but does not
   block or revert the update).
 
@@ -509,17 +521,16 @@ with verbs `detect`, `register`, `reindex` (with an `--async` variant), `status`
 and a read-only `search`) does all the work by delegating to the qmd CLI. Each
 trigger lives at a fixed point:
 
-- **install**: the install skill registers every store as a `plastic-`
-  prefixed collection (`register --all`).
-- **project creation**: the project-creating skill registers the new project
-  store's collection (`register --store <dir>`).
-- **intent delivery**: the delivery/completion path reindexes the delivering
-  store's collection. This is the LAST step of the canonical End tail (intent
-  93): it runs after the INDEX terminal move, the savepoint `Done` line, the
-  commit, and disarm (worktree release, then `Lock.release`),
-  so the index never references a lock that disarm has just released.
-  It is mandatory on completion and runs async
-  (`reindex --store <dir> --async`) so it never blocks the turn. The sync
+- **install and project creation**: the 1.x install and project-creating skills ran
+  `register --all` and `register --store <dir>`. Those skills are retired, and
+  `plastic install` and `plastic project new` register nothing in 2.0. The session-start
+  hook suggests `qmd-sync register --all` when QMD is present and stores are unindexed.
+- **intent delivery**: the design makes a reindex the LAST step of the canonical End
+  tail (intent 93), after the INDEX terminal move, the savepoint `Done` line, the commit,
+  and disarm, so the index never references a lock that disarm has just released. In 2.0
+  `scripts/end-intent` stops at disarm and says the reindex stayed in a retired skill, so
+  no public close path reindexes (a known gap). The internal `scripts/promote-session-item`
+  still runs `reindex`. The sync
   `reindex` runs `qmd update` then `qmd embed -c plastic-<slug>` inline;
   `QmdSync.reindex_async` runs the same work detached via `Process.spawn` plus
   `Process.detach`, with output discarded, returning immediately. Both no-op when
@@ -527,8 +538,8 @@ trigger lives at a fixed point:
 - **search**: the read-only `search "<terms>" [--store <dir>]` verb wraps
   `QmdSync.search`, scoping collections by `--store` (that store's collection plus
   `plastic-global`) or by CWD (`collections_for_cwd`), and prints ranked hits as
-  `[<pct>%] <path> - <title>`. The per-skill QMD-first steps call it before
-  grep/Read; it no-ops cleanly (exit 0) when qmd is absent.
+  `[<pct>%] <path> - <title>`. The retired 1.x skills called it before grep/Read;
+  it no-ops cleanly (exit 0) when qmd is absent.
 - **session start**: report-only. The boot path may report index status but
   never mutates it.
 - **doctor**: a qmd check verifies the integration is healthy, including that the
@@ -1823,7 +1834,8 @@ field stays blank. On a single-maintainer repository the only approver a deploym
 add is the person who already pushed the tag, so it excludes nobody; the control that matters
 is who can push a `v*` tag, which tag protection already governs.
 
-**The releasing skill's second post-push action.** `skills/releasing/SKILL.md` keeps its
+**The releasing skill's second post-push action** (1.x; intent 372 retired the releasing
+skill, and in 2.0 a push to `alpha`, `beta`, or `main` starts `publish.yml`). `skills/releasing/SKILL.md` kept its
 `npm_publish` action (a local `npm publish`) for every other project, and adds
 `npm_publish_workflow` as a sibling: the tag push already started the publish, so the session
 confirms a run exists (`gh run list --workflow publish.yml`), follows it (`gh run watch`), and

@@ -87,7 +87,7 @@ relocation holds itself to the identical rule.
 
 Doctor stays a detector: core and full checks, every installed agent, both global and project
 stores. It gains no write path of its own. The "Fix all" prompt
-(`skills/doctor/SKILL.md`) is a ROUTER: for each fixable finding it dispatches to the tool
+(the retired `skills/doctor/SKILL.md`; in 2.0 each `plastic doctor` finding names its own repair) is a ROUTER: for each fixable finding it dispatches to the tool
 that already owns that class of repair (`project-links`, `rebuild-graph`,
 `restore-intent-v1`, or the curator, via `scripts/maintenance-run` where applicable), and
 those tools perform the mutation and write the `revisions.md` receipt - never doctor itself.
@@ -176,7 +176,7 @@ meant to catch).
 (intent 274) is the one narrow exception to the "every maintenance action is recorded in
 `revisions.md`" rule above. It populates each store's `doctor-exclusions` file (the per-store
 record of knowingly-exempt `(intent_id, rule)` pairs `doctor`'s `savepoint_operational` check
-honors - see `skills/doctor/SKILL.md`) by computing violations through
+honors) by computing violations through
 `Doctor#done_signal_findings_for_dir` directly, the same function `check_done_signals` itself
 calls, so the registry can never disagree with the checker about what counts as a violation.
 

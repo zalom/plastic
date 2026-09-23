@@ -3,7 +3,7 @@
 This is the operating model behind the `sources` and `chain` frontmatter fields. It
 explains how Plastic borrows from Zettelkasten, what each field means, the invariants that
 keep the graph honest, and the context contract (the operational reason the two fields are
-weighted differently). Every other surface (PLASTIC.md, the skills, the scripts) restates a
+weighted differently). Every other surface (PLASTIC.md, the `plastic help` chapters, the scripts) restates a
 slice of this model; this document is the source of truth.
 
 ## Grounding: from a paper tree to a software graph

@@ -20,11 +20,12 @@ The installer asks no questions. It writes the defaults, and the following flags
 
 ## Keys in `config.yml`
 
-The following table lists the keys that the installer writes into `~/.plastic/config.yml`:
+The following table lists the keys you are most likely to set in `~/.plastic/config.yml`. A
+new install writes every key except `project_roots`:
 
 | Key | Default | Meaning |
 | --- | ------- | ------- |
-| `project_roots` | `~/.plastic/projects` | The directories where Plastic looks for projects. |
+| `project_roots` | `~/.plastic/projects` and `~/.plastic/stores` | The parent folders searched for this session's delivery locks. Projects themselves are found through `projects.yml`. |
 | `stale_threshold_days` | `3` | The age at which a future intent is shown for triage. |
 | `context_offer_tokens` | `150000` | The context size at which the agent offers to compact. |
 | `context_insist_tokens` | `250000` | The context size at which the agent insists on compacting. |
@@ -38,7 +39,7 @@ Edit the file to change a key.
 | File | Holds |
 | ---- | ----- |
 | `~/.plastic/config.yml` | Global settings, such as the context thresholds. |
-| `~/.plastic/projects.yml` | The registered projects: slug, path and governing intent. |
+| `~/.plastic/projects.yml` | The registered projects: for each slug, the path, the registration date, the status and an optional parent. |
 | `~/.plastic/PLASTIC.md` | The instruction text the agent carries. The installer replaces it on every update. |
 
-The `plastic` command has no configuration file of its own in this batch.
+The `plastic` command has no configuration file of its own.

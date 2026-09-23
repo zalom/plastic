@@ -2,16 +2,17 @@
 
 Plastic runs on your machine. It makes no model call and sends none of your files anywhere.
 
-Two things use the network. The update check hook and `plastic update` ask the npm registry
+Three things use the network. The update check hook and `plastic update` ask the npm registry
 for the newest version with `npm view @zalom/plastic dist-tags`. The npm install path
-downloads the package through `npx`.
+downloads the package through `npx`. `plastic session commit` in a project whose flow sets
+`mode: pull_request` runs `gh pr create`, which talks to GitHub.
 
 ## Files the installer writes
 
 | Place | What is written |
 | ----- | --------------- |
 | `~/.plastic/` | Scripts, hooks, templates, `PLASTIC.md`, the install ledger `versions.json`, and your stores. |
-| `~/.claude/skills`, `~/.claude/agents/`, `~/.claude/hooks` | The Plastic skills, agents and hooks for Claude Code. |
+| `~/.claude/agents/`, `~/.claude/hooks`, `~/.claude/plastic/` | The Plastic agents and hooks for Claude Code, and the install record (`manifest.json`, `VERSION`). No skills ship; the installer may leave an empty `~/.claude/skills`. |
 | `~/.claude/settings.json` | Hook entries, and the status line when you choose it. |
 | `~/.claude/CLAUDE.md` | One managed block between the `BEGIN PLASTIC` and `END PLASTIC` markers. |
 | `~/.codex/AGENTS.md`, `~/.codex/hooks.json`, `~/.codex/agents/` | The same, for Codex CLI. |

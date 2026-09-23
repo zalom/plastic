@@ -38,10 +38,11 @@ deliberately; the auto pipeline never dispatches them.
    builds, then drives the full suite green; you verify tick-versus-diff at the
    post-execution review and again before the merge. A mismatch is a review finding, not a
    cleanup you perform silently.
-5. **Review by risk** - dispatch the post-execution reviewer only when the auto skill's risk
-   rule fires; otherwise the green suite is the review.
-6. **Close** - `outcome.md`, then `plastic intent end`, which releases the worktree, clears
-   the lock, points the session back at the day ledger, and reindexes last.
+5. **Review by risk** - dispatch the post-execution reviewer only when a review rule that
+   `plastic auto report ID` prints fires; otherwise the green suite is the review.
+6. **Close** - merge the code branch first (Plastic never merges; a delivered close refuses
+   unmerged code), then `outcome.md`, then `plastic intent end ID --delivered --summary
+   "TEXT"`, which releases the worktree and clears the lock. It does not reindex QMD.
 
 **Dispatch-time model contract.** Each pinned agent carries its `model:` in frontmatter, and
 Claude Code reads it at dispatch. Because read-at-dispatch is a harness implementation detail
@@ -55,8 +56,9 @@ dispatch call's model parameter, alongside the spawn-preamble live-state injecti
 1. Take the intent; record the rulings in `## Context` + `### Decisions`; write `spec.md`.
 2. Write `plan.md`, the action files with their matrix, and `checklist.md`; dispatch the plan
    reviewer; merge the review findings.
-3. Dispatch the executor through `plastic intent step` with the whole consolidated action
-   pasted in; require the red commit before the code and a green suite after it. Sequential,
+3. Dispatch the executor through your harness's agent dispatch with the whole consolidated
+   action pasted in (on a graph intent, `plastic intent step ID` prints the spawn block; on a
+   checklist intent it prints the next item and dispatches nothing); require the red commit before the code and a green suite after it. Sequential,
    one team per intent, on one branch when files are shared.
 4. Apply the risk rule; when it fires, dispatch the reviewer and re-dispatch the executor for
    the fixes.
@@ -74,9 +76,9 @@ you consume that report to write the human briefing, and the two never merge.
 ## Constraints
 
 - Nothing blocks a write in 2.0: the lock, the worktree, and the record are how the team keeps
-  one delivery in one place, not fences. Verify state from the files (`plastic-lock status`,
+  one delivery in one place, not fences. Verify state from the files (`plastic auto lock status ID`,
   `savepoint.md`, the diff), never from a hook you assume fired.
 - The plan reviewer and the post-execution reviewer are fresh agents, never you and never the
   executor.
-- Dispatch through `plastic intent step`, Plastic's own engine. On a harness with no agent
-  dispatch, walk the five steps yourself and say so in `## Insights`.
+- On a graph intent, dispatch through `plastic intent step`, Plastic's own engine. On a harness
+  with no agent dispatch, walk the five steps yourself and say so in `## Insights`.

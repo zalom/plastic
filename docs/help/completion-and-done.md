@@ -18,20 +18,25 @@ header. The delivered path authors it with the result; the abandoned path author
 the abandonment reason and no longer leaves the scaffolded placeholder sentinel in place.
 
 The canonical End tail runs in this order: `outcome.md -> INDEX terminal -> the terminal
-savepoint line -> commit -> disarm (Worktree.release -> Lock.release) -> QMD reindex`, the
-reindex always LAST. Running the reindex last keeps the index from ever referencing a lock
-that disarm just removed.
+savepoint line -> commit -> disarm (Worktree.release -> Lock.release)`. `plastic intent end`
+runs all of it through `scripts/end-intent`. The close does not reindex QMD: no public close
+path calls `qmd-sync`, so the QMD index catches up only when you run `qmd-sync` yourself.
 
 `scripts/end-intent` never merges code. Before a delivered close writes anything, it checks
 that the intent's code is already merged into the current branch of the repo checkout. It
 checks the commit the code worktree is on, even when that worktree is on a renamed branch or
 a detached HEAD, and it checks the code branch after the worktree is gone. The repo checkout
 must be on the branch you release from, not detached and not on the code branch. If the code
-isn't merged, or Git can't tell, the close exits 9 and changes nothing: INDEX, the savepoint, the
-lock, and the worktree all stay as they were. `--dry-run` refuses the same way. The refusal
+isn't merged, or Git can't tell, the script exits 9 and changes nothing: INDEX, the savepoint, the
+lock, and the worktree all stay as they were. `plastic intent end` reports that refusal as exit 1
+with a named message. `--dry-run` refuses the same way. The refusal
 names the merge to run, for example `git -C <repo> merge plastic/<id>--<slug>`. Run that
 ordinary merge, or release the work through your usual process, and then run the close
 again. An abandoned close and an intent with no code repository skip this check.
+
+A delivered close also refuses, as exit 1, an untouched scaffold (script exit 8) and a hollow
+report whose `## Delivered` rows do not match the action files (script exit 7). A live foreign
+lock is script exit 4, which `plastic intent end` reports as exit 3.
 
 `scripts/end-intent` performs this order's disarm step (verify the code worktree is clean,
 then remove the worktree, then clear the lock) as its own step 5, mechanically, since

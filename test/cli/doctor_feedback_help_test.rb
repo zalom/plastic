@@ -13,7 +13,7 @@ class CliDoctorFeedbackHelpTest < Minitest::Test
 
   KNOWN_TOPICS = %w[completion-and-done knowledge-graph lifecycle-and-savepoints
     locks-and-worktrees maintenance-and-revisions roadmaps track-1-guided
-    track-2-auto track-3-projects-and-roadmaps].freeze
+    track-2-auto track-3-projects-and-roadmaps tutorial].freeze
 
   def setup
     @out = StringIO.new

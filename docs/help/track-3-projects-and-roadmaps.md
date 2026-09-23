@@ -20,8 +20,8 @@ one this tutorial keeps or ships.
 
 ### 1. Start from a founding implementation intent
 
-Create and board an intent the same way as track 1, stations 1 and 2: `plastic intent new`,
-then `plastic continue`. Describe something meant to grow into a small real project,
+Create an intent and read where it stands, the same way as track 1, stations 1 and 2:
+`plastic intent new`, then `plastic intent show ID`. Describe something meant to grow into a small real project,
 for example "build a personal todo app."
 
 Then type `plastic intent spec` and record a couple of real rulings on this founding
@@ -66,8 +66,10 @@ and an append-only, dated `## Log`. `INDEX.md` stays the single source of truth 
 intent's status; the roadmap only mirrors it. List the two or more intents from station 3
 across one or more batches.
 
-Run `plastic roadmap check <slug>` to confirm the file parses, then `plastic roadmap show
-<slug>` to see it rendered as a report.
+Run `plastic roadmap check <slug>` to confirm the file parses. A roadmap copied from the
+template may have no `## Graph` section yet; `check` then exits 1 and names
+`plastic roadmap migrate <slug>`, which writes the section from the batches. Then run
+`plastic roadmap show <slug>` to see it rendered as a report.
 
 Artifact: a new `roadmaps/<slug>.md` file, sitting next to the project's `INDEX.md`, listing
 the two or more intents from station 3 across one or more batches.
@@ -101,13 +103,14 @@ sections you turned into the condition above.
 No command run here; describe the step instead. Each delivered intent's code merges to main
 as it lands. When the batch (or a meaningful slice of it) is ready to ship, cutting a release
 is a push to `alpha`, `beta`, or `main`: the version files are bumped in that push, and CI
-tags, publishes, and completes the intents it collects.
+tags and publishes. CI never sees your stores, so it closes no intent: each intent is closed
+with `plastic intent end ID --delivered --summary "TEXT"` after its code is merged.
 
 Releases and any npm publish step are described here, not run: this walkthrough stays in a
 sandbox and never touches a real package registry.
 
-Checkpoint: explain why a release completes the intents it collects, rather than an intent
-waiting on a release to exist first.
+Checkpoint: explain why an intent closes when its code is merged, rather than waiting on a
+release to exist first.
 
 ## Wrap and where to go next
 
