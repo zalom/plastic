@@ -1,6 +1,6 @@
 {
   "name": "@zalom/plastic",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Intent-driven idea development system for AI coding agents",
   "type": "module",
   "bin": {
@@ -31,6 +31,7 @@
   },
   "homepage": "https://github.com/zalom/plastic",
   "files": [
+    "assets/",
     "bin/",
     "scripts/",
     "skills/",
