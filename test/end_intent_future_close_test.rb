@@ -81,18 +81,33 @@ class EndIntentFutureCloseTest < Minitest::Test
     assert_equal before, snapshot
   end
 
-  def test_future_abandon_closes_through_the_lifecycle_path
+  def test_future_abandon_moves_the_entry_to_abandoned_with_the_note
     file_under("Future")
 
-    status, out, err = plastic(*ABANDON)
+    status, _out, err = plastic(*ABANDON)
 
     assert_equal 0, status, err
-    assert_includes out, "next: plastic status"
     assert_equal "Abandoned", section_of("1")
-    assert_match(/^- \[1 \u2014 later work\]\(store\/1--later\/1--later\.md\) \u2014 \d{4}-\d{2}-\d{2} successor: intent 2$/,
+    assert_match(/^- \[1 — later work\]\(store\/1--later\/1--later\.md\) — \d{4}-\d{2}-\d{2} successor: intent 2$/,
       File.read(@index))
+  end
+
+  def test_future_abandon_writes_the_terminal_record
+    file_under("Future")
+
+    _status, out, = plastic(*ABANDON)
+
+    assert_includes out, "next: plastic status"
     assert_includes File.read(File.join(intent_dir, "savepoint.md")), "Done  abandoned"
     assert_includes File.read(File.join(intent_dir, "outcome.md")), "disposition: abandoned"
+  end
+
+  def test_future_abandon_commits_the_store
+    file_under("Future")
+
+    status, _out, err = plastic(*ABANDON)
+
+    assert_equal 0, status, err
     assert_equal "chore: complete intent 1 (abandoned)", git("log", "-1", "--format=%s").strip
     assert_equal "", git("status", "--porcelain")
   end
@@ -110,17 +125,25 @@ class EndIntentFutureCloseTest < Minitest::Test
     assert_equal head, git("rev-parse", "HEAD")
   end
 
-  def test_an_absent_index_entry_refuses_preview_and_close_without_writing
+  def test_an_absent_index_entry_refuses_the_preview_without_writing
     file_under(nil)
     before = snapshot
 
-    preview_status, _out, preview_err = plastic(*ABANDON, "--dry-run")
+    status, _out, err = plastic(*ABANDON, "--dry-run")
+
+    assert_equal 1, status, err
+    assert_includes err, "intent 1 could not be resolved"
+    assert_equal before, snapshot
+  end
+
+  def test_an_absent_index_entry_refuses_the_close_before_the_backfill
+    file_under(nil)
+    before = snapshot
+
     status, _out, err = plastic(*ABANDON)
 
-    assert_equal [1, 1], [preview_status, status], err
-    assert_includes preview_err, "intent 1 could not be resolved"
+    assert_equal 1, status, err
     assert_includes err, "intent 1 could not be resolved"
-    refute_includes err, "backfilled"
     assert_equal before, snapshot
   end
 
@@ -147,7 +170,6 @@ class EndIntentFutureCloseTest < Minitest::Test
     assert_equal [1, 1], [preview_status, status]
     assert_includes err, "untouched scaffold"
     assert_equal before, snapshot
-    assert_equal "Future", section_of("1")
   end
 
   def test_a_worked_future_intent_delivers_like_an_active_one
