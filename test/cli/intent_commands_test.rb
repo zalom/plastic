@@ -330,7 +330,7 @@ class CliIntentCommandsTest < Minitest::Test
   def test_end_a_real_close_points_at_status
     command("intent end", "372", "--delivered", "--summary", "shipped it")
 
-    assert_includes @fixture.printed, "next: plastic status\nbecause: the intent moved out of Active"
+    assert_includes @fixture.printed, "next: plastic status\nbecause: the intent is now closed"
   end
 
   def test_end_an_unnamed_failure_names_the_exit_code

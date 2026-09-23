@@ -42,7 +42,7 @@ module Plastic
           if options[:dry_run]
             @output.next_step("none", because: "the dry run wrote nothing and found nothing that would refuse the close")
           else
-            @output.next_step("plastic status", because: "the intent moved out of Active")
+            @output.next_step("plastic status", because: "the intent is now closed")
           end
         end
 

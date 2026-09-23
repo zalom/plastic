@@ -42,7 +42,9 @@
 #      resolved before step 1 writes anything (intent 385): an id that
 #      resolves to neither an open section nor the terminal section is a loud
 #      failure (exit 1) that writes nothing, in the dry run too; an id already
-#      correctly in the terminal section is a quiet, idempotent success.
+#      correctly in the terminal section is a quiet, idempotent success. A
+#      missing INDEX.md is not a refusal: the move is skipped with a warning,
+#      and the dry run says so.
 #   3. Append the savepoint `Done` bookend (Savepoint.append_terminal_savepoint).
 #   4. Commit the store repo, unless --no-commit.
 #   5. Disarm (intent 188, D2/D16; intent 307): check the code worktree (derived

@@ -97,7 +97,7 @@ class EndIntentFutureCloseTest < Minitest::Test
 
     _status, out, = plastic(*ABANDON)
 
-    assert_includes out, "next: plastic status"
+    assert_includes out, "next: plastic status\nbecause: the intent is now closed"
     assert_includes File.read(File.join(intent_dir, "savepoint.md")), "Done  abandoned"
     assert_includes File.read(File.join(intent_dir, "outcome.md")), "disposition: abandoned"
   end
