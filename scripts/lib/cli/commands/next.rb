@@ -14,9 +14,14 @@ module Plastic
         USAGE_LINE = "plastic next [--why] [--project SLUG] [--json]"
 
         def call
-          @output.row("next work", frontier.summary)
+          active_id = scope.active_ids.first unless frontier.roadmap
+          @output.row("next work", active_id ? "#{active_id}  in #{scope.slug}" : frontier.summary)
           detail if options[:why]
-          @output.next_step(frontier.next_step, because: frontier.because)
+          if active_id
+            @output.next_step("plastic intent show #{active_id}", because: "#{active_id} is the first active intent in #{scope.slug}")
+          else
+            @output.next_step(frontier.next_step, because: frontier.because)
+          end
         rescue RoadmapSavepoint::MissingGroupingHeading => e
           raise Failure, e.message
         end

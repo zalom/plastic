@@ -4,6 +4,7 @@ require_relative "../test_helper"
 require "tmpdir"
 require_relative "../lib/cli_fixture"
 require_relative "../../scripts/lib/cli"
+require_relative "../../scripts/lib/cli/commands/render"
 require_relative "../../scripts/lib/store_sync"
 require_relative "../../scripts/doctor"
 
@@ -289,6 +290,20 @@ class CliSyncCommandsTest < Minitest::Test
     plastic("render", File.join(home, "page.md"))
 
     assert_equal 1, @fixture.printed.scan("<style>").size
+  end
+
+  def test_render_supports_rdoc_with_a_required_options_argument
+    require "rdoc"
+    legacy_formatter = Class.new do
+      attr_reader :options
+
+      def initialize(options, _markup = nil)
+        @options = options
+      end
+    end
+    formatter = Plastic::CLI::Commands::Render.allocate.send(:html_formatter, legacy_formatter)
+
+    assert_instance_of RDoc::Options, formatter.options
   end
 
   def test_render_without_a_file_exits_two

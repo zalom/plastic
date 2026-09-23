@@ -118,6 +118,12 @@ class CliAutoSessionCommandsTest < Minitest::Test
     assert_includes @fixture.printed, "next: plastic auto brief 372"
   end
 
+  def test_take_forwards_the_explicit_inline_override
+    command("auto take", "372", "--allow-inline")
+
+    assert_equal ["arm", "--intent-dir", intent_dir, "--mode", "auto", "--allow-inline"], @calls.last.last
+  end
+
   def test_take_with_an_unknown_id_exits_one
     assert_equal 1, command("auto take", "999")
   end
@@ -266,6 +272,14 @@ class CliAutoSessionCommandsTest < Minitest::Test
     assert_includes @fixture.printed, "held by abc"
   end
 
+  def test_lock_status_uses_the_current_owner_session_field
+    @captured = JSON.generate("intent_dir" => "/store/372", "lock" => {"owner_session" => "current-owner", "session" => "legacy"},
+      "lock_fresh" => true)
+    command("auto lock", "status", "372")
+
+    assert_includes @fixture.printed, "held by current-owner"
+  end
+
   def test_lock_status_marks_a_stale_lock_stale
     @captured = JSON.generate("intent_dir" => "/store/372", "lock" => {"session" => "abc"},
       "lock_fresh" => false)
@@ -279,6 +293,13 @@ class CliAutoSessionCommandsTest < Minitest::Test
     command("auto lock", "status", "372")
 
     assert_includes @fixture.printed, "plastic auto lock fix 372 rewrites it"
+  end
+
+  def test_lock_status_does_not_hide_a_corrupt_unreadable_lock
+    @captured = JSON.generate("intent_dir" => "/store/372", "lock" => nil, "lock_corrupt" => true)
+    command("auto lock", "status", "372")
+
+    assert_includes @fixture.printed, "corrupt, plastic auto lock fix 372"
   end
 
   def test_lock_status_shows_a_provisioned_worktree

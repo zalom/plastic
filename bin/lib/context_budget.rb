@@ -8,6 +8,7 @@ require "open3"
 require "rbconfig"
 require "tmpdir"
 require "yaml"
+require_relative "../../scripts/lib/store_layout"
 
 # ContextBudget (intent 313): the measurement behind Plastic's two ruled context
 # numbers. Intent 296 ruled the core block under 8,192 bytes and the whole
@@ -174,7 +175,7 @@ module ContextBudget
     write_project_store(plastic_home: plastic_home, project_dir: project_dir, today: today)
 
     Fixture.new(home: home, plastic_home: plastic_home,
-                index: File.join(plastic_home, "INDEX.md"), project_dir: project_dir)
+                index: File.join(Plastic::StoreLayout.global_root(plastic_home), "INDEX.md"), project_dir: project_dir)
   end
 
   def self.install_into(home:, plastic_home:, repo:)
@@ -192,12 +193,12 @@ module ContextBudget
   # packaging_no_store_ids_test.rb flags any shipped literal carrying five or
   # more digit-leading tokens, and bin/ is inside package.json's files set.
   def self.write_global_store(plastic_home:, today:)
-    store = File.join(plastic_home, "store")
+    store = Plastic::StoreLayout.global_store(plastic_home)
     write_intent(store, "0001", "a-global-intent-in-flight", 1, today)
     write_intent(store, "0002", "a-parked-global-intent", FIXTURE_STALE_DAYS, today)
     write_intent(store, "0003", "another-parked-global-intent", FIXTURE_STALE_DAYS, today)
 
-    File.write(File.join(plastic_home, "INDEX.md"), <<~MD)
+    File.write(File.join(Plastic::StoreLayout.global_root(plastic_home), "INDEX.md"), <<~MD)
       # Index
 
       ## Active
@@ -210,7 +211,7 @@ module ContextBudget
   end
 
   def self.write_project_store(plastic_home:, project_dir:, today:)
-    project_root = File.join(plastic_home, "projects", "fixture")
+    project_root = Plastic::StoreLayout.project_root(plastic_home, "fixture")
     store = File.join(project_root, "store")
     write_intent(store, "0100", "a-project-intent-in-flight", 1, today)
     write_intent(store, "0101", "a-parked-project-intent", FIXTURE_STALE_DAYS, today)

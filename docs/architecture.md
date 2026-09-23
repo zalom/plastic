@@ -79,7 +79,14 @@ same shape, and the global store is the root named `global`:
 ```
 
 Plastic reads this layout when `~/.plastic/stores/` exists and reads the earlier layout when it
-does not. A fresh install still creates the earlier layout.
+does not. A fresh install creates `stores/global/` by default. Existing homes retain their
+layout until the explicit migration runs; reinstalling does not move user data.
+
+`varar/store-layout.md` checks fresh installation and legacy migration separately for
+Claude Code and Codex. Its Ruby fixtures execute an npm archive in disposable homes,
+including harness registration and public project and intent creation. These deterministic
+checks supplement the live authenticated agent runs; they do not claim full doctor or
+all-command acceptance.
 
 ### intent directory contents
 
@@ -324,3 +331,9 @@ Diagnostics remain on stderr. Direct intents use their specification, plan, and
 checklist to select work. Graph execution first checks ownership and names the
 public lock command when ownership is absent. Completed intents have no next
 action. A Future index entry does not remove an explicit roadmap block.
+
+Without a roadmap, both `next` and `continue` select the first active intent.
+Graph steps accept repeated `--return NODE=PATH` arguments and a harness override,
+so the public command can complete the runner's dispatch and absorption cycle.
+Conversation sessions still require explicit owner approval for inline delivery;
+`auto take --allow-inline` carries that approval to the existing lock guard.

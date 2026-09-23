@@ -694,6 +694,18 @@ top of spec.md. `Savepoint.savepoint_tier` delegates to it. (removed in 2.0, int
 
 ## store layout and the stores move (intent 370)
 
+Fresh bootstrap creates `stores/global/store` and `stores/global/INDEX.md`. Legacy data
+(`store`, `projects`, `INDEX.md`, or `roadmaps` at the home root) keeps bootstrap on the old
+layout until explicit migration. Bootstrap on an already migrated home never recreates `projects/`.
+The context-budget benchmark seeds its fixture through the same store path resolver, so it
+measures active intents in the layout produced by the real installer.
+
+The four rows in `varar/store-layout.md` bind to `test/varar/store_layout.steps.rb`.
+They pack once per test process, isolate every home and harness configuration, check
+legacy data and backup preservation, and verify repeated migration refusal. The Varar
+test loader checks that all four cases remain discoverable, so a removed or unparsed
+table cannot silently drop this coverage. These rows make no model calls.
+
 `scripts/lib/store_layout.rb` is the one place that turns a home and a slug into a store path.
 `Plastic::StoreLayout.moved?(home)` is true when `stores/` exists. Every script asks it for the
 global root, a project root and the list of project roots, so no script joins `"store"` or
@@ -1822,3 +1834,11 @@ before dispatch. Lock inspection and search end with `next: none`.
 `test/cli/release_contract_test.rb` exercises the actual executable with isolated
 stores, including creation, screens, project scope, direct progression, graph
 lock prerequisites, and blocked Future work.
+
+`IntentStep` forwards graph returns, harness selection, and the explicit core-drift
+override to the runner. `AutoTake` exposes the owner-approved inline override;
+without it, a started conversation session returns refusal code 3. Lock screens
+read `owner_session`, with the older `session` field as a compatibility fallback.
+The renderer supports both the RDoc 7 constructor with options and RDoc 8's
+keyword constructor, so an installed package does not depend on the development
+bundle's RDoc version.

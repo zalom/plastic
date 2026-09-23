@@ -132,6 +132,13 @@ class CliIntentCommandsTest < Minitest::Test
 
   # --- intent step -------------------------------------------------------------
 
+  def test_end_rejects_conflicting_dispositions_before_any_script_runs
+    status = command("intent end", "372", "--delivered", "--abandoned", "--summary", "Ambiguous")
+
+    assert_equal 2, status
+    assert_empty @calls
+  end
+
   def test_step_runs_runner_step
     File.write(File.join(intent_dir, "graph.md"), "# graph\n")
     require_relative "../../scripts/lib/arm"
@@ -147,6 +154,17 @@ class CliIntentCommandsTest < Minitest::Test
 
     assert_empty @calls
     assert_includes @fixture.printed, "next: plastic intent spec 372"
+  end
+
+  def test_step_forwards_multiple_returns_and_harness_options
+    File.write(File.join(intent_dir, "graph.md"), "# graph\n")
+    require_relative "../../scripts/lib/arm"
+    Lock.acquire(intent_dir, session: Arm.derive_key(store, "372"))
+    command("intent step", "372", "--return", "n1=/tmp/one.yml", "--return", "n2=/tmp/two.yml",
+      "--harness", "codex-cli", "--allow-core-drift")
+
+    assert_equal ["step", intent_dir, "--return", "n1=/tmp/one.yml", "--return", "n2=/tmp/two.yml",
+      "--harness", "codex-cli", "--allow-core-drift"], @calls.last.last
   end
 
   def test_step_with_a_graph_does_not_print_the_non_graph_procedure

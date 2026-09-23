@@ -99,7 +99,16 @@ class CliNextTest < Minitest::Test
     assert_includes @fixture.printed, "next work  367  in Batch 1 the command line foundation"
   end
 
-  def test_a_project_with_no_roadmap_directory_says_there_is_none
+  def test_a_project_with_no_roadmap_directory_names_its_active_intent
+    next_command
+
+    assert_includes @fixture.printed, "next work  363  in plastic"
+    assert_includes @fixture.printed, "next: plastic intent show 363 --project plastic"
+    assert_includes @fixture.printed, "because: 363 is the first active intent in plastic"
+  end
+
+  def test_a_project_with_neither_roadmap_nor_active_intent_has_no_work
+    @fixture.project("plastic", active: [])
     next_command
 
     assert_includes @fixture.printed, "next work  none"

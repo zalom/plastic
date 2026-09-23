@@ -185,7 +185,7 @@ when "arm"
     warn "plastic-lock: refusing to arm intent #{intent_id} from a conversation session " \
          "(owner rule 2026-08-31: no inline intent delivery). Dispatch the delivery team " \
          "instead (plastic-auto), or pass --allow-inline with explicit owner approval."
-    exit 1
+    exit 3
   end
 when "status"
   lock = Lock.read(dir)

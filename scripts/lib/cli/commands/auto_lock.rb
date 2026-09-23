@@ -62,10 +62,10 @@ module Plastic
 
         def lock_line(report)
           lock = report["lock"]
-          return "none" if lock.nil?
           return "corrupt, plastic auto lock fix #{id} rewrites it" if report["lock_corrupt"]
+          return "none" if lock.nil?
 
-          holder = lock.is_a?(Hash) ? lock["session"] : lock
+          holder = lock.is_a?(Hash) ? (lock["owner_session"] || lock["session"]) : lock
           "held by #{holder}#{", stale" unless report["lock_fresh"]}"
         end
 

@@ -262,6 +262,42 @@ class InstallerCoreTest < Minitest::Test
 
   # --- intent 312: the seeded config and the compact-instructions block ---
 
+  def test_fresh_bootstrap_uses_stores_global
+    capture_io { @core.bootstrap }
+
+    assert_path_exists File.join(@home, "stores", "global", "store")
+    assert_path_exists File.join(@home, "stores", "global", "INDEX.md")
+    refute_path_exists File.join(@home, "projects")
+  end
+
+  def test_bootstrap_preserves_legacy_layout_until_explicit_migration
+    FileUtils.mkdir_p(File.join(@home, "store"))
+    marker = File.join(@home, "store", "history.txt")
+    File.write(marker, "retained")
+    capture_io { @core.bootstrap }
+
+    assert_equal "retained", File.read(marker)
+    assert_path_exists File.join(@home, "INDEX.md")
+    refute_path_exists File.join(@home, "stores")
+  end
+
+  def test_bootstrap_preserves_a_project_only_legacy_home
+    FileUtils.mkdir_p(File.join(@home, "projects", "sample", "store"))
+    capture_io { @core.bootstrap }
+
+    assert_path_exists File.join(@home, "store")
+    refute_path_exists File.join(@home, "stores")
+  end
+
+  def test_bootstrap_preserves_migrated_layout
+    FileUtils.mkdir_p(File.join(@home, "stores", "global", "store"))
+    capture_io { @core.bootstrap }
+
+    assert_path_exists File.join(@home, "stores", "global", "INDEX.md")
+    refute_path_exists File.join(@home, "projects")
+    refute_path_exists File.join(@home, "store")
+  end
+
   def test_compaction_defaults_150k_250k
     capture_io { @core.bootstrap }
     config = YAML.safe_load(File.read(File.join(@home, "config.yml")))

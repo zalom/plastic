@@ -119,4 +119,24 @@ class CliReleaseContractTest < Minitest::Test
     assert_equal 0, status, error
     assert_equal "none", result.fetch("next")
   end
+
+  def test_started_session_requires_owner_approval_before_inline_delivery
+    dir = new_intent
+    FileUtils.mkdir_p(File.join(@fixture.plastic_home, "store", ".tmp", "releasec"))
+    result, _error, status = command("auto", "take", "1", "--project", "sample")
+
+    assert_equal 3, status
+    assert_equal "refused", result.dig("result", "error", "kind")
+    refute_path_exists File.join(dir, "delivery.lock")
+  end
+
+  def test_explicit_inline_approval_is_available_through_the_public_cli
+    dir = new_intent
+    FileUtils.mkdir_p(File.join(@fixture.plastic_home, "store", ".tmp", "releasec"))
+    result, error, status = command("auto", "take", "1", "--project", "sample", "--allow-inline")
+
+    assert_equal 0, status, error
+    assert_equal "plastic auto brief 1 --project sample", result.fetch("next")
+    assert_equal "release-contract-test", JSON.parse(File.read(File.join(dir, "delivery.lock"))).fetch("owner_session")
+  end
 end
