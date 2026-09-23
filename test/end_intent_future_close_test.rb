@@ -88,7 +88,7 @@ class EndIntentFutureCloseTest < Minitest::Test
 
     assert_equal 0, status, err
     assert_equal "Abandoned", section_of("1")
-    assert_match(/^- \[1 — later work\]\(store\/1--later\/1--later\.md\) — \d{4}-\d{2}-\d{2} successor: intent 2$/,
+    assert_match(/^- \[1 \u2014 later work\]\(store\/1--later\/1--later\.md\) \u2014 \d{4}-\d{2}-\d{2} successor: intent 2$/,
       File.read(@index))
   end
 
