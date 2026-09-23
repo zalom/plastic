@@ -3,6 +3,12 @@
 Release history for Plastic, one line per cut. Commit-level detail lives in
 [GitHub Releases](https://github.com/zalom/plastic/releases).
 
+## 2.0.1
+
+- The README uses the centered ocean-blue wordmark and shows stable release versions on GitHub and npm.
+
+- Packaged Varar checks read the generated archive directly, so npm 12 can run the release checks.
+
 ## 2.0.0
 
 - The public `plastic` command carries workflow guidance, project scope, and next actions. Agent instructions point to the command and its help chapters.

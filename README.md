@@ -1,14 +1,17 @@
-<h1 align="center">PLASTIC</h1>
+<h1 align="center">
+  <img src="https://raw.githubusercontent.com/zalom/plastic/main/assets/plastic-logo.svg"
+    alt="Plastic" width="360">
+</h1>
 
 <p align="center">
   <strong>One command that turns an intent into a durable, linked record of decisions, plans, delivery and outcomes</strong>
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/@zalom/plastic"><img src="https://img.shields.io/npm/v/@zalom/plastic/alpha" alt="npm version"></a>
+  <a href="https://www.npmjs.com/package/@zalom/plastic"><img src="https://img.shields.io/npm/v/@zalom/plastic" alt="npm version"></a>
   <a href="https://www.npmjs.com/package/@zalom/plastic"><img src="https://img.shields.io/npm/dm/@zalom/plastic" alt="npm downloads"></a>
   <a href="https://github.com/zalom/plastic/actions/workflows/test.yml"><img src="https://github.com/zalom/plastic/actions/workflows/test.yml/badge.svg" alt="CI"></a>
-  <a href="https://github.com/zalom/plastic/releases"><img src="https://img.shields.io/github/v/release/zalom/plastic?include_prereleases" alt="Release"></a>
+  <a href="https://github.com/zalom/plastic/releases"><img src="https://img.shields.io/github/v/release/zalom/plastic" alt="Release"></a>
   <a href="LICENSE"><img src="https://img.shields.io/npm/l/@zalom/plastic" alt="License: MIT"></a>
 </p>
 

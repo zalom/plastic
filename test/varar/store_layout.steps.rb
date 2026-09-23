@@ -17,10 +17,13 @@ module StoreLayoutAcceptance
 
     root = Dir.mktmpdir("varar-package")
     Minitest.after_run { FileUtils.remove_entry(root) }
-    out, err, status = Open3.capture3("npm", "pack", "--json", "--pack-destination", root, chdir: REPO)
+    _out, err, status = Open3.capture3("npm", "pack", "--pack-destination", root, chdir: REPO)
     raise "npm pack: #{err}" unless status.success?
 
-    archive = File.join(root, JSON.parse(out).first.fetch("filename"))
+    archives = Dir.glob(File.join(root, "*.tgz"))
+    raise "npm pack: expected one archive, found #{archives.length}" unless archives.length == 1
+
+    archive = archives.fetch(0)
     _out, err, status = Open3.capture3("tar", "-xzf", archive, "-C", root)
     raise "archive extraction: #{err}" unless status.success?
 
