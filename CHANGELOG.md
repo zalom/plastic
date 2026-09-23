@@ -3,6 +3,16 @@
 Release history for Plastic, one line per cut. Commit-level detail lives in
 [GitHub Releases](https://github.com/zalom/plastic/releases).
 
+## 2.0.2
+
+- Updates and rollbacks verify the installed version and refuse packages that cannot read the stores layout.
+
+- Closure previews enforce delivery checks without writing records. Untouched intents cannot be marked delivered.
+
+- Command repairs cover project registration, roadmap validation, sync previews, lock ownership, and completed graph guidance.
+
+- Harness display checks enforce one deadline across the process and its input and output streams.
+
 ## 2.0.1
 
 - The README uses the centered ocean-blue wordmark and shows stable release versions on GitHub and npm.

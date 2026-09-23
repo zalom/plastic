@@ -1,4 +1,3 @@
-# encoding: UTF-8
 # frozen_string_literal: true
 
 require "minitest/autorun"
@@ -36,9 +35,9 @@ class EndIntentWorktreeGuardTest < Minitest::Test
     FileUtils.mkdir_p(@repo)
     Open3.capture3("git", "init", "-q", @repo)
     Open3.capture3("git", "-C", @repo, "-c", "user.email=t@t.test", "-c", "user.name=Test",
-                   "commit", "--allow-empty", "-q", "-m", "init")
+      "commit", "--allow-empty", "-q", "-m", "init")
     File.write(File.join(@plastic_home, "projects.yml"),
-               { "projects" => { "demo" => { "path" => @repo } } }.to_yaml)
+      {"projects" => {"demo" => {"path" => @repo}}}.to_yaml)
   end
 
   def teardown
@@ -46,7 +45,7 @@ class EndIntentWorktreeGuardTest < Minitest::Test
   end
 
   def run_end_intent(*args, session:)
-    env = { "CLAUDE_CODE_SESSION_ID" => nil, "HOME" => @home, "PLASTIC_TMP" => @tmp_bridge }
+    env = {"CLAUDE_CODE_SESSION_ID" => nil, "HOME" => @home, "PLASTIC_TMP" => @tmp_bridge}
     argv = args + ["--session", session]
     out = IO.popen(env, [RbConfig.ruby, SCRIPT, *argv], err: [:child, :out], &:read)
     [out.strip, $?.exitstatus]
@@ -130,7 +129,7 @@ class EndIntentWorktreeGuardTest < Minitest::Test
     File.write(File.join(worktree_path, "scratch.txt"), "uncommitted\n")
 
     out, status = run_end_intent("--store", @store, "--id", id, "--disposition", "delivered",
-                                  "--index", @index, "--no-commit", session: "sess-1")
+      "--index", @index, "--no-commit", session: "sess-1")
     assert_equal 5, status
     assert_match(/uncommitted/i, out)
     assert Dir.exist?(worktree_path), "the worktree must still exist on disk"
@@ -138,8 +137,8 @@ class EndIntentWorktreeGuardTest < Minitest::Test
     assert File.exist?(Lock.path(intent_dir)), "disarm never ran: the delivery lock must still be present"
 
     out2, status2 = run_end_intent("--store", @store, "--id", id, "--disposition", "delivered",
-                                    "--index", @index, "--no-commit", "--discard-worktree-changes",
-                                    session: "sess-1")
+      "--index", @index, "--no-commit", "--discard-worktree-changes",
+      session: "sess-1")
     assert_equal 0, status2, out2
     refute Dir.exist?(worktree_path), "--discard-worktree-changes must allow the worktree to be removed"
     refute File.exist?(Lock.path(intent_dir)), "a real close must clear the delivery lock"
@@ -167,12 +166,12 @@ class EndIntentWorktreeGuardTest < Minitest::Test
     FileUtils.mkdir_p(not_a_repo)
     # A `.git` file pointing at a gitdir that does not exist makes `git status` fail
     # outright inside this directory, which is the inconclusive case the guard must refuse.
-    File.write(File.join(not_a_repo, ".git"), "gitdir: #{File.join(@home, 'no-such-gitdir')}\n")
+    File.write(File.join(not_a_repo, ".git"), "gitdir: #{File.join(@home, "no-such-gitdir")}\n")
     marker = File.join(not_a_repo, "scratch.txt")
     File.write(marker, "uncommitted work that must survive\n")
 
     out, status = run_end_intent("--store", @store, "--id", id, "--disposition", "delivered",
-                                  "--index", @index, "--no-commit", session: "sess-1")
+      "--index", @index, "--no-commit", session: "sess-1")
     assert_equal 5, status, "an inconclusive git status must refuse (exit 5), not proceed: #{out}"
     assert_match(/could not inspect/i, out)
     assert Dir.exist?(not_a_repo), "BLOCKER 1: the worktree directory must NOT be removed"
@@ -191,7 +190,7 @@ class EndIntentWorktreeGuardTest < Minitest::Test
     # No worktree directory exists for this intent, so the derived block is empty.
 
     _out, status = run_end_intent("--store", @store, "--id", id, "--disposition", "delivered",
-                                   "--index", @index, "--no-commit", session: "sess-1")
+      "--index", @index, "--no-commit", session: "sess-1")
     assert_equal 0, status
     refute File.exist?(Lock.path(intent_dir))
   end
@@ -201,11 +200,162 @@ class EndIntentWorktreeGuardTest < Minitest::Test
     intent_dir = build_intent(id: id)
     write_index(id: id)
     Lock.acquire(intent_dir, session: "sess-1")
-    gone_path = File.join(@repo, ".claude", "worktrees", "#{id}--demo") # never created on disk
+    File.join(@repo, ".claude", "worktrees", "#{id}--demo") # never created on disk
 
     _out, status = run_end_intent("--store", @store, "--id", id, "--disposition", "delivered",
-                                   "--index", @index, "--no-commit", session: "sess-1")
+      "--index", @index, "--no-commit", session: "sess-1")
     assert_equal 0, status
     refute File.exist?(Lock.path(intent_dir))
+  end
+
+  # --- A delivered close refuses unmerged code (exit 9), before any write ----
+
+  def git(*args)
+    out, _err, _st = Open3.capture3("git", "-c", "user.email=t@t.test", "-c", "user.name=Test", *args)
+    out.strip
+  end
+
+  def commit_in(path, file, body)
+    File.write(File.join(path, file), body)
+    git("-C", path, "add", file)
+    git("-C", path, "commit", "-q", "-m", "work on #{file}")
+  end
+
+  # Everything an unmerged close must leave alone: INDEX, savepoint, lock,
+  # worktree, and both git heads.
+  def close_state(intent_dir, worktree_path)
+    savepoint = File.join(intent_dir, "savepoint.md")
+    [File.binread(@index), File.exist?(savepoint) && File.binread(savepoint),
+      File.binread(Lock.path(intent_dir)), Dir.exist?(worktree_path),
+      git("-C", @repo, "rev-parse", "HEAD"), git("-C", worktree_path, "rev-parse", "HEAD"),
+      Dir.children(intent_dir).sort]
+  end
+
+  def unmerged_fixture
+    intent_dir = build_intent(id: "161")
+    write_index(id: "161")
+    Lock.acquire(intent_dir, session: "sess-1")
+    worktree_path = build_worktree(id: "161")
+    commit_in(worktree_path, "feature.rb", "puts 1\n")
+    [intent_dir, worktree_path]
+  end
+
+  def test_unmerged_delivered_close_refuses_before_any_write
+    intent_dir, worktree_path = unmerged_fixture
+    before = close_state(intent_dir, worktree_path)
+
+    out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered",
+      "--index", @index, session: "sess-1")
+    assert_equal 9, status, out
+    assert_includes out, "git -C #{@repo} merge plastic/161--demo"
+    assert_includes out, "nothing was merged, written, or released"
+    assert_equal before, close_state(intent_dir, worktree_path)
+    refute File.exist?(File.join(@repo, "feature.rb")), "end-intent must never merge"
+  end
+
+  def test_unmerged_delivered_dry_run_refuses_the_same_way
+    intent_dir, worktree_path = unmerged_fixture
+    before = close_state(intent_dir, worktree_path)
+
+    out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered",
+      "--index", @index, "--dry-run", session: "sess-1")
+    assert_equal 9, status, out
+    assert_includes out, "dry run: would refuse a delivered close"
+    assert_includes out, "git -C #{@repo} merge plastic/161--demo"
+    assert_equal before, close_state(intent_dir, worktree_path)
+  end
+
+  def test_already_merged_delivered_close_succeeds
+    intent_dir, worktree_path = unmerged_fixture
+    git("-C", @repo, "merge", "-q", "--no-edit", "plastic/161--demo")
+
+    out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered",
+      "--index", @index, "--no-commit", session: "sess-1")
+    assert_equal 0, status, out
+    refute Dir.exist?(worktree_path)
+    refute File.exist?(Lock.path(intent_dir))
+    assert_match(/## Completed\n- \[161/, File.read(@index))
+  end
+
+  def test_abandoned_close_releases_without_merging
+    id = "161"
+    intent_dir = build_intent(id: id)
+    File.write(File.join(intent_dir, "outcome.md"), "---\ndisposition: abandoned\n---\n# Outcome: Demo intent\n\n## Summary\nDropped.\n")
+    write_index(id: id)
+    Lock.acquire(intent_dir, session: "sess-1")
+    worktree_path = build_worktree(id: id)
+    commit_in(worktree_path, "feature.rb", "puts 1\n")
+    main_head = git("-C", @repo, "rev-parse", "HEAD")
+
+    out, status = run_end_intent("--store", @store, "--id", id, "--disposition", "abandoned",
+      "--index", @index, "--no-commit", session: "sess-1")
+    assert_equal 0, status, out
+    assert_equal main_head, git("-C", @repo, "rev-parse", "HEAD"), "an abandoned close must not merge"
+    refute File.exist?(Lock.path(intent_dir))
+  end
+
+  # A real worktree must prove its HEAD commit merged, whatever branch it is on,
+  # and a close must refuse before it writes anything.
+  def assert_refused_unchanged(intent_dir, worktree_path, expected)
+    before = close_state(intent_dir, worktree_path)
+    out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered",
+      "--index", @index, "--no-commit", session: "sess-1")
+    assert_equal 9, status, out
+    expected.each { |text| assert_includes out, text }
+    assert_equal before, close_state(intent_dir, worktree_path)
+  end
+
+  def test_detached_worktree_with_deleted_branch_refuses
+    intent_dir, worktree_path = unmerged_fixture
+    git("-C", worktree_path, "checkout", "-q", "--detach")
+    git("-C", @repo, "branch", "-q", "-D", "plastic/161--demo")
+    sha = git("-C", worktree_path, "rev-parse", "HEAD")[0, 12]
+
+    assert_refused_unchanged(intent_dir, worktree_path,
+      ["(detached at #{sha}) is not merged", "git -C #{@repo} merge #{sha}"])
+  end
+
+  def test_renamed_worktree_branch_refuses
+    intent_dir, worktree_path = unmerged_fixture
+    git("-C", worktree_path, "branch", "-m", "renamed-work")
+
+    assert_refused_unchanged(intent_dir, worktree_path, ["(on branch renamed-work at", "is not merged"])
+  end
+
+  def test_unreadable_worktree_head_refuses
+    intent_dir, worktree_path = unmerged_fixture
+    git("-C", worktree_path, "checkout", "-q", "--orphan", "unborn")
+
+    assert_refused_unchanged(intent_dir, worktree_path, ["could not read the HEAD commit"])
+  end
+
+  def test_removed_worktree_with_unmerged_branch_refuses
+    intent_dir, worktree_path = unmerged_fixture
+    git("-C", @repo, "worktree", "remove", worktree_path)
+
+    assert_refused_unchanged(intent_dir, worktree_path,
+      ["code branch plastic/161--demo is not merged", "git -C #{@repo} merge plastic/161--demo"])
+  end
+
+  def test_detached_repo_checkout_refuses
+    intent_dir, worktree_path = unmerged_fixture
+    git("-C", @repo, "checkout", "-q", "--detach")
+
+    assert_refused_unchanged(intent_dir, worktree_path, ["#{@repo} is not on a branch"])
+  end
+
+  def test_repo_checkout_on_the_code_branch_refuses
+    intent_dir, worktree_path = unmerged_fixture
+    git("-C", @repo, "worktree", "remove", worktree_path)
+    git("-C", @repo, "checkout", "-q", "plastic/161--demo")
+
+    assert_refused_unchanged(intent_dir, worktree_path, ["is on the code branch plastic/161--demo itself"])
+  end
+
+  def test_unreadable_repository_refuses
+    intent_dir, worktree_path = unmerged_fixture
+    File.write(File.join(@repo, ".git", "HEAD"), "garbage\n")
+
+    assert_refused_unchanged(intent_dir, worktree_path, ["could not inspect the Git repository #{@repo}"])
   end
 end

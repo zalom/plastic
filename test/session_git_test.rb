@@ -5,6 +5,7 @@ require "minitest/autorun"
 require "tmpdir"
 require "fileutils"
 require "yaml"
+require "json"
 require_relative "../scripts/lib/session_git"
 require_relative "../scripts/lib/session_ledger"
 require_relative "../scripts/lib/installer_core"
@@ -315,9 +316,95 @@ class SessionGitTest < Minitest::Test
     result = commit!(repo, "should not land")
 
     assert_equal "Note", result.event
-    assert_includes result.message, "left branch plastic/123--x untouched: agent lock"
+    assert_equal "left branch plastic/123--x untouched: it is an intent delivery branch", result.message
     assert_equal "plastic/123--x", current_branch(repo)
     assert_match(/^\?\? work\.txt/, git(repo, "status", "--porcelain").stdout.to_s)
+  ensure
+    FileUtils.rm_rf(repo)
+  end
+
+  # Acceptance N5: the note names the real delivery lock, not a guessed one.
+  def delivery_worktree(lock: nil)
+    repo = build_repo
+    register_project("demo", repo)
+    intent = File.join(@plastic_home, "projects", "demo", "store", "123--x")
+    FileUtils.mkdir_p(intent)
+    File.write(File.join(intent, "delivery.lock"), JSON.generate("owner_session" => lock)) if lock
+    wt = File.join(repo, ".claude", "worktrees", "123--x")
+    git(repo, "worktree", "add", "-q", "-b", "plastic/123--x", wt)
+    write_dirty_file(wt)
+    [repo, wt]
+  end
+
+  def note_in(worktree)
+    SessionGit.commit!(cwd: worktree, summary: "item", day: @day, session: @session,
+      plastic_home: @plastic_home, store: store, runner: RUNNER).message
+  end
+
+  def test_an_intent_worktree_without_a_lock_says_no_lock_is_held
+    repo, wt = delivery_worktree
+
+    assert_equal "left branch plastic/123--x untouched: it is intent 123's delivery branch and no delivery lock is held",
+      note_in(wt)
+  ensure
+    FileUtils.rm_rf(repo)
+  end
+
+  def test_an_intent_worktree_names_another_sessions_lock
+    repo, wt = delivery_worktree(lock: "other-session-id")
+
+    assert_equal "left branch plastic/123--x untouched: intent 123's delivery lock is held by other-session-id",
+      note_in(wt)
+  ensure
+    FileUtils.rm_rf(repo)
+  end
+
+  def test_an_intent_worktree_names_this_sessions_own_lock
+    repo, wt = delivery_worktree(lock: "#{@session}-full-id")
+
+    assert_equal "left branch plastic/123--x untouched: this session holds intent 123's delivery lock; " \
+      "commit delivery work there with git", note_in(wt)
+    assert_match(/^\?\? work\.txt/, git(wt, "status", "--porcelain").stdout.to_s)
+  ensure
+    FileUtils.rm_rf(repo)
+  end
+
+  def test_a_blank_session_never_claims_the_lock
+    repo, wt = delivery_worktree(lock: "other-session-id")
+
+    message = SessionGit.commit!(cwd: wt, summary: "item", day: @day, session: "",
+      plastic_home: @plastic_home, store: store, runner: RUNNER).message
+
+    assert_equal "left branch plastic/123--x untouched: intent 123's delivery lock is held by other-session-id", message
+  ensure
+    FileUtils.rm_rf(repo)
+  end
+
+  def test_a_missing_project_path_does_not_hide_the_matching_one
+    repo, wt = delivery_worktree(lock: "other-session-id")
+    File.write(File.join(@plastic_home, "projects.yml"),
+      YAML.dump({ "projects" => { "gone" => { "path" => "/nonexistent/gone" }, "demo" => { "path" => repo } } }))
+
+    assert_equal "left branch plastic/123--x untouched: intent 123's delivery lock is held by other-session-id",
+      note_in(wt)
+  ensure
+    FileUtils.rm_rf(repo)
+  end
+
+  def test_an_unregistered_repo_leaves_the_branch_alone_plainly
+    repo, wt = delivery_worktree
+    register_project("other", Dir.tmpdir)
+
+    assert_equal "left branch plastic/123--x untouched: it is an intent delivery branch", note_in(wt)
+  ensure
+    FileUtils.rm_rf(repo)
+  end
+
+  def test_an_unreadable_projects_file_leaves_the_branch_alone_plainly
+    repo, wt = delivery_worktree
+    File.write(File.join(@plastic_home, "projects.yml"), "projects: [unclosed")
+
+    assert_equal "left branch plastic/123--x untouched: it is an intent delivery branch", note_in(wt)
   ensure
     FileUtils.rm_rf(repo)
   end
@@ -335,7 +422,7 @@ class SessionGitTest < Minitest::Test
                                  plastic_home: @plastic_home, store: store, runner: RUNNER)
 
     assert_equal "Note", result.event
-    assert_includes result.message, "agent lock"
+    assert_equal "left branch someones-feature untouched: it is an intent delivery branch", result.message
     assert_match(/^\?\? work\.txt/, git(wt, "status", "--porcelain").stdout.to_s)
   ensure
     FileUtils.rm_rf(repo)
@@ -674,7 +761,7 @@ class SessionGitTest < Minitest::Test
     result = commit!(repo, "PR mode over an agent branch", gh_runner: gh)
 
     assert_equal "Note", result.event
-    assert_includes result.message, "left branch plastic/123--x untouched: agent lock"
+    assert_equal "left branch plastic/123--x untouched: it is an intent delivery branch", result.message
     assert_equal "plastic/123--x", current_branch(repo)
     assert_equal "initial", git(repo, "log", "-1", "--format=%s", "plastic/123--x").stdout.to_s.strip
     assert_match(/^\?\? work\.txt/, git(repo, "status", "--porcelain").stdout.to_s)

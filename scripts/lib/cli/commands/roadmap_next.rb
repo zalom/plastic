@@ -15,6 +15,7 @@ module Plastic
         USAGE_LINE = "plastic roadmap next [--json]"
         AFTER = "plastic roadmap show SLUG"
         BECAUSE = "the winner it just named is the slug that command wants"
+        TIED = "the roadmaps tie; the first is shown, and any of them may be picked"
 
         def initialize(argv, runner: nil, **streams)
           super(argv, **streams)
@@ -24,7 +25,7 @@ module Plastic
         def call
           report = parse(*legacy.capture("roadmap-next", "--roadmaps-dir", scope.roadmaps_dir, "--which"))
           screen(report)
-          @output.next_step(after(report), because: BECAUSE)
+          @output.next_step(after(report), because: (report["state"] == "tie") ? TIED : BECAUSE)
         end
 
         private
@@ -38,8 +39,14 @@ module Plastic
         end
 
         def after(report)
-          slug = report["roadmap"].to_s
+          slug = (report["roadmap"] || tied(report).first).to_s
           slug.empty? ? AFTER : AFTER.sub("SLUG", slug)
+        end
+
+        # roadmap-next --which reports a tie as state "tie" with "tie" false and
+        # each candidate as an object; older reports carried plain names.
+        def tied(report)
+          Array(report["tie_candidates"]).map { |candidate| candidate.is_a?(Hash) ? candidate["roadmap"] : candidate }
         end
 
         def screen(report)
@@ -49,7 +56,7 @@ module Plastic
           @output.row("next", queue(report["dispatchable_queue"]))
           @output.row("delivering", entries(report["in_flight"]))
           @output.row("blocked", entries(report["blocked"]))
-          @output.row("tie", Array(report["tie_candidates"]).join(", ")) if report["tie"]
+          @output.row("tie", tied(report).join(", ")) if report["tie"] || report["state"] == "tie"
         end
 
         def queue(list)

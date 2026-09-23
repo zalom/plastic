@@ -39,7 +39,7 @@ module StoreLayoutAcceptance
       @env = {"HOME" => home, "PLASTIC_HOME" => @plastic, "PLASTIC_TMP" => File.join(home, "tmp"),
               "CODEX_HOME" => File.join(home, ".codex"), "CLAUDE_CONFIG_DIR" => File.join(home, ".claude"),
               "XDG_CONFIG_HOME" => File.join(home, ".config"), "XDG_CACHE_HOME" => File.join(home, ".cache"),
-              "PLASTIC_PACKAGE_ROOT" => StoreLayoutAcceptance.package, "RUBYOPT" => nil,
+              "PLASTIC_PACKAGE_ROOT" => StoreLayoutAcceptance.package, "RUBYOPT" => nil, "BUNDLER_SETUP" => nil,
               "GIT_CONFIG_GLOBAL" => File.join(home, ".gitconfig"), "GIT_CONFIG_SYSTEM" => "/dev/null"}
     end
 
@@ -84,6 +84,46 @@ module StoreLayoutAcceptance
       )
     end
 
+    def refuse_old_package(row)
+      command("install", "--#{@harness}", "--no-advisor")
+      version_file = File.join(@plastic, "VERSION")
+      version = File.read(version_file)
+      File.open(File.join(@plastic, "versions.json"), "a") do |file|
+        file.puts(JSON.generate("version" => "1.14.1", "action" => "install"))
+      end
+      paths = [version_file, File.join(@plastic, "versions.json"),
+        *REGISTRATIONS.fetch(@harness).map { |path| File.join(@home, path) }]
+      before = paths.to_h { |path| [path, File.binread(path)] }
+      bin = File.join(@home, "fake-bin")
+      FileUtils.mkdir_p(bin)
+      File.write(File.join(bin, "npm"), "#!/bin/sh\nprintf '%s\n' '{\"beta\":\"1.10.0\"}'\n")
+      File.write(File.join(bin, "npx"), "#!/bin/sh\nexit 99\n")
+      FileUtils.chmod(0o755, Dir.glob(File.join(bin, "*")))
+      @env["PATH"] = "#{bin}:#{ENV.fetch("PATH")}"
+      args = (row.fetch("command") == "update") ? %w[update --beta --yes] : %w[rollback --version 1.14.1]
+      code = command(*args, expected: 3)
+      unchanged = before.all? { |path, bytes| File.binread(path) == bytes }
+      row.merge("exit" => code, "installation" => unchanged ? "unchanged" : "changed",
+        "version" => (File.read(version_file) == version) ? "unchanged" : "changed")
+    end
+
+    def project_links(row)
+      command("install", "--#{@harness}", "--no-advisor")
+      before = tree_snapshot
+      args = ["project", "links"]
+      args << "--dry-run" if row.fetch("mode") == "preview"
+      command(*args)
+      audit = File.join(@plastic, "stores", "global", "resources", "audit--links-projection.md")
+      row.merge("legacy tree" => present(File.exist?(File.join(@plastic, "projects"))),
+        "audit" => present(File.file?(audit)), "changes" => (tree_snapshot == before) ? "none" : "written")
+    end
+
+    def tree_snapshot
+      Dir.glob(File.join(@plastic, "**", "*"), File::FNM_DOTMATCH).sort.to_h do |path|
+        [path, File.file?(path) ? File.binread(path) : nil]
+      end
+    end
+
     def present(value)
       value ? "present" : "absent"
     end
@@ -94,6 +134,17 @@ steps do
   sensor("the harness, starting layout, global store, project intent, registered harness, legacy directory, backup, and repeated migration exit") do |_state, row|
     Dir.mktmpdir("varar-store-layout") do |home|
       StoreLayoutAcceptance::Scenario.new(home, row.fetch("harness")).run(row)
+    end
+  end
+
+  sensor("the harness, command, exit, installation, and version") do |_state, row|
+    Dir.mktmpdir("varar-update-safety") do |home|
+      StoreLayoutAcceptance::Scenario.new(home, row.fetch("harness")).refuse_old_package(row)
+    end
+  end
+  sensor("the harness, mode, legacy tree, audit, and changes") do |_state, row|
+    Dir.mktmpdir("varar-project-links") do |home|
+      StoreLayoutAcceptance::Scenario.new(home, row.fetch("harness")).project_links(row)
     end
   end
 end

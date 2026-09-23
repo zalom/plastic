@@ -8,6 +8,8 @@ module Plastic
       class Render < Command
         USAGE_LINE = "plastic render FILE"
         STYLE = File.expand_path("../../../../templates/render.css", __dir__)
+        # A leading YAML block is metadata; RDoc would render it as body text.
+        FRONTMATTER = /\A---\r?\n.*?^---[ \t]*(\r?\n|\z)/m
 
         def call
           file = arguments.first or raise Usage, "FILE is the markdown file to render"
@@ -15,7 +17,7 @@ module Plastic
 
           require "rubygems"
           require "rdoc"
-          body = RDoc::Markdown.parse(File.read(file, encoding: "UTF-8")).accept(html_formatter)
+          body = RDoc::Markdown.parse(File.read(file, encoding: "UTF-8").sub(FRONTMATTER, "")).accept(html_formatter)
           @output.raw("<!doctype html>\n<meta charset=\"utf-8\">\n<title>#{File.basename(file)}</title>\n" \
             "<style>\n#{File.read(STYLE)}</style>\n#{body}")
         end

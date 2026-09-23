@@ -2,6 +2,7 @@
 
 require_relative "../command"
 require_relative "../legacy"
+require_relative "../../roadmap_graph"
 
 # `plastic roadmap show` - a roadmap's state screen (`report-screen roadmap
 # FILE state`, run through Legacy). SLUG is required: `plastic roadmap next`
@@ -23,10 +24,29 @@ module Plastic
           status = legacy.run("report-screen", "roadmap", path, "state")
           raise Failure, "report-screen exited #{status}" unless status.zero?
 
-          @output.next_step("plastic roadmap log #{slug} EVENT \"TEXT\"", because: "a savepoint is how this state screen keeps moving")
+          problems = graph_problems
+          problems.each { |problem| @output.row("warning", problem) }
+          if problems.empty?
+            @output.next_step("plastic roadmap log #{slug} EVENT \"TEXT\"", because: "a savepoint is how this state screen keeps moving")
+          else
+            @output.next_step("plastic roadmap check #{slug}", because: "the graph has problems the state screen cannot show")
+          end
         end
 
         private
+
+        # A cycle or a graph id no batch lists (acceptance N8). The state screen
+        # cannot show either, so they are named under it.
+        def graph_problems
+          return [] unless File.file?(path)
+
+          result = RoadmapGraph.analyze(path)
+          problems = []
+          problems << "cyclic graph: #{result[:cycle].join(" > ")}" if result[:cycle]
+          dangling = Array(result[:dangling])
+          problems << "graph names #{dangling.join(", ")}, no batch entry" unless dangling.empty?
+          problems
+        end
 
         def slug
           arguments.first

@@ -15,6 +15,17 @@ class CliAutoSessionCommandsTest < Minitest::Test
     "delivering" => false, "claims" => []
   )
 
+  TAKE_REPORT = JSON.generate(
+    "intent_dir" => "/store/372--skills-to-commands", "session" => "s1", "status" => "acquired",
+    "run_mode" => "auto",
+    "worktree" => {"code" => "/repo/.claude/worktrees/372--skills-to-commands", "provisioned" => true}
+  )
+
+  FIX_REPORT = JSON.generate(
+    "status" => "repaired", "actions" => ["lock acquired", "worktree absent"], "session" => "s1",
+    "lock" => {"owner_session" => "s1", "run_mode" => "auto"}
+  )
+
   REPO = File.expand_path("../..", __dir__)
 
   def setup
@@ -29,7 +40,7 @@ class CliAutoSessionCommandsTest < Minitest::Test
 
   # Same seam test/cli/project_roadmap_commands_test.rb uses: a runner double
   # that never spawns a real script.
-  def command(verb, *argv, status: 0, directory: "/nowhere")
+  def command(verb, *argv, status: 0, directory: "/nowhere", env: {})
     file, const, = Plastic::CLI::TABLE.fetch(verb)
     require File.expand_path("../../scripts/lib/cli/#{file}", __dir__)
     runner = lambda do |path, arguments, capture: false|
@@ -38,7 +49,8 @@ class CliAutoSessionCommandsTest < Minitest::Test
 
       [@captured || LOCK_REPORT, status]
     end
-    Plastic::CLI::Commands.const_get(const).call(argv, directory: directory, runner: runner, **@fixture.streams)
+    streams = @fixture.streams.merge(env: @fixture.env(env))
+    Plastic::CLI::Commands.const_get(const).call(argv, directory: directory, runner: runner, **streams)
   end
 
   def run_cli(*argv)
@@ -122,6 +134,73 @@ class CliAutoSessionCommandsTest < Minitest::Test
     command("auto take", "372", "--allow-inline")
 
     assert_equal ["arm", "--intent-dir", intent_dir, "--mode", "auto", "--allow-inline"], @calls.last.last
+  end
+
+  def test_take_forwards_the_provenance_it_is_given
+    command("auto take", "372", "--harness", "codex", "--agent", "plastic-enforcer",
+      "--model", "gpt-6", "--thread", "t-1")
+
+    assert_equal ["arm", "--intent-dir", intent_dir, "--mode", "auto", "--harness", "codex",
+      "--agent", "plastic-enforcer", "--model", "gpt-6", "--thread", "t-1"], @calls.last.last
+  end
+
+  def test_take_names_the_claude_harness_inside_a_claude_session
+    command("auto take", "372", env: {"CLAUDE_CODE_SESSION_ID" => "abc"})
+
+    assert_equal ["arm", "--intent-dir", intent_dir, "--mode", "auto", "--harness", "claude"], @calls.last.last
+  end
+
+  def test_take_keeps_an_explicit_harness_inside_a_claude_session
+    command("auto take", "372", "--harness", "codex", env: {"CLAUDE_CODE_SESSION_ID" => "abc"})
+
+    assert_equal ["arm", "--intent-dir", intent_dir, "--mode", "auto", "--harness", "codex"], @calls.last.last
+  end
+
+  def test_take_names_no_harness_for_a_blank_claude_session
+    command("auto take", "372", env: {"CLAUDE_CODE_SESSION_ID" => " "})
+
+    assert_equal ["arm", "--intent-dir", intent_dir, "--mode", "auto"], @calls.last.last
+  end
+
+  def test_take_does_not_print_the_document
+    @captured = TAKE_REPORT
+    command("auto take", "372")
+
+    refute_includes @fixture.printed, "run_mode"
+  end
+
+  def test_take_prints_a_screen
+    @captured = TAKE_REPORT
+    command("auto take", "372")
+
+    assert_includes @fixture.printed, "372--skills-to-commands"
+    assert_includes @fixture.printed, "acquired by s1, auto mode"
+    assert_includes @fixture.printed, "/repo/.claude/worktrees/372--skills-to-commands"
+  end
+
+  def test_take_names_no_worktree_when_none_is_provisioned
+    command("auto take", "372")
+
+    assert_match(/worktree +none/, @fixture.printed)
+  end
+
+  def test_take_with_json_prints_the_document
+    @captured = TAKE_REPORT
+    command("auto take", "372", "--json")
+
+    assert_includes @fixture.printed, "run_mode"
+  end
+
+  def test_take_refuses_when_another_session_holds_the_lock
+    assert_equal 3, command("auto take", "372", status: 3)
+    assert_includes @fixture.warned, "plastic-lock needs the owner"
+  end
+
+  def test_take_with_an_unreadable_report_says_so
+    @captured = "not a report"
+
+    assert_equal 1, command("auto take", "372")
+    assert_includes @fixture.warned, "plastic-lock did not print a report"
   end
 
   def test_take_with_an_unknown_id_exits_one
@@ -222,6 +301,37 @@ class CliAutoSessionCommandsTest < Minitest::Test
     command("auto lock", "fix", "372")
 
     assert_equal [["fix", "--intent-dir", intent_dir]], @calls.map(&:last)
+  end
+
+  def test_lock_fix_does_not_print_the_document
+    @captured = FIX_REPORT
+    command("auto lock", "fix", "372")
+
+    refute_includes @fixture.printed, "owner_session"
+  end
+
+  def test_lock_fix_prints_a_screen
+    @captured = FIX_REPORT
+    command("auto lock", "fix", "372")
+
+    assert_includes @fixture.printed, "repaired by s1, auto mode"
+    assert_includes @fixture.printed, "lock acquired"
+    assert_includes @fixture.printed, "next: plastic auto brief 372"
+  end
+
+  def test_lock_fix_with_json_prints_the_document
+    @captured = FIX_REPORT
+    command("auto lock", "fix", "372", "--json")
+
+    assert_includes @fixture.printed, "owner_session"
+  end
+
+  def test_lock_fix_refuses_when_another_session_holds_the_lock
+    assert_equal 3, command("auto lock", "fix", "372", status: 3)
+  end
+
+  def test_lock_release_refuses_when_another_session_owns_the_lock
+    assert_equal 3, command("auto lock", "release", "372", status: 3)
   end
 
   def test_lock_release_runs_plastic_lock_release
@@ -360,7 +470,7 @@ class CliAutoSessionCommandsTest < Minitest::Test
   def test_commit_names_handoff_in_its_next_step
     command("session commit", "shipped the thin slice")
 
-    assert_includes @fixture.printed, "next: plastic session handoff"
+    assert_includes @fixture.printed, "next: plastic session handoff\nbecause: the line above says whether a commit landed"
   end
 
   def test_a_failing_commit_exits_one

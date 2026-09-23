@@ -89,12 +89,16 @@ class Rollback < InstallerCore
   end
 
   def switch_to(target, current)
+    return 3 if refuse_incompatible_store_layout(target)
+
     action = action_for(target, current)
     puts "#{action == "downgrade" ? "\u{23ea}" : "\u{23e9}"}  #{current} \u{2192} #{target} (#{action})"
     prepare_switch(target, current)
     cmd = ["npx", "#{PKG}@#{target}", "install", "--reinstall", "--ledger-action", action, *harness_flags]
     puts "  $ #{cmd.join(" ")}"
-    system(*cmd) ? 0 : 1
+    return 1 unless system({"PLASTIC_PACKAGE_ROOT" => nil}, *cmd)
+
+    installed_version == target ? 0 : 1
   end
 
   # Before handing off to an older package (a downgrade), strip Plastic's own current hook

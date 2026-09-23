@@ -71,6 +71,17 @@ class InstallerCore
 
   attr_reader :package_root, :plastic_home, :version, :agents
 
+  def store_layout_compatible?(target)
+    !Plastic::StoreLayout.moved?(plastic_home) || semver_compare(target, "2.0.0-alpha.28") >= 0
+  end
+
+  def refuse_incompatible_store_layout(target)
+    return if store_layout_compatible?(target)
+
+    warn "Plastic #{target} cannot read stores/ in #{plastic_home}. Keep a version that supports this layout."
+    true
+  end
+
   def initialize(package_root:, plastic_home: DEFAULT_PLASTIC_HOME, version: nil, agents: DEFAULT_AGENTS)
     @package_root = package_root
     @plastic_home = plastic_home
@@ -405,6 +416,7 @@ class InstallerCore
       "scripts/lib/index_entry.rb" => "scripts/lib/index_entry.rb",
       "scripts/lib/project_config.rb" => "scripts/lib/project_config.rb",
       "scripts/lib/savepoint.rb" => "scripts/lib/savepoint.rb",
+      "scripts/lib/untouched_scaffold.rb" => "scripts/lib/untouched_scaffold.rb",
       "scripts/lib/guarded_append.rb" => "scripts/lib/guarded_append.rb",
       "scripts/lib/node_ledger.rb" => "scripts/lib/node_ledger.rb",
       "scripts/lib/node_input_compatibility.rb" => "scripts/lib/node_input_compatibility.rb",

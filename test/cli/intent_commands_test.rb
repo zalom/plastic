@@ -38,9 +38,9 @@ class CliIntentCommandsTest < Minitest::Test
   def command(verb, *argv, status: 0, directory: "/nowhere")
     file, const, = Plastic::CLI::TABLE.fetch(verb)
     require File.expand_path("../../scripts/lib/cli/#{file}", __dir__)
-    runner = lambda do |path, arguments|
+    runner = lambda do |path, arguments, capture: false|
       @calls << [path, arguments]
-      status
+      capture ? [@captured.to_s, status] : status
     end
     Plastic::CLI::Commands.const_get(const).call(argv, directory: directory, runner: runner, **@fixture.streams)
   end
@@ -149,6 +149,29 @@ class CliIntentCommandsTest < Minitest::Test
     assert_equal [["step", intent_dir]], @calls.map(&:last)
   end
 
+  def graph_with_one_node(state)
+    FileUtils.mkdir_p(File.join(intent_dir, "nodes"))
+    File.write(File.join(intent_dir, "nodes", "n1.md"), "---\nnode: n1\nkind: work\nfiles: []\nbudget: 1000\n---\n")
+    File.write(File.join(intent_dir, "graph.md"), "# graph\n\n## Graph\n- n1 needs nothing\n")
+    File.write(File.join(intent_dir, "savepoint.md"), "2026-09-10T06:33:16Z  n1  #{state} holder=h model=m\n")
+    require_relative "../../scripts/lib/arm"
+    Lock.acquire(intent_dir, session: Arm.derive_key(store, "372"))
+  end
+
+  def test_step_on_a_finished_graph_names_verify_next
+    graph_with_one_node("done gates=integrity commit=abc1234")
+    command("intent step", "372")
+
+    assert_includes @fixture.printed, "next: plastic intent verify 372"
+  end
+
+  def test_step_on_an_unfinished_graph_names_step_again
+    graph_with_one_node("running expires=2099-01-01T00:00:00Z input=abc")
+    command("intent step", "372")
+
+    assert_includes @fixture.printed, "next: plastic intent step 372"
+  end
+
   def test_step_with_no_graph_prints_the_non_graph_procedure
     command("intent step", "372")
 
@@ -172,6 +195,16 @@ class CliIntentCommandsTest < Minitest::Test
     command("intent step", "372")
 
     refute_includes @fixture.printed, "dispatch ONE plastic-executor subagent"
+  end
+
+  def test_graph_return_requires_ownership
+    File.write(File.join(intent_dir, "graph.md"), "# graph\n")
+
+    status = run_cli("intent", "step", "372", "--return", "n1=/tmp/return.yml")
+
+    assert_equal 3, status
+    assert_empty @calls
+    refute_path_exists File.join(intent_dir, "delivery.lock")
   end
 
   # --- intent answer -----------------------------------------------------------
@@ -253,6 +286,57 @@ class CliIntentCommandsTest < Minitest::Test
 
   def test_end_a_plain_failing_status_exits_one
     assert_equal 1, command("intent end", "372", "--delivered", "--summary", "text", status: 2)
+  end
+
+  def test_end_names_the_hollow_report_refusal
+    assert_equal 1, command("intent end", "372", "--delivered", "--summary", "text", status: 7)
+    assert_includes @fixture.warned, "hollow delivered close"
+  end
+
+  def test_end_names_the_untouched_scaffold_refusal
+    assert_equal 1, command("intent end", "372", "--delivered", "--summary", "text", status: 8)
+    assert_includes @fixture.warned, "untouched scaffold"
+    assert_includes @fixture.warned, "--abandoned"
+  end
+
+  def test_end_names_the_unmerged_branch_refusal
+    assert_equal 1, command("intent end", "372", "--delivered", "--summary", "text", status: 9)
+    assert_includes @fixture.warned, "whose code is not merged: run the git merge it names"
+  end
+
+  def test_end_reports_the_unmerged_refusal_as_a_json_failure
+    assert_equal 1, command("intent end", "372", "--delivered", "--summary", "text", "--json", status: 9)
+
+    error = JSON.parse(@fixture.printed).dig("result", "error")
+
+    assert_equal "failed", error.fetch("kind")
+    assert_includes error.fetch("message"), "whose code is not merged: run the git merge it names"
+  end
+
+  def test_end_keeps_the_unmerged_refusal_detail_in_json_output
+    @captured = "end-intent: refusing a delivered close: code branch plastic/1--x is not merged\n"
+    command("intent end", "372", "--delivered", "--summary", "text", "--json", status: 9)
+
+    assert_includes JSON.parse(@fixture.printed).dig("result", "output").join, "code branch plastic/1--x is not merged"
+  end
+
+  def test_end_a_passing_dry_run_names_no_next_command
+    command("intent end", "372", "--delivered", "--summary", "$(touch x)", "--dry-run")
+
+    assert_equal "next: none\nbecause: the dry run wrote nothing and found nothing that would refuse the close\n",
+      @fixture.printed
+  end
+
+  def test_end_a_real_close_points_at_status
+    command("intent end", "372", "--delivered", "--summary", "shipped it")
+
+    assert_includes @fixture.printed, "next: plastic status\nbecause: the intent moved out of Active"
+  end
+
+  def test_end_an_unnamed_failure_names_the_exit_code
+    command("intent end", "372", "--delivered", "--summary", "text", status: 2)
+
+    assert_includes @fixture.warned, "end-intent exited 2"
   end
 
   # --- intent new ----------------------------------------------------------------

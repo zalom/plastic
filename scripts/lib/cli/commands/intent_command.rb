@@ -22,10 +22,15 @@ module Plastic
           status = legacy.run(self.class::SCRIPT, *script_arguments)
           raise Failure, "#{self.class::SCRIPT} exited #{status}" unless status.zero?
 
-          @output.next_step(self.class::AFTER.sub("ID", id.to_s), because: self.class::BECAUSE)
+          command, reason = after_run
+          @output.next_step(command, because: reason)
         end
 
         private
+
+        def after_run
+          [self.class::AFTER.sub("ID", id.to_s), self.class::BECAUSE]
+        end
 
         def id
           arguments.first

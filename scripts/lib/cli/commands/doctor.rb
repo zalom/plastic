@@ -15,8 +15,8 @@ module Plastic
   class CLI
     module Commands
       class Doctor < InstallerVerb
-        USAGE_LINE = "plastic doctor [--core] [--store WHICH] [--json]"
-        FLAGS = %w[--core --store].freeze
+        USAGE_LINE = "plastic doctor [--core] [--agent claude|codex|hermes] [--store WHICH] [--json]"
+        FLAGS = %w[--core --agent --store].freeze
 
         SCRIPT = "doctor.rb"
         AFTER = "none"

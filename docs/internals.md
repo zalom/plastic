@@ -908,6 +908,19 @@ own isolation instead, deterministic and cwd-independent.
   like `/tmp/x/.plastic` works; an arbitrarily named root does not, and
   `provision` falls back to the passed `home:`).
 
+- **Foreign locks refuse with exit 3**: `plastic-lock` exits 3 when the lock
+  belongs to someone else: `arm` on a held, stale, or excluded lock, `fix` that
+  cannot repair a held or stale lock, `release` by a session that is not the
+  owner, and `reclaim` on a fresh lock. Each refusal prints a hint that names a
+  public command (`plastic auto lock status ID`); `Arm.stale_hint` carries the
+  stale wording. `arm` on an unreadable lock exits 1 and names `plastic auto
+  lock fix ID`. `Arm.repair` stamps `run_mode: auto` on a lock it rebuilds from
+  nothing, and keeps the mode of a lock it keeps. `plastic auto take` passes
+  `--harness`, `--agent`, `--model`, and `--thread` through, infers the
+  `claude` harness from `CLAUDE_CODE_SESSION_ID`, and prints the lock and the
+  worktree unless `--json` is given. The runner's re-arm hint is
+  `plastic auto take ID`.
+
 - **Three distinct evidence layers and bounded delegate history** (intent 108a):
   the controller record proves whole-intent authority; a registered delegate record
   authorizes one child session under that controller; a claim record identifies
@@ -1842,3 +1855,84 @@ read `owner_session`, with the older `session` field as a compatibility fallback
 The renderer supports both the RDoc 7 constructor with options and RDoc 8's
 keyword constructor, so an installed package does not depend on the development
 bundle's RDoc version.
+
+### Package and store safety checks
+
+`bin/plastic` sets the package root from its own location. This prevents the
+old updater's environment from routing a newly downloaded command back to an
+older installer. The update and rollback subprocesses also clear that variable.
+A successful subprocess is insufficient: the installed `VERSION` must equal
+the selected target.
+
+`InstallerCore` checks store-layout compatibility before either switch can
+write files. `ProjectLinks` resolves audit paths through `StoreLayout` and
+skips audit writes during previews. Packaged Varar scenarios exercise update
+refusal, rollback refusal, and link previews separately for Claude and Codex.
+
+### Close refusals shared with the dry run
+
+`scripts/lib/untouched_scaffold.rb` decides whether an intent is still its
+new-intent scaffold. The check is narrow on purpose. All four lifecycle files
+must exist as untouched placeholders. There must be no ticked checklist item, no
+action, node or graph file, and no savepoint line past What. The code worktree
+must have no uncommitted changes and no commits past its base. When the
+worktree cannot be read, the intent counts as worked. `end-intent` exits 8 on a
+delivered close of such an intent, before any write.
+
+`unmerged_refusal` in `scripts/end-intent` runs next, also before any write, for
+a delivered close. `Arm.code_paths` names the code worktree and branch the
+intent would have, whether or not the worktree exists. The check fails closed:
+
+- When the code directory is the top of a real Git worktree, the commit at its
+  HEAD must be an ancestor of the repo checkout's HEAD. This covers a renamed
+  branch and a detached HEAD. A HEAD that `git rev-parse` can't read refuses.
+- When the code branch exists, it must be an ancestor too, so a removed
+  worktree doesn't hide unmerged work. A failed branch lookup refuses.
+- When the repo checkout is detached, or is on the code branch itself, no
+  other branch holds the code, so the close refuses. `target_refusal` checks
+  this before each ancestry check.
+- When `git merge-base --is-ancestor` itself fails, the close refuses the same
+  as when the code isn't merged.
+- When the repo has a `.git` entry but `git rev-parse --git-dir` fails there,
+  the close refuses.
+
+A refusal exits 9 and names the ordinary merge to run. `end-intent` never
+merges. A store-only project and a repo path with no `.git` entry skip the
+check. So does a code directory that isn't a real worktree and has no branch.
+The dirty-worktree guard refuses that last case (exit 5) because it can't
+inspect it.
+
+`end-intent --dry-run` copies the intent to a scratch directory. It runs the
+same outcome generation and backfill on that copy, then applies the
+hollow-report gate (exit 7). The dirty-worktree guard is shared by the dry run
+and the disarm step (exit 5). The dry run also refuses exits 8 and 9 exactly as
+the real close does. `plastic intent end` names exits 7, 8, and 9 in its failure
+message.
+
+### Bounded display replay
+
+`HookReplay.run_bounded` feeds the hook and reads its output through pipes.
+It used scratch files before. On Snap Ruby the launcher's `ruby` could not use
+those files, so the doctor paint check saw empty output and failed.
+
+One deadline covers the whole exchange. It covers the launcher's exit, feeding
+stdin, and draining stdout and stderr. A launcher can exit while a child it
+started still holds the pipes, so waiting for the launcher alone is not enough.
+A writer thread and two reader threads work at the same time, so large input or
+output cannot block. The hook leads its own process group. When the deadline
+passes, the whole group is killed and the pipes are closed. The chunk keeps the
+output read so far, with a nil exit status. The bounded run writes no files.
+
+### Command surface repairs
+
+`IntentCommand#after_run` returns the `next:` command and its reason after the
+script succeeds. `IntentStep` overrides it: when `RunnerCore.complete?` holds
+for the intent's graph, the next command is `plastic intent verify ID`.
+`RunnerDispatch` passes `HarnessAdapter.agent_type_for_kind` into the spawn
+line, and `NodeInput` marks nodes without a worktree as read-only.
+
+`RoadmapQueue` ranks a roadmap with a cyclic graph after every healthy one.
+`roadmap-graph` reports graph ids no batch lists even when it also finds a
+cycle. `SessionGit` reads the intent's `delivery.lock` to say who holds a
+delivery branch. `plastic sync` lists a missing `work_graph.db` or
+`references.db` under `build`.

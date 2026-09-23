@@ -76,6 +76,18 @@ class CliReleaseContractTest < Minitest::Test
     refute_includes error, "plastic-lock"
   end
 
+  def test_graph_return_without_ownership_is_refused_without_consuming_the_file
+    dir = new_intent
+    File.write(File.join(dir, "graph.md"), "# Graph\n")
+    payload = File.join(@dir, "return.yml")
+    File.write(payload, "status: done\n")
+    result, error, status = command("intent", "step", "1", "--project", "sample", "--return", "n1=#{payload}")
+
+    assert_equal 3, status, error
+    assert_equal "refused", result.dig("result", "error", "kind")
+    assert_equal "status: done\n", File.read(payload)
+  end
+
   def test_store_directory_resolves_the_project
     dir = new_intent
     result, error, status = command("intent", "show", "1", directory: dir)

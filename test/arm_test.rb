@@ -187,6 +187,12 @@ class ArmTest < Minitest::Test
     assert_equal true, block["provisioned"]
   end
 
+  def test_code_paths_name_the_worktree_before_it_exists
+    p = Worktree.paths(slug: "demo", intent_id: "96", intent_slug: "demo", home: @home)
+    assert_equal p, Arm.code_paths(intent_dir: @dir, home: @home)
+    refute Dir.exist?(p["code"])
+  end
+
   def test_delivery_carries_the_intent_and_worktree_blocks
     data = Arm.delivery(intent_dir: @dir, home: @home)
     assert_equal({ "id" => "96", "dir" => "96--demo", "store" => @store }, data["intent"])
@@ -264,12 +270,24 @@ class ArmTest < Minitest::Test
     assert_equal "sess-b", Lock.read(@dir)["owner_session"]
   end
 
-  def test_repair_reports_a_stale_foreign_lock_with_the_reclaim_hint
+  def test_repair_reports_a_stale_foreign_lock_with_the_public_hint
     Lock.acquire(@dir, session: "sess-b", now: @now - 4000)
     FileUtils.touch(Lock.path(@dir), mtime: @now - 4000)
-    report = repair(hint_harness: "codex")
+    report = repair
     assert_equal "stale", report["status"]
-    assert_includes report["hint"], "$plastic-doctor"
+    assert_equal Arm.stale_hint(Arm.intent_id_for(@dir)), report["hint"]
+    assert_includes report["hint"], "plastic auto lock status"
+  end
+
+  def test_repair_rebuilds_a_missing_lock_as_an_auto_delivery
+    repair
+    assert_equal "auto", Lock.read(@dir)["run_mode"]
+  end
+
+  def test_repair_rebuilds_a_corrupt_lock_as_an_auto_delivery
+    File.write(Lock.path(@dir), "{ nope")
+    repair
+    assert_equal "auto", Lock.read(@dir)["run_mode"]
   end
 
   def test_repair_keeps_and_enriches_an_own_lock_without_inventing_a_mode

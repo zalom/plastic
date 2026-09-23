@@ -1,6 +1,15 @@
 {
   "version": 2,
   "oaths": {
+    "varar/intent-end.md": {
+      "sourceHash": "fnv1a:89038af1",
+      "examples": [
+        {
+          "name": "Each row gives the record, the mode, the exit and the index section:",
+          "line": 9
+        }
+      ]
+    },
     "varar/next.md": {
       "sourceHash": "fnv1a:1fac258c",
       "examples": [
@@ -10,12 +19,39 @@
         }
       ]
     },
+    "varar/project-links.md": {
+      "sourceHash": "fnv1a:23723867",
+      "examples": [
+        {
+          "name": "Each row gives the harness, mode, legacy tree, audit, and changes:",
+          "line": 7
+        }
+      ]
+    },
+    "varar/project-new.md": {
+      "sourceHash": "fnv1a:cf974b54",
+      "examples": [
+        {
+          "name": "Each row gives the slug, the path, the exit and the registered slugs:",
+          "line": 9
+        }
+      ]
+    },
     "varar/store-layout.md": {
       "sourceHash": "fnv1a:8aac771e",
       "examples": [
         {
           "name": "Each row gives the harness, starting layout, global store, project intent, registered harness, legacy directory, backup, and repeated migration exit:",
           "line": 10
+        }
+      ]
+    },
+    "varar/update-safety.md": {
+      "sourceHash": "fnv1a:bf5b48d4",
+      "examples": [
+        {
+          "name": "Each row gives the harness, command, exit, installation, and version:",
+          "line": 8
         }
       ]
     }

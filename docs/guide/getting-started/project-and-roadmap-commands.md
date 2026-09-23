@@ -16,7 +16,11 @@ The following table shows each project command and what it does:
 ## Register a project
 
 1. Make the project directory, and write an `AGENTS.md` file in it.
-1. Run the command with a short name and the path:
+1. Run the command with a short name and the path. The name uses lowercase
+   letters, digits and hyphens, and starts with a letter or digit. `global`
+   is taken. A directory can be registered under one name only.
+
+   Run:
 
    ```
    plastic project new acme --path ~/code/acme

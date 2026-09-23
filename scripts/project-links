@@ -48,10 +48,6 @@ require_relative "lib/revisions_writer"
 class ProjectLinks
   DEFAULT_HOME = File.join(Dir.home, ".plastic")
 
-  # The 72 intent dir audit destination (relative to plastic_home).
-  DEFAULT_AUDIT_REL =
-    "projects/plastic/store/72--links-graph-projection/resources/audit--links-projection.md"
-
   def initialize(plastic_home: DEFAULT_HOME, dry_run: false, audit_path: nil,
                  drop_unbacked_links: false, intent: nil, store: nil)
     @plastic_home = plastic_home
@@ -60,20 +56,7 @@ class ProjectLinks
     @intent = intent && intent.to_s
     @store = store
 
-    # A dry run must NOT stomp the canonical audit (humans run --dry-run to review
-    # the plan). With no explicit --audit-path, a dry run writes a `.dry-run.md`
-    # sibling, leaving the canonical real-run audit untouched. An explicit
-    # --audit-path is always honored verbatim (tests inject it). Mirrors
-    # RebuildGraph's discipline exactly.
-    canonical = File.join(plastic_home, DEFAULT_AUDIT_REL)
-    @audit_path =
-      if audit_path
-        audit_path
-      elsif dry_run
-        canonical.sub(/\.md\z/, ".dry-run.md")
-      else
-        canonical
-      end
+    @audit_path = audit_path || File.join(Plastic::StoreLayout.global_root(plastic_home), "resources", "audit--links-projection.md")
   end
 
   attr_reader :plastic_home, :dry_run, :audit_path, :drop_unbacked_links, :intent, :store
@@ -330,9 +313,11 @@ class ProjectLinks
     "(ambiguous: multiple ## Links headings)"
   end
 
-  # Always write the audit (even in dry-run, so the human reviews the plan).
+  # Return the audit for previews; save it only when applying changes.
   def emit_audit(store_list, results)
     text = render_audit(store_list, results)
+    return text if dry_run
+
     FileUtils.mkdir_p(File.dirname(audit_path))
     File.write(audit_path, text)
     text
@@ -348,7 +333,7 @@ class ProjectLinks
 
   def render_audit(store_list, results)
     lines = []
-    lines << "# Audit: store-wide ## Links projection (intent 72)"
+    lines << "# Audit: store-wide Links projection"
     lines << ""
     lines << "Generated: #{Time.now.utc.strftime("%Y-%m-%dT%H:%M:%SZ")}#{dry_run ? " (DRY RUN)" : ""}"
     lines << "Scoped to intent #{intent} only (--intent)." if intent
@@ -482,6 +467,6 @@ if $PROGRAM_NAME == __FILE__
        "regenerated #{totals[:regenerated]}, added #{totals[:added]}, " \
        "unchanged #{totals[:unchanged]}, failed #{totals[:failed]} " \
        "across #{results.size} store(s)."
-  puts "Audit: #{tool.audit_path}"
+  puts(dry ? "Dry run: no files written." : "Audit: #{tool.audit_path}")
   exit 1 if tool.any_failed?(results)
 end

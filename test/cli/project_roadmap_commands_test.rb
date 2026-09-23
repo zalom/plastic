@@ -196,6 +196,41 @@ class CliProjectRoadmapCommandsTest < Minitest::Test
     assert_equal 1, command("project new", "acme", "--path", project_path)
   end
 
+  def test_new_rejects_a_slug_outside_lowercase_letters_digits_and_hyphens
+    ["Bad Slug", "Acme", "acme_co", "-acme", "a/b"].each do |bad|
+      assert_equal 2, command("project new", bad, "--path", project_path), bad
+    end
+    refute_path_exists projects_yml
+  end
+
+  def test_new_names_the_slug_rule
+    command("project new", "Bad Slug", "--path", project_path)
+
+    assert_includes @fixture.warned, "lowercase letters, digits and hyphens"
+  end
+
+  def test_new_refuses_the_reserved_global_slug
+    assert_equal 2, command("project new", "global", "--path", project_path)
+  end
+
+  def test_new_accepts_digits_and_inner_hyphens
+    assert_equal 0, command("project new", "acme-2", "--path", project_path)
+  end
+
+  def test_new_refuses_a_path_registered_under_another_slug
+    @fixture.register("acme", "path" => File.expand_path(project_path))
+
+    assert_equal 1, command("project new", "other", "--path", "#{project_path}/")
+    assert_includes @fixture.warned, "already registered as acme"
+    assert_equal %w[acme], YAML.safe_load_file(projects_yml)["projects"].keys
+  end
+
+  def test_new_ignores_rows_without_a_path
+    @fixture.register("odd", "not a mapping")
+
+    assert_equal 0, command("project new", "acme", "--path", project_path)
+  end
+
   def test_new_with_a_failing_provision_exits_one
     assert_equal 1, command("project new", "acme", "--path", project_path, status: 5)
   end
@@ -213,6 +248,7 @@ class CliProjectRoadmapCommandsTest < Minitest::Test
     command("project links", "--dry-run")
 
     assert_equal [["--plastic-home", @fixture.plastic_home, "--dry-run"]], @calls.map(&:last)
+    assert_includes @fixture.printed, "next: none"
   end
 
   def test_links_names_status_in_its_next_step
@@ -239,6 +275,23 @@ class CliProjectRoadmapCommandsTest < Minitest::Test
     command("roadmap show", "372")
 
     assert_includes @fixture.printed, 'next: plastic roadmap log 372 EVENT "TEXT"'
+  end
+
+  def test_show_names_a_cycle_and_a_graph_id_no_batch_lists
+    @fixture.roadmap("global", "cyclic", "# Roadmap: cyclic\n\n## Graph\n- 1 needs 2\n- 2 needs 1\n- 9 needs 1\n\n" \
+      "## Batches\n### Batch 1\n- [ ] 1 a - queued\n- [ ] 2 b - queued\n")
+    command("roadmap show", "cyclic")
+
+    assert_match(/^warning\s+cyclic graph: 1 > 2 > 1\nwarning\s+graph names 9, no batch entry$/, @fixture.printed)
+    assert_includes @fixture.printed, "next: plastic roadmap check cyclic"
+  end
+
+  def test_next_on_a_tie_says_any_candidate_may_be_picked
+    @captured = JSON.generate("state" => "tie", "roadmap" => nil, "tie" => false,
+      "tie_candidates" => [{"roadmap" => "good"}])
+    command("roadmap next")
+
+    assert_includes @fixture.printed, "because: the roadmaps tie; the first is shown, and any of them may be picked"
   end
 
   def test_show_without_a_slug_exits_two
@@ -297,6 +350,18 @@ class CliProjectRoadmapCommandsTest < Minitest::Test
     command("roadmap next")
 
     assert_includes @fixture.printed, "next     none"
+  end
+
+  # Acceptance N8: roadmap-next --which reports a tie with "tie" false and
+  # each candidate as an object; the screen names them all the same.
+  def test_next_names_the_tie_candidates_from_the_scripts_own_report
+    @captured = JSON.generate("state" => "tie", "roadmap" => nil, "tie" => false,
+      "tie_candidates" => [{"roadmap" => "good", "last_event" => "1970-01-01T00:00:00Z"},
+        {"roadmap" => "nograph", "last_event" => "1970-01-01T00:00:00Z"}])
+    command("roadmap next")
+
+    assert_match(/^tie\s+good, nograph$/, @fixture.printed)
+    assert_includes @fixture.printed, "next: plastic roadmap show good"
   end
 
   def test_next_names_the_tie_candidates_when_two_roadmaps_tie

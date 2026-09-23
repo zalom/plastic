@@ -62,6 +62,8 @@ class Update < InstallerCore
       warn "No published version on the #{requested} channel."
       return 1
     when :ok
+      return 3 if refuse_incompatible_store_layout(res[:target])
+
       if res[:kind] == :cross_bleeding && !confirm_bleeding(iv, res[:target], argv)
         puts "Aborted."
         return 1
@@ -235,10 +237,14 @@ class Update < InstallerCore
   # the target version's install verb, recording the ledger action as `update`. On
   # success, commits the re-synced core files and clears the update-check cache
   # (former update skill, lines 124-125).
-  def perform_switch(target, agent_flags, switch_runner: ->(cmd) { system(*cmd) })
+  def perform_switch(target, agent_flags, switch_runner: ->(cmd) { system({"PLASTIC_PACKAGE_ROOT" => nil}, *cmd) })
     cmd = ["npx", "#{PKG}@#{target}", "install", "--reinstall", "--ledger-action", "update", *agent_flags]
     puts "  $ #{cmd.join(" ")}"
     return 1 unless switch_runner.call(cmd)
+    unless installed_version == target
+      warn "Update did not install #{target}; installed version is #{installed_version.inspect}."
+      return 1
+    end
 
     commit_core_files(target)
     clear_update_check_cache

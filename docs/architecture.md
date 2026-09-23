@@ -264,7 +264,7 @@ Each roadmap carries the same kind of ledger for the same reason (intent 134): a
 
 ## the delivery lock and the record hook
 
-The delivery lock (`delivery.lock` in the intent directory) names the session delivering an intent, as owner or delegate; `scripts/lib/arm.rb` behind `plastic-lock arm` is how a team takes and gives back an intent.
+The delivery lock (`delivery.lock` in the intent directory) names the session delivering an intent, as owner or delegate; `scripts/lib/arm.rb` behind `plastic auto take` (which runs `plastic-lock arm`) is how a team takes and gives back an intent. A lock held by another session is refused with exit 3 and a public hint, never taken over.
 
 Removed in 2.0 (intent 302): the edit-path gates (edit, bash, code, lock, links), the create gate, and the stage-transition gates. No hook blocks a write any more; the record hook is the only write-path hook, and doctor checks (intent 308) replace enforcement.
 
@@ -306,6 +306,15 @@ flag overrides it. `end-intent`'s own INDEX-move parser and `IndexEntry.active?`
 one matcher that accepts a real em dash or a plain hyphen as the id/title separator on read,
 while every write still emits the real em dash.
 
+A delivered close requires its code to be merged already. Before any write, `end-intent`
+checks with `git merge-base --is-ancestor` that the code is an ancestor of the repo
+checkout's current branch. It checks the HEAD commit of the code worktree, whether that
+worktree is on its own branch, a renamed branch, or a detached HEAD. It also checks the code
+branch, which still matters after the worktree is removed. The checkout must be on a branch
+other than the code branch. If the code isn't merged, or Git can't answer, the close and its dry run exit 9 and change nothing. `end-intent` never
+merges: the owner merges or releases the work and runs the close again. An abandoned close
+and a store-only intent skip the check.
+
 ## dashboard
 
 The dashboard is the work cockpit. It answers three questions: where we are (a short prose summary of recent delivery, plus capped active work), where we go next (the most-valuable next work, ranked), and how to conduct each item (a disposition). The split keeps determinism while reaching a Markdown UI:
@@ -337,3 +346,74 @@ Graph steps accept repeated `--return NODE=PATH` arguments and a harness overrid
 so the public command can complete the runner's dispatch and absorption cycle.
 Conversation sessions still require explicit owner approval for inline delivery;
 `auto take --allow-inline` carries that approval to the existing lock guard.
+
+### Safe package transitions
+
+The executable resolves its own package root, even when an older updater passes
+an inherited package path. Update and rollback clear that inherited path when
+launching npm and verify the installed version before reporting success.
+
+Homes using `stores/` cannot switch to versions before `2.0.0-alpha.28`, which
+introduced that layout. This refusal happens before installation or hook cleanup.
+Legacy homes retain their existing rollback behavior.
+
+`plastic project links` saves its audit under the current global store's
+`resources/` directory. Its dry-run writes no files. Use
+`plastic doctor --agent claude`, `--agent codex`, or `--agent hermes` to select
+the harness being diagnosed.
+
+### Closing checks
+
+`plastic intent end --delivered` refuses an untouched scaffold. An untouched
+scaffold has only placeholder lifecycle files, no action or graph, no savepoint
+entries after the first What line, and no changes in its code worktree. Close it
+with `--abandoned`, or do the work first. Legacy intents with missing lifecycle
+files still close through the backfill.
+
+`--dry-run` runs the same refusals as the real close and writes nothing. It
+refuses an untouched scaffold, a hollow delivered report and a dirty code
+worktree. A passing dry run ends with `next: none`.
+
+### Project registration
+
+`plastic project new` accepts a slug of lowercase letters, digits and hyphens
+that starts with a letter or digit. `global` is reserved for the global store.
+Any other slug exits 2 before anything is written. A directory already in
+`projects.yml` under another slug is refused with exit 1, naming that slug.
+
+### Session commits on delivery branches
+
+`plastic session commit` never commits on an intent's delivery branch or
+worktree. Its note now names the real delivery lock of that intent: held by
+another session, held by this session, or not held at all. It no longer
+reports an agent lock that does not exist. The `next:` line no longer implies
+that a commit landed; the printed line above it says whether one did.
+
+### Sync preview
+
+`plastic sync` rebuilds `work_graph.db` and `references.db` on every run. When
+either is missing, the plan names it under `build`. The preview and the sync
+now report the same work, and "nothing to do" means nothing is missing.
+
+### Rendering
+
+`plastic render` leaves out a leading YAML frontmatter block. A later `---`
+line is still a horizontal rule.
+
+### Roadmap health and selection
+
+A roadmap whose graph has a cycle cannot compute a frontier. It now ranks after
+every healthy roadmap, so `plastic next` and `plastic roadmap next` pick a
+healthy one first. It is still reported as an error when nothing else is left.
+
+`plastic roadmap next` shows the tied roadmaps when several are equally live.
+`plastic roadmap check` names a cycle and every graph id that no batch lists.
+`plastic roadmap show` adds a warning row for either problem and points at
+`plastic roadmap check`.
+
+### Node dispatch and the finished graph
+
+A dispatch line names the agent type for the node's kind. A research or verify
+node has no worktree, and its dispatch line and input both say it is read-only.
+When a step leaves every node in a finished state, `plastic intent step` names
+`plastic intent verify ID` as the next command instead of another step.

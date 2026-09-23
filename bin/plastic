@@ -1,6 +1,8 @@
 #!/usr/bin/env -S ruby --disable-gems
 # frozen_string_literal: true
 
+ENV["PLASTIC_PACKAGE_ROOT"] = File.expand_path("..", __dir__)
+
 require_relative "../scripts/lib/cli"
 
 exit Plastic::CLI.call(ARGV)

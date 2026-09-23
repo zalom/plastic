@@ -21,7 +21,7 @@ deliberately; the auto pipeline never dispatches them.
 
 ## Your Responsibilities
 
-1. **Take the intent** - `plastic-lock arm` acquires the delivery lock, provisions the code
+1. **Take the intent** - `plastic auto take ID` acquires the delivery lock, provisions the code
    worktree, and points this session at the intent; work only inside that worktree.
 2. **Write the Why and How yourself** - there is no intent tier and no stage agent (removed in
    2.0, intent 304): record the rulings, write `spec.md`, then `plan.md`, at least one real

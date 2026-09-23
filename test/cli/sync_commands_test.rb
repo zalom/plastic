@@ -61,6 +61,27 @@ class CliSyncCommandsTest < Minitest::Test
     %w[knowledge_graph.db work_graph.db references.db].each { |name| assert_path_exists File.join(home, name) }
   end
 
+  # Acceptance N7: after `plastic index` only the search index exists, and
+  # sync builds the other two databases. Preview and sync both say so.
+  def test_a_preview_names_the_databases_sync_would_build
+    plastic("index")
+    plastic("sync", "--dry-run")
+
+    assert_match(/^build\s+work_graph\.db\n\s+references\.db$/, @fixture.printed)
+    refute_includes @fixture.printed, "nothing to do"
+    refute_path_exists File.join(home, "work_graph.db")
+  end
+
+  def test_sync_reports_the_databases_it_builds_then_has_nothing_to_do
+    plastic("index")
+    plastic("sync")
+    first = @fixture.printed.dup
+    plastic("sync")
+
+    assert_match(/^build\s+work_graph\.db\n\s+references\.db$/, first)
+    assert_match(/^result\s+nothing to do$/, @fixture.printed)
+  end
+
   def test_a_changed_file_is_read_into_its_row
     plastic("sync")
     seed(SPEC, "# Spec\n\nThe heron moved to the pond.\n")
@@ -304,6 +325,23 @@ class CliSyncCommandsTest < Minitest::Test
     formatter = Plastic::CLI::Commands::Render.allocate.send(:html_formatter, legacy_formatter)
 
     assert_instance_of RDoc::Options, formatter.options
+  end
+
+  # Acceptance N11: frontmatter is metadata, not body text.
+  def test_render_leaves_out_yaml_frontmatter
+    seed("intent.md", "---\nid: \"1\"\ntags: []\n---\n\n## Intent\nfixture note\n")
+    plastic("render", File.join(home, "intent.md"))
+
+    assert_includes @fixture.printed, "fixture note"
+    refute_match(/tags|id: /, @fixture.printed.split("</style>").last)
+  end
+
+  def test_render_keeps_a_rule_that_is_not_leading_frontmatter
+    seed("page.md", "# Title\n\nabove\n\n---\n\nbelow\n")
+    plastic("render", File.join(home, "page.md"))
+
+    assert_includes @fixture.printed, "<hr>"
+    assert_includes @fixture.printed, "below"
   end
 
   def test_render_without_a_file_exits_two

@@ -167,7 +167,7 @@ class RunnerStepCliTest < Minitest::Test
     assert_equal 0, status.exitstatus, out
 
     assert_includes out, "```", "the spawn block must be fenced so a session can paste it: #{out}"
-    assert_includes out, "agent: plastic-executor", out
+    assert_includes out, "agent: plastic-node-work", out
 
     plan = YAML.safe_load(out, permitted_classes: [], aliases: false)
     refute_nil plan, "step's stdout must still be the YAML dispatch plan, got: #{out.inspect}"

@@ -314,6 +314,53 @@ class RoadmapQueueTest < Minitest::Test
     end
   end
 
+  # Acceptance N8: a roadmap whose graph has a cycle cannot compute a
+  # frontier, so it never wins a tie against a healthy one.
+  def cyclic_and_healthy_roadmaps
+    write_roadmap("aaa-cyclic", <<~MD)
+      # Roadmap: Cyclic
+      ## Graph
+      - 1 needs 2
+      - 2 needs 1
+      ## Batches
+      ### Batch 1
+      - [ ] 1 First - queued
+      - [ ] 2 Second - queued
+    MD
+    write_roadmap("good", <<~MD)
+      # Roadmap: Good
+      ## Graph
+      - 1 needs nothing
+      - 2 needs 1
+      ## Batches
+      ### Batch 1
+      - [ ] 1 First - queued
+      ### Batch 2
+      - [ ] 2 Second - queued
+    MD
+  end
+
+  def test_queue_mode_picks_a_healthy_roadmap_over_a_cyclic_one
+    cyclic_and_healthy_roadmaps
+
+    result = reader
+
+    assert_equal ["good", "dispatchable"], [result["roadmap"], result["state"]]
+  end
+
+  def test_which_mode_never_offers_a_cyclic_roadmap_as_a_tie_candidate
+    cyclic_and_healthy_roadmaps
+    write_roadmap("nograph", "# Roadmap: No graph\n## Batches\n### Batch 1\n- [ ] 3 Third - queued\n")
+
+    assert_equal %w[good nograph], reader(:which)["tie_candidates"].map { |c| c["roadmap"] }
+  end
+
+  def test_a_cyclic_roadmap_alone_is_still_reported_as_an_error
+    write_roadmap("aaa-cyclic", "# Roadmap: C\n## Graph\n- 1 needs 2\n- 2 needs 1\n## Batches\n### Batch 1\n- [ ] 1 A - queued\n- [ ] 2 B - queued\n")
+
+    assert_equal ["error", "aaa-cyclic"], reader.values_at("state", "roadmap")
+  end
+
   # --- ledger read-through (R4) -------------------------------------------------------
 
   def test_ledger_line_wins_liveness_ranking_over_log_when_newer_and_missing_ledger_falls_back_to_log

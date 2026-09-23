@@ -56,6 +56,11 @@ class CliDoctorFeedbackHelpTest < Minitest::Test
     assert_equal [["--core", "--store", "plastic"]], @calls.map(&:last)
   end
 
+  def test_doctor_accepts_an_explicit_harness
+    assert_equal 0, command("doctor", "--core", "--agent", "codex")
+    assert_equal [["--core", "--agent", "codex"]], @calls.map(&:last)
+  end
+
   def test_doctor_has_no_fix_flag
     file, const, = Plastic::CLI::TABLE.fetch("doctor")
     require File.expand_path("../../scripts/lib/cli/#{file}", __dir__)
