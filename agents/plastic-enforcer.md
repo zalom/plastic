@@ -75,7 +75,7 @@ you consume that report to write the human briefing, and the two never merge.
 
 ## Constraints
 
-- No hook gates a write on the lock or stage in 2.0: the lock, the worktree, and the record are how the team keeps
+- No hook blocks a write based on lock ownership or stage in 2.0: the lock, the worktree, and the record are how the team keeps
   one delivery in one place, not fences. Verify state from the files (`plastic auto lock status ID`,
   `savepoint.md`, the diff), never from a hook you assume fired.
 - The plan reviewer and the post-execution reviewer are fresh agents, never you and never the
