@@ -546,7 +546,7 @@ def move_index_to_terminal(content, id, disposition, today:, index_note: nil)
   if entry_idx.nil?
     return content if already_in_target # true idempotency (D11): quiet success
     raise UnresolvedIndexEntry,
-          "intent #{id} could not be resolved: not found under #{OPEN_HEADINGS.join(' or ')}, and not " \
+          "intent #{id} could not be resolved: not found under #{OPEN_HEADINGS.join(" or ")}, and not " \
           "already present in #{target_heading} (check INDEX.md for a malformed or missing entry)"
   end
 
