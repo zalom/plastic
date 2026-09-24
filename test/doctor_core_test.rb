@@ -954,7 +954,7 @@ class DoctorRunChecksHarnessGatingTest < Minitest::Test
 
   def agents_with_codex_home_dir
     { "claude" => { name: "Claude Code", dir: DOCTOR_TEST_CLAUDE },
-      "codex"  => { name: "Codex CLI", dir: DOCTOR_TEST_CODEX, home_dir: DOCTOR_TEST_CODEX } }
+      "codex" => { name: "Codex CLI", dir: DOCTOR_TEST_CODEX, home_dir: DOCTOR_TEST_CODEX } }
   end
 
   def test_running_as_claude_carries_no_codex_named_check_or_version_match_codex

@@ -17,8 +17,8 @@ module ReleaseChannels
     m = /\A(\d+)\.(\d+)\.(\d+)(?:-(.+))?\z/.match(version.to_s.strip)
     return nil unless m
 
-    { maj: m[1].to_i, min: m[2].to_i, pat: m[3].to_i,
-      pre: m[4] ? m[4].split(".") : nil }
+    {maj: m[1].to_i, min: m[2].to_i, pat: m[3].to_i,
+     pre: m[4]&.split(".")}
   end
 
   # Semver precedence (§11). Returns -1, 0, or 1.
