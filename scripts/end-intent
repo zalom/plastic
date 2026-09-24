@@ -91,10 +91,8 @@
 require_relative "lib/store_layout"
 require "fileutils"
 require "date"
-require "open3"
 require "stringio"
 require "tmpdir"
-require "pathname"
 require_relative "lib/arm"
 require_relative "lib/exec_worktree"
 require_relative "lib/index_entry"
@@ -605,53 +603,23 @@ rescue UnresolvedIndexEntry => e
   exit 1
 end
 
-# --- store auto-commit (D2 step 4) ------------------------------------------
+# --- store commit instruction (D2 step 4) -----------------------------------
 
-def git_toplevel(dir)
-  out, _err, status = Open3.capture3("git", "-C", dir, "rev-parse", "--show-toplevel")
-  return nil unless status.success?
-  top = out.strip
-  top.empty? ? nil : top
-end
-
-# Best-effort store commit: never raises, never blocks the mechanical close.
-# Returns true when a commit was created, false otherwise (not a git repo, nothing to
-# commit, or the commit failed). Pins a local committer identity so the commit succeeds
-# even with no ambient git config (hermetic).
-#
-# SCOPED, never `git add -A` (D17, intent 197): stages only the completing intent's own
-# directory plus the store's INDEX.md, by explicit relative path. An unrelated dirty file
-# elsewhere in the store (another session's uncommitted work, a maintenance session's
-# in-flight change) is left exactly as it was found, never swept into this commit. This is
-# the safety floor that makes a concurrent maintenance session's change-plus-receipt safe on
-# the shared store checkout before intent 178 (store worktrees) lands.
-def store_commit(store, id, disposition, intent_dir:, index_path:)
-  root = git_toplevel(store)
-  return false if root.nil?
-
+# Owner ruling 2026-09-24: Plastic runs no version control command. Instead
+# of staging and committing the store itself, this names the exact
+# instruction for the closer to run - SCOPED, never `git add -A` (D17,
+# intent 197): only the completing intent's own directory plus the store's
+# INDEX.md, by explicit path. An unrelated dirty file elsewhere in the store
+# (another session's uncommitted work, a maintenance session's in-flight
+# change) is never named, so it is never swept up by a copy-pasted `-A`.
+# Returns nil when neither path exists (nothing to name).
+def store_commit_instruction(store, id, disposition, intent_dir:, index_path:)
   paths = [intent_dir, index_path].select { |p| p && File.exist?(p) }
-                                   .map { |p| relative_to(root, p) }
-  return false if paths.empty?
+  return nil if paths.empty?
 
-  Open3.capture3("git", "-C", root, "add", "--", *paths)
-  _out, _err, status = Open3.capture3(
-    "git", "-C", root,
-    "-c", "user.name=Plastic", "-c", "user.email=plastic@localhost",
-    "commit", "--quiet", "-m", "chore: complete intent #{id} (#{disposition})"
-  )
-  status.success?
-end
-
-# `path`, relative to `root` (both absolute). Assumes `path` is inside `root` (true for
-# both intent_dir and index_path here, since both are derived from `store`, itself always
-# inside the same git repo `git_toplevel` resolved `root` from). Uses File.realpath, not
-# File.expand_path: `root` came back from `git rev-parse --show-toplevel`, which resolves
-# symlinked ancestors (e.g. macOS's /var -> /private/var), so an unresolved `path` can start
-# with a different prefix than `root` and produce a bogus, escaping relative path. Both
-# `path` and `root` are known to exist by the time this is called (the caller filters on
-# File.exist? first), so realpath is safe here.
-def relative_to(root, path)
-  Pathname.new(File.realpath(path)).relative_path_from(Pathname.new(File.realpath(root))).to_s
+  quoted_paths = paths.map { |p| "\"#{p}\"" }.join(" ")
+  "git -C #{store} add -- #{quoted_paths} && " \
+    "git -C #{store} commit -m \"chore: complete intent #{id} (#{disposition})\""
 end
 
 # --- pre-flight lock guard (D3/D4, intent 188) ------------------------------
@@ -799,22 +767,19 @@ def run_disarm(intent_dir, id, session, discard_worktree_changes:,
   :lock_remains
 end
 
-# True when the intent's code worktree carries any work: uncommitted changes
-# or commits past its base branch. Anything that cannot be proven reads as
-# changed, so an unreadable worktree never turns a close into a refusal.
+# True when the intent has a code worktree at all. Owner ruling 2026-09-24:
+# Plastic runs no version control command, so it can no longer read git
+# status or the commit count ahead of base itself - whether the worktree
+# actually carries work is for the closer to judge from the printed merge
+# instruction (run_disarm's own worktree-removal message), never guessed
+# here. A worktree that exists reads as changed (fail open, the same
+# direction the old check took when it could not prove otherwise), so a
+# close is never refused as an "untouched scaffold" merely because Plastic
+# cannot see inside a real repository.
 def worktree_changed?(intent_dir)
   block = Arm.worktree_block(intent_dir: intent_dir)
   code = block.is_a?(Hash) ? block["code"] : nil
-  return false unless code && Dir.exist?(code)
-
-  out, status = Open3.capture2e("git", "-C", code, "status", "--porcelain")
-  return true unless status.success? && out.strip.empty?
-
-  base = ScaffoldIntent.detect_base_branch(code)
-  return true if base.nil?
-
-  ahead, status = Open3.capture2e("git", "-C", code, "rev-list", "--count", "#{base}..HEAD")
-  !status.success? || ahead.strip != "0"
+  !!(code && Dir.exist?(code))
 rescue StandardError
   true
 end
@@ -927,7 +892,12 @@ def main(argv)
     puts "  #{index_move}"
     puts "  would append index note: #{opts[:index_note].inspect}" if opts[:index_note]
     puts "  would append savepoint bookend: Done  #{disposition}"
-    puts(opts[:no_commit] ? "  would skip store commit (--no-commit)" : "  would commit the store repo")
+    if opts[:no_commit]
+      puts "  would skip the store commit instruction (--no-commit)"
+    else
+      preview = store_commit_instruction(store, id, disposition, intent_dir: intent_dir, index_path: index_path)
+      puts "  would print: #{preview}" if preview
+    end
     if verdict == :takeover
       owner_desc = lock_data ? lock_data["owner_session"] : "corrupt/unreadable"
       puts "  would reclaim the stale delivery lock (owner #{owner_desc}) via takeover"
@@ -1010,9 +980,14 @@ def main(argv)
   # 3. Savepoint Done bookend (idempotent).
   Savepoint.append_terminal_savepoint(intent_dir, disposition)
 
-  # 4. Store auto-commit, unless --no-commit. Scoped to this intent's own paths (D17):
-  # never git add -A.
-  store_commit(store, id, disposition, intent_dir: intent_dir, index_path: index_path) unless opts[:no_commit]
+  # 4. Store commit instruction (D2 step 4), unless --no-commit. Owner ruling
+  # 2026-09-24: Plastic runs no version control command - it prints the
+  # instruction, scoped to this intent's own paths (D17: never `git add
+  # -A`), for the closer to run.
+  unless opts[:no_commit]
+    instruction = store_commit_instruction(store, id, disposition, intent_dir: intent_dir, index_path: index_path)
+    puts instruction if instruction
+  end
 
   # 5. Disarm (D2/D16): dirty-worktree guard, disarm seam, lock verification.
   result = run_disarm(intent_dir, id, session, discard_worktree_changes: opts[:discard_worktree_changes])
