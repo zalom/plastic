@@ -10,10 +10,9 @@ require_relative "../scripts/lib/report_screen"
 require_relative "../scripts/lib/intent_screen"
 require_relative "../scripts/lib/screen_paint"
 require_relative "../scripts/lib/lock"
-require_relative "../scripts/dashboard"
 
 # Intent 331a2 (D5, S4): mirror scripts/report-screen's own glob explicitly rather than relying
-# on the kind registry being populated incidentally through dashboard.rb's require chain, so a
+# on the kind registry being populated incidentally through a require chain, so a
 # future require reshuffle cannot silently shrink the registry this census tests against.
 Dir.glob(File.join(File.expand_path("../scripts/lib/screens", __dir__), "*.rb")).sort.each { |f| require_relative f }
 
@@ -41,8 +40,8 @@ class ScreenWidthTest < Minitest::Test
     FileUtils.remove_entry(@home) if @home && Dir.exist?(@home)
   end
 
-  # --- fixture helpers, matching test/report_screen_header_and_width_test.rb and
-  # test/dashboard_screen_test.rb's own conventions rather than inventing new ones ----------
+  # --- fixture helpers, matching test/report_screen_header_and_width_test.rb's own
+  # conventions rather than inventing new ones ----------------------------------------------
 
   def tier_root
     root = File.join(@home, "projects", "demo")
@@ -117,49 +116,6 @@ class ScreenWidthTest < Minitest::Test
   LONG_STEP = (["StepWord"] * 40).join(" ").freeze
   LONG_INSIGHT = (["InsightWord"] * 40).join(" ").freeze
   LONG_NOTE = ("D" * 300).freeze
-
-  # dashboard.rb's own record pipeline, re-derived from an explicit `home` rather than the
-  # ambient PLASTIC_HOME constant (test/dashboard_screen_test.rb's stores_for/load_all_for,
-  # copied rather than reinvented).
-  def stores_for(home)
-    list = []
-    global = File.join(home, "store")
-    list << { scope: "global", store: global, index: File.join(home, "INDEX.md") } if File.directory?(global)
-    projects_root = File.join(home, "projects")
-    if File.directory?(projects_root)
-      Dir.children(projects_root).sort.each do |proj|
-        store = File.join(projects_root, proj, "store")
-        next unless File.directory?(store)
-        list << { scope: "project:#{proj}", store: store, index: File.join(projects_root, proj, "INDEX.md") }
-      end
-    end
-    list
-  end
-
-  def records_for(home)
-    all = []
-    done_ids = {}
-    completed_on_map = {}
-    stores_for(home).each do |si|
-      idx = {
-        active: index_section_ids(si[:index], "## Active"),
-        abandoned: index_section_ids(si[:index], "## Abandoned"),
-        completed: index_section_ids(si[:index], "## Completed"),
-      }
-      comp = completion_dates(si[:index])
-      intent_dirs(si[:store]).each do |d|
-        rec = parse_intent(si, d, idx)
-        next unless rec
-        rec[:completed_on] = comp[rec[:id]] || ""
-        all << rec
-        done_ids[[rec[:scope], rec[:id]]] = true if rec[:status] == "completed"
-        completed_on_map[[rec[:scope], rec[:id]]] = comp[rec[:id]] if comp[rec[:id]] && !comp[rec[:id]].empty?
-      end
-    end
-    referenced = {}
-    all.each { |r| r[:sources].each { |s| referenced[[r[:scope], s]] = true } }
-    all.map { |r| classify(r, done_ids, referenced, completed_on_map) }
-  end
 
   # One heavy fixture (300-character goal/title/notes, a real progress bar in a field
   # table's value column) rendered through all ten verbs. Reproduces the RC1-RC4 defects
@@ -245,7 +201,6 @@ class ScreenWidthTest < Minitest::Test
     screens["roadmap plan"] = ReportScreen.render_roadmap(path: roadmap_path, verb: "plan", store_root: root)
     screens["roadmap state"] = ReportScreen.render_roadmap(path: roadmap_path, verb: "state", store_root: root, now: NOW)
     screens["roadmap delivered"] = ReportScreen.render_roadmap(path: roadmap_path, verb: "delivered", store_root: root)
-    screens["dashboard"] = render_screen(records_for(@home), "project:demo", plastic_home: @home, now: NOW)
     # 331a2 (D5, S2 leg 3): the eleventh verb. The :intent kind has been registered since
     # screen_paint.rb:543 and fed to the hook (test/hook_message_display_test.rb:89), but this
     # census never rendered it - a new key, added here without touching any of the ten already
@@ -274,10 +229,10 @@ class ScreenWidthTest < Minitest::Test
 
   # --- S2: the derived site table, kept alive as running assertions rather than a comment ----
   #
-  # Leg 1: `grep -n '<< "' scripts/lib/report_screen.rb` (47 sites at 4e4b96e) and the same
-  # over scripts/dashboard.rb (42 sites, all outside the painter's path - dashboard.rb has no
-  # painted-screen emission at all; DashboardScreen.render builds the dashboard SCREEN by
-  # substitution and has zero `<<` sites of its own).
+  # Leg 1 once also counted scripts/dashboard.rb (47 sites in report_screen.rb, 42 in
+  # dashboard.rb at 4e4b96e, all outside the painter's path). dashboard.rb is gone (intent
+  # 392), so that half of leg 1 went with it; report_screen.rb's own count is still measured
+  # below, and it has since grown to 52 sites.
   #
   # Leg 2: `grep -n '<<' report_screen.rb | grep -v '<< "' | grep -v '<<~'` (28 hits) misses
   # five sites that append a method call or constant rather than a literal, and two of those
@@ -288,9 +243,9 @@ class ScreenWidthTest < Minitest::Test
   #   1466 the rescue card `## <id> · could not render (<msg>)` - :unknown today (F5)
   #   1478 the roster, appended to every session report (:opener + roster grammar)
   #
-  # Leg 3: seven screen templates built by substitution (zero `<<` sites): intent-screen.md,
-  # report-state.md, report-plan.md, dashboard-screen.md, and the three report-roadmap-*.md
-  # templates. `intent-screen.md` is the one this action adds as an eleventh verb.
+  # Leg 3: six screen templates built by substitution (zero `<<` sites): intent-screen.md,
+  # report-state.md, report-plan.md, and the three report-roadmap-*.md templates.
+  # `intent-screen.md` is the one this action adds as an eleventh verb.
   def literal_append_lines(path)
     File.readlines(path).each_with_index.select { |line, _| line.include?('<< "') }.map { |_, i| i + 1 }
   end
@@ -305,11 +260,6 @@ class ScreenWidthTest < Minitest::Test
     assert_equal 52, literal_append_lines(File.join(REPO, "scripts", "lib", "report_screen.rb")).length,
                  "the derived site table's leg 1 count has drifted from the repo - re-derive it " \
                  "before trusting the rest of this file's fixtures"
-  end
-
-  def test_leg1_dashboard_literal_append_count_is_the_exemption_bound
-    assert_equal 42, literal_append_lines(File.join(REPO, "scripts", "dashboard.rb")).length,
-                 "dashboard.rb's literal-append count is the exemption bound the board tests below assert against"
   end
 
   def test_leg2_non_literal_append_sites_include_every_screen_emission
@@ -333,18 +283,21 @@ class ScreenWidthTest < Minitest::Test
     # it shifts nothing else and adds no new leg-2 site. Same five sites,
     # matched by content; leg 1's literal appends (render_archive's row,
     # render_nodes_block's node/findings rows) are unaffected, so this list's
-    # five members are unchanged in kind, only in position.
-    [1090, 1170, 1614, 1620, 1632].each do |line|
+    # five members are unchanged in kind, only in position. Re-derived again
+    # (intent 392) when a stale dashboard.rb comment above these sites was
+    # corrected to one fewer line - -1 to all five (1090->1089, 1170->1169,
+    # 1614->1613, 1620->1619, 1632->1631).
+    [1089, 1169, 1613, 1619, 1631].each do |line|
       assert_includes lines, line, "leg 2 must still carry the screen-emitting non-literal append at line #{line}"
     end
   end
 
-  def test_screen_paint_is_called_from_exactly_three_places
-    callers = %w[report-screen dashboard.rb message_display.rb].flat_map do |base|
+  def test_screen_paint_is_called_from_exactly_two_places
+    callers = %w[report-screen message_display.rb].flat_map do |base|
       path = Dir.glob(File.join(REPO, "scripts", "**", base)).find { |f| File.file?(f) }
       File.readlines(path).each_with_index.select { |line, _| line.include?("ScreenPaint.paint(") }
     end
-    assert_equal 3, callers.length,
+    assert_equal 2, callers.length,
                  "every ScreenPaint.paint caller must be accounted for - a new one needs this census's coverage too"
   end
 
@@ -466,25 +419,6 @@ class ScreenWidthTest < Minitest::Test
       titles.each do |title|
         assert_includes painted, title, "#{verb}: opener title #{title.inspect} did not survive into the painted output"
       end
-    end
-  end
-
-  # The dashboard.rb exemption, asserted rather than claimed (S2): the five board renderers -
-  # the TTY board and the plain fallbacks - never carry a registered opener. If anyone later
-  # gives a board an opener, this fails loudly instead of rotting into a blind spot.
-  def test_dashboard_board_renderers_are_exempt_from_the_painter
-    fixtures = {
-      "continue" => render_continue([]),
-      "project" => render_project([], "demo"),
-      "all" => render_all([]),
-      "plain project" => render_plain_project([], "demo"),
-      "plain global" => render_plain_global([]),
-    }
-    fixtures.each do |board, text|
-      first_line = text.lines.map(&:strip).find { |l| !l.empty? }
-      assert_nil ScreenPaint.opener_kind(first_line.to_s),
-                 "#{board}: a board renderer must never gain a registered opener silently: #{first_line.inspect}"
-      assert_nil ScreenPaint.paint(text), "#{board}: a board renderer's output must never be claimed by the painter"
     end
   end
 

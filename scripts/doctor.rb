@@ -3084,7 +3084,7 @@ end
   # Same injection seams as all_checks_for_project_slug (intent 221a), threaded through
   # so every branch's check_qmd/check_serena/check_enola call can be made hermetic.
   # Defaults are byte-identical to the real probes; both production callers
-  # (scripts/doctor.rb's CLI entry point and scripts/dashboard.rb) call
+  # (scripts/doctor.rb's CLI entry point) call
   # run_store_checks(store) with a single positional argument and no kwargs, so
   # behavior at those call sites is unchanged.
   def run_store_checks(store, qmd_detector: QmdSync.method(:detect), qmd_runner: QmdSync.default_runner,

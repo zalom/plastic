@@ -130,9 +130,9 @@ class ReportScreenSkillContractTest < Minitest::Test
   # skill prose, so there is no SKILL.md text left for these to read.
 
   # F10/F11 (test_roadmap_skill_prints_roadmap_screens, test_dashboard_skill_prints_screen)
-  # were retired by intent 372 (family 3): `plastic roadmap show` and `plastic status` run
-  # report-screen and the dashboard board directly now, not skill prose, so there is no
-  # SKILL.md text left for these to read.
+  # were retired by intent 372 (family 3): `plastic roadmap show` runs report-screen directly
+  # now, and the dashboard board `test_dashboard_skill_prints_screen` pinned is gone (intent
+  # 392), not skill prose, so there is no SKILL.md text left for these to read.
 
   # F12 (test_executing_prints_state) was retired by intent 341 (G8, n1): the runner-driven
   # executing skill no longer prints report-screen state itself; the lead does, from the auto

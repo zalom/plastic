@@ -71,7 +71,7 @@ module ReportScreen
   # --- width bound (D7, intent 331f) --------------------------------------------
   #
   # ReportScreen.fit_screen(text, limit:) is the one shared pass every public render entry
-  # point in this file (and dashboard.rb's screen renderer) calls last, so no rendered row
+  # point in this file calls last, so no rendered row
   # ever passes the limit. Input unchanged byte for byte when nothing is over the limit.
 
   FIT_SCREEN_DEFAULT_LIMIT = 115
@@ -84,9 +84,8 @@ module ReportScreen
 
   # Truncate `text` to at most `max_chars`, cutting at the last whitespace at or before the
   # limit (never mid-word) and appending a single ellipsis when truncation happens. The one
-  # shared implementation now lives on ScreenPaint (intent 331f, finding 1); dashboard.rb's own
-  # helper of the same name delegates here, and this delegates onward so neither caller's own
-  # name has to change.
+  # shared implementation lives on ScreenPaint (intent 331f, finding 1); this method delegates
+  # to it so this module's own name for the helper does not have to change.
   def self.truncate_on_word_boundary(text, max_chars)
     ScreenPaint.truncate_on_word_boundary(text, max_chars)
   end
@@ -107,7 +106,7 @@ module ReportScreen
   # has a real label colon, 130 characters in, long after its opening sentence ends. With
   # neither boundary the title is the whole line.
   # A line that opens with its colon has no label to take, so it falls back the same way. The
-  # one implementation: dashboard.rb reads titles through this rather than splitting again.
+  # one implementation: every title reader goes through this rather than splitting again.
   TITLE_LABEL_RE = /\A(.*?): /m.freeze
   TITLE_SENTENCE_RE = /\A(.*?[.!?])(?:\s|\z)/m.freeze
 
@@ -379,7 +378,7 @@ module ReportScreen
     "#{render.call.join("\n")}\n"
   end
 
-  # Intent 331f1 (design's final bullet): the shared budget dashboard.rb's screen_fit_intent
+  # Intent 331f1 (design's final bullet): the shared budget
   # and roadmap_state_entries_table's Intent cell both spend by - a title cell fitted to
   # whatever the row's OTHER already-rendered cells leave it, measured in display columns
   # (RC1: an `others` cell carrying a progress bar costs two columns per glyph, not one).
@@ -1840,7 +1839,7 @@ def self.matching_action_heading(intent_dir, label)
   # RC4/spec.md defect 2: the Batches table carries the same Intent title column the plan
   # verb's own table already does (roadmap_plan_entries_table). The Intent cell spends
   # whatever the row's other cells leave it (W8a/W8b) through the ONE shared budget helper
-  # (fit_row_cell) dashboard.rb's screen_fit_intent also spends by, computed PER ROW from that
+  # (fit_row_cell) spends by, computed PER ROW from that
   # row's own batch/id/status/progress/lead - never a cross-row max - so one long row's Intent
   # cell can never re-truncate another row's already-correct one (A5).
   def self.roadmap_state_entries_table(data, store_root, now)

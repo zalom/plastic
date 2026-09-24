@@ -12,8 +12,9 @@ require "minitest/autorun"
 class ModifyPass306Test < Minitest::Test
   ROOT = File.expand_path("..", __dir__)
 
-  # The 42 files of cut-inventory 6b still present after 302 to 305
-  # (savepoint_pre_hook_test and start_intent_test were deleted, on record).
+  # The 41 files of cut-inventory 6b still present after 302 to 305
+  # (savepoint_pre_hook_test and start_intent_test were deleted, on record;
+  # dashboard_test was deleted by intent 392, on record).
   PRESENT = %w[
     plastic_core_budget_test plastic_md_batch0_conventions_test hook_registry_test install_hooks_test
     install_codex_hooks_test codex_hooks_test install_packaging_test codex_install_test
@@ -22,7 +23,7 @@ class ModifyPass306Test < Minitest::Test
     session_start_test savepoint_ledger_test savepoint_phantom_test scaffold_intent_test end_intent_test
     end_intent_disarm_toctou_test end_intent_worktree_guard_test new_intent_test exec_worktree_test
     doctor_test doctor_core_test doctor_core_split_test doctor_revisions_remedy_test insights_test
-    write_config_test dashboard_test spawn_preamble_test plastic_lock_cli_test lock_system_test
+    write_config_test spawn_preamble_test plastic_lock_cli_test lock_system_test
     roadmap_queue_test roadmap_savepoint_test qmd_sync_test
     skill_rename_prune_test doctor_stray_skills_test update_verb_test
     rollback_verb_test
@@ -45,7 +46,6 @@ class ModifyPass306Test < Minitest::Test
     "end_intent_test.rb" => ["Tier S"],
     "harness_text_test.rb" => ["lock-gate deny"],
     "new_intent_test.rb" => ["gate fire"],
-    "dashboard_test.rb" => ["M tier"],
     "doctor_revisions_remedy_test.rb" => ["yields_curator", "names the curator"],
     "install_packaging_test.rb" => ["gate relocation"],
     "insights_test.rb" => ["planner"],
