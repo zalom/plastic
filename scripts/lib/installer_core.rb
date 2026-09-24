@@ -464,9 +464,6 @@ class InstallerCore
       "scripts/restore-intent-v1" => "scripts/restore-intent-v1",
 "scripts/lib/revisions_writer.rb" => "scripts/lib/revisions_writer.rb",
 "scripts/maintenance-run" => "scripts/maintenance-run",
-"scripts/lib/maintenance_git.rb" => "scripts/lib/maintenance_git.rb",
-"scripts/lib/worktree_sweep.rb" => "scripts/lib/worktree_sweep.rb",
-"scripts/sweep-store-worktrees" => "scripts/sweep-store-worktrees",
       "scripts/validate-intent" => "scripts/validate-intent",
       "scripts/new-intent" => "scripts/new-intent",
       "scripts/end-intent" => "scripts/end-intent",
@@ -715,15 +712,6 @@ class InstallerCore
     MD
 
     puts "  \u{2705} Store bootstrapped"
-  end
-
-  # Intent 372 (former install skill, lines 119-127): `~/.plastic` becomes its own
-  # git repository the first time it exists, so `update` can later commit the core
-  # files it re-syncs. Leaves an existing repository alone.
-  def git_init_if_absent(runner: ->(cmd) { system(*cmd) })
-    FileUtils.mkdir_p(plastic_home)
-    return if File.directory?(File.join(plastic_home, ".git"))
-    runner.call(["git", "-C", plastic_home, "init", "-q"])
   end
 
   # Intent 372 (former install skill, lines 167-179): register every Plastic store as
