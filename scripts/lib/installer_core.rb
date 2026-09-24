@@ -435,7 +435,6 @@ class InstallerCore
       "scripts/insight-append" => "scripts/insight-append",
       "scripts/lib/worktree.rb" => "scripts/lib/worktree.rb",
       "scripts/lib/boot_banner.rb" => "scripts/lib/boot_banner.rb",
-      "scripts/lib/dashboard_banner.rb" => "scripts/lib/dashboard_banner.rb",
       "scripts/lib/qmd_sync.rb" => "scripts/lib/qmd_sync.rb",
       "scripts/qmd-sync" => "scripts/qmd-sync",
       "scripts/lib/roadmap_savepoint.rb" => "scripts/lib/roadmap_savepoint.rb",
@@ -503,7 +502,6 @@ class InstallerCore
       "scripts/lib/rule_catalog.rb" => "scripts/lib/rule_catalog.rb",
       "scripts/lib/doctor_exclusions.rb" => "scripts/lib/doctor_exclusions.rb",
       "scripts/lib/doctor_session_ledger.rb" => "scripts/lib/doctor_session_ledger.rb",
-      "scripts/dashboard.rb" => "scripts/dashboard.rb",
       "scripts/skill-lint" => "scripts/skill-lint",
       "scripts/lib/skill_lint.rb" => "scripts/lib/skill_lint.rb",
       "scripts/feedback-report" => "scripts/feedback-report",
@@ -531,11 +529,6 @@ class InstallerCore
       "scripts/lib/intent_screen_ansi.rb" => "scripts/lib/intent_screen_ansi.rb",
       "scripts/lib/screen_paint.rb" => "scripts/lib/screen_paint.rb",
       "scripts/lib/message_display.rb" => "scripts/lib/message_display.rb",
-      # Intent 331d (A1): scripts/dashboard.rb require_relatives this lib
-      # directly; templates/dashboard-screen.md and scripts/lib/screens/
-      # dashboard.rb are glob-derived (template_files, screen_files above)
-      # and need no entry here.
-      "scripts/lib/dashboard_screen.rb" => "scripts/lib/dashboard_screen.rb",
       "scripts/hook-message-display" => "scripts/hook-message-display",
       # Intent 334 (G1): the node file and graph.md library, plus its
       # validator and CLI (327 D40/D41).

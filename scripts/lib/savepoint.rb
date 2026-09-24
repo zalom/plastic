@@ -74,7 +74,7 @@ module Savepoint
 
   # True iff a lifecycle file is PRESENT AND REAL: it exists and its first line is
   # not the placeholder sentinel. Reads only the file head (never the whole file)
-  # so the dashboard stays fast across many intents. Exact first-line match only,
+  # so the report screens stay fast across many intents. Exact first-line match only,
   # so a real file that merely contains an HTML comment later is unaffected, and a
   # partially-edited sentinel reads as real rather than sticking as a placeholder.
   def self.stage_file_present?(path)

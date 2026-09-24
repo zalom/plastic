@@ -457,15 +457,6 @@ class ReportScreenHeaderAndWidthTest < Minitest::Test
     assert_includes ReportScreen.title_before_colon(": opens with its colon"), "opens with its colon"
   end
 
-  def test_the_dashboard_reads_titles_through_the_one_helper # D8.7
-    source = File.read(File.expand_path("../scripts/dashboard.rb", __dir__))
-    body = source[/def screen_intent_title.*?\nend/m]
-    refute_nil body, "screen_intent_title is gone; the assertion needs rewriting"
-    assert_includes body, "ReportScreen.title_before_colon",
-                    "the dashboard must read titles through the one helper, not a second split"
-    refute_match(/split\(":"/, body, "a second colon rule lives in dashboard.rb")
-  end
-
   def test_the_earlier_of_the_two_boundaries_is_the_title # D8.8
     # zlatkocodes 4 carries both: a sentence 47 characters in and a real label colon 130
     # characters in. The sentence is what names the work, so the earlier boundary wins.

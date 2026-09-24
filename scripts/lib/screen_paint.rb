@@ -91,7 +91,7 @@ module ScreenPaint
   # Truncate `text` to at most `max_chars` DISPLAY COLUMNS, cutting at the last whitespace at
   # or before the limit (never mid-word) and appending a single ellipsis when truncation
   # happens. The one shared implementation (intent 331f, finding 1; intent 331f1 finding A1):
-  # ReportScreen.truncate_on_word_boundary and dashboard.rb's own helper of the same name both
+  # ReportScreen.truncate_on_word_boundary and its callers
   # delegate here. The ellipsis (U+2026) itself sits above WIDE_CODEPOINT_MIN, so it costs TWO
   # display columns even though it is one character - the budget reserves that display width,
   # not `ellipsis.length`, or every truncated cell lands one column over (finding A1). Any

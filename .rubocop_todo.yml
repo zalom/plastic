@@ -17,7 +17,6 @@ Layout/ArgumentAlignment:
     - 'bin/verify-change'
     - 'scripts/append-ledger'
     - 'scripts/codex-hook'
-    - 'scripts/dashboard.rb'
     - 'scripts/doctor.rb'
     - 'scripts/end-intent'
     - 'scripts/file-session-intent'
@@ -94,10 +93,6 @@ Layout/ArgumentAlignment:
     - 'test/context_budget_bench_test.rb'
     - 'test/core_integrity_test.rb'
     - 'test/cross_harness_resume_test.rb'
-    - 'test/dashboard_advisory_flag_test.rb'
-    - 'test/dashboard_screen_test.rb'
-    - 'test/dashboard_sentinel_test.rb'
-    - 'test/dashboard_test.rb'
     - 'test/day_summary_test.rb'
     - 'test/doctor_core_test.rb'
     - 'test/doctor_cross_store_test.rb'
@@ -271,7 +266,6 @@ Layout/ArrayAlignment:
     - 'test/codex_adapter_test.rb'
     - 'test/codex_install_content_test.rb'
     - 'test/codex_v4a_grammar_test.rb'
-    - 'test/dashboard_screen_test.rb'
     - 'test/doctor_display_test.rb'
     - 'test/doctor_intent_end_test.rb'
     - 'test/end_intent_close_gate_test.rb'
@@ -311,12 +305,6 @@ Layout/BlockAlignment:
   Exclude:
     - 'scripts/lib/report_screen.rb'
 
-# Offense count: 2
-# This cop supports safe autocorrection (--autocorrect).
-Layout/BlockEndNewline:
-  Exclude:
-    - 'scripts/dashboard.rb'
-
 # Offense count: 1
 # This cop supports safe autocorrection (--autocorrect).
 Layout/ClosingHeredocIndentation:
@@ -346,7 +334,6 @@ Layout/ElseAlignment:
   Exclude:
     - 'bin/lib/skill_census.rb'
     - 'bin/plastic-skill-census'
-    - 'scripts/dashboard.rb'
     - 'scripts/doctor.rb'
     - 'scripts/hook-session-start'
     - 'scripts/lib/doctor_core.rb'
@@ -454,7 +441,6 @@ Layout/EndAlignment:
   Exclude:
     - 'bin/lib/skill_census.rb'
     - 'bin/plastic-skill-census'
-    - 'scripts/dashboard.rb'
     - 'scripts/doctor.rb'
     - 'scripts/hook-session-start'
     - 'scripts/lib/doctor_core.rb'
@@ -481,7 +467,6 @@ Layout/EndAlignment:
 Layout/ExtraSpacing:
   Exclude:
     - 'scripts/append-ledger'
-    - 'scripts/dashboard.rb'
     - 'scripts/end-intent'
     - 'scripts/exec-worktree'
     - 'scripts/file-session-intent'
@@ -519,7 +504,6 @@ Layout/FirstArrayElementIndentation:
 # SupportedLastArgumentHashStyles: always_inspect, always_ignore, ignore_implicit, ignore_explicit
 Layout/HashAlignment:
   Exclude:
-    - 'scripts/dashboard.rb'
     - 'scripts/lib/doctor_core.rb'
     - 'scripts/lib/graph_measure.rb'
     - 'scripts/lib/graph_measure_budget.rb'
@@ -528,7 +512,6 @@ Layout/HashAlignment:
     - 'scripts/lib/runner_absorb.rb'
     - 'scripts/lib/runner_dispatch.rb'
     - 'scripts/select-update-target'
-    - 'test/dashboard_test.rb'
     - 'test/doctor_display_test.rb'
     - 'test/doctor_requalification_test.rb'
     - 'test/doctor_test.rb'
@@ -555,7 +538,6 @@ Layout/IndentationConsistency:
     - 'scripts/doctor.rb'
     - 'scripts/lib/report_screen.rb'
     - 'test/capture_hook_test.rb'
-    - 'test/dashboard_screen_test.rb'
     - 'test/doctor_core_test.rb'
     - 'test/end_intent_test.rb'
     - 'test/intent_screen_test.rb'
@@ -589,7 +571,6 @@ Layout/IndentationWidth:
     - 'scripts/plastic-lock'
     - 'scripts/read-config'
     - 'test/capture_hook_test.rb'
-    - 'test/dashboard_screen_test.rb'
     - 'test/doctor_core_test.rb'
     - 'test/end_intent_test.rb'
     - 'test/intent_screen_test.rb'
@@ -599,12 +580,6 @@ Layout/IndentationWidth:
     - 'test/report_screen_plan_test.rb'
     - 'test/report_screen_session_test.rb'
     - 'test/skill_contract_cut_test.rb'
-
-# Offense count: 2
-# This cop supports safe autocorrection (--autocorrect).
-Layout/MultilineBlockLayout:
-  Exclude:
-    - 'scripts/dashboard.rb'
 
 # Offense count: 2
 # This cop supports safe autocorrection (--autocorrect).
@@ -620,7 +595,6 @@ Layout/MultilineMethodCallBraceLayout:
 # SupportedStyles: aligned, indented, indented_relative_to_receiver
 Layout/MultilineMethodCallIndentation:
   Exclude:
-    - 'scripts/dashboard.rb'
     - 'scripts/doctor.rb'
     - 'scripts/end-intent'
     - 'scripts/lib/action_graph_shim.rb'
@@ -646,7 +620,6 @@ Layout/MultilineMethodCallIndentation:
     - 'scripts/restore-intent-v1'
     - 'test/action_shim_live_store_test.rb'
     - 'test/auto_core_307_test.rb'
-    - 'test/dashboard_test.rb'
     - 'test/doctor_core_test.rb'
     - 'test/doctor_requalification_test.rb'
     - 'test/doctor_test.rb'
@@ -676,7 +649,6 @@ Layout/MultilineMethodCallIndentation:
 # SupportedStyles: aligned, indented
 Layout/MultilineOperationIndentation:
   Exclude:
-    - 'scripts/dashboard.rb'
     - 'scripts/doctor.rb'
     - 'scripts/lib/installer_core.rb'
     - 'scripts/lib/lock.rb'
@@ -710,7 +682,6 @@ Layout/MultilineOperationIndentation:
 # SupportedStyles: with_first_parameter, with_fixed_indentation
 Layout/ParameterAlignment:
   Exclude:
-    - 'scripts/dashboard.rb'
     - 'scripts/doctor.rb'
     - 'scripts/end-intent'
     - 'scripts/install.rb'
@@ -776,7 +747,6 @@ Layout/SpaceInsideHashLiteralBraces:
     - 'bin/lib/skill_census.rb'
     - 'bin/verify-change'
     - 'scripts/codex-hook'
-    - 'scripts/dashboard.rb'
     - 'scripts/doctor.rb'
     - 'scripts/exec-worktree'
     - 'scripts/file-session-intent'
@@ -889,11 +859,6 @@ Layout/SpaceInsideHashLiteralBraces:
     - 'test/config_asks_test.rb'
     - 'test/context_budget_bench_test.rb'
     - 'test/cross_harness_resume_test.rb'
-    - 'test/dashboard_advisory_flag_test.rb'
-    - 'test/dashboard_banner_test.rb'
-    - 'test/dashboard_screen_test.rb'
-    - 'test/dashboard_sentinel_test.rb'
-    - 'test/dashboard_test.rb'
     - 'test/day_summary_test.rb'
     - 'test/deprecation_display_test.rb'
     - 'test/doctor_config_asks_test.rb'
@@ -1437,11 +1402,6 @@ Minitest/EmptyLineBeforeAssertionMethods:
     - 'test/config_asks_test.rb'
     - 'test/context_budget_bench_test.rb'
     - 'test/core_integrity_test.rb'
-    - 'test/dashboard_advisory_flag_test.rb'
-    - 'test/dashboard_banner_test.rb'
-    - 'test/dashboard_screen_test.rb'
-    - 'test/dashboard_sentinel_test.rb'
-    - 'test/dashboard_test.rb'
     - 'test/data_boundary_test.rb'
     - 'test/day_summary_test.rb'
     - 'test/deprecation_display_test.rb'
@@ -1714,10 +1674,6 @@ Minitest/MultipleAssertions:
     - 'test/config_template_test.rb'
     - 'test/context_budget_bench_test.rb'
     - 'test/core_integrity_test.rb'
-    - 'test/dashboard_banner_test.rb'
-    - 'test/dashboard_screen_test.rb'
-    - 'test/dashboard_sentinel_test.rb'
-    - 'test/dashboard_test.rb'
     - 'test/day_summary_test.rb'
     - 'test/deprecation_display_test.rb'
     - 'test/doctor_config_asks_test.rb'
@@ -2076,7 +2032,6 @@ Minitest/TestMethodName:
 # This cop supports unsafe autocorrection (--autocorrect-all).
 Style/ComparableBetween:
   Exclude:
-    - 'scripts/dashboard.rb'
     - 'scripts/lib/installer_core.rb'
     - 'scripts/lib/report_screen.rb'
     - 'scripts/lib/session_ledger.rb'
@@ -2136,7 +2091,6 @@ Style/Encoding:
     - 'scripts/agent-report'
     - 'scripts/append-ledger'
     - 'scripts/codex-hook'
-    - 'scripts/dashboard.rb'
     - 'scripts/day-summary'
     - 'scripts/doctor.rb'
     - 'scripts/end-intent'
@@ -2167,8 +2121,6 @@ Style/Encoding:
     - 'scripts/lib/compact_instructions.rb'
     - 'scripts/lib/config_asks.rb'
     - 'scripts/lib/core_integrity.rb'
-    - 'scripts/lib/dashboard_banner.rb'
-    - 'scripts/lib/dashboard_screen.rb'
     - 'scripts/lib/data_boundary.rb'
     - 'scripts/lib/day_summary.rb'
     - 'scripts/lib/doctor_core.rb'
@@ -2247,7 +2199,6 @@ Style/Encoding:
     - 'scripts/lib/savepoint.rb'
     - 'scripts/lib/scaffold_intent.rb'
     - 'scripts/lib/screen_paint.rb'
-    - 'scripts/lib/screens/dashboard.rb'
     - 'scripts/lib/screens/plan.rb'
     - 'scripts/lib/screens/roadmap.rb'
     - 'scripts/lib/session_backfill.rb'
@@ -2323,11 +2274,6 @@ Style/Encoding:
     - 'test/context_budget_bench_test.rb'
     - 'test/core_integrity_test.rb'
     - 'test/cross_harness_resume_test.rb'
-    - 'test/dashboard_advisory_flag_test.rb'
-    - 'test/dashboard_banner_test.rb'
-    - 'test/dashboard_screen_test.rb'
-    - 'test/dashboard_sentinel_test.rb'
-    - 'test/dashboard_test.rb'
     - 'test/data_boundary_test.rb'
     - 'test/day_summary_test.rb'
     - 'test/derive_stage_node_shape_test.rb'
@@ -2561,14 +2507,6 @@ Style/KeywordParametersOrder:
     - 'test/report_screen_node_progress_test.rb'
     - 'test/work_graph_validator_test.rb'
 
-# Offense count: 7
-# This cop supports safe autocorrection (--autocorrect).
-# Configuration parameters: EnforcedStyle.
-# SupportedStyles: call, braces
-Style/LambdaCall:
-  Exclude:
-    - 'scripts/dashboard.rb'
-
 # Offense count: 1
 # This cop supports unsafe autocorrection (--autocorrect-all).
 Style/MapJoin:
@@ -2706,14 +2644,12 @@ Style/RedundantFreeze:
     - 'scripts/lib/runner_dispatch.rb'
     - 'scripts/lib/savepoint.rb'
     - 'scripts/lib/screen_paint.rb'
-    - 'scripts/lib/screens/dashboard.rb'
     - 'scripts/lib/session_backfill.rb'
     - 'scripts/lib/session_ledger.rb'
     - 'scripts/lib/verify_intent.rb'
     - 'scripts/runner'
     - 'test/auto_core_307_test.rb'
     - 'test/backfill_308_test.rb'
-    - 'test/dashboard_sentinel_test.rb'
     - 'test/doctrine_305_test.rb'
     - 'test/end_intent_generated_outcome_test.rb'
     - 'test/gates_removed_test.rb'
@@ -2762,7 +2698,6 @@ Style/RedundantInterpolationUnfreeze:
 Style/RedundantParentheses:
   Exclude:
     - 'scripts/codex-hook'
-    - 'scripts/dashboard.rb'
     - 'scripts/lib/links_section.rb'
     - 'scripts/lib/qmd_sync.rb'
 
@@ -2829,7 +2764,6 @@ Style/RedundantStructKeywordInit:
 Style/RescueModifier:
   Exclude:
     - 'scripts/codex-hook'
-    - 'scripts/dashboard.rb'
     - 'scripts/hook-session-start'
     - 'scripts/lib/doctor_core.rb'
     - 'scripts/lib/installer_core.rb'
@@ -2850,7 +2784,6 @@ Style/RescueStandardError:
     - 'scripts/agent-report'
     - 'scripts/append-ledger'
     - 'scripts/codex-hook'
-    - 'scripts/dashboard.rb'
     - 'scripts/doctor.rb'
     - 'scripts/end-intent'
     - 'scripts/feedback-report'
@@ -2934,7 +2867,6 @@ Style/RescueStandardError:
 # AllowedMethods: present?, blank?, presence, try, try!
 Style/SafeNavigation:
   Exclude:
-    - 'scripts/dashboard.rb'
     - 'scripts/lib/apply_patch_envelope.rb'
     - 'scripts/lib/installer_core.rb'
     - 'scripts/lib/node_input.rb'
@@ -2982,7 +2914,6 @@ Style/Semicolon:
     - 'scripts/rebuild-graph'
     - 'scripts/session-commit'
     - 'test/codex_install_test.rb'
-    - 'test/dashboard_screen_test.rb'
     - 'test/file_session_intent_test.rb'
     - 'test/node_input_budget_test.rb'
     - 'test/node_input_readers_test.rb'
@@ -3051,7 +2982,6 @@ Style/StringLiteralsInInterpolation:
   Exclude:
     - 'bin/lib/context_budget.rb'
     - 'bin/test'
-    - 'scripts/dashboard.rb'
     - 'scripts/doctor.rb'
     - 'scripts/end-intent'
     - 'scripts/graph-measure'
@@ -3111,9 +3041,6 @@ Style/StringLiteralsInInterpolation:
     - 'test/bridge_retired_test.rb'
     - 'test/codex_adapter_test.rb'
     - 'test/context_budget_bench_test.rb'
-    - 'test/dashboard_advisory_flag_test.rb'
-    - 'test/dashboard_screen_test.rb'
-    - 'test/dashboard_test.rb'
     - 'test/day_summary_test.rb'
     - 'test/doctor_core_split_test.rb'
     - 'test/doctor_requalification_test.rb'
@@ -3164,7 +3091,6 @@ Style/StringLiteralsInInterpolation:
 Style/TernaryParentheses:
   Exclude:
     - 'bin/verify-change'
-    - 'scripts/dashboard.rb'
     - 'scripts/doctor.rb'
     - 'scripts/end-intent'
     - 'scripts/file-session-intent'
@@ -3246,7 +3172,6 @@ Style/TernaryParentheses:
 # SupportedStylesForMultiline: comma, consistent_comma, diff_comma, no_comma
 Style/TrailingCommaInArguments:
   Exclude:
-    - 'scripts/dashboard.rb'
     - 'scripts/hook-message-display'
     - 'scripts/lib/message_display.rb'
     - 'scripts/lib/node_input.rb'
@@ -3356,7 +3281,6 @@ Style/TrailingCommaInHashLiteral:
     - 'bin/lib/context_budget.rb'
     - 'bin/lib/skill_census.rb'
     - 'scripts/append-ledger'
-    - 'scripts/dashboard.rb'
     - 'scripts/doctor.rb'
     - 'scripts/end-intent'
     - 'scripts/graph-measure'
@@ -3427,9 +3351,6 @@ Style/TrailingCommaInHashLiteral:
     - 'test/codex_install_content_test.rb'
     - 'test/codex_install_test.rb'
     - 'test/config_asks_test.rb'
-    - 'test/dashboard_banner_test.rb'
-    - 'test/dashboard_screen_test.rb'
-    - 'test/dashboard_test.rb'
     - 'test/doctor_config_asks_test.rb'
     - 'test/doctor_core_test.rb'
     - 'test/doctor_display_test.rb'

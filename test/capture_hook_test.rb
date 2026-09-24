@@ -535,13 +535,13 @@ end
                      "secondary ceiling that survives if a future step legitimately starts emitting a little"
   end
 
-  # --- dashboard.rb missing or failing -----------------------------------------------
+  # --- report-screen missing or failing -----------------------------------------------
 
   # An isolated copy of hook-capture plus its lib dependencies, deliberately
-  # WITHOUT scripts/dashboard.rb beside it, so job (d)'s own
-  # `if File.exist?(dashboard)` guard is exercised for real rather than assumed.
-  def isolated_capture_without_dashboard
-    root = Dir.mktmpdir("capture-no-dashboard")
+  # WITHOUT scripts/report-screen beside it, so job (d)'s own
+  # failed roster run is exercised for real rather than assumed.
+  def isolated_capture_without_report_screen
+    root = Dir.mktmpdir("capture-no-report-screen")
     scripts = File.join(root, "scripts")
     FileUtils.mkdir_p(File.join(scripts, "lib"))
     real_scripts = File.expand_path("../scripts", __dir__)
@@ -549,8 +549,6 @@ end
     FileUtils.cp(File.join(real_scripts, "lib", "session_ledger.rb"), File.join(scripts, "lib", "session_ledger.rb"))
     FileUtils.cp(File.join(real_scripts, "lib", "store_provisioning.rb"),
                  File.join(scripts, "lib", "store_provisioning.rb"))
-    FileUtils.cp(File.join(real_scripts, "lib", "dashboard_banner.rb"),
-                 File.join(scripts, "lib", "dashboard_banner.rb"))
     FileUtils.cp(File.join(real_scripts, "lib", "qmd_sync.rb"), File.join(scripts, "lib", "qmd_sync.rb"))
     FileUtils.cp(File.join(real_scripts, "lib", "data_boundary.rb"), File.join(scripts, "lib", "data_boundary.rb"))
     FileUtils.cp(File.join(real_scripts, "lib", "active_delivery.rb"), File.join(scripts, "lib", "active_delivery.rb"))
@@ -562,15 +560,15 @@ end
 
   # 345 S6: under the old /\bcontinue\b/i trigger, "continue and take it from
   # here" fired both the cockpit and the auto steer in one prompt, so this
-  # single test exercised job (d)'s missing-dashboard guard and job (e)'s
+  # single test exercised job (d)'s missing-report-screen guard and job (e)'s
   # steer together. Under the exact-match rule the two triggers are mutually
   # exclusive (a prompt equal to "continue" carries no auto trigger, and an
   # auto-trigger prompt is not equal to "continue"), so the old prompt no
   # longer fires the cockpit at all and the test went vacuous rather than
-  # red. Split into two, each against the same dashboard-less fixture.
+  # red. Split into two, each against the same report-screen-less fixture.
 
-  def test_dashboard_missing_on_a_bare_continue_exits_zero_and_emits_nothing
-    root = isolated_capture_without_dashboard
+  def test_report_screen_missing_on_a_bare_continue_exits_zero_and_emits_nothing
+    root = isolated_capture_without_report_screen
     script = File.join(root, "scripts", "hook-capture")
     payload = { "session_id" => "sess-nodash-continue", "user_prompt" => "continue", "cwd" => @home }
     env = { "PLASTIC_HOME" => @plastic_home, "HOME" => @home, "CLAUDE_CODE_SESSION_ID" => nil }
@@ -578,13 +576,13 @@ end
 
     assert_equal 0, status.exitstatus, out
     assert_empty out.strip,
-                 "the cockpit is the only job a bare continue could fire, and the missing dashboard is why it did not"
+                 "the cockpit is the only job a bare continue could fire, and the missing report screen is why it did not"
   ensure
     FileUtils.rm_rf(root) if root
   end
 
-  def test_dashboard_missing_does_not_suppress_the_auto_steer
-    root = isolated_capture_without_dashboard
+  def test_report_screen_missing_does_not_suppress_the_auto_steer
+    root = isolated_capture_without_report_screen
     script = File.join(root, "scripts", "hook-capture")
     payload = { "session_id" => "sess-nodash-auto", "user_prompt" => "take it from here", "cwd" => @home }
     env = { "PLASTIC_HOME" => @plastic_home, "HOME" => @home, "CLAUDE_CODE_SESSION_ID" => nil }
@@ -593,7 +591,7 @@ end
     assert_equal 0, status.exitstatus, out
     ctx = JSON.parse(out).dig("hookSpecificOutput", "additionalContext").to_s
     assert_includes ctx, "Run `plastic auto take ID`",
-                    "a missing dashboard must not suppress another job's context"
+                    "a missing report screen must not suppress another job's context"
   ensure
     FileUtils.rm_rf(root) if root
   end

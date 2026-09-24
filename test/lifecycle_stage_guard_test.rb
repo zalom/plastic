@@ -6,15 +6,14 @@ require "time"
 require_relative "../scripts/lib/intent_screen"
 require_relative "../scripts/lib/savepoint"
 require_relative "../scripts/lib/day_summary"
-require_relative "../scripts/dashboard"
 
 # Intent 317, D6: three stage readers must not mistake a non-lifecycle savepoint
 # line (Lock, Review, Commit) for the current stage. IntentScreen.savepoint_fields
 # still shows the TRUE last line in the Savepoint field; only the STAGE PICK and
 # the delivered scan are guarded. spawn-preamble and agent-report share the same
-# bug and get the same guard (plan review finding B1). day_summary and dashboard
-# deliberately keep reading the raw last line (B2/B3, no code change) - pinned
-# here so that is a decision, not an accident.
+# bug and get the same guard (plan review finding B1). day_summary deliberately
+# keeps reading the raw last line (B2, no code change) - pinned here so that is
+# a decision, not an accident.
 class LifecycleStageGuardTest < Minitest::Test
   REPO = File.expand_path("..", __dir__)
   PREAMBLE = File.join(REPO, "scripts", "spawn-preamble")
@@ -155,15 +154,5 @@ class LifecycleStageGuardTest < Minitest::Test
     text = DaySummary.last_savepoint_line(@dir)
     assert_includes text, "Commit"
     assert_includes text, "abc1234 2460 runs"
-  end
-
-  # --- row 20: dashboard.rb's last_accessed_at / savepoint_shows_progress? ----
-
-  def test_dashboard_reader_functions_are_unaffected_by_commit_lines
-    write_ledger(HOW_LEDGER + ["2026-08-30T13:10:00Z  Commit  abc1234 2460 runs"])
-    path = File.join(@dir, "savepoint.md")
-    assert_equal "2026-08-30T13:10:00Z", last_accessed_at(@dir, "2026-08-30")
-    assert_equal true, savepoint_shows_progress?(path)
-    assert_nil done_timestamp(@dir)
   end
 end
