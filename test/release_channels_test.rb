@@ -67,9 +67,28 @@ class ReleaseChannelsTest < Minitest::Test
   end
 
   def test_a_release_with_only_a_symbol_tag_name_is_still_read
-    releases = [{"draft" => false, tag_name: "v1.0.0"}]
+    release = {"draft" => false}
+    release[:tag_name] = "v1.0.0"
+    releases = [release]
 
     assert_equal({"latest" => "1.0.0"}, ReleaseChannels.channels(releases))
+  end
+
+  def test_a_release_with_no_tag_name_at_all_is_skipped_not_raised
+    releases = [
+      {"draft" => false},
+      {"tag_name" => "v1.0.0", "draft" => false}
+    ]
+
+    assert_equal({"latest" => "1.0.0"}, ReleaseChannels.channels(releases))
+  end
+
+  def test_compare_returns_early_on_a_differing_major_version
+    older = ReleaseChannels.parse("1.0.0")
+    newer = ReleaseChannels.parse("2.0.0")
+
+    assert_equal(-1, ReleaseChannels.compare(older, newer))
+    assert_equal(1, ReleaseChannels.compare(newer, older))
   end
 
   # §11 precedence, exercised directly on compare so every prerelease-identifier branch

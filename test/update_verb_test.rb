@@ -187,6 +187,26 @@ class UpdateVerbTest < Minitest::Test
     assert_equal :install_sh, u.send(:install_path)
   end
 
+  def test_cli_with_no_installed_version_warns_and_exits_1
+    _, err = capture_io { assert_equal 1, @u.cli([]) }
+
+    assert_match(/not installed/i, err)
+  end
+
+  def test_fetch_channels_calls_the_injected_fetcher
+    fetched = @u.send(:fetch_channels, fetcher: -> { {"latest" => "1.2.3"} })
+
+    assert_equal({"latest" => "1.2.3"}, fetched)
+  end
+
+  def test_channel_env_maps_latest_to_stable
+    assert_equal "stable", @u.send(:channel_env, "latest")
+  end
+
+  def test_channel_env_passes_other_channels_through_unchanged
+    assert_equal "alpha", @u.send(:channel_env, "alpha")
+  end
+
   def test_offline_fetch_prints_a_message_and_exits_1
     u = Update.new(package_root: ".", plastic_home: @home, version: "x")
     u.define_singleton_method(:installed_version) { "1.0.0-alpha.18" }

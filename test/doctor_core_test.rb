@@ -1189,6 +1189,26 @@ class DoctorCliDispatchTest < Minitest::Test
     assert result.key?("checks"), result.inspect
   end
 
+  def test_cli_core_flag_runs_core_checks
+    out, = capture_io do
+      assert_raises(SystemExit) { doctor.cli(["--core"]) }
+    end
+
+    result = JSON.parse(out)
+
+    assert result.key?("checks"), result.inspect
+  end
+
+  def test_cli_with_no_flags_runs_the_full_check
+    out, = capture_io do
+      assert_raises(SystemExit) { doctor.cli([]) }
+    end
+
+    result = JSON.parse(out)
+
+    assert result.key?("checks"), result.inspect
+  end
+
   def test_cli_intent_flag_rescues_a_raising_check_and_exits_2
     d = doctor
     d.define_singleton_method(:run_intent_check) { |*| raise "boom" }
