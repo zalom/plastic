@@ -67,8 +67,30 @@ class Doctor
 
   # --- Flag parsing ---
 
+  # G4 (intent 391): the doctor checks only the harness it runs from. This is a
+  # pure function of an injected environment, so no test reads or fakes a real
+  # process environment. CLAUDECODE set means Claude Code. A CODEX_-prefixed
+  # variable with no CLAUDECODE means Codex. Neither present keeps the default
+  # at claude. `effective_agent` layers `--agent` on top: an explicit flag
+  # always wins over this resolution, at the CLI boundary only, so parse_args's
+  # own default (agent_explicit: false plainly says none was given) stays
+  # untouched and every existing parse_args test keeps its own fixed default.
+  def resolve_running_harness(env)
+    return "claude" if env["CLAUDECODE"]
+    return "codex" if env.keys.any? { |k| k.to_s.start_with?("CODEX_") }
+
+    "claude"
+  end
+
+  def effective_agent(flags, env: ENV)
+    return flags[:agent] if flags[:agent_explicit]
+
+    resolve_running_harness(env)
+  end
+
   def parse_args(argv)
     agent = "claude"
+    agent_explicit = false
     help = false
     core = false
     # store flag representation:
@@ -86,6 +108,7 @@ class Doctor
       when "--agent"
         if argv[i + 1] && agents.key?(argv[i + 1])
           agent = argv[i + 1]
+          agent_explicit = true
           i += 2
         else
           $stderr.puts "Error: --agent requires one of: #{agents.keys.join(", ")}"
@@ -117,7 +140,8 @@ class Doctor
       end
     end
 
-    { agent: agent, help: help, core: core, store: store, intent: intent, disposition: disposition }
+    { agent: agent, agent_explicit: agent_explicit, help: help, core: core, store: store,
+      intent: intent, disposition: disposition }
   end
 
   def show_help
@@ -129,7 +153,8 @@ class Doctor
         ruby ~/.plastic/scripts/doctor.rb [options]
 
       Options:
-        --agent NAME    Agent to check: claude (default), codex, hermes
+        --agent NAME    Agent to check: claude, codex, hermes. Defaults to the
+                        harness this doctor run is reading its environment from.
         --core          Binary core sync check: verifies agent registration, core
                         files, and that every manifest-tracked file matches its
                         recorded SHA256. Exits 0 (pass) or 2 (fail); never warn.
@@ -2944,8 +2969,10 @@ end
     all_checks += check_conventions(scopes: ["global"])
     all_checks += check_agent_registration(agent_key)
     all_checks += check_core_files(agent_key)
-    all_checks += check_harness_versions
-    all_checks += check_codex_stale_registrations
+    if agent_key == "codex"
+      all_checks += check_harness_versions
+      all_checks += check_codex_stale_registrations
+    end
     all_checks += check_deprecations
     all_checks += check_config_asks(agent_key)
     all_checks += check_ruby_runtime
@@ -3033,13 +3060,15 @@ end
 
   # --- Main ---
 
-  def cli(argv = ARGV)
+  def cli(argv = ARGV, env: ENV)
     flags = parse_args(argv)
 
     if flags[:help]
       show_help
       exit 0
     end
+
+    agent = effective_agent(flags, env: env)
 
     result =
       if flags[:intent]
@@ -3053,9 +3082,9 @@ end
       elsif !flags[:store].nil?
         run_store_checks(flags[:store])
       elsif flags[:core]
-        run_core_checks(flags[:agent])
+        run_core_checks(agent)
       else
-        run_checks(flags[:agent])
+        run_checks(agent)
       end
 
     puts JSON.pretty_generate(result)

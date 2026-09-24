@@ -882,6 +882,117 @@ class DoctorCodexStaleRegistrationsTest < Minitest::Test
 end
 
 # ===========================================================================
+# G4 (intent 391): the doctor checks only the harness it runs from. A pure
+# resolver reads an injected environment for the default, and --agent still
+# wins. The multi-harness version scan and the stale-Codex scan (both
+# added for the same stale-Codex-under-a-passing-report bug, Row E) now run
+# only when the running harness is Codex, so a Claude Code doctor run never
+# carries a codex_ named check or a version_match_codex line.
+# ===========================================================================
+
+class DoctorRunningHarnessResolutionTest < Minitest::Test
+  include DoctorTestHelpers
+
+  def test_claudecode_set_resolves_to_claude
+    assert_equal "claude", doctor.resolve_running_harness({ "CLAUDECODE" => "1" })
+  end
+
+  def test_codex_prefixed_var_with_no_claudecode_resolves_to_codex
+    assert_equal "codex", doctor.resolve_running_harness({ "CODEX_SANDBOX" => "seatbelt" })
+  end
+
+  def test_claudecode_wins_when_both_are_set
+    assert_equal "claude",
+      doctor.resolve_running_harness({ "CLAUDECODE" => "1", "CODEX_SANDBOX" => "seatbelt" })
+  end
+
+  def test_neither_set_defaults_to_claude
+    assert_equal "claude", doctor.resolve_running_harness({})
+  end
+
+  def test_agent_flag_marks_itself_explicit
+    flags = doctor.parse_args(["--agent", "codex"])
+    assert_equal "codex", flags[:agent]
+    assert_equal true, flags[:agent_explicit]
+  end
+
+  def test_no_agent_flag_is_not_explicit
+    flags = doctor.parse_args([])
+    assert_equal false, flags[:agent_explicit]
+  end
+
+  def test_effective_agent_flag_wins_over_a_codex_env
+    flags = doctor.parse_args(["--agent", "claude"])
+    assert_equal "claude", doctor.effective_agent(flags, env: { "CODEX_SANDBOX" => "seatbelt" })
+  end
+
+  def test_effective_agent_reads_codex_from_env_with_no_agent_flag
+    flags = doctor.parse_args([])
+    assert_equal "codex", doctor.effective_agent(flags, env: { "CODEX_SANDBOX" => "seatbelt" })
+  end
+end
+
+class DoctorRunChecksHarnessGatingTest < Minitest::Test
+  include DoctorTestHelpers
+
+  def setup
+    FileUtils.rm_rf([DOCTOR_TEST_HOME, DOCTOR_TEST_CLAUDE, DOCTOR_TEST_CODEX])
+    FileUtils.mkdir_p(DOCTOR_TEST_HOME)
+    FileUtils.mkdir_p(DOCTOR_TEST_CLAUDE)
+    FileUtils.mkdir_p(DOCTOR_TEST_CODEX)
+    File.write(File.join(DOCTOR_TEST_HOME, "VERSION"), "2.0.0-alpha.5")
+  end
+
+  def teardown
+    FileUtils.rm_rf([DOCTOR_TEST_HOME, DOCTOR_TEST_CLAUDE, DOCTOR_TEST_CODEX])
+  end
+
+  def write_agent_version(dir, version)
+    FileUtils.mkdir_p(File.join(dir, "plastic"))
+    File.write(File.join(dir, "plastic", "VERSION"), version)
+  end
+
+  def agents_with_codex_home_dir
+    { "claude" => { name: "Claude Code", dir: DOCTOR_TEST_CLAUDE },
+      "codex"  => { name: "Codex CLI", dir: DOCTOR_TEST_CODEX, home_dir: DOCTOR_TEST_CODEX } }
+  end
+
+  def test_running_as_claude_carries_no_codex_named_check_or_version_match_codex
+    write_agent_version(DOCTOR_TEST_CLAUDE, "2.0.0-alpha.5")
+    write_agent_version(DOCTOR_TEST_CODEX, "1.14.1") # stale; would surface pre-fix
+
+    names = doctor(agents: agents_with_codex_home_dir).run_checks("claude")[:checks].map { |c| c[:name] }
+
+    refute_includes names, "version_match_codex"
+    codex_named = names.select { |n| n.start_with?("codex_") }
+    assert_empty codex_named, "a Claude Code doctor run must carry no codex_ named check"
+  end
+
+  def test_running_as_codex_carries_no_claude_registration_check
+    write_agent_version(DOCTOR_TEST_CODEX, "2.0.0-alpha.5")
+
+    names = doctor(agents: agents_with_codex_home_dir).run_checks("codex")[:checks].map { |c| c[:name] }
+
+    refute_includes names, "hooks_exist"
+    refute_includes names, "hooks_executable"
+    refute_includes names, "hooks_no_orphans"
+  end
+
+  def test_running_as_codex_still_carries_the_stale_registration_scan
+    write_agent_version(DOCTOR_TEST_CODEX, "2.0.0-alpha.5")
+    dispatcher_path = File.join(DOCTOR_TEST_CODEX, "codex-hook")
+    File.write(dispatcher_path, "#!/usr/bin/env ruby\n")
+    File.chmod(0o755, dispatcher_path)
+    hooks = HookRegistry.codex_hooks_json(dispatcher_path: dispatcher_path)
+    File.write(File.join(DOCTOR_TEST_CODEX, "hooks.json"), JSON.pretty_generate({ "hooks" => hooks }))
+
+    names = doctor(agents: agents_with_codex_home_dir).run_checks("codex")[:checks].map { |c| c[:name] }
+
+    assert_includes names, "codex_stale_registrations"
+  end
+end
+
+# ===========================================================================
 # Unpromoted rule: findings (intent 341, G8, C37)
 # ===========================================================================
 
