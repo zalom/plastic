@@ -24,38 +24,19 @@ global rule.
 - All bash scripts must work under macOS /bin/bash 3.2 (no bash 4.x features)
 - Bump all 3 version files on every fix/feature release
 
-## Searching Plastic with QMD
+## Searching Plastic's stores
 
-QMD is an optional but recommended local markdown search engine over the Plastic stores.
-Plastic works without it (ripgrep over the store files is the fallback). When QMD is
-present, search it before re-deriving an existing decision, spec, or outcome.
+`plastic search TERMS` is Plastic's own store search index, built on sqlite3, the same
+install-time checked dependency as git (see the Stack section above). Search it before
+re-deriving an existing decision, spec, or outcome. The stores are the memory.
 
-- **Collections.** Plastic indexes into the DEFAULT qmd index, one collection per store,
-  all `plastic-` prefixed: `plastic-global` for the global store (`~/.plastic/stores/global/store`,
-  or `~/.plastic/store` in a home that has not moved to `stores/`), and `plastic-<slug>` for each
-  project store (slugs come from `projects.yml`).
-- **Scope a search.** One project: `-c plastic-<slug>`. All of Plastic: target the
-  `plastic-*` collections. Pick the narrowest scope that answers the question.
-- **Search before re-deriving.** Look in the stores for prior decisions, specs, and
-  outcomes before re-deriving them. The stores are the memory.
-- **Power tools are recommended when present.** When QMD (for intents), Enola, or Serena
-  (for code navigation) is present, prefer them. This file is where that recommendation lives:
-  `PLASTIC.md` is the short command contract and does not name these tools, and no hook repeats
-  it per prompt (the power-tools hook was removed in 2.0, intent 309). Search before grep/Read, then open
-  the authoritative intent file. Use `plastic search TERMS` for the store search index, or the
-  deterministic `scripts/qmd-sync search "<terms>"` helper for QMD, which
-  scopes collections for you and is a clean no-op when QMD is absent.
-- **Completion does not reindex.** In 2.0 no public close path calls `qmd-sync`:
-  `scripts/end-intent` stops at the disarm step, and the reindex step it names lived in a
-  retired skill. Only the internal `scripts/promote-session-item` reindexes. This is a known
-  gap; do not describe completion as reindexing until it is wired again.
-- **Index mutation is lifecycle-only.** Never reindex ad-hoc. The session-start hook names
-  `qmd-sync register --all` when QMD is present and the stores are not indexed yet;
-  `plastic project new` does not register the new store's collection.
-- **Query craft lives in the qmd skill.** Use the installed `qmd` skill for structured
-  `qmd query` (intent/lex/vec/hyde) and BM25 `qmd search`. Two notes: structured queries
-  need ANSI-C `$'...'` quoting so `\n` becomes a real newline, and `qmd search` (BM25)
-  needs no model downloads, so it is the safe model-free fallback.
+QMD, Serena, and Enola are companion tools a person can run by hand beside Plastic; see
+`plastic help tools` (`docs/help/tools.md`) for what each one does and how to reach for it.
+Intent 391 (2.0) dissolved every Plastic-owned integration with the three: no Plastic
+command, hook, or script starts, registers with, reindexes, or reads from any of them. When
+QMD is set up, its own `qmd query` (structured intent/lex/vec/hyde) or `qmd search` (BM25,
+no model downloads) runs directly against the store files, outside Plastic, the same as it
+would against any other directory of markdown.
 
 ## Working on Plastic
 

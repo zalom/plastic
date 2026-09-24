@@ -431,47 +431,29 @@ check artifacts: `new-intent`, `validate-intent`, `scaffold-intent`, `verify-int
 context. Doctor reports what is off. No eval suite or eval runner ships, so nothing replays a
 recorded eval against a produced artifact.
 
-### qmd registration and reindex flow
+### companion tools: no Plastic code path calls them
 
-The optional qmd search integration mutates its index only on Plastic lifecycle
-events, and one helper (`scripts/lib/qmd_sync.rb`, exposed as `scripts/qmd-sync`
-with verbs `detect`, `register`, `reindex` (with an `--async` variant), `status`,
-and a read-only `search`) does all the work by delegating to the qmd CLI. Each
-trigger lives at a fixed point:
+Intent 391 (2.0) dissolved every Plastic-owned integration with QMD, Serena, and Enola.
+`scripts/lib/qmd_sync.rb`, its `scripts/qmd-sync` CLI, and `scripts/lib/power_tools.rb` (the
+presence probes `PowerTools.qmd?`, `.serena?`, `.enola?` that doctor's Serena and Enola
+readiness checks used to call) are all deleted. No Plastic command installs, registers with,
+reindexes, queries, or reports on any of the three: not install, not project creation, not
+intent delivery, not session start, not doctor. `plastic install` no longer registers a QMD
+collection, and `plastic project new` never did.
 
-- **install and project creation**: `plastic install` registers every store as a QMD
-  collection (`register_with_qmd`, a no-op when QMD is absent); `plastic project new`
-  registers nothing. The session-start hook suggests `qmd-sync register --all` when QMD is present
-  and the stores are not indexed yet.
-- **intent delivery**: no public close path reindexes. `scripts/end-intent` stops at
-  disarm, and its header says the reindex step stayed in a retired skill. This is a known
-  gap. The internal `scripts/promote-session-item` runs `reindex` unless given
-  `--no-reindex`. The sync
-  `reindex` runs `qmd update` then `qmd embed -c plastic-<slug>` inline;
-  `QmdSync.reindex_async` runs the same work detached via `Process.spawn` plus
-  `Process.detach`, with output discarded, returning immediately. Both no-op when
-  qmd is absent.
-- **search**: the read-only `search "<terms>" [--store <dir>]` verb wraps
-  `QmdSync.search`, scoping collections by `--store` (that store's collection plus
-  `plastic-global`) or by CWD (`collections_for_cwd`), and prints ranked hits as
-  `[<pct>%] <path> - <title>`. It no-ops cleanly (exit 0) when qmd is absent.
-- **session start**: report-only. The boot path may report index status but
-  never mutates it.
-- **doctor**: the `qmd` category holds two checks. `present` passes whether or not QMD
-  is installed, since QMD is optional. `collections` warns when a store's collection is
-  not registered. Doctor does not check QMD's models.
+QMD, Serena, and Enola are companion tools a person sets up and runs by hand, beside Plastic,
+against the stores or the repository. `plastic help tools` (`docs/help/tools.md`) documents
+each one; `PLASTIC.md` carries a single pointer to that chapter, and no other Plastic surface
+names them. `plastic search TERMS` is Plastic's own store search index, built on sqlite3 (an
+install-time checked dependency, alongside git), never delegated to an outside process.
 
-The power-tools `UserPromptSubmit` hook was removed in 2.0 (intent 309): `PLASTIC.md`
-carries the "prefer QMD, prefer Enola or Serena" recommendation once per session (intent
-305), so a per-prompt reminder only repeated it. `scripts/lib/power_tools.rb` stays: doctor's
-Serena and Enola readiness checks use its presence probes (`PowerTools.qmd?`,
-`PowerTools.serena?`, `PowerTools.enola?`, PATH and marker-file walks with no subprocess).
-The name `power-tools` is in `HookRegistry::RETIRED_HOOK_NAMES`, so an old settings.json or
-`~/.codex/hooks.json` entry is purged on the next install or update. History: until intent
-246 this hook also injected scored `qmd search` hits; intent 225 measured that injection at
-0.24 intent-level recall@3 against a plain ripgrep control at 0.18, while agent-driven
-`qmd query` scored 0.71, so the injection went first and the reminder last.
-`QmdSync.search` is untouched and still backs the read-only `scripts/qmd-sync search` verb.
+History: the power-tools `UserPromptSubmit` hook (removed in 2.0, intent 309) used to remind
+on every prompt to prefer these tools; until intent 246 it also injected scored `qmd search`
+hits, which intent 225 measured at 0.24 intent-level recall@3 against a plain ripgrep control
+at 0.18, while agent-driven `qmd query` scored 0.71, so the injection went first and the
+reminder stayed until intent 309 removed it too. The name `power-tools` is in
+`HookRegistry::RETIRED_HOOK_NAMES`, so an old settings.json or `~/.codex/hooks.json` entry is
+purged on the next install or update.
 
 ### intent born-complete validation
 
@@ -482,7 +464,7 @@ one shared definition of "born complete" that creation and diagnosis both consul
 - **Single source of truth**: `scripts/lib/intent_validator.rb` is the only
   definition of born-complete (required fields present, `sources` and `chain`
   well-formed arrays of id references (bare ids, or cross-store references like global:1a2)). It is injectable (`plastic_home`), hermetic,
-  uses no eval, and does no global-constant injection, mirroring `qmd_sync.rb`.
+  uses no eval, and does no global-constant injection.
 - **Three consumers sit on top of it**: the `validate-intent` CLI (exit 0 when
   complete, non-zero with a report otherwise); `scripts/new-intent`, which validates
   the file it just wrote and exits non-zero when it is not born complete (`plastic
@@ -656,18 +638,17 @@ one shared definition of store creation that creation and repair both consult.
   `~/.plastic/projects/{slug}/store` on a legacy home, then write-if-missing `.gitkeep`
   in the store, and `INDEX.md` from `templates/index.md` and `project.yml` from
   `templates/project.yml` beside it). It
-  is injectable (`plastic_home`, `package_root`), hermetic, idempotent, uses no
-  eval, does no global-constant injection, and performs no qmd mutation, mirroring
-  `intent_validator.rb`. The logic was migrated from the orphaned
-  `InstallerCore#bootstrap_project_store`, which is now removed.
+  is injectable (`plastic_home`, `package_root`), hermetic, idempotent, and uses
+  no eval and no global-constant injection. The logic was migrated from the
+  orphaned `InstallerCore#bootstrap_project_store`, which is now removed.
 - **Consumers sit on top of it**: the `scripts/provision-project-store` CLI (exit
   0 on success, non-zero with a report when the slug is unregistered or on usage
   error); `plastic project new`, which runs the verb after `projects.yml`
   registration; and doctor's read-only `project_store_dir` check, which warns and
   prints `provision-project-store {slug}` as its fix.
-- **Scope boundary**: the provisioner is pure filesystem. It never mutates qmd and
-  never edits `projects.yml`. Registering the store with qmd is a separate, optional
-  `qmd-sync register --store` step that no-ops when qmd is absent.
+- **Scope boundary**: the provisioner is pure filesystem. It never edits
+  `projects.yml`. Since intent 391 nothing registers a store with any search index;
+  a person who runs QMD by hand points it at the store directory themselves.
 
 ## per-agent model resolution and installer application (intent 116)
 
@@ -776,7 +757,7 @@ own isolation instead, deterministic and cwd-independent.
   retired it, and store-write safety for lifecycle docs now comes from intent
   197's branch-from-main plus scoped-commit mechanism.
   `Worktree.repo_for` resolves the abs repo path from `projects.yml` (reusing the
-  qmd_sync safe-loader pattern), or nil.
+  `YAML.safe_load` pattern used across `scripts/lib`), or nil.
 - **Reports and removes, creates nothing** (intent 390): `Arm.worktree_block`
   resolves the slug from the intent dir, derives the code worktree's path and
   branch through `Worktree.paths`, and reports `provisioned` as whether that
@@ -788,7 +769,7 @@ own isolation instead, deterministic and cwd-independent.
   a path that was never created is nothing to remove.
 - **Unified `PLASTIC_HOME` seam** (intent 169): every CLI-script and hook entry
   point resolves its sandbox override from the single env var `PLASTIC_HOME`
-  (`read-config`, `dashboard.rb`, `qmd-sync`, `provision-project-store`,
+  (`read-config`, `dashboard.rb`, `provision-project-store`,
   `validate-intent`, `doctor.rb`, `install.rb`, `hooks/check-update`); an older,
   differently-named env var that only `read-config` read was hard-cut, not
   aliased. Holding this seam is a level mismatch: the env var names the
@@ -1307,8 +1288,7 @@ session id, no `RUBYOPT`, and a `PATH` of exactly one entry: the running interpr
 directory. That last one is load-bearing twice. `hook-session-start` shells out to
 `scripts/read-config` three times and `read-config`'s shebang is `#!/usr/bin/env ruby`, so any
 `PATH` carrying `/usr/bin` would run those reads under the system Ruby while the report named a
-different interpreter; and with nothing else on `PATH`, `qmd` is unfindable on every host, so
-the optional QMD status line can never move the byte count between machines.
+different interpreter.
 
 **What it measures, and what is enforced.**
 

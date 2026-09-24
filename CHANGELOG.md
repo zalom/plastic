@@ -39,6 +39,13 @@ This version was not published separately. Its changes shipped with 2.0.1.
 
 ## Unreleased
 
+- Intent 391: Plastic calls only tools native to macOS and Linux. Install checks only git and
+  sqlite3; `doctor` checks only the harness it runs from; `plastic update` reads the GitHub
+  releases list through curl instead of npm and syncs a newer package-root release in
+  process, with no shell-out to `npx`; QMD, Serena, and Enola lose every Plastic-owned
+  integration (`scripts/lib/qmd_sync.rb`, `scripts/qmd-sync`, and `scripts/lib/power_tools.rb`
+  are deleted) and become companion tools documented in `plastic help tools`.
+
 - Plastic runs no version control command. This removes the pull request body and template-honoring code that PRs 18 and 19 added; `plastic session commit` now only records the item and prints the commit instruction, and `plastic auto take` prints the worktree to create instead of creating it.
 
 - Intent 360: every Plastic agent now defaults to medium reasoning effort on Claude Code and Codex. Codex dispatch passes literal OpenAI model IDs and effort into `codex exec`, Codex installs OpenAI equivalents for both advisors, `read-config` is harness-aware, and read-only research nodes can return one declared Markdown report for the runner to write under the intent's `resources/` directory.
