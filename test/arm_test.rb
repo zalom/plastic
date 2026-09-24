@@ -173,19 +173,25 @@ class ArmTest < Minitest::Test
 
   # --- worktree_block and bridge_hash -------------------------------------------
 
-  def test_worktree_block_reports_the_expected_path_before_and_after_the_directory_exists
+  def test_expected_worktree_reports_the_path_before_and_after_the_directory_exists
     p = Worktree.paths(slug: "demo", intent_id: "96", intent_slug: "demo", home: @home)
 
-    block = Arm.worktree_block(intent_dir: @dir, home: @home)
+    block = Arm.expected_worktree(intent_dir: @dir, home: @home)
     assert_equal p["code"], block["code"], "the expected path is named before the directory exists"
     assert_equal p["code_branch"], block["code_branch"]
     assert_equal false, block["provisioned"]
 
     FileUtils.mkdir_p(p["code"]) # simulates the agent creating the workspace
-    block = Arm.worktree_block(intent_dir: @dir, home: @home)
+    block = Arm.expected_worktree(intent_dir: @dir, home: @home)
     assert_equal p["code"], block["code"]
     assert_equal p["code_branch"], block["code_branch"]
     assert_equal true, block["provisioned"]
+  end
+
+  def test_worktree_block_names_no_path_until_the_directory_exists
+    block = Arm.worktree_block(intent_dir: @dir, home: @home)
+
+    assert_equal [nil, nil, false], block.values_at("code", "code_branch", "provisioned")
   end
 
   def test_code_paths_name_the_worktree_before_it_exists

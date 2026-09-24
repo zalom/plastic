@@ -79,19 +79,27 @@ module Arm
   end
 
   # `{code, code_branch, provisioned}` derived from projects.yml and the
-  # intent id: the workspace the agent is told to create (Plastic runs no
-  # `git worktree add` itself, intent 390). `code`/`code_branch` name the
-  # expected path and branch whenever a repo resolves for the project, blank
-  # only for a store-only (non-git) intent; `provisioned` alone says whether
-  # that directory already exists on disk.
+  # intent id: the worktree path, `provisioned` iff it exists on disk. `code`
+  # is blank while the directory is absent, so readers never act on a path
+  # that is not there.
   def worktree_block(intent_dir:, home: Dir.home)
+    expected = expected_worktree(intent_dir: intent_dir, home: home)
+    return expected if expected["provisioned"]
+
+    expected.merge("code" => nil, "code_branch" => nil)
+  end
+
+  # The workspace `plastic auto take` tells the agent to create, since Plastic
+  # creates none itself: the expected path and branch whenever a repo
+  # resolves for the project, blank only for a store-only intent, and
+  # `provisioned` when that directory already exists.
+  def expected_worktree(intent_dir:, home: Dir.home)
     p = code_paths(intent_dir: intent_dir, home: home)
     code = p["code"]
-    provisioned = !blank?(code) && Dir.exist?(code)
     {
       "code" => code,
       "code_branch" => code ? p["code_branch"] : nil,
-      "provisioned" => provisioned,
+      "provisioned" => !blank?(code) && Dir.exist?(code),
     }
   end
 
@@ -151,7 +159,7 @@ module Arm
       return { status: status, lock: lock, worktree: nil, session: key }
     end
 
-    { status: status, lock: lock, worktree: worktree_block(intent_dir: dir, home: h),
+    { status: status, lock: lock, worktree: expected_worktree(intent_dir: dir, home: h),
       session: key }
   end
 
