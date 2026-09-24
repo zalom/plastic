@@ -241,7 +241,7 @@ class CaptureHookTest < Minitest::Test
     File.write(File.join(root, "INDEX.md"),
                "# Index\n\n## Active\n\n- [#{intent_dirname}](store/#{intent_dirname}/#{intent_dirname}.md)\n\n## Future\n")
     File.write(File.join(root, "store", intent_dirname, "#{intent_dirname}.md"),
-               "---\nid: \"#{intent_dirname.split('--').first}\"\nintent: \"Seeded\"\n---\n\n## Intent\nSeeded\n")
+               "---\nid: \"#{intent_dirname.split("--").first}\"\nintent: \"Seeded\"\n---\n\n## Intent\nSeeded\n")
     File.write(File.join(root, "store", intent_dirname, "savepoint.md"), "2026-09-24T10:00:00Z  How  plan.md\n")
   end
 
