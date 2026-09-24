@@ -52,4 +52,10 @@ class CliPlasticMdTest < Minitest::Test
   def test_it_carries_no_skill_names
     refute_match(/slash command|SKILL\.md/i, body)
   end
+
+  # Intent 391, G3: the tools chapter is one pointer line away, not doctrine
+  # folded back into this file.
+  def test_it_points_at_the_tools_chapter
+    assert_includes mentioned_commands, "help tools"
+  end
 end
