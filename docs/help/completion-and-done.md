@@ -22,29 +22,28 @@ savepoint line -> commit -> disarm (Worktree.release -> Lock.release)`. `plastic
 runs all of it through `scripts/end-intent`. The close does not reindex QMD: no public close
 path calls `qmd-sync`, so the QMD index catches up only when you run `qmd-sync` yourself.
 
-`scripts/end-intent` never merges code. Before a delivered close writes anything, it checks
-that the intent's code is already merged into the current branch of the repo checkout. It
-checks the commit the code worktree is on, even when that worktree is on a renamed branch or
-a detached HEAD, and it checks the code branch after the worktree is gone. The repo checkout
-must be on the branch you release from, not detached and not on the code branch. If the code
-isn't merged, or Git can't tell, the script exits 9 and changes nothing: INDEX, the savepoint, the
-lock, and the worktree all stay as they were. `plastic intent end` reports that refusal as exit 1
-with a named message. `--dry-run` refuses the same way. The refusal
-names the merge to run, for example `git -C <repo> merge plastic/<id>--<slug>`. Run that
-ordinary merge, or release the work through your usual process, and then run the close
-again. An abandoned close and an intent with no code repository skip this check.
+`scripts/end-intent` never merges code, and never checks that it is merged (intent 390:
+Plastic runs no version control command). A delivered close authors the record and
+disarms; it does not ask Git whether the code worktree's branch landed anywhere. If code
+work is still open, merge it yourself, on your own schedule, before or after the intent
+closes -- the close no longer blocks on it.
 
-A delivered close also refuses, as exit 1, an untouched scaffold (script exit 8) and a hollow
+A delivered close still refuses, as exit 1, an untouched scaffold (script exit 8) and a hollow
 report whose `## Delivered` rows do not match the action files (script exit 7). A live foreign
-lock is script exit 4, which `plastic intent end` reports as exit 3.
+lock is script exit 4, which `plastic intent end` reports as exit 3. The dirty-worktree
+check (former exit 5) and the unmerged-branch check (former exit 9) are retired: both
+required a real `git status` or `git merge-base`, which Plastic no longer runs.
+`--discard-worktree-changes` is still accepted for backward compatibility but changes
+nothing.
 
-`scripts/end-intent` performs this order's disarm step (verify the code worktree is clean,
-then remove the worktree, then clear the lock) as its own step 5, mechanically, since
-intent 188: a session no longer needs a separate one-liner for it, and the script's own
+`scripts/end-intent` performs this order's disarm step as its own step 5, mechanically,
+since intent 188: a session no longer needs a separate one-liner for it, and the script's own
 exit code (0) is the single fact a caller needs that the intent is closed AND its delivery
 lock is gone. A pre-flight lock guard runs before anything is written (refuses a live
-foreign session, reclaims a stale one with an audit line), and a dirty code worktree
-refuses before removal rather than force-discarding uncommitted changes.
+foreign session, reclaims a stale one with an audit line). Disarm itself only clears the
+delivery lock; when a worktree was provisioned for the intent, it never removes that
+worktree (intent 390) -- it names the `git worktree remove` instruction, and end-intent
+prints it for the closer to run by hand, after committing and merging.
 
 The post-done access window is lock-bounded: `[INDEX terminal -> Lock.release]`. Through it
 the completing session keeps full read and write access to the terminal directory (108's

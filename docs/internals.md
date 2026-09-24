@@ -156,8 +156,10 @@ mtime drifts forward as `## Insights` are appended through the lifecycle.
 move-and-record change: the misplaced section, file, or ref, where it came from, the rule it
 broke, and its prior content. `scripts/lib/revisions_writer.rb` (`RevisionsWriter`) appends
 one entry per change for `project-links`, `rebuild-graph`, and the `rebuild-savepoint` tool;
-`restore-intent-v1` writes its own entry. `scripts/maintenance-run` commits the change and its receipt as one
-scoped store commit. A hand edit that moves content records its entry the same way; `plastic
+`restore-intent-v1` writes its own entry. Plastic runs no version control command (intent 390):
+`scripts/maintenance-run` makes the change and its receipt on disk, then prints the `git add`
+and `git commit` instruction for the closer to run by hand. A hand edit that moves content
+records its entry the same way; `plastic
 help maintenance-and-revisions` has the format. The file exists only when maintenance
 happened, so its presence is itself the signal.
 
@@ -277,15 +279,17 @@ refuses to write on an unrecognized tag would fail harder than the bug it is mea
 is the one-time population tool (197-conformant, dry-run by default): it computes violations by
 calling `Doctor#done_signal_findings_for_dir` directly, the same function `check_done_signals`
 itself calls, so the registry can never disagree with the checker about what counts as a
-violation. It processes every store in one invocation by default (all stores already live in
-the single `~/.plastic` git repo, so a cross-store write is still one repo and one scoped
-commit), unions with any existing hand-edited file content so a manually added id is never
-dropped, and skips (never aborts on) any intent dir holding a fresh delivery lock, reporting the
-skip. It writes no `revisions.md` entries: the tool modifies no intent directory, only one
-store-level table per store, so 197's receipt-before-write rule (which covers tools that
-structurally edit an intent's own files) does not apply here, and writing one would mean editing
-every touched Completed intent directory, which the standing rule that completed intents are
-immutable forbids. The scoped git commit plus the diffable exclusion file itself are the receipt.
+violation. It processes every store in one invocation by default (all stores already live under
+the single `~/.plastic` home, so a cross-store write is still one home and, once the closer runs
+the printed instruction, one scoped commit), unions with any existing hand-edited file content
+so a manually added id is never dropped, and skips (never aborts on) any intent dir holding a
+fresh delivery lock, reporting the skip. It writes no `revisions.md` entries: the tool modifies
+no intent directory, only one store-level table per store, so 197's receipt-before-write rule
+(which covers tools that structurally edit an intent's own files) does not apply here, and
+writing one would mean editing every touched Completed intent directory, which the standing rule
+that completed intents are immutable forbids. Plastic runs no version control command (intent
+390): the diffable exclusion file itself is the receipt, and `maintenance-run` prints the commit
+instruction for the closer to run by hand.
 
 A registered row can go dead: the intent's gap got repaired, the id was mistyped when the row was
 written, or the intent directory is gone. Left alone, the exclusion file only ever grows into an
@@ -531,9 +535,10 @@ Per-intent validation cannot see asymmetry between intents, so the cross-intent
   project store), builds the maps, runs the transform per
   store, emits a per-store before/after audit grouped by kind (dedupes, I3
   resolutions, I1 backlinks, cross-store repoints/collapses, drops), then writes the
-  changed frontmatter back. Pure Ruby (no bash). It runs no git itself;
-  `maintenance-run --tool rebuild-graph --apply` wraps it in one scoped store commit with
-  its `revisions.md` receipt. `~/.plastic` is never pushed.
+  changed frontmatter back. Pure Ruby (no bash). It runs no git itself, and neither does
+  `maintenance-run --tool rebuild-graph --apply` (intent 390): it writes the change and its
+  `revisions.md` receipt, then prints the commit instruction for the closer to run by hand.
+  `~/.plastic` is never pushed.
 - **Doctor's `graph_cross_store_resolution` check**: the i1/i3/i4 checks
   (`graph_invariant_checks`) deliberately treat a `store:id` ref as out-of-scope and
   validate only its shape, so a well-formed ref at a relocated or deleted target was
@@ -582,8 +587,10 @@ hook blocks a hand-authored intent file in 2.0; `validate-intent` and doctor's
 a pure function of already-committed artifacts (spec.md, plan.md, checklist.md, outcome.md,
 test results, the diff). Everything else stays judgment and stays with the agent. Intent 213
 applied that rule with thin CLIs over `scripts/lib/` modules. Three of them remain:
-`scripts/scaffold-intent`, `scripts/verify-intent`, and `scripts/exec-worktree`, which
-finishes the code worktree. `scripts/end-intent` runs the same backfill as
+`scripts/scaffold-intent`, `scripts/verify-intent`, and `scripts/exec-worktree`, which prints
+the commit, merge, and worktree-removal steps for the agent or owner to run by hand (intent
+390: Plastic runs no version control command, so it never inspects, merges, or removes the
+code worktree itself). `scripts/end-intent` runs the same backfill as
 `scaffold-intent` at close. The arm step is `plastic auto take ID`.
 
 `scripts/scaffold-intent` is one CLI with one verb, `backfill` (its `spec`, `checklist`, and
@@ -764,12 +771,12 @@ checkout, so parallel intent deliveries were not isolated. Plastic supplies its
 own isolation instead, deterministic and cwd-independent.
 
 - **Single source of truth**: `scripts/lib/worktree.rb` (module `Worktree`) is
-  the only definition of how an intent's worktree and lock are made. It is
-  dependency-injected (a `ShellRunner` runs `git`, a `home` argument resolves
-  `projects.yml`), hermetic, idempotent, uses no eval, and does no
-  global-constant injection, mirroring `intent_validator.rb` and
-  `store_provisioning.rb`. Every git call uses `git -C <resolved path>`, never
-  cwd: that is the actual fix for the cwd-not-repo-root gap.
+  the only definition of how an intent's worktree path and lock are computed.
+  Plastic runs no version control command (owner ruling 2026-09-24, intent
+  390): `Worktree` only computes the deterministic path and branch a project
+  intent's code worktree would have and never shells to `git`. It is
+  hermetic, idempotent, uses no eval, and does no global-constant injection,
+  mirroring `intent_validator.rb` and `store_provisioning.rb`.
 - **One worktree, id-first name**: `Worktree.paths` is pure and returns the
   code worktree (`<repo>/.claude/worktrees/{id}--{slug}`, branch
   `plastic/{id}--{slug}`). A paired store worktree used to exist; intent 178
@@ -777,15 +784,21 @@ own isolation instead, deterministic and cwd-independent.
   197's branch-from-main plus scoped-commit mechanism.
   `Worktree.repo_for` resolves the abs repo path from `projects.yml` (reusing the
   qmd_sync safe-loader pattern), or nil.
-- **Reports and removes, creates nothing** (intent 390): `Arm.worktree_block`
-  resolves the slug from the intent dir, derives the code worktree's path and
-  branch through `Worktree.paths`, and reports `provisioned` as whether that
-  path already exists on disk -- `code` and `code_branch` name the expected
+- **Reports, never runs git** (intent 390): `Arm.worktree_block` resolves the
+  slug from the intent dir, derives the code worktree's path and branch
+  through `Worktree.paths`, and reports `provisioned` as whether that path
+  already exists on disk -- `code` and `code_branch` name the expected
   workspace whether or not it exists yet; only a store-only project (no repo
-  resolves) leaves them blank. Neither `Arm.arm` nor `Arm.repair` runs git.
-  `Worktree.release(delivery)` still removes an existing worktree, prunes, and
-  clears the block when `provisioned` was true; it is a no-op otherwise, since
-  a path that was never created is nothing to remove.
+  resolves) leaves them blank. Neither `Arm.arm`, `Arm.disarm`, nor
+  `Arm.repair` takes a `runner:` seam or runs git. `release`, `finish`,
+  `merge_branch`, `current_branch`, `remove_worktree`, `prune`, `git_repo?`,
+  and `ensure_gitignored` are gone from `Worktree`; when a worktree was
+  provisioned, `Arm.disarm` names the `git worktree remove` instruction as a
+  `worktree_removal` result field, and `end-intent` prints it for the closer
+  to run by hand, after committing and merging. `Worktree::ShellRunner` stays
+  only because `node_worktree.rb` and the `runner_*` node-graph modules still
+  run real `git worktree`/merge commands for the graph's own node worktrees --
+  a separate, still-open action (intent 390 part B).
 - **Unified `PLASTIC_HOME` seam** (intent 169): every CLI-script and hook entry
   point resolves its sandbox override from the single env var `PLASTIC_HOME`
   (`read-config`, `dashboard.rb`, `qmd-sync`, `provision-project-store`,
@@ -1548,10 +1561,11 @@ file against `graph.md`'s declared nodes, refusing rather than rendering an empt
 an id the graph does not declare. The ledger block carries every transition line for the
 node in file order (torn lines marked, never counted as evidence), predecessor evidence read
 from `graph.md`'s edges (never the node envelope, which 327 D41 removed `needs` from) and
-counted only from an attributed well-formed `done` line, the lease from `--holder`/`--expires`/
-`--model` or the last `running` line or `lease: none` plus a stop directive (spec D9, C7), and
-landed commits after a reclaim through an injected git runner that is never invoked without a
-`reclaimed` line (spec D14, C11). The record block carries only `## Intent` (the floor, never
+counted only from an attributed well-formed `done` line, and the lease from `--holder`/`--expires`/
+`--model` or the last `running` line or `lease: none` plus a stop directive (spec D9, C7). The
+landed-commits block that once ran an injected git runner after a reclaim (spec D14, C11) is
+gone: Plastic runs no version control command (intent 390). The record block carries only
+`## Intent` (the floor, never
 cut), `### Decisions` (falling back to a top-level `## Decisions` when the nested one is
 absent) and the last three `## Insights` entries, with a kind-aware exclusion of any
 `### Findings` subsection for a verify node (spec D12, C23) anchored to the `## Insights` body
