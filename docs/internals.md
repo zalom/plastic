@@ -795,10 +795,14 @@ own isolation instead, deterministic and cwd-independent.
   and `ensure_gitignored` are gone from `Worktree`; when a worktree was
   provisioned, `Arm.disarm` names the `git worktree remove` instruction as a
   `worktree_removal` result field, and `end-intent` prints it for the closer
-  to run by hand, after committing and merging. `Worktree::ShellRunner` stays
-  only because `node_worktree.rb` and the `runner_*` node-graph modules still
-  run real `git worktree`/merge commands for the graph's own node worktrees --
-  a separate, still-open action (intent 390 part B).
+  to run by hand, after committing and merging. `Worktree::ShellRunner` is
+  gone too (intent 390 part B): `node_worktree.rb` and the `runner_*`
+  node-graph modules now compute the same path/branch/commit-line instructions
+  for the graph's own node worktrees -- `provision` reports `provisioned` only
+  when the path already exists on disk, `merge` names the `git merge --no-ff
+  --no-edit` instruction into the intent branch, and `release` names the `git
+  worktree remove` instruction on a terminal state -- creating, merging, and
+  removing nothing itself, in every one of these modules alike.
 - **Unified `PLASTIC_HOME` seam** (intent 169): every CLI-script and hook entry
   point resolves its sandbox override from the single env var `PLASTIC_HOME`
   (`read-config`, `dashboard.rb`, `qmd-sync`, `provision-project-store`,
@@ -1691,40 +1695,35 @@ refusal, rollback refusal, and link previews separately for Claude and Codex.
 `scripts/lib/untouched_scaffold.rb` decides whether an intent is still its
 new-intent scaffold. The check is narrow on purpose. All four lifecycle files
 must exist as untouched placeholders. There must be no ticked checklist item, no
-action, node or graph file, and no savepoint line past What. The code worktree
-must have no uncommitted changes and no commits past its base. When the
-worktree cannot be read, the intent counts as worked. `end-intent` exits 8 on a
-delivered close of such an intent, before any write.
+action, node or graph file, and no savepoint line past What. It also takes an
+injected `worktree_changed:` predicate (`end-intent`'s own `worktree_changed?`,
+defaulting to `false` otherwise); a code worktree only counts as changed when
+`worktree_changed?` reads true. `end-intent` exits 8 on a delivered close of
+such an intent, before any write.
 
-`unmerged_refusal` in `scripts/end-intent` runs next, also before any write, for
-a delivered close. `Arm.code_paths` names the code worktree and branch the
-intent would have, whether or not the worktree exists. The check fails closed:
-
-- When the code directory is the top of a real Git worktree, the commit at its
-  HEAD must be an ancestor of the repo checkout's HEAD. This covers a renamed
-  branch and a detached HEAD. A HEAD that `git rev-parse` can't read refuses.
-- When the code branch exists, it must be an ancestor too, so a removed
-  worktree doesn't hide unmerged work. A failed branch lookup refuses.
-- When the repo checkout is detached, or is on the code branch itself, no
-  other branch holds the code, so the close refuses. `target_refusal` checks
-  this before each ancestry check.
-- When `git merge-base --is-ancestor` itself fails, the close refuses the same
-  as when the code isn't merged.
-- When the repo has a `.git` entry but `git rev-parse --git-dir` fails there,
-  the close refuses.
-
-A refusal exits 9 and names the ordinary merge to run. `end-intent` never
-merges. A store-only project and a repo path with no `.git` entry skip the
-check. So does a code directory that isn't a real worktree and has no branch.
-The dirty-worktree guard refuses that last case (exit 5) because it can't
-inspect it.
+Plastic runs no version control command (intent 390), so `end-intent` no longer
+checks whether the code was actually merged before a delivered close.
+`worktree_changed?` (called from `untouched_scaffold.rb` above) is the one
+remaining worktree check, and it fails open: it names the code worktree's
+expected path through `Arm.worktree_block` and answers true (changed) whenever
+that path cannot be resolved or does not exist, and false only when the path
+resolves and exists on disk -- it never inspects the worktree's git status, so
+"exists" is the only signal left once git is out of the picture. `end-intent`
+authors the record and prints the merge instruction (from `NodeWorktree.merge`
+where a node worktree applies) for the closer to run themselves, before or
+after the close; the close no longer blocks on it. The retired exit code 9
+names what used to live here: checking the code branch was merged required
+real git commands (`git merge-base --is-ancestor`, `git rev-parse`), which
+Plastic no longer runs.
 
 `end-intent --dry-run` copies the intent to a scratch directory. It runs the
 same outcome generation and backfill on that copy, then applies the
-hollow-report gate (exit 7). The dirty-worktree guard is shared by the dry run
-and the disarm step (exit 5). The dry run also refuses exits 8 and 9 exactly as
-the real close does. `plastic intent end` names exits 7, 8, and 9 in its failure
-message.
+hollow-report gate (exit 7). Exits 5 and 9 are both retired (intent 390): each
+named a real git check (dirty-worktree status, merge ancestry) Plastic no
+longer runs, and `--discard-worktree-changes` is accepted but changes nothing
+now that there is nothing left to discard a check against. The dry run still
+refuses exit 8 exactly as the real close does. `plastic intent end` names
+exits 7 and 8 in its failure message.
 
 ### Bounded display replay
 

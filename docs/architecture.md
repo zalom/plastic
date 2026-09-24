@@ -247,7 +247,7 @@ Removed in 2.0 (intent 302): the edit-path gates (edit, bash, code, lock, links)
 
 An intent whose delivery touches code runs in its own git worktree, and an intent's delivery is single-owner: exactly one session develops it at a time. Both properties are owned by Plastic, not the harness (intents 73c and 108). The lock is a durable `delivery.lock` JSON file inside the intent directory, acquired atomically (O_EXCL) at arm time. Its `owner_session` is the sole authorization identity. Controller provenance (`harness`, `agent`, `model`, `thread`, and `mode`) is descriptive only, accepts explicit values from the harness, and is never inferred from transcripts or paths; legacy omissions render as `Unknown`. Liveness is a lease: write-path hooks refresh the file mtime on owner activity, and that mtime is the sole heartbeat and freshness truth against the 1800-second TTL. A fresh foreign lock means back off; a stale one is taken only by explicit takeover, which appends an audit line to savepoint.md and replaces the prior controller. Rearming the same session refreshes known provenance without changing authority. The internal `plastic-lock` CLI exposes the lock verbs (`arm`, `status`, `who`, `fix`, `release`, `reclaim`, `delegate`, `claim`, `release-claim`), and the public `plastic auto lock` command runs its `status`, `fix` and `release` verbs. `fix` is the idempotent repair; it also migrates legacy lock files that still carry a pid. `who` is a read-only durable-files view of controller, mtime heartbeat, delegates, and claims. `Arm.delivery`'s `worktree` block (`Arm.worktree_block`) names the code worktree's expected path and branch plus a `provisioned` flag; Plastic runs no version control command (intent 390), so nothing in `Arm` creates, merges, or removes that worktree -- `Arm.disarm` clears the lock only and, when a worktree was provisioned, returns the `git worktree remove` instruction for the closer to run by hand.
 
-Plastic computes the worktree path deterministically and cwd-independently, but it creates nothing (intent 390): it resolves the project repo from `projects.yml`, derives the path and branch a code worktree would have, and reports whether that path already exists on disk. `plastic auto take` prints that path and branch as its `next:` line, an example `git -C <repo> worktree add <path> -b <branch>` the agent runs itself. One worktree is expected per project intent, named `{id}--{slug}`: the code worktree at `<repo>/.claude/worktrees/{id}--{slug}` on branch `plastic/{id}--{slug}`, where all code edits happen. A second, store worktree used to exist; intent 178 retired it, and store-write safety for lifecycle-doc commits now comes from intent 197's branch-from-main plus scoped-commit mechanism. Disarming still removes an existing worktree (`git worktree remove` then `git worktree prune`) and clears the block, since the code the agent wrote still needs tearing down.
+Plastic computes the worktree path deterministically and cwd-independently, but it creates nothing (intent 390): it resolves the project repo from `projects.yml`, derives the path and branch a code worktree would have, and reports whether that path already exists on disk. `plastic auto take` prints that path and branch as its `next:` line, an example `git -C <repo> worktree add <path> -b <branch>` the agent runs itself. One worktree is expected per project intent, named `{id}--{slug}`: the code worktree at `<repo>/.claude/worktrees/{id}--{slug}` on branch `plastic/{id}--{slug}`, where all code edits happen. A second, store worktree used to exist; intent 178 retired it, and store-write safety for lifecycle-doc commits now comes from intent 197's branch-from-main plus scoped-commit mechanism. Disarming removes nothing itself (intent 390): when a worktree was provisioned, `Arm.disarm` names the `git worktree remove` instruction, and the closer runs it by hand after committing and merging; disarm only clears the lock.
 
 `provisioned` is simply whether the expected path exists on disk: a pure research or decision intent in the global store, or a repo that resolves to no path at all, reports `code: null` and `provisioned: false`; such intents still get the lock.
 
@@ -261,28 +261,28 @@ Done is one law with three signals that must agree. The INDEX `## Completed` or 
 
 The audit echo can itself drift, so a pure, disk-only detector (`Savepoint.savepoint_phantom_lines`, intent 134; the ledger code lives in `scripts/lib/savepoint.rb` since intent 303) checks it: a savepoint line is a phantom when its file-landing milestone is absent or still a sentinel placeholder, its `(stage, milestone)` pair is a duplicate, or a state line's stage prerequisite is missing on disk. Doctor's `savepoint_truthful` check (in `done_signals`) reports phantoms as a warning, never a failure. For a live (INDEX Active) intent its fix hint names `Savepoint.rebuild_savepoint`; a terminal (Completed/Abandoned) intent is immutable, so a phantom there stays report-only.
 
-The End tail runs in a fixed order: `outcome.md`, then the INDEX terminal move, then the savepoint `Done` line, then the commit, then disarm (worktree release, then `Lock.release`). The design put a QMD reindex last, after disarm, so the index never references a released lock; `scripts/end-intent` does not run it in 2.0, and no public close path reindexes (a known gap). No hook freezes the intent directory after the lock is released: since intent 302 no hook gates a write on the lock or the stage, and doctor's `done_signals` checks report drift instead.
+The End tail runs in a fixed order: `outcome.md`, then the INDEX terminal move, then the savepoint `Done` line, then the commit, then disarm (clears the lock and, when a worktree was provisioned, prints the removal instruction; intent 390 - Plastic removes nothing itself). The design put a QMD reindex last, after disarm, so the index never references a released lock; `scripts/end-intent` does not run it in 2.0, and no public close path reindexes (a known gap). No hook freezes the intent directory after the lock is released: since intent 302 no hook gates a write on the lock or the stage, and doctor's `done_signals` checks report drift instead.
 
 Since intent 188, `scripts/end-intent` performs disarm itself, as its own step 5 after the
 outcome/INDEX/savepoint/commit steps commit: the script's exit code 0 now means both "the
 intent is closed" and "its delivery lock is gone," rather than the second half being left to
 a separate one-liner an agent had to remember to run. A pre-flight guard resolves the calling
 session and refuses the whole run before anything is written when a live foreign session
-holds the lock, and reclaims a stale foreign lock automatically (audited to savepoint.md). A
-dirty code worktree refuses before removal (rather than the existing force-remove path
-silently discarding uncommitted changes), unless an explicit `--discard-worktree-changes`
-flag overrides it. `end-intent`'s own INDEX-move parser and `IndexEntry.active?` now share
+holds the lock, and reclaims a stale foreign lock automatically (audited to savepoint.md).
+Plastic runs no version control command (intent 390), so it can no longer verify the code
+worktree is clean before disarming; `--discard-worktree-changes` is still accepted for
+backward compatibility but changes nothing now that there is no check left to override.
+`end-intent`'s own INDEX-move parser and `IndexEntry.active?` now share
 one matcher that accepts a real em dash or a plain hyphen as the id/title separator on read,
 while every write still emits the real em dash.
 
-A delivered close requires its code to be merged already. Before any write, `end-intent`
-checks with `git merge-base --is-ancestor` that the code is an ancestor of the repo
-checkout's current branch. It checks the HEAD commit of the code worktree, whether that
-worktree is on its own branch, a renamed branch, or a detached HEAD. It also checks the code
-branch, which still matters after the worktree is removed. The checkout must be on a branch
-other than the code branch. If the code isn't merged, or Git can't answer, `end-intent` and its dry run exit 9 and change nothing, and `plastic intent end` reports that as exit 1 with the reason. `end-intent` never
-merges: the owner merges or releases the work and runs the close again. An abandoned close
-and a store-only intent skip the check.
+A delivered close never merges code, and never checks that the code is merged (intent 390):
+Plastic runs no version control command, so it cannot verify a merge itself. `end-intent`
+authors the record and prints the merge instruction (the `git -C <intent-worktree> merge
+--no-ff --no-edit <node-branch>` shape `NodeWorktree.merge` computes) for the closer to run
+by hand, before or after the close; the close no longer blocks on it. The retired exit code 9
+names this: checking the code branch was merged used to require real git commands, which
+Plastic no longer runs.
 
 ## status and the dashboard
 
@@ -331,21 +331,25 @@ the harness being diagnosed.
 
 `plastic intent end --delivered` refuses an untouched scaffold. An untouched
 scaffold has only placeholder lifecycle files, no action or graph, no savepoint
-entries after the first What line, and no changes in its code worktree. Close it
+entries after the first What line, and its code worktree (when one is expected)
+still resolves to the same path Plastic would provision, since Plastic runs no
+version control command and cannot inspect it further than that. Close it
 with `--abandoned`, or do the work first. Legacy intents with missing lifecycle
 files still close through the backfill.
 
 `--dry-run` runs the same refusals as the real close and writes nothing. It
-refuses an untouched scaffold, unmerged code, a hollow delivered report, and a
-dirty code worktree. A passing dry run ends with `next: none`.
+refuses an untouched scaffold and a hollow delivered report. A passing dry run
+ends with `next: none`. Checking that the code was actually merged, and
+checking the worktree for uncommitted changes, are both retired (intent 390):
+each required a real git command Plastic no longer runs; the merge instruction
+prints instead, unconditionally, for the closer to run themselves.
 
-A real delivered close refuses an untouched scaffold and unmerged code before
-it writes anything. The hollow-report refusal runs later, after outcome
-generation and the backfill, so a close it refuses may already have written
-`outcome.md` or action files. INDEX.md, the savepoint `Done` line, and the store
-commit stay untouched in that case. A dirty code worktree refuses at disarm,
-after the store commit. `plastic intent end` reports each of these refusals as
-exit 1 with the reason.
+A real delivered close refuses an untouched scaffold before it writes anything.
+The hollow-report refusal runs later, after outcome generation and the
+backfill, so a close it refuses may already have written `outcome.md` or action
+files. INDEX.md, the savepoint `Done` line, and the store commit stay untouched
+in that case. `plastic intent end` reports each of these refusals as exit 1
+with the reason.
 
 ### Project registration
 
