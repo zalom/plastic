@@ -9,8 +9,9 @@ require_relative "../scripts/lib/lock"
 
 # Intent 298: hook-record replaces hook-gate-check. It keeps the decoupled
 # savepoint ledger (intent 34/52) byte for byte, promotes the session's newest
-# pending day-ledger line when a project file lands (intent 297), calls the
-# scripts/session-commit seam (intent 300) when present, and never blocks.
+# pending day-ledger line when a project file lands (intent 297), never runs
+# scripts/session-commit itself (a commit is explicit since 2026-09-24), and
+# never blocks.
 class RecordHookTest < Minitest::Test
   SCRIPT = File.expand_path("../scripts/hook-record", __dir__)
   SEAM_PATH = File.expand_path("../scripts/session-commit", __dir__)
@@ -243,7 +244,7 @@ class RecordHookTest < Minitest::Test
 
   # --- (c) project file, pending line exists -----------------------------------
 
-  def test_project_file_pending_line_exists_promotes_and_appends_item_and_calls_seam
+  def test_project_file_pending_line_exists_promotes_and_appends_item_and_never_commits
     seed_pending_line("sess-1", "About the widget page")
     seam_calls = File.join(@root, "seam-calls.log")
     File.write(SEAM_PATH, <<~SH)
@@ -268,10 +269,7 @@ class RecordHookTest < Minitest::Test
     assert_includes ledger, "About the widget page"
     assert_includes ledger, "Item"
 
-    assert File.exist?(seam_calls), "the seam must have been called"
-    call = File.read(seam_calls)
-    assert_includes call, "About the widget page"
-    assert_includes call, sid_for("sess-1")
+    refute File.exist?(seam_calls), "record must never run session-commit on an edit"
   end
 
   # --- (c) project file, no pending line ---------------------------------------
@@ -294,7 +292,7 @@ class RecordHookTest < Minitest::Test
   # --- row A10: a rejected prompt disables the turn's auto-commit (spec D7) ---
   #
   # SessionLedger.set_state promotes only a checklist line matching the session
-  # id, and hook-record spawns session-commit only on a promotion. A prompt
+  # id, and hook-record never spawns session-commit at all. A prompt
   # capture_worthy? rejects never gets a pending line in the first place, so
   # its turn gets no Item savepoint line and no session-commit spawn either --
   # intended (D7), not a bug, and pinned here end to end through the real
@@ -328,7 +326,7 @@ class RecordHookTest < Minitest::Test
     refute File.exist?(savepoint_path), "no Item savepoint line for a rejected prompt's turn"
   end
 
-  def test_a10_accepted_prompt_yields_a_pending_line_an_item_and_a_seam_call
+  def test_a10_accepted_prompt_yields_a_pending_line_and_an_item_and_no_commit
     run_capture("fix the dashboard date parser for the wikilink form", session: "sess-accepted")
     lines = File.read(checklist_path).lines.map { |l| SessionLedger.parse_checklist_line(l) }.compact
     assert(lines.any? { |l| l[:session] == sid_for("sess-accepted") && l[:state] == :pending },
@@ -344,49 +342,12 @@ class RecordHookTest < Minitest::Test
 
     out, status = run_hook(project_file, session: "sess-accepted", cwd: @root)
     assert_equal 0, status.exitstatus, out
-    assert File.exist?(seam_calls), "the seam must be called for a turn whose prompt was accepted"
+    refute File.exist?(seam_calls), "no session-commit even for an accepted prompt's turn"
     assert File.exist?(savepoint_path), "an Item savepoint line must land for an accepted prompt's turn"
   end
 
-  # --- seam missing, hangs, or exits 1: exit 0 in every case -------------------
 
-  def test_seam_script_missing_exits_zero
-    FileUtils.rm_f(SEAM_PATH)
-    seed_pending_line("sess-1", "Missing seam item")
-    project_file = File.join(@root, "code", "app.rb")
-    FileUtils.mkdir_p(File.dirname(project_file))
-    File.write(project_file, "puts 1\n")
 
-    out, status = run_hook(project_file, session: "sess-1", cwd: @root)
-    assert_equal 0, status.exitstatus, out
-  end
-
-  def test_seam_script_exits_nonzero_still_exits_zero
-    File.write(SEAM_PATH, "#!/bin/bash\nexit 1\n")
-    FileUtils.chmod(0o755, SEAM_PATH)
-    seed_pending_line("sess-1", "Failing seam item")
-    project_file = File.join(@root, "code", "app.rb")
-    FileUtils.mkdir_p(File.dirname(project_file))
-    File.write(project_file, "puts 1\n")
-
-    out, status = run_hook(project_file, session: "sess-1", cwd: @root)
-    assert_equal 0, status.exitstatus, out
-  end
-
-  def test_seam_script_hangs_past_ten_seconds_still_exits_zero
-    File.write(SEAM_PATH, "#!/bin/bash\nsleep 30\nexit 0\n")
-    FileUtils.chmod(0o755, SEAM_PATH)
-    seed_pending_line("sess-1", "Hanging seam item")
-    project_file = File.join(@root, "code", "app.rb")
-    FileUtils.mkdir_p(File.dirname(project_file))
-    File.write(project_file, "puts 1\n")
-
-    started = Time.now
-    out, status = run_hook(project_file, session: "sess-1", cwd: @root)
-    elapsed = Time.now - started
-    assert_equal 0, status.exitstatus, out
-    assert_operator elapsed, :<, 15, "the seam must be bounded by its own 10s timeout"
-  end
 
   # --- a condition that used to make gate-check exit 2 (pre-How auto edit) ----
 

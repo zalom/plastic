@@ -1061,6 +1061,7 @@ start.
   under `.tmp/<session>/`, and capture and record.
 - intent 300 (delivered): `scripts/session-commit`, which appends one `Item` or `Note`
   savepoint line per commit. See "the session branch model and session-commit" below.
+  Only `plastic session commit` runs it; the record hook stopped spawning it on 2026-09-24.
 - intent 301: close, `file-session-intent`, `promote-session-item`, and the carry-forward of
   open items, which is why `append-ledger item` exists alongside `pending`.
 - intent 311 (delivered): `write-handoff` (the per-session hand-off in the day directory,
