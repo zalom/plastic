@@ -134,6 +134,10 @@ ruling behind it, with the date when one matters. How lists each file or area
 and what changed there. Tests names the test files run and their result, and
 says that CI runs the full suite. Write it in plain words. No AI attribution. The
 template at `.github/pull_request_template.md` carries the four headings.
+Before the description is written to the pull request, it passes the plain-writing
+checker: write it to a file, run `lint.rb` on that file, fix every finding, and only
+then pass it with `--body-file`. A description that has not passed the checker is not
+written.
 - NEVER add AI attribution to a commit, tag, release note, or pull request. No
   `Co-Authored-By: Claude`, no `Co-Authored-By: Codex`, no `Generated with [Claude Code]`, no
   robot emoji footer, no `Assisted-By`. The commit belongs to the repository owner. This
