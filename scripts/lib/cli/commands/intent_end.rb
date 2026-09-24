@@ -20,8 +20,7 @@ module Plastic
         # surfaced as a bare exit code.
         REFUSED = {
           7 => "end-intent refused a hollow delivered close: write outcome.md's ## Delivered rows to match the action headings",
-          8 => "end-intent refused to deliver an untouched scaffold: do the work first, or close it with --abandoned",
-          9 => "end-intent refused a delivered close whose code is not merged: run the git merge it names in the repo, then run the close again"
+          8 => "end-intent refused to deliver an untouched scaffold: do the work first, or close it with --abandoned"
         }.freeze
 
         SUMMARY_GUIDANCE = [
