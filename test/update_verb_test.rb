@@ -74,15 +74,14 @@ class UpdateVerbTest < Minitest::Test
     assert u.send(:confirm_bleeding, "1.14.1", "2.0.0-alpha.1", ["--alpha", "--yes"])
     refute u.send(:confirm_bleeding, "1.14.1", "2.0.0-alpha.1", ["--alpha"]), "no tty and no --yes must not confirm"
 
-    switched = nil
+    switched = false
     u.define_singleton_method(:installed_version) { "1.14.1" }
-    u.define_singleton_method(:fetch_dist_tags) { MAJOR_TAGS }
-    u.define_singleton_method(:perform_switch) { |target, _flags| switched = target; 0 }
-    u.define_singleton_method(:run_post_update_doctor) { |**_kwargs| nil }
-    u.define_singleton_method(:announce_pending_config_asks) { |**_kwargs| nil }
+    u.define_singleton_method(:fetch_channels) { MAJOR_TAGS }
+    u.define_singleton_method(:perform_switch) { |*| switched = true; 0 }
     out, = capture_io { assert_equal 0, u.cli(["--alpha", "--yes"]) }
-    assert_equal "2.0.0-alpha.1", switched
+    refute switched, "no local copy of the target exists, so a confirmed bleeding move still only prints the install command"
     refute_match(/Aborted/, out)
+    assert_match(/2\.0\.0-alpha\.1/, out)
   end
 
   # Intent 372: the update skill's former step 124-125 (commit the core files in
@@ -150,6 +149,77 @@ class UpdateVerbTest < Minitest::Test
   def test_unknown_channel_when_tag_absent
     r = @u.compute_target(installed_version: "1.0.0-alpha.18", dist_tags: { "alpha" => "1.0.0-alpha.18" }, requested_channel: "beta")
     assert_equal :unknown_channel, r[:status]
+  end
+
+  # --- G5 (intent 391): curl-based release fetch, no npm/npx, package-newer sync ---
+
+  def test_install_path_is_npm_under_a_node_modules_root
+    u = Update.new(package_root: "/usr/local/lib/node_modules/@zalom/plastic", plastic_home: @home, version: "x")
+    assert_equal :npm, u.send(:install_path)
+  end
+
+  def test_install_path_is_install_sh_for_any_other_root
+    u = Update.new(package_root: "/Users/me/.plastic/vendor/plastic", plastic_home: @home, version: "x")
+    assert_equal :install_sh, u.send(:install_path)
+  end
+
+  def test_offline_fetch_prints_a_message_and_exits_1
+    u = Update.new(package_root: ".", plastic_home: @home, version: "x")
+    u.define_singleton_method(:installed_version) { "1.0.0-alpha.18" }
+    u.define_singleton_method(:fetch_channels) { nil }
+
+    _, err = capture_io { assert_equal 1, u.cli([]) }
+
+    assert_match(/online/i, err)
+    refute_match(/npm/i, err)
+  end
+
+  def test_default_release_fetcher_shells_curl_against_the_github_releases_api
+    assert_equal "https://api.github.com/repos/zalom/plastic/releases?per_page=50", Update::RELEASES_URL
+
+    source = File.read(File.expand_path("../scripts/update.rb", __dir__))
+    assert_match(/curl.*RELEASES_URL/, source)
+  end
+
+  def test_default_switch_runner_shells_to_the_local_install_verb_not_npx
+    source = File.read(File.expand_path("../scripts/update.rb", __dir__))
+    refute_match(/npx/, source, "update.rb must never build an npx command")
+    refute_match(/`npm /, source, "update.rb must never shell out to npm")
+  end
+
+  # A package on disk already ahead of the installed VERSION (a download already ran,
+  # this is the second `plastic update` D3 speaks of) syncs in place through the local
+  # install verb, with no network call at all.
+  def test_package_newer_than_installed_runs_the_reinstall_sync_with_no_fetch
+    u = Update.new(package_root: ".", plastic_home: @home, version: "1.0.0-alpha.19")
+    u.define_singleton_method(:installed_version) { "1.0.0-alpha.18" }
+    fetch_called = false
+    u.define_singleton_method(:fetch_channels) { fetch_called = true; { "alpha" => "1.0.0-alpha.19" } }
+    synced_to = nil
+    u.define_singleton_method(:perform_switch) { |target, _flags| synced_to = target; 0 }
+    u.define_singleton_method(:announce_pending_config_asks) { |**_kwargs| }
+    u.define_singleton_method(:run_post_update_doctor) { |**_kwargs| }
+
+    capture_io { assert_equal 0, u.cli([]) }
+
+    assert_equal "1.0.0-alpha.19", synced_to
+    refute fetch_called, "a package already newer than installed must sync without hitting the network"
+  end
+
+  # When the fetch finds a newer release that is NOT already on disk, update must print
+  # the one-line install command and stop -- never call perform_switch (there is no local
+  # code for that version to sync from).
+  def test_ok_with_no_local_copy_prints_the_install_command_and_does_not_switch
+    u = Update.new(package_root: "/opt/homebrew/lib/node_modules/@zalom/plastic", plastic_home: @home, version: "1.0.0-alpha.18")
+    u.define_singleton_method(:installed_version) { "1.0.0-alpha.18" }
+    u.define_singleton_method(:fetch_channels) { { "alpha" => "1.0.0-alpha.19" } }
+    switched = false
+    u.define_singleton_method(:perform_switch) { |*| switched = true; 0 }
+
+    out, = capture_io { u.cli([]) }
+
+    refute switched, "perform_switch must not run for a version not present on disk"
+    assert_match(/npm install -g @zalom\/plastic@1\.0\.0-alpha\.19/, out)
   end
 
   # --- Post-update doctor (intent 56 introduced the full run; intent 126
@@ -248,12 +318,13 @@ class UpdateVerbTest < Minitest::Test
   # failure path (returns 1) must not. We stub perform_switch and run_post_update_doctor
   # to stay hermetic (no npx, no real doctor).
   def test_cli_success_triggers_post_update_doctor
-    u = Update.new(package_root: ".", plastic_home: @home, version: "x")
+    u = Update.new(package_root: ".", plastic_home: @home, version: "1.0.0-alpha.19")
 
-    # Stub installed_version, fetch_dist_tags, perform_switch, and run_post_update_doctor
+    # Stub installed_version, perform_switch, and run_post_update_doctor. version is
+    # already ahead of installed_version, so this exercises the package-newer sync path
+    # (D3's second run) and never touches fetch_channels.
     doctor_called = false
     u.define_singleton_method(:installed_version) { "1.0.0-alpha.18" }
-    u.define_singleton_method(:fetch_dist_tags) { TAGS }
     u.define_singleton_method(:perform_switch) { |_target, _flags| 0 }
     u.define_singleton_method(:run_post_update_doctor) { |**_kwargs| doctor_called = true; nil }
 
@@ -263,11 +334,10 @@ class UpdateVerbTest < Minitest::Test
   end
 
   def test_cli_failure_does_not_trigger_post_update_doctor
-    u = Update.new(package_root: ".", plastic_home: @home, version: "x")
+    u = Update.new(package_root: ".", plastic_home: @home, version: "1.0.0-alpha.19")
 
     doctor_called = false
     u.define_singleton_method(:installed_version) { "1.0.0-alpha.18" }
-    u.define_singleton_method(:fetch_dist_tags) { TAGS }
     u.define_singleton_method(:perform_switch) { |_target, _flags| 1 }
     u.define_singleton_method(:run_post_update_doctor) { |**_kwargs| doctor_called = true; nil }
 
@@ -367,11 +437,10 @@ class UpdateVerbTest < Minitest::Test
   end
 
   def test_cli_calls_announce_before_doctor_on_success
-    u = Update.new(package_root: ".", plastic_home: @home, version: "x")
+    u = Update.new(package_root: ".", plastic_home: @home, version: "1.0.0-alpha.19")
 
     call_order = []
     u.define_singleton_method(:installed_version) { "1.0.0-alpha.18" }
-    u.define_singleton_method(:fetch_dist_tags) { TAGS }
     u.define_singleton_method(:perform_switch) { |_target, _flags| 0 }
     u.define_singleton_method(:announce_pending_config_asks) { |**_kwargs| call_order << :announce }
     u.define_singleton_method(:run_post_update_doctor) { |**_kwargs| call_order << :doctor; nil }
@@ -384,11 +453,10 @@ class UpdateVerbTest < Minitest::Test
   end
 
   def test_cli_passes_the_matching_agent_key_to_announce
-    u = Update.new(package_root: ".", plastic_home: @home, version: "x")
+    u = Update.new(package_root: ".", plastic_home: @home, version: "1.0.0-alpha.19")
 
     received_agent_key = nil
     u.define_singleton_method(:installed_version) { "1.0.0-alpha.18" }
-    u.define_singleton_method(:fetch_dist_tags) { TAGS }
     u.define_singleton_method(:perform_switch) { |_target, _flags| 0 }
     u.define_singleton_method(:announce_pending_config_asks) { |agent_key:, **_kwargs| received_agent_key = agent_key }
     u.define_singleton_method(:run_post_update_doctor) { |**_kwargs| nil }
@@ -421,11 +489,10 @@ class UpdateVerbTest < Minitest::Test
   end
 
   def test_cli_skips_announce_on_failed_switch
-    u = Update.new(package_root: ".", plastic_home: @home, version: "x")
+    u = Update.new(package_root: ".", plastic_home: @home, version: "1.0.0-alpha.19")
 
     announced = false
     u.define_singleton_method(:installed_version) { "1.0.0-alpha.18" }
-    u.define_singleton_method(:fetch_dist_tags) { TAGS }
     u.define_singleton_method(:perform_switch) { |_target, _flags| 1 }
     u.define_singleton_method(:announce_pending_config_asks) { |**_kwargs| announced = true }
     u.define_singleton_method(:run_post_update_doctor) { |**_kwargs| nil }
@@ -517,7 +584,7 @@ class UpdateVerbTest < Minitest::Test
 
     switch_calls = []
     u.define_singleton_method(:installed_version) { "1.6.0" }
-    u.define_singleton_method(:fetch_dist_tags) { { "latest" => "1.6.0" } }
+    u.define_singleton_method(:fetch_channels) { { "latest" => "1.6.0" } }
     u.define_singleton_method(:perform_switch) { |target, flags| switch_calls << [target, flags]; 0 }
     u.define_singleton_method(:announce_pending_config_asks) { |**_kwargs| }
     u.define_singleton_method(:run_post_update_doctor) { |**_kwargs| }
@@ -545,7 +612,7 @@ class UpdateVerbTest < Minitest::Test
 
     switch_calls = []
     u.define_singleton_method(:installed_version) { "1.6.0" }
-    u.define_singleton_method(:fetch_dist_tags) { { "latest" => "1.6.0" } }
+    u.define_singleton_method(:fetch_channels) { { "latest" => "1.6.0" } }
     u.define_singleton_method(:perform_switch) { |target, flags| switch_calls << [target, flags]; 0 }
 
     exit_code = u.cli(["--codex"])

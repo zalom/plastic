@@ -29,7 +29,7 @@ class UpdateSafetyTest < Minitest::Test
 
   def test_update_refuses_incompatible_channel_before_switch
     update = Update.new(package_root: ".", plastic_home: @home, version: "2.0.1")
-    update.define_singleton_method(:fetch_dist_tags) { {"beta" => "1.10.0"} }
+    update.define_singleton_method(:fetch_channels) { {"beta" => "1.10.0"} }
     switched = false
     update.define_singleton_method(:perform_switch) { |*|
       switched = true
@@ -64,14 +64,14 @@ class UpdateSafetyTest < Minitest::Test
   end
 
   def test_successful_process_with_wrong_installed_version_is_not_a_successful_update
-    update = Update.new(package_root: ".", plastic_home: @home, version: "2.0.1")
+    update = Update.new(package_root: ".", plastic_home: @home, version: "2.0.2")
     committed = false
     update.define_singleton_method(:commit_core_files) { |*| committed = true }
-    update.define_singleton_method(:fetch_dist_tags) { {"latest" => "2.0.2"} }
-    update.define_singleton_method(:system) { |*| true }
+    update.define_singleton_method(:installed_version) { "2.0.1" }
 
     _, error = capture_io do
-      assert_equal 1, update.cli(["--codex"])
+      status = update.send(:perform_switch, "2.0.2", ["--codex"], switch_runner: ->(*) { true })
+      assert_equal 1, status
     end
 
     assert_equal %(Update did not install 2.0.2; installed version is "2.0.1".\n), error
