@@ -30,18 +30,22 @@ class Update < InstallerCore
 
   # Mirrors Doctor.default_runner: a pure factory for the real, curl-shelling fetcher, kept
   # out of the instance so a test never needs a real HTTP call to exercise update's logic.
+  # The parsing step is its own method (`parse_releases_response`) so a test can drive every
+  # branch of it directly, on a string, with the backtick call left as the one line that
+  # genuinely needs a real network probe.
   def self.default_release_fetcher
-    lambda do
-      raw = `curl -fsSL #{RELEASES_URL} 2>/dev/null`
-      return nil if raw.nil? || raw.strip.empty?
+    lambda { parse_releases_response(`curl -fsSL #{RELEASES_URL} 2>/dev/null`) }
+  end
 
-      releases = JSON.parse(raw)
-      return nil unless releases.is_a?(Array)
+  def self.parse_releases_response(raw)
+    return nil if raw.nil? || raw.strip.empty?
 
-      ReleaseChannels.channels(releases)
-    rescue JSON::ParserError, StandardError
-      nil
-    end
+    releases = JSON.parse(raw)
+    return nil unless releases.is_a?(Array)
+
+    ReleaseChannels.channels(releases)
+  rescue JSON::ParserError, StandardError
+    nil
   end
 
   def cli(argv = ARGV)

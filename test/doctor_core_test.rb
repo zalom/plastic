@@ -1154,3 +1154,51 @@ class DoctorGraphIntentSpecOptionalTest < Minitest::Test
     assert(c[:details].any? { |d| d.include?("spec.md") }, c[:details].inspect)
   end
 end
+
+# Coverage for `Doctor#cli`'s own dispatch branches (--help, --store, and the --intent
+# rescue), which no other test drives through the actual entry point.
+class DoctorCliDispatchTest < Minitest::Test
+  include DoctorTestHelpers
+
+  def setup
+    FileUtils.rm_rf([DOCTOR_TEST_HOME, DOCTOR_TEST_CLAUDE])
+    FileUtils.mkdir_p(DOCTOR_TEST_HOME)
+    FileUtils.mkdir_p(DOCTOR_TEST_CLAUDE)
+    File.write(File.join(DOCTOR_TEST_HOME, "INDEX.md"), "# Index\n")
+  end
+
+  def teardown
+    FileUtils.rm_rf([DOCTOR_TEST_HOME, DOCTOR_TEST_CLAUDE])
+  end
+
+  def test_cli_help_flag_prints_usage_and_exits_zero
+    _, err = capture_io do
+      assert_raises(SystemExit) { doctor.cli(["--help"]) }
+    end
+
+    assert_match(/Usage/, err)
+  end
+
+  def test_cli_store_flag_runs_store_checks
+    out, = capture_io do
+      assert_raises(SystemExit) { doctor.cli(["--store", "global"]) }
+    end
+
+    result = JSON.parse(out)
+
+    assert result.key?("checks"), result.inspect
+  end
+
+  def test_cli_intent_flag_rescues_a_raising_check_and_exits_2
+    d = doctor
+    d.define_singleton_method(:run_intent_check) { |*| raise "boom" }
+    err = nil
+
+    _, captured_err = capture_io do
+      err = assert_raises(SystemExit) { d.cli(["--intent", "some-id"]) }
+    end
+
+    assert_equal 2, err.status
+    assert_match(/doctor: boom/, captured_err)
+  end
+end

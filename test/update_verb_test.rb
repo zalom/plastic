@@ -206,6 +206,28 @@ class UpdateVerbTest < Minitest::Test
     assert_match(/curl.*RELEASES_URL/, source)
   end
 
+  def test_parse_releases_response_nil_is_nil
+    assert_nil Update.parse_releases_response(nil)
+  end
+
+  def test_parse_releases_response_blank_is_nil
+    assert_nil Update.parse_releases_response("   ")
+  end
+
+  def test_parse_releases_response_malformed_json_is_nil
+    assert_nil Update.parse_releases_response("{not json")
+  end
+
+  def test_parse_releases_response_non_array_json_is_nil
+    assert_nil Update.parse_releases_response('{"tag_name": "v1.0.0"}')
+  end
+
+  def test_parse_releases_response_valid_array_returns_channels
+    raw = JSON.generate([{"tag_name" => "v1.2.3", "draft" => false}])
+
+    assert_equal({"latest" => "1.2.3"}, Update.parse_releases_response(raw))
+  end
+
   def test_default_switch_runner_shells_to_the_local_install_verb_not_npx
     source = File.read(File.expand_path("../scripts/update.rb", __dir__))
 

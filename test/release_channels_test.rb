@@ -65,4 +65,74 @@ class ReleaseChannelsTest < Minitest::Test
 
     assert_equal({"latest" => "1.0.0"}, ReleaseChannels.channels(releases))
   end
+
+  def test_a_release_with_only_a_symbol_tag_name_is_still_read
+    releases = [{"draft" => false, tag_name: "v1.0.0"}]
+
+    assert_equal({"latest" => "1.0.0"}, ReleaseChannels.channels(releases))
+  end
+
+  # §11 precedence, exercised directly on compare so every prerelease-identifier branch
+  # (numeric vs numeric, numeric vs alphanumeric either way round, alphanumeric vs
+  # alphanumeric, and a shorter prerelease array) is provable without a channels() detour.
+  def test_compare_numeric_prerelease_identifiers_by_value
+    a = ReleaseChannels.parse("1.0.0-alpha.9")
+    b = ReleaseChannels.parse("1.0.0-alpha.10")
+
+    assert_equal(-1, ReleaseChannels.compare(a, b))
+    assert_equal(1, ReleaseChannels.compare(b, a))
+  end
+
+  def test_compare_a_numeric_identifier_before_an_alphanumeric_one
+    numeric = ReleaseChannels.parse("1.0.0-1")
+    alpha = ReleaseChannels.parse("1.0.0-alpha")
+
+    assert_equal(-1, ReleaseChannels.compare(numeric, alpha))
+    assert_equal(1, ReleaseChannels.compare(alpha, numeric))
+  end
+
+  def test_compare_alphanumeric_prerelease_identifiers_lexically
+    a = ReleaseChannels.parse("1.0.0-alpha")
+    b = ReleaseChannels.parse("1.0.0-beta")
+
+    assert_equal(-1, ReleaseChannels.compare(a, b))
+    assert_equal(1, ReleaseChannels.compare(b, a))
+  end
+
+  def test_compare_equal_alphanumeric_identifiers_falls_through_to_the_next_one
+    a = ReleaseChannels.parse("1.0.0-alpha.1")
+    b = ReleaseChannels.parse("1.0.0-alpha.2")
+
+    assert_equal(-1, ReleaseChannels.compare(a, b))
+  end
+
+  def test_compare_a_shorter_prerelease_sorts_before_a_longer_one_with_the_same_prefix
+    shorter = ReleaseChannels.parse("1.0.0-alpha")
+    longer = ReleaseChannels.parse("1.0.0-alpha.1")
+
+    assert_equal(-1, ReleaseChannels.compare(shorter, longer))
+    assert_equal(1, ReleaseChannels.compare(longer, shorter))
+  end
+
+  def test_compare_a_release_outranks_a_prerelease_of_the_same_version
+    release = ReleaseChannels.parse("1.0.0")
+    prerelease = ReleaseChannels.parse("1.0.0-alpha.1")
+
+    assert_equal(1, ReleaseChannels.compare(release, prerelease))
+    assert_equal(-1, ReleaseChannels.compare(prerelease, release))
+  end
+
+  def test_compare_two_plain_releases_with_no_prerelease_are_equal
+    a = ReleaseChannels.parse("1.0.0")
+    b = ReleaseChannels.parse("1.0.0")
+
+    assert_equal(0, ReleaseChannels.compare(a, b))
+  end
+
+  def test_compare_identical_prerelease_identifiers_are_equal
+    a = ReleaseChannels.parse("1.0.0-alpha.1")
+    b = ReleaseChannels.parse("1.0.0-alpha.1")
+
+    assert_equal(0, ReleaseChannels.compare(a, b))
+  end
 end
