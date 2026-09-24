@@ -58,8 +58,9 @@ Codex. The manifest tracks the installed files, so they prune on update and unin
 ## the-harness-system
 
 No hook gates an edit on its content or stage in 2.0. Intent 302 removed the edit-path gates, the create gate,
-and the stage-transition gates. The one `PreToolUse` hook, `call-budget`, caps tool calls
-for a dispatched node subagent. The `record` hook writes the savepoint line, refreshes
+and the stage-transition gates. No `PreToolUse` hook remains: the `call-budget` guard was
+removed on 2026-09-24, and a node's call budget is now a sentence in its input that the
+subagent honors itself. The `record` hook writes the savepoint line, refreshes
 the lock heartbeat, and updates the day ledger. Doctor checks and the close checks in
 `scripts/end-intent` report what the gates once blocked (intent 308).
 

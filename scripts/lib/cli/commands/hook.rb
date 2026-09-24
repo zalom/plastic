@@ -9,7 +9,7 @@ module Plastic
     module Commands
       class Hook < Command
         USAGE_LINE = "plastic hook EVENT"
-        EVENTS = %w[call-budget capture close record savepoint session-start stop].freeze
+        EVENTS = %w[capture close record savepoint session-start stop].freeze
 
         DEFAULT_RUNNER = lambda do |path|
           system(path)

@@ -4,15 +4,12 @@ require_relative "../scripts/lib/hook_registry"
 
 # The single source of truth for hook registration (intent 108, D7). Since intent 302
 # the edit-path gates are gone, and the only write-path hook is `record` under
-# PostToolUse. Intent 355, n2 adds one PreToolUse hook back, call-budget, a
-# different kind of gate (a per-attempt call COUNT, never a content deny).
+# PostToolUse. The call-budget PreToolUse hook from intent 355 was removed on
+# 2026-09-24, so no PreToolUse group is registered.
 class HookRegistryTest < Minitest::Test
-  def test_pre_tool_use_registers_only_call_budget
-    groups = HookRegistry.events["PreToolUse"]
-    refute_nil groups, "call-budget must be registered under PreToolUse"
-    assert_equal 1, groups.size
-    assert_equal "", groups.first["matcher"]
-    assert_equal ["call-budget"], groups.first["hooks"].map { |h| h["name"] }
+  def test_pre_tool_use_registers_nothing
+    assert_nil HookRegistry.events["PreToolUse"]
+    assert_includes HookRegistry::RETIRED_HOOK_NAMES, "call-budget"
   end
 
   def test_edit_path_gate_constants_stay_gone
@@ -58,7 +55,7 @@ class HookRegistryTest < Minitest::Test
     settings = HookRegistry.claude_settings_hooks(hook_dir: "/x/hooks")
     record = settings["PostToolUse"]
     assert_equal "/x/hooks/plastic-record", record["hooks"][0]["command"]
-    assert_equal "/x/hooks/plastic-call-budget", settings["PreToolUse"]["hooks"][0]["command"]
+    assert_nil settings["PreToolUse"]
   end
 
   def test_every_registry_hook_name_has_a_launcher_file

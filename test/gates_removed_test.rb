@@ -106,20 +106,16 @@ class GatesRemovedTest < Minitest::Test
     assert Claim.respond_to?(:fail_open?)
   end
 
-  # Intent 355, n2 registers one legitimate PreToolUse hook (call-budget, a
-  # per-attempt call COUNT, never a content deny) after intent 302 removed
-  # the edit-path gates. This test now proves the gate TABLES stayed gone
-  # and that the one PreToolUse entry is call-budget alone, never a revived
-  # edit-gates or bash-gate.
-  def test_registry_carries_no_gate_tables_and_only_call_budget_under_pretooluse
-    names = HookRegistry.events["PreToolUse"].flat_map { |g| g["hooks"].map { |h| h["name"] } }
-    assert_equal ["call-budget"], names
+  # Intent 302 removed the edit-path gates; the call-budget guard that intent
+  # 355 added under PreToolUse was removed on 2026-09-24. This test proves the
+  # gate TABLES stayed gone and that no PreToolUse entry exists at all.
+  def test_registry_carries_no_gate_tables_and_nothing_under_pretooluse
+    assert_nil HookRegistry.events["PreToolUse"]
     %i[GATE_TOOLS CODEX_GATE_TOOLS CODEX_PRE_HOOKS CODEX_BASH_HOOKS].each do |c|
       refute HookRegistry.const_defined?(c), "HookRegistry::#{c} must be gone"
     end
     raw = JSON.parse(File.read(File.join(REPO, "hooks", "hooks.json")))
-    json_names = raw["hooks"]["PreToolUse"].flat_map { |g| g["hooks"].map { |h| h["command"][/run-hook" ([a-z-]+)/, 1] } }
-    assert_equal ["call-budget"], json_names, "hooks/hooks.json PreToolUse must carry call-budget alone"
+    assert_nil raw["hooks"]["PreToolUse"], "hooks/hooks.json must carry no PreToolUse group"
   end
 
   def test_exec_worktree_has_no_precondition_seam

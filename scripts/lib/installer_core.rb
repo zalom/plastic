@@ -622,10 +622,6 @@ class InstallerCore
       "scripts/lib/stop_gate.rb" => "scripts/lib/stop_gate.rb",
       "scripts/lib/active_delivery.rb" => "scripts/lib/active_delivery.rb",
       "scripts/hook-stop" => "scripts/hook-stop",
-      # Intent 355 (n2): the call budget PreToolUse hook (RunnerPolicy.call_cap
-      # is its cap table, above); its launcher (hooks/call-budget) ships via
-      # hook_files' own glob, so only the hook script itself needs an entry.
-      "scripts/hook-call-budget" => "scripts/hook-call-budget",
       "scripts/meter-watch" => "scripts/meter-watch",
       "scripts/lib/meter_watch.rb" => "scripts/lib/meter_watch.rb",
       # Intent 340 (G7, n6): answer (closes a decision node or unparks a

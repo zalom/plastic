@@ -472,8 +472,8 @@ module NodeInput
   end
 
   def call_cap_sentence(call_cap)
-    "call budget: this attempt may make at most #{call_cap} tool calls; past that a hook denies the " \
-      "next one, so commit what is green and return failed_verification reason=call_budget."
+    "call budget: this attempt may make at most #{call_cap} tool calls; at that count, commit what " \
+      "is green and return failed_verification reason=call_budget."
   end
 
   # --- section and list parsing (shared) -------------------------------------
