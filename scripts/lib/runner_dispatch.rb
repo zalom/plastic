@@ -389,9 +389,9 @@ module RunnerDispatch
   end
 
   # Row 5.32: re-arms delivery.lock for a resumed session with a new id -
-  # `plastic auto take` is the public command that takes ownership again.
+  # `plastic auto start` is the public command that takes ownership again.
   def rearm_command(intent_dir)
-    "plastic auto take #{File.basename(intent_dir.to_s).split("--").first}"
+    "plastic auto start #{File.basename(intent_dir.to_s).split("--").first}"
   end
 
   # --- refusals and the report -------------------------------------------------

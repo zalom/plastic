@@ -123,7 +123,7 @@ class AutoCore307Test < Minitest::Test
   # test_auto_skill_takes_the_intent_through_plastic_lock_arm was retired by intent 372
   # (family 5): skills/auto/SKILL.md is gone. The arming call it pinned is now
   # test/cli/auto_session_commands_test.rb's test_take_runs_plastic_lock_arm, which asserts
-  # the same "arm --intent-dir ... --mode auto" call against the real `AutoTake` command.
+  # the same "arm --intent-dir ... --mode auto" call against the real `AutoStart` command.
 
   # test_plan_reviewer_prompt_reviews_the_matrix_before_code was retired by intent 372
   # (family 2): skills/intent-executing/plan-reviewer-prompt.md is gone; the reviewer

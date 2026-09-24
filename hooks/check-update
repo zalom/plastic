@@ -1,8 +1,9 @@
 #!/bin/bash
-# plastic-hook-version: 1.2.0
-# Runs on SessionStart — checks npm for a newer version on the installed
-# channel, writes cache. Channel-aware: queries dist-tags and picks the best
-# upgrade target instead of blindly trusting the `latest` tag.
+# plastic-hook-version: 2.0.0
+# Runs on SessionStart — checks the GitHub releases list for a newer version on the
+# installed channel, writes cache. Channel-aware: reads every published release and
+# picks the best upgrade target instead of blindly trusting the newest tag (intent 391,
+# G5: a curl call against the GitHub releases API is the only outside call this hook makes).
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PLASTIC_HOME="${PLASTIC_HOME:-$HOME/.plastic}"
@@ -10,6 +11,7 @@ CACHE_DIR="$PLASTIC_HOME/.cache"
 CACHE_FILE="$CACHE_DIR/update-check.json"
 VERSION_FILE="$PLASTIC_HOME/VERSION"
 SELECTOR="$SCRIPT_DIR/../scripts/select-update-target"
+RELEASES_URL="https://api.github.com/repos/zalom/plastic/releases?per_page=50"
 
 mkdir -p "$CACHE_DIR"
 
@@ -27,20 +29,20 @@ fi
 #
 # The three redirects are load-bearing (intent 289). Without them this subshell inherits
 # the caller's stdout, stderr, and stdin. A caller that reads those pipes to EOF then
-# blocks for as long as the npm call takes, not for as long as this script takes:
+# blocks for as long as the curl call takes, not for as long as this script takes:
 # scripts/codex-hook drives this launcher through Open3.capture3 under a 5 s timeout, and
 # a slow network made that timeout fire, close the pipes, and print Open3 reader-thread
 # backtraces into a hook's output channel. The body writes only to $CACHE_FILE, so
 # nothing is lost by sending its descriptors to /dev/null; what changes is that the
 # inherited pipes close at fork, so the last write end disappears when THIS script exits.
 (
-  TAGS=$(npm view @zalom/plastic dist-tags --json 2>/dev/null)
+  RELEASES=$(curl -fsSL "$RELEASES_URL" 2>/dev/null)
 
-  if [ -z "$TAGS" ]; then
+  if [ -z "$RELEASES" ]; then
     exit 0
   fi
 
-  TARGET=$(printf '%s' "$TAGS" | env -u RUBYOPT ruby "$SELECTOR" "$CURRENT" 2>/dev/null)
+  TARGET=$(printf '%s' "$RELEASES" | env -u RUBYOPT ruby "$SELECTOR" "$CURRENT" 2>/dev/null)
   CHECKED=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
   if [ -n "$TARGET" ]; then

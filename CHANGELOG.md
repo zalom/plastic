@@ -39,6 +39,18 @@ This version was not published separately. Its changes shipped with 2.0.1.
 
 ## Unreleased
 
+- Intent 391: Plastic calls only tools native to macOS and Linux. Install checks only git and
+  sqlite3; `doctor` checks only the harness it runs from; `plastic update` reads the GitHub
+  releases list through curl instead of npm and syncs a newer package-root release in
+  process, with no shell-out to `npx`; QMD, Serena, and Enola lose every Plastic-owned
+  integration (`scripts/lib/qmd_sync.rb`, `scripts/qmd-sync`, and `scripts/lib/power_tools.rb`
+  are deleted) and become companion tools documented in `plastic help tools`.
+  `plastic auto take ID` is renamed `plastic auto start ID|ROADMAP-SLUG`. Given a roadmap slug,
+  it arms the roadmap's first ready intent and prints the rest of the queue. The Codex
+  adapter no longer runs `codex exec`: the dispatch block prints the command for the session
+  to run. `scripts/node-run`, the `runner until-empty` loop, and `runner watch --dispatch`
+  are removed.
+
 - Intent 392: the dashboard is removed. The `continue` prompt now shows the report roster
   (`report-screen state --all`) for the store of the working directory: its project store, or the
   global store when the directory maps to no project.

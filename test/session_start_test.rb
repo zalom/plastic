@@ -5,11 +5,9 @@ require "fileutils"
 require "open3"
 
 require_relative "../scripts/lib/boot_banner"
-require_relative "../scripts/lib/qmd_sync"
 require_relative "../scripts/lib/savepoint"
 require_relative "../scripts/lib/index_entry"
 require_relative "../scripts/lib/session_ledger"
-require_relative "../scripts/lib/data_boundary"
 
 # Unit coverage for the pure boot-banner renderer (intent 36a). Health is
 # injected, so these are fully hermetic — no doctor run, no ~/.claude, no ENV.
@@ -110,114 +108,16 @@ class SessionStartHookTest < Minitest::Test
     assert_equal first_line, msg.strip, "systemMessage must match additionalContext banner line"
   end
 
-  # Intent 45a: the QMD status line is READ-ONLY and report-only. The hook calls
-  # QmdSync with the host's real PATH, so we cannot force qmd present/absent
-  # deterministically. What we CAN assert unconditionally: the hook exits 0 and
-  # emits parseable JSON regardless of qmd state, and if a QMD line surfaces it
-  # lives only in additionalContext (model channel), never in systemMessage.
-  def test_qmd_line_is_report_only_and_never_blocks
+  # Intent 391: the hook calls no optional tool, so no QMD line can ever
+  # surface, on any host, in any channel.
+  def test_no_qmd_line_ever_surfaces
     out, _err, status = run_hook
-    assert_equal 0, status.exitstatus, "qmd status must never block session start"
+    assert_equal 0, status.exitstatus, "session start must never block"
     payload = JSON.parse(out) # must be parseable
     ctx = payload.dig("hookSpecificOutput", "additionalContext")
     msg = payload["systemMessage"].to_s
     refute_includes msg, "QMD", "QMD status must never leak into the visible systemMessage"
-    if ctx.include?("QMD")
-      assert(ctx.include?("Plastic collections indexed") || ctx.include?("qmd-sync register --all"),
-             "QMD line, when present, must be one of the two known states")
-    end
-  end
-
-  # --- QMD hits wrapped as untrusted data (intent 341, G8, C23) --------------------
-
-  # A fake `qmd` on a PATH-only bindir, prepended onto the real PATH so `ruby`
-  # itself still resolves. Guarantees the "all registered" QMD line fires
-  # deterministically, regardless of the host's own qmd state.
-  def bindir_with_fake_qmd
-    bindir = Dir.mktmpdir("session-start-qmd-bin")
-    fake = File.join(bindir, "qmd")
-    File.write(fake, <<~RUBY)
-      #!/usr/bin/env ruby
-      puts "plastic-global (qmd://plastic-global/)"
-    RUBY
-    File.chmod(0o755, fake)
-    bindir
-  end
-
-  def run_hook_with_path(path_prefix)
-    Open3.capture3({ "PLASTIC_TMP" => @dir, "CLAUDE_CODE_SESSION_ID" => nil,
-                      "PATH" => [path_prefix, ENV.fetch("PATH", "")].join(File::PATH_SEPARATOR) },
-                   "ruby", HOOK, @index, @dir, "global")
-  end
-
-  def strip_wrapped_blocks(text)
-    text.gsub(/<<<PLASTIC-DATA:[0-9a-f]+ label="[^"]*" source="[^"]*">>>\n.*?<<<END-PLASTIC-DATA:[0-9a-f]+>>>\n?/m, "")
-  end
-
-  def test_qmd_hits_are_wrapped_with_the_data_boundary
-    bindir = bindir_with_fake_qmd
-    out, _err, status = run_hook_with_path(bindir)
-    assert_equal 0, status.exitstatus
-
-    ctx = context_from(out)
-    blocks = DataBoundary.unwrap(ctx)
-    qmd_block = blocks.find { |b| b[:label] == "qmd-hit" }
-    refute_nil qmd_block, "the QMD status line must be wrapped in a data block"
-    assert_includes qmd_block[:payload], "Plastic collections indexed"
-  ensure
-    FileUtils.rm_rf(bindir) if bindir
-  end
-
-  def test_banners_stay_unwrapped
-    bindir = bindir_with_fake_qmd
-    out, _err, status = run_hook_with_path(bindir)
-    assert_equal 0, status.exitstatus
-
-    ctx = context_from(out)
-    assert_includes ctx, "Plastic collections indexed", "fixture sanity: the fake qmd must yield the indexed line"
-
-    residual = strip_wrapped_blocks(ctx)
-    assert_includes residual, "Plastic Core loaded", "the core banner must survive outside every data block"
-    refute_includes residual, "Plastic collections indexed",
-                     "the QMD line must live only inside a data block, never loose too"
-  ensure
-    FileUtils.rm_rf(bindir) if bindir
-  end
-end
-
-# Intent 45a: unit-level coverage of the three-state line construction, driving
-# QmdSync.status with an injected runner/detector so it is hermetic (no real qmd,
-# no PATH dependency). Mirrors the branch logic the hook applies.
-class QmdStatusLineTest < Minitest::Test
-  def line_for(status)
-    return nil unless status[:present]
-    if status[:all_registered]
-      "QMD: #{status[:registered].size} Plastic collections indexed (search with the qmd skill)."
-    else
-      "QMD detected — run `qmd-sync register --all` to index your Plastic stores for search."
-    end
-  end
-
-  def test_absent_yields_no_line
-    status = QmdSync.status(plastic_home: "/nope", detector: -> { false })
-    assert_nil line_for(status)
-  end
-
-  def test_all_registered_yields_indexed_line
-    runner = ->(args) { ["plastic-global (qmd://plastic-global/)\n", true] }
-    Dir.mktmpdir do |home|
-      status = QmdSync.status(plastic_home: home, runner: runner, detector: -> { true })
-      assert_equal "QMD: 1 Plastic collections indexed (search with the qmd skill).", line_for(status)
-    end
-  end
-
-  def test_missing_collections_yields_setup_nudge
-    runner = ->(args) { ["No collections\n", true] }
-    Dir.mktmpdir do |home|
-      status = QmdSync.status(plastic_home: home, runner: runner, detector: -> { true })
-      assert_equal "QMD detected — run `qmd-sync register --all` to index your Plastic stores for search.",
-                   line_for(status)
-    end
+    refute_includes ctx, "QMD", "the hook calls no optional tool, so no QMD line can appear"
   end
 end
 
@@ -651,7 +551,7 @@ end
 
 # Intent 341, G8 (node n2), row 2.1: session start stops dumping doctrine. A
 # live boot carries the core banner, the project (or global) banner with its
-# one active intent, and the QMD line; the conventions dump, the bulleted
+# one active intent; the conventions dump, the bulleted
 # active-intents listing, the stage line, and the stale-future paragraph are
 # all cut (a skill or the conventions chapter already carries that text).
 # Deprecation warnings, the update notice, the sweep line and the day-ledger

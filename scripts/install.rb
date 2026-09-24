@@ -75,13 +75,12 @@ class Install < InstallerCore
   # they are reported, never re-installed, so the summary line and the Codex
   # trust reminder only ever count agents that actually changed this run.
   def run(selected:, force: false, reinstall: false, ledger_action: nil, argv: ARGV, input: $stdin,
-          already_registered: [], qmd_runner: QmdSync.default_runner, qmd_detector: QmdSync.method(:detect))
+          already_registered: [])
     fresh = !installed?
     mode = fresh ? :install : :update # :update here means "re-sync, skip bootstrap"
 
     distribute(mode)
     bootstrap if fresh
-    register_with_qmd(runner: qmd_runner, detector: qmd_detector)
     migrate_advisor_config_file(File.join(plastic_home, "config.yml"))
     apply_config_flags(argv)
 
@@ -119,30 +118,23 @@ class Install < InstallerCore
 
   # Injectable pre-flight gate: real probes as default args, printing to an
   # injectable `out:` IO so this is hermetically testable via StringIO. Returns
-  # 1 (stop the install) when Ruby is missing/too-old, else 0. Owner ruling
-  # 2026-09-24 (intent 390): no git probe here any more - Plastic itself runs
-  # no version control command, so git presence is no longer this gate's
-  # concern.
-  def preflight_gate(ruby_version: RUBY_VERSION, node_version: node_probe,
-                      mise_present: mise_probe, out: $stderr)
-    result = Preflight.check(ruby_version: ruby_version, node_version: node_version,
-                              mise_present: mise_present)
+  # 1 (stop the install) when Ruby is missing/too-old, else 0.
+  def preflight_gate(ruby_version: RUBY_VERSION, git_present: tool_present?("git"), sqlite3_present: tool_present?("sqlite3"),
+                      platform: platform_probe, out: $stderr)
+    result = Preflight.check(ruby_version: ruby_version, git_present: git_present,
+                              sqlite3_present: sqlite3_present, platform: platform)
     result[:messages].each { |message| out.puts(message) }
     result[:fatal] ? 1 : 0
   end
 
   private
 
-  def node_probe
-    `node --version`.strip
-  rescue StandardError
-    ""
+  def tool_present?(name)
+    system(name, "--version", out: File::NULL, err: File::NULL) == true
   end
 
-  def mise_probe
-    !`mise --version`.strip.empty?
-  rescue StandardError
-    false
+  def platform_probe
+    RUBY_PLATFORM[/linux/] || "darwin"
   end
 
   def flag_value(argv, name)

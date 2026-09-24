@@ -327,8 +327,9 @@ The two advisor agents generate Codex TOMLs too: Primary Advisor and Secondary A
 omits them.
 
 At graph runtime, `RunnerDispatch` records the literal Codex model and effort on the node's
-`running` line. `scripts/node-run` passes both to `codex exec` with `--model` and
-`--config model_reasoning_effort=...`, so a node never inherits an unrelated global model.
+`running` line. The Codex dispatch block prints a `codex exec` command that passes both with
+`--model` and `--config model_reasoning_effort=...`, so a node never inherits an unrelated
+global model. Plastic prints that command and never runs it (intent 391).
 A research node may declare one `report: resources/<name>.md` path. The subprocess stays
 read only and returns the Markdown body in its YAML `report` field. `RunnerAbsorb` validates
 and atomically writes that one intent resource after the normal integrity, scope, and suite
@@ -386,10 +387,10 @@ worktree-scoping bug.
 
 ## Delivery watch
 
-`runner watch <intent_dir>` runs one tick over disk truth. It takes a non-blocking lock, aborts
-the tick if a merge is in progress, reclaims any expired lease, then classifies the delivery. A
-watch tick never heartbeats the delivery lease the way `runner step` does, so a stalled lead
-cannot look alive just because a timer keeps polling it.
+`runner watch <intent_dir>` runs one tick over disk truth. It takes a non-blocking lock,
+reclaims any expired lease, then classifies the delivery. A watch tick never heartbeats the
+delivery lease the way `runner step` does, so a stalled lead cannot look alive just because a
+timer keeps polling it.
 
 Each tick sorts the delivery into one of five classes. `closed` means the savepoint already
 carries a `Done` line. `done_unreported` means every node is terminal but no `Done` line was
@@ -398,21 +399,18 @@ recorded ticks with no lease still open. `moving` means the fingerprint changed 
 recorded tick. `quiet` means nothing changed yet, but not for long enough to call it stalled.
 
 A recorded tick appends one line to `watch.record` in the intent directory: the time, the tick
-number, the class, what was reclaimed, what is ready, and what the tick dispatched.
+number, the class, what was reclaimed, what is ready, and whether the session holds the lock.
 
-On Claude Code, a local `/loop` carries the timer: it runs `ruby ~/.plastic/scripts/runner watch
-<intent_dir>` on a fixed interval, and the live session reads the tick's ready set and dispatches
-through `runner step`. On Codex, two carriers exist. `SessionStart` runs one unrecorded tick for
-every active delivery and reports the stalled and done-unreported ones at boot. `runner watch
-<intent_dir> --install-timer` writes a LaunchAgent plist the owner loads with `launchctl`; that
-plist carries `--dispatch --harness codex`, so each timer tick both classifies and dispatches,
-unattended.
+A tick never dispatches (intent 391). On Claude Code, a local `/loop` carries the timer: it
+runs `ruby ~/.plastic/scripts/runner watch <intent_dir>` on a fixed interval, and the live
+session reads the tick's ready set and dispatches through `runner step`. On Codex, two carriers
+exist. `SessionStart` runs one unrecorded tick for every active delivery and reports the
+stalled and done-unreported ones at boot. `runner watch <intent_dir> --install-timer` writes a
+LaunchAgent plist the owner loads with `launchctl`, and each timer tick only classifies.
 
-Unattended continuation is delivered on both harnesses: either carrier keeps a delivery moving
-once it has started. Unattended start is delivered only where a Ruby loop owns dispatch, which
-today is Codex, and is parked on Claude Code with the standalone runner under Q6.
-
-> Unattended start is delivered only where a Ruby loop owns dispatch (Codex, through runner watch --dispatch); on Claude Code the runner is the harness session (327 Q6), so arm /loop over runner watch in a live session instead.
+Plastic starts no agent process on either harness. The live session runs the next step:
+`runner step` prints the dispatch line, and on Codex the block adds the `codex exec` command
+for the session to run.
 
 ## Roadmap
 

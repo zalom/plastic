@@ -1,6 +1,8 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 
+require_relative "codex_adapter"
+
 # HarnessAdapter (intent 340b, G7c, n1): the one module in Plastic that knows
 # a harness by name. It resolves the current key from config `agent.type`,
 # renders a dispatch plan into that harness's instructions, and answers what
@@ -21,27 +23,6 @@ module HarnessAdapter
   # first is silent.
   DEFAULT_KEY = "claude-code"
   KNOWN_KEYS = %w[claude-code codex].freeze
-
-  # The exact sentence 340a's watch prints to stderr and exits 1 with,
-  # before any write, when `--dispatch` is asked of a harness
-  # #unattended_start? refuses (graph.md D7). Quoted verbatim in
-  # docs/reference/harness-adapters.md (D12); change the wording in one
-  # place only.
-  UNATTENDED_START_SENTENCE =
-    "Unattended start is delivered only where a Ruby loop owns dispatch (Codex, through runner " \
-    "watch --dispatch); on Claude Code the runner is the harness session (327 Q6), so arm /loop " \
-    "over runner watch in a live session instead."
-
-  # unattended_start?(key) -> true only for "codex" (graph.md D7): the one
-  # harness where a Ruby loop (RunnerUntilEmpty, through `runner watch
-  # --dispatch`) owns dispatch end to end with nobody on the other end
-  # making subagent calls. Claude Code IS the harness session (327 Q6), and
-  # an unknown key is never granted unattended start either - this module
-  # stays the only place that names a harness, so RunnerWatch asks this
-  # predicate and never compares a key against "codex" itself.
-  def unattended_start?(key)
-    key.to_s == "codex"
-  end
 
   # kind -> the Claude Code agent type dispatched for it (spec Approach).
   # Verify and research carry no `Bash` in their own frontmatter (n2); this
@@ -118,27 +99,25 @@ module HarnessAdapter
   # type from the kind, the model the plan already resolved, and the node input
   # path as the whole prompt.
   def render_claude_code(entries, return_contract)
-    blocks = entries.map do |d|
-      "Dispatch #{agent_type_for_kind(d[:kind])} for #{d[:node]} (model: #{d[:model]}):\n  prompt: #{d[:input]}"
-    end
-    "#{return_contract.to_s.strip}\n\n#{blocks.join("\n\n")}\n"
+    "#{return_contract.to_s.strip}\n\n#{entries.map { |d| dispatch_line(d) }.join("\n\n")}\n"
   end
   private_class_method :render_claude_code
 
-  # The Codex rendering: a Codex node runs end to end through `scripts/
-  # node-run` (n6), which reads the ledger's own `running` line directly and
-  # never through this printed block - so this names, per node, the same
-  # facts the block gives Claude Code (kind, model, node input path) framed as
-  # `node-run` calls, proving the seam renders SOMETHING for the second
-  # harness rather than nothing (matrix row 1.27), without inventing detail
-  # that belongs to n6's own adapter.
   def render_codex(entries, return_contract)
     blocks = entries.map do |d|
-      "node-run #{d[:node]} (#{d[:kind]}, model: #{d[:model]}):\n  input: #{d[:input]}"
+      run = CodexAdapter.command_line(
+        kind: d[:kind], worktree: d[:worktree], input: d[:input], model: d[:model], effort: d[:effort]
+      )
+      "#{dispatch_line(d)}\n  run: #{run}"
     end
     "#{return_contract.to_s.strip}\n\n#{blocks.join("\n\n")}\n"
   end
   private_class_method :render_codex
+
+  def dispatch_line(entry)
+    "Dispatch #{agent_type_for_kind(entry[:kind])} for #{entry[:node]} (model: #{entry[:model]}):\n  prompt: #{entry[:input]}"
+  end
+  private_class_method :dispatch_line
 
   # cross_harness_resume(entries) -> [{node:, harnesses: [...], commits: {...}}, ...]
   # (spec D12, 340b n8). `entries` is a node ledger's own parsed lines (the

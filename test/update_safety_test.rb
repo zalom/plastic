@@ -29,7 +29,7 @@ class UpdateSafetyTest < Minitest::Test
 
   def test_update_refuses_incompatible_channel_before_switch
     update = Update.new(package_root: ".", plastic_home: @home, version: "2.0.1")
-    update.define_singleton_method(:fetch_dist_tags) { {"beta" => "1.10.0"} }
+    update.define_singleton_method(:fetch_channels) { {"beta" => "1.10.0"} }
     switched = false
     update.define_singleton_method(:perform_switch) { |*|
       switched = true
@@ -64,50 +64,44 @@ class UpdateSafetyTest < Minitest::Test
   end
 
   def test_successful_process_with_wrong_installed_version_is_not_a_successful_update
-    update = Update.new(package_root: ".", plastic_home: @home, version: "2.0.1")
+    update = Update.new(package_root: ".", plastic_home: @home, version: "2.0.2")
     committed = false
     update.define_singleton_method(:commit_core_files) { |*| committed = true }
-    update.define_singleton_method(:fetch_dist_tags) { {"latest" => "2.0.2"} }
-    update.define_singleton_method(:system) { |*| true }
+    update.define_singleton_method(:installed_version) { "2.0.1" }
 
     _, error = capture_io do
-      assert_equal 1, update.cli(["--codex"])
+      status = update.send(:perform_switch, "2.0.2", ["--codex"], switch_runner: ->(*) { true })
+
+      assert_equal 1, status
     end
 
     assert_equal %(Update did not install 2.0.2; installed version is "2.0.1".\n), error
     refute committed
   end
 
-  def test_rollback_checks_the_version_after_the_installer_succeeds
+  def test_rollback_prints_the_install_command_for_the_target_package
     rollback = Rollback.new(package_root: ".", plastic_home: @home, version: "2.0.1", agents: [])
-    calls = []
-    rollback.define_singleton_method(:system) do |*args|
-      calls << args
-      true
-    end
 
-    capture_io { assert_equal 1, rollback.switch_to("2.0.0", "2.0.1") }
-    assert_equal({"PLASTIC_PACKAGE_ROOT" => nil}, calls.first.first)
-    assert_equal ["npx", "@zalom/plastic@2.0.0", "install", "--reinstall", "--ledger-action", "downgrade", "--claude"], calls.first.drop(1)
+    out, = capture_io { assert_equal 0, rollback.switch_to("2.0.0", "2.0.1") }
+
+    assert_includes out, "run: npx @zalom/plastic@2.0.0 install --reinstall --ledger-action downgrade --claude"
   end
 
-  def test_rollback_accepts_a_verified_compatible_install
+  def test_rollback_starts_no_process
     rollback = Rollback.new(package_root: ".", plastic_home: @home, version: "2.0.1", agents: [])
-    version = File.join(@home, "VERSION")
-    rollback.define_singleton_method(:system) do |*|
-      File.write(version, "2.0.0")
-      true
-    end
+    spawned = false
+    rollback.define_singleton_method(:system) { |*| spawned = true }
 
-    capture_io { assert_equal 0, rollback.switch_to("2.0.0", "2.0.1") }
-    assert_equal "2.0.0", File.read(version)
+    capture_io { rollback.switch_to("2.0.0", "2.0.1") }
+
+    refute spawned
   end
 
-  def test_rollback_reports_a_failed_installer
+  def test_rollback_leaves_the_installed_version_to_the_command_it_prints
     rollback = Rollback.new(package_root: ".", plastic_home: @home, version: "2.0.1", agents: [])
-    rollback.define_singleton_method(:system) { |*| false }
 
-    capture_io { assert_equal 1, rollback.switch_to("2.0.0", "2.0.1") }
+    capture_io { rollback.switch_to("2.0.0", "2.0.1") }
+
     assert_equal "2.0.1\n", File.read(File.join(@home, "VERSION"))
   end
 end

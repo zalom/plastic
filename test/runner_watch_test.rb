@@ -356,7 +356,7 @@ class RunnerWatchTest < Minitest::Test
   # `lock=not_held` - n1 hardcoded `lock=held` unconditionally; n2 makes it
   # real (`context.session ? "held" : "not_held"`).
 
-  def test_record_line_carries_class_ready_and_dispatched
+  def test_record_line_carries_class_and_ready
     write_one_node_graph
     write_savepoint("")
     ctx = build_context
@@ -366,7 +366,7 @@ class RunnerWatchTest < Minitest::Test
     lines = File.read(record_path).each_line.to_a
     assert_equal 1, lines.length
     assert_match(
-      /\A2026-09-13T03:00:00Z {2}tick=1 class=moving reclaimed=- ready=n1 dispatched=- harness=- meter=- lock=not_held\n\z/,
+      /\A2026-09-13T03:00:00Z {2}tick=1 class=moving reclaimed=- ready=n1 lock=not_held\n\z/,
       lines.first
     )
   end
@@ -428,123 +428,6 @@ class RunnerWatchTest < Minitest::Test
     refute_empty result[:blockers]
   end
 
-  # === Intent 340a, G7b, n2: the dispatch branch (graph.md D7, D8) ===
-  #
-  # `build_context(session:)` stands in for a held delivery lock (1.15b
-  # already proves the plain lock_state wiring), so these rows drive
-  # RunnerWatch.tick's own dispatch guard directly, never a real Lock file.
-
-  # A double for RunnerUntilEmpty: #run drives the `step:` proc it is handed
-  # once per entry in `batches`, and #step_once - the SAME object, since
-  # RunnerWatch hands one `until_empty:` value to both call sites - answers
-  # with the next batch as `:dispatched`. Exhausting `batches` ends #run,
-  # so the double never loops forever on an empty batch list.
-  class FakeUntilEmpty
-    def initialize(batches)
-      @batches = batches.dup
-    end
-
-    def step_once(_context, harness:, returns:)
-      { ok: true, dispatched: @batches.shift || [] }
-    end
-
-    def run(context, harness:, step:)
-      step.call(context, harness: harness, returns: {}) until @batches.empty?
-      { status: "complete" }
-    end
-  end
-
-  # A double that raises the moment either method is called - proves a
-  # refusal path (no lock, a stopped meter, a finished class) never reaches
-  # the loop at all, rather than reaching it and simply dispatching nothing.
-  module RefusingUntilEmpty
-    module_function
-
-    def run(*)
-      raise "RunnerWatch must not run until-empty on a refused dispatch"
-    end
-
-    def step_once(*)
-      raise "RunnerWatch must not run until-empty on a refused dispatch"
-    end
-  end
-
-  # --- 2.7: every dispatched id lands in the record line --------------------------
-
-  def test_dispatch_records_every_node_it_triggered
-    write_one_node_graph
-    write_savepoint("")
-    ctx = build_context(session: "sess-1")
-    until_empty = FakeUntilEmpty.new([["n1"], ["n2"]])
-
-    result = RunnerWatch.tick(ctx, dispatch: true, harness: "codex",
-                               until_empty: until_empty, now: Time.iso8601("2026-09-13T03:00:00Z"))
-
-    assert_equal ["n1", "n2"], result[:dispatched]
-    assert_match(/dispatched=n1,n2/, File.read(record_path).each_line.to_a.first)
-  end
-
-  # --- 2.8: no held lock, no dispatch, and the record says so ---------------------
-
-  def test_dispatch_without_the_lock_dispatches_nothing
-    write_one_node_graph
-    write_savepoint("")
-    ctx = build_context
-
-    result = RunnerWatch.tick(ctx, dispatch: true, harness: "codex",
-                               until_empty: RefusingUntilEmpty, now: Time.iso8601("2026-09-13T03:00:00Z"))
-
-    assert_empty result[:dispatched]
-    line = File.read(record_path).each_line.to_a.first
-    assert_match(/dispatched=-/, line)
-    assert_match(/lock=not_held/, line)
-  end
-
-  # --- 2.9: a stopped meter blocks dispatch and the record says so ----------------
-
-  def test_meter_stop_blocks_dispatch
-    write_one_node_graph
-    write_savepoint("")
-    FileUtils.mkdir_p(File.join(@dir, ".cache"))
-    File.write(File.join(@dir, ".cache", "meter-state.json"), JSON.generate("state" => "stop"))
-    ctx = build_context(session: "sess-1")
-
-    result = RunnerWatch.tick(ctx, dispatch: true, harness: "codex",
-                               until_empty: RefusingUntilEmpty, now: Time.iso8601("2026-09-13T03:00:00Z"))
-
-    assert_empty result[:dispatched]
-    assert_match(/meter=stop/, File.read(record_path).each_line.to_a.first)
-  end
-
-  # --- 2.10: a missing meter state reads unavailable and never blocks -------------
-
-  def test_unavailable_meter_does_not_block_dispatch
-    write_one_node_graph
-    write_savepoint("")
-    ctx = build_context(session: "sess-1")
-    until_empty = FakeUntilEmpty.new([["n1"]])
-
-    result = RunnerWatch.tick(ctx, dispatch: true, harness: "codex",
-                               until_empty: until_empty, now: Time.iso8601("2026-09-13T03:00:00Z"))
-
-    assert_equal ["n1"], result[:dispatched]
-    assert_match(/meter=unavailable/, File.read(record_path).each_line.to_a.first)
-  end
-
-  # --- 2.11: a finished intent never calls until-empty -----------------------------
-
-  def test_dispatch_skips_a_finished_intent
-    write_one_node_graph
-    write_savepoint(line("n1", "done", gates: "g1", commit: "c1") + "2026-09-13T00:00:00Z  Done  delivered\n")
-    ctx = build_context(session: "sess-1")
-
-    result = RunnerWatch.tick(ctx, dispatch: true, harness: "codex",
-                               until_empty: RefusingUntilEmpty, now: Time.iso8601("2026-09-13T03:00:00Z"))
-
-    assert_equal "closed", result[:class]
-    assert_empty result[:dispatched]
-  end
-
   # --- 3.5: runner_watch.rb writes no plist XML of its own ------------------------
 
   def test_timer_reuses_the_meter_watch_writer
@@ -554,44 +437,6 @@ class RunnerWatchTest < Minitest::Test
   end
 
   # === Intent 340a, G7b, n5: the review fix (B1-B3) ===
-
-  # A double for RunnerUntilEmpty whose #run drives the given `step:` proc
-  # exactly once - dispatching the ids handed to .new - and then raises, the
-  # way a launchd SIGTERM or a Process.spawn Errno would mid-delivery (B1,
-  # probe P2). #step_once is what `wrapped_step` calls to learn what to
-  # collect, same as FakeUntilEmpty above.
-  class RaisingUntilEmpty
-    def initialize(dispatched)
-      @dispatched = dispatched
-    end
-
-    def step_once(_context, harness:, returns:)
-      { ok: true, dispatched: @dispatched }
-    end
-
-    def run(context, harness:, step:)
-      step.call(context, harness: harness, returns: {})
-      raise "boom mid-delivery"
-    end
-  end
-
-  # --- 5.1: the record survives a raise inside until_empty.run --------------------
-
-  def test_record_survives_a_raise_inside_until_empty
-    write_one_node_graph
-    write_savepoint("")
-    ctx = build_context(session: "sess-1")
-    until_empty = RaisingUntilEmpty.new(["n1"])
-
-    assert_raises(RuntimeError) do
-      RunnerWatch.tick(ctx, dispatch: true, harness: "codex",
-                        until_empty: until_empty, now: Time.iso8601("2026-09-13T03:00:00Z"))
-    end
-
-    assert File.exist?(record_path), "watch.record must exist even when until_empty.run raises"
-    line = File.read(record_path).each_line.to_a.first
-    assert_match(/dispatched=n1/, line)
-  end
 
   # A sweep double that proves B2: it always answers reclaim with a
   # non-empty `extended`, the way a live executor past its lease with new

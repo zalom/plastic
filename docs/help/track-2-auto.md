@@ -20,19 +20,24 @@ track touches a real project.
 ### 1. Board a small intent and choose auto
 
 Start from an active intent (create one first with `plastic intent new` if none
-exists, the same way as track 1 station 1). Run `plastic auto take ID`.
+exists, the same way as track 1 station 1). Run `plastic auto start ID`.
 
-Artifact: the delivery lock arms (`delivery.lock` in the intent directory) and the code
-worktree is made at `<repo>/.claude/worktrees/ID--slug` on branch `plastic/ID--slug`. The
-command prints both:
+Artifact: the delivery lock arms (`delivery.lock` in the intent directory). The command names
+the code worktree at `<repo>/.claude/worktrees/ID--slug` on branch `plastic/ID--slug`, and its
+`next:` line is the `git worktree add` command that creates it:
 
 ```text
 intent    2--shout
 lock      acquired by auto-9184f6c4fa, auto mode
-worktree  /home/you/greeter/.claude/worktrees/2--shout
+worktree  /home/you/greeter/.claude/worktrees/2--shout (not yet created)
 ```
 
-Run from inside a conversation session, `plastic auto take` refuses with exit 3: an intent is
+To start a roadmap instead, pass its slug: `plastic auto start SLUG` arms the first intent
+in the roadmap's file order whose dependencies are all delivered, and prints the rest of the
+ready queue. A cycle or an unknown id in the graph exits 1. A blocked entry with nothing
+ready exits 3. When nothing is ready, the next step is `plastic roadmap show SLUG`.
+
+Run from inside a conversation session, `plastic auto start` refuses with exit 3: an intent is
 not delivered inline. The owner may approve an inline take with `--allow-inline`. Otherwise
 the harness spawns the team, and the team takes the intent. Exit 3 means stop and report; never
 retry with another flag on your own.

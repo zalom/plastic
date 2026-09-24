@@ -99,34 +99,19 @@ class RunnerWatchCliTest < Minitest::Test
     assert_match(/^class: /, out)
   end
 
-  # --- 2.6: --dispatch on Claude Code is refused before any write -----------------
+  # --- intent 391: a tick records no dispatch fields ------------------------------
 
-  def test_dispatch_refused_on_claude_code_names_q6
+  def test_tick_records_no_dispatch_fields
     write_graph("- n1 needs nothing\n")
     write_node("n1")
 
-    out, err, status = run_cli("watch", @dir, "--dispatch")
-
-    assert_equal 1, status.exitstatus, out + err
-    assert_includes err, "Unattended start is delivered only where a Ruby loop owns dispatch"
-    assert_includes err, "327 Q6"
-    refute File.exist?(record_path), "a refused --dispatch must leave no watch.record line behind"
-    refute File.exist?(state_path), "a refused --dispatch must write no watch.state either"
-  end
-
-  # --- 5.4: --dispatch --harness codex on an unheld lock records lock=not_held ----
-
-  def test_subprocess_dispatch_on_codex_without_the_lock_records_not_held
-    write_graph("- n1 needs nothing\n")
-    write_node("n1")
-
-    out, err, status = run_cli("watch", @dir, "--dispatch", "--harness", "codex")
+    out, err, status = run_cli("watch", @dir)
 
     assert_equal 0, status.exitstatus, out + err
-    assert_includes out, "dispatched: (none)"
+    refute_includes out, "dispatched:"
     line = File.read(record_path).each_line.to_a.first
-    assert_match(/lock=not_held/, line)
-    assert_match(/dispatched=-/, line)
+    assert_match(/lock=not_held\n\z/, line)
+    refute_match(/dispatched=|harness=|meter=/, line)
   end
 
   # --- 3.2: --install-timer writes the delivery-watch plist and prints the load line ---
@@ -151,9 +136,9 @@ class RunnerWatchCliTest < Minitest::Test
     end
   end
 
-  # --- 3.3: --dispatch --harness codex ride only where unattended start holds -----
+  # --- 3.3 (intent 391): the timer only ticks, it never dispatches ----------------
 
-  def test_install_timer_dispatches_only_where_unattended_start_holds
+  def test_install_timer_never_dispatches
     write_graph("- n1 needs nothing\n")
     write_node("n1")
     home = Dir.mktmpdir("runner-watch-cli-home")
@@ -161,17 +146,11 @@ class RunnerWatchCliTest < Minitest::Test
 
     begin
       out, err, status = run_cli("watch", @dir, "--install-timer", "--home", home)
-      assert_equal 0, status.exitstatus, out + err
-      claude_code_content = File.read(plist_path)
-      refute_includes claude_code_content, "--dispatch",
-                       "a Claude Code machine must never claim unattended start (327 Q6)"
 
-      out2, err2, status2 = run_cli("watch", @dir, "--install-timer", "--home", home, "--harness", "codex")
-      assert_equal 0, status2.exitstatus, out2 + err2
-      codex_content = File.read(plist_path)
-      assert_includes codex_content, "<string>--dispatch</string>"
-      assert_includes codex_content, "<string>--harness</string>"
-      assert_includes codex_content, "<string>codex</string>"
+      assert_equal 0, status.exitstatus, out + err
+      content = File.read(plist_path)
+      refute_includes content, "--dispatch"
+      refute_includes content, "--harness"
     ensure
       FileUtils.remove_entry(home)
     end

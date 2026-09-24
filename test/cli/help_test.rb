@@ -95,4 +95,13 @@ class CliHelpTest < Minitest::Test
 
     assert_equal Plastic::CLI::TABLE.keys.sort, (result.keys - %w[usage topics]).sort
   end
+
+  # Intent 391, G3: the tools chapter names the companion tools Plastic itself
+  # never calls, so a person driving Plastic from the command line knows what
+  # they are for and how to reach for them.
+  def test_tools_topic_prints_rtk_qmd_and_enola
+    help("tools")
+
+    %w[RTK QMD Enola].each { |name| assert_includes @out.string, name }
+  end
 end

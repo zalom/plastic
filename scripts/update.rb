@@ -2,22 +2,51 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 
-# Plastic — `update` verb. Runs via `npx @zalom/plastic update` (bin/plastic.js) or directly.
+# Plastic — `update` verb. Runs via `plastic update` or directly.
 # Usage: ruby scripts/update.rb [--beta|--latest|--alpha] [--yes] [--claude|--codex|--hermes|--all] [--help]
 #
-# Forward-only version transitions, sourced from npm dist-tags:
+# Forward-only version transitions, sourced from the GitHub releases list (intent 391, G5):
 #   - no flag                = next version on the CURRENT channel (derived from VERSION)
 #   - --beta/--latest/--alpha = switch channel. Toward stability (alpha->beta->latest) is
 #                               frictionless; toward bleeding edge requires confirmation.
-# "Already up to date" is a clean no-op. Performs the switch by delegating the file-sync to
-# `install --reinstall --ledger-action update` for the chosen version via npx.
+# "Already up to date" is a clean no-op. Two runs when a download is needed (D3): the package
+# already on disk (package_root) is compared against the installed VERSION first, with no
+# network call. When it is already newer, the switch syncs in place through the local
+# `install --reinstall --ledger-action update`, in this same Ruby process. Only when the
+# package on disk is not ahead does update reach the network, via a curl-based fetch of the
+# GitHub releases list; finding a newer release there, with no local copy to sync from, it
+# prints the one-line install command (npm or install.sh, by install_path) and stops. The
+# `next:` line says to run `plastic update` again once that command has run.
 
 require_relative "lib/installer_core"
+require_relative "lib/release_channels"
 require_relative "doctor"
 require_relative "lib/config_asks"
+require_relative "install"
 
 class Update < InstallerCore
   PKG = "@zalom/plastic"
+  RELEASES_URL = "https://api.github.com/repos/zalom/plastic/releases?per_page=50"
+
+  # Mirrors Doctor.default_runner: a pure factory for the real, curl-shelling fetcher, kept
+  # out of the instance so a test never needs a real HTTP call to exercise update's logic.
+  # The parsing step is its own method (`parse_releases_response`) so a test can drive every
+  # branch of it directly, on a string, with the backtick call left as the one line that
+  # genuinely needs a real network probe.
+  def self.default_release_fetcher(url = RELEASES_URL)
+    lambda { parse_releases_response(IO.popen(["curl", "-fsSL", url], err: File::NULL, &:read)) }
+  end
+
+  def self.parse_releases_response(raw)
+    return nil if raw.nil? || raw.strip.empty?
+
+    releases = JSON.parse(raw)
+    return nil unless releases.is_a?(Array)
+
+    ReleaseChannels.channels(releases)
+  rescue JSON::ParserError, StandardError
+    nil
+  end
 
   def cli(argv = ARGV)
     if argv.include?("--help") || argv.include?("-h")
@@ -27,18 +56,30 @@ class Update < InstallerCore
 
     iv = installed_version
     unless iv
-      warn "Plastic is not installed. Run: npx #{PKG} install --claude"
+      warn "Plastic is not installed. Run the install command your platform's docs give, then `plastic install --claude`."
       return 1
+    end
+
+    if semver_gt?(version, iv)
+      # A download already ran (D3's second run): the package on disk outranks what is
+      # synced into plastic_home. Sync in place, no network call needed.
+      puts "\u{2b06}\u{fe0f}  Syncing Plastic #{iv} \u{2192} #{version}"
+      exit_code = perform_switch(version, agent_args(argv))
+      if exit_code == 0
+        announce_pending_config_asks(agent_key: primary_agent_key(argv))
+        run_post_update_doctor(full: argv.include?("--full-doctor"), synced_agents: target_agent_keys(argv))
+      end
+      return exit_code
     end
 
     requested = requested_channel(argv)
-    tags = fetch_dist_tags
-    unless tags
-      warn "Could not query npm dist-tags. Are you online?"
+    channels = fetch_channels
+    unless channels
+      warn "Could not reach the GitHub releases list. Are you online?"
       return 1
     end
 
-    res = compute_target(installed_version: iv, dist_tags: tags, requested_channel: requested)
+    res = compute_target(installed_version: iv, dist_tags: channels, requested_channel: requested)
 
     case res[:status]
     when :up_to_date
@@ -68,13 +109,8 @@ class Update < InstallerCore
         puts "Aborted."
         return 1
       end
-      puts "\u{2b06}\u{fe0f}  Updating Plastic #{iv} \u{2192} #{res[:target]}"
-      exit_code = perform_switch(res[:target], agent_args(argv))
-      if exit_code == 0
-        announce_pending_config_asks(agent_key: primary_agent_key(argv))
-        run_post_update_doctor(full: argv.include?("--full-doctor"), synced_agents: target_agent_keys(argv))
-      end
-      exit_code
+      print_install_command(res[:target])
+      0
     end
   end
 
@@ -216,12 +252,34 @@ class Update < InstallerCore
     match ? match[:key] : "claude"
   end
 
-  def fetch_dist_tags
-    raw = `npm view #{PKG} dist-tags --json 2>/dev/null`
-    return nil if raw.nil? || raw.strip.empty?
-    JSON.parse(raw)
-  rescue JSON::ParserError, StandardError
-    nil
+  def fetch_channels(fetcher: self.class.default_release_fetcher(ENV.fetch("PLASTIC_RELEASES_URL", RELEASES_URL)))
+    fetcher.call
+  end
+
+  # A root under `node_modules` is an npm install; any other root is install.sh (spec G5).
+  def install_path(root = package_root)
+    root.to_s.include?("node_modules") ? :npm : :install_sh
+  end
+
+  # PLASTIC_CHANNEL as install.sh reads it: "stable" for the default channel, else the
+  # channel name unchanged. channel_for names the default channel "latest" (the old npm
+  # dist-tag), which install.sh has never heard of.
+  def channel_env(channel)
+    channel == "latest" ? "stable" : channel
+  end
+
+  # No local copy of `target` exists to sync from (it came from the network, not the
+  # package already on disk), so update prints the one-line command that fetches it and
+  # stops. The next `plastic update` run finds the package on disk ahead of installed_version
+  # and syncs in place (D3's second run).
+  def print_install_command(target)
+    channel = channel_for(target)
+    cmd = if install_path == :npm
+      "npm install -g #{PKG}@#{target}"
+    else
+      "curl -fsSL https://raw.githubusercontent.com/zalom/plastic/main/install.sh | PLASTIC_CHANNEL=#{channel_env(channel)} sh"
+    end
+    puts "\u{2b06}\u{fe0f}  Plastic #{target} is available. Run:\n\n  #{cmd}\n\nThen run `plastic update` again to sync it in."
   end
 
   # --yes (intent 310) answers the bleeding-edge question without a tty, so a script or an
@@ -233,14 +291,16 @@ class Update < InstallerCore
     ($stdin.gets&.strip || "").downcase.start_with?("y")
   end
 
-  # Thin npx-exec glue (the decision above is unit-tested). Delegates the file-sync to
-  # the target version's install verb, recording the ledger action as `update`. On
-  # success, commits the re-synced core files and clears the update-check cache
-  # (former update skill, lines 124-125).
-  def perform_switch(target, agent_flags, switch_runner: ->(cmd) { system({"PLASTIC_PACKAGE_ROOT" => nil}, *cmd) })
-    cmd = ["npx", "#{PKG}@#{target}", "install", "--reinstall", "--ledger-action", "update", *agent_flags]
-    puts "  $ #{cmd.join(" ")}"
-    return 1 unless switch_runner.call(cmd)
+  # Thin glue (the decision above is unit-tested). Delegates the file-sync to the local
+  # install verb, running it in this same Ruby process (no download, no subprocess: the
+  # target version's code is already on disk at package_root by construction, see cli's
+  # two call sites), recording the ledger action as `update`. On success, commits the
+  # re-synced core files and clears the update-check cache (former update skill, lines
+  # 124-125).
+  def perform_switch(target, agent_flags, switch_runner: ->(argv) { Install.new(package_root: package_root, plastic_home: plastic_home, version: version, agents: agents).cli(argv).zero? })
+    argv = ["--reinstall", "--ledger-action", "update", *agent_flags]
+    puts "  $ plastic install #{argv.join(" ")}"
+    return 1 unless switch_runner.call(argv)
     unless installed_version == target
       warn "Update did not install #{target}; installed version is #{installed_version.inspect}."
       return 1
@@ -272,7 +332,7 @@ class Update < InstallerCore
       plastic update — upgrade Plastic to a newer version
 
       Usage:
-        npx @zalom/plastic update [options]
+        plastic update [options]
 
       Channel options (default: stay on the current channel):
         --latest      Switch to / advance the stable channel

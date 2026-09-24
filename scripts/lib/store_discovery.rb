@@ -15,8 +15,7 @@ require_relative "store_provisioning"
 # and is reported separately in `missing`, never silently dropped.
 #
 # Reuses StoreProvisioning.load_projects (rescues to {} so a malformed projects.yml never
-# raises) instead of writing a third copy of that reader (a second copy already exists in
-# QmdSync, out of scope here).
+# raises) instead of writing a second copy of that reader.
 #
 # Pure filesystem, dependency-injected: `discover` takes `plastic_home` as its only
 # argument, performs no writes, no `system`/`spawn`, no network, no eval, no

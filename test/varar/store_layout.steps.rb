@@ -94,12 +94,9 @@ module StoreLayoutAcceptance
       paths = [version_file, File.join(@plastic, "versions.json"),
         *REGISTRATIONS.fetch(@harness).map { |path| File.join(@home, path) }]
       before = paths.to_h { |path| [path, File.binread(path)] }
-      bin = File.join(@home, "fake-bin")
-      FileUtils.mkdir_p(bin)
-      File.write(File.join(bin, "npm"), "#!/bin/sh\nprintf '%s\n' '{\"beta\":\"1.10.0\"}'\n")
-      File.write(File.join(bin, "npx"), "#!/bin/sh\nexit 99\n")
-      FileUtils.chmod(0o755, Dir.glob(File.join(bin, "*")))
-      @env["PATH"] = "#{bin}:#{ENV.fetch("PATH")}"
+      releases = File.join(@home, "releases.json")
+      File.write(releases, JSON.generate([{"tag_name" => "v1.10.0-beta.1", "draft" => false}]))
+      @env["PLASTIC_RELEASES_URL"] = "file://#{releases}"
       args = (row.fetch("command") == "update") ? %w[update --beta --yes] : %w[rollback --version 1.14.1]
       code = command(*args, expected: 3)
       unchanged = before.all? { |path, bytes| File.binread(path) == bytes }

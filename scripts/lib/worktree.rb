@@ -15,7 +15,7 @@ require_relative "lock"
 # 390). It computes the deterministic path and branch a project intent's code
 # worktree would have (<repo>/.claude/worktrees/{id}--{slug}, branch
 # plastic/{id}--{slug}) and prints them (see Arm.worktree_block and
-# `plastic auto take`'s screen); the agent that receives the instruction
+# `plastic auto start`'s screen); the agent that receives the instruction
 # creates the worktree itself, e.g. `git -C <repo> worktree add <path> -b
 # <branch>`, and removes/merges it itself too. `release`, `finish`, and
 # `merge_branch` (the old teardown/merge git calls) are gone; `Arm.disarm`
@@ -78,7 +78,7 @@ module Worktree
   end
 
   # Absolute repo path for a project slug from `~/.plastic/projects.yml`, or nil.
-  # Reuses the qmd_sync safe-loader pattern: any failure yields nil.
+  # Any failure yields nil.
   def repo_for(slug, home: Dir.home)
     return nil if blank?(slug)
     projects = load_projects(home)
@@ -135,7 +135,7 @@ module Worktree
     false
   end
 
-  # --- internals (projects.yml resolution, mirrors qmd_sync) -----------------
+  # --- internals (projects.yml resolution) -----------------------------------
 
   def load_projects(home)
     path = File.join(File.expand_path(home), ".plastic", "projects.yml")
@@ -151,7 +151,7 @@ module Worktree
 
   # Resolve a project slug from a store directory. A project's tactical store
   # lives at <plastic_home>/projects/<slug>/store; the global store yields nil
-  # (no project repo). Mirrors qmd_sync's slug_for_store fallback.
+  # (no project repo).
   def slug_for_store(store_dir, home: Dir.home)
     return nil if blank?(store_dir)
     slug = Plastic::StoreLayout.locate(store_dir).last

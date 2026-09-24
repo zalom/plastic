@@ -62,20 +62,12 @@ class HarnessAdaptersDocTest < Minitest::Test
 
   # --- Delivery watch (intent 340a, G7b, n4) ----------------------------------
 
-  def test_documents_unattended_start_honestly
+  def test_documents_that_a_tick_never_dispatches
     body = normalized_body
     assert_includes body, "## Delivery watch"
-    assert_includes body, "Unattended continuation is delivered on both harnesses"
-    assert_includes body, "Unattended start"
-    assert_includes body, "only where a Ruby loop owns dispatch"
-    assert_includes body, "Codex"
-    assert_includes body, "parked on Claude Code"
-    assert_includes body, "Q6"
-  end
-
-  def test_unattended_start_sentence_matches_the_adapter
-    body = normalized_body
-    assert_includes body, HarnessAdapter::UNATTENDED_START_SENTENCE
+    assert_includes body, "A tick never dispatches (intent 391)"
+    assert_includes body, "Plastic starts no agent process on either harness"
+    refute_includes body, "--dispatch"
   end
 
   def test_documents_the_watch_timer_per_harness
@@ -85,7 +77,12 @@ class HarnessAdaptersDocTest < Minitest::Test
     assert_includes body, "SessionStart"
     assert_includes body, "--install-timer"
     assert_includes body, "launchctl"
-    assert_includes body, "--dispatch --harness codex"
+  end
+
+  def test_documents_the_printed_codex_command
+    body = normalized_body
+    assert_includes body, "Plastic prints that command and never runs it"
+    refute_includes body, "node-run"
   end
 
   GUIDE = File.join(ROOT, "docs", "guides", "using-plastic-with-claude-code.md")

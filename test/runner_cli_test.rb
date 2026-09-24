@@ -879,7 +879,7 @@ class RunnerCliTest < Minitest::Test
 
     out, err, status = run_cli("step", @dir, "--harness", "codex", env: { "CLAUDE_CODE_SESSION_ID" => session })
     assert_equal 0, status.exitstatus, out + err
-    assert_match(/node-run n1/, out, "the codex block must render for --harness codex: #{out}")
+    assert_match(/run: codex exec .* - < \S+n1--a1\.input/, out, "the codex block must print the command for --harness codex: #{out}")
   end
 
   # --- 1.28: the plan and the rendered block are separated by a document marker --
@@ -958,36 +958,13 @@ class RunnerCliTest < Minitest::Test
                     "runner-step.last must be ignored in the store's own git tree: #{patterns.inspect}"
   end
 
-  # === Intent 340b, G7c, n7: until-empty, the Codex loop ===
+  # --- intent 391: until-empty is gone, the verb is unknown -----------------------
 
-  # --- 7.6: until-empty has a KNOWN_FLAGS entry, --harness is never refused ---
+  def test_until_empty_is_no_longer_a_verb
+    _out, err, status = run_cli("until-empty", @dir)
 
-  def test_until_empty_known_flags
-    assert_includes Runner::KNOWN_FLAGS.fetch("until-empty", []), "--harness",
-                     "until-empty must accept --harness or unrecognized_flag falls back to an " \
-                     "empty list and refuses every flag it needs"
-
-    write_graph("- n1 needs nothing\n")
-    write_node("n1.md", node: "n1", kind: "work")
-
-    _out, err, status = run_cli("until-empty", @dir, "--harness", "codex")
-    refute_equal 2, status.exitstatus, err
-    refute_match(/unknown flag/i, err)
-  end
-
-  # --- 7.13: until-empty is internal - callable, never in the public usage ---
-
-  def test_until_empty_is_internal
-    _out, err, status = run_cli("swep", @dir)
     assert_equal 2, status.exitstatus
-    refute_match(/until-empty/, err, "the usage text must not advertise the internal until-empty verb")
-
-    write_graph("- n1 needs nothing\n")
-    write_node("n1.md", node: "n1", kind: "work")
-
-    _out2, err2, _status2 = run_cli("until-empty", @dir)
-    refute_match(/unknown verb/, err2,
-                 "until-empty must be a recognized internal verb, not routed through the unknown-verb refusal")
+    assert_match(/unknown verb "until-empty"/, err)
   end
 
   # === Intent 340a, G7b, n2: watch, the one-tick verb ===
@@ -1006,19 +983,18 @@ class RunnerCliTest < Minitest::Test
                  "watch must be a recognized internal verb, not routed through the unknown-verb refusal")
   end
 
-  # --- 2.2: watch's flags are never refused as unknown ----------------------
+  # --- 2.2 (intent 391): watch refuses the retired dispatch flags -----------------
 
-  def test_watch_known_flags
-    assert_includes Runner::KNOWN_FLAGS.fetch("watch", []), "--dispatch",
-                     "watch must accept --dispatch or unrecognized_flag refuses it"
-    assert_includes Runner::KNOWN_FLAGS.fetch("watch", []), "--harness",
-                     "watch must accept --harness or unrecognized_flag refuses it"
-
+  def test_watch_refuses_the_retired_dispatch_flags
     write_graph("- n1 needs nothing\n")
     write_node("n1.md", node: "n1", kind: "work")
 
-    _out, err, _status = run_cli("watch", @dir, "--harness", "codex")
-    refute_match(/unknown flag/i, err)
+    %w[--dispatch --harness].each do |flag|
+      _out, err, status = run_cli("watch", @dir, flag)
+
+      assert_equal 2, status.exitstatus, err
+      assert_includes err, "unknown flag \"#{flag}\" for watch"
+    end
   end
 
   # --- 3.6 (intent 340a, G7b, n3): the timer flags are never refused as unknown ---

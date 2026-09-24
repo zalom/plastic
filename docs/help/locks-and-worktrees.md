@@ -66,7 +66,7 @@ doctrine.
 
 Every code-touching auto intent gets its own git worktree named `{id}--{slug}`, and all code
 edits for that intent happen inside it. Plastic runs no version control command, so it creates
-this worktree deterministically without creating it: `plastic auto take ID` resolves the
+this worktree deterministically without creating it: `plastic auto start ID` resolves the
 project repo from `projects.yml`, computes the expected path and branch, and prints the
 `git -C <repo> worktree add <path> -b <branch>` for the agent to run -- isolation never depends
 on the current working directory, but the workspace itself is the agent's own step. There is
@@ -84,7 +84,7 @@ into it, because every delivering agent writes lifecycle docs straight to the ma
 checkout, so intent 178 retired the store worktree in favor of the two mechanisms above.
 
 A store-only intent that touches no project code (pure research or decision intents in the
-global store, or a non-git repo) gets the lock only: no repo resolves, so `auto take` names no
+global store, or a non-git repo) gets the lock only: no repo resolves, so `auto start` names no
 worktree path and the next step stays the preamble read. This reads the same in the screen
 whether the repo simply has not resolved yet or never will; it is not a failure, only nothing
 to report.
@@ -104,7 +104,7 @@ what gets written down.
 
 | Station | Delivered artifact | Lock steps | Record |
 |---|---|---|---|
-| Start (board) | none (a procedure, not a stage) | `plastic-lock fix` self-heals stale, corrupt, or legacy state; arm (`plastic auto take ID`, the only public entry) acquires `delivery.lock` (O_EXCL, session-keyed), prints the code worktree's expected path and branch for the agent to create | savepoint confirms the boarding station |
+| Start (board) | none (a procedure, not a stage) | `plastic-lock fix` self-heals stale, corrupt, or legacy state; arm (`plastic auto start ID`, the only public entry) acquires `delivery.lock` (O_EXCL, session-keyed), prints the code worktree's expected path and branch for the agent to create | savepoint confirms the boarding station |
 | What (create) | `<id>--<slug>.md`, born complete | no lock yet; `new-intent` validates the file it writes (`scripts/validate-intent`) | savepoint `What` line; intent listed in INDEX `## Active` |
 | Why | `spec.md` | owner writes refresh the lease (lock file mtime heartbeat) | savepoint `Why started`, `Why spec.md created` |
 | How | `plan.md`, `actions/ACTION_N.md` (at least one), `checklist.md` | heartbeat on writes | savepoint `How started`, `How plan.md created`, `How checklist.md created`, `Exec started` |

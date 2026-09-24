@@ -109,7 +109,17 @@ class CliIntentProgressTest < Minitest::Test
     write("graph", "# Graph")
 
     assert_equal 0, step
-    assert_equal "plastic auto take 1 --project global", JSON.parse(@fixture.printed).fetch("next")
+    assert_equal "plastic auto start 1 --project global", JSON.parse(@fixture.printed).fetch("next")
+  end
+
+  def test_a_return_with_no_lock_is_refused_and_names_auto_start
+    prepare
+    write("graph", "# Graph")
+
+    status = Plastic::CLI::Commands::IntentStep.call(["1", "--return", "n1=/tmp/n1.yml"], directory: @dir, **@fixture.streams)
+
+    assert_equal 3, status
+    assert_includes @fixture.warned, "return not accepted: take intent 1 with plastic auto start 1 --project global"
   end
 
   def test_foreign_lock_refuses_with_public_inspection_command

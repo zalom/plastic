@@ -13,7 +13,6 @@ require_relative "agent_models"
 require_relative "harness_text"
 require_relative "compact_instructions"
 require_relative "engine_permissions"
-require_relative "qmd_sync"
 
 # Shared installer machinery, instantiable with injected package root / store / agent
 # map so the verb scripts (install/update/uninstall/rollback) and their tests can run
@@ -408,7 +407,6 @@ class InstallerCore
       "scripts/hook-capture" => "scripts/hook-capture",
       "scripts/hook-record" => "scripts/hook-record",
       "scripts/hook-close" => "scripts/hook-close",
-      "scripts/lib/power_tools.rb" => "scripts/lib/power_tools.rb",
       "scripts/lib/ruby_probe.rb" => "scripts/lib/ruby_probe.rb",
       "scripts/lib/agent_models.rb" => "scripts/lib/agent_models.rb",
       "scripts/lib/config_asks.rb" => "scripts/lib/config_asks.rb",
@@ -435,8 +433,6 @@ class InstallerCore
       "scripts/insight-append" => "scripts/insight-append",
       "scripts/lib/worktree.rb" => "scripts/lib/worktree.rb",
       "scripts/lib/boot_banner.rb" => "scripts/lib/boot_banner.rb",
-      "scripts/lib/qmd_sync.rb" => "scripts/lib/qmd_sync.rb",
-      "scripts/qmd-sync" => "scripts/qmd-sync",
       "scripts/lib/roadmap_savepoint.rb" => "scripts/lib/roadmap_savepoint.rb",
       "scripts/roadmap-savepoint" => "scripts/roadmap-savepoint",
       "scripts/lib/roadmap_queue.rb" => "scripts/lib/roadmap_queue.rb",
@@ -479,6 +475,7 @@ class InstallerCore
       "scripts/validate-project" => "scripts/validate-project",
       "scripts/lib/installer_core.rb" => "scripts/lib/installer_core.rb",
       "scripts/lib/preflight.rb" => "scripts/lib/preflight.rb",
+      "scripts/lib/release_channels.rb" => "scripts/lib/release_channels.rb",
       "scripts/install.rb" => "scripts/install.rb",
       "scripts/update.rb" => "scripts/update.rb",
       "scripts/uninstall.rb" => "scripts/uninstall.rb",
@@ -596,12 +593,9 @@ class InstallerCore
       # by scripts/lib/runner_dispatch.rb and by scripts/runner's `step`
       # directly.
       "scripts/lib/harness_adapter.rb" => "scripts/lib/harness_adapter.rb",
-      # Intent 340b (G7c, n6): the Codex leg - CodexAdapter (the `codex exec`
-      # argv, the sandbox per kind, and the bounded subprocess) and
-      # scripts/node-run, the CLI that runs one node's whole attempt over
-      # it and writes only a return file, never a ledger transition.
+      # Intent 340b (G7c, n6): the Codex leg - CodexAdapter, the `codex exec`
+      # argv and the sandbox per kind. Intent 391: printed, never run.
       "scripts/lib/codex_adapter.rb" => "scripts/lib/codex_adapter.rb",
-      "scripts/node-run" => "scripts/node-run",
       # Intent 340b (G7c, n3): the engine deny rule - the frozen permissions.deny
       # entry list, merged into settings.json at install and removed surgically
       # at uninstall.
@@ -644,10 +638,6 @@ class InstallerCore
       # fix per verify model, hop on versus off, delivery latency, the
       # evidence bar, and the two concurrency ceilings.
       "scripts/lib/graph_measure_cohorts.rb" => "scripts/lib/graph_measure_cohorts.rb",
-      # Intent 340b (G7c, n7): the Codex loop - composes `step` and
-      # `node-run` itself (concurrency two, serial absorb, iteration-capped),
-      # routed from scripts/runner's internal `until-empty` verb.
-      "scripts/lib/runner_until_empty.rb" => "scripts/lib/runner_until_empty.rb",
       # Intent 340a (G7b, n1): the delivery watch - one tick over disk truth,
       # stalled and done-unreported classification, no CLI and no dispatch.
       "scripts/lib/runner_watch.rb" => "scripts/lib/runner_watch.rb",
@@ -705,16 +695,6 @@ class InstallerCore
     MD
 
     puts "  \u{2705} Store bootstrapped"
-  end
-
-  # Intent 372 (former install skill, lines 167-179): register every Plastic store as
-  # a QMD collection. QmdSync.register already no-ops per store when QMD is absent;
-  # the detector is injected too so a run stays hermetic on a machine that happens to
-  # have the real `qmd` binary on PATH.
-  def register_with_qmd(runner: QmdSync.default_runner, detector: QmdSync.method(:detect))
-    QmdSync.enumerate_stores(plastic_home: plastic_home).each do |store|
-      QmdSync.register(collection: store[:collection], dir: store[:dir], runner: runner, detector: detector)
-    end
   end
 
   # --- Agent adapters ---

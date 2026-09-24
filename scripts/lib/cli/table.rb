@@ -13,7 +13,7 @@ module Plastic
       "auto brief" => ["commands/auto_brief", "AutoBrief", "Print an intent's spawn preamble, and the advisor shapes for --role advisor"],
       "auto lock" => ["commands/auto_lock", "AutoLock", "Inspect, repair, or release an intent's delivery lock"],
       "auto report" => ["commands/auto_report", "AutoReport", "Print an intent's completion report, then the review-by-risk rules"],
-      "auto take" => ["commands/auto_take", "AutoTake", "Arm an intent's delivery lock for this session"],
+      "auto start" => ["commands/auto_start", "AutoStart", "Arm an intent's delivery lock, or a roadmap's next ready intent"],
       "auto" => ["commands/auto", "Auto", "List the auto subcommands"],
       "backup" => ["commands/backup", "Backup", "Write one archive of the three databases and the config"],
       "checkout" => ["commands/checkout", "Checkout", "Restore missing store files from the databases"],

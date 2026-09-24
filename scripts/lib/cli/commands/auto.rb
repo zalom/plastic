@@ -10,8 +10,8 @@ module Plastic
       class Auto < SubcommandList
         USAGE_LINE = "plastic auto SUBCOMMAND [options]"
         PREFIX = "auto"
-        NEXT = "plastic auto take ID"
-        BECAUSE = "taking the intent is what every other auto subcommand needs first"
+        NEXT = "plastic auto start ID"
+        BECAUSE = "starting an intent is what every other auto subcommand needs first"
       end
     end
   end

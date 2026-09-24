@@ -27,4 +27,4 @@ WHERE WE GO NEXT  ·  value × effort  (all scopes)
   RESEARCH → agent  ⊙   5 Research a thing
 
 legend  ○ What ◔ Why ◑ How ◕ Exec ● Done │ ▸drive ⇢defer ⊙research ⚑triage │ ⇡unblocked
-ask    for the <slug> project board  ·  plastic auto take ID  (works the dispatchable queue)
+ask    for the <slug> project board  ·  plastic auto start ID  (works the dispatchable queue)

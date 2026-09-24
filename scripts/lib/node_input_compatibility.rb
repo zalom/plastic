@@ -8,7 +8,7 @@
 #
 # It maps, never rewrites: the raw ledger line on disk is never touched.
 # `NodeLedger.parse_transition_line` calls #fields on every parsed field hash
-# before returning it, so torn detection, attempt counting, node-run,
+# before returning it, so torn detection, attempt counting,
 # graph-measure and outcome-report all see `input` whether the line was
 # written by an old dispatch or a new one.
 #
