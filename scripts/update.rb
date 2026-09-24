@@ -33,8 +33,8 @@ class Update < InstallerCore
   # The parsing step is its own method (`parse_releases_response`) so a test can drive every
   # branch of it directly, on a string, with the backtick call left as the one line that
   # genuinely needs a real network probe.
-  def self.default_release_fetcher
-    lambda { parse_releases_response(`curl -fsSL #{RELEASES_URL} 2>/dev/null`) }
+  def self.default_release_fetcher(url = RELEASES_URL)
+    lambda { parse_releases_response(IO.popen(["curl", "-fsSL", url], err: File::NULL, &:read)) }
   end
 
   def self.parse_releases_response(raw)

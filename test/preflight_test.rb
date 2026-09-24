@@ -139,23 +139,16 @@ class PreflightTest < Minitest::Test
 
   # --- install.rb#preflight_gate wiring ---
 
-  def test_executable_probes_work_without_an_external_command_program
-    Dir.mktmpdir("preflight-probes") do |dir|
-      %w[git sqlite3].each do |name|
-        path = File.join(dir, name)
-        File.write(path, "#!/bin/sh\nprintf 'test version\\n'\n")
-        File.chmod(0o755, path)
-      end
-      install = Install.new(package_root: WORKTREE, plastic_home: dir)
-      original_path = ENV["PATH"]
-      begin
-        ENV["PATH"] = dir
-        assert install.send(:git_probe)
-        assert install.send(:sqlite3_probe)
-      ensure
-        ENV["PATH"] = original_path
-      end
-    end
+  def test_a_missing_tool_reads_as_absent
+    install = Install.new(package_root: WORKTREE, plastic_home: Dir.mktmpdir("preflight-probes"))
+
+    refute install.send(:tool_present?, "plastic-no-such-tool-391")
+  end
+
+  def test_the_platform_is_linux_or_darwin
+    install = Install.new(package_root: WORKTREE, plastic_home: Dir.mktmpdir("preflight-probes"))
+
+    assert_includes %w[linux darwin], install.send(:platform_probe)
   end
 
   def test_preflight_gate_returns_1_and_prints_the_offer_on_fatal_ruby

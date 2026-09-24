@@ -213,12 +213,17 @@ class UpdateVerbTest < Minitest::Test
     refute_match(/npm/i, err)
   end
 
-  def test_default_release_fetcher_shells_curl_against_the_github_releases_api
+  def test_default_release_fetcher_reads_the_github_releases_api
     assert_equal "https://api.github.com/repos/zalom/plastic/releases?per_page=50", Update::RELEASES_URL
+  end
 
-    source = File.read(File.expand_path("../scripts/update.rb", __dir__))
+  def test_default_release_fetcher_parses_what_curl_reads
+    Dir.mktmpdir("releases") do |dir|
+      path = File.join(dir, "releases.json")
+      File.write(path, JSON.generate([{ "tag_name" => "v2.1.0", "draft" => false }]))
 
-    assert_match(/curl.*RELEASES_URL/, source)
+      assert_equal({ "latest" => "2.1.0" }, Update.default_release_fetcher("file://#{path}").call)
+    end
   end
 
   def test_parse_releases_response_nil_is_nil
