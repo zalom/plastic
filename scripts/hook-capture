@@ -15,7 +15,6 @@ require "open3"
 require "time"
 require "fileutils"
 require_relative "lib/session_ledger"
-require_relative "lib/dashboard_banner"
 require_relative "lib/active_delivery"
 
 raw = begin
@@ -101,29 +100,22 @@ end
 context_parts = []
 system_message = nil
 
-# --- (d) "continue" cockpit -------------------------------------------------
+# --- (d) "continue" cockpit: the report roster -------------------------------
 begin
   if prompt.to_s.strip.downcase == "continue"
-    dashboard = File.expand_path("dashboard.rb", __dir__)
-    if File.exist?(dashboard)
-      cockpit, _err, status = Open3.capture3({ "RUBYOPT" => nil }, "ruby", dashboard, "continue")
-      if status.success? && !cockpit.strip.empty?
-        context_parts << (cockpit.rstrip +
-          "\n\nRun `plastic continue` to resume: " \
-          "if active intents exist, read their state and resume; otherwise surface the " \
-          "most-valuable next work and any stale or triage intents from the board above.")
-
-        begin
-          data_json, _data_err, data_status = Open3.capture3({ "RUBYOPT" => nil }, "ruby", dashboard,
-                                                               "continue", "--data")
-          if data_status.success?
-            banner = DashboardBanner.render(JSON.parse(data_json))
-            system_message = banner if banner
-          end
-        rescue StandardError
-          nil
-        end
-      end
+    slug = SessionLedger.project_slug(cwd, plastic_home: plastic_home)
+    project_root = Plastic::StoreLayout.root(plastic_home, slug)
+    roster_root = File.exist?(File.join(project_root, "INDEX.md")) ? project_root : Plastic::StoreLayout.global_root(plastic_home)
+    report_screen = File.expand_path("report-screen", __dir__)
+    roster, _err, status = Open3.capture3({ "RUBYOPT" => nil }, "ruby", report_screen, "state", "--all", roster_root)
+    if status.success? && !roster.strip.empty?
+      context_parts << (roster.rstrip +
+        "\n\nRun `plastic continue` to resume: " \
+        "if active intents exist, read their state and resume; otherwise surface the " \
+        "most-valuable next work and any stale or triage intents from the roster above.")
+      painted, _paint_err, paint_status = Open3.capture3({ "RUBYOPT" => nil, "PLASTIC_FORCE_COLOR" => "1" },
+                                                         "ruby", report_screen, "state", "--all", roster_root, "--ansi")
+      system_message = (paint_status.success? && !painted.strip.empty?) ? painted.rstrip : roster.rstrip
     end
   end
 rescue StandardError

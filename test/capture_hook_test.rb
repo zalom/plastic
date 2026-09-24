@@ -269,7 +269,7 @@ class CaptureHookTest < Minitest::Test
     seed_tier(@plastic_home, "41--global-thing")
     project_dir = File.join(@home, "code", "alpha")
     FileUtils.mkdir_p(project_dir)
-    File.write(File.join(@plastic_home, "projects.yml"), YAML.dump("alpha" => { "path" => project_dir }))
+    File.write(File.join(@plastic_home, "projects.yml"), YAML.dump("projects" => { "alpha" => { "path" => project_dir } }))
     seed_tier(File.join(@plastic_home, "projects", "alpha"), "7--alpha-thing")
     out, status = run_hook("continue", session: "sess-roster-proj", cwd: project_dir)
     assert_equal 0, status.exitstatus, out
