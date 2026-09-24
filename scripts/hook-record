@@ -7,12 +7,13 @@
 # intent-dir savepoint append byte for byte, refreshes the delivery-lock lease
 # for the owning session (intent 302, the lock gate's old allow-path job),
 # promotes the session's newest pending day-ledger line when a project file
-# lands, and calls the session-commit seam when that script exists. Always
-# exits 0 (spec D3).
+# lands, and never commits: a commit is an explicit `plastic session commit`
+# by the person or agent who verified the item (2026-09-24, after the hook
+# committed half-edited files under a prompt as the message). Always exits 0
+# (spec D3).
 
 require_relative "lib/store_layout"
 require "json"
-require "timeout"
 require "fileutils"
 require_relative "lib/savepoint"
 require_relative "lib/lock"
@@ -75,7 +76,7 @@ plastic_home = File.expand_path(ENV["PLASTIC_HOME"] || "~/.plastic")
 inside_plastic = file_path_abs == plastic_home || file_path_abs.start_with?("#{plastic_home}/")
 skip_day_ledger = inside_plastic || !intent_dir_abs.nil?
 
-# --- (c) promote the newest pending line, Item savepoint, seam -------------
+# --- (c) promote the newest pending line, Item savepoint, no commit --------
 unless skip_day_ledger
   begin
     store = Plastic::StoreLayout.global_store(plastic_home)
@@ -110,35 +111,6 @@ unless skip_day_ledger
         project = SessionLedger.project_slug(cwd, plastic_home: plastic_home)
         line = SessionLedger.savepoint_line("Item", sid, project, target_summary, now: Time.now)
         SessionLedger.append_line(SessionLedger.savepoint_path(store, today), line, header: nil)
-
-        seam = File.expand_path("session-commit", __dir__)
-        if File.executable?(seam)
-          begin
-            # A bare Timeout.timeout around Open3.capture3 does not reliably bound a
-            # genuinely hanging child: capture3's internal wait still blocks on
-            # Process.waitpid for the child regardless of the raised Timeout::Error.
-            # Spawn directly and kill on timeout instead, so the 10s bound is real.
-            pid = Process.spawn({ "RUBYOPT" => nil }, seam, "--cwd", cwd, "--summary", target_summary,
-                                 "--session", sid, "--day", today,
-                                 [:out, :err] => File::NULL)
-            begin
-              Timeout.timeout(10) { Process.wait(pid) }
-            rescue Timeout::Error
-              begin
-                Process.kill("KILL", pid)
-              rescue StandardError
-                nil
-              end
-              begin
-                Process.wait(pid)
-              rescue StandardError
-                nil
-              end
-            end
-          rescue StandardError
-            nil
-          end
-        end
       end
     end
   rescue StandardError
