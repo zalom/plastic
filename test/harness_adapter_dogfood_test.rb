@@ -22,13 +22,23 @@ load File.expand_path("../scripts/runner", __dir__)
 # 340 shipped a green suite over a `runner step` that raised on every real
 # call, because every test drove the module API directly and none turned
 # the key through the CLI. This file turns the key: an authored scratch
-# intent, a real git repository, a real lock, a real node worktree, walked
-# end to end by subprocess calls only (`runner status`, then `runner
-# step`), with the rendered Claude block read back out of stdout and
-# checked against what the harness would actually need to spawn.
+# intent, a plain scratch repo directory, a real lock, walked end to end by
+# subprocess calls only (`runner status`, then `runner step`), with the
+# rendered Claude block read back out of stdout and checked against what
+# the harness would actually need to spawn.
 #
-# Matrix rows 5.1-5.13 in nodes/n5.md (5.14 is a process rule the return's
-# own findings list satisfies, not a unit test).
+# Owner ruling 2026-09-24 (intent 390): Plastic runs no version control
+# command, so the scratch "repo" this file builds is a plain directory tree
+# (a projects.yml entry plus the intent worktree's own path), never a real
+# git repository - `NodeWorktree.paths`/`Worktree.paths` compute every path
+# and branch deterministically from that layout, with no git call anywhere
+# in the path this test drives.
+#
+# Matrix rows 5.1-5.11 in nodes/n5.md (5.12-5.14 were a git-probe skip rule
+# and a process rule; both are gone or subsumed now that no row here can run
+# a real git command to probe for. Row 5.13's "a real subprocess failure
+# fails the test, never skips it" still holds and is proven by
+# test_subprocess_failure_never_skips below).
 class HarnessAdapterDogfoodTest < Minitest::Test
   INTENT_ID = "1"
   INTENT_SLUG = "demo"
@@ -49,21 +59,6 @@ class HarnessAdapterDogfoodTest < Minitest::Test
     FileUtils.remove_entry(@home) if @home && Dir.exist?(@home)
     FileUtils.remove_entry(@repo) if @repo && Dir.exist?(@repo)
     Array(@scratch_dirs).each { |d| FileUtils.remove_entry(d) if d && Dir.exist?(d) }
-  end
-
-  # --- the git probe (row 5.12) ---------------------------------------------------
-  #
-  # A positive check, taken before any subprocess in the test body runs -
-  # never a rescue wrapped around the subprocess call itself. A rescue there
-  # would turn a genuine crash in the real CLI path into a green skip, which
-  # is exactly the defect this whole node exists to catch (row 5.13).
-
-  def git_available?
-    system("git", "--version", out: File::NULL, err: File::NULL)
-  end
-
-  def assert_git_available!
-    skip "git not available" unless git_available?
   end
 
   # --- fixture helpers (the same shapes runner_cli_test.rb and
@@ -112,27 +107,18 @@ class HarnessAdapterDogfoodTest < Minitest::Test
                JSON.generate("type" => "delivery", "owner_session" => owner, "delegates" => []))
   end
 
-  def git(*args, dir: @repo)
-    out, err, status = Open3.capture3("git", "-C", dir, *args.map(&:to_s))
-    raise "git #{args.join(' ')} failed: #{err}" unless status.success?
-
-    out
-  end
-
-  # A real throwaway git repo, registered in projects.yml, with the intent
-  # worktree already checked out on the intent branch, so RunnerDispatch can
-  # actually provision a work node's own worktree and RunnerAbsorb can
-  # actually merge it back. Never the real Plastic repository, never the
-  # owner's real ~/.plastic.
-  def setup_real_repo
+  # A plain throwaway scratch directory, registered in projects.yml, with the
+  # intent worktree directory already present at the path
+  # `Worktree.paths`/`NodeWorktree.paths` compute deterministically, so
+  # RunnerDispatch can render a work node's own worktree path and
+  # RunnerAbsorb can render its merge instruction, with no git call anywhere
+  # in that path. This stands in for an agent having already run the
+  # printed `git -C <repo> worktree add ...` instruction for the intent
+  # worktree itself. Never the real Plastic repository, never the owner's
+  # real ~/.plastic.
+  def setup_repo
     @repo = Dir.mktmpdir("dogfood-repo")
-    git("init", "-q", "-b", "alpha")
-    git("config", "user.email", "dogfood@example.com")
-    git("config", "user.name", "Dogfood Test")
-    git("config", "gc.auto", "0")
     File.write(File.join(@repo, "README.md"), "hi\n")
-    git("add", "README.md")
-    git("commit", "-q", "-m", "init")
 
     FileUtils.mkdir_p(File.join(@home, ".plastic"))
     File.write(File.join(@home, ".plastic", "projects.yml"),
@@ -140,9 +126,7 @@ class HarnessAdapterDogfoodTest < Minitest::Test
     File.write(File.join(@home, ".plastic", "manifest.json"), JSON.generate("files" => {}))
 
     intent_worktree = File.join(@repo, ".claude", "worktrees", "#{INTENT_ID}--#{INTENT_SLUG}")
-    intent_branch = "plastic/#{INTENT_ID}--#{INTENT_SLUG}"
-    FileUtils.mkdir_p(File.dirname(intent_worktree))
-    git("worktree", "add", intent_worktree, "-b", intent_branch, dir: @repo)
+    FileUtils.mkdir_p(intent_worktree)
   end
 
   # One work node (n1) and one verify node (v1 needs n1) - the smallest
@@ -155,7 +139,7 @@ class HarnessAdapterDogfoodTest < Minitest::Test
     write_node("n1.md", node: "n1", kind: "work")
     write_node("v1.md", node: "v1", kind: "verify", body: "# v1 - review\n\n## Criteria\ndone\n")
     write_lock(owner: "sess-1") if with_lock
-    setup_real_repo
+    setup_repo
   end
 
   def write_return(node, status:, commit:, summary: "ok")
@@ -203,7 +187,6 @@ class HarnessAdapterDogfoodTest < Minitest::Test
   # --- 5.1: `runner status` on a scratch intent, as a subprocess ------------------
 
   def test_status_subprocess_runs
-    assert_git_available!
     build_scratch_intent
 
     out, err, status = run_cli("status", @dir)
@@ -215,7 +198,6 @@ class HarnessAdapterDogfoodTest < Minitest::Test
   # --- 5.2: `runner step` on a scratch intent, as a subprocess --------------------
 
   def test_step_subprocess_dispatches
-    assert_git_available!
     build_scratch_intent
 
     out, err, status = run_step
@@ -226,7 +208,6 @@ class HarnessAdapterDogfoodTest < Minitest::Test
   # --- 5.3: the rendered agent type is a file under agents/ -----------------------
 
   def test_rendered_agent_type_exists_on_disk
-    assert_git_available!
     build_scratch_intent
 
     out, err, status = run_step
@@ -243,7 +224,6 @@ class HarnessAdapterDogfoodTest < Minitest::Test
   # --- 5.4: the rendered node input path exists ---------------------------------------
 
   def test_rendered_input_path_exists
-    assert_git_available!
     build_scratch_intent
 
     out, err, status = run_step
@@ -259,7 +239,6 @@ class HarnessAdapterDogfoodTest < Minitest::Test
   # --- 5.5: the rendered model equals the plan's model -----------------------------
 
   def test_rendered_model_matches_plan
-    assert_git_available!
     build_scratch_intent
 
     out, err, status = run_step
@@ -279,7 +258,6 @@ class HarnessAdapterDogfoodTest < Minitest::Test
   # --- 5.6: the running line carries harness=claude-code ---------------------------
 
   def test_running_line_records_claude_harness
-    assert_git_available!
     build_scratch_intent
 
     out, err, status = run_step
@@ -294,7 +272,6 @@ class HarnessAdapterDogfoodTest < Minitest::Test
   # --- 5.7: the YAML plan above the block still parses as one document ------------
 
   def test_plan_still_parses_as_yaml
-    assert_git_available!
     build_scratch_intent
 
     out, err, status = run_step
@@ -309,7 +286,6 @@ class HarnessAdapterDogfoodTest < Minitest::Test
   # --- 5.8: runner-step.last exists after the step ---------------------------------
 
   def test_step_persists_last_output
-    assert_git_available!
     build_scratch_intent
 
     out, err, status = run_step
@@ -324,7 +300,6 @@ class HarnessAdapterDogfoodTest < Minitest::Test
   # --- 5.9: a verify node renders the read-only agent through the same path -------
 
   def test_verify_node_renders_read_only_agent
-    assert_git_available!
     build_scratch_intent
 
     out1, err1, status1 = run_step
@@ -344,7 +319,6 @@ class HarnessAdapterDogfoodTest < Minitest::Test
   # --- 5.10: a nonzero subprocess exit fails with its stderr in the message -------
 
   def test_subprocess_failure_reports_stderr
-    assert_git_available!
     build_scratch_intent
 
     out, err, status = run_step("--return", "bogus")
@@ -360,7 +334,6 @@ class HarnessAdapterDogfoodTest < Minitest::Test
   # --- 5.11: the scratch intent is hermetic ----------------------------------------
 
   def test_scratch_intent_is_hermetic
-    assert_git_available!
     build_scratch_intent
 
     out, err, status = run_step
@@ -385,38 +358,9 @@ class HarnessAdapterDogfoodTest < Minitest::Test
     end
   end
 
-  # --- 5.12: a skip is gated on a positive environment probe taken first ----------
-
-  def test_skip_is_gated_on_a_prior_git_probe
-    no_git_dir = Dir.mktmpdir("no-git-on-path")
-    (@scratch_dirs ||= []) << no_git_dir
-    original_path = ENV["PATH"]
-    probe = nil
-    subprocess_attempted = false
-    skipped = false
-
-    begin
-      ENV["PATH"] = no_git_dir
-      probe = git_available?
-      begin
-        skip "git not available" unless probe
-        subprocess_attempted = true
-      rescue Minitest::Skip
-        skipped = true
-      end
-    ensure
-      ENV["PATH"] = original_path
-    end
-
-    refute probe, "the fixture must actually make git unavailable for this row to prove anything"
-    assert skipped, "a negative probe must skip before any subprocess is attempted"
-    refute subprocess_attempted, "no subprocess call may happen once the probe reads negative"
-  end
-
   # --- 5.13: a real subprocess failure fails the test, never skips it -------------
 
   def test_subprocess_failure_never_skips
-    assert_git_available!
     build_scratch_intent(with_lock: false)
 
     out, err, status = run_step
