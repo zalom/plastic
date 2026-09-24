@@ -1121,8 +1121,9 @@ def check_done_signals(scopes: nil)
                "(terminal in INDEX but the End tail did not finish)",
       details: stalled, fixable: true,
       fix_hint: "Finish the End tail via stale-lock reclaim: run /plastic-doctor reclaim the lock, " \
-                "then complete the tail (Worktree.release -> Lock.release -> purge -> QMD reindex " \
-                "last). This FINISHES a completion; it is NOT a reactivation of a done intent."
+                "then complete the tail (Arm.disarm's printed worktree-removal instruction -> " \
+                "Lock.release -> purge -> QMD reindex last). This FINISHES a completion; it is " \
+                "NOT a reactivation of a done intent."
     )
   end
 
@@ -3017,7 +3018,7 @@ end
   #               (fail if the slug is not registered in projects.yml)
   # 3-state roll-up (pass/warn/fail), like the full run.
   # Defaults are byte-identical to the real probes; both production callers
-  # (scripts/doctor.rb's CLI entry point and scripts/dashboard.rb) call
+  # (scripts/doctor.rb's CLI entry point) call
   # run_store_checks(store) with a single positional argument and no kwargs, so
   # behavior at those call sites is unchanged.
   def run_store_checks(store)

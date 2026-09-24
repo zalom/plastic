@@ -23,7 +23,7 @@ class BridgeRetiredTest < Minitest::Test
 
   CHANGED_LIBS = %w[
     scripts/lib/arm.rb scripts/lib/worktree.rb scripts/lib/exec_worktree.rb
-    scripts/lib/worktree_sweep.rb scripts/lib/scaffold_intent.rb
+    scripts/lib/scaffold_intent.rb
     scripts/lib/index_entry.rb scripts/lib/project_config.rb
   ].freeze
 

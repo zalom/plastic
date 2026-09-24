@@ -56,9 +56,11 @@ module RunnerDispatch
   # (NodeInput.test_command_block, n4), and the call cap (n2) - fenced so a
   # session pastes it straight into the Agent tool (327 D42: the runner
   # itself never spawns).
-  def spawn_block(model:, input:, test_command:, call_cap:, effort: AgentModels::DEFAULT_EFFORT, agent: SPAWN_AGENT)
+  def spawn_block(model:, input:, test_command:, call_cap:, effort: AgentModels::DEFAULT_EFFORT, agent: SPAWN_AGENT,
+                  worktree_instruction: nil)
     lines = ["agent: #{agent}", "model: #{model}", "effort: #{effort}", "input: #{input}", test_command,
              NodeInput.call_cap_sentence(call_cap)]
+    lines << worktree_instruction if worktree_instruction
     (["```"] + lines + ["```"]).join("\n")
   end
 
@@ -72,7 +74,6 @@ module RunnerDispatch
                input_builder: NodeInput.method(:build),
                worktree: NodeWorktree,
                ledger: NodeLedger,
-               runner: Worktree::ShellRunner.new,
                harness_adapter: HarnessAdapter)
     intent_dir = context.intent_dir
     savepoint_path = File.join(intent_dir.to_s, "savepoint.md")
@@ -173,7 +174,7 @@ module RunnerDispatch
 
       result = dispatch_one(context, node: node, kind: kind, now: now, config: config, harness: harness_key,
                              caps: caps, edges: edges, nodes_decl: nodes_decl, input_builder: input_builder,
-                             worktree: worktree, ledger: ledger, runner: runner)
+                             worktree: worktree, ledger: ledger)
       if result[:input_build_failed]
         input_failures << result
         next
@@ -215,7 +216,7 @@ module RunnerDispatch
   # --- one node's whole dispatch (node input, lease, `running`) -------------------
 
   def dispatch_one(context, node:, kind:, now:, config:, harness:, caps:, edges:, nodes_decl:, input_builder:,
-                    worktree:, ledger:, runner:)
+                    worktree:, ledger:)
     intent_dir = context.intent_dir
     savepoint_path = File.join(intent_dir.to_s, "savepoint.md")
 
@@ -225,16 +226,14 @@ module RunnerDispatch
     expires = RunnerPolicy.lease_expires(kind, now: now)
     calls_cap = RunnerPolicy.call_cap(kind, config: config)
 
-    # Row 10.16/M13: recorded BEFORE provisioning - a worktree this dispatch
-    # finds already on disk (kept there by a prior failed_verification
-    # attempt, D7) must never be the one a later rollback in this same call
-    # deletes; only a worktree THIS call actually creates may be rolled back.
-    pre_existing_worktree = worktree_pre_existing?(worktree, context, node, kind)
-
     # Row 5.16/5.29: only a `work` node gets a worktree, and this is the
     # node-scoped `worktree_reader:` D23 injects into NodeInput.build - it
-    # names THIS node's own worktree and branch, never the intent's.
-    provisioned = RunnerPolicy.worktree?(kind) ? worktree.provision(context, node: node, kind: kind, runner: runner)
+    # names THIS node's own worktree and branch, never the intent's. Owner
+    # ruling 2026-09-24: `provision` creates nothing itself anymore, so there
+    # is no longer a worktree for a failed input build to roll back -
+    # `rollback_dispatch` below only ever deletes the node input file it
+    # wrote.
+    provisioned = RunnerPolicy.worktree?(kind) ? worktree.provision(context, node: node, kind: kind)
                                                 : unprovisioned
     node_reader = lambda do |intent_dir:|
       { "code" => provisioned[:path], "code_branch" => provisioned[:branch], "provisioned" => !!provisioned[:provisioned],
@@ -255,11 +254,11 @@ module RunnerDispatch
                                         model: model, force: true, worktree_reader: node_reader,
                                         budget_tokens: node_declared_budget(intent_dir, node), call_cap: calls_cap)
     unless build_result[:ok]
-      # M6: a failed input build never leaves an orphan worktree behind, and
-      # its errors travel back up so the step's report can name the node and
-      # the reason instead of a bare "stalled" (row 10.6/10.7).
-      rollback_dispatch(context, node: node, kind: kind, input_path: build_result[:path], runner: runner,
-                         worktree: worktree, created_this_dispatch: !pre_existing_worktree)
+      # M6: a failed input build's errors travel back up so the step's
+      # report can name the node and the reason instead of a bare "stalled"
+      # (row 10.6/10.7). Nothing to roll back on the worktree side (Plastic
+      # never created one).
+      rollback_dispatch(input_path: build_result[:path])
       return { ok: false, input_build_failed: true, node: node, errors: build_result[:errors] }
     end
 
@@ -279,23 +278,23 @@ module RunnerDispatch
       :unavailable
     end
 
-    # Row 5.20: a refused (or unavailable) `running` write rolls back both
-    # side effects this method already produced - the node never ran, so
-    # nothing may act like it did.
+    # Row 5.20: a refused (or unavailable) `running` write rolls back the
+    # node input this method already wrote - the node never ran, so nothing
+    # may act like it did.
     unless result == :written
-      rollback_dispatch(context, node: node, kind: kind, input_path: build_result[:path], runner: runner,
-                         worktree: worktree, created_this_dispatch: !pre_existing_worktree)
+      rollback_dispatch(input_path: build_result[:path])
       return { ok: false }
     end
 
     test_command = NodeInput.test_command_block(intent_dir: intent_dir, files: (nodes_decl[node] || {})[:files])
     spawn = spawn_block(model: model, effort: effort, input: build_result[:path], test_command: test_command,
-                        call_cap: calls_cap, agent: HarnessAdapter.agent_type_for_kind(kind))
+                        call_cap: calls_cap, agent: HarnessAdapter.agent_type_for_kind(kind),
+                        worktree_instruction: provisioned[:instruction])
 
     {
       ok: true,
       entry: { node: node, kind: kind.to_s, role: role_for(kind), model: model, effort: effort,
-                worktree: provisioned[:path],
+                worktree: provisioned[:path], worktree_instruction: provisioned[:instruction],
                 input: build_result[:path], spawn: spawn },
     }
   end
@@ -313,40 +312,20 @@ module RunnerDispatch
   end
   private_class_method :node_declared_budget
 
-  # true iff a `work` node's own worktree already exists BEFORE this call
-  # provisions anything - the pre-check `rollback_dispatch` needs to tell a
-  # worktree this dispatch created from one it merely found (row 10.16).
-  def worktree_pre_existing?(worktree, context, node, kind)
-    return false unless RunnerPolicy.worktree?(kind)
-
-    p = worktree.paths(context, node: node)
-    !!(p && p["path"] && Dir.exist?(p["path"]))
-  end
-  private_class_method :worktree_pre_existing?
-
   def role_for(kind)
     kind.to_s == "verify" ? "advisor" : "executor"
   end
 
   def unprovisioned
-    { ok: true, path: nil, branch: nil, provisioned: false }
+    { ok: true, path: nil, branch: nil, provisioned: false, instruction: nil }
   end
   private_class_method :unprovisioned
 
-  # Row 10.16/M13: `created_this_dispatch:` gates the worktree half of the
-  # rollback - a worktree this call did not create (kept on disk by a prior
-  # attempt's failed_verification, D7) is never touched, only a node input this
-  # call's own `input_builder` may have written is ever deleted.
-  def rollback_dispatch(context, node:, kind:, input_path:, runner:, worktree:, created_this_dispatch:)
+  # Owner ruling 2026-09-24: `provision` no longer creates a worktree itself,
+  # so a failed input build has nothing to roll back on that side - only the
+  # node input this call's own `input_builder` may have written is deleted.
+  def rollback_dispatch(input_path:)
     File.delete(input_path) if input_path && File.exist?(input_path)
-    return unless RunnerPolicy.worktree?(kind)
-    return unless created_this_dispatch
-
-    p = worktree.paths(context, node: node)
-    return if p["path"].nil? || !Dir.exist?(p["path"])
-
-    Worktree.remove_worktree(runner, repo: p["repo"], worktree: p["path"])
-    Worktree.prune(runner, repo: p["repo"])
   end
   private_class_method :rollback_dispatch
 
@@ -512,7 +491,7 @@ module RunnerDispatch
       "dispatch" => dispatched.map do |d|
         { "node" => d[:node], "kind" => d[:kind], "role" => d[:role], "model" => d[:model],
           "effort" => d[:effort],
-          "worktree" => d[:worktree], "input" => d[:input] }
+          "worktree" => d[:worktree], "worktree_instruction" => d[:worktree_instruction], "input" => d[:input] }
       end,
       "spawn" => dispatched.map { |d| d[:spawn] }
     )

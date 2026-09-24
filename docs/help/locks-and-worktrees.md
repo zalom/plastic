@@ -28,8 +28,10 @@ separate authorization-removal mechanism exists. Finished and failed delegate ac
 retained as descriptive history, bounded to the 20 most recent terminal entries. A controller,
 a delegate, and an artifact claim are distinct evidence: controller ownership authorizes the
 delivery, delegate registration authorizes a child session, and a claim selects one current
-writer for one artifact. Disarm clears the lock; the End tail is ordered: verify, merge and
-remove worktrees, then clear the lock. Repair
+writer for one artifact. Disarm clears the delivery lock only (intent 390: Plastic runs no
+version control command, so it never merges or removes a worktree); when a worktree was
+provisioned, disarm names the `git worktree remove` instruction for the closer to run by hand,
+after committing and merging. Repair
 is one idempotent function with two entry points: the `plastic-lock` command (`who`, status,
 fix, release, reclaim, delegate) and the public `plastic auto lock status|fix|release ID`
 commands that wrap it, so repair
@@ -87,9 +89,11 @@ worktree path and the next step stays the preamble read. This reads the same in 
 whether the repo simply has not resolved yet or never will; it is not a failure, only nothing
 to report.
 
-Cleanup is part of the End tail: `end-intent` verifies the code is merged (Plastic never merges
-it itself), then removes the worktree, then disarms. Never leave an orphaned worktree behind,
-and clear a stale worktree reference with `git worktree prune`.
+Cleanup is part of the End tail, and it is the closer's own step: `end-intent` neither checks
+that the code is merged nor removes the worktree (intent 390). It disarms, which clears the
+lock and, when a worktree was provisioned, prints the `git worktree remove` instruction. Run
+that after committing and merging, so no worktree is ever left orphaned, and clear a stale
+worktree reference with `git worktree prune`.
 
 
 #### Intent delivery, station by station

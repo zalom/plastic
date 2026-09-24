@@ -156,8 +156,10 @@ mtime drifts forward as `## Insights` are appended through the lifecycle.
 move-and-record change: the misplaced section, file, or ref, where it came from, the rule it
 broke, and its prior content. `scripts/lib/revisions_writer.rb` (`RevisionsWriter`) appends
 one entry per change for `project-links`, `rebuild-graph`, and the `rebuild-savepoint` tool;
-`restore-intent-v1` writes its own entry. `scripts/maintenance-run` commits the change and its receipt as one
-scoped store commit. A hand edit that moves content records its entry the same way; `plastic
+`restore-intent-v1` writes its own entry. Plastic runs no version control command (intent 390):
+`scripts/maintenance-run` makes the change and its receipt on disk, then prints the `git add`
+and `git commit` instruction for the closer to run by hand. A hand edit that moves content
+records its entry the same way; `plastic
 help maintenance-and-revisions` has the format. The file exists only when maintenance
 happened, so its presence is itself the signal.
 
@@ -189,8 +191,10 @@ The roadmap read path (intent 148) sits on top of that ledger. `scripts/lib/road
 (`RoadmapQueue`, constructor-DI and hermetic: clock and paths injected, no eval, no ENV or global
 config seam; a thin `scripts/roadmap-next` CLI wraps it, both registered in
 `InstallerCore#core_files` and covered by a hermetic test) is the one roadmap reader. `plastic
-next` and `plastic continue` read its queue mode through `scripts/lib/cli/frontier.rb`, and the
-dashboard screen reads its which mode. It does two things: liveness-ranks the tier's `roadmaps/*.md`
+next` and `plastic continue` read its queue mode through `scripts/lib/cli/frontier.rb`; its which
+mode (`--which`, tie candidates for a human choosing) has no caller left now that the dashboard
+is gone (intent 392), and stays exercised only by `test/roadmap_queue_test.rb`. It does two
+things: liveness-ranks the tier's `roadmaps/*.md`
 (a `delivering` or `blocked` entry wins, else the newest ledger or `## Log` timestamp, read
 through `RoadmapSavepoint.ledger_path_for`), and within the winning roadmap selects the frontier
 batch. When the roadmap's `## Graph` section carries edges, the frontier is the first
@@ -202,8 +206,8 @@ but does not gate, and `delivered`/`abandoned` entries are settled. Every fronti
 reconciled against INDEX.md before classification and INDEX wins on any mismatch, so an intent
 INDEX already shows Completed or Abandoned can never be dispatched. The CLI emits JSON with a
 `state` field (`dispatchable`, `in_flight`, `exhausted`, `none`, or `tie`) and a
-`dispatchable_queue` array shaped to match the dashboard's, plus `in_flight`, `blocked`, and
-`tie_candidates`. It runs in two modes: queue mode (the default, for the loop) breaks ties
+`dispatchable_queue` array, plus `in_flight`, `blocked`, and `tie_candidates`. It runs in two
+modes: queue mode (the default, for the loop) breaks ties
 deterministically (newest ledger line, then slug ascending) and flags `tie: true`; which mode
 (`--which`) returns `tie_candidates` instead of breaking the tie. The design is file-based throughout (roadmap `.md`, the 134 ledger, INDEX.md),
 DB-ready but not DB-dependent: `RoadmapQueue` is the single seam a future 147 DB-backed read
@@ -277,15 +281,17 @@ refuses to write on an unrecognized tag would fail harder than the bug it is mea
 is the one-time population tool (197-conformant, dry-run by default): it computes violations by
 calling `Doctor#done_signal_findings_for_dir` directly, the same function `check_done_signals`
 itself calls, so the registry can never disagree with the checker about what counts as a
-violation. It processes every store in one invocation by default (all stores already live in
-the single `~/.plastic` git repo, so a cross-store write is still one repo and one scoped
-commit), unions with any existing hand-edited file content so a manually added id is never
-dropped, and skips (never aborts on) any intent dir holding a fresh delivery lock, reporting the
-skip. It writes no `revisions.md` entries: the tool modifies no intent directory, only one
-store-level table per store, so 197's receipt-before-write rule (which covers tools that
-structurally edit an intent's own files) does not apply here, and writing one would mean editing
-every touched Completed intent directory, which the standing rule that completed intents are
-immutable forbids. The scoped git commit plus the diffable exclusion file itself are the receipt.
+violation. It processes every store in one invocation by default (all stores already live under
+the single `~/.plastic` home, so a cross-store write is still one home and, once the closer runs
+the printed instruction, one scoped commit), unions with any existing hand-edited file content
+so a manually added id is never dropped, and skips (never aborts on) any intent dir holding a
+fresh delivery lock, reporting the skip. It writes no `revisions.md` entries: the tool modifies
+no intent directory, only one store-level table per store, so 197's receipt-before-write rule
+(which covers tools that structurally edit an intent's own files) does not apply here, and
+writing one would mean editing every touched Completed intent directory, which the standing rule
+that completed intents are immutable forbids. Plastic runs no version control command (intent
+390): the diffable exclusion file itself is the receipt, and `maintenance-run` prints the commit
+instruction for the closer to run by hand.
 
 A registered row can go dead: the intent's gap got repaired, the id was mistyped when the row was
 written, or the intent directory is gone. Left alone, the exclusion file only ever grows into an
@@ -351,9 +357,7 @@ intent. `plastic intent show ID` prints that intent's state screen.
 - **`--store [global|<slug>]`**: three-state (pass / warn / fail). Walks store state:
   intent well-formedness, INDEX sections, conventions, and link validity. Without an
   argument it checks all stores; `global` checks only the global store; a project slug
-  checks only that project's store. A `dashboard.rb` board load runs the same check
-  in-process (`store_health`): the global board runs `--store global`, a project board
-  runs `--store <slug>`.
+  checks only that project's store.
 
 - **`--intent ID`**: three-state, one intent only, never a store sweep (intent 222).
   `verify-intent` runs it, and `end-intent` runs it as its self-check at close.
@@ -413,11 +417,13 @@ The error line still names `/plastic-doctor`, a 1.x skill that no longer ships; 
 working command is `plastic doctor`. This is a known gap in `scripts/lib/boot_banner.rb`.
 Sharing one renderer means the visible line and the model-facing line cannot drift.
 
-`hook-capture` follows the same two-channel shape for the dashboard (intent 125). When the
-prompt is `continue` (ignoring case and surrounding spaces), it adds the `dashboard.rb continue` cockpit to
-`additionalContext` and emits a top-level `systemMessage` one-line summary (counts, and the
-next big thing when there is one) from a pure `DashboardBanner` renderer. It degrades silently on any failure (subprocess, JSON,
-renderer), so a broken or slow dashboard call never crashes `UserPromptSubmit`.
+`hook-capture` follows the same two-channel shape for the report roster (intent 392, replacing
+the dashboard). When the prompt is exactly `continue` (ignoring case and surrounding spaces),
+it runs `report-screen state --all` against the working directory's store (the project store,
+or the global store when the directory maps to no project) and adds that plain-text roster to
+`additionalContext`, then emits the same roster painted with `--ansi` as the top-level
+`systemMessage`. It degrades silently on any failure (subprocess, empty output), so a broken
+or slow `report-screen` call never crashes `UserPromptSubmit`.
 
 ## what-exists-today-vs-what-is-missing
 
@@ -513,9 +519,10 @@ Per-intent validation cannot see asymmetry between intents, so the cross-intent
   project store), builds the maps, runs the transform per
   store, emits a per-store before/after audit grouped by kind (dedupes, I3
   resolutions, I1 backlinks, cross-store repoints/collapses, drops), then writes the
-  changed frontmatter back. Pure Ruby (no bash). It runs no git itself;
-  `maintenance-run --tool rebuild-graph --apply` wraps it in one scoped store commit with
-  its `revisions.md` receipt. `~/.plastic` is never pushed.
+  changed frontmatter back. Pure Ruby (no bash). It runs no git itself, and neither does
+  `maintenance-run --tool rebuild-graph --apply` (intent 390): it writes the change and its
+  `revisions.md` receipt, then prints the commit instruction for the closer to run by hand.
+  `~/.plastic` is never pushed.
 - **Doctor's `graph_cross_store_resolution` check**: the i1/i3/i4 checks
   (`graph_invariant_checks`) deliberately treat a `store:id` ref as out-of-scope and
   validate only its shape, so a well-formed ref at a relocated or deleted target was
@@ -564,8 +571,10 @@ hook blocks a hand-authored intent file in 2.0; `validate-intent` and doctor's
 a pure function of already-committed artifacts (spec.md, plan.md, checklist.md, outcome.md,
 test results, the diff). Everything else stays judgment and stays with the agent. Intent 213
 applied that rule with thin CLIs over `scripts/lib/` modules. Three of them remain:
-`scripts/scaffold-intent`, `scripts/verify-intent`, and `scripts/exec-worktree`, which
-finishes the code worktree. `scripts/end-intent` runs the same backfill as
+`scripts/scaffold-intent`, `scripts/verify-intent`, and `scripts/exec-worktree`, which prints
+the commit, merge, and worktree-removal steps for the agent or owner to run by hand (intent
+390: Plastic runs no version control command, so it never inspects, merges, or removes the
+code worktree itself). `scripts/end-intent` runs the same backfill as
 `scaffold-intent` at close. The arm step is `plastic auto take ID`.
 
 `scripts/scaffold-intent` is one CLI with one verb, `backfill` (its `spec`, `checklist`, and
@@ -745,12 +754,12 @@ checkout, so parallel intent deliveries were not isolated. Plastic supplies its
 own isolation instead, deterministic and cwd-independent.
 
 - **Single source of truth**: `scripts/lib/worktree.rb` (module `Worktree`) is
-  the only definition of how an intent's worktree and lock are made. It is
-  dependency-injected (a `ShellRunner` runs `git`, a `home` argument resolves
-  `projects.yml`), hermetic, idempotent, uses no eval, and does no
-  global-constant injection, mirroring `intent_validator.rb` and
-  `store_provisioning.rb`. Every git call uses `git -C <resolved path>`, never
-  cwd: that is the actual fix for the cwd-not-repo-root gap.
+  the only definition of how an intent's worktree path and lock are computed.
+  Plastic runs no version control command (owner ruling 2026-09-24, intent
+  390): `Worktree` only computes the deterministic path and branch a project
+  intent's code worktree would have and never shells to `git`. It is
+  hermetic, idempotent, uses no eval, and does no global-constant injection,
+  mirroring `intent_validator.rb` and `store_provisioning.rb`.
 - **One worktree, id-first name**: `Worktree.paths` is pure and returns the
   code worktree (`<repo>/.claude/worktrees/{id}--{slug}`, branch
   `plastic/{id}--{slug}`). A paired store worktree used to exist; intent 178
@@ -758,18 +767,28 @@ own isolation instead, deterministic and cwd-independent.
   197's branch-from-main plus scoped-commit mechanism.
   `Worktree.repo_for` resolves the abs repo path from `projects.yml` (reusing the
   `YAML.safe_load` pattern used across `scripts/lib`), or nil.
-- **Reports and removes, creates nothing** (intent 390): `Arm.worktree_block`
-  resolves the slug from the intent dir, derives the code worktree's path and
-  branch through `Worktree.paths`, and reports `provisioned` as whether that
-  path already exists on disk -- `code` and `code_branch` name the expected
+- **Reports, never runs git** (intent 390): `Arm.worktree_block` resolves the
+  slug from the intent dir, derives the code worktree's path and branch
+  through `Worktree.paths`, and reports `provisioned` as whether that path
+  already exists on disk -- `code` and `code_branch` name the expected
   workspace whether or not it exists yet; only a store-only project (no repo
-  resolves) leaves them blank. Neither `Arm.arm` nor `Arm.repair` runs git.
-  `Worktree.release(delivery)` still removes an existing worktree, prunes, and
-  clears the block when `provisioned` was true; it is a no-op otherwise, since
-  a path that was never created is nothing to remove.
+  resolves) leaves them blank. Neither `Arm.arm`, `Arm.disarm`, nor
+  `Arm.repair` takes a `runner:` seam or runs git. `release`, `finish`,
+  `merge_branch`, `current_branch`, `remove_worktree`, `prune`, `git_repo?`,
+  and `ensure_gitignored` are gone from `Worktree`; when a worktree was
+  provisioned, `Arm.disarm` names the `git worktree remove` instruction as a
+  `worktree_removal` result field, and `end-intent` prints it for the closer
+  to run by hand, after committing and merging. `Worktree::ShellRunner` is
+  gone too (intent 390 part B): `node_worktree.rb` and the `runner_*`
+  node-graph modules now compute the same path/branch/commit-line instructions
+  for the graph's own node worktrees -- `provision` reports `provisioned` only
+  when the path already exists on disk, `merge` names the `git merge --no-ff
+  --no-edit` instruction into the intent branch, and `release` names the `git
+  worktree remove` instruction on a terminal state -- creating, merging, and
+  removing nothing itself, in every one of these modules alike.
 - **Unified `PLASTIC_HOME` seam** (intent 169): every CLI-script and hook entry
   point resolves its sandbox override from the single env var `PLASTIC_HOME`
-  (`read-config`, `dashboard.rb`, `provision-project-store`,
+  (`read-config`, `hook-capture`, `provision-project-store`,
   `validate-intent`, `doctor.rb`, `install.rb`, `hooks/check-update`); an older,
   differently-named env var that only `read-config` read was hard-cut, not
   aliased. Holding this seam is a level mismatch: the env var names the
@@ -1382,72 +1401,29 @@ index, capped at `max_wait_ms` - so a chunk deep into a long streamed message wa
 for a decision that is certainly on its way, and `write_screen`/`write_noscreen` both remove
 `PENDING` the moment they run, so it is never both there and stale at once for long.
 
-## the dashboard screen (intent 331d)
+## the report roster (`report-screen state --all`, intent 392 replacing the dashboard)
 
-`dashboard.rb continue|project <slug> --screen [--ansi]` prints the dashboard as a screen
-instead of the Markdown board a prose skill once filled by hand, retired in favor of `plastic
-status`: a title (`## ▶ {scope} ·
-dashboard`, scope `global` or `project:<slug>`), six fields (Active, In delivery, Delivered,
-Roadmap, Sessions, Changed), then a Where-we-are table (the active records, most recently
-touched first, capped at 8) and a Where-we-go-next table (the dispatchable queue in rank
-order, capped at 6). `--data`, `--plain`, and `--json` are unaffected; flag precedence in
-`main` is `--data`, `--plain`, `--json`, `--screen`, then the default text renderers.
+The dashboard (`scripts/dashboard.rb`, its `--screen` renderer, `scripts/lib/dashboard_screen.rb`,
+`templates/dashboard-screen.md`, and the `:dashboard` `ScreenPaint` kind) is gone. The one place
+that filled the same job, a glance at every store's active work, is now `report-screen state
+--all <store_root>`: `plastic status` names the stores and their active intent ids (see
+"status and the report roster" above), and `hook-capture` runs `report-screen state --all`
+against the working directory's store on a bare `continue` prompt (see the `hook-capture`
+section above). `docs/help/human-report-contract.md` names the roster's own column shape and
+capped-list behavior; this section does not repeat it.
 
-**Same records, a new renderer.** The classification pipeline (`load_all`, `classify`,
-`rank_key`, `QUADRANTS`, `disposition_of`) is untouched; `screen_fields` (in `dashboard.rb`,
-beside `render_json`) reads the same classified records `--json` already reports for the
-identical scope, so Where-we-go-next's rank order is always `render_json`'s
-`dispatchable_queue` order for that scope. `scripts/lib/dashboard_screen.rb` is a small,
-data-free module: `DashboardScreen.render(fields)` fills `templates/dashboard-screen.md` from
-already-computed values, exactly like `IntentScreen.render` and `ReportScreen.render_state`
-fill their own templates. A missing source (no roadmap, no lock, no savepoint) prints "not
-recorded" or "none", never a guess; Lead reads through `ReportScreen.lead_cell` (intent 331f,
-D6) - the one freshness rule every Lead cell on every screen shares, so a stale lock never
-shows a named lead while In delivery counts it as zero, and the reader is told the lock is
-stale ("stale · N min") rather than merely absent.
-
-**Column vocabulary and the width bound (intent 331f, D5/D7).** No rendered header across the
-family reads "What" any more: the id column is "Graph ID", the title column is "Intent", every
-Steps table reads `Step | Status | Detail`, the plan screen's own reads
-`Step | Action | Detail`, Risks read `N | Risk`, and the `delivered` screen's own three tables
-read `Row | Detail | Proven by`, `Kind | Detail | Source`, and `N | Need | Reason`.
-`ScreenPaint::NOTE_HEADERS` gained `Reason` and kept `Why`, so a screen captured before the
-rename still paints. `ReportScreen.fit_screen(text, limit: 115)` is the one shared pass every
-public render entry point (and `dashboard.rb`'s screen renderer) calls last: a fitting screen
+No rendered header across the report-screen family reads "What" any more: the id column is
+"Graph ID", the title column is "Intent", every Steps table reads `Step | Status | Detail`,
+the plan screen's own reads `Step | Action | Detail`, Risks read `N | Risk`, and the
+`delivered` screen's own three tables read `Row | Detail | Proven by`, `Kind | Detail |
+Source`, and `N | Need | Reason` (intent 331f, D5/D7). `ReportScreen.fit_screen(text, limit:
+115)` is the one shared pass every public render entry point calls last: a fitting screen
 returns byte-identical, an over-limit table shrinks its widest shrinkable column first (floor
 8, a progress-bar column never shrinks, ties break leftmost), and a row that is still over the
 limit after every column hits its floor truncates on a word boundary as a last-resort backstop.
-
-**Sessions and Roadmap resolve per tier.** Sessions are always read from the global store's
-`.tmp/` heartbeats (`DaySummary.active_sessions`, `session: nil` so the calling session's own
-heartbeat counts), never per-project. Roadmap resolves the tier root - `PLASTIC_HOME` itself for
-`global`, `StoreLayout.project_root` for a project - and asks `RoadmapQueue#which` for its
-frontier; a missing `roadmaps/` directory or a `none`/`tie`/`exhausted` state renders "none"
-rather than crashing.
-
-**The `:dashboard` kind.** `scripts/lib/screens/dashboard.rb` registers `:dashboard` with
-`ScreenPaint.register`, no custom `paint:` lambda: every line of the screen classifies under
-the shared field-table/data-table grammar. Its opener is a strict subset of the already-shipped
-`:intent` opener (registered first), so a live paint call resolves through `:intent`'s path
-regardless; the registration exists so `ScreenPaint.kinds` is complete and the opener's own
-grammar (which scope forms it accepts, and that it rejects a plain intent title) is directly
-testable.
-
-**Column vocabulary (intent 331d1, an owner ruling).** Where-we-are is `Graph ID | Intent |
-Stage | Progress | Lead`; Where-we-go-next is `Rank | Graph ID | Intent | Reason`. The id
-stands in its own `Graph ID` cell rather than glued to the front of the title. The `Intent`
-cell carries the intent line up to but not including its first colon, which is where a
-Plastic intent line stops naming itself and starts explaining, then word-boundary truncated
-with an ellipsis. `What` names no column anywhere on a screen, because What is a lifecycle
-stage; `Why` is `Reason` for the same reason. `ScreenPaint::NOTE_HEADERS` lists `Reason`
-beside `Source` and `Why`, so the renamed column keeps its greyed note styling instead of
-losing it to the rename.
-
-**The 115-column bound.** No rendered row exceeds 115 visible columns. The bound is measured
-on the whole pipe-delimited row, never on one cell: `screen_fit_intent` renders every other
-cell first, subtracts their width and the table scaffolding, and gives the Intent cell what
-is left. A cell short enough on its own still drifts the row past the bound once the progress
-bar, the lead and the separators are added, which is exactly what measuring the row prevents.
+No rendered row exceeds 115 visible columns; the bound is measured on the whole
+pipe-delimited row, never on one cell, since a cell short enough on its own can still drift the
+row past the bound once a progress bar, a lead, and the separators are added.
 
 ## roadmap screens: the roadmap verb, `RoadmapQueue#roadmap`, and the Log fallback (intent 331c)
 
@@ -1528,10 +1504,11 @@ file against `graph.md`'s declared nodes, refusing rather than rendering an empt
 an id the graph does not declare. The ledger block carries every transition line for the
 node in file order (torn lines marked, never counted as evidence), predecessor evidence read
 from `graph.md`'s edges (never the node envelope, which 327 D41 removed `needs` from) and
-counted only from an attributed well-formed `done` line, the lease from `--holder`/`--expires`/
-`--model` or the last `running` line or `lease: none` plus a stop directive (spec D9, C7), and
-landed commits after a reclaim through an injected git runner that is never invoked without a
-`reclaimed` line (spec D14, C11). The record block carries only `## Intent` (the floor, never
+counted only from an attributed well-formed `done` line, and the lease from `--holder`/`--expires`/
+`--model` or the last `running` line or `lease: none` plus a stop directive (spec D9, C7). The
+landed-commits block that once ran an injected git runner after a reclaim (spec D14, C11) is
+gone: Plastic runs no version control command (intent 390). The record block carries only
+`## Intent` (the floor, never
 cut), `### Decisions` (falling back to a top-level `## Decisions` when the nested one is
 absent) and the last three `## Insights` entries, with a kind-aware exclusion of any
 `### Findings` subsection for a verify node (spec D12, C23) anchored to the `## Insights` body
@@ -1657,40 +1634,35 @@ refusal, rollback refusal, and link previews separately for Claude and Codex.
 `scripts/lib/untouched_scaffold.rb` decides whether an intent is still its
 new-intent scaffold. The check is narrow on purpose. All four lifecycle files
 must exist as untouched placeholders. There must be no ticked checklist item, no
-action, node or graph file, and no savepoint line past What. The code worktree
-must have no uncommitted changes and no commits past its base. When the
-worktree cannot be read, the intent counts as worked. `end-intent` exits 8 on a
-delivered close of such an intent, before any write.
+action, node or graph file, and no savepoint line past What. It also takes an
+injected `worktree_changed:` predicate (`end-intent`'s own `worktree_changed?`,
+defaulting to `false` otherwise); a code worktree only counts as changed when
+`worktree_changed?` reads true. `end-intent` exits 8 on a delivered close of
+such an intent, before any write.
 
-`unmerged_refusal` in `scripts/end-intent` runs next, also before any write, for
-a delivered close. `Arm.code_paths` names the code worktree and branch the
-intent would have, whether or not the worktree exists. The check fails closed:
-
-- When the code directory is the top of a real Git worktree, the commit at its
-  HEAD must be an ancestor of the repo checkout's HEAD. This covers a renamed
-  branch and a detached HEAD. A HEAD that `git rev-parse` can't read refuses.
-- When the code branch exists, it must be an ancestor too, so a removed
-  worktree doesn't hide unmerged work. A failed branch lookup refuses.
-- When the repo checkout is detached, or is on the code branch itself, no
-  other branch holds the code, so the close refuses. `target_refusal` checks
-  this before each ancestry check.
-- When `git merge-base --is-ancestor` itself fails, the close refuses the same
-  as when the code isn't merged.
-- When the repo has a `.git` entry but `git rev-parse --git-dir` fails there,
-  the close refuses.
-
-A refusal exits 9 and names the ordinary merge to run. `end-intent` never
-merges. A store-only project and a repo path with no `.git` entry skip the
-check. So does a code directory that isn't a real worktree and has no branch.
-The dirty-worktree guard refuses that last case (exit 5) because it can't
-inspect it.
+Plastic runs no version control command (intent 390), so `end-intent` no longer
+checks whether the code was actually merged before a delivered close.
+`worktree_changed?` (called from `untouched_scaffold.rb` above) is the one
+remaining worktree check, and it fails open: it names the code worktree's
+expected path through `Arm.worktree_block` and answers true (changed) whenever
+that path cannot be resolved or does not exist, and false only when the path
+resolves and exists on disk -- it never inspects the worktree's git status, so
+"exists" is the only signal left once git is out of the picture. `end-intent`
+authors the record and prints the merge instruction (from `NodeWorktree.merge`
+where a node worktree applies) for the closer to run themselves, before or
+after the close; the close no longer blocks on it. The retired exit code 9
+names what used to live here: checking the code branch was merged required
+real git commands (`git merge-base --is-ancestor`, `git rev-parse`), which
+Plastic no longer runs.
 
 `end-intent --dry-run` copies the intent to a scratch directory. It runs the
 same outcome generation and backfill on that copy, then applies the
-hollow-report gate (exit 7). The dirty-worktree guard is shared by the dry run
-and the disarm step (exit 5). The dry run also refuses exits 8 and 9 exactly as
-the real close does. `plastic intent end` names exits 7, 8, and 9 in its failure
-message.
+hollow-report gate (exit 7). Exits 5 and 9 are both retired (intent 390): each
+named a real git check (dirty-worktree status, merge ancestry) Plastic no
+longer runs, and `--discard-worktree-changes` is accepted but changes nothing
+now that there is nothing left to discard a check against. The dry run still
+refuses exit 8 exactly as the real close does. `plastic intent end` names
+exits 7 and 8 in its failure message.
 
 ### Bounded display replay
 

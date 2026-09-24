@@ -236,6 +236,55 @@ class CaptureHookTest < Minitest::Test
     assert parsed.key?("systemMessage")
   end
 
+  def seed_tier(root, intent_dirname)
+    FileUtils.mkdir_p(File.join(root, "store", intent_dirname))
+    File.write(File.join(root, "INDEX.md"),
+               "# Index\n\n## Active\n\n- [#{intent_dirname}](store/#{intent_dirname}/#{intent_dirname}.md)\n\n## Future\n")
+    File.write(File.join(root, "store", intent_dirname, "#{intent_dirname}.md"),
+               "---\nid: \"#{intent_dirname.split("--").first}\"\nintent: \"Seeded\"\n---\n\n## Intent\nSeeded\n")
+    File.write(File.join(root, "store", intent_dirname, "savepoint.md"), "2026-09-24T10:00:00Z  How  plan.md\n")
+  end
+
+  def test_continue_context_is_the_report_roster_not_the_dashboard
+    seed_tier(@plastic_home, "41--global-thing")
+    out, status = run_hook("continue", session: "sess-roster")
+    assert_equal 0, status.exitstatus, out
+    context = JSON.parse(out).dig("hookSpecificOutput", "additionalContext")
+    assert_includes context, "In delivery · 1 intent"
+    assert_includes context, "| 41 |"
+    refute_includes context, "dashboard"
+  end
+
+  def test_continue_system_message_is_the_painted_roster
+    seed_tier(@plastic_home, "41--global-thing")
+    out, status = run_hook("continue", session: "sess-roster-msg")
+    assert_equal 0, status.exitstatus, out
+    message = JSON.parse(out)["systemMessage"].to_s
+    assert_includes message, "In delivery"
+    assert_includes message, "41"
+    refute_includes message, "show the dashboard"
+  end
+
+  def test_continue_inside_a_project_shows_that_projects_roster
+    seed_tier(@plastic_home, "41--global-thing")
+    project_dir = File.join(@home, "code", "alpha")
+    FileUtils.mkdir_p(project_dir)
+    File.write(File.join(@plastic_home, "projects.yml"), YAML.dump("projects" => { "alpha" => { "path" => project_dir } }))
+    seed_tier(File.join(@plastic_home, "projects", "alpha"), "7--alpha-thing")
+    out, status = run_hook("continue", session: "sess-roster-proj", cwd: project_dir)
+    assert_equal 0, status.exitstatus, out
+    context = JSON.parse(out).dig("hookSpecificOutput", "additionalContext")
+    assert_includes context, "| 7 |"
+    refute_includes context, "| 41 |"
+  end
+
+  def test_continue_with_no_index_adds_no_cockpit_and_exits_zero
+    File.delete(File.join(@plastic_home, "INDEX.md"))
+    out, status = run_hook("continue", session: "sess-no-index")
+    assert_equal 0, status.exitstatus, out
+    refute_includes out.to_s, "Run `plastic continue` to resume"
+  end
+
   # --- D34 (325): the cockpit fires only on the trimmed prompt "continue" ----
 
   def test_padded_and_capitalised_continue_still_yields_the_cockpit
@@ -486,13 +535,13 @@ end
                      "secondary ceiling that survives if a future step legitimately starts emitting a little"
   end
 
-  # --- dashboard.rb missing or failing -----------------------------------------------
+  # --- report-screen missing or failing -----------------------------------------------
 
   # An isolated copy of hook-capture plus its lib dependencies, deliberately
-  # WITHOUT scripts/dashboard.rb beside it, so job (d)'s own
-  # `if File.exist?(dashboard)` guard is exercised for real rather than assumed.
-  def isolated_capture_without_dashboard
-    root = Dir.mktmpdir("capture-no-dashboard")
+  # WITHOUT scripts/report-screen beside it, so job (d)'s own
+  # failed roster run is exercised for real rather than assumed.
+  def isolated_capture_without_report_screen
+    root = Dir.mktmpdir("capture-no-report-screen")
     scripts = File.join(root, "scripts")
     FileUtils.mkdir_p(File.join(scripts, "lib"))
     real_scripts = File.expand_path("../scripts", __dir__)
@@ -500,8 +549,7 @@ end
     FileUtils.cp(File.join(real_scripts, "lib", "session_ledger.rb"), File.join(scripts, "lib", "session_ledger.rb"))
     FileUtils.cp(File.join(real_scripts, "lib", "store_provisioning.rb"),
                  File.join(scripts, "lib", "store_provisioning.rb"))
-    FileUtils.cp(File.join(real_scripts, "lib", "dashboard_banner.rb"),
-                 File.join(scripts, "lib", "dashboard_banner.rb"))
+    FileUtils.cp(File.join(real_scripts, "lib", "data_boundary.rb"), File.join(scripts, "lib", "data_boundary.rb"))
     FileUtils.cp(File.join(real_scripts, "lib", "active_delivery.rb"), File.join(scripts, "lib", "active_delivery.rb"))
     FileUtils.cp(File.join(real_scripts, "lib", "lock.rb"), File.join(scripts, "lib", "lock.rb"))
     FileUtils.cp(File.join(real_scripts, "lib", "store_layout.rb"), File.join(scripts, "lib", "store_layout.rb"))
@@ -511,15 +559,15 @@ end
 
   # 345 S6: under the old /\bcontinue\b/i trigger, "continue and take it from
   # here" fired both the cockpit and the auto steer in one prompt, so this
-  # single test exercised job (d)'s missing-dashboard guard and job (e)'s
+  # single test exercised job (d)'s missing-report-screen guard and job (e)'s
   # steer together. Under the exact-match rule the two triggers are mutually
   # exclusive (a prompt equal to "continue" carries no auto trigger, and an
   # auto-trigger prompt is not equal to "continue"), so the old prompt no
   # longer fires the cockpit at all and the test went vacuous rather than
-  # red. Split into two, each against the same dashboard-less fixture.
+  # red. Split into two, each against the same report-screen-less fixture.
 
-  def test_dashboard_missing_on_a_bare_continue_exits_zero_and_emits_nothing
-    root = isolated_capture_without_dashboard
+  def test_report_screen_missing_on_a_bare_continue_exits_zero_and_emits_nothing
+    root = isolated_capture_without_report_screen
     script = File.join(root, "scripts", "hook-capture")
     payload = { "session_id" => "sess-nodash-continue", "user_prompt" => "continue", "cwd" => @home }
     env = { "PLASTIC_HOME" => @plastic_home, "HOME" => @home, "CLAUDE_CODE_SESSION_ID" => nil }
@@ -527,13 +575,13 @@ end
 
     assert_equal 0, status.exitstatus, out
     assert_empty out.strip,
-                 "the cockpit is the only job a bare continue could fire, and the missing dashboard is why it did not"
+                 "the cockpit is the only job a bare continue could fire, and the missing report screen is why it did not"
   ensure
     FileUtils.rm_rf(root) if root
   end
 
-  def test_dashboard_missing_does_not_suppress_the_auto_steer
-    root = isolated_capture_without_dashboard
+  def test_report_screen_missing_does_not_suppress_the_auto_steer
+    root = isolated_capture_without_report_screen
     script = File.join(root, "scripts", "hook-capture")
     payload = { "session_id" => "sess-nodash-auto", "user_prompt" => "take it from here", "cwd" => @home }
     env = { "PLASTIC_HOME" => @plastic_home, "HOME" => @home, "CLAUDE_CODE_SESSION_ID" => nil }
@@ -542,7 +590,7 @@ end
     assert_equal 0, status.exitstatus, out
     ctx = JSON.parse(out).dig("hookSpecificOutput", "additionalContext").to_s
     assert_includes ctx, "Run `plastic auto take ID`",
-                    "a missing dashboard must not suppress another job's context"
+                    "a missing report screen must not suppress another job's context"
   ensure
     FileUtils.rm_rf(root) if root
   end

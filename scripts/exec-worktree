@@ -2,9 +2,10 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 
-# exec-worktree (intent 213, group 2) - finish an intent's code worktree: the dirty-worktree
-# guard, then Worktree.finish (delivered merges + removes, abandoned removes only). The order
-# precondition it once ran first was removed in 2.0 with the gates (intent 302).
+# exec-worktree (intent 213, group 2) - print the steps left to finish an intent's code
+# worktree. Plastic runs no version control command (owner ruling 2026-09-24, intent 390):
+# this script never inspects, merges, or removes the worktree itself; it prints the
+# commit/merge/remove instructions for the agent or owner to run by hand.
 #
 # Usage:
 #   exec-worktree --store <path> --id <intent_id> --home <plastic_home> \
@@ -12,9 +13,7 @@
 #
 # --home accepts either spelling: the OS-home level (the PARENT of .plastic) or the
 # .plastic directory itself. When the given path's basename is literally .plastic, its
-# dirname is used instead. Worktree.finish's home: keyword always wants the OS-home
-# level (Worktree.home_from_store, scripts/lib/worktree.rb:90); this script normalizes
-# both spellings to that so either caller convention works.
+# dirname is used instead.
 #
 # Steps performed:
 #   0. Resolve inputs: the intent dir, normalize --home, resolve the calling session
@@ -22,27 +21,18 @@
 #      recorded owner_session when non-blank, else nil; the lock-owner fallback IS
 #      used here, matching end-intent's teardown resolution order).
 #      Derive the worktree block from projects.yml and the intent id (Arm.worktree_block).
-#      No code worktree on
-#      disk means nothing was provisioned (exit 0).
-#   1. The dirty-worktree guard (delivered only): git status --porcelain on the code
-#      worktree. Not clean, or the check itself fails, fails CLOSED (exit 3), mirroring
-#      end-intent's dirty-worktree handling. abandoned skips this guard entirely: the
-#      branch survives and can be reclaimed, so a dirty worktree is not a reason to
-#      refuse.
-#   2. Finish: Worktree.finish(delivery, home:, runner:, merge: disposition ==
-#      "delivered"). Worktree.finish is fail-open and never raises, so failure is
-#      detected by checking, for a delivered disposition only, whether the worktree
-#      directory still exists on disk afterward (release removes it on success).
+#      No code worktree on disk means nothing was provisioned (exit 0).
+#   1. Print the instructions: commit any remaining changes, merge the branch into the
+#      base branch (delivered only; ScaffoldIntent.detect_base_branch names the base, from
+#      projects.yml/project.yml, not from git), and remove the worktree.
 #
 # No test suite is run by this script, in any form. verify-intent owns test execution;
 # one concern per script (spec D8).
 #
 # Exit codes:
-#   0  finished (merged or removed per disposition), or nothing to finish (no delivery
-#      resolved, or no code worktree recorded on it)
+#   0  the instructions were printed, or nothing to finish (no delivery resolved, or no
+#      code worktree recorded on it)
 #   1  usage or path-resolution failure
-#   2  retired in 2.0 (intent 302): was the order precondition; never emitted, never reused
-#   3  the worktree is not clean, or the merge/removal did not complete (delivered only)
 #   4  lock or session resolution failure
 
 require_relative "lib/exec_worktree"

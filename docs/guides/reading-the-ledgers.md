@@ -48,16 +48,17 @@ a stage, and a milestone, separated by two spaces.
 - Two more kinds record delivery mechanics rather than a stage: `Review` (one line per
   plan-review or post-execution-review verdict) and `Commit` (one line per commit landing
   during Exec), written through `plastic intent note ID "TEXT" --kind Review|Commit`, which
-  wraps the internal `scripts/savepoint-note` (intent 317). They keep the same line shape as every other kind and feed the delay report
-  (`report-screen delay`); readers that pick the current STAGE (the dashboard, the spawn
-  preamble, `report-screen state`) skip over them and use the last lifecycle line instead.
+  wraps the internal `scripts/savepoint-note` (intent 317). They keep the same line shape as
+  every other kind and feed the delay report (`report-screen delay`); readers that pick the
+  current STAGE (the spawn preamble, `report-screen state`) skip over them and use the last
+  lifecycle line instead.
   `report-screen archive <store_root>` (intent 339) is the read-only counterpart for a whole
   store: it lists the terminal intents (`## Completed`, `## Abandoned`) with the disposition
   each one's `outcome.md` frontmatter carries, and moves nothing on disk.
 - The last LIFECYCLE line (What/Why/How/Exec/Done) is the intent's current stage. That is
-  what the dashboard and the spawn preamble read. The last line of ANY kind is still what the
-  intent screen's `Savepoint` field shows, since that field answers "when did this ledger
-  last move," not "what stage is this."
+  what `report-screen state` and the spawn preamble read. The last line of ANY kind is still
+  what the intent screen's `Savepoint` field shows, since that field answers "when did this
+  ledger last move," not "what stage is this."
 - The file is rebuildable from the files on disk. If it looks wrong, run `plastic doctor`
   rather than editing the file by hand. On a closed intent, it reports a missing savepoint or a
   missing `Done` line as a repairable warning.

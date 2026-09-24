@@ -3,15 +3,17 @@
 require "minitest/autorun"
 require "tmpdir"
 require "fileutils"
-require "open3"
 require "json"
 require_relative "varar/support/public_command"
 
 # Intent 385: a Future intent closes through the same lifecycle path as an
 # Active one, and `plastic intent end --dry-run` resolves the INDEX entry the
 # way the real close does, before anything is written. Driven through the
-# repository's own bin/plastic against a disposable PLASTIC_HOME whose global
-# store is a real Git repository.
+# repository's own bin/plastic against a disposable PLASTIC_HOME. Owner
+# ruling 2026-09-24 (intent 390): Plastic runs no version control command,
+# so the global store here is a PLAIN directory, never a real git
+# repository - the close's own "commit" is a printed instruction, checked
+# against stdout and the files it names, never a real git log.
 class EndIntentFutureCloseTest < Minitest::Test
   ABANDON = ["intent", "end", "1", "--abandoned", "--summary", "superseded by a wider intent",
     "--note", "successor: intent 2"].freeze
@@ -22,7 +24,6 @@ class EndIntentFutureCloseTest < Minitest::Test
     @global = @command.global
     @index = File.join(@global, "INDEX.md")
     File.write(@index, "# Index\n\n## Active\n\n## Future\n\n## Completed\n\n## Abandoned\n")
-    git("init", "-q", "-b", "main")
     plastic("intent", "new", "later work", "--slug", "later")
   end
 
@@ -34,22 +35,13 @@ class EndIntentFutureCloseTest < Minitest::Test
     @command.run(*args)
   end
 
-  def git(*args)
-    out, _err, _status = Open3.capture3("git", "-C", @global, "-c", "user.name=fixture",
-      "-c", "user.email=fixture@localhost", *args)
-    out
-  end
-
-  # Moves the intent's INDEX line into ## Future (or drops it), then commits the
-  # store so the close's own commit is the only new one.
+  # Moves the intent's INDEX line into ## Future (or drops it).
   def file_under(section)
     text = File.read(@index)
     line = text[/^- \[1 .*\n/]
     text = text.sub(line, "")
     text = text.sub("## #{section}\n", "## #{section}\n#{line}") if section
     File.write(@index, text)
-    git("add", "-A")
-    git("commit", "-q", "-m", "seed")
   end
 
   def section_of(id)
@@ -102,27 +94,29 @@ class EndIntentFutureCloseTest < Minitest::Test
     assert_includes File.read(File.join(intent_dir, "outcome.md")), "disposition: abandoned"
   end
 
-  def test_future_abandon_commits_the_store
+  def test_future_abandon_prints_the_store_commit_instruction
     file_under("Future")
+    store_dir = File.join(@global, "store")
 
-    status, _out, err = plastic(*ABANDON)
+    status, out, err = plastic(*ABANDON)
 
     assert_equal 0, status, err
-    assert_equal "chore: complete intent 1 (abandoned)", git("log", "-1", "--format=%s").strip
-    assert_equal "", git("status", "--porcelain")
+    assert_match(
+      /git -C #{Regexp.escape(store_dir)} add -- .*git -C #{Regexp.escape(store_dir)} commit -m "chore: complete intent 1 \(abandoned\)"/m,
+      out
+    )
+    [intent_dir, @index].each { |path| assert_includes out, path }
   end
 
   def test_a_second_close_of_a_closed_future_intent_changes_nothing
     file_under("Future")
     plastic(*ABANDON)
     before = snapshot
-    head = git("rev-parse", "HEAD")
 
     status, _out, err = plastic(*ABANDON)
 
     assert_equal 0, status, err
     assert_equal before, snapshot
-    assert_equal head, git("rev-parse", "HEAD")
   end
 
   def test_an_absent_index_entry_refuses_the_preview_without_writing
@@ -150,7 +144,6 @@ class EndIntentFutureCloseTest < Minitest::Test
   def test_a_malformed_index_entry_refuses_preview_and_close_without_writing
     file_under("Future")
     File.write(@index, File.read(@index).sub(%r{\]\(store/1--later/1--later\.md\)}, "]"))
-    git("commit", "-q", "-am", "break the entry")
     before = snapshot
 
     preview_status, = plastic(*ABANDON, "--dry-run")

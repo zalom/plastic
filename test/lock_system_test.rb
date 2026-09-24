@@ -9,27 +9,10 @@ require_relative "../scripts/lib/lock"
 
 # The composed lock-mechanism surface, end to end (intent 108, the original
 # What). Every test is hermetic: injected PLASTIC_TMP (ambient save/restore),
-# mktmpdir stores, injected clocks, and FakeRunner for git. Arm.arm and
-# Arm.repair create no worktree themselves (intent 390); the FakeRunner here
-# proves the disarm/release path still removes one an agent already made.
+# mktmpdir stores, injected clocks. Plastic runs no version control command
+# (intent 390): Arm.arm, Arm.repair, and Arm.disarm never create, remove, or
+# merge a worktree, only report its expected or provisioned path.
 class LockSystemTest < Minitest::Test
-  # A fake ShellRunner (worktree_test.rb pattern): records calls, scripted
-  # results, every git call "succeeds" by default.
-  class FakeRunner
-    attr_reader :calls
-
-    def initialize(&block)
-      @calls = []
-      @responder = block
-    end
-
-    def run(*args)
-      @calls << args.map(&:to_s)
-      r = @responder ? @responder.call(args.map(&:to_s)) : nil
-      r || Worktree::ShellRunner::Result.new(0, "true\n", "")
-    end
-  end
-
   def setup
     @tmp = Dir.mktmpdir("locksys-tmp")
     @home = Dir.mktmpdir("locksys-home")
@@ -47,7 +30,7 @@ class LockSystemTest < Minitest::Test
     @dir97 = File.join(@store, "97--other")
 
     # projects.yml so a test that exercises the worktree surface directly
-    # (Worktree.release, .finish) resolves the demo repo inside this test home.
+    # resolves the demo repo inside this test home.
     @repo = File.join(@home, "apps", "demo")
     FileUtils.mkdir_p(@repo)
     File.write(File.join(@home, ".plastic", "projects.yml"),
@@ -158,50 +141,6 @@ class LockSystemTest < Minitest::Test
                                         current_session: "a", home: @home)
   end
 
-  # --- 6. worktree finish / merge-remove (created by an agent, not Plastic) ----
-
-  # `Arm.worktree_block`'s shape: `code`/`code_branch` name the expected
-  # workspace, `provisioned` reflects whether it exists on disk. These tests
-  # simulate an agent having already created it, and check that `finish`/
-  # `release` still tear it down through the injected runner (intent 390:
-  # Plastic runs no version control command to create one, but still removes
-  # and merges one that exists).
-  def worktree_bridge(provisioned: true)
-    code_wt = File.join(@repo, ".claude", "worktrees", "96--demo")
-    {
-      "intent" => { "id" => "96", "dir" => "96--demo", "store" => @store, "name" => "demo" },
-      "worktree" => {
-        "code" => code_wt,
-        "code_branch" => "plastic/96--demo",
-        "provisioned" => provisioned
-      }
-    }
-  end
-
-  def test_finish_merge_remove_tears_down_a_provisioned_worktree
-    bridge = worktree_bridge
-    bridge["session"] = "a"
-
-    # Merge-remove: finish(merge: true) merges the code branch, then removes
-    # the worktree and clears the block.
-    finish_runner = FakeRunner.new
-    result = Worktree.finish(bridge, home: @home, runner: finish_runner, merge: true)
-    merges = finish_runner.calls.select { |c| c.include?("merge") }
-    removes = finish_runner.calls.select { |c| c.include?("remove") }
-    refute_empty merges, "finish(merge: true) must merge the code branch"
-    assert_equal 1, removes.length, "the code worktree is removed"
-    assert_nil result["worktree"]
-  end
-
-  def test_release_removes_nothing_when_never_provisioned
-    bridge = worktree_bridge(provisioned: false)
-    runner = FakeRunner.new
-    result = Worktree.release(bridge, home: @home, runner: runner)
-    removes = runner.calls.select { |c| c.include?("remove") }
-    assert_empty removes, "a workspace never created is nothing to remove"
-    assert_nil result["worktree"]
-  end
-
   # --- 9-11. recovery ---------------------------------------------------------------
 
   def test_corrupted_lock_recovery
@@ -221,8 +160,8 @@ class LockSystemTest < Minitest::Test
   # D9's guarantee, and still worth proving here, is that lifecycle writes
   # land in the MAIN intent dir regardless.
   def test_d9_lifecycle_writes_use_the_main_store_dir
-    bridge = worktree_bridge
-    refute bridge["worktree"].key?("store"), "the worktree block must not carry a store key at all"
+    block = Arm.worktree_block(intent_dir: @dir96, home: @home)
+    refute block.key?("store"), "the worktree block must not carry a store key at all"
 
     spec = File.join(@dir96, "spec.md")
     File.write(spec, "real spec content\n")

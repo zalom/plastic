@@ -111,29 +111,12 @@ class ReportScreenCliTest < Minitest::Test
     refute_match(/\e\[/, out)
   end
 
-  # --- fix (2026-09-01): the CLI's git tag reader ------------------------------
-  # The installed copy lives in ~/.plastic/scripts, whose parent has a .git with
-  # no tags, so the old reader (git describe next to the script) always answered
-  # "not recorded"; in-repo it answered with the tag nearest HEAD, the wrong
-  # version for every older intent. The reader must resolve the project's repo
-  # and pick the lowest tag that CONTAINS the intent's merge commit.
-
-  def make_tagged_repo
-    repo = File.join(@home, "repo")
-    FileUtils.mkdir_p(repo)
-    env = { "GIT_AUTHOR_NAME" => "t", "GIT_AUTHOR_EMAIL" => "t@x", "GIT_COMMITTER_NAME" => "t", "GIT_COMMITTER_EMAIL" => "t@x" }
-    git = ->(*a) { out, err, st = Open3.capture3(env, "git", "-C", repo, *a); raise "git #{a.join(' ')}: #{err}" unless st.success?; out.strip }
-    git.call("init", "-q", "-b", "alpha")
-    git.call("config", "commit.gpgsign", "false")
-    File.write(File.join(repo, "a.txt"), "a\n")
-    git.call("add", "."); git.call("commit", "-q", "-m", "first")
-    first_sha = git.call("rev-parse", "--short", "HEAD")
-    git.call("tag", "v1.0.0-alpha.1")
-    File.write(File.join(repo, "b.txt"), "b\n")
-    git.call("add", "."); git.call("commit", "-q", "-m", "second")
-    git.call("tag", "v1.0.0-alpha.2")
-    [repo, first_sha]
-  end
+  # --- owner ruling 2026-09-24 (intent 390): the CLI's git tag reader --------
+  # Plastic runs no version control command, so this reader no longer shells
+  # out to find which tag contains a merge commit. The recorded version in
+  # outcome.md (a pure text read) is the only source left; with no record,
+  # the header falls back to naming the merge sha itself (D11), never a
+  # git-derived guess.
 
   def delivered_intent(root, outcome_body)
     dir = make_intent(root, id: "12")
@@ -147,47 +130,24 @@ class ReportScreenCliTest < Minitest::Test
     out.lines[1].to_s.split(" · ").last.to_s.strip
   end
 
-  def test_delivered_cli_picks_the_tag_containing_the_merge_not_the_tag_nearest_head
-    repo, first_sha = make_tagged_repo
-    dir = delivered_intent(File.join(@home, "store_root"), "- Merged into alpha at #{first_sha}.")
-    out, err, status = Open3.capture3("ruby", CLI, "delivered", dir, "--repo", repo)
-    assert_equal 0, status.exitstatus, err
-    assert_equal "v1.0.0-alpha.1", version_segment(out), out.lines[1]
-    ship = out.lines.find { |l| l.start_with?("| ship") }
-    assert_includes ship.to_s, "v1.0.0-alpha.1"
-  end
-
-  def test_delivered_cli_record_version_beats_git
-    repo, first_sha = make_tagged_repo
-    dir = delivered_intent(File.join(@home, "store_root"), "- Shipped as `v9.9.9`: merged into alpha as `#{first_sha}`.")
-    out, err, status = Open3.capture3("ruby", CLI, "delivered", dir, "--repo", repo)
+  def test_delivered_cli_uses_the_recorded_version
+    dir = delivered_intent(File.join(@home, "store_root"), "- Shipped as `v9.9.9`: merged into alpha as `deadbee`.")
+    out, err, status = Open3.capture3("ruby", CLI, "delivered", dir)
     assert_equal 0, status.exitstatus, err
     assert_equal "v9.9.9", version_segment(out), out.lines[1]
   end
 
-  def test_delivered_cli_never_guesses_from_head_without_a_merge_sha
-    repo, _first_sha = make_tagged_repo
+  def test_delivered_cli_never_guesses_a_version_with_no_record
     dir = delivered_intent(File.join(@home, "store_root"), "- nothing shipped yet")
-    out, err, status = Open3.capture3("ruby", CLI, "delivered", dir, "--repo", repo)
+    out, err, status = Open3.capture3("ruby", CLI, "delivered", dir)
     assert_equal 0, status.exitstatus, err
     assert_equal "not recorded", version_segment(out), out.lines[1]
   end
 
-  def test_delivered_cli_resolves_the_repo_from_projects_yml_next_to_the_store
-    repo, first_sha = make_tagged_repo
-    home = File.join(@home, "plastic_home")
-    root = File.join(home, "projects", "demo")
-    dir = delivered_intent(root, "- Merged into alpha at #{first_sha}.")
-    File.write(File.join(home, "projects.yml"), "---\nprojects:\n  demo:\n    path: \"#{repo}\"\n")
-    out, err, status = Open3.capture3("ruby", CLI, "delivered", dir)
-    assert_equal 0, status.exitstatus, err
-    assert_equal "v1.0.0-alpha.1", version_segment(out), out.lines[1]
-  end
-
   # Intent 330 (D11): the header no longer collapses a known merge sha into
-  # "not recorded" just because no tag was found for it - the last segment
-  # names WHICH kind of identity it is, "merge <sha>" here.
-  def test_delivered_cli_falls_back_to_the_merge_sha_when_no_repo_can_be_found
+  # "not recorded" just because no version was on record for it - the last
+  # segment names WHICH kind of identity it is, "merge <sha>" here.
+  def test_delivered_cli_falls_back_to_the_merge_sha_when_no_version_is_recorded
     dir = delivered_intent(File.join(@home, "store_root"), "- Merged into alpha at 0123abc.")
     out, err, status = Open3.capture3("ruby", CLI, "delivered", dir)
     assert_equal 0, status.exitstatus, err

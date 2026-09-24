@@ -4,11 +4,14 @@
 
 # maintenance-run - the maintenance dispatch wrapper (intent 197). DETECTS (never acquires) a
 # target intent's delivery lock (Lock.fresh?) and defers if fresh; otherwise runs the
-# requested tool inside MaintenanceGit.run_scoped so the change and its revisions.md receipt
-# land as ONE scoped, merged commit on the store's own main, never via `git add -A`.
+# requested tool directly against the store checkout and prints the scoped commit
+# instruction for the paths it touched (never `git add -A`). Plastic runs no version
+# control command (intent 390): the git-isolated branch/commit/merge cycle MaintenanceGit
+# used to run is gone; the closer runs the printed `git add`/`git commit` by hand.
 #
 # Dry-run by DEFAULT (mirrors restore-intent-v1's higher-blast-radius default, since this
-# tool commits and merges on the shared store repo); --apply is required to write anything.
+# tool's changes land straight on the shared store checkout); --apply is required to write
+# anything.
 #
 # Usage:
 #   maintenance-run --tool project-links --intent <id> [--store <key>] [--plastic-home PATH] [--apply]
@@ -28,15 +31,15 @@
 # never silently pick the first match.
 #
 # Exit codes: 0 applied or clean no-op; 1 usage error; 2 deferred (a target holds a fresh
-# delivery lock); 3 the underlying tool reported failure; 4 precondition failed (the store
-# working tree was not clean, or is not a git repo at all).
+# delivery lock); 3 the underlying tool reported failure.
 
 require "open3"
 require "time"
+require "pathname"
+require "shellwords"
 
 require_relative "lib/store_discovery"
 require_relative "lib/lock"
-require_relative "lib/maintenance_git"
 require_relative "lib/savepoint"
 require_relative "lib/revisions_writer"
 require_relative "doctor" # safe: doctor.rb's CLI is behind $PROGRAM_NAME == __FILE__
@@ -106,17 +109,29 @@ def check_not_fresh!(dir, id)
              "once the delivery finishes or the lock goes stale.", 2)
 end
 
-def stamp
-  Time.now.utc.strftime("%Y%m%d%H%M%S")
+# `path`, relative to `root` (both absolute); falls back to the raw path when either side
+# cannot be resolved (a path already removed by the time this prints, say).
+def relative_to(root, path)
+  Pathname.new(File.realpath(path)).relative_path_from(Pathname.new(File.realpath(root))).to_s
+rescue StandardError
+  path
 end
 
-def report_result(result)
-  if result[:committed]
-    puts "maintenance-run: applied and merged (#{result[:changed].size} path(s)): " \
-         "#{result[:changed].join(", ")}"
-  else
+# Plastic runs no version control command (intent 390): report_result no longer runs
+# MaintenanceGit's own git status diff to learn what changed, stage it, commit it, and merge
+# it. It instead prints the scoped `git add`/`git commit` instruction (never `git add -A`)
+# for the paths this tool run is known to have touched, for the closer to run by hand.
+def report_result(repo_dir, paths, message)
+  rel = Array(paths).select { |p| File.exist?(p) }.map { |p| relative_to(repo_dir, p) }.uniq.sort
+  if rel.empty?
     puts "maintenance-run: no change (already canonical)."
+    exit 0
   end
+
+  puts "maintenance-run: applied (#{rel.size} path(s)): #{rel.join(", ")}"
+  quoted = rel.map { |p| Shellwords.escape(p) }.join(" ")
+  puts "next: git -C #{repo_dir} add -- #{quoted} && git -C #{repo_dir} " \
+       "-c user.name=Plastic -c user.email=plastic@localhost commit -m #{Shellwords.escape(message)}"
   exit 0
 end
 
@@ -138,20 +153,9 @@ def run_project_links(home, intent, store, apply)
     exit($?.exitstatus)
   end
 
-  begin
-    result = MaintenanceGit.run_scoped(
-      repo_dir: home, branch_name: "maintenance/project-links-#{intent}-#{stamp}",
-      commit_message: "chore: maintenance - project-links --intent #{intent}"
-    ) do
-      ok = system({"RUBYOPT" => nil}, RbConfig.ruby, tool_path, *base_args)
-      raise "project-links failed for #{intent}" unless ok
-    end
-  rescue MaintenanceGit::DirtyWorkingTree, MaintenanceGit::NotAGitRepo => e
-    abort_loud(e.message, 4)
-  rescue RuntimeError => e
-    abort_loud(e.message, 3)
-  end
-  report_result(result)
+  ok = system({"RUBYOPT" => nil}, RbConfig.ruby, tool_path, *base_args)
+  abort_loud("project-links failed for #{intent}", 3) unless ok
+  report_result(home, [dir], "chore: maintenance - project-links --intent #{intent}")
 end
 
 def run_rebuild_graph(home, apply)
@@ -170,20 +174,10 @@ def run_rebuild_graph(home, apply)
     exit 0
   end
 
-  begin
-    result = MaintenanceGit.run_scoped(
-      repo_dir: home, branch_name: "maintenance/rebuild-graph-#{stamp}",
-      commit_message: "chore: maintenance - rebuild-graph"
-    ) do
-      ok = system({"RUBYOPT" => nil}, RbConfig.ruby, tool_path, "--plastic-home", home)
-      raise "rebuild-graph failed" unless ok
-    end
-  rescue MaintenanceGit::DirtyWorkingTree, MaintenanceGit::NotAGitRepo => e
-    abort_loud(e.message, 4)
-  rescue RuntimeError => e
-    abort_loud(e.message, 3)
-  end
-  report_result(result)
+  ok = system({"RUBYOPT" => nil}, RbConfig.ruby, tool_path, "--plastic-home", home)
+  abort_loud("rebuild-graph failed", 3) unless ok
+  dirs = touched_ids.map { |id| resolve_dir_for_id(discovery, id) }.compact
+  report_result(home, dirs, "chore: maintenance - rebuild-graph")
 end
 
 def run_restore_intent_v1(home, id, at, store, apply, skip_links)
@@ -208,20 +202,9 @@ def run_restore_intent_v1(home, id, at, store, apply, skip_links)
     exit($?.exitstatus)
   end
 
-  begin
-    result = MaintenanceGit.run_scoped(
-      repo_dir: home, branch_name: "maintenance/restore-intent-v1-#{id}-#{stamp}",
-      commit_message: "chore: maintenance - restore-intent-v1 #{id}"
-    ) do
-      ok = system({"RUBYOPT" => nil}, RbConfig.ruby, *args, "--apply")
-      raise "restore-intent-v1 failed for #{id}" unless ok
-    end
-  rescue MaintenanceGit::DirtyWorkingTree, MaintenanceGit::NotAGitRepo => e
-    abort_loud(e.message, 4)
-  rescue RuntimeError => e
-    abort_loud(e.message, 3)
-  end
-  report_result(result)
+  ok = system({"RUBYOPT" => nil}, RbConfig.ruby, *args, "--apply")
+  abort_loud("restore-intent-v1 failed for #{id}", 3) unless ok
+  report_result(home, [dir], "chore: maintenance - restore-intent-v1 #{id}")
 end
 
 def run_rebuild_savepoint(home, intent, store, apply)
@@ -248,29 +231,18 @@ def run_rebuild_savepoint(home, intent, store, apply)
     exit 0
   end
 
-  begin
-    result = MaintenanceGit.run_scoped(
-      repo_dir: home, branch_name: "maintenance/rebuild-savepoint-#{intent}-#{stamp}",
-      commit_message: "chore: maintenance - rebuild-savepoint #{intent}"
-    ) do
-      Savepoint.rebuild_savepoint(dir)
-      Savepoint.append_terminal_savepoint(dir, disposition)
-      RevisionsWriter.append!(
-        dir,
-        why: "reconstruct missing operational savepoint.md (generic operational-gap predicate)",
-        rule: "savepoint-operational-reconstruction",
-        prior_location: "#{intent}/savepoint.md",
-        change: "savepoint.md rebuilt from disk (Savepoint.rebuild_savepoint) plus Done " \
-                "#{disposition} echo appended (Savepoint.append_terminal_savepoint); disposition " \
-                "read from outcome.md's own frontmatter, never invented"
-      )
-    end
-  rescue MaintenanceGit::DirtyWorkingTree, MaintenanceGit::NotAGitRepo => e
-    abort_loud(e.message, 4)
-  rescue RuntimeError => e
-    abort_loud(e.message, 3)
-  end
-  report_result(result)
+  Savepoint.rebuild_savepoint(dir)
+  Savepoint.append_terminal_savepoint(dir, disposition)
+  RevisionsWriter.append!(
+    dir,
+    why: "reconstruct missing operational savepoint.md (generic operational-gap predicate)",
+    rule: "savepoint-operational-reconstruction",
+    prior_location: "#{intent}/savepoint.md",
+    change: "savepoint.md rebuilt from disk (Savepoint.rebuild_savepoint) plus Done " \
+            "#{disposition} echo appended (Savepoint.append_terminal_savepoint); disposition " \
+            "read from outcome.md's own frontmatter, never invented"
+  )
+  report_result(home, [dir], "chore: maintenance - rebuild-savepoint #{intent}")
 end
 
 # Renders one store's canonical doctor-exclusions content (spec D6/D7): a leading comment
@@ -493,19 +465,12 @@ def run_register_exclusions(home, rule, store, apply, prune = false)
     exit 0
   end
 
-  begin
-    result = MaintenanceGit.run_scoped(
-      repo_dir: home, branch_name: "maintenance/#{prune ? "prune" : "register"}-exclusions-#{stamp}",
-      commit_message: "chore: maintenance - #{prune ? "prune dead" : "register"} doctor exclusions (#{rule})"
-    ) do
-      plan.each { |s, info| File.write(DoctorExclusions.path_for(s[:index]), info[:content]) }
-    end
-  rescue MaintenanceGit::DirtyWorkingTree, MaintenanceGit::NotAGitRepo => e
-    abort_loud(e.message, 4)
-  rescue RuntimeError => e
-    abort_loud(e.message, 3)
+  paths = plan.map do |s, info|
+    path = DoctorExclusions.path_for(s[:index])
+    File.write(path, info[:content])
+    path
   end
-  report_result(result)
+  report_result(home, paths, "chore: maintenance - #{prune ? "prune dead" : "register"} doctor exclusions (#{rule})")
 end
 
 def main(argv)

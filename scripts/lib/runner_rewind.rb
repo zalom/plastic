@@ -12,30 +12,32 @@ require_relative "runner_core"
 require_relative "worktree"
 require_relative "node_worktree"
 
-# RunnerRewind (intent 340, G7, n6): resets the intent branch to a node's own
-# recorded commit, marks every downstream node superseded (its evidence no
-# longer stands once the code it was built on is gone), and respins the
-# rewound node itself the same way RunnerAnswer's hard-cap path does - never
-# a plain `planned` line, because `failed_verification_count` is counted per
-# subject id over the WHOLE ledger and never resets; only a brand new id
-# starts clean.
+# RunnerRewind (intent 340, G7, n6): marks every downstream node superseded
+# (its evidence no longer stands once the code it was built on is gone) and
+# respins the rewound node itself the same way RunnerAnswer's hard-cap path
+# does - never a plain `planned` line, because `failed_verification_count` is
+# counted per subject id over the WHOLE ledger and never resets; only a
+# brand new id starts clean.
+#
+# Owner ruling 2026-09-24 (intent 390 part B): Plastic runs no version
+# control command, so the `git reset --hard` this action used to run itself
+# is now a printed instruction (`reset_instruction:`) for the agent or the
+# owner to run - the ledger rewind (the superseded lines, the respin) still
+# happens here; only the branch reset moved to the printed instruction.
 #
 # Internal, confirm-gated (327 D15's rewind clause): `confirm:` must be
 # explicitly true, and the whole intent must be quiescent (no `running` node
-# anywhere) before a branch reset is safe to make - resetting the branch
+# anywhere) before a branch reset is safe to name - resetting the branch
 # under a live executor's own worktree would move the base it is building on
 # out from under it.
 #
-# Pure and dependency-injected: every git call goes through an injected
-# `runner:` (default Worktree::ShellRunner), always `-C <path>`, never cwd;
-# the clock and the rename call are injectable the same way every other
-# runner_* module here already is.
+# Pure and dependency-injected: the clock and the rename call are injectable
+# the same way every other runner_* module here already is.
 module RunnerRewind
   module_function
 
   def rewind(context, node:, confirm:, now: Time.now, ledger: NodeLedger,
-             runner: Worktree::ShellRunner.new, renamer: File.method(:rename),
-             worktree: NodeWorktree)
+             renamer: File.method(:rename), worktree: NodeWorktree)
     node = node.to_s
     return refusal("confirm_required") unless confirm
 
@@ -58,25 +60,28 @@ module RunnerRewind
 
     return refusal("no_intent_worktree") if blank?(context.worktree)
 
-    reset = runner.run("-C", context.worktree, "reset", "--hard", commit)
-    return refusal("git_reset_failed", detail: reset.stderr.to_s.strip) unless reset.success?
+    reset_instruction = "git -C #{context.worktree} reset --hard #{commit}"
 
     downstream = downstream_of(node, edges)
+    release_instructions = []
     downstream.each do |d|
       ledger.append_transition(savepoint_path(intent_dir), subject: d, state: "superseded",
                                 fields: { by: node }, now: now)
       # M5/D7: a rewind-superseded node's evidence no longer stands once the
-      # code it was built on is gone - its worktree releases here too.
-      worktree.release(context, node: d, state: "superseded", runner: runner)
+      # code it was built on is gone - its worktree removal is named here too.
+      instr = worktree.release(context, node: d, state: "superseded")[:instruction]
+      release_instructions << instr if instr
     end
 
-    succ_id = respin(intent_dir, node, nodes_decl, edges, ledger: ledger, now: now, renamer: renamer,
-                      context: context, worktree: worktree, runner: runner)
+    respin_result = respin(intent_dir, node, nodes_decl, edges, ledger: ledger, now: now, renamer: renamer,
+                            context: context, worktree: worktree)
+    release_instructions << respin_result[:release_instruction] if respin_result[:release_instruction]
 
     RunnerCore.render_status(context)
 
     {
-      ok: true, reset_to: commit, superseded: downstream, respun_to: succ_id, errors: [],
+      ok: true, reset_to: commit, reset_instruction: reset_instruction, superseded: downstream,
+      respun_to: respin_result[:succ_id], release_instructions: release_instructions, errors: [],
       newly_ready: newly_ready(intent_dir, before_content: before_content, before_nodes: nodes_decl,
                                 before_edges: edges),
     }
@@ -111,7 +116,7 @@ module RunnerRewind
   # --- the respin (327 D22, same shape as RunnerAnswer's hard-cap path) ------
 
   def respin(intent_dir, node, nodes_decl, edges, ledger:, now:, renamer:,
-             context:, worktree: NodeWorktree, runner: Worktree::ShellRunner.new)
+             context:, worktree: NodeWorktree)
     decl = nodes_decl[node] || {}
     kind = decl[:kind]
     node_path = ReadySet.find_node_path(intent_dir, node)
@@ -136,11 +141,11 @@ module RunnerRewind
     ledger.append_transition(savepoint_path(intent_dir), subject: node, state: "superseded",
                               fields: { by: succ_id }, now: now)
 
-    # M5/D7: the rewound node's own worktree releases too, same as the
-    # downstream nodes above.
-    worktree.release(context, node: node, state: "superseded", runner: runner)
+    # M5/D7: the rewound node's own worktree removal is named too, same as
+    # the downstream nodes above.
+    release_instruction = worktree.release(context, node: node, state: "superseded")[:instruction]
 
-    succ_id
+    { succ_id: succ_id, release_instruction: release_instruction }
   end
   private_class_method :respin
 
@@ -179,7 +184,8 @@ module RunnerRewind
   private_class_method :newly_ready
 
   def refusal(reason, detail: nil)
-    { ok: false, reason: reason, detail: detail, reset_to: nil, superseded: [], respun_to: nil, newly_ready: [] }
+    { ok: false, reason: reason, detail: detail, reset_to: nil, reset_instruction: nil, superseded: [],
+      respun_to: nil, release_instructions: [], newly_ready: [] }
   end
   private_class_method :refusal
 

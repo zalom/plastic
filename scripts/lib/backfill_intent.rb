@@ -26,8 +26,8 @@ require_relative "worktree"
 # `Savepoint.stage_file_present?` (spec D1), so the doctor surfaces never disagree.
 #
 # Pure and dependency-injected like ScaffoldIntent: never exits, never reads ARGV or ENV
-# (only the ambient Dir.home default), and takes the git seam as `runner:` so tests drive
-# it in process with a fake runner.
+# (only the ambient Dir.home default). Plastic runs no version control command (intent
+# 390): the diff itself is never read here, only its instruction is printed.
 module BackfillIntent
   module_function
 
@@ -241,17 +241,15 @@ module BackfillIntent
     code && Dir.exist?(code) ? code : nil
   end
 
-  def verification_body(store:, id:, intent_dir:, home:, runner:)
+  # Plastic runs no version control command (intent 390): the diff itself is never read;
+  # this prints the `git diff --stat` instruction for the closer to run and paste in by
+  # hand, same as ScaffoldIntent.build_verification_body.
+  def verification_body(store:, id:, intent_dir:, home:)
     repo = worktree_dir(store: store, id: id, intent_dir: intent_dir, home: home)
     return "Diffstat unavailable: this intent provisioned no code worktree\n" if repo.nil?
 
-    base = ScaffoldIntent.detect_base_branch(repo, runner: runner)
-    return "Diffstat unavailable: no base branch could be detected (no origin/HEAD, main, or master)\n" if base.nil?
-
-    stat, err = ScaffoldIntent.diffstat(repo, base, runner: runner)
-    return "Diffstat unavailable: #{err}\n" if stat.nil?
-
-    "Diffstat against #{base}:\n```\n#{stat}#{stat.end_with?("\n") ? "" : "\n"}```\n"
+    base = ScaffoldIntent.detect_base_branch(repo, home: home)
+    "Diffstat: run `#{ScaffoldIntent.diffstat_instruction(repo, base)}` (against #{base})\n"
   rescue StandardError => e
     "Diffstat unavailable: #{e.message}\n"
   end
@@ -279,7 +277,7 @@ module BackfillIntent
   # `notes`). `notes` names every absent source; an absent source never stops the write.
   # One savepoint line, `Exec  backfilled <list>`, records the fact (idempotent per list).
   def run(intent_dir:, store:, id:, disposition:, summary: nil, home: Dir.home,
-          runner: Worktree::ShellRunner.new, templates_dir: nil, now: Time.now)
+          templates_dir: nil, now: Time.now)
     result = { written: [], skipped: [], notes: [] }
     remove_stale_filing(intent_dir)
 
@@ -302,7 +300,7 @@ module BackfillIntent
 
     verification = nil
     if targets.include?("outcome.md")
-      verification = verification_body(store: store, id: id, intent_dir: intent_dir, home: home, runner: runner)
+      verification = verification_body(store: store, id: id, intent_dir: intent_dir, home: home)
     end
     docs = render(record, disposition: disposition, summary: summary, verification: verification,
                   now: now, templates: templates)

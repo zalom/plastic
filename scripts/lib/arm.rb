@@ -20,10 +20,11 @@ require_relative "savepoint"
 # helpers that once sat alongside them on a shared-helpers module now live on
 # IndexEntry and ProjectConfig (intent 344).
 #
-# Pure and dependency-injected: every path and clock is an argument, every git
-# call goes through an injected runner, and the only environment read is the
-# `env:` value the caller passes to `resolve_session`. Nothing here raises for
-# a lock outcome; callers get a status and decide.
+# Pure and dependency-injected: every path and clock is an argument, and the
+# only environment read is the `env:` value the caller passes to
+# `resolve_session`. Plastic runs no version control command here (intent
+# 390): arm and disarm never touch the code worktree, only its expected path.
+# Nothing here raises for a lock outcome; callers get a status and decide.
 module Arm
   module_function
 
@@ -67,8 +68,8 @@ module Arm
     Plastic::StoreLayout.global_store(File.join(File.expand_path(home), ".plastic"))
   end
 
-  # The minimal hash Worktree.provision, release, and finish consume: the
-  # intent block plus, when asked, the derived worktree block.
+  # The minimal hash carrying the intent block plus, when asked, the derived
+  # worktree block (Plastic itself no longer provisions or tears anything down).
   def delivery(intent_dir:, home: Dir.home, with_worktree: true)
     dir = File.expand_path(intent_dir)
     data = {
@@ -134,7 +135,7 @@ module Arm
   # corrupt lock returns that status with the lock data read and touches
   # nothing.
   def arm(intent_dir:, session:, mode: "auto", home: Dir.home, harness: nil,
-          agent: nil, model: nil, thread: nil, now: Time.now, runner: Worktree::ShellRunner.new,
+          agent: nil, model: nil, thread: nil, now: Time.now,
           host: Socket.gethostname, allow_inline: false)
     raise ArgumentError, "mode must be auto or guided" unless %w[auto guided].include?(mode.to_s)
     dir = File.expand_path(intent_dir)
@@ -165,29 +166,45 @@ module Arm
 
   # --- disarm ------------------------------------------------------------------
 
-  # Give the intent back: remove the worktree (when `remove`) and release the
-  # lock as its recorded owner (falling back to `session`). Returns the lock
-  # release status (:released, :none, :not_owner, or :raised).
-  def disarm(intent_dir:, session:, home: Dir.home, runner: Worktree::ShellRunner.new,
-             remove: true, now: Time.now)
+  # Plastic creates no worktree, so disarm removes none either (intent 390):
+  # it releases the lock as the intent's recorded owner (falling back to
+  # `session`), and, when the worktree block shows a workspace was actually
+  # provisioned, hands back the instruction that removes it. Returns
+  # `{status:, worktree_removal:}`; `status` is the lock release status
+  # (:released, :none, :not_owner, or :raised), `worktree_removal` is the
+  # `git -C <repo> worktree remove <path>` line, or nil when there is nothing
+  # to remove.
+  def disarm(intent_dir:, session:, home: Dir.home, now: Time.now)
     dir = File.expand_path(intent_dir)
     h = home_for(dir, home: home)
     key = resolve_session(session, store: store_for(dir), intent_id: intent_id_for(dir))
 
-    begin
-      Worktree.release(delivery(intent_dir: dir, home: h), home: h, runner: runner, remove: remove)
-    rescue StandardError => e
-      warn "plastic: worktree release raised, continuing: #{e.message}"
-    end
-
     lock = Lock.read(dir)
     owner = lock && !blank?(lock["owner_session"]) ? lock["owner_session"] : key
-    begin
+    status = begin
       Lock.release(dir, session: owner)
     rescue StandardError => e
       warn "plastic: delivery lock release raised for #{dir}, continuing: #{e.message}"
       :raised
     end
+
+    { status: status, worktree_removal: worktree_removal_instruction(intent_dir: dir, home: h) }
+  end
+
+  # The `git -C <repo> worktree remove <path>` instruction for the workspace
+  # this intent's `Arm.worktree_block` shows as provisioned, or nil when none
+  # exists (nothing was ever created, or no repo resolves for the intent).
+  def worktree_removal_instruction(intent_dir:, home: Dir.home)
+    dir = File.expand_path(intent_dir)
+    h = home_for(dir, home: home)
+    block = worktree_block(intent_dir: dir, home: h)
+    return nil unless block["provisioned"]
+
+    slug = Worktree.slug_for_store(store_for(dir), home: h)
+    repo = Worktree.repo_for(slug, home: h)
+    return nil if blank?(repo)
+
+    "git -C #{repo} worktree remove #{block['code']}"
   end
 
   # --- repair ------------------------------------------------------------------
@@ -205,8 +222,7 @@ module Arm
   # report whether the repaired intent's workspace is present. Plastic
   # creates no worktree here (intent 390); the agent is told to.
   def repair(intent_dir:, session:, home: Dir.home, now: Time.now, harness: nil,
-             agent: nil, model: nil, thread: nil, run_mode: nil,
-             runner: Worktree::ShellRunner.new)
+             agent: nil, model: nil, thread: nil, run_mode: nil)
     dir = File.expand_path(intent_dir)
     h = home_for(dir, home: home)
     key = resolve_session(session, store: store_for(dir), intent_id: intent_id_for(dir))

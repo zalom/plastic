@@ -331,24 +331,18 @@ end
   end
 
   # --- O2.8/O2.9/O2.10: the real CLI branch reader ----------------------------
+  # Owner ruling 2026-09-24 (intent 390): Plastic runs no version control
+  # command, so the CLI's branch reader no longer shells out to find a
+  # repository's actual current or remote-default branch. flow_base (a pure
+  # YAML read) still wins; once a real project repository is known (a plain
+  # directory is enough - no `.git` history needed), the reader falls back
+  # to the literal "main", never a git-derived guess.
 
   CLI = File.expand_path("../scripts/report-screen", __dir__)
 
-  def make_repo(branch:)
-    repo = File.join(@root, "repo-#{branch}")
-    FileUtils.mkdir_p(repo)
-    env = { "GIT_AUTHOR_NAME" => "t", "GIT_AUTHOR_EMAIL" => "t@x", "GIT_COMMITTER_NAME" => "t", "GIT_COMMITTER_EMAIL" => "t@x" }
-    git = lambda do |*a|
-      out, err, st = Open3.capture3(env, "git", "-C", repo, *a)
-      raise "git #{a.join(' ')}: #{err}" unless st.success?
-
-      out.strip
-    end
-    git.call("init", "-q", "-b", branch)
-    git.call("config", "commit.gpgsign", "false")
-    File.write(File.join(repo, "a.txt"), "a\n")
-    git.call("add", ".")
-    git.call("commit", "-q", "-m", "first")
+  def make_repo
+    repo = File.join(@root, "repo")
+    FileUtils.mkdir_p(File.join(repo, ".git"))
     repo
   end
 
@@ -367,7 +361,7 @@ end
   end
 
   def test_cli_branch_reader_prefers_flow_base
-    repo = make_repo(branch: "master")
+    repo = make_repo
     home = File.join(@root, "plastic_home")
     project_dir = File.join(home, "projects", "demo")
     FileUtils.mkdir_p(project_dir)
@@ -379,10 +373,8 @@ end
     assert_includes ship_row_line(out).to_s, "→ alpha"
   end
 
-  def test_cli_branch_reader_falls_back_to_main
-    repo = make_repo(branch: "main")
-    Open3.capture3("git", "-C", repo, "branch", "feature")
-    Open3.capture3("git", "-C", repo, "checkout", "feature")
+  def test_cli_branch_reader_falls_back_to_main_with_no_flow_base
+    repo = make_repo
     dir = make_delivered_intent(File.join(@root, "store_root"))
     out, err, status = Open3.capture3("ruby", CLI, "delivered", dir, "--repo", repo)
     assert_equal 0, status.exitstatus, err

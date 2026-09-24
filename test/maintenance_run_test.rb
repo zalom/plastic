@@ -14,9 +14,6 @@ class MaintenanceRunTest < Minitest::Test
   def setup
     @home = Dir.mktmpdir("plastic-maintenance-run")
     build_fixture_stores
-    git("init", "-q", "-b", "main")
-    git("add", "-A")
-    git("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "seed fixtures")
   end
 
   def teardown
@@ -73,18 +70,6 @@ class MaintenanceRunTest < Minitest::Test
     write_index(File.join(@home, "projects", "plastic", "INDEX.md"))
   end
 
-  def git(*args)
-    out, status = Open3.capture2("git", "-C", @home, *args)
-    raise "git #{args.join(" ")} failed: #{out}" unless status.success?
-
-    out
-  end
-
-  def branches
-    out, = Open3.capture3("git", "-C", @home, "branch", "--list")
-    out
-  end
-
   def test_defers_when_target_holds_a_fresh_delivery_lock
     # Write a delivery.lock with a fresh mtime in the target intent's directory
     # (JSON shape: {"type":"delivery","owner_session":"other-session", ...}; see
@@ -99,17 +84,16 @@ class MaintenanceRunTest < Minitest::Test
     assert_match(/deferred/, out + err)
   end
 
-  def test_applies_project_links_and_merges_when_clean
+  # Plastic runs no version control command (intent 390): a real close now prints the scoped
+  # `git add`/`git commit` instruction for the paths this run touched, rather than running
+  # MaintenanceGit's own branch-then-merge cycle.
+  def test_applies_project_links_and_prints_the_commit_instruction
     out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "project-links",
                                         "--intent", "11", "--plastic-home", @home, "--apply")
     assert_equal 0, status.exitstatus, out
-    assert_match(/applied and merged/, out)
-
-    log, = Open3.capture3("git", "-C", @home, "log", "--oneline")
-    assert_match(/maintenance - project-links --intent 11/, log)
-    status_out, = Open3.capture3("git", "-C", @home, "status", "--porcelain")
-    assert_empty status_out.strip
-    refute_match(/maintenance\//, branches, "no maintenance branch should remain after merge")
+    assert_match(/applied \(1 path/, out)
+    assert_match(%r{next: git -C #{Regexp.escape(@home)} add -- .*11--child}, out)
+    assert_match(/commit -m/, out)
   end
 
   def test_dry_run_makes_no_changes_by_default
@@ -126,13 +110,15 @@ class MaintenanceRunTest < Minitest::Test
     assert_equal 1, status.exitstatus
   end
 
-  # FALSIFIABLE (208): an unrelated dirty file elsewhere in the store refuses the WHOLE run
-  # (exit 4), rather than being silently swept up or silently ignored.
-  def test_refuses_when_store_working_tree_is_dirty
+  # Plastic runs no version control command (intent 390): there is no working-tree cleanliness
+  # to check any more, so an unrelated file elsewhere in the store never blocks a run; only the
+  # paths this run actually touches are named in the printed commit instruction.
+  def test_an_unrelated_file_elsewhere_in_the_store_never_blocks_a_run
     File.write(File.join(@home, "unrelated.md"), "dirty\n")
-    _out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "project-links",
-                                         "--intent", "11", "--plastic-home", @home, "--apply")
-    assert_equal 4, status.exitstatus
+    out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "project-links",
+                                        "--intent", "11", "--plastic-home", @home, "--apply")
+    assert_equal 0, status.exitstatus, out
+    refute_match(/unrelated\.md/, out)
   end
 
   # 12 sources 11 while 11.chain is still empty: rebuild-graph's I1 pass writes the missing
@@ -147,7 +133,6 @@ class MaintenanceRunTest < Minitest::Test
                                        "--plastic-home", @home, "--apply")
     assert_equal 2, status.exitstatus
     assert_match(/deferred/, out + err)
-    refute_match(/maintenance\/rebuild-graph-/, branches, "no branch should be created on defer")
   end
 
   # FALSIFIABLE (208) and load-bearing for Task 13: real proof-case ids (26, 15) collide
@@ -161,8 +146,6 @@ class MaintenanceRunTest < Minitest::Test
                "author: t\ntags: [t]\n---\n\n## Intent\nb\n")
     FileUtils.mkdir_p(File.join(@home, "projects", "knowdb"))
     File.write(File.join(@home, "projects", "knowdb", "INDEX.md"), "# Index\n\n## Completed\n")
-    Open3.capture3("git", "-C", @home, "add", "-A")
-    Open3.capture3("git", "-C", @home, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "add collision")
 
     _out, err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "project-links",
                                         "--intent", "11", "--plastic-home", @home, "--apply")
@@ -178,8 +161,6 @@ class MaintenanceRunTest < Minitest::Test
                "author: t\ntags: [t]\n---\n\n## Intent\nb\n")
     FileUtils.mkdir_p(File.join(@home, "projects", "knowdb"))
     File.write(File.join(@home, "projects", "knowdb", "INDEX.md"), "# Index\n\n## Completed\n")
-    Open3.capture3("git", "-C", @home, "add", "-A")
-    Open3.capture3("git", "-C", @home, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "add collision")
 
     before_knowdb = File.read(File.join(knowdb, "11--knowdb-collision", "11--knowdb-collision.md"))
 
@@ -223,14 +204,13 @@ class MaintenanceRunTest < Minitest::Test
   def test_rebuild_savepoint_applies_and_appends_one_revisions_entry
     dir = File.join(@home, "projects", "plastic", "store", "11--child")
     write_outcome(dir)
-    git("add", "-A")
-    git("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "seed outcome fixture")
 
     out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "rebuild-savepoint",
                                         "--intent", "11", "--store", "project:plastic",
                                         "--plastic-home", @home, "--apply")
     assert_equal 0, status.exitstatus, out
-    assert_match(/applied and merged/, out)
+    assert_match(/applied \(1 path/, out)
+    assert_match(/next: git -C #{Regexp.escape(@home)} add --/, out)
 
     savepoint = File.read(File.join(dir, "savepoint.md"))
     assert_match(/\bDone\b.*\bdelivered\b/, savepoint)
@@ -238,9 +218,6 @@ class MaintenanceRunTest < Minitest::Test
     revisions = File.read(File.join(dir, "revisions.md"))
     assert_equal 1, revisions.scan(/^## Revision v\d+/).size
     assert_match(/savepoint-operational-reconstruction/, revisions)
-
-    status_out, = Open3.capture3("git", "-C", @home, "status", "--porcelain")
-    assert_empty status_out.strip
   end
 
   def test_rebuild_savepoint_refuses_when_outcome_missing
@@ -297,15 +274,10 @@ class MaintenanceRunTest < Minitest::Test
   end
 
   # Marks the fixture's global "40--store-graph" and plastic-project "11--child" Completed
-  # (both already lack savepoint.md, so both are real savepoint_operational violations), and
-  # gitignores *.lock the way a real ~/.plastic install does (scripts/lib/lock.rb), so a
-  # written-but-uncommitted delivery.lock never trips MaintenanceGit's clean-tree precondition.
+  # (both already lack savepoint.md, so both are real savepoint_operational violations).
   def seed_register_exclusions_fixture
-    File.write(File.join(@home, ".gitignore"), "*.lock\n")
     write_doctor_index(File.join(@home, "INDEX.md"), completed_dirnames: ["40--store-graph"])
     write_doctor_index(File.join(@home, "projects", "plastic", "INDEX.md"), completed_dirnames: ["11--child"])
-    git("add", "-A")
-    git("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "seed register-exclusions fixture")
   end
 
   def test_register_exclusions_dry_run_writes_nothing
@@ -340,7 +312,7 @@ class MaintenanceRunTest < Minitest::Test
     assert_match(/savepoint_operational/, err)
   end
 
-  def test_register_exclusions_apply_writes_and_commits_once_across_stores
+  def test_register_exclusions_apply_writes_across_stores_and_prints_the_commit_instruction
     seed_register_exclusions_fixture
 
     out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "register-exclusions",
@@ -355,18 +327,13 @@ class MaintenanceRunTest < Minitest::Test
     assert_empty plastic_loaded[:errors]
     assert_equal ["11"], plastic_loaded[:rules]["savepoint_operational"]
 
-    log, = Open3.capture3("git", "-C", @home, "log", "--oneline")
-    assert_equal 1, log.lines.count { |l| l =~ /register doctor exclusions/ }
-
-    status_out, = Open3.capture3("git", "-C", @home, "status", "--porcelain")
-    assert_empty status_out.strip
+    assert_match(/applied \(2 path/, out)
+    assert_match(/next: git -C #{Regexp.escape(@home)} add --/, out)
   end
 
   def test_register_exclusions_unions_with_a_preexisting_hand_added_id
     seed_register_exclusions_fixture
     File.write(File.join(@home, "doctor-exclusions"), "savepoint_operational 999\n")
-    git("add", "-A")
-    git("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "hand-add 999")
 
     out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "register-exclusions",
                                         "--plastic-home", @home, "--apply")
@@ -386,8 +353,6 @@ class MaintenanceRunTest < Minitest::Test
                    "# approved by owner 2026-08-01\n" \
                    "savepoint_operational 999\n"
     File.write(File.join(@home, "doctor-exclusions"), hand_written)
-    git("add", "-A")
-    git("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "hand-add 999 with comments")
 
     out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "register-exclusions",
                                         "--plastic-home", @home, "--apply")
@@ -411,8 +376,6 @@ class MaintenanceRunTest < Minitest::Test
     seed_register_exclusions_fixture
     File.binwrite(File.join(@home, "doctor-exclusions"),
                   "# a comment with a bad byte caf\xE9\nsavepoint_operational 999\n")
-    git("add", "-A")
-    git("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "seed bad-byte comment fixture")
 
     dry_out, _err, dry_status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "register-exclusions",
                                                 "--plastic-home", @home)
@@ -458,10 +421,10 @@ class MaintenanceRunTest < Minitest::Test
   # reports as suppressing nothing, through the same walk, the same comment-preserving writer,
   # and the same dry-run/--apply gate as the add direction.
 
-  def commit_all(message)
-    git("add", "-A")
-    git("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", message)
-  end
+  # Plastic runs no version control command (intent 390): a fixture no longer needs a
+  # git commit to look "seeded" before a run; writing the files is enough. Kept as a
+  # no-op so every prune test below still reads as "the fixture is now in place."
+  def commit_all(_message); end
 
   def test_prune_dry_run_writes_nothing
     seed_register_exclusions_fixture

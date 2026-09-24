@@ -433,7 +433,6 @@ class InstallerCore
       "scripts/insight-append" => "scripts/insight-append",
       "scripts/lib/worktree.rb" => "scripts/lib/worktree.rb",
       "scripts/lib/boot_banner.rb" => "scripts/lib/boot_banner.rb",
-      "scripts/lib/dashboard_banner.rb" => "scripts/lib/dashboard_banner.rb",
       "scripts/lib/roadmap_savepoint.rb" => "scripts/lib/roadmap_savepoint.rb",
       "scripts/roadmap-savepoint" => "scripts/roadmap-savepoint",
       "scripts/lib/roadmap_queue.rb" => "scripts/lib/roadmap_queue.rb",
@@ -460,9 +459,6 @@ class InstallerCore
       "scripts/restore-intent-v1" => "scripts/restore-intent-v1",
 "scripts/lib/revisions_writer.rb" => "scripts/lib/revisions_writer.rb",
 "scripts/maintenance-run" => "scripts/maintenance-run",
-"scripts/lib/maintenance_git.rb" => "scripts/lib/maintenance_git.rb",
-"scripts/lib/worktree_sweep.rb" => "scripts/lib/worktree_sweep.rb",
-"scripts/sweep-store-worktrees" => "scripts/sweep-store-worktrees",
       "scripts/validate-intent" => "scripts/validate-intent",
       "scripts/new-intent" => "scripts/new-intent",
       "scripts/end-intent" => "scripts/end-intent",
@@ -500,7 +496,6 @@ class InstallerCore
       "scripts/lib/rule_catalog.rb" => "scripts/lib/rule_catalog.rb",
       "scripts/lib/doctor_exclusions.rb" => "scripts/lib/doctor_exclusions.rb",
       "scripts/lib/doctor_session_ledger.rb" => "scripts/lib/doctor_session_ledger.rb",
-      "scripts/dashboard.rb" => "scripts/dashboard.rb",
       "scripts/skill-lint" => "scripts/skill-lint",
       "scripts/lib/skill_lint.rb" => "scripts/lib/skill_lint.rb",
       "scripts/feedback-report" => "scripts/feedback-report",
@@ -528,11 +523,6 @@ class InstallerCore
       "scripts/lib/intent_screen_ansi.rb" => "scripts/lib/intent_screen_ansi.rb",
       "scripts/lib/screen_paint.rb" => "scripts/lib/screen_paint.rb",
       "scripts/lib/message_display.rb" => "scripts/lib/message_display.rb",
-      # Intent 331d (A1): scripts/dashboard.rb require_relatives this lib
-      # directly; templates/dashboard-screen.md and scripts/lib/screens/
-      # dashboard.rb are glob-derived (template_files, screen_files above)
-      # and need no entry here.
-      "scripts/lib/dashboard_screen.rb" => "scripts/lib/dashboard_screen.rb",
       "scripts/hook-message-display" => "scripts/hook-message-display",
       # Intent 334 (G1): the node file and graph.md library, plus its
       # validator and CLI (327 D40/D41).
@@ -712,15 +702,6 @@ class InstallerCore
     MD
 
     puts "  \u{2705} Store bootstrapped"
-  end
-
-  # Intent 372 (former install skill, lines 119-127): `~/.plastic` becomes its own
-  # git repository the first time it exists, so `update` can later commit the core
-  # files it re-syncs. Leaves an existing repository alone.
-  def git_init_if_absent(runner: ->(cmd) { system(*cmd) })
-    FileUtils.mkdir_p(plastic_home)
-    return if File.directory?(File.join(plastic_home, ".git"))
-    runner.call(["git", "-C", plastic_home, "init", "-q"])
   end
 
   # --- Agent adapters ---

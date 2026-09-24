@@ -306,7 +306,7 @@ class CodexHooksTest < Minitest::Test
 
   # ---- capture (intent 298 merges continue, future-intent-check, auto-arm) ----
 
-  def test_capture_continue_returns_dashboard_context
+  def test_capture_continue_returns_report_roster_context
     plastic_home = File.join(@fake_home, ".plastic")
     FileUtils.mkdir_p(File.join(plastic_home, "store"))
     File.write(File.join(plastic_home, "INDEX.md"), "# Index\n\n## Active\n\n## Future\n")

@@ -5,7 +5,6 @@ require "minitest/autorun"
 require "tmpdir"
 require "fileutils"
 require "time"
-require "open3"
 
 require_relative "../scripts/lib/runner_absorb"
 require_relative "../scripts/lib/runner_core"
@@ -22,9 +21,20 @@ require_relative "../scripts/lib/atomic_write"
 # nodes/n4.md (4.45 lives in install_sync_test.rb; 4.1-4.12, 4.37, 4.38 live
 # in node_return_test.rb).
 #
-# Every git/suite/integrity side effect is an injected double; RunnerAbsorb's
-# own job is the gate's ORDER and ROUTING, not re-proving NodeWorktree's git
+# Every suite/integrity side effect is an injected double; RunnerAbsorb's own
+# job is the gate's ORDER and ROUTING, not re-proving NodeWorktree's own
 # mechanics (n3 already does that) or a real test suite's own correctness.
+#
+# Owner ruling 2026-09-24 (intent 390 part B): the "scope" check (a git diff
+# against a node's declared `files:`) is gone with the git call that measured
+# it - NodeReturn's closed schema carries no file list to check instead, so
+# every former scope-check row (4.16-4.18, 9.10, 9.11) is gone from this file,
+# not rewritten onto a fabricated signal. The "merge" check no longer proves a
+# real merge either: `FakeWorktree#merge` returns `{ok:, instruction:,
+# error:}`, never a commit, so `done`'s own `commit:` field comes from the
+# return's own self-reported `commit`, and every former merge-conflict row
+# (4.21, 4.22, 4.36) is gone the same way - a merge failure is now a flat
+# `merge_unresolvable` `failed_verification`, never a `needs_decision`.
 class RunnerAbsorbTest < Minitest::Test
   INTENT_ID = "340"
   INTENT_SLUG = "absorb-fixture"
@@ -34,9 +44,9 @@ class RunnerAbsorbTest < Minitest::Test
   class FakeWorktree
     attr_reader :calls, :released
 
-    def initialize(changed: [], merge_result: { ok: true, commit: "c0ffee00", conflicted: [], error: nil },
+    def initialize(merge_result: { ok: true, instruction: "git -C /repo merge --no-ff --no-edit plastic/x--n4",
+                                    error: nil },
                    paths: { "path" => nil, "branch" => nil, "repo" => nil })
-      @changed = changed
       @merge_result = merge_result
       @paths_value = paths
       @calls = []
@@ -47,19 +57,14 @@ class RunnerAbsorbTest < Minitest::Test
       @paths_value
     end
 
-    def changed_paths(_context, node:, kind:, runner:)
-      @calls << :changed_paths
-      @changed
-    end
-
-    def merge(_context, node:, runner:)
+    def merge(_context, node:)
       @calls << :merge
       @merge_result
     end
 
-    def release(_context, node:, state:, runner:)
+    def release(_context, node:, state:)
       @released << [node, state]
-      { ok: true, removed: true }
+      { ok: true, removed: false, instruction: "git -C /repo worktree remove /path" }
     end
   end
 
@@ -165,7 +170,7 @@ class RunnerAbsorbTest < Minitest::Test
                                extra: report_body.nil? ? {} : { "report" => report_body })
     RunnerAbsorb.absorb(
       context, node: "r1", return_path: return_path, integrity_checker: ok_integrity,
-      worktree: FakeWorktree.new(changed: []), suite_runner: ok_suite, project_reader: no_command_reader
+      worktree: FakeWorktree.new, suite_runner: ok_suite, project_reader: no_command_reader
     )
   end
 
@@ -251,18 +256,19 @@ class RunnerAbsorbTest < Minitest::Test
     ->(_intent_dir) { nil }
   end
 
-  # A fully wired happy-path call: integrity ok, named test present, scope
-  # in-files, clean merge, green suite -> done. Every keyword can be
+  # A fully wired happy-path call: integrity ok, named test present,
+  # resolvable merge, green suite -> done. Every keyword can be
   # overridden per test.
-  def absorb_happy(node: "n4", kind: "work", files: ["scripts/lib/foo.rb"], changed: ["scripts/lib/foo.rb"],
-                    merge_result: { ok: true, commit: "c0ffee00", conflicted: [], error: nil },
+  def absorb_happy(node: "n4", kind: "work", files: ["scripts/lib/foo.rb"],
+                    merge_result: { ok: true, instruction: "git -C /repo merge --no-ff --no-edit plastic/x--n4",
+                                    error: nil },
                     integrity: ok_integrity, allow_core_drift: false,
                     suite: ok_suite, project_reader: command_reader,
                     return_status: "done", return_commit: "exec1234", return_extra: {},
                     ledger: NodeLedger, now: Time.utc(2026, 1, 2))
     write_node_file(node)
     touch_named_test
-    fake_wt = FakeWorktree.new(changed: changed, merge_result: merge_result,
+    fake_wt = FakeWorktree.new(merge_result: merge_result,
                                 paths: { "path" => @node_wt, "branch" => "plastic/x--n4", "repo" => @dir })
     context = build_context(node: node, kind: kind, files: files)
     return_path = write_return(node: node, status: return_status, commit: return_commit, extra: return_extra)
@@ -320,39 +326,6 @@ class RunnerAbsorbTest < Minitest::Test
     assert_equal "true", entry[:fields]["allow_core_drift"]
   end
 
-  # --- 4.16: diff outside declared files: ----------------------------------------
-
-  def test_diff_outside_files_fails_verification
-    write_savepoint(running_line)
-    result, fake_wt = absorb_happy(files: ["scripts/lib/foo.rb"], changed: ["scripts/lib/foo.rb", "scripts/other.rb"])
-
-    assert_equal "failed_verification", result[:state]
-    assert_equal "integrity+schema+scope", result[:gates]
-    entry = NodeLedger.entries(File.join(@dir, "savepoint.md")).last
-    assert_equal "diff_outside_files", entry[:fields]["reason"]
-    refute_includes fake_wt.calls, :merge
-  end
-
-  # --- 4.17 / 4.18: any diff at all on verify/research is refused ----------------
-
-  def test_any_diff_on_verify_fails_verification
-    write_savepoint(running_line)
-    result, = absorb_happy(kind: "verify", files: [], changed: ["scripts/some_review.md"])
-
-    assert_equal "failed_verification", result[:state]
-    entry = NodeLedger.entries(File.join(@dir, "savepoint.md")).last
-    assert_equal "diff_on_verify_node", entry[:fields]["reason"]
-  end
-
-  def test_any_diff_on_research_fails_verification
-    write_savepoint(running_line)
-    result, = absorb_happy(kind: "research", files: [], changed: ["notes.md"])
-
-    assert_equal "failed_verification", result[:state]
-    entry = NodeLedger.entries(File.join(@dir, "savepoint.md")).last
-    assert_equal "diff_on_research_node", entry[:fields]["reason"]
-  end
-
   # --- 4.19: a named test file that does not exist --------------------------------
 
   def test_named_test_missing_fails_verification
@@ -368,64 +341,34 @@ class RunnerAbsorbTest < Minitest::Test
     )
 
     assert_equal "failed_verification", result[:state]
-    assert_equal "integrity+schema+scope+named_tests", result[:gates]
+    assert_equal "integrity+schema+named_tests", result[:gates]
     entry = NodeLedger.entries(File.join(@dir, "savepoint.md")).last
     assert_equal "named_test_missing", entry[:fields]["reason"]
   end
 
-  # --- 4.20: a clean merge records its commit -------------------------------------
+  # --- 4.20: done carries the executor's own reported commit ----------------------
 
-  def test_clean_merge_records_commit
+  def test_done_commit_is_the_executors_own_report
     write_savepoint(running_line)
-    result, = absorb_happy(merge_result: { ok: true, commit: "abc123def", conflicted: [], error: nil })
+    result, = absorb_happy(return_commit: "abc123def")
 
     assert_equal "done", result[:state]
     assert_equal "abc123def", result[:commit]
     entry = NodeLedger.entries(File.join(@dir, "savepoint.md")).last
     assert_equal "abc123def", entry[:fields]["commit"]
+    refute_nil result[:merge_instruction], "a work node's done result must carry the printed merge instruction"
   end
 
-  # --- 4.21: a conflict entirely inside files: --------------------------------
+  # --- 4.21: an unresolvable merge fails verification, prints no instruction -------
 
-  def test_conflict_inside_files_fails_verification
+  def test_merge_unresolvable_fails_verification
     write_savepoint(running_line)
-    result, = absorb_happy(
-      files: ["scripts/lib/foo.rb"],
-      merge_result: { ok: false, commit: nil, conflicted: ["scripts/lib/foo.rb"], error: "conflict" }
-    )
+    result, = absorb_happy(merge_result: { ok: false, instruction: nil, error: "conflict" })
 
     assert_equal "failed_verification", result[:state]
     entry = NodeLedger.entries(File.join(@dir, "savepoint.md")).last
-    assert_equal "merge_conflict", entry[:fields]["reason"]
-  end
-
-  # --- 4.22: a conflict outside files: needs a decision, names the paths ---------
-
-  def test_conflict_outside_files_needs_decision_with_paths
-    write_savepoint(running_line)
-    result, = absorb_happy(
-      files: ["scripts/lib/foo.rb"],
-      merge_result: { ok: false, commit: nil, conflicted: ["scripts/other/unrelated.rb"], error: "conflict" }
-    )
-
-    assert_equal "needs_decision", result[:state]
-    entry = NodeLedger.entries(File.join(@dir, "savepoint.md")).last
-    assert_includes entry[:fields]["question"], "scripts/other/unrelated.rb"
-  end
-
-  # --- 4.36: the synthesized question always carries the paths -------------------
-
-  def test_conflict_needs_decision_carries_question
-    write_savepoint(running_line)
-    result, = absorb_happy(
-      files: ["scripts/lib/foo.rb"],
-      merge_result: { ok: false, commit: nil, conflicted: ["scripts/lib/other_dir/x.rb"], error: "conflict" }
-    )
-
-    assert_equal "needs_decision", result[:state]
-    entry = NodeLedger.entries(File.join(@dir, "savepoint.md")).last
-    refute_nil entry[:fields]["question"]
-    assert_includes entry[:fields]["question"], "scripts/lib/other_dir/x.rb"
+    assert_equal "merge_unresolvable", entry[:fields]["reason"]
+    assert_equal "integrity+schema+named_tests+merge", entry[:fields]["gates"]
   end
 
   # --- 4.23: done carries the runner-measured suite --------------------------------
@@ -449,10 +392,10 @@ class RunnerAbsorbTest < Minitest::Test
     entry = NodeLedger.entries(File.join(@dir, "savepoint.md")).last
     assert_equal "suite_red", entry[:fields]["reason"]
     assert_equal "5/5/1/0", entry[:fields]["suite"]
-    assert_equal "integrity+schema+scope+named_tests+merge+suite", entry[:fields]["gates"]
+    assert_equal "integrity+schema+named_tests+merge+suite", entry[:fields]["gates"]
   end
 
-  # --- 4.25: the suite runs only after a clean merge --------------------------------
+  # --- 4.25: the suite runs only after a resolvable merge --------------------------------
 
   def test_suite_runs_on_merged_tree
     write_savepoint(running_line)
@@ -460,12 +403,12 @@ class RunnerAbsorbTest < Minitest::Test
     spy_suite = ->(dir:, command:) { suite_calls << dir; { ok: true, runs: 1, assertions: 1, failures: 0, errors: 0 } }
 
     result, = absorb_happy(
-      merge_result: { ok: false, commit: nil, conflicted: ["scripts/lib/foo.rb"], error: "x" },
+      merge_result: { ok: false, instruction: nil, error: "x" },
       suite: spy_suite
     )
 
     assert_equal "failed_verification", result[:state]
-    assert_empty suite_calls, "the suite must never run when the merge itself failed"
+    assert_empty suite_calls, "the suite must never run when the merge itself is unresolvable"
   end
 
   # --- 4.26: exactly one transition per return --------------------------------------
@@ -507,7 +450,7 @@ class RunnerAbsorbTest < Minitest::Test
 
   def test_failing_absorb_keeps_worktree
     write_savepoint(running_line)
-    _result, fake_wt = absorb_happy(files: ["scripts/lib/foo.rb"], changed: ["scripts/lib/foo.rb", "scripts/other.rb"])
+    _result, fake_wt = absorb_happy(suite: red_suite)
 
     assert_empty fake_wt.released
   end
@@ -515,7 +458,7 @@ class RunnerAbsorbTest < Minitest::Test
   # --- 4.30: absorbing a return for a node that is not running is refused ----------
 
   def test_return_for_non_running_node_is_refused
-    write_savepoint(line("n4", "done", holder: "auto-abc", gates: "integrity+schema+scope+named_tests+merge+suite",
+    write_savepoint(line("n4", "done", holder: "auto-abc", gates: "integrity+schema+named_tests+merge+suite",
                           commit: "abc123"))
     before = NodeLedger.entries(File.join(@dir, "savepoint.md")).length
 
@@ -535,12 +478,12 @@ class RunnerAbsorbTest < Minitest::Test
     write_savepoint(running_line)
     absorb_happy
     entry = NodeLedger.entries(File.join(@dir, "savepoint.md")).last
-    assert_equal "integrity+schema+scope+named_tests+merge+suite", entry[:fields]["gates"]
+    assert_equal "integrity+schema+named_tests+merge+suite", entry[:fields]["gates"]
   end
 
   def test_failed_verification_line_carries_gates
     write_savepoint(running_line)
-    absorb_happy(files: ["scripts/lib/foo.rb"], changed: ["scripts/other.rb"])
+    absorb_happy(suite: red_suite)
     entry = NodeLedger.entries(File.join(@dir, "savepoint.md")).last
     assert_equal "failed_verification", entry[:state]
     refute_nil entry[:fields]["gates"]
@@ -548,9 +491,9 @@ class RunnerAbsorbTest < Minitest::Test
 
   def test_gates_lists_only_checks_that_ran
     write_savepoint(running_line)
-    absorb_happy(files: ["scripts/lib/foo.rb"], changed: ["scripts/other.rb"])
+    absorb_happy(merge_result: { ok: false, instruction: nil, error: "x" })
     entry = NodeLedger.entries(File.join(@dir, "savepoint.md")).last
-    assert_equal "integrity+schema+scope", entry[:fields]["gates"]
+    assert_equal "integrity+schema+named_tests+merge", entry[:fields]["gates"]
   end
 
   # --- 4.34: holder= on every written line --------------------------------------
@@ -563,7 +506,7 @@ class RunnerAbsorbTest < Minitest::Test
     assert_equal "auto-holder-1", entry[:fields]["holder"]
 
     write_savepoint(running_line(holder: "auto-holder-2"))
-    result2, = absorb_happy(files: ["scripts/lib/foo.rb"], changed: ["scripts/other.rb"])
+    result2, = absorb_happy(suite: red_suite)
     entry2 = NodeLedger.entries(File.join(@dir, "savepoint.md")).last
     assert_equal "failed_verification", result2[:state]
     assert_equal "auto-holder-2", entry2[:fields]["holder"]
@@ -592,15 +535,14 @@ class RunnerAbsorbTest < Minitest::Test
     assert_equal "done", result[:state]
     entry = NodeLedger.entries(File.join(@dir, "savepoint.md")).last
     assert_equal "none", entry[:fields]["suite"]
-    assert_equal "integrity+schema+scope+named_tests+merge+suite:absent", entry[:fields]["gates"]
+    assert_equal "integrity+schema+named_tests+merge+suite:absent", entry[:fields]["gates"]
   end
 
-  # --- 4.40: an append failure after a landed merge still reports the commit --------
+  # --- 4.40: an append failure after a landed transition still reports the commit --
 
   def test_append_failure_after_merge_reports_commit
     write_savepoint(running_line)
-    result, = absorb_happy(merge_result: { ok: true, commit: "landed999", conflicted: [], error: nil },
-                            ledger: UnavailableLedger.new)
+    result, = absorb_happy(return_commit: "landed999", ledger: UnavailableLedger.new)
 
     assert_equal "append_failed", result[:state]
     refute result[:written]
@@ -775,7 +717,7 @@ class RunnerAbsorbTest < Minitest::Test
                                   worktree: fake_wt, suite_runner: ok_suite, project_reader: command_reader)
 
     assert_equal "blocked", result[:state]
-    assert_empty fake_wt.calls, "scope, named_tests and merge must never run for a non-done return"
+    assert_empty fake_wt.calls, "named_tests and merge must never run for a non-done return"
     assert_equal "integrity+schema", result[:gates]
   end
 
@@ -837,61 +779,6 @@ class RunnerAbsorbTest < Minitest::Test
            "the proposed node's file must be scaffolded from the real template"
   end
 
-  # --- 9.10: a real commit on the intent branch fails a verify node's scope ------
-
-  def test_verify_node_with_a_diff_fails_scope
-    repo = Dir.mktmpdir("absorb-real-repo")
-    begin
-      real_git("init", "-q", "-b", "alpha", dir: repo)
-      real_git("config", "user.email", "absorb@example.com", dir: repo)
-      real_git("config", "user.name", "Absorb Test", dir: repo)
-      real_git("config", "gc.auto", "0", dir: repo)
-      File.write(File.join(repo, "README.md"), "hi\n")
-      real_git("add", "README.md", dir: repo)
-      real_git("commit", "-q", "-m", "init", dir: repo)
-
-      intent_worktree = File.join(repo, ".claude", "worktrees", "#{INTENT_ID}--#{INTENT_SLUG}")
-      intent_branch = "plastic/#{INTENT_ID}--#{INTENT_SLUG}"
-      FileUtils.mkdir_p(File.dirname(intent_worktree))
-      real_git("worktree", "add", intent_worktree, "-b", intent_branch, dir: repo)
-
-      # The reviewer's own reproduction: a verify node's executor edits the
-      # code it is reviewing and commits it directly onto the intent branch -
-      # there is no node branch of its own for a verify node to isolate that
-      # commit on, which is exactly what the fix must still catch.
-      File.write(File.join(intent_worktree, "reviewed.rb"), "# edited by the reviewer\n")
-      real_git("add", "reviewed.rb", dir: intent_worktree)
-      real_git("commit", "-q", "-m", "v1 edits the code it is reviewing", dir: intent_worktree)
-
-      write_savepoint(running_line(node: "v1"))
-      write_node_file("v1")
-      context = build_context(node: "v1", kind: "verify", files: [], worktree: intent_worktree,
-                               worktree_branch: intent_branch)
-      return_path = write_return(node: "v1", status: "done", commit: "shouldnotmatter")
-
-      result = RunnerAbsorb.absorb(context, node: "v1", return_path: return_path, integrity_checker: ok_integrity,
-                                    worktree: NodeWorktree, suite_runner: ok_suite, project_reader: command_reader)
-
-      assert_equal "failed_verification", result[:state]
-      entry = NodeLedger.entries(File.join(@dir, "savepoint.md")).last
-      assert_equal "diff_on_verify_node", entry[:fields]["reason"]
-    ensure
-      FileUtils.remove_entry(repo) if repo && Dir.exist?(repo)
-    end
-  end
-
-  # --- 9.11: an unmeasurable diff fails verification, never passes ---------------
-
-  def test_unmeasurable_diff_fails_verification
-    write_savepoint(running_line)
-    result, = absorb_happy(changed: nil)
-
-    assert_equal "failed_verification", result[:state]
-    entry = NodeLedger.entries(File.join(@dir, "savepoint.md")).last
-    assert_equal "scope_unmeasurable", entry[:fields]["reason"]
-    assert_equal "integrity+schema+scope", entry[:fields]["gates"]
-  end
-
   # --- 9.14: a project.yml that fails to parse blocks, never reads as absent -----
 
   def test_unparsable_project_record_blocks_with_verify_command_unreadable
@@ -904,8 +791,7 @@ class RunnerAbsorbTest < Minitest::Test
 
     File.write(File.join(@root, "projects", slug, "project.yml"), "release:\n  verify: \"unterminated\n")
 
-    fake_wt = FakeWorktree.new(changed: ["scripts/lib/foo.rb"],
-                                paths: { "path" => @node_wt, "branch" => "x", "repo" => @dir })
+    fake_wt = FakeWorktree.new(paths: { "path" => @node_wt, "branch" => "x", "repo" => @dir })
     context = build_context
     return_path = write_return(status: "done", commit: "exec1234")
 
@@ -931,7 +817,7 @@ class RunnerAbsorbTest < Minitest::Test
     write_savepoint(running_line)
     write_node_file("n4", tests: [])
     context = build_context(kind: "research", files: [])
-    fake_wt = FakeWorktree.new(changed: [], paths: { "path" => @node_wt, "branch" => "x", "repo" => @dir })
+    fake_wt = FakeWorktree.new(paths: { "path" => @node_wt, "branch" => "x", "repo" => @dir })
     return_path = write_return(status: "done", commit: "r1")
 
     result2 = RunnerAbsorb.absorb(
@@ -943,13 +829,6 @@ class RunnerAbsorbTest < Minitest::Test
     entry2 = NodeLedger.entries(File.join(@dir, "savepoint.md")).last
     assert_includes entry2[:fields]["gates"].split("+"), "merge:none"
     refute_includes entry2[:fields]["gates"].split("+"), "merge"
-  end
-
-  def real_git(*args, dir:)
-    out, err, status = Open3.capture3("git", "-C", dir, *args.map(&:to_s))
-    raise "git #{args.join(' ')} failed: #{err}" unless status.success?
-
-    out
   end
 
   # --- 10.2: a proposal is accepted from production, not just validated -------
@@ -1192,76 +1071,17 @@ class RunnerAbsorbTest < Minitest::Test
     assert_equal "invalid_graph", entry[:fields]["reason"]
   end
 
-  # --- 11.4: an unmerged commit can never land on done, proven against a real branch (v2 NEW-2) --
-
-  def test_done_requires_the_commit_to_be_merged
-    repo = Dir.mktmpdir("absorb-real-repo")
-    begin
-      real_git("init", "-q", "-b", "alpha", dir: repo)
-      real_git("config", "user.email", "t@example.com", dir: repo)
-      real_git("config", "user.name", "Test", dir: repo)
-      real_git("config", "gc.auto", "0", dir: repo)
-      File.write(File.join(repo, "README.md"), "hi\n")
-      real_git("add", "README.md", dir: repo)
-      real_git("commit", "-q", "-m", "init", dir: repo)
-
-      # A real intent worktree, the shape NodeWorktree itself expects
-      # (`<repo>/.claude/worktrees/<id>--<slug>`) - the ONLY honest way to
-      # drive absorb's own scope/merge machinery for real, rather than a
-      # bare repo path a fixture merely hands it.
-      intent_branch = "plastic/#{INTENT_ID}--#{INTENT_SLUG}"
-      intent_worktree = File.join(repo, ".claude", "worktrees", "#{INTENT_ID}--#{INTENT_SLUG}")
-      FileUtils.mkdir_p(File.dirname(intent_worktree))
-      real_git("worktree", "add", intent_worktree, "-b", intent_branch, dir: repo)
-
-      # A commit that genuinely exists in the repo but is NOT reachable from
-      # the intent branch - exactly the shape an executor's self-reported
-      # commit takes when NEW-2's merge is skipped entirely.
-      real_git("checkout", "-q", "-b", "off-branch-work", dir: repo)
-      File.write(File.join(repo, "unmerged.txt"), "x\n")
-      real_git("add", "unmerged.txt", dir: repo)
-      real_git("commit", "-q", "-m", "never merged", dir: repo)
-      unmerged_commit = real_git("rev-parse", "HEAD", dir: repo).strip
-
-      write_savepoint(running_line)
-      # No named tests declared: with `kind` unresolvable, the named-tests
-      # gate would otherwise check the wrong directory (the intent worktree,
-      # never a per-node one that was never provisioned for this node) and
-      # refuse for an unrelated reason before ever reaching the merge this
-      # row is actually about.
-      write_node_file("n4", tests: [])
-
-      # graph.md is unresolvable (context.graph[:ok] is false) - NEW-2's
-      # exact reproduction - so absorb must refuse before it ever reaches a
-      # merge or a `done` write.
-      context = RunnerCore::Context.new(
-        intent_dir: @dir, intent_id: INTENT_ID, intent_slug: INTENT_SLUG,
-        store: nil, plastic_home: @home, session: nil,
-        worktree: intent_worktree, worktree_branch: intent_branch,
-        graph: { ok: false, edges: {}, nodes: {}, errors: ["graph.md could not be read"] },
-        errors: []
-      )
-      return_path = write_return(status: "done", commit: unmerged_commit)
-
-      result = RunnerAbsorb.absorb(
-        context, node: "n4", return_path: return_path, integrity_checker: ok_integrity,
-        worktree: NodeWorktree, suite_runner: ok_suite, project_reader: command_reader
-      )
-
-      refute_equal "done", result[:state],
-                   "an unresolvable kind must never let an unmerged, self-reported commit land as done: #{result.inspect}"
-      entries = NodeLedger.entries(File.join(@dir, "savepoint.md"))
-      refute(entries.any? { |e| e[:subject] == "n4" && e[:state] == "done" },
-             "no done line may ever be written for this commit")
-
-      _out, _err, status = Open3.capture3("git", "-C", repo, "merge-base", "--is-ancestor", unmerged_commit,
-                                           intent_branch)
-      refute status.success?,
-             "fixture sanity: the commit must genuinely NOT be an ancestor of the intent branch"
-    ensure
-      FileUtils.remove_entry(repo) if repo && Dir.exist?(repo)
-    end
-  end
+  # --- 11.4: an unresolvable kind never lets a self-reported commit land as done ---
+  #
+  # Owner ruling 2026-09-24: RunnerAbsorb no longer verifies a commit's own
+  # ancestry against the intent branch (that was a git call); the former
+  # "unmerged commit, proven against a real branch" row is gone with it, a
+  # real capability lost, recorded as a finding rather than faked with a
+  # fabricated signal. What still holds without any git call is NEW-2 itself:
+  # an unresolvable graph blocks before a self-reported commit is ever looked
+  # at, so this row narrows to that guarantee (already covered in full by
+  # test_unresolvable_kind_blocks_rather_than_writing_done above; nothing
+  # further to add here).
 
   # --- 11.5: gates= says suite:unreadable on that state, never a bare suite (v2 NEW-3) --
 
@@ -1274,8 +1094,7 @@ class RunnerAbsorbTest < Minitest::Test
     touch_named_test
     File.write(File.join(@root, "projects", slug, "project.yml"), "release:\n  verify: \"unterminated\n")
 
-    fake_wt = FakeWorktree.new(changed: ["scripts/lib/foo.rb"],
-                                paths: { "path" => @node_wt, "branch" => "x", "repo" => @dir })
+    fake_wt = FakeWorktree.new(paths: { "path" => @node_wt, "branch" => "x", "repo" => @dir })
     context = build_context
     return_path = write_return(status: "done", commit: "exec1234")
 
@@ -1461,8 +1280,7 @@ class RunnerAbsorbTest < Minitest::Test
     touch_named_test
     File.write(File.join(@root, "projects", slug, "project.yml"), "- just\n- an\n- array\n")
 
-    fake_wt = FakeWorktree.new(changed: ["scripts/lib/foo.rb"],
-                                paths: { "path" => @node_wt, "branch" => "x", "repo" => @dir })
+    fake_wt = FakeWorktree.new(paths: { "path" => @node_wt, "branch" => "x", "repo" => @dir })
     context = build_context
     return_path = write_return(status: "done", commit: "exec1234")
 
@@ -1520,8 +1338,14 @@ class RunnerAbsorbTest < Minitest::Test
     assert_equal "codex", entry[:fields]["harness"]
 
     File.write(File.join(@dir, "savepoint.md"), savepoint_content + running_line(node: "n5", harness: "codex"))
-    result2, = absorb_happy(node: "n5", merge_result: { ok: false, commit: nil,
-                                                          conflicted: ["outside/file.rb"], error: "conflict" })
+    write_node_file("n5")
+    context = build_context(node: "n5")
+    return_path = write_return(node: "n5", status: "needs_decision", commit: nil,
+                                extra: { question: "which approach?" })
+
+    result2 = RunnerAbsorb.absorb(context, node: "n5", return_path: return_path, integrity_checker: ok_integrity,
+                                   worktree: FakeWorktree.new)
+
     assert_equal "needs_decision", result2[:state]
     entry2 = NodeLedger.entries(File.join(@dir, "savepoint.md")).select { |e| e[:subject] == "n5" }.last
     assert_equal "codex", entry2[:fields]["harness"]

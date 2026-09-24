@@ -9,67 +9,53 @@ require_relative "node_ledger"
 require_relative "ready_set"
 require_relative "savepoint"
 
-# RunnerSweep (intent 340, G7, n2): the first thing every `step` does. Two
-# separately callable entry points - #abort_if_merging and #reclaim - plus
-# #run, which composes them for a caller that has no absorb step to interleave.
-# `step` (a later node) calls #abort_if_merging, runs absorb, then calls
-# #reclaim itself, so a reclaimed node's just-landed work from absorb is never
-# thrown away by a stale read (matrix row 2.20).
+# RunnerSweep (intent 340, G7, n2): the first thing every `step` does. The
+# single entry point is #reclaim, plus #run, which composes it with the
+# delivery-lease heartbeat for a caller that has no absorb step to interleave.
+# `step` (a later node) runs absorb, then calls #reclaim itself, so a
+# reclaimed node's just-landed work from absorb is never thrown away by a
+# stale read (matrix row 2.20).
 #
-# #abort_if_merging refuses the whole step when the intent worktree already
-# has a merge in progress (`MERGE_HEAD` resolves): dispatching on top of a
-# half-finished merge would hand the next node a diff full of someone else's
-# conflict markers. Nothing is written when this fires - not the ledger, not
-# graph.md, not even the delivery lease heartbeat (row 2.2, row 2.16: the
-# heartbeat runs strictly after the abort check).
+# Owner ruling 2026-09-24 (intent 390 part B): Plastic runs no version
+# control command. #abort_if_merging (a `git rev-parse MERGE_HEAD` check) is
+# gone outright: Plastic never runs a merge itself anymore (NodeWorktree.merge
+# prints the instruction instead), so there is no merge of Plastic's own that
+# could be left half-finished for a later step to trip on.
 #
 # #reclaim walks every node whose CURRENT status (the ledger's own resolution,
 # never a raw scan) is `running`, skipping anything named in `skip:` (the
 # nodes this step already absorbed, row 2.19) or already terminal (a `done`
 # node is never touched, row 2.12 - it simply never shows up as `running`).
-# An expired lease with no commits on the node's own branch newer than its
-# expiry is reclaimed outright. An expired lease whose branch DOES carry
-# newer commits is extended instead, up to twice per attempt (row 2.7); the
+# Freshness used to come from the node branch's own git commit time; with git
+# gone, it now comes from the node's own worktree files: an expired lease
+# whose worktree directory carries no file modified after the expiry is
+# reclaimed outright. An expired lease whose worktree DOES carry a file newer
+# than its expiry is extended instead, up to twice per attempt (row 2.7); the
 # extension is never a ledger transition (`running` cannot re-enter `running`
 # under the transition layer), so it is one line appended to
 # attempts/<node>--a<N>.extensions, `N` derived from the ledger's own attempt
 # count (row 2.18), never trusted from the caller. A third expiry reclaims
-# regardless of new commits.
+# regardless of newer files. A node whose worktree cannot be resolved at all
+# (no repo, no path) has nothing to check freshness against and is reclaimed
+# on its first expiry, same as before this change for an unresolvable branch.
 #
-# Pure and dependency-injected: every git call goes through an injected
-# `runner:` (default Worktree::ShellRunner), never cwd; the delivery-lease
-# heartbeat goes through an injected `heartbeat:` (default Lock.heartbeat) so
-# ordering (row 2.16) is provable without a real lock file. No eval, no
-# ENV/global-constant seam.
+# Pure and dependency-injected: the delivery-lease heartbeat goes through an
+# injected `heartbeat:` (default Lock.heartbeat) so ordering (row 2.16) is
+# provable without a real lock file. No eval, no ENV/global-constant seam, no
+# git call anywhere in this file.
 module RunnerSweep
   module_function
 
   # D-ish: at most two extensions per attempt (row 2.7); the third expiry
-  # reclaims regardless of new commits.
+  # reclaims regardless of newer files.
   MAX_EXTENSIONS_PER_ATTEMPT = 2
 
-  # abort_if_merging(context, runner:) -> {ok:, error:, recovery_command:}.
-  # `context.worktree` is nil for a global-store-only intent (no git repo to
-  # merge into); that case is always ok - there is nothing to abort.
-  def abort_if_merging(context, runner: Worktree::ShellRunner.new)
-    worktree = context&.worktree
-    return { ok: true, error: nil, recovery_command: nil } if blank?(worktree)
-
-    res = runner.run("-C", worktree, "rev-parse", "-q", "--verify", "MERGE_HEAD")
-    return { ok: true, error: nil, recovery_command: nil } unless res.success?
-
-    recovery_command = "git -C #{worktree} merge --abort"
-    warn "runner: a merge is already in progress in #{worktree}; run `#{recovery_command}` " \
-         "before the next step can dispatch"
-    { ok: false, error: "a merge is in progress in #{worktree}", recovery_command: recovery_command }
-  end
-
-  # reclaim(context, runner:, skip:, now:) -> {reclaimed: [{node:, holder:,
+  # reclaim(context, skip:, now:) -> {reclaimed: [{node:, holder:,
   # expired:}], extended: [{node:, head:, time:}]}. Reads the ledger fresh on
   # every call (no cache), which is what makes calling it AFTER absorb (row
   # 2.20) actually see absorb's own just-landed work rather than a stale
   # snapshot taken before it.
-  def reclaim(context, runner: Worktree::ShellRunner.new, skip: [], now: Time.now)
+  def reclaim(context, skip: [], now: Time.now)
     intent_dir = context.intent_dir
     content = savepoint_content(intent_dir)
     entries = NodeLedger.entries_from_content(content)
@@ -94,16 +80,16 @@ module RunnerSweep
       next if now < expires_at # row 2.5: an unexpired lease is left alone
 
       holder = fields["holder"]
-      branch = node_branch(context, subject)
-      head_sha, head_time = branch_head(runner, context.worktree, branch)
-      has_new_commits = head_time && head_time > expires_at
+      worktree_path = node_worktree_path(context, subject)
+      newest_mtime = newest_file_mtime(worktree_path)
+      has_new_commits = newest_mtime && newest_mtime > expires_at
 
       if has_new_commits
         attempt = current_attempt(entries, subject)
         count = extension_count(intent_dir, subject, attempt)
         if count < MAX_EXTENSIONS_PER_ATTEMPT
-          record_extension(intent_dir, subject, attempt, head_sha, now)
-          extended << { node: subject, head: head_sha, time: now.utc.iso8601 }
+          record_extension(intent_dir, subject, attempt, newest_mtime, now)
+          extended << { node: subject, mtime: newest_mtime.utc.iso8601, time: now.utc.iso8601 }
           next
         end
         # row 2.7: the cap is spent - fall through and reclaim anyway.
@@ -122,28 +108,17 @@ module RunnerSweep
     { reclaimed: reclaimed, extended: extended }
   end
 
-  # run(context, runner:, skip:, now:, heartbeat:) -> the composed report a
-  # caller with no absorb step to interleave uses directly. Order is fixed on
-  # purpose (row 2.2, row 2.16): abort check, THEN the lease heartbeat, THEN
-  # reclaim - never the reverse, and never a write of any kind before the
-  # abort check has cleared.
-  def run(context, runner: Worktree::ShellRunner.new, skip: [], now: Time.now, heartbeat: Lock.method(:heartbeat))
-    abort_result = abort_if_merging(context, runner: runner)
-    unless abort_result[:ok]
-      return {
-        ok: false, aborted: true, error: abort_result[:error],
-        recovery_command: abort_result[:recovery_command], reclaimed: [], extended: [],
-      }
-    end
-
+  # run(context, skip:, now:, heartbeat:) -> the composed report a caller
+  # with no absorb step to interleave uses directly. Order is fixed on
+  # purpose (row 2.16): the lease heartbeat, THEN reclaim - never a write of
+  # any kind before the heartbeat lands.
+  def run(context, skip: [], now: Time.now, heartbeat: Lock.method(:heartbeat))
     session = context&.session
     heartbeat.call(context.intent_dir, session: session, now: now) unless blank?(session)
 
-    result = reclaim(context, runner: runner, skip: skip, now: now)
-    {
-      ok: true, aborted: false, error: nil, recovery_command: nil,
-      reclaimed: result[:reclaimed], extended: result[:extended],
-    }
+    result = reclaim(context, skip: skip, now: now)
+    { ok: true, aborted: false, error: nil, recovery_command: nil,
+      reclaimed: result[:reclaimed], extended: result[:extended] }
   end
 
   # --- internals ---------------------------------------------------------------
@@ -164,29 +139,43 @@ module RunnerSweep
   end
   private_class_method :savepoint_content
 
-  # The node's own worktree branch (n3's naming: `plastic/<id>--<slug>--<node>`),
-  # derived from the intent id/slug alone - never through NodeWorktree, which
-  # this node does not depend on.
-  def node_branch(context, node)
-    "plastic/#{context.intent_id}--#{context.intent_slug}--#{node}"
+  # The node's own worktree path (n3's naming:
+  # `<repo>/.claude/worktrees/<id>--<slug>--<node>`), derived from the intent
+  # id/slug alone - never through NodeWorktree, which this module does not
+  # depend on. nil when the intent has no code worktree to derive from.
+  def node_worktree_path(context, node)
+    repo = repo_root(context)
+    return nil if repo.nil?
+
+    File.join(repo, ".claude", "worktrees", "#{context.intent_id}--#{context.intent_slug}--#{node}")
   end
-  private_class_method :node_branch
+  private_class_method :node_worktree_path
 
-  # [head_sha, committer_time] for `branch` in `worktree`'s repo, or [nil, nil]
-  # when the worktree is gone, the branch does not exist, or anything else
-  # about the git call fails (row 2.13: never raise).
-  def branch_head(runner, worktree, branch)
-    return [nil, nil] if blank?(worktree) || blank?(branch)
+  # Three levels up from `context.worktree` is the repo root (Worktree.paths'
+  # own shape); nil when there is no code worktree at all.
+  def repo_root(context)
+    wt = context&.worktree
+    return nil if blank?(wt)
 
-    res = runner.run("-C", worktree, "log", "-1", "--format=%H%x1f%cI", branch)
-    return [nil, nil] unless res.success?
+    File.dirname(File.dirname(File.dirname(File.expand_path(wt))))
+  end
+  private_class_method :repo_root
 
-    sha, iso = res.stdout.to_s.strip.split("\x1f")
-    [sha, parse_time(iso)]
+  # The most recent mtime among every file under `dir` (recursively), or nil
+  # when the directory does not exist or is empty (row 2.13: never raise) -
+  # the file-system replacement for a git branch's own committer time, since
+  # Plastic reads no git history anymore.
+  def newest_file_mtime(dir)
+    return nil if blank?(dir) || !Dir.exist?(dir)
+
+    Dir.glob(File.join(dir, "**", "*"), File::FNM_DOTMATCH)
+       .reject { |f| File.directory?(f) }
+       .map { |f| File.mtime(f) }
+       .max
   rescue StandardError
-    [nil, nil]
+    nil
   end
-  private_class_method :branch_head
+  private_class_method :newest_file_mtime
 
   def parse_time(raw)
     return nil if blank?(raw)
@@ -221,11 +210,11 @@ module RunnerSweep
   end
   private_class_method :extension_count
 
-  # Row 2.9: the observed head sha and the time, one line, append-only.
-  def record_extension(intent_dir, node, attempt, head_sha, now)
+  # Row 2.9: the observed newest file mtime and the time, one line, append-only.
+  def record_extension(intent_dir, node, attempt, newest_mtime, now)
     path = extensions_path(intent_dir, node, attempt)
     FileUtils.mkdir_p(File.dirname(path))
-    File.open(path, "a") { |f| f.write("#{now.utc.iso8601}  head=#{head_sha}\n") }
+    File.open(path, "a") { |f| f.write("#{now.utc.iso8601}  mtime=#{newest_mtime.utc.iso8601}\n") }
   end
   private_class_method :record_extension
 end

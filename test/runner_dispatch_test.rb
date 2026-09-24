@@ -4,7 +4,6 @@
 require "minitest/autorun"
 require "tmpdir"
 require "fileutils"
-require "open3"
 require "time"
 require "yaml"
 require "json"
@@ -135,30 +134,17 @@ class RunnerDispatchTest < Minitest::Test
     )
   end
 
-  def git(*args, dir: @repo)
-    out, err, status = Open3.capture3("git", "-C", dir, *args.map(&:to_s))
-    raise "git #{args.join(' ')} failed: #{err}" unless status.success?
-
-    out
-  end
-
-  # A real throwaway git repo with the intent worktree already checked out
-  # on the intent branch - the only honest way to test worktree provisioning
-  # and merge behavior (node_worktree_test.rb's own pattern).
-  def setup_real_repo
+  # A throwaway PLAIN repo directory, never a real git repository (owner
+  # ruling 2026-09-24, intent 390 part B: Plastic runs no version control
+  # command). NodeWorktree's own path/branch computation
+  # (scripts/lib/node_worktree.rb) never shells out to git - it only ever
+  # checks `Dir.exist?` - so a directory at the exact repo/worktree path is
+  # the whole fixture RunnerDispatch's worktree-touching rows need.
+  def setup_repo
     @repo = Dir.mktmpdir("rd-repo")
-    git("init", "-q", "-b", "alpha")
-    git("config", "user.email", "rd@example.com")
-    git("config", "user.name", "RD Test")
-    git("config", "gc.auto", "0")
-    File.write(File.join(@repo, "README.md"), "hi\n")
-    git("add", "README.md")
-    git("commit", "-q", "-m", "init")
-
     @intent_worktree = File.join(@repo, ".claude", "worktrees", "#{INTENT_ID}--#{INTENT_SLUG}")
     @intent_branch = "plastic/#{INTENT_ID}--#{INTENT_SLUG}"
-    FileUtils.mkdir_p(File.dirname(@intent_worktree))
-    git("worktree", "add", @intent_worktree, "-b", @intent_branch)
+    FileUtils.mkdir_p(@intent_worktree)
   end
 
   def savepoint_path
@@ -417,7 +403,7 @@ class RunnerDispatchTest < Minitest::Test
   # --- 5.20: a refused `running` rolls back the worktree and the node input -----
 
   def test_refused_running_rolls_back_side_effects
-    setup_real_repo
+    setup_repo
     write_graph("- n1 needs nothing\n")
     write_node("n1.md", node: "n1", kind: "work")
     ctx = build_context(worktree: @intent_worktree, worktree_branch: @intent_branch)
@@ -426,8 +412,12 @@ class RunnerDispatchTest < Minitest::Test
     assert result[:ok], result[:errors].inspect
     assert_empty result[:dispatched]
 
+    # Owner ruling 2026-09-24: NodeWorktree.provision creates nothing itself
+    # any more, so a refused running write has no worktree of its own to
+    # roll back - this stays true trivially now, and the node input rollback
+    # below is the real thing left to prove.
     node_path = File.join(@repo, ".claude", "worktrees", "#{INTENT_ID}--#{INTENT_SLUG}--n1")
-    refute Dir.exist?(node_path), "a refused running write must roll back the worktree it provisioned"
+    refute Dir.exist?(node_path), "nothing must have created a node worktree on a refused running write"
     refute Dir.glob(File.join(@dir, "attempts", "n1--a*.input")).any?,
            "a refused running write must roll back the node input it built"
   end
@@ -653,17 +643,24 @@ class RunnerDispatchTest < Minitest::Test
   # --- 5.29: the node input names the node worktree and node branch --------------
 
   def test_input_names_node_worktree_and_branch
-    setup_real_repo
+    setup_repo
     write_graph("- n1 needs nothing\n")
     write_node("n1.md", node: "n1", kind: "work")
     ctx = build_context(worktree: @intent_worktree, worktree_branch: @intent_branch)
+
+    # Stands in for an agent having already run the `git worktree add`
+    # instruction NodeWorktree.provision prints (owner ruling 2026-09-24:
+    # Plastic itself creates nothing here any more) - only once the node
+    # worktree actually exists does the node input name it instead of
+    # printing the STOP-and-provision-first directive.
+    node_path = File.join(@repo, ".claude", "worktrees", "#{INTENT_ID}--#{INTENT_SLUG}--n1")
+    node_branch = "plastic/#{INTENT_ID}--#{INTENT_SLUG}--n1"
+    FileUtils.mkdir_p(node_path)
 
     result = RunnerDispatch.dispatch(ctx)
     assert result[:ok], result[:errors].inspect
     entry = result[:dispatched].first
 
-    node_path = File.join(@repo, ".claude", "worktrees", "#{INTENT_ID}--#{INTENT_SLUG}--n1")
-    node_branch = "plastic/#{INTENT_ID}--#{INTENT_SLUG}--n1"
     assert_equal node_path, entry[:worktree]
 
     input_text = File.read(entry[:input])
@@ -746,7 +743,7 @@ class RunnerDispatchTest < Minitest::Test
   # --- 10.6: a failed input build rolls back the worktree it provisioned (M6) --
 
   def test_failed_input_build_rolls_back_the_worktree
-    setup_real_repo
+    setup_repo
     write_graph("- n1 needs nothing\n")
     write_node("n1.md", node: "n1", kind: "work")
     ctx = build_context(worktree: @intent_worktree, worktree_branch: @intent_branch)
@@ -757,8 +754,11 @@ class RunnerDispatchTest < Minitest::Test
     assert result[:ok], result[:errors].inspect
     assert_empty result[:dispatched]
 
+    # Owner ruling 2026-09-24: NodeWorktree.provision creates nothing itself
+    # any more, so a failed input build has no worktree of its own to roll
+    # back - this stays true trivially now.
     node_path = File.join(@repo, ".claude", "worktrees", "#{INTENT_ID}--#{INTENT_SLUG}--n1")
-    refute Dir.exist?(node_path), "a failed input build must roll back the worktree it provisioned"
+    refute Dir.exist?(node_path), "nothing must have created a node worktree on a failed input build"
   end
 
   # --- 10.7: a failed input build's errors reach the step's blockers (M6) ----
@@ -818,17 +818,21 @@ class RunnerDispatchTest < Minitest::Test
   # --- 10.16: a refused running rolls back only the worktree THIS dispatch made (M13) --
 
   def test_rollback_keeps_a_preexisting_worktree
-    setup_real_repo
+    setup_repo
     write_graph("- n1 needs nothing\n")
     write_node("n1.md", node: "n1", kind: "work")
     ctx = build_context(worktree: @intent_worktree, worktree_branch: @intent_branch)
 
     # A prior attempt's worktree, kept on disk per D7 (failed_verification
-    # keeps evidence) - this dispatch must never destroy it on its OWN refusal.
+    # keeps evidence) - this dispatch must never destroy it on its OWN
+    # refusal. Stands in for an agent having already run the `git worktree
+    # add` instruction NodeWorktree.provision prints (owner ruling
+    # 2026-09-24: Plastic itself creates nothing here any more).
+    node_path = File.join(@repo, ".claude", "worktrees", "#{INTENT_ID}--#{INTENT_SLUG}--n1")
+    FileUtils.mkdir_p(node_path)
     pre = NodeWorktree.provision(ctx, node: "n1", kind: "work")
     assert pre[:ok] && pre[:provisioned], pre.inspect
-    node_path = pre[:path]
-    assert Dir.exist?(node_path)
+    assert_equal node_path, pre[:path]
 
     result = RunnerDispatch.dispatch(ctx, ledger: RefusingRunningLedger.new)
     assert result[:ok], result[:errors].inspect

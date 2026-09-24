@@ -12,7 +12,10 @@ written by eye:
   `Changed` row naming what caused the print, and its Steps table.
 - **`report-screen state --all <store_root>`** - the roster across every in-delivery intent,
   most recently changed first, then one collapsed block (Stage, Next, Changed, first three
-  open steps) per intent.
+  open steps) per intent. When a prompt is the single word `continue`, the capture hook runs
+  this against the working directory's store (the project store, or the global store when the
+  directory maps to no project) and adds the roster to the agent's context; the `plastic
+  continue` command prints its own rows and no screen.
 - **`report-screen delivered <intent_dir>`** - the post-delivery report, printed once at close:
   Asked, Delivered (with a Proven-by column), Evidence, Needs you.
 - **`report-screen delay <intent_dir>`** - printed only on request ("why did X take so long"):
@@ -21,14 +24,6 @@ written by eye:
   with delivery", "what is the status"): one `delivered` screen per intent this session
   completed, oldest first, then the `state --all` roster. Intent 330's ruling: a status ask
   answers with what actually shipped, not the in-flight roster alone.
-- **`dashboard.rb continue|project <slug> --screen`** - the dashboard screen (intent 331d):
-  Active, In delivery, Delivered, Roadmap, Sessions, Changed, then the Where-we-are and
-  Where-we-go-next tables. A separate script from the other four (`dashboard.rb`, not
-  `report-screen`), since it aggregates across a whole store or project rather than one
-  intent. It is not a delivery trigger. When a prompt is the single word `continue`, the
-  capture hook runs `dashboard.rb continue` and adds its board to the agent's context; the
-  `plastic continue` command prints its own rows and no screen.
-
 ## Binding table (intent 331f)
 
 Every command or lead role that shows state names its own report verb, one row per binding
@@ -144,9 +139,9 @@ reads `Step | Status | Detail` (the plan screen's own Steps table reads
 tables on the `delivered` screen read `Row | Detail | Proven by`, `Kind | Detail | Source`, and
 `N | Need | Reason`. The plan screen's Asked row prints the intent title before its first
 colon, never the whole intent line. This applies to every screen the family prints: `state`,
-`roster`, `session`, `delivered`, `delay`, `plan`, `roadmap` (`plan`/`state`/`delivered`), and
-`dashboard`. `outcome.md`'s own `| Row | What |` heading is an AUTHORING convention inside the
-file a human writes, never a rendered header, and stays unchanged.
+`roster`, `session`, `delivered`, `delay`, `plan`, and `roadmap` (`plan`/`state`/`delivered`).
+`outcome.md`'s own `| Row | What |` heading is an AUTHORING convention inside the file a human
+writes, never a rendered header, and stays unchanged.
 
 ## Width bound (D7, intent 331f)
 
