@@ -101,10 +101,11 @@ class EndIntentFutureCloseTest < Minitest::Test
     status, out, err = plastic(*ABANDON)
 
     assert_equal 0, status, err
-    assert_match(/git -C #{Regexp.escape(store_dir)} add -- /, out)
-    assert_match(/git -C #{Regexp.escape(store_dir)} commit -m "chore: complete intent 1 \(abandoned\)"/, out)
-    assert_includes out, intent_dir
-    assert_includes out, @index
+    assert_match(
+      /git -C #{Regexp.escape(store_dir)} add -- .*git -C #{Regexp.escape(store_dir)} commit -m "chore: complete intent 1 \(abandoned\)"/m,
+      out
+    )
+    [intent_dir, @index].each { |path| assert_includes out, path }
   end
 
   def test_a_second_close_of_a_closed_future_intent_changes_nothing
