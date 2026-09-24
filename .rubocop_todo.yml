@@ -22,7 +22,6 @@ Layout/ArgumentAlignment:
     - 'scripts/end-intent'
     - 'scripts/file-session-intent'
     - 'scripts/graph-measure'
-    - 'scripts/hook-call-budget'
     - 'scripts/hook-capture'
     - 'scripts/hook-close'
     - 'scripts/hook-record'
@@ -83,7 +82,6 @@ Layout/ArgumentAlignment:
     - 'test/auto_core_307_test.rb'
     - 'test/backfill_intent_test.rb'
     - 'test/bin_test_test.rb'
-    - 'test/call_budget_hook_test.rb'
     - 'test/capture_hook_test.rb'
     - 'test/claim_cli_test.rb'
     - 'test/claim_test.rb'
@@ -522,7 +520,6 @@ Layout/FirstArrayElementIndentation:
 Layout/HashAlignment:
   Exclude:
     - 'scripts/dashboard.rb'
-    - 'scripts/hook-call-budget'
     - 'scripts/lib/doctor_core.rb'
     - 'scripts/lib/graph_measure.rb'
     - 'scripts/lib/graph_measure_budget.rb'
@@ -784,7 +781,6 @@ Layout/SpaceInsideHashLiteralBraces:
     - 'scripts/exec-worktree'
     - 'scripts/file-session-intent'
     - 'scripts/graph-measure'
-    - 'scripts/hook-call-budget'
     - 'scripts/hook-capture'
     - 'scripts/hook-record'
     - 'scripts/hook-savepoint'
@@ -883,7 +879,6 @@ Layout/SpaceInsideHashLiteralBraces:
     - 'test/arm_test.rb'
     - 'test/backfill_intent_test.rb'
     - 'test/bridge_retired_test.rb'
-    - 'test/call_budget_hook_test.rb'
     - 'test/capture_hook_test.rb'
     - 'test/claim_cli_test.rb'
     - 'test/close_hook_test.rb'
@@ -1370,7 +1365,6 @@ Minitest/AssertTruthy:
 Minitest/AssertWithExpectedArgument:
   Exclude:
     - 'test/append_ledger_test.rb'
-    - 'test/call_budget_hook_test.rb'
     - 'test/core_integrity_test.rb'
     - 'test/day_summary_test.rb'
     - 'test/derive_stage_node_shape_test.rb'
@@ -1430,7 +1424,6 @@ Minitest/EmptyLineBeforeAssertionMethods:
     - 'test/backfill_intent_test.rb'
     - 'test/bin_test_test.rb'
     - 'test/bridge_retired_test.rb'
-    - 'test/call_budget_hook_test.rb'
     - 'test/capture_hook_test.rb'
     - 'test/claim_cli_test.rb'
     - 'test/claim_test.rb'
@@ -1708,7 +1701,6 @@ Minitest/MultipleAssertions:
     - 'test/backfill_308_test.rb'
     - 'test/backfill_intent_test.rb'
     - 'test/bin_test_test.rb'
-    - 'test/call_budget_hook_test.rb'
     - 'test/capture_hook_test.rb'
     - 'test/claim_cli_test.rb'
     - 'test/claim_test.rb'
@@ -2153,7 +2145,6 @@ Style/Encoding:
     - 'scripts/file-session-intent'
     - 'scripts/folgezettel-id'
     - 'scripts/graph-measure'
-    - 'scripts/hook-call-budget'
     - 'scripts/hook-capture'
     - 'scripts/hook-close'
     - 'scripts/hook-message-display'
@@ -2323,7 +2314,6 @@ Style/Encoding:
     - 'test/backfill_intent_test.rb'
     - 'test/bin_test_test.rb'
     - 'test/bridge_retired_test.rb'
-    - 'test/call_budget_hook_test.rb'
     - 'test/close_hook_test.rb'
     - 'test/codex_adapter_test.rb'
     - 'test/codex_hooks_test.rb'
@@ -2602,7 +2592,6 @@ Style/MultilineIfModifier:
 # This cop supports safe autocorrection (--autocorrect).
 Style/NestedFileDirname:
   Exclude:
-    - 'scripts/hook-call-budget'
     - 'scripts/lib/codex_adapter.rb'
     - 'scripts/lib/exec_worktree.rb'
     - 'scripts/lib/node_worktree.rb'
@@ -2689,7 +2678,6 @@ Style/RedundantFreeze:
     - 'bin/lib/skill_census.rb'
     - 'scripts/doctor.rb'
     - 'scripts/end-intent'
-    - 'scripts/hook-call-budget'
     - 'scripts/lib/action_graph_shim.rb'
     - 'scripts/lib/backfill_intent.rb'
     - 'scripts/lib/compact_instructions.rb'
@@ -2868,7 +2856,6 @@ Style/RescueStandardError:
     - 'scripts/feedback-report'
     - 'scripts/file-session-intent'
     - 'scripts/graph-measure'
-    - 'scripts/hook-call-budget'
     - 'scripts/hook-capture'
     - 'scripts/hook-close'
     - 'scripts/hook-message-display'
@@ -2948,7 +2935,6 @@ Style/RescueStandardError:
 Style/SafeNavigation:
   Exclude:
     - 'scripts/dashboard.rb'
-    - 'scripts/hook-call-budget'
     - 'scripts/lib/apply_patch_envelope.rb'
     - 'scripts/lib/installer_core.rb'
     - 'scripts/lib/node_input.rb'

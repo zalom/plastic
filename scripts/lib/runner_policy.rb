@@ -160,8 +160,9 @@ module RunnerPolicy
 
   # --- call budget (intent 355, n2) -------------------------------------------
   #
-  # D2: a cap on tool calls per attempt, enforced by a PreToolUse hook that
-  # counts tool calls in the session transcript. Shipped per kind (matrix
+  # D2: a cap on tool calls per attempt, stated in the node input and honored
+  # by the subagent itself since the PreToolUse hook was removed on
+  # 2026-09-24. Shipped per kind (matrix
   # 2.1); `decision` carries one too even though it is never dispatched
   # (327 D12 leaves it out of every lease table for the same reason), so
   # `call_cap` never has to special-case an unknown kind here any more than

@@ -798,14 +798,11 @@ class MergeClaudeHooksTest < Minitest::Test
     assert_equal "755", format("%o", File.stat(dest).mode & 0o777)
   end
 
-  # Intent 302: the edit-path gates are gone. Intent 355, n2 adds one
-  # PreToolUse hook back, call-budget, so a fresh merge registers exactly
-  # that one, never a revived edit-path gate.
-  def test_merge_registers_only_call_budget_under_pretooluse
+  # Intent 302: the edit-path gates are gone, and the call-budget hook went
+  # on 2026-09-24, so a fresh merge registers nothing under PreToolUse.
+  def test_merge_registers_nothing_under_pretooluse
     settings = merged_settings
-    commands = plastic_commands(settings, "PreToolUse")
-    assert_equal 1, commands.size
-    assert commands.first.include?("plastic-call-budget"), commands.inspect
+    assert_empty plastic_commands(settings, "PreToolUse")
   end
 
   # The one write-path hook is record, under PostToolUse, on the full WRITE_MATCHER
@@ -857,6 +854,6 @@ class MergeClaudeHooksTest < Minitest::Test
     commands = plastic_commands(merged, "PreToolUse")
     refute commands.any? { |c| c.include?("plastic-edit-gates") || c.include?("plastic-bash-gate") },
            "retired PreToolUse gates must be purged: #{merged["hooks"]["PreToolUse"].inspect}"
-    assert commands.any? { |c| c.include?("plastic-call-budget") }, "call-budget must register fresh"
+    refute commands.any? { |c| c.include?("plastic-call-budget") }, "the retired call-budget hook must be purged"
   end
 end
