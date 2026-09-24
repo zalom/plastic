@@ -2,7 +2,7 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 
-# Plastic — `uninstall` verb. Runs via `npx @zalom/plastic uninstall` (bin/plastic.js) or directly.
+# Plastic — `uninstall` verb. Runs via `plastic uninstall` or directly.
 # Usage: ruby scripts/uninstall.rb [--claude|--codex|--hermes|--all] [--help]
 #
 # Manifest-driven removal of installed files + legacy-plugin migration. Leaves ~/.plastic/
@@ -33,7 +33,7 @@ class Uninstall < InstallerCore
       plastic uninstall — remove Plastic from an agent
 
       Usage:
-        npx @zalom/plastic uninstall [options]
+        plastic uninstall [options]
 
       Agent options:
         --claude      Uninstall from Claude Code (default)

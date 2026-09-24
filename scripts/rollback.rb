@@ -2,7 +2,7 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 
-# Plastic — `rollback` verb. Runs via `npx @zalom/plastic rollback` (bin/plastic.js) or directly.
+# Plastic — `rollback` verb. Runs via `plastic rollback` or directly.
 # Usage: ruby scripts/rollback.rb [--version <v> [--downgrade | --upgrade]] [--help]
 #
 # Local time-machine over the append-only versions.json ledger. Navigates ONLY versions you
@@ -163,7 +163,7 @@ class Rollback < InstallerCore
       plastic rollback — read installed and available versions, and switch on request
 
       Usage:
-        npx @zalom/plastic rollback [options]
+        plastic rollback [options]
 
       Options:
         (none)                    Show the version-history table (read-only, no switch)
