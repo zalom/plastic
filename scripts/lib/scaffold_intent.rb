@@ -10,8 +10,8 @@ require_relative "intent_validator"
 # and its callers: path and template resolution, section splitting, the intent file's
 # `### Decisions` extraction, and the git-derived diffstat (`build_verification_body`).
 # BackfillIntent (scripts/lib/backfill_intent.rb, intent 308) composes these into the
-# one writer that fills an intent's judgment documents from its record; verify_intent,
-# exec_worktree, and session_git use the repo and base-branch helpers directly.
+# one writer that fills an intent's judgment documents from its record; verify_intent
+# and exec_worktree use the repo and base-branch helpers directly.
 #
 # The three per-file subcommands this module once carried were removed in 2.0 (intent
 # 308): `scaffold_spec` and `scaffold_checklist` (removed in 2.0), `scaffold_outcome` with

@@ -14,11 +14,11 @@ module PullRequestTemplates
     ".github/pull_request_template.md",
     ".github/PULL_REQUEST_TEMPLATE.md",
     ".github/PULL_REQUEST_TEMPLATE/*.md",
-    "docs/pull_request_template.md",
+    "docs/pull_request_template.md"
   ].freeze
 
   GITLAB_GLOBS = [
-    ".gitlab/merge_request_templates/*.md",
+    ".gitlab/merge_request_templates/*.md"
   ].freeze
 
   GLOBS = (GITHUB_GLOBS + GITLAB_GLOBS).freeze

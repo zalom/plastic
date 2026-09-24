@@ -25,16 +25,6 @@ require "yaml"
 module ProjectValidator
   module_function
 
-  # The two enumerated flow: knobs (intent 300, spec D2). Kept as a plain
-  # literal here rather than a require on SessionGit: this validator only
-  # reports a bad value in `errors` (project.yml is still "accepted", spec
-  # D2's matrix row), it never blocks spawn completeness, since a bad value
-  # degrades gracefully at commit time (SessionGit falls back with a Note)
-  # rather than blocking the spawn.
-  FLOW_MODES = %w[direct pull_request].freeze
-  FLOW_WORKSPACES = %w[checkout worktree].freeze
-  FLOW_PULL_REQUEST_BODIES = %w[inject template].freeze
-
   def validate(slug, plastic_home: File.join(Dir.home, ".plastic"))
     missing = []
     errors = []
@@ -64,9 +54,7 @@ module ProjectValidator
       rescue StandardError
         nil
       end
-      if parsed.is_a?(Hash)
-        validate_flow_block(parsed, errors)
-      else
+      unless parsed.is_a?(Hash)
         missing << "project.yml (valid YAML)"
         errors << "project.yml exists at #{project_yml_path} but does not parse as YAML"
       end
@@ -99,25 +87,6 @@ module ProjectValidator
     end
 
     { ok: missing.empty?, missing: missing, errors: errors }
-  end
-
-  # Non-blocking: an unknown `mode` or `workspace` value in project.yml's
-  # `flow:` block, if present, is reported in `errors` but never added to
-  # `missing`, so it never flips `ok`.
-  def validate_flow_block(parsed, errors)
-    flow = parsed["flow"]
-    return unless flow.is_a?(Hash)
-
-    validate_flow_knob(flow, "mode", FLOW_MODES, errors)
-    validate_flow_knob(flow, "workspace", FLOW_WORKSPACES, errors)
-    validate_flow_knob(flow, "pull_request_body", FLOW_PULL_REQUEST_BODIES, errors)
-  end
-
-  def validate_flow_knob(flow, key, allowed, errors)
-    value = flow[key]
-    return if value.nil? || allowed.include?(value.to_s)
-
-    errors << "project.yml flow.#{key} is #{value.inspect}, must be one of #{allowed.join(", ")}"
   end
 
   # Invariant 1: registered in projects.yml with a 'path'. Returns the

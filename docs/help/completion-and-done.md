@@ -57,6 +57,18 @@ a done intent is never moved back to `## Active`.
 One report per audience: a delivery produces `outcome.md` plus one EM-to-CTO owner report, and
 no other step restates either (see `plastic help human-report-contract`).
 
+#### session commit records the item, you land it
+
+`plastic session commit "SUMMARY" [--ref REF]` is how a verified checklist item gets recorded.
+It runs `scripts/session-commit`, which appends one `Item` savepoint line to the day ledger and
+prints, as its `next:` line, the exact instruction to run. Plastic writes no commit itself: no
+`git`, no `gh`, no `glab`.
+
+Outside a registered project the instruction points at this page and names no repository.
+Inside one, it names the project's path and says to commit there the way that repository's own
+`AGENTS.md` says -- the project owns its own commit conventions, this page does not restate
+them.
+
 #### The pull request description
 
 A pull request that closes a delivery carries four headings, in this order:
@@ -68,10 +80,10 @@ A pull request that closes a delivery carries four headings, in this order:
 
 Plain words throughout. No AI attribution anywhere in the title or the body.
 
-A repository's own pull request template is honored, never rewritten. The project's
-`flow.pull_request_body` in `project.yml` decides how: `inject` (the default) puts the four
-headings after the template, and `template` sends the template alone. A repository with no
-template gets the four headings under either value.
-
-Write the description to a file first and pass the file to the pull request. When the
-project or the person runs a writing checker, the file passes it before it is used.
+A repository's own pull request template is honored, never rewritten. `session commit`
+detects one for you: when the project's repository holds a template at any path GitHub or
+GitLab reads it from, the printed instruction includes the exact command that uses it --
+`gh pr create --template NAME.md` or `glab mr create --template NAME` -- one line per template
+found. A repository with no detected template gets a line pointing back at this page instead.
+Either way, filling in the four headings above, and writing the description to a file before
+passing it to the pull request tool, is the agent's own step; Plastic only names the command.

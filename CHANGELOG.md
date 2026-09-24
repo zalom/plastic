@@ -3,6 +3,10 @@
 Release history for Plastic, one line per cut. Commit-level detail lives in
 [GitHub Releases](https://github.com/zalom/plastic/releases).
 
+## Unreleased
+
+- Plastic runs no version control command. This removes the pull request body and template-honoring code that PRs 18 and 19 added; `plastic session commit` now only records the item and prints the commit instruction, and `plastic auto take` prints the worktree to create instead of creating it.
+
 ## 2.0.3
 
 - Documentation follows the public CLI and distinguishes implemented behavior from proposals.

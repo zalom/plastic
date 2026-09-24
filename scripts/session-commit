@@ -2,17 +2,16 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 
-# session-commit (intent 300) - makes one commit for a verified checklist
-# item on the right branch of the repo that contains `--cwd`, applying the
-# branch model and per-repo flow settings in `scripts/lib/session_git.rb`.
-# Idempotent and fail-open: no repository, a detached HEAD, a clean tree, an
-# agent-owned branch, a refused push, a missing `gh`, or a rejected
-# commit-msg hook all degrade to no commit plus a Note savepoint line,
-# never a non-zero exit (spec D1).
+# session-commit (intent 390) - records one verified checklist item as an
+# "Item" savepoint line and prints the instruction for landing it. Plastic
+# runs no version control command: it never commits, pushes, or opens a
+# pull request itself (spec: "Plastic runs no version control command").
+# Fail-open: a store or ledger write failure degrades to a warning, never a
+# non-zero exit, except a usage error.
 #
 # Usage:
-#   session-commit --cwd <dir> --summary <text> [--session <id>] [--day <YYYYMMDD>]
-#                   [--store <dir>] [--plastic-home <dir>]
+#   session-commit --cwd <dir> --summary <text> [--ref REF] [--session <id>]
+#                   [--day <YYYYMMDD>] [--store <dir>] [--plastic-home <dir>]
 #
 # Exit codes:
 #   0 - always, except a usage error
@@ -20,8 +19,9 @@
 
 require_relative "lib/store_layout"
 require "fileutils"
-require_relative "lib/session_git"
 require_relative "lib/session_ledger"
+require_relative "lib/store_provisioning"
+require_relative "lib/pull_request_templates"
 
 def usage_abort(message)
   warn "session-commit: #{message}"
@@ -34,13 +34,14 @@ def next_value!(argv, i, flag)
 end
 
 def parse_args(argv)
-  opts = { cwd: nil, summary: nil, session: nil, day: nil, store: nil, plastic_home: nil }
+  opts = { cwd: nil, summary: nil, ref: nil, session: nil, day: nil, store: nil, plastic_home: nil }
   i = 0
   while i < argv.length
     arg = argv[i]
     case arg
     when "--cwd"          then opts[:cwd] = next_value!(argv, i, arg); i += 1
     when "--summary"      then opts[:summary] = next_value!(argv, i, arg); i += 1
+    when "--ref"          then opts[:ref] = next_value!(argv, i, arg); i += 1
     when "--session"      then opts[:session] = next_value!(argv, i, arg); i += 1
     when "--day"          then opts[:day] = next_value!(argv, i, arg); i += 1
     when "--store"        then opts[:store] = next_value!(argv, i, arg); i += 1
@@ -64,15 +65,27 @@ def default_templates_dir
   File.expand_path("../templates", __dir__)
 end
 
-# The fail-open guarantee (spec D1: exit 0 always, except a usage error)
-# must survive a store or ledger failure too (review R2), not only a git
-# failure: a read-only store, a damaged install missing templates/, or any
-# other write failure used to sit outside every rescue, so the CLI could
-# exit 1 with a raw Ruby backtrace on stderr and zero savepoint lines, even
-# after the git commit itself had already landed. `main`'s own body is
-# wrapped so nothing here can turn into a crash; the ledger write is a
-# second, inner rescue so a lost savepoint line never also swallows the
-# result the caller already needs on stdout.
+# The instruction that lands the item. Inside a registered project: change to
+# its path and commit the way its own AGENTS.md says, naming both, then one
+# line per pull request or merge request template the repository carries, or
+# a pointer at `plastic help completion-and-done` when it carries none.
+# Outside a registered project, no repository is named: the record already
+# went to the global store, and completion-and-done is the only pointer.
+def instruction_for(plastic_home:, project:)
+  registered = project != "global" && StoreProvisioning.registered?(project, plastic_home)
+  return "plastic help completion-and-done names how to land this" unless registered
+
+  repo = StoreProvisioning.load_projects(plastic_home).dig(project, "path")
+  lines = ["cd #{repo} and commit the way #{repo}/AGENTS.md says"]
+  template_lines = PullRequestTemplates.instructions(repo)
+  if template_lines.empty?
+    lines << "plastic help completion-and-done names what comes after the commit"
+  else
+    lines.concat(template_lines)
+  end
+  lines.join("\n")
+end
+
 def main(argv)
   opts = parse_args(argv)
   usage_abort("--cwd is required") if opts[:cwd].nil?
@@ -93,21 +106,20 @@ def main(argv)
     warn "session-commit: could not open the day ledger: #{e.message}"
   end
 
-  result = SessionGit.commit!(cwd: cwd, summary: opts[:summary], day: day, session: session,
-                               plastic_home: plastic_home, store: store)
+  summary = opts[:ref].to_s.strip.empty? ? opts[:summary] : "#{opts[:summary]} (ref #{opts[:ref]})"
 
   begin
     # Does not depend on open_day having run: a damaged install with no
     # templates/, or a store error above, must not also block the append.
     savepoint_path = SessionLedger.savepoint_path(store, day)
     FileUtils.mkdir_p(File.dirname(savepoint_path))
-    line = SessionLedger.savepoint_line(result.event, session, project, result.message, now: Time.now)
+    line = SessionLedger.savepoint_line("Item", session, project, summary, now: Time.now)
     SessionLedger.append_line(savepoint_path, line, header: nil)
   rescue StandardError => e
     warn "session-commit: could not write the savepoint line: #{e.message}"
   end
 
-  puts result.message
+  puts instruction_for(plastic_home: plastic_home, project: project)
   exit 0
 rescue StandardError => e
   warn "session-commit: #{e.message}"

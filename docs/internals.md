@@ -777,14 +777,15 @@ own isolation instead, deterministic and cwd-independent.
   197's branch-from-main plus scoped-commit mechanism.
   `Worktree.repo_for` resolves the abs repo path from `projects.yml` (reusing the
   qmd_sync safe-loader pattern), or nil.
-- **Provision and release**: `Worktree.provision(delivery)` resolves the slug
-  from `delivery["intent"]["store"]`, creates the code worktree idempotently
-  (an existing worktree path is reused, never re-created or errored), and writes
-  the `worktree` block plus `provisioned: true`. It fails open with a stderr log
-  when the repo is unresolvable or not a git work tree, setting `provisioned:
-  false` and leaving `code: null`. `Worktree.release(delivery)` removes the
-  worktree, prunes, and clears the block; it is a no-op when nothing was
-  provisioned.
+- **Reports and removes, creates nothing** (intent 390): `Arm.worktree_block`
+  resolves the slug from the intent dir, derives the code worktree's path and
+  branch through `Worktree.paths`, and reports `provisioned` as whether that
+  path already exists on disk -- `code` and `code_branch` name the expected
+  workspace whether or not it exists yet; only a store-only project (no repo
+  resolves) leaves them blank. Neither `Arm.arm` nor `Arm.repair` runs git.
+  `Worktree.release(delivery)` still removes an existing worktree, prunes, and
+  clears the block when `provisioned` was true; it is a no-op otherwise, since
+  a path that was never created is nothing to remove.
 - **Unified `PLASTIC_HOME` seam** (intent 169): every CLI-script and hook entry
   point resolves its sandbox override from the single env var `PLASTIC_HOME`
   (`read-config`, `dashboard.rb`, `qmd-sync`, `provision-project-store`,
@@ -796,17 +797,18 @@ own isolation instead, deterministic and cwd-independent.
   `home:` kwarg names the OS HOME (the PARENT of `.plastic`) and computes
   `plastic_home = File.expand_path(File.join(home, ".plastic"))` internally, so
   threading the env value straight into `home:` would yield a
-  `~/.plastic/.plastic` bug. `Worktree.provision` therefore never reads the env:
-  it derives `home` from the already-sandboxed `delivery["intent"]["store"]`
-  path (anchored on the `.plastic` path segment, via the pure `home_from_store`
+  `~/.plastic/.plastic` bug. `Arm.home_for` therefore never reads the env: it
+  derives `home` from the already-sandboxed intent directory's store path
+  (anchored on the `.plastic` path segment, via the pure `Worktree.home_from_store`
   helper), falling back to its `home: Dir.home` default only when the store is
   blank or unrecognized. This closes a real incident where a sandboxed board,
-  with no override on `provision`, planted a git worktree in the operator's
-  actual `~/.plastic`; deriving from the store trusts the already-sandboxed
-  value over the ambient environment. The derivation only engages when the
-  store's plastic-home segment is literally named `.plastic` (a sandbox home
-  like `/tmp/x/.plastic` works; an arbitrarily named root does not, and
-  `provision` falls back to the passed `home:`).
+  with no override, planted a git worktree in the operator's actual
+  `~/.plastic` back when `Worktree.provision` did the resolving; deriving from
+  the store trusts the already-sandboxed value over the ambient environment,
+  and the same derivation now guards every path `Arm.worktree_block` computes.
+  The derivation only engages when the store's plastic-home segment is
+  literally named `.plastic` (a sandbox home like `/tmp/x/.plastic` works; an
+  arbitrarily named root does not, and it falls back to the passed `home:`).
 
 - **Foreign locks refuse with exit 3**: `plastic-lock` exits 3 when the lock
   belongs to someone else: `arm` on a held, stale, or excluded lock, `fix` that
@@ -1075,137 +1077,60 @@ ref by scanning store-root children, so a later intent whose `sources` names a d
 is either a resolver that knows `.sessions/` or a frontmatter-only link that projection
 skips, and it belongs to intent 301, not here.
 
-## the session branch model and session-commit (intent 300)
+## session-commit records, it never commits (intent 390)
 
-`scripts/session-commit --cwd <dir> --summary <text>` is how a verified checklist item
-becomes exactly one git commit. `scripts/lib/session_git.rb` is the pure library behind it:
-every git call goes through an injected `runner:` (`Worktree::ShellRunner` by default, the
-same seam `Worktree` itself uses), every `gh` call goes through a separate injected
-`gh_runner:` (`SessionGit::GhRunner` by default, since `gh` is not `git` and needs its own
-seam), and the library reads no environment variable anywhere; only the CLI reads the
-environment and passes what it read in as arguments.
+`scripts/session-commit --cwd <dir> --summary <text> [--ref REF]` is how a verified checklist
+item gets a permanent record. It runs no version control command. It never shells to `git` or
+`gh`, so `scripts/lib/session_git.rb`, its `runner:`/`gh_runner:` seams, and the flow-resolution
+and pull-request-body logic that used to live behind it (intent 300) are gone. What replaced
+them is two plain steps: append one savepoint line, then print the instruction that names the
+actual commit for the caller to run.
 
-**Repo resolution and the guards shared by both modes.** The repo root is
-`git -C <cwd> rev-parse --show-toplevel`; none means the outcome `no repo`. Three checks then
-run before the mode is even read, so `mode: direct` and `mode: pull_request` share exactly one
-implementation of each (an independent review found these living only inside the direct-mode
-path, so `pull_request` could switch a checkout holding another agent's uncommitted work, or
-commit on a detached HEAD): the branch HEAD points to is read with
-`git symbolic-ref --quiet --short HEAD`, which -- unlike `git rev-parse --abbrev-ref HEAD` --
-succeeds on an UNBORN branch (a fresh `git init`, zero commits) as well as a normal one, and
-fails only when HEAD is genuinely detached (reported as the literal string `HEAD`); a detached
-`H` commits nothing; a `H` an agent owns -- its name starts with `plastic/` (every Plastic
-intent worktree's branch), or `cwd` itself is a worktree checked out under
-`.claude/worktrees/` -- is left completely untouched; and a repository with zero commits yet
-(`git rev-parse --verify --quiet HEAD` fails) reports "no commits yet" rather than attempting a
-base-branch dance that cannot resolve.
+**Recording.** `SessionLedger.open_day` opens the day ledger the same way it always has. The
+event is always `Item` -- there is no git outcome left to degrade it to a `Note` over -- with
+the summary text unchanged, or `"<summary> (ref <REF>)"` when `--ref` is given. It is recorded
+against the same store `--store`/`--plastic-home` (or their defaults) already resolved to;
+being inside a registered project changes only the printed instruction, never which store the
+line lands in.
 
-**Flow resolution.** The project slug is the longest `projects.yml` path match (the same idiom
-`SessionLedger.project_slug` already uses for the day ledger). The flow is read from
-the `project.yml` under the project root that `StoreLayout.project_root` resolves, from its `flow:` block, when the project and the key both
-exist, else every knob defaults: `mode: direct`, `base:` from
-`ScaffoldIntent.detect_base_branch` (origin/HEAD, then `main`, then `master`),
-`branch_template: "session/{{day}}"`, `ticket_source: intent_id`, `workspace: checkout`,
-`pull_request_body: inject`. An
-unknown `mode`, `workspace` or `pull_request_body` value falls back to its default and always turns the whole
-outcome into a `Note`, even when the git operation underneath it succeeds: an unrecognized
-flow value is itself a degradation from the configured intent, and `SessionGit.commit!` merges
-both facts into the one savepoint line a caller gets to write. `workspace: worktree` gets the
-same treatment even though it IS a recognized value: see below.
+**The printed instruction.** Outside a registered project, or when `--cwd` resolves to no
+known project, the instruction points at `plastic help completion-and-done` and names no
+repository, since there is none to name. Inside a registered project, the instruction names
+the project's path and says to commit there the way that repository's own `AGENTS.md` says --
+Plastic does not restate a project's commit conventions, it points at the document that owns
+them. `PullRequestTemplates.instructions(repo)` (see below) is appended below that: one line
+per detected template, or, when none is found, a line pointing at
+`plastic help completion-and-done` for what comes after the commit.
 
-**Direct mode, the branch rule.** Let `S` be the rendered session branch and `B` the base. A
-clean tree is `nothing to commit`; an empty summary (blank after truncation) commits nothing
-either, rather than reach git at all and surface as a misleading commit-msg-hook rejection. The
-configured `base` must actually exist (`branch_exists?`) or the outcome is a Note naming it --
-a silently-missing base used to fall through to whatever branch happened to be checked out. A
-`branch_template` that references `{{ticket}}` or `{{slug}}` is rejected before rendering:
-direct mode never populates those tokens, so such a template would render an incomplete ref
-(`quick/` for `quick/{{ticket}}`). The rendered `S` is validated with
-`git check-ref-format --branch` as a second, general safety net. Only past all of that: when
-`H` is `B` or `S`, `S` is created from `B`'s tip if it does not exist yet (reused, never
-recreated, when it already does) and the checkout moves to `S` -- and BOTH of those git calls
-have their exit status checked (an independent review found them ignored: a conflicting dirty
-file, or `S` already checked out in a sibling worktree, made `git branch`/`git checkout` fail
-silently, after which staging and committing ran anyway in whatever branch was actually
-checked out, landing the item straight on `B` while the Note claimed `S`). A failure at either
-step is a Note naming the real git failure, and nothing is staged or committed. Only once the
-checkout is confirmed to have landed on `S` (`current_branch` is re-read, not assumed) does the
-dirty tree get staged and committed there, and `B` is fast-forwarded to `S`'s new tip via
-`git push . S:B` -- a local push that only ever succeeds when it is a genuine fast-forward. A
-`H` that is neither `B` nor `S` (a `feature/x` the owner happened to be on) still gets
-committed, on `H`, with the deviation named in the `Note`. A push refused because `B` moved
-ahead independently (not a fast-forward) leaves the new commit sitting on `S` and reports the
-refusal as a `Note`; the commit is not lost, only not yet integrated.
+**`scripts/lib/pull_request_templates.rb`.** A pure, read-only file-glob check, no git or `gh`
+call: `PullRequestTemplates.detect(repo)` globs for
+`.github/pull_request_template.md`, `.github/PULL_REQUEST_TEMPLATE.md`,
+`.github/PULL_REQUEST_TEMPLATE/*.md`, `docs/pull_request_template.md`, and
+`.gitlab/merge_request_templates/*.md`, returning the paths that exist (deduplicated, since a
+case-insensitive filesystem can match more than one of the GitHub globs against the same
+file). `.instructions(repo)` turns each match into the exact command that uses it:
+`gh pr create --template NAME.md` for a GitHub path, `glab mr create --template NAME` for a
+GitLab one. Neither method runs `gh` or `glab` to check that either is installed; the command
+they name is left for the agent, alongside everything else session-commit prints, never
+Plastic itself.
 
-**workspace: worktree is not implemented in this release.** Spec D8 originally shipped a
-`git stash push`/`pop` relocation into a dedicated worktree at
-`.claude/worktrees/session-<day>`, so `cwd`'s own checkout never had to switch onto `S`. An
-independent review found it unsafe as written: a failed `git worktree add`, a stash pop that
-conflicts with independent changes on `B`, or a rejecting commit-msg hook each left the
-mechanism permanently wedged for the rest of the day (every later item failed the same way,
-self-heal absent), and the commit-msg-hook case silently moved the owner's uncommitted file out
-of their own working tree into the hidden worktree with no notice in the Note. The mechanism is
-removed rather than hardened. `workspace: worktree` stays a valid, accepted config value (the
-validator does not reject it), but `SessionGit.load_flow` now treats it as `checkout` and adds
-`SessionGit::WORKSPACE_WORKTREE_NOTE` to the notes it returns, which merges into a `Note`
-savepoint line the same way an unknown flow value does. The item still commits, through the
-checkout, exactly as `workspace: checkout` would; only the ledger line differs, recording that
-the configured workspace was not honored. A real worktree-based session workspace, if wanted, is
-a follow-up intent.
-
-**Pull request mode.** Shares the repo-existence, detached-HEAD, agent-lock, and unborn-repo
-guards above, plus the empty-summary and missing/nonexistent-base checks direct mode has. The
-branch name renders `branch_template` with three tokens: `{{day}}`, `{{ticket}}`, and
-`{{slug}}` (the summary's first five words, kebab-cased), validated with
-`git check-ref-format --branch` the same way direct mode's session branch is. `{{ticket}}` is
-the intent id when the session holds the intent's `delivery.lock` (as owner or delegate) and
-`ticket_source` is `intent_id`; per 344 G11 this replaces the retired per-session state file,
-falling back to the session's day id (from the day ledger) when no lock is held, so either case
-resolves to one non-blank ticket value. The branch is cut from `B`'s tip and checked out, both with their exit status
-checked the same way direct mode's are; `gh pr create --base B --head <branch> --fill` runs,
-inside the resolved repository (`gh_runner.available?(repo)` and `gh_runner.run(..., dir:
-repo)`), when `gh` is on PATH, with `--title` set to the subject and `--body` to the
-description. The description is Plastic's four headings, What, Why, How and Tests (`plastic
-help completion-and-done`), with the item summary under What and the other three left for
-`gh pr edit` by whoever verified the item. A repository's own pull request template, at any
-path GitHub reads it from, is never rewritten: `pull_request_body: inject` (the default) puts
-the four headings after it, and `pull_request_body: template` sends the template alone, so a
-team's own workflow stands. Without a template both values give the four headings. Without an explicit working directory, `gh` resolves its target
-repository from the calling process's own `Dir.pwd`, not `--cwd`'s repo, which an independent
-review found to be the one place this library could otherwise act on a repository other than
-the one it was asked about -- the normal case for a hook firing from the session's own cwd, not
-the repo the item is in. When `gh` is missing, the Note names the branch and short sha the
-commit actually landed on, since dropping them left the owner with no way to find the commit
-from the ledger line alone. The session branch is never touched in this mode. Whether `gh`
-succeeds, fails, or is missing, the checkout returns to whatever branch was checked out before
-the call.
-
-**Commit message.** The message is the summary's first line only, truncated to 72
-characters, no trailer; a blank result (after truncation) commits nothing at all rather than
-attempt a git commit with an empty message, which git itself would refuse and this library
-would otherwise misreport as a rejecting commit-msg hook. The repository's own `commit-msg`
-hook runs exactly as it would for the owner, and a hook rejection degrades to a `Note`
-carrying the hook's diagnosis: its stderr, or its stdout when stderr is empty, since git and a
-hook script can write their explanation to either stream and an empty diagnosis serves no one.
-
-**Item versus Note.** Every outcome writes exactly one savepoint line. Only the two full
-happy paths -- a direct commit that lands on the session branch AND successfully
-fast-forwards (or merges) the base, and a pull-request commit that successfully opens its PR
--- are `Item`, with the summary format `<commit subject> (<short sha>)`. Every other outcome,
-including ones where a commit did land (a wrong-branch commit, a refused push, a missing
-`gh`), is a `Note`: whether the branch model reached its fully-integrated end state decides
-the event, not merely whether a commit object exists.
-
-**The CLI's own fail-open guarantee.** `SessionGit.commit!` is fail-open by construction, but
-`scripts/session-commit` also wraps `SessionLedger.open_day` and the savepoint append in their
-own rescues, and `main` carries a top-level one: a store or ledger failure (a read-only store
-directory, an installed layout missing `templates/`) used to sit outside every rescue, so the
-CLI could exit 1 with a raw Ruby backtrace on stderr and zero savepoint lines, even after the
-git commit itself had already landed -- breaking the exit-0-always contract for a caller like
-intent 298's `record` hook, which never expects a git-commit tool to crash the calling process.
-The savepoint append also no longer depends on `open_day` having run: it calls
+**The CLI's fail-open guarantee.** `scripts/session-commit` wraps `SessionLedger.open_day` and
+the savepoint append in their own rescues, and `main` carries a top-level one, so a store or
+ledger failure (a read-only store directory, an installed layout missing `templates/`) degrades
+to exit 0 with the instruction still printed, rather than a raw Ruby backtrace and a crashed
+calling process -- the same exit-0-always contract intent 298's `record` hook already depended
+on. The savepoint append does not depend on `open_day` having run: it calls
 `FileUtils.mkdir_p` on the day directory itself first, so a damaged install that cannot open
-the day ledger can still write its one savepoint line.
+the day ledger can still write its one savepoint line. Only a usage error (no `--cwd`, no
+`--summary`) exits 2 and writes nothing.
+
+**`plastic auto take` reports a worktree, it never creates one.** The companion half of this
+cut: `Arm.worktree_block` (see the worktree-provisioning section above) computes the expected
+code worktree's path and branch with no git call, and `scripts/lib/cli/commands/auto_take.rb`
+renders them on the screen (`present`/`not yet created`, from `provisioned`) and, when a repo
+resolves, prints the exact `git -C <repo> worktree add <path> -b <branch>` as the `next:` line
+-- Plastic names the command, the agent runs it. A store-only project (no repo resolves) keeps
+the previous next step, `plastic auto brief ID`, since there is no workspace to create.
 
 ## compaction thresholds and the compact-instructions block (intent 312)
 
@@ -1811,8 +1736,7 @@ line, and `NodeInput` marks nodes without a worktree as read-only.
 
 `RoadmapQueue` ranks a roadmap with a cyclic graph after every healthy one.
 `roadmap-graph` reports graph ids no batch lists even when it also finds a
-cycle. `SessionGit` reads the intent's `delivery.lock` to say who holds a
-delivery branch. `plastic sync` lists a missing `work_graph.db` or
+cycle. `plastic sync` lists a missing `work_graph.db` or
 `references.db` under `build`.
 
 ## History: the 1.x skill design

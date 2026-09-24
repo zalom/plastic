@@ -515,7 +515,7 @@ class InstallerCore
       "scripts/promote-session-item" => "scripts/promote-session-item",
       "scripts/lib/session_backfill.rb" => "scripts/lib/session_backfill.rb",
       "scripts/lib/session_close.rb" => "scripts/lib/session_close.rb",
-      "scripts/lib/session_git.rb" => "scripts/lib/session_git.rb",
+      "scripts/lib/pull_request_templates.rb" => "scripts/lib/pull_request_templates.rb",
       "scripts/lib/handoff.rb" => "scripts/lib/handoff.rb",
       "scripts/lib/day_summary.rb" => "scripts/lib/day_summary.rb",
       "scripts/write-handoff" => "scripts/write-handoff",

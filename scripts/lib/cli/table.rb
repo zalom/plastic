@@ -51,7 +51,7 @@ module Plastic
       "roadmap show" => ["commands/roadmap_show", "RoadmapShow", "Print a roadmap's state screen"],
       "rollback" => ["commands/rollback", "Rollback", "Move to a Plastic version this machine has run before"],
       "search" => ["commands/search", "Search", "Find text in the stores, ranked, with one excerpt each"],
-      "session commit" => ["commands/session_commit", "SessionCommit", "Commit one verified checklist item"],
+      "session commit" => ["commands/session_commit", "SessionCommit", "Record one verified checklist item and print the commit instruction"],
       "session handoff" => ["commands/session_handoff", "SessionHandoff", "Write this session's hand-off into the day ledger"],
       "session summary" => ["commands/session_summary", "SessionSummary", "Print the day ledger's open items and recent activity"],
       "session" => ["commands/session", "Session", "List the session subcommands"],
