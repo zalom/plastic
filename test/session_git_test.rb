@@ -692,7 +692,55 @@ class SessionGitTest < Minitest::Test
     expected_branch = "pr/#{@day}-fix-the-login-bug"
     assert git(repo, "rev-parse", "--verify", "--quiet", expected_branch).success?
     refute_empty gh.calls
-    assert_equal ["pr", "create", "--base", "main", "--head", expected_branch, "--fill"], gh.calls.first[:args]
+    args = gh.calls.first[:args]
+    assert_equal ["pr", "create", "--base", "main", "--head", expected_branch, "--title", "Fix the login bug"], args.first(8)
+    assert_equal "--body", args[8]
+    assert_equal "## What\n\nFix the login bug\n\n## Why\n\n## How\n\n## Tests\n", args[9]
+  ensure
+    FileUtils.rm_rf(repo)
+  end
+
+  def test_pr_mode_inject_puts_the_four_headings_after_the_repo_template
+    repo = build_repo
+    register_project("demo", repo)
+    write_flow("demo", { "mode" => "pull_request" })
+    FileUtils.mkdir_p(File.join(repo, ".github"))
+    File.write(File.join(repo, ".github", "pull_request_template.md"), "## Checklist\n\n- [ ] reviewed\n")
+    write_dirty_file(repo)
+    gh = FakeGhRunner.new(available: true)
+
+    commit!(repo, "Fix the login bug", gh_runner: gh)
+
+    body = gh.calls.first[:args].last
+    assert_equal "## Checklist\n\n- [ ] reviewed\n\n## What\n\nFix the login bug\n\n## Why\n\n## How\n\n## Tests\n", body
+  ensure
+    FileUtils.rm_rf(repo)
+  end
+
+  def test_pr_mode_template_sends_the_repo_template_untouched
+    repo = build_repo
+    register_project("demo", repo)
+    write_flow("demo", { "mode" => "pull_request", "pull_request_body" => "template" })
+    File.write(File.join(repo, "PULL_REQUEST_TEMPLATE.md"), "## Checklist\n\n- [ ] reviewed\n")
+    write_dirty_file(repo)
+    gh = FakeGhRunner.new(available: true)
+
+    commit!(repo, "Fix the login bug", gh_runner: gh)
+
+    assert_equal "## Checklist\n\n- [ ] reviewed\n", gh.calls.first[:args].last
+  ensure
+    FileUtils.rm_rf(repo)
+  end
+
+  def test_load_flow_unknown_pull_request_body_falls_back_to_inject_with_a_note
+    repo = build_repo
+    register_project("demo", repo)
+    write_flow("demo", { "pull_request_body" => "rewrite" })
+
+    flow, notes = SessionGit.load_flow(cwd: repo, repo: repo, plastic_home: @plastic_home, runner: RUNNER)
+
+    assert_equal "inject", flow["pull_request_body"]
+    assert notes.any? { |n| n.include?("rewrite") }
   ensure
     FileUtils.rm_rf(repo)
   end

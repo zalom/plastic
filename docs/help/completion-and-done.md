@@ -67,3 +67,8 @@ A pull request that closes a delivery carries four headings, in this order:
 - **Tests.** The test files run and their result, and a note that CI runs the full suite.
 
 Plain words throughout. No AI attribution anywhere in the title or the body.
+
+A repository's own pull request template is honored, never rewritten. The project's
+`flow.pull_request_body` in `project.yml` decides how: `inject` (the default) puts the four
+headings after the template, and `template` sends the template alone. A repository with no
+template gets the four headings under either value.
