@@ -11,14 +11,15 @@ require_relative "lock"
 # Worktree -- the expected code worktree path and the delivery lock
 # (intent 73c / 73c1; provisioning removed by intent 390).
 #
-# Plastic runs no version control command. It computes the deterministic path
-# and branch a project intent's code worktree would have
-# (<repo>/.claude/worktrees/{id}--{slug}, branch plastic/{id}--{slug}) and
-# prints them (see Arm.worktree_block and `plastic auto take`'s screen); the
-# agent that receives the instruction creates the worktree itself, e.g.
-# `git -C <repo> worktree add <path> -b <branch>`. This module still tears a
-# worktree down (`release`, `finish`) once one exists, since disarm and
-# CLEANUP still need to remove and merge what the agent created.
+# Plastic runs no version control command (owner ruling 2026-09-24, intent
+# 390). It computes the deterministic path and branch a project intent's code
+# worktree would have (<repo>/.claude/worktrees/{id}--{slug}, branch
+# plastic/{id}--{slug}) and prints them (see Arm.worktree_block and
+# `plastic auto take`'s screen); the agent that receives the instruction
+# creates the worktree itself, e.g. `git -C <repo> worktree add <path> -b
+# <branch>`, and removes/merges it itself too. `release`, `finish`, and
+# `merge_branch` (the old teardown/merge git calls) are gone; `Arm.disarm`
+# now only clears the lock and prints the removal instruction.
 #
 # One worktree per project intent (decision D2, retired to a single worktree by
 # intent 178). Store-write safety for lifecycle-doc writes comes from intent
@@ -28,16 +29,19 @@ require_relative "lock"
 # The durable delivery.lock file in the intent dir is the single-owner
 # delivery lock (intent 108): session-keyed, lease-based, explicit takeover.
 #
-# Pure and dependency-injected: every git call goes through an injected
-# `ShellRunner`, so unit tests are hermetic (no real git; inject a fake runner).
-# No eval, no global/ENV config injection.
+# Pure and dependency-injected. No eval, no global/ENV config injection.
 module Worktree
   module_function
 
   # --- ShellRunner (DI seam) -------------------------------------------------
-
-  # The default runner shells out to real `git`. Tests inject a fake with the
-  # same `run(*args)` contract so no real git runs in unit tests.
+  #
+  # KEPT ONLY for the node-graph runner modules (node_worktree.rb, runner_*.rb),
+  # which still run real `git worktree`/merge commands for the graph's own node
+  # worktrees; that is a separate, still-open action (intent 390 part B). Once
+  # those modules stop shelling out, this class and `current_branch`,
+  # `remove_worktree`, `prune`, and `git_repo?` below go too. Plastic's own
+  # intent-delivery worktree path (arm/disarm/exec_worktree/scaffold/verify) no
+  # longer uses any of this.
   class ShellRunner
     Result = Struct.new(:status, :stdout, :stderr) do
       def success?
@@ -107,85 +111,8 @@ module Worktree
     File.expand_path(path)
   end
 
-  # --- teardown ----------------------------------------------------------
-
-  # Remove the worktree (then `git worktree prune`), clear the worktree block.
-  # No-op when nothing was provisioned. CLEANUP (73c3) layers the merge-vs-remove
-  # policy on top via `finish`; this is the plain remove. Pass `remove: false` to
-  # clear the block WITHOUT touching git (so `finish` can merge first, then call
-  # release to drop the worktree once the code branch is integrated).
-  def release(delivery, home: Dir.home, runner: ShellRunner.new, remove: true)
-    return delivery unless delivery.is_a?(Hash)
-    block = delivery["worktree"]
-    return delivery unless block.is_a?(Hash)
-
-    if remove
-      slug = slug_for_store(delivery.dig("intent", "store").to_s, home: home)
-      repo = repo_for(slug, home: home)
-
-      # `code` now names the expected path whether or not it was ever created
-      # (intent 390: Arm.worktree_block reports it unconditionally), so the
-      # git call is gated on `provisioned`, not on `code` alone -- a workspace
-      # never created is nothing to remove.
-      remove_worktree(runner, repo: repo, worktree: block["code"]) if repo && block["provisioned"]
-      prune(runner, repo: repo) if repo
-    end
-
-    delivery.delete("worktree")
-    delivery
-  end
-
-  # --- cleanup policy (merge-vs-remove) -------------------------------------
-
-  # Finish an intent's delivery by tearing down its worktree, optionally merging
-  # the code branch back first (intent 73c3). The merge-vs-remove decision is the
-  # one piece of policy on top of the plain `release`:
-  #
-  #   merge: true  -> the releasing path. Merge the intent's code branch
-  #                   (`plastic/{id}--{slug}`) into the repo's default branch
-  #                   BEFORE removing the worktrees, so the work is integrated and
-  #                   not lost when the worktree disappears. Then `release`.
-  #   merge: false -> the disarm / abandon path. Just `release` (plain remove);
-  #                   the branch survives and can be reclaimed.
-  #
-  # Fail-open and idempotent throughout: a missing block, missing branch, or any
-  # git failure never raises and never blocks teardown. All git ops use
-  # `git -C <path>`, never cwd (decision D6). No-op when nothing was provisioned.
-  def finish(delivery, home: Dir.home, runner: ShellRunner.new, merge: false)
-    return delivery unless delivery.is_a?(Hash)
-    block = delivery["worktree"]
-    return delivery unless block.is_a?(Hash)
-
-    if merge && block["provisioned"]
-      slug = slug_for_store(delivery.dig("intent", "store").to_s, home: home)
-      repo = repo_for(slug, home: home)
-      branch = block["code_branch"]
-      merge_branch(runner, repo: repo, branch: branch) if repo && !blank?(branch)
-    end
-
-    release(delivery, home: home, runner: runner, remove: true)
-  end
-
-  # Merge `branch` into the repo's default branch from the main checkout. The
-  # worktree the branch is checked out in stays put; we merge in the repo dir
-  # itself (its own current branch is the integration target). Idempotent: a
-  # no-op merge ("Already up to date") still succeeds. Fail-open: a conflicting
-  # or otherwise failing merge is aborted and logged, never raised, so teardown
-  # still proceeds (CLEANUP must not strand a worktree).
-  def merge_branch(runner, repo:, branch:)
-    return false if blank?(repo) || blank?(branch)
-    target = current_branch(runner, repo: repo)
-    return false if blank?(target) || target == branch
-
-    res = runner.run("-C", repo, "merge", "--no-ff", "--no-edit", branch)
-    return true if res.success?
-
-    # Leave the integration branch clean: abort a half-applied/conflicted merge.
-    runner.run("-C", repo, "merge", "--abort")
-    warn "plastic: worktree finish could not merge #{branch.inspect} into " \
-         "#{target.inspect}: #{res.stderr.to_s.strip}; removing worktree without merge"
-    false
-  end
+  # --- git operations still needed by the node-graph runner (see the
+  # ShellRunner comment above; intent 390 part B removes these too) ----------
 
   # The repo's current branch (the integration target), or nil when detached /
   # unresolvable.
