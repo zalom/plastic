@@ -10,38 +10,13 @@ require_relative "../scripts/lib/outcome_guard"
 
 # BackfillIntent (intent 308): the four judgment documents are written from the record at
 # intent end, only where a target is missing or still the placeholder. Drives the lib in
-# process with a fake git runner; hermetic tmp home, no eval, no ENV seam, no real
-# ~/.plastic read (templates are passed explicitly).
+# process; hermetic tmp home, no eval, no ENV seam, no real ~/.plastic read (templates are
+# passed explicitly). Plastic runs no version control command (intent 390): the
+# verification section prints the `git diff --stat` instruction instead of running it, so
+# no fake git runner is needed here either.
 class BackfillIntentTest < Minitest::Test
   SENTINEL = Savepoint::PLACEHOLDER_SENTINEL
   TEMPLATES = File.expand_path("../templates", __dir__)
-
-  class FakeRunner
-    Result = Struct.new(:status, :stdout, :stderr) do
-      def success?
-        status.zero?
-      end
-    end
-
-    def initialize(diffstat_status: 0, diffstat_stdout: "2 files changed, 9 insertions(+)\n", raise_on_diff: false)
-      @diffstat_status = diffstat_status
-      @diffstat_stdout = diffstat_stdout
-      @raise_on_diff = raise_on_diff
-    end
-
-    def run(*args)
-      case args[2]
-      when "rev-parse"
-        args.include?("--show-toplevel") ? Result.new(0, "/fake/repo\n", "") : Result.new(args.include?("main") ? 0 : 1, "", "")
-      when "symbolic-ref" then Result.new(1, "", "")
-      when "diff"
-        raise IOError, "git exploded" if @raise_on_diff
-
-        Result.new(@diffstat_status, @diffstat_stdout, "boom")
-      else Result.new(1, "", "unhandled #{args.inspect}")
-      end
-    end
-  end
 
   DECISIONS = "- D1. First ruling.\n- D2. Second ruling that wraps\n  onto a continuation line.\n"
   CHECKLIST = <<~MD
@@ -110,9 +85,9 @@ class BackfillIntentTest < Minitest::Test
     dir
   end
 
-  def run_backfill(dir, disposition: "delivered", summary: "Shipped the thing.", runner: FakeRunner.new)
+  def run_backfill(dir, disposition: "delivered", summary: "Shipped the thing.")
     BackfillIntent.run(intent_dir: dir, store: @store, id: File.basename(dir).split("--").first,
-                       disposition: disposition, summary: summary, home: @home, runner: runner,
+                       disposition: disposition, summary: summary, home: @home,
                        templates_dir: TEMPLATES, now: @now)
   end
 
@@ -273,30 +248,18 @@ class BackfillIntentTest < Minitest::Test
     [dir, store]
   end
 
-  def test_diffstat_comes_from_the_intents_own_worktree_only
+  def test_diffstat_instruction_comes_from_the_intents_own_worktree_only
     dir, store = build_project_intent
+    worktree = File.join(@home, "repo", ".claude", "worktrees", "308w--demo")
     BackfillIntent.run(intent_dir: dir, store: store, id: "308w", disposition: "delivered", summary: "s",
-                       home: @home, runner: FakeRunner.new, templates_dir: TEMPLATES, now: @now)
+                       home: @home, templates_dir: TEMPLATES, now: @now)
     assert_includes read(dir, "outcome.md"),
-                    "## Verification\nDiffstat against main:\n```\n2 files changed, 9 insertions(+)\n```\n"
+                    "## Verification\nDiffstat: run `git -C #{worktree} diff --stat main...HEAD` (against main)\n"
 
     dir2, = build_project_intent(id: "308v", worktree: false)
     BackfillIntent.run(intent_dir: dir2, store: store, id: "308v", disposition: "delivered", summary: "s",
-                       home: @home, runner: FakeRunner.new, templates_dir: TEMPLATES, now: @now)
+                       home: @home, templates_dir: TEMPLATES, now: @now)
     assert_includes read(dir2, "outcome.md"), "Diffstat unavailable: this intent provisioned no code worktree\n"
-  end
-
-  def test_failing_diffstat_and_raising_git_both_yield_an_unavailable_line
-    dir, store = build_project_intent
-    BackfillIntent.run(intent_dir: dir, store: store, id: "308w", disposition: "delivered", summary: "s",
-                       home: @home, runner: FakeRunner.new(diffstat_status: 1), templates_dir: TEMPLATES, now: @now)
-    assert_includes read(dir, "outcome.md"), "## Verification\nDiffstat unavailable: boom\n"
-
-    dir2, = build_project_intent(id: "308u")
-    result = BackfillIntent.run(intent_dir: dir2, store: store, id: "308u", disposition: "delivered", summary: "s",
-                                home: @home, runner: FakeRunner.new(raise_on_diff: true), templates_dir: TEMPLATES, now: @now)
-    assert_includes result[:written], "outcome.md"
-    assert_includes read(dir2, "outcome.md"), "Diffstat unavailable: git exploded\n"
   end
 
   def test_missing_intent_file_writes_nothing_and_notes_it
@@ -332,7 +295,7 @@ class BackfillIntentTest < Minitest::Test
   def test_missing_templates_dir_falls_back_to_the_built_in_stubs
     dir = build_intent
     BackfillIntent.run(intent_dir: dir, store: @store, id: "308z", disposition: "delivered", summary: "s",
-                       home: File.join(@home, "nowhere"), runner: FakeRunner.new,
+                       home: File.join(@home, "nowhere"),
                        templates_dir: File.join(@home, "missing-templates"), now: @now)
     assert_includes read(dir, "spec.md"), "## Goals\n- ...\n"
   end

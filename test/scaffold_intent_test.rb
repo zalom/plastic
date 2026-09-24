@@ -167,10 +167,12 @@ class ScaffoldIntentTest < Minitest::Test
     end
     refute ScaffoldIntent.const_defined?(:SPEC_SECTIONS)
     %i[expand resolve_intent_dir resolve_templates_dir sections_from replace_section_body
-       extract_decisions strip_blank_edges resolve_repo_dir detect_base_branch diffstat
-       build_verification_body].each do |m|
+       extract_decisions strip_blank_edges resolve_repo_dir detect_base_branch
+       diffstat_instruction build_verification_body].each do |m|
       assert ScaffoldIntent.respond_to?(m), "ScaffoldIntent.#{m} must survive for its callers"
     end
+    refute ScaffoldIntent.respond_to?(:diffstat),
+           "diffstat shelled out to git directly; intent 390 replaced it with diffstat_instruction"
   end
 
   def test_extract_decisions_is_byte_for_byte_and_errors_without_the_heading

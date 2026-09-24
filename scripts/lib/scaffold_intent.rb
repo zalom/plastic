@@ -2,13 +2,15 @@
 # frozen_string_literal: true
 
 require "fileutils"
+require "yaml"
 require_relative "worktree"
 require_relative "savepoint"
 require_relative "intent_validator"
+require_relative "store_layout"
 
 # ScaffoldIntent - the shared, pure helpers behind `scripts/scaffold-intent` (intent 213)
 # and its callers: path and template resolution, section splitting, the intent file's
-# `### Decisions` extraction, and the git-derived diffstat (`build_verification_body`).
+# `### Decisions` extraction, and the diffstat instruction (`build_verification_body`).
 # BackfillIntent (scripts/lib/backfill_intent.rb, intent 308) composes these into the
 # one writer that fills an intent's judgment documents from its record; verify_intent
 # and exec_worktree use the repo and base-branch helpers directly.
@@ -21,10 +23,11 @@ require_relative "intent_validator"
 #
 # Pure and dependency-injected: never calls `exit` or `abort`, never reads `ARGV` or
 # `ENV` directly (only via the ambient `Dir.home` default, matching this module's own
-# convention). A git seam is injected as `runner:`, defaulting to
-# `Worktree::ShellRunner.new`, so tests drive this in process with a fake runner and
-# never touch real git. Every method returns a value; `scripts/scaffold-intent` maps the
-# returned result to an exit code.
+# convention). Plastic runs no version control command (intent 390): `resolve_repo_dir`
+# and `detect_base_branch` read only projects.yml and a project's project.yml, never git;
+# `diffstat` is gone, replaced everywhere by the printed `git diff --stat` instruction.
+# Every method returns a value; `scripts/scaffold-intent` maps the returned result to an
+# exit code.
 module ScaffoldIntent
   module_function
 
@@ -145,73 +148,81 @@ module ScaffoldIntent
     lines.reverse.drop_while { |l| l.strip.empty? }.reverse
   end
 
-  # --- repo / base-branch resolution (shared with ACTION_3) -----------------------
+  # --- repo / base-branch resolution (shared with ACTION_3; intent 390: no git call) --
 
-  # The provisioned code worktree for this intent when it exists on disk, else the git
-  # toplevel of the current working directory. Returns nil when neither resolves.
-  def resolve_repo_dir(store:, id:, intent_dir:, home: Dir.home, runner: Worktree::ShellRunner.new)
+  # The provisioned code worktree for this intent when it exists on disk, else nil.
+  # Plastic runs no version control command, so there is no git-toplevel fallback: a
+  # repo is named only by projects.yml plus the worktree the agent was told to create.
+  def resolve_repo_dir(store:, id:, intent_dir:, home: Dir.home)
     wt_home = Worktree.home_from_store(store) || home
     slug = Worktree.slug_for_store(store, home: wt_home)
     intent_slug = File.basename(intent_dir).split("--", 2).last
     paths = Worktree.paths(slug: slug, intent_id: id, intent_slug: intent_slug, home: wt_home)
     code = paths["code"]
-    return code if code && Dir.exist?(code)
-
-    res = runner.run("-C", Dir.pwd, "rev-parse", "--show-toplevel")
-    return nil unless res.success?
-
-    top = res.stdout.to_s.strip
-    top.empty? ? nil : top
+    code && Dir.exist?(code) ? code : nil
   end
 
-  # Standard git base-branch detection, first success wins: origin/HEAD, then `main`,
-  # then `master`. Returns nil when none resolve.
-  def detect_base_branch(repo, runner: Worktree::ShellRunner.new)
-    res = runner.run("-C", repo, "symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD")
-    if res.success?
-      ref = res.stdout.to_s.strip
-      return ref.sub(%r{\Aorigin/}, "") unless ref.empty?
+  # The slug whose projects.yml path matches `repo`, or nil (no reverse match, or a
+  # blank/relative repo that resolves nowhere).
+  def slug_for_repo(repo, home: Dir.home)
+    return nil if blank?(repo)
+    target = File.expand_path(repo.to_s)
+    projects = Worktree.load_projects(home)
+    entry = projects.find do |_slug, info|
+      info.is_a?(Hash) && !blank?(info["path"]) && File.expand_path(info["path"]) == target
     end
+    entry && entry.first
+  end
 
-    return "main" if runner.run("-C", repo, "rev-parse", "--verify", "--quiet", "main").success?
-    return "master" if runner.run("-C", repo, "rev-parse", "--verify", "--quiet", "master").success?
+  # `flow: base:` from the project's project.yml (mirrors ReportScreen.flow_base), or
+  # nil when the repo names no registered project, the key is absent, or the file
+  # cannot be read.
+  def configured_base_branch(repo, home: Dir.home)
+    slug = slug_for_repo(repo, home: home)
+    return nil unless slug
 
+    path = File.join(Plastic::StoreLayout.project_root(File.join(File.expand_path(home), ".plastic"), slug),
+                     "project.yml")
+    return nil unless File.exist?(path)
+
+    data = YAML.safe_load(File.read(path))
+    return nil unless data.is_a?(Hash)
+
+    flow = data["flow"]
+    return nil unless flow.is_a?(Hash)
+
+    base = flow["base"]
+    base.is_a?(String) && !base.empty? ? base : nil
+  rescue StandardError
     nil
   end
 
-  # [stdout, nil] on success, [nil, stderr] on failure. Three-dot range so the diff is
-  # against the merge base, not the tip of the base branch.
-  def diffstat(repo, base, runner: Worktree::ShellRunner.new)
-    res = runner.run("-C", repo, "diff", "--stat", "#{base}...HEAD")
-    return [nil, res.stderr.to_s.strip] unless res.success?
-
-    [res.stdout.to_s, nil]
+  # The intent's base branch: the project's own `flow: base:` when it names one, else
+  # `main`. No git call (intent 390): a project that wants `master`, or any other
+  # default branch name, states it in project.yml instead of Plastic guessing from a
+  # repository it no longer inspects.
+  def detect_base_branch(repo, home: Dir.home)
+    configured_base_branch(repo, home: home) || "main"
   end
 
-  # --- verification body (diffstat plus an optional test summary) ----------------------
+  # The `git diff --stat` instruction for `repo` against `base` (three-dot range, so the
+  # diff is against the merge base, not the tip of the base branch), for a caller to
+  # print and run by hand. Plastic runs no version control command (intent 390).
+  def diffstat_instruction(repo, base)
+    "git -C #{repo} diff --stat #{base}...HEAD"
+  end
 
-  def build_verification_body(store:, id:, intent_dir:, home:, runner:, test_summary:)
-    repo = resolve_repo_dir(store: store, id: id, intent_dir: intent_dir, home: home, runner: runner)
+  # --- verification body (the diffstat instruction plus an optional test summary) -----
+
+  def build_verification_body(store:, id:, intent_dir:, home:, test_summary:)
+    repo = resolve_repo_dir(store: store, id: id, intent_dir: intent_dir, home: home)
 
     out = []
     if repo.nil?
       out << "Diffstat unavailable: no repo could be resolved for this intent\n"
     else
-      base = detect_base_branch(repo, runner: runner)
-      if base.nil?
-        out << "Diffstat unavailable: no base branch could be detected (no origin/HEAD, main, or master)\n"
-      else
-        stat, err = diffstat(repo, base, runner: runner)
-        if stat.nil?
-          out << "Diffstat unavailable: #{err}\n"
-        else
-          out << "Diffstat against #{base}:\n"
-          out << "```\n"
-          out << stat
-          out << "\n" unless stat.end_with?("\n")
-          out << "```\n"
-        end
-      end
+      base = detect_base_branch(repo, home: home)
+      out << "Diffstat: run `#{diffstat_instruction(repo, base)}` (against #{base})\n"
     end
 
     unless blank?(test_summary)

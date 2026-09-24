@@ -4,45 +4,55 @@
 
 # verify-intent (intent 213) - bundles the checks that need no project-specific knowledge
 # into one verdict: the per-intent doctor scan, an added-line em-dash diff guard, a
-# diffstat, and an optional caller-supplied suite command.
+# diffstat instruction, and an optional caller-supplied suite command.
+#
+# Plastic runs no version control command (owner ruling 2026-09-24, intent 390): the
+# em-dash guard and the diffstat both print the `git diff` command to run by hand instead
+# of running it. Pass --diff-file with a file already holding `git diff <base>...HEAD`'s
+# own output (piped in from the shell, or from CI's own diff step) to still gate the
+# em-dash guard on real content.
 #
 # Usage:
-#   verify-intent --store <path> --id <intent_id> [--base <ref>] [--suite <command>]
+#   verify-intent --store <path> --id <intent_id> [--base <ref>] [--diff-file <path>]
+#                 [--suite <command>]
 #
-# --base overrides the auto-detected diff base (default: the merge base with the repo's
-# detected default branch) for repos where detection is ambiguous. --suite is an optional
-# caller-supplied command to run (in the repo directory) and merge into the verdict. No
-# other flags exist.
+# --base overrides the auto-detected diff base (default: the project's `flow: base:` from
+# project.yml, else `main`) for repos where the default is not `main`. --diff-file names a
+# file already holding the unified diff to scan for the em-dash guard; without it, the
+# guard only prints the command to run. --suite is an optional caller-supplied command to
+# run (in the repo directory) and merge into the verdict. No other flags exist.
 #
 # Checks, all run every invocation (the fourth only when --suite is given):
 #   1. doctor    - Doctor#run_intent_check(id, store: scope), fail-open on a crash; the doctor
 #                  scan includes the intent_ticks_lag warning (intent 329)
-#   2. em-dash   - added lines only of `git diff <base>...HEAD`, never the whole tree
-#   3. diffstat  - `git diff --stat <base>...HEAD`, never a failure on its own
+#   2. em-dash   - added lines only, scanned when --diff-file is given; otherwise the
+#                  `git diff <base>...HEAD` command is printed, never run
+#   3. diffstat  - the `git diff --stat <base>...HEAD` command is printed, never run
 #   4. suite     - the supplied --suite command, run with RUBYOPT cleared
 #
 # Every check runs, then the run exits on the LOWEST-numbered failure that occurred, so one
 # invocation gives the full picture on stdout even when several checks fail.
 #
 # Exit codes:
-#   0  every check passed
+#   0  every check passed (or was only printed as an instruction)
 #   1  usage or path-resolution failure
 #   2  doctor reported an issue
-#   3  the em-dash guard found a violation on an added line
+#   3  the em-dash guard found a violation on an added line (--diff-file only)
 #   4  the supplied --suite command exited non-zero
 
 require_relative "lib/verify_intent"
 
 def parse_args(argv)
-  opts = { store: nil, id: nil, base: nil, suite: nil }
+  opts = { store: nil, id: nil, base: nil, suite: nil, diff_file: nil }
   i = 0
   while i < argv.length
     arg = argv[i]
     case arg
-    when "--store" then opts[:store] = argv[i += 1]
-    when "--id"    then opts[:id] = argv[i += 1]
-    when "--base"  then opts[:base] = argv[i += 1]
-    when "--suite" then opts[:suite] = argv[i += 1]
+    when "--store"     then opts[:store] = argv[i += 1]
+    when "--id"        then opts[:id] = argv[i += 1]
+    when "--base"      then opts[:base] = argv[i += 1]
+    when "--suite"     then opts[:suite] = argv[i += 1]
+    when "--diff-file" then opts[:diff_file] = argv[i += 1]
     else
       usage_abort("unknown argument #{arg.inspect}")
     end
@@ -52,7 +62,8 @@ def parse_args(argv)
 end
 
 def usage
-  "usage: verify-intent --store <path> --id <intent_id> [--base <ref>] [--suite <command>]"
+  "usage: verify-intent --store <path> --id <intent_id> [--base <ref>] [--diff-file <path>] " \
+    "[--suite <command>]"
 end
 
 def usage_abort(message)
@@ -66,7 +77,10 @@ def main(argv)
   usage_abort("--store is required") if opts[:store].nil? || opts[:store].empty?
   usage_abort("--id is required") if opts[:id].nil? || opts[:id].empty?
 
-  verdict = VerifyIntent.run(store: opts[:store], id: opts[:id], base: opts[:base], suite: opts[:suite])
+  diff_text = opts[:diff_file] ? File.read(opts[:diff_file]) : nil
+
+  verdict = VerifyIntent.run(store: opts[:store], id: opts[:id], base: opts[:base],
+                             suite: opts[:suite], diff_text: diff_text)
   verdict[:lines].each { |line| puts line }
   exit verdict[:exit_code]
 end
