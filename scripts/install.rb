@@ -121,21 +121,15 @@ class Install < InstallerCore
   # Injectable pre-flight gate: real probes as default args, printing to an
   # injectable `out:` IO so this is hermetically testable via StringIO. Returns
   # 1 (stop the install) when Ruby is missing/too-old, else 0.
-  def preflight_gate(ruby_version: RUBY_VERSION, node_version: node_probe, git_present: git_probe,
-                      mise_present: mise_probe, out: $stderr)
-    result = Preflight.check(ruby_version: ruby_version, node_version: node_version,
-                              git_present: git_present, mise_present: mise_present)
+  def preflight_gate(ruby_version: RUBY_VERSION, git_present: git_probe, sqlite3_present: sqlite3_probe,
+                      platform: platform_probe, out: $stderr)
+    result = Preflight.check(ruby_version: ruby_version, git_present: git_present,
+                              sqlite3_present: sqlite3_present, platform: platform)
     result[:messages].each { |message| out.puts(message) }
     result[:fatal] ? 1 : 0
   end
 
   private
-
-  def node_probe
-    `node --version`.strip
-  rescue StandardError
-    ""
-  end
 
   def git_probe
     !`git --version`.strip.empty?
@@ -143,10 +137,14 @@ class Install < InstallerCore
     false
   end
 
-  def mise_probe
-    !`mise --version`.strip.empty?
+  def sqlite3_probe
+    !`sqlite3 --version`.strip.empty?
   rescue StandardError
     false
+  end
+
+  def platform_probe
+    RUBY_PLATFORM.include?("linux") ? "linux" : "darwin"
   end
 
   def flag_value(argv, name)
