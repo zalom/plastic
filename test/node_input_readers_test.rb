@@ -283,93 +283,6 @@ class NodeInputReadersTest < Minitest::Test
     assert_equal [1, 1], [text.scan(NodeInput::STOP_DIRECTIVE).length, text.scan(NodeInput::WORKTREE_STOP_DIRECTIVE).length]
   end
 
-  # --- 2.12-2.14: landed commits ---------------------------------------------
-
-  def test_a_reclaimed_node_carries_the_landed_commits_with_their_diffstat
-    append_ledger("2026-09-01T00:00:00Z  n1  reclaimed holder=h1 expired=2026-09-01T01:00:00Z\n")
-    spy = ->(repo_dir:, files:) { "abc123 fix thing\n a.rb | 2 +-\n" }
-    text = NodeInput.landed_commits_block(intent_dir: @dir, node: "n1", files: ["a.rb"], repo_dir: "/tmp/repo",
-                                            git_runner: spy)
-    assert_includes text, "abc123"
-    assert_includes text, "a.rb | 2 +-"
-  end
-
-  def test_a_node_with_no_reclaimed_line_never_calls_the_git_runner
-    called = false
-    spy = ->(repo_dir:, files:) { called = true; "should never run" }
-    result = NodeInput.landed_commits_block(intent_dir: @dir, node: "n1", files: ["a.rb"], repo_dir: "/tmp/repo",
-                                              git_runner: spy)
-    refute called
-    assert_nil result
-  end
-
-  def test_a_failing_git_runner_degrades_to_a_note_not_an_exception
-    append_ledger("2026-09-01T00:00:00Z  n1  reclaimed holder=h1 expired=2026-09-01T01:00:00Z\n")
-    spy = ->(repo_dir:, files:) { raise "git exploded" }
-    text = nil
-    begin
-      text = NodeInput.landed_commits_block(intent_dir: @dir, node: "n1", files: ["a.rb"], repo_dir: "/tmp/repo",
-                                              git_runner: spy)
-    rescue StandardError
-      flunk "landed_commits_block must never raise"
-    end
-    refute_nil text
-    assert_includes text, "unavailable"
-  end
-
-  # B12: entries pre-read for landed commits too - a reclaimed line added to
-  # disk after the pre-read must never turn on a git shell-out this call
-  # never asked for.
-  def test_landed_commits_block_uses_the_pre_read_entries_instead_of_re_reading
-    append_ledger("2026-09-01T00:00:00Z  n1  reclaimed holder=h1 expired=2026-09-01T01:00:00Z\n")
-    stale_entries = [{ subject: "n1", torn: false, state: "planned" }] # no reclaimed line in this view
-    called = false
-    spy = ->(repo_dir:, files:) { called = true; "should never run" }
-    result = NodeInput.landed_commits_block(intent_dir: @dir, node: "n1", files: ["a.rb"], repo_dir: "/tmp/repo",
-                                              git_runner: spy, entries: stale_entries)
-    refute called
-    assert_nil result
-  end
-
-  # --- B4 (post-execution review): the pinned git log command ----------------
-
-  # Unpinned, `git log --stat` varies with the caller's terminal COLUMNS, the
-  # caller's color.ui, and gitconfig's pretty/date/showSignature settings, so
-  # `input=<sha>` was not a pure function of the repo's history alone.
-  def test_git_log_command_is_pinned_against_terminal_and_gitconfig_variance
-    cmd = NodeInput.git_log_command(repo_dir: "/tmp/repo", files: ["a.rb", "b.rb"])
-    joined = cmd.join(" ")
-    assert_includes joined, "-c color.ui=false"
-    assert_includes joined, "--no-color"
-    assert_includes joined, "--stat=200,200"
-    assert_includes cmd, "/tmp/repo"
-    assert_includes cmd, "a.rb"
-    assert_includes cmd, "b.rb"
-  end
-
-  def test_git_log_env_unsets_columns_rather_than_leaving_it_alone
-    env = NodeInput.git_log_env
-    assert env.key?("COLUMNS")
-    assert_nil env["COLUMNS"]
-  end
-
-  # --- B4/never-cut (post-execution review): bounding landed commits ---------
-
-  # "landed commits" is one of the never-cut blocks (matrix 3.9), so an
-  # unbounded `git log --stat` could route the whole node input straight to exit
-  # 4 with no cut able to help; it is capped and never left to grow past it.
-  def test_truncate_landed_commits_caps_an_oversized_log_and_appends_the_note
-    oversized = "x" * (NodeInput::LANDED_COMMITS_MAX_BYTES + 500)
-    result = NodeInput.truncate_landed_commits(oversized)
-    assert_operator result.bytesize, :<, oversized.bytesize
-    assert_includes result, "truncated at #{NodeInput::LANDED_COMMITS_MAX_BYTES} bytes"
-  end
-
-  def test_truncate_landed_commits_passes_a_small_log_through_byte_identical
-    small = "abc123 fix thing\n a.rb | 2 +-\n"
-    assert_equal small, NodeInput.truncate_landed_commits(small)
-  end
-
   # --- 2.15-2.18a: the record block -------------------------------------------
 
   def test_the_record_block_carries_intent_decisions_and_insights_only
@@ -641,22 +554,20 @@ class NodeInputReadersTest < Minitest::Test
     retired = %w[pack et].join
     null_worktree = ->(intent_dir:) { { "code" => nil, "code_branch" => nil, "provisioned" => false } }
     null_project = ->(_intent_dir) { nil }
-    null_git = ->(repo_dir:, files:) { nil }
 
     write_graph("- n1 needs nothing\n")
     write_node("n1")
     write_record
 
     built = NodeInput.build(intent_dir: @dir, node: "n1", worktree_reader: null_worktree,
-                             project_reader: null_project, git_runner: null_git)
+                             project_reader: null_project)
     assert built[:ok], built[:errors].inspect
     rendered = File.read(built[:path])
     refute_match(/\b#{retired}\b/i, rendered)
 
     write_record(intent_text: "y" * 200_000, decisions: (1..50).map { |i| "- D#{i} #{'x' * 500}" }.join("\n"))
     overflow = NodeInput.build(intent_dir: @dir, node: "n1", budget_tokens: 100, hop_tokens: 0,
-                                worktree_reader: null_worktree, project_reader: null_project,
-                                git_runner: null_git)
+                                worktree_reader: null_worktree, project_reader: null_project)
     refute overflow[:ok]
     cmd = overflow[:needs_decision_command]
     refute_nil cmd

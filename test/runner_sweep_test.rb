@@ -329,26 +329,6 @@ class RunnerSweepTest < Minitest::Test
     assert_equal "2000-01-01T00:00:00Z", reclaimed_entry[:fields]["expired"]
   end
 
-  def test_reclaim_records_landed_commits
-    init_repo # the node branch is never created: this is the plain "no new commits" reclaim path
-    write_savepoint(line("n1", "running", running_fields(expires: "2000-01-01T00:00:00Z")))
-    ctx = build_context(worktree: @repo)
-
-    before = NodeInput.landed_commits_block(
-      intent_dir: @dir, node: "n1", files: ["n1.txt"], repo_dir: @repo,
-      git_runner: ->(repo_dir:, files:) { "stub landed commits for #{files.join(',')}" }
-    )
-    assert_nil before, "no reclaimed line yet, so node-input must show nothing landed"
-
-    RunnerSweep.reclaim(ctx, now: Time.iso8601("2030-01-01T00:00:00Z"))
-
-    after = NodeInput.landed_commits_block(
-      intent_dir: @dir, node: "n1", files: ["n1.txt"], repo_dir: @repo,
-      git_runner: ->(repo_dir:, files:) { "stub landed commits for #{files.join(',')}" }
-    )
-    assert_equal "stub landed commits for n1.txt", after
-  end
-
   # --- 2.12: a done node is never reclaimed -----------------------------------------
 
   def test_done_node_is_never_reclaimed
