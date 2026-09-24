@@ -33,6 +33,7 @@ module ProjectValidator
   # rather than blocking the spawn.
   FLOW_MODES = %w[direct pull_request].freeze
   FLOW_WORKSPACES = %w[checkout worktree].freeze
+  FLOW_PULL_REQUEST_BODIES = %w[inject template].freeze
 
   def validate(slug, plastic_home: File.join(Dir.home, ".plastic"))
     missing = []
@@ -109,6 +110,7 @@ module ProjectValidator
 
     validate_flow_knob(flow, "mode", FLOW_MODES, errors)
     validate_flow_knob(flow, "workspace", FLOW_WORKSPACES, errors)
+    validate_flow_knob(flow, "pull_request_body", FLOW_PULL_REQUEST_BODIES, errors)
   end
 
   def validate_flow_knob(flow, key, allowed, errors)

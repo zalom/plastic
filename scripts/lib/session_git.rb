@@ -28,6 +28,15 @@ module SessionGit
 
   MODES = %w[direct pull_request].freeze
   WORKSPACES = %w[checkout worktree].freeze
+  PULL_REQUEST_BODIES = %w[inject template].freeze
+  PULL_REQUEST_TEMPLATES = %w[
+    .github/pull_request_template.md
+    .github/PULL_REQUEST_TEMPLATE.md
+    pull_request_template.md
+    PULL_REQUEST_TEMPLATE.md
+    docs/pull_request_template.md
+    docs/PULL_REQUEST_TEMPLATE.md
+  ].freeze
   MAX_SUBJECT_LENGTH = 72
 
   DEFAULT_BRANCH_TEMPLATE = "session/{{day}}"
@@ -125,6 +134,7 @@ module SessionGit
       "branch_template" => DEFAULT_BRANCH_TEMPLATE,
       "ticket_source" => "intent_id",
       "workspace" => "checkout",
+      "pull_request_body" => "inject",
     }
 
     if project_flow
@@ -138,6 +148,7 @@ module SessionGit
 
       apply_enum_knob!(flow, notes, project_flow, key: "mode", allowed: MODES, default: "direct")
       apply_enum_knob!(flow, notes, project_flow, key: "workspace", allowed: WORKSPACES, default: "checkout")
+      apply_enum_knob!(flow, notes, project_flow, key: "pull_request_body", allowed: PULL_REQUEST_BODIES, default: "inject")
     end
 
     if flow["workspace"] == "worktree"
@@ -521,7 +532,8 @@ module SessionGit
     res = stage_and_commit(repo, subject, runner: runner, body: body)
     outcome =
       if res.success?
-        pull_request_outcome(repo: repo, subject: subject, branch: branch, base: base, gh_runner: gh_runner, runner: runner)
+        pull_request_outcome(repo: repo, subject: subject, branch: branch, base: base, gh_runner: gh_runner, runner: runner,
+                             body: pull_request_body(repo, subject, body, flow["pull_request_body"]))
       else
         note("commit rejected by commit-msg hook: #{diagnose(res)}")
       end
@@ -533,11 +545,38 @@ module SessionGit
     outcome
   end
 
-  def pull_request_outcome(repo:, subject:, branch:, base:, gh_runner:, runner:)
+  # The pull request description. Plastic's own shape is four headings, What, Why, How
+  # and Tests (`plastic help completion-and-done`), with the item summary under What and
+  # the other three left for whoever verified the item to fill through `gh pr edit`. A
+  # repository's own pull request template, at any of the paths GitHub reads, is never
+  # rewritten: under `pull_request_body: inject` the four headings follow it, and under
+  # `pull_request_body: template` the template stands alone. Without a template both
+  # values give the four headings.
+  def pull_request_body(repo, subject, body, mode)
+    structure = structured_pull_request_body(subject, body)
+    template = pull_request_template(repo)
+    return structure if template.nil?
+    return template if mode == "template"
+
+    "#{template.rstrip}\n\n#{structure}"
+  end
+
+  def structured_pull_request_body(subject, body)
+    what = [subject, body].compact.map(&:strip).reject(&:empty?).uniq.join("\n\n")
+    "## What\n\n#{what}\n\n## Why\n\n## How\n\n## Tests\n"
+  end
+
+  def pull_request_template(repo)
+    path = PULL_REQUEST_TEMPLATES.map { |rel| File.join(repo, rel) }.find { |p| File.file?(p) }
+    path && File.read(path)
+  end
+
+  def pull_request_outcome(repo:, subject:, branch:, base:, gh_runner:, runner:, body:)
     sha = short_sha(repo, runner: runner)
     return note("gh missing: commit #{subject} (#{sha}) is on #{branch}") unless gh_runner.available?(repo)
 
-    pr = gh_runner.run("pr", "create", "--base", base.to_s, "--head", branch, "--fill", dir: repo)
+    pr = gh_runner.run("pr", "create", "--base", base.to_s, "--head", branch,
+                       "--title", subject, "--body", body, dir: repo)
     if pr.success?
       url = pr.stdout.to_s.strip.lines.last.to_s.strip
       Result.new(message: "pr #{url}", event: "Item")

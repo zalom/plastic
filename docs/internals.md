@@ -1105,8 +1105,9 @@ base-branch dance that cannot resolve.
 the `project.yml` under the project root that `StoreLayout.project_root` resolves, from its `flow:` block, when the project and the key both
 exist, else every knob defaults: `mode: direct`, `base:` from
 `ScaffoldIntent.detect_base_branch` (origin/HEAD, then `main`, then `master`),
-`branch_template: "session/{{day}}"`, `ticket_source: intent_id`, `workspace: checkout`. An
-unknown `mode` or `workspace` value falls back to its default and always turns the whole
+`branch_template: "session/{{day}}"`, `ticket_source: intent_id`, `workspace: checkout`,
+`pull_request_body: inject`. An
+unknown `mode`, `workspace` or `pull_request_body` value falls back to its default and always turns the whole
 outcome into a `Note`, even when the git operation underneath it succeeds: an unrecognized
 flow value is itself a degradation from the configured intent, and `SessionGit.commit!` merges
 both facts into the one savepoint line a caller gets to write. `workspace: worktree` gets the
@@ -1163,7 +1164,13 @@ falling back to the session's day id (from the day ledger) when no lock is held,
 resolves to one non-blank ticket value. The branch is cut from `B`'s tip and checked out, both with their exit status
 checked the same way direct mode's are; `gh pr create --base B --head <branch> --fill` runs,
 inside the resolved repository (`gh_runner.available?(repo)` and `gh_runner.run(..., dir:
-repo)`), when `gh` is on PATH. Without an explicit working directory, `gh` resolves its target
+repo)`), when `gh` is on PATH, with `--title` set to the subject and `--body` to the
+description. The description is Plastic's four headings, What, Why, How and Tests (`plastic
+help completion-and-done`), with the item summary under What and the other three left for
+`gh pr edit` by whoever verified the item. A repository's own pull request template, at any
+path GitHub reads it from, is never rewritten: `pull_request_body: inject` (the default) puts
+the four headings after it, and `pull_request_body: template` sends the template alone, so a
+team's own workflow stands. Without a template both values give the four headings. Without an explicit working directory, `gh` resolves its target
 repository from the calling process's own `Dir.pwd`, not `--cwd`'s repo, which an independent
 review found to be the one place this library could otherwise act on a repository other than
 the one it was asked about -- the normal case for a hook firing from the session's own cwd, not

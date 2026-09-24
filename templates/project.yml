@@ -10,3 +10,4 @@ release:
 #   branch_template: "session/{{day}}"   # {{day}}, {{ticket}}, {{slug}} tokens
 #   ticket_source: intent_id   # intent_id (the delivering intent's id from its delivery lock, else the day id)
 #   workspace: checkout        # checkout | worktree (worktree applies to direct mode only)
+#   pull_request_body: inject  # inject (What, Why, How, Tests after the repo's PR template, if any) | template (the repo's PR template as is)
