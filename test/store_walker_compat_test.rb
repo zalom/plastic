@@ -9,7 +9,6 @@ require_relative "../scripts/lib/session_ledger"
 require_relative "../scripts/lib/intent_validator"
 require_relative "../scripts/lib/doctor_exclusions"
 require_relative "../scripts/doctor"
-require_relative "../scripts/dashboard"
 
 # scripts/rebuild-graph and scripts/project-links carry no .rb extension (they
 # are executable shell entry points), so `require_relative` cannot resolve
@@ -90,15 +89,6 @@ class StoreWalkerCompatTest < Minitest::Test
     refute_includes entries, ".tmp"
   end
 
-  # --- dashboard -----------------------------------------------------------------
-
-  def test_dashboard_intent_dirs_skips_dot_directories
-    entries = intent_dirs(@store)
-    assert_equal ["1--test-intent"], entries
-    refute_includes entries, ".sessions"
-    refute_includes entries, ".tmp"
-  end
-
   # --- rebuild-graph ---------------------------------------------------------------
 
   def test_rebuild_graph_load_nodes_has_no_day_id_or_dot_dir_entry
@@ -154,7 +144,6 @@ class StoreWalkerCompatTest < Minitest::Test
     [DAY, "20261231"].each do |id|
       assert id.match?(IntentValidator::ID_PATTERN), "#{id} must match IntentValidator::ID_PATTERN"
       assert id.match?(DoctorExclusions::FOLGEZETTEL_ID), "#{id} must match DoctorExclusions::FOLGEZETTEL_ID"
-      assert root_intent?(id), "#{id} must satisfy dashboard root_intent?"
     end
   end
 
@@ -162,14 +151,12 @@ class StoreWalkerCompatTest < Minitest::Test
     hyphenated = "2026-08-29"
     refute hyphenated.match?(IntentValidator::ID_PATTERN), "a hyphenated day id must not match ID_PATTERN"
     refute hyphenated.match?(DoctorExclusions::FOLGEZETTEL_ID), "a hyphenated day id must not match FOLGEZETTEL_ID"
-    refute root_intent?(hyphenated), "a hyphenated day id must not satisfy dashboard root_intent?"
   end
 
   # --- no special case, spec goal -----------------------------------------------------
 
   WALKER_SOURCES = {
     "scripts/doctor.rb" => "def store_intent_dirs",
-    "scripts/dashboard.rb" => "def intent_dirs",
     "scripts/rebuild-graph" => "def load_nodes",
     "scripts/project-links" => "def load_nodes",
   }.freeze
@@ -177,7 +164,6 @@ class StoreWalkerCompatTest < Minitest::Test
   ID_PATTERN_SOURCES = %w[
     scripts/lib/intent_validator.rb
     scripts/lib/doctor_exclusions.rb
-    scripts/dashboard.rb
   ].freeze
 
   def repo_root

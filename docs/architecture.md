@@ -284,17 +284,13 @@ other than the code branch. If the code isn't merged, or Git can't answer, `end-
 merges: the owner merges or releases the work and runs the close again. An abandoned close
 and a store-only intent skip the check.
 
-## status and the dashboard
+## status and the report roster
 
 `plastic status` prints one row per store this machine holds: the store's slug, its count of active intents, and their ids (for example `global  2 active  7, 9`). It then names one store to continue: the store whose repository holds the working directory when that store has active work, else the store with the most active intents, else `plastic help` when no store has active work. `--json` returns the same rows as a `result` hash of slug to summary. It renders no board, table, prose summary or ranking.
 
-`scripts/dashboard.rb` still ships as an internal, read-only script. The `capture` hook runs it when a prompt is exactly `continue`: it adds the plain-text cockpit (`dashboard.rb continue`) to the model context, and a banner built from `dashboard.rb continue --data` to the user's terminal. The script's modes are:
+The dashboard is gone (intent 392). In its place, the `capture` hook runs `scripts/report-screen state --all` against the working directory's store when a prompt is exactly `continue`: the project store when the working directory maps to one, else the global store. It adds the plain-text roster (`report-screen state --all STORE_ROOT`) to the model context, and the same roster painted with `--ansi` to the user's terminal.
 
-- `--data`: one JSON payload with the capped active list (3 by default, `--limit-active N`), the ranked next-work list (5 by default, `--limit-next N`), and the true totals; `--all` lifts both caps, and entry text is truncated to 120 characters.
-- `--json`: the machine-readable manifest (`dispatchable_queue`, `human_only`, `next_big_thing`).
-- `--plain`: the full, uncapped board as plain text, meant to pipe into a pager.
-
-Same store state gives the same output regardless of model. Roadmaps are the planning surface: `plastic next` and `plastic continue` read the roadmap frontier through `RoadmapQueue`, and the dashboard stays a state view.
+Same store state gives the same output regardless of model. Roadmaps are the planning surface: `plastic next` and `plastic continue` read the roadmap frontier through `RoadmapQueue`, and `report-screen state` stays a state view.
 
 ## CLI output and progression
 

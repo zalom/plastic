@@ -20,15 +20,12 @@ class HermeticityGuardTest < Minitest::Test
   # resurrected call is caught too.
   WRITERS = /Arm\.(arm|disarm|repair)\b|Bridge\.(arm_auto|arm_guided|derive|write|disarm_auto|repair_lock)\b/.freeze
   ISOLATION = /PLASTIC_TMP|tmp:\s|Dir\.mktmpdir/.freeze
-  # This boundary is intentionally conservative. Dashboard calls Doctor's
-  # store_health during every board load, so Doctor and its local dependency
-  # closure are part of the ambient-read path even though most are not lock
-  # visibility helpers. A future transcript diagnostic on that load path must
-  # be injected or isolated; it must not read an ambient harness store.
+  # This boundary is intentionally conservative. A future transcript diagnostic
+  # on the lock or ledger read path must be injected or isolated; it must not
+  # read an ambient harness store.
   AMBIENT_READ_BOUNDARY_ROOTS = %w[
     scripts/lib/lock.rb
     scripts/plastic-lock
-    scripts/dashboard.rb
   ].freeze
 
   # Source scanners read hook files as text and never launch them. They must name the spawn
@@ -89,7 +86,7 @@ class HermeticityGuardTest < Minitest::Test
     relative_paths = local_dependency_closure(root, AMBIENT_READ_BOUNDARY_ROOTS)
       .map { |path| path.delete_prefix("#{root}#{File::SEPARATOR}") }
 
-    %w[scripts/lib/arm.rb scripts/lib/worktree.rb scripts/doctor.rb].each do |expected|
+    %w[scripts/lib/arm.rb scripts/lib/worktree.rb].each do |expected|
       assert_includes relative_paths, expected
     end
   end
