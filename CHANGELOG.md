@@ -41,6 +41,8 @@ This version was not published separately. Its changes shipped with 2.0.1.
 
 - Plastic runs no version control command. This removes the pull request body and template-honoring code that PRs 18 and 19 added; `plastic session commit` now only records the item and prints the commit instruction, and `plastic auto take` prints the worktree to create instead of creating it.
 
+- Intent 390: the node-graph runner's own close gate drops the scope check (the in-`files:` diff), since `NodeReturn` carries no file list once git is out of the picture; the gate now runs all five remaining checks - integrity, schema, named_tests, merge, suite. Every worktree-creating, merging, and removing step across the runner, `end-intent`, `update`, `report-screen`, and `restore-intent-v1` prints the git instruction for the agent or the owner to run instead of running it itself.
+
 - Intent 360: every Plastic agent now defaults to medium reasoning effort on Claude Code and Codex. Codex dispatch passes literal OpenAI model IDs and effort into `codex exec`, Codex installs OpenAI equivalents for both advisors, `read-config` is harness-aware, and read-only research nodes can return one declared Markdown report for the runner to write under the intent's `resources/` directory.
 
 - The core doctor leaves out the `codex_hooks_trust` reminder. The reminder always warns, because Codex keeps no trust record Plastic can read, and the core doctor turns any warning into a failure, so every Codex core check failed. The full doctor still shows the reminder.

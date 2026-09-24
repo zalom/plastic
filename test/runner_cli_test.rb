@@ -512,13 +512,6 @@ class RunnerCliTest < Minitest::Test
     File.join(@dir, "savepoint.md")
   end
 
-  def git!(*args, dir:)
-    out, err, status = Open3.capture3("git", "-C", dir, *args.map(&:to_s))
-    raise "git #{args.join(' ')} failed: #{err}" unless status.success?
-
-    out
-  end
-
   # --- 10.1: --allow-core-drift reaches the absorb (M3) -----------------------
 
   def test_allow_core_drift_flag_reaches_the_absorb
@@ -546,20 +539,19 @@ class RunnerCliTest < Minitest::Test
                  "the flag must reach the absorb and be recorded on the transition line"
   end
 
-  # --- 10.4: `step` reaps stale node worktrees after the reclaim pass (M5) ----
+  # --- 10.4: `step` prints the reap instruction for a stale node worktree (M5) --
 
+  # Owner ruling 2026-09-24: Plastic runs no version control command, so
+  # NodeWorktree.reap (scripts/lib/node_worktree.rb) computes the removal
+  # instruction for a stale, terminal node worktree and never removes it
+  # itself. A PLAIN directory at the exact node-worktree path is the whole
+  # fixture `reap` needs - it globs `Dir.glob` and checks `File.directory?`,
+  # never git, to find a candidate.
   def test_step_reaps_stale_node_worktrees
     slug = "demo-reap"
     plastic = File.join(@home, ".plastic")
     repo = File.join(@home, "apps", slug)
     FileUtils.mkdir_p(repo)
-    git!("init", "-q", "-b", "alpha", dir: repo)
-    git!("config", "user.email", "reap@example.com", dir: repo)
-    git!("config", "user.name", "Reap Test", dir: repo)
-    git!("config", "gc.auto", "0", dir: repo)
-    File.write(File.join(repo, "README.md"), "hi\n")
-    git!("add", "README.md", dir: repo)
-    git!("commit", "-q", "-m", "init", dir: repo)
 
     File.write(File.join(plastic, "projects.yml"), { "projects" => { slug => { "path" => repo } } }.to_yaml)
 
@@ -572,15 +564,12 @@ class RunnerCliTest < Minitest::Test
     write_node("n1.md", node: "n1", kind: "work")
 
     intent_worktree = File.join(repo, ".claude", "worktrees", "1--demo")
-    intent_branch = "plastic/1--demo"
-    FileUtils.mkdir_p(File.dirname(intent_worktree))
-    git!("worktree", "add", intent_worktree, "-b", intent_branch, dir: repo)
+    FileUtils.mkdir_p(intent_worktree)
 
-    # A stale, terminal, fully-merged node worktree - exactly what
-    # NodeWorktree.reap must remove once `step` actually calls it.
-    node_branch = "plastic/1--demo--n1"
+    # A stale, terminal node worktree - exactly what NodeWorktree.reap must
+    # name a removal instruction for once `step` actually calls it.
     node_worktree = File.join(repo, ".claude", "worktrees", "1--demo--n1")
-    git!("worktree", "add", node_worktree, "-b", node_branch, intent_branch, dir: repo)
+    FileUtils.mkdir_p(node_worktree)
     write_savepoint(line("n1", "done", gates: "g", commit: "c1", holder: "h"))
 
     session = "reap-session"
@@ -588,8 +577,10 @@ class RunnerCliTest < Minitest::Test
 
     out, err, status = run_cli("step", @dir, env: { "CLAUDE_CODE_SESSION_ID" => session })
     assert_equal 0, status.exitstatus, out + err
-    refute Dir.exist?(node_worktree),
-           "a stale, merged, terminal node worktree must be reaped by the same step: #{out}#{err}"
+    assert_match(/git -C #{Regexp.escape(repo)} worktree remove #{Regexp.escape(node_worktree)}/, out,
+                 "step must print the reap instruction for a stale, terminal node worktree: #{out}")
+    assert Dir.exist?(node_worktree),
+           "Plastic must remove nothing itself; the node worktree must still be on disk: #{out}#{err}"
   end
 
   # --- 10.10: a terminal node's Detail renders its last transition, not a blocker (M8) --
@@ -685,56 +676,6 @@ class RunnerCliTest < Minitest::Test
     refute_equal "running", entry[:state], "n1 must never be left stuck running: #{out}#{err}"
   end
 
-  # --- 11.18: the merge-in-progress warning prints exactly once (v1 minor 3) ---
-
-  def test_merge_warning_is_printed_once
-    slug = "demo-merge-warn"
-    plastic = File.join(@home, ".plastic")
-    repo = File.join(@home, "apps", slug)
-    FileUtils.mkdir_p(repo)
-    git!("init", "-q", "-b", "alpha", dir: repo)
-    git!("config", "user.email", "m@example.com", dir: repo)
-    git!("config", "user.name", "Merge Test", dir: repo)
-    git!("config", "gc.auto", "0", dir: repo)
-    File.write(File.join(repo, "f.txt"), "a\n")
-    git!("add", "f.txt", dir: repo)
-    git!("commit", "-q", "-m", "init", dir: repo)
-
-    File.write(File.join(plastic, "projects.yml"), { "projects" => { slug => { "path" => repo } } }.to_yaml)
-
-    proj_store = File.join(plastic, "projects", slug, "store")
-    @dir = File.join(proj_store, "1--demo")
-    FileUtils.mkdir_p(File.join(@dir, "nodes"))
-    File.write(File.join(@dir, "1--demo.md"), "---\nid: \"1\"\nintent: t\n---\n\n## Intent\nbody\n")
-    write_graph("- n1 needs nothing\n")
-    write_node("n1.md", node: "n1", kind: "work")
-
-    intent_worktree = File.join(repo, ".claude", "worktrees", "1--demo")
-    intent_branch = "plastic/1--demo"
-    FileUtils.mkdir_p(File.dirname(intent_worktree))
-    git!("worktree", "add", intent_worktree, "-b", intent_branch, dir: repo)
-
-    # A real conflicting merge, so MERGE_HEAD genuinely resolves in the
-    # intent worktree - the only honest way to prove the warning, not a
-    # fixture standing in for it.
-    git!("checkout", "-q", "-b", "conflict-branch", dir: repo)
-    File.write(File.join(repo, "f.txt"), "b\n")
-    git!("commit", "-q", "-am", "conflicting change", dir: repo)
-    File.write(File.join(intent_worktree, "f.txt"), "c\n")
-    git!("commit", "-q", "-am", "other side", dir: intent_worktree)
-    _out, _err, merge_status = Open3.capture3("git", "-C", intent_worktree, "merge", "conflict-branch")
-    refute merge_status.success?, "fixture sanity: the merge must actually conflict"
-
-    out, err, status = run_cli("step", @dir)
-
-    refute_equal 0, status.exitstatus, out + err
-    combined = out + err
-    occurrences = combined.scan(/merge is (?:already )?in progress/i).length
-    assert_equal 1, occurrences,
-                 "the merge-in-progress warning must print exactly once, not once from the library and " \
-                 "once from the CLI: #{combined.inspect}"
-  end
-
   # --- 10.14: a needs_decision stop prints even alongside a dispatch (M11) ----
 
   def test_stop_is_printed_alongside_a_dispatch_plan
@@ -769,19 +710,27 @@ class RunnerCliTest < Minitest::Test
     assert_match(/unknown flag/i, err)
   end
 
-  # --- 10.22: the CHANGELOG names six checks and the real proposal behavior (minor 10) --
+  # --- 10.22: the CHANGELOG names five checks under Unreleased (intent 390) ---
 
-  def test_changelog_says_six_checks
+  # Owner ruling 2026-09-24 (intent 390): the scope check (the in-`files:`
+  # diff) is gone from the gate, since `NodeReturn` carries no file list once
+  # git is out of the picture - the gate now runs the five that remain. The
+  # 340 CHANGELOG entry itself stays untouched: it is a historical record of
+  # what shipped that day, when the gate genuinely ran six. The current
+  # count lives in the one `## Unreleased` section instead.
+  def test_changelog_says_five_checks
     path = File.expand_path("../CHANGELOG.md", __dir__)
     changelog = File.read(path)
-    start_idx = changelog.index("- 340 (G7")
-    refute_nil start_idx, "the 340 CHANGELOG entry must exist"
-    stop_idx = changelog.index("\n- 339 (G6", start_idx)
+    unreleased_idx = changelog.index("## Unreleased")
+    refute_nil unreleased_idx, "the Unreleased section must exist"
+
+    start_idx = changelog.index("- Intent 390: the node-graph runner's own close gate", unreleased_idx)
+    refute_nil start_idx, "the intent 390 gate-count CHANGELOG line must exist under Unreleased"
+    stop_idx = changelog.index("\n\n", start_idx)
     entry = changelog[start_idx...stop_idx]
 
-    assert_match(/all six/, entry, "the gate runs six checks: integrity, schema, scope, named_tests, merge, suite")
-    refute_match(/all five/, entry)
-    refute_match(/accepted proposals.*ledger-line/, entry)
+    assert_match(/all five/, entry, "the gate runs five checks: integrity, schema, named_tests, merge, suite")
+    refute_match(/all six/, entry)
   end
 
   # === Intent 340b, G7c, n1: the harness seam, --harness, runner-step.last ===
@@ -952,53 +901,6 @@ class RunnerCliTest < Minitest::Test
     refute_nil block_idx, out
     assert plan_idx < marker_idx, out
     assert marker_idx < block_idx, out
-  end
-
-  # --- 1.29: runner-step.last is written on the MERGE_HEAD abort path ---------
-
-  def test_last_file_written_on_merge_abort
-    slug = "demo-merge-last"
-    plastic = File.join(@home, ".plastic")
-    repo = File.join(@home, "apps", slug)
-    FileUtils.mkdir_p(repo)
-    git!("init", "-q", "-b", "alpha", dir: repo)
-    git!("config", "user.email", "m@example.com", dir: repo)
-    git!("config", "user.name", "Merge Test", dir: repo)
-    git!("config", "gc.auto", "0", dir: repo)
-    File.write(File.join(repo, "f.txt"), "a\n")
-    git!("add", "f.txt", dir: repo)
-    git!("commit", "-q", "-m", "init", dir: repo)
-
-    File.write(File.join(plastic, "projects.yml"), { "projects" => { slug => { "path" => repo } } }.to_yaml)
-
-    proj_store = File.join(plastic, "projects", slug, "store")
-    @dir = File.join(proj_store, "1--demo")
-    FileUtils.mkdir_p(File.join(@dir, "nodes"))
-    File.write(File.join(@dir, "1--demo.md"), "---\nid: \"1\"\nintent: t\n---\n\n## Intent\nbody\n")
-    write_graph("- n1 needs nothing\n")
-    write_node("n1.md", node: "n1", kind: "work")
-
-    intent_worktree = File.join(repo, ".claude", "worktrees", "1--demo")
-    intent_branch = "plastic/1--demo"
-    FileUtils.mkdir_p(File.dirname(intent_worktree))
-    git!("worktree", "add", intent_worktree, "-b", intent_branch, dir: repo)
-
-    git!("checkout", "-q", "-b", "conflict-branch", dir: repo)
-    File.write(File.join(repo, "f.txt"), "b\n")
-    git!("commit", "-q", "-am", "conflicting change", dir: repo)
-    File.write(File.join(intent_worktree, "f.txt"), "c\n")
-    git!("commit", "-q", "-am", "other side", dir: intent_worktree)
-    _out, _err, merge_status = Open3.capture3("git", "-C", intent_worktree, "merge", "conflict-branch")
-    refute merge_status.success?, "fixture sanity: the merge must actually conflict"
-
-    out, err, status = run_cli("step", @dir)
-    refute_equal 0, status.exitstatus, out + err
-
-    last_path = File.join(@dir, "runner-step.last")
-    assert File.exist?(last_path), "runner-step.last must be written even on the merge-abort refusal"
-    content = File.read(last_path)
-    assert_match(/merge is (?:already )?in progress/i, content,
-                 "the merge-abort refusal reason must land in the file, not only on stderr: #{content.inspect}")
   end
 
   # --- 1.30: runner-step.last is written on the two other pre-plan refusals ---
