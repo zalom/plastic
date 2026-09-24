@@ -61,8 +61,8 @@ class HarnessAdapterDogfoodTest < Minitest::Test
     Array(@scratch_dirs).each { |d| FileUtils.remove_entry(d) if d && Dir.exist?(d) }
   end
 
-  # --- fixture helpers (the same shapes runner_cli_test.rb and
-  # runner_until_empty_test.rb already build a scratch intent from) --------------
+  # --- fixture helpers (the same shapes runner_cli_test.rb already builds a
+  # scratch intent from) ---------------------------------------------------------
 
   def write_graph(graph_body)
     File.write(File.join(@dir, "graph.md"), <<~MD)

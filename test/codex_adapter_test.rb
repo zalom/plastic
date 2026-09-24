@@ -4,17 +4,12 @@
 require "minitest/autorun"
 require "tmpdir"
 require "fileutils"
-require "yaml"
 
 require_relative "../scripts/lib/codex_adapter"
-require_relative "../scripts/lib/runner_policy"
 
-# CodexAdapter (intent 340b, G7c, n6): the `codex exec` argv per kind, the
-# sandbox and --add-dir it carries, the return read from
-# --output-last-message with a stdout fallback, and the lease-derived
-# timeout. Matrix rows 6.1-6.10, 6.18, 6.19, 6.23 in nodes/n6.md (the rest
-# live in node_run_cli_test.rb - CLI-level refusals, the subprocess against
-# a stub codex, and the end-to-end sandbox commit).
+# CodexAdapter (intent 340b, G7c, n6; intent 391): the `codex exec` argv per
+# kind and the sandbox and --add-dir it carries, printed and never run.
+# Matrix rows 6.1-6.10 in nodes/n6.md.
 class CodexAdapterTest < Minitest::Test
   def setup
     @tmp = Dir.mktmpdir("codex-adapter")
@@ -34,13 +29,6 @@ class CodexAdapterTest < Minitest::Test
     FileUtils.mkdir_p(dir)
     File.write(File.join(dir, ".git"), "gitdir: #{gitdir}\n")
     dir
-  end
-
-  def write_stub(name, content)
-    path = File.join(@tmp, name)
-    File.write(path, content)
-    FileUtils.chmod(0o755, path)
-    path
   end
 
   # --- 6.1/6.2: verify and research get the read-only sandbox -----------------
@@ -96,11 +84,11 @@ class CodexAdapterTest < Minitest::Test
 
   def test_no_argv_widens_beyond_the_node_worktree_and_git
     worktree = make_worktree("/repo/.git/worktrees/n1")
-    argv = CodexAdapter.build_argv(kind: "work", worktree: worktree, output_last_message: "/tmp/out.msg")
+    argv = CodexAdapter.build_argv(kind: "work", worktree: worktree)
 
     assert_equal(
       ["codex", "exec", "-C", worktree, "--sandbox", "workspace-write", "--add-dir", "/repo/.git",
-       "--output-last-message", "/tmp/out.msg", "-"],
+       "-"],
       argv
     )
     refute_includes argv.join(" "), ".plastic"
@@ -111,7 +99,7 @@ class CodexAdapterTest < Minitest::Test
 
   def test_runs_in_the_node_worktree
     worktree = make_worktree("/repo/.git/worktrees/n1")
-    argv = CodexAdapter.build_argv(kind: "verify", worktree: worktree, output_last_message: "/tmp/out.msg")
+    argv = CodexAdapter.build_argv(kind: "verify", worktree: worktree)
 
     idx = argv.index("-C")
     refute_nil idx
@@ -119,15 +107,13 @@ class CodexAdapterTest < Minitest::Test
   end
 
   def test_build_argv_passes_model
-    argv = CodexAdapter.build_argv(kind: "verify", worktree: @tmp, output_last_message: "/tmp/out.msg",
-                                    model: "gpt-5.6-sol", effort: "medium")
+    argv = CodexAdapter.build_argv(kind: "verify", worktree: @tmp, model: "gpt-5.6-sol", effort: "medium")
 
     assert_equal "gpt-5.6-sol", argv[argv.index("--model") + 1]
   end
 
   def test_build_argv_passes_reasoning_effort
-    argv = CodexAdapter.build_argv(kind: "verify", worktree: @tmp, output_last_message: "/tmp/out.msg",
-                                    model: "gpt-5.6-sol", effort: "medium")
+    argv = CodexAdapter.build_argv(kind: "verify", worktree: @tmp, model: "gpt-5.6-sol", effort: "medium")
 
     assert_includes argv, 'model_reasoning_effort="medium"'
   end
@@ -135,19 +121,19 @@ class CodexAdapterTest < Minitest::Test
   # --- 6.9: the node input rides on stdin, never as an argument --------------------
 
   def test_input_goes_on_stdin
-    stub = write_stub("echo-stdin", <<~RUBY)
-      #!/usr/bin/env ruby
-      File.write(ARGV[0], $stdin.read)
-    RUBY
-    out_path = File.join(@tmp, "out.msg")
-    huge_input = "INPUT-MARKER-#{'x' * 5000}"
+    line = CodexAdapter.command_line(kind: "verify", worktree: @tmp, input: "/store/n1 input.md")
 
-    argv = [stub, out_path]
-    result = CodexAdapter.execute(argv, stdin_data: huge_input, timeout_seconds: 5,
-                                   output_last_message_path: out_path)
+    assert line.end_with?(' - < /store/n1\ input.md'), line
+  end
 
-    refute_includes argv.join(" "), huge_input
-    assert_equal huge_input, result[:message]
+  def test_command_line_escapes_every_argument
+    line = CodexAdapter.command_line(kind: "verify", worktree: "/a b", input: "/in.md", effort: "medium")
+
+    assert_equal 'codex exec -C /a\ b --sandbox read-only --config model_reasoning_effort\=\"medium\" - < /in.md', line
+  end
+
+  def test_no_worktree_leaves_out_the_directory_switch
+    refute_includes CodexAdapter.build_argv(kind: "research", worktree: nil), "-C"
   end
 
   # --- 6.10: an unknown kind gets the work sandbox -----------------------------
@@ -156,59 +142,5 @@ class CodexAdapterTest < Minitest::Test
     worktree = make_worktree("/repo/.git/worktrees/n1")
     assert_equal "workspace-write", CodexAdapter.sandbox_mode("mystery")
     assert_equal ["--add-dir", "/repo/.git"], CodexAdapter.add_dir_args(kind: "mystery", worktree: worktree)
-  end
-
-  # --- 6.18: the return comes from --output-last-message, stdout ignored ------
-
-  def test_return_read_from_output_last_message
-    stub = write_stub("fixed-output", <<~RUBY)
-      #!/usr/bin/env ruby
-      $stdin.read
-      puts "node: wrong"
-      puts "status: failed_verification"
-      puts "reason: this is stdout, must be ignored"
-      File.write(ARGV[0], "node: n1\\nstatus: done\\ncommit: abc123def456\\n")
-    RUBY
-    out_path = File.join(@tmp, "out.msg")
-
-    result = CodexAdapter.execute([stub, out_path], stdin_data: "input", timeout_seconds: 5,
-                                   output_last_message_path: out_path)
-
-    assert_equal "node: n1\nstatus: done\ncommit: abc123def456\n", result[:message]
-  end
-
-  # --- 6.19: stdout is the fallback, the last YAML document wins --------------
-
-  def test_stdout_fallback_extracts_the_last_document
-    stub = write_stub("stdout-only", <<~RUBY)
-      #!/usr/bin/env ruby
-      $stdin.read
-      puts "not yaml at all, just prose"
-      puts "---"
-      puts "node: n1"
-      puts "status: failed_verification"
-      puts "reason: an earlier attempt, superseded"
-      puts "---"
-      puts "node: n1"
-      puts "status: done"
-      puts "commit: deadbeefcafe"
-    RUBY
-    missing_path = File.join(@tmp, "never-written.msg")
-
-    result = CodexAdapter.execute([stub, missing_path], stdin_data: "input", timeout_seconds: 5,
-                                   output_last_message_path: missing_path)
-
-    parsed = YAML.safe_load(result[:message])
-    assert_equal "done", parsed["status"]
-    assert_equal "deadbeefcafe", parsed["commit"]
-  end
-
-  # --- 6.23: the timeout comes from the kind's own lease length ----------------
-
-  def test_timeout_comes_from_the_kind_lease
-    assert_equal RunnerPolicy.lease_minutes("work") * 60, CodexAdapter.timeout_seconds("work")
-    assert_equal RunnerPolicy.lease_minutes("verify") * 60, CodexAdapter.timeout_seconds("verify")
-    assert_equal RunnerPolicy.lease_minutes("research") * 60, CodexAdapter.timeout_seconds("research")
-    refute_equal CodexAdapter.timeout_seconds("verify"), CodexAdapter.timeout_seconds("work")
   end
 end

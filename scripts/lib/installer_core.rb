@@ -593,12 +593,9 @@ class InstallerCore
       # by scripts/lib/runner_dispatch.rb and by scripts/runner's `step`
       # directly.
       "scripts/lib/harness_adapter.rb" => "scripts/lib/harness_adapter.rb",
-      # Intent 340b (G7c, n6): the Codex leg - CodexAdapter (the `codex exec`
-      # argv, the sandbox per kind, and the bounded subprocess) and
-      # scripts/node-run, the CLI that runs one node's whole attempt over
-      # it and writes only a return file, never a ledger transition.
+      # Intent 340b (G7c, n6): the Codex leg - CodexAdapter, the `codex exec`
+      # argv and the sandbox per kind. Intent 391: printed, never run.
       "scripts/lib/codex_adapter.rb" => "scripts/lib/codex_adapter.rb",
-      "scripts/node-run" => "scripts/node-run",
       # Intent 340b (G7c, n3): the engine deny rule - the frozen permissions.deny
       # entry list, merged into settings.json at install and removed surgically
       # at uninstall.
@@ -641,10 +638,6 @@ class InstallerCore
       # fix per verify model, hop on versus off, delivery latency, the
       # evidence bar, and the two concurrency ceilings.
       "scripts/lib/graph_measure_cohorts.rb" => "scripts/lib/graph_measure_cohorts.rb",
-      # Intent 340b (G7c, n7): the Codex loop - composes `step` and
-      # `node-run` itself (concurrency two, serial absorb, iteration-capped),
-      # routed from scripts/runner's internal `until-empty` verb.
-      "scripts/lib/runner_until_empty.rb" => "scripts/lib/runner_until_empty.rb",
       # Intent 340a (G7b, n1): the delivery watch - one tick over disk truth,
       # stalled and done-unreported classification, no CLI and no dispatch.
       "scripts/lib/runner_watch.rb" => "scripts/lib/runner_watch.rb",

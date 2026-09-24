@@ -151,23 +151,26 @@ class HarnessAdapterTest < Minitest::Test
     assert_nil HarnessAdapter.render(nil, harness: "claude-code", return_contract: RETURN_CONTRACT)
   end
 
-  # --- the codex key renders its own, distinct block, never claude-code's ----
+  # --- intent 391: the codex key prints the same dispatch line plus the command ---
 
-  def test_codex_renders_a_distinct_block
+  def test_codex_prints_the_claude_code_dispatch_line
     claude = HarnessAdapter.render([ENTRY], harness: "claude-code", return_contract: RETURN_CONTRACT)
     codex = HarnessAdapter.render([ENTRY], harness: "codex", return_contract: RETURN_CONTRACT)
-    refute_equal claude, codex
-    assert_includes codex, ENTRY[:input]
-    refute_match(/plastic-node-work/, codex)
+
+    assert_includes codex, claude.lines[2..].first(2).join
   end
 
-  # --- 338a n4, 4.8: the Codex rendering names the input path, never the retired key ---
-
-  def test_codex_rendering_names_the_input_path
+  def test_codex_prints_the_codex_exec_command_for_the_node
     codex = HarnessAdapter.render([ENTRY], harness: "codex", return_contract: RETURN_CONTRACT)
-    assert_includes codex, "input: /store/1--demo/attempts/n1--a1.input"
-    retired = "pack" + "et"
-    refute_match(/^#{retired}: /, codex, "the codex rendering must not keep a #{retired}: line: #{codex.inspect}")
+
+    assert_includes codex, "  run: codex exec -C /repo/.claude/worktrees/1--demo--n1 --sandbox workspace-write " \
+                           "--model sonnet - < /store/1--demo/attempts/n1--a1.input"
+  end
+
+  def test_claude_code_prints_no_codex_command
+    claude = HarnessAdapter.render([ENTRY], harness: "claude-code", return_contract: RETURN_CONTRACT)
+
+    refute_includes claude, "codex exec"
   end
 
   # --- 1.18: a config-authored key is squashed before it reaches the ledger --
@@ -185,15 +188,5 @@ class HarnessAdapterTest < Minitest::Test
 
   def test_harness_key_with_incidental_whitespace_still_resolves
     assert_equal "codex", HarnessAdapter.resolve_key(config: { "agent" => { "type" => " codex \n" } })
-  end
-
-  # --- 2.5 (intent 340a, G7b, n2): unattended start only where a Ruby loop
-  # owns dispatch ------------------------------------------------------------
-
-  def test_unattended_start_only_where_ruby_owns_dispatch
-    assert HarnessAdapter.unattended_start?("codex")
-    refute HarnessAdapter.unattended_start?("claude-code")
-    refute HarnessAdapter.unattended_start?("some-unknown-harness")
-    refute HarnessAdapter.unattended_start?(nil)
   end
 end
