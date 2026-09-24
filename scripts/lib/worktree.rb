@@ -33,29 +33,6 @@ require_relative "lock"
 module Worktree
   module_function
 
-  # --- ShellRunner (DI seam) -------------------------------------------------
-  #
-  # KEPT ONLY for the node-graph runner modules (node_worktree.rb, runner_*.rb),
-  # which still run real `git worktree`/merge commands for the graph's own node
-  # worktrees; that is a separate, still-open action (intent 390 part B). Once
-  # those modules stop shelling out, this class and `current_branch`,
-  # `remove_worktree`, `prune`, and `git_repo?` below go too. Plastic's own
-  # intent-delivery worktree path (arm/disarm/exec_worktree/scaffold/verify) no
-  # longer uses any of this.
-  class ShellRunner
-    Result = Struct.new(:status, :stdout, :stderr) do
-      def success?
-        status.zero?
-      end
-    end
-
-    def run(*args)
-      require "open3"
-      out, err, status = Open3.capture3("git", *args.map(&:to_s))
-      Result.new(status.exitstatus.to_i, out, err)
-    end
-  end
-
   # --- pure helpers ----------------------------------------------------------
 
   def blank?(value)
@@ -111,19 +88,6 @@ module Worktree
     File.expand_path(path)
   end
 
-  # --- git operations still needed by the node-graph runner (see the
-  # ShellRunner comment above; intent 390 part B removes these too) ----------
-
-  # The repo's current branch (the integration target), or nil when detached /
-  # unresolvable.
-  def current_branch(runner, repo:)
-    return nil if blank?(repo)
-    res = runner.run("-C", repo, "rev-parse", "--abbrev-ref", "HEAD")
-    return nil unless res.success?
-    name = res.stdout.to_s.strip
-    (name.empty? || name == "HEAD") ? nil : name
-  end
-
   # --- gitignore safety ------------------------------------------------------
 
   # Ensure `entry` is present in `<repo>/.gitignore`, appending it once if absent
@@ -132,7 +96,7 @@ module Worktree
   # -A`, polluting the index with worktree gitlinks (observed during 73c1
   # integration). Provisioning and cleanup both call this so the repos' indexes
   # stay clean. Best-effort and non-raising: any failure is logged, never raised.
-  def ensure_gitignored(repo, entry, runner: ShellRunner.new)
+  def ensure_gitignored(repo, entry)
     return false if blank?(repo) || blank?(entry) || !Dir.exist?(repo)
     gitignore = File.join(File.expand_path(repo), ".gitignore")
     want = entry.to_s.strip
@@ -169,30 +133,6 @@ module Worktree
     Lock.fresh?(dir, ttl: ttl, now: now)
   rescue StandardError
     false
-  end
-
-  # --- git operations (all use -C, never cwd) --------------------------------
-
-  def remove_worktree(runner, repo:, worktree:)
-    return false if blank?(repo) || blank?(worktree)
-    res = runner.run("-C", repo, "worktree", "remove", worktree)
-    unless res.success?
-      # Force-remove tolerates dirty/locked worktrees; CLEANUP owns merge policy.
-      res = runner.run("-C", repo, "worktree", "remove", "--force", worktree)
-    end
-    res.success?
-  end
-
-  def prune(runner, repo:)
-    return false if blank?(repo)
-    runner.run("-C", repo, "worktree", "prune").success?
-  end
-
-  # True iff `repo` is a git work tree (idempotent, no mutation).
-  def git_repo?(runner, repo)
-    return false if blank?(repo) || !Dir.exist?(repo)
-    res = runner.run("-C", repo, "rev-parse", "--is-inside-work-tree")
-    res.success? && res.stdout.to_s.strip == "true"
   end
 
   # --- internals (projects.yml resolution, mirrors qmd_sync) -----------------

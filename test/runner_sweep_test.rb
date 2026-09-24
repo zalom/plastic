@@ -4,7 +4,6 @@
 require "minitest/autorun"
 require "tmpdir"
 require "fileutils"
-require "open3"
 require "time"
 
 require_relative "../scripts/lib/runner_sweep"
@@ -13,40 +12,26 @@ require_relative "../scripts/lib/node_ledger"
 require_relative "../scripts/lib/node_input"
 require_relative "../scripts/lib/worktree"
 
-# RunnerSweep (intent 340, G7, n2): the merge abort, the reclaim, and the
-# extension. Matrix rows 2.1-2.21 in actions/ACTION_2.md n2 (2.21 lives in
-# install_sync_test.rb).
+# RunnerSweep (intent 340, G7, n2): the reclaim and the extension. Matrix
+# rows 2.1-2.21 in actions/ACTION_2.md n2 (2.21 lives in install_sync_test.rb).
 #
-# Rows that need a real commit timestamp (extend vs. reclaim) build a real
-# throwaway git repo under Dir.mktmpdir and read the branch's actual
-# committer time back out of git - the only honest way to test that decision.
-# Rows about the merge-abort check alone use a FakeRunner (no real git call
-# needed to prove refusal/ordering).
+# Owner ruling 2026-09-24 (intent 390 part B): Plastic runs no version
+# control command. #abort_if_merging (a `git rev-parse MERGE_HEAD` check) is
+# gone with every test that once proved it - Plastic never runs a merge of
+# its own to leave half-finished. Freshness (extend vs. reclaim) no longer
+# comes from a node branch's own commit time; every test below drives it
+# through a plain file's mtime under the node's own worktree directory
+# instead, with no git repository anywhere in this file.
 class RunnerSweepTest < Minitest::Test
   INTENT_ID = "340"
   INTENT_SLUG = "sweep-fixture"
 
-  # A fake ShellRunner. Records every `run(*args)` and answers via a block;
-  # defaults to "not found" (exit 1), the safe default for both the
-  # MERGE_HEAD probe and a branch `log` call.
-  class FakeRunner
-    attr_reader :calls
-
-    def initialize(&block)
-      @calls = []
-      @responder = block
-    end
-
-    def run(*args)
-      @calls << args.map(&:to_s)
-      r = @responder ? @responder.call(args.map(&:to_s)) : nil
-      r || Worktree::ShellRunner::Result.new(1, "", "")
-    end
-  end
-
   def setup
     @home = Dir.mktmpdir("sweep-home")
     @dir = Dir.mktmpdir("sweep-intent", @home)
+    @repo = Dir.mktmpdir("sweep-repo")
+    @intent_worktree = File.join(@repo, ".claude", "worktrees", "#{INTENT_ID}--#{INTENT_SLUG}")
+    FileUtils.mkdir_p(@intent_worktree)
   end
 
   def teardown
@@ -84,120 +69,60 @@ class RunnerSweepTest < Minitest::Test
     File.join(@dir, "attempts", "#{node}--a#{attempt}.extensions")
   end
 
-  # --- real git fixture (branch head + commit time) -------------------------------
+  # --- node worktree freshness fixture (mtime replaces a git commit time) ------
 
-  def git(*args)
-    out, err, status = Open3.capture3("git", "-C", @repo, *args.map(&:to_s))
-    raise "git #{args.join(' ')} failed: #{err}" unless status.success?
-
-    out
+  def node_worktree_dir(node)
+    File.join(@repo, ".claude", "worktrees", "#{INTENT_ID}--#{INTENT_SLUG}--#{node}")
   end
 
-  def init_repo
-    @repo = Dir.mktmpdir("sweep-repo")
-    git("init", "-q", "-b", "main")
-    git("config", "user.email", "sweep@example.com")
-    git("config", "user.name", "Sweep Test")
-    File.write(File.join(@repo, "README.md"), "hi\n")
-    git("add", "README.md")
-    git("commit", "-q", "-m", "init")
-    @repo
+  # Writes one file under the node's own worktree directory with the given
+  # mtime forced onto it - the file-system stand-in for "a new commit landed
+  # on the node's branch at this time".
+  def touch_node_worktree_file(node, mtime:, filename: "work.txt")
+    dir = node_worktree_dir(node)
+    FileUtils.mkdir_p(dir)
+    path = File.join(dir, filename)
+    File.write(path, "work\n")
+    File.utime(mtime, mtime, path)
   end
 
-  def node_branch(node, intent_id: INTENT_ID, intent_slug: INTENT_SLUG)
-    "plastic/#{intent_id}--#{intent_slug}--#{node}"
-  end
+  # --- 2.1/2.3/2.2/2.16/2.17: the merge-abort check is gone --------------------
+  #
+  # Owner ruling 2026-09-24: #abort_if_merging (a `git rev-parse MERGE_HEAD`
+  # check) and its recovery-command printing are gone outright - Plastic
+  # never runs a merge of its own to leave half-finished, so there is nothing
+  # left for a later step to trip on. #run's own order narrows to "heartbeat,
+  # then reclaim", proven below.
 
-  # Creates a commit on the node's own branch and returns its real committer
-  # time (read back from git, never assumed).
-  def commit_on_node_branch(node, filename: "#{node}.txt")
-    branch = node_branch(node)
-    git("checkout", "-q", "-b", branch)
-    File.write(File.join(@repo, filename), "work\n")
-    git("add", filename)
-    git("commit", "-q", "-m", "#{node} work")
-    git("checkout", "-q", "main")
-    Time.iso8601(git("log", "-1", "--format=%cI", branch).strip)
-  end
+  def test_run_heartbeats_when_session_present
+    write_savepoint("")
+    calls = []
+    heartbeat = lambda { |*args, **kwargs| calls << [args, kwargs]; true }
+    ctx = build_context(worktree: @intent_worktree, session: "auto-xyz")
 
-  # --- 2.1/2.3: the merge-head abort check -----------------------------------------
-
-  def test_merge_head_aborts_step
-    runner = FakeRunner.new { |args| Worktree::ShellRunner::Result.new(0, "abcd1234\n", "") if args.include?("MERGE_HEAD") }
-    ctx = build_context(worktree: "/fake/worktree")
-
-    result = RunnerSweep.abort_if_merging(ctx, runner: runner)
-
-    refute result[:ok]
-    assert_match(/merge is in progress/, result[:error])
-    assert_equal "git -C /fake/worktree merge --abort", result[:recovery_command]
-  end
-
-  def test_clean_tree_does_not_abort
-    runner = FakeRunner.new # default: exit 1, no MERGE_HEAD
-    ctx = build_context(worktree: "/fake/worktree")
-
-    result = RunnerSweep.abort_if_merging(ctx, runner: runner)
+    result = RunnerSweep.run(ctx, heartbeat: heartbeat)
 
     assert result[:ok]
-    assert_nil result[:error]
+    assert_equal 1, calls.length
   end
 
-  # --- 2.2: nothing lands when the abort fires -------------------------------------
-
-  def test_merge_head_abort_leaves_ledger_and_graph_unchanged
-    write_savepoint(line("n1", "running", running_fields(expires: "2000-01-01T00:00:00Z")))
-    graph_path = File.join(@dir, "graph.md")
-    File.write(graph_path, "# Graph\n")
-    before_savepoint = File.read(File.join(@dir, "savepoint.md"))
-    before_graph = File.read(graph_path)
-
-    runner = FakeRunner.new { |args| Worktree::ShellRunner::Result.new(0, "sha\n", "") if args.include?("MERGE_HEAD") }
-    ctx = build_context(worktree: "/fake/worktree")
-
-    result = RunnerSweep.run(ctx, runner: runner, now: Time.iso8601("2030-01-01T00:00:00Z"))
-
-    refute result[:ok]
-    assert_empty result[:reclaimed]
-    assert_empty result[:extended]
-    assert_equal before_savepoint, File.read(File.join(@dir, "savepoint.md"))
-    assert_equal before_graph, File.read(graph_path)
-  end
-
-  # --- 2.17: the recovery command is printed ---------------------------------------
-
-  def test_merge_head_abort_prints_recovery_command
-    runner = FakeRunner.new { |args| Worktree::ShellRunner::Result.new(0, "sha\n", "") if args.include?("MERGE_HEAD") }
-    ctx = build_context(worktree: "/fake/worktree")
-
-    _out, err = capture_io { RunnerSweep.abort_if_merging(ctx, runner: runner) }
-
-    assert_match(%r{git -C /fake/worktree merge --abort}, err)
-  end
-
-  # --- 2.16: the heartbeat runs after the abort check, never before it ------------
-
-  def test_heartbeat_runs_after_abort_check
-    order = []
-    runner = FakeRunner.new do |args|
-      order << :abort_check if args.include?("MERGE_HEAD")
-      nil
-    end
-    heartbeat = lambda { |*_args, **_kwargs| order << :heartbeat; true }
+  def test_run_skips_heartbeat_when_no_session
     write_savepoint("")
-    ctx = build_context(worktree: "/fake/worktree", session: "auto-xyz")
+    calls = []
+    heartbeat = lambda { |*args, **kwargs| calls << [args, kwargs]; true }
+    ctx = build_context(worktree: @intent_worktree, session: nil)
 
-    RunnerSweep.run(ctx, runner: runner, heartbeat: heartbeat)
+    result = RunnerSweep.run(ctx, heartbeat: heartbeat)
 
-    assert_equal [:abort_check, :heartbeat], order
+    assert result[:ok]
+    assert_empty calls
   end
 
   # --- 2.4/2.5: expired vs. unexpired -----------------------------------------------
 
   def test_expired_node_with_no_commits_is_reclaimed
-    init_repo
     write_savepoint(line("n1", "running", running_fields(expires: "2000-01-01T00:00:00Z", holder: "auto-1")))
-    ctx = build_context(worktree: @repo)
+    ctx = build_context(worktree: @intent_worktree)
 
     result = RunnerSweep.reclaim(ctx, now: Time.iso8601("2030-01-01T00:00:00Z"))
 
@@ -208,10 +133,9 @@ class RunnerSweepTest < Minitest::Test
   end
 
   def test_unexpired_node_is_not_reclaimed
-    init_repo
     future = (Time.now + 3600).utc.iso8601
     write_savepoint(line("n1", "running", running_fields(expires: future)))
-    ctx = build_context(worktree: @repo)
+    ctx = build_context(worktree: @intent_worktree)
 
     result = RunnerSweep.reclaim(ctx, now: Time.now)
 
@@ -222,14 +146,14 @@ class RunnerSweepTest < Minitest::Test
 
   # --- 2.6/2.7/2.8: extension mechanics ---------------------------------------------
 
-  def test_expired_node_with_new_commits_is_extended
-    init_repo
-    commit_time = commit_on_node_branch("n1")
-    expires = (commit_time - 60).utc.iso8601
+  def test_expired_node_with_new_files_is_extended
+    mtime = Time.iso8601("2026-01-01T00:30:00Z")
+    touch_node_worktree_file("n1", mtime: mtime)
+    expires = (mtime - 60).utc.iso8601
     write_savepoint(line("n1", "running", running_fields(expires: expires)))
-    ctx = build_context(worktree: @repo)
+    ctx = build_context(worktree: @intent_worktree)
 
-    result = RunnerSweep.reclaim(ctx, now: commit_time + 3600)
+    result = RunnerSweep.reclaim(ctx, now: mtime + 3600)
 
     assert_empty result[:reclaimed]
     assert_equal 1, result[:extended].length
@@ -238,14 +162,14 @@ class RunnerSweepTest < Minitest::Test
     assert File.exist?(extensions_path("n1", 1))
   end
 
-  def test_third_expiry_reclaims_despite_new_commits
-    init_repo
-    commit_time = commit_on_node_branch("n1")
-    expires = (commit_time - 60).utc.iso8601
+  def test_third_expiry_reclaims_despite_new_files
+    mtime = Time.iso8601("2026-01-01T00:30:00Z")
+    touch_node_worktree_file("n1", mtime: mtime)
+    expires = (mtime - 60).utc.iso8601
     write_savepoint(line("n1", "running", running_fields(expires: expires)))
-    ctx = build_context(worktree: @repo)
+    ctx = build_context(worktree: @intent_worktree)
 
-    now = commit_time + 3600
+    now = mtime + 3600
     RunnerSweep.reclaim(ctx, now: now)
     RunnerSweep.reclaim(ctx, now: now)
     result = RunnerSweep.reclaim(ctx, now: now)
@@ -256,21 +180,22 @@ class RunnerSweepTest < Minitest::Test
   end
 
   def test_extension_count_resets_per_attempt
-    init_repo
-    commit_time = commit_on_node_branch("n1")
-    expires_1 = (commit_time - 3600).utc.iso8601
+    mtime = Time.iso8601("2026-01-01T00:30:00Z")
+    touch_node_worktree_file("n1", mtime: mtime)
+    expires_1 = (mtime - 3600).utc.iso8601
     FileUtils.mkdir_p(File.join(@dir, "attempts"))
-    File.write(extensions_path("n1", 1), "2026-01-01T00:00:00Z  head=aaaa\n2026-01-01T00:01:00Z  head=bbbb\n")
+    File.write(extensions_path("n1", 1),
+               "2026-01-01T00:00:00Z  mtime=2025-12-31T23:00:00Z\n2026-01-01T00:01:00Z  mtime=2025-12-31T23:05:00Z\n")
 
-    expires_2 = (commit_time - 60).utc.iso8601
+    expires_2 = (mtime - 60).utc.iso8601
     write_savepoint(
       line("n1", "running", running_fields(expires: expires_1), ts: "2026-01-01T00:00:00Z") +
       line("n1", "reclaimed", { holder: "auto-1", expired: expires_1 }, ts: "2026-01-01T01:00:00Z") +
       line("n1", "running", running_fields(expires: expires_2), ts: "2026-01-01T02:00:00Z")
     )
-    ctx = build_context(worktree: @repo)
+    ctx = build_context(worktree: @intent_worktree)
 
-    result = RunnerSweep.reclaim(ctx, now: commit_time + 3600)
+    result = RunnerSweep.reclaim(ctx, now: mtime + 3600)
 
     assert_empty result[:reclaimed]
     assert_equal 1, result[:extended].length
@@ -278,32 +203,31 @@ class RunnerSweepTest < Minitest::Test
     refute_equal File.read(extensions_path("n1", 1)), File.read(extensions_path("n1", 2))
   end
 
-  def test_extension_line_records_head_sha_and_time
-    init_repo
-    commit_time = commit_on_node_branch("n1")
-    expected_sha = git("rev-parse", node_branch("n1")).strip
-    expires = (commit_time - 60).utc.iso8601
+  def test_extension_line_records_mtime_and_time
+    mtime = Time.iso8601("2026-01-01T00:30:00Z")
+    touch_node_worktree_file("n1", mtime: mtime)
+    expires = (mtime - 60).utc.iso8601
     write_savepoint(line("n1", "running", running_fields(expires: expires)))
-    ctx = build_context(worktree: @repo)
+    ctx = build_context(worktree: @intent_worktree)
 
-    now = commit_time + 3600
+    now = mtime + 3600
     RunnerSweep.reclaim(ctx, now: now)
 
     written = File.read(extensions_path("n1", 1)).strip
-    assert_match(/\Ahead=#{Regexp.escape(expected_sha)}\z|head=#{Regexp.escape(expected_sha)}\z/, written)
+    assert_match(/mtime=#{Regexp.escape(mtime.utc.iso8601)}/, written)
     assert_match(/#{Regexp.escape(now.utc.iso8601)}/, written)
   end
 
   # --- 338a n3, 3.6: extensions are written and counted under attempts/ ---------
 
   def test_extensions_file_lives_under_attempts
-    init_repo
-    commit_time = commit_on_node_branch("n1")
-    expires = (commit_time - 60).utc.iso8601
+    mtime = Time.iso8601("2026-01-01T00:30:00Z")
+    touch_node_worktree_file("n1", mtime: mtime)
+    expires = (mtime - 60).utc.iso8601
     write_savepoint(line("n1", "running", running_fields(expires: expires)))
-    ctx = build_context(worktree: @repo)
+    ctx = build_context(worktree: @intent_worktree)
 
-    now = commit_time + 3600
+    now = mtime + 3600
     result = RunnerSweep.reclaim(ctx, now: now)
 
     expected = File.join(@dir, "attempts", "n1--a1.extensions")
@@ -315,9 +239,8 @@ class RunnerSweepTest < Minitest::Test
   # --- 2.10/2.11: the reclaim line's required fields and node-input integration --
 
   def test_reclaim_line_carries_required_fields
-    init_repo
     write_savepoint(line("n1", "running", running_fields(expires: "2000-01-01T00:00:00Z", holder: "auto-9")))
-    ctx = build_context(worktree: @repo)
+    ctx = build_context(worktree: @intent_worktree)
 
     RunnerSweep.reclaim(ctx, now: Time.iso8601("2030-01-01T00:00:00Z"))
 
@@ -332,12 +255,11 @@ class RunnerSweepTest < Minitest::Test
   # --- 2.12: a done node is never reclaimed -----------------------------------------
 
   def test_done_node_is_never_reclaimed
-    init_repo
     write_savepoint(
       line("n1", "running", running_fields(expires: "2000-01-01T00:00:00Z"), ts: "2026-01-01T00:00:00Z") +
       line("n1", "done", { gates: "integrity+suite", commit: "abc123" }, ts: "2026-01-01T01:00:00Z")
     )
-    ctx = build_context(worktree: @repo)
+    ctx = build_context(worktree: @intent_worktree)
 
     result = RunnerSweep.reclaim(ctx, now: Time.iso8601("2030-01-01T00:00:00Z"))
 
@@ -345,15 +267,16 @@ class RunnerSweepTest < Minitest::Test
     assert_equal "done", NodeLedger.status_for(File.join(@dir, "savepoint.md"), "n1")
   end
 
-  # --- 2.13: a missing branch or worktree never raises ------------------------------
+  # --- 2.13: a missing node worktree never raises ------------------------------------
 
-  def test_missing_node_branch_does_not_raise
-    init_repo # no commit_on_node_branch call: the branch simply does not exist
+  def test_missing_node_worktree_does_not_raise
+    # no touch_node_worktree_file call: neither node's worktree directory
+    # exists on disk at all.
     write_savepoint(
       line("n1", "running", running_fields(expires: "2000-01-01T00:00:00Z"), ts: "2026-01-01T00:00:00Z") +
       line("n2", "running", running_fields(expires: "2000-01-01T00:00:00Z"), ts: "2026-01-01T00:00:00Z")
     )
-    ctx = build_context(worktree: @repo)
+    ctx = build_context(worktree: @intent_worktree)
 
     result = nil
     assert_silent_of_exception { result = RunnerSweep.reclaim(ctx, now: Time.iso8601("2030-01-01T00:00:00Z")) }
@@ -372,11 +295,10 @@ class RunnerSweepTest < Minitest::Test
   # --- 2.14: a torn running line is skipped, not raised on -------------------------
 
   def test_torn_running_line_is_skipped
-    init_repo
     torn = "2026-01-01T00:00:00Z  n1  running holder=auto-1\n" # missing expires/input/model
     healthy = line("n2", "running", running_fields(expires: "2000-01-01T00:00:00Z"))
     write_savepoint(torn + healthy)
-    ctx = build_context(worktree: @repo)
+    ctx = build_context(worktree: @intent_worktree)
 
     result = RunnerSweep.reclaim(ctx, now: Time.iso8601("2030-01-01T00:00:00Z"))
 
@@ -389,15 +311,15 @@ class RunnerSweepTest < Minitest::Test
   # --- 2.15: the report lists every reclaim and extension ---------------------------
 
   def test_report_lists_reclaims_and_extensions
-    init_repo
-    commit_time = commit_on_node_branch("n1")
+    mtime = Time.iso8601("2026-01-01T00:30:00Z")
+    touch_node_worktree_file("n1", mtime: mtime)
     write_savepoint(
-      line("n1", "running", running_fields(expires: (commit_time - 60).utc.iso8601), ts: "2026-01-01T00:00:00Z") +
+      line("n1", "running", running_fields(expires: (mtime - 60).utc.iso8601), ts: "2026-01-01T00:00:00Z") +
       line("n2", "running", running_fields(expires: "2000-01-01T00:00:00Z"), ts: "2026-01-01T00:00:01Z")
     )
-    ctx = build_context(worktree: @repo)
+    ctx = build_context(worktree: @intent_worktree)
 
-    result = RunnerSweep.run(ctx, now: commit_time + 3600)
+    result = RunnerSweep.run(ctx, now: mtime + 3600)
 
     assert result[:ok]
     assert_equal ["n2"], result[:reclaimed].map { |r| r[:node] }
@@ -407,16 +329,16 @@ class RunnerSweepTest < Minitest::Test
   # --- 2.18: the extension attempt number comes from the ledger, not the caller ---
 
   def test_extension_attempt_number_comes_from_ledger
-    init_repo
-    commit_time = commit_on_node_branch("n1")
+    mtime = Time.iso8601("2026-01-01T00:30:00Z")
+    touch_node_worktree_file("n1", mtime: mtime)
     write_savepoint(
       line("n1", "running", running_fields(expires: "2000-01-01T00:00:00Z"), ts: "2026-01-01T00:00:00Z") +
       line("n1", "reclaimed", { holder: "auto-1", expired: "2000-01-01T00:00:00Z" }, ts: "2026-01-01T01:00:00Z") +
-      line("n1", "running", running_fields(expires: (commit_time - 60).utc.iso8601), ts: "2026-01-01T02:00:00Z")
+      line("n1", "running", running_fields(expires: (mtime - 60).utc.iso8601), ts: "2026-01-01T02:00:00Z")
     )
-    ctx = build_context(worktree: @repo)
+    ctx = build_context(worktree: @intent_worktree)
 
-    RunnerSweep.reclaim(ctx, now: commit_time + 3600)
+    RunnerSweep.reclaim(ctx, now: mtime + 3600)
 
     refute File.exist?(extensions_path("n1", 1))
     assert File.exist?(extensions_path("n1", 2))
@@ -425,9 +347,8 @@ class RunnerSweepTest < Minitest::Test
   # --- 2.19: a returned node is spared from this step's reclaim pass ---------------
 
   def test_returned_node_is_not_reclaimed
-    init_repo
     write_savepoint(line("n1", "running", running_fields(expires: "2000-01-01T00:00:00Z")))
-    ctx = build_context(worktree: @repo)
+    ctx = build_context(worktree: @intent_worktree)
 
     result = RunnerSweep.reclaim(ctx, skip: ["n1"], now: Time.iso8601("2030-01-01T00:00:00Z"))
 
@@ -438,15 +359,11 @@ class RunnerSweepTest < Minitest::Test
   # --- 2.20: reclaim reads fresh state, so running it after absorb sees absorb -----
 
   def test_reclaim_pass_runs_after_absorb
-    init_repo
     write_savepoint(line("n1", "running", running_fields(expires: "2000-01-01T00:00:00Z")))
-    ctx = build_context(worktree: @repo)
+    ctx = build_context(worktree: @intent_worktree)
 
-    abort_result = RunnerSweep.abort_if_merging(ctx)
-    assert abort_result[:ok]
-
-    # Simulate "absorb" landing between the abort check and the reclaim pass:
-    # a later dispatch already wrote a `done` line for n1 out from under us.
+    # Simulate "absorb" landing before the reclaim pass: a later dispatch
+    # already wrote a `done` line for n1 out from under us.
     write_savepoint(
       File.read(File.join(@dir, "savepoint.md")) +
       line("n1", "done", { gates: "integrity+suite", commit: "abc123" })

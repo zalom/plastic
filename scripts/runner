@@ -232,22 +232,21 @@ module Runner
   # run_sweep (intent 340, G7, n8): the standalone `sweep` verb, unreachable
   # from the CLI until this node - `dispatch_lazy` had no `when "sweep"` arm
   # even though `RunnerSweep.run` (n2) is a complete, documented standalone
-  # entry point, exactly the shape a bare `runner sweep` call needs (abort
-  # check, THEN the lease heartbeat, THEN reclaim - RunnerSweep's own fixed
-  # order). `step` never calls this method: it composes `abort_if_merging`
-  # and `reclaim` itself, interleaved around absorb.
+  # entry point, exactly the shape a bare `runner sweep` call needs (the
+  # lease heartbeat, THEN reclaim - RunnerSweep's own fixed order). `step`
+  # never calls this method: it calls `reclaim` itself, interleaved around
+  # absorb.
   def run_sweep(intent_dir, args)
     context = RunnerCore.context(intent_dir: intent_dir, env: ENV["CLAUDE_CODE_SESSION_ID"])
     result = RunnerSweep.run(context)
 
     unless result[:ok]
       warn "runner: #{result[:error]}"
-      warn "runner: run `#{result[:recovery_command]}` before the next sweep can run" if result[:recovery_command]
       exit 1
     end
 
     result[:reclaimed].each { |r| puts "reclaimed #{r[:node]} (holder=#{r[:holder]})" }
-    result[:extended].each { |e| puts "extended #{e[:node]} (head=#{e[:head]})" }
+    result[:extended].each { |e| puts "extended #{e[:node]} (mtime=#{e[:mtime]})" }
     puts "nothing to sweep" if result[:reclaimed].empty? && result[:extended].empty?
     exit 0
   end
@@ -274,6 +273,7 @@ module Runner
 
     puts "answered #{node}"
     puts "respun to #{result[:respun_to]}" if result[:respun_to]
+    puts result[:release_instruction] if result[:release_instruction]
     puts "newly ready: #{result[:newly_ready].join(', ')}" if result[:newly_ready].any?
     exit 0
   end
@@ -299,8 +299,10 @@ module Runner
     end
 
     puts "reset #{node} to #{result[:reset_to]}"
+    puts result[:reset_instruction]
     puts "superseded: #{result[:superseded].join(', ')}" if result[:superseded].any?
     puts "respun to #{result[:respun_to]}"
+    Array(result[:release_instructions]).each { |i| puts i }
     exit 0
   end
 
@@ -447,21 +449,16 @@ module Runner
   end
 
   # run_step_body (intent 340, G7, n5): one turn of the loop, in the fixed
-  # order 327 D14 and RunnerSweep's own docstring name - abort on a stuck
-  # merge, the delivery-lease heartbeat, absorb every `--return NODE=PATH`
-  # this call carries, THEN reclaim (so a node this very call just absorbed
-  # is never reclaimed out from under its own return, matrix row 2.19/2.20) -
-  # and only then dispatch whatever is left ready. Never spawns an agent (327
-  # D42): the session makes every subagent call from the plan this prints.
+  # order 327 D14 and RunnerSweep's own docstring name - the delivery-lease
+  # heartbeat, absorb every `--return NODE=PATH` this call carries, THEN
+  # reclaim (so a node this very call just absorbed is never reclaimed out
+  # from under its own return, matrix row 2.19/2.20) - and only then dispatch
+  # whatever is left ready. Never spawns an agent (327 D42): the session
+  # makes every subagent call from the plan this prints. Owner ruling
+  # 2026-09-24: the abort-on-a-stuck-merge step this once ran first is gone
+  # - Plastic runs no merge of its own to leave half-finished.
   def run_step_body(intent_dir, args)
     context = RunnerCore.context(intent_dir: intent_dir, env: ENV["CLAUDE_CODE_SESSION_ID"])
-
-    # v1 minor 3/row 11.18: RunnerSweep.abort_if_merging already prints the
-    # whole sentence itself (its own error PLUS the recovery command) - this
-    # used to print both halves again, so the operator read the same merge
-    # warning twice for one refusal.
-    abort_result = RunnerSweep.abort_if_merging(context)
-    exit 1 unless abort_result[:ok]
 
     Lock.heartbeat(intent_dir, session: context.session) unless context.session.to_s.strip.empty?
 
@@ -503,6 +500,8 @@ module Runner
     returns.each do |node, path|
       absorbed = RunnerAbsorb.absorb(context, node: node, return_path: path, allow_core_drift: allow_core_drift)
       puts "absorbed #{node}: #{absorbed[:state]}"
+      puts "  #{absorbed[:merge_instruction]}" if absorbed[:merge_instruction]
+      puts "  #{absorbed[:release_instruction]}" if absorbed[:release_instruction]
       # M4/row 10.3: a refused proposal is surfaced here, not left to a
       # savepoint comment the operator never sees - the exact reason the
       # proposer's next attempt otherwise proposes the same thing again.
@@ -512,12 +511,14 @@ module Runner
 
     swept = RunnerSweep.reclaim(context, skip: returns.keys)
     swept[:reclaimed].each { |r| puts "reclaimed #{r[:node]} (holder=#{r[:holder]})" }
-    swept[:extended].each { |e| puts "extended #{e[:node]} (head=#{e[:head]})" }
+    swept[:extended].each { |e| puts "extended #{e[:node]} (mtime=#{e[:mtime]})" }
 
     # M5/row 10.4: NodeWorktree.reap runs once per step, right after the
-    # reclaim pass - D26's reaper, unreachable from anywhere until now.
+    # reclaim pass - D26's reaper, unreachable from anywhere until now. Owner
+    # ruling 2026-09-24: Plastic removes nothing itself, so a terminal
+    # candidate's removal instruction prints instead of being run.
     reaped = NodeWorktree.reap(context)
-    reaped[:removed].each { |r| puts "reaped #{r[:node]} worktree" }
+    reaped[:instructions].each { |r| puts r[:instruction] }
 
     agent_config = load_agent_config(context.plastic_home)
     result = RunnerDispatch.dispatch(context, config: agent_config, harness: harness_override)

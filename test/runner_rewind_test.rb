@@ -4,7 +4,6 @@
 require "minitest/autorun"
 require "tmpdir"
 require "fileutils"
-require "open3"
 require "time"
 
 require_relative "../scripts/lib/runner_rewind"
@@ -15,20 +14,17 @@ require_relative "../scripts/lib/graph_file"
 require_relative "../scripts/lib/ready_set"
 require_relative "../scripts/lib/worktree"
 
-# RunnerRewind (intent 340, G7, n6): resets the intent branch to a node's
-# own recorded commit, supersedes every downstream node, and respins the
-# rewound node itself. Matrix rows 6.16-6.21 in nodes/n6.md.
+# RunnerRewind (intent 340, G7, n6): supersedes every downstream node,
+# respins the rewound node itself, and names the branch reset. Matrix rows
+# 6.16-6.21 in nodes/n6.md.
+#
+# Owner ruling 2026-09-24 (intent 390 part B): Plastic runs no version
+# control command, so the `git reset --hard` this action once ran itself is
+# a printed instruction now (`reset_instruction:`) - every test here asserts
+# on that instruction's text, never on a real git repository's own HEAD.
 class RunnerRewindTest < Minitest::Test
   INTENT_ID = "340"
   INTENT_SLUG = "rewind-fixture"
-
-  # A runner double that raises if ever called, standing in for "no git call
-  # is made before confirm is checked" (matrix row 6.16).
-  class RefusingToRunRunner
-    def run(*)
-      raise "a git call must never happen before --confirm is checked"
-    end
-  end
 
   def setup
     @home = Dir.mktmpdir("rewind-home")
@@ -36,6 +32,10 @@ class RunnerRewindTest < Minitest::Test
     FileUtils.mkdir_p(File.join(@dir, "nodes"))
     File.write(File.join(@dir, "#{INTENT_ID}--#{INTENT_SLUG}.md"),
                "---\nid: \"#{INTENT_ID}\"\nintent: t\n---\n\n## Intent\nbody\n")
+
+    @repo = Dir.mktmpdir("rewind-repo")
+    @intent_worktree = File.join(@repo, ".claude", "worktrees", "#{INTENT_ID}--#{INTENT_SLUG}")
+    FileUtils.mkdir_p(@intent_worktree)
   end
 
   def teardown
@@ -137,38 +137,6 @@ class RunnerRewindTest < Minitest::Test
     )
   end
 
-  def git(*args, dir: @repo)
-    out, err, status = Open3.capture3("git", "-C", dir, *args.map(&:to_s))
-    raise "git #{args.join(' ')} failed: #{err}" unless status.success?
-
-    out
-  end
-
-  # A real throwaway git repo with the intent worktree checked out on the
-  # intent branch (runner_dispatch_test.rb's own pattern) - the only honest
-  # way to test a real `git reset --hard`.
-  def setup_real_repo
-    @repo = Dir.mktmpdir("rewind-repo")
-    git("init", "-q", "-b", "alpha")
-    git("config", "user.email", "rw@example.com")
-    git("config", "user.name", "RW Test")
-    git("config", "gc.auto", "0")
-    File.write(File.join(@repo, "README.md"), "hi\n")
-    git("add", "README.md")
-    git("commit", "-q", "-m", "init")
-
-    @intent_worktree = File.join(@repo, ".claude", "worktrees", "#{INTENT_ID}--#{INTENT_SLUG}")
-    FileUtils.mkdir_p(File.dirname(@intent_worktree))
-    git("worktree", "add", @intent_worktree, "-b", "plastic/#{INTENT_ID}--#{INTENT_SLUG}")
-  end
-
-  def commit_in_intent_worktree(message)
-    File.write(File.join(@intent_worktree, "#{message.gsub(/\s+/, '-')}.txt"), "#{message}\n")
-    git("-C", @intent_worktree, "add", ".")
-    git("-C", @intent_worktree, "commit", "-q", "-m", message)
-    git("-C", @intent_worktree, "rev-parse", "HEAD").strip
-  end
-
   # --- 6.16: refuse rewind without --confirm -----------------------------------
 
   def test_rewind_requires_confirm
@@ -176,43 +144,37 @@ class RunnerRewindTest < Minitest::Test
     write_work_node("n1")
     write_savepoint(line("n1", "done", gates: "g", commit: "deadbeef"))
 
-    result = RunnerRewind.rewind(build_context, node: "n1", confirm: false, runner: RefusingToRunRunner.new)
+    result = RunnerRewind.rewind(build_context, node: "n1", confirm: false)
 
     refute result[:ok]
     assert_equal "confirm_required", result[:reason]
+    assert_nil result[:reset_instruction]
   end
 
-  # --- 6.17: reset the intent branch to the node's recorded commit -------------
+  # --- 6.17: name the reset instruction against the node's recorded commit -----
 
-  def test_rewind_resets_to_node_commit
-    setup_real_repo
-    n1_commit = commit_in_intent_worktree("n1 work")
-    commit_in_intent_worktree("n4 work, built on n1")
-
+  def test_rewind_names_reset_instruction_to_node_commit
     write_graph("- n1 needs nothing\n- n4 needs n1\n")
     write_work_node("n1")
     write_work_node("n4")
-    write_savepoint(line("n1", "done", gates: "g", commit: n1_commit) +
+    write_savepoint(line("n1", "done", gates: "g", commit: "n1c0ffee") +
                      line("n4", "done", gates: "g", commit: "whatever"))
 
     result = RunnerRewind.rewind(build_context(worktree: @intent_worktree), node: "n1", confirm: true)
 
     assert result[:ok], result.inspect
-    assert_equal n1_commit, result[:reset_to]
-    assert_equal n1_commit, git("rev-parse", "HEAD", dir: @intent_worktree).strip
+    assert_equal "n1c0ffee", result[:reset_to]
+    assert_equal "git -C #{@intent_worktree} reset --hard n1c0ffee", result[:reset_instruction]
   end
 
   # --- 6.18: every downstream node is marked superseded -------------------------
 
   def test_rewind_supersedes_downstream_nodes
-    setup_real_repo
-    n1_commit = commit_in_intent_worktree("n1 work")
-
     write_graph("- n1 needs nothing\n- n4 needs n1\n- n7 needs n4\n")
     write_work_node("n1")
     write_work_node("n4")
     write_work_node("n7")
-    write_savepoint(line("n1", "done", gates: "g", commit: n1_commit) +
+    write_savepoint(line("n1", "done", gates: "g", commit: "n1c0ffee") +
                      line("n4", "done", gates: "g", commit: "c4") +
                      line("n7", "done", gates: "g", commit: "c7"))
 
@@ -227,12 +189,9 @@ class RunnerRewindTest < Minitest::Test
   # --- 6.19: the rewound node is respun, never written as planned --------------
 
   def test_rewind_respins_instead_of_planning
-    setup_real_repo
-    n1_commit = commit_in_intent_worktree("n1 work")
-
     write_graph("- n1 needs nothing\n")
     write_work_node("n1")
-    write_savepoint(line("n1", "done", gates: "g", commit: n1_commit))
+    write_savepoint(line("n1", "done", gates: "g", commit: "n1c0ffee"))
 
     result = RunnerRewind.rewind(build_context(worktree: @intent_worktree), node: "n1", confirm: true)
 
@@ -246,15 +205,12 @@ class RunnerRewindTest < Minitest::Test
   # --- 6.19a: the successor starts with clean cap counters ----------------------
 
   def test_respun_node_starts_with_clean_counters
-    setup_real_repo
-    n1_commit = commit_in_intent_worktree("n1 work")
-
     write_graph("- n1 needs nothing\n")
     write_work_node("n1")
     write_savepoint(
       line("n1", "failed_verification", gates: "g", reason: "suite_red") +
       line("n1", "failed_verification", gates: "g", reason: "suite_red") +
-      line("n1", "done", gates: "g", commit: n1_commit)
+      line("n1", "done", gates: "g", commit: "n1c0ffee")
     )
 
     result = RunnerRewind.rewind(build_context(worktree: @intent_worktree), node: "n1", confirm: true)
@@ -274,7 +230,7 @@ class RunnerRewindTest < Minitest::Test
     write_decision_node("d1")
     write_savepoint(line("d1", "done", gates: "answer", verdict: "answered"))
 
-    result = RunnerRewind.rewind(build_context, node: "d1", confirm: true, runner: RefusingToRunRunner.new)
+    result = RunnerRewind.rewind(build_context, node: "d1", confirm: true)
 
     refute result[:ok]
     assert_equal "no_recorded_commit", result[:reason]
@@ -291,7 +247,7 @@ class RunnerRewindTest < Minitest::Test
       line("n2", "running", holder: "h", expires: "2026-01-01T01:00:00Z", input: "p", model: "sonnet")
     )
 
-    result = RunnerRewind.rewind(build_context, node: "n1", confirm: true, runner: RefusingToRunRunner.new)
+    result = RunnerRewind.rewind(build_context, node: "n1", confirm: true)
 
     refute result[:ok]
     assert_equal "a_node_is_running", result[:reason]

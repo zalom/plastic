@@ -18,10 +18,12 @@ require_relative "lock"
 # once, absorb each return, and around again, stopping on complete,
 # stalled, needs_decision, a refused step, or an iteration cap.
 #
-# #step_once is one turn - abort-if-merging, the heartbeat, absorb every
-# return this call carries (serially, a plain Ruby loop, never a thread),
-# reclaim, reap, then dispatch - the same fixed order scripts/runner's own
-# `run_step_body` uses, returning data rather than printing it, so #run can
+# #step_once is one turn - the heartbeat, absorb every return this call
+# carries (serially, a plain Ruby loop, never a thread), reclaim, reap, then
+# dispatch - the same fixed order scripts/runner's own `run_step_body` uses
+# (owner ruling 2026-09-24: the abort-if-merging step this loop once ran is
+# gone now, since Plastic runs no merge of its own to leave half-finished),
+# returning data rather than printing it, so #run can
 # make its own stop/continue decision instead of scraping stdout. #run is
 # the loop: it grows `active` from whatever #step_once actually dispatched
 # (already capped at the concurrency ceiling by RunnerDispatch's own
@@ -127,11 +129,6 @@ module RunnerUntilEmpty
   def step_once(context, harness:, returns: {}, allow_core_drift: false, now: Time.now,
                 sweep: RunnerSweep, absorb: RunnerAbsorb, dispatch: RunnerDispatch,
                 worktree: NodeWorktree, lock: Lock, config_loader: method(:load_agent_config))
-    abort_result = sweep.abort_if_merging(context)
-    unless abort_result[:ok]
-      return refusal("merge_in_progress", abort_result[:error])
-    end
-
     lock.heartbeat(context.intent_dir, session: context.session) unless context.session.to_s.strip.empty?
 
     return refusal("lock_not_held", nil) unless context.session

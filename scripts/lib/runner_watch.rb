@@ -18,17 +18,20 @@ require_relative "meter_watch"
 
 # RunnerWatch (intent 340a, G7b, n1): one tick over disk truth. The whole
 # watch minus the CLI and the dispatch branch (340a n2). Composes the
-# existing modules the way RunnerSweep and MeterWatch already do - the
-# git runner, the clock and the sweep module are all injected, nothing
-# reads ENV, nothing evals.
+# existing modules the way RunnerSweep and MeterWatch already do - the clock
+# and the sweep module are all injected, nothing reads ENV, nothing evals,
+# and no method here runs a version control command (owner ruling
+# 2026-09-24).
 #
 # Order, fixed by graph.md D2: take a non-blocking lock on
 # `<intent_dir>/watch.lock` for the whole tick (a losing tick is `busy`,
-# writes nothing); `RunnerSweep.abort_if_merging`; refuse the tick outright
-# on a half-finished merge (row 1.3), writing nothing; `RunnerSweep.reclaim`
-# (never `RunnerSweep.run`, D3: that method heartbeats the delivery lease,
-# which would keep a dead lead's lock fresh forever); classify (D4);
-# persist the snapshot and the record line only when `record:` holds.
+# writes nothing); `RunnerSweep.reclaim` (never `RunnerSweep.run`, D3: that
+# method heartbeats the delivery lease, which would keep a dead lead's lock
+# fresh forever); classify (D4); persist the snapshot and the record line
+# only when `record:` holds. Owner ruling 2026-09-24: the
+# `RunnerSweep.abort_if_merging` step this tick once ran before reclaim is
+# gone - Plastic runs no merge of its own to leave half-finished, so there is
+# nothing left to abort on.
 module RunnerWatch
   module_function
 
@@ -40,7 +43,7 @@ module RunnerWatch
   # graph on every tick is exactly the bug a timer must not have.
   FINISHED_CLASSES = %w[closed done_unreported].freeze
 
-  # tick(context, record:, dispatch:, harness:, now:, runner:, sweep:,
+  # tick(context, record:, dispatch:, harness:, now:, sweep:,
   # until_empty:) -> {class:, blockers:, ready:, reclaimed:, dispatched:,
   # tick:, busy:}. `dispatch:` (327 Q6, D7, D8) only ever runs under an
   # explicit ask - never inferred from the class - and only when the lock is
@@ -52,25 +55,17 @@ module RunnerWatch
   # (an unheld lock, a finished class, a stopped meter) still consults and
   # records the meter, since the tick DID look, it just chose not to act.
   def tick(context, record: true, dispatch: false, harness: nil, now: Time.now,
-           runner: Worktree::ShellRunner.new, sweep: RunnerSweep, until_empty: RunnerUntilEmpty)
+           sweep: RunnerSweep, until_empty: RunnerUntilEmpty)
     intent_dir = context.intent_dir.to_s
     lock_handle = acquire_lock(File.join(intent_dir, LOCK_FILENAME))
     return busy_result unless lock_handle
 
     begin
-      abort_result = sweep.abort_if_merging(context, runner: runner)
-      unless abort_result[:ok]
-        return {
-          class: "merge_in_progress", blockers: [abort_result[:error]], ready: [],
-          reclaimed: [], dispatched: [], tick: nil, busy: false,
-        }
-      end
-
-      reclaim_result = sweep.reclaim(context, runner: runner, skip: [], now: now)
+      reclaim_result = sweep.reclaim(context, skip: [], now: now)
       reclaimed_ids = Array(reclaim_result[:reclaimed]).map { |r| r[:node] }
       extended = !Array(reclaim_result[:extended]).empty?
 
-      view = classify(context, runner: runner, now: now, intent_dir: intent_dir, extended: extended)
+      view = classify(context, now: now, intent_dir: intent_dir, extended: extended)
 
       lock_state = context.session ? "held" : "not_held"
       harness_field = "-"
@@ -95,7 +90,7 @@ module RunnerWatch
         end
       ensure
         if record
-          Worktree.ensure_gitignored(context.plastic_home, STATE_FILENAME, runner: runner)
+          Worktree.ensure_gitignored(context.plastic_home, STATE_FILENAME)
           write_snapshot(intent_dir, view[:snapshot])
           append_record(
             intent_dir, now: now, tick: view[:tick], klass: view[:class],
@@ -173,14 +168,15 @@ module RunnerWatch
   end
   private_class_method :blank?
 
-  # fingerprint(context, runner:) -> the SHA256 D4 defines: savepoint.md's
-  # current content plus the intent branch head, so a commit that lands no
-  # ledger line still counts as movement (row 1.13). Public so a caller (and
-  # this file's own tests) can compute the exact value a tick would compute
-  # without duplicating the hashing here.
-  def fingerprint(context, runner: Worktree::ShellRunner.new)
+  # fingerprint(context) -> the SHA256 D4 defines: savepoint.md's current
+  # content plus the intent worktree's own newest file mtime (see
+  # `worktree_signal`), so a file change that lands no ledger line still
+  # counts as movement (row 1.13). Public so a caller (and this file's own
+  # tests) can compute the exact value a tick would compute without
+  # duplicating the hashing here.
+  def fingerprint(context)
     content = savepoint_content(context.intent_dir)
-    Digest::SHA256.hexdigest("#{content}\x1f#{branch_head_sha(context, runner)}")
+    Digest::SHA256.hexdigest("#{content}\x1f#{worktree_signal(context)}")
   end
 
   # --- the lock ----------------------------------------------------------------
@@ -214,7 +210,7 @@ module RunnerWatch
 
   # --- classification (D4), first match wins ------------------------------------
 
-  def classify(context, runner:, now:, intent_dir:, extended: false)
+  def classify(context, now:, intent_dir:, extended: false)
     content = savepoint_content(intent_dir)
     recorded_pairs = Savepoint.savepoint_recorded_pairs(intent_dir)
     previous = read_snapshot(intent_dir)
@@ -222,19 +218,19 @@ module RunnerWatch
 
     if closed?(recorded_pairs)
       return settle("closed", blockers: [], ready_ids: [], previous: previous, tick_number: tick_number,
-                     quiet_ticks: 0, content: content, context: context, runner: runner, now: now)
+                     quiet_ticks: 0, content: content, context: context, now: now)
     end
 
     unless context.graph[:ok]
       errors = Array(context.graph[:errors])
       errors = ["graph.md could not be parsed"] if errors.empty?
       return settle("stalled", blockers: errors, ready_ids: [], previous: previous, tick_number: tick_number,
-                     quiet_ticks: 0, content: content, context: context, runner: runner, now: now)
+                     quiet_ticks: 0, content: content, context: context, now: now)
     end
 
     if RunnerCore.complete?(context)
       return settle("done_unreported", blockers: [], ready_ids: [], previous: previous, tick_number: tick_number,
-                     quiet_ticks: 0, content: content, context: context, runner: runner, now: now)
+                     quiet_ticks: 0, content: content, context: context, now: now)
     end
 
     ready_ids = ReadySet.analyze(intent_dir, now: now)[:ranked_ready].map { |r| r[:id] }
@@ -242,11 +238,11 @@ module RunnerWatch
 
     if !running && ready_ids.empty?
       return settle("stalled", blockers: blocked_reasons(context), ready_ids: ready_ids, previous: previous,
-                     tick_number: tick_number, quiet_ticks: 0, content: content, context: context, runner: runner,
+                     tick_number: tick_number, quiet_ticks: 0, content: content, context: context,
                      now: now)
     end
 
-    current_fingerprint = fingerprint(context, runner: runner)
+    current_fingerprint = fingerprint(context)
 
     # B2: a reclaim that extended a lease is evidence of live work (the
     # sweep extends only when the node branch has commits newer than the
@@ -255,7 +251,7 @@ module RunnerWatch
     # nothing-running-nothing-ready stall have already returned above.
     if extended || previous.nil? || previous[:fingerprint] != current_fingerprint
       return settle("moving", blockers: [], ready_ids: ready_ids, previous: previous, tick_number: tick_number,
-                     quiet_ticks: 0, content: content, context: context, runner: runner, now: now,
+                     quiet_ticks: 0, content: content, context: context, now: now,
                      fingerprint: current_fingerprint)
     end
 
@@ -269,7 +265,7 @@ module RunnerWatch
     end
 
     settle(klass, blockers: blockers, ready_ids: ready_ids, previous: previous, tick_number: tick_number,
-           quiet_ticks: next_quiet_ticks, content: content, context: context, runner: runner, now: now,
+           quiet_ticks: next_quiet_ticks, content: content, context: context, now: now,
            fingerprint: current_fingerprint)
   end
   private_class_method :classify
@@ -278,9 +274,9 @@ module RunnerWatch
   # `record:` is honored by the caller. `fingerprint:` defaults to a fresh
   # computation so every class - not only moving/quiet/stalled-by-quiet -
   # persists a value later ticks can compare against.
-  def settle(klass, blockers:, ready_ids:, previous:, tick_number:, quiet_ticks:, content:, context:, runner:,
+  def settle(klass, blockers:, ready_ids:, previous:, tick_number:, quiet_ticks:, content:, context:,
              now:, fingerprint: nil)
-    fp = fingerprint || RunnerWatch.fingerprint(context, runner: runner)
+    fp = fingerprint || RunnerWatch.fingerprint(context)
     {
       class: klass, blockers: blockers, ready: ready_ids, tick: tick_number,
       snapshot: { fingerprint: fp, quiet_ticks: quiet_ticks, tick: tick_number, at: now.utc.iso8601 },
@@ -321,16 +317,24 @@ module RunnerWatch
   end
   private_class_method :unexpired_running_lease?
 
-  def branch_head_sha(context, runner)
+  # The newest mtime among every file under the intent worktree, or "" when
+  # there is no worktree or it is empty - the file-system replacement for
+  # the git branch head sha this used to hash (owner ruling 2026-09-24:
+  # Plastic reads no git history), so a file a node writes without landing a
+  # ledger line still counts as movement (row 1.13).
+  def worktree_signal(context)
     worktree = context.worktree
-    return "" if worktree.nil? || worktree.to_s.strip.empty?
+    return "" if worktree.nil? || worktree.to_s.strip.empty? || !Dir.exist?(worktree)
 
-    res = runner.run("-C", worktree, "rev-parse", "HEAD")
-    res.success? ? res.stdout.to_s.strip : ""
+    newest = Dir.glob(File.join(worktree, "**", "*"), File::FNM_DOTMATCH)
+                .reject { |f| File.directory?(f) }
+                .map { |f| File.mtime(f) }
+                .max
+    newest ? newest.utc.iso8601 : ""
   rescue StandardError
     ""
   end
-  private_class_method :branch_head_sha
+  private_class_method :worktree_signal
 
   def parse_time(raw)
     return nil if raw.nil? || raw.to_s.strip.empty?

@@ -23,31 +23,43 @@ require_relative "atomic_write"
 require_relative "runner_proposals"
 
 # RunnerAbsorb (intent 340, G7, n4): the gate that turns one executor return
-# into exactly one node ledger transition. It runs six checks in a fixed
-# order - integrity, schema, scope, named_tests, merge, suite - and stops at
-# the first refusal. Only a clean pass through all six writes `done`; every
+# into exactly one node ledger transition. It runs five checks in a fixed
+# order - integrity, schema, named_tests, merge, suite - and stops at the
+# first refusal. Only a clean pass through all five writes `done`; every
 # other path writes `failed_verification`, `needs_decision` or `blocked`,
 # carrying the reason the gate stopped at and `gates=`, the checks that
 # actually ran.
 #
-# `done` is written only on code-verified evidence: the runner re-derives
-# the merge commit and the suite result itself, never trusting the
-# executor's own report of either. The return's `commit:` field is a
-# required attestation at the schema layer (row 4.6), not the value that
-# lands on the ledger line - the merge's own commit wins whenever a merge
-# actually ran (a work node); the return's commit is the fallback only when
-# no merge exists to measure (a verify or research node's kind, out of this
-# node's tested scope).
+# Owner ruling 2026-09-24 (intent 390 part B): Plastic runs no version
+# control command. The "scope" check this gate used to run (a git diff
+# against the node's own declared `files:`) is gone outright, not replaced -
+# NodeReturn's closed schema carries no file list an executor's return could
+# report instead (ALLOWED_KEYS: node, status, commit, summary, findings,
+# report, proposed_nodes, proposed_edges, question, reason), so there is
+# nothing left to measure scope against. This is a real capability the gate
+# had and no longer has; it is recorded here as a finding, not quietly
+# patched over.
+#
+# The "merge" check no longer runs an actual merge either. `NodeWorktree.merge`
+# returns the printed `git merge` instruction instead of a commit, so `done`
+# now carries the executor's OWN reported `commit:` (the schema's required
+# attestation, row 4.6) rather than a runner-verified merge commit - the
+# smaller of the two changes weighed for this gate (the alternative, parking
+# every work node at a new "awaiting merge" state, would have added a state
+# the rest of the ledger's transition machinery does not know) - and the
+# result carries the merge instruction (`merge_instruction:`) for the caller
+# to print right alongside the `done` line, so the actual integration is a
+# step the agent or the owner still takes.
 #
 # Pure and dependency-injected down to the clock: every side effect -
-# core integrity, the worktree module, git itself, the suite command, the
-# project's verify reader - is an injectable keyword argument with a real
-# default, so a test never touches a real repository, a real suite, or a
-# real filesystem outside its own tmpdir.
+# core integrity, the worktree module, the suite command, the project's
+# verify reader - is an injectable keyword argument with a real default, so
+# a test never touches a real repository, a real suite, or a real
+# filesystem outside its own tmpdir.
 module RunnerAbsorb
   module_function
 
-  CHECKS = %w[integrity schema scope named_tests merge suite].freeze
+  CHECKS = %w[integrity schema named_tests merge suite].freeze
 
   # M1: `default_project_reader`'s own sentinel for "the project record
   # exists but could not be parsed" - distinct from nil ("no verify command
@@ -70,7 +82,6 @@ module RunnerAbsorb
              integrity_checker: CoreIntegrity.method(:check),
              worktree: NodeWorktree,
              ledger: NodeLedger,
-             runner: Worktree::ShellRunner.new,
              suite_runner: method(:default_suite_runner),
              project_reader: method(:default_project_reader),
              proposals: RunnerProposals)
@@ -100,15 +111,14 @@ module RunnerAbsorb
 
     node_decl = ((context.graph || {})[:nodes] || {})[node] || {}
     kind = node_decl[:kind]
-    declared_files = normalize_files(node_decl[:files])
     report_path = declared_report_path(intent_dir, node)
 
     # v2 NEW-2: a `graph.md` that failed to parse, or a node whose kind
     # cannot be resolved from it, refuses right here - before ANY check
     # runs. Falling through with `kind` nil used to skip the whole work-node
-    # branch (no merge ever ran), pass scope vacuously (`declared_files` was
-    # empty), and land `done` carrying the executor's own self-reported
-    # commit on work nothing had verified ever reached the intent branch.
+    # branch (no merge ever ran) and land `done` carrying the executor's own
+    # self-reported commit on work nothing had verified ever reached the
+    # intent branch.
     unless (context.graph || {})[:ok] && !kind.nil?
       fields = { reason: "invalid_graph", holder: holder }.merge(extra_fields)
       return write_transition(savepoint_path, context, node, "blocked", fields, now: now, ledger: ledger)
@@ -197,48 +207,27 @@ module RunnerAbsorb
       end
     end
 
-    # 3. scope --------------------------------------------------------------
-    checks_ran << "scope"
-    changed = worktree.changed_paths(context, node: node, kind: kind, runner: runner)
-    if changed.nil?
-      return finish.call(fail_check(savepoint_path, context, node, "scope_unmeasurable", checks_ran, holder, extra_fields, now, ledger))
-    end
-    scope_reason = scope_violation(kind, changed, declared_files)
-    if scope_reason
-      return finish.call(fail_check(savepoint_path, context, node, scope_reason, checks_ran, holder, extra_fields, now, ledger))
-    end
-
-    # 4. named_tests ----------------------------------------------------------
+    # 3. named_tests ----------------------------------------------------------
     checks_ran << "named_tests"
     if missing_named_tests?(context, node, kind, worktree)
       return finish.call(fail_check(savepoint_path, context, node, "named_test_missing", checks_ran, holder, extra_fields, now, ledger))
     end
 
-    # 5. merge ------------------------------------------------------------------
-    # M2: `merge` lands in gates= only when a merge actually ran - a verify
-    # or research return never reaches a merge (only a work node's diff
-    # lives on a mergeable branch), so its evidence line must say `merge:none`
-    # rather than claiming a check the code skipped for its kind.
-    merge_commit = nil
+    # 4. merge ------------------------------------------------------------------
+    # M2: `merge` lands in gates= only when a merge applies - a verify or
+    # research node's kind never gets one, so its evidence line must say
+    # `merge:none` rather than claiming a check that never applied for its
+    # kind. Owner ruling 2026-09-24: Plastic runs no merge itself anymore;
+    # `NodeWorktree.merge` returns the printed instruction, carried through
+    # to the caller as `merge_instruction:` rather than a verified commit.
+    merge_instruction = nil
     if kind.to_s == "work"
       checks_ran << "merge"
-      merge_result = worktree.merge(context, node: node, runner: runner)
+      merge_result = worktree.merge(context, node: node)
       unless merge_result[:ok]
-        conflicted = Array(merge_result[:conflicted])
-        if conflicted.empty?
-          return finish.call(fail_check(savepoint_path, context, node, "merge_failed", checks_ran, holder, extra_fields, now, ledger))
-        end
-
-        outside = conflicted.reject { |p| path_covered?(p, declared_files) }
-        if outside.empty?
-          return finish.call(fail_check(savepoint_path, context, node, "merge_conflict", checks_ran, holder, extra_fields, now, ledger))
-        end
-
-        question = "merge conflict touches path(s) outside files: #{outside.sort.join(', ')}"
-        fields = { question: question, holder: holder, gates: checks_ran.join("+") }.merge(extra_fields)
-        return finish.call(write_transition(savepoint_path, context, node, "needs_decision", fields, now: now, ledger: ledger))
+        return finish.call(fail_check(savepoint_path, context, node, "merge_unresolvable", checks_ran, holder, extra_fields, now, ledger))
       end
-      merge_commit = merge_result[:commit]
+      merge_instruction = merge_result[:instruction]
     else
       checks_ran << "merge:none"
     end
@@ -273,7 +262,7 @@ module RunnerAbsorb
       suite_value = format_suite(suite_result)
     end
 
-    commit_value = merge_commit || parsed.commit
+    commit_value = parsed.commit
     if report_path
       report_result = persist_report(intent_dir, report_path, parsed.report)
       unless report_result[:ok]
@@ -285,9 +274,10 @@ module RunnerAbsorb
     fields = { gates: gates, commit: commit_value, holder: holder, suite: suite_value }.merge(extra_fields)
     result = write_transition(savepoint_path, context, node, "done", fields, now: now, ledger: ledger)
 
-    worktree.release(context, node: node, state: "done", runner: runner) if result[:written]
+    release_instruction = nil
+    release_instruction = worktree.release(context, node: node, state: "done")[:instruction] if result[:written]
 
-    finish.call(result)
+    finish.call(result.merge(merge_instruction: merge_instruction, release_instruction: release_instruction))
   end
 
   # --- transitions -------------------------------------------------------------
@@ -401,39 +391,6 @@ module RunnerAbsorb
     parts.join(";")
   end
   private_class_method :drift_summary
-
-  # --- scope ---------------------------------------------------------------
-
-  def scope_violation(kind, changed, declared_files)
-    case kind.to_s
-    when "work"
-      outside = Array(changed).reject { |p| path_covered?(p, declared_files) }
-      outside.any? ? "diff_outside_files" : nil
-    when "verify"
-      Array(changed).any? ? "diff_on_verify_node" : nil
-    when "research"
-      Array(changed).any? ? "diff_on_research_node" : nil
-    end
-  end
-  private_class_method :scope_violation
-
-  def path_covered?(path, declared_files)
-    norm = normalize_scope_path(path)
-    declared_files.any? do |f|
-      norm == f || norm.start_with?("#{f}/")
-    end
-  end
-  private_class_method :path_covered?
-
-  def normalize_files(files)
-    Array(files).map { |f| normalize_scope_path(f) }
-  end
-  private_class_method :normalize_files
-
-  def normalize_scope_path(path)
-    path.to_s.sub(%r{\A\./}, "").sub(%r{/\z}, "")
-  end
-  private_class_method :normalize_scope_path
 
   # --- research report -------------------------------------------------------
 
