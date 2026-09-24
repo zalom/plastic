@@ -72,3 +72,7 @@ A repository's own pull request template is honored, never rewritten. The projec
 `flow.pull_request_body` in `project.yml` decides how: `inject` (the default) puts the four
 headings after the template, and `template` sends the template alone. A repository with no
 template gets the four headings under either value.
+
+The description is written to the pull request only after it has passed the plain-writing
+checker, with every finding fixed. An agent writes it to a file, runs the checker on that
+file, fixes what it reports, and only then passes the file to the pull request.
