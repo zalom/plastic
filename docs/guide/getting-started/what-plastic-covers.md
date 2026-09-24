@@ -17,7 +17,7 @@
 | `plastic rollback [--version VERSION]` | Moves to a Plastic version this machine has run before. |
 | `plastic uninstall [--claude] [--codex] [--hermes] [--all]` | Removes Plastic from this machine's agents. |
 | `plastic intent new`, `show`, `spec`, `rule`, `note`, `step`, `answer`, `verify`, `end` | Carries one intent from its first line to its close. See [Intent commands](intent-commands.md). |
-| `plastic auto take`, `brief`, `report`, `lock` and `plastic session summary`, `handoff`, `commit` | Serves an auto team and keeps the day ledger. See [Auto and session commands](auto-and-session-commands.md). |
+| `plastic auto start`, `brief`, `report`, `lock` and `plastic session summary`, `handoff`, `commit` | Serves an auto team and keeps the day ledger. See [Auto and session commands](auto-and-session-commands.md). |
 | `plastic project new`, `list`, `links` | Registers a project, lists the stores, and rebuilds the Links sections. See [Project and roadmap commands](project-and-roadmap-commands.md). |
 | `plastic roadmap next`, `show`, `log`, `check`, `migrate` | Reads a roadmap, appends to its ledger, and writes a missing Graph section. See [Project and roadmap commands](project-and-roadmap-commands.md). |
 | `plastic index`, `plastic search TERMS`, `plastic query SQL` | Builds and reads the search index of the stores. See [Search commands](search-commands.md). |

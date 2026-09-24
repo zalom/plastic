@@ -228,7 +228,7 @@ plastic roadmap log SLUG EVENT "TEXT" # Append a line to the roadmap ledger
 
 ### Auto teams
 ```bash
-plastic auto take 12                  # Arm the delivery lock for this session
+plastic auto start 12                  # Arm the delivery lock for this session
 plastic auto brief 12 --role executor # Print the spawn preamble for one role
 plastic auto report 12                # Completion report, then the review rules
 plastic auto lock status 12           # Inspect the delivery lock

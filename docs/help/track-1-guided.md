@@ -79,7 +79,7 @@ Checkpoint: open `graph.md` and point at the one node this worked example needs.
 Run `plastic intent step ID`.
 
 Graph execution needs the delivery lock. Without it, `intent step` names
-`plastic auto take ID` as the next step. From a conversation session, `auto take` refuses with
+`plastic auto start ID` as the next step. From a conversation session, `auto start` refuses with
 exit 3 unless the owner approves `--allow-inline`; stop and report the refusal.
 
 Teach the loop: `plastic intent step ID` runs the internal `runner step`, which computes which

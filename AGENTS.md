@@ -94,7 +94,7 @@ Rules for any agent (or human) contributing to this repository.
   corrupt or legacy state.
 - Every code-touching intent gets its own worktree named `{id}--{slug}`, and code edits happen
   only inside it. Plastic runs no version control command, so it does not create this worktree:
-  at arm time (`plastic auto take ID`, the only public arm), it resolves the repo from
+  at arm time (`plastic auto start ID`, the only public arm), it resolves the repo from
   `projects.yml`, computes the expected path and branch, and prints the exact
   `git -C <repo> worktree add <path> -b <branch>` for the agent to run. The code worktree lives
   at `<repo>/.claude/worktrees/{id}--{slug}` on branch `plastic/{id}--{slug}`. It is the only

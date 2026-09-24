@@ -130,9 +130,9 @@ lost or stale copy costs nothing.
 
 ## When you see a lock
 
-`delivery.lock` appears in an intent directory when `plastic auto take` arms it for an auto
+`delivery.lock` appears in an intent directory when `plastic auto start` arms it for an auto
 team. It names the owning session and stays fresh while that session's hooks touch it. An
-interactive session takes one only with `plastic auto take ID --allow-inline` and the owner's
+interactive session takes one only with `plastic auto start ID --allow-inline` and the owner's
 approval. To inspect a lock, run `plastic auto lock status ID`. Taking over a lock whose owner
 has gone quiet is the owner's step: the internal `plastic-lock reclaim` does it and records it
 in the intent's `savepoint.md`. The public commands refuse a foreign lock with exit 3.

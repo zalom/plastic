@@ -575,7 +575,7 @@ applied that rule with thin CLIs over `scripts/lib/` modules. Three of them rema
 the commit, merge, and worktree-removal steps for the agent or owner to run by hand (intent
 390: Plastic runs no version control command, so it never inspects, merges, or removes the
 code worktree itself). `scripts/end-intent` runs the same backfill as
-`scaffold-intent` at close. The arm step is `plastic auto take ID`.
+`scaffold-intent` at close. The arm step is `plastic auto start ID`.
 
 `scripts/scaffold-intent` is one CLI with one verb, `backfill` (its `spec`, `checklist`, and
 `outcome` subcommands were removed in 2.0, intent 308). It runs `BackfillIntent`
@@ -721,8 +721,8 @@ Claude Code and Astra on Codex; Primary uses medium effort, and Secondary uses h
   line. See [harness-adapters.md](reference/harness-adapters.md) for the full codex
   agent TOML contract.
 - **Graph runtime contract**: `RunnerPolicy` resolves model and effort for the active harness.
-  `RunnerDispatch` records both on `running`, and `scripts/node-run` passes both explicitly
-  to `codex exec`. A research node can declare one Markdown report under `resources/`.
+  `RunnerDispatch` records both on `running`, and the Codex dispatch block prints a
+  `codex exec` command that passes both. Plastic never runs it (intent 391). A research node can declare one Markdown report under `resources/`.
   The read-only node returns its content in YAML and `RunnerAbsorb` performs the confined,
   atomic write after validation.
 - **Dispatch-time contract (belt-and-braces)**: because Claude Code reading
@@ -817,11 +817,11 @@ own isolation instead, deterministic and cwd-independent.
   public command (`plastic auto lock status ID`); `Arm.stale_hint` carries the
   stale wording. `arm` on an unreadable lock exits 1 and names `plastic auto
   lock fix ID`. `Arm.repair` stamps `run_mode: auto` on a lock it rebuilds from
-  nothing, and keeps the mode of a lock it keeps. `plastic auto take` passes
+  nothing, and keeps the mode of a lock it keeps. `plastic auto start` passes
   `--harness`, `--agent`, `--model`, and `--thread` through, infers the
   `claude` harness from `CLAUDE_CODE_SESSION_ID`, and prints the lock and the
   worktree unless `--json` is given. The runner's re-arm hint is
-  `plastic auto take ID`.
+  `plastic auto start ID`.
 
 - **Three distinct evidence layers and bounded delegate history** (intent 108a):
   the controller record proves whole-intent authority; a registered delegate record
@@ -1124,13 +1124,28 @@ on. The savepoint append does not depend on `open_day` having run: it calls
 the day ledger can still write its one savepoint line. Only a usage error (no `--cwd`, no
 `--summary`) exits 2 and writes nothing.
 
-**`plastic auto take` reports a worktree, it never creates one.** The companion half of this
+**`plastic auto start` reports a worktree, it never creates one.** The companion half of this
 cut: `Arm.worktree_block` (see the worktree-provisioning section above) computes the expected
-code worktree's path and branch with no git call, and `scripts/lib/cli/commands/auto_take.rb`
+code worktree's path and branch with no git call, and `scripts/lib/cli/commands/auto_start.rb`
 renders them on the screen (`present`/`not yet created`, from `provisioned`) and, when a repo
 resolves, prints the exact `git -C <repo> worktree add <path> -b <branch>` as the `next:` line
 -- Plastic names the command, the agent runs it. A store-only project (no repo resolves) keeps
 the previous next step, `plastic auto brief ID`, since there is no workspace to create.
+
+**`plastic auto start` takes a roadmap slug (intent 391).** When the argument names no intent
+directory and `roadmaps/<slug>.md` exists, `AutoStart` reads the roadmap through
+`RoadmapGraph.analyze`. A missing `## Graph` section, a cycle, or a dangling id exits 1 and
+names `plastic roadmap check`. Otherwise it arms the first `ready` id in file order, the same
+arm an intent id takes, and prints the rest as the `queue` row. With nothing ready, a
+`blocked` entry exits 3, because it needs an owner decision. With no blocked entry either,
+it prints `ready none` and names `plastic roadmap show` as the next step.
+
+**The Codex adapter prints, it never runs (intent 391).** `HarnessAdapter.render` gives a
+Codex node the same dispatch line as Claude Code, plus a `run:` line from
+`CodexAdapter.command_line`: the `codex exec` argv with the sandbox and `--add-dir` for the
+node kind, and the node input on stdin. `scripts/node-run`, `RunnerUntilEmpty`, and the
+`runner watch --dispatch` branch are gone. A watch tick only classifies, and its
+`watch.record` line carries no `dispatched`, `harness`, or `meter` field.
 
 ## compaction thresholds and the compact-instructions block (intent 312)
 
@@ -1609,7 +1624,7 @@ stores, including creation, screens, project scope, direct progression, graph
 lock prerequisites, and blocked Future work.
 
 `IntentStep` forwards graph returns, harness selection, and the explicit core-drift
-override to the runner. `AutoTake` exposes the owner-approved inline override;
+override to the runner. `AutoStart` exposes the owner-approved inline override;
 without it, a started conversation session returns refusal code 3. Lock screens
 read `owner_session`, with the older `session` field as a compatibility fallback.
 The renderer supports both the RDoc 7 constructor with options and RDoc 8's

@@ -210,7 +210,7 @@ because: perform this checklist item, record its verification, then run plastic 
 ```
 
 **You or your agent** do the item on a branch. The branch name `plastic/1--custom-greeting`
-matches the name `plastic auto take` would provision, so the close can find it:
+matches the name `plastic auto start` prints, so the close can find it:
 
 ```sh
 git switch -c plastic/1--custom-greeting
@@ -386,16 +386,17 @@ because: the intent is completed
 In auto mode, an agent team does steps 4 to 9. The commands below set up and inspect that
 run. They do not run the team; your harness does that.
 
-1. `plastic auto take ID` takes the delivery lock and provisions the code worktree at
-   `<repo>/.claude/worktrees/ID--slug` on branch `plastic/ID--slug`.
+1. `plastic auto start ID` takes the delivery lock and names the code worktree at
+   `<repo>/.claude/worktrees/ID--slug` on branch `plastic/ID--slug`. Its `next:` line is the
+   `git worktree add` command that creates the worktree.
 
    ```text
    intent    2--shout
    lock      acquired by auto-9184f6c4fa, auto mode
-   worktree  /home/you/greeter/.claude/worktrees/2--shout
+   worktree  /home/you/greeter/.claude/worktrees/2--shout (not yet created)
    ```
 
-   Run from inside a conversation session, `auto take` refuses with exit 3 unless you pass
+   Run from inside a conversation session, `auto start` refuses with exit 3 unless you pass
    `--allow-inline`. Exit 3 means the step belongs to the owner: stop and report it.
 
 2. `plastic auto brief ID` prints the preamble the dispatched agent reads first.

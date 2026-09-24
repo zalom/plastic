@@ -34,7 +34,7 @@ questions to be hard.
 ## Auto
 
 You ask for auto on a registered intent with a clear prompt. The agent takes the intent with
-`plastic auto take ID` and hands the whole cycle to a background team: a lead that writes the
+`plastic auto start ID` and hands the whole cycle to a background team: a lead that writes the
 record and an executor that builds, under a lock and in its own git worktree. The lead chooses
 a review by risk; `plastic auto report ID` prints the rules it follows. It stops to ask you something
 at a few designed moments: confirming a project path, or before an action with no safe undo.
