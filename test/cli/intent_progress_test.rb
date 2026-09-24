@@ -109,7 +109,7 @@ class CliIntentProgressTest < Minitest::Test
     write("graph", "# Graph")
 
     assert_equal 0, step
-    assert_equal "plastic auto take 1 --project global", JSON.parse(@fixture.printed).fetch("next")
+    assert_equal "plastic auto start 1 --project global", JSON.parse(@fixture.printed).fetch("next")
   end
 
   def test_foreign_lock_refuses_with_public_inspection_command

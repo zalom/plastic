@@ -2,9 +2,12 @@
 
 require "json"
 require_relative "intent_command"
+require_relative "../../roadmap_graph"
 
-# `plastic auto take` - arms the intent's delivery lock for this session
+# `plastic auto start` - arms the intent's delivery lock for this session
 # (`plastic-lock arm --intent-dir DIR --mode auto`, run through Legacy).
+# Given a roadmap slug instead of an id, it arms the roadmap's first ready
+# intent in file order and prints the rest of the ready queue (intent 391).
 # The lock records who took it: --harness, --agent, --model and --thread pass
 # through, and a Claude Code session names its harness when none is given.
 # plastic-lock answers in JSON, so this command renders it as a screen and
@@ -16,8 +19,8 @@ require_relative "intent_command"
 module Plastic
   class CLI
     module Commands
-      class AutoTake < IntentCommand
-        USAGE_LINE = "plastic auto take ID [--allow-inline] [--harness NAME] [--agent NAME] " \
+      class AutoStart < IntentCommand
+        USAGE_LINE = "plastic auto start ID|ROADMAP-SLUG [--allow-inline] [--harness NAME] [--agent NAME] " \
                      "[--model MODEL] [--thread ID] [--json]"
 
         SCRIPT = "plastic-lock"
@@ -25,10 +28,18 @@ module Plastic
         BECAUSE = "the preamble is the live state a taken intent is read from next"
         CREATE_BECAUSE = "Plastic runs no version control command; it creates no worktree itself"
         PROVENANCE = %i[harness agent model thread].freeze
+        EMPTY_BECAUSE = "no roadmap entry is queued with every dependency delivered"
 
         def call
+          return start_roadmap if roadmap?
           return super if options[:json]
 
+          arm
+        end
+
+        private
+
+        def arm
           text, status = legacy.capture(SCRIPT, *script_arguments)
           raise Failure, "#{SCRIPT} exited #{status}" unless status.zero?
 
@@ -40,7 +51,42 @@ module Plastic
           raise Failure, "#{SCRIPT} did not print a report"
         end
 
-        private
+        def id
+          @id || arguments.first
+        end
+
+        def roadmap?
+          return false if arguments.first.to_s.empty? || scope.intent_dir(arguments.first)
+
+          File.file?(roadmap_path)
+        end
+
+        def roadmap_path
+          File.join(scope.roadmaps_dir, "#{arguments.first}.md")
+        end
+
+        def start_roadmap
+          slug = arguments.first
+          result = RoadmapGraph.analyze(roadmap_path, index_path: scope.index_path)
+          raise Failure, "#{slug} cannot start: #{result[:reason]}; plastic roadmap check #{slug} says more" if result[:reason]
+          raise Failure, "#{slug} has a cycle or a dangling id; plastic roadmap check #{slug} names it" if result[:cycle] || result[:dangling].any?
+
+          @output.row("roadmap", slug)
+          ready = result[:ready]
+          return arm_first(ready) if ready.any?
+
+          blocked = result[:entries].values.find { |entry| entry[:status] == "blocked" }
+          raise Refusal, "#{slug} entry #{blocked[:id]} is blocked and needs a decision" if blocked
+
+          @output.row("ready", "none")
+          @output.next_step("plastic roadmap show #{slug}", because: EMPTY_BECAUSE)
+        end
+
+        def arm_first(ready)
+          @id = ready.first
+          @output.row("queue", (ready.length > 1) ? ready.drop(1).join(", ") : "none")
+          arm
+        end
 
         def switches(parser)
           parser.on("--allow-inline") { @options[:allow_inline] = true }

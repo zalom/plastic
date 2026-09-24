@@ -90,7 +90,7 @@ module Arm
     expected.merge("code" => nil, "code_branch" => nil)
   end
 
-  # The workspace `plastic auto take` tells the agent to create, since Plastic
+  # The workspace `plastic auto start` tells the agent to create, since Plastic
   # creates none itself: the expected path and branch whenever a repo
   # resolves for the project, blank only for a store-only intent, and
   # `provisioned` when that directory already exists.

@@ -328,13 +328,13 @@ class CaptureHookTest < Minitest::Test
     out, status = run_hook("take it from here please", session: "sess-auto")
     assert_equal 0, status.exitstatus, out
     ctx = JSON.parse(out).dig("hookSpecificOutput", "additionalContext")
-    assert_includes ctx, "Run `plastic auto take ID`"
+    assert_includes ctx, "Run `plastic auto start ID`"
   end
 
   def test_bare_auto_word_triggers_steer_text
     out, status = run_hook("please run this in auto for me", session: "sess-auto2")
     ctx = JSON.parse(out).dig("hookSpecificOutput", "additionalContext")
-    assert_includes ctx, "Run `plastic auto take ID`"
+    assert_includes ctx, "Run `plastic auto start ID`"
   end
 
 # --- the prompt key (intent 315a) -------------------------------------------------
@@ -397,7 +397,7 @@ def test_auto_under_prompt_key_yields_steer_text
                             "prompt" => "take it from here please")
   assert_equal 0, status.exitstatus, out
   ctx = JSON.parse(out).dig("hookSpecificOutput", "additionalContext").to_s
-  assert_includes ctx, "Run `plastic auto take ID`"
+  assert_includes ctx, "Run `plastic auto start ID`"
 end
 
   # 345: after the hint cut, an ordinary prompt with no trigger word takes the
@@ -589,7 +589,7 @@ end
 
     assert_equal 0, status.exitstatus, out
     ctx = JSON.parse(out).dig("hookSpecificOutput", "additionalContext").to_s
-    assert_includes ctx, "Run `plastic auto take ID`",
+    assert_includes ctx, "Run `plastic auto start ID`",
                     "a missing report screen must not suppress another job's context"
   ensure
     FileUtils.rm_rf(root) if root

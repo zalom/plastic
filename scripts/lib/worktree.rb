@@ -15,7 +15,7 @@ require_relative "lock"
 # 390). It computes the deterministic path and branch a project intent's code
 # worktree would have (<repo>/.claude/worktrees/{id}--{slug}, branch
 # plastic/{id}--{slug}) and prints them (see Arm.worktree_block and
-# `plastic auto take`'s screen); the agent that receives the instruction
+# `plastic auto start`'s screen); the agent that receives the instruction
 # creates the worktree itself, e.g. `git -C <repo> worktree add <path> -b
 # <branch>`, and removes/merges it itself too. `release`, `finish`, and
 # `merge_branch` (the old teardown/merge git calls) are gone; `Arm.disarm`

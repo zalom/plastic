@@ -127,7 +127,7 @@ begin
   auto_triggers = ["take it from here", "deliver this", "/plastic-auto", "auto mode"].freeze
   triggered = auto_triggers.any? { |p| message_lower.include?(p) } || message_lower.match?(/\bauto\b/)
   if triggered
-    context_parts << "Auto-mode request detected. Run `plastic auto take ID` to deliver the " \
+    context_parts << "Auto-mode request detected. Run `plastic auto start ID` to deliver the " \
                       "active intent autonomously - it takes the intent under a lock and a worktree " \
                       "and points this session at it."
   end

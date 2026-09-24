@@ -79,10 +79,10 @@ class CliAutoSessionCommandsTest < Minitest::Test
     assert_equal 0, run_cli("auto")
   end
 
-  def test_bare_auto_lists_the_take_and_brief_subcommands
+  def test_bare_auto_lists_the_start_and_brief_subcommands
     run_cli("auto")
 
-    assert_includes @fixture.printed, "auto take"
+    assert_includes @fixture.printed, "auto start"
     assert_includes @fixture.printed, "auto brief"
   end
 
@@ -123,123 +123,211 @@ class CliAutoSessionCommandsTest < Minitest::Test
     assert_equal 2, run_cli("session", "bogus")
   end
 
-  # --- auto take ------------------------------------------------------------------
+  # --- auto start ------------------------------------------------------------------
 
-  def test_take_runs_plastic_lock_arm
-    command("auto take", "372")
+  def test_start_runs_plastic_lock_arm
+    command("auto start", "372")
 
     assert_equal [script("plastic-lock")], @calls.map(&:first)
     assert_equal [["arm", "--intent-dir", intent_dir, "--mode", "auto"]], @calls.map(&:last)
   end
 
-  def test_take_names_brief_in_its_next_step
-    command("auto take", "372")
+  def test_start_names_brief_in_its_next_step
+    command("auto start", "372")
 
     assert_includes @fixture.printed, "next: plastic auto brief 372"
   end
 
-  def test_take_forwards_the_explicit_inline_override
-    command("auto take", "372", "--allow-inline")
+  def test_start_forwards_the_explicit_inline_override
+    command("auto start", "372", "--allow-inline")
 
     assert_equal ["arm", "--intent-dir", intent_dir, "--mode", "auto", "--allow-inline"], @calls.last.last
   end
 
-  def test_take_forwards_the_provenance_it_is_given
-    command("auto take", "372", "--harness", "codex", "--agent", "plastic-enforcer",
+  def test_start_forwards_the_provenance_it_is_given
+    command("auto start", "372", "--harness", "codex", "--agent", "plastic-enforcer",
       "--model", "gpt-6", "--thread", "t-1")
 
     assert_equal ["arm", "--intent-dir", intent_dir, "--mode", "auto", "--harness", "codex",
       "--agent", "plastic-enforcer", "--model", "gpt-6", "--thread", "t-1"], @calls.last.last
   end
 
-  def test_take_names_the_claude_harness_inside_a_claude_session
-    command("auto take", "372", env: {"CLAUDE_CODE_SESSION_ID" => "abc"})
+  def test_start_names_the_claude_harness_inside_a_claude_session
+    command("auto start", "372", env: {"CLAUDE_CODE_SESSION_ID" => "abc"})
 
     assert_equal ["arm", "--intent-dir", intent_dir, "--mode", "auto", "--harness", "claude"], @calls.last.last
   end
 
-  def test_take_keeps_an_explicit_harness_inside_a_claude_session
-    command("auto take", "372", "--harness", "codex", env: {"CLAUDE_CODE_SESSION_ID" => "abc"})
+  def test_start_keeps_an_explicit_harness_inside_a_claude_session
+    command("auto start", "372", "--harness", "codex", env: {"CLAUDE_CODE_SESSION_ID" => "abc"})
 
     assert_equal ["arm", "--intent-dir", intent_dir, "--mode", "auto", "--harness", "codex"], @calls.last.last
   end
 
-  def test_take_names_no_harness_for_a_blank_claude_session
-    command("auto take", "372", env: {"CLAUDE_CODE_SESSION_ID" => " "})
+  def test_start_names_no_harness_for_a_blank_claude_session
+    command("auto start", "372", env: {"CLAUDE_CODE_SESSION_ID" => " "})
 
     assert_equal ["arm", "--intent-dir", intent_dir, "--mode", "auto"], @calls.last.last
   end
 
-  def test_take_does_not_print_the_document
+  def test_start_does_not_print_the_document
     @captured = TAKE_REPORT
-    command("auto take", "372")
+    command("auto start", "372")
 
     refute_includes @fixture.printed, "run_mode"
   end
 
-  def test_take_prints_a_screen
+  def test_start_prints_a_screen
     @captured = TAKE_REPORT
-    command("auto take", "372")
+    command("auto start", "372")
 
     assert_includes @fixture.printed, "372--skills-to-commands"
     assert_includes @fixture.printed, "acquired by s1, auto mode"
     assert_includes @fixture.printed, "/repo/.claude/worktrees/372--skills-to-commands"
   end
 
-  def test_take_names_no_worktree_when_none_is_provisioned
-    command("auto take", "372")
+  def test_start_names_no_worktree_when_none_is_provisioned
+    command("auto start", "372")
 
     assert_match(/worktree +none/, @fixture.printed)
   end
 
-  def test_take_shows_a_provisioned_worktree_as_present
+  def test_start_shows_a_provisioned_worktree_as_present
     @captured = TAKE_REPORT
-    command("auto take", "372")
+    command("auto start", "372")
 
     assert_includes @fixture.printed, "(present)"
   end
 
-  def test_take_shows_an_unprovisioned_worktree_as_not_yet_created
+  def test_start_shows_an_unprovisioned_worktree_as_not_yet_created
     @captured = TAKE_REPORT_NOT_YET
-    command("auto take", "372")
+    command("auto start", "372")
 
     assert_includes @fixture.printed, "(not yet created)"
   end
 
-  def test_take_names_the_worktree_add_instruction_as_its_next_step
+  def test_start_names_the_worktree_add_instruction_as_its_next_step
     @captured = TAKE_REPORT
-    command("auto take", "372")
+    command("auto start", "372")
 
     assert_includes @fixture.printed,
       "next: git -C /repo worktree add /repo/.claude/worktrees/372--skills-to-commands " \
       "-b plastic/372--skills-to-commands"
   end
 
-  def test_take_with_json_prints_the_document
+  def test_start_with_json_prints_the_document
     @captured = TAKE_REPORT
-    command("auto take", "372", "--json")
+    command("auto start", "372", "--json")
 
     assert_includes @fixture.printed, "run_mode"
   end
 
-  def test_take_refuses_when_another_session_holds_the_lock
-    assert_equal 3, command("auto take", "372", status: 3)
+  def test_start_refuses_when_another_session_holds_the_lock
+    assert_equal 3, command("auto start", "372", status: 3)
     assert_includes @fixture.warned, "plastic-lock needs the owner"
   end
 
-  def test_take_with_an_unreadable_report_says_so
+  def test_start_with_an_unreadable_report_says_so
     @captured = "not a report"
 
-    assert_equal 1, command("auto take", "372")
+    assert_equal 1, command("auto start", "372")
     assert_includes @fixture.warned, "plastic-lock did not print a report"
   end
 
-  def test_take_with_an_unknown_id_exits_one
-    assert_equal 1, command("auto take", "999")
+  def test_start_with_an_unknown_id_exits_one
+    assert_equal 1, command("auto start", "999")
   end
 
-  def test_a_failing_take_exits_one
-    assert_equal 1, command("auto take", "372", status: 5)
+  def test_a_failing_start_exits_one
+    assert_equal 1, command("auto start", "372", status: 5)
+  end
+
+  # --- auto start with a roadmap slug ------------------------------------------------
+
+  def roadmap(graph, *entries)
+    lines = entries.map { |id, status| "- [ ] #{id} work #{id} - #{status}" }
+    @fixture.roadmap("global", "cli", "# Roadmap: cli\n\n## Graph\n#{graph}\n\n## Batches\n### Batch 1\n#{lines.join("\n")}\n")
+  end
+
+  def two_ready_roadmap
+    @fixture = CliFixture.new(@dir).global_store(active: [["372", "Skills to commands"], ["373", "Next"], ["374", "Last"]])
+    roadmap("- 374 needs 372", ["373", "queued"], ["372", "queued"], ["374", "queued"])
+  end
+
+  def test_start_with_a_roadmap_arms_the_first_ready_intent_in_file_order
+    two_ready_roadmap
+    command("auto start", "cli")
+
+    assert_equal [["arm", "--intent-dir", @fixture.intent_dir("global", "373"), "--mode", "auto"]], @calls.map(&:last)
+  end
+
+  def test_start_with_a_roadmap_prints_the_remaining_ready_queue
+    two_ready_roadmap
+    command("auto start", "cli")
+
+    assert_match(/roadmap +cli\nqueue +372\n/, @fixture.printed)
+    assert_includes @fixture.printed, "next: plastic auto brief 373"
+  end
+
+  def test_start_with_a_roadmap_of_one_ready_intent_prints_an_empty_queue
+    roadmap("- 372", ["372", "queued"])
+    command("auto start", "cli")
+
+    assert_match(/queue +none/, @fixture.printed)
+  end
+
+  def test_start_with_a_roadmap_and_json_prints_the_queue_in_the_document
+    two_ready_roadmap
+    @captured = TAKE_REPORT
+    command("auto start", "cli", "--json")
+
+    assert_equal "372", JSON.parse(@fixture.printed).dig("result", "queue")
+  end
+
+  def test_start_with_a_cyclic_roadmap_exits_one_and_names_roadmap_check
+    roadmap("- 372 needs 373\n- 373 needs 372", ["372", "queued"], ["373", "queued"])
+
+    assert_equal 1, command("auto start", "cli")
+    assert_includes @fixture.warned, "plastic roadmap check cli"
+    assert_empty @calls
+  end
+
+  def test_start_with_a_dangling_id_exits_one_and_names_roadmap_check
+    roadmap("- 372 needs 999", ["372", "queued"])
+
+    assert_equal 1, command("auto start", "cli")
+    assert_includes @fixture.warned, "has a cycle or a dangling id; plastic roadmap check cli names it"
+  end
+
+  def test_start_with_a_roadmap_without_a_graph_exits_one
+    @fixture.roadmap("global", "cli", "# Roadmap: cli\n\n## Batches\n### Batch 1\n- [ ] 372 a - queued\n")
+
+    assert_equal 1, command("auto start", "cli")
+    assert_includes @fixture.warned, "no ## Graph section"
+  end
+
+  def test_start_with_a_blocked_roadmap_entry_refuses_and_names_it
+    roadmap("- 373 needs 372", ["372", "blocked"], ["373", "queued"])
+
+    assert_equal 3, command("auto start", "cli")
+    assert_includes @fixture.warned, "cli entry 372 is blocked and needs a decision"
+    assert_empty @calls
+  end
+
+  def test_start_with_nothing_ready_names_roadmap_show
+    roadmap("- 372", ["372", "delivered"])
+
+    assert_equal 0, command("auto start", "cli")
+    assert_match(/ready +none/, @fixture.printed)
+    assert_includes @fixture.printed, "next: plastic roadmap show cli"
+    assert_empty @calls
+  end
+
+  def test_start_prefers_an_intent_id_over_a_roadmap_of_the_same_name
+    @fixture.roadmap("global", "372", "# Roadmap\n\n## Graph\n- 1\n")
+    command("auto start", "372")
+
+    assert_equal [["arm", "--intent-dir", intent_dir, "--mode", "auto"]], @calls.map(&:last)
   end
 
   # --- auto brief ------------------------------------------------------------------

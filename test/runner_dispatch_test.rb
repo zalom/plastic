@@ -708,7 +708,7 @@ class RunnerDispatchTest < Minitest::Test
 
     result = RunnerDispatch.dispatch(ctx)
     id = File.basename(@dir).split("--").first
-    assert_equal "plastic auto take #{id}", result[:rearm_command]
+    assert_equal "plastic auto start #{id}", result[:rearm_command]
   end
 
   # --- 5.33: the overlap refusal comes from ReadySet, re-checked within a step -
