@@ -9,7 +9,7 @@ require_relative "../scripts/update"
 # update verb: pure compute_target decision logic (intent 30a1a). The npx-exec switch is
 # thin glue and not unit-tested here.
 class UpdateVerbTest < Minitest::Test
-  TAGS = { "alpha" => "1.0.0-alpha.19", "beta" => "1.0.0-beta.2", "latest" => "0.0.1" }.freeze
+  TAGS = {"alpha" => "1.0.0-alpha.19", "beta" => "1.0.0-beta.2", "latest" => "0.0.1"}.freeze
 
   def setup
     @home = Dir.mktmpdir("update-verb")
@@ -22,6 +22,7 @@ class UpdateVerbTest < Minitest::Test
 
   def test_in_channel_next_when_higher_available
     r = @u.compute_target(installed_version: "1.0.0-alpha.18", dist_tags: TAGS)
+
     assert_equal :ok, r[:status]
     assert_equal "1.0.0-alpha.19", r[:target]
     assert_equal :in_channel, r[:kind]
@@ -29,11 +30,13 @@ class UpdateVerbTest < Minitest::Test
 
   def test_up_to_date_is_noop
     r = @u.compute_target(installed_version: "1.0.0-alpha.19", dist_tags: TAGS)
+
     assert_equal :up_to_date, r[:status]
   end
 
   def test_cross_channel_toward_stable_is_frictionless
     r = @u.compute_target(installed_version: "1.0.0-alpha.19", dist_tags: TAGS, requested_channel: "beta")
+
     assert_equal :ok, r[:status]
     assert_equal "1.0.0-beta.2", r[:target]
     assert_equal :cross_stable, r[:kind]
@@ -41,6 +44,7 @@ class UpdateVerbTest < Minitest::Test
 
   def test_cross_channel_toward_bleeding_requires_confirm
     r = @u.compute_target(installed_version: "1.0.0-beta.2", dist_tags: TAGS, requested_channel: "alpha")
+
     assert_equal :ok, r[:status]
     assert_equal :cross_bleeding, r[:kind]
   end
@@ -49,21 +53,24 @@ class UpdateVerbTest < Minitest::Test
   # prerelease case. A stable install is up to date with no flag (never nudged onto the
   # alpha), reaches it only by asking (--alpha, a confirmed :cross_bleeding move), and the
   # alpha itself is up to date on its own channel.
-  MAJOR_TAGS = { "latest" => "1.14.1", "alpha" => "2.0.0-alpha.1" }.freeze
+  MAJOR_TAGS = {"latest" => "1.14.1", "alpha" => "2.0.0-alpha.1"}.freeze
 
   def test_new_major_alpha_resolves_to_the_alpha_channel_as_the_code_stands
     assert_equal "alpha", @u.channel_for("2.0.0-alpha.1")
     assert_equal 1, @u.semver_compare("2.0.0-alpha.1", "1.14.1")
 
     quiet = @u.compute_target(installed_version: "1.14.1", dist_tags: MAJOR_TAGS)
+
     assert_equal :up_to_date, quiet[:status], "a stable install must never be nudged onto the alpha"
 
     asked = @u.compute_target(installed_version: "1.14.1", dist_tags: MAJOR_TAGS, requested_channel: "alpha")
+
     assert_equal :ok, asked[:status]
     assert_equal "2.0.0-alpha.1", asked[:target]
     assert_equal :cross_bleeding, asked[:kind]
 
     on_alpha = @u.compute_target(installed_version: "2.0.0-alpha.1", dist_tags: MAJOR_TAGS)
+
     assert_equal :up_to_date, on_alpha[:status]
   end
 
@@ -71,14 +78,19 @@ class UpdateVerbTest < Minitest::Test
   # works from a script or an agent; without it a non-tty run still aborts.
   def test_yes_confirms_bleeding_switch_without_a_tty
     u = Update.new(package_root: ".", plastic_home: @home, version: "x")
+
     assert u.send(:confirm_bleeding, "1.14.1", "2.0.0-alpha.1", ["--alpha", "--yes"])
     refute u.send(:confirm_bleeding, "1.14.1", "2.0.0-alpha.1", ["--alpha"]), "no tty and no --yes must not confirm"
 
     switched = false
     u.define_singleton_method(:installed_version) { "1.14.1" }
     u.define_singleton_method(:fetch_channels) { MAJOR_TAGS }
-    u.define_singleton_method(:perform_switch) { |*| switched = true; 0 }
+    u.define_singleton_method(:perform_switch) { |*|
+      switched = true
+      0
+    }
     out, = capture_io { assert_equal 0, u.cli(["--alpha", "--yes"]) }
+
     refute switched, "no local copy of the target exists, so a confirmed bleeding move still only prints the install command"
     refute_match(/Aborted/, out)
     assert_match(/2\.0\.0-alpha\.1/, out)
@@ -89,12 +101,16 @@ class UpdateVerbTest < Minitest::Test
   # shell recipe. Hermetic: the git calls go through an injected runner, never real git.
   def test_commit_core_files_shells_git_add_then_commit
     calls = []
-    runner = ->(cmd) { calls << cmd; true }
+    runner = ->(cmd) {
+      calls << cmd
+      true
+    }
 
     @u.send(:commit_core_files, "1.0.0-alpha.19", runner: runner)
 
     assert_equal 2, calls.length
     add, commit = calls
+
     assert_equal ["git", "-C", @home, "add", "PLASTIC.md", "scripts", "AGENTS.md", "VERSION",
       "versions.json", "deprecations.yml", "config_asks.yml"], add
     assert_equal ["git", "-C", @home, "commit", "-m", "chore: update Plastic to 1.0.0-alpha.19",
@@ -126,7 +142,12 @@ class UpdateVerbTest < Minitest::Test
     u = FakeUpdate.new(package_root: ".", plastic_home: @home, version: "x")
 
     status = nil
-    capture_io { status = u.send(:perform_switch, "1.0.0-alpha.19", ["--claude"], switch_runner: ->(_cmd) { File.write(File.join(@home, "VERSION"), "1.0.0-alpha.19"); true }) }
+    capture_io {
+      status = u.send(:perform_switch, "1.0.0-alpha.19", ["--claude"], switch_runner: ->(_cmd) {
+        File.write(File.join(@home, "VERSION"), "1.0.0-alpha.19")
+        true
+      })
+    }
 
     assert_equal 0, status
 
@@ -147,7 +168,8 @@ class UpdateVerbTest < Minitest::Test
   end
 
   def test_unknown_channel_when_tag_absent
-    r = @u.compute_target(installed_version: "1.0.0-alpha.18", dist_tags: { "alpha" => "1.0.0-alpha.18" }, requested_channel: "beta")
+    r = @u.compute_target(installed_version: "1.0.0-alpha.18", dist_tags: {"alpha" => "1.0.0-alpha.18"}, requested_channel: "beta")
+
     assert_equal :unknown_channel, r[:status]
   end
 
@@ -155,11 +177,13 @@ class UpdateVerbTest < Minitest::Test
 
   def test_install_path_is_npm_under_a_node_modules_root
     u = Update.new(package_root: "/usr/local/lib/node_modules/@zalom/plastic", plastic_home: @home, version: "x")
+
     assert_equal :npm, u.send(:install_path)
   end
 
   def test_install_path_is_install_sh_for_any_other_root
     u = Update.new(package_root: "/Users/me/.plastic/vendor/plastic", plastic_home: @home, version: "x")
+
     assert_equal :install_sh, u.send(:install_path)
   end
 
@@ -178,11 +202,13 @@ class UpdateVerbTest < Minitest::Test
     assert_equal "https://api.github.com/repos/zalom/plastic/releases?per_page=50", Update::RELEASES_URL
 
     source = File.read(File.expand_path("../scripts/update.rb", __dir__))
+
     assert_match(/curl.*RELEASES_URL/, source)
   end
 
   def test_default_switch_runner_shells_to_the_local_install_verb_not_npx
     source = File.read(File.expand_path("../scripts/update.rb", __dir__))
+
     refute_match(/npx/, source, "update.rb must never build an npx command")
     refute_match(/`npm /, source, "update.rb must never shell out to npm")
   end
@@ -194,9 +220,15 @@ class UpdateVerbTest < Minitest::Test
     u = Update.new(package_root: ".", plastic_home: @home, version: "1.0.0-alpha.19")
     u.define_singleton_method(:installed_version) { "1.0.0-alpha.18" }
     fetch_called = false
-    u.define_singleton_method(:fetch_channels) { fetch_called = true; { "alpha" => "1.0.0-alpha.19" } }
+    u.define_singleton_method(:fetch_channels) {
+      fetch_called = true
+      {"alpha" => "1.0.0-alpha.19"}
+    }
     synced_to = nil
-    u.define_singleton_method(:perform_switch) { |target, _flags| synced_to = target; 0 }
+    u.define_singleton_method(:perform_switch) { |target, _flags|
+      synced_to = target
+      0
+    }
     u.define_singleton_method(:announce_pending_config_asks) { |**_kwargs| }
     u.define_singleton_method(:run_post_update_doctor) { |**_kwargs| }
 
@@ -212,9 +244,12 @@ class UpdateVerbTest < Minitest::Test
   def test_ok_with_no_local_copy_prints_the_install_command_and_does_not_switch
     u = Update.new(package_root: "/opt/homebrew/lib/node_modules/@zalom/plastic", plastic_home: @home, version: "1.0.0-alpha.18")
     u.define_singleton_method(:installed_version) { "1.0.0-alpha.18" }
-    u.define_singleton_method(:fetch_channels) { { "alpha" => "1.0.0-alpha.19" } }
+    u.define_singleton_method(:fetch_channels) { {"alpha" => "1.0.0-alpha.19"} }
     switched = false
-    u.define_singleton_method(:perform_switch) { |*| switched = true; 0 }
+    u.define_singleton_method(:perform_switch) { |*|
+      switched = true
+      0
+    }
 
     out, = capture_io { u.cli([]) }
 
@@ -233,12 +268,12 @@ class UpdateVerbTest < Minitest::Test
 
     CANNED_CORE_RESULT = {
       status: "fail",
-      summary: { pass: 2, warn: 0, fail: 1, total: 3 },
+      summary: {pass: 2, warn: 0, fail: 1, total: 3}
     }.freeze
 
     CANNED_RESULT = {
       status: "warn",
-      summary: { pass: 3, warn: 1, fail: 0, total: 4 },
+      summary: {pass: 3, warn: 1, fail: 0, total: 4}
     }.freeze
 
     def run_core_checks(agent_key)
@@ -278,6 +313,7 @@ class UpdateVerbTest < Minitest::Test
     @u.run_post_update_doctor(doctor: fake, out: out)
 
     output = out.string
+
     assert_match(/doctor/i, output, "output should mention 'doctor'")
     assert_match(/fail/, output, "output should include the overall status")
     assert_match(/pass.*2|2.*pass/i, output, "output should include pass count")
@@ -287,7 +323,7 @@ class UpdateVerbTest < Minitest::Test
   def test_run_post_update_doctor_does_not_raise_on_fail_status
     fake_fail = Class.new do
       def run_core_checks(_)
-        { status: "fail", summary: { pass: 0, warn: 0, fail: 2, total: 2 } }
+        {status: "fail", summary: {pass: 0, warn: 0, fail: 2, total: 2}}
       end
     end.new
 
@@ -301,7 +337,7 @@ class UpdateVerbTest < Minitest::Test
   def test_run_post_update_doctor_swallows_exception
     raising = Class.new do
       def run_core_checks(_)
-        raise RuntimeError, "malformed store file"
+        raise "malformed store file"
       end
     end.new
 
@@ -326,7 +362,10 @@ class UpdateVerbTest < Minitest::Test
     doctor_called = false
     u.define_singleton_method(:installed_version) { "1.0.0-alpha.18" }
     u.define_singleton_method(:perform_switch) { |_target, _flags| 0 }
-    u.define_singleton_method(:run_post_update_doctor) { |**_kwargs| doctor_called = true; nil }
+    u.define_singleton_method(:run_post_update_doctor) { |**_kwargs|
+      doctor_called = true
+      nil
+    }
 
     u.cli([])
 
@@ -339,7 +378,10 @@ class UpdateVerbTest < Minitest::Test
     doctor_called = false
     u.define_singleton_method(:installed_version) { "1.0.0-alpha.18" }
     u.define_singleton_method(:perform_switch) { |_target, _flags| 1 }
-    u.define_singleton_method(:run_post_update_doctor) { |**_kwargs| doctor_called = true; nil }
+    u.define_singleton_method(:run_post_update_doctor) { |**_kwargs|
+      doctor_called = true
+      nil
+    }
 
     u.cli([])
 
@@ -363,9 +405,9 @@ class UpdateVerbTest < Minitest::Test
       "introduced" => "1.3.0",
       "question" => "Which advisor should be the default?",
       "options" => [
-        { "label" => "Primary Advisor", "value" => "plastic-primary-advisor" },
-        { "label" => "Secondary Advisor", "value" => "plastic-secondary-advisor" },
-      ],
+        {"label" => "Primary Advisor", "value" => "plastic-primary-advisor"},
+        {"label" => "Secondary Advisor", "value" => "plastic-secondary-advisor"}
+      ]
     }
   end
 
@@ -400,6 +442,7 @@ class UpdateVerbTest < Minitest::Test
     @u.announce_pending_config_asks(out: buf)
 
     output = buf.string
+
     assert_match(/Which advisor should be the default\?/, output)
     assert_match(/Primary Advisor/, output)
     assert_match(/Secondary Advisor/, output)
@@ -410,7 +453,7 @@ class UpdateVerbTest < Minitest::Test
 
   def test_announce_silent_when_key_already_set
     write_manifest([sample_config_ask_entry])
-    write_global_config("advisor" => { "claude" => { "default" => "plastic-primary-advisor" } })
+    write_global_config("advisor" => {"claude" => {"default" => "plastic-primary-advisor"}})
 
     buf = StringIO.new
     @u.announce_pending_config_asks(out: buf)
@@ -421,7 +464,7 @@ class UpdateVerbTest < Minitest::Test
   def test_announce_rescues_and_does_not_raise
     raising = Class.new(Update) do
       def plastic_home
-        raise RuntimeError, "malformed config_asks.yml"
+        raise "malformed config_asks.yml"
       end
     end.new(package_root: ".", plastic_home: @home, version: "x")
 
@@ -443,7 +486,10 @@ class UpdateVerbTest < Minitest::Test
     u.define_singleton_method(:installed_version) { "1.0.0-alpha.18" }
     u.define_singleton_method(:perform_switch) { |_target, _flags| 0 }
     u.define_singleton_method(:announce_pending_config_asks) { |**_kwargs| call_order << :announce }
-    u.define_singleton_method(:run_post_update_doctor) { |**_kwargs| call_order << :doctor; nil }
+    u.define_singleton_method(:run_post_update_doctor) { |**_kwargs|
+      call_order << :doctor
+      nil
+    }
 
     result = u.cli([])
 
@@ -505,22 +551,25 @@ class UpdateVerbTest < Minitest::Test
   # --- Intent 210: installed-agent discovery + consolidated update ---
 
   AGENTS_FIXTURE = [
-    { key: "claude", name: "Claude Code", dir: "claude-dir", flag: "--claude" },
-    { key: "codex", name: "Codex CLI", dir: "codex-dir", home_dir: "codex-dir", flag: "--codex" },
+    {key: "claude", name: "Claude Code", dir: "claude-dir", flag: "--claude"},
+    {key: "codex", name: "Codex CLI", dir: "codex-dir", home_dir: "codex-dir", flag: "--codex"}
   ].freeze
 
   def test_agents_needing_sync_returns_stale_and_missing_keys
-    r = @u.agents_needing_sync(target: "1.6.0", agent_versions: { claude: "1.6.0", codex: "1.5.0" })
+    r = @u.agents_needing_sync(target: "1.6.0", agent_versions: {claude: "1.6.0", codex: "1.5.0"})
+
     assert_equal [:codex], r
   end
 
   def test_agents_needing_sync_treats_a_nil_version_as_missing
-    r = @u.agents_needing_sync(target: "1.6.0", agent_versions: { claude: "1.6.0", codex: nil })
+    r = @u.agents_needing_sync(target: "1.6.0", agent_versions: {claude: "1.6.0", codex: nil})
+
     assert_equal [:codex], r
   end
 
   def test_agents_needing_sync_all_current_returns_empty
-    r = @u.agents_needing_sync(target: "1.6.0", agent_versions: { claude: "1.6.0", codex: "1.6.0" })
+    r = @u.agents_needing_sync(target: "1.6.0", agent_versions: {claude: "1.6.0", codex: "1.6.0"})
+
     assert_empty r
   end
 
@@ -539,8 +588,8 @@ class UpdateVerbTest < Minitest::Test
   def test_agent_args_with_no_flag_targets_every_installed_agent
     claude_dir, codex_dir = agent_fixture_dirs
     agents = [
-      { key: "claude", name: "Claude Code", dir: claude_dir, flag: "--claude" },
-      { key: "codex", name: "Codex CLI", dir: codex_dir, home_dir: codex_dir, flag: "--codex" },
+      {key: "claude", name: "Claude Code", dir: claude_dir, flag: "--claude"},
+      {key: "codex", name: "Codex CLI", dir: codex_dir, home_dir: codex_dir, flag: "--codex"}
     ]
     u = Update.new(package_root: ".", plastic_home: @home, version: "x", agents: agents)
 
@@ -555,14 +604,15 @@ class UpdateVerbTest < Minitest::Test
 
   def test_agent_args_falls_back_to_claude_when_nothing_installed
     u = Update.new(package_root: ".", plastic_home: @home, version: "x", agents: AGENTS_FIXTURE)
+
     assert_equal ["--claude"], u.send(:agent_args, [])
   end
 
   def test_agent_args_honors_an_explicit_flag_over_installed_state
     claude_dir, codex_dir = agent_fixture_dirs
     agents = [
-      { key: "claude", name: "Claude Code", dir: claude_dir, flag: "--claude" },
-      { key: "codex", name: "Codex CLI", dir: codex_dir, home_dir: codex_dir, flag: "--codex" },
+      {key: "claude", name: "Claude Code", dir: claude_dir, flag: "--claude"},
+      {key: "codex", name: "Codex CLI", dir: codex_dir, home_dir: codex_dir, flag: "--codex"}
     ]
     u = Update.new(package_root: ".", plastic_home: @home, version: "x", agents: agents)
 
@@ -577,15 +627,18 @@ class UpdateVerbTest < Minitest::Test
   def test_cli_same_version_repair_performs_switch_for_a_stale_targeted_agent
     claude_dir, codex_dir = agent_fixture_dirs # codex pinned at 1.5.0
     agents = [
-      { key: "claude", name: "Claude Code", dir: claude_dir, flag: "--claude" },
-      { key: "codex", name: "Codex CLI", dir: codex_dir, home_dir: codex_dir, flag: "--codex" },
+      {key: "claude", name: "Claude Code", dir: claude_dir, flag: "--claude"},
+      {key: "codex", name: "Codex CLI", dir: codex_dir, home_dir: codex_dir, flag: "--codex"}
     ]
     u = Update.new(package_root: ".", plastic_home: @home, version: "x", agents: agents)
 
     switch_calls = []
     u.define_singleton_method(:installed_version) { "1.6.0" }
-    u.define_singleton_method(:fetch_channels) { { "latest" => "1.6.0" } }
-    u.define_singleton_method(:perform_switch) { |target, flags| switch_calls << [target, flags]; 0 }
+    u.define_singleton_method(:fetch_channels) { {"latest" => "1.6.0"} }
+    u.define_singleton_method(:perform_switch) { |target, flags|
+      switch_calls << [target, flags]
+      0
+    }
     u.define_singleton_method(:announce_pending_config_asks) { |**_kwargs| }
     u.define_singleton_method(:run_post_update_doctor) { |**_kwargs| }
 
@@ -594,6 +647,7 @@ class UpdateVerbTest < Minitest::Test
     assert_equal 0, exit_code
     refute_empty switch_calls, "a stale targeted agent must trigger perform_switch even though core is up to date"
     target, flags = switch_calls.first
+
     assert_equal "1.6.0", target, "same-version repair re-syncs at the SAME version, not a new one"
     assert_includes flags, "--codex"
   ensure
@@ -605,15 +659,18 @@ class UpdateVerbTest < Minitest::Test
     claude_dir, codex_dir = agent_fixture_dirs
     File.write(File.join(codex_dir, "plastic", "VERSION"), "1.6.0\n") # codex now current too
     agents = [
-      { key: "claude", name: "Claude Code", dir: claude_dir, flag: "--claude" },
-      { key: "codex", name: "Codex CLI", dir: codex_dir, home_dir: codex_dir, flag: "--codex" },
+      {key: "claude", name: "Claude Code", dir: claude_dir, flag: "--claude"},
+      {key: "codex", name: "Codex CLI", dir: codex_dir, home_dir: codex_dir, flag: "--codex"}
     ]
     u = Update.new(package_root: ".", plastic_home: @home, version: "x", agents: agents)
 
     switch_calls = []
     u.define_singleton_method(:installed_version) { "1.6.0" }
-    u.define_singleton_method(:fetch_channels) { { "latest" => "1.6.0" } }
-    u.define_singleton_method(:perform_switch) { |target, flags| switch_calls << [target, flags]; 0 }
+    u.define_singleton_method(:fetch_channels) { {"latest" => "1.6.0"} }
+    u.define_singleton_method(:perform_switch) { |target, flags|
+      switch_calls << [target, flags]
+      0
+    }
 
     exit_code = u.cli(["--codex"])
 
@@ -636,12 +693,12 @@ class UpdateVerbTest < Minitest::Test
 
     def run_core_checks(agent_key)
       @core_calls << agent_key
-      { status: "pass", summary: { pass: 1, warn: 0, fail: 0, total: 1 } }
+      {status: "pass", summary: {pass: 1, warn: 0, fail: 0, total: 1}}
     end
 
     def run_checks(agent_key)
       @full_calls << agent_key
-      { status: "pass", summary: { pass: 1, warn: 0, fail: 0, total: 1 } }
+      {status: "pass", summary: {pass: 1, warn: 0, fail: 0, total: 1}}
     end
   end
 
@@ -663,6 +720,6 @@ class UpdateVerbTest < Minitest::Test
     result = @u.run_post_update_doctor(doctor: fake, out: out)
 
     assert_equal ["claude"], fake.core_calls
-    assert_equal({ status: "pass", summary: { pass: 1, warn: 0, fail: 0, total: 1 } }, result)
+    assert_equal({status: "pass", summary: {pass: 1, warn: 0, fail: 0, total: 1}}, result)
   end
 end

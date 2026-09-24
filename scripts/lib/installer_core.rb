@@ -479,6 +479,7 @@ class InstallerCore
       "scripts/validate-project" => "scripts/validate-project",
       "scripts/lib/installer_core.rb" => "scripts/lib/installer_core.rb",
       "scripts/lib/preflight.rb" => "scripts/lib/preflight.rb",
+      "scripts/lib/release_channels.rb" => "scripts/lib/release_channels.rb",
       "scripts/install.rb" => "scripts/install.rb",
       "scripts/update.rb" => "scripts/update.rb",
       "scripts/uninstall.rb" => "scripts/uninstall.rb",

@@ -71,6 +71,7 @@ class UpdateSafetyTest < Minitest::Test
 
     _, error = capture_io do
       status = update.send(:perform_switch, "2.0.2", ["--codex"], switch_runner: ->(*) { true })
+
       assert_equal 1, status
     end
 

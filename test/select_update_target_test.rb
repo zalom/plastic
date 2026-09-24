@@ -11,7 +11,7 @@ class SelectUpdateTargetTest < Minitest::Test
   end
 
   def releases(*versions)
-    versions.map { |v| { "tag_name" => "v#{v}", "draft" => false } }
+    versions.map { |v| {"tag_name" => "v#{v}", "draft" => false} }
   end
 
   def test_alpha_up_to_date_yields_empty
@@ -55,12 +55,14 @@ class SelectUpdateTargetTest < Minitest::Test
 
   def test_malformed_json_yields_empty
     out, = Open3.capture2("ruby", SCRIPT, "1.0.0-alpha.12", stdin_data: "not json")
+
     assert_equal "", out.strip
   end
 
   # G5 (intent 391): a draft release must never be offered as an update target.
   def test_a_draft_release_is_never_the_target
-    drafted = [{ "tag_name" => "v9.9.9", "draft" => true }, { "tag_name" => "v1.0.0", "draft" => false }]
+    drafted = [{"tag_name" => "v9.9.9", "draft" => true}, {"tag_name" => "v1.0.0", "draft" => false}]
+
     assert_equal "1.0.0", select("0.9.0", drafted)
   end
 end

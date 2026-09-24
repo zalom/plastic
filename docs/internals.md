@@ -451,7 +451,7 @@ History: the power-tools `UserPromptSubmit` hook (removed in 2.0, intent 309) us
 on every prompt to prefer these tools; until intent 246 it also injected scored `qmd search`
 hits, which intent 225 measured at 0.24 intent-level recall@3 against a plain ripgrep control
 at 0.18, while agent-driven `qmd query` scored 0.71, so the injection went first and the
-reminder stayed until intent 309 removed it too. The name `power-tools` is in
+reminder stayed on its own until it too was removed in 2.0 (intent 309). The name `power-tools` is in
 `HookRegistry::RETIRED_HOOK_NAMES`, so an old settings.json or `~/.codex/hooks.json` entry is
 purged on the next install or update.
 
