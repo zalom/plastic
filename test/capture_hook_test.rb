@@ -236,6 +236,55 @@ class CaptureHookTest < Minitest::Test
     assert parsed.key?("systemMessage")
   end
 
+  def seed_tier(root, intent_dirname)
+    FileUtils.mkdir_p(File.join(root, "store", intent_dirname))
+    File.write(File.join(root, "INDEX.md"),
+               "# Index\n\n## Active\n\n- [#{intent_dirname}](store/#{intent_dirname}/#{intent_dirname}.md)\n\n## Future\n")
+    File.write(File.join(root, "store", intent_dirname, "#{intent_dirname}.md"),
+               "---\nid: \"#{intent_dirname.split('--').first}\"\nintent: \"Seeded\"\n---\n\n## Intent\nSeeded\n")
+    File.write(File.join(root, "store", intent_dirname, "savepoint.md"), "2026-09-24T10:00:00Z  How  plan.md\n")
+  end
+
+  def test_continue_context_is_the_report_roster_not_the_dashboard
+    seed_tier(@plastic_home, "41--global-thing")
+    out, status = run_hook("continue", session: "sess-roster")
+    assert_equal 0, status.exitstatus, out
+    context = JSON.parse(out).dig("hookSpecificOutput", "additionalContext")
+    assert_includes context, "In delivery · 1 intent"
+    assert_includes context, "| 41 |"
+    refute_includes context, "dashboard"
+  end
+
+  def test_continue_system_message_is_the_painted_roster
+    seed_tier(@plastic_home, "41--global-thing")
+    out, status = run_hook("continue", session: "sess-roster-msg")
+    assert_equal 0, status.exitstatus, out
+    message = JSON.parse(out)["systemMessage"].to_s
+    assert_includes message, "In delivery"
+    assert_includes message, "41"
+    refute_includes message, "show the dashboard"
+  end
+
+  def test_continue_inside_a_project_shows_that_projects_roster
+    seed_tier(@plastic_home, "41--global-thing")
+    project_dir = File.join(@home, "code", "alpha")
+    FileUtils.mkdir_p(project_dir)
+    File.write(File.join(@plastic_home, "projects.yml"), YAML.dump("alpha" => { "path" => project_dir }))
+    seed_tier(File.join(@plastic_home, "projects", "alpha"), "7--alpha-thing")
+    out, status = run_hook("continue", session: "sess-roster-proj", cwd: project_dir)
+    assert_equal 0, status.exitstatus, out
+    context = JSON.parse(out).dig("hookSpecificOutput", "additionalContext")
+    assert_includes context, "| 7 |"
+    refute_includes context, "| 41 |"
+  end
+
+  def test_continue_with_no_index_adds_no_cockpit_and_exits_zero
+    File.delete(File.join(@plastic_home, "INDEX.md"))
+    out, status = run_hook("continue", session: "sess-no-index")
+    assert_equal 0, status.exitstatus, out
+    refute_includes out.to_s, "Run `plastic continue` to resume"
+  end
+
   # --- D34 (325): the cockpit fires only on the trimmed prompt "continue" ----
 
   def test_padded_and_capitalised_continue_still_yields_the_cockpit
