@@ -11,7 +11,7 @@ class CliTableTest < Minitest::Test
   end
 
   def test_the_table_holds_every_command_shipped_so_far
-    assert_equal %w[auto auto\ brief auto\ lock auto\ report auto\ take backup checkout continue
+    assert_equal %w[auto auto\ brief auto\ lock auto\ report auto\ start backup checkout continue
       doctor feedback help hook index install intent intent\ answer
       intent\ end intent\ new intent\ note intent\ rule intent\ show intent\ spec intent\ step intent\ verify
       migrate migrate\ stores next project project\ links project\ list project\ new query

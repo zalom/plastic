@@ -318,8 +318,7 @@ class CliAutoSessionCommandsTest < Minitest::Test
     roadmap("- 372", ["372", "delivered"])
 
     assert_equal 0, command("auto start", "cli")
-    assert_match(/ready +none/, @fixture.printed)
-    assert_includes @fixture.printed, "next: plastic roadmap show cli"
+    assert_match(/ready +none\n.*next: plastic roadmap show cli/m, @fixture.printed)
     assert_empty @calls
   end
 

@@ -123,7 +123,7 @@ class CodexAdapterTest < Minitest::Test
   def test_input_goes_on_stdin
     line = CodexAdapter.command_line(kind: "verify", worktree: @tmp, input: "/store/n1 input.md")
 
-    assert line.end_with?(' - < /store/n1\ input.md'), line
+    assert_match(%r{ - < /store/n1\\ input\.md\z}, line)
   end
 
   def test_command_line_escapes_every_argument

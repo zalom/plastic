@@ -103,13 +103,11 @@ module HarnessAdapter
   end
   private_class_method :render_claude_code
 
-  # The Codex rendering (intent 391): the same dispatch line, plus the
-  # `codex exec` command the Codex session runs for the node. Plastic prints
-  # it and never runs it.
   def render_codex(entries, return_contract)
     blocks = entries.map do |d|
-      run = CodexAdapter.command_line(kind: d[:kind], worktree: d[:worktree], input: d[:input],
-                                      model: d[:model], effort: d[:effort])
+      run = CodexAdapter.command_line(
+        kind: d[:kind], worktree: d[:worktree], input: d[:input], model: d[:model], effort: d[:effort]
+      )
       "#{dispatch_line(d)}\n  run: #{run}"
     end
     "#{return_contract.to_s.strip}\n\n#{blocks.join("\n\n")}\n"
