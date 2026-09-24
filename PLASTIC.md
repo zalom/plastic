@@ -14,6 +14,8 @@ line gives the rule that chose it.
 Add `--json` to any command except the installer commands (`install`, `update`,
 `uninstall`, `rollback`) and `plastic hook` to get the same result as data.
 
+Pull request: What, Why, How, Tests (`plastic help completion-and-done`).
+
 Exit codes: 0 succeeded, 1 failed, 2 called wrongly, 3 refused. Exit code 3
 means the step belongs to the owner. Report what was refused and stop. Never
 retry a refused command with a different flag.
