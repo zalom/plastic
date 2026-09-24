@@ -79,36 +79,29 @@ class UpdateSafetyTest < Minitest::Test
     refute committed
   end
 
-  def test_rollback_checks_the_version_after_the_installer_succeeds
+  def test_rollback_prints_the_install_command_for_the_target_package
     rollback = Rollback.new(package_root: ".", plastic_home: @home, version: "2.0.1", agents: [])
-    calls = []
-    rollback.define_singleton_method(:system) do |*args|
-      calls << args
-      true
-    end
 
-    capture_io { assert_equal 1, rollback.switch_to("2.0.0", "2.0.1") }
-    assert_equal({"PLASTIC_PACKAGE_ROOT" => nil}, calls.first.first)
-    assert_equal ["npx", "@zalom/plastic@2.0.0", "install", "--reinstall", "--ledger-action", "downgrade", "--claude"], calls.first.drop(1)
+    out, = capture_io { assert_equal 0, rollback.switch_to("2.0.0", "2.0.1") }
+
+    assert_includes out, "run: npx @zalom/plastic@2.0.0 install --reinstall --ledger-action downgrade --claude"
   end
 
-  def test_rollback_accepts_a_verified_compatible_install
+  def test_rollback_starts_no_process
     rollback = Rollback.new(package_root: ".", plastic_home: @home, version: "2.0.1", agents: [])
-    version = File.join(@home, "VERSION")
-    rollback.define_singleton_method(:system) do |*|
-      File.write(version, "2.0.0")
-      true
-    end
+    spawned = false
+    rollback.define_singleton_method(:system) { |*| spawned = true }
 
-    capture_io { assert_equal 0, rollback.switch_to("2.0.0", "2.0.1") }
-    assert_equal "2.0.0", File.read(version)
+    capture_io { rollback.switch_to("2.0.0", "2.0.1") }
+
+    refute spawned
   end
 
-  def test_rollback_reports_a_failed_installer
+  def test_rollback_leaves_the_installed_version_to_the_command_it_prints
     rollback = Rollback.new(package_root: ".", plastic_home: @home, version: "2.0.1", agents: [])
-    rollback.define_singleton_method(:system) { |*| false }
 
-    capture_io { assert_equal 1, rollback.switch_to("2.0.0", "2.0.1") }
+    capture_io { rollback.switch_to("2.0.0", "2.0.1") }
+
     assert_equal "2.0.1\n", File.read(File.join(@home, "VERSION"))
   end
 end

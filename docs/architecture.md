@@ -323,8 +323,9 @@ Conversation sessions still require explicit owner approval for inline delivery;
 ### Safe package transitions
 
 The executable resolves its own package root, even when an older updater passes
-an inherited package path. Update and rollback clear that inherited path when
-launching npm and verify the installed version before reporting success.
+an inherited package path. Update clears that inherited path and verifies the
+installed version before reporting success. Rollback prints the install command
+for the target version and starts no package process.
 
 Homes using `stores/` cannot switch to versions before `2.0.0-alpha.28`, which
 introduced that layout. This refusal happens before installation or hook cleanup.

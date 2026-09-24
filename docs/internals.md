@@ -1635,9 +1635,9 @@ bundle's RDoc version.
 
 `bin/plastic` sets the package root from its own location. This prevents the
 old updater's environment from routing a newly downloaded command back to an
-older installer. The update and rollback subprocesses also clear that variable.
-A successful subprocess is insufficient: the installed `VERSION` must equal
-the selected target.
+older installer. Update clears that variable and checks that the installed
+`VERSION` equals the selected target. Rollback starts no package process: it
+prints the install command for the target version, and the person or agent runs it.
 
 `InstallerCore` checks store-layout compatibility before either switch can
 write files. `ProjectLinks` resolves audit paths through `StoreLayout` and

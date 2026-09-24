@@ -95,10 +95,9 @@ class Rollback < InstallerCore
     puts "#{action == "downgrade" ? "\u{23ea}" : "\u{23e9}"}  #{current} \u{2192} #{target} (#{action})"
     prepare_switch(target, current)
     cmd = ["npx", "#{PKG}@#{target}", "install", "--reinstall", "--ledger-action", action, *harness_flags]
-    puts "  $ #{cmd.join(" ")}"
-    return 1 unless system({"PLASTIC_PACKAGE_ROOT" => nil}, *cmd)
-
-    installed_version == target ? 0 : 1
+    puts "  run: #{cmd.join(" ")}"
+    puts "  Plastic starts no package process. The #{target} package installs itself when that command runs."
+    0
   end
 
   # Before handing off to an older package (a downgrade), strip Plastic's own current hook
