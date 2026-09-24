@@ -252,7 +252,7 @@ class Update < InstallerCore
     match ? match[:key] : "claude"
   end
 
-  def fetch_channels(fetcher: self.class.default_release_fetcher)
+  def fetch_channels(fetcher: self.class.default_release_fetcher(ENV.fetch("PLASTIC_RELEASES_URL", RELEASES_URL)))
     fetcher.call
   end
 

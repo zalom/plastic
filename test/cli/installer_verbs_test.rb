@@ -64,7 +64,7 @@ class CliInstallerVerbsTest < Minitest::Test
     require File.expand_path("../../scripts/lib/cli/commands/install", __dir__)
     %w[update.rb rollback.rb].each do |script|
       source = File.read(File.expand_path("../../scripts/#{script}", __dir__))
-      handoff = source[/"install", (.*?)\*/m, 1]
+      handoff = source[/(?:"install", |argv = \[)("--reinstall".*?)\*/m, 1]
       handoff.scan(/"(--[a-z-]+)"/).flatten.each do |flag|
         assert_includes Plastic::CLI::Commands::Install::FLAGS, flag, "#{script} passes #{flag}"
       end

@@ -54,7 +54,7 @@ class CliPlasticMdTest < Minitest::Test
   end
 
   # Intent 391, G3: the tools chapter is one pointer line away, not doctrine
-  # folded back into this file.
+  # copied back into this file.
   def test_it_points_at_the_tools_chapter
     assert_includes mentioned_commands, "help tools"
   end

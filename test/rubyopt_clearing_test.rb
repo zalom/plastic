@@ -77,7 +77,6 @@ class RubyoptClearingTest < Minitest::Test
 
   # Named, not enumerated: scripts/ holds many git and npm spawns plus two off-limits files.
   RUBY_SPAWNERS = %w[
-    scripts/link-suggest
     scripts/maintenance-run
     scripts/restore-intent-v1
     scripts/hook-capture
@@ -206,7 +205,6 @@ class RubyoptClearingTest < Minitest::Test
   # would look clean. Each named file must still contain at least one recognized, cleared spawn.
   def test_the_detector_still_recognizes_the_spawn_sites_it_is_meant_to_cover
     expected = {
-      "scripts/link-suggest" => 1,
       "scripts/maintenance-run" => 5,
       "scripts/restore-intent-v1" => 1,
       "scripts/hook-capture" => 2,

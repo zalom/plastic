@@ -47,11 +47,11 @@
       ]
     },
     "varar/update-safety.md": {
-      "sourceHash": "fnv1a:bf5b48d4",
+      "sourceHash": "fnv1a:dea48d10",
       "examples": [
         {
           "name": "Each row gives the harness, command, exit, installation, and version:",
-          "line": 8
+          "line": 9
         }
       ]
     }
