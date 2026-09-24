@@ -40,7 +40,7 @@ This version was not published separately. Its changes shipped with 2.0.1.
 ## Unreleased
 
 - Intent 392: the dashboard is removed. The `continue` prompt now shows the report roster
-  (`report-screen state --all`) for the working directory's store, the project store, or the
+  (`report-screen state --all`) for the store of the working directory: its project store, or the
   global store when the directory maps to no project.
 
 - Plastic runs no version control command. This removes the pull request body and template-honoring code that PRs 18 and 19 added; `plastic session commit` now only records the item and prints the commit instruction, and `plastic auto take` prints the worktree to create instead of creating it.
