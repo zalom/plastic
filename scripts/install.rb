@@ -81,7 +81,6 @@ class Install < InstallerCore
 
     distribute(mode)
     bootstrap if fresh
-    git_init_if_absent
     register_with_qmd(runner: qmd_runner, detector: qmd_detector)
     migrate_advisor_config_file(File.join(plastic_home, "config.yml"))
     apply_config_flags(argv)

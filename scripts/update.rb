@@ -251,10 +251,11 @@ class Update < InstallerCore
     0
   end
 
-  # Intent 372 (former update skill, lines 124-125): `~/.plastic` is its own git
-  # repository (install.rb's git_init_if_absent), so a successful update commits the
-  # core files it just re-synced. Empty commits are allowed: a same-version repair
-  # re-syncs nothing new, and that is still worth a ledger-adjacent commit.
+  # Intent 372 (former update skill, lines 124-125), intent 390: install no longer
+  # git-inits `~/.plastic` (Plastic runs no version control command), so this commit
+  # only lands when the home already carries its own repository. Empty commits are
+  # allowed: a same-version repair re-syncs nothing new, and that is still worth a
+  # ledger-adjacent commit when the repository exists.
   def commit_core_files(target, runner: ->(cmd) { system(*cmd) })
     runner.call(["git", "-C", plastic_home, "add", "PLASTIC.md", "scripts", "AGENTS.md", "VERSION",
       "versions.json", "deprecations.yml", "config_asks.yml"])
