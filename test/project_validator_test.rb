@@ -43,6 +43,22 @@ class ProjectValidatorTest < Minitest::Test
     end
   end
 
+  # Intent 390: `flow:` was retired from project.yml along with SessionGit.
+  # A leftover `flow:` block from an older spawn is an unknown key now, not a
+  # validated knob: it yields no error at all, not even for a value the old
+  # FLOW_MODES/FLOW_WORKSPACES enums would have rejected.
+  def test_a_leftover_flow_block_yields_no_flow_error
+    with_registered_project do |home, project_root|
+      build_complete_spawn(home, project_root)
+      project_dir = File.join(home, "projects", "demo")
+      File.write(File.join(project_dir, "project.yml"),
+                 "governing_docs:\n  - AGENTS.md\nflow:\n  mode: not-a-real-mode\n")
+      result = ProjectValidator.validate("demo", plastic_home: home)
+      assert result[:ok], result.inspect
+      assert_empty result[:errors]
+    end
+  end
+
   # THE fixture named in D11: the intent-26 partial-spawn shape. A registered
   # project with a store/ and INDEX.md, but NO project.yml and NO root
   # AGENTS.md. Must flag BOTH by name, not just the first one found.

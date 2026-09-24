@@ -9,6 +9,10 @@ require_relative "intent_command"
 # through, and a Claude Code session names its harness when none is given.
 # plastic-lock answers in JSON, so this command renders it as a screen and
 # leaves the document to `--json`. A lock another session owns exits 3.
+#
+# Plastic creates no worktree itself (intent 390): the screen names the
+# expected code worktree path and branch, and the `next:` line is the exact
+# `git worktree add` the agent runs to create it -- Plastic never runs it.
 module Plastic
   class CLI
     module Commands
@@ -19,6 +23,7 @@ module Plastic
         SCRIPT = "plastic-lock"
         AFTER = "plastic auto brief ID"
         BECAUSE = "the preamble is the live state a taken intent is read from next"
+        CREATE_BECAUSE = "Plastic runs no version control command; it creates no worktree itself"
         PROVENANCE = %i[harness agent model thread].freeze
 
         def call
@@ -27,8 +32,9 @@ module Plastic
           text, status = legacy.capture(SCRIPT, *script_arguments)
           raise Failure, "#{SCRIPT} exited #{status}" unless status.zero?
 
-          screen(JSON.parse(text))
-          command, reason = after_run
+          report = JSON.parse(text)
+          screen(report)
+          command, reason = next_step_for(report)
           @output.next_step(command, because: reason)
         rescue JSON::ParserError
           raise Failure, "#{SCRIPT} did not print a report"
@@ -60,7 +66,26 @@ module Plastic
           worktree = report["worktree"] || {}
           @output.row("intent", File.basename(report["intent_dir"].to_s))
           @output.row("lock", "#{report["status"]} by #{report["session"]}, #{report["run_mode"]} mode")
-          @output.row("worktree", worktree["provisioned"] ? worktree["code"].to_s : "none")
+          @output.row("worktree", worktree_row(worktree))
+        end
+
+        def worktree_row(worktree)
+          return "none" if worktree["code"].nil?
+
+          "#{worktree["code"]} (#{worktree["provisioned"] ? "present" : "not yet created"})"
+        end
+
+        # A store-only project (`code` blank) has no worktree to create, so
+        # the next step stays the preamble read. Otherwise it is the exact
+        # `git worktree add` that creates the expected workspace: Plastic
+        # only prints it, it never runs it.
+        def next_step_for(report)
+          worktree = report["worktree"] || {}
+          code = worktree["code"]
+          return after_run if code.nil?
+
+          repo = code.sub(%r{/\.claude/worktrees/[^/]+\z}, "")
+          ["git -C #{repo} worktree add #{code} -b #{worktree["code_branch"]}", CREATE_BECAUSE]
         end
       end
     end

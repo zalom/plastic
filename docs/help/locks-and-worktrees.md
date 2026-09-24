@@ -63,11 +63,13 @@ behind. See "WORK vs MAINTENANCE" in `references/maintenance-and-revisions.md` f
 doctrine.
 
 Every code-touching auto intent gets its own git worktree named `{id}--{slug}`, and all code
-edits for that intent happen inside it. Plastic provisions the worktree deterministically: it
-resolves the project repo from `projects.yml` and runs `git -C <repo> worktree add`, so
-isolation never depends on the current working directory. There is one worktree per project
-intent, the code worktree at `<repo>/.claude/worktrees/{id}--{slug}` (branch
-`plastic/{id}--{slug}`).
+edits for that intent happen inside it. Plastic runs no version control command, so it creates
+this worktree deterministically without creating it: `plastic auto take ID` resolves the
+project repo from `projects.yml`, computes the expected path and branch, and prints the
+`git -C <repo> worktree add <path> -b <branch>` for the agent to run -- isolation never depends
+on the current working directory, but the workspace itself is the agent's own step. There is
+one worktree per project intent, the code worktree at
+`<repo>/.claude/worktrees/{id}--{slug}` (branch `plastic/{id}--{slug}`).
 
 Plastic does not provision a second worktree for lifecycle-doc writes. Two things cover that
 need instead. First, the harness's own native worktree: Claude Code manages its own code
@@ -79,12 +81,15 @@ dedicated store worktree at `<plastic_home>/.worktrees/{id}--{slug}` first; agen
 into it, because every delivering agent writes lifecycle docs straight to the main store
 checkout, so intent 178 retired the store worktree in favor of the two mechanisms above.
 
-Provisioning fails open for intents that touch no project code (pure research or decision
-intents in the global store, or a non-git repo): those get the lock only, and the worktree
-block stays unprovisioned. The fail-open path is always logged, never silent.
+A store-only intent that touches no project code (pure research or decision intents in the
+global store, or a non-git repo) gets the lock only: no repo resolves, so `auto take` names no
+worktree path and the next step stays the preamble read. This reads the same in the screen
+whether the repo simply has not resolved yet or never will; it is not a failure, only nothing
+to report.
 
-Cleanup is part of the End tail: it merges the branch, then removes the worktree. Never leave
-an orphaned worktree behind, and clear a stale worktree reference with `git worktree prune`.
+Cleanup is part of the End tail: `end-intent` verifies the code is merged (Plastic never merges
+it itself), then removes the worktree, then disarms. Never leave an orphaned worktree behind,
+and clear a stale worktree reference with `git worktree prune`.
 
 
 #### Intent delivery, station by station
@@ -95,7 +100,7 @@ what gets written down.
 
 | Station | Delivered artifact | Lock steps | Record |
 |---|---|---|---|
-| Start (board) | none (a procedure, not a stage) | `plastic-lock fix` self-heals stale, corrupt, or legacy state; arm (`plastic auto take ID`, the only public entry) acquires `delivery.lock` (O_EXCL, session-keyed), provisions the code worktree | savepoint confirms the boarding station |
+| Start (board) | none (a procedure, not a stage) | `plastic-lock fix` self-heals stale, corrupt, or legacy state; arm (`plastic auto take ID`, the only public entry) acquires `delivery.lock` (O_EXCL, session-keyed), prints the code worktree's expected path and branch for the agent to create | savepoint confirms the boarding station |
 | What (create) | `<id>--<slug>.md`, born complete | no lock yet; `new-intent` validates the file it writes (`scripts/validate-intent`) | savepoint `What` line; intent listed in INDEX `## Active` |
 | Why | `spec.md` | owner writes refresh the lease (lock file mtime heartbeat) | savepoint `Why started`, `Why spec.md created` |
 | How | `plan.md`, `actions/ACTION_N.md` (at least one), `checklist.md` | heartbeat on writes | savepoint `How started`, `How plan.md created`, `How checklist.md created`, `Exec started` |

@@ -10,10 +10,11 @@ require "tmpdir"
 # file exercising arm/derive must not leak the ambient CLAUDE_CODE_SESSION_ID
 # into those writes.
 #
-# This file is a STATIC guard (source scans only). It cannot catch a live
-# Worktree.provision call resolving against the real ~/.plastic (that is how
-# 166 got bitten). See test/worktree_hermeticity_test.rb (intent 169) for the
-# runtime behavioral counterpart.
+# This file is a STATIC guard (source scans only). Intent 390 retired
+# Worktree.provision (Plastic runs no git worktree add itself any more), which
+# is what the 166 incident and this guard's runtime counterpart were about;
+# the arm/repair writes this class still watches are the lock and ledger
+# files, not a live git worktree.
 class HermeticityGuardTest < Minitest::Test
   # Arm (intent 307) replaced the bridge writers; the old names stay in the regex so a
   # resurrected call is caught too.
@@ -169,23 +170,6 @@ class HermeticityGuardTest < Minitest::Test
     end
     assert_empty offenders,
       "these tests arm without handling the ambient session id: #{offenders.map { |f| File.basename(f) }.join(', ')}"
-  end
-
-  # Arm.arm and Arm.repair (intent 307; before them Bridge.arm and repair_lock) run the REAL Worktree.provision,
-  # whose plastic_home derives from HOME: unneutralized, a test plants a store
-  # worktree in the LIVE ~/.plastic (observed: ~/.plastic/.worktrees/{52,80,96}
-  # --demo). Every arm- or repair_lock-exercising test must stub provision or
-  # isolate HOME for spawned arms/repairs.
-  def test_every_arm_exercising_test_neutralizes_worktree_provision
-    offenders = Dir[File.expand_path("../*_test.rb", __FILE__)].select do |f|
-      next false if File.basename(f) == File.basename(__FILE__)
-      src = File.read(f)
-      src.match?(/Arm\.(arm|repair)\b|Bridge\.(arm_auto|arm_guided|repair_lock)\b/) &&
-        !src.match?(/define_singleton_method\(:provision|with_worktree\(:provision|"HOME"\s*=>|runner:\s/)
-    end
-    assert_empty offenders,
-      "these tests arm/repair without stubbing Worktree.provision or isolating HOME: " \
-      "#{offenders.map { |f| File.basename(f) }.join(', ')}"
   end
 
   # hook-session-start and hook-record (formerly hook-gate-check, intent 298)

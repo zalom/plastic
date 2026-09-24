@@ -112,12 +112,13 @@ Rules for any agent (or human) contributing to this repository.
   savepoint.md); disarm clears the lock, and `plastic-lock fix` is the repair path for
   corrupt or legacy state.
 - Every code-touching intent gets its own worktree named `{id}--{slug}`, and code edits happen
-  only inside it. Plastic provisions this automatically at arm time (`plastic auto take ID`, the
-  only public arm) by resolving the repo from
-  `projects.yml` and running `git -C <repo> worktree add`, so isolation does not depend on the
-  current directory. The code worktree lives at `<repo>/.claude/worktrees/{id}--{slug}` on
-  branch `plastic/{id}--{slug}`. It is the only worktree: store-write safety for lifecycle
-  docs comes from intent 197's branch-from-main plus scoped commits, not a second worktree.
+  only inside it. Plastic runs no version control command, so it does not create this worktree:
+  at arm time (`plastic auto take ID`, the only public arm), it resolves the repo from
+  `projects.yml`, computes the expected path and branch, and prints the exact
+  `git -C <repo> worktree add <path> -b <branch>` for the agent to run. The code worktree lives
+  at `<repo>/.claude/worktrees/{id}--{slug}` on branch `plastic/{id}--{slug}`. It is the only
+  worktree: store-write safety for lifecycle docs comes from intent 197's branch-from-main plus
+  scoped commits, not a second worktree.
 - Do isolated feature work in that worktree, not the shared checkout, so parallel sessions and
   the main working copy stay clean. Run and test inside it, then merge the branch back.
 - Clean up when done: remove the worktree after the branch is merged. Never leave an orphaned

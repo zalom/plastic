@@ -9,8 +9,9 @@ require_relative "../scripts/lib/lock"
 
 # The composed lock-mechanism surface, end to end (intent 108, the original
 # What). Every test is hermetic: injected PLASTIC_TMP (ambient save/restore),
-# mktmpdir stores, injected clocks, FakeRunner for git, and Worktree
-# provision/release neutralized except where a test exercises them with a fake.
+# mktmpdir stores, injected clocks, and FakeRunner for git. Arm.arm and
+# Arm.repair create no worktree themselves (intent 390); the FakeRunner here
+# proves the disarm/release path still removes one an agent already made.
 class LockSystemTest < Minitest::Test
   # A fake ShellRunner (worktree_test.rb pattern): records calls, scripted
   # results, every git call "succeeds" by default.
@@ -45,40 +46,19 @@ class LockSystemTest < Minitest::Test
     @dir96 = File.join(@store, "96--demo")
     @dir97 = File.join(@store, "97--other")
 
-    # projects.yml so the real provision (used with a FakeRunner) resolves the
-    # demo repo inside this test home.
+    # projects.yml so a test that exercises the worktree surface directly
+    # (Worktree.release, .finish) resolves the demo repo inside this test home.
     @repo = File.join(@home, "apps", "demo")
     FileUtils.mkdir_p(@repo)
     File.write(File.join(@home, ".plastic", "projects.yml"),
                { "projects" => { "demo" => { "path" => @repo } } }.to_yaml)
-
-    # Neutralize real worktree git ops for arms; tests that exercise the
-    # worktree surface swap the real methods back in with a FakeRunner.
-    @real_provision = Worktree.method(:provision)
-    @real_release = Worktree.method(:release)
-    stub_worktree
   end
 
   def teardown
     ENV["PLASTIC_TMP"] = @prev_tmp
     ENV["CLAUDE_CODE_SESSION_ID"] = @prev_sid
-    Worktree.define_singleton_method(:provision, @real_provision) if @real_provision
-    Worktree.define_singleton_method(:release, @real_release) if @real_release
     FileUtils.rm_rf(@tmp)
     FileUtils.rm_rf(@home)
-  end
-
-  def stub_worktree
-    Worktree.define_singleton_method(:provision) { |d, *_a, **_kw| d }
-    Worktree.define_singleton_method(:release) { |d, *_a, **_kw| d }
-  end
-
-  def with_real_worktree
-    Worktree.define_singleton_method(:provision, @real_provision)
-    Worktree.define_singleton_method(:release, @real_release)
-    yield
-  ensure
-    stub_worktree
   end
 
   def write_index_active(ids)
@@ -178,37 +158,47 @@ class LockSystemTest < Minitest::Test
                                         current_session: "a", home: @home)
   end
 
-  # --- 6. worktree provision / enforcement / merge-remove ------------------------
+  # --- 6. worktree finish / merge-remove (created by an agent, not Plastic) ----
 
-  def provision_bridge_with(runner)
-    bridge = { "intent" => { "id" => "96", "dir" => "96--demo",
-                             "store" => @store, "name" => "demo" } }
-    with_real_worktree { Worktree.provision(bridge, home: @home, runner: runner) }
+  # `Arm.worktree_block`'s shape: `code`/`code_branch` name the expected
+  # workspace, `provisioned` reflects whether it exists on disk. These tests
+  # simulate an agent having already created it, and check that `finish`/
+  # `release` still tear it down through the injected runner (intent 390:
+  # Plastic runs no version control command to create one, but still removes
+  # and merges one that exists).
+  def worktree_bridge(provisioned: true)
+    code_wt = File.join(@repo, ".claude", "worktrees", "96--demo")
+    {
+      "intent" => { "id" => "96", "dir" => "96--demo", "store" => @store, "name" => "demo" },
+      "worktree" => {
+        "code" => code_wt,
+        "code_branch" => "plastic/96--demo",
+        "provisioned" => provisioned
+      }
+    }
   end
 
-  def test_provision_enforcement_and_merge_remove
-    runner = FakeRunner.new
-    bridge = provision_bridge_with(runner)
-
-    wt = bridge["worktree"]
-    assert_equal true, wt["provisioned"]
-    code_wt = File.join(@repo, ".claude", "worktrees", "96--demo")
-    assert_equal code_wt, wt["code"]
-    gitignore = File.read(File.join(@home, ".plastic", ".gitignore"))
-    assert_includes gitignore.lines.map(&:strip), "*.lock"
-
+  def test_finish_merge_remove_tears_down_a_provisioned_worktree
+    bridge = worktree_bridge
     bridge["session"] = "a"
 
     # Merge-remove: finish(merge: true) merges the code branch, then removes
     # the worktree and clears the block.
     finish_runner = FakeRunner.new
-    result = with_real_worktree do
-      Worktree.finish(bridge, home: @home, runner: finish_runner, merge: true)
-    end
+    result = Worktree.finish(bridge, home: @home, runner: finish_runner, merge: true)
     merges = finish_runner.calls.select { |c| c.include?("merge") }
     removes = finish_runner.calls.select { |c| c.include?("remove") }
     refute_empty merges, "finish(merge: true) must merge the code branch"
     assert_equal 1, removes.length, "the code worktree is removed"
+    assert_nil result["worktree"]
+  end
+
+  def test_release_removes_nothing_when_never_provisioned
+    bridge = worktree_bridge(provisioned: false)
+    runner = FakeRunner.new
+    result = Worktree.release(bridge, home: @home, runner: runner)
+    removes = runner.calls.select { |c| c.include?("remove") }
+    assert_empty removes, "a workspace never created is nothing to remove"
     assert_nil result["worktree"]
   end
 
@@ -225,15 +215,14 @@ class LockSystemTest < Minitest::Test
 
   # --- 12. D9: lifecycle writes read only the MAIN store dir -----------------------
 
-  # Intent 178 retired the store worktree entirely, so `provision` no longer
-  # carries a "store" key at all (proven directly in
-  # test/worktree_test.rb#test_provision_does_not_create_a_store_worktree).
-  # What is left of D9's guarantee, and still worth proving here, is that
-  # lifecycle writes land in the MAIN intent dir regardless.
+  # Intent 178 retired the store worktree entirely, and intent 390 retired
+  # `provision` itself, so `Arm.worktree_block` (proven directly in
+  # test/arm_test.rb) never carries a "store" key at all. What is left of
+  # D9's guarantee, and still worth proving here, is that lifecycle writes
+  # land in the MAIN intent dir regardless.
   def test_d9_lifecycle_writes_use_the_main_store_dir
-    runner = FakeRunner.new
-    bridge = provision_bridge_with(runner)
-    refute bridge["worktree"].key?("store"), "provision must not carry a store key at all"
+    bridge = worktree_bridge
+    refute bridge["worktree"].key?("store"), "the worktree block must not carry a store key at all"
 
     spec = File.join(@dir96, "spec.md")
     File.write(spec, "real spec content\n")
@@ -248,7 +237,7 @@ class LockSystemTest < Minitest::Test
     readers = Dir[File.expand_path("../../scripts/**/*", __FILE__)].select do |f|
       next false unless File.file?(f)
       src = File.read(f)
-      # worktree["store"] is written at provision and removed at release;
+      # worktree["store"] was retired with the store worktree (intent 178);
       # nothing may READ it to locate lifecycle files.
       src.match?(/dig\(\s*["']worktree["']\s*,\s*["']store["']\s*\)|worktree\[["']store["']\]/) &&
         !f.end_with?("lib/worktree.rb")

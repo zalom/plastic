@@ -27,18 +27,11 @@ class PlasticLockCliTest < Minitest::Test
     File.write(File.join(@intent_dir, "96--demo.md"), "## Intent\nDemo\n")
     File.write(File.join(File.dirname(@store), "INDEX.md"),
                "## Active\n- [96 — demo](96--demo/96--demo.md)\n\n## Future\n")
-
-    # Neutralize real worktree git ops by default (intent 136: repair_lock now
-    # provisions too) so the in-process repair tests never shell out to real
-    # git or write the live ~/.plastic. Dedicated tests below re-stub locally.
-    @real_provision = Worktree.method(:provision)
-    Worktree.define_singleton_method(:provision) { |d, *_a, **_kw| d }
   end
 
   def teardown
     FileUtils.rm_rf(@tmp)
     FileUtils.rm_rf(@home)
-    Worktree.define_singleton_method(:provision, @real_provision) if @real_provision
   end
 
   def repair(session = "sess-1", **kw)
@@ -55,17 +48,6 @@ class PlasticLockCliTest < Minitest::Test
     Open3.capture3({ "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => nil, "HOME" => @home },
                    RbConfig.ruby, CLI, *args,
                    "--intent-dir", @intent_dir, "--session", session)
-  end
-
-  # Temporarily redefine a Worktree singleton method for one block, restoring it
-  # after (mirrors test/bridge_auto_test.rb; Minitest::Mock#stub is unavailable
-  # in this bundled minitest).
-  def with_worktree(method_name, impl)
-    original = Worktree.method(method_name)
-    Worktree.define_singleton_method(method_name, impl)
-    yield
-  ensure
-    Worktree.define_singleton_method(method_name, original)
   end
 
   def capture_stderr
@@ -158,24 +140,13 @@ class PlasticLockCliTest < Minitest::Test
     assert_equal "codex", Lock.read(@intent_dir)["owner_harness"]
   end
 
-  # --- intent 136: repair_lock must provision the worktree ---------------------
-  # repair_lock rebuilds the bridge via derive but (pre-fix) never calls
-  # Worktree.provision, so the rebuilt bridge keeps derive's default
-  # worktree.code: nil and wipes any previously complete worktree block.
-
-  def test_repair_provision_failure_still_repairs
-    out = capture_stderr do
-      with_worktree(:provision, ->(*_a, **_kw) { raise "boom" }) do
-        report = repair
-        assert_equal "repaired", report["status"], "AC6: a provision raise must not break the repair"
-        assert_equal "sess-1", Lock.read(@intent_dir)["owner_session"]
-      end
-    end
-    refute_empty out, "AC6: the provision raise is logged, mirroring arm's survive-raise contract"
-  end
+  # --- intent 390: repair reports the worktree, it does not create one ---------
+  # repair_lock rebuilds the bridge via derive but never provisions (Plastic
+  # runs no git worktree add itself); it only reports whether the workspace
+  # the agent was told to create is present or absent.
 
   # Fake ShellRunner that records `git worktree remove` calls (proves the
-  # wiped block orphans a worktree; an intact block does not).
+  # release path removes a worktree the agent already created).
   class Recorder
     Result = Struct.new(:status, :stdout, :stderr) { def success?; status.zero?; end }
     attr_reader :calls
@@ -183,7 +154,14 @@ class PlasticLockCliTest < Minitest::Test
     def run(*args); @calls << args.map(&:to_s); Result.new(0, "", ""); end
   end
 
-  def test_released_repaired_intent_removes_its_worktree
+  def test_repair_creates_no_worktree_and_reports_it_absent
+    report = repair
+    assert_equal "repaired", report["status"]
+    assert_includes report["actions"], "worktree absent"
+    refute Dir.exist?(File.join(@home, "repo", ".claude", "worktrees", "96--demo"))
+  end
+
+  def test_released_repaired_intent_removes_a_worktree_the_agent_already_created
     repo = File.join(@home, "repo")
     FileUtils.mkdir_p(repo)
     File.write(File.join(@home, ".plastic", "projects.yml"),
@@ -191,9 +169,10 @@ class PlasticLockCliTest < Minitest::Test
     code_wt = File.join(repo, ".claude", "worktrees", "96--demo")
     FileUtils.mkdir_p(code_wt)
 
-    with_worktree(:provision, ->(d, *_a, **_kw) { d }) { repair }
+    repair
     after = Arm.delivery(intent_dir: @intent_dir, home: @home)
     assert_equal code_wt, after.dig("worktree", "code"), "the block is derived from projects.yml and the directory on disk"
+    assert_equal true, after.dig("worktree", "provisioned")
 
     recorder = Recorder.new
     Worktree.release(after, home: @home, runner: recorder)

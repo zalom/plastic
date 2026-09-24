@@ -8,22 +8,22 @@ require "socket"
 require "time"
 require_relative "lock"
 
-# Worktree -- Plastic-supplied git worktree isolation and the delivery lock
-# (intent 73c / 73c1).
+# Worktree -- the expected code worktree path and the delivery lock
+# (intent 73c / 73c1; provisioning removed by intent 390).
 #
-# The harness `EnterWorktree` tool assumes cwd IS the repo root, which is false
-# for Plastic (cwd is often the parent of the repo subdir). When the mismatch
-# occurs the tool silently degrades to a plain feature branch on the shared
-# checkout, so parallel intent deliveries are NOT isolated. This module makes
-# isolation deterministic and cwd-independent: Plastic resolves the repo from
-# projects.yml and runs `git -C <repo> worktree add`, so the cwd-not-root bug
-# dies by construction (decision D6).
+# Plastic runs no version control command. It computes the deterministic path
+# and branch a project intent's code worktree would have
+# (<repo>/.claude/worktrees/{id}--{slug}, branch plastic/{id}--{slug}) and
+# prints them (see Arm.worktree_block and `plastic auto take`'s screen); the
+# agent that receives the instruction creates the worktree itself, e.g.
+# `git -C <repo> worktree add <path> -b <branch>`. This module still tears a
+# worktree down (`release`, `finish`) once one exists, since disarm and
+# CLEANUP still need to remove and merge what the agent created.
 #
 # One worktree per project intent (decision D2, retired to a single worktree by
-# intent 178): the code worktree, <repo>/.claude/worktrees/{id}--{slug}, branch
-# plastic/{id}--{slug}. Store-write safety for lifecycle-doc writes now comes
-# from intent 197's branch-from-main plus scoped-commit mechanism instead of a
-# second, dedicated worktree (see PLASTIC.md's worktree doctrine).
+# intent 178). Store-write safety for lifecycle-doc writes comes from intent
+# 197's branch-from-main plus scoped-commit mechanism instead of a second,
+# dedicated worktree (see PLASTIC.md's worktree doctrine).
 #
 # The durable delivery.lock file in the intent dir is the single-owner
 # delivery lock (intent 108): session-keyed, lease-based, explicit takeover.
@@ -107,83 +107,7 @@ module Worktree
     File.expand_path(path)
   end
 
-  # --- provisioning ----------------------------------------------------------
-
-  # Resolve the slug from the delivery's intent.store, create code + store
-  # worktrees (idempotent: reuse an existing worktree path, do not error), write
-  # the `worktree` block plus `provisioned: true` onto delivery, return it.
-  #
-  # Fails open with a stderr log when the repo is non-git or unresolvable:
-  # sets `provisioned: false` and leaves `code: null`. All git ops use
-  # `git -C <resolved path>` -- never cwd (decision D6).
-  def provision(delivery, home: Dir.home, runner: ShellRunner.new)
-    return delivery unless delivery.is_a?(Hash)
-    intent = delivery["intent"] || {}
-    intent_id = intent["id"].to_s
-    store = intent["store"].to_s
-    intent_slug = slug_from_dir(intent["dir"]) || slug_from_dir(store)
-
-    # Defect 1 fix (intent 169): derive plastic_home from the already-sandboxed
-    # store path when possible, so a sandboxed board never falls to the real
-    # `Dir.home` default. `home:` remains the fallback only when the store is
-    # blank or carries no recognizable `.plastic` segment.
-    home = home_from_store(store) || home
-
-    slug = slug_for_store(store, home: home)
-    p = paths(slug: slug, intent_id: intent_id, intent_slug: intent_slug, home: home)
-
-    block = {
-      "code" => nil,
-      "code_branch" => nil,
-      "provisioned" => false,
-    }
-
-    plastic_home = File.expand_path(File.join(home, ".plastic"))
-
-    # The durable lock files live inside intent dirs under the store git repo
-    # (intent 108, D2): transient state, never committed. Unrelated to store
-    # worktrees (retired by intent 178); this stays regardless.
-    ensure_gitignored(plastic_home, "*.lock", runner: runner)
-
-    # Code worktree: MANDATORY for project intents. Fail-open when the repo is
-    # unresolvable or non-git -- that is the global-store-only / non-git case.
-    repo = repo_for(slug, home: home)
-    code_ok = false
-    if repo && git_repo?(runner, repo)
-      ensure_gitignored(repo, ".claude/worktrees/", runner: runner)
-      code_ok = add_worktree(runner, repo: repo,
-                             worktree: p["code"], branch: p["code_branch"],
-                             label: "code")
-      if code_ok
-        block["code"] = p["code"]
-        block["code_branch"] = p["code_branch"]
-      end
-    else
-      warn "plastic: worktree provision fail-open -- repo for slug #{slug.inspect} " \
-           "is unresolvable or not a git repo; code worktree skipped"
-    end
-
-    # provisioned is true only when the MANDATORY code worktree exists. The gate
-    # fails open on provisioned: false (non-git / global-only).
-    block["provisioned"] = code_ok
-
-    # Intent 230: only OVERWRITE the worktree block when the code worktree was
-    # actually added. On failure, keep a pointer the caller already had rather
-    # than erasing it -- clearing it is what sent code edits into the shared
-    # checkout. A pointer whose directory is gone is worse than none, so it is
-    # replaced by the fresh unprovisioned block; the guard must not fail harder
-    # than the bug it guards.
-    if code_ok
-      delivery["worktree"] = block
-    else
-      existing = delivery["worktree"]
-      keep = existing.is_a?(Hash) && !blank?(existing["code"]) &&
-             Dir.exist?(existing["code"].to_s)
-      delivery["worktree"] = block unless keep
-    end
-
-    delivery
-  end
+  # --- teardown ----------------------------------------------------------
 
   # Remove the worktree (then `git worktree prune`), clear the worktree block.
   # No-op when nothing was provisioned. CLEANUP (73c3) layers the merge-vs-remove
@@ -199,7 +123,11 @@ module Worktree
       slug = slug_for_store(delivery.dig("intent", "store").to_s, home: home)
       repo = repo_for(slug, home: home)
 
-      remove_worktree(runner, repo: repo, worktree: block["code"]) if repo && block["code"]
+      # `code` now names the expected path whether or not it was ever created
+      # (intent 390: Arm.worktree_block reports it unconditionally), so the
+      # git call is gated on `provisioned`, not on `code` alone -- a workspace
+      # never created is nothing to remove.
+      remove_worktree(runner, repo: repo, worktree: block["code"]) if repo && block["provisioned"]
       prune(runner, repo: repo) if repo
     end
 
@@ -228,7 +156,7 @@ module Worktree
     block = delivery["worktree"]
     return delivery unless block.is_a?(Hash)
 
-    if merge
+    if merge && block["provisioned"]
       slug = slug_for_store(delivery.dig("intent", "store").to_s, home: home)
       repo = repo_for(slug, home: home)
       branch = block["code_branch"]
@@ -317,25 +245,6 @@ module Worktree
   end
 
   # --- git operations (all use -C, never cwd) --------------------------------
-
-  # Idempotent worktree add. If `worktree` already exists on disk, treat as
-  # reuse (success, no git call). Otherwise `git -C <repo> worktree add <wt>
-  # -b <branch>`; if the branch already exists, retry without -b (reattach).
-  def add_worktree(runner, repo:, worktree:, branch:, label:)
-    return false if blank?(repo) || blank?(worktree)
-    return true if Dir.exist?(worktree) # idempotent reuse
-
-    res = runner.run("-C", repo, "worktree", "add", worktree, "-b", branch)
-    return true if res.success?
-
-    # Branch may already exist (a prior provision that was pruned but kept the
-    # branch). Retry attaching the existing branch.
-    res2 = runner.run("-C", repo, "worktree", "add", worktree, branch)
-    return true if res2.success?
-
-    warn "plastic: worktree add (#{label}) failed: #{res.stderr.to_s.strip}"
-    false
-  end
 
   def remove_worktree(runner, repo:, worktree:)
     return false if blank?(repo) || blank?(worktree)

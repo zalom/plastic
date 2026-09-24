@@ -94,15 +94,13 @@ class ArmTest < Minitest::Test
     assert_equal "guided", Lock.read(@dir)["run_mode"]
   end
 
-  def test_arm_provisions_the_code_worktree_and_reports_it
+  def test_arm_reports_the_expected_worktree_path_and_creates_nothing
     result = arm
-    assert Dir.exist?(worktree_path)
+    refute Dir.exist?(worktree_path), "arm must create no directory (intent 390)"
     assert_equal worktree_path, result[:worktree]["code"]
     assert_equal "plastic/96--demo", result[:worktree]["code_branch"]
-    assert_equal true, result[:worktree]["provisioned"]
-    add = @runner.calls.find { |c| c[2] == "worktree" && c[3] == "add" }
-    refute_nil add
-    assert_equal @repo, add[1]
+    assert_equal false, result[:worktree]["provisioned"]
+    assert_empty @runner.calls, "arm must run no git"
   end
 
   def test_arm_fails_open_on_an_intent_with_no_repo
@@ -175,16 +173,25 @@ class ArmTest < Minitest::Test
 
   # --- worktree_block and bridge_hash -------------------------------------------
 
-  def test_worktree_block_matches_worktree_paths_and_follows_the_directory
-    block = Arm.worktree_block(intent_dir: @dir, home: @home)
-    assert_equal false, block["provisioned"]
-    assert_nil block["code"]
-    arm
-    block = Arm.worktree_block(intent_dir: @dir, home: @home)
+  def test_expected_worktree_reports_the_path_before_and_after_the_directory_exists
     p = Worktree.paths(slug: "demo", intent_id: "96", intent_slug: "demo", home: @home)
+
+    block = Arm.expected_worktree(intent_dir: @dir, home: @home)
+    assert_equal p["code"], block["code"], "the expected path is named before the directory exists"
+    assert_equal p["code_branch"], block["code_branch"]
+    assert_equal false, block["provisioned"]
+
+    FileUtils.mkdir_p(p["code"]) # simulates the agent creating the workspace
+    block = Arm.expected_worktree(intent_dir: @dir, home: @home)
     assert_equal p["code"], block["code"]
     assert_equal p["code_branch"], block["code_branch"]
     assert_equal true, block["provisioned"]
+  end
+
+  def test_worktree_block_names_no_path_until_the_directory_exists
+    block = Arm.worktree_block(intent_dir: @dir, home: @home)
+
+    assert_equal [nil, nil, false], block.values_at("code", "code_branch", "provisioned")
   end
 
   def test_code_paths_name_the_worktree_before_it_exists
@@ -204,6 +211,7 @@ class ArmTest < Minitest::Test
 
   def test_disarm_removes_the_worktree_then_releases_the_lock
     arm
+    FileUtils.mkdir_p(worktree_path) # simulates the agent creating the workspace
     status = Arm.disarm(intent_dir: @dir, session: "sess-a", home: @home, runner: @runner, now: @now)
     assert_equal :released, status
     refute File.exist?(Lock.path(@dir))
@@ -235,6 +243,7 @@ class ArmTest < Minitest::Test
 
   def test_disarm_without_remove_keeps_the_worktree
     arm
+    FileUtils.mkdir_p(worktree_path) # simulates the agent creating the workspace
     Arm.disarm(intent_dir: @dir, session: "sess-a", home: @home, runner: @runner, now: @now, remove: false)
     assert Dir.exist?(worktree_path)
     refute File.exist?(Lock.path(@dir))
@@ -246,12 +255,13 @@ class ArmTest < Minitest::Test
     Arm.repair(intent_dir: @dir, session: session, home: @home, now: @now, runner: @runner, **kw)
   end
 
-  def test_repair_acquires_when_no_lock_and_provisions
+  def test_repair_acquires_when_no_lock_and_reports_the_worktree_absent
     report = repair(run_mode: "auto")
     assert_equal "repaired", report["status"]
     assert_includes report["actions"], "lock acquired"
     assert_equal "auto", Lock.read(@dir)["run_mode"]
-    assert Dir.exist?(worktree_path)
+    assert_includes report["actions"], "worktree absent"
+    refute Dir.exist?(worktree_path), "repair must create no directory (intent 390)"
   end
 
   def test_repair_removes_a_corrupt_lock_and_rebuilds

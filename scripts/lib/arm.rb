@@ -79,15 +79,27 @@ module Arm
   end
 
   # `{code, code_branch, provisioned}` derived from projects.yml and the
-  # intent id: the same path provision creates, `provisioned` iff it exists.
+  # intent id: the worktree path, `provisioned` iff it exists on disk. `code`
+  # is blank while the directory is absent, so readers never act on a path
+  # that is not there.
   def worktree_block(intent_dir:, home: Dir.home)
+    expected = expected_worktree(intent_dir: intent_dir, home: home)
+    return expected if expected["provisioned"]
+
+    expected.merge("code" => nil, "code_branch" => nil)
+  end
+
+  # The workspace `plastic auto take` tells the agent to create, since Plastic
+  # creates none itself: the expected path and branch whenever a repo
+  # resolves for the project, blank only for a store-only intent, and
+  # `provisioned` when that directory already exists.
+  def expected_worktree(intent_dir:, home: Dir.home)
     p = code_paths(intent_dir: intent_dir, home: home)
     code = p["code"]
-    provisioned = !blank?(code) && Dir.exist?(code)
     {
-      "code" => provisioned ? code : nil,
-      "code_branch" => provisioned ? p["code_branch"] : nil,
-      "provisioned" => provisioned,
+      "code" => code,
+      "code_branch" => code ? p["code_branch"] : nil,
+      "provisioned" => !blank?(code) && Dir.exist?(code),
     }
   end
 
@@ -147,14 +159,7 @@ module Arm
       return { status: status, lock: lock, worktree: nil, session: key }
     end
 
-    data = delivery(intent_dir: dir, home: h, with_worktree: false)
-    begin
-      Worktree.provision(data, home: h, runner: runner)
-    rescue StandardError => e
-      warn "plastic: worktree provision raised, continuing unprovisioned: #{e.message}"
-    end
-
-    { status: status, lock: lock, worktree: worktree_block(intent_dir: dir, home: h),
+    { status: status, lock: lock, worktree: expected_worktree(intent_dir: dir, home: h),
       session: key }
   end
 
@@ -197,7 +202,8 @@ module Arm
   # remove a corrupt lock, back off from a fresh foreign lock (`held`), report
   # a stale foreign lock (`stale`) for the explicit reclaim verb, keep and
   # enrich an own lock, heartbeat a delegated one, acquire when none, and
-  # provision the worktree so the repaired intent has its checkout.
+  # report whether the repaired intent's workspace is present. Plastic
+  # creates no worktree here (intent 390); the agent is told to.
   def repair(intent_dir:, session:, home: Dir.home, now: Time.now, harness: nil,
              agent: nil, model: nil, thread: nil, run_mode: nil,
              runner: Worktree::ShellRunner.new)
@@ -253,11 +259,6 @@ module Arm
       actions << "lock #{status}"
     end
 
-    begin
-      Worktree.provision(delivery(intent_dir: dir, home: h, with_worktree: false), home: h, runner: runner)
-    rescue StandardError => e
-      warn "plastic: worktree provision raised during repair, continuing unprovisioned: #{e.message}"
-    end
     actions << "worktree #{worktree_block(intent_dir: dir, home: h)['provisioned'] ? 'present' : 'absent'}"
     actions << "stage #{Savepoint.derive_stage(dir)}"
 
