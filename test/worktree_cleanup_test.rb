@@ -210,29 +210,6 @@ class WorktreeCleanupTest < Minitest::Test
     refute Worktree.ensure_gitignored(File.join(@home, "does-not-exist"), ".worktrees/", runner: FakeRunner.new)
   end
 
-  # --- provision calls ensure_gitignored -------------------------------------
-
-  # Intent 178 retired the store worktree, so provision no longer ensures a
-  # `.worktrees/` entry in the plastic home's own `.gitignore` (that entry
-  # already ships committed there from prior runs and is left alone). The code
-  # repo's `.gitignore` entry is unaffected: the code worktree stays mandatory.
-  def test_provision_ensures_the_code_repo_gitignore_entry
-    runner = FakeRunner.new do |args|
-      if args[2] == "rev-parse"
-        next Worktree::ShellRunner::Result.new(0, "true\n", "")
-      end
-      Worktree::ShellRunner::Result.new(0, "", "")
-    end
-    bridge = {
-      "intent" => { "id" => "73c3", "dir" => "73c3--cleanup", "store" => @store, "name" => "cleanup" },
-    }
-    Worktree.provision(bridge, home: @home, runner: runner)
-
-    assert_includes File.read(File.join(@repo, ".gitignore")), ".claude/worktrees/"
-    refute_includes File.read(File.join(@plastic_home, ".gitignore")), ".worktrees/",
-      "provision no longer writes a .worktrees/ entry into the plastic home gitignore (intent 178)"
-  end
-
   def capture_stderr
     original = $stderr
     $stderr = StringIO.new

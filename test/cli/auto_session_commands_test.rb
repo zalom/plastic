@@ -18,7 +18,15 @@ class CliAutoSessionCommandsTest < Minitest::Test
   TAKE_REPORT = JSON.generate(
     "intent_dir" => "/store/372--skills-to-commands", "session" => "s1", "status" => "acquired",
     "run_mode" => "auto",
-    "worktree" => {"code" => "/repo/.claude/worktrees/372--skills-to-commands", "provisioned" => true}
+    "worktree" => {"code" => "/repo/.claude/worktrees/372--skills-to-commands",
+                   "code_branch" => "plastic/372--skills-to-commands", "provisioned" => true}
+  )
+
+  TAKE_REPORT_NOT_YET = JSON.generate(
+    "intent_dir" => "/store/372--skills-to-commands", "session" => "s1", "status" => "acquired",
+    "run_mode" => "auto",
+    "worktree" => {"code" => "/repo/.claude/worktrees/372--skills-to-commands",
+                   "code_branch" => "plastic/372--skills-to-commands", "provisioned" => false}
   )
 
   FIX_REPORT = JSON.generate(
@@ -182,6 +190,29 @@ class CliAutoSessionCommandsTest < Minitest::Test
     command("auto take", "372")
 
     assert_match(/worktree +none/, @fixture.printed)
+  end
+
+  def test_take_shows_a_provisioned_worktree_as_present
+    @captured = TAKE_REPORT
+    command("auto take", "372")
+
+    assert_includes @fixture.printed, "(present)"
+  end
+
+  def test_take_shows_an_unprovisioned_worktree_as_not_yet_created
+    @captured = TAKE_REPORT_NOT_YET
+    command("auto take", "372")
+
+    assert_includes @fixture.printed, "(not yet created)"
+  end
+
+  def test_take_names_the_worktree_add_instruction_as_its_next_step
+    @captured = TAKE_REPORT
+    command("auto take", "372")
+
+    assert_includes @fixture.printed,
+      "next: git -C /repo worktree add /repo/.claude/worktrees/372--skills-to-commands " \
+      "-b plastic/372--skills-to-commands"
   end
 
   def test_take_with_json_prints_the_document
@@ -467,10 +498,21 @@ class CliAutoSessionCommandsTest < Minitest::Test
     assert_equal 2, command("session commit")
   end
 
-  def test_commit_names_handoff_in_its_next_step
+  def test_commit_forwards_the_ref_it_is_given
+    command("session commit", "shipped the thin slice", "--ref", "42")
+
+    assert_equal [["--cwd", "/nowhere", "--summary", "shipped the thin slice", "--ref", "42"]],
+      @calls.map(&:last)
+  end
+
+  def test_commit_names_the_printed_instruction_as_its_next_step
+    @captured = "cd /code/plastic and commit the way /code/plastic/AGENTS.md says"
     command("session commit", "shipped the thin slice")
 
-    assert_includes @fixture.printed, "next: plastic session handoff\nbecause: the line above says whether a commit landed"
+    assert_includes @fixture.printed,
+      "next: cd /code/plastic and commit the way /code/plastic/AGENTS.md says"
+    assert_includes @fixture.printed,
+      "because: Plastic runs no version control command; this names the exact one that lands the item"
   end
 
   def test_a_failing_commit_exits_one

@@ -33,11 +33,6 @@ class CodexHooksTest < Minitest::Test
     @saved_plastic_tmp = ENV["PLASTIC_TMP"]
     ENV["PLASTIC_TMP"] = @bridge_tmp
     ENV.delete("CLAUDE_CODE_SESSION_ID")
-
-    # Neutralize the real provision (intent 108 hermeticity fix): unstubbed,
-    # arm's provision would plant a store worktree in the LIVE ~/.plastic.
-    @real_provision = Worktree.method(:provision)
-    Worktree.define_singleton_method(:provision) { |d, *_a, **_kw| d }
   end
 
   def teardown
@@ -46,7 +41,6 @@ class CodexHooksTest < Minitest::Test
     FileUtils.rm_rf(@fake_home)
     @saved_session.nil? ? ENV.delete("CLAUDE_CODE_SESSION_ID") : ENV["CLAUDE_CODE_SESSION_ID"] = @saved_session
     @saved_plastic_tmp.nil? ? ENV.delete("PLASTIC_TMP") : ENV["PLASTIC_TMP"] = @saved_plastic_tmp
-    Worktree.define_singleton_method(:provision, @real_provision) if @real_provision
   end
 
   def silence_stderr
