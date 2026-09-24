@@ -189,8 +189,10 @@ The roadmap read path (intent 148) sits on top of that ledger. `scripts/lib/road
 (`RoadmapQueue`, constructor-DI and hermetic: clock and paths injected, no eval, no ENV or global
 config seam; a thin `scripts/roadmap-next` CLI wraps it, both registered in
 `InstallerCore#core_files` and covered by a hermetic test) is the one roadmap reader. `plastic
-next` and `plastic continue` read its queue mode through `scripts/lib/cli/frontier.rb`, and the
-dashboard screen reads its which mode. It does two things: liveness-ranks the tier's `roadmaps/*.md`
+next` and `plastic continue` read its queue mode through `scripts/lib/cli/frontier.rb`; its which
+mode (`--which`, tie candidates for a human choosing) has no caller left now that the dashboard
+is gone (intent 392), and stays exercised only by `test/roadmap_queue_test.rb`. It does two
+things: liveness-ranks the tier's `roadmaps/*.md`
 (a `delivering` or `blocked` entry wins, else the newest ledger or `## Log` timestamp, read
 through `RoadmapSavepoint.ledger_path_for`), and within the winning roadmap selects the frontier
 batch. When the roadmap's `## Graph` section carries edges, the frontier is the first
@@ -202,8 +204,8 @@ but does not gate, and `delivered`/`abandoned` entries are settled. Every fronti
 reconciled against INDEX.md before classification and INDEX wins on any mismatch, so an intent
 INDEX already shows Completed or Abandoned can never be dispatched. The CLI emits JSON with a
 `state` field (`dispatchable`, `in_flight`, `exhausted`, `none`, or `tie`) and a
-`dispatchable_queue` array shaped to match the dashboard's, plus `in_flight`, `blocked`, and
-`tie_candidates`. It runs in two modes: queue mode (the default, for the loop) breaks ties
+`dispatchable_queue` array, plus `in_flight`, `blocked`, and `tie_candidates`. It runs in two
+modes: queue mode (the default, for the loop) breaks ties
 deterministically (newest ledger line, then slug ascending) and flags `tie: true`; which mode
 (`--which`) returns `tie_candidates` instead of breaking the tie. The design is file-based throughout (roadmap `.md`, the 134 ledger, INDEX.md),
 DB-ready but not DB-dependent: `RoadmapQueue` is the single seam a future 147 DB-backed read
@@ -351,9 +353,7 @@ intent. `plastic intent show ID` prints that intent's state screen.
 - **`--store [global|<slug>]`**: three-state (pass / warn / fail). Walks store state:
   intent well-formedness, INDEX sections, conventions, and link validity. Without an
   argument it checks all stores; `global` checks only the global store; a project slug
-  checks only that project's store. A `dashboard.rb` board load runs the same check
-  in-process (`store_health`): the global board runs `--store global`, a project board
-  runs `--store <slug>`.
+  checks only that project's store.
 
 - **`--intent ID`**: three-state, one intent only, never a store sweep (intent 222).
   `verify-intent` runs it, and `end-intent` runs it as its self-check at close.
@@ -413,11 +413,13 @@ The error line still names `/plastic-doctor`, a 1.x skill that no longer ships; 
 working command is `plastic doctor`. This is a known gap in `scripts/lib/boot_banner.rb`.
 Sharing one renderer means the visible line and the model-facing line cannot drift.
 
-`hook-capture` follows the same two-channel shape for the dashboard (intent 125). When the
-prompt is `continue` (ignoring case and surrounding spaces), it adds the `dashboard.rb continue` cockpit to
-`additionalContext` and emits a top-level `systemMessage` one-line summary (counts, and the
-next big thing when there is one) from a pure `DashboardBanner` renderer. It degrades silently on any failure (subprocess, JSON,
-renderer), so a broken or slow dashboard call never crashes `UserPromptSubmit`.
+`hook-capture` follows the same two-channel shape for the report roster (intent 392, replacing
+the dashboard). When the prompt is exactly `continue` (ignoring case and surrounding spaces),
+it runs `report-screen state --all` against the working directory's store (the project store,
+or the global store when the directory maps to no project) and adds that plain-text roster to
+`additionalContext`, then emits the same roster painted with `--ansi` as the top-level
+`systemMessage`. It degrades silently on any failure (subprocess, empty output), so a broken
+or slow `report-screen` call never crashes `UserPromptSubmit`.
 
 ## what-exists-today-vs-what-is-missing
 
@@ -788,7 +790,7 @@ own isolation instead, deterministic and cwd-independent.
   a path that was never created is nothing to remove.
 - **Unified `PLASTIC_HOME` seam** (intent 169): every CLI-script and hook entry
   point resolves its sandbox override from the single env var `PLASTIC_HOME`
-  (`read-config`, `dashboard.rb`, `qmd-sync`, `provision-project-store`,
+  (`read-config`, `hook-capture`, `qmd-sync`, `provision-project-store`,
   `validate-intent`, `doctor.rb`, `install.rb`, `hooks/check-update`); an older,
   differently-named env var that only `read-config` read was hard-cut, not
   aliased. Holding this seam is a level mismatch: the env var names the
@@ -1402,72 +1404,29 @@ index, capped at `max_wait_ms` - so a chunk deep into a long streamed message wa
 for a decision that is certainly on its way, and `write_screen`/`write_noscreen` both remove
 `PENDING` the moment they run, so it is never both there and stale at once for long.
 
-## the dashboard screen (intent 331d)
+## the report roster (`report-screen state --all`, intent 392 replacing the dashboard)
 
-`dashboard.rb continue|project <slug> --screen [--ansi]` prints the dashboard as a screen
-instead of the Markdown board a prose skill once filled by hand, retired in favor of `plastic
-status`: a title (`## ▶ {scope} ·
-dashboard`, scope `global` or `project:<slug>`), six fields (Active, In delivery, Delivered,
-Roadmap, Sessions, Changed), then a Where-we-are table (the active records, most recently
-touched first, capped at 8) and a Where-we-go-next table (the dispatchable queue in rank
-order, capped at 6). `--data`, `--plain`, and `--json` are unaffected; flag precedence in
-`main` is `--data`, `--plain`, `--json`, `--screen`, then the default text renderers.
+The dashboard (`scripts/dashboard.rb`, its `--screen` renderer, `scripts/lib/dashboard_screen.rb`,
+`templates/dashboard-screen.md`, and the `:dashboard` `ScreenPaint` kind) is gone. The one place
+that filled the same job, a glance at every store's active work, is now `report-screen state
+--all <store_root>`: `plastic status` names the stores and their active intent ids (see
+"status and the report roster" above), and `hook-capture` runs `report-screen state --all`
+against the working directory's store on a bare `continue` prompt (see the `hook-capture`
+section above). `docs/help/human-report-contract.md` names the roster's own column shape and
+capped-list behavior; this section does not repeat it.
 
-**Same records, a new renderer.** The classification pipeline (`load_all`, `classify`,
-`rank_key`, `QUADRANTS`, `disposition_of`) is untouched; `screen_fields` (in `dashboard.rb`,
-beside `render_json`) reads the same classified records `--json` already reports for the
-identical scope, so Where-we-go-next's rank order is always `render_json`'s
-`dispatchable_queue` order for that scope. `scripts/lib/dashboard_screen.rb` is a small,
-data-free module: `DashboardScreen.render(fields)` fills `templates/dashboard-screen.md` from
-already-computed values, exactly like `IntentScreen.render` and `ReportScreen.render_state`
-fill their own templates. A missing source (no roadmap, no lock, no savepoint) prints "not
-recorded" or "none", never a guess; Lead reads through `ReportScreen.lead_cell` (intent 331f,
-D6) - the one freshness rule every Lead cell on every screen shares, so a stale lock never
-shows a named lead while In delivery counts it as zero, and the reader is told the lock is
-stale ("stale · N min") rather than merely absent.
-
-**Column vocabulary and the width bound (intent 331f, D5/D7).** No rendered header across the
-family reads "What" any more: the id column is "Graph ID", the title column is "Intent", every
-Steps table reads `Step | Status | Detail`, the plan screen's own reads
-`Step | Action | Detail`, Risks read `N | Risk`, and the `delivered` screen's own three tables
-read `Row | Detail | Proven by`, `Kind | Detail | Source`, and `N | Need | Reason`.
-`ScreenPaint::NOTE_HEADERS` gained `Reason` and kept `Why`, so a screen captured before the
-rename still paints. `ReportScreen.fit_screen(text, limit: 115)` is the one shared pass every
-public render entry point (and `dashboard.rb`'s screen renderer) calls last: a fitting screen
+No rendered header across the report-screen family reads "What" any more: the id column is
+"Graph ID", the title column is "Intent", every Steps table reads `Step | Status | Detail`,
+the plan screen's own reads `Step | Action | Detail`, Risks read `N | Risk`, and the
+`delivered` screen's own three tables read `Row | Detail | Proven by`, `Kind | Detail |
+Source`, and `N | Need | Reason` (intent 331f, D5/D7). `ReportScreen.fit_screen(text, limit:
+115)` is the one shared pass every public render entry point calls last: a fitting screen
 returns byte-identical, an over-limit table shrinks its widest shrinkable column first (floor
 8, a progress-bar column never shrinks, ties break leftmost), and a row that is still over the
 limit after every column hits its floor truncates on a word boundary as a last-resort backstop.
-
-**Sessions and Roadmap resolve per tier.** Sessions are always read from the global store's
-`.tmp/` heartbeats (`DaySummary.active_sessions`, `session: nil` so the calling session's own
-heartbeat counts), never per-project. Roadmap resolves the tier root - `PLASTIC_HOME` itself for
-`global`, `StoreLayout.project_root` for a project - and asks `RoadmapQueue#which` for its
-frontier; a missing `roadmaps/` directory or a `none`/`tie`/`exhausted` state renders "none"
-rather than crashing.
-
-**The `:dashboard` kind.** `scripts/lib/screens/dashboard.rb` registers `:dashboard` with
-`ScreenPaint.register`, no custom `paint:` lambda: every line of the screen classifies under
-the shared field-table/data-table grammar. Its opener is a strict subset of the already-shipped
-`:intent` opener (registered first), so a live paint call resolves through `:intent`'s path
-regardless; the registration exists so `ScreenPaint.kinds` is complete and the opener's own
-grammar (which scope forms it accepts, and that it rejects a plain intent title) is directly
-testable.
-
-**Column vocabulary (intent 331d1, an owner ruling).** Where-we-are is `Graph ID | Intent |
-Stage | Progress | Lead`; Where-we-go-next is `Rank | Graph ID | Intent | Reason`. The id
-stands in its own `Graph ID` cell rather than glued to the front of the title. The `Intent`
-cell carries the intent line up to but not including its first colon, which is where a
-Plastic intent line stops naming itself and starts explaining, then word-boundary truncated
-with an ellipsis. `What` names no column anywhere on a screen, because What is a lifecycle
-stage; `Why` is `Reason` for the same reason. `ScreenPaint::NOTE_HEADERS` lists `Reason`
-beside `Source` and `Why`, so the renamed column keeps its greyed note styling instead of
-losing it to the rename.
-
-**The 115-column bound.** No rendered row exceeds 115 visible columns. The bound is measured
-on the whole pipe-delimited row, never on one cell: `screen_fit_intent` renders every other
-cell first, subtracts their width and the table scaffolding, and gives the Intent cell what
-is left. A cell short enough on its own still drifts the row past the bound once the progress
-bar, the lead and the separators are added, which is exactly what measuring the row prevents.
+No rendered row exceeds 115 visible columns; the bound is measured on the whole
+pipe-delimited row, never on one cell, since a cell short enough on its own can still drift the
+row past the bound once a progress bar, a lead, and the separators are added.
 
 ## roadmap screens: the roadmap verb, `RoadmapQueue#roadmap`, and the Log fallback (intent 331c)
 

@@ -39,6 +39,10 @@ This version was not published separately. Its changes shipped with 2.0.1.
 
 ## Unreleased
 
+- Intent 392: the dashboard is removed. The `continue` prompt now shows the report roster
+  (`report-screen state --all`) for the working directory's store, the project store, or the
+  global store when the directory maps to no project.
+
 - Plastic runs no version control command. This removes the pull request body and template-honoring code that PRs 18 and 19 added; `plastic session commit` now only records the item and prints the commit instruction, and `plastic auto take` prints the worktree to create instead of creating it.
 
 - Intent 360: every Plastic agent now defaults to medium reasoning effort on Claude Code and Codex. Codex dispatch passes literal OpenAI model IDs and effort into `codex exec`, Codex installs OpenAI equivalents for both advisors, `read-config` is harness-aware, and read-only research nodes can return one declared Markdown report for the runner to write under the intent's `resources/` directory.
