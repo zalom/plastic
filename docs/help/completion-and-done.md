@@ -56,3 +56,14 @@ a done intent is never moved back to `## Active`.
 
 One report per audience: a delivery produces `outcome.md` plus one EM-to-CTO owner report, and
 no other step restates either (see `plastic help human-report-contract`).
+
+#### The pull request description
+
+A pull request that closes a delivery carries four headings, in this order:
+
+- **What.** The change, in one paragraph.
+- **Why.** The problem or the ruling behind it, with the date when one matters.
+- **How.** Each file or area and what changed there.
+- **Tests.** The test files run and their result, and a note that CI runs the full suite.
+
+Plain words throughout. No AI attribution anywhere in the title or the body.

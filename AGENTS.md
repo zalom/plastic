@@ -125,6 +125,14 @@ Rules for any agent (or human) contributing to this repository.
 
 ### Commits and releases
 
+
+### Pull request description
+
+Every pull request description has four headings in this order: What, Why, How,
+Tests. What says what changes, in one paragraph. Why gives the problem or the
+ruling behind it, with the date when one matters. How lists each file or area
+and what changed there. Tests names the test files run and their result, and
+says that CI runs the full suite. Write it in plain words. No AI attribution.
 - NEVER add AI attribution to a commit, tag, release note, or pull request. No
   `Co-Authored-By: Claude`, no `Co-Authored-By: Codex`, no `Generated with [Claude Code]`, no
   robot emoji footer, no `Assisted-By`. The commit belongs to the repository owner. This
