@@ -147,22 +147,27 @@ class EndIntentDryRunAgreementTest < Minitest::Test
     repo = File.join(@root, "repo")
     code = File.join(repo, ".claude", "worktrees", "1--demo")
     FileUtils.mkdir_p(code)
-    system("git", "init", "-q", code)
     File.write(File.join(code, "loose.txt"), "uncommitted\n")
     File.write(File.join(@root, ".plastic", "projects.yml"), "projects:\n  demo:\n    path: #{repo}\n")
+    code
   end
 
-  def test_dry_run_predicts_a_dirty_worktree_refusal
+  # Plastic runs no version control command (intent 390): a code worktree with
+  # uncommitted content no longer blocks the close, in the dry run or the real
+  # one. The real close prints the `git worktree remove` instruction instead
+  # of ever inspecting or removing the worktree itself.
+  def test_a_dirty_worktree_no_longer_blocks_dry_run_or_the_real_close
     dir = scaffold
     File.write(File.join(dir, "checklist.md"), "# Checklist: demo\n\n- [x] S1 the change\n")
-    dirty_code_worktree
+    code = dirty_code_worktree
 
     dry_out, dry_status = end_intent("--dry-run")
     real_out, real_status = end_intent
 
-    assert_equal 5, real_status, real_out
-    assert_equal 5, dry_status, dry_out
-    assert_includes dry_out, "would refuse at disarm"
+    assert_equal 0, dry_status, dry_out
+    assert_equal 0, real_status, real_out
+    assert_match(/git -C .* worktree remove #{Regexp.escape(code)}/, real_out)
+    assert File.exist?(File.join(code, "loose.txt")), "Plastic must never touch the worktree's files"
   end
 
   def test_changes_in_the_code_worktree_count_as_work
@@ -171,7 +176,7 @@ class EndIntentDryRunAgreementTest < Minitest::Test
 
     out, status = end_intent("--dry-run")
 
-    assert_equal 5, status, out
+    assert_equal 0, status, out
     refute_includes out, "untouched scaffold"
   end
 end

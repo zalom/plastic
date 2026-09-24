@@ -81,7 +81,6 @@ class Install < InstallerCore
 
     distribute(mode)
     bootstrap if fresh
-    git_init_if_absent
     register_with_qmd(runner: qmd_runner, detector: qmd_detector)
     migrate_advisor_config_file(File.join(plastic_home, "config.yml"))
     apply_config_flags(argv)
@@ -120,11 +119,14 @@ class Install < InstallerCore
 
   # Injectable pre-flight gate: real probes as default args, printing to an
   # injectable `out:` IO so this is hermetically testable via StringIO. Returns
-  # 1 (stop the install) when Ruby is missing/too-old, else 0.
-  def preflight_gate(ruby_version: RUBY_VERSION, node_version: node_probe, git_present: git_probe,
+  # 1 (stop the install) when Ruby is missing/too-old, else 0. Owner ruling
+  # 2026-09-24 (intent 390): no git probe here any more - Plastic itself runs
+  # no version control command, so git presence is no longer this gate's
+  # concern.
+  def preflight_gate(ruby_version: RUBY_VERSION, node_version: node_probe,
                       mise_present: mise_probe, out: $stderr)
     result = Preflight.check(ruby_version: ruby_version, node_version: node_version,
-                              git_present: git_present, mise_present: mise_present)
+                              mise_present: mise_present)
     result[:messages].each { |message| out.puts(message) }
     result[:fatal] ? 1 : 0
   end
@@ -135,12 +137,6 @@ class Install < InstallerCore
     `node --version`.strip
   rescue StandardError
     ""
-  end
-
-  def git_probe
-    !`git --version`.strip.empty?
-  rescue StandardError
-    false
   end
 
   def mise_probe

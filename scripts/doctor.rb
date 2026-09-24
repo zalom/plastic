@@ -1098,8 +1098,9 @@ def check_done_signals(scopes: nil)
                "(terminal in INDEX but the End tail did not finish)",
       details: stalled, fixable: true,
       fix_hint: "Finish the End tail via stale-lock reclaim: run /plastic-doctor reclaim the lock, " \
-                "then complete the tail (Worktree.release -> Lock.release -> purge -> QMD reindex " \
-                "last). This FINISHES a completion; it is NOT a reactivation of a done intent."
+                "then complete the tail (Arm.disarm's printed worktree-removal instruction -> " \
+                "Lock.release -> purge -> QMD reindex last). This FINISHES a completion; it is " \
+                "NOT a reactivation of a done intent."
     )
   end
 

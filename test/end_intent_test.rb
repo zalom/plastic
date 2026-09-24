@@ -4,7 +4,6 @@
 require "minitest/autorun"
 require "tmpdir"
 require "fileutils"
-require "open3"
 require "date"
 require "json"
 require_relative "../scripts/lib/savepoint"
@@ -271,19 +270,17 @@ end
     assert_match(/^## Completed\n- \[161 /, File.read(@index))
   end
 
-  def test_backfilled_files_land_in_the_store_commit
+  def test_backfilled_files_land_under_the_printed_commit_instruction
     intent_dir = build_intent(sentinel_docs: true)
     write_index
-    Open3.capture3("git", "init", "-q", @home)
-    Open3.capture3("git", "-C", @home, "add", "-A")
-    Open3.capture3("git", "-C", @home, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "seed")
 
-    _out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered", "--index", @index)
-    assert_equal 0, status
-    files, _err, st = Open3.capture3("git", "-C", @home, "show", "--name-only", "--format=", "HEAD")
-    assert st.success?
+    out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered", "--index", @index)
+    assert_equal 0, status, out
+
+    assert_match(/git -C #{Regexp.escape(@store)} add -- "#{Regexp.escape(intent_dir)}"/, out,
+                 "the printed instruction must name this intent's own directory, for the closer to add")
     %w[spec.md plan.md actions/ACTION_1.md outcome.md].each do |rel|
-      assert_includes files, "store/161--demo/#{rel}", "the close commit must carry #{rel}"
+      assert File.exist?(File.join(intent_dir, rel)), "the backfilled #{rel} must exist for that add to pick up"
     end
     refute File.exist?(File.join(intent_dir, "delivery.lock"))
   end
@@ -435,59 +432,45 @@ end
     refute File.exist?(File.join(intent_dir, "savepoint.md")), "dry-run must not append the savepoint bookend"
   end
 
-  # --- (e) store auto-commit lands with a real git repo -----------------------
+  # --- (e) the store commit instruction (owner ruling 2026-09-24: Plastic ----
+  # runs no version control command, so it prints the instruction rather
+  # than running `git add`/`git commit` itself) ------------------------------
 
-  def test_store_commit_lands_in_a_real_git_repo
+  def test_store_commit_instruction_is_printed
     build_intent
     write_index
-    Open3.capture3("git", "init", "-q", @home)
 
-    _out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered", "--index", @index)
-    assert_equal 0, status
+    out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered", "--index", @index)
+    assert_equal 0, status, out
 
-    log, _err, log_status = Open3.capture3("git", "-C", @home, "log", "--oneline")
-    assert log_status.success?
-    assert_match(/complete intent 161/, log)
-
-    status_out, = Open3.capture3("git", "-C", @home, "status", "--porcelain")
-    assert_empty status_out.strip, "the store commit must leave the working tree clean"
+    assert_match(/git -C #{Regexp.escape(@store)} add -- /, out)
+    assert_match(/git -C #{Regexp.escape(@store)} commit -m "chore: complete intent 161 \(delivered\)"/, out)
   end
 
-  def test_no_commit_flag_skips_the_store_commit
+  def test_no_commit_flag_skips_the_store_commit_instruction
     build_intent
     write_index
-    Open3.capture3("git", "init", "-q", @home)
 
-    run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered", "--index", @index, "--no-commit")
-
-    log, = Open3.capture3("git", "-C", @home, "log", "--oneline")
-    assert_empty log.strip, "--no-commit must leave the store repo with no commits"
+    out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered", "--index", @index,
+                                  "--no-commit")
+    assert_equal 0, status, out
+    refute_match(/commit -m "chore: complete intent/, out,
+                 "--no-commit must skip the printed commit instruction")
   end
 
-  # FALSIFIABLE (208): an unrelated dirty file elsewhere in the store must survive the
-  # commit untouched and uncommitted (D17's whole point).
-  def test_store_commit_never_sweeps_an_unrelated_dirty_file
+  # FALSIFIABLE (208): the printed instruction must never sweep the whole store, and must
+  # never name an unrelated file (D17's whole point, without a real git repo to prove it in).
+  def test_store_commit_instruction_never_names_a_wildcard_or_an_unrelated_file
     build_intent
     write_index
-    Open3.capture3("git", "init", "-q", @home)
-    Open3.capture3("git", "-C", @home, "add", "-A")
-    Open3.capture3("git", "-C", @home, "-c", "user.name=t", "-c", "user.email=t@t",
-                   "commit", "-q", "-m", "seed")
-
     unrelated = File.join(@home, "unrelated-scratch.md")
     File.write(unrelated, "unrelated dirty content\n")
 
-    _out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered", "--index", @index)
-    assert_equal 0, status
+    out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered", "--index", @index)
+    assert_equal 0, status, out
 
-    log, = Open3.capture3("git", "-C", @home, "log", "--oneline")
-    assert_match(/complete intent 161/, log)
-
-    show, = Open3.capture3("git", "-C", @home, "show", "--stat", "HEAD")
-    refute_match(/unrelated-scratch\.md/, show, "the unrelated file must not appear in the commit")
-
-    status_out, = Open3.capture3("git", "-C", @home, "status", "--porcelain")
-    assert_match(/unrelated-scratch\.md/, status_out, "the unrelated file must remain uncommitted/dirty")
+    refute_match(/add -A/, out, "the printed instruction must never sweep the whole store (D17)")
+    refute_match(/unrelated-scratch\.md/, out, "the printed instruction must never name an unrelated file")
   end
 
   # --- outcome-summary stamp (D2 step 1b) -------------------------------------
@@ -852,10 +835,6 @@ end
     intent_dir = build_intent(id: "161")
     File.write(File.join(intent_dir, "checklist.md"), "# Checklist\n\n- [ ] finish the thing\n")
     write_index
-    Open3.capture3("git", "init", "-q", @home)
-    Open3.capture3("git", "-C", @home, "add", "-A")
-    Open3.capture3("git", "-C", @home, "-c", "user.name=t", "-c", "user.email=t@t",
-                   "commit", "-q", "-m", "seed")
 
     out, status = run_end_intent("--store", @store, "--id", "161", "--disposition", "delivered", "--index", @index)
     assert_equal 0, status, out
@@ -869,9 +848,7 @@ end
     assert(savepoint_lines(intent_dir).any? { |l| l.include?("Done") && l.include?("delivered") },
            "the savepoint must gain the Done bookend")
 
-    log, _err, log_status = Open3.capture3("git", "-C", @home, "log", "--oneline")
-    assert log_status.success?
-    assert_match(/complete intent 161/, log, "the close must still commit the store")
+    assert_match(/complete intent 161/, out, "the close must still print the store commit instruction")
   end
 
   # --- n6 (334): the hollow-report gate reads nodes/ too (review A2/A3) --------

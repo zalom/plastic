@@ -49,17 +49,16 @@ def usage_abort(message)
   exit 2
 end
 
-# The one place allowed to shell out (D2/D20): resolves the tag that CONTAINS
-# the intent's merge commit, in the project's own repository, so the version
-# on the delivered screen is the release that merge shipped in. The
-# repository comes from --repo, else from projects.yml beside the store (the
-# installed layout, <home>/projects/<slug>/store/<id>), else the repository
-# this script lives in (the in-repo layout, `include_self: true`) - unless
+# Resolves the project repository purely from the filesystem (no shell, no
+# git command): --repo, else projects.yml beside the store (the installed
+# layout, <home>/projects/<slug>/store/<id>), else the repository this
+# script lives in (the in-repo layout, `include_self: true`) - unless
 # `include_self: false` (the branch reader, D23), in which case a global
 # intent's repo never falls back to the script's own repository, since that
-# is not the intent's repository at all. No merge sha, no repository, or no
-# containing tag all answer nil, and the screen says "not recorded" rather
-# than guessing from HEAD (D14). The pure module never reads git.
+# is not the intent's repository at all. A candidate counts only when a
+# `.git` directory sits at it (a filesystem check, never a git call). No
+# merge sha or no repository both answer nil, and the screen says "not
+# recorded" rather than guessing (D14). The pure module never reads git.
 def resolve_repo(intent_dir, explicit_repo, script_dir, include_self: true)
   candidates = []
   candidates << File.expand_path(explicit_repo) if explicit_repo
@@ -81,27 +80,33 @@ def resolve_repo(intent_dir, explicit_repo, script_dir, include_self: true)
   candidates.find { |c| File.exist?(File.join(c, ".git")) }
 end
 
+# Owner ruling 2026-09-24 (intent 390): Plastic runs no version control
+# command, so this reader no longer shells out to find which tag contains
+# the merge commit. When a merge sha is on record but no version was
+# recorded in outcome.md either, it prints the command a person can run
+# themselves and answers nil - the screen then falls back to "merge <sha>"
+# (D11), never a guess.
 def git_tag_reader(explicit_repo:, script_dir:)
   lambda do |intent_dir|
     sha = ReportScreen.merge_sha(intent_dir)
-    return nil unless sha
+    next nil unless sha
     repo = resolve_repo(intent_dir, explicit_repo, script_dir)
-    return nil unless repo
-    tags = `git -C #{repo.shellescape} tag --contains #{sha.shellescape} 2>/dev/null`
-    versions = tags.lines.map(&:strip).reject(&:empty?).filter_map do |tag|
-      v = tag.sub(/\Av/, "")
-      Gem::Version.correct?(v) ? [Gem::Version.new(v), tag] : nil
-    end
-    versions.min_by(&:first)&.last
+    next nil unless repo
+
+    warn "report-screen: no recorded version for #{sha}; find it yourself with " \
+         "git -C #{repo.shellescape} tag --contains #{sha.shellescape}"
+    nil
   end
 end
 
-# D9/D23: the injected branch reader. flow_base (a pure YAML read, never
-# git) wins when the intent's project names a flow base; otherwise the
-# repository's remote HEAD, else whichever of main/master exists. Resolves
-# the repo with `include_self: false` (D23): a global-store intent must
-# never fall back to the script's OWN repository (~/.plastic itself, on
-# "main" in the installed layout) and print a confident, wrong branch.
+# D9/D23 (owner ruling 2026-09-24: no git command left here either): the
+# injected branch reader. flow_base (a pure YAML read) wins when the
+# intent's project names a flow base; otherwise the literal "main" once a
+# real project repository is known (resolve_repo, filesystem-only, D23's
+# `include_self: false` so a global-store intent never borrows the script's
+# own repository), else nil. Plastic prints no branch-detection instruction
+# here: the reader's whole job was picking a default, and "main" is that
+# default, not evidence a command would find.
 def git_branch_reader(explicit_repo:, script_dir:)
   lambda do |intent_dir|
     flow = ReportScreen.flow_base(intent_dir)
@@ -110,13 +115,7 @@ def git_branch_reader(explicit_repo:, script_dir:)
     repo = resolve_repo(intent_dir, explicit_repo, script_dir, include_self: false)
     next nil unless repo
 
-    branch = `git -C #{repo.shellescape} symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null`.strip
-    branch = branch.sub(%r{\Aorigin/}, "")
-    next branch unless branch.empty?
-
-    %w[main master].find do |b|
-      system("git", "-C", repo, "rev-parse", "--verify", "--quiet", b, out: File::NULL, err: File::NULL)
-    end
+    "main"
   end
 end
 

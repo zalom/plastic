@@ -2,18 +2,32 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 
-# restore-intent-v1 - restore a completed intent's PROSE to an explicit v1 git ref
-# while preserving its frontmatter GRAPH (sources/chain) as a target-resolved
-# union of the v1 snapshot and the current snapshot (intent 193). This is the
-# ONLY sanctioned way to restore a completed intent to v1; a hand-run whole-file
-# `git checkout`/revert is forbidden (see plastic-conventions > references/maintenance-and-revisions.md,
-# WORK vs MAINTENANCE and its Restore-to-v1 paragraph), because it cannot tell prose from graph
-# metadata and silently destroys backlinks written after v1 (the 124/131 incident this tool
-# exists to prevent).
+# restore-intent-v1 - restore a completed intent's PROSE to an explicit v1
+# snapshot while preserving its frontmatter GRAPH (sources/chain) as a
+# target-resolved union of the v1 snapshot and the current snapshot (intent
+# 193). This is the ONLY sanctioned way to restore a completed intent to v1;
+# a hand-run whole-file `git checkout`/revert is forbidden (see
+# plastic-conventions > references/maintenance-and-revisions.md, WORK vs
+# MAINTENANCE and its Restore-to-v1 paragraph), because it cannot tell prose
+# from graph metadata and silently destroys backlinks written after v1 (the
+# 124/131 incident this tool exists to prevent).
 #
 # Usage:
-#   restore-intent-v1 <intent-id> --at <git-ref> [--plastic-home PATH] [--apply] \
-#                      [--skip-links] [--audit-path PATH]
+#   restore-intent-v1 <intent-id> --at <label> --snapshot-dir <dir> \
+#                      [--plastic-home PATH] [--apply] [--skip-links] [--audit-path PATH]
+#
+# Owner ruling 2026-09-24 (intent 390): Plastic runs no version control
+# command, so this tool no longer shells out to `git show` to read the v1
+# snapshot itself. --at is now a free-form label (the ref the snapshot was
+# taken at, kept for the report and revisions.md entry, never resolved or
+# verified here). --snapshot-dir names a directory the caller has already
+# populated with the v1 content, one file per path this tool needs, each at
+# the SAME path relative to the directory as the file has under
+# --plastic-home (e.g. <snapshot-dir>/store/<id>--<slug>/<id>--<slug>.md).
+# With no --snapshot-dir, or a file missing from it, the tool prints the
+# exact `git -C <home> show <at>:<path>` command to run to produce it and
+# aborts with no write - the person or agent runs that command (or an
+# equivalent from another VCS) themselves.
 #
 # Dry-run by default (the OPPOSITE of rebuild-graph/project-links, which default
 # to a real run): this tool is rarer and higher blast-radius, and this exact
@@ -36,13 +50,14 @@
 # --skip-links to decline it (the tool then warns loudly that `## Links` is
 # stale until project-links is run by hand).
 #
-# Pure-Ruby (no bash). Graph math lives in lib/restore_intent_v1.rb and reuses
-# lib/graph_rebuild.rb + lib/frontmatter_writer.rb verbatim; this shell does only
-# discovery, git IO, and reporting. Never pushes ~/.plastic.
+# Pure-Ruby (no bash, no shell-out). Graph math lives in lib/restore_intent_v1.rb
+# and reuses lib/graph_rebuild.rb + lib/frontmatter_writer.rb verbatim; this
+# shell does only discovery, snapshot-directory reads, and reporting. Never
+# touches ~/.plastic's own git history in any way.
 
 require "fileutils"
 require "time"
-require "open3"
+require "shellwords"
 
 require_relative "lib/store_discovery"
 require_relative "lib/intent_validator"
@@ -58,7 +73,8 @@ class RestoreIntentV1CLI
   def self.parse_argv(argv)
     args = argv.dup
     intent_id = nil
-    opts = { at: nil, plastic_home: DEFAULT_HOME, apply: false, skip_links: false, audit_path: nil }
+    opts = { at: nil, plastic_home: DEFAULT_HOME, apply: false, skip_links: false, audit_path: nil,
+             snapshot_dir: nil }
     i = 0
     while i < args.length
       case args[i]
@@ -67,6 +83,7 @@ class RestoreIntentV1CLI
       when "--apply" then opts[:apply] = true
       when "--skip-links" then opts[:skip_links] = true
       when "--audit-path" then opts[:audit_path] = args[i += 1]
+      when "--snapshot-dir" then opts[:snapshot_dir] = args[i += 1]
       else
         intent_id ||= args[i]
       end
@@ -75,31 +92,36 @@ class RestoreIntentV1CLI
     [intent_id, opts]
   end
 
-  def initialize(intent_id, at:, plastic_home: DEFAULT_HOME, apply: false, skip_links: false, audit_path: nil)
+  def initialize(intent_id, at:, plastic_home: DEFAULT_HOME, apply: false, skip_links: false, audit_path: nil,
+                 snapshot_dir: nil)
     @intent_id = intent_id
     @at = at
     @plastic_home = plastic_home
     @apply = apply
     @skip_links = skip_links
     @audit_path = audit_path
+    @snapshot_dir = snapshot_dir
   end
 
-  attr_reader :intent_id, :at, :plastic_home, :apply, :skip_links, :audit_path
+  attr_reader :intent_id, :at, :plastic_home, :apply, :skip_links, :audit_path, :snapshot_dir
 
   def run
     abort_loud("--at is required") if at.nil? || at.to_s.strip.empty?
     abort_loud("intent id is required") if intent_id.nil? || intent_id.to_s.strip.empty?
-    abort_loud("--at #{at} does not resolve to a commit") unless ref_exists?
 
     discovery = StoreDiscovery.discover(plastic_home)
     dir, store_key = find_intent_dir(discovery, intent_id)
     abort_loud("intent #{intent_id} not found in any known store under #{plastic_home}") if dir.nil?
 
+    abort_loud(missing_snapshot_dir_message(dir)) if snapshot_dir.nil? || snapshot_dir.to_s.strip.empty?
+    abort_loud("--snapshot-dir #{snapshot_dir} does not exist") unless Dir.exist?(snapshot_dir)
+
     base = File.basename(dir)
     md_path = File.join(dir, "#{base}.md")
 
-    v1_md = git_show(relative(md_path))
-    abort_loud("--at #{at} has no version of #{base}.md; aborting, no write") if v1_md.nil?
+    v1_md = read_snapshot(md_path)
+    abort_loud("--at #{at} has no #{base}.md under --snapshot-dir #{snapshot_dir}; aborting, no " \
+               "write. #{fetch_instruction(md_path)}") if v1_md.nil?
 
     current_md = File.read(md_path)
     current_fm = IntentValidator.parse_frontmatter_text(current_md)
@@ -188,7 +210,7 @@ class RestoreIntentV1CLI
     other_files = {}
     PROSE_SIBLINGS.each do |f|
       path = File.join(dir, f)
-      v1_content = git_show(relative(path))
+      v1_content = read_snapshot(path)
       next if v1_content.nil? # did not exist at v1: nothing to restore
 
       current_content = File.exist?(path) ? File.read(path) : nil
@@ -214,18 +236,48 @@ class RestoreIntentV1CLI
     reproject_links
   end
 
-  def ref_exists?
-    _out, status = Open3.capture2("git", "-C", plastic_home, "rev-parse", "--verify", "--quiet", "#{at}^{commit}")
-    status.success?
-  end
-
-  def git_show(rel_path)
-    out, status = Open3.capture2("git", "-C", plastic_home, "show", "#{at}:#{rel_path}")
-    status.success? ? out : nil
+  # Reads a v1 file from the caller-populated snapshot directory - never git,
+  # never a subprocess. nil means "not present at v1" (a legitimate answer for
+  # a prose sibling that did not exist yet; the caller distinguishes "not
+  # fetched" from "did not exist at v1" for the required #{base}.md itself via
+  # fetch_instruction's message).
+  def read_snapshot(path)
+    snap_path = File.join(snapshot_dir, relative(path))
+    File.exist?(snap_path) ? File.read(snap_path) : nil
   end
 
   def relative(path)
     path.delete_prefix("#{plastic_home}/")
+  end
+
+  def fetch_instruction(path)
+    rel = relative(path)
+    "Fetch it yourself: git -C #{plastic_home.shellescape} show #{at.shellescape}:#{rel.shellescape} " \
+      "> #{File.join(snapshot_dir.to_s, rel)} (create the parent directory first if it does not exist)."
+  end
+
+  # Printed once, before any snapshot read is attempted, when --snapshot-dir
+  # was not given at all. Names every file this restore MIGHT need (the
+  # intent's own .md plus every PROSE_SIBLINGS name) so one pass of copy-paste
+  # commands is enough; a nonzero `git show` for a sibling just means it did
+  # not exist at --at, which is fine to skip.
+  def missing_snapshot_dir_message(dir)
+    base = File.basename(dir)
+    paths = [File.join(dir, "#{base}.md"), *PROSE_SIBLINGS.map { |f| File.join(dir, f) }]
+    lines = [
+      "--snapshot-dir is required. Plastic runs no version control command itself, so it " \
+      "cannot fetch the v1 snapshot; fetch it yourself first, one command per file below (a " \
+      "nonzero exit for a lifecycle sibling just means it did not exist at #{at} - skip it):",
+      "",
+    ]
+    paths.each do |p|
+      rel = relative(p)
+      lines << "  git -C #{plastic_home.shellescape} show #{at.shellescape}:#{rel.shellescape} " \
+               "> <snapshot-dir>/#{rel}"
+    end
+    lines << ""
+    lines << "Then rerun with --snapshot-dir <snapshot-dir> (create parent directories as needed)."
+    lines.join("\n")
   end
 
   # id--slug directory resolution: exact id match on the dirname's segment before

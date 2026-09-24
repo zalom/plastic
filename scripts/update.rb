@@ -251,15 +251,15 @@ class Update < InstallerCore
     0
   end
 
-  # Intent 372 (former update skill, lines 124-125): `~/.plastic` is its own git
-  # repository (install.rb's git_init_if_absent), so a successful update commits the
-  # core files it just re-synced. Empty commits are allowed: a same-version repair
-  # re-syncs nothing new, and that is still worth a ledger-adjacent commit.
-  def commit_core_files(target, runner: ->(cmd) { system(*cmd) })
-    runner.call(["git", "-C", plastic_home, "add", "PLASTIC.md", "scripts", "AGENTS.md", "VERSION",
-      "versions.json", "deprecations.yml", "config_asks.yml"])
-    runner.call(["git", "-C", plastic_home, "commit", "-m", "chore: update Plastic to #{target}",
-      "--allow-empty"])
+  # Intent 372 (former update skill, lines 124-125); owner ruling 2026-09-24
+  # (intent 390): Plastic runs no version control command, so this prints the
+  # add/commit instruction rather than running it. `--allow-empty` stays in
+  # the printed commit: a same-version repair re-syncs nothing new, and that
+  # is still worth naming when the home carries its own repository.
+  def commit_core_files(target)
+    puts "git -C #{plastic_home} add PLASTIC.md scripts AGENTS.md VERSION versions.json " \
+      "deprecations.yml config_asks.yml"
+    puts "git -C #{plastic_home} commit -m \"chore: update Plastic to #{target}\" --allow-empty"
   end
 
   def clear_update_check_cache

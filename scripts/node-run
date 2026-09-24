@@ -88,8 +88,7 @@ module NodeRunCLI
   # one is actually provisioned on disk, else the shared intent worktree -
   # verify and research nodes never get a worktree of their own (327 D6,
   # D29), so the only place they could ever leave a diff is the intent
-  # worktree itself, exactly where NodeWorktree.changed_paths already looks
-  # for one.
+  # worktree itself.
   def node_target_dir(context, node:, kind:)
     if NodeWorktree::WORKTREE_KINDS.include?(kind.to_s)
       p = NodeWorktree.paths(context, node: node)

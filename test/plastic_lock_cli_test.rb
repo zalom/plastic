@@ -145,15 +145,6 @@ class PlasticLockCliTest < Minitest::Test
   # runs no git worktree add itself); it only reports whether the workspace
   # the agent was told to create is present or absent.
 
-  # Fake ShellRunner that records `git worktree remove` calls (proves the
-  # release path removes a worktree the agent already created).
-  class Recorder
-    Result = Struct.new(:status, :stdout, :stderr) { def success?; status.zero?; end }
-    attr_reader :calls
-    def initialize; @calls = []; end
-    def run(*args); @calls << args.map(&:to_s); Result.new(0, "", ""); end
-  end
-
   def test_repair_creates_no_worktree_and_reports_it_absent
     report = repair
     assert_equal "repaired", report["status"]
@@ -161,7 +152,7 @@ class PlasticLockCliTest < Minitest::Test
     refute Dir.exist?(File.join(@home, "repo", ".claude", "worktrees", "96--demo"))
   end
 
-  def test_released_repaired_intent_removes_a_worktree_the_agent_already_created
+  def test_disarm_of_a_repaired_intent_prints_the_removal_instruction_for_a_worktree_the_agent_already_created
     repo = File.join(@home, "repo")
     FileUtils.mkdir_p(repo)
     File.write(File.join(@home, ".plastic", "projects.yml"),
@@ -174,11 +165,9 @@ class PlasticLockCliTest < Minitest::Test
     assert_equal code_wt, after.dig("worktree", "code"), "the block is derived from projects.yml and the directory on disk"
     assert_equal true, after.dig("worktree", "provisioned")
 
-    recorder = Recorder.new
-    Worktree.release(after, home: @home, runner: recorder)
-    removes = recorder.calls.select { |c| c.include?("remove") && c.include?(code_wt) }
-    refute_empty removes,
-                 "AC5: End cleanup issues `worktree remove` for the repaired intent's code worktree"
+    result = Arm.disarm(intent_dir: @intent_dir, session: "sess-1", home: @home)
+    assert_equal "git -C #{repo} worktree remove #{code_wt}", result[:worktree_removal],
+                 "AC5: disarm prints the `worktree remove` instruction for the repaired intent's code worktree"
   end
 
   # --- CLI verbs ---------------------------------------------------------------

@@ -45,7 +45,7 @@ module RunnerAnswer
 
   def answer(context, node:, text:, now: Time.now, ledger: NodeLedger,
              caps: ReadySet::DEFAULT_CAPS, renamer: File.method(:rename),
-             worktree: NodeWorktree, runner: Worktree::ShellRunner.new)
+             worktree: NodeWorktree)
     node = node.to_s
     intent_dir = context.intent_dir
     graph_path = File.join(intent_dir, "graph.md")
@@ -70,6 +70,7 @@ module RunnerAnswer
 
     kind = (nodes_decl[node] || {})[:kind]
     respun_to = nil
+    release_instruction = nil
 
     if kind.to_s == "decision" && current_state == "needs_decision"
       gf = GraphFile.append_decision(graph_path, text.to_s.strip, renamer: renamer)
@@ -90,8 +91,10 @@ module RunnerAnswer
       attempts = ReadySet.attempts_count(entries, node)
 
       if cap && attempts >= cap
-        respun_to = respin(intent_dir, node, nodes_decl, edges, ledger: ledger, now: now, renamer: renamer,
-                            holder: context.session, context: context, worktree: worktree, runner: runner)
+        respin_result = respin(intent_dir, node, nodes_decl, edges, ledger: ledger, now: now, renamer: renamer,
+                                holder: context.session, context: context, worktree: worktree)
+        respun_to = respin_result[:succ_id]
+        release_instruction = respin_result[:release_instruction]
       else
         fields = {}
         fields[:holder] = context.session unless blank?(context.session)
@@ -104,15 +107,19 @@ module RunnerAnswer
     RunnerCore.render_status(context)
 
     {
-      ok: true, respun_to: respun_to, errors: [],
+      ok: true, respun_to: respun_to, release_instruction: release_instruction, errors: [],
       newly_ready: newly_ready(intent_dir, before_content: before_content, before_nodes: nodes_decl, before_edges: edges),
     }
   end
 
   # --- the hard-cap respin (327 D22) ------------------------------------------
 
+  # respin(...) -> {succ_id:, release_instruction:}. Owner ruling 2026-09-24:
+  # `worktree.release` no longer removes the superseded node's own worktree
+  # itself - it names the removal instruction, carried back here so `answer`
+  # can surface it to the caller alongside the new successor id.
   def respin(intent_dir, node, nodes_decl, edges, ledger:, now:, renamer:, holder: nil,
-             context:, worktree: NodeWorktree, runner: Worktree::ShellRunner.new)
+             context:, worktree: NodeWorktree)
     decl = nodes_decl[node] || {}
     kind = decl[:kind]
     node_path = ReadySet.find_node_path(intent_dir, node)
@@ -140,10 +147,11 @@ module RunnerAnswer
                               fields: fields, now: now)
 
     # M5/D7: a superseded node's evidence no longer needs to survive - its
-    # own worktree releases here, the same as `done`'s does in RunnerAbsorb.
-    worktree.release(context, node: node, state: "superseded", runner: runner)
+    # own worktree's removal instruction is named here, the same as `done`'s
+    # is in RunnerAbsorb.
+    release_instruction = worktree.release(context, node: node, state: "superseded")[:instruction]
 
-    succ_id
+    { succ_id: succ_id, release_instruction: release_instruction }
   end
   private_class_method :respin
 

@@ -15,21 +15,6 @@ class InstallerCoreGitAndQmdTest < Minitest::Test
     FileUtils.rm_rf(File.dirname(@home))
   end
 
-  def test_git_init_creates_the_home_and_initializes_it_quietly
-    @install.git_init_if_absent(runner: ->(cmd) { @calls << cmd })
-
-    assert File.directory?(@home)
-    assert_equal [["git", "-C", @home, "init", "-q"]], @calls
-  end
-
-  def test_git_init_leaves_an_existing_repository_alone
-    FileUtils.mkdir_p(File.join(@home, ".git"))
-
-    @install.git_init_if_absent(runner: ->(cmd) { @calls << cmd })
-
-    assert_empty @calls
-  end
-
   def test_register_with_qmd_adds_the_global_store
     FileUtils.mkdir_p(File.join(@home, "store"))
     runner = ->(args) {

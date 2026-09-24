@@ -17,41 +17,27 @@ require_relative "../scripts/lib/worktree"
 
 # RunnerWatch (intent 340a, G7b, n1): one tick over disk truth. Matrix rows
 # 1.1-1.18 in nodes/n1.md. Hermetic: every fixture lives under Dir.mktmpdir,
-# every git call goes through an injected fake runner, no real ~/.plastic is
-# ever touched.
+# no real ~/.plastic is ever touched.
+#
+# Owner ruling 2026-09-24 (intent 390 part B): Plastic runs no version
+# control command. `tick` no longer takes a `runner:` seam, and the
+# `RunnerSweep.abort_if_merging` step (a `git rev-parse MERGE_HEAD` check)
+# this tick once ran before reclaim is gone with it - Plastic never runs a
+# merge of its own to leave half-finished, so there is nothing left to abort
+# on. Movement (row 1.13) is proven through the intent worktree's own newest
+# file mtime now, never a git branch head.
 class RunnerWatchTest < Minitest::Test
   INTENT_ID = "340a"
   INTENT_SLUG = "watch-fixture"
 
-  # A fake ShellRunner, same shape as RunnerSweepTest's: records every call
-  # and answers via a block, defaulting to "not found" (exit 1).
-  class FakeRunner
-    attr_reader :calls
-
-    def initialize(&block)
-      @calls = []
-      @responder = block
-    end
-
-    def run(*args)
-      @calls << args.map(&:to_s)
-      r = @responder ? @responder.call(args.map(&:to_s)) : nil
-      r || Worktree::ShellRunner::Result.new(1, "", "")
-    end
-  end
-
-  # A sweep double that proves D3: it delegates abort_if_merging and reclaim
-  # to the real RunnerSweep, but raises if anything ever calls #run - the
-  # heartbeating composed entry point RunnerWatch must never touch.
+  # A sweep double that proves D3: it delegates reclaim to the real
+  # RunnerSweep, but raises if anything ever calls #run - the heartbeating
+  # composed entry point RunnerWatch must never touch.
   module RunGuardSweep
     module_function
 
-    def abort_if_merging(context, runner:)
-      RunnerSweep.abort_if_merging(context, runner: runner)
-    end
-
-    def reclaim(context, runner:, skip: [], now: Time.now)
-      RunnerSweep.reclaim(context, runner: runner, skip: skip, now: now)
+    def reclaim(context, skip: [], now: Time.now)
+      RunnerSweep.reclaim(context, skip: skip, now: now)
     end
 
     def run(*)
@@ -175,7 +161,7 @@ class RunnerWatchTest < Minitest::Test
 
     begin
       ctx = build_context
-      result = RunnerWatch.tick(ctx, runner: FakeRunner.new)
+      result = RunnerWatch.tick(ctx)
 
       assert result[:busy]
       refute File.exist?(state_path)
@@ -193,26 +179,16 @@ class RunnerWatchTest < Minitest::Test
     write_savepoint("")
     ctx = build_context
 
-    result = RunnerWatch.tick(ctx, runner: FakeRunner.new, sweep: RunGuardSweep)
+    result = RunnerWatch.tick(ctx, sweep: RunGuardSweep)
 
     refute result[:busy]
   end
 
-  # --- 1.3: refuses on a merge in progress ------------------------------------------
-
-  def test_merge_in_progress_refuses_the_tick
-    write_one_node_graph
-    write_savepoint("")
-    runner = FakeRunner.new { |args| Worktree::ShellRunner::Result.new(0, "abcd1234\n", "") if args.include?("MERGE_HEAD") }
-    ctx = build_context(worktree: "/fake/worktree")
-
-    result = RunnerWatch.tick(ctx, runner: runner)
-
-    assert_equal "merge_in_progress", result[:class]
-    assert(result[:blockers].any? { |b| b.include?("merge is in progress") })
-    refute File.exist?(state_path)
-    refute File.exist?(record_path)
-  end
+  # --- 1.3: the merge-abort check is gone --------------------------------------------
+  #
+  # Owner ruling 2026-09-24: Plastic never runs a merge of its own, so there
+  # is no `merge_in_progress` class left to refuse a tick on - the former row
+  # 1.3 fixture is gone with the check it proved.
 
   # --- 1.4: reclaim goes through RunnerSweep.reclaim --------------------------------
 
@@ -221,7 +197,7 @@ class RunnerWatchTest < Minitest::Test
     write_savepoint(line("n1", "running", running_fields(expires: "2000-01-01T00:00:00Z")))
     ctx = build_context
 
-    result = RunnerWatch.tick(ctx, runner: FakeRunner.new, now: Time.iso8601("2026-09-13T00:00:00Z"))
+    result = RunnerWatch.tick(ctx, now: Time.iso8601("2026-09-13T00:00:00Z"))
 
     assert_equal ["n1"], result[:reclaimed]
     assert_match(/n1\s+reclaimed/, File.read(File.join(@dir, "savepoint.md")))
@@ -234,7 +210,7 @@ class RunnerWatchTest < Minitest::Test
     write_savepoint(line("n1", "done", gates: "g1", commit: "c1") + "2026-09-13T00:00:00Z  Done  delivered\n")
     ctx = build_context
 
-    result = RunnerWatch.tick(ctx, runner: FakeRunner.new)
+    result = RunnerWatch.tick(ctx)
 
     assert_equal "closed", result[:class]
   end
@@ -246,7 +222,7 @@ class RunnerWatchTest < Minitest::Test
     write_savepoint(line("n1", "done", gates: "g1", commit: "c1"))
     ctx = build_context
 
-    result = RunnerWatch.tick(ctx, runner: FakeRunner.new)
+    result = RunnerWatch.tick(ctx)
 
     assert_equal "done_unreported", result[:class]
   end
@@ -258,7 +234,7 @@ class RunnerWatchTest < Minitest::Test
     write_savepoint("")
     ctx = build_context
 
-    result = RunnerWatch.tick(ctx, runner: FakeRunner.new)
+    result = RunnerWatch.tick(ctx)
 
     assert_equal "moving", result[:class]
     assert_equal ["n1"], result[:ready]
@@ -274,7 +250,7 @@ class RunnerWatchTest < Minitest::Test
     write_state(fingerprint: "stale-fingerprint", quiet_ticks: 5, tick: 5)
     ctx = build_context
 
-    result = RunnerWatch.tick(ctx, runner: FakeRunner.new)
+    result = RunnerWatch.tick(ctx)
 
     assert_equal "moving", result[:class]
     assert_equal 0, read_state["quiet_ticks"]
@@ -287,10 +263,10 @@ class RunnerWatchTest < Minitest::Test
     write_one_node_graph
     write_savepoint(line("n1", "running", running_fields(expires: "2026-09-13T01:00:00Z")))
     ctx = build_context
-    fingerprint = RunnerWatch.fingerprint(ctx, runner: FakeRunner.new)
+    fingerprint = RunnerWatch.fingerprint(ctx)
     write_state(fingerprint: fingerprint, quiet_ticks: 0, tick: 1)
 
-    result = RunnerWatch.tick(ctx, runner: FakeRunner.new, now: Time.iso8601("2026-09-13T00:30:00Z"))
+    result = RunnerWatch.tick(ctx, now: Time.iso8601("2026-09-13T00:30:00Z"))
 
     assert_equal "quiet", result[:class]
     assert_equal 1, read_state["quiet_ticks"]
@@ -302,10 +278,10 @@ class RunnerWatchTest < Minitest::Test
     write_one_node_graph
     write_savepoint(line("n1", "failed_verification", gates: "g1", reason: "broke"))
     ctx = build_context
-    fingerprint = RunnerWatch.fingerprint(ctx, runner: FakeRunner.new)
+    fingerprint = RunnerWatch.fingerprint(ctx)
     write_state(fingerprint: fingerprint, quiet_ticks: 1, tick: 2)
 
-    result = RunnerWatch.tick(ctx, runner: FakeRunner.new)
+    result = RunnerWatch.tick(ctx)
 
     assert_equal "stalled", result[:class]
   end
@@ -316,10 +292,10 @@ class RunnerWatchTest < Minitest::Test
     write_one_node_graph
     write_savepoint(line("n1", "running", running_fields(expires: "2026-09-13T02:00:00Z")))
     ctx = build_context
-    fingerprint = RunnerWatch.fingerprint(ctx, runner: FakeRunner.new)
+    fingerprint = RunnerWatch.fingerprint(ctx)
     write_state(fingerprint: fingerprint, quiet_ticks: 1, tick: 2)
 
-    result = RunnerWatch.tick(ctx, runner: FakeRunner.new, now: Time.iso8601("2026-09-13T00:30:00Z"))
+    result = RunnerWatch.tick(ctx, now: Time.iso8601("2026-09-13T00:30:00Z"))
 
     assert_equal "quiet", result[:class]
   end
@@ -331,7 +307,7 @@ class RunnerWatchTest < Minitest::Test
     write_savepoint(line("n1", "blocked", reason: "waiting on the owner"))
     ctx = build_context
 
-    result = RunnerWatch.tick(ctx, runner: FakeRunner.new)
+    result = RunnerWatch.tick(ctx)
 
     assert_equal "stalled", result[:class]
     assert_equal [], result[:ready]
@@ -341,17 +317,23 @@ class RunnerWatchTest < Minitest::Test
 
   # --- 1.13: the branch head joins the fingerprint --------------------------------------
 
-  def test_branch_commit_counts_as_movement
+  def test_new_worktree_file_counts_as_movement
     write_one_node_graph
     write_savepoint("")
-    ctx = build_context(worktree: "/fake/worktree")
-    runner_a = FakeRunner.new { |args| Worktree::ShellRunner::Result.new(0, "sha-one\n", "") if args.include?("HEAD") }
-    RunnerWatch.tick(ctx, runner: runner_a)
+    worktree = Dir.mktmpdir("watch-worktree")
+    begin
+      File.write(File.join(worktree, "a.txt"), "a\n")
+      ctx = build_context(worktree: worktree)
+      RunnerWatch.tick(ctx)
 
-    runner_b = FakeRunner.new { |args| Worktree::ShellRunner::Result.new(0, "sha-two\n", "") if args.include?("HEAD") }
-    result = RunnerWatch.tick(ctx, runner: runner_b)
+      File.write(File.join(worktree, "b.txt"), "b\n")
+      File.utime(Time.now + 5, Time.now + 5, File.join(worktree, "b.txt"))
+      result = RunnerWatch.tick(ctx)
 
-    assert_equal "moving", result[:class]
+      assert_equal "moving", result[:class]
+    ensure
+      FileUtils.remove_entry(worktree) if Dir.exist?(worktree)
+    end
   end
 
   # --- 1.14: watch.state is git-ignored -------------------------------------------------
@@ -361,7 +343,7 @@ class RunnerWatchTest < Minitest::Test
     write_savepoint("")
     ctx = build_context
 
-    RunnerWatch.tick(ctx, runner: FakeRunner.new)
+    RunnerWatch.tick(ctx)
 
     gitignore = File.read(File.join(@dir, ".gitignore"))
     assert_includes gitignore.each_line.map(&:strip), "watch.state"
@@ -379,7 +361,7 @@ class RunnerWatchTest < Minitest::Test
     write_savepoint("")
     ctx = build_context
 
-    RunnerWatch.tick(ctx, runner: FakeRunner.new, now: Time.iso8601("2026-09-13T03:00:00Z"))
+    RunnerWatch.tick(ctx, now: Time.iso8601("2026-09-13T03:00:00Z"))
 
     lines = File.read(record_path).each_line.to_a
     assert_equal 1, lines.length
@@ -396,7 +378,7 @@ class RunnerWatchTest < Minitest::Test
     write_savepoint("")
     ctx = build_context(session: "sess-1")
 
-    RunnerWatch.tick(ctx, runner: FakeRunner.new, now: Time.iso8601("2026-09-13T03:00:00Z"))
+    RunnerWatch.tick(ctx, now: Time.iso8601("2026-09-13T03:00:00Z"))
 
     assert_match(/lock=held\n\z/, File.read(record_path).each_line.to_a.first)
   end
@@ -408,7 +390,7 @@ class RunnerWatchTest < Minitest::Test
     write_savepoint("")
     ctx = build_context
 
-    result = RunnerWatch.tick(ctx, runner: FakeRunner.new, record: false)
+    result = RunnerWatch.tick(ctx, record: false)
 
     assert_equal "moving", result[:class]
     refute File.exist?(state_path)
@@ -423,7 +405,7 @@ class RunnerWatchTest < Minitest::Test
     File.write(state_path, "{not json")
     ctx = build_context
 
-    result = RunnerWatch.tick(ctx, runner: FakeRunner.new)
+    result = RunnerWatch.tick(ctx)
 
     assert_equal "moving", result[:class]
     assert_equal 1, read_state["tick"]
@@ -439,7 +421,7 @@ class RunnerWatchTest < Minitest::Test
     write_savepoint("")
     ctx = build_context
 
-    result = RunnerWatch.tick(ctx, runner: FakeRunner.new)
+    result = RunnerWatch.tick(ctx)
 
     assert_equal "stalled", result[:class]
     assert_equal ctx.graph[:errors], result[:blockers]
@@ -495,7 +477,7 @@ class RunnerWatchTest < Minitest::Test
     ctx = build_context(session: "sess-1")
     until_empty = FakeUntilEmpty.new([["n1"], ["n2"]])
 
-    result = RunnerWatch.tick(ctx, runner: FakeRunner.new, dispatch: true, harness: "codex",
+    result = RunnerWatch.tick(ctx, dispatch: true, harness: "codex",
                                until_empty: until_empty, now: Time.iso8601("2026-09-13T03:00:00Z"))
 
     assert_equal ["n1", "n2"], result[:dispatched]
@@ -509,7 +491,7 @@ class RunnerWatchTest < Minitest::Test
     write_savepoint("")
     ctx = build_context
 
-    result = RunnerWatch.tick(ctx, runner: FakeRunner.new, dispatch: true, harness: "codex",
+    result = RunnerWatch.tick(ctx, dispatch: true, harness: "codex",
                                until_empty: RefusingUntilEmpty, now: Time.iso8601("2026-09-13T03:00:00Z"))
 
     assert_empty result[:dispatched]
@@ -527,7 +509,7 @@ class RunnerWatchTest < Minitest::Test
     File.write(File.join(@dir, ".cache", "meter-state.json"), JSON.generate("state" => "stop"))
     ctx = build_context(session: "sess-1")
 
-    result = RunnerWatch.tick(ctx, runner: FakeRunner.new, dispatch: true, harness: "codex",
+    result = RunnerWatch.tick(ctx, dispatch: true, harness: "codex",
                                until_empty: RefusingUntilEmpty, now: Time.iso8601("2026-09-13T03:00:00Z"))
 
     assert_empty result[:dispatched]
@@ -542,7 +524,7 @@ class RunnerWatchTest < Minitest::Test
     ctx = build_context(session: "sess-1")
     until_empty = FakeUntilEmpty.new([["n1"]])
 
-    result = RunnerWatch.tick(ctx, runner: FakeRunner.new, dispatch: true, harness: "codex",
+    result = RunnerWatch.tick(ctx, dispatch: true, harness: "codex",
                                until_empty: until_empty, now: Time.iso8601("2026-09-13T03:00:00Z"))
 
     assert_equal ["n1"], result[:dispatched]
@@ -556,7 +538,7 @@ class RunnerWatchTest < Minitest::Test
     write_savepoint(line("n1", "done", gates: "g1", commit: "c1") + "2026-09-13T00:00:00Z  Done  delivered\n")
     ctx = build_context(session: "sess-1")
 
-    result = RunnerWatch.tick(ctx, runner: FakeRunner.new, dispatch: true, harness: "codex",
+    result = RunnerWatch.tick(ctx, dispatch: true, harness: "codex",
                                until_empty: RefusingUntilEmpty, now: Time.iso8601("2026-09-13T03:00:00Z"))
 
     assert_equal "closed", result[:class]
@@ -602,7 +584,7 @@ class RunnerWatchTest < Minitest::Test
     until_empty = RaisingUntilEmpty.new(["n1"])
 
     assert_raises(RuntimeError) do
-      RunnerWatch.tick(ctx, runner: FakeRunner.new, dispatch: true, harness: "codex",
+      RunnerWatch.tick(ctx, dispatch: true, harness: "codex",
                         until_empty: until_empty, now: Time.iso8601("2026-09-13T03:00:00Z"))
     end
 
@@ -611,18 +593,14 @@ class RunnerWatchTest < Minitest::Test
     assert_match(/dispatched=n1/, line)
   end
 
-  # A sweep double that proves B2: it delegates abort_if_merging to the real
-  # RunnerSweep but always answers reclaim with a non-empty `extended`, the
-  # way a live executor past its lease with new commits would.
+  # A sweep double that proves B2: it always answers reclaim with a
+  # non-empty `extended`, the way a live executor past its lease with new
+  # worktree files would.
   module ExtendingSweep
     module_function
 
-    def abort_if_merging(context, runner:)
-      RunnerSweep.abort_if_merging(context, runner: runner)
-    end
-
-    def reclaim(context, runner:, skip: [], now: Time.now)
-      { reclaimed: [], extended: [{ node: "n1", head: "abc123", time: now.utc.iso8601 }] }
+    def reclaim(context, skip: [], now: Time.now)
+      { reclaimed: [], extended: [{ node: "n1", mtime: now.utc.iso8601, time: now.utc.iso8601 }] }
     end
   end
 
@@ -634,7 +612,7 @@ class RunnerWatchTest < Minitest::Test
     ctx = build_context
 
     3.times do
-      result = RunnerWatch.tick(ctx, runner: FakeRunner.new, sweep: ExtendingSweep,
+      result = RunnerWatch.tick(ctx, sweep: ExtendingSweep,
                                  now: Time.iso8601("2026-09-13T00:00:00Z"))
       assert_equal "moving", result[:class]
     end

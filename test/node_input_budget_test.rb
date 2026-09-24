@@ -14,7 +14,6 @@ require_relative "../scripts/lib/node_input"
 class NodeInputBudgetTest < Minitest::Test
   NULL_WORKTREE_READER = ->(intent_dir:) { { "code" => nil, "code_branch" => nil, "provisioned" => false } }
   NULL_PROJECT_READER = ->(_intent_dir) { nil }
-  NULL_GIT_RUNNER = ->(repo_dir:, files:) { nil }
 
   def setup
     @dir = Dir.mktmpdir("node-input-budget")
@@ -101,7 +100,6 @@ class NodeInputBudgetTest < Minitest::Test
   def build(node: "n1", **overrides)
     defaults = {
       intent_dir: @dir, node: node, worktree_reader: NULL_WORKTREE_READER, project_reader: NULL_PROJECT_READER,
-      git_runner: NULL_GIT_RUNNER,
     }
     NodeInput.build(**defaults.merge(overrides))
   end
@@ -455,7 +453,7 @@ class NodeInputBudgetTest < Minitest::Test
   end
 
   def build_in_place(node: "n1", **overrides)
-    defaults = { intent_dir: @dir, node: node, worktree_reader: NULL_WORKTREE_READER, git_runner: NULL_GIT_RUNNER }
+    defaults = { intent_dir: @dir, node: node, worktree_reader: NULL_WORKTREE_READER }
     NodeInput.build(**defaults.merge(overrides))
   end
 

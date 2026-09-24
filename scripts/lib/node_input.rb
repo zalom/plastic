@@ -27,7 +27,6 @@ module NodeInput
 
   DEFAULT_BUDGET_TOKENS = 8000
   DEFAULT_HOP_TOKENS = 2000
-  MAX_LANDED_COMMITS = 10
   DECISIONS_KEEP = 5
   INSIGHTS_KEEP = 3
 
@@ -39,41 +38,6 @@ module NodeInput
   # A work node whose worktree is missing gets its own reason (acceptance
   # N12): the lease may be fine, and saying it is missing contradicts it.
   WORKTREE_STOP_DIRECTIVE = "STOP: no worktree is provisioned for this node. Do not edit files until a runner dispatches it into one."
-
-  # Pinned so `input=<sha>` is a function of the repo's history alone
-  # (post-execution review finding B4): unpinned, `git log --stat` varies
-  # with the terminal's COLUMNS (abbreviates paths, narrows the graph
-  # column), the caller's `color.ui` (ANSI escapes land in the ledger data
-  # block), and gitconfig's `format.pretty`/`log.date`/`log.showSignature`.
-  GIT_LOG_FIXED_ARGS = %w[-c color.ui=false -c log.showSignature=false --no-pager log --no-color --pretty=fuller
-                          --stat=200,200].freeze
-  LANDED_COMMITS_MAX_BYTES = 8000
-
-  def git_log_command(repo_dir:, files:)
-    ["git", "-C", repo_dir.to_s, *GIT_LOG_FIXED_ARGS, "-n", MAX_LANDED_COMMITS.to_s, "--", *Array(files)]
-  end
-
-  # `COLUMNS` unset (Process.spawn/Open3 delete a var whose value is nil)
-  # rather than merely left alone, so an interactive caller's terminal width
-  # never reaches `git log --stat`'s column math.
-  def git_log_env
-    { "COLUMNS" => nil }
-  end
-
-  # `landed commits` is one of the three never-cut blocks (matrix 3.9), so an
-  # unbounded `git log --stat` (ten verbose commit messages, say) could route
-  # the whole node input straight to exit 4 with no cut able to help.
-  def truncate_landed_commits(out)
-    return out.to_s if out.to_s.bytesize <= LANDED_COMMITS_MAX_BYTES
-
-    "#{out.byteslice(0, LANDED_COMMITS_MAX_BYTES)}\n[landed commits truncated at #{LANDED_COMMITS_MAX_BYTES} bytes]"
-  end
-
-  DEFAULT_GIT_RUNNER = lambda do |repo_dir:, files:|
-    require "open3"
-    out, _err, status = Open3.capture3(git_log_env, *git_log_command(repo_dir: repo_dir, files: files))
-    status.success? ? truncate_landed_commits(out) : nil
-  end
 
   PROJECT_LAYOUT_RE = %r{\A(.*)/(?:projects|stores)/([^/]+)/store/[^/]+\z}.freeze
 
@@ -224,23 +188,6 @@ module NodeInput
 
     f = last[:fields] || {}
     "lease: holder=#{f['holder']} expires=#{f['expires']} model=#{f['model']}"
-  end
-
-  # Landed commits after a reclaim (spec D14, C11). Never shells out to git
-  # unless the node actually carries a `reclaimed` line (matrix 2.13); a
-  # failing runner degrades to a note, never an exception (matrix 2.14).
-  def landed_commits_block(intent_dir:, node:, files:, repo_dir:, git_runner: DEFAULT_GIT_RUNNER, entries: nil)
-    entries ||= NodeLedger.entries(savepoint_path(intent_dir))
-    node_entries = entries.select { |e| e[:subject] == node.to_s && !e[:torn] }
-    return nil unless node_entries.any? { |e| e[:state] == "reclaimed" }
-    return nil if Array(files).empty? || repo_dir.to_s.empty?
-
-    begin
-      out = git_runner.call(repo_dir: repo_dir, files: files)
-      out.to_s.strip.empty? ? "landed commits: none found for #{files.join(', ')}" : out
-    rescue StandardError => e
-      "landed commits: unavailable (#{e.class}: #{e.message})"
-    end
   end
 
   # --- block 3: the record (retrieved data) ---------------------------------
@@ -585,13 +532,13 @@ module NodeInput
   HOP_LABEL = "knowledge hop"
 
   # The whole "ledger" data block (spec block 2): the node's own transition
-  # lines, its predecessors' evidence, its lease, and any landed commits
-  # after a reclaim.
-  def full_ledger_text(intent_dir:, node:, files:, holder:, expires:, model:, repo_dir:, git_runner:, entries: nil)
+  # lines, its predecessors' evidence, and its lease. Plastic runs no version
+  # control command (intent 390): a node input no longer carries a "landed
+  # commits" block built from `git log`, since that read straight off the
+  # repository's history.
+  def full_ledger_text(intent_dir:, node:, holder:, expires:, model:, entries: nil)
     entries ||= NodeLedger.entries(savepoint_path(intent_dir))
-    landed = landed_commits_block(intent_dir: intent_dir, node: node, files: files, repo_dir: repo_dir,
-                                   git_runner: git_runner, entries: entries)
-    parts = [
+    [
       "### Transitions",
       ledger_lines_block(intent_dir: intent_dir, node: node, entries: entries),
       "",
@@ -601,13 +548,7 @@ module NodeInput
       "### Lease",
       lease_block(intent_dir: intent_dir, node: node, holder: holder, expires: expires, model: model,
                   entries: entries),
-    ]
-    if landed
-      parts << ""
-      parts << "### Landed commits"
-      parts << landed
-    end
-    parts.join("\n")
+    ].join("\n")
   end
 
   # The record's Intent/Decisions/Insights rendered as one payload, over
@@ -818,7 +759,7 @@ module NodeInput
   # RunnerDispatch explicitly threads it through (row 10.8).
   def build(intent_dir:, node:, budget_tokens: nil, hop_tokens: DEFAULT_HOP_TOKENS,
             holder: nil, expires: nil, model: nil, attempt: nil, out: nil, force: false,
-            renamer: File.method(:rename), git_runner: DEFAULT_GIT_RUNNER,
+            renamer: File.method(:rename),
             worktree_reader: Arm.method(:worktree_block), project_reader: method(:default_project_reader),
             call_cap: nil)
     intent_dir = File.expand_path(intent_dir)
@@ -833,13 +774,6 @@ module NodeInput
     record = record_block(intent_dir: intent_dir, kind: nb[:kind])
     return { ok: false, exit_code: 3, errors: record[:errors] } unless record[:ok]
 
-    repo_dir = begin
-      info = worktree_reader.call(intent_dir: intent_dir)
-      info && info["code"]
-    rescue StandardError
-      nil
-    end
-
     # Read the ledger once and thread it through every block that consults
     # it (post-execution review finding B12): `node-transition` is a
     # concurrent appending writer, so re-reading `savepoint.md` once per
@@ -847,9 +781,8 @@ module NodeInput
     # Lease and attempt number of one node input disagree with each other.
     entries = NodeLedger.entries(savepoint_path(intent_dir))
 
-    ledger_text = full_ledger_text(intent_dir: intent_dir, node: node, files: nb[:files], holder: holder,
-                                    expires: expires, model: model, repo_dir: repo_dir, git_runner: git_runner,
-                                    entries: entries)
+    ledger_text = full_ledger_text(intent_dir: intent_dir, node: node, holder: holder,
+                                    expires: expires, model: model, entries: entries)
 
     store_dir = File.dirname(intent_dir)
     sources = record_sources(intent_dir)

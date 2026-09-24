@@ -121,10 +121,6 @@ class LedgerCoexistenceTest < Minitest::Test
       File.write(File.join(dir, "savepoint.md"), transition_line(subject: "n1", state: "planned"))
       File.write(File.join(home, "INDEX.md"), "# Index\n\n## Relocated\n(none)\n\n## Completed\n")
 
-      Open3.capture3("git", "-C", home, "init", "-q", "-b", "main")
-      Open3.capture3("git", "-C", home, "add", "-A")
-      Open3.capture3("git", "-C", home, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "seed")
-
       out, err, status = Open3.capture3(RbConfig.ruby, maintenance_run, "--tool", "rebuild-savepoint",
                                          "--intent", "1", "--plastic-home", home, "--apply")
       assert_equal 0, status.exitstatus, out + err

@@ -10,37 +10,14 @@ require_relative "../scripts/lib/lock"
 require_relative "../scripts/lib/worktree"
 require_relative "../scripts/lib/session_ledger"
 
-# Arm (intent 307): taking an intent is the lock and the worktree; giving it
-# back reverses both. Hermetic: a tmp HOME
-# holds the sandbox `.plastic` (projects.yml, a project store, the global
-# store's `.tmp/`), every git call goes through a fake runner that creates the
-# worktree directory on `worktree add` and removes it on `worktree remove`,
-# the clock is injected, and CLAUDE_CODE_SESSION_ID is never read (Arm reads
-# no environment; `env:` is an argument). Nothing touches the live ~/.plastic.
+# Arm (intent 307): taking an intent is the lock; giving it back releases it.
+# Plastic runs no version control command (intent 390): arm and disarm never
+# touch the code worktree, only compute and report its expected path.
+# Hermetic: a tmp HOME holds the sandbox `.plastic` (projects.yml, a project
+# store, the global store's `.tmp/`), the clock is injected, and
+# CLAUDE_CODE_SESSION_ID is never read (Arm reads no environment; `env:` is
+# an argument). Nothing touches the live ~/.plastic.
 class ArmTest < Minitest::Test
-  class FakeRunner
-    attr_reader :calls
-
-    def initialize(&block)
-      @calls = []
-      @responder = block
-    end
-
-    def run(*args)
-      a = args.map(&:to_s)
-      @calls << a
-      if a[0] == "-C" && a[2] == "worktree" && a[3] == "add"
-        FileUtils.mkdir_p(a[4])
-      elsif a[0] == "-C" && a[2] == "worktree" && a[3] == "remove"
-        FileUtils.rm_rf(a[4])
-      elsif a[0] == "-C" && a[2] == "rev-parse"
-        return Worktree::ShellRunner::Result.new(0, "true\n", "")
-      end
-      r = @responder ? @responder.call(a) : nil
-      r || Worktree::ShellRunner::Result.new(0, "", "")
-    end
-  end
-
   def setup
     @home = Dir.mktmpdir("arm-home")
     @plastic = File.join(@home, ".plastic")
@@ -58,7 +35,6 @@ class ArmTest < Minitest::Test
     # The lock lease is judged by file mtime against `now`, so the injected
     # clock must be the real one; freshness tests push the mtime back instead.
     @now = Time.now
-    @runner = FakeRunner.new
   end
 
   def teardown
@@ -66,7 +42,7 @@ class ArmTest < Minitest::Test
   end
 
   def arm(session = "sess-a", **kw)
-    Arm.arm(intent_dir: @dir, session: session, home: @home, now: @now, runner: @runner, **kw)
+    Arm.arm(intent_dir: @dir, session: session, home: @home, now: @now, **kw)
   end
 
   def start_session!(session)
@@ -100,7 +76,6 @@ class ArmTest < Minitest::Test
     assert_equal worktree_path, result[:worktree]["code"]
     assert_equal "plastic/96--demo", result[:worktree]["code_branch"]
     assert_equal false, result[:worktree]["provisioned"]
-    assert_empty @runner.calls, "arm must run no git"
   end
 
   def test_arm_fails_open_on_an_intent_with_no_repo
@@ -108,7 +83,7 @@ class ArmTest < Minitest::Test
     FileUtils.mkdir_p(global_dir)
     result = nil
     capture_io do
-      result = Arm.arm(intent_dir: global_dir, session: "sess-a", home: @home, now: @now, runner: @runner)
+      result = Arm.arm(intent_dir: global_dir, session: "sess-a", home: @home, now: @now)
     end
     assert_equal :acquired, result[:status]
     assert_equal false, result[:worktree]["provisioned"]
@@ -136,7 +111,7 @@ class ArmTest < Minitest::Test
   def test_arm_reports_a_stale_foreign_lock_without_taking_it
     Lock.acquire(@dir, session: "sess-b", now: @now - 4000)
     FileUtils.touch(Lock.path(@dir), mtime: @now - 4000)
-    result = Arm.arm(intent_dir: @dir, session: "sess-a", home: @home, now: @now, runner: @runner)
+    result = Arm.arm(intent_dir: @dir, session: "sess-a", home: @home, now: @now)
     assert_equal :stale, result[:status]
     assert_equal "sess-b", Lock.read(@dir)["owner_session"]
   end
@@ -150,7 +125,7 @@ class ArmTest < Minitest::Test
 
   def test_arm_with_no_session_uses_the_derived_key
     derived = Arm.derive_key(@store, "96")
-    result = Arm.arm(intent_dir: @dir, session: nil, home: @home, now: @now, runner: @runner)
+    result = Arm.arm(intent_dir: @dir, session: nil, home: @home, now: @now)
     assert_equal :acquired, result[:status]
     assert_equal derived, Lock.read(@dir)["owner_session"]
     assert_equal derived, result[:session]
@@ -208,51 +183,53 @@ class ArmTest < Minitest::Test
   end
 
   # --- disarm ------------------------------------------------------------------
+  #
+  # Plastic creates no worktree, so disarm removes none either (intent 390):
+  # it only clears the lock and, when a workspace was actually provisioned,
+  # hands back the `git worktree remove` instruction for the human/agent to run.
 
-  def test_disarm_removes_the_worktree_then_releases_the_lock
+  def test_disarm_releases_the_lock_and_prints_the_removal_instruction
     arm
     FileUtils.mkdir_p(worktree_path) # simulates the agent creating the workspace
-    status = Arm.disarm(intent_dir: @dir, session: "sess-a", home: @home, runner: @runner, now: @now)
-    assert_equal :released, status
+    result = Arm.disarm(intent_dir: @dir, session: "sess-a", home: @home, now: @now)
+    assert_equal :released, result[:status]
     refute File.exist?(Lock.path(@dir))
-    refute Dir.exist?(worktree_path)
-    remove_at = @runner.calls.index { |c| c[2] == "worktree" && c[3] == "remove" }
-    refute_nil remove_at, "the worktree is removed"
+    assert Dir.exist?(worktree_path), "disarm must not remove the worktree itself (intent 390)"
+    assert_equal "git -C #{@repo} worktree remove #{worktree_path}", result[:worktree_removal]
+  end
+
+  def test_disarm_names_no_removal_when_nothing_was_provisioned
+    arm
+    result = Arm.disarm(intent_dir: @dir, session: "sess-a", home: @home, now: @now)
+    assert_equal :released, result[:status]
+    assert_nil result[:worktree_removal]
   end
 
   def test_disarm_never_releases_a_foreign_fresh_lock
     Lock.acquire(@dir, session: "sess-b", now: @now)
-    status = Arm.disarm(intent_dir: @dir, session: "sess-a", home: @home, runner: @runner, now: @now)
-    assert_equal :released, status,
+    result = Arm.disarm(intent_dir: @dir, session: "sess-a", home: @home, now: @now)
+    assert_equal :released, result[:status],
       "disarm releases as the RECORDED owner: end-intent's pre-flight decides who may close"
     refute File.exist?(Lock.path(@dir))
   end
 
   def test_disarm_with_no_lock_reports_none
-    status = Arm.disarm(intent_dir: @dir, session: "sess-a", home: @home, runner: @runner, now: @now)
-    assert_equal :none, status
+    result = Arm.disarm(intent_dir: @dir, session: "sess-a", home: @home, now: @now)
+    assert_equal :none, result[:status]
   end
 
   def test_disarm_touches_no_session_tmp_file
     arm
     tmp_dir = SessionLedger.session_tmp_dir(@global, SessionLedger.short_session_id(nil, "sess-a"))
     FileUtils.rm_rf(tmp_dir)
-    Arm.disarm(intent_dir: @dir, session: "sess-a", home: @home, runner: @runner, now: @now)
+    Arm.disarm(intent_dir: @dir, session: "sess-a", home: @home, now: @now)
     refute Dir.exist?(tmp_dir), "disarm must not recreate a closed session's tmp directory"
-  end
-
-  def test_disarm_without_remove_keeps_the_worktree
-    arm
-    FileUtils.mkdir_p(worktree_path) # simulates the agent creating the workspace
-    Arm.disarm(intent_dir: @dir, session: "sess-a", home: @home, runner: @runner, now: @now, remove: false)
-    assert Dir.exist?(worktree_path)
-    refute File.exist?(Lock.path(@dir))
   end
 
   # --- repair ------------------------------------------------------------------
 
   def repair(session = "sess-a", **kw)
-    Arm.repair(intent_dir: @dir, session: session, home: @home, now: @now, runner: @runner, **kw)
+    Arm.repair(intent_dir: @dir, session: session, home: @home, now: @now, **kw)
   end
 
   def test_repair_acquires_when_no_lock_and_reports_the_worktree_absent
@@ -335,7 +312,7 @@ class ArmTest < Minitest::Test
 
   def test_arm_refuses_a_started_conversation_session
     start_session!("sess-a")
-    result = Arm.arm(intent_dir: @dir, session: "sess-a", home: @home, runner: FakeRunner.new)
+    result = Arm.arm(intent_dir: @dir, session: "sess-a", home: @home)
     assert_equal :inline_refused, result[:status]
     refute File.exist?(File.join(@dir, "delivery.lock")),
            "a refused arm must not leave a lock behind"
@@ -343,8 +320,7 @@ class ArmTest < Minitest::Test
 
   def test_allow_inline_bypasses_the_started_session_refusal
     start_session!("sess-a")
-    result = Arm.arm(intent_dir: @dir, session: "sess-a", home: @home,
-                     runner: FakeRunner.new, allow_inline: true)
+    result = Arm.arm(intent_dir: @dir, session: "sess-a", home: @home, allow_inline: true)
     assert_equal :acquired, result[:status]
   end
 

@@ -27,11 +27,20 @@ require_relative "../scripts/lib/runner_absorb"
 # control-flow claim. Rows that need a real dispatch to prove something
 # lands on the ledger (--harness threading, serial absorb against a real
 # graph, the index.lock collision) drive the REAL #step_once against a
-# throwaway git repo, with a fake `node_run_spawner`/`node_run_waiter` that
-# never spawns a real subprocess. Only 7.1 (real concurrency) and 7.15 (the
-# CLI arm) drive a real `node-run` subprocess, against a stub `codex` on
+# throwaway PLAIN directory tree (never a real git repository - owner ruling
+# 2026-09-24, intent 390 part B: Plastic runs no version control command,
+# and neither RunnerDispatch's provisioning nor RunnerAbsorb's merge check
+# touches git any more, so a bare directory at the exact worktree path is
+# all either one ever needs), with a fake `node_run_spawner`/`node_run_waiter`
+# that never spawns a real subprocess. Only 7.1 (real concurrency) and 7.15
+# (the CLI arm) drive a real `node-run` subprocess, against a stub `codex` on
 # PATH - never the real binary: no network, no API key, no live model call
-# anywhere in this file.
+# anywhere in this file. Those two pre-create each dispatched node's own
+# worktree directory by hand, standing in for the `git worktree add` a human
+# or agent would have run from RunnerDispatch's printed instruction, since
+# `node-run`'s own `node_target_dir` falls back to the shared intent
+# worktree - and the stub's node id along with it - whenever that directory
+# does not already exist on disk.
 class RunnerUntilEmptyTest < Minitest::Test
   INTENT_ID = "1"
   INTENT_SLUG = "demo"
@@ -114,27 +123,16 @@ class RunnerUntilEmptyTest < Minitest::Test
                JSON.generate("type" => "delivery", "owner_session" => owner, "delegates" => []))
   end
 
-  def git(*args, dir: @repo)
-    out, err, status = Open3.capture3("git", "-C", dir, *args.map(&:to_s))
-    raise "git #{args.join(' ')} failed: #{err}" unless status.success?
-
-    out
-  end
-
-  # A real throwaway git repo, registered in projects.yml, with the intent
-  # worktree already checked out on the intent branch - the same fixture
-  # node_run_cli_test.rb and runner_cli_test.rb both use, the only honest
-  # way to let RunnerDispatch actually provision a work node's own worktree
-  # and let RunnerAbsorb actually merge it back.
-  def setup_real_repo
+  # A throwaway PLAIN repo directory, registered in projects.yml, with the
+  # intent worktree already present as a bare directory - never a real git
+  # repository (owner ruling 2026-09-24). RunnerDispatch only ever PRINTS
+  # a node's own `git worktree add` instruction now, and RunnerAbsorb's
+  # merge check only prints a `git merge` instruction too, so nothing left
+  # in either path needs a real git repository underneath - a plain
+  # directory at the exact path `Worktree.paths` computes is the whole
+  # fixture.
+  def setup_repo
     @repo = Dir.mktmpdir("ue-repo")
-    git("init", "-q", "-b", "alpha")
-    git("config", "user.email", "ue@example.com")
-    git("config", "user.name", "UE Test")
-    git("config", "gc.auto", "0")
-    File.write(File.join(@repo, "README.md"), "hi\n")
-    git("add", "README.md")
-    git("commit", "-q", "-m", "init")
 
     FileUtils.mkdir_p(File.join(@home, ".plastic"))
     File.write(File.join(@home, ".plastic", "projects.yml"),
@@ -148,8 +146,17 @@ class RunnerUntilEmptyTest < Minitest::Test
 
     @intent_worktree = File.join(@repo, ".claude", "worktrees", "#{INTENT_ID}--#{INTENT_SLUG}")
     @intent_branch = "plastic/#{INTENT_ID}--#{INTENT_SLUG}"
-    FileUtils.mkdir_p(File.dirname(@intent_worktree))
-    git("worktree", "add", @intent_worktree, "-b", @intent_branch)
+    FileUtils.mkdir_p(@intent_worktree)
+  end
+
+  # Stands in for an agent having already run the `git worktree add`
+  # instruction RunnerDispatch printed for this node - the only way a real
+  # `node-run` subprocess (7.1, 7.15) can `-C` into the node's OWN
+  # directory instead of falling back to the shared intent worktree.
+  def provision_node_worktree(node)
+    dir = File.join(@repo, ".claude", "worktrees", "#{INTENT_ID}--#{INTENT_SLUG}--#{node}")
+    FileUtils.mkdir_p(dir)
+    dir
   end
 
   def context_for(session: "sess-1")
@@ -301,7 +308,7 @@ class RunnerUntilEmptyTest < Minitest::Test
   # === 7.5: --harness threads into EVERY step, not only the first ==========
 
   def test_harness_flag_threads_into_each_step
-    setup_real_repo
+    setup_repo
     write_graph("- verify: none reason=fixture\n- n1 needs nothing\n- n2 needs n1\n")
     write_work_nodes("n1", "n2")
     write_lock(owner: "sess-1")
@@ -324,7 +331,7 @@ class RunnerUntilEmptyTest < Minitest::Test
   # the same turn ============================================================
 
   def test_absorbs_serially
-    setup_real_repo
+    setup_repo
     write_graph("- verify: none reason=fixture\n- n1 needs nothing\n- n2 needs nothing\n")
     write_work_nodes("n1", "n2")
     write_lock(owner: "sess-1")
@@ -361,7 +368,7 @@ class RunnerUntilEmptyTest < Minitest::Test
   # ready set advances ========================================================
 
   def test_absorbs_each_return
-    setup_real_repo
+    setup_repo
     write_graph("- verify: none reason=fixture\n- n1 needs nothing\n- n2 needs nothing\n- n3 needs n1 n2\n")
     write_work_nodes("n1", "n2", "n3")
     write_lock(owner: "sess-1")
@@ -389,7 +396,7 @@ class RunnerUntilEmptyTest < Minitest::Test
   # serialize the two executors ==============================================
 
   def test_index_lock_collision_is_recorded
-    setup_real_repo
+    setup_repo
     write_graph("- verify: none reason=fixture\n- n1 needs nothing\n- n2 needs nothing\n")
     write_work_nodes("n1", "n2")
     write_lock(owner: "sess-1")
@@ -424,14 +431,13 @@ class RunnerUntilEmptyTest < Minitest::Test
   # === 7.1: real concurrency, capped at two ================================
 
   def test_at_most_two_subprocesses
-    skip "git not available" unless system("git", "--version", out: File::NULL, err: File::NULL)
-
-    setup_real_repo
+    setup_repo
     ids = %w[n1 n2 n3 n4]
     graph = "- verify: none reason=fixture\n" + ids.map { |i| "- #{i} needs nothing\n" }.join
     write_graph(graph)
     write_work_nodes(*ids)
     write_lock(owner: "sess-1")
+    ids.each { |id| provision_node_worktree(id) }
     context = context_for
 
     bin_dir = Dir.mktmpdir("ue-codex-stub")
@@ -454,12 +460,11 @@ class RunnerUntilEmptyTest < Minitest::Test
   # === 7.15: the CLI arm - `scripts/runner until-empty` as a real subprocess ===
 
   def test_subprocess_until_empty_runs
-    skip "git not available" unless system("git", "--version", out: File::NULL, err: File::NULL)
-
-    setup_real_repo
+    setup_repo
     write_graph("- n1 needs nothing\n")
     write_work_nodes("n1")
     write_lock(owner: "sess-1")
+    provision_node_worktree("n1")
 
     bin_dir = Dir.mktmpdir("ue-cli-stub")
     (@scratch_dirs ||= []) << bin_dir

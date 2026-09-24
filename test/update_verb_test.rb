@@ -87,19 +87,18 @@ class UpdateVerbTest < Minitest::Test
 
   # Intent 372: the update skill's former step 124-125 (commit the core files in
   # ~/.plastic, delete the update cache) becomes code, ported from the skill's own
-  # shell recipe. Hermetic: the git calls go through an injected runner, never real git.
-  def test_commit_core_files_shells_git_add_then_commit
-    calls = []
-    runner = ->(cmd) { calls << cmd; true }
+  # shell recipe. Owner ruling 2026-09-24 (intent 390): Plastic runs no version
+  # control command, so this prints the add/commit instruction, never runs git.
+  def test_commit_core_files_prints_git_add_then_commit
+    out, = capture_io { @u.send(:commit_core_files, "1.0.0-alpha.19") }
 
-    @u.send(:commit_core_files, "1.0.0-alpha.19", runner: runner)
-
-    assert_equal 2, calls.length
-    add, commit = calls
-    assert_equal ["git", "-C", @home, "add", "PLASTIC.md", "scripts", "AGENTS.md", "VERSION",
-      "versions.json", "deprecations.yml", "config_asks.yml"], add
-    assert_equal ["git", "-C", @home, "commit", "-m", "chore: update Plastic to 1.0.0-alpha.19",
-      "--allow-empty"], commit
+    assert_match(
+      /git -C #{Regexp.escape(@home)} add PLASTIC\.md scripts AGENTS\.md VERSION versions\.json/, out
+    )
+    assert_match(/deprecations\.yml config_asks\.yml/, out)
+    assert_match(
+      /git -C #{Regexp.escape(@home)} commit -m "chore: update Plastic to 1\.0\.0-alpha\.19" --allow-empty/, out
+    )
   end
 
   def test_clear_update_check_cache_deletes_the_file

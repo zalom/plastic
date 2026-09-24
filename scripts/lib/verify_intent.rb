@@ -7,22 +7,26 @@ require_relative "scaffold_intent"
 
 # VerifyIntent - all logic for `scripts/verify-intent` (intent 213). Bundles the checks that
 # need no project-specific knowledge into one verdict: the per-intent doctor scan
-# (`Doctor#run_intent_check`), a net-new added-line em-dash diff guard (the first standing
-# implementation of this check; the only prior automated em-dash check,
-# `test/skill_command_lint_test.rb`, asserts against two FIXED file sets and cannot scan a
-# diff), a diffstat, and an optional caller-supplied `--suite` command merged into the same
-# verdict.
+# (`Doctor#run_intent_check`), the added-line em-dash diff guard (`em_dash_violations`, a
+# pure text scan; the only prior automated em-dash check, `test/skill_command_lint_test.rb`,
+# asserts against two FIXED file sets and cannot scan a diff), the diffstat instruction, and
+# an optional caller-supplied `--suite` command merged into the same verdict.
 #
-# Repo resolution and base-branch detection are NOT re-implemented here: `resolve_repo_dir`,
-# `detect_base_branch`, and `diffstat` are `ScaffoldIntent`'s own shared git seam helpers
-# (built for `scripts/scaffold-intent`, intent 213 ACTION_2); this module calls them so
-# there is exactly one implementation of each in the repo.
+# Repo resolution and base-branch detection are NOT re-implemented here: `resolve_repo_dir`
+# and `detect_base_branch` are `ScaffoldIntent`'s own shared helpers (built for
+# `scripts/scaffold-intent`, intent 213 ACTION_2); this module calls them so there is exactly
+# one implementation of each in the repo.
+#
+# Plastic runs no version control command (intent 390): the em-dash guard and the diffstat
+# both print the `git diff` command to run instead of running it, so both are always
+# "skipped" here, never "fail" or "pass" from a real scan. `em_dash_violations` stays as a
+# pure function over diff TEXT the caller supplies (e.g. by hand, or from CI's own diff step)
+# for `verify-intent --diff-file` (see scripts/verify-intent) to still gate on.
 #
 # Pure and dependency-injected: never calls `exit` or `abort`, never reads `ARGV`. The public
 # entry point (`run`) returns a verdict hash; `scripts/verify-intent` maps it to stdout lines
-# plus an exit code. Seams: `git_runner:` (defaults to `Worktree::ShellRunner.new`),
-# `doctor:` (a lambda, defaults to a real `Doctor#run_intent_check` call), `suite_runner:` (a
-# lambda, defaults to a real subprocess with `RUBYOPT` cleared).
+# plus an exit code. Seams: `doctor:` (a lambda, defaults to a real `Doctor#run_intent_check`
+# call), `suite_runner:` (a lambda, defaults to a real subprocess with `RUBYOPT` cleared).
 module VerifyIntent
   module_function
 
@@ -39,8 +43,8 @@ module VerifyIntent
 
   # --- entry point ---------------------------------------------------------------
 
-  def run(store:, id:, base: nil, suite: nil, home: Dir.home,
-          git_runner: Worktree::ShellRunner.new, doctor: default_doctor, suite_runner: default_suite_runner)
+  def run(store:, id:, base: nil, suite: nil, home: Dir.home, diff_text: nil,
+          doctor: default_doctor, suite_runner: default_suite_runner)
     return usage_result("--store is required") if Worktree.blank?(store)
     return usage_result("--id is required") if Worktree.blank?(id)
 
@@ -58,16 +62,15 @@ module VerifyIntent
     checks[:doctor] = doctor_check
     codes << doctor_code if doctor_code
 
-    repo = ScaffoldIntent.resolve_repo_dir(store: store, id: id, intent_dir: intent_dir, home: home, runner: git_runner)
-    base_ref = base
-    base_ref ||= repo ? ScaffoldIntent.detect_base_branch(repo, runner: git_runner) : nil
+    repo = ScaffoldIntent.resolve_repo_dir(store: store, id: id, intent_dir: intent_dir, home: home)
+    base_ref = base || (repo ? ScaffoldIntent.detect_base_branch(repo, home: home) : nil)
 
-    emdash_lines, emdash_code, emdash_check = run_emdash_check(repo: repo, base: base_ref, git_runner: git_runner)
+    emdash_lines, emdash_code, emdash_check = run_emdash_check(repo: repo, base: base_ref, diff_text: diff_text)
     lines.concat(emdash_lines)
     checks[:emdash] = emdash_check
     codes << emdash_code if emdash_code
 
-    diffstat_lines, diffstat_check = run_diffstat_check(repo: repo, base: base_ref, git_runner: git_runner)
+    diffstat_lines, diffstat_check = run_diffstat_check(repo: repo, base: base_ref)
     lines.concat(diffstat_lines)
     checks[:diffstat] = diffstat_check
 
@@ -187,23 +190,23 @@ module VerifyIntent
     violations
   end
 
-  def run_emdash_check(repo:, base:, git_runner:)
+  # Plastic runs no version control command (intent 390), so this scans `diff_text` when
+  # the caller supplies it (e.g. `verify-intent --diff-file`, piping in `git diff`'s own
+  # output) and otherwise only prints the command to run and pipe in by hand. Never fails
+  # without `diff_text`: a printed instruction is not a violation.
+  def run_emdash_check(repo:, base:, diff_text:)
     if repo.nil?
       return [["em-dash guard skipped: no repo could be resolved for this intent"], nil,
               { status: "skipped", reason: "no repo" }]
     end
-    if base.nil?
-      return [["em-dash guard skipped: no base branch could be detected (no origin/HEAD, main, or master)"], nil,
-              { status: "skipped", reason: "no base" }]
+
+    unless diff_text
+      cmd = "git -C #{repo} diff #{base}...HEAD"
+      return [["em-dash guard: run `#{cmd}` and pass its output to verify-intent --diff-file " \
+               "to check the added lines for em dashes"], nil, { status: "skipped", reason: "no diff supplied" }]
     end
 
-    res = git_runner.run("-C", repo, "diff", "#{base}...HEAD")
-    unless res.success?
-      reason = res.stderr.to_s.strip
-      return [["em-dash guard skipped: #{reason}"], nil, { status: "skipped", reason: reason }]
-    end
-
-    violations = em_dash_violations(res.stdout)
+    violations = em_dash_violations(diff_text)
     if violations.empty?
       [["em-dash guard: pass (0 violations)"], nil, { status: "pass", violations: [] }]
     else
@@ -215,23 +218,15 @@ module VerifyIntent
 
   # --- check 3: the diffstat -------------------------------------------------------
 
-  def run_diffstat_check(repo:, base:, git_runner:)
+  # Plastic runs no version control command (intent 390): this prints the `git diff --stat`
+  # command instead of running it.
+  def run_diffstat_check(repo:, base:)
     if repo.nil?
       return [["diffstat unavailable: no repo could be resolved for this intent"], { status: "skipped" }]
     end
-    if base.nil?
-      return [["diffstat unavailable: no base branch could be detected (no origin/HEAD, main, or master)"],
-              { status: "skipped" }]
-    end
 
-    stat, err = ScaffoldIntent.diffstat(repo, base, runner: git_runner)
-    if stat.nil?
-      [["diffstat unavailable: #{err}"], { status: "skipped" }]
-    else
-      lines = ["diffstat against #{base}:"]
-      lines.concat(stat.each_line.map(&:chomp))
-      [lines, { status: "pass", stat: stat }]
-    end
+    cmd = ScaffoldIntent.diffstat_instruction(repo, base)
+    [["diffstat: run `#{cmd}` (against #{base})"], { status: "skipped", command: cmd }]
   end
 
   # --- check: the Report savepoint lines (intent 331f, F17) ------------------------

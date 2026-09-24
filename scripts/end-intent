@@ -47,16 +47,18 @@
 #      and the dry run says so.
 #   3. Append the savepoint `Done` bookend (Savepoint.append_terminal_savepoint).
 #   4. Commit the store repo, unless --no-commit.
-#   5. Disarm (intent 188, D2/D16; intent 307): check the code worktree (derived
-#      from projects.yml and the intent id, Arm.worktree_block) for uncommitted
-#      changes first (exit 5 if dirty, unless --discard-worktree-changes); call the
-#      disarm seam (default Arm.disarm: worktree released, lock cleared); verify
-#      the durable lock file is actually gone afterward, and release it directly
-#      when a foreign-keyed disarm left it.
+#   5. Disarm (intent 188, D2/D16; intent 307; intent 390): call the disarm
+#      seam (default Arm.disarm), which clears the delivery lock only. Plastic
+#      runs no version control command, so it never removes the code worktree
+#      or checks it for uncommitted or unmerged work; when a worktree was
+#      provisioned, Arm.disarm names the `git worktree remove` instruction and
+#      end-intent prints it for the closer to run by hand, after committing
+#      and merging. Then verify the durable lock file is actually gone
+#      afterward, and release it directly when a foreign-keyed disarm left it.
 #
-# A delivered close never merges code. Its code branch must already be merged
-# into the repo checkout's current branch, or the close refuses before any
-# write (exit 9).
+# A delivered close never merges code, and never checks that the code is
+# merged (intent 390): Plastic authors the record and prints the merge
+# instruction; the closer runs it.
 #
 # Exit codes:
 #   0  ok - the intent is closed and no delivery.lock remains.
@@ -69,32 +71,28 @@
 #   4  pre-flight refusal: a FRESH foreign lock is held by a live,
 #      non-delegate session; a FRESH lock that will not parse (corrupt); or a
 #      lock file with no resolvable session identity at all. Authors nothing.
-#   5  the code worktree is dirty, OR its cleanliness could not be proven
-#      (git status itself failed: corrupt index, git missing, not a repo);
-#      refused before removal; pass --discard-worktree-changes to override
-#      deliberately.
+#   5  retired in 2.0 (intent 390): the dirty-worktree check required a real
+#      `git status`, which Plastic no longer runs. --discard-worktree-changes
+#      is still accepted for backward compatibility but changes nothing.
 #   6  retired in 2.0 (intent 308): the structure check reports and proceeds.
 #   7  hollow delivered report refused (317a D7) - intent 308's one deliberate
 #      exception to report-and-proceed; --allow-hollow-report overrides.
 #   8  delivered close of an untouched scaffold refused (acceptance N3):
 #      nothing was worked, so there is nothing to deliver. Close it as
 #      abandoned, or do the work first. Authors nothing.
-#   9  delivered close refused because its code branch is not merged into the
-#      repo checkout's current branch. Refused before any write: nothing is
-#      merged, written, or released. Merge the branch, then run the close again.
+#   9  retired in 2.0 (intent 390): checking the code branch was merged
+#      required real git commands. A delivered close no longer checks; the
+#      merge instruction is printed at disarm time instead.
 #
-# --dry-run runs the same refusals as the real close (exits 1, 8, 9, 7 and 5 with
-# a "would refuse" line) and writes nothing: the hollow-report gate is judged
-# on a scratch copy that went through the same outcome generation and
-# backfill.
+# --dry-run runs the same refusals as the real close (exits 1, 8, and 7) and
+# writes nothing: the hollow-report gate is judged on a scratch copy that
+# went through the same outcome generation and backfill.
 
 require_relative "lib/store_layout"
 require "fileutils"
 require "date"
-require "open3"
 require "stringio"
 require "tmpdir"
-require "pathname"
 require_relative "lib/arm"
 require_relative "lib/exec_worktree"
 require_relative "lib/index_entry"
@@ -605,53 +603,23 @@ rescue UnresolvedIndexEntry => e
   exit 1
 end
 
-# --- store auto-commit (D2 step 4) ------------------------------------------
+# --- store commit instruction (D2 step 4) -----------------------------------
 
-def git_toplevel(dir)
-  out, _err, status = Open3.capture3("git", "-C", dir, "rev-parse", "--show-toplevel")
-  return nil unless status.success?
-  top = out.strip
-  top.empty? ? nil : top
-end
-
-# Best-effort store commit: never raises, never blocks the mechanical close.
-# Returns true when a commit was created, false otherwise (not a git repo, nothing to
-# commit, or the commit failed). Pins a local committer identity so the commit succeeds
-# even with no ambient git config (hermetic).
-#
-# SCOPED, never `git add -A` (D17, intent 197): stages only the completing intent's own
-# directory plus the store's INDEX.md, by explicit relative path. An unrelated dirty file
-# elsewhere in the store (another session's uncommitted work, a maintenance session's
-# in-flight change) is left exactly as it was found, never swept into this commit. This is
-# the safety floor that makes a concurrent maintenance session's change-plus-receipt safe on
-# the shared store checkout before intent 178 (store worktrees) lands.
-def store_commit(store, id, disposition, intent_dir:, index_path:)
-  root = git_toplevel(store)
-  return false if root.nil?
-
+# Owner ruling 2026-09-24: Plastic runs no version control command. Instead
+# of staging and committing the store itself, this names the exact
+# instruction for the closer to run - SCOPED, never `git add -A` (D17,
+# intent 197): only the completing intent's own directory plus the store's
+# INDEX.md, by explicit path. An unrelated dirty file elsewhere in the store
+# (another session's uncommitted work, a maintenance session's in-flight
+# change) is never named, so it is never swept up by a copy-pasted `-A`.
+# Returns nil when neither path exists (nothing to name).
+def store_commit_instruction(store, id, disposition, intent_dir:, index_path:)
   paths = [intent_dir, index_path].select { |p| p && File.exist?(p) }
-                                   .map { |p| relative_to(root, p) }
-  return false if paths.empty?
+  return nil if paths.empty?
 
-  Open3.capture3("git", "-C", root, "add", "--", *paths)
-  _out, _err, status = Open3.capture3(
-    "git", "-C", root,
-    "-c", "user.name=Plastic", "-c", "user.email=plastic@localhost",
-    "commit", "--quiet", "-m", "chore: complete intent #{id} (#{disposition})"
-  )
-  status.success?
-end
-
-# `path`, relative to `root` (both absolute). Assumes `path` is inside `root` (true for
-# both intent_dir and index_path here, since both are derived from `store`, itself always
-# inside the same git repo `git_toplevel` resolved `root` from). Uses File.realpath, not
-# File.expand_path: `root` came back from `git rev-parse --show-toplevel`, which resolves
-# symlinked ancestors (e.g. macOS's /var -> /private/var), so an unresolved `path` can start
-# with a different prefix than `root` and produce a bogus, escaping relative path. Both
-# `path` and `root` are known to exist by the time this is called (the caller filters on
-# File.exist? first), so realpath is safe here.
-def relative_to(root, path)
-  Pathname.new(File.realpath(path)).relative_path_from(Pathname.new(File.realpath(root))).to_s
+  quoted_paths = paths.map { |p| "\"#{p}\"" }.join(" ")
+  "git -C #{store} add -- #{quoted_paths} && " \
+    "git -C #{store} commit -m \"chore: complete intent #{id} (#{disposition})\""
 end
 
 # --- pre-flight lock guard (D3/D4, intent 188) ------------------------------
@@ -708,31 +676,35 @@ end
 
 # --- step 5: disarm (D2/D16, intent 188) ------------------------------------
 #
-# Injected seams (D2, re-pointed by intent 307): worktree_reader defaults to
-# Arm.worktree_block (so the dirty-worktree check can resolve the code worktree
-# path without disarming first), disarm defaults to Arm.disarm. Tests may inject
-# fakes for in-process unit coverage of this function; the subprocess-driven
-# end-to-end tests exercise the real defaults against a hermetic tmp home.
+# Plastic runs no version control command (intent 390): there is no dirty-worktree
+# guard left to run (that required a real `git status`), so disarm always
+# proceeds and Arm.disarm itself never touches the worktree, only the lock. When
+# a workspace was provisioned, Arm.disarm's `worktree_removal` names the
+# `git worktree remove` instruction, printed here for the closer to run by hand
+# once the work is committed and merged. `discard_worktree_changes` survives as
+# a CLI flag for backward compatibility but changes nothing here now; the
+# choice of whether to commit first is the closer's, not this script's.
 #
-# Returns :ok, :dirty (exit 5), or :lock_remains (exit 3). A blank session
-# (D3's "no lock at all" fallback case) is a clean no-op: :ok, nothing touched.
+# Injected seams (D2, re-pointed by intent 307): worktree_reader defaults to
+# Arm.worktree_block, disarm defaults to Arm.disarm. Tests may inject fakes for
+# in-process unit coverage of this function; the subprocess-driven end-to-end
+# tests exercise the real defaults against a hermetic tmp home.
+#
+# Returns :ok or :lock_remains (exit 3). A blank session (D3's "no lock at
+# all" fallback case) is a clean no-op: :ok, nothing touched.
 def run_disarm(intent_dir, id, session, discard_worktree_changes:,
                worktree_reader: ->(dir) { Arm.worktree_block(intent_dir: dir) },
                disarm: ->(sess, dir) { Arm.disarm(intent_dir: dir, session: sess) })
   return :ok if blank?(session)
 
   block = worktree_reader.call(intent_dir)
-  worktree_code = block.is_a?(Hash) ? block["code"] : nil
 
-  unless discard_worktree_changes
-    refusal = worktree_refusal(worktree_code)
-    if refusal
-      warn refusal
-      return :dirty
-    end
+  result = disarm.call(session, intent_dir)
+  removal = result.is_a?(Hash) ? result[:worktree_removal] : nil
+  if removal
+    warn "end-intent: the code worktree is not removed (Plastic runs no version control " \
+         "command). Commit and merge the work, then run: #{removal}"
   end
-
-  disarm.call(session, intent_dir)
 
   # The durable lock file is the truth (AGENTS.md). Arm.disarm releases as the
   # lock's recorded owner, so a lock a delegate or a post-takeover owner is
@@ -795,146 +767,21 @@ def run_disarm(intent_dir, id, session, discard_worktree_changes:,
   :lock_remains
 end
 
-# The disarm step's dirty-worktree guard, as a message (nil when the worktree
-# is clean or absent). Shared by run_disarm and --dry-run so the preview
-# refuses exactly what the close refuses.
-#
-# Fail CLOSED (intent 188, post-review hardening). A failed or impossible
-# `git status` (corrupt per-worktree index, git missing from PATH, not a
-# repo) means we cannot PROVE the worktree is clean, and the removal
-# force-removes on a plain `git worktree remove` failure, which destroys
-# uncommitted work. Never force-remove an unproven worktree: the guard
-# exists to protect uncommitted code, so an inconclusive check must refuse,
-# not silently proceed as if it were clean.
-def worktree_refusal(worktree_code)
-  return nil unless worktree_code && Dir.exist?(worktree_code)
-
-  begin
-    out, err, status = Open3.capture3("git", "-C", worktree_code, "status", "--porcelain")
-  rescue StandardError => e
-    out, err, status = nil, e.message, nil
-  end
-
-  if status.nil? || !status.success?
-    "end-intent: could not inspect the code worktree at #{worktree_code} " \
-      "(git status failed: #{err.to_s.strip}); refusing to remove it, because " \
-      "removal would force-discard any uncommitted work. Pass " \
-      "--discard-worktree-changes to remove it anyway, or repair the worktree."
-  elsif !out.strip.empty?
-    "end-intent: code worktree #{worktree_code} has uncommitted changes; refusing " \
-      "to remove it. Pass --discard-worktree-changes to force the close deliberately, " \
-      "or commit/stash the changes and re-run."
-  end
-end
-
-# True when the intent's code worktree carries any work: uncommitted changes
-# or commits past its base branch. Anything that cannot be proven reads as
-# changed, so an unreadable worktree never turns a close into a refusal.
+# True when the intent has a code worktree at all. Owner ruling 2026-09-24:
+# Plastic runs no version control command, so it can no longer read git
+# status or the commit count ahead of base itself - whether the worktree
+# actually carries work is for the closer to judge from the printed merge
+# instruction (run_disarm's own worktree-removal message), never guessed
+# here. A worktree that exists reads as changed (fail open, the same
+# direction the old check took when it could not prove otherwise), so a
+# close is never refused as an "untouched scaffold" merely because Plastic
+# cannot see inside a real repository.
 def worktree_changed?(intent_dir)
   block = Arm.worktree_block(intent_dir: intent_dir)
   code = block.is_a?(Hash) ? block["code"] : nil
-  return false unless code && Dir.exist?(code)
-
-  out, status = Open3.capture2e("git", "-C", code, "status", "--porcelain")
-  return true unless status.success? && out.strip.empty?
-
-  base = ScaffoldIntent.detect_base_branch(code)
-  return true if base.nil?
-
-  ahead, status = Open3.capture2e("git", "-C", code, "rev-list", "--count", "#{base}..HEAD")
-  !status.success? || ahead.strip != "0"
+  !!(code && Dir.exist?(code))
 rescue StandardError
   true
-end
-
-# A delivered close whose code is not on the repo checkout's current branch,
-# as a refusal message (nil when it is, or for a store-only project).
-# end-intent never merges: the owner merges or releases the work, then runs
-# the close again. A real code worktree must prove that its HEAD commit is
-# merged, so a detached or renamed branch is still checked. The code branch
-# must be merged too, even after its worktree is gone. A git failure refuses.
-# A directory that is not a working git worktree, with no code branch, is left
-# to the dirty-worktree guard, which refuses what it cannot inspect.
-def unmerged_refusal(intent_dir, runner: Worktree::ShellRunner.new)
-  paths = Arm.code_paths(intent_dir: intent_dir)
-  code = paths["code"]
-  return nil if code.nil?
-
-  repo = ExecWorktree.repo_from_worktree_code(code)
-  unless runner.run("-C", repo, "rev-parse", "--git-dir").success?
-    # No .git at all is a project without code; a .git that Git cannot read is not.
-    return nil unless File.exist?(File.join(repo, ".git"))
-
-    return "could not inspect the Git repository #{repo}, so the code cannot be shown to be merged. " \
-      "Check the repository, then run the close again"
-  end
-
-  unmerged_worktree_head(runner, code, repo, paths["code_branch"]) ||
-    unmerged_branch(runner, repo, paths["code_branch"])
-end
-
-# True when `code` is the top of its own git work tree, not a plain
-# directory inside the repo or a broken checkout.
-def real_worktree?(runner, code)
-  return false unless File.directory?(code)
-
-  top = runner.run("-C", code, "rev-parse", "--show-toplevel")
-  top.success? && File.realpath(top.stdout.strip) == File.realpath(code)
-rescue SystemCallError
-  false
-end
-
-def unmerged_worktree_head(runner, code, repo, branch)
-  return nil unless real_worktree?(runner, code)
-
-  head = runner.run("-C", code, "rev-parse", "--verify", "--quiet", "HEAD^{commit}")
-  unless head.success?
-    return "could not read the HEAD commit of the code worktree #{code}, so its work cannot be " \
-      "shown to be merged. Commit it, merge it into the current branch of #{repo}, then run the close again"
-  end
-  sha = head.stdout.strip
-  on = runner.run("-C", code, "symbolic-ref", "--quiet", "--short", "HEAD")
-  name = on.success? ? on.stdout.strip : nil
-  ref = (name == branch) ? branch : sha[0, 12]
-  where = name ? "on branch #{name}" : "detached"
-  ancestry_refusal(runner, repo, sha, ref, "the code worktree #{code} (#{where} at #{sha[0, 12]})", branch)
-end
-
-def unmerged_branch(runner, repo, branch)
-  found = runner.run("-C", repo, "show-ref", "--verify", "--quiet", "refs/heads/#{branch}")
-  return nil if found.status == 1
-  unless found.success?
-    return "could not look up code branch #{branch} in #{repo}. Check the repository, then run the close again"
-  end
-  ancestry_refusal(runner, repo, branch, branch, "code branch #{branch}", branch)
-end
-
-# nil when `rev` is an ancestor of the branch the repo checkout is on, else a
-# refusal naming `what` and the ordinary merge of `ref` that fixes it.
-def ancestry_refusal(runner, repo, rev, ref, what, branch)
-  target = target_refusal(runner, repo, branch)
-  return target if target
-
-  check = runner.run("-C", repo, "merge-base", "--is-ancestor", rev, "HEAD")
-  return nil if check.success?
-
-  verdict = (check.status == 1) ? "is not merged into" : "could not be checked against"
-  "#{what} #{verdict} the current branch of #{repo}. " \
-    "Merge it there first (git -C #{repo} merge #{ref}), then run the close again"
-end
-
-# Integration means merged into a branch other than the code branch, so a
-# detached checkout, or one on the code branch itself, proves nothing.
-def target_refusal(runner, repo, branch)
-  on = runner.run("-C", repo, "symbolic-ref", "--quiet", "--short", "HEAD")
-  unless on.success?
-    return "the repo checkout #{repo} is not on a branch, so no branch holds the merged code. " \
-      "Check out the branch you release from, merge #{branch} into it, then run the close again"
-  end
-  return nil unless on.stdout.strip == branch
-
-  "the repo checkout #{repo} is on the code branch #{branch} itself, so the code is not merged anywhere. " \
-    "Check out the branch you release from, merge #{branch} into it, then run the close again"
 end
 
 # The hollow-report verdict the real close would reach, judged on a scratch
@@ -1024,13 +871,6 @@ def main(argv)
       warn "end-intent: do the work first, or close it with --disposition abandoned"
       exit 8
     end
-
-    unmerged = unmerged_refusal(intent_dir)
-    if unmerged
-      warn "end-intent: #{opts[:dry_run] ? "dry run: would refuse" : "refusing"} a delivered close: #{unmerged}"
-      warn "end-intent: nothing was merged, written, or released"
-      exit 9
-    end
   end
 
   # Resolve the INDEX move before any write (intent 385), in the dry run and the
@@ -1045,15 +885,6 @@ def main(argv)
       warn "end-intent: dry run: would refuse a hollow delivered close: #{hollow}"
       exit 7
     end
-    unless blank?(session) || opts[:discard_worktree_changes]
-      block = Arm.worktree_block(intent_dir: intent_dir)
-      refusal = worktree_refusal(block.is_a?(Hash) ? block["code"] : nil)
-      if refusal
-        warn "end-intent: dry run: would refuse at disarm (exit 5), after the store commit: " \
-             "#{refusal.delete_prefix("end-intent: ")}"
-        exit 5
-      end
-    end
     puts "end-intent: dry run for #{File.basename(intent_dir)} (#{disposition})"
     targets = BackfillIntent.targets_for(intent_dir)
     puts "  would backfill: #{targets.empty? ? "(nothing)" : targets.join(", ")}"
@@ -1061,7 +892,12 @@ def main(argv)
     puts "  #{index_move}"
     puts "  would append index note: #{opts[:index_note].inspect}" if opts[:index_note]
     puts "  would append savepoint bookend: Done  #{disposition}"
-    puts(opts[:no_commit] ? "  would skip store commit (--no-commit)" : "  would commit the store repo")
+    if opts[:no_commit]
+      puts "  would skip the store commit instruction (--no-commit)"
+    else
+      preview = store_commit_instruction(store, id, disposition, intent_dir: intent_dir, index_path: index_path)
+      puts "  would print: #{preview}" if preview
+    end
     if verdict == :takeover
       owner_desc = lock_data ? lock_data["owner_session"] : "corrupt/unreadable"
       puts "  would reclaim the stale delivery lock (owner #{owner_desc}) via takeover"
@@ -1144,9 +980,14 @@ def main(argv)
   # 3. Savepoint Done bookend (idempotent).
   Savepoint.append_terminal_savepoint(intent_dir, disposition)
 
-  # 4. Store auto-commit, unless --no-commit. Scoped to this intent's own paths (D17):
-  # never git add -A.
-  store_commit(store, id, disposition, intent_dir: intent_dir, index_path: index_path) unless opts[:no_commit]
+  # 4. Store commit instruction (D2 step 4), unless --no-commit. Owner ruling
+  # 2026-09-24: Plastic runs no version control command - it prints the
+  # instruction, scoped to this intent's own paths (D17: never `git add
+  # -A`), for the closer to run.
+  unless opts[:no_commit]
+    instruction = store_commit_instruction(store, id, disposition, intent_dir: intent_dir, index_path: index_path)
+    puts instruction if instruction
+  end
 
   # 5. Disarm (D2/D16): dirty-worktree guard, disarm seam, lock verification.
   result = run_disarm(intent_dir, id, session, discard_worktree_changes: opts[:discard_worktree_changes])

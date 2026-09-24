@@ -108,31 +108,17 @@ class NodeRunCliTest < Minitest::Test
                JSON.generate("type" => "delivery", "owner_session" => owner, "delegates" => delegates))
   end
 
-  def git(*args, dir: @repo)
-    out, err, status = Open3.capture3("git", "-C", dir, *args.map(&:to_s))
-    raise "git #{args.join(' ')} failed: #{err}" unless status.success?
-
-    out
-  end
-
-  # A real throwaway git repo, registered in projects.yml under
-  # PROJECT_SLUG, with the intent worktree already checked out on the
-  # intent branch - the only honest way to let the real node-run CLI
-  # resolve a worktree to run in (node_worktree_test.rb's own pattern).
-  def setup_real_repo
+  # A throwaway PLAIN repo directory, registered in projects.yml under
+  # PROJECT_SLUG, with the intent worktree already present as a bare
+  # directory - never a real git repository (owner ruling 2026-09-24, intent
+  # 390 part B: Plastic runs no version control command). node-run's own
+  # worktree resolution (node_target_dir) only ever checks `Dir.exist?`, so
+  # a plain directory at the exact path is the whole fixture.
+  def setup_repo
     @repo = Dir.mktmpdir("nrc-repo")
-    git("init", "-q", "-b", "alpha")
-    git("config", "user.email", "nrc@example.com")
-    git("config", "user.name", "NRC Test")
-    git("config", "gc.auto", "0")
-    File.write(File.join(@repo, "README.md"), "hi\n")
-    git("add", "README.md")
-    git("commit", "-q", "-m", "init")
-
     @intent_worktree = File.join(@repo, ".claude", "worktrees", "#{INTENT_ID}--#{INTENT_SLUG}")
     @intent_branch = "plastic/#{INTENT_ID}--#{INTENT_SLUG}"
-    FileUtils.mkdir_p(File.dirname(@intent_worktree))
-    git("worktree", "add", @intent_worktree, "-b", @intent_branch)
+    FileUtils.mkdir_p(@intent_worktree)
 
     FileUtils.mkdir_p(File.join(@home, ".plastic"))
     File.write(File.join(@home, ".plastic", "projects.yml"),
@@ -148,8 +134,13 @@ class NodeRunCliTest < Minitest::Test
     )
   end
 
+  # Stands in for an agent having already run the `git worktree add`
+  # instruction NodeWorktree.provision prints for this node (owner ruling
+  # 2026-09-24: Plastic itself creates nothing here any more).
   def provision_node_worktree(node, kind: "work")
-    NodeWorktree.provision(build_context, node: node, kind: kind)
+    result = NodeWorktree.provision(build_context, node: node, kind: kind)
+    FileUtils.mkdir_p(result[:path]) if result[:path]
+    result
   end
 
   # A ready node with a real running line and a real, hashed node input on disk
@@ -215,13 +206,8 @@ class NodeRunCliTest < Minitest::Test
       when "commit"
         Dir.chdir(cdir) do
           File.write("stub-work.txt", "hello from stub codex\n")
-          system("git", "add", "stub-work.txt")
-          system({ "GIT_AUTHOR_NAME" => "Stub", "GIT_AUTHOR_EMAIL" => "stub@example.com",
-                   "GIT_COMMITTER_NAME" => "Stub", "GIT_COMMITTER_EMAIL" => "stub@example.com" },
-                 "git", "commit", "-q", "-m", "stub work")
         end
-        sha = `git -C #{cdir} rev-parse HEAD`.strip
-        File.write(out_path, "node: n1\nstatus: done\ncommit: #{sha}\nsummary: stub committed\n") if out_path
+        File.write(out_path, "node: n1\nstatus: done\ncommit: fake0000cafe\nsummary: stub committed\n") if out_path
       else
         File.write(out_path, "node: n1\nstatus: done\ncommit: deadbeef0000\nsummary: stub ok\n") if out_path
       end
@@ -231,7 +217,7 @@ class NodeRunCliTest < Minitest::Test
   end
 
   def test_running_fields_reach_codex_argv
-    setup_real_repo
+    setup_repo
     write_graph("- n1 needs nothing\n")
     write_node("n1.md", node: "n1", kind: "work")
     write_lock(owner: "sess-1")
@@ -255,7 +241,7 @@ class NodeRunCliTest < Minitest::Test
   # --- 6.11: the attempt number comes from NodeInput.compute_attempt_number --
 
   def test_input_path_comes_from_compute_attempt_number
-    setup_real_repo
+    setup_repo
     write_graph("- n1 needs nothing\n")
     write_node("n1.md", node: "n1", kind: "work")
     write_lock(owner: "sess-1")
@@ -350,7 +336,7 @@ class NodeRunCliTest < Minitest::Test
   # --- 6.16: no ledger transition is ever written, refusal or success ---------
 
   def test_writes_no_transition_on_any_path
-    setup_real_repo
+    setup_repo
     write_graph("- n1 needs nothing\n")
     write_node("n1.md", node: "n1", kind: "work")
     write_lock(owner: "sess-1")
@@ -370,7 +356,7 @@ class NodeRunCliTest < Minitest::Test
   # --- 6.17: the return path is per-attempt ------------------------------------
 
   def test_return_path_is_per_attempt
-    setup_real_repo
+    setup_repo
     write_graph("- n1 needs nothing\n")
     write_node("n1.md", node: "n1", kind: "work")
     write_lock(owner: "sess-1")
@@ -398,7 +384,7 @@ class NodeRunCliTest < Minitest::Test
   # --- 6.20: no YAML document anywhere writes an unparsable return -------------
 
   def test_no_yaml_writes_unparsable_return
-    setup_real_repo
+    setup_repo
     write_graph("- n1 needs nothing\n")
     write_node("n1.md", node: "n1", kind: "work")
     write_lock(owner: "sess-1")
@@ -417,7 +403,7 @@ class NodeRunCliTest < Minitest::Test
   # --- 6.21: a nonzero exit writes an unparsable return ------------------------
 
   def test_nonzero_exit_writes_unparsable_return
-    setup_real_repo
+    setup_repo
     write_graph("- n1 needs nothing\n")
     write_node("n1.md", node: "n1", kind: "work")
     write_lock(owner: "sess-1")
@@ -436,7 +422,7 @@ class NodeRunCliTest < Minitest::Test
   # --- 6.22: a timeout writes an unparsable return -----------------------------
 
   def test_timeout_writes_unparsable_return
-    setup_real_repo
+    setup_repo
     write_graph("- n1 needs nothing\n")
     write_node("n1.md", node: "n1", kind: "work")
     write_lock(owner: "sess-1")
@@ -455,7 +441,7 @@ class NodeRunCliTest < Minitest::Test
   # --- 6.24: a timeout kills the whole process group, not just the top pid ----
 
   def test_timeout_kills_the_process_group
-    setup_real_repo
+    setup_repo
     write_graph("- n1 needs nothing\n")
     write_node("n1.md", node: "n1", kind: "work")
     write_lock(owner: "sess-1")
@@ -478,7 +464,7 @@ class NodeRunCliTest < Minitest::Test
   # --- 6.25: the return path is printed on success -----------------------------
 
   def test_prints_return_path
-    setup_real_repo
+    setup_repo
     write_graph("- n1 needs nothing\n")
     write_node("n1.md", node: "n1", kind: "work")
     write_lock(owner: "sess-1")
@@ -494,7 +480,7 @@ class NodeRunCliTest < Minitest::Test
   # --- 338a n3, 3.4: the return lands under attempts/, not the retired directory -
 
   def test_return_lands_under_attempts
-    setup_real_repo
+    setup_repo
     write_graph("- n1 needs nothing\n")
     write_node("n1.md", node: "n1", kind: "work")
     write_lock(owner: "sess-1")
@@ -517,7 +503,7 @@ class NodeRunCliTest < Minitest::Test
     _out, _err, refusal_status = run_cli(@dir, "--node", "n1", "--session", "sess-1")
     refute_equal 0, refusal_status.exitstatus
 
-    setup_real_repo
+    setup_repo
     provision_node_worktree("n1")
     build_running_node(node: "n1", session: "sess-1")
     _out2, err2, success_status = run_cli(@dir, "--node", "n1", "--session", "sess-1", env: stub_env)
@@ -527,7 +513,7 @@ class NodeRunCliTest < Minitest::Test
   # --- 6.28: a real subprocess of node-run itself, against a stub codex -------
 
   def test_subprocess_runs_against_stub_codex
-    setup_real_repo
+    setup_repo
     write_graph("- n1 needs nothing\n")
     write_node("n1.md", node: "n1", kind: "work")
     write_lock(owner: "sess-1")
@@ -544,16 +530,17 @@ class NodeRunCliTest < Minitest::Test
     assert_match(/commit: deadbeef0000/, content)
   end
 
-  # --- 6.29: a work node can commit inside the resolved sandbox, end to end ---
+  # --- 6.29: a work node writes into the resolved sandbox, end to end ---
 
-  # Proves the git commit succeeds against the exact --add-dir CodexAdapter
-  # resolves (codex_adapter_test.rb proves the argv itself; this proves the
-  # git call against it actually works), via the stub codex - never a real
-  # Codex API call. No network, no key, and no live model call anywhere in
-  # this suite; a genuinely Codex-enforced sandbox denial is not assertable
-  # here without one, so it is not asserted.
-  def test_work_node_commits_inside_the_sandbox
-    setup_real_repo
+  # Proves the stub codex actually runs against the exact --add-dir
+  # CodexAdapter resolves (codex_adapter_test.rb proves the argv itself;
+  # this proves the write against it actually lands), via the stub codex -
+  # never a real Codex API call. No network, no key, and no live model call
+  # anywhere in this suite. Plastic runs no git command (owner ruling
+  # 2026-09-24), so the commit sha in the node return is the stub's own
+  # fabricated value, never a real `git rev-parse`.
+  def test_work_node_writes_inside_the_sandbox
+    setup_repo
     write_graph("- n1 needs nothing\n")
     write_node("n1.md", node: "n1", kind: "work")
     write_lock(owner: "sess-1")
@@ -571,8 +558,7 @@ class NodeRunCliTest < Minitest::Test
 
     node_worktree = provisioned[:path]
     assert File.exist?(File.join(node_worktree, "stub-work.txt")),
-      "the stub codex must have actually committed inside the node worktree, not merely claimed to"
-    committed_sha = git("rev-parse", "HEAD", dir: node_worktree).strip
-    assert_equal committed_sha, parsed.commit
+      "the stub codex must have actually written inside the node worktree, not merely claimed to"
+    assert_equal "fake0000cafe", parsed.commit
   end
 end

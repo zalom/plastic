@@ -4,8 +4,13 @@
 require_relative "version_number"
 
 # Pure, dependency-injected pre-flight checks for Plastic's runtime dependencies
-# (intent 38). Takes injected probes (ruby version, node version, git presence,
-# mise presence) and returns a plain decision: ok / fatal plus branded messages.
+# (intent 38). Takes injected probes (ruby version, node version, mise
+# presence) and returns a plain decision: ok / fatal plus branded messages.
+# Owner ruling 2026-09-24 (intent 390): git dropped out of this check. Plastic
+# itself runs no version control command any more, so git is no longer a
+# runtime dependency of the tool this gate protects - only of the printed
+# instructions a person or agent runs afterward, which is their own machine's
+# concern, not an install-time gate.
 #
 # No I/O, no shelling out, no ENV reads here. Callers (scripts/install.rb,
 # bin/plastic.js) own the impure probing and the printing, so this module stays
@@ -18,7 +23,7 @@ module Preflight
   NODE_FLOOR = 18
   RUBY_PIN = "4.0"
 
-  def check(ruby_version:, node_version:, git_present:, mise_present:)
+  def check(ruby_version:, node_version:, mise_present:)
     messages = []
 
     ruby_message = ruby_issue(ruby_version, mise_present)
@@ -27,9 +32,6 @@ module Preflight
 
     node_message = node_issue(node_version)
     messages << node_message if node_message
-
-    git_message = git_issue(git_present)
-    messages << git_message if git_message
 
     { ok: messages.empty?, fatal: fatal, messages: messages }
   end
@@ -53,13 +55,6 @@ module Preflight
 
     "Plastic works best on Node #{NODE_FLOOR} or newer (found #{found(node_version)}). " \
       "Pin it with mise: mise use --global node@25"
-  end
-
-  def git_issue(git_present)
-    return nil if git_present
-
-    "Plastic uses git for its store and worktrees (git was not found). " \
-      "Install git, e.g. macOS: xcode-select --install"
   end
 
   def safe_version(str)

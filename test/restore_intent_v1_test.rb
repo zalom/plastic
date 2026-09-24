@@ -8,29 +8,30 @@ require "open3"
 require_relative "../scripts/lib/intent_validator"
 require_relative "../scripts/lib/links_section"
 
+# Owner ruling 2026-09-24 (intent 390): Plastic runs no version control
+# command, so this fixture builds "v1" as a plain snapshot directory (a copy
+# of the intent's own .md plus whichever lifecycle siblings exist, taken
+# BEFORE the fixture mutates them into "current"), never a real git repo.
+# `--at` is passed as a free-form label; `snapshot!` stands in for the person
+# or agent having already run the printed `git show` instruction themselves.
 class RestoreIntentV1Test < Minitest::Test
   NEW_INTENT = File.expand_path("../scripts/new-intent", __dir__)
   RESTORE = File.expand_path("../scripts/restore-intent-v1", __dir__)
   TEMPLATES = File.expand_path("../templates", __dir__)
+  AT_LABEL = "v1"
+  PROSE_SIBLINGS = %w[checklist.md outcome.md spec.md plan.md].freeze
 
   def setup
     @home = Dir.mktmpdir("restore-intent-v1")
+    @snapshot_dir = Dir.mktmpdir("restore-intent-v1-snapshot")
     @store = File.join(@home, "store")
     FileUtils.mkdir_p(@store)
     File.write(File.join(@home, "INDEX.md"), "# Index\n\n## Relocated\n(none)\n")
-    git("init", "-q")
-    git("-c", "user.email=t@t", "-c", "user.name=t", "commit", "--allow-empty", "-q", "-m", "init")
   end
 
   def teardown
     FileUtils.rm_rf(@home)
-  end
-
-  def git(*args)
-    out, status = Open3.capture2("git", "-C", @home, *args)
-    raise "git #{args.join(" ")} failed: #{out}" unless status.success?
-
-    out
+    FileUtils.rm_rf(@snapshot_dir)
   end
 
   def new_intent(*args)
@@ -46,10 +47,26 @@ class RestoreIntentV1Test < Minitest::Test
     out.strip
   end
 
-  def commit_all(message)
-    git("add", "-A")
-    git("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", message)
-    git("rev-parse", "HEAD").strip
+  # Copies `dir`'s own .md plus every PROSE_SIBLINGS file that currently
+  # exists into @snapshot_dir at the same path relative to `home`, standing in
+  # for a `git show <at>:<path>` a person already ran for each file. Call
+  # this BEFORE mutating `dir` into its "current" shape.
+  def snapshot!(dir, home: @home)
+    rel_dir = dir.delete_prefix("#{home}/")
+    dest_dir = File.join(@snapshot_dir, rel_dir)
+    FileUtils.mkdir_p(dest_dir)
+    base = File.basename(dir)
+    files = ["#{base}.md", *PROSE_SIBLINGS]
+    files.each do |f|
+      src = File.join(dir, f)
+      next unless File.exist?(src)
+
+      FileUtils.cp(src, File.join(dest_dir, f))
+    end
+  end
+
+  def restore(*args)
+    Open3.capture2(RbConfig.ruby, RESTORE, *args, "--plastic-home", @home, "--snapshot-dir", @snapshot_dir)
   end
 
   def frontmatter_of(dir)
@@ -72,32 +89,32 @@ class RestoreIntentV1Test < Minitest::Test
        .find { |d| File.basename(d).split("--", 2).first == id.to_s }
   end
 
-  # Builds the 124/131-shaped fixture. Returns [a_dir, a_id, v1_sha].
+  # Builds the 124/131-shaped fixture. Returns [a_dir, a_id].
   def seed_124_131_shape
     a_dir = new_intent("--intent", "Delivered thing", "--slug", "delivered-thing")
     a_id = File.basename(a_dir).split("--", 2).first
-    v1_sha = commit_all("intent #{a_id} delivered")
+    snapshot!(a_dir)
 
     b_dir = new_intent("--intent", "Later thing", "--slug", "later-thing", "--sources", a_id)
-    commit_all("feat: create later thing (sources #{a_id})")
     assert_includes chain_of(a_dir), File.basename(b_dir).split("--", 2).first,
       "fixture setup: new-intent must write the I1 backlink before the test proceeds"
 
     a_md = File.join(a_dir, "#{File.basename(a_dir)}.md")
     File.write(a_md, File.read(a_md) + "\n\n### Amendment\nA late ruling landed in place.\n")
-    commit_all("intent #{a_id} amended in place")
 
-    [a_dir, a_id, v1_sha]
+    [a_dir, a_id]
   end
 
   # THE regression: the OLD hand-run behavior (60a51bf's literal mechanism) loses
   # the accrued I1 backlink because it is a whole-file revert with no concept of
-  # graph metadata.
+  # graph metadata - reproduced here by copying the snapshot straight over the
+  # live file, exactly what a bare `git checkout <sha> -- <path>` would do.
   def test_old_whole_file_revert_destroys_the_accrued_backlink
-    a_dir, _a_id, v1_sha = seed_124_131_shape
-    rel = relative_to_home(a_dir)
+    a_dir, _a_id = seed_124_131_shape
+    a_md = File.join(a_dir, "#{File.basename(a_dir)}.md")
+    v1_md = File.join(@snapshot_dir, a_dir.delete_prefix("#{@home}/"), "#{File.basename(a_dir)}.md")
 
-    git("checkout", v1_sha, "--", "#{rel}/#{File.basename(a_dir)}.md")
+    FileUtils.cp(v1_md, a_md)
 
     assert_empty chain_of(a_dir),
       "the OLD whole-file revert must reproduce the real incident: chain reverts to v1's " \
@@ -106,24 +123,16 @@ class RestoreIntentV1Test < Minitest::Test
 
   # THE fix: the NEW tool preserves the backlink through an identical restore.
   def test_new_tool_preserves_the_accrued_backlink
-    a_dir, a_id, v1_sha = seed_124_131_shape
+    a_dir, a_id = seed_124_131_shape
     b_id_chain_before = chain_of(a_dir)
 
-    out, status = Open3.capture2(
-      RbConfig.ruby, RESTORE, a_id, "--at", v1_sha, "--plastic-home", @home, "--apply"
-    )
+    out, status = restore(a_id, "--at", AT_LABEL, "--apply")
     assert_equal 0, status.exitstatus, "restore should succeed: #{out}"
 
     assert_equal b_id_chain_before, chain_of(a_dir),
       "the accrued backlink must survive the restore"
     refute_includes File.read(File.join(a_dir, "#{File.basename(a_dir)}.md")), "A late ruling landed in place",
       "the amendment prose must be reverted to v1"
-  end
-
-  # Path relative to @home (the fixture's git repo root), for `git checkout <sha>
-  # -- <path>` invocations run directly against the fixture (not through the CLI).
-  def relative_to_home(dir)
-    dir.delete_prefix("#{@home}/")
   end
 
   # Synthetic: v1's chain names an id with no directory anywhere in the fixture
@@ -141,7 +150,7 @@ class RestoreIntentV1Test < Minitest::Test
     content = File.read(a_md)
     content = content.sub('chain: []', 'chain: ["999"]')
     File.write(a_md, content)
-    v1_sha = commit_all("intent #{a_id} delivered with a since-dead edge")
+    snapshot!(a_dir)
 
     # Revert the dead edge back out of the working file (simulating that nothing
     # legitimately re-added it later); current chain is empty. Also land an unrelated
@@ -153,20 +162,15 @@ class RestoreIntentV1Test < Minitest::Test
     current = File.read(a_md).sub('chain: ["999"]', "chain: []")
     current += "\n\n### Amendment\nSomething unrelated changed after v1.\n"
     File.write(a_md, current)
-    commit_all("intent #{a_id} amended in place")
 
     # The drop must be named in BOTH the dry-run report and the apply report
     # (spec acceptance criterion names both explicitly), not only on --apply.
-    dry_out, dry_status = Open3.capture2(
-      RbConfig.ruby, RESTORE, a_id, "--at", v1_sha, "--plastic-home", @home
-    )
+    dry_out, dry_status = restore(a_id, "--at", AT_LABEL)
     assert_equal 0, dry_status.exitstatus, "dry run should succeed: #{dry_out}"
     assert_includes dry_out, "999", "the dropped dead edge must be named in the DRY RUN report"
     assert_empty chain_of(a_dir), "a dry run must not have written anything yet"
 
-    out, status = Open3.capture2(
-      RbConfig.ruby, RESTORE, a_id, "--at", v1_sha, "--plastic-home", @home, "--apply"
-    )
+    out, status = restore(a_id, "--at", AT_LABEL, "--apply")
     assert_equal 0, status.exitstatus, "restore should succeed: #{out}"
     assert_empty chain_of(a_dir), "a confirmed-dead v1 edge must not be reintroduced"
     assert_includes out, "999", "the dropped dead edge must be named in the APPLY report"
@@ -186,19 +190,15 @@ class RestoreIntentV1Test < Minitest::Test
 
     content = File.read(a_md).sub('chain: []', 'chain: ["999"]')
     File.write(a_md, content)
-    v1_sha = commit_all("intent #{a_id} delivered with a since-dead edge")
+    snapshot!(a_dir)
 
     File.write(a_md, File.read(a_md).sub('chain: ["999"]', "chain: []"))
-    commit_all("intent #{a_id} amended in place")
 
     b_dir = new_intent("--intent", "Live accrual", "--slug", "live-accrual", "--sources", a_id)
-    commit_all("feat: create live accrual (sources #{a_id})")
     b_id = File.basename(b_dir).split("--", 2).first
     assert_equal [b_id], chain_of(a_dir), "fixture setup: only the live backlink should be present"
 
-    out, status = Open3.capture2(
-      RbConfig.ruby, RESTORE, a_id, "--at", v1_sha, "--plastic-home", @home, "--apply"
-    )
+    out, status = restore(a_id, "--at", AT_LABEL, "--apply")
     assert_equal 0, status.exitstatus, "restore should succeed: #{out}"
     assert_equal [b_id], chain_of(a_dir),
       "restored chain must be exactly the live accrued edge, no dead edge, no duplication"
@@ -207,14 +207,12 @@ class RestoreIntentV1Test < Minitest::Test
   # Dry-run (no --apply) is the default: it must exit 0, print a report, and
   # touch NO file on disk, not even the .md file's frontmatter.
   def test_dry_run_is_default_no_filesystem_write
-    a_dir, a_id, v1_sha = seed_124_131_shape
+    a_dir, a_id = seed_124_131_shape
     a_md = File.join(a_dir, "#{File.basename(a_dir)}.md")
     before_md = File.read(a_md)
     before_chain = chain_of(a_dir)
 
-    out, status = Open3.capture2(
-      RbConfig.ruby, RESTORE, a_id, "--at", v1_sha, "--plastic-home", @home
-    )
+    out, status = restore(a_id, "--at", AT_LABEL)
     assert_equal 0, status.exitstatus, "a dry run should still exit 0: #{out}"
     assert_equal before_md, File.read(a_md), "dry run (no --apply) must not write the .md file"
     assert_equal before_chain, chain_of(a_dir), "dry run must not change the frontmatter graph"
@@ -227,16 +225,13 @@ class RestoreIntentV1Test < Minitest::Test
   def test_apply_reverts_all_four_lifecycle_siblings_to_exact_v1_bytes
     a_dir = new_intent("--intent", "Full lifecycle files", "--slug", "full-lifecycle")
     a_id = File.basename(a_dir).split("--", 2).first
-    siblings = %w[checklist.md outcome.md spec.md plan.md]
+    siblings = PROSE_SIBLINGS
     v1_bytes = siblings.to_h { |f| [f, File.read(File.join(a_dir, f))] }
-    v1_sha = commit_all("intent #{a_id} delivered")
+    snapshot!(a_dir)
 
     siblings.each { |f| File.write(File.join(a_dir, f), "#{v1_bytes[f]}\nlate edit\n") }
-    commit_all("intent #{a_id} lifecycle files amended in place")
 
-    out, status = Open3.capture2(
-      RbConfig.ruby, RESTORE, a_id, "--at", v1_sha, "--plastic-home", @home, "--apply"
-    )
+    out, status = restore(a_id, "--at", AT_LABEL, "--apply")
     assert_equal 0, status.exitstatus, "restore should succeed: #{out}"
     siblings.each do |f|
       assert_equal v1_bytes[f], File.read(File.join(a_dir, f)),
@@ -253,14 +248,12 @@ class RestoreIntentV1Test < Minitest::Test
   # for real at --apply time (Task 2's reproject_links); this test observes the
   # resulting file, it does not re-invoke project-links itself.
   def test_links_section_reflects_the_preserved_graph_after_apply
-    a_dir, a_id, v1_sha = seed_124_131_shape
+    a_dir, a_id = seed_124_131_shape
     b_id = chain_of(a_dir).first
     b_dir = dir_for_id(b_id)
     refute_nil b_dir, "fixture setup: B's directory must resolve"
 
-    out, status = Open3.capture2(
-      RbConfig.ruby, RESTORE, a_id, "--at", v1_sha, "--plastic-home", @home, "--apply"
-    )
+    out, status = restore(a_id, "--at", AT_LABEL, "--apply")
     assert_equal 0, status.exitstatus, "restore should succeed: #{out}"
 
     a_md = File.join(a_dir, "#{File.basename(a_dir)}.md")
@@ -270,29 +263,43 @@ class RestoreIntentV1Test < Minitest::Test
       "## Links must reflect the preserved chain edge after an applied restore"
   end
 
-  def test_unresolved_at_aborts_with_no_write
+  def test_missing_snapshot_dir_flag_aborts_with_no_write_and_names_the_fetch_command
     a_dir = new_intent("--intent", "Untouched", "--slug", "untouched")
     a_id = File.basename(a_dir).split("--", 2).first
     a_md = File.join(a_dir, "#{File.basename(a_dir)}.md")
-    commit_all("intent #{a_id} delivered")
     before = File.read(a_md)
 
-    out, status = Open3.capture2(
-      RbConfig.ruby, RESTORE, a_id, "--at", "not-a-real-ref", "--plastic-home", @home, "--apply"
+    out, status = Open3.capture2e(
+      RbConfig.ruby, RESTORE, a_id, "--at", AT_LABEL, "--plastic-home", @home, "--apply"
     )
     refute_equal 0, status.exitstatus, "must exit non-zero: #{out}"
     assert_equal before, File.read(a_md), "file must be byte-for-byte unchanged"
+    assert_includes out, "--snapshot-dir is required"
+    assert_includes out, "git -C #{@home} show #{AT_LABEL}:", "must name the fetch command to run"
+  end
+
+  def test_snapshot_missing_the_intent_file_aborts_with_no_write_and_names_the_fetch_command
+    a_dir = new_intent("--intent", "Untouched two", "--slug", "untouched-two")
+    a_id = File.basename(a_dir).split("--", 2).first
+    a_md = File.join(a_dir, "#{File.basename(a_dir)}.md")
+    before = File.read(a_md)
+    # @snapshot_dir exists but was never populated for this intent.
+
+    out, status = Open3.capture2e(
+      RbConfig.ruby, RESTORE, a_id, "--at", AT_LABEL, "--plastic-home", @home, "--snapshot-dir", @snapshot_dir,
+      "--apply"
+    )
+    refute_equal 0, status.exitstatus, "must exit non-zero: #{out}"
+    assert_equal before, File.read(a_md), "file must be byte-for-byte unchanged"
+    assert_includes out, "git -C #{@home} show #{AT_LABEL}:", "must name the fetch command to run"
   end
 
   def test_unresolved_intent_id_aborts_with_no_write
-    a_dir = new_intent("--intent", "Untouched two", "--slug", "untouched-two")
+    a_dir = new_intent("--intent", "Untouched three", "--slug", "untouched-three")
     a_md = File.join(a_dir, "#{File.basename(a_dir)}.md")
-    v1_sha = commit_all("intent delivered")
     before = File.read(a_md)
 
-    out, status = Open3.capture2(
-      RbConfig.ruby, RESTORE, "999999", "--at", v1_sha, "--plastic-home", @home, "--apply"
-    )
+    out, status = restore("999999", "--at", AT_LABEL, "--apply")
     refute_equal 0, status.exitstatus, "must exit non-zero: #{out}"
     assert_equal before, File.read(a_md), "file must be byte-for-byte unchanged"
   end
@@ -302,38 +309,33 @@ class RestoreIntentV1Test < Minitest::Test
     a_id = File.basename(a_dir).split("--", 2).first
     a_md = File.join(a_dir, "#{File.basename(a_dir)}.md")
 
-    # Corrupt v1's frontmatter itself (no closing --- delimiter), commit it as v1.
+    # Corrupt v1's frontmatter itself (no closing --- delimiter), snapshot it as v1.
     File.write(a_md, "---\nid: \"#{a_id}\"\nsources: [\nno closing delimiter here")
-    v1_sha = commit_all("intent #{a_id} delivered with broken frontmatter")
+    snapshot!(a_dir)
 
     # Restore the working copy to something valid so "current" is readable, but
-    # v1 (the committed snapshot) remains broken.
+    # v1 (the snapshot) remains broken.
     good_a_dir = new_intent("--intent", "Bad v1 fixed", "--slug", "bad-v1-fixed")
     FileUtils.cp(File.join(good_a_dir, "#{File.basename(good_a_dir)}.md"), a_md)
-    commit_all("intent #{a_id} amended in place")
     before = File.read(a_md)
 
-    out, status = Open3.capture2(
-      RbConfig.ruby, RESTORE, a_id, "--at", v1_sha, "--plastic-home", @home, "--apply"
-    )
+    out, status = restore(a_id, "--at", AT_LABEL, "--apply")
     refute_equal 0, status.exitstatus, "must exit non-zero: #{out}"
     assert_equal before, File.read(a_md), "file must be byte-for-byte unchanged"
   end
 
   # AC (spec.md): --apply reverts the intent's own .md while sources/chain equals
   # the union, "verified by reading the written file back and diffing prose
-  # against the v1 git blob byte-for-byte outside the two frontmatter array
-  # lines." This test performs exactly that diff, directly against the real git
-  # blob at v1_sha, not merely against a substring check.
+  # against the v1 snapshot byte-for-byte outside the two frontmatter array
+  # lines." This test performs exactly that diff, directly against the snapshot
+  # file, not merely against a substring check.
   def test_apply_restores_md_byte_identical_to_v1_outside_graph_arrays
-    a_dir, a_id, v1_sha = seed_124_131_shape
+    a_dir, a_id = seed_124_131_shape
     a_md = File.join(a_dir, "#{File.basename(a_dir)}.md")
-    rel = relative_to_home(a_dir)
-    v1_blob = git("show", "#{v1_sha}:#{rel}/#{File.basename(a_dir)}.md")
+    v1_md_path = File.join(@snapshot_dir, a_dir.delete_prefix("#{@home}/"), "#{File.basename(a_dir)}.md")
+    v1_blob = File.read(v1_md_path)
 
-    out, status = Open3.capture2(
-      RbConfig.ruby, RESTORE, a_id, "--at", v1_sha, "--plastic-home", @home, "--apply"
-    )
+    out, status = restore(a_id, "--at", AT_LABEL, "--apply")
     assert_equal 0, status.exitstatus, "restore should succeed: #{out}"
 
     # Strip the two graph frontmatter lines AND the ## Links section: Links is a
@@ -357,11 +359,9 @@ class RestoreIntentV1Test < Minitest::Test
   # graph/prose restore). Both are real, distinct structural changes, so both get their own
   # receipt; this is the intended, more complete audit trail, not a duplicate.
   def test_revisions_gains_restored_to_v1_entry_naming_reverted_files
-    a_dir, a_id, v1_sha = seed_124_131_shape
+    a_dir, a_id = seed_124_131_shape
 
-    out, status = Open3.capture2(
-      RbConfig.ruby, RESTORE, a_id, "--at", v1_sha, "--plastic-home", @home, "--apply"
-    )
+    out, status = restore(a_id, "--at", AT_LABEL, "--apply")
     assert_equal 0, status.exitstatus, "restore should succeed: #{out}"
 
     revisions = File.read(File.join(a_dir, "revisions.md"))
@@ -378,11 +378,9 @@ class RestoreIntentV1Test < Minitest::Test
   # lock; the tool never calls lock-acquisition/lock-check code (verified
   # structurally: scripts/restore-intent-v1 never requires lib/lock.rb).
   def test_apply_prints_maintenance_lock_reminder
-    a_dir, a_id, v1_sha = seed_124_131_shape
+    a_dir, a_id = seed_124_131_shape
 
-    out, status = Open3.capture2(
-      RbConfig.ruby, RESTORE, a_id, "--at", v1_sha, "--plastic-home", @home, "--apply"
-    )
+    out, status = restore(a_id, "--at", AT_LABEL, "--apply")
     assert_equal 0, status.exitstatus, "restore should succeed: #{out}"
     assert_includes out, "There is no maintenance lock to hold",
       "an --apply run must print the corrected no-lock reminder (fail-open doctrine, 111), " \
@@ -403,15 +401,12 @@ class RestoreIntentV1Test < Minitest::Test
     a_id = File.basename(a_dir).split("--", 2).first
     checklist_path = File.join(a_dir, "checklist.md")
     v1_checklist_bytes = File.read(checklist_path)
-    v1_sha = commit_all("intent #{a_id} delivered")
+    snapshot!(a_dir)
 
     File.delete(checklist_path)
-    commit_all("intent #{a_id} checklist.md deleted after v1")
     refute File.exist?(checklist_path), "fixture setup: checklist.md must be gone before the restore"
 
-    out, status = Open3.capture2(
-      RbConfig.ruby, RESTORE, a_id, "--at", v1_sha, "--plastic-home", @home, "--apply"
-    )
+    out, status = restore(a_id, "--at", AT_LABEL, "--apply")
     assert_equal 0, status.exitstatus, "restore should succeed: #{out}"
     assert File.exist?(checklist_path), "a sibling deleted after v1 must be RECREATED by the restore"
     assert_equal v1_checklist_bytes, File.read(checklist_path),
@@ -428,7 +423,6 @@ class RestoreIntentV1Test < Minitest::Test
   def test_v1_frontmatter_missing_graph_keys_aborts_via_write_confirmation
     other_dir = new_intent("--intent", "Real other intent", "--slug", "real-other-intent")
     other_id = File.basename(other_dir).split("--", 2).first
-    commit_all("intent #{other_id} delivered")
 
     a_dir = new_intent("--intent", "Missing graph keys", "--slug", "missing-graph-keys")
     a_id = File.basename(a_dir).split("--", 2).first
@@ -447,15 +441,12 @@ class RestoreIntentV1Test < Minitest::Test
       Missing graph keys.
     MD
     File.write(a_md, minimal)
-    v1_sha = commit_all("intent #{a_id} delivered with no sources:/chain: keys in frontmatter")
+    snapshot!(a_dir)
 
     File.write(a_md, minimal.sub("tags: []", "tags: []\nchain: [\"#{other_id}\"]"))
-    commit_all("intent #{a_id} amended with a chain edge; v1 still has no chain: key")
     before = File.read(a_md)
 
-    out, status = Open3.capture2(
-      RbConfig.ruby, RESTORE, a_id, "--at", v1_sha, "--plastic-home", @home, "--apply"
-    )
+    out, status = restore(a_id, "--at", AT_LABEL, "--apply")
     refute_equal 0, status.exitstatus, "must exit non-zero: #{out}"
     assert_equal before, File.read(a_md), "file must be byte-for-byte unchanged"
   end
@@ -466,21 +457,17 @@ class RestoreIntentV1Test < Minitest::Test
   def test_sources_edge_is_preserved_through_a_restore
     root_dir = new_intent("--intent", "Root for sources", "--slug", "root-for-sources")
     root_id = File.basename(root_dir).split("--", 2).first
-    commit_all("root delivered")
 
     restorable_dir = new_intent("--intent", "Restorable with sources", "--slug", "restorable-sources",
                                  "--sources", root_id)
     restorable_id = File.basename(restorable_dir).split("--", 2).first
-    v1_sha = commit_all("intent #{restorable_id} delivered with sources #{root_id}")
+    snapshot!(restorable_dir)
     assert_includes sources_of(restorable_dir), root_id, "fixture setup: sources must be wired"
 
     restorable_md = File.join(restorable_dir, "#{File.basename(restorable_dir)}.md")
     File.write(restorable_md, File.read(restorable_md) + "\n\n### Amendment\nLate ruling.\n")
-    commit_all("intent #{restorable_id} amended in place")
 
-    out, status = Open3.capture2(
-      RbConfig.ruby, RESTORE, restorable_id, "--at", v1_sha, "--plastic-home", @home, "--apply"
-    )
+    out, status = restore(restorable_id, "--at", AT_LABEL, "--apply")
     assert_equal 0, status.exitstatus, "restore should succeed: #{out}"
     assert_includes sources_of(restorable_dir), root_id, "the sources edge must survive the restore"
   end
@@ -502,14 +489,9 @@ class RestoreIntentV1Test < Minitest::Test
     p_id = File.basename(p_dir).split("--", 2).first
     assert_equal g_id, p_id, "fixture setup: both stores must allocate the same first bare id"
 
-    Open3.capture2("git", "-C", home, "init", "-q")
-    Open3.capture2("git", "-C", home, "add", "-A")
-    Open3.capture2("git", "-C", home, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "init")
-    head, = Open3.capture2("git", "-C", home, "rev-parse", "HEAD")
-    head = head.strip
-
     out, status = Open3.capture2e(
-      RbConfig.ruby, RESTORE, g_id, "--at", head, "--plastic-home", home, "--apply"
+      RbConfig.ruby, RESTORE, g_id, "--at", AT_LABEL, "--plastic-home", home, "--snapshot-dir", @snapshot_dir,
+      "--apply"
     )
     refute_equal 0, status.exitstatus, "an ambiguous bare id must abort loud rather than guess: #{out}"
     assert_includes out.downcase, "ambiguous"
@@ -523,20 +505,19 @@ class RestoreIntentV1Test < Minitest::Test
   # unmissably, and --skip-links must let an operator decline it (with a loud
   # staleness warning instead of a silent skip).
   def test_apply_announces_store_wide_links_reprojection
-    a_dir, a_id, v1_sha = seed_124_131_shape
+    a_dir, a_id = seed_124_131_shape
 
-    out, status = Open3.capture2(
-      RbConfig.ruby, RESTORE, a_id, "--at", v1_sha, "--plastic-home", @home, "--apply"
-    )
+    out, status = restore(a_id, "--at", AT_LABEL, "--apply")
     assert_equal 0, status.exitstatus, "restore should succeed: #{out}"
     assert_includes out.downcase, "store-wide", "the store-wide blast radius must be announced"
   end
 
   def test_skip_links_declines_reprojection_with_a_loud_staleness_warning
-    a_dir, a_id, v1_sha = seed_124_131_shape
+    a_dir, a_id = seed_124_131_shape
 
     out, status = Open3.capture2e(
-      RbConfig.ruby, RESTORE, a_id, "--at", v1_sha, "--plastic-home", @home, "--apply", "--skip-links"
+      RbConfig.ruby, RESTORE, a_id, "--at", AT_LABEL, "--plastic-home", @home, "--snapshot-dir", @snapshot_dir,
+      "--apply", "--skip-links"
     )
     assert_equal 0, status.exitstatus, "restore should succeed: #{out}"
     assert_includes out.downcase, "stale", "declining reprojection must print a loud staleness warning"
@@ -548,7 +529,7 @@ class RestoreIntentV1Test < Minitest::Test
   # revisions.md (v1, unrelated to this restore) before running --apply, and confirm the
   # restore's own entry lands as v2 (or later), with v1's exact text still present verbatim.
   def test_preexisting_revisions_md_is_preserved_and_new_entry_appends_after_it
-    a_dir, a_id, v1_sha = seed_124_131_shape
+    a_dir, a_id = seed_124_131_shape
 
     preexisting = "# revisions.md\n\n## Revision v1 - 2026-01-01-00:00\n" \
                   "- Why: unrelated prior structural fix [rule: unsanctioned-section]\n" \
@@ -557,9 +538,7 @@ class RestoreIntentV1Test < Minitest::Test
     revisions_path = File.join(a_dir, "revisions.md")
     File.write(revisions_path, preexisting)
 
-    out, status = Open3.capture2(
-      RbConfig.ruby, RESTORE, a_id, "--at", v1_sha, "--plastic-home", @home, "--apply"
-    )
+    out, status = restore(a_id, "--at", AT_LABEL, "--apply")
     assert_equal 0, status.exitstatus, "restore should succeed: #{out}"
 
     revisions = File.read(revisions_path)
@@ -581,13 +560,13 @@ class RestoreIntentV1Test < Minitest::Test
   # actually changed. (Establishes the "no-op yields no entry" floor so the test above is
   # not vacuously passing on a tool that appends unconditionally on every invocation.)
   def test_idempotent_second_restore_appends_no_further_entry_when_already_at_v1
-    a_dir, a_id, v1_sha = seed_124_131_shape
+    a_dir, a_id = seed_124_131_shape
 
-    Open3.capture2(RbConfig.ruby, RESTORE, a_id, "--at", v1_sha, "--plastic-home", @home, "--apply")
+    restore(a_id, "--at", AT_LABEL, "--apply")
     revisions_path = File.join(a_dir, "revisions.md")
     count_after_first = File.read(revisions_path).scan(/^## Revision v\d+/).length
 
-    Open3.capture2(RbConfig.ruby, RESTORE, a_id, "--at", v1_sha, "--plastic-home", @home, "--apply")
+    restore(a_id, "--at", AT_LABEL, "--apply")
     count_after_second = File.read(revisions_path).scan(/^## Revision v\d+/).length
 
     assert_equal count_after_first, count_after_second,

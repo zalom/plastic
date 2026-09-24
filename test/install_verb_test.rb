@@ -100,14 +100,9 @@ class InstallVerbTest < Minitest::Test
       "the install results must point a first-time user at guide 1"
   end
 
-  # Intent 372: the installer skills are gone, so a fresh `~/.plastic` needs `git init`
-  # to come from the install verb itself, matching the skill's former step 119-127.
-  def test_run_git_inits_a_fresh_plastic_home
-    build.run(selected: ["claude"])
-
-    assert File.directory?(File.join(@home, ".git")), "a fresh plastic_home must end up under git"
-  end
-
+  # Intent 390: Plastic runs no version control command, so install no longer git-inits
+  # a fresh `~/.plastic`; an existing `.git` directory, if any, is simply none of its
+  # business.
   def test_run_leaves_an_existing_git_repository_alone
     FileUtils.mkdir_p(File.join(@home, ".git"))
     marker = File.join(@home, ".git", "HEAD")

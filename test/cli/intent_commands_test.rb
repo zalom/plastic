@@ -299,25 +299,9 @@ class CliIntentCommandsTest < Minitest::Test
     assert_includes @fixture.warned, "--abandoned"
   end
 
-  def test_end_names_the_unmerged_branch_refusal
-    assert_equal 1, command("intent end", "372", "--delivered", "--summary", "text", status: 9)
-    assert_includes @fixture.warned, "whose code is not merged: run the git merge it names"
-  end
-
-  def test_end_reports_the_unmerged_refusal_as_a_json_failure
-    assert_equal 1, command("intent end", "372", "--delivered", "--summary", "text", "--json", status: 9)
-
-    error = JSON.parse(@fixture.printed).dig("result", "error")
-
-    assert_equal "failed", error.fetch("kind")
-    assert_includes error.fetch("message"), "whose code is not merged: run the git merge it names"
-  end
-
-  def test_end_keeps_the_unmerged_refusal_detail_in_json_output
-    @captured = "end-intent: refusing a delivered close: code branch plastic/1--x is not merged\n"
-    command("intent end", "372", "--delivered", "--summary", "text", "--json", status: 9)
-
-    assert_includes JSON.parse(@fixture.printed).dig("result", "output").join, "code branch plastic/1--x is not merged"
+  def test_end_names_no_refusal_for_an_unknown_status
+    assert_equal 1, command("intent end", "372", "--delivered", "--summary", "text", status: 42)
+    assert_includes @fixture.warned, "end-intent exited 42"
   end
 
   def test_end_a_passing_dry_run_names_no_next_command

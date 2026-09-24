@@ -8,29 +8,12 @@ require "json"
 require "stringio"
 require_relative "../scripts/lib/worktree"
 require_relative "../scripts/lib/lock"
-require_relative "../scripts/lib/arm"
 
-# Hermetic tests for the Worktree module (intent 73c1). No real git runs: a
-# FakeRunner records calls and returns scripted results. projects.yml is built
-# inside a tmp HOME so resolution is deterministic.
+# Hermetic tests for the Worktree module (intent 73c1). Plastic runs no
+# version control command (intent 390): these tests cover only the pure path
+# helpers and the lock-freshness check. projects.yml is built inside a tmp
+# HOME so resolution is deterministic.
 class WorktreeTest < Minitest::Test
-  # A fake ShellRunner. Records every `run(*args)` and returns a scripted
-  # Result. By default every git call "succeeds"; tests can override per-arg.
-  class FakeRunner
-    attr_reader :calls
-
-    def initialize(&block)
-      @calls = []
-      @responder = block
-    end
-
-    def run(*args)
-      @calls << args.map(&:to_s)
-      r = @responder ? @responder.call(args.map(&:to_s)) : nil
-      r || Worktree::ShellRunner::Result.new(0, "true\n", "")
-    end
-  end
-
   def setup
     @home = Dir.mktmpdir("wt-home")
     @plastic_home = File.join(@home, ".plastic")
@@ -88,45 +71,6 @@ class WorktreeTest < Minitest::Test
   def test_repo_for_blank_slug_is_nil
     assert_nil Worktree.repo_for(nil, home: @home)
     assert_nil Worktree.repo_for("", home: @home)
-  end
-
-  # --- release ---------------------------------------------------------------
-
-  def bridge_data(id: "73c1", slug: "worktree-x")
-    {
-      "intent" => {
-        "id" => id,
-        "dir" => "#{id}--#{slug}",
-        "store" => @store,
-        "name" => slug,
-      },
-    }
-  end
-
-  def test_release_removes_the_code_worktree_and_prunes_then_clears_block
-    runner = FakeRunner.new
-    data = bridge_data
-    data["worktree"] = {
-      "code" => File.join(@repo, ".claude", "worktrees", "73c1--worktree-x"),
-      "code_branch" => "plastic/73c1--worktree-x",
-      "provisioned" => true,
-    }
-    result = Worktree.release(data, home: @home, runner: runner)
-    assert_nil result["worktree"], "worktree block must be cleared"
-
-    removes = runner.calls.select { |c| c.include?("remove") }
-    prunes = runner.calls.select { |c| c.include?("prune") }
-    assert_equal 1, removes.length
-    assert removes.all? { |c| c[0] == "-C" }
-    assert_equal 1, prunes.length
-  end
-
-  def test_release_noop_when_nothing_provisioned
-    runner = FakeRunner.new
-    data = bridge_data # no "worktree" key
-    result = Worktree.release(data, home: @home, runner: runner)
-    assert_empty runner.calls
-    assert_nil result["worktree"]
   end
 
   # --- lock_held_by_other? (intent 108: the delivery.lock file decides) -------
