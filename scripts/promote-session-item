@@ -9,7 +9,7 @@
 # Usage:
 #   promote-session-item --day <YYYYMMDD> --match <substring> [--session <id>]
 #                        [--store <dir>] [--project <slug>] [--templates <dir>]
-#                        [--plastic-home <dir>] [--no-reindex]
+#                        [--plastic-home <dir>]
 #
 # Target: the newest open line, else the newest pending line, whose summary
 # contains --match, tagged with --session when given, any session otherwise.
@@ -40,7 +40,7 @@ def next_value!(argv, i, flag)
 end
 
 opts = { day: nil, match: nil, session: nil, store: nil, project: nil, templates: nil,
-         plastic_home: nil, reindex: true }
+         plastic_home: nil }
 i = 0
 while i < ARGV.length
   case ARGV[i]
@@ -51,7 +51,6 @@ while i < ARGV.length
   when "--project"      then opts[:project] = next_value!(ARGV, i, "--project"); i += 1
   when "--templates"    then opts[:templates] = next_value!(ARGV, i, "--templates"); i += 1
   when "--plastic-home" then opts[:plastic_home] = next_value!(ARGV, i, "--plastic-home"); i += 1
-  when "--no-reindex"   then opts[:reindex] = false
   else usage_abort("unknown argument #{ARGV[i].inspect}")
   end
   i += 1
@@ -136,7 +135,7 @@ end
 
 register_in_index(File.join(File.dirname(target_store), "INDEX.md"), intent_id, intent_dir, target[:summary])
 
-# --- mark the line, note it, reindex ---------------------------------------------
+# --- mark the line, note it ---------------------------------------------
 
 SessionLedger.set_state(checklist, from: target[:state], to: :promoted, session: target[:session],
                         match: target[:summary])
@@ -144,8 +143,4 @@ SessionLedger.append_line(SessionLedger.savepoint_path(store, opts[:day]),
                           SessionLedger.savepoint_line("Note", target[:session], target[:project],
                                                        "promoted \"#{target[:summary]}\" to intent #{intent_id}",
                                                        now: Time.now))
-if opts[:reindex]
-  qmd_sync = File.expand_path("qmd-sync", __dir__)
-  system({ "RUBYOPT" => nil }, RbConfig.ruby, qmd_sync, "reindex", out: File::NULL, err: File::NULL) if File.exist?(qmd_sync)
-end
 puts intent_dir

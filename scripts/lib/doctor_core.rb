@@ -64,9 +64,9 @@ class Doctor
 
   attr_reader :plastic_home, :agents
 
-  # Testable shell-out default, mirroring QmdSync.default_runner: a real
-  # Open3.capture3 call in production, swappable for a fake in tests so no
-  # test needs a real codex binary or a PATH mutation.
+  # Testable shell-out default: a real Open3.capture3 call in production,
+  # swappable for a fake in tests so no test needs a real codex binary or a
+  # PATH mutation.
   def self.default_runner
     lambda do |args|
       require "open3"

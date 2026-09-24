@@ -20,7 +20,6 @@ require_relative "lib/doctor_core"
 require_relative "lib/hook_replay"
 
 require_relative "lib/doctor_exclusions"
-require_relative "lib/qmd_sync"
 require_relative "lib/intent_validator"
 require_relative "lib/graph_rebuild"
 require_relative "lib/store_discovery"
@@ -36,7 +35,6 @@ require_relative "lib/agent_models"
 require_relative "lib/outcome_guard"
 require_relative "lib/skill_lint"
 require_relative "lib/config_asks"
-require_relative "lib/power_tools"
 require_relative "lib/preflight"
 require_relative "lib/ruby_probe"
 require_relative "lib/doctor_session_ledger"
@@ -2597,92 +2595,6 @@ end
     )]
   end
 
-  # --- Check category: QMD integration (read-only, optional) ---
-  #
-  # QMD is an optional integration. When `qmd` is not on PATH we emit a single
-  # passing check and never fail — its absence is not a Plastic health problem.
-  # When present, we report whether every Plastic store is registered as a QMD
-  # collection. Everything here is read-only; we never invoke a mutating qmd
-  # subcommand. detector/runner are injectable so tests stay hermetic.
-  def check_qmd(detector: QmdSync.method(:detect), runner: QmdSync.default_runner, collection: nil)
-    return [absent_qmd_check] unless detector.call
-
-    checks = [check(
-      category: "qmd", name: "present", status: "pass",
-      message: "QMD installed"
-    )]
-
-    status = QmdSync.status(plastic_home: plastic_home, runner: runner, detector: detector)
-    expected = collection ? [collection] : (status[:expected] || [])
-    missing = collection ? (Array(status[:missing]) & expected) : (status[:missing] || [])
-
-    if missing.empty?
-      checks << check(
-        category: "qmd", name: "collections", status: "pass",
-        message: collection ? "Store collection '#{collection}' registered as a QMD collection" \
-                             : "All #{expected.size} Plastic store(s) registered as QMD collections"
-      )
-    else
-      checks << check(
-        category: "qmd", name: "collections", status: "warn",
-        message: collection ? "Store collection '#{collection}' not registered as a QMD collection" \
-                             : "#{missing.size} Plastic store(s) not registered as QMD collections",
-        details: missing,
-        fixable: true, fix_hint: "Run: qmd-sync register --all"
-      )
-    end
-
-    checks
-  end
-
-  def absent_qmd_check
-    check(
-      category: "qmd", name: "present", status: "pass",
-      message: "QMD not installed (optional integration)"
-    )
-  end
-
-  # --- Check category: tool readiness (Serena, Enola) ---
-  #
-  # One readiness check per recognized code-navigation power tool (intent 221, D4). Wraps
-  # PowerTools' existing pure, injectable presence detectors (scripts/lib/power_tools.rb).
-  # Absence is a PASS with a note, never a warn, mirroring check_qmd's absent-is-a-silent-pass
-  # shape (108 D8: power tools are recommendations, never a hard gate). No fail path exists for
-  # either check: PowerTools' detectors are pure presence probes (a marker-directory walk or a
-  # PATH scan) with no handshake to test whether a detected tool actually works, so there is
-  # nothing to report beyond present/absent.
-  def check_serena(cwd:, path_probe: PowerTools.method(:which_serena), marker_finder: PowerTools.method(:serena_marker?))
-    present = PowerTools.serena?(cwd: cwd, path_probe: path_probe, marker_finder: marker_finder)
-
-    if present
-      [check(
-        category: "tools", name: "serena_ready", status: "pass",
-        message: "Serena is available for code navigation"
-      )]
-    else
-      [check(
-        category: "tools", name: "serena_ready", status: "pass",
-        message: "Serena not installed (optional code-navigation tool)"
-      )]
-    end
-  end
-
-  def check_enola(cwd:, path_probe: PowerTools.method(:which_enola), marker_finder: PowerTools.method(:enola_marker?))
-    present = PowerTools.enola?(cwd: cwd, path_probe: path_probe, marker_finder: marker_finder)
-
-    if present
-      [check(
-        category: "tools", name: "enola_ready", status: "pass",
-        message: "Enola is available for code navigation"
-      )]
-    else
-      [check(
-        category: "tools", name: "enola_ready", status: "pass",
-        message: "Enola not installed (optional code-navigation tool)"
-      )]
-    end
-  end
-
   # --- Check category: runtime (which ruby a spawned hook resolves) ---
   #
   # Intent 235, D6. REPORT ONLY: this check never pins an interpreter and never repairs.
@@ -2696,8 +2608,8 @@ end
   # precise fix hint instead of blocking. "Could not determine" is the same warn: an
   # honest unknown, not a silent pass.
   #
-  # The probe is injected as a keyword with a real default (see check_serena for the same
-  # shape), so tests never spawn a process and never touch ENV.
+  # The probe is injected as a keyword with a real default, so tests never spawn a
+  # process and never touch ENV.
   def check_ruby_runtime(probe: RubyProbe.method(:resolve))
     resolved = probe.call
     version = resolved[:version]
@@ -3036,7 +2948,6 @@ end
     all_checks += check_codex_stale_registrations
     all_checks += check_deprecations
     all_checks += check_config_asks(agent_key)
-    all_checks += check_qmd
     all_checks += check_ruby_runtime
     all_checks += check_done_signals(scopes: ["global"])
     all_checks += check_session_ledger(scopes: ["global"])
@@ -3078,32 +2989,21 @@ end
   #   "<slug>" -> that project only + conventions scoped to ["project:<slug>"]
   #               (fail if the slug is not registered in projects.yml)
   # 3-state roll-up (pass/warn/fail), like the full run.
-  # QMD reachability is now wired into every branch, scoped to that branch's own
-  # collection(s) (D3); Serena/Enola readiness is per-slug only (D4).
-  # Same injection seams as all_checks_for_project_slug (intent 221a), threaded through
-  # so every branch's check_qmd/check_serena/check_enola call can be made hermetic.
   # Defaults are byte-identical to the real probes; both production callers
   # (scripts/doctor.rb's CLI entry point and scripts/dashboard.rb) call
   # run_store_checks(store) with a single positional argument and no kwargs, so
   # behavior at those call sites is unchanged.
-  def run_store_checks(store, qmd_detector: QmdSync.method(:detect), qmd_runner: QmdSync.default_runner,
-                        serena_path_probe: PowerTools.method(:which_serena),
-                        serena_marker_finder: PowerTools.method(:serena_marker?),
-                        enola_path_probe: PowerTools.method(:which_enola),
-                        enola_marker_finder: PowerTools.method(:enola_marker?))
+  def run_store_checks(store)
     all_checks =
       case store
       when :all
         check_global_store + check_project_stores + check_conventions + check_done_signals +
-          check_session_ledger + check_qmd(detector: qmd_detector, runner: qmd_runner)
+          check_session_ledger
       when :global
         check_global_store + check_conventions(scopes: ["global"]) +
-          check_done_signals(scopes: ["global"]) + check_session_ledger(scopes: ["global"]) +
-          check_qmd(detector: qmd_detector, runner: qmd_runner, collection: "plastic-global")
+          check_done_signals(scopes: ["global"]) + check_session_ledger(scopes: ["global"])
       else
-        all_checks_for_project_slug(store, qmd_detector: qmd_detector, qmd_runner: qmd_runner,
-                                     serena_path_probe: serena_path_probe, serena_marker_finder: serena_marker_finder,
-                                     enola_path_probe: enola_path_probe, enola_marker_finder: enola_marker_finder)
+        all_checks_for_project_slug(store)
       end
 
     summarize(all_checks, "claude", binary: false)
@@ -3111,16 +3011,7 @@ end
 
   # Build the checks for a single project slug, or a lone fail check when the
   # slug is unknown.
-  # qmd_detector/qmd_runner and the serena_/enola_ path_probe/marker_finder kwargs are
-  # injection seams (intent 221a) mirroring check_qmd/check_serena/check_enola's own
-  # kwargs, defaulted to the same real probes those methods already default to. No
-  # caller passes these; they exist so tests can make host state (QMD/Serena/Enola
-  # presence) irrelevant.
-  def all_checks_for_project_slug(slug, qmd_detector: QmdSync.method(:detect), qmd_runner: QmdSync.default_runner,
-                                   serena_path_probe: PowerTools.method(:which_serena),
-                                   serena_marker_finder: PowerTools.method(:serena_marker?),
-                                   enola_path_probe: PowerTools.method(:which_enola),
-                                   enola_marker_finder: PowerTools.method(:enola_marker?))
+  def all_checks_for_project_slug(slug)
     projects_data = load_yaml_safe(File.join(plastic_home, "projects.yml"))
     projects = projects_data.is_a?(Hash) ? projects_data["projects"] : nil
 
@@ -3133,15 +3024,10 @@ end
     end
 
     project_info = projects[slug]
-    project_path = project_info.is_a?(Hash) ? project_info["path"] : nil
-    probe_cwd = project_path || Dir.pwd
 
     check_project_store(slug, project_info) +
       check_conventions(scopes: ["project:#{slug}"]) +
-      check_done_signals(scopes: ["project:#{slug}"]) +
-      check_qmd(detector: qmd_detector, runner: qmd_runner, collection: "plastic-#{slug}") +
-      check_serena(cwd: probe_cwd, path_probe: serena_path_probe, marker_finder: serena_marker_finder) +
-      check_enola(cwd: probe_cwd, path_probe: enola_path_probe, marker_finder: enola_marker_finder)
+      check_done_signals(scopes: ["project:#{slug}"])
   end
 
 

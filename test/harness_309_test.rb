@@ -45,11 +45,11 @@ class Harness309Test < Minitest::Test
     assert_empty present, "still present: #{present.inspect}"
   end
 
-  def test_the_manifest_lists_no_power_tools_script_and_still_ships_power_tools_lib
+  def test_the_manifest_lists_no_power_tools_script_or_lib
     manifest = File.read(File.join(REPO, "scripts", "lib", "installer_core.rb"))
     refute_match(/hook-power-tools/, manifest)
     refute_match(/qmd_hook\.rb/, manifest)
-    assert_match(%r{"scripts/lib/power_tools\.rb"}, manifest, "doctor's Serena and Enola checks still use it")
+    refute_match(%r{"scripts/lib/power_tools\.rb"}, manifest, "power_tools.rb dissolved in intent 391")
   end
 
   def test_power_tools_is_retired_and_user_prompt_submit_carries_capture_only

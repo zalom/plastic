@@ -254,13 +254,13 @@ class ContextBudgetBootTest < Minitest::Test
     refute_includes report.context, "(30 days)"
   end
 
-  # The two QMD status lines the hook can emit (hook-session-start's qmd block).
+  # The hook emits no QMD status line since intent 391 dissolved that path.
   # Not the bare word "QMD", which PLASTIC.md itself uses in its own doctrine.
   def test_no_host_state_leaks_into_the_measurement
     refute_includes report.context, "Plastic collections indexed",
-      "a host with qmd on PATH must not change the measured bytes"
+      "no host state may change the measured bytes"
     refute_includes report.context, "qmd-sync register --all",
-      "a host without a registered qmd must not change the measured bytes either"
+      "the qmd-sync line is gone; it must never reappear in the measurement"
     refute_includes report.context, "update available",
       "a real update-check cache must not change the measured bytes"
   end
@@ -312,7 +312,7 @@ class ContextBudgetBootTest < Minitest::Test
 
   def test_the_report_names_what_it_could_not_count
     assert_match(/not counted/i, report.to_table,
-      "the report must state its exclusions (update notice, sweep line, qmd line)")
+      "the report must state its exclusions (update notice, sweep line)")
   end
 end
 
@@ -351,8 +351,7 @@ class ContextBudgetCeilingTest < Minitest::Test
 
   # PATH is exactly the running interpreter's directory: the hook backticks
   # scripts/read-config three times under `#!/usr/bin/env ruby`, so any other
-  # PATH runs those reads under a different Ruby than the report names, and a
-  # host with qmd on PATH would add a QMD line to the measurement.
+  # PATH runs those reads under a different Ruby than the report names.
   def test_the_child_env_pins_the_interpreter_and_the_home
     Dir.mktmpdir("plastic-bench-env") do |dir|
       fixture = ContextBudget::Fixture.build(dir: dir, repo: REPO)
@@ -500,8 +499,8 @@ end
 # below intent 296's original 15,000-byte "boot" ceiling in CEILINGS above
 # (unchanged; this class does not touch it). Measured against this repo's own
 # live fixture boot (a project registered, one active intent, PLASTIC.md
-# installed, one real deprecation warning, the day ledger's join line, QMD
-# unreachable on the pinned PATH) the boot comes to roughly 500 bytes. 1,000
+# installed, one real deprecation warning, the day ledger's join line) the
+# boot comes to roughly 500 bytes. 1,000
 # gives modest headroom over that measured value, room for the day ledger's
 # counts and an extra deprecation line to vary, while staying tight enough
 # that a doctrine-dump regression (PLASTIC.md, the active-intents listing,
@@ -554,7 +553,7 @@ class ContextBudgetSubagentBootTest < Minitest::Test
   # 69-91 bytes against this repo's own version string. 512 gives a
   # generous multiple of headroom for a longer version string while staying
   # tight enough that any future subagent-branch regression (the stale list,
-  # the day ledger, a QMD line) blows through it immediately.
+  # the day ledger) blows through it immediately.
   SUBAGENT_BOOT_CEILING = 512
 
   def self.subagent_context

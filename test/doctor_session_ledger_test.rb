@@ -216,7 +216,7 @@ class DoctorSessionLedgerTest < Minitest::Test
 
   def test_store_scope_runs_carry_the_session_ledger_category
     write_session_tmp("dead0001", heartbeat: @now - Doctor::ORPHAN_TTL_SECONDS - 60)
-    result = doctor.run_store_checks(:global, qmd_detector: -> { nil }, qmd_runner: ->(*) { nil })
+    result = doctor.run_store_checks(:global)
     names = result[:checks].map { |c| c[:name] }
     assert_includes names, "orphaned_session_tmp"
     assert_includes names, "day_ledger_shape"

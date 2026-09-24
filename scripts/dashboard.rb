@@ -1018,8 +1018,7 @@ def screen_scope_slug(scope)
 end
 
 # Tier root: PLASTIC_HOME for "global", PLASTIC_HOME/projects/<slug> for
-# "project:<slug>" (Resolved contract) - the same tier scripts/lib/qmd_sync.rb
-# already derives from a store path. Global's own roadmaps/INDEX.md sit
+# "project:<slug>" (Resolved contract). Global's own roadmaps/INDEX.md sit
 # directly under PLASTIC_HOME, with no intervening "store" segment.
 def screen_tier_root(plastic_home, scope)
   return plastic_home if scope == "global"

@@ -7,7 +7,7 @@
 # Creates a registered project's store at ~/.plastic/projects/{slug}/store: it
 # makes the store directory, then writes, only if missing, .gitkeep, INDEX.md,
 # and project.yml. It is pure filesystem and idempotent, so re-running never
-# clobbers existing files and performs no qmd mutation. The project must already
+# clobbers existing files. The project must already
 # be registered in projects.yml; an unregistered slug exits non-zero and creates
 # nothing.
 #

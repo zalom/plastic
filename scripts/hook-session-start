@@ -8,12 +8,11 @@ require "json"
 require "date"
 require "yaml"
 require "fileutils"
+require "timeout"
 require_relative "lib/boot_banner"
-require_relative "lib/qmd_sync"
 require_relative "lib/doctor_core"
 require_relative "lib/session_ledger"
 require_relative "lib/day_summary"
-require_relative "lib/data_boundary"
 require_relative "lib/active_delivery"
 require_relative "lib/runner_core"
 require_relative "lib/runner_watch"
@@ -93,8 +92,8 @@ core_banner = BootBanner.render(health: core_health, version: current_version)
 
 # --- Build context ---
 # The core banner is the one thing a session always gets. Everything below it
-# (the project/global banner with its active intent, the QMD line,
-# deprecations, the update notice, the first-boot sweep, the day ledger) is
+# (the project/global banner with its active intent, deprecations, the
+# update notice, the first-boot sweep, the day ledger) is
 # best-effort: intent 341, G8 wraps all of it in one rescue so any exception
 # anywhere in that assembly degrades to a banner-only boot, never nothing.
 # That is the same "as today" contract every individual sub-block already
@@ -235,37 +234,13 @@ begin
     end
   end
 
-  # --- QMD search status (intent 45a, READ-ONLY) ---
-  # Report-only line for the model (additionalContext), never systemMessage and
-  # never the exit code. QmdSync.status shells out to `qmd collection list`, so the
-  # whole block is guarded: a 2s timeout caps any hang, and rescue-all guarantees a
-  # slow/broken/missing qmd appends nothing and the hook continues cleanly.
-  begin
-    require "timeout"
-    qmd_status = Timeout.timeout(2) { QmdSync.status(plastic_home: plastic_home) }
-    if qmd_status[:present]
-      # C23 (intent 341, G8): a QMD hit is untrusted text, so it never sits
-      # loose in additionalContext alongside the owner's own banners; it
-      # rides inside DataBoundary's data boundary.
-      qmd_line = if qmd_status[:all_registered]
-        "QMD: #{qmd_status[:registered].size} Plastic collections indexed (search with the qmd skill)."
-      else
-        "QMD detected — run `qmd-sync register --all` to index your Plastic stores for search."
-      end
-      token = DataBoundary.boundary_token([qmd_line])
-      parts << DataBoundary.wrap(qmd_line, label: "qmd-hit", source: "qmd-sync", token: token).rstrip
-    end
-  rescue Exception
-    # Any failure (timeout, missing binary, parse error) — stay silent, never crash.
-  end unless subagent_session
-
   # --- Delivery watch (intent 340a, G7b, n3, graph.md D10) ---
   # One unrecorded tick (record: false: reclaim and classify, no snapshot,
   # no record line, so boot never advances a quiet count) per intent
   # ActiveDelivery.candidate_intent_dirs finds, naming every stalled or
   # done_unreported one in a single line, nothing when there are none. The
-  # whole block is one guarded unit, like the QMD block above it: a raise or
-  # a hang on any one candidate must add nothing rather than name only the
+  # whole block is one guarded unit: a raise or a hang on any one candidate
+  # must add nothing rather than name only the
   # candidates seen before the failure, so the line a boot does print is
   # never a partial one.
   begin
@@ -358,7 +333,6 @@ begin
   unless subagent_session
     begin
       require "open3"
-      require "timeout"
       require_relative "lib/session_backfill"
 
       sweep_today = SessionLedger.day_id

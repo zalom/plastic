@@ -160,52 +160,10 @@ module LinkSuggestCLI
     report(tool, opts[:subject], out: out)
   end
 
-  # The real candidate-finder, wired here (not in the lib): use QMD when available,
-  # else fall back to the lib's cheap family/tag/adjacent net. Discovery only.
-  def build_finder(store_dir)
-    qmd = qmd_finder(store_dir)
-    qmd || LinkSuggestions::FamilyTagFinder.new
-  end
-
-  # A QMD-backed finder when the `qmd` (or qmd-sync) CLI is on PATH. It seeds discovery
-  # from the subject's intent line, unions the hits with the cheap fallback net, and
-  # returns ids present in the store. Any failure falls back silently. Discovery only,
-  # never a grade.
-  def qmd_finder(_store_dir)
-    return nil unless qmd_available?
-
-    fallback = LinkSuggestions::FamilyTagFinder.new
-    lambda do |subject_id, nodes|
-      base = fallback.call(subject_id, nodes)
-      subject = nodes[subject_id]
-      return base unless subject
-
-      hits = qmd_search_ids(subject[:label], nodes)
-      (base + hits).uniq.reject { |id| id == subject_id }
-    end
-  end
-
-  def qmd_available?
-    %w[qmd qmd-sync].any? { |c| system("command -v #{c} >/dev/null 2>&1") }
-  rescue StandardError
-    false
-  end
-
-  # Best-effort: ask qmd-sync for related text and map any id-shaped tokens back to
-  # store ids. Never raises; returns [] on any trouble.
-  def qmd_search_ids(query, nodes)
-    return [] if query.to_s.strip.empty?
-
-    out = `env -u RUBYOPT ruby #{File.join(Dir.home, ".plastic", "scripts", "qmd-sync")} search #{shell_quote(query)} 2>/dev/null`
-    return [] if out.nil? || out.empty?
-
-    out.scan(/\b([0-9]+[a-z0-9]*)\b/).flatten.uniq.select { |id| nodes.key?(id) }
-  rescue StandardError
-    []
-  end
-
-  def shell_quote(str)
-    "'#{str.to_s.gsub("'", "'\\\\''")}'"
+  # The real candidate-finder, wired here (not in the lib): the lib's cheap
+  # family/tag/adjacent net. Discovery only.
+  def build_finder(_store_dir)
+    LinkSuggestions::FamilyTagFinder.new
   end
 end
 

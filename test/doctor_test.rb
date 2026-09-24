@@ -2291,23 +2291,10 @@ class DoctorIntegrationTest < Minitest::Test
     assert_equal result[:checks].size, summary[:total], "Summary total should match"
   end
 
-  # run_checks calls check_qmd with its default detector and runner, which query the
-  # machine's own qmd installation and its own index. The fixture store is never
-  # registered there, so the collections check warns on a healthy installation and the
-  # overall status turns on whatever the machine happens to have indexed. Reporting QMD
-  # as absent is the branch that says nothing about Plastic's health.
-  def without_qmd
-    original = QmdSync.method(:detect)
-    QmdSync.define_singleton_method(:detect) { |**| false }
-    yield
-  ensure
-    QmdSync.define_singleton_method(:detect, original)
-  end
-
   def test_healthy_installation_status_is_pass
     build_healthy_installation
 
-    result = without_qmd { doctor.run_checks("claude") }
+    result = doctor.run_checks("claude")
 
     assert_equal "pass", result[:status], "Healthy installation should have pass status, failures: #{
       result[:checks].reject { |c| c[:status] == "pass" }.map { |c| [c[:name], c[:status], c[:message]] }
@@ -2483,38 +2470,22 @@ class DoctorStoreScopingTest < Minitest::Test
     end
   end
 
-  # Fake `qmd collection list` output reporting both collections these tests touch
-  # (plastic-global and the @project_slug collection) as already registered, so
-  # check_qmd's scoped "collections" check reaches its pass branch deterministically
-  # (intent 221a) regardless of whether the executing host actually has QMD
-  # installed or any collections registered.
-  def fake_qmd_collection_list_runner
-    ->(_args) {
-      ["plastic-global (qmd://plastic-global/)\nplastic-#{@project_slug} (qmd://plastic-#{@project_slug}/)\n", true]
-    }
-  end
-
-  def test_store_global_includes_scoped_qmd_but_no_tool_checks
-    result = doctor.run_store_checks(:global, qmd_detector: -> { true }, qmd_runner: fake_qmd_collection_list_runner)
+  def test_store_global_has_no_qmd_or_tool_checks
+    result = doctor.run_store_checks(:global)
     names = result[:checks].map { |c| c[:name] }
 
-    assert_includes names, "present" # check_qmd's own "present" check name
+    refute_includes names, "present" # check_qmd's own "present" check name, now gone
     refute_includes names, "serena_ready"
     refute_includes names, "enola_ready"
   end
 
-  def test_store_slug_includes_qmd_and_both_tool_checks
-    result = doctor.run_store_checks(
-      @project_slug,
-      qmd_detector: -> { true }, qmd_runner: fake_qmd_collection_list_runner,
-      serena_path_probe: -> { false }, serena_marker_finder: ->(_cwd) { false },
-      enola_path_probe: -> { false }, enola_marker_finder: ->(_cwd) { false }
-    )
+  def test_store_slug_has_no_qmd_or_tool_checks
+    result = doctor.run_store_checks(@project_slug)
     names = result[:checks].map { |c| c[:name] }
 
-    assert_includes names, "collections" # check_qmd's scoped collection check
-    assert_includes names, "serena_ready"
-    assert_includes names, "enola_ready"
+    refute_includes names, "collections" # check_qmd's scoped collection check, now gone
+    refute_includes names, "serena_ready"
+    refute_includes names, "enola_ready"
   end
 
   # D5 no-leak guarantee: a project registered with a real violation (its own store

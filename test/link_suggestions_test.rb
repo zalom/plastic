@@ -304,4 +304,10 @@ class LinkSuggestionsTest < Minitest::Test
     assert_match(/Usage:/, out.string)
     refute_match(/no intent/, out.string, "--help must not be treated as a subject id")
   end
+
+  # Intent 391: the finder is the family-tag finder only, no QMD path.
+  def test_build_finder_is_the_family_tag_finder
+    finder = LinkSuggestCLI.build_finder(@store)
+    assert_instance_of LinkSuggestions::FamilyTagFinder, finder
+  end
 end

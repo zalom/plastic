@@ -13,7 +13,6 @@ require_relative "agent_models"
 require_relative "harness_text"
 require_relative "compact_instructions"
 require_relative "engine_permissions"
-require_relative "qmd_sync"
 
 # Shared installer machinery, instantiable with injected package root / store / agent
 # map so the verb scripts (install/update/uninstall/rollback) and their tests can run
@@ -408,7 +407,6 @@ class InstallerCore
       "scripts/hook-capture" => "scripts/hook-capture",
       "scripts/hook-record" => "scripts/hook-record",
       "scripts/hook-close" => "scripts/hook-close",
-      "scripts/lib/power_tools.rb" => "scripts/lib/power_tools.rb",
       "scripts/lib/ruby_probe.rb" => "scripts/lib/ruby_probe.rb",
       "scripts/lib/agent_models.rb" => "scripts/lib/agent_models.rb",
       "scripts/lib/config_asks.rb" => "scripts/lib/config_asks.rb",
@@ -436,8 +434,6 @@ class InstallerCore
       "scripts/lib/worktree.rb" => "scripts/lib/worktree.rb",
       "scripts/lib/boot_banner.rb" => "scripts/lib/boot_banner.rb",
       "scripts/lib/dashboard_banner.rb" => "scripts/lib/dashboard_banner.rb",
-      "scripts/lib/qmd_sync.rb" => "scripts/lib/qmd_sync.rb",
-      "scripts/qmd-sync" => "scripts/qmd-sync",
       "scripts/lib/roadmap_savepoint.rb" => "scripts/lib/roadmap_savepoint.rb",
       "scripts/roadmap-savepoint" => "scripts/roadmap-savepoint",
       "scripts/lib/roadmap_queue.rb" => "scripts/lib/roadmap_queue.rb",
@@ -724,16 +720,6 @@ class InstallerCore
     FileUtils.mkdir_p(plastic_home)
     return if File.directory?(File.join(plastic_home, ".git"))
     runner.call(["git", "-C", plastic_home, "init", "-q"])
-  end
-
-  # Intent 372 (former install skill, lines 167-179): register every Plastic store as
-  # a QMD collection. QmdSync.register already no-ops per store when QMD is absent;
-  # the detector is injected too so a run stays hermetic on a machine that happens to
-  # have the real `qmd` binary on PATH.
-  def register_with_qmd(runner: QmdSync.default_runner, detector: QmdSync.method(:detect))
-    QmdSync.enumerate_stores(plastic_home: plastic_home).each do |store|
-      QmdSync.register(collection: store[:collection], dir: store[:dir], runner: runner, detector: detector)
-    end
   end
 
   # --- Agent adapters ---

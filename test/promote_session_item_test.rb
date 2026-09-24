@@ -32,7 +32,7 @@ class PromoteSessionItemTest < Minitest::Test
 
   def run_promote(*args)
     env = { "CLAUDE_CODE_SESSION_ID" => nil, "PLASTIC_HOME" => @home, "PLASTIC_TMP" => @tmp }
-    out = IO.popen(env, [RbConfig.ruby, SCRIPT, "--store", @store, "--templates", TEMPLATES, "--no-reindex",
+    out = IO.popen(env, [RbConfig.ruby, SCRIPT, "--store", @store, "--templates", TEMPLATES,
                          "--day", DAY, *args], err: [:child, :out], &:read)
     [out, $?.exitstatus]
   end
@@ -130,5 +130,11 @@ class PromoteSessionItemTest < Minitest::Test
     out, status = run_promote("--match", "project item", "--project", "demo")
     assert_equal 0, status, out
     assert_equal project_store, File.dirname(out.lines.last.strip)
+  end
+
+  def test_script_runs_no_reindex_step
+    content = File.read(SCRIPT)
+    refute_includes content, "qmd"
+    refute_includes content, "reindex"
   end
 end

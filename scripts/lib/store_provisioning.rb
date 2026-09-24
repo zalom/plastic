@@ -20,7 +20,7 @@ require "yaml"
 #
 # Pure filesystem and dependency-injected: `provision` accepts an injectable
 # `plastic_home` and `package_root` (so templates resolve from a known root and
-# tests stay hermetic), uses no `eval`, performs no qmd mutation, no `system`
+# tests stay hermetic), uses no `eval`, no `system`
 # or `spawn`, no network, and no global-constant injection. An unknown or
 # unregistered slug creates nothing and returns an error result.
 module StoreProvisioning
@@ -84,7 +84,6 @@ module StoreProvisioning
   end
 
   # Parse projects.yml -> the `projects` Hash, or {} on any error/absence.
-  # Mirrors QmdSync#load_projects (scripts/lib/qmd_sync.rb).
   def load_projects(plastic_home)
     path = File.join(plastic_home, "projects.yml")
     return {} unless File.exist?(path)

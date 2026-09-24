@@ -66,7 +66,6 @@ module ContextBudget
   # table so a reader knows what the number does not cover.
   EXCLUSIONS = [
     "the update notice and the prior-day sweep line (both transient, absent from a steady-state boot)",
-    "the QMD status line (PATH carries only the running interpreter's directory, so qmd is unfindable on any host)",
     "the harness's own system prompt and tool schemas (not Plastic's, and not readable from here)",
   ].freeze
 
@@ -252,12 +251,10 @@ module ContextBudget
   # The child environment is a pure function of the fixture, so a test can assert
   # containment without running anything.
   #
-  # PATH is exactly the running interpreter's directory, and that is load-bearing
-  # twice. The hook backticks scripts/read-config three times and read-config's
-  # shebang is `#!/usr/bin/env ruby`, so a PATH carrying /usr/bin would run those
-  # three reads under the system Ruby while the report named a different one. And
-  # with nothing else on PATH, `qmd` cannot be found on any host, so the QMD
-  # status line never appears and the measurement reproduces off this machine.
+  # PATH is exactly the running interpreter's directory. The hook backticks
+  # scripts/read-config three times and read-config's shebang is
+  # `#!/usr/bin/env ruby`, so a PATH carrying /usr/bin would run those three
+  # reads under the system Ruby while the report named a different one.
   def self.child_env(fixture)
     {
       "HOME" => fixture.home,

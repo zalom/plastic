@@ -141,8 +141,8 @@ class InstallerCoreTest < Minitest::Test
   end
 
   # Regression guard (intent 78): every scripts/lib/*.rb in the package must be listed in
-  # the core_files manifest. Without this, a new lib file (e.g. power_tools.rb from 66b) can
-  # be require_relative'd but never installed, raising a LoadError in the live hook.
+  # the core_files manifest. Without this, a new lib file can be require_relative'd
+  # but never installed, raising a LoadError in the live hook.
   def test_every_lib_file_is_in_the_manifest
     manifest = @core.core_files
     lib_files = Dir[File.join(WORKTREE, "scripts/lib/**/*.rb")].map do |path|

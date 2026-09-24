@@ -278,7 +278,7 @@ class RoadmapSavepointTest < Minitest::Test
            "the legacy Waves-era grouping Log line must keep classifying exactly as before")
   end
 
-  # --- CLI smoke (mirrors qmd_sync_search_cli_test.rb) -------------------------
+  # --- CLI smoke -------------------------------------------------------------
 
   def run_cli(args)
     Open3.capture3(RbConfig.ruby, CLI, *args)
