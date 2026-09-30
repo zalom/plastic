@@ -38,7 +38,7 @@ QMD is set up, its own `qmd query` (structured intent/lex/vec/hyde) or `qmd sear
 no model downloads) runs directly against the store files, outside Plastic, the same as it
 would against any other directory of markdown.
 
-## Working on Plastic
+## Contributor rules
 
 Rules for any agent (or human) contributing to this repository.
 
