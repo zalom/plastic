@@ -29,12 +29,12 @@ class OutputTest < Minitest::Test
     assert_equal "", @out.string
   end
 
-  def test_a_project_with_no_next_step_prints_only_the_rows
-    printer = output.row("id", "7")
+  def test_a_project_with_no_next_step_prints_a_null_next_in_json
+    printer = output(json: true).row("id", "7")
     printer.project = "b"
-    printer.flush
+    printer.flush(json: true)
 
-    assert_equal "id  7\n", @out.string
+    assert_equal({"result" => {"id" => "7"}, "next" => nil, "because" => nil}, JSON.parse(@out.string))
   end
 
   def test_flush_prints_once
