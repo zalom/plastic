@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 920" role="img" aria-label="Class map of the kernel. CLI looks up TABLE and runs a subclass of CLI::Command: Group, Hook, or Routine. A Routine builds the Context, keeps a RoutineRun, and runs each workflow key. Workflow fetches the class through REGISTRY and returns one of the end values. Workflow has two subclasses, CodeWorkflow and AgentWorkflow, and both read and write through the Graphs that the context carries."><defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#1f2328"/></marker></defs><rect x="40" y="20" width="260" height="95" rx="6" style="fill:#FFFFFF;stroke:#1A1D23" stroke-width="1.3"/>
+<text x="170.0" y="40" font-size="13" font-weight="700" text-anchor="middle" fill="#1f2328">TABLE</text>
+<text x="170.0" y="56" font-size="10.5" font-weight="400" text-anchor="middle" style="fill:#3D434E">[Constant: cli/table.rb]</text>
+<text x="170.0" y="75" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">Words, class, and summary</text>
+<text x="170.0" y="90" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">of each command.</text>
+<rect x="400" y="20" width="320" height="95" rx="6" style="fill:#FFFFFF;stroke:#1A1D23" stroke-width="1.3"/>
+<text x="560.0" y="40" font-size="13" font-weight="700" text-anchor="middle" fill="#1f2328">CLI</text>
+<text x="560.0" y="56" font-size="10.5" font-weight="400" text-anchor="middle" style="fill:#3D434E">[Class: cli.rb]</text>
+<text x="560.0" y="75" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">Finds the longest match in</text>
+<text x="560.0" y="90" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">TABLE and runs its class.</text>
+<polyline points="400,67 302,67" fill="none" stroke="#1f2328" stroke-width="1.3" marker-end="url(#ah)"/>
+<text x="351" y="59" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">looks up</text>
+<rect x="400" y="170" width="320" height="100" rx="6" style="fill:#FFFFFF;stroke:#1A1D23" stroke-width="1.3"/>
+<text x="560.0" y="190" font-size="13" font-weight="700" text-anchor="middle" fill="#1f2328">CLI::Command</text>
+<text x="560.0" y="206" font-size="10.5" font-weight="400" text-anchor="middle" style="fill:#3D434E">[Base class: cli/command.rb]</text>
+<text x="560.0" y="225" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">Arguments, options, reads, writes,</text>
+<text x="560.0" y="240" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">exit codes, describe. Parser reads argv.</text>
+<polyline points="560,115 560,168" fill="none" stroke="#1f2328" stroke-width="1.3" marker-end="url(#ah)"/>
+<text x="568" y="146" font-size="11" font-weight="400" text-anchor="start" fill="#1f2328">runs the class</text>
+<polyline points="560,270 560,300" fill="none" stroke="#1f2328" stroke-width="1.3"/>
+<polyline points="130,300 610,300" fill="none" stroke="#1f2328" stroke-width="1.3"/>
+<polyline points="130,300 130,330" fill="none" stroke="#1f2328" stroke-width="1.3"/>
+<polyline points="335,300 335,330" fill="none" stroke="#1f2328" stroke-width="1.3"/>
+<polyline points="610,300 610,330" fill="none" stroke="#1f2328" stroke-width="1.3"/>
+<text x="420" y="292" font-size="11" font-weight="400" text-anchor="start" style="fill:#3D434E">subclasses</text>
+<rect x="40" y="330" width="180" height="105" rx="6" style="fill:#FFFFFF;stroke:#1A1D23" stroke-width="1.3"/>
+<text x="130.0" y="350" font-size="13" font-weight="700" text-anchor="middle" fill="#1f2328">Group</text>
+<text x="130.0" y="366" font-size="10.5" font-weight="400" text-anchor="middle" style="fill:#3D434E">[Class: commands/group.rb]</text>
+<text x="130.0" y="385" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">Lists the commands</text>
+<text x="130.0" y="400" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">of one first word.</text>
+<rect x="240" y="330" width="190" height="105" rx="6" style="fill:#FFFFFF;stroke:#1A1D23" stroke-width="1.3"/>
+<text x="335.0" y="350" font-size="13" font-weight="700" text-anchor="middle" fill="#1f2328">Hook</text>
+<text x="335.0" y="366" font-size="10.5" font-weight="400" text-anchor="middle" style="fill:#3D434E">[Class: hook.rb]</text>
+<text x="335.0" y="385" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">Replies to one harness</text>
+<text x="335.0" y="400" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">event: a Hash or nil.</text>
+<rect x="460" y="330" width="300" height="105" rx="6" style="fill:#FFFFFF;stroke:#1A1D23" stroke-width="2.4"/>
+<text x="610.0" y="350" font-size="13" font-weight="700" text-anchor="middle" fill="#1f2328">Routine</text>
+<text x="610.0" y="366" font-size="10.5" font-weight="400" text-anchor="middle" style="fill:#3D434E">[Class: routine.rb]</text>
+<text x="610.0" y="385" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">A chain of workflow keys, kept in</text>
+<text x="610.0" y="400" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">Routine::Chain. It walks the chain,</text>
+<text x="610.0" y="415" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">saves the run, prints the report.</text>
+<rect x="840" y="170" width="240" height="100" rx="6" style="fill:#FFFFFF;stroke:#1A1D23" stroke-width="1.3"/>
+<text x="960.0" y="190" font-size="13" font-weight="700" text-anchor="middle" fill="#1f2328">Context</text>
+<text x="960.0" y="206" font-size="10.5" font-weight="400" text-anchor="middle" style="fill:#3D434E">[Class: context.rb]</text>
+<text x="960.0" y="225" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">Facts, graphs, session, and</text>
+<text x="960.0" y="240" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">the routine run. fill puts</text>
+<text x="960.0" y="255" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">facts into words.</text>
+<rect x="840" y="330" width="240" height="105" rx="6" style="fill:#FFFFFF;stroke:#1A1D23" stroke-width="1.3"/>
+<text x="960.0" y="350" font-size="13" font-weight="700" text-anchor="middle" fill="#1f2328">RoutineRun</text>
+<text x="960.0" y="366" font-size="10.5" font-weight="400" text-anchor="middle" style="fill:#3D434E">[Class: routine_run.rb]</text>
+<text x="960.0" y="385" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">One call&#39;s facts and the</text>
+<text x="960.0" y="400" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">workflow it stopped at.</text>
+<text x="960.0" y="415" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">A row in routine_runs.</text>
+<rect x="840" y="490" width="240" height="105" rx="6" style="fill:#FFFFFF;stroke:#1A1D23" stroke-width="1.3"/>
+<text x="960.0" y="510" font-size="13" font-weight="700" text-anchor="middle" fill="#1f2328">End values</text>
+<text x="960.0" y="526" font-size="10.5" font-weight="400" text-anchor="middle" style="fill:#3D434E">[Data: one file each]</text>
+<text x="960.0" y="545" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">Finished, HandedOff, Failed,</text>
+<text x="960.0" y="560" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">Refused. Each prints its end.</text>
+<text x="960.0" y="575" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">Invalid is a wiring error.</text>
+<polyline points="740,330 740,220 838,220" fill="none" stroke="#1f2328" stroke-width="1.3" marker-end="url(#ah)"/>
+<text x="789" y="212" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">builds</text>
+<polyline points="760,382 838,382" fill="none" stroke="#1f2328" stroke-width="1.3" marker-end="url(#ah)"/>
+<text x="799" y="374" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">keeps</text>
+<rect x="460" y="490" width="300" height="105" rx="6" style="fill:#FFFFFF;stroke:#1A1D23" stroke-width="1.3"/>
+<text x="610.0" y="510" font-size="13" font-weight="700" text-anchor="middle" fill="#1f2328">Workflow</text>
+<text x="610.0" y="526" font-size="10.5" font-weight="400" text-anchor="middle" style="fill:#3D434E">[Class: workflow.rb]</text>
+<text x="610.0" y="545" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">Finds a key&#39;s class through</text>
+<text x="610.0" y="560" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">REGISTRY. Its outcome lines</text>
+<text x="610.0" y="575" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">name the next command.</text>
+<polyline points="610,435 610,488" fill="none" stroke="#1f2328" stroke-width="1.3" marker-end="url(#ah)"/>
+<text x="618" y="466" font-size="11" font-weight="400" text-anchor="start" fill="#1f2328">runs each key</text>
+<polyline points="760,542 838,542" fill="none" stroke="#1f2328" stroke-width="1.3" marker-end="url(#ah)"/>
+<text x="799" y="534" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">returns</text>
+<rect x="120" y="490" width="240" height="105" rx="6" style="fill:#FFFFFF;stroke:#1A1D23" stroke-width="1.3"/>
+<text x="240.0" y="510" font-size="13" font-weight="700" text-anchor="middle" fill="#1f2328">REGISTRY</text>
+<text x="240.0" y="526" font-size="10.5" font-weight="400" text-anchor="middle" style="fill:#3D434E">[Constant: workflows/registry.rb]</text>
+<text x="240.0" y="545" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">Every workflow key,</text>
+<text x="240.0" y="560" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">under its family</text>
+<text x="240.0" y="575" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">heading.</text>
+<polyline points="460,542 362,542" fill="none" stroke="#1f2328" stroke-width="1.3" marker-end="url(#ah)"/>
+<text x="411" y="534" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">fetch</text>
+<polyline points="610,595 610,620" fill="none" stroke="#1f2328" stroke-width="1.3"/>
+<polyline points="500,620 720,620" fill="none" stroke="#1f2328" stroke-width="1.3"/>
+<polyline points="500,620 500,648" fill="none" stroke="#1f2328" stroke-width="1.3" marker-end="url(#ah)"/>
+<polyline points="720,620 720,648" fill="none" stroke="#1f2328" stroke-width="1.3" marker-end="url(#ah)"/>
+<text x="730" y="614" font-size="11" font-weight="400" text-anchor="start" style="fill:#3D434E">two lanes</text>
+<rect x="400" y="650" width="200" height="100" rx="6" style="fill:#FFFFFF;stroke:#1A1D23" stroke-width="1.3"/>
+<text x="500.0" y="670" font-size="13" font-weight="700" text-anchor="middle" fill="#1f2328">CodeWorkflow</text>
+<text x="500.0" y="686" font-size="10.5" font-weight="400" text-anchor="middle" style="fill:#3D434E">[Class: code_workflow.rb]</text>
+<text x="500.0" y="705" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">step, read, gate,</text>
+<text x="500.0" y="720" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">sets, and outcome.</text>
+<rect x="620" y="650" width="200" height="100" rx="6" style="fill:#FFFFFF;stroke:#1A1D23" stroke-width="1.3"/>
+<text x="720.0" y="670" font-size="13" font-weight="700" text-anchor="middle" fill="#1f2328">AgentWorkflow</text>
+<text x="720.0" y="686" font-size="10.5" font-weight="400" text-anchor="middle" style="fill:#3D434E">[Class: agent_workflow.rb]</text>
+<text x="720.0" y="705" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">step with say:, sets,</text>
+<text x="720.0" y="720" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">and outcome.</text>
+<polyline points="500,750 500,808" fill="none" stroke="#1f2328" stroke-width="1.3" marker-end="url(#ah)"/>
+<polyline points="720,750 720,808" fill="none" stroke="#1f2328" stroke-width="1.3" marker-end="url(#ah)"/>
+<text x="610" y="786" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">through the context</text>
+<rect x="400" y="810" width="420" height="95" rx="6" style="fill:#FFFFFF;stroke:#1A1D23" stroke-width="1.3"/>
+<text x="610.0" y="830" font-size="13" font-weight="700" text-anchor="middle" fill="#1f2328">Graphs</text>
+<text x="610.0" y="846" font-size="10.5" font-weight="400" text-anchor="middle" style="fill:#3D434E">[Data: Graph::Graphs in graph.rb]</text>
+<text x="610.0" y="865" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">work, knowledge, references, retrieval,</text>
+<text x="610.0" y="880" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">databases, and checkout of one store.</text></svg>

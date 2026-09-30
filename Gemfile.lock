@@ -191,6 +191,7 @@ DEPENDENCIES
   mutineer (~> 1.0)
   ostruct (~> 0.6)
   rdoc
+  reek (~> 6.5)
   rubocop-minitest
   rubycritic (~> 4.12)
   simplecov (~> 1.0)

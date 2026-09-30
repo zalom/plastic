@@ -368,7 +368,8 @@ class InstallerCore
   # bin/plastic requires scripts/lib/cli.rb by a relative path, so the whole
   # subtree travels together or an installed copy LoadErrors on the first call.
   def cli_files
-    Dir.glob(File.join(package_root, "scripts", "lib", "{cli,rlm}", "**", "*.rb")).each_with_object({}) do |path, acc|
+    kernel = [File.join(package_root, "scripts", "lib", "plastic.rb")]
+    Dir.glob(File.join(package_root, "scripts", "lib", "{cli,rlm,plastic}", "**", "*.rb")).concat(kernel).each_with_object({}) do |path, acc|
       rel = path.sub("#{package_root}/", "")
       acc[rel] = rel
     end

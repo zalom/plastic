@@ -5,57 +5,18 @@ require "minitest/autorun"
 require "tmpdir"
 require "fileutils"
 require "open3"
+require_relative "lib/bin_test_support"
 
 # Intent 355 (n4), matrix 4.1-4.7. Drives bin/test as a subprocess against a
 # tmpdir root holding tiny fixture test files, never the real suite: the real
 # bin/test and failures_reporter.rb are copied into the fixture root so the
 # script's own __dir__-relative paths resolve inside the tmpdir.
 class BinTestTest < Minitest::Test
-  REPO = File.expand_path("..", __dir__)
-
-  GREEN = <<~RUBY
-    require "minitest/autorun"
-    class GreenTest < Minitest::Test
-      def test_it_passes
-        assert true
-      end
-    end
-  RUBY
-
-  RED = <<~RUBY
-    require "minitest/autorun"
-    class RedTest < Minitest::Test
-      def test_it_fails
-        assert_equal 1, 2, "expected failure message"
-      end
-    end
-  RUBY
+  include BinTestSupport
 
   POISON = <<~RUBY
     raise "b_test.rb must never load under --only a_test.rb"
   RUBY
-
-  def setup
-    @dir = Dir.mktmpdir("bin-test-only")
-    FileUtils.mkdir_p(File.join(@dir, "bin"))
-    FileUtils.mkdir_p(File.join(@dir, "test", "lib"))
-    FileUtils.cp(File.join(REPO, "bin", "test"), File.join(@dir, "bin", "test"))
-    FileUtils.chmod(0o755, File.join(@dir, "bin", "test"))
-    FileUtils.cp(File.join(REPO, "test", "lib", "failures_reporter.rb"),
-                 File.join(@dir, "test", "lib", "failures_reporter.rb"))
-  end
-
-  def teardown
-    FileUtils.remove_entry(@dir) if @dir && Dir.exist?(@dir)
-  end
-
-  def write_test(name, body)
-    File.write(File.join(@dir, "test", "#{name}.rb"), body)
-  end
-
-  def run_bin_test(*args)
-    Open3.capture3("ruby", File.join(@dir, "bin", "test"), *args, chdir: @dir)
-  end
 
   def test_only_loads_named_files
     write_test("a_test", GREEN)

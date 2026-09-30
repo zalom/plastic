@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 768" role="img" aria-label="A session from top to bottom as seven events that a harness fires: session start, prompt sent, before a tool runs, after a tool ran, before a compaction, end of the turn, and session end. Plastic hooks two of them. At session start, plastic hook continue prints the open intents, this session's locks and today's hand-off. At the end of the turn, plastic hook record renews the session's live locks and tells the agent when nodes are ready. The right column names the six hooks of the proposal and why four of them go: capture filled the ledger with prompts, record ran on every tool call, and savepoint and close wrote a hand-off that the rows already hold."><defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#1f2328"/></marker></defs><text x="40" y="34" font-size="12" font-weight="700" text-anchor="start" style="fill:#3D434E">The harness fires</text>
+<text x="330" y="34" font-size="12" font-weight="700" text-anchor="start" style="fill:#3D434E">Plastic does</text>
+<text x="760" y="34" font-size="12" font-weight="700" text-anchor="start" style="fill:#3D434E">The proposal had, and why it goes</text>
+<rect x="40" y="48" width="250" height="78" rx="6" style="fill:#FFFFFF;stroke:#1A1D23" stroke-width="1.3"/>
+<text x="165.0" y="68" font-size="13" font-weight="700" text-anchor="middle" fill="#1f2328">Session start</text>
+<text x="165" y="88" font-size="10.5" font-weight="400" text-anchor="middle" style="fill:#3D434E">once, when the session opens, and</text>
+<text x="165" y="102" font-size="10.5" font-weight="400" text-anchor="middle" style="fill:#3D434E">again after a compaction</text>
+<polyline points="290,68 328,68" fill="none" stroke="#1f2328" stroke-width="1.3" marker-end="url(#ah)"/>
+<rect x="330" y="48" width="400" height="78" rx="6" style="fill:#FFFFFF;stroke:#1A1D23" stroke-width="2.4"/>
+<text x="346" y="70" font-size="13" font-weight="700" text-anchor="start" fill="#1f2328" style="font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-ligatures:none">plastic hook continue</text>
+<text x="346" y="90" font-size="10.5" font-weight="400" text-anchor="start" fill="#1f2328">Prints the open intents of this store, the locks this session holds,</text>
+<text x="346" y="104" font-size="10.5" font-weight="400" text-anchor="start" fill="#1f2328">and today&#39;s hand-off lines. After a compaction it adds: say continue.</text>
+<rect x="760" y="48" width="340" height="78" rx="6" style="fill:#F7DFD9;stroke:#B8452F" stroke-width="2"/>
+<text x="772" y="68" font-size="12" font-weight="700" text-anchor="start" fill="#1f2328" style="font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-ligatures:none">hook session-start</text>
+<text x="772" y="86" font-size="10.5" font-weight="400" text-anchor="start" fill="#1f2328">The same hook, under the name of what the agent</text>
+<text x="772" y="100" font-size="10.5" font-weight="400" text-anchor="start" fill="#1f2328">does next.</text>
+<polyline points="80,126 80,148" fill="none" stroke="#1f2328" stroke-width="1.3" marker-end="url(#ah)"/>
+<rect x="40" y="150" width="250" height="82" rx="6" style="fill:#FFFFFF;stroke:#1A1D23" stroke-width="1.3"/>
+<text x="165.0" y="170" font-size="13" font-weight="700" text-anchor="middle" fill="#1f2328">Prompt sent</text>
+<text x="165" y="190" font-size="10.5" font-weight="400" text-anchor="middle" style="fill:#3D434E">every time the owner sends a</text>
+<text x="165" y="204" font-size="10.5" font-weight="400" text-anchor="middle" style="fill:#3D434E">message</text>
+<text x="346" y="172" font-size="12" font-weight="400" text-anchor="start" style="fill:#3D434E">nothing</text>
+<rect x="760" y="150" width="340" height="82" rx="6" style="fill:#F7DFD9;stroke:#B8452F" stroke-width="2"/>
+<text x="772" y="170" font-size="12" font-weight="700" text-anchor="start" fill="#1f2328" style="font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-ligatures:none">hook capture</text>
+<text x="772" y="188" font-size="10.5" font-weight="400" text-anchor="start" fill="#1f2328">It wrote every prompt to the day ledger, which</text>
+<text x="772" y="202" font-size="10.5" font-weight="400" text-anchor="start" fill="#1f2328">filled it with 538 open items. The session start</text>
+<text x="772" y="216" font-size="10.5" font-weight="400" text-anchor="start" fill="#1f2328">hook already says what to run on continue.</text>
+<polyline points="80,232 80,254" fill="none" stroke="#1f2328" stroke-width="1.3" marker-end="url(#ah)"/>
+<rect x="40" y="256" width="250" height="68" rx="6" style="fill:#FFFFFF;stroke:#1A1D23" stroke-width="1.3"/>
+<text x="165.0" y="276" font-size="13" font-weight="700" text-anchor="middle" fill="#1f2328">Before a tool runs</text>
+<text x="165" y="296" font-size="10.5" font-weight="400" text-anchor="middle" style="fill:#3D434E">before every tool call</text>
+<text x="346" y="278" font-size="12" font-weight="400" text-anchor="start" style="fill:#3D434E">nothing</text>
+<rect x="760" y="256" width="340" height="68" rx="6" style="fill:#EDEBE6;stroke:#6B7285" stroke-width="1.3"/>
+<text x="772" y="276" font-size="12" font-weight="700" text-anchor="start" fill="#1f2328">nothing</text>
+<text x="772" y="294" font-size="10.5" font-weight="400" text-anchor="start" fill="#1f2328">Never hooked. Plastic has nothing to do before a</text>
+<text x="772" y="308" font-size="10.5" font-weight="400" text-anchor="start" fill="#1f2328">tool runs.</text>
+<polyline points="80,324 80,346" fill="none" stroke="#1f2328" stroke-width="1.3" marker-end="url(#ah)"/>
+<rect x="40" y="348" width="250" height="82" rx="6" style="fill:#FFFFFF;stroke:#1A1D23" stroke-width="1.3"/>
+<text x="165.0" y="368" font-size="13" font-weight="700" text-anchor="middle" fill="#1f2328">After a tool ran</text>
+<text x="165" y="388" font-size="10.5" font-weight="400" text-anchor="middle" style="fill:#3D434E">after every tool call</text>
+<text x="346" y="370" font-size="12" font-weight="400" text-anchor="start" style="fill:#3D434E">nothing</text>
+<rect x="760" y="348" width="340" height="82" rx="6" style="fill:#F7DFD9;stroke:#B8452F" stroke-width="2"/>
+<text x="772" y="368" font-size="12" font-weight="700" text-anchor="start" fill="#1f2328" style="font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-ligatures:none">hook record</text>
+<text x="772" y="386" font-size="10.5" font-weight="400" text-anchor="start" fill="#1f2328">It renewed the locks on every tool call, which is</text>
+<text x="772" y="400" font-size="10.5" font-weight="400" text-anchor="start" fill="#1f2328">hundreds of times a turn. Once a turn is enough,</text>
+<text x="772" y="414" font-size="10.5" font-weight="400" text-anchor="start" fill="#1f2328">so that moves to the end of the turn.</text>
+<polyline points="80,430 80,452" fill="none" stroke="#1f2328" stroke-width="1.3" marker-end="url(#ah)"/>
+<rect x="40" y="454" width="250" height="82" rx="6" style="fill:#FFFFFF;stroke:#1A1D23" stroke-width="1.3"/>
+<text x="165.0" y="474" font-size="13" font-weight="700" text-anchor="middle" fill="#1f2328">Before a compaction</text>
+<text x="165" y="494" font-size="10.5" font-weight="400" text-anchor="middle" style="fill:#3D434E">when the context is about to be</text>
+<text x="165" y="508" font-size="10.5" font-weight="400" text-anchor="middle" style="fill:#3D434E">summarized</text>
+<text x="346" y="476" font-size="12" font-weight="400" text-anchor="start" style="fill:#3D434E">nothing</text>
+<rect x="760" y="454" width="340" height="82" rx="6" style="fill:#F7DFD9;stroke:#B8452F" stroke-width="2"/>
+<text x="772" y="474" font-size="12" font-weight="700" text-anchor="start" fill="#1f2328" style="font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-ligatures:none">hook savepoint</text>
+<text x="772" y="492" font-size="10.5" font-weight="400" text-anchor="start" fill="#1f2328">It wrote a hand-off file. The hand-off is now read</text>
+<text x="772" y="506" font-size="10.5" font-weight="400" text-anchor="start" fill="#1f2328">from rows: the locks and today&#39;s ledger lines.</text>
+<text x="772" y="520" font-size="10.5" font-weight="400" text-anchor="start" fill="#1f2328">There is nothing to write.</text>
+<polyline points="80,536 80,558" fill="none" stroke="#1f2328" stroke-width="1.3" marker-end="url(#ah)"/>
+<rect x="40" y="560" width="250" height="78" rx="6" style="fill:#FFFFFF;stroke:#1A1D23" stroke-width="1.3"/>
+<text x="165.0" y="580" font-size="13" font-weight="700" text-anchor="middle" fill="#1f2328">End of the turn</text>
+<text x="165" y="600" font-size="10.5" font-weight="400" text-anchor="middle" style="fill:#3D434E">every time the agent stops and</text>
+<text x="165" y="614" font-size="10.5" font-weight="400" text-anchor="middle" style="fill:#3D434E">waits for the owner</text>
+<polyline points="290,580 328,580" fill="none" stroke="#1f2328" stroke-width="1.3" marker-end="url(#ah)"/>
+<rect x="330" y="560" width="400" height="78" rx="6" style="fill:#FFFFFF;stroke:#1A1D23" stroke-width="2.4"/>
+<text x="346" y="582" font-size="13" font-weight="700" text-anchor="start" fill="#1f2328" style="font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-ligatures:none">plastic hook record</text>
+<text x="346" y="602" font-size="10.5" font-weight="400" text-anchor="start" fill="#1f2328">Renews the live locks of this session, so an intent it drives stays its own.</text>
+<text x="346" y="616" font-size="10.5" font-weight="400" text-anchor="start" fill="#1f2328">When nodes of a driven intent are ready, it tells the agent which command lists them.</text>
+<rect x="760" y="560" width="340" height="78" rx="6" style="fill:#F7DFD9;stroke:#B8452F" stroke-width="2"/>
+<text x="772" y="580" font-size="12" font-weight="700" text-anchor="start" fill="#1f2328" style="font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-ligatures:none">hook record and hook stop</text>
+<text x="772" y="598" font-size="10.5" font-weight="400" text-anchor="start" fill="#1f2328">The two hooks merge into one. Lock renewal moves</text>
+<text x="772" y="612" font-size="10.5" font-weight="400" text-anchor="start" fill="#1f2328">here from the tool hook.</text>
+<polyline points="80,638 80,660" fill="none" stroke="#1f2328" stroke-width="1.3" marker-end="url(#ah)"/>
+<rect x="40" y="662" width="250" height="82" rx="6" style="fill:#FFFFFF;stroke:#1A1D23" stroke-width="1.3"/>
+<text x="165.0" y="682" font-size="13" font-weight="700" text-anchor="middle" fill="#1f2328">Session end</text>
+<text x="165" y="702" font-size="10.5" font-weight="400" text-anchor="middle" style="fill:#3D434E">when the session closes, or in</text>
+<text x="165" y="716" font-size="10.5" font-weight="400" text-anchor="middle" style="fill:#3D434E">Codex after 30 minutes idle</text>
+<text x="346" y="684" font-size="12" font-weight="400" text-anchor="start" style="fill:#3D434E">nothing</text>
+<rect x="760" y="662" width="340" height="82" rx="6" style="fill:#F7DFD9;stroke:#B8452F" stroke-width="2"/>
+<text x="772" y="682" font-size="12" font-weight="700" text-anchor="start" fill="#1f2328" style="font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-ligatures:none">hook close</text>
+<text x="772" y="700" font-size="10.5" font-weight="400" text-anchor="start" fill="#1f2328">It wrote the same hand-off file. The rows already</text>
+<text x="772" y="714" font-size="10.5" font-weight="400" text-anchor="start" fill="#1f2328">hold it, and a lock lapses on its own after 60</text>
+<text x="772" y="728" font-size="10.5" font-weight="400" text-anchor="start" fill="#1f2328">minutes.</text></svg>

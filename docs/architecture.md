@@ -404,6 +404,20 @@ node has no worktree, and its dispatch line and input both say it is read-only.
 When a step leaves every node in a finished state, `plastic intent step` names
 `plastic intent verify ID` as the next command instead of another step.
 
+## the tri-graph kernel (intent 394)
+
+The tri-graph design moves Plastic's work into three graph databases. Its kernel is stage 1 of
+that build, and it sits beside the live command line under `scripts/lib/plastic/`, with
+`scripts/lib/plastic.rb` as its entry. A command in the kernel is a routine: it walks a chain
+of code and agent workflows, and it ends as finished, handed off, failed or refused. A routine
+that writes keeps its facts in a `routine_runs` row of `work_graph.db`, so the call after an
+agent hand-off picks up where the first one stopped.
+
+The kernel is not wired yet. `bin/plastic` still calls the live command line, and the kernel's
+command table is empty. The installer ships the kernel files with the rest of the command
+line. The life of a routine call, the four endings and the hook reply are drawn in
+[the contributor architecture page](contributing/ARCHITECTURE.md).
+
 ## History: the 1.x skill design
 
 This section describes Plastic 1.x. It is not current behavior.

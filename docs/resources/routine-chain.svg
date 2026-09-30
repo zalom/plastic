@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 620" role="img" aria-label="Two panels. The top panel is the chain of the IntentEnd routine: FindIntent, then CheckWriteLock, then CheckEnding. CheckEnding ends on written, which goes to CloseIntent, or on missing, which goes to the agent workflow WriteOutcome. Both end the chain at noop, where the report prints next and because from the last workflow. The bottom panel shows the lines of one code workflow from left to right: read runs on every call and changes nothing; step runs while its done check is false, and fails with exit code 1 when the check still fails after the block; gate stops the call unless its pass check holds, with exit code 3 for a refusal and 1 for a failure; outcome picks the first line whose if check holds, and the routine follows that outcome's edge."><defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#1f2328"/></marker></defs><rect x="20" y="20" width="1080" height="260" rx="10" fill="none" style="stroke:#3D434E" stroke-width="1.3" stroke-dasharray="7 5"/>
+<text x="34" y="39" font-size="12" text-anchor="start" fill="#1f2328"><tspan font-weight="700">Routine Commands::IntentEnd</tspan> <tspan style="fill:#3D434E" font-size="11">the chain, in commands/intent_end.rb</tspan></text>
+<rect x="40" y="100" width="180" height="90" rx="6" style="fill:#FFFFFF;stroke:#1A1D23" stroke-width="1.3"/>
+<text x="130.0" y="120" font-size="13" font-weight="700" text-anchor="middle" fill="#1f2328">FindIntent</text>
+<text x="130.0" y="136" font-size="10.5" font-weight="400" text-anchor="middle" style="fill:#3D434E">[CodeWorkflow]</text>
+<text x="130.0" y="155" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">Stops when the</text>
+<text x="130.0" y="170" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">intent is missing.</text>
+<rect x="260" y="100" width="180" height="90" rx="6" style="fill:#FFFFFF;stroke:#1A1D23" stroke-width="1.3"/>
+<text x="350.0" y="120" font-size="13" font-weight="700" text-anchor="middle" fill="#1f2328">CheckWriteLock</text>
+<text x="350.0" y="136" font-size="10.5" font-weight="400" text-anchor="middle" style="fill:#3D434E">[CodeWorkflow]</text>
+<text x="350.0" y="155" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">Stops when another</text>
+<text x="350.0" y="170" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">session holds the lock.</text>
+<rect x="480" y="100" width="180" height="90" rx="6" style="fill:#FFFFFF;stroke:#1A1D23" stroke-width="2.4"/>
+<text x="570.0" y="120" font-size="13" font-weight="700" text-anchor="middle" fill="#1f2328">CheckEnding</text>
+<text x="570.0" y="136" font-size="10.5" font-weight="400" text-anchor="middle" style="fill:#3D434E">[CodeWorkflow]</text>
+<text x="570.0" y="155" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">Ends on written</text>
+<text x="570.0" y="170" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">or on missing.</text>
+<rect x="790" y="50" width="170" height="90" rx="6" style="fill:#FFFFFF;stroke:#1A1D23" stroke-width="1.3"/>
+<text x="875.0" y="70" font-size="13" font-weight="700" text-anchor="middle" fill="#1f2328">CloseIntent</text>
+<text x="875.0" y="86" font-size="10.5" font-weight="400" text-anchor="middle" style="fill:#3D434E">[CodeWorkflow]</text>
+<text x="875.0" y="105" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">Closes the intent and</text>
+<text x="875.0" y="120" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">drops the lock.</text>
+<rect x="790" y="165" width="170" height="90" rx="6" style="fill:#FFFFFF;stroke:#1A1D23" stroke-width="1.3"/>
+<text x="875.0" y="185" font-size="13" font-weight="700" text-anchor="middle" fill="#1f2328">WriteOutcome</text>
+<text x="875.0" y="201" font-size="10.5" font-weight="400" text-anchor="middle" style="fill:#3D434E">[AgentWorkflow]</text>
+<text x="875.0" y="220" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">Asks the agent to</text>
+<text x="875.0" y="235" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">write the outcome.</text>
+<rect x="990" y="50" width="100" height="205" rx="6" style="fill:#FFFFFF;stroke:#1A1D23" stroke-width="1.3"/>
+<text x="1040.0" y="70" font-size="13" font-weight="700" text-anchor="middle" fill="#1f2328">:noop</text>
+<text x="1040.0" y="86" font-size="10.5" font-weight="400" text-anchor="middle" style="fill:#3D434E">[End of chain]</text>
+<text x="1040.0" y="105" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">The report</text>
+<text x="1040.0" y="120" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">prints next:</text>
+<text x="1040.0" y="135" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">and because:</text>
+<text x="1040.0" y="150" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">from the last</text>
+<text x="1040.0" y="165" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">workflow.</text>
+<polyline points="220,145 258,145" fill="none" stroke="#1f2328" stroke-width="1.3" marker-end="url(#ah)"/>
+<polyline points="440,145 478,145" fill="none" stroke="#1f2328" stroke-width="1.3" marker-end="url(#ah)"/>
+<polyline points="660,130 720,130 720,95 788,95" fill="none" stroke="#1f2328" stroke-width="1.3" marker-end="url(#ah)"/>
+<text x="754" y="88" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">written</text>
+<polyline points="660,160 720,160 720,210 788,210" fill="none" stroke="#1f2328" stroke-width="1.3" marker-end="url(#ah)"/>
+<text x="754" y="203" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">missing</text>
+<polyline points="960,95 988,95" fill="none" stroke="#1f2328" stroke-width="1.3" marker-end="url(#ah)"/>
+<polyline points="960,210 988,210" fill="none" stroke="#1f2328" stroke-width="1.3" marker-end="url(#ah)"/>
+<rect x="20" y="310" width="1080" height="290" rx="10" fill="none" style="stroke:#3D434E" stroke-width="1.3" stroke-dasharray="7 5"/>
+<text x="34" y="329" font-size="12" text-anchor="start" fill="#1f2328"><tspan font-weight="700">Inside one code workflow</tspan> <tspan style="fill:#3D434E" font-size="11">its lines run from top to bottom, once each call</tspan></text>
+<rect x="40" y="355" width="230" height="115" rx="6" style="fill:#FFFFFF;stroke:#1A1D23" stroke-width="1.3"/>
+<text x="155.0" y="375" font-size="13" font-weight="700" text-anchor="middle" fill="#1f2328">read</text>
+<text x="155.0" y="391" font-size="10.5" font-weight="400" text-anchor="middle" style="fill:#3D434E">[Runs on every call]</text>
+<text x="155.0" y="410" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">Works out facts or prints.</text>
+<text x="155.0" y="425" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">It changes nothing on disk.</text>
+<rect x="310" y="355" width="230" height="115" rx="6" style="fill:#FFFFFF;stroke:#1A1D23" stroke-width="1.3"/>
+<text x="425.0" y="375" font-size="13" font-weight="700" text-anchor="middle" fill="#1f2328">step</text>
+<text x="425.0" y="391" font-size="10.5" font-weight="400" text-anchor="middle" style="fill:#3D434E">[Runs while done: is false]</text>
+<text x="425.0" y="410" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">Changes state. After the</text>
+<text x="425.0" y="425" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">block runs, done: must hold.</text>
+<rect x="580" y="355" width="230" height="115" rx="6" style="fill:#FFFFFF;stroke:#1A1D23" stroke-width="1.3"/>
+<text x="695.0" y="375" font-size="13" font-weight="700" text-anchor="middle" fill="#1f2328">gate</text>
+<text x="695.0" y="391" font-size="10.5" font-weight="400" text-anchor="middle" style="fill:#3D434E">[Stops unless pass: holds]</text>
+<text x="695.0" y="410" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">Prints its reason and</text>
+<text x="695.0" y="425" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">stops the whole call.</text>
+<rect x="850" y="355" width="230" height="115" rx="6" style="fill:#FFFFFF;stroke:#1A1D23" stroke-width="1.3"/>
+<text x="965.0" y="375" font-size="13" font-weight="700" text-anchor="middle" fill="#1f2328">outcome</text>
+<text x="965.0" y="391" font-size="10.5" font-weight="400" text-anchor="middle" style="fill:#3D434E">[The first if: that holds]</text>
+<text x="965.0" y="410" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">The last line has no if:,</text>
+<text x="965.0" y="425" font-size="11" font-weight="400" text-anchor="middle" fill="#1f2328">so one outcome holds.</text>
+<polyline points="270,412 308,412" fill="none" stroke="#1f2328" stroke-width="1.3" marker-end="url(#ah)"/>
+<polyline points="540,412 578,412" fill="none" stroke="#1f2328" stroke-width="1.3" marker-end="url(#ah)"/>
+<polyline points="810,412 848,412" fill="none" stroke="#1f2328" stroke-width="1.3" marker-end="url(#ah)"/>
+<polyline points="425,470 425,508" fill="none" stroke="#1f2328" stroke-width="1.3" marker-end="url(#ah)"/>
+<text x="433" y="494" font-size="11" font-weight="400" text-anchor="start" fill="#1f2328">done: still false</text>
+<polyline points="695,470 695,508" fill="none" stroke="#1f2328" stroke-width="1.3" marker-end="url(#ah)"/>
+<text x="703" y="494" font-size="11" font-weight="400" text-anchor="start" fill="#1f2328">pass: false</text>
+<rect x="310" y="510" width="230" height="70" rx="6" style="fill:#F7DFD9;stroke:#B8452F" stroke-width="2"/>
+<text x="425.0" y="530" font-size="13" font-weight="700" text-anchor="middle" fill="#1f2328">Failed</text>
+<text x="425.0" y="546" font-size="10.5" font-weight="400" text-anchor="middle" style="fill:#3D434E">[Exit code 1]</text>
+<rect x="580" y="510" width="230" height="70" rx="6" style="fill:#F7DFD9;stroke:#B8452F" stroke-width="2"/>
+<text x="695.0" y="530" font-size="13" font-weight="700" text-anchor="middle" fill="#1f2328">Refused or Failed</text>
+<text x="695.0" y="546" font-size="10.5" font-weight="400" text-anchor="middle" style="fill:#3D434E">[stops: :refusal is 3, :failure is 1]</text>
+<text x="860" y="520" font-size="11" font-weight="400" text-anchor="start" style="fill:#3D434E">The routine follows the edge</text>
+<text x="860" y="536" font-size="11" font-weight="400" text-anchor="start" style="fill:#3D434E">for this outcome and runs</text>
+<text x="860" y="552" font-size="11" font-weight="400" text-anchor="start" style="fill:#3D434E">the next key.</text></svg>

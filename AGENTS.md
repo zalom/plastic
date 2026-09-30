@@ -38,7 +38,7 @@ QMD is set up, its own `qmd query` (structured intent/lex/vec/hyde) or `qmd sear
 no model downloads) runs directly against the store files, outside Plastic, the same as it
 would against any other directory of markdown.
 
-## Working on Plastic
+## Contributor rules
 
 Rules for any agent (or human) contributing to this repository.
 
@@ -81,6 +81,14 @@ Rules for any agent (or human) contributing to this repository.
 - Confirm that the changed files' tests and the change gate are green before committing code changes.
 - Lock and worktree tests must stay hermetic: inject `PLASTIC_TMP` plus explicit paths and
   never write with the ambient session id (`test/hermeticity_guard_test.rb` enforces this).
+
+#### Kernel style
+
+The Metrics cops are on for the whole repository in `.rubocop.yml`. `.rubocop_todo.yml` hides only the offenses of code written before 2026-09-30, and it never gains an entry. A new or changed method or class that trips a cop is split, and a disable comment never excuses it. Hash literals carry one space inside the braces, `{ key: value }`, and RuboCop corrects it. Reek and RubyCritic, which runs Reek, Flay and Flog, hold the same line: `.reek.yml` hides only the smells of code written before 2026-09-30 and never gains an entry, and the change gate fails a change that smells or scores under 90. Before a kernel section is called done, load it whole, lint it, and verify its chains with `verify`, which raises with every problem at once. Ruled 2026-09-30.
+
+#### Branches
+
+`alpha` guards development. Feature and stage pull requests stack on `alpha`, and CI runs the suite on each. `beta` guards local testing. It is reset from `alpha` when a whole feature is merged there, never takes direct commits, and publishes under the `beta` npm tag on a `-beta.N` version. `main` is everyday use and publishes under `latest` on a version with no suffix. A fix needed today goes to `main` by its own pull request, and `main` is merged into `alpha` after. `scripts/release-check` enforces the branch-to-suffix pairing. Ruled 2026-09-30.
 
 ### Worktrees and the single-owner lock
 - Single owner, mandatory. Exactly one session or agent develops an intent's delivery at a

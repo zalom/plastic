@@ -15,6 +15,8 @@
 # loaded.
 
 root = File.expand_path("..", __dir__)
+kernel_dir = File.join(root, "test", "plastic", "")
+kernel = []
 discover = -> { Dir.glob(File.join(root, "test", "**", "*_test.rb")).sort }
 
 # `bin/test --list` prints the discovered files without running them, so the
@@ -40,9 +42,16 @@ if only_index
 else
   files = discover.call
   abort "No test files found under #{File.join(root, "test")}" if files.empty?
+
+  # The kernel under scripts/lib/plastic/ defines the same constants as the
+  # live command line, so its tests run in a process of their own until the
+  # live one retires (intent 394).
+  kernel, files = files.partition { |f| f.start_with?(kernel_dir) }
 end
+kernel_passed = kernel.empty? || system(RbConfig.ruby, __FILE__, "--only", *kernel)
 
 $LOAD_PATH.unshift File.join(root, "test")
 require_relative "../test/lib/failures_reporter"
 require "minitest/autorun"
+Minitest.after_run { exit false unless kernel_passed }
 files.each { |f| require f }
