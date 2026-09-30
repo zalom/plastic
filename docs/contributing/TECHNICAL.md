@@ -27,7 +27,7 @@ bin/verify-change origin/alpha
   Mutation testing  Mutineer on the changed lines
   CRAP scores       each changed method
   Code smells       Reek on the changed sources, with .reek.yml
-  RubyCritic score  the changed sources
+  RubyCritic score  the changed sources that no todo list names
   print "Change verified", or the names of the steps that failed
 exit code 0 verified, 1 a check failed, 2 a usage or git error
 ```
@@ -42,7 +42,7 @@ The following table says when each step passes.
 | Mutation testing | Mutineer kills at least 75 percent of the mutants on the changed code. |
 | CRAP scores | No changed method scores above 30. |
 | Code smells | Reek finds no smell in the changed sources. |
-| RubyCritic score | The changed sources score 90 or more out of 100. |
+| RubyCritic score | The changed sources that no todo list names score 90 or more out of 100. |
 
 A lint failure does not stop the other steps. Only red tests stop the gate early.
 
@@ -50,7 +50,9 @@ Lint reads `.rubocop_with_todo.yml`. It is `.rubocop.yml` plus `.rubocop_todo.ym
 generated list of offenses in code written before 2026-09-30. So a lint run reports what the
 change did and nothing else. Reek reads `.reek.yml` the same way: its exclude lists hold only
 the smells of that older code. RubyCritic runs Reek, Flay and Flog, and scores the changed
-sources from their smells, duplication and complexity.
+sources from their smells, duplication and complexity. It leaves out a file that
+`.rubocop_todo.yml` or `.reek.yml` lists, because that file is older code, and it prints the
+names it left out. When every changed source is older code, the step does not run.
 
 Every step runs under a new `HOME` and `PLASTIC_TMP`. A mutant can turn an injected runner
 into a live call, and the throwaway home keeps that call away from the real one.
