@@ -7,6 +7,7 @@ group :development, :test do
   gem "skunk", "~> 0.5"
   gem "rubycritic", "~> 4.12"
   gem "flog", "~> 4.9"
+  gem "reek", "~> 6.5", require: false
   gem "ostruct", "~> 0.6"
   gem "rdoc"
   gem "standard", require: false

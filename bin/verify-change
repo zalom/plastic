@@ -15,6 +15,8 @@ class VerifyChange
       3. patch coverage of the changed lines (simplecov patch)
       4. mutation testing of the changed lines (mutineer, operators from .mutineer.yml)
       5. CRAP scores of the changed methods (bin/crap)
+      6. code smells in the changed files (reek, with .reek.yml present)
+      7. the RubyCritic score of the changed files (rubycritic, in Gemfile.lock)
 
     Runs RSpec specs in a project with spec/ and .rspec, spec/spec_helper.rb,
     or spec/rails_helper.rb, or with rspec, rspec-core, or rspec-rails under
@@ -35,6 +37,7 @@ class VerifyChange
   PATCH_COVERAGE_MINIMUM = 100
   MUTATION_THRESHOLD = 75
   CRAP_THRESHOLD = 30
+  RUBYCRITIC_MINIMUM = 90
   TESTS_STEP = "Tests with coverage"
   LINT_STEP = "Lint"
   DEFAULT_BASES = %w[origin/main main master].freeze
@@ -177,6 +180,8 @@ class VerifyChange
     steps << step("Patch coverage", {}, %W[bundle exec simplecov patch --base #{base} --minimum #{PATCH_COVERAGE_MINIMUM}])
     steps << step("Mutation testing", {}, mutation_command(sources, tests, base, rails, suite))
     steps << step("CRAP scores", {}, %W[bundle exec bin/crap --threshold #{CRAP_THRESHOLD} --since #{base}] + sources)
+    steps << step("Code smells", {}, %w[bundle exec reek --config .reek.yml] + sources) if File.exist?(File.join(@root, ".reek.yml"))
+    steps << step("RubyCritic score", {}, %W[bundle exec rubycritic --no-browser --format console --minimum-score #{RUBYCRITIC_MINIMUM}] + sources) if lint_gem_available?(:rubycritic)
   end
 
   def step(title, env, command)
@@ -224,6 +229,7 @@ class VerifyChange
     return true if command_gem == :rubocop && (dependencies_section.match?(/^  rubocop(\s|!|$)/) ||
                     dependencies_section.match?(/^  standard(\s|!|$)/) || dependencies_section.match?(/^  rubocop-rails-omakase(\s|!|$)/))
     return true if command_gem == :standard && dependencies_section.match?(/^  standard(\s|!|$)/)
+    return true if command_gem == :rubycritic && dependencies_section.match?(/^  rubycritic(\s|!|$)/)
 
     false
   end

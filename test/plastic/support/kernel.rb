@@ -153,7 +153,7 @@ module KernelFixtures
   end
 
   class Echo < Plastic::Hook
-    def respond(event) = context("SessionStart", "session #{event[:session_id]}")
+    def respond(event) = "session #{event[:session_id]}"
   end
 
   class Quiet < Plastic::Hook
