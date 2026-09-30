@@ -191,10 +191,10 @@ module KernelFixtures
         input: StringIO.new(input), out:, err:, home: @home, directory: @home)
     end
 
-    def plastic(*argv, env: {}, input: "")
+    def plastic(*argv, env: {}, input: "", table: TABLE)
       out = StringIO.new
       err = StringIO.new
-      code = Plastic::CLI.call(argv, environment: environment(env:, input:, out:, err:), table: TABLE)
+      code = Plastic::CLI.call(argv, environment: environment(env:, input:, out:, err:), table:)
       Result.new(out.string, err.string, code)
     end
 
@@ -238,6 +238,39 @@ module KernelFixtures
 
     def insert(name, table: :routine_runs)
       @database.transaction { |batch| batch.insert(table, { name: }) }
+    end
+  end
+end
+
+module KernelFixtures
+  # Calls of the kernel's own commands against the global store of a
+  # temporary home, and reads of the files and rows they leave.
+  module StoreCalls
+    include Calls
+
+    LEGACY_STORE = File.expand_path("../fixtures/legacy_store", __dir__)
+
+    def setup = make_home
+
+    def teardown = remove_home
+
+    def run_plastic(*argv) = plastic(*argv, table: Plastic::CLI::TABLE)
+
+    def store_root = File.join(@plastic_home, "stores", "global")
+
+    def store_path(path) = File.join(store_root, path)
+
+    def store_graphs = Plastic::Graph.open(home: @plastic_home, store: "global")
+
+    def copy_legacy_store
+      FileUtils.mkdir_p(File.dirname(store_root))
+      FileUtils.cp_r(LEGACY_STORE, store_root)
+    end
+
+    # Every file under `dir` with its bytes, dot files included.
+    def snapshot(dir)
+      files = Dir.glob("**/*", File::FNM_DOTMATCH, base: dir).select { |rel| File.file?(File.join(dir, rel)) }
+      files.sort.to_h { |rel| [rel, File.binread(File.join(dir, rel))] }
     end
   end
 end

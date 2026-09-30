@@ -55,8 +55,8 @@ class GraphTest < Minitest::Test
 
   def test_wrote_has_one_phrase_per_database_written
     opened = graphs
-    opened.databases[:work].transaction { |batch| batch.insert(:routine_runs, { store: "plastic", tool: "x", subject: "" }) }
+    opened.databases[:home].transaction { |batch| batch.insert(:routine_runs, { store: "plastic", tool: "x", subject: "" }) }
 
-    assert_equal ["1 routine run in work_graph.db"], opened.wrote
+    assert_equal ["1 routine run in home.db"], opened.wrote
   end
 end

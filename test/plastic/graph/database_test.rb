@@ -5,17 +5,17 @@ require_relative "../support/kernel"
 class DatabaseTest < Minitest::Test
   include KernelFixtures::DatabaseHome
 
-  def test_open_all_needs_sqlite3_on_the_path
-    error = assert_raises(Database::Error) { Database.open_all(@dir, path: "") }
+  def test_opening_needs_sqlite3_on_the_path
+    error = assert_raises(Database::Error) { Database.open_home(@dir, path: "") }
 
     assert_equal "sqlite3 is not on PATH; install it, then call again", error.message
   end
 
-  def test_open_all_opens_the_work_graph_at_the_home
-    databases = Database.open_all(@dir)
+  def test_open_home_opens_the_home_database
+    databases = Database.open_home(@dir)
 
-    assert_equal [:work], databases.keys
-    assert_equal File.join(@dir, "work_graph.db"), databases[:work].path
+    assert_equal [:home], databases.keys
+    assert_equal File.join(@dir, "home.db"), databases[:home].path
   end
 
   def test_literals_quote_every_kind_of_value

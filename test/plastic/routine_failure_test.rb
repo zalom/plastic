@@ -67,6 +67,6 @@ class RoutineFailureTest < Minitest::Test
     call = plastic("kernel", "gate", "pass")
 
     assert_equal 1, call.code
-    assert_includes call.err, "work_graph.db"
+    assert_includes call.err, "home.db"
   end
 end
