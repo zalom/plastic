@@ -84,7 +84,11 @@ Rules for any agent (or human) contributing to this repository.
 
 #### Kernel style
 
-Every file under `scripts/lib/plastic/` passes RuboCop with the Metrics cops on, through the nested `.rubocop.yml` in that folder. A method or class that trips a cop is split, and a disable comment never excuses it. Before a kernel section is called done, load it whole, lint it, and verify its chains with `verify!`, which raises with every problem at once. Ruled 2026-09-30.
+The Metrics cops are on for the whole repository in `.rubocop.yml`. `.rubocop_todo.yml` hides only the offenses of code written before 2026-09-30, and it never gains an entry. A new or changed method or class that trips a cop is split, and a disable comment never excuses it. Before a kernel section is called done, load it whole, lint it, and verify its chains with `verify!`, which raises with every problem at once. Ruled 2026-09-30.
+
+#### Branches
+
+`alpha` guards development. Feature and stage pull requests stack on `alpha`, and CI runs the suite on each. `beta` guards local testing. It is reset from `alpha` when a whole feature is merged there, never takes direct commits, and publishes under the `beta` npm tag on a `-beta.N` version. `main` is everyday use and publishes under `latest` on a version with no suffix. A fix needed today goes to `main` by its own pull request, and `main` is merged into `alpha` after. `scripts/release-check` enforces the branch-to-suffix pairing. Ruled 2026-09-30.
 
 ### Worktrees and the single-owner lock
 - Single owner, mandatory. Exactly one session or agent develops an intent's delivery at a
