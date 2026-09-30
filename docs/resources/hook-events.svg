@@ -67,7 +67,7 @@
 <text x="346" y="616" font-size="10.5" font-weight="400" text-anchor="start" fill="#1f2328">When nodes of a driven intent are ready, it tells the agent which command lists them.</text>
 <rect x="760" y="560" width="340" height="78" rx="6" style="fill:#F7DFD9;stroke:#B8452F" stroke-width="2"/>
 <text x="772" y="580" font-size="12" font-weight="700" text-anchor="start" fill="#1f2328" style="font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-ligatures:none">hook record and hook stop</text>
-<text x="772" y="598" font-size="10.5" font-weight="400" text-anchor="start" fill="#1f2328">The two hooks fold into one. Lock renewal moves</text>
+<text x="772" y="598" font-size="10.5" font-weight="400" text-anchor="start" fill="#1f2328">The two hooks merge into one. Lock renewal moves</text>
 <text x="772" y="612" font-size="10.5" font-weight="400" text-anchor="start" fill="#1f2328">here from the tool hook.</text>
 <polyline points="80,638 80,660" fill="none" stroke="#1f2328" stroke-width="1.3" marker-end="url(#ah)"/>
 <rect x="40" y="662" width="250" height="82" rx="6" style="fill:#FFFFFF;stroke:#1A1D23" stroke-width="1.3"/>
