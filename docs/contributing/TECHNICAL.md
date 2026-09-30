@@ -9,28 +9,9 @@ covers the tools around the `plastic` command.
 bundle exec ruby bin/verify-change <base commit>
 ```
 
-`bin/verify-change` checks only the lines changed since the base commit. The following block
-shows its steps in order.
+`bin/verify-change` checks only the lines changed since the base commit.
 
-```text
-bin/verify-change origin/alpha
-  find the merge base with origin/alpha
-  list the changed files
-    the Ruby sources under scripts/, lib/, tools/ or bin/lib/
-    the tests for those sources, and every changed test
-  stop with exit 1 when a changed source has no test file
-  make a throwaway HOME and PLASTIC_TMP for every step below
-  Lint              RuboCop on every changed Ruby file
-  Tests             the tests for the changed files, with coverage on
-    red tests stop the gate here, because a failing test kills every mutant
-  Patch coverage    every changed line and branch
-  Mutation testing  Mutineer on the changed lines
-  CRAP scores       each changed method
-  Code smells       Reek on the changed sources, with .reek.yml
-  RubyCritic score  the changed sources that no todo list names
-  print "Change verified", or the names of the steps that failed
-exit code 0 verified, 1 a check failed, 2 a usage or git error
-```
+![One run of bin/verify-change against origin/alpha. It finds the merge base, lists the changed Ruby sources and their tests, and stops with exit 1 when a changed source has no test file. In a throwaway home it runs Lint, Tests, Patch coverage, Mutation testing, CRAP scores, Code smells and RubyCritic score in that order. Red tests stop the gate, because a failing test kills every mutant. It prints Change verified or the names of the failed steps, and exits 0, 1 or 2.](../resources/verify-change.svg)
 
 The following table says when each step passes.
 

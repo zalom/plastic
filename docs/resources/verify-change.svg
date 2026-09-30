@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 804" role="img" aria-label="One run of bin/verify-change against origin/alpha">
+<style>text { font: 14px sans-serif; fill: #1f2328; } .title { font-weight: 700; } .note { fill: #57606a; text-anchor: end; }</style>
+<defs><marker id="head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#57606a"/></marker></defs>
+<rect width="960" height="804" fill="#ffffff"/>
+<rect x="20" y="20" width="920" height="40" rx="6" fill="#ffffff" stroke="#57606a" stroke-width="2"/>
+<text x="34" y="45" class="title">Find the merge base</text>
+<text x="926" y="45" class="note">with origin/alpha</text>
+<rect x="20" y="76" width="920" height="40" rx="6" fill="#ffffff" stroke="#57606a" stroke-width="2"/>
+<text x="34" y="101" class="title">List the changed files</text>
+<text x="926" y="101" class="note">Ruby sources under scripts/, lib/, tools/ or bin/lib/, and their tests</text>
+<rect x="20" y="132" width="920" height="40" rx="6" fill="#ffffff" stroke="#cf222e" stroke-width="2"/>
+<text x="34" y="157" class="title">Stop when a changed source has no test file</text>
+<text x="926" y="157" class="note">exit 1</text>
+<rect x="20" y="188" width="920" height="40" rx="6" fill="#ffffff" stroke="#57606a" stroke-width="2"/>
+<text x="34" y="213" class="title">Make a throwaway HOME and PLASTIC_TMP</text>
+<text x="926" y="213" class="note">for every step below</text>
+<rect x="56" y="244" width="884" height="40" rx="6" fill="#ffffff" stroke="#57606a" stroke-width="2"/>
+<text x="70" y="269" class="title">Lint</text>
+<text x="926" y="269" class="note">RuboCop on every changed Ruby file</text>
+<rect x="56" y="300" width="884" height="40" rx="6" fill="#ffffff" stroke="#57606a" stroke-width="2"/>
+<text x="70" y="325" class="title">Tests</text>
+<text x="926" y="325" class="note">the tests for the changed files, with coverage on</text>
+<rect x="92" y="356" width="848" height="40" rx="6" fill="#ffffff" stroke="#cf222e" stroke-width="2"/>
+<text x="106" y="381" class="title">Red tests stop the gate here</text>
+<text x="926" y="381" class="note">a failing test kills every mutant</text>
+<rect x="56" y="412" width="884" height="40" rx="6" fill="#ffffff" stroke="#57606a" stroke-width="2"/>
+<text x="70" y="437" class="title">Patch coverage</text>
+<text x="926" y="437" class="note">every changed line and branch</text>
+<rect x="56" y="468" width="884" height="40" rx="6" fill="#ffffff" stroke="#57606a" stroke-width="2"/>
+<text x="70" y="493" class="title">Mutation testing</text>
+<text x="926" y="493" class="note">Mutineer on the changed lines</text>
+<rect x="56" y="524" width="884" height="40" rx="6" fill="#ffffff" stroke="#57606a" stroke-width="2"/>
+<text x="70" y="549" class="title">CRAP scores</text>
+<text x="926" y="549" class="note">each changed method</text>
+<rect x="56" y="580" width="884" height="40" rx="6" fill="#ffffff" stroke="#57606a" stroke-width="2"/>
+<text x="70" y="605" class="title">Code smells</text>
+<text x="926" y="605" class="note">Reek on the changed sources, with .reek.yml</text>
+<rect x="56" y="636" width="884" height="40" rx="6" fill="#ffffff" stroke="#57606a" stroke-width="2"/>
+<text x="70" y="661" class="title">RubyCritic score</text>
+<text x="926" y="661" class="note">the changed sources that no todo list names</text>
+<rect x="20" y="692" width="920" height="40" rx="6" fill="#ffffff" stroke="#57606a" stroke-width="2"/>
+<text x="34" y="717" class="title">Print the result</text>
+<text x="926" y="717" class="note">"Change verified", or the names of the steps that failed</text>
+<rect x="20" y="748" width="920" height="40" rx="6" fill="#ffffff" stroke="#1a7f37" stroke-width="2"/>
+<text x="34" y="773" class="title">Exit 0, 1 or 2</text>
+<text x="926" y="773" class="note">verified, a check failed, a usage or git error</text>
+<polyline points="44,60 44,74" fill="none" stroke="#57606a" stroke-width="1.5" marker-end="url(#head)"/>
+<polyline points="44,116 44,130" fill="none" stroke="#57606a" stroke-width="1.5" marker-end="url(#head)"/>
+<polyline points="44,172 44,186" fill="none" stroke="#57606a" stroke-width="1.5" marker-end="url(#head)"/>
+<polyline points="44,228 44,242" fill="none" stroke="#57606a" stroke-width="1.5" marker-end="url(#head)"/>
+<polyline points="80,284 80,298" fill="none" stroke="#57606a" stroke-width="1.5" marker-end="url(#head)"/>
+<polyline points="80,340 80,354" fill="none" stroke="#57606a" stroke-width="1.5" marker-end="url(#head)"/>
+<polyline points="80,396 80,410" fill="none" stroke="#57606a" stroke-width="1.5" marker-end="url(#head)"/>
+<polyline points="80,452 80,466" fill="none" stroke="#57606a" stroke-width="1.5" marker-end="url(#head)"/>
+<polyline points="80,508 80,522" fill="none" stroke="#57606a" stroke-width="1.5" marker-end="url(#head)"/>
+<polyline points="80,564 80,578" fill="none" stroke="#57606a" stroke-width="1.5" marker-end="url(#head)"/>
+<polyline points="80,620 80,634" fill="none" stroke="#57606a" stroke-width="1.5" marker-end="url(#head)"/>
+<polyline points="44,676 44,690" fill="none" stroke="#57606a" stroke-width="1.5" marker-end="url(#head)"/>
+<polyline points="44,732 44,746" fill="none" stroke="#57606a" stroke-width="1.5" marker-end="url(#head)"/>
+</svg>

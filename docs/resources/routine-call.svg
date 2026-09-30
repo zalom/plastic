@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 860" role="img" aria-label="One call of a routine command through the kernel">
+<style>text { font: 14px sans-serif; fill: #1f2328; } .title { font-weight: 700; } .note { fill: #57606a; text-anchor: end; }</style>
+<defs><marker id="head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#57606a"/></marker></defs>
+<rect width="960" height="860" fill="#ffffff"/>
+<rect x="20" y="20" width="920" height="40" rx="6" fill="#ffffff" stroke="#57606a" stroke-width="2"/>
+<text x="34" y="45" class="title">Plastic::CLI.call</text>
+<text x="926" y="45" class="note">the kernel's dispatcher</text>
+<rect x="56" y="76" width="884" height="40" rx="6" fill="#ffffff" stroke="#57606a" stroke-width="2"/>
+<text x="70" y="101" class="title">Find the command</text>
+<text x="926" y="101" class="note">the longest table entry that starts the arguments</text>
+<rect x="56" y="132" width="884" height="40" rx="6" fill="#ffffff" stroke="#57606a" stroke-width="2"/>
+<text x="70" y="157" class="title">Load its class</text>
+<text x="926" y="157" class="note">only on the first call</text>
+<rect x="56" y="188" width="884" height="40" rx="6" fill="#ffffff" stroke="#57606a" stroke-width="2"/>
+<text x="70" y="213" class="title">Build the command</text>
+<text x="926" y="213" class="note">Command.call, then check that a named project exists</text>
+<rect x="92" y="244" width="848" height="40" rx="6" fill="#ffffff" stroke="#57606a" stroke-width="2"/>
+<text x="106" y="269" class="title">Verify the chain</text>
+<text x="926" y="269" class="note">once per process; raises every wiring fault at once</text>
+<rect x="92" y="300" width="848" height="40" rx="6" fill="#ffffff" stroke="#57606a" stroke-width="2"/>
+<text x="106" y="325" class="title">Open the routine run</text>
+<text x="926" y="325" class="note">the open row for this tool and subject, or a new one</text>
+<rect x="92" y="356" width="848" height="40" rx="6" fill="#ffffff" stroke="#57606a" stroke-width="2"/>
+<text x="106" y="381" class="title">Build the context</text>
+<text x="926" y="381" class="note">saved facts first, then this call's arguments</text>
+<rect x="128" y="412" width="812" height="40" rx="6" fill="#ffffff" stroke="#57606a" stroke-width="2"/>
+<text x="142" y="437" class="title">Run the workflow</text>
+<text x="926" y="437" class="note">it returns an outcome name or an end value</text>
+<rect x="128" y="468" width="812" height="40" rx="6" fill="#ffffff" stroke="#57606a" stroke-width="2"/>
+<text x="142" y="493" class="title">Follow the edge</text>
+<text x="926" y="493" class="note">the edge that carries that outcome</text>
+<rect x="128" y="524" width="812" height="40" rx="6" fill="#ffffff" stroke="#57606a" stroke-width="2"/>
+<text x="142" y="549" class="title">Save the routine run</text>
+<text x="926" y="549" class="note">after each workflow, for a tool that writes</text>
+<rect x="128" y="580" width="812" height="40" rx="6" fill="#ffffff" stroke="#57606a" stroke-width="2"/>
+<text x="142" y="605" class="title">Repeat</text>
+<text x="926" y="605" class="note">until an end value, or until the edge reaches :noop</text>
+<rect x="92" y="636" width="848" height="40" rx="6" fill="#ffffff" stroke="#57606a" stroke-width="2"/>
+<text x="106" y="661" class="title">Close the routine run</text>
+<text x="926" y="661" class="note">the end value names its status and its lines</text>
+<rect x="92" y="692" width="848" height="40" rx="6" fill="#ffffff" stroke="#57606a" stroke-width="2"/>
+<text x="106" y="717" class="title">Report</text>
+<text x="926" y="717" class="note">the printed lines, next: and because:, then the wrote: line</text>
+<rect x="56" y="748" width="884" height="40" rx="6" fill="#ffffff" stroke="#57606a" stroke-width="2"/>
+<text x="70" y="773" class="title">flush</text>
+<text x="926" y="773" class="note">prints the rows, or one JSON document with --json</text>
+<rect x="20" y="804" width="920" height="40" rx="6" fill="#ffffff" stroke="#1a7f37" stroke-width="2"/>
+<text x="34" y="829" class="title">Exit 0, 1 or 3</text>
+<text x="926" y="829" class="note">a usage error still exits 2</text>
+<polyline points="44,60 44,74" fill="none" stroke="#57606a" stroke-width="1.5" marker-end="url(#head)"/>
+<polyline points="80,116 80,130" fill="none" stroke="#57606a" stroke-width="1.5" marker-end="url(#head)"/>
+<polyline points="80,172 80,186" fill="none" stroke="#57606a" stroke-width="1.5" marker-end="url(#head)"/>
+<polyline points="80,228 80,242" fill="none" stroke="#57606a" stroke-width="1.5" marker-end="url(#head)"/>
+<polyline points="116,284 116,298" fill="none" stroke="#57606a" stroke-width="1.5" marker-end="url(#head)"/>
+<polyline points="116,340 116,354" fill="none" stroke="#57606a" stroke-width="1.5" marker-end="url(#head)"/>
+<polyline points="116,396 116,410" fill="none" stroke="#57606a" stroke-width="1.5" marker-end="url(#head)"/>
+<polyline points="152,452 152,466" fill="none" stroke="#57606a" stroke-width="1.5" marker-end="url(#head)"/>
+<polyline points="152,508 152,522" fill="none" stroke="#57606a" stroke-width="1.5" marker-end="url(#head)"/>
+<polyline points="152,564 152,578" fill="none" stroke="#57606a" stroke-width="1.5" marker-end="url(#head)"/>
+<polyline points="116,620 116,634" fill="none" stroke="#57606a" stroke-width="1.5" marker-end="url(#head)"/>
+<polyline points="116,676 116,690" fill="none" stroke="#57606a" stroke-width="1.5" marker-end="url(#head)"/>
+<polyline points="80,732 80,746" fill="none" stroke="#57606a" stroke-width="1.5" marker-end="url(#head)"/>
+<polyline points="44,788 44,802" fill="none" stroke="#57606a" stroke-width="1.5" marker-end="url(#head)"/>
+</svg>

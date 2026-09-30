@@ -5,16 +5,11 @@ the store layout, is in [docs/architecture.md](../architecture.md).
 
 ## The life of a command
 
-```text
-bin/plastic
-  Plastic::CLI.call(ARGV)            the dispatcher
-    TABLE[name]                      one frozen hash: name, file, class, help line
-    --help? print USAGE_LINE         nothing is built
-    Command.call(rest, out:, err:)   builds the command and sends it call
-      call                           the work of one command
-      flush                          prints the result, or the JSON form
-    exit code 0, 1, 2 or 3
-```
+![One call of a live command. bin/plastic runs the dispatcher, which finds the command in one frozen table, prints the usage line on --help without building anything, or builds the command and sends it call and then flush. The call exits 0, 1, 2 or 3.](../resources/command-call.svg)
+
+The dispatcher's table is one frozen hash: the command's name, its file, its class and its
+help line. The `call` method does the work of one command, and `flush` prints the result or
+its JSON form.
 
 ## The shared classes
 
@@ -93,30 +88,7 @@ The following table lists the kernel's main classes. Each one sits in the `Plast
 
 ### The life of a routine call
 
-The following block shows one call of a routine command, from the dispatcher down to the exit
-code.
-
-```text
-Plastic::CLI.call(argv, environment:)     the kernel's dispatcher
-  find the command                         the longest table entry that starts argv
-  load its class                           only on the first call
-  Command.call(rest, words:, environment:) builds the command and sends it run
-    check the scope                        a project named with --project must exist
-    Routine#call
-      Routine.verify                       once per process; raises every chain fault at once
-      open the routine run                 the open row for this tool and subject, or a new one
-      build the context                    saved facts first, then this call's arguments
-      Traversal#call                       starts at the first workflow of the chain
-        run the workflow                   it returns an outcome name or an end value
-        follow the edge                    the edge that carries that outcome
-        save the routine run               after each workflow, for a tool that writes
-        repeat                             until an end value, or until the edge reaches :noop
-      close the routine run                the end value names its status and its lines
-      report                               the printed lines, then the wrote: line
-        the end value prints its lines     next: and because:, or the error line
-    flush                                  prints the rows, or one JSON document with --json
-  exit code 0, 1 or 3
-```
+![One call of a routine command through the kernel. The dispatcher finds the command and loads its class on the first call. The command verifies the chain once per process, opens the routine run, builds the context, then runs each workflow, follows the edge its outcome takes, saves the routine run, and repeats until an end value. It closes the routine run, reports, flushes, and exits 0, 1 or 3.](../resources/routine-call.svg)
 
 A usage error still exits 2, as it does in the live command line.
 
@@ -125,7 +97,7 @@ A usage error still exits 2, as it does in the live command line.
 A routine names its chain in its class body. Each `workflow` line gives a key and the edge
 that each outcome takes. The special key `:noop` ends the chain.
 
-```text
+```ruby
 workflow :code_check_write_lock, next: :code_check_ending
 workflow :code_check_ending do
   on :written, next: :code_close_intent
@@ -147,24 +119,10 @@ finds these faults:
 A call ends in one of four values. Each value prints its own last lines and gives the exit
 code, so no workflow picks a number.
 
-```text
-Routine call
-  code workflow                     runs its gates, reads and steps in order
-    a gate stops as a refusal       Refused     exit 3   the owner holds this step
-    a step breaks                   Failed      exit 1   the error names the workflow and step
-    a gate stops as a failure       Failed      exit 1   the agent can fix it
-    returns an outcome name         follow the edge to the next workflow
-  agent workflow                    checks the done test of each step
-    steps are left                  HandedOff   exit 0   prints the steps, then next:
-                                                exit 1   when the outcome says stops: :failure
-    every step is done              the edge reaches :noop, since an agent workflow is last
-  the edge reaches :noop            Finished    exit 0   prints next: and because:
-```
-
 ![A chain of two code workflows and one agent workflow. Refused, Failed, HandedOff and Finished each end the call with their own exit code.](../resources/routine-endings.svg)
 
-`docs/resources/routine_endings.rb` draws the figure. Run it from the repository root after
-you change it.
+`docs/resources/routine_endings.rb` draws this figure, and `docs/resources/call_flows.rb` draws
+the call figures of these pages. Run either one from the repository root after you change it.
 
 ### The routine run row
 
@@ -200,15 +158,7 @@ its `wrote:` line.
 A hook is a command that the harness calls on an event, such as the start of a session. A
 hook is not a routine. It prints no `next:` line and keeps no routine run.
 
-```text
-the harness sends an event          JSON on stdin
-  Hook.call(argv, environment:)
-    read the event                  empty input is an empty event
-    respond(event)                  the subclass returns text, or nil
-    print the text on stdout        only when there is text
-  exit 0
-  on any error                      one line on stderr, then exit 0
-```
+![One call of a hook command. The harness sends an event as JSON on stdin. The hook reads the event, responds to it, prints the text on stdout when there is any, and exits 0. On any error it prints one line on stderr and still exits 0.](../resources/hook-call.svg)
 
 Claude Code adds the text to the agent's context on the session start event. A broken hook
 never breaks the session, because the hook always exits 0.

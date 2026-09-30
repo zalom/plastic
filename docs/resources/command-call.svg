@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 412" role="img" aria-label="One call of a live command, from bin/plastic to the exit code">
+<style>text { font: 14px sans-serif; fill: #1f2328; } .title { font-weight: 700; } .note { fill: #57606a; text-anchor: end; }</style>
+<defs><marker id="head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#57606a"/></marker></defs>
+<rect width="960" height="412" fill="#ffffff"/>
+<rect x="20" y="20" width="920" height="40" rx="6" fill="#ffffff" stroke="#57606a" stroke-width="2"/>
+<text x="34" y="45" class="title">bin/plastic</text>
+<text x="926" y="45" class="note">runs Plastic::CLI.call with the arguments</text>
+<rect x="56" y="76" width="884" height="40" rx="6" fill="#ffffff" stroke="#57606a" stroke-width="2"/>
+<text x="70" y="101" class="title">Find the command</text>
+<text x="926" y="101" class="note">one frozen table: name, file, class and help line</text>
+<rect x="56" y="132" width="884" height="40" rx="6" fill="#ffffff" stroke="#57606a" stroke-width="2"/>
+<text x="70" y="157" class="title">Print the usage line on --help</text>
+<text x="926" y="157" class="note">nothing is built</text>
+<rect x="56" y="188" width="884" height="40" rx="6" fill="#ffffff" stroke="#57606a" stroke-width="2"/>
+<text x="70" y="213" class="title">Build the command</text>
+<text x="926" y="213" class="note">Command.call with the rest of the arguments</text>
+<rect x="92" y="244" width="848" height="40" rx="6" fill="#ffffff" stroke="#57606a" stroke-width="2"/>
+<text x="106" y="269" class="title">call</text>
+<text x="926" y="269" class="note">the work of one command</text>
+<rect x="92" y="300" width="848" height="40" rx="6" fill="#ffffff" stroke="#57606a" stroke-width="2"/>
+<text x="106" y="325" class="title">flush</text>
+<text x="926" y="325" class="note">prints the result, or its JSON form</text>
+<rect x="20" y="356" width="920" height="40" rx="6" fill="#ffffff" stroke="#1a7f37" stroke-width="2"/>
+<text x="34" y="381" class="title">Exit 0, 1, 2 or 3</text>
+<text x="926" y="381" class="note">succeeded, failed, called wrongly, refused</text>
+<polyline points="44,60 44,74" fill="none" stroke="#57606a" stroke-width="1.5" marker-end="url(#head)"/>
+<polyline points="80,116 80,130" fill="none" stroke="#57606a" stroke-width="1.5" marker-end="url(#head)"/>
+<polyline points="80,172 80,186" fill="none" stroke="#57606a" stroke-width="1.5" marker-end="url(#head)"/>
+<polyline points="80,228 80,242" fill="none" stroke="#57606a" stroke-width="1.5" marker-end="url(#head)"/>
+<polyline points="116,284 116,298" fill="none" stroke="#57606a" stroke-width="1.5" marker-end="url(#head)"/>
+<polyline points="44,340 44,354" fill="none" stroke="#57606a" stroke-width="1.5" marker-end="url(#head)"/>
+</svg>
