@@ -80,7 +80,9 @@ included. `test/context_budget_bench_test.rb` fails when a surface crosses its c
 | `test/cli/` | The tests for the dispatcher, the shared classes and the commands. |
 | `scripts/lib/plastic.rb` | The entry of the tri-graph kernel. |
 | `scripts/lib/plastic/` | The kernel: its command line, routines, workflows, end values and graph layer. |
+| `scripts/lib/plastic/graph/` | The kernel's graph layer: the store databases, the printed files and sync. |
 | `test/plastic/` | The kernel tests, which run in their own process. |
+| `test/plastic/fixtures/legacy_store/` | A copy of a store written before `store/index.json`, for the import tests. |
 | `docs/resources/` | The figures of these pages, copied from the tri-graph proposal pages. |
 | `varar/` | The acceptance documents. |
 | `test/varar/` | The step files for the acceptance documents. |
