@@ -18,7 +18,7 @@ module Plastic
       end
 
       def error_document(message, kind)
-        row("error", {"kind" => kind, "message" => message})
+        row("error", { "kind" => kind, "message" => message })
         next_step("none", because: message)
         flush
       end

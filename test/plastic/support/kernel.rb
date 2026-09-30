@@ -187,7 +187,7 @@ module KernelFixtures
     def remove_home = FileUtils.remove_entry(@home)
 
     def environment(env: {}, input: "", out: StringIO.new, err: StringIO.new)
-      Plastic::CLI::Command::Environment.new(env: {"PLASTIC_HOME" => @plastic_home}.merge(env),
+      Plastic::CLI::Command::Environment.new(env: { "PLASTIC_HOME" => @plastic_home }.merge(env),
         input: StringIO.new(input), out:, err:, home: @home, directory: @home)
     end
 
@@ -209,7 +209,7 @@ module KernelFixtures
   module WorkflowBuilders
     Flows = KernelFixtures::Workflows
 
-    def context(declared: %i[name mode], facts: {name: "ada"})
+    def context(declared: %i[name mode], facts: { name: "ada" })
       Plastic::Context.new(declared:, facts:, graphs: {})
     end
 
@@ -237,7 +237,7 @@ module KernelFixtures
     def teardown = FileUtils.remove_entry(@dir)
 
     def insert(name, table: :routine_runs)
-      @database.transaction { |batch| batch.insert(table, {name:}) }
+      @database.transaction { |batch| batch.insert(table, { name: }) }
     end
   end
 end

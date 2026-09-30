@@ -11,6 +11,6 @@ module Plastic
 
     def because = message
 
-    def record = {status:, next_command:, because:, exit_code:}
+    def record = { status:, next_command:, because:, exit_code: }
   end
 end

@@ -76,13 +76,13 @@ class RoutineTest < Minitest::Test
   end
 
   def test_the_calling_session_reaches_the_context
-    call = plastic("kernel", "who", env: {"PLASTIC_SESSION" => "", "CLAUDE_CODE_SESSION_ID" => "cc-1"})
+    call = plastic("kernel", "who", env: { "PLASTIC_SESSION" => "", "CLAUDE_CODE_SESSION_ID" => "cc-1" })
 
     assert_includes call.out, "session \"cc-1\""
   end
 
   def test_the_plastic_session_variable_wins
-    call = plastic("kernel", "who", env: {"PLASTIC_SESSION" => "p-1", "CLAUDE_CODE_SESSION_ID" => "cc-1"})
+    call = plastic("kernel", "who", env: { "PLASTIC_SESSION" => "p-1", "CLAUDE_CODE_SESSION_ID" => "cc-1" })
 
     assert_includes call.out, "session \"p-1\""
   end

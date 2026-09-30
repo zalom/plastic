@@ -14,7 +14,7 @@ module Plastic
       SQL
 
       # How the report names the rows of a table: one and many.
-      NOUNS = {"routine_runs" => ["routine run", "routine runs"]}.freeze
+      NOUNS = { "routine_runs" => ["routine run", "routine runs"] }.freeze
 
       # A count of rows with its noun: "1 routine run", "2 routine runs".
       def self.tally(table, count)
@@ -31,7 +31,7 @@ module Plastic
         (rest.size == 1) ? "#{rest.first} and #{last}" : "#{rest.join(", ")}, and #{last}"
       end
 
-      def self.fetch(key) = {work: WORK}.fetch(key)
+      def self.fetch(key) = { work: WORK }.fetch(key)
     end
   end
 end

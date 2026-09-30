@@ -11,7 +11,7 @@ class GraphTest < Minitest::Test
 
   def closed_run(subject = "7")
     Plastic::RoutineRun.fresh("intent end", subject).advance(:code_a, :code_b)
-      .close(Plastic::Finished.new(next_command: "plastic next", because: "done"), {id: "7", list: [1, 2]})
+      .close(Plastic::Finished.new(next_command: "plastic next", because: "done"), { id: "7", list: [1, 2] })
   end
 
   def test_a_saved_routine_run_reads_back_the_same
@@ -55,7 +55,7 @@ class GraphTest < Minitest::Test
 
   def test_wrote_has_one_phrase_per_database_written
     opened = graphs
-    opened.databases[:work].transaction { |batch| batch.insert(:routine_runs, {store: "plastic", tool: "x", subject: ""}) }
+    opened.databases[:work].transaction { |batch| batch.insert(:routine_runs, { store: "plastic", tool: "x", subject: "" }) }
 
     assert_equal ["1 routine run in work_graph.db"], opened.wrote
   end

@@ -11,7 +11,7 @@ class ScopeTest < Minitest::Test
 
   def teardown = FileUtils.remove_entry(@home)
 
-  def scope(slug: nil, directory: @home, env: {"PLASTIC_HOME" => @plastic_home})
+  def scope(slug: nil, directory: @home, env: { "PLASTIC_HOME" => @plastic_home })
     Plastic::CLI::Scope.new(env:, home: @home, slug:, directory:)
   end
 
@@ -76,7 +76,7 @@ class ScopeTest < Minitest::Test
   def test_a_project_with_no_path_matches_nothing
     projects("plastic: true\n")
 
-    assert_equal({"plastic" => ""}, scope.projects)
+    assert_equal({ "plastic" => "" }, scope.projects)
     assert_equal "global", scope.slug
   end
 

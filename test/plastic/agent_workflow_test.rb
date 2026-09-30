@@ -36,13 +36,13 @@ class AgentWorkflowTest < Minitest::Test
   end
 
   def test_an_agent_workflow_whose_checks_hold_is_done
-    ctx = context(declared: %i[name draft_path], facts: {name: "ada", draft_path: __FILE__})
+    ctx = context(declared: %i[name draft_path], facts: { name: "ada", draft_path: __FILE__ })
 
     assert_equal :done, Flows::WriteDraft.call(ctx)
   end
 
   def test_an_agent_workflow_hands_off_the_steps_left
-    ctx = context(declared: %i[name draft_path], facts: {name: "ada", draft_path: "/nowhere/ada.md"})
+    ctx = context(declared: %i[name draft_path], facts: { name: "ada", draft_path: "/nowhere/ada.md" })
     expected = Plastic::HandedOff.new(steps: ["Write the draft to /nowhere/ada.md"], next_command: "plastic kernel draft ada",
       because: "the draft for ada is not written yet", exit_code: 0)
 
@@ -50,7 +50,7 @@ class AgentWorkflowTest < Minitest::Test
   end
 
   def test_a_done_check_that_raises_fails_the_handoff
-    ctx = context(declared: %i[name draft_path], facts: {name: "ada"})
+    ctx = context(declared: %i[name draft_path], facts: { name: "ada" })
     value = Flows::WriteDraft.call(ctx)
 
     assert_equal ["agent_write_draft", "handoff"], [value.workflow.to_s, value.step]

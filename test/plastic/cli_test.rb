@@ -11,7 +11,7 @@ class CliTest < Minitest::Test
   def teardown = remove_home
 
   def test_find_picks_the_longest_command_the_words_start
-    table = {"auto lock" => [], "auto lock renew" => []}
+    table = { "auto lock" => [], "auto lock renew" => [] }
 
     assert_equal "auto lock renew", Plastic::CLI.find(%w[auto lock renew 7], table)
     assert_equal "auto lock", Plastic::CLI.find(%w[auto lock 7], table)
@@ -30,7 +30,7 @@ class CliTest < Minitest::Test
   end
 
   def test_tool_loads_the_file_the_class_names
-    error = assert_raises(LoadError) { Plastic::CLI.tool("x", {"x" => ["Commands::IntentEnd", ""]}) }
+    error = assert_raises(LoadError) { Plastic::CLI.tool("x", { "x" => ["Commands::IntentEnd", ""] }) }
 
     assert_includes error.message, "commands/intent_end"
   end
@@ -85,7 +85,7 @@ class CliTest < Minitest::Test
     document = JSON.parse(call.out)
 
     assert_equal 3, call.code
-    assert_equal({"kind" => "refused", "message" => "the owner holds hold"}, document.dig("result", "error"))
+    assert_equal({ "kind" => "refused", "message" => "the owner holds hold" }, document.dig("result", "error"))
   end
 
   def test_describe_says_what_a_tool_takes_and_writes

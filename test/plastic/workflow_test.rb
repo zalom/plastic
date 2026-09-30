@@ -51,7 +51,7 @@ class WorkflowTest < Minitest::Test
   end
 
   def test_closing_with_no_offer_prints_none
-    assert_equal ["none", "passed hold"], Flows::Hold.closing(:done, context(facts: {mode: "hold"}))
+    assert_equal ["none", "passed hold"], Flows::Hold.closing(:done, context(facts: { mode: "hold" }))
   end
 
   def test_closing_with_no_because_raises

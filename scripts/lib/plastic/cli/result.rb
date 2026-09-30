@@ -47,7 +47,7 @@ module Plastic
       def document(project)
         result = @rows.to_h
         result["output"] = @lines unless @lines.empty?
-        {"result" => result, "next" => next_command(project), "because" => because}
+        { "result" => result, "next" => next_command(project), "because" => because }
       end
     end
   end

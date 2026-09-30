@@ -33,7 +33,7 @@ class OutputTest < Minitest::Test
     printer = output(json: true).row("id", "7")
     printer.flush("b")
 
-    assert_equal({"result" => {"id" => "7"}, "next" => nil, "because" => nil}, JSON.parse(@out.string))
+    assert_equal({ "result" => { "id" => "7" }, "next" => nil, "because" => nil }, JSON.parse(@out.string))
   end
 
   def test_flush_prints_once
@@ -74,7 +74,7 @@ class OutputTest < Minitest::Test
   def test_json_keeps_raw_lines_under_output
     output(json: true).raw("line").row("id", "7").next_step("plastic next", because: "why").flush
 
-    assert_equal({"result" => {"id" => "7", "output" => ["line"]}, "next" => "plastic next", "because" => "why"},
+    assert_equal({ "result" => { "id" => "7", "output" => ["line"] }, "next" => "plastic next", "because" => "why" },
       JSON.parse(@out.string))
   end
 
@@ -84,10 +84,10 @@ class OutputTest < Minitest::Test
   end
 
   def test_a_document_prints_whole_and_ends_the_output
-    printer = output.document({"a" => 1})
+    printer = output.document({ "a" => 1 })
     printer.flush
 
-    assert_equal({"a" => 1}, JSON.parse(@out.string))
+    assert_equal({ "a" => 1 }, JSON.parse(@out.string))
   end
 
   def test_usage_prints_the_message_and_the_banner
@@ -112,7 +112,7 @@ class OutputTest < Minitest::Test
   def test_an_error_in_json_prints_the_error_document
     output(json: true).failed("it broke")
 
-    assert_equal({"result" => {"error" => {"kind" => "failed", "message" => "it broke"}}, "next" => "none", "because" => "it broke"},
+    assert_equal({ "result" => { "error" => { "kind" => "failed", "message" => "it broke" } }, "next" => "none", "because" => "it broke" },
       JSON.parse(@out.string))
   end
 

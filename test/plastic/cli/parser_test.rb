@@ -11,7 +11,7 @@ class ParserTest < Minitest::Test
   end
 
   def test_an_option_takes_its_default
-    assert_equal({dir: "/default", id: "7"}, parser.parse(%w[7]))
+    assert_equal({ dir: "/default", id: "7" }, parser.parse(%w[7]))
   end
 
   def test_an_option_takes_its_value

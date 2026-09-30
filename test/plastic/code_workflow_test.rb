@@ -56,18 +56,18 @@ class CodeWorkflowTest < Minitest::Test
   end
 
   def test_a_read_runs_on_every_call
-    ctx = context(declared: %i[name dir draft_path], facts: {name: "ada", dir: "/d"})
+    ctx = context(declared: %i[name dir draft_path], facts: { name: "ada", dir: "/d" })
     Flows::FindDraft.call(ctx)
 
     assert_equal "/d/ada.md", ctx.draft_path
   end
 
   def test_a_refusal_gate_returns_a_refused_value
-    assert_equal Plastic::Refused.new(:code_hold, "the owner holds hold"), Flows::Hold.call(context(facts: {mode: "hold"}))
+    assert_equal Plastic::Refused.new(:code_hold, "the owner holds hold"), Flows::Hold.call(context(facts: { mode: "hold" }))
   end
 
   def test_a_failure_gate_returns_a_failed_value
     assert_equal Plastic::Failed.new(:code_hold, "gate", "the check broke on break"),
-      Flows::Hold.call(context(facts: {mode: "break"}))
+      Flows::Hold.call(context(facts: { mode: "break" }))
   end
 end

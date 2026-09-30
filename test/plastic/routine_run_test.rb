@@ -37,9 +37,9 @@ class RoutineRunTest < Minitest::Test
   end
 
   def test_closing_on_finished_keeps_next_and_because
-    run = fresh.close(Plastic::Finished.new(next_command: "plastic next", because: "done"), {id: "7"})
+    run = fresh.close(Plastic::Finished.new(next_command: "plastic next", because: "done"), { id: "7" })
 
-    assert_equal ["finished", "plastic next", "done", 0, {id: "7"}],
+    assert_equal ["finished", "plastic next", "done", 0, { id: "7" }],
       [run.status, run.next_command, run.because, run.exit_code, run.facts]
   end
 
@@ -63,12 +63,12 @@ class RoutineRunTest < Minitest::Test
 
   def test_from_h_reads_string_keys_back_into_symbols
     hash = fresh.advance(:code_a, :code_b).to_h.transform_keys(&:to_s)
-    hash["facts"] = {"id" => "7"}
+    hash["facts"] = { "id" => "7" }
     hash["finished"] = ["code_a"]
     hash["at"] = "code_b"
     run = Plastic::RoutineRun.from_h(hash)
 
-    assert_equal [{id: "7"}, [:code_a], :code_b], [run.facts, run.finished, run.at]
+    assert_equal [{ id: "7" }, [:code_a], :code_b], [run.facts, run.finished, run.at]
   end
 
   def test_from_h_keeps_a_nil_at

@@ -18,7 +18,7 @@ module Plastic
     # get two ids. Each database counts the rows that this call wrote, and the
     # report prints the counts on its `wrote:` line.
     class Database
-      FILES = {work: "work_graph.db"}.freeze
+      FILES = { work: "work_graph.db" }.freeze
 
       # The sqlite3 program is missing, or a statement failed.
       class Error < StandardError; end

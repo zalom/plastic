@@ -19,7 +19,7 @@ class DatabaseTest < Minitest::Test
   end
 
   def test_literals_quote_every_kind_of_value
-    values = [nil, true, false, 3, 1.5, SQL::Bytes.new("ab"), {"a" => 1}, [1], "it's"]
+    values = [nil, true, false, 3, 1.5, SQL::Bytes.new("ab"), { "a" => 1 }, [1], "it's"]
 
     assert_equal ["NULL", "1", "0", "3", "1.5", "X'6162'", %('{"a":1}'), "'[1]'", "'it''s'"],
       values.map { |value| SQL.literal(value) }
@@ -45,8 +45,8 @@ class DatabaseTest < Minitest::Test
     insert("a")
     insert("b")
 
-    assert_equal [{"name" => "a"}, {"name" => "b"}], @database.rows("SELECT name FROM routine_runs ORDER BY id")
-    assert_equal({"name" => "b"}, @database.row("SELECT name FROM routine_runs WHERE name = :name", name: "b"))
+    assert_equal [{ "name" => "a" }, { "name" => "b" }], @database.rows("SELECT name FROM routine_runs ORDER BY id")
+    assert_equal({ "name" => "b" }, @database.row("SELECT name FROM routine_runs WHERE name = :name", name: "b"))
   end
 
   def test_an_empty_transaction_runs_nothing
@@ -60,24 +60,24 @@ class DatabaseTest < Minitest::Test
       batch.write(:routine_runs, "INSERT INTO routine_runs(name) VALUES (:name) RETURNING name", name: "b")
     end
 
-    assert_equal [[{"name" => "a"}], [{"name" => "b"}]], returned
+    assert_equal [[{ "name" => "a" }], [{ "name" => "b" }]], returned
   end
 
   def test_a_conflict_clause_skips_the_duplicate
     insert("a")
-    @database.transaction { |batch| batch.insert(:routine_runs, {name: "a"}, conflict: "NOTHING") }
+    @database.transaction { |batch| batch.insert(:routine_runs, { name: "a" }, conflict: "NOTHING") }
 
     assert_equal 1, @database.row("SELECT count(*) AS n FROM routine_runs")["n"]
   end
 
   def test_the_record_names_the_columns_in_order
-    @database.transaction { |batch| batch.insert(:stored, {store: "plastic", name: "x"}) }
+    @database.transaction { |batch| batch.insert(:stored, { store: "plastic", name: "x" }) }
 
-    assert_equal({"store" => "plastic", "name" => "x"}, @database.row("SELECT * FROM stored"))
+    assert_equal({ "store" => "plastic", "name" => "x" }, @database.row("SELECT * FROM stored"))
   end
 
   def test_bytes_go_in_as_a_blob
-    @database.transaction { |batch| batch.insert(:routine_runs, {name: "b", data: SQL::Bytes.new("hi")}) }
+    @database.transaction { |batch| batch.insert(:routine_runs, { name: "b", data: SQL::Bytes.new("hi") }) }
 
     assert_equal "hi", @database.row("SELECT CAST(data AS TEXT) AS t FROM routine_runs")["t"]
   end

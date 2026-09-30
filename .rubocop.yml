@@ -40,3 +40,7 @@ Metrics/ParameterLists:
   Enabled: true
 Metrics/PerceivedComplexity:
   Enabled: true
+
+# The owner's preference, ruled 2026-09-30.
+Layout/SpaceInsideHashLiteralBraces:
+  EnforcedStyle: space

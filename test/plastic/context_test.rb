@@ -5,7 +5,7 @@ require_relative "support/kernel"
 class ContextTest < Minitest::Test
   Graphs = Data.define(:work, :retrieval, :databases)
 
-  def context(declared: %i[id title], facts: {id: "7"}, graphs: {}, session: nil)
+  def context(declared: %i[id title], facts: { id: "7" }, graphs: {}, session: nil)
     Plastic::Context.new(declared:, facts:, graphs:, session:)
   end
 
@@ -15,7 +15,7 @@ class ContextTest < Minitest::Test
   end
 
   def test_an_undeclared_fact_is_dropped
-    assert_equal({id: "7"}, context(facts: {id: "7", stray: 1}).facts)
+    assert_equal({ id: "7" }, context(facts: { id: "7", stray: 1 }).facts)
   end
 
   def test_writing_an_undeclared_fact_raises
