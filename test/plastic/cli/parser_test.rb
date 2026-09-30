@@ -30,6 +30,13 @@ class ParserTest < Minitest::Test
     assert_equal "one two three", parser(arguments: rest, options: []).parse(%w[one two three])[:text]
   end
 
+  def test_a_rest_argument_past_the_words_is_missing
+    arguments = [Command::Argument.new(:id, "ID", "the intent", false, true),
+      Command::Argument.new(:text, "TEXT", "words", true, true)]
+
+    assert_nil parser(arguments:, options: []).parse([])[:text]
+  end
+
   def test_an_optional_argument_may_be_missing
     optional = [Command::Argument.new(:id, "ID", "the intent", false, true)]
 

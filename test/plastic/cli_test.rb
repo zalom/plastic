@@ -95,6 +95,16 @@ class CliTest < Minitest::Test
     assert_equal [[:name], [], [:work]], [description.subject, description.reads, description.writes]
   end
 
+  def test_a_class_in_the_table_has_its_first_words
+    assert_equal "kernel draft", KernelFixtures::Draft.tool_name(KernelFixtures::TABLE)
+  end
+
+  def test_an_optional_argument_shows_in_brackets
+    optional = Class.new(Plastic::CLI::Command) { argument :id, "ID", "the intent", optional: true }
+
+    assert_equal "plastic x [ID]", optional.usage_line("x")
+  end
+
   def test_a_class_outside_the_table_has_no_tool_name
     assert_nil KernelFixtures::Draft.tool_name
     assert_nil KernelFixtures::Draft.describe.name

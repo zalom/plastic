@@ -45,7 +45,7 @@ module Plastic
 
       def templates = super + steps.map(&:say)
 
-      def handoff_exit_code = (outcome_for(:handoff)&.stops == :failure) ? 1 : 0
+      def handoff_exit_code = (outcome_for(:handoff).stops == :failure) ? 1 : 0
     end
 
     def call

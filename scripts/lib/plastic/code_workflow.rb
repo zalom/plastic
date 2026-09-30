@@ -91,7 +91,7 @@ module Plastic
       case step
       in Gate then check(step)
       in Read then observe(step)
-      in Step then change(step)
+      else change(step)
       end
     rescue => e
       Failed.new(key, step.name, "#{e.class}: #{e.message}")

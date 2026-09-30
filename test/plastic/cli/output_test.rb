@@ -29,6 +29,14 @@ class OutputTest < Minitest::Test
     assert_equal "", @out.string
   end
 
+  def test_a_project_with_no_next_step_prints_only_the_rows
+    printer = output.row("id", "7")
+    printer.project = "b"
+    printer.flush
+
+    assert_equal "id  7\n", @out.string
+  end
+
   def test_flush_prints_once
     printer = output.next_step("plastic next", because: "why")
     printer.flush

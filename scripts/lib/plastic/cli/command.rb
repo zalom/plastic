@@ -83,8 +83,8 @@ module Plastic
 
         # The first words TABLE gives this class. A class that runs under
         # several names, such as Group, is told its words by CLI.call.
-        def tool_name
-          TABLE.find { |_name, (klass, _summary)| klass == name.delete_prefix("Plastic::") }&.first
+        def tool_name(table = TABLE)
+          table.find { |_name, (klass, _summary)| klass == name.delete_prefix("Plastic::") }&.first
         end
 
         def usage_line(name = tool_name)

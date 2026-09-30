@@ -72,7 +72,7 @@ module Plastic
         return [] if batch.empty?
 
         sets = execute(["BEGIN IMMEDIATE;", *batch.statements, "COMMIT;"].join("\n"))
-        counts, returned = sets.partition { |set| set.first&.key?("written_table") }
+        counts, returned = sets.partition { |set| set.first.key?("written_table") }
         count(counts.flatten)
         returned
       end
