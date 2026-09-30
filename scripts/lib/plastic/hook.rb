@@ -16,14 +16,6 @@ module Plastic
   # rescues every error. A hook that refused would print a refusal
   # where the harness expects JSON. A hook never stops the agent.
   class Hook < CLI::Command
-    # The event name the harness sends, and the reply shape it accepts.
-    # These are Claude Code's; another harness gets its own Reply.
-    module Reply
-      def self.context(event, text)
-        {hookSpecificOutput: {hookEventName: event, additionalContext: text}}
-      end
-    end
-
     def self.call(argv, out:, err:, **rest)
       hook = new(argv, out:, err:, **rest)
       reply = hook.respond(hook.event)
@@ -43,6 +35,15 @@ module Plastic
     # Returns a Hash to print, or nil to print nothing.
     def respond(_event)
       raise NoMethodError, "#{self.class} must define respond"
+    end
+
+    private
+
+    # Text for the agent, in the reply shape Claude Code reads. The event
+    # name is the one the harness sent. Another harness gets its own shape
+    # through its adapter.
+    def context(event, text)
+      {hookSpecificOutput: {hookEventName: event, additionalContext: text}}
     end
   end
 end
