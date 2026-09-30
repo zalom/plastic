@@ -84,7 +84,7 @@ Rules for any agent (or human) contributing to this repository.
 
 #### Kernel style
 
-The Metrics cops are on for the whole repository in `.rubocop.yml`. `.rubocop_todo.yml` hides only the offenses of code written before 2026-09-30, and it never gains an entry. A new or changed method or class that trips a cop is split, and a disable comment never excuses it. Reek and RubyCritic, which runs Reek, Flay and Flog, hold the same line: `.reek.yml` hides only the smells of code written before 2026-09-30 and never gains an entry, and the change gate fails a change that smells or scores under 90. Before a kernel section is called done, load it whole, lint it, and verify its chains with `verify!`, which raises with every problem at once. Ruled 2026-09-30.
+The Metrics cops are on for the whole repository in `.rubocop.yml`. `.rubocop_todo.yml` hides only the offenses of code written before 2026-09-30, and it never gains an entry. A new or changed method or class that trips a cop is split, and a disable comment never excuses it. Reek and RubyCritic, which runs Reek, Flay and Flog, hold the same line: `.reek.yml` hides only the smells of code written before 2026-09-30 and never gains an entry, and the change gate fails a change that smells or scores under 90. Before a kernel section is called done, load it whole, lint it, and verify its chains with `verify`, which raises with every problem at once. Ruled 2026-09-30.
 
 #### Branches
 
