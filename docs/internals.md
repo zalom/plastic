@@ -89,18 +89,18 @@ chapters under `docs/help/`, which `plastic help TOPIC` prints.
 
 **Layer 2: agent-extra harnesses.** An AI agent lacks a human's innate senses: it
 does not feel fatigue, does not sense when working memory is full, does not carry
-the lifecycle order in its body. Where a human supplies a behaviour from instinct,
+the lifecycle order in its body. Where a human supplies a behavior from instinct,
 an agent needs explicit scaffolding to reproduce it. Each agent-extra harness is
-defined by reference to the human behaviour it mirrors. Two mechanisms:
+defined by reference to the human behavior it mirrors. Two mechanisms:
 
 - **Eval**: a recorded check that running a procedure on a known input yields a
-  conforming artifact. It mirrors the human behaviour of *inspecting your own
+  conforming artifact. It mirrors the human behavior of *inspecting your own
   finished work against the standard before calling it done*. No eval suite ships
   in 2.0. Code does this check instead: `validate-intent`, doctor, and the checks
   `scripts/end-intent` runs at close.
 - **Hook + instruction**: constrains an agent's reasoning at runtime. A trigger
   that fires on a runtime event and injects a steering instruction. It mirrors the
-  human behaviours of *knowing the lifecycle order*, *feeling when to save state*,
+  human behaviors of *knowing the lifecycle order*, *feeling when to save state*,
   and *leaving yourself a note when too tired to continue*. In 2.0 no hook gates
   an edit on its content or stage; the hooks record state, inject context, and cap a
   dispatched node's tool calls.
@@ -118,7 +118,7 @@ Input-steer, form-fix, and output-verify are the full surface of a brain step.
 There is no fourth point at which a step can be harnessed, so the
 three-mechanism agent-extra set (eval, hook + instruction, template) is
 **complete**. New triggers extend existing mechanisms rather than adding new ones
-(the context-full savepoint is the felt-savepoint behaviour bound to a second
+(the context-full savepoint is the felt-savepoint behavior bound to a second
 trigger, not a new mechanism).
 
 The cycle-step savepoint ledger (intent 34) is a clear instance of this. `savepoint.md`
@@ -237,7 +237,7 @@ Done-bookend repair (rebuild the skeleton, then re-append the terminal line from
 evidence) stays reserved for an explicit human grant.
 
 Some `savepoint_operational` gaps can never legitimately close: a terminal intent with no real
-`outcome.md` has no disposition to echo, and 219 D6 forbids ever inventing one, so the warning
+`outcome.md` has no disposition to echo, and a ruling of intent 219 forbids ever inventing one, so the warning
 would otherwise recur forever. Intent 274 gives each store a `doctor-exclusions` file, sibling to
 that store's `INDEX.md` (`~/.plastic/stores/global/doctor-exclusions` for the global store,
 `~/.plastic/stores/<slug>/doctor-exclusions` for a project; a legacy home keeps it beside
@@ -437,6 +437,19 @@ check artifacts: `new-intent`, `validate-intent`, `scaffold-intent`, `verify-int
 context. Doctor reports what is off. No eval suite or eval runner ships, so nothing replays a
 recorded eval against a produced artifact.
 
+### the tri-graph kernel: built, not wired (intent 394)
+
+Stage 1 of the tri-graph build landed the kernel under `scripts/lib/plastic/`. It has the
+command line, routines, code and agent workflows, the four end values, the routine run row,
+and a graph layer with one table, `routine_runs` in `work_graph.db`. No command runs through
+it yet. The live command line under `scripts/lib/cli.rb` serves every command, and the kernel
+tests run in a process of their own because both define some of the same constant names.
+
+What is still missing is stage 2 and later: the first commands in the kernel's command table,
+the workflows in its registry, the knowledge and references graphs, and the file checkout
+from the rows. When the live command line retires, the separate test process ends. See
+[the contributor architecture page](contributing/ARCHITECTURE.md) for how a routine call runs.
+
 ### companion tools: no Plastic code path calls them
 
 Intent 391 (2.0) dissolved every Plastic-owned integration with QMD, Serena, and Enola.
@@ -503,9 +516,9 @@ Per-intent validation cannot see asymmetry between intents, so the cross-intent
   whose target was relocated to `22c`, but a brand-new unrelated `global:24`
   (visual-ui-layer) was later created. Direct resolution would silently accept the
   impostor; relocation-first repoints it to bare `22c`. `rebuild_store` applies the
-  load-bearing order dedupe -> I3 (formative edge wins, dropped from chain) ->
-  cross-store resolve (repoint / collapse-to-bare-same-store / drop-dead) -> I1
-  in-store backlinks, while I2 relational forward links are never stripped and no
+  load-bearing order dedupe -> the formative-edge rule (formative edge wins, dropped from chain) ->
+  cross-store resolve (repoint / collapse-to-bare-same-store / drop-dead) ->
+  in-store backlinks, while relational forward links are never stripped and no
   reciprocal source is ever synthesized. It is a deterministic fixpoint: a second
   pass yields zero changes.
 - **`scripts/lib/frontmatter_writer.rb`** (pure `FrontmatterWriter`): a minimal,
@@ -517,8 +530,8 @@ Per-intent validation cannot see asymmetry between intents, so the cross-intent
 - **`scripts/rebuild-graph`** (executable IO shell, DI `--plastic-home`/`--dry-run`/
   `--audit-path`): loads every store `StoreDiscovery` finds (the global store plus each
   project store), builds the maps, runs the transform per
-  store, emits a per-store before/after audit grouped by kind (dedupes, I3
-  resolutions, I1 backlinks, cross-store repoints/collapses, drops), then writes the
+  store, emits a per-store before/after audit grouped by kind (dedupes,
+  formative-edge resolutions, backlinks, cross-store repoints/collapses, drops), then writes the
   changed frontmatter back. Pure Ruby (no bash). It runs no git itself, and neither does
   `maintenance-run --tool rebuild-graph --apply` (intent 390): it writes the change and its
   `revisions.md` receipt, then prints the commit instruction for the closer to run by hand.
@@ -1161,7 +1174,7 @@ context_insist_tokens: 250000   # insist on one
 
 They are absolute token counts, not percentages, and they resolve through the ordinary
 `scripts/read-config` path (project, then global, then the `DEFAULTS` in that script).
-Intent 296's D38 settled the numbers from `research--context-thresholds.md`: models are
+A ruling of intent 296 settled the numbers from `research--context-thresholds.md`: models are
 reliable only to roughly 50 to 65 percent of advertised context, and the mechanisms
 behind that are architectural, so a percentage that is right at a 200k window would let
 five times as many raw tokens pile up before firing at 1M. The three places the numbers
@@ -1183,7 +1196,7 @@ installed into `~/.claude/CLAUDE.md` as a marked section:
 ```
 
 Intent 363 added the first line of that block: a Claude Code import, `@~/.plastic/PLASTIC.md`.
-Ruling D43 makes `PLASTIC.md` the only instruction text Plastic puts in a session, and this
+An owner ruling makes `PLASTIC.md` the only instruction text Plastic puts in a session, and this
 import is how the harness reads it. The path names the installed copy under the Plastic home,
 because a bare `@PLASTIC.md` would resolve against `~/.claude`, which holds no such file.
 
@@ -1497,7 +1510,7 @@ palette stays `IntentScreenAnsi`'s shared pipeline, exactly like every shipped k
 A node agent is stateless (327 D45): its whole input is its node input. `DataBoundary`
 (`scripts/lib/data_boundary.rb`) owns the trust boundary a node input is built over. A data
 block is opened by `<<<PLASTIC-DATA:<token> label="..." source="...">>>` and closed by
-`<<<END-PLASTIC-DATA:<token>>>`, one token per node input, the first twelve hex characters of
+`<<<END-PLASTIC-DATA:<token>>>`, one token per node input, the first 12 hex characters of
 the SHA-256 over the node input's raw payloads joined by a newline - content-derived rather than
 random, so the same node built twice produces the same bytes and the same hash (spec D4).
 Every payload is escaped independently of the token (spec D5): a literal opening or closing
@@ -1535,19 +1548,18 @@ record carries none - about half the store, intent 327 among them - that source'
 entirely at `--hop-tokens 0` (224's kill criterion, spec D7).
 
 Assembly (same file) renders the five blocks, measures the budget over the fully rendered
-bytes with markers included, and applies the C28 cut ladder only as far as needed and only
+bytes with markers included, and applies the cut ladder only as far as needed and only
 when a step actually shrinks the render: drop the hop whole, cut Insights to the last one,
 cut Decisions to the last five (spec D8). The node, ledger and where-to-work blocks are never
 touched by any cut. Still over budget after the third cut: no file is written, exit 4, and
 the exact `node-transition ... --state needs_decision --field question="..."` command is
 returned, naming the oversized block and its token count so the owner knows what to shorten.
 Attempts are numbered from the node's prior `running` lines, plus one when a lease is
-supplied by flag (a new dispatch), floored at 1, overridable with `--attempt` (spec D11,
-C21); the node input lands at `attempts/<node>--a<N>.input` (a `.input` extension, not `.md`,
+supplied by flag (a new dispatch), floored at 1, overridable with `--attempt` (spec D11); the node input lands at `attempts/<node>--a<N>.input` (a `.input` extension, not `.md`,
 so QMD's `**/*.md` collection glob never re-indexes a node input's wrapped payloads back into
 search results). Rebuilding an attempt is a no-op when the bytes are unchanged and a refusal
 (exit 5) otherwise, unless `--force` is given. The hash is the SHA-256 of the file's own
-bytes on disk, first twelve hex, printed and never embedded in the file (spec D10); it is the
+bytes on disk, first 12 hex, printed and never embedded in the file (spec D10); it is the
 value `node-transition running --field input=<sha>` takes.
 
 `scripts/node-input <intent_dir> --node <id>` is the CLI, shaped like `node-transition` and
