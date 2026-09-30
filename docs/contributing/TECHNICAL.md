@@ -11,7 +11,12 @@ bundle exec ruby bin/verify-change <base commit>
 
 `bin/verify-change` checks only the lines changed since the base commit.
 
-![One run of bin/verify-change against origin/alpha. It finds the merge base, lists the changed Ruby sources and their tests, and stops with exit 1 when a changed source has no test file. In a throwaway home it runs Lint, Tests, Patch coverage, Mutation testing, CRAP scores, Code smells and RubyCritic score in that order. Red tests stop the gate, because a failing test kills every mutant. It prints Change verified or the names of the failed steps, and exits 0, 1 or 2.](../resources/verify-change.svg)
+It finds the merge base, lists the changed Ruby sources under `scripts/`, `lib/`, `tools/`
+and `bin/lib/` with their tests, and stops with exit 1 when a changed source has no test file.
+In a throwaway home it then runs the steps of the following table in order. Red tests stop the
+gate at the second step, because a failing test kills every mutant. It prints "Change
+verified" or the names of the failed steps, and exits 0 verified, 1 a check failed, or 2 a
+usage or git error.
 
 The following table says when each step passes.
 
@@ -76,6 +81,6 @@ included. `test/context_budget_bench_test.rb` fails when a surface crosses its c
 | `scripts/lib/plastic.rb` | The entry of the tri-graph kernel. |
 | `scripts/lib/plastic/` | The kernel: its command line, routines, workflows, end values and graph layer. |
 | `test/plastic/` | The kernel tests, which run in their own process. |
-| `docs/resources/` | The figures of these pages and the Ruby scripts that draw them. |
+| `docs/resources/` | The figures of these pages, copied from the tri-graph proposal pages. |
 | `varar/` | The acceptance documents. |
 | `test/varar/` | The step files for the acceptance documents. |

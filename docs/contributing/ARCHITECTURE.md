@@ -5,7 +5,9 @@ the store layout, is in [docs/architecture.md](../architecture.md).
 
 ## The life of a command
 
-![One call of a live command. bin/plastic runs the dispatcher, which finds the command in one frozen table, prints the usage line on --help without building anything, or builds the command and sends it call and then flush. The call exits 0, 1, 2 or 3.](../resources/command-call.svg)
+`bin/plastic` runs the dispatcher. The dispatcher finds the command in its table, prints the
+usage line on `--help` without building anything, or builds the command and sends it `call`
+and then `flush`. The call exits 0, 1, 2 or 3.
 
 The dispatcher's table is one frozen hash: the command's name, its file, its class and its
 help line. The `call` method does the work of one command, and `flush` prints the result or
@@ -68,7 +70,9 @@ output class. So its tests run in a separate process, as the tests section of th
 
 ### The kernel's classes
 
-The following table lists the kernel's main classes. Each one sits in the `Plastic` module.
+![The kernel's classes. CLI looks up TABLE and runs the command class. CLI::Command is the base class; Group, Hook and Routine subclass it. Routine builds a Context, keeps a RoutineRun and runs each workflow key. Workflow finds a key's class through REGISTRY and returns one of the end values Finished, HandedOff, Failed or Refused. CodeWorkflow and AgentWorkflow are its two lanes, and both reach the Graphs through the context.](../resources/kernel-classes.svg)
+
+The following table lists the same classes. Each one sits in the `Plastic` module.
 
 | Class | Job |
 | ----- | --- |
@@ -88,7 +92,11 @@ The following table lists the kernel's main classes. Each one sits in the `Plast
 
 ### The life of a routine call
 
-![One call of a routine command through the kernel. The dispatcher finds the command and loads its class on the first call. The command verifies the chain once per process, opens the routine run, builds the context, then runs each workflow, follows the edge its outcome takes, saves the routine run, and repeats until an end value. It closes the routine run, reports, flushes, and exits 0, 1 or 3.](../resources/routine-call.svg)
+![One call of plastic intent end 12 --as delivered, top to bottom. The kernel opens the databases and picks up the routine run. Find the intent has one gate, intent 12 exists, which fails with exit 1. Check the write lock reads the lock and has two gates that refuse with exit 3. Check the ending has three gates and two outcomes, written and missing. On written, Close the intent runs three steps and finishes with exit 0. On missing, Write the outcome hands off to the agent with exit 0, and the next call finishes once the outcome is recorded.](../resources/routine-call.svg)
+
+The figure shows the shape of every routine call: the kernel opens the databases and the
+routine run, each workflow runs its gates, reads, steps and outcomes in order, and the call
+ends in one of the four values below. The command it draws, `intent end`, lands in stage 2.
 
 A usage error still exits 2, as it does in the live command line.
 
@@ -119,10 +127,7 @@ finds these faults:
 A call ends in one of four values. Each value prints its own last lines and gives the exit
 code, so no workflow picks a number.
 
-![A chain of two code workflows and one agent workflow. Refused, Failed, HandedOff and Finished each end the call with their own exit code.](../resources/routine-endings.svg)
-
-`docs/resources/routine_endings.rb` draws this figure, and `docs/resources/call_flows.rb` draws
-the call figures of these pages. Run either one from the repository root after you change it.
+![Above, the chain of the intent end routine: FindIntent, CheckWriteLock and CheckEnding, which ends on written to CloseIntent or on missing to WriteOutcome, an agent workflow, and then :noop, where the report prints next: and because: from the last workflow. Below, inside one code workflow: read runs on every call and changes nothing on disk; step runs while done: is false and changes state; gate stops the whole call unless pass: holds, as Refused with exit 3 or Failed with exit 1; outcome is the first if: that holds.](../resources/routine-chain.svg)
 
 ### The routine run row
 
@@ -158,7 +163,11 @@ its `wrote:` line.
 A hook is a command that the harness calls on an event, such as the start of a session. A
 hook is not a routine. It prints no `next:` line and keeps no routine run.
 
-![One call of a hook command. The harness sends an event as JSON on stdin. The hook reads the event, responds to it, prints the text on stdout when there is any, and exits 0. On any error it prints one line on stderr and still exits 0.](../resources/hook-call.svg)
+![What the harness fires and what Plastic does. Session start, once when the session opens and again after a compaction, runs plastic hook continue, which prints the open intents of this store, the locks this session holds and today's hand-off lines. End of the turn runs plastic hook record, which renews the live locks of this session. Prompt sent, before a tool runs, after a tool ran, before a compaction and session end run nothing. A third column names the hooks the proposal had and why each one goes.](../resources/hook-events.svg)
+
+A hook call reads the event as JSON on stdin, hands it to the subclass, prints the returned
+text on stdout when there is any, and exits 0. On any error it prints one line on stderr and
+still exits 0.
 
 Claude Code adds the text to the agent's context on the session start event. A broken hook
 never breaks the session, because the hook always exits 0.
