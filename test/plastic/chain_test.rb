@@ -21,9 +21,11 @@ class ChainTest < Minitest::Test
     end
     error = assert_raises(Plastic::Invalid) { broken.verify! }
 
-    assert_includes error.message, "code_missing is a target but not in the chain"
-    assert_includes error.message, "code_hold -> code_stamp points backward; a chain only moves forward"
-    assert_includes error.message, "code_hold prints %{mode}, which no one declares"
+    expected = ["code_missing is a target but not in the chain",
+      "code_hold -> code_stamp points backward; a chain only moves forward",
+      "code_hold prints %{mode}, which no one declares"]
+
+    assert_empty expected.reject { |problem| error.message.include?(problem) }
   end
 
   def test_an_undeclared_fact_is_a_problem

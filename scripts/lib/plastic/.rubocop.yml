@@ -1,0 +1,21 @@
+inherit_from: ../../../.rubocop.yml
+
+# Standard turns the Metrics cops off. They stay on for the kernel at
+# RuboCop's own limits, ruled 2026-09-30: a method that trips one is split,
+# not excused.
+Metrics/AbcSize:
+  Enabled: true
+Metrics/BlockNesting:
+  Enabled: true
+Metrics/ClassLength:
+  Enabled: true
+Metrics/CyclomaticComplexity:
+  Enabled: true
+Metrics/MethodLength:
+  Enabled: true
+Metrics/ModuleLength:
+  Enabled: true
+Metrics/ParameterLists:
+  Enabled: true
+Metrics/PerceivedComplexity:
+  Enabled: true

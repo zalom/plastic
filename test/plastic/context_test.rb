@@ -43,6 +43,7 @@ class ContextTest < Minitest::Test
 
     assert_same ctx, ctx.print("one")
     ctx.print("two")
+
     assert_equal %w[one two], ctx.printed
   end
 

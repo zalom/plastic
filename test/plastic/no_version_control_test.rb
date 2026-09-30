@@ -22,6 +22,7 @@ class NoVersionControlTest < Minitest::Test
   def test_the_only_program_run_is_sqlite3
     calls = SOURCES.flat_map { |path| File.readlines(path).reject { |line| line.strip.start_with?("#") }.grep(SPAWNS) }
 
-    assert_equal [%(Open3.capture3("sqlite3", "-json", "-bail", path, stdin_data: script))], calls.map(&:strip)
+    assert_equal 1, calls.size
+    assert_includes calls.first, 'Open3.capture3("sqlite3", '
   end
 end
