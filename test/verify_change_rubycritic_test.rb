@@ -44,6 +44,11 @@ class VerifyChangeRubycriticTest < Minitest::Test
 
     assert_includes command, NEW
     refute_includes command, OLD
+  end
+
+  def test_the_gate_names_the_files_it_left_out
+    critic_step([OLD, NEW])
+
     assert_includes @err.string, "Not checked by RubyCritic"
     assert_includes @err.string, OLD
   end
