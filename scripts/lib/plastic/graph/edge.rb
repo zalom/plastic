@@ -1,0 +1,13 @@
+# frozen_string_literal: true
+
+require_relative "record"
+
+module Plastic
+  module Graph
+    # A directed edge between two nodes. Only `needs` orders the work: `to`
+    # waits until `from` is done.
+    Edge = Data.define(:intent_id, :from, :to, :kind, :origin_id) do
+      include Record
+    end
+  end
+end

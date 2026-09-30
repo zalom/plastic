@@ -13,7 +13,7 @@ class ChangeLogTest < Minitest::Test
 
   def test_every_put_appends_one_change_with_the_whole_row
     work.transaction { |batch| batch.put(:clusters, { name: "Core", intent_id: "1" }) }
-    change = changes.sole
+    change = sole(changes)
 
     assert_equal %w[clusters put], change.values_at("table", "operation")
     assert_equal({ "name" => "Core", "intent_id" => "1", "origin_id" => origin }, JSON.parse(change["row"]))
@@ -57,7 +57,7 @@ class ChangeLogTest < Minitest::Test
             intent_id: "1", sha256: "x" }
     references.transaction { |batch| batch.put(:sqlar, row) }
 
-    assert_equal "6162", JSON.parse(changes(references).sole["row"])["data"]
+    assert_equal "6162", JSON.parse(sole(changes(references))["row"])["data"]
   end
 
   def test_the_home_database_keeps_no_change_log

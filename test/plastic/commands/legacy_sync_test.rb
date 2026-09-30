@@ -29,7 +29,7 @@ class LegacySyncTest < Minitest::Test
 
     assert_equal %w[1--ai-infra.md checklist.md outcome.md plan.md spec.md], retrieval.documents("1").map(&:path)
     assert_equal ["#{DIR}/actions/.gitkeep"], retrieval.kept_files("1").map(&:name)
-    assert_equal "What  1--ai-infra.md", retrieval.savepoints("1").sole.text
+    assert_equal "What  1--ai-infra.md", sole(retrieval.savepoints("1")).text
   end
 
   def test_the_documents_print_back_byte_for_byte

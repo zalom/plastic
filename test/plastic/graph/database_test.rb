@@ -93,7 +93,7 @@ class DatabaseTest < Minitest::Test
       [Plastic::Graph::Schema.tally(:routine_runs, 1), Plastic::Graph::Schema.tally("routine_runs", 2), Plastic::Graph::Schema.tally(:x, 1)]
   end
 
-  def test_the_work_schema_holds_the_routine_runs_table
-    assert_includes Plastic::Graph::Schema.fetch(:work), "CREATE TABLE IF NOT EXISTS routine_runs("
+  def test_the_home_schema_holds_the_routine_runs_table
+    assert_includes Plastic::Graph::Schema.fetch(:home), 'CREATE TABLE IF NOT EXISTS "routine_runs"('
   end
 end

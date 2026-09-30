@@ -262,6 +262,12 @@ module KernelFixtures
 
     def store_graphs = Plastic::Graph.open(home: @plastic_home, store: "global")
 
+    # The one item of a list, asserted to be the only one.
+    def sole(list)
+      assert_equal 1, list.size, list.inspect
+      list.first
+    end
+
     def copy_legacy_store
       FileUtils.mkdir_p(File.dirname(store_root))
       FileUtils.cp_r(LEGACY_STORE, store_root)
