@@ -27,15 +27,13 @@ module Plastic
         own_ref_problem(IntentRef.parse(ref))
       end
 
-      def write(title:, parent_id: nil, ref: nil, kind: "work", status: "open", slug: nil)
+      # `fields` may name the ref, the kind, the status and the slug; a field left out or nil takes its default.
+      def write(title:, parent_id: nil, **fields)
         now = Plastic.now
-        intent = Intent.from_h(intent_id: next_id(parent_id), parent_id:, ref:, slug: slug || Intent.slug_for(title),
-          title:, kind:, status:, opened_at: now, updated_at: now)
-        @databases.fetch(:work).transaction do |batch|
-          batch.put(:intents, intent.to_h.except(:id, :origin_id), new_row: true)
-          batch.put(:savepoints, { intent_id: intent.intent_id, position: 1, at: now, text: "Opened: #{title}" })
-        end
-        @databases.fetch(:knowledge).transaction { |batch| batch.put(:documents, document(intent, now)) }
+        values = DEFAULTS.merge(fields.compact)
+        intent = Intent.from_h(slug: Intent.slug_for(title), **values, intent_id: next_id(parent_id), parent_id:,
+          title:, opened_at: now, updated_at: now)
+        write_rows(intent, now)
         @retrieval.intent(intent.intent_id)
       end
 
@@ -53,6 +51,16 @@ module Plastic
       end
 
       private
+
+      DEFAULTS = { kind: "work", status: "open" }.freeze
+
+      def write_rows(intent, now)
+        @databases.fetch(:work).transaction do |batch|
+          batch.put(:intents, intent.to_h.except(:id, :origin_id), new_row: true)
+          batch.put(:savepoints, { intent_id: intent.intent_id, position: 1, at: now, text: "Opened: #{intent.title}" })
+        end
+        @databases.fetch(:knowledge).transaction { |batch| batch.put(:documents, document(intent, now)) }
+      end
 
       def own_ref_problem(found)
         return unless found && found.origin_id == @retrieval.origin_id && !@retrieval.intent(found.intent_id)

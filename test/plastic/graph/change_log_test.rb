@@ -15,9 +15,8 @@ class ChangeLogTest < Minitest::Test
     work.transaction { |batch| batch.put(:clusters, { name: "Core", intent_id: "1" }) }
     change = sole(changes)
 
-    assert_equal %w[clusters put], change.values_at("table", "operation")
+    assert_equal ["clusters", "put", origin], change.values_at("table", "operation", "origin_id")
     assert_equal({ "name" => "Core", "intent_id" => "1", "origin_id" => origin }, JSON.parse(change["row"]))
-    assert_equal origin, change["origin_id"]
     assert_match(/[+-]\d\d:\d\d\z/, change["at"])
   end
 

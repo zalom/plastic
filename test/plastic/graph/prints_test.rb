@@ -14,10 +14,10 @@ class PrintsTest < Minitest::Test
     %w[One Two].each { |title| work.write_intent(title:) }
     work.write_intent(title: "Child", parent_id: "1")
     index = JSON.parse(index_text)
+    intents = index["intents"]
 
-    assert_equal %w[1 1a 2], index["intents"].map { |intent| intent["intent_id"] }
-    assert_equal FIELDS, index["intents"].first.keys
-    assert_equal "global", index["store"]
+    assert_equal %w[1 1a 2], intents.map { |intent| intent["intent_id"] }
+    assert_equal [FIELDS, "global"], [intents.first.keys, index["store"]]
   end
 
   def test_clusters_list_their_intents

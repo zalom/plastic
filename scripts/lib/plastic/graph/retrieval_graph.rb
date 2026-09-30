@@ -39,16 +39,16 @@ module Plastic
 
       def clusters = records(Cluster, :work, "SELECT * FROM clusters WHERE origin_id = :origin ORDER BY name, intent_id")
 
-      def documents(intent_id = nil) = of_intent(Document, :knowledge, "documents", intent_id, "path")
+      def documents(intent_id = nil) = of_intent(:documents, intent_id)
 
-      def savepoints(intent_id = nil) = of_intent(Savepoint, :work, "savepoints", intent_id, "position")
+      def savepoints(intent_id = nil) = of_intent(:savepoints, intent_id)
 
-      def nodes(intent_id = nil) = of_intent(Node, :work, "nodes", intent_id, "id")
+      def nodes(intent_id = nil) = of_intent(:nodes, intent_id)
 
-      def edges(intent_id = nil) = of_intent(Edge, :work, "edges", intent_id, "\"from\", \"to\", kind")
+      def edges(intent_id = nil) = of_intent(:edges, intent_id)
 
       # Kept files with no bytes: a print compares the hash and reads the bytes only to write.
-      def kept_files(intent_id = nil) = of_intent(KeptFile, :references, "sqlar", intent_id, "name", columns: KEPT_COLUMNS)
+      def kept_files(intent_id = nil) = of_intent(:kept_files, intent_id)
 
       def kept_file_data(name)
         row = @databases.fetch(:references).row("SELECT hex(data) AS data FROM sqlar WHERE name = :name", name:)
@@ -62,14 +62,23 @@ module Plastic
         end
       end
 
-      KEPT_COLUMNS = "name, mode, mtime, sz, intent_id, sha256, origin_id"
+      # Where each kind of intent row lives: the record, the database, the table, the columns and the order.
+      Source = Data.define(:record, :database, :table, :columns, :order)
+      SOURCES = {
+        documents: Source.new(Document, :knowledge, "documents", "*", "path"),
+        savepoints: Source.new(Savepoint, :work, "savepoints", "*", "position"),
+        nodes: Source.new(Node, :work, "nodes", "*", "id"),
+        edges: Source.new(Edge, :work, "edges", "*", '"from", "to", kind'),
+        kept_files: Source.new(KeptFile, :references, "sqlar", "name, mode, mtime, sz, intent_id, sha256, origin_id", "name")
+      }.freeze
 
       private
 
-      def of_intent(record, key, table, intent_id, order, columns: "*")
+      def of_intent(name, intent_id)
+        source = SOURCES.fetch(name)
         filter = intent_id ? " AND intent_id = :intent_id" : ""
-        sql = "SELECT #{columns} FROM #{table} WHERE origin_id = :origin#{filter} ORDER BY intent_id, #{order}"
-        records(record, key, sql, intent_id:)
+        sql = "SELECT #{source.columns} FROM #{source.table} WHERE origin_id = :origin#{filter} ORDER BY intent_id, #{source.order}"
+        records(source.record, source.database, sql, intent_id:)
       end
 
       def records(record, key, sql, **values)

@@ -32,11 +32,14 @@ class SyncTest < Minitest::Test
 
   def change_count = store_graphs.databases[:knowledge].row("SELECT count(*) AS n FROM changes")["n"]
 
+  # Whether the text names each path.
+  def names(text, *paths) = paths.map { |path| text.include?(path) }
+
   def both_changed(*paths) = paths.each { |path| write(path, "by hand\n") && change_row(path, "in rows\n") }
 
   def test_a_deleted_intent_folder_comes_back_the_same
     write("#{DIR}/graph.json", JSON.pretty_generate(GRAPH))
-    assert_equal 0, run_plastic("sync", "up").code
+    run_plastic("sync", "up")
     before = snapshot(store_path(DIR))
     FileUtils.rm_rf(store_path(DIR))
     call = run_plastic("sync", "down")
@@ -81,15 +84,10 @@ class SyncTest < Minitest::Test
   def test_plain_sync_writes_nothing_and_lists_every_conflict
     both_changed(SPEC, FILE)
     change_row("#{DIR}/notes.md", "new in rows\n")
-    %w[up down].each do |direction|
-      call = run_plastic("sync", direction)
+    calls = %w[up down].map { |direction| run_plastic("sync", direction) }
 
-      assert_equal 3, call.code
-      assert_includes call.err, SPEC
-      assert_includes call.err, FILE
-    end
-    assert_equal "by hand\n", read(SPEC)
-    assert_equal "in rows\n", document(SPEC)
+    assert_equal [[3, true, true]] * 2, calls.map { |call| [call.code, *names(call.err, SPEC, FILE)] }
+    assert_equal ["by hand\n", "in rows\n"], [read(SPEC), document(SPEC)]
     refute_path_exists store_path("#{DIR}/notes.md")
   end
 
@@ -98,10 +96,8 @@ class SyncTest < Minitest::Test
     call = run_plastic("sync", "down", "--overwrite", SPEC)
 
     assert_equal 3, call.code
-    assert_equal "in rows\n", read(SPEC)
-    assert_equal "by hand\n", read(FILE)
-    assert_includes call.err, FILE
-    refute_includes call.err, SPEC
+    assert_equal ["in rows\n", "by hand\n"], [read(SPEC), read(FILE)]
+    assert_equal [true, false], names(call.err, FILE, SPEC)
   end
 
   def test_overwrite_alone_takes_the_direction_for_the_store
@@ -125,9 +121,7 @@ class SyncTest < Minitest::Test
     call = run_plastic("sync", "down", "--merge")
 
     assert_equal 3, call.code
-    assert_equal "row only\n", read(FILE)
-    assert_equal "by hand\n", read(SPEC)
-    assert_includes call.err, SPEC
-    refute_includes call.err, FILE
+    assert_equal ["row only\n", "by hand\n"], [read(FILE), read(SPEC)]
+    assert_equal [true, false], names(call.err, SPEC, FILE)
   end
 end

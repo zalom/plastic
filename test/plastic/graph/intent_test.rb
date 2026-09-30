@@ -6,10 +6,9 @@ class IntentTest < Minitest::Test
   Intent = Plastic::Graph::Intent
 
   def test_next_child_alternates_number_and_letter
-    assert_equal "307a", Intent.next_child("307", [])
-    assert_equal "307b", Intent.next_child("307", %w[307a])
-    assert_equal "307a1", Intent.next_child("307a", [])
-    assert_equal "307a2", Intent.next_child("307a", %w[307a1])
+    calls = [["307", []], ["307", %w[307a]], ["307a", []], ["307a", %w[307a1]]]
+
+    assert_equal %w[307a 307b 307a1 307a2], calls.map { |parent, taken| Intent.next_child(parent, taken) }
   end
 
   def test_next_root_follows_the_highest_number

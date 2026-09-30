@@ -36,10 +36,12 @@ class LegacyIndexTest < Minitest::Test
     found = entries
 
     assert_equal %w[active future done abandoned done], %w[396 380 1 307a 394].map { |id| found.fetch(id).status }
-    assert_equal "2026-09-22 owner ask", found["380"].disposition
-    assert_equal ["2026-08-31", "abandoned without work"], found["307a"].to_h.values_at(:closed_at, :disposition)
-    assert_equal ["2026-10-01", nil], found["394"].to_h.values_at(:closed_at, :disposition)
-    assert_equal "store/396--trigraph-storage", found["396"].dir
+    assert_equal [[nil, "2026-09-22 owner ask"], ["2026-08-31", "abandoned without work"], ["2026-10-01", nil]],
+      %w[380 307a 394].map { |id| found.fetch(id).to_h.values_at(:closed_at, :disposition) }
+  end
+
+  def test_an_entry_names_its_folder
+    assert_equal "store/396--trigraph-storage", entries.fetch("396").dir
   end
 
   def test_clusters_keep_their_names_and_intents

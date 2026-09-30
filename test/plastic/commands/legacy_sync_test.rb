@@ -19,7 +19,12 @@ class LegacySyncTest < Minitest::Test
     assert_equal 0, call.code, call.err
     refute_path_exists store_path("INDEX.md")
     assert_equal [%w[1 active], %w[1a future]], retrieval.intents.map { |intent| [intent.intent_id, intent.status] }
-    assert_equal "1", retrieval.intent("1a").parent_id
+  end
+
+  def test_the_imported_intents_keep_their_parent_and_print_in_index_json
+    run_plastic("sync", "up")
+
+    assert_equal "1", store_graphs.retrieval.intent("1a").parent_id
     assert_equal %w[1 1a], JSON.parse(File.read(store_path("store/index.json")))["intents"].map { |i| i["intent_id"] }
   end
 

@@ -49,9 +49,15 @@ module Plastic
 
       def of_intent(retrieval, intent, rows = Contents.read(retrieval, intent.intent_id))
         id = intent.intent_id
-        [*rows.documents(id).map { |document| Print.text("#{intent.dir}/#{document.path}", :knowledge, document.body) },
-          *savepoint(intent, rows.savepoints(id)), graph(intent, rows.nodes(id), rows.edges(id)),
-          *rows.kept_files(id).map { |kept| Print.new(kept.name, :references, kept.sha256, -> { retrieval.kept_file_data(kept.name) }) }]
+        [*documents(intent, rows.documents(id)), *savepoint(intent, rows.savepoints(id)),
+          graph(intent, rows.nodes(id), rows.edges(id)), *kept_files(retrieval, rows.kept_files(id))]
+      end
+
+      def documents(intent, rows) = rows.map { |document| Print.text("#{intent.dir}/#{document.path}", :knowledge, document.body) }
+
+      # A kept file is compared by its hash; its bytes are read only to write it.
+      def kept_files(retrieval, rows)
+        rows.map { |kept| Print.new(kept.name, :references, kept.sha256, -> { retrieval.kept_file_data(kept.name) }) }
       end
 
       def savepoint(intent, lines)

@@ -14,6 +14,11 @@ class IntentNewTest < Minitest::Test
     assert_equal 0, call.code, call.err
     assert_equal ["Build the thing", "build-the-thing", "open", origin], intent.to_h.values_at(:title, :slug, :status, :origin_id)
     %w[1--build-the-thing.md graph.json savepoint.md].each { |file| assert_path_exists store_path("store/1--build-the-thing/#{file}") }
+  end
+
+  def test_intent_new_lists_the_intent_in_index_json
+    run_plastic("intent", "new", "Build")
+
     assert_equal ["1"], JSON.parse(File.read(store_path("store/index.json")))["intents"].map { |i| i["intent_id"] }
   end
 

@@ -21,11 +21,12 @@ module Plastic
         def self.entries(folder, retrieval)
           prints = Prints.of_store(retrieval).to_h { |print| [print.path, print] }
           printed = retrieval.printed
-          disk = [*(StoreFolder::INDEX if folder.exist?(StoreFolder::INDEX)), *folder.intent_files]
-          (prints.keys | disk | printed.keys).sort.map do |path|
+          (prints.keys | on_disk(folder) | printed.keys).sort.map do |path|
             Entry.new(path, folder.sha256(path), printed[path], prints[path])
           end
         end
+
+        def self.on_disk(folder) = [*(StoreFolder::INDEX if folder.exist?(StoreFolder::INDEX)), *folder.intent_files]
 
         def self.legacy_problem(folder, direction)
           return unless direction == :down && folder.legacy?

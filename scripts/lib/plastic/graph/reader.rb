@@ -76,12 +76,15 @@ module Plastic
         Intent::INDEX_FIELDS.to_h { |field| [field, entry[field.to_s]] }.merge(updated_at: Plastic.now)
       end
 
+      GRAPH_TABLES = { "nodes" => [:nodes, Node], "edges" => [:edges, Edge] }.freeze
+
       def graph(batch, intent, _rel, path)
         data = JSON.parse(text(path))
         id = intent.intent_id
-        %i[nodes edges].each { |table| batch.remove(table, intent_id: id) }
-        Array(data["nodes"]).each { |node| batch.put(:nodes, Node.from_h(node).to_h.merge(intent_id: id).except(:origin_id)) }
-        Array(data["edges"]).each { |edge| batch.put(:edges, Edge.from_h(edge).to_h.merge(intent_id: id).except(:origin_id)) }
+        GRAPH_TABLES.each do |field, (table, record)|
+          batch.remove(table, intent_id: id)
+          Array(data[field]).each { |item| batch.put(table, record.from_h(item).with(intent_id: id).to_h.except(:origin_id)) }
+        end
       end
 
       def savepoint(batch, intent, _rel, path)

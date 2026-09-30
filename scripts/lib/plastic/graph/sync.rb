@@ -42,11 +42,8 @@ module Plastic
       def read(paths)
         reader = Reader.new(@folder, known_intents, @retrieval.origin_id)
         reads = paths.map { |path| reader.read(path) }
-        reads.group_by(&:database).sort_by { |key, _group| Schema::STORE.index(key) }.each do |key, group|
-          @databases.fetch(key).transaction { |batch| group.each { |found| found.apply.call(batch) } }
-        end
-        fresh = Prints.of_store(@retrieval).to_h { |print| [print.path, print] }
-        printer.print(reads.map { |found| fresh[found.path] || kept_as_is(found) })
+        write_reads(reads)
+        reprint(reads)
         paths.map { |path| "read #{path}" }
       end
 
@@ -55,6 +52,18 @@ module Plastic
       def printer = (@printer ||= Printer.new(@folder, @databases, @retrieval))
 
       private
+
+      # The work graph first, so a new intent's row is in place before its files.
+      def write_reads(reads)
+        reads.group_by(&:database).sort_by { |key, _group| Schema::STORE.index(key) }.each do |key, group|
+          @databases.fetch(key).transaction { |batch| group.each { |found| found.apply.call(batch) } }
+        end
+      end
+
+      def reprint(reads)
+        fresh = Prints.of_store(@retrieval).to_h { |print| [print.path, print] }
+        printer.print(reads.map { |found| fresh[found.path] || kept_as_is(found) })
+      end
 
       # A file whose rows print nothing, such as an empty savepoint.md, keeps its own hash.
       def kept_as_is(found) = Prints::Print.new(found.path, found.database, @folder.sha256(found.path), nil)
