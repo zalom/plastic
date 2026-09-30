@@ -1,0 +1,69 @@
+# frozen_string_literal: true
+
+require_relative "../invalid"
+require_relative "command/argument"
+require_relative "command/option"
+require_relative "command/description"
+
+module Plastic
+  class CLI
+    # The words a command's class body declares itself with: what the tool
+    # takes, what it works on, and which graphs it reads and writes. The
+    # harness reads them back through `describe`.
+    module Declarations
+      GRAPHS = %i[work knowledge retrieval references].freeze
+
+      # The arguments that name the thing a call works on, such as the
+      # intent id and the node id. A tool that writes keeps one open routine
+      # run per subject (see RoutineRun).
+      def subject(*names)
+        @subject = names if names.any?
+        @subject
+      end
+
+      # One word the tool takes, as `argument :id, label: "ID", text: "the intent"`.
+      # Add `rest: true` to take every word left, `optional: true` to allow none.
+      def argument(name, **shape) = arguments << Command::Argument.new(name:, rest: false, optional: false, **shape)
+
+      # One switch the tool takes, as `option :dir, switch: "--dir DIR", text: "where"`,
+      # with `default:` for its value when the call leaves it out.
+      def option(name, **shape) = options << Command::Option.new(name:, default: nil, **shape)
+
+      # Which graphs the tool reads or writes. Every read goes through the
+      # retrieval graph; `reads :work` names the records it reads.
+      def reads(*graphs) = graphs_for(:@reads, graphs)
+
+      def writes(*graphs) = graphs_for(:@writes, graphs)
+
+      def arguments = (@arguments ||= [])
+
+      def options = (@options ||= [])
+
+      # The names of every argument and option.
+      def declared_names = (arguments + options).map(&:name)
+
+      # The first words TABLE gives this class. A class that runs under
+      # several names, such as Group, is told its words by CLI.call.
+      def tool_name(table = TABLE)
+        table.find { |_name, (klass, _summary)| klass == name.delete_prefix("Plastic::") }&.first
+      end
+
+      def usage_line(tool = tool_name) = ["plastic", tool, *(arguments + options).map(&:usage)].join(" ")
+
+      def describe(tool = tool_name)
+        Command::Description.new(name: tool, summary: TABLE.dig(tool, 1), usage: usage_line(tool), subject:,
+          arguments: arguments.map(&:to_h), options: options.map(&:to_h), reads:, writes:)
+      end
+
+      private
+
+      def graphs_for(variable, graphs)
+        unknown = graphs - GRAPHS
+        raise Invalid, "#{name}: unknown graph #{unknown.join(", ")}" if unknown.any?
+
+        list = instance_variable_get(variable) || instance_variable_set(variable, [])
+        list.concat(graphs)
+      end
+    end
+  end
+end

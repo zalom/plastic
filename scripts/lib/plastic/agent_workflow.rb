@@ -3,6 +3,7 @@
 require_relative "workflow"
 require_relative "failed"
 require_relative "handed_off"
+require_relative "agent_workflow/step"
 
 module Plastic
   # A workflow of plain-word steps that the agent does. A call prints the
@@ -12,8 +13,6 @@ module Plastic
   #   step     one thing the agent does, said in words
   #   outcome  :handoff while a step is left, :done once every check holds
   class AgentWorkflow < Workflow
-    Step = Data.define(:name, :done, :say)
-
     OUTCOMES = %i[handoff done].freeze
 
     class << self
@@ -24,18 +23,18 @@ module Plastic
       # `say:` is a String with %{fact} names. `done:` reads the graphs: the
       # agent reports its work through a Plastic tool, and the next call sees
       # the record.
-      def step(name, done:, say:)
-        steps << Step.new(name, done, say)
+      def step(step_name, done:, say:)
+        steps << Step.new(step_name, done, say)
       end
 
       # The kernel picks the outcome, so an agent's outcome line takes no if:.
       # stops: :failure makes the handoff exit 1: the call did not do its
       # job, and the steps say how to fix that.
-      def outcome(name, **options)
-        raise Invalid, "#{self.name}: an agent workflow ends on #{OUTCOMES.join(" or ")}" unless OUTCOMES.include?(name)
-        raise Invalid, "#{self.name}: the kernel picks an agent's outcome, so #{name} takes no if:" if options.key?(:if)
-        if options.key?(:stops) && (name != :handoff || options[:stops] != :failure)
-          raise Invalid, "#{self.name}: only the handoff stops, and only as :failure"
+      def outcome(outcome_name, **options)
+        raise Invalid, "#{name}: an agent workflow ends on #{OUTCOMES.join(" or ")}" unless OUTCOMES.include?(outcome_name)
+        raise Invalid, "#{name}: the kernel picks an agent's outcome, so #{outcome_name} takes no if:" if options.key?(:if)
+        if options.key?(:stops) && [outcome_name, options[:stops]] != %i[handoff failure]
+          raise Invalid, "#{name}: only the handoff stops, and only as :failure"
         end
 
         super
@@ -45,22 +44,25 @@ module Plastic
 
       def templates = super + steps.map(&:say)
 
-      def handoff_exit_code = (outcome_for(:handoff).stops == :failure) ? 1 : 0
+      def handoff_exit_code = (ending(:handoff).stops == :failure) ? 1 : 0
     end
 
     def call
-      left = self.class.steps.reject { |step| step.done.call(ctx) }
+      left = steps_left
       left.empty? ? :done : hand_off(left)
-    rescue => e
-      Failed.new(key, "handoff", "#{e.class}: #{e.message}")
+    rescue => error
+      Failed.raised(key, "handoff", error)
     end
 
     private
 
+    def steps_left = self.class.steps.select { |step| step.left?(ctx) }
+
     def hand_off(left)
-      command, because = self.class.closing(:handoff, ctx)
-      HandedOff.new(steps: left.map { |step| ctx.fill(step.say) }, next_command: command, because:,
-        exit_code: self.class.handoff_exit_code)
+      workflow = self.class
+      command, because = workflow.closing(:handoff, ctx)
+      HandedOff.new(steps: left.map { |step| step.instruction(ctx) }, next_command: command, because:,
+        exit_code: workflow.handoff_exit_code)
     end
   end
 end

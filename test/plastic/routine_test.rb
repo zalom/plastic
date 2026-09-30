@@ -67,8 +67,8 @@ class RoutineTest < Minitest::Test
   end
 
   def test_verify_runs_once_per_routine
-    assert KernelFixtures::TwoStep.verify!
-    assert KernelFixtures::TwoStep.verify!
+    assert KernelFixtures::TwoStep.verify
+    assert KernelFixtures::TwoStep.verify
   end
 
   def test_the_declared_facts_are_arguments_options_and_workflow_facts

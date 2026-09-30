@@ -9,7 +9,7 @@ class OutputTest < Minitest::Test
     @err = StringIO.new
   end
 
-  def output(json: false) = Plastic::CLI::Output.new(out: @out, err: @err, json:)
+  def output(json: false) = (json ? Plastic::CLI::JsonOutput : Plastic::CLI::TextOutput).new(out: @out, err: @err)
 
   def test_rows_line_up_on_the_widest_label
     output.row("intent", "7").row("wrote:", ["a", "b"]).next_step("plastic next", because: "why").flush
@@ -31,8 +31,7 @@ class OutputTest < Minitest::Test
 
   def test_a_project_with_no_next_step_prints_a_null_next_in_json
     printer = output(json: true).row("id", "7")
-    printer.project = "b"
-    printer.flush(json: true)
+    printer.flush("b")
 
     assert_equal({"result" => {"id" => "7"}, "next" => nil, "because" => nil}, JSON.parse(@out.string))
   end
@@ -47,24 +46,21 @@ class OutputTest < Minitest::Test
 
   def test_a_scoped_command_keeps_the_project
     printer = output.next_step("plastic intent show 7", because: "why")
-    printer.project = "my app"
-    printer.flush
+    printer.flush("my app")
 
     assert_includes @out.string, "next: plastic intent show 7 --project my\\ app\n"
   end
 
   def test_a_command_that_names_its_project_is_left_alone
     printer = output.next_step("plastic intent show 7 --project a", because: "why")
-    printer.project = "b"
-    printer.flush
+    printer.flush("b")
 
     assert_includes @out.string, "next: plastic intent show 7 --project a\n"
   end
 
   def test_an_unscoped_command_gets_no_project
     printer = output.next_step("plastic status", because: "why")
-    printer.project = "b"
-    printer.flush
+    printer.flush("b")
 
     assert_includes @out.string, "next: plastic status\n"
   end
@@ -76,7 +72,7 @@ class OutputTest < Minitest::Test
   end
 
   def test_json_keeps_raw_lines_under_output
-    output(json: true).raw("line").row("id", "7").next_step("plastic next", because: "why").flush(json: true)
+    output(json: true).raw("line").row("id", "7").next_step("plastic next", because: "why").flush
 
     assert_equal({"result" => {"id" => "7", "output" => ["line"]}, "next" => "plastic next", "because" => "why"},
       JSON.parse(@out.string))

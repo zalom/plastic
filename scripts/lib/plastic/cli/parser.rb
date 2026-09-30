@@ -15,40 +15,35 @@ module Plastic
         @banner = banner
       end
 
+      # The values of one call. `argv` stays as given; the words left after
+      # the switches are the positional arguments.
       def parse(argv)
-        values = @options.to_h { |o| [o.name, o.default] }
-        switches(values).parse!(argv)
-        values.merge(positional(argv))
+        values = @options.to_h { |option| [option.name, option.default] }
+        words = switches(values).parse(argv)
+        values.merge(positional(words))
+      end
+
+      # Every tool takes --json and --project.
+      def self.common_switches(banner, values)
+        OptionParser.new(banner).tap do |parser|
+          parser.on("--json") { values[:json] = true }
+          parser.on("--project SLUG") { |slug| values[:project] = slug }
+        end
       end
 
       private
 
-      def switches(values)
-        OptionParser.new do |o|
-          o.banner = @banner
-          o.on("--json") { values[:json] = true }
-          o.on("--project SLUG") { |slug| values[:project] = slug }
-          @options.each { |option| o.on(option.switch, option.text) { |value| values[option.name] = value } }
-        end
-      end
+      def switches(values) = @options.each_with_object(self.class.common_switches(@banner, values)) { |option, parser| option.add_to(parser, values) }
 
       def positional(words)
-        values = @arguments.each_with_index.to_h { |argument, index| [argument.name, value_of(argument, words, index)] }
+        refuse_extra(words)
+        @arguments.each_with_index.to_h { |argument, index| [argument.name, argument.read(words, index)] }
+      end
+
+      def refuse_extra(words)
         extra = @arguments.any?(&:rest) ? [] : words.drop(@arguments.size)
         raise Command::Usage, "unexpected #{extra.join(" ")}" if extra.any?
-
-        values
       end
-
-      def value_of(argument, words, index)
-        value = argument.rest ? words[index..]&.join(" ") : words[index]
-        return value unless blank?(value)
-        raise Command::Usage, "missing #{argument.label}" unless argument.optional
-
-        nil
-      end
-
-      def blank?(value) = value.nil? || value.strip.empty?
     end
   end
 end

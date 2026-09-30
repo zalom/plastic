@@ -1,5 +1,8 @@
 # frozen_string_literal: true
 
+require_relative "end_value"
+require_relative "failed"
+
 module Plastic
   # The chain reached its end: next: names the outcome's offer, or none. Exit 0.
   #
@@ -15,6 +18,17 @@ module Plastic
   #
   # The printed lines live on the Context, not on these values.
   Finished = Data.define(:next_command, :because) do
+    include EndValue
+
+    # The end of the chain on `outcome` of `workflow`, with its closing
+    # lines. A closing line that cannot fill fails the call.
+    def self.closing(workflow, outcome, ctx)
+      command, because = workflow.closing(outcome, ctx)
+      new(next_command: command, because:)
+    rescue => error
+      Failed.raised(workflow.key, "closing", error)
+    end
+
     def exit_code = 0
 
     def report(output)

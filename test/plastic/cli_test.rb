@@ -100,7 +100,7 @@ class CliTest < Minitest::Test
   end
 
   def test_an_optional_argument_shows_in_brackets
-    optional = Class.new(Plastic::CLI::Command) { argument :id, "ID", "the intent", optional: true }
+    optional = Class.new(Plastic::CLI::Command) { argument :id, label: "ID", text: "the intent", optional: true }
 
     assert_equal "plastic x [ID]", optional.usage_line("x")
   end
@@ -117,7 +117,7 @@ class CliTest < Minitest::Test
   end
 
   def test_the_base_command_must_define_call
-    command = Plastic::CLI::Command.new([], out: StringIO.new, err: StringIO.new, words: "x", environment: environment)
+    command = Plastic::CLI::Command.new([], words: "x", environment: environment)
 
     assert_raises(NoMethodError) { command.call }
   end
@@ -125,6 +125,7 @@ class CliTest < Minitest::Test
   def test_the_current_environment_is_the_process
     current = Plastic::CLI::Command::Environment.current
 
-    assert_equal [ENV, $stdin, Dir.home, Dir.pwd], [current.env, current.input, current.home, current.directory]
+    assert_equal [ENV, $stdin, $stdout, $stderr, Dir.home, Dir.pwd],
+      [current.env, current.input, current.out, current.err, current.home, current.directory]
   end
 end

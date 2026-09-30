@@ -103,7 +103,7 @@ module KernelFixtures
   end
 
   class TwoStep < Routine
-    argument :name, "NAME", "who to greet"
+    argument :name, label: "NAME", text: "who to greet"
 
     workflow :code_stamp, next: :code_greet
     workflow :code_greet, next: :noop
@@ -111,8 +111,8 @@ module KernelFixtures
 
   class Draft < Routine
     subject :name
-    argument :name, "NAME", "the draft's name"
-    option :dir, "--dir DIR", "where the draft goes"
+    argument :name, label: "NAME", text: "the draft's name"
+    option :dir, switch: "--dir DIR", text: "where the draft goes"
     writes :work
 
     workflow :code_stamp, next: :code_find_draft
@@ -121,7 +121,7 @@ module KernelFixtures
   end
 
   class Gate < Routine
-    argument :mode, "MODE", "pass, hold or break"
+    argument :mode, label: "MODE", text: "pass, hold or break"
     writes :work
 
     workflow :code_hold, next: :noop
@@ -186,15 +186,15 @@ module KernelFixtures
 
     def remove_home = FileUtils.remove_entry(@home)
 
-    def environment(env: {}, input: "")
+    def environment(env: {}, input: "", out: StringIO.new, err: StringIO.new)
       Plastic::CLI::Command::Environment.new(env: {"PLASTIC_HOME" => @plastic_home}.merge(env),
-        input: StringIO.new(input), home: @home, directory: @home)
+        input: StringIO.new(input), out:, err:, home: @home, directory: @home)
     end
 
     def plastic(*argv, env: {}, input: "")
       out = StringIO.new
       err = StringIO.new
-      code = Plastic::CLI.call(argv, out:, err:, environment: environment(env:, input:), table: TABLE)
+      code = Plastic::CLI.call(argv, environment: environment(env:, input:, out:, err:), table: TABLE)
       Result.new(out.string, err.string, code)
     end
 
@@ -210,7 +210,7 @@ module KernelFixtures
     Flows = KernelFixtures::Workflows
 
     def context(declared: %i[name mode], facts: {name: "ada"})
-      Plastic::Context.new(declared:, facts:, graphs: {}, routine_run: nil)
+      Plastic::Context.new(declared:, facts:, graphs: {})
     end
 
     def code(&body) = Class.new(Plastic::CodeWorkflow, &body)
@@ -221,6 +221,7 @@ module KernelFixtures
   # A database in a temporary folder, with tables for the database tests.
   module DatabaseHome
     Database = Plastic::Graph::Database
+    SQL = Plastic::Graph::SQL
     SCHEMA = <<~SQL
       CREATE TABLE IF NOT EXISTS routine_runs(id INTEGER PRIMARY KEY, name TEXT UNIQUE, data BLOB);
       CREATE TABLE IF NOT EXISTS tallies(name TEXT);

@@ -14,6 +14,7 @@ module Plastic
   #
   # The report reads what the call wrote from `wrote`.
   module Graph
+    # The open graphs of one store, and the databases they sit on.
     Graphs = Data.define(:work, :retrieval, :databases) do
       # One phrase per database that this call wrote to.
       def wrote = databases.values.filter_map(&:written_phrase)

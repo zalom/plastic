@@ -19,22 +19,22 @@ class DatabaseTest < Minitest::Test
   end
 
   def test_literals_quote_every_kind_of_value
-    values = [nil, true, false, 3, 1.5, Database::Bytes.new("ab"), {"a" => 1}, [1], "it's"]
+    values = [nil, true, false, 3, 1.5, SQL::Bytes.new("ab"), {"a" => 1}, [1], "it's"]
 
     assert_equal ["NULL", "1", "0", "3", "1.5", "X'6162'", %('{"a":1}'), "'[1]'", "'it''s'"],
-      values.map { |value| Database.literal(value) }
+      values.map { |value| SQL.literal(value) }
   end
 
   def test_a_name_is_quoted
-    assert_equal %("say ""hi"""), Database.name(%(say "hi"))
+    assert_equal %("say ""hi"""), SQL.name(%(say "hi"))
   end
 
   def test_bind_fills_known_names_only
-    assert_equal "SELECT 'a' WHERE b = :b AND c::text", Database.bind("SELECT :a WHERE b = :b AND c::text", a: "a")
+    assert_equal "SELECT 'a' WHERE b = :b AND c::text", SQL.bind("SELECT :a WHERE b = :b AND c::text", a: "a")
   end
 
   def test_bind_with_no_values_leaves_the_sql
-    assert_equal "SELECT :a", Database.bind("SELECT :a", {})
+    assert_equal "SELECT :a", SQL.bind("SELECT :a", {})
   end
 
   def test_the_schema_is_made_on_the_first_read
@@ -70,14 +70,14 @@ class DatabaseTest < Minitest::Test
     assert_equal 1, @database.row("SELECT count(*) AS n FROM routine_runs")["n"]
   end
 
-  def test_a_store_goes_first_in_the_row
-    @database.transaction { |batch| batch.insert(:stored, {name: "x"}, store: "plastic") }
+  def test_the_record_names_the_columns_in_order
+    @database.transaction { |batch| batch.insert(:stored, {store: "plastic", name: "x"}) }
 
     assert_equal({"store" => "plastic", "name" => "x"}, @database.row("SELECT * FROM stored"))
   end
 
   def test_bytes_go_in_as_a_blob
-    @database.transaction { |batch| batch.insert(:routine_runs, {name: "b", data: Database::Bytes.new("hi")}) }
+    @database.transaction { |batch| batch.insert(:routine_runs, {name: "b", data: SQL::Bytes.new("hi")}) }
 
     assert_equal "hi", @database.row("SELECT CAST(data AS TEXT) AS t FROM routine_runs")["t"]
   end
@@ -89,8 +89,8 @@ class DatabaseTest < Minitest::Test
   end
 
   def test_the_schema_names_routine_runs_one_and_many
-    assert_equal ["routine run", "routine runs", "x"],
-      [Plastic::Graph::Schema.noun(:routine_runs, 1), Plastic::Graph::Schema.noun("routine_runs", 2), Plastic::Graph::Schema.noun(:x, 1)]
+    assert_equal ["1 routine run", "2 routine runs", "1 x"],
+      [Plastic::Graph::Schema.tally(:routine_runs, 1), Plastic::Graph::Schema.tally("routine_runs", 2), Plastic::Graph::Schema.tally(:x, 1)]
   end
 
   def test_the_work_schema_holds_the_routine_runs_table

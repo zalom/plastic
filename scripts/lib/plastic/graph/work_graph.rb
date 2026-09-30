@@ -23,7 +23,7 @@ module Plastic
       # A routine run is call memory, kept off the report.
       def save_routine_run(routine_run)
         values = routine_run.to_h.merge(subject: routine_run.subject.to_s)
-        @database.transaction { |batch| batch.write(:routine_runs, ROUTINE_RUN_UPSERT, count: false, store: @store, **values) }
+        @database.transaction { |batch| batch.add(ROUTINE_RUN_UPSERT, store: @store, **values) }
         routine_run
       end
     end

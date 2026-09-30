@@ -6,7 +6,7 @@ class ContextTest < Minitest::Test
   Graphs = Data.define(:work, :retrieval, :databases)
 
   def context(declared: %i[id title], facts: {id: "7"}, graphs: {}, session: nil)
-    Plastic::Context.new(declared:, facts:, graphs:, routine_run: :run, session:)
+    Plastic::Context.new(declared:, facts:, graphs:, session:)
   end
 
   def test_a_declared_fact_reads_as_a_method
@@ -63,9 +63,9 @@ class ContextTest < Minitest::Test
     assert_equal "fact names print, facts are Context methods", error.message
   end
 
-  def test_the_context_holds_the_graphs_the_routine_run_and_the_session
+  def test_the_context_holds_the_graphs_and_the_session
     ctx = context(graphs: Graphs.new(work: :work, retrieval: :retrieval, databases: {}), session: "s-1")
 
-    assert_equal [:work, :retrieval, :run, "s-1"], [ctx.work, ctx.retrieval, ctx.routine_run, ctx.session]
+    assert_equal [:work, :retrieval, "s-1"], [ctx.work, ctx.retrieval, ctx.session]
   end
 end

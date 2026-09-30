@@ -32,7 +32,7 @@ class WrittenPhraseTest < Minitest::Test
   end
 
   def test_an_uncounted_write_is_kept_off_the_phrase
-    @database.transaction { |batch| batch.write(:notes, "INSERT INTO notes VALUES ('x')", count: false) }
+    @database.transaction { |batch| batch.add("INSERT INTO notes VALUES ('x')") }
 
     assert_nil @database.written_phrase
   end

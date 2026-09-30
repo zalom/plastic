@@ -9,6 +9,7 @@ require_relative "refused"
 require_relative "context"
 require_relative "routine_run"
 require_relative "routine/chain"
+require_relative "routine/traversal"
 require_relative "workflow"
 require_relative "graph"
 
@@ -24,7 +25,7 @@ module Plastic
   #
   # :noop ends the chain. The workflow that ends it supplies next: and
   # because: through its `outcome` lines. Routine::Chain holds the keys and
-  # edges and checks them.
+  # edges and checks them; Routine::Traversal walks them.
   class Routine < CLI::Command
     class << self
       def workflow(key, **edge, &branches)
@@ -38,13 +39,11 @@ module Plastic
 
       # Every name a step may read or write: the tool's arguments and options,
       # plus the facts each workflow in the chain declares.
-      def declared_facts
-        arguments.map(&:name) + options.map(&:name) + chain.facts
-      end
+      def declared_facts = declared_names + chain.facts
 
       # Runs once per process, on the first call, and raises every problem at
       # once, so a reordered chain never skips a workflow in silence.
-      def verify!
+      def verify
         @verified ||= begin
           problems = chain_problems
           raise Invalid, "#{name}: #{problems.join("; ")}" if problems.any?
@@ -53,51 +52,30 @@ module Plastic
         end
       end
 
-      def chain_problems = chain.problems(arguments.map(&:name) + options.map(&:name))
+      def chain_problems = chain.problems(declared_names)
     end
 
     def call
-      self.class.verify!
-      routine_run = open_routine_run
-      ctx = context(routine_run)
-      value = walk(ctx)
-      routine_run.close(value, ctx.facts)
-      save_routine_run(routine_run)
-      report(value, ctx)
-    rescue Graph::Database::Error => e
-      raise CLI::Command::Failure, e.message
+      self.class.verify
+      finish(open_routine_run)
+    rescue Graph::Database::Error => error
+      raise CLI::Command::Failure, error.message
     end
 
     private
 
+    def finish(routine_run)
+      ctx = context(routine_run)
+      report(Traversal.new(chain, ctx, routine_run) { |run| save_routine_run(run) }.call, ctx)
+    end
+
     # A resumed routine run brings back what its workflows found; this call's
     # arguments and options always win, nil included.
     def context(routine_run)
-      Context.new(declared: self.class.declared_facts, facts: routine_run.facts.merge(parsed),
-        graphs:, routine_run:, session:)
-    end
-
-    def walk(ctx)
-      key = chain.entry
-      loop do
-        workflow = chain.fetch(key)
-        outcome = workflow.call(ctx)
-        return outcome unless outcome.is_a?(Symbol)
-
-        key = chain.target(workflow.key, outcome)
-        save_routine_run(ctx.routine_run.advance(workflow.key, key))
-        return closed(workflow, outcome, ctx) if key == :noop
-      end
+      Context.new(declared: self.class.declared_facts, facts: routine_run.facts.merge(parsed), graphs:, session:)
     end
 
     def chain = self.class.chain
-
-    def closed(workflow, outcome, ctx)
-      command, because = workflow.closing(outcome, ctx)
-      Finished.new(next_command: command, because:)
-    rescue => e
-      Failed.new(workflow.key, "closing", "#{e.class}: #{e.message}")
-    end
 
     # The printed lines go first on every end, failure included, so a gate
     # that says "see above" has something above it. Then the call says what

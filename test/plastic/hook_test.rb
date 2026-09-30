@@ -34,7 +34,7 @@ class HookTest < Minitest::Test
 
   def test_a_hook_must_define_respond
     err = StringIO.new
-    code = Plastic::Hook.call([], out: StringIO.new, err:, words: "hook", environment: environment)
+    code = Plastic::Hook.call([], words: "hook", environment: environment(err:))
 
     assert_equal 0, code
     assert_equal "plastic hook: NoMethodError: Plastic::Hook must define respond\n", err.string

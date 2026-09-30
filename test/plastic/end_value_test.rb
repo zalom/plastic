@@ -6,7 +6,7 @@ class EndValueTest < Minitest::Test
   def setup
     @out = StringIO.new
     @err = StringIO.new
-    @output = Plastic::CLI::Output.new(out: @out, err: @err)
+    @output = Plastic::CLI::TextOutput.new(out: @out, err: @err)
   end
 
   def test_finished_prints_next_and_because_and_exits_0

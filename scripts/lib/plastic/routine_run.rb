@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "json"
+
 module Plastic
   # One call of one tool on one subject, kept as a row of the work graph.
   #
@@ -17,14 +19,16 @@ module Plastic
   #            finished   the chain ended; the next call starts a new routine run
   #
   # A tool that writes nothing keeps no routine run row: its routine run lives in memory.
+  # The fields are the columns of the routine_runs table, in order. A routine
+  # run never changes; `advance` and `close` return the next one.
+  RoutineRun = Data.define(:tool, :subject, :at, :finished, :status, :facts, :next_command, :because, :exit_code,
+    :started_at, :updated_at)
+
+  # A routine run's status, its fields, and the next routine run.
   class RoutineRun
     OPEN = %w[running handed_off failed refused].freeze
 
-    # The columns of the routine_runs table, in order.
-    FIELDS = %i[tool subject at finished status facts next_command because exit_code
-      started_at updated_at].freeze
-
-    attr_reader(*FIELDS)
+    FIELDS = members.freeze
 
     def self.fresh(tool, subject)
       now = Plastic.now
@@ -34,17 +38,22 @@ module Plastic
 
     def self.from_h(hash)
       values = hash.transform_keys(&:to_sym)
-      values[:facts] = values[:facts].transform_keys(&:to_sym)
-      values[:at] = values[:at]&.to_sym
-      values[:finished] = values[:finished].map(&:to_sym)
-      new(**values)
+      new(**values.merge(facts: values[:facts].transform_keys(&:to_sym), at: values[:at]&.to_sym,
+        finished: values[:finished].map(&:to_sym)))
+    end
+
+    # A row of the routine_runs table: facts and finished are JSON text, and
+    # the subject is the one the caller asked for, nil included.
+    def self.from_row(row, subject)
+      from_h(row.except("store").merge("subject" => subject, "facts" => JSON.parse(row.fetch("facts")),
+        "finished" => JSON.parse(row.fetch("finished"))))
     end
 
     def initialize(**values)
       missing = FIELDS - values.keys
       raise ArgumentError, "a routine run needs #{missing.join(", ")}" if missing.any?
 
-      FIELDS.each { |field| instance_variable_set(:"@#{field}", values.fetch(field)) }
+      super
     end
 
     def open? = OPEN.include?(status)
@@ -52,30 +61,10 @@ module Plastic
     def key = [tool, subject].compact.join(" ")
 
     # A workflow finished and the chain moves on.
-    def advance(from, to)
-      @finished |= [from]
-      @at = to
-      touch("running")
-    end
+    def advance(from, to) = with(finished: finished | [from], at: to, status: "running", updated_at: Plastic.now)
 
-    # The call ends. `value` is Finished, HandedOff, Failed or Refused, and
-    # the status is its snake name.
-    def close(value, facts)
-      @facts = facts
-      @next_command = value.respond_to?(:next_command) ? value.next_command : nil
-      @because = value.respond_to?(:because) ? value.because : value.message
-      @exit_code = value.exit_code
-      touch(value.class.name.split("::").last.gsub(/(?<=[a-z])(?=[A-Z])/, "_").downcase)
-    end
-
-    def to_h = FIELDS.to_h { |field| [field, public_send(field)] }
-
-    private
-
-    def touch(status)
-      @status = status
-      @updated_at = Plastic.now
-      self
-    end
+    # The call ends. `value` is Finished, HandedOff, Failed or Refused, and it
+    # names the status and the lines the routine run keeps.
+    def close(value, facts) = with(facts:, updated_at: Plastic.now, **value.record)
   end
 end

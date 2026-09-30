@@ -16,19 +16,23 @@ module Plastic
   # So a hook is not a Routine: it prints no next: line, has no routine run, and
   # rescues every error. A hook never stops the agent.
   class Hook < CLI::Command
-    def self.call(argv, out:, err:, **rest)
-      hook = new(argv, out:, err:, **rest)
-      reply = hook.respond(hook.event)
-      out.puts reply if reply
-      CLI::Command::OK
+    def self.call(argv, environment: CLI::Command::Environment.current, **rest)
+      new(argv, environment:, **rest).answer
     rescue => error
-      err.puts "plastic hook: #{error.class}: #{error.message}"
+      environment.err.puts "plastic hook: #{error.class}: #{error.message}"
+      CLI::Command::OK
+    end
+
+    # Prints the reply to the event, if there is one.
+    def answer
+      reply = respond(event)
+      environment.out.puts reply if reply
       CLI::Command::OK
     end
 
     # The event JSON the harness writes on stdin, with symbol keys.
     def event
-      text = @environment.input.read.to_s
+      text = environment.input.read.to_s
       text.strip.empty? ? {} : JSON.parse(text, symbolize_names: true)
     end
 

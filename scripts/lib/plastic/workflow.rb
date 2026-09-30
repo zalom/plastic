@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require_relative "invalid"
+require_relative "workflow/outcome"
+require_relative "workflow/key"
 require_relative "workflows/registry"
 
 module Plastic
@@ -18,28 +20,17 @@ module Plastic
   # The class body is the definition. Each call runs on a new instance, so
   # nothing one call finds outlives it.
   class Workflow
-    # One way the workflow ends: the outcome's name, the check that picks it,
-    # the command next: prints, the line because: prints, and how it stops.
-    Outcome = Data.define(:name, :check, :offers, :because, :stops)
-
     class << self
-      def key
-        snake = name.split("::").last.gsub(/(?<=[a-z0-9])(?=[A-Z])/, "_").downcase
-        :"#{lane}_#{snake}"
-      end
+      def key = :"#{lane}_#{Plastic.snake(name.split("::").last)}"
 
       def lane = raise(NoMethodError, "#{name} must subclass CodeWorkflow or AgentWorkflow")
 
       # The workflow class for a key, from a namespace that holds a REGISTRY
-      # and the classes. The key's lane must match the class.
+      # and the classes.
       def fetch(key, from: Workflows)
         raise Invalid, "no workflow #{key} in #{from}::REGISTRY" unless from::REGISTRY.include?(key)
 
-        lane, snake = key.to_s.split("_", 2)
-        klass = workflow_class(from, snake)
-        raise Invalid, "#{key} names a #{lane} workflow, and #{klass} is a #{klass.lane} workflow" unless klass.lane == lane
-
-        klass
+        Key.parse(key).workflow_in(from)
       end
 
       # The facts this workflow sets. The routine declares them on the context.
@@ -50,42 +41,34 @@ module Plastic
       # One way the workflow ends. `offers:` is the command next: prints and
       # `because:` the line that says why; both matter only when the outcome
       # ends the chain. Each lane adds its own rules.
-      def outcome(name, **options)
+      def outcome(outcome_name, **options)
         unknown = options.keys - %i[if offers because stops]
-        raise Invalid, "#{self.name}: outcome #{name} does not take #{unknown.join(", ")}" if unknown.any?
+        raise Invalid, "#{name}: outcome #{outcome_name} does not take #{unknown.join(", ")}" if unknown.any?
 
-        outcomes << Outcome.new(name, options[:if], options[:offers], options[:because], options[:stops])
+        outcomes << Outcome.new(outcome_name, *options.values_at(:if, :offers, :because, :stops))
       end
 
       def outcomes = (@outcomes ||= [])
 
-      def outcome_for(name) = outcomes.find { |o| o.name == name }
+      # The outcome line that can end the chain on `outcome_name`: the one that
+      # gives its because: line. Nil when no line does.
+      def ending(outcome_name) = outcomes.select(&:because).find { |outcome| outcome.name == outcome_name }
 
       # The next: and because: lines for an outcome that ends the chain.
-      def closing(name, ctx)
-        found = outcome_for(name)
-        raise Invalid, "#{key} ends on #{name}, and no outcome line gives its because:" unless found&.because
+      def closing(outcome_name, ctx)
+        found = ending(outcome_name)
+        raise Invalid, "#{key} ends on #{outcome_name}, and no outcome line gives its because:" unless found
 
-        [found.offers ? ctx.fill(found.offers) : "none", ctx.fill(found.because)]
+        found.closing(ctx)
       end
 
-      # Every %{name} this workflow prints. Routine.verify! checks them.
-      def templates = outcomes.flat_map { |o| [o.offers, o.because] }.compact
+      # Every %{name} this workflow prints. Routine.verify checks them.
+      def templates = outcomes.flat_map(&:templates)
 
       # Wiring faults a class body cannot see until it has loaded.
       def problems = []
 
       def call(ctx) = new(ctx).call
-
-      private
-
-      # A class already loaded is used as it is; any other is required from
-      # workflows/ first.
-      def workflow_class(from, snake)
-        name = snake.split("_").map(&:capitalize).join
-        require_relative "workflows/#{snake}" unless from.const_defined?(name, false)
-        from.const_get(name, false)
-      end
     end
 
     def initialize(ctx)

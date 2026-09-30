@@ -14,8 +14,11 @@ module Plastic
     # a store are read through the graphs, never here; the scope knows only
     # the home, the projects file and the store directories.
     class Scope
-      UnknownProject = Class.new(StandardError)
-      BrokenProjects = Class.new(StandardError)
+      # A named project this machine does not have.
+      class UnknownProject < StandardError; end
+
+      # A projects file that does not parse or holds no map.
+      class BrokenProjects < StandardError; end
 
       GLOBAL = "global"
 
@@ -45,17 +48,23 @@ module Plastic
       # parse stops the call and names itself, so no command runs on a guess.
       def projects
         path = File.join(plastic_home, "projects.yml")
-        return {} unless File.exist?(path)
-
-        data = YAML.safe_load_file(path)
-        raise BrokenProjects, "#{path} does not hold a map of projects" unless data.is_a?(Hash)
-
-        data.to_h { |slug, info| [slug.to_s, info.is_a?(Hash) ? info["path"].to_s : ""] }
-      rescue Psych::SyntaxError => e
-        raise BrokenProjects, "#{path} does not parse: #{e.message}"
+        File.exist?(path) ? read_projects(path) : {}
       end
 
       private
+
+      def read_projects(path)
+        data = load_projects(path)
+        raise BrokenProjects, "#{path} does not hold a map of projects" unless data.is_a?(Hash)
+
+        data.to_h { |slug, info| [slug.to_s, info.is_a?(Hash) ? info["path"].to_s : ""] }
+      end
+
+      def load_projects(path)
+        YAML.safe_load_file(path)
+      rescue Psych::SyntaxError => error
+        raise BrokenProjects, "#{path} does not parse: #{error.message}"
+      end
 
       def resolve_slug
         return requested_slug if @requested

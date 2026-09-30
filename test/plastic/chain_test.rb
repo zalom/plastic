@@ -5,7 +5,7 @@ require_relative "support/kernel"
 class ChainTest < Minitest::Test
   def routine(&body)
     Class.new(KernelFixtures::Routine) do
-      argument :name, "NAME", "a name"
+      argument :name, label: "NAME", text: "a name"
       class_eval(&body)
     end
   end
@@ -19,7 +19,7 @@ class ChainTest < Minitest::Test
       workflow :code_stamp, next: :code_missing
       workflow :code_hold, next: :code_stamp
     end
-    error = assert_raises(Plastic::Invalid) { broken.verify! }
+    error = assert_raises(Plastic::Invalid) { broken.verify }
 
     expected = ["code_missing is a target but not in the chain",
       "code_hold -> code_stamp points backward; a chain only moves forward",
