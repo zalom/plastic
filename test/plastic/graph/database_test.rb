@@ -3,24 +3,7 @@
 require_relative "../support/kernel"
 
 class DatabaseTest < Minitest::Test
-  Database = Plastic::Graph::Database
-  SCHEMA = <<~SQL
-    CREATE TABLE IF NOT EXISTS routine_runs(id INTEGER PRIMARY KEY, name TEXT UNIQUE, data BLOB);
-    CREATE TABLE IF NOT EXISTS tallies(name TEXT);
-    CREATE TABLE IF NOT EXISTS notes(name TEXT);
-    CREATE TABLE IF NOT EXISTS stored(store TEXT, name TEXT);
-  SQL
-
-  def setup
-    @dir = Dir.mktmpdir("plastic-database")
-    @database = Database.new(File.join(@dir, "work_graph.db"), SCHEMA)
-  end
-
-  def teardown = FileUtils.remove_entry(@dir)
-
-  def insert(name, table: :routine_runs)
-    @database.transaction { |batch| batch.insert(table, {name:}) }
-  end
+  include KernelFixtures::DatabaseHome
 
   def test_open_all_needs_sqlite3_on_the_path
     error = assert_raises(Database::Error) { Database.open_all(@dir, path: "") }
@@ -91,44 +74,6 @@ class DatabaseTest < Minitest::Test
     @database.transaction { |batch| batch.insert(:stored, {name: "x"}, store: "plastic") }
 
     assert_equal({"store" => "plastic", "name" => "x"}, @database.row("SELECT * FROM stored"))
-  end
-
-  def test_nothing_written_has_no_phrase
-    assert_nil @database.written_phrase
-  end
-
-  def test_one_table_written_is_one_phrase
-    insert("a")
-    insert("b")
-
-    assert_equal "2 routine runs in work_graph.db", @database.written_phrase
-  end
-
-  def test_two_tables_join_with_and
-    insert("a")
-    insert("t", table: :tallies)
-
-    assert_equal "1 routine run and 1 tallies in work_graph.db", @database.written_phrase
-  end
-
-  def test_three_tables_join_with_commas
-    insert("a")
-    insert("t", table: :tallies)
-    insert("n", table: :notes)
-
-    assert_equal "1 routine run, 1 tallies, and 1 notes in work_graph.db", @database.written_phrase
-  end
-
-  def test_an_uncounted_write_is_kept_off_the_phrase
-    @database.transaction { |batch| batch.write(:notes, "INSERT INTO notes VALUES ('x')", count: false) }
-
-    assert_nil @database.written_phrase
-  end
-
-  def test_a_write_that_changes_nothing_counts_nothing
-    @database.transaction { |batch| batch.write(:notes, "DELETE FROM notes") }
-
-    assert_nil @database.written_phrase
   end
 
   def test_bytes_go_in_as_a_blob

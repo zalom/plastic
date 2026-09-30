@@ -203,3 +203,40 @@ module KernelFixtures
     end
   end
 end
+
+module KernelFixtures
+  # Builders for the workflow tests: a context and anonymous workflow classes.
+  module WorkflowBuilders
+    Flows = KernelFixtures::Workflows
+
+    def context(declared: %i[name mode], facts: {name: "ada"})
+      Plastic::Context.new(declared:, facts:, graphs: {}, routine_run: nil)
+    end
+
+    def code(&body) = Class.new(Plastic::CodeWorkflow, &body)
+
+    def agent(&body) = Class.new(Plastic::AgentWorkflow, &body)
+  end
+
+  # A database in a temporary folder, with tables for the database tests.
+  module DatabaseHome
+    Database = Plastic::Graph::Database
+    SCHEMA = <<~SQL
+      CREATE TABLE IF NOT EXISTS routine_runs(id INTEGER PRIMARY KEY, name TEXT UNIQUE, data BLOB);
+      CREATE TABLE IF NOT EXISTS tallies(name TEXT);
+      CREATE TABLE IF NOT EXISTS notes(name TEXT);
+      CREATE TABLE IF NOT EXISTS stored(store TEXT, name TEXT);
+    SQL
+
+    def setup
+      @dir = Dir.mktmpdir("plastic-database")
+      @database = Database.new(File.join(@dir, "work_graph.db"), SCHEMA)
+    end
+
+    def teardown = FileUtils.remove_entry(@dir)
+
+    def insert(name, table: :routine_runs)
+      @database.transaction { |batch| batch.insert(table, {name:}) }
+    end
+  end
+end

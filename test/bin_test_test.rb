@@ -5,57 +5,18 @@ require "minitest/autorun"
 require "tmpdir"
 require "fileutils"
 require "open3"
+require_relative "lib/bin_test_support"
 
 # Intent 355 (n4), matrix 4.1-4.7. Drives bin/test as a subprocess against a
 # tmpdir root holding tiny fixture test files, never the real suite: the real
 # bin/test and failures_reporter.rb are copied into the fixture root so the
 # script's own __dir__-relative paths resolve inside the tmpdir.
 class BinTestTest < Minitest::Test
-  REPO = File.expand_path("..", __dir__)
-
-  GREEN = <<~RUBY
-    require "minitest/autorun"
-    class GreenTest < Minitest::Test
-      def test_it_passes
-        assert true
-      end
-    end
-  RUBY
-
-  RED = <<~RUBY
-    require "minitest/autorun"
-    class RedTest < Minitest::Test
-      def test_it_fails
-        assert_equal 1, 2, "expected failure message"
-      end
-    end
-  RUBY
+  include BinTestSupport
 
   POISON = <<~RUBY
     raise "b_test.rb must never load under --only a_test.rb"
   RUBY
-
-  def setup
-    @dir = Dir.mktmpdir("bin-test-only")
-    FileUtils.mkdir_p(File.join(@dir, "bin"))
-    FileUtils.mkdir_p(File.join(@dir, "test", "lib"))
-    FileUtils.cp(File.join(REPO, "bin", "test"), File.join(@dir, "bin", "test"))
-    FileUtils.chmod(0o755, File.join(@dir, "bin", "test"))
-    FileUtils.cp(File.join(REPO, "test", "lib", "failures_reporter.rb"),
-                 File.join(@dir, "test", "lib", "failures_reporter.rb"))
-  end
-
-  def teardown
-    FileUtils.remove_entry(@dir) if @dir && Dir.exist?(@dir)
-  end
-
-  def write_test(name, body)
-    File.write(File.join(@dir, "test", "#{name}.rb"), body)
-  end
-
-  def run_bin_test(*args)
-    Open3.capture3("ruby", File.join(@dir, "bin", "test"), *args, chdir: @dir)
-  end
 
   def test_only_loads_named_files
     write_test("a_test", GREEN)
@@ -104,54 +65,5 @@ class BinTestTest < Minitest::Test
     out, _err, status = run_bin_test("--list")
     assert status.success?
     assert_includes out, "test/a_test.rb"
-  end
-
-  # Intent 394: the kernel under scripts/lib/plastic/ defines the same
-  # constants as the live command line, so its tests run in their own process.
-  LIVE = <<~RUBY
-    require "minitest/autorun"
-    LIVE_LOADED = true
-    class LiveTest < Minitest::Test
-      def test_it_passes
-        assert true
-      end
-    end
-  RUBY
-
-  KERNEL = <<~RUBY
-    require "minitest/autorun"
-    class KernelTest < Minitest::Test
-      def test_the_live_files_are_not_loaded
-        refute defined?(LIVE_LOADED), "a live test file loaded in the kernel process"
-      end
-    end
-  RUBY
-
-  def write_kernel_test(name, body)
-    FileUtils.mkdir_p(File.join(@dir, "test", "plastic"))
-    File.write(File.join(@dir, "test", "plastic", "#{name}.rb"), body)
-  end
-
-  def test_full_run_runs_the_kernel_tests_in_their_own_process
-    write_test("a_test", LIVE)
-    write_kernel_test("k_test", KERNEL)
-    out, err, status = run_bin_test
-    assert status.success?, "expected success, got: #{out}#{err}"
-    assert_equal 2, out.scan("1 runs, 1 assertions, 0 failures, 0 errors").size
-  end
-
-  def test_full_run_fails_when_only_the_kernel_tests_fail
-    write_test("a_test", LIVE)
-    write_kernel_test("k_test", RED)
-    out, _err, status = run_bin_test
-    refute status.success?
-    assert_includes out, "expected failure message"
-  end
-
-  def test_full_run_with_only_kernel_tests_runs_them
-    write_kernel_test("k_test", KERNEL)
-    out, err, status = run_bin_test
-    assert status.success?, "expected success, got: #{out}#{err}"
-    assert_includes out, "1 runs, 1 assertions, 0 failures, 0 errors"
   end
 end
