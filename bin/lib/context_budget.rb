@@ -483,4 +483,98 @@ end
 
     ((sorted[middle - 1] + sorted[middle]) / 2.0).round(1)
   end
+
+  # bin/plastic-bench's own argv parsing and exit-code decision, as a class a
+  # test can drive in-process. Only one scenario (the ceiling-crossed exit
+  # code) still needs a real spawn of the executable; every other argument
+  # case is this class's own behavior, not the process boundary.
+  class CLI
+    UsageError = Class.new(StandardError)
+
+    USAGE = <<~TEXT
+      usage: plastic-bench [--repeat N] [--core-file PATH] [--repo PATH]
+
+        --repeat N        boots to run against the fixture (default #{DEFAULT_REPEAT}, minimum 1)
+        --core-file PATH  measure this file as the core block instead of PLASTIC.md
+        --repo PATH       the Plastic checkout to measure (default: this checkout)
+        --help            this message
+
+      Exits 0 when every ceiling holds, 1 when one is crossed, 2 on bad usage.
+    TEXT
+
+    def self.run(argv, out: $stdout, err: $stderr, default_repo: File.expand_path("../..", __dir__))
+      new(argv, out: out, err: err, default_repo: default_repo).call
+    end
+
+    def initialize(argv, out:, err:, default_repo:)
+      @argv = argv.dup
+      @out = out
+      @err = err
+      @repo = default_repo
+      @repeat = DEFAULT_REPEAT
+      @core_file = nil
+      @help = false
+    end
+
+    def call
+      parse!
+      return help! if @help
+
+      report = ContextBudget.run(repo: @repo, repeat: @repeat, core_file: @core_file)
+      @out.print report.to_table
+      report.ok? ? 0 : 1
+    rescue UsageError => e
+      @err.puts "plastic-bench: #{e.message}"
+      @err.puts USAGE
+      2
+    rescue => e
+      @err.puts "plastic-bench: #{e.message}"
+      1
+    end
+
+    private
+
+    def help!
+      @out.puts USAGE
+      0
+    end
+
+    def parse!
+      until @argv.empty?
+        case (flag = @argv.shift)
+        when "--help", "-h" then @help = true
+        when "--repeat" then @repeat = repeat_value
+        when "--core-file" then @core_file = core_file_value
+        when "--repo" then @repo = repo_value
+        else raise UsageError, "unknown argument #{flag}"
+        end
+      end
+    end
+
+    def repeat_value
+      value = @argv.shift
+      raise UsageError, "--repeat needs a whole number of at least 1" unless value.to_s.match?(/\A\d+\z/)
+
+      n = value.to_i
+      raise UsageError, "--repeat needs a whole number of at least 1" if n < 1
+
+      n
+    end
+
+    def core_file_value
+      path = @argv.shift
+      raise UsageError, "--core-file needs a path" if path.to_s.empty?
+      raise UsageError, "--core-file #{path} does not exist" unless File.file?(path)
+
+      path
+    end
+
+    def repo_value
+      path = @argv.shift
+      raise UsageError, "--repo needs a path" if path.to_s.empty?
+      raise UsageError, "--repo #{path} is not a directory" unless File.directory?(path)
+
+      path
+    end
+  end
 end

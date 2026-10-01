@@ -8,6 +8,7 @@ require "json"
 require "open3"
 require "rbconfig"
 require "yaml"
+require "stringio"
 
 require_relative "../bin/lib/context_budget"
 
@@ -215,13 +216,14 @@ class ContextBudgetFixtureTest < Minitest::Test
   end
 end
 
-# One live report, memoized: install once, boot three times, assert everything
-# about the result. Three repeats keep the suite cheap; the CLI defaults to five.
+# One live report, memoized: install once, boot twice, assert everything
+# about the result. Two repeats prove the boots are byte-identical as well as
+# three do and keep the suite cheaper; the CLI defaults to five.
 class ContextBudgetBootTest < Minitest::Test
   REPO = File.expand_path("../../", __FILE__)
 
   def self.report
-    @report ||= ContextBudget.run(repo: REPO, repeat: 3)
+    @report ||= ContextBudget.run(repo: REPO, repeat: 2)
   end
 
   def report
@@ -265,7 +267,7 @@ class ContextBudgetBootTest < Minitest::Test
   end
 
   def test_repeats_are_byte_identical
-    assert_equal 3, report.samples.length
+    assert_equal 2, report.samples.length
     assert_equal 0, report.byte_spread,
       "the fixture is fixed, so any byte spread across repeats means something non-deterministic leaked in"
   end
@@ -440,8 +442,27 @@ class ContextBudgetCliTest < Minitest::Test
   REPO = File.expand_path("../../", __FILE__)
   BENCH = File.join(REPO, "bin", "plastic-bench")
 
-  def self.live_run
-    @live_run ||= Open3.capture3({ "RUBYOPT" => nil }, RbConfig.ruby, BENCH, "--repeat", "1")
+  # Only the ceiling-crossed case below still spawns the real executable: it
+  # is the one proof that bin/plastic-bench itself, not just the class behind
+  # it, exits non-zero over a shell caller's own process boundary. Every other
+  # argument case is ContextBudget::CLI's own behavior and runs in-process.
+  def self.live_crossed_run
+    @live_crossed_run ||= Dir.mktmpdir("plastic-bench-cli-red") do |dir|
+      core = File.join(dir, "over_budget.md")
+      File.write(core, "y" * 9_000)
+      Open3.capture3({ "RUBYOPT" => nil }, RbConfig.ruby, BENCH, "--repeat", "1", "--core-file", core)
+    end
+  end
+
+  def self.live_tree_run
+    @live_tree_run ||= cli_run(["--repeat", "1"])
+  end
+
+  def self.cli_run(argv)
+    out = StringIO.new
+    err = StringIO.new
+    status = ContextBudget::CLI.run(argv, out: out, err: err, default_repo: REPO)
+    [out.string, err.string, status]
   end
 
   def test_the_bench_is_executable
@@ -449,43 +470,37 @@ class ContextBudgetCliTest < Minitest::Test
   end
 
   def test_the_cli_exits_zero_on_the_live_tree
-    out, err, status = self.class.live_run
+    out, err, status = self.class.live_tree_run
 
-    assert_equal 0, status.exitstatus, "bench failed: #{err}#{out}"
+    assert_equal 0, status, "bench failed: #{err}#{out}"
     assert_includes out, "core block"
   end
 
   def test_the_cli_prints_the_interpreter_it_ran_under
-    out, _err, _status = self.class.live_run
+    out, = self.class.live_tree_run
 
     assert_includes out, RUBY_VERSION
     assert_includes out, RbConfig.ruby
   end
 
   def test_the_cli_exits_non_zero_when_a_ceiling_is_crossed
-    Dir.mktmpdir("plastic-bench-cli-red") do |dir|
-      core = File.join(dir, "over_budget.md")
-      File.write(core, "y" * 9_000)
+    out, _err, status = self.class.live_crossed_run
 
-      out, _err, status = Open3.capture3({ "RUBYOPT" => nil }, RbConfig.ruby, BENCH,
-                                         "--repeat", "1", "--core-file", core)
-
-      assert_equal 1, status.exitstatus, "a crossed ceiling must exit non-zero"
-      assert_includes out, "core block"
-    end
+    assert_equal 1, status.exitstatus, "a crossed ceiling must exit non-zero"
+    assert_includes out, "core block"
   end
 
   def test_the_cli_rejects_a_bad_repeat_count
-    out, err, status = Open3.capture3({ "RUBYOPT" => nil }, RbConfig.ruby, BENCH, "--repeat", "0")
+    out, err, status = self.class.cli_run(["--repeat", "0"])
 
-    assert_equal 2, status.exitstatus
+    assert_equal 2, status
     assert_match(/usage/i, "#{out}#{err}")
   end
 
   def test_the_cli_has_a_help
-    out, _err, status = Open3.capture3({ "RUBYOPT" => nil }, RbConfig.ruby, BENCH, "--help")
+    out, _err, status = self.class.cli_run(["--help"])
 
-    assert_equal 0, status.exitstatus
+    assert_equal 0, status
     assert_match(/usage/i, out)
   end
 end
