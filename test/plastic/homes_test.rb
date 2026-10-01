@@ -2,8 +2,8 @@
 
 require_relative "../test_helper"
 
-# Intent 397, D2: the home reset puts back only what a test changed, instead
-# of copying the whole fixture back on every test. Every test here drives the
+# The home reset puts back only what a test changed, instead of copying the
+# whole fixture back on every test. Every test here drives the
 # reset through its two public calls, `begin` and `reset`, the same calls
 # `Plastic::TestCase` makes around every kernel test.
 class HomesTest < Plastic::TestCase
@@ -133,5 +133,16 @@ class HomesTest < Plastic::TestCase
     @template.reset
 
     assert_equal before, File.stat(path).ino
+  end
+
+  def test_after_one_restore_the_next_untouched_reset_keeps_its_inode
+    path = store_path("spec.md")
+    File.write(path, "junk")
+
+    @template.reset
+    restored_ctime = File.stat(path).ctime
+    @template.reset
+
+    assert_equal restored_ctime, File.stat(path).ctime
   end
 end

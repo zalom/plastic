@@ -211,7 +211,7 @@ class VerifyChange
   end
 
   # The Tests step and the step right after it, which checks what the Tests
-  # step just wrote (D5, D8). A suite the timing extension does not cover
+  # step just wrote. A suite the timing extension does not cover
   # (RSpec, or Minitest run through `bin/rails test`) says so instead of
   # carrying a step that would always pass on nothing.
   def tests_steps(tests, rails, suite)

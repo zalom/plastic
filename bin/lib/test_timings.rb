@@ -4,7 +4,7 @@ require "json"
 require "fileutils"
 require "minitest"
 
-# The gate's timing check (intent 397, D5): a Minitest extension that sums
+# The gate's timing check: a Minitest extension that sums
 # each test's time per file, and the cap check a gate step runs on what it
 # wrote. Registered through Minitest's own extension list, the same seam
 # FailuresReporter uses, and active only when PLASTIC_TEST_TIMINGS names a

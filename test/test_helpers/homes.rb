@@ -19,7 +19,7 @@ module Plastic
       end
 
       # One built home: its folder, a snapshot of every file it started with,
-      # and the state of each one (D2, intent 397). A reset compares that
+      # and the state of each one. A reset compares that
       # state with what the home holds now and touches only what moved,
       # instead of copying the whole fixture back on every test.
       class Home
@@ -71,7 +71,12 @@ module Plastic
         end
 
         def restore_changed(current)
-          @state.sort.each { |rel, original| restore(rel, original) if current[rel] != original }
+          @state.sort.each do |rel, original|
+            next if current[rel] == original
+
+            restore(rel, original)
+            @state[rel] = @snapshot.entry(File.join(@dir, rel))
+          end
         end
 
         def connections = @databases.map { |path| Pool.for(path) }
@@ -146,6 +151,14 @@ module Plastic
           state
         end
 
+        def entry(full)
+          stat = File.lstat(full)
+          return Entry.new(:link, nil, nil, stat.ctime, File.readlink(full)) if stat.symlink?
+          return Entry.new(:dir, nil, stat.mode & 0o7777, stat.ctime, nil) if stat.directory?
+
+          Entry.new(:file, stat.size, stat.mode & 0o7777, stat.ctime, nil)
+        end
+
         private
 
         def walk(base, rel = "", &block)
@@ -167,14 +180,6 @@ module Plastic
           return true if File.fnmatch?(Home::JOURNAL_PATTERN, basename)
 
           File.fnmatch?(Home::DATABASE_PATTERN, basename) && @databases.include?(full)
-        end
-
-        def entry(full)
-          stat = File.lstat(full)
-          return Entry.new(:link, nil, nil, stat.ctime, File.readlink(full)) if stat.symlink?
-          return Entry.new(:dir, nil, stat.mode & 0o7777, stat.ctime, nil) if stat.directory?
-
-          Entry.new(:file, stat.size, stat.mode & 0o7777, stat.ctime, nil)
         end
       end
 
