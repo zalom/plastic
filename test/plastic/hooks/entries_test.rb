@@ -78,6 +78,39 @@ class EntriesTest < Minitest::Test
     end
   end
 
+  def test_statusline_false_removes_our_own_status_line_when_present
+    ours = { "statusLine" => { "type" => "command", "command" => LAUNCHERS[:statusline] } }
+
+    entries("statusline: false\n") { |rewriter| refute_includes rewriter.claude(ours), "statusLine" }
+  end
+
+  def test_statusline_true_keeps_a_status_line_the_user_set
+    foreign = { "statusLine" => { "type" => "command", "command" => "/other/status" } }
+
+    entries("statusline: true\n") { |rewriter| assert_equal "/other/status", rewriter.claude(foreign)["statusLine"]["command"] }
+  end
+
+  def test_screens_true_keeps_a_users_message_display_hook_beside_ours
+    foreign = { "matcher" => "", "hooks" => [{ "type" => "command", "command" => "/user/own-display" }] }
+
+    entries("screens: true\n") do |rewriter|
+      commands = commands_for(rewriter.claude({ "hooks" => { "MessageDisplay" => [foreign] } })["hooks"], "MessageDisplay")
+
+      assert_equal ["/user/own-display", %(env -u RUBYOPT "#{LAUNCHERS[:screens]}" || true)], commands
+    end
+  end
+
+  def test_an_old_launcher_is_matched_by_its_file_name_not_a_substring
+    old = { "matcher" => "", "hooks" => [{ "type" => "command", "command" => '"/u/.claude/hooks/plastic-session-start"' }] }
+    user = { "matcher" => "", "hooks" => [{ "type" => "command", "command" => "/u/.claude/hooks/plastic-writing-style" }] }
+
+    entries do |rewriter|
+      commands = commands_for(rewriter.claude({ "hooks" => { "SessionStart" => [old, user] } })["hooks"], "SessionStart")
+
+      assert_equal ["/u/.claude/hooks/plastic-writing-style", %(env -u RUBYOPT "#{COMMAND}" hook resume --harness claude-code || true)], commands
+    end
+  end
+
   def test_an_old_installs_entries_are_removed_and_a_plain_user_hook_stays
     old_group = { "matcher" => "", "hooks" => [{ "type" => "command", "command" => "plastic-continue" }] }
     user_group = { "matcher" => "", "hooks" => [{ "type" => "command", "command" => "my-own-hook" }] }

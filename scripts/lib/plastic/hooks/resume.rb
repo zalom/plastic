@@ -20,20 +20,18 @@ module Plastic
 
       def respond(event)
         sid = session_id(event)
-        return stderr_line if sid.nil?
-
-        open_session_row(sid)
+        sid.nil? ? stderr_line : open_session_row(sid)
         lines(event, sid).join("\n")
       end
 
       private
 
       def open_session_row(sid)
-        store.work.ignore_databases
-        store.work.open_session(sid, harness: parsed[:harness], directory: environment.directory)
+        store.work.open_session(sid, harness: parsed[:harness], directory: directory)
       end
 
       def lines(event, sid)
+        store.work.ignore_databases
         [first_line(event), *open_intent_lines, *previous_session_lines(event, sid), *in_progress_lines(event, sid),
           *note_line(event, sid)].compact
       end
@@ -77,7 +75,7 @@ module Plastic
       def predecessor(event, sid)
         return nil unless source(event) == "clear"
 
-        store.retrieval.predecessor(sid, directory: environment.directory, prefer_reason: "clear")
+        store.retrieval.predecessor(sid, directory: directory, prefer_reason: "clear")
       end
 
       def predecessor_or_latest(event, sid) = predecessor(event, sid) || store.retrieval.previous_session(sid)

@@ -35,7 +35,7 @@ module Plastic
       end
 
       def stop(graphs, sid, event)
-        graphs.work.stamp_turn(sid, harness: parsed[:harness], directory: environment.directory)
+        graphs.work.stamp_turn(sid, harness: parsed[:harness], directory: directory)
         graphs.work.renew_locks(sid)
         decision = StopGate.new(event:, stop_hook: stop_hook?, retrieval: graphs.retrieval, session_id: sid).decision
         decision && JSON.generate(decision)

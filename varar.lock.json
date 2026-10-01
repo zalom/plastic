@@ -55,6 +55,10 @@
         }
       ]
     },
+    "varar/session-resume.md": {
+      "sourceHash": "fnv1a:58fe1b29",
+      "examples": []
+    },
     "varar/store-layout.md": {
       "sourceHash": "fnv1a:8aac771e",
       "examples": [

@@ -8,7 +8,13 @@ module Plastic
     # so a user's own hook or status line is never touched.
     class Entries
       EVENTS = { "SessionStart" => "hook resume", "Stop" => "hook record", "SessionEnd" => "hook record --end" }.freeze
-      OLD_MARKS = %w[plastic-hook plastic-continue plastic-record codex-hook].freeze
+      # The launchers and the Codex dispatcher earlier installs wrote. A
+      # command is theirs only when one of its words names one of these
+      # files, never by a substring, so a user's plastic-writing-style stays.
+      OLD_LAUNCHERS = %w[session-start check-update savepoint record close capture message-display stop statusline
+        edit-gates bash-gate code-gate create-gate links-gate lock-gate savepoint-pre call-budget qmd-search
+        retrieval-gate model-instructions opus-manual continue future-intent-check auto-arm gate-check
+        power-tools].map { |name| "plastic-#{name}" }.push("codex-hook").freeze
 
       def initialize(command:, config:, launchers:)
         @command = command
@@ -46,17 +52,26 @@ module Plastic
 
       def ours_command?(command)
         ours = [@command, @launchers[:statusline], @launchers[:screens]].compact
-        ours.any? { |path| command.include?(%("#{path}")) } || OLD_MARKS.any? { |mark| command.include?(mark) }
+        ours.any? { |path| command.include?(%("#{path}")) } || old_launcher?(command)
       end
 
+      def old_launcher?(command)
+        command.split.map { |word| File.basename(word.delete(%("')), ".rb") }.intersect?(OLD_LAUNCHERS)
+      end
+
+      # A status line the user set stays: only an empty or our own is written,
+      # and only our own is removed.
       def with_status_line(settings)
+        return settings if foreign_status_line?(settings)
         return settings.merge("statusLine" => { "type" => "command", "command" => @launchers[:statusline] }) if screen?(:statusline)
-        return settings unless ours_status_line?(settings)
 
         settings.except("statusLine")
       end
 
-      def ours_status_line?(settings) = settings.dig("statusLine", "command") == @launchers[:statusline]
+      def foreign_status_line?(settings)
+        command = settings.dig("statusLine", "command")
+        !command.nil? && !ours_command?(command.to_s) && command != @launchers[:statusline]
+      end
 
       def with_screens(settings)
         return screens_on(settings) if screen?(:screens)
@@ -65,8 +80,9 @@ module Plastic
       end
 
       def screens_on(settings)
-        hooks = (settings["hooks"] || {}).merge("MessageDisplay" => [message_display_group])
-        settings.merge("hooks" => hooks)
+        kept = screens_off(settings)
+        hooks = kept["hooks"]
+        kept.merge("hooks" => hooks.merge("MessageDisplay" => [*hooks["MessageDisplay"], message_display_group]))
       end
 
       def screens_off(settings)

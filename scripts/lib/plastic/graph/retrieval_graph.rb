@@ -146,8 +146,8 @@ module Plastic
           origin: origin_id, session_id:).map { |row| row.values_at("at", "intent_id") }
       end
 
-      # The intent id a routine run names: its subject when the tool took
-      # one, else the intent_id its facts kept, else nil.
+      # The intent id a routine run names: the intent_id its facts kept,
+      # else its subject, else nil. Intent new takes a title as its subject.
       def run_intent_id(row)
         from_facts = JSON.parse(row.fetch("facts")).fetch("intent_id", nil)
         return from_facts if from_facts

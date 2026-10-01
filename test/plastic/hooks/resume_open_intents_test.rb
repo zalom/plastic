@@ -43,11 +43,12 @@ class ResumeOpenIntentsTest < Plastic::TestCase
     refute_includes result.out, "Later"
   end
 
-  def test_an_empty_event_with_no_session_prints_nothing_and_one_stderr_line
+  def test_an_empty_event_with_no_session_prints_the_state_and_one_stderr_line
+    intent("Beta")
     result = call(env: {}, input: "")
 
-    assert_equal ["", 0], [result.out, result.code]
-    assert_includes result.err, "plastic hook: the event names no session; nothing recorded"
+    assert_equal [0, "plastic hook: the event names no session; nothing recorded\n"], [result.code, result.err]
+    assert_includes result.out, "open: 1 Beta (open)"
   end
 
   def test_an_event_that_is_not_an_object_still_prints_when_a_session_is_set
@@ -77,5 +78,13 @@ class ResumeOpenIntentsTest < Plastic::TestCase
     Plastic::CLI.call(["hook", "resume"], environment:, table: Plastic::CLI::TABLE)
 
     assert_includes out.string, "Plastic: a new session in store widgets"
+  end
+
+  def test_the_event_cwd_picks_the_store_over_the_process_directory
+    project_dir = File.join(@home, "proj")
+    FileUtils.mkdir_p([project_dir, File.join(@plastic_home, "stores", "widgets")])
+    File.write(File.join(@plastic_home, "projects.yml"), "widgets:\n  path: #{project_dir}\n")
+
+    assert_includes call(input: JSON.generate({ cwd: project_dir })).out, "Plastic: a new session in store widgets"
   end
 end
