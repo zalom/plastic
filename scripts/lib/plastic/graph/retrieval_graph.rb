@@ -28,7 +28,7 @@ module Plastic
       READY_NODES_SQL = <<~SQL
         SELECT * FROM nodes
         WHERE intent_id = :intent_id AND origin_id = :origin
-          AND (state IS NULL OR state = '' OR state = 'pending')
+          AND state = 'open'
           AND NOT EXISTS (
             SELECT 1 FROM edges JOIN nodes AS from_node
               ON from_node.intent_id = edges.intent_id AND from_node.id = edges."from"
@@ -57,6 +57,8 @@ module Plastic
       def savepoints(intent_id = nil) = read(:savepoints, intent_id)
 
       def nodes(intent_id = nil) = read(:nodes, intent_id)
+
+      def node(intent_id, id) = nodes(intent_id).find { |node| node.id == id }
 
       def edges(intent_id = nil) = read(:edges, intent_id)
 
