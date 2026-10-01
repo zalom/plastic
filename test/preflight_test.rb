@@ -104,7 +104,7 @@ class PreflightTest < Minitest::Test
   end
 
   def test_the_installer_names_only_the_gems_ruby_cannot_load
-    assert_equal %w[no_such_gem_for_plastic], Install.allocate.missing_gems(%w[sqlite3 no_such_gem_for_plastic])
+    assert_equal %w[no_such_gem_for_plastic], Install.allocate.missing_gems(%w[json no_such_gem_for_plastic])
   end
 
   # --- node and mise probes are gone ---
