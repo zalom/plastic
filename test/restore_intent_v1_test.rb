@@ -5,8 +5,17 @@ require "minitest/autorun"
 require "tmpdir"
 require "fileutils"
 require "open3"
+require "stringio"
 require_relative "../scripts/lib/intent_validator"
 require_relative "../scripts/lib/links_section"
+
+# scripts/restore-intent-v1 has no .rb suffix (it is an executable, run
+# directly by a person), so `require`/`require_relative` cannot resolve it -
+# both only try appending ".rb", never the bare literal name. `load` reads
+# the exact path given, which is the one entry point extensionless scripts
+# accept (intent 397, D6: in-process entry before one subprocess per call).
+RESTORE_SCRIPT = File.expand_path("../scripts/restore-intent-v1", __dir__)
+load RESTORE_SCRIPT
 
 # Owner ruling 2026-09-24 (intent 390): Plastic runs no version control
 # command, so this fixture builds "v1" as a plain snapshot directory (a copy
@@ -16,8 +25,18 @@ require_relative "../scripts/lib/links_section"
 # or agent having already run the printed `git show` instruction themselves.
 class RestoreIntentV1Test < Minitest::Test
   NEW_INTENT = File.expand_path("../scripts/new-intent", __dir__)
-  RESTORE = File.expand_path("../scripts/restore-intent-v1", __dir__)
   TEMPLATES = File.expand_path("../templates", __dir__)
+  FakeExitStatus = Struct.new(:exitstatus) do
+    def success? = exitstatus.zero?
+  end
+
+  # reproject_links' own collaborator (intent 397 D6): this file made one
+  # project-links spawn per --apply call (~12 of them). Every test but the
+  # two that verify project-links' own real effect (the ## Links content and
+  # the revisions.md dual-entry trail) injects this no-op instead.
+  module FakeProjectLinks
+    def self.call(_plastic_home) = true
+  end
   AT_LABEL = "v1"
   PROSE_SIBLINGS = %w[checklist.md outcome.md spec.md plan.md].freeze
 
@@ -65,8 +84,35 @@ class RestoreIntentV1Test < Minitest::Test
     end
   end
 
-  def restore(*args)
-    Open3.capture2(RbConfig.ruby, RESTORE, *args, "--plastic-home", @home, "--snapshot-dir", @snapshot_dir)
+  def restore(*args, project_links: FakeProjectLinks)
+    run_restore_cli([*args, "--plastic-home", @home, "--snapshot-dir", @snapshot_dir], project_links: project_links)
+  end
+
+  # Runs RestoreIntentV1CLI in-process instead of spawning a Ruby interpreter
+  # per call (this file made ~20 such spawns at ~226ms each, plus one more
+  # per --apply call for the tool's own project-links reprojection spawn).
+  # abort_loud's `exit 1` is the tool's only non-zero exit path, so a bare
+  # SystemExit rescue recovers the real exit code; stdout and stderr merge,
+  # matching the `Open3.capture2e` shape the handful of stderr-asserting
+  # tests here relied on (intent 397, D6).
+  def run_restore_cli(args, project_links: FakeProjectLinks)
+    intent_id, opts = RestoreIntentV1CLI.parse_argv(args)
+    out = StringIO.new
+    err = StringIO.new
+    exit_code = 0
+    orig_stdout = $stdout
+    orig_stderr = $stderr
+    $stdout = out
+    $stderr = err
+    begin
+      RestoreIntentV1CLI.new(intent_id, **opts, project_links: project_links).run
+    rescue SystemExit => e
+      exit_code = e.status
+    ensure
+      $stdout = orig_stdout
+      $stderr = orig_stderr
+    end
+    [out.string + err.string, FakeExitStatus.new(exit_code)]
   end
 
   def frontmatter_of(dir)
@@ -253,7 +299,7 @@ class RestoreIntentV1Test < Minitest::Test
     b_dir = dir_for_id(b_id)
     refute_nil b_dir, "fixture setup: B's directory must resolve"
 
-    out, status = restore(a_id, "--at", AT_LABEL, "--apply")
+    out, status = restore(a_id, "--at", AT_LABEL, "--apply", project_links: nil)
     assert_equal 0, status.exitstatus, "restore should succeed: #{out}"
 
     a_md = File.join(a_dir, "#{File.basename(a_dir)}.md")
@@ -269,9 +315,7 @@ class RestoreIntentV1Test < Minitest::Test
     a_md = File.join(a_dir, "#{File.basename(a_dir)}.md")
     before = File.read(a_md)
 
-    out, status = Open3.capture2e(
-      RbConfig.ruby, RESTORE, a_id, "--at", AT_LABEL, "--plastic-home", @home, "--apply"
-    )
+    out, status = run_restore_cli([a_id, "--at", AT_LABEL, "--plastic-home", @home, "--apply"])
     refute_equal 0, status.exitstatus, "must exit non-zero: #{out}"
     assert_equal before, File.read(a_md), "file must be byte-for-byte unchanged"
     assert_includes out, "--snapshot-dir is required"
@@ -285,9 +329,8 @@ class RestoreIntentV1Test < Minitest::Test
     before = File.read(a_md)
     # @snapshot_dir exists but was never populated for this intent.
 
-    out, status = Open3.capture2e(
-      RbConfig.ruby, RESTORE, a_id, "--at", AT_LABEL, "--plastic-home", @home, "--snapshot-dir", @snapshot_dir,
-      "--apply"
+    out, status = run_restore_cli(
+      [a_id, "--at", AT_LABEL, "--plastic-home", @home, "--snapshot-dir", @snapshot_dir, "--apply"]
     )
     refute_equal 0, status.exitstatus, "must exit non-zero: #{out}"
     assert_equal before, File.read(a_md), "file must be byte-for-byte unchanged"
@@ -361,7 +404,7 @@ class RestoreIntentV1Test < Minitest::Test
   def test_revisions_gains_restored_to_v1_entry_naming_reverted_files
     a_dir, a_id = seed_124_131_shape
 
-    out, status = restore(a_id, "--at", AT_LABEL, "--apply")
+    out, status = restore(a_id, "--at", AT_LABEL, "--apply", project_links: nil)
     assert_equal 0, status.exitstatus, "restore should succeed: #{out}"
 
     revisions = File.read(File.join(a_dir, "revisions.md"))
@@ -386,7 +429,7 @@ class RestoreIntentV1Test < Minitest::Test
       "an --apply run must print the corrected no-lock reminder (fail-open doctrine, 111), " \
       "not the earlier wrong doctrine that a maintenance lock must be held"
 
-    refute_includes File.read(RESTORE), "lib/lock\"",
+    refute_includes File.read(RESTORE_SCRIPT), "lib/lock\"",
       "the tool itself must never require the lock library (fail-open doctrine, 111)"
   end
 
@@ -489,9 +532,8 @@ class RestoreIntentV1Test < Minitest::Test
     p_id = File.basename(p_dir).split("--", 2).first
     assert_equal g_id, p_id, "fixture setup: both stores must allocate the same first bare id"
 
-    out, status = Open3.capture2e(
-      RbConfig.ruby, RESTORE, g_id, "--at", AT_LABEL, "--plastic-home", home, "--snapshot-dir", @snapshot_dir,
-      "--apply"
+    out, status = run_restore_cli(
+      [g_id, "--at", AT_LABEL, "--plastic-home", home, "--snapshot-dir", @snapshot_dir, "--apply"]
     )
     refute_equal 0, status.exitstatus, "an ambiguous bare id must abort loud rather than guess: #{out}"
     assert_includes out.downcase, "ambiguous"
@@ -515,9 +557,8 @@ class RestoreIntentV1Test < Minitest::Test
   def test_skip_links_declines_reprojection_with_a_loud_staleness_warning
     a_dir, a_id = seed_124_131_shape
 
-    out, status = Open3.capture2e(
-      RbConfig.ruby, RESTORE, a_id, "--at", AT_LABEL, "--plastic-home", @home, "--snapshot-dir", @snapshot_dir,
-      "--apply", "--skip-links"
+    out, status = run_restore_cli(
+      [a_id, "--at", AT_LABEL, "--plastic-home", @home, "--snapshot-dir", @snapshot_dir, "--apply", "--skip-links"]
     )
     assert_equal 0, status.exitstatus, "restore should succeed: #{out}"
     assert_includes out.downcase, "stale", "declining reprojection must print a loud staleness warning"
