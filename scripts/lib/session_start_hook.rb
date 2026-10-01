@@ -6,9 +6,11 @@ require "date"
 require "yaml"
 require "fileutils"
 require "timeout"
+require "open3"
 require_relative "boot_banner"
 require_relative "doctor_core"
 require_relative "session_ledger"
+require_relative "session_backfill"
 require_relative "day_summary"
 require_relative "active_delivery"
 require_relative "runner_core"
@@ -57,12 +59,14 @@ module SessionStartHook
   module CoreBanner
     def self.render(plastic_home:, plugin_root:)
       version = current_version(plastic_home, plugin_root)
-      health = begin
-        Doctor.new(plastic_home: plastic_home).run_core_checks("claude")
-      rescue
-        nil
-      end
+      health = core_health(plastic_home)
       [BootBanner.render(health: health, version: version), version]
+    end
+
+    def self.core_health(plastic_home)
+      Doctor.new(plastic_home: plastic_home).run_core_checks("claude")
+    rescue
+      nil
     end
 
     def self.current_version(plastic_home, plugin_root)
@@ -77,39 +81,63 @@ module SessionStartHook
       plugin_json_path = "#{plugin_root}/.claude-plugin/plugin.json"
       return nil unless File.exist?(plugin_json_path)
 
-      parsed = begin
-        JSON.parse(File.read(plugin_json_path))
-      rescue
-        {}
-      end
+      parsed = safe_json(plugin_json_path)
       parsed["version"]
+    end
+
+    def self.safe_json(path)
+      JSON.parse(File.read(path))
+    rescue
+      {}
     end
   end
 
   # One `## Active` / `## Future` section parse, shared by the global
   # INDEX.md and a project's own INDEX.md.
   module IndexFile
+    HEADER_SECTIONS = { "## Active" => :active, "## Future" => :future }.freeze
+
     def self.parse(path)
-      active = []
-      future = []
-      section = nil
-
-      File.readlines(path).each do |line|
-        section = section_for(line, section)
-        next unless section.is_a?(Symbol) && line.strip.start_with?("- [")
-
-        active << line.strip if section == :active
-        future << line.strip if section == :future
-      end
-      [active, future]
+      sections = { active: [], future: [] }
+      scan(path, sections)
+      [sections[:active], sections[:future]]
     end
 
-    def self.section_for(line, current)
-      case line
-      when /\A## Active/ then :active
-      when /\A## Future/ then :future
-      when /\A## / then nil
-      else current
+    def self.scan(path, sections)
+      cursor = Cursor.new(nil)
+      File.readlines(path).each do |line|
+        cursor.advance(line)
+        accumulate(sections, cursor.section, line)
+      end
+    end
+
+    def self.accumulate(sections, section, line)
+      return unless section.is_a?(Symbol)
+
+      stripped = line.strip
+      return unless stripped.start_with?("- [")
+
+      sections[section] << stripped if sections.key?(section)
+    end
+
+    def self.section_for(line)
+      HEADER_SECTIONS.find { |prefix, _| line.start_with?(prefix) }&.last
+    end
+
+    # Tracks which `##` section a line stream is currently inside, so the
+    # same running state never needs to come back as a parameter the next
+    # line's classification branches on.
+    class Cursor
+      attr_reader :section
+
+      def initialize(section)
+        @section = section
+      end
+
+      def advance(line)
+        return unless line.start_with?("## ")
+
+        @section = IndexFile.section_for(line)
       end
     end
   end
@@ -118,6 +146,9 @@ module SessionStartHook
   # that project's own active/future lines (intent 231: home and the store
   # are two different paths).
   module CurrentProject
+    # A projects.yml entry whose path matched the current working directory.
+    Match = Struct.new(:slug, :info, :project_path)
+
     def self.detect(plastic_home)
       projects_path = "#{plastic_home}/projects.yml"
       return nil unless File.exist?(projects_path)
@@ -132,20 +163,24 @@ module SessionStartHook
     end
 
     def self.find_current(plastic_home, projects)
-      cwd = Dir.pwd
-      (projects["projects"] || {}).each_pair do |slug, info|
-        project_path = File.expand_path(info["path"])
-        next unless cwd.start_with?(project_path)
+      match = match_for(projects["projects"] || {}, Dir.pwd)
+      match ? build(plastic_home, match) : nil
+    end
 
-        return build(plastic_home, slug, info, project_path)
+    def self.match_for(projects, cwd)
+      projects.each_pair do |slug, info|
+        project_path = File.expand_path(info["path"])
+        return Match.new(slug: slug, info: info, project_path: project_path) if cwd.start_with?(project_path)
       end
       nil
     end
 
-    def self.build(plastic_home, slug, info, project_path)
+    def self.build(plastic_home, match)
+      slug = match.slug
       project_index = File.join(Plastic::StoreLayout.project_root(plastic_home, slug), "INDEX.md")
       active, future = File.exist?(project_index) ? IndexFile.parse(project_index) : [[], []]
-      { "slug" => slug, "parent" => info["parent"], "path" => project_path, "active" => active, "future" => future }
+      { "slug" => slug, "parent" => match.info["parent"], "path" => match.project_path,
+        "active" => active, "future" => future }
     end
   end
 
@@ -179,23 +214,32 @@ module SessionStartHook
   # already behind the installed one has nothing left to warn about. Only a
   # critical notice outlives its own removal.
   module DeprecationNotice
+    # What a deprecation is checked against: the installed version, the
+    # current release string, and the ids the owner already dismissed.
+    Check = Struct.new(:installed, :current_version, :dismissed)
+
     def self.active(plastic_home:, plugin_root:, current_version:)
       deprecations = load(plastic_home, plugin_root)
-      dismissed = read_dismissed
-      installed = VersionNumber.parse(current_version)
-      deprecations.select { |dep| live?(dep, installed, current_version, dismissed) }
+      check = Check.new(installed: VersionNumber.parse(current_version), current_version: current_version,
+        dismissed: read_dismissed)
+      deprecations.select { |dep| live?(dep, check) }
     end
 
     def self.load(plastic_home, plugin_root)
-      dep_file = (plugin_root && !plugin_root.empty?) ? "#{plugin_root}/deprecations.yml" : "#{plastic_home}/deprecations.yml"
+      dep_file = deprecations_path(plastic_home, plugin_root)
       return [] unless File.exist?(dep_file)
 
-      data = begin
-        YAML.safe_load_file(dep_file)
-      rescue
-        {}
-      end
-      data["deprecations"] || []
+      safe_load_yaml(dep_file)["deprecations"] || []
+    end
+
+    def self.deprecations_path(plastic_home, plugin_root)
+      (plugin_root && !plugin_root.empty?) ? "#{plugin_root}/deprecations.yml" : "#{plastic_home}/deprecations.yml"
+    end
+
+    def self.safe_load_yaml(path)
+      YAML.safe_load_file(path)
+    rescue
+      {}
     end
 
     def self.read_dismissed
@@ -204,14 +248,23 @@ module SessionStartHook
       []
     end
 
-    def self.live?(dep, installed, current_version, dismissed)
+    def self.live?(dep, check)
       return true if dep["severity"] == "critical"
+      return false if removed_before_install?(dep, check)
+      return true if removed_at_current?(dep, check)
 
+      !check.dismissed.include?(dep["id"])
+    end
+
+    def self.removed_before_install?(dep, check)
+      installed = check.installed
       removal = VersionNumber.parse(dep["removal"])
-      return false if installed && removal && removal < installed
-      return true if current_version && dep["removal"] == current_version
+      installed && removal && removal < installed
+    end
 
-      !dismissed.include?(dep["id"])
+    def self.removed_at_current?(dep, check)
+      current = check.current_version
+      current && dep["removal"] == current
     end
 
     def self.lines(deprecations)
@@ -222,47 +275,54 @@ module SessionStartHook
 
     def self.lines_for(dep)
       severity = dep["severity"] || "info"
-      summary = dep["summary"] || dep["id"]
-      removal = dep["removal"]
+      (severity == "info") ? info_line(dep) : warning_lines(dep)
+    end
+
+    def self.info_line(dep)
       link = dep["link"]
-      return info_line(summary, removal, link) if severity == "info"
-
-      warning_lines(severity, summary, removal, link, dep["migration_steps"] || [])
+      line = "i Deprecation: #{dep["summary"] || dep["id"]}. Removed in: #{dep["removal"]}."
+      [link ? "#{line} See: #{link}" : line]
     end
 
-    def self.info_line(summary, removal, link)
-      line = "i Deprecation: #{summary}. Removed in: #{removal}."
-      line += " See: #{link}" if link
-      [line]
+    def self.warning_lines(dep)
+      [warning_marker(dep), *migration_lines(dep), removal_trail(dep)]
     end
 
-    def self.warning_lines(severity, summary, removal, link, steps)
-      marker = (severity == "critical") ? "!! DEPRECATION (critical)" : "! DEPRECATION (warning)"
-      lines = ["#{marker}: #{summary}"]
-      if steps.any?
-        lines << "  Migration steps:"
-        steps.each_with_index { |s, i| lines << "  #{i + 1}. #{s}" }
-      end
-      trail = "  Removed in: #{removal}"
-      trail += " | Details: #{link}" if link
-      lines << trail
+    def self.warning_marker(dep)
+      marker = (dep["severity"] == "critical") ? "!! DEPRECATION (critical)" : "! DEPRECATION (warning)"
+      "#{marker}: #{dep["summary"] || dep["id"]}"
+    end
+
+    def self.migration_lines(dep)
+      steps = dep["migration_steps"] || []
+      return [] if steps.empty?
+
+      ["  Migration steps:"] + steps.each_with_index.map { |step, position| "  #{position + 1}. #{step}" }
+    end
+
+    def self.removal_trail(dep)
+      link = dep["link"]
+      trail = "  Removed in: #{dep["removal"]}"
+      link ? "#{trail} | Details: #{link}" : trail
     end
   end
 
   # Whether a previous session's update check left a notice to show.
   module UpdateNotice
     def self.read(plastic_home)
-      cache_file = "#{plastic_home}/.cache/update-check.json"
-      return nil unless File.exist?(cache_file)
-
-      cache = begin
-        JSON.parse(File.read(cache_file))
-      rescue
-        {}
-      end
+      cache = load_cache(plastic_home)
       return nil unless cache["updateAvailable"]
 
       "Plastic update available: #{cache["current"]} -> #{cache["latest"]} — run `plastic update`"
+    end
+
+    def self.load_cache(plastic_home)
+      cache_file = "#{plastic_home}/.cache/update-check.json"
+      return {} unless File.exist?(cache_file)
+
+      JSON.parse(File.read(cache_file))
+    rescue
+      {}
     end
   end
 
@@ -279,23 +339,41 @@ module SessionStartHook
     end
 
     def self.build_line(plastic_home, store_dir)
-      roots = ReadConfig.resolve("project_roots", plastic_home: plastic_home)
-      project_roots = Array(roots).map { |root| File.expand_path(root.to_s) }
-
-      attention = ActiveDelivery.candidate_intent_dirs(global_store: store_dir, project_roots: project_roots)
-        .uniq.filter_map { |dir| line_for(dir) }
+      attention = candidates(store_dir, resolve_project_roots(plastic_home))
       attention.any? ? "PLASTIC watch: #{attention.join(", ")}" : nil
+    end
+
+    def self.resolve_project_roots(plastic_home)
+      roots = ReadConfig.resolve("project_roots", ReadConfig::Options.new(plastic_home: plastic_home))
+      Array(roots).map { |root| File.expand_path(root.to_s) }
+    end
+
+    def self.candidates(store_dir, project_roots)
+      ActiveDelivery.candidate_intent_dirs(global_store: store_dir, project_roots: project_roots)
+        .uniq.filter_map { |dir| line_for(dir) }
     end
 
     def self.line_for(dir)
       result = RunnerWatch.tick(RunnerCore.context(intent_dir: dir), record: false)
-      return unless %w[stalled done_unreported].include?(result[:class])
+      state = result[:class]
+      return unless %w[stalled done_unreported].include?(state)
 
-      watch_intent_id = File.basename(dir).split("--").first
-      return "#{watch_intent_id} done_unreported" unless result[:class] == "stalled"
+      describe_attention(dir, state, result)
+    end
 
+    ATTENTION_LINES = {
+      "stalled" => ->(intent_id, result) { stalled_line(intent_id, result) },
+      "done_unreported" => ->(intent_id, _result) { "#{intent_id} done_unreported" }
+    }.freeze
+
+    def self.describe_attention(dir, state, result)
+      intent_id = File.basename(dir).split("--").first
+      ATTENTION_LINES.fetch(state).call(intent_id, result)
+    end
+
+    def self.stalled_line(intent_id, result)
       blocker = Array(result[:blockers]).first
-      blocker ? "#{watch_intent_id} stalled (#{blocker})" : "#{watch_intent_id} stalled"
+      blocker ? "#{intent_id} stalled (#{blocker})" : "#{intent_id} stalled"
     end
   end
 
@@ -303,59 +381,65 @@ module SessionStartHook
   # per boot within a 5-second budget (intent 301, spec D9). Each day runs
   # the sibling file-session-intent in its own rescue; the boot never blocks.
   module FirstBootSweep
-    def self.line(store_dir:)
-      require "open3"
-      require_relative "session_backfill"
+    # One sweep run's fixed inputs: the sibling script to shell out to, the
+    # templates it needs, and where/when it is filing a prior day into.
+    Job = Struct.new(:filer, :templates, :store_dir, :today)
 
+    def self.line(store_dir:)
       today = SessionLedger.day_id
       filed, candidates = run_candidates(store_dir, today)
       return nil unless filed.positive?
 
-      line = "PLASTIC: filed #{filed} prior day ledger(s) into #{today}"
-      remaining = candidates.size - filed
-      remaining.positive? ? "#{line}, #{remaining} more wait for the next boot" : line
+      describe(filed, candidates, today)
     rescue
       nil
     end
 
+    def self.describe(filed, candidates, today)
+      line = "PLASTIC: filed #{filed} prior day ledger(s) into #{today}"
+      remaining = candidates.size - filed
+      remaining.positive? ? "#{line}, #{remaining} more wait for the next boot" : line
+    end
+
     def self.run_candidates(store_dir, today)
-      filer = File.expand_path("../file-session-intent", __dir__)
-      templates = File.expand_path("../../templates", __dir__)
-      candidates = sweepable_days(store_dir, today, filer)
-      filed = sweep_up_to_three(candidates, filer, templates, store_dir, today)
-      [filed, candidates]
+      job = Job.new(filer: File.expand_path("../file-session-intent", __dir__),
+        templates: File.expand_path("../../templates", __dir__), store_dir: store_dir, today: today)
+      candidates = sweepable_days(job)
+      [sweep_up_to_three(candidates, job), candidates]
     end
 
-    def self.sweepable_days(store_dir, today, filer)
-      sweep_root = SessionLedger.sessions_root(store_dir)
-      return [] unless Dir.exist?(sweep_root) && File.exist?(filer)
+    def self.sweepable_days(job)
+      sweep_root = SessionLedger.sessions_root(job.store_dir)
+      return [] unless Dir.exist?(sweep_root) && File.exist?(job.filer)
 
-      Dir.children(sweep_root).select do |name|
-        File.directory?(File.join(sweep_root, name)) && SessionLedger.valid_day_id?(name) &&
-          name < today && !SessionBackfill.closed?(store_dir, name)
-      end.sort
+      Dir.children(sweep_root).select { |name| sweepable_day?(sweep_root, name, job) }.sort
     end
 
-    def self.sweep_up_to_three(candidates, filer, templates, store_dir, today)
-      filed = 0
+    def self.sweepable_day?(sweep_root, name, job)
+      File.directory?(File.join(sweep_root, name)) && SessionLedger.valid_day_id?(name) &&
+        name < job.today && !SessionBackfill.closed?(job.store_dir, name)
+    end
+
+    def self.sweep_up_to_three(candidates, job)
       budget_end = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 5
-      candidates.first(3).each do |day|
-        break if Process.clock_gettime(Process::CLOCK_MONOTONIC) > budget_end
-
-        filed += 1 if sweep_one_day(filer, templates, store_dir, today, day)
-      end
-      filed
+      candidates.first(3).count { |day| within_budget?(budget_end) && sweep_one_day(job, day) }
     end
 
-    def self.sweep_one_day(filer, templates, store_dir, today, day)
-      Timeout.timeout(5) do
-        _out, _err, status = Open3.capture3({ "RUBYOPT" => nil }, RbConfig.ruby, filer,
-          "--day", day, "--carry-to", today,
-          "--store", store_dir, "--templates", templates)
-        status.success? && SessionBackfill.closed?(store_dir, day)
-      end
+    def self.within_budget?(budget_end)
+      Process.clock_gettime(Process::CLOCK_MONOTONIC) <= budget_end
+    end
+
+    def self.sweep_one_day(job, day)
+      Timeout.timeout(5) { run_filer(job, day) }
     rescue
       false
+    end
+
+    def self.run_filer(job, day)
+      store_dir = job.store_dir
+      _out, _err, status = Open3.capture3({ "RUBYOPT" => nil }, RbConfig.ruby, job.filer,
+        "--day", day, "--carry-to", job.today, "--store", store_dir, "--templates", job.templates)
+      status.success? && SessionBackfill.closed?(store_dir, day)
     end
   end
 
@@ -363,17 +447,24 @@ module SessionStartHook
   # heartbeat, and append the joined-count line plus the day summary (344 n2,
   # spec D4). Best-effort: any failure here degrades to no ledger line.
   module DayLedger
-    def self.lines(plastic_home:, store_dir:, env:, payload_session_id:)
-      day = SessionLedger.day_id
-      open_today(store_dir, day)
+    # What a day-ledger line needs from the boot: where the store and home
+    # are, the process environment, and the session id the payload carried.
+    Inputs = Struct.new(:plastic_home, :store_dir, :env, :payload_session_id)
 
-      sid = open_tmp_and_heartbeat(store_dir, env, payload_session_id)
-      lines = [joined_line(store_dir, day)]
-      summary = build_summary(store_dir, day, sid, plastic_home)
-      lines << summary unless summary.empty?
-      lines
+    def self.lines(inputs)
+      day = SessionLedger.day_id
+      open_today(inputs.store_dir, day)
+      sid = open_tmp_and_heartbeat(inputs)
+      build_lines(inputs, day, sid)
     rescue
       []
+    end
+
+    def self.build_lines(inputs, day, sid)
+      lines = [joined_line(inputs.store_dir, day)]
+      summary = build_summary(inputs, day, sid)
+      lines << summary unless summary.empty?
+      lines
     end
 
     # ReadConfig.resolve defaults to ENV["PLASTIC_HOME"], the real global
@@ -387,13 +478,27 @@ module SessionStartHook
       SessionLedger.open_day(store: store_dir, day: day, templates: templates, author: author)
     end
 
-    def self.open_tmp_and_heartbeat(store_dir, env, payload_session_id)
-      session = payload_session_id.empty? ? (env["CLAUDE_CODE_SESSION_ID"] || Process.pid.to_s) : payload_session_id
-      sid = SessionLedger.short_session_id(nil, session)
+    def self.open_tmp_and_heartbeat(inputs)
+      store_dir = inputs.store_dir
+      sid = resolve_session_id(inputs)
+      prepare_tmp_dir(store_dir, sid)
+      sid
+    end
+
+    def self.prepare_tmp_dir(store_dir, sid)
       SessionLedger.ensure_tmp_root(store_dir)
       FileUtils.mkdir_p(SessionLedger.session_tmp_dir(store_dir, sid))
+      write_heartbeat(store_dir, sid)
+    end
+
+    def self.resolve_session_id(inputs)
+      payload_session_id = inputs.payload_session_id
+      session = payload_session_id.empty? ? (inputs.env["CLAUDE_CODE_SESSION_ID"] || Process.pid.to_s) : payload_session_id
+      SessionLedger.short_session_id(nil, session)
+    end
+
+    def self.write_heartbeat(store_dir, sid)
       File.write(SessionLedger.heartbeat_path(store_dir, sid), "#{Time.now.utc.iso8601}\n")
-      sid
     end
 
     def self.joined_line(store_dir, day)
@@ -405,12 +510,19 @@ module SessionStartHook
       checklist = SessionLedger.checklist_path(store_dir, day)
       return [0, 0] unless File.exist?(checklist)
 
-      parsed = File.readlines(checklist).filter_map { |line| SessionLedger.parse_checklist_line(line) }
-      [parsed.count { |p| p[:state] == :open }, parsed.count { |p| p[:state] == :pending }]
+      tally = state_tally(checklist)
+      [tally[:open] || 0, tally[:pending] || 0]
     end
 
-    def self.build_summary(store_dir, day, sid, plastic_home)
-      DaySummary.build(store: store_dir, day: day, session: sid, home: plastic_home, now: Time.now)
+    def self.state_tally(checklist)
+      File.readlines(checklist)
+        .filter_map { |line| SessionLedger.parse_checklist_line(line) }
+        .map { |entry| entry[:state] }
+        .tally
+    end
+
+    def self.build_summary(inputs, day, sid)
+      DaySummary.build(store: inputs.store_dir, day: day, session: sid, home: inputs.plastic_home, now: Time.now)
     rescue
       ""
     end
@@ -439,74 +551,95 @@ module SessionStartHook
 
   # One session-start boot: argument parsing and the fixed order the original
   # top-level script ran its sections in. Every section above is a
-  # self-contained collaborator this class only sequences.
+  # self-contained collaborator this class only sequences. `@request` holds
+  # what the hook was invoked with; `@state` holds what boot resolved from it
+  # (the session id, whether this is a subagent, the store, the banner) -
+  # two ivars stand in for what used to be eleven.
   class Boot
+    # What the hook was invoked with: argv, the process environment, and stdin.
+    Request = Struct.new(:index_path, :plastic_home, :mode, :plugin_root, :env, :stdin)
+    # What this boot resolved from the request: the store, the session id,
+    # whether it is a subagent boot, and the already-rendered core banner.
+    State = Struct.new(:store_dir, :payload_session_id, :subagent_session, :core_banner, :current_version)
+
     def initialize(argv:, env:, stdin:)
-      @index_path, @plastic_home, @mode, @plugin_root = argv
-      @env = env
-      @stdin = stdin
+      index_path, plastic_home, mode, plugin_root = argv
+      @request = Request.new(index_path: index_path, plastic_home: plastic_home, mode: mode,
+        plugin_root: plugin_root, env: env, stdin: stdin)
+      @state = nil
     end
 
     def run
-      return exit(0) unless @index_path && @plastic_home && @mode
+      return exit(0) unless @request.index_path && @request.plastic_home && @request.mode
 
-      @payload_session_id, @subagent_session = StdinPayload.read(@stdin)
-      @store_dir = Plastic::StoreLayout.global_store(@plastic_home)
-      @core_banner, @current_version = CoreBanner.render(plastic_home: @plastic_home, plugin_root: @plugin_root)
-      parts = [@core_banner, ""]
-      Emit.call(build_context(parts), @core_banner)
+      @state = resolve_state
+      core_banner = @state.core_banner
+      Emit.call(build_context([core_banner, ""]), core_banner)
     end
 
     private
 
+    def resolve_state
+      plastic_home = @request.plastic_home
+      payload_session_id, subagent_session = StdinPayload.read(@request.stdin)
+      core_banner, current_version = CoreBanner.render(plastic_home: plastic_home, plugin_root: @request.plugin_root)
+      State.new(store_dir: Plastic::StoreLayout.global_store(plastic_home),
+        payload_session_id: payload_session_id, subagent_session: subagent_session,
+        core_banner: core_banner, current_version: current_version)
+    end
+
     # intent 341, G8: everything past the core banner is best-effort, wrapped
     # in one rescue so any exception anywhere in this assembly degrades the
-    # whole boot to the core banner alone, never a naked crash.
+    # whole boot to the core banner alone, never a naked crash. intent 355,
+    # D9: a subagent boot carries the core banner only, so it never even
+    # enters this assembly.
     def build_context(parts)
+      return parts if @state.subagent_session
+
+      append_sections(parts)
+      parts
+    rescue
+      [@state.core_banner, ""]
+    end
+
+    def append_sections(parts)
       append_banner_and_watch(parts)
       append_deprecations_and_update(parts)
       append_sweep_and_ledger(parts)
-      parts
-    rescue
-      [@core_banner, ""]
     end
 
     def append_banner_and_watch(parts)
-      active, _ = IndexFile.parse(@index_path)
-      plastic_md = File.exist?("#{@plastic_home}/PLASTIC.md")
       append_watch(parts)
-      append_banner(parts, plastic_md, CurrentProject.detect(@plastic_home), active)
+      plastic_home = @request.plastic_home
+      return unless File.exist?("#{plastic_home}/PLASTIC.md")
+
+      active, _ = IndexFile.parse(@request.index_path)
+      parts << ProjectBanner.render(plastic_home: plastic_home, project: CurrentProject.detect(plastic_home),
+        global_active: active)
     end
 
     def append_deprecations_and_update(parts)
-      deprecations = DeprecationNotice.active(plastic_home: @plastic_home, plugin_root: @plugin_root,
-        current_version: @current_version)
-      parts.concat(DeprecationNotice.lines(deprecations)) unless @subagent_session
+      plastic_home = @request.plastic_home
+      deprecations = DeprecationNotice.active(plastic_home: plastic_home, plugin_root: @request.plugin_root,
+        current_version: @state.current_version)
+      parts.concat(DeprecationNotice.lines(deprecations))
 
-      update_notice = UpdateNotice.read(@plastic_home)
-      parts.unshift("! #{update_notice}\n") if update_notice && !@subagent_session
+      update_notice = UpdateNotice.read(plastic_home)
+      parts.unshift("! #{update_notice}\n") if update_notice
     end
 
     def append_watch(parts)
-      return if @subagent_session
-
-      line = DeliveryWatch.line(plastic_home: @plastic_home, store_dir: @store_dir)
+      line = DeliveryWatch.line(plastic_home: @request.plastic_home, store_dir: @state.store_dir)
       parts << line if line
     end
 
-    def append_banner(parts, plastic_md, project, active)
-      return unless plastic_md && !@subagent_session
-
-      parts << ProjectBanner.render(plastic_home: @plastic_home, project: project, global_active: active)
-    end
-
     def append_sweep_and_ledger(parts)
-      return if @subagent_session
-
-      sweep_line = FirstBootSweep.line(store_dir: @store_dir)
+      store_dir = @state.store_dir
+      sweep_line = FirstBootSweep.line(store_dir: store_dir)
       parts << sweep_line if sweep_line
-      parts.concat(DayLedger.lines(plastic_home: @plastic_home, store_dir: @store_dir,
-        env: @env, payload_session_id: @payload_session_id))
+      inputs = DayLedger::Inputs.new(plastic_home: @request.plastic_home, store_dir: store_dir,
+        env: @request.env, payload_session_id: @state.payload_session_id)
+      parts.concat(DayLedger.lines(inputs))
     end
   end
 end

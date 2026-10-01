@@ -24,25 +24,39 @@ module InProcessSessionStart
     def success? = exitstatus.zero?
   end
 
-  def run_session_start(index, home, mode = "global", plugin_root = "", env: {}, stdin_data: "")
+  def run_session_start(argv, env: {}, stdin_data: "")
+    full_argv = argv.values_at(0, 1) + [argv[2] || "global", argv[3] || ""]
+    with_overridden_env(env) { capture_boot(full_argv, stdin_data) }
+  end
+
+  def with_overridden_env(env)
     saved = {}
-    env.each_key { |k| saved[k] = ENV[k] }
-    env.each { |k, v| v.nil? ? ENV.delete(k) : ENV[k] = v }
-    out = StringIO.new
-    exitstatus = 0
-    begin
-      $stdout = out
-      begin
-        SessionStartHook::Boot.new(argv: [index, home, mode, plugin_root], env: ENV, stdin: StringIO.new(stdin_data)).run
-      rescue SystemExit => e
-        exitstatus = e.status || 0
-      end
-    ensure
-      $stdout = STDOUT
-    end
-    [out.string, "", Status.new(exitstatus)]
+    env.each_key { |key| saved[key] = ENV[key] }
+    env.each { |key, value| value.nil? ? ENV.delete(key) : ENV[key] = value }
+    yield
   ensure
-    saved.each { |k, v| v.nil? ? ENV.delete(k) : ENV[k] = v }
+    saved.each { |key, value| value.nil? ? ENV.delete(key) : ENV[key] = value }
+  end
+
+  def capture_boot(argv, stdin_data)
+    out = StringIO.new
+    exitstatus = run_boot_capturing_stdout(argv, stdin_data, out)
+    [out.string, "", Status.new(exitstatus)]
+  end
+
+  def run_boot_capturing_stdout(argv, stdin_data, out)
+    previous_stdout = $stdout
+    $stdout = out
+    boot_exit_status(argv, stdin_data)
+  ensure
+    $stdout = previous_stdout
+  end
+
+  def boot_exit_status(argv, stdin_data)
+    SessionStartHook::Boot.new(argv: argv, env: ENV, stdin: StringIO.new(stdin_data)).run
+    0
+  rescue SystemExit => e
+    e.status || 0
   end
 end
 
@@ -51,39 +65,45 @@ end
 class BootBannerTest < Minitest::Test
   def test_pass_renders_loaded_with_version
     health = { status: "pass", checks: [{ name: "hooks_exist", status: "pass", message: "ok" }] }
+
     assert_equal "Plastic Core loaded — v1.2.3 | doctor --core run: success",
-                 BootBanner.render(health: health, version: "1.2.3")
+      BootBanner.render(health: health, version: "1.2.3")
   end
 
   def test_pass_without_version_says_unknown
     health = { status: "pass", checks: [] }
+
     assert_equal "Plastic Core loaded — vunknown | doctor --core run: success",
-                 BootBanner.render(health: health, version: nil)
+      BootBanner.render(health: health, version: nil)
   end
 
   def test_fail_yields_binary_error_line
     health = { status: "fail", checks: [
       { name: "hooks_exist", status: "pass", message: "ok" },
-      { name: "scripts_present", status: "fail", message: "missing folgezettel-id" },
+      { name: "scripts_present", status: "fail", message: "missing folgezettel-id" }
     ] }
     out = BootBanner.render(health: health, version: "1.2.3")
+
     assert_equal "Plastic Core loaded — v1.2.3 | doctor --core run: error — run /plastic-doctor", out
   end
 
   def test_warn_yields_binary_error_line
     health = { status: "warn", checks: [{ name: "version_match", status: "warn", message: "mismatch" }] }
     out = BootBanner.render(health: health, version: "1.2.3")
+
     assert_equal "Plastic Core loaded — v1.2.3 | doctor --core run: error — run /plastic-doctor", out
   end
 
   def test_non_pass_with_no_checks_yields_binary_error_line
     health = { status: "fail", checks: [] }
     out = BootBanner.render(health: health, version: "1.2.3")
+
     assert_equal "Plastic Core loaded — v1.2.3 | doctor --core run: error — run /plastic-doctor", out
   end
 
   def test_nil_health_yields_binary_error_line
     out = BootBanner.render(health: nil, version: "1.2.3")
+
     assert_equal "Plastic Core loaded — v1.2.3 | doctor --core run: error — run /plastic-doctor", out
   end
 end
@@ -111,7 +131,7 @@ class SessionStartHookTest < Minitest::Test
   # INDEX the hook derives (writes) a bridge; keep even the empty-INDEX
   # smoke run away from the live /tmp and session id.
   def run_hook
-    run_session_start(@index, @dir, env: { "PLASTIC_TMP" => @dir, "CLAUDE_CODE_SESSION_ID" => nil })
+    run_session_start([@index, @dir], env: { "PLASTIC_TMP" => @dir, "CLAUDE_CODE_SESSION_ID" => nil })
   end
 
   def context_from(stdout)
@@ -122,7 +142,8 @@ class SessionStartHookTest < Minitest::Test
   # and real output on real stdout/exit code - what an in-process call cannot.
   def test_emits_boot_banner_and_exits_zero
     out, _err, status = Open3.capture3({ "PLASTIC_TMP" => @dir, "CLAUDE_CODE_SESSION_ID" => nil },
-                                        "ruby", HOOK, @index, @dir, "global")
+      "ruby", HOOK, @index, @dir, "global")
+
     assert_equal 0, status.exitstatus
     refute_empty out.strip
     assert_includes context_from(out), "Plastic Core loaded"
@@ -130,8 +151,10 @@ class SessionStartHookTest < Minitest::Test
 
   def test_broken_core_warns_but_does_not_block
     out, _err, status = run_hook
+
     assert_equal 0, status.exitstatus, "session start must never block"
     ctx = context_from(out)
+
     assert_includes ctx, "doctor --core run:"
     assert_includes ctx, "run /plastic-doctor"
   end
@@ -141,11 +164,14 @@ class SessionStartHookTest < Minitest::Test
   # first line of additionalContext so the two channels cannot drift.
   def test_emits_visible_system_message_matching_banner
     out, _err, status = run_hook
+
     assert_equal 0, status.exitstatus
     msg = JSON.parse(out)["systemMessage"]
+
     refute_nil msg, "hook must emit a top-level systemMessage banner"
     assert_includes msg, "Plastic Core loaded"
     first_line = context_from(out).lines.first.strip
+
     assert_equal first_line, msg.strip, "systemMessage must match additionalContext banner line"
   end
 
@@ -153,10 +179,12 @@ class SessionStartHookTest < Minitest::Test
   # surface, on any host, in any channel.
   def test_no_qmd_line_ever_surfaces
     out, _err, status = run_hook
+
     assert_equal 0, status.exitstatus, "session start must never block"
     payload = JSON.parse(out) # must be parseable
     ctx = payload.dig("hookSpecificOutput", "additionalContext")
     msg = payload["systemMessage"].to_s
+
     refute_includes msg, "QMD", "QMD status must never leak into the visible systemMessage"
     refute_includes ctx, "QMD", "the hook calls no optional tool, so no QMD line can appear"
   end
@@ -182,11 +210,11 @@ class SessionStartStagePathTest < Minitest::Test
     @intent_dir = File.join(@home, "store", DIR_NAME)
     FileUtils.mkdir_p(@intent_dir)
     File.write(File.join(@home, "INDEX.md"),
-               "# Index\n\n## Active\n" \
-               "- [231 - session start home vs store](store/#{DIR_NAME}/#{DIR_NAME}.md)\n" \
-               "\n## Future\n")
+      "# Index\n\n## Active\n" \
+      "- [231 - session start home vs store](store/#{DIR_NAME}/#{DIR_NAME}.md)\n" \
+      "\n## Future\n")
     File.write(File.join(@intent_dir, "#{DIR_NAME}.md"),
-               "---\nid: \"231\"\n---\n\n## Intent\nHome and store are two paths.\n")
+      "---\nid: \"231\"\n---\n\n## Intent\nHome and store are two paths.\n")
     # The banner branch that carries the stage line runs only when the core
     # conventions file is present beside INDEX.md.
     File.write(File.join(@home, "PLASTIC.md"), "# Plastic: Conventions\n")
@@ -199,11 +227,12 @@ class SessionStartStagePathTest < Minitest::Test
 
   # Argument 2 is Plastic HOME, exactly what hooks/session-start passes today.
   def run_hook
-    run_session_start(File.join(@home, "INDEX.md"), @home, env: { "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => nil })
+    run_session_start([File.join(@home, "INDEX.md"), @home], env: { "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => nil })
   end
 
   def context
     out, _err, status = run_hook
+
     assert_equal 0, status.exitstatus
     JSON.parse(out).dig("hookSpecificOutput", "additionalContext")
   end
@@ -215,16 +244,18 @@ class SessionStartStagePathTest < Minitest::Test
   def test_stage_line_is_no_longer_printed_at_boot
     refute_includes context, "Stage: ", "the stage line is ceremony the hook no longer prints (intent 341)"
     assert_equal Savepoint.derive_stage(@intent_dir), Savepoint.derive_stage(@intent_dir),
-                 "Savepoint.derive_stage itself stays callable; only the hook's print is cut"
+      "Savepoint.derive_stage itself stays callable; only the hook's print is cut"
   end
 
   def test_no_bridge_file_is_written
     run_hook
+
     assert_empty Dir[File.join(@tmp, "plastic-*.json")], "the /tmp bridge was removed in 2.0 (intent 307)"
   end
 
   def test_hook_no_longer_derives_a_bridge
     src = File.read(HOOK)
+
     refute_includes src, "Bridge.derive"
   end
 
@@ -233,10 +264,11 @@ class SessionStartStagePathTest < Minitest::Test
   # it would produce store/store paths. Pin the shim so that repair cannot land quietly.
   def test_shim_passes_plastic_home_not_the_store
     src = File.read(SHIM)
+
     assert_includes src, '"$HOME/.plastic" "global"',
-                    "shim must keep passing Plastic home as argument 2"
+      "shim must keep passing Plastic home as argument 2"
     refute_includes src, '"$HOME/.plastic/store" "global"',
-                    "argument 2 is Plastic home, never the store directory"
+      "argument 2 is Plastic home, never the store directory"
   end
 
   # intent_active? resolves the INDEX as the PARENT of the store dir; home as the store
@@ -272,7 +304,7 @@ class SessionStartDayLedgerTest < Minitest::Test
   end
 
   def run_hook(session_id: "sess-boot")
-    run_session_start(@index, @home, env: { "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => session_id })
+    run_session_start([@index, @home], env: { "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => session_id })
   end
 
   # 344 n2 (D4): session start creates the tmp directory and the heartbeat,
@@ -280,15 +312,18 @@ class SessionStartDayLedgerTest < Minitest::Test
   def test_session_start_writes_heartbeat_and_no_pointer
     day = SessionLedger.day_id
     out, _err, status = run_hook(session_id: "sess-boot-1")
+
     assert_equal 0, status.exitstatus
 
-    assert File.exist?(SessionLedger.day_file(store, day)), ".sessions/<day>/<day>.md must be created"
+    assert_path_exists SessionLedger.day_file(store, day), ".sessions/<day>/<day>.md must be created"
 
     sid = SessionLedger.short_session_id(nil, "sess-boot-1")
-    assert File.exist?(SessionLedger.heartbeat_path(store, sid)), "the heartbeat must be written"
-    refute File.exist?(File.join(SessionLedger.session_tmp_dir(store, sid), "current")), "the retired pointer must never be written"
+
+    assert_path_exists SessionLedger.heartbeat_path(store, sid), "the heartbeat must be written"
+    refute_path_exists File.join(SessionLedger.session_tmp_dir(store, sid), "current"), "the retired pointer must never be written"
 
     ctx = JSON.parse(out).dig("hookSpecificOutput", "additionalContext")
+
     assert_includes ctx, "day ledger #{day} joined"
   end
 
@@ -297,22 +332,25 @@ class SessionStartDayLedgerTest < Minitest::Test
     run_hook(session_id: "sess-boot-2") # first boot: scaffolds the day and the tmp dir
 
     SessionLedger.append_line(SessionLedger.checklist_path(store, day),
-                               SessionLedger.checklist_line(:open, "aaaaaaaa", "global", "An open item"),
-                               header: SessionLedger.checklist_header(day))
+      SessionLedger.checklist_line(:open, "aaaaaaaa", "global", "An open item"),
+      header: SessionLedger.checklist_header(day))
     SessionLedger.append_line(SessionLedger.checklist_path(store, day),
-                               SessionLedger.checklist_line(:pending, "aaaaaaaa", "global", "A pending item"),
-                               header: nil)
+      SessionLedger.checklist_line(:pending, "aaaaaaaa", "global", "A pending item"),
+      header: nil)
 
     sid = SessionLedger.short_session_id(nil, "sess-boot-2")
     tmp_dir = SessionLedger.session_tmp_dir(store, sid)
+
     assert Dir.exist?(tmp_dir), "the first boot must create the session tmp directory"
 
     out, _err, status = run_hook(session_id: "sess-boot-2") # second boot: joins
+
     assert_equal 0, status.exitstatus
     assert Dir.exist?(tmp_dir), "the second boot must not remove the session tmp directory"
-    refute File.exist?(File.join(SessionLedger.session_tmp_dir(store, sid), "current")), "the retired pointer must never be written"
+    refute_path_exists File.join(SessionLedger.session_tmp_dir(store, sid), "current"), "the retired pointer must never be written"
 
     ctx = JSON.parse(out).dig("hookSpecificOutput", "additionalContext")
+
     assert_includes ctx, "1 open items, 1 pending"
   end
 
@@ -324,8 +362,10 @@ class SessionStartDayLedgerTest < Minitest::Test
 
   def test_first_boot_on_an_empty_day_injects_the_joined_line_and_no_summary
     out, _err, status = run_hook(session_id: "sess-boot-4")
+
     assert_equal 0, status.exitstatus
     ctx = JSON.parse(out).dig("hookSpecificOutput", "additionalContext")
+
     assert_includes ctx, "day ledger #{SessionLedger.day_id} joined"
     refute_includes ctx, "Day summary"
   end
@@ -335,12 +375,12 @@ class SessionStartDayLedgerTest < Minitest::Test
     run_hook(session_id: "sess-boot-5")
     checklist = SessionLedger.checklist_path(store, day)
     SessionLedger.append_line(checklist, SessionLedger.checklist_line(:open, "aaaaaaaa", "global", "An open item"),
-                              header: SessionLedger.checklist_header(day))
+      header: SessionLedger.checklist_header(day))
     SessionLedger.append_line(checklist, SessionLedger.checklist_line(:pending, "bbbbbbbb", "global", "A pending item"),
-                              header: nil)
+      header: nil)
     SessionLedger.append_line(SessionLedger.savepoint_path(store, day),
-                              SessionLedger.savepoint_line("Done", "aaaaaaaa", "global", "Something finished", now: Time.now),
-                              header: nil)
+      SessionLedger.savepoint_line("Done", "aaaaaaaa", "global", "Something finished", now: Time.now),
+      header: nil)
 
     dir = File.join(store, "231--live-intent")
     FileUtils.mkdir_p(dir)
@@ -355,12 +395,15 @@ class SessionStartDayLedgerTest < Minitest::Test
     File.write(SessionLedger.heartbeat_path(store, other), "#{Time.now.utc.iso8601}\n")
 
     out, _err, status = run_hook(session_id: "sess-boot-5")
+
     assert_equal 0, status.exitstatus
     ctx = JSON.parse(out).dig("hookSpecificOutput", "additionalContext")
     joined = "day ledger #{day} joined (1 open items, 1 pending)"
+
     assert_includes ctx, joined
     assert_operator ctx.index(joined), :<, ctx.index("Day summary #{day}:")
     summary = summary_of(ctx)
+
     assert_includes summary, "Open:"
     assert_includes summary, "- [aaaaaaaa] [global] An open item"
     assert_includes summary, "Done, last five:"
@@ -380,11 +423,13 @@ class SessionStartDayLedgerTest < Minitest::Test
   # session id falls all the way back to the hook's own Process.pid, spec D4
   # row G3).
   def test_no_stdin_still_derives_a_session_id_and_exits_zero
-    out, _err, status = run_session_start(@index, @home, env: { "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => nil })
+    out, _err, status = run_session_start([@index, @home], env: { "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => nil })
+
     assert_equal 0, status.exitstatus
     assert JSON.parse(out)
 
     entries = Dir.exist?(SessionLedger.tmp_root(store)) ? Dir.children(SessionLedger.tmp_root(store)) : []
+
     refute_empty entries, "a session id must be derived from env or the hook's own pid, never skipped"
   end
 
@@ -392,44 +437,50 @@ class SessionStartDayLedgerTest < Minitest::Test
 
   def run_hook_with_stdin(stdin_data:, env_session_id: nil)
     env = { "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => env_session_id }
-    run_session_start(@index, @home, env: env, stdin_data: stdin_data)
+    run_session_start([@index, @home], env: env, stdin_data: stdin_data)
   end
 
   def test_g1_prefers_the_payloads_session_id_over_a_different_env_var
     payload = JSON.generate("session_id" => "payload-sid-g1")
     out, _err, status = run_hook_with_stdin(stdin_data: payload, env_session_id: "env-sid-g1")
+
     assert_equal 0, status.exitstatus
     assert JSON.parse(out)
 
     sid = SessionLedger.short_session_id(nil, "payload-sid-g1")
     other_sid = SessionLedger.short_session_id(nil, "env-sid-g1")
+
     assert Dir.exist?(SessionLedger.session_tmp_dir(store, sid)),
-           "the tmp dir must be created under the payload's session id"
+      "the tmp dir must be created under the payload's session id"
     refute Dir.exist?(SessionLedger.session_tmp_dir(store, other_sid)),
-           "the env var's session id must not be used when the payload names one"
+      "the env var's session id must not be used when the payload names one"
   end
 
   def test_g2_falls_back_to_the_env_var_when_the_payload_carries_no_id
     payload = JSON.generate("prompt" => "irrelevant, no session_id key at all")
     out, _err, status = run_hook_with_stdin(stdin_data: payload, env_session_id: "env-sid-g2")
+
     assert_equal 0, status.exitstatus
     assert JSON.parse(out)
 
     sid = SessionLedger.short_session_id(nil, "env-sid-g2")
+
     assert Dir.exist?(SessionLedger.session_tmp_dir(store, sid)),
-           "the env var must be used when the stdin payload names no session_id"
+      "the env var must be used when the stdin payload names no session_id"
   end
 
   def test_g3_falls_back_to_the_pid_with_no_payload_and_no_env_var
     env = { "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => nil }
-    out, _err, status = run_session_start(@index, @home, env: env, stdin_data: "not valid json{{{")
+    out, _err, status = run_session_start([@index, @home], env: env, stdin_data: "not valid json{{{")
+
     assert_equal 0, status.exitstatus
     assert JSON.parse(out)
 
     expected_sid = SessionLedger.short_session_id(nil, Process.pid.to_s)
+
     assert Dir.exist?(SessionLedger.session_tmp_dir(store, expected_sid)),
-           "with no payload id and no env var, the session must be keyed by the hook's own pid " \
-           "(#{expected_sid}), not skipped or left to some other fallback"
+      "with no payload id and no env var, the session must be keyed by the hook's own pid " \
+      "(#{expected_sid}), not skipped or left to some other fallback"
   end
 
   def test_g4_the_stdin_read_never_blocks_on_a_terminal
@@ -438,7 +489,7 @@ class SessionStartDayLedgerTest < Minitest::Test
 
     out = +""
     PTY.spawn({ "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => "sess-tty-guard" },
-              "ruby", HOOK, @index, @home, "global", err: File::NULL) do |r, _w, spawned_pid|
+      "ruby", HOOK, @index, @home, "global", err: File::NULL) do |r, _w, spawned_pid|
       begin
         Timeout.timeout(5) do
           loop { out << r.readpartial(4096) }
@@ -452,6 +503,7 @@ class SessionStartDayLedgerTest < Minitest::Test
         nil
       end
     end
+
     assert JSON.parse(out), "the hook must still emit valid JSON when stdin is a tty"
   rescue Errno::EIO
     assert JSON.parse(out), "the hook must still emit valid JSON when stdin is a tty"
@@ -482,12 +534,12 @@ class SessionStartSubagentTest < Minitest::Test
     active_dir = File.join(@home, "store", "555--an-active-intent")
     FileUtils.mkdir_p(active_dir)
     File.write(File.join(active_dir, "555--an-active-intent.md"),
-               "---\nid: \"555\"\n---\n\n## Intent\nActive.\n")
+      "---\nid: \"555\"\n---\n\n## Intent\nActive.\n")
 
     stale_dir = File.join(@home, "store", "556--a-stale-intent")
     FileUtils.mkdir_p(stale_dir)
     File.write(File.join(stale_dir, "556--a-stale-intent.md"),
-               "---\nid: \"556\"\ncreated: '2000-01-01'\n---\n\n## Intent\nStale.\n")
+      "---\nid: \"556\"\ncreated: '2000-01-01'\n---\n\n## Intent\nStale.\n")
 
     File.write(@index, <<~MD)
       # Index
@@ -507,20 +559,21 @@ class SessionStartSubagentTest < Minitest::Test
 
   def run_hook(stdin_data:, session_id: "sess-subagent")
     env = { "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => session_id }
-    run_session_start(@index, @home, env: env, stdin_data: stdin_data)
+    run_session_start([@index, @home], env: env, stdin_data: stdin_data)
   end
 
   # Row 7.1
   def test_subagent_session_boot_is_core_banner_only
     payload = JSON.generate("session_id" => "sub-1", "agent_id" => "agent-42")
     out, _err, status = run_hook(stdin_data: payload)
+
     assert_equal 0, status.exitstatus
     parsed = JSON.parse(out)
     ctx = parsed.dig("hookSpecificOutput", "additionalContext")
     banner = parsed["systemMessage"]
 
     assert_equal "#{banner}\n", ctx,
-                 "a subagent boot must emit the core banner and nothing else"
+      "a subagent boot must emit the core banner and nothing else"
     refute_includes ctx, "Active intents"
     refute_includes ctx, "Stale future intents"
     refute_includes ctx, "day ledger"
@@ -530,6 +583,7 @@ class SessionStartSubagentTest < Minitest::Test
   def test_missing_subagent_marker_is_a_live_session
     payload = JSON.generate("session_id" => "live-1")
     out, _err, status = run_hook(stdin_data: payload)
+
     assert_equal 0, status.exitstatus
     ctx = JSON.parse(out).dig("hookSpecificOutput", "additionalContext")
 
@@ -540,21 +594,25 @@ class SessionStartSubagentTest < Minitest::Test
   # Row 7.3
   def test_marker_read_from_hook_input
     env_with_stray_agent_env = { "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => "sess-env-only",
-                                  "CLAUDE_AGENT_ID" => "agent-from-env-must-be-ignored" }
+                                 "CLAUDE_AGENT_ID" => "agent-from-env-must-be-ignored" }
     payload_without_marker = JSON.generate("session_id" => "sess-env-only")
-    out, _err, status = run_session_start(@index, @home, env: env_with_stray_agent_env,
-                                           stdin_data: payload_without_marker)
+    out, _err, status = run_session_start([@index, @home], env: env_with_stray_agent_env,
+      stdin_data: payload_without_marker)
+
     assert_equal 0, status.exitstatus
     ctx = JSON.parse(out).dig("hookSpecificOutput", "additionalContext")
+
     assert_includes ctx, "Active: [555 — 555 - An active intent]",
-                    "an agent id carried only on the env, never on stdin, must never mark a subagent session"
+      "an agent id carried only on the env, never on stdin, must never mark a subagent session"
 
     payload_with_marker = JSON.generate("session_id" => "sess-marker-only", "agent_id" => "agent-42")
     out2, _err2, status2 = run_hook(stdin_data: payload_with_marker, session_id: "sess-marker-only")
+
     assert_equal 0, status2.exitstatus
     ctx2 = JSON.parse(out2).dig("hookSpecificOutput", "additionalContext")
+
     refute_includes ctx2, "Active: [555",
-                    "the marker on the stdin payload alone, with no env support at all, must still mark a subagent"
+      "the marker on the stdin payload alone, with no env support at all, must still mark a subagent"
   end
 
   # Row 7.2 (B6): a live `claude --agent` session carries agent_type but no
@@ -563,24 +621,28 @@ class SessionStartSubagentTest < Minitest::Test
   def test_agent_type_without_agent_id_is_a_live_session
     payload = JSON.generate("session_id" => "live-agent-type-only", "agent_type" => "executor")
     out, _err, status = run_hook(stdin_data: payload, session_id: "live-agent-type-only")
+
     assert_equal 0, status.exitstatus
     ctx = JSON.parse(out).dig("hookSpecificOutput", "additionalContext")
 
     assert_includes ctx, "Active: [555 — 555 - An active intent]",
-                     "agent_type alone, with no agent_id, must be a live session, not a subagent"
+      "agent_type alone, with no agent_id, must be a live session, not a subagent"
   end
 
   # Row 7.6
   def test_subagent_branch_exception_degrades_to_banner
     payload = JSON.generate("session_id" => "sub-weird", "agent_id" => { "nested" => ["weird", 1, nil] })
     out, _err, status = run_hook(stdin_data: payload, session_id: "sess-subagent-weird")
+
     assert_equal 0, status.exitstatus
     parsed = JSON.parse(out)
+
     assert_includes parsed["systemMessage"], "Plastic Core loaded"
     ctx = parsed.dig("hookSpecificOutput", "additionalContext")
+
     assert_includes ctx, "Plastic Core loaded"
     refute_includes ctx, "Active:",
-                    "a malformed marker value must still degrade to a banner-only boot, never crash to nothing"
+      "a malformed marker value must still degrade to a banner-only boot, never crash to nothing"
   end
 end
 
@@ -611,12 +673,12 @@ class SessionStartDoctrineCutTest < Minitest::Test
     active_dir = File.join(@home, "store", "701--an-active-intent")
     FileUtils.mkdir_p(active_dir)
     File.write(File.join(active_dir, "701--an-active-intent.md"),
-               "---\nid: \"701\"\n---\n\n## Intent\nActive.\n")
+      "---\nid: \"701\"\n---\n\n## Intent\nActive.\n")
 
     stale_dir = File.join(@home, "store", "702--a-stale-intent")
     FileUtils.mkdir_p(stale_dir)
     File.write(File.join(stale_dir, "702--a-stale-intent.md"),
-               "---\nid: \"702\"\ncreated: '2000-01-01'\n---\n\n## Intent\nStale.\n")
+      "---\nid: \"702\"\ncreated: '2000-01-01'\n---\n\n## Intent\nStale.\n")
 
     File.write(@index, <<~MD)
       # Index
@@ -635,7 +697,8 @@ class SessionStartDoctrineCutTest < Minitest::Test
   end
 
   def context
-    out, _err, status = run_session_start(@index, @home, env: { "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => "sess-doctrine-cut" })
+    out, _err, status = run_session_start([@index, @home], env: { "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => "sess-doctrine-cut" })
+
     assert_equal 0, status.exitstatus
     JSON.parse(out).dig("hookSpecificOutput", "additionalContext")
   end
@@ -646,7 +709,7 @@ class SessionStartDoctrineCutTest < Minitest::Test
 
     assert_includes ctx, "Plastic Core loaded", "the core banner must still boot"
     assert_includes ctx, "Active: [701 — 701 - An active intent]",
-                    "the project/global banner keeps its one active intent"
+      "the project/global banner keeps its one active intent"
 
     refute_includes ctx, "CONVENTIONS PROSE", "PLASTIC.md's conventions dump must not reach a live boot"
     refute_includes ctx, "Active intents:", "the bulleted active-intents listing is cut"
@@ -687,7 +750,7 @@ class SessionStartBannerExceptionTest < Minitest::Test
   end
 
   def run_hook
-    run_session_start(@index, @home, env: { "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => "sess-banner-exception" })
+    run_session_start([@index, @home], env: { "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => "sess-banner-exception" })
   end
 
   def test_exception_degrades_to_banner
@@ -697,8 +760,10 @@ class SessionStartBannerExceptionTest < Minitest::Test
     assert_empty err.strip, "the rescue must swallow the exception, never leak a backtrace to stderr"
 
     parsed = JSON.parse(out)
+
     assert_includes parsed["systemMessage"], "Plastic Core loaded"
     ctx = parsed.dig("hookSpecificOutput", "additionalContext")
+
     assert_includes ctx, "Plastic Core loaded", "the boot must degrade to the banner, never to nothing"
     refute_includes ctx, "Active:", "a failed assembly must not leak a partial banner line"
   end
@@ -741,11 +806,12 @@ class SessionStartWatchTest < Minitest::Test
 
   def run_hook(stdin_data: "", session_id: "sess-watch")
     env = { "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => session_id }
-    run_session_start(@index, @home, "global", PLUGIN_ROOT, env: env, stdin_data: stdin_data)
+    run_session_start([@index, @home, "global", PLUGIN_ROOT], env: env, stdin_data: stdin_data)
   end
 
   def context(**kwargs)
     out, err, status = run_hook(**kwargs)
+
     assert_equal 0, status.exitstatus, err
     JSON.parse(out).dig("hookSpecificOutput", "additionalContext")
   end
@@ -810,8 +876,8 @@ class SessionStartWatchTest < Minitest::Test
     write_graph(dir, "- n1 needs nothing\n")
     write_node(dir, "n1")
     File.write(File.join(dir, "savepoint.md"),
-               "2026-09-13T00:00:00Z  n1  done holder=h gates=g1+g2 " \
-               "commit=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa suite=1/1/0/0\n")
+      "2026-09-13T00:00:00Z  n1  done holder=h gates=g1+g2 " \
+      "commit=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa suite=1/1/0/0\n")
     File.write(File.join(dir, "delivery.lock"), "stale\n")
     dir
   end
@@ -858,6 +924,7 @@ class SessionStartWatchTest < Minitest::Test
 
     ctx = context
     line = ctx.lines.find { |l| l.include?("PLASTIC watch:") }
+
     assert line, "boot must carry one PLASTIC watch line naming both deliveries"
     assert_includes line, "911 stalled ("
     assert_includes line, "912 done_unreported"
@@ -876,8 +943,8 @@ class SessionStartWatchTest < Minitest::Test
 
     context
 
-    refute File.exist?(watch_state_path(dir)), "an unrecorded boot tick must never write watch.state"
-    refute File.exist?(watch_record_path(dir)), "an unrecorded boot tick must never write watch.record"
+    refute_path_exists watch_state_path(dir), "an unrecorded boot tick must never write watch.state"
+    refute_path_exists watch_record_path(dir), "an unrecorded boot tick must never write watch.record"
   end
 
   # Row 3.10
@@ -888,8 +955,8 @@ class SessionStartWatchTest < Minitest::Test
     ctx = context(stdin_data: payload, session_id: "sess-sub-915")
 
     refute_includes ctx, "PLASTIC watch:", "a subagent boot must never pay for a store walk"
-    refute File.exist?(watch_state_path(dir))
-    refute File.exist?(watch_record_path(dir))
+    refute_path_exists watch_state_path(dir)
+    refute_path_exists watch_record_path(dir)
   end
 
   # Row 3.11
@@ -898,13 +965,16 @@ class SessionStartWatchTest < Minitest::Test
     stalled_intent("917")
 
     out, err, status = run_hook
+
     assert_equal 0, status.exitstatus, err
     parsed = JSON.parse(out)
+
     assert_includes parsed["systemMessage"], "Plastic Core loaded",
-                     "a raise inside one delivery's tick must still let boot finish"
+      "a raise inside one delivery's tick must still let boot finish"
     ctx = parsed.dig("hookSpecificOutput", "additionalContext")
+
     refute_includes ctx, "PLASTIC watch:",
-                     "the whole watch block is one guarded unit; a raise on any candidate must add nothing"
+      "the whole watch block is one guarded unit; a raise on any candidate must add nothing"
   end
 end
 
@@ -925,7 +995,7 @@ class SessionStartShimLayoutTest < Minitest::Test
   end
 
   def trace
-    out, = Open3.capture2e({"HOME" => @home}, "bash", "-x", SHIM, stdin_data: "")
+    out, = Open3.capture2e({ "HOME" => @home }, "bash", "-x", SHIM, stdin_data: "")
     out
   end
 
@@ -997,7 +1067,7 @@ class SessionStartDeprecationAgeTest < Minitest::Test
   end
 
   def context
-    out, _err, status = run_session_start(File.join(@home, "INDEX.md"), @home,
+    out, _err, status = run_session_start([File.join(@home, "INDEX.md"), @home],
       env: { "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => nil })
 
     assert_equal 0, status.exitstatus

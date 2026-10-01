@@ -71,7 +71,8 @@ if key.nil? || key.empty?
 end
 
 begin
-  value = ReadConfig.resolve(key, default: explicit_default, project: project_dir, harness: harness)
+  options = ReadConfig::Options.new(default: explicit_default, project: project_dir, harness: harness)
+  value = ReadConfig.resolve(key, options)
 rescue ReadConfig::InvalidHarness => e
   abort "Error: #{e.message}"
 end
