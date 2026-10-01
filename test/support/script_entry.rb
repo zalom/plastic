@@ -26,13 +26,19 @@ module ScriptEntry
   end
 
   def self.call(script_path, method = nil, *args, **opts)
-    argv = opts.fetch(:argv, [])
-    env = opts.fetch(:env, {})
-    stdin = opts[:stdin]
-    out, err, exit_code = with_env(env) do
-      capture_stdio(argv, stdin) { run_in_module(script_path, method, args) }
-    end
-    [out + err, FakeExitStatus.new(exit_code)]
+    out, err, status = capture3(**opts) { run_in_module(script_path, method, args) }
+    [out + err, status]
+  end
+
+  # The capture3-shaped primitive underneath `call`, exposed directly for a
+  # script already loaded in process by its own real constant (e.g. a proper
+  # `module Runner` loaded once by plain `load` at file top, whose CLI entry
+  # is a module method such as `Runner.main`, not a bare top-level `def` that
+  # needs the module-wrap load `call` does). The caller supplies the block
+  # that invokes it; this method only supplies the env/stdio/exit capture.
+  def self.capture3(argv: [], env: {}, stdin: nil)
+    out, err, exit_code = with_env(env) { capture_stdio(argv, stdin) { yield } }
+    [out, err, FakeExitStatus.new(exit_code)]
   end
 
   def self.run_in_module(script_path, method, args)

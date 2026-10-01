@@ -23,6 +23,7 @@ require_relative "../scripts/lib/lock"
 require_relative "../scripts/lib/core_integrity"
 require_relative "../scripts/lib/node_worktree"
 require_relative "../scripts/lib/worktree"
+require_relative "support/script_entry"
 
 # scripts/runner (intent 340, G7, n1): the one executable with a subcommand
 # table, its shared context (RunnerCore), and the two read-only queries plus
@@ -122,7 +123,7 @@ class RunnerCliTest < Minitest::Test
 
   def run_cli(*args, env: {})
     full_env = { "CLAUDE_CODE_SESSION_ID" => nil }.merge(env)
-    Open3.capture3(full_env, RbConfig.ruby, SCRIPT, *args)
+    ScriptEntry.capture3(env: full_env) { Runner.main(args) }
   end
 
   # --- 1.1: a known verb routes to its module -------------------------------------
