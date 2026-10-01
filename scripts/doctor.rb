@@ -2804,11 +2804,10 @@ end
 
     text = display_fixture_text(fixture_path)
     tmp_dir = tmp_dir_factory.call
-    replay = hook_replay || HookReplay
     outs =
       begin
-        replay.replay(hook_path: launcher_path, tmp_root: tmp_dir, text: text,
-                       env: { "PLASTIC_HOME" => plastic_home }, timeout: timeout_seconds)
+        HookReplay.replay(hook_path: launcher_path, tmp_root: tmp_dir, text: text,
+                           env: { "PLASTIC_HOME" => plastic_home }, timeout: timeout_seconds)
       rescue StandardError => e
         # Process.spawn (inside HookReplay) can raise before a pid ever
         # exists: a permissions race, or a launcher that vanishes between the
@@ -2827,7 +2826,7 @@ end
         FileUtils.remove_entry(tmp_dir) if tmp_dir && File.exist?(tmp_dir)
       end
 
-    if replay.timed_out?(outs)
+    if HookReplay.timed_out?(outs)
       return [check(
         category: "display", name: "display_hook_paints", status: "fail",
         message: "Replaying the installed launcher timed out after #{timeout_seconds}s; painting could not be verified",
@@ -2844,7 +2843,7 @@ end
       )]
     end
 
-    content = replay.final_display_content(outs)
+    content = HookReplay.final_display_content(outs)
     if content.to_s.include?("\e[")
       [check(
         category: "display", name: "display_hook_paints", status: "pass",

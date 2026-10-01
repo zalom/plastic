@@ -66,15 +66,6 @@ require_relative "lib/frontmatter_writer"
 require_relative "lib/links_projection"
 require_relative "lib/restore_intent_v1"
 
-# The real store-wide reprojection spawn, kept as its own collaborator so a
-# test can inject a fake in place of it (intent 397 D6).
-module ProjectLinks
-  def self.call(plastic_home)
-    project_links = File.expand_path("project-links", __dir__)
-    system({"RUBYOPT" => nil}, RbConfig.ruby, project_links, "--plastic-home", plastic_home)
-  end
-end
-
 class RestoreIntentV1CLI
   DEFAULT_HOME = File.join(Dir.home, ".plastic")
   PROSE_SIBLINGS = %w[checklist.md outcome.md spec.md plan.md].freeze
@@ -101,12 +92,8 @@ class RestoreIntentV1CLI
     [intent_id, opts]
   end
 
-  # project_links: nil default, never ProjectLinks itself (test callers fake
-  # this collaborator to skip its real spawn; reproject_links falls back to
-  # the real module at call time, intent 397 D6, same seam shape as Doctor's
-  # hook_replay:).
   def initialize(intent_id, at:, plastic_home: DEFAULT_HOME, apply: false, skip_links: false, audit_path: nil,
-                 snapshot_dir: nil, project_links: nil)
+                 snapshot_dir: nil)
     @intent_id = intent_id
     @at = at
     @plastic_home = plastic_home
@@ -114,10 +101,9 @@ class RestoreIntentV1CLI
     @skip_links = skip_links
     @audit_path = audit_path
     @snapshot_dir = snapshot_dir
-    @project_links = project_links
   end
 
-  attr_reader :intent_id, :at, :plastic_home, :apply, :skip_links, :audit_path, :snapshot_dir, :project_links
+  attr_reader :intent_id, :at, :plastic_home, :apply, :skip_links, :audit_path, :snapshot_dir
 
   def run
     abort_loud("--at is required") if at.nil? || at.to_s.strip.empty?
@@ -336,11 +322,12 @@ class RestoreIntentV1CLI
   end
 
   def reproject_links
-    return if (project_links || ProjectLinks).call(plastic_home)
+    project_links = File.expand_path("project-links", __dir__)
+    system({"RUBYOPT" => nil}, RbConfig.ruby, project_links, "--plastic-home", plastic_home)
+    return if $?.success?
 
-    script = File.expand_path("project-links", __dir__)
     warn "restore-intent-v1: ## Links may now be stale (project-links reprojection failed). " \
-         "Rerun: ruby #{script} --plastic-home #{plastic_home}"
+         "Rerun: ruby #{project_links} --plastic-home #{plastic_home}"
   end
 
   # True iff `md_a`/`md_b` differ OUTSIDE their ## Links ENTRY LINES (the ones
