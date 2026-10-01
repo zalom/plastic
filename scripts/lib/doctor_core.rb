@@ -77,12 +77,17 @@ class Doctor
     end
   end
 
+  # hook_replay: nil default, never HookReplay itself (no require of it on
+  # this boot path, intent 397 D6); scripts/doctor.rb falls back at call time.
   def initialize(plastic_home: DEFAULT_PLASTIC_HOME, agents: DEFAULT_AGENTS,
-                  runner: Doctor.default_runner)
+                  runner: Doctor.default_runner, hook_replay: nil)
     @plastic_home = plastic_home
     @agents = agents
     @runner = runner
+    @hook_replay = hook_replay
   end
+
+  attr_reader :hook_replay
 
   # --- Utility helpers ---
 

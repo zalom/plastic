@@ -25,11 +25,30 @@ DOCTOR_TEST_AGENTS = {
 # Helpers shared across test classes
 # ---------------------------------------------------------------------------
 
+# display_hook_paints (run_checks only) is the one production check that
+# spawns a real process per call (HookReplay replays the installed launcher).
+# No test in this file targets that check's own behavior, so every test that
+# reaches it through a full run_checks call injects this fake instead of
+# paying for a real spawn - timed_out?/final_display_content stay the real,
+# pure parsing logic; only the spawning replay itself is faked. Intent 397,
+# D6: keeps doctor_test.rb to the one real spawn DoctorEntryPlasticHomeTest
+# already does through scripts/doctor.rb's own CLI entry.
+module FakeHookReplay
+  PAINTED_STDOUT = JSON.generate("hookSpecificOutput" => { "displayContent" => "\e[32mpainted\e[0m" })
+
+  def self.replay(**)
+    [{ index: 0, exitstatus: 0, final: true, stderr: "", stdout: PAINTED_STDOUT }]
+  end
+
+  def self.timed_out?(outs) = HookReplay.timed_out?(outs)
+  def self.final_display_content(outs) = HookReplay.final_display_content(outs)
+end
+
 module DoctorTestHelpers
   # Fresh Doctor pointed at the test home/agents. Checks are stateless
   # (they read the filesystem), so a new instance per call is fine.
-  def doctor(plastic_home: DOCTOR_TEST_HOME, agents: DOCTOR_TEST_AGENTS)
-    Doctor.new(plastic_home: plastic_home, agents: agents)
+  def doctor(plastic_home: DOCTOR_TEST_HOME, agents: DOCTOR_TEST_AGENTS, hook_replay: FakeHookReplay)
+    Doctor.new(plastic_home: plastic_home, agents: agents, hook_replay: hook_replay)
   end
 
   # Intent 312: a healthy Claude install carries the compact-instructions block in
@@ -2265,7 +2284,8 @@ class DoctorIntegrationTest < Minitest::Test
       probe = allocate
       probe.setup
       probe.build_healthy_installation
-      result = Doctor.new(plastic_home: DOCTOR_TEST_HOME, agents: DOCTOR_TEST_AGENTS).run_checks("claude")
+      result = Doctor.new(plastic_home: DOCTOR_TEST_HOME, agents: DOCTOR_TEST_AGENTS,
+        hook_replay: FakeHookReplay).run_checks("claude")
       probe.teardown
       result
     end
