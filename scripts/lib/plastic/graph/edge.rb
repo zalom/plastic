@@ -8,6 +8,8 @@ module Plastic
     # waits until `from` is done.
     Edge = Data.define(:intent_id, :from, :to, :kind, :origin_id) do
       include Record
+
+      def touches?(node_id) = from == node_id || to == node_id
     end
   end
 end

@@ -27,6 +27,9 @@ module Plastic
       "node answer" => ["Commands::NodeAnswer", "Answer a parked node and reopen it"],
       "edge add" => ["Commands::EdgeAdd", "Add a needs edge between two nodes"],
       "edge remove" => ["Commands::EdgeRemove", "Remove an edge"],
+      "graph check" => ["Commands::GraphCheck", "Find a judge missing, an isolated node, a retry cap or no done criterion"],
+      "graph ready" => ["Commands::GraphReady", "List the nodes ready to claim"],
+      "graph show" => ["Commands::GraphShow", "Print every node and edge, then reprint graph.json from rows"],
 
       # Hooks: the harness calls these on an event; see docs/contributing/ARCHITECTURE.md.
       "hook resume" => ["Hooks::Resume", "SessionStart: print the state the rows carry"],
