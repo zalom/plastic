@@ -128,14 +128,15 @@ module TestTimings
   # of trusting the first. A Varar document has no single-file entry point,
   # so it reruns the whole Varar suite and charges the document its time.
   class Rerun
-    def initialize(root: File.expand_path("../..", __dir__))
+    def initialize(root: File.expand_path("../..", __dir__), runner: ->(*command, chdir:) { Open3.capture2e(*command, chdir:) })
       @root = root
+      @runner = runner
     end
 
     def call(file)
       command = file.start_with?("varar/") ? %w[bundle exec ruby bin/test --system] : ["bundle", "exec", "ruby", "bin/test", "--only", file]
       start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-      Open3.capture2e(*command, chdir: @root)
+      @runner.call(*command, chdir: @root)
       Process.clock_gettime(Process::CLOCK_MONOTONIC) - start
     end
   end

@@ -114,4 +114,22 @@ class TestTimingsTest < Minitest::Test
     assert_includes out.string, "5.5"
     assert_includes out.string, "6.2"
   end
+
+  def test_rerun_shells_to_bin_test_only_for_a_plain_file
+    seen = nil
+    runner = ->(*command, chdir:) { seen = [command, chdir] }
+
+    TestTimings::Rerun.new(root: "/worktree", runner:).call("test/plain_test.rb")
+
+    assert_equal [["bundle", "exec", "ruby", "bin/test", "--only", "test/plain_test.rb"], "/worktree"], seen
+  end
+
+  def test_rerun_shells_to_bin_test_system_for_a_varar_document
+    seen = nil
+    runner = ->(*command, chdir:) { seen = [command, chdir] }
+
+    TestTimings::Rerun.new(root: "/worktree", runner:).call("varar/store-layout.md")
+
+    assert_equal [%w[bundle exec ruby bin/test --system], "/worktree"], seen
+  end
 end

@@ -168,13 +168,14 @@ module MutationVerdicts
   # first, full pass; `rerun` (the shape `Gate` expects) runs one subject
   # alone, single worker, against the same Mutineer arguments.
   class Mutineer
-    def initialize(args, root: Dir.pwd)
+    def initialize(args, root: Dir.pwd, runner: ->(*command, chdir:) { Open3.capture2e(*command, chdir:) })
       @args = args
       @root = root
+      @runner = runner
     end
 
     def call(output)
-      Open3.capture2e("bundle", "exec", "mutineer", "run", *@args, "--format", "json", "--output", output, chdir: @root)
+      @runner.call("bundle", "exec", "mutineer", "run", *@args, "--format", "json", "--output", output, chdir: @root)
     end
 
     def rerun(subject, ids)
@@ -188,7 +189,7 @@ module MutationVerdicts
     private
 
     def call_only(subject, path)
-      Open3.capture2e("bundle", "exec", "mutineer", "run", *@args, "--only", subject, "--jobs", "1", "--format", "json", "--output", path, chdir: @root)
+      @runner.call("bundle", "exec", "mutineer", "run", *@args, "--only", subject, "--jobs", "1", "--format", "json", "--output", path, chdir: @root)
     end
 
     def verdicts_of(report, ids)

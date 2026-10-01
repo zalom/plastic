@@ -30,7 +30,7 @@ class MutationVerdictsTest < Minitest::Test
     MutationVerdicts::Gate.new(@path, rerun:, out: @out)
   end
 
-  def run(runner:, rerun: ->(*) { flunk("rerun must not run") })
+  def full_run(runner:, rerun: ->(*) { flunk("rerun must not run") })
     MutationVerdicts::Run.new(@path, runner:, rerun:, out: @out)
   end
 
@@ -38,7 +38,7 @@ class MutationVerdictsTest < Minitest::Test
     write_report(summary: { "killed" => 93, "survived" => 7 })
     never_writes = -> { ["", OpenStruct.new(success?: true)] }
 
-    error = assert_raises(MutationVerdicts::Decision::Failure) { run(runner: never_writes).call }
+    error = assert_raises(MutationVerdicts::Decision::Failure) { full_run(runner: never_writes).call }
 
     assert_includes error.message, "mutineer failed"
   end
@@ -128,7 +128,7 @@ class MutationVerdictsTest < Minitest::Test
   def test_a_mutineer_error_fails_with_its_output
     crashes = -> { ["boom: segmentation fault", OpenStruct.new(success?: false)] }
 
-    error = assert_raises(MutationVerdicts::Decision::Failure) { run(runner: crashes).call }
+    error = assert_raises(MutationVerdicts::Decision::Failure) { full_run(runner: crashes).call }
 
     assert_includes error.message, "boom: segmentation fault"
   end
