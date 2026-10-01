@@ -35,5 +35,23 @@ module Plastic
       environment.err.puts "plastic: no command #{argv.first(2).join(" ").inspect}; plastic help lists them"
       Command::USAGE
     end
+
+    # The whole of bin/plastic: run a shipped command, list the shipped
+    # commands for `plastic help`, and name a command that has no stage yet
+    # instead of blaming the words the owner typed.
+    def self.bin_call(argv, environment: Command::Environment.current, table: TABLE)
+      return list(table, environment) if argv.empty? || %w[help --help -h].include?(argv.first)
+
+      name = find(argv, table)
+      return tool(name, table).call(argv.drop(name.split.size), words: name, environment:) if name
+
+      environment.err.puts "plastic #{argv.join(" ")} is not in this build yet; it lands with its stage"
+      Command::USAGE
+    end
+
+    def self.list(table, environment)
+      table.each { |name, (_, summary)| environment.out.puts format("%-14s %s", name, summary) }
+      Command::OK
+    end
   end
 end

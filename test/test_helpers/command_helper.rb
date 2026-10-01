@@ -20,6 +20,13 @@ module Plastic
         Result.new(out.string, err.string, code)
       end
 
+      def plastic_bin(*argv, table: Fixtures::TABLE)
+        out = StringIO.new
+        err = StringIO.new
+        code = Plastic::CLI.bin_call(argv, environment: environment(out:, err:), table:)
+        Result.new(out.string, err.string, code)
+      end
+
       def routine_run(tool, subject)
         Plastic::Graph.open(home: @plastic_home, store: "global").retrieval.routine_run(tool, subject)
       end

@@ -3,6 +3,7 @@
 
 ENV["PLASTIC_PACKAGE_ROOT"] = File.expand_path("..", __dir__)
 
-require_relative "../scripts/lib/cli"
+$LOAD_PATH.unshift File.expand_path("../scripts/lib", __dir__)
+require "plastic"
 
-exit Plastic::CLI.call(ARGV)
+exit Plastic::CLI.bin_call(ARGV)
