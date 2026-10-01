@@ -1,0 +1,61 @@
+#!/usr/bin/env ruby
+# plastic-script-version: 2.0.0
+# Channel-aware update target selector.
+#
+# Usage: curl -fsSL https://api.github.com/repos/zalom/plastic/releases?per_page=50 \
+#          | select-update-target <current-version>
+#
+# Prints the best update target to stdout, or nothing if already up to date.
+#
+# Rule: target = the highest version, among the channels reachable from the
+# installed channel, that is strictly greater than the installed version (semver).
+#   alpha installed  -> reachable: alpha, beta, latest
+#   beta installed   -> reachable: beta, latest   (never downgrade to alpha)
+#   stable installed -> reachable: latest         (stable only)
+# A prerelease (1.1.0-alpha.1) is LOWER than its release (1.1.0).
+
+require "json"
+require_relative "lib/release_channels"
+
+REACH = {
+  "alpha"  => %w[alpha beta latest],
+  "beta"   => %w[beta latest],
+  "stable" => %w[latest],
+}.freeze
+
+def stable_channel(version)
+  return "alpha" if version.include?("-alpha")
+  return "beta" if version.include?("-beta")
+
+  "stable"
+end
+
+current = ARGV[0]
+cur = ReleaseChannels.parse(current)
+exit 0 unless cur
+
+begin
+  releases = JSON.parse($stdin.read)
+rescue JSON::ParserError, StandardError
+  exit 0
+end
+exit 0 unless releases.is_a?(Array)
+
+tags = ReleaseChannels.channels(releases)
+
+best = nil
+best_parsed = nil
+REACH[stable_channel(current)].each do |tag|
+  raw = tags[tag]
+  next unless raw
+
+  parsed = ReleaseChannels.parse(raw)
+  next unless parsed
+
+  if ReleaseChannels.compare(parsed, cur) > 0 && (best_parsed.nil? || ReleaseChannels.compare(parsed, best_parsed) > 0)
+    best = raw
+    best_parsed = parsed
+  end
+end
+
+print best if best
