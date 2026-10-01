@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-require_relative "support/kernel"
+require_relative "../test_helper"
 
-class PlasticTest < Minitest::Test
+class PlasticTest < Plastic::TestCase
   def test_now_is_local_time_with_its_offset
     now = Plastic.now
 

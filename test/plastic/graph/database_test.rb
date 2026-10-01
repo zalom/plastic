@@ -1,99 +1,115 @@
 # frozen_string_literal: true
 
-require_relative "../support/kernel"
+require_relative "../../test_helper"
 
-class DatabaseTest < Minitest::Test
-  include KernelFixtures::DatabaseHome
+class DatabaseTest < Plastic::TestCase
+  Database = Plastic::Graph::Database
+  SQL = Plastic::Graph::SQL
 
-  def test_open_all_needs_sqlite3_on_the_path
-    error = assert_raises(Database::Error) { Database.open_all(@dir, path: "") }
+  def scratch(file) = Database.new(File.join(@home, "scratch", file), "")
 
-    assert_equal "sqlite3 is not on PATH; install it, then call again", error.message
+  def test_rows_returns_the_first_result_set
+    assert_equal [{ "a" => 1 }], scratch("x.db").rows("SELECT 1 AS a; SELECT 2 AS b;")
   end
 
-  def test_open_all_opens_the_work_graph_at_the_home
-    databases = Database.open_all(@dir)
-
-    assert_equal [:work], databases.keys
-    assert_equal File.join(@dir, "work_graph.db"), databases[:work].path
+  def test_a_read_with_no_rows_returns_none
+    assert_empty scratch("x.db").rows("CREATE TABLE t(a)")
   end
 
-  def test_literals_quote_every_kind_of_value
-    values = [nil, true, false, 3, 1.5, SQL::Bytes.new("ab"), { "a" => 1 }, [1], "it's"]
+  def test_a_failed_statement_commits_nothing_of_its_transaction
+    error = assert_raises(Plastic::Graph::Database::Error) do
+      database.transaction do |batch|
+        batch.insert(:routine_runs, { name: "a" })
+        batch.add("INSERT INTO nowhere VALUES (1)")
+      end
+    end
 
-    assert_equal ["NULL", "1", "0", "3", "1.5", "X'6162'", %('{"a":1}'), "'[1]'", "'it''s'"],
-      values.map { |value| SQL.literal(value) }
+    assert_equal "work_graph.db: no such table: nowhere", error.message
+    assert_equal [], database.rows("SELECT name FROM routine_runs")
   end
 
-  def test_a_name_is_quoted
-    assert_equal %("say ""hi"""), SQL.name(%(say "hi"))
+  def test_a_folder_that_cannot_be_made_names_the_file
+    File.write(File.join(@home, "taken"), "")
+    error = assert_raises(Database::Error) { Database.new(File.join(@home, "taken", "home.db"), "").rows("SELECT 1") }
+
+    assert_match(/\Ahome\.db: /, error.message)
   end
 
-  def test_bind_fills_known_names_only
-    assert_equal "SELECT 'a' WHERE b = :b AND c::text", SQL.bind("SELECT :a WHERE b = :b AND c::text", a: "a")
+  def test_a_failed_write_inside_an_open_transaction_undoes_only_itself
+    insert("a")
+    connection = Database::ConnectionPool.for(database.path)
+    connection.execute("BEGIN")
+    insert("b")
+    assert_raises(Database::Error) { database.transaction { |batch| batch.add("INSERT INTO nowhere VALUES (1)") } }
+
+    assert_equal %w[a b], database.rows("SELECT name FROM routine_runs ORDER BY id").map { |row| row["name"] }
+    connection.rollback
   end
 
-  def test_bind_with_no_values_leaves_the_sql
-    assert_equal "SELECT :a", SQL.bind("SELECT :a", {})
+  def test_open_home_opens_the_home_database
+    databases = Database.open_home("/home")
+
+    assert_equal [:home], databases.keys
+    assert_equal ["/home/home.db", "home.db"], [databases[:home].path, databases[:home].file]
   end
 
   def test_the_schema_is_made_on_the_first_read
-    assert_empty @database.rows("SELECT name FROM notes")
+    assert_empty database.rows("SELECT name FROM notes")
   end
 
   def test_rows_and_row_read_with_values
     insert("a")
     insert("b")
 
-    assert_equal [{ "name" => "a" }, { "name" => "b" }], @database.rows("SELECT name FROM routine_runs ORDER BY id")
-    assert_equal({ "name" => "b" }, @database.row("SELECT name FROM routine_runs WHERE name = :name", name: "b"))
+    assert_equal [{ "name" => "a" }, { "name" => "b" }], database.rows("SELECT name FROM routine_runs ORDER BY id")
+    assert_equal({ "name" => "b" }, database.row("SELECT name FROM routine_runs WHERE name = :name", name: "b"))
+    assert_nil database.row("SELECT name FROM routine_runs WHERE name = 'c'")
   end
 
   def test_an_empty_transaction_runs_nothing
-    assert_empty(@database.transaction { |_batch| nil })
-    refute_path_exists @database.path
+    database = Database.new(File.join(@home, "x.db"), "")
+
+    assert_equal [[], false], [database.transaction { |_batch| nil }, File.exist?(File.join(@home, "x.db"))]
   end
 
   def test_returning_rows_come_back_in_order
-    returned = @database.transaction do |batch|
+    returned = database.transaction do |batch|
       batch.write(:routine_runs, "INSERT INTO routine_runs(name) VALUES (:name) RETURNING name", name: "a")
       batch.write(:routine_runs, "INSERT INTO routine_runs(name) VALUES (:name) RETURNING name", name: "b")
     end
 
     assert_equal [[{ "name" => "a" }], [{ "name" => "b" }]], returned
+    assert_equal({ "routine_runs" => 2 }, database.written)
   end
 
   def test_a_conflict_clause_skips_the_duplicate
     insert("a")
-    @database.transaction { |batch| batch.insert(:routine_runs, { name: "a" }, conflict: "NOTHING") }
+    database.transaction { |batch| batch.insert(:routine_runs, { name: "a" }, conflict: "NOTHING") }
 
-    assert_equal 1, @database.row("SELECT count(*) AS n FROM routine_runs")["n"]
+    assert_equal 1, database.row("SELECT count(*) AS n FROM routine_runs")["n"]
   end
 
   def test_the_record_names_the_columns_in_order
-    @database.transaction { |batch| batch.insert(:stored, { store: "plastic", name: "x" }) }
+    database.transaction { |batch| batch.insert(:stored, { store: "plastic", name: "x" }) }
 
-    assert_equal({ "store" => "plastic", "name" => "x" }, @database.row("SELECT * FROM stored"))
+    assert_equal({ "store" => "plastic", "name" => "x" }, database.row("SELECT * FROM stored"))
   end
 
   def test_bytes_go_in_as_a_blob
-    @database.transaction { |batch| batch.insert(:routine_runs, { name: "b", data: SQL::Bytes.new("hi") }) }
+    database.transaction { |batch| batch.insert(:routine_runs, { name: "b", data: SQL::Bytes.new("hi") }) }
 
-    assert_equal "hi", @database.row("SELECT CAST(data AS TEXT) AS t FROM routine_runs")["t"]
+    assert_equal "hi", database.row("SELECT CAST(data AS TEXT) AS t FROM routine_runs")["t"]
   end
 
-  def test_an_sql_error_names_the_file
-    error = assert_raises(Database::Error) { @database.rows("SELECT nope FROM notes") }
+  def test_a_new_database_makes_its_folder
+    scratch("home.db").rows("CREATE TABLE t(a)")
 
-    assert_match(/\Awork_graph\.db: .*no such column: nope/, error.message)
+    assert_path_exists File.join(@home, "scratch", "home.db")
   end
 
-  def test_the_schema_names_routine_runs_one_and_many
-    assert_equal ["1 routine run", "2 routine runs", "1 x"],
-      [Plastic::Graph::Schema.tally(:routine_runs, 1), Plastic::Graph::Schema.tally("routine_runs", 2), Plastic::Graph::Schema.tally(:x, 1)]
-  end
+  def test_puts_and_applies_return_the_batch_so_writes_chain
+    batch = Plastic::Graph::Database::Batch.new
 
-  def test_the_work_schema_holds_the_routine_runs_table
-    assert_includes Plastic::Graph::Schema.fetch(:work), "CREATE TABLE IF NOT EXISTS routine_runs("
+    assert_same batch, batch.put(:clusters, { name: "C", intent_id: "1" }).apply([])
   end
 end

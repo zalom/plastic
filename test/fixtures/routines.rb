@@ -1,16 +1,9 @@
 # frozen_string_literal: true
 
-require_relative "../../test_helper"
-require "fileutils"
-require "securerandom"
-require "stringio"
-require "tmpdir"
-require_relative "../../../scripts/lib/plastic"
-
-# Routines and workflows that exist only for the kernel tests. They live in
-# their own namespace, with their own registry and command table, so no test
-# adds a key to Plastic::Workflows::REGISTRY or Plastic::CLI::TABLE.
-module KernelFixtures
+# Routines, workflows and hooks that exist only for the kernel tests. They
+# live in their own namespace, with their own registry and command table, so
+# no test adds a key to Plastic::Workflows::REGISTRY or Plastic::CLI::TABLE.
+module Fixtures
   module Workflows
     REGISTRY = %i[code_stamp code_greet code_find_draft agent_write_draft code_hold code_hole
       code_break code_stuck agent_review code_who code_choose agent_greet].freeze
@@ -161,83 +154,16 @@ module KernelFixtures
   end
 
   TABLE = {
-    "kernel two" => ["KernelFixtures::TwoStep", "Greet in two steps"],
-    "kernel draft" => ["KernelFixtures::Draft", "Hand a draft to the agent"],
-    "kernel gate" => ["KernelFixtures::Gate", "Stop at a gate"],
-    "kernel hole" => ["KernelFixtures::Holed", "Close on a fact with no value"],
-    "kernel break" => ["KernelFixtures::Broken", "Raise inside a step"],
-    "kernel stuck" => ["KernelFixtures::Stalled", "Run a step that never lands"],
-    "kernel review" => ["KernelFixtures::Reviewed", "Hand off as a failure"],
-    "kernel backward" => ["KernelFixtures::Backward", "Point an edge backward"],
-    "kernel who" => ["KernelFixtures::Named", "Print the session"],
-    "hook echo" => ["KernelFixtures::Echo", "Echo the session"],
-    "hook quiet" => ["KernelFixtures::Quiet", "Say nothing"]
+    "kernel two" => ["Fixtures::TwoStep", "Greet in two steps"],
+    "kernel draft" => ["Fixtures::Draft", "Hand a draft to the agent"],
+    "kernel gate" => ["Fixtures::Gate", "Stop at a gate"],
+    "kernel hole" => ["Fixtures::Holed", "Close on a fact with no value"],
+    "kernel break" => ["Fixtures::Broken", "Raise inside a step"],
+    "kernel stuck" => ["Fixtures::Stalled", "Run a step that never lands"],
+    "kernel review" => ["Fixtures::Reviewed", "Hand off as a failure"],
+    "kernel backward" => ["Fixtures::Backward", "Point an edge backward"],
+    "kernel who" => ["Fixtures::Named", "Print the session"],
+    "hook echo" => ["Fixtures::Echo", "Echo the session"],
+    "hook quiet" => ["Fixtures::Quiet", "Say nothing"]
   }.freeze
-
-  # One call of the kernel command line, against a temporary home.
-  module Calls
-    Result = Data.define(:out, :err, :code)
-
-    def make_home
-      @home = Dir.mktmpdir("plastic-kernel")
-      @plastic_home = File.join(@home, ".plastic")
-      FileUtils.mkdir_p(@plastic_home)
-    end
-
-    def remove_home = FileUtils.remove_entry(@home)
-
-    def environment(env: {}, input: "", out: StringIO.new, err: StringIO.new)
-      Plastic::CLI::Command::Environment.new(env: { "PLASTIC_HOME" => @plastic_home }.merge(env),
-        input: StringIO.new(input), out:, err:, home: @home, directory: @home)
-    end
-
-    def plastic(*argv, env: {}, input: "")
-      out = StringIO.new
-      err = StringIO.new
-      code = Plastic::CLI.call(argv, environment: environment(env:, input:, out:, err:), table: TABLE)
-      Result.new(out.string, err.string, code)
-    end
-
-    def routine_run(tool, subject)
-      Plastic::Graph.open(home: @plastic_home, store: "global").retrieval.routine_run(tool, subject)
-    end
-  end
-end
-
-module KernelFixtures
-  # Builders for the workflow tests: a context and anonymous workflow classes.
-  module WorkflowBuilders
-    Flows = KernelFixtures::Workflows
-
-    def context(declared: %i[name mode], facts: { name: "ada" })
-      Plastic::Context.new(declared:, facts:, graphs: {})
-    end
-
-    def code(&body) = Class.new(Plastic::CodeWorkflow, &body)
-
-    def agent(&body) = Class.new(Plastic::AgentWorkflow, &body)
-  end
-
-  # A database in a temporary folder, with tables for the database tests.
-  module DatabaseHome
-    Database = Plastic::Graph::Database
-    SQL = Plastic::Graph::SQL
-    SCHEMA = <<~SQL
-      CREATE TABLE IF NOT EXISTS routine_runs(id INTEGER PRIMARY KEY, name TEXT UNIQUE, data BLOB);
-      CREATE TABLE IF NOT EXISTS tallies(name TEXT);
-      CREATE TABLE IF NOT EXISTS notes(name TEXT);
-      CREATE TABLE IF NOT EXISTS stored(store TEXT, name TEXT);
-    SQL
-
-    def setup
-      @dir = Dir.mktmpdir("plastic-database")
-      @database = Database.new(File.join(@dir, "work_graph.db"), SCHEMA)
-    end
-
-    def teardown = FileUtils.remove_entry(@dir)
-
-    def insert(name, table: :routine_runs)
-      @database.transaction { |batch| batch.insert(table, { name: }) }
-    end
-  end
 end

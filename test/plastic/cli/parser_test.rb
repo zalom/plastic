@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-require_relative "../support/kernel"
+require_relative "../../test_helper"
 
-class ParserTest < Minitest::Test
+class ParserTest < Plastic::TestCase
   Command = Plastic::CLI::Command
 
   def parser(arguments: [Command::Argument.new(:id, "ID", "the intent", false, false)],

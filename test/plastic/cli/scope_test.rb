@@ -1,15 +1,12 @@
 # frozen_string_literal: true
 
-require_relative "../support/kernel"
+require_relative "../../test_helper"
 
-class ScopeTest < Minitest::Test
+class ScopeTest < Plastic::TestCase
   def setup
-    @home = File.realpath(Dir.mktmpdir("plastic-scope"))
-    @plastic_home = File.join(@home, ".plastic")
+    super
     FileUtils.mkdir_p(File.join(@plastic_home, "stores", "plastic"))
   end
-
-  def teardown = FileUtils.remove_entry(@home)
 
   def scope(slug: nil, directory: @home, env: { "PLASTIC_HOME" => @plastic_home })
     Plastic::CLI::Scope.new(env:, home: @home, slug:, directory:)

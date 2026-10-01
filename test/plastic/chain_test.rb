@@ -1,17 +1,17 @@
 # frozen_string_literal: true
 
-require_relative "support/kernel"
+require_relative "../test_helper"
 
-class ChainTest < Minitest::Test
+class ChainTest < Plastic::TestCase
   def routine(&body)
-    Class.new(KernelFixtures::Routine) do
+    Class.new(Fixtures::Routine) do
       argument :name, label: "NAME", text: "a name"
       class_eval(&body)
     end
   end
 
   def test_a_sound_chain_has_no_problems
-    assert_empty KernelFixtures::Draft.chain_problems
+    assert_empty Fixtures::Draft.chain_problems
   end
 
   def test_verify_lists_every_problem_in_one_message
@@ -37,7 +37,7 @@ class ChainTest < Minitest::Test
   def test_a_key_missing_from_the_registry_is_the_only_problem
     chain = routine { workflow :code_nowhere, next: :noop }
 
-    assert_equal ["no workflow code_nowhere in KernelFixtures::Workflows::REGISTRY"], chain.chain_problems
+    assert_equal ["no workflow code_nowhere in Fixtures::Workflows::REGISTRY"], chain.chain_problems
   end
 
   def test_a_workflow_no_edge_reaches_is_a_problem
@@ -108,6 +108,6 @@ class ChainTest < Minitest::Test
   end
 
   def test_the_entry_is_the_first_key
-    assert_equal :code_stamp, KernelFixtures::Draft.chain.entry
+    assert_equal :code_stamp, Fixtures::Draft.chain.entry
   end
 end

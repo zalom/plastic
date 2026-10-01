@@ -1,15 +1,9 @@
 # frozen_string_literal: true
 
 require "json"
-require_relative "support/kernel"
+require_relative "../test_helper"
 
-class CliTest < Minitest::Test
-  include KernelFixtures::Calls
-
-  def setup = make_home
-
-  def teardown = remove_home
-
+class CliTest < Plastic::TestCase
   def test_find_picks_the_longest_command_the_words_start
     table = { "auto lock" => [], "auto lock renew" => [] }
 
@@ -18,7 +12,7 @@ class CliTest < Minitest::Test
   end
 
   def test_find_returns_nil_for_unknown_words
-    assert_nil Plastic::CLI.find(%w[nothing here], KernelFixtures::TABLE)
+    assert_nil Plastic::CLI.find(%w[nothing here], Fixtures::TABLE)
   end
 
   def test_the_stage_one_table_names_no_command
@@ -26,7 +20,7 @@ class CliTest < Minitest::Test
   end
 
   def test_tool_returns_a_loaded_class
-    assert_equal KernelFixtures::Draft, Plastic::CLI.tool("kernel draft", KernelFixtures::TABLE)
+    assert_equal Fixtures::Draft, Plastic::CLI.tool("kernel draft", Fixtures::TABLE)
   end
 
   def test_tool_loads_the_file_the_class_names
@@ -89,14 +83,14 @@ class CliTest < Minitest::Test
   end
 
   def test_describe_says_what_a_tool_takes_and_writes
-    description = KernelFixtures::Draft.describe("kernel draft")
+    description = Fixtures::Draft.describe("kernel draft")
 
     assert_equal "plastic kernel draft NAME [--dir DIR]", description.usage
     assert_equal [[:name], [], [:work]], [description.subject, description.reads, description.writes]
   end
 
   def test_a_class_in_the_table_has_its_first_words
-    assert_equal "kernel draft", KernelFixtures::Draft.tool_name(KernelFixtures::TABLE)
+    assert_equal "kernel draft", Fixtures::Draft.tool_name(Fixtures::TABLE)
   end
 
   def test_an_optional_argument_shows_in_brackets
@@ -106,8 +100,8 @@ class CliTest < Minitest::Test
   end
 
   def test_a_class_outside_the_table_has_no_tool_name
-    assert_nil KernelFixtures::Draft.tool_name
-    assert_nil KernelFixtures::Draft.describe.name
+    assert_nil Fixtures::Draft.tool_name
+    assert_nil Fixtures::Draft.describe.name
   end
 
   def test_an_unknown_graph_is_invalid

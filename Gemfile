@@ -1,5 +1,7 @@
 source "https://rubygems.org"
 
+gem "sqlite3", "~> 2.9"
+
 group :development, :test do
   gem "minitest", "~> 6.0"
   gem "simplecov", "~> 1.0"

@@ -1,14 +1,8 @@
 # frozen_string_literal: true
 
-require_relative "support/kernel"
+require_relative "../test_helper"
 
-class RoutineFailureTest < Minitest::Test
-  include KernelFixtures::Calls
-
-  def setup = make_home
-
-  def teardown = remove_home
-
+class RoutineFailureTest < Plastic::TestCase
   def test_a_refusal_gate_exits_3_with_the_owner_line
     call = plastic("kernel", "gate", "hold")
 
@@ -62,11 +56,11 @@ class RoutineFailureTest < Minitest::Test
   end
 
   def test_a_database_error_fails_the_call
-    FileUtils.rm_rf(@plastic_home)
+    @plastic_home = File.join(@home, "plain-file")
     File.write(@plastic_home, "not a directory")
     call = plastic("kernel", "gate", "pass")
 
     assert_equal 1, call.code
-    assert_includes call.err, "work_graph.db"
+    assert_includes call.err, "home.db"
   end
 end

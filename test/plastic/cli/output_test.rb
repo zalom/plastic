@@ -1,10 +1,11 @@
 # frozen_string_literal: true
 
 require "json"
-require_relative "../support/kernel"
+require_relative "../../test_helper"
 
-class OutputTest < Minitest::Test
+class OutputTest < Plastic::TestCase
   def setup
+    super
     @out = StringIO.new
     @err = StringIO.new
   end

@@ -1,14 +1,8 @@
 # frozen_string_literal: true
 
-require_relative "support/kernel"
+require_relative "../test_helper"
 
-class HookTest < Minitest::Test
-  include KernelFixtures::Calls
-
-  def setup = make_home
-
-  def teardown = remove_home
-
+class HookTest < Plastic::TestCase
   def test_a_hook_prints_its_reply_as_plain_text
     call = plastic("hook", "echo", input: %({"session_id": "s-1"}))
 

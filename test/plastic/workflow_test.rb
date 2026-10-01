@@ -1,10 +1,8 @@
 # frozen_string_literal: true
 
-require_relative "support/kernel"
+require_relative "../test_helper"
 
-class WorkflowTest < Minitest::Test
-  include KernelFixtures::WorkflowBuilders
-
+class WorkflowTest < Plastic::TestCase
   def test_a_key_is_the_lane_and_the_snake_name
     assert_equal :code_find_draft, Flows::FindDraft.key
     assert_equal :agent_write_draft, Flows::WriteDraft.key

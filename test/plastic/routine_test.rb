@@ -1,14 +1,8 @@
 # frozen_string_literal: true
 
-require_relative "support/kernel"
+require_relative "../test_helper"
 
-class RoutineTest < Minitest::Test
-  include KernelFixtures::Calls
-
-  def setup = make_home
-
-  def teardown = remove_home
-
+class RoutineTest < Plastic::TestCase
   def test_a_chain_of_two_code_workflows_prints_next_and_because
     call = plastic("kernel", "two", "ada")
 
@@ -67,12 +61,12 @@ class RoutineTest < Minitest::Test
   end
 
   def test_verify_runs_once_per_routine
-    assert KernelFixtures::TwoStep.verify
-    assert KernelFixtures::TwoStep.verify
+    assert Fixtures::TwoStep.verify
+    assert Fixtures::TwoStep.verify
   end
 
   def test_the_declared_facts_are_arguments_options_and_workflow_facts
-    assert_equal %i[name dir stamp draft_path], KernelFixtures::Draft.declared_facts
+    assert_equal %i[name dir stamp draft_path], Fixtures::Draft.declared_facts
   end
 
   def test_the_calling_session_reaches_the_context

@@ -10,6 +10,24 @@
         }
       ]
     },
+    "varar/intent-new.md": {
+      "sourceHash": "fnv1a:d9e78ed6",
+      "examples": [
+        {
+          "name": "Each row gives the store, the call, the exit code, the index, the files and what it says:",
+          "line": 8
+        }
+      ]
+    },
+    "varar/legacy-import.md": {
+      "sourceHash": "fnv1a:98df1ff2",
+      "examples": [
+        {
+          "name": "Each row gives the fixture, the call, the exit code, the result, the intents and the files of 1:",
+          "line": 10
+        }
+      ]
+    },
     "varar/next.md": {
       "sourceHash": "fnv1a:1fac258c",
       "examples": [
@@ -43,6 +61,24 @@
         {
           "name": "Each row gives the harness, starting layout, global store, project intent, registered harness, legacy directory, backup, and repeated migration exit:",
           "line": 10
+        }
+      ]
+    },
+    "varar/sync-down.md": {
+      "sourceHash": "fnv1a:3a35a4ae",
+      "examples": [
+        {
+          "name": "Each row gives the change, the call, the exit code, the result, the file and the row:",
+          "line": 10
+        }
+      ]
+    },
+    "varar/sync-up.md": {
+      "sourceHash": "fnv1a:162adc49",
+      "examples": [
+        {
+          "name": "Each row gives the change, the exit code, the result and the rows:",
+          "line": 8
         }
       ]
     },

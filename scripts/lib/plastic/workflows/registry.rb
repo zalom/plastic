@@ -7,6 +7,9 @@ module Plastic
     # workflows/close_intent.rb, a CodeWorkflow. Workflow.fetch loads a file
     # only when a routine asks for its key, and a key missing here fails
     # `verify` before any step runs. Each family owns its own section.
-    REGISTRY = [].freeze
+    REGISTRY = [
+      # Storage: intents and the sync of a store folder with its rows.
+      :code_write_intent, :code_sync_up, :code_sync_down
+    ].freeze
   end
 end
