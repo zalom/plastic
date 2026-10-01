@@ -96,4 +96,24 @@ class SyncStepsTest < Minitest::Test
 
     assert_equal [before, [:done]], [[Plastic::Workflows::SyncUp.steps.size, Plastic::Workflows::SyncUp.facts.size], Plastic::Workflows::SyncUp.outcome_names]
   end
+
+  def test_a_sync_declares_its_steps_and_gates_in_order
+    flow = Class.new(Plastic::CodeWorkflow) do
+      extend Plastic::Workflows::SyncSteps
+
+      sync :up
+    end
+    steps = Plastic::Workflows::SyncSteps
+    gates = flow.steps.grep(Plastic::CodeWorkflow::Gate).map(&:reason)
+
+    assert_equal ["plan the sync", "gate", "gate", "apply the changes", "say what changed", "gate"], flow.steps.map(&:name)
+    assert_equal ["%{failure}", steps::REFUSED_BEFORE, steps::REFUSED_AFTER], gates
+  end
+
+  def test_a_plan_note_clears_the_lines_of_an_earlier_apply
+    context = Plastic::Context.new(declared: DECLARED, facts: { lines: ["read a.md"] }, graphs: {})
+    Plastic::Workflows::SyncSteps.note(context, Plan.new(failure: nil, conflicts: [], merging: false, pending: 1))
+
+    assert_nil context.lines
+  end
 end
