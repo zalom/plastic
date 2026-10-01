@@ -8,15 +8,17 @@ require "tmpdir"
 
 load File.expand_path("../bin/verify-change", __dir__) unless defined?(VerifyChange)
 
-# Intent 397, D8: the gate wires the timing extension and cap check into its
+# The gate wires the timing extension and cap check into its
 # own steps, through the same `step` method every other check uses, so the
 # sandbox HOME and PLASTIC_TMP apply to them too.
 class VerifyChangeTimingTest < Minitest::Test
   TEST_FILE = "test/plastic/new_routine_test.rb"
+  SOURCE_FILE = "bin/lib/new_routine.rb"
 
   def setup
     @root = Dir.mktmpdir("verify-change-timing")
     write(TEST_FILE, "")
+    write(SOURCE_FILE, "")
     @err = StringIO.new
   end
 
@@ -77,5 +79,14 @@ class VerifyChangeTimingTest < Minitest::Test
 
     refute_includes titles, "Timing check"
     assert_includes @err.string, "Timing check skipped"
+  end
+
+  def test_the_mutation_step_writes_json_under_the_sandbox
+    step = plan(changed: [SOURCE_FILE, TEST_FILE]).steps.find { |candidate| candidate.title == "Mutation testing" }
+
+    output_index = step.command.index("--output")
+
+    refute_nil output_index
+    assert_equal "/nowhere/mutation_report.json", step.command[output_index + 1]
   end
 end

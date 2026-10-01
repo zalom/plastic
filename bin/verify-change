@@ -336,11 +336,19 @@ class VerifyChange
     @dependencies_section = section.join
   end
 
+  # Everything after `--` is Mutineer's own argument line, which
+  # bin/lib/mutation_verdicts.rb passes through unchanged for the first run
+  # and again, with `--only` and `--jobs 1`, for each subject it re-runs.
   def mutation_command(sources, tests, base, rails, suite)
-    %w[bundle exec mutineer run] + sources + tests.flat_map { |test| ["--test", test] } +
-      %W[--since #{base} --threshold #{MUTATION_THRESHOLD}] + (suite == RSPEC ? %w[--framework rspec] : []) +
+    %w[bundle exec ruby] + [File.join(@root, "bin/lib/mutation_verdicts.rb"), "run", "--output", mutation_report_path,
+                            "--threshold", MUTATION_THRESHOLD.to_s, "--"] + sources + tests.flat_map { |test| ["--test", test] } +
+      %W[--since #{base}] + (suite == RSPEC ? %w[--framework rspec] : []) +
       (rails ? %w[--rails] : %w[--strategy redefine]) +
       (exist?(".mutineer.yml") ? [] : ["--operators", ALL_OPERATORS.join(",")])
+  end
+
+  def mutation_report_path
+    @mutation_report_path ||= File.join(sandbox.fetch("PLASTIC_TMP"), "mutation_report.json")
   end
 
   def execute(plan, requested_base)
