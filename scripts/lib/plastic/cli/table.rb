@@ -13,6 +13,18 @@ module Plastic
       "sync down" => ["Commands::SyncDown", "Print the rows that changed into files"],
       "session note" => ["Commands::SessionNote", "Write the one prose line of this session"],
 
+      # Work graph
+      "node add" => ["Commands::NodeAdd", "Add a node to an intent's work graph"],
+      "node remove" => ["Commands::NodeRemove", "Remove a node; its edges stay as rows"],
+      "node claim" => ["Commands::NodeClaim", "Claim an open node and print its brief"],
+      "node release" => ["Commands::NodeRelease", "Release a claimed or failed node back to open"],
+      "node done" => ["Commands::NodeDone", "Mark a claimed node done, with its judge and findings"],
+      "node fail" => ["Commands::NodeFail", "Mark a claimed node failed, with a reason"],
+      "node park" => ["Commands::NodePark", "Park a claimed node with a question for the owner"],
+      "node answer" => ["Commands::NodeAnswer", "Answer a parked node and reopen it"],
+      "edge add" => ["Commands::EdgeAdd", "Add a needs edge between two nodes"],
+      "edge remove" => ["Commands::EdgeRemove", "Remove an edge"],
+
       # Hooks: the harness calls these on an event; see docs/contributing/ARCHITECTURE.md.
       "hook resume" => ["Hooks::Resume", "SessionStart: print the state the rows carry"],
       "hook record" => ["Hooks::Record", "Stop: stamp the turn, renew locks, run the stop gate"]
