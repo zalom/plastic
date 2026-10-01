@@ -13,6 +13,7 @@ require_relative "day_summary"
 require_relative "active_delivery"
 require_relative "runner_core"
 require_relative "runner_watch"
+require_relative "read_config"
 require_relative "version_number"
 
 # Extracted from scripts/hook-session-start (intent 397, technique 1): the
@@ -178,9 +179,9 @@ module SessionStartHook
   # already behind the installed one has nothing left to warn about. Only a
   # critical notice outlives its own removal.
   module DeprecationNotice
-    def self.active(plastic_home:, plugin_root:, read_config:, current_version:)
+    def self.active(plastic_home:, plugin_root:, current_version:)
       deprecations = load(plastic_home, plugin_root)
-      dismissed = read_dismissed(read_config)
+      dismissed = read_dismissed
       installed = VersionNumber.parse(current_version)
       deprecations.select { |dep| live?(dep, installed, current_version, dismissed) }
     end
@@ -197,8 +198,8 @@ module SessionStartHook
       data["deprecations"] || []
     end
 
-    def self.read_dismissed(read_config)
-      JSON.parse(`"#{read_config}" deprecations_dismissed`.strip)
+    def self.read_dismissed
+      Array(ReadConfig.resolve("deprecations_dismissed"))
     rescue
       []
     end
@@ -271,16 +272,15 @@ module SessionStartHook
   # 340a, G7b, n3, graph.md D10). A raise or a hang on any one candidate must
   # add nothing, never a partial line.
   module DeliveryWatch
-    def self.line(plastic_home:, store_dir:, read_config:)
-      Timeout.timeout(2) { build_line(plastic_home, store_dir, read_config) }
+    def self.line(plastic_home:, store_dir:)
+      Timeout.timeout(2) { build_line(plastic_home, store_dir) }
     rescue Exception # rubocop:disable Lint/RescueException -- any failure or timeout stays silent, never crashes boot
       nil
     end
 
-    def self.build_line(plastic_home, store_dir, read_config)
-      roots_raw = IO.popen({ "PLASTIC_HOME" => plastic_home }, [read_config, "project_roots"],
-        err: File::NULL, &:read).to_s.strip
-      project_roots = (roots_raw.empty? ? [] : Array(JSON.parse(roots_raw))).map { |root| File.expand_path(root.to_s) }
+    def self.build_line(plastic_home, store_dir)
+      roots = ReadConfig.resolve("project_roots", plastic_home: plastic_home)
+      project_roots = Array(roots).map { |root| File.expand_path(root.to_s) }
 
       attention = ActiveDelivery.candidate_intent_dirs(global_store: store_dir, project_roots: project_roots)
         .uniq.filter_map { |dir| line_for(dir) }
@@ -363,9 +363,9 @@ module SessionStartHook
   # heartbeat, and append the joined-count line plus the day summary (344 n2,
   # spec D4). Best-effort: any failure here degrades to no ledger line.
   module DayLedger
-    def self.lines(plastic_home:, store_dir:, read_config:, env:, payload_session_id:)
+    def self.lines(plastic_home:, store_dir:, env:, payload_session_id:)
       day = SessionLedger.day_id
-      open_today(store_dir, day, read_config)
+      open_today(store_dir, day)
 
       sid = open_tmp_and_heartbeat(store_dir, env, payload_session_id)
       lines = [joined_line(store_dir, day)]
@@ -376,8 +376,12 @@ module SessionStartHook
       []
     end
 
-    def self.open_today(store_dir, day, read_config)
-      author = `"#{read_config}" author`.strip
+    # ReadConfig.resolve defaults to ENV["PLASTIC_HOME"], the real global
+    # config, not the hook's own plastic_home: the author setting has always
+    # been a real-environment lookup here, matching the prior backtick call's
+    # inherited (never overridden) PLASTIC_HOME.
+    def self.open_today(store_dir, day)
+      author = ReadConfig.resolve("author").to_s.strip
       author = "session" if author.empty?
       templates = File.expand_path("../../templates", __dir__)
       SessionLedger.open_day(store: store_dir, day: day, templates: templates, author: author)
@@ -459,39 +463,34 @@ module SessionStartHook
     # in one rescue so any exception anywhere in this assembly degrades the
     # whole boot to the core banner alone, never a naked crash.
     def build_context(parts)
-      read_config = read_config_path
-      append_banner_and_watch(parts, read_config)
+      append_banner_and_watch(parts)
       append_deprecations_and_update(parts)
-      append_sweep_and_ledger(parts, read_config)
+      append_sweep_and_ledger(parts)
       parts
     rescue
       [@core_banner, ""]
     end
 
-    def append_banner_and_watch(parts, read_config)
+    def append_banner_and_watch(parts)
       active, _ = IndexFile.parse(@index_path)
       plastic_md = File.exist?("#{@plastic_home}/PLASTIC.md")
-      append_watch(parts, read_config)
+      append_watch(parts)
       append_banner(parts, plastic_md, CurrentProject.detect(@plastic_home), active)
     end
 
     def append_deprecations_and_update(parts)
       deprecations = DeprecationNotice.active(plastic_home: @plastic_home, plugin_root: @plugin_root,
-        read_config: read_config_path, current_version: @current_version)
+        current_version: @current_version)
       parts.concat(DeprecationNotice.lines(deprecations)) unless @subagent_session
 
       update_notice = UpdateNotice.read(@plastic_home)
       parts.unshift("! #{update_notice}\n") if update_notice && !@subagent_session
     end
 
-    def read_config_path
-      (@plugin_root && !@plugin_root.empty?) ? "#{@plugin_root}/scripts/read-config" : File.expand_path("~/.plastic/scripts/read-config")
-    end
-
-    def append_watch(parts, read_config)
+    def append_watch(parts)
       return if @subagent_session
 
-      line = DeliveryWatch.line(plastic_home: @plastic_home, store_dir: @store_dir, read_config: read_config)
+      line = DeliveryWatch.line(plastic_home: @plastic_home, store_dir: @store_dir)
       parts << line if line
     end
 
@@ -501,12 +500,12 @@ module SessionStartHook
       parts << ProjectBanner.render(plastic_home: @plastic_home, project: project, global_active: active)
     end
 
-    def append_sweep_and_ledger(parts, read_config)
+    def append_sweep_and_ledger(parts)
       return if @subagent_session
 
       sweep_line = FirstBootSweep.line(store_dir: @store_dir)
       parts << sweep_line if sweep_line
-      parts.concat(DayLedger.lines(plastic_home: @plastic_home, store_dir: @store_dir, read_config: read_config,
+      parts.concat(DayLedger.lines(plastic_home: @plastic_home, store_dir: @store_dir,
         env: @env, payload_session_id: @payload_session_id))
     end
   end

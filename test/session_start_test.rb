@@ -3,11 +3,48 @@ require "tmpdir"
 require "json"
 require "fileutils"
 require "open3"
+require "stringio"
 
 require_relative "../scripts/lib/boot_banner"
 require_relative "../scripts/lib/savepoint"
 require_relative "../scripts/lib/index_entry"
 require_relative "../scripts/lib/session_ledger"
+require_relative "../scripts/lib/session_start_hook"
+
+# Technique 1 (intent 397): most scenarios below call SessionStartHook::Boot
+# in process instead of spawning a fresh `ruby` per case - the same class a
+# real boot runs, with argv/env/stdin given and stdout captured. A handful of
+# tests keep a real spawn for what only a real process shows (a real tty, the
+# bash shim, the hook's own pid). `env` entries mutate the real ENV for the
+# call and are restored after, since RunnerCore.context still reads
+# ENV["CLAUDE_CODE_SESSION_ID"] directly, the same key a subprocess env hash
+# would have overridden for a real child.
+module InProcessSessionStart
+  Status = Struct.new(:exitstatus) do
+    def success? = exitstatus.zero?
+  end
+
+  def run_session_start(index, home, mode = "global", plugin_root = "", env: {}, stdin_data: "")
+    saved = {}
+    env.each_key { |k| saved[k] = ENV[k] }
+    env.each { |k, v| v.nil? ? ENV.delete(k) : ENV[k] = v }
+    out = StringIO.new
+    exitstatus = 0
+    begin
+      $stdout = out
+      begin
+        SessionStartHook::Boot.new(argv: [index, home, mode, plugin_root], env: ENV, stdin: StringIO.new(stdin_data)).run
+      rescue SystemExit => e
+        exitstatus = e.status || 0
+      end
+    ensure
+      $stdout = STDOUT
+    end
+    [out.string, "", Status.new(exitstatus)]
+  ensure
+    saved.each { |k, v| v.nil? ? ENV.delete(k) : ENV[k] = v }
+  end
+end
 
 # Unit coverage for the pure boot-banner renderer (intent 36a). Health is
 # injected, so these are fully hermetic — no doctor run, no ~/.claude, no ENV.
@@ -56,6 +93,8 @@ end
 # in-process core check reports issues — exercising the degraded, non-blocking
 # path deterministically regardless of the host's ~/.claude state.
 class SessionStartHookTest < Minitest::Test
+  include InProcessSessionStart
+
   HOOK = File.expand_path("../scripts/hook-session-start", __dir__)
 
   def setup
@@ -68,20 +107,22 @@ class SessionStartHookTest < Minitest::Test
     FileUtils.rm_rf(@dir)
   end
 
+  # PLASTIC_TMP + session isolation (intent 108): with an active intent in
+  # INDEX the hook derives (writes) a bridge; keep even the empty-INDEX
+  # smoke run away from the live /tmp and session id.
   def run_hook
-    # PLASTIC_TMP + session isolation (intent 108): with an active intent in
-    # INDEX the hook derives (writes) a bridge; keep even the empty-INDEX
-    # smoke run away from the live /tmp and session id.
-    Open3.capture3({ "PLASTIC_TMP" => @dir, "CLAUDE_CODE_SESSION_ID" => nil },
-                   "ruby", HOOK, @index, @dir, "global")
+    run_session_start(@index, @dir, env: { "PLASTIC_TMP" => @dir, "CLAUDE_CODE_SESSION_ID" => nil })
   end
 
   def context_from(stdout)
     JSON.parse(stdout).dig("hookSpecificOutput", "additionalContext")
   end
 
+  # The one real spawn this class keeps: proves the shebang, the load path,
+  # and real output on real stdout/exit code - what an in-process call cannot.
   def test_emits_boot_banner_and_exits_zero
-    out, _err, status = run_hook
+    out, _err, status = Open3.capture3({ "PLASTIC_TMP" => @dir, "CLAUDE_CODE_SESSION_ID" => nil },
+                                        "ruby", HOOK, @index, @dir, "global")
     assert_equal 0, status.exitstatus
     refute_empty out.strip
     assert_includes context_from(out), "Plastic Core loaded"
@@ -129,6 +170,8 @@ end
 # Hermetic per test/hermeticity_guard_test.rb: PLASTIC_TMP and CLAUDE_CODE_SESSION_ID
 # are set explicitly so nothing keys off the live session.
 class SessionStartStagePathTest < Minitest::Test
+  include InProcessSessionStart
+
   HOOK = File.expand_path("../scripts/hook-session-start", __dir__)
   SHIM = File.expand_path("../hooks/session-start", __dir__)
   DIR_NAME = "231--session-start-home-vs-store".freeze
@@ -156,8 +199,7 @@ class SessionStartStagePathTest < Minitest::Test
 
   # Argument 2 is Plastic HOME, exactly what hooks/session-start passes today.
   def run_hook
-    Open3.capture3({ "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => nil },
-                   "ruby", HOOK, File.join(@home, "INDEX.md"), @home, "global")
+    run_session_start(File.join(@home, "INDEX.md"), @home, env: { "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => nil })
   end
 
   def context
@@ -209,6 +251,8 @@ end
 # writes the per-session pointer and heartbeat. Hermetic: PLASTIC_TMP isolates
 # the bridge write and CLAUDE_CODE_SESSION_ID is set explicitly per test.
 class SessionStartDayLedgerTest < Minitest::Test
+  include InProcessSessionStart
+
   HOOK = File.expand_path("../scripts/hook-session-start", __dir__)
 
   def setup
@@ -228,8 +272,7 @@ class SessionStartDayLedgerTest < Minitest::Test
   end
 
   def run_hook(session_id: "sess-boot")
-    Open3.capture3({ "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => session_id },
-                   "ruby", HOOK, @index, @home, "global")
+    run_session_start(@index, @home, env: { "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => session_id })
   end
 
   # 344 n2 (D4): session start creates the tmp directory and the heartbeat,
@@ -337,8 +380,7 @@ class SessionStartDayLedgerTest < Minitest::Test
   # session id falls all the way back to the hook's own Process.pid, spec D4
   # row G3).
   def test_no_stdin_still_derives_a_session_id_and_exits_zero
-    out, _err, status = Open3.capture3({ "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => nil },
-                                        "ruby", HOOK, @index, @home, "global")
+    out, _err, status = run_session_start(@index, @home, env: { "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => nil })
     assert_equal 0, status.exitstatus
     assert JSON.parse(out)
 
@@ -350,7 +392,7 @@ class SessionStartDayLedgerTest < Minitest::Test
 
   def run_hook_with_stdin(stdin_data:, env_session_id: nil)
     env = { "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => env_session_id }
-    Open3.capture3(env, "ruby", HOOK, @index, @home, "global", stdin_data: stdin_data)
+    run_session_start(@index, @home, env: env, stdin_data: stdin_data)
   end
 
   def test_g1_prefers_the_payloads_session_id_over_a_different_env_var
@@ -380,20 +422,11 @@ class SessionStartDayLedgerTest < Minitest::Test
 
   def test_g3_falls_back_to_the_pid_with_no_payload_and_no_env_var
     env = { "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => nil }
-    child_pid = nil
-    out = nil
-    status = nil
-    Open3.popen3(env, "ruby", HOOK, @index, @home, "global") do |stdin, stdout, _stderr, wait_thr|
-      child_pid = wait_thr.pid
-      stdin.write("not valid json{{{")
-      stdin.close
-      out = stdout.read
-      status = wait_thr.value
-    end
+    out, _err, status = run_session_start(@index, @home, env: env, stdin_data: "not valid json{{{")
     assert_equal 0, status.exitstatus
     assert JSON.parse(out)
 
-    expected_sid = SessionLedger.short_session_id(nil, child_pid.to_s)
+    expected_sid = SessionLedger.short_session_id(nil, Process.pid.to_s)
     assert Dir.exist?(SessionLedger.session_tmp_dir(store, expected_sid)),
            "with no payload id and no env var, the session must be keyed by the hook's own pid " \
            "(#{expected_sid}), not skipped or left to some other fallback"
@@ -436,6 +469,8 @@ end
 # suppress; a fixture without that content would leave the suppression
 # unproven either way.
 class SessionStartSubagentTest < Minitest::Test
+  include InProcessSessionStart
+
   HOOK = File.expand_path("../scripts/hook-session-start", __dir__)
 
   def setup
@@ -472,7 +507,7 @@ class SessionStartSubagentTest < Minitest::Test
 
   def run_hook(stdin_data:, session_id: "sess-subagent")
     env = { "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => session_id }
-    Open3.capture3(env, "ruby", HOOK, @index, @home, "global", stdin_data: stdin_data)
+    run_session_start(@index, @home, env: env, stdin_data: stdin_data)
   end
 
   # Row 7.1
@@ -507,8 +542,8 @@ class SessionStartSubagentTest < Minitest::Test
     env_with_stray_agent_env = { "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => "sess-env-only",
                                   "CLAUDE_AGENT_ID" => "agent-from-env-must-be-ignored" }
     payload_without_marker = JSON.generate("session_id" => "sess-env-only")
-    out, _err, status = Open3.capture3(env_with_stray_agent_env, "ruby", HOOK, @index, @home, "global",
-                                        stdin_data: payload_without_marker)
+    out, _err, status = run_session_start(@index, @home, env: env_with_stray_agent_env,
+                                           stdin_data: payload_without_marker)
     assert_equal 0, status.exitstatus
     ctx = JSON.parse(out).dig("hookSpecificOutput", "additionalContext")
     assert_includes ctx, "Active: [555 — 555 - An active intent]",
@@ -558,6 +593,8 @@ end
 # line are unrelated bookkeeping this cut does not touch, so this fixture
 # carries none of them and the assertions below do not need to exclude them.
 class SessionStartDoctrineCutTest < Minitest::Test
+  include InProcessSessionStart
+
   HOOK = File.expand_path("../scripts/hook-session-start", __dir__)
 
   def setup
@@ -598,8 +635,7 @@ class SessionStartDoctrineCutTest < Minitest::Test
   end
 
   def context
-    out, _err, status = Open3.capture3({ "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => "sess-doctrine-cut" },
-                                        "ruby", HOOK, @index, @home, "global")
+    out, _err, status = run_session_start(@index, @home, env: { "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => "sess-doctrine-cut" })
     assert_equal 0, status.exitstatus
     JSON.parse(out).dig("hookSpecificOutput", "additionalContext")
   end
@@ -629,6 +665,8 @@ end
 # `File.expand_path` argument) is a real, reachable, hermetic way to raise
 # partway through that assembly.
 class SessionStartBannerExceptionTest < Minitest::Test
+  include InProcessSessionStart
+
   HOOK = File.expand_path("../scripts/hook-session-start", __dir__)
 
   def setup
@@ -649,8 +687,7 @@ class SessionStartBannerExceptionTest < Minitest::Test
   end
 
   def run_hook
-    Open3.capture3({ "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => "sess-banner-exception" },
-                   "ruby", HOOK, @index, @home, "global")
+    run_session_start(@index, @home, env: { "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => "sess-banner-exception" })
   end
 
   def test_exception_degrades_to_banner
@@ -675,6 +712,8 @@ end
 # plastic_home so the walk never leaves this tmp home; record: false means
 # a boot must never write the fixture's own watch.state or watch.record.
 class SessionStartWatchTest < Minitest::Test
+  include InProcessSessionStart
+
   HOOK = File.expand_path("../scripts/hook-session-start", __dir__)
   PLUGIN_ROOT = File.expand_path("..", __dir__)
 
@@ -702,7 +741,7 @@ class SessionStartWatchTest < Minitest::Test
 
   def run_hook(stdin_data: "", session_id: "sess-watch")
     env = { "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => session_id }
-    Open3.capture3(env, "ruby", HOOK, @index, @home, "global", PLUGIN_ROOT, stdin_data: stdin_data)
+    run_session_start(@index, @home, "global", PLUGIN_ROOT, env: env, stdin_data: stdin_data)
   end
 
   def context(**kwargs)
@@ -927,6 +966,8 @@ end
 # at every boot on 2.0.0-alpha.29. A notice whose removal is behind the
 # installed version has nothing left to say, unless it is critical.
 class SessionStartDeprecationAgeTest < Minitest::Test
+  include InProcessSessionStart
+
   HOOK = File.expand_path("../scripts/hook-session-start", __dir__)
 
   def setup
@@ -956,8 +997,8 @@ class SessionStartDeprecationAgeTest < Minitest::Test
   end
 
   def context
-    out, _err, status = Open3.capture3({"PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => nil},
-      "ruby", HOOK, File.join(@home, "INDEX.md"), @home, "global")
+    out, _err, status = run_session_start(File.join(@home, "INDEX.md"), @home,
+      env: { "PLASTIC_TMP" => @tmp, "CLAUDE_CODE_SESSION_ID" => nil })
 
     assert_equal 0, status.exitstatus
     JSON.parse(out).dig("hookSpecificOutput", "additionalContext").to_s

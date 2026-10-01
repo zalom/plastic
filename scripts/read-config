@@ -8,39 +8,7 @@
 #   PLASTIC_HOME -- override ~/.plastic (for testing)
 
 require "yaml"
-require "json"
-require_relative "lib/agent_models"
-
-DEFAULTS = {
-  "version" => 3,
-  "stale_threshold_days" => 3,
-  # Absolute token counts for a 1M window, 15 and 25 percent (intent 355, n5, D7).
-  "context_offer_tokens" => 150_000,
-  "context_insist_tokens" => 250_000,
-  "execution_mode" => "subagent-driven",
-  "hash_length" => 6,
-  "hash_algorithm" => "sha256-base36",
-  "max_slug_words" => 5,
-  "project_roots" => ["~/.plastic/projects"],
-  "deprecations_dismissed" => [],
-  "config_asks_dismissed" => [],
-  "agent" => {
-    "type" => "claude-code",
-    "parallel_mode" => "linear"
-  },
-  "agents" => {
-    "models" => AgentModels::TIER_DEFAULTS
-  },
-  "architect" => {
-    "style" => nil
-  },
-  # Intent 340b (G7c, n4, D9): the Stop hook's runtime arm. Off until the
-  # owner's C32 ruling; read-config emits it as the string "false", which
-  # StopGate parses as a boolean itself rather than trusting.
-  "runner" => {
-    "stop_hook" => false
-  }
-}.freeze
+require_relative "lib/read_config"
 
 def parse_args(argv)
   key = nil
@@ -72,40 +40,11 @@ def parse_args(argv)
   [key, default_val, project_dir, harness]
 end
 
-def load_yaml(path)
-  return {} unless File.exist?(path)
-  YAML.safe_load(File.read(path)) || {}
-rescue => e
-  $stderr.puts "Warning: failed to parse #{path}: #{e.message}"
-  {}
-end
-
-def dig_key(hash, dotted_key)
-  keys = dotted_key.split(".")
-  value = hash
-  keys.each do |k|
-    return nil unless value.is_a?(Hash) && value.key?(k)
-    value = value[k]
-  end
-  value
-end
-
-def format_value(value)
-  case value
-  when Hash, Array
-    JSON.generate(value)
-  when nil
-    ""
-  else
-    value.to_s
-  end
-end
-
 # Handle --migrate mode
 if ARGV.include?("--migrate")
   global_root = ENV.fetch("PLASTIC_HOME", File.expand_path("~/.plastic"))
   config_path = File.join(global_root, "config.yml")
-  config = load_yaml(config_path)
+  config = ReadConfig.load_yaml(config_path)
 
   if config["version"].to_i >= 3
     puts "Config already at version #{config["version"]}."
@@ -127,55 +66,14 @@ end
 key, explicit_default, project_dir, harness = parse_args(ARGV)
 
 if key.nil? || key.empty?
-  $stderr.puts "Usage: read-config <key> [--default VALUE] [--project PATH] [--harness claude|codex]"
+  warn "Usage: read-config <key> [--default VALUE] [--project PATH] [--harness claude|codex]"
   exit 1
 end
 
-global_root = ENV.fetch("PLASTIC_HOME", File.expand_path("~/.plastic"))
-global_config = load_yaml(File.join(global_root, "config.yml"))
-
-project_config = {}
-if project_dir
-  project_config_path = File.join(project_dir, ".plastic_store", "config.yml")
-  project_config = load_yaml(project_config_path)
+begin
+  value = ReadConfig.resolve(key, default: explicit_default, project: project_dir, harness: harness)
+rescue ReadConfig::InvalidHarness => e
+  abort "Error: #{e.message}"
 end
 
-def canonical_harness(value)
-  return nil if value.nil?
-  return "claude" if %w[claude claude-code].include?(value.to_s)
-  return "codex" if value.to_s == "codex"
-
-  abort "Error: --harness must be claude or codex"
-end
-
-def harness_agent_value(config, key, harness)
-  match = key.match(/\Aagents\.(models|efforts)\.([^.]+)\z/)
-  return nil unless match
-
-  section, agent = match.captures
-  if section == "models"
-    AgentModels.models_section(config, harness: harness)[agent]
-  else
-    AgentModels.efforts_section(config, harness)[agent]
-  end
-end
-
-harness = canonical_harness(harness)
-if harness
-  value = harness_agent_value(project_config, key, harness)
-  value = harness_agent_value(global_config, key, harness) if value.nil?
-else
-  value = dig_key(project_config, key)
-  value = dig_key(global_config, key) if value.nil?
-end
-value = explicit_default if value.nil? && explicit_default
-if value.nil? && harness && (match = key.match(/\Aagents\.(models|efforts)\.([^.]+)\z/))
-  value = if match[1] == "models"
-            AgentModels.shipped_model_for(match[2], harness: harness)
-          else
-            AgentModels::DEFAULT_EFFORT
-          end
-end
-value = dig_key(DEFAULTS, key) if value.nil?
-
-puts format_value(value)
+puts ReadConfig.format_value(value)
