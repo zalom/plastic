@@ -6,7 +6,10 @@ module Plastic
   module Graph
     # One table: its columns with their SQL types, and the key that names one
     # row. The statements that write a row and log the write are built here.
-    Table = Data.define(:name, :columns, :key) do
+    Table = Data.define(:name, :columns, :key)
+
+    # The statements of one table.
+    class Table
       def ddl
         parts = columns.map { |column, type| "#{SQL.name(column)} #{type}" }
         parts << "UNIQUE(#{SQL.names(key)})" unless key.empty?

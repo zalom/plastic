@@ -94,4 +94,29 @@ class PrintsTest < Minitest::Test
     assert_equal %w[store/index.json store/1--one/1--one.md store/1--one/savepoint.md store/1--one/graph.json store/2--two/2--two.md
       store/2--two/savepoint.md store/2--two/graph.json], Plastic::Graph::Prints.of_store(retrieval).map(&:path)
   end
+
+  def test_index_json_names_the_store_and_origin_and_ends_with_a_newline
+    text = index_text
+
+    assert_equal [{ "store" => "global", "origin_id" => origin, "intents" => [], "clusters" => [] }, "\n"], [JSON.parse(text), text[-1]]
+  end
+
+  def test_the_savepoint_file_holds_one_line_per_row
+    store_graphs.work.write_intent(title: "One")
+    savepoint = Plastic::Graph::Prints.of_intent(retrieval, retrieval.intent("1"))[1]
+
+    assert_equal ["store/1--one/savepoint.md", "#{retrieval.savepoints("1").first.line}\n"], [savepoint.path, savepoint.text]
+  end
+
+  def graph_text_with_node
+    store_graphs.work.write_intent(title: "One")
+    store_graphs.databases[:work].transaction { |batch| batch.put(:nodes, { intent_id: "1", id: "n1", kind: "build" }) }
+    Plastic::Graph::Prints.of_intent(retrieval, retrieval.intent("1")).last.text
+  end
+
+  def test_the_graph_file_lists_each_node_and_ends_with_a_newline
+    text = graph_text_with_node
+
+    assert_equal [["n1"], "\n"], [JSON.parse(text)["nodes"].map { |node| node["id"] }, text[-1]]
+  end
 end

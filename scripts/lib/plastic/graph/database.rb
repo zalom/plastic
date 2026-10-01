@@ -19,7 +19,10 @@ module Plastic
       class Error < StandardError; end
 
       # One file and the engine that runs each script against it.
-      Connection = Data.define(:path, :engine) do
+      Connection = Data.define(:path, :engine)
+
+      # Runs a script against its file.
+      class Connection
         def call(script) = engine.call(path, script)
       end
 

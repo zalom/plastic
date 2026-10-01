@@ -35,4 +35,12 @@ class WorkGraphTest < Minitest::Test
     assert_equal [:up, 1], [plan.direction, plan.pending]
     assert_equal ["read store/1--alpha/spec.md"], work.sync_apply(plan)
   end
+
+  def test_print_intent_keeps_the_databases_out_of_versioning
+    work.write_intent(title: "Alpha")
+    folder.delete(".gitignore")
+    work.print_intent("1")
+
+    assert folder.exist?(".gitignore")
+  end
 end

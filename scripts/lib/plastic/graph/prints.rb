@@ -21,7 +21,10 @@ module Plastic
     module Prints
       # One file and how to make it. `source` gives the bytes only when the
       # file must be written, so a kept file is compared by its hash alone.
-      Print = Data.define(:path, :database, :sha256, :source) do
+      Print = Data.define(:path, :database, :sha256, :source)
+
+      # How a print compares with its file and its record.
+      class Print
         def self.text(path, database, text) = new(path, database, Digest::SHA256.hexdigest(text), -> { text })
 
         def text = source.call
@@ -88,7 +91,10 @@ module Plastic
       def plain(record) = record.to_h.except(:origin_id).transform_keys(&:to_s)
 
       # The rows of one intent or of the whole store, grouped by intent.
-      Contents = Data.define(:groups) do
+      Contents = Data.define(:groups)
+
+      # The rows of each table, by intent.
+      class Contents
         def self.read(retrieval, intent_id = nil)
           tables = %i[documents savepoints nodes edges kept_files]
           new(tables.to_h { |table| [table, retrieval.public_send(table, intent_id).group_by(&:intent_id)] })

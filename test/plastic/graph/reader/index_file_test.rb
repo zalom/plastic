@@ -46,4 +46,11 @@ class IndexFileTest < Minitest::Test
     assert_equal ["2", "T", nil], row.values_at(:intent_id, :title, :kind)
     assert_match(/\A\d{4}-\d\d-\d\dT/, row[:updated_at])
   end
+
+  def test_a_field_the_rows_do_not_hold_is_ignored
+    open_intent
+    apply(index([entry(title: "Noted", note: "kept out")], []))
+
+    assert_equal "Noted", retrieval.intent("1").title
+  end
 end

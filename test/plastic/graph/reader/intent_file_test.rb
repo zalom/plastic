@@ -58,7 +58,8 @@ class IntentFileTest < Minitest::Test
   end
 
   def test_markdown_under_resources_and_bytes_that_are_not_text_are_kept
-    assert_equal %i[references references], [read_in("resources/notes.md", "# Notes\n"), read_in("odd.md", "\xFF".b)]
+    assert_equal %i[references references references], [read_in("resources/notes.md", "# Notes\n"), read_in("odd.md", "\xFF".b),
+      read_in("notes.txt", "plain text\n")]
     assert_equal [true, true], [!kept("resources/notes.md").nil?, !kept("odd.md").nil?]
   end
 end

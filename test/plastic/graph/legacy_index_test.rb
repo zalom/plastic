@@ -79,4 +79,30 @@ class LegacyIndexTest < Minitest::Test
   def test_the_counts_name_the_intents_and_the_clusters
     assert_equal({ "intents" => 5, "clusters" => 2 }, LegacyIndex.parse(TEXT).counts)
   end
+
+  def test_a_slug_keeps_every_double_dash_after_the_id
+    assert_equal "a--b", LegacyIndex::Entry.new("9", "T", "store/9--a--b", "open", nil, nil).row({}, "now")[:slug]
+  end
+
+  def test_an_intent_marked_only_in_a_cluster_has_no_closing
+    assert_equal ["done", nil, nil], entries.fetch("1").to_h.values_at(:status, :disposition, :closed_at)
+  end
+
+  def test_a_dash_with_no_space_still_opens_the_detail
+    entry = LegacyIndex.parse("## Completed\n- [4 — Four](store/4--four/4--four.md) —2026-10-01 shipped\n").entries.first
+
+    assert_equal %w[2026-10-01 shipped], entry.to_h.values_at(:closed_at, :disposition)
+  end
+
+  def test_every_problem_is_named_in_one_message
+    error = assert_raises(Plastic::Invalid) { LegacyIndex.parse("## Someday\n#{TEXT.lines[3]}## Later\n#{TEXT.lines[6]}") }
+
+    assert_equal "INDEX.md: 396 sits under ## Someday, which gives no status; 380 sits under ## Later, which gives no status", error.message
+  end
+
+  def test_a_check_names_every_missing_entry_and_folder
+    error = assert_raises(Plastic::Invalid) { LegacyIndex.parse(TEXT).check(%w[store/9--stray]) }
+
+    assert_match(/\Astore\/9--stray has no entry in INDEX.md; store\/396--trigraph-storage is in INDEX.md and has no folder; /, error.message)
+  end
 end

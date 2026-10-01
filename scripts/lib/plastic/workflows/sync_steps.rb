@@ -37,6 +37,9 @@ module Plastic
 
       def self.settled?(context) = context.conflicts.empty?
 
+      # A gate's pass: check, read at each call, so it always runs the method as it stands.
+      def self.check(name) = ->(context) { public_send(name, context) }
+
       def sync(direction)
         sets :failure, :conflicts, :merging, :lines
         plan_steps(direction)
@@ -48,14 +51,14 @@ module Plastic
 
       def plan_steps(direction)
         read("plan the sync") { |context| SyncSteps.note(context, SyncSteps.plan(context, direction)) }
-        gate "%{failure}", stops: :failure, pass: SyncSteps.method(:runs?)
-        gate REFUSED_BEFORE, stops: :refusal, pass: SyncSteps.method(:writes?)
+        gate "%{failure}", stops: :failure, pass: SyncSteps.check(:runs?)
+        gate REFUSED_BEFORE, stops: :refusal, pass: SyncSteps.check(:writes?)
       end
 
       def apply_steps(direction)
         step("apply the changes", done: SyncSteps.applied(direction)) { |context| SyncSteps.apply(context, direction) }
         read("say what changed") { |context| SyncSteps.say(context) }
-        gate REFUSED_AFTER, stops: :refusal, pass: SyncSteps.method(:settled?)
+        gate REFUSED_AFTER, stops: :refusal, pass: SyncSteps.check(:settled?)
       end
     end
   end

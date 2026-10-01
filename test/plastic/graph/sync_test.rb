@@ -106,4 +106,32 @@ class SyncTest < Minitest::Test
 
     assert_equal "imported INDEX.md: 2 intents and 0 clusters, then deleted it", run_sync(:up).first
   end
+
+  def test_a_sync_keeps_the_databases_out_of_versioning
+    folder.delete(".gitignore")
+    run_sync(:up)
+
+    assert_equal "*.db\n*.db-journal\n", folder.read(".gitignore")
+  end
+
+  def test_a_level_file_with_no_record_is_recorded
+    store_graphs.databases[:knowledge].transaction { |batch| batch.remove(:printed, path: SPEC) }
+
+    assert_equal [], run_sync(:up)
+    assert_equal Digest::SHA256.hexdigest("# Spec\n"), retrieval.printed[SPEC]
+  end
+
+  def list_beta_in_the_index
+    data = JSON.parse(folder.read("store/index.json"))
+    data["intents"] << data["intents"].first.merge("intent_id" => "2", "slug" => "beta", "title" => "Beta")
+    write("store/index.json", JSON.generate(data))
+  end
+
+  def test_read_takes_a_folder_whose_intent_only_the_index_lists
+    list_beta_in_the_index
+    write("store/2--beta/spec.md", "# Beta\n")
+    sync.read(["store/index.json", "store/2--beta/spec.md"])
+
+    assert_equal ["# Beta\n"], retrieval.documents("2").map(&:body)
+  end
 end

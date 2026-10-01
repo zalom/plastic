@@ -12,7 +12,10 @@ module Plastic
     # another intent as `{intent_id}-{origin_id}`, and is never a copy.
     # `parent_id` is the Luhmann id the last run was appended to.
     Intent = Data.define(:id, :intent_id, :parent_id, :ref, :origin_id, :slug, :title, :kind, :status, :disposition,
-      :opened_at, :closed_at, :updated_at) do
+      :opened_at, :closed_at, :updated_at)
+
+    # What an intent derives from its fields: its folder, its rows and its own file.
+    class Intent
       include Record
 
       def self.slug_for(title) = title.downcase.scan(/[a-z0-9]+/).first(6).join("-")

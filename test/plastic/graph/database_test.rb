@@ -105,4 +105,39 @@ class DatabaseTest < Minitest::Test
 
     assert_equal "hi", @database.row("SELECT CAST(data AS TEXT) AS t FROM routine_runs")["t"]
   end
+
+  # An engine that keeps each script it is given and returns no rows.
+  class Scripts
+    attr_reader :seen
+
+    def initialize = @seen = []
+
+    def call(_path, script) = (@seen << script) && []
+  end
+
+  def test_the_schema_goes_first_in_the_first_script_alone
+    engine = Scripts.new
+    database = Database.new("/memory/x.db", "CREATE TABLE t(a);", engine:)
+    2.times { database.rows("SELECT a FROM t") }
+
+    assert_equal ["CREATE TABLE t(a);\nSELECT a FROM t", "SELECT a FROM t"], engine.seen
+  end
+
+  def test_the_program_fails_its_check_on_a_folder_with_no_sqlite3
+    Dir.mktmpdir("plastic-path") { |dir| assert_raises(Database::Error) { Program.new(dir).check } }
+  end
+
+  def test_the_program_makes_the_folder_of_a_new_database
+    Dir.mktmpdir("plastic-program") do |dir|
+      Program.new.call(File.join(dir, "new", "home.db"), "CREATE TABLE t(a);")
+
+      assert_path_exists File.join(dir, "new", "home.db")
+    end
+  end
+
+  def test_puts_and_applies_return_the_batch_so_writes_chain
+    batch = Plastic::Graph::Database::Batch.new
+
+    assert_same batch, batch.put(:clusters, { name: "C", intent_id: "1" }).apply([])
+  end
 end
