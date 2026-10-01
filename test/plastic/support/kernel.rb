@@ -3,7 +3,6 @@
 require_relative "../../test_helper"
 require "fileutils"
 require "securerandom"
-require "sqlite3"
 require "stringio"
 require "tmpdir"
 require_relative "../../../scripts/lib/plastic"
