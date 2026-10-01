@@ -16,6 +16,11 @@ module Plastic
         retrieval-gate model-instructions opus-manual continue future-intent-check auto-arm gate-check
         power-tools].map { |name| "plastic-#{name}" }.push("codex-hook").freeze
 
+      # True when a word of the command names an earlier install's launcher file.
+      def self.old_launcher?(command)
+        command.split.map { |word| File.basename(word.delete(%("')), ".rb") }.intersect?(OLD_LAUNCHERS)
+      end
+
       def initialize(command:, config:, launchers:)
         @command = command
         @config = config
@@ -25,72 +30,49 @@ module Plastic
       # A new Claude Code settings hash, with this installation's hook groups,
       # status line and screens replaced.
       def claude(settings)
-        with_screens(with_status_line(with_hooks(settings, "claude-code")))
+        rewritten = with_events(settings, "claude-code")
+        hooks = rewritten["hooks"]
+        hooks["MessageDisplay"] = [*hooks["MessageDisplay"], *screens_group]
+        status_line(rewritten)
       end
 
       # A new Codex hooks.json hash. Codex has no status line or screen events.
-      def codex(hooks_json) = { **hooks_json, "hooks" => rewritten_events(hooks_json["hooks"], "codex") }
+      def codex(hooks_json) = with_events(hooks_json, "codex")
 
       private
 
-      def with_hooks(settings, harness) = settings.merge("hooks" => rewritten_events(settings["hooks"], harness))
-
-      def rewritten_events(hooks, harness)
-        kept = strip_ours(hooks || {})
-        EVENTS.each_with_object(kept) { |(event, words), all| all[event] = [*all[event], group(words, harness)] }
+      def with_events(settings, harness)
+        kept = Hash(settings["hooks"]).transform_values { |entries| without_ours(entries) }
+        settings.merge("hooks" => kept.merge(own_groups(harness)) { |_event, theirs, ours| theirs + ours })
       end
 
-      def group(words, harness) = { "matcher" => "", "hooks" => [{ "type" => "command", "command" => wrapped(%("#{@command}" #{words} --harness #{harness})) }] }
+      def own_groups(harness) = EVENTS.transform_values { |words| [group(%("#{@command}" #{words} --harness #{harness}))] }
 
-      def wrapped(line) = "env -u RUBYOPT #{line} || true"
+      def group(line) = { "matcher" => "", "hooks" => [{ "type" => "command", "command" => "env -u RUBYOPT #{line} || true" }] }
 
-      def strip_ours(hooks)
-        hooks.to_h { |event, entries| [event, Array(entries).reject { |entry| ours?(entry) }] }
-      end
+      def without_ours(entries) = Array(entries).reject { |entry| ours?(entry) }
 
       def ours?(entry) = Array(entry["hooks"]).any? { |hook| ours_command?(hook["command"].to_s) }
 
       def ours_command?(command)
-        ours = [@command, @launchers[:statusline], @launchers[:screens]].compact
-        ours.any? { |path| command.include?(%("#{path}")) } || old_launcher?(command)
-      end
-
-      def old_launcher?(command)
-        command.split.map { |word| File.basename(word.delete(%("')), ".rb") }.intersect?(OLD_LAUNCHERS)
+        own = [@command, *@launchers.values].compact
+        own.any? { |path| command == path || command.include?(%("#{path}")) } || self.class.old_launcher?(command)
       end
 
       # A status line the user set stays: only an empty or our own is written,
       # and only our own is removed.
-      def with_status_line(settings)
-        return settings if foreign_status_line?(settings)
-        return settings.merge("statusLine" => { "type" => "command", "command" => @launchers[:statusline] }) if screen?(:statusline)
-
-        settings.except("statusLine")
+      def status_line(settings)
+        foreign = settings.dig("statusLine", "command").then { |command| command && !ours_command?(command) }
+        foreign ? settings : own_status_line(settings)
       end
 
-      def foreign_status_line?(settings)
-        command = settings.dig("statusLine", "command")
-        !command.nil? && !ours_command?(command.to_s) && command != @launchers[:statusline]
+      def own_status_line(settings)
+        return settings.except("statusLine") unless screen?(:statusline)
+
+        settings.merge("statusLine" => { "type" => "command", "command" => @launchers[:statusline] })
       end
 
-      def with_screens(settings)
-        return screens_on(settings) if screen?(:screens)
-
-        screens_off(settings)
-      end
-
-      def screens_on(settings)
-        kept = screens_off(settings)
-        hooks = kept["hooks"]
-        kept.merge("hooks" => hooks.merge("MessageDisplay" => [*hooks["MessageDisplay"], message_display_group]))
-      end
-
-      def screens_off(settings)
-        kept = Array((settings["hooks"] || {})["MessageDisplay"]).reject { |entry| ours?(entry) }
-        settings.merge("hooks" => (settings["hooks"] || {}).merge("MessageDisplay" => kept))
-      end
-
-      def message_display_group = { "matcher" => "", "hooks" => [{ "type" => "command", "command" => wrapped(%("#{@launchers[:screens]}")) }] }
+      def screens_group = screen?(:screens) ? [group(%("#{@launchers[:screens]}"))] : []
 
       def screen?(key) = @config.flag([key.to_s], default: true)
     end

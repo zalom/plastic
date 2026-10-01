@@ -24,6 +24,14 @@ class ResumeOpenIntentsTest < Plastic::TestCase
     refute_includes call.out, "next:"
   end
 
+  def test_an_open_intent_with_a_run_prints_the_last_run_and_its_next
+    intent_id = intent("Beta")
+    run = Plastic::RoutineRun.fresh("intent show", intent_id).with(status: "finished", next_command: "plastic next")
+    store_graphs.work.save_routine_run(run)
+
+    assert_includes call.out, "open: #{intent_id} Beta (open), last run intent show finished #{run.updated_at}, next: plastic next"
+  end
+
   def test_open_intents_over_the_cap_print_ten_and_a_count_of_the_rest
     12.times { |n| intent("I#{n}") }
 

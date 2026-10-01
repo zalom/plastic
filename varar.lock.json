@@ -56,7 +56,7 @@
       ]
     },
     "varar/session-resume.md": {
-      "sourceHash": "fnv1a:5e39ceee",
+      "sourceHash": "fnv1a:e66535df",
       "examples": [
         {
           "name": "Each row gives the source, the session, the exit code, the first line and the names:",

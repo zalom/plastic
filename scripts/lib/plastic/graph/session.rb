@@ -10,7 +10,10 @@ module Plastic
       :end_reason, :note) do
       include Record
 
-      def ended? = !ended_at.nil?
+      def ended? = !ended_at.to_s.empty?
+
+      # The session in one phrase: when it ended and why, else its last turn.
+      def summary = ended? ? "session #{session_id} ended #{ended_at} (#{end_reason})" : "session #{session_id} last turn #{last_turn_at}"
     end
   end
 end

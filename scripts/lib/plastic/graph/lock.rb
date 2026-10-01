@@ -15,14 +15,8 @@ module Plastic
     class Lock
       TTL = 1800
 
-      # True when `renewed_at` parses and lies within the TTL of `now`.
-      def live?(now = Time.now)
-        return false unless renewed_at
-
-        (now - Time.parse(renewed_at)) <= TTL
-      rescue ArgumentError
-        false
-      end
+      # True when `renewed_at` lies within the TTL of `now`.
+      def live?(now = Time.now) = (now - Time.parse(renewed_at)) <= TTL
     end
   end
 end

@@ -28,7 +28,7 @@ module Plastic
       private
 
       def block?
-        @event[:stop_hook_active] == true && @stop_hook && !lock.nil? && @retrieval.ready_nodes(lock.intent_id).any?
+        @event[:stop_hook_active] == true && @stop_hook && lock && @retrieval.ready_nodes(lock.intent_id).any?
       end
 
       def lock

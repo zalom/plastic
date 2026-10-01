@@ -139,6 +139,8 @@ The following table lists the same classes. Each one sits in the `Plastic` modul
 | `Graph::Session` | One row of `home.db`'s `sessions` table: a harness run, from its first turn to its end reason. |
 | `Graph::Lock` | One row of `home.db`'s `locks` table: the session holding the delivery lock of one intent. `live?` checks its TTL. |
 | `Graph::RetrievalGraph` | The reads of a command, one table at a time. |
+| `Graph::SessionWriter` | The writes to `home.db`'s `sessions` and `locks` tables. `WorkGraph` hands those writes to it. |
+| `Graph::SessionReader` | The reads of `home.db`'s routine runs, sessions and locks, and the intents a session touched. `RetrievalGraph` hands those reads to it. |
 | `Graph::IntentWriter` | Checks and writes a new intent: its Luhmann id, its rows and its folder. |
 | `Graph::Printer` | Prints files from their rows and records each hash in `printed`. |
 | `Graph::Reader` | Reads a file changed by hand back into its rows: `store/index.json` through `IndexFile`, and a file of an intent folder through `IntentFile`. |
@@ -147,6 +149,7 @@ The following table lists the same classes. Each one sits in the `Plastic` modul
 | `Graph::LuhmannId` | Splits, sorts and extends Luhmann ids, such as the next child of `307a`. |
 | `Graph::LegacyIndex` | Reads the `INDEX.md` of a store written before `store/index.json`. |
 | `Hook` | The base class of a hook command. It prints a plain text reply and always exits 0. |
+| `Hooks::Recap` | The lines `hook resume` prints, from rows alone: the first line, the open intents, the previous session, the intent in progress and the note. |
 | `Hooks::StopGate` | Whether `hook record` blocks a stop: the harness, the config flag, a live auto lock and a ready node, all four. |
 | `Hooks::Entries` | The harness hook groups, status line and screens entry the installer writes into Claude Code and Codex. |
 | `Config` | Reads `config.yml`; a missing or broken file never stops a hook or a command, it reads every flag at its default. |

@@ -18,6 +18,17 @@ module Plastic
     class Intent
       include Record
 
+      OPEN = %w[open active].freeze
+
+      # Open or active: the work a resume lists.
+      def open? = OPEN.include?(status)
+
+      # The id and the title, as people name the intent.
+      def label = "#{intent_id} #{title}"
+
+      # The label and the status.
+      def heading = "#{label} (#{status})"
+
       def self.slug_for(title) = title.downcase.scan(/[a-z0-9]+/).first(6).join("-")
 
       def segments = LuhmannId.segments(intent_id)

@@ -31,6 +31,16 @@ class ResumeTest < Plastic::TestCase
     assert_includes result.out, "touched: #{intent_id}"
   end
 
+  def test_a_new_session_prints_a_previous_session_still_running_and_nothing_touched
+    opened = Plastic::Graph.open(home: @plastic_home, store: "global", session: "s-1")
+    opened.work.stamp_turn("s-1", harness: "claude-code", directory: @home)
+
+    result = call(env: { "PLASTIC_SESSION" => "s-2" })
+
+    assert_match(/^previous session s-1 last turn \S+$/, result.out)
+    refute_includes result.out, "touched:"
+  end
+
   def test_clear_prints_open_intents_and_the_note
     opened = Plastic::Graph.open(home: @plastic_home, store: "global", session: "s-1")
     intent_id = opened.work.write_intent(title: "Alpha").intent_id

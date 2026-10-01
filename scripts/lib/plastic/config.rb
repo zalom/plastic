@@ -11,21 +11,21 @@ module Plastic
       @path = File.join(plastic_home, "config.yml")
     end
 
-    # True only for the boolean true or the string "true"; `default` for a
-    # missing key or a config that does not parse.
+    TRUE_VALUES = [true, "true"].freeze
+    FALSE_VALUES = [false, "false"].freeze
+
+    # True for the boolean true or the string "true", false for false or
+    # "false"; `default` for any other value, a missing key or a config that
+    # does not parse.
     def flag(path, default:)
       value = dig(path)
-      value.nil? ? default : boolean(value, default)
-    end
-
-    private
-
-    def boolean(value, default)
-      return true if value == true || value == "true"
-      return false if value == false || value == "false"
+      return true if TRUE_VALUES.include?(value)
+      return false if FALSE_VALUES.include?(value)
 
       default
     end
+
+    private
 
     def dig(path)
       data.dig(*path.map(&:to_s))

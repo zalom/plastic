@@ -20,6 +20,10 @@ class ConfigTest < Plastic::TestCase
     config("runner:\n  stop_hook: \"false\"\n") { |cfg| refute cfg.flag(%w[runner stop_hook], default: true) }
   end
 
+  def test_a_value_that_is_not_a_boolean_reads_as_the_default
+    config("statusline: maybe\n") { |cfg| assert_equal "x", cfg.flag(%w[statusline], default: "x") }
+  end
+
   def test_a_missing_key_reads_as_the_default
     config("runner:\n  stop_hook: true\n") { |cfg| assert_equal "x", cfg.flag(%w[other key], default: "x") }
   end
