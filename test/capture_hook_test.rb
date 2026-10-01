@@ -3,11 +3,10 @@ require "tmpdir"
 require "fileutils"
 require "json"
 require "yaml"
-require "open3"
-require "rbconfig"
 require_relative "../scripts/lib/session_ledger"
 require_relative "../scripts/lib/data_boundary"
 require_relative "../scripts/lib/lock"
+require_relative "support/script_entry"
 
 # Intent 298: hook-capture replaces hook-continue, hook-future-intent-check,
 # and hook-auto-arm. One UserPromptSubmit process that appends a pending line
@@ -32,7 +31,7 @@ class CaptureHookTest < Minitest::Test
   def run_hook(prompt, session: "sess-1", cwd: @home, extra: {})
     payload = { "session_id" => session, "user_prompt" => prompt, "cwd" => cwd }.merge(extra)
     env = { "PLASTIC_HOME" => @plastic_home, "HOME" => @home, "CLAUDE_CODE_SESSION_ID" => nil }
-    out, status = Open3.capture2(env, "ruby", SCRIPT, stdin_data: JSON.generate(payload))
+    out, status = ScriptEntry.call(SCRIPT, env: env, stdin: JSON.generate(payload))
     [out, status]
   end
 
@@ -58,7 +57,7 @@ class CaptureHookTest < Minitest::Test
 
   def test_malformed_stdin_exits_zero_no_output_nothing_written
     env = { "PLASTIC_HOME" => @plastic_home, "HOME" => @home, "CLAUDE_CODE_SESSION_ID" => nil }
-    out, status = Open3.capture2(env, "ruby", SCRIPT, stdin_data: "not valid json{{{")
+    out, status = ScriptEntry.call(SCRIPT, env: env, stdin: "not valid json{{{")
     assert_equal 0, status.exitstatus
     assert_empty out.strip
     refute File.exist?(SessionLedger.sessions_root(@store))
@@ -67,7 +66,7 @@ class CaptureHookTest < Minitest::Test
 
   def test_empty_stdin_exits_zero_no_output_nothing_written
     env = { "PLASTIC_HOME" => @plastic_home, "HOME" => @home, "CLAUDE_CODE_SESSION_ID" => nil }
-    out, status = Open3.capture2(env, "ruby", SCRIPT, stdin_data: "")
+    out, status = ScriptEntry.call(SCRIPT, env: env, stdin: "")
     assert_equal 0, status.exitstatus
     assert_empty out.strip
     refute File.exist?(SessionLedger.tmp_root(@store))
@@ -343,7 +342,7 @@ class CaptureHookTest < Minitest::Test
 
 def run_payload(payload)
   env = { "PLASTIC_HOME" => @plastic_home, "HOME" => @home, "CLAUDE_CODE_SESSION_ID" => nil }
-  Open3.capture2(env, "ruby", SCRIPT, stdin_data: JSON.generate(payload))
+  ScriptEntry.call(SCRIPT, env: env, stdin: JSON.generate(payload))
 end
 
 def test_prompt_key_appends_pending_line
@@ -571,7 +570,7 @@ end
     script = File.join(root, "scripts", "hook-capture")
     payload = { "session_id" => "sess-nodash-continue", "user_prompt" => "continue", "cwd" => @home }
     env = { "PLASTIC_HOME" => @plastic_home, "HOME" => @home, "CLAUDE_CODE_SESSION_ID" => nil }
-    out, status = Open3.capture2(env, "ruby", script, stdin_data: JSON.generate(payload))
+    out, status = ScriptEntry.call(script, env: env, stdin: JSON.generate(payload))
 
     assert_equal 0, status.exitstatus, out
     assert_empty out.strip,
@@ -585,7 +584,7 @@ end
     script = File.join(root, "scripts", "hook-capture")
     payload = { "session_id" => "sess-nodash-auto", "user_prompt" => "take it from here", "cwd" => @home }
     env = { "PLASTIC_HOME" => @plastic_home, "HOME" => @home, "CLAUDE_CODE_SESSION_ID" => nil }
-    out, status = Open3.capture2(env, "ruby", script, stdin_data: JSON.generate(payload))
+    out, status = ScriptEntry.call(script, env: env, stdin: JSON.generate(payload))
 
     assert_equal 0, status.exitstatus, out
     ctx = JSON.parse(out).dig("hookSpecificOutput", "additionalContext").to_s
@@ -635,7 +634,7 @@ def test_capture_hook_never_invokes_qmd
   payload = { "session_id" => "sess-no-qmd", "user_prompt" => prompt, "cwd" => project_dir }
   env = { "PLASTIC_HOME" => @plastic_home, "HOME" => @home, "CLAUDE_CODE_SESSION_ID" => nil,
           "PATH" => [bindir, ENV.fetch("PATH", "")].join(File::PATH_SEPARATOR) }
-  out, status = Open3.capture2(env, "ruby", SCRIPT, stdin_data: JSON.generate(payload))
+  out, status = ScriptEntry.call(SCRIPT, env: env, stdin: JSON.generate(payload))
 
   assert_equal 0, status.exitstatus, out
   refute File.exist?(marker), "the capture hook must never invoke qmd"

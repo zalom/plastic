@@ -4,28 +4,60 @@
 require "stringio"
 
 # A shared in-process entry point for the bare, extensionless scripts under
-# scripts/ (new-intent, restore-intent-v1, and siblings): `load` the script
-# into an anonymous module instead of the top level, so its bare `def main`
-# and neighboring top-level methods never land on Object and collide with
-# another such script's same-named method inside the full suite's one
-# shared process. The script's own `if $PROGRAM_NAME == __FILE__` guard
-# never fires this way (intentionally: that check compares the full
-# suite's $PROGRAM_NAME against the loaded file, never a match), so the
-# caller names the guarded method to invoke directly instead. These scripts
-# are being replaced by the plastic command stage by stage, so this helper
-# adds nothing to any of them beyond letting a test drive the existing
-# entry point without a trailing interpreter spawn (intent 397, D6).
+# scripts/ (new-intent, restore-intent-v1, end-intent, hook-capture, and
+# siblings): `load` the script into an anonymous module instead of the top
+# level, so its bare `def main` (or, for a script with no main at all, its
+# top-level statements) and neighboring top-level methods never land on
+# Object and collide with another such script's same-named method inside the
+# full suite's one shared process. The script's own
+# `if $PROGRAM_NAME == __FILE__` guard never fires this way (intentionally:
+# that check compares the full suite's $PROGRAM_NAME against the loaded
+# file, never a match), so the caller names the guarded method to invoke
+# directly instead - or, for a script that runs its logic as top-level
+# statements with no wrapping method, leaves `method` nil and lets the load
+# itself be the entry point. These scripts are being replaced by the
+# plastic command stage by stage, so this helper adds nothing to any of
+# them beyond letting a test drive the existing entry point without a
+# trailing interpreter spawn (intent 397, D6).
 module ScriptEntry
   # A fake Process::Status: exitstatus plus the success? check callers read.
   FakeExitStatus = Struct.new(:exitstatus) do
     def success? = exitstatus.zero?
   end
 
-  def self.call(script_path, method, *args, argv: [], env: {})
-    runner = Object.new.extend(Module.new.tap { |mod| load(script_path, mod) })
-    out, err, exit_code = with_env(env) { capture_stdio(argv) { runner.send(method, *args) } }
+  def self.call(script_path, method = nil, *args, **opts)
+    argv = opts.fetch(:argv, [])
+    env = opts.fetch(:env, {})
+    stdin = opts[:stdin]
+    out, err, exit_code = with_env(env) do
+      capture_stdio(argv, stdin) { run_in_module(script_path, method, args) }
+    end
     [out + err, FakeExitStatus.new(exit_code)]
   end
+
+  def self.run_in_module(script_path, method, args)
+    mod = Module.new
+    runner = Object.new.extend(mod)
+    # A script this process already required once by its real path (a
+    # shared lib/*.rb) and a copy of it loaded here from a second,
+    # fixture path both define the same constants. The real subprocess
+    # this replaces never saw that: each spawn got its own fresh
+    # process, so the second definition warned at nobody. $VERBOSE off
+    # for the load keeps that silence instead of leaking an
+    # "already initialized constant" warning onto the captured stderr.
+    quietly { load(script_path, mod) }
+    runner.send(method, *args) if method
+  end
+  private_class_method :run_in_module
+
+  def self.quietly
+    original = $VERBOSE
+    $VERBOSE = nil
+    yield
+  ensure
+    $VERBOSE = original
+  end
+  private_class_method :quietly
 
   # Sets each env.each_pair for the duration of the block (a nil value
   # deletes the key, matching IO.popen's env-hash convention the scripts'
@@ -39,10 +71,10 @@ module ScriptEntry
   end
   private_class_method :with_env
 
-  def self.capture_stdio(argv)
+  def self.capture_stdio(argv, stdin)
     out = StringIO.new
     err = StringIO.new
-    original = swap_io(out, err, argv)
+    original = swap_io(out, err, argv, stdin)
     exit_code = exit_code_of { yield }
     [out.string, err.string, exit_code]
   ensure
@@ -50,17 +82,18 @@ module ScriptEntry
   end
   private_class_method :capture_stdio
 
-  def self.swap_io(out, err, argv)
-    original = [$stdout, $stderr, ARGV.dup]
+  def self.swap_io(out, err, argv, stdin)
+    original = [$stdout, $stderr, $stdin, ARGV.dup]
     $stdout = out
     $stderr = err
+    $stdin = StringIO.new(stdin) unless stdin.nil?
     ARGV.replace(argv)
     original
   end
   private_class_method :swap_io
 
   def self.restore_io(original)
-    $stdout, $stderr, saved_argv = original
+    $stdout, $stderr, $stdin, saved_argv = original
     ARGV.replace(saved_argv)
   end
   private_class_method :restore_io
