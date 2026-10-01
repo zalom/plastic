@@ -245,15 +245,27 @@ class Subtraction304Test < Minitest::Test
     assert_empty missing, "manifest lists files that do not exist: #{missing.inspect}"
   end
 
-  def test_every_ruby_script_parses_and_every_lib_loads
+  def test_every_ruby_script_parses
+    # Pure syntax checking has no process-boundary concern, so it runs in-process
+    # via the same parser `ruby -c` uses underneath, instead of one interpreter
+    # spawn per script.
+    scripts = Dir[File.join(REPO, "scripts", "*")].select { |f| File.file?(f) }
+    ruby_scripts = scripts.select { |f| File.open(f, &:readline).to_s.include?("ruby") rescue false }
+    ruby_scripts.each do |f|
+      RubyVM::InstructionSequence.compile_file(f)
+    rescue SyntaxError => e
+      flunk "#{f} does not parse: #{e.message}"
+    end
+  end
+
+  def test_every_lib_loads
+    # Each lib is required alone in its own fresh interpreter, on purpose: a lib
+    # that silently depends on a constant another lib's require happens to have
+    # already loaded would pass an in-process require and only fail for a real
+    # caller that requires it first. The subprocess per file is the boundary
+    # this test actually proves and stays.
     Dir.mktmpdir("subtraction-304-tmp") do |tmp|
       env = { "RUBYOPT" => nil, "PLASTIC_TMP" => tmp, "CLAUDE_CODE_SESSION_ID" => nil }
-      scripts = Dir[File.join(REPO, "scripts", "*")].select { |f| File.file?(f) }
-      ruby_scripts = scripts.select { |f| File.open(f, &:readline).to_s.include?("ruby") rescue false }
-      ruby_scripts.each do |f|
-        _out, err, status = Open3.capture3(env, RbConfig.ruby, "-c", f)
-        assert status.success?, "#{f} does not parse: #{err}"
-      end
       Dir[File.join(REPO, "scripts", "lib", "*.rb")].each do |f|
         _out, err, status = Open3.capture3(env, RbConfig.ruby, "-e", "require #{f.inspect}")
         assert status.success?, "#{f} does not load: #{err}"
