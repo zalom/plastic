@@ -108,6 +108,7 @@ class SyncStepsTest < Minitest::Test
 
     assert_equal ["plan the sync", "gate", "gate", "apply the changes", "say what changed", "gate"], flow.steps.map(&:name)
     assert_equal ["%{failure}", steps::REFUSED_BEFORE, steps::REFUSED_AFTER], gates
+    assert_equal ["plastic continue"], flow.outcomes.map(&:offers)
   end
 
   def test_a_plan_note_clears_the_lines_of_an_earlier_apply
