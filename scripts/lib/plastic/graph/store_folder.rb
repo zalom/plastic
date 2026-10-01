@@ -28,7 +28,8 @@ module Plastic
 
       def read(rel) = File.binread(path(rel))
 
-      def sha256(rel) = exist?(rel) ? Digest::SHA256.file(path(rel)).hexdigest : nil
+      # The SHA-256 of the file, or nil when it is gone.
+      def digest(rel) = exist?(rel) ? Digest::SHA256.file(path(rel)).hexdigest : nil
 
       # A store with INDEX.md and no store/index.json has not been imported yet.
       def legacy? = exist?(LEGACY_INDEX) && !exist?(INDEX)
@@ -50,9 +51,7 @@ module Plastic
       def intent_files = intent_dirs.flat_map { |dir| files(dir) }
 
       def files(dir)
-        base = path(dir)
-        found = Dir.glob("**/*", File::FNM_DOTMATCH, base:).select { |rel| File.file?(File.join(base, rel)) }
-        found.reject { |rel| File.basename(rel).match?(SKIPPED) }.sort.map { |rel| "#{dir}/#{rel}" }
+        Dir.glob("**/*", File::FNM_DOTMATCH, base: path(dir)).map { |rel| "#{dir}/#{rel}" }.select { |rel| kept?(rel) }.sort
       end
 
       # The store's versioning never holds its databases.
@@ -61,6 +60,10 @@ module Plastic
         missing = IGNORED - lines
         write(IGNORE_FILE, (lines + missing).map { |line| "#{line}\n" }.join) if missing.any?
       end
+
+      private
+
+      def kept?(rel) = File.file?(path(rel)) && !File.basename(rel).match?(SKIPPED)
     end
   end
 end

@@ -22,17 +22,17 @@ module Plastic
 
       # The database of the home, for what belongs to one machine.
       def self.open_home(home, path: ENV.fetch("PATH", ""))
-        find_sqlite3(path)
-        { home: new(File.join(home, Schema::FILES[:home]), Schema.fetch(:home)) }
+        require_program(path)
+        { home: new(File.join(home, Schema.file(:home)), Schema.fetch(:home)) }
       end
 
       # The three databases of one store folder. `origin` stamps their rows and their change log.
       def self.open_store(root, origin, path: ENV.fetch("PATH", ""))
-        find_sqlite3(path)
-        Schema::STORE.to_h { |key| [key, new(File.join(root, Schema::FILES.fetch(key)), Schema.fetch(key), origin:)] }
+        require_program(path)
+        Schema::STORE.to_h { |key| [key, new(File.join(root, Schema.file(key)), Schema.fetch(key), origin:)] }
       end
 
-      def self.find_sqlite3(path)
+      def self.require_program(path)
         found = path.split(File::PATH_SEPARATOR).any? { |dir| File.executable?(File.join(dir, "sqlite3")) }
         raise Error, "sqlite3 is not on PATH; install it, then call again" unless found
       end
@@ -51,7 +51,6 @@ module Plastic
         @path = path
         @schema = schema
         @origin = origin
-        @created = false
         @written = Hash.new(0)
       end
 
@@ -91,7 +90,7 @@ module Plastic
         out, err, status = Open3.capture3("sqlite3", "-json", "-bail", folder, stdin_data: with_schema(script))
         raise Error, "#{file}: #{err.strip}" unless status.success?
 
-        @created = true
+        @schema = nil
         Database.result_sets(out)
       end
 
@@ -103,7 +102,7 @@ module Plastic
         raise Error, "#{file}: #{error.message}"
       end
 
-      def with_schema(script) = @created ? script : "#{@schema}\n#{script}"
+      def with_schema(script) = @schema ? "#{@schema}\n#{script}" : script
     end
   end
 end

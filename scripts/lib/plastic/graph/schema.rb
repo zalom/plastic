@@ -13,44 +13,49 @@ module Plastic
     # every write, and a `printed` table, the hash of every file printed from
     # its rows. The whole design is in docs/contributing/ARCHITECTURE.md.
     module Schema
-      TEXT = "TEXT"
-      KEPT = "TEXT NOT NULL"
-      STATUS = "TEXT NOT NULL CHECK(status IN (#{Intent::STATUSES.map { |status| "'#{status}'" }.join(", ")}))".freeze
-
-      def self.table(name, key, **columns) = Table.new(name:, columns:, key:)
-
-      ROUTINE_RUNS = table(:routine_runs, %i[store tool subject], store: KEPT, tool: KEPT, subject: "TEXT NOT NULL DEFAULT ''",
-        at: TEXT, finished: TEXT, status: TEXT, facts: TEXT, next_command: TEXT, because: TEXT, exit_code: "INTEGER",
-        started_at: TEXT, updated_at: TEXT)
-      INTENTS = table(:intents, %i[intent_id origin_id], id: "INTEGER PRIMARY KEY AUTOINCREMENT", intent_id: KEPT,
-        parent_id: TEXT, ref: TEXT, origin_id: KEPT, slug: KEPT, title: KEPT, kind: TEXT, status: STATUS,
-        disposition: TEXT, opened_at: TEXT, closed_at: TEXT, updated_at: TEXT)
-      CLUSTERS = table(:clusters, %i[name intent_id origin_id], name: KEPT, intent_id: KEPT, origin_id: KEPT)
-      NODES = table(:nodes, %i[intent_id id origin_id], intent_id: KEPT, id: KEPT, kind: TEXT, title: TEXT,
-        criterion: TEXT, state: TEXT, by: TEXT, input: TEXT, output: TEXT, question: TEXT, answer: TEXT, reason: TEXT,
-        judge: TEXT, verdict: TEXT, findings: TEXT, retries: "INTEGER", updated_at: TEXT, origin_id: KEPT)
-      EDGES = table(:edges, %i[intent_id from to kind origin_id], intent_id: KEPT, from: KEPT, to: KEPT, kind: KEPT,
-        origin_id: KEPT)
-      SAVEPOINTS = table(:savepoints, %i[intent_id position origin_id], intent_id: KEPT, position: "INTEGER NOT NULL",
-        at: TEXT, text: KEPT, origin_id: KEPT)
-      DOCUMENTS = table(:documents, %i[intent_id path origin_id], intent_id: KEPT, path: KEPT, body: KEPT,
-        updated_at: TEXT, origin_id: KEPT)
-      # The SQLite archive format, so `sqlite3 -A` lists and extracts the kept files.
-      SQLAR = table(:sqlar, %i[name], name: "TEXT PRIMARY KEY", mode: "INT", mtime: "INT", sz: "INT", data: "BLOB",
-        intent_id: TEXT, sha256: TEXT, origin_id: KEPT)
-      PRINTED = table(:printed, %i[path], path: KEPT, sha256: KEPT, at: KEPT, origin_id: KEPT)
-      CHANGES = table(:changes, [], seq: "INTEGER PRIMARY KEY AUTOINCREMENT", table: KEPT, key: KEPT,
-        operation: "TEXT NOT NULL CHECK(operation IN ('put', 'remove'))", row: TEXT, at: KEPT, origin_id: KEPT)
-
-      DATABASES = {
-        home: [ROUTINE_RUNS],
-        work: [INTENTS, CLUSTERS, NODES, EDGES, SAVEPOINTS, PRINTED, CHANGES],
-        knowledge: [DOCUMENTS, PRINTED, CHANGES],
-        references: [SQLAR, PRINTED, CHANGES]
+      # The SQL type of each kind of column; a type not named here is written as it stands.
+      TYPES = {
+        text: "TEXT", kept: "TEXT NOT NULL", integer: "INTEGER",
+        status: "TEXT NOT NULL CHECK(status IN (#{Intent::STATUSES.map { |status| "'#{status}'" }.join(", ")}))"
       }.freeze
-      FILES = { home: "home.db", work: "work_graph.db", knowledge: "knowledge_graph.db", references: "references.db" }.freeze
+
+      # Each table: the key that names one row, then its columns. `sqlar` is the
+      # SQLite archive format, so `sqlite3 -A` lists and extracts the kept files.
+      TABLES = {
+        routine_runs: [%i[store tool subject], { store: :kept, tool: :kept, subject: "TEXT NOT NULL DEFAULT ''",
+                                                 at: :text, finished: :text, status: :text, facts: :text, next_command: :text, because: :text,
+                                                 exit_code: :integer, started_at: :text, updated_at: :text }],
+        intents: [%i[intent_id origin_id], { id: "INTEGER PRIMARY KEY AUTOINCREMENT", intent_id: :kept,
+                                             parent_id: :text, ref: :text, origin_id: :kept, slug: :kept, title: :kept, kind: :text, status: :status,
+                                             disposition: :text, opened_at: :text, closed_at: :text, updated_at: :text }],
+        clusters: [%i[name intent_id origin_id], { name: :kept, intent_id: :kept, origin_id: :kept }],
+        nodes: [%i[intent_id id origin_id], { intent_id: :kept, id: :kept, kind: :text, title: :text,
+                                              criterion: :text, state: :text, by: :text, input: :text, output: :text, question: :text, answer: :text,
+                                              reason: :text, judge: :text, verdict: :text, findings: :text, retries: :integer, updated_at: :text,
+                                              origin_id: :kept }],
+        edges: [%i[intent_id from to kind origin_id], { intent_id: :kept, from: :kept, to: :kept, kind: :kept,
+                                                        origin_id: :kept }],
+        savepoints: [%i[intent_id position origin_id], { intent_id: :kept, position: "INTEGER NOT NULL",
+                                                         at: :text, text: :kept, origin_id: :kept }],
+        documents: [%i[intent_id path origin_id], { intent_id: :kept, path: :kept, body: :kept,
+                                                    updated_at: :text, origin_id: :kept }],
+        sqlar: [%i[name], { name: "TEXT PRIMARY KEY", mode: "INT", mtime: "INT", sz: "INT", data: "BLOB",
+                            intent_id: :text, sha256: :text, origin_id: :kept }],
+        printed: [%i[path], { path: :kept, sha256: :kept, at: :kept, origin_id: :kept }],
+        changes: [[], { seq: "INTEGER PRIMARY KEY AUTOINCREMENT", table: :kept, key: :kept,
+                        operation: "TEXT NOT NULL CHECK(operation IN ('put', 'remove'))", row: :text, at: :kept, origin_id: :kept }]
+      }.to_h do |name, (key, columns)|
+        [name, Table.new(name:, key:, columns: columns.transform_values { |type| TYPES.fetch(type, type) })]
+      end.freeze
+
+      # Each database: its file and its tables.
+      DATABASES = {
+        home: ["home.db", %i[routine_runs]],
+        work: ["work_graph.db", %i[intents clusters nodes edges savepoints printed changes]],
+        knowledge: ["knowledge_graph.db", %i[documents printed changes]],
+        references: ["references.db", %i[sqlar printed changes]]
+      }.freeze
       STORE = %i[work knowledge references].freeze
-      TABLES = DATABASES.values.flatten.to_h { |table| [table.name, table] }.freeze
 
       # How the report names the rows of a table: one and many.
       NOUNS = {
@@ -60,7 +65,9 @@ module Plastic
         "sqlar" => ["kept file", "kept files"], "printed" => ["printed file", "printed files"]
       }.freeze
 
-      def self.fetch(key) = DATABASES.fetch(key).map(&:ddl).join("\n")
+      def self.file(key) = DATABASES.fetch(key).first
+
+      def self.fetch(key) = DATABASES.fetch(key).last.map { |name| TABLES.fetch(name).ddl }.join("\n")
 
       def self.table_named(name) = TABLES.fetch(name.to_sym)
 

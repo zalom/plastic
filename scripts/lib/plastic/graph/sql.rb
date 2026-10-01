@@ -36,6 +36,17 @@ module Plastic
         end
       end
 
+      def self.names(list) = list.map { |column| name(column) }.join(", ")
+
+      # `a = excluded.a`, for the update of an upsert.
+      def self.assignment(column)
+        quoted = name(column)
+        "#{quoted} = excluded.#{quoted}"
+      end
+
+      # `a IS 1 AND b IS 'x'`: IS matches a NULL as well.
+      def self.where(values) = values.empty? ? "1" : values.map { |column, value| "#{name(column)} IS #{literal(value)}" }.join(" AND ")
+
       # The columns and values of an insert: `(a, b) VALUES (1, 2)`.
       def self.tuple(columns)
         names = columns.keys.map { |key| name(key) }

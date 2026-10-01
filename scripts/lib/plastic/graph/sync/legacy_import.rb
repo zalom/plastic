@@ -3,6 +3,7 @@
 require_relative "../intent"
 require_relative "../legacy_index"
 require_relative "../prints"
+require_relative "../schema"
 require_relative "../store_folder"
 
 module Plastic
@@ -24,30 +25,25 @@ module Plastic
 
         def call
           parsed = LegacyIndex.parse(@folder.read(StoreFolder::LEGACY_INDEX).force_encoding(Encoding::UTF_8))
-          parsed.check(@folder.intent_dirs)
-          write(parsed)
+          write(parsed.check(@folder.intent_dirs))
           read = @sync.read(@folder.intent_files)
-          @sync.printer.print(Prints.of_store(@retrieval))
-          @folder.delete(StoreFolder::LEGACY_INDEX)
-          ["imported #{StoreFolder::LEGACY_INDEX}: #{counted(parsed)}, then deleted it", *read]
+          finish
+          ["imported #{StoreFolder::LEGACY_INDEX}: #{Schema.phrase(parsed.counts)}, then deleted it", *read]
         end
 
         private
 
         def write(parsed)
           now = Plastic.now
+          rows = parsed.entries.map { |entry| entry.row(front_matter(entry.dir), now) }
           @databases.fetch(:work).transaction do |batch|
-            parsed.entries.each { |entry| batch.put(:intents, row(entry, now)) }
-            parsed.clusters.each { |member| batch.put(:clusters, member.to_h) }
+            batch.put_all(:intents, rows).put_all(:clusters, parsed.clusters.map(&:to_h))
           end
         end
 
-        def row(entry, now)
-          front = front_matter(entry.dir)
-          { intent_id: entry.intent_id, parent_id: Intent.parent_of(entry.intent_id),
-            slug: File.basename(entry.dir).split("--", 2).last, title: entry.title, kind: front["kind"],
-            status: entry.status, disposition: entry.disposition, opened_at: front["created"],
-            closed_at: entry.closed_at, updated_at: now }
+        def finish
+          @sync.printer.print(Prints.of_store(@retrieval))
+          @folder.delete(StoreFolder::LEGACY_INDEX)
         end
 
         # The fields at the head of the intent's own file.
@@ -56,8 +52,6 @@ module Plastic
           text = @folder.exist?(file) ? @folder.read(file).force_encoding(Encoding::UTF_8) : ""
           text[FRONT_MATTER, 1].to_s.scan(FIELD).to_h
         end
-
-        def counted(parsed) = Schema.phrase({ "intents" => parsed.entries.size, "clusters" => parsed.clusters.size })
       end
     end
   end

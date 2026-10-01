@@ -9,7 +9,7 @@ module Plastic
     Table = Data.define(:name, :columns, :key) do
       def ddl
         parts = columns.map { |column, type| "#{SQL.name(column)} #{type}" }
-        parts << "UNIQUE(#{names(key)})" unless key.empty?
+        parts << "UNIQUE(#{SQL.names(key)})" unless key.empty?
         "CREATE TABLE IF NOT EXISTS #{SQL.name(name)}(#{parts.join(", ")});"
       end
 
@@ -20,12 +20,9 @@ module Plastic
       # An insert that updates the row its key names, column by column.
       def upsert(row)
         rest = row.keys - key
-        action = rest.empty? ? "NOTHING" : "UPDATE SET #{rest.map { |column| assignment(column) }.join(", ")}"
-        "#{insert(row)} ON CONFLICT(#{names(key)}) DO #{action}"
+        action = rest.empty? ? "NOTHING" : "UPDATE SET #{rest.map { |column| SQL.assignment(column) }.join(", ")}"
+        "#{insert(row)} ON CONFLICT(#{SQL.names(key)}) DO #{action}"
       end
-
-      # `a IS 1 AND b IS 'x'`: IS matches a NULL as well.
-      def where(values) = values.empty? ? "1" : values.map { |column, value| "#{SQL.name(column)} IS #{SQL.literal(value)}" }.join(" AND ")
 
       def key_of(row) = key.to_h { |column| [column, row[column]] }
 
@@ -35,15 +32,31 @@ module Plastic
 
       def json_key = json_object(key)
 
+      # The printed table is what this machine printed, so it is never logged.
+      def logged? = name != :printed
+
+      # Machine state that the report leaves out: the printed hashes and the routine runs.
+      def counted? = !%i[printed routine_runs].include?(name)
+
+      # The `changes` row of a put or a remove of the rows `match` names.
+      # Built from literals, never bound: a bound name would also match text
+      # inside a value.
+      def change(operation, match, origin_id)
+        row = { "put" => json_row }.fetch(operation, "NULL")
+        values = [name.to_s, operation, Plastic.now, origin_id].map { |value| SQL.literal(value) }
+        "INSERT INTO changes(\"table\", \"key\", operation, \"row\", at, origin_id) " \
+          "SELECT #{values[0]}, #{json_key}, #{values[1]}, #{row}, #{values[2]}, #{values[3]} " \
+          "FROM #{SQL.name(name)} WHERE #{SQL.where(match)}"
+      end
+
       private
-
-      def names(list) = list.map { |column| SQL.name(column) }.join(", ")
-
-      def assignment(column) = "#{SQL.name(column)} = excluded.#{SQL.name(column)}"
 
       def json_object(list) = "json_object(#{list.map { |column| "'#{column}', #{json_value(column)}" }.join(", ")})"
 
-      def json_value(column) = columns.fetch(column).start_with?("BLOB") ? "hex(#{SQL.name(column)})" : SQL.name(column)
+      def json_value(column)
+        quoted = SQL.name(column)
+        columns.fetch(column).start_with?("BLOB") ? "hex(#{quoted})" : quoted
+      end
     end
   end
 end

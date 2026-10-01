@@ -12,19 +12,30 @@ module Plastic
       REFUSED_AFTER = "changed on both sides since the last print, left as they are: %{conflicts}; " \
                       "pass --overwrite PATH or --overwrite"
 
-      def self.plan(c, direction) = c.work.sync_plan(direction, overwrite: c.overwrite, merge: c.merge)
-
-      # What the gates read, kept as facts.
-      def self.note(c, plan)
-        c[:failure] = plan.failure
-        c[:conflicts] = plan.conflicts.join(", ")
-        c[:merging] = plan.merging?
-        c[:lines] = nil
+      def self.plan(context, direction)
+        context.work.sync_plan(direction, { overwrite: context.overwrite, merge: context.merge })
       end
 
-      def self.apply(c, direction) = c[:lines] = c.work.sync_apply(plan(c, direction))
+      # What the gates read, kept as facts.
+      def self.note(context, plan)
+        context[:failure] = plan.failure
+        context[:conflicts] = plan.conflicts.join(", ")
+        context[:merging] = plan.merging?
+        context[:lines] = nil
+      end
 
-      def self.say(c) = Array(c.lines).each { |line| c.print(line) }
+      def self.apply(context, direction) = context[:lines] = context.work.sync_apply(plan(context, direction))
+
+      def self.applied(direction) = ->(context) { plan(context, direction).pending.zero? }
+
+      def self.say(context) = Array(context.lines).each { |line| context.print(line) }
+
+      def self.runs?(context) = !context.failure
+
+      # A plain call writes nothing while a conflict waits.
+      def self.writes?(context) = context.conflicts.empty? || context.merging
+
+      def self.settled?(context) = context.conflicts.empty?
 
       def sync(direction)
         sets :failure, :conflicts, :merging, :lines
@@ -36,15 +47,15 @@ module Plastic
       private
 
       def plan_steps(direction)
-        read("plan the sync") { |c| SyncSteps.note(c, SyncSteps.plan(c, direction)) }
-        gate "%{failure}", stops: :failure, pass: ->(c) { c.failure.nil? }
-        gate REFUSED_BEFORE, stops: :refusal, pass: ->(c) { c.conflicts.empty? || c.merging }
+        read("plan the sync") { |context| SyncSteps.note(context, SyncSteps.plan(context, direction)) }
+        gate "%{failure}", stops: :failure, pass: SyncSteps.method(:runs?)
+        gate REFUSED_BEFORE, stops: :refusal, pass: SyncSteps.method(:writes?)
       end
 
       def apply_steps(direction)
-        step("apply the changes", done: ->(c) { SyncSteps.plan(c, direction).pending.zero? }) { |c| SyncSteps.apply(c, direction) }
-        read("say what changed") { |c| SyncSteps.say(c) }
-        gate REFUSED_AFTER, stops: :refusal, pass: ->(c) { c.conflicts.empty? }
+        step("apply the changes", done: SyncSteps.applied(direction)) { |context| SyncSteps.apply(context, direction) }
+        read("say what changed") { |context| SyncSteps.say(context) }
+        gate REFUSED_AFTER, stops: :refusal, pass: SyncSteps.method(:settled?)
       end
     end
   end

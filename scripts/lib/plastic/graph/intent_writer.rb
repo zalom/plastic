@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require "json"
 require_relative "intent"
 require_relative "intent_ref"
 require_relative "store_folder"
@@ -24,7 +23,7 @@ module Plastic
         return "a new intent takes the status open, active, parked or future, not #{status}" unless Intent::NEW_STATUSES.include?(status)
         return "no intent #{parent_id} in this store to be the parent" if parent_id && !@retrieval.intent(parent_id)
 
-        own_ref_problem(IntentRef.parse(ref))
+        IntentRef.parse(ref)&.problem(@retrieval)
       end
 
       # `fields` may name the ref, the kind, the status and the slug; a field left out or nil takes its default.
@@ -33,54 +32,32 @@ module Plastic
         values = DEFAULTS.merge(fields.compact)
         intent = Intent.from_h(slug: Intent.slug_for(title), **values, intent_id: next_id(parent_id), parent_id:,
           title:, opened_at: now, updated_at: now)
-        write_rows(intent, now)
+        write_rows(intent)
         @retrieval.intent(intent.intent_id)
       end
 
       # What a ref names, in words.
-      def ref_line(ref)
-        found = IntentRef.parse(ref)
-        return "ref: #{ref}" unless found
-        return "ref: intent #{found.intent_id} of this installation" if found.origin_id == @retrieval.origin_id
-
-        "ref: intent #{found.intent_id} of installation #{found.origin_id}, not in this store"
-      end
+      def ref_line(ref) = IntentRef.parse(ref)&.line(@retrieval.origin_id) || "ref: #{ref}"
 
       def hand_edited?
-        @folder.exist?(StoreFolder::INDEX) && @folder.sha256(StoreFolder::INDEX) != @retrieval.printed[StoreFolder::INDEX]
+        @folder.exist?(StoreFolder::INDEX) && @folder.digest(StoreFolder::INDEX) != @retrieval.printed[StoreFolder::INDEX]
       end
 
       private
 
       DEFAULTS = { kind: "work", status: "open" }.freeze
 
-      def write_rows(intent, now)
+      def write_rows(intent)
         @databases.fetch(:work).transaction do |batch|
-          batch.put(:intents, intent.to_h.except(:id, :origin_id), new_row: true)
-          batch.put(:savepoints, { intent_id: intent.intent_id, position: 1, at: now, text: "Opened: #{intent.title}" })
+          batch.put(:intents, intent.new_row, statement: :insert)
+          batch.put(:savepoints, intent.first_savepoint)
         end
-        @databases.fetch(:knowledge).transaction { |batch| batch.put(:documents, document(intent, now)) }
-      end
-
-      def own_ref_problem(found)
-        return unless found && found.origin_id == @retrieval.origin_id && !@retrieval.intent(found.intent_id)
-
-        "no intent #{found.intent_id} of this installation for the ref"
+        @databases.fetch(:knowledge).transaction { |batch| batch.put(:documents, intent.document(@retrieval.origin_id)) }
       end
 
       def next_id(parent_id)
         taken = @retrieval.intents.map(&:intent_id)
-        parent_id ? Intent.next_child(parent_id, taken) : Intent.next_root(taken)
-      end
-
-      def document(intent, now) = { intent_id: intent.intent_id, path: intent.file, body: body(intent), updated_at: now }
-
-      def body(intent)
-        fields = { id: intent.intent_id, intent: intent.title, parent: intent.parent_id, ref: intent.ref,
-                   origin: @retrieval.origin_id, created: intent.opened_at }.compact
-        front = fields.map { |name, value| "#{name}: #{JSON.generate(value)}" }
-        ["---", *front, "---", "", "# #{intent.intent_id} — #{intent.title}", "", "## Intent", "", intent.title, "",
-          "## Context", "", "## Outcome", "", "## Insights", ""].join("\n")
+        parent_id ? LuhmannId.next_child(parent_id, taken) : LuhmannId.next_root(taken)
       end
     end
   end

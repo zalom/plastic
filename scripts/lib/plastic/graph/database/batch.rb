@@ -43,37 +43,44 @@ module Plastic
           write(table, "INSERT INTO #{SQL.name(table)} #{SQL.tuple(record.to_h)}#{clause}")
         end
 
-        # Writes the whole row its key names, and logs it. `new_row: true`
-        # refuses a row that is already there instead of updating it.
-        def put(name, row, count: true, new_row: false)
+        # Writes the whole row its key names, and logs it. `statement: :insert`
+        # refuses a row already there under its key, and fails the transaction.
+        def put(name, row, statement: :upsert)
           table = Schema.table_named(name)
           row = stamped(table, row.to_h)
-          sql = new_row ? table.insert(row) : table.upsert(row)
-          count ? write(name, sql) : add(sql)
-          log(table, "put", table.json_row, table.key_of(row))
+          counted(table, table.public_send(statement, row))
+          log(table, "put", table.key_of(row))
+        end
+
+        def put_all(name, rows)
+          rows.each { |row| put(name, row) }
+          self
+        end
+
+        # Adds the statements of each read, in order.
+        def apply(applies)
+          applies.each { |apply| apply.call(self) }
+          self
         end
 
         # Removes the rows `values` match, and logs each one with no row.
         def remove(name, **values)
           table = Schema.table_named(name)
           values = stamped(table, values)
-          log(table, "remove", "NULL", values)
-          write(name, "DELETE FROM #{SQL.name(name)} WHERE #{table.where(values)}")
+          log(table, "remove", values)
+          write(name, "DELETE FROM #{SQL.name(name)} WHERE #{SQL.where(values)}")
         end
 
         private
 
+        # Machine state, such as the printed hashes, stays off the report.
+        def counted(table, sql) = table.counted? ? write(table.name, sql) : add(sql)
+
         def stamped(table, row) = (table.origin? && @origin) ? { origin_id: @origin.id }.merge(row) : row
 
-        # The printed table is what this machine printed, so it is never logged.
-        # Built from literals, never bound: a bound name would also match text inside a value.
-        def log(table, operation, row_sql, match)
-          return self unless @origin && table.name != :printed
-
-          values = [table.name.to_s, operation, Plastic.now, @origin.id].map { |value| SQL.literal(value) }
-          add("INSERT INTO changes(\"table\", \"key\", operation, \"row\", at, origin_id) " \
-              "SELECT #{values[0]}, #{table.json_key}, #{values[1]}, #{row_sql}, #{values[2]}, #{values[3]} " \
-              "FROM #{SQL.name(table.name)} WHERE #{table.where(match)}")
+        def log(table, operation, match)
+          @statements << "#{table.change(operation, match, @origin.id)};" if @origin && table.logged?
+          self
         end
       end
     end

@@ -9,6 +9,7 @@ require_relative "reader"
 require_relative "schema"
 require_relative "store_folder"
 require_relative "sync/plan"
+require_relative "sync/resolution"
 require_relative "sync/legacy_import"
 
 module Plastic
@@ -24,9 +25,8 @@ module Plastic
         @databases = databases
       end
 
-      def plan(direction, overwrite: false, merge: false)
-        Plan.build(@folder, @retrieval, direction:, overwrite:, merge:)
-      end
+      # `options` may hold :overwrite and :merge, as Resolution reads them.
+      def plan(direction, options = {}) = Plan.build(@folder, @retrieval, Resolution.new(direction, @folder.root, options))
 
       # Applies every action of `plan` but the conflicts, and says what it did, one line per file.
       def apply(plan)
@@ -40,11 +40,10 @@ module Plastic
       # Reads files into rows, one transaction per database, then prints
       # each back from its rows, so the file holds the form the rows print.
       def read(paths)
-        reader = Reader.new(@folder, known_intents, @retrieval.origin_id)
-        reads = paths.map { |path| reader.read(path) }
+        reads = paths.map(&reader.method(:read))
         write_reads(reads)
         reprint(reads)
-        paths.map { |path| "read #{path}" }
+        reads.map(&:line)
       end
 
       def print(prints) = printer.print(prints).map { |path| "printed #{path}" }
@@ -53,25 +52,28 @@ module Plastic
 
       private
 
+      def reader = Reader.new(@folder, known_intents, @retrieval.origin_id)
+
       # The work graph first, so a new intent's row is in place before its files.
       def write_reads(reads)
         reads.group_by(&:database).sort_by { |key, _group| Schema::STORE.index(key) }.each do |key, group|
-          @databases.fetch(key).transaction { |batch| group.each { |found| found.apply.call(batch) } }
+          write_group(key, group)
         end
+      end
+
+      def write_group(key, group)
+        applies = group.map(&:apply)
+        @databases.fetch(key).transaction { |batch| batch.apply(applies) }
       end
 
       def reprint(reads)
         fresh = Prints.of_store(@retrieval).to_h { |print| [print.path, print] }
-        printer.print(reads.map { |found| fresh[found.path] || kept_as_is(found) })
+        printer.print(reads.map { |found| fresh[found.path] || found.kept_print(@folder) })
       end
-
-      # A file whose rows print nothing, such as an empty savepoint.md, keeps its own hash.
-      def kept_as_is(found) = Prints::Print.new(found.path, found.database, @folder.sha256(found.path), nil)
 
       # The intents of the rows, and those a hand edit of store/index.json adds or changes.
       def known_intents
-        rows = @retrieval.intents.to_h { |intent| [intent.intent_id, intent] }
-        rows.merge(index_intents.to_h { |intent| [intent.intent_id, intent] })
+        (@retrieval.intents + index_intents).to_h { |intent| [intent.intent_id, intent] }
       end
 
       def index_intents

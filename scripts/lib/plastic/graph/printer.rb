@@ -15,8 +15,7 @@ module Plastic
 
       # The paths it wrote.
       def print(prints)
-        written = prints.reject { |print| @folder.sha256(print.path) == print.sha256 }
-        written.each { |print| @folder.write(print.path, print.text) }
+        written = prints.reject { |print| print.level?(@folder) }.each { |print| print.write_to(@folder) }
         record(prints)
         written.map(&:path)
       end
@@ -24,13 +23,13 @@ module Plastic
       # Records the hash of each print, so the next sync knows the file is level.
       def record(prints)
         recorded = @retrieval.printed
-        fresh = prints.reject { |print| recorded[print.path] == print.sha256 }
-        fresh.group_by(&:database).each do |key, group|
-          @databases.fetch(key).transaction do |batch|
-            group.each { |print| batch.put(:printed, { path: print.path, sha256: print.sha256, at: Plastic.now }, count: false) }
-          end
-        end
+        fresh = prints.reject { |print| print.recorded?(recorded) }
+        fresh.group_by(&:database).each { |key, group| record_in(key, group.map(&:printed_row)) }
       end
+
+      private
+
+      def record_in(key, rows) = @databases.fetch(key).transaction { |batch| batch.put_all(:printed, rows) }
     end
   end
 end

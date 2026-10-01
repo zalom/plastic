@@ -20,4 +20,10 @@ class OriginTest < Minitest::Test
 
     refute_path_exists File.join(@home, "origin_id")
   end
+
+  def test_an_empty_origin_file_gets_a_new_id
+    File.write(File.join(@home, "origin_id"), "\n")
+
+    assert_match(/\A\h{8}\z/, Plastic::Graph::Origin.new(@home).id)
+  end
 end

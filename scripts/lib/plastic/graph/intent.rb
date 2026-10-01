@@ -1,7 +1,8 @@
 # frozen_string_literal: true
 
+require "json"
 require_relative "record"
-require_relative "../invalid"
+require_relative "luhmann_id"
 
 module Plastic
   module Graph
@@ -9,36 +10,35 @@ module Plastic
     # `intent_id` is the Luhmann id people use, and with `origin_id` it names
     # the intent across installations. `ref` points at a ticket, a link or
     # another intent as `{intent_id}-{origin_id}`, and is never a copy.
-    #
-    # A Luhmann id alternates number and letter: 307 gives 307a, 307a gives
-    # 307a1. `parent_id` is the id the last run was appended to.
+    # `parent_id` is the Luhmann id the last run was appended to.
     Intent = Data.define(:id, :intent_id, :parent_id, :ref, :origin_id, :slug, :title, :kind, :status, :disposition,
       :opened_at, :closed_at, :updated_at) do
       include Record
 
-      def self.segments(id) = id.to_s.scan(/\d+|[a-z]+/).map { |part| part.match?(/\d/) ? [0, part.to_i] : [1, part] }
-
-      def self.next_child(parent, taken)
-        suffixes = parent.to_s.match?(/[a-z]\z/) ? (1..99).map(&:to_s) : ("a".."z").to_a
-        candidates = suffixes.map { |suffix| "#{parent}#{suffix}" }
-        candidates.find { |candidate| !taken.include?(candidate) } or raise Invalid, "#{parent} has no free child id"
-      end
-
-      def self.next_root(taken) = (taken.grep(/\A\d+\z/).map(&:to_i).max.to_i + 1).to_s
-
-      def self.parent_of(id)
-        runs = id.to_s.scan(/\d+|[a-z]+/)
-        runs[0..-2].join if runs.size > 1
-      end
-
       def self.slug_for(title) = title.downcase.scan(/[a-z0-9]+/).first(6).join("-")
 
-      def segments = Intent.segments(intent_id)
+      def segments = LuhmannId.segments(intent_id)
 
       # The intent's folder, relative to the store folder.
       def dir = "store/#{intent_id}--#{slug}"
 
       def file = "#{intent_id}--#{slug}.md"
+
+      # The row a new intent writes; the database gives `id` and stamps `origin_id`.
+      def new_row = to_h.except(:id, :origin_id)
+
+      def first_savepoint = { intent_id:, position: 1, at: opened_at, text: "Opened: #{title}" }
+
+      # The row of the intent's own file in the knowledge graph.
+      def document(origin_id) = { intent_id:, path: file, body: page(origin_id), updated_at: opened_at }
+
+      # The intent's own file: front matter, then the sections a person fills.
+      def page(origin_id)
+        fields = { id: intent_id, intent: title, parent: parent_id, ref:, origin: origin_id, created: opened_at }.compact
+        front = fields.map { |name, value| "#{name}: #{JSON.generate(value)}" }
+        ["---", *front, "---", "", "# #{intent_id} — #{title}", "", "## Intent", "", title, "",
+          "## Context", "", "## Outcome", "", "## Insights", ""].join("\n")
+      end
 
       # The fields store/index.json lists, in order.
       def index_h = Intent::INDEX_FIELDS.to_h { |field| [field.to_s, public_send(field)] }

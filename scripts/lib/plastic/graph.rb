@@ -26,8 +26,7 @@ module Plastic
       root = File.join(home, "stores", store)
       databases = Database.open_home(home).merge(Database.open_store(root, origin))
       retrieval = RetrievalGraph.new(databases, store:, origin:)
-      work = WorkGraph.new(databases, folder: StoreFolder.new(root), retrieval:)
-      Graphs.new(work:, retrieval:, databases:)
+      Graphs.new(work: WorkGraph.new(databases, folder: StoreFolder.new(root), retrieval:), retrieval:, databases:)
     end
   end
 end

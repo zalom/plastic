@@ -20,7 +20,7 @@ module Plastic
       # A routine run is call memory, kept off the report.
       def save_routine_run(routine_run)
         row = routine_run.to_h.merge(store: @retrieval.store, subject: routine_run.subject.to_s)
-        @databases.fetch(:home).transaction { |batch| batch.put(:routine_runs, row, count: false) }
+        @databases.fetch(:home).transaction { |batch| batch.put(:routine_runs, row) }
         routine_run
       end
 
@@ -40,7 +40,7 @@ module Plastic
         sync.printer.print([Prints.index(@retrieval), *Prints.of_intent(@retrieval, intent)])
       end
 
-      def sync_plan(direction, **options) = sync.plan(direction, **options)
+      def sync_plan(direction, options) = sync.plan(direction, options)
 
       def sync_apply(plan) = sync.apply(plan)
 

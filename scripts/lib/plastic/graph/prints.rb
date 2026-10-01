@@ -25,6 +25,16 @@ module Plastic
         def self.text(path, database, text) = new(path, database, Digest::SHA256.hexdigest(text), -> { text })
 
         def text = source.call
+
+        # The file holds these bytes already.
+        def level?(folder) = folder.digest(path) == sha256
+
+        def write_to(folder) = folder.write(path, text)
+
+        # The last print recorded these bytes.
+        def recorded?(recorded) = recorded[path] == sha256
+
+        def printed_row = { path:, sha256:, at: Plastic.now }
       end
 
       module_function
@@ -39,7 +49,7 @@ module Plastic
         rows.group_by(&:name).map { |name, members| { "name" => name, "intents" => luhmann(members.map(&:intent_id)) } }
       end
 
-      def luhmann(ids) = ids.sort_by { |id| Intent.segments(id) }
+      def luhmann(ids) = ids.sort_by { |id| LuhmannId.segments(id) }
 
       # Every file of the store, read in five queries whatever the number of intents.
       def of_store(retrieval)
@@ -47,8 +57,9 @@ module Plastic
         [index(retrieval), *retrieval.intents.flat_map { |intent| of_intent(retrieval, intent, rows) }]
       end
 
-      def of_intent(retrieval, intent, rows = Contents.read(retrieval, intent.intent_id))
+      def of_intent(retrieval, intent, rows = nil)
         id = intent.intent_id
+        rows ||= Contents.read(retrieval, id)
         [*documents(intent, rows.documents(id)), *savepoint(intent, rows.savepoints(id)),
           graph(intent, rows.nodes(id), rows.edges(id)), *kept_files(retrieval, rows.kept_files(id))]
       end
@@ -57,7 +68,10 @@ module Plastic
 
       # A kept file is compared by its hash; its bytes are read only to write it.
       def kept_files(retrieval, rows)
-        rows.map { |kept| Print.new(kept.name, :references, kept.sha256, -> { retrieval.kept_file_data(kept.name) }) }
+        rows.map do |kept|
+          name = kept.name
+          Print.new(name, :references, kept.sha256, -> { retrieval.kept_file_data(name) })
+        end
       end
 
       def savepoint(intent, lines)
