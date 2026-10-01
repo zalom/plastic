@@ -149,10 +149,11 @@ module Plastic
       # The intent id a routine run names: its subject when the tool took
       # one, else the intent_id its facts kept, else nil.
       def run_intent_id(row)
-        subject = row.fetch("subject")
-        return subject unless subject.to_s.empty?
+        from_facts = JSON.parse(row.fetch("facts")).fetch("intent_id", nil)
+        return from_facts if from_facts
 
-        JSON.parse(row.fetch("facts")).fetch("intent_id", nil)
+        subject = row.fetch("subject")
+        subject.to_s.empty? ? nil : subject
       end
 
       def read(name, intent_id = nil) = SOURCES.fetch(name).read(@databases, origin: origin_id, intent_id:)
