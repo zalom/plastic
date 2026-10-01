@@ -29,11 +29,9 @@ module Plastic
     # its own words. A hook reads its event from the environment's input;
     # other tools ignore it.
     def self.call(argv, environment: Command::Environment.current, table: TABLE)
-      name = find(argv.empty? ? ["help"] : argv, table)
-      return tool(name, table).call(argv.drop(name.split.size), words: name, environment:) if name
-
-      environment.err.puts "plastic: no command #{argv.first(2).join(" ").inspect}; plastic help lists them"
-      Command::USAGE
+      dispatch(argv.empty? ? ["help"] : argv, table, environment) do
+        "plastic: no command #{argv.first(2).join(" ").inspect}; plastic help lists them"
+      end
     end
 
     # The whole of bin/plastic: run a shipped command, list the shipped
@@ -42,12 +40,18 @@ module Plastic
     def self.bin_call(argv, environment: Command::Environment.current, table: TABLE)
       return list(table, environment) if argv.empty? || %w[help --help -h].include?(argv.first)
 
+      dispatch(argv, table, environment) { "plastic #{argv.join(" ")} is not in this build yet; it lands with its stage" }
+    end
+
+    # Runs the command the words name, or prints the block's line and exits 2.
+    def self.dispatch(argv, table, environment)
       name = find(argv, table)
       return tool(name, table).call(argv.drop(name.split.size), words: name, environment:) if name
 
-      environment.err.puts "plastic #{argv.join(" ")} is not in this build yet; it lands with its stage"
+      environment.err.puts yield
       Command::USAGE
     end
+    private_class_method :dispatch
 
     def self.list(table, environment)
       table.each { |name, (_, summary)| environment.out.puts format("%-14s %s", name, summary) }
