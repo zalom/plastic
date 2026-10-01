@@ -2,10 +2,11 @@
 
 require "minitest/autorun"
 require "json"
+require "stringio"
 require "tmpdir"
 require_relative "../bin/lib/test_timings"
 
-# Intent 397, D5: the gate's timing extension and cap check. Every test
+# The gate's timing extension and cap check. Every test
 # drives the two public classes, Reporter and Caps, the same way the gate's
 # step and the plugin hook do.
 class TestTimingsTest < Minitest::Test
@@ -92,5 +93,25 @@ class TestTimingsTest < Minitest::Test
 
     assert_includes error.message, "test/plain_test.rb"
     assert_includes error.message, "6.2"
+  end
+
+  def test_a_rerun_that_passes_still_prints_both_times
+    File.write(@path, JSON.generate({ "test/plain_test.rb" => 5.5 }))
+    out = StringIO.new
+
+    TestTimings::Caps.new(@path, rerun: ->(_file) { 4.0 }, out:).check!
+
+    assert_includes out.string, "5.5"
+    assert_includes out.string, "4.0"
+  end
+
+  def test_a_rerun_that_fails_still_prints_both_times
+    File.write(@path, JSON.generate({ "test/plain_test.rb" => 5.5 }))
+    out = StringIO.new
+
+    assert_raises(TestTimings::Caps::Failure) { TestTimings::Caps.new(@path, rerun: ->(_file) { 6.2 }, out:).check! }
+
+    assert_includes out.string, "5.5"
+    assert_includes out.string, "6.2"
   end
 end

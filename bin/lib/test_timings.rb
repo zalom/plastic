@@ -82,9 +82,10 @@ module TestTimings
   class Caps
     Failure = Class.new(StandardError)
 
-    def initialize(path, rerun:)
+    def initialize(path, rerun:, out: $stdout)
       @path = path
       @rerun = rerun
+      @out = out
     end
 
     def check!
@@ -99,10 +100,11 @@ module TestTimings
       cap = cap_for(file)
       return if seconds <= cap
 
-      seconds = @rerun.call(file)
-      return if seconds <= cap
+      rerun_seconds = @rerun.call(file)
+      @out.puts format("%s took %.1fs, re-run took %.1fs", file, seconds, rerun_seconds)
+      return if rerun_seconds <= cap
 
-      raise Failure, "#{file} took #{format("%.1f", seconds)}s, over its #{cap.to_i}s cap"
+      raise Failure, "#{file} took #{format("%.1f", seconds)}s, over its #{cap.to_i}s cap (re-run #{format("%.1f", rerun_seconds)}s)"
     end
 
     def cap_for(file) = file.start_with?("varar/") ? CAPS.fetch(:document) : CAPS.fetch(:file)
