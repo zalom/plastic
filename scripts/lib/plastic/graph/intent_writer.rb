@@ -40,6 +40,20 @@ module Plastic
       # What a ref names, in words.
       def ref_line(ref) = IntentRef.parse(ref)&.line(@retrieval.origin_id) || "ref: #{ref}"
 
+      ACTIVATE_SQL = <<~SQL
+        UPDATE intents SET status = 'active', updated_at = :now
+        WHERE intent_id = :intent_id AND origin_id = :origin AND status NOT IN ('done', 'abandoned')
+        RETURNING intent_id
+      SQL
+
+      # Sets an open, parked or future intent active; a no-op guard against a
+      # race with a status that moved to done or abandoned since the check.
+      def activate(intent_id)
+        @databases.fetch(:work).transaction do |batch|
+          batch.write(:intents, ACTIVATE_SQL, intent_id:, origin: @retrieval.origin_id, now: Plastic.now)
+        end
+      end
+
       def hand_edited?
         @folder.exist?(StoreFolder::INDEX) && @folder.digest(StoreFolder::INDEX) != @retrieval.printed[StoreFolder::INDEX]
       end

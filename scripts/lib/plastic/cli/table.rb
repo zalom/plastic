@@ -13,6 +13,8 @@ module Plastic
       "sync down" => ["Commands::SyncDown", "Print the rows that changed into files"],
       "session note" => ["Commands::SessionNote", "Write the one prose line of this session"],
       "intent rule" => ["Commands::IntentRule", "Write an owner ruling, with --supersedes to replace an older one"],
+      "intent spec" => ["Commands::IntentSpec", "Print the grilling method, then the intent's open decisions"],
+      "auto start" => ["Commands::AutoStart", "Take the delivery lock and set the intent active"],
       "intent link" => ["Commands::IntentLink", "Write a typed link from an intent to a ref"],
       "intent unlink" => ["Commands::IntentUnlink", "Remove a link"],
 
@@ -27,6 +29,9 @@ module Plastic
       "node answer" => ["Commands::NodeAnswer", "Answer a parked node and reopen it"],
       "edge add" => ["Commands::EdgeAdd", "Add a needs edge between two nodes"],
       "edge remove" => ["Commands::EdgeRemove", "Remove an edge"],
+      "graph check" => ["Commands::GraphCheck", "Find a judge missing, an isolated node, a retry cap or no done criterion"],
+      "graph ready" => ["Commands::GraphReady", "List the nodes ready to claim"],
+      "graph show" => ["Commands::GraphShow", "Print every node and edge, then reprint graph.json from rows"],
 
       # Hooks: the harness calls these on an event; see docs/contributing/ARCHITECTURE.md.
       "hook resume" => ["Hooks::Resume", "SessionStart: print the state the rows carry"],

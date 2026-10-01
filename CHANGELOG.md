@@ -7,6 +7,8 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 - The work graph: `node add`, `node remove`, `node claim`, `node release`, `node done`, `node fail`, `node park`, `node answer`, `edge add`, `edge remove`. Nodes move through guarded state changes; a node claimed a fourth time parks with a question instead of looping.
 
+- `intent rule ID TEXT` writes an owner ruling as the next D id, with `--supersedes` linking it to the ruling it replaces. `intent spec ID` prints the grilling method, then the intent's open decisions read from its spec document. `auto start ID` refuses an open decision, no done criterion, a done or abandoned intent, and another session's live lock, then takes the lock, sets the intent active, and reprints its files.
+
 ## 2.0.3
 
 - Documentation follows the public CLI and distinguishes implemented behavior from proposals.
