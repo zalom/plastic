@@ -20,13 +20,15 @@ module Plastic
     end
 
     # Opening reads no file and makes none: the origin id and the databases
-    # appear on the first read or write.
-    def self.open(home:, store:)
+    # appear on the first read or write. `session` names the harness session
+    # that made the call, stamped on the rows it writes.
+    def self.open(home:, store:, session: nil)
       origin = Origin.new(home)
       root = File.join(home, "stores", store)
       databases = Database.open_home(home).merge(Database.open_store(root, origin))
       retrieval = RetrievalGraph.new(databases, store:, origin:)
-      Graphs.new(work: WorkGraph.new(databases, folder: StoreFolder.new(root), retrieval:), retrieval:, databases:)
+      work = WorkGraph.new(databases, folder: StoreFolder.new(root), retrieval:, session:)
+      Graphs.new(work:, retrieval:, databases:)
     end
   end
 end

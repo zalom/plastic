@@ -106,7 +106,7 @@ module Plastic
       end
 
       # The graphs of the store the call works on, opened once.
-      def graphs = (@graphs ||= Graph.open(home: scope.plastic_home, store: scope.slug))
+      def graphs = (@graphs ||= Graph.open(home: scope.plastic_home, store: scope.slug, session: environment.session))
     end
   end
 end
