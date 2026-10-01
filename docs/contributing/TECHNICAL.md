@@ -102,8 +102,9 @@ file comparison. Teardown also closes any database the test opened. The tests ru
 commands would.
 - **Acceptance documents** under `varar/` run each command of the storage kernel in a child
   Ruby process, against a fresh home. The steps read the rows back through the `sqlite3`
-  gem, on a connection of their own. `bin/plastic` does not route to the kernel yet, so the steps call the kernel's
-  command line directly. `bin/test --system` runs them through `test/varar_test.rb`. The change
+  gem, on a connection of their own. `bin/plastic` routes to the kernel (intent 397), so the
+  steps call it either through the packaged executable or the kernel's own command line
+  directly, by the case. `bin/test --system` runs them through `test/varar_test.rb`. The change
   gate never passes that file to the mutation run.
 
 ## The byte budget
@@ -115,15 +116,15 @@ included. `test/context_budget_bench_test.rb` fails when a surface crosses its c
 
 | Path | Holds |
 | ---- | ----- |
-| `bin/plastic` | The launcher. |
-| `scripts/lib/cli.rb` | The dispatcher. |
-| `scripts/lib/cli/` | The shared classes. |
-| `scripts/lib/cli/commands/` | One file per command. |
-| `test/cli/` | The tests for the dispatcher, the shared classes and the commands. |
+| `bin/plastic` | The launcher; points at the kernel (intent 397). |
 | `scripts/lib/plastic.rb` | The entry of the tri-graph kernel. |
 | `scripts/lib/plastic/` | The kernel: its command line, routines, workflows, end values and graph layer. |
+| `scripts/lib/plastic/cli.rb` | The dispatcher. |
+| `scripts/lib/plastic/cli/` | The shared classes. |
+| `scripts/lib/plastic/commands/` | One file per command. |
 | `scripts/lib/plastic/graph/` | The kernel's graph layer: the store databases, the printed files and sync. |
 | `test/plastic/` | The kernel tests, which run in their own process. |
+| `test/cli/` | The acceptance test of the packaged executable, `bin/plastic`, run as installed. |
 | `test/test_helper.rb` | The boot of every test, and `Plastic::TestCase`, the base class of the kernel tests. |
 | `test/test_helpers/` | The helpers `Plastic::TestCase` includes, and the builder of the home fixtures. |
 | `test/fixtures/homes/` | The homes the kernel tests start from, one file each. |
