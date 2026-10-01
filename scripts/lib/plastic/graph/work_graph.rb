@@ -4,6 +4,7 @@ require "forwardable"
 require_relative "intent_writer"
 require_relative "node_writer"
 require_relative "edge_writer"
+require_relative "ruling_writer"
 require_relative "session_writer"
 require_relative "printer"
 require_relative "prints"
@@ -22,6 +23,7 @@ module Plastic
       def_delegators :nodes, :add_node, :remove_node, :claim_node, :release_node, :done_node, :fail_node,
         :park_node, :answer_node
       def_delegators :edges, :add_edge, :remove_edge
+      def_delegators :rulings, :add_ruling
 
       def initialize(databases, folder:, retrieval:, session: nil)
         @databases = databases
@@ -70,6 +72,8 @@ module Plastic
       def nodes = (@nodes ||= NodeWriter.new(@databases, @retrieval))
 
       def edges = (@edges ||= EdgeWriter.new(@databases, @retrieval))
+
+      def rulings = (@rulings ||= RulingWriter.new(@databases, @retrieval, session: @session))
 
       def sync = (@sync ||= Sync.new(folder: @folder, retrieval: @retrieval, databases: @databases))
     end

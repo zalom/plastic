@@ -12,6 +12,7 @@ module Plastic
       "sync up" => ["Commands::SyncUp", "Read the files changed by hand into rows"],
       "sync down" => ["Commands::SyncDown", "Print the rows that changed into files"],
       "session note" => ["Commands::SessionNote", "Write the one prose line of this session"],
+      "intent rule" => ["Commands::IntentRule", "Write an owner ruling, with --supersedes to replace an older one"],
 
       # Work graph
       "node add" => ["Commands::NodeAdd", "Add a node to an intent's work graph"],

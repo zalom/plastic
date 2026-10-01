@@ -6,6 +6,7 @@ require_relative "document"
 require_relative "savepoint"
 require_relative "node"
 require_relative "edge"
+require_relative "ruling"
 require_relative "kept_file"
 
 module Plastic
@@ -30,6 +31,7 @@ module Plastic
       savepoints: Source.new(Savepoint, :work, "savepoints", "*", "intent_id, position"),
       nodes: Source.new(Node, :work, "nodes", "*", "intent_id, id"),
       edges: Source.new(Edge, :work, "edges", "*", 'intent_id, "from", "to", kind'),
+      rulings: Source.new(Ruling, :knowledge, "rulings", "*", "intent_id, id"),
       kept_files: Source.new(KeptFile, :references, "sqlar", "name, mode, mtime, sz, intent_id, sha256, origin_id",
         "intent_id, name")
     }.freeze
