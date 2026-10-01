@@ -40,7 +40,9 @@ module Plastic
       # A gate's pass: check, read at each call, so it always runs the method as it stands.
       def self.check(name) = ->(context) { public_send(name, context) }
 
+      # Declares the whole chain, so a second load of the class replaces the first.
       def sync(direction)
+        [facts, steps, outcomes].each(&:clear)
         sets :failure, :conflicts, :merging, :lines
         plan_steps(direction)
         apply_steps(direction)
