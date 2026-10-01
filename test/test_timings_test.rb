@@ -53,12 +53,10 @@ class TestTimingsTest < Minitest::Test
   end
 
   # With PLASTIC_TEST_TIMINGS named, the real init path (a reporter already
-  # set, the way Minitest's own plugin sequence guarantees) must read the
-  # ENV var exactly once and add a TestTimings::Reporter at that path.
-  # A mutant that removes the `path = ENV.fetch(...)` assignment while
-  # leaving the guard behind would read an undefined local here instead of
-  # failing this assertion, so this is the test that keeps that mutant from
-  # surviving unverdicted.
+  # set, as Minitest's plugin sequence guarantees) reads the ENV var once and
+  # adds a TestTimings::Reporter at that path. A mutant that drops the
+  # `path = ENV.fetch(...)` assignment reads an undefined local here instead
+  # of failing this assertion, so this test catches it.
   def test_with_a_timings_file_a_reporter_is_added
     ENV["PLASTIC_TEST_TIMINGS"] = @path
     fake, added = fake_reporter
@@ -82,65 +80,55 @@ class TestTimingsTest < Minitest::Test
 
   def test_a_varar_class_is_booked_to_its_document_from_the_list
     reporter = TestTimings::Reporter.new(@path)
-    reporter.record(FakeResult.new("Var_varar_store_layout_md", "test_example", 3.0))
+    reporter.record(FakeResult.new("Var_varar_intent_new_md", "test_example", 3.0))
     reporter.report
 
     totals = JSON.parse(File.read(@path))
 
-    assert_in_delta 3.0, totals.fetch("varar/store-layout.md"), 0.0001
+    assert_in_delta 3.0, totals.fetch("varar/intent-new.md"), 0.0001
   end
 
   def test_the_caps_are_5_seconds_per_file_and_10_per_document
-    File.write(@path, JSON.generate({ "test/plain_test.rb" => 4.9, "varar/store-layout.md" => 9.9 }))
     never_called = ->(_file) { raise "rerun must not run" }
+    _, out_one = check_caps({ "test/plain_test.rb" => 4.9, "varar/intent-new.md" => 9.9 }, rerun: never_called)
+    _, out_two = check_caps({ "varar/intent-new.md" => 5.5 }, rerun: never_called)
 
-    TestTimings::Caps.new(@path, rerun: never_called).check
-
-    File.write(@path, JSON.generate({ "varar/store-layout.md" => 5.5 }))
-
-    TestTimings::Caps.new(@path, rerun: never_called).check
+    assert_empty out_one
+    assert_empty out_two
   end
 
-  def test_a_file_over_its_cap_fails_only_when_its_rerun_is_over_too
-    File.write(@path, JSON.generate({ "test/plain_test.rb" => 5.5 }))
-    under_on_rerun = TestTimings::Caps.new(@path, rerun: ->(_file) { 4.0 })
+  def test_a_file_under_its_cap_on_rerun_passes
+    error, out = check_caps({ "test/plain_test.rb" => 5.5 }, rerun: ->(_file) { 4.0 })
 
-    under_on_rerun.check
+    assert_nil error
+    assert_includes out, "5.5"
+    assert_includes out, "4.0"
+  end
 
-    File.write(@path, JSON.generate({ "test/plain_test.rb" => 5.5 }))
-    over_on_rerun = TestTimings::Caps.new(@path, rerun: ->(_file) { 6.0 })
+  def test_a_file_over_its_cap_on_rerun_fails
+    error, out = check_caps({ "test/plain_test.rb" => 5.5 }, rerun: ->(_file) { 6.0 })
 
-    assert_raises(TestTimings::Caps::Failure) { over_on_rerun.check }
+    refute_nil error
+    assert_includes out, "5.5"
+    assert_includes out, "6.0"
   end
 
   def test_a_file_over_its_cap_is_named_with_its_time
-    File.write(@path, JSON.generate({ "test/plain_test.rb" => 5.5 }))
-    caps = TestTimings::Caps.new(@path, rerun: ->(_file) { 6.2 })
-
-    error = assert_raises(TestTimings::Caps::Failure) { caps.check }
+    error, out = check_caps({ "test/plain_test.rb" => 5.5 }, rerun: ->(_file) { 6.2 })
 
     assert_includes error.message, "test/plain_test.rb"
     assert_includes error.message, "6.2"
+    assert_includes out, "test/plain_test.rb"
   end
 
-  def test_a_rerun_that_passes_still_prints_both_times
-    File.write(@path, JSON.generate({ "test/plain_test.rb" => 5.5 }))
+  def check_caps(seconds, rerun:)
+    File.write(@path, JSON.generate(seconds))
     out = StringIO.new
-
-    TestTimings::Caps.new(@path, rerun: ->(_file) { 4.0 }, out:).check
-
-    assert_includes out.string, "5.5"
-    assert_includes out.string, "4.0"
-  end
-
-  def test_a_rerun_that_fails_still_prints_both_times
-    File.write(@path, JSON.generate({ "test/plain_test.rb" => 5.5 }))
-    out = StringIO.new
-
-    assert_raises(TestTimings::Caps::Failure) { TestTimings::Caps.new(@path, rerun: ->(_file) { 6.2 }, out:).check }
-
-    assert_includes out.string, "5.5"
-    assert_includes out.string, "6.2"
+    caps = TestTimings::Caps.new(@path, rerun:, out:)
+    caps.check
+    [nil, out.string]
+  rescue TestTimings::Caps::Failure => e
+    [e, out.string]
   end
 
   def test_rerun_shells_to_bin_test_only_for_a_plain_file
@@ -156,7 +144,7 @@ class TestTimingsTest < Minitest::Test
     seen = nil
     runner = ->(*command, chdir:) { seen = [command, chdir] }
 
-    TestTimings::Rerun.new(root: "/worktree", runner:).call("varar/store-layout.md")
+    TestTimings::Rerun.new(root: "/worktree", runner:).call("varar/intent-new.md")
 
     assert_equal [%w[bundle exec ruby bin/test --system], "/worktree"], seen
   end
