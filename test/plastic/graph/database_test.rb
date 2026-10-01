@@ -4,31 +4,16 @@ require_relative "../../test_helper"
 
 class DatabaseTest < Plastic::TestCase
   Database = Plastic::Graph::Database
-  Program = Database::Program
   SQL = Plastic::Graph::SQL
 
-  # The sqlite3 program on a database in a temporary folder.
-  def program_call(script, file: "work_graph.db")
-    Dir.mktmpdir("plastic-program") { |dir| Program.new.call(File.join(dir, file), script) }
+  def scratch(file) = Database.new(File.join(@home, "scratch", file), "")
+
+  def test_rows_returns_the_first_result_set
+    assert_equal [{ "a" => 1 }], scratch("x.db").rows("SELECT 1 AS a; SELECT 2 AS b;")
   end
 
-  def test_the_program_needs_sqlite3_on_the_search_path
-    error = assert_raises(Database::Error) { Program.new("").check }
-
-    assert_equal "sqlite3 is not on PATH; install it, then call again", error.message
-  end
-
-  def test_the_program_passes_its_check_when_sqlite3_is_found
-    assert_nil Program.new.check
-  end
-
-  def test_the_program_returns_each_result_set_in_order
-    assert_equal [[{ "a" => 1 }], [{ "b" => "x" }, { "b" => "y" }]],
-      program_call("SELECT 1 AS a; CREATE TABLE t(b); INSERT INTO t VALUES ('x'), ('y'); SELECT b FROM t ORDER BY b;")
-  end
-
-  def test_a_script_with_no_rows_returns_no_sets
-    assert_empty program_call("CREATE TABLE t(a);")
+  def test_a_read_with_no_rows_returns_none
+    assert_empty scratch("x.db").rows("CREATE TABLE t(a)")
   end
 
   def test_a_failed_statement_commits_nothing_of_its_transaction
@@ -44,17 +29,21 @@ class DatabaseTest < Plastic::TestCase
   end
 
   def test_a_folder_that_cannot_be_made_names_the_file
-    Dir.mktmpdir("plastic-program") do |dir|
-      File.write(File.join(dir, "taken"), "")
-      error = assert_raises(Database::Error) { Program.new.call(File.join(dir, "taken", "home.db"), "SELECT 1;") }
+    File.write(File.join(@home, "taken"), "")
+    error = assert_raises(Database::Error) { Database.new(File.join(@home, "taken", "home.db"), "").rows("SELECT 1") }
 
-      assert_match(/\Ahome\.db: /, error.message)
-    end
+    assert_match(/\Ahome\.db: /, error.message)
   end
 
-  def test_opening_checks_the_engine_first
-    assert_raises(Database::Error) { Database.open_home("/nowhere", engine: Program.new("")) }
-    assert_raises(Database::Error) { Database.open_store("/nowhere", nil, engine: Program.new("")) }
+  def test_a_failed_write_inside_an_open_transaction_undoes_only_itself
+    insert("a")
+    connection = Database::ConnectionPool.for(database.path)
+    connection.execute("BEGIN")
+    insert("b")
+    assert_raises(Database::Error) { database.transaction { |batch| batch.add("INSERT INTO nowhere VALUES (1)") } }
+
+    assert_equal %w[a b], database.rows("SELECT name FROM routine_runs ORDER BY id").map { |row| row["name"] }
+    connection.rollback
   end
 
   def test_open_home_opens_the_home_database
@@ -112,16 +101,10 @@ class DatabaseTest < Plastic::TestCase
     assert_equal "hi", database.row("SELECT CAST(data AS TEXT) AS t FROM routine_runs")["t"]
   end
 
-  def test_the_program_fails_its_check_on_a_folder_with_no_sqlite3
-    Dir.mktmpdir("plastic-path") { |dir| assert_raises(Database::Error) { Program.new(dir).check } }
-  end
+  def test_a_new_database_makes_its_folder
+    scratch("home.db").rows("CREATE TABLE t(a)")
 
-  def test_the_program_makes_the_folder_of_a_new_database
-    Dir.mktmpdir("plastic-program") do |dir|
-      Program.new.call(File.join(dir, "new", "home.db"), "CREATE TABLE t(a);")
-
-      assert_path_exists File.join(dir, "new", "home.db")
-    end
+    assert_path_exists File.join(@home, "scratch", "home.db")
   end
 
   def test_puts_and_applies_return_the_batch_so_writes_chain

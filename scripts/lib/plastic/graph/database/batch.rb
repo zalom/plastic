@@ -21,10 +21,6 @@ module Plastic
 
         def empty? = @statements.empty?
 
-        # The transaction up to its commit. The commit is a call of its own,
-        # sent only when every statement here succeeded.
-        def script = ["BEGIN IMMEDIATE;", *@statements].join("\n")
-
         # A statement kept off the report. Its RETURNING rows, such as a new
         # id, come back from the transaction.
         def add(sql, **values)

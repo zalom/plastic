@@ -4,12 +4,13 @@ require "fileutils"
 require "json"
 require "open3"
 require "rbconfig"
+require "sqlite3"
 require "tmpdir"
 
 # Runs the kernel command line of scripts/lib/plastic in a child process,
 # against a disposable home. The kernel defines the same constants as the
 # live command line, so it never loads into the process that runs Varar.
-# The rows are read back through the sqlite3 program, as a person would.
+# The rows are read back through the sqlite3 gem, on their own connection.
 class KernelCommand
   KERNEL = File.expand_path("../../../scripts/lib/plastic", __dir__)
   LEGACY_STORE = File.expand_path("../../fixtures/legacy_store", __dir__)
@@ -89,14 +90,14 @@ class KernelCommand
     FileUtils.cp_r(LEGACY_STORE, store)
   end
 
-  # The rows one query returns from one database of the store, as arrays.
+  # The rows one statement returns from one database of the store, as arrays.
   def rows(database, sql)
     return [] unless File.exist?(path(database))
 
-    out, err, status = Open3.capture3("sqlite3", "-json", path(database), sql)
-    raise "sqlite3: #{err}" unless status.success?
-
-    out.strip.empty? ? [] : JSON.parse(out).map(&:values)
+    connection = SQLite3::Database.new(path(database))
+    connection.execute(sql)
+  ensure
+    connection&.close
   end
 
   # Every file under `dir` with its bytes.

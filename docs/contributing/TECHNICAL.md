@@ -68,14 +68,15 @@ the live command line retires.
 The kernel has two layers of tests:
 
 - **Unit tests** under `test/plastic/` call public methods only. Each class inherits
-  `Plastic::TestCase` from `test/test_helper.rb`. A test gets its own copy of a home built once
-  per process from a file under `test/fixtures/homes/`, and a class picks a named home with
-  `fixtures`. The tests run the real `Graph::Database` through the `sqlite3` program, so each
-  one reads and writes the state the commands would. The base class closes every database
-  connection after each test, as Rails resets its state after each test.
+`Plastic::TestCase` from `test/test_helper.rb`, as Rails tests inherit one base class. Each
+process builds one home per fixture under `test/fixtures/homes/` and opens its databases
+once. Every test runs inside a transaction on each of those databases and rolls it back in
+teardown, as Rails does with transactional tests. Teardown also puts back the home's other
+files and closes any database the test opened. The tests run the real `Graph::Database`
+through the `sqlite3` gem, so each one reads and writes the state the commands would.
 - **Acceptance documents** under `varar/` run each command of the storage kernel in a child
   Ruby process, against a fresh home. The steps read the rows back through the `sqlite3`
-  program. `bin/plastic` does not route to the kernel yet, so the steps call the kernel's
+  gem, on a connection of their own. `bin/plastic` does not route to the kernel yet, so the steps call the kernel's
   command line directly. `bin/test --system` runs them through `test/varar_test.rb`. The change
   gate never passes that file to the mutation run.
 

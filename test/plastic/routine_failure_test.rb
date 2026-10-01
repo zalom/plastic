@@ -56,7 +56,7 @@ class RoutineFailureTest < Plastic::TestCase
   end
 
   def test_a_database_error_fails_the_call
-    FileUtils.rm_rf(@plastic_home)
+    @plastic_home = File.join(@home, "plain-file")
     File.write(@plastic_home, "not a directory")
     call = plastic("kernel", "gate", "pass")
 

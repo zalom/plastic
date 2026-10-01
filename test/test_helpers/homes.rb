@@ -4,19 +4,62 @@ require "yaml"
 
 module Plastic
   class TestCase
-    # The homes the tests copy. Each is built once per process from its file
-    # under test/fixtures/homes: the store databases with their schema, the
-    # origin id, and the intents and files the fixture lists.
+    # The homes the tests run in, one per fixture per process, built from its
+    # file under test/fixtures/homes: the store databases with their schema,
+    # the origin id, and the intents and files the fixture lists. A test runs
+    # inside a transaction on each database of its home and rolls it back,
+    # as a Rails test does; the files it changed are put back after it.
     module Homes
       FIXTURES = File.expand_path("../fixtures", __dir__)
 
-      def self.template(name) = (@templates ||= {})[name] ||= build(name)
+      def self.template(name)
+        @templates = {} unless @pid == Process.pid
+        @pid = Process.pid
+        @templates[name] ||= Home.build(name)
+      end
 
-      def self.build(name)
-        dir = File.realpath(Dir.mktmpdir("plastic-home-#{name}"))
-        Minitest.after_run { FileUtils.remove_entry(dir) }
-        Fixture.new(File.join(dir, ".plastic"), YAML.load_file(File.join(FIXTURES, "homes", "#{name}.yml"))).load
-        dir
+      # One built home: its folder, its database files and a copy of the rest.
+      class Home
+        Pool = Plastic::Graph::Database::ConnectionPool
+
+        attr_reader :dir
+
+        def self.build(name)
+          dir = File.realpath(Dir.mktmpdir("plastic-home-#{name}"))
+          Minitest.after_run { FileUtils.rm_rf([dir, "#{dir}.files"]) }
+          Fixture.new(File.join(dir, ".plastic"), YAML.load_file(File.join(FIXTURES, "homes", "#{name}.yml"))).load
+          new(dir)
+        end
+
+        def initialize(dir)
+          @dir = dir
+          @databases = Dir.glob("#{dir}/**/*.db", File::FNM_DOTMATCH)
+          @files = "#{dir}.files"
+          FileUtils.cp_r(dir, @files)
+          Dir.glob("#{@files}/**/*.db", File::FNM_DOTMATCH).each { |path| File.delete(path) }
+        end
+
+        def begin = connections.each { |connection| connection.execute("BEGIN") }
+
+        # Rolls each database back, closes every other connection and puts the files back.
+        def reset
+          connections.each { |connection| connection.rollback if connection.transaction_active? }
+          Pool.disconnect(keep: @databases)
+          Dir.glob("**/*", File::FNM_DOTMATCH, base: @dir).reverse_each { |entry| clear(File.join(@dir, entry)) }
+          FileUtils.cp_r("#{@files}/.", @dir)
+        end
+
+        private
+
+        def connections = @databases.map { |path| Pool.for(path) }
+
+        def clear(path)
+          return if @databases.include?(path) || File.basename(path) == "."
+
+          return File.delete(path) if File.symlink?(path) || !File.directory?(path)
+
+          Dir.rmdir(path) if Dir.empty?(path)
+        end
       end
 
       # One home fixture loaded through the kernel's own public calls.
@@ -31,7 +74,6 @@ module Plastic
           graphs.databases.each_value { |database| database.rows("SELECT 1") }
           @data.fetch("intents", []).each { |intent| open_intent(intent) }
           sync_up if @data["sync"]
-          Plastic::Graph::Database::Program.disconnect
         end
 
         private

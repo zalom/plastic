@@ -20,11 +20,11 @@ module Plastic
     end
 
     # Opening reads no file and makes none: the origin id and the databases
-    # appear on the first read or write. `engine` runs the databases' scripts.
-    def self.open(home:, store:, engine: Database::Program.new)
+    # appear on the first read or write.
+    def self.open(home:, store:)
       origin = Origin.new(home)
       root = File.join(home, "stores", store)
-      databases = Database.open_home(home, engine:).merge(Database.open_store(root, origin, engine:))
+      databases = Database.open_home(home).merge(Database.open_store(root, origin))
       retrieval = RetrievalGraph.new(databases, store:, origin:)
       Graphs.new(work: WorkGraph.new(databases, folder: StoreFolder.new(root), retrieval:), retrieval:, databases:)
     end

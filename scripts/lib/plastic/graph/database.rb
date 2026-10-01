@@ -3,62 +3,50 @@
 require_relative "schema"
 require_relative "sql"
 require_relative "database/batch"
-require_relative "database/program"
+require_relative "database/connection_pool"
 
 module Plastic
   module Graph
-    # One SQLite file. The rows are the authority; the files are printed
-    # from them. `engine` runs each script, by default the sqlite3 program.
+    # One SQLite file through the sqlite3 gem. The rows are the authority;
+    # the files are printed from them.
     #
-    # A write is one transaction in the file's one sqlite3 session. BEGIN IMMEDIATE takes
-    # the write lock first, so two calls that both ask for the next intent id
-    # get two ids. Each database counts the rows that this call wrote, and the
-    # report prints the counts on its `wrote:` line.
+    # A write is one transaction. BEGIN IMMEDIATE takes the write lock first,
+    # so two calls that both ask for the next intent id get two ids. Inside
+    # an open transaction, such as a test's, the write is a savepoint. Each
+    # database counts the rows that this call wrote, and the report prints
+    # the counts on its `wrote:` line.
     class Database
-      # The sqlite3 program is missing, or a statement failed.
+      # A statement failed, or the file cannot be opened.
       class Error < StandardError; end
 
-      # One file and the engine that runs each script against it.
-      Connection = Data.define(:path, :engine)
-
-      # Runs a script against its file.
-      class Connection
-        def call(script) = engine.call(path, script)
-      end
-
       # The database of the home, for what belongs to one machine.
-      def self.open_home(home, engine: Program.new)
-        engine.check
-        { home: new(File.join(home, Schema.file(:home)), Schema.fetch(:home), engine:) }
-      end
+      def self.open_home(home) = { home: new(File.join(home, Schema.file(:home)), Schema.fetch(:home)) }
 
       # The three databases of one store folder. `origin` stamps their rows and their change log.
-      def self.open_store(root, origin, engine: Program.new)
-        engine.check
-        Schema::STORE.to_h { |key| [key, new(File.join(root, Schema.file(key)), Schema.fetch(key), origin:, engine:)] }
+      def self.open_store(root, origin)
+        Schema::STORE.to_h { |key| [key, new(File.join(root, Schema.file(key)), Schema.fetch(key), origin:)] }
       end
 
-      attr_reader :written
+      attr_reader :path, :written
 
-      def initialize(path, schema, origin: nil, engine: Program.new)
-        @connection = Connection.new(path, engine)
+      def initialize(path, schema, origin: nil)
+        @path = path
         @schema = schema
         @origin = origin
         @written = Hash.new(0)
       end
 
-      def path = @connection.path
-
       def file = File.basename(path)
 
       # Rows from one read. `:name` in the SQL takes the value of `name`.
-      def rows(sql, **values) = execute(SQL.bind(sql, values)).first || []
+      def rows(sql, **values) = connected { |connection| connection.sets(SQL.bind(sql, values)) }.first || []
 
       def row(sql, **values) = rows(sql, **values).first
 
       # Every write of one call to this database, in one transaction. The
       # block adds statements to the Batch; the rows that RETURNING gives back
-      # come back in the order the statements were added.
+      # come back in the order the statements were added. A failed statement
+      # rolls the whole batch back and raises Error.
       def transaction
         batch = Batch.new(origin: @origin)
         yield batch
@@ -71,11 +59,9 @@ module Plastic
 
       private
 
-      # The commit goes only after every statement of the batch succeeded.
       def commit(batch)
-        sets = execute(batch.script)
-        @connection.call("COMMIT;")
-        tally(sets)
+        script = batch.statements.join("\n")
+        tally(connected { |connection| connection.atomically { connection.sets(script) } })
       end
 
       def tally(sets)
@@ -86,15 +72,20 @@ module Plastic
 
       def count(table, rows) = @written[table] += rows
 
-      # The schema goes first in the first script of the call, so a new
-      # folder needs no separate setup step.
-      def execute(script)
-        sets = @connection.call(with_schema(script))
-        @schema = nil
-        sets
+      def connected
+        yield connection
+      rescue SQLite3::Exception, SystemCallError => error
+        raise Error, "#{file}: #{error.message.lines.first.chomp.delete_suffix(":")}"
       end
 
-      def with_schema(script) = @schema ? "#{@schema}\n#{script}" : script
+      # The connection, with the schema made on the first call, so a new
+      # folder needs no separate setup step.
+      def connection
+        ConnectionPool.for(path).tap do |connection|
+          connection.execute_batch(@schema) if @schema
+          @schema = nil
+        end
+      end
     end
   end
 end

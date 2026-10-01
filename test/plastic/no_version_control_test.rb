@@ -3,7 +3,7 @@
 require_relative "../test_helper"
 
 # The git ruling of 2026-09-28: Plastic code runs no version control command
-# and no report prints one. The kernel runs one program, sqlite3.
+# and no report prints one. The kernel runs no program: SQLite comes through the sqlite3 gem.
 class NoVersionControlTest < Plastic::TestCase
   ROOT = File.expand_path("../../scripts/lib", __dir__)
   SOURCES = [File.join(ROOT, "plastic.rb"), *Dir.glob(File.join(ROOT, "plastic", "**", "*.rb"))].freeze
@@ -19,10 +19,9 @@ class NoVersionControlTest < Plastic::TestCase
     assert_empty offenders
   end
 
-  def test_the_only_program_run_is_sqlite3
+  def test_the_kernel_runs_no_program
     calls = SOURCES.flat_map { |path| File.readlines(path).reject { |line| line.strip.start_with?("#") }.grep(SPAWNS) }
 
-    assert_equal 1, calls.size
-    assert_includes calls.first, 'Open3.popen2e("sqlite3", '
+    assert_empty calls
   end
 end

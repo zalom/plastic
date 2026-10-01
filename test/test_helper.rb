@@ -35,6 +35,7 @@ module Plastic
 
       @booted = true
       require "plastic"
+      SQLite3::ForkSafety.suppress_warnings!
       require File.expand_path("fixtures/routines", __dir__)
       Dir[File.join(HELPERS, "*.rb")].each { |helper| require helper }
       include StoreHelper, CommandHelper, WorkflowHelper, DatabaseHelper
@@ -46,14 +47,12 @@ module Plastic
     end
 
     def setup
-      @home = File.realpath(Dir.mktmpdir("plastic-test"))
+      @template = Homes.template(self.class.fixtures)
+      @home = @template.dir
       @plastic_home = File.join(@home, ".plastic")
-      FileUtils.cp_r("#{Homes.template(self.class.fixtures)}/.", @home)
+      @template.begin
     end
 
-    def teardown
-      Plastic::Graph::Database::Program.disconnect
-      FileUtils.remove_entry(@home)
-    end
+    def teardown = @template.reset
   end
 end

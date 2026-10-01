@@ -130,7 +130,7 @@ The following table lists the same classes. Each one sits in the `Plastic` modul
 | `AgentWorkflow` | Steps in plain words for the agent. It hands off while any step is left undone. |
 | `Context` and `Facts` | The named values of one call. A name that no one declared raises at once. |
 | `RoutineRun` | One call of one tool on one subject, kept as a row of `home.db`. |
-| `Graph::Database` | One SQLite file. Its engine runs each script: the `sqlite3` program, or an engine a test passes in. Each write logs its `changes` row in the same transaction. |
+| `Graph::Database` | One SQLite file, read and written through the `sqlite3` gem. Each write logs its `changes` row in the same transaction. |
 | `Graph::Origin` | The id of this installation, made at the home on first use. |
 | `Graph::WorkGraph` | The writes of a command: routine runs, intents, and the files printed after them. |
 | `Graph::RetrievalGraph` | The reads of a command, one table at a time. |
@@ -208,17 +208,16 @@ The following table lists the status values of a routine run.
 An open routine run restarts at the first workflow with its saved facts. A step that changes
 state has a done check, so a change that already happened is skipped and never runs twice.
 
-`Graph::Database` hands each read or write to its engine. The default engine,
-`Graph::Database::Program`, keeps one `sqlite3` process per database file for the life of the
-Ruby process, the way a Rails process keeps one connection. The `ConnectionPool` holds these
-sessions and closes them at exit. Each script goes in on the process's input, and its output and
-errors come back in order before an end marker. A failed statement raises with sqlite3's error
-line and rolls back any open transaction. The session stays open, as a Rails connection survives
-an error. A call with no answer in 30 seconds ends its process and raises. A write is one
-transaction that takes the write lock first, and its COMMIT goes only after every statement
-succeeded. The first script of a `Database`
-carries the schema, so a new home or store needs no setup step. The report counts the rows a call wrote and prints them on
-its `wrote:` line.
+`Graph::Database` reaches its file through the `sqlite3` gem. The `ConnectionPool` keeps one
+connection per database file for the life of the Ruby process, the way a Rails process keeps
+one connection per database. A connection opens on first use and closes at exit, and a forked
+child opens its own. Each connection returns rows as hashes, turns foreign keys on and waits
+on a busy file. A write is one transaction that takes the write lock first, and a failed
+statement rolls the whole transaction back and raises with SQLite's error line. Inside a
+transaction that is already open, such as a test's, the write is a savepoint instead, so a
+failure undoes only that write. The first call of a `Database` runs the schema, so a new home
+or store needs no setup step. The report counts the rows a call wrote and prints them on its
+`wrote:` line.
 
 ### The hook reply
 
