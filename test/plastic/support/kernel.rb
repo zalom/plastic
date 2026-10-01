@@ -3,6 +3,7 @@
 require_relative "../../test_helper"
 require "fileutils"
 require "securerandom"
+require "sqlite3"
 require "stringio"
 require "tmpdir"
 require_relative "../../../scripts/lib/plastic"
@@ -218,7 +219,39 @@ module KernelFixtures
     def agent(&body) = Class.new(Plastic::AgentWorkflow, &body)
   end
 
-  # A database in a temporary folder, with tables for the database tests.
+  # The sqlite3 library inside the test process, with one database in
+  # memory per path: the same SQL as the sqlite3 program, and no process
+  # for each script.
+  class MemoryEngine
+    def initialize = @databases = {}
+
+    def check = nil
+
+    def call(path, script)
+      database = (@databases[path] ||= SQLite3::Database.new(":memory:", results_as_hash: true))
+      result_sets(database, script)
+    rescue SQLite3::Exception => error
+      database.rollback if database.transaction_active?
+      raise Plastic::Graph::Database::Error, "#{File.basename(path)}: #{error.message}"
+    end
+
+    private
+
+    # Like the program: one set per statement that returns rows.
+    def result_sets(database, script)
+      sets = []
+      rest = script
+      until rest.strip.empty?
+        statement = database.prepare(rest)
+        sets << statement.execute.to_a
+        rest = statement.remainder
+        statement.close
+      end
+      sets.reject(&:empty?)
+    end
+  end
+
+  # A database in memory, with tables for the database tests.
   module DatabaseHome
     Database = Plastic::Graph::Database
     SQL = Plastic::Graph::SQL
@@ -230,11 +263,8 @@ module KernelFixtures
     SQL
 
     def setup
-      @dir = Dir.mktmpdir("plastic-database")
-      @database = Database.new(File.join(@dir, "work_graph.db"), SCHEMA)
+      @database = Database.new("/memory/work_graph.db", SCHEMA, engine: MemoryEngine.new)
     end
-
-    def teardown = FileUtils.remove_entry(@dir)
 
     def insert(name, table: :routine_runs)
       @database.transaction { |batch| batch.insert(table, { name: }) }
@@ -243,24 +273,44 @@ module KernelFixtures
 end
 
 module KernelFixtures
-  # Calls of the kernel's own commands against the global store of a
-  # temporary home, and reads of the files and rows they leave.
-  module StoreCalls
-    include Calls
-
+  # The graphs of the global store of a temporary home, on databases in
+  # memory, and reads of the files they print.
+  module StoreGraphs
     LEGACY_STORE = File.expand_path("../fixtures/legacy_store", __dir__)
 
-    def setup = make_home
+    def setup
+      @home = Dir.mktmpdir("plastic-store")
+      @plastic_home = File.join(@home, ".plastic")
+    end
 
-    def teardown = remove_home
+    def teardown = FileUtils.remove_entry(@home)
 
-    def run_plastic(*argv) = plastic(*argv, table: Plastic::CLI::TABLE)
+    def engine = (@engine ||= MemoryEngine.new)
 
     def store_root = File.join(@plastic_home, "stores", "global")
 
     def store_path(path) = File.join(store_root, path)
 
-    def store_graphs = Plastic::Graph.open(home: @plastic_home, store: "global")
+    def store_graphs = Plastic::Graph.open(home: @plastic_home, store: "global", engine:)
+
+    def origin = Plastic::Graph::Origin.new(@plastic_home).id
+
+    def folder = Plastic::Graph::StoreFolder.new(store_root)
+
+    def write(path, text) = folder.write(path, text)
+
+    def retrieval = store_graphs.retrieval
+
+    # A new intent with its files printed, as plastic intent new leaves it.
+    def open_intent(title = "Alpha", **fields)
+      work = store_graphs.work
+      intent = work.write_intent(title:, **fields)
+      work.print_intent(intent.intent_id)
+      intent
+    end
+
+    # Writes the rows one read adds, in the database that owns them.
+    def apply_read(read) = store_graphs.databases.fetch(read.database).transaction { |batch| batch.apply([read.apply]) }
 
     # The one item of a list, asserted to be the only one.
     def sole(list)

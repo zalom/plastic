@@ -67,4 +67,16 @@ class LegacyIndexTest < Minitest::Test
 
     assert_includes error.message, "Someday"
   end
+
+  def test_an_entry_imports_as_an_intent_row
+    row = entries.fetch("307a").row({ "kind" => "research", "created" => "2026-08-01" }, "now")
+
+    assert_equal({ intent_id: "307a", parent_id: "307", slug: "auto-shape", title: "Auto shape", kind: "research",
+                   status: "abandoned", disposition: "abandoned without work", opened_at: "2026-08-01",
+                   closed_at: "2026-08-31", updated_at: "now" }, row)
+  end
+
+  def test_the_counts_name_the_intents_and_the_clusters
+    assert_equal({ "intents" => 5, "clusters" => 2 }, LegacyIndex.parse(TEXT).counts)
+  end
 end

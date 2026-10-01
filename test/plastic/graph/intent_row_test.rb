@@ -3,7 +3,7 @@
 require_relative "../support/kernel"
 
 class IntentRowTest < Minitest::Test
-  include KernelFixtures::StoreCalls
+  include KernelFixtures::StoreGraphs
 
   COLUMNS = %w[id intent_id parent_id ref origin_id slug title kind status disposition opened_at closed_at updated_at].freeze
 

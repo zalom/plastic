@@ -1,16 +1,14 @@
 # frozen_string_literal: true
 
-require "fileutils"
-require "json"
-require "open3"
 require_relative "schema"
 require_relative "sql"
 require_relative "database/batch"
+require_relative "database/program"
 
 module Plastic
   module Graph
-    # One SQLite file, reached through the sqlite3 program. The rows are the
-    # authority; the files are printed from them.
+    # One SQLite file. The rows are the authority; the files are printed
+    # from them. `engine` runs each script, by default the sqlite3 program.
     #
     # A write is one transaction in one sqlite3 process. BEGIN IMMEDIATE takes
     # the write lock first, so two calls that both ask for the next intent id
@@ -20,39 +18,33 @@ module Plastic
       # The sqlite3 program is missing, or a statement failed.
       class Error < StandardError; end
 
+      # One file and the engine that runs each script against it.
+      Connection = Data.define(:path, :engine) do
+        def call(script) = engine.call(path, script)
+      end
+
       # The database of the home, for what belongs to one machine.
-      def self.open_home(home, path: ENV.fetch("PATH", ""))
-        require_program(path)
-        { home: new(File.join(home, Schema.file(:home)), Schema.fetch(:home)) }
+      def self.open_home(home, engine: Program.new)
+        engine.check
+        { home: new(File.join(home, Schema.file(:home)), Schema.fetch(:home), engine:) }
       end
 
       # The three databases of one store folder. `origin` stamps their rows and their change log.
-      def self.open_store(root, origin, path: ENV.fetch("PATH", ""))
-        require_program(path)
-        Schema::STORE.to_h { |key| [key, new(File.join(root, Schema.file(key)), Schema.fetch(key), origin:)] }
+      def self.open_store(root, origin, engine: Program.new)
+        engine.check
+        Schema::STORE.to_h { |key| [key, new(File.join(root, Schema.file(key)), Schema.fetch(key), origin:, engine:)] }
       end
 
-      def self.require_program(path)
-        found = path.split(File::PATH_SEPARATOR).any? { |dir| File.executable?(File.join(dir, "sqlite3")) }
-        raise Error, "sqlite3 is not on PATH; install it, then call again" unless found
-      end
+      attr_reader :written
 
-      # The result sets of one sqlite3 run. Each set prints as one JSON
-      # array; a raw newline never occurs inside a JSON string, so "]\n["
-      # only separates two sets.
-      def self.result_sets(out)
-        text = out.strip
-        text.empty? ? [] : JSON.parse("[#{text.gsub("]\n[", "],[")}]")
-      end
-
-      attr_reader :path, :written
-
-      def initialize(path, schema, origin: nil)
-        @path = path
+      def initialize(path, schema, origin: nil, engine: Program.new)
+        @connection = Connection.new(path, engine)
         @schema = schema
         @origin = origin
         @written = Hash.new(0)
       end
+
+      def path = @connection.path
 
       def file = File.basename(path)
 
@@ -84,22 +76,12 @@ module Plastic
 
       def count(table, rows) = @written[table] += rows
 
-      # One sqlite3 process per call. The schema goes first in the first
-      # script of the process, so a new folder needs no separate setup step.
+      # The schema goes first in the first script of the call, so a new
+      # folder needs no separate setup step.
       def execute(script)
-        out, err, status = Open3.capture3("sqlite3", "-json", "-bail", folder, stdin_data: with_schema(script))
-        raise Error, "#{file}: #{err.strip}" unless status.success?
-
+        sets = @connection.call(with_schema(script))
         @schema = nil
-        Database.result_sets(out)
-      end
-
-      # The database's path, with its folder made first.
-      def folder
-        FileUtils.mkdir_p(File.dirname(path))
-        path
-      rescue SystemCallError => error
-        raise Error, "#{file}: #{error.message}"
+        sets
       end
 
       def with_schema(script) = @schema ? "#{@schema}\n#{script}" : script

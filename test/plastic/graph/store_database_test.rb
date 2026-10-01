@@ -3,7 +3,13 @@
 require_relative "../support/kernel"
 
 class StoreDatabaseTest < Minitest::Test
-  include KernelFixtures::StoreCalls
+  include KernelFixtures::StoreGraphs
+
+  def test_a_write_through_the_sqlite3_program_makes_the_store_files
+    Plastic::Graph.open(home: @plastic_home, store: "global").work.write_intent(title: "Alpha")
+
+    assert_equal %w[knowledge_graph.db work_graph.db], Dir.children(store_root).grep(/\.db\z/).sort
+  end
 
   def test_the_databases_sit_in_the_store_folder
     databases = store_graphs.databases

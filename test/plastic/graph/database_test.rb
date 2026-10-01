@@ -5,36 +5,57 @@ require_relative "../support/kernel"
 class DatabaseTest < Minitest::Test
   include KernelFixtures::DatabaseHome
 
-  def test_opening_needs_sqlite3_on_the_path
-    error = assert_raises(Database::Error) { Database.open_home(@dir, path: "") }
+  Program = Plastic::Graph::Database::Program
+
+  # The sqlite3 program on a database in a temporary folder.
+  def program_call(script, file: "work_graph.db")
+    Dir.mktmpdir("plastic-program") { |dir| Program.new.call(File.join(dir, file), script) }
+  end
+
+  def test_the_program_needs_sqlite3_on_the_search_path
+    error = assert_raises(Database::Error) { Program.new("").check }
 
     assert_equal "sqlite3 is not on PATH; install it, then call again", error.message
   end
 
+  def test_the_program_passes_its_check_when_sqlite3_is_found
+    assert_nil Program.new.check
+  end
+
+  def test_the_program_returns_each_result_set_in_order
+    assert_equal [[{ "a" => 1 }], [{ "b" => "x" }, { "b" => "y" }]],
+      program_call("SELECT 1 AS a; CREATE TABLE t(b); INSERT INTO t VALUES ('x'), ('y'); SELECT b FROM t ORDER BY b;")
+  end
+
+  def test_a_script_with_no_rows_returns_no_sets
+    assert_empty program_call("CREATE TABLE t(a);")
+  end
+
+  def test_an_sql_error_names_the_file
+    error = assert_raises(Database::Error) { program_call("SELECT nope;") }
+
+    assert_match(/\Awork_graph\.db: .*no such column: nope/, error.message)
+  end
+
+  def test_a_folder_that_cannot_be_made_names_the_file
+    Dir.mktmpdir("plastic-program") do |dir|
+      File.write(File.join(dir, "taken"), "")
+      error = assert_raises(Database::Error) { Program.new.call(File.join(dir, "taken", "home.db"), "SELECT 1;") }
+
+      assert_match(/\Ahome\.db: /, error.message)
+    end
+  end
+
+  def test_opening_checks_the_engine_first
+    assert_raises(Database::Error) { Database.open_home("/nowhere", engine: Program.new("")) }
+    assert_raises(Database::Error) { Database.open_store("/nowhere", nil, engine: Program.new("")) }
+  end
+
   def test_open_home_opens_the_home_database
-    databases = Database.open_home(@dir)
+    databases = Database.open_home("/home", engine: KernelFixtures::MemoryEngine.new)
 
     assert_equal [:home], databases.keys
-    assert_equal File.join(@dir, "home.db"), databases[:home].path
-  end
-
-  def test_literals_quote_every_kind_of_value
-    values = [nil, true, false, 3, 1.5, SQL::Bytes.new("ab"), { "a" => 1 }, [1], "it's"]
-
-    assert_equal ["NULL", "1", "0", "3", "1.5", "X'6162'", %('{"a":1}'), "'[1]'", "'it''s'"],
-      values.map { |value| SQL.literal(value) }
-  end
-
-  def test_a_name_is_quoted
-    assert_equal %("say ""hi"""), SQL.name(%(say "hi"))
-  end
-
-  def test_bind_fills_known_names_only
-    assert_equal "SELECT 'a' WHERE b = :b AND c::text", SQL.bind("SELECT :a WHERE b = :b AND c::text", a: "a")
-  end
-
-  def test_bind_with_no_values_leaves_the_sql
-    assert_equal "SELECT :a", SQL.bind("SELECT :a", {})
+    assert_equal ["/home/home.db", "home.db"], [databases[:home].path, databases[:home].file]
   end
 
   def test_the_schema_is_made_on_the_first_read
@@ -47,11 +68,13 @@ class DatabaseTest < Minitest::Test
 
     assert_equal [{ "name" => "a" }, { "name" => "b" }], @database.rows("SELECT name FROM routine_runs ORDER BY id")
     assert_equal({ "name" => "b" }, @database.row("SELECT name FROM routine_runs WHERE name = :name", name: "b"))
+    assert_nil @database.row("SELECT name FROM routine_runs WHERE name = 'c'")
   end
 
   def test_an_empty_transaction_runs_nothing
-    assert_empty(@database.transaction { |_batch| nil })
-    refute_path_exists @database.path
+    database = Database.new("/memory/x.db", "", engine: Object.new)
+
+    assert_empty(database.transaction { |_batch| nil })
   end
 
   def test_returning_rows_come_back_in_order
@@ -61,6 +84,7 @@ class DatabaseTest < Minitest::Test
     end
 
     assert_equal [[{ "name" => "a" }], [{ "name" => "b" }]], returned
+    assert_equal({ "routine_runs" => 2 }, @database.written)
   end
 
   def test_a_conflict_clause_skips_the_duplicate
@@ -80,20 +104,5 @@ class DatabaseTest < Minitest::Test
     @database.transaction { |batch| batch.insert(:routine_runs, { name: "b", data: SQL::Bytes.new("hi") }) }
 
     assert_equal "hi", @database.row("SELECT CAST(data AS TEXT) AS t FROM routine_runs")["t"]
-  end
-
-  def test_an_sql_error_names_the_file
-    error = assert_raises(Database::Error) { @database.rows("SELECT nope FROM notes") }
-
-    assert_match(/\Awork_graph\.db: .*no such column: nope/, error.message)
-  end
-
-  def test_the_schema_names_routine_runs_one_and_many
-    assert_equal ["1 routine run", "2 routine runs", "1 x"],
-      [Plastic::Graph::Schema.tally(:routine_runs, 1), Plastic::Graph::Schema.tally("routine_runs", 2), Plastic::Graph::Schema.tally(:x, 1)]
-  end
-
-  def test_the_home_schema_holds_the_routine_runs_table
-    assert_includes Plastic::Graph::Schema.fetch(:home), 'CREATE TABLE IF NOT EXISTS "routine_runs"('
   end
 end

@@ -130,7 +130,7 @@ The following table lists the same classes. Each one sits in the `Plastic` modul
 | `AgentWorkflow` | Steps in plain words for the agent. It hands off while any step is left undone. |
 | `Context` and `Facts` | The named values of one call. A name that no one declared raises at once. |
 | `RoutineRun` | One call of one tool on one subject, kept as a row of `home.db`. |
-| `Graph::Database` | One SQLite file, reached through the `sqlite3` program. Each write logs its `changes` row in the same transaction. |
+| `Graph::Database` | One SQLite file. Its engine runs each script: the `sqlite3` program, or an engine a test passes in. Each write logs its `changes` row in the same transaction. |
 | `Graph::Origin` | The id of this installation, made at the home on first use. |
 | `Graph::WorkGraph` | The writes of a command: routine runs, intents, and the files printed after them. |
 | `Graph::RetrievalGraph` | The reads of a command, one table at a time. |
@@ -208,7 +208,8 @@ The following table lists the status values of a routine run.
 An open routine run restarts at the first workflow with its saved facts. A step that changes
 state has a done check, so a change that already happened is skipped and never runs twice.
 
-`Graph::Database` runs one `sqlite3` process for each read or write. A write is one
+`Graph::Database` hands each read or write to its engine. The default engine,
+`Graph::Database::Program`, runs one `sqlite3` process for each script. A write is one
 transaction that takes the write lock first. The first script of a process carries the schema,
 so a new home or store needs no setup step. The report counts the rows a call wrote and prints them on
 its `wrote:` line.

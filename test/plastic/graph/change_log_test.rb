@@ -3,11 +3,9 @@
 require_relative "../support/kernel"
 
 class ChangeLogTest < Minitest::Test
-  include KernelFixtures::StoreCalls
+  include KernelFixtures::StoreGraphs
 
   def work = @work ||= store_graphs.databases[:work]
-
-  def origin = Plastic::Graph::Origin.new(@plastic_home).id
 
   def changes(database = work) = database.rows("SELECT * FROM changes ORDER BY seq")
 

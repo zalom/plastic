@@ -64,6 +64,18 @@ process. The kernel defines some of the same constant names as the live command 
 two cannot load into one process. The run fails when either process fails. The split ends when
 the live command line retires.
 
+The kernel has two layers of tests:
+
+- **Unit tests** under `test/plastic/` call public methods only. They pass the graphs an
+  in-memory engine, `KernelFixtures::MemoryEngine`, which runs SQLite through the `sqlite3`
+  gem, so no unit test starts a `sqlite3` process. Only `database_test.rb` and
+  `store_database_test.rb` run the `sqlite3` program. A unit test file runs in well under a
+  second, which keeps each mutant of the change gate inside its time limit.
+- **Acceptance documents** under `varar/` run each command of the storage kernel in a child
+  Ruby process, against a fresh home. The steps read the rows back through the `sqlite3`
+  program. `bin/plastic` does not route to the kernel yet, so the steps call the kernel's
+  command line directly. `test/varar_test.rb` runs them in CI.
+
 ## The byte budget
 
 `bin/plastic-bench` is the one script that measures every standing surface, the agent catalog
@@ -86,3 +98,4 @@ included. `test/context_budget_bench_test.rb` fails when a surface crosses its c
 | `docs/resources/` | The figures of these pages, copied from the tri-graph proposal pages. |
 | `varar/` | The acceptance documents. |
 | `test/varar/` | The step files for the acceptance documents. |
+| `test/varar/support/kernel_command.rb` | Runs the kernel's command line in a child process for the storage documents. |
