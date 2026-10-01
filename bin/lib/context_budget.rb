@@ -271,8 +271,17 @@ module ContextBudget
 
   # Runs the real hook once. Returns [additionalContext, elapsed_ms]. A failed or
   # empty boot raises rather than scoring as a small, passing number.
+  #
+  # Intent 397 cutover: the kernel registers no SessionStart hook yet, so no
+  # repo on alpha ships scripts/hook-session-start any more. A repo without the
+  # file boots to an empty context, deterministically, with no process spawned
+  # and no runner call; the measurement reports the truth, that nothing runs.
+  # A repo that still carries the file, real or a fixture built to simulate
+  # one, boots for real through the injectable runner exactly as before.
   def self.boot(fixture:, repo:, runner: DEFAULT_RUNNER)
     hook = File.join(repo, "scripts", "hook-session-start")
+    return ["", 0.0] unless File.file?(hook)
+
     started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
     out, err, status = runner.call(child_env(fixture), RbConfig.ruby, hook,
                                    fixture.index, fixture.plastic_home, "global", repo,

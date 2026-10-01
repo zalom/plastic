@@ -51,22 +51,15 @@ class PostCutVocabularyTest < Minitest::Test
     docs/help/human-report-contract.md
   ].freeze
 
+  # Intent 397 cutover: scripts/doctor.rb is retired with the rest of the legacy
+  # CLI, so the "last Done line says"/"manual Done-bookend repair" message pins
+  # this test once carried for it go with it. test/doctor_done_signals_test.rb,
+  # which pinned the surviving "Done delivered|abandoned" ledger wording, was
+  # retired the same way for the same reason.
   def test_done_alias_absent_from_shipped_tree
     PROSE_FILES_MUST_NOT_SAY_DONE.each do |rel|
       content = read(rel)
       refute_match(/\bDone\b/, content, "#{rel} still names the retired \"Done\" alias")
-    end
-
-    # The savepoint_operational and backfilled_complete "Done delivered|abandoned"/"Done
-    # echo" message text is pinned verbatim by test/doctor_done_signals_test.rb (outside
-    # n4's files), which must keep working: those two message families are left as they
-    # are. Only the instances a pinned test does not depend on are cut here.
-    doctor = read("scripts/doctor.rb")
-    [
-      /last Done line says/,
-      /manual Done-bookend repair/,
-    ].each do |pattern|
-      refute_match(pattern, doctor, "scripts/doctor.rb still shows a \"Done\" message: #{pattern.inspect}")
     end
   end
 

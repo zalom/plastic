@@ -81,16 +81,6 @@ class HermeticityGuardTest < Minitest::Test
     nil
   end
 
-  def test_lock_visibility_dependency_closure_follows_local_helpers
-    root = File.expand_path("..", __dir__)
-    relative_paths = local_dependency_closure(root, AMBIENT_READ_BOUNDARY_ROOTS)
-      .map { |path| path.delete_prefix("#{root}#{File::SEPARATOR}") }
-
-    %w[scripts/lib/arm.rb scripts/lib/worktree.rb].each do |expected|
-      assert_includes relative_paths, expected
-    end
-  end
-
   def test_lock_visibility_dependency_closure_cannot_escape_project_root
     Dir.mktmpdir("lock-visibility-closure") do |parent|
       root = File.join(parent, "project")

@@ -236,108 +236,12 @@ class ContextBudgetFixtureTest < Minitest::Test
   end
 end
 
-# One live report, memoized: install once, boot twice, assert everything
-# about the result. Two repeats prove the boots are byte-identical as well as
-# three do and keep the suite cheaper; the CLI defaults to five.
-class ContextBudgetBootTest < Minitest::Test
-  REPO = ContextBudgetSharedFixture::REPO
-
-  def self.report
-    @report ||= ContextBudget.run(repo: REPO, repeat: 1, fixture: ContextBudgetSharedFixture.fixture)
-  end
-
-  def report
-    self.class.report
-  end
-
-  def test_the_fixture_boots_healthy
-    assert_match(/doctor --core run: success\z/, report.context.lines.first.strip,
-      "a degraded fixture measures a boot no real session sees")
-  end
-
-  # Intent 341, G8: the conventions dump no longer reaches a live boot; the
-  # core block is still measured on its own (the `core` row below reads
-  # PLASTIC.md directly), just never injected into additionalContext.
-  def test_the_boot_no_longer_carries_the_core_block
-    refute_includes report.context, "# Plastic: Conventions"
-  end
-
-  def test_the_boot_renders_the_project_banner_and_its_active_intent
-    assert_includes report.context, "Project: "
-    assert_includes report.context, "Active: [0100"
-  end
-
-  # Intent 341, G8: the stale-future paragraph is cut from a live boot; the
-  # fixture still seeds a 30-day-old future intent (FIXTURE_STALE_DAYS), so
-  # this proves the cut, not merely that nothing stale happened to render.
-  def test_the_stale_future_paragraph_is_cut
-    refute_includes report.context, "Stale future intents"
-    refute_includes report.context, "(30 days)"
-  end
-
-  # The hook emits no QMD status line since intent 391 dissolved that path.
-  # Not the bare word "QMD", which PLASTIC.md itself uses in its own doctrine.
-  def test_no_host_state_leaks_into_the_measurement
-    refute_includes report.context, "Plastic collections indexed",
-      "no host state may change the measured bytes"
-    refute_includes report.context, "qmd-sync register --all",
-      "the qmd-sync line is gone; it must never reappear in the measurement"
-    refute_includes report.context, "update available",
-      "a real update-check cache must not change the measured bytes"
-  end
-
-  # The suite keeps one repeat for speed; `bin/plastic-bench` still defaults
-  # to five, and that reproducibility proof runs there, outside the suite.
-  def test_repeats_are_byte_identical
-    assert_equal 1, report.samples.length
-    assert_equal 0, report.byte_spread,
-      "the fixture is fixed, so any byte spread across repeats means something non-deterministic leaked in"
-  end
-
-  def test_every_enforced_row_is_under_its_ceiling
-    report.rows.select(&:enforced?).each do |row|
-      assert_operator row.bytes, :<, row.ceiling,
-        "#{row.key} is #{row.bytes} bytes against a #{row.ceiling} ceiling"
-    end
-    assert report.ok?, "live report must pass: #{report.failures.join('; ')}"
-  end
-
-  def test_the_working_set_is_reported_with_its_ruled_target
-    row = report.row(:working_set)
-
-    refute row.enforced?, "the working set carries no ceiling; its median term steps by a kilobyte"
-    assert_equal ContextBudget::WORKING_SET_TARGET, row.target
-    refute_nil row.gap, "the gap to the ruled 15,000 must be reported, not hidden"
-  end
-
-  def test_the_combined_row_adds_the_catalog_to_the_boot
-    assert_equal report.row(:boot).bytes + report.row(:skill_catalog).bytes,
-                 report.row(:boot_plus_catalog).bytes
-  end
-
-  def test_the_table_renders_a_ceiling_or_the_word_reported_for_every_row
-    table = report.to_table
-
-    report.rows.each do |row|
-      assert_includes table, row.label
-    end
-    assert_includes table, "reported"
-    assert_includes table, ContextBudget::WORKING_SET_TARGET.to_s
-  end
-
-  # Intent 242's standing complaint: a measurement that never says which
-  # interpreter produced it.
-  def test_the_report_names_the_interpreter
-    assert_equal RUBY_VERSION, report.ruby_version
-    assert_equal RbConfig.ruby, report.ruby_bin
-    assert_includes report.to_table, RUBY_VERSION
-  end
-
-  def test_the_report_names_what_it_could_not_count
-    assert_match(/not counted/i, report.to_table,
-      "the report must state its exclusions (update notice, sweep line)")
-  end
-end
+# Intent 397 cutover: ContextBudgetBootTest measured hook-session-start's real,
+# live additionalContext (the project banner, the doctor status line, the active
+# intent, the stale-future cut). The kernel registers no SessionStart hook yet, so
+# no repo on alpha ships that file any more; ContextBudget.boot now reports an
+# honest empty context for a repo without it (bin/lib/context_budget.rb), and this
+# class, which had no live content left to measure, is retired with the hook.
 
 class ContextBudgetCeilingTest < Minitest::Test
   REPO = ContextBudgetSharedFixture::REPO
@@ -397,6 +301,28 @@ class ContextBudgetCeilingTest < Minitest::Test
     def exitstatus = @ok ? 0 : 1
   end
 
+  # A repo carrying a hook-session-start file, to exercise the injectable
+  # runner below without this repo's own tree, which no longer ships one
+  # (intent 397 cutover: the kernel registers no SessionStart hook yet).
+  def repo_with_hook
+    dir = Dir.mktmpdir("plastic-bench-hook-repo")
+    Minitest.after_run { FileUtils.remove_entry(dir) }
+    FileUtils.mkdir_p(File.join(dir, "scripts"))
+    FileUtils.touch(File.join(dir, "scripts", "hook-session-start"))
+    dir
+  end
+
+  def test_a_repo_with_no_session_start_hook_boots_empty_with_no_runner_call
+    called = false
+    runner = ->(*) { called = true }
+
+    context, ms = ContextBudget.boot(fixture: fixture, repo: REPO, runner: runner)
+
+    assert_equal "", context
+    assert_in_delta(0.0, ms)
+    refute called, "a repo without the hook must not spawn anything, injected or not"
+  end
+
   def test_the_boot_runner_is_injectable
     seen = nil
     runner = lambda do |env, *cmd, **opts|
@@ -405,7 +331,7 @@ class ContextBudgetCeilingTest < Minitest::Test
       [JSON.generate(payload), "", FakeStatus.new(true)]
     end
 
-    context, ms = ContextBudget.boot(fixture: fixture, repo: REPO, runner: runner)
+    context, ms = ContextBudget.boot(fixture: fixture, repo: repo_with_hook, runner: runner)
 
     assert_equal "injected", context
     assert_operator ms, :>=, 0
@@ -416,7 +342,7 @@ class ContextBudgetCeilingTest < Minitest::Test
   def test_a_failing_boot_is_never_scored_as_a_pass
     runner = ->(_env, *_cmd, **_opts) { ["", "boom", FakeStatus.new(false)] }
 
-    assert_raises(RuntimeError) { ContextBudget.boot(fixture: fixture, repo: REPO, runner: runner) }
+    assert_raises(RuntimeError) { ContextBudget.boot(fixture: fixture, repo: repo_with_hook, runner: runner) }
   end
 
   # D10: the bench is a maintainer tool over repo fixtures and is never installed
@@ -523,108 +449,9 @@ class ContextBudgetCliTest < Minitest::Test
   end
 end
 
-# Intent 355 spec D9, node n7: the subagent boot (hook-session-start's core
-# banner only branch) gets its own measurement and its own ceiling, so the
-# "helper boots small" claim is asserted rather than guessed. Kept local to
-# this test file rather than added to ContextBudget's shared CEILINGS: node
-# n7's declared files are the hook and its two test files, not
-# bin/lib/context_budget.rb, so the branch stays self-contained (spec D13)
-# for intent 341 to rebase on.
-# Intent 341, G8 (node n2), rows 2.2-2.3: the post-cut boot ceiling (C28). A
-# live boot no longer carries the conventions dump, so its size drops far
-# below intent 296's original 15,000-byte "boot" ceiling in CEILINGS above
-# (unchanged; this class does not touch it). Measured against this repo's own
-# live fixture boot (a project registered, one active intent, PLASTIC.md
-# installed, one real deprecation warning, the day ledger's join line) the
-# boot comes to roughly 500 bytes. 1,000
-# gives modest headroom over that measured value, room for the day ledger's
-# counts and an extra deprecation line to vary, while staying tight enough
-# that a doctrine-dump regression (PLASTIC.md, the active-intents listing,
-# the stale-future list) blows through it immediately. Kept local to this
-# test file the same way node n7 (intent 355) kept the subagent-boot ceiling
-# local rather than adding a shared constant to bin/lib/context_budget.rb,
-# which is not one of this node's declared files.
-class ContextBudgetPostCutBootTest < Minitest::Test
-  REPO = ContextBudgetSharedFixture::REPO
-
-  POST_CUT_BOOT_CEILING = 1_000
-
-  # ContextBudgetBootTest's own report already boots the shared fixture with
-  # the default runner, the same call this class would otherwise make again;
-  # its context is reused here instead of paying for a second boot.
-  def self.live_context = ContextBudgetBootTest.report.context
-
-  def context
-    self.class.live_context
-  end
-
-  def failure_line(bytes:, ceiling:)
-    "post-cut boot is #{bytes} bytes against a #{ceiling} byte ceiling"
-  end
-
-  # Row 2.2
-  def test_post_cut_boot_under_ceiling
-    bytes = context.bytesize
-    assert_operator bytes, :<, POST_CUT_BOOT_CEILING, failure_line(bytes: bytes, ceiling: POST_CUT_BOOT_CEILING)
-  end
-
-  # Row 2.3: can-fail proof of the message itself, driven by a synthetic
-  # over-ceiling byte count rather than by inflating the real boot.
-  def test_ceiling_failure_names_both_numbers
-    message = failure_line(bytes: 9_000, ceiling: POST_CUT_BOOT_CEILING)
-
-    assert_includes message, "9000"
-    assert_includes message, POST_CUT_BOOT_CEILING.to_s
-  end
-end
-
-class ContextBudgetSubagentBootTest < Minitest::Test
-  REPO = ContextBudgetSharedFixture::REPO
-
-  # A real subagent boot is one banner line: "Plastic Core loaded - v<ver> |
-  # doctor --core run: <success|error - run /plastic-doctor>\n", measured at
-  # 69-91 bytes against this repo's own version string. 512 gives a
-  # generous multiple of headroom for a longer version string while staying
-  # tight enough that any future subagent-branch regression (the stale list,
-  # the day ledger) blows through it immediately.
-  SUBAGENT_BOOT_CEILING = 512
-
-  def self.subagent_context
-    @subagent_context ||= begin
-      runner = lambda do |env, *cmd, **opts|
-        Open3.capture3(env, *cmd, **opts,
-                       stdin_data: JSON.generate("session_id" => "bench-subagent", "agent_id" => "bench-agent"))
-      end
-      context, = ContextBudget.boot(fixture: ContextBudgetSharedFixture.fixture, repo: REPO, runner: runner)
-      context
-    end
-  end
-
-  def context
-    self.class.subagent_context
-  end
-
-  def failure_line(bytes:, ceiling:)
-    "subagent boot is #{bytes} bytes against a #{ceiling} byte ceiling"
-  end
-
-  # Row 7.4
-  def test_subagent_boot_under_its_ceiling
-    bytes = context.bytesize
-    assert_operator bytes, :<, SUBAGENT_BOOT_CEILING, failure_line(bytes: bytes, ceiling: SUBAGENT_BOOT_CEILING)
-  end
-
-  def test_subagent_boot_carries_no_live_session_content
-    refute_includes context, "Active intents"
-    refute_includes context, "day ledger"
-  end
-
-  # Row 7.5: can-fail proof of the message itself, driven by a synthetic
-  # over-ceiling byte count rather than by inflating the real boot.
-  def test_subagent_ceiling_failure_names_both_numbers
-    message = failure_line(bytes: 9_000, ceiling: SUBAGENT_BOOT_CEILING)
-
-    assert_includes message, "9000"
-    assert_includes message, SUBAGENT_BOOT_CEILING.to_s
-  end
-end
+# Intent 397 cutover: ContextBudgetPostCutBootTest and ContextBudgetSubagentBootTest
+# measured hook-session-start's live additionalContext, row by row. The kernel
+# registers no SessionStart hook yet (hooks.json carries none), so no repo on
+# alpha ships that file any more; ContextBudget.boot reports an honest empty
+# context for a repo without it (bin/lib/context_budget.rb), and these two
+# classes, which had no content left to measure, are retired with the hook.

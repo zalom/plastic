@@ -127,45 +127,16 @@ class PluginDispatchTest < Minitest::Test
   end
 
   # --- AC1 to AC3: the shipped manifest resolves against a simulated plugin root ---
+  #
+  # Intent 397 cutover: hooks.json now registers nothing (the kernel ships no
+  # lifecycle hooks yet), so the three "at least N commands" floor checks that
+  # used to run against the real manifest have no shipped commands left to
+  # check. run-hook's own dispatch contract (AC4 onward) is still real and
+  # still proved below, against synthetic manifests this file builds itself.
 
-  def test_every_hooks_json_command_resolves_to_an_executable_file
-    commands = hooks_json_commands(@plugin_root)
-    assert_operator commands.size, :>=, 6,
-                    "fixture floor: hooks.json declares at least 6 commands (power-tools retired in 2.0, intent 309); an empty walk is not a pass"
-
-    bad = unresolved_commands(@plugin_root)
-          .select { |c| TARGET_LEVEL_KINDS.include?(c.kind) }
-    assert_empty bad.map(&:message)
-  end
-
-  def test_every_run_hook_target_resolves_to_an_executable_launcher
-    wrapped = hooks_json_commands(@plugin_root).select { |c| c.include?("run-hook") }
-    assert_operator wrapped.size, :>=, 5,
-                    "fixture floor: at least 5 commands dispatch through run-hook (power-tools retired in 2.0, intent 309)"
-
-    # Everything that is not a target-level complaint is a run-hook-level one
-    # by construction (see TARGET_LEVEL_KINDS): missing_name, missing_launcher,
-    # and not_executable_launcher all land here with no allow-list of their
-    # own to fall out of sync, and any future kind lands here too until it is
-    # deliberately added to TARGET_LEVEL_KINDS instead.
-    bad = unresolved_commands(@plugin_root)
-          .reject { |c| TARGET_LEVEL_KINDS.include?(c.kind) }
-    assert_empty bad.map(&:message)
-  end
-
-  def test_every_hooks_json_command_uses_the_plugin_root_variable
-    commands = hooks_json_commands(REPO)
-    assert_operator commands.size, :>=, 6,
-                    "fixture floor: hooks.json declares at least 6 commands (power-tools retired in 2.0, intent 309); an empty walk is not a pass"
-
-    commands.each do |command|
-      assert_includes command, "${CLAUDE_PLUGIN_ROOT}/hooks/",
-                      "#{command} must address its launcher through the plugin root variable"
-      Shellwords.split(command.gsub("${CLAUDE_PLUGIN_ROOT}", "PLUGINROOT")).each do |token|
-        refute token.start_with?("/"),
-               "#{command} carries an absolute path that would not survive a plugin install"
-      end
-    end
+  def test_the_shipped_manifest_currently_registers_no_hooks
+    assert_empty hooks_json_commands(REPO),
+                "hooks.json carries commands again; restore the AC1-AC3 floor checks for it"
   end
 
   # --- AC4 and AC5: the checker is falsifiable and derived, proved in-suite ---
@@ -248,25 +219,5 @@ class PluginDispatchTest < Minitest::Test
     assert_equal 0, status.exitstatus
     assert_empty out
     assert_empty err
-  end
-
-  # --- AC9: one real launcher, end to end, with real stdin JSON ---
-
-  # hooks/capture's bash body pipes stdin straight to scripts/hook-capture with
-  # no bash-side fallback (intent 298 collapsed continue/future-intent-check/
-  # auto-arm into this one launcher), so a bare hookEventName assertion here
-  # is already proof the Ruby path ran.
-  def test_the_capture_launcher_runs_end_to_end_through_run_hook
-    FileUtils.mkdir_p(File.join(@home, ".plastic", "store"))
-    File.write(File.join(@home, ".plastic", "INDEX.md"), "# Intent Index\n\n## Active\n\n## Future\n")
-    payload = JSON.generate("session_id" => "sess-234", "user_prompt" => "continue")
-
-    out, _err, status = Open3.capture3(hook_env, File.join(plugin_hooks_dir, "run-hook"),
-                                       "capture", stdin_data: payload)
-
-    assert_equal 0, status.exitstatus
-    refute_empty out.strip, "the capture launcher must emit context on a continue prompt"
-    parsed = JSON.parse(out)
-    assert_equal "UserPromptSubmit", parsed.dig("hookSpecificOutput", "hookEventName")
   end
 end
