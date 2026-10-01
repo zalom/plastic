@@ -1346,7 +1346,7 @@ different interpreter.
 | skill catalog | every `skills/*/SKILL.md` frontmatter `name` + `description` value the harness loads | reported |
 | agent catalog | every `agents/*.md` frontmatter `name` + `description` value | reported |
 | boot injection + skill catalog | the two above | **under 17,500**, a 313 ratchet, lower it, never raise it |
-| standing surface | core block + boot injection + both catalogs | **under 3,608**, an intent 363 ratchet that only moves down |
+| standing surface | core block + boot injection + both catalogs | **under 5,000**, the owner's cap of 2026-10-01 on what Plastic alone introduces |
 | median skill body | the median `SKILL.md` body, frontmatter excluded | reported |
 | doctrine working set | boot injection + `skills/_decision-tables.md` + the median skill body | reported against the 15,000 target, with its gap |
 
