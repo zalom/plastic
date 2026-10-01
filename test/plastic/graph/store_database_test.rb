@@ -3,7 +3,7 @@
 require_relative "../../test_helper"
 
 class StoreDatabaseTest < Plastic::TestCase
-  def test_a_write_through_the_sqlite3_program_makes_the_store_files
+  def test_a_write_makes_the_store_files
     Plastic::Graph.open(home: @plastic_home, store: "fresh").work.write_intent(title: "Alpha")
 
     assert_equal %w[knowledge_graph.db work_graph.db], Dir.children(File.join(@plastic_home, "stores", "fresh")).grep(/\.db\z/).sort

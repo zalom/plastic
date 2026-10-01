@@ -17,7 +17,7 @@ class PreflightTest < Minitest::Test
   EN_DASH = "–"
 
   def check(overrides = {})
-    defaults = { ruby_version: "4.0.1", git_present: true, sqlite3_present: true, platform: "darwin" }
+    defaults = { ruby_version: "4.0.1", git_present: true, sqlite3_present: true, missing_gems: [], platform: "darwin" }
     Preflight.check(**defaults.merge(overrides))
   end
 
@@ -92,6 +92,21 @@ class PreflightTest < Minitest::Test
     assert result[:messages].none? { |m| m.include?("sqlite3 was not found") }
   end
 
+  def test_a_missing_sqlite3_gem_warns_with_the_gem_install_command
+    result = check(missing_gems: %w[sqlite3])
+
+    refute result[:fatal]
+    assert_includes result[:messages], "Plastic reads its graph databases through the sqlite3 gem (the gem was not found).\nnext: gem install sqlite3"
+  end
+
+  def test_a_present_sqlite3_gem_has_no_gem_issue
+    assert_empty check(missing_gems: [])[:messages]
+  end
+
+  def test_the_installer_names_only_the_gems_ruby_cannot_load
+    assert_equal %w[no_such_gem_for_plastic], Install.allocate.missing_gems(%w[sqlite3 no_such_gem_for_plastic])
+  end
+
   # --- node and mise probes are gone ---
 
   def test_check_takes_no_node_or_mise_keyword
@@ -119,8 +134,8 @@ class PreflightTest < Minitest::Test
 
   def test_no_message_contains_em_or_en_dash
     scenarios = [
-      { ruby_version: "2.6.10", git_present: false, sqlite3_present: false, platform: "linux" },
-      { ruby_version: "4.0.1", git_present: true, sqlite3_present: true, platform: "darwin" },
+      { ruby_version: "2.6.10", git_present: false, sqlite3_present: false, missing_gems: %w[sqlite3], platform: "linux" },
+      { ruby_version: "4.0.1", git_present: true, sqlite3_present: true, missing_gems: [], platform: "darwin" },
     ]
     scenarios.each do |probes|
       Preflight.check(**probes)[:messages].each do |message|

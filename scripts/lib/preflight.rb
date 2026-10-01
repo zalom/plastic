@@ -5,7 +5,7 @@ require_relative "version_number"
 
 # Pure, dependency-injected pre-flight checks for Plastic's runtime dependencies
 # (intent 38, narrowed by intent 391). Takes injected probes (ruby version, git
-# presence, sqlite3 presence, platform) and returns a plain decision: ok / fatal
+# presence, sqlite3 presence, missing gems, platform) and returns a plain decision: ok / fatal
 # plus branded messages.
 #
 # No I/O, no shelling out, no ENV reads here. Callers (scripts/install.rb,
@@ -18,7 +18,7 @@ module Preflight
   RUBY_FLOOR = "4.0.0"
   RUBY_PIN = "4.0"
 
-  def check(ruby_version:, git_present:, sqlite3_present:, platform:)
+  def check(ruby_version:, git_present:, sqlite3_present:, missing_gems:, platform:)
     messages = []
 
     ruby_message = ruby_issue(ruby_version)
@@ -29,6 +29,8 @@ module Preflight
 
     sqlite3_message = sqlite3_issue(sqlite3_present, platform)
     messages << sqlite3_message if sqlite3_message
+
+    messages.concat(gem_issues(missing_gems))
 
     fatal = !(ruby_message.nil? && git_message.nil? && sqlite3_message.nil?)
     { ok: messages.empty?, fatal: fatal, messages: messages }
@@ -59,6 +61,15 @@ module Preflight
 
     "Plastic uses sqlite3 for its search index (sqlite3 was not found).\n" \
       "next: #{install_command(platform, "sqlite3")}"
+  end
+
+  # Warnings, never fatal: only the storage kernel needs its gems, and
+  # bin/plastic does not route to it yet.
+  def gem_issues(missing_gems)
+    missing_gems.map do |name|
+      "Plastic reads its graph databases through the #{name} gem (the gem was not found).\n" \
+        "next: gem install #{name}"
+    end
   end
 
   def install_command(platform, package)

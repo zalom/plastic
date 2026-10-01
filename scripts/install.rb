@@ -120,11 +120,23 @@ class Install < InstallerCore
   # injectable `out:` IO so this is hermetically testable via StringIO. Returns
   # 1 (stop the install) when Ruby is missing/too-old, else 0.
   def preflight_gate(ruby_version: RUBY_VERSION, git_present: tool_present?("git"), sqlite3_present: tool_present?("sqlite3"),
+                     missing_gems: missing_gems(%w[sqlite3]),
                       platform: platform_probe, out: $stderr)
     result = Preflight.check(ruby_version: ruby_version, git_present: git_present,
-                              sqlite3_present: sqlite3_present, platform: platform)
+                              sqlite3_present: sqlite3_present, missing_gems: missing_gems,
+                              platform: platform)
     result[:messages].each { |message| out.puts(message) }
     result[:fatal] ? 1 : 0
+  end
+
+  # The gems of `names` that Ruby cannot load.
+  def missing_gems(names)
+    names.reject do |name|
+      require name
+      true
+    rescue LoadError
+      false
+    end
   end
 
   private
