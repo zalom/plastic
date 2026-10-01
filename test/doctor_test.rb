@@ -2226,13 +2226,11 @@ class DoctorIntegrationTest < Minitest::Test
   end
 
   def build_healthy_installation
-    # Global store
     store_dir = File.join(DOCTOR_TEST_HOME, "store")
     FileUtils.mkdir_p(store_dir)
     write_intent(store_dir, "1a--healthy")
     write_index(File.join(DOCTOR_TEST_HOME, "INDEX.md"), store_refs: ["store/1a--healthy"])
 
-    # Core files
     File.write(File.join(DOCTOR_TEST_HOME, "PLASTIC.md"), "# Plastic\n")
     File.write(File.join(DOCTOR_TEST_HOME, "VERSION"), "1.0.0")
     write_core_scripts(File.join(DOCTOR_TEST_HOME, "scripts"))
@@ -2245,7 +2243,6 @@ class DoctorIntegrationTest < Minitest::Test
     FileUtils.mkdir_p(File.dirname(agent_manifest))
     File.write(agent_manifest, JSON.pretty_generate({ "files" => {} }))
 
-    # Agent registration
     write_claude_hooks(File.join(DOCTOR_TEST_CLAUDE, "hooks"))
     write_working_display_hook(File.join(DOCTOR_TEST_CLAUDE, "hooks"))
     write_claude_settings(File.join(DOCTOR_TEST_CLAUDE, "settings.json"))
@@ -2253,19 +2250,31 @@ class DoctorIntegrationTest < Minitest::Test
     write_agents(DOCTOR_TEST_CLAUDE)
     write_claude_compact_section(DOCTOR_TEST_CLAUDE)
 
-    # Agent-side VERSION
     agent_plastic = File.join(DOCTOR_TEST_CLAUDE, "plastic")
     FileUtils.mkdir_p(agent_plastic)
     File.write(File.join(agent_plastic, "VERSION"), "1.0.0")
 
-    # projects.yml (empty — no projects)
     File.write(File.join(DOCTOR_TEST_HOME, "projects.yml"), YAML.dump({ "projects" => {} }))
   end
 
-  def test_run_checks_returns_valid_json_structure
-    build_healthy_installation
+  # The four tests below share one real build plus one real run_checks instead
+  # of each running its own, the way ContextBudgetAgentsTest already shares
+  # its own measurement; none of the four mutates the fixture or the result.
+  def self.healthy_result
+    @healthy_result ||= begin
+      probe = allocate
+      probe.setup
+      probe.build_healthy_installation
+      result = Doctor.new(plastic_home: DOCTOR_TEST_HOME, agents: DOCTOR_TEST_AGENTS).run_checks("claude")
+      probe.teardown
+      result
+    end
+  end
 
-    result = doctor.run_checks("claude")
+  def healthy_result = self.class.healthy_result
+
+  def test_run_checks_returns_valid_json_structure
+    result = healthy_result
 
     assert_equal "1.0.0", result[:version]
     assert result[:timestamp]
@@ -2276,9 +2285,7 @@ class DoctorIntegrationTest < Minitest::Test
   end
 
   def test_summary_counts_match_actual_statuses
-    build_healthy_installation
-
-    result = doctor.run_checks("claude")
+    result = healthy_result
     summary = result[:summary]
 
     actual_pass = result[:checks].count { |c| c[:status] == "pass" }
@@ -2292,9 +2299,7 @@ class DoctorIntegrationTest < Minitest::Test
   end
 
   def test_healthy_installation_status_is_pass
-    build_healthy_installation
-
-    result = doctor.run_checks("claude")
+    result = healthy_result
 
     assert_equal "pass", result[:status], "Healthy installation should have pass status, failures: #{
       result[:checks].reject { |c| c[:status] == "pass" }.map { |c| [c[:name], c[:status], c[:message]] }
@@ -2327,9 +2332,7 @@ class DoctorIntegrationTest < Minitest::Test
   end
 
   def test_each_check_has_required_fields
-    build_healthy_installation
-
-    result = doctor.run_checks("claude")
+    result = healthy_result
     required_keys = %i[category name status message details fixable]
 
     result[:checks].each do |c|
