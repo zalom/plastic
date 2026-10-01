@@ -45,7 +45,7 @@ class KernelCommand
   def initialize(home)
     @home = home
     @env = { "HOME" => home, "PLASTIC_HOME" => plastic_home, "PLASTIC_TMP" => File.join(home, "tmp"),
-             "CLAUDE_CODE_SESSION_ID" => nil, "RUBYOPT" => nil, "BUNDLER_SETUP" => nil }
+             "CLAUDE_CODE_SESSION_ID" => nil, "PLASTIC_SESSION" => nil, "RUBYOPT" => nil, "BUNDLER_SETUP" => nil }
   end
 
   def plastic_home = File.join(home, ".plastic")
@@ -56,8 +56,8 @@ class KernelCommand
 
   def origin = File.read(File.join(plastic_home, "origin_id")).strip
 
-  def run(*args)
-    out, err, status = Open3.capture3(@env, RbConfig.ruby, "-e", PROGRAM, KERNEL, *args, chdir: home)
+  def run(*args, input: "", env: {})
+    out, err, status = Open3.capture3(@env.merge(env), RbConfig.ruby, "-e", PROGRAM, KERNEL, *args, chdir: home, stdin_data: input)
     Call.new(status.exitstatus, out, err)
   end
 
