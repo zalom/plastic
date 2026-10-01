@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-require_relative "../support/kernel"
+require_relative "../../test_helper"
 
-class SyncTest < Minitest::Test
-  include KernelFixtures::StoreGraphs
+class SyncTest < Plastic::TestCase
+  fixtures :alpha_synced
 
   SPEC = "store/1--alpha/spec.md"
   FILE = "store/1--alpha/1--alpha.md"
@@ -19,13 +19,6 @@ class SyncTest < Minitest::Test
   end
 
   def body(path) = retrieval.documents("1").find { |document| document.path == File.basename(path) }&.body
-
-  def setup
-    super
-    open_intent
-    write(SPEC, "# Spec\n")
-    run_sync(:up)
-  end
 
   def test_the_plan_keeps_the_direction_and_the_overwrite_path_inside_the_store
     plan = sync.plan(:down, { overwrite: File.join(store_root, SPEC), merge: true })
@@ -98,13 +91,6 @@ class SyncTest < Minitest::Test
     print = Plastic::Graph::Prints::Print.text("store/1--alpha/notes.md", :knowledge, "n\n")
 
     assert_equal [["printed store/1--alpha/notes.md"], []], [sync.print([print]), sync.print([print])]
-  end
-
-  def test_a_legacy_plan_imports_the_store
-    FileUtils.rm_rf(store_root)
-    copy_legacy_store
-
-    assert_equal "imported INDEX.md: 2 intents and 0 clusters, then deleted it", run_sync(:up).first
   end
 
   def test_a_sync_keeps_the_databases_out_of_versioning

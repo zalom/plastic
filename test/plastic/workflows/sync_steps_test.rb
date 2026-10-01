@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
-require_relative "../support/kernel"
+require_relative "../../test_helper"
 require_relative "../../../scripts/lib/plastic/workflows/registry"
 require_relative "../../../scripts/lib/plastic/workflows/sync_up"
 require_relative "../../../scripts/lib/plastic/workflows/sync_down"
 
-class SyncStepsTest < Minitest::Test
+class SyncStepsTest < Plastic::TestCase
   DECLARED = %i[overwrite merge failure conflicts merging lines].freeze
   PLAIN = "changed on both sides since the last print, nothing written: a.md, b.md; pass --overwrite PATH, --overwrite or --merge"
   LEFT = "changed on both sides since the last print, left as they are: a.md; pass --overwrite PATH or --overwrite"

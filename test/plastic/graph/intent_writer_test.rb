@@ -1,10 +1,8 @@
 # frozen_string_literal: true
 
-require_relative "../support/kernel"
+require_relative "../../test_helper"
 
-class IntentWriterTest < Minitest::Test
-  include KernelFixtures::StoreGraphs
-
+class IntentWriterTest < Plastic::TestCase
   def writer = Plastic::Graph::IntentWriter.new(store_graphs.databases, retrieval, folder)
 
   def test_a_plain_call_has_no_problem

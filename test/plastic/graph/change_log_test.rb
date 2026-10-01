@@ -1,10 +1,8 @@
 # frozen_string_literal: true
 
-require_relative "../support/kernel"
+require_relative "../../test_helper"
 
-class ChangeLogTest < Minitest::Test
-  include KernelFixtures::StoreGraphs
-
+class ChangeLogTest < Plastic::TestCase
   def work = @work ||= store_graphs.databases[:work]
 
   def changes(database = work) = database.rows("SELECT * FROM changes ORDER BY seq")

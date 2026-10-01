@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
-require_relative "../support/kernel"
+require_relative "../../test_helper"
 
-class DatabaseTest < Minitest::Test
-  include KernelFixtures::DatabaseHome
-
-  Program = Plastic::Graph::Database::Program
+class DatabaseTest < Plastic::TestCase
+  Database = Plastic::Graph::Database
+  Program = Database::Program
+  SQL = Plastic::Graph::SQL
 
   # The sqlite3 program on a database in a temporary folder.
   def program_call(script, file: "work_graph.db")
@@ -59,51 +59,51 @@ class DatabaseTest < Minitest::Test
   end
 
   def test_the_schema_is_made_on_the_first_read
-    assert_empty @database.rows("SELECT name FROM notes")
+    assert_empty database.rows("SELECT name FROM notes")
   end
 
   def test_rows_and_row_read_with_values
     insert("a")
     insert("b")
 
-    assert_equal [{ "name" => "a" }, { "name" => "b" }], @database.rows("SELECT name FROM routine_runs ORDER BY id")
-    assert_equal({ "name" => "b" }, @database.row("SELECT name FROM routine_runs WHERE name = :name", name: "b"))
-    assert_nil @database.row("SELECT name FROM routine_runs WHERE name = 'c'")
+    assert_equal [{ "name" => "a" }, { "name" => "b" }], database.rows("SELECT name FROM routine_runs ORDER BY id")
+    assert_equal({ "name" => "b" }, database.row("SELECT name FROM routine_runs WHERE name = :name", name: "b"))
+    assert_nil database.row("SELECT name FROM routine_runs WHERE name = 'c'")
   end
 
   def test_an_empty_transaction_runs_nothing
-    database = Database.new(File.join(@dir, "x.db"), "")
+    database = Database.new(File.join(@home, "x.db"), "")
 
-    assert_equal [[], false], [database.transaction { |_batch| nil }, File.exist?(File.join(@dir, "x.db"))]
+    assert_equal [[], false], [database.transaction { |_batch| nil }, File.exist?(File.join(@home, "x.db"))]
   end
 
   def test_returning_rows_come_back_in_order
-    returned = @database.transaction do |batch|
+    returned = database.transaction do |batch|
       batch.write(:routine_runs, "INSERT INTO routine_runs(name) VALUES (:name) RETURNING name", name: "a")
       batch.write(:routine_runs, "INSERT INTO routine_runs(name) VALUES (:name) RETURNING name", name: "b")
     end
 
     assert_equal [[{ "name" => "a" }], [{ "name" => "b" }]], returned
-    assert_equal({ "routine_runs" => 2 }, @database.written)
+    assert_equal({ "routine_runs" => 2 }, database.written)
   end
 
   def test_a_conflict_clause_skips_the_duplicate
     insert("a")
-    @database.transaction { |batch| batch.insert(:routine_runs, { name: "a" }, conflict: "NOTHING") }
+    database.transaction { |batch| batch.insert(:routine_runs, { name: "a" }, conflict: "NOTHING") }
 
-    assert_equal 1, @database.row("SELECT count(*) AS n FROM routine_runs")["n"]
+    assert_equal 1, database.row("SELECT count(*) AS n FROM routine_runs")["n"]
   end
 
   def test_the_record_names_the_columns_in_order
-    @database.transaction { |batch| batch.insert(:stored, { store: "plastic", name: "x" }) }
+    database.transaction { |batch| batch.insert(:stored, { store: "plastic", name: "x" }) }
 
-    assert_equal({ "store" => "plastic", "name" => "x" }, @database.row("SELECT * FROM stored"))
+    assert_equal({ "store" => "plastic", "name" => "x" }, database.row("SELECT * FROM stored"))
   end
 
   def test_bytes_go_in_as_a_blob
-    @database.transaction { |batch| batch.insert(:routine_runs, { name: "b", data: SQL::Bytes.new("hi") }) }
+    database.transaction { |batch| batch.insert(:routine_runs, { name: "b", data: SQL::Bytes.new("hi") }) }
 
-    assert_equal "hi", @database.row("SELECT CAST(data AS TEXT) AS t FROM routine_runs")["t"]
+    assert_equal "hi", database.row("SELECT CAST(data AS TEXT) AS t FROM routine_runs")["t"]
   end
 
   def test_the_program_fails_its_check_on_a_folder_with_no_sqlite3

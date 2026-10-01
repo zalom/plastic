@@ -56,7 +56,8 @@ ruby bin/test --only test/plastic/routine_test.rb
 ```
 
 CI runs the full suite on every push to `main` and `alpha`, and on every pull request
-into them. `bin/test` with no argument is the command CI runs.
+into them. It runs `bin/test` with no argument for the unit layer, then `bin/test --system` for
+the acceptance documents, the way `rails test` and `rails test:system` split them.
 
 On a full run, `bin/test` splits the test files in two. It runs the kernel tests under
 `test/plastic/` in a process of their own first, then every other test file in its own
@@ -66,13 +67,16 @@ the live command line retires.
 
 The kernel has two layers of tests:
 
-- **Unit tests** under `test/plastic/` call public methods only. They run the real
-  `Graph::Database` through the `sqlite3` program on a temporary home, so each test reads and
-  writes the state the commands would.
+- **Unit tests** under `test/plastic/` call public methods only. Each class inherits
+  `Plastic::TestCase` from `test/test_helper.rb`. A test gets its own copy of a home built once
+  per process from a file under `test/fixtures/homes/`, and a class picks a named home with
+  `fixtures`. The tests run the real `Graph::Database` through the `sqlite3` program, so each
+  one reads and writes the state the commands would.
 - **Acceptance documents** under `varar/` run each command of the storage kernel in a child
   Ruby process, against a fresh home. The steps read the rows back through the `sqlite3`
   program. `bin/plastic` does not route to the kernel yet, so the steps call the kernel's
-  command line directly. `test/varar_test.rb` runs them in CI.
+  command line directly. `bin/test --system` runs them through `test/varar_test.rb`. The change
+  gate never passes that file to the mutation run.
 
 ## The byte budget
 
@@ -92,7 +96,11 @@ included. `test/context_budget_bench_test.rb` fails when a surface crosses its c
 | `scripts/lib/plastic/` | The kernel: its command line, routines, workflows, end values and graph layer. |
 | `scripts/lib/plastic/graph/` | The kernel's graph layer: the store databases, the printed files and sync. |
 | `test/plastic/` | The kernel tests, which run in their own process. |
-| `test/plastic/fixtures/legacy_store/` | A copy of a store written before `store/index.json`, for the import tests. |
+| `test/test_helper.rb` | The boot of every test, and `Plastic::TestCase`, the base class of the kernel tests. |
+| `test/test_helpers/` | The helpers `Plastic::TestCase` includes, and the builder of the home fixtures. |
+| `test/fixtures/homes/` | The homes the kernel tests start from, one file each. |
+| `test/fixtures/routines.rb` | The routines, workflows and hooks that exist only for the kernel tests. |
+| `test/fixtures/legacy_store/` | A copy of a store written before `store/index.json`, for the import tests. |
 | `docs/resources/` | The figures of these pages, copied from the tri-graph proposal pages. |
 | `varar/` | The acceptance documents. |
 | `test/varar/` | The step files for the acceptance documents. |

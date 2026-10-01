@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-require_relative "../support/kernel"
+require_relative "../../test_helper"
 
-class IntentRefTest < Minitest::Test
+class IntentRefTest < Plastic::TestCase
   IntentRef = Plastic::Graph::IntentRef
 
   # The retrieval graph as a ref reads it: the origin id and one intent.

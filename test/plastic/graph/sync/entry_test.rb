@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-require_relative "../../support/kernel"
+require_relative "../../../test_helper"
 
-class SyncEntryTest < Minitest::Test
+class SyncEntryTest < Plastic::TestCase
   Entry = Plastic::Graph::Sync::Entry
   Print = Plastic::Graph::Prints::Print
 

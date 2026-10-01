@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-require_relative "../support/kernel"
+require_relative "../../test_helper"
 
-class TableTest < Minitest::Test
+class TableTest < Plastic::TestCase
   Schema = Plastic::Graph::Schema
   CLUSTER = { name: "C", intent_id: "1", origin_id: "o" }.freeze
   CLUSTER_SQL = %(INSERT INTO "clusters" ("name", "intent_id", "origin_id") VALUES ('C', '1', 'o'))

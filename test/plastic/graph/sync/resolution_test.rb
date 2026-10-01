@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-require_relative "../../support/kernel"
+require_relative "../../../test_helper"
 
-class SyncResolutionTest < Minitest::Test
+class SyncResolutionTest < Plastic::TestCase
   Resolution = Plastic::Graph::Sync::Resolution
   SPEC = "store/1--a/spec.md"
 

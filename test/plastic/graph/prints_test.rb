@@ -1,10 +1,8 @@
 # frozen_string_literal: true
 
-require_relative "../support/kernel"
+require_relative "../../test_helper"
 
-class PrintsTest < Minitest::Test
-  include KernelFixtures::StoreGraphs
-
+class PrintsTest < Plastic::TestCase
   FIELDS = %w[intent_id origin_id parent_id ref slug title kind status disposition opened_at closed_at].freeze
 
   def index_text = Plastic::Graph::Prints.index(store_graphs.retrieval).text

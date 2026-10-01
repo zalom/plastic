@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
-require_relative "support/kernel"
+require_relative "../test_helper"
 
 # The git ruling of 2026-09-28: Plastic code runs no version control command
 # and no report prints one. The kernel runs one program, sqlite3.
-class NoVersionControlTest < Minitest::Test
+class NoVersionControlTest < Plastic::TestCase
   ROOT = File.expand_path("../../scripts/lib", __dir__)
   SOURCES = [File.join(ROOT, "plastic.rb"), *Dir.glob(File.join(ROOT, "plastic", "**", "*.rb"))].freeze
   SPAWNS = /\b(?:system|spawn|exec|popen|capture2e?|capture3|pipeline\w*)\b|`|%x/

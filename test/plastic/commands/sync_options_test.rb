@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
-require_relative "../support/kernel"
+require_relative "../../test_helper"
 require_relative "../../../scripts/lib/plastic/commands/sync_up"
 require_relative "../../../scripts/lib/plastic/commands/sync_down"
 
-class SyncOptionsTest < Minitest::Test
+class SyncOptionsTest < Plastic::TestCase
   OPTIONS = [{ name: :overwrite, switch: "--overwrite [PATH]", default: false,
                text: "settle conflicts on this side: one record by its path, or every record with no path" },
     { name: :merge, switch: "--merge", default: false, text: "apply the one-sided changes, then list the conflicts" }].freeze

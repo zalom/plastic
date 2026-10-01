@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-require_relative "../support/kernel"
+require_relative "../../test_helper"
 
-class IntentTest < Minitest::Test
+class IntentTest < Plastic::TestCase
   Intent = Plastic::Graph::Intent
   LuhmannId = Plastic::Graph::LuhmannId
   AT = "2026-10-01T10:00:00+02:00"

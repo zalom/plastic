@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-require_relative "../support/kernel"
+require_relative "../../test_helper"
 
-class LegacyIndexTest < Minitest::Test
+class LegacyIndexTest < Plastic::TestCase
   LegacyIndex = Plastic::Graph::LegacyIndex
 
   TEXT = <<~MARKDOWN

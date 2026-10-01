@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-require_relative "../support/kernel"
+require_relative "../../test_helper"
 require_relative "../../../scripts/lib/plastic/workflows/write_intent"
 
-class WriteIntentTest < Minitest::Test
+class WriteIntentTest < Plastic::TestCase
   WriteIntent = Plastic::Workflows::WriteIntent
   DECLARED = %i[title parent_id ref kind status slug problem intent_id printed_paths].freeze
 

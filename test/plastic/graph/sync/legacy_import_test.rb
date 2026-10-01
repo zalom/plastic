@@ -1,18 +1,13 @@
 # frozen_string_literal: true
 
-require_relative "../../support/kernel"
+require_relative "../../../test_helper"
 
-class LegacyImportTest < Minitest::Test
-  include KernelFixtures::StoreGraphs
+class LegacyImportTest < Plastic::TestCase
+  fixtures :legacy
 
   def sync = Plastic::Graph::Sync.new(folder:, retrieval:, databases: store_graphs.databases)
 
   def import = Plastic::Graph::Sync::LegacyImport.new(sync, folder, retrieval, store_graphs.databases).call
-
-  def setup
-    super
-    copy_legacy_store
-  end
 
   def test_the_import_says_what_it_read_and_deletes_index_md
     lines = import
@@ -44,5 +39,9 @@ class LegacyImportTest < Minitest::Test
 
     assert_equal "store/9--stray has no entry in INDEX.md", error.message
     assert_equal [[], true], [retrieval.intents, folder.exist?("INDEX.md")]
+  end
+
+  def test_a_sync_up_plan_on_a_legacy_store_imports_it
+    assert_equal "imported INDEX.md: 2 intents and 0 clusters, then deleted it", sync.apply(sync.plan(:up, {})).first
   end
 end

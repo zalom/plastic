@@ -1,10 +1,8 @@
 # frozen_string_literal: true
 
-require_relative "../support/kernel"
+require_relative "../../test_helper"
 
-class ReaderTest < Minitest::Test
-  include KernelFixtures::StoreGraphs
-
+class ReaderTest < Plastic::TestCase
   Reader = Plastic::Graph::Reader
 
   def reader(intents = retrieval.intents) = Reader.new(folder, intents.to_h { |intent| [intent.intent_id, intent] }, origin)

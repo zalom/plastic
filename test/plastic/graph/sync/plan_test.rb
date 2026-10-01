@@ -1,10 +1,8 @@
 # frozen_string_literal: true
 
-require_relative "../../support/kernel"
+require_relative "../../../test_helper"
 
-class SyncPlanTest < Minitest::Test
-  include KernelFixtures::StoreGraphs
-
+class SyncPlanTest < Plastic::TestCase
   Sync = Plastic::Graph::Sync
   Plan = Sync::Plan
   Print = Plastic::Graph::Prints::Print

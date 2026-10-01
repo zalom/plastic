@@ -1,10 +1,8 @@
 # frozen_string_literal: true
 
-require_relative "../support/kernel"
+require_relative "../../test_helper"
 
-class PrinterTest < Minitest::Test
-  include KernelFixtures::StoreGraphs
-
+class PrinterTest < Plastic::TestCase
   Print = Plastic::Graph::Prints::Print
 
   def printer = Plastic::Graph::Printer.new(folder, store_graphs.databases, retrieval)

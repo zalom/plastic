@@ -12,7 +12,7 @@ require "tmpdir"
 # The rows are read back through the sqlite3 program, as a person would.
 class KernelCommand
   KERNEL = File.expand_path("../../../scripts/lib/plastic", __dir__)
-  LEGACY_STORE = File.expand_path("../../plastic/fixtures/legacy_store", __dir__)
+  LEGACY_STORE = File.expand_path("../../fixtures/legacy_store", __dir__)
   PROGRAM = "require ARGV.shift; exit Plastic::CLI.call(ARGV)"
 
   # One call: its exit code, what it printed and what it said went wrong.

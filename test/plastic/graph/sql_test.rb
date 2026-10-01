@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-require_relative "../support/kernel"
+require_relative "../../test_helper"
 
-class SQLTest < Minitest::Test
+class SQLTest < Plastic::TestCase
   SQL = Plastic::Graph::SQL
 
   def test_literals_quote_every_kind_of_value

@@ -1,10 +1,8 @@
 # frozen_string_literal: true
 
-require_relative "../support/kernel"
+require_relative "../../test_helper"
 
-class WorkGraphTest < Minitest::Test
-  include KernelFixtures::StoreGraphs
-
+class WorkGraphTest < Plastic::TestCase
   def work = store_graphs.work
 
   def test_write_intent_returns_the_intent_and_ignores_the_databases

@@ -1,10 +1,8 @@
 # frozen_string_literal: true
 
-require_relative "../support/kernel"
+require_relative "../../test_helper"
 
-class RetrievalGraphTest < Minitest::Test
-  include KernelFixtures::StoreGraphs
-
+class RetrievalGraphTest < Plastic::TestCase
   def put(key, table, row) = store_graphs.databases[key].transaction { |batch| batch.put(table, row) }
 
   def test_the_origin_id_is_the_installation_id

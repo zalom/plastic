@@ -1,14 +1,8 @@
 # frozen_string_literal: true
 
-require_relative "support/kernel"
+require_relative "../test_helper"
 
-class RoutineFailureTest < Minitest::Test
-  include KernelFixtures::Calls
-
-  def setup = make_home
-
-  def teardown = remove_home
-
+class RoutineFailureTest < Plastic::TestCase
   def test_a_refusal_gate_exits_3_with_the_owner_line
     call = plastic("kernel", "gate", "hold")
 

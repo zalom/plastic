@@ -1,10 +1,8 @@
 # frozen_string_literal: true
 
-require_relative "../support/kernel"
+require_relative "../../test_helper"
 
-class IntentRowTest < Minitest::Test
-  include KernelFixtures::StoreGraphs
-
+class IntentRowTest < Plastic::TestCase
   COLUMNS = %w[id intent_id parent_id ref origin_id slug title kind status disposition opened_at closed_at updated_at].freeze
 
   def work = @work ||= store_graphs.databases[:work]

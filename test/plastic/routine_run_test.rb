@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-require_relative "support/kernel"
+require_relative "../test_helper"
 
-class RoutineRunTest < Minitest::Test
+class RoutineRunTest < Plastic::TestCase
   def fresh = Plastic::RoutineRun.fresh("intent end", "7")
 
   def test_a_fresh_routine_run_is_running_with_nothing_found

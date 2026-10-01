@@ -1,16 +1,15 @@
 # frozen_string_literal: true
 
-require_relative "../support/kernel"
+require_relative "../../test_helper"
 
-class StoreFolderTest < Minitest::Test
+class StoreFolderTest < Plastic::TestCase
   StoreFolder = Plastic::Graph::StoreFolder
 
   def setup
-    @root = Dir.mktmpdir("plastic-folder")
+    super
+    @root = File.join(@home, "folder")
     @folder = StoreFolder.new(@root)
   end
-
-  def teardown = FileUtils.remove_entry(@root)
 
   def test_a_written_file_reads_back_with_its_digest
     @folder.write("store/1--a/spec.md", "# Spec\n")

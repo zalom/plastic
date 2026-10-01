@@ -1,9 +1,10 @@
 # frozen_string_literal: true
 
-require_relative "support/kernel"
+require_relative "../test_helper"
 
-class EndValueTest < Minitest::Test
+class EndValueTest < Plastic::TestCase
   def setup
+    super
     @out = StringIO.new
     @err = StringIO.new
     @output = Plastic::CLI::TextOutput.new(out: @out, err: @err)

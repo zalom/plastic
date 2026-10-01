@@ -1,10 +1,8 @@
 # frozen_string_literal: true
 
-require_relative "support/kernel"
+require_relative "../test_helper"
 
-class CodeWorkflowTest < Minitest::Test
-  include KernelFixtures::WorkflowBuilders
-
+class CodeWorkflowTest < Plastic::TestCase
   def test_a_code_outcome_takes_no_stops
     error = assert_raises(Plastic::Invalid) { code { outcome :done, because: "x", stops: :failure } }
 

@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-require_relative "../support/kernel"
+require_relative "../../test_helper"
 require_relative "../../../scripts/lib/plastic/commands/intent_new"
 
-class IntentNewTest < Minitest::Test
+class IntentNewTest < Plastic::TestCase
   IntentNew = Plastic::Commands::IntentNew
 
   def description = IntentNew.describe.to_h

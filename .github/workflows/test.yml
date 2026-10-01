@@ -21,6 +21,8 @@ jobs:
         run: bundle install
       - name: Run the full suite
         run: ruby bin/test
+      - name: Run the acceptance documents
+        run: ruby bin/test --system
       - uses: actions/setup-node@v7
         with:
           node-version: '24'

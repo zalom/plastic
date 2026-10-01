@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-require_relative "support/kernel"
+require_relative "../test_helper"
 
-class ContextTest < Minitest::Test
+class ContextTest < Plastic::TestCase
   Graphs = Data.define(:work, :retrieval, :databases)
 
   def context(declared: %i[id title], facts: { id: "7" }, graphs: {}, session: nil)

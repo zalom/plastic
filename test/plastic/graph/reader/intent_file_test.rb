@@ -1,19 +1,14 @@
 # frozen_string_literal: true
 
-require_relative "../../support/kernel"
+require_relative "../../../test_helper"
 
-class IntentFileTest < Minitest::Test
-  include KernelFixtures::StoreGraphs
+class IntentFileTest < Plastic::TestCase
+  fixtures :alpha
 
   DIR = "store/1--alpha"
   AT = "2026-10-01T10:00:00+02:00"
   GRAPH = { "nodes" => [{ "id" => "n1", "kind" => "build", "state" => "open", "origin_id" => "x" }],
             "edges" => [{ "from" => "n1", "to" => "n2", "kind" => "needs" }] }.freeze
-
-  def setup
-    super
-    open_intent
-  end
 
   # Writes the file, reads it into rows, and returns the database its rows went to.
   def read_in(rel, bytes)

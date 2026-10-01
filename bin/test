@@ -2,8 +2,9 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 
-# Runs the Minitest suite in a single process, either the whole suite or a
-# named subset via --only (intent 355, n4, D5). Every run, named or full,
+# Runs the Minitest unit suite in a single process, either the whole suite or a
+# named subset via --only (intent 355, n4, D5). --system runs the Varar
+# acceptance documents instead. Every run, named or full,
 # goes through FailuresReporter, so a green run costs one line and a red run
 # prints only the failures plus that line, never a dot per test.
 #
@@ -17,7 +18,8 @@
 root = File.expand_path("..", __dir__)
 kernel_dir = File.join(root, "test", "plastic", "")
 kernel = []
-discover = -> { Dir.glob(File.join(root, "test", "**", "*_test.rb")).sort }
+system_runner = File.join(root, "test", "varar_test.rb")
+discover = -> { Dir.glob(File.join(root, "test", "**", "*_test.rb")).sort - [system_runner] }
 
 # `bin/test --list` prints the discovered files without running them, so the
 # discovery logic can be tested cheaply (no full-suite execution).
@@ -28,6 +30,10 @@ if ARGV.delete("--list")
   exit 0
 end
 
+# `bin/test --system` runs the Varar acceptance documents, the way
+# `rails test:system` runs the system tests apart from the unit layer.
+ARGV.concat(["--only", system_runner]) if ARGV.delete("--system")
+
 only_index = ARGV.index("--only")
 if only_index
   named = ARGV.slice!(only_index..-1)
@@ -36,7 +42,7 @@ if only_index
   files = named.map { |f| File.expand_path(f, root) }
   missing = files.reject { |f| File.exist?(f) }
   unless missing.empty?
-    warn "no such test file: #{missing.map { |f| f.sub("#{root}/", "") }.join(', ')}"
+    warn "no such test file: #{missing.map { |f| f.sub("#{root}/", "") }.join(", ")}"
     exit 2
   end
 else

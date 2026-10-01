@@ -1,10 +1,8 @@
 # frozen_string_literal: true
 
-require_relative "../../support/kernel"
+require_relative "../../../test_helper"
 
-class IndexFileTest < Minitest::Test
-  include KernelFixtures::StoreGraphs
-
+class IndexFileTest < Plastic::TestCase
   IndexFile = Plastic::Graph::Reader::IndexFile
 
   def index(intents, clusters) = JSON.generate({ "intents" => intents, "clusters" => clusters })

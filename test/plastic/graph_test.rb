@@ -1,15 +1,9 @@
 # frozen_string_literal: true
 
-require_relative "support/kernel"
+require_relative "../test_helper"
 
-class GraphTest < Minitest::Test
-  def setup
-    @home = Dir.mktmpdir("plastic-graph")
-  end
-
-  def teardown = FileUtils.remove_entry(@home)
-
-  def graphs(store = "plastic") = Plastic::Graph.open(home: @home, store:)
+class GraphTest < Plastic::TestCase
+  def graphs(store = "plastic") = Plastic::Graph.open(home: @plastic_home, store:)
 
   def closed_run(subject = "7")
     Plastic::RoutineRun.fresh("intent end", subject).advance(:code_a, :code_b)

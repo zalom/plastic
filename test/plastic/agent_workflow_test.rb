@@ -1,10 +1,8 @@
 # frozen_string_literal: true
 
-require_relative "support/kernel"
+require_relative "../test_helper"
 
-class AgentWorkflowTest < Minitest::Test
-  include KernelFixtures::WorkflowBuilders
-
+class AgentWorkflowTest < Plastic::TestCase
   def test_an_agent_workflow_ends_on_handoff_or_done
     error = assert_raises(Plastic::Invalid) { agent { outcome :later, because: "x" } }
 
