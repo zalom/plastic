@@ -8,6 +8,7 @@ require_relative "../scripts/lib/savepoint"
 require_relative "../scripts/lib/intent_validator"
 require_relative "../scripts/lib/links_section"
 require_relative "../scripts/doctor"
+require_relative "support/script_entry"
 
 # ACTION_4 (intent 60b): the new-intent scaffolding CLI. Drive the real script as
 # a subprocess (hermetic tmp store, repo templates) and assert it scaffolds a
@@ -26,8 +27,8 @@ class NewIntentTest < Minitest::Test
   end
 
   def run_new_intent(*args)
-    out = IO.popen([RbConfig.ruby, SCRIPT, "--templates", TEMPLATES, *args], err: [:child, :out], &:read)
-    [out.strip, $?.exitstatus]
+    out, status = ScriptEntry.call(SCRIPT, :main, ["--templates", TEMPLATES, *args])
+    [out.strip, status.exitstatus]
   end
 
   def first_line(path)

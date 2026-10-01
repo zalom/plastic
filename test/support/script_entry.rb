@@ -25,9 +25,19 @@ module ScriptEntry
     def success? = exitstatus.zero?
   end
 
+  # One merged stream for stdout and stderr, matching the IO.popen(...,
+  # err: [:child, :out]) merge the subprocess-driving callers used: a script
+  # that warns on stderr before printing its stdout result (new-intent's
+  # dead-chain-ref diagnostic ahead of the scaffolded path) needs that
+  # chronological order preserved, which two independently-captured buffers
+  # concatenated after the fact cannot give back.
   def self.call(script_path, method = nil, *args, **opts)
-    out, err, status = capture3(**opts) { run_in_module(script_path, method, args) }
-    [out + err, status]
+    argv = opts.fetch(:argv, [])
+    env = opts.fetch(:env, {})
+    stdin = opts[:stdin]
+    merged = StringIO.new
+    exit_code = with_env(env) { capture_stdio(argv, stdin, out: merged, err: merged) { run_in_module(script_path, method, args) } }
+    [merged.string, FakeExitStatus.new(exit_code)]
   end
 
   # The capture3-shaped primitive underneath `call`, exposed directly for a
@@ -36,9 +46,14 @@ module ScriptEntry
   # is a module method such as `Runner.main`, not a bare top-level `def` that
   # needs the module-wrap load `call` does). The caller supplies the block
   # that invokes it; this method only supplies the env/stdio/exit capture.
+  # Unlike `call`, stdout and stderr are genuinely separate streams here
+  # (matching Open3.capture3), since a caller asking for them apart has
+  # already said it does not need chronological interleaving.
   def self.capture3(argv: [], env: {}, stdin: nil)
-    out, err, exit_code = with_env(env) { capture_stdio(argv, stdin) { yield } }
-    [out, err, FakeExitStatus.new(exit_code)]
+    out = StringIO.new
+    err = StringIO.new
+    exit_code = with_env(env) { capture_stdio(argv, stdin, out: out, err: err) { yield } }
+    [out.string, err.string, FakeExitStatus.new(exit_code)]
   end
 
   def self.run_in_module(script_path, method, args)
@@ -77,12 +92,9 @@ module ScriptEntry
   end
   private_class_method :with_env
 
-  def self.capture_stdio(argv, stdin)
-    out = StringIO.new
-    err = StringIO.new
+  def self.capture_stdio(argv, stdin, out:, err:)
     original = swap_io(out, err, argv, stdin)
-    exit_code = exit_code_of { yield }
-    [out.string, err.string, exit_code]
+    exit_code_of { yield }
   ensure
     restore_io(original)
   end
