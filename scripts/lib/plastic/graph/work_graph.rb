@@ -20,6 +20,7 @@ module Plastic
       extend Forwardable
 
       def_delegators :sessions, :open_session, :stamp_turn, :end_session, :write_note, :take_lock, :renew_locks
+      def_delegator :intents, :activate, :activate_intent
       def_delegators :nodes, :add_node, :remove_node, :claim_node, :release_node, :done_node, :fail_node,
         :park_node, :answer_node
       def_delegators :edges, :add_edge, :remove_edge
