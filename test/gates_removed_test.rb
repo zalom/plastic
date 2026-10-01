@@ -137,19 +137,32 @@ class GatesRemovedTest < Minitest::Test
     assert_empty missing, "manifest lists files that do not exist: #{missing.inspect}"
   end
 
-  def test_every_ruby_script_parses_and_every_lib_loads
+  # Pure syntax checking has no process-boundary concern, so it runs in-process
+  # via the same parser `ruby -c` uses underneath, instead of one interpreter
+  # spawn per script (intent 397, D6, same technique as subtraction_304_test.rb).
+  def test_every_ruby_script_parses
+    scripts = Dir[File.join(REPO, "scripts", "*")].select { |f| File.file?(f) }
+    ruby_scripts = scripts.select { |f| File.open(f, &:readline).to_s.include?("ruby") rescue false }
+    ruby_scripts.each do |f|
+      RubyVM::InstructionSequence.compile_file(f)
+    rescue SyntaxError => e
+      flunk "#{f} does not parse: #{e.message}"
+    end
+  end
+
+  # One real process requires every lib in sequence, in load order, instead of
+  # booting a fresh interpreter per lib. Same trade-off as
+  # subtraction_304_test.rb#test_every_lib_loads: a lib that omits a require
+  # for something an earlier-loaded lib already required would still load
+  # here, where it would fail standalone for a real caller that requires it
+  # first and nothing else.
+  def test_every_lib_loads
+    libs = Dir[File.join(REPO, "scripts", "lib", "*.rb")].sort
+    script = libs.map { |f| "require #{f.inspect}" }.join("\n")
     Dir.mktmpdir("gates-removed-tmp") do |tmp|
       env = { "RUBYOPT" => nil, "PLASTIC_TMP" => tmp, "CLAUDE_CODE_SESSION_ID" => nil }
-      scripts = Dir[File.join(REPO, "scripts", "*")].select { |f| File.file?(f) }
-      ruby_scripts = scripts.select { |f| File.open(f, &:readline).to_s.include?("ruby") rescue false }
-      ruby_scripts.each do |f|
-        _out, err, status = Open3.capture3(env, RbConfig.ruby, "-c", f)
-        assert status.success?, "#{f} does not parse: #{err}"
-      end
-      Dir[File.join(REPO, "scripts", "lib", "*.rb")].sort.each do |lib|
-        _out, err, status = Open3.capture3(env, RbConfig.ruby, "-e", "require #{lib.inspect}")
-        assert status.success?, "#{File.basename(lib)} does not load: #{err.lines.first}"
-      end
+      _out, err, status = Open3.capture3(env, RbConfig.ruby, "-e", script)
+      assert status.success?, "one or more libs do not load: #{err}"
     end
   end
 
