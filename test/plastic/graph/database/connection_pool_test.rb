@@ -39,15 +39,28 @@ class ConnectionPoolTest < Plastic::TestCase
 
   def test_a_forked_child_opens_its_own_connection
     Pool.for(path).execute("CREATE TABLE t(a)")
+
+    assert_equal "0", in_a_child { Pool.for(path).get_first_value("SELECT count(*) FROM t").to_s }
+  end
+
+  private
+
+  def in_a_child(&)
     reader, writer = IO.pipe
-    child = fork do
-      writer.write(Pool.for(path).get_first_value("SELECT count(*) FROM t").to_s)
-    rescue => error
-      writer.write(error.message)
-    end
+    child = fork { leave(writer, &) }
     writer.close
     Process.wait(child)
+    reader.read
+  end
 
-    assert_equal "0", reader.read
+  # The child hard-exits so the test process's exit handlers, Minitest's and
+  # the mutation runner's, never run a second time in it.
+  def leave(writer)
+    writer.write(yield)
+  rescue => error
+    writer.write(error.message)
+  ensure
+    writer.close
+    exit!
   end
 end
