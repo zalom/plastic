@@ -62,8 +62,8 @@ class KernelCommand
   end
 
   # Runs the call and raises unless it exits 0, for the steps that set a store up.
-  def run!(*args)
-    call = run(*args)
+  def run!(*args, **options)
+    call = run(*args, **options)
     raise "plastic #{args.join(" ")}: #{call.code}\n#{call.out}#{call.err}" unless call.code.zero?
 
     call

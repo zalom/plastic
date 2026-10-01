@@ -56,8 +56,13 @@
       ]
     },
     "varar/session-resume.md": {
-      "sourceHash": "fnv1a:58fe1b29",
-      "examples": []
+      "sourceHash": "fnv1a:5e39ceee",
+      "examples": [
+        {
+          "name": "Each row gives the source, the session, the exit code, the first line and the names:",
+          "line": 9
+        }
+      ]
     },
     "varar/store-layout.md": {
       "sourceHash": "fnv1a:8aac771e",
