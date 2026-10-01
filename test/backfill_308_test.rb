@@ -46,22 +46,11 @@ class Backfill308Test < Minitest::Test
     assert_empty hits, "live references to removed names:\n#{hits.join("\n")}"
   end
 
-  def test_end_intent_no_longer_exits_2_or_6_and_says_so_in_its_header
-    script = File.read(File.join(REPO, "scripts", "end-intent"))
-    refute_match(/^\s+exit [26]\b/, script, "end-intent must not exit 2 or 6 anywhere")
-    assert_match(/^#   2  retired in 2\.0 \(intent 308\)/, script)
-    assert_match(/^#   6  retired in 2\.0 \(intent 308\)/, script)
-    refute_match(/run_structure_gate/, script)
-    assert_match(/def run_backfill\(/, script)
-    assert_match(/def run_structure_check\(/, script)
-  end
-
-  def test_outcome_guard_comment_names_its_two_callers_and_no_block
-    lib = File.read(File.join(REPO, "scripts", "lib", "outcome_guard.rb"))
-    assert_match(/post-backfill self-check/, lib)
-    assert_match(/nothing blocks on it/, lib)
-    refute_match(/exit-2 path/, lib)
-  end
+  # test_end_intent_no_longer_exits_2_or_6_and_says_so_in_its_header and
+  # test_outcome_guard_comment_names_its_two_callers_and_no_block are retired by
+  # intent 397's cutover: scripts/end-intent and scripts/lib/outcome_guard.rb are
+  # both legacy CLI the kernel's `plastic intent end` does not carry forward, so
+  # the exit-code and comment contracts they pinned have no file left to pin.
 
   # test_skills_no_longer_describe_the_write_time_gate was retired by intent 372
   # (family 2): skills/intent-ending/SKILL.md is gone, moved into the
