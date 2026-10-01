@@ -21,18 +21,20 @@ kernel = []
 system_runner = File.join(root, "test", "varar_test.rb")
 discover = -> { Dir.glob(File.join(root, "test", "**", "*_test.rb")).sort - [system_runner] }
 
-# `bin/test --list` prints the discovered files without running them, so the
+# `bin/test --system` runs the Varar acceptance documents, the way
+# `rails test:system` runs the system tests apart from the unit layer.
+system_layer = ARGV.delete("--system")
+
+# `bin/test --list` prints the files of the layer without running them, so the
 # discovery logic can be tested cheaply (no full-suite execution).
 if ARGV.delete("--list")
-  files = discover.call
+  files = system_layer ? [system_runner] : discover.call
   abort "No test files found under #{File.join(root, "test")}" if files.empty?
   puts files.map { |f| f.sub("#{root}/", "") }
   exit 0
 end
 
-# `bin/test --system` runs the Varar acceptance documents, the way
-# `rails test:system` runs the system tests apart from the unit layer.
-ARGV.concat(["--only", system_runner]) if ARGV.delete("--system")
+ARGV.concat(["--only", system_runner]) if system_layer
 
 only_index = ARGV.index("--only")
 if only_index
