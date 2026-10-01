@@ -343,20 +343,29 @@ module ContextBudget
     end
   end
 
-  def self.run(repo:, repeat: DEFAULT_REPEAT, core_file: nil, dir: nil, today: Date.today)
+  # `fixture:` lets a caller that already built one, such as the bench's own
+  # test suite, skip a second install and reuse it. It is never given a
+  # `core_file`: the swap below is destructive, so a shared fixture only ever
+  # reaches here with none.
+  def self.run(repo:, repeat: DEFAULT_REPEAT, core_file: nil, dir: nil, fixture: nil, today: Date.today)
     unless repeat.is_a?(Integer) && repeat >= 1
       raise ArgumentError, "repeat must be an integer of at least 1 (got #{repeat.inspect})"
     end
 
-    return report_for(dir: dir, repo: repo, repeat: repeat, core_file: core_file, today: today) if dir
+    return report_for(fixture: fixture, repo: repo, repeat: repeat, core_file: core_file) if fixture
+
+    if dir
+      return report_for(fixture: Fixture.build(dir: dir, repo: repo, today: today), repo: repo, repeat: repeat,
+        core_file: core_file)
+    end
 
     Dir.mktmpdir("plastic-context-bench") do |tmp|
-      report_for(dir: tmp, repo: repo, repeat: repeat, core_file: core_file, today: today)
+      report_for(fixture: Fixture.build(dir: tmp, repo: repo, today: today), repo: repo, repeat: repeat,
+        core_file: core_file)
     end
   end
 
-  def self.report_for(dir:, repo:, repeat:, core_file:, today:)
-    fixture = Fixture.build(dir: dir, repo: repo, today: today)
+  def self.report_for(fixture:, repo:, repeat:, core_file:)
     # --core-file swaps the core block so a crossed ceiling can be observed
     # without editing a real file. check_core_files runs with include_drift:
     # false, so the swap does not change the banner.
@@ -513,13 +522,19 @@ end
     # Where the CLI prints to and which checkout it measures by default.
     IO = Struct.new(:out, :err, :default_repo, keyword_init: true)
 
-    def self.run(argv, io = IO.new(out: $stdout, err: $stderr, default_repo: File.expand_path("../..", __dir__)))
-      new(argv, io).call
+    def self.run(argv, io = IO.new(out: $stdout, err: $stderr, default_repo: File.expand_path("../..", __dir__)),
+      fixture: nil)
+      new(argv, io, fixture:).call
     end
 
-    def initialize(argv, io)
+    # `fixture:` carries no argv flag; it exists only so the bench's own
+    # tests can run the CLI's parsing and formatting against an install
+    # they already paid for, the same contract a real call gets with a
+    # fresh one.
+    def initialize(argv, io, fixture: nil)
       @argv = argv
       @io = io
+      @fixture = fixture
     end
 
     def call
@@ -540,7 +555,7 @@ end
     end
 
     def run_report(request)
-      ContextBudget.run(**request.run_kwargs).print_to(@io.out)
+      ContextBudget.run(**request.run_kwargs, fixture: @fixture).print_to(@io.out)
     end
 
     def usage_error(error)

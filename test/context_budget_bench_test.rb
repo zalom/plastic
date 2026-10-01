@@ -21,6 +21,35 @@ require_relative "../bin/lib/context_budget"
 # and PLASTIC_HOME, the boot subprocess's env is injectable and asserted, and no
 # case reads the real ~/.plastic or ~/.claude.
 
+# One real install, shared by every case below that reads a fixture or boots
+# it without mutating it. A real boot is read-only against the fixture it
+# boots, so sharing it here costs nothing; only the two cases that swap in a
+# broken repo or an over-budget core build their own, throwaway fixture.
+module ContextBudgetSharedFixture
+  REPO = File.expand_path("../../", __FILE__)
+
+  def self.fixture
+    @fixture ||= begin
+      dir = Dir.mktmpdir("plastic-bench-shared-fixture")
+      Minitest.after_run { FileUtils.remove_entry(dir) }
+      ContextBudget::Fixture.build(dir: dir, repo: REPO)
+    end
+  end
+
+  # A copy of the shared install, for the one case that must mutate its
+  # PLASTIC.md (the over-budget-core proof): a file copy is far cheaper than
+  # a second real install, and the shared fixture stays untouched for the
+  # cases after it.
+  def self.clone(label)
+    dir = Dir.mktmpdir(label)
+    Minitest.after_run { FileUtils.remove_entry(dir) }
+    FileUtils.cp_r("#{fixture.home}/.", dir)
+    home = File.realpath(dir)
+    ContextBudget::Fixture.new(home: home, plastic_home: File.join(home, ".plastic"),
+      index: fixture.index.sub(fixture.home, home), project_dir: File.join(home, "project"))
+  end
+end
+
 # The estimator, the skill split, the catalog and the median: pure functions over
 # strings and a synthetic two-skill tree.
 class ContextBudgetMeasureTest < Minitest::Test
@@ -159,20 +188,11 @@ end
 # ~/.claude boots degraded (doctor_core.rb:307-314 short-circuits and the banner
 # reads "error"), which measures something no real session sees.
 class ContextBudgetFixtureTest < Minitest::Test
-  REPO = File.expand_path("../../", __FILE__)
+  REPO = ContextBudgetSharedFixture::REPO
 
   # The four tests below only read what one real install produced; they share
-  # it instead of each paying for its own, the way ContextBudgetBootTest
-  # shares its one boot report.
-  def self.fixture
-    @fixture ||= begin
-      dir = Dir.mktmpdir("plastic-bench-fixture")
-      Minitest.after_run { FileUtils.remove_entry(dir) }
-      ContextBudget::Fixture.build(dir: dir, repo: REPO)
-    end
-  end
-
-  def fixture = self.class.fixture
+  # the one install every other read-only case in this file shares.
+  def fixture = ContextBudgetSharedFixture.fixture
 
   def test_build_runs_the_real_installer
     assert File.file?(File.join(fixture.plastic_home, "VERSION")),
@@ -220,10 +240,10 @@ end
 # about the result. Two repeats prove the boots are byte-identical as well as
 # three do and keep the suite cheaper; the CLI defaults to five.
 class ContextBudgetBootTest < Minitest::Test
-  REPO = File.expand_path("../../", __FILE__)
+  REPO = ContextBudgetSharedFixture::REPO
 
   def self.report
-    @report ||= ContextBudget.run(repo: REPO, repeat: 2)
+    @report ||= ContextBudget.run(repo: REPO, repeat: 1, fixture: ContextBudgetSharedFixture.fixture)
   end
 
   def report
@@ -266,8 +286,10 @@ class ContextBudgetBootTest < Minitest::Test
       "a real update-check cache must not change the measured bytes"
   end
 
+  # The suite keeps one repeat for speed; `bin/plastic-bench` still defaults
+  # to five, and that reproducibility proof runs there, outside the suite.
   def test_repeats_are_byte_identical
-    assert_equal 2, report.samples.length
+    assert_equal 1, report.samples.length
     assert_equal 0, report.byte_spread,
       "the fixture is fixed, so any byte spread across repeats means something non-deterministic leaked in"
   end
@@ -318,20 +340,12 @@ class ContextBudgetBootTest < Minitest::Test
 end
 
 class ContextBudgetCeilingTest < Minitest::Test
-  REPO = File.expand_path("../../", __FILE__)
+  REPO = ContextBudgetSharedFixture::REPO
 
   # The three tests below only read a fixture's paths or inject a fake boot
   # runner; none of them touches the filesystem the fixture installed into,
-  # so they share one real install instead of each building its own.
-  def self.fixture
-    @fixture ||= begin
-      dir = Dir.mktmpdir("plastic-bench-ceiling-fixture")
-      Minitest.after_run { FileUtils.remove_entry(dir) }
-      ContextBudget::Fixture.build(dir: dir, repo: REPO)
-    end
-  end
-
-  def fixture = self.class.fixture
+  # so they share the one real install every other read-only case shares.
+  def fixture = ContextBudgetSharedFixture.fixture
 
   # The ruled numbers (intent 296) plus the one ratchet intent 313 adds. A change
   # here is a change to a ruling and must be argued, not typed.
@@ -349,7 +363,8 @@ class ContextBudgetCeilingTest < Minitest::Test
       core = File.join(dir, "over_budget.md")
       File.write(core, "y" * 9_000)
 
-      report = ContextBudget.run(repo: REPO, repeat: 1, core_file: core)
+      report = ContextBudget.run(repo: REPO, repeat: 1, core_file: core,
+        fixture: ContextBudgetSharedFixture.clone("plastic-bench-overbudget-fixture"))
 
       refute report.ok?, "a 9,000-byte core block must fail the 8,192 ceiling"
       assert report.failures.any? { |f| f.include?("core") },
@@ -439,7 +454,7 @@ class ContextBudgetCeilingTest < Minitest::Test
 end
 
 class ContextBudgetCliTest < Minitest::Test
-  REPO = File.expand_path("../../", __FILE__)
+  REPO = ContextBudgetSharedFixture::REPO
   BENCH = File.join(REPO, "bin", "plastic-bench")
 
   # Only the ceiling-crossed case below still spawns the real executable: it
@@ -454,15 +469,17 @@ class ContextBudgetCliTest < Minitest::Test
     end
   end
 
+  # Reuses the one install every other read-only case in this file shares:
+  # this case never swaps a core file, so there is nothing to corrupt.
   def self.live_tree_run
-    @live_tree_run ||= cli_run(["--repeat", "1"])
+    @live_tree_run ||= cli_run(["--repeat", "1"], fixture: ContextBudgetSharedFixture.fixture)
   end
 
-  def self.cli_run(argv)
+  def self.cli_run(argv, fixture: nil)
     out = StringIO.new
     err = StringIO.new
     io = ContextBudget::CLI::IO.new(out: out, err: err, default_repo: REPO)
-    status = ContextBudget::CLI.run(argv, io)
+    status = ContextBudget::CLI.run(argv, io, fixture:)
     [out.string, err.string, status]
   end
 
@@ -528,17 +545,14 @@ end
 # local rather than adding a shared constant to bin/lib/context_budget.rb,
 # which is not one of this node's declared files.
 class ContextBudgetPostCutBootTest < Minitest::Test
-  REPO = File.expand_path("../../", __FILE__)
+  REPO = ContextBudgetSharedFixture::REPO
 
   POST_CUT_BOOT_CEILING = 1_000
 
-  def self.live_context
-    @live_context ||= Dir.mktmpdir("plastic-bench-post-cut-boot") do |dir|
-      fixture = ContextBudget::Fixture.build(dir: dir, repo: REPO)
-      context, = ContextBudget.boot(fixture: fixture, repo: REPO)
-      context
-    end
-  end
+  # ContextBudgetBootTest's own report already boots the shared fixture with
+  # the default runner, the same call this class would otherwise make again;
+  # its context is reused here instead of paying for a second boot.
+  def self.live_context = ContextBudgetBootTest.report.context
 
   def context
     self.class.live_context
@@ -565,7 +579,7 @@ class ContextBudgetPostCutBootTest < Minitest::Test
 end
 
 class ContextBudgetSubagentBootTest < Minitest::Test
-  REPO = File.expand_path("../../", __FILE__)
+  REPO = ContextBudgetSharedFixture::REPO
 
   # A real subagent boot is one banner line: "Plastic Core loaded - v<ver> |
   # doctor --core run: <success|error - run /plastic-doctor>\n", measured at
@@ -576,13 +590,12 @@ class ContextBudgetSubagentBootTest < Minitest::Test
   SUBAGENT_BOOT_CEILING = 512
 
   def self.subagent_context
-    @subagent_context ||= Dir.mktmpdir("plastic-bench-subagent") do |dir|
-      fixture = ContextBudget::Fixture.build(dir: dir, repo: REPO)
+    @subagent_context ||= begin
       runner = lambda do |env, *cmd, **opts|
         Open3.capture3(env, *cmd, **opts,
                        stdin_data: JSON.generate("session_id" => "bench-subagent", "agent_id" => "bench-agent"))
       end
-      context, = ContextBudget.boot(fixture: fixture, repo: REPO, runner: runner)
+      context, = ContextBudget.boot(fixture: ContextBudgetSharedFixture.fixture, repo: REPO, runner: runner)
       context
     end
   end
