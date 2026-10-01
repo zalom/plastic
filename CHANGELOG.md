@@ -9,6 +9,10 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 - `intent rule ID TEXT` writes an owner ruling as the next D id, with `--supersedes` linking it to the ruling it replaces. `intent spec ID` prints the grilling method, then the intent's open decisions read from its spec document. `auto start ID` refuses an open decision, no done criterion, a done or abandoned intent, and another session's live lock, then takes the lock, sets the intent active, and reprints its files.
 
+- `intent show ID` prints one intent's status, criteria count, open decisions, rulings, nodes, and last savepoints. `intent brief ID` prints its goal, done criteria, rulings with superseded ones marked, ready nodes, and the node and edge command usage. `status` lists every store's open and active intents with node counts by state. `next` picks the intent this session is working on and offers its next command through the spec, start, brief, show, check, and ready cascade.
+
+- A Varar acceptance document, `varar/work-graph.md`, runs a full pass of the work graph: two rulings, two nodes and an edge, a claim, a failure, a release, a second claim, and a done, checked through `graph show` and `intent brief`.
+
 ## 2.0.3
 
 - Documentation follows the public CLI and distinguishes implemented behavior from proposals.
