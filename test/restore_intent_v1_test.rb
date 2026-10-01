@@ -4,10 +4,10 @@
 require "minitest/autorun"
 require "tmpdir"
 require "fileutils"
-require "open3"
 require "stringio"
 require_relative "../scripts/lib/intent_validator"
 require_relative "../scripts/lib/links_section"
+require_relative "support/script_entry"
 
 # scripts/restore-intent-v1 has no .rb suffix (it is an executable, run
 # directly by a person), so `require`/`require_relative` cannot resolve it -
@@ -26,9 +26,6 @@ load RESTORE_SCRIPT
 class RestoreIntentV1Test < Minitest::Test
   NEW_INTENT = File.expand_path("../scripts/new-intent", __dir__)
   TEMPLATES = File.expand_path("../templates", __dir__)
-  FakeExitStatus = Struct.new(:exitstatus) do
-    def success? = exitstatus.zero?
-  end
 
   # reproject_links' own collaborator (intent 397 D6): this file made one
   # project-links spawn per --apply call (~12 of them). Every test but the
@@ -60,7 +57,7 @@ class RestoreIntentV1Test < Minitest::Test
   # Same as new_intent, but against an explicit store path (used by the
   # ambiguous-bare-id test, which needs two independent stores under one home).
   def new_intent_in(store, *args)
-    out, status = Open3.capture2(RbConfig.ruby, NEW_INTENT, "--templates", TEMPLATES, "--store", store, *args)
+    out, status = ScriptEntry.call(NEW_INTENT, :main, ["--templates", TEMPLATES, "--store", store, *args])
     raise "new-intent failed: #{out}" unless status.success?
 
     out.strip
@@ -112,7 +109,7 @@ class RestoreIntentV1Test < Minitest::Test
       $stdout = orig_stdout
       $stderr = orig_stderr
     end
-    [out.string + err.string, FakeExitStatus.new(exit_code)]
+    [out.string + err.string, ScriptEntry::FakeExitStatus.new(exit_code)]
   end
 
   def frontmatter_of(dir)
