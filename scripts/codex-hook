@@ -50,7 +50,10 @@ require "timeout"
 $stdout.sync = true
 
 STATE_HOOKS = %w[session-start check-update capture savepoint close].freeze
-STATE_TIMEOUT = 5
+# A test proving the timeout path itself fires (never a live Codex session)
+# sets PLASTIC_CODEX_STATE_TIMEOUT to a small number so it does not have to
+# wait out the real 5 s bound to prove the same fail-open behavior.
+STATE_TIMEOUT = Float(ENV.fetch("PLASTIC_CODEX_STATE_TIMEOUT", "5"))
 DETACHED_HOOKS = %w[close].freeze
 
 # One capture path for the relayed-launcher branch (intent 289). The 5 s bound covers a

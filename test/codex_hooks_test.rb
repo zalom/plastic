@@ -286,21 +286,22 @@ class CodexHooksTest < Minitest::Test
     dispatcher = File.join(fake, "scripts", "codex-hook")
     FileUtils.cp(SCRIPT, dispatcher)
     launcher = File.join(fake, "hooks", "check-update")
-    # Deliberately leaky: exits at once, leaves a child holding the inherited pipes. The
-    # exact shape hooks/check-update had before this intent.
-    File.write(launcher, "#!/bin/bash\n( sleep 10 ) &\nexit 0\n")
+    # Deliberately leaky: exits at once, leaves a child holding the inherited pipes, well
+    # past the shortened timeout below. The exact shape hooks/check-update had before this
+    # intent, just with a sleep long enough to outlast PLASTIC_CODEX_STATE_TIMEOUT.
+    File.write(launcher, "#!/bin/bash\n( sleep 2 ) &\nexit 0\n")
     File.chmod(0o755, launcher)
 
     started = Time.now
     out, status = run_hook("check-update", state_payload(event: "SessionStart"),
-                           script: dispatcher)
+                           script: dispatcher, extra_env: { "PLASTIC_CODEX_STATE_TIMEOUT" => "0.3" })
     elapsed = Time.now - started
 
     assert_equal 0, status.exitstatus,
       "a timed-out launcher must still fail open with exit 0"
     assert_empty out.strip,
       "the timeout path must print no Open3 reader-thread backtrace (stream closed in another thread)"
-    assert_operator elapsed, :>=, 4.0,
+    assert_operator elapsed, :>=, 0.3,
       "the fixture must actually hold the pipes past STATE_TIMEOUT, or this test proves nothing"
   end
 
