@@ -160,47 +160,46 @@ end
 class ContextBudgetFixtureTest < Minitest::Test
   REPO = File.expand_path("../../", __FILE__)
 
-  def with_fixture
-    Dir.mktmpdir("plastic-bench-fixture") do |dir|
-      yield ContextBudget::Fixture.build(dir: dir, repo: REPO)
+  # The four tests below only read what one real install produced; they share
+  # it instead of each paying for its own, the way ContextBudgetBootTest
+  # shares its one boot report.
+  def self.fixture
+    @fixture ||= begin
+      dir = Dir.mktmpdir("plastic-bench-fixture")
+      Minitest.after_run { FileUtils.remove_entry(dir) }
+      ContextBudget::Fixture.build(dir: dir, repo: REPO)
     end
   end
 
+  def fixture = self.class.fixture
+
   def test_build_runs_the_real_installer
-    with_fixture do |fixture|
-      assert File.file?(File.join(fixture.plastic_home, "VERSION")),
-        "the fixture must carry an installed VERSION"
-      refute_empty Dir.glob(File.join(fixture.home, ".claude", "hooks", "*")),
-        "the fixture must carry installed Claude hook launchers, or the boot measures a degraded install"
-    end
+    assert File.file?(File.join(fixture.plastic_home, "VERSION")),
+      "the fixture must carry an installed VERSION"
+    refute_empty Dir.glob(File.join(fixture.home, ".claude", "hooks", "*")),
+      "the fixture must carry installed Claude hook launchers, or the boot measures a degraded install"
   end
 
   def test_build_copies_the_repos_own_core_block
-    with_fixture do |fixture|
-      assert_equal File.size(File.join(REPO, "PLASTIC.md")),
-                   File.size(File.join(fixture.plastic_home, "PLASTIC.md")),
-                   "the fixture must measure the repo's core block, never a stale one"
-    end
+    assert_equal File.size(File.join(REPO, "PLASTIC.md")),
+                 File.size(File.join(fixture.plastic_home, "PLASTIC.md")),
+                 "the fixture must measure the repo's core block, never a stale one"
   end
 
   # On macOS Dir.pwd resolves /var to /private/var; without realpath the hook's
   # cwd.start_with?(project_path) test silently misses and the project banner
   # disappears from the measured context.
   def test_build_realpaths_the_project_directory
-    with_fixture do |fixture|
-      assert_equal File.realpath(fixture.project_dir), fixture.project_dir
-      assert_equal File.realpath(fixture.home), fixture.home
-    end
+    assert_equal File.realpath(fixture.project_dir), fixture.project_dir
+    assert_equal File.realpath(fixture.home), fixture.home
   end
 
   def test_build_stays_inside_the_given_directory
-    with_fixture do |fixture|
-      env = ContextBudget.child_env(fixture)
+    env = ContextBudget.child_env(fixture)
 
-      %w[HOME PLASTIC_HOME PLASTIC_TMP].each do |key|
-        assert env[key].start_with?(fixture.home),
-          "#{key} (#{env[key]}) must live inside the fixture, never in the real home"
-      end
+    %w[HOME PLASTIC_HOME PLASTIC_TMP].each do |key|
+      assert env[key].start_with?(fixture.home),
+        "#{key} (#{env[key]}) must live inside the fixture, never in the real home"
     end
   end
 
@@ -319,6 +318,19 @@ end
 class ContextBudgetCeilingTest < Minitest::Test
   REPO = File.expand_path("../../", __FILE__)
 
+  # The three tests below only read a fixture's paths or inject a fake boot
+  # runner; none of them touches the filesystem the fixture installed into,
+  # so they share one real install instead of each building its own.
+  def self.fixture
+    @fixture ||= begin
+      dir = Dir.mktmpdir("plastic-bench-ceiling-fixture")
+      Minitest.after_run { FileUtils.remove_entry(dir) }
+      ContextBudget::Fixture.build(dir: dir, repo: REPO)
+    end
+  end
+
+  def fixture = self.class.fixture
+
   # The ruled numbers (intent 296) plus the one ratchet intent 313 adds. A change
   # here is a change to a ruling and must be argued, not typed.
   def test_ceilings_are_the_ruled_numbers
@@ -353,16 +365,13 @@ class ContextBudgetCeilingTest < Minitest::Test
   # scripts/read-config three times under `#!/usr/bin/env ruby`, so any other
   # PATH runs those reads under a different Ruby than the report names.
   def test_the_child_env_pins_the_interpreter_and_the_home
-    Dir.mktmpdir("plastic-bench-env") do |dir|
-      fixture = ContextBudget::Fixture.build(dir: dir, repo: REPO)
-      env = ContextBudget.child_env(fixture)
+    env = ContextBudget.child_env(fixture)
 
-      assert_equal File.dirname(RbConfig.ruby), env["PATH"]
-      assert_nil env["RUBYOPT"]
-      assert_equal fixture.home, env["HOME"]
-      assert_equal fixture.plastic_home, env["PLASTIC_HOME"]
-      refute_nil env["CLAUDE_CODE_SESSION_ID"]
-    end
+    assert_equal File.dirname(RbConfig.ruby), env["PATH"]
+    assert_nil env["RUBYOPT"]
+    assert_equal fixture.home, env["HOME"]
+    assert_equal fixture.plastic_home, env["PLASTIC_HOME"]
+    refute_nil env["CLAUDE_CODE_SESSION_ID"]
   end
 
   class FakeStatus
@@ -372,31 +381,25 @@ class ContextBudgetCeilingTest < Minitest::Test
   end
 
   def test_the_boot_runner_is_injectable
-    Dir.mktmpdir("plastic-bench-runner") do |dir|
-      fixture = ContextBudget::Fixture.build(dir: dir, repo: REPO)
-      seen = nil
-      runner = lambda do |env, *cmd, **opts|
-        seen = { env: env, cmd: cmd, opts: opts }
-        payload = { "hookSpecificOutput" => { "additionalContext" => "injected" } }
-        [JSON.generate(payload), "", FakeStatus.new(true)]
-      end
-
-      context, ms = ContextBudget.boot(fixture: fixture, repo: REPO, runner: runner)
-
-      assert_equal "injected", context
-      assert_operator ms, :>=, 0
-      assert_equal RbConfig.ruby, seen[:cmd].first
-      assert_equal fixture.project_dir, seen[:opts][:chdir]
+    seen = nil
+    runner = lambda do |env, *cmd, **opts|
+      seen = { env: env, cmd: cmd, opts: opts }
+      payload = { "hookSpecificOutput" => { "additionalContext" => "injected" } }
+      [JSON.generate(payload), "", FakeStatus.new(true)]
     end
+
+    context, ms = ContextBudget.boot(fixture: fixture, repo: REPO, runner: runner)
+
+    assert_equal "injected", context
+    assert_operator ms, :>=, 0
+    assert_equal RbConfig.ruby, seen[:cmd].first
+    assert_equal fixture.project_dir, seen[:opts][:chdir]
   end
 
   def test_a_failing_boot_is_never_scored_as_a_pass
-    Dir.mktmpdir("plastic-bench-failboot") do |dir|
-      fixture = ContextBudget::Fixture.build(dir: dir, repo: REPO)
-      runner = ->(_env, *_cmd, **_opts) { ["", "boom", FakeStatus.new(false)] }
+    runner = ->(_env, *_cmd, **_opts) { ["", "boom", FakeStatus.new(false)] }
 
-      assert_raises(RuntimeError) { ContextBudget.boot(fixture: fixture, repo: REPO, runner: runner) }
-    end
+    assert_raises(RuntimeError) { ContextBudget.boot(fixture: fixture, repo: REPO, runner: runner) }
   end
 
   # D10: the bench is a maintainer tool over repo fixtures and is never installed
