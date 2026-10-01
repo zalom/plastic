@@ -71,8 +71,15 @@ module Plastic
 
       private
 
+      # The commit goes only after every statement of the batch succeeded.
       def commit(batch)
-        tallies, returned = execute(batch.script).partition { |set| set.first.key?("written_table") }
+        sets = execute(batch.script)
+        @connection.call("COMMIT;")
+        tally(sets)
+      end
+
+      def tally(sets)
+        tallies, returned = sets.partition { |set| set.first.key?("written_table") }
         tallies.flatten.each { |tally| count(*tally.values_at("written_table", "written_rows")) }
         returned
       end

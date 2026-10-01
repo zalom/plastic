@@ -6,6 +6,9 @@ module Plastic
   module Workflows
     # Writes a new intent's rows, then prints its folder and store/index.json.
     class WriteIntent < CodeWorkflow
+      # Declares the whole chain, so a second load of the class replaces the first.
+      [facts, steps, outcomes].each(&:clear)
+
       sets :problem, :intent_id, :printed_paths
 
       read "check the call" do |context|

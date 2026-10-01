@@ -26,68 +26,100 @@ module Plastic
       end
 
       # One sqlite3 process on one database file, open until a disconnect or
-      # the end of this Ruby process. Each script goes in on its stdin and its
-      # output comes back up to an end marker. Under -bail a failed statement
-      # ends the process, so an open transaction rolls back, and the next call
-      # opens a new session.
+      # the end of this Ruby process. Each script goes in on its input, and
+      # its output and its errors come back in order up to an end marker. A
+      # failed statement raises and rolls back any open transaction; the
+      # session stays open, as a Rails connection survives an error.
       class Session
         MARK = "plastic:end"
+        ERROR = /\A(?:Parse error|Runtime error|Error:)/
+        DEADLINE = 30
 
-        # The three pipes of one sqlite3 process and the thread that waits on it.
-        Pipes = Data.define(:input, :output, :errors, :process)
+        # The two pipes of one sqlite3 process and the thread that waits on it.
+        Pipes = Data.define(:input, :output, :process)
 
         # Writes to the process and ends it.
         class Pipes
           def write(text)
             input.write(text)
             input.flush
-          rescue IOError, SystemCallError
-            nil
           end
 
           def close
             input.close unless input.closed?
             process.join
             output.close
-            errors.close
+          end
+
+          def kill
+            Process.kill(:KILL, process.pid)
+            close
           end
         end
 
-        def initialize(path)
+        def initialize(path, deadline: DEADLINE)
           @path = path
-          @pipes = Pipes.new(*Open3.popen3("sqlite3", "-json", "-bail", folder))
+          @deadline = deadline
+          @pipes = Pipes.new(*Open3.popen2e("sqlite3", "-json", folder))
         end
 
-        # The output of one script, or a raised Error when the process ended.
+        # The output of one script. A failed statement raises Error with
+        # sqlite3's line after the open transaction rolls back.
         def call(script)
-          writer = Thread.new { write(script) }
-          out = read
-          writer.join
-          out || failed
+          lines = exchange(script)
+          error = lines.find { |line| line.match?(ERROR) }
+          error ? roll_back(error) : lines.join
         end
 
         def close = @pipes.close
 
         private
 
-        # The statement separator ends a script whose last statement has none.
-        def write(script) = @pipes.write("#{script}\n;\n.print #{MARK}\n")
+        def name = File.basename(@path)
 
-        # The lines before the end marker; nil when the process ended first.
-        def read
-          lines = +""
-          while (line = @pipes.output.gets)
+        def roll_back(error)
+          exchange("ROLLBACK;")
+          raise Error, "#{name}: #{error.strip}"
+        end
+
+        # Sends one script and reads its lines; the separator ends a script
+        # whose last statement has none.
+        def exchange(script)
+          writer = Thread.new do
+            Thread.current.report_on_exception = false
+            @pipes.write("#{script}\n;\n.print #{MARK}\n")
+          end
+          read(Process.clock_gettime(Process::CLOCK_MONOTONIC) + @deadline).tap { writer.join }
+        end
+
+        # The lines before the end marker, waiting at most until `deadline`.
+        def read(deadline)
+          lines = []
+          while (line = next_line(deadline))
             return lines if line.chomp == MARK
 
             lines << line
           end
+          ended
         end
 
-        def failed
+        def next_line(deadline)
+          left = deadline - Process.clock_gettime(Process::CLOCK_MONOTONIC)
+          output = @pipes.output
+          no_answer unless left.positive? && output.wait_readable(left)
+          output.gets
+        end
+
+        def no_answer
           ConnectionPool.remove(@path)
-          message = @pipes.errors.read.strip
+          @pipes.kill
+          raise Error, "#{name}: sqlite3 gave no answer in #{@deadline} s"
+        end
+
+        def ended
+          ConnectionPool.remove(@path)
           close
-          raise Error, "#{File.basename(@path)}: #{message}"
+          raise Error, "#{name}: sqlite3 ended before its answer"
         end
 
         # The database's path, with its folder made first.

@@ -211,9 +211,12 @@ state has a done check, so a change that already happened is skipped and never r
 `Graph::Database` hands each read or write to its engine. The default engine,
 `Graph::Database::Program`, keeps one `sqlite3` process per database file for the life of the
 Ruby process, the way a Rails process keeps one connection. The `ConnectionPool` holds these
-sessions and closes them at exit. Each script goes in on the process's input. A failed statement
-ends the process, so an open transaction rolls back, and the next call opens a new session. A
-write is one transaction that takes the write lock first. The first script of a `Database`
+sessions and closes them at exit. Each script goes in on the process's input, and its output and
+errors come back in order before an end marker. A failed statement raises with sqlite3's error
+line and rolls back any open transaction. The session stays open, as a Rails connection survives
+an error. A call with no answer in 30 seconds ends its process and raises. A write is one
+transaction that takes the write lock first, and its COMMIT goes only after every statement
+succeeded. The first script of a `Database`
 carries the schema, so a new home or store needs no setup step. The report counts the rows a call wrote and prints them on
 its `wrote:` line.
 

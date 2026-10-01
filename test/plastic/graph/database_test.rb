@@ -31,10 +31,16 @@ class DatabaseTest < Plastic::TestCase
     assert_empty program_call("CREATE TABLE t(a);")
   end
 
-  def test_an_sql_error_names_the_file
-    error = assert_raises(Database::Error) { program_call("SELECT nope;") }
+  def test_a_failed_statement_commits_nothing_of_its_transaction
+    error = assert_raises(Plastic::Graph::Database::Error) do
+      database.transaction do |batch|
+        batch.insert(:routine_runs, { name: "a" })
+        batch.add("INSERT INTO nowhere VALUES (1)")
+      end
+    end
 
-    assert_match(/\Awork_graph\.db: .*no such column: nope/, error.message)
+    assert_match(/\Awork_graph\.db: .*no such table: nowhere/, error.message)
+    assert_equal [], database.rows("SELECT name FROM routine_runs")
   end
 
   def test_a_folder_that_cannot_be_made_names_the_file

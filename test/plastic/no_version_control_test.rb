@@ -23,6 +23,6 @@ class NoVersionControlTest < Plastic::TestCase
     calls = SOURCES.flat_map { |path| File.readlines(path).reject { |line| line.strip.start_with?("#") }.grep(SPAWNS) }
 
     assert_equal 1, calls.size
-    assert_includes calls.first, 'Open3.popen3("sqlite3", '
+    assert_includes calls.first, 'Open3.popen2e("sqlite3", '
   end
 end
