@@ -30,7 +30,7 @@ module Plastic
       # The row a new intent writes; the database gives `id` and stamps `origin_id`.
       def new_row = to_h.except(:id, :origin_id)
 
-      def first_savepoint = { intent_id:, position: 1, at: opened_at, text: "Opened: #{title}" }
+      def first_savepoint(session_id = nil) = { intent_id:, position: 1, at: opened_at, text: "Opened: #{title}", session_id: }
 
       # The row of the intent's own file in the knowledge graph.
       def document(origin_id) = { intent_id:, path: file, body: page(origin_id), updated_at: opened_at }

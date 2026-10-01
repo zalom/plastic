@@ -42,10 +42,11 @@ module Plastic
         finished: values[:finished].map(&:to_sym)))
     end
 
-    # A row of the routine_runs table: facts and finished are JSON text, and
-    # the subject is the one the caller asked for, nil included.
+    # A row of the routine_runs table: facts and finished are JSON text, the
+    # subject is the one the caller asked for, nil included, and the session
+    # that wrote the row is call memory, not a field of the routine run.
     def self.from_row(row, subject)
-      from_h(row.except("store").merge("subject" => subject, "facts" => JSON.parse(row.fetch("facts")),
+      from_h(row.except("store", "session_id").merge("subject" => subject, "facts" => JSON.parse(row.fetch("facts")),
         "finished" => JSON.parse(row.fetch("finished"))))
     end
 

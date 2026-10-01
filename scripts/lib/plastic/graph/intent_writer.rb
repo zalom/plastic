@@ -10,10 +10,11 @@ module Plastic
     # file, each in the transaction of the database that owns it. The id is
     # the next free Luhmann id, a root or the next child of `parent_id`.
     class IntentWriter
-      def initialize(databases, retrieval, folder)
+      def initialize(databases, retrieval, folder, session: nil)
         @databases = databases
         @retrieval = retrieval
         @folder = folder
+        @session = session
       end
 
       # Why the call cannot write the intent, or nil.
@@ -50,7 +51,7 @@ module Plastic
       def write_rows(intent)
         @databases.fetch(:work).transaction do |batch|
           batch.put(:intents, intent.new_row, statement: :insert)
-          batch.put(:savepoints, intent.first_savepoint)
+          batch.put(:savepoints, intent.first_savepoint(@session))
         end
         @databases.fetch(:knowledge).transaction { |batch| batch.put(:documents, intent.document(@retrieval.origin_id)) }
       end

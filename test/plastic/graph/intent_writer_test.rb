@@ -3,7 +3,7 @@
 require_relative "../../test_helper"
 
 class IntentWriterTest < Plastic::TestCase
-  def writer = Plastic::Graph::IntentWriter.new(store_graphs.databases, retrieval, folder)
+  def writer(session: nil) = Plastic::Graph::IntentWriter.new(store_graphs.databases, retrieval, folder, session:)
 
   def test_a_plain_call_has_no_problem
     assert_nil writer.problem
@@ -60,6 +60,12 @@ class IntentWriterTest < Plastic::TestCase
 
     assert_equal ["Opened: Alpha"], retrieval.savepoints("1").map(&:text)
     assert_equal ["1--alpha.md"], retrieval.documents("1").map(&:path)
+  end
+
+  def test_write_carries_the_session_onto_the_first_savepoint_line
+    writer(session: "s-1").write(title: "Alpha")
+
+    assert_equal "s-1", retrieval.savepoints("1").first.session_id
   end
 
   def test_the_ref_line_says_what_a_ref_names

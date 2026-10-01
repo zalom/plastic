@@ -78,4 +78,11 @@ class RoutineRunTest < Plastic::TestCase
   def test_to_h_lists_the_fields_in_order
     assert_equal Plastic::RoutineRun::FIELDS, fresh.to_h.keys
   end
+
+  def test_from_row_drops_the_store_and_the_session_the_row_carries
+    row = fresh.to_h.transform_keys(&:to_s).merge("store" => "s", "session_id" => "s-1",
+      "facts" => "{}", "finished" => "[]")
+
+    refute_includes Plastic::RoutineRun.from_row(row, "7").to_h.keys, :session_id
+  end
 end

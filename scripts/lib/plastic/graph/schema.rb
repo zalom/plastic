@@ -13,6 +13,9 @@ module Plastic
     # every write, and a `printed` table, the hash of every file printed from
     # its rows. The whole design is in docs/contributing/ARCHITECTURE.md.
     module Schema
+      # The home keeps `routine_runs`, `sessions` and `locks`, which belong to one machine,
+      # not to one store. A store folder keeps the other three tables, one database each.
+      #
       # The SQL type of each kind of column; a type not named here is written as it stands.
       TYPES = {
         text: "TEXT", kept: "TEXT NOT NULL", integer: "INTEGER",
@@ -24,7 +27,11 @@ module Plastic
       TABLES = {
         routine_runs: [%i[store tool subject], { store: :kept, tool: :kept, subject: "TEXT NOT NULL DEFAULT ''",
                                                  at: :text, finished: :text, status: :text, facts: :text, next_command: :text, because: :text,
-                                                 exit_code: :integer, started_at: :text, updated_at: :text }],
+                                                 exit_code: :integer, started_at: :text, updated_at: :text, session_id: :text }],
+        sessions: [%i[session_id], { session_id: :kept, harness: :text, store: :text, directory: :text,
+                                     started_at: :text, last_turn_at: :text, ended_at: :text, end_reason: :text, note: :text }],
+        locks: [%i[store intent_id], { store: :kept, intent_id: :kept, session_id: :kept, mode: :text,
+                                       taken_at: :text, renewed_at: :text }],
         intents: [%i[intent_id origin_id], { id: "INTEGER PRIMARY KEY AUTOINCREMENT", intent_id: :kept,
                                              parent_id: :text, ref: :text, origin_id: :kept, slug: :kept, title: :kept, kind: :text, status: :status,
                                              disposition: :text, opened_at: :text, closed_at: :text, updated_at: :text }],
@@ -36,7 +43,7 @@ module Plastic
         edges: [%i[intent_id from to kind origin_id], { intent_id: :kept, from: :kept, to: :kept, kind: :kept,
                                                         origin_id: :kept }],
         savepoints: [%i[intent_id position origin_id], { intent_id: :kept, position: "INTEGER NOT NULL",
-                                                         at: :text, text: :kept, origin_id: :kept }],
+                                                         at: :text, text: :kept, origin_id: :kept, session_id: :text }],
         documents: [%i[intent_id path origin_id], { intent_id: :kept, path: :kept, body: :kept,
                                                     updated_at: :text, origin_id: :kept }],
         sqlar: [%i[name], { name: "TEXT PRIMARY KEY", mode: "INT", mtime: "INT", sz: "INT", data: "BLOB",
@@ -50,7 +57,7 @@ module Plastic
 
       # Each database: its file and its tables.
       DATABASES = {
-        home: ["home.db", %i[routine_runs]],
+        home: ["home.db", %i[routine_runs sessions locks]],
         work: ["work_graph.db", %i[intents clusters nodes edges savepoints printed changes]],
         knowledge: ["knowledge_graph.db", %i[documents printed changes]],
         references: ["references.db", %i[sqlar printed changes]]
@@ -62,7 +69,8 @@ module Plastic
         "routine_runs" => ["routine run", "routine runs"], "intents" => %w[intent intents],
         "clusters" => %w[cluster clusters], "nodes" => %w[node nodes], "edges" => %w[edge edges],
         "savepoints" => ["savepoint line", "savepoint lines"], "documents" => %w[document documents],
-        "sqlar" => ["kept file", "kept files"], "printed" => ["printed file", "printed files"]
+        "sqlar" => ["kept file", "kept files"], "printed" => ["printed file", "printed files"],
+        "sessions" => %w[session sessions], "locks" => %w[lock locks]
       }.freeze
 
       def self.file(key) = DATABASES.fetch(key).first

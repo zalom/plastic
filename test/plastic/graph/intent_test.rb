@@ -60,7 +60,11 @@ class IntentTest < Plastic::TestCase
   end
 
   def test_the_first_savepoint_line_names_the_title
-    assert_equal({ intent_id: "1a", position: 1, at: AT, text: "Opened: Build" }, intent.first_savepoint)
+    assert_equal({ intent_id: "1a", position: 1, at: AT, text: "Opened: Build", session_id: nil }, intent.first_savepoint)
+  end
+
+  def test_the_first_savepoint_line_carries_the_session_that_opened_it
+    assert_equal "s-1", intent.first_savepoint("s-1").fetch(:session_id)
   end
 
   def test_the_own_file_holds_the_front_matter_and_the_sections
