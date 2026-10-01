@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "json"
 require_relative "../../test_helper"
 
 # bin/plastic's own entry: runs a shipped command, lists the shipped table,
@@ -24,6 +25,15 @@ class BinCallTest < Plastic::TestCase
 
     assert_equal 0, call.code
     assert_equal Plastic::CLI::TABLE.size, call.out.lines.size
+  end
+
+  def test_bin_call_help_json_prints_the_shipped_commands_as_one_document
+    call = plastic_bin("help", "--json", table: Plastic::CLI::TABLE)
+    document = JSON.parse(call.out)
+
+    assert_equal 0, call.code
+    assert_equal Plastic::CLI::TABLE.keys, document.fetch("result").keys
+    assert_nil document.fetch("next")
   end
 
   def test_bin_call_help_lists_the_shipped_commands
