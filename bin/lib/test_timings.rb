@@ -3,6 +3,7 @@
 require "json"
 require "fileutils"
 require "minitest"
+require "benchmark"
 
 # The gate's timing check: a Minitest extension that sums
 # each test's time per file, and the cap check a gate step runs on what it
@@ -28,7 +29,8 @@ module TestTimings
     end
 
     def book(result)
-      class_names.fetch(result.klass) { file_of(result) }
+      klass = result.klass
+      class_names.fetch(klass) { file_of(klass, result.name) }
     end
 
     private
@@ -41,9 +43,12 @@ module TestTimings
       config_path = File.join(@root, CONFIG_FILE)
       return [] unless File.exist?(config_path)
 
-      config = JSON.parse(File.read(config_path))
-      Array(config.dig("docs", "include")).flat_map { |glob| Dir.glob(File.join(@root, glob)) }
+      included_globs(config_path).flat_map { |glob| Dir.glob(File.join(@root, glob)) }
         .map { |full| full.delete_prefix("#{@root}/") }.sort
+    end
+
+    def included_globs(config_path)
+      Array(JSON.parse(File.read(config_path)).dig("docs", "include"))
     end
 
     def varar_class_name(path)
@@ -51,8 +56,8 @@ module TestTimings
       "Var_#{Varar::Minitest.identifier(path)}"
     end
 
-    def file_of(result)
-      Object.const_get(result.klass).instance_method(result.name).source_location.first.delete_prefix("#{@root}/")
+    def file_of(klass, name)
+      Object.const_get(klass).instance_method(name).source_location.first.delete_prefix("#{@root}/")
     end
   end
 
@@ -80,7 +85,11 @@ module TestTimings
   # re-run alone through `rerun` before it fails, so a slow file under
   # outside load is not called red on one bad run.
   class Caps
+    # Raised for a missing timings file, or a file (or document) still over
+    # its cap after being re-run alone.
     Failure = Class.new(StandardError)
+
+    def self.cap_for(file) = file.start_with?("varar/") ? CAPS.fetch(:document) : CAPS.fetch(:file)
 
     def initialize(path, rerun:, out: $stdout)
       @path = path
@@ -88,7 +97,7 @@ module TestTimings
       @out = out
     end
 
-    def check!
+    def check
       raise Failure, "missing timings file: #{@path}" unless File.exist?(@path)
 
       JSON.parse(File.read(@path)).each { |file, seconds| check_one(file, seconds) }
@@ -97,26 +106,30 @@ module TestTimings
     private
 
     def check_one(file, seconds)
-      cap = cap_for(file)
+      cap = self.class.cap_for(file)
       return if seconds <= cap
 
+      verify_rerun(file, seconds, cap)
+    end
+
+    def verify_rerun(file, seconds, cap)
       rerun_seconds = @rerun.call(file)
       @out.puts format("%s took %.1fs, re-run took %.1fs", file, seconds, rerun_seconds)
       return if rerun_seconds <= cap
 
       raise Failure, "#{file} took #{format("%.1f", seconds)}s, over its #{cap.to_i}s cap (re-run #{format("%.1f", rerun_seconds)}s)"
     end
-
-    def cap_for(file) = file.start_with?("varar/") ? CAPS.fetch(:document) : CAPS.fetch(:file)
   end
 end
 
 Minitest.extensions << "test_timings" unless Minitest.extensions.include?("test_timings")
 
+# Reopened only to add `plugin_test_timings_init`, the hook Minitest calls
+# for every name in `Minitest.extensions`, the same seam FailuresReporter
+# uses to add itself.
 module Minitest
-  def self.plugin_test_timings_init(options)
-    path = ENV.fetch("PLASTIC_TEST_TIMINGS", nil)
-    return unless path
+  def self.plugin_test_timings_init(_options)
+    return unless (path = ENV.fetch("PLASTIC_TEST_TIMINGS", nil))
 
     reporter << TestTimings::Reporter.new(path)
   end
@@ -135,9 +148,7 @@ module TestTimings
 
     def call(file)
       command = file.start_with?("varar/") ? %w[bundle exec ruby bin/test --system] : ["bundle", "exec", "ruby", "bin/test", "--only", file]
-      start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-      @runner.call(*command, chdir: @root)
-      Process.clock_gettime(Process::CLOCK_MONOTONIC) - start
+      Benchmark.realtime { @runner.call(*command, chdir: @root) }
     end
   end
 end
@@ -152,7 +163,7 @@ if $PROGRAM_NAME == __FILE__
   end
 
   begin
-    TestTimings::Caps.new(path, rerun: TestTimings::Rerun.new).check!
+    TestTimings::Caps.new(path, rerun: TestTimings::Rerun.new).check
   rescue TestTimings::Caps::Failure => e
     warn e.message
     exit 1
