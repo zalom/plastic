@@ -62,9 +62,9 @@ class WriteIntentTest < Plastic::TestCase
   end
 
   def test_a_second_load_keeps_one_chain
-    before = [WriteIntent.steps.size, WriteIntent.facts.size]
+    before = [run_flow(ref: "ENG-1")[1], run_flow[1]]
     load File.expand_path("../../../scripts/lib/plastic/workflows/write_intent.rb", __dir__)
 
-    assert_equal [before, [:done]], [[WriteIntent.steps.size, WriteIntent.facts.size], WriteIntent.outcome_names]
+    assert_equal [before, [:done]], [[run_flow(ref: "ENG-1")[1], run_flow[1]], WriteIntent.outcome_names]
   end
 end

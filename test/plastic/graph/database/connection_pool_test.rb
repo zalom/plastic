@@ -40,7 +40,11 @@ class ConnectionPoolTest < Plastic::TestCase
   def test_a_forked_child_opens_its_own_connection
     Pool.for(path).execute("CREATE TABLE t(a)")
     reader, writer = IO.pipe
-    child = fork { writer.write(Pool.for(path).get_first_value("SELECT count(*) FROM t").to_s) }
+    child = fork do
+      writer.write(Pool.for(path).get_first_value("SELECT count(*) FROM t").to_s)
+    rescue => error
+      writer.write(error.message)
+    end
     writer.close
     Process.wait(child)
 
