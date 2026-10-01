@@ -4,7 +4,7 @@ require "minitest/autorun"
 require "tmpdir"
 require "fileutils"
 require "json"
-require "english"
+require "English"
 require_relative "../../varar/support/kernel_command"
 
 # Hooks on a broken store: the harness never sees a crash. Each test builds
