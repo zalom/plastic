@@ -37,16 +37,15 @@ module ContextBudget
   #                     Not a ruling: a 313 ratchet over the measured 16,537, so
   #                     the second-largest per-boot cost cannot regrow unwatched.
   #                     Lower it as the catalog shrinks; never raise it.
-  #   standing          every byte a session carries before it does any work:
-  #                     the core block, the boot injection, the skill catalog
-  #                     and the agent catalog. Intent 363 ratchet, not a
-  #                     ruling. It is the measured number plus a little, and it
-  #                     only ever moves down, once per skill family removed.
-  #                     Family 5 (intent 372: auto, direct, agent-advisor,
-  #                     releasing) freed 1,503 bytes, taking it to 3,788.
-  #                     Intent 381 retired a deprecation notice whose removal
-  #                     had already shipped, freeing 180, taking it to 3,608.
-  CEILINGS = { core: 8_192, boot: 15_000, boot_plus_catalog: 17_500, standing: 3_608 }.freeze
+  #   standing          every byte Plastic puts into a session before it does
+  #                     any work: the core block, the boot injection, the skill
+  #                     catalog and the agent catalog. The owner ruled on
+  #                     2026-10-01 that only what Plastic introduces can be
+  #                     capped, never the whole context, and set the cap at
+  #                     5,000 bytes, about 1,250 tokens. It replaces the intent
+  #                     363 ratchet, which sat just above the measured size and
+  #                     only ever moved down.
+  CEILINGS = { core: 8_192, boot: 15_000, boot_plus_catalog: 17_500, standing: 5_000 }.freeze
 
   # The doctrine working set (boot + _decision-tables.md + the median skill body)
   # is reported against this target, never enforced: its median term steps by

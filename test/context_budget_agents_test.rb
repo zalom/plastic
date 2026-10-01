@@ -6,10 +6,10 @@ require "fileutils"
 require "tmpdir"
 require_relative "../bin/lib/context_budget"
 
-# The standing surface (intent 363, plan step 7): every byte a session carries
-# before it does any work. bin/plastic-bench is the one script that measures it,
-# the agent catalog included, and the ceiling is the measured number, never a
-# guess. It moves down as each skill family is removed, and never up.
+# The standing surface (intent 363, plan step 7): every byte Plastic puts into a
+# session before it does any work. bin/plastic-bench is the one script that
+# measures it, the agent catalog included. The ceiling is the owner's cap of
+# 2026-10-01 on what Plastic alone introduces, 5,000 bytes.
 class ContextBudgetAgentsTest < Minitest::Test
   REPO = File.expand_path("..", __dir__)
 
@@ -79,17 +79,11 @@ class ContextBudgetAgentsTest < Minitest::Test
     assert_equal parts, report.row(:standing).bytes
   end
 
-  # Intent 372: each family's skill deletions free their name + description bytes
-  # from the skill catalog, measured by bin/plastic-bench. The ceiling moves down
-  # by exactly that, never a round number. Family 1 (install, uninstall, update,
-  # rollback) freed 1,332 bytes; family 2 (the five intent skills) freed 2,230;
-  # family 4 (doctor, feedback, tutorial, conventions) freed 1,074; family 3
-  # (project-creating, roadmap, dashboard) freed 1,073; family 5 (auto, direct,
-  # agent-advisor, releasing) freed 1,503.
-  # Intent 381 retired a deprecation notice whose removal had already shipped,
-  # which freed 180 bytes of the boot injection.
-  def test_the_standing_ceiling_reflects_every_family_so_far
-    assert_equal 11_000 - 1_332 - 2_230 - 1_074 - 1_073 - 1_503 - 180, ContextBudget::CEILINGS[:standing]
+  # The owner ruled on 2026-10-01 that a cap sits only on what Plastic introduces,
+  # never on the whole context, and set it at 5,000 bytes. It replaces the intent
+  # 363 ratchet that followed each skill family's deletion down to 3,608.
+  def test_the_standing_ceiling_is_the_owners_cap
+    assert_equal 5_000, ContextBudget::CEILINGS[:standing]
   end
 
   def test_the_standing_row_carries_the_ceiling
@@ -104,12 +98,12 @@ class ContextBudgetAgentsTest < Minitest::Test
     assert_operator report.row(:standing).bytes, :<=, ContextBudget::CEILINGS[:standing]
   end
 
-  def test_the_ceiling_is_the_measured_number_rather_than_a_guess
+  def test_the_standing_surface_leaves_room_for_rulings_in_the_core_block
     report = ContextBudget.run(repo: REPO, repeat: 1)
 
-    assert_operator report.row(:standing).headroom, :<=, 250,
-      "the standing ceiling carries #{report.row(:standing).headroom} bytes of " \
-      "headroom; it is set to the measured number, not to a round one"
+    assert_operator report.row(:standing).headroom, :>=, 500,
+      "the standing surface leaves #{report.row(:standing).headroom} bytes under the cap; " \
+      "a ruling of a few lines in PLASTIC.md must fit without trimming"
   end
 
   def test_the_bench_passes_on_this_repository
