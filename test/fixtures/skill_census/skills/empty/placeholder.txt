@@ -1,0 +1,1 @@
+A directory with no SKILL.md; the roster loader must skip it.

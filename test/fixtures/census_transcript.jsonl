@@ -1,0 +1,5 @@
+{"type":"assistant","timestamp":"2026-09-01T10:00:00Z","message":{"content":[{"type":"text","text":"## ▶ 50 · Demo intent\n\n| a | b |\n"}]}}
+{"type":"assistant","timestamp":"2026-09-01T11:00:00Z","message":{"content":[{"type":"text","text":"Here is where 50 stands.\n\n## ▶ 50 · Demo intent\n"}]}}
+{"type":"assistant","timestamp":"2026-09-02T09:00:00Z","message":{"content":[{"type":"text","text":"```\n## ▶ 50 · Demo intent\n```\n"}]}}
+{"type":"assistant","timestamp":"2026-09-02T09:30:00Z","message":{"content":[{"type":"text","text":"Just an ordinary reply, no screen at all.\n"}]}}
+{"type":"user","timestamp":"2026-09-02T09:31:00Z","message":{"content":"ignored, not assistant"}}
