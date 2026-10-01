@@ -1,0 +1,35 @@
+# frozen_string_literal: true
+
+require_relative "../../test_helper"
+require_relative "../../../scripts/lib/plastic/commands/roadmap_batch"
+require_relative "../../../scripts/lib/plastic/commands/roadmap_add"
+require_relative "../../../scripts/lib/plastic/commands/roadmap_edge_remove"
+
+class RoadmapEdgeRemoveTest < Plastic::TestCase
+  def call(*args) = plastic("roadmap", "edge", "remove", *args, table: Plastic::CLI::TABLE)
+
+  def setup
+    super
+    plastic("roadmap", "batch", "r1", "1", "--title", "T", "--goal", "G", "--done", "d", table: Plastic::CLI::TABLE)
+    plastic("roadmap", "add", "r1", "1", "a", "--title", "A", table: Plastic::CLI::TABLE)
+    plastic("roadmap", "add", "r1", "1", "b", "--title", "B", table: Plastic::CLI::TABLE)
+    plastic("roadmap", "add", "r1", "1", "c", "--title", "C", "--after", "a", "--after", "b", table: Plastic::CLI::TABLE)
+  end
+
+  def edges = store_graphs.retrieval.roadmap_edges("r1")
+
+  def test_the_named_edge_goes_and_the_other_stays
+    result = call("r1", "a", "c")
+
+    assert_equal 0, result.code
+    assert_equal [%w[b c]], edges.map { |edge| [edge.from, edge.to] }
+  end
+
+  def test_a_missing_edge_exits_1
+    call("r1", "a", "c")
+
+    result = call("r1", "a", "c")
+
+    assert_equal 1, result.code
+  end
+end

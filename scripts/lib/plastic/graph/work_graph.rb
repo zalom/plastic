@@ -7,6 +7,7 @@ require_relative "edge_writer"
 require_relative "ruling_writer"
 require_relative "link_writer"
 require_relative "roadmap_writer"
+require_relative "roadmap_state"
 require_relative "session_writer"
 require_relative "printer"
 require_relative "prints"
@@ -73,6 +74,18 @@ module Plastic
         sync.printer.print([Prints.roadmap(@retrieval, slug)])
       end
 
+      # Opens a ready item's intent, with its spec held in rows. Returns
+      # [intent_id, problem, kind]; kind is :failure or :refusal, nil on success.
+      def start_roadmap_item(slug, item_id)
+        item = @retrieval.roadmap_items(slug).find { |row| row.item == item_id }
+        return [nil, "no item #{item_id} on roadmap #{slug}", :failure] unless item
+
+        problem = start_problem(item)
+        return [nil, problem, :refusal] if problem
+
+        open_roadmap_item(slug, item)
+      end
+
       def sync_plan(direction, options) = sync.plan(direction, options)
 
       def sync_apply(plan) = sync.apply(plan)
@@ -94,6 +107,35 @@ module Plastic
       def roadmaps = (@roadmaps ||= RoadmapWriter.new(@databases, @retrieval, session: @session))
 
       def sync = (@sync ||= Sync.new(folder: @folder, retrieval: @retrieval, databases: @databases))
+
+      def start_problem(item)
+        return "item #{item.item} already has an intent" if item.intent_id
+
+        state = RoadmapState.of(item, @retrieval)
+        "item #{item.item} is #{state}, not ready" unless state == "ready"
+      end
+
+      def open_roadmap_item(slug, item)
+        intent = intents.write(title: item.title)
+        write_spec_document(intent.intent_id, batch_of(slug, item), item)
+        roadmaps.start_item(slug, item.item, intent.intent_id)
+        links.add_link(from_ref: intent.intent_id, to_ref: "roadmap:#{slug}", kind: "source")
+        [intent.intent_id, nil, nil]
+      end
+
+      def batch_of(slug, item) = @retrieval.batches(slug).find { |row| row.position == item.batch }
+
+      def write_spec_document(intent_id, batch, item)
+        row = { intent_id:, path: "spec.md", body: spec_body(batch, item), updated_at: Plastic.now }
+        @databases.fetch(:knowledge).transaction { |transaction| transaction.put(:documents, row, statement: :insert) }
+      end
+
+      def spec_body(batch, item)
+        goal = [batch&.goal, item.goal].compact
+        done = (batch&.done_lines || []) + item.done_lines
+        lines = ["## Goal", "", *goal, "", "## Done criteria", "", *done.map { |line| "- [ ] #{line}" }, ""]
+        lines.join("\n")
+      end
     end
   end
 end

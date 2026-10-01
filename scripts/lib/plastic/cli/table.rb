@@ -39,6 +39,10 @@ module Plastic
       "roadmap show" => ["Commands::RoadmapShow", "Print a roadmap's batches and items, then reprint its file"],
       "roadmap next" => ["Commands::RoadmapNext", "Print the first ready item, or what is in the way"],
       "roadmap drop" => ["Commands::RoadmapDrop", "Mark a roadmap item dropped; its edges stay as rows"],
+      "roadmap start" => ["Commands::RoadmapStart", "Open a ready item's intent, with its spec held in rows"],
+      "roadmap check" => ["Commands::RoadmapCheck", "List a roadmap's loops, dangling edges and items with no intent"],
+      "roadmap log" => ["Commands::RoadmapLog", "Append a log line to a roadmap, stamped with the session id"],
+      "roadmap edge remove" => ["Commands::RoadmapEdgeRemove", "Remove one after edge from a roadmap"],
 
       # Hooks: the harness calls these on an event; see docs/contributing/ARCHITECTURE.md.
       "hook resume" => ["Hooks::Resume", "SessionStart: print the state the rows carry"],

@@ -64,6 +64,16 @@ module Plastic
         changed(:roadmap_edges) { |batch| batch.remove(:roadmap_edges, roadmap: slug, from:, to:) }
       end
 
+      # Records the intent an item was opened as.
+      def start_item(slug, item, intent_id)
+        now = Plastic.now
+        changed(:roadmap_items) do |batch|
+          batch.write(:roadmap_items, "UPDATE roadmap_items SET intent_id = :intent_id, updated_at = :now " \
+            "WHERE origin_id = :origin AND roadmap = :roadmap AND item = :item",
+            intent_id:, now:, origin: origin_id, roadmap: slug, item:)
+        end
+      end
+
       def add_log(slug, text)
         now = Plastic.now
         row = { roadmap: slug, position: next_log_position(slug), at: now, text:, session_id: @session }
