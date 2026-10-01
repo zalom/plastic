@@ -40,6 +40,14 @@ module ScriptEntry
     [merged.string, FakeExitStatus.new(exit_code)]
   end
 
+  # Same load-into-a-module entry point as `call`, but keeping stdout and
+  # stderr genuinely separate (matching Open3.capture3, which the callers
+  # driving this way already called directly and so already read out/err
+  # apart, with no merge-order expectation to preserve).
+  def self.call3(script_path, method = nil, *args, **opts)
+    capture3(**opts) { run_in_module(script_path, method, args) }
+  end
+
   # The capture3-shaped primitive underneath `call`, exposed directly for a
   # script already loaded in process by its own real constant (e.g. a proper
   # `module Runner` loaded once by plain `load` at file top, whose CLI entry

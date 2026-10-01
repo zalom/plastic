@@ -7,6 +7,7 @@ require "fileutils"
 require "open3"
 
 require_relative "../scripts/lib/doctor_exclusions"
+require_relative "support/script_entry"
 
 class MaintenanceRunTest < Minitest::Test
   MAINTENANCE_RUN = File.expand_path("../scripts/maintenance-run", __dir__)
@@ -78,8 +79,8 @@ class MaintenanceRunTest < Minitest::Test
     lock_path = File.join(@home, "projects", "plastic", "store", "11--child", "delivery.lock")
     File.write(lock_path, '{"owner_session":"someone-else"}')
 
-    out, err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "project-links",
-                                       "--intent", "11", "--plastic-home", @home, "--apply")
+    out, err, status = ScriptEntry.call3(MAINTENANCE_RUN, :main, ["--tool", "project-links",
+      "--intent", "11", "--plastic-home", @home, "--apply"])
     assert_equal 2, status.exitstatus
     assert_match(/deferred/, out + err)
   end
@@ -88,8 +89,8 @@ class MaintenanceRunTest < Minitest::Test
   # `git add`/`git commit` instruction for the paths this run touched, rather than running
   # MaintenanceGit's own branch-then-merge cycle.
   def test_applies_project_links_and_prints_the_commit_instruction
-    out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "project-links",
-                                        "--intent", "11", "--plastic-home", @home, "--apply")
+    out, _err, status = ScriptEntry.call3(MAINTENANCE_RUN, :main, ["--tool", "project-links",
+      "--intent", "11", "--plastic-home", @home, "--apply"])
     assert_equal 0, status.exitstatus, out
     assert_match(/applied \(1 path/, out)
     assert_match(%r{next: git -C #{Regexp.escape(@home)} add -- .*11--child}, out)
@@ -98,15 +99,15 @@ class MaintenanceRunTest < Minitest::Test
 
   def test_dry_run_makes_no_changes_by_default
     before = File.read(File.join(@home, "projects", "plastic", "store", "11--child", "11--child.md"))
-    _out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "project-links",
-                                         "--intent", "11", "--plastic-home", @home)
+    _out, _err, status = ScriptEntry.call3(MAINTENANCE_RUN, :main, ["--tool", "project-links",
+      "--intent", "11", "--plastic-home", @home])
     assert_equal 0, status.exitstatus
     assert_equal before, File.read(File.join(@home, "projects", "plastic", "store", "11--child", "11--child.md"))
   end
 
   def test_project_links_without_intent_is_a_usage_error
-    _out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "project-links",
-                                         "--plastic-home", @home, "--apply")
+    _out, _err, status = ScriptEntry.call3(MAINTENANCE_RUN, :main, ["--tool", "project-links",
+      "--plastic-home", @home, "--apply"])
     assert_equal 1, status.exitstatus
   end
 
@@ -115,8 +116,8 @@ class MaintenanceRunTest < Minitest::Test
   # paths this run actually touches are named in the printed commit instruction.
   def test_an_unrelated_file_elsewhere_in_the_store_never_blocks_a_run
     File.write(File.join(@home, "unrelated.md"), "dirty\n")
-    out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "project-links",
-                                        "--intent", "11", "--plastic-home", @home, "--apply")
+    out, _err, status = ScriptEntry.call3(MAINTENANCE_RUN, :main, ["--tool", "project-links",
+      "--intent", "11", "--plastic-home", @home, "--apply"])
     assert_equal 0, status.exitstatus, out
     refute_match(/unrelated\.md/, out)
   end
@@ -129,8 +130,8 @@ class MaintenanceRunTest < Minitest::Test
     lock_path = File.join(@home, "projects", "plastic", "store", "11--child", "delivery.lock")
     File.write(lock_path, '{"owner_session":"someone-else"}')
 
-    out, err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "rebuild-graph",
-                                       "--plastic-home", @home, "--apply")
+    out, err, status = ScriptEntry.call3(MAINTENANCE_RUN, :main, ["--tool", "rebuild-graph",
+      "--plastic-home", @home, "--apply"])
     assert_equal 2, status.exitstatus
     assert_match(/deferred/, out + err)
   end
@@ -147,8 +148,8 @@ class MaintenanceRunTest < Minitest::Test
     FileUtils.mkdir_p(File.join(@home, "projects", "knowdb"))
     File.write(File.join(@home, "projects", "knowdb", "INDEX.md"), "# Index\n\n## Completed\n")
 
-    _out, err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "project-links",
-                                        "--intent", "11", "--plastic-home", @home, "--apply")
+    _out, err, status = ScriptEntry.call3(MAINTENANCE_RUN, :main, ["--tool", "project-links",
+      "--intent", "11", "--plastic-home", @home, "--apply"])
     assert_equal 1, status.exitstatus
     assert_match(/ambiguous/, err)
   end
@@ -164,9 +165,9 @@ class MaintenanceRunTest < Minitest::Test
 
     before_knowdb = File.read(File.join(knowdb, "11--knowdb-collision", "11--knowdb-collision.md"))
 
-    _out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "project-links",
-                                         "--intent", "11", "--store", "project:plastic",
-                                         "--plastic-home", @home, "--apply")
+    _out, _err, status = ScriptEntry.call3(MAINTENANCE_RUN, :main, ["--tool", "project-links",
+      "--intent", "11", "--store", "project:plastic",
+      "--plastic-home", @home, "--apply"])
     assert_equal 0, status.exitstatus
 
     assert_equal before_knowdb, File.read(File.join(knowdb, "11--knowdb-collision", "11--knowdb-collision.md")),
@@ -182,8 +183,8 @@ class MaintenanceRunTest < Minitest::Test
   end
 
   def test_rebuild_savepoint_requires_intent_flag
-    _out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "rebuild-savepoint",
-                                         "--plastic-home", @home, "--apply")
+    _out, _err, status = ScriptEntry.call3(MAINTENANCE_RUN, :main, ["--tool", "rebuild-savepoint",
+      "--plastic-home", @home, "--apply"])
     assert_equal 1, status.exitstatus
   end
 
@@ -193,9 +194,9 @@ class MaintenanceRunTest < Minitest::Test
     savepoint_path = File.join(dir, "savepoint.md")
     refute File.exist?(savepoint_path)
 
-    out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "rebuild-savepoint",
-                                        "--intent", "11", "--store", "project:plastic",
-                                        "--plastic-home", @home)
+    out, _err, status = ScriptEntry.call3(MAINTENANCE_RUN, :main, ["--tool", "rebuild-savepoint",
+      "--intent", "11", "--store", "project:plastic",
+      "--plastic-home", @home])
     assert_equal 0, status.exitstatus, out
     assert_match(/DRY RUN/, out)
     refute File.exist?(savepoint_path), "dry-run must not write savepoint.md"
@@ -205,9 +206,9 @@ class MaintenanceRunTest < Minitest::Test
     dir = File.join(@home, "projects", "plastic", "store", "11--child")
     write_outcome(dir)
 
-    out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "rebuild-savepoint",
-                                        "--intent", "11", "--store", "project:plastic",
-                                        "--plastic-home", @home, "--apply")
+    out, _err, status = ScriptEntry.call3(MAINTENANCE_RUN, :main, ["--tool", "rebuild-savepoint",
+      "--intent", "11", "--store", "project:plastic",
+      "--plastic-home", @home, "--apply"])
     assert_equal 0, status.exitstatus, out
     assert_match(/applied \(1 path/, out)
     assert_match(/next: git -C #{Regexp.escape(@home)} add --/, out)
@@ -224,9 +225,9 @@ class MaintenanceRunTest < Minitest::Test
     dir = File.join(@home, "projects", "plastic", "store", "11--child")
     refute File.exist?(File.join(dir, "outcome.md"))
 
-    _out, err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "rebuild-savepoint",
-                                        "--intent", "11", "--store", "project:plastic",
-                                        "--plastic-home", @home, "--apply")
+    _out, err, status = ScriptEntry.call3(MAINTENANCE_RUN, :main, ["--tool", "rebuild-savepoint",
+      "--intent", "11", "--store", "project:plastic",
+      "--plastic-home", @home, "--apply"])
     assert_equal 1, status.exitstatus
     assert_match(/outcome\.md is missing or a placeholder/, err)
     refute File.exist?(File.join(dir, "savepoint.md"))
@@ -236,9 +237,9 @@ class MaintenanceRunTest < Minitest::Test
     dir = File.join(@home, "projects", "plastic", "store", "11--child")
     File.write(File.join(dir, "outcome.md"), "<!-- plastic:placeholder -->\n")
 
-    _out, err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "rebuild-savepoint",
-                                        "--intent", "11", "--store", "project:plastic",
-                                        "--plastic-home", @home)
+    _out, err, status = ScriptEntry.call3(MAINTENANCE_RUN, :main, ["--tool", "rebuild-savepoint",
+      "--intent", "11", "--store", "project:plastic",
+      "--plastic-home", @home])
     assert_equal 1, status.exitstatus
     assert_match(/outcome\.md is missing or a placeholder/, err)
   end
@@ -248,9 +249,9 @@ class MaintenanceRunTest < Minitest::Test
     write_outcome(dir)
     File.write(File.join(dir, "delivery.lock"), '{"owner_session":"someone-else"}')
 
-    out, err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "rebuild-savepoint",
-                                       "--intent", "11", "--store", "project:plastic",
-                                       "--plastic-home", @home, "--apply")
+    out, err, status = ScriptEntry.call3(MAINTENANCE_RUN, :main, ["--tool", "rebuild-savepoint",
+      "--intent", "11", "--store", "project:plastic",
+      "--plastic-home", @home, "--apply"])
     assert_equal 2, status.exitstatus
     assert_match(/deferred/, out + err)
   end
@@ -283,8 +284,8 @@ class MaintenanceRunTest < Minitest::Test
   def test_register_exclusions_dry_run_writes_nothing
     seed_register_exclusions_fixture
 
-    out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "register-exclusions",
-                                        "--plastic-home", @home)
+    out, _err, status = ScriptEntry.call3(MAINTENANCE_RUN, :main, ["--tool", "register-exclusions",
+      "--plastic-home", @home])
     assert_equal 0, status.exitstatus, out
     refute File.exist?(File.join(@home, "doctor-exclusions"))
     refute File.exist?(File.join(@home, "projects", "plastic", "doctor-exclusions"))
@@ -293,8 +294,8 @@ class MaintenanceRunTest < Minitest::Test
   def test_register_exclusions_dry_run_names_scope_and_ids
     seed_register_exclusions_fixture
 
-    out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "register-exclusions",
-                                        "--plastic-home", @home)
+    out, _err, status = ScriptEntry.call3(MAINTENANCE_RUN, :main, ["--tool", "register-exclusions",
+      "--plastic-home", @home])
     assert_equal 0, status.exitstatus, out
     assert_match(/global/, out)
     assert_match(/\b40\b/, out)
@@ -305,8 +306,8 @@ class MaintenanceRunTest < Minitest::Test
   def test_register_exclusions_bad_rule_is_a_usage_error
     seed_register_exclusions_fixture
 
-    _out, err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "register-exclusions",
-                                        "--rule", "bogus", "--plastic-home", @home)
+    _out, err, status = ScriptEntry.call3(MAINTENANCE_RUN, :main, ["--tool", "register-exclusions",
+      "--rule", "bogus", "--plastic-home", @home])
     assert_equal 1, status.exitstatus
     assert_match(/not excludable/, err)
     assert_match(/savepoint_operational/, err)
@@ -315,8 +316,8 @@ class MaintenanceRunTest < Minitest::Test
   def test_register_exclusions_apply_writes_across_stores_and_prints_the_commit_instruction
     seed_register_exclusions_fixture
 
-    out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "register-exclusions",
-                                        "--plastic-home", @home, "--apply")
+    out, _err, status = ScriptEntry.call3(MAINTENANCE_RUN, :main, ["--tool", "register-exclusions",
+      "--plastic-home", @home, "--apply"])
     assert_equal 0, status.exitstatus, out
 
     global_loaded = DoctorExclusions.load(File.join(@home, "INDEX.md"))
@@ -335,8 +336,8 @@ class MaintenanceRunTest < Minitest::Test
     seed_register_exclusions_fixture
     File.write(File.join(@home, "doctor-exclusions"), "savepoint_operational 999\n")
 
-    out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "register-exclusions",
-                                        "--plastic-home", @home, "--apply")
+    out, _err, status = ScriptEntry.call3(MAINTENANCE_RUN, :main, ["--tool", "register-exclusions",
+      "--plastic-home", @home, "--apply"])
     assert_equal 0, status.exitstatus, out
 
     loaded = DoctorExclusions.load(File.join(@home, "INDEX.md"))
@@ -354,8 +355,8 @@ class MaintenanceRunTest < Minitest::Test
                    "savepoint_operational 999\n"
     File.write(File.join(@home, "doctor-exclusions"), hand_written)
 
-    out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "register-exclusions",
-                                        "--plastic-home", @home, "--apply")
+    out, _err, status = ScriptEntry.call3(MAINTENANCE_RUN, :main, ["--tool", "register-exclusions",
+      "--plastic-home", @home, "--apply"])
     assert_equal 0, status.exitstatus, out
 
     content = File.read(File.join(@home, "doctor-exclusions"))
@@ -377,12 +378,12 @@ class MaintenanceRunTest < Minitest::Test
     File.binwrite(File.join(@home, "doctor-exclusions"),
                   "# a comment with a bad byte caf\xE9\nsavepoint_operational 999\n")
 
-    dry_out, _err, dry_status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "register-exclusions",
-                                                "--plastic-home", @home)
+    dry_out, _err, dry_status = ScriptEntry.call3(MAINTENANCE_RUN, :main, ["--tool", "register-exclusions",
+      "--plastic-home", @home])
     assert_equal 0, dry_status.exitstatus, dry_out
 
-    out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "register-exclusions",
-                                        "--plastic-home", @home, "--apply")
+    out, _err, status = ScriptEntry.call3(MAINTENANCE_RUN, :main, ["--tool", "register-exclusions",
+      "--plastic-home", @home, "--apply"])
     assert_equal 0, status.exitstatus, out
 
     content = File.read(File.join(@home, "doctor-exclusions"))
@@ -395,8 +396,8 @@ class MaintenanceRunTest < Minitest::Test
   def test_register_exclusions_writes_no_revisions_entries
     seed_register_exclusions_fixture
 
-    out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "register-exclusions",
-                                        "--plastic-home", @home, "--apply")
+    out, _err, status = ScriptEntry.call3(MAINTENANCE_RUN, :main, ["--tool", "register-exclusions",
+      "--plastic-home", @home, "--apply"])
     assert_equal 0, status.exitstatus, out
 
     refute File.exist?(File.join(@home, "store", "40--store-graph", "revisions.md"))
@@ -408,8 +409,8 @@ class MaintenanceRunTest < Minitest::Test
     File.write(File.join(@home, "store", "40--store-graph", "delivery.lock"),
                '{"owner_session":"someone-else"}')
 
-    out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "register-exclusions",
-                                        "--plastic-home", @home, "--apply")
+    out, _err, status = ScriptEntry.call3(MAINTENANCE_RUN, :main, ["--tool", "register-exclusions",
+      "--plastic-home", @home, "--apply"])
     assert_equal 0, status.exitstatus, out
     assert_match(/40--store-graph skipped/, out)
 
@@ -432,8 +433,8 @@ class MaintenanceRunTest < Minitest::Test
     commit_all("seed dead row fixture")
     before = File.read(File.join(@home, "doctor-exclusions"))
 
-    out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "register-exclusions",
-                                        "--prune", "--plastic-home", @home)
+    out, _err, status = ScriptEntry.call3(MAINTENANCE_RUN, :main, ["--tool", "register-exclusions",
+      "--prune", "--plastic-home", @home])
     assert_equal 0, status.exitstatus, out
     assert_equal before, File.read(File.join(@home, "doctor-exclusions"))
     assert_match(/DRY RUN/, out)
@@ -445,8 +446,8 @@ class MaintenanceRunTest < Minitest::Test
     File.write(File.join(@home, "doctor-exclusions"), "savepoint_operational 40 999\n")
     commit_all("seed dead row fixture")
 
-    out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "register-exclusions",
-                                        "--prune", "--plastic-home", @home, "--apply")
+    out, _err, status = ScriptEntry.call3(MAINTENANCE_RUN, :main, ["--tool", "register-exclusions",
+      "--prune", "--plastic-home", @home, "--apply"])
     assert_equal 0, status.exitstatus, out
 
     loaded = DoctorExclusions.load(File.join(@home, "INDEX.md"))
@@ -463,8 +464,8 @@ class MaintenanceRunTest < Minitest::Test
     File.write(File.join(@home, "doctor-exclusions"), hand_written)
     commit_all("hand-add 999 with comments")
 
-    out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "register-exclusions",
-                                        "--prune", "--plastic-home", @home, "--apply")
+    out, _err, status = ScriptEntry.call3(MAINTENANCE_RUN, :main, ["--tool", "register-exclusions",
+      "--prune", "--plastic-home", @home, "--apply"])
     assert_equal 0, status.exitstatus, out
 
     content = File.read(File.join(@home, "doctor-exclusions"))
@@ -485,8 +486,8 @@ class MaintenanceRunTest < Minitest::Test
     File.write(File.join(@home, "store", "40--store-graph", "delivery.lock"),
                '{"owner_session":"someone-else"}')
 
-    out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "register-exclusions",
-                                        "--prune", "--plastic-home", @home, "--apply")
+    out, _err, status = ScriptEntry.call3(MAINTENANCE_RUN, :main, ["--tool", "register-exclusions",
+      "--prune", "--plastic-home", @home, "--apply"])
     assert_equal 0, status.exitstatus, out
     assert_match(/40--store-graph skipped/, out)
 
@@ -507,8 +508,8 @@ class MaintenanceRunTest < Minitest::Test
     File.write(File.join(@home, "projects", "plastic", "doctor-exclusions"), "savepoint_operational 11 12\n")
     commit_all("seed non-terminal exclusion")
 
-    out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "register-exclusions",
-                                        "--prune", "--plastic-home", @home, "--apply")
+    out, _err, status = ScriptEntry.call3(MAINTENANCE_RUN, :main, ["--tool", "register-exclusions",
+      "--prune", "--plastic-home", @home, "--apply"])
     assert_equal 0, status.exitstatus, out
     assert_match(/12 kept \(protected, still live\)/, out)
 
@@ -523,8 +524,8 @@ class MaintenanceRunTest < Minitest::Test
     File.write(File.join(@home, "doctor-exclusions"), "savepoint_operational 999\n")
     commit_all("seed all-dead rule fixture")
 
-    out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "register-exclusions",
-                                        "--prune", "--plastic-home", @home, "--apply")
+    out, _err, status = ScriptEntry.call3(MAINTENANCE_RUN, :main, ["--tool", "register-exclusions",
+      "--prune", "--plastic-home", @home, "--apply"])
     assert_equal 0, status.exitstatus, out
 
     content = File.read(File.join(@home, "doctor-exclusions"))
@@ -542,8 +543,8 @@ class MaintenanceRunTest < Minitest::Test
     File.write(File.join(@home, "doctor-exclusions"), "savepoint_operational 40 999\n")
     commit_all("seed dead row fixture")
 
-    out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "register-exclusions",
-                                        "--prune", "--plastic-home", @home, "--apply")
+    out, _err, status = ScriptEntry.call3(MAINTENANCE_RUN, :main, ["--tool", "register-exclusions",
+      "--prune", "--plastic-home", @home, "--apply"])
     assert_equal 0, status.exitstatus, out
 
     refute File.exist?(File.join(@home, "store", "40--store-graph", "revisions.md"))
@@ -556,8 +557,8 @@ class MaintenanceRunTest < Minitest::Test
     commit_all("seed live-only exclusion")
     before = File.read(File.join(@home, "doctor-exclusions"))
 
-    out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "register-exclusions",
-                                        "--prune", "--plastic-home", @home, "--apply")
+    out, _err, status = ScriptEntry.call3(MAINTENANCE_RUN, :main, ["--tool", "register-exclusions",
+      "--prune", "--plastic-home", @home, "--apply"])
     assert_equal 0, status.exitstatus, out
     assert_match(/no dead savepoint_operational exclusion rows to prune/, out)
     assert_equal before, File.read(File.join(@home, "doctor-exclusions"))
@@ -578,8 +579,8 @@ class MaintenanceRunTest < Minitest::Test
     File.write(File.join(@home, "doctor-exclusions"), "savepoint_operational 40 70\n")
     commit_all("seed ghost-directory fixture")
 
-    out, _err, status = Open3.capture3(RbConfig.ruby, MAINTENANCE_RUN, "--tool", "register-exclusions",
-                                        "--prune", "--plastic-home", @home, "--apply")
+    out, _err, status = ScriptEntry.call3(MAINTENANCE_RUN, :main, ["--tool", "register-exclusions",
+      "--prune", "--plastic-home", @home, "--apply"])
     assert_equal 0, status.exitstatus, out
 
     loaded = DoctorExclusions.load(File.join(@home, "INDEX.md"))
