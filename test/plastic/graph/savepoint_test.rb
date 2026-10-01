@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../support/kernel"
+require_relative "../../../scripts/lib/plastic/graph/savepoint"
 
 class SavepointTest < Minitest::Test
   Savepoint = Plastic::Graph::Savepoint
