@@ -60,7 +60,7 @@ module Plastic
       private
 
       def commit(batch)
-        script = batch.statements.join("\n")
+        script = batch.statements.join
         tally(connected { |connection| connection.atomically { connection.sets(script) } })
       end
 

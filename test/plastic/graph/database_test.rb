@@ -24,7 +24,7 @@ class DatabaseTest < Plastic::TestCase
       end
     end
 
-    assert_match(/\Awork_graph\.db: .*no such table: nowhere/, error.message)
+    assert_equal "work_graph.db: no such table: nowhere", error.message
     assert_equal [], database.rows("SELECT name FROM routine_runs")
   end
 

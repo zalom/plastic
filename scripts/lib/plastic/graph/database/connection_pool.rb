@@ -66,7 +66,8 @@ module Plastic
 
         # Closes every connection except those of the `keep` paths.
         def self.disconnect(keep: [])
-          connections.reject! { |path, connection| keep.include?(path) ? false : connection.close || true }
+          connections.except(*keep).each_value(&:close)
+          connections.keep_if { |path, _connection| keep.include?(path) }
         end
 
         def self.connections
