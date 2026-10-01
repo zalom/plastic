@@ -4,6 +4,7 @@ require "yaml"
 require "json"
 require "fileutils"
 require "open3"
+require_relative "../scripts/lib/read_config"
 
 class ReadConfigTest < Minitest::Test
   SCRIPT = File.expand_path("../../scripts/read-config", __FILE__)
@@ -163,6 +164,100 @@ class ReadConfigTest < Minitest::Test
   def test_a_configured_runner_stop_hook_wins_over_the_default
     write_global_config("version" => 3, "runner" => { "stop_hook" => true })
     assert_equal "true", run_script("runner.stop_hook").first
+  end
+end
+
+# Drives ReadConfig's public methods directly, in process, the same lookups
+# the CLI above exercises through a subprocess. scripts/read-config never
+# requires this lib in process, so SimpleCov could never see these lines
+# through the suite above alone (intent 397, lead's gate-failure item 3).
+class ReadConfigLibTest < Minitest::Test
+  def setup
+    @global_dir = Dir.mktmpdir("plastic-global-lib")
+    @project_dir = Dir.mktmpdir("plastic-project-lib")
+    FileUtils.mkdir_p(File.join(@project_dir, ".plastic_store"))
+  end
+
+  def teardown
+    FileUtils.rm_rf(@global_dir)
+    FileUtils.rm_rf(@project_dir)
+  end
+
+  def write_global_config(data)
+    File.write(File.join(@global_dir, "config.yml"), YAML.dump(data))
+  end
+
+  def write_project_config(data)
+    File.write(File.join(@project_dir, ".plastic_store", "config.yml"), YAML.dump(data))
+  end
+
+  def options(**attrs)
+    ReadConfig::Options.new(default: nil, project: nil, harness: nil, plastic_home: @global_dir, **attrs)
+  end
+
+  def test_resolve_returns_the_builtin_default_with_no_config
+    assert_equal 3, ReadConfig.resolve("stale_threshold_days", options)
+  end
+
+  def test_resolve_prefers_project_over_global
+    write_global_config("agent" => { "type" => "claude-code" })
+    write_project_config("agent" => { "type" => "hermes" })
+
+    assert_equal "hermes", ReadConfig.resolve("agent.type", options(project: @project_dir))
+  end
+
+  def test_resolve_returns_the_explicit_default_when_nothing_configured
+    assert_equal "fallback", ReadConfig.resolve("nonexistent.key", options(default: "fallback"))
+  end
+
+  def test_resolve_keeps_a_stored_false_instead_of_falling_through
+    write_global_config("runner" => { "stop_hook" => true })
+
+    assert ReadConfig.resolve("runner.stop_hook", options)
+  end
+
+  def test_resolve_reads_harness_scoped_agent_models
+    write_global_config("agents" => { "models" => { "claude" => { "plastic-executor" => "haiku" } } })
+
+    assert_equal "haiku", ReadConfig.resolve("agents.models.plastic-executor", options(harness: "claude"))
+  end
+
+  def test_resolve_falls_back_to_the_shipped_model_for_an_unconfigured_agent
+    assert_equal "gpt-5.6-terra", ReadConfig.resolve("agents.models.plastic-executor", options(harness: "codex"))
+  end
+
+  def test_harness_canonical_accepts_claude_code_as_claude
+    assert_equal "claude", ReadConfig::Harness.canonical("claude-code")
+  end
+
+  def test_harness_canonical_returns_nil_for_no_value
+    assert_nil ReadConfig::Harness.canonical(nil)
+  end
+
+  def test_harness_canonical_rejects_an_unknown_harness
+    assert_raises(ReadConfig::InvalidHarness) { ReadConfig::Harness.canonical("unknown") }
+  end
+
+  def test_format_value_renders_a_hash_as_json
+    assert_equal '{"a":1}', ReadConfig.format_value({ "a" => 1 })
+  end
+
+  def test_format_value_renders_booleans_and_numbers_as_strings
+    assert_equal "false", ReadConfig.format_value(false)
+    assert_equal "3", ReadConfig.format_value(3)
+  end
+
+  def test_format_value_renders_nil_as_empty
+    assert_equal "", ReadConfig.format_value(nil)
+  end
+
+  def test_load_yaml_warns_and_returns_empty_on_a_broken_file
+    broken = File.join(@global_dir, "broken.yml")
+    File.write(broken, "{not: valid: yaml")
+
+    _out, err = capture_io { assert_equal({}, ReadConfig.load_yaml(broken)) }
+
+    assert_includes err, "Warning: failed to parse"
   end
 end
 

@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require "minitest/autorun"
-require "minitest/mock"
 require "json"
 require "stringio"
 require "tmpdir"
@@ -62,16 +61,23 @@ class TestTimingsTest < Minitest::Test
   # surviving unverdicted.
   def test_with_a_timings_file_a_reporter_is_added
     ENV["PLASTIC_TEST_TIMINGS"] = @path
-    fake_reporter = Minitest::Mock.new
-    fake_reporter.expect(:<<, nil) { |reporter| reporter.is_a?(TestTimings::Reporter) }
+    fake, added = fake_reporter
+    original = Minitest.reporter
+    Minitest.reporter = fake
 
-    Minitest.stub(:reporter, fake_reporter) do
-      Minitest.plugin_test_timings_init({})
-    end
+    Minitest.plugin_test_timings_init({})
 
-    fake_reporter.verify
+    assert_instance_of TestTimings::Reporter, added.call
   ensure
+    Minitest.reporter = original
     ENV.delete("PLASTIC_TEST_TIMINGS")
+  end
+
+  def fake_reporter
+    added = nil
+    fake = Object.new
+    fake.define_singleton_method(:<<) { |reporter| added = reporter }
+    [fake, -> { added }]
   end
 
   def test_a_varar_class_is_booked_to_its_document_from_the_list
