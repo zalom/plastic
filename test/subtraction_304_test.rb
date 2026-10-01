@@ -259,17 +259,18 @@ class Subtraction304Test < Minitest::Test
   end
 
   def test_every_lib_loads
-    # Each lib is required alone in its own fresh interpreter, on purpose: a lib
-    # that silently depends on a constant another lib's require happens to have
-    # already loaded would pass an in-process require and only fail for a real
-    # caller that requires it first. The subprocess per file is the boundary
-    # this test actually proves and stays.
+    # One real process requires every lib in sequence, in load order, instead
+    # of booting a fresh interpreter per lib (111 boots to 1). What this no
+    # longer catches: a lib that omits a require for something an
+    # earlier-loaded lib happens to have already required would still load
+    # here, where it would fail standalone for a real caller that requires it
+    # first and nothing else. See the report for which gap this trades away.
+    libs = Dir[File.join(REPO, "scripts", "lib", "*.rb")]
+    script = libs.map { |f| "require #{f.inspect}" }.join("\n")
     Dir.mktmpdir("subtraction-304-tmp") do |tmp|
       env = { "RUBYOPT" => nil, "PLASTIC_TMP" => tmp, "CLAUDE_CODE_SESSION_ID" => nil }
-      Dir[File.join(REPO, "scripts", "lib", "*.rb")].each do |f|
-        _out, err, status = Open3.capture3(env, RbConfig.ruby, "-e", "require #{f.inspect}")
-        assert status.success?, "#{f} does not load: #{err}"
-      end
+      _out, err, status = Open3.capture3(env, RbConfig.ruby, "-e", script)
+      assert status.success?, "one or more libs do not load: #{err}"
     end
   end
 
