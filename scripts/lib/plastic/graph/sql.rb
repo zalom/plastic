@@ -45,7 +45,7 @@ module Plastic
       end
 
       # `a IS 1 AND b IS 'x'`: IS matches a NULL as well.
-      def self.where(values) = values.empty? ? "1" : values.map { |column, value| "#{name(column)} IS #{literal(value)}" }.join(" AND ")
+      def self.where(values) = values.map { |column, value| "#{name(column)} IS #{literal(value)}" }.join(" AND ")
 
       # The columns and values of an insert: `(a, b) VALUES (1, 2)`.
       def self.tuple(columns)
