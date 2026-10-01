@@ -9,7 +9,9 @@ module Plastic
     # `verify` before any step runs. Each family owns its own section.
     REGISTRY = [
       # Storage: intents and the sync of a store folder with its rows.
-      :code_write_intent, :code_sync_up, :code_sync_down
+      :code_write_intent, :code_sync_up, :code_sync_down,
+      # Sessions: the one prose line a session writes about itself.
+      :code_write_note
     ].freeze
   end
 end
