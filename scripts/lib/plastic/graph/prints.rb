@@ -4,6 +4,7 @@ require "digest"
 require "json"
 require_relative "intent"
 require_relative "store_folder"
+require_relative "roadmap_state"
 
 module Plastic
   module Graph
@@ -89,6 +90,42 @@ module Plastic
       end
 
       def plain(record) = record.to_h.except(:origin_id).transform_keys(&:to_s)
+
+      def roadmap(retrieval, slug)
+        row = retrieval.roadmap(slug)
+        lines = ["# #{row.title}", "", *goal_lines(row.goal), *roadmap_batches(retrieval, slug),
+          "## Graph", "", *roadmap_edge_lines(retrieval, slug), "", "## Log", "", *roadmap_log_lines(retrieval, slug)]
+        Print.text("roadmaps/#{slug}.md", :work, "#{lines.join("\n")}\n")
+      end
+
+      def goal_lines(goal) = goal ? ["## Goal", "", goal, ""] : []
+
+      def roadmap_batches(retrieval, slug)
+        retrieval.batches(slug).flat_map { |batch| roadmap_batch_lines(retrieval, slug, batch) }
+      end
+
+      def roadmap_batch_lines(retrieval, slug, batch)
+        items = retrieval.roadmap_items(slug).select { |item| item.batch == batch.position }
+        ["## Batch #{batch.position}: #{batch.title}", "", *batch.done_lines.map { |line| "- #{line}" }, "",
+          *items.map { |item| roadmap_item_line(item, retrieval) }, ""]
+      end
+
+      def roadmap_item_line(item, retrieval)
+        state = RoadmapState.of(item, retrieval)
+        mark = (state == "done" || state == "dropped") ? "x" : " "
+        "- [#{mark}] #{item.item} #{item.title} — #{state}"
+      end
+
+      def roadmap_edge_lines(retrieval, slug)
+        retrieval.roadmap_items(slug).map do |item|
+          from = retrieval.roadmap_edges(slug).select { |edge| edge.to == item.item }.map(&:from)
+          "- #{item.item} needs #{from.empty? ? "nothing" : from.join(" ")}"
+        end
+      end
+
+      def roadmap_log_lines(retrieval, slug)
+        retrieval.roadmap_log(slug).map { |line| "- #{line.at} #{line.text}" }
+      end
 
       # The rows of one intent or of the whole store, grouped by intent.
       Contents = Data.define(:groups)

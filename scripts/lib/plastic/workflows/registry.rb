@@ -13,6 +13,9 @@ module Plastic
       :code_check_graph, :code_ready_graph, :code_show_graph,
       # Knowledge graph: typed links between intents and rulings.
       :code_add_link, :code_remove_link,
+      # Roadmaps: batches and items held as rows, with a derived state per item.
+      :code_write_roadmap_batch, :code_add_roadmap_item, :code_show_roadmap, :code_next_roadmap,
+      :code_drop_roadmap_item,
       # Sessions: the one prose line a session writes about itself.
       :code_write_note,
       # Work graph: building and moving the nodes and edges of one intent.

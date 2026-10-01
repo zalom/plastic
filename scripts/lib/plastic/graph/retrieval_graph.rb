@@ -5,6 +5,7 @@ require_relative "../routine_run"
 require_relative "session_reader"
 require_relative "source"
 require_relative "link"
+require_relative "roadmap"
 
 module Plastic
   module Graph
@@ -69,6 +70,34 @@ module Plastic
 
       # Links naming `ref` at either end: a ruling's ref today, any ref later.
       def links(ref) = @databases.fetch(:knowledge).rows(LINKS_SQL, origin: origin_id, ref:).map { |row| Link.from_h(row) }
+
+      ROADMAP_SQL = "SELECT * FROM roadmaps WHERE origin_id = :origin AND slug = :slug"
+      BATCHES_SQL = "SELECT * FROM batches WHERE origin_id = :origin AND roadmap = :slug ORDER BY position"
+      ITEMS_SQL = "SELECT * FROM roadmap_items WHERE origin_id = :origin AND roadmap = :slug ORDER BY batch, position"
+      ROADMAP_EDGES_SQL = "SELECT * FROM roadmap_edges WHERE origin_id = :origin AND roadmap = :slug"
+      ROADMAP_LOG_SQL = "SELECT * FROM roadmap_log WHERE origin_id = :origin AND roadmap = :slug ORDER BY position"
+
+      # One roadmap by slug, or nil when none has been started.
+      def roadmap(slug)
+        row = @databases.fetch(:work).row(ROADMAP_SQL, origin: origin_id, slug:)
+        row && Roadmap.from_h(row)
+      end
+
+      def batches(slug)
+        @databases.fetch(:work).rows(BATCHES_SQL, origin: origin_id, slug:).map { |row| RoadmapBatch.from_h(row) }
+      end
+
+      def roadmap_items(slug)
+        @databases.fetch(:work).rows(ITEMS_SQL, origin: origin_id, slug:).map { |row| RoadmapItem.from_h(row) }
+      end
+
+      def roadmap_edges(slug)
+        @databases.fetch(:work).rows(ROADMAP_EDGES_SQL, origin: origin_id, slug:).map { |row| RoadmapEdge.from_h(row) }
+      end
+
+      def roadmap_log(slug)
+        @databases.fetch(:work).rows(ROADMAP_LOG_SQL, origin: origin_id, slug:).map { |row| RoadmapLogLine.from_h(row) }
+      end
 
       # Kept files with no bytes: a print compares the hash and reads the bytes only to write.
       def kept_files(intent_id = nil) = read(:kept_files, intent_id)

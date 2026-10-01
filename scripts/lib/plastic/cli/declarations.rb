@@ -27,7 +27,10 @@ module Plastic
 
       # One switch the tool takes, as `option :dir, switch: "--dir DIR", text: "where"`,
       # with `default:` for its value when the call leaves it out.
-      def option(name, **shape) = options << Command::Option.new(name:, default: nil, **shape)
+      def option(name, repeatable: false, **shape)
+        default = repeatable ? [] : nil
+        options << Command::Option.new(name:, default:, repeatable:, **shape)
+      end
 
       # Which graphs the tool reads or writes. Every read goes through the
       # retrieval graph; `reads :work` names the records it reads.

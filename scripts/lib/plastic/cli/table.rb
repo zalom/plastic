@@ -33,6 +33,13 @@ module Plastic
       "graph ready" => ["Commands::GraphReady", "List the nodes ready to claim"],
       "graph show" => ["Commands::GraphShow", "Print every node and edge, then reprint graph.json from rows"],
 
+      # Roadmaps: a named plan, held as rows instead of a hand-kept file.
+      "roadmap batch" => ["Commands::RoadmapBatch", "Write one roadmap batch's goal and done criteria"],
+      "roadmap add" => ["Commands::RoadmapAdd", "Add an item to a roadmap batch, after whichever items it waits on"],
+      "roadmap show" => ["Commands::RoadmapShow", "Print a roadmap's batches and items, then reprint its file"],
+      "roadmap next" => ["Commands::RoadmapNext", "Print the first ready item, or what is in the way"],
+      "roadmap drop" => ["Commands::RoadmapDrop", "Mark a roadmap item dropped; its edges stay as rows"],
+
       # Hooks: the harness calls these on an event; see docs/contributing/ARCHITECTURE.md.
       "hook resume" => ["Hooks::Resume", "SessionStart: print the state the rows carry"],
       "hook record" => ["Hooks::Record", "Stop: stamp the turn, renew locks, run the stop gate"]
