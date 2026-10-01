@@ -136,8 +136,10 @@ The following table lists the same classes. Each one sits in the `Plastic` modul
 | `Graph::RetrievalGraph` | The reads of a command, one table at a time. |
 | `Graph::IntentWriter` | Checks and writes a new intent: its Luhmann id, its rows and its folder. |
 | `Graph::Printer` | Prints files from their rows and records each hash in `printed`. |
-| `Graph::Reader` | Reads a file changed by hand back into its rows. |
+| `Graph::Reader` | Reads a file changed by hand back into its rows: `store/index.json` through `IndexFile`, and a file of an intent folder through `IntentFile`. |
 | `Graph::Sync` | Compares each file, its rows and its last print, and plans and applies a sync. |
+| `Graph::Sync::Resolution` | Holds how one sync settles a conflict: `--overwrite PATH`, `--overwrite` alone, or `--merge`. |
+| `Graph::LuhmannId` | Splits, sorts and extends Luhmann ids, such as the next child of `307a`. |
 | `Graph::LegacyIndex` | Reads the `INDEX.md` of a store written before `store/index.json`. |
 | `Hook` | The base class of a hook command. It prints a plain text reply and always exits 0. |
 
