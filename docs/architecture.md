@@ -158,6 +158,23 @@ The frontmatter graph drifts over time as it is edited by hand, so two pieces of
 
 Each store's `INDEX.md` is a structure note, not a table of contents: it groups intents by meaning and records where each one sits in the person's attention (`## Active`, `## Future`, `## Clusters`, `## Abandoned`, `## Completed`). It does not record lifecycle stage, since that is derived from the files.
 
+## the work graph
+
+Each store's `work_graph.db` holds one intent's nodes and the edges between them, alongside
+its `intents`, `clusters` and `savepoints` tables. A node is one unit of work (`plastic node
+add`); it moves through `open`, `claimed`, `done`, `failed` and `parked`, or leaves the graph
+as `removed` (`Graph::Node::MOVES` is the one source of which moves are legal). An edge
+(`plastic edge add`) says one node needs another; a guarded SQL insert refuses a self edge, an
+edge touching a missing or removed node, and an edge that would close a loop.
+
+`Graph::NodeWriter` and `Graph::EdgeWriter` own these writes. Every state move is a guarded
+`UPDATE ... WHERE state IN (...)`, so two attempts to move the same node cannot both win; the
+one that finds no row back re-reads the node to report why. Claiming a node caps at three
+retries: the fourth claim parks the node with a standing question instead of claiming it, so a
+node that keeps failing surfaces to the owner rather than looping. The full command set:
+`node add`, `node remove`, `node claim`, `node release`, `node done`, `node fail`, `node park`,
+`node answer`, `edge add`, `edge remove`.
+
 ## component map
 
 The tooling layer is thin and sits on top of the store. The parts that supply determinism do so by construction, never by judgement.

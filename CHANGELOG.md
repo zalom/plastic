@@ -3,6 +3,10 @@
 Release history for Plastic, one line per cut. Commit-level detail lives in
 [GitHub Releases](https://github.com/zalom/plastic/releases).
 
+## Unreleased
+
+- The work graph: `node add`, `node remove`, `node claim`, `node release`, `node done`, `node fail`, `node park`, `node answer`, `edge add`, `edge remove`. Nodes move through guarded state changes; a node claimed a fourth time parks with a question instead of looping.
+
 ## 2.0.3
 
 - Documentation follows the public CLI and distinguishes implemented behavior from proposals.
