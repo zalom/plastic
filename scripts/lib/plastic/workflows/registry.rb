@@ -19,6 +19,8 @@ module Plastic
       :code_remove_roadmap_edge,
       # Sessions: the one prose line a session writes about itself.
       :code_write_note,
+      # Archive: taking an intent off the checkout and printing it back.
+      :code_archive_intent, :code_restore_intent,
       # Work graph: building and moving the nodes and edges of one intent.
       :code_add_node, :code_remove_node, :code_add_edge, :code_remove_edge,
       :code_claim_node, :code_release_node, :code_done_node, :code_fail_node, :code_park_node, :code_answer_node

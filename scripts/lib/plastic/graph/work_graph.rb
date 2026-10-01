@@ -8,6 +8,7 @@ require_relative "ruling_writer"
 require_relative "link_writer"
 require_relative "roadmap_writer"
 require_relative "roadmap_state"
+require_relative "archive_writer"
 require_relative "session_writer"
 require_relative "printer"
 require_relative "prints"
@@ -90,6 +91,19 @@ module Plastic
 
       def sync_apply(plan) = sync.apply(plan)
 
+      # Returns [ok, problem, kind]; kind is :failure or :refusal, nil on success.
+      def archive_intent(intent_id)
+        @folder.ignore_databases
+        archives.archive(intent_id)
+      end
+
+      # Returns [ok, problem, kind]; kind is :failure, nil on success. Prints the folder back on success.
+      def restore_intent(intent_id)
+        ok, problem, kind = archives.restore(intent_id)
+        print_intent(intent_id) if ok
+        [ok, problem, kind]
+      end
+
       private
 
       def sessions = (@sessions ||= SessionWriter.new(@databases.fetch(:home), store: @retrieval.store))
@@ -107,6 +121,8 @@ module Plastic
       def roadmaps = (@roadmaps ||= RoadmapWriter.new(@databases, @retrieval, session: @session))
 
       def sync = (@sync ||= Sync.new(folder: @folder, retrieval: @retrieval, databases: @databases))
+
+      def archives = (@archives ||= ArchiveWriter.new(@databases, @retrieval, @folder, session: @session))
 
       def start_problem(item)
         return "item #{item.item} already has an intent" if item.intent_id

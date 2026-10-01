@@ -17,6 +17,8 @@ module Plastic
       "auto start" => ["Commands::AutoStart", "Take the delivery lock and set the intent active"],
       "intent link" => ["Commands::IntentLink", "Write a typed link from an intent to a ref"],
       "intent unlink" => ["Commands::IntentUnlink", "Remove a link"],
+      "intent archive" => ["Commands::IntentArchive", "Take a done, abandoned or future intent off the checkout"],
+      "intent restore" => ["Commands::IntentRestore", "Print an archived intent's folder back from its rows"],
 
       # Work graph
       "node add" => ["Commands::NodeAdd", "Add a node to an intent's work graph"],

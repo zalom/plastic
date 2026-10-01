@@ -45,7 +45,7 @@ module Plastic
 
       def index(retrieval)
         data = { "store" => retrieval.store, "origin_id" => retrieval.origin_id,
-                 "intents" => retrieval.intents.map(&:index_h), "clusters" => clusters(retrieval.clusters) }
+                 "intents" => retrieval.unarchived_intents.map(&:index_h), "clusters" => clusters(retrieval.clusters) }
         Print.text(StoreFolder::INDEX, :work, "#{JSON.pretty_generate(data)}\n")
       end
 
@@ -58,7 +58,7 @@ module Plastic
       # Every file of the store, read in five queries whatever the number of intents.
       def of_store(retrieval)
         rows = Contents.read(retrieval)
-        [index(retrieval), *retrieval.intents.flat_map { |intent| of_intent(retrieval, intent, rows) }]
+        [index(retrieval), *retrieval.unarchived_intents.flat_map { |intent| of_intent(retrieval, intent, rows) }]
       end
 
       def of_intent(retrieval, intent, rows = nil)

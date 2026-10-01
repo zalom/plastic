@@ -6,6 +6,7 @@ require_relative "session_reader"
 require_relative "source"
 require_relative "link"
 require_relative "roadmap"
+require_relative "archive"
 
 module Plastic
   module Graph
@@ -52,6 +53,9 @@ module Plastic
 
       def intent(intent_id) = intents.find { |intent| intent.intent_id == intent_id }
 
+      # Intents with no live archive row: what store/index.json lists and what sync prints.
+      def unarchived_intents = intents.reject { |intent| archived?(intent.intent_id) }
+
       def clusters = read(:clusters)
 
       def documents(intent_id = nil) = read(:documents, intent_id)
@@ -70,6 +74,27 @@ module Plastic
 
       # Links naming `ref` at either end: a ruling's ref today, any ref later.
       def links(ref) = @databases.fetch(:knowledge).rows(LINKS_SQL, origin: origin_id, ref:).map { |row| Link.from_h(row) }
+
+      LINKING_SQL = "SELECT * FROM links WHERE origin_id = :origin AND (to_ref = :id OR to_ref LIKE :prefix)"
+
+      # Links whose to_ref is `id` or a ruling of it, such as "ID/D1".
+      def linking(id)
+        @databases.fetch(:knowledge).rows(LINKING_SQL, origin: origin_id, id:, prefix: "#{id}/%").map { |row| Link.from_h(row) }
+      end
+
+      ARCHIVE_SQL = "SELECT * FROM archives WHERE origin_id = :origin AND intent_id = :intent_id"
+
+      # The intent's archive row, or nil when it was never archived.
+      def archive_of(intent_id)
+        row = @databases.fetch(:work).row(ARCHIVE_SQL, origin: origin_id, intent_id:)
+        row && Archive.from_h(row)
+      end
+
+      # True while the intent has an archive row with no restored_at.
+      def archived?(intent_id)
+        archive = archive_of(intent_id)
+        !archive.nil? && archive.restored_at.nil?
+      end
 
       ROADMAP_SQL = "SELECT * FROM roadmaps WHERE origin_id = :origin AND slug = :slug"
       BATCHES_SQL = "SELECT * FROM batches WHERE origin_id = :origin AND roadmap = :slug ORDER BY position"

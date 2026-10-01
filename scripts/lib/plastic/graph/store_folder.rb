@@ -45,6 +45,9 @@ module Plastic
 
       def delete(rel) = FileUtils.rm_f(path(rel))
 
+      # Removes a whole folder of the checkout, such as an archived intent's.
+      def remove_dir(rel) = FileUtils.rm_rf(path(rel))
+
       def intent_dirs = Dir.glob("store/*--*/", base: root).map { |dir| dir.chomp("/") }.sort
 
       # Every file of every intent folder, dot files included.
