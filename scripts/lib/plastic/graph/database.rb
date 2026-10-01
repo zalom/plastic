@@ -10,7 +10,7 @@ module Plastic
     # One SQLite file. The rows are the authority; the files are printed
     # from them. `engine` runs each script, by default the sqlite3 program.
     #
-    # A write is one transaction in one sqlite3 process. BEGIN IMMEDIATE takes
+    # A write is one transaction in the file's one sqlite3 session. BEGIN IMMEDIATE takes
     # the write lock first, so two calls that both ask for the next intent id
     # get two ids. Each database counts the rows that this call wrote, and the
     # report prints the counts on its `wrote:` line.

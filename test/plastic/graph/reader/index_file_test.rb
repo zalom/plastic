@@ -3,6 +3,8 @@
 require_relative "../../../test_helper"
 
 class IndexFileTest < Plastic::TestCase
+  fixtures :alpha
+
   IndexFile = Plastic::Graph::Reader::IndexFile
 
   def index(intents, clusters) = JSON.generate({ "intents" => intents, "clusters" => clusters })
@@ -14,7 +16,6 @@ class IndexFileTest < Plastic::TestCase
   def put_old_cluster = store_graphs.databases[:work].transaction { |batch| batch.put(:clusters, { name: "Old", intent_id: "1" }) }
 
   def test_a_hand_edit_renames_an_intent_and_replaces_the_clusters
-    open_intent
     put_old_cluster
     apply(index([entry(title: "Renamed")], [{ "name" => "Core", "intents" => ["1"] }]))
     read = retrieval
@@ -23,7 +24,6 @@ class IndexFileTest < Plastic::TestCase
   end
 
   def test_an_index_with_no_lists_clears_the_clusters
-    open_intent
     put_old_cluster
     apply("{}")
 
@@ -46,7 +46,6 @@ class IndexFileTest < Plastic::TestCase
   end
 
   def test_a_field_the_rows_do_not_hold_is_ignored
-    open_intent
     apply(index([entry(title: "Noted", note: "kept out")], []))
 
     assert_equal "Noted", retrieval.intent("1").title

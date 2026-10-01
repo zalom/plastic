@@ -209,9 +209,12 @@ An open routine run restarts at the first workflow with its saved facts. A step 
 state has a done check, so a change that already happened is skipped and never runs twice.
 
 `Graph::Database` hands each read or write to its engine. The default engine,
-`Graph::Database::Program`, runs one `sqlite3` process for each script. A write is one
-transaction that takes the write lock first. The first script of a process carries the schema,
-so a new home or store needs no setup step. The report counts the rows a call wrote and prints them on
+`Graph::Database::Program`, keeps one `sqlite3` process per database file for the life of the
+Ruby process, the way a Rails process keeps one connection. The `ConnectionPool` holds these
+sessions and closes them at exit. Each script goes in on the process's input. A failed statement
+ends the process, so an open transaction rolls back, and the next call opens a new session. A
+write is one transaction that takes the write lock first. The first script of a `Database`
+carries the schema, so a new home or store needs no setup step. The report counts the rows a call wrote and prints them on
 its `wrote:` line.
 
 ### The hook reply

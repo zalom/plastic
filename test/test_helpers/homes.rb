@@ -29,8 +29,9 @@ module Plastic
         def load
           copy_store
           graphs.databases.each_value { |database| database.rows("SELECT 1") }
-          @data.fetch("intents", []).each { |intent| open(intent) }
+          @data.fetch("intents", []).each { |intent| open_intent(intent) }
           sync_up if @data["sync"]
+          Plastic::Graph::Database::Program.disconnect
         end
 
         private
@@ -47,7 +48,7 @@ module Plastic
           FileUtils.cp_r(File.join(FIXTURES, store), store_root)
         end
 
-        def open(fields)
+        def open_intent(fields)
           work = graphs.work
           intent = work.write_intent(title: fields.fetch("title"))
           work.print_intent(intent.intent_id)

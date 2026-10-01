@@ -1,17 +1,18 @@
 # frozen_string_literal: true
 
-require "fileutils"
 require "json"
-require "open3"
+require_relative "session"
 
 module Plastic
   module Graph
     class Database
-      # The sqlite3 program, which runs every script of a database: one
-      # process per script, with each result set printed as JSON.
+      # The sqlite3 program, which runs every script of a database through
+      # the file's one Session in the ConnectionPool, with each result set
+      # printed as JSON.
       class Program
-        def initialize(search_path = ENV.fetch("PATH", ""))
+        def initialize(search_path = ENV.fetch("PATH", ""), pool: ConnectionPool)
           @search_path = search_path
+          @pool = pool
         end
 
         # Fails before the first call when sqlite3 is not on the search path.
@@ -21,28 +22,16 @@ module Plastic
         end
 
         # The result sets of one script run on the file at `path`.
-        def call(path, script)
-          out, err, status = Open3.capture3("sqlite3", "-json", "-bail", folder(path), stdin_data: script)
-          raise Error, "#{File.basename(path)}: #{err.strip}" unless status.success?
+        def call(path, script) = Program.result_sets(@pool.for(path).call(script))
 
-          Program.result_sets(out)
-        end
+        # Ends every session, as a test does after each test.
+        def self.disconnect = ConnectionPool.disconnect
 
         # Each set prints as one JSON array; a raw newline never occurs
         # inside a JSON string, so "]\n[" only separates two sets.
         def self.result_sets(out)
           text = out.strip
           text.empty? ? [] : JSON.parse("[#{text.gsub("]\n[", "],[")}]")
-        end
-
-        private
-
-        # The database's path, with its folder made first.
-        def folder(path)
-          FileUtils.mkdir_p(File.dirname(path))
-          path
-        rescue SystemCallError => error
-          raise Error, "#{File.basename(path)}: #{error.message}"
         end
       end
     end

@@ -51,6 +51,9 @@ module Plastic
       FileUtils.cp_r("#{Homes.template(self.class.fixtures)}/.", @home)
     end
 
-    def teardown = FileUtils.remove_entry(@home)
+    def teardown
+      Plastic::Graph::Database::Program.disconnect
+      FileUtils.remove_entry(@home)
+    end
   end
 end

@@ -71,7 +71,8 @@ The kernel has two layers of tests:
   `Plastic::TestCase` from `test/test_helper.rb`. A test gets its own copy of a home built once
   per process from a file under `test/fixtures/homes/`, and a class picks a named home with
   `fixtures`. The tests run the real `Graph::Database` through the `sqlite3` program, so each
-  one reads and writes the state the commands would.
+  one reads and writes the state the commands would. The base class closes every database
+  connection after each test, as Rails resets its state after each test.
 - **Acceptance documents** under `varar/` run each command of the storage kernel in a child
   Ruby process, against a fresh home. The steps read the rows back through the `sqlite3`
   program. `bin/plastic` does not route to the kernel yet, so the steps call the kernel's

@@ -7,7 +7,7 @@ require_relative "../test_helper"
 class NoVersionControlTest < Plastic::TestCase
   ROOT = File.expand_path("../../scripts/lib", __dir__)
   SOURCES = [File.join(ROOT, "plastic.rb"), *Dir.glob(File.join(ROOT, "plastic", "**", "*.rb"))].freeze
-  SPAWNS = /\b(?:system|spawn|exec|popen|capture2e?|capture3|pipeline\w*)\b|`|%x/
+  SPAWNS = /\b(?:system|spawn|exec|popen\w*|capture2e?|capture3|pipeline\w*)\b|`|%x/
 
   def test_the_kernel_has_sources
     assert_operator SOURCES.size, :>, 20
@@ -23,6 +23,6 @@ class NoVersionControlTest < Plastic::TestCase
     calls = SOURCES.flat_map { |path| File.readlines(path).reject { |line| line.strip.start_with?("#") }.grep(SPAWNS) }
 
     assert_equal 1, calls.size
-    assert_includes calls.first, 'Open3.capture3("sqlite3", '
+    assert_includes calls.first, 'Open3.popen3("sqlite3", '
   end
 end

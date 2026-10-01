@@ -3,12 +3,13 @@
 require_relative "../../test_helper"
 
 class ReaderTest < Plastic::TestCase
+  fixtures :alpha
+
   Reader = Plastic::Graph::Reader
 
   def reader(intents = retrieval.intents) = Reader.new(folder, intents.to_h { |intent| [intent.intent_id, intent] }, origin)
 
   def test_a_read_names_its_path_its_database_and_its_line
-    open_intent
     write("store/1--alpha/spec.md", "# Spec\n")
     read = reader.read("store/1--alpha/spec.md")
 
@@ -16,8 +17,6 @@ class ReaderTest < Plastic::TestCase
   end
 
   def test_index_json_reads_into_the_work_graph
-    open_intent
-
     assert_equal :work, reader.read("store/index.json").database
   end
 
@@ -28,13 +27,10 @@ class ReaderTest < Plastic::TestCase
   end
 
   def test_a_folder_whose_slug_differs_from_the_row_is_refused
-    open_intent
-
     assert_raises(Plastic::Invalid) { reader.read("store/1--other/spec.md") }
   end
 
   def test_a_kept_print_holds_the_hash_of_the_file_as_it_is
-    open_intent
     write("store/1--alpha/savepoint.md", "")
     print = reader.read("store/1--alpha/savepoint.md").kept_print(folder)
 
