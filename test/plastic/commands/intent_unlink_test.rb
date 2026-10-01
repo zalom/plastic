@@ -19,6 +19,7 @@ class IntentUnlinkTest < Plastic::TestCase
 
     assert_equal 0, result.code
     links = store_graphs.retrieval.links("1")
+
     assert_equal 1, links.size
     assert_equal "chain", links.first.kind
   end

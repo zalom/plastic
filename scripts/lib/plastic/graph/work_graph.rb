@@ -5,6 +5,7 @@ require_relative "intent_writer"
 require_relative "node_writer"
 require_relative "edge_writer"
 require_relative "ruling_writer"
+require_relative "link_writer"
 require_relative "session_writer"
 require_relative "printer"
 require_relative "prints"
@@ -24,6 +25,7 @@ module Plastic
         :park_node, :answer_node
       def_delegators :edges, :add_edge, :remove_edge
       def_delegators :rulings, :add_ruling
+      def_delegators :links, :add_link, :remove_link
 
       def initialize(databases, folder:, retrieval:, session: nil)
         @databases = databases
@@ -52,6 +54,10 @@ module Plastic
 
       def ref_line(ref) = intents.ref_line(ref)
 
+      def link_target_problem(id, target) = links.target_problem(id, target)
+
+      def link_refusal(id, target, kind) = links.refusal(id, target, kind)
+
       # Prints store/index.json and every file of one intent; returns the paths written.
       def print_intent(intent_id)
         @folder.ignore_databases
@@ -74,6 +80,8 @@ module Plastic
       def edges = (@edges ||= EdgeWriter.new(@databases, @retrieval))
 
       def rulings = (@rulings ||= RulingWriter.new(@databases, @retrieval, session: @session))
+
+      def links = (@links ||= LinkWriter.new(@databases, @retrieval))
 
       def sync = (@sync ||= Sync.new(folder: @folder, retrieval: @retrieval, databases: @databases))
     end

@@ -15,6 +15,7 @@ class IntentLinkTest < Plastic::TestCase
 
       assert_equal 0, result.code
       links = store_graphs.retrieval.links("1").select { |link| link.kind == kind }
+
       assert_equal 1, links.size
       assert_equal "2", links.first.to_ref
     end

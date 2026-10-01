@@ -9,10 +9,11 @@ module Plastic
       # Declares the whole chain, so a second load of the class replaces the first.
       [facts, steps, outcomes].each(&:clear)
 
-      sets :problem, :intent_id, :printed_paths
+      sets :problem, :intent_id, :linked, :printed_paths
 
       read "check the call" do |context|
-        context[:problem] = context.work.intent_problem(parent_id: context.parent_id, ref: context.ref, status: context.status)
+        context[:problem] = context.work.intent_problem(parent_id: context.parent_id, ref: context.ref, status: context.status) ||
+          after_problem(context)
       end
 
       gate "%{problem}", stops: :failure, pass: ->(context) { context.problem.nil? }
@@ -21,6 +22,11 @@ module Plastic
         intent = context.work.write_intent(title: context.title, parent_id: context.parent_id, ref: context.ref, kind: context.kind,
           status: context.status, slug: context.slug)
         context[:intent_id] = intent.intent_id
+      end
+
+      step "link to what it grows out of", done: ->(context) { context.after.nil? || !context.linked.nil? } do |context|
+        context.work.add_link(from_ref: context.intent_id, to_ref: context.after, kind: "source")
+        context[:linked] = true
       end
 
       step "print its files", done: ->(context) { !context.printed_paths.nil? } do |context|
@@ -34,6 +40,10 @@ module Plastic
       end
 
       outcome :done, offers: "plastic next", because: "intent %{intent_id} has its rows and its printed files"
+
+      def self.after_problem(context)
+        "no intent #{context.after} in this store to link after" if context.after && !context.retrieval.intent(context.after)
+      end
     end
   end
 end

@@ -13,6 +13,8 @@ module Plastic
       "sync down" => ["Commands::SyncDown", "Print the rows that changed into files"],
       "session note" => ["Commands::SessionNote", "Write the one prose line of this session"],
       "intent rule" => ["Commands::IntentRule", "Write an owner ruling, with --supersedes to replace an older one"],
+      "intent link" => ["Commands::IntentLink", "Write a typed link from an intent to a ref"],
+      "intent unlink" => ["Commands::IntentUnlink", "Remove a link"],
 
       # Work graph
       "node add" => ["Commands::NodeAdd", "Add a node to an intent's work graph"],

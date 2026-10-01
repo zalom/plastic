@@ -29,12 +29,19 @@ class IntentNewTest < Plastic::TestCase
     open_intent
 
     result = plastic("intent", "new", "Beta", "--after", "1", table: Plastic::CLI::TABLE)
+    links = store_graphs.retrieval.links("1")
 
     assert_equal 0, result.code
-    links = store_graphs.retrieval.links("1")
     assert_equal 1, links.size
-    assert_equal "2", links.first.from_ref
-    assert_equal "source", links.first.kind
+  end
+
+  def test_after_links_the_new_intent_to_id_as_a_source
+    open_intent
+    plastic("intent", "new", "Beta", "--after", "1", table: Plastic::CLI::TABLE)
+
+    link = store_graphs.retrieval.links("1").first
+
+    assert_equal ["2", "source"], [link.from_ref, link.kind]
   end
 
   def test_after_naming_a_missing_intent_fails_with_no_intent_written
