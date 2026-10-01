@@ -39,7 +39,7 @@ class ScopeTest < Plastic::TestCase
   def test_the_directory_names_its_project
     repo = File.join(@home, "repo")
     FileUtils.mkdir_p(File.join(repo, "lib"))
-    projects("plastic:\n  path: #{repo}\n")
+    projects("projects:\n  plastic:\n    path: #{repo}\n")
 
     assert_equal "plastic", scope(directory: File.join(repo, "lib")).slug
     assert_equal "plastic", scope(directory: repo).slug
@@ -49,7 +49,7 @@ class ScopeTest < Plastic::TestCase
     outer = File.join(@home, "outer")
     inner = File.join(outer, "inner")
     FileUtils.mkdir_p(inner)
-    projects("outer:\n  path: #{outer}\ninner:\n  path: #{inner}\n")
+    projects("projects:\n  outer:\n    path: #{outer}\n  inner:\n    path: #{inner}\n")
 
     assert_equal "inner", scope(directory: inner).slug
   end
@@ -57,7 +57,7 @@ class ScopeTest < Plastic::TestCase
   def test_a_sibling_with_a_shared_prefix_is_not_inside
     repo = File.join(@home, "app")
     FileUtils.mkdir_p([repo, "#{repo}2"])
-    projects("app:\n  path: #{repo}\n")
+    projects("projects:\n  app:\n    path: #{repo}\n")
 
     assert_equal "global", scope(directory: "#{repo}2").slug
   end
@@ -65,13 +65,21 @@ class ScopeTest < Plastic::TestCase
   def test_a_directory_that_does_not_exist_yet_still_resolves
     repo = File.join(@home, "repo")
     FileUtils.mkdir_p(repo)
-    projects("plastic:\n  path: #{repo}\n")
+    projects("projects:\n  plastic:\n    path: #{repo}\n")
 
     assert_equal "plastic", scope(directory: File.join(repo, "not", "yet")).slug
   end
 
+  def test_a_nested_file_with_other_top_level_keys_still_resolves
+    repo = File.join(@home, "repo")
+    FileUtils.mkdir_p(repo)
+    projects("governing_docs: []\nprojects:\n  plastic:\n    path: #{repo}\nrelease: {}\nagents: {}\n")
+
+    assert_equal "plastic", scope(directory: repo).slug
+  end
+
   def test_a_project_with_no_path_matches_nothing
-    projects("plastic: true\n")
+    projects("projects:\n  plastic: true\n")
 
     assert_equal({ "plastic" => "" }, scope.projects)
     assert_equal "global", scope.slug
@@ -83,6 +91,20 @@ class ScopeTest < Plastic::TestCase
 
   def test_a_projects_file_that_is_not_a_map_stops_the_call
     projects("- plastic\n")
+    error = assert_raises(Plastic::CLI::Scope::BrokenProjects) { scope.projects }
+
+    assert_includes error.message, "does not hold a map of projects"
+  end
+
+  def test_a_projects_file_with_no_projects_key_stops_the_call
+    projects("governing_docs: []\n")
+    error = assert_raises(Plastic::CLI::Scope::BrokenProjects) { scope.projects }
+
+    assert_includes error.message, "does not hold a map of projects"
+  end
+
+  def test_a_projects_file_with_a_flat_shape_stops_the_call
+    projects("plastic:\n  path: /tmp/plastic\n")
     error = assert_raises(Plastic::CLI::Scope::BrokenProjects) { scope.projects }
 
     assert_includes error.message, "does not hold a map of projects"

@@ -52,6 +52,8 @@ module Plastic
         misused(error)
       rescue Refusal, Failure => error
         stop(error)
+      rescue Scope::BrokenProjects => error
+        broken(error)
       end
 
       def answer
@@ -89,6 +91,12 @@ module Plastic
         flush unless output.json?
         error.report(output)
         error.exit_code
+      end
+
+      def broken(error)
+        output.flush unless output.json?
+        output.failed(error.message)
+        FAILED
       end
 
       def parsed
