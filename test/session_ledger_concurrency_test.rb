@@ -5,39 +5,52 @@ require "minitest/autorun"
 require "tmpdir"
 require "fileutils"
 require_relative "../scripts/lib/session_ledger"
+# append-ledger has no .rb suffix, so `load` (not `require`/`require_relative`,
+# which refuse an unrecognized extension) is what runs it; it is guarded by
+# $PROGRAM_NAME, so loading it here only defines main() et al., same as any
+# other require.
+load File.expand_path("../scripts/append-ledger", __dir__)
 
 # Intent 297, task 4: the two-process flock race (spec D8). Several processes
 # append to the SAME checklist.md and savepoint.md concurrently; every line
 # must land intact, in an exact and complete count, with no lost or
-# interleaved bytes. Every spawn clears CLAUDE_CODE_SESSION_ID, and every
-# subprocess env carries PLASTIC_HOME and PLASTIC_TMP pointed at the
-# Dir.mktmpdir root, per the hermeticity contract.
+# interleaved bytes. Concurrency is this file's own subject, so each writer
+# below is a real `fork`ed process (a real PID, a real flock on the real
+# file), not a simulation; the code it runs is already loaded in the parent,
+# so forking costs no interpreter boot, only the real process and its real
+# lock contention. Every fork clears CLAUDE_CODE_SESSION_ID, and every
+# forked env carries PLASTIC_HOME and PLASTIC_TMP pointed at the
+# Dir.mktmpdir root, per the hermeticity contract. Every race here uses a
+# fixed child count and an explicit wait on every child; none of it asserts
+# on timing.
 class SessionLedgerConcurrencyTest < Minitest::Test
-  APPEND_LEDGER = File.expand_path("../scripts/append-ledger", __dir__)
-  LIB = File.expand_path("../scripts/lib/session_ledger.rb", __dir__)
   TEMPLATES = File.expand_path("../templates", __dir__)
 
   WRITER_SESSIONS = %w[aaaaaaa1 aaaaaaa2 aaaaaaa3 aaaaaaa4 aaaaaaa5 aaaaaaa6].freeze
   APPENDS_PER_WRITER = 30
 
-  # A small in-process worker: loops APPENDS_PER_WRITER times inside ONE
-  # spawned process, calling SessionLedger.append_line directly (the same
-  # locked-write path scripts/append-ledger's pending verb calls), so the
-  # appends actually contend against each other rather than a fresh process
-  # winning the lock in turn.
-  WORKER_SCRIPT = <<~'RUBY'
-    session = ARGV[0]
-    path = ARGV[1]
-    header = ARGV[2]
-    count = ARGV[3].to_i
-    lib = ARGV[4]
-    require lib
-    count.times do |i|
-      summary = "#{session}-#{i}"
-      line = SessionLedger.checklist_line(:pending, session, "plastic", summary)
-      SessionLedger.append_line(path, line, header: header)
+  # Runs `block` in a real forked child under `env`, returning the pid. The
+  # child's own exit code is set to 1 (not raised past the fork boundary) on
+  # any exception `main` itself does not already turn into `exit(code)`, so
+  # `reap` below always has a real process exit status to check.
+  def fork_with_env(env)
+    fork do
+      env.each { |k, v| ENV[k] = v }
+      yield
+    rescue SystemExit
+      raise
+    rescue Exception => e # rubocop:disable Lint/RescueException -- a child process must never re-raise into the test runner
+      warn "#{e.class}: #{e.message}"
+      exit!(1)
     end
-  RUBY
+  end
+
+  def reap(pids)
+    pids.each do |pid|
+      _pid, status = Process.wait2(pid)
+      refute_equal false, status.success?, "a worker process exited non-zero"
+    end
+  end
 
   def setup
     @home = Dir.mktmpdir("session-ledger-race-home")
@@ -61,15 +74,13 @@ class SessionLedgerConcurrencyTest < Minitest::Test
 
   def spawn_worker(session)
     header = SessionLedger.checklist_header(@day)
-    IO.popen(base_env, [RbConfig.ruby, "-e", WORKER_SCRIPT, session, @checklist_path, header,
-                        APPENDS_PER_WRITER.to_s, LIB])
-  end
-
-  def reap(handles)
-    handles.each do |io|
-      io.read
-      io.close
-      refute_equal false, $?.success?, "a worker process exited non-zero"
+    path = @checklist_path
+    fork_with_env(base_env) do
+      APPENDS_PER_WRITER.times do |i|
+        summary = "#{session}-#{i}"
+        line = SessionLedger.checklist_line(:pending, session, "plastic", summary)
+        SessionLedger.append_line(path, line, header: header)
+      end
     end
   end
 
@@ -138,12 +149,15 @@ class SessionLedgerConcurrencyTest < Minitest::Test
 
   def test_concurrent_savepoint_appends_leave_every_line_intact_and_exact
     writers = 6
-    handles = (1..writers).map do |i|
-      IO.popen(base_env, [RbConfig.ruby, APPEND_LEDGER, "--store", @store, "--templates", TEMPLATES,
-                          "--day", @day, "--session", "bbbbbbb#{i}", "--project", "plastic",
-                          "savepoint", "--event", "Note", "concurrent note #{i}"])
+    store = @store
+    day = @day
+    pids = (1..writers).map do |i|
+      fork_with_env(base_env) do
+        main(["--store", store, "--templates", TEMPLATES, "--day", day, "--session", "bbbbbbb#{i}",
+              "--project", "plastic", "savepoint", "--event", "Note", "concurrent note #{i}"])
+      end
     end
-    reap(handles)
+    reap(pids)
 
     content = File.read(@savepoint_path)
     lines = content.lines
@@ -190,24 +204,17 @@ class SessionLedgerConcurrencyTest < Minitest::Test
       env = { "CLAUDE_CODE_SESSION_ID" => nil, "PLASTIC_HOME" => home, "PLASTIC_TMP" => tmp }
 
       run_append_ledger = lambda do |*args|
-        full = [RbConfig.ruby, APPEND_LEDGER, "--store", store, "--templates", TEMPLATES,
-                "--day", day, "--session", session, "--project", "plastic", *args]
-        IO.popen(env, full, err: [:child, :out], &:read)
+        fork_with_env(env) do
+          main(["--store", store, "--templates", TEMPLATES, "--day", day, "--session", session,
+                "--project", "plastic", *args])
+        end
       end
 
-      run_append_ledger.call("pending", "First item")
-      run_append_ledger.call("pending", "Second item")
+      reap([run_append_ledger.call("pending", "First item")])
+      reap([run_append_ledger.call("pending", "Second item")])
 
-      handles = 2.times.map do
-        IO.popen(env, [RbConfig.ruby, APPEND_LEDGER, "--store", store, "--templates", TEMPLATES,
-                       "--day", day, "--session", session, "--project", "plastic",
-                       "promote", "--savepoint"], err: [:child, :out])
-      end
-      handles.each do |io|
-        io.read
-        io.close
-        refute_equal false, $?.success?, "a promote --savepoint process exited non-zero"
-      end
+      pids = 2.times.map { run_append_ledger.call("promote", "--savepoint") }
+      reap(pids)
 
       checklist = File.read(SessionLedger.checklist_path(store, day))
       open_summaries = checklist.lines.map { |l| SessionLedger.parse_checklist_line(l) }.compact
