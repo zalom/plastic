@@ -89,8 +89,7 @@ module Plastic
       @exit_code = value.report(output)
     end
 
-    # The open routine run for this tool and subject, or a new one. Only a
-    # tool that writes keeps its routine run as a row.
+    # The open routine run for this tool and subject, or a new one.
     def open_routine_run
       found = graphs.retrieval.routine_run(words, subject) if keeps_routine_run?
       found&.open? ? found : RoutineRun.fresh(words, subject)
@@ -106,6 +105,9 @@ module Plastic
       graphs.work.save_routine_run(routine_run) if keeps_routine_run?
     end
 
-    def keeps_routine_run? = self.class.writes.any?
+    # Every command keeps its routine run, so the session that reads a call
+    # back sees the same row a write left: a read's facts and next command
+    # are call memory too.
+    def keeps_routine_run? = true
   end
 end

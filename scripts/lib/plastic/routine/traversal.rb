@@ -9,8 +9,8 @@ module Plastic
     # the call or an edge reaches :noop. The routine run closes on the value
     # that ends the pass.
     class Traversal
-      # `save` keeps a routine run; the routine passes a no-op when the tool
-      # writes nothing.
+      # `save` keeps every routine run the pass produces, read tool and
+      # write tool alike.
       def initialize(chain, ctx, routine_run, &save)
         @chain = chain
         @ctx = ctx
