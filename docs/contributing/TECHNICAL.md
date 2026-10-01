@@ -24,13 +24,30 @@ The following table says when each step passes.
 | ---- | ----------- |
 | Lint | RuboCop reports no offense on the changed files. |
 | Tests | The tests for the changed files pass. |
+| Timing check | Every test file ran under 5 seconds and every Varar document under 10, on a re-run when the first run went over. |
 | Patch coverage | Every changed line and branch is covered. |
-| Mutation testing | Mutineer kills at least 75 percent of the mutants on the changed code. |
+| Mutation testing | Every mutant on the changed code has a verdict, and killed mutants are at least 75 percent of the total. |
 | CRAP scores | No changed method scores above 30. |
 | Code smells | Reek finds no smell in the changed sources. |
 | RubyCritic score | The changed sources that no todo list names score 90 or more out of 100. |
 
 A lint failure does not stop the other steps. Only red tests stop the gate early.
+
+The Tests step loads `bin/lib/test_timings.rb`, a Minitest extension that sums each test's
+time into a file under the sandbox `PLASTIC_TMP`, booking a Varar document's tests to the
+document (read from `varar.config.json`) rather than to the gem file that defines them. The
+Timing check step then reads that file: a file or document over its cap is re-run alone
+before it is called red, and the gate prints both times either way. RSpec projects, and
+Minitest run through `bin/rails test`, have no step to load the extension into, so the gate
+skips the Timing check for them and says so.
+
+The Mutation testing step runs `bin/lib/mutation_verdicts.rb`, which removes any report left
+under the sandbox `PLASTIC_TMP` from an earlier run, runs Mutineer with `--format json
+--output` into that same path, and reads only what this run wrote. A mutant Mutineer could not
+give a verdict is re-run alone, one subject at a time with `--only NAME --jobs 1` and the same
+sources and tests, and the gate prints each re-run's subject and seconds. A mutant still
+without a verdict after its re-run fails the step by name; a mutant with no subject to isolate
+(a failure before a worker forked) fails at once, with no re-run.
 
 Lint reads `.rubocop_with_todo.yml`. It is `.rubocop.yml` plus `.rubocop_todo.yml`, the
 generated list of offenses in code written before 2026-09-30. So a lint run reports what the
@@ -41,7 +58,9 @@ sources from their smells, duplication and complexity. It leaves out a file that
 names it left out. When every changed source is older code, the step does not run.
 
 Every step runs under a new `HOME` and `PLASTIC_TMP`. A mutant can turn an injected runner
-into a live call, and the throwaway home keeps that call away from the real one.
+into a live call, and the throwaway home keeps that call away from the real one. The timings
+file the Tests step writes and the mutation report Mutineer writes both live under that same
+`PLASTIC_TMP`, so a mutant that reaches for either file finds only the throwaway copy.
 
 Use the merge base with the target branch as the base commit. An older base makes the gate
 measure lines that the branch did not change. For a branch of `alpha`, the base is
@@ -71,9 +90,16 @@ The kernel has two layers of tests:
 `Plastic::TestCase` from `test/test_helper.rb`, as Rails tests inherit one base class. Each
 process builds one home per fixture under `test/fixtures/homes/` and opens its databases
 once. Every test runs inside a transaction on each of those databases and rolls it back in
-teardown, as Rails does with transactional tests. Teardown also puts back the home's other
-files and closes any database the test opened. The tests run the real `Graph::Database`
-through the `sqlite3` gem, so each one reads and writes the state the commands would.
+teardown, as Rails does with transactional tests. Teardown also resets the home's other
+files: it compares each file's type, size, mode, link target and change time against a
+snapshot taken when the home was built, and touches only what a test changed, instead of
+copying the whole fixture back every time. A restored file's new state is recorded, so a later
+test that leaves it alone does not pay to have it restored again. It never follows a symlink,
+so a link a test made to a folder outside the home never carries the reset into that folder; a
+tracked database and its rollback journal are left to the transaction rollback instead of this
+file comparison. Teardown also closes any database the test opened. The tests run the real
+`Graph::Database` through the `sqlite3` gem, so each one reads and writes the state the
+commands would.
 - **Acceptance documents** under `varar/` run each command of the storage kernel in a child
   Ruby process, against a fresh home. The steps read the rows back through the `sqlite3`
   gem, on a connection of their own. `bin/plastic` does not route to the kernel yet, so the steps call the kernel's
