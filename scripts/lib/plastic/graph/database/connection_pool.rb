@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
 require "fileutils"
-# The launcher starts Ruby with --disable-gems; the kernel loads RubyGems
-# itself, once, when it first opens a database.
-require "rubygems" unless defined?(Gem)
+# The launcher starts Ruby with --disable-gems, so the kernel loads RubyGems
+# itself. The require does nothing when RubyGems is already loaded.
+require "rubygems"
 require "sqlite3"
 
 module Plastic
