@@ -21,11 +21,23 @@ module ScriptEntry
     def success? = exitstatus.zero?
   end
 
-  def self.call(script_path, method, *args, argv: [])
+  def self.call(script_path, method, *args, argv: [], env: {})
     runner = Object.new.extend(Module.new.tap { |mod| load(script_path, mod) })
-    out, err, exit_code = capture_stdio(argv) { runner.send(method, *args) }
+    out, err, exit_code = with_env(env) { capture_stdio(argv) { runner.send(method, *args) } }
     [out + err, FakeExitStatus.new(exit_code)]
   end
+
+  # Sets each env.each_pair for the duration of the block (a nil value
+  # deletes the key, matching IO.popen's env-hash convention the scripts'
+  # subprocess-driving callers already use), then restores the prior values.
+  def self.with_env(env)
+    original = env.keys.to_h { |key| [key, ENV[key]] }
+    env.each_pair { |key, value| ENV[key] = value }
+    yield
+  ensure
+    original.each_pair { |key, value| ENV[key] = value }
+  end
+  private_class_method :with_env
 
   def self.capture_stdio(argv)
     out = StringIO.new

@@ -9,6 +9,7 @@ require "json"
 require_relative "../scripts/lib/savepoint"
 require_relative "../scripts/lib/lock"
 require_relative "../scripts/lib/report_screen"
+require_relative "support/script_entry"
 # end-intent has no .rb extension (it is a CLI, not a library), so
 # require_relative cannot resolve it; load its top-level function
 # hollow_report_reason directly for n6's unit tests below (its
@@ -50,8 +51,8 @@ class EndIntentTest < Minitest::Test
   def run_end_intent(*args, session: nil)
     env = { "CLAUDE_CODE_SESSION_ID" => nil, "PLASTIC_TMP" => @tmp_bridge }
     argv = session ? args + ["--session", session] : args
-    out = IO.popen(env, [RbConfig.ruby, SCRIPT, *argv], err: [:child, :out], &:read)
-    [out.strip, $?.exitstatus]
+    out, status = ScriptEntry.call(SCRIPT, :main, argv, env: env)
+    [out.strip, status.exitstatus]
   end
 
   # --- fixture builders ------------------------------------------------------
