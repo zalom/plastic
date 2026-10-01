@@ -13,6 +13,8 @@ module Plastic
       "sync down" => ["Commands::SyncDown", "Print the rows that changed into files"],
       "session note" => ["Commands::SessionNote", "Write the one prose line of this session"],
       "intent rule" => ["Commands::IntentRule", "Write an owner ruling, with --supersedes to replace an older one"],
+      "intent spec" => ["Commands::IntentSpec", "Print the grilling method, then the intent's open decisions"],
+      "auto start" => ["Commands::AutoStart", "Take the delivery lock and set the intent active"],
 
       # Work graph
       "node add" => ["Commands::NodeAdd", "Add a node to an intent's work graph"],
