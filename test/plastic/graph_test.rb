@@ -5,12 +5,11 @@ require_relative "support/kernel"
 class GraphTest < Minitest::Test
   def setup
     @home = Dir.mktmpdir("plastic-graph")
-    @engine = KernelFixtures::MemoryEngine.new
   end
 
   def teardown = FileUtils.remove_entry(@home)
 
-  def graphs(store = "plastic") = Plastic::Graph.open(home: @home, store:, engine: @engine)
+  def graphs(store = "plastic") = Plastic::Graph.open(home: @home, store:)
 
   def closed_run(subject = "7")
     Plastic::RoutineRun.fresh("intent end", subject).advance(:code_a, :code_b)

@@ -219,39 +219,7 @@ module KernelFixtures
     def agent(&body) = Class.new(Plastic::AgentWorkflow, &body)
   end
 
-  # The sqlite3 library inside the test process, with one database in
-  # memory per path: the same SQL as the sqlite3 program, and no process
-  # for each script.
-  class MemoryEngine
-    def initialize = @databases = {}
-
-    def check = nil
-
-    def call(path, script)
-      database = (@databases[path] ||= SQLite3::Database.new(":memory:", results_as_hash: true))
-      result_sets(database, script)
-    rescue SQLite3::Exception => error
-      database.rollback if database.transaction_active?
-      raise Plastic::Graph::Database::Error, "#{File.basename(path)}: #{error.message}"
-    end
-
-    private
-
-    # Like the program: one set per statement that returns rows.
-    def result_sets(database, script)
-      sets = []
-      rest = script
-      until rest.strip.empty?
-        statement = database.prepare(rest)
-        sets << statement.execute.to_a
-        rest = statement.remainder
-        statement.close
-      end
-      sets.reject(&:empty?)
-    end
-  end
-
-  # A database in memory, with tables for the database tests.
+  # A database in a temporary folder, with tables for the database tests.
   module DatabaseHome
     Database = Plastic::Graph::Database
     SQL = Plastic::Graph::SQL
@@ -263,8 +231,11 @@ module KernelFixtures
     SQL
 
     def setup
-      @database = Database.new("/memory/work_graph.db", SCHEMA, engine: MemoryEngine.new)
+      @dir = Dir.mktmpdir("plastic-database")
+      @database = Database.new(File.join(@dir, "work_graph.db"), SCHEMA)
     end
+
+    def teardown = FileUtils.remove_entry(@dir)
 
     def insert(name, table: :routine_runs)
       @database.transaction { |batch| batch.insert(table, { name: }) }
@@ -273,8 +244,8 @@ module KernelFixtures
 end
 
 module KernelFixtures
-  # The graphs of the global store of a temporary home, on databases in
-  # memory, and reads of the files they print.
+  # The graphs of the global store of a temporary home, and reads of the
+  # files they print.
   module StoreGraphs
     LEGACY_STORE = File.expand_path("../fixtures/legacy_store", __dir__)
 
@@ -285,13 +256,11 @@ module KernelFixtures
 
     def teardown = FileUtils.remove_entry(@home)
 
-    def engine = (@engine ||= MemoryEngine.new)
-
     def store_root = File.join(@plastic_home, "stores", "global")
 
     def store_path(path) = File.join(store_root, path)
 
-    def store_graphs = Plastic::Graph.open(home: @plastic_home, store: "global", engine:)
+    def store_graphs = Plastic::Graph.open(home: @plastic_home, store: "global")
 
     def origin = Plastic::Graph::Origin.new(@plastic_home).id
 

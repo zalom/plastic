@@ -3,7 +3,6 @@ source "https://rubygems.org"
 group :development, :test do
   gem "minitest", "~> 6.0"
   gem "simplecov", "~> 1.0"
-  gem "sqlite3", "~> 2.9"
   gem "mutineer", "~> 1.0"
   gem "skunk", "~> 0.5"
   gem "rubycritic", "~> 4.12"

@@ -52,7 +52,7 @@ class DatabaseTest < Minitest::Test
   end
 
   def test_open_home_opens_the_home_database
-    databases = Database.open_home("/home", engine: KernelFixtures::MemoryEngine.new)
+    databases = Database.open_home("/home")
 
     assert_equal [:home], databases.keys
     assert_equal ["/home/home.db", "home.db"], [databases[:home].path, databases[:home].file]
@@ -72,9 +72,9 @@ class DatabaseTest < Minitest::Test
   end
 
   def test_an_empty_transaction_runs_nothing
-    database = Database.new("/memory/x.db", "", engine: Object.new)
+    database = Database.new(File.join(@dir, "x.db"), "")
 
-    assert_empty(database.transaction { |_batch| nil })
+    assert_equal [[], false], [database.transaction { |_batch| nil }, File.exist?(File.join(@dir, "x.db"))]
   end
 
   def test_returning_rows_come_back_in_order
@@ -104,23 +104,6 @@ class DatabaseTest < Minitest::Test
     @database.transaction { |batch| batch.insert(:routine_runs, { name: "b", data: SQL::Bytes.new("hi") }) }
 
     assert_equal "hi", @database.row("SELECT CAST(data AS TEXT) AS t FROM routine_runs")["t"]
-  end
-
-  # An engine that keeps each script it is given and returns no rows.
-  class Scripts
-    attr_reader :seen
-
-    def initialize = @seen = []
-
-    def call(_path, script) = (@seen << script) && []
-  end
-
-  def test_the_schema_goes_first_in_the_first_script_alone
-    engine = Scripts.new
-    database = Database.new("/memory/x.db", "CREATE TABLE t(a);", engine:)
-    2.times { database.rows("SELECT a FROM t") }
-
-    assert_equal ["CREATE TABLE t(a);\nSELECT a FROM t", "SELECT a FROM t"], engine.seen
   end
 
   def test_the_program_fails_its_check_on_a_folder_with_no_sqlite3

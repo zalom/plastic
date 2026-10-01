@@ -66,11 +66,9 @@ the live command line retires.
 
 The kernel has two layers of tests:
 
-- **Unit tests** under `test/plastic/` call public methods only. They pass the graphs an
-  in-memory engine, `KernelFixtures::MemoryEngine`, which runs SQLite through the `sqlite3`
-  gem, so no unit test starts a `sqlite3` process. Only `database_test.rb` and
-  `store_database_test.rb` run the `sqlite3` program. A unit test file runs in well under a
-  second, which keeps each mutant of the change gate inside its time limit.
+- **Unit tests** under `test/plastic/` call public methods only. They run the real
+  `Graph::Database` through the `sqlite3` program on a temporary home, so each test reads and
+  writes the state the commands would.
 - **Acceptance documents** under `varar/` run each command of the storage kernel in a child
   Ruby process, against a fresh home. The steps read the rows back through the `sqlite3`
   program. `bin/plastic` does not route to the kernel yet, so the steps call the kernel's
