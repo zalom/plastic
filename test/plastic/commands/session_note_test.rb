@@ -9,9 +9,10 @@ class SessionNoteTest < Plastic::TestCase
   def call(*args, env: {}) = plastic("session", "note", *args, env:, table: Plastic::CLI::TABLE)
 
   def test_the_note_is_written_to_the_session_row
-    call("stopped", "after", "Beta", env: { "PLASTIC_SESSION" => "s-1" })
+    result = call("stopped", "after", "Beta", env: { "PLASTIC_SESSION" => "s-1" })
 
     assert_equal "stopped after Beta", store_graphs.retrieval.session("s-1").note
+    assert_includes result.out, "1 session in home.db"
   end
 
   def test_a_second_note_replaces_the_first_with_no_new_row

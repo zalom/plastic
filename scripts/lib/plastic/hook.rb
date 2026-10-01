@@ -30,11 +30,21 @@ module Plastic
       CLI::Command::OK
     end
 
-    # The event JSON the harness writes on stdin, with symbol keys.
+    # The event JSON the harness writes on stdin, with symbol keys. An event
+    # that is not a JSON object, such as `[]` or bad JSON, reads as empty.
     def event
       text = environment.input.read.to_s
-      text.strip.empty? ? {} : JSON.parse(text, symbolize_names: true)
+      return {} if text.strip.empty?
+
+      parsed = JSON.parse(text, symbolize_names: true)
+      parsed.is_a?(Hash) ? parsed : {}
+    rescue JSON::ParserError
+      {}
     end
+
+    # The session the event names, else the environment's; nil when neither
+    # names one. A hook with no session id writes no row.
+    def session_id(event) = event[:session_id] || session
 
     # Returns the text to print, or nil to print nothing.
     def respond(_event)
