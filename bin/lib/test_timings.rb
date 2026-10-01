@@ -119,3 +119,39 @@ module Minitest
     reporter << TestTimings::Reporter.new(path)
   end
 end
+
+module TestTimings
+  # Re-runs one file or Varar document alone, through the same `bin/test` a
+  # contributor would use, so a cap failure times a real second run instead
+  # of trusting the first. A Varar document has no single-file entry point,
+  # so it reruns the whole Varar suite and charges the document its time.
+  class Rerun
+    def initialize(root: File.expand_path("../..", __dir__))
+      @root = root
+    end
+
+    def call(file)
+      command = file.start_with?("varar/") ? %w[bundle exec ruby bin/test --system] : ["bundle", "exec", "ruby", "bin/test", "--only", file]
+      start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      Open3.capture2e(*command, chdir: @root)
+      Process.clock_gettime(Process::CLOCK_MONOTONIC) - start
+    end
+  end
+end
+
+if $PROGRAM_NAME == __FILE__
+  require "open3"
+
+  command, path = ARGV
+  unless command == "check" && path
+    warn "Usage: bin/lib/test_timings.rb check PATH"
+    exit 2
+  end
+
+  begin
+    TestTimings::Caps.new(path, rerun: TestTimings::Rerun.new).check!
+  rescue TestTimings::Caps::Failure => e
+    warn e.message
+    exit 1
+  end
+end

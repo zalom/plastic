@@ -57,13 +57,16 @@ class VerifyChangeTimingTest < Minitest::Test
     step = plan(changed: [TEST_FILE]).steps.find { |candidate| candidate.title == "Timing check" }
     missing = File.join(Dir.mktmpdir("verify-change-timing-missing"), "absent.json")
 
-    _, status = Open3.capture2e(step.env, *step.command.map { |word| word == "/nowhere/test_timings.json" ? missing : word }, chdir: @root)
+    _, status = Open3.capture2e(step.env, *step.command.map { |word| (word == "/nowhere/test_timings.json") ? missing : word }, chdir: @root)
 
-    refute status.success?
+    refute_predicate status, :success?
   end
 
   def test_other_suites_skip_the_timing_check_and_say_so
-    titles = plan(changed: [TEST_FILE], suite: VerifyChange::RSPEC).steps.map(&:title)
+    spec_file = "spec/new_routine_spec.rb"
+    write(spec_file, "")
+
+    titles = plan(changed: [spec_file], suite: VerifyChange::RSPEC).steps.map(&:title)
 
     refute_includes titles, "Timing check"
     assert_includes @err.string, "Timing check skipped"
