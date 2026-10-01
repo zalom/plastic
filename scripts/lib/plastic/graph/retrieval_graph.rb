@@ -4,6 +4,7 @@ require "forwardable"
 require_relative "../routine_run"
 require_relative "session_reader"
 require_relative "source"
+require_relative "link"
 
 module Plastic
   module Graph
@@ -61,6 +62,13 @@ module Plastic
       def node(intent_id, id) = nodes(intent_id).find { |node| node.id == id }
 
       def edges(intent_id = nil) = read(:edges, intent_id)
+
+      def rulings(intent_id = nil) = read(:rulings, intent_id)
+
+      LINKS_SQL = 'SELECT * FROM links WHERE origin_id = :origin AND (from_ref = :ref OR to_ref = :ref) ORDER BY "at"'
+
+      # Links naming `ref` at either end: a ruling's ref today, any ref later.
+      def links(ref) = @databases.fetch(:knowledge).rows(LINKS_SQL, origin: origin_id, ref:).map { |row| Link.from_h(row) }
 
       # Kept files with no bytes: a print compares the hash and reads the bytes only to write.
       def kept_files(intent_id = nil) = read(:kept_files, intent_id)
