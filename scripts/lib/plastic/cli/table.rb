@@ -15,6 +15,10 @@ module Plastic
       "intent rule" => ["Commands::IntentRule", "Write an owner ruling, with --supersedes to replace an older one"],
       "intent spec" => ["Commands::IntentSpec", "Print the grilling method, then the intent's open decisions"],
       "auto start" => ["Commands::AutoStart", "Take the delivery lock and set the intent active"],
+      "intent show" => ["Commands::IntentShow", "Print one intent's status, criteria, decisions, rulings and nodes"],
+      "intent brief" => ["Commands::IntentBrief", "Print an intent's goal, criteria, rulings, ready nodes and command usage"],
+      "status" => ["Commands::Status", "List every store's open and active intents, with node counts by state"],
+      "next" => ["Commands::Next", "Pick the intent in play and offer its next command"],
 
       # Work graph
       "node add" => ["Commands::NodeAdd", "Add a node to an intent's work graph"],
