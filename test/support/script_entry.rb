@@ -35,8 +35,9 @@ module ScriptEntry
     argv = opts.fetch(:argv, [])
     env = opts.fetch(:env, {})
     stdin = opts[:stdin]
+    chdir = opts[:chdir]
     merged = StringIO.new
-    exit_code = with_env(env) { capture_stdio(argv, stdin, out: merged, err: merged) { run_in_module(script_path, method, args) } }
+    exit_code = with_dir(chdir) { with_env(env) { capture_stdio(argv, stdin, out: merged, err: merged) { run_in_module(script_path, method, args) } } }
     [merged.string, FakeExitStatus.new(exit_code)]
   end
 
@@ -91,6 +92,17 @@ module ScriptEntry
   # Sets each env.each_pair for the duration of the block (a nil value
   # deletes the key, matching IO.popen's env-hash convention the scripts'
   # subprocess-driving callers already use), then restores the prior values.
+  # Runs the block with the process cwd set to `dir` (matching IO.popen's
+  # chdir: option), or runs it unchanged when `dir` is nil. Scoped to a
+  # block, like with_env, so the real cwd is never left pointed somewhere
+  # a later test in the same process does not expect.
+  def self.with_dir(dir)
+    return yield if dir.nil?
+
+    Dir.chdir(dir) { yield }
+  end
+  private_class_method :with_dir
+
   def self.with_env(env)
     original = env.keys.to_h { |key| [key, ENV[key]] }
     env.each_pair { |key, value| ENV[key] = value }

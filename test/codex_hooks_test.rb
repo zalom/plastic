@@ -8,6 +8,7 @@ require "json"
 require "stringio"
 require "rbconfig"
 require "open3"
+require_relative "support/script_entry"
 require_relative "../scripts/lib/session_ledger"
 require_relative "../scripts/lib/arm"
 require_relative "../scripts/lib/worktree"
@@ -108,13 +109,8 @@ class CodexHooksTest < Minitest::Test
     env = { "PLASTIC_TMP" => @bridge_tmp, "CLAUDE_CODE_SESSION_ID" => session, "HOME" => home }
     env["PLASTIC_HOME"] = plastic_home if plastic_home
     env.merge!(extra_env)
-    out = nil
-    IO.popen(env, [RbConfig.ruby, script, hook_name], "r+", err: [:child, :out], chdir: chdir) do |io|
-      io.write(payload_hash.nil? ? "" : JSON.generate(payload_hash))
-      io.close_write
-      out = io.read
-    end
-    [out, $?]
+    stdin = payload_hash.nil? ? "" : JSON.generate(payload_hash)
+    ScriptEntry.call(script, argv: [hook_name], env: env, stdin: stdin, chdir: chdir)
   end
 
   # ---- fixtures ----
@@ -434,14 +430,9 @@ class CodexHooksTest < Minitest::Test
     _out, status = run_hook("close", nil)
     assert_equal 0, status.exitstatus
 
-    out = nil
     env = { "PLASTIC_TMP" => @bridge_tmp, "CLAUDE_CODE_SESSION_ID" => nil, "HOME" => @fake_home }
-    IO.popen(env, [RbConfig.ruby, SCRIPT, "close"], "r+", err: [:child, :out], chdir: @store) do |io|
-      io.write("{not json")
-      io.close_write
-      out = io.read
-    end
-    assert_equal 0, $?.exitstatus
+    out, status = ScriptEntry.call(SCRIPT, argv: ["close"], env: env, stdin: "{not json", chdir: @store)
+    assert_equal 0, status.exitstatus
     assert_empty out.to_s.strip
   end
 
@@ -479,13 +470,8 @@ class CodexHooksTest < Minitest::Test
 
   def test_state_hook_malformed_stdin_fails_open
     env = { "PLASTIC_TMP" => @bridge_tmp, "HOME" => @fake_home }
-    out = nil
-    IO.popen(env, [RbConfig.ruby, SCRIPT, "session-start"], "r+", err: [:child, :out]) do |io|
-      io.write("not valid json{{{")
-      io.close_write
-      out = io.read
-    end
-    assert_equal 0, $?.exitstatus
+    out, status = ScriptEntry.call(SCRIPT, argv: ["session-start"], env: env, stdin: "not valid json{{{")
+    assert_equal 0, status.exitstatus
     assert_empty out.strip
   end
 
@@ -539,12 +525,8 @@ class CodexHooksTest < Minitest::Test
 
   def test_empty_stdin_fails_open
     env = { "PLASTIC_TMP" => @bridge_tmp, "HOME" => @fake_home }
-    out = nil
-    IO.popen(env, [RbConfig.ruby, SCRIPT, "record"], "r+", err: [:child, :out]) do |io|
-      io.close_write
-      out = io.read
-    end
-    assert_equal 0, $?.exitstatus, out
+    out, status = ScriptEntry.call(SCRIPT, argv: ["record"], env: env, stdin: "")
+    assert_equal 0, status.exitstatus, out
   end
 
   # Intent 340b (G7c, n4, row 4.30): the Stop hook assumes Claude's payload
