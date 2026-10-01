@@ -334,6 +334,13 @@ module ContextBudget
     def to_table
       ContextBudget.render(self)
     end
+
+    def exit_status = ok? ? 0 : 1
+
+    def print_to(out)
+      out.print to_table
+      exit_status
+    end
   end
 
   def self.run(repo:, repeat: DEFAULT_REPEAT, core_file: nil, dir: nil, today: Date.today)
@@ -489,6 +496,7 @@ end
   # code) still needs a real spawn of the executable; every other argument
   # case is this class's own behavior, not the process boundary.
   class CLI
+    # Raised when argv names an unknown flag, or a flag's value fails its own check.
     UsageError = Class.new(StandardError)
 
     USAGE = <<~TEXT
@@ -502,79 +510,126 @@ end
       Exits 0 when every ceiling holds, 1 when one is crossed, 2 on bad usage.
     TEXT
 
-    def self.run(argv, out: $stdout, err: $stderr, default_repo: File.expand_path("../..", __dir__))
-      new(argv, out: out, err: err, default_repo: default_repo).call
+    # Where the CLI prints to and which checkout it measures by default.
+    IO = Struct.new(:out, :err, :default_repo, keyword_init: true)
+
+    def self.run(argv, io = IO.new(out: $stdout, err: $stderr, default_repo: File.expand_path("../..", __dir__)))
+      new(argv, io).call
     end
 
-    def initialize(argv, out:, err:, default_repo:)
-      @argv = argv.dup
-      @out = out
-      @err = err
-      @repo = default_repo
-      @repeat = DEFAULT_REPEAT
-      @core_file = nil
-      @help = false
+    def initialize(argv, io)
+      @argv = argv
+      @io = io
     end
 
     def call
-      parse!
-      return help! if @help
-
-      report = ContextBudget.run(repo: @repo, repeat: @repeat, core_file: @core_file)
-      @out.print report.to_table
-      report.ok? ? 0 : 1
-    rescue UsageError => e
-      @err.puts "plastic-bench: #{e.message}"
-      @err.puts USAGE
-      2
-    rescue => e
-      @err.puts "plastic-bench: #{e.message}"
-      1
+      run
+    rescue UsageError => error
+      usage_error(error)
+    rescue => error
+      runtime_error(error)
     end
 
     private
 
-    def help!
-      @out.puts USAGE
+    def run
+      request = Args.parse(@argv, default_repo: @io.default_repo)
+      return show_help if request.help
+
+      run_report(request)
+    end
+
+    def run_report(request)
+      ContextBudget.run(**request.run_kwargs).print_to(@io.out)
+    end
+
+    def usage_error(error)
+      print_error(error)
+      @io.err.puts USAGE
+      2
+    end
+
+    def runtime_error(error)
+      print_error(error)
+      1
+    end
+
+    def print_error(error)
+      @io.err.puts "plastic-bench: #{error.message}"
+    end
+
+    def show_help
+      @io.out.puts USAGE
       0
     end
 
-    def parse!
-      until @argv.empty?
-        case (flag = @argv.shift)
-        when "--help", "-h" then @help = true
-        when "--repeat" then @repeat = repeat_value
-        when "--core-file" then @core_file = core_file_value
-        when "--repo" then @repo = repo_value
-        else raise UsageError, "unknown argument #{flag}"
-        end
+    # Parses plastic-bench's argv into a Request, one flag at a time.
+    class Args
+      # The three run inputs argv resolves to: how many times to boot, which
+      # file stands in for the core block, which checkout to measure.
+      Request = Struct.new(:repeat, :core_file, :repo, :help, keyword_init: true) do
+        def run_kwargs = { repeat: repeat, core_file: core_file, repo: repo }
       end
-    end
 
-    def repeat_value
-      value = @argv.shift
-      raise UsageError, "--repeat needs a whole number of at least 1" unless value.to_s.match?(/\A\d+\z/)
+      FLAG_METHODS = {
+        "--help" => :mark_help,
+        "-h" => :mark_help,
+        "--repeat" => :set_repeat,
+        "--core-file" => :set_core_file,
+        "--repo" => :set_repo
+      }.freeze
 
-      n = value.to_i
-      raise UsageError, "--repeat needs a whole number of at least 1" if n < 1
+      def self.parse(argv, default_repo:)
+        new(argv, default_repo).parse
+      end
 
-      n
-    end
+      def initialize(argv, default_repo)
+        @argv = argv.dup
+        @request = Request.new(repeat: DEFAULT_REPEAT, core_file: nil, repo: default_repo, help: false)
+      end
 
-    def core_file_value
-      path = @argv.shift
-      raise UsageError, "--core-file needs a path" if path.to_s.empty?
-      raise UsageError, "--core-file #{path} does not exist" unless File.file?(path)
+      def parse
+        apply_flag(@argv.shift) until @argv.empty?
+        @request
+      end
 
-      path
-    end
+      private
 
-    def repo_value
-      path = @argv.shift
-      raise UsageError, "--repo needs a path" if path.to_s.empty?
-      raise UsageError, "--repo #{path} is not a directory" unless File.directory?(path)
+      def apply_flag(flag)
+        send(FLAG_METHODS.fetch(flag) { raise UsageError, "unknown argument #{flag}" })
+      end
 
-      path
+      def mark_help = @request.help = true
+
+      def set_repeat = @request.repeat = repeat_value
+
+      def set_core_file = @request.core_file = core_file_value
+
+      def set_repo = @request.repo = repo_value
+
+      def repeat_value
+        value = @argv.shift
+        count = value.to_s.match?(/\A\d+\z/) ? value.to_i : 0
+        raise UsageError, "--repeat needs a whole number of at least 1" if count < 1
+
+        count
+      end
+
+      def core_file_value
+        path = @argv.shift
+        raise UsageError, "--core-file needs a path" if path.to_s.empty?
+        raise UsageError, "--core-file #{path} does not exist" unless File.file?(path)
+
+        path
+      end
+
+      def repo_value
+        path = @argv.shift
+        raise UsageError, "--repo needs a path" if path.to_s.empty?
+        raise UsageError, "--repo #{path} is not a directory" unless File.directory?(path)
+
+        path
+      end
     end
   end
 end

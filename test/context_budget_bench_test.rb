@@ -461,7 +461,8 @@ class ContextBudgetCliTest < Minitest::Test
   def self.cli_run(argv)
     out = StringIO.new
     err = StringIO.new
-    status = ContextBudget::CLI.run(argv, out: out, err: err, default_repo: REPO)
+    io = ContextBudget::CLI::IO.new(out: out, err: err, default_repo: REPO)
+    status = ContextBudget::CLI.run(argv, io)
     [out.string, err.string, status]
   end
 
