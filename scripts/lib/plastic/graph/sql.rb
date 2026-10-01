@@ -10,6 +10,9 @@ module Plastic
       # Bytes that go in as a BLOB literal, such as a kept file.
       Bytes = Data.define(:data)
 
+      # SQL text kept as it stands, such as `retries + 1`, never quoted.
+      Raw = Data.define(:sql)
+
       # A value as an SQL literal. Hashes and arrays are stored as JSON text.
       def self.literal(value)
         case value
@@ -17,9 +20,17 @@ module Plastic
         in true then "1"
         in false then "0"
         in Integer | Float => number then number.to_s
-        in Bytes then "X'#{value.data.unpack1("H*")}'"
+        in Bytes | Raw => wrapped then wrapped_literal(wrapped)
         in Hash | Array then literal(JSON.generate(value))
         else "'#{value.to_s.gsub("'", "''")}'"
+        end
+      end
+
+      # A value that carries its own SQL text: bytes as a BLOB literal, raw as itself.
+      def self.wrapped_literal(wrapped)
+        case wrapped
+        in Bytes then "X'#{wrapped.data.unpack1("H*")}'"
+        in Raw then wrapped.sql
         end
       end
 
@@ -46,6 +57,12 @@ module Plastic
 
       # `a IS 1 AND b IS 'x'`: IS matches a NULL as well.
       def self.where(values) = values.map { |column, value| "#{name(column)} IS #{literal(value)}" }.join(" AND ")
+
+      # `a = 1, b = 'x'`, for the SET clause of a guarded UPDATE.
+      def self.set(values) = values.map { |column, value| "#{name(column)} = #{literal(value)}" }.join(", ")
+
+      # `'a', 'b'`, for a SQL IN (...) list.
+      def self.list(values) = values.map { |value| literal(value) }.join(", ")
 
       # The columns and values of an insert: `(a, b) VALUES (1, 2)`.
       def self.tuple(columns)

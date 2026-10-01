@@ -48,8 +48,8 @@ class LocksTest < Plastic::TestCase
   end
 
   def test_ready_nodes_skips_a_node_waiting_on_an_undone_need
-    put(:work, :nodes, { intent_id: "1", id: "a", state: "pending" })
-    put(:work, :nodes, { intent_id: "1", id: "b", state: "pending" })
+    put(:work, :nodes, { intent_id: "1", id: "a", state: "open" })
+    put(:work, :nodes, { intent_id: "1", id: "b", state: "open" })
     put(:work, :edges, { intent_id: "1", from: "a", to: "b", kind: "needs" })
 
     assert_equal ["a"], retrieval.ready_nodes("1").map(&:id)
@@ -57,7 +57,7 @@ class LocksTest < Plastic::TestCase
 
   def test_ready_nodes_includes_a_node_whose_need_is_done
     put(:work, :nodes, { intent_id: "1", id: "a", state: "done" })
-    put(:work, :nodes, { intent_id: "1", id: "b", state: "pending" })
+    put(:work, :nodes, { intent_id: "1", id: "b", state: "open" })
     put(:work, :edges, { intent_id: "1", from: "a", to: "b", kind: "needs" })
 
     assert_equal ["b"], retrieval.ready_nodes("1").map(&:id)
