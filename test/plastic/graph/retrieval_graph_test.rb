@@ -99,4 +99,14 @@ class RetrievalGraphTest < Plastic::TestCase
 
     assert_equal [[1, 1600], [2, 100]], saved_passages.last(2).map { |row| [row.fetch("position"), row.fetch("body").length] }
   end
+
+  def test_repairs_a_missing_fts_row_from_immutable_evidence
+    intent = open_intent("Repair")
+    index_text(intent, "repair.txt", "Repairable evidence\n")
+    store_graphs.databases.fetch(:knowledge).transaction { |batch| batch.add("DELETE FROM document_fts") }
+
+    retrieval.repair!
+
+    assert_equal ["repair.txt"], retrieval.search("repairable").map { |row| row.fetch("path") }
+  end
 end
