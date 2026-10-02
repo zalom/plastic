@@ -1,0 +1,30 @@
+# frozen_string_literal: true
+
+require_relative "../test_helper"
+require "json"
+require_relative "../../tools/retrieval_benchmark"
+
+class RetrievalBenchmarkTest < Minitest::Test
+  def test_declares_reproducible_public_corpora_and_full_cli_measurements
+    schema = Plastic::RetrievalBenchmark.schema
+
+    assert_equal 1, schema.fetch("schema_version")
+    assert_equal "bin/plastic", schema.fetch("entrypoint")
+    assert_equal [15_000_000, 100_000_000], schema.fetch("corpora").map { |corpus| corpus.fetch("target_bytes") }
+    assert schema.fetch("corpora").all? { |corpus| corpus.fetch("text_encoding") == "UTF-8" && corpus.fetch("public_data") }
+    assert_equal %w[exact_lookup single_store_top_20 three_store_rrf_top_20 concurrent_writer_reader], schema.fetch("measurements").map { |measurement| measurement.fetch("id") }
+    assert_equal({ "exact_lookup" => 100, "single_store_top_20" => 250, "three_store_rrf_top_20" => 500 }, schema.fetch("warm_p95_targets_ms"))
+  end
+
+  def test_generates_deterministic_utf8_text_without_binary_padding
+    Dir.mktmpdir do |directory|
+      first = Plastic::RetrievalBenchmark.generate_corpus(directory, target_bytes: 20_000, stores: 3)
+      second = Plastic::RetrievalBenchmark.generate_corpus(File.join(directory, "again"), target_bytes: 20_000, stores: 3)
+
+      assert_equal first.fetch("bytes"), second.fetch("bytes")
+      assert_equal first.fetch("sha256"), second.fetch("sha256")
+      assert_equal 3, first.fetch("stores").length
+      assert first.fetch("files").all? { |path| File.read(path, encoding: "UTF-8").valid_encoding? }
+    end
+  end
+end

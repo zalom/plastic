@@ -39,6 +39,17 @@ class ArchitectureTest < Plastic::TestCase
     end
   end
 
+  def test_preserves_the_selected_project_in_the_refresh_next_step
+    Dir.mktmpdir do |repository|
+      prepare_repository(repository)
+      register_project("other", repository)
+
+      result = architecture_status(repository, arguments: ["--project", "other"])
+
+      assert_equal "plastic architecture refresh --project other", result.fetch("next")
+    end
+  end
+
   private
 
   def architecture_status(repository, arguments: [])

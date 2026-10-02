@@ -15,6 +15,14 @@ class EnolaAdapterTest < Plastic::TestCase
     assert_equal "enola", receipt.fetch("provider")
   end
 
+  def test_accepts_the_pinned_executable_digest_without_an_archive_digest
+    adapter = Plastic::Architecture::EnolaAdapter.new(executor: ->(*) { ["enola 0.4.18", "", true] })
+
+    receipt = adapter.receipt(binary_sha256: Plastic::Architecture::EnolaAdapter::BINARY_SHA256, archive_sha256: nil)
+
+    assert_equal "verified", receipt.fetch("provenance")
+  end
+
   def test_marks_a_same_version_unknown_binary_as_unverified
     adapter = Plastic::Architecture::EnolaAdapter.new(executor: ->(*) { ["enola 0.4.18", "", true] })
 
@@ -45,6 +53,20 @@ class EnolaAdapterTest < Plastic::TestCase
       assert_equal %w[manifests ruby], receipt.fetch("extractors")
       assert_equal [".svg"], receipt.fetch("exclusions")
       assert_equal 12, receipt.fetch("gaps").fetch("extraction_unresolved")
+    end
+  end
+
+  def test_reads_top_level_enola_quality_fields
+    Dir.mktmpdir do |repository|
+      write_snapshot(repository, commit: "abc", dirty: false, repo_path: repository, top_level_quality: true)
+      adapter = Plastic::Architecture::EnolaAdapter.new(executor: ->(*) { ["enola 0.4.18", "", true] })
+
+      receipt = adapter.snapshot(repository:, binary_sha256: "unknown", archive_sha256: nil, revision: "abc", dirty: false)
+
+      assert_equal ["ruby", "typescript"], receipt.fetch("detected_languages")
+      assert_equal [".json", ".svg"], receipt.fetch("exclusions")
+      assert_equal 3, receipt.dig("gaps", "coverage_gaps")
+      assert_equal 7, receipt.dig("gaps", "extraction_unresolved")
     end
   end
 
@@ -81,10 +103,14 @@ class EnolaAdapterTest < Plastic::TestCase
 
   private
 
-  def write_snapshot(repository, commit:, dirty:, repo_path:, extractors: %w[manifests ruby])
+  def write_snapshot(repository, commit:, dirty:, repo_path:, extractors: %w[manifests ruby], top_level_quality: false)
     data = { "repo_path" => repo_path, "git" => { "commit" => commit, "dirty" => dirty }, "extractors" => extractors,
              "extractor_version" => "v265", "quality" => { "census" => { "excluded_kinds" => { ".svg" => 1 } },
                                                            "coverage" => { "extraction_unresolved" => 12 } } }
+    if top_level_quality
+      data["census"] = { "detected_languages" => %w[ruby typescript], "excluded_kinds" => { ".svg" => 1, ".json" => 2 } }
+      data["coverage"] = { "coverage_gaps" => 3, "extraction_unresolved" => 7 }
+    end
     FileUtils.mkdir_p(File.join(repository, ".enola"))
     File.write(File.join(repository, ".enola", "snapshot.meta.json"), JSON.generate(data))
   end
