@@ -41,8 +41,17 @@ class VerifyChangeTimingTest < Minitest::Test
     step = plan(changed: [TEST_FILE]).steps.find { |candidate| candidate.title == "Tests with coverage" }
 
     assert_equal "/nowhere/test_timings.json", step.env.fetch("PLASTIC_TEST_TIMINGS")
-    assert_includes step.command, "-r"
     assert_includes step.command, File.join(@root, "bin/lib/test_timings")
+  end
+
+  def test_coverage_starts_before_the_timing_extension_loads
+    write("test/test_helper.rb", "require 'coverage'; Coverage.start\n")
+    write("bin/lib/test_timings.rb", "abort 'coverage started too late' unless Coverage.running?\n")
+    step = plan(changed: [TEST_FILE]).steps.find { |candidate| candidate.title == "Tests with coverage" }
+
+    output, status = Open3.capture2e(*step.command.drop(2), chdir: @root)
+
+    assert_predicate status, :success?, output
   end
 
   def test_the_timing_check_is_its_own_step_after_the_tests

@@ -3,6 +3,7 @@
 require "json"
 require "fileutils"
 require "benchmark"
+require "tmpdir"
 
 # The gate's mutation report: reads the JSON Mutineer wrote, re-runs every
 # subject a mutant came back without a verdict for, prints what it found, and
@@ -236,19 +237,19 @@ module MutationVerdicts
       @runner = runner
     end
 
-    def self.status_of(id, survived, unresolved)
-      return "survived" if survived.include?(id)
-      return "no_verdict" if unresolved.include?(id)
+    def self.status_of(id, evidence)
+      evidence.each { |status, mutants| return status if ids_of(mutants).include?(id) }
 
-      "killed"
+      "no_verdict"
     end
 
     def self.ids_of(mutants) = mutants.map { |mutant| mutant["id"] }
 
     def self.verdicts_of(report, ids)
-      survived = ids_of(report.fetch("survivors", []))
-      unresolved = ids_of(report.fetch("no_verdict", []))
-      ids.to_h { |id| [id, status_of(id, survived, unresolved)] }
+      unresolved = %w[no_verdict no_coverage uncapturable ignored].flat_map { |key| report.fetch(key, []) }
+      evidence = { "no_verdict" => unresolved, "survived" => report.fetch("survivors", []),
+                   "killed" => report.fetch("killed", []) }
+      ids.to_h { |id| [id, status_of(id, evidence)] }
     end
 
     def call(output)
@@ -256,12 +257,19 @@ module MutationVerdicts
     end
 
     def rerun(subject, ids)
-      path = File.join(Dir.mktmpdir("mutation-rerun"), "report.json")
-      seconds = Benchmark.realtime { call_only(subject, path) }
-      [self.class.verdicts_of(JSON.parse(File.read(path)), ids), seconds]
+      Dir.mktmpdir("mutation-rerun") do |dir|
+        path = File.join(dir, "report.json")
+        seconds = Benchmark.realtime { checked_rerun(subject, path) }
+        [self.class.verdicts_of(JSON.parse(File.read(path)), ids), seconds]
+      end
     end
 
     private
+
+    def checked_rerun(subject, path)
+      output, status = call_only(subject, path)
+      raise Decision::Failure, "mutineer rerun failed: #{output}" unless status.success? && File.file?(path)
+    end
 
     def call_only(subject, path)
       @runner.call("bundle", "exec", "mutineer", "run", *@args, "--only", subject, "--jobs", "1", "--format", "json", "--output", path, chdir: @root)
