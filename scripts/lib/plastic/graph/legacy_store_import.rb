@@ -6,6 +6,7 @@ require_relative "../config"
 require_relative "legacy_decisions"
 require_relative "legacy_roadmaps"
 require_relative "legacy_originals"
+require_relative "import_rollback"
 
 module Plastic
   module Graph
@@ -42,7 +43,7 @@ module Plastic
 
         counts = rolled_back_on_error(root) { run_import(home, slug, root, folder, parsed) }
       rescue => e
-        report(slug, problems: ["#{slug}: the import failed and the store was put back: #{e.message}"])
+        report(slug, problems: ["#{slug}: the import failed: #{e.message}"])
       else
         removed_after_import(home, slug, folder, counts)
       end
@@ -65,22 +66,7 @@ module Plastic
       # A store that fails halfway gets its folder back as it was, databases
       # gone, so the next run imports it again instead of skipping it.
       def rolled_back_on_error(root)
-        Dir.mktmpdir do |saved|
-          FileUtils.cp_r(root, saved)
-          begin
-            yield
-          rescue
-            restore_store(root, saved)
-            raise
-          end
-        end
-      end
-
-      def restore_store(root, saved)
-        pool = Database::ConnectionPool
-        pool.disconnect(keep: pool.connections.keys.reject { |path| path.start_with?("#{root}/") })
-        FileUtils.rm_rf(root)
-        FileUtils.cp_r(File.join(saved, File.basename(root)), File.dirname(root))
+        ImportRollback.new(root).call { yield }
       end
 
       def run_import(home, slug, root, folder, parsed)
