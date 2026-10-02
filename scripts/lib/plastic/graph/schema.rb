@@ -3,6 +3,7 @@
 require_relative "table"
 require_relative "intent"
 require_relative "roadmap"
+require_relative "schema/retrieval"
 
 module Plastic
   module Graph
@@ -75,7 +76,7 @@ module Plastic
         printed: [%i[path], { path: :kept, sha256: :kept, at: :kept, origin_id: :kept }],
         changes: [[], { seq: "INTEGER PRIMARY KEY AUTOINCREMENT", table: :kept, key: :kept,
                         operation: "TEXT NOT NULL CHECK(operation IN ('put', 'remove'))", row: :text, at: :kept, origin_id: :kept }]
-      }.to_h do |name, (key, columns)|
+      }.merge(RetrievalSchema::TABLES).to_h do |name, (key, columns)|
         [name, Table.new(name:, key:, columns: columns.transform_values { |type| TYPES.fetch(type, type) })]
       end.freeze
 
@@ -84,7 +85,7 @@ module Plastic
         home: ["home.db", %i[routine_runs sessions locks backups]],
         work: ["work_graph.db", %i[intents clusters nodes edges savepoints completions printed changes
           roadmaps batches roadmap_items roadmap_edges roadmap_log archives archive_entries]],
-        knowledge: ["knowledge_graph.db", %i[documents rulings links printed changes]],
+        knowledge: ["knowledge_graph.db", %i[documents document_revisions document_heads document_passages document_fts retrieval_schema rulings links printed changes]],
         references: ["references.db", %i[sqlar printed changes]]
       }.freeze
       STORE = %i[work knowledge references].freeze
@@ -106,9 +107,11 @@ module Plastic
 
       def self.file(key) = DATABASES.fetch(key).first
 
-      def self.fetch(key) = DATABASES.fetch(key).last.map { |name| TABLES.fetch(name).ddl }.join("\n")
+      def self.fetch(key) = DATABASES.fetch(key).last.map { |name| ddl(name) }.join("\n")
 
       def self.table_named(name) = TABLES.fetch(name.to_sym)
+
+      def self.ddl(name) = RetrievalSchema::FTS.fetch(name) { TABLES.fetch(name).ddl }
 
       # A count of rows with its noun: "1 routine run", "2 routine runs".
       def self.tally(table, count)
