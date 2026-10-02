@@ -27,4 +27,14 @@ class RetrievalBenchmarkTest < Minitest::Test
       assert first.fetch("files").all? { |path| File.read(path, encoding: "UTF-8").valid_encoding? }
     end
   end
+
+  def test_writes_raw_evidence_to_a_new_output_directory
+    Dir.mktmpdir do |directory|
+      output = File.join(directory, "evidence", "benchmark.json")
+
+      Plastic::RetrievalBenchmark.run(output:, corpus_bytes: 1_000, warmup: 0, samples: 1)
+
+      assert_equal "pending", JSON.parse(File.read(output)).dig("owner_review", "status")
+    end
+  end
 end

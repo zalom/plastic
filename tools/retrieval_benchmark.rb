@@ -29,6 +29,7 @@ module Plastic
         corpus = generate_corpus(File.join(directory, "corpus"), target_bytes: corpus_bytes, stores: 3)
         commands = benchmark_commands(warmup, samples)
         report = report_for(corpus, commands, warmup, samples)
+        FileUtils.mkdir_p(File.dirname(File.expand_path(output)))
         File.write(output, JSON.pretty_generate(report) + "\n")
         report
       end
