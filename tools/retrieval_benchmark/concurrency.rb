@@ -15,19 +15,34 @@ module Plastic
       def measure
         writer = start_writer
         readers = @samples.times.map { reader_sample }
-        status = writer.fetch(:wait).value.exitstatus
+        diagnostics = writer_diagnostics(writer)
         busy_failures = readers.count { |sample| busy_error?(sample) }
-        { "writer_exit_status" => status, "reader_samples" => readers,
-          "busy_handling" => busy_handling(busy_failures) }
+        diagnostics.merge(
+          "reader_samples" => readers,
+          "busy_handling" => busy_handling(busy_failures)
+        )
       ensure
-        writer&.fetch(:stdin)&.close unless writer&.fetch(:stdin)&.closed?
+        close_streams(writer)
       end
 
       private
 
       def start_writer
         stdin, stdout, stderr, wait = Open3.popen3(worker_environment, RbConfig.ruby, worker_path, "writer", @benchmark.fetch(:home), @samples.to_s)
+        stdin.close
         { stdin:, stdout:, stderr:, wait: }
+      end
+
+      def writer_diagnostics(writer)
+        { "writer_exit_status" => writer.fetch(:wait).value.exitstatus,
+          "writer_stdout" => writer.fetch(:stdout).read,
+          "writer_stderr" => writer.fetch(:stderr).read }
+      end
+
+      def close_streams(writer)
+        return unless writer
+
+        writer.values_at(:stdin, :stdout, :stderr).each { |stream| stream.close unless stream.closed? }
       end
 
       def reader_sample
