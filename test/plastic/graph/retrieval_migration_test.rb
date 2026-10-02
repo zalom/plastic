@@ -5,6 +5,11 @@ require_relative "../../test_helper"
 class RetrievalMigrationTest < Plastic::TestCase
   MigrationInterrupted = Class.new(StandardError)
 
+  def teardown
+    Plastic::Graph::Database::ConnectionPool.disconnect
+    super
+  end
+
   def test_first_read_migrates_legacy_documents_and_references_once_per_origin
     seed_legacy_evidence
 
@@ -43,7 +48,7 @@ class RetrievalMigrationTest < Plastic::TestCase
 
   def create_legacy_knowledge
     SQLite3::Database.new(store_path("knowledge_graph.db")).tap do |database|
-      database.execute_batch("CREATE TABLE documents(intent_id TEXT, path TEXT, body TEXT, updated_at TEXT, origin_id TEXT);")
+      database.execute_batch("CREATE TABLE documents(intent_id TEXT, path TEXT, body TEXT, updated_at TEXT, origin_id TEXT, UNIQUE(intent_id, path, origin_id));")
       database.execute("INSERT INTO documents VALUES (?, ?, ?, ?, ?)", ["1", "legacy.md", "legacy document", "then", origin])
       database.close
     end
@@ -83,8 +88,11 @@ class RetrievalMigrationTest < Plastic::TestCase
   def migration_state
     knowledge = store_graphs.databases.fetch(:knowledge)
     { schema: knowledge.rows("SELECT name, version, completed_at FROM retrieval_schema"),
-      marker: knowledge.rows("SELECT name, origin_id FROM retrieval_backfills ORDER BY name, origin_id"),
-      revisions: knowledge.rows("SELECT intent_id, path, body FROM document_revisions ORDER BY path"),
+      marker: knowledge.rows("SELECT name, origin_id FROM retrieval_backfills ORDER BY name, origin_id") }.merge(derived_state(knowledge))
+  end
+
+  def derived_state(knowledge)
+    { revisions: knowledge.rows("SELECT intent_id, path, body FROM document_revisions ORDER BY path"),
       documents: knowledge.rows("SELECT intent_id, path, sha256 FROM document_heads ORDER BY intent_id, path"),
       passages: knowledge.rows("SELECT sha256, position, body FROM document_passages ORDER BY body"),
       fts: knowledge.rows("SELECT intent_id, path, sha256, position, body FROM document_fts ORDER BY path") }
@@ -93,9 +101,15 @@ class RetrievalMigrationTest < Plastic::TestCase
   def assert_migration_complete
     state = migration_state
 
-    assert_equal [2], state.values_at(:revisions, :documents, :passages, :fts).map(&:size).uniq
+    assert_evidence_counts(state)
+    assert_marker(state)
+    assert_equal ["legacy.md", "reference.txt"], state.fetch(:fts).map { |row| row.fetch("path") }
+  end
+
+  def assert_evidence_counts(state) = assert_equal([2], state.values_at(:revisions, :documents, :passages, :fts).map(&:size).uniq)
+
+  def assert_marker(state)
     assert_equal "complete", state.fetch(:schema).fetch(0).fetch("completed_at")
     assert_equal [["retrieval", origin]], state.fetch(:marker).map { |row| row.values_at("name", "origin_id") }
-    assert_equal ["legacy.md", "reference.txt"], state.fetch(:fts).map { |row| row.fetch("path") }
   end
 end

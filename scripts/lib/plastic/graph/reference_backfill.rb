@@ -6,10 +6,11 @@ module Plastic
   module Graph
     # Imports eligible legacy attachments after the retrieval schema appears.
     class ReferenceBackfill
-      def initialize(databases, origin_id)
+      def initialize(databases, origin_id, after_write: -> {})
         @knowledge = databases.fetch(:knowledge)
         @references = databases.fetch(:references)
         @origin_id = origin_id
+        @after_write = after_write
       end
 
       def call
@@ -38,6 +39,7 @@ module Plastic
 
         body = row.fetch("body") { utf8(row.fetch("data")) }
         EvidenceWriter.new(@knowledge, @origin_id).write(row.fetch("intent_id"), path, body)
+        @after_write.call
       end
 
       def head_exists?(intent_id, path)
