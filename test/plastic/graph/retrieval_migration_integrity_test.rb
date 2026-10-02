@@ -40,7 +40,7 @@ class RetrievalMigrationIntegrityTest < Plastic::TestCase
     knowledge.transaction { |batch| batch.add("UPDATE retrieval_backfills SET version = 0 WHERE name = 'retrieval' AND origin_id = :origin", origin: origin_id) }
 
     assert_equal 1, knowledge.rows("SELECT * FROM retrieval_backfills WHERE origin_id = :origin", origin: origin_id).size
-    refute backfill.send(:complete?)
+    refute Plastic::Graph::ReferenceBackfill.complete?(knowledge.path, origin_id)
     backfill.call
   end
 

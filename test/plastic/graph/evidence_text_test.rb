@@ -29,6 +29,14 @@ class EvidenceTextTest < Plastic::TestCase
     assert_equal "žé", text.extract("note.rtf", "{\\rtf1\\ansi\\u382?\\'e9}")
   end
 
+  def test_markup_and_rtf_passages_keep_their_original_source_line_ranges
+    html = "<html>\n<style>hidden\ncode</style>\n<body>\n<p>First line</p>\n<p>Second &amp; third</p>\n</body>\n</html>"
+    rtf = "{\\rtf1\\ansi\nFirst \\b line\\b0\\par\nSecond \\u382? line\n}"
+
+    assert_equal [["First line Second & third", 4, 5]], passage_details(text.extract_with_lines("page.html", html))
+    assert_equal [["First line Second ž line", 2, 3]], passage_details(text.extract_with_lines("note.rtf", rtf))
+  end
+
   def test_builds_repeatable_unicode_passages_with_overlap_and_source_lines
     assert_repeatable_passages
     assert_bounded_overlap_and_lines
@@ -39,6 +47,10 @@ class EvidenceTextTest < Plastic::TestCase
   def text = Plastic::Graph::EvidenceText
   def unicode_body = "first line\n\n" + ("ž" * 1700) + "\nfinal line\n"
   def passages = text.passages(unicode_body)
+
+  def passage_details(extraction)
+    text.passages(extraction).map { |passage| passage.values_at(:body, :line_start, :line_end) }
+  end
 
   def assert_repeatable_passages
     assert_equal passages, text.passages(unicode_body)

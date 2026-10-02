@@ -17,6 +17,13 @@ class RetrievalBackfillOriginTest < Plastic::TestCase
     assert_second_completion
   end
 
+  def test_completion_probe_does_not_create_an_absent_database
+    path = File.join(@home, "missing", "knowledge_graph.db")
+
+    refute Plastic::Graph::ReferenceBackfill.complete?(path, origin)
+    refute_path_exists File.dirname(path)
+  end
+
   private
 
   def knowledge = store_graphs.databases.fetch(:knowledge)
