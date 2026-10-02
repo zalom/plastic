@@ -10,6 +10,12 @@ class EvidenceTextTest < Plastic::TestCase
     assert_equal "Rich text", text.extract("note.rtf", "{\\rtf1\\ansi Rich \\b text}")
   end
 
+  def test_preserves_boundaries_and_signed_unicode_when_extracting_markup_and_rtf
+    assert_equal "first second", text.extract("page.html", "<p>first</p><p>second</p>")
+    assert_equal "first second", text.extract("diagram.svg", "<text>first</text><text>second</text>")
+    assert_equal "\uFF37", text.extract("note.rtf", "{\\rtf1\\ansi\\u-201?}")
+  end
+
   def test_classifies_supported_text_and_reports_unsupported_or_invalid_bytes
     assert_equal :text, text.classify("data.json", "{\"title\":\"Readable\"}")
     assert_equal :unsupported, text.classify("report.pdf", "%PDF-1.7")

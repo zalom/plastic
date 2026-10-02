@@ -22,6 +22,16 @@ class EvidenceWriterTest < Plastic::TestCase
     assert_equal [0], %w[document_revisions document_heads document_passages document_fts].map { |table| count(table) }.uniq
   end
 
+  def test_keeps_separate_revision_membership_for_identical_bodies_at_distinct_identities
+    writer = Plastic::Graph::EvidenceWriter.new(knowledge, origin)
+    writer.write("1", "first.md", "shared evidence")
+    writer.write("2", "second.md", "shared evidence")
+    writer.remove("1", "first.md")
+
+    assert_equal [["1", "first.md", "shared evidence"], ["2", "second.md", "shared evidence"]],
+      knowledge.rows("SELECT intent_id, path, body FROM document_revisions ORDER BY intent_id").map(&:values)
+  end
+
   private
 
   def write_evidence(body) = Plastic::Graph::EvidenceWriter.new(knowledge, origin).write("1", "plan.md", body)

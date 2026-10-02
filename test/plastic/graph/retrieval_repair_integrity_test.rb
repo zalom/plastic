@@ -32,6 +32,25 @@ class RetrievalRepairIntegrityTest < Plastic::TestCase
     assert_equal "canonical evidence", knowledge.row("SELECT body FROM documents WHERE path = 'missing.md'").fetch("body")
   end
 
+  def test_repair_rebuilds_derived_rows_without_writing_canonical_documents_or_change_log
+    writer.write("1", "repair.md", "repair evidence")
+    before = canonical_state
+    knowledge.transaction { |batch| batch.add("DELETE FROM document_fts") }
+
+    repair
+
+    assert_equal before, canonical_state
+  end
+
+  def test_repair_scales_past_sqlite_expression_depth
+    1001.times { |index| writer.write(index.to_s, "#{index}.md", "evidence #{index}") }
+    knowledge.transaction { |batch| batch.add("DELETE FROM document_fts") }
+
+    repair
+
+    assert_equal 1001, knowledge.row("SELECT count(*) AS n FROM document_fts").fetch("n")
+  end
+
   private
 
   def assert_repaired(revision)
@@ -58,6 +77,11 @@ class RetrievalRepairIntegrityTest < Plastic::TestCase
     writer.write("1", "repair.md", "old evidence")
     knowledge.transaction { |batch| batch.add("DELETE FROM document_fts") }
     Plastic::Graph::EvidenceIntegrity.new(knowledge, origin, before_rebuild: concurrent_writer).repair!
+  end
+
+  def canonical_state
+    { documents: knowledge.rows("SELECT intent_id, path, body, updated_at FROM documents ORDER BY intent_id, path"),
+      changes: knowledge.rows("SELECT * FROM changes ORDER BY seq") }
   end
 
   def corrupt_derived_rows
