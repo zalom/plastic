@@ -65,7 +65,7 @@ class IntentFileTest < Plastic::TestCase
     assert_equal %i[knowledge references knowledge knowledge], [read_in("resources/notes.md", "# Notes\n"), read_in("odd.md", "\xFF".b),
       read_in("notes.txt", "plain text\n"), read_in("data.json", '{"topic":"retrieval"}')]
 
-    assert_equal ["data.json", "notes.txt", "resources/notes.md"], retrieval.documents("1").map(&:path).sort
+    assert_equal ["1--alpha.md", "data.json", "notes.txt", "resources/notes.md"], retrieval.documents("1").map(&:path).sort
     assert_equal [true], [!kept("odd.md").nil?]
   end
 end

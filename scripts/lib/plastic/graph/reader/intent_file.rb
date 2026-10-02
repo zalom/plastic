@@ -37,7 +37,9 @@ module Plastic
 
         def text = bytes.force_encoding(Encoding::UTF_8)
 
-        def document? = @rel.end_with?(".md") && !@rel.start_with?("resources/") && text.valid_encoding?
+        # Textual references are preserved in the knowledge graph. NUL bytes
+        # identify binary data; invalid UTF-8 stays in the attachment archive.
+        def document? = text.valid_encoding? && !bytes.include?("\0")
 
         def graph(_batch)
           raise Invalid, "graph.json is generated from rows; use node and edge commands to change the graph"
