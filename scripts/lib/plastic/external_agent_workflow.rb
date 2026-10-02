@@ -8,9 +8,9 @@ module Plastic
     class ExternalAgentWorkflow < AgentWorkflow
       [facts, steps, outcomes].each(&:clear)
 
-      sets :handoff_text, :context_command
+      sets :handoff_text, :context_command, :context_complete
 
-      step "select retrieved evidence and provide architecture context", done: ->(context) { context.handoff_text.nil? }, say: "%{handoff_text}"
+      step "select retrieved evidence and provide architecture context", done: ->(context) { context.context_complete }, say: "%{handoff_text}"
       outcome :handoff, offers: "%{context_command}", because: "an external agent must select evidence and provide architecture context"
       outcome :done, offers: nil, because: "the retrieval context was submitted"
 

@@ -33,7 +33,7 @@ class IntentDiscoverTest < Plastic::TestCase
     write_document("global", "global evidence")
 
     result = plastic("intent", "discover", "1", "evidence", "--json", table: Plastic::CLI::TABLE)
-    run = routine_run("intent discover", "1")
+    run = Plastic::Graph.open(home: @plastic_home, store: "global").retrieval.last_run("1")
 
     assert_equal 0, result.code
     assert_routine_handoff(run)

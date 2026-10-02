@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../routine"
+require "digest"
 
 module Plastic
   module Commands
@@ -26,6 +27,15 @@ module Plastic
       end
 
       private
+
+      def subject
+        Digest::SHA256.hexdigest([parsed.fetch(:intent_id), parsed.fetch(:terms), source_key].join("\0"))
+      end
+
+      def source_key
+        sources = parsed.fetch(:source_projects).map(&:strip).reject(&:empty?).uniq.sort
+        (sources.empty? ? [scope.slug] : sources).join(",")
+      end
 
       def context(routine_run)
         Context.new(declared: self.class.declared_facts, facts: routine_run.facts.merge(parsed).merge(scope_facts), graphs:, session:)
