@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-require "json"
-require_relative "../../scripts/lib/plastic"
-require_relative "../../scripts/lib/plastic/graph/evidence_writer"
+require "open3"
+require "rbconfig"
+require_relative "../../scripts/lib/plastic/graph/database/connection_pool"
 
 module Plastic
   module RetrievalBenchmark
@@ -14,53 +14,35 @@ module Plastic
 
       def measure
         writer = start_writer
-        readers = reader_samples
-        busy_failures = readers.select { |sample| busy_error?(sample) }
-        { "writer_exit_status" => wait_for_writer(writer), "reader_samples" => readers,
-          "busy_handling" => { "timeout_ms" => Graph::Database::Connection::BUSY_TIMEOUT, "busy_failures" => busy_failures.length,
-                               "status" => busy_failures.empty? ? "no_busy_errors" : "busy_errors" } }
+        readers = @samples.times.map { reader_sample }
+        status = writer.fetch(:wait).value.exitstatus
+        busy_failures = readers.count { |sample| busy_error?(sample) }
+        { "writer_exit_status" => status, "reader_samples" => readers,
+          "busy_handling" => busy_handling(busy_failures) }
+      ensure
+        writer&.fetch(:stdin)&.close unless writer&.fetch(:stdin)&.closed?
       end
 
       private
 
-      def reader_samples
-        processes = @samples.times.map { spawn_reader }
-        processes.map { |reader, process| read_sample(reader, process) }
+      def start_writer
+        stdin, stdout, stderr, wait = Open3.popen3(worker_environment, RbConfig.ruby, worker_path, "writer", @benchmark.fetch(:home), @samples.to_s)
+        { stdin:, stdout:, stderr:, wait: }
       end
 
-      def spawn_reader
-        reader, writer = IO.pipe
-        process = fork do
-          reader.close
-          sample = Measurements.run_command(@benchmark.fetch(:commands).fetch("exact_lookup"))
-          sample["immutable_reference_consistent"] = sample.fetch("output_valid")
-          writer.write(JSON.generate(sample))
-          writer.close
-          exit! 0
-        end
-        writer.close
-        [reader, process]
+      def reader_sample
+        sample = Measurements.run_command(@benchmark.fetch(:commands).fetch("exact_lookup"))
+        sample["immutable_reference_consistent"] = sample.fetch("output_valid")
+        sample
       end
 
-      def read_sample(reader, process)
-        JSON.parse(reader.read)
-      ensure
-        reader.close unless reader.closed?
-        Process.wait(process)
-      end
+      def worker_environment = Measurements.environment(@benchmark.fetch(:commands).fetch("exact_lookup"))
 
-      def start_writer = fork { write_revisions }
+      def worker_path = File.join(RetrievalBenchmark::ROOT, "tools", "retrieval_benchmark", "worker.rb")
 
-      def wait_for_writer(process) = Process.wait2(process).last.exitstatus
-
-      def write_revisions
-        Graph::Database::ConnectionPool.disconnect
-        graphs = Graph.open(home: @benchmark.fetch(:home), store: "store-1")
-        writer = Graph::EvidenceWriter.new(graphs.databases.fetch(:knowledge), graphs.retrieval.origin_id)
-        @samples.times { |index| writer.write("concurrent", "writer.md", "concurrent writer revision #{index}") }
-        exit! 0
-      rescue SQLite3::Exception
-        exit! 1
+      def busy_handling(busy_failures)
+        { "timeout_ms" => Graph::Database::Connection::BUSY_TIMEOUT, "busy_failures" => busy_failures,
+          "status" => busy_failures.zero? ? "no_busy_errors" : "busy_errors" }
       end
 
       def busy_error?(sample) = sample.fetch("stderr").match?(/(?:busy|locked)/i)

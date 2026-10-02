@@ -60,10 +60,16 @@ module Plastic
 
       def seed_store(store, paths)
         graphs = Graph.open(home: @home, store:)
-        graphs.databases.each_value { |database| database.rows("SELECT 1") }
+        initialize_databases(graphs)
+        write_paths(graphs, paths)
+        graphs.retrieval.backfill!
+      end
+
+      def initialize_databases(graphs) = graphs.databases.each_value { |database| database.rows("SELECT 1") }
+
+      def write_paths(graphs, paths)
         writer = Graph::EvidenceWriter.new(graphs.databases.fetch(:knowledge), graphs.retrieval.origin_id)
         paths.each_with_index { |path, index| writer.write((index + 1).to_s, File.basename(path), File.read(path, encoding: "UTF-8")) }
-        graphs.retrieval.backfill!
       end
 
       def commands(reference)
@@ -122,12 +128,18 @@ module Plastic
         return false unless status.success?
 
         result = JSON.parse(stdout).fetch("result")
-        return result.fetch("document").fetch("uri") == command.fetch(:reference).fetch(:uri) if command[:reference]
+        return exact_match?(command, result) if command[:reference]
 
-        returned = result.fetch("results").map { |row| row.fetch("store") }.uniq
-        returned.any? && (returned - command.fetch(:stores)).empty?
+        selected_store_match?(command, result)
       rescue JSON::ParserError, KeyError
         false
+      end
+
+      def self.exact_match?(command, result) = result.fetch("document").fetch("uri") == command.fetch(:reference).fetch(:uri)
+
+      def self.selected_store_match?(command, result)
+        returned = result.fetch("results").map { |row| row.fetch("store") }.uniq
+        returned.any? && (returned - command.fetch(:stores)).empty?
       end
     end
 
