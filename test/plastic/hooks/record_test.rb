@@ -54,7 +54,7 @@ class RecordTest < Plastic::TestCase
   def test_a_block_prints_the_decision_as_one_json_line
     File.write(File.join(@plastic_home, "config.yml"), "runner:\n  stop_hook: true\n")
     put(:home, :locks, { store: "global", intent_id: "1", session_id: "s-1", mode: "auto", taken_at: Plastic.now, renewed_at: Plastic.now })
-    put(:work, :nodes, { intent_id: "1", id: "a", state: "pending" })
+    put(:work, :nodes, { intent_id: "1", id: "a", state: "open" })
 
     result = call(input: JSON.generate(stop_hook_active: true))
 
