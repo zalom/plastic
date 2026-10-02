@@ -16,11 +16,18 @@ module Plastic
       writes :knowledge
 
       def call
+        validate_intent!
         output.row("discovery", persist(manifest))
         output.next_step("plastic intent context #{parsed.fetch(:intent_id)} --from FILE", because: "an agent selects evidence and provides architecture context")
       end
 
       private
+
+      def validate_intent!
+        id = parsed.fetch(:intent_id)
+        raise CLI::Command::Usage, "invalid intent id #{id.inspect}" unless /\A\d+[a-z0-9]*\z/.match?(id)
+        raise CLI::Command::Failure, "no intent #{id} in owning store" unless Graph.open(home: scope.plastic_home, store: scope.slug).retrieval.intent(id)
+      end
 
       def manifest
         { intent_id: parsed.fetch(:intent_id), query: parsed.fetch(:terms), scope: sources, candidates: candidates }

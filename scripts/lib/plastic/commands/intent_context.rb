@@ -15,6 +15,7 @@ module Plastic
       writes :knowledge
 
       def call
+        validate_intent!
         output.row("context", parsed[:from] ? persist(validated_submission) : readback)
         output.next_step("none", because: "the retrieval context was read")
       rescue Errno::ENOENT, JSON::ParserError => error
@@ -24,6 +25,12 @@ module Plastic
       end
 
       private
+
+      def validate_intent!
+        id = parsed.fetch(:intent_id)
+        raise CLI::Command::Usage, "invalid intent id #{id.inspect}" unless /\A\d+[a-z0-9]*\z/.match?(id)
+        raise CLI::Command::Failure, "no intent #{id} in owning store" unless Graph.open(home: scope.plastic_home, store: scope.slug).retrieval.intent(id)
+      end
 
       def readback
         JSON.parse(File.read(context_path))
