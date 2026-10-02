@@ -34,6 +34,30 @@ class IntentContextTest < Plastic::TestCase
     assert_equal [{ "uri" => reference, "state" => "stale" }], context.fetch("freshness").fetch("evidence")
   end
 
+  def test_reports_a_removed_current_head_as_stale_when_its_pinned_revision_survives
+    open_intent
+    reference = write_document("other", "selected evidence")
+    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
+    submit_context(context_submission(reference))
+    graphs = Plastic::Graph.open(home: @plastic_home, store: "other")
+    Plastic::Graph::EvidenceWriter.new(graphs.databases.fetch(:knowledge), origin).remove("1", "evidence.md")
+
+    assert_equal "stale", read_context.fetch("freshness").fetch("evidence").first.fetch("state")
+  end
+
+  def test_rejects_a_non_object_submission_without_replacing_saved_context
+    open_intent
+    reference = write_document("other", "selected evidence")
+    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
+    submit_context(context_submission(reference))
+    before = File.binread(store_path("context/1.json"))
+
+    result = submit_raw_context("[]")
+
+    assert_equal 2, result.code
+    assert_equal before, File.binread(store_path("context/1.json"))
+  end
+
   private
 
   def write_document(store, body)
@@ -71,5 +95,13 @@ class IntentContextTest < Plastic::TestCase
 
     assert_equal 0, result.code
     JSON.parse(result.out).fetch("result").fetch("context")
+  end
+
+  def submit_raw_context(body)
+    Tempfile.create(["context", ".json"]) do |file|
+      file.write(body)
+      file.flush
+      return plastic("intent", "context", "1", "--from", file.path, table: Plastic::CLI::TABLE)
+    end
   end
 end
