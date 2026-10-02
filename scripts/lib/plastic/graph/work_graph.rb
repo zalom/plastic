@@ -16,6 +16,7 @@ require_relative "printer"
 require_relative "prints"
 require_relative "sync"
 require_relative "sync_preview"
+require_relative "evidence_writer"
 
 module Plastic
   module Graph
@@ -163,7 +164,7 @@ module Plastic
 
       def write_spec_document(intent_id, batch, item)
         row = { intent_id:, path: "spec.md", body: spec_body(batch, item), updated_at: Plastic.now }
-        @databases.fetch(:knowledge).transaction { |transaction| transaction.put(:documents, row, statement: :insert) }
+        EvidenceWriter.new(@databases.fetch(:knowledge), @retrieval.origin_id).write(row.fetch(:intent_id), row.fetch(:path), row.fetch(:body))
       end
 
       def spec_body(batch, item)

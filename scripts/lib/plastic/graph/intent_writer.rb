@@ -3,6 +3,7 @@
 require_relative "intent"
 require_relative "intent_ref"
 require_relative "store_folder"
+require_relative "evidence_writer"
 
 module Plastic
   module Graph
@@ -67,7 +68,8 @@ module Plastic
           batch.put(:intents, intent.new_row, statement: :insert)
           batch.put(:savepoints, intent.first_savepoint(@session))
         end
-        @databases.fetch(:knowledge).transaction { |batch| batch.put(:documents, intent.document(@retrieval.origin_id)) }
+        document = intent.document(@retrieval.origin_id)
+        EvidenceWriter.new(@databases.fetch(:knowledge), @retrieval.origin_id).write(document.fetch(:intent_id), document.fetch(:path), document.fetch(:body))
       end
 
       def next_id(parent_id)
