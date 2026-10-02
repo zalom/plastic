@@ -82,6 +82,22 @@ class BackupTest < Plastic::TestCase
     end
   end
 
+  def test_an_unpacked_backup_retains_the_owning_retrieval_context_rows
+    home, env = populated_home
+    graphs = Plastic::Graph.open(home:, store: "global")
+    body = JSON.generate("intent_id" => "1", "architecture" => { "provider" => "external", "revision" => "abc" })
+    graphs.databases.fetch(:knowledge).transaction do |batch|
+      batch.put(:retrieval_contexts, { intent_id: "1", data: body, updated_at: Plastic.now })
+    end
+
+    Dir.mktmpdir do |restored|
+      unpack(entries_of(archive_path(env)), restored)
+      row = Plastic::Graph.open(home: restored, store: "global").databases.fetch(:knowledge).row("SELECT data FROM retrieval_contexts WHERE intent_id = '1'")
+
+      assert_equal body, row.fetch("data")
+    end
+  end
+
   def assert_home_files_match(home, restored)
     %w[origin_id config.yml projects.yml].each do |name|
       assert_equal File.binread(File.join(home, name)), File.binread(File.join(restored, name))

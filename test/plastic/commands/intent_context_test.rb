@@ -101,6 +101,33 @@ class IntentContextTest < Plastic::TestCase
     assert_equal before, File.binread(store_path("context/1.json"))
   end
 
+  def test_accepts_an_external_provider_without_a_receipt_and_keeps_it_after_backup_restore
+    open_intent
+    reference = write_document("other", "selected evidence")
+    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
+    submission = context_submission(reference)
+    submission.fetch("architecture").delete("receipt")
+
+    submit_context(submission)
+
+    assert_equal submission.fetch("architecture"), read_context.fetch("architecture")
+  end
+
+  def test_rejects_an_invalid_receipt_without_replacing_the_saved_context
+    open_intent
+    reference = write_document("other", "selected evidence")
+    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
+    submit_context(context_submission(reference))
+    before = read_context
+    invalid = context_submission(reference)
+    invalid.fetch("architecture")["receipt"] = []
+
+    result = submit_raw_context(JSON.generate(invalid))
+
+    assert_equal 2, result.code
+    assert_equal before.slice("evidence", "architecture"), read_context.slice("evidence", "architecture")
+  end
+
   private
 
   def write_document(store, body)
