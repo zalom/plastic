@@ -4,9 +4,10 @@ module Plastic
   class CLI
     class Command
       # One switch a command takes, such as --dir DIR, and its value when the
-      # call leaves it out.
-      Option = Data.define(:name, :switch, :text, :default) do
-        def usage = "[#{switch}]"
+      # call leaves it out. A required switch has no such value: the call must
+      # give it.
+      Option = Data.define(:name, :switch, :text, :default, :required) do
+        def usage = required ? switch : "[#{switch}]"
 
         # Teaches `parser` this switch; its value lands in `values`.
         def add_to(parser, values)

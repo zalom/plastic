@@ -5,25 +5,36 @@ require_relative "../graph/spec"
 
 module Plastic
   module Workflows
-    # Prints the grilling method, then the intent's open decisions.
+    # Prints the grilling method, then the intent's open decisions; refuses
+    # an unknown id.
     class ShowSpec < CodeWorkflow
       [facts, steps, outcomes].each(&:clear)
 
       GRILLING = File.expand_path("../../../../docs/grilling.md", __dir__)
 
-      sets :decisions
+      sets :intent, :decisions, :criteria
+
+      read "find the intent" do |context|
+        context[:intent] = context.retrieval.intent(context.intent_id)
+      end
+
+      gate "no intent %{intent_id} in this store", stops: :failure, pass: ->(context) { !context.intent.nil? }
 
       read "print the grilling method" do |context|
         context.print(File.read(GRILLING))
       end
 
       read "read the open decisions" do |context|
-        context[:decisions] = Graph::Spec.new(context.retrieval, context.intent_id).open_decisions
+        spec = Graph::Spec.new(context.retrieval, context.intent_id)
+        context[:decisions] = spec.open_decisions
+        context[:criteria] = spec.done_criteria
         context.decisions.each { |decision| context.print("open: #{decision}") }
       end
 
       outcome :open, if: ->(context) { context.decisions.any? }, offers: "plastic intent rule %{intent_id} TEXT",
         because: "an open decision is still unrecorded"
+      outcome :no_criterion, if: ->(context) { context.criteria.empty? }, offers: "plastic sync up",
+        because: "the spec names no done criterion; write them in spec.md first"
       outcome :done, offers: "plastic auto start %{intent_id}", because: "the spec carries no open decision"
     end
   end

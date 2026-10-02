@@ -9,16 +9,16 @@ class EdgeAddTest < Plastic::TestCase
 
   def add_node(title) = plastic("node", "add", "1", title, "--criterion", "done", table: Plastic::CLI::TABLE)
 
-  def test_a_self_edge_exits_3
+  def test_a_self_edge_exits_1
     open_intent
     add_node("a")
 
     result = call("1", "n1", "n1")
 
-    assert_equal 3, result.code
+    assert_equal 1, result.code
   end
 
-  def test_an_edge_to_a_removed_node_exits_3
+  def test_an_edge_to_a_removed_node_exits_1
     open_intent
     add_node("a")
     add_node("b")
@@ -26,7 +26,7 @@ class EdgeAddTest < Plastic::TestCase
 
     result = call("1", "n1", "n2")
 
-    assert_equal 3, result.code
+    assert_equal 1, result.code
   end
 
   def test_a_loop_exits_3_and_only_one_edge_row_exists
@@ -37,7 +37,7 @@ class EdgeAddTest < Plastic::TestCase
 
     result = call("1", "n2", "n1")
 
-    assert_equal 3, result.code
+    assert_equal 1, result.code
     assert_equal 1, store_graphs.databases.fetch(:work).rows("SELECT * FROM edges").size
   end
 end

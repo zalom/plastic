@@ -1,0 +1,13 @@
+# plastic edge add
+
+`plastic edge add ID FROM TO` adds a needs edge: TO waits until FROM is done. An edge to itself, to a missing node or back to its own start fails. The rows below run the storage kernel's command line in a fresh home each time, as session s-1. A setup lists the calls made first, in order, split by a semicolon; `write PATH TEXT` writes a file in the store instead. TIME stands for a timestamp.
+
+Each row gives the setup, the call, the exit code, the result and the next line:
+
+| setup                                                                                                                       | call             | exit | result                                           | next line                             |
+| --------------------------------------------------------------------------------------------------------------------------- | ---------------- | ---- | ------------------------------------------------ | ------------------------------------- |
+| intent new Alpha ; node add 1 Build --criterion "tests pass" ; node add 1 Test --criterion "suite green"                    | edge add 1 n2 n1 | 0    | edge: n2 to n1                                   | plastic graph show 1 --project global |
+| intent new Alpha ; node add 1 Build --criterion "tests pass"                                                                | edge add 1 n1 n1 | 1    | edge n1 to n1 would loop or names a missing node | none                                  |
+| intent new Alpha ; node add 1 Build --criterion "tests pass" ; node add 1 Test --criterion "suite green" ; edge add 1 n2 n1 | edge add 1 n1 n2 | 1    | edge n1 to n2 would loop or names a missing node | none                                  |
+| intent new Alpha ; node add 1 Build --criterion "tests pass"                                                                | edge add 1 n1 n9 | 1    | edge n1 to n9 would loop or names a missing node | none                                  |
+| none                                                                                                                        | edge add 9 n2 n1 | 1    | no intent 9 in this store                        | none                                  |

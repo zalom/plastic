@@ -10,7 +10,13 @@ module Plastic
     class ShowGraph < CodeWorkflow
       [facts, steps, outcomes].each(&:clear)
 
-      sets :printed_paths
+      sets :intent, :printed_paths
+
+      read "find the intent" do |context|
+        context[:intent] = context.retrieval.intent(context.intent_id)
+      end
+
+      gate "no intent %{intent_id} in this store", stops: :failure, pass: ->(context) { !context.intent.nil? }
 
       read "print each node and edge" do |context|
         context.retrieval.nodes(context.intent_id).each { |node| context.print(Lines.node(node)) }
