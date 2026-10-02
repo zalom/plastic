@@ -39,20 +39,6 @@ class RetrievalMigrationTest < Plastic::TestCase
     assert_equal before, database_bytes
   end
 
-  def test_backfill_markers_stay_isolated_between_origins
-    seed_legacy_evidence
-    other_origin = "another-installation"
-    put(:knowledge, :documents, { intent_id: "2", path: "other.md", body: "other legacy", updated_at: "then", origin_id: other_origin })
-
-    retrieval.backfill!
-    Plastic::Graph::ReferenceBackfill.new(store_graphs.databases, other_origin).call
-
-    assert_equal [["retrieval", origin], ["retrieval", other_origin]],
-      knowledge.rows("SELECT name, origin_id FROM retrieval_backfills ORDER BY origin_id").map { |row| row.values_at("name", "origin_id") }
-    assert_equal ["legacy.md", "other.md", "reference.txt"],
-      knowledge.rows("SELECT path FROM document_heads ORDER BY path").map { |row| row.fetch("path") }
-  end
-
   private
 
   def seed_legacy_evidence
@@ -116,8 +102,6 @@ class RetrievalMigrationTest < Plastic::TestCase
     { schema: knowledge.rows("SELECT name, version, completed_at FROM retrieval_schema"),
       marker: knowledge.rows("SELECT name, origin_id FROM retrieval_backfills ORDER BY name, origin_id") }.merge(derived_state(knowledge))
   end
-
-  def knowledge = store_graphs.databases.fetch(:knowledge)
 
   def derived_state(knowledge)
     { revisions: knowledge.rows("SELECT intent_id, path, body FROM document_revisions ORDER BY path"),

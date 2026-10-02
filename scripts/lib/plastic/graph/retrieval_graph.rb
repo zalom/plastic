@@ -11,6 +11,7 @@ require_relative "roadmap"
 require_relative "archive"
 require_relative "backup"
 require_relative "evidence_writer"
+require_relative "evidence_integrity"
 require_relative "reference_backfill"
 
 module Plastic
@@ -66,9 +67,7 @@ module Plastic
       end
 
       def repair!
-        @databases.fetch(:knowledge).rows("SELECT intent_id, path, body FROM documents WHERE origin_id = :origin", origin: origin_id).each do |row|
-          EvidenceWriter.new(@databases.fetch(:knowledge), origin_id).write(row.fetch("intent_id"), row.fetch("path"), row.fetch("body"))
-        end
+        EvidenceIntegrity.new(@databases.fetch(:knowledge), origin_id).repair!
       end
 
       def savepoints(intent_id = nil) = read(:savepoints, intent_id)
@@ -139,7 +138,6 @@ module Plastic
           .to_h { |row| row.values_at("path", "sha256") }
       end
 
-      # Every archive this machine has written, oldest first.
       def backups
         @databases.fetch(:home).rows("SELECT * FROM backups ORDER BY at").map { |row| Backup.from_h(row) }
       end

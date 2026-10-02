@@ -63,7 +63,8 @@ module Plastic
 
       def complete!
         @knowledge.transaction do |batch|
-          batch.put(:retrieval_backfills, { name: "retrieval", completed_at: Plastic.now })
+          batch.add("INSERT INTO retrieval_backfills (name, origin_id, completed_at) VALUES ('retrieval', :origin, :completed_at) ON CONFLICT(name, origin_id) DO UPDATE SET completed_at = excluded.completed_at",
+            origin: @origin_id, completed_at: Plastic.now)
           batch.add("UPDATE retrieval_schema SET completed_at = 'complete' WHERE name = 'retrieval'")
         end
       end

@@ -16,6 +16,17 @@ module Plastic
         @database.transaction { |batch| apply(batch, intent_id, path, body) }
       end
 
+      # Removes only the mutable current view. The immutable revision and its
+      # passages remain available for an exact historical read.
+      def remove(intent_id, path)
+        @database.transaction do |batch|
+          batch.remove(:documents, intent_id:, path:)
+          batch.remove(:document_heads, intent_id:, path:)
+          batch.add("DELETE FROM document_fts WHERE intent_id = :intent_id AND path = :path AND origin_id = :origin_id",
+            intent_id:, path:, origin_id: @origin_id)
+        end
+      end
+
       def apply(batch, intent_id, path, body) = write_rows(batch, intent_id, path, body, Digest::SHA256.hexdigest(body))
 
       private
