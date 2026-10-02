@@ -11,3 +11,12 @@ class NextPickTest < Plastic::TestCase
     assert_nil Plastic::Graph::NextPick.new(store_graphs.retrieval, "s-1").intent
   end
 end
+
+class ClosedIntentPickTest < Plastic::TestCase
+  def test_a_closed_intent_is_not_selected_through_a_leftover_lock
+    intent = open_intent(status: "done")
+    store_graphs.work.take_lock(intent.intent_id, session_id: "s-1", mode: "auto")
+
+    assert_nil Plastic::Graph::NextPick.new(retrieval, "s-1").intent
+  end
+end

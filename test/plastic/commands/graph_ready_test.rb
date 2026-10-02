@@ -32,7 +32,7 @@ class GraphReadyTest < Plastic::TestCase
     refute_includes result.out, "ready: n2 b"
   end
 
-  def test_no_ready_node_offers_graph_show
+  def test_claimed_work_stays_with_its_worker
     open_intent
     add_node("a")
     add_node("b")
@@ -44,6 +44,6 @@ class GraphReadyTest < Plastic::TestCase
     result = call("1")
 
     refute_includes result.out, "ready:"
-    assert_includes result.out, "plastic graph show 1"
+    assert_includes result.out, "Continue node n2 with its worker"
   end
 end

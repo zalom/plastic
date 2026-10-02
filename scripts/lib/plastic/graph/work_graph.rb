@@ -2,6 +2,7 @@
 
 require "forwardable"
 require_relative "intent_writer"
+require_relative "completion_writer"
 require_relative "node_writer"
 require_relative "edge_writer"
 require_relative "ruling_writer"
@@ -21,8 +22,10 @@ module Plastic
 
       def_delegators :sessions, :open_session, :stamp_turn, :end_session, :write_note, :take_lock, :renew_locks
       def_delegator :intents, :activate, :activate_intent
+      def_delegator :completions, :close, :close_intent
+      def_delegator :completions, :evidence, :completion_evidence
       def_delegators :nodes, :add_node, :remove_node, :claim_node, :release_node, :done_node, :fail_node,
-        :park_node, :answer_node
+        :park_node, :answer_node, :repair_done_node
       def_delegators :edges, :add_edge, :remove_edge
       def_delegators :rulings, :add_ruling
 
@@ -60,11 +63,15 @@ module Plastic
         sync.printer.print([Prints.index(@retrieval), *Prints.of_intent(@retrieval, intent)])
       end
 
+      def print_index = sync.printer.print([Prints.index(@retrieval)])
+
       def sync_plan(direction, options) = sync.plan(direction, options)
 
       def sync_apply(plan) = sync.apply(plan)
 
       private
+
+      def completions = (@completions ||= CompletionWriter.new(@databases, @retrieval, @folder, session: @session))
 
       def sessions = (@sessions ||= SessionWriter.new(@databases.fetch(:home), store: @retrieval.store))
 

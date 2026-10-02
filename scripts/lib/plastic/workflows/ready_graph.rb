@@ -22,9 +22,7 @@ module Plastic
         context.nodes.each { |node| context.print("ready: #{node.id} #{node.title}") }
       end
 
-      outcome :ready, if: ->(context) { context.nodes.any? }, offers: "plastic node claim %{intent_id} %{first}",
-        because: "node %{first} is ready"
-      outcome :empty, offers: "plastic graph show %{intent_id}", because: "no node is ready"
+      outcome :done
     end
   end
 end

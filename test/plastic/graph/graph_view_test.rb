@@ -21,3 +21,19 @@ class GraphViewTest < Plastic::TestCase
     assert_raises(Plastic::Invalid) { apply_read(read) }
   end
 end
+
+class GraphViewRestoreTest < Plastic::TestCase
+  fixtures :alpha_synced
+
+  def printed_node_ids = JSON.parse(folder.read("store/1--alpha/graph.json")).fetch("nodes").map { |row| row.fetch("id") }
+
+  def test_sync_down_regenerates_from_rows_after_a_tampered_view
+    node = store_graphs.work.add_node(intent_id: "1", title: "Trusted", criterion: "Done")
+    write("store/1--alpha/graph.json", "not even JSON")
+    sync = Plastic::Graph::Sync.new(folder:, retrieval:, databases: store_graphs.databases)
+
+    sync.apply(sync.plan(:down, overwrite: nil))
+
+    assert_equal [node.id], printed_node_ids
+  end
+end

@@ -3,6 +3,7 @@
 require_relative "../code_workflow"
 require_relative "../graph/next_pick"
 require_relative "../graph/spec"
+require_relative "../graph/delivery_action"
 
 module Plastic
   module Workflows
@@ -12,15 +13,15 @@ module Plastic
     class PickNext < CodeWorkflow
       [facts, steps, outcomes].each(&:clear)
 
-      sets :next_command, :why
+      sets :next_command, :why, :handoff_text
 
       read "pick the intent and its next command" do |context|
-        context[:next_command], context[:why] = PickNext.offer_for(context, Graph::NextPick.new(context.retrieval, context.session))
+        context[:next_command], context[:why], context[:handoff_text] = PickNext.offer_for(context, Graph::NextPick.new(context.retrieval, context.session))
       end
 
       def self.offer_for(context, pick)
-        return ["plastic status", "several intents stand out; narrow it down first"] if pick.ambiguous?
-        return ["plastic intent new TITLE", "nothing is open"] if pick.none?
+        return [nil, "choose the intent to work on", "Inspect plastic status, choose an intent ID, and run plastic intent brief ID."] if pick.ambiguous?
+        return ["none", "nothing is open"] if pick.none?
 
         offer_for_intent(context, pick.intent)
       end
@@ -40,49 +41,10 @@ module Plastic
       end
 
       def self.node_offer(context, intent)
-        live = context.retrieval.nodes(intent.intent_id).reject { |node| node.state == "removed" }
-        NODE_OFFERS.fetch(live_state(live)).call(intent)
+        Graph::DeliveryAction.new(context.retrieval, intent.intent_id).call
       end
 
-      LIVE_STATE_RULES = [
-        [:brief, ->(states) { states.empty? || states.include?("parked") }],
-        [:show, ->(states) { states.include?("failed") }],
-        [:check, ->(states) { states.all? { |state| state == "done" } }]
-      ].freeze
-
-      def self.live_state(live)
-        states = live.map(&:state)
-        rule = LIVE_STATE_RULES.find { |_name, matches| matches.call(states) }
-        rule ? rule.first : :ready
-      end
-
-      def self.brief_offer(intent)
-        id = intent.intent_id
-        ["plastic intent brief #{id}", "intent #{id} has no nodes or a parked one"]
-      end
-
-      def self.show_offer(intent)
-        id = intent.intent_id
-        ["plastic graph show #{id}", "intent #{id} has a failed node"]
-      end
-
-      def self.check_offer(intent)
-        id = intent.intent_id
-        ["plastic graph check #{id}", "every live node of intent #{id} is done"]
-      end
-
-      def self.ready_offer(intent)
-        id = intent.intent_id
-        ["plastic graph ready #{id}", "intent #{id} has nodes left to claim"]
-      end
-
-      NODE_OFFERS = {
-        brief: ->(intent) { brief_offer(intent) },
-        show: ->(intent) { show_offer(intent) },
-        check: ->(intent) { check_offer(intent) },
-        ready: ->(intent) { ready_offer(intent) }
-      }.freeze
-
+      outcome :agent_needed, if: ->(context) { !context.handoff_text.nil? }
       outcome :done, offers: "%{next_command}", because: "%{why}"
     end
   end

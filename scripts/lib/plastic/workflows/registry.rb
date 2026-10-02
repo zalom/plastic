@@ -11,6 +11,7 @@ module Plastic
       # Storage: intents and the sync of a store folder with its rows.
       :code_write_intent, :code_sync_up, :code_sync_down, :code_add_ruling, :code_show_spec, :code_start_auto,
       :code_check_graph, :code_ready_graph, :code_show_graph, :code_show_intent, :code_show_brief, :code_pick_next,
+      :code_delivery_next, :agent_advance_delivery, :code_prepare_ending, :agent_finish_intent, :code_close_intent,
       # Sessions: the one prose line a session writes about itself.
       :code_write_note,
       # Work graph: building and moving the nodes and edges of one intent.

@@ -485,17 +485,31 @@ under the Plastic home (`scope.known_slugs`) rather than one scoped store: it op
 store's graphs in turn (`Graph.open(home:, store: slug)`) and prints its open and active
 intents with their node counts by state (`Graph::IntentRow`, `Graph::NodeCounts`).
 
-`Commands::Next` (`workflow :code_pick_next`) picks the one intent this session is working
-on through `Graph::NextPick`: the intent behind a live lock this session holds in the current
-store, else the only active intent, else the only open one; several candidates or none are
-distinct outcomes, not a `nil` the caller would have to check for a third time. Given one
-intent, `Workflows::PickNext` offers the next command through a fixed cascade: an empty or
-open spec decision offers `intent spec`; an open-status intent offers `auto start`; the
-intent's live nodes (every node whose state is not `removed`) then decide the rest — empty or
-holding a parked node offers `intent brief`, a failed node offers `graph show`, every live
-node done offers `graph check`, otherwise `graph ready`. `PickNext.live_state` reads this
-branch from a small ordered table of symbol-to-predicate pairs (`LIVE_STATE_RULES`) rather
-than a chain of `if`/`elsif`, so adding a state to the cascade is one row, not a new branch.
+`Commands::Next` picks a live intent through `Graph::NextPick`. Closed intents are
+excluded even if a lock remains after an interrupted closure. With several candidates,
+the harness gets instructions to choose one. With no open work, the next command is none.
+
+`Graph::DeliveryAction` supplies the actions used by next, brief, ready, and check.
+Ready nodes lead to claim; failed nodes lead to release. Empty graphs hand planning to
+`AgentWorkflow`, claimed nodes remain with their worker, and parked nodes request the
+owner's answer. Completed graphs lead to `intent end` for explicit acceptance.
+
+`IntentEnd` chains prerequisite checks, an agent verification handoff when records are
+missing, and closure. `CompletionEvidence` accepts a JSON object with every exact done
+criterion as a key and nonempty evidence text as its value. Paths resolve within the
+selected intent folder, including a check after resolving symbolic links. The judge
+attests to the evidence; Plastic does not execute the verification.
+
+`CompletionWriter` stores the criterion snapshot, evidence, judge, outcome hash, session,
+and timestamp in `completions`. It commits that row with the delivered status and closure
+time in the work database, then releases the delivery lock in the home database. A repeat
+call preserves the first completion record and retries cleanup. Imported done intents
+remain closed without gaining an invented attestation. `node done --repair` explicitly
+records verification for an already done node; it preserves the node's attempt count.
+
+`graph.json` is a generated view. Sync up skips it, direct Reader import refuses it,
+and sync down or graph show renders it from rows. Legacy import skips graph.json too;
+its node and edge state can only be created through the graph commands.
 
 ### companion tools: no Plastic code path calls them
 

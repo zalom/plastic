@@ -9,11 +9,14 @@ module Plastic
     class NodeDone < Routine
       node_subject
       option :judge, switch: "--judge WHO", text: "tests, tool, agent or owner"
-      option :findings, switch: "--findings TEXT", text: "what the judge found"
+      option :findings, switch: "--findings TEXT", text: "what the judge found", required: true
+      option :repair, switch: "--repair", text: "record verification for an already done node", default: false
       writes :work
 
       def call
         raise CLI::Command::Usage, "--judge takes tests, tool, agent or owner" unless Graph::Node::JUDGES.include?(parsed[:judge])
+
+        raise CLI::Command::Usage, "--findings must describe the verification" if parsed[:findings].to_s.strip.empty?
 
         super
       end

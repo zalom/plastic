@@ -5,6 +5,7 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+- Delivered intents close through `intent end` with explicit criterion evidence and a judge. Closure records the outcome hash, releases the delivery lock, and can be retried without duplicating acceptance. Empty and completed graph handoffs now lead to planning or verification. Node completion requires findings; `--repair` records verification for an existing done node. Sync no longer imports graph.json.
 - `auto start` takes a missing or expired delivery lock even when the intent is already active. Another session's live lock still refuses the call. Failed edge additions and removals can retry after their cause is fixed.
 
 - The work graph: `node add`, `node remove`, `node claim`, `node release`, `node done`, `node fail`, `node park`, `node answer`, `edge add`, `edge remove`. Nodes move through guarded state changes; a node claimed a fourth time parks with a question instead of looping.
