@@ -15,7 +15,9 @@ module Plastic
       def call
         output.row("results", ranked_rows)
         output.next_step("none", because: "the indexed passages were read")
-      rescue Graph::RetrievalGraph::InvalidSearch, Graph::RetrievalGraph::MaintenanceRequired => error
+      rescue Graph::RetrievalGraph::InvalidSearch => error
+        raise CLI::Command::Usage, error.message
+      rescue Graph::RetrievalGraph::MaintenanceRequired => error
         raise CLI::Command::Failure, error.message
       end
 
@@ -35,7 +37,7 @@ module Plastic
 
       def validate_sources(list)
         unknown = list - scope.known_slugs
-        raise CLI::Command::Failure, "unknown source projects: #{unknown.join(", ")}" if unknown.any?
+        raise CLI::Command::Usage, "unknown source projects: #{unknown.join(", ")}" if unknown.any?
       end
 
       def rows(slug)
@@ -52,12 +54,15 @@ module Plastic
       end
 
       def excerpt(body)
-        index = search_terms.filter_map { |term| body.downcase.index(term.downcase) }.min || 0
+        normalized = normalize(body)
+        index = search_terms.filter_map { |term| normalized.index(normalize(term)) }.min || 0
         first = [index - 160, 0].max
         body[first, 320]
       end
 
       def search_terms = parsed.fetch(:terms).scan(/[\p{Alnum}_]+/)
+
+      def normalize(text) = text.unicode_normalize(:nfkd).gsub(/\p{Mn}/, "").downcase
 
       def ranked_rows = sources.flat_map { |slug| rows(slug) }.sort_by { |row| [-row.fetch("rrf_score"), row.fetch("uri")] }.take(search_limit)
 

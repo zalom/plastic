@@ -39,7 +39,7 @@ class SearchTest < Plastic::TestCase
     %w[0 101 word].each do |limit|
       result = plastic("search", "evidence", "--limit", limit, table: Plastic::CLI::TABLE)
 
-      assert_equal 1, result.code
+      assert_equal 2, result.code
       assert_match(/limit/, result.err)
     end
   end
@@ -63,8 +63,17 @@ class SearchTest < Plastic::TestCase
 
     assert_equal 0, blank.code
     assert_includes blank.out, "global"
-    assert_equal 1, unknown.code
+    assert_equal 2, unknown.code
     assert_match(/unknown source projects: missing/, unknown.err)
+  end
+
+  def test_centers_an_accent_insensitive_fts_match
+    write_document("global", ("prefix " * 100) + "café")
+    result = plastic("search", "cafe", "--json", table: Plastic::CLI::TABLE)
+    excerpt = JSON.parse(result.out).fetch("result").fetch("results").fetch(0).fetch("body")
+
+    assert_equal 0, result.code
+    assert_includes excerpt, "café"
   end
 
   def test_pins_a_hit_to_its_historical_revision_through_concurrent_replacement_and_removal
