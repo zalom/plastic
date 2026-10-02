@@ -28,6 +28,15 @@ class DocumentGetTest < Plastic::TestCase
     assert_operator result.out.index("other"), :<, result.out.index("global")
   end
 
+  def test_refuses_malformed_unknown_and_missing_qualified_references
+    %w[broken plastic://unknown/1/plan.md plastic://global/1/missing.md].each do |reference|
+      result = plastic("document", "get", reference, table: Plastic::CLI::TABLE)
+
+      assert_equal 1, result.code
+      assert_includes result.err, "document"
+    end
+  end
+
   private
 
   def knowledge = store_graphs.databases.fetch(:knowledge)

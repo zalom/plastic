@@ -33,6 +33,17 @@ class RetrievalReadTest < Plastic::TestCase
     assert_equal %w[b a b], retrieval.fetch_batch([b, a, b]).map { |row| row.fetch(:body) }
   end
 
+  def test_exact_intent_and_document_reads_use_their_qualified_indexes
+    open_intent("Indexed")
+    writer.write("1", "plan.md", "indexed")
+
+    assert_equal "1", retrieval.intent("1").intent_id
+    plans = retrieval.exact_lookup_plans("1", "plan.md").flatten.join(" ")
+
+    assert_includes plans, "SEARCH"
+    refute_includes plans, "SCAN"
+  end
+
   private
 
   def writer = Plastic::Graph::EvidenceWriter.new(knowledge, origin)
