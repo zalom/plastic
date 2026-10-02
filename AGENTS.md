@@ -54,10 +54,8 @@ Rules for any agent (or human) contributing to this repository.
 ### Work
 - All work flows through an intent. Move it through What, Why, How, Exec. Do not jump
   straight to code.
-- Create intents through `plastic intent new` (which wraps `scripts/new-intent`), never by
-  hand-authoring the files. One call scaffolds a born-complete intent
-  plus sentinel placeholder lifecycle files. `new-intent` validates the file it writes and
-  `end-intent` checks it again at close, so hand-authoring is unnecessary.
+- Create intents through `plastic intent new`, which runs the kernel's own command
+  (`scripts/lib/plastic/commands/intent_new.rb`), never by hand-authoring the files or its rows.
 - Plans, specs, checklists, and outcomes live in the intent directory under `~/.plastic/`,
   never in the project tree.
 - A step becomes a script only when its output is a pure function of already-committed

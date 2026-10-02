@@ -4,6 +4,7 @@
 require_relative "test_helper"
 require "fileutils"
 require "tmpdir"
+require "tempfile"
 require_relative "../bin/lib/context_budget"
 
 # The standing surface (intent 363, plan step 7): every byte Plastic puts into a
@@ -12,6 +13,30 @@ require_relative "../bin/lib/context_budget"
 # 2026-10-01 on what Plastic alone introduces, 5,000 bytes.
 class ContextBudgetAgentsTest < Minitest::Test
   REPO = File.expand_path("..", __dir__)
+
+  # A plain `ContextBudget.run(repo: REPO, repeat: 1)` installs a real fixture
+  # home and runs the session-start hook against it; nothing in this file
+  # mutates REPO, so every test that asks for that one measurement shares it,
+  # the way a Rails test suite boots its fixtures once per file.
+  def self.report
+    @report ||= ContextBudget.run(repo: REPO, repeat: 1)
+  end
+
+  def report = self.class.report
+
+  # The two over-the-ceiling tests ask the same question (does a core file
+  # past the cap fail the bench) of the same oversized content, so they share
+  # one real measurement too, in a tmp file outside the per-test @dir.
+  def self.over_ceiling_report
+    @over_ceiling_report ||= begin
+      oversized = Tempfile.create(["oversized-core", ".md"])
+      oversized.write("x" * (ContextBudget::CEILINGS[:standing] + 1))
+      oversized.close
+      ContextBudget.run(repo: REPO, repeat: 1, core_file: oversized.path)
+    end
+  end
+
+  def over_ceiling_report = self.class.over_ceiling_report
 
   def setup
     @dir = Dir.mktmpdir("plastic-standing-surface")
@@ -60,20 +85,15 @@ class ContextBudgetAgentsTest < Minitest::Test
   end
 
   def test_the_bench_reports_an_agent_catalog_row
-    report = ContextBudget.run(repo: REPO, repeat: 1)
-
     assert_equal ContextBudget.agent_catalog_bytes(repo: REPO), report.row(:agent_catalog).bytes
   end
 
   def test_the_agent_catalog_row_says_how_many_agents_it_counted
-    report = ContextBudget.run(repo: REPO, repeat: 1)
-
     assert_includes report.row(:agent_catalog).label,
       "#{ContextBudget.agent_paths(repo: REPO).length} name + description values"
   end
 
   def test_the_standing_row_is_the_sum_of_the_four_surfaces
-    report = ContextBudget.run(repo: REPO, repeat: 1)
     parts = %i[core boot skill_catalog agent_catalog].sum { |key| report.row(key).bytes }
 
     assert_equal parts, report.row(:standing).bytes
@@ -87,48 +107,32 @@ class ContextBudgetAgentsTest < Minitest::Test
   end
 
   def test_the_standing_row_carries_the_ceiling
-    report = ContextBudget.run(repo: REPO, repeat: 1)
-
     assert_equal ContextBudget::CEILINGS[:standing], report.row(:standing).ceiling
   end
 
   def test_the_standing_surface_holds_under_its_ceiling
-    report = ContextBudget.run(repo: REPO, repeat: 1)
-
     assert_operator report.row(:standing).bytes, :<=, ContextBudget::CEILINGS[:standing]
   end
 
   def test_the_standing_surface_leaves_room_for_rulings_in_the_core_block
-    report = ContextBudget.run(repo: REPO, repeat: 1)
-
     assert_operator report.row(:standing).headroom, :>=, 500,
       "the standing surface leaves #{report.row(:standing).headroom} bytes under the cap; " \
       "a ruling of a few lines in PLASTIC.md must fit without trimming"
   end
 
   def test_the_bench_passes_on_this_repository
-    assert_predicate ContextBudget.run(repo: REPO, repeat: 1), :ok?
+    assert_predicate report, :ok?
   end
 
   def test_a_standing_surface_over_the_ceiling_fails_the_bench
-    over = File.join(@dir, "oversized.md")
-    File.write(over, "x" * (ContextBudget::CEILINGS[:standing] + 1))
-    report = ContextBudget.run(repo: REPO, repeat: 1, core_file: over)
-
-    refute_predicate report, :ok?
+    refute_predicate over_ceiling_report, :ok?
   end
 
   def test_a_standing_surface_over_the_ceiling_names_the_standing_row
-    over = File.join(@dir, "oversized.md")
-    File.write(over, "x" * (ContextBudget::CEILINGS[:standing] + 1))
-    report = ContextBudget.run(repo: REPO, repeat: 1, core_file: over)
-
-    assert_includes report.failures.join(" "), "standing"
+    assert_includes over_ceiling_report.failures.join(" "), "standing"
   end
 
   def test_the_rendered_table_carries_the_standing_row
-    report = ContextBudget.run(repo: REPO, repeat: 1)
-
     assert_includes report.to_table, "standing surface"
   end
 end

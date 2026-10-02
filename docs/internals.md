@@ -14,6 +14,12 @@ chapters under `docs/help/` print through `plastic help TOPIC`.
 
 ## deterministic-by-design
 
+The gate loads `test_helper` before `test_timings`, so SimpleCov can observe the
+timing library. A timing rerun uses `--only` for a unit file or Minitest's class
+filter for one Varar document, and a failed subprocess fails the check. Mutation
+reruns also require a successful process and a fresh report. An id missing from
+the report's verdict lists stays unresolved, even when its summary counts kills.
+
 Plastic splits every unit of work into two parts.
 
 - **The blueprint** is the deterministic part: conventions, templates, directory
@@ -623,12 +629,6 @@ Fresh bootstrap creates `stores/global/store` and `stores/global/INDEX.md`. Lega
 layout until explicit migration. Bootstrap on an already migrated home never recreates `projects/`.
 The context-budget benchmark seeds its fixture through the same store path resolver, so it
 measures active intents in the layout produced by the real installer.
-
-The four rows in `varar/store-layout.md` bind to `test/varar/store_layout.steps.rb`.
-They pack once per test process, isolate every home and harness configuration, check
-legacy data and backup preservation, and verify repeated migration refusal. The Varar
-test loader checks that all four cases remain discoverable, so a removed or unparsed
-table cannot silently drop this coverage. These rows make no model calls.
 
 `scripts/lib/store_layout.rb` is the one place that turns a home and a slug into a store path.
 `Plastic::StoreLayout.moved?(home)` is true when `stores/` exists. Every script asks it for the

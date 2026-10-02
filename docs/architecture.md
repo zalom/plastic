@@ -2,6 +2,11 @@
 
 ## overview
 
+The development gate starts coverage before timing instrumentation and checks
+the exit status of each rerun. Timing reruns select one test file or acceptance
+document. Mutation reruns resolve only ids with explicit verdict evidence;
+aggregate kill counts cannot establish an individual verdict.
+
 Plastic is an intent store plus a thin tooling layer over it. The store is plain files (folders, Markdown, YAML frontmatter) that capture desires and carry them through a fixed lifecycle; the tooling (the `plastic` command, hooks, scripts, agents, templates) keeps the store well-shaped and automates the deterministic parts. This document describes the system structure. For how the cycles actually execute (operational mechanics, harness detail), see [internals](internals.md). For the pitch and quick start, see the [README](../README.md).
 
 ## the two processes
