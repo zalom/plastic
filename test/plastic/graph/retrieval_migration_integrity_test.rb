@@ -25,7 +25,7 @@ class RetrievalMigrationIntegrityTest < Plastic::TestCase
       batch.add("INSERT INTO documents (intent_id, path, body, updated_at, origin_id) VALUES ('1', 'legacy.md', 'legacy document', 'then', :origin)", origin: origin_id)
     end
     references.transaction do |batch|
-      batch.add("INSERT INTO sqlar (name, mode, mtime, sz, data, intent_id, sha256, origin_id) VALUES (:name, 33188, 0, :size, :data, '1', 'source', :origin)",
+      batch.add("INSERT OR REPLACE INTO sqlar (name, mode, mtime, sz, data, intent_id, sha256, origin_id) VALUES (:name, 33188, 0, :size, :data, '1', 'source', :origin)",
         name: source_name, size: source_bytes.bytesize, data: Plastic::Graph::SQL::Bytes.new(source_bytes), origin: origin_id)
     end
   end
@@ -37,7 +37,7 @@ class RetrievalMigrationIntegrityTest < Plastic::TestCase
   end
 
   def resume_after_version_change
-    knowledge.transaction { |batch| batch.add("UPDATE retrieval_schema SET version = 0 WHERE name = 'retrieval'") }
+    knowledge.transaction { |batch| batch.add("UPDATE retrieval_backfills SET version = 0 WHERE name = 'retrieval' AND origin_id = :origin", origin: origin_id) }
 
     assert_equal 1, knowledge.rows("SELECT * FROM retrieval_backfills WHERE origin_id = :origin", origin: origin_id).size
     refute backfill.send(:complete?)

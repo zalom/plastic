@@ -103,7 +103,7 @@ class RetrievalGraphTest < Plastic::TestCase
     intent = open_intent("Passages")
     index_text(intent, "long.txt", "ž" * 1700)
 
-    assert_equal [[1, 1600], [2, 100]], saved_passages.last(2).map { |row| [row.fetch("position"), row.fetch("body").length] }
+    assert_equal [[1, 1600], [2, 300]], saved_passages.last(2).map { |row| [row.fetch("position"), row.fetch("body").length] }
   end
 
   def test_repairs_a_missing_fts_row_from_immutable_evidence

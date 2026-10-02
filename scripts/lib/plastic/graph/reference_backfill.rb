@@ -35,7 +35,7 @@ module Plastic
       end
 
       def self.complete_sql
-        "SELECT 1 FROM retrieval_backfills b JOIN retrieval_schema s ON s.name = b.name WHERE b.name = 'retrieval' AND b.origin_id = ? AND s.version = ?"
+        "SELECT 1 FROM retrieval_backfills WHERE name = 'retrieval' AND origin_id = ? AND version >= ?"
       end
 
       private
@@ -64,15 +64,15 @@ module Plastic
       end
 
       def complete?
-        @knowledge.row("SELECT 1 FROM retrieval_backfills b JOIN retrieval_schema s ON s.name = b.name WHERE b.name = 'retrieval' AND b.origin_id = :origin AND s.version = :version",
+        @knowledge.row("SELECT 1 FROM retrieval_backfills WHERE name = 'retrieval' AND origin_id = :origin AND version >= :version",
           origin: @origin_id, version: SCHEMA_VERSION)
       end
 
       def complete!
         @knowledge.transaction do |batch|
-          batch.add("INSERT INTO retrieval_backfills (name, origin_id, completed_at) VALUES ('retrieval', :origin, :completed_at) ON CONFLICT(name, origin_id) DO UPDATE SET completed_at = excluded.completed_at",
-            origin: @origin_id, completed_at: Plastic.now)
-          batch.add("UPDATE retrieval_schema SET version = :version, completed_at = 'complete' WHERE name = 'retrieval'", version: SCHEMA_VERSION)
+          batch.add("INSERT INTO retrieval_backfills (name, origin_id, version, completed_at) VALUES ('retrieval', :origin, :version, :completed_at) ON CONFLICT(name, origin_id) DO UPDATE SET version = MAX(version, excluded.version), completed_at = excluded.completed_at",
+            origin: @origin_id, version: SCHEMA_VERSION, completed_at: Plastic.now)
+          batch.add("UPDATE retrieval_schema SET completed_at = 'complete' WHERE name = 'retrieval'")
         end
       end
 
