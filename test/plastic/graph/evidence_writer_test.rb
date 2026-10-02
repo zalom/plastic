@@ -22,6 +22,18 @@ class EvidenceWriterTest < Plastic::TestCase
     assert_equal [0], %w[document_revisions document_heads document_passages document_fts].map { |table| count(table) }.uniq
   end
 
+  def test_removing_a_current_document_clears_its_head_and_fts_rows_but_keeps_its_revision
+    write_evidence("first evidence")
+    write_evidence("second evidence")
+
+    Plastic::Graph::EvidenceWriter.new(knowledge, origin).remove("1", "plan.md")
+
+    assert_empty rows("document_heads", "sha256")
+    assert_empty rows("document_fts", "body")
+    assert_equal ["first evidence", "second evidence"], rows("document_revisions", "body").sort
+    assert_equal ["first evidence", "second evidence"], rows("document_passages", "body").sort
+  end
+
   private
 
   def write_evidence(body) = Plastic::Graph::EvidenceWriter.new(knowledge, origin).write("1", "plan.md", body)
