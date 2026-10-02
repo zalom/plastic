@@ -107,7 +107,11 @@ module Plastic
 
       def self.file(key) = DATABASES.fetch(key).first
 
-      def self.fetch(key) = DATABASES.fetch(key).last.map { |name| ddl(name) }.join("\n")
+      MIGRATIONS = {
+        knowledge: "INSERT OR IGNORE INTO \"retrieval_schema\" (\"name\", \"version\") VALUES ('retrieval', 1);"
+      }.freeze
+
+      def self.fetch(key) = [*DATABASES.fetch(key).last.map { |name| ddl(name) }, MIGRATIONS[key]].compact.join("\n")
 
       def self.table_named(name) = TABLES.fetch(name.to_sym)
 
