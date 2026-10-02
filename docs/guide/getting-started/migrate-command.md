@@ -57,3 +57,21 @@ The command exits 3 and changes nothing in each of these cases:
 - `~/.plastic/stores/` exists, so the home has moved already.
 - An intent holds a fresh `delivery.lock`. A lock older than the lock lifetime does not block the move.
 - `~/.plastic-before-stores-move` exists from an earlier run.
+
+## Import the stores
+
+`plastic migrate stores --apply` on a moved home imports each store that still keeps its intents
+only as files. The import removes no file. It writes the rows and prints `store/index.json`
+beside `INDEX.md`.
+
+The following setting in `config.yml` removes the imported files after a store imports with no error:
+
+```yaml
+migrate:
+  remove_after_import: true
+```
+
+With the setting on, the command removes `INDEX.md` and archives the folders of done and abandoned
+intents. Their rows stay, and `plastic intent restore ID` prints a folder back. The setting is off
+by default. Turn it on after you check an import, and run the command again: a store imported on
+an earlier run that still holds `INDEX.md` gets the same removal.

@@ -3,13 +3,17 @@
 require "digest"
 require "fileutils"
 require "tmpdir"
+require_relative "../config"
 require_relative "roadmap_parse"
 
 module Plastic
   module Graph
     # Imports every legacy store under a home: `Sync::LegacyImport` for the
     # intent files, then the rulings, links, roadmaps, kept originals and
-    # archive-after-import that the legacy import does not do on its own.
+    # roadmaps and kept originals the legacy import does not do on its own.
+    # Nothing is removed during the import. Only after a store imports with
+    # no error, and only when migrate.remove_after_import is on, INDEX.md is
+    # removed and the folders of done and abandoned intents are archived.
     # `:dry_run` runs the same import against a throwaway copy of the home;
     # `:apply` runs it against the home it is given.
     class MigrateWriter
@@ -45,15 +49,40 @@ module Plastic
       def migrate_store(home, slug)
         root = File.join(home, "stores", slug)
         folder = StoreFolder.new(root)
-        return StoreReport.new(store: slug, skipped: true, counts: {}, problems: []) unless folder.legacy?
+        return leftover_report(home, slug, folder) unless folder.legacy?
 
         parsed = roadmap_files(root).to_h { |path| [path, RoadmapParse.call(File.read(path, encoding: "UTF-8"), path: relative(root, path))] }
         problems = parsed.values.flat_map(&:problems)
         return StoreReport.new(store: slug, skipped: false, counts: {}, problems:) if problems.any?
 
-        StoreReport.new(store: slug, skipped: false, counts: rolled_back_on_error(root) { run_import(home, slug, root, folder, parsed) }, problems: [])
+        counts = rolled_back_on_error(root) { run_import(home, slug, root, folder, parsed) }
       rescue StandardError => e
         StoreReport.new(store: slug, skipped: false, counts: {}, problems: ["#{slug}: the import failed and the store was put back: #{e.message}"])
+      else
+        removed_after_import(home, slug, folder, counts)
+      end
+
+      # A store imported on an earlier run that still holds INDEX.md: removed
+      # now when the flag has been turned on since, skipped otherwise.
+      def leftover_report(home, slug, folder)
+        return StoreReport.new(store: slug, skipped: true, counts: {}, problems: []) unless remove_after_import? && folder.exist?(StoreFolder::LEGACY_INDEX)
+
+        removed_after_import(home, slug, folder, Hash.new(0))
+      end
+
+      def remove_after_import? = Config.new(@home).flag(%w[migrate remove_after_import], default: false)
+
+      # Runs only after the store imported with no error. A failure here keeps
+      # the rows already written and says what was left in place.
+      def removed_after_import(home, slug, folder, counts)
+        return StoreReport.new(store: slug, skipped: false, counts:, problems: []) unless remove_after_import?
+
+        graphs = Graph.open(home:, store: slug, session: @session)
+        archive_done_intents(graphs.work, graphs.retrieval, counts)
+        folder.delete(StoreFolder::LEGACY_INDEX)
+        StoreReport.new(store: slug, skipped: false, counts:, problems: [])
+      rescue StandardError => e
+        StoreReport.new(store: slug, skipped: false, counts:, problems: ["#{slug}: imported, but removing the imported files stopped: #{e.message}"])
       end
 
       # A store that fails halfway gets its folder back as it was, databases
@@ -83,7 +112,6 @@ module Plastic
         write_decisions(graphs.databases, decisions, counts)
         keep_changed_originals(graphs.databases, folder, originals, counts)
         migrate_roadmaps(graphs, root, parsed, counts)
-        archive_done_intents(graphs.work, graphs.retrieval, counts)
         counts
       end
 

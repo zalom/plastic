@@ -11,7 +11,9 @@ module Plastic
     class Sync
       # The first sync up of a store written before store/index.json: reads
       # INDEX.md into intent and cluster rows, every file of every intent
-      # folder into rows, prints the whole store, and deletes INDEX.md.
+      # folder into rows, and prints the whole store. INDEX.md stays: migrate
+      # stores removes it only after the whole store imports, and only when
+      # migrate.remove_after_import is on in config.yml.
       class LegacyImport
         FRONT_MATTER = /\A---\n(.*?)\n---/m
         FIELD = /^(\w+):[ \t]*"?([^"\n]*?)"?[ \t]*$/
@@ -28,7 +30,7 @@ module Plastic
           write(parsed.check(@folder.intent_dirs))
           read = @sync.read(@folder.intent_files)
           finish
-          ["imported #{StoreFolder::LEGACY_INDEX}: #{Schema.phrase(parsed.counts)}, then deleted it", *read]
+          ["imported #{StoreFolder::LEGACY_INDEX}: #{Schema.phrase(parsed.counts)}", *read]
         end
 
         private
@@ -43,7 +45,6 @@ module Plastic
 
         def finish
           @sync.printer.print(Prints.of_store(@retrieval))
-          @folder.delete(StoreFolder::LEGACY_INDEX)
         end
 
         # The fields at the head of the intent's own file.

@@ -211,7 +211,10 @@ since it was written.
 
 `plastic migrate stores` imports every store that still keeps its intents only as files. By
 default it runs against a copy of the home and changes nothing. With `--apply`, it imports
-the real home. A store that is already imported is skipped.
+the real home. A store that is already imported is skipped. The import removes no file. Only
+after a store imports with no error, and only when `migrate.remove_after_import` is on in
+`config.yml`, it removes `INDEX.md` and archives the folders of done and abandoned intents.
+Their rows stay, and `plastic intent restore` prints a folder back. The flag is off by default.
 
 ## component map
 

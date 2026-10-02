@@ -18,6 +18,8 @@ class MigrateStoresTest < Plastic::TestCase
 
   def apply = plastic("migrate", "stores", "--apply", table: Plastic::CLI::TABLE)
 
+  def remove_after_import = File.write(File.join(@plastic_home, "config.yml"), "migrate:\n  remove_after_import: true\n")
+
   def spec_with(decisions) = "# Spec\n\n## Decisions\n#{decisions.map { |line| "- #{line}\n" }.join}"
 
   def test_colliding_ruling_ids_take_the_next_free_number
@@ -107,7 +109,31 @@ class MigrateStoresTest < Plastic::TestCase
     end
   end
 
-  def test_an_unknown_roadmap_is_refused
+def test_the_import_keeps_index_md
+  apply
+
+  assert folder.exist?("INDEX.md")
+end
+
+def test_index_md_goes_after_the_import_when_the_flag_is_on
+  remove_after_import
+
+  apply
+
+  refute folder.exist?("INDEX.md")
+  assert_equal %w[1 1a], retrieval.intents.map(&:intent_id).sort
+end
+
+def test_turning_the_flag_on_later_removes_index_md_on_the_next_run
+  apply
+  remove_after_import
+
+  apply
+
+  refute folder.exist?("INDEX.md")
+end
+
+def test_an_unknown_roadmap_is_refused
     assert_equal 1, plastic("roadmap", "show", "nosuch", table: Plastic::CLI::TABLE).code
   end
 end

@@ -519,7 +519,10 @@ this section covers how the code holds together.
 links from the original file bytes before the sync rewrites them. It then syncs the intent
 files into rows and writes the rulings and links. It keeps every original that the sync
 changed in the `sqlar` table of `references.db`. Last, it imports each roadmap file through
-`Graph::RoadmapParse` and archives every done or abandoned intent. A roadmap item whose id
+`Graph::RoadmapParse`. Nothing is removed while a store imports. When the import ends with
+no error and `migrate.remove_after_import` is on in `config.yml`, it then removes `INDEX.md`
+and archives every done or abandoned intent. The flag is off by default. A store imported on
+an earlier run that still holds `INDEX.md` gets the same removal when the flag is on. A roadmap item whose id
 names an intent in the store is linked to that intent, so its state follows the intent's
 status.
 
