@@ -12,7 +12,10 @@ module Plastic
         @origin_id = origin_id
       end
 
-      def call = legacy_references.each { |row| write(row) }
+      def call
+        legacy_references.each { |row| write(row) }
+        @knowledge.transaction { |batch| batch.add("UPDATE retrieval_schema SET completed_at = 'complete' WHERE name = 'retrieval'") }
+      end
 
       private
 
