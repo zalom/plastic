@@ -61,6 +61,22 @@ class DocumentGetTest < Plastic::TestCase
     assert_equal 2, malformed.code
   end
 
+  def test_reports_reference_and_passage_validation_as_structured_errors
+    reference = write_document("global", "1", "long.md", "evidence " * 400)
+
+    ["plastic://global/1/long.md?revision=bad", "plastic://global/1/%FF.md"].each do |invalid|
+      assert_json_error(plastic("document", "get", invalid, "--json", table: Plastic::CLI::TABLE), 2, "usage")
+    end
+
+    %w[word 0 -1].each do |position|
+      assert_json_error(plastic("document", "get", reference, "--passage", position, "--json", table: Plastic::CLI::TABLE), 2, "usage")
+    end
+
+    assert_json_error(plastic("document", "get", reference, "--passage", "99", "--json", table: Plastic::CLI::TABLE), 1, "failed")
+    missing = reference.sub("long.md", "missing.md")
+    assert_json_error(plastic("document", "get", missing, "--passage", "1", "--json", table: Plastic::CLI::TABLE), 1, "failed")
+  end
+
   private
 
   def repository = File.expand_path("../../..", __dir__)
@@ -72,5 +88,13 @@ class DocumentGetTest < Plastic::TestCase
     Plastic::Graph::EvidenceWriter.new(graphs.databases.fetch(:knowledge), origin).write(intent_id, path, body)
     graphs.retrieval.backfill!
     graphs.retrieval.reference(intent_id, path).fetch(:uri)
+  end
+
+  def assert_json_error(result, code, kind)
+    assert_equal code, result.code
+    assert_empty result.err
+    document = JSON.parse(result.out)
+    assert_equal kind, document.fetch("result").fetch("error").fetch("kind")
+    refute_match(/(?:Traceback|NoMethodError|ArgumentError)/, result.out)
   end
 end
