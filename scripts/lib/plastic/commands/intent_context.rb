@@ -41,6 +41,8 @@ module Plastic
 
       def validated_submission
         submission = JSON.parse(File.read(parsed.fetch(:from)))
+        raise CLI::Command::Usage, "context submission must be a JSON object" unless submission.is_a?(Hash)
+
         required_fields(submission)
         evidence = submission.fetch("evidence")
         validate_evidence(evidence)
@@ -74,7 +76,7 @@ module Plastic
         evidence.each do |reference|
           raise CLI::Command::Failure, "evidence was not discovered: #{reference}" unless allowed.include?(reference)
 
-          fields = Graph.open(home: scope.plastic_home, store: source(reference)).retrieval.fetch_reference(reference)
+          fields = source_retrieval(reference).fetch_reference(reference)
           raise CLI::Command::Failure, "evidence revision changed: #{reference}" unless fields.fetch(:uri) == reference
         end
       end
@@ -88,15 +90,32 @@ module Plastic
       end
 
       def evidence_state(reference)
-        retrieval = Graph.open(home: scope.plastic_home, store: source(reference)).retrieval
+        retrieval = source_retrieval(reference)
         retrieval.fetch_reference(reference)
         current = retrieval.fetch_reference(strip_revision(reference))
         { "uri" => reference, "state" => ((current.fetch(:uri) == reference) ? "fresh" : "stale") }
+      rescue Graph::RetrievalGraph::MissingReference
+        evidence_missing_or_stale(reference)
+      end
+
+      def evidence_missing_or_stale(reference)
+        retrieval = source_retrieval(reference)
+        retrieval.fetch_reference(reference)
+        { "uri" => reference, "state" => "stale" }
       rescue Graph::RetrievalGraph::MissingReference
         { "uri" => reference, "state" => "missing" }
       end
 
       def strip_revision(reference) = reference.sub(/\?revision=[0-9a-f]{64}\z/, "")
+
+      def source_retrieval(reference)
+        slug = source(reference)
+        root = File.join(scope.plastic_home, "stores", slug)
+        complete = Graph::Schema::STORE.all? { |key| File.file?(File.join(root, Graph::Schema.file(key))) }
+        raise Graph::RetrievalGraph::MissingReference, "source #{slug} needs retrieval maintenance" unless complete
+
+        Graph.open(home: scope.plastic_home, store: slug).retrieval
+      end
 
       def context_path = File.join(scope.root, "context", "#{parsed.fetch(:intent_id)}.json")
 
