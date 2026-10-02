@@ -98,6 +98,28 @@ class BackupTest < Plastic::TestCase
     end
   end
 
+  def test_backup_unpack_and_cli_readback_keep_retrieval_handoff_rows
+    home, env = populated_home
+    reference = write_retrieval_document(home, "backup evidence")
+    discovery = plastic("intent", "discover", "1", "backup", "--json", env:, table: Plastic::CLI::TABLE)
+
+    assert_equal 0, discovery.code
+    submit_retrieval_context(env, reference)
+
+    Dir.mktmpdir do |restored|
+      unpack(entries_of(archive_path(env)), restored)
+      restored_env = { "PLASTIC_HOME" => restored }
+      readback = plastic("intent", "context", "1", "--json", env: restored_env, table: Plastic::CLI::TABLE)
+      rows = Plastic::Graph.open(home: restored, store: "global").databases.fetch(:knowledge)
+
+      assert_equal 0, readback.code
+      assert_equal ["backup evidence"], JSON.parse(readback.out).dig("result", "context", "facts")
+      assert rows.row("SELECT data FROM retrieval_discoveries WHERE intent_id = '1'")
+      assert rows.row("SELECT data FROM retrieval_contexts WHERE intent_id = '1'")
+      assert rows.row("SELECT data FROM architecture_receipts WHERE provider = 'external'")
+    end
+  end
+
   def assert_home_files_match(home, restored)
     %w[origin_id config.yml projects.yml].each do |name|
       assert_equal File.binread(File.join(home, name)), File.binread(File.join(restored, name))
@@ -116,6 +138,26 @@ class BackupTest < Plastic::TestCase
       path = File.join(home, name)
       FileUtils.mkdir_p(File.dirname(path))
       File.binwrite(path, bytes)
+    end
+  end
+
+  def write_retrieval_document(home, body)
+    graphs = Plastic::Graph.open(home:, store: "global")
+    Plastic::Graph::EvidenceWriter.new(graphs.databases.fetch(:knowledge), graphs.retrieval.origin_id).write("1", "evidence.md", body)
+    graphs.retrieval.backfill!
+    graphs.retrieval.reference("1", "evidence.md").fetch(:uri)
+  end
+
+  def submit_retrieval_context(env, reference)
+    document = { "evidence" => [reference], "facts" => ["backup evidence"], "interpretations" => [], "gaps" => [], "rulings" => [],
+                 "architecture" => { "provider" => "external", "revision" => "abc", "coverage" => ["Ruby"], "limitations" => [],
+                                     "receipt" => { "available" => true, "revision" => "abc" } } }
+    Tempfile.create(["context", ".json"]) do |file|
+      file.write(JSON.generate(document))
+      file.flush
+      result = plastic("intent", "context", "1", "--from", file.path, env:, table: Plastic::CLI::TABLE)
+
+      assert_equal 0, result.code
     end
   end
 end

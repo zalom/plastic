@@ -28,6 +28,20 @@ class IntentDiscoverTest < Plastic::TestCase
     assert_discovery(manifest, result)
   end
 
+  def test_hands_discovery_to_the_external_agent_through_a_routine
+    open_intent
+    write_document("global", "global evidence")
+
+    result = plastic("intent", "discover", "1", "evidence", "--json", table: Plastic::CLI::TABLE)
+    run = routine_run("intent discover", "1")
+
+    assert_equal 0, result.code
+    assert_equal "handed_off", run.status
+    assert_equal :agent_external_agent_workflow, run.at
+    assert_equal "1", run.facts.fetch(:intent_id)
+    assert_equal "evidence", run.facts.fetch(:terms)
+  end
+
   private
 
   def assert_discovery(manifest, result)

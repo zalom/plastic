@@ -142,6 +142,22 @@ class IntentContextTest < Plastic::TestCase
     assert_equal before.slice("evidence", "architecture"), read_context.slice("evidence", "architecture")
   end
 
+  def test_rejects_an_unsafe_architecture_provider_without_writing_outside_the_owner_directory
+    open_intent
+    reference = write_document("other", "selected evidence")
+    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
+    submit_context(context_submission(reference))
+    before = read_context
+    unsafe = context_submission(reference)
+    unsafe.fetch("architecture")["provider"] = "../../outside"
+
+    result = submit_raw_context(JSON.generate(unsafe))
+
+    assert_equal 2, result.code
+    assert_equal before.slice("evidence", "architecture"), read_context.slice("evidence", "architecture")
+    refute_path_exists File.join(@plastic_home, "stores", "global", "outside.json")
+  end
+
   private
 
   def write_document(store, body)
