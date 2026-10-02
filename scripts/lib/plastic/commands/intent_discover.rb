@@ -17,7 +17,7 @@ module Plastic
 
       def call
         output.row("discovery", persist(manifest))
-        output.next_step("none", because: "the retrieval candidates were recorded")
+        output.next_step("plastic intent context #{parsed.fetch(:intent_id)} --from FILE", because: "an agent selects evidence and provides architecture context")
       end
 
       private

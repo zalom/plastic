@@ -18,6 +18,7 @@ class IntentDiscoverTest < Plastic::TestCase
     assert_equal %w[global other], manifest.fetch("candidates").map { |candidate| candidate.fetch("store") }
     assert manifest.fetch("candidates").all? { |candidate| candidate.key?("uri") && candidate.key?("revision") && candidate.key?("archived") }
     assert_equal manifest, JSON.parse(File.read(store_path("discovery/1.json")))
+    assert_equal "plastic intent context 1 --from FILE --project global", JSON.parse(result.out).fetch("next")
   end
 
   private
