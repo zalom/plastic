@@ -11,7 +11,8 @@ module Plastic
         document_passages: [%i[sha256 position origin_id], { sha256: :kept, position: "INTEGER NOT NULL",
                                                              body: :kept, line_start: "INTEGER NOT NULL",
                                                              line_end: "INTEGER NOT NULL", origin_id: :kept }],
-        retrieval_schema: [%i[name], { name: :kept, version: "INTEGER NOT NULL", completed_at: :text }]
+        retrieval_schema: [%i[name], { name: :kept, version: "INTEGER NOT NULL", completed_at: :text }],
+        retrieval_backfills: [%i[name origin_id], { name: :kept, origin_id: :kept, completed_at: :kept }]
       }.freeze
 
       FTS = {

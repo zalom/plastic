@@ -33,13 +33,9 @@ module Plastic
       end
 
       def origin_id = @origin.id
-
-      # This installation's intents, in Luhmann order.
       def intents = read(:intents).sort_by(&:segments)
 
       def intent(intent_id) = intents.find { |intent| intent.intent_id == intent_id }
-
-      # Intents with no live archive row: what store/index.json lists and what sync prints.
       def unarchived_intents = intents.reject { |intent| archived?(intent.intent_id) }
 
       def completion(intent_id)
@@ -48,17 +44,11 @@ module Plastic
 
       def clusters = read(:clusters)
 
-      def documents(intent_id = nil) = read(:documents, intent_id)
+      def documents(intent_id = nil) = ensure_backfill! && read(:documents, intent_id)
 
-      # Returns the current document for one intent path without changing any
-      # archive, source, or derived retrieval rows.
-      def fetch(intent_id, path)
-        row = @databases.fetch(:knowledge).row(DOCUMENT_SQL, intent_id:, path:, origin: origin_id)
-        row && Document.from_h(row)
-      end
+      def fetch(intent_id, path) = ensure_backfill! && @databases.fetch(:knowledge).row(DOCUMENT_SQL, intent_id:, path:, origin: origin_id).then { |row| row && Document.from_h(row) }
 
       DOCUMENT_SQL = "SELECT * FROM documents WHERE intent_id = :intent_id AND path = :path AND origin_id = :origin"
-
       SEARCH_SQL = "SELECT intent_id, path, body, sha256, position, bm25(document_fts) AS score " \
                    "FROM document_fts WHERE document_fts MATCH :query AND origin_id = :origin " \
                    "ORDER BY score, intent_id, path, position LIMIT :limit"
@@ -66,11 +56,10 @@ module Plastic
       # Returns current indexed passages in stable lexical-rank order. Plain
       # words become quoted FTS terms, so caller text never changes the query.
       def search(terms, limit: 20)
+        ensure_backfill!
         @databases.fetch(:knowledge).rows(SEARCH_SQL, query: fts_query(terms), origin: origin_id, limit:)
       end
 
-      # Imports legacy text attachments without deleting their source bytes.
-      # Immutable revisions make a resumed pass safe after interruption.
       def backfill!
         ReferenceBackfill.new(@databases, origin_id).call
       end
@@ -107,7 +96,6 @@ module Plastic
         archive = archive_of(intent_id)
         !archive.nil? && archive.restored_at.nil?
       end
-
       ROADMAP_SQL = "SELECT * FROM roadmaps WHERE origin_id = :origin AND slug = :slug"
       BATCHES_SQL = "SELECT * FROM batches WHERE origin_id = :origin AND roadmap = :slug ORDER BY position"
       ITEMS_SQL = "SELECT * FROM roadmap_items WHERE origin_id = :origin AND roadmap = :slug ORDER BY batch, position"
@@ -165,6 +153,8 @@ module Plastic
       end
 
       private
+
+      def ensure_backfill! = backfill!
 
       def home_dir = File.dirname(@databases.fetch(:home).path)
 

@@ -13,8 +13,12 @@ module Plastic
       end
 
       def call
+        return self if complete?
+
+        legacy_documents.each { |row| write(row) }
         legacy_references.each { |row| write(row) }
-        @knowledge.transaction { |batch| batch.add("UPDATE retrieval_schema SET completed_at = 'complete' WHERE name = 'retrieval'") }
+        complete!
+        self
       end
 
       private
@@ -24,16 +28,32 @@ module Plastic
           .select { |row| text?(row.fetch("data")) }
       end
 
+      def legacy_documents
+        @knowledge.rows("SELECT intent_id, path, body FROM documents WHERE origin_id = :origin", origin: @origin_id)
+      end
+
       def write(row)
-        path = row.fetch("name").split("/", 3).last
+        path = row.fetch("path") { row.fetch("name").split("/", 3).last }
         return if head_exists?(row.fetch("intent_id"), path)
 
-        EvidenceWriter.new(@knowledge, @origin_id).write(row.fetch("intent_id"), path, utf8(row.fetch("data")))
+        body = row.fetch("body") { utf8(row.fetch("data")) }
+        EvidenceWriter.new(@knowledge, @origin_id).write(row.fetch("intent_id"), path, body)
       end
 
       def head_exists?(intent_id, path)
         @knowledge.row("SELECT 1 FROM document_heads WHERE intent_id = :intent_id AND path = :path AND origin_id = :origin",
           intent_id:, path:, origin: @origin_id)
+      end
+
+      def complete?
+        @knowledge.row("SELECT 1 FROM retrieval_backfills WHERE name = 'retrieval' AND origin_id = :origin", origin: @origin_id)
+      end
+
+      def complete!
+        @knowledge.transaction do |batch|
+          batch.put(:retrieval_backfills, { name: "retrieval", completed_at: Plastic.now })
+          batch.add("UPDATE retrieval_schema SET completed_at = 'complete' WHERE name = 'retrieval'")
+        end
       end
 
       def text?(bytes) = utf8(bytes).valid_encoding? && !bytes.include?("\0")

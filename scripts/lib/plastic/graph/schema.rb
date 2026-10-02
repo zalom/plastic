@@ -85,7 +85,7 @@ module Plastic
         home: ["home.db", %i[routine_runs sessions locks backups]],
         work: ["work_graph.db", %i[intents clusters nodes edges savepoints completions printed changes
           roadmaps batches roadmap_items roadmap_edges roadmap_log archives archive_entries]],
-        knowledge: ["knowledge_graph.db", %i[documents document_revisions document_heads document_passages document_fts retrieval_schema rulings links printed changes]],
+        knowledge: ["knowledge_graph.db", %i[documents document_revisions document_heads document_passages document_fts retrieval_schema retrieval_backfills rulings links printed changes]],
         references: ["references.db", %i[sqlar printed changes]]
       }.freeze
       STORE = %i[work knowledge references].freeze
