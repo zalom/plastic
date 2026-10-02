@@ -24,9 +24,11 @@ module Plastic
 
       read "say what each store holds" do |context|
         context.reports.each { |report| context.print(report_line(report)) }
-        context.print(totals_line(context.reports))
+        context.print(totals_line(context.reports, context.apply ? "total" : "would import"))
       end
 
+      outcome :dry_run, if: ->(context) { !context.apply }, offers: "plastic migrate stores --apply",
+        because: "a dry run writes no rows"
       outcome :done, offers: "plastic next", because: "the stores import as rows"
 
       def self.problem_lines(reports)
@@ -41,11 +43,11 @@ module Plastic
         "#{report.store}: #{Graph::Schema.phrase(report.counts)}"
       end
 
-      def self.totals_line(reports)
+      def self.totals_line(reports, label)
         totals = reports.reject(&:skipped).each_with_object(Hash.new(0)) do |report, sums|
           report.counts.each { |key, value| sums[key] += value }
         end
-        totals.empty? ? "total: no store left to import" : "total: #{Graph::Schema.phrase(totals)}"
+        totals.empty? ? "#{label}: no store left to import" : "#{label}: #{Graph::Schema.phrase(totals)}"
       end
     end
   end

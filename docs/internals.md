@@ -487,6 +487,11 @@ than a chain of `if`/`elsif`, so adding a state to the cascade is one row, not a
 
 ### the knowledge graph command set (intent 400)
 
+`DropRoadmapItem` reads and checks the roadmap and item before its write step.
+`MigrateStores` ends a dry run with its own outcome, proposed totals, and the apply command.
+The acceptance helper decodes escaped line breaks in spec examples and clears all four
+session environment variables before passing the session declared by each example.
+
 Stage 5 adds 16 kernel commands in four groups. See
 [architecture](architecture.md#roadmaps-links-archive-and-backup) for what each group does;
 this section covers how the code holds together.

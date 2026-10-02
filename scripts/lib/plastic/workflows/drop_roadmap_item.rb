@@ -9,13 +9,19 @@ module Plastic
     class DropRoadmapItem < CodeWorkflow
       [facts, steps, outcomes].each(&:clear)
 
-      sets :dropped
+      sets :item, :dropped
+
+      gate "no roadmap %{slug}", stops: :failure, pass: ->(context) { !context.retrieval.roadmap(context.slug).nil? }
+
+      read "find the item" do |context|
+        context[:item] = context.retrieval.roadmap_items(context.slug).find { |item| item.item == context.item_id }
+      end
+
+      gate "no item %{item_id} on roadmap %{slug}", stops: :failure, pass: ->(context) { !context.item.nil? }
 
       step "drop the item", done: ->(context) { context.dropped } do |context|
         context[:dropped] = context.work.drop_item(context.slug, context.item_id)
       end
-
-      gate "no item %{item_id} on roadmap %{slug}", stops: :failure, pass: ->(context) { context.dropped }
 
       read "say what was dropped" do |context|
         context.print("dropped: #{context.item_id}")

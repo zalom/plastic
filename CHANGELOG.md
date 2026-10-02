@@ -5,6 +5,9 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+- Stage 5 acceptance documents cover every added command. The test helpers decode multiline specs and isolate Codex session identifiers. CI also runs on pull requests targeting stacked `plastic/` branches.
+- `roadmap drop` names a missing roadmap or item before attempting a write. A migration dry run labels its totals as proposed imports and offers the apply command.
+
 - The work graph: `node add`, `node remove`, `node claim`, `node release`, `node done`, `node fail`, `node park`, `node answer`, `edge add`, `edge remove`. Nodes move through guarded state changes; a node claimed a fourth time parks with a question instead of looping.
 
 - `intent rule ID TEXT` writes an owner ruling as the next D id, with `--supersedes` linking it to the ruling it replaces. `intent spec ID` prints the grilling method, then the intent's open decisions read from its spec document. `auto start ID` refuses an open decision, no done criterion, a done or abandoned intent, and another session's live lock, then takes the lock, sets the intent active, and reprints its files.

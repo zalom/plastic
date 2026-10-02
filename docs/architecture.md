@@ -188,6 +188,9 @@ reprints its files.
 
 ## roadmaps, links, archive and backup
 
+A migration dry run reports what it would import and offers `plastic migrate stores --apply`.
+Dropping a missing roadmap item fails before any write and names the missing roadmap or item.
+
 A roadmap is a plan of several intents, kept as rows in `work_graph.db`. It holds batches.
 Each batch has a goal and done criteria, and each item in a batch can wait on other items.
 `plastic roadmap batch` and `plastic roadmap add` write the plan. `plastic roadmap start`

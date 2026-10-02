@@ -77,7 +77,7 @@ class ResumeOpenIntentsTest < Plastic::TestCase
     project_dir = File.join(@home, "proj")
     FileUtils.mkdir_p(project_dir)
     FileUtils.mkdir_p(File.join(@plastic_home, "stores", "widgets"))
-    File.write(File.join(@plastic_home, "projects.yml"), "widgets:\n  path: #{project_dir}\n")
+    File.write(File.join(@plastic_home, "projects.yml"), "projects:\n  widgets:\n    path: #{project_dir}\n")
     out = StringIO.new
     err = StringIO.new
     environment = Plastic::CLI::Command::Environment.new(env: { "PLASTIC_HOME" => @plastic_home, "PLASTIC_SESSION" => "s-1" },
@@ -91,7 +91,7 @@ class ResumeOpenIntentsTest < Plastic::TestCase
   def test_the_event_cwd_picks_the_store_over_the_process_directory
     project_dir = File.join(@home, "proj")
     FileUtils.mkdir_p([project_dir, File.join(@plastic_home, "stores", "widgets")])
-    File.write(File.join(@plastic_home, "projects.yml"), "widgets:\n  path: #{project_dir}\n")
+    File.write(File.join(@plastic_home, "projects.yml"), "projects:\n  widgets:\n    path: #{project_dir}\n")
 
     assert_includes call(input: JSON.generate({ cwd: project_dir })).out, "Plastic: a new session in store widgets"
   end
