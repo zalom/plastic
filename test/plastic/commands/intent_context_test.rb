@@ -16,6 +16,8 @@ class IntentContextTest < Plastic::TestCase
 
     assert_equal submission, submitted.slice("evidence", "facts", "interpretations", "gaps", "rulings", "architecture")
     assert_equal submission, readback.slice("evidence", "facts", "interpretations", "gaps", "rulings", "architecture")
+    row = Plastic::Graph.open(home: @plastic_home, store: "global").databases.fetch(:knowledge).row("SELECT data FROM retrieval_contexts WHERE intent_id = '1'")
+    assert_equal submitted.slice("evidence", "facts", "interpretations", "gaps", "rulings", "architecture", "archive_states", "intent_id"), JSON.parse(row.fetch("data"))
     assert_equal before, File.binread(File.join(@plastic_home, "stores", "other", "knowledge_graph.db"))
   end
 
@@ -29,7 +31,7 @@ class IntentContextTest < Plastic::TestCase
     context = read_context
 
     assert_equal submission.slice("facts", "interpretations", "gaps", "rulings", "architecture"), context.slice("facts", "interpretations", "gaps", "rulings", "architecture")
-    assert_equal [{ "uri" => reference, "state" => "stale" }], context.fetch("freshness").fetch("evidence")
+    assert_equal [{ "uri" => reference, "state" => "stale", "archived" => false }], context.fetch("freshness").fetch("evidence")
   end
 
   def test_records_selected_archive_state_and_marks_it_stale_without_losing_the_pinned_revision
@@ -118,7 +120,9 @@ class IntentContextTest < Plastic::TestCase
 
   def archive_source_intent
     source = Plastic::Graph.open(home: @plastic_home, store: "other")
-    source.work.archive_intent("1")
+    source.databases.fetch(:work).transaction do |batch|
+      batch.put(:archives, { intent_id: "1", at: Plastic.now, restored_at: nil, session_id: "context-test" })
+    end
   end
 
   def replace_architecture_receipt(revision:, available: true)

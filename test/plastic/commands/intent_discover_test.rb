@@ -46,7 +46,7 @@ class IntentDiscoverTest < Plastic::TestCase
 
   def assert_workflow(manifest)
     expected = { "search" => "plastic search evidence --source-project global --source-project other", "evidence" => "plastic document get REF",
-                 "architecture" => "external architecture provider records coverage and limitations", "context" => "plastic intent context 1 --from FILE" }
+                 "architecture" => "external architecture provider records coverage and limitations", "context" => "plastic intent context 1 --from FILE --project global" }
 
     assert_equal expected, manifest.fetch("workflow")
   end

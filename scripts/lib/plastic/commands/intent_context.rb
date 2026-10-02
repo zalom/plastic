@@ -33,7 +33,7 @@ module Plastic
       end
 
       def readback
-        document = JSON.parse(File.read(context_path))
+        document = stored_context
         document.merge("freshness" => freshness(document))
       rescue Errno::ENOENT
         raise CLI::Command::Failure, "no retrieval context for intent #{parsed.fetch(:intent_id)}"
@@ -46,7 +46,9 @@ module Plastic
         required_fields(submission)
         evidence = submission.fetch("evidence")
         validate_evidence(evidence)
-        submission.merge("intent_id" => parsed.fetch(:intent_id), "evidence" => evidence.uniq)
+        selected = evidence.uniq
+        submission.merge("intent_id" => parsed.fetch(:intent_id), "evidence" => selected,
+          "archive_states" => selected.to_h { |reference| [reference, archived?(reference)] })
       end
 
       def required_fields(submission)
@@ -86,14 +88,17 @@ module Plastic
       def source(reference) = reference[/\Aplastic:\/\/([^\/]+)/, 1]
 
       def freshness(document)
-        { "evidence" => document.fetch("evidence").map { |reference| evidence_state(reference) } }
+        { "evidence" => document.fetch("evidence").map { |reference| evidence_state(document, reference) },
+          "architecture" => architecture_state(document.fetch("architecture")) }
       end
 
-      def evidence_state(reference)
+      def evidence_state(document, reference)
         retrieval = source_retrieval(reference)
         retrieval.fetch_reference(reference)
         current = retrieval.fetch_reference(strip_revision(reference))
-        { "uri" => reference, "state" => ((current.fetch(:uri) == reference) ? "fresh" : "stale") }
+        archived = retrieval.archived?(current.fetch(:intent_id))
+        state = current.fetch(:uri) == reference && document.fetch("archive_states", {}).fetch(reference, archived) == archived ? "fresh" : "stale"
+        { "uri" => reference, "state" => state, "archived" => archived }
       rescue Graph::RetrievalGraph::MissingReference
         evidence_missing_or_stale(reference)
       end
@@ -104,6 +109,25 @@ module Plastic
         { "uri" => reference, "state" => "stale" }
       rescue Graph::RetrievalGraph::MissingReference
         { "uri" => reference, "state" => "missing" }
+      end
+
+      def archived?(reference)
+        retrieval = source_retrieval(reference)
+        fields = retrieval.fetch_reference(reference)
+        retrieval.archived?(fields.fetch(:intent_id))
+      end
+
+      def architecture_state(architecture)
+        receipt = JSON.parse(File.read(architecture_receipt_path(architecture.fetch("provider"))))
+        return architecture_status(architecture, "missing") unless receipt.fetch("available", true)
+
+        architecture_status(architecture, receipt.fetch("revision") == architecture.fetch("revision") ? "fresh" : "stale")
+      rescue Errno::ENOENT, JSON::ParserError, KeyError
+        architecture_status(architecture, "missing")
+      end
+
+      def architecture_status(architecture, state)
+        { "provider" => architecture.fetch("provider"), "revision" => architecture.fetch("revision"), "state" => state }
       end
 
       def strip_revision(reference) = reference.sub(/\?revision=[0-9a-f]{64}\z/, "")
@@ -119,17 +143,38 @@ module Plastic
 
       def context_path = File.join(scope.root, "context", "#{parsed.fetch(:intent_id)}.json")
 
+      def stored_context
+        row = graphs.databases.fetch(:knowledge).row("SELECT data FROM retrieval_contexts WHERE intent_id = :intent_id AND origin_id = :origin",
+          intent_id: parsed.fetch(:intent_id), origin: graphs.retrieval.origin_id)
+        return JSON.parse(row.fetch("data")) if row
+
+        JSON.parse(File.read(context_path))
+      end
+
       def discovery_path = File.join(scope.root, "discovery", "#{parsed.fetch(:intent_id)}.json")
 
       def persist(document)
+        body = JSON.pretty_generate(document)
+        graphs.databases.fetch(:knowledge).transaction do |batch|
+          batch.put(:retrieval_contexts, { intent_id: parsed.fetch(:intent_id), data: body, updated_at: Plastic.now })
+        end
+        persist_architecture_receipt(document.fetch("architecture"))
         FileUtils.mkdir_p(File.dirname(context_path))
         Tempfile.create(["context", ".json"], File.dirname(context_path)) do |file|
-          file.write(JSON.pretty_generate(document))
+          file.write(body)
           file.flush
           File.rename(file.path, context_path)
         end
         document
       end
+
+      def persist_architecture_receipt(architecture)
+        path = architecture_receipt_path(architecture.fetch("provider"))
+        FileUtils.mkdir_p(File.dirname(path))
+        File.write(path, JSON.pretty_generate(architecture.fetch("receipt")))
+      end
+
+      def architecture_receipt_path(provider) = File.join(scope.root, "architecture", "#{provider}.json")
     end
   end
 end
