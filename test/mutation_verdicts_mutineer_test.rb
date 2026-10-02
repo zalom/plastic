@@ -35,6 +35,31 @@ class MutationVerdictsMutineerTest < Minitest::Test
     assert_kind_of Numeric, seconds
   end
 
+  def test_an_unreported_id_has_no_verdict
+    report = { "survivors" => [], "no_verdict" => [], "summary" => { "killed" => 1 } }
+
+    assert_equal({ "absent" => "no_verdict" }, MutationVerdicts::Mutineer.verdicts_of(report, ["absent"]))
+  end
+
+  def test_an_uncovered_id_is_never_counted_as_killed
+    report = { "survivors" => [], "no_verdict" => [], "no_coverage" => [{ "id" => "uncovered" }] }
+
+    assert_equal({ "uncovered" => "no_verdict" }, MutationVerdicts::Mutineer.verdicts_of(report, ["uncovered"]))
+  end
+
+  def test_a_failed_rerun_rejects_even_a_written_report
+    runner = lambda { |*command, **|
+      File.write(command[command.index("--output") + 1], JSON.generate({ "survivors" => [], "no_verdict" => [] }))
+      ["rerun failed", Struct.new(:success?).new(false)]
+    }
+
+    error = assert_raises(MutationVerdicts::Decision::Failure) do
+      MutationVerdicts::Mutineer.new([], runner:).rerun("Foo#bar", ["id1"])
+    end
+
+    assert_includes error.message, "rerun failed"
+  end
+
   private
 
   def rerun_with_fake_mutineer
@@ -42,7 +67,8 @@ class MutationVerdictsMutineerTest < Minitest::Test
     runner = lambda { |*command, chdir:|
       seen = [command, chdir]
       output = command[command.index("--output") + 1]
-      File.write(output, JSON.generate({ "survivors" => [], "no_verdict" => [{ "id" => "id2" }] }))
+      File.write(output, JSON.generate({ "killed" => [{ "id" => "id1" }], "survivors" => [], "no_verdict" => [{ "id" => "id2" }] }))
+      ["", Struct.new(:success?).new(true)]
     }
     mutineer = MutationVerdicts::Mutineer.new(["--since", "abc"], root: "/worktree", runner:)
     result = mutineer.rerun("Foo#bar", ["id1", "id2"])

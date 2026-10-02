@@ -245,8 +245,9 @@ class VerifyChange
     return %w[bundle exec rspec] + tests if suite == RSPEC
     return %w[bin/rails test] + tests if rails
 
-    %w[bundle exec ruby -Ilib -Itools -Itest -r] + [File.join(@root, "bin/lib/test_timings"), "-e"] +
-      [%(require "test_helper"; ARGV.each { |file| require File.expand_path(file) })] + tests
+    %w[bundle exec ruby -Ilib -Itools -Itest -e] +
+      [%(require "test_helper"; require ARGV.shift; ARGV.each { |file| require File.expand_path(file) }),
+        File.join(@root, "bin/lib/test_timings")] + tests
   end
 
   def lint_decision(lint_files)

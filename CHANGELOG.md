@@ -7,6 +7,7 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 - Stage 5 acceptance documents cover every added command. The test helpers decode multiline specs and isolate Codex session identifiers. CI also runs on pull requests targeting stacked `plastic/` branches.
 - `roadmap drop` names a missing roadmap or item before attempting a write. A migration dry run labels its totals as proposed imports and offers the apply command.
+- `auto start` takes a missing or expired delivery lock even when the intent is already active. Another session's live lock still refuses the call. Failed edge additions and removals can retry after their cause is fixed.
 
 - The work graph: `node add`, `node remove`, `node claim`, `node release`, `node done`, `node fail`, `node park`, `node answer`, `edge add`, `edge remove`. Nodes move through guarded state changes; a node claimed a fourth time parks with a question instead of looping.
 

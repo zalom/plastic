@@ -14,6 +14,12 @@ chapters under `docs/help/` print through `plastic help TOPIC`.
 
 ## deterministic-by-design
 
+The gate loads `test_helper` before `test_timings`, so SimpleCov can observe the
+timing library. A timing rerun uses `--only` for a unit file or Minitest's class
+filter for one Varar document, and a failed subprocess fails the check. Mutation
+reruns also require a successful process and a fresh report. An id missing from
+the report's verdict lists stays unresolved, even when its summary counts kills.
+
 Plastic splits every unit of work into two parts.
 
 - **The blueprint** is the deterministic part: conventions, templates, directory
@@ -459,6 +465,11 @@ rule`, `auto start`, `graph check`, `graph ready`, `graph show`, `intent show`, 
 brief`, `status`, and `next`. See [architecture](architecture.md#the-work-graph) for the node
 and edge state machine and the ruling/spec mechanics; this section covers the four read
 commands stage 4 added on top of them.
+
+`StartAuto.delivery_started?` checks both active status and a live auto lock held by the
+calling session before skipping the write. The foreign live-lock gate still runs first.
+`AddEdge` and `RemoveEdge` clear a failed result before retrying the write. Their gates
+still report why an edge could not be added or removed.
 
 `Commands::IntentShow` and `Commands::IntentBrief` are kernel routines (`workflow
 :code_show_intent` and `:code_show_brief`): each refuses (exit 1) an unknown intent id through

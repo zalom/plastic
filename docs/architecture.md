@@ -2,6 +2,11 @@
 
 ## overview
 
+The development gate starts coverage before timing instrumentation and checks
+the exit status of each rerun. Timing reruns select one test file or acceptance
+document. Mutation reruns resolve only ids with explicit verdict evidence;
+aggregate kill counts cannot establish an individual verdict.
+
 Plastic is an intent store plus a thin tooling layer over it. The store is plain files (folders, Markdown, YAML frontmatter) that capture desires and carry them through a fixed lifecycle; the tooling (the `plastic` command, hooks, scripts, agents, templates) keeps the store well-shaped and automates the deterministic parts. This document describes the system structure. For how the cycles actually execute (operational mechanics, harness detail), see [internals](internals.md). For the pitch and quick start, see the [README](../README.md).
 
 ## the two processes
@@ -161,6 +166,7 @@ add`); it moves through `open`, `claimed`, `done`, `failed` and `parked`, or lea
 as `removed` (`Graph::Node::MOVES` is the one source of which moves are legal). An edge
 (`plastic edge add`) says one node needs another; a guarded SQL insert refuses a self edge, an
 edge touching a missing or removed node, and an edge that would close a loop.
+After the cause of a failed edge addition or removal is fixed, the same command can retry.
 
 `Graph::NodeWriter` and `Graph::EdgeWriter` own these writes. Every state move is a guarded
 `UPDATE ... WHERE state IN (...)`, so two attempts to move the same node cannot both win; the
@@ -184,7 +190,8 @@ open decisions, so the next step is always either `intent rule` or `auto start`.
 `plastic auto start ID` refuses (exit 3) an open decision, no done criterion, a done or
 abandoned intent, and a live lock held by another session; it fails (exit 1) when the call
 names no session. Otherwise it takes the lock in `auto` mode, sets the intent active, and
-reprints its files.
+reprints its files. An already active intent still needs a live auto lock held by the
+calling session; starting it takes a missing or expired lock.
 
 ## roadmaps, links, archive and backup
 

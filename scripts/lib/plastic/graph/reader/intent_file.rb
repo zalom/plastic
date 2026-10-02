@@ -18,10 +18,11 @@ module Plastic
         GRAPH_TABLES = { "nodes" => [:nodes, Node], "edges" => [:edges, Edge] }.freeze
         KINDS = { "graph.json" => %i[work graph], "savepoint.md" => %i[work savepoint] }.freeze
 
-        def initialize(folder, intent, path)
+        def initialize(folder, intent, path, retrieval: nil)
           @folder = folder
           @path = path
           @intent_id = intent.intent_id
+          @retrieval = retrieval
           @rel = path.delete_prefix("#{intent.dir}/")
         end
 
@@ -49,13 +50,15 @@ module Plastic
         def graph_rows(record, items) = Array(items).map { |item| record.from_h(item).with(intent_id: @intent_id).to_h.except(:origin_id) }
 
         def savepoint(batch)
+          @previous_lines = Array(@retrieval&.savepoints(@intent_id)).group_by(&:line)
           batch.remove(:savepoints, intent_id: @intent_id)
           batch.put_all(:savepoints, text.lines(chomp: true).each_with_index.map { |line, index| savepoint_row(line, index) })
         end
 
         def savepoint_row(line, index)
           at, said = Savepoint.parse(line)
-          { intent_id: @intent_id, position: index + 1, at:, text: said }
+          previous = @previous_lines.fetch(line, []).shift
+          { intent_id: @intent_id, position: index + 1, at:, text: said, session_id: previous&.session_id }
         end
 
         def document(batch)

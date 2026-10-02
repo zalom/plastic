@@ -10,6 +10,8 @@ module Plastic
 
       sets :problem, :removed
 
+      read("forget a refusal of an earlier call") { |context| context[:removed] = nil if context.removed == false }
+
       step "remove the edge", done: ->(context) { !context.removed.nil? } do |context|
         removed = context.work.remove_edge(intent_id: context.intent_id, from: context.from, to: context.to)
         context[:removed] = removed

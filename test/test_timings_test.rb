@@ -130,22 +130,42 @@ class TestTimingsTest < Minitest::Test
   rescue TestTimings::Caps::Failure => e
     [e, out.string]
   end
+end
 
+class TestTimingsRerunTest < Minitest::Test
   def test_rerun_shells_to_bin_test_only_for_a_plain_file
     seen = nil
-    runner = ->(*command, chdir:) { seen = [command, chdir] }
+    runner = lambda { |*command, chdir:|
+      seen = [command, chdir]
+      ["", success]
+    }
 
     TestTimings::Rerun.new(root: "/worktree", runner:).call("test/plain_test.rb")
 
     assert_equal [["bundle", "exec", "ruby", "bin/test", "--only", "test/plain_test.rb"], "/worktree"], seen
   end
 
-  def test_rerun_shells_to_bin_test_system_for_a_varar_document
+  def test_rerun_selects_only_the_named_varar_document
     seen = nil
-    runner = ->(*command, chdir:) { seen = [command, chdir] }
+    runner = lambda { |*command, chdir:|
+      seen = [command, chdir]
+      ["", success]
+    }
 
     TestTimings::Rerun.new(root: "/worktree", runner:).call("varar/intent-new.md")
 
-    assert_equal [%w[bundle exec ruby bin/test --system], "/worktree"], seen
+    assert_equal [["bundle", "exec", "ruby", "bin/test", "--name", "/\\AVar_varar_intent_new_md#/", "--system"], "/worktree"], seen
   end
+
+  def test_a_failed_rerun_never_passes_the_cap
+    runner = ->(*, **) { ["load failed", Struct.new(:success?).new(false)] }
+
+    error = assert_raises(TestTimings::Caps::Failure) do
+      TestTimings::Rerun.new(runner:).call("test/missing_test.rb")
+    end
+
+    assert_includes error.message, "load failed"
+  end
+
+  def success = Struct.new(:success?).new(true)
 end

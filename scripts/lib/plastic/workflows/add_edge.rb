@@ -17,6 +17,8 @@ module Plastic
 
       gate "no intent %{intent_id} in this store", stops: :failure, pass: ->(context) { !context.intent.nil? }
 
+      read("forget a refusal of an earlier call") { |context| context[:added] = nil if context.added == false }
+
       step "add the edge", done: ->(context) { !context.added.nil? } do |context|
         added = context.work.add_edge(intent_id: context.intent_id, from: context.from, to: context.to)
         context[:added] = added
