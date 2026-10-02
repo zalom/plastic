@@ -11,7 +11,6 @@ class IntentContextTest < Plastic::TestCase
     plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
     before = File.binread(File.join(@plastic_home, "stores", "other", "knowledge_graph.db"))
     submission = context_submission(reference)
-
     submitted = submit_context(submission, json: true)
     readback = read_context
 
@@ -25,7 +24,6 @@ class IntentContextTest < Plastic::TestCase
     reference = write_document("other", "first selected evidence")
     plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
     submission = context_submission(reference)
-
     submit_context(submission)
     write_document("other", "second selected evidence")
     context = read_context
@@ -39,8 +37,7 @@ class IntentContextTest < Plastic::TestCase
     reference = write_document("other", "selected evidence")
     plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
     submit_context(context_submission(reference))
-    graphs = Plastic::Graph.open(home: @plastic_home, store: "other")
-    Plastic::Graph::EvidenceWriter.new(graphs.databases.fetch(:knowledge), origin).remove("1", "evidence.md")
+    remove_current_head
 
     assert_equal "stale", read_context.fetch("freshness").fetch("evidence").first.fetch("state")
   end
@@ -50,15 +47,14 @@ class IntentContextTest < Plastic::TestCase
     reference = write_document("other", "selected evidence")
     plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
     submit_context(context_submission(reference))
-    graphs = Plastic::Graph.open(home: @plastic_home, store: "other")
-    graphs.databases.fetch(:knowledge).transaction do |batch|
-      batch.add("UPDATE retrieval_backfills SET version = 0 WHERE name = 'retrieval' AND origin_id = :origin", origin: origin)
-    end
+    mark_retrieval_incomplete
+    before = File.binread(store_path("../other/knowledge_graph.db"))
 
     result = plastic("intent", "context", "1", table: Plastic::CLI::TABLE)
 
     assert_equal 1, result.code
     assert_includes result.err, "retrieval maintenance is required before source other can be read"
+    assert_equal before, File.binread(store_path("../other/knowledge_graph.db"))
   end
 
   def test_rejects_a_non_object_submission_without_replacing_saved_context
@@ -86,11 +82,20 @@ class IntentContextTest < Plastic::TestCase
 
   def context_submission(reference)
     { "evidence" => [reference], "facts" => ["a source fact"], "interpretations" => ["an agent interpretation"],
-      "gaps" => ["a remaining gap"], "rulings" => ["an owner ruling"], "architecture" => external_architecture }
+      "gaps" => ["a remaining gap"], "rulings" => ["an owner ruling"],
+      "architecture" => { "provider" => "external", "revision" => "abc", "coverage" => ["Ruby"], "limitations" => ["templates"] } }
   end
 
-  def external_architecture
-    { "provider" => "external", "revision" => "abc", "coverage" => ["Ruby"], "limitations" => ["templates"] }
+  def remove_current_head
+    graphs = Plastic::Graph.open(home: @plastic_home, store: "other")
+    Plastic::Graph::EvidenceWriter.new(graphs.databases.fetch(:knowledge), origin).remove("1", "evidence.md")
+  end
+
+  def mark_retrieval_incomplete
+    graphs = Plastic::Graph.open(home: @plastic_home, store: "other")
+    graphs.databases.fetch(:knowledge).transaction do |batch|
+      batch.add("UPDATE retrieval_backfills SET version = 0 WHERE name = 'retrieval' AND origin_id = :origin", origin: origin)
+    end
   end
 
   def submit_context(submission, json: false)

@@ -20,7 +20,7 @@ module Plastic
         output.next_step("none", because: "the retrieval context was read")
       rescue Errno::ENOENT, JSON::ParserError => error
         raise CLI::Command::Usage, error.message
-      rescue Graph::RetrievalGraph::MissingReference, KeyError => error
+      rescue Graph::RetrievalGraph::MaintenanceRequired, Graph::RetrievalGraph::MissingReference, KeyError => error
         raise CLI::Command::Failure, error.message
       end
 
@@ -110,9 +110,9 @@ module Plastic
 
       def source_retrieval(reference)
         slug = source(reference)
-        root = File.join(scope.plastic_home, "stores", slug)
-        complete = Graph::Schema::STORE.all? { |key| File.file?(File.join(root, Graph::Schema.file(key))) }
-        raise Graph::RetrievalGraph::MissingReference, "source #{slug} needs retrieval maintenance" unless complete
+        knowledge = File.join(scope.plastic_home, "stores", slug, "knowledge_graph.db")
+        complete = Graph::ReferenceBackfill.complete?(knowledge, Graph::Origin.new(scope.plastic_home).id)
+        raise Graph::RetrievalGraph::MaintenanceRequired, "retrieval maintenance is required before source #{slug} can be read" unless complete
 
         Graph.open(home: scope.plastic_home, store: slug).retrieval
       end
