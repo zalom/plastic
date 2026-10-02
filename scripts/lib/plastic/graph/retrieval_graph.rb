@@ -74,7 +74,7 @@ module Plastic
       ROADMAP_SQL = "SELECT * FROM roadmaps WHERE origin_id = :origin AND slug = :slug"
       BATCHES_SQL = "SELECT * FROM batches WHERE origin_id = :origin AND roadmap = :slug ORDER BY position"
       ITEMS_SQL = "SELECT * FROM roadmap_items WHERE origin_id = :origin AND roadmap = :slug ORDER BY batch, position"
-      ROADMAP_EDGES_SQL = "SELECT * FROM roadmap_edges WHERE origin_id = :origin AND roadmap = :slug"
+      ROADMAP_EDGES_SQL = 'SELECT * FROM roadmap_edges WHERE origin_id = :origin AND roadmap = :slug ORDER BY CAST("from" AS INTEGER), "from"'
       ROADMAP_LOG_SQL = "SELECT * FROM roadmap_log WHERE origin_id = :origin AND roadmap = :slug ORDER BY position"
 
       # One roadmap by slug, or nil when none has been started.

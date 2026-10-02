@@ -11,6 +11,8 @@ module Plastic
 
       sets :findings
 
+      gate "no roadmap %{slug}", stops: :failure, pass: ->(context) { !context.retrieval.roadmap(context.slug).nil? }
+
       read "find problems" do |context|
         context[:findings] = Graph::RoadmapCheck.new(context.retrieval, context.slug).all
         print_findings(context)

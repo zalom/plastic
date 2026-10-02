@@ -12,6 +12,8 @@ module Plastic
 
       sets :ready, :ready_id, :open
 
+      gate "no roadmap %{slug}", stops: :failure, pass: ->(context) { !context.retrieval.roadmap(context.slug).nil? }
+
       def self.items_of(context)
         all = context.retrieval.roadmap_items(context.slug)
         context.position ? all.select { |item| item.batch == context.position.to_i } : all

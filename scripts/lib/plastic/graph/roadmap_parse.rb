@@ -57,7 +57,7 @@ module Plastic
         def goal = @goal_lines.join(" ").strip.empty? ? nil : @goal_lines.map(&:strip).join(" ")
 
         def line(text, number)
-          @title ||= text[/\A#\s+(.*)\z/, 1]&.strip
+          @title ||= text[/\A#\s+(?:Roadmap:\s*)?(.*)\z/, 1]&.strip
           return enter_section(text) if text.match?(TOP_HEADING)
 
           dispatch(text, number)

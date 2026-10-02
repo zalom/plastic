@@ -13,6 +13,8 @@ module Plastic
 
       sets :reports, :problem
 
+      forget_stop :reports, :problem
+
       step "migrate every legacy store", done: ->(context) { !context.reports.nil? } do |context|
         context[:reports] = context.work.migrate_stores(context.apply ? :apply : :dry_run)
         context[:problem] = problem_lines(context.reports)

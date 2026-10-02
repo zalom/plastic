@@ -12,6 +12,8 @@ module Plastic
 
       sets :printed_paths
 
+      gate "no roadmap %{slug}", stops: :failure, pass: ->(context) { !context.retrieval.roadmap(context.slug).nil? }
+
       def self.batches_of(context)
         all = context.retrieval.batches(context.slug)
         context.position ? all.select { |row| row.position == context.position.to_i } : all

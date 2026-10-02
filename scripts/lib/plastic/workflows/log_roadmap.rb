@@ -10,6 +10,8 @@ module Plastic
 
       sets :line
 
+      gate "no roadmap %{slug}", stops: :failure, pass: ->(context) { !context.retrieval.roadmap(context.slug).nil? }
+
       step "write the log line", done: ->(context) { !context.line.nil? } do |context|
         context[:line] = context.work.add_log(context.slug, context.text)
       end

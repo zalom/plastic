@@ -78,4 +78,36 @@ class MigrateStoresTest < Plastic::TestCase
 
     assert_includes result.out, "batch 1: Ship the client\n"
   end
+
+  def test_a_roadmap_title_loses_its_roadmap_prefix
+    write("roadmaps/ship.md", ROADMAP.sub("# Ship", "# Roadmap: Ship"))
+
+    apply
+
+    assert_equal "Ship the client", retrieval.roadmap("ship").title
+  end
+
+  def test_waits_read_in_number_order
+    write("roadmaps/ship.md", "# Ship\n\n## Batches\n\n- [ ] 9 A — queued\n- [ ] 10 B — queued\n- [ ] 11 C — queued\n\n" \
+                              "## Graph\n\n- 9 needs nothing\n- 10 needs nothing\n- 11 needs 10 9\n")
+    apply
+
+    assert_equal %w[9 10], retrieval.roadmap_edges("ship").map(&:from)
+  end
+
+  def test_a_store_that_fails_halfway_gets_its_folder_back
+    Dir.mktmpdir do |dir|
+      root = File.join(dir, "store-a")
+      FileUtils.mkdir_p(root)
+      File.write(File.join(root, "INDEX.md"), "before")
+      writer = Plastic::Graph::MigrateWriter.new(dir, mode: :apply)
+
+      assert_raises(RuntimeError) { writer.send(:rolled_back_on_error, root) { File.write(File.join(root, "work_graph.db"), "x") && raise("halfway") } }
+      assert_equal ["INDEX.md"], Dir.children(root)
+    end
+  end
+
+  def test_an_unknown_roadmap_is_refused
+    assert_equal 1, plastic("roadmap", "show", "nosuch", table: Plastic::CLI::TABLE).code
+  end
 end

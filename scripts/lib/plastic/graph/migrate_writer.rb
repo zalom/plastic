@@ -51,7 +51,22 @@ module Plastic
         problems = parsed.values.flat_map(&:problems)
         return StoreReport.new(store: slug, skipped: false, counts: {}, problems:) if problems.any?
 
-        StoreReport.new(store: slug, skipped: false, counts: run_import(home, slug, root, folder, parsed), problems: [])
+        StoreReport.new(store: slug, skipped: false, counts: rolled_back_on_error(root) { run_import(home, slug, root, folder, parsed) }, problems: [])
+      rescue StandardError => e
+        StoreReport.new(store: slug, skipped: false, counts: {}, problems: ["#{slug}: the import failed and the store was put back: #{e.message}"])
+      end
+
+      # A store that fails halfway gets its folder back as it was, databases
+      # gone, so the next run imports it again instead of skipping it.
+      def rolled_back_on_error(root)
+        Dir.mktmpdir do |saved|
+          FileUtils.cp_r(root, saved)
+          yield
+        rescue StandardError
+          FileUtils.rm_rf(root)
+          FileUtils.cp_r(File.join(saved, File.basename(root)), File.dirname(root))
+          raise
+        end
       end
 
       def relative(root, path) = path.delete_prefix("#{root}/")
