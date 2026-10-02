@@ -20,21 +20,10 @@ class RetrievalContextResumeTest < Minitest::Test
 
   def test_real_cli_resumes_only_the_matching_saved_discovery_context
     command("intent", "new", "Evidence delivery")
-    first = command("intent", "discover", "1", "Evidence")
-    reference = first.fetch("result").fetch("discovery").fetch("candidates").first.fetch("uri")
+    submit_context(first_reference)
 
-    Tempfile.create(["context", ".json"]) do |file|
-      file.write(JSON.generate(context_submission(reference)))
-      file.flush
-      submitted = command("intent", "context", "1", "--from", file.path)
-      same = command("intent", "discover", "1", "Evidence")
-      changed = command("intent", "discover", "1", "delivery")
-
-      assert_equal "none", submitted.fetch("next")
-      assert_equal "none", same.fetch("next")
-      assert_equal "plastic intent context 1 --from FILE --project global", changed.fetch("next")
-      assert_equal "delivery", changed.fetch("result").fetch("discovery").fetch("query")
-    end
+    assert_equal "none", command("intent", "discover", "1", "Evidence").fetch("next")
+    assert_changed_discovery(command("intent", "discover", "1", "delivery"))
   end
 
   private
@@ -50,5 +39,23 @@ class RetrievalContextResumeTest < Minitest::Test
   def context_submission(reference)
     { "evidence" => [reference], "facts" => [], "interpretations" => [], "gaps" => [], "rulings" => [],
       "architecture" => { "provider" => "external", "revision" => "revision", "coverage" => [], "limitations" => [] } }
+  end
+
+  def first_reference
+    command("intent", "discover", "1", "Evidence").dig("result", "discovery", "candidates", 0, "uri")
+  end
+
+  def submit_context(reference)
+    Tempfile.create(["context", ".json"]) do |file|
+      file.write(JSON.generate(context_submission(reference)))
+      file.flush
+
+      assert_equal "none", command("intent", "context", "1", "--from", file.path).fetch("next")
+    end
+  end
+
+  def assert_changed_discovery(result)
+    assert_equal "plastic intent context 1 --from FILE --project global", result.fetch("next")
+    assert_equal "delivery", result.dig("result", "discovery", "query")
   end
 end

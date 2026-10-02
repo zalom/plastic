@@ -47,14 +47,19 @@ module Plastic
         evidence = submission.fetch("evidence")
         validate_evidence(evidence)
         selected = evidence.uniq
-        submission.merge("intent_id" => parsed.fetch(:intent_id), "evidence" => selected,
-          "archive_states" => selected.to_h { |reference| [reference, archived?(reference)] })
+        submission.merge(submission_metadata(selected))
       end
 
       def required_fields(submission)
         %w[evidence facts interpretations gaps rulings architecture].each { |field| submission.fetch(field) }
         validate_context_categories(submission)
         validate_architecture(submission.fetch("architecture"))
+      end
+
+      def submission_metadata(selected)
+        { "intent_id" => parsed.fetch(:intent_id), "evidence" => selected,
+          "archive_states" => selected.to_h { |reference| [reference, archived?(reference)] },
+          "discovery" => discovery.slice("query", "scope") }
       end
 
       def validate_context_categories(submission)

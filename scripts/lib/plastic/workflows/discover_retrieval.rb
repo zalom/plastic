@@ -21,7 +21,7 @@ module Plastic
       read "find the saved retrieval context" do |context|
         row = context.database(:knowledge).row("SELECT data FROM retrieval_contexts WHERE intent_id = :intent_id AND origin_id = :origin",
           intent_id: context.intent_id, origin: context.retrieval.origin_id)
-        context[:context_complete] = !row.nil?
+        context[:context_complete] = context_matches?(row, context)
       end
 
       gate "no intent %{intent_id} in owning store", stops: :failure, pass: ->(context) { !context.intent.nil? }
@@ -107,6 +107,15 @@ module Plastic
             file.flush
             File.rename(file.path, path)
           end
+        end
+
+        def context_matches?(row, context)
+          return false unless row
+
+          saved = JSON.parse(row.fetch("data")).fetch("discovery")
+          saved.fetch("query") == context.terms && saved.fetch("scope") == sources(context)
+        rescue JSON::ParserError, KeyError
+          false
         end
       end
     end

@@ -17,7 +17,7 @@ class IntentContextTest < Plastic::TestCase
     assert_equal submission, submitted.slice("evidence", "facts", "interpretations", "gaps", "rulings", "architecture")
     assert_equal submission, readback.slice("evidence", "facts", "interpretations", "gaps", "rulings", "architecture")
     row = Plastic::Graph.open(home: @plastic_home, store: "global").databases.fetch(:knowledge).row("SELECT data FROM retrieval_contexts WHERE intent_id = '1'")
-    assert_equal submitted.slice("evidence", "facts", "interpretations", "gaps", "rulings", "architecture", "archive_states", "intent_id"), JSON.parse(row.fetch("data"))
+    assert_equal submitted.slice("evidence", "facts", "interpretations", "gaps", "rulings", "architecture", "archive_states", "intent_id", "discovery"), JSON.parse(row.fetch("data"))
     assert_equal before, File.binread(File.join(@plastic_home, "stores", "other", "knowledge_graph.db"))
   end
 
