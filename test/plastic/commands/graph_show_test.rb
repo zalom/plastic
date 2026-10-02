@@ -22,7 +22,7 @@ class GraphShowTest < Plastic::TestCase
 
     assert_equal 0, result.code
     assert_includes result.out, "node: n1 open a"
-    assert_includes result.out, "edge: n1 needs n2"
+    assert_includes result.out, "edge: n1 to n2"
   end
 
   def test_a_hand_edited_graph_json_is_overwritten_from_rows
