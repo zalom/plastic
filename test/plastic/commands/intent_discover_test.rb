@@ -39,6 +39,7 @@ class IntentDiscoverTest < Plastic::TestCase
     assert_routine_handoff(run)
   end
 
+
   private
 
   def assert_routine_handoff(run)
@@ -80,4 +81,5 @@ class IntentDiscoverTest < Plastic::TestCase
     graphs.retrieval.backfill!
     graphs.retrieval.archived?("1")
   end
+
 end
