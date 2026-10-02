@@ -39,9 +39,7 @@ module Plastic
 
       def source_slug(reference)
         validate_reference!(reference)
-        slug = reference[/\Aplastic:\/\/([^\/]+)/, 1]
-
-        slug
+        reference[/\Aplastic:\/\/([^\/]+)/, 1]
       end
 
       def validate_reference!(reference)
