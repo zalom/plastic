@@ -122,4 +122,13 @@ class EntriesTest < Minitest::Test
       assert_includes commands, "my-own-hook"
     end
   end
+
+  def test_no_launcher_writes_no_status_line_or_screens
+    config do |cfg|
+      settings = Plastic::Hooks::Entries.new(command: COMMAND, config: cfg, launchers: {}).claude({})
+
+      refute_includes settings, "statusLine"
+      refute_includes settings["hooks"], "MessageDisplay"
+    end
+  end
 end

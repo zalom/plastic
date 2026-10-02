@@ -75,6 +75,12 @@ class RoutineTest < Plastic::TestCase
     assert_includes call.out, "session \"cc-1\""
   end
 
+def test_a_codex_session_reaches_the_context
+  call = plastic("kernel", "who", env: { "PLASTIC_SESSION" => "", "CLAUDE_CODE_SESSION_ID" => "", "CODEX_THREAD_ID" => "cx-1" })
+
+  assert_includes call.out, "session \"cx-1\""
+end
+
   def test_the_plastic_session_variable_wins
     call = plastic("kernel", "who", env: { "PLASTIC_SESSION" => "p-1", "CLAUDE_CODE_SESSION_ID" => "cc-1" })
 

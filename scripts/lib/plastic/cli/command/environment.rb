@@ -12,7 +12,7 @@ module Plastic
       class Environment
         # The first of these that is set names the calling session. Claude
         # Code sets the second; any harness may set the first.
-        SESSION_VARIABLES = %w[PLASTIC_SESSION CLAUDE_CODE_SESSION_ID].freeze
+        SESSION_VARIABLES = %w[PLASTIC_SESSION CLAUDE_CODE_SESSION_ID CODEX_SESSION_ID CODEX_THREAD_ID].freeze
 
         def self.current = new(env: ENV, input: $stdin, out: $stdout, err: $stderr, home: Dir.home, directory: Dir.pwd)
 

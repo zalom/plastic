@@ -9,6 +9,8 @@ require "digest"
 require "time"
 require "tmpdir"
 require_relative "hook_registry"
+require_relative "plastic/config"
+require_relative "plastic/hooks/entries"
 require_relative "agent_models"
 require_relative "harness_text"
 require_relative "compact_instructions"
@@ -1062,6 +1064,17 @@ class InstallerCore
     s.gsub(/[\x00-\x08\x0b\x0c\x0e-\x1f]/) { |c| format('\u%04X', c.ord) }
   end
 
+  # The kernel's own hook groups: hook resume on SessionStart, hook record on
+  # Stop and SessionEnd. Written before the registry's groups, because the
+  # entries treat the old check-update launcher as stale and the registry adds
+  # it back.
+  def kernel_hook_entries
+    Plastic::Hooks::Entries.new(command: File.join(plastic_home, "bin", "plastic"),
+                                config: Plastic::Config.new(plastic_home), launchers: {})
+  end
+
+  def statusline_on? = Plastic::Config.new(plastic_home).flag(["statusline"], default: true)
+
   def codex_dispatcher_path
     File.join(plastic_home, "scripts", "codex-hook")
   end
@@ -1078,6 +1091,8 @@ class InstallerCore
     hooks = data["hooks"] ||= {}
     removed = purge_stale_codex_hooks(hooks)
     report_removed_hook_entries(removed, "hooks.json")
+    data = kernel_hook_entries.codex(data)
+    hooks = data["hooks"]
     plastic = HookRegistry.codex_hooks_json(dispatcher_path: codex_dispatcher_path)
     plastic.each do |event, groups|
       hooks[event] ||= []
@@ -1464,6 +1479,8 @@ class InstallerCore
     removed = purge_stale_plastic_hooks(hooks)
     report_removed_hook_entries(removed, "settings.json")
     report_reserved_prefix_hooks(hooks)
+    settings = kernel_hook_entries.claude(settings)
+    hooks = settings["hooks"]
 
     # Single source of truth (intent 108, D7): registrations live in
     # HookRegistry; this merge only translates them into settings.json.
@@ -1498,7 +1515,7 @@ class InstallerCore
       File.write(File.join(cache_dir, "original-statusline.json"), JSON.pretty_generate(existing_status))
     end
 
-    settings["statusLine"] = { "type" => "command", "command" => "#{hook_dir}/plastic-statusline" } if choice == :plastic
+    settings["statusLine"] = { "type" => "command", "command" => "#{hook_dir}/plastic-statusline" } if choice == :plastic && statusline_on?
 
     # No plugin/marketplace registration: skills are flat personal skills
     # (plastic-<name>/) discovered directly from ~/.claude/skills.
