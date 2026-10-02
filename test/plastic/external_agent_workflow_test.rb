@@ -4,7 +4,7 @@ require_relative "../test_helper"
 
 class ExternalAgentWorkflowTest < Plastic::TestCase
   def test_defines_a_kernel_agent_handoff_and_quotes_the_external_commands
-    context = Plastic::Context.new(declared: [:handoff_text], facts: { handoff_text: "Submit the selected context." }, graphs: {})
+    context = Plastic::Context.new(declared: %i[handoff_text context_command], facts: { handoff_text: "Submit the selected context.", context_command: "plastic intent context 1 --from FILE" }, graphs: {})
 
     handoff = Plastic::ExternalAgentWorkflow.call(context)
     commands = Plastic::ExternalAgentWorkflow.retrieval_handoff(intent_id: "1", terms: "quoted terms; keep literal", sources: ["global", "other store"], project: "global")

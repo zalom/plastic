@@ -68,10 +68,18 @@ module Plastic
         raise CLI::Command::Usage, "architecture must be an object" unless architecture.is_a?(Hash)
 
         %w[provider revision coverage limitations].each { |field| architecture.fetch(field) }
+        validate_architecture_identity(architecture)
         raise CLI::Command::Usage, "architecture coverage and limitations must be arrays" unless %w[coverage limitations].all? { |field| architecture.fetch(field).is_a?(Array) }
         return unless architecture.key?("receipt") && !architecture.fetch("receipt").is_a?(Hash)
 
         raise CLI::Command::Usage, "architecture receipt must be an object"
+      end
+
+      def validate_architecture_identity(architecture)
+        provider = architecture.fetch("provider")
+        revision = architecture.fetch("revision")
+        raise CLI::Command::Usage, "architecture provider must be a safe identifier" unless /\A[a-z0-9][a-z0-9_-]*\z/.match?(provider.to_s)
+        raise CLI::Command::Usage, "architecture revision must be a string" unless revision.is_a?(String)
       end
 
       def validate_evidence(evidence)

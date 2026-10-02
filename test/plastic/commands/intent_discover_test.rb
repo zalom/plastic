@@ -36,13 +36,17 @@ class IntentDiscoverTest < Plastic::TestCase
     run = routine_run("intent discover", "1")
 
     assert_equal 0, result.code
+    assert_routine_handoff(run)
+  end
+
+  private
+
+  def assert_routine_handoff(run)
     assert_equal "handed_off", run.status
     assert_equal :agent_external_agent_workflow, run.at
     assert_equal "1", run.facts.fetch(:intent_id)
     assert_equal "evidence", run.facts.fetch(:terms)
   end
-
-  private
 
   def assert_discovery(manifest, result)
     assert_equal "1", manifest.fetch("intent_id")

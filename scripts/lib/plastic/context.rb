@@ -30,6 +30,8 @@ module Plastic
 
     def retrieval = @graphs[:retrieval]
 
+    def database(name) = @graphs.fetch(:databases).fetch(name)
+
     def []=(name, value)
       @facts[name] = value
     end
