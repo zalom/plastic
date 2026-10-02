@@ -10,6 +10,8 @@ module Plastic
 
       sets :problem, :removed
 
+      forget_stop :problem, :removed
+
       step "remove the edge", done: ->(context) { !context.removed.nil? } do |context|
         removed = context.work.remove_roadmap_edge(context.slug, context.from, context.to)
         context[:removed] = removed

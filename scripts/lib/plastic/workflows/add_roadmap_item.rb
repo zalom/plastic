@@ -12,6 +12,8 @@ module Plastic
 
       sets :problem, :kind, :item
 
+      forget_stop :problem, :kind, :item
+
       step "add the item", done: ->(context) { !context.item.nil? || !context.problem.nil? } do |context|
         fields = Graph::RoadmapWriter::Fields.new(title: context.title, goal: context.goal, done: context.done)
         item, problem, kind = context.work.add_item(context.slug, context.item_id, context.position.to_i,

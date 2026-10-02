@@ -44,6 +44,8 @@ module Plastic
       def origin_id = @retrieval.origin_id
 
       def archive_problem(intent)
+        return "intent #{intent.intent_id} is already archived" if @retrieval.archived?(intent.intent_id)
+
         return "intent #{intent.intent_id} is #{intent.status}; only done, abandoned and future intents archive" \
           unless ARCHIVABLE_STATES.include?(intent.status)
 

@@ -32,4 +32,14 @@ class RoadmapEdgeRemoveTest < Plastic::TestCase
 
     assert_equal 1, result.code
   end
+
+  def test_a_failed_removal_succeeds_once_the_edge_exists
+    call("r1", "a", "d")
+    plastic("roadmap", "add", "r1", "1", "d", "--title", "D", "--after", "a", table: Plastic::CLI::TABLE)
+
+    result = call("r1", "a", "d")
+
+    assert_equal 0, result.code
+    refute_includes edges.map { |edge| [edge.from, edge.to] }, %w[a d]
+  end
 end

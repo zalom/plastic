@@ -41,6 +41,17 @@ module Plastic
         steps << Read.new(step_name, body)
       end
 
+      # A read that clears what a stopped step of an earlier call left in
+      # `names`, so a resumed routine run tries that step again rather than
+      # replaying its stop. An earlier call stopped when `problem` is set.
+      def forget_stop(*names)
+        read("forget a stop of an earlier call") do |context|
+          clear_facts(context, names) if context.problem
+        end
+      end
+
+      def clear_facts(context, names) = names.each { |name| context[name] = nil }
+
       # A step that changes state. It runs only while its done: check is
       # false, and the check must hold after the body. So a rerun after a
       # failure or a handoff never repeats the change.

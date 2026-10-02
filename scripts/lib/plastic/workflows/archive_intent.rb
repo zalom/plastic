@@ -10,6 +10,8 @@ module Plastic
 
       sets :problem, :kind, :ok
 
+      forget_stop :problem, :kind, :ok
+
       step "archive the intent", done: ->(context) { !context.ok.nil? || !context.problem.nil? } do |context|
         ok, problem, kind = context.work.archive_intent(context.intent_id)
         context[:ok] = ok

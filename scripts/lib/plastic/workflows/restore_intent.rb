@@ -10,6 +10,8 @@ module Plastic
 
       sets :problem, :ok
 
+      forget_stop :problem, :ok
+
       step "restore the intent", done: ->(context) { !context.ok.nil? || !context.problem.nil? } do |context|
         ok, problem, = context.work.restore_intent(context.intent_id)
         context[:ok] = ok

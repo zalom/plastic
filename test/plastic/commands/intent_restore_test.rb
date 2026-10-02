@@ -37,4 +37,16 @@ class IntentRestoreTest < Plastic::TestCase
 
     assert_equal 1, result.code
   end
+
+  def test_a_failed_restore_succeeds_once_the_intent_is_archived
+    intent = open_intent("Target")
+    mark_done(intent)
+    restore_call(intent.intent_id)
+    archive_call(intent.intent_id)
+
+    result = restore_call(intent.intent_id)
+
+    assert_equal 0, result.code
+    assert folder.exist?("#{intent.dir}/#{intent.file}")
+  end
 end

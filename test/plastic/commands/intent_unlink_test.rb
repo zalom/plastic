@@ -32,4 +32,16 @@ class IntentUnlinkTest < Plastic::TestCase
 
     assert_equal 1, result.code
   end
+
+  def test_a_failed_unlink_succeeds_once_the_link_exists
+    open_intent
+    open_intent("Beta")
+    call("1", "cites", "2")
+    link("1", "cites", "2")
+
+    result = call("1", "cites", "2")
+
+    assert_equal 0, result.code
+    assert_empty store_graphs.retrieval.links("1")
+  end
 end

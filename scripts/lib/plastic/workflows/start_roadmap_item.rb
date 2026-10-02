@@ -11,6 +11,8 @@ module Plastic
 
       sets :problem, :kind, :intent_id, :printed_paths
 
+      forget_stop :problem, :kind
+
       step "open the item's intent", done: ->(context) { !context.intent_id.nil? || !context.problem.nil? } do |context|
         intent_id, problem, kind = context.work.start_roadmap_item(context.slug, context.item_id)
         context[:intent_id] = intent_id

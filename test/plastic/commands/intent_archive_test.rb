@@ -91,4 +91,36 @@ class IntentArchiveTest < Plastic::TestCase
     assert_equal 0, result.code
     refute folder.exist?(intent.dir)
   end
+
+  def test_a_refused_archive_is_refused_again_on_the_next_call
+    intent = open_intent("Target")
+    call(intent.intent_id)
+
+    result = call(intent.intent_id)
+
+    assert_equal 3, result.code
+    refute retrieval.archived?(intent.intent_id)
+  end
+
+  def test_an_intent_refused_while_open_archives_once_it_is_done
+    intent = open_intent("Target")
+    call(intent.intent_id)
+    mark_done(intent)
+
+    result = call(intent.intent_id)
+
+    assert_equal 0, result.code
+    assert retrieval.archived?(intent.intent_id)
+  end
+
+  def test_archiving_an_archived_intent_is_refused
+    intent = open_intent("Target")
+    mark_done(intent)
+    call(intent.intent_id)
+
+    result = call(intent.intent_id)
+
+    assert_equal 3, result.code
+    assert_includes result.err, "already archived"
+  end
 end

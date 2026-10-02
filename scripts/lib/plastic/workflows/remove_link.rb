@@ -10,6 +10,8 @@ module Plastic
 
       sets :problem, :removed
 
+      forget_stop :problem, :removed
+
       step "remove the link", done: ->(context) { !context.removed.nil? } do |context|
         removed = context.work.remove_link(from_ref: context.intent_id, to_ref: context.target, kind: context.kind)
         context[:removed] = removed
