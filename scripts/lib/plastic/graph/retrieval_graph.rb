@@ -77,6 +77,15 @@ module Plastic
 
       def fetch_batch(references) = references.map { |reference| fetch_reference(reference) }
 
+      def fetch_passage(reference, position)
+        document = fetch_reference(reference)
+        row = @databases.fetch(:knowledge).row("SELECT body, line_start, line_end FROM document_passages WHERE intent_id = :intent_id AND path = :path AND sha256 = :sha256 AND position = :position AND origin_id = :origin",
+          intent_id: document.fetch(:intent_id), path: document.fetch(:path), sha256: document.fetch(:revision), position:, origin: origin_id)
+        raise MissingReference, "no passage #{position}" unless row
+
+        document.merge(position:, **row.transform_keys(&:to_sym))
+      end
+
       def exact_lookup_plans(intent_id, path)
         [@databases.fetch(:work).rows("EXPLAIN QUERY PLAN SELECT * FROM intents WHERE intent_id = :intent_id AND origin_id = :origin", intent_id:, origin: origin_id),
           @databases.fetch(:knowledge).rows("EXPLAIN QUERY PLAN #{DOCUMENT_SQL}", intent_id:, path:, origin: origin_id)]

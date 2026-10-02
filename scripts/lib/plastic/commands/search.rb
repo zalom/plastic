@@ -35,7 +35,7 @@ module Plastic
 
       def rows(slug)
         retrieval = Graph.open(home: scope.plastic_home, store: slug).retrieval
-        retrieval.search(parsed.fetch(:terms), limit: Integer(parsed[:limit] || 20)).each_with_index.map do |row, index|
+        retrieval.search(parsed.fetch(:terms), limit: Integer(parsed[:limit] || 20), migrate: false).each_with_index.map do |row, index|
           row.merge("store" => slug, "local_rank" => index + 1)
         end
       end

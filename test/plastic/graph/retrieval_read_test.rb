@@ -44,6 +44,15 @@ class RetrievalReadTest < Plastic::TestCase
     refute_includes plans, "SCAN"
   end
 
+  def test_fetches_one_bounded_passage_from_a_qualified_revision
+    writer.write("1", "long.md", "a" * 1700)
+    reference = retrieval.reference("1", "long.md")
+
+    passage = retrieval.fetch_passage(reference, 2)
+
+    assert_equal [2, 300, 1, 1], passage.values_at(:position, :body, :line_start, :line_end).then { |position, body, first, last| [position, body.length, first, last] }
+  end
+
   private
 
   def writer = Plastic::Graph::EvidenceWriter.new(knowledge, origin)

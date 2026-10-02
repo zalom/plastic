@@ -9,6 +9,7 @@ class DocumentGetTest < Plastic::TestCase
     Plastic::Graph::EvidenceWriter.new(knowledge, origin).write("1", "plan.md", "first")
     reference = retrieval.reference("1", "plan.md").fetch(:uri)
     Plastic::Graph::EvidenceWriter.new(knowledge, origin).write("1", "plan.md", "second")
+    retrieval.backfill!
 
     result = plastic("document", "get", reference, "--json", table: Plastic::CLI::TABLE)
 
@@ -35,7 +36,7 @@ class DocumentGetTest < Plastic::TestCase
       result = plastic("document", "get", reference, table: Plastic::CLI::TABLE)
 
       assert_equal 1, result.code
-      assert_match(/document|project/, result.err)
+      assert_match(/document|project|maintenance/, result.err)
     end
 
     malformed = plastic("document", "get", "broken", table: Plastic::CLI::TABLE)
@@ -49,6 +50,7 @@ class DocumentGetTest < Plastic::TestCase
   def write_document(store, intent_id, path, body)
     graphs = Plastic::Graph.open(home: @plastic_home, store:)
     Plastic::Graph::EvidenceWriter.new(graphs.databases.fetch(:knowledge), origin).write(intent_id, path, body)
+    graphs.retrieval.backfill!
     graphs.retrieval.reference(intent_id, path).fetch(:uri)
   end
 end
