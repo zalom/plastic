@@ -25,4 +25,28 @@ class RoadmapBatchTest < Plastic::TestCase
 
     assert_equal ["Second"], rows.map(&:title)
   end
+
+  def test_a_new_batch_with_no_title_is_named_by_its_position
+    result = call("r1", "2", "--goal", "Ship it")
+
+    assert_equal 0, result.code
+    assert_equal ["Batch 2"], store_graphs.retrieval.batches("r1").map(&:title)
+  end
+
+  def test_a_field_left_out_keeps_the_batch_word_for_it
+    call("r1", "1", "--title", "First", "--goal", "G1", "--done", "a", "--done", "b")
+    call("r1", "1", "--title", "Renamed")
+
+    batch = store_graphs.retrieval.batches("r1").first
+
+    assert_equal ["Renamed", "G1", %w[a b]], [batch.title, batch.goal, batch.done_lines]
+  end
+
+  def test_a_batch_write_keeps_the_roadmap_title
+    call("r1", "1", "--title", "First")
+    store_graphs.databases.fetch(:work).transaction { |batch| batch.put(:roadmaps, { slug: "r1", title: "Make it useful", goal: "G" }) }
+    call("r1", "2", "--title", "Second")
+
+    assert_equal "Make it useful", store_graphs.retrieval.roadmap("r1").title
+  end
 end

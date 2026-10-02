@@ -19,6 +19,15 @@
         }
       ]
     },
+    "varar/knowledge-graph.md": {
+      "sourceHash": "fnv1a:a5675545",
+      "examples": [
+        {
+          "name": "Each row gives the step, the exit code and what it shows:",
+          "line": 9
+        }
+      ]
+    },
     "varar/legacy-import.md": {
       "sourceHash": "fnv1a:98df1ff2",
       "examples": [

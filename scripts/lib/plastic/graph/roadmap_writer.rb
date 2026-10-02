@@ -1,13 +1,13 @@
 # frozen_string_literal: true
 
+require_relative "roadmap"
+
 module Plastic
   module Graph
     # Writes a roadmap's own row, its batches and its items: a named plan,
     # held as rows instead of a hand-kept file.
     class RoadmapWriter
-      # A batch's or an item's own words, carried as one value so a method
-      # that builds a row takes one argument for them, not three.
-      Fields = Data.define(:title, :goal, :done)
+      Fields = RoadmapFields
 
       LOOP_SQL = <<~SQL
         SELECT 1 WHERE EXISTS (
@@ -28,14 +28,16 @@ module Plastic
       end
 
       # Writes the batch's goal and done criteria, and the roadmap row the
-      # first time it is named.
+      # first time it is named. A field left out keeps the batch's word for
+      # it, and a new batch with no title is called "Batch N".
       def write_batch(slug, position, fields:)
         now = Plastic.now
+        kept = fields.over(find_batch(slug, position), "Batch #{position}")
         @databases.fetch(:work).transaction do |batch|
-          batch.put(:roadmaps, roadmap_row(slug, now), statement: :upsert)
-          batch.put(:batches, batch_row(slug, position, fields, now), statement: :upsert)
+          batch.put(:roadmaps, roadmap_row(slug, now), statement: :insert) unless @retrieval.roadmap(slug)
+          batch.put(:batches, batch_row(slug, position, kept, now), statement: :upsert)
         end
-        @retrieval.batches(slug).find { |row| row.position == position }
+        find_batch(slug, position)
       end
 
       # Adds an item to batch N. Returns nil, nil when the batch is missing;
@@ -93,6 +95,8 @@ module Plastic
       end
 
       def batch?(slug, position) = @retrieval.batches(slug).any? { |row| row.position == position }
+
+      def find_batch(slug, position) = @retrieval.batches(slug).find { |row| row.position == position }
 
       def loop?(slug, from, to)
         !@databases.fetch(:work).row(LOOP_SQL, origin: origin_id, roadmap: slug, from:, to:).nil?

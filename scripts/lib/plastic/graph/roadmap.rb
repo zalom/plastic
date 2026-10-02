@@ -9,6 +9,17 @@ module Plastic
       include Record
     end
 
+    # A batch's or an item's own words, carried as one value so a method
+    # that builds a row takes one argument for them, not three.
+    RoadmapFields = Data.define(:title, :goal, :done) do
+      # These words over a row already written: a field left out keeps the
+      # row's word for it, and a title missing from both takes `fallback`.
+      def over(row, fallback)
+        given = Array(done)
+        with(title: title || row&.title || fallback, goal: goal || row&.goal, done: given.empty? ? row&.done_lines.to_a : given)
+      end
+    end
+
     # One wave of a roadmap: a titled group of items with its own goal and
     # done criteria, one per line.
     RoadmapBatch = Data.define(:roadmap, :position, :title, :goal, :done, :updated_at, :origin_id) do

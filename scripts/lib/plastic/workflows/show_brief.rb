@@ -35,9 +35,10 @@ module Plastic
       gate "no intent %{intent_id} in this store", stops: :failure, pass: ->(context) { !context.intent.nil? }
 
       read "print the goal and its criteria" do |context|
-        context.print("goal: #{context.intent.title}")
+        spec = Graph::Spec.new(context.retrieval, context.intent_id)
+        spec.goal_lines.then { |lines| lines.empty? ? [context.intent.title] : lines }.each { |line| context.print("goal: #{line}") }
         context.print("spec: #{context.intent.dir}/spec.md")
-        Graph::Spec.new(context.retrieval, context.intent_id).done_criteria.each { |criterion| context.print("criterion: #{criterion}") }
+        spec.done_criteria.each { |criterion| context.print("criterion: #{criterion}") }
       end
 
       read "print the rulings" do |context|
