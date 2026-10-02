@@ -69,7 +69,7 @@ class IntentTest < Plastic::TestCase
 
   def test_the_own_file_holds_the_front_matter_and_the_sections
     page = ["---", 'id: "1a"', 'intent: "Build"', 'parent: "1"', 'ref: "ENG-1"', 'origin: "o"', %(created: "#{AT}"), "---", "",
-      "# 1a — Build", "", "## Intent", "", "Build", "", "## Context", "", "## Outcome", "", "## Insights", ""].join("\n")
+      "# 1a - Build", "", "## Intent", "", "Build", "", "## Context", "", "## Outcome", "", "## Insights", ""].join("\n")
 
     assert_equal({ intent_id: "1a", path: "1a--build.md", body: page, updated_at: AT }, intent.document("o"))
   end

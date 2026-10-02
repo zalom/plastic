@@ -271,8 +271,17 @@ module ContextBudget
 
   # Runs the real hook once. Returns [additionalContext, elapsed_ms]. A failed or
   # empty boot raises rather than scoring as a small, passing number.
+  #
+  # Intent 397 cutover: the kernel registers no SessionStart hook yet, so no
+  # repo on alpha ships scripts/hook-session-start any more. A repo without the
+  # file boots to an empty context, deterministically, with no process spawned
+  # and no runner call; the measurement reports the truth, that nothing runs.
+  # A repo that still carries the file, real or a fixture built to simulate
+  # one, boots for real through the injectable runner exactly as before.
   def self.boot(fixture:, repo:, runner: DEFAULT_RUNNER)
     hook = File.join(repo, "scripts", "hook-session-start")
+    return ["", 0.0] unless File.file?(hook)
+
     started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
     out, err, status = runner.call(child_env(fixture), RbConfig.ruby, hook,
                                    fixture.index, fixture.plastic_home, "global", repo,
@@ -334,22 +343,38 @@ module ContextBudget
     def to_table
       ContextBudget.render(self)
     end
+
+    def exit_status = ok? ? 0 : 1
+
+    def print_to(out)
+      out.print to_table
+      exit_status
+    end
   end
 
-  def self.run(repo:, repeat: DEFAULT_REPEAT, core_file: nil, dir: nil, today: Date.today)
+  # `fixture:` lets a caller that already built one, such as the bench's own
+  # test suite, skip a second install and reuse it. It is never given a
+  # `core_file`: the swap below is destructive, so a shared fixture only ever
+  # reaches here with none.
+  def self.run(repo:, repeat: DEFAULT_REPEAT, core_file: nil, dir: nil, fixture: nil, today: Date.today)
     unless repeat.is_a?(Integer) && repeat >= 1
       raise ArgumentError, "repeat must be an integer of at least 1 (got #{repeat.inspect})"
     end
 
-    return report_for(dir: dir, repo: repo, repeat: repeat, core_file: core_file, today: today) if dir
+    return report_for(fixture: fixture, repo: repo, repeat: repeat, core_file: core_file) if fixture
+
+    if dir
+      return report_for(fixture: Fixture.build(dir: dir, repo: repo, today: today), repo: repo, repeat: repeat,
+        core_file: core_file)
+    end
 
     Dir.mktmpdir("plastic-context-bench") do |tmp|
-      report_for(dir: tmp, repo: repo, repeat: repeat, core_file: core_file, today: today)
+      report_for(fixture: Fixture.build(dir: tmp, repo: repo, today: today), repo: repo, repeat: repeat,
+        core_file: core_file)
     end
   end
 
-  def self.report_for(dir:, repo:, repeat:, core_file:, today:)
-    fixture = Fixture.build(dir: dir, repo: repo, today: today)
+  def self.report_for(fixture:, repo:, repeat:, core_file:)
     # --core-file swaps the core block so a crossed ceiling can be observed
     # without editing a real file. check_core_files runs with include_drift:
     # false, so the swap does not change the banner.
@@ -482,5 +507,153 @@ end
     return sorted[middle] if sorted.length.odd?
 
     ((sorted[middle - 1] + sorted[middle]) / 2.0).round(1)
+  end
+
+  # bin/plastic-bench's own argv parsing and exit-code decision, as a class a
+  # test can drive in-process. Only one scenario (the ceiling-crossed exit
+  # code) still needs a real spawn of the executable; every other argument
+  # case is this class's own behavior, not the process boundary.
+  class CLI
+    # Raised when argv names an unknown flag, or a flag's value fails its own check.
+    UsageError = Class.new(StandardError)
+
+    USAGE = <<~TEXT
+      usage: plastic-bench [--repeat N] [--core-file PATH] [--repo PATH]
+
+        --repeat N        boots to run against the fixture (default #{DEFAULT_REPEAT}, minimum 1)
+        --core-file PATH  measure this file as the core block instead of PLASTIC.md
+        --repo PATH       the Plastic checkout to measure (default: this checkout)
+        --help            this message
+
+      Exits 0 when every ceiling holds, 1 when one is crossed, 2 on bad usage.
+    TEXT
+
+    # Where the CLI prints to and which checkout it measures by default.
+    IO = Struct.new(:out, :err, :default_repo, keyword_init: true)
+
+    def self.run(argv, io = IO.new(out: $stdout, err: $stderr, default_repo: File.expand_path("../..", __dir__)),
+      fixture: nil)
+      new(argv, io, fixture:).call
+    end
+
+    # `fixture:` carries no argv flag; it exists only so the bench's own
+    # tests can run the CLI's parsing and formatting against an install
+    # they already paid for, the same contract a real call gets with a
+    # fresh one.
+    def initialize(argv, io, fixture: nil)
+      @argv = argv
+      @io = io
+      @fixture = fixture
+    end
+
+    def call
+      run
+    rescue UsageError => error
+      usage_error(error)
+    rescue => error
+      runtime_error(error)
+    end
+
+    private
+
+    def run
+      request = Args.parse(@argv, default_repo: @io.default_repo)
+      return show_help if request.help
+
+      run_report(request)
+    end
+
+    def run_report(request)
+      ContextBudget.run(**request.run_kwargs, fixture: @fixture).print_to(@io.out)
+    end
+
+    def usage_error(error)
+      print_error(error)
+      @io.err.puts USAGE
+      2
+    end
+
+    def runtime_error(error)
+      print_error(error)
+      1
+    end
+
+    def print_error(error)
+      @io.err.puts "plastic-bench: #{error.message}"
+    end
+
+    def show_help
+      @io.out.puts USAGE
+      0
+    end
+
+    # Parses plastic-bench's argv into a Request, one flag at a time.
+    class Args
+      # The three run inputs argv resolves to: how many times to boot, which
+      # file stands in for the core block, which checkout to measure.
+      Request = Struct.new(:repeat, :core_file, :repo, :help, keyword_init: true) do
+        def run_kwargs = { repeat: repeat, core_file: core_file, repo: repo }
+      end
+
+      FLAG_METHODS = {
+        "--help" => :mark_help,
+        "-h" => :mark_help,
+        "--repeat" => :set_repeat,
+        "--core-file" => :set_core_file,
+        "--repo" => :set_repo
+      }.freeze
+
+      def self.parse(argv, default_repo:)
+        new(argv, default_repo).parse
+      end
+
+      def initialize(argv, default_repo)
+        @argv = argv.dup
+        @request = Request.new(repeat: DEFAULT_REPEAT, core_file: nil, repo: default_repo, help: false)
+      end
+
+      def parse
+        apply_flag(@argv.shift) until @argv.empty?
+        @request
+      end
+
+      private
+
+      def apply_flag(flag)
+        send(FLAG_METHODS.fetch(flag) { raise UsageError, "unknown argument #{flag}" })
+      end
+
+      def mark_help = @request.help = true
+
+      def set_repeat = @request.repeat = repeat_value
+
+      def set_core_file = @request.core_file = core_file_value
+
+      def set_repo = @request.repo = repo_value
+
+      def repeat_value
+        value = @argv.shift
+        count = value.to_s.match?(/\A\d+\z/) ? value.to_i : 0
+        raise UsageError, "--repeat needs a whole number of at least 1" if count < 1
+
+        count
+      end
+
+      def core_file_value
+        path = @argv.shift
+        raise UsageError, "--core-file needs a path" if path.to_s.empty?
+        raise UsageError, "--core-file #{path} does not exist" unless File.file?(path)
+
+        path
+      end
+
+      def repo_value
+        path = @argv.shift
+        raise UsageError, "--repo needs a path" if path.to_s.empty?
+        raise UsageError, "--repo #{path} is not a directory" unless File.directory?(path)
+
+        path
+      end
+    end
   end
 end

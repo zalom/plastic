@@ -104,9 +104,14 @@ class RealHomeGuardTest < Minitest::Test
   end
 
   def planned_steps(sandbox)
+    # scripts/lib/cli/legacy.rb's own mapped test was part of the legacy
+    # suite the owner ruled deleted (2026-10-01); legacy.rb stays the
+    # mutated file (see the class comment above), but the tests step needs
+    # a test path that still exists on disk, so it is supplied directly
+    # instead of relying on the naming-convention mapping.
     VerifyChange.new([], root: ROOT, sandbox: sandbox)
-      .plan(changed: ["scripts/lib/cli/legacy.rb", "test/cli/legacy_test.rb"],
-        extra_tests: [], base: "HEAD", rails: false)
+      .plan(changed: ["scripts/lib/cli/legacy.rb"],
+        extra_tests: ["test/real_home_guard_test.rb"], base: "HEAD", rails: false)
   end
 
   def test_every_gate_step_runs_under_the_sandbox_home

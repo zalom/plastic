@@ -41,6 +41,7 @@ class VerifyChange
   RUBYCRITIC_MINIMUM = 90
   LEGACY_LISTS = %w[.rubocop_todo.yml .reek.yml].freeze
   TESTS_STEP = "Tests with coverage"
+  TIMING_STEP = "Timing check"
   LINT_STEP = "Lint"
   DEFAULT_BASES = %w[origin/main main master].freeze
   ALL_OPERATORS = %w[arithmetic comparison boolean_connector boolean_literal statement_removal return_nil
@@ -175,8 +176,7 @@ class VerifyChange
   end
 
   def steps(sources, tests, base, rails, suite)
-    steps = []
-    steps << step(TESTS_STEP, { "COVERAGE" => "1" }, test_command(tests, rails, suite)) unless tests.empty?
+    steps = tests_steps(tests, rails, suite)
     return steps if sources.empty?
 
     steps << step("Patch coverage", {}, %W[bundle exec simplecov patch --base #{base} --minimum #{PATCH_COVERAGE_MINIMUM}])
@@ -210,11 +210,43 @@ class VerifyChange
     Step.new(title, sandbox.merge(env), command)
   end
 
+  # The Tests step and the step right after it, which checks what the Tests
+  # step just wrote. A suite the timing extension does not cover
+  # (RSpec, or Minitest run through `bin/rails test`) says so instead of
+  # carrying a step that would always pass on nothing.
+  def tests_steps(tests, rails, suite)
+    return [] if tests.empty?
+
+    steps = [step(TESTS_STEP, tests_env(suite, rails), test_command(tests, rails, suite))]
+    if timed?(suite, rails)
+      steps << timing_step
+    else
+      @err.puts "Timing check skipped: #{suite.name} does not load the timing extension."
+    end
+    steps
+  end
+
+  def timed?(suite, rails) = suite == MINITEST && !rails
+
+  def tests_env(suite, rails)
+    base = { "COVERAGE" => "1" }
+    timed?(suite, rails) ? base.merge("PLASTIC_TEST_TIMINGS" => timings_path) : base
+  end
+
+  def timing_step
+    step(TIMING_STEP, {}, %w[bundle exec ruby] + [File.join(@root, "bin/lib/test_timings.rb"), "check", timings_path])
+  end
+
+  def timings_path
+    @timings_path ||= File.join(sandbox.fetch("PLASTIC_TMP"), "test_timings.json")
+  end
+
   def test_command(tests, rails, suite)
     return %w[bundle exec rspec] + tests if suite == RSPEC
     return %w[bin/rails test] + tests if rails
 
-    %w[bundle exec ruby -Ilib -Itools -Itest -e] + [%(require "test_helper"; ARGV.each { |file| require File.expand_path(file) })] + tests
+    %w[bundle exec ruby -Ilib -Itools -Itest -r] + [File.join(@root, "bin/lib/test_timings"), "-e"] +
+      [%(require "test_helper"; ARGV.each { |file| require File.expand_path(file) })] + tests
   end
 
   def lint_decision(lint_files)
@@ -304,11 +336,19 @@ class VerifyChange
     @dependencies_section = section.join
   end
 
+  # Everything after `--` is Mutineer's own argument line, which
+  # bin/lib/mutation_verdicts.rb passes through unchanged for the first run
+  # and again, with `--only` and `--jobs 1`, for each subject it re-runs.
   def mutation_command(sources, tests, base, rails, suite)
-    %w[bundle exec mutineer run] + sources + tests.flat_map { |test| ["--test", test] } +
-      %W[--since #{base} --threshold #{MUTATION_THRESHOLD}] + (suite == RSPEC ? %w[--framework rspec] : []) +
+    %w[bundle exec ruby] + [File.join(@root, "bin/lib/mutation_verdicts.rb"), "run", "--output", mutation_report_path,
+                            "--threshold", MUTATION_THRESHOLD.to_s, "--"] + sources + tests.flat_map { |test| ["--test", test] } +
+      %W[--since #{base}] + (suite == RSPEC ? %w[--framework rspec] : []) +
       (rails ? %w[--rails] : %w[--strategy redefine]) +
       (exist?(".mutineer.yml") ? [] : ["--operators", ALL_OPERATORS.join(",")])
+  end
+
+  def mutation_report_path
+    @mutation_report_path ||= File.join(sandbox.fetch("PLASTIC_TMP"), "mutation_report.json")
   end
 
   def execute(plan, requested_base)

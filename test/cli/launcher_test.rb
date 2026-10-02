@@ -44,7 +44,7 @@ class CliLauncherTest < Minitest::Test
     out, _err, status = Open3.capture3(@env, LAUNCHER, "help")
 
     assert_predicate status, :success?
-    assert_includes out, "plastic <command> [options]"
+    assert_includes out, "intent new"
   end
 
   def test_running_the_launcher_through_a_symlink_works
@@ -54,7 +54,7 @@ class CliLauncherTest < Minitest::Test
       out, _err, status = Open3.capture3(@env, link, "help")
 
       assert_predicate status, :success?
-      assert_includes out, "plastic <command> [options]"
+      assert_includes out, "intent new"
     end
   end
 
@@ -78,12 +78,13 @@ class CliLauncherTest < Minitest::Test
   end
 
   def test_the_launcher_loads_only_the_command_it_runs
-    script = "require #{File.join(ROOT, "scripts", "lib", "cli").inspect}\n" \
-             "Plastic::CLI.call(['version'], out: StringIO.new, err: StringIO.new)\n" \
-             "puts $LOADED_FEATURES.grep(%r{/cli/commands/}).map { |f| File.basename(f) }.sort.join(',')\n"
-    out, err, status = Open3.capture3(@env, "ruby", "--disable-gems", "-rstringio", "-e", script)
+    script = "require_relative #{File.join(ROOT, "scripts", "lib", "plastic").inspect}\n" \
+             "name = Plastic::CLI.find(['intent', 'new'])\n" \
+             "Plastic::CLI.tool(name)\n" \
+             "puts $LOADED_FEATURES.grep(%r{/plastic/commands/}).map { |f| File.basename(f) }.sort.join(',')\n"
+    out, err, status = Open3.capture3(@env, "ruby", "--disable-gems", "-e", script)
 
     assert_predicate status, :success?, err
-    assert_equal "version.rb", out.strip
+    assert_equal "intent_new.rb", out.strip
   end
 end
