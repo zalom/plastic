@@ -44,6 +44,21 @@ class IntentFileTest < Plastic::TestCase
     assert_equal "# Plan\n", retrieval.documents("1").find { |document| document.path == "plan.md" }.body
   end
 
+  def attributed_savepoint
+    store_graphs.databases.fetch(:work).transaction do |batch|
+      batch.put(:savepoints, { intent_id: "1", position: 1, at: AT, text: "Original", session_id: "owner" })
+    end
+  end
+
+  def test_sync_preserves_attribution_only_for_existing_savepoint_lines
+    attributed_savepoint
+    write("#{DIR}/savepoint.md", "new line\n#{AT}  Original\n#{AT}  Original\n")
+    Plastic::Graph::Sync.new(folder:, retrieval:, databases: store_graphs.databases).read(["#{DIR}/savepoint.md"])
+
+    assert_equal [nil, "owner", nil], retrieval.savepoints("1").map(&:session_id)
+    assert_equal ["1"], retrieval.touched("owner")
+  end
+
   def test_any_other_file_is_kept_whole
     assert_equal :references, read_in("x.bin", "\x00\xFF".b)
     file = kept("x.bin")

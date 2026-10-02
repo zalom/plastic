@@ -14,6 +14,12 @@ chapters under `docs/help/` print through `plastic help TOPIC`.
 
 ## deterministic-by-design
 
+The gate loads `test_helper` before `test_timings`, so SimpleCov can observe the
+timing library. A timing rerun uses `--only` for a unit file or Minitest's class
+filter for one Varar document, and a failed subprocess fails the check. Mutation
+reruns also require a successful process and a fresh report. An id missing from
+the report's verdict lists stays unresolved, even when its summary counts kills.
+
 Plastic splits every unit of work into two parts.
 
 - **The blueprint** is the deterministic part: conventions, templates, directory
