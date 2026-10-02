@@ -67,14 +67,20 @@ module Plastic
       def rolled_back_on_error(root)
         Dir.mktmpdir do |saved|
           FileUtils.cp_r(root, saved)
-          yield
-        rescue
-          pool = Database::ConnectionPool
-          pool.disconnect(keep: pool.connections.keys.reject { |path| path.start_with?("#{root}/") })
-          FileUtils.rm_rf(root)
-          FileUtils.cp_r(File.join(saved, File.basename(root)), File.dirname(root))
-          raise
+          begin
+            yield
+          rescue
+            restore_store(root, saved)
+            raise
+          end
         end
+      end
+
+      def restore_store(root, saved)
+        pool = Database::ConnectionPool
+        pool.disconnect(keep: pool.connections.keys.reject { |path| path.start_with?("#{root}/") })
+        FileUtils.rm_rf(root)
+        FileUtils.cp_r(File.join(saved, File.basename(root)), File.dirname(root))
       end
 
       def run_import(home, slug, root, folder, parsed)
