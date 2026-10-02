@@ -109,31 +109,31 @@ class MigrateStoresTest < Plastic::TestCase
     end
   end
 
-def test_the_import_keeps_index_md
-  apply
+  def test_the_import_keeps_index_md
+    apply
 
-  assert folder.exist?("INDEX.md")
-end
+    assert folder.exist?("INDEX.md")
+  end
 
-def test_index_md_goes_after_the_import_when_the_flag_is_on
-  remove_after_import
+  def test_index_md_goes_after_the_import_when_the_flag_is_on
+    remove_after_import
 
-  apply
+    apply
 
-  refute folder.exist?("INDEX.md")
-  assert_equal %w[1 1a], retrieval.intents.map(&:intent_id).sort
-end
+    refute folder.exist?("INDEX.md")
+    assert_equal %w[1 1a], retrieval.intents.map(&:intent_id).sort
+  end
 
-def test_turning_the_flag_on_later_removes_index_md_on_the_next_run
-  apply
-  remove_after_import
+  def test_turning_the_flag_on_later_removes_index_md_on_the_next_run
+    apply
+    remove_after_import
 
-  apply
+    apply
 
-  refute folder.exist?("INDEX.md")
-end
+    refute folder.exist?("INDEX.md")
+  end
 
-def test_an_unknown_roadmap_is_refused
+  def test_an_unknown_roadmap_is_refused
     assert_equal 1, plastic("roadmap", "show", "nosuch", table: Plastic::CLI::TABLE).code
   end
 end

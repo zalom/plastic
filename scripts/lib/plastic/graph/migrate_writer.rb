@@ -47,17 +47,21 @@ module Plastic
       def store_dirs(home) = Dir.glob(File.join(home, "stores", "*")).select { |path| File.directory?(path) }.sort
 
       def migrate_store(home, slug)
-        root = File.join(home, "stores", slug)
-        folder = StoreFolder.new(root)
-        return leftover_report(home, slug, folder) unless folder.legacy?
+        folder = StoreFolder.new(File.join(home, "stores", slug))
+        folder.legacy? ? imported_report(home, slug, folder) : leftover_report(home, slug, folder)
+      end
 
+      def report(slug, counts: {}, problems: [], skipped: false) = StoreReport.new(store: slug, skipped:, counts:, problems:)
+
+      def imported_report(home, slug, folder)
+        root = folder.root
         parsed = roadmap_files(root).to_h { |path| [path, RoadmapParse.call(File.read(path, encoding: "UTF-8"), path: relative(root, path))] }
         problems = parsed.values.flat_map(&:problems)
-        return StoreReport.new(store: slug, skipped: false, counts: {}, problems:) if problems.any?
+        return report(slug, problems:) if problems.any?
 
         counts = rolled_back_on_error(root) { run_import(home, slug, root, folder, parsed) }
-      rescue StandardError => e
-        StoreReport.new(store: slug, skipped: false, counts: {}, problems: ["#{slug}: the import failed and the store was put back: #{e.message}"])
+      rescue => e
+        report(slug, problems: ["#{slug}: the import failed and the store was put back: #{e.message}"])
       else
         removed_after_import(home, slug, folder, counts)
       end
@@ -65,7 +69,7 @@ module Plastic
       # A store imported on an earlier run that still holds INDEX.md: removed
       # now when the flag has been turned on since, skipped otherwise.
       def leftover_report(home, slug, folder)
-        return StoreReport.new(store: slug, skipped: true, counts: {}, problems: []) unless remove_after_import? && folder.exist?(StoreFolder::LEGACY_INDEX)
+        return report(slug, skipped: true) unless remove_after_import? && folder.exist?(StoreFolder::LEGACY_INDEX)
 
         removed_after_import(home, slug, folder, Hash.new(0))
       end
@@ -75,14 +79,14 @@ module Plastic
       # Runs only after the store imported with no error. A failure here keeps
       # the rows already written and says what was left in place.
       def removed_after_import(home, slug, folder, counts)
-        return StoreReport.new(store: slug, skipped: false, counts:, problems: []) unless remove_after_import?
+        return report(slug, counts:) unless remove_after_import?
 
         graphs = Graph.open(home:, store: slug, session: @session)
         archive_done_intents(graphs.work, graphs.retrieval, counts)
         folder.delete(StoreFolder::LEGACY_INDEX)
-        StoreReport.new(store: slug, skipped: false, counts:, problems: [])
-      rescue StandardError => e
-        StoreReport.new(store: slug, skipped: false, counts:, problems: ["#{slug}: imported, but removing the imported files stopped: #{e.message}"])
+        report(slug, counts:)
+      rescue => e
+        report(slug, counts:, problems: ["#{slug}: imported, but removing the imported files stopped: #{e.message}"])
       end
 
       # A store that fails halfway gets its folder back as it was, databases
@@ -91,7 +95,7 @@ module Plastic
         Dir.mktmpdir do |saved|
           FileUtils.cp_r(root, saved)
           yield
-        rescue StandardError
+        rescue
           FileUtils.rm_rf(root)
           FileUtils.cp_r(File.join(saved, File.basename(root)), File.dirname(root))
           raise
