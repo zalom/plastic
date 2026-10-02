@@ -45,6 +45,22 @@ class IntentContextTest < Plastic::TestCase
     assert_equal "stale", read_context.fetch("freshness").fetch("evidence").first.fetch("state")
   end
 
+  def test_reports_retrieval_maintenance_when_a_selected_source_is_not_ready
+    open_intent
+    reference = write_document("other", "selected evidence")
+    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
+    submit_context(context_submission(reference))
+    graphs = Plastic::Graph.open(home: @plastic_home, store: "other")
+    graphs.databases.fetch(:knowledge).transaction do |batch|
+      batch.add("UPDATE retrieval_backfills SET version = 0 WHERE name = 'retrieval' AND origin_id = :origin", origin: origin)
+    end
+
+    result = plastic("intent", "context", "1", table: Plastic::CLI::TABLE)
+
+    assert_equal 1, result.code
+    assert_includes result.err, "retrieval maintenance is required before source other can be read"
+  end
+
   def test_rejects_a_non_object_submission_without_replacing_saved_context
     open_intent
     reference = write_document("other", "selected evidence")
