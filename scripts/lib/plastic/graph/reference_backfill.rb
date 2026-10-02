@@ -9,13 +9,11 @@ module Plastic
       SCHEMA_VERSION = 1
 
       def self.complete?(path, origin_id)
-        database = SQLite3::Database.new(path, readonly: true)
+        database = Database::ConnectionPool.for(path)
         tables = database.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'retrieval_backfills'")
         tables.any? && database.execute(complete_sql, [origin_id, SCHEMA_VERSION]).any?
       rescue SQLite3::Exception, SystemCallError
         false
-      ensure
-        database&.close
       end
 
       def initialize(databases, origin_id, after_write: -> {})
