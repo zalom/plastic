@@ -44,6 +44,29 @@ class SearchTest < Plastic::TestCase
     end
   end
 
+  def test_defaults_to_twenty_results_and_bounds_each_excerpt
+    25.times { |index| write_document("global", "needle #{index}", path: "#{index}.md") }
+
+    result = plastic("search", "needle", "--json", table: Plastic::CLI::TABLE)
+    rows = JSON.parse(result.out).fetch("result").fetch("results")
+
+    assert_equal 0, result.code
+    assert_equal 20, rows.length
+    assert rows.all? { |row| row.fetch("body").length <= 320 }
+  end
+
+  def test_blank_scope_falls_back_and_unknown_scope_fails
+    write_document("global", "evidence")
+
+    blank = plastic("search", "evidence", "--source-project", "   ", "--json", table: Plastic::CLI::TABLE)
+    unknown = plastic("search", "evidence", "--source-project", "missing", table: Plastic::CLI::TABLE)
+
+    assert_equal 0, blank.code
+    assert_includes blank.out, "global"
+    assert_equal 1, unknown.code
+    assert_match(/unknown source projects: missing/, unknown.err)
+  end
+
   private
 
   def write_document(store, body, path: "evidence.md")

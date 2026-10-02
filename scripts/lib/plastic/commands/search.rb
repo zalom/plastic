@@ -22,11 +22,16 @@ module Plastic
       private
 
       def sources
+        configured_sources.tap { |list| validate_sources(list) }
+      end
+
+      def configured_sources
         values = parsed.fetch(:source_projects)
         values = environment.env.fetch("PLASTIC_SOURCE_PROJECTS", "").split(",") if values.empty?
-        values = [scope.slug] if values.empty?
-        values.map(&:strip).reject(&:empty?).uniq.sort.tap { |list| validate_sources(list) }
+        canonical_sources(values).then { |list| list.empty? ? [scope.slug] : list }
       end
+
+      def canonical_sources(values) = values.map(&:strip).reject(&:empty?).uniq.sort
 
       def validate_sources(list)
         unknown = list - scope.known_slugs
