@@ -46,10 +46,13 @@ module Plastic
 
       def validate_reference!(reference)
         match = /\Aplastic:\/\/[^\/]+\/[^\/]+\/[^?]*(?:\?revision=[0-9a-f]{64})?\z/.match(reference)
-        path = match && URI::DEFAULT_PARSER.unescape(reference.split("/", 5).last.split("?", 2).first).force_encoding(Encoding::UTF_8)
-        return if match && path.valid_encoding?
+        return if match && valid_reference_path?(reference)
 
         raise CLI::Command::Usage, "invalid document reference #{reference.inspect}"
+      end
+
+      def valid_reference_path?(reference)
+        URI::DEFAULT_PARSER.unescape(reference.split("/", 5).last.split("?", 2).first).force_encoding(Encoding::UTF_8).valid_encoding?
       end
 
       def passage_position
