@@ -8,12 +8,7 @@ require_relative "../../../scripts/lib/plastic/graph"
 class LegacyStoreImportSafetyTest < Minitest::Test
   def test_a_failed_snapshot_does_not_remove_the_source
     with_importer do |writer, folder|
-      fail_snapshot = lambda do |source, destination|
-        FileUtils.mkdir_p(File.join(destination, File.basename(source)))
-        raise Errno::ENOSPC, "snapshot full"
-      end
-
-      FileUtils.stub(:cp_r, fail_snapshot) do
+      FileUtils.stub(:cp_r, method(:fail_snapshot)) do
         error = assert_raises(Plastic::Invalid) { writer.call }
         assert_includes error.message, "snapshot full"
       end
@@ -22,6 +17,11 @@ class LegacyStoreImportSafetyTest < Minitest::Test
   end
 
   private
+
+  def fail_snapshot(source, destination)
+    FileUtils.mkdir_p(File.join(destination, File.basename(source)))
+    raise Errno::ENOSPC, "snapshot full"
+  end
 
   def with_importer
     Dir.mktmpdir("plastic-import-safety") do |home|
