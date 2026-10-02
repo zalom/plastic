@@ -87,6 +87,12 @@ class RetrievalGraphTest < Plastic::TestCase
     assert_equal "Archived evidence\n", retrieval.kept_file_data(row[:name])
   end
 
+  def test_backfill_marks_the_retrieval_migration_complete
+    retrieval.backfill!
+
+    assert_equal "complete", store_graphs.databases.fetch(:knowledge).row("SELECT completed_at FROM retrieval_schema WHERE name = 'retrieval'").fetch("completed_at")
+  end
+
   def test_an_intents_initial_document_is_searchable
     intent = open_intent("Retrieval planning")
 
