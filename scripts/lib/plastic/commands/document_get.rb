@@ -7,7 +7,7 @@ module Plastic
   module Commands
     # Fetches one current or immutable document by its qualified reference.
     class DocumentGet < CLI::Command
-      argument :reference, label: "REF", text: "the qualified document reference"
+      argument :reference, label: "REF", text: "plastic://STORE/INTENT/PATH?revision=SHA256"
       option :passage, switch: "--passage N", text: "one-based bounded passage position"
       reads :knowledge
 
@@ -31,14 +31,28 @@ module Plastic
       end
 
       def retrieval_for(reference)
+        slug = source_slug(reference)
+        validate_source!(slug)
+        maintained_retrieval(slug)
+      end
+
+      def source_slug(reference)
         slug = reference[/\Aplastic:\/\/([^\/]+)/, 1]
         raise CLI::Command::Usage, "invalid document reference #{reference.inspect}" unless slug
-        raise CLI::Scope::UnknownProject, "no project named #{slug.inspect}" unless scope.known_slugs.include?(slug)
 
+        slug
+      end
+
+      def validate_source!(slug)
+        return if scope.known_slugs.include?(slug)
+
+        raise CLI::Scope::UnknownProject, "no project named #{slug.inspect}"
+      end
+
+      def maintained_retrieval(slug)
         knowledge = File.join(scope.plastic_home, "stores", slug, "knowledge_graph.db")
-        unless Graph::ReferenceBackfill.complete?(knowledge, Graph::Origin.new(scope.plastic_home).id)
-          raise Graph::RetrievalGraph::MaintenanceRequired, "retrieval maintenance is required before source #{slug} can be read"
-        end
+        complete = Graph::ReferenceBackfill.complete?(knowledge, Graph::Origin.new(scope.plastic_home).id)
+        raise Graph::RetrievalGraph::MaintenanceRequired, "retrieval maintenance is required before source #{slug} can be read" unless complete
 
         Graph.open(home: scope.plastic_home, store: slug).retrieval
       end

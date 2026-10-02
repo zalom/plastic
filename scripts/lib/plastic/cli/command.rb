@@ -47,6 +47,8 @@ module Plastic
       # error prints the usage line; a refusal or a failure prints its line
       # after the rows.
       def run
+        return help if @argv.include?("--help") || @argv.include?("-h")
+
         answer
       rescue OptionParser::ParseError, Scope::UnknownProject, Usage => error
         misused(error)
@@ -68,6 +70,11 @@ module Plastic
 
       def usage_line = self.class.usage_line(words)
 
+      def help
+        [usage_line, *help_details].each { |line| output.raw(line) }
+        OK
+      end
+
       # The rows go out before any error line, so a failed call still says
       # what it wrote.
       def flush
@@ -76,6 +83,14 @@ module Plastic
       end
 
       private
+
+      def help_details
+        arguments = self.class.arguments.map { |argument| help_line(argument.usage, argument.text) }
+        options = self.class.options.map { |option| help_line(option.switch, option.text) }
+        [*arguments, *options, "        --json", "        --project SLUG"]
+      end
+
+      def help_line(syntax, text) = format("        %-28s %s", syntax, text)
 
       attr_reader :words, :environment
 

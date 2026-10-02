@@ -38,7 +38,8 @@ module Plastic
     # commands for `plastic help`, and name a command that has no stage yet
     # instead of blaming the words the owner typed.
     def self.bin_call(argv, environment: Command::Environment.current, table: TABLE)
-      return list(argv, table, environment) if argv.empty? || %w[help --help -h].include?(argv.first)
+      return list(argv, table, environment) if argv.empty? || %w[--help -h].include?(argv.first)
+      return help(argv, table, environment) if argv.first == "help"
 
       dispatch(argv, table, environment) { "plastic #{argv.join(" ")} is not in this build yet; it lands with its stage" }
     end
@@ -52,6 +53,15 @@ module Plastic
       Command::USAGE
     end
     private_class_method :dispatch
+
+    def self.help(argv, table, environment)
+      return list(argv, table, environment) if argv.one? || argv.drop(1).all? { |word| %w[--json --help -h].include?(word) }
+
+      dispatch(argv.drop(1).append("--help"), table, environment) do
+        "plastic: no command #{argv.drop(1).join(" ").inspect}; plastic help lists them"
+      end
+    end
+    private_class_method :help
 
     # The shipped commands, one row each, as lines or as one document with --json.
     def self.list(argv, table, environment)

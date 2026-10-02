@@ -3,15 +3,23 @@
 require_relative "../../test_helper"
 require_relative "../../../scripts/lib/plastic/commands/document_get"
 require_relative "../../../scripts/lib/plastic/commands/document_batch"
+require "open3"
+require "rbconfig"
 
 class DocumentGetTest < Plastic::TestCase
   def test_routed_help_prints_document_command_usage
     %w[get batch].each do |command|
-      result = plastic_bin("help", "document", command, table: Plastic::CLI::TABLE)
+      output, errors, status = Open3.capture3(RbConfig.ruby, "bin/plastic", "help", "document", command, chdir: repository)
 
-      assert_equal 0, result.code
-      assert_includes result.out, "plastic document #{command} REF"
+      assert_predicate status, :success?
+      assert_empty errors
+      assert_includes output, "plastic document #{command} REF"
+      assert_includes output, "plastic://STORE/INTENT/PATH?revision=SHA256"
     end
+
+    batch, = Open3.capture3(RbConfig.ruby, "bin/plastic", "help", "document", "batch", chdir: repository)
+
+    assert_includes batch, "plastic document batch REF..."
   end
 
   def test_prints_a_historical_qualified_document_as_structured_json
@@ -49,10 +57,13 @@ class DocumentGetTest < Plastic::TestCase
     end
 
     malformed = plastic("document", "get", "broken", table: Plastic::CLI::TABLE)
+
     assert_equal 2, malformed.code
   end
 
   private
+
+  def repository = File.expand_path("../../..", __dir__)
 
   def knowledge = store_graphs.databases.fetch(:knowledge)
 

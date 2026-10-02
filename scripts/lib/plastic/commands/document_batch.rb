@@ -6,7 +6,7 @@ module Plastic
   module Commands
     # Fetches requested qualified documents in the exact request order.
     class DocumentBatch < DocumentGet
-      argument :references, label: "REF", text: "one or more qualified document references", rest: true
+      argument :references, label: "REF", text: "one or more plastic://STORE/INTENT/PATH?revision=SHA256 references", rest: true
       reads :knowledge
 
       def call
