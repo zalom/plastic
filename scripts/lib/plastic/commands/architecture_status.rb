@@ -3,6 +3,7 @@
 require_relative "../cli/command"
 require "digest"
 require "json"
+require "shellwords"
 
 module Plastic
   module Commands
@@ -12,7 +13,7 @@ module Plastic
 
       def call
         output.row("architecture", receipt)
-        output.next_step("plastic architecture refresh", because: "an explicit refresh updates the architecture snapshot")
+        output.next_step(refresh_command, because: "an explicit refresh updates the architecture snapshot")
       end
 
       private
@@ -37,6 +38,11 @@ module Plastic
       end
 
       def archive_sha256 = nil
+
+      def refresh_command
+        project = parsed[:project]
+        project ? "plastic architecture refresh --project #{Shellwords.shellescape(project)}" : "plastic architecture refresh"
+      end
 
       def current_receipt
         Architecture::EnolaAdapter.new.snapshot(repository:, binary_sha256:, archive_sha256: nil, revision:, dirty:)

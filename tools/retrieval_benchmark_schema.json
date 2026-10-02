@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "entrypoint": "bin/plastic",
+  "public_data": true,
+  "corpora": [
+    { "id": "medium", "target_bytes": 15000000, "stores": 3, "text_encoding": "UTF-8", "public_data": true, "content": "deterministic synthetic public prose" },
+    { "id": "large", "target_bytes": 100000000, "stores": 3, "text_encoding": "UTF-8", "public_data": true, "content": "deterministic synthetic public prose" }
+  ],
+  "measurements": [
+    { "id": "exact_lookup", "command": "document get", "target": "qualified current document reference" },
+    { "id": "single_store_top_20", "command": "search", "target": "one store, limit 20" },
+    { "id": "three_store_rrf_top_20", "command": "search", "target": "three stores, limit 20, reciprocal rank fusion" },
+    { "id": "concurrent_writer_reader", "command": "search", "target": "bounded writer and reader processes with busy handling and revision checks" }
+  ],
+  "warmup_samples": { "warmup": 3, "samples": 10, "cache": "warm filesystem and SQLite page cache" },
+  "warm_p95_targets_ms": { "exact_lookup": 100, "single_store_top_20": 250, "three_store_rrf_top_20": 500 },
+  "raw_timing_fields": ["started_at", "duration_ms", "exit_status", "stdout_sha256", "stderr_sha256"]
+}

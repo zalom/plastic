@@ -91,27 +91,71 @@ class EnolaAdapterTest < Plastic::TestCase
     end
   end
 
+  def test_preserves_an_unsupported_tool_state_when_snapshot_metadata_is_missing
+    Dir.mktmpdir do |repository|
+      adapter = Plastic::Architecture::EnolaAdapter.new(executor: ->(*) { ["enola 0.5.0", "", true] })
+
+      receipt = adapter.snapshot(repository:, binary_sha256: "unknown", archive_sha256: nil, revision: "abc", dirty: false)
+
+      assert_equal "unsupported", receipt.fetch("state")
+      assert_equal "missing", receipt.fetch("snapshot_state")
+    end
+  end
+
+  def test_marks_a_snapshot_incomplete_when_a_required_artifact_is_missing
+    Dir.mktmpdir do |repository|
+      write_snapshot(repository, commit: "abc", dirty: false, repo_path: repository)
+      File.delete(File.join(repository, ".enola", "facts.jsonl"))
+      adapter = Plastic::Architecture::EnolaAdapter.new(executor: ->(*) { ["enola 0.4.18", "", true] })
+
+      assert_equal "incomplete", adapter.snapshot(repository:, binary_sha256: "unknown", archive_sha256: nil, revision: "abc", dirty: false).fetch("state")
+    end
+  end
+
   def test_refresh_calls_the_cli_only_when_requested_and_keeps_the_old_receipt_on_failure
     calls = []
     adapter = Plastic::Architecture::EnolaAdapter.new(executor: ->(*command) { calls << command; ["failed", "generation failed", false] })
     prior = { "state" => "fresh", "revision" => "abc" }
     assert_respond_to adapter, :refresh
 
-    assert_equal prior, adapter.refresh(repository: "/repo", prior:)
+    result = adapter.refresh(repository: "/repo", prior:)
+
+    assert_equal false, result.fetch(:success)
+    assert_equal prior, result.fetch(:receipt)
     assert_equal [["enola", "--generate", "/repo"]], calls
+  end
+
+  def test_refresh_reports_failure_without_a_prior_receipt
+    adapter = Plastic::Architecture::EnolaAdapter.new(executor: ->(*) { ["failed", "generation failed", false] })
+
+    result = adapter.refresh(repository: "/repo", prior: nil)
+
+    assert_equal false, result.fetch(:success)
+    assert_nil result.fetch(:receipt)
   end
 
   private
 
   def write_snapshot(repository, commit:, dirty:, repo_path:, extractors: %w[manifests ruby], top_level_quality: false)
+    artifact_hashes = write_artifacts(repository)
     data = { "repo_path" => repo_path, "git" => { "commit" => commit, "dirty" => dirty }, "extractors" => extractors,
              "extractor_version" => "v265", "quality" => { "census" => { "excluded_kinds" => { ".svg" => 1 } },
-                                                           "coverage" => { "extraction_unresolved" => 12 } } }
+                                                           "coverage" => { "extraction_unresolved" => 12 } }, "output_hashes" => artifact_hashes }
     if top_level_quality
       data["census"] = { "detected_languages" => %w[ruby typescript], "excluded_kinds" => { ".svg" => 1, ".json" => 2 } }
       data["coverage"] = { "coverage_gaps" => 3, "extraction_unresolved" => 7 }
     end
     FileUtils.mkdir_p(File.join(repository, ".enola"))
     File.write(File.join(repository, ".enola", "snapshot.meta.json"), JSON.generate(data))
+  end
+
+  def write_artifacts(repository)
+    root = File.join(repository, ".enola")
+    FileUtils.mkdir_p(root)
+    %w[facts.jsonl llm_context.md].to_h do |name|
+      path = File.join(root, name)
+      File.write(path, name)
+      [name, "sha256:#{Digest::SHA256.file(path).hexdigest}"]
+    end
   end
 end

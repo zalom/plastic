@@ -1,0 +1,14 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "optparse"
+require_relative "../tools/retrieval_benchmark"
+
+options = { output: "retrieval-benchmark.json", corpus_bytes: 15_000_000 }
+OptionParser.new do |parser|
+  parser.banner = "Usage: bin/plastic-retrieval-bench [options]"
+  parser.on("--output PATH", "Write raw JSON evidence to PATH") { |value| options[:output] = value }
+  parser.on("--corpus-bytes BYTES", Integer, "Generate this many public UTF-8 bytes") { |value| options[:corpus_bytes] = value }
+end.parse!
+
+Plastic::RetrievalBenchmark.run(**options)

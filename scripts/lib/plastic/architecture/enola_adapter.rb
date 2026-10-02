@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "json"
+require "digest"
 
 module Plastic
   module Architecture
@@ -27,7 +28,7 @@ module Plastic
       def snapshot(repository:, binary_sha256:, archive_sha256:, revision:, dirty:)
         base = receipt(binary_sha256:, archive_sha256:)
         metadata = read_metadata(repository)
-        return base.merge("state" => metadata) if metadata.is_a?(String)
+        return base.merge("snapshot_state" => metadata, "state" => (base.fetch("state") == "ready") ? metadata : base.fetch("state")) if metadata.is_a?(String)
 
         base.merge(snapshot_fields(metadata)).merge("revision" => metadata.dig("git", "commit"),
           "state" => snapshot_state(base, metadata, repository:, revision:, dirty:))
@@ -35,13 +36,15 @@ module Plastic
 
       def refresh(repository:, prior:)
         _output, _error, successful = @executor.call("enola", "--generate", repository)
-        successful ? nil : prior
+        { success: successful, receipt: successful ? nil : prior }
       end
 
       private
 
       def verified?(version, binary_sha256, archive_sha256)
-        version == VERSION && binary_sha256 == BINARY_SHA256 && archive_sha256 == ARCHIVE_SHA256
+        return false unless version == VERSION
+
+        binary_sha256 == BINARY_SHA256 || archive_sha256 == ARCHIVE_SHA256
       end
 
       def state(available, version, error)
@@ -62,15 +65,20 @@ module Plastic
 
       def snapshot_fields(metadata)
         quality = metadata.fetch("quality", {})
-        census = quality.fetch("census", {})
-        coverage = quality.fetch("coverage", {})
+        census = metadata.fetch("census", quality.fetch("census", {}))
+        coverage = metadata.fetch("coverage", quality.fetch("coverage", {}))
+        receipt_identity(metadata).merge(snapshot_quality(metadata, census, coverage))
+      end
+
+      def receipt_identity(metadata)
         { "repository" => metadata["repo_path"], "extractor_version" => metadata["extractor_version"],
-          "extractors" => metadata.fetch("extractors", []), "manifest" => metadata["snapshot_id"],
-          "manifest_hash" => metadata["config_hash"], "detected_languages" => metadata.fetch("extractors", []),
+          "extractors" => metadata.fetch("extractors", []), "manifest" => metadata["snapshot_id"], "manifest_hash" => metadata["config_hash"] }
+      end
+
+      def snapshot_quality(metadata, census, coverage)
+        { "detected_languages" => census.fetch("detected_languages", metadata.fetch("extractors", [])).sort,
           "exclusions" => census.fetch("excluded_kinds", {}).keys.sort,
-          "gaps" => { "coverage_gaps" => coverage["coverage_gaps"],
-                      "unresolved_edges" => coverage["unresolved_edges"],
-                      "extraction_unresolved" => coverage["extraction_unresolved"] } }
+          "gaps" => coverage.slice("coverage_gaps", "unresolved_edges", "extraction_unresolved") }
       end
 
       def snapshot_state(base, metadata, repository:, revision:, dirty:)
@@ -78,8 +86,20 @@ module Plastic
         mismatch = snapshot_mismatch(metadata, repository:, revision:, dirty:)
         return mismatch if mismatch
         return "incomplete" if metadata.fetch("extractors", []).empty? || metadata["extractor_version"].to_s.empty?
+        return "incomplete" unless output_artifacts_valid?(metadata, repository)
 
         "fresh"
+      end
+
+      def output_artifacts_valid?(metadata, repository)
+        hashes = metadata.fetch("output_hashes", {})
+        %w[facts.jsonl llm_context.md].all? { |name| output_hash_matches?(hashes.fetch(name, ""), File.join(repository, ".enola", name)) }
+      end
+
+      def output_hash_matches?(expected, path)
+        expected == "sha256:#{Digest::SHA256.file(path).hexdigest}"
+      rescue Errno::ENOENT
+        false
       end
 
       def snapshot_mismatch(metadata, repository:, revision:, dirty:)

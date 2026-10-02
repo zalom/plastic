@@ -12,7 +12,7 @@ module Plastic
       def call
         previous = stored_receipt
         result = adapter.refresh(repository:, prior: previous)
-        raise CLI::Command::Failure, "Enola could not generate an architecture snapshot" if result
+        raise CLI::Command::Failure, "Enola could not generate an architecture snapshot" unless result.fetch(:success)
 
         current = current_receipt.merge("worktree_hash" => worktree_hash)
         persist(current)

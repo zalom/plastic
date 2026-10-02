@@ -76,10 +76,16 @@ class ArchitectureTest < Plastic::TestCase
   end
 
   def write_snapshot(repository, dirty: true)
+    root = File.join(repository, ".enola")
+    FileUtils.mkdir_p(root)
+    hashes = %w[facts.jsonl llm_context.md].to_h do |name|
+      path = File.join(root, name)
+      File.write(path, name)
+      [name, "sha256:#{Digest::SHA256.file(path).hexdigest}"]
+    end
     data = { "repo_path" => repository, "git" => { "commit" => revision(repository), "dirty" => dirty },
-             "extractors" => ["ruby"], "extractor_version" => "v265", "quality" => {} }
-    FileUtils.mkdir_p(File.join(repository, ".enola"))
-    File.write(File.join(repository, ".enola", "snapshot.meta.json"), JSON.generate(data))
+             "extractors" => ["ruby"], "extractor_version" => "v265", "quality" => {}, "output_hashes" => hashes }
+    File.write(File.join(root, "snapshot.meta.json"), JSON.generate(data))
   end
 
   def revision(repository) = run_git(repository, "rev-parse", "HEAD").strip
