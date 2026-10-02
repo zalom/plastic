@@ -8,15 +8,9 @@ module Plastic
     class NodeAdd < Routine
       intent_subject
       argument :title, label: "TITLE", text: "what the node is for"
-      option :criterion, switch: "--criterion TEXT", text: "what done means"
+      option :criterion, switch: "--criterion TEXT", text: "what done means", required: true
       option :input, switch: "--input PATH", text: "a file the node reads"
       writes :work
-
-      def call
-        raise CLI::Command::Usage, "missing --criterion" unless parsed[:criterion]
-
-        super
-      end
 
       workflow :code_add_node, next: :noop
     end

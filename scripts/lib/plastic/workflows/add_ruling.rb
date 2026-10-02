@@ -4,11 +4,18 @@ require_relative "../code_workflow"
 
 module Plastic
   module Workflows
-    # Writes one ruling; fails when --supersedes names no such ruling.
+    # Writes one ruling; fails on an unknown intent, or when --supersedes
+    # names no such ruling.
     class AddRuling < CodeWorkflow
       [facts, steps, outcomes].each(&:clear)
 
-      sets :problem, :id
+      sets :intent, :problem, :id
+
+      read "find the intent" do |context|
+        context[:intent] = context.retrieval.intent(context.intent_id)
+      end
+
+      gate "no intent %{intent_id} in this store", stops: :failure, pass: ->(context) { !context.intent.nil? }
 
       step "write the ruling", done: ->(context) { !context.problem.nil? || !context.id.nil? } do |context|
         ruling = context.work.add_ruling(intent_id: context.intent_id, text: context.text, supersedes: context.supersedes)

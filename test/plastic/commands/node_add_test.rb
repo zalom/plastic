@@ -32,13 +32,13 @@ class NodeAddTest < Plastic::TestCase
 
     result = call("1", "do the thing", "--criterion", "it is done")
 
-    assert_equal 3, result.code
+    assert_equal 1, result.code
   end
 
   def test_refused_on_a_missing_intent
     result = call("9", "do the thing", "--criterion", "it is done")
 
-    assert_equal 3, result.code
+    assert_equal 1, result.code
     assert_includes result.err, "no intent 9"
   end
 

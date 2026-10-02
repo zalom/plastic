@@ -9,7 +9,13 @@ module Plastic
     class CheckGraph < CodeWorkflow
       [facts, steps, outcomes].each(&:clear)
 
-      sets :findings
+      sets :intent, :findings
+
+      read "find the intent" do |context|
+        context[:intent] = context.retrieval.intent(context.intent_id)
+      end
+
+      gate "no intent %{intent_id} in this store", stops: :failure, pass: ->(context) { !context.intent.nil? }
 
       read "find problems" do |context|
         context[:findings] = Graph::Findings.new(context.retrieval, context.intent_id).all

@@ -20,11 +20,11 @@ module Plastic
 
       def self.problem_for(context)
         id = context.intent_id
-        intent_problem(id, context.intent) || spec_problem(id, context) || lock_problem(id, context)
+        state_problem(id, context.intent) || spec_problem(id, context) || lock_problem(id, context)
       end
 
-      def self.intent_problem(id, intent)
-        return "no intent #{id} in this store" unless intent
+      def self.state_problem(id, intent)
+        return nil unless intent
         return "intent #{id} is #{intent.status}" unless intent.open?
 
         nil
@@ -46,6 +46,7 @@ module Plastic
         "intent #{id} is locked by session #{holder}"
       end
 
+      gate "no intent %{intent_id} in this store", stops: :failure, pass: ->(context) { !context.intent.nil? }
       gate "auto start names no session", stops: :failure, pass: ->(context) { !context.session.nil? }
       gate "%{problem}", stops: :refusal, pass: ->(context) { context.problem.nil? }
 

@@ -27,15 +27,21 @@ module Plastic
 
       def self.move(verb)
         shape = MOVES.fetch(verb)
-        sets :problem, :moved
+        sets :intent, :problem, :moved
+        intent_steps
         move_steps(verb, shape)
         result_steps(shape)
+      end
+
+      def self.intent_steps
+        read("find the intent") { |context| context[:intent] = context.retrieval.intent(context.intent_id) }
+        gate "no intent %{intent_id} in this store", stops: :failure, pass: ->(context) { !context.intent.nil? }
       end
 
       def self.move_steps(verb, shape)
         read("forget a refusal of an earlier call") { |context| forget_refusal(context) }
         step(shape.fetch(:step), done: method(:tried?)) { |context| run_move(context, verb, shape) }
-        gate "%{problem}", stops: :refusal, pass: method(:moved?)
+        gate "%{problem}", stops: :failure, pass: method(:moved?)
       end
 
       def self.forget_refusal(context)

@@ -72,7 +72,7 @@ class AutoStartTest < Plastic::TestCase
   def test_a_missing_intent_refuses
     result = call("9")
 
-    assert_equal 3, result.code
+    assert_equal 1, result.code
     assert_includes result.err, "no intent 9 in this store"
   end
 

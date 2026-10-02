@@ -6,7 +6,7 @@ class ParserTest < Plastic::TestCase
   Command = Plastic::CLI::Command
 
   def parser(arguments: [Command::Argument.new(:id, "ID", "the intent", false, false)],
-    options: [Command::Option.new(:dir, "--dir DIR", "where", "/default")])
+    options: [Command::Option.new(:dir, "--dir DIR", "where", "/default", false)])
     Plastic::CLI::Parser.new(arguments:, options:, banner: "plastic x ID")
   end
 
