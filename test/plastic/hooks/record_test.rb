@@ -56,7 +56,7 @@ class RecordTest < Plastic::TestCase
     put(:home, :locks, { store: "global", intent_id: "1", session_id: "s-1", mode: "auto", taken_at: Plastic.now, renewed_at: Plastic.now })
     put(:work, :nodes, { intent_id: "1", id: "a", state: "open" })
 
-    result = call(input: JSON.generate(stop_hook_active: true))
+    result = call(input: JSON.generate(stop_hook_active: false))
 
     assert_equal({ "decision" => "block", "reason" => "Plastic: intent 1 still has ready work. Run plastic next for it and " \
                                                        "dispatch what it prints before stopping." }, JSON.parse(result.out))
