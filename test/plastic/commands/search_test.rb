@@ -76,6 +76,35 @@ class SearchTest < Plastic::TestCase
     assert_includes excerpt, "café"
   end
 
+  def test_keeps_an_accent_insensitive_match_after_combining_mark_fillers
+    body = ("é " * 180) + "café"
+    write_document("global", body)
+
+    result = plastic("search", "cafe", "--json", table: Plastic::CLI::TABLE)
+    excerpt = JSON.parse(result.out).fetch("result").fetch("results").fetch(0).fetch("body")
+
+    assert_equal 0, result.code
+    assert_operator excerpt.length, :<=, 320
+    assert_includes excerpt, "café"
+  end
+
+  def test_reports_maintenance_without_recreating_a_missing_selected_store_database
+    write_document("other", "other evidence")
+    root = File.join(@plastic_home, "stores", "other")
+    Plastic::Graph.open(home: @plastic_home, store: "other").retrieval.archived?("1")
+    knowledge = File.binread(File.join(root, "knowledge_graph.db"))
+    references = File.binread(File.join(root, "references.db"))
+    File.delete(File.join(root, "work_graph.db"))
+
+    result = plastic("search", "evidence", "--source-project", "other", "--json", table: Plastic::CLI::TABLE)
+
+    assert_equal 1, result.code
+    assert_match(/maintenance/, result.out)
+    refute_path_exist File.join(root, "work_graph.db")
+    assert_equal knowledge, File.binread(File.join(root, "knowledge_graph.db"))
+    assert_equal references, File.binread(File.join(root, "references.db"))
+  end
+
   def test_pins_a_hit_to_its_historical_revision_through_concurrent_replacement_and_removal
     graphs = Plastic::Graph.open(home: @plastic_home, store: "global")
     writer = Plastic::Graph::EvidenceWriter.new(graphs.databases.fetch(:knowledge), origin)
