@@ -41,6 +41,10 @@ before it is called red, and the gate prints both times either way. RSpec projec
 Minitest run through `bin/rails test`, have no step to load the extension into, so the gate
 skips the Timing check for them and says so.
 
+Coverage starts before the timing extension loads. A timing rerun must succeed;
+a fast failure cannot pass the cap. A Varar rerun selects the named document's
+generated test class, so other documents do not count toward its time.
+
 The Mutation testing step runs `bin/lib/mutation_verdicts.rb`, which removes any report left
 under the sandbox `PLASTIC_TMP` from an earlier run, runs Mutineer with `--format json
 --output` into that same path, and reads only what this run wrote. A mutant Mutineer could not
@@ -48,6 +52,11 @@ give a verdict is re-run alone, one subject at a time with `--only NAME --jobs 1
 sources and tests, and the gate prints each re-run's subject and seconds. A mutant still
 without a verdict after its re-run fails the step by name; a mutant with no subject to isolate
 (a failure before a worker forked) fails at once, with no re-run.
+
+Reruns must exit successfully and write a report. Each resolved verdict needs the
+mutant's id in an explicit result list. Mutineer 1.0 reports killed mutants only
+as a total, so a rerun cannot prove an individual kill from that format. Such an
+id stays unresolved and fails the gate; missing or uncovered ids never count as kills.
 
 Lint reads `.rubocop_with_todo.yml`. It is `.rubocop.yml` plus `.rubocop_todo.yml`, the
 generated list of offenses in code written before 2026-09-30. So a lint run reports what the

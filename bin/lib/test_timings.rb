@@ -138,8 +138,8 @@ end
 module TestTimings
   # Re-runs one file or Varar document alone, through the same `bin/test` a
   # contributor would use, so a cap failure times a real second run instead
-  # of trusting the first. A Varar document has no single-file entry point,
-  # so it reruns the whole Varar suite and charges the document its time.
+  # of trusting the first. Minitest's class filter selects the named Varar
+  # document while the adapter loads the project for reference resolution.
   class Rerun
     def initialize(root: File.expand_path("../..", __dir__), runner: ->(*command, chdir:) { Open3.capture2e(*command, chdir:) })
       @root = root
@@ -147,8 +147,20 @@ module TestTimings
     end
 
     def call(file)
-      command = file.start_with?("varar/") ? %w[bundle exec ruby bin/test --system] : ["bundle", "exec", "ruby", "bin/test", "--only", file]
-      Benchmark.realtime { @runner.call(*command, chdir: @root) }
+      Benchmark.realtime do
+        output, status = @runner.call(*command(file), chdir: @root)
+        raise Caps::Failure, "#{file} rerun failed: #{output}" unless status.success?
+      end
+    end
+
+    private
+
+    def command(file)
+      return ["bundle", "exec", "ruby", "bin/test", "--only", file] unless file.start_with?("varar/")
+
+      require "varar/minitest"
+      name = Regexp.escape("Var_#{Varar::Minitest.identifier(file)}")
+      ["bundle", "exec", "ruby", "bin/test", "--name", "/\\A#{name}#/", "--system"]
     end
   end
 end
