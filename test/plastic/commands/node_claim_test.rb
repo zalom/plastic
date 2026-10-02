@@ -8,6 +8,7 @@ require_relative "../../../scripts/lib/plastic/commands/node_done"
 require_relative "../../../scripts/lib/plastic/commands/node_park"
 require_relative "../../../scripts/lib/plastic/commands/node_fail"
 require_relative "../../../scripts/lib/plastic/commands/node_release"
+require_relative "../../../scripts/lib/plastic/commands/edge_add"
 
 class NodeClaimTest < Plastic::TestCase
   def add_node(title) = plastic("node", "add", "1", title, "--criterion", "done", table: Plastic::CLI::TABLE)
@@ -86,5 +87,42 @@ class NodeClaimTest < Plastic::TestCase
 
     assert_equal "parked", node.state
     assert_equal "boom", node.reason
+  end
+
+  def test_claiming_a_node_that_needs_an_open_node_is_refused
+    open_intent
+    add_node("a")
+    add_node("b")
+    plastic("edge", "add", "1", "n1", "n2", table: Plastic::CLI::TABLE)
+
+    result = claim("n2")
+
+    assert_equal 3, result.code
+    assert_includes result.err, "node n2 needs a node that is not done"
+  end
+
+  def test_a_node_refused_for_its_needs_is_claimed_once_they_are_done
+    open_intent
+    add_node("a")
+    add_node("b")
+    plastic("edge", "add", "1", "n1", "n2", table: Plastic::CLI::TABLE)
+    claim("n2")
+    claim("n1")
+    plastic("node", "done", "1", "n1", "--judge", "tests", "--findings", "ok", table: Plastic::CLI::TABLE)
+
+    result = claim("n2")
+
+    assert_equal 0, result.code
+    assert_equal "claimed", store_graphs.retrieval.node("1", "n2").state
+  end
+
+  def test_a_refused_claim_is_refused_again_on_the_next_call
+    open_intent
+    claim("n9")
+
+    result = claim("n9")
+
+    assert_equal 3, result.code
+    assert_includes result.err, "no node n9 in intent 1"
   end
 end

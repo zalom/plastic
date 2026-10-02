@@ -32,4 +32,15 @@ class IntentShowTest < Plastic::TestCase
     assert_includes result.out, "ruling: D1 Flowbite styles every delivery"
     assert_includes result.out, "savepoint:"
   end
+
+  def test_marks_a_superseded_ruling
+    intent = open_intent
+    plastic("intent", "rule", intent.intent_id, "Flowbite styles every delivery", table: Plastic::CLI::TABLE)
+    plastic("intent", "rule", intent.intent_id, "Direct mode only", "--supersedes", "D1", table: Plastic::CLI::TABLE)
+
+    result = call(intent.intent_id)
+
+    assert_includes result.out, "ruling: D1 Flowbite styles every delivery (superseded)"
+    assert_includes result.out, "ruling: D2 Direct mode only\n"
+  end
 end
