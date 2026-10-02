@@ -25,7 +25,7 @@ module Plastic
         context.print("note: #{context.text}")
       end
 
-      outcome :done, offers: "plastic next", because: "session %{session_id} has its note"
+      outcome :done, because: "session %{session_id} has its note"
     end
   end
 end
