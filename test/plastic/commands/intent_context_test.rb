@@ -88,6 +88,20 @@ class IntentContextTest < Plastic::TestCase
     assert_equal before, File.binread(store_path("../other/knowledge_graph.db"))
   end
 
+  def test_does_not_recreate_a_missing_selected_source_work_database
+    open_intent
+    reference = write_document("other", "selected evidence")
+    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
+    submit_context(context_submission(reference))
+    path = store_path("../other/work_graph.db")
+    File.delete(path)
+
+    result = plastic("intent", "context", "1", table: Plastic::CLI::TABLE)
+
+    assert_equal 1, result.code
+    refute_path_exists path
+  end
+
   def test_rejects_a_non_object_submission_without_replacing_saved_context
     open_intent
     reference = write_document("other", "selected evidence")

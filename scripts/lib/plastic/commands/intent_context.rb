@@ -149,7 +149,11 @@ module Plastic
 
       def source_retrieval(reference)
         slug = source(reference)
-        knowledge = File.join(scope.plastic_home, "stores", slug, "knowledge_graph.db")
+        store = File.join(scope.plastic_home, "stores", slug)
+        missing = Graph::Schema::STORE.map { |key| Graph::Schema.file(key) }.reject { |file| File.file?(File.join(store, file)) }
+        raise Graph::RetrievalGraph::MaintenanceRequired, "retrieval maintenance is required before source #{slug} can be read" if missing.any?
+
+        knowledge = File.join(store, "knowledge_graph.db")
         complete = Graph::ReferenceBackfill.complete?(knowledge, Graph::Origin.new(scope.plastic_home).id)
         raise Graph::RetrievalGraph::MaintenanceRequired, "retrieval maintenance is required before source #{slug} can be read" unless complete
 
