@@ -87,6 +87,17 @@ class RetrievalGraphTest < Plastic::TestCase
     assert_equal "Archived evidence\n", retrieval.kept_file_data(row[:name])
   end
 
+  def test_keeps_unsupported_textual_attachments_without_indexing_or_crashing
+    row = { name: "store/1--alpha/report.pdf", mode: 0o100644, mtime: 0, sz: 12,
+            data: Plastic::Graph::SQL::Bytes.new("%PDF readable"), intent_id: "1", sha256: "source" }
+    put(:references, :sqlar, row)
+
+    retrieval.backfill!
+
+    assert_equal "%PDF readable", retrieval.kept_file_data(row[:name])
+    assert_empty retrieval.search("readable")
+  end
+
   def test_backfill_marks_the_retrieval_migration_complete
     retrieval.backfill!
 

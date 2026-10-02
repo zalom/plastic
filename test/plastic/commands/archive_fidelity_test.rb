@@ -103,6 +103,15 @@ class ArchiveFidelityTest < Plastic::TestCase
     assert_equal [["research.txt", "Archive-only evidence\n"]], retrieval.search("archive evidence").map { |row| row.values_at("path", "body") }
   end
 
+  def test_archive_keeps_an_unsupported_textual_attachment_without_failing
+    intent = future_intent
+    write("#{intent.dir}/report.pdf", "%PDF readable")
+
+    assert_archived(intent)
+
+    assert_empty retrieval.search("readable")
+  end
+
   def test_revert_preserves_conflicting_symlink_and_archive_marker
     intent = archived_with_conflict
 
