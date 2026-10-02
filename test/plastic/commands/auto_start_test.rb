@@ -57,6 +57,7 @@ class AutoStartTest < Plastic::TestCase
 
     assert_equal 0, result.code
     assert_equal "active", store_graphs.retrieval.intent(intent.intent_id).status
+    assert_includes result.out, "next: plastic intent brief #{intent.intent_id}"
   end
 
   def test_a_clear_spec_takes_the_lock

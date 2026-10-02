@@ -55,7 +55,7 @@ module Plastic
         context.work.print_intent(context.intent_id)
       end
 
-      outcome :done, offers: "plastic node claim %{intent_id} ID", because: "intent %{intent_id} is active"
+      outcome :done, offers: "plastic intent brief %{intent_id}", because: "intent %{intent_id} is active"
     end
   end
 end

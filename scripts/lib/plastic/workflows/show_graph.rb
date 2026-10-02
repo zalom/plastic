@@ -13,7 +13,7 @@ module Plastic
 
       read "print each node and edge" do |context|
         context.retrieval.nodes(context.intent_id).each { |node| context.print("node: #{node.id} #{node.state} #{node.title}") }
-        context.retrieval.edges(context.intent_id).each { |edge| context.print("edge: #{edge.from} #{edge.kind} #{edge.to}") }
+        context.retrieval.edges(context.intent_id).each { |edge| context.print("edge: #{edge.from} to #{edge.to}") }
       end
 
       step "reprint graph.json", done: ->(context) { !context.printed_paths.nil? } do |context|

@@ -101,7 +101,7 @@
       ]
     },
     "varar/work-graph.md": {
-      "sourceHash": "fnv1a:d20e5bbe",
+      "sourceHash": "fnv1a:bc314de4",
       "examples": [
         {
           "name": "Each row gives the check, the exit code and what it shows:",
