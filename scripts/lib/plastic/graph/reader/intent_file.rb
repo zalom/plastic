@@ -2,6 +2,7 @@
 
 require "digest"
 require "json"
+require_relative "../evidence_writer"
 require_relative "../edge"
 require_relative "../node"
 require_relative "../savepoint"
@@ -59,23 +60,7 @@ module Plastic
         end
 
         def document(batch)
-          body = text
-          sha256 = Digest::SHA256.hexdigest(body)
-          now = Plastic.now
-          batch.put(:documents, { intent_id: @intent_id, path: @rel, body:, updated_at: now })
-          write_retrieval_evidence(batch, body, sha256, now)
-        end
-
-        def write_retrieval_evidence(batch, body, sha256, now)
-          batch.add("INSERT OR IGNORE INTO document_revisions (sha256, intent_id, path, body, created_at, origin_id) VALUES (:sha256, :intent_id, :path, :body, :created_at, :origin_id)",
-            sha256:, intent_id: @intent_id, path: @rel, body:, created_at: now, origin_id: @origin_id)
-          batch.put(:document_heads, { intent_id: @intent_id, path: @rel, sha256:, updated_at: now })
-          batch.add("INSERT OR IGNORE INTO document_passages (sha256, position, body, line_start, line_end, origin_id) VALUES (:sha256, 1, :body, 1, :line_end, :origin_id)",
-            sha256:, body:, line_end: body.lines.size, origin_id: @origin_id)
-          batch.add("DELETE FROM document_fts WHERE intent_id = :intent_id AND path = :path AND origin_id = :origin_id",
-            intent_id: @intent_id, path: @rel, origin_id: @origin_id)
-          batch.add("INSERT INTO document_fts (body, intent_id, path, sha256, position, origin_id) VALUES (:body, :intent_id, :path, :sha256, 1, :origin_id)",
-            body:, intent_id: @intent_id, path: @rel, sha256:, origin_id: @origin_id)
+          EvidenceWriter.new(nil, @origin_id).apply(batch, @intent_id, @rel, text)
         end
 
         def kept(batch)

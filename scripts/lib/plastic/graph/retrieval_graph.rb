@@ -10,6 +10,8 @@ require_relative "link"
 require_relative "roadmap"
 require_relative "archive"
 require_relative "backup"
+require_relative "evidence_writer"
+require_relative "reference_backfill"
 
 module Plastic
   module Graph
@@ -56,6 +58,12 @@ module Plastic
       # words become quoted FTS terms, so caller text never changes the query.
       def search(terms, limit: 20)
         @databases.fetch(:knowledge).rows(SEARCH_SQL, query: fts_query(terms), origin: origin_id, limit:)
+      end
+
+      # Imports legacy text attachments without deleting their source bytes.
+      # Immutable revisions make a resumed pass safe after interruption.
+      def backfill!
+        ReferenceBackfill.new(@databases, origin_id).call
       end
 
       def savepoints(intent_id = nil) = read(:savepoints, intent_id)
