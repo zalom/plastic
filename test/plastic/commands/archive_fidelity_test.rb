@@ -94,6 +94,15 @@ class ArchiveFidelityTest < Plastic::TestCase
     assert_equal "owner's unsynced text", folder.read(path)
   end
 
+  def test_archive_indexes_unsynced_text_before_removing_its_directory
+    intent = future_intent
+    write("#{intent.dir}/research.txt", "Archive-only evidence\n")
+
+    assert_archived(intent)
+
+    assert_equal [["research.txt", "Archive-only evidence\n"]], retrieval.search("archive evidence").map { |row| row.values_at("path", "body") }
+  end
+
   def test_revert_preserves_conflicting_symlink_and_archive_marker
     intent = archived_with_conflict
 
