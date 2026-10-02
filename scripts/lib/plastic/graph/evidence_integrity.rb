@@ -47,8 +47,8 @@ module Plastic
 
       def rebuild_passages(batch, revision)
         passages(revision).each do |passage|
-          batch.add("INSERT INTO document_passages (sha256, position, body, line_start, line_end, origin_id) VALUES (:sha256, :position, :body, :line_start, :line_end, :origin_id)",
-            sha256: revision.fetch("sha256"), origin_id: @origin_id, **passage)
+          batch.add("INSERT INTO document_passages (sha256, intent_id, path, position, body, line_start, line_end, origin_id) VALUES (:sha256, :intent_id, :path, :position, :body, :line_start, :line_end, :origin_id)",
+            sha256: revision.fetch("sha256"), intent_id: revision.fetch("intent_id"), path: revision.fetch("path"), origin_id: @origin_id, **passage)
         end
       end
 
@@ -65,7 +65,7 @@ module Plastic
       def rows(connection = nil)
         { documents: documents(connection), revisions: select("document_revisions", "intent_id, path, body, sha256", connection),
           heads: select("document_heads", "intent_id, path, sha256", connection),
-          passages: select("document_passages", "sha256, position, body, line_start, line_end", connection),
+          passages: select("document_passages", "sha256, intent_id, path, position, body, line_start, line_end", connection),
           fts: select("document_fts", "intent_id, path, body, sha256, position", connection) }
       end
 
@@ -100,7 +100,7 @@ module Plastic
 
       def expected(current, name)
         { heads: current.fetch(:documents).map { |row| row.values_at("intent_id", "path", "sha256") },
-          passages: current.fetch(:revisions).flat_map { |row| passage_values(row) }.uniq,
+          passages: current.fetch(:revisions).flat_map { |row| passage_values(row) },
           fts: current.fetch(:documents).flat_map { |row| fts_values(row) } }.fetch(name)
       end
 
@@ -116,7 +116,7 @@ module Plastic
       end
 
       def passage_values(row)
-        passages(row).map { |passage| [row.fetch("sha256"), *passage.values_at(:position, :body, :line_start, :line_end)] }
+        passages(row).map { |passage| [row.fetch("sha256"), row.fetch("intent_id"), row.fetch("path"), *passage.values_at(:position, :body, :line_start, :line_end)] }
       end
 
       def fts_values(row) = passages(row).map { |passage| [row.fetch("intent_id"), row.fetch("path"), passage.fetch(:body), row.fetch("sha256"), passage.fetch(:position)] }

@@ -9,7 +9,7 @@ class RetrievalReadTest < Plastic::TestCase
     reference = retrieval.reference("1", "dir/a:b @ 100% ž.md")
     writer.write("1", "dir/a:b @ 100% ž.md", "second body")
 
-    assert_equal "plastic://global/1/dir%2Fa%3Ab%20%40%20100%25%20%C5%BE.md", reference.fetch(:uri)
+    assert_equal "plastic://global/1/dir%2Fa%3Ab%20%40%20100%25%20%C5%BE.md?revision=920de5214f0d1366297d417e04180cfe6939c853d544ddfeea9e9c030ced9c41", reference.fetch(:uri)
     assert_equal "first body", retrieval.fetch_reference(reference.fetch(:uri)).fetch(:body)
     assert_equal "second body", retrieval.fetch_reference(retrieval.reference("1", "dir/a:b @ 100% ž.md")).fetch(:body)
   end

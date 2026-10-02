@@ -38,7 +38,7 @@ module Plastic
       def self.utf8?(bytes) = bytes.dup.force_encoding(Encoding::UTF_8).valid_encoding? && !bytes.include?("\0")
 
       def self.rtf(source)
-        extract_tokens(source, /\\u(-?\d+)\?|\\'([0-9a-f]{2})|\\[a-z]+-?\d* ?|[{}]/i) do |match|
+        extract_tokens(rtf_surrogates(source), /\\u(-?\d+)\?|\\'([0-9a-f]{2})|\\[a-z]+-?\d* ?|[{}]/i) do |match|
           decoded_rtf(match)
         end
       end
@@ -98,6 +98,19 @@ module Plastic
       def self.rtf_codepoint(value)
         number = value.to_i
         number.negative? ? number + 65_536 : number
+      end
+
+      def self.rtf_surrogates(source)
+        source.gsub(/\\u(-?\d+)\?\\u(-?\d+)\?/) do
+          high, low = [Regexp.last_match(1), Regexp.last_match(2)].map { |value| rtf_codepoint(value) }
+          surrogate_pair(high, low)
+        end
+      end
+
+      def self.surrogate_pair(high, low)
+        return "" unless high.between?(0xD800, 0xDBFF) && low.between?(0xDC00, 0xDFFF)
+
+        (0x10000 + ((high - 0xD800) << 10) + low - 0xDC00).chr(Encoding::UTF_8)
       end
 
       def self.normalize_piece(body, lines, piece, space)

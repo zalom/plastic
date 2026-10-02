@@ -45,8 +45,8 @@ module Plastic
         batch.add("INSERT OR IGNORE INTO document_revisions (sha256, intent_id, path, body, created_at, origin_id) VALUES (:sha256, :intent_id, :path, :body, :created_at, :origin_id)",
           sha256:, intent_id:, path:, body:, created_at: now, origin_id: @origin_id)
         EvidenceText.passages(row.fetch(:extraction)).each do |passage|
-          batch.add("INSERT OR IGNORE INTO document_passages (sha256, position, body, line_start, line_end, origin_id) VALUES (:sha256, :position, :body, :line_start, :line_end, :origin_id)",
-            sha256:, position: passage.fetch(:position), body: passage.fetch(:body), line_start: passage.fetch(:line_start), line_end: passage.fetch(:line_end), origin_id: @origin_id)
+          batch.add("INSERT OR IGNORE INTO document_passages (sha256, intent_id, path, position, body, line_start, line_end, origin_id) VALUES (:sha256, :intent_id, :path, :position, :body, :line_start, :line_end, :origin_id)",
+            sha256:, intent_id:, path:, position: passage.fetch(:position), body: passage.fetch(:body), line_start: passage.fetch(:line_start), line_end: passage.fetch(:line_end), origin_id: @origin_id)
         end
         @after_passages.call
       end

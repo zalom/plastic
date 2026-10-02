@@ -2,6 +2,7 @@
 
 require "forwardable"
 require "digest"
+require "uri"
 require_relative "../routine_run"
 require_relative "session_reader"
 require_relative "work_reader"
@@ -21,6 +22,7 @@ module Plastic
     # takes an intent id reads every intent of the store when given none.
     class RetrievalGraph
       class MaintenanceRequired < StandardError; end
+      class MissingReference < StandardError; end
       extend Forwardable
 
       attr_reader :store
@@ -49,6 +51,26 @@ module Plastic
       def documents(intent_id = nil) = ensure_backfill! && read(:documents, intent_id)
 
       def fetch(intent_id, path) = ensure_backfill! && @databases.fetch(:knowledge).row(DOCUMENT_SQL, intent_id:, path:, origin: origin_id).then { |row| row && Document.from_h(row) }
+
+      def reference(intent_id, path)
+        row = @databases.fetch(:knowledge).row("SELECT h.sha256 FROM document_heads h WHERE h.intent_id = :intent_id AND h.path = :path AND h.origin_id = :origin", intent_id:, path:, origin: origin_id)
+        raise MissingReference, "no current document #{intent_id}:#{path}" unless row
+
+        qualified_reference(intent_id, path, row.fetch("sha256"))
+      end
+
+      def fetch_reference(reference)
+        fields = reference.is_a?(Hash) ? reference.transform_keys(&:to_sym) : parse_reference(reference)
+        raise MissingReference, "source #{fields.fetch(:store)} is not #{store}" unless fields.fetch(:store) == store
+
+        revision = fields[:sha256]
+        row = revision ? revision_row(fields, revision) : current_row(fields)
+        raise MissingReference, "no document #{fields.fetch(:intent_id)}:#{fields.fetch(:path)}" unless row
+
+        qualified_reference(fields.fetch(:intent_id), fields.fetch(:path), row.fetch("sha256")).merge(body: row.fetch("body"))
+      end
+
+      def fetch_batch(references) = references.map { |reference| fetch_reference(reference) }
 
       DOCUMENT_SQL = "SELECT * FROM documents WHERE intent_id = :intent_id AND path = :path AND origin_id = :origin"
       SEARCH_SQL = "SELECT intent_id, path, body, sha256, position, bm25(document_fts) AS score " \
@@ -152,6 +174,32 @@ module Plastic
       end
 
       private
+
+      def qualified_reference(intent_id, path, sha256)
+        { store:, intent_id:, path:, sha256:, uri: "plastic://#{store}/#{intent_id}/#{escape_path(path)}?revision=#{sha256}" }
+      end
+
+      def parse_reference(uri)
+        match = /\Aplastic:\/\/([^\/]+)\/([^\/]+)\/(.*?)(?:\?revision=([0-9a-f]{64}))?\z/.match(uri)
+        raise MissingReference, "invalid document reference #{uri.inspect}" unless match
+
+        store, intent_id, path, sha256 = match.captures
+        { store:, intent_id:, path: URI::DEFAULT_PARSER.unescape(path).force_encoding(Encoding::UTF_8), sha256: }
+      end
+
+      def escape_path(path) = path.bytes.map { |byte| unreserved?(byte) ? byte.chr : format("%%%02X", byte) }.join
+
+      def unreserved?(byte) = (byte.between?(65, 90) || byte.between?(97, 122) || byte.between?(48, 57) || "-._~".bytes.include?(byte))
+
+      def revision_row(fields, sha256)
+        @databases.fetch(:knowledge).row("SELECT body, sha256 FROM document_revisions WHERE intent_id = :intent_id AND path = :path AND sha256 = :sha256 AND origin_id = :origin",
+          intent_id: fields.fetch(:intent_id), path: fields.fetch(:path), sha256:, origin: origin_id)
+      end
+
+      def current_row(fields)
+        @databases.fetch(:knowledge).row("SELECT d.body, h.sha256 FROM documents d JOIN document_heads h ON h.intent_id = d.intent_id AND h.path = d.path AND h.origin_id = d.origin_id WHERE d.intent_id = :intent_id AND d.path = :path AND d.origin_id = :origin",
+          intent_id: fields.fetch(:intent_id), path: fields.fetch(:path), origin: origin_id)
+      end
 
       def ensure_backfill!(migrate = true)
         return backfill! if migrate

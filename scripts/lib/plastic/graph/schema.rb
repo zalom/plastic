@@ -116,6 +116,7 @@ module Plastic
       def self.prepare(connection, schema)
         connection.execute_batch(schema)
         migrate_revision_membership(connection)
+        migrate_passage_identity(connection)
       end
 
       def self.table_named(name) = TABLES.fetch(name.to_sym)
@@ -133,6 +134,23 @@ module Plastic
             INSERT INTO document_revisions (sha256, intent_id, path, body, created_at, origin_id)
             SELECT sha256, intent_id, path, body, created_at, origin_id FROM document_revisions_legacy;
             DROP TABLE document_revisions_legacy;
+          SQL
+        end
+      end
+
+      def self.migrate_passage_identity(connection)
+        sql = connection.get_first_value("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'document_passages'")
+        return unless sql
+        return if sql.include?('"intent_id"')
+
+        connection.transaction(:immediate) do
+          connection.execute_batch <<~SQL
+            ALTER TABLE document_passages RENAME TO document_passages_legacy;
+            #{ddl(:document_passages)}
+            INSERT INTO document_passages (sha256, intent_id, path, position, body, line_start, line_end, origin_id)
+            SELECT p.sha256, r.intent_id, r.path, p.position, p.body, p.line_start, p.line_end, p.origin_id
+            FROM document_passages_legacy p JOIN document_revisions r ON r.sha256 = p.sha256 AND r.origin_id = p.origin_id;
+            DROP TABLE document_passages_legacy;
           SQL
         end
       end
