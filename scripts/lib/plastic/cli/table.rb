@@ -26,6 +26,7 @@ module Plastic
       "backup" => ["Commands::Backup", "Pack home.db and every store's three databases into one archive"],
       "backup list" => ["Commands::BackupList", "List every backup, flagging a missing or changed file"],
       "document get" => ["Commands::DocumentGet", "Fetch one current or revision-qualified document"],
+      "document batch" => ["Commands::DocumentBatch", "Fetch qualified documents in request order"],
 
       # Work graph
       "node add" => ["Commands::NodeAdd", "Add a node to an intent's work graph"],
