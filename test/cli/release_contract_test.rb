@@ -49,10 +49,10 @@ class CliReleaseContractTest < Minitest::Test
 
   def test_an_unknown_command_is_not_in_this_build_yet
     out, err = StringIO.new, StringIO.new
-    code = Plastic::CLI.bin_call(%w[auto start 1], environment: environment(out:, err:))
+    code = Plastic::CLI.bin_call(%w[doctor], environment: environment(out:, err:))
 
     assert_equal 2, code
-    assert_equal "plastic auto start 1 is not in this build yet; it lands with its stage\n", err.string
+    assert_equal "plastic doctor is not in this build yet; it lands with its stage\n", err.string
   end
 
   def test_help_lists_only_the_shipped_commands
@@ -61,7 +61,7 @@ class CliReleaseContractTest < Minitest::Test
 
     assert_equal 0, code
     assert_includes out.string, "intent new"
-    refute_includes out.string, "auto"
+    refute_includes out.string, "doctor"
   end
 
   private

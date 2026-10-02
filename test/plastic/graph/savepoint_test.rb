@@ -16,6 +16,6 @@ class SavepointTest < Plastic::TestCase
   end
 
   def test_a_line_prints_its_time_only_when_it_has_one
-    assert_equal ["#{AT}  a", "b"], [Savepoint.new("1", 1, AT, "a", "o").line, Savepoint.new("1", 2, nil, "b", "o").line]
+    assert_equal ["#{AT}  a", "b"], [Savepoint.new("1", 1, AT, "a", "o", "s-1").line, Savepoint.new("1", 2, nil, "b", "o", nil).line]
   end
 end

@@ -25,10 +25,11 @@ module Plastic
 
       # `intents` maps each known intent id to its intent: from the rows and
       # from the store/index.json on disk.
-      def initialize(folder, intents, origin_id)
+      def initialize(folder, intents, origin_id, retrieval: nil)
         @folder = folder
         @intents = intents
         @origin_id = origin_id
+        @retrieval = retrieval
       end
 
       def read(path)
@@ -41,7 +42,7 @@ module Plastic
       def intent_file(path)
         dir = path.split("/").first(2).join("/")
         intent = @intents[File.basename(dir).split("--").first]
-        return IntentFile.new(@folder, intent, path) if intent&.dir == dir
+        return IntentFile.new(@folder, intent, path, retrieval: @retrieval) if intent&.dir == dir
 
         raise Invalid, "#{dir} has no intent row and no entry in #{StoreFolder::INDEX}; add one or remove the folder"
       end

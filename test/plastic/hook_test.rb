@@ -19,11 +19,10 @@ class HookTest < Plastic::TestCase
     assert_equal [0, "", ""], [call.code, call.out, call.err]
   end
 
-  def test_a_broken_event_still_exits_0
+  def test_a_broken_event_reads_as_empty_with_one_stderr_line
     call = plastic("hook", "echo", input: "{not json")
 
-    assert_equal [0, ""], [call.code, call.out]
-    assert_match(/\Aplastic hook: JSON::ParserError: /, call.err)
+    assert_equal [0, "session \n", "plastic hook: the event is not a JSON object; read as empty\n"], [call.code, call.out, call.err]
   end
 
   def test_a_hook_must_define_respond

@@ -30,15 +30,46 @@ module Plastic
       CLI::Command::OK
     end
 
-    # The event JSON the harness writes on stdin, with symbol keys.
-    def event
-      text = environment.input.read.to_s
-      text.strip.empty? ? {} : JSON.parse(text, symbolize_names: true)
-    end
+    # The event JSON the harness writes on stdin, with symbol keys, read
+    # once. An event that is not a JSON object, such as `[]` or bad JSON,
+    # reads as empty.
+    def event = (@event ||= read_event)
+
+    # The session the event names, else the environment's; nil when neither
+    # names one. A hook with no session id writes no row.
+    def session_id = event[:session_id] || session
+
+    # Where the session runs: the event's cwd, else the process's directory.
+    def directory = event[:cwd] || environment.directory
 
     # Returns the text to print, or nil to print nothing.
     def respond(_event)
       raise NoMethodError, "#{self.class} must define respond"
+    end
+
+    private
+
+    def read_event
+      text = environment.input.read.to_s
+      text.strip.empty? ? {} : parsed_event(text)
+    end
+
+    def parsed_event(text)
+      parsed = JSON.parse(text, symbolize_names: true)
+      parsed.is_a?(Hash) ? parsed : unreadable
+    rescue JSON::ParserError
+      unreadable
+    end
+
+    def unreadable
+      environment.err.puts "plastic hook: the event is not a JSON object; read as empty"
+      {}
+    end
+
+    # The store comes from the directory the event names, so a hook run from
+    # another folder still reads the session's own project.
+    def scope
+      @scope ||= CLI::Scope.new(env: environment.env, home: environment.home, slug: parsed[:project], directory:)
     end
   end
 end

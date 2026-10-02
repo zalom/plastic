@@ -18,6 +18,17 @@ module Plastic
     class Intent
       include Record
 
+      OPEN = %w[open active].freeze
+
+      # Open or active: the work a resume lists.
+      def open? = OPEN.include?(status)
+
+      # The id and the title, as people name the intent.
+      def label = "#{intent_id} #{title}"
+
+      # The label and the status.
+      def heading = "#{label} (#{status})"
+
       def self.slug_for(title) = title.downcase.scan(/[a-z0-9]+/).first(6).join("-")
 
       def segments = LuhmannId.segments(intent_id)
@@ -30,7 +41,7 @@ module Plastic
       # The row a new intent writes; the database gives `id` and stamps `origin_id`.
       def new_row = to_h.except(:id, :origin_id)
 
-      def first_savepoint = { intent_id:, position: 1, at: opened_at, text: "Opened: #{title}" }
+      def first_savepoint(session_id = nil) = { intent_id:, position: 1, at: opened_at, text: "Opened: #{title}", session_id: }
 
       # The row of the intent's own file in the knowledge graph.
       def document(origin_id) = { intent_id:, path: file, body: page(origin_id), updated_at: opened_at }

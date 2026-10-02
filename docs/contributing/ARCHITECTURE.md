@@ -53,8 +53,11 @@ the top of the home until `bin/plastic` switches to the kernel, a later stage.
 Each store keeps its rows in three SQLite databases inside its own folder: `work_graph.db`,
 `knowledge_graph.db` and `references.db`. The store folder's `.gitignore` lists them, so they
 are never versioned. The files printed from them are. The home keeps one database of its own,
-`home.db`, for the routine runs of every store. Its `routine_runs` table is the only table
-with a `store` column.
+`home.db`, for what belongs to one machine rather than one store: `routine_runs`, `sessions`
+and `locks`. `routine_runs` and `locks` carry a `store` column; `sessions` carries one too,
+alongside the `directory` the session ran in. A session row tells the story of the work: who
+ran what, when, in which session. Graph rows tell the story of the project. The two join on
+the intent id, never on a drawn session graph.
 
 Every row that a store database writes carries `origin_id`, the id of the installation that
 wrote it. The id sits in a file at the home and is made on first use. Each store database has
@@ -132,8 +135,12 @@ The following table lists the same classes. Each one sits in the `Plastic` modul
 | `RoutineRun` | One call of one tool on one subject, kept as a row of `home.db`. |
 | `Graph::Database` | One SQLite file, read and written through the `sqlite3` gem. Each write logs its `changes` row in the same transaction. |
 | `Graph::Origin` | The id of this installation, made at the home on first use. |
-| `Graph::WorkGraph` | The writes of a command: routine runs, intents, and the files printed after them. |
+| `Graph::WorkGraph` | The writes of a command: routine runs, sessions, locks, intents, and the files printed after them. |
+| `Graph::Session` | One row of `home.db`'s `sessions` table: a harness run, from its first turn to its end reason. |
+| `Graph::Lock` | One row of `home.db`'s `locks` table: the session holding the delivery lock of one intent. `live?` checks its TTL. |
 | `Graph::RetrievalGraph` | The reads of a command, one table at a time. |
+| `Graph::SessionWriter` | The writes to `home.db`'s `sessions` and `locks` tables. `WorkGraph` hands those writes to it. |
+| `Graph::SessionReader` | The reads of `home.db`'s routine runs, sessions and locks, and the intents a session touched. `RetrievalGraph` hands those reads to it. |
 | `Graph::IntentWriter` | Checks and writes a new intent: its Luhmann id, its rows and its folder. |
 | `Graph::Printer` | Prints files from their rows and records each hash in `printed`. |
 | `Graph::Reader` | Reads a file changed by hand back into its rows: `store/index.json` through `IndexFile`, and a file of an intent folder through `IntentFile`. |
@@ -142,6 +149,10 @@ The following table lists the same classes. Each one sits in the `Plastic` modul
 | `Graph::LuhmannId` | Splits, sorts and extends Luhmann ids, such as the next child of `307a`. |
 | `Graph::LegacyIndex` | Reads the `INDEX.md` of a store written before `store/index.json`. |
 | `Hook` | The base class of a hook command. It prints a plain text reply and always exits 0. |
+| `Hooks::Recap` | The lines `hook resume` prints, from rows alone: the first line, the open intents, the previous session, the intent in progress and the note. |
+| `Hooks::StopGate` | Whether `hook record` blocks a stop: the harness, the config flag, a live auto lock and a ready node, all four. |
+| `Hooks::Entries` | The harness hook groups, status line and screens entry the installer writes into Claude Code and Codex. |
+| `Config` | Reads `config.yml`; a missing or broken file never stops a hook or a command, it reads every flag at its default. |
 
 `Plastic.now` is the one source of the time. It gives the local time with its offset.
 
@@ -225,6 +236,16 @@ A hook is a command that the harness calls on an event, such as the start of a s
 hook is not a routine. It prints no `next:` line and keeps no routine run.
 
 ![What the harness fires and what Plastic does. Session start, once when the session opens and again after a compaction, runs plastic hook continue, which prints the open intents of this store, the locks this session holds and today's hand-off lines. End of the turn runs plastic hook record, which renews the live locks of this session. Prompt sent, before a tool runs, after a tool ran, before a compaction and session end run nothing. A third column names the hooks the proposal had and why each one goes.](../resources/hook-events.svg)
+
+Two hooks ship today; `continue` in the figure above is `resume`, renamed because the harness
+itself uses the word `continue`. `plastic hook resume` replies to the session start event in
+all three cases Claude Code's `source` field tells apart, a new session, a clear and a
+compaction, printing the open intents, the previous session's end and what it touched, the
+intent in progress with its last savepoint lines, and its note, from rows alone. `plastic hook
+record` replies to the stop event: it stamps the session's last turn, renews its live locks,
+and runs the stop gate. `plastic hook record --end` replies to the session end event: it sets
+the end time and the reason and does nothing else, because only that event knows why a session
+ended.
 
 A hook call reads the event as JSON on stdin, hands it to the subclass, prints the returned
 text on stdout when there is any, and exits 0. On any error it prints one line on stderr and

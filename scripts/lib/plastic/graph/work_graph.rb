@@ -1,28 +1,40 @@
 # frozen_string_literal: true
 
+require "forwardable"
 require_relative "intent_writer"
+require_relative "session_writer"
 require_relative "printer"
 require_relative "prints"
 require_relative "sync"
 
 module Plastic
   module Graph
-    # The write side of the graphs: routine runs at the home, and the rows
-    # and printed files of one store. Every write keeps the store's
-    # databases out of its versioning.
+    # The write side of the graphs: routine runs, sessions and locks at the
+    # home, and the rows and printed files of one store. Every write keeps
+    # the store's databases out of its versioning. `session` names the
+    # harness session this call runs as, nil when the harness sets none.
     class WorkGraph
-      def initialize(databases, folder:, retrieval:)
+      extend Forwardable
+
+      def_delegators :sessions, :open_session, :stamp_turn, :end_session, :write_note, :take_lock, :renew_locks
+
+      def initialize(databases, folder:, retrieval:, session: nil)
         @databases = databases
         @folder = folder
         @retrieval = retrieval
+        @session = session
       end
 
       # A routine run is call memory, kept off the report.
       def save_routine_run(routine_run)
-        row = routine_run.to_h.merge(store: @retrieval.store, subject: routine_run.subject.to_s)
+        row = routine_run.to_h.merge(store: @retrieval.store, subject: routine_run.subject.to_s, session_id: @session)
         @databases.fetch(:home).transaction { |batch| batch.put(:routine_runs, row) }
         routine_run
       end
+
+      # Keeps the store's own databases out of its versioning; a hook calls
+      # this before any read, because a read alone can create the files.
+      def ignore_databases = @folder.ignore_databases
 
       def intent_problem(**call) = intents.problem(**call)
 
@@ -46,7 +58,9 @@ module Plastic
 
       private
 
-      def intents = (@intents ||= IntentWriter.new(@databases, @retrieval, @folder))
+      def sessions = (@sessions ||= SessionWriter.new(@databases.fetch(:home), store: @retrieval.store))
+
+      def intents = (@intents ||= IntentWriter.new(@databases, @retrieval, @folder, session: @session))
 
       def sync = (@sync ||= Sync.new(folder: @folder, retrieval: @retrieval, databases: @databases))
     end

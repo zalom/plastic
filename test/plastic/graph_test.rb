@@ -55,4 +55,13 @@ class GraphTest < Plastic::TestCase
 
     assert_equal ["1 routine run in home.db"], opened.wrote
   end
+
+  def test_a_session_given_at_open_stamps_the_routine_run_row
+    opened = Plastic::Graph.open(home: @plastic_home, store: "plastic", session: "s-1")
+    opened.work.save_routine_run(closed_run)
+
+    row = opened.databases[:home].row("SELECT session_id FROM routine_runs WHERE tool = 'intent end' AND subject = '7'")
+
+    assert_equal "s-1", row.fetch("session_id")
+  end
 end

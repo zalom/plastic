@@ -1,13 +1,9 @@
 # frozen_string_literal: true
 
+require "forwardable"
 require_relative "../routine_run"
-require_relative "intent"
-require_relative "cluster"
-require_relative "document"
-require_relative "savepoint"
-require_relative "node"
-require_relative "edge"
-require_relative "kept_file"
+require_relative "session_reader"
+require_relative "source"
 
 module Plastic
   module Graph
@@ -15,7 +11,11 @@ module Plastic
     # returns records or plain values. Nothing here writes. A method that
     # takes an intent id reads every intent of the store when given none.
     class RetrievalGraph
+      extend Forwardable
+
       attr_reader :store
+
+      def_delegators :sessions, :routine_run, :session, :previous_session, :predecessor, :locks_of, :lock, :last_run, :touched
 
       def initialize(databases, store:, origin:)
         @databases = databases
@@ -25,11 +25,24 @@ module Plastic
 
       def origin_id = @origin.id
 
-      # The open or last routine run of one tool on one subject.
-      def routine_run(tool, subject)
-        row = @databases.fetch(:home).row("SELECT * FROM routine_runs WHERE store = :store AND tool = :tool AND " \
-          "subject = :subject", store:, tool:, subject: subject.to_s)
-        row && RoutineRun.from_row(row, subject)
+      READY_NODES_SQL = <<~SQL
+        SELECT * FROM nodes
+        WHERE intent_id = :intent_id AND origin_id = :origin
+          AND (state IS NULL OR state = '' OR state = 'pending')
+          AND NOT EXISTS (
+            SELECT 1 FROM edges JOIN nodes AS from_node
+              ON from_node.intent_id = edges.intent_id AND from_node.id = edges."from"
+            WHERE edges.intent_id = nodes.intent_id AND edges.kind = 'needs' AND edges."to" = nodes.id
+              AND from_node.state IS NOT 'done'
+          )
+        ORDER BY id
+      SQL
+
+      # Nodes of `intent_id` ready to run: state nil, empty or pending, with
+      # every `needs` edge into them satisfied (graph/edge.rb: `to` waits
+      # until `from` is done).
+      def ready_nodes(intent_id)
+        @databases.fetch(:work).rows(READY_NODES_SQL, intent_id:, origin: origin_id).map { |row| Node.from_h(row) }
       end
 
       # This installation's intents, in Luhmann order.
@@ -61,30 +74,9 @@ module Plastic
           .to_h { |row| row.values_at("path", "sha256") }
       end
 
-      # Where each kind of row lives: the record, the database, the table, the
-      # columns and the order. A read with no intent id reads every intent.
-      Source = Data.define(:record, :database, :table, :columns, :order)
-
-      # The rows of one source that this installation wrote.
-      class Source
-        def read(databases, **values) = databases.fetch(database).rows(sql, **values).map { |row| record.from_h(row) }
-
-        def sql = "SELECT #{columns} FROM #{table} WHERE origin_id = :origin AND " \
-                  "(:intent_id IS NULL OR intent_id = :intent_id) ORDER BY #{order}"
-      end
-
-      SOURCES = {
-        intents: Source.new(Intent, :work, "intents", "*", "intent_id"),
-        clusters: Source.new(Cluster, :work, "clusters", "*", "name, intent_id"),
-        documents: Source.new(Document, :knowledge, "documents", "*", "intent_id, path"),
-        savepoints: Source.new(Savepoint, :work, "savepoints", "*", "intent_id, position"),
-        nodes: Source.new(Node, :work, "nodes", "*", "intent_id, id"),
-        edges: Source.new(Edge, :work, "edges", "*", 'intent_id, "from", "to", kind'),
-        kept_files: Source.new(KeptFile, :references, "sqlar", "name, mode, mtime, sz, intent_id, sha256, origin_id",
-          "intent_id, name")
-      }.freeze
-
       private
+
+      def sessions = (@sessions ||= SessionReader.new(@databases, store:, origin: @origin))
 
       def read(name, intent_id = nil) = SOURCES.fetch(name).read(@databases, origin: origin_id, intent_id:)
     end
