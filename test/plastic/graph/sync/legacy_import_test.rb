@@ -9,7 +9,7 @@ class LegacyImportTest < Plastic::TestCase
 
   def import = Plastic::Graph::Sync::LegacyImport.new(sync, folder, retrieval, store_graphs.databases).call
 
-  def test_the_import_says_what_it_read_and_deletes_index_md
+  def test_the_import_says_what_it_read_and_keeps_index_md
     lines = import
 
     assert_equal "imported INDEX.md: 2 intents and 0 clusters", lines.first
