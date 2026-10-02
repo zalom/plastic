@@ -100,7 +100,7 @@ class SearchTest < Plastic::TestCase
 
     assert_equal 1, result.code
     assert_match(/maintenance/, result.out)
-    refute_path_exist File.join(root, "work_graph.db")
+    refute File.exist?(File.join(root, "work_graph.db"))
     assert_equal knowledge, File.binread(File.join(root, "knowledge_graph.db"))
     assert_equal references, File.binread(File.join(root, "references.db"))
   end
@@ -156,6 +156,7 @@ class SearchTest < Plastic::TestCase
     graphs = Plastic::Graph.open(home: @plastic_home, store:)
     Plastic::Graph::EvidenceWriter.new(graphs.databases.fetch(:knowledge), origin).write("1", path, body)
     graphs.retrieval.backfill!
+    graphs.retrieval.archived?("1")
   end
 
   def selected_store_bytes

@@ -41,10 +41,19 @@ module Plastic
       end
 
       def rows(slug)
-        retrieval = Graph.open(home: scope.plastic_home, store: slug).retrieval
+        retrieval = maintained_retrieval(slug)
         retrieval.search(parsed.fetch(:terms), limit: search_limit, migrate: false).each_with_index.map do |row, index|
           result_row(retrieval, slug, row, index + 1)
         end
+      end
+
+      def maintained_retrieval(slug)
+        missing = Graph::Schema::STORE.map { |key| Graph::Schema.file(key) }.reject do |file|
+          File.file?(File.join(scope.plastic_home, "stores", slug, file))
+        end
+        raise Graph::RetrievalGraph::MaintenanceRequired, "retrieval maintenance is required before source #{slug} can be read" if missing.any?
+
+        Graph.open(home: scope.plastic_home, store: slug).retrieval
       end
 
       def result_row(retrieval, slug, row, rank)
@@ -54,8 +63,9 @@ module Plastic
       end
 
       def excerpt(body)
-        normalized = normalize(body)
+        normalized, positions = normalized_positions(body)
         index = search_terms.filter_map { |term| normalized.index(normalize(term)) }.min || 0
+        index = positions.fetch(index, 0)
         first = [index - 160, 0].max
         body[first, 320]
       end
@@ -63,6 +73,16 @@ module Plastic
       def search_terms = parsed.fetch(:terms).scan(/[\p{Alnum}_]+/)
 
       def normalize(text) = text.unicode_normalize(:nfkd).gsub(/\p{Mn}/, "").downcase
+
+      def normalized_positions(text)
+        positions = []
+        normalized = text.each_char.with_index.map do |character, index|
+          fragment = normalize(character)
+          positions.concat([index] * fragment.length)
+          fragment
+        end.join
+        [normalized, positions]
+      end
 
       def ranked_rows = sources.flat_map { |slug| rows(slug) }.sort_by { |row| [-row.fetch("rrf_score"), row.fetch("uri")] }.take(search_limit)
 
