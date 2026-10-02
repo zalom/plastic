@@ -10,7 +10,7 @@ class RetrievalSearchTest < Plastic::TestCase
 
     rows = retrieval.search('needle -- quoted "term"')
 
-    assert_equal [["2", "a.md", 1], ["1", "z.md", 1]], rows.map { |row| row.values_at("intent_id", "path", "position") }
+    assert_equal [["1", "z.md", 1], ["2", "a.md", 1]], rows.map { |row| row.values_at("intent_id", "path", "position") }
     assert rows.all? { |row| row.fetch("body").length <= 1600 }
   end
 

@@ -23,6 +23,8 @@ module Plastic
     class RetrievalGraph
       class MaintenanceRequired < StandardError; end
       class MissingReference < StandardError; end
+      class InvalidSearch < StandardError; end
+      SEARCH_LIMIT = 100
       extend Forwardable
 
       attr_reader :store
@@ -88,6 +90,7 @@ module Plastic
       # Returns current indexed passages in stable lexical-rank order. Plain
       # words become quoted FTS terms, so caller text never changes the query.
       def search(terms, limit: 20, migrate: true)
+        validate_search!(terms, limit)
         ensure_backfill!(migrate)
         @databases.fetch(:knowledge).rows(SEARCH_SQL, query: fts_query(terms), origin: origin_id, limit:)
       end
@@ -218,7 +221,12 @@ module Plastic
 
       def home_dir = File.dirname(@databases.fetch(:home).path)
 
-      def fts_query(terms) = terms.to_s.scan(/\S+/).map { |term| %("#{term.tr("\"", " ")}") }.join(" AND ")
+      def fts_query(terms) = terms.to_s.scan(/[\p{Alnum}_]+/).map { |term| %("#{term}") }.join(" AND ")
+
+      def validate_search!(terms, limit)
+        raise InvalidSearch, "search terms are required" if terms.to_s.scan(/\p{Alnum}+/).empty?
+        raise InvalidSearch, "search limit must be between 1 and #{SEARCH_LIMIT}" unless limit.is_a?(Integer) && limit.between?(1, SEARCH_LIMIT)
+      end
 
       def sessions = (@sessions ||= SessionReader.new(@databases, store:, origin: @origin))
 
