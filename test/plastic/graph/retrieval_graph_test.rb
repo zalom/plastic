@@ -78,4 +78,10 @@ class RetrievalGraphTest < Plastic::TestCase
     assert_equal [["research.txt", "Archived evidence\n"]], retrieval.search("archived evidence").map { |found| found.values_at("path", "body") }
     assert_equal "Archived evidence\n", retrieval.kept_file_data(row[:name])
   end
+
+  def test_an_intents_initial_document_is_searchable
+    intent = open_intent("Retrieval planning")
+
+    assert_equal [[intent.intent_id, intent.file]], retrieval.search("retrieval planning").map { |row| row.values_at("intent_id", "path") }
+  end
 end
