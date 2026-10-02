@@ -49,17 +49,17 @@ class NextTest < Plastic::TestCase
     assert_includes result.out, "next: plastic auto start #{intent.intent_id}"
   end
 
-  def test_no_nodes_offers_intent_brief
+  def test_no_nodes_hands_planning_to_the_harness
     intent = open_intent
     clear_spec(intent)
     start(intent)
 
     result = call
 
-    assert_includes result.out, "next: plastic intent brief #{intent.intent_id}"
+    assert_includes result.out, "plastic node add #{intent.intent_id} TITLE"
   end
 
-  def test_a_parked_node_offers_intent_brief
+  def test_a_parked_node_requests_the_owner_answer
     intent = open_intent
     clear_spec(intent)
     start(intent)
@@ -69,10 +69,10 @@ class NextTest < Plastic::TestCase
 
     result = call
 
-    assert_includes result.out, "next: plastic intent brief #{intent.intent_id}"
+    assert_includes result.out, "Ask the owner: which way"
   end
 
-  def test_a_failed_node_offers_graph_show
+  def test_a_failed_node_offers_release
     intent = open_intent
     clear_spec(intent)
     start(intent)
@@ -82,10 +82,10 @@ class NextTest < Plastic::TestCase
 
     result = call
 
-    assert_includes result.out, "next: plastic graph show #{intent.intent_id}"
+    assert_includes result.out, "next: plastic node release #{intent.intent_id} n1"
   end
 
-  def test_every_live_node_done_offers_graph_check
+  def test_every_live_node_done_offers_intent_end
     intent = open_intent
     clear_spec(intent)
     start(intent)
@@ -95,10 +95,10 @@ class NextTest < Plastic::TestCase
 
     result = call
 
-    assert_includes result.out, "next: plastic graph check #{intent.intent_id}"
+    assert_includes result.out, "next: plastic intent end #{intent.intent_id}"
   end
 
-  def test_an_open_node_left_offers_graph_ready
+  def test_an_open_node_left_offers_claim
     intent = open_intent
     clear_spec(intent)
     start(intent)
@@ -106,10 +106,10 @@ class NextTest < Plastic::TestCase
 
     result = call
 
-    assert_includes result.out, "next: plastic graph ready #{intent.intent_id}"
+    assert_includes result.out, "next: plastic node claim #{intent.intent_id} n1"
   end
 
-  def test_several_candidates_offer_status
+  def test_several_candidates_request_a_choice
     first = open_intent("Alpha")
     second = open_intent("Beta")
     clear_spec(first)
@@ -119,12 +119,12 @@ class NextTest < Plastic::TestCase
 
     result = call
 
-    assert_includes result.out, "next: plastic status"
+    assert_includes result.out, "Inspect plastic status"
   end
 
-  def test_nothing_open_offers_intent_new
+  def test_nothing_open_has_no_next_action
     result = call
 
-    assert_includes result.out, "next: plastic intent new TITLE"
+    assert_includes result.out, "next: none"
   end
 end

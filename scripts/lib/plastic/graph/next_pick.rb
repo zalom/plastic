@@ -26,7 +26,7 @@ module Plastic
       def locked_intents
         store = @retrieval.store
         ids = @retrieval.locks_of(@session).select { |lock| lock.store == store && lock.live? }.map(&:intent_id)
-        @retrieval.intents.select { |intent| ids.include?(intent.intent_id) }
+        @retrieval.intents.select { |intent| intent.open? && ids.include?(intent.intent_id) }
       end
 
       def by_status(status) = @retrieval.intents.select { |intent| intent.status == status }

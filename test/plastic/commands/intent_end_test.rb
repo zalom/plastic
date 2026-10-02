@@ -25,6 +25,11 @@ class IntentEndFixture < Plastic::TestCase
     write("#{intent.dir}/completion.json", JSON.generate(values))
   end
 
+  def finish_ready_intent
+    evidence(ready_intent)
+    finish
+  end
+
   def finish = cli("intent", "end", "1", "--judge", "agent", "--evidence", "completion.json")
 end
 
@@ -52,9 +57,7 @@ class IntentEndTest < IntentEndFixture
   end
 
   def test_repeating_closure_keeps_the_first_record_and_cleans_its_lock
-    intent = ready_intent
-    evidence(intent)
-    finish
+    finish_ready_intent
     before = retrieval.completion("1")
     store_graphs.work.take_lock("1", session_id: "delivery", mode: "auto")
 
@@ -112,6 +115,70 @@ class IntentEndRefusalTest < IntentEndFixture
     ready_intent
 
     result = cli("intent", "end", "1", "--judge", "owner", "--evidence", "../../outside.json")
+
+    assert_equal 1, result.code
+    assert_equal "active", retrieval.intent("1").status
+  end
+end
+
+class IntentEndPrerequisitesTest < IntentEndFixture
+  def test_an_empty_graph_is_not_delivered
+    intent = ready_intent
+    evidence(intent)
+    store_graphs.databases.fetch(:work).transaction { |batch| batch.remove(:nodes, intent_id: "1") }
+
+    result = finish
+
+    assert_includes result.out, "Plan at least one work node"
+    assert_equal "active", retrieval.intent("1").status
+  end
+
+  def test_done_nodes_without_findings_are_not_accepted
+    intent = ready_intent
+    evidence(intent)
+    store_graphs.databases.fetch(:work).transaction do |batch|
+      batch.add("UPDATE nodes SET findings = NULL WHERE intent_id = '1'")
+    end
+
+    result = finish
+
+    assert_includes result.out, "nonempty findings"
+    assert_equal "active", retrieval.intent("1").status
+  end
+
+  def test_an_open_decision_prevents_closure
+    intent = ready_intent
+    evidence(intent)
+    write("#{intent.dir}/spec.md", "# Spec\n## Done criteria\n- #{CRITERION}\n## Open Questions\n- Which release?\n")
+    cli("sync", "up")
+
+    result = finish
+
+    assert_includes result.out, "settle the open decisions"
+    assert_equal "active", retrieval.intent("1").status
+  end
+
+  def test_an_imported_done_intent_stays_closed_without_fabricated_evidence
+    open_intent(status: "done")
+
+    result = cli("intent", "end", "1")
+
+    assert_equal 0, result.code
+    assert_nil retrieval.completion("1")
+    assert_includes result.out, "next: none"
+  end
+
+  def link_foreign_evidence(intent)
+    other = open_intent("Other")
+    write("#{other.dir}/evidence.json", JSON.generate({ CRITERION => "Checked" }))
+    File.symlink(folder.path("#{other.dir}/evidence.json"), folder.path("#{intent.dir}/completion.json"))
+  end
+
+  def test_a_symlink_cannot_import_evidence_from_another_intent
+    intent = ready_intent
+    link_foreign_evidence(intent)
+
+    result = finish
 
     assert_equal 1, result.code
     assert_equal "active", retrieval.intent("1").status

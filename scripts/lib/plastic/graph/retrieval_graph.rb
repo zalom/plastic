@@ -32,6 +32,10 @@ module Plastic
 
       def intent(intent_id) = intents.find { |intent| intent.intent_id == intent_id }
 
+      def completion(intent_id)
+        @databases.fetch(:work).row("SELECT * FROM completions WHERE intent_id = :intent_id AND origin_id = :origin", intent_id:, origin: origin_id)
+      end
+
       def clusters = read(:clusters)
 
       def documents(intent_id = nil) = read(:documents, intent_id)

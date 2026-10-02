@@ -20,17 +20,11 @@ class IntentFileTest < Plastic::TestCase
 
   def kept(name) = retrieval.kept_files("1").find { |file| file.name == "#{DIR}/#{name}" }
 
-  def test_graph_json_reads_into_nodes_and_edges
-    assert_equal :work, read_in("graph.json", JSON.generate(GRAPH))
-    assert_equal [%w[n1 build open], [%w[n1 n2 needs]]],
-      [retrieval.nodes("1").first.to_h.values_at(:id, :kind, :state), retrieval.edges("1").map { |e| [e.from, e.to, e.kind] }]
-  end
+  def test_graph_json_cannot_replace_node_or_edge_rows
+    node = store_graphs.work.add_node(intent_id: "1", title: "Recorded", criterion: "Done")
 
-  def test_a_second_graph_json_replaces_the_first
-    read_in("graph.json", JSON.generate(GRAPH))
-    read_in("graph.json", JSON.generate({ "nodes" => [{ "id" => "n9" }] }))
-
-    assert_equal [["n9"], []], [retrieval.nodes("1").map(&:id), retrieval.edges("1")]
+    assert_raises(Plastic::Invalid) { read_in("graph.json", JSON.generate(GRAPH)) }
+    assert_equal [node.id], retrieval.nodes("1").map(&:id)
   end
 
   def test_savepoint_md_reads_one_row_per_line

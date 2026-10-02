@@ -193,6 +193,22 @@ names no session. Otherwise it takes the lock in `auto` mode, sets the intent ac
 reprints its files. An already active intent still needs a live auto lock held by the
 calling session; starting it takes a missing or expired lock.
 
+## Delivery acceptance
+
+A graph with all nodes done advances to `intent end`. Closure also requires recorded
+criteria, resolved decisions, a substantive outcome, and an explicit judge's evidence
+for every criterion. The evidence and outcome hash remain in a completion row. Plastic
+records this acceptance; the harness or owner performs the verification. Successful
+closure releases the delivery lock and ends with no next command.
+
+An empty graph hands planning to the harness. Claimed work stays with its worker,
+parked work needs the owner's answer, and failed work advances to release before retry.
+These handoffs use the agent workflow DSL and stop until the harness records its action.
+
+Node completion requires nonempty findings. `node done --repair` records missing
+verification for a done node after the work is checked again. `graph.json` always flows
+from database rows to the checkout; sync never imports its node or edge content.
+
 ## component map
 
 The tooling layer is thin and sits on top of the store. The parts that supply determinism do so by construction, never by judgement.

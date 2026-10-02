@@ -8,6 +8,7 @@ module Plastic
     # listing the commands loads no command. Each family owns its own section.
     TABLE = {
       # Storage
+      "intent end" => ["Commands::IntentEnd", "Record explicit criterion acceptance and close a delivered intent"],
       "intent new" => ["Commands::IntentNew", "Open an intent: write its rows and print its folder"],
       "sync up" => ["Commands::SyncUp", "Read the files changed by hand into rows"],
       "sync down" => ["Commands::SyncDown", "Print the rows that changed into files"],

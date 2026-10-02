@@ -26,7 +26,7 @@ module Plastic
         def call
           parsed = LegacyIndex.parse(@folder.read(StoreFolder::LEGACY_INDEX).force_encoding(Encoding::UTF_8))
           write(parsed.check(@folder.intent_dirs))
-          read = @sync.read(@folder.intent_files)
+          read = @sync.read(@folder.intent_files.reject { |path| StoreFolder.graph_view?(path) })
           finish
           ["imported #{StoreFolder::LEGACY_INDEX}: #{Schema.phrase(parsed.counts)}, then deleted it", *read]
         end

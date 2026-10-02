@@ -7,7 +7,11 @@ module Plastic
     # Picks the intent this session is working on and offers its next command.
     class Next < Routine
       reads :work, :knowledge
-      workflow :code_pick_next, next: :noop
+      workflow :code_pick_next do
+        on :done, next: :noop
+        on :agent_needed, next: :agent_advance_delivery
+      end
+      workflow :agent_advance_delivery, next: :noop
     end
   end
 end

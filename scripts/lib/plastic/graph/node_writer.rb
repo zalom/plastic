@@ -17,6 +17,7 @@ module Plastic
         remove_node: { to: "removed", from: %w[open] },
         release_node: { to: "open", from: %w[claimed failed] },
         done_node: { to: "done", from: %w[claimed] },
+        repair_done_node: { to: "done", from: %w[done] },
         fail_node: { to: "failed", from: %w[claimed] },
         park_node: { to: "parked", from: %w[claimed] },
         answer_node: { to: "open", from: %w[parked], resets_retries: true }
