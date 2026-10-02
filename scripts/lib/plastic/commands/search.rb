@@ -52,10 +52,12 @@ module Plastic
       end
 
       def excerpt(body)
-        index = body.downcase.index(parsed.fetch(:terms).downcase) || 0
+        index = search_terms.filter_map { |term| body.downcase.index(term.downcase) }.min || 0
         first = [index - 160, 0].max
         body[first, 320]
       end
+
+      def search_terms = parsed.fetch(:terms).scan(/[\p{Alnum}_]+/)
 
       def ranked_rows = sources.flat_map { |slug| rows(slug) }.sort_by { |row| [-row.fetch("rrf_score"), row.fetch("uri")] }.take(search_limit)
 
