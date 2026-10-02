@@ -103,12 +103,12 @@ module Plastic
       def self.rtf_surrogates(source)
         source.gsub(/\\u(-?\d+)\?\\u(-?\d+)\?/) do
           high, low = [Regexp.last_match(1), Regexp.last_match(2)].map { |value| rtf_codepoint(value) }
-          surrogate_pair(high, low)
+          surrogate_pair(high, low) || Regexp.last_match(0)
         end
       end
 
       def self.surrogate_pair(high, low)
-        return "" unless high.between?(0xD800, 0xDBFF) && low.between?(0xDC00, 0xDFFF)
+        return unless high.between?(0xD800, 0xDBFF) && low.between?(0xDC00, 0xDFFF)
 
         (0x10000 + ((high - 0xD800) << 10) + low - 0xDC00).chr(Encoding::UTF_8)
       end

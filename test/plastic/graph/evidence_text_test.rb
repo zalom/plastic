@@ -15,6 +15,7 @@ class EvidenceTextTest < Plastic::TestCase
     assert_equal "first second", text.extract("diagram.svg", "<text>first</text><text>second</text>")
     assert_equal "\uFF37", text.extract("note.rtf", "{\\rtf1\\ansi\\u-201?}")
     assert_equal "😀", text.extract("note.rtf", "{\\rtf1\\ansi\\u-10179?\\u-8704?}")
+    assert_equal "žć", text.extract("note.rtf", "{\\rtf1\\ansi\\u382?\\u263?}")
   end
 
   def test_classifies_supported_text_and_reports_unsupported_or_invalid_bytes

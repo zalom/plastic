@@ -25,6 +25,7 @@ module Plastic
       "intent archive" => ["Commands::IntentArchive", "Archive an intent directory; --revert restores it"],
       "backup" => ["Commands::Backup", "Pack home.db and every store's three databases into one archive"],
       "backup list" => ["Commands::BackupList", "List every backup, flagging a missing or changed file"],
+      "document get" => ["Commands::DocumentGet", "Fetch one current or revision-qualified document"],
 
       # Work graph
       "node add" => ["Commands::NodeAdd", "Add a node to an intent's work graph"],
