@@ -39,7 +39,10 @@ module Plastic
       def origin_id = @origin.id
       def intents = read(:intents).sort_by(&:segments)
 
-      def intent(intent_id) = intents.find { |intent| intent.intent_id == intent_id }
+      def intent(intent_id)
+        row = @databases.fetch(:work).row("SELECT * FROM intents WHERE intent_id = :intent_id AND origin_id = :origin", intent_id:, origin: origin_id)
+        row && Intent.from_h(row)
+      end
       def unarchived_intents = intents.reject { |intent| archived?(intent.intent_id) }
 
       def completion(intent_id)
@@ -71,6 +74,11 @@ module Plastic
       end
 
       def fetch_batch(references) = references.map { |reference| fetch_reference(reference) }
+
+      def exact_lookup_plans(intent_id, path)
+        [@databases.fetch(:work).rows("EXPLAIN QUERY PLAN SELECT * FROM intents WHERE intent_id = :intent_id AND origin_id = :origin", intent_id:, origin: origin_id),
+          @databases.fetch(:knowledge).rows("EXPLAIN QUERY PLAN #{DOCUMENT_SQL}", intent_id:, path:, origin: origin_id)]
+      end
 
       DOCUMENT_SQL = "SELECT * FROM documents WHERE intent_id = :intent_id AND path = :path AND origin_id = :origin"
       SEARCH_SQL = "SELECT intent_id, path, body, sha256, position, bm25(document_fts) AS score " \

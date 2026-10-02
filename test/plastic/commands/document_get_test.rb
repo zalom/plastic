@@ -33,7 +33,7 @@ class DocumentGetTest < Plastic::TestCase
       result = plastic("document", "get", reference, table: Plastic::CLI::TABLE)
 
       assert_equal 1, result.code
-      assert_includes result.err, "document"
+      assert_match(/document|project/, result.err)
     end
   end
 

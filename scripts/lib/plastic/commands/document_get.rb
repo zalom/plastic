@@ -17,7 +17,11 @@ module Plastic
 
       private
 
-      def fetch(reference) = retrieval_for(reference).fetch_reference(reference)
+      def fetch(reference)
+        retrieval_for(reference).fetch_reference(reference)
+      rescue Graph::RetrievalGraph::MissingReference, CLI::Scope::UnknownProject => error
+        raise CLI::Command::Failure, error.message
+      end
 
       def retrieval_for(reference)
         slug = reference[/\Aplastic:\/\/([^\/]+)/, 1]
