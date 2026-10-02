@@ -48,6 +48,8 @@ class BackupTest < Plastic::TestCase
 
     Dir.mktmpdir do |tmp|
       entries_of(archive_path(env)).each do |name, bytes|
+        next unless name.end_with?(".db")
+
         path = File.join(tmp, name.tr("/", "_"))
         File.binwrite(path, bytes)
 
@@ -64,5 +66,40 @@ class BackupTest < Plastic::TestCase
 
     assert_equal 0, result.code
     assert_predicate Dir.glob(File.join(deep, "backups", "*.tar.gz")), :any?
+  end
+
+  def test_an_unpacked_backup_retains_identity_configuration_and_rows
+    home, env = populated_home
+    File.write(File.join(home, "config.yml"), "hooks:\n  stop: false\n")
+    File.write(File.join(home, "projects.yml"), "projects: {}\n")
+    entries = entries_of(archive_path(env))
+
+    Dir.mktmpdir do |restored|
+      unpack(entries, restored)
+
+      assert_home_files_match(home, restored)
+      assert_restored_intent(restored)
+    end
+  end
+
+  def assert_home_files_match(home, restored)
+    %w[origin_id config.yml projects.yml].each do |name|
+      assert_equal File.binread(File.join(home, name)), File.binread(File.join(restored, name))
+    end
+  end
+
+  def assert_restored_intent(home)
+    result = plastic("intent", "show", "1", env: { "PLASTIC_HOME" => home }, table: Plastic::CLI::TABLE)
+
+    assert_equal 0, result.code
+    assert_includes result.out, "Target"
+  end
+
+  def unpack(entries, home)
+    entries.each do |name, bytes|
+      path = File.join(home, name)
+      FileUtils.mkdir_p(File.dirname(path))
+      File.binwrite(path, bytes)
+    end
   end
 end

@@ -46,4 +46,16 @@ class RoadmapNextTest < Plastic::TestCase
 
     assert_includes result.out, "b: ready"
   end
+
+  def test_an_imported_cycle_is_blocked_without_recursing
+    store_graphs.databases.fetch(:work).transaction do |batch|
+      batch.put(:roadmap_edges, { roadmap: "r1", from: "b", to: "a", kind: "after" }, statement: :insert)
+    end
+
+    result = call("r1")
+
+    assert_equal 0, result.code
+    assert_includes result.out, "a: blocked"
+    assert_includes result.out, "b: blocked"
+  end
 end

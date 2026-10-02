@@ -99,7 +99,7 @@ module Plastic
       def find_batch(slug, position) = @retrieval.batches(slug).find { |row| row.position == position }
 
       def loop?(slug, from, to)
-        !@databases.fetch(:work).row(LOOP_SQL, origin: origin_id, roadmap: slug, from:, to:).nil?
+        from == to || !@databases.fetch(:work).row(LOOP_SQL, origin: origin_id, roadmap: slug, from:, to:).nil?
       end
 
       def write_item(slug, item, batch_position, fields, after)

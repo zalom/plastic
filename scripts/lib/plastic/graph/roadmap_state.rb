@@ -34,8 +34,7 @@ module Plastic
       end
 
       def resolved?(item, retrieval)
-        state = of(item, retrieval)
-        state == "done" || state == "dropped"
+        done?(item, retrieval) || item.dropped?
       end
 
       def predecessors(item, retrieval)

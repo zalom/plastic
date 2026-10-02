@@ -45,4 +45,14 @@ class RoadmapAddTest < Plastic::TestCase
     assert_equal 0, result.code
     assert_equal ["a"], store_graphs.retrieval.roadmap_items("r1").map(&:item)
   end
+
+  def test_an_existing_item_cannot_depend_on_itself
+    batch
+    call("r1", "1", "a", "--title", "A")
+
+    result = call("r1", "1", "a", "--after", "a")
+
+    assert_equal 3, result.code
+    assert_empty store_graphs.retrieval.roadmap_edges("r1")
+  end
 end

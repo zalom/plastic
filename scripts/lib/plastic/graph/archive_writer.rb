@@ -32,6 +32,9 @@ module Plastic
         archive = @retrieval.archive_of(intent_id)
         return [false, "intent #{intent_id} is not archived", :failure] unless archive && archive.restored_at.nil?
 
+        conflict = restore_conflict(intent_id)
+        return [false, "#{conflict} differs from the archived rows; move it aside before restoring", :failure] if conflict
+
         @databases.fetch(:work).transaction do |batch|
           batch.write(:archives, "UPDATE archives SET restored_at = :now WHERE origin_id = :origin AND intent_id = :intent_id",
             now: Plastic.now, origin: origin_id, intent_id:)
@@ -42,6 +45,13 @@ module Plastic
       private
 
       def origin_id = @retrieval.origin_id
+
+      def restore_conflict(intent_id)
+        intent = @retrieval.intent(intent_id)
+        Prints.of_intent(@retrieval, intent).find do |print|
+          @folder.exist?(print.path) && !print.level?(@folder)
+        end&.path
+      end
 
       def archive_problem(intent)
         return "intent #{intent.intent_id} is already archived" if @retrieval.archived?(intent.intent_id)

@@ -208,8 +208,16 @@ folder goes, and its rows stay. `plastic intent restore` prints the folder back.
 that is open, already archived, linked from a live intent, or edited by hand since the last
 sync is refused.
 
-`plastic backup` packs `home.db` and each store's three databases into one gzipped archive
-under `backups/`. `plastic backup list` flags an archive that is missing or that changed
+Restoring an intent checks existing files before changing its archive row. A file that
+differs from the stored bytes stops the restore; an identical file can stay.
+
+Roadmap writes reject an item that depends on itself. Reading an imported cycle reports
+its unresolved items as blocked, and `roadmap check` identifies the loop.
+
+`plastic backup` packs `home.db`, each store's three databases, and the home's `origin_id`,
+`config.yml`, and `projects.yml` when present into one gzipped archive under `backups/`.
+The identity file lets an unpacked backup read the rows under their original owner.
+`plastic backup list` flags an archive that is missing or that changed
 since it was written.
 
 `plastic migrate stores` imports every store that still keeps its intents only as files. By

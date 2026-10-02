@@ -18,6 +18,8 @@ module Plastic
     # long-name header first, so a long store name or a deep home path
     # never stops the write.
     class BackupWriter
+      HOME_FILES = %w[origin_id config.yml projects.yml].freeze
+
       def initialize(home, session: nil)
         @home = home
         @session = session
@@ -78,10 +80,17 @@ module Plastic
         Schema::STORE.filter_map { |key| self.class.store_entry(store, slug, key) }
       end
 
+      def home_files
+        HOME_FILES.filter_map do |name|
+          path = File.join(@home, name)
+          [name, path] if File.file?(path)
+        end
+      end
+
       def pack(path)
         entries = sources
         writer = self.class
-        Dir.mktmpdir("plastic-backup") { |tmp| writer.write_tar(path, writer.vacuum(tmp, entries)) }
+        Dir.mktmpdir("plastic-backup") { |tmp| writer.write_tar(path, writer.vacuum(tmp, entries) + home_files) }
         entries.size
       end
     end

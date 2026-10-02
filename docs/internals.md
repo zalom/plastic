@@ -502,7 +502,9 @@ this section covers how the code holds together.
   `roadmap_edges` and `roadmap_log`. `Graph::RoadmapWriter` owns the writes, and
   `WorkGraph` delegates to it. `Graph::RoadmapState` derives an item's state every time it
   is read. The rows hold only the facts the state comes from: the item's mark, its intent's
-  status and its predecessors. `Graph::RoadmapCheck` finds a loop, an edge to an item that is
+  status and its predecessors. Readiness checks whether each predecessor is done or dropped
+  without recursively evaluating its predecessors, so imported cycles stay blocked.
+  `RoadmapWriter` rejects a self edge before writing it. `Graph::RoadmapCheck` finds a loop, an edge to an item that is
   not on the roadmap, and an item whose intent id names no intent. A `roadmap batch` call
   keeps every field it leaves out: `RoadmapFields#over` takes the stored title, goal and done
   lines in their place, and a new batch with no title is named "Batch N". The call writes the
@@ -515,10 +517,13 @@ this section covers how the code holds together.
 - **Archive.** `intent archive` and `intent restore` go through `Graph::ArchiveWriter`. An
   archive writes one `archives` row, removes the intent folder and removes the folder's
   `printed` rows. The intent's own rows never move. A restore sets `restored_at` and prints
-  the folder back from the rows.
+  the folder back from the rows. Before that write, it compares every existing destination
+  with the stored bytes and stops on a conflict without changing the archive row.
 - **Backup.** `backup` and `backup list` go through `Graph::BackupWriter` and the `backups`
   table of `home.db`. `RetrievalGraph#backup_flag` compares each archive's SHA-256 digest
-  with the digest stored at write time.
+  with the digest stored at write time. The archive also carries `origin_id`, `config.yml`,
+  and `projects.yml` from the Plastic home when present. These files preserve row ownership,
+  settings, and project lookup when the archive is unpacked into an empty home.
 
 `migrate stores` runs `Graph::MigrateWriter`. For each legacy store, it reads the rulings and
 links from the original file bytes before the sync rewrites them. It then syncs the intent

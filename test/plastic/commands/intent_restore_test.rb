@@ -49,4 +49,38 @@ class IntentRestoreTest < Plastic::TestCase
     assert_equal 0, result.code
     assert folder.exist?("#{intent.dir}/#{intent.file}")
   end
+
+  def archived_intent
+    open_intent("Target").tap do |intent|
+      mark_done(intent)
+      archive_call(intent.intent_id)
+    end
+  end
+
+  def test_restore_preserves_a_conflicting_file_and_the_archive_state
+    intent = archived_intent
+    path = "#{intent.dir}/#{intent.file}"
+    write(path, "Unsynced owner edit")
+
+    result = restore_call(intent.intent_id)
+
+    assert_equal 1, result.code
+    assert_equal "Unsynced owner edit", folder.read(path)
+    assert store_graphs.retrieval.archived?(intent.intent_id)
+  end
+
+  def test_restore_accepts_an_identical_existing_file
+    intent = archived_intent
+    replace_identical_file(intent)
+
+    result = restore_call(intent.intent_id)
+
+    assert_equal 0, result.code
+    refute store_graphs.retrieval.archived?(intent.intent_id)
+  end
+
+  def replace_identical_file(intent)
+    document = store_graphs.retrieval.documents(intent.intent_id).find { |row| row.path == intent.file }
+    write("#{intent.dir}/#{intent.file}", document.body)
+  end
 end
