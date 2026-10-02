@@ -17,6 +17,11 @@ class EvidenceRemovalTest < Plastic::TestCase
 
   def writer = Plastic::Graph::EvidenceWriter.new(knowledge, origin)
   def knowledge = store_graphs.databases.fetch(:knowledge)
-  def current_rows = %w[document_heads document_fts].flat_map { |table| knowledge.rows("SELECT * FROM #{table}") }
-  def immutable_rows = %w[document_revisions document_passages].flat_map { |table| knowledge.rows("SELECT body FROM #{table}") }.map { |row| row.fetch("body") }.uniq.sort
+
+  def current_rows = %w[document_heads document_fts].flat_map { |table| knowledge.rows("SELECT * FROM #{table} WHERE path = 'plan.md'") }
+
+  def immutable_rows
+    knowledge.rows("SELECT body FROM document_revisions WHERE path = 'plan.md' UNION SELECT p.body FROM document_passages p JOIN document_revisions r ON r.sha256 = p.sha256 WHERE r.path = 'plan.md'")
+      .map { |row| row.fetch("body") }.sort
+  end
 end

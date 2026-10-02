@@ -60,7 +60,7 @@ class TableTest < Plastic::TestCase
 
   def test_the_schema_joins_each_database_tables_ddl
     assert_equal [table(:routine_runs).ddl, table(:sessions).ddl, table(:locks).ddl, table(:backups).ddl].join("\n"), Schema.fetch(:home)
-    assert_equal %i[documents document_revisions document_heads document_passages document_fts retrieval_schema rulings links printed changes],
+    assert_equal %i[documents document_revisions document_heads document_passages document_fts retrieval_schema retrieval_backfills rulings links printed changes],
       Schema::DATABASES.fetch(:knowledge).last
   end
 

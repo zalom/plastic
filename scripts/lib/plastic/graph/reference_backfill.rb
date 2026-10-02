@@ -9,6 +9,8 @@ module Plastic
       SCHEMA_VERSION = 1
 
       def self.complete?(path, origin_id)
+        return false unless File.file?(path)
+
         database = Database::ConnectionPool.for(path)
         tables = database.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'retrieval_backfills'")
         tables.any? && database.execute(complete_sql, [origin_id, SCHEMA_VERSION]).any?

@@ -2,6 +2,7 @@
 
 require "digest"
 require_relative "evidence_writer"
+require_relative "evidence_text"
 
 module Plastic
   module Graph
@@ -9,16 +10,17 @@ module Plastic
     class EvidenceIntegrity
       class EvidenceLost < StandardError; end
 
-      def initialize(database, origin_id)
+      def initialize(database, origin_id, before_rebuild: -> {})
         @database = database
         @origin_id = origin_id
+        @before_rebuild = before_rebuild
       end
 
       def repair!
         report = report()
         raise EvidenceLost, report.fetch(:missing).join("; ") unless report.fetch(:missing).empty?
 
-        rebuild(rows)
+        rebuild_with_retry
         report
       end
 
@@ -29,12 +31,32 @@ module Plastic
 
       private
 
-      def rebuild(current)
+      def rebuild
+        current = rows
+        @before_rebuild.call
         @database.transaction do |batch|
+          guard(batch, current)
           clear(batch)
           current.fetch(:revisions).each { |revision| rebuild_passages(batch, revision) }
           current.fetch(:documents).each { |document| rebuild_current(batch, document) }
         end
+      end
+
+      def rebuild_with_retry
+        rebuild
+      rescue Database::Error => error
+        raise unless error.message.include?("integer overflow")
+
+        rebuild
+      end
+
+      def guard(batch, current)
+        expected = current.fetch(:documents)
+        conditions = expected.map do |document|
+          "EXISTS (SELECT 1 FROM documents WHERE origin_id = #{SQL.literal(@origin_id)} AND intent_id = #{SQL.literal(document.fetch("intent_id"))} AND path = #{SQL.literal(document.fetch("path"))} AND body = #{SQL.literal(document.fetch("body"))})"
+        end
+        condition = ["(SELECT count(*) FROM documents WHERE origin_id = #{SQL.literal(@origin_id)}) = #{expected.size}", *conditions].join(" AND ")
+        batch.add("SELECT CASE WHEN #{condition} THEN 1 ELSE abs(-9223372036854775808) END")
       end
 
       def clear(batch)
@@ -101,22 +123,14 @@ module Plastic
       end
 
       def passages(row)
-        chunks(row.fetch("body")).map do |body, position|
-          { body:, position:, line_start: 1, line_end: row.fetch("body").lines.size }
-        end
+        EvidenceText.passages(EvidenceText.extract_with_lines(row.fetch("path"), row.fetch("body")))
       end
 
       def passage_values(row)
         passages(row).map { |passage| [row.fetch("sha256"), *passage.values_at(:position, :body, :line_start, :line_end)] }
       end
 
-      def fts_values(row)
-        chunks(row.fetch("body")).map do |body, position|
-          [row.fetch("intent_id"), row.fetch("path"), body, row.fetch("sha256"), position]
-        end
-      end
-
-      def chunks(body) = body.each_char.each_slice(1600).map(&:join).each_with_index.map { |text, index| [text, index + 1] }
+      def fts_values(row) = passages(row).map { |passage| [row.fetch("intent_id"), row.fetch("path"), passage.fetch(:body), row.fetch("sha256"), passage.fetch(:position)] }
     end
   end
 end

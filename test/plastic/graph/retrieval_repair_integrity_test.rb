@@ -15,12 +15,7 @@ class RetrievalRepairIntegrityTest < Plastic::TestCase
   end
 
   def test_repair_uses_a_current_snapshot_when_a_writer_commits_before_rebuild
-    writer.write("1", "repair.md", "old evidence")
-    knowledge.transaction { |batch| batch.add("DELETE FROM document_fts") }
-    integrity = Plastic::Graph::EvidenceIntegrity.new(knowledge, origin,
-      before_rebuild: -> { writer.write("1", "repair.md", "new evidence") })
-
-    integrity.repair!
+    repair_after_concurrent_write
 
     assert_equal ["new evidence"], retrieval.search("new").map { |row| row.fetch("body") }
     assert_empty retrieval.search("old")
@@ -48,6 +43,22 @@ class RetrievalRepairIntegrityTest < Plastic::TestCase
   def writer = Plastic::Graph::EvidenceWriter.new(knowledge, origin)
   def knowledge = store_graphs.databases.fetch(:knowledge)
   def repair = retrieval.repair!
+
+  def concurrent_writer
+    called = false
+    -> do
+      next if called
+
+      called = true
+      writer.write("1", "repair.md", "new evidence")
+    end
+  end
+
+  def repair_after_concurrent_write
+    writer.write("1", "repair.md", "old evidence")
+    knowledge.transaction { |batch| batch.add("DELETE FROM document_fts") }
+    Plastic::Graph::EvidenceIntegrity.new(knowledge, origin, before_rebuild: concurrent_writer).repair!
+  end
 
   def corrupt_derived_rows
     knowledge.transaction do |batch|

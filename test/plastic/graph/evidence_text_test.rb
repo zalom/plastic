@@ -33,7 +33,7 @@ class EvidenceTextTest < Plastic::TestCase
     html = "<html>\n<style>hidden\ncode</style>\n<body>\n<p>First line</p>\n<p>Second &amp; third</p>\n</body>\n</html>"
     rtf = "{\\rtf1\\ansi\nFirst \\b line\\b0\\par\nSecond \\u382? line\n}"
 
-    assert_equal [["First line Second & third", 4, 5]], passage_details(text.extract_with_lines("page.html", html))
+    assert_equal [["First line Second & third", 5, 6]], passage_details(text.extract_with_lines("page.html", html))
     assert_equal [["First line Second ž line", 2, 3]], passage_details(text.extract_with_lines("note.rtf", rtf))
   end
 
