@@ -33,7 +33,8 @@ module Plastic
       end
 
       def readback
-        JSON.parse(File.read(context_path))
+        document = JSON.parse(File.read(context_path))
+        document.merge("freshness" => freshness(document))
       rescue Errno::ENOENT
         raise CLI::Command::Failure, "no retrieval context for intent #{parsed.fetch(:intent_id)}"
       end
@@ -47,8 +48,25 @@ module Plastic
       end
 
       def required_fields(submission)
-        %w[evidence facts judgments architecture].each { |field| submission.fetch(field) }
-        raise CLI::Command::Usage, "evidence, facts, and judgments must be arrays" unless %w[evidence facts judgments].all? { |field| submission.fetch(field).is_a?(Array) }
+        %w[evidence facts interpretations gaps rulings architecture].each { |field| submission.fetch(field) }
+        validate_context_categories(submission)
+        validate_architecture(submission.fetch("architecture"))
+      end
+
+      def validate_context_categories(submission)
+        fields = %w[evidence facts interpretations gaps rulings]
+        return if fields.all? { |field| submission.fetch(field).is_a?(Array) }
+
+        raise CLI::Command::Usage, "evidence, facts, interpretations, gaps, and rulings must be arrays"
+      end
+
+      def validate_architecture(architecture)
+        raise CLI::Command::Usage, "architecture must be an object" unless architecture.is_a?(Hash)
+
+        %w[provider revision coverage limitations].each { |field| architecture.fetch(field) }
+        return if %w[coverage limitations].all? { |field| architecture.fetch(field).is_a?(Array) }
+
+        raise CLI::Command::Usage, "architecture coverage and limitations must be arrays"
       end
 
       def validate_evidence(evidence)
@@ -64,6 +82,21 @@ module Plastic
       def discovery = JSON.parse(File.read(discovery_path))
 
       def source(reference) = reference[/\Aplastic:\/\/([^\/]+)/, 1]
+
+      def freshness(document)
+        { "evidence" => document.fetch("evidence").map { |reference| evidence_state(reference) } }
+      end
+
+      def evidence_state(reference)
+        retrieval = Graph.open(home: scope.plastic_home, store: source(reference)).retrieval
+        retrieval.fetch_reference(reference)
+        current = retrieval.fetch_reference(strip_revision(reference))
+        { "uri" => reference, "state" => ((current.fetch(:uri) == reference) ? "fresh" : "stale") }
+      rescue Graph::RetrievalGraph::MissingReference
+        { "uri" => reference, "state" => "missing" }
+      end
+
+      def strip_revision(reference) = reference.sub(/\?revision=[0-9a-f]{64}\z/, "")
 
       def context_path = File.join(scope.root, "context", "#{parsed.fetch(:intent_id)}.json")
 

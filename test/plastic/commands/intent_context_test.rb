@@ -10,19 +10,13 @@ class IntentContextTest < Plastic::TestCase
     reference = write_document("other", "selected evidence")
     plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
     before = File.binread(File.join(@plastic_home, "stores", "other", "knowledge_graph.db"))
-    submission = { "evidence" => [reference], "facts" => ["a source fact"], "interpretations" => ["an agent interpretation"],
-                   "gaps" => ["a remaining gap"], "rulings" => ["an owner ruling"],
-                   "architecture" => { "provider" => "external", "revision" => "abc", "coverage" => ["Ruby"], "limitations" => ["templates"] } }
+    submission = context_submission(reference)
 
-    Tempfile.create(["context", ".json"]) do |file|
-      file.write(JSON.generate(submission))
-      file.flush
-      submitted = plastic("intent", "context", "1", "--from", file.path, "--json", table: Plastic::CLI::TABLE)
-      readback = plastic("intent", "context", "1", "--json", table: Plastic::CLI::TABLE)
+    submitted = submit_context(submission, json: true)
+    readback = read_context
 
-      assert_equal 0, submitted.code
-      assert_equal submission, JSON.parse(readback.out).fetch("result").fetch("context").slice("evidence", "facts", "interpretations", "gaps", "rulings", "architecture")
-    end
+    assert_equal submission, submitted.slice("evidence", "facts", "interpretations", "gaps", "rulings", "architecture")
+    assert_equal submission, readback.slice("evidence", "facts", "interpretations", "gaps", "rulings", "architecture")
     assert_equal before, File.binread(File.join(@plastic_home, "stores", "other", "knowledge_graph.db"))
   end
 
@@ -30,14 +24,7 @@ class IntentContextTest < Plastic::TestCase
     open_intent
     reference = write_document("other", "first selected evidence")
     plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
-    submission = {
-      "evidence" => [reference],
-      "facts" => ["The document has a selected passage."],
-      "interpretations" => ["The agent considers it relevant."],
-      "gaps" => ["No architecture receipt is available."],
-      "rulings" => ["The owner chose lexical retrieval."],
-      "architecture" => { "provider" => "external", "revision" => "abc", "coverage" => ["Ruby"], "limitations" => ["templates"] }
-    }
+    submission = context_submission(reference)
 
     submit_context(submission)
     write_document("other", "second selected evidence")
@@ -53,20 +40,35 @@ class IntentContextTest < Plastic::TestCase
     graphs = Plastic::Graph.open(home: @plastic_home, store:)
     Plastic::Graph::EvidenceWriter.new(graphs.databases.fetch(:knowledge), origin).write("1", "evidence.md", body)
     graphs.retrieval.backfill!
+    graphs.retrieval.archived?("1")
     graphs.retrieval.reference("1", "evidence.md").fetch(:uri)
   end
 
-  def submit_context(submission)
+  def context_submission(reference)
+    { "evidence" => [reference], "facts" => ["a source fact"], "interpretations" => ["an agent interpretation"],
+      "gaps" => ["a remaining gap"], "rulings" => ["an owner ruling"], "architecture" => external_architecture }
+  end
+
+  def external_architecture
+    { "provider" => "external", "revision" => "abc", "coverage" => ["Ruby"], "limitations" => ["templates"] }
+  end
+
+  def submit_context(submission, json: false)
     Tempfile.create(["context", ".json"]) do |file|
       file.write(JSON.generate(submission))
       file.flush
-      result = plastic("intent", "context", "1", "--from", file.path, table: Plastic::CLI::TABLE)
-      assert_equal 0, result.code
+      arguments = ["intent", "context", "1", "--from", file.path]
+      arguments << "--json" if json
+      result = plastic(*arguments, table: Plastic::CLI::TABLE)
+
+      assert_equal 0, result.code, result.err
+      return JSON.parse(result.out).fetch("result").fetch("context") if json
     end
   end
 
   def read_context
     result = plastic("intent", "context", "1", "--json", table: Plastic::CLI::TABLE)
+
     assert_equal 0, result.code
     JSON.parse(result.out).fetch("result").fetch("context")
   end
