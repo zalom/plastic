@@ -77,6 +77,10 @@ module Plastic
       end
 
       def persist(document)
+        body = JSON.pretty_generate(document)
+        graphs.databases.fetch(:knowledge).transaction do |batch|
+          batch.put(:retrieval_discoveries, { intent_id: parsed.fetch(:intent_id), data: body, updated_at: Plastic.now })
+        end
         FileUtils.mkdir_p(File.dirname(manifest_path))
         Tempfile.create(["discovery", ".json"], File.dirname(manifest_path)) do |file|
           file.write(JSON.pretty_generate(document))

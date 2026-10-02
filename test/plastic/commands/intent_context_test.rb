@@ -155,7 +155,11 @@ class IntentContextTest < Plastic::TestCase
   def replace_architecture_receipt(revision:, available: true)
     path = store_path("architecture/external.json")
     FileUtils.mkdir_p(File.dirname(path))
-    File.write(path, JSON.generate("provider" => "external", "revision" => revision, "available" => available))
+    receipt = { "provider" => "external", "revision" => revision, "available" => available }
+    File.write(path, JSON.generate(receipt))
+    Plastic::Graph.open(home: @plastic_home, store: "global").databases.fetch(:knowledge).transaction do |batch|
+      batch.put(:architecture_receipts, { provider: "external", data: JSON.generate(receipt), updated_at: Plastic.now })
+    end
   end
 
   def remove_current_head

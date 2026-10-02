@@ -68,9 +68,10 @@ module Plastic
         raise CLI::Command::Usage, "architecture must be an object" unless architecture.is_a?(Hash)
 
         %w[provider revision coverage limitations].each { |field| architecture.fetch(field) }
-        return if %w[coverage limitations].all? { |field| architecture.fetch(field).is_a?(Array) }
+        raise CLI::Command::Usage, "architecture coverage and limitations must be arrays" unless %w[coverage limitations].all? { |field| architecture.fetch(field).is_a?(Array) }
+        return unless architecture.key?("receipt") && !architecture.fetch("receipt").is_a?(Hash)
 
-        raise CLI::Command::Usage, "architecture coverage and limitations must be arrays"
+        raise CLI::Command::Usage, "architecture receipt must be an object"
       end
 
       def validate_evidence(evidence)
@@ -83,7 +84,13 @@ module Plastic
         end
       end
 
-      def discovery = JSON.parse(File.read(discovery_path))
+      def discovery
+        row = graphs.databases.fetch(:knowledge).row("SELECT data FROM retrieval_discoveries WHERE intent_id = :intent_id AND origin_id = :origin",
+          intent_id: parsed.fetch(:intent_id), origin: graphs.retrieval.origin_id)
+        return JSON.parse(row.fetch("data")) if row
+
+        JSON.parse(File.read(discovery_path))
+      end
 
       def source(reference) = reference[/\Aplastic:\/\/([^\/]+)/, 1]
 
@@ -118,7 +125,7 @@ module Plastic
       end
 
       def architecture_state(architecture)
-        receipt = JSON.parse(File.read(architecture_receipt_path(architecture.fetch("provider"))))
+        receipt = stored_architecture_receipt(architecture.fetch("provider"))
         return architecture_status(architecture, "missing") unless receipt.fetch("available", true)
 
         architecture_status(architecture, receipt.fetch("revision") == architecture.fetch("revision") ? "fresh" : "stale")
@@ -128,6 +135,14 @@ module Plastic
 
       def architecture_status(architecture, state)
         { "provider" => architecture.fetch("provider"), "revision" => architecture.fetch("revision"), "state" => state }
+      end
+
+      def stored_architecture_receipt(provider)
+        row = graphs.databases.fetch(:knowledge).row("SELECT data FROM architecture_receipts WHERE provider = :provider AND origin_id = :origin",
+          provider:, origin: graphs.retrieval.origin_id)
+        return JSON.parse(row.fetch("data")) if row
+
+        JSON.parse(File.read(architecture_receipt_path(provider)))
       end
 
       def strip_revision(reference) = reference.sub(/\?revision=[0-9a-f]{64}\z/, "")
@@ -155,10 +170,13 @@ module Plastic
 
       def persist(document)
         body = JSON.pretty_generate(document)
+        architecture = document.fetch("architecture")
+        receipt = architecture["receipt"]
         graphs.databases.fetch(:knowledge).transaction do |batch|
           batch.put(:retrieval_contexts, { intent_id: parsed.fetch(:intent_id), data: body, updated_at: Plastic.now })
+          batch.put(:architecture_receipts, { provider: architecture.fetch("provider"), data: JSON.pretty_generate(receipt), updated_at: Plastic.now }) if receipt
         end
-        persist_architecture_receipt(document.fetch("architecture"))
+        persist_architecture_receipt(architecture) if receipt
         FileUtils.mkdir_p(File.dirname(context_path))
         Tempfile.create(["context", ".json"], File.dirname(context_path)) do |file|
           file.write(body)
