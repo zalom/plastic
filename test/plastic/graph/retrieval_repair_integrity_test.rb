@@ -52,6 +52,17 @@ class RetrievalRepairIntegrityTest < Plastic::TestCase
     assert_equal 1001, knowledge.row("SELECT count(*) AS n FROM document_fts").fetch("n")
   end
 
+  def test_repair_keeps_distinct_passages_for_identical_bodies_with_different_extraction
+    writer.write("1", "first.txt", "<p>shared</p><p>evidence</p>")
+    writer.write("2", "second.html", "<p>shared</p><p>evidence</p>")
+    knowledge.transaction { |batch| batch.add("DELETE FROM document_fts") }
+
+    repair
+
+    assert_equal [["1", "first.txt"], ["2", "second.html"]],
+      knowledge.rows("SELECT intent_id, path FROM document_passages ORDER BY intent_id").map(&:values)
+  end
+
   def test_repair_holds_an_immediate_snapshot_against_a_second_connection
     isolated_writer.write("1", "repair.md", "repair evidence")
     isolated.transaction { |batch| batch.add("DELETE FROM document_fts") }
