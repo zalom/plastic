@@ -19,4 +19,14 @@ class EnolaAdapterTest < Plastic::TestCase
 
     assert_equal "unverified", adapter.receipt(binary_sha256: "unknown", archive_sha256: "unknown").fetch("provenance")
   end
+
+  def test_distinguishes_missing_unsupported_and_failed_cli_states
+    missing = Plastic::Architecture::EnolaAdapter.new(executor: ->(*) { ["", "not found", false] })
+    unsupported = Plastic::Architecture::EnolaAdapter.new(executor: ->(*) { ["enola 0.5.0", "", true] })
+    failed = Plastic::Architecture::EnolaAdapter.new(executor: ->(*) { ["not JSON", "invalid manifest", false] })
+
+    assert_equal "missing", missing.receipt(binary_sha256: "unknown", archive_sha256: "unknown").fetch("state")
+    assert_equal "unsupported", unsupported.receipt(binary_sha256: "unknown", archive_sha256: "unknown").fetch("state")
+    assert_equal "failed", failed.receipt(binary_sha256: "unknown", archive_sha256: "unknown").fetch("state")
+  end
 end
