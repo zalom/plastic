@@ -6,12 +6,12 @@ require "tmpdir"
 require_relative "../scripts/lib/installer_core"
 
 class InstallerKernelHooksTest < Minitest::Test
-  def install(settings)
+  def install(settings, times: 1)
     Dir.mktmpdir do |home|
       path = File.join(home, "settings.json")
       File.write(path, JSON.generate(settings))
       installer = InstallerCore.new(package_root: Dir.pwd, plastic_home: File.join(home, ".plastic"))
-      capture_io { installer.send(:merge_claude_hooks, path) }
+      times.times { capture_io { installer.send(:merge_claude_hooks, path) } }
       yield JSON.parse(File.read(path)), home
     end
   end
@@ -30,7 +30,7 @@ class InstallerKernelHooksTest < Minitest::Test
   end
 
   def test_a_second_install_keeps_one_group_per_event
-    install({}) do |settings, _home|
+    install({}, times: 2) do |settings, _home|
       assert_equal 1, commands(settings, "Stop").size
     end
   end
