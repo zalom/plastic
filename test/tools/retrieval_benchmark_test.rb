@@ -36,7 +36,7 @@ class RetrievalBenchmarkTest < Minitest::Test
 
       concurrent = report.fetch("measurements").fetch("concurrent_writer_reader")
 
-      assert_equal({ busy: "no_busy_errors", immutable: true, owner_review: "pending", p95: %w[exact_lookup single_store_top_20 three_store_rrf_top_20] }, concurrency_summary(report, concurrent))
+      assert_equal({ busy: "no_busy_errors", immutable: true, owner_review: "pending", p95: %w[exact_lookup single_store_top_20 three_store_rrf_top_20], writer_stderr: "" }, concurrency_summary(report, concurrent))
     end
   end
 
@@ -81,7 +81,8 @@ class RetrievalBenchmarkTest < Minitest::Test
 
   def concurrency_summary(report, concurrent)
     { busy: concurrent.fetch("busy_handling").fetch("status"), immutable: concurrent.fetch("reader_samples").all? { |sample| sample.fetch("immutable_reference_consistent") },
-      owner_review: report.fetch("acceptance_gates").fetch("owner_review").fetch("status"), p95: report.fetch("p95_ms").keys }
+      owner_review: report.fetch("acceptance_gates").fetch("owner_review").fetch("status"), p95: report.fetch("p95_ms").keys,
+      writer_stderr: concurrent.fetch("writer_stderr") }
   end
 
   def quality_summary(report, answer)
