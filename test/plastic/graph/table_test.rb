@@ -57,7 +57,7 @@ class TableTest < Plastic::TestCase
   def test_the_schema_names_each_database_file_and_its_tables
     assert_equal %w[home.db work_graph.db knowledge_graph.db references.db], %i[home work knowledge references].map { |key| Schema.file(key) }
     assert_equal [[table(:routine_runs).ddl, table(:sessions).ddl, table(:locks).ddl].join("\n")], [Schema.fetch(:home)]
-    assert_equal 3, Schema.fetch(:knowledge).lines.size
+    assert_equal 5, Schema.fetch(:knowledge).lines.size
   end
 
   def test_a_tally_names_one_and_many

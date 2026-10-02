@@ -9,7 +9,7 @@ class StopGateTest < Plastic::TestCase
   def retrieval = store_graphs.retrieval
 
   def make_ready_node(intent_id)
-    put(:work, :nodes, { intent_id:, id: "a", state: "pending" })
+    put(:work, :nodes, { intent_id:, id: "a", state: "open" })
   end
 
   def take_lock(intent_id, mode: "auto", live: true)

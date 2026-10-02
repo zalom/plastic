@@ -44,7 +44,7 @@ class CliReleaseContractTest < Minitest::Test
   end
 
   def test_the_real_process_names_the_next_step
-    assert_equal "none", @result.fetch("next")
+    assert_equal "plastic next --project global", @result.fetch("next")
   end
 
   def test_an_unknown_command_is_not_in_this_build_yet

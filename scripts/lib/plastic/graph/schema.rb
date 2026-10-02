@@ -35,6 +35,8 @@ module Plastic
         intents: [%i[intent_id origin_id], { id: "INTEGER PRIMARY KEY AUTOINCREMENT", intent_id: :kept,
                                              parent_id: :text, ref: :text, origin_id: :kept, slug: :kept, title: :kept, kind: :text, status: :status,
                                              disposition: :text, opened_at: :text, closed_at: :text, updated_at: :text }],
+        completions: [%i[intent_id origin_id], { intent_id: :kept, origin_id: :kept, at: :kept, session_id: :kept,
+                                                 judge: :kept, criteria: :kept, evidence: :kept, outcome_sha256: :kept }],
         clusters: [%i[name intent_id origin_id], { name: :kept, intent_id: :kept, origin_id: :kept }],
         nodes: [%i[intent_id id origin_id], { intent_id: :kept, id: :kept, kind: :text, title: :text,
                                               criterion: :text, state: :text, by: :text, input: :text, output: :text, question: :text, answer: :text,
@@ -46,6 +48,10 @@ module Plastic
                                                          at: :text, text: :kept, origin_id: :kept, session_id: :text }],
         documents: [%i[intent_id path origin_id], { intent_id: :kept, path: :kept, body: :kept,
                                                     updated_at: :text, origin_id: :kept }],
+        rulings: [%i[intent_id id origin_id], { intent_id: :kept, id: :kept, text: :kept, supersedes: :text,
+                                                at: :text, session_id: :text, origin_id: :kept }],
+        links: [%i[from_ref to_ref kind origin_id], { from_ref: :kept, to_ref: :kept, kind: :kept,
+                                                      at: :text, origin_id: :kept }],
         sqlar: [%i[name], { name: "TEXT PRIMARY KEY", mode: "INT", mtime: "INT", sz: "INT", data: "BLOB",
                             intent_id: :text, sha256: :text, origin_id: :kept }],
         printed: [%i[path], { path: :kept, sha256: :kept, at: :kept, origin_id: :kept }],
@@ -58,17 +64,19 @@ module Plastic
       # Each database: its file and its tables.
       DATABASES = {
         home: ["home.db", %i[routine_runs sessions locks]],
-        work: ["work_graph.db", %i[intents clusters nodes edges savepoints printed changes]],
-        knowledge: ["knowledge_graph.db", %i[documents printed changes]],
+        work: ["work_graph.db", %i[intents clusters nodes edges savepoints completions printed changes]],
+        knowledge: ["knowledge_graph.db", %i[documents rulings links printed changes]],
         references: ["references.db", %i[sqlar printed changes]]
       }.freeze
       STORE = %i[work knowledge references].freeze
 
       # How the report names the rows of a table: one and many.
       NOUNS = {
+        "completions" => ["completion", "completions"],
         "routine_runs" => ["routine run", "routine runs"], "intents" => %w[intent intents],
         "clusters" => %w[cluster clusters], "nodes" => %w[node nodes], "edges" => %w[edge edges],
         "savepoints" => ["savepoint line", "savepoint lines"], "documents" => %w[document documents],
+        "rulings" => %w[ruling rulings], "links" => %w[link links],
         "sqlar" => ["kept file", "kept files"], "printed" => ["printed file", "printed files"],
         "sessions" => %w[session sessions], "locks" => %w[lock locks]
       }.freeze

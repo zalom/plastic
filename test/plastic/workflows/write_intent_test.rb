@@ -57,7 +57,7 @@ class WriteIntentTest < Plastic::TestCase
   def test_the_outcome_offers_the_next_command_and_names_the_intent
     outcome = WriteIntent.outcomes.first
 
-    assert_equal [:done, nil, "intent %{intent_id} has its rows and its printed files"],
+    assert_equal [:done, "plastic next", "intent %{intent_id} has its rows and its printed files"],
       [outcome.name, outcome.offers, outcome.because]
   end
 

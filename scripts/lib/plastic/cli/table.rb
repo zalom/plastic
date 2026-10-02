@@ -8,10 +8,33 @@ module Plastic
     # listing the commands loads no command. Each family owns its own section.
     TABLE = {
       # Storage
+      "intent end" => ["Commands::IntentEnd", "Record explicit criterion acceptance and close a delivered intent"],
       "intent new" => ["Commands::IntentNew", "Open an intent: write its rows and print its folder"],
       "sync up" => ["Commands::SyncUp", "Read the files changed by hand into rows"],
       "sync down" => ["Commands::SyncDown", "Print the rows that changed into files"],
       "session note" => ["Commands::SessionNote", "Write the one prose line of this session"],
+      "intent rule" => ["Commands::IntentRule", "Write an owner ruling, with --supersedes to replace an older one"],
+      "intent spec" => ["Commands::IntentSpec", "Print the grilling method, then the intent's open decisions"],
+      "auto start" => ["Commands::AutoStart", "Take the delivery lock and set the intent active"],
+      "intent show" => ["Commands::IntentShow", "Print one intent's status, criteria, decisions, rulings and nodes"],
+      "intent brief" => ["Commands::IntentBrief", "Print an intent's goal, criteria, rulings, ready nodes and command usage"],
+      "status" => ["Commands::Status", "List every store's open and active intents, with node counts by state"],
+      "next" => ["Commands::Next", "Pick the intent in play and offer its next command"],
+
+      # Work graph
+      "node add" => ["Commands::NodeAdd", "Add a node to an intent's work graph"],
+      "node remove" => ["Commands::NodeRemove", "Remove a node; its edges stay as rows"],
+      "node claim" => ["Commands::NodeClaim", "Claim an open node and print its brief"],
+      "node release" => ["Commands::NodeRelease", "Release a claimed or failed node back to open"],
+      "node done" => ["Commands::NodeDone", "Mark a claimed node done, with its judge and findings"],
+      "node fail" => ["Commands::NodeFail", "Mark a claimed node failed, with a reason"],
+      "node park" => ["Commands::NodePark", "Park a claimed node with a question for the owner"],
+      "node answer" => ["Commands::NodeAnswer", "Answer a parked node and reopen it"],
+      "edge add" => ["Commands::EdgeAdd", "Add a needs edge between two nodes"],
+      "edge remove" => ["Commands::EdgeRemove", "Remove an edge"],
+      "graph check" => ["Commands::GraphCheck", "Find a judge missing, an isolated node, a retry cap or no done criterion"],
+      "graph ready" => ["Commands::GraphReady", "List the nodes ready to claim"],
+      "graph show" => ["Commands::GraphShow", "Print every node and edge, then reprint graph.json from rows"],
 
       # Hooks: the harness calls these on an event; see docs/contributing/ARCHITECTURE.md.
       "hook resume" => ["Hooks::Resume", "SessionStart: print the state the rows carry"],

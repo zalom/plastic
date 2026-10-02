@@ -10,10 +10,12 @@ class RoutineTest < Plastic::TestCase
     assert_equal "hello ada\nnext: plastic kernel two ada\nbecause: greeted ada\n", call.out
   end
 
-  def test_a_tool_that_writes_nothing_keeps_no_routine_run_row
+  def test_a_tool_that_writes_nothing_still_keeps_a_routine_run_row
     plastic("kernel", "two", "ada")
 
-    assert_nil routine_run("kernel two", "ada")
+    run = routine_run("kernel two", "")
+
+    assert_equal "finished", run.status
   end
 
   def test_an_agent_workflow_hands_off_with_its_steps

@@ -18,8 +18,9 @@ module Plastic
   #            refused    the owner holds a step; the next call asks again
   #            finished   the chain ended; the next call starts a new routine run
   #
-  # A tool that writes nothing keeps no routine run row: its routine run lives in memory.
-  # The fields are the columns of the routine_runs table, in order. A routine
+  # Every tool keeps its routine run as a row, read tool and write tool
+  # alike, so a session that reads a call back sees the same memory a write
+  # left. The fields are the columns of the routine_runs table, in order. A routine
   # run never changes; `advance` and `close` return the next one.
   RoutineRun = Data.define(:tool, :subject, :at, :finished, :status, :facts, :next_command, :because, :exit_code,
     :started_at, :updated_at)

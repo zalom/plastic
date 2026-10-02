@@ -447,14 +447,69 @@ recorded eval against a produced artifact.
 
 Stage 1 of the tri-graph build landed the kernel under `scripts/lib/plastic/`. It has the
 command line, routines, code and agent workflows, the four end values, the routine run row,
-and a graph layer with one table, `routine_runs` in `work_graph.db`. No command runs through
-it yet. The live command line under `scripts/lib/cli.rb` serves every command, and the kernel
-tests run in a process of their own because both define some of the same constant names.
+and a graph layer with one table, `routine_runs` in `work_graph.db`. The live command line
+under `scripts/lib/cli.rb` still serves every command, and the kernel tests run in a process
+of their own because both define some of the same constant names.
 
-What is still missing is stage 2 and later: the first commands in the kernel's command table,
-the workflows in its registry, the knowledge and references graphs, and the file checkout
-from the rows. When the live command line retires, the separate test process ends. See
-[the contributor architecture page](contributing/ARCHITECTURE.md) for how a routine call runs.
+Stage 4 (intent 399) filled the kernel's command table and workflow registry with the full
+work graph command set (below); the knowledge and references graphs, and the file checkout
+from the rows, are still missing. When the live command line retires, the separate test
+process ends. See [the contributor architecture page](contributing/ARCHITECTURE.md) for how a
+routine call runs.
+
+### the work graph command set (intent 399)
+
+`scripts/lib/plastic/cli/table.rb` routes 18 kernel commands against `work_graph.db` and
+`knowledge_graph.db`: `node add`, `node remove`, `node claim`, `node release`, `node done`,
+`node fail`, `node park`, `node answer`, `edge add`, `edge remove`, `intent spec`, `intent
+rule`, `auto start`, `graph check`, `graph ready`, `graph show`, `intent show`, `intent
+brief`, `status`, and `next`. See [architecture](architecture.md#the-work-graph) for the node
+and edge state machine and the ruling/spec mechanics; this section covers the four read
+commands stage 4 added on top of them.
+
+`StartAuto.delivery_started?` checks both active status and a live auto lock held by the
+calling session before skipping the write. The foreign live-lock gate still runs first.
+`AddEdge` and `RemoveEdge` clear a failed result before retrying the write. Their gates
+still report why an edge could not be added or removed.
+
+`Commands::IntentShow` and `Commands::IntentBrief` are kernel routines (`workflow
+:code_show_intent` and `:code_show_brief`): each refuses (exit 1) an unknown intent id through
+a `gate`, then a `read` step prints from `context.retrieval` alone, so neither command writes.
+`ShowBrief` marks a ruling superseded by checking whether any other ruling's `supersedes`
+field names it (`rulings.filter_map(&:supersedes).to_set`), and lists the node and edge
+command usage by calling `.usage_line` (from the `Declarations` module) on the ten command
+classes it requires directly — there is no dynamic class lookup from a command name.
+
+`Commands::Status` is a plain `CLI::Command`, not a routine, because it sweeps every store
+under the Plastic home (`scope.known_slugs`) rather than one scoped store: it opens each
+store's graphs in turn (`Graph.open(home:, store: slug)`) and prints its open and active
+intents with their node counts by state (`Graph::IntentRow`, `Graph::NodeCounts`).
+
+`Commands::Next` picks a live intent through `Graph::NextPick`. Closed intents are
+excluded even if a lock remains after an interrupted closure. With several candidates,
+the harness gets instructions to choose one. With no open work, the next command is none.
+
+`Graph::DeliveryAction` supplies the actions used by next, brief, ready, and check.
+Ready nodes lead to claim; failed nodes lead to release. Empty graphs hand planning to
+`AgentWorkflow`, claimed nodes remain with their worker, and parked nodes request the
+owner's answer. Completed graphs lead to `intent end` for explicit acceptance.
+
+`IntentEnd` chains prerequisite checks, an agent verification handoff when records are
+missing, and closure. `CompletionEvidence` accepts a JSON object with every exact done
+criterion as a key and nonempty evidence text as its value. Paths resolve within the
+selected intent folder, including a check after resolving symbolic links. The judge
+attests to the evidence; Plastic does not execute the verification.
+
+`CompletionWriter` stores the criterion snapshot, evidence, judge, outcome hash, session,
+and timestamp in `completions`. It commits that row with the delivered status and closure
+time in the work database, then releases the delivery lock in the home database. A repeat
+call preserves the first completion record and retries cleanup. Imported done intents
+remain closed without gaining an invented attestation. `node done --repair` explicitly
+records verification for an already done node; it preserves the node's attempt count.
+
+`graph.json` is a generated view. Sync up skips it, direct Reader import refuses it,
+and sync down or graph show renders it from rows. Legacy import skips graph.json too;
+its node and edge state can only be created through the graph commands.
 
 ### companion tools: no Plastic code path calls them
 

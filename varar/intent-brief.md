@@ -1,0 +1,11 @@
+# plastic intent brief
+
+`plastic intent brief ID` prints what an agent needs to work on an intent: its goal, spec, criteria, rulings, ready nodes and the usage of the node commands. The rows below run the storage kernel's command line in a fresh home each time, as session s-1. A setup lists the calls made first, in order, split by a semicolon; `write PATH TEXT` writes a file in the store instead. TIME stands for a timestamp.
+
+Each row gives the setup, the call, the exit code, the result and the next line:
+
+| setup                                                                                                                                                                                        | call           | exit | result                                                                                                                    | next line                              |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- | ---- | ------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
+| intent new Alpha | intent brief 1 | 0 | goal: Alpha / spec: store/1--alpha/spec.md / 1. Read the intent's goal and done criteria. Add work with plastic node add 1 TITLE --criterion TEXT, then add dependencies with plastic edge add. Use plastic graph ready 1 after the plan is recorded. | none |
+| intent new Alpha ; write store/1--alpha/spec.md "# Spec\n\n## Done criteria\n\n- the CLI ships\n" ; sync up ; intent rule 1 "ship the CLI first" ; node add 1 Build --criterion "tests pass" | intent brief 1 | 0    | `goal: Alpha / spec: store/1--alpha/spec.md / criterion: the CLI ships / ruling: D1 ship the CLI first / ready: n1 Build` | plastic node claim 1 n1 --project global |
+| none                                                                                                                                                                                         | intent brief 9 | 1    | no intent 9 in this store                                                                                                 | none                                   |

@@ -6,9 +6,9 @@ class SQLTest < Plastic::TestCase
   SQL = Plastic::Graph::SQL
 
   def test_literals_quote_every_kind_of_value
-    values = [nil, true, false, 3, 1.5, SQL::Bytes.new("ab"), { "a" => 1 }, [1], "it's", :sym]
+    values = [nil, true, false, 3, 1.5, SQL::Bytes.new("ab"), SQL::Raw.new("retries + 1"), { "a" => 1 }, [1], "it's", :sym]
 
-    assert_equal ["NULL", "1", "0", "3", "1.5", "X'6162'", %('{"a":1}'), "'[1]'", "'it''s'", "'sym'"],
+    assert_equal ["NULL", "1", "0", "3", "1.5", "X'6162'", "retries + 1", %('{"a":1}'), "'[1]'", "'it''s'", "'sym'"],
       values.map { |value| SQL.literal(value) }
   end
 

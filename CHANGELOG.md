@@ -3,6 +3,21 @@
 Release history for Plastic, one line per cut. Commit-level detail lives in
 [GitHub Releases](https://github.com/zalom/plastic/releases).
 
+## Unreleased
+
+- Delivered intents close through `intent end` with explicit criterion evidence and a judge. Closure records the outcome hash, releases the delivery lock, and can be retried without duplicating acceptance. Empty and completed graph handoffs now lead to planning or verification. Node completion requires findings; `--repair` records verification for an existing done node. Sync no longer imports graph.json.
+- `auto start` takes a missing or expired delivery lock even when the intent is already active. Another session's live lock still refuses the call. Failed edge additions and removals can retry after their cause is fixed.
+
+- The work graph: `node add`, `node remove`, `node claim`, `node release`, `node done`, `node fail`, `node park`, `node answer`, `edge add`, `edge remove`. Nodes move through guarded state changes; a node claimed a fourth time parks with a question instead of looping.
+
+- `intent rule ID TEXT` writes an owner ruling as the next D id, with `--supersedes` linking it to the ruling it replaces. `intent spec ID` prints the grilling method, then the intent's open decisions read from its spec document. `auto start ID` refuses an open decision, no done criterion, a done or abandoned intent, and another session's live lock, then takes the lock, sets the intent active, and reprints its files.
+
+- `graph check ID` reports a done node with no judge, a done node judged by tests with no findings, a live node no edge reaches, a node claimed past the cap, and an intent with no done criteria. `graph ready ID` lists the nodes free to claim. `graph show ID` prints every node and edge, then writes `graph.json` from the rows; no command reads that file back.
+
+- `intent show ID` prints one intent's status, criteria count, open decisions, rulings, nodes, and last savepoints. `intent brief ID` prints its goal, done criteria, rulings with superseded ones marked, ready nodes, and the node and edge command usage. `status` lists every store's open and active intents with node counts by state. `next` picks the intent this session is working on and offers its next command through the spec, start, brief, show, check, and ready cascade.
+
+- A Varar acceptance document, `varar/work-graph.md`, runs a full pass of the work graph: two rulings, two nodes and an edge, a claim, a failure, a release, a second claim, and a done, checked through `graph show` and `intent brief`.
+
 ## 2.0.3
 
 - Documentation follows the public CLI and distinguishes implemented behavior from proposals.

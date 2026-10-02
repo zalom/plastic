@@ -23,10 +23,10 @@ class CliTest < Plastic::TestCase
     assert_equal Fixtures::Draft, Plastic::CLI.tool("kernel draft", Fixtures::TABLE)
   end
 
-  def test_tool_loads_the_file_the_class_names
-    error = assert_raises(LoadError) { Plastic::CLI.tool("x", { "x" => ["Commands::IntentEnd", ""] }) }
+  def test_tool_reports_the_missing_file_named_by_an_unknown_class
+    error = assert_raises(LoadError) { Plastic::CLI.tool("x", { "x" => ["Commands::MissingAutoloadFixture", ""] }) }
 
-    assert_includes error.message, "commands/intent_end"
+    assert_includes error.message, "commands/missing_autoload_fixture"
   end
 
   def test_the_class_names_its_file

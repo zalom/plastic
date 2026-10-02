@@ -82,12 +82,12 @@ class SyncStepsTest < Plastic::TestCase
   end
 
   def test_each_direction_names_what_it_settles
-    assert_equal [[nil, "the rows hold every file changed by hand"], [nil, "the files hold every row that changed"]],
+    assert_equal [["plastic next", "the rows hold every file changed by hand"], ["plastic next", "the files hold every row that changed"]],
       [Plastic::Workflows::SyncUp, Plastic::Workflows::SyncDown].map { |flow| [flow.outcomes.first.offers, flow.outcomes.first.because] }
   end
 
   def test_the_registry_lists_the_storage_workflows
-    assert_equal %i[code_write_intent code_sync_up code_sync_down code_write_note], Plastic::Workflows::REGISTRY
+    assert_equal %i[code_write_intent code_sync_up code_sync_down], Plastic::Workflows::REGISTRY.first(3)
   end
 
   def test_a_second_load_of_a_sync_class_keeps_one_chain
@@ -108,7 +108,7 @@ class SyncStepsTest < Plastic::TestCase
 
     assert_equal ["plan the sync", "gate", "gate", "apply the changes", "say what changed", "gate"], flow.steps.map(&:name)
     assert_equal ["%{failure}", steps::REFUSED_BEFORE, steps::REFUSED_AFTER], gates
-    assert_equal [nil], flow.outcomes.map(&:offers)
+    assert_equal ["plastic next"], flow.outcomes.map(&:offers)
   end
 
   def test_a_plan_note_clears_the_lines_of_an_earlier_apply

@@ -5,7 +5,7 @@ require "optparse"
 module Plastic
   class CLI
     # Reads one call's argv against the arguments and options a command
-    # declares. A missing required argument, an extra word or an unknown
+    # declares. A missing required argument or switch, an extra word or an unknown
     # switch is a Command::Usage error: exit 2. --json and --project belong
     # to every command.
     class Parser
@@ -20,6 +20,7 @@ module Plastic
       def parse(argv)
         values = @options.to_h { |option| [option.name, option.default] }
         words = switches(values).parse(argv)
+        refuse_missing(values)
         values.merge(positional(words))
       end
 
@@ -38,6 +39,11 @@ module Plastic
       def positional(words)
         refuse_extra(words)
         @arguments.each_with_index.to_h { |argument, index| [argument.name, argument.read(words, index)] }
+      end
+
+      def refuse_missing(values)
+        missing = @options.find { |option| option.required && values[option.name].nil? }
+        raise Command::Usage, "missing #{missing.switch.split.first}" if missing
       end
 
       def refuse_extra(words)

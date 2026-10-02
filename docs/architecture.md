@@ -158,6 +158,57 @@ The frontmatter graph drifts over time as it is edited by hand, so two pieces of
 
 Each store's `INDEX.md` is a structure note, not a table of contents: it groups intents by meaning and records where each one sits in the person's attention (`## Active`, `## Future`, `## Clusters`, `## Abandoned`, `## Completed`). It does not record lifecycle stage, since that is derived from the files.
 
+## the work graph
+
+Each store's `work_graph.db` holds one intent's nodes and the edges between them, alongside
+its `intents`, `clusters` and `savepoints` tables. A node is one unit of work (`plastic node
+add`); it moves through `open`, `claimed`, `done`, `failed` and `parked`, or leaves the graph
+as `removed` (`Graph::Node::MOVES` is the one source of which moves are legal). An edge
+(`plastic edge add`) says one node needs another; a guarded SQL insert refuses a self edge, an
+edge touching a missing or removed node, and an edge that would close a loop.
+After the cause of a failed edge addition or removal is fixed, the same command can retry.
+
+`Graph::NodeWriter` and `Graph::EdgeWriter` own these writes. Every state move is a guarded
+`UPDATE ... WHERE state IN (...)`, so two attempts to move the same node cannot both win; the
+one that finds no row back re-reads the node to report why. Claiming a node caps at three
+retries: the fourth claim parks the node with a standing question instead of claiming it, so a
+node that keeps failing surfaces to the owner rather than looping. The full command set:
+`node add`, `node remove`, `node claim`, `node release`, `node done`, `node fail`, `node park`,
+`node answer`, `edge add`, `edge remove`.
+
+## rulings, the spec and arming delivery
+
+`knowledge_graph.db` also holds `rulings` and `links`. `plastic intent rule ID TEXT` writes
+the owner's next decision as the next `D` id in that intent; `--supersedes RULING_ID` links it
+to the ruling it replaces, which stays on record rather than being overwritten.
+`Graph::RulingWriter` owns the write; `Graph::Spec` reads an intent's `spec.md` document row
+for its done criteria and open decisions, the bullets under a `Done criteria` or `Open
+Questions` heading (a section holding only "None" counts zero).
+
+`plastic intent spec ID` prints `docs/grilling.md`, the grilling method, then the intent's
+open decisions, so the next step is always either `intent rule` or `auto start`.
+`plastic auto start ID` refuses (exit 3) an open decision, no done criterion, a done or
+abandoned intent, and a live lock held by another session; it fails (exit 1) when the call
+names no session. Otherwise it takes the lock in `auto` mode, sets the intent active, and
+reprints its files. An already active intent still needs a live auto lock held by the
+calling session; starting it takes a missing or expired lock.
+
+## Delivery acceptance
+
+A graph with all nodes done advances to `intent end`. Closure also requires recorded
+criteria, resolved decisions, a substantive outcome, and an explicit judge's evidence
+for every criterion. The evidence and outcome hash remain in a completion row. Plastic
+records this acceptance; the harness or owner performs the verification. Successful
+closure releases the delivery lock and ends with no next command.
+
+An empty graph hands planning to the harness. Claimed work stays with its worker,
+parked work needs the owner's answer, and failed work advances to release before retry.
+These handoffs use the agent workflow DSL and stop until the harness records its action.
+
+Node completion requires nonempty findings. `node done --repair` records missing
+verification for a done node after the work is checked again. `graph.json` always flows
+from database rows to the checkout; sync never imports its node or edge content.
+
 ## component map
 
 The tooling layer is thin and sits on top of the store. The parts that supply determinism do so by construction, never by judgement.
