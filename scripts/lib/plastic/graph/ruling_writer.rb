@@ -1,5 +1,8 @@
 # frozen_string_literal: true
 
+require_relative "link"
+require_relative "next_id"
+
 module Plastic
   module Graph
     # Writes one intent's rulings: the next D id, and the `supersedes` link
@@ -30,19 +33,22 @@ module Plastic
       end
 
       def write(ruling, target)
+        write_row(ruling, target)
+        refetch(ruling)
+      end
+
+      def write_row(ruling, target)
+        row = ruling.to_h.except(:origin_id)
+        link = Link.supersedes(ruling, target) if target
         @databases.fetch(:knowledge).transaction do |batch|
-          batch.put(:rulings, ruling.to_h.except(:origin_id), statement: :insert)
-          batch.put(:links, link_row(ruling, target), statement: :insert) if target
+          batch.put(:rulings, row, statement: :insert)
+          batch.put(:links, link, statement: :insert) if target
         end
-        @retrieval.rulings(ruling.intent_id).find { |row| row.id == ruling.id }
       end
 
-      def link_row(ruling, target) = { from_ref: ruling.ref, to_ref: target.ref, kind: "supersedes", at: ruling.at }
+      def refetch(ruling) = @retrieval.rulings(ruling.intent_id).find { |row| row.id == ruling.id }
 
-      def next_id(intent_id)
-        highest = @retrieval.rulings(intent_id).filter_map { |ruling| ruling.id[/\AD(\d+)\z/, 1]&.to_i }.max || 0
-        "D#{highest + 1}"
-      end
+      def next_id(intent_id) = NextId.after(@retrieval.rulings(intent_id), prefix: "D")
     end
   end
 end

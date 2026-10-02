@@ -2,6 +2,7 @@
 
 require_relative "../code_workflow"
 require_relative "../graph/spec"
+require_relative "lines"
 require_relative "../commands/node_add"
 require_relative "../commands/node_remove"
 require_relative "../commands/node_claim"
@@ -42,17 +43,11 @@ module Plastic
       read "print the rulings" do |context|
         rulings = context.retrieval.rulings(context.intent_id)
         superseded = rulings.filter_map(&:supersedes).to_set
-        rulings.each { |ruling| context.print(ShowBrief.ruling_line(ruling, superseded)) }
-      end
-
-      def self.ruling_line(ruling, superseded)
-        id = ruling.id
-        mark = superseded.include?(id) ? " (superseded)" : ""
-        "ruling: #{id} #{ruling.text}#{mark}"
+        rulings.each { |ruling| context.print(Lines.ruling(ruling, mark: superseded.include?(ruling.id) ? " (superseded)" : "")) }
       end
 
       read "print the ready nodes" do |context|
-        context.retrieval.ready_nodes(context.intent_id).each { |node| context.print("ready: #{node.id} #{node.title}") }
+        context.retrieval.ready_nodes(context.intent_id).each { |node| context.print(Lines.ready_node(node)) }
       end
 
       read "print the usage of the node and edge commands" do |context|
