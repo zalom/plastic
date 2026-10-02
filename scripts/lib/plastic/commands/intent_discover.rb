@@ -19,6 +19,8 @@ module Plastic
         validate_intent!
         output.row("discovery", persist(manifest))
         output.next_step("plastic intent context #{parsed.fetch(:intent_id)} --from FILE", because: "an agent selects evidence and provides architecture context")
+      rescue Graph::RetrievalGraph::MaintenanceRequired => error
+        raise CLI::Command::Failure, error.message
       end
 
       private
@@ -55,12 +57,21 @@ module Plastic
       end
 
       def rows(slug)
-        retrieval = Graph.open(home: scope.plastic_home, store: slug).retrieval
+        retrieval = maintained_retrieval(slug)
         retrieval.search(parsed.fetch(:terms), migrate: false).each_with_index.map do |row, index|
           reference = retrieval.search_reference(row)
           row.merge(reference.transform_keys(&:to_s)).merge("store" => slug, "local_rank" => index + 1,
             "rrf_score" => 1.0 / (61 + index), "archived" => retrieval.archived?(row.fetch("intent_id")))
         end
+      end
+
+      def maintained_retrieval(slug)
+        missing = Graph::Schema::STORE.map { |key| Graph::Schema.file(key) }.reject do |file|
+          File.file?(File.join(scope.plastic_home, "stores", slug, file))
+        end
+        raise Graph::RetrievalGraph::MaintenanceRequired, "retrieval maintenance is required before source #{slug} can be read" if missing.any?
+
+        Graph.open(home: scope.plastic_home, store: slug).retrieval
       end
 
       def persist(document)
