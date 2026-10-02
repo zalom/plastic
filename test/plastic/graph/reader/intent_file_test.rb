@@ -61,9 +61,11 @@ class IntentFileTest < Plastic::TestCase
     assert_equal "\x00\xFF".b, retrieval.kept_file_data(file.name)
   end
 
-  def test_markdown_under_resources_and_bytes_that_are_not_text_are_kept
-    assert_equal %i[references references references], [read_in("resources/notes.md", "# Notes\n"), read_in("odd.md", "\xFF".b),
-      read_in("notes.txt", "plain text\n")]
-    assert_equal [true, true], [!kept("resources/notes.md").nil?, !kept("odd.md").nil?]
+  def test_every_valid_utf8_reference_without_a_nul_is_a_document
+    assert_equal %i[knowledge references knowledge knowledge], [read_in("resources/notes.md", "# Notes\n"), read_in("odd.md", "\xFF".b),
+      read_in("notes.txt", "plain text\n"), read_in("data.json", '{"topic":"retrieval"}')]
+
+    assert_equal ["data.json", "notes.txt", "resources/notes.md"], retrieval.documents("1").map(&:path).sort
+    assert_equal [true], [!kept("odd.md").nil?]
   end
 end
