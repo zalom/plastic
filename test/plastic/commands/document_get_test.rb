@@ -5,6 +5,15 @@ require_relative "../../../scripts/lib/plastic/commands/document_get"
 require_relative "../../../scripts/lib/plastic/commands/document_batch"
 
 class DocumentGetTest < Plastic::TestCase
+  def test_routed_help_prints_document_command_usage
+    %w[get batch].each do |command|
+      result = plastic_bin("help", "document", command, table: Plastic::CLI::TABLE)
+
+      assert_equal 0, result.code
+      assert_includes result.out, "plastic document #{command} REF"
+    end
+  end
+
   def test_prints_a_historical_qualified_document_as_structured_json
     Plastic::Graph::EvidenceWriter.new(knowledge, origin).write("1", "plan.md", "first")
     reference = retrieval.reference("1", "plan.md").fetch(:uri)
