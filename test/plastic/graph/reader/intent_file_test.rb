@@ -42,6 +42,7 @@ class IntentFileTest < Plastic::TestCase
     read_in("plan.md", "# Retrieval\n\nIndexed evidence\n")
 
     row = store_graphs.databases.fetch(:knowledge).row("SELECT body, sha256, position FROM document_fts WHERE document_fts MATCH 'evidence'")
+
     assert_equal ["# Retrieval\n\nIndexed evidence\n", Digest::SHA256.hexdigest("# Retrieval\n\nIndexed evidence\n"), 1],
       row.values_at("body", "sha256", "position")
   end

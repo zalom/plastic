@@ -15,7 +15,7 @@ module Plastic
       }.freeze
 
       FTS = {
-        document_fts: 'CREATE VIRTUAL TABLE IF NOT EXISTS "document_fts" USING fts5(body, sha256 UNINDEXED, position UNINDEXED, origin_id UNINDEXED);'
+        document_fts: 'CREATE VIRTUAL TABLE IF NOT EXISTS "document_fts" USING fts5(body, intent_id UNINDEXED, path UNINDEXED, sha256 UNINDEXED, position UNINDEXED, origin_id UNINDEXED);'
       }.freeze
     end
   end

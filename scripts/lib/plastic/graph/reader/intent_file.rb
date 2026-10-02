@@ -17,10 +17,11 @@ module Plastic
         KEPT_MODE = 0o100644
         KINDS = { "graph.json" => %i[work graph], "savepoint.md" => %i[work savepoint] }.freeze
 
-        def initialize(folder, intent, path, retrieval: nil)
+        def initialize(folder, intent, path, origin_id, retrieval: nil)
           @folder = folder
           @path = path
           @intent_id = intent.intent_id
+          @origin_id = origin_id
           @retrieval = retrieval
           @rel = path.delete_prefix("#{intent.dir}/")
         end
@@ -58,7 +59,23 @@ module Plastic
         end
 
         def document(batch)
-          batch.put(:documents, { intent_id: @intent_id, path: @rel, body: text, updated_at: Plastic.now })
+          body = text
+          sha256 = Digest::SHA256.hexdigest(body)
+          now = Plastic.now
+          batch.put(:documents, { intent_id: @intent_id, path: @rel, body:, updated_at: now })
+          write_retrieval_evidence(batch, body, sha256, now)
+        end
+
+        def write_retrieval_evidence(batch, body, sha256, now)
+          batch.add("INSERT OR IGNORE INTO document_revisions (sha256, intent_id, path, body, created_at, origin_id) VALUES (:sha256, :intent_id, :path, :body, :created_at, :origin_id)",
+            sha256:, intent_id: @intent_id, path: @rel, body:, created_at: now, origin_id: @origin_id)
+          batch.put(:document_heads, { intent_id: @intent_id, path: @rel, sha256:, updated_at: now })
+          batch.add("INSERT OR IGNORE INTO document_passages (sha256, position, body, line_start, line_end, origin_id) VALUES (:sha256, 1, :body, 1, :line_end, :origin_id)",
+            sha256:, body:, line_end: body.lines.size, origin_id: @origin_id)
+          batch.add("DELETE FROM document_fts WHERE intent_id = :intent_id AND path = :path AND origin_id = :origin_id",
+            intent_id: @intent_id, path: @rel, origin_id: @origin_id)
+          batch.add("INSERT INTO document_fts (body, intent_id, path, sha256, position, origin_id) VALUES (:body, :intent_id, :path, :sha256, 1, :origin_id)",
+            body:, intent_id: @intent_id, path: @rel, sha256:, origin_id: @origin_id)
         end
 
         def kept(batch)

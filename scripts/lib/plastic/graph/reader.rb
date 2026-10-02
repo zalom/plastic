@@ -42,7 +42,7 @@ module Plastic
       def intent_file(path)
         dir = path.split("/").first(2).join("/")
         intent = @intents[File.basename(dir).split("--").first]
-        return IntentFile.new(@folder, intent, path, retrieval: @retrieval) if intent&.dir == dir
+        return IntentFile.new(@folder, intent, path, @origin_id, retrieval: @retrieval) if intent&.dir == dir
 
         raise Invalid, "#{dir} has no intent row and no entry in #{StoreFolder::INDEX}; add one or remove the folder"
       end
