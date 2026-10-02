@@ -11,13 +11,21 @@ module Plastic
       reads :knowledge
 
       def call
-        output.row("document", retrieval.fetch_reference(parsed.fetch(:reference)))
+        output.row("document", fetch(parsed.fetch(:reference)))
         output.next_step("none", because: "the document was read")
       end
 
       private
 
-      def retrieval = graphs.retrieval
+      def fetch(reference) = retrieval_for(reference).fetch_reference(reference)
+
+      def retrieval_for(reference)
+        slug = reference[/\Aplastic:\/\/([^\/]+)/, 1]
+        raise CLI::Scope::UnknownProject, "invalid document reference #{reference.inspect}" unless slug
+        raise CLI::Scope::UnknownProject, "no project named #{slug.inspect}" unless scope.known_slugs.include?(slug)
+
+        Graph.open(home: scope.plastic_home, store: slug).retrieval
+      end
     end
   end
 end

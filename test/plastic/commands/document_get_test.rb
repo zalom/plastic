@@ -24,7 +24,7 @@ class DocumentGetTest < Plastic::TestCase
     result = plastic("document", "batch", second, first, second, "--json", table: Plastic::CLI::TABLE)
 
     assert_equal 0, result.code
-    assert_equal 2, result.out.scan('"store"').count { |entry| entry }
+    assert_equal 3, result.out.scan('"store"').count { |entry| entry }
     assert_operator result.out.index("other"), :<, result.out.index("global")
   end
 
