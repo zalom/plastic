@@ -55,4 +55,16 @@ class RetrievalGraphTest < Plastic::TestCase
 
     assert_equal({ "store/index.json" => "a", "store/1--a/spec.md" => "b" }, retrieval.printed)
   end
+
+  def test_searches_indexed_passages_without_matching_an_intent_title
+    intent = open_intent("Unrelated")
+    path = "#{intent.dir}/research.txt"
+    write(path, "The retrieval evidence stays searchable.\n")
+    apply_read(Plastic::Graph::Reader.new(folder, { intent.intent_id => intent }, origin, retrieval:).read(path))
+
+    result = retrieval.search("retrieval evidence")
+
+    assert_equal [[intent.intent_id, "research.txt", "The retrieval evidence stays searchable.\n", 1]],
+      result.map { |row| row.values_at("intent_id", "path", "body", "position") }
+  end
 end
