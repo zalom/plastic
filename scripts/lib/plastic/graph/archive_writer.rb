@@ -2,6 +2,7 @@
 
 require_relative "archive_snapshot"
 require_relative "archive_location"
+require_relative "evidence_writer"
 
 module Plastic
   module Graph
@@ -93,6 +94,7 @@ module Plastic
       end
 
       def finish_archive(intent)
+        index_snapshot(intent)
         snapshot(intent.intent_id).remove(ArchiveLocation.root(@folder, intent))
         remove_printed(intent.dir)
         [true, nil, nil]
@@ -106,6 +108,21 @@ module Plastic
           @databases.fetch(key).transaction { |batch| paths.each { |path| batch.remove(:printed, path:) } }
         end
       end
+
+      def index_snapshot(intent)
+        snapshot(intent.intent_id).entries.select { |entry| searchable?(entry) }.each do |entry|
+          EvidenceWriter.new(@databases.fetch(:knowledge), origin_id).write(intent.intent_id, entry.fetch(:path), utf8(entry.fetch(:data)))
+        end
+      end
+
+      def searchable?(entry)
+        return false unless entry[:kind] == "file"
+
+        text = utf8(entry.fetch(:data))
+        text.valid_encoding? && !entry.fetch(:data).include?("\0")
+      end
+
+      def utf8(bytes) = bytes.dup.force_encoding(Encoding::UTF_8)
     end
   end
 end
