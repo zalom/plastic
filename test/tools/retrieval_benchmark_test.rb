@@ -39,4 +39,16 @@ class RetrievalBenchmarkTest < Minitest::Test
       refute report.fetch("measurements").values.flatten.any? { |sample| sample.fetch("argv").include?("--help") }
     end
   end
+
+  def test_records_concurrent_reads_and_explicit_acceptance_gates
+    Dir.mktmpdir do |directory|
+      report = Plastic::RetrievalBenchmark.run(output: File.join(directory, "benchmark.json"), corpus_bytes: 20_000, warmup: 0, samples: 1)
+
+      concurrent = report.fetch("measurements").fetch("concurrent_writer_reader")
+      assert_equal "no_busy_errors", concurrent.fetch("busy_handling").fetch("status")
+      assert concurrent.fetch("reader_samples").all? { |sample| sample.fetch("immutable_reference_consistent") }
+      assert_equal "pending", report.fetch("acceptance_gates").fetch("owner_review").fetch("status")
+      assert_equal %w[exact_lookup single_store_top_20 three_store_rrf_top_20], report.fetch("p95_ms").keys
+    end
+  end
 end
