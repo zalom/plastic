@@ -6,9 +6,10 @@ module Plastic
   module Graph
     # Writes one immutable text revision and its current derived search rows.
     class EvidenceWriter
-      def initialize(database, origin_id)
+      def initialize(database, origin_id, after_passages: -> {})
         @database = database
         @origin_id = origin_id
+        @after_passages = after_passages
       end
 
       def write(intent_id, path, body)
@@ -35,6 +36,7 @@ module Plastic
           batch.add("INSERT OR IGNORE INTO document_passages (sha256, position, body, line_start, line_end, origin_id) VALUES (:sha256, :position, :body, 1, :line_end, :origin_id)",
             sha256:, position: index + 1, body: passage, line_end: body.lines.size, origin_id: @origin_id)
         end
+        @after_passages.call
       end
 
       def current_rows(batch, row)
