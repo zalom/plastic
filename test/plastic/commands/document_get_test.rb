@@ -20,11 +20,13 @@ class DocumentGetTest < Plastic::TestCase
   def test_batch_routes_each_qualified_reference_to_its_selected_store_in_order
     first = write_document("global", "1", "global.md", "global")
     second = write_document("other", "2", "other.md", "other")
+    third = write_document("third", "3", "third.md", "third")
 
-    result = plastic("document", "batch", second, first, second, "--json", table: Plastic::CLI::TABLE)
+    result = plastic("document", "batch", third, second, first, second, "--json", table: Plastic::CLI::TABLE)
 
     assert_equal 0, result.code
-    assert_equal 3, result.out.scan('"store"').count { |entry| entry }
+    assert_equal 4, result.out.scan('"store"').count { |entry| entry }
+    assert_operator result.out.index("third"), :<, result.out.index("other")
     assert_operator result.out.index("other"), :<, result.out.index("global")
   end
 
