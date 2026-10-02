@@ -7,9 +7,7 @@ module Plastic
   module Commands
     # Moves a claimed node to done, judged by tests, tool, agent or owner.
     class NodeDone < Routine
-      subject :intent_id, :id
-      argument :intent_id, label: "ID", text: "the intent"
-      argument :id, label: "NODE", text: "the node"
+      node_subject
       option :judge, switch: "--judge WHO", text: "tests, tool, agent or owner"
       option :findings, switch: "--findings TEXT", text: "what the judge found"
       writes :work

@@ -6,8 +6,7 @@ module Plastic
   module Commands
     # Prints the grilling method, then one intent's open decisions.
     class IntentSpec < Routine
-      subject :intent_id
-      argument :intent_id, label: "ID", text: "the intent"
+      intent_subject
       reads :knowledge
 
       workflow :code_show_spec, next: :noop

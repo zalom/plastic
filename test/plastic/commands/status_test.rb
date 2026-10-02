@@ -2,6 +2,8 @@
 
 require_relative "../../test_helper"
 require_relative "../../../scripts/lib/plastic/commands/status"
+require_relative "../../../scripts/lib/plastic/commands/node_add"
+require_relative "../../../scripts/lib/plastic/commands/node_claim"
 
 class StatusTest < Plastic::TestCase
   def call(*args) = plastic("status", *args, table: Plastic::CLI::TABLE)
@@ -23,5 +25,19 @@ class StatusTest < Plastic::TestCase
     result = call
 
     assert_includes result.out, "next: plastic next"
+  end
+
+  def test_an_intent_without_nodes_says_so
+    open_intent
+
+    assert_includes call.out, "no nodes"
+  end
+
+  def test_counts_the_nodes_of_an_intent_by_state
+    open_intent
+    2.times { |i| plastic("node", "add", "1", "node #{i}", "--criterion", "done", table: Plastic::CLI::TABLE) }
+    plastic("node", "claim", "1", "n1", table: Plastic::CLI::TABLE)
+
+    assert_includes call.out, "claimed: 1, open: 1"
   end
 end

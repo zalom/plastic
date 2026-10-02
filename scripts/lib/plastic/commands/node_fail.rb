@@ -6,9 +6,7 @@ module Plastic
   module Commands
     # Moves a claimed node to failed, with a reason.
     class NodeFail < Routine
-      subject :intent_id, :id
-      argument :intent_id, label: "ID", text: "the intent"
-      argument :id, label: "NODE", text: "the node"
+      node_subject
       option :reason, switch: "--reason TEXT", text: "why it failed"
       writes :work
 

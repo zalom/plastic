@@ -86,6 +86,15 @@ class GraphCheckTest < Plastic::TestCase
     assert_includes result.out, "finding: intent 1 names no done criterion"
   end
 
+  def test_a_tests_judged_done_node_with_findings_passes
+    intent = open_intent
+    add_node("a")
+    write_spec(intent, "# Spec\n\n## Done criteria\n- ships\n")
+    update_node("n1", "state = 'done', judge = 'tests', findings = 'green'")
+
+    assert_equal 0, call("1").code
+  end
+
   def test_a_clean_graph_passes
     intent = open_intent
     add_node("a")

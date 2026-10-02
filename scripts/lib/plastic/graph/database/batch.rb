@@ -54,6 +54,13 @@ module Plastic
           self
         end
 
+        # Inserts each row under its table name, in order, as
+        # `insert_rows(rulings: row, links: row)`. A row already there fails the transaction.
+        def insert_rows(rows)
+          rows.each { |name, row| put(name, row, statement: :insert) }
+          self
+        end
+
         # Adds the statements of each read, in order.
         def apply(applies)
           applies.each { |apply| apply.call(self) }

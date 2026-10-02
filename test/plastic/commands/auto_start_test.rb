@@ -68,4 +68,23 @@ class AutoStartTest < Plastic::TestCase
 
     assert_equal "s-1", store_graphs.retrieval.lock(intent.intent_id).session_id
   end
+
+  def test_a_missing_intent_refuses
+    result = call("9")
+
+    assert_equal 3, result.code
+    assert_includes result.err, "no intent 9 in this store"
+  end
+
+  def test_a_done_intent_refuses
+    open_intent
+    store_graphs.databases.fetch(:work).transaction do |batch|
+      batch.write(:intents, "UPDATE intents SET status = 'done' WHERE intent_id = :intent_id", intent_id: "1")
+    end
+
+    result = call("1")
+
+    assert_equal 3, result.code
+    assert_includes result.err, "intent 1 is done"
+  end
 end

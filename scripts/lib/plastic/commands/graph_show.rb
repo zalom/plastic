@@ -6,8 +6,7 @@ module Plastic
   module Commands
     # Prints one intent's nodes and edges, then reprints graph.json from rows.
     class GraphShow < Routine
-      subject :intent_id
-      argument :intent_id, label: "ID", text: "the intent"
+      intent_subject
       writes :work
       workflow :code_show_graph, next: :noop
     end

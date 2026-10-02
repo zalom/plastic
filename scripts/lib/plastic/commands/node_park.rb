@@ -6,9 +6,7 @@ module Plastic
   module Commands
     # Moves a claimed node to parked, with a question for the owner.
     class NodePark < Routine
-      subject :intent_id, :id
-      argument :intent_id, label: "ID", text: "the intent"
-      argument :id, label: "NODE", text: "the node"
+      node_subject
       option :question, switch: "--question TEXT", text: "what the owner must decide"
       writes :work
 

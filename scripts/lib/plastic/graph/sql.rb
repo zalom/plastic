@@ -8,10 +8,14 @@ module Plastic
     # parameters and the column list of an insert.
     module SQL
       # Bytes that go in as a BLOB literal, such as a kept file.
-      Bytes = Data.define(:data)
+      Bytes = Data.define(:data) do
+        def literal = "X'#{data.unpack1("H*")}'"
+      end
 
       # SQL text kept as it stands, such as `retries + 1`, never quoted.
-      Raw = Data.define(:sql)
+      Raw = Data.define(:sql) do
+        def literal = sql
+      end
 
       # A value as an SQL literal. Hashes and arrays are stored as JSON text.
       def self.literal(value)
@@ -20,17 +24,9 @@ module Plastic
         in true then "1"
         in false then "0"
         in Integer | Float => number then number.to_s
-        in Bytes | Raw => wrapped then wrapped_literal(wrapped)
+        in Bytes | Raw => wrapped then wrapped.literal
         in Hash | Array then literal(JSON.generate(value))
         else "'#{value.to_s.gsub("'", "''")}'"
-        end
-      end
-
-      # A value that carries its own SQL text: bytes as a BLOB literal, raw as itself.
-      def self.wrapped_literal(wrapped)
-        case wrapped
-        in Bytes then "X'#{wrapped.data.unpack1("H*")}'"
-        in Raw then wrapped.sql
         end
       end
 

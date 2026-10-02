@@ -16,15 +16,13 @@ module Plastic
       :reason, :judge, :verdict, :findings, :retries, :updated_at, :origin_id) do
       include Record
 
-      def can_move_to?(to) = Node::MOVES.fetch(state, []).include?(to)
-
       def refusal(to) = "node #{id} is #{state}; it cannot move to #{to}"
+
+      # An open node that is missing from the intent's ready nodes, because a
+      # node it needs is not done.
+      def waiting?(ready_nodes) = state == "open" && ready_nodes.none? { |ready| ready.id == id }
     end
     Node::STATES = %w[open claimed done failed parked removed].freeze
     Node::JUDGES = %w[tests tool agent owner].freeze
-    Node::MOVES = {
-      "open" => %w[claimed removed], "claimed" => %w[done failed parked open],
-      "failed" => %w[open], "parked" => %w[open], "done" => [], "removed" => []
-    }.freeze
   end
 end

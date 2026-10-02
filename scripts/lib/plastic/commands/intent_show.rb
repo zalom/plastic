@@ -7,8 +7,7 @@ module Plastic
     # Prints one intent: its status, criteria count, open decisions,
     # rulings, nodes and last savepoint lines.
     class IntentShow < Routine
-      subject :intent_id
-      argument :intent_id, label: "ID", text: "the intent"
+      intent_subject
       reads :work, :knowledge
       workflow :code_show_intent, next: :noop
     end

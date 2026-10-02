@@ -7,8 +7,7 @@ module Plastic
     # Writes one owner ruling against an intent, numbered D1, D2 and on.
     # --supersedes names an older ruling and links the two.
     class IntentRule < Routine
-      subject :intent_id
-      argument :intent_id, label: "ID", text: "the intent"
+      intent_subject
       argument :text, label: "TEXT", text: "the ruling, in the owner's words"
       option :supersedes, switch: "--supersedes RULING_ID", text: "an older ruling this one replaces"
       writes :knowledge
