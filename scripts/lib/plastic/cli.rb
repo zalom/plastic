@@ -29,11 +29,37 @@ module Plastic
     # its own words. A hook reads its event from the environment's input;
     # other tools ignore it.
     def self.call(argv, environment: Command::Environment.current, table: TABLE)
-      name = find(argv.empty? ? ["help"] : argv, table)
+      dispatch(argv.empty? ? ["help"] : argv, table, environment) do
+        "plastic: no command #{argv.first(2).join(" ").inspect}; plastic help lists them"
+      end
+    end
+
+    # The whole of bin/plastic: run a shipped command, list the shipped
+    # commands for `plastic help`, and name a command that has no stage yet
+    # instead of blaming the words the owner typed.
+    def self.bin_call(argv, environment: Command::Environment.current, table: TABLE)
+      return list(argv, table, environment) if argv.empty? || %w[help --help -h].include?(argv.first)
+
+      dispatch(argv, table, environment) { "plastic #{argv.join(" ")} is not in this build yet; it lands with its stage" }
+    end
+
+    # Runs the command the words name, or prints the block's line and exits 2.
+    def self.dispatch(argv, table, environment)
+      name = find(argv, table)
       return tool(name, table).call(argv.drop(name.split.size), words: name, environment:) if name
 
-      environment.err.puts "plastic: no command #{argv.first(2).join(" ").inspect}; plastic help lists them"
+      environment.err.puts yield
       Command::USAGE
+    end
+    private_class_method :dispatch
+
+    # The shipped commands, one row each, as lines or as one document with --json.
+    def self.list(argv, table, environment)
+      printer = argv.include?("--json") ? JsonOutput : TextOutput
+      output = printer.new(out: environment.out, err: environment.err)
+      table.each { |name, (_, summary)| output.row(name, summary) }
+      output.flush
+      Command::OK
     end
   end
 end

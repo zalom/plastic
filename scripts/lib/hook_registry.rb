@@ -2,11 +2,17 @@
 # frozen_string_literal: true
 
 # HookRegistry: THE single source of truth for Plastic's hook registration
-# (intent 108, D7). Three consumers, none of which may hand-roll matchers:
-#   - InstallerCore#merge_claude_hooks builds settings.json entries from it
-#   - hooks/hooks.json (legacy plugin surface) is pinned to it by test
-#   - doctor's hooks_match_registry check compares live settings against it
-# Change registrations HERE and only here.
+# (intent 108, D7). InstallerCore#merge_claude_hooks and #merge_codex_hooks
+# build settings.json/hooks.json entries from it; nothing else may hand-roll
+# a matcher. Change registrations HERE and only here.
+#
+# Intent 397 cutover: session-start, savepoint, record, close, capture,
+# message-display, stop, and the codex-hook dispatcher are retired with the
+# legacy scripts that were their launchers (see RETIRED_HOOK_NAMES below for
+# the purge entries this drops). `events` keeps only check-update, whose
+# launcher (hooks/check-update) and target (scripts/select-update-target)
+# both still ship. Stage 3 (intent 398) adds the kernel's own hook resume
+# and hook record entries in their place.
 module HookRegistry
   module_function
 
@@ -30,87 +36,25 @@ module HookRegistry
     {
       "SessionStart" => [
         { "matcher" => "", "hooks" => [
-          { "name" => "session-start", "status" => "Loading Plastic context..." },
           { "name" => "check-update", "status" => "" },
-        ] },
-      ],
-      "PreCompact" => [
-        { "matcher" => "", "hooks" => [
-          { "name" => "savepoint", "status" => "Saving Plastic intent state..." },
-        ] },
-      ],
-      "PostToolUse" => [
-        { "matcher" => WRITE_MATCHER, "hooks" => [
-          { "name" => "record", "status" => "Recording Plastic session state..." },
-        ] },
-      ],
-      "SessionEnd" => [
-        { "matcher" => "", "hooks" => [
-          { "name" => "close", "status" => "Closing the Plastic session..." },
-        ] },
-      ],
-      "UserPromptSubmit" => [
-        { "matcher" => "", "hooks" => [
-          { "name" => "capture", "status" => "Capturing prompt into the session ledger..." },
-        ] },
-      ],
-      # This entry belongs to the Claude adapter half of Plastic's
-      # harness-agnostic-core / Claude-adapter split (intent 316a1, D3
-      # supersedes 316a's D6): MessageDisplay is not one of
-      # CODEX_LIVE_STATE_EVENTS, so codex_hooks_json (below) never picks it
-      # up; codex_hook_names stays exactly what it was (pinned by
-      # test/hook_registry_test.rb:82 and :110-111). Fires on every streamed
-      # chunk of every assistant message (D11); the launcher (hooks/message-
-      # display) decides with shell builtins and forks nothing on the common
-      # case, execing Ruby only for a candidate message.
-      "MessageDisplay" => [
-        { "matcher" => "", "hooks" => [
-          { "name" => "message-display", "status" => "" },
-        ] },
-      ],
-      # Continuation on Claude Code (intent 340b, G7c, n4, D5/D7): registered
-      # statically here, like every other hook, and decided at runtime by
-      # StopGate, which reads runner.stop_hook itself (default false, D9).
-      # Not one of CODEX_LIVE_STATE_EVENTS, CODEX_POST_HOOKS or
-      # CODEX_SESSION_END_HOOKS, so codex_hooks_json never picks it up and
-      # codex_hook_names stays at its pinned six (test/hook_registry_test.rb,
-      # test/codex_hooks_test.rb).
-      "Stop" => [
-        { "matcher" => "", "hooks" => [
-          { "name" => "stop", "status" => "" },
         ] },
       ],
     }
   end
 
-  # Codex registration (~/.codex/hooks.json, intent 102). Derived from `events`:
-  # the PostToolUse record hook collapses from Claude's multi-tool matcher onto
-  # Codex's single apply_patch tool (181 F4: apply_patch is Codex's sole
-  # file-mutation tool; tool_name always reports apply_patch), and the live-state
-  # events project through whole. No PreToolUse hook is registered since the
-  # call-budget guard was removed on 2026-09-24. Command invokes the
-  # codex-hook dispatcher with the hook name. Guide-settled shape [guide Part 3]:
-  # top-level {"hooks":{<Event>: [{"matcher","hooks":[{"type":"command","command",
-  # "statusMessage"}]}]}}, identical to Claude's shape, string command. Single
-  # source of truth (108 D7): any drift from `events` is a bug, pinned by test.
-  CODEX_POST_HOOKS = %w[record].freeze
+  # Codex registration (~/.codex/hooks.json, intent 102). Derived from `events`
+  # through the codex-hook dispatcher, deleted in the intent 397 cutover along
+  # with every name these three constants used to list (record, the three
+  # live-state events' hooks, close). Empty until stage 3 (intent 398) gives
+  # Codex its own hook resume and hook record entries; codex_hooks_json keeps
+  # running so the shape stays settled, it just has nothing to project yet.
+  CODEX_POST_HOOKS = [].freeze
 
-  # Live-state events registered WHOLE (intent 199): Codex's SessionStart/
-  # UserPromptSubmit/PreCompact already match Claude's shape exactly, one matcher
-  # group each ("", no tool to collapse onto), so every hook `events` lists under
-  # these three events projects straight through with no allowlist to keep in
-  # sync. A hook added to any of them on the Claude side registers for Codex
-  # automatically.
-  CODEX_LIVE_STATE_EVENTS = %w[SessionStart UserPromptSubmit PreCompact].freeze
+  # Live-state events registered WHOLE (intent 199): see CODEX_POST_HOOKS above.
+  CODEX_LIVE_STATE_EVENTS = [].freeze
 
-  # SessionEnd on Codex (intent 309): projected from its own constant, never as a fourth
-  # live-state event, because the dispatch differs. Codex kills a SessionEnd hook after
-  # 3 seconds, so scripts/codex-hook hands `close` to its launcher detached and returns at
-  # once instead of the synchronous relay the live-state hooks get. Codex ships both Stop
-  # and SessionEnd (codex-rs/hooks at rust-v0.149.1); the design uses SessionEnd on both
-  # harnesses. Like STATE_HOOKS, the dispatcher's list is hand-kept and cross-checked by
-  # test/hook_registry_test.rb.
-  CODEX_SESSION_END_HOOKS = %w[close].freeze
+  # SessionEnd on Codex (intent 309): see CODEX_POST_HOOKS above.
+  CODEX_SESSION_END_HOOKS = [].freeze
 
   def codex_hooks_json(dispatcher_path:)
     status_by_name = events.values.flatten.flat_map { |g| g["hooks"] }
@@ -120,18 +64,20 @@ module HookRegistry
         "command" => "\"#{dispatcher_path}\" #{name}",
         "statusMessage" => status_by_name[name].to_s }
     }
-    # Validate the Codex name against the single source of truth, `events`.
-    post_order = events["PostToolUse"].flat_map { |g| g["hooks"].map { |h| h["name"] } }
+    # Validate the Codex name against the single source of truth, `events`. An event
+    # with nothing left in `events` (every current CODEX_* list is empty, see above)
+    # reads as no names rather than a missing-key crash.
+    post_order = Array(events["PostToolUse"]).flat_map { |g| g["hooks"].map { |h| h["name"] } }
     post = (CODEX_POST_HOOKS & post_order).map { |n| cmd.call(n) }
 
     result = {
       "PostToolUse" => [{ "matcher" => "apply_patch", "hooks" => post }],
     }
     CODEX_LIVE_STATE_EVENTS.each do |event|
-      names = events[event].flat_map { |g| g["hooks"].map { |h| h["name"] } }
+      names = Array(events[event]).flat_map { |g| g["hooks"].map { |h| h["name"] } }
       result[event] = [{ "matcher" => "", "hooks" => names.map { |n| cmd.call(n) } }]
     end
-    end_order = events["SessionEnd"].flat_map { |g| g["hooks"].map { |h| h["name"] } }
+    end_order = Array(events["SessionEnd"]).flat_map { |g| g["hooks"].map { |h| h["name"] } }
     result["SessionEnd"] = [{ "matcher" => "", "hooks" => (CODEX_SESSION_END_HOOKS & end_order).map { |n| cmd.call(n) } }]
     result
   end
@@ -169,6 +115,7 @@ module HookRegistry
     qmd-search retrieval-gate model-instructions opus-manual
     continue future-intent-check auto-arm gate-check
     power-tools
+    session-start savepoint record close capture message-display stop
   ].freeze
 
   RETIRED_CLAUDE_LAUNCHERS = RETIRED_HOOK_NAMES.map { |n| "plastic-#{n}" }.freeze

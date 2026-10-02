@@ -106,18 +106,10 @@ class Doctrine305Test < Minitest::Test
     assert_includes index, "(reading-the-ledgers.md)"
   end
 
-  # subtraction_304_test's scan_files returns [] for a path that does not
-  # exist, so a deleted or renamed file in SCAN_ROOTS silently drops out of
-  # the removed-name scan instead of failing (review A4). Pin every entry to
-  # disk.
-  def test_subtraction_scan_roots_exist_on_disk
-    source = read(File.join(ROOT, "test", "subtraction_304_test.rb"))
-    match = source.match(/SCAN_ROOTS = %w\[(.*?)\]/m)
-    refute_nil match, "subtraction_304_test.rb must declare SCAN_ROOTS"
-    missing = match[1].split.reject { |rel| File.exist?(File.join(ROOT, rel)) }
-    assert_empty missing,
-      "SCAN_ROOTS entries missing on disk (the scan would silently skip them): #{missing.join(', ')}"
-  end
+  # test_subtraction_scan_roots_exist_on_disk was retired with
+  # subtraction_304_test.rb itself: the owner ruling of 2026-10-01 deleted
+  # the whole legacy test suite, subtraction_304_test.rb included, so there
+  # is no SCAN_ROOTS left on disk to pin.
 
   # --- guides, tutorial, README ----------------------------------------------
 

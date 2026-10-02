@@ -72,6 +72,12 @@ class OutputTest < Plastic::TestCase
     assert_equal "line\n", @out.string
   end
 
+  def test_json_keys_drop_the_colon_a_text_label_carries
+    output(json: true).row("wrote:", ["a"]).flush
+
+    assert_equal({ "wrote" => ["a"] }, JSON.parse(@out.string).fetch("result"))
+  end
+
   def test_json_keeps_raw_lines_under_output
     output(json: true).raw("line").row("id", "7").next_step("plastic next", because: "why").flush
 

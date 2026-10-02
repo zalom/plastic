@@ -8,13 +8,8 @@ require "minitest/autorun"
 # read the file, assert on its prose. A new file so it cannot collide with that one.
 class HarnessSupportDocsTest < Minitest::Test
   ROOT = File.expand_path("..", __dir__)
-  ENVELOPE = File.join(ROOT, "scripts", "lib", "apply_patch_envelope.rb")
   ADAPTERS_DOC = File.join(ROOT, "docs", "reference", "harness-adapters.md")
   README = File.join(ROOT, "README.md")
-
-  def envelope_text
-    File.read(ENVELOPE)
-  end
 
   def adapters_doc_text
     File.read(ADAPTERS_DOC)
@@ -31,12 +26,6 @@ class HarnessSupportDocsTest < Minitest::Test
     rest = text[start..]
     next_heading = rest.index("\n## ", 1)
     next_heading ? rest[0...next_heading] : rest
-  end
-
-  def test_parser_comment_no_longer_claims_the_grammar_is_unsourced
-    refute_includes envelope_text, "not primary-sourced"
-    refute_includes envelope_text, "the owner has none installed"
-    assert_includes envelope_text, "test/fixtures/codex-v4a-grammar.txt"
   end
 
   def test_adapter_doc_no_longer_claims_no_codex_installed

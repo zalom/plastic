@@ -9,6 +9,8 @@ require "digest"
 require "time"
 require "tmpdir"
 require_relative "hook_registry"
+require_relative "plastic/config"
+require_relative "plastic/hooks/entries"
 require_relative "agent_models"
 require_relative "harness_text"
 require_relative "compact_instructions"
@@ -362,14 +364,15 @@ class InstallerCore
     end
   end
 
-  # The command line (intent 363). Glob-derived for the reason screen_files is:
-  # a command is one row in scripts/lib/cli/table.rb plus one file, and a
-  # hand-written manifest would make it two files and a diff. The launcher
-  # bin/plastic requires scripts/lib/cli.rb by a relative path, so the whole
-  # subtree travels together or an installed copy LoadErrors on the first call.
+  # The kernel command line (intent 397 cutover). Glob-derived for the reason
+  # screen_files is: a command is one file under scripts/lib/plastic/commands,
+  # and a hand-written manifest would make it two files and a diff. The
+  # launcher bin/plastic requires scripts/lib/plastic.rb by a relative path,
+  # so the whole subtree travels together or an installed copy LoadErrors on
+  # the first call.
   def cli_files
     kernel = [File.join(package_root, "scripts", "lib", "plastic.rb")]
-    Dir.glob(File.join(package_root, "scripts", "lib", "{cli,rlm,plastic}", "**", "*.rb")).concat(kernel).each_with_object({}) do |path, acc|
+    Dir.glob(File.join(package_root, "scripts", "lib", "plastic", "**", "*.rb")).concat(kernel).each_with_object({}) do |path, acc|
       rel = path.sub("#{package_root}/", "")
       acc[rel] = rel
     end
@@ -395,253 +398,28 @@ class InstallerCore
       .merge(help_files)
   end
 
+  # Files copied into ~/.plastic on install/update. The kernel command tree, the
+  # templates and the hook launchers are glob-derived (cli_files, template_files,
+  # hook_files above); this hand-written set is what glob cannot find on its own:
+  # the installer chain itself (intent 397 cutover kept only the files bin/lib's
+  # context budget bench calls through scripts/install.rb), the launcher, and the
+  # three root files every install needs before any store exists.
   def hand_registered_files
     {
       "PLASTIC.md" => "PLASTIC.md",
       "deprecations.yml" => "deprecations.yml",
       "config_asks.yml" => "config_asks.yml",
-      "scripts/folgezettel-id" => "scripts/folgezettel-id",
-      "scripts/read-config" => "scripts/read-config",
-      "scripts/write-config" => "scripts/write-config",
-      "scripts/select-update-target" => "scripts/select-update-target",
-      "scripts/hook-session-start" => "scripts/hook-session-start",
-      "scripts/hook-capture" => "scripts/hook-capture",
-      "scripts/hook-record" => "scripts/hook-record",
-      "scripts/hook-close" => "scripts/hook-close",
-      "scripts/lib/ruby_probe.rb" => "scripts/lib/ruby_probe.rb",
-      "scripts/lib/agent_models.rb" => "scripts/lib/agent_models.rb",
-      "scripts/lib/config_asks.rb" => "scripts/lib/config_asks.rb",
-      "scripts/lib/release_guard.rb" => "scripts/lib/release_guard.rb",
-      "scripts/lib/index_entry.rb" => "scripts/lib/index_entry.rb",
-      "scripts/lib/project_config.rb" => "scripts/lib/project_config.rb",
-      "scripts/lib/savepoint.rb" => "scripts/lib/savepoint.rb",
-      "scripts/lib/untouched_scaffold.rb" => "scripts/lib/untouched_scaffold.rb",
-      "scripts/lib/guarded_append.rb" => "scripts/lib/guarded_append.rb",
-      "scripts/lib/node_ledger.rb" => "scripts/lib/node_ledger.rb",
-      "scripts/lib/node_input_compatibility.rb" => "scripts/lib/node_input_compatibility.rb",
-      "scripts/lib/node_progress.rb" => "scripts/lib/node_progress.rb",
-      "scripts/node-transition" => "scripts/node-transition",
-      "scripts/lib/arm.rb" => "scripts/lib/arm.rb",
-      "scripts/lib/lock.rb" => "scripts/lib/lock.rb",
-      "scripts/plastic-lock" => "scripts/plastic-lock",
-      "scripts/lib/hook_registry.rb" => "scripts/lib/hook_registry.rb",
-      "scripts/lib/compact_instructions.rb" => "scripts/lib/compact_instructions.rb",
-      "scripts/lib/version_number.rb" => "scripts/lib/version_number.rb",
-      "scripts/lib/cli.rb" => "scripts/lib/cli.rb",
       "bin/plastic" => "bin/plastic",
-      "scripts/agent-report" => "scripts/agent-report",
-      "scripts/lib/insights.rb" => "scripts/lib/insights.rb",
-      "scripts/insight-append" => "scripts/insight-append",
-      "scripts/lib/worktree.rb" => "scripts/lib/worktree.rb",
-      "scripts/lib/boot_banner.rb" => "scripts/lib/boot_banner.rb",
-      "scripts/lib/roadmap_savepoint.rb" => "scripts/lib/roadmap_savepoint.rb",
-      "scripts/roadmap-savepoint" => "scripts/roadmap-savepoint",
-      "scripts/lib/roadmap_queue.rb" => "scripts/lib/roadmap_queue.rb",
-      "scripts/roadmap-next" => "scripts/roadmap-next",
-      "scripts/lib/intent_validator.rb" => "scripts/lib/intent_validator.rb",
-      "scripts/lib/graph_rebuild.rb" => "scripts/lib/graph_rebuild.rb",
-      "scripts/lib/store_discovery.rb" => "scripts/lib/store_discovery.rb",
-      "scripts/lib/store_layout.rb" => "scripts/lib/store_layout.rb",
-      "scripts/lib/stores_move.rb" => "scripts/lib/stores_move.rb",
-      "scripts/lib/sqlite.rb" => "scripts/lib/sqlite.rb",
-      "scripts/lib/search_index.rb" => "scripts/lib/search_index.rb",
-      "scripts/lib/store_sync.rb" => "scripts/lib/store_sync.rb",
-      "scripts/lib/work_graph.rb" => "scripts/lib/work_graph.rb",
-      "scripts/lib/reference_archive.rb" => "scripts/lib/reference_archive.rb",
-      "scripts/lib/backup.rb" => "scripts/lib/backup.rb",
-      "scripts/lib/frontmatter_writer.rb" => "scripts/lib/frontmatter_writer.rb",
-      "scripts/lib/links_projection.rb" => "scripts/lib/links_projection.rb",
-      "scripts/lib/links_section.rb" => "scripts/lib/links_section.rb",
-      "scripts/lib/link_suggestions.rb" => "scripts/lib/link_suggestions.rb",
-      "scripts/project-links" => "scripts/project-links",
-      "scripts/link-suggest" => "scripts/link-suggest",
-      "scripts/rebuild-graph" => "scripts/rebuild-graph",
-      "scripts/lib/restore_intent_v1.rb" => "scripts/lib/restore_intent_v1.rb",
-      "scripts/restore-intent-v1" => "scripts/restore-intent-v1",
-"scripts/lib/revisions_writer.rb" => "scripts/lib/revisions_writer.rb",
-"scripts/maintenance-run" => "scripts/maintenance-run",
-      "scripts/validate-intent" => "scripts/validate-intent",
-      "scripts/new-intent" => "scripts/new-intent",
-      "scripts/end-intent" => "scripts/end-intent",
-      "scripts/lib/apply_patch_envelope.rb" => "scripts/lib/apply_patch_envelope.rb",
-      "scripts/lib/harness_text.rb" => "scripts/lib/harness_text.rb",
-      "scripts/codex-hook" => "scripts/codex-hook",
-      "scripts/spawn-preamble" => "scripts/spawn-preamble",
-      "scripts/lib/report_screen.rb" => "scripts/lib/report_screen.rb",
-      "scripts/report-screen" => "scripts/report-screen",
-      "scripts/savepoint-note" => "scripts/savepoint-note",
-      "scripts/lib/store_provisioning.rb" => "scripts/lib/store_provisioning.rb",
-      "scripts/provision-project-store" => "scripts/provision-project-store",
-      "scripts/lib/project_validator.rb" => "scripts/lib/project_validator.rb",
-      "scripts/validate-project" => "scripts/validate-project",
+      "scripts/install.rb" => "scripts/install.rb",
       "scripts/lib/installer_core.rb" => "scripts/lib/installer_core.rb",
       "scripts/lib/preflight.rb" => "scripts/lib/preflight.rb",
-      "scripts/lib/release_channels.rb" => "scripts/lib/release_channels.rb",
-      "scripts/install.rb" => "scripts/install.rb",
-      "scripts/update.rb" => "scripts/update.rb",
-      "scripts/uninstall.rb" => "scripts/uninstall.rb",
-      "scripts/rollback.rb" => "scripts/rollback.rb",
-      "scripts/lib/outcome_guard.rb" => "scripts/lib/outcome_guard.rb",
-      "scripts/lib/scaffold_intent.rb" => "scripts/lib/scaffold_intent.rb",
-      "scripts/lib/backfill_intent.rb" => "scripts/lib/backfill_intent.rb",
-      "scripts/scaffold-intent" => "scripts/scaffold-intent",
-      "scripts/lib/verify_intent.rb" => "scripts/lib/verify_intent.rb",
-      "scripts/verify-intent" => "scripts/verify-intent",
-      "scripts/lib/exec_worktree.rb" => "scripts/lib/exec_worktree.rb",
-      "scripts/exec-worktree" => "scripts/exec-worktree",
-      "scripts/lib/session_usage.rb" => "scripts/lib/session_usage.rb",
-      "scripts/session-usage" => "scripts/session-usage",
-      "scripts/doctor.rb" => "scripts/doctor.rb",
-      "scripts/lib/doctor_core.rb" => "scripts/lib/doctor_core.rb",
-      "scripts/lib/hook_replay.rb" => "scripts/lib/hook_replay.rb",
-      "scripts/lib/rule_catalog.rb" => "scripts/lib/rule_catalog.rb",
-      "scripts/lib/doctor_exclusions.rb" => "scripts/lib/doctor_exclusions.rb",
-      "scripts/lib/doctor_session_ledger.rb" => "scripts/lib/doctor_session_ledger.rb",
-      "scripts/skill-lint" => "scripts/skill-lint",
-      "scripts/lib/skill_lint.rb" => "scripts/lib/skill_lint.rb",
-      "scripts/feedback-report" => "scripts/feedback-report",
-      "scripts/lib/feedback_report.rb" => "scripts/lib/feedback_report.rb",
-      "scripts/append-ledger" => "scripts/append-ledger",
-      "scripts/lib/session_ledger.rb" => "scripts/lib/session_ledger.rb",
-      "scripts/session-commit" => "scripts/session-commit",
-      "scripts/file-session-intent" => "scripts/file-session-intent",
-      "scripts/promote-session-item" => "scripts/promote-session-item",
-      "scripts/lib/session_backfill.rb" => "scripts/lib/session_backfill.rb",
-      "scripts/lib/session_close.rb" => "scripts/lib/session_close.rb",
-      "scripts/lib/pull_request_templates.rb" => "scripts/lib/pull_request_templates.rb",
-      "scripts/lib/handoff.rb" => "scripts/lib/handoff.rb",
-      "scripts/lib/day_summary.rb" => "scripts/lib/day_summary.rb",
-      "scripts/write-handoff" => "scripts/write-handoff",
-      "scripts/day-summary" => "scripts/day-summary",
-      "scripts/lib/intent_screen.rb" => "scripts/lib/intent_screen.rb",
-      "scripts/intent-screen" => "scripts/intent-screen",
-      "scripts/hook-savepoint" => "scripts/hook-savepoint",
-      # Intent 316a: hooks/* only glob-copies scripts/*, never scripts/lib/*
-      # (see hook_files above), so the two lib files a require_relative
-      # between themselves are unguarded there — these three literal
-      # entries are their only protection (test/install_sync_test.rb:23-29
-      # greps installer_core.rb's own source text for "scripts/<name>").
-      "scripts/lib/intent_screen_ansi.rb" => "scripts/lib/intent_screen_ansi.rb",
-      "scripts/lib/screen_paint.rb" => "scripts/lib/screen_paint.rb",
-      "scripts/lib/message_display.rb" => "scripts/lib/message_display.rb",
-      "scripts/hook-message-display" => "scripts/hook-message-display",
-      # Intent 334 (G1): the node file and graph.md library, plus its
-      # validator and CLI (327 D40/D41).
-      "scripts/lib/graph_edges.rb" => "scripts/lib/graph_edges.rb",
-      "scripts/lib/node_file.rb" => "scripts/lib/node_file.rb",
-      "scripts/lib/atomic_write.rb" => "scripts/lib/atomic_write.rb",
-      "scripts/lib/graph_file.rb" => "scripts/lib/graph_file.rb",
-      "scripts/lib/work_graph_validator.rb" => "scripts/lib/work_graph_validator.rb",
-      "scripts/validate-work-graph" => "scripts/validate-work-graph",
-      # Intent 335a: every id an intent has ever seen, so a deleted node's id
-      # is never reissued to a new node with the dead one's ledger history.
-      "scripts/lib/node_ids.rb" => "scripts/lib/node_ids.rb",
-      # Intent 339 (G6): the generated outcome.md library and its CLI.
-      "scripts/lib/outcome_report.rb" => "scripts/lib/outcome_report.rb",
-      "scripts/outcome-report" => "scripts/outcome-report",
-      # Intent 336 (G3): ReadySet, the one function that says what may run
-      # next, and its CLI. node-transition requires the lib as of n5;
-      # registered here (rather than waiting for n8's own CLI/doc unit) so
-      # test/install_sync_test.rb stays green across every intermediate unit.
-      "scripts/lib/ready_set.rb" => "scripts/lib/ready_set.rb",
-      "scripts/ready-set" => "scripts/ready-set",
-      # Intent 337 (G4): the roadmap graph model and its tree renderer,
-      # registered as they land (test/installer_core_test.rb requires every
-      # scripts/lib file to be manifest-covered as soon as it exists, not
-      # only once the CLI that ships it arrives at n4).
-      "scripts/lib/roadmap_graph.rb" => "scripts/lib/roadmap_graph.rb",
-      "scripts/lib/graph_tree.rb" => "scripts/lib/graph_tree.rb",
-      "scripts/lib/index_projection.rb" => "scripts/lib/index_projection.rb",
-      "scripts/lib/roadmap_render.rb" => "scripts/lib/roadmap_render.rb",
-      "scripts/lib/roadmap_migration.rb" => "scripts/lib/roadmap_migration.rb",
-      "scripts/roadmap-graph" => "scripts/roadmap-graph",
-      "scripts/index-projection" => "scripts/index-projection",
-      # Intent 338 (G5): the node input command - the trust-boundary wrapper,
-      # the five-block gatherer/assembler, and the CLI 340's runner calls.
-      "scripts/lib/data_boundary.rb" => "scripts/lib/data_boundary.rb",
-      "scripts/lib/node_input.rb" => "scripts/lib/node_input.rb",
-      "scripts/node-input" => "scripts/node-input",
-      # Intent 342 (G9): the backward shim that presents actions/*.md as a
-      # node graph for any legacy intent, so WorkGraphValidator can require
-      # it without going red on contact with install_sync_test.
-      "scripts/lib/action_graph_shim.rb" => "scripts/lib/action_graph_shim.rb",
-      # Intent 340 (G7, n1): the runner command - the subcommand table over
-      # the declared node graph, its shared context (RunnerCore), and the
-      # installed-core integrity check (CoreIntegrity) the runner's trust
-      # boundary and doctor will both call.
-      "scripts/runner" => "scripts/runner",
-      "scripts/lib/runner_core.rb" => "scripts/lib/runner_core.rb",
-      "scripts/lib/core_integrity.rb" => "scripts/lib/core_integrity.rb",
-      # Intent 340 (G7, n2): the merge abort, the reclaim, and the extension -
-      # the first thing every `step` does, routed from scripts/runner's `sweep`
-      # verb.
-      "scripts/lib/runner_sweep.rb" => "scripts/lib/runner_sweep.rb",
-      # Intent 340 (G7, n3): a work node's own git worktree, cut from the
-      # intent branch tip, merged back into the intent branch, and swept once
-      # its node is terminal.
-      "scripts/lib/node_worktree.rb" => "scripts/lib/node_worktree.rb",
-      # Intent 340 (G7, n4): the return schema (NodeReturn) and the six-check
-      # gate (RunnerAbsorb) that turns one executor return into exactly one
-      # node ledger transition, required lazily by scripts/runner's `step`.
-      "scripts/lib/node_return.rb" => "scripts/lib/node_return.rb",
-      "scripts/lib/runner_absorb.rb" => "scripts/lib/runner_absorb.rb",
-      # Intent 340 (G7, n5): validation, policy, leases and the dispatch plan
-      # - RunnerPolicy (the kind table) and RunnerDispatch, required lazily
-      # by scripts/runner's `step`.
-      "scripts/lib/runner_policy.rb" => "scripts/lib/runner_policy.rb",
-      "scripts/lib/runner_dispatch.rb" => "scripts/lib/runner_dispatch.rb",
-      # Intent 340b (G7c, n1): the harness seam - HarnessAdapter, required
-      # by scripts/lib/runner_dispatch.rb and by scripts/runner's `step`
-      # directly.
-      "scripts/lib/harness_adapter.rb" => "scripts/lib/harness_adapter.rb",
-      # Intent 340b (G7c, n6): the Codex leg - CodexAdapter, the `codex exec`
-      # argv and the sandbox per kind. Intent 391: printed, never run.
-      "scripts/lib/codex_adapter.rb" => "scripts/lib/codex_adapter.rb",
-      # Intent 340b (G7c, n3): the engine deny rule - the frozen permissions.deny
-      # entry list, merged into settings.json at install and removed surgically
-      # at uninstall.
+      "scripts/lib/store_layout.rb" => "scripts/lib/store_layout.rb",
+      "scripts/lib/hook_registry.rb" => "scripts/lib/hook_registry.rb",
+      "scripts/lib/agent_models.rb" => "scripts/lib/agent_models.rb",
+      "scripts/lib/harness_text.rb" => "scripts/lib/harness_text.rb",
+      "scripts/lib/compact_instructions.rb" => "scripts/lib/compact_instructions.rb",
       "scripts/lib/engine_permissions.rb" => "scripts/lib/engine_permissions.rb",
-      # Intent 340b (G7c, n4): the Stop gate, the shared ActiveDelivery walk
-      # it and the PreCompact hand-off both call, and hook-stop, the Stop
-      # hook body scripts/hook-stop's launcher (hooks/stop) relays into.
-      "scripts/lib/stop_gate.rb" => "scripts/lib/stop_gate.rb",
-      "scripts/lib/active_delivery.rb" => "scripts/lib/active_delivery.rb",
-      "scripts/hook-stop" => "scripts/hook-stop",
-      "scripts/meter-watch" => "scripts/meter-watch",
-      "scripts/lib/meter_watch.rb" => "scripts/lib/meter_watch.rb",
-      # Intent 340 (G7, n6): answer (closes a decision node or unparks a
-      # work node parked at needs_decision), proposals (mints ids for what
-      # an executor proposed), and rewind (resets the intent branch to a
-      # node's own commit and respins it) - routed from scripts/runner's
-      # `answer` and `rewind` verbs.
-      "scripts/lib/runner_answer.rb" => "scripts/lib/runner_answer.rb",
-      "scripts/lib/runner_proposals.rb" => "scripts/lib/runner_proposals.rb",
-      "scripts/lib/runner_rewind.rb" => "scripts/lib/runner_rewind.rb",
-      # Intent 343 (G10, n1): the ledger reader - GraphMeasure.read turns one
-      # intent directory into one frozen measurement record. No CLI yet
-      # (scripts/graph-measure ships at n2); registered here so it is never
-      # a lib that exists on disk but never reaches an install.
-      "scripts/lib/graph_measure.rb" => "scripts/lib/graph_measure.rb",
-      # Intent 343 (G10, n2): the graph-measure command - the subcommand
-      # table over the ledger reader, and the two renderers (text, JSON)
-      # over the one record it returns.
-      "scripts/graph-measure" => "scripts/graph-measure",
-      "scripts/lib/graph_measure_report.rb" => "scripts/lib/graph_measure_report.rb",
-      # Intent 343 (G10, n4): the `budget` verb - whether the `budget:` a
-      # node's envelope declares (327 C19) is a ceiling that ever actually
-      # held, read from the ledger and the real input files.
-      "scripts/lib/graph_measure_budget.rb" => "scripts/lib/graph_measure_budget.rb",
-      # Intent 343 (G10, n5): the `cohorts` verb's model section - the store
-      # walk and whether a recorded model= still matches what config
-      # resolves today through RunnerPolicy.
-      "scripts/lib/graph_measure_models.rb" => "scripts/lib/graph_measure_models.rb",
-      # Intent 343 (G10, n6): the rest of the `cohorts` verb - approve-then-
-      # fix per verify model, hop on versus off, delivery latency, the
-      # evidence bar, and the two concurrency ceilings.
-      "scripts/lib/graph_measure_cohorts.rb" => "scripts/lib/graph_measure_cohorts.rb",
-      # Intent 340a (G7b, n1): the delivery watch - one tick over disk truth,
-      # stalled and done-unreported classification, no CLI and no dispatch.
-      "scripts/lib/runner_watch.rb" => "scripts/lib/runner_watch.rb",
+      "scripts/lib/version_number.rb" => "scripts/lib/version_number.rb"
     }
   end
 
@@ -1286,6 +1064,17 @@ class InstallerCore
     s.gsub(/[\x00-\x08\x0b\x0c\x0e-\x1f]/) { |c| format('\u%04X', c.ord) }
   end
 
+  # The kernel's own hook groups: hook resume on SessionStart, hook record on
+  # Stop and SessionEnd. Written before the registry's groups, because the
+  # entries treat the old check-update launcher as stale and the registry adds
+  # it back.
+  def kernel_hook_entries
+    Plastic::Hooks::Entries.new(command: File.join(plastic_home, "bin", "plastic"),
+                                config: Plastic::Config.new(plastic_home), launchers: {})
+  end
+
+  def statusline_on? = Plastic::Config.new(plastic_home).flag(["statusline"], default: true)
+
   def codex_dispatcher_path
     File.join(plastic_home, "scripts", "codex-hook")
   end
@@ -1302,6 +1091,8 @@ class InstallerCore
     hooks = data["hooks"] ||= {}
     removed = purge_stale_codex_hooks(hooks)
     report_removed_hook_entries(removed, "hooks.json")
+    data = kernel_hook_entries.codex(data)
+    hooks = data["hooks"]
     plastic = HookRegistry.codex_hooks_json(dispatcher_path: codex_dispatcher_path)
     plastic.each do |event, groups|
       hooks[event] ||= []
@@ -1688,6 +1479,8 @@ class InstallerCore
     removed = purge_stale_plastic_hooks(hooks)
     report_removed_hook_entries(removed, "settings.json")
     report_reserved_prefix_hooks(hooks)
+    settings = kernel_hook_entries.claude(settings)
+    hooks = settings["hooks"]
 
     # Single source of truth (intent 108, D7): registrations live in
     # HookRegistry; this merge only translates them into settings.json.
@@ -1722,7 +1515,7 @@ class InstallerCore
       File.write(File.join(cache_dir, "original-statusline.json"), JSON.pretty_generate(existing_status))
     end
 
-    settings["statusLine"] = { "type" => "command", "command" => "#{hook_dir}/plastic-statusline" } if choice == :plastic
+    settings["statusLine"] = { "type" => "command", "command" => "#{hook_dir}/plastic-statusline" } if choice == :plastic && statusline_on?
 
     # No plugin/marketplace registration: skills are flat personal skills
     # (plastic-<name>/) discovered directly from ~/.claude/skills.

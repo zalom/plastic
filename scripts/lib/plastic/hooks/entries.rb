@@ -32,7 +32,8 @@ module Plastic
       def claude(settings)
         rewritten = with_events(settings, "claude-code")
         hooks = rewritten["hooks"]
-        hooks["MessageDisplay"] = [*hooks["MessageDisplay"], *screens_group]
+        display = [*hooks["MessageDisplay"], *screens_group]
+        display.empty? ? hooks.delete("MessageDisplay") : hooks["MessageDisplay"] = display
         status_line(rewritten)
       end
 
@@ -74,7 +75,7 @@ module Plastic
 
       def screens_group = screen?(:screens) ? [group(%("#{@launchers[:screens]}"))] : []
 
-      def screen?(key) = @config.flag([key.to_s], default: true)
+      def screen?(key) = @launchers.key?(key) && @config.flag([key.to_s], default: true)
     end
   end
 end
