@@ -10,6 +10,7 @@ require_relative "roadmap_writer"
 require_relative "roadmap_state"
 require_relative "archive_writer"
 require_relative "backup_writer"
+require_relative "migrate_writer"
 require_relative "session_writer"
 require_relative "printer"
 require_relative "prints"
@@ -111,6 +112,13 @@ module Plastic
         row = BackupWriter.new(File.dirname(home_db.path), session: @session).call
         home_db.transaction { |batch| batch.put(:backups, row, statement: :insert) }
         row
+      end
+
+      # Imports every legacy store under the home into rows. Returns one
+      # MigrateWriter::StoreReport per store found.
+      def migrate_stores(mode)
+        home = File.dirname(@databases.fetch(:home).path)
+        MigrateWriter.new(home, mode:, session: @session).call
       end
 
       private

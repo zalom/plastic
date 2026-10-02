@@ -23,6 +23,8 @@ module Plastic
       :code_archive_intent, :code_restore_intent,
       # Backups: one gzipped tar of every database on the machine.
       :code_backup, :code_backup_list,
+      # Migration: importing every legacy store under a home into rows.
+      :code_migrate_stores,
       # Work graph: building and moving the nodes and edges of one intent.
       :code_add_node, :code_remove_node, :code_add_edge, :code_remove_edge,
       :code_claim_node, :code_release_node, :code_done_node, :code_fail_node, :code_park_node, :code_answer_node

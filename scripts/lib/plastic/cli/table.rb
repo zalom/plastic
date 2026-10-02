@@ -21,6 +21,7 @@ module Plastic
       "intent restore" => ["Commands::IntentRestore", "Print an archived intent's folder back from its rows"],
       "backup" => ["Commands::Backup", "Pack home.db and every store's three databases into one archive"],
       "backup list" => ["Commands::BackupList", "List every backup, flagging a missing or changed file"],
+      "migrate stores" => ["Commands::MigrateStores", "Import every legacy store under the home into rows"],
 
       # Work graph
       "node add" => ["Commands::NodeAdd", "Add a node to an intent's work graph"],
