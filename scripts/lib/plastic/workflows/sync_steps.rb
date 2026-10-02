@@ -46,7 +46,7 @@ module Plastic
         sets :failure, :conflicts, :merging, :lines
         plan_steps(direction)
         apply_steps(direction)
-        outcome :done, because: NAMES.fetch(direction)
+        outcome :done, offers: "plastic next", because: NAMES.fetch(direction)
       end
 
       private
