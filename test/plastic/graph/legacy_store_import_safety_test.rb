@@ -1,14 +1,16 @@
 # frozen_string_literal: true
 
-require "minitest/mock"
 require_relative "../../test_helper"
+require_relative "../../test_helpers/method_replacement"
 require_relative "../../../scripts/lib/plastic"
 require_relative "../../../scripts/lib/plastic/graph"
 
 class LegacyStoreImportSafetyTest < Minitest::Test
+  include MethodReplacement
+
   def test_a_failed_snapshot_does_not_remove_the_source
     with_importer do |writer, folder|
-      FileUtils.stub(:cp_r, method(:fail_snapshot)) do
+      with_replacement(FileUtils, :cp_r, method(:fail_snapshot)) do
         error = assert_raises(Plastic::Invalid) { writer.call }
         assert_includes error.message, "snapshot full"
       end
@@ -28,7 +30,7 @@ class LegacyStoreImportSafetyTest < Minitest::Test
   def test_failed_recovery_keeps_the_snapshot_and_reports_its_path
     with_importer do |_writer, folder|
       rollback = Plastic::Graph::ImportRollback.new(folder.root)
-      File.stub(:rename, refuse_recovery(folder.root)) do
+      with_replacement(File, :rename, refuse_recovery(folder.root)) do
         error = assert_raises(Plastic::Invalid) { rollback.call { damage(folder) } }
         assert_recoverable(folder, error)
       end
