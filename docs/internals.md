@@ -467,6 +467,11 @@ brief`, `status`, and `next`. See [architecture](architecture.md#the-work-graph)
 and edge state machine and the ruling/spec mechanics; this section covers the four read
 commands stage 4 added on top of them.
 
+`StartAuto.delivery_started?` checks both active status and a live auto lock held by the
+calling session before skipping the write. The foreign live-lock gate still runs first.
+`AddEdge` and `RemoveEdge` clear a failed result before retrying the write. Their gates
+still report why an edge could not be added or removed.
+
 `Commands::IntentShow` and `Commands::IntentBrief` are kernel routines (`workflow
 :code_show_intent` and `:code_show_brief`): each refuses (exit 1) an unknown intent id through
 a `gate`, then a `read` step prints from `context.retrieval` alone, so neither command writes.

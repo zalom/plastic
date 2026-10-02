@@ -76,6 +76,54 @@ class AutoStartTest < Plastic::TestCase
     assert_includes result.err, "no intent 9 in this store"
   end
 
+  def active_intent
+    intent = open_intent
+    write_spec(intent, "# Spec\n\n## Done criteria\n- ships\n")
+    store_graphs.work.activate_intent(intent.intent_id)
+    intent
+  end
+
+  def expire_lock
+    store_graphs.databases.fetch(:home).transaction do |batch|
+      batch.add("UPDATE locks SET renewed_at = '2000-01-01T00:00:00Z'")
+    end
+  end
+
+  def test_an_active_intent_without_a_lock_takes_one
+    intent = active_intent
+
+    result = call(intent.intent_id)
+
+    lock = retrieval.lock(intent.intent_id)
+
+    assert_equal 0, result.code
+    assert_equal ["s-1", "auto", true], [lock&.session_id, lock&.mode, lock&.live?]
+  end
+
+  def test_an_active_intent_with_an_expired_foreign_lock_takes_it
+    intent = active_intent
+    store_graphs.work.take_lock(intent.intent_id, session_id: "s-2", mode: "auto")
+    expire_lock
+
+    result = call(intent.intent_id)
+
+    lock = retrieval.lock(intent.intent_id)
+
+    assert_equal 0, result.code
+    assert_equal "s-1", lock.session_id
+    assert_predicate lock, :live?
+  end
+
+  def test_an_active_intent_with_a_live_foreign_lock_refuses
+    intent = active_intent
+    store_graphs.work.take_lock(intent.intent_id, session_id: "s-2", mode: "auto")
+
+    result = call(intent.intent_id)
+
+    assert_equal 3, result.code
+    assert_equal "s-2", store_graphs.retrieval.lock(intent.intent_id).session_id
+  end
+
   def test_a_done_intent_refuses
     open_intent
     store_graphs.databases.fetch(:work).transaction do |batch|
