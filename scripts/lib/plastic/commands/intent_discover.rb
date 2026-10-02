@@ -32,7 +32,9 @@ module Plastic
       end
 
       def manifest
-        { intent_id: parsed.fetch(:intent_id), query: parsed.fetch(:terms), scope: sources, candidates: candidates }
+        source_scope = sources
+        { intent_id: parsed.fetch(:intent_id), query: parsed.fetch(:terms), scope: source_scope, candidates: candidates,
+          workflow: ExternalAgentWorkflow.retrieval_handoff(intent_id: parsed.fetch(:intent_id), terms: parsed.fetch(:terms), sources: source_scope) }
       end
 
       def sources

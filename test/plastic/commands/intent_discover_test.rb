@@ -24,19 +24,37 @@ class IntentDiscoverTest < Plastic::TestCase
     assert_equal 0, result.code
     document = JSON.parse(result.out)
     manifest = document.fetch("result").fetch("discovery")
+
+    assert_discovery(manifest, result)
+  end
+
+  private
+
+  def assert_discovery(manifest, result)
     assert_equal "1", manifest.fetch("intent_id")
     assert_equal "evidence", manifest.fetch("query")
     assert_equal %w[global other], manifest.fetch("scope")
     assert_equal %w[global other], manifest.fetch("candidates").map { |candidate| candidate.fetch("store") }
+    assert_candidates(manifest)
+    assert_workflow(manifest)
+    assert_persisted_manifest(manifest, result)
+  end
+
+  def assert_candidates(manifest)
     assert manifest.fetch("candidates").all? { |candidate| candidate.key?("uri") && candidate.key?("revision") && candidate.key?("archived") }
-    assert_equal({ "search" => "plastic search evidence --source-project global --source-project other",
-      "evidence" => "plastic document get REF", "architecture" => "external architecture provider records coverage and limitations",
-      "context" => "plastic intent context 1 --from FILE" }, manifest.fetch("workflow"))
+  end
+
+  def assert_workflow(manifest)
+    expected = { "search" => "plastic search evidence --source-project global --source-project other", "evidence" => "plastic document get REF",
+                 "architecture" => "external architecture provider records coverage and limitations", "context" => "plastic intent context 1 --from FILE" }
+
+    assert_equal expected, manifest.fetch("workflow")
+  end
+
+  def assert_persisted_manifest(manifest, result)
     assert_equal manifest, JSON.parse(File.read(store_path("discovery/1.json")))
     assert_equal "plastic intent context 1 --from FILE --project global", JSON.parse(result.out).fetch("next")
   end
-
-  private
 
   def write_document(store, body)
     graphs = Plastic::Graph.open(home: @plastic_home, store:)
