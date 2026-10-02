@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
+require_relative "../../../scripts/lib/plastic/graph/evidence_text"
 
 class EvidenceTextTest < Plastic::TestCase
   def test_extracts_readable_markup_and_rich_text_without_hidden_syntax
