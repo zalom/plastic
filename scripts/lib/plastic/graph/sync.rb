@@ -52,7 +52,7 @@ module Plastic
 
       private
 
-      def reader = Reader.new(@folder, known_intents, @retrieval.origin_id)
+      def reader = Reader.new(@folder, known_intents, @retrieval.origin_id, retrieval: @retrieval)
 
       # The work graph first, so a new intent's row is in place before its files.
       def write_reads(reads)
