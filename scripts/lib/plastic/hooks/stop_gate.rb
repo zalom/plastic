@@ -2,11 +2,12 @@
 
 module Plastic
   module Hooks
-    # Whether `hook record` blocks the stop event. It blocks only when the
-    # harness says the stop hook is already active, `runner.stop_hook` is
-    # armed, this session holds a live delivery lock of this store in auto
-    # mode, and that intent has a node ready to run (review A11: it never
-    # fires the stop itself, only a repeated one). Any error permits.
+    # Whether `hook record` blocks the stop event. It blocks on the first
+    # stop when `runner.stop_hook` is armed, this session holds a live
+    # delivery lock of this store in auto mode, and that intent has a node
+    # ready to run. Once the harness reports `stop_hook_active`, a stop this
+    # hook already blocked, it permits, so the session can always end. Any
+    # error permits.
     class StopGate
       def initialize(event:, stop_hook:, retrieval:, session_id:)
         @event = event
@@ -28,7 +29,7 @@ module Plastic
       private
 
       def block?
-        @event[:stop_hook_active] == true && @stop_hook && lock && @retrieval.ready_nodes(lock.intent_id).any?
+        @event[:stop_hook_active] != true && @stop_hook && lock && @retrieval.ready_nodes(lock.intent_id).any?
       end
 
       def lock

@@ -7,9 +7,7 @@ module Plastic
     # Answers a parked node's question, moving it back to open with its
     # retries reset.
     class NodeAnswer < Routine
-      subject :intent_id, :id
-      argument :intent_id, label: "ID", text: "the intent"
-      argument :id, label: "NODE", text: "the node"
+      node_subject
       option :answer, switch: "--answer TEXT", text: "the owner's answer"
       writes :work
 

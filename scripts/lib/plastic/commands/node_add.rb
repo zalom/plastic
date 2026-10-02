@@ -6,8 +6,7 @@ module Plastic
   module Commands
     # Adds one node to an intent's work graph, open and ready.
     class NodeAdd < Routine
-      subject :intent_id
-      argument :intent_id, label: "ID", text: "the intent"
+      intent_subject
       argument :title, label: "TITLE", text: "what the node is for"
       option :criterion, switch: "--criterion TEXT", text: "what done means"
       option :input, switch: "--input PATH", text: "a file the node reads"

@@ -9,7 +9,7 @@ class StopGateTest < Plastic::TestCase
   def retrieval = store_graphs.retrieval
 
   def make_ready_node(intent_id)
-    put(:work, :nodes, { intent_id:, id: "a", state: "pending" })
+    put(:work, :nodes, { intent_id:, id: "a", state: "open" })
   end
 
   def take_lock(intent_id, mode: "auto", live: true)
@@ -19,7 +19,7 @@ class StopGateTest < Plastic::TestCase
 
   def put(key, table, row) = store_graphs.databases[key].transaction { |batch| batch.put(table, row) }
 
-  def gate(event: { stop_hook_active: true }, stop_hook: true) = StopGate.new(event:, stop_hook:, retrieval:, session_id: "s-1")
+  def gate(event: {}, stop_hook: true) = StopGate.new(event:, stop_hook:, retrieval:, session_id: "s-1")
 
   def test_blocks_when_every_condition_holds
     take_lock("1")
@@ -31,11 +31,11 @@ class StopGateTest < Plastic::TestCase
     assert_includes decision["reason"], "intent 1 still has ready work"
   end
 
-  def test_permits_when_stop_hook_active_is_missing
+  def test_permits_once_the_harness_reports_the_stop_hook_active
     take_lock("1")
     make_ready_node("1")
 
-    assert_nil gate(event: {}).decision
+    assert_nil gate(event: { stop_hook_active: true }).decision
   end
 
   def test_permits_when_the_config_flag_is_off
@@ -65,7 +65,7 @@ class StopGateTest < Plastic::TestCase
   end
 
   def test_an_error_permits
-    broken = StopGate.new(event: { stop_hook_active: true }, stop_hook: true, retrieval: nil, session_id: "s-1")
+    broken = StopGate.new(event: {}, stop_hook: true, retrieval: nil, session_id: "s-1")
 
     assert_nil broken.decision
   end

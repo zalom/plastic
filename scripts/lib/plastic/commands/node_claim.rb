@@ -6,9 +6,7 @@ module Plastic
   module Commands
     # Claims an open node: moves it to claimed and prints its brief.
     class NodeClaim < Routine
-      subject :intent_id, :id
-      argument :intent_id, label: "ID", text: "the intent"
-      argument :id, label: "NODE", text: "the node"
+      node_subject
       writes :work
 
       workflow :code_claim_node, next: :noop

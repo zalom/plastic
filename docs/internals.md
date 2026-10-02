@@ -441,14 +441,50 @@ recorded eval against a produced artifact.
 
 Stage 1 of the tri-graph build landed the kernel under `scripts/lib/plastic/`. It has the
 command line, routines, code and agent workflows, the four end values, the routine run row,
-and a graph layer with one table, `routine_runs` in `work_graph.db`. No command runs through
-it yet. The live command line under `scripts/lib/cli.rb` serves every command, and the kernel
-tests run in a process of their own because both define some of the same constant names.
+and a graph layer with one table, `routine_runs` in `work_graph.db`. The live command line
+under `scripts/lib/cli.rb` still serves every command, and the kernel tests run in a process
+of their own because both define some of the same constant names.
 
-What is still missing is stage 2 and later: the first commands in the kernel's command table,
-the workflows in its registry, the knowledge and references graphs, and the file checkout
-from the rows. When the live command line retires, the separate test process ends. See
-[the contributor architecture page](contributing/ARCHITECTURE.md) for how a routine call runs.
+Stage 4 (intent 399) filled the kernel's command table and workflow registry with the full
+work graph command set (below); the knowledge and references graphs, and the file checkout
+from the rows, are still missing. When the live command line retires, the separate test
+process ends. See [the contributor architecture page](contributing/ARCHITECTURE.md) for how a
+routine call runs.
+
+### the work graph command set (intent 399)
+
+`scripts/lib/plastic/cli/table.rb` routes 18 kernel commands against `work_graph.db` and
+`knowledge_graph.db`: `node add`, `node remove`, `node claim`, `node release`, `node done`,
+`node fail`, `node park`, `node answer`, `edge add`, `edge remove`, `intent spec`, `intent
+rule`, `auto start`, `graph check`, `graph ready`, `graph show`, `intent show`, `intent
+brief`, `status`, and `next`. See [architecture](architecture.md#the-work-graph) for the node
+and edge state machine and the ruling/spec mechanics; this section covers the four read
+commands stage 4 added on top of them.
+
+`Commands::IntentShow` and `Commands::IntentBrief` are kernel routines (`workflow
+:code_show_intent` and `:code_show_brief`): each refuses (exit 1) an unknown intent id through
+a `gate`, then a `read` step prints from `context.retrieval` alone, so neither command writes.
+`ShowBrief` marks a ruling superseded by checking whether any other ruling's `supersedes`
+field names it (`rulings.filter_map(&:supersedes).to_set`), and lists the node and edge
+command usage by calling `.usage_line` (from the `Declarations` module) on the ten command
+classes it requires directly — there is no dynamic class lookup from a command name.
+
+`Commands::Status` is a plain `CLI::Command`, not a routine, because it sweeps every store
+under the Plastic home (`scope.known_slugs`) rather than one scoped store: it opens each
+store's graphs in turn (`Graph.open(home:, store: slug)`) and prints its open and active
+intents with their node counts by state (`Graph::IntentRow`, `Graph::NodeCounts`).
+
+`Commands::Next` (`workflow :code_pick_next`) picks the one intent this session is working
+on through `Graph::NextPick`: the intent behind a live lock this session holds in the current
+store, else the only active intent, else the only open one; several candidates or none are
+distinct outcomes, not a `nil` the caller would have to check for a third time. Given one
+intent, `Workflows::PickNext` offers the next command through a fixed cascade: an empty or
+open spec decision offers `intent spec`; an open-status intent offers `auto start`; the
+intent's live nodes (every node whose state is not `removed`) then decide the rest — empty or
+holding a parked node offers `intent brief`, a failed node offers `graph show`, every live
+node done offers `graph check`, otherwise `graph ready`. `PickNext.live_state` reads this
+branch from a small ordered table of symbol-to-predicate pairs (`LIVE_STATE_RULES`) rather
+than a chain of `if`/`elsif`, so adding a state to the cascade is one row, not a new branch.
 
 ### companion tools: no Plastic code path calls them
 

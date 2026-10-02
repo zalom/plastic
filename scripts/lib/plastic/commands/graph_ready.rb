@@ -6,8 +6,7 @@ module Plastic
   module Commands
     # Lists the nodes ready to claim: open, with every need done.
     class GraphReady < Routine
-      subject :intent_id
-      argument :intent_id, label: "ID", text: "the intent"
+      intent_subject
       reads :work
       workflow :code_ready_graph, next: :noop
     end

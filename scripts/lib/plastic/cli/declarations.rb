@@ -21,6 +21,19 @@ module Plastic
         @subject
       end
 
+      # The intent a call works on, as its subject and its first argument.
+      def intent_subject
+        subject :intent_id
+        argument :intent_id, label: "ID", text: "the intent"
+      end
+
+      # One node of an intent, as its subject and its first two arguments.
+      def node_subject
+        intent_subject
+        subject :intent_id, :id
+        argument :id, label: "NODE", text: "the node"
+      end
+
       # One word the tool takes, as `argument :id, label: "ID", text: "the intent"`.
       # Add `rest: true` to take every word left, `optional: true` to allow none.
       def argument(name, **shape) = arguments << Command::Argument.new(name:, rest: false, optional: false, **shape)

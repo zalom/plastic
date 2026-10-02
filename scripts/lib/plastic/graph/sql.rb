@@ -8,10 +8,14 @@ module Plastic
     # parameters and the column list of an insert.
     module SQL
       # Bytes that go in as a BLOB literal, such as a kept file.
-      Bytes = Data.define(:data)
+      Bytes = Data.define(:data) do
+        def literal = "X'#{data.unpack1("H*")}'"
+      end
 
       # SQL text kept as it stands, such as `retries + 1`, never quoted.
-      Raw = Data.define(:sql)
+      Raw = Data.define(:sql) do
+        def literal = sql
+      end
 
       # A value as an SQL literal. Hashes and arrays are stored as JSON text.
       def self.literal(value)
@@ -20,17 +24,9 @@ module Plastic
         in true then "1"
         in false then "0"
         in Integer | Float => number then number.to_s
-        in Bytes | Raw => wrapped then wrapped_literal(wrapped)
+        in Bytes | Raw => wrapped then wrapped.literal
         in Hash | Array then literal(JSON.generate(value))
         else "'#{value.to_s.gsub("'", "''")}'"
-        end
-      end
-
-      # A value that carries its own SQL text: bytes as a BLOB literal, raw as itself.
-      def self.wrapped_literal(wrapped)
-        case wrapped
-        in Bytes then "X'#{wrapped.data.unpack1("H*")}'"
-        in Raw then wrapped.sql
         end
       end
 
@@ -56,10 +52,15 @@ module Plastic
       end
 
       # `a IS 1 AND b IS 'x'`: IS matches a NULL as well.
-      def self.where(values) = values.map { |column, value| "#{name(column)} IS #{literal(value)}" }.join(" AND ")
+      def self.where(values) = pairs(values, "IS", " AND ")
 
       # `a = 1, b = 'x'`, for the SET clause of a guarded UPDATE.
-      def self.set(values) = values.map { |column, value| "#{name(column)} = #{literal(value)}" }.join(", ")
+      def self.set(values) = pairs(values, "=", ", ")
+
+      # `a <operator> 1<joiner>b <operator> 'x'`: the shape behind where and set.
+      def self.pairs(values, operator, joiner)
+        values.map { |column, value| "#{name(column)} #{operator} #{literal(value)}" }.join(joiner)
+      end
 
       # `'a', 'b'`, for a SQL IN (...) list.
       def self.list(values) = values.map { |value| literal(value) }.join(", ")
@@ -69,6 +70,18 @@ module Plastic
         names = columns.keys.map { |key| name(key) }
         values = columns.values.map { |value| literal(value) }
         "(#{names.join(", ")}) VALUES (#{values.join(", ")})"
+      end
+
+      # An UPDATE that moves a node between states: the row in `from` with
+      # `intent_id`/`id` moves to `to`, with `set` merged in, and returns its
+      # id only when a row was found.
+      def self.move(to:, from:, set: {})
+        values = { state: to, updated_at: Plastic.now }.merge(set)
+        <<~SQL
+          UPDATE nodes SET #{set(values)}
+          WHERE intent_id = :intent_id AND id = :id AND origin_id = :origin AND state IN (#{list(from)})
+          RETURNING id
+        SQL
       end
     end
   end

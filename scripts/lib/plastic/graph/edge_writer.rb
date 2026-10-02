@@ -28,24 +28,31 @@ module Plastic
         RETURNING "from"
       SQL
 
+      REMOVE_SQL = <<~SQL
+        DELETE FROM edges WHERE intent_id = :intent_id AND "from" = :from AND "to" = :to AND origin_id = :origin
+        RETURNING "from"
+      SQL
+
       def initialize(databases, retrieval)
         @databases = databases
         @retrieval = retrieval
       end
 
       def add_edge(intent_id:, from:, to:)
-        rows = @databases.fetch(:work).transaction do |batch|
-          batch.write(:edges, ADD_SQL, intent_id:, from:, to:, kind: "needs", origin: @retrieval.origin_id)
-        end
-        rows.any?
+        moved(ADD_SQL, intent_id:, from:, to:)
       end
 
       def remove_edge(intent_id:, from:, to:)
-        database = @databases.fetch(:work)
-        written = database.written
-        before = written["edges"]
-        database.transaction { |batch| batch.remove(:edges, intent_id:, from:, to:, origin_id: @retrieval.origin_id) }
-        written["edges"] > before
+        moved(REMOVE_SQL, intent_id:, from:, to:)
+      end
+
+      private
+
+      def moved(sql, **edge)
+        rows = @databases.fetch(:work).transaction do |batch|
+          batch.write(:edges, sql, **edge, kind: "needs", origin: @retrieval.origin_id)
+        end
+        rows.any?
       end
     end
   end

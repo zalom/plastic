@@ -34,4 +34,15 @@ class NodeAddTest < Plastic::TestCase
 
     assert_equal 3, result.code
   end
+
+  def test_refused_on_a_missing_intent
+    result = call("9", "do the thing", "--criterion", "it is done")
+
+    assert_equal 3, result.code
+    assert_includes result.err, "no intent 9"
+  end
+
+  def test_takes_the_intent_as_its_subject
+    assert_equal [:intent_id], Plastic::Commands::NodeAdd.describe.subject
+  end
 end
