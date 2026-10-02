@@ -59,6 +59,8 @@ module Plastic
         private
 
         def settled(entry)
+          return :none if direction == :up && StoreFolder.graph_view?(entry.path)
+
           action = entry.action(direction)
           (action == :conflict && resolution.overwrites?(entry.path)) ? resolution.side : action
         end

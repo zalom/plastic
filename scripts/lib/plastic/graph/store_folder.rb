@@ -50,6 +50,9 @@ module Plastic
 
       def intent_dirs = Dir.glob("store/*--*/", base: root).map { |dir| dir.chomp("/") }.sort
 
+      # The graph view is generated from node and edge rows.
+      def self.graph_view?(path) = path.match?(%r{\Astore/[^/]+/graph\.json\z})
+
       # Every file of every intent folder, dot files included.
       def intent_files = intent_dirs.flat_map { |dir| files(dir) }
 

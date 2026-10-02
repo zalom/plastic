@@ -10,11 +10,9 @@ require_relative "../legacy_store_import"
 module Plastic
   module Graph
     class Sync
-      # The first sync up of a store written before store/index.json: reads
-      # INDEX.md into intent and cluster rows, every file of every intent
-      # folder into rows, and prints the whole store. INDEX.md stays: migrate
-      # stores removes it only after the whole store imports, and only when
-      # migrate.remove_after_import is on in config.yml.
+      # The full first sync delegates preservation and metadata to LegacyStoreImport.
+      # Its read_rows primitive reads intents, clusters and ordinary files, then
+      # prints the store. graph.json remains a generated view and is never imported.
       class LegacyImport
         FRONT_MATTER = /\A---\n(.*?)\n---/m
         FIELD = /^(\w+):[ \t]*"?([^"\n]*?)"?[ \t]*$/
@@ -31,7 +29,7 @@ module Plastic
         def read_rows
           parsed = LegacyIndex.parse(@folder.read(StoreFolder::LEGACY_INDEX).force_encoding(Encoding::UTF_8))
           write(parsed.check(@folder.intent_dirs))
-          read = @sync.read(@folder.intent_files)
+          read = @sync.read(@folder.intent_files.reject { |path| StoreFolder.graph_view?(path) })
           finish
           ["imported #{StoreFolder::LEGACY_INDEX}: #{Schema.phrase(parsed.counts)}", *read]
         end

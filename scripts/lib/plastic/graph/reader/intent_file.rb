@@ -15,7 +15,6 @@ module Plastic
       # document into its row, and any other file kept whole as bytes.
       class IntentFile
         KEPT_MODE = 0o100644
-        GRAPH_TABLES = { "nodes" => [:nodes, Node], "edges" => [:edges, Edge] }.freeze
         KINDS = { "graph.json" => %i[work graph], "savepoint.md" => %i[work savepoint] }.freeze
 
         def initialize(folder, intent, path, retrieval: nil)
@@ -40,14 +39,9 @@ module Plastic
 
         def document? = @rel.end_with?(".md") && !@rel.start_with?("resources/") && text.valid_encoding?
 
-        def graph(batch)
-          data = JSON.parse(text)
-          GRAPH_TABLES.each do |field, (table, record)|
-            batch.remove(table, intent_id: @intent_id).put_all(table, graph_rows(record, data[field]))
-          end
+        def graph(_batch)
+          raise Invalid, "graph.json is generated from rows; use node and edge commands to change the graph"
         end
-
-        def graph_rows(record, items) = Array(items).map { |item| record.from_h(item).with(intent_id: @intent_id).to_h.except(:origin_id) }
 
         def savepoint(batch)
           @previous_lines = Array(@retrieval&.savepoints(@intent_id)).group_by(&:line)

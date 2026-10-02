@@ -2,6 +2,7 @@
 
 require "forwardable"
 require_relative "intent_writer"
+require_relative "completion_writer"
 require_relative "node_writer"
 require_relative "edge_writer"
 require_relative "ruling_writer"
@@ -27,8 +28,10 @@ module Plastic
 
       def_delegators :sessions, :open_session, :stamp_turn, :end_session, :write_note, :take_lock, :renew_locks
       def_delegator :intents, :activate, :activate_intent
+      def_delegator :completions, :close, :close_intent
+      def_delegator :completions, :evidence, :completion_evidence
       def_delegators :nodes, :add_node, :remove_node, :claim_node, :release_node, :done_node, :fail_node,
-        :park_node, :answer_node
+        :park_node, :answer_node, :repair_done_node
       def_delegators :edges, :add_edge, :remove_edge
       def_delegators :rulings, :add_ruling
       def_delegators :links, :add_link, :remove_link
@@ -73,9 +76,7 @@ module Plastic
       end
 
       # Prints a roadmap's file from its rows; returns the paths written.
-      def print_roadmap(slug)
-        sync.printer.print([Prints.roadmap(@retrieval, slug)])
-      end
+      def print_roadmap(slug) = sync.printer.print([Prints.roadmap(@retrieval, slug)])
 
       # Opens a ready item's intent, with its spec held in rows. Returns
       # [intent_id, problem, kind]; kind is :failure or :refusal, nil on success.
@@ -88,6 +89,8 @@ module Plastic
 
         open_roadmap_item(slug, item)
       end
+
+      def print_index = sync.printer.print([Prints.index(@retrieval)])
 
       def sync_plan(direction, options) = sync.plan(direction, options)
 
@@ -120,6 +123,8 @@ module Plastic
       end
 
       private
+
+      def completions = (@completions ||= CompletionWriter.new(@databases, @retrieval, @folder, session: @session))
 
       def sessions = (@sessions ||= SessionWriter.new(@databases.fetch(:home), store: @retrieval.store))
 

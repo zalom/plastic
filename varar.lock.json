@@ -47,7 +47,7 @@
       ]
     },
     "varar/graph-check.md": {
-      "sourceHash": "fnv1a:dceabe22",
+      "sourceHash": "fnv1a:2cb07b3b",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -56,7 +56,7 @@
       ]
     },
     "varar/graph-ready.md": {
-      "sourceHash": "fnv1a:95a37f12",
+      "sourceHash": "fnv1a:ee1079a1",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -101,7 +101,7 @@
       ]
     },
     "varar/intent-brief.md": {
-      "sourceHash": "fnv1a:c375bd2e",
+      "sourceHash": "fnv1a:9e989360",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -110,11 +110,11 @@
       ]
     },
     "varar/intent-end.md": {
-      "sourceHash": "fnv1a:89038af1",
+      "sourceHash": "fnv1a:8b5cc98c",
       "examples": [
         {
-          "name": "Each row gives the record, the mode, the exit and the index section:",
-          "line": 9
+          "name": "The rows below use a disposable fixture with one verified node and outcome. Each row gives the closure case, the exit code, the status, the completion records and the next line:",
+          "line": 23
         }
       ]
     },
@@ -209,7 +209,7 @@
       ]
     },
     "varar/next.md": {
-      "sourceHash": "fnv1a:ef72ddee",
+      "sourceHash": "fnv1a:06cd151a",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -245,7 +245,7 @@
       ]
     },
     "varar/node-done.md": {
-      "sourceHash": "fnv1a:df47d0c4",
+      "sourceHash": "fnv1a:0250ed91",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -443,7 +443,7 @@
       ]
     },
     "varar/sync-up.md": {
-      "sourceHash": "fnv1a:162adc49",
+      "sourceHash": "fnv1a:d9c8d828",
       "examples": [
         {
           "name": "Each row gives the change, the exit code, the result and the rows:",

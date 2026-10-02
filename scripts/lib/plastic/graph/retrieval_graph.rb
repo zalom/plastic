@@ -40,6 +40,10 @@ module Plastic
       # Intents with no live archive row: what store/index.json lists and what sync prints.
       def unarchived_intents = intents.reject { |intent| archived?(intent.intent_id) }
 
+      def completion(intent_id)
+        @databases.fetch(:work).row("SELECT * FROM completions WHERE intent_id = :intent_id AND origin_id = :origin", intent_id:, origin: origin_id)
+      end
+
       def clusters = read(:clusters)
 
       def documents(intent_id = nil) = read(:documents, intent_id)
