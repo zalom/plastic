@@ -17,6 +17,8 @@ module Plastic
       "intent spec" => ["Commands::IntentSpec", "Print the grilling method, then the intent's open decisions"],
       "intent discover" => ["Commands::IntentDiscover", "Record deterministic retrieval candidates for an intent"],
       "intent context" => ["Commands::IntentContext", "Read or submit selected retrieval context for an intent"],
+      "architecture status" => ["Commands::ArchitectureStatus", "Read the current architecture receipt without generating it"],
+      "architecture refresh" => ["Commands::ArchitectureRefresh", "Generate and save an Enola architecture receipt"],
       "auto start" => ["Commands::AutoStart", "Take the delivery lock and set the intent active"],
       "intent show" => ["Commands::IntentShow", "Print one intent's status, criteria, decisions, rulings and nodes"],
       "intent brief" => ["Commands::IntentBrief", "Print an intent's goal, criteria, rulings, ready nodes and command usage"],
