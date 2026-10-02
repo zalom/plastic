@@ -15,6 +15,7 @@ module Plastic
         rows = context.retrieval.backups.map { |backup| [backup, context.retrieval.backup_flag(backup)] }
         context[:flagged] = rows.any? { |(_backup, flag)| flag }
         rows.each { |backup, flag| print_row(context, backup, flag) }
+        context.print("no backups") if rows.empty?
       end
 
       def self.print_row(context, backup, flag)

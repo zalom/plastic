@@ -16,7 +16,7 @@ module Plastic
         context[:problem] = intent_problem(intent, context.intent_id)
       end
 
-      gate "%{problem}", stops: :refusal, pass: ->(context) { context.problem.nil? }
+      gate "%{problem}", stops: :failure, pass: ->(context) { context.problem.nil? }
 
       step "add the node", done: ->(context) { !context.id.nil? } do |context|
         node = context.work.add_node(intent_id: context.intent_id, title: context.title, criterion: context.criterion,
@@ -29,7 +29,7 @@ module Plastic
       end
 
       def self.intent_problem(intent, intent_id)
-        return "no intent #{intent_id}" unless intent
+        return "no intent #{intent_id} in this store" unless intent
 
         status = intent.status
         "intent #{intent_id} is #{status}; it takes no nodes" if %w[done abandoned].include?(status)

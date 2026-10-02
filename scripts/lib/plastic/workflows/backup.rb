@@ -19,7 +19,8 @@ module Plastic
       end
 
       read "say what was packed" do |context|
-        context.print("backup: #{context.name}, #{context.files} databases, #{context.bytes} bytes")
+        files = context.files
+        context.print("backup: #{context.name}, #{files} #{(files == 1) ? "database" : "databases"}, #{context.bytes} bytes")
       end
 
       outcome :done, offers: "plastic backup list", because: "backup %{name} is on disk"

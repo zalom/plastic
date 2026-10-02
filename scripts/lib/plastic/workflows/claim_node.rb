@@ -12,7 +12,13 @@ module Plastic
 
       STOPPED = %w[refused capped blocked].freeze
 
-      sets :result, :node, :problem
+      sets :intent, :result, :node, :problem
+
+      read "find the intent" do |context|
+        context[:intent] = context.retrieval.intent(context.intent_id)
+      end
+
+      gate "no intent %{intent_id} in this store", stops: :failure, pass: ->(context) { !context.intent.nil? }
 
       read "forget a refusal of an earlier call" do |context|
         context[:result] = nil if STOPPED.include?(context.result.to_s)
@@ -34,7 +40,8 @@ module Plastic
         end
       end
 
-      gate "%{problem}", stops: :refusal, pass: ->(context) { !STOPPED.include?(context.result.to_s) }
+      gate "%{problem}", stops: :refusal, pass: ->(context) { context.result.to_s != "capped" }
+      gate "%{problem}", stops: :failure, pass: ->(context) { !STOPPED.include?(context.result.to_s) }
 
       read "print the brief" do |context|
         node = context.node

@@ -23,7 +23,7 @@ class NodeClaimTest < Plastic::TestCase
 
     result = claim("n1")
 
-    assert_equal 3, result.code
+    assert_equal 1, result.code
   end
 
   def test_claiming_a_parked_node_is_refused
@@ -34,7 +34,7 @@ class NodeClaimTest < Plastic::TestCase
 
     result = claim("n1")
 
-    assert_equal 3, result.code
+    assert_equal 1, result.code
   end
 
   def test_claiming_a_removed_node_is_refused
@@ -44,7 +44,7 @@ class NodeClaimTest < Plastic::TestCase
 
     result = claim("n1")
 
-    assert_equal 3, result.code
+    assert_equal 1, result.code
   end
 
   def test_claiming_an_already_claimed_node_is_refused
@@ -54,7 +54,7 @@ class NodeClaimTest < Plastic::TestCase
 
     result = claim("n1")
 
-    assert_equal 3, result.code
+    assert_equal 1, result.code
   end
 
   def test_the_brief_includes_the_last_reason
@@ -97,7 +97,7 @@ class NodeClaimTest < Plastic::TestCase
 
     result = claim("n2")
 
-    assert_equal 3, result.code
+    assert_equal 1, result.code
     assert_includes result.err, "node n2 needs a node that is not done"
   end
 
@@ -122,7 +122,7 @@ class NodeClaimTest < Plastic::TestCase
 
     result = claim("n9")
 
-    assert_equal 3, result.code
+    assert_equal 1, result.code
     assert_includes result.err, "no node n9 in intent 1"
   end
 

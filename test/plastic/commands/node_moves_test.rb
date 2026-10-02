@@ -18,7 +18,7 @@ class NodeMovesTest < Plastic::TestCase
 
     result = plastic("node", "release", "1", "n1", table: Plastic::CLI::TABLE)
 
-    assert_equal 3, result.code
+    assert_equal 1, result.code
     assert_includes result.err, "node n1 is open; it cannot move to open"
   end
 
@@ -38,7 +38,7 @@ class NodeMovesTest < Plastic::TestCase
 
     result = plastic("node", "fail", "1", "n1", "--reason", "boom", table: Plastic::CLI::TABLE)
 
-    assert_equal 3, result.code
+    assert_equal 1, result.code
   end
 
   def test_parking_an_open_node_is_refused
@@ -47,7 +47,7 @@ class NodeMovesTest < Plastic::TestCase
 
     result = plastic("node", "park", "1", "n1", "--question", "which way?", table: Plastic::CLI::TABLE)
 
-    assert_equal 3, result.code
+    assert_equal 1, result.code
   end
 
   def test_answering_an_open_node_is_refused
@@ -56,7 +56,7 @@ class NodeMovesTest < Plastic::TestCase
 
     result = plastic("node", "answer", "1", "n1", "--answer", "go left", table: Plastic::CLI::TABLE)
 
-    assert_equal 3, result.code
+    assert_equal 1, result.code
   end
 
   def test_a_refused_move_moves_on_the_next_call
@@ -75,7 +75,7 @@ class NodeMovesTest < Plastic::TestCase
 
     result = plastic("node", "fail", "1", "n9", "--reason", "boom", table: Plastic::CLI::TABLE)
 
-    assert_equal 3, result.code
+    assert_equal 1, result.code
     assert_includes result.err, "no node n9 in intent 1"
   end
 
