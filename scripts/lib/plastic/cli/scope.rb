@@ -39,6 +39,8 @@ module Plastic
 
       def root = File.join(plastic_home, "stores", slug)
 
+      def project_path = projects.fetch(slug, @directory)
+
       def known_slugs
         dirs = Dir.glob(File.join(plastic_home, "stores", "*")).select { |path| File.directory?(path) }
         (dirs.map { |path| File.basename(path) } | [GLOBAL]).sort

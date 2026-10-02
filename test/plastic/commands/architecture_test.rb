@@ -1,8 +1,9 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/commands/architecture_status"
 require "json"
+require "open3"
+require "digest"
 
 class ArchitectureTest < Plastic::TestCase
   def test_reports_a_missing_architecture_snapshot_as_json_and_lists_its_refresh_command
@@ -15,20 +16,89 @@ class ArchitectureTest < Plastic::TestCase
   end
 
   def test_marks_a_second_dirty_worktree_edit_as_stale
-    command = freshness_command(current: { "state" => "fresh", "revision" => "abc" },
-      saved: { "revision" => "abc", "worktree_hash" => "first" }, worktree_hash: "second")
+    Dir.mktmpdir do |repository|
+      prepare_repository(repository)
+      write_snapshot(repository)
+      File.write(File.join(repository, "source.rb"), "first edit\n")
+      store_receipt("revision" => revision(repository), "worktree_hash" => worktree_hash(repository))
+      File.write(File.join(repository, "source.rb"), "second edit\n")
 
-    assert_equal "stale", command.send(:receipt).fetch("state")
+      assert_equal "stale", architecture_status(repository).dig("result", "architecture", "state")
+    end
+  end
+
+  def test_uses_the_registered_project_root_from_a_subdirectory
+    Dir.mktmpdir do |repository|
+      prepare_repository(repository)
+      write_snapshot(repository, dirty: false)
+      register_project("other", repository)
+      nested = File.join(repository, "nested")
+      FileUtils.mkdir_p(nested)
+
+      assert_equal "fresh", architecture_status(nested, arguments: ["--project", "other"]).dig("result", "architecture", "state")
+    end
   end
 
   private
 
-  def freshness_command(current:, saved:, worktree_hash:)
-    command_class = Class.new(Plastic::Commands::ArchitectureStatus) do
-      define_method(:current_receipt) { current }
-      define_method(:stored_receipt) { saved }
-      define_method(:worktree_hash) { worktree_hash }
+  def architecture_status(repository, arguments: [])
+    out = StringIO.new
+    error = StringIO.new
+    result = Plastic::CLI.call(["architecture", "status", *arguments, "--json"], environment: command_environment(out, error, repository), table: Plastic::CLI::TABLE)
+
+    assert_equal 0, result, error.string
+
+    JSON.parse(out.string)
+  end
+
+  def command_environment(out, error, repository)
+    Plastic::CLI::Command::Environment.new(env: { "PLASTIC_HOME" => @plastic_home }, input: StringIO.new,
+      out:, err: error, home: @home, directory: repository)
+  end
+
+  def prepare_repository(repository)
+    File.write(File.join(repository, ".gitignore"), ".enola/\n")
+    File.write(File.join(repository, "source.rb"), "original\n")
+    run_git(repository, "init")
+    run_git(repository, "add", ".")
+    run_git(repository, "commit", "-m", "initial")
+  end
+
+  def write_snapshot(repository, dirty: true)
+    data = { "repo_path" => repository, "git" => { "commit" => revision(repository), "dirty" => dirty },
+             "extractors" => ["ruby"], "extractor_version" => "v265", "quality" => {} }
+    FileUtils.mkdir_p(File.join(repository, ".enola"))
+    File.write(File.join(repository, ".enola", "snapshot.meta.json"), JSON.generate(data))
+  end
+
+  def revision(repository) = run_git(repository, "rev-parse", "HEAD").strip
+
+  def worktree_hash(repository)
+    status = run_git(repository, "status", "--porcelain", "--untracked-files=all")
+    Digest::SHA256.hexdigest(status.lines.map { |line| dirty_file_digest(repository, line) }.join)
+  end
+
+  def dirty_file_digest(repository, line)
+    path = line[3..].to_s.strip
+    [line, Digest::SHA256.file(File.join(repository, path)).hexdigest].join("\0")
+  end
+
+  def run_git(repository, *arguments)
+    output, error, status = Open3.capture3("git", "-C", repository, *arguments)
+    raise error unless status.success?
+
+    output
+  end
+
+  def store_receipt(receipt)
+    Plastic::Graph.open(home: @plastic_home, store: "global").databases.fetch(:knowledge).transaction do |batch|
+      batch.put(:architecture_receipts, { provider: "enola", data: JSON.generate(receipt), updated_at: Plastic.now })
     end
-    command_class.new([], words: "architecture status", environment: environment)
+  end
+
+  def register_project(slug, path)
+    File.write(File.join(@plastic_home, "projects.yml"), "projects:\n  #{slug}:\n    path: #{path}\n")
+    FileUtils.mkdir_p(File.join(@plastic_home, "stores", slug))
+    Plastic::Graph.open(home: @plastic_home, store: slug)
   end
 end
