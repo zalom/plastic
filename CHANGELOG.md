@@ -15,6 +15,18 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 - A Varar acceptance document, `varar/work-graph.md`, runs a full pass of the work graph: two rulings, two nodes and an edge, a claim, a failure, a release, a second claim, and a done, checked through `graph show` and `intent brief`.
 
+- Roadmaps live in rows: `roadmap batch`, `roadmap add`, `roadmap show`, `roadmap next`, `roadmap drop`, `roadmap start`, `roadmap check`, `roadmap log` and `roadmap edge remove`. An item's state is derived from its intent and the items it waits on.
+
+- `intent link` and `intent unlink` write typed links between intents. `intent new --after ID` opens an intent that waits on another.
+
+- `intent archive` takes a done, abandoned or future intent off the checkout and keeps its rows. `intent restore` prints it back.
+
+- `backup` packs every database into one archive, and `backup list` flags an archive that is missing or changed.
+
+- `migrate stores` imports legacy stores into rows: intents, rulings, links, roadmaps and the originals the import changed. It runs against a copy unless `--apply` is given.
+
+- A refused or failed write now runs again on the next call instead of replaying the old stop.
+
 ## 2.0.3
 
 - Documentation follows the public CLI and distinguishes implemented behavior from proposals.

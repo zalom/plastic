@@ -186,6 +186,33 @@ abandoned intent, and a live lock held by another session; it fails (exit 1) whe
 names no session. Otherwise it takes the lock in `auto` mode, sets the intent active, and
 reprints its files.
 
+## roadmaps, links, archive and backup
+
+A roadmap is a plan of several intents, kept as rows in `work_graph.db`. It holds batches.
+Each batch has a goal and done criteria, and each item in a batch can wait on other items.
+`plastic roadmap batch` and `plastic roadmap add` write the plan. `plastic roadmap start`
+opens a ready item's intent and copies the item's goal and done criteria into that intent's
+spec. An item's state is never stored. It is derived on each read from its intent's status
+and from the items it waits on: done, dropped, in flight, blocked or ready. `plastic roadmap
+next` prints the first ready item, or what is in the way. `plastic roadmap show` prints the
+plan and reprints `roadmaps/<slug>.md` from the rows.
+
+`plastic intent link` writes a typed link from one intent to another. A link to a live intent
+stops that intent from being archived.
+
+`plastic intent archive` takes a done, abandoned or future intent off the checkout. Its
+folder goes, and its rows stay. `plastic intent restore` prints the folder back. An intent
+that is open, already archived, linked from a live intent, or edited by hand since the last
+sync is refused.
+
+`plastic backup` packs `home.db` and each store's three databases into one gzipped archive
+under `backups/`. `plastic backup list` flags an archive that is missing or that changed
+since it was written.
+
+`plastic migrate stores` imports every store that still keeps its intents only as files. By
+default it runs against a copy of the home and changes nothing. With `--apply`, it imports
+the real home. A store that is already imported is skipped.
+
 ## component map
 
 The tooling layer is thin and sits on top of the store. The parts that supply determinism do so by construction, never by judgement.

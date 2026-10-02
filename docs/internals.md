@@ -445,15 +445,14 @@ and a graph layer with one table, `routine_runs` in `work_graph.db`. The live co
 under `scripts/lib/cli.rb` still serves every command, and the kernel tests run in a process
 of their own because both define some of the same constant names.
 
-Stage 4 (intent 399) filled the kernel's command table and workflow registry with the full
-work graph command set (below); the knowledge and references graphs, and the file checkout
-from the rows, are still missing. When the live command line retires, the separate test
-process ends. See [the contributor architecture page](contributing/ARCHITECTURE.md) for how a
-routine call runs.
+Stage 4, intent 399, added the work graph command set to the kernel's command table. Stage 5,
+intent 400, added the knowledge graph command set. Both sets are described below. When the
+live command line retires, the separate test process ends. See
+[the contributor architecture page](contributing/ARCHITECTURE.md) for how a routine call runs.
 
 ### the work graph command set (intent 399)
 
-`scripts/lib/plastic/cli/table.rb` routes 18 kernel commands against `work_graph.db` and
+`scripts/lib/plastic/cli/table.rb` routes 20 work graph commands against `work_graph.db` and
 `knowledge_graph.db`: `node add`, `node remove`, `node claim`, `node release`, `node done`,
 `node fail`, `node park`, `node answer`, `edge add`, `edge remove`, `intent spec`, `intent
 rule`, `auto start`, `graph check`, `graph ready`, `graph show`, `intent show`, `intent
@@ -466,8 +465,8 @@ commands stage 4 added on top of them.
 a `gate`, then a `read` step prints from `context.retrieval` alone, so neither command writes.
 `ShowBrief` marks a ruling superseded by checking whether any other ruling's `supersedes`
 field names it (`rulings.filter_map(&:supersedes).to_set`), and lists the node and edge
-command usage by calling `.usage_line` (from the `Declarations` module) on the ten command
-classes it requires directly — there is no dynamic class lookup from a command name.
+command usage by calling `.usage_line` (from the `Declarations` module) on the 10 command
+classes it requires directly. No dynamic class lookup from a command name takes place.
 
 `Commands::Status` is a plain `CLI::Command`, not a routine, because it sweeps every store
 under the Plastic home (`scope.known_slugs`) rather than one scoped store: it opens each
@@ -480,11 +479,54 @@ store, else the only active intent, else the only open one; several candidates o
 distinct outcomes, not a `nil` the caller would have to check for a third time. Given one
 intent, `Workflows::PickNext` offers the next command through a fixed cascade: an empty or
 open spec decision offers `intent spec`; an open-status intent offers `auto start`; the
-intent's live nodes (every node whose state is not `removed`) then decide the rest — empty or
+intent's live nodes (every node whose state is not `removed`) then decide the rest. A graph that is empty or
 holding a parked node offers `intent brief`, a failed node offers `graph show`, every live
 node done offers `graph check`, otherwise `graph ready`. `PickNext.live_state` reads this
 branch from a small ordered table of symbol-to-predicate pairs (`LIVE_STATE_RULES`) rather
 than a chain of `if`/`elsif`, so adding a state to the cascade is one row, not a new branch.
+
+### the knowledge graph command set (intent 400)
+
+Stage 5 adds 16 kernel commands in four groups. See
+[architecture](architecture.md#roadmaps-links-archive-and-backup) for what each group does;
+this section covers how the code holds together.
+
+- **Roadmaps.** `roadmap batch`, `roadmap add`, `roadmap show`, `roadmap next`, `roadmap
+  drop`, `roadmap start`, `roadmap check`, `roadmap log` and `roadmap edge remove` write and
+  read five tables in `work_graph.db`: `roadmaps`, `batches`, `roadmap_items`,
+  `roadmap_edges` and `roadmap_log`. `Graph::RoadmapWriter` owns the writes, and
+  `WorkGraph` delegates to it. `Graph::RoadmapState` derives an item's state every time it
+  is read. The rows hold only the facts the state comes from: the item's mark, its intent's
+  status and its predecessors. `Graph::RoadmapCheck` finds a loop, an edge to an item that is
+  not on the roadmap, and an item whose intent id names no intent.
+- **Links.** `intent link` and `intent unlink` write and remove rows in the `links` table of
+  `knowledge_graph.db` through `Graph::LinkWriter`. A link to a missing intent fails with
+  exit 1. A self link or a repeated link is refused with exit 3.
+- **Archive.** `intent archive` and `intent restore` go through `Graph::ArchiveWriter`. An
+  archive writes one `archives` row, removes the intent folder and removes the folder's
+  `printed` rows. The intent's own rows never move. A restore sets `restored_at` and prints
+  the folder back from the rows.
+- **Backup.** `backup` and `backup list` go through `Graph::BackupWriter` and the `backups`
+  table of `home.db`. `RetrievalGraph#backup_flag` compares each archive's SHA-256 digest
+  with the digest stored at write time.
+
+`migrate stores` runs `Graph::MigrateWriter`. For each legacy store, it reads the rulings and
+links from the original file bytes before the sync rewrites them. It then syncs the intent
+files into rows and writes the rulings and links. It keeps every original that the sync
+changed in the `sqlar` table of `references.db`. Last, it imports each roadmap file through
+`Graph::RoadmapParse` and archives every done or abandoned intent. A roadmap item whose id
+names an intent in the store is linked to that intent, so its state follows the intent's
+status.
+
+#### a stopped write runs again on the next call
+
+A routine run that stopped with a refusal or a failure stays open, and the next call on the
+same subject reopens it. Its stored facts come back into the context, so a step whose `done:`
+check reads those facts would skip and the old stop would replay. `CodeWorkflow.forget_stop`
+adds a `read` step that clears the named facts when the earlier call left a `problem`. Every
+stage 5 workflow that writes, and that can stop, starts with this step: archive, restore,
+roadmap add, roadmap start, roadmap edge remove and unlink. Workflows that recompute their
+facts in a `read` step on every call, such as `intent link`, do not need it.
 
 ### companion tools: no Plastic code path calls them
 
