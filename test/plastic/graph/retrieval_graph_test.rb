@@ -67,4 +67,15 @@ class RetrievalGraphTest < Plastic::TestCase
     assert_equal [[intent.intent_id, "research.txt", "The retrieval evidence stays searchable.\n", 1]],
       result.map { |row| row.values_at("intent_id", "path", "body", "position") }
   end
+
+  def test_backfills_a_text_reference_once_without_removing_its_attachment
+    row = { name: "store/1--alpha/research.txt", mode: 0o100644, mtime: 0, sz: 18,
+            data: Plastic::Graph::SQL::Bytes.new("Archived evidence\n"), intent_id: "1", sha256: "source" }
+    put(:references, :sqlar, row)
+
+    2.times { retrieval.backfill! }
+
+    assert_equal [["research.txt", "Archived evidence\n"]], retrieval.search("archived evidence").map { |found| found.values_at("path", "body") }
+    assert_equal "Archived evidence\n", retrieval.kept_file_data(row[:name])
+  end
 end
