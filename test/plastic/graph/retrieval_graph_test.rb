@@ -84,4 +84,15 @@ class RetrievalGraphTest < Plastic::TestCase
 
     assert_equal [[intent.intent_id, intent.file]], retrieval.search("retrieval planning").map { |row| row.values_at("intent_id", "path") }
   end
+
+  def test_splits_long_unicode_text_into_bounded_passages
+    intent = open_intent("Passages")
+    path = "#{intent.dir}/long.txt"
+    write(path, "ž" * 1700)
+    apply_read(Plastic::Graph::Reader.new(folder, { intent.intent_id => intent }, origin, retrieval:).read(path))
+
+    passages = store_graphs.databases.fetch(:knowledge).rows("SELECT position, body FROM document_passages ORDER BY position")
+
+    assert_equal [[1, 1600], [2, 100]], passages.last(2).map { |row| [row.fetch("position"), row.fetch("body").length] }
+  end
 end
