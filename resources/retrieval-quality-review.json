@@ -1,0 +1,45 @@
+{
+  "status": "synthetic_fixture",
+  "documents": [
+    { "store": "store-1", "intent_id": "source", "path": "approved-source.md", "content": "# Approved source\n\nThe retrieval graph preserves immutable revisions. The answer is: immutable revisions retain history after a current document changes." },
+    { "store": "store-1", "intent_id": "d01", "path": "d01.md", "content": "Trigraph retrieval notes describe public benchmark fixtures." },
+    { "store": "store-1", "intent_id": "d02", "path": "d02.md", "content": "Retrieval ranking uses local evidence." },
+    { "store": "store-1", "intent_id": "d03", "path": "d03.md", "content": "Graph planning records source provenance." },
+    { "store": "store-1", "intent_id": "d04", "path": "d04.md", "content": "Public text documents support deterministic tests." },
+    { "store": "store-1", "intent_id": "d05", "path": "d05.md", "content": "An index can return passages." },
+    { "store": "store-1", "intent_id": "d06", "path": "d06.md", "content": "SQLite supports lexical retrieval." },
+    { "store": "store-1", "intent_id": "d07", "path": "d07.md", "content": "A source record has a qualified URI." },
+    { "store": "store-1", "intent_id": "d08", "path": "d08.md", "content": "Synthetic quality fixtures are diagnostic." },
+    { "store": "store-1", "intent_id": "d09", "path": "d09.md", "content": "The benchmark reports raw timing samples." },
+    { "store": "store-1", "intent_id": "d10", "path": "d10.md", "content": "Search output includes bounded excerpts." },
+    { "store": "store-2", "intent_id": "d11", "path": "d11.md", "content": "Trigraph retrieval notes describe public benchmark fixtures." },
+    { "store": "store-2", "intent_id": "d12", "path": "d12.md", "content": "Retrieval ranking uses local evidence." },
+    { "store": "store-2", "intent_id": "d13", "path": "d13.md", "content": "Graph planning records source provenance." },
+    { "store": "store-2", "intent_id": "d14", "path": "d14.md", "content": "Public text documents support deterministic tests." },
+    { "store": "store-2", "intent_id": "d15", "path": "d15.md", "content": "An index can return passages." },
+    { "store": "store-2", "intent_id": "d16", "path": "d16.md", "content": "SQLite supports lexical retrieval." },
+    { "store": "store-2", "intent_id": "d17", "path": "d17.md", "content": "A source record has a qualified URI." },
+    { "store": "store-2", "intent_id": "d18", "path": "d18.md", "content": "Synthetic quality fixtures are diagnostic." },
+    { "store": "store-2", "intent_id": "d19", "path": "d19.md", "content": "The benchmark reports raw timing samples." },
+    { "store": "store-2", "intent_id": "d20", "path": "d20.md", "content": "Search output includes bounded excerpts." },
+    { "store": "store-3", "intent_id": "d21", "path": "d21.md", "content": "Trigraph retrieval notes describe public benchmark fixtures." },
+    { "store": "store-3", "intent_id": "d22", "path": "d22.md", "content": "Retrieval ranking uses local evidence." },
+    { "store": "store-3", "intent_id": "d23", "path": "d23.md", "content": "Graph planning records source provenance." },
+    { "store": "store-3", "intent_id": "d24", "path": "d24.md", "content": "Public text documents support deterministic tests." },
+    { "store": "store-3", "intent_id": "d25", "path": "d25.md", "content": "An index can return passages." },
+    { "store": "store-3", "intent_id": "d26", "path": "d26.md", "content": "SQLite supports lexical retrieval." },
+    { "store": "store-3", "intent_id": "d27", "path": "d27.md", "content": "A source record has a qualified URI." },
+    { "store": "store-3", "intent_id": "d28", "path": "d28.md", "content": "Synthetic quality fixtures are diagnostic." },
+    { "store": "store-3", "intent_id": "d29", "path": "d29.md", "content": "The benchmark reports raw timing samples." },
+    { "store": "store-3", "intent_id": "d30", "path": "d30.md", "content": "Search output includes bounded excerpts." }
+  ],
+  "queries": [
+    {
+      "id": "immutable-revision-history",
+      "harness_search_terms": "immutable revisions history",
+      "scope": ["store-1", "store-2", "store-3"],
+      "expected": [{ "store": "store-1", "intent_id": "source", "path": "approved-source.md" }],
+      "relevant_passage_hint": "immutable revisions retain history"
+    }
+  ]
+}

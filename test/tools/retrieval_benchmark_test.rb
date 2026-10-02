@@ -8,12 +8,7 @@ class RetrievalBenchmarkTest < Minitest::Test
   def test_declares_reproducible_public_corpora_and_full_cli_measurements
     schema = Plastic::RetrievalBenchmark.schema
 
-    assert_equal 1, schema.fetch("schema_version")
-    assert_equal "bin/plastic", schema.fetch("entrypoint")
-    assert_equal [15_000_000, 100_000_000], schema.fetch("corpora").map { |corpus| corpus.fetch("target_bytes") }
-    assert schema.fetch("corpora").all? { |corpus| corpus.fetch("text_encoding") == "UTF-8" && corpus.fetch("public_data") }
-    assert_equal %w[exact_lookup single_store_top_20 three_store_rrf_top_20 concurrent_writer_reader], schema.fetch("measurements").map { |measurement| measurement.fetch("id") }
-    assert_equal({ "exact_lookup" => 100, "single_store_top_20" => 250, "three_store_rrf_top_20" => 500 }, schema.fetch("warm_p95_targets_ms"))
+    assert_equal expected_schema, schema_summary(schema)
   end
 
   def test_generates_deterministic_utf8_text_without_binary_padding
@@ -21,10 +16,7 @@ class RetrievalBenchmarkTest < Minitest::Test
       first = Plastic::RetrievalBenchmark.generate_corpus(directory, target_bytes: 20_000, stores: 3)
       second = Plastic::RetrievalBenchmark.generate_corpus(File.join(directory, "again"), target_bytes: 20_000, stores: 3)
 
-      assert_equal first.fetch("bytes"), second.fetch("bytes")
-      assert_equal first.fetch("sha256"), second.fetch("sha256")
-      assert_equal 3, first.fetch("stores").length
-      assert first.fetch("files").all? { |path| File.read(path, encoding: "UTF-8").valid_encoding? }
+      assert_equal corpus_summary(first), corpus_summary(second)
     end
   end
 
@@ -34,9 +26,7 @@ class RetrievalBenchmarkTest < Minitest::Test
 
       report = Plastic::RetrievalBenchmark.run(output:, corpus_bytes: 1_000, warmup: 0, samples: 1)
 
-      assert_equal "pending", JSON.parse(File.read(output)).dig("owner_review", "status")
-      assert report.fetch("measurements").values.flatten.all? { |sample| sample.fetch("exit_status").zero? }
-      refute report.fetch("measurements").values.flatten.any? { |sample| sample.fetch("argv").include?("--help") }
+      assert_equal({ owner_review: "pending", commands_succeeded: true, no_help: true }, raw_evidence_summary(output, report))
     end
   end
 
@@ -45,10 +35,57 @@ class RetrievalBenchmarkTest < Minitest::Test
       report = Plastic::RetrievalBenchmark.run(output: File.join(directory, "benchmark.json"), corpus_bytes: 20_000, warmup: 0, samples: 1)
 
       concurrent = report.fetch("measurements").fetch("concurrent_writer_reader")
-      assert_equal "no_busy_errors", concurrent.fetch("busy_handling").fetch("status")
-      assert concurrent.fetch("reader_samples").all? { |sample| sample.fetch("immutable_reference_consistent") }
-      assert_equal "pending", report.fetch("acceptance_gates").fetch("owner_review").fetch("status")
-      assert_equal %w[exact_lookup single_store_top_20 three_store_rrf_top_20], report.fetch("p95_ms").keys
+
+      assert_equal({ busy: "no_busy_errors", immutable: true, owner_review: "pending", p95: %w[exact_lookup single_store_top_20 three_store_rrf_top_20] }, concurrency_summary(report, concurrent))
     end
+  end
+
+  def test_scores_the_public_fixture_with_a_ranked_answer_bearing_passage
+    Dir.mktmpdir do |directory|
+      report = Plastic::RetrievalBenchmark.run(output: File.join(directory, "benchmark.json"), corpus_bytes: 20_000, warmup: 0, samples: 1,
+        quality_input: File.expand_path("../../resources/retrieval-quality-review.json", __dir__))
+      answer = report.fetch("quality").fetch("synthetic_top_20").fetch(0)
+
+      assert_equal({ owner_review: "pending", passed: true, rank: 1, answer_bearing: true }, quality_summary(report, answer))
+    end
+  end
+
+  private
+
+  def timed_samples(report)
+    report.fetch("measurements").slice("exact_lookup", "single_store_top_20", "three_store_rrf_top_20").values.flatten
+  end
+
+  def expected_schema
+    { "schema_version" => 1, "entrypoint" => "bin/plastic", "corpora" => [15_000_000, 100_000_000], "public_text" => true,
+      "measurements" => %w[exact_lookup single_store_top_20 three_store_rrf_top_20 concurrent_writer_reader],
+      "targets" => { "exact_lookup" => 100, "single_store_top_20" => 250, "three_store_rrf_top_20" => 500 } }
+  end
+
+  def schema_summary(schema)
+    { "schema_version" => schema.fetch("schema_version"), "entrypoint" => schema.fetch("entrypoint"),
+      "corpora" => schema.fetch("corpora").map { |corpus| corpus.fetch("target_bytes") },
+      "public_text" => schema.fetch("corpora").all? { |corpus| corpus.fetch("text_encoding") == "UTF-8" && corpus.fetch("public_data") },
+      "measurements" => schema.fetch("measurements").map { |measurement| measurement.fetch("id") }, "targets" => schema.fetch("warm_p95_targets_ms") }
+  end
+
+  def corpus_summary(corpus)
+    { bytes: corpus.fetch("bytes"), sha256: corpus.fetch("sha256"), stores: corpus.fetch("stores").length,
+      valid_utf8: corpus.fetch("files").all? { |path| File.read(path, encoding: "UTF-8").valid_encoding? } }
+  end
+
+  def raw_evidence_summary(output, report)
+    { owner_review: JSON.parse(File.read(output)).dig("owner_review", "status"), commands_succeeded: timed_samples(report).all? { |sample| sample.fetch("exit_status").zero? },
+      no_help: timed_samples(report).none? { |sample| sample.fetch("argv").include?("--help") } }
+  end
+
+  def concurrency_summary(report, concurrent)
+    { busy: concurrent.fetch("busy_handling").fetch("status"), immutable: concurrent.fetch("reader_samples").all? { |sample| sample.fetch("immutable_reference_consistent") },
+      owner_review: report.fetch("acceptance_gates").fetch("owner_review").fetch("status"), p95: report.fetch("p95_ms").keys }
+  end
+
+  def quality_summary(report, answer)
+    { owner_review: report.fetch("quality").dig("owner_review", "status"), passed: answer.fetch("passed"), rank: answer.fetch("rank"),
+      answer_bearing: answer.fetch("matched_text").include?("immutable revisions retain history") }
   end
 end
