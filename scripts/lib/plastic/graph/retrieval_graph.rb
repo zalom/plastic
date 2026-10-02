@@ -92,7 +92,7 @@ module Plastic
       end
 
       DOCUMENT_SQL = "SELECT * FROM documents WHERE intent_id = :intent_id AND path = :path AND origin_id = :origin"
-      SEARCH_SQL = "SELECT intent_id, path, substr(body, 1, 320) AS body, sha256, position, bm25(document_fts) AS score " \
+      SEARCH_SQL = "SELECT intent_id, path, body, sha256, position, bm25(document_fts) AS score " \
                    "FROM document_fts WHERE document_fts MATCH :query AND origin_id = :origin " \
                    "ORDER BY score, intent_id, path, position LIMIT :limit"
 
@@ -102,6 +102,10 @@ module Plastic
         validate_search!(terms, limit)
         ensure_backfill!(migrate)
         @databases.fetch(:knowledge).rows(SEARCH_SQL, query: fts_query(terms), origin: origin_id, limit:)
+      end
+
+      def search_reference(row)
+        qualified_reference(row.fetch("intent_id"), row.fetch("path"), row.fetch("sha256"))
       end
 
       def backfill!

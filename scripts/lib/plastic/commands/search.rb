@@ -46,9 +46,15 @@ module Plastic
       end
 
       def result_row(retrieval, slug, row, rank)
-        reference = retrieval.reference(row.fetch("intent_id"), row.fetch("path"))
-        details = { "store" => slug, "local_rank" => rank, "rrf_score" => rrf(rank) }
-        row.merge(reference.transform_keys(&:to_s)).merge(details)
+        reference = retrieval.search_reference(row)
+        details = { "store" => slug, "local_rank" => rank, "rrf_score" => rrf(rank), "archived" => retrieval.archived?(row.fetch("intent_id")) }
+        row.merge(reference.transform_keys(&:to_s)).merge(details).merge("body" => excerpt(row.fetch("body")))
+      end
+
+      def excerpt(body)
+        index = body.downcase.index(parsed.fetch(:terms).downcase) || 0
+        first = [index - 160, 0].max
+        body[first, 320]
       end
 
       def ranked_rows = sources.flat_map { |slug| rows(slug) }.sort_by { |row| [-row.fetch("rrf_score"), row.fetch("uri")] }.take(search_limit)
