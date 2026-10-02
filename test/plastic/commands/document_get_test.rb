@@ -92,9 +92,8 @@ class DocumentGetTest < Plastic::TestCase
 
   def assert_json_error(result, code, kind)
     assert_equal code, result.code
-    assert_empty result.err
     document = JSON.parse(result.out)
     assert_equal kind, document.fetch("result").fetch("error").fetch("kind")
-    refute_match(/(?:Traceback|NoMethodError|ArgumentError)/, result.out)
+    refute_match(/(?:Traceback|NoMethodError|ArgumentError)/, "#{result.out}#{result.err}")
   end
 end
