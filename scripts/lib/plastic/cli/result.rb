@@ -43,9 +43,10 @@ module Plastic
         @next_step ? ["next: #{next_command(project)}", "because: #{because}"] : []
       end
 
-      # The JSON answer, with the same three parts and stable keys.
+      # The JSON answer, with the same three parts and stable keys. A text
+      # label keeps its colon; a JSON key drops it.
       def document(project)
-        result = @rows.to_h
+        result = @rows.to_h { |label, value| [label.delete_suffix(":"), value] }
         result["output"] = @lines unless @lines.empty?
         { "result" => result, "next" => next_command(project), "because" => because }
       end

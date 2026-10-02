@@ -50,7 +50,7 @@ module Plastic
       def page(origin_id)
         fields = { id: intent_id, intent: title, parent: parent_id, ref:, origin: origin_id, created: opened_at }.compact
         front = fields.map { |name, value| "#{name}: #{JSON.generate(value)}" }
-        ["---", *front, "---", "", "# #{intent_id} — #{title}", "", "## Intent", "", title, "",
+        ["---", *front, "---", "", "# #{intent_id} - #{title}", "", "## Intent", "", title, "",
           "## Context", "", "## Outcome", "", "## Insights", ""].join("\n")
       end
 
