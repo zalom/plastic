@@ -12,5 +12,6 @@ class IntentDiscoverTest < Plastic::TestCase
     assert_equal "1", manifest.fetch("intent_id")
     assert_equal "evidence", manifest.fetch("query")
     assert_equal ["global"], manifest.fetch("scope")
+    assert_equal manifest, JSON.parse(File.read(store_path("discovery/1.json")))
   end
 end
