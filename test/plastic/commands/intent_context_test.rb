@@ -32,6 +32,35 @@ class IntentContextTest < Plastic::TestCase
     assert_equal [{ "uri" => reference, "state" => "stale" }], context.fetch("freshness").fetch("evidence")
   end
 
+  def test_records_selected_archive_state_and_marks_it_stale_without_losing_the_pinned_revision
+    open_intent
+    reference = write_document("other", "selected evidence")
+    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
+    submit_context(context_submission(reference))
+
+    fresh = read_context
+    archive_source_intent
+    stale = read_context
+
+    assert_equal false, fresh.fetch("freshness").fetch("evidence").first.fetch("archived")
+    assert_equal "stale", stale.fetch("freshness").fetch("evidence").first.fetch("state")
+    assert_equal true, stale.fetch("freshness").fetch("evidence").first.fetch("archived")
+    assert_equal "selected evidence", Plastic::Graph.open(home: @plastic_home, store: "other").retrieval.fetch_reference(reference).fetch(:body)
+  end
+
+  def test_reports_architecture_receipt_changes_and_missing_revisions_separately
+    open_intent
+    reference = write_document("other", "selected evidence")
+    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
+    submit_context(context_submission(reference))
+
+    assert_equal "fresh", read_context.fetch("freshness").fetch("architecture").fetch("state")
+    replace_architecture_receipt(revision: "def")
+    assert_equal "stale", read_context.fetch("freshness").fetch("architecture").fetch("state")
+    replace_architecture_receipt(revision: "missing", available: false)
+    assert_equal "missing", read_context.fetch("freshness").fetch("architecture").fetch("state")
+  end
+
   def test_reports_a_removed_current_head_as_stale_when_its_pinned_revision_survives
     open_intent
     reference = write_document("other", "selected evidence")
@@ -83,7 +112,19 @@ class IntentContextTest < Plastic::TestCase
   def context_submission(reference)
     { "evidence" => [reference], "facts" => ["a source fact"], "interpretations" => ["an agent interpretation"],
       "gaps" => ["a remaining gap"], "rulings" => ["an owner ruling"],
-      "architecture" => { "provider" => "external", "revision" => "abc", "coverage" => ["Ruby"], "limitations" => ["templates"] } }
+      "architecture" => { "provider" => "external", "revision" => "abc", "coverage" => ["Ruby"], "limitations" => ["templates"],
+                          "receipt" => { "available" => true, "revision" => "abc" } } }
+  end
+
+  def archive_source_intent
+    source = Plastic::Graph.open(home: @plastic_home, store: "other")
+    source.work.archive_intent("1")
+  end
+
+  def replace_architecture_receipt(revision:, available: true)
+    path = store_path("architecture/external.json")
+    FileUtils.mkdir_p(File.dirname(path))
+    File.write(path, JSON.generate("provider" => "external", "revision" => revision, "available" => available))
   end
 
   def remove_current_head
