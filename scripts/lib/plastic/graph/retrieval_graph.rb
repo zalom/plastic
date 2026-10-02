@@ -66,6 +66,12 @@ module Plastic
         ReferenceBackfill.new(@databases, origin_id).call
       end
 
+      def repair!
+        @databases.fetch(:knowledge).rows("SELECT h.intent_id, h.path, r.body FROM document_heads h JOIN document_revisions r ON r.sha256 = h.sha256 AND r.origin_id = h.origin_id WHERE h.origin_id = :origin", origin: origin_id).each do |row|
+          EvidenceWriter.new(@databases.fetch(:knowledge), origin_id).write(row.fetch("intent_id"), row.fetch("path"), row.fetch("body"))
+        end
+      end
+
       def savepoints(intent_id = nil) = read(:savepoints, intent_id)
 
       def nodes(intent_id = nil) = read(:nodes, intent_id)
