@@ -3,6 +3,7 @@
 require_relative "archive_snapshot"
 require_relative "archive_location"
 require_relative "evidence_writer"
+require_relative "evidence_text"
 
 module Plastic
   module Graph
@@ -111,18 +112,16 @@ module Plastic
 
       def index_snapshot(intent)
         snapshot(intent.intent_id).entries.select { |entry| searchable?(entry) }.each do |entry|
-          EvidenceWriter.new(@databases.fetch(:knowledge), origin_id).write(intent.intent_id, entry.fetch(:path), utf8(entry.fetch(:data)))
+          body = entry.fetch(:data).dup.force_encoding(Encoding::UTF_8)
+          EvidenceWriter.new(@databases.fetch(:knowledge), origin_id).write(intent.intent_id, entry.fetch(:path), body)
         end
       end
 
       def searchable?(entry)
         return false unless entry[:kind] == "file"
 
-        text = utf8(entry.fetch(:data))
-        text.valid_encoding? && !entry.fetch(:data).include?("\0")
+        EvidenceText.classify(entry.fetch(:path), entry.fetch(:data)) == :text
       end
-
-      def utf8(bytes) = bytes.dup.force_encoding(Encoding::UTF_8)
     end
   end
 end

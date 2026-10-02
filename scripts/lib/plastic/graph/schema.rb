@@ -113,9 +113,29 @@ module Plastic
 
       def self.fetch(key) = [*DATABASES.fetch(key).last.map { |name| ddl(name) }, MIGRATIONS[key]].compact.join("\n")
 
+      def self.prepare(connection, schema)
+        connection.execute_batch(schema)
+        migrate_revision_membership(connection)
+      end
+
       def self.table_named(name) = TABLES.fetch(name.to_sym)
 
       def self.ddl(name) = RetrievalSchema::FTS.fetch(name) { TABLES.fetch(name).ddl }
+
+      def self.migrate_revision_membership(connection)
+        sql = connection.get_first_value("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'document_revisions'")
+        return unless sql&.include?('UNIQUE("sha256", "origin_id")')
+
+        connection.transaction(:immediate) do
+          connection.execute_batch <<~SQL
+            ALTER TABLE document_revisions RENAME TO document_revisions_legacy;
+            #{ddl(:document_revisions)}
+            INSERT INTO document_revisions (sha256, intent_id, path, body, created_at, origin_id)
+            SELECT sha256, intent_id, path, body, created_at, origin_id FROM document_revisions_legacy;
+            DROP TABLE document_revisions_legacy;
+          SQL
+        end
+      end
 
       # A count of rows with its noun: "1 routine run", "2 routine runs".
       def self.tally(table, count)

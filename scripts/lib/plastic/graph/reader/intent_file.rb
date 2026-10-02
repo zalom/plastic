@@ -3,6 +3,7 @@
 require "digest"
 require "json"
 require_relative "../evidence_writer"
+require_relative "../evidence_text"
 require_relative "../edge"
 require_relative "../node"
 require_relative "../savepoint"
@@ -41,7 +42,7 @@ module Plastic
 
         # Textual references are preserved in the knowledge graph. NUL bytes
         # identify binary data; invalid UTF-8 stays in the attachment archive.
-        def document? = text.valid_encoding? && !bytes.include?("\0")
+        def document? = EvidenceText.classify(@rel, bytes) == :text
 
         def graph(_batch)
           raise Invalid, "graph.json is generated from rows; use node and edge commands to change the graph"

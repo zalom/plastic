@@ -4,7 +4,7 @@ module Plastic
   module Graph
     module RetrievalSchema
       TABLES = {
-        document_revisions: [%i[sha256 origin_id], { sha256: :kept, intent_id: :kept, path: :kept,
+        document_revisions: [%i[sha256 intent_id path origin_id], { sha256: :kept, intent_id: :kept, path: :kept,
                                                      body: :kept, created_at: :kept, origin_id: :kept }],
         document_heads: [%i[intent_id path origin_id], { intent_id: :kept, path: :kept,
                                                          sha256: :kept, updated_at: :kept, origin_id: :kept }],

@@ -45,7 +45,7 @@ module Plastic
 
       def self.markup(source)
         extract_tokens(source, /<(script|style)\b.*?<\/\1>|<[^>]+>|&(?:#\d+|#x[0-9a-f]+|[a-z]+);/mi) do |match|
-          match[0].start_with?("&") ? CGI.unescapeHTML(match[0]) : ""
+          match[0].start_with?("&") ? CGI.unescapeHTML(match[0]) : " "
         end
       end
 
@@ -89,10 +89,15 @@ module Plastic
       def self.passage_offsets(length) = (0...length).step(PASSAGE_SIZE - OVERLAP)
 
       def self.decoded_rtf(match)
-        return match[1].to_i.chr(Encoding::UTF_8) if match[1]
+        return rtf_codepoint(match[1]).chr(Encoding::UTF_8) if match[1]
         return match[2].to_i(16).chr(Encoding::ISO_8859_1).encode(Encoding::UTF_8) if match[2]
 
         ""
+      end
+
+      def self.rtf_codepoint(value)
+        number = value.to_i
+        number.negative? ? number + 65_536 : number
       end
 
       def self.normalize_piece(body, lines, piece, space)

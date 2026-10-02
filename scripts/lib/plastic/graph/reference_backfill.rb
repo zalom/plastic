@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "evidence_writer"
+require_relative "evidence_text"
 
 module Plastic
   module Graph
@@ -42,7 +43,7 @@ module Plastic
 
       def legacy_references
         @references.rows("SELECT name, data, intent_id FROM sqlar WHERE origin_id = :origin", origin: @origin_id)
-          .select { |row| text?(row.fetch("data")) }
+          .select { |row| EvidenceText.classify(row.fetch("name"), row.fetch("data")) == :text }
       end
 
       def legacy_documents
@@ -53,7 +54,7 @@ module Plastic
         path = row.fetch("path") { row.fetch("name").split("/", 3).last }
         return if head_exists?(row.fetch("intent_id"), path)
 
-        body = row.fetch("body") { utf8(row.fetch("data")) }
+        body = row.fetch("body") { row.fetch("data").dup.force_encoding(Encoding::UTF_8) }
         EvidenceWriter.new(@knowledge, @origin_id).write(row.fetch("intent_id"), path, body)
         @after_write.call
       end
@@ -76,9 +77,6 @@ module Plastic
         end
       end
 
-      def text?(bytes) = utf8(bytes).valid_encoding? && !bytes.include?("\0")
-
-      def utf8(bytes) = bytes.dup.force_encoding(Encoding::UTF_8)
     end
   end
 end
