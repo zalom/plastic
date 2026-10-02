@@ -31,6 +31,14 @@ class RetrievalMigrationTest < Plastic::TestCase
     end
   end
 
+  def test_source_read_requires_maintenance_without_writing_an_old_database
+    create_old_schema
+    before = database_bytes
+
+    assert_raises(Plastic::Graph::RetrievalGraph::MaintenanceRequired) { retrieval.search("legacy", migrate: false) }
+    assert_equal before, database_bytes
+  end
+
   private
 
   def seed_legacy_evidence
@@ -75,6 +83,10 @@ class RetrievalMigrationTest < Plastic::TestCase
   def reopen
     Plastic::Graph::Database::ConnectionPool.disconnect
     Plastic::Graph.open(home: @plastic_home, store: "global")
+  end
+
+  def database_bytes
+    %w[knowledge_graph.db references.db].to_h { |file| [file, File.binread(store_path(file))] }
   end
 
   def put(database, table, row)
