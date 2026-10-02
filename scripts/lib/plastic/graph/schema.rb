@@ -2,6 +2,7 @@
 
 require_relative "table"
 require_relative "intent"
+require_relative "roadmap"
 
 module Plastic
   module Graph
@@ -52,6 +53,23 @@ module Plastic
                                                 at: :text, session_id: :text, origin_id: :kept }],
         links: [%i[from_ref to_ref kind origin_id], { from_ref: :kept, to_ref: :kept, kind: :kept,
                                                       at: :text, origin_id: :kept }],
+        roadmaps: [%i[slug origin_id], { slug: :kept, title: :kept, goal: :text, opened_at: :text,
+                                         updated_at: :text, origin_id: :kept }],
+        batches: [%i[roadmap position origin_id], { roadmap: :kept, position: "INTEGER NOT NULL",
+                                                    title: :kept, goal: :text, done: :text, updated_at: :text, origin_id: :kept }],
+        roadmap_items: [%i[roadmap item origin_id], { roadmap: :kept, item: :kept, batch: "INTEGER NOT NULL",
+                                                      position: "INTEGER NOT NULL", title: :kept, goal: :text, done: :text,
+                                                      intent_id: :text, mark: :text, updated_at: :text, origin_id: :kept }],
+        roadmap_edges: [%i[roadmap from to origin_id], { roadmap: :kept, from: :kept, to: :kept,
+                                                         kind: :kept, origin_id: :kept }],
+        roadmap_log: [%i[roadmap position origin_id], { roadmap: :kept, position: "INTEGER NOT NULL",
+                                                        at: :text, text: :kept, session_id: :text, origin_id: :kept }],
+        archives: [%i[intent_id origin_id], { intent_id: :kept, at: :text, origin_id: :kept,
+                                              restored_at: :text, session_id: :text }],
+        archive_entries: [%i[intent_id path origin_id], { intent_id: :kept, path: :kept, origin_id: :kept,
+                                                          kind: :kept, mode: :integer, mtime: :text, data: "BLOB" }],
+        backups: [%i[name], { name: :kept, files: :integer, bytes: :integer, sha256: :text,
+                              at: :text, session_id: :text }],
         sqlar: [%i[name], { name: "TEXT PRIMARY KEY", mode: "INT", mtime: "INT", sz: "INT", data: "BLOB",
                             intent_id: :text, sha256: :text, origin_id: :kept }],
         printed: [%i[path], { path: :kept, sha256: :kept, at: :kept, origin_id: :kept }],
@@ -63,8 +81,9 @@ module Plastic
 
       # Each database: its file and its tables.
       DATABASES = {
-        home: ["home.db", %i[routine_runs sessions locks]],
-        work: ["work_graph.db", %i[intents clusters nodes edges savepoints completions printed changes]],
+        home: ["home.db", %i[routine_runs sessions locks backups]],
+        work: ["work_graph.db", %i[intents clusters nodes edges savepoints completions printed changes
+          roadmaps batches roadmap_items roadmap_edges roadmap_log archives archive_entries]],
         knowledge: ["knowledge_graph.db", %i[documents rulings links printed changes]],
         references: ["references.db", %i[sqlar printed changes]]
       }.freeze
@@ -78,7 +97,11 @@ module Plastic
         "savepoints" => ["savepoint line", "savepoint lines"], "documents" => %w[document documents],
         "rulings" => %w[ruling rulings], "links" => %w[link links],
         "sqlar" => ["kept file", "kept files"], "printed" => ["printed file", "printed files"],
-        "sessions" => %w[session sessions], "locks" => %w[lock locks]
+        "sessions" => %w[session sessions], "locks" => %w[lock locks],
+        "roadmaps" => %w[roadmap roadmaps], "batches" => %w[batch batches],
+        "roadmap_items" => %w[item items], "roadmap_edges" => ["roadmap edge", "roadmap edges"],
+        "roadmap_log" => ["roadmap log line", "roadmap log lines"], "archives" => %w[archive archives],
+        "archive_entries" => ["archive entry", "archive entries"], "backups" => %w[backup backups]
       }.freeze
 
       def self.file(key) = DATABASES.fetch(key).first

@@ -451,15 +451,14 @@ and a graph layer with one table, `routine_runs` in `work_graph.db`. The live co
 under `scripts/lib/cli.rb` still serves every command, and the kernel tests run in a process
 of their own because both define some of the same constant names.
 
-Stage 4 (intent 399) filled the kernel's command table and workflow registry with the full
-work graph command set (below); the knowledge and references graphs, and the file checkout
-from the rows, are still missing. When the live command line retires, the separate test
-process ends. See [the contributor architecture page](contributing/ARCHITECTURE.md) for how a
-routine call runs.
+Stage 4, intent 399, added the work graph command set to the kernel's command table. Stage 5,
+intent 400, added the knowledge graph command set. Both sets are described below. When the
+live command line retires, the separate test process ends. See
+[the contributor architecture page](contributing/ARCHITECTURE.md) for how a routine call runs.
 
 ### the work graph command set (intent 399)
 
-`scripts/lib/plastic/cli/table.rb` routes 18 kernel commands against `work_graph.db` and
+`scripts/lib/plastic/cli/table.rb` routes 20 work graph commands against `work_graph.db` and
 `knowledge_graph.db`: `node add`, `node remove`, `node claim`, `node release`, `node done`,
 `node fail`, `node park`, `node answer`, `edge add`, `edge remove`, `intent spec`, `intent
 rule`, `auto start`, `graph check`, `graph ready`, `graph show`, `intent show`, `intent
@@ -477,8 +476,8 @@ still report why an edge could not be added or removed.
 a `gate`, then a `read` step prints from `context.retrieval` alone, so neither command writes.
 `ShowBrief` marks a ruling superseded by checking whether any other ruling's `supersedes`
 field names it (`rulings.filter_map(&:supersedes).to_set`), and lists the node and edge
-command usage by calling `.usage_line` (from the `Declarations` module) on the ten command
-classes it requires directly — there is no dynamic class lookup from a command name.
+command usage by calling `.usage_line` (from the `Declarations` module) on the 10 command
+classes it requires directly. No dynamic class lookup from a command name takes place.
 
 `Commands::Status` is a plain `CLI::Command`, not a routine, because it sweeps every store
 under the Plastic home (`scope.known_slugs`) rather than one scoped store: it opens each
@@ -510,6 +509,76 @@ records verification for an already done node; it preserves the node's attempt c
 `graph.json` is a generated view. Sync up skips it, direct Reader import refuses it,
 and sync down or graph show renders it from rows. Legacy import skips graph.json too;
 its node and edge state can only be created through the graph commands.
+
+### the knowledge graph command set (intent 400)
+
+`DropRoadmapItem` reads and checks the roadmap and item before its write step.
+`PreviewSync` runs a disposable copy and offers `sync up` after the preview.
+The acceptance helper decodes escaped line breaks in spec examples and clears all four
+session environment variables before passing the session declared by each example.
+
+Stage 5 adds the knowledge commands in four groups. See
+[architecture](architecture.md#roadmaps-links-archive-and-backup) for what each group does;
+this section covers how the code holds together.
+
+- **Roadmaps.** `roadmap batch`, `roadmap add`, `roadmap show`, `roadmap next`, `roadmap
+  drop`, `roadmap start`, `roadmap check`, `roadmap log` and `roadmap edge remove` write and
+  read five tables in `work_graph.db`: `roadmaps`, `batches`, `roadmap_items`,
+  `roadmap_edges` and `roadmap_log`. `Graph::RoadmapWriter` owns the writes, and
+  `WorkGraph` delegates to it. `Graph::RoadmapState` derives an item's state every time it
+  is read. The rows hold only the facts the state comes from: the item's mark, its intent's
+  status and its predecessors. Readiness checks whether each predecessor is done or dropped
+  without recursively evaluating its predecessors, so imported cycles stay blocked.
+  `RoadmapWriter` rejects a self edge before writing it. `Graph::RoadmapCheck` finds a loop, an edge to an item that is
+  not on the roadmap, and an item whose intent id names no intent. A `roadmap batch` call
+  keeps every field it leaves out: `RoadmapFields#over` takes the stored title, goal and done
+  lines in their place, and a new batch with no title is named "Batch N". The call writes the
+  roadmap row only when the roadmap has none, so its title and goal stay. `intent brief` prints
+  each line of the spec's Goal section as a `goal:` line, and the intent title only when the
+  spec has no goal.
+- **Links.** `intent link` and `intent unlink` write and remove rows in the `links` table of
+  `knowledge_graph.db` through `Graph::LinkWriter`. A link to a missing intent fails with
+  exit 1. A self link or a repeated link is refused with exit 3.
+- **Archive.** `intent archive ID` and its explicit `--revert` option use
+  `Graph::ArchiveWriter`. `ArchiveTree` reads entries with `lstat`, without following
+  links. The `archives` marker and complete `archive_entries` snapshot commit in one
+  work database transaction before filesystem removal. A removal retry checks every
+  remaining entry against that snapshot and preserves changed files.
+  `ArchiveSnapshot` restores into a temporary sibling directory, checks its bytes
+  and metadata, then renames it into place. Only then does `restored_at` change.
+  Conflicting destinations remain untouched. A directory already published by an
+  interrupted call must match the complete snapshot before that call can finish.
+  Restore does not print newer semantic rows over archived bytes or mark unsynced
+  documents as current. Plain sync reports conflicts for those documents.
+- **Backup.** `backup` and `backup list` go through `Graph::BackupWriter` and the `backups`
+  table of `home.db`. `RetrievalGraph#backup_flag` compares each archive's SHA-256 digest
+  with the digest stored at write time. The archive also carries `origin_id`, `config.yml`,
+  and `projects.yml` from the Plastic home when present. These files preserve row ownership,
+  settings, and project lookup when the archive is unpacked into an empty home.
+
+`Sync::LegacyImport` runs `Graph::LegacyStoreImport` for a store with `INDEX.md` and no
+`store/index.json`. One coordinator reads intent files, rulings and source links, imports
+roadmaps, and preserves changed originals. `LegacyDecisions`, `LegacyRoadmaps`, and
+`LegacyOriginals` own those parts. Failed import restores a complete saved copy of the
+store after disconnecting its database handles. Failure to save that copy leaves the
+original store untouched.
+
+`SyncPreview` copies the selected store and its identity and configuration into a
+temporary home and runs the same sync there. It rejects symbolic links before copying
+and resolves absolute overwrite paths against the original store. Preview does not keep
+a routine run in the original home. Metadata import no longer requires a separate
+migration command. The compatibility cleanup flag applies only after successful first
+import; later sync does not delete legacy source files.
+
+#### a stopped write runs again on the next call
+
+A routine run that stopped with a refusal or a failure stays open, and the next call on the
+same subject reopens it. Its stored facts come back into the context, so a step whose `done:`
+check reads those facts would skip and the old stop would replay. `CodeWorkflow.forget_stop`
+adds a `read` step that clears the named facts when the earlier call left a `problem`. Every
+stage 5 workflow that writes, and that can stop, starts with this step: archive, restore,
+roadmap add, roadmap start, roadmap edge remove and unlink. Workflows that recompute their
+facts in a `read` step on every call, such as `intent link`, do not need it.
 
 ### companion tools: no Plastic code path calls them
 
@@ -690,7 +759,7 @@ measures active intents in the layout produced by the real installer.
 global root, a project root and the list of project roots, so no script joins `"store"` or
 `"projects"` by hand.
 
-`scripts/lib/stores_move.rb` does the move for `plastic migrate stores`. It works in this order:
+The historical `scripts/lib/stores_move.rb` moved old home layouts before the kernel cut-over. That retired implementation worked in this order:
 
 1. It refuses when `stores/` exists, when a fresh `delivery.lock` is held, or when the copy
    directory exists.

@@ -5,7 +5,7 @@ require_relative "../../../scripts/lib/plastic/workflows/write_intent"
 
 class WriteIntentTest < Plastic::TestCase
   WriteIntent = Plastic::Workflows::WriteIntent
-  DECLARED = %i[title parent_id ref kind status slug problem intent_id printed_paths].freeze
+  DECLARED = %i[title parent_id ref after kind status slug problem intent_id linked printed_paths].freeze
 
   # The work graph as WriteIntent calls it, keeping each call.
   class Work

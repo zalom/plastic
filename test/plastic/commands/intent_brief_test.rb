@@ -32,6 +32,16 @@ class IntentBriefTest < Plastic::TestCase
     assert_includes result.out, "criterion: ships"
   end
 
+  def test_names_each_goal_line_the_spec_holds
+    intent = open_intent
+    write_spec(intent, "# Spec\n\n## Goal\n\nClose the two blockers\nLock down guest orders\n\n## Done criteria\n- ships\n")
+
+    result = call(intent.intent_id)
+
+    assert_includes result.out, "goal: Close the two blockers\ngoal: Lock down guest orders\n"
+    refute_includes result.out, "goal: Alpha"
+  end
+
   def test_marks_the_superseded_ruling_and_keeps_the_other_plain
     intent = briefed_intent
 

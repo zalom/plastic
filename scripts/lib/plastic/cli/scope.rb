@@ -55,9 +55,10 @@ module Plastic
 
       def read_projects(path)
         data = load_projects(path)
-        raise BrokenProjects, "#{path} does not hold a map of projects" unless data.is_a?(Hash)
+        projects = data.is_a?(Hash) ? data["projects"] : nil
+        raise BrokenProjects, "#{path} does not hold a map of projects" unless projects.is_a?(Hash)
 
-        data.to_h { |slug, info| [slug.to_s, info.is_a?(Hash) ? info["path"].to_s : ""] }
+        projects.to_h { |slug, info| [slug.to_s, info.is_a?(Hash) ? info["path"].to_s : ""] }
       end
 
       def load_projects(path)

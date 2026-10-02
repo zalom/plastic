@@ -6,10 +6,16 @@ require_relative "completion_writer"
 require_relative "node_writer"
 require_relative "edge_writer"
 require_relative "ruling_writer"
+require_relative "link_writer"
+require_relative "roadmap_writer"
+require_relative "roadmap_state"
+require_relative "archive_writer"
+require_relative "backup_writer"
 require_relative "session_writer"
 require_relative "printer"
 require_relative "prints"
 require_relative "sync"
+require_relative "sync_preview"
 
 module Plastic
   module Graph
@@ -28,6 +34,8 @@ module Plastic
         :park_node, :answer_node, :repair_done_node
       def_delegators :edges, :add_edge, :remove_edge
       def_delegators :rulings, :add_ruling
+      def_delegators :links, :add_link, :remove_link
+      def_delegators :roadmaps, :write_batch, :add_item, :start_item, :drop_item, :remove_roadmap_edge, :add_log
 
       def initialize(databases, folder:, retrieval:, session: nil)
         @databases = databases
@@ -56,6 +64,10 @@ module Plastic
 
       def ref_line(ref) = intents.ref_line(ref)
 
+      def link_target_problem(id, target) = links.target_problem(id, target)
+
+      def link_refusal(id, target, kind) = links.refusal(id, target, kind)
+
       # Prints store/index.json and every file of one intent; returns the paths written.
       def print_intent(intent_id)
         @folder.ignore_databases
@@ -63,11 +75,52 @@ module Plastic
         sync.printer.print([Prints.index(@retrieval), *Prints.of_intent(@retrieval, intent)])
       end
 
+      # Prints a roadmap's file from its rows; returns the paths written.
+      def print_roadmap(slug) = sync.printer.print([Prints.roadmap(@retrieval, slug)])
+
+      # Opens a ready item's intent, with its spec held in rows. Returns
+      # [intent_id, problem, kind]; kind is :failure or :refusal, nil on success.
+      def start_roadmap_item(slug, item_id)
+        item = @retrieval.roadmap_items(slug).find { |row| row.item == item_id }
+        return [nil, "no item #{item_id} on roadmap #{slug}", :failure] unless item
+
+        problem = start_problem(item)
+        return [nil, problem, :refusal] if problem
+
+        open_roadmap_item(slug, item)
+      end
+
       def print_index = sync.printer.print([Prints.index(@retrieval)])
 
       def sync_plan(direction, options) = sync.plan(direction, options)
 
       def sync_apply(plan) = sync.apply(plan)
+
+      def preview_sync(options)
+        home = File.dirname(@databases.fetch(:home).path)
+        SyncPreview.new(home, @retrieval.store, options).call
+      end
+
+      # Returns [ok, problem, kind]; kind is :failure or :refusal, nil on success.
+      def archive_intent(intent_id)
+        @folder.ignore_databases
+        archives.archive(intent_id)
+      end
+
+      # Returns [ok, problem, kind]; kind is :failure, nil on success. Restores the saved directory.
+      def restore_intent(intent_id)
+        ok, problem, kind = archives.restore(intent_id)
+        # The snapshot restores exact bytes; printing live rows would replace them.
+        [ok, problem, kind]
+      end
+
+      # Packs home.db and every store's three databases, writes the row, and returns it.
+      def backup
+        home_db = @databases.fetch(:home)
+        row = BackupWriter.new(File.dirname(home_db.path), session: @session).call
+        home_db.transaction { |batch| batch.put(:backups, row, statement: :insert) }
+        row
+      end
 
       private
 
@@ -83,7 +136,42 @@ module Plastic
 
       def rulings = (@rulings ||= RulingWriter.new(@databases, @retrieval, session: @session))
 
+      def links = (@links ||= LinkWriter.new(@databases, @retrieval))
+
+      def roadmaps = (@roadmaps ||= RoadmapWriter.new(@databases, @retrieval, session: @session))
+
       def sync = (@sync ||= Sync.new(folder: @folder, retrieval: @retrieval, databases: @databases))
+
+      def archives = (@archives ||= ArchiveWriter.new(@databases, @retrieval, @folder, session: @session))
+
+      def start_problem(item)
+        return "item #{item.item} already has an intent" if item.intent_id
+
+        state = RoadmapState.of(item, @retrieval)
+        "item #{item.item} is #{state}, not ready" unless state == "ready"
+      end
+
+      def open_roadmap_item(slug, item)
+        intent = intents.write(title: item.title)
+        write_spec_document(intent.intent_id, batch_of(slug, item), item)
+        roadmaps.start_item(slug, item.item, intent.intent_id)
+        links.add_link(from_ref: intent.intent_id, to_ref: "roadmap:#{slug}", kind: "source")
+        [intent.intent_id, nil, nil]
+      end
+
+      def batch_of(slug, item) = @retrieval.batches(slug).find { |row| row.position == item.batch }
+
+      def write_spec_document(intent_id, batch, item)
+        row = { intent_id:, path: "spec.md", body: spec_body(batch, item), updated_at: Plastic.now }
+        @databases.fetch(:knowledge).transaction { |transaction| transaction.put(:documents, row, statement: :insert) }
+      end
+
+      def spec_body(batch, item)
+        goal = [batch&.goal, item.goal].compact
+        done = (batch&.done_lines || []) + item.done_lines
+        lines = ["## Goal", "", *goal, "", "## Done criteria", "", *done.map { |line| "- [ ] #{line}" }, ""]
+        lines.join("\n")
+      end
     end
   end
 end

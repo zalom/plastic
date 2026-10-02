@@ -13,13 +13,13 @@ class SyncOptionsTest < Plastic::TestCase
     [Plastic::Commands::SyncUp, Plastic::Commands::SyncDown].each do |command|
       description = command.describe.to_h
 
-      assert_equal [OPTIONS, %i[work knowledge references]], [description[:options].map { |option| option.slice(*OPTIONS.first.keys) },
+      assert_equal [OPTIONS, %i[work knowledge references]], [description[:options].reject { |option| option[:name] == :dry_run }.map { |option| option.slice(*OPTIONS.first.keys) },
         description[:writes]]
     end
   end
 
   def test_each_direction_runs_its_own_workflow
-    assert_equal [["sync up", "Read the files changed by hand into rows", [:code_sync_up]],
+    assert_equal [["sync up", "Read the files changed by hand into rows", %i[code_preview_sync code_sync_up]],
       ["sync down", "Print the rows that changed into files", [:code_sync_down]]],
       [Plastic::Commands::SyncUp, Plastic::Commands::SyncDown].map { |command| [*command.describe.to_h.values_at(:name, :summary), command.chain.keys] }
   end

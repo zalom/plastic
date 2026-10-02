@@ -55,6 +55,12 @@ class StoreFolderTest < Plastic::TestCase
     assert_equal "notes/\n*.db\n*.db-journal\n", @folder.read(".gitignore")
   end
 
+  def test_content_lock_files_are_kept
+    @folder.write("store/1--a/Gemfile.lock", "dependency versions")
+
+    assert_includes @folder.intent_files, "store/1--a/Gemfile.lock"
+  end
+
   def test_a_new_ignore_file_lists_both_patterns
     @folder.ignore_databases
 

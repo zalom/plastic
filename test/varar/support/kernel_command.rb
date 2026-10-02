@@ -45,7 +45,8 @@ class KernelCommand
   def initialize(home)
     @home = home
     @env = { "HOME" => home, "PLASTIC_HOME" => plastic_home, "PLASTIC_TMP" => File.join(home, "tmp"),
-             "CLAUDE_CODE_SESSION_ID" => nil, "PLASTIC_SESSION" => nil, "RUBYOPT" => nil, "BUNDLER_SETUP" => nil }
+             "CLAUDE_CODE_SESSION_ID" => nil, "PLASTIC_SESSION" => nil, "CODEX_SESSION_ID" => nil, "CODEX_THREAD_ID" => nil,
+             "RUBYOPT" => nil, "BUNDLER_SETUP" => nil }
   end
 
   def plastic_home = File.join(home, ".plastic")

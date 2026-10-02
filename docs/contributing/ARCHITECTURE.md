@@ -98,7 +98,7 @@ conflict. `--merge` applies the one-sided changes, then exits 3 and lists the co
 
 A store written before `store/index.json` has an `INDEX.md` instead. `sync up` on such a store
 reads `INDEX.md` once, writes its intents and clusters, reads the intent folders, prints the
-whole store, and deletes `INDEX.md`. `sync down` fails on such a store until `sync up` has
+whole store, and leaves `INDEX.md` in place. `sync down` fails on such a store until `sync up` has
 imported it.
 
 ## The tri-graph kernel

@@ -5,13 +5,14 @@ require_relative "../legacy_index"
 require_relative "../prints"
 require_relative "../schema"
 require_relative "../store_folder"
+require_relative "../legacy_store_import"
 
 module Plastic
   module Graph
     class Sync
-      # The first sync up of a store written before store/index.json: reads
-      # INDEX.md into intent and cluster rows, every file of every intent
-      # folder into rows, prints the whole store, and deletes INDEX.md.
+      # The full first sync delegates preservation and metadata to LegacyStoreImport.
+      # Its read_rows primitive reads intents, clusters and ordinary files, then
+      # prints the store. graph.json remains a generated view and is never imported.
       class LegacyImport
         FRONT_MATTER = /\A---\n(.*?)\n---/m
         FIELD = /^(\w+):[ \t]*"?([^"\n]*?)"?[ \t]*$/
@@ -23,12 +24,14 @@ module Plastic
           @databases = databases
         end
 
-        def call
+        def call = LegacyStoreImport.new(self, @folder, @retrieval, @databases).call
+
+        def read_rows
           parsed = LegacyIndex.parse(@folder.read(StoreFolder::LEGACY_INDEX).force_encoding(Encoding::UTF_8))
           write(parsed.check(@folder.intent_dirs))
           read = @sync.read(@folder.intent_files.reject { |path| StoreFolder.graph_view?(path) })
           finish
-          ["imported #{StoreFolder::LEGACY_INDEX}: #{Schema.phrase(parsed.counts)}, then deleted it", *read]
+          ["imported #{StoreFolder::LEGACY_INDEX}: #{Schema.phrase(parsed.counts)}", *read]
         end
 
         private
@@ -43,7 +46,6 @@ module Plastic
 
         def finish
           @sync.printer.print(Prints.of_store(@retrieval))
-          @folder.delete(StoreFolder::LEGACY_INDEX)
         end
 
         # The fields at the head of the intent's own file.

@@ -11,6 +11,7 @@ module Plastic
       argument :title, label: "TITLE", text: "what the intent is for, in words", rest: true
       option :parent_id, switch: "--parent ID", text: "the intent this one is a child of"
       option :ref, switch: "--ref REF", text: "a ticket, a link, or another intent as ID-ORIGIN"
+      option :after, switch: "--after ID", text: "an intent this one grows out of, linked as source"
       option :kind, switch: "--kind KIND", text: "the kind of work", default: "work"
       option :status, switch: "--status STATUS", text: "open, active, parked or future", default: "open"
       option :slug, switch: "--slug SLUG", text: "the folder name after the id"

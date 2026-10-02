@@ -67,7 +67,7 @@ Each store root has exactly one `INDEX.md` and a `store/` folder holding one dir
 
 So the global store is `~/.plastic/stores/global/store/`, and a project store is `~/.plastic/stores/{slug}/store/`.
 
-Homes created before the stores layout use the legacy layout. There the global store root is `~/.plastic/` itself (`~/.plastic/INDEX.md` and `~/.plastic/store/`), and project store roots sit at `~/.plastic/projects/{slug}/`. Plastic reads the stores layout when `~/.plastic/stores/` exists, and reads the legacy layout when it does not. The installer bootstraps the legacy layout only when the home already holds a legacy `store`, `projects`, `INDEX.md` or `roadmaps` entry. An existing home keeps its layout until `plastic migrate stores` moves every store under `stores/`. Reinstalling does not move user data.
+Homes created before the stores layout use the legacy layout. There the global store root is `~/.plastic/` itself (`~/.plastic/INDEX.md` and `~/.plastic/store/`), and project store roots sit at `~/.plastic/projects/{slug}/`. Plastic reads the stores layout when `~/.plastic/stores/` exists, and reads the legacy layout when it does not. The installer bootstraps the legacy layout only when the home already holds a legacy `store`, `projects`, `INDEX.md` or `roadmaps` entry. That layout mover belonged to the earlier command line. The current kernel expects stores under `stores/`; `sync up` imports their legacy content. Reinstalling does not move user data.
 
 The rule of thumb: if the work changes a specific project's code it is tactical and belongs in that project's store; otherwise it is strategic and belongs in the global store. When in doubt, global. Stores are personal and local; the Plastic home is git-tracked locally but never pushed to a remote.
 
@@ -192,6 +192,66 @@ abandoned intent, and a live lock held by another session; it fails (exit 1) whe
 names no session. Otherwise it takes the lock in `auto` mode, sets the intent active, and
 reprints its files. An already active intent still needs a live auto lock held by the
 calling session; starting it takes a missing or expired lock.
+
+## roadmaps, links, archive and backup
+
+A sync preview reports what it would import and offers `plastic sync up`.
+Dropping a missing roadmap item fails before any write and names the missing roadmap or item.
+
+A roadmap is a plan of several intents, kept as rows in `work_graph.db`. It holds batches.
+Each batch has a goal and done criteria, and each item in a batch can wait on other items.
+`plastic roadmap batch` and `plastic roadmap add` write the plan. `plastic roadmap start`
+opens a ready item's intent and copies the item's goal and done criteria into that intent's
+spec. An item's state is never stored. It is derived on each read from its intent's status
+and from the items it waits on: done, dropped, in flight, blocked or ready. `plastic roadmap
+next` prints the first ready item, or what is in the way. `plastic roadmap show` prints the
+plan and reprints `roadmaps/<slug>.md` from the rows.
+
+`plastic intent link` writes a typed link from one intent to another. A link to a live intent
+stops that intent from being archived.
+
+`plastic intent archive ID` saves the entire directory in `work_graph.db` before
+removing it. The snapshot includes hand edits, binary files, dotfiles, lock files,
+empty directories, symlink targets, file modes and modification times. Open intents
+and intents linked from live work are refused. Special files are refused before
+removal. Archived intents stay out of `sync down`.
+
+`plastic intent archive ID --revert` restores the snapshot. It preserves conflicting
+files and keeps the archived marker until the directory is restored. An interrupted
+call can retry; a completed archive offers `status`, so following its next command
+does not undo it. Restored hand edits that differ from live document rows need
+explicit sync conflict resolution. A plain sync cannot silently overwrite them.
+
+Roadmap writes reject an item that depends on itself. Reading an imported cycle reports
+its unresolved items as blocked, and `roadmap check` identifies the loop.
+
+`plastic backup` packs `home.db`, each store's three databases, and the home's `origin_id`,
+`config.yml`, and `projects.yml` when present into one gzipped archive under `backups/`.
+The identity file lets an unpacked backup read the rows under their original owner.
+`plastic backup list` flags an archive that is missing or that changed
+since it was written.
+
+`plastic sync up` imports a selected legacy store completely: intents, rulings, source
+and chain links, roadmaps, and preserved original bytes. It then handles ordinary hand
+edits through the same command. Use `--project SLUG` to select each store. The separate
+migration command has been removed.
+
+`plastic sync up --dry-run` runs the same operation in a disposable copy. It refuses a
+source tree containing symbolic links so a preview cannot write through one into the
+original tree. Plain sync retains its conflict checks and explicit merge or overwrite
+options. Content files such as `Gemfile.lock` are kept; the old `delivery.lock` and
+`.DS_Store` machine files remain excluded from ordinary sync. Archive snapshots include
+those files too.
+
+First import retains the source checkout by default. The existing
+`migrate.remove_after_import` configuration remains supported for that first import only:
+after success, it removes `INDEX.md` and archives done or abandoned intents. Ordinary
+later sync does not repeat cleanup. Explicit archive reversal uses
+`plastic intent archive ID --revert`.
+
+Backups recover the same installation, including its origin identity. They are not a
+colleague handover format. Team transport is deferred, and Plastic stores are not shared
+through Git.
 
 ## Delivery acceptance
 

@@ -14,7 +14,7 @@ module Plastic
       IGNORE_FILE = ".gitignore"
       IGNORED = %w[*.db *.db-journal].freeze
       # Machine state of the command line that runs today, never a record.
-      SKIPPED = /(?:\.lock|\A\.DS_Store)\z/
+      SKIPPED = /\A(?:delivery\.lock|\.DS_Store)\z/
 
       attr_reader :root
 
@@ -45,11 +45,15 @@ module Plastic
 
       def delete(rel) = FileUtils.rm_f(path(rel))
 
+      # Removes a whole folder of the checkout, such as an archived intent's.
+      def remove_dir(rel) = FileUtils.rm_rf(path(rel))
+
       def intent_dirs = Dir.glob("store/*--*/", base: root).map { |dir| dir.chomp("/") }.sort
 
-      # Every file of every intent folder, dot files included.
+      # The graph view is generated from node and edge rows.
       def self.graph_view?(path) = path.match?(%r{\Astore/[^/]+/graph\.json\z})
 
+      # Every file of every intent folder, dot files included.
       def intent_files = intent_dirs.flat_map { |dir| files(dir) }
 
       def files(dir)

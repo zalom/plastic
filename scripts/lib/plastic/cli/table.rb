@@ -20,6 +20,11 @@ module Plastic
       "intent brief" => ["Commands::IntentBrief", "Print an intent's goal, criteria, rulings, ready nodes and command usage"],
       "status" => ["Commands::Status", "List every store's open and active intents, with node counts by state"],
       "next" => ["Commands::Next", "Pick the intent in play and offer its next command"],
+      "intent link" => ["Commands::IntentLink", "Write a typed link from an intent to a ref"],
+      "intent unlink" => ["Commands::IntentUnlink", "Remove a link"],
+      "intent archive" => ["Commands::IntentArchive", "Archive an intent directory; --revert restores it"],
+      "backup" => ["Commands::Backup", "Pack home.db and every store's three databases into one archive"],
+      "backup list" => ["Commands::BackupList", "List every backup, flagging a missing or changed file"],
 
       # Work graph
       "node add" => ["Commands::NodeAdd", "Add a node to an intent's work graph"],
@@ -35,6 +40,17 @@ module Plastic
       "graph check" => ["Commands::GraphCheck", "Find a judge missing, an isolated node, a retry cap or no done criterion"],
       "graph ready" => ["Commands::GraphReady", "List the nodes ready to claim"],
       "graph show" => ["Commands::GraphShow", "Print every node and edge, then reprint graph.json from rows"],
+
+      # Roadmaps: a named plan, held as rows instead of a hand-kept file.
+      "roadmap batch" => ["Commands::RoadmapBatch", "Write one roadmap batch's goal and done criteria"],
+      "roadmap add" => ["Commands::RoadmapAdd", "Add an item to a roadmap batch, after whichever items it waits on"],
+      "roadmap show" => ["Commands::RoadmapShow", "Print a roadmap's batches and items, then reprint its file"],
+      "roadmap next" => ["Commands::RoadmapNext", "Print the first ready item, or what is in the way"],
+      "roadmap drop" => ["Commands::RoadmapDrop", "Mark a roadmap item dropped; its edges stay as rows"],
+      "roadmap start" => ["Commands::RoadmapStart", "Open a ready item's intent, with its spec held in rows"],
+      "roadmap check" => ["Commands::RoadmapCheck", "List a roadmap's loops, dangling edges and items with no intent"],
+      "roadmap log" => ["Commands::RoadmapLog", "Append a log line to a roadmap, stamped with the session id"],
+      "roadmap edge remove" => ["Commands::RoadmapEdgeRemove", "Remove one after edge from a roadmap"],
 
       # Hooks: the harness calls these on an event; see docs/contributing/ARCHITECTURE.md.
       "hook resume" => ["Hooks::Resume", "SessionStart: print the state the rows carry"],
