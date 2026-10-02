@@ -6,6 +6,7 @@ require "tempfile"
 
 class IntentContextTest < Plastic::TestCase
   def test_validates_and_persists_agent_selected_evidence_without_writing_source_stores
+    open_intent
     reference = write_document("other", "selected evidence")
     plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
     before = File.binread(File.join(@plastic_home, "stores", "other", "knowledge_graph.db"))

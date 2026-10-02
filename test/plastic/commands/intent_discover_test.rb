@@ -3,7 +3,19 @@
 require_relative "../../test_helper"
 
 class IntentDiscoverTest < Plastic::TestCase
+  def test_rejects_a_missing_or_unsafe_owning_intent_before_writing_a_manifest
+    write_document("global", "global evidence")
+
+    missing = plastic("intent", "discover", "99", "evidence", "--json", table: Plastic::CLI::TABLE)
+    unsafe = plastic("intent", "discover", "../escape", "evidence", "--json", table: Plastic::CLI::TABLE)
+
+    assert_equal 1, missing.code
+    assert_equal 2, unsafe.code
+    refute_path_exists store_path("discovery/99.json")
+  end
+
   def test_records_deterministic_selected_source_candidates
+    open_intent
     write_document("global", "global evidence")
     write_document("other", "other evidence")
 
