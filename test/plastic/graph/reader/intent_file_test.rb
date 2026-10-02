@@ -38,6 +38,14 @@ class IntentFileTest < Plastic::TestCase
     assert_equal "# Plan\n", retrieval.documents("1").find { |document| document.path == "plan.md" }.body
   end
 
+  def test_a_document_write_keeps_an_immutable_revision_head_passage_and_fts_row
+    read_in("plan.md", "# Retrieval\n\nIndexed evidence\n")
+
+    row = store_graphs.databases.fetch(:knowledge).row("SELECT body, sha256, position FROM document_fts WHERE document_fts MATCH 'evidence'")
+    assert_equal ["# Retrieval\n\nIndexed evidence\n", Digest::SHA256.hexdigest("# Retrieval\n\nIndexed evidence\n"), 1],
+      row.values_at("body", "sha256", "position")
+  end
+
   def attributed_savepoint
     store_graphs.databases.fetch(:work).transaction do |batch|
       batch.put(:savepoints, { intent_id: "1", position: 1, at: AT, text: "Original", session_id: "owner" })
