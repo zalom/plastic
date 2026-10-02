@@ -32,9 +32,11 @@ class RetrievalBenchmarkTest < Minitest::Test
     Dir.mktmpdir do |directory|
       output = File.join(directory, "evidence", "benchmark.json")
 
-      Plastic::RetrievalBenchmark.run(output:, corpus_bytes: 1_000, warmup: 0, samples: 1)
+      report = Plastic::RetrievalBenchmark.run(output:, corpus_bytes: 1_000, warmup: 0, samples: 1)
 
       assert_equal "pending", JSON.parse(File.read(output)).dig("owner_review", "status")
+      assert report.fetch("measurements").values.flatten.all? { |sample| sample.fetch("exit_status").zero? }
+      refute report.fetch("measurements").values.flatten.any? { |sample| sample.fetch("argv").include?("--help") }
     end
   end
 end

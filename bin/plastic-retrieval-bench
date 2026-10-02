@@ -9,6 +9,7 @@ OptionParser.new do |parser|
   parser.banner = "Usage: bin/plastic-retrieval-bench [options]"
   parser.on("--output PATH", "Write raw JSON evidence to PATH") { |value| options[:output] = value }
   parser.on("--corpus-bytes BYTES", Integer, "Generate this many public UTF-8 bytes") { |value| options[:corpus_bytes] = value }
+  parser.on("--quality-input PATH", "Evaluate a candidate quality JSON file") { |value| options[:quality_input] = value }
 end.parse!
 
 Plastic::RetrievalBenchmark.run(**options)
