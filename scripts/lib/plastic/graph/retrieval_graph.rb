@@ -48,6 +48,16 @@ module Plastic
 
       def documents(intent_id = nil) = read(:documents, intent_id)
 
+      SEARCH_SQL = "SELECT intent_id, path, body, sha256, position, bm25(document_fts) AS score " \
+                   "FROM document_fts WHERE document_fts MATCH :query AND origin_id = :origin " \
+                   "ORDER BY score, intent_id, path, position LIMIT :limit"
+
+      # Returns current indexed passages in stable lexical-rank order. Plain
+      # words become quoted FTS terms, so caller text never changes the query.
+      def search(terms, limit: 20)
+        @databases.fetch(:knowledge).rows(SEARCH_SQL, query: fts_query(terms), origin: origin_id, limit:)
+      end
+
       def savepoints(intent_id = nil) = read(:savepoints, intent_id)
 
       def nodes(intent_id = nil) = read(:nodes, intent_id)
@@ -134,6 +144,8 @@ module Plastic
       private
 
       def home_dir = File.dirname(@databases.fetch(:home).path)
+
+      def fts_query(terms) = terms.to_s.scan(/\S+/).map { |term| %("#{term.tr("\"", " ")}") }.join(" AND ")
 
       def sessions = (@sessions ||= SessionReader.new(@databases, store:, origin: @origin))
 
