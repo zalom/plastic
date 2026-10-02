@@ -89,7 +89,7 @@ class SyncStepsTest < Plastic::TestCase
   def test_the_registry_lists_the_storage_workflows
     assert_equal %i[code_write_intent code_sync_up code_sync_down], Plastic::Workflows::REGISTRY.first(3)
     assert_equal Plastic::Workflows::REGISTRY.size, Plastic::Workflows::REGISTRY.uniq.size
-    assert_includes Plastic::Workflows::REGISTRY, :code_migrate_stores
+    assert_includes Plastic::Workflows::REGISTRY, :code_preview_sync
   end
 
   def test_a_second_load_of_a_sync_class_keeps_one_chain

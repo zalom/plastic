@@ -10,11 +10,11 @@ require_relative "roadmap_writer"
 require_relative "roadmap_state"
 require_relative "archive_writer"
 require_relative "backup_writer"
-require_relative "migrate_writer"
 require_relative "session_writer"
 require_relative "printer"
 require_relative "prints"
 require_relative "sync"
+require_relative "sync_preview"
 
 module Plastic
   module Graph
@@ -93,16 +93,21 @@ module Plastic
 
       def sync_apply(plan) = sync.apply(plan)
 
+      def preview_sync(options)
+        home = File.dirname(@databases.fetch(:home).path)
+        SyncPreview.new(home, @retrieval.store, options).call
+      end
+
       # Returns [ok, problem, kind]; kind is :failure or :refusal, nil on success.
       def archive_intent(intent_id)
         @folder.ignore_databases
         archives.archive(intent_id)
       end
 
-      # Returns [ok, problem, kind]; kind is :failure, nil on success. Prints the folder back on success.
+      # Returns [ok, problem, kind]; kind is :failure, nil on success. Restores the saved directory.
       def restore_intent(intent_id)
         ok, problem, kind = archives.restore(intent_id)
-        print_intent(intent_id) if ok
+        # The snapshot restores exact bytes; printing live rows would replace them.
         [ok, problem, kind]
       end
 
@@ -112,13 +117,6 @@ module Plastic
         row = BackupWriter.new(File.dirname(home_db.path), session: @session).call
         home_db.transaction { |batch| batch.put(:backups, row, statement: :insert) }
         row
-      end
-
-      # Imports every legacy store under the home into rows. Returns one
-      # MigrateWriter::StoreReport per store found.
-      def migrate_stores(mode)
-        home = File.dirname(@databases.fetch(:home).path)
-        MigrateWriter.new(home, mode:, session: @session).call
       end
 
       private

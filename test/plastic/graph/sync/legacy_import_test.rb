@@ -37,7 +37,7 @@ class LegacyImportTest < Plastic::TestCase
     folder.write("store/9--stray/spec.md", "# Stray\n")
     error = assert_raises(Plastic::Invalid) { import }
 
-    assert_equal "store/9--stray has no entry in INDEX.md", error.message
+    assert_includes error.message, "store/9--stray has no entry in INDEX.md"
     assert_equal [[], true], [retrieval.intents, folder.exist?("INDEX.md")]
   end
 

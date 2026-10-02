@@ -21,11 +21,9 @@ module Plastic
       "next" => ["Commands::Next", "Pick the intent in play and offer its next command"],
       "intent link" => ["Commands::IntentLink", "Write a typed link from an intent to a ref"],
       "intent unlink" => ["Commands::IntentUnlink", "Remove a link"],
-      "intent archive" => ["Commands::IntentArchive", "Take a done, abandoned or future intent off the checkout"],
-      "intent restore" => ["Commands::IntentRestore", "Print an archived intent's folder back from its rows"],
+      "intent archive" => ["Commands::IntentArchive", "Archive an intent directory; --revert restores it"],
       "backup" => ["Commands::Backup", "Pack home.db and every store's three databases into one archive"],
       "backup list" => ["Commands::BackupList", "List every backup, flagging a missing or changed file"],
-      "migrate stores" => ["Commands::MigrateStores", "Import every legacy store under the home into rows"],
 
       # Work graph
       "node add" => ["Commands::NodeAdd", "Add a node to an intent's work graph"],

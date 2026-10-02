@@ -2,7 +2,7 @@
 
 module Plastic
   module Graph
-    # Reads a legacy roadmap file's text into the rows migrate stores
+    # Reads a legacy roadmap file's text into the rows sync up
     # writes: a title and goal, the batches and items of its "## Batches" or
     # "## Waves" section, the "needs" edges of its "## Graph" section, and
     # the dated lines of its "## Log" section. Ported from the line patterns

@@ -70,15 +70,15 @@ class IntentArchiveTest < Plastic::TestCase
     assert_includes "#{result.out}#{result.err}", "open"
   end
 
-  def test_a_hand_edited_file_refuses_the_archive
+  def test_a_hand_edited_file_is_captured_before_archive
     intent = open_intent("Target")
     mark_done(intent)
     write("#{intent.dir}/#{intent.file}", "edited by hand\n")
 
     result = call(intent.intent_id)
 
-    assert_equal 3, result.code
-    assert folder.exist?("#{intent.dir}/#{intent.file}")
+    assert_equal 0, result.code
+    refute folder.exist?("#{intent.dir}/#{intent.file}")
   end
 
   def test_sync_down_after_an_archive_prints_nothing_back
@@ -113,14 +113,14 @@ class IntentArchiveTest < Plastic::TestCase
     assert retrieval.archived?(intent.intent_id)
   end
 
-  def test_archiving_an_archived_intent_is_refused
+  def test_archiving_an_archived_intent_finishes_idempotently
     intent = open_intent("Target")
     mark_done(intent)
     call(intent.intent_id)
 
     result = call(intent.intent_id)
 
-    assert_equal 3, result.code
-    assert_includes result.err, "already archived"
+    assert_equal 0, result.code
+    assert retrieval.archived?(intent.intent_id)
   end
 end

@@ -92,7 +92,7 @@
       ]
     },
     "varar/intent-archive.md": {
-      "sourceHash": "fnv1a:5b1186c0",
+      "sourceHash": "fnv1a:31a78971",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -137,7 +137,7 @@
       ]
     },
     "varar/intent-restore.md": {
-      "sourceHash": "fnv1a:5f131453",
+      "sourceHash": "fnv1a:dc7830a7",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -182,7 +182,7 @@
       ]
     },
     "varar/knowledge-graph.md": {
-      "sourceHash": "fnv1a:a5675545",
+      "sourceHash": "fnv1a:b381cdcc",
       "examples": [
         {
           "name": "Each row gives the step, the exit code and what it shows:",
@@ -191,7 +191,7 @@
       ]
     },
     "varar/legacy-import.md": {
-      "sourceHash": "fnv1a:0240c7f5",
+      "sourceHash": "fnv1a:e1d44e16",
       "examples": [
         {
           "name": "Each row gives the fixture, the call, the exit code, the result, the intents and the files of 1:",
@@ -430,6 +430,15 @@
         {
           "name": "Each row gives the change, the call, the exit code, the result, the file and the row:",
           "line": 10
+        }
+      ]
+    },
+    "varar/sync-import.md": {
+      "sourceHash": "fnv1a:af674805",
+      "examples": [
+        {
+          "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
+          "line": 7
         }
       ]
     },

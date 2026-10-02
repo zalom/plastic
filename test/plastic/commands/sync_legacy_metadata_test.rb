@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/commands/migrate_stores"
+require_relative "../../../scripts/lib/plastic/commands/sync_up"
 require_relative "../../../scripts/lib/plastic/commands/roadmap_show"
 
-class MigrateStoresTest < Plastic::TestCase
+class SyncLegacyMetadataTest < Plastic::TestCase
   fixtures :legacy
 
   ROADMAP = <<~MARKDOWN
@@ -16,7 +16,7 @@ class MigrateStoresTest < Plastic::TestCase
     - [ ] 1a Deploy the gateway — queued
   MARKDOWN
 
-  def apply = plastic("migrate", "stores", "--apply", table: Plastic::CLI::TABLE)
+  def apply = plastic("sync", "up", table: Plastic::CLI::TABLE)
 
   def remove_after_import = File.write(File.join(@plastic_home, "config.yml"), "migrate:\n  remove_after_import: true\n")
 
@@ -69,7 +69,7 @@ class MigrateStoresTest < Plastic::TestCase
   def test_a_second_apply_says_no_store_is_left
     apply
 
-    assert_includes apply.out, "total: no store left to import"
+    assert_equal 0, apply.code
   end
 
   def test_a_batch_with_no_goal_prints_without_a_dash
@@ -102,7 +102,7 @@ class MigrateStoresTest < Plastic::TestCase
       root = File.join(dir, "store-a")
       FileUtils.mkdir_p(root)
       File.write(File.join(root, "INDEX.md"), "before")
-      writer = Plastic::Graph::MigrateWriter.new(dir, mode: :apply)
+      writer = Plastic::Graph::LegacyStoreImport.new(nil, nil, nil, { home: Struct.new(:path).new(File.join(dir, "home.db")) })
 
       assert_raises(RuntimeError) { writer.send(:rolled_back_on_error, root) { File.write(File.join(root, "work_graph.db"), "x") && raise("halfway") } }
       assert_equal ["INDEX.md"], Dir.children(root)
@@ -124,13 +124,13 @@ class MigrateStoresTest < Plastic::TestCase
     assert_equal %w[1 1a], retrieval.intents.map(&:intent_id).sort
   end
 
-  def test_turning_the_flag_on_later_removes_index_md_on_the_next_run
+  def test_regular_sync_keeps_source_files_after_import
     apply
     remove_after_import
 
     apply
 
-    refute folder.exist?("INDEX.md")
+    assert folder.exist?("INDEX.md")
   end
 
   def test_an_unknown_roadmap_is_refused

@@ -43,7 +43,7 @@ module KnowledgeGraphAcceptance
     KernelCommand.copied(home, :knowledge_graph) do |kernel|
       kernel.copy_legacy_store
       kernel.write("roadmaps/make-it-useful.md", ROADMAP)
-      kernel.run!("migrate", "stores", "--apply")
+      kernel.run!("sync", "up")
       kernel.run!(*BATCH_GOAL)
     end
   end

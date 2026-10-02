@@ -12,9 +12,9 @@ Each row gives the fixture, the call, the exit code, the result, the intents and
 
 | fixture                        | call      | exit | result                                                                         | intents                                    | files of 1   |
 | ------------------------------ | --------- | ---: | ------------------------------------------------------------------------------ | ------------------------------------------ | ------------ |
-| as written                     | sync up   |    0 | imported INDEX.md: 2 intents and 0 clusters / 14 files read   | 1 active since 2026-09-17, 1a future since 2026-09-17 | byte for byte |
-| 1a without its own file        | sync up   |    0 | imported INDEX.md: 2 intents and 0 clusters / 13 files read   | 1 active since 2026-09-17, 1a future undated | byte for byte |
-| a folder with no entry         | sync up   |    1 | store/9--stray has no entry in INDEX.md                                        | none                                       | byte for byte |
+| as written                     | sync up   |    0 | imported INDEX.md: 2 intents and 0 clusters / imported metadata: 2 intents, 10 documents, 2 savepoint lines, 2 rulings, and 3 links / 14 files read   | 1 active since 2026-09-17, 1a future since 2026-09-17 | byte for byte |
+| 1a without its own file        | sync up   |    0 | imported INDEX.md: 2 intents and 0 clusters / imported metadata: 2 intents, 9 documents, 2 savepoint lines, 2 rulings, and 2 links / 13 files read   | 1 active since 2026-09-17, 1a future undated | byte for byte |
+| a folder with no entry         | sync up   |    1 | global: the import failed: store/9--stray has no entry in INDEX.md                                        | none                                       | byte for byte |
 | as written                     | sync down |    1 | this store still has INDEX.md; run plastic sync up to import it first          | none                                       | byte for byte |
 | imported                       | sync up   |    0 | none                                                                           | 1 active since 2026-09-17, 1a future since 2026-09-17 | byte for byte |
 | imported, folder of 1 deleted  | sync down |    0 | 8 files printed                                                                | 1 active since 2026-09-17, 1a future since 2026-09-17 | byte for byte |

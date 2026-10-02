@@ -5,6 +5,7 @@ require_relative "../legacy_index"
 require_relative "../prints"
 require_relative "../schema"
 require_relative "../store_folder"
+require_relative "../legacy_store_import"
 
 module Plastic
   module Graph
@@ -25,7 +26,9 @@ module Plastic
           @databases = databases
         end
 
-        def call
+        def call = LegacyStoreImport.new(self, @folder, @retrieval, @databases).call
+
+        def read_rows
           parsed = LegacyIndex.parse(@folder.read(StoreFolder::LEGACY_INDEX).force_encoding(Encoding::UTF_8))
           write(parsed.check(@folder.intent_dirs))
           read = @sync.read(@folder.intent_files)

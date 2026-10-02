@@ -5,6 +5,8 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+- Archive captures complete intent directories before deletion and restores them through `intent archive ID --revert`. `sync up` imports legacy rulings, links, roadmaps, and preserved originals; `--dry-run` previews the same operation in a copy. The separate migration command is removed.
+
 - Stage 5 acceptance documents cover every added command. The test helpers decode multiline specs and isolate Codex session identifiers. CI also runs on pull requests targeting stacked `plastic/` branches.
 - `roadmap drop` names a missing roadmap or item before attempting a write. A migration dry run labels its totals as proposed imports and offers the apply command.
 - `auto start` takes a missing or expired delivery lock even when the intent is already active. Another session's live lock still refuses the call. Failed edge additions and removals can retry after their cause is fixed.

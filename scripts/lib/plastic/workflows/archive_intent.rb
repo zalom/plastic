@@ -26,7 +26,7 @@ module Plastic
         context.print("intent: #{context.intent_id} archived")
       end
 
-      outcome :done, offers: "plastic intent restore %{intent_id}", because: "intent %{intent_id} is off the checkout"
+      outcome :done, offers: "plastic status", because: "intent %{intent_id} is off the checkout"
     end
   end
 end

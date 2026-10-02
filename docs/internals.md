@@ -499,11 +499,11 @@ than a chain of `if`/`elsif`, so adding a state to the cascade is one row, not a
 ### the knowledge graph command set (intent 400)
 
 `DropRoadmapItem` reads and checks the roadmap and item before its write step.
-`MigrateStores` ends a dry run with its own outcome, proposed totals, and the apply command.
+`PreviewSync` runs a disposable copy and offers `sync up` after the preview.
 The acceptance helper decodes escaped line breaks in spec examples and clears all four
 session environment variables before passing the session declared by each example.
 
-Stage 5 adds 16 kernel commands in four groups. See
+Stage 5 adds the knowledge commands in four groups. See
 [architecture](architecture.md#roadmaps-links-archive-and-backup) for what each group does;
 this section covers how the code holds together.
 
@@ -525,27 +525,36 @@ this section covers how the code holds together.
 - **Links.** `intent link` and `intent unlink` write and remove rows in the `links` table of
   `knowledge_graph.db` through `Graph::LinkWriter`. A link to a missing intent fails with
   exit 1. A self link or a repeated link is refused with exit 3.
-- **Archive.** `intent archive` and `intent restore` go through `Graph::ArchiveWriter`. An
-  archive writes one `archives` row, removes the intent folder and removes the folder's
-  `printed` rows. The intent's own rows never move. A restore sets `restored_at` and prints
-  the folder back from the rows. Before that write, it compares every existing destination
-  with the stored bytes and stops on a conflict without changing the archive row.
+- **Archive.** `intent archive ID` and its explicit `--revert` option use
+  `Graph::ArchiveWriter`. `ArchiveTree` reads entries with `lstat`, without following
+  links. The `archives` marker and complete `archive_entries` snapshot commit in one
+  work database transaction before filesystem removal. A removal retry checks every
+  remaining entry against that snapshot and preserves changed files.
+  `ArchiveSnapshot` restores into a temporary sibling directory, checks its bytes
+  and metadata, then renames it into place. Only then does `restored_at` change.
+  Conflicting destinations remain untouched. A directory already published by an
+  interrupted call must match the complete snapshot before that call can finish.
+  Restore does not print newer semantic rows over archived bytes or mark unsynced
+  documents as current. Plain sync reports conflicts for those documents.
 - **Backup.** `backup` and `backup list` go through `Graph::BackupWriter` and the `backups`
   table of `home.db`. `RetrievalGraph#backup_flag` compares each archive's SHA-256 digest
   with the digest stored at write time. The archive also carries `origin_id`, `config.yml`,
   and `projects.yml` from the Plastic home when present. These files preserve row ownership,
   settings, and project lookup when the archive is unpacked into an empty home.
 
-`migrate stores` runs `Graph::MigrateWriter`. For each legacy store, it reads the rulings and
-links from the original file bytes before the sync rewrites them. It then syncs the intent
-files into rows and writes the rulings and links. It keeps every original that the sync
-changed in the `sqlar` table of `references.db`. Last, it imports each roadmap file through
-`Graph::RoadmapParse`. Nothing is removed while a store imports. When the import ends with
-no error and `migrate.remove_after_import` is on in `config.yml`, it then removes `INDEX.md`
-and archives every done or abandoned intent. The flag is off by default. A store imported on
-an earlier run that still holds `INDEX.md` gets the same removal when the flag is on. A roadmap item whose id
-names an intent in the store is linked to that intent, so its state follows the intent's
-status.
+`Sync::LegacyImport` runs `Graph::LegacyStoreImport` for a store with `INDEX.md` and no
+`store/index.json`. One coordinator reads intent files, rulings and source links, imports
+roadmaps, and preserves changed originals. `LegacyDecisions`, `LegacyRoadmaps`, and
+`LegacyOriginals` own those parts. Failed import restores a complete saved copy of the
+store after disconnecting its database handles. Failure to save that copy leaves the
+original store untouched.
+
+`SyncPreview` copies the selected store and its identity and configuration into a
+temporary home and runs the same sync there. It rejects symbolic links before copying
+and resolves absolute overwrite paths against the original store. Preview does not keep
+a routine run in the original home. Metadata import no longer requires a separate
+migration command. The compatibility cleanup flag applies only after successful first
+import; later sync does not delete legacy source files.
 
 #### a stopped write runs again on the next call
 
@@ -736,7 +745,7 @@ measures active intents in the layout produced by the real installer.
 global root, a project root and the list of project roots, so no script joins `"store"` or
 `"projects"` by hand.
 
-`scripts/lib/stores_move.rb` does the move for `plastic migrate stores`. It works in this order:
+The historical `scripts/lib/stores_move.rb` moved old home layouts before the kernel cut-over. That retired implementation worked in this order:
 
 1. It refuses when `stores/` exists, when a fresh `delivery.lock` is held, or when the copy
    directory exists.

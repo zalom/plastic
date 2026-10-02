@@ -10,6 +10,7 @@ module Plastic
     REGISTRY = [
       # Storage: intents and the sync of a store folder with its rows.
       :code_write_intent, :code_sync_up, :code_sync_down, :code_add_ruling, :code_show_spec, :code_start_auto,
+      :code_preview_sync,
       :code_check_graph, :code_ready_graph, :code_show_graph, :code_show_intent, :code_show_brief, :code_pick_next,
       # Knowledge graph: typed links between intents and rulings.
       :code_add_link, :code_remove_link,
@@ -20,11 +21,9 @@ module Plastic
       # Sessions: the one prose line a session writes about itself.
       :code_write_note,
       # Archive: taking an intent off the checkout and printing it back.
-      :code_archive_intent, :code_restore_intent,
+      :code_choose_archive, :code_archive_intent, :code_restore_intent,
       # Backups: one gzipped tar of every database on the machine.
       :code_backup, :code_backup_list,
-      # Migration: importing every legacy store under a home into rows.
-      :code_migrate_stores,
       # Work graph: building and moving the nodes and edges of one intent.
       :code_add_node, :code_remove_node, :code_add_edge, :code_remove_edge,
       :code_claim_node, :code_release_node, :code_done_node, :code_fail_node, :code_park_node, :code_answer_node

@@ -14,7 +14,7 @@ module Plastic
       IGNORE_FILE = ".gitignore"
       IGNORED = %w[*.db *.db-journal].freeze
       # Machine state of the command line that runs today, never a record.
-      SKIPPED = /(?:\.lock|\A\.DS_Store)\z/
+      SKIPPED = /\A(?:delivery\.lock|\.DS_Store)\z/
 
       attr_reader :root
 

@@ -3,12 +3,11 @@
 require "digest"
 require_relative "../../test_helper"
 require_relative "../../../scripts/lib/plastic/commands/intent_archive"
-require_relative "../../../scripts/lib/plastic/commands/intent_restore"
 
 class IntentRestoreTest < Plastic::TestCase
   def archive_call(*args) = plastic("intent", "archive", *args, table: Plastic::CLI::TABLE)
 
-  def restore_call(*args) = plastic("intent", "restore", *args, table: Plastic::CLI::TABLE)
+  def restore_call(*args) = plastic("intent", "archive", *args, "--revert", table: Plastic::CLI::TABLE)
 
   def mark_done(intent)
     store_graphs.databases.fetch(:work).transaction do |batch|
@@ -69,14 +68,14 @@ class IntentRestoreTest < Plastic::TestCase
     assert store_graphs.retrieval.archived?(intent.intent_id)
   end
 
-  def test_restore_accepts_an_identical_existing_file
+  def test_restore_refuses_a_partial_existing_tree_without_changing_it
     intent = archived_intent
     replace_identical_file(intent)
 
     result = restore_call(intent.intent_id)
 
-    assert_equal 0, result.code
-    refute store_graphs.retrieval.archived?(intent.intent_id)
+    assert_equal 1, result.code
+    assert store_graphs.retrieval.archived?(intent.intent_id)
   end
 
   def replace_identical_file(intent)
