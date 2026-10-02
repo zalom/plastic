@@ -50,6 +50,15 @@ module Plastic
 
       def documents(intent_id = nil) = read(:documents, intent_id)
 
+      # Returns the current document for one intent path without changing any
+      # archive, source, or derived retrieval rows.
+      def fetch(intent_id, path)
+        row = @databases.fetch(:knowledge).row(DOCUMENT_SQL, intent_id:, path:, origin: origin_id)
+        row && Document.from_h(row)
+      end
+
+      DOCUMENT_SQL = "SELECT * FROM documents WHERE intent_id = :intent_id AND path = :path AND origin_id = :origin"
+
       SEARCH_SQL = "SELECT intent_id, path, body, sha256, position, bm25(document_fts) AS score " \
                    "FROM document_fts WHERE document_fts MATCH :query AND origin_id = :origin " \
                    "ORDER BY score, intent_id, path, position LIMIT :limit"

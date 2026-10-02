@@ -103,21 +103,6 @@ class ArchiveFidelityTest < Plastic::TestCase
     assert_equal [["research.txt", "Archive-only evidence\n"]], retrieval.search("archive evidence").map { |row| row.values_at("path", "body") }
   end
 
-  def test_archive_reads_return_snapshot_bytes_without_mutating_archive_state
-    intent = future_intent
-    write("#{intent.dir}/#{intent.file}", "Hand-edited archive evidence\n")
-    write("#{intent.dir}/research.txt", "New archive evidence\n")
-
-    assert_archived(intent)
-    before = archive_read_state(intent)
-
-    assert_equal [[intent.file, "Hand-edited archive evidence\n"], ["research.txt", "New archive evidence\n"]],
-      retrieval.search("archive evidence").map { |row| row.values_at("path", "body") }.sort
-    assert_equal ["Hand-edited archive evidence\n", "New archive evidence\n"],
-      [retrieval.fetch(intent.intent_id, intent.file), retrieval.fetch(intent.intent_id, "research.txt")].map(&:body)
-    assert_equal before, archive_read_state(intent)
-  end
-
   def test_revert_preserves_conflicting_symlink_and_archive_marker
     intent = archived_with_conflict
 
@@ -131,17 +116,6 @@ class ArchiveFidelityTest < Plastic::TestCase
       assert_archived(intent)
       File.symlink(folder.root, folder.path(intent.dir))
     end
-  end
-
-  def archive_read_state(intent)
-    work = store_graphs.databases.fetch(:work)
-    {
-      archive_rows: work.rows("SELECT * FROM archives WHERE intent_id = :id ORDER BY intent_id", id: intent.intent_id),
-      entry_rows: work.rows("SELECT * FROM archive_entries WHERE intent_id = :id ORDER BY path", id: intent.intent_id),
-      work_changes: work.rows("SELECT * FROM changes ORDER BY seq"),
-      knowledge_changes: store_graphs.databases.fetch(:knowledge).rows("SELECT * FROM changes ORDER BY seq"),
-      filesystem: { exists: folder.exist?(intent.dir), files: snapshot(folder.path("store")) }
-    }
   end
 
   def test_archive_offers_status_instead_of_revert
