@@ -57,7 +57,7 @@ class NodeClaimTest < Plastic::TestCase
     assert_equal 3, result.code
   end
 
-  def test_the_brief_includes_the_last_findings
+  def test_the_brief_includes_the_last_reason
     open_intent
     add_node("a")
     claim("n1")
@@ -124,5 +124,12 @@ class NodeClaimTest < Plastic::TestCase
 
     assert_equal 3, result.code
     assert_includes result.err, "no node n9 in intent 1"
+  end
+
+  def test_the_brief_names_the_input_file
+    open_intent
+    plastic("node", "add", "1", "a", "--criterion", "done", "--input", "docs/a.md", table: Plastic::CLI::TABLE)
+
+    assert_includes claim("n1").out, "input: docs/a.md"
   end
 end

@@ -41,7 +41,6 @@ module Plastic
         context.print("node: #{node.id} #{node.title}")
         context.print("criterion: #{node.criterion}")
         context.print("input: #{node.input}") if node.input
-        context.print("last findings: #{node.findings}") if node.findings
         context.print("last reason: #{node.reason}") if node.reason
       end
 

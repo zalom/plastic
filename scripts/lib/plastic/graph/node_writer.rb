@@ -13,8 +13,6 @@ module Plastic
     class NodeWriter
       RETRY_CAP = 3
 
-      Ref = Data.define(:intent_id, :id)
-
       MOVES = {
         remove_node: { to: "removed", from: %w[open] },
         release_node: { to: "open", from: %w[claimed failed] },
@@ -42,43 +40,39 @@ module Plastic
       MOVES.each do |name, move|
         define_method(name) do |intent_id:, id:, **fields|
           set = move[:resets_retries] ? fields.merge(retries: 0) : fields
-          moved(Ref.new(intent_id:, id:), move, set:)
+          moved({ intent_id:, id: }, move, set:)
         end
       end
 
       # Returns [:claimed, node], [:capped, node] or [:refused, node].
       def claim_node(intent_id:, id:, by:)
-        ref = Ref.new(intent_id:, id:)
         current = @retrieval.node(intent_id, id)
         return [:refused, nil] unless current
-        return [:blocked, current] if blocked?(current)
-        return capped(ref) if current.state == "open" && current.retries >= RETRY_CAP
+        return [:blocked, current] if current.waiting?(@retrieval.ready_nodes(intent_id))
+        return capped(intent_id:, id:) if current.state == "open" && current.retries >= RETRY_CAP
 
-        claimed(ref, by:)
+        claimed({ intent_id:, id: }, by:)
       end
 
       private
 
-      def claimed(ref, by:)
-        node = moved(ref, CLAIM_MOVE, set: { by:, retries: SQL::Raw.new("retries + 1") })
-        node ? [:claimed, node] : [:refused, refetched(ref)]
+      def claimed(key, by:)
+        node = moved(key, CLAIM_MOVE, set: { by:, retries: SQL::Raw.new("retries + 1") })
+        node ? [:claimed, node] : [:refused, fetched(key)]
       end
 
-      def blocked?(node) = node.state == "open" && @retrieval.ready_nodes(node.intent_id).none? { |ready| ready.id == node.id }
+      def fetched(key) = @retrieval.node(*key.values_at(:intent_id, :id))
 
-      def refetched(ref) = @retrieval.node(ref.intent_id, ref.id)
-
-      def capped(ref)
-        node = moved(ref, CAP_MOVE, set: { question: "claimed 3 times; the owner decides" })
+      def capped(key)
+        node = moved(key, CAP_MOVE, set: { question: "claimed 3 times; the owner decides" })
         [:capped, node]
       end
 
-      def moved(ref, move, set: {})
+      def moved(key, move, set: {})
         rows = @databases.fetch(:work).transaction do |batch|
-          batch.write(:nodes, SQL.move(to: move.fetch(:to), from: move.fetch(:from), set:),
-            intent_id: ref.intent_id, id: ref.id, origin: @retrieval.origin_id)
+          batch.write(:nodes, SQL.move(to: move.fetch(:to), from: move.fetch(:from), set:), **key, origin: @retrieval.origin_id)
         end
-        rows.any? ? @retrieval.node(ref.intent_id, ref.id) : nil
+        rows.any? ? fetched(key) : nil
       end
 
       def next_id(intent_id) = NextId.after(@retrieval.nodes(intent_id), prefix: "n")

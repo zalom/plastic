@@ -7,9 +7,7 @@ module Plastic
     # Moves a node from open to removed. Its edges stay, but a removed node
     # never counts as ready or isolated.
     class NodeRemove < Routine
-      subject :intent_id, :id
-      argument :intent_id, label: "ID", text: "the intent"
-      argument :id, label: "NODE", text: "the node"
+      node_subject
       option :reason, switch: "--reason TEXT", text: "why the node is removed"
       writes :work
 

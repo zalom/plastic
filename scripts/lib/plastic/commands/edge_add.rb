@@ -7,8 +7,7 @@ module Plastic
     # Adds a needs edge between two nodes of the same intent, guarded
     # against a self edge, a missing or removed node, and a loop.
     class EdgeAdd < Routine
-      subject :intent_id
-      argument :intent_id, label: "ID", text: "the intent"
+      intent_subject
       argument :from, label: "FROM", text: "the node that must be done first"
       argument :to, label: "TO", text: "the node that waits on it"
       writes :work
