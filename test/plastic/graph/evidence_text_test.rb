@@ -30,18 +30,24 @@ class EvidenceTextTest < Plastic::TestCase
   end
 
   def test_builds_repeatable_unicode_passages_with_overlap_and_source_lines
-    body = "first line\n\n" + ("ž" * 1700) + "\nfinal line\n"
-
-    passages = text.passages(body)
-
-    assert_equal passages, text.passages(body)
-    assert passages.all? { |passage| passage.fetch(:body).length <= 1600 }
-    assert_equal 2, passages.size
-    assert_equal [1, 3], passages.map { |passage| passage.fetch(:line_start) }
-    assert_equal 200, passages.first.fetch(:body)[-200..].length
+    assert_repeatable_passages
+    assert_bounded_overlap_and_lines
   end
 
   private
 
   def text = Plastic::Graph::EvidenceText
+  def unicode_body = "first line\n\n" + ("ž" * 1700) + "\nfinal line\n"
+  def passages = text.passages(unicode_body)
+
+  def assert_repeatable_passages
+    assert_equal passages, text.passages(unicode_body)
+    assert_equal 2, passages.size
+  end
+
+  def assert_bounded_overlap_and_lines
+    assert passages.all? { |passage| passage.fetch(:body).length <= 1600 }
+    assert_equal [1, 3], passages.map { |passage| passage.fetch(:line_start) }
+    assert_equal 200, passages.first.fetch(:body)[-200..].length
+  end
 end
