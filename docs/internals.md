@@ -498,7 +498,12 @@ this section covers how the code holds together.
   `WorkGraph` delegates to it. `Graph::RoadmapState` derives an item's state every time it
   is read. The rows hold only the facts the state comes from: the item's mark, its intent's
   status and its predecessors. `Graph::RoadmapCheck` finds a loop, an edge to an item that is
-  not on the roadmap, and an item whose intent id names no intent.
+  not on the roadmap, and an item whose intent id names no intent. A `roadmap batch` call
+  keeps every field it leaves out: `RoadmapFields#over` takes the stored title, goal and done
+  lines in their place, and a new batch with no title is named "Batch N". The call writes the
+  roadmap row only when the roadmap has none, so its title and goal stay. `intent brief` prints
+  each line of the spec's Goal section as a `goal:` line, and the intent title only when the
+  spec has no goal.
 - **Links.** `intent link` and `intent unlink` write and remove rows in the `links` table of
   `knowledge_graph.db` through `Graph::LinkWriter`. A link to a missing intent fails with
   exit 1. A self link or a repeated link is refused with exit 3.

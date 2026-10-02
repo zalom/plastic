@@ -25,6 +25,8 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 - `migrate stores` imports legacy stores into rows: intents, rulings, links, roadmaps and the originals the import changed. It runs against a copy unless `--apply` is given.
 
+- `roadmap batch` keeps the fields a call leaves out, names a new untitled batch "Batch N", and no longer resets the roadmap's title and goal. `intent brief` prints the goal lines of the spec.
+
 - A refused or failed write now runs again on the next call instead of replaying the old stop.
 
 ## 2.0.3
