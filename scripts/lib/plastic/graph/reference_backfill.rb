@@ -6,10 +6,12 @@ module Plastic
   module Graph
     # Imports eligible legacy attachments after the retrieval schema appears.
     class ReferenceBackfill
+      SCHEMA_VERSION = 1
+
       def self.complete?(path, origin_id)
         database = SQLite3::Database.new(path, readonly: true)
         tables = database.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'retrieval_backfills'")
-        tables.any? && database.execute("SELECT 1 FROM retrieval_backfills WHERE name = 'retrieval' AND origin_id = ?", [origin_id]).any?
+        tables.any? && database.execute(complete_sql, [origin_id, SCHEMA_VERSION]).any?
       rescue SQLite3::Exception, SystemCallError
         false
       ensure
@@ -30,6 +32,10 @@ module Plastic
         legacy_references.each { |row| write(row) }
         complete!
         self
+      end
+
+      def self.complete_sql
+        "SELECT 1 FROM retrieval_backfills b JOIN retrieval_schema s ON s.name = b.name WHERE b.name = 'retrieval' AND b.origin_id = ? AND s.version = ?"
       end
 
       private
@@ -58,14 +64,15 @@ module Plastic
       end
 
       def complete?
-        @knowledge.row("SELECT 1 FROM retrieval_backfills WHERE name = 'retrieval' AND origin_id = :origin", origin: @origin_id)
+        @knowledge.row("SELECT 1 FROM retrieval_backfills b JOIN retrieval_schema s ON s.name = b.name WHERE b.name = 'retrieval' AND b.origin_id = :origin AND s.version = :version",
+          origin: @origin_id, version: SCHEMA_VERSION)
       end
 
       def complete!
         @knowledge.transaction do |batch|
           batch.add("INSERT INTO retrieval_backfills (name, origin_id, completed_at) VALUES ('retrieval', :origin, :completed_at) ON CONFLICT(name, origin_id) DO UPDATE SET completed_at = excluded.completed_at",
             origin: @origin_id, completed_at: Plastic.now)
-          batch.add("UPDATE retrieval_schema SET completed_at = 'complete' WHERE name = 'retrieval'")
+          batch.add("UPDATE retrieval_schema SET version = :version, completed_at = 'complete' WHERE name = 'retrieval'", version: SCHEMA_VERSION)
         end
       end
 
