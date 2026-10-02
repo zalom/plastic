@@ -161,6 +161,7 @@ add`); it moves through `open`, `claimed`, `done`, `failed` and `parked`, or lea
 as `removed` (`Graph::Node::MOVES` is the one source of which moves are legal). An edge
 (`plastic edge add`) says one node needs another; a guarded SQL insert refuses a self edge, an
 edge touching a missing or removed node, and an edge that would close a loop.
+After the cause of a failed edge addition or removal is fixed, the same command can retry.
 
 `Graph::NodeWriter` and `Graph::EdgeWriter` own these writes. Every state move is a guarded
 `UPDATE ... WHERE state IN (...)`, so two attempts to move the same node cannot both win; the
@@ -184,7 +185,8 @@ open decisions, so the next step is always either `intent rule` or `auto start`.
 `plastic auto start ID` refuses (exit 3) an open decision, no done criterion, a done or
 abandoned intent, and a live lock held by another session; it fails (exit 1) when the call
 names no session. Otherwise it takes the lock in `auto` mode, sets the intent active, and
-reprints its files.
+reprints its files. An already active intent still needs a live auto lock held by the
+calling session; starting it takes a missing or expired lock.
 
 ## component map
 

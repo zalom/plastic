@@ -18,6 +18,21 @@ class EdgeRemoveTest < Plastic::TestCase
     assert_equal 1, result.code
   end
 
+  def test_retry_after_adding_the_missing_edge_succeeds
+    open_intent
+    add_node("a")
+    add_node("b")
+    failed = plastic("edge", "remove", "1", "n1", "n2", table: Plastic::CLI::TABLE)
+
+    assert_includes failed.err, "no edge n1 to n2 in intent 1"
+    plastic("edge", "add", "1", "n1", "n2", table: Plastic::CLI::TABLE)
+
+    result = plastic("edge", "remove", "1", "n1", "n2", table: Plastic::CLI::TABLE)
+
+    assert_equal 0, result.code
+    assert_empty store_graphs.retrieval.edges("1")
+  end
+
   def test_removing_an_existing_edge_succeeds
     open_intent
     add_node("a")

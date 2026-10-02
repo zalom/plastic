@@ -50,7 +50,13 @@ module Plastic
       gate "auto start names no session", stops: :failure, pass: ->(context) { !context.session.nil? }
       gate "%{problem}", stops: :refusal, pass: ->(context) { context.problem.nil? }
 
-      step "take the lock and go active", done: ->(context) { context.retrieval.intent(context.intent_id).status == "active" } do |context|
+      def self.delivery_started?(context)
+        lock = context.retrieval.lock(context.intent_id)
+        context.retrieval.intent(context.intent_id).status == "active" &&
+          lock&.session_id == context.session && lock.mode == "auto" && lock.live?
+      end
+
+      step "take the lock and go active", done: method(:delivery_started?) do |context|
         context.work.take_lock(context.intent_id, session_id: context.session, mode: "auto")
         context.work.activate_intent(context.intent_id)
         context.work.print_intent(context.intent_id)

@@ -18,6 +18,22 @@ class EdgeAddTest < Plastic::TestCase
     assert_equal 1, result.code
   end
 
+  def test_retry_after_adding_the_missing_node_succeeds
+    open_intent
+    add_node("a")
+    failed = call("1", "n1", "n2")
+
+    assert_includes failed.err, "would loop or names a missing node"
+    add_node("b")
+
+    result = call("1", "n1", "n2")
+
+    assert_equal 0, result.code
+    edge = sole(store_graphs.retrieval.edges("1"))
+
+    assert_equal ["n1", "n2"], [edge.from, edge.to]
+  end
+
   def test_an_edge_to_a_removed_node_exits_1
     open_intent
     add_node("a")
