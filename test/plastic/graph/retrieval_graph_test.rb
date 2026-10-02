@@ -5,6 +5,14 @@ require_relative "../../test_helper"
 class RetrievalGraphTest < Plastic::TestCase
   def put(key, table, row) = store_graphs.databases[key].transaction { |batch| batch.put(table, row) }
 
+  def saved_passages = store_graphs.databases.fetch(:knowledge).rows("SELECT position, body FROM document_passages ORDER BY position")
+
+  def index_text(intent, name, body)
+    path = "#{intent.dir}/#{name}"
+    write(path, body)
+    apply_read(Plastic::Graph::Reader.new(folder, { intent.intent_id => intent }, origin, retrieval:).read(path))
+  end
+
   def test_the_origin_id_is_the_installation_id
     assert_equal [origin, "global"], [retrieval.origin_id, retrieval.store]
   end
@@ -87,12 +95,8 @@ class RetrievalGraphTest < Plastic::TestCase
 
   def test_splits_long_unicode_text_into_bounded_passages
     intent = open_intent("Passages")
-    path = "#{intent.dir}/long.txt"
-    write(path, "ž" * 1700)
-    apply_read(Plastic::Graph::Reader.new(folder, { intent.intent_id => intent }, origin, retrieval:).read(path))
+    index_text(intent, "long.txt", "ž" * 1700)
 
-    passages = store_graphs.databases.fetch(:knowledge).rows("SELECT position, body FROM document_passages ORDER BY position")
-
-    assert_equal [[1, 1600], [2, 100]], passages.last(2).map { |row| [row.fetch("position"), row.fetch("body").length] }
+    assert_equal [[1, 1600], [2, 100]], saved_passages.last(2).map { |row| [row.fetch("position"), row.fetch("body").length] }
   end
 end

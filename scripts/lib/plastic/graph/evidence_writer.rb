@@ -31,8 +31,10 @@ module Plastic
         intent_id, path, body, sha256, now = row.values_at(:intent_id, :path, :body, :sha256, :now)
         batch.add("INSERT OR IGNORE INTO document_revisions (sha256, intent_id, path, body, created_at, origin_id) VALUES (:sha256, :intent_id, :path, :body, :created_at, :origin_id)",
           sha256:, intent_id:, path:, body:, created_at: now, origin_id: @origin_id)
-        batch.add("INSERT OR IGNORE INTO document_passages (sha256, position, body, line_start, line_end, origin_id) VALUES (:sha256, 1, :body, 1, :line_end, :origin_id)",
-          sha256:, body:, line_end: body.lines.size, origin_id: @origin_id)
+        passages(body).each_with_index do |passage, index|
+          batch.add("INSERT OR IGNORE INTO document_passages (sha256, position, body, line_start, line_end, origin_id) VALUES (:sha256, :position, :body, 1, :line_end, :origin_id)",
+            sha256:, position: index + 1, body: passage, line_end: body.lines.size, origin_id: @origin_id)
+        end
       end
 
       def current_rows(batch, row)
@@ -40,9 +42,13 @@ module Plastic
         batch.put(:document_heads, { intent_id:, path:, sha256:, updated_at: now })
         batch.add("DELETE FROM document_fts WHERE intent_id = :intent_id AND path = :path AND origin_id = :origin_id",
           intent_id:, path:, origin_id: @origin_id)
-        batch.add("INSERT INTO document_fts (body, intent_id, path, sha256, position, origin_id) VALUES (:body, :intent_id, :path, :sha256, 1, :origin_id)",
-          body:, intent_id:, path:, sha256:, origin_id: @origin_id)
+        passages(body).each_with_index do |passage, index|
+          batch.add("INSERT INTO document_fts (body, intent_id, path, sha256, position, origin_id) VALUES (:body, :intent_id, :path, :sha256, :position, :origin_id)",
+            body: passage, intent_id:, path:, sha256:, position: index + 1, origin_id: @origin_id)
+        end
       end
+
+      def passages(body) = body.each_char.each_slice(1600).map(&:join)
     end
   end
 end
