@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../code_workflow"
+require_relative "lines"
 
 module Plastic
   module Workflows
@@ -12,7 +13,7 @@ module Plastic
       sets :printed_paths
 
       read "print each node and edge" do |context|
-        context.retrieval.nodes(context.intent_id).each { |node| context.print("node: #{node.id} #{node.state} #{node.title}") }
+        context.retrieval.nodes(context.intent_id).each { |node| context.print(Lines.node(node)) }
         context.retrieval.edges(context.intent_id).each { |edge| context.print("edge: #{edge.from} to #{edge.to}") }
       end
 

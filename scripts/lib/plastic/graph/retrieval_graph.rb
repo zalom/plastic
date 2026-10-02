@@ -3,8 +3,8 @@
 require "forwardable"
 require_relative "../routine_run"
 require_relative "session_reader"
+require_relative "work_reader"
 require_relative "source"
-require_relative "link"
 
 module Plastic
   module Graph
@@ -17,6 +17,7 @@ module Plastic
       attr_reader :store
 
       def_delegators :sessions, :routine_run, :session, :previous_session, :predecessor, :locks_of, :lock, :last_run, :touched
+      def_delegators :work, :ready_nodes, :node, :rulings, :links
 
       def initialize(databases, store:, origin:)
         @databases = databases
@@ -25,26 +26,6 @@ module Plastic
       end
 
       def origin_id = @origin.id
-
-      READY_NODES_SQL = <<~SQL
-        SELECT * FROM nodes
-        WHERE intent_id = :intent_id AND origin_id = :origin
-          AND state = 'open'
-          AND NOT EXISTS (
-            SELECT 1 FROM edges JOIN nodes AS from_node
-              ON from_node.intent_id = edges.intent_id AND from_node.id = edges."from"
-            WHERE edges.intent_id = nodes.intent_id AND edges.kind = 'needs' AND edges."to" = nodes.id
-              AND from_node.state IS NOT 'done'
-          )
-        ORDER BY id
-      SQL
-
-      # Nodes of `intent_id` ready to run: state nil, empty or pending, with
-      # every `needs` edge into them satisfied (graph/edge.rb: `to` waits
-      # until `from` is done).
-      def ready_nodes(intent_id)
-        @databases.fetch(:work).rows(READY_NODES_SQL, intent_id:, origin: origin_id).map { |row| Node.from_h(row) }
-      end
 
       # This installation's intents, in Luhmann order.
       def intents = read(:intents).sort_by(&:segments)
@@ -59,16 +40,7 @@ module Plastic
 
       def nodes(intent_id = nil) = read(:nodes, intent_id)
 
-      def node(intent_id, id) = nodes(intent_id).find { |node| node.id == id }
-
       def edges(intent_id = nil) = read(:edges, intent_id)
-
-      def rulings(intent_id = nil) = read(:rulings, intent_id)
-
-      LINKS_SQL = 'SELECT * FROM links WHERE origin_id = :origin AND (from_ref = :ref OR to_ref = :ref) ORDER BY "at"'
-
-      # Links naming `ref` at either end: a ruling's ref today, any ref later.
-      def links(ref) = @databases.fetch(:knowledge).rows(LINKS_SQL, origin: origin_id, ref:).map { |row| Link.from_h(row) }
 
       # Kept files with no bytes: a print compares the hash and reads the bytes only to write.
       def kept_files(intent_id = nil) = read(:kept_files, intent_id)
@@ -87,6 +59,8 @@ module Plastic
       private
 
       def sessions = (@sessions ||= SessionReader.new(@databases, store:, origin: @origin))
+
+      def work = (@work ||= WorkReader.new(@databases, origin: @origin))
 
       def read(name, intent_id = nil) = SOURCES.fetch(name).read(@databases, origin: origin_id, intent_id:)
     end

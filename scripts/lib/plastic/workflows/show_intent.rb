@@ -2,6 +2,7 @@
 
 require_relative "../code_workflow"
 require_relative "../graph/spec"
+require_relative "lines"
 
 module Plastic
   module Workflows
@@ -33,11 +34,11 @@ module Plastic
       end
 
       def self.print_rulings(context)
-        context.retrieval.rulings(context.intent_id).each { |ruling| context.print("ruling: #{ruling.id} #{ruling.text}") }
+        context.retrieval.rulings(context.intent_id).each { |ruling| context.print(Lines.ruling(ruling)) }
       end
 
       def self.print_nodes(context)
-        context.retrieval.nodes(context.intent_id).each { |node| context.print("node: #{node.id} #{node.state} #{node.title}") }
+        context.retrieval.nodes(context.intent_id).each { |node| context.print(Lines.node(node)) }
       end
 
       def self.print_savepoints(context)
