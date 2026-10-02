@@ -1,12 +1,14 @@
 # frozen_string_literal: true
 
 require "forwardable"
+require "digest"
 require_relative "../routine_run"
 require_relative "session_reader"
 require_relative "source"
 require_relative "link"
 require_relative "roadmap"
 require_relative "archive"
+require_relative "backup"
 
 module Plastic
   module Graph
@@ -138,7 +140,23 @@ module Plastic
           .to_h { |row| row.values_at("path", "sha256") }
       end
 
+      # Every archive this machine has written, oldest first.
+      def backups
+        @databases.fetch(:home).rows("SELECT * FROM backups ORDER BY at").map { |row| Backup.from_h(row) }
+      end
+
+      # "missing" when the archive's file is gone, "changed" when its sha256
+      # no longer matches, nil when it reads back the same.
+      def backup_flag(backup)
+        path = File.join(home_dir, "backups", backup.name)
+        return "missing" unless File.exist?(path)
+
+        (Digest::SHA256.file(path).hexdigest == backup.sha256) ? nil : "changed"
+      end
+
       private
+
+      def home_dir = File.dirname(@databases.fetch(:home).path)
 
       def sessions = (@sessions ||= SessionReader.new(@databases, store:, origin: @origin))
 

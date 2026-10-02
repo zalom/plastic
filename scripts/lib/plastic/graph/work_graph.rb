@@ -9,6 +9,7 @@ require_relative "link_writer"
 require_relative "roadmap_writer"
 require_relative "roadmap_state"
 require_relative "archive_writer"
+require_relative "backup_writer"
 require_relative "session_writer"
 require_relative "printer"
 require_relative "prints"
@@ -102,6 +103,14 @@ module Plastic
         ok, problem, kind = archives.restore(intent_id)
         print_intent(intent_id) if ok
         [ok, problem, kind]
+      end
+
+      # Packs home.db and every store's three databases, writes the row, and returns it.
+      def backup
+        home_db = @databases.fetch(:home)
+        row = BackupWriter.new(File.dirname(home_db.path), session: @session).call
+        home_db.transaction { |batch| batch.put(:backups, row, statement: :insert) }
+        row
       end
 
       private

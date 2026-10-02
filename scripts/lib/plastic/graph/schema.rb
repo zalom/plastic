@@ -64,6 +64,8 @@ module Plastic
                                                         at: :text, text: :kept, session_id: :text, origin_id: :kept }],
         archives: [%i[intent_id origin_id], { intent_id: :kept, at: :text, origin_id: :kept,
                                               restored_at: :text, session_id: :text }],
+        backups: [%i[name], { name: :kept, files: :integer, bytes: :integer, sha256: :text,
+                              at: :text, session_id: :text }],
         sqlar: [%i[name], { name: "TEXT PRIMARY KEY", mode: "INT", mtime: "INT", sz: "INT", data: "BLOB",
                             intent_id: :text, sha256: :text, origin_id: :kept }],
         printed: [%i[path], { path: :kept, sha256: :kept, at: :kept, origin_id: :kept }],
@@ -75,7 +77,7 @@ module Plastic
 
       # Each database: its file and its tables.
       DATABASES = {
-        home: ["home.db", %i[routine_runs sessions locks]],
+        home: ["home.db", %i[routine_runs sessions locks backups]],
         work: ["work_graph.db", %i[intents clusters nodes edges savepoints printed changes
           roadmaps batches roadmap_items roadmap_edges roadmap_log archives]],
         knowledge: ["knowledge_graph.db", %i[documents rulings links printed changes]],
@@ -93,7 +95,8 @@ module Plastic
         "sessions" => %w[session sessions], "locks" => %w[lock locks],
         "roadmaps" => %w[roadmap roadmaps], "batches" => %w[batch batches],
         "roadmap_items" => %w[item items], "roadmap_edges" => ["roadmap edge", "roadmap edges"],
-        "roadmap_log" => ["roadmap log line", "roadmap log lines"], "archives" => %w[archive archives]
+        "roadmap_log" => ["roadmap log line", "roadmap log lines"], "archives" => %w[archive archives],
+        "backups" => %w[backup backups]
       }.freeze
 
       def self.file(key) = DATABASES.fetch(key).first
