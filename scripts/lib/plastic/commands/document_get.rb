@@ -25,7 +25,7 @@ module Plastic
 
       def retrieval_for(reference)
         slug = reference[/\Aplastic:\/\/([^\/]+)/, 1]
-        raise CLI::Scope::UnknownProject, "invalid document reference #{reference.inspect}" unless slug
+        raise CLI::Command::Usage, "invalid document reference #{reference.inspect}" unless slug
         raise CLI::Scope::UnknownProject, "no project named #{slug.inspect}" unless scope.known_slugs.include?(slug)
 
         Graph.open(home: scope.plastic_home, store: slug).retrieval

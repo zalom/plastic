@@ -68,7 +68,7 @@ module Plastic
         fields = reference.is_a?(Hash) ? reference.transform_keys(&:to_sym) : parse_reference(reference)
         raise MissingReference, "source #{fields.fetch(:store)} is not #{store}" unless fields.fetch(:store) == store
 
-        revision = fields[:sha256]
+        revision = fields[:revision] || fields[:sha256]
         row = revision ? revision_row(fields, revision) : current_row(fields)
         raise MissingReference, "no document #{fields.fetch(:intent_id)}:#{fields.fetch(:path)}" unless row
 
@@ -187,15 +187,18 @@ module Plastic
       private
 
       def qualified_reference(intent_id, path, sha256)
-        { store:, intent_id:, path:, sha256:, uri: "plastic://#{store}/#{intent_id}/#{escape_path(path)}?revision=#{sha256}" }
+        { store:, intent_id:, path:, revision: sha256, uri: "plastic://#{store}/#{intent_id}/#{escape_path(path)}?revision=#{sha256}" }
       end
 
       def parse_reference(uri)
-        match = /\Aplastic:\/\/([^\/]+)\/([^\/]+)\/(.*?)(?:\?revision=([0-9a-f]{64}))?\z/.match(uri)
+        match = /\Aplastic:\/\/([^\/]+)\/([^\/]+)\/([^?]*)(?:\?revision=([0-9a-f]{64}))?\z/.match(uri)
         raise MissingReference, "invalid document reference #{uri.inspect}" unless match
 
         store, intent_id, path, sha256 = match.captures
-        { store:, intent_id:, path: URI::DEFAULT_PARSER.unescape(path).force_encoding(Encoding::UTF_8), sha256: }
+        path = URI::DEFAULT_PARSER.unescape(path).force_encoding(Encoding::UTF_8)
+        raise MissingReference, "invalid document reference #{uri.inspect}" unless path.valid_encoding?
+
+        { store:, intent_id:, path:, revision: sha256 }
       end
 
       def escape_path(path) = path.bytes.map { |byte| unreserved?(byte) ? byte.chr : format("%%%02X", byte) }.join

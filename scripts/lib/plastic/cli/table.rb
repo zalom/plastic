@@ -27,6 +27,7 @@ module Plastic
       "backup list" => ["Commands::BackupList", "List every backup, flagging a missing or changed file"],
       "document get" => ["Commands::DocumentGet", "Fetch one current or revision-qualified document"],
       "document batch" => ["Commands::DocumentBatch", "Fetch qualified documents in request order"],
+      "search" => ["Commands::Search", "Search literal indexed passages across selected stores"],
 
       # Work graph
       "node add" => ["Commands::NodeAdd", "Add a node to an intent's work graph"],

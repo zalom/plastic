@@ -21,7 +21,7 @@ class RetrievalReadTest < Plastic::TestCase
 
     assert_equal "current", retrieval.fetch_reference(ref).fetch(:body)
     assert_raises(Plastic::Graph::RetrievalGraph::MissingReference) { retrieval.fetch_reference("plastic://global/1/missing.md") }
-    assert_raises(Plastic::Graph::RetrievalGraph::MissingReference) { retrieval.fetch_reference(ref.merge(sha256: "missing")) }
+    assert_raises(Plastic::Graph::RetrievalGraph::MissingReference) { retrieval.fetch_reference(ref.merge(revision: "missing")) }
   end
 
   def test_fetches_a_batch_in_request_order_with_duplicates

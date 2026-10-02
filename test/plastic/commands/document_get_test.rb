@@ -31,12 +31,15 @@ class DocumentGetTest < Plastic::TestCase
   end
 
   def test_refuses_malformed_unknown_and_missing_qualified_references
-    %w[broken plastic://unknown/1/plan.md plastic://global/1/missing.md].each do |reference|
+    %w[plastic://unknown/1/plan.md plastic://global/1/missing.md].each do |reference|
       result = plastic("document", "get", reference, table: Plastic::CLI::TABLE)
 
       assert_equal 1, result.code
       assert_match(/document|project/, result.err)
     end
+
+    malformed = plastic("document", "get", "broken", table: Plastic::CLI::TABLE)
+    assert_equal 2, malformed.code
   end
 
   private
