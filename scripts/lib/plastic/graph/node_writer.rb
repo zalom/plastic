@@ -16,16 +16,16 @@ module Plastic
       Ref = Data.define(:intent_id, :id)
 
       MOVES = {
-        remove_node: {to: "removed", from: %w[open]},
-        release_node: {to: "open", from: %w[claimed failed]},
-        done_node: {to: "done", from: %w[claimed]},
-        fail_node: {to: "failed", from: %w[claimed]},
-        park_node: {to: "parked", from: %w[claimed]},
-        answer_node: {to: "open", from: %w[parked], resets_retries: true}
+        remove_node: { to: "removed", from: %w[open] },
+        release_node: { to: "open", from: %w[claimed failed] },
+        done_node: { to: "done", from: %w[claimed] },
+        fail_node: { to: "failed", from: %w[claimed] },
+        park_node: { to: "parked", from: %w[claimed] },
+        answer_node: { to: "open", from: %w[parked], resets_retries: true }
       }.freeze
 
-      CLAIM_MOVE = {to: "claimed", from: %w[open]}.freeze
-      CAP_MOVE = {to: "parked", from: %w[open]}.freeze
+      CLAIM_MOVE = { to: "claimed", from: %w[open] }.freeze
+      CAP_MOVE = { to: "parked", from: %w[open] }.freeze
 
       def initialize(databases, retrieval)
         @databases = databases
@@ -34,7 +34,7 @@ module Plastic
 
       def add_node(intent_id:, **fields)
         id = next_id(intent_id)
-        row = {intent_id:, id:, kind: "work", state: "open", retries: 0, updated_at: Plastic.now}.merge(fields)
+        row = { intent_id:, id:, kind: "work", state: "open", retries: 0, updated_at: Plastic.now }.merge(fields)
         @databases.fetch(:work).transaction { |batch| batch.put(:nodes, row, statement: :insert) }
         @retrieval.node(intent_id, id)
       end
@@ -51,6 +51,7 @@ module Plastic
         ref = Ref.new(intent_id:, id:)
         current = @retrieval.node(intent_id, id)
         return [:refused, nil] unless current
+        return [:blocked, current] if blocked?(current)
         return capped(ref) if current.state == "open" && current.retries >= RETRY_CAP
 
         claimed(ref, by:)
@@ -59,14 +60,16 @@ module Plastic
       private
 
       def claimed(ref, by:)
-        node = moved(ref, CLAIM_MOVE, set: {by:, retries: SQL::Raw.new("retries + 1")})
+        node = moved(ref, CLAIM_MOVE, set: { by:, retries: SQL::Raw.new("retries + 1") })
         node ? [:claimed, node] : [:refused, refetched(ref)]
       end
+
+      def blocked?(node) = node.state == "open" && @retrieval.ready_nodes(node.intent_id).none? { |ready| ready.id == node.id }
 
       def refetched(ref) = @retrieval.node(ref.intent_id, ref.id)
 
       def capped(ref)
-        node = moved(ref, CAP_MOVE, set: {question: "claimed 3 times; the owner decides"})
+        node = moved(ref, CAP_MOVE, set: { question: "claimed 3 times; the owner decides" })
         [:capped, node]
       end
 

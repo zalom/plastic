@@ -41,9 +41,7 @@ module Plastic
       end
 
       read "print the rulings" do |context|
-        rulings = context.retrieval.rulings(context.intent_id)
-        superseded = rulings.filter_map(&:supersedes).to_set
-        rulings.each { |ruling| context.print(Lines.ruling(ruling, mark: superseded.include?(ruling.id) ? " (superseded)" : "")) }
+        Lines.rulings(context.retrieval.rulings(context.intent_id)).each { |line| context.print(line) }
       end
 
       read "print the ready nodes" do |context|

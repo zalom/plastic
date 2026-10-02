@@ -34,7 +34,7 @@ module Plastic
       end
 
       def self.print_rulings(context)
-        context.retrieval.rulings(context.intent_id).each { |ruling| context.print(Lines.ruling(ruling)) }
+        Lines.rulings(context.retrieval.rulings(context.intent_id)).each { |line| context.print(line) }
       end
 
       def self.print_nodes(context)
