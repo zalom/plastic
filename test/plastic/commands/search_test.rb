@@ -30,7 +30,7 @@ class SearchTest < Plastic::TestCase
     rows = document.fetch("result").fetch("results")
 
     assert_equal 0, result.code
-    assert_equal %w[other third global], rows.map { |row| row.fetch("store") }
+    assert_equal %w[global other third], rows.map { |row| row.fetch("store") }
     assert_equal [1, 1, 1], rows.map { |row| row.fetch("local_rank") }
     assert_equal [1.0 / 61, 1.0 / 61, 1.0 / 61], rows.map { |row| row.fetch("rrf_score") }
   end

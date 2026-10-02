@@ -13,7 +13,7 @@ module Plastic
       reads :knowledge
 
       def call
-        output.row("results", sources.flat_map { |slug| rows(slug) })
+        output.row("results", ranked_rows)
         output.next_step("none", because: "the indexed passages were read")
       rescue Graph::RetrievalGraph::InvalidSearch, Graph::RetrievalGraph::MaintenanceRequired => error
         raise CLI::Command::Failure, error.message
@@ -35,9 +35,25 @@ module Plastic
 
       def rows(slug)
         retrieval = Graph.open(home: scope.plastic_home, store: slug).retrieval
-        retrieval.search(parsed.fetch(:terms), limit: Integer(parsed[:limit] || 20), migrate: false).each_with_index.map do |row, index|
-          row.merge("store" => slug, "local_rank" => index + 1)
+        retrieval.search(parsed.fetch(:terms), limit: search_limit, migrate: false).each_with_index.map do |row, index|
+          result_row(retrieval, slug, row, index + 1)
         end
+      end
+
+      def result_row(retrieval, slug, row, rank)
+        reference = retrieval.reference(row.fetch("intent_id"), row.fetch("path"))
+        details = { "store" => slug, "local_rank" => rank, "rrf_score" => rrf(rank) }
+        row.merge(reference.transform_keys(&:to_s)).merge(details)
+      end
+
+      def ranked_rows = sources.flat_map { |slug| rows(slug) }.sort_by { |row| [-row.fetch("rrf_score"), row.fetch("uri")] }.take(search_limit)
+
+      def rrf(rank) = 1.0 / (60 + rank)
+
+      def search_limit
+        Integer(parsed.fetch(:limit))
+      rescue ArgumentError, TypeError
+        raise Graph::RetrievalGraph::InvalidSearch, "search limit must be an integer"
       end
     end
   end
