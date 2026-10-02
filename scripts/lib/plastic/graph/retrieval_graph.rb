@@ -19,6 +19,7 @@ module Plastic
     # returns records or plain values. Nothing here writes. A method that
     # takes an intent id reads every intent of the store when given none.
     class RetrievalGraph
+      class MaintenanceRequired < StandardError; end
       extend Forwardable
 
       attr_reader :store
@@ -55,8 +56,8 @@ module Plastic
 
       # Returns current indexed passages in stable lexical-rank order. Plain
       # words become quoted FTS terms, so caller text never changes the query.
-      def search(terms, limit: 20)
-        ensure_backfill!
+      def search(terms, limit: 20, migrate: true)
+        ensure_backfill!(migrate)
         @databases.fetch(:knowledge).rows(SEARCH_SQL, query: fts_query(terms), origin: origin_id, limit:)
       end
 
@@ -154,7 +155,12 @@ module Plastic
 
       private
 
-      def ensure_backfill! = backfill!
+      def ensure_backfill!(migrate = true)
+        return backfill! if migrate
+        return if ReferenceBackfill.complete?(@databases.fetch(:knowledge).path, origin_id)
+
+        raise MaintenanceRequired, "retrieval migration is required before a selected source can be read"
+      end
 
       def home_dir = File.dirname(@databases.fetch(:home).path)
 

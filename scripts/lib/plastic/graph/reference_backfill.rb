@@ -6,6 +6,16 @@ module Plastic
   module Graph
     # Imports eligible legacy attachments after the retrieval schema appears.
     class ReferenceBackfill
+      def self.complete?(path, origin_id)
+        database = SQLite3::Database.new(path, readonly: true)
+        tables = database.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'retrieval_backfills'")
+        tables.any? && database.execute("SELECT 1 FROM retrieval_backfills WHERE name = 'retrieval' AND origin_id = ?", [origin_id]).any?
+      rescue SQLite3::Exception, SystemCallError
+        false
+      ensure
+        database&.close
+      end
+
       def initialize(databases, origin_id, after_write: -> {})
         @knowledge = databases.fetch(:knowledge)
         @references = databases.fetch(:references)
