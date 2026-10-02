@@ -2,6 +2,7 @@
 
 require_relative "../cli/command"
 require_relative "../graph"
+require "uri"
 
 module Plastic
   module Commands
@@ -14,20 +15,20 @@ module Plastic
       def call
         output.row("document", selected(parsed.fetch(:reference)))
         output.next_step("none", because: "the document was read")
+      rescue Graph::RetrievalGraph::MissingReference, Graph::RetrievalGraph::MaintenanceRequired, CLI::Scope::UnknownProject => error
+        raise CLI::Command::Failure, error.message
       end
 
       private
 
       def fetch(reference)
         retrieval_for(reference).fetch_reference(reference)
-      rescue Graph::RetrievalGraph::MissingReference, Graph::RetrievalGraph::MaintenanceRequired, CLI::Scope::UnknownProject => error
-        raise CLI::Command::Failure, error.message
       end
 
       def selected(reference)
         return fetch(reference) unless parsed[:passage]
 
-        retrieval_for(reference).fetch_passage(reference, Integer(parsed.fetch(:passage)))
+        retrieval_for(reference).fetch_passage(reference, passage_position)
       end
 
       def retrieval_for(reference)
@@ -37,10 +38,27 @@ module Plastic
       end
 
       def source_slug(reference)
+        validate_reference!(reference)
         slug = reference[/\Aplastic:\/\/([^\/]+)/, 1]
-        raise CLI::Command::Usage, "invalid document reference #{reference.inspect}" unless slug
 
         slug
+      end
+
+      def validate_reference!(reference)
+        match = /\Aplastic:\/\/[^\/]+\/[^\/]+\/[^?]*(?:\?revision=[0-9a-f]{64})?\z/.match(reference)
+        path = match && URI::DEFAULT_PARSER.unescape(reference.split("/", 5).last.split("?", 2).first).force_encoding(Encoding::UTF_8)
+        return if match && path.valid_encoding?
+
+        raise CLI::Command::Usage, "invalid document reference #{reference.inspect}"
+      end
+
+      def passage_position
+        position = Integer(parsed.fetch(:passage))
+        raise CLI::Command::Usage, "passage must be a positive integer" unless position.positive?
+
+        position
+      rescue ArgumentError
+        raise CLI::Command::Usage, "passage must be a positive integer"
       end
 
       def validate_source!(slug)
