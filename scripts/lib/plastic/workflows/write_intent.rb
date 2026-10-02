@@ -33,7 +33,7 @@ module Plastic
         context.printed_paths.each { |path| context.print("printed #{path}") }
       end
 
-      outcome :done, because: "intent %{intent_id} has its rows and its printed files"
+      outcome :done, offers: "plastic next", because: "intent %{intent_id} has its rows and its printed files"
     end
   end
 end
