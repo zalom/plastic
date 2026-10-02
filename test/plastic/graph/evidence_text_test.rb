@@ -16,6 +16,19 @@ class EvidenceTextTest < Plastic::TestCase
     assert_equal :attachment, text.classify("bad.txt", "\xFF".b)
   end
 
+  def test_preserves_every_valid_utf8_non_nul_reference_without_an_extension_allowlist
+    %w[settings.toml query.sql script.sh main.go task.py README].each do |path|
+      assert_equal :text, text.classify(path, "{keep}\\path\n")
+    end
+  end
+
+  def test_preserves_plain_text_and_decodes_rtf_unicode_and_hex_escapes
+    plain = "# Heading\n{json: \\path}\n"
+
+    assert_equal plain, text.extract("note.md", plain)
+    assert_equal "žé", text.extract("note.rtf", "{\\rtf1\\ansi\\u382?\\'e9}")
+  end
+
   def test_builds_repeatable_unicode_passages_with_overlap_and_source_lines
     body = "first line\n\n" + ("ž" * 1700) + "\nfinal line\n"
 
