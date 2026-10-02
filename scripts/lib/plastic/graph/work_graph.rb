@@ -32,7 +32,7 @@ module Plastic
       def_delegators :edges, :add_edge, :remove_edge
       def_delegators :rulings, :add_ruling
       def_delegators :links, :add_link, :remove_link
-      def_delegators :roadmaps, :write_batch, :add_item, :drop_item, :remove_roadmap_edge, :add_log
+      def_delegators :roadmaps, :write_batch, :add_item, :start_item, :drop_item, :remove_roadmap_edge, :add_log
 
       def initialize(databases, folder:, retrieval:, session: nil)
         @databases = databases

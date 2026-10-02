@@ -43,7 +43,7 @@ module Plastic
         totals = reports.reject(&:skipped).each_with_object(Hash.new(0)) do |report, sums|
           report.counts.each { |key, value| sums[key] += value }
         end
-        "total: #{Graph::Schema.phrase(totals)}"
+        totals.empty? ? "total: no store left to import" : "total: #{Graph::Schema.phrase(totals)}"
       end
     end
   end

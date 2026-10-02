@@ -18,7 +18,7 @@ module Plastic
       end
 
       def self.print_batch(context, batch)
-        context.print("batch #{batch.position}: #{batch.title} - #{batch.goal}")
+        context.print(["batch #{batch.position}: #{batch.title}", batch.goal].compact.reject(&:empty?).join(" - "))
         batch.done_lines.each { |line| context.print("  done: #{line}") }
         context.retrieval.roadmap_items(context.slug).select { |item| item.batch == batch.position }
           .each { |item| print_item(context, item) }

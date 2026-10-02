@@ -18,7 +18,7 @@ module Plastic
       TOP_HEADING = /\A##\s+(.+?)\s*\z/.freeze
       BATCH_HEADING = /\A###\s+(?:Batch|Wave)\s+(\d+)\s*(?:[—-]\s*(.*))?\z/.freeze
       ITEM_LEAD = /\A-\s*\[([ xX])\]\s+(\S+)\s+(.*)\z/.freeze
-      STATUS = /[—-]\s*(queued|delivering|delivered|abandoned|blocked)\z/.freeze
+      STATUS = /[—-]\s*(queued|delivering|delivered|abandoned|blocked)\b/.freeze
       EDGE_LEAD = /\A-\s*(\S+)\s+needs\b(.*)\z/.freeze
       TOKEN = /\A[A-Za-z0-9][A-Za-z0-9_-]*\z/.freeze
       ROOT = "nothing"
@@ -113,13 +113,11 @@ module Plastic
           match = joined.match(ITEM_LEAD)
           return problem("cannot read roadmap item #{joined.inspect}", @item_line) unless match
 
-          status = joined.match(STATUS)
+          status = match[3].match(STATUS)
           return problem("no status on roadmap item #{joined.inspect}", @item_line) unless status
           return problem("not a plain id: #{match[2].inspect}", @item_line) unless match[2].match?(TOKEN)
 
-          title = match[3][0...(status.begin(0) - match[3].length - 1 + match[3].length)]
           @items << Item.new(item: match[2], batch: @current_batch, title: status.pre_match.strip, status: status[1])
-          title # silence unused warning for the slice above, kept for clarity of intent
         end
 
         def graph_line(text, number)
@@ -144,8 +142,9 @@ module Plastic
           @edges[id] = (targets == [ROOT]) ? [] : targets
         end
 
+        # A bullet at the margin opens a log line; an indented one continues it.
         def log_line(text, number)
-          if text.strip.start_with?("- ")
+          if text.start_with?("- ")
             flush_log
             @log_buffer = [text.strip]
             @log_line = number

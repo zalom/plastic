@@ -47,7 +47,7 @@ module Plastic
         folder = StoreFolder.new(root)
         return StoreReport.new(store: slug, skipped: true, counts: {}, problems: []) unless folder.legacy?
 
-        parsed = roadmap_files(root).to_h { |path| [path, RoadmapParse.call(File.binread(path), path: relative(root, path))] }
+        parsed = roadmap_files(root).to_h { |path| [path, RoadmapParse.call(File.read(path, encoding: "UTF-8"), path: relative(root, path))] }
         problems = parsed.values.flat_map(&:problems)
         return StoreReport.new(store: slug, skipped: false, counts: {}, problems:) if problems.any?
 
@@ -56,18 +56,18 @@ module Plastic
 
       def relative(root, path) = path.delete_prefix("#{root}/")
 
-      def roadmap_files(root) = (Dir.glob(File.join(root, "roadmaps", "*.md")) + Dir.glob(File.join(root, "roadmaps", "archived", "*.md"))).sort
+      def roadmap_files(root) = Dir.glob(File.join(root, "roadmaps", "{,archived/}*.md")).reject { |path| path.end_with?(".savepoint.md") }.sort
 
       def run_import(home, slug, root, folder, parsed)
         originals = folder.intent_files.to_h { |path| [path, folder.read(path)] }
-        dirs = folder.intent_dirs
+        decisions = read_decisions(folder.intent_dirs, originals)
         graphs = Graph.open(home:, store: slug, session: @session)
         counts = Hash.new(0)
         graphs.work.sync_apply(graphs.work.sync_plan(:up, {}))
         tally_sync(counts, graphs.retrieval)
-        extract_rulings_and_links(graphs.databases, dirs, originals, counts)
+        write_decisions(graphs.databases, decisions, counts)
         keep_changed_originals(graphs.databases, folder, originals, counts)
-        migrate_roadmaps(graphs.databases, graphs.work, root, parsed, counts)
+        migrate_roadmaps(graphs, root, parsed, counts)
         archive_done_intents(graphs.work, graphs.retrieval, counts)
         counts
       end
@@ -78,18 +78,26 @@ module Plastic
         counts[:savepoints] = retrieval.savepoints.size
       end
 
-      # Rulings and links read from the ORIGINAL bytes, taken before the sync
-      # ran: the legacy import does not keep sources, chain or Decisions.
-      def extract_rulings_and_links(databases, dirs, originals, counts)
-        dirs.each do |dir|
-          intent_id = File.basename(dir).split("--").first
-          main = "#{dir}/#{File.basename(dir)}.md"
-          texts = [originals[main], originals["#{dir}/spec.md"]].compact
-          write_rulings(databases, intent_id, texts.flat_map { |text| decision_bullets(text) }, counts)
-          next unless originals[main]
+      # Rulings and links read from the ORIGINAL bytes, before the sync runs:
+      # the legacy import does not keep sources, chain or Decisions. When
+      # spec.md lists decisions, it holds them and the intent file's copy is
+      # skipped, since both files carry the same decisions in other words.
+      def read_decisions(dirs, originals)
+        dirs.map do |dir|
+          main, spec = ["#{File.basename(dir)}.md", "spec.md"].map { |name| text_of(originals["#{dir}/#{name}"]) }
+          bullets = [spec, main].map { |text| decision_bullets(text) }.find(&:any?) || []
+          { intent_id: File.basename(dir).split("--").first, rulings: assign_ruling_ids(bullets),
+            source: front_matter_refs(main, "sources"), chain: front_matter_refs(main, "chain") }
+        end
+      end
 
-          write_links(databases, intent_id, front_matter_refs(originals[main], "sources"), "source", counts)
-          write_links(databases, intent_id, front_matter_refs(originals[main], "chain"), "chain", counts)
+      def text_of(bytes) = bytes.to_s.dup.force_encoding(Encoding::UTF_8)
+
+      def write_decisions(databases, decisions, counts)
+        decisions.each do |decision|
+          intent_id = decision.fetch(:intent_id)
+          write_rulings(databases, intent_id, decision.fetch(:rulings), counts)
+          %i[source chain].each { |kind| write_links(databases, intent_id, decision.fetch(kind), kind.to_s, counts) }
         end
       end
 
@@ -109,21 +117,21 @@ module Plastic
         bullets
       end
 
+      # A bullet that opens with Dn keeps that id unless an earlier bullet
+      # took it; every other bullet takes the next free number.
       def assign_ruling_ids(bullets)
-        highest = 0
+        taken = []
         bullets.map do |bullet|
-          match = bullet.match(RULING_ID)
-          id = match ? "D#{match[1]}" : "D#{highest + 1}"
-          highest = [highest, id[1..].to_i].max
-          [id, bullet]
+          number = bullet[RULING_ID, 1].to_i
+          number = (taken.max || 0) + 1 if number.zero? || taken.include?(number)
+          taken << number
+          ["D#{number}", bullet]
         end
       end
 
       def write_rulings(databases, intent_id, bullets, counts)
-        return if bullets.empty?
-
         database = databases.fetch(:knowledge)
-        assign_ruling_ids(bullets).each do |id, text|
+        bullets.each do |id, text|
           row = { intent_id:, id:, text:, supersedes: nil, at: Plastic.now, session_id: @session }
           database.transaction { |batch| batch.put(:rulings, row, statement: :insert) }
           counts[:rulings] += 1
@@ -156,30 +164,51 @@ module Plastic
 
       def keep_original(databases, path, bytes, intent_id, counts)
         row = { name: "originals/#{path}", mode: 0o644, mtime: Time.now.to_i, sz: bytes.bytesize,
-                data: bytes, intent_id:, sha256: Digest::SHA256.hexdigest(bytes) }
+                data: SQL::Bytes.new(bytes), intent_id:, sha256: Digest::SHA256.hexdigest(bytes) }
         databases.fetch(:references).transaction { |batch| batch.put(:sqlar, row, statement: :upsert) }
         counts[:kept] += 1
       end
 
-      def migrate_roadmaps(databases, work, root, parsed, counts)
+      def migrate_roadmaps(graphs, root, parsed, counts)
         parsed.each do |path, result|
           slug = File.basename(path, ".md")
           original_bytes = File.binread(path)
-          write_roadmap_rows(databases, work, slug, result)
-          work.print_roadmap(slug)
-          keep_roadmap_original(databases, root, slug, original_bytes, counts)
+          write_roadmap_rows(graphs, slug, result, path.sub(/\.md\z/, ".savepoint.md"))
+          graphs.work.print_roadmap(slug)
+          keep_roadmap_original(graphs.databases, root, slug, original_bytes, counts)
           counts[:roadmaps] += 1
           counts[:roadmap_items] += result.items.size
         end
       end
 
-      def write_roadmap_rows(databases, work, slug, result)
+      # A roadmap with no batch headings lists its items in one batch.
+      def write_roadmap_rows(graphs, slug, result, savepoint)
+        databases = graphs.databases
+        work = graphs.work
         fields = ->(title) { RoadmapWriter::Fields.new(title:, goal: nil, done: []) }
-        result.batches.each { |batch| work.write_batch(slug, batch.position, fields: fields.call(batch.title)) }
-        result.items.each { |item| work.add_item(slug, item.item, item.batch, fields: fields.call(item.title), after: []) }
+        batches = result.batches.empty? ? [RoadmapParse::Batch.new(position: 1, title: result.title)] : result.batches
+        batches.each { |batch| work.write_batch(slug, batch.position, fields: fields.call(batch.title)) }
+        result.items.each { |item| add_item(graphs, slug, item, fields.call(item.title)) }
         write_edges(databases, slug, result.edges)
-        write_log(databases, slug, result.log)
+        write_log(databases, slug, result.log + savepoint_log(savepoint))
         databases.fetch(:work).transaction { |batch| batch.put(:roadmaps, { slug:, title: result.title, goal: result.goal }, statement: :upsert) }
+      end
+
+      # An imported item keys by its intent id, so it names that intent when the store holds one.
+      def add_item(graphs, slug, item, fields)
+        id = item.item
+        graphs.work.add_item(slug, id, item.batch || 1, fields:, after: [])
+        graphs.work.start_item(slug, id, id) if graphs.retrieval.intent(id)
+      end
+
+      # The `.savepoint.md` sibling: one line per event, its time stamp first.
+      def savepoint_log(path)
+        return [] unless File.exist?(path)
+
+        File.read(path, encoding: "UTF-8").each_line.filter_map do |line|
+          at, text = line.strip.split(/\s+/, 2)
+          RoadmapParse::LogLine.new(at:, text: text.to_s.squeeze(" ")) if at
+        end
       end
 
       def write_edges(databases, slug, edges)
