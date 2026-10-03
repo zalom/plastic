@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-require_relative "plastic/graph/database/sqlite_loader"
-
 # Checks whether the installed sqlite3 gem matches Plastic's runtime pin.
 module Sqlite3Dependency
+  VERSION = "2.9.6"
+
   module_function
 
   def available?
@@ -14,6 +14,6 @@ module Sqlite3Dependency
   end
 
   def supported?(version)
-    version == Plastic::Graph::Database::SqliteLoader::VERSION
+    version == VERSION
   end
 end
