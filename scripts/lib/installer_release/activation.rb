@@ -44,6 +44,8 @@ module InstallerRelease
 
     def publish!(candidate, version, before_switch)
       FileUtils.mkdir_p(releases_path)
+      raise ActivationError, "candidate is not on the installation filesystem" unless same_filesystem?(candidate)
+
       destination = File.join(releases_path, version)
       raise ActivationError, "release version already exists" if File.exist?(destination)
 
@@ -71,6 +73,10 @@ module InstallerRelease
 
     def releases_path
       File.join(home, "releases")
+    end
+
+    def same_filesystem?(candidate)
+      File.stat(candidate).dev == File.stat(releases_path).dev
     end
 
     def previous_path

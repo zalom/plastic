@@ -95,6 +95,13 @@ class InstallerReleaseTest < Minitest::Test
     assert_equal "old", File.read(File.join(installer.active_path, "bin", "plastic")).strip
   end
 
+  def test_activation_requires_candidate_staging_on_the_installation_filesystem
+    home = File.join(@root, "home", ".plastic")
+    installer = foreign_filesystem_activation(home)
+
+    assert_raises(InstallerRelease::ActivationError) { installer.activate!(staged_candidate("2.0.2"), version: "2.0.2") }
+  end
+
   private
 
   def release
@@ -119,5 +126,15 @@ class InstallerReleaseTest < Minitest::Test
     File.write(File.join(stage, "bin", "plastic"), (version == "2.0.2") ? "old\n" : "new\n")
     File.chmod(0o755, File.join(stage, "bin", "plastic"))
     stage
+  end
+
+  def foreign_filesystem_activation(home)
+    Class.new(InstallerRelease::Activation) do
+      private
+
+      def same_filesystem?(_candidate)
+        false
+      end
+    end.new(home: home)
   end
 end
