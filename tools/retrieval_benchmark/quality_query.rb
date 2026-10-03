@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "json"
+require_relative "quality_passage_checks"
 
 module Plastic
   module RetrievalBenchmark
@@ -17,7 +18,7 @@ module Plastic
         expected = expected_references
         sample = Measurements.run_command(search_command)
         rows = JSON.parse(sample.fetch("stdout")).fetch("result").fetch("results")
-        checks = rows.filter_map.with_index { |row, index| check(row, expected[row.fetch("uri")], index + 1) }
+        checks = QualityPassageChecks.new(@home, expected).evaluate(rows)
         answer(Result.new(expected, sample, rows, checks))
       end
 
@@ -28,12 +29,6 @@ module Plastic
           reference = Graph.open(home: @home, store: row.fetch("store")).retrieval.reference(row.fetch("intent_id"), row.fetch("path"))
           [reference.fetch(:uri), row.fetch("relevant_passage_hint") { @query.fetch("relevant_passage_hint") }]
         end
-      end
-
-      def check(row, hint, rank)
-        passage = fetch_passage(row)
-        { "uri" => row.fetch("uri"), "rank" => rank, "position" => row.fetch("position"), "hint" => hint,
-          "body" => passage&.fetch("body"), "matched" => passage&.fetch("body")&.include?(hint) || false }
       end
 
       def answer(result)
@@ -50,13 +45,6 @@ module Plastic
         { "rank" => matched&.fetch("rank"),
           "matched_text" => matched&.fetch("body"), "resolved_qualified_reference" => matched&.fetch("uri"), "passed" => !matched.nil?,
           "classification" => classification(result.checks, matched) }
-      end
-
-      def fetch_passage(row)
-        argv = [File.join(RetrievalBenchmark::ROOT, "bin", "plastic"), "document", "get", row.fetch("uri"), "--passage", row.fetch("position").to_s, "--json"]
-        sample = Measurements.run_command({ home: @home, argv:, stores: [row.fetch("store")] })
-        document = JSON.parse(sample.fetch("stdout")).dig("result", "document")
-        document if sample.fetch("exit_status").zero? && document
       end
 
       def classification(checks, matched)
