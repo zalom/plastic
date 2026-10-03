@@ -12,8 +12,12 @@ module InstallerRelease
 
     def newest(releases, channel)
       versions = releases.select { |release| complete?(release) }.map { |release| release.fetch("tag_name").delete_prefix("v") }
-      versions.select { |version| on_channel?(version, channel) }.max_by { |version| version.scan(/\d+/).map(&:to_i) }
+      versions.select { |version| on_channel?(version, channel) }.max_by { |version| order(version) }
     end
+
+    def newer?(candidate, current) = (order(candidate) <=> order(current)) == 1
+
+    def order(version) = version.scan(/\d+/).map(&:to_i)
 
     def complete?(release) = (ReleaseFiles::NAMES - release.fetch("assets").map { |asset| asset["name"] }).empty?
 

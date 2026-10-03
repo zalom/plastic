@@ -2,22 +2,21 @@
 
 require_relative "../code_workflow"
 require_relative "installation"
+require_relative "release_update"
 
 module Plastic
   module Workflows
     # Syncs a newer running package into the home for the registered agents.
-    # When the running package is not newer, names the installer command
-    # that fetches the newest release of its channel, since Plastic downloads
-    # nothing itself.
+    # When the running package is not newer, activates the newest release of
+    # the active release's channel. With no release activated yet, names the
+    # installer command that installs one.
     class UpdatePlastic < CodeWorkflow
       [facts, steps, outcomes].each(&:clear)
 
-      sets :newer, :synced
+      sets :newer, :synced, :active, :release, :activated
 
       read "check whether the running package is newer" do |context|
-        installation = Installation.of(context)
-        context[:newer] = installation.newer?
-        context.row("run:", Installation.fetch_command("PLASTIC_CHANNEL=#{installation.channel}")) unless context.newer
+        context[:newer] = Installation.of(context).newer?
       end
 
       step "sync the newer package into the home", done: ->(context) { !context.newer || context.synced } do |context|
@@ -28,8 +27,29 @@ module Plastic
         context[:synced] = true
       end
 
+      read "find a newer release on the active channel" do |context|
+        newest_release(context) unless context.newer
+      end
+
+      step "activate the newer release", done: ->(context) { context.release.nil? || context.activated } do |context|
+        context[:activated] = ReleaseUpdate.of(context).activate(context.release)
+      end
+
       outcome :done, if: ->(context) { context.synced }, offers: "plastic version", because: "the home holds Plastic %{to}"
+      outcome :activated, if: ->(context) { context.activated }, offers: "plastic update",
+        because: "Plastic %{activated} is active; update again to sync its files into the home"
+      outcome :current, if: ->(context) { context.active }, offers: "plastic version",
+        because: "Plastic %{active} is the newest release on its channel"
       outcome :fetch, offers: "plastic update", because: "run the installer command above, then update again"
+
+      def self.newest_release(context)
+        release = ReleaseUpdate.of(context)
+        context[:active] = release.active_version
+        return context.row("run:", Installation.fetch_command("PLASTIC_CHANNEL=#{Installation.of(context).channel}")) unless context.active
+
+        release.warning(context)
+        context[:release] = release.newer_release
+      end
     end
   end
 end
