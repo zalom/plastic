@@ -24,6 +24,11 @@ class ReleaseBuild
     InstallerRelease::Manifest.write(File.join(directory, "plastic.manifest.json"), archive:, release:)
   end
 
+  # One file of the archive, written under package/ with its mode.
+  Entry = Data.define(:name, :content, :mode) do
+    def write_to(tar) = tar.add_file_simple("package/#{name}", mode, content.bytesize) { |io| io.write(content) }
+  end
+
   def initialize(version, directory, root)
     @version = version
     @directory = directory
@@ -32,7 +37,7 @@ class ReleaseBuild
 
   def call
     FileUtils.mkdir_p(directory)
-    Zlib::GzipWriter.open(File.join(directory, ARCHIVE)) { |gzip| Gem::Package::TarWriter.new(gzip) { |tar| write_entries(tar) } }
+    Zlib::GzipWriter.open(File.join(directory, ARCHIVE)) { |gzip| write_tar(gzip) }
     self.class.seal(version, directory)
   end
 
@@ -40,13 +45,19 @@ class ReleaseBuild
 
   attr_reader :version, :directory, :root
 
-  def write_entries(tar)
-    package_files.each { |name| add(tar, name, File.binread(source(name)), File.stat(source(name)).mode & 0o777) }
-    add(tar, "VERSION", "#{version}\n", 0o644)
+  def write_tar(gzip)
+    tar = Gem::Package::TarWriter.new(gzip)
+    entries.each { |entry| entry.write_to(tar) }
+    tar.close
   end
 
-  def add(tar, name, content, mode)
-    tar.add_file_simple("package/#{name}", mode, content.bytesize) { |io| io.write(content) }
+  def entries
+    package_files.map { |name| file_entry(name) } << Entry.new("VERSION", "#{version}\n", 0o644)
+  end
+
+  def file_entry(name)
+    path = source(name)
+    Entry.new(name, File.binread(path), File.stat(path).mode & 0o777)
   end
 
   def source(name) = File.join(root, name)
