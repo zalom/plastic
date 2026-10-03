@@ -1856,7 +1856,7 @@ class InstallerCore
 
     statusline_removed = HookRegistry.claude_purge_command?(settings.dig("statusLine", "command"))
     restored_statusline = restore_claude_statusline(settings) if statusline_removed
-    drop_plastic_plugin(settings)
+    self.class.drop_plastic_plugin(settings)
 
     result = write_json_atomic(settings_path, settings)
     report_removed_hook_entries(removed, "settings.json", qualifier: "Plastic")
@@ -1873,7 +1873,7 @@ class InstallerCore
     original["command"]
   end
 
-  def drop_plastic_plugin(settings)
+  def self.drop_plastic_plugin(settings)
     plugins = settings["enabledPlugins"]
     return unless plugins
 
