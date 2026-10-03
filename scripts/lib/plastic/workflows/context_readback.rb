@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative "../graph/context_freshness"
-require_relative "../graph/context_source"
+require_relative "../graph/retrieval/context/freshness"
+require_relative "../graph/retrieval/context/source"
 require_relative "context_documents"
 
 module Plastic
@@ -14,7 +14,7 @@ module Plastic
 
       def call
         document = ContextDocuments.new(context).read(:context)
-        document.merge("freshness" => Graph::ContextFreshness.new(source: Graph::ContextSource.new(context.scope.plastic_home)).call(document))
+        document.merge("freshness" => Graph::Retrieval::Context::Freshness.new(source: Graph::Retrieval::Context::Source.new(context.scope.plastic_home)).call(document))
       end
 
       private

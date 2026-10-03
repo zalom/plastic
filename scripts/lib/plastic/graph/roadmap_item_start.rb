@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require "forwardable"
-require_relative "evidence_writer"
+require_relative "retrieval/evidence/writer"
 require_relative "roadmap_state"
 
 module Plastic
@@ -37,7 +37,7 @@ module Plastic
         [intent_id, nil, nil]
       end
 
-      def write_spec(intent_id, body) = EvidenceWriter.new(databases.fetch(:knowledge), retrieval.origin_id).write(intent_id, "spec.md", body)
+      def write_spec(intent_id, body) = Retrieval::Evidence::Writer.new(databases.fetch(:knowledge), retrieval.origin_id).write(intent_id, "spec.md", body)
 
       def link_source(intent_id, slug) = @writers.links.add_link(from_ref: intent_id, to_ref: "roadmap:#{slug}", kind: "source")
     end

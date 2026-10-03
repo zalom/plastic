@@ -2,14 +2,14 @@
 
 require_relative "../../test_helper"
 require_relative "../../../scripts/lib/plastic/commands/search"
-require_relative "../../../scripts/lib/plastic/graph/evidence_writer"
+require_relative "../../../scripts/lib/plastic/graph/retrieval/evidence/writer"
 
 module SearchTestSupport
   private
 
   def write_document(store, body, path: "evidence.md")
     graphs = Plastic::Graph.open(home: @plastic_home, store:)
-    Plastic::Graph::EvidenceWriter.new(graphs.databases.fetch(:knowledge), origin).write("1", path, body)
+    Plastic::Graph::Retrieval::Evidence::Writer.new(graphs.databases.fetch(:knowledge), origin).write("1", path, body)
     graphs.retrieval.backfill
     graphs.retrieval.archived?("1")
   end
@@ -88,7 +88,7 @@ module SearchTestAssertionSupport
 
   def historical_document
     graphs = Plastic::Graph.open(home: @plastic_home, store: "global")
-    writer = Plastic::Graph::EvidenceWriter.new(graphs.databases.fetch(:knowledge), origin)
+    writer = Plastic::Graph::Retrieval::Evidence::Writer.new(graphs.databases.fetch(:knowledge), origin)
     writer.write("1", "evidence.md", "first evidence")
     graphs.retrieval.backfill
     hit = sole(graphs.retrieval.search("evidence"))

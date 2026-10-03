@@ -145,7 +145,7 @@ class BackupRetrievalTest < Plastic::TestCase
 
   def write_retrieval_document(home, body)
     graphs = Plastic::Graph.open(home:, store: "global")
-    Plastic::Graph::EvidenceWriter.new(graphs.databases.fetch(:knowledge), graphs.retrieval.origin_id).write("1", "evidence.md", body)
+    Plastic::Graph::Retrieval::Evidence::Writer.new(graphs.databases.fetch(:knowledge), graphs.retrieval.origin_id).write("1", "evidence.md", body)
     graphs.retrieval.backfill
     graphs.retrieval.reference("1", "evidence.md").fetch(:uri)
   end

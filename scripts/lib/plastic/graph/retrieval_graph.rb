@@ -9,20 +9,20 @@ require_relative "link"
 require_relative "roadmap"
 require_relative "archive"
 require_relative "backup"
-require_relative "evidence_writer"
-require_relative "evidence_integrity"
-require_relative "reference_backfill"
-require_relative "retrieval_reference"
-require_relative "retrieval_search"
-require_relative "retrieval_store_read"
-require_relative "retrieval_archive_reader"
-require_relative "retrieval_roadmap_reader"
-require_relative "retrieval_roadmap_reads"
-require_relative "retrieval_store_reads"
-require_relative "retrieval_archive_reads"
-require_relative "retrieval_structure_reads"
-require_relative "exact_lookup_plans"
-require_relative "retrieval_evidence"
+require_relative "retrieval/evidence/writer"
+require_relative "retrieval/evidence/integrity"
+require_relative "retrieval/reference_backfill"
+require_relative "retrieval/reference"
+require_relative "retrieval/search"
+require_relative "retrieval/store_read"
+require_relative "retrieval/archive_reader"
+require_relative "retrieval/roadmap_reader"
+require_relative "retrieval/roadmap_reads"
+require_relative "retrieval/store_reads"
+require_relative "retrieval/archive_reads"
+require_relative "retrieval/structure_reads"
+require_relative "retrieval/exact_lookup_plans"
+require_relative "retrieval/evidence"
 
 module Plastic
   # Persists and retrieves the graph records that describe Plastic work.
@@ -31,10 +31,10 @@ module Plastic
     # not write. Explicit owning-store backfill and repair rebuild derived
     # tables. A selected-source read never runs either operation.
     class RetrievalGraph
-      include RetrievalRoadmapReads
-      include RetrievalStoreReads
-      include RetrievalArchiveReads
-      include RetrievalStructureReads
+      include Retrieval::RoadmapReads
+      include Retrieval::StoreReads
+      include Retrieval::ArchiveReads
+      include Retrieval::StructureReads
 
       # Signals that a caller must build the derived retrieval rows first.
       class MaintenanceRequired < StandardError; end
@@ -42,7 +42,7 @@ module Plastic
       class MissingReference < StandardError; end
       # Signals an FTS query that SQLite rejected.
       class InvalidSearch < StandardError; end
-      SEARCH_LIMIT = RetrievalSearch::SEARCH_LIMIT
+      SEARCH_LIMIT = Retrieval::Search::SEARCH_LIMIT
       extend Forwardable
 
       attr_reader :store
@@ -74,20 +74,20 @@ module Plastic
 
       def clusters = read(:clusters)
 
-      def exact_lookup_plans(intent_id, path) = ExactLookupPlans.new(@databases, origin_id).rows(intent_id, path)
+      def exact_lookup_plans(intent_id, path) = Retrieval::ExactLookupPlans.new(@databases, origin_id).rows(intent_id, path)
 
       DOCUMENT_SQL = "SELECT * FROM documents WHERE intent_id = :intent_id AND path = :path AND origin_id = :origin"
-      SEARCH_SQL = RetrievalSearch::SEARCH_SQL
+      SEARCH_SQL = Retrieval::Search::SEARCH_SQL
 
       private
 
-      def evidence = (@evidence ||= RetrievalEvidence.new(@databases, store:, origin: @origin))
+      def evidence = (@evidence ||= Retrieval::Evidence.new(@databases, store:, origin: @origin))
 
-      def stored = (@stored ||= RetrievalStoreRead.new(@databases))
+      def stored = (@stored ||= Retrieval::StoreRead.new(@databases))
 
-      def archives = (@archives ||= RetrievalArchiveReader.new(@databases.fetch(:work), origin_id))
+      def archives = (@archives ||= Retrieval::ArchiveReader.new(@databases.fetch(:work), origin_id))
 
-      def roadmaps = (@roadmaps ||= RetrievalRoadmapReader.new(@databases.fetch(:work), origin_id))
+      def roadmaps = (@roadmaps ||= Retrieval::RoadmapReader.new(@databases.fetch(:work), origin_id))
 
       def sessions = (@sessions ||= SessionReader.new(@databases, store:, origin: @origin))
 

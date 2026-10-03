@@ -10,13 +10,13 @@ class LazyCommandDispatchTest < Minitest::Test
   RETRIEVAL_CONTEXT_SCRIPT = <<~RUBY
     require "plastic"
     require "plastic/graph"
-    require "plastic/graph/evidence_writer"
+    require "plastic/graph//retrieval/evidence/writer"
     global = Plastic::Graph.open(home: ARGV.fetch(0), store: "global")
     global.databases.each_value { |database| database.rows("SELECT 1") }
     global.work.write_intent(title: "Selected")
     other = Plastic::Graph.open(home: ARGV.fetch(0), store: "other")
     other.databases.each_value { |database| database.rows("SELECT 1") }
-    Plastic::Graph::EvidenceWriter.new(other.databases.fetch(:knowledge), other.retrieval.origin_id).write("1", "evidence.md", "selected evidence")
+    Plastic::Graph::Retrieval::Evidence::Writer.new(other.databases.fetch(:knowledge), other.retrieval.origin_id).write("1", "evidence.md", "selected evidence")
     other.retrieval.backfill
   RUBY
 

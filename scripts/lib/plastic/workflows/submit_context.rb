@@ -2,7 +2,7 @@
 
 require "json"
 require_relative "../code_workflow"
-require_relative "../graph/context_source"
+require_relative "../graph/retrieval/context/source"
 require_relative "../graph/retrieval_graph"
 require_relative "context_documents"
 require_relative "context_persistence"
@@ -20,7 +20,7 @@ module Plastic
 
       read "persist the submitted context" do |context|
         discovery = ContextDocuments.new(context).read(:discovery)
-        source = Graph::ContextSource.new(context.scope.plastic_home)
+        source = Graph::Retrieval::Context::Source.new(context.scope.plastic_home)
         submission = ContextSubmission.new(intent_id: context.intent_id, discovery:, source:).validate(context.from)
         context.row("context", ContextPersistence.new(context).persist(submission))
       rescue Errno::ENOENT, JSON::ParserError => error

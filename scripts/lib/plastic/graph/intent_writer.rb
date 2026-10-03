@@ -3,7 +3,7 @@
 require_relative "intent"
 require_relative "intent_ref"
 require_relative "store_folder"
-require_relative "evidence_writer"
+require_relative "retrieval/evidence/writer"
 
 module Plastic
   module Graph
@@ -74,7 +74,7 @@ module Plastic
       def write_document(intent)
         origin_id = @retrieval.origin_id
         document = intent.document(origin_id)
-        EvidenceWriter.new(@databases.fetch(:knowledge), origin_id).write(*document.values_at(:intent_id, :path, :body))
+        Retrieval::Evidence::Writer.new(@databases.fetch(:knowledge), origin_id).write(*document.values_at(:intent_id, :path, :body))
       end
 
       def next_id(parent_id)

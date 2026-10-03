@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative "evidence_writer"
-require_relative "evidence_text"
+require_relative "retrieval/evidence/writer"
+require_relative "retrieval/evidence/text"
 
 module Plastic
   module Graph
@@ -10,7 +10,7 @@ module Plastic
       def initialize(database, origin_id)
         @database = database
         @origin_id = origin_id
-        @classifier = EvidenceText
+        @classifier = Retrieval::Evidence::Text
       end
 
       def index(intent_id, entries)
@@ -21,7 +21,7 @@ module Plastic
 
       attr_reader :classifier, :database, :origin_id
 
-      def writer = EvidenceWriter.new(database, origin_id)
+      def writer = Retrieval::Evidence::Writer.new(database, origin_id)
 
       def index_file(intent_id, entry)
         path, data = entry.values_at(:path, :data)

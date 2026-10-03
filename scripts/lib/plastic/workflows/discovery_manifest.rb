@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "external_agent_workflow"
-require_relative "../graph/retrieval_source"
+require_relative "../graph/retrieval/source"
 require_relative "discovery_candidates"
 
 module Plastic
