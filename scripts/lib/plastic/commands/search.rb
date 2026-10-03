@@ -2,6 +2,9 @@
 
 require_relative "../cli/command"
 require_relative "../graph/retrieval_source"
+require_relative "search_excerpt"
+require_relative "search_results"
+require_relative "search_scope"
 
 module Plastic
   module Commands
@@ -13,80 +16,24 @@ module Plastic
       reads :knowledge
 
       def call
-        output.row("results", ranked_rows(search_limit))
-        output.next_step("none", because: "the indexed passages were read")
+        write_results
       rescue Graph::RetrievalGraph::InvalidSearch => error
-        raise CLI::Command::Usage, error.message
+        raise_failure(CLI::Command::Usage, error)
       rescue Graph::RetrievalGraph::MaintenanceRequired => error
-        raise CLI::Command::Failure, error.message
+        raise_failure(CLI::Command::Failure, error)
       end
 
       private
 
-      def sources
-        configured_sources.tap { |list| validate_sources(list) }
-      end
+      def sources = SearchScope.new(scope, parsed, environment).sources
 
-      def configured_sources
-        values = parsed.fetch(:source_projects)
-        values = environment.env.fetch("PLASTIC_SOURCE_PROJECTS", "").split(",") if values.empty?
-        canonical_sources(values).then { |list| list.empty? ? [scope.slug] : list }
-      end
+      def results = SearchResults.new(scope, terms, excerpt: SearchExcerpt.new(terms))
 
-      def canonical_sources(values) = values.map(&:strip).reject(&:empty?).uniq.sort
+      def terms = parsed.fetch(:terms)
 
-      def validate_sources(list)
-        unknown = list - scope.known_slugs
-        raise CLI::Command::Usage, "unknown source projects: #{unknown.join(", ")}" if unknown.any?
-      end
+      def write_results = SearchOutput.new(output, results.call(sources, search_limit)).write
 
-      def rows(slug, limit)
-        retrieval = maintained_retrieval(slug)
-        retrieval.search(parsed.fetch(:terms), limit:, migrate: false).each_with_index.map do |row, index|
-          result_row(retrieval, slug, row, index + 1)
-        end
-      end
-
-      def maintained_retrieval(slug)
-        missing = Graph::Schema::STORE.map { |key| Graph::Schema.file(key) }.reject do |file|
-          File.file?(File.join(scope.plastic_home, "stores", slug, file))
-        end
-        raise Graph::RetrievalGraph::MaintenanceRequired, "retrieval maintenance is required before source #{slug} can be read" if missing.any?
-
-        Graph.open_retrieval(home: scope.plastic_home, store: slug)
-      end
-
-      def result_row(retrieval, slug, row, rank)
-        reference = retrieval.search_reference(row)
-        details = { "store" => slug, "local_rank" => rank, "rrf_score" => rrf(rank), "archived" => retrieval.archived?(row.fetch("intent_id")) }
-        row.merge(reference.transform_keys(&:to_s)).merge(details).merge("body" => excerpt(row.fetch("body")))
-      end
-
-      def excerpt(body)
-        normalized, positions = normalized_positions(body)
-        index = search_terms.filter_map { |term| normalized.index(normalize(term)) }.min || 0
-        index = positions.fetch(index, 0)
-        first = [index - 160, 0].max
-        body[first, 320]
-      end
-
-      def search_terms = parsed.fetch(:terms).scan(/[\p{Alnum}_]+/)
-
-      def normalize(text) = text.unicode_normalize(:nfkd).gsub(/\p{Mn}/, "").downcase
-
-      def normalized_positions(text)
-        positions = []
-        normalized = text.each_char.with_index.map do |character, index|
-          fragment = normalize(character)
-          positions.concat([index] * fragment.length)
-          fragment
-        end.join
-        [normalized, positions]
-      end
-
-      def ranked_rows(limit) = sources.flat_map { |slug| rows(slug, limit) }.sort_by { |row| [-row.fetch("rrf_score"), row.fetch("uri")] }.take(limit)
-
-      def rrf(rank) = 1.0 / (60 + rank)
+      def raise_failure(error_class, error) = raise error_class, error.message
 
       def search_limit
         limit = Integer(parsed.fetch(:limit))
@@ -96,6 +43,23 @@ module Plastic
       rescue ArgumentError, TypeError
         raise Graph::RetrievalGraph::InvalidSearch, "search limit must be an integer"
       end
+    end
+
+    # Writes the command envelope for successful search results.
+    class SearchOutput
+      def initialize(output, rows)
+        @output = output
+        @rows = rows
+      end
+
+      def write
+        output.row("results", rows)
+        output.next_step("none", because: "the indexed passages were read")
+      end
+
+      private
+
+      attr_reader :output, :rows
     end
   end
 end
