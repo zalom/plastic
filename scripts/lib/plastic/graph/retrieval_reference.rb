@@ -13,7 +13,8 @@ module Plastic
       end
 
       def reference(intent_id, path)
-        qualified(intent_id, path, documents.current_revision(intent_id, path))
+        identity = DocumentIdentity.new(intent_id, path)
+        qualified(identity, documents.current_revision(*identity.deconstruct))
       end
 
       def fetch(reference)
@@ -21,10 +22,11 @@ module Plastic
         address.verify_store(fields)
         row = documents.fetch(fields)
 
-        qualified(fields.fetch(:intent_id), fields.fetch(:path), row.fetch("sha256")).merge(body: row.fetch("body"))
+        identity = DocumentIdentity.new(fields.fetch(:intent_id), fields.fetch(:path))
+        qualified(identity, row.fetch("sha256")).merge(body: row.fetch("body"))
       end
 
-      def qualified_reference(intent_id, path, revision) = qualified(intent_id, path, revision)
+      def qualified_reference(intent_id, path, revision) = qualified(DocumentIdentity.new(intent_id, path), revision)
 
       def fetch_passage(reference, position)
         document = fetch(reference)
@@ -35,7 +37,10 @@ module Plastic
 
       attr_reader :address, :documents
 
-      def qualified(intent_id, path, revision) = address.qualified(intent_id, path, revision)
+      # Identifies one document independently of its current or historical revision.
+      DocumentIdentity = Data.define(:intent_id, :path)
+
+      def qualified(identity, revision) = address.qualified(*identity.deconstruct, revision)
     end
   end
 end

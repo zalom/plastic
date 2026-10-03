@@ -23,25 +23,48 @@ module Plastic
         end
 
         def resolve_pairs(source)
-          output = String.new
-          append_pairs(source, output)
-          output
+          PairCursor.new(source).resolved
         end
 
-        def append_pairs(source, output)
-          cursor = 0
-          while (first = escape_at(source, cursor))
-            output << source[cursor...first.begin(0)]
-            ending = first.end(0)
-            second = escape_at(source, ending)
-            pair = adjacent_pair(first, second)
-            output << (pair || first[0])
-            cursor = pair ? second.end(0) : ending
+        # Advances through RTF Unicode escapes while preserving unmatched escapes.
+        class PairCursor
+          def initialize(source)
+            @source = source
+            @output = String.new
+            @cursor = 0
           end
-          output << source[cursor..]
-        end
 
-        def escape_at(source, offset) = /\\u(-?\d+)\?/.match(source, offset)
+          def resolved
+            advance while first_escape
+            @output << @source[@cursor..]
+          end
+
+          private
+
+          def advance
+            first = first_escape
+            append_prefix(first)
+            append_escape(first)
+          end
+
+          def append_prefix(first) = @output << @source[@cursor...first.begin(0)]
+
+          def append_escape(first)
+            pair, ending = pair_result(first)
+            @output << (pair || first[0])
+            @cursor = ending
+          end
+
+          def pair_result(first)
+            ending = first.end(0)
+            second = escape_at(ending)
+            pair = RichText.adjacent_pair(first, second)
+            [pair, pair ? second.end(0) : ending]
+          end
+
+          def first_escape = escape_at(@cursor)
+          def escape_at(offset) = /\\u(-?\d+)\?/.match(@source, offset)
+        end
 
         def adjacent_pair(first, second)
           return unless second&.begin(0) == first.end(0)

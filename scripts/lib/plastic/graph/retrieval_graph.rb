@@ -17,6 +17,10 @@ require_relative "retrieval_search"
 require_relative "retrieval_store_read"
 require_relative "retrieval_archive_reader"
 require_relative "retrieval_roadmap_reader"
+require_relative "retrieval_roadmap_reads"
+require_relative "retrieval_store_reads"
+require_relative "retrieval_archive_reads"
+require_relative "retrieval_structure_reads"
 require_relative "retrieval_evidence"
 
 module Plastic
@@ -26,6 +30,11 @@ module Plastic
     # not write. Explicit owning-store backfill and repair rebuild derived
     # tables. A selected-source read never runs either operation.
     class RetrievalGraph
+      include RetrievalRoadmapReads
+      include RetrievalStoreReads
+      include RetrievalArchiveReads
+      include RetrievalStructureReads
+
       # Signals that a caller must build the derived retrieval rows first.
       class MaintenanceRequired < StandardError; end
       # Signals an invalid or unavailable document or passage reference.
@@ -65,48 +74,6 @@ module Plastic
 
       DOCUMENT_SQL = "SELECT * FROM documents WHERE intent_id = :intent_id AND path = :path AND origin_id = :origin"
       SEARCH_SQL = RetrievalSearch::SEARCH_SQL
-
-      def savepoints(intent_id = nil) = read(:savepoints, intent_id)
-
-      def nodes(intent_id = nil) = read(:nodes, intent_id)
-
-      def edges(intent_id = nil) = read(:edges, intent_id)
-
-      LINKING_SQL = "SELECT * FROM links WHERE origin_id = :origin AND (to_ref = :id OR to_ref LIKE :prefix)"
-
-      # Links whose to_ref is `id` or a ruling of it, such as "ID/D1".
-      def linking(id)
-        @databases.fetch(:knowledge).rows(LINKING_SQL, origin: origin_id, id:, prefix: "#{id}/%").map { |row| Link.from_h(row) }
-      end
-
-      # The intent's archive row, or nil when it was never archived.
-      def archive_of(intent_id) = archives.archive_of(intent_id)
-
-      # True while the intent has an archive row with no restored_at.
-      def archived?(intent_id)
-        archives.archived?(intent_id)
-      end
-
-      # One roadmap by slug, or nil when none has been started.
-      def roadmap(slug) = roadmaps.roadmap(slug)
-      def batches(slug) = roadmaps.batches(slug)
-      def roadmap_items(slug) = roadmaps.items(slug)
-      def roadmap_edges(slug) = roadmaps.edges(slug)
-      def roadmap_log(slug) = roadmaps.log(slug)
-
-      # Kept files with no bytes: a print compares the hash and reads the bytes only to write.
-      def kept_files(intent_id = nil) = read(:kept_files, intent_id)
-
-      def kept_file_data(name) = stored.kept_file_data(name)
-
-      # The hash of every file printed from the store's rows, by path.
-      def printed = stored.printed
-
-      def backups = stored.backups
-
-      # "missing" when the archive's file is gone, "changed" when its sha256
-      # no longer matches, nil when it reads back the same.
-      def backup_flag(backup) = stored.backup_flag(backup)
 
       private
 

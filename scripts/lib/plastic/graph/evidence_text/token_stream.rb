@@ -11,38 +11,54 @@ module Plastic
         end
 
         def extract
-          fragments = []
-          cursor = append_matches(fragments) { |match| yield(match) }
-          append(fragments, @source[cursor..], line_at(cursor))
-          NormalizedText.new(fragments).build
+          fragments = Fragments.new(@source)
+          scan(fragments) { |match| yield(match) }
+          NormalizedText.new(fragments.values).build
         end
 
         private
 
-        def append_matches(fragments)
+        def scan(fragments)
+          fragments.append_tail(matches(fragments) { |match| yield(match) })
+        end
+
+        def matches(fragments)
           cursor = 0
-          @source.to_enum(:scan, @pattern).each do
-            match = Regexp.last_match
-            cursor = append_match(fragments, cursor, match) { |found| yield(found) }
+          while (match = @pattern.match(@source, cursor))
+            cursor = fragments.append_match(cursor, match) { |found| yield(found) }
           end
           cursor
         end
 
-        def append_match(fragments, cursor, match)
-          start = match.begin(0)
-          append(fragments, @source[cursor...start], line_at(cursor))
-          append(fragments, yield(match), line_at(start))
-          match.end(0)
-        end
+        # Owns fragment assembly and the source-line accounting for one stream.
+        class Fragments
+          attr_reader :values
 
-        def append(fragments, value, line)
-          value.each_char do |character|
-            fragments << [character, line]
-            line += 1 if character == "\n"
+          def initialize(source)
+            @source = source
+            @values = []
           end
-        end
 
-        def line_at(offset) = @source[0...offset].count("\n") + 1
+          def append_match(cursor, match)
+            start = match.begin(0)
+            append(@source[cursor...start], line_at(cursor))
+            append(yield(match), line_at(start))
+            match.end(0)
+          end
+
+          def append_tail(cursor) = append(@source[cursor..], line_at(cursor))
+
+          private
+
+          def append(value, line)
+            value.each_char do |character|
+              @values << [character, line]
+              line += 1 if character == "\n"
+            end
+          end
+
+          def line_at(offset) = @source[0...offset].count("\n") + 1
+        end
       end
     end
   end

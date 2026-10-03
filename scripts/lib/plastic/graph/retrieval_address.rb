@@ -53,18 +53,11 @@ module Plastic
 
       # Escapes a document path for its qualified retrieval URI.
       class PathEscaper
-        def initialize(path)
-          @bytes = path.bytes
-          @unreserved = "-._~".bytes
-        end
+        TABLE = (0..255).map { |byte| ((65..90).cover?(byte) || (97..122).cover?(byte) || (48..57).cover?(byte) || "-._~".bytes.include?(byte)) ? byte.chr : format("%%%02X", byte) }.freeze
 
-        def encoded = @bytes.map { |byte| literal?(byte) ? byte.chr : format("%%%02X", byte) }.join
+        def initialize(path) = @bytes = path.bytes
 
-        private
-
-        def literal?(byte)
-          byte.between?(65, 90) || byte.between?(97, 122) || byte.between?(48, 57) || @unreserved.include?(byte)
-        end
+        def encoded = @bytes.map { |byte| TABLE.fetch(byte) }.join
       end
     end
   end
