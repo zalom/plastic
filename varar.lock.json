@@ -1,6 +1,14 @@
 {
   "version": 2,
   "oaths": {
+    "varar/architecture-refresh.md": {
+      "sourceHash": "fnv1a:bd5f4504",
+      "examples": []
+    },
+    "varar/architecture-status.md": {
+      "sourceHash": "fnv1a:09cffb93",
+      "examples": []
+    },
     "varar/auto-start.md": {
       "sourceHash": "fnv1a:56e6f39c",
       "examples": [
@@ -27,6 +35,14 @@
           "line": 5
         }
       ]
+    },
+    "varar/document-batch.md": {
+      "sourceHash": "fnv1a:95bdae9b",
+      "examples": []
+    },
+    "varar/document-get.md": {
+      "sourceHash": "fnv1a:3ca119f6",
+      "examples": []
     },
     "varar/edge-add.md": {
       "sourceHash": "fnv1a:2b70e150",
@@ -108,6 +124,14 @@
           "line": 5
         }
       ]
+    },
+    "varar/intent-context.md": {
+      "sourceHash": "fnv1a:c3ebdf37",
+      "examples": []
+    },
+    "varar/intent-discover.md": {
+      "sourceHash": "fnv1a:f36b8e26",
+      "examples": []
     },
     "varar/intent-end.md": {
       "sourceHash": "fnv1a:8b5cc98c",
@@ -191,20 +215,11 @@
       ]
     },
     "varar/legacy-import.md": {
-      "sourceHash": "fnv1a:e1d44e16",
+      "sourceHash": "fnv1a:cfdbc4a3",
       "examples": [
         {
           "name": "Each row gives the fixture, the call, the exit code, the result, the intents and the files of 1:",
           "line": 11
-        }
-      ]
-    },
-    "varar/migrate-stores.md": {
-      "sourceHash": "fnv1a:1d892cd9",
-      "examples": [
-        {
-          "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
-          "line": 5
         }
       ]
     },
@@ -289,24 +304,6 @@
         }
       ]
     },
-    "varar/project-links.md": {
-      "sourceHash": "fnv1a:23723867",
-      "examples": [
-        {
-          "name": "Each row gives the harness, mode, legacy tree, audit, and changes:",
-          "line": 7
-        }
-      ]
-    },
-    "varar/project-new.md": {
-      "sourceHash": "fnv1a:cf974b54",
-      "examples": [
-        {
-          "name": "Each row gives the slug, the path, the exit and the registered slugs:",
-          "line": 9
-        }
-      ]
-    },
     "varar/roadmap-add.md": {
       "sourceHash": "fnv1a:9d67a8e1",
       "examples": [
@@ -388,6 +385,10 @@
         }
       ]
     },
+    "varar/search.md": {
+      "sourceHash": "fnv1a:41cef4cf",
+      "examples": []
+    },
     "varar/session-note.md": {
       "sourceHash": "fnv1a:d6141d51",
       "examples": [
@@ -397,30 +398,12 @@
         }
       ]
     },
-    "varar/session-resume.md": {
-      "sourceHash": "fnv1a:e66535df",
-      "examples": [
-        {
-          "name": "Each row gives the source, the session, the exit code, the first line and the names:",
-          "line": 9
-        }
-      ]
-    },
     "varar/status.md": {
       "sourceHash": "fnv1a:a2b41afe",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
           "line": 5
-        }
-      ]
-    },
-    "varar/store-layout.md": {
-      "sourceHash": "fnv1a:8aac771e",
-      "examples": [
-        {
-          "name": "Each row gives the harness, starting layout, global store, project intent, registered harness, legacy directory, backup, and repeated migration exit:",
-          "line": 10
         }
       ]
     },
@@ -448,15 +431,6 @@
         {
           "name": "Each row gives the change, the exit code, the result and the rows:",
           "line": 8
-        }
-      ]
-    },
-    "varar/update-safety.md": {
-      "sourceHash": "fnv1a:dea48d10",
-      "examples": [
-        {
-          "name": "Each row gives the harness, command, exit, installation, and version:",
-          "line": 9
         }
       ]
     },
