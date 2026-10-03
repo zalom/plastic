@@ -45,6 +45,13 @@ class RetrievalReadTest < Plastic::TestCase
     assert_equal [2, 300, 1, 1], passage.values_at(:position, :body, :line_start, :line_end).then { |position, body, first, last| [position, body.length, first, last] }
   end
 
+  def test_rejects_a_qualified_hash_reference_from_another_store
+    writer.write("1", "plan.md", "current")
+    foreign = retrieval.reference("1", "plan.md").merge(store: "other")
+
+    assert_raises(Plastic::Graph::RetrievalGraph::MissingReference) { retrieval.fetch_reference(foreign) }
+  end
+
   private
 
   def writer = Plastic::Graph::EvidenceWriter.new(knowledge, origin)
