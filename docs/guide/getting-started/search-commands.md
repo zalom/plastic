@@ -7,7 +7,7 @@ Plastic indexes readable intent documents as immutable revisions and searchable 
 | Command | What it does |
 | --- | --- |
 | `plastic search TERMS [--source-project SLUG] [--limit N]` | Searches literal terms in selected stores. The default limit is 20 passages. |
-| `plastic document get REFERENCE [--passage N]` | Fetches a qualified document, or one numbered passage of it. |
+| `plastic document get REFERENCE [--passage N]` | Fetches a qualified document. With `--passage N`, fetches one numbered passage. |
 | `plastic document batch REFERENCE...` | Fetches qualified documents in request order. |
 | `plastic intent discover ID TERMS... [--source-project SLUG]` | Records deterministic candidates for an intent. |
 | `plastic intent context ID [--from FILE]` | Reads the latest saved context of an intent, or saves the selection in `FILE`. |
