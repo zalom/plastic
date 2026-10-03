@@ -10,16 +10,16 @@ class CliPackageBinTest < Minitest::Test
     @package ||= JSON.parse(File.read(File.join(ROOT, "package.json")))
   end
 
-  def test_the_npm_bin_entry_names_the_ruby_launcher
-    assert_equal({"plastic" => "bin/plastic"}, package.fetch("bin"))
+  def test_the_package_cannot_be_published_to_a_registry
+    assert package.fetch("private")
   end
 
-  def test_the_npm_bin_entry_points_at_a_file_that_exists
-    assert_path_exists File.join(ROOT, package.fetch("bin").fetch("plastic"))
+  def test_the_package_names_no_registry_launcher
+    refute package.key?("bin")
   end
 
-  def test_the_npm_bin_entry_points_at_an_executable
-    assert File.executable?(File.join(ROOT, package.fetch("bin").fetch("plastic")))
+  def test_the_launcher_exists_and_is_executable
+    assert File.executable?(File.join(ROOT, "bin", "plastic"))
   end
 
   def test_the_javascript_shim_is_gone
