@@ -2,7 +2,7 @@
 
 require_relative "../cli/command"
 require_relative "../graph/retrieval_source"
-require "uri"
+require_relative "document_reference"
 
 module Plastic
   module Commands
@@ -32,48 +32,31 @@ module Plastic
       end
 
       def retrieval_for(reference)
-        slug = source_slug(reference)
-        validate_source!(slug)
+        slug = DocumentReference.new(reference).source_slug
+        require_source(slug)
         maintained_retrieval(slug)
       end
 
-      def source_slug(reference)
-        validate_reference!(reference)
-        reference[/\Aplastic:\/\/([^\/]+)/, 1]
-      end
-
-      def validate_reference!(reference)
-        match = /\Aplastic:\/\/[^\/]+\/[^\/]+\/[^?]*(?:\?revision=[0-9a-f]{64})?\z/.match(reference)
-        return if match && valid_reference_path?(reference)
-
-        raise CLI::Command::Usage, "invalid document reference #{reference.inspect}"
-      end
-
-      def valid_reference_path?(reference)
-        URI::DEFAULT_PARSER.unescape(reference.split("/", 5).last.split("?", 2).first).force_encoding(Encoding::UTF_8).valid_encoding?
-      end
-
       def passage_position
-        position = Integer(parsed.fetch(:passage))
-        raise CLI::Command::Usage, "passage must be a positive integer" unless position.positive?
+        position = Integer(parsed.fetch(:passage), exception: false).to_i
+        return position if position.positive?
 
-        position
-      rescue ArgumentError
         raise CLI::Command::Usage, "passage must be a positive integer"
       end
 
-      def validate_source!(slug)
+      def require_source(slug)
         return if scope.known_slugs.include?(slug)
 
         raise CLI::Scope::UnknownProject, "no project named #{slug.inspect}"
       end
 
       def maintained_retrieval(slug)
-        knowledge = File.join(scope.plastic_home, "stores", slug, "knowledge_graph.db")
-        complete = Graph::ReferenceBackfill.complete?(knowledge, Graph::Origin.new(scope.plastic_home).id)
+        home = scope.plastic_home
+        knowledge = File.join(home, "stores", slug, "knowledge_graph.db")
+        complete = Graph::ReferenceBackfill.complete?(knowledge, Graph::Origin.new(home).id)
         raise Graph::RetrievalGraph::MaintenanceRequired, "retrieval maintenance is required before source #{slug} can be read" unless complete
 
-        Graph.open_retrieval(home: scope.plastic_home, store: slug)
+        Graph.open_retrieval(home:, store: slug)
       end
     end
   end

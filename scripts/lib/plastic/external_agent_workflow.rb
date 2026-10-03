@@ -16,12 +16,10 @@ module Plastic
       outcome :done, offers: nil, because: "the retrieval context was submitted"
 
       class << self
-        def retrieval_handoff(intent_id:, terms:, sources:, project:)
-          { "search" => search_command(terms, sources), "evidence" => "plastic document get REF",
+        def retrieval_handoff(intent_id:, project:, search:)
+          { "search" => search, "evidence" => "plastic document get REF",
             "context" => Shellwords.join(["plastic", "intent", "context", intent_id, "--from", "FILE", "--project", project]) }
         end
-
-        private
 
         def search_command(terms, sources)
           Shellwords.join(["plastic", "search", terms, *sources.flat_map { |source| ["--source-project", source] }])

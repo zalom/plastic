@@ -13,7 +13,7 @@ module Plastic
       end
 
       def resolve
-        selected = canonical_sources(source_values)
+        selected = source_values
         selected = [@context.scope_slug] if selected.empty?
         validate(selected)
         selected
@@ -23,10 +23,8 @@ module Plastic
 
       def source_values
         values = @context.source_projects
-        values.empty? ? ENV.fetch("PLASTIC_SOURCE_PROJECTS", "").split(",") : values
+        (values.empty? ? ENV.fetch("PLASTIC_SOURCE_PROJECTS", "").split(",") : values).map(&:strip).reject(&:empty?).uniq.sort
       end
-
-      def canonical_sources(values) = values.map(&:strip).reject(&:empty?).uniq.sort
 
       def validate(selected)
         unknown = selected - (known_stores | ["global"])

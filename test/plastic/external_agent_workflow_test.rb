@@ -8,7 +8,7 @@ class ExternalAgentWorkflowTest < Plastic::TestCase
     context = Plastic::Context.new(declared: %i[handoff_text context_command context_complete], facts: { handoff_text: "Submit the selected context.", context_command: "plastic intent context 1 --from FILE", context_complete: false }, graphs: {})
 
     handoff = Plastic::ExternalAgentWorkflow.call(context)
-    commands = Plastic::ExternalAgentWorkflow.retrieval_handoff(intent_id: "1", terms: "quoted terms; keep literal", sources: ["global", "other store"], project: "global")
+    commands = Plastic::ExternalAgentWorkflow.retrieval_handoff(intent_id: "1", project: "global", search: Plastic::ExternalAgentWorkflow.search_command("quoted terms; keep literal", ["global", "other store"]))
 
     assert_equal ["Submit the selected context."], handoff.steps
     assert_equal "plastic search quoted\\ terms\\;\\ keep\\ literal --source-project global --source-project other\\ store", commands.fetch("search")

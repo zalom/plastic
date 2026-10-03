@@ -2,6 +2,7 @@
 
 require_relative "../external_agent_workflow"
 require_relative "../graph/retrieval_source"
+require_relative "discovery_candidates"
 
 module Plastic
   module Workflows
@@ -27,18 +28,7 @@ module Plastic
         @source_scope.flat_map { |slug| rows(slug) }.sort_by { |row| [-row.fetch("rrf_score"), row.fetch("uri")] }
       end
 
-      def rows(slug)
-        retrieval = retrieval_for(slug)
-        retrieval.search(@context.terms, migrate: false).each_with_index.map do |row, index|
-          candidate(row, index, slug, retrieval)
-        end
-      end
-
-      def candidate(row, index, slug, retrieval)
-        reference = retrieval.search_reference(row).transform_keys(&:to_s)
-        row.merge(reference).merge("store" => slug, "local_rank" => index + 1,
-          "rrf_score" => 1.0 / (61 + index), "archived" => retrieval.archived?(row.fetch("intent_id")))
-      end
+      def rows(slug) = DiscoveryCandidates.new(slug, retrieval_for(slug)).rows(@context.terms)
 
       def retrieval_for(slug)
         verify_store_files(slug)
@@ -47,15 +37,14 @@ module Plastic
 
       def verify_store_files(slug)
         root = File.join(@context.plastic_home, "stores", slug)
-        missing = Graph::Schema.store.map { |key| Graph::Schema.file(key) }.reject { |file| File.file?(File.join(root, file)) }
-        return if missing.empty?
+        return if Graph::Schema.store.all? { |key| File.file?(File.join(root, Graph::Schema.file(key))) }
 
         raise Graph::RetrievalGraph::MaintenanceRequired, "retrieval maintenance is required before source #{slug} can be read"
       end
 
       def handoff
-        ExternalAgentWorkflow.retrieval_handoff(intent_id: @context.intent_id, terms: @context.terms,
-          sources: @source_scope, project: @context.scope_slug)
+        search = ExternalAgentWorkflow.search_command(@context.terms, @source_scope)
+        ExternalAgentWorkflow.retrieval_handoff(intent_id: @context.intent_id, project: @context.scope_slug, search:)
       end
     end
   end

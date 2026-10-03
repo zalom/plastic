@@ -34,13 +34,12 @@ module Plastic
         path = File.join(@context.store_root, "discovery", "#{@context.intent_id}.json")
         directory = File.dirname(path)
         FileUtils.mkdir_p(directory)
-        Tempfile.create(["discovery", ".json"], directory) { |file| replace(file, path) }
+        Tempfile.create(["discovery", ".json"], directory) { |file| replace(file.path, path) }
       end
 
-      def replace(file, path)
-        file.write(@body)
-        file.flush
-        File.rename(file.path, path)
+      def replace(temporary, path)
+        File.write(temporary, @body)
+        File.rename(temporary, path)
       end
     end
   end

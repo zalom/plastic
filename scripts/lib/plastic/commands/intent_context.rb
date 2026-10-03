@@ -23,18 +23,20 @@ module Plastic
       writes :knowledge
 
       def call
-        owner.validate(intent_id)
-        output.row("context", exchange.call)
-        output.next_step("none", because: "the retrieval context was read")
+        read_context
       rescue Errno::ENOENT, JSON::ParserError => error
-        message = error.message
-        raise CLI::Command::Usage, message
-      rescue Graph::RetrievalGraph::MaintenanceRequired, Graph::RetrievalGraph::MissingReference, KeyError => error
-        message = error.message
-        raise CLI::Command::Failure, message
+        raise CLI::Command::Usage, error.message
       end
 
       private
+
+      def read_context
+        owner.validate(intent_id)
+        output.row("context", exchange.call)
+        output.next_step("none", because: "the retrieval context was read")
+      rescue Graph::RetrievalGraph::MaintenanceRequired, Graph::RetrievalGraph::MissingReference, KeyError => error
+        raise CLI::Command::Failure, error.message
+      end
 
       def intent_id = parsed.fetch(:intent_id)
 
