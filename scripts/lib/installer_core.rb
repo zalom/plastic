@@ -1835,7 +1835,7 @@ class InstallerCore
       settings["hooks"][event] = groups.map do |group|
         if group.is_a?(Hash) && group["hooks"].is_a?(Array)
           group["hooks"].reject! do |h|
-            HookRegistry.claude_purge_command?(h["command"]) && (removed << [event, h["command"]])
+            uninstalled_hook?(HookRegistry.method(:claude_purge_command?), h["command"]) && (removed << [event, h["command"]])
           end
           group unless group["hooks"].empty?
         elsif group.is_a?(Hash) && group["command"]
@@ -1899,7 +1899,7 @@ class InstallerCore
         next g unless g.is_a?(Hash) && Array(g["hooks"]).is_a?(Array)
 
         g["hooks"] = Array(g["hooks"]).reject do |h|
-          HookRegistry.codex_purge_command?(h["command"]) && (removed << [event, h["command"]])
+          uninstalled_hook?(HookRegistry.method(:codex_purge_command?), h["command"]) && (removed << [event, h["command"]])
         end
         g["hooks"].empty? ? nil : g
       end.compact
@@ -1916,6 +1916,10 @@ class InstallerCore
     report_removed_hook_entries(removed, "hooks.json", qualifier: "Plastic")
     hooks_json_path
   end
+
+  # A hook an uninstall removes: one the registry purges, or one that runs
+  # Plastic's own launcher.
+  def uninstalled_hook?(purge, command) = purge.call(command) || kernel_hook_entries.own?(command.to_s)
 
   # --- Utilities ---
 

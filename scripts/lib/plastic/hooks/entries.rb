@@ -41,6 +41,13 @@ module Plastic
       # A new Codex hooks.json hash. Codex has no status line or screen events.
       def codex(hooks_json) = with_events(hooks_json, own_groups("codex"))
 
+      # True when the command runs this installation's launcher, or one an
+      # earlier install wrote, so an uninstall removes it.
+      def own?(command)
+        own = [@command, *@former, *@launchers.values].compact
+        own.any? { |path| command == path || command.include?(%("#{path}")) } || self.class.old_launcher?(command)
+      end
+
       private
 
       def with_events(settings, own)
@@ -54,17 +61,12 @@ module Plastic
 
       def without_ours(entries) = Array(entries).reject { |entry| ours?(entry) }
 
-      def ours?(entry) = Array(entry["hooks"]).any? { |hook| ours_command?(hook["command"].to_s) }
-
-      def ours_command?(command)
-        own = [@command, *@former, *@launchers.values].compact
-        own.any? { |path| command == path || command.include?(%("#{path}")) } || self.class.old_launcher?(command)
-      end
+      def ours?(entry) = Array(entry["hooks"]).any? { |hook| own?(hook["command"].to_s) }
 
       # A status line the user set stays: only an empty or our own is written,
       # and only our own is removed.
       def status_line(settings)
-        foreign = settings.dig("statusLine", "command").then { |command| command && !ours_command?(command) }
+        foreign = settings.dig("statusLine", "command").then { |command| command && !own?(command) }
         foreign ? settings : own_status_line(settings)
       end
 

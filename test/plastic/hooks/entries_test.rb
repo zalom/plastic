@@ -28,14 +28,14 @@ class EntriesTest < Minitest::Test
     assert_equal [%(env -u RUBYOPT "#{COMMAND}" hook record --end --harness claude-code || true)], commands_for(@settings["hooks"], "SessionEnd")
   end
 
-def test_owns_its_hook_commands_and_no_one_elses
-  entries do |rewriter|
-    @owned = [%(env -u RUBYOPT "#{COMMAND}" hook resume --harness codex || true), "/usr/local/bin/my-hook", "/opt/plastic/bin/plastic-ish"]
-      .map { |command| rewriter.own?(command) }
-  end
+  def test_owns_its_hook_commands_and_no_one_elses
+    entries do |rewriter|
+      @owned = [%(env -u RUBYOPT "#{COMMAND}" hook resume --harness codex || true), "/usr/local/bin/my-hook", "/opt/plastic/bin/plastic-ish"]
+        .map { |command| rewriter.own?(command) }
+    end
 
-  assert_equal [true, false, false], @owned
-end
+    assert_equal [true, false, false], @owned
+  end
 
   def test_codex_writes_the_three_events_with_the_codex_flag_and_no_status_line
     entries { |rewriter| @hooks_json = rewriter.codex({ "hooks" => {} }) }
