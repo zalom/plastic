@@ -15,6 +15,8 @@ require_relative "reference_backfill"
 require_relative "retrieval_reference"
 require_relative "retrieval_search"
 require_relative "retrieval_store_read"
+require_relative "retrieval_archive_reader"
+require_relative "retrieval_roadmap_reader"
 
 module Plastic
   module Graph
@@ -107,46 +109,20 @@ module Plastic
         @databases.fetch(:knowledge).rows(LINKING_SQL, origin: origin_id, id:, prefix: "#{id}/%").map { |row| Link.from_h(row) }
       end
 
-      ARCHIVE_SQL = "SELECT * FROM archives WHERE origin_id = :origin AND intent_id = :intent_id"
-
       # The intent's archive row, or nil when it was never archived.
-      def archive_of(intent_id)
-        row = @databases.fetch(:work).row(ARCHIVE_SQL, origin: origin_id, intent_id:)
-        row && Archive.from_h(row)
-      end
+      def archive_of(intent_id) = archives.archive_of(intent_id)
 
       # True while the intent has an archive row with no restored_at.
       def archived?(intent_id)
-        archive = archive_of(intent_id)
-        !archive.nil? && archive.restored_at.nil?
+        archives.archived?(intent_id)
       end
-      ROADMAP_SQL = "SELECT * FROM roadmaps WHERE origin_id = :origin AND slug = :slug"
-      BATCHES_SQL = "SELECT * FROM batches WHERE origin_id = :origin AND roadmap = :slug ORDER BY position"
-      ITEMS_SQL = "SELECT * FROM roadmap_items WHERE origin_id = :origin AND roadmap = :slug ORDER BY batch, position"
-      ROADMAP_EDGES_SQL = 'SELECT * FROM roadmap_edges WHERE origin_id = :origin AND roadmap = :slug ORDER BY CAST("from" AS INTEGER), "from"'
-      ROADMAP_LOG_SQL = "SELECT * FROM roadmap_log WHERE origin_id = :origin AND roadmap = :slug ORDER BY position"
 
       # One roadmap by slug, or nil when none has been started.
-      def roadmap(slug)
-        row = @databases.fetch(:work).row(ROADMAP_SQL, origin: origin_id, slug:)
-        row && Roadmap.from_h(row)
-      end
-
-      def batches(slug)
-        @databases.fetch(:work).rows(BATCHES_SQL, origin: origin_id, slug:).map { |row| RoadmapBatch.from_h(row) }
-      end
-
-      def roadmap_items(slug)
-        @databases.fetch(:work).rows(ITEMS_SQL, origin: origin_id, slug:).map { |row| RoadmapItem.from_h(row) }
-      end
-
-      def roadmap_edges(slug)
-        @databases.fetch(:work).rows(ROADMAP_EDGES_SQL, origin: origin_id, slug:).map { |row| RoadmapEdge.from_h(row) }
-      end
-
-      def roadmap_log(slug)
-        @databases.fetch(:work).rows(ROADMAP_LOG_SQL, origin: origin_id, slug:).map { |row| RoadmapLogLine.from_h(row) }
-      end
+      def roadmap(slug) = roadmaps.roadmap(slug)
+      def batches(slug) = roadmaps.batches(slug)
+      def roadmap_items(slug) = roadmaps.items(slug)
+      def roadmap_edges(slug) = roadmaps.edges(slug)
+      def roadmap_log(slug) = roadmaps.log(slug)
 
       # Kept files with no bytes: a print compares the hash and reads the bytes only to write.
       def kept_files(intent_id = nil) = read(:kept_files, intent_id)
@@ -176,6 +152,10 @@ module Plastic
       def searcher = (@searcher ||= RetrievalSearch.new(@databases.fetch(:knowledge), origin: @origin))
 
       def stored = (@stored ||= RetrievalStoreRead.new(@databases))
+
+      def archives = (@archives ||= RetrievalArchiveReader.new(@databases.fetch(:work), origin_id))
+
+      def roadmaps = (@roadmaps ||= RetrievalRoadmapReader.new(@databases.fetch(:work), origin_id))
 
       def sessions = (@sessions ||= SessionReader.new(@databases, store:, origin: @origin))
 
