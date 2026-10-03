@@ -56,7 +56,7 @@ class RetrievalBenchmarkTest < Minitest::Test
         quality_input: File.expand_path("../../resources/retrieval-quality-review.json", __dir__))
       answers = report.fetch("quality").fetch("synthetic_top_20")
 
-      assert_equal 10, answers.count { |answer| answer.fetch("passed") }
+      assert_equal [true], answers.map { |answer| answer.fetch("passage_checks").first.fetch("matched") }
     end
   end
 

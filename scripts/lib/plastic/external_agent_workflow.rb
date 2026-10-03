@@ -6,7 +6,7 @@ require_relative "agent_workflow"
 module Plastic
   module Workflows
     # Gives an external agent deterministic retrieval commands without selecting evidence.
-    class ExternalAgentWorkflow < AgentWorkflow
+    class ExternalAgentWorkflow < ::Plastic::AgentWorkflow
       [facts, steps, outcomes].each(&:clear)
 
       sets :handoff_text, :context_command, :context_complete

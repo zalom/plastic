@@ -35,6 +35,17 @@ class LazyCommandDispatchTest < Minitest::Test
     end
   end
 
+  def test_architecture_commands_load_their_dependencies_in_fresh_cli_processes
+    Dir.mktmpdir do |home|
+      seed_retrieval_context(home)
+      %w[status refresh].each do |command|
+        result = run_cli(home, "architecture", command, "--project", "global")
+
+        refute_match(/uninitialized constant/, result.fetch(:err), command)
+      end
+    end
+  end
+
   private
 
   def environment(home) = { "PLASTIC_HOME" => home, "PLASTIC_TMP" => File.join(home, "tmp") }

@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require_relative "../cli/command"
+require_relative "../architecture/enola_adapter"
+require_relative "../graph"
 require "digest"
 require "json"
 require "shellwords"

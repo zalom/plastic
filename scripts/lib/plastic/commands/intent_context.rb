@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../cli/command"
+require_relative "../graph"
 require "fileutils"
 require "json"
 require "tempfile"
