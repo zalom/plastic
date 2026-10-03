@@ -58,7 +58,7 @@ module Plastic
       def expected_references(query)
         query.fetch("expected").map do |row|
           { "uri" => Graph.open(home: @home, store: row.fetch("store")).retrieval.reference(row.fetch("intent_id"), row.fetch("path")).fetch(:uri),
-            "hint" => row.fetch("relevant_passage_hint", query.fetch("relevant_passage_hint")) }
+            "hint" => row.fetch("relevant_passage_hint") { query.fetch("relevant_passage_hint") } }
         end
       end
 
