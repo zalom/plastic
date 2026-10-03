@@ -63,14 +63,14 @@ class ArchitectureTest < Plastic::TestCase
     assert_includes help.out, "plastic architecture refresh"
   end
 
-  def test_reports_a_missing_snapshot_when_git_is_unavailable
+  def test_reports_architecture_status_when_git_and_enola_are_unavailable
     original_path = ENV.fetch("PATH")
     ENV["PATH"] = ""
 
     result = plastic("architecture", "status", "--json", table: Plastic::CLI::TABLE)
 
     assert_equal 0, result.code, result.err
-    assert_equal "missing", JSON.parse(result.out).dig("result", "architecture", "state")
+    assert_equal "failed", JSON.parse(result.out).dig("result", "architecture", "state")
   ensure
     ENV["PATH"] = original_path
   end

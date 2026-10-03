@@ -31,6 +31,8 @@ module Plastic
       def binary_digest
         path = `command -v enola`.strip
         File.file?(path) ? Digest::SHA256.file(path).hexdigest : nil
+      rescue Errno::ENOENT
+        nil
       end
 
       def status_lines = git("status", "--porcelain", "--untracked-files=all").first.to_s.lines
