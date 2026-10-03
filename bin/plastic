@@ -2,9 +2,7 @@
 # frozen_string_literal: true
 
 ENV["PLASTIC_PACKAGE_ROOT"] = File.expand_path("..", __dir__)
-
-bundle = File.expand_path("../runtime/bundle/bundler/setup.rb", __dir__)
+bundle = File.join(ENV["PLASTIC_PACKAGE_ROOT"], "runtime/bundle/bundler/setup.rb")
 require bundle if File.file?(bundle)
 require_relative "../scripts/lib/plastic"
-
 exit Plastic::CLI.bin_call(ARGV)
