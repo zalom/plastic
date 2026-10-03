@@ -19,7 +19,6 @@
 
 require_relative "lib/installer_core"
 require_relative "lib/preflight"
-require_relative "lib/sqlite3_dependency"
 
 class Install < InstallerCore
   def cli(argv = ARGV)
@@ -130,22 +129,17 @@ class Install < InstallerCore
     result[:fatal] ? 1 : 0
   end
 
-  # The gems of `names` that Plastic cannot load at their supported version.
+  # The gems of `names` that Ruby cannot load.
   def missing_gems(names)
-    names.reject { |name| supported_gem?(name) }
+    names.reject do |name|
+      require name
+      true
+    rescue LoadError
+      false
+    end
   end
 
   private
-
-  def supported_gem?(name)
-    return Sqlite3Dependency.available? if name == "sqlite3"
-
-    require name
-
-    true
-  rescue LoadError
-    false
-  end
 
   def tool_present?(name)
     system(name, "--version", out: File::NULL, err: File::NULL) == true

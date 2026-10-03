@@ -68,12 +68,9 @@ class InstallerRuntimeTest < Minitest::Test
     end
   end
 
-  def test_checks_supported_and_missing_gems_without_using_the_real_home
+  def test_lists_the_gems_that_do_not_load_without_using_the_real_home
     with_probe do |installer|
       assert_equal ["plastic/no_such_runtime_dependency"], installer.missing_gems(%w[json plastic/no_such_runtime_dependency])
-
-      with_replacement(Sqlite3Dependency, :available?, -> { true }) { assert installer.send(:supported_gem?, "sqlite3") }
-      refute installer.send(:supported_gem?, "plastic/no_such_runtime_dependency")
     end
   end
 
@@ -85,14 +82,5 @@ class InstallerRuntimeTest < Minitest::Test
       installer.instance_variable_set(:@version, version)
       yield installer
     end
-  end
-
-  def with_replacement(receiver, name, replacement)
-    singleton = receiver.singleton_class
-    original = receiver.method(name)
-    singleton.define_method(name, &replacement)
-    yield
-  ensure
-    singleton.define_method(name, original)
   end
 end
