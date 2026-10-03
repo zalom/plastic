@@ -46,8 +46,8 @@ module Plastic
 
       def spec_body(batches)
         owner = batches.find { |row| row.position == batch }
-        criteria = ((owner&.done_lines || []) + done_lines).map { |line| "- [ ] #{line}" }
-        ["## Goal", "", *[owner&.goal, goal].compact, "", "## Done criteria", "", *criteria, ""].join("\n")
+        criteria = (owner.done_lines + done_lines).map { |line| "- [ ] #{line}" }
+        ["## Goal", "", *[owner.goal, goal].compact, "", "## Done criteria", "", *criteria, ""].join("\n")
       end
     end
 
