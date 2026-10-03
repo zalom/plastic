@@ -37,6 +37,18 @@ module Plastic
       def done_lines = done.to_s.lines(chomp: true)
 
       def dropped? = mark == "dropped"
+
+      def start_refusal(state)
+        return "item #{item} already has an intent" if intent_id
+
+        "item #{item} is #{state}, not ready" unless state == "ready"
+      end
+
+      def spec_body(batches)
+        owner = batches.find { |row| row.position == batch }
+        criteria = ((owner&.done_lines || []) + done_lines).map { |line| "- [ ] #{line}" }
+        ["## Goal", "", *[owner&.goal, goal].compact, "", "## Done criteria", "", *criteria, ""].join("\n")
+      end
     end
 
     # An edge between two items of the same roadmap: `to` waits for `from`.
