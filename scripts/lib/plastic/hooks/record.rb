@@ -3,6 +3,7 @@
 require "json"
 require_relative "../hook"
 require_relative "../config"
+require_relative "../graph"
 require_relative "stop_gate"
 
 module Plastic

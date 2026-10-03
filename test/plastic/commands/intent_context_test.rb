@@ -17,6 +17,7 @@ class IntentContextTest < Plastic::TestCase
     assert_equal submission, submitted.slice("evidence", "facts", "interpretations", "gaps", "rulings", "architecture")
     assert_equal submission, readback.slice("evidence", "facts", "interpretations", "gaps", "rulings", "architecture")
     row = Plastic::Graph.open(home: @plastic_home, store: "global").databases.fetch(:knowledge).row("SELECT data FROM retrieval_contexts WHERE intent_id = '1'")
+
     assert_equal submitted.slice("evidence", "facts", "interpretations", "gaps", "rulings", "architecture", "archive_states", "intent_id", "discovery"), JSON.parse(row.fetch("data"))
     assert_equal before, File.binread(File.join(@plastic_home, "stores", "other", "knowledge_graph.db"))
   end
@@ -44,9 +45,9 @@ class IntentContextTest < Plastic::TestCase
     archive_source_intent
     stale = read_context
 
-    assert_equal false, fresh.fetch("freshness").fetch("evidence").first.fetch("archived")
+    refute fresh.fetch("freshness").fetch("evidence").first.fetch("archived")
     assert_equal "stale", stale.fetch("freshness").fetch("evidence").first.fetch("state")
-    assert_equal true, stale.fetch("freshness").fetch("evidence").first.fetch("archived")
+    assert stale.fetch("freshness").fetch("evidence").first.fetch("archived")
     assert_equal "selected evidence", Plastic::Graph.open(home: @plastic_home, store: "other").retrieval.fetch_reference(reference).fetch(:body)
   end
 
@@ -58,8 +59,10 @@ class IntentContextTest < Plastic::TestCase
 
     assert_equal "fresh", read_context.fetch("freshness").fetch("architecture").fetch("state")
     replace_architecture_receipt(revision: "def")
+
     assert_equal "stale", read_context.fetch("freshness").fetch("architecture").fetch("state")
     replace_architecture_receipt(revision: "missing", available: false)
+
     assert_equal "missing", read_context.fetch("freshness").fetch("architecture").fetch("state")
   end
 

@@ -118,7 +118,7 @@ module Plastic
         retrieval.fetch_reference(reference)
         current = retrieval.fetch_reference(strip_revision(reference))
         archived = retrieval.archived?(current.fetch(:intent_id))
-        state = current.fetch(:uri) == reference && document.fetch("archive_states", {}).fetch(reference, archived) == archived ? "fresh" : "stale"
+        state = (current.fetch(:uri) == reference && document.fetch("archive_states", {}).fetch(reference, archived) == archived) ? "fresh" : "stale"
         { "uri" => reference, "state" => state, "archived" => archived }
       rescue Graph::RetrievalGraph::MissingReference
         evidence_missing_or_stale(reference)
@@ -142,7 +142,7 @@ module Plastic
         receipt = stored_architecture_receipt(architecture.fetch("provider"))
         return architecture_status(architecture, "missing") unless receipt.fetch("available", true)
 
-        architecture_status(architecture, receipt.fetch("revision") == architecture.fetch("revision") ? "fresh" : "stale")
+        architecture_status(architecture, (receipt.fetch("revision") == architecture.fetch("revision")) ? "fresh" : "stale")
       rescue Errno::ENOENT, JSON::ParserError, KeyError
         architecture_status(architecture, "missing")
       end

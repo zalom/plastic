@@ -76,7 +76,6 @@ module Plastic
           batch.add("UPDATE retrieval_schema SET completed_at = 'complete' WHERE name = 'retrieval'")
         end
       end
-
     end
   end
 end

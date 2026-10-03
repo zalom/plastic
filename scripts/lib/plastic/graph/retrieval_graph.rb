@@ -45,6 +45,7 @@ module Plastic
         row = @databases.fetch(:work).row("SELECT * FROM intents WHERE intent_id = :intent_id AND origin_id = :origin", intent_id:, origin: origin_id)
         row && Intent.from_h(row)
       end
+
       def unarchived_intents = intents.reject { |intent| archived?(intent.intent_id) }
 
       def completion(intent_id)
@@ -216,7 +217,7 @@ module Plastic
 
       def escape_path(path) = path.bytes.map { |byte| unreserved?(byte) ? byte.chr : format("%%%02X", byte) }.join
 
-      def unreserved?(byte) = (byte.between?(65, 90) || byte.between?(97, 122) || byte.between?(48, 57) || "-._~".bytes.include?(byte))
+      def unreserved?(byte) = byte.between?(65, 90) || byte.between?(97, 122) || byte.between?(48, 57) || "-._~".bytes.include?(byte)
 
       def revision_row(fields, sha256)
         @databases.fetch(:knowledge).row("SELECT body, sha256 FROM document_revisions WHERE intent_id = :intent_id AND path = :path AND sha256 = :sha256 AND origin_id = :origin",

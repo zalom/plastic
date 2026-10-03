@@ -24,7 +24,7 @@ module Plastic
 
           rebuild(batch, current)
         end
-        report()
+        report
       end
 
       def report

@@ -9,7 +9,7 @@ require "rbconfig"
 class DocumentGetTest < Plastic::TestCase
   def test_routed_help_prints_document_command_usage
     %w[get batch].each do |command|
-      output, errors, status = Open3.capture3(RbConfig.ruby, "bin/plastic", "help", "document", command, chdir: repository)
+      output, errors, status = Open3.capture3({ "HOME" => @home }, RbConfig.ruby, "bin/plastic", "help", "document", command, chdir: repository)
 
       assert_predicate status, :success?
       assert_empty errors
@@ -17,7 +17,7 @@ class DocumentGetTest < Plastic::TestCase
       assert_includes output, "plastic://STORE/INTENT/PATH?revision=SHA256"
     end
 
-    batch, = Open3.capture3(RbConfig.ruby, "bin/plastic", "help", "document", "batch", chdir: repository)
+    batch, = Open3.capture3({ "HOME" => @home }, RbConfig.ruby, "bin/plastic", "help", "document", "batch", chdir: repository)
 
     assert_includes batch, "plastic document batch REF..."
   end
@@ -74,6 +74,7 @@ class DocumentGetTest < Plastic::TestCase
 
     assert_json_error(plastic("document", "get", reference, "--passage", "99", "--json", table: Plastic::CLI::TABLE), 1, "failed")
     missing = reference.sub("long.md", "missing.md")
+
     assert_json_error(plastic("document", "get", missing, "--passage", "1", "--json", table: Plastic::CLI::TABLE), 1, "failed")
   end
 
@@ -93,6 +94,7 @@ class DocumentGetTest < Plastic::TestCase
   def assert_json_error(result, code, kind)
     assert_equal code, result.code
     document = JSON.parse(result.out)
+
     assert_equal kind, document.fetch("result").fetch("error").fetch("kind")
     refute_match(/(?:Traceback|NoMethodError|ArgumentError)/, "#{result.out}#{result.err}")
   end

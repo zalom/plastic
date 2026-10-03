@@ -100,7 +100,7 @@ class SearchTest < Plastic::TestCase
 
     assert_equal 1, result.code
     assert_match(/maintenance/, result.out)
-    refute File.exist?(File.join(root, "work_graph.db"))
+    refute_path_exists File.join(root, "work_graph.db")
     assert_equal knowledge, File.binread(File.join(root, "knowledge_graph.db"))
     assert_equal references, File.binread(File.join(root, "references.db"))
   end
@@ -126,8 +126,10 @@ class SearchTest < Plastic::TestCase
     write_document("global", body)
 
     result = plastic("search", "needle evidence", "--json", table: Plastic::CLI::TABLE)
+
     assert_equal 0, result.code
     rows = JSON.parse(result.out).fetch("result").fetch("results")
+
     assert_equal 1, rows.length, result.out
     excerpt = rows.fetch(0).fetch("body")
 
@@ -139,6 +141,7 @@ class SearchTest < Plastic::TestCase
   def test_marks_archived_hits_and_leaves_every_selected_store_unchanged
     intent = open_intent("Archived", status: "future")
     write("#{intent.dir}/research.md", "archived evidence")
+
     assert_equal 0, plastic("intent", "archive", intent.intent_id, table: Plastic::CLI::TABLE).code
     before = selected_store_bytes
 
@@ -146,7 +149,7 @@ class SearchTest < Plastic::TestCase
     hit = JSON.parse(result.out).fetch("result").fetch("results").fetch(0)
 
     assert_equal 0, result.code
-    assert_equal true, hit.fetch("archived")
+    assert hit.fetch("archived")
     assert_equal before, selected_store_bytes
   end
 

@@ -68,14 +68,14 @@ module Plastic
           passage_check(row, candidate, index + 1) if candidate
         end
         matched = checks.find { |check| check.fetch("matched") }
-        [matched && matched.fetch(:row), matched && matched.fetch(:passage), checks.map { |check| check.except(:row, :passage) }]
+        [matched&.fetch(:row), matched&.fetch(:passage), checks.map { |check| check.except(:row, :passage) }]
       end
 
       def passage_check(row, candidate, rank)
         passage = fetch_passage(row)
         body = passage&.fetch("body")
         { "uri" => row.fetch("uri"), "rank" => rank, "position" => row.fetch("position"), "hint" => candidate.fetch("hint"),
-          "body" => body, "matched" => body&.include?(candidate.fetch("hint")) || false, row:, passage: }
+          "body" => body, "matched" => body&.include?(candidate.fetch("hint")) || false, :row => row, :passage => passage }
       end
 
       def fetch_passage(row)

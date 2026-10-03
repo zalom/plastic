@@ -36,7 +36,7 @@ class RetrievalReadCliTest < Minitest::Test
     { out:, err:, status: }
   end
 
-  def environment(home) = { "PLASTIC_HOME" => home, "PLASTIC_TMP" => File.join(home, "tmp") }
+  def environment(home) = { "HOME" => home, "PLASTIC_HOME" => home, "PLASTIC_TMP" => File.join(home, "tmp") }
 
   def assert_success(result) = assert_equal(0, result.fetch(:status).exitstatus, result.fetch(:err))
 end

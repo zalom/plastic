@@ -48,7 +48,7 @@ class LazyCommandDispatchTest < Minitest::Test
 
   private
 
-  def environment(home) = { "PLASTIC_HOME" => home, "PLASTIC_TMP" => File.join(home, "tmp") }
+  def environment(home) = { "HOME" => home, "PLASTIC_HOME" => home, "PLASTIC_TMP" => File.join(home, "tmp") }
 
   def run_cli(home, *argv)
     out, err, status = Open3.capture3(environment(home), File.join(ROOT, "bin", "plastic"), *argv)
