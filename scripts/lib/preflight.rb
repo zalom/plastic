@@ -63,8 +63,7 @@ module Preflight
       "next: #{install_command(platform, "sqlite3")}"
   end
 
-  # Warnings, never fatal: only the storage kernel needs its gems, and
-  # bin/plastic does not route to it yet.
+  # Warnings, never fatal: storage commands need their gems.
   def gem_issues(missing_gems)
     missing_gems.map do |name|
       "Plastic reads its graph databases through the #{name} gem (the gem was not found).\n" \
