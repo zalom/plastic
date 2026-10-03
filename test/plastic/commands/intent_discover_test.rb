@@ -38,6 +38,7 @@ class IntentDiscoverTest < Plastic::TestCase
     write_document("other", "selected evidence")
     missing = File.join(@plastic_home, "stores", "other", "work_graph.db")
     File.delete(missing)
+    File.write(File.join(@plastic_home, "stores", "missing"), "not a store directory")
 
     unknown = plastic("intent", "discover", "1", "evidence", "--source-project", "missing", table: Plastic::CLI::TABLE)
     unmaintained = plastic("intent", "discover", "1", "evidence", "--source-project", "other", table: Plastic::CLI::TABLE)

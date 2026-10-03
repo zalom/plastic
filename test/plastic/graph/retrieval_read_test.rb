@@ -52,6 +52,17 @@ class RetrievalReadTest < Plastic::TestCase
     assert_raises(Plastic::Graph::RetrievalGraph::MissingReference) { retrieval.fetch_reference(foreign) }
   end
 
+  def test_rejects_malformed_or_invalid_utf8_qualified_addresses
+    address = Plastic::Graph::RetrievalAddress.new("global")
+
+    assert_raises(Plastic::Graph::RetrievalGraph::MissingReference) { address.fields_for("not a reference") }
+    assert_raises(Plastic::Graph::RetrievalGraph::MissingReference) { address.fields_for("plastic://global/1/%FF") }
+  end
+
+  def test_refuses_to_build_a_reference_for_a_document_without_a_current_head
+    assert_raises(Plastic::Graph::RetrievalGraph::MissingReference) { retrieval.reference("1", "missing.md") }
+  end
+
   private
 
   def writer = Plastic::Graph::EvidenceWriter.new(knowledge, origin)

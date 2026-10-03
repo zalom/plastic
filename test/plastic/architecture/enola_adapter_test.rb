@@ -197,6 +197,15 @@ class EnolaAdapterSnapshotTest < Plastic::TestCase
     end
   end
 
+  def test_preserves_an_unsupported_tool_state_when_snapshot_metadata_exists
+    Dir.mktmpdir do |repository|
+      write_snapshot(repository, commit: "abc", dirty: false, repo_path: repository)
+      adapter = adapter_for(->(*) { ["enola 0.5.0", "", true] })
+
+      assert_equal "unsupported", adapter.snapshot(source: source(repository), identity: identity("unknown", nil)).fetch("state")
+    end
+  end
+
   def test_marks_a_snapshot_incomplete_when_a_required_artifact_is_missing
     Dir.mktmpdir do |repository|
       write_snapshot(repository, commit: "abc", dirty: false, repo_path: repository)

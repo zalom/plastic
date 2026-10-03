@@ -75,6 +75,22 @@ class ArchitectureTest < Plastic::TestCase
     ENV["PATH"] = original_path
   end
 
+  def test_records_the_digest_of_an_available_enola_executable
+    Dir.mktmpdir do |directory|
+      executable = File.join(directory, "enola")
+      File.write(executable, "#!/bin/sh\nexit 0\n")
+      FileUtils.chmod(0o755, executable)
+      original_path = ENV.fetch("PATH")
+      ENV["PATH"] = [directory, original_path].join(File::PATH_SEPARATOR)
+
+      identity = Plastic::Architecture::SourceState.new(@home).identity
+
+      assert_equal Digest::SHA256.file(executable).hexdigest, identity.binary_digest
+    ensure
+      ENV["PATH"] = original_path
+    end
+  end
+
   def test_marks_a_second_dirty_worktree_edit_as_stale
     Dir.mktmpdir do |repository|
       prepare_repository(repository)
