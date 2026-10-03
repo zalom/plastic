@@ -126,7 +126,8 @@ module IntentContextAssertionSupport
   end
 
   def assert_unsafe_provider_rejected(before, result)
-    assert_context_remains(before, result)
+    assert_equal 2, result.code
+    assert_equal before.slice("evidence", "architecture"), read_context.slice("evidence", "architecture")
     refute_path_exists File.join(@plastic_home, "stores", "global", "outside.json")
   end
 end
@@ -315,6 +316,44 @@ class IntentContextValidationTest < Plastic::TestCase
     assert_includes result.err, "must be arrays"
   end
 
+  def test_rejects_invalid_architecture_shapes_and_revisions
+    open_intent
+    reference = write_document("other", "selected evidence")
+    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
+    invalid_architecture = context_submission(reference).merge("architecture" => [])
+    invalid_coverage = context_submission(reference).tap { |document| document.fetch("architecture")["coverage"] = "Ruby" }
+    invalid_revision = context_submission(reference).tap { |document| document.fetch("architecture")["revision"] = 1 }
+
+    assert_invalid_submission(invalid_architecture, 2, "architecture must be an object")
+    assert_invalid_submission(invalid_coverage, 2, "coverage and limitations must be arrays")
+    assert_invalid_submission(invalid_revision, 2, "revision must be a string")
+  end
+
+  def test_rejects_evidence_that_was_not_discovered
+    open_intent
+    reference = write_document("other", "selected evidence")
+    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
+    undiscovered = context_submission(reference).merge("evidence" => ["plastic://other/1/missing.md"])
+
+    assert_invalid_submission(undiscovered, 1, "evidence was not discovered")
+  end
+
+  def test_rejects_an_unpinned_reference_from_a_legacy_discovery_record
+    open_intent
+    reference = write_document("other", "selected evidence")
+    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
+    submit_context(context_submission(reference))
+    before = read_context
+    unpinned = reference.sub(/\?revision=[0-9a-f]{64}\z/, "")
+    store_legacy_discovery(unpinned)
+
+    result = submit_raw_context(JSON.generate(context_submission(unpinned)))
+
+    assert_equal 1, result.code
+    assert_equal before.slice("evidence", "architecture"), read_context.slice("evidence", "architecture")
+    assert_includes result.err, "evidence revision changed"
+  end
+
   def test_accepts_an_external_provider_without_a_receipt_and_keeps_it_after_backup_restore
     open_intent
     reference = write_document("other", "selected evidence")
@@ -353,5 +392,21 @@ class IntentContextValidationTest < Plastic::TestCase
     result = submit_raw_context(JSON.generate(unsafe))
 
     assert_unsafe_provider_rejected(before, result)
+  end
+
+  private
+
+  def assert_invalid_submission(document, code, message)
+    result = submit_raw_context(JSON.generate(document))
+
+    assert_equal code, result.code
+    assert_includes result.err, message
+  end
+
+  def store_legacy_discovery(reference)
+    document = { "query" => "selected", "scope" => ["other"], "candidates" => [{ "uri" => reference }] }
+    Plastic::Graph.open(home: @plastic_home, store: "global").databases.fetch(:knowledge).transaction do |batch|
+      batch.put(:retrieval_discoveries, { intent_id: "1", data: JSON.generate(document), updated_at: Plastic.now })
+    end
   end
 end

@@ -19,6 +19,7 @@ class EvidenceTextTest < Plastic::TestCase
     assert_equal :text, text.classify("data.json", "{\"title\":\"Readable\"}")
     assert_equal :unsupported, text.classify("report.pdf", "%PDF-1.7")
     assert_equal :attachment, text.classify("bad.txt", "\xFF".b)
+    assert_nil text.extract("bad.txt", "\xFF".b)
   end
 
   def test_preserves_every_valid_utf8_non_nul_reference_without_an_extension_allowlist

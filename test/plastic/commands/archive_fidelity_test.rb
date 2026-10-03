@@ -134,4 +134,14 @@ class ArchiveFidelityTest < Plastic::TestCase
     assert_includes result.out, "next: plastic status"
     refute_includes Plastic::CLI::TABLE.keys, "intent restore"
   end
+
+  def test_archive_reports_an_intent_directory_that_disappeared_before_capture
+    intent = future_intent
+    FileUtils.remove_entry(folder.path(intent.dir))
+
+    result = archive(intent)
+
+    assert_equal 1, result.code
+    assert_includes result.err, "has no directory to archive"
+  end
 end

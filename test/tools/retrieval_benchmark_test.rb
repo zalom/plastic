@@ -89,6 +89,21 @@ class RetrievalBenchmarkTest < Minitest::Test
     end
   end
 
+  def test_worker_writes_revisions_after_the_barrier_opens
+    Dir.mktmpdir do |directory|
+      home = File.join(directory, "home")
+      ready = File.join(directory, "ready")
+      start = File.join(directory, "start")
+      File.write(start, "start")
+      worker = Plastic::RetrievalBenchmark::Worker.new([home, "1", ready, start, "1", "notes.md"])
+
+      capture_io { worker.run }
+      document = Plastic::Graph.open(home:, store: "store-1").retrieval.fetch_reference("plastic://store-1/1/notes.md")
+
+      assert_equal [true, "concurrent writer revision 9"], [File.exist?(ready), document.fetch(:body)]
+    end
+  end
+
   def test_writes_raw_evidence_to_a_new_output_directory
     Dir.mktmpdir do |directory|
       output = File.join(directory, "evidence", "benchmark.json")
@@ -118,6 +133,12 @@ class RetrievalBenchmarkTest < Minitest::Test
     report = Plastic::RetrievalBenchmark::Report.new({}, measurements, 0, 1).build
 
     assert_equal "missed", report.dig("acceptance_gates", "latency", "exact_lookup", "status")
+  end
+
+  def test_rejects_a_failed_timed_command_output
+    _stdout, _stderr, status = Open3.capture3("false")
+
+    refute Plastic::RetrievalBenchmark::OutputValidator.valid?({}, "", status)
   end
 
   def test_records_concurrent_reads_and_explicit_acceptance_gates

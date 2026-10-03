@@ -3,6 +3,7 @@
 require_relative "../test_helper"
 require "json"
 require_relative "../../tools/retrieval_benchmark"
+require_relative "../../tools/retrieval_benchmark/quality_passage_checks"
 
 class RetrievalBenchmarkQualityTest < Minitest::Test
   def test_skips_unexpected_search_rows_when_the_expected_reference_is_not_in_the_top_twenty
@@ -25,6 +26,17 @@ class RetrievalBenchmarkQualityTest < Minitest::Test
       answer = Plastic::RetrievalBenchmark::QualityEvaluator.new(input, directory).evaluate.fetch("synthetic_top_20").fetch(0)
 
       assert_equal [false, "passage_fetch_failed", 1], [answer.fetch("passed"), answer.fetch("classification"), answer.fetch("passage_checks").length]
+    end
+  end
+
+  def test_reports_a_missing_document_when_a_returned_expected_reference_cannot_be_fetched
+    Dir.mktmpdir do |directory|
+      uri = "plastic://global/1/missing.md?revision=#{'a' * 64}"
+      rows = [{ "uri" => uri, "position" => 1, "store" => "global" }]
+
+      checks = Plastic::RetrievalBenchmark::QualityPassageChecks.new(directory, uri => "evidence").evaluate(rows)
+
+      assert_equal [{ "uri" => uri, "rank" => 1, "position" => 1, "hint" => "evidence", "body" => nil, "matched" => false }], checks
     end
   end
 

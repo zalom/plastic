@@ -15,6 +15,15 @@ class DocumentGetTest < Plastic::TestCase
     assert_historical_document(historical_document_result)
   end
 
+  def test_reads_a_current_document_when_its_qualified_reference_omits_a_revision
+    write_document("global", "1", "current.md", "current body")
+
+    result = plastic("document", "get", "plastic://global/1/current.md", "--json", table: Plastic::CLI::TABLE)
+
+    assert_equal 0, result.code, result.err
+    assert_equal "current body", JSON.parse(result.out).dig("result", "document", "body")
+  end
+
   def test_batch_routes_each_qualified_reference_to_its_selected_store_in_order
     assert_batch_order(batch_result)
   end
