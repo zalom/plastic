@@ -245,11 +245,13 @@ plastic session handoff               # Write this session's hand-off
 
 ### Search
 ```bash
-plastic index                         # Rebuild the search index from every Markdown file
-plastic search recovery flow          # Ranked matches, one excerpt each
-plastic search recovery --project blog --limit 5
-plastic search --ask "Why did we drop the queue?"   # Search with a whole question
-plastic query "SELECT path FROM doc LIMIT 5"        # One read-only SQL statement
+plastic search recovery flow --source-project blog --limit 20  # Ranked passages
+plastic document get REFERENCE --json                           # One immutable document
+plastic document batch REFERENCE... --json                      # Documents in request order
+plastic intent discover 12 recovery flow                         # Save candidate provenance
+plastic intent context 12 --file selected-context.json           # Save agent-selected context
+plastic architecture status --project blog                       # Read the current receipt
+plastic architecture refresh --project blog                      # Explicitly refresh Enola
 ```
 
 ### Stores and databases

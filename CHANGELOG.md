@@ -5,6 +5,10 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+- Stage 6 adds deterministic SQLite passage retrieval, immutable document fetches, selected-store
+  search, context manifests, and explicit Enola architecture receipts. Retrieval benchmarks report
+  full-process timings and keep owner-reviewed quality acceptance pending.
+
 - Archive captures complete intent directories before deletion and restores them through `intent archive ID --revert`. `sync up` imports legacy rulings, links, roadmaps, and preserved originals; `--dry-run` previews the same operation in a copy. The separate migration command is removed.
 
 - Stage 5 acceptance documents cover every added command. The test helpers decode multiline specs and isolate Codex session identifiers. CI also runs on pull requests targeting stacked `plastic/` branches.

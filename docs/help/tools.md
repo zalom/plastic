@@ -1,9 +1,8 @@
 # Tools
 
-No Plastic command depends on RTK, QMD or Enola. Plastic itself calls only git and sqlite3.
-These three are companion tools a person can run beside Plastic, by hand, for the parts Plastic
-does not do itself: condensing shell output, searching the stores by meaning, and reading a
-codebase's architecture as queryable facts.
+Plastic uses SQLite for deterministic store retrieval. RTK and QMD remain companion tools. Enola
+is optional, but `plastic architecture refresh` can run it when you explicitly request an
+architecture receipt. Search does not refresh Enola.
 
 ### RTK
 
@@ -24,10 +23,10 @@ command starts, registers with, or reads from it.
 ### Enola
 
 Enola reads a codebase's architecture as queryable facts: symbols, dependencies, layers, and the
-findings its explainers compute (cycles, layer violations, dead routes, hotspots). Plastic's own
-checks (the doctor, the change gate) never call it. Generate a snapshot on a repository by hand
-(`enola --generate <repo>`), then query it directly, before or after a Plastic delivery, to see
-what a change did to the structure.
+findings its explainers compute. Use `plastic architecture status --project SLUG` to read the saved
+receipt. Use `plastic architecture refresh --project SLUG` to run an explicit refresh. The receipt
+records the repository revision, executable and archive hashes, extractor version, coverage, and
+limitations as provenance. A failed refresh preserves the prior receipt.
 
 ### Using them together
 
