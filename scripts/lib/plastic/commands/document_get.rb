@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../cli/command"
-require_relative "../graph"
+require_relative "../graph/retrieval_source"
 require "uri"
 
 module Plastic
@@ -73,7 +73,7 @@ module Plastic
         complete = Graph::ReferenceBackfill.complete?(knowledge, Graph::Origin.new(scope.plastic_home).id)
         raise Graph::RetrievalGraph::MaintenanceRequired, "retrieval maintenance is required before source #{slug} can be read" unless complete
 
-        Graph.open(home: scope.plastic_home, store: slug).retrieval
+        Graph.open_retrieval(home: scope.plastic_home, store: slug)
       end
     end
   end
