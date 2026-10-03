@@ -22,7 +22,16 @@ class InstallShLocalTest < Minitest::Test
     assert_includes out, "next: plastic install"
   end
 
-  def test_a_second_install_of_the_same_release_succeeds
+def test_an_installed_home_names_the_version_check_as_the_next_command
+  FileUtils.mkdir_p(File.join(@home, ".plastic"))
+  File.write(File.join(@home, ".plastic", "VERSION"), "2.0.2\n")
+  out, = install_local("2.0.3")
+
+  assert_includes out, "next: plastic version"
+  refute_includes out, "next: plastic install"
+end
+
+def test_a_second_install_of_the_same_release_succeeds
     install_local("2.0.3")
     _out, err, status = install_local("2.0.3")
 

@@ -69,4 +69,43 @@ class InstallCommandTest < Plastic::TestCase
     assert_equal 3, result.code
     assert_includes result.err, "--reinstall"
   end
+  def test_a_first_install_offers_enola_as_an_optional_instruction
+    claude_folder
+    result = call("install", "--claude")
+
+    assert_equal 0, result.code, result.err
+    assert_includes result.out, "Enola maps the code architecture of a project"
+    assert_includes result.out, "It is optional"
+    assert_includes result.out, "curl -fsSL https://raw.githubusercontent.com/enola-labs/enola/main/install.sh | sh"
+    assert_match(/next:\s+plastic version/, result.out)
+  end
+
+  def test_a_reinstall_makes_no_enola_offer
+    claude_folder
+    call("install", "--claude")
+    result = call("install", "--reinstall")
+
+    assert_equal 0, result.code, result.err
+    refute_includes result.out, "Enola"
+  end
+
+  def test_a_reinstall_that_changes_nothing_reports_no_removed_hook
+    %w[.claude .codex].each { |folder| FileUtils.mkdir_p(File.join(@home, folder)) }
+    call("install", "--claude", "--codex")
+    result = call("install", "--reinstall")
+
+    assert_equal 0, result.code, result.err
+    refute_includes result.out, "Removed"
+  end
+
+  def test_a_settings_file_that_is_not_json_stops_the_install_and_changes_nothing
+    settings = File.join(claude_folder, "settings.json")
+    File.write(settings, "{ not json")
+    result = call("install", "--claude")
+
+    assert_equal 1, result.code
+    assert_includes result.err, "#{settings} is not valid JSON; nothing was changed"
+    assert_equal "{ not json", File.read(settings)
+    refute_path_exists File.join(@plastic_home, "VERSION")
+  end
 end
