@@ -5,7 +5,7 @@ require "rubygems/package"
 require_relative "../../test_helper"
 require_relative "../../../scripts/lib/plastic/commands/backup"
 
-class BackupTest < Plastic::TestCase
+module BackupTestSupport
   def call(*args, env: {}) = plastic("backup", *args, env:, table: Plastic::CLI::TABLE)
 
   def entries_of(path)
@@ -14,10 +14,6 @@ class BackupTest < Plastic::TestCase
     end
   end
 
-  # A real home is wrapped in a per-test transaction and rolled back, as
-  # Rails rolls each test back, so a connection inside it is always mid
-  # transaction. VACUUM INTO never runs inside one, so backup is proved
-  # against a plain, separate home that commits as a real process would.
   def populated_home(title: "Target")
     home = File.join(Dir.mktmpdir, ".plastic")
     env = { "PLASTIC_HOME" => home }
@@ -33,6 +29,18 @@ class BackupTest < Plastic::TestCase
     name = result.out[/backup: (\S+),/, 1]
     File.join(env.fetch("PLASTIC_HOME"), "backups", name)
   end
+
+  def unpack(entries, home)
+    entries.each do |name, bytes|
+      path = File.join(home, name)
+      FileUtils.mkdir_p(File.dirname(path))
+      File.binwrite(path, bytes)
+    end
+  end
+end
+
+class BackupTest < Plastic::TestCase
+  include BackupTestSupport
 
   def test_the_archive_lists_home_and_every_store_database
     _home, env = populated_home
@@ -82,6 +90,23 @@ class BackupTest < Plastic::TestCase
     end
   end
 
+  def assert_home_files_match(home, restored)
+    %w[origin_id config.yml projects.yml].each do |name|
+      assert_equal File.binread(File.join(home, name)), File.binread(File.join(restored, name))
+    end
+  end
+
+  def assert_restored_intent(home)
+    result = plastic("intent", "show", "1", env: { "PLASTIC_HOME" => home }, table: Plastic::CLI::TABLE)
+
+    assert_equal 0, result.code
+    assert_includes result.out, "Target"
+  end
+end
+
+class BackupRetrievalTest < Plastic::TestCase
+  include BackupTestSupport
+
   def test_an_unpacked_backup_retains_the_owning_retrieval_context_rows
     home, env = populated_home
     graphs = Plastic::Graph.open(home:, store: "global")
@@ -92,9 +117,8 @@ class BackupTest < Plastic::TestCase
 
     Dir.mktmpdir do |restored|
       unpack(entries_of(archive_path(env)), restored)
-      row = Plastic::Graph.open(home: restored, store: "global").databases.fetch(:knowledge).row("SELECT data FROM retrieval_contexts WHERE intent_id = '1'")
 
-      assert_equal body, row.fetch("data")
+      assert_context_row(restored, body)
     end
   end
 
@@ -108,37 +132,15 @@ class BackupTest < Plastic::TestCase
 
     Dir.mktmpdir do |restored|
       unpack(entries_of(archive_path(env)), restored)
-      restored_env = { "PLASTIC_HOME" => restored }
-      readback = plastic("intent", "context", "1", "--json", env: restored_env, table: Plastic::CLI::TABLE)
-      rows = Plastic::Graph.open(home: restored, store: "global").databases.fetch(:knowledge)
 
-      assert_equal 0, readback.code
-      assert_equal ["backup evidence"], JSON.parse(readback.out).dig("result", "context", "facts")
-      assert rows.row("SELECT data FROM retrieval_discoveries WHERE intent_id = '1'")
-      assert rows.row("SELECT data FROM retrieval_contexts WHERE intent_id = '1'")
-      assert rows.row("SELECT data FROM architecture_receipts WHERE provider = 'external'")
+      assert_retrieval_readback(restored)
     end
   end
 
-  def assert_home_files_match(home, restored)
-    %w[origin_id config.yml projects.yml].each do |name|
-      assert_equal File.binread(File.join(home, name)), File.binread(File.join(restored, name))
-    end
-  end
+  def assert_context_row(restored, body)
+    row = Plastic::Graph.open(home: restored, store: "global").databases.fetch(:knowledge).row("SELECT data FROM retrieval_contexts WHERE intent_id = '1'")
 
-  def assert_restored_intent(home)
-    result = plastic("intent", "show", "1", env: { "PLASTIC_HOME" => home }, table: Plastic::CLI::TABLE)
-
-    assert_equal 0, result.code
-    assert_includes result.out, "Target"
-  end
-
-  def unpack(entries, home)
-    entries.each do |name, bytes|
-      path = File.join(home, name)
-      FileUtils.mkdir_p(File.dirname(path))
-      File.binwrite(path, bytes)
-    end
+    assert_equal body, row.fetch("data")
   end
 
   def write_retrieval_document(home, body)
@@ -159,5 +161,17 @@ class BackupTest < Plastic::TestCase
 
       assert_equal 0, result.code
     end
+  end
+
+  def assert_retrieval_readback(restored)
+    restored_env = { "PLASTIC_HOME" => restored }
+    readback = plastic("intent", "context", "1", "--json", env: restored_env, table: Plastic::CLI::TABLE)
+    rows = Plastic::Graph.open(home: restored, store: "global").databases.fetch(:knowledge)
+
+    assert_equal 0, readback.code
+    assert_equal ["backup evidence"], JSON.parse(readback.out).dig("result", "context", "facts")
+    assert rows.row("SELECT data FROM retrieval_discoveries WHERE intent_id = '1'")
+    assert rows.row("SELECT data FROM retrieval_contexts WHERE intent_id = '1'")
+    assert rows.row("SELECT data FROM architecture_receipts WHERE provider = 'external'")
   end
 end
