@@ -5,6 +5,7 @@ require "json"
 require "tempfile"
 require_relative "../code_workflow"
 require_relative "../external_agent_workflow"
+require_relative "../graph/retrieval_source"
 
 module Plastic
   module Workflows
@@ -84,7 +85,7 @@ module Plastic
           end
           raise Graph::RetrievalGraph::MaintenanceRequired, "retrieval maintenance is required before source #{slug} can be read" if missing.any?
 
-          Graph.open(home: context.plastic_home, store: slug).retrieval
+          Graph.open_retrieval(home: context.plastic_home, store: slug)
         end
 
         def persist(context, document)

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../cli/command"
-require_relative "../graph"
+require_relative "../graph/retrieval_source"
 
 module Plastic
   module Commands
@@ -53,7 +53,7 @@ module Plastic
         end
         raise Graph::RetrievalGraph::MaintenanceRequired, "retrieval maintenance is required before source #{slug} can be read" if missing.any?
 
-        Graph.open(home: scope.plastic_home, store: slug).retrieval
+        Graph.open_retrieval(home: scope.plastic_home, store: slug)
       end
 
       def result_row(retrieval, slug, row, rank)
