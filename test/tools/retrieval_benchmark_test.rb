@@ -71,6 +71,20 @@ class RetrievalBenchmarkTest < Minitest::Test
     end
   end
 
+  def test_skips_unexpected_search_rows_when_the_expected_reference_is_not_in_the_top_twenty
+    Dir.mktmpdir do |directory|
+      input = File.join(directory, "quality.json")
+      File.write(input, JSON.generate(quality_fixture_with_distractors))
+      report = Plastic::RetrievalBenchmark::QualityEvaluator.new(
+        input, directory
+      ).evaluate
+      answer = report.fetch("synthetic_top_20").fetch(0)
+
+      assert_equal [false, "not_in_top_20", [], 20], [answer.fetch("passed"), answer.fetch("classification"),
+        answer.fetch("passage_checks"), answer.fetch("returned_references").length]
+    end
+  end
+
   private
 
   def timed_samples(report)
@@ -109,5 +123,14 @@ class RetrievalBenchmarkTest < Minitest::Test
   def quality_summary(report, answer)
     { owner_review: report.fetch("quality").dig("owner_review", "status"), passed: answer.fetch("passed"), rank: answer.fetch("rank"),
       answer_bearing: answer.fetch("matched_text").include?("immutable revisions retain history") }
+  end
+
+  def quality_fixture_with_distractors
+    distractors = 20.times.map do |index|
+      { "store" => "store-1", "intent_id" => "d#{index}", "path" => "notes.md", "content" => "fictional search result #{index}" }
+    end
+    { "status" => "synthetic_fixture", "documents" => distractors + [{ "store" => "store-1", "intent_id" => "source", "path" => "source.md", "content" => "expected evidence" }],
+      "queries" => [{ "id" => "missing-expected", "harness_search_terms" => "fictional", "scope" => ["store-1"],
+        "expected" => [{ "store" => "store-1", "intent_id" => "source", "path" => "source.md", "relevant_passage_hint" => "expected evidence" }] }] }
   end
 end
