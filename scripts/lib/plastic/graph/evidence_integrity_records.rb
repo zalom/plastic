@@ -1,5 +1,8 @@
 # frozen_string_literal: true
 
+require "digest"
+require_relative "evidence_text"
+
 module Plastic
   module Graph
     # An immutable revision that supplies derived passages.

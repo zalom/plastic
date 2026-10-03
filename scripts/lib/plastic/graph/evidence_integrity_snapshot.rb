@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require "digest"
 require_relative "evidence_integrity_records"
 require_relative "evidence_integrity_sources"
 
