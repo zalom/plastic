@@ -4,163 +4,7 @@ require_relative "../../test_helper"
 require "json"
 require "tempfile"
 
-class IntentContextTest < Plastic::TestCase
-  def test_validates_and_persists_agent_selected_evidence_without_writing_source_stores
-    open_intent
-    reference = write_document("other", "selected evidence")
-    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
-    before = File.binread(File.join(@plastic_home, "stores", "other", "knowledge_graph.db"))
-    submission = context_submission(reference)
-    submitted = submit_context(submission, json: true)
-    readback = read_context
-
-    assert_equal submission, submitted.slice("evidence", "facts", "interpretations", "gaps", "rulings", "architecture")
-    assert_equal submission, readback.slice("evidence", "facts", "interpretations", "gaps", "rulings", "architecture")
-    row = Plastic::Graph.open(home: @plastic_home, store: "global").databases.fetch(:knowledge).row("SELECT data FROM retrieval_contexts WHERE intent_id = '1'")
-
-    assert_equal submitted.slice("evidence", "facts", "interpretations", "gaps", "rulings", "architecture", "archive_states", "intent_id", "discovery"), JSON.parse(row.fetch("data"))
-    assert_equal before, File.binread(File.join(@plastic_home, "stores", "other", "knowledge_graph.db"))
-  end
-
-  def test_keeps_context_categories_separate_and_reports_changed_heads
-    open_intent
-    reference = write_document("other", "first selected evidence")
-    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
-    submission = context_submission(reference)
-    submit_context(submission)
-    write_document("other", "second selected evidence")
-    context = read_context
-
-    assert_equal submission.slice("facts", "interpretations", "gaps", "rulings", "architecture"), context.slice("facts", "interpretations", "gaps", "rulings", "architecture")
-    assert_equal [{ "uri" => reference, "state" => "stale", "archived" => false }], context.fetch("freshness").fetch("evidence")
-  end
-
-  def test_records_selected_archive_state_and_marks_it_stale_without_losing_the_pinned_revision
-    open_intent
-    reference = write_document("other", "selected evidence")
-    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
-    submit_context(context_submission(reference))
-
-    fresh = read_context
-    archive_source_intent
-    stale = read_context
-
-    refute fresh.fetch("freshness").fetch("evidence").first.fetch("archived")
-    assert_equal "stale", stale.fetch("freshness").fetch("evidence").first.fetch("state")
-    assert stale.fetch("freshness").fetch("evidence").first.fetch("archived")
-    assert_equal "selected evidence", Plastic::Graph.open(home: @plastic_home, store: "other").retrieval.fetch_reference(reference).fetch(:body)
-  end
-
-  def test_reports_architecture_receipt_changes_and_missing_revisions_separately
-    open_intent
-    reference = write_document("other", "selected evidence")
-    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
-    submit_context(context_submission(reference))
-
-    assert_equal "fresh", read_context.fetch("freshness").fetch("architecture").fetch("state")
-    replace_architecture_receipt(revision: "def")
-
-    assert_equal "stale", read_context.fetch("freshness").fetch("architecture").fetch("state")
-    replace_architecture_receipt(revision: "missing", available: false)
-
-    assert_equal "missing", read_context.fetch("freshness").fetch("architecture").fetch("state")
-  end
-
-  def test_reports_a_removed_current_head_as_stale_when_its_pinned_revision_survives
-    open_intent
-    reference = write_document("other", "selected evidence")
-    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
-    submit_context(context_submission(reference))
-    remove_current_head
-
-    assert_equal "stale", read_context.fetch("freshness").fetch("evidence").first.fetch("state")
-  end
-
-  def test_reports_retrieval_maintenance_when_a_selected_source_is_not_ready
-    open_intent
-    reference = write_document("other", "selected evidence")
-    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
-    submit_context(context_submission(reference))
-    mark_retrieval_incomplete
-    before = File.binread(store_path("../other/knowledge_graph.db"))
-
-    result = plastic("intent", "context", "1", table: Plastic::CLI::TABLE)
-
-    assert_equal 1, result.code
-    assert_includes result.err, "retrieval maintenance is required before source other can be read"
-    assert_equal before, File.binread(store_path("../other/knowledge_graph.db"))
-  end
-
-  def test_does_not_recreate_a_missing_selected_source_work_database
-    open_intent
-    reference = write_document("other", "selected evidence")
-    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
-    submit_context(context_submission(reference))
-    path = store_path("../other/work_graph.db")
-    File.delete(path)
-
-    result = plastic("intent", "context", "1", table: Plastic::CLI::TABLE)
-
-    assert_equal 1, result.code
-    refute_path_exists path
-  end
-
-  def test_rejects_a_non_object_submission_without_replacing_saved_context
-    open_intent
-    reference = write_document("other", "selected evidence")
-    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
-    submit_context(context_submission(reference))
-    before = File.binread(store_path("context/1.json"))
-
-    result = submit_raw_context("[]")
-
-    assert_equal 2, result.code
-    assert_equal before, File.binread(store_path("context/1.json"))
-  end
-
-  def test_accepts_an_external_provider_without_a_receipt_and_keeps_it_after_backup_restore
-    open_intent
-    reference = write_document("other", "selected evidence")
-    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
-    submission = context_submission(reference)
-    submission.fetch("architecture").delete("receipt")
-
-    submit_context(submission)
-
-    assert_equal submission.fetch("architecture"), read_context.fetch("architecture")
-  end
-
-  def test_rejects_an_invalid_receipt_without_replacing_the_saved_context
-    open_intent
-    reference = write_document("other", "selected evidence")
-    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
-    submit_context(context_submission(reference))
-    before = read_context
-    invalid = context_submission(reference)
-    invalid.fetch("architecture")["receipt"] = []
-
-    result = submit_raw_context(JSON.generate(invalid))
-
-    assert_equal 2, result.code
-    assert_equal before.slice("evidence", "architecture"), read_context.slice("evidence", "architecture")
-  end
-
-  def test_rejects_an_unsafe_architecture_provider_without_writing_outside_the_owner_directory
-    open_intent
-    reference = write_document("other", "selected evidence")
-    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
-    submit_context(context_submission(reference))
-    before = read_context
-    unsafe = context_submission(reference)
-    unsafe.fetch("architecture")["provider"] = "../../outside"
-
-    result = submit_raw_context(JSON.generate(unsafe))
-
-    assert_equal 2, result.code
-    assert_equal before.slice("evidence", "architecture"), read_context.slice("evidence", "architecture")
-    refute_path_exists File.join(@plastic_home, "stores", "global", "outside.json")
-  end
-
+module IntentContextTestSupport
   private
 
   def write_document(store, body)
@@ -233,5 +77,206 @@ class IntentContextTest < Plastic::TestCase
       file.flush
       return plastic("intent", "context", "1", "--from", file.path, table: Plastic::CLI::TABLE)
     end
+  end
+end
+
+module IntentContextAssertionSupport
+  private
+
+  def assert_persisted_context(submission, submitted, readback)
+    fields = %w[evidence facts interpretations gaps rulings architecture]
+
+    assert_equal submission, submitted.slice(*fields)
+    assert_equal submission, readback.slice(*fields)
+    row = Plastic::Graph.open(home: @plastic_home, store: "global").databases.fetch(:knowledge).row("SELECT data FROM retrieval_contexts WHERE intent_id = '1'")
+    persisted = submitted.slice(*fields, "archive_states", "intent_id", "discovery")
+
+    assert_equal persisted, JSON.parse(row.fetch("data"))
+  end
+
+  def assert_archived_context(fresh, stale, reference)
+    fresh_evidence = evidence_freshness(fresh)
+    stale_evidence = evidence_freshness(stale)
+
+    refute fresh_evidence.fetch("archived")
+    assert_equal "stale", stale_evidence.fetch("state")
+    assert stale_evidence.fetch("archived")
+    document = Plastic::Graph.open(home: @plastic_home, store: "other").retrieval.fetch_reference(reference)
+
+    assert_equal "selected evidence", document.fetch(:body)
+  end
+
+  def evidence_freshness(context)
+    context.fetch("freshness").fetch("evidence").first
+  end
+
+  def assert_architecture_freshness
+    assert_equal "fresh", read_context.fetch("freshness").fetch("architecture").fetch("state")
+    replace_architecture_receipt(revision: "def")
+
+    assert_equal "stale", read_context.fetch("freshness").fetch("architecture").fetch("state")
+    replace_architecture_receipt(revision: "missing", available: false)
+
+    assert_equal "missing", read_context.fetch("freshness").fetch("architecture").fetch("state")
+  end
+
+  def assert_context_remains(before, result)
+    assert_equal 2, result.code
+    assert_equal before.slice("evidence", "architecture"), read_context.slice("evidence", "architecture")
+  end
+
+  def assert_unsafe_provider_rejected(before, result)
+    assert_context_remains(before, result)
+    refute_path_exists File.join(@plastic_home, "stores", "global", "outside.json")
+  end
+end
+
+class IntentContextPersistenceTest < Plastic::TestCase
+  include IntentContextTestSupport
+  include IntentContextAssertionSupport
+
+  def test_validates_and_persists_agent_selected_evidence_without_writing_source_stores
+    open_intent
+    reference = write_document("other", "selected evidence")
+    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
+    before = File.binread(File.join(@plastic_home, "stores", "other", "knowledge_graph.db"))
+    submission = context_submission(reference)
+    submitted = submit_context(submission, json: true)
+    readback = read_context
+
+    assert_persisted_context(submission, submitted, readback)
+    assert_equal before, File.binread(File.join(@plastic_home, "stores", "other", "knowledge_graph.db"))
+  end
+
+  def test_keeps_context_categories_separate_and_reports_changed_heads
+    open_intent
+    reference = write_document("other", "first selected evidence")
+    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
+    submission = context_submission(reference)
+    submit_context(submission)
+    write_document("other", "second selected evidence")
+    context = read_context
+
+    assert_equal submission.slice("facts", "interpretations", "gaps", "rulings", "architecture"), context.slice("facts", "interpretations", "gaps", "rulings", "architecture")
+    assert_equal [{ "uri" => reference, "state" => "stale", "archived" => false }], context.fetch("freshness").fetch("evidence")
+  end
+
+  def test_records_selected_archive_state_and_marks_it_stale_without_losing_the_pinned_revision
+    open_intent
+    reference = write_document("other", "selected evidence")
+    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
+    submit_context(context_submission(reference))
+
+    fresh = read_context
+    archive_source_intent
+    stale = read_context
+
+    assert_archived_context(fresh, stale, reference)
+  end
+
+  def test_reports_architecture_receipt_changes_and_missing_revisions_separately
+    open_intent
+    reference = write_document("other", "selected evidence")
+    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
+    submit_context(context_submission(reference))
+
+    assert_architecture_freshness
+  end
+
+  def test_reports_a_removed_current_head_as_stale_when_its_pinned_revision_survives
+    open_intent
+    reference = write_document("other", "selected evidence")
+    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
+    submit_context(context_submission(reference))
+    remove_current_head
+
+    assert_equal "stale", read_context.fetch("freshness").fetch("evidence").first.fetch("state")
+  end
+end
+
+class IntentContextValidationTest < Plastic::TestCase
+  include IntentContextTestSupport
+  include IntentContextAssertionSupport
+
+  def test_reports_retrieval_maintenance_when_a_selected_source_is_not_ready
+    open_intent
+    reference = write_document("other", "selected evidence")
+    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
+    submit_context(context_submission(reference))
+    mark_retrieval_incomplete
+    before = File.binread(store_path("../other/knowledge_graph.db"))
+
+    result = plastic("intent", "context", "1", table: Plastic::CLI::TABLE)
+
+    assert_equal 1, result.code
+    assert_includes result.err, "retrieval maintenance is required before source other can be read"
+    assert_equal before, File.binread(store_path("../other/knowledge_graph.db"))
+  end
+
+  def test_does_not_recreate_a_missing_selected_source_work_database
+    open_intent
+    reference = write_document("other", "selected evidence")
+    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
+    submit_context(context_submission(reference))
+    path = store_path("../other/work_graph.db")
+    File.delete(path)
+
+    result = plastic("intent", "context", "1", table: Plastic::CLI::TABLE)
+
+    assert_equal 1, result.code
+    refute_path_exists path
+  end
+
+  def test_rejects_a_non_object_submission_without_replacing_saved_context
+    open_intent
+    reference = write_document("other", "selected evidence")
+    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
+    submit_context(context_submission(reference))
+    before = File.binread(store_path("context/1.json"))
+
+    result = submit_raw_context("[]")
+
+    assert_equal 2, result.code
+    assert_equal before, File.binread(store_path("context/1.json"))
+  end
+
+  def test_accepts_an_external_provider_without_a_receipt_and_keeps_it_after_backup_restore
+    open_intent
+    reference = write_document("other", "selected evidence")
+    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
+    submission = context_submission(reference)
+    submission.fetch("architecture").delete("receipt")
+
+    submit_context(submission)
+
+    assert_equal submission.fetch("architecture"), read_context.fetch("architecture")
+  end
+
+  def test_rejects_an_invalid_receipt_without_replacing_the_saved_context
+    open_intent
+    reference = write_document("other", "selected evidence")
+    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
+    submit_context(context_submission(reference))
+    before = read_context
+    invalid = context_submission(reference)
+    invalid.fetch("architecture")["receipt"] = []
+
+    result = submit_raw_context(JSON.generate(invalid))
+
+    assert_context_remains(before, result)
+  end
+
+  def test_rejects_an_unsafe_architecture_provider_without_writing_outside_the_owner_directory
+    open_intent
+    reference = write_document("other", "selected evidence")
+    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
+    submit_context(context_submission(reference))
+    before = read_context
+    unsafe = context_submission(reference)
+    unsafe.fetch("architecture")["provider"] = "../../outside"
+
+    result = submit_raw_context(JSON.generate(unsafe))
+
+    assert_unsafe_provider_rejected(before, result)
   end
 end
