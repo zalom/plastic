@@ -10,7 +10,7 @@ class SqliteLoaderTest < Minitest::Test
     out, err, status = subprocess("require 'plastic/graph/database/connection_pool'; puts SQLite3::VERSION; puts $LOADED_FEATURES.grep(/rubygems/).empty?")
 
     assert_predicate status, :success?, err
-    assert_match(/\A2\.9\./, out)
+    assert_match(/\A2\.9\.6/, out)
     assert_includes out, "true"
   end
 
@@ -18,13 +18,13 @@ class SqliteLoaderTest < Minitest::Test
     out, err, status = subprocess("require 'plastic/graph/database/sqlite_loader'; Plastic::Graph::Database::SqliteLoader.load!(roots: []); puts SQLite3::VERSION; puts $LOADED_FEATURES.any? { |path| path.include?('rubygems') }")
 
     assert_predicate status, :success?, err
-    assert_match(/\A2\.9\./, out)
+    assert_match(/\A2\.9\.6/, out)
     assert_includes out, "true"
   end
 
   private
 
   def subprocess(script)
-    Open3.capture3("ruby", "--disable-gems", "-I", File.join(ROOT, "scripts", "lib"), "-e", script)
+    Open3.capture3({ "COVERAGE" => nil, "RUBYOPT" => nil }, "ruby", "--disable-gems", "-I", File.join(ROOT, "scripts", "lib"), "-e", script)
   end
 end

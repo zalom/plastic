@@ -8,7 +8,7 @@ module Plastic
       # Loads the locked sqlite3 gem without starting RubyGems when its standard
       # installation root is present. RubyGems remains the portable fallback.
       module SqliteLoader
-        VERSION = /\A2\.9\./
+        VERSION = "2.9.6"
 
         def self.load!(roots: gem_roots)
           return validate! if defined?(SQLite3)
@@ -39,7 +39,7 @@ module Plastic
         end
 
         def self.validate!
-          return if VERSION.match?(SQLite3::VERSION)
+          return if SQLite3::VERSION == VERSION
 
           raise LoadError, "Plastic requires sqlite3 ~> 2.9 (found #{SQLite3::VERSION})"
         end
@@ -61,7 +61,7 @@ module Plastic
         end
 
         def self.compatible?(path)
-          match = /sqlite3-(2\.9\.[0-9]+)(?:-([a-z0-9_-]+))?\z/.match(File.basename(File.dirname(path)))
+          match = /sqlite3-#{Regexp.escape(VERSION)}(?:-([a-z0-9_-]+))?\z/.match(File.basename(File.dirname(path)))
           match && compatible_platform?(match[2])
         end
 
