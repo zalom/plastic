@@ -4,6 +4,7 @@ require "rubygems/package"
 require "zlib"
 require "digest"
 require "fileutils"
+require "securerandom"
 require "tmpdir"
 require_relative "database"
 require_relative "schema"
@@ -19,6 +20,32 @@ module Plastic
     # never stops the write.
     class BackupWriter
       HOME_FILES = %w[origin_id config.yml projects.yml].freeze
+      # One private archive waiting for publication with its metadata row.
+      class Staged
+        attr_reader :row, :path
+
+        def initialize(row:, path:)
+          @row = row
+          @path = path
+          @published = false
+        end
+
+        def publish_to(directory)
+          File.link(path, destination(directory))
+          @published = true
+          FileUtils.rm_f(path)
+          row
+        end
+
+        def discard_from(directory)
+          FileUtils.rm_f(path)
+          FileUtils.rm_f(destination(directory)) if @published
+        end
+
+        private
+
+        def destination(directory) = File.join(directory, row.fetch(:name))
+      end
 
       def initialize(home, session: nil)
         @home = home
@@ -52,33 +79,76 @@ module Plastic
         tar.close
       end
 
-      # Writes the archive and returns the row to save.
-      def call
-        at = Plastic.now
-        name = "plastic-#{Time.now.strftime("%Y%m%d-%H%M%S")}.tar.gz"
-        path = File.join(backups_dir, name)
-        files = pack(path)
-        { name:, files:, bytes: File.size(path), sha256: Digest::SHA256.file(path).hexdigest, at:, session_id: @session }
+      # Writes a complete archive to a private path. The work graph publishes
+      # it only with the matching metadata transaction.
+      def stage
+        name = self.class.archive_name(@home)
+        path = staging_path(name)
+        stage_archive(name, path)
+      rescue
+        FileUtils.rm_f(path) if path
+        raise
       end
+
+      # Makes a complete staged archive visible under its unique final name.
+      def publish(staged)
+        staged.publish_to(backups_dir)
+      end
+
+      # Removes a staged or newly published archive after a failed transaction.
+      def discard(staged)
+        staged.discard_from(backups_dir)
+      end
+
+      # Describes a backup without creating the home, archive, or metadata.
+      def self.plan(home)
+        name = archive_name(home)
+        { name:, files: sources(home).count { |(_name, path)| File.file?(path) } }
+      end
+
+      def self.sources(home)
+        [["home.db", File.join(home, "home.db")]] + store_sources(home)
+      end
+
+      def self.store_sources(home)
+        Dir.glob(File.join(home, "stores", "*")).select { |path| File.directory?(path) }.sort.flat_map do |store|
+          entries_for_store(store)
+        end
+      end
+
+      def self.entries_for_store(store)
+        slug = File.basename(store)
+        Schema::STORE.filter_map { |key| store_entry(store, slug, key) }
+      end
+
+      def self.archive_name(home)
+        prefix = "plastic-#{Time.now.strftime("%Y%m%d-%H%M%S")}"
+        "#{prefix}#{available_suffix(home, prefix)}.tar.gz"
+      end
+
+      def self.available_suffix(home, prefix)
+        names = Dir.glob(File.join(home, "backups", "#{prefix}*.tar.gz")).map { |path| File.basename(path) }
+        suffix_for((0..).find { |number| !names.include?("#{prefix}#{suffix_for(number)}.tar.gz") })
+      end
+
+      def self.suffix_for(number) = number.zero? ? "" : "-#{number}"
 
       private
 
       def backups_dir = File.join(@home, "backups").tap { |dir| FileUtils.mkdir_p(dir) }
 
-      def sources
-        [["home.db", File.join(@home, "home.db")]] + store_sources
+      def staging_path(name) = File.join(backups_dir, ".#{name}.#{SecureRandom.hex(8)}.tmp")
+
+      def stage_archive(name, path)
+        files = pack(path)
+        Staged.new(row: archive_row(name, files, path), path:)
       end
 
-      def store_sources
-        Dir.glob(File.join(@home, "stores", "*")).select { |path| File.directory?(path) }.sort.flat_map do |store|
-          store_entries(store)
-        end
+      def archive_row(name, files, path)
+        { name:, files:, bytes: File.size(path), sha256: Digest::SHA256.file(path).hexdigest, at: Plastic.now, session_id: @session }
       end
 
-      def store_entries(store)
-        slug = File.basename(store)
-        Schema::STORE.filter_map { |key| self.class.store_entry(store, slug, key) }
-      end
+      def sources = self.class.sources(@home)
 
       def home_files
         HOME_FILES.filter_map do |name|

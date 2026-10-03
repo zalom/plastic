@@ -11,6 +11,7 @@ require_relative "roadmap_writer"
 require_relative "roadmap_state"
 require_relative "archive_writer"
 require_relative "backup_writer"
+require_relative "backup_publisher"
 require_relative "session_writer"
 require_relative "printer"
 require_relative "prints"
@@ -115,16 +116,17 @@ module Plastic
       end
 
       # Packs home.db and every store's three databases, writes the row, and returns it.
-      def backup
-        home_db = @databases.fetch(:home)
-        row = BackupWriter.new(File.dirname(home_db.path), session: @session).call
-        home_db.transaction { |batch| batch.put(:backups, row, statement: :insert) }
-        row
-      end
+      def backup = BackupPublisher.new(home_db, home, session: @session).call
+
+      def preview_backup = BackupWriter.plan(File.dirname(@databases.fetch(:home).path))
 
       private
 
       def completions = (@completions ||= CompletionWriter.new(@databases, @retrieval, @folder, session: @session))
+
+      def home_db = @databases.fetch(:home)
+
+      def home = File.dirname(home_db.path)
 
       def sessions = (@sessions ||= SessionWriter.new(@databases.fetch(:home), store: @retrieval.store))
 
