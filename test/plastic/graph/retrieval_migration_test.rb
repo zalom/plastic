@@ -2,13 +2,24 @@
 
 require_relative "../../test_helper"
 
-class RetrievalMigrationTest < Plastic::TestCase
-  MigrationInterrupted = Class.new(StandardError)
-
-  def teardown
+module RetrievalMigrationHome
+  def with_isolated_graph_home
+    original_home = @plastic_home
+    temporary_home = Dir.mktmpdir("plastic-retrieval-migration")
+    @plastic_home = File.join(temporary_home, ".plastic")
+    FileUtils.mkdir_p(store_root)
+    yield
+  ensure
     Plastic::Graph::Database::ConnectionPool.disconnect
-    super
+    @plastic_home = original_home
+    FileUtils.remove_entry(temporary_home) if temporary_home && File.exist?(temporary_home)
   end
+end
+
+class RetrievalMigrationTest < Plastic::TestCase
+  include RetrievalMigrationHome
+
+  MigrationInterrupted = Class.new(StandardError)
 
   def test_first_read_migrates_legacy_documents_and_references_once_per_origin
     seed_legacy_evidence
@@ -21,22 +32,26 @@ class RetrievalMigrationTest < Plastic::TestCase
   end
 
   def test_reopens_and_completes_an_old_schema_after_each_evidence_commit
-    (1..2).each do |boundary|
-      create_old_schema
+    with_isolated_graph_home do
+      (1..2).each do |boundary|
+        create_old_schema
 
-      assert_raises(MigrationInterrupted) { interrupted_backfill(boundary) }
-      reopen.retrieval.search("legacy")
+        assert_raises(MigrationInterrupted) { interrupted_backfill(boundary) }
+        reopen.retrieval.search("legacy")
 
-      assert_migration_complete
+        assert_migration_complete
+      end
     end
   end
 
   def test_source_read_requires_maintenance_without_writing_an_old_database
-    create_old_schema
-    before = database_bytes
+    with_isolated_graph_home do
+      create_old_schema
+      before = database_bytes
 
-    assert_raises(Plastic::Graph::RetrievalGraph::MaintenanceRequired) { retrieval.search("legacy", migrate: false) }
-    assert_equal before, database_bytes
+      assert_raises(Plastic::Graph::RetrievalGraph::MaintenanceRequired) { retrieval.search("legacy", migrate: false) }
+      assert_equal before, database_bytes
+    end
   end
 
   private
