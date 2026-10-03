@@ -1,0 +1,24 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "optparse"
+
+require_relative "lib/installer_release"
+
+options = {}
+OptionParser.new do |parser|
+  parser.on("--directory PATH") { |value| options[:directory] = value }
+  parser.on("--version VERSION") { |value| options[:version] = value }
+  parser.on("--home PATH") { |value| options[:home] = value }
+end.parse!
+
+missing = %i[directory version home].reject { |key| options[key] }
+abort "missing required options: #{missing.join(", ")}" unless missing.empty?
+
+begin
+  files = InstallerRelease::ReleaseFiles.new(options[:directory]).verify
+  expected = InstallerRelease::Manifest.identity(options[:version])
+  InstallerRelease::ReleaseInstall.new(home: options[:home]).call(archive: files.archive, manifest: files.manifest, expected: expected)
+rescue StandardError => error
+  abort "plastic: v#{options[:version]}: #{error.message}"
+end
