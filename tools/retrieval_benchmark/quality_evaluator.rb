@@ -2,6 +2,7 @@
 
 require "json"
 require_relative "../../scripts/lib/plastic"
+require_relative "../../scripts/lib/plastic/graph"
 require_relative "../../scripts/lib/plastic/graph/evidence_writer"
 
 module Plastic

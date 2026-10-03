@@ -7,6 +7,7 @@ require "open3"
 require "tmpdir"
 require "time"
 require_relative "../../scripts/lib/plastic"
+require_relative "../../scripts/lib/plastic/graph"
 require_relative "../../scripts/lib/plastic/graph/evidence_writer"
 require_relative "concurrency"
 
