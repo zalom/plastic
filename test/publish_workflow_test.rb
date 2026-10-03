@@ -168,7 +168,7 @@ class PublishWorkflowTest < Minitest::Test
 
   def test_the_release_kind_is_exactly_the_guard_channel
     assert_equal "${{ steps.guard.outputs.channel == 'latest' }}", release_step["env"]["STABLE"]
-    refute_match(/\b(alpha|beta|latest)\b/, release_step["run"], "the release run: line must carry no literal channel name")
+    refute_match(/\b(alpha|beta)\b|\${{/, release_step["run"], "the release run: line reads the channel only through STABLE")
   end
 
   def test_every_channel_makes_the_github_release
