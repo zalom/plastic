@@ -26,6 +26,17 @@ class RetrievalContextResumeTest < Minitest::Test
     assert_changed_discovery(command("intent", "discover", "1", "delivery"))
   end
 
+  def test_documented_search_and_document_get_commands_run_against_a_temporary_store
+    command("intent", "new", "Evidence delivery")
+    reference = first_reference
+
+    document = command("document", "get", reference)
+    search = command("search", "Evidence", "--source-project", "global")
+
+    assert_equal reference, document.dig("result", "document", "uri")
+    assert_includes search.dig("result", "results").map { |row| row.fetch("uri") }, reference
+  end
+
   private
 
   def command(*arguments)

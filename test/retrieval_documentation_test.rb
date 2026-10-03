@@ -29,6 +29,15 @@ class RetrievalDocumentationTest < Minitest::Test
     assert_includes content, "does not refresh Enola"
   end
 
+  def test_examples_use_context_from_and_qualified_document_references
+    readme = File.read(File.join(ROOT, "README.md"))
+    guide = File.read(File.join(ROOT, "docs/guide/getting-started/search-commands.md"))
+
+    assert_includes readme, "intent context 12 --from selected-context.json"
+    assert_includes guide, "Fetches a qualified document."
+    refute_includes guide, "current or revision-qualified"
+  end
+
   private
 
   def public_docs
