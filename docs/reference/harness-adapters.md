@@ -99,8 +99,7 @@ display-surface matrix. This split is what makes it possible to ask honestly abo
 | Hermes | `install.sh`, then `plastic install --hermes` | none | none | none | no | no |
 
 1. Plastic installs through `install.sh` for every harness above (owner ruling of 2026-10-03,
-   which supersedes the npm-only ruling of 2026-08-08). npm is frozen at the stable release
-   2.0.3. See [INSTALL.md](../../INSTALL.md).
+   which supersedes the npm-only ruling of 2026-08-08). See [INSTALL.md](../../INSTALL.md).
 2. Hermes copies skills and agent files and wires nothing else. It is a packaging target,
    not a working adapter.
 3. Codex receives its skill text with paths and command prefixes rewritten at install time

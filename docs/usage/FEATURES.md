@@ -63,4 +63,4 @@ the usage line without building the command. An unknown command prints the close
 ## Starts without Node
 
 `bin/plastic` is a Ruby script. It uses the Ruby standard library only and loads with
-RubyGems off. npm remains one way to install it.
+RubyGems off. `install.sh` installs it from a GitHub release.

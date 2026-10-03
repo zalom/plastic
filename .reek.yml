@@ -1302,7 +1302,6 @@ detectors:
     - InstallerCore#report_removed_statusline
     - InstallerCore#semver_compare
     - ReleaseGuard#self.check
-    - ReleaseGuard#self.dist_tag
     - ExecWorktree#blank?
     - ExecWorktree#run
     - Insights#self.with_entry

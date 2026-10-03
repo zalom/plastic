@@ -99,7 +99,7 @@ checks each part of the installation:
 The check changes nothing. For each broken part it prints a `repair:` line with the command
 that fixes it, and it exits 1. Run the repairs, then run `plastic version` again.
 
-When no release is installed, as when Plastic runs from source or from npm, the `installation`
+When no release is installed, as when Plastic runs from source or from an npm copy, the `installation`
 row says so. Only Ruby is checked, and the check does not report the installation as whole.
 
 ## Update
@@ -158,9 +158,12 @@ Plastic did not link stays, and the command says so.
 
 ## Move from npm
 
-npm is frozen at the stable release 2.0.3. That release stays installable with
-`npx -y @zalom/plastic install --claude`. Nothing newer is published to npm, so every later
-release installs through `install.sh`.
+Plastic retired npm on 2026-10-03. The stable release 2.0.3 stays on npm and still installs
+with `npx -y @zalom/plastic install --claude`. Nothing newer goes to npm. Every later release
+is a GitHub release that `install.sh` installs.
+
+The `plastic update` of 2.0.3 reads npm, so it finds nothing newer and stays on 2.0.3. Run
+`install.sh` once to move. After that, `plastic update` reads the GitHub releases.
 
 To move an npm installation, run `install.sh` once:
 

@@ -106,7 +106,7 @@ if [ -n "$local_release" ]; then
   [ -n "$version" ] || version=$(manifest_version)
 else
   [ -n "$version" ] || version=$(newest_version)
-  [ -n "$version" ] || fail "no $channel release carries $files. Choose another channel, such as PLASTIC_CHANNEL=alpha, or install with npm."
+  [ -n "$version" ] || fail "no $channel release carries $files. Choose another channel, such as PLASTIC_CHANNEL=alpha."
   for name in $files; do
     fetch "$download/v$version/$name" "$tmp/$name" || fail "could not download $name of v$version"
   done

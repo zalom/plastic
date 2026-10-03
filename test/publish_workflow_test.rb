@@ -5,8 +5,9 @@ require "minitest/autorun"
 require "yaml"
 
 # PublishWorkflowTest (intent 347, S1): pins the shape of
-# .github/workflows/publish.yml, the trusted-publishing (OIDC) workflow that
-# replaces a laptop-held npm token with a short-lived, per-run credential.
+# .github/workflows/publish.yml, the workflow that makes the tag and the
+# GitHub release install.sh downloads. Since the npm retirement of
+# 2026-10-03 it talks to no package registry.
 #
 # Psych resolves the bare YAML key `on` to boolean `true` under YAML 1.1
 # resolution, so the trigger map lives at parsed[true], not parsed["on"].
@@ -24,12 +25,12 @@ class PublishWorkflowTest < Minitest::Test
     doc["on"] || doc[true] || {}
   end
 
-  def publish_job
-    parsed["jobs"]["publish"]
+  def release_job
+    parsed["jobs"]["release"]
   end
 
   def steps
-    publish_job["steps"]
+    release_job["steps"]
   end
 
   def step_using(uses_prefix)
@@ -44,8 +45,12 @@ class PublishWorkflowTest < Minitest::Test
     steps.find { |s| s["id"] == "guard" }
   end
 
-  def publish_step
-    step_named("Publish to npm")
+  def build_step
+    step_named("Build the release files")
+  end
+
+  def release_step
+    step_named("Create the tag and the GitHub release")
   end
 
   def has_pull_request?(trigger_map)
@@ -53,7 +58,7 @@ class PublishWorkflowTest < Minitest::Test
   end
 
   def test_workflow_lives_at_the_registered_path
-    assert File.file?(PATH), "expected .github/workflows/publish.yml to exist; npm keys the trusted publisher on this exact filename"
+    assert File.file?(PATH), "expected .github/workflows/publish.yml to exist; the release history and the branch rules name this exact filename"
   end
 
   def test_workflow_parses_as_yaml
@@ -78,7 +83,7 @@ class PublishWorkflowTest < Minitest::Test
   end
 
   def test_has_no_pull_request_trigger
-    refute has_pull_request?(triggers), "a pull_request trigger would let a fork PR obtain an id-token"
+    refute has_pull_request?(triggers), "a pull_request trigger would let a fork PR run a job that can write the repository"
   end
 
   def test_pull_request_detection_catches_a_real_trigger
@@ -87,8 +92,8 @@ class PublishWorkflowTest < Minitest::Test
     assert has_pull_request?(triggers(fixture)), "the predicate must report a real pull_request trigger, or the row above proves nothing"
   end
 
-  def test_publish_job_requests_an_id_token
-    assert_equal({ "contents" => "write", "id-token" => "write" }, publish_job["permissions"])
+  def test_release_job_writes_contents_and_asks_for_no_id_token
+    assert_equal({ "contents" => "write" }, release_job["permissions"])
   end
 
   def test_workflow_permissions_default_to_read
@@ -96,36 +101,31 @@ class PublishWorkflowTest < Minitest::Test
   end
 
   def test_runs_on_a_github_hosted_runner
-    assert_equal "ubuntu-latest", publish_job["runs-on"]
+    assert_equal "ubuntu-latest", release_job["runs-on"]
   end
 
   def test_sets_up_ruby
     refute_nil step_using("ruby/setup-ruby@v1"), "expected a ruby/setup-ruby@v1 step"
   end
 
-  def test_sets_up_node_with_the_npm_registry
-    step = step_using("actions/setup-node@v7")
-
-    refute_nil step, "expected an actions/setup-node@v7 step"
-    assert_equal "https://registry.npmjs.org", step["with"]["registry-url"]
+  def test_sets_up_no_node
+    assert_nil step_using("actions/setup-node"), "the release needs no Node and no package registry"
   end
 
-  def test_installs_a_current_npm
-    assert steps.any? { |s| s["run"].to_s.include?("npm install -g npm@latest") },
-      "expected a step that installs a current npm before the guard runs"
+  def test_no_step_talks_to_npm
+    refute_match(/\bnpm\b|npmjs|registry-url/, File.read(PATH))
+    assert_nil release_job["environment"], "the npm environment went with the npm publish"
   end
 
-  def test_guard_step_passes_the_npm_version
+  def test_guard_step_reads_only_the_branch
     refute_nil guard_step, "expected a step with id: guard"
-    assert_includes guard_step["run"], '--npm-version "$(npm --version)"'
+    assert_equal 'ruby scripts/release-check --branch "$BRANCH" --github-output "$GITHUB_OUTPUT"', guard_step["run"].strip
   end
 
-  def test_guard_runs_before_the_publish
-    guard_index = steps.index(guard_step)
-    publish_index = steps.index(publish_step)
-
-    refute_nil publish_index, "expected a step named 'Publish to npm'"
-    assert_operator guard_index, :<, publish_index, "the guard must run before the publish step"
+  def test_guard_runs_before_the_build_and_the_build_before_the_release
+    refute_nil build_step, "expected a step named 'Build the release files'"
+    assert_operator steps.index(guard_step), :<, steps.index(build_step)
+    assert_operator steps.index(build_step), :<, steps.index(release_step)
   end
 
   def test_the_suite_runs_before_the_guard
@@ -139,15 +139,15 @@ class PublishWorkflowTest < Minitest::Test
   # straight into the run: string, so an untrusted value cannot land in a
   # shell context even though nothing escalates today (pushing a v* tag or
   # dispatching the workflow both already need write access; the job still
-  # holds id-token: write, so this is belt-and-suspenders) (review fix 4).
+  # holds contents: write, so this is belt-and-suspenders) (review fix 4).
   def test_guard_reads_the_pushed_branch_through_env
     assert_equal "${{ github.ref_name }}", guard_step["env"]["BRANCH"]
     assert_includes guard_step["run"], '--branch "$BRANCH"'
   end
 
   def test_publish_waits_for_an_unreleased_version
-    assert_equal "unreleased", publish_job["needs"]
-    assert_equal "needs.unreleased.outputs.tag != ''", publish_job["if"]
+    assert_equal "unreleased", release_job["needs"]
+    assert_equal "needs.unreleased.outputs.tag != ''", release_job["if"]
   end
 
   def test_an_existing_tag_leaves_the_tag_output_empty
@@ -156,62 +156,23 @@ class PublishWorkflowTest < Minitest::Test
     assert_includes run, 'git ls-remote --exit-code --tags origin "refs/tags/$tag"'
   end
 
-  def test_the_release_carries_the_archive_at_the_pushed_commit
-    run = step_named("Create the tag and the GitHub release")["run"]
-
-    assert_includes run, 'gh release create "$TAG" plastic.tgz plastic.tgz.sha256 plastic.manifest.json --target "$GITHUB_SHA"'
+  def test_the_release_carries_the_three_install_files_at_the_pushed_commit
+    assert_includes release_step["run"],
+      'gh release create "$TAG" release/plastic.tgz release/plastic.tgz.sha256 release/plastic.manifest.json --target "$GITHUB_SHA"'
   end
 
-  def test_the_archive_carries_its_version_and_checksum
-    run = step_named("Build the archive and manifest")["run"]
-
-    assert_operator run.index('printf "%s\n" "$VERSION" > VERSION'), :<, run.index("npm pack")
-    assert_includes run, "sha256sum plastic.tgz > plastic.tgz.sha256"
+  def test_the_build_uses_the_builder_the_tests_and_the_install_job_use
+    assert_equal 'ruby scripts/build-release --version "$VERSION" --directory release', build_step["run"].strip
+    assert_equal "${{ steps.guard.outputs.version }}", build_step["env"]["VERSION"]
   end
 
-  def test_builds_the_archive_and_manifest_together
-    run = step_named("Build the archive and manifest")["run"]
-
-    assert_includes run, "npm pack"
-    assert_includes run, "scripts/build-release-manifest"
+  def test_the_release_kind_is_exactly_the_guard_channel
+    assert_equal "${{ steps.guard.outputs.channel == 'latest' }}", release_step["env"]["STABLE"]
+    refute_match(/\b(alpha|beta)\b|\${{/, release_step["run"], "the release run: line reads the channel only through STABLE")
   end
 
-  def test_the_release_is_made_before_the_npm_publish
-    release_index = steps.index(step_named("Create the tag and the GitHub release"))
-
-    assert_operator release_index, :<, steps.index(publish_step)
-  end
-
-  def test_npm_publishes_the_same_archive_the_release_carries
-    assert_includes publish_step["run"], "npm publish plastic.tgz"
-  end
-
-  def test_publish_passes_provenance
-    assert_includes publish_step["run"], "--provenance"
-  end
-
-  def test_publish_passes_public_access
-    assert_includes publish_step["run"], "--access public"
-  end
-
-  def test_publish_tag_is_exactly_the_guard_output
-    run_line = publish_step["run"]
-
-    assert_includes run_line, '--tag "${{ steps.guard.outputs.dist_tag }}"'
-    refute_match(/\b(alpha|beta|latest)\b/, run_line,
-      "the publish run: line must carry no literal channel name; ubuntu-latest and npm@latest legitimately appear elsewhere in the file")
-  end
-
-  def test_npm_publishes_only_from_main
-    assert_equal "github.ref_name == 'main'", publish_step["if"],
-      "npm publication is frozen on alpha and beta; only main may run the npm publish step"
-  end
-
-  def test_alpha_and_beta_still_make_the_github_release
-    release = step_named("Create the tag and the GitHub release")
-
-    assert_nil release["if"], "the GitHub release with the archive and manifest stays on every channel"
-    assert_nil step_named("Build the archive and manifest")["if"]
+  def test_every_channel_makes_the_github_release
+    assert_empty steps.filter_map { |step| step["name"] if step["if"] }, "the build and the release run on alpha, beta and main alike"
   end
 
   def test_publishes_are_serialized

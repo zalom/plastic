@@ -1,68 +1,13 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-require "digest"
 require "fileutils"
 require "json"
 require "open3"
-require "rubygems/package"
 require "tmpdir"
-require "zlib"
-require_relative "../scripts/lib/installer_release"
+require_relative "../scripts/lib/release_build"
 
 ROOT = File.expand_path("..", __dir__)
-
-# One release built from this checkout the way the publish job lays it out:
-# plastic.tgz with the package files under package/, its checksum, and the
-# manifest. Nothing is downloaded.
-class ReleaseBuild
-  EXTRA = %w[package.json README.md LICENSE].freeze
-
-  def initialize(version, directory)
-    @version = version
-    @directory = directory
-  end
-
-  def call
-    FileUtils.mkdir_p(directory)
-    write_archive
-    File.write("#{archive}.sha256", "#{Digest::SHA256.file(archive).hexdigest}  plastic.tgz\n")
-    InstallerRelease::Manifest.write(File.join(directory, "plastic.manifest.json"), archive:, release:)
-    directory
-  end
-
-  private
-
-  attr_reader :version, :directory
-
-  def archive = File.join(directory, "plastic.tgz")
-
-  def release = InstallerRelease::Manifest.identity(version).merge("platform" => "universal", "architecture" => "universal")
-
-  def write_archive
-    Zlib::GzipWriter.open(archive) do |gzip|
-      Gem::Package::TarWriter.new(gzip) do |tar|
-        package_files.each { |name| add(tar, name, File.binread(File.join(ROOT, name)), File.stat(File.join(ROOT, name)).mode & 0o777) }
-        add(tar, "VERSION", "#{version}\n", 0o644)
-      end
-    end
-  end
-
-  def add(tar, name, content, mode)
-    tar.add_file_simple("package/#{name}", mode, content.bytesize) { |io| io.write(content) }
-  end
-
-  def package_files
-    listed = JSON.parse(File.read(File.join(ROOT, "package.json"))).fetch("files") - ["VERSION"]
-    (listed.flat_map { |entry| expand(entry) } + EXTRA).uniq.sort
-  end
-
-  def expand(entry)
-    return [entry] unless entry.end_with?("/")
-
-    Dir.glob("#{entry}**/*", File::FNM_DOTMATCH, base: ROOT).select { |name| File.file?(File.join(ROOT, name)) }
-  end
-end
 
 # Installs Plastic under an empty home from two releases built out of this
 # checkout, then updates, rolls back and uninstalls it. A step fails when it
@@ -150,7 +95,7 @@ class FreshInstallCheck
 
   def share = File.join(home, ".local", "share", "plastic")
 
-  def build_releases = [first, second].each { |version| ReleaseBuild.new(version, release(version)).call }
+  def build_releases = [first, second].each { |version| ReleaseBuild.call(version:, directory: release(version), root: ROOT) }
 end
 
 Dir.mktmpdir("plastic-fresh-install") do |work|

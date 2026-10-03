@@ -1,0 +1,18 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "optparse"
+
+require_relative "lib/release_build"
+
+options = { root: File.expand_path("..", __dir__) }
+OptionParser.new do |parser|
+  parser.on("--version VERSION") { |value| options[:version] = value }
+  parser.on("--directory PATH") { |value| options[:directory] = value }
+  parser.on("--root PATH") { |value| options[:root] = value }
+end.parse!
+
+missing = %i[version directory].reject { |key| options[key] }
+abort "missing required options: #{missing.map { |key| "--#{key}" }.join(", ")}" unless missing.empty?
+
+ReleaseBuild.call(**options)

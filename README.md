@@ -8,11 +8,9 @@
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/@zalom/plastic"><img src="https://img.shields.io/npm/v/@zalom/plastic" alt="npm version"></a>
-  <a href="https://www.npmjs.com/package/@zalom/plastic"><img src="https://img.shields.io/npm/dm/@zalom/plastic" alt="npm downloads"></a>
   <a href="https://github.com/zalom/plastic/actions/workflows/test.yml"><img src="https://github.com/zalom/plastic/actions/workflows/test.yml/badge.svg" alt="CI"></a>
   <a href="https://github.com/zalom/plastic/releases"><img src="https://img.shields.io/github/v/release/zalom/plastic" alt="Release"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/npm/l/@zalom/plastic" alt="License: MIT"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/zalom/plastic" alt="License: MIT"></a>
 </p>
 
 <p align="center">
@@ -117,10 +115,9 @@ nothing. When a part is broken, it prints the command that repairs it.
 
 ### Move from npm
 
-npm is frozen at the stable release 2.0.3, which stays installable. Nothing newer is published
-there. To move an npm installation to the shell launcher, run `install.sh` once. It points
-the hooks at the new launcher and keeps your stores and settings. See
-[INSTALL.md](INSTALL.md#move-from-npm) for a launcher link you made by hand.
+To move an npm installation to the shell launcher, run `install.sh` once. It points the hooks
+at the new launcher and keeps your stores and settings. See
+[INSTALL.md](INSTALL.md#move-from-npm) for the details.
 
 [INSTALL.md](INSTALL.md) covers update, rollback, uninstall and the supported platforms.
 
@@ -401,7 +398,7 @@ Plastic 2.0 moves from prose skills to one command with direct results.
 - **Backup and migrate.** One archive command, and a store move that runs behind a full copy of the home.
 - **Two advisors, medium effort by default.** Summon the Primary Advisor or the Secondary Advisor on purpose.
 - **Codex CLI as a second agent.** The same install, with OpenAI model ids for each role.
-- **Releases from branches.** A push to `alpha`, `beta` or `main` creates a GitHub release that `install.sh` reads. npm is frozen at the stable release 2.0.3.
+- **Releases from branches.** A push to `alpha`, `beta` or `main` creates a GitHub release that `install.sh` reads.
 
 The [changelog](CHANGELOG.md) holds one line for each release.
 

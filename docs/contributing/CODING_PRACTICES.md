@@ -68,10 +68,10 @@ Each long-lived branch has one role.
 - **`alpha` is for development.** Feature and stage pull requests stack on `alpha`, and CI
   runs the suite on each one.
 - **`beta` is for local testing.** It is reset from `alpha` when a whole feature is merged
-  there, and it never takes a direct commit. It publishes under the `beta` npm tag, on a
+  there, and it never takes a direct commit. It releases on the `beta` channel, on a
   version that ends in `-beta.N`.
-- **`main` is for everyday use.** It publishes under the `latest` npm tag, on a version with
+- **`main` is for everyday use.** It releases on the `latest` channel, on a version with
   no suffix.
 
 A fix needed today goes to `main` in its own pull request. Then `main` is merged into `alpha`.
-`scripts/release-check` checks that each branch publishes the right kind of version.
+`scripts/release-check` checks that each branch releases the right kind of version.

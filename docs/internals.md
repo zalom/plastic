@@ -251,7 +251,7 @@ that store's `INDEX.md` (`~/.plastic/stores/global/doctor-exclusions` for the gl
 `(intent_id, rule)` pairs. The format
 is `/etc/hosts`-shaped: one `rule_name id id id` line per rule, blank lines and `#` comments
 ignored, duplicate rule lines unioned. It is a plain-text config table, not a markdown document
-(no `.md` extension), and it never ships in the npm package: `scripts/lib/rule_catalog.rb`
+(no `.md` extension), and it never ships in the release archive: `scripts/lib/rule_catalog.rb`
 (`RuleCatalog::EXCLUDABLE_CHECKS`, one key in v1, `savepoint_operational`) is the vocabulary of
 doctor check names an exclusion file may name, and `scripts/lib/doctor_exclusions.rb`
 (`DoctorExclusions.load`/`.parse`/`.rules_for`) is the pure-parse-plus-thin-IO loader, never
@@ -1702,53 +1702,45 @@ across both node commands). On success it prints a parsable summary
 (`path=... sha=... tokens=... hop_tokens=... attempt=...`) and the exact `node-transition
 running` command to record, both of which intent 340's runner parses.
 
-## trusted publishing over OIDC (intent 347)
+## GitHub releases (intents 347, 376, 402)
 
-`@zalom/plastic` used to depend on a long-lived npm access token sitting in one maintainer's
-`~/.npmrc`. On 2026-09-08 that token had expired, the alpha.18 release stalled at the publish
-step, and the package reached the registry only the next morning after a manual `npm publish`
-from a detached checkout of the tag. `.github/workflows/publish.yml` closes that failure mode
-structurally: no npm token exists anywhere, on any machine or in any GitHub secret.
+`.github/workflows/publish.yml` makes every release. It talks to no package registry and holds
+no token beyond the job's own `contents: write`. Plastic retired npm on 2026-10-03: the stable
+release 2.0.3 stays on npm, and nothing newer goes there. `INSTALL.md` says how an npm copy
+moves to `install.sh`.
 
 **The trigger (intent 376).** A push to `alpha`, `beta` or `main` is the release. The workflow
 reads the version from `package.json`. When the tag for that version exists, it stops. Otherwise
-it runs the suite and the guard, packs one archive, creates the tag and the GitHub release
-with `plastic.tgz` attached. On `main` it also publishes that same archive to npm. To release,
-change the version in `package.json` and push the branch. `install.sh` at the repository root
-downloads the archive of the latest stable release, unpacks it under `~/.local/share/plastic` and links
-`~/.local/bin/plastic`.
-
-**The mechanism.** The publish job is granted `id-token: write`. The npm CLI detects the OIDC environment, fetches a short-lived
-token scoped to this repository and this exact workflow filename, and presents it to the
-registry instead of an `_authToken`. The registry compares the token's claims against the
-trusted publisher registered on npmjs.com and publishes only on an exact match. The trust is
-pinned to the workflow file's name, not to a person: anyone who can push to a channel branch can
-publish, and renaming `publish.yml` silently breaks every future release, which is why a test
-pins the path.
+it runs the suite and the guard, builds the release files, and creates the tag and the GitHub
+release with them attached. To release, change the version in `package.json` and push the
+branch. `install.sh` at the repository root downloads the archive of the release its channel
+names, unpacks it under `~/.local/share/plastic` and links `~/.local/bin/plastic`.
 
 **The guard.** `scripts/release-check`, a thin CLI over `scripts/lib/release_guard.rb`, runs
-before the publish step. It asserts that the pushed branch publishes the channel the version
-suffix names (`alpha`, `beta`, or `main` for a version with no suffix), that the three repo version files agree
-(`ReleaseGuard.check`, `scripts/lib/release_guard.rb`),
-and that the runner's npm meets the 11.5.1 floor OIDC requires, comparing version segments
-numerically so `11.10.0` does not lose to `11.5.1` as a string. It writes the derived dist-tag
-to `$GITHUB_OUTPUT` by appending, never truncating, so another step's output in the same file
+before the build. It asserts that the pushed branch releases the channel the version names
+(`alpha`, `beta`, or `main` for a version with no suffix), and that a stable version carries no
+pre-release suffix (`ReleaseGuard.check`). It writes the version, the channel and the tag to
+`$GITHUB_OUTPUT` by appending, never truncating, so another step's output in the same file
 survives.
 
-**One dist-tag rule, one implementation.** `ReleaseGuard.dist_tag(version)` returns `alpha` for
-an `-alpha` suffix, `beta` for `-beta`, `latest` for no suffix at all, and the raw suffix itself
-(never `latest`) for anything else. The workflow's `--tag` argument is always
-`${{ steps.guard.outputs.dist_tag }}`, never a literal, because the alternative - a second,
-untested implementation of the same rule in shell - is exactly the kind of drift that would put
-an alpha on `latest` and pull every stable user onto it at their next `plastic update`.
+**One channel rule, one implementation.** `InstallerRelease::Manifest.identity(version)` returns
+`alpha` for an `-alpha` suffix, `beta` for `-beta`, and `latest` for any other version. The
+guard, the release manifest and `install.sh` all read the channel through it. The release step
+marks a `latest` channel as the Latest release and any other channel as a pre-release, and it
+reads the channel only from the guard's output, never from a literal. A second rule in shell is
+the drift that would put an alpha on Latest and pull every stable user onto it.
 
-**The suite runs in the publish job.** The publish job runs `ruby bin/test` before the guard,
-so a red suite stops the release before any tag, GitHub release, or npm publish.
+**One builder.** `scripts/build-release`, a CLI over `scripts/lib/release_build.rb`, writes
+`plastic.tgz`, `plastic.tgz.sha256` and `plastic.manifest.json`. The archive holds under
+`package/` the files `package.json` lists in `files`, plus `package.json`, `README.md`,
+`LICENSE` and a `VERSION` file. The publish workflow, the packaged executable check in
+`.github/workflows/test.yml`, `tools/check-fresh-install` and the `install.sh` tests all build
+through it, so the archive CI checks is the archive a release carries.
+
+**The suite runs in the release job.** The release job runs `ruby bin/test` before the guard,
+so a red suite stops the release before any tag or GitHub release.
 `test/publish_workflow_test.rb` pins that order. `.github/workflows/test.yml` also runs the suite
 on pushes and pull requests to `main` and `alpha`.
-
-**The `npm` environment.** The publish job runs in the GitHub environment named `npm`, and its
-URL points at the package page on npmjs.com.
 
 ## CLI adapter contract
 

@@ -1,11 +1,10 @@
 # frozen_string_literal: true
 
 require "minitest/autorun"
-require "digest"
 require "fileutils"
 require "open3"
 require "tmpdir"
-require_relative "../../scripts/lib/installer_release"
+require_relative "../../scripts/lib/release_build"
 
 # Runs install.sh against throwaway homes. Releases are built in a temp
 # directory with the repository's own installer code inside the archive. A
@@ -60,10 +59,7 @@ module InstallShHelper
   end
 
   def publish(directory, version)
-    archive = File.join(directory, "plastic.tgz")
-    identity = InstallerRelease::Manifest.identity(version).merge("platform" => "universal", "architecture" => "universal")
-    InstallerRelease::Manifest.write(File.join(directory, "plastic.manifest.json"), archive: archive, release: identity)
-    File.write(File.join(directory, "plastic.tgz.sha256"), "#{Digest::SHA256.file(archive).hexdigest}  plastic.tgz\n")
+    ReleaseBuild.seal(version, directory)
     directory
   end
 

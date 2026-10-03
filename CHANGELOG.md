@@ -5,6 +5,9 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+- Plastic retires npm. A push to `alpha`, `beta` or `main` makes only the tag and the GitHub release,
+  built by `scripts/build-release`, the same builder CI and the fresh install check use. `package.json`
+  is private. The stable release 2.0.3 stays on npm.
 - Stage 6 adds deterministic SQLite passage retrieval, immutable document fetches, selected-store
   search, context manifests, and architecture prompts that tell the agent to map the code with its own tool.
   `search`, `document get`, `document batch`, `intent discover`, and `intent context` are routines, and the

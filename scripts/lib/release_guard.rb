@@ -30,23 +30,9 @@ module ReleaseGuard
     Result.new(ok: !version.nil? && !(stable && suffix), version: version, prerelease_suffix: suffix)
   end
 
-  # Derives the npm dist-tag from a version string: "alpha" when it carries
-  # an -alpha pre-release suffix, "beta" for -beta, "latest" for no
-  # pre-release suffix at all. Any other suffix returns the suffix itself,
-  # never "latest" - an unrecognized shape (a "-rc.1", say) must not resolve
-  # to the stable channel. Pure function, no ENV reads, shared by
-  # scripts/release-check and the test suite so the channel rule has exactly
-  # one implementation (intent 347).
+  # The channel each release branch makes. scripts/release-check compares it
+  # with the channel InstallerRelease::Manifest.identity reads from the version.
   CHANNELS = {"alpha" => "alpha", "beta" => "beta", "main" => "latest"}.freeze
-
-  def self.dist_tag(version)
-    suffix = version[/-(.+)\z/, 1]
-    return "latest" if suffix.nil?
-    return "alpha" if version.include?("-alpha")
-    return "beta" if version.include?("-beta")
-
-    suffix
-  end
 
   def self.read_version(path)
     JSON.parse(File.read(path))["version"]
