@@ -11,11 +11,8 @@ class EvidenceTextTest < Plastic::TestCase
   end
 
   def test_preserves_boundaries_and_signed_unicode_when_extracting_markup_and_rtf
-    assert_equal "first second", text.extract("page.html", "<p>first</p><p>second</p>")
-    assert_equal "first second", text.extract("diagram.svg", "<text>first</text><text>second</text>")
-    assert_equal "\uFF37", text.extract("note.rtf", "{\\rtf1\\ansi\\u-201?}")
-    assert_equal "😀", text.extract("note.rtf", "{\\rtf1\\ansi\\u-10179?\\u-8704?}")
-    assert_equal "žć", text.extract("note.rtf", "{\\rtf1\\ansi\\u382?\\u263?}")
+    assert_markup_boundaries
+    assert_rtf_unicode_boundaries
   end
 
   def test_classifies_supported_text_and_reports_unsupported_or_invalid_bytes
@@ -69,5 +66,16 @@ class EvidenceTextTest < Plastic::TestCase
     assert passages.all? { |passage| passage.fetch(:body).length <= 1600 }
     assert_equal [1, 3], passages.map { |passage| passage.fetch(:line_start) }
     assert_equal 200, passages.first.fetch(:body)[-200..].length
+  end
+
+  def assert_markup_boundaries
+    assert_equal "first second", text.extract("page.html", "<p>first</p><p>second</p>")
+    assert_equal "first second", text.extract("diagram.svg", "<text>first</text><text>second</text>")
+  end
+
+  def assert_rtf_unicode_boundaries
+    assert_equal "\uFF37", text.extract("note.rtf", "{\\rtf1\\ansi\\u-201?}")
+    assert_equal "😀", text.extract("note.rtf", "{\\rtf1\\ansi\\u-10179?\\u-8704?}")
+    assert_equal "žć", text.extract("note.rtf", "{\\rtf1\\ansi\\u382?\\u263?}")
   end
 end
