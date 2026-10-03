@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Plastic
-  module Commands
+  module Graph
     # Produces a bounded source-text excerpt around a literal search match.
     class SearchExcerpt
       LIMIT = 320

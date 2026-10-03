@@ -1,7 +1,11 @@
 # frozen_string_literal: true
 
+require_relative "../retrieval_graph"
+require_relative "../retrieval_source"
+require_relative "../schema"
+
 module Plastic
-  module Commands
+  module Graph
     # Opens a selected store only after confirming retrieval data is available.
     class SearchStore
       def initialize(plastic_home, slug)
@@ -21,11 +25,11 @@ module Plastic
       def ensure_maintained
         return if missing_files.empty?
 
-        raise Graph::RetrievalGraph::MaintenanceRequired, "retrieval maintenance is required before source #{slug} can be read"
+        raise RetrievalGraph::MaintenanceRequired, "retrieval maintenance is required before source #{slug} can be read"
       end
 
       def missing_files
-        Graph::Schema.store.map { |key| Graph::Schema.file(key) }.reject { |file| File.file?(File.join(store_root, file)) }
+        Schema.store.map { |key| Schema.file(key) }.reject { |file| File.file?(File.join(store_root, file)) }
       end
 
       def store_root = File.join(plastic_home, "stores", slug)

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative "../test_helper"
-require_relative "../../scripts/lib/plastic/external_agent_workflow"
+require_relative "../../test_helper"
+require_relative "../../../scripts/lib/plastic/workflows/external_agent_workflow"
 
 class ExternalAgentWorkflowTest < Plastic::TestCase
   def test_defines_a_kernel_agent_handoff_and_quotes_the_external_commands

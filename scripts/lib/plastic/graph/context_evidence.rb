@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Plastic
-  module Commands
+  module Graph
     # One saved reference of a context, compared with the source state it was
     # saved from.
     class ContextEvidence

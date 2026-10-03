@@ -1,18 +1,15 @@
 # frozen_string_literal: true
 
-require_relative "document_get"
+require_relative "../routine"
 
 module Plastic
   module Commands
     # Fetches requested qualified documents in the exact request order.
-    class DocumentBatch < DocumentGet
+    class DocumentBatch < Routine
       argument :references, label: "REF", text: "one or more plastic://STORE/INTENT/PATH?revision=SHA256 references", rest: true
       reads :knowledge
 
-      def call
-        output.row("documents", parsed.fetch(:references).split.map { |reference| fetch(reference) })
-        output.next_step("none", because: "the documents were read")
-      end
+      workflow :code_batch_documents, next: :noop
     end
   end
 end

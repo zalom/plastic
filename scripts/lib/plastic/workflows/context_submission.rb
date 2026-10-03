@@ -1,7 +1,11 @@
 # frozen_string_literal: true
 
+require "json"
+require_relative "../cli/command/failure"
+require_relative "../cli/command/usage"
+
 module Plastic
-  module Commands
+  module Workflows
     # Validates the agent-selected context before the owning store writes it.
     class ContextSubmission
       CATEGORY_FIELDS = %w[evidence facts interpretations gaps rulings].freeze

@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
 require "uri"
-require_relative "../cli/command"
+require_relative "../cli/command/usage"
 
 module Plastic
-  module Commands
+  module Workflows
     # A qualified document reference, plastic://STORE/INTENT/PATH with an optional revision.
     class DocumentReference
       SHAPE = /\Aplastic:\/\/[^\/]+\/[^\/]+\/[^?]*(?:\?revision=[0-9a-f]{64})?\z/

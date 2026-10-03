@@ -5,13 +5,13 @@ require_relative "search_results/result"
 require_relative "search_results/store"
 
 module Plastic
-  module Commands
+  module Graph
     # Reads per-store matches and merges them with reciprocal-rank fusion.
     class SearchResults
       RRF_OFFSET = 60
 
-      def initialize(scope, terms, excerpt:)
-        @scope = scope
+      def initialize(plastic_home, terms, excerpt:)
+        @plastic_home = plastic_home
         @terms = terms
         @excerpt = excerpt
         @rrf_offset = RRF_OFFSET
@@ -23,10 +23,10 @@ module Plastic
 
       private
 
-      attr_reader :excerpt, :rrf_offset, :scope, :terms
+      attr_reader :excerpt, :plastic_home, :rrf_offset, :terms
 
       def store_rows(slug, limit)
-        retrieval = SearchStore.new(scope.plastic_home, slug).retrieval
+        retrieval = SearchStore.new(plastic_home, slug).retrieval
         retrieval.search_current(terms, limit:).each_with_index.map do |row, index|
           match = SearchMatch.new(retrieval, slug, row, index + 1, rrf_offset)
           SearchResult.new(match, excerpt:).to_h

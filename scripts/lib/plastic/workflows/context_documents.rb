@@ -1,7 +1,9 @@
 # frozen_string_literal: true
 
+require "json"
+
 module Plastic
-  module Commands
+  module Workflows
     # Reads the current context and discovery records from their owning store.
     class ContextDocuments
       LOCATIONS = {
@@ -9,10 +11,8 @@ module Plastic
         discovery: ["retrieval_discoveries", "discovery"]
       }.freeze
 
-      def initialize(graphs:, scope:, intent_id:)
-        @graphs = graphs
-        @scope = scope
-        @intent_id = intent_id
+      def initialize(context)
+        @context = context
       end
 
       def read(kind)
@@ -25,13 +25,13 @@ module Plastic
 
       private
 
-      attr_reader :graphs, :scope, :intent_id
+      attr_reader :context
 
-      def knowledge = graphs.databases.fetch(:knowledge)
+      def knowledge = context.database(:knowledge)
 
-      def parameters = { intent_id:, origin: graphs.retrieval.origin_id }
+      def parameters = { intent_id: context.intent_id, origin: context.retrieval.origin_id }
 
-      def path(directory) = File.join(scope.root, directory, "#{intent_id}.json")
+      def path(directory) = File.join(context.scope.root, directory, "#{context.intent_id}.json")
     end
   end
 end

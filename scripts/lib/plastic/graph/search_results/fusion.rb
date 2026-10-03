@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Plastic
-  module Commands
+  module Graph
     # Sorts passages by reciprocal-rank score, then by stable reference.
     class SearchFusion
       def initialize(rows, limit)

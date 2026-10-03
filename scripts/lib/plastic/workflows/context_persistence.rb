@@ -1,13 +1,15 @@
 # frozen_string_literal: true
 
+require "fileutils"
+require "json"
+require "tempfile"
+
 module Plastic
-  module Commands
+  module Workflows
     # Writes the context only to the owning store.
     class ContextPersistence
-      def initialize(graphs:, scope:, intent_id:)
-        @graphs = graphs
-        @scope = scope
-        @intent_id = intent_id
+      def initialize(context)
+        @context = context
       end
 
       def persist(document)
@@ -19,12 +21,12 @@ module Plastic
 
       private
 
-      attr_reader :graphs, :scope, :intent_id
+      attr_reader :context
 
       def persist_database(body)
         updated_at = Plastic.now
-        graphs.databases.fetch(:knowledge).transaction do |batch|
-          batch.put(:retrieval_contexts, { intent_id:, data: body, updated_at: })
+        context.database(:knowledge).transaction do |batch|
+          batch.put(:retrieval_contexts, { intent_id: context.intent_id, data: body, updated_at: })
         end
       end
 
@@ -40,7 +42,7 @@ module Plastic
 
       def context_directory = File.dirname(context_path)
 
-      def context_path = File.join(scope.root, "context", "#{intent_id}.json")
+      def context_path = File.join(context.scope.root, "context", "#{context.intent_id}.json")
     end
   end
 end

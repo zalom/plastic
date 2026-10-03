@@ -3,7 +3,7 @@
 require "forwardable"
 
 module Plastic
-  module Commands
+  module Graph
     # Holds local search information before it becomes a federated result.
     SearchMatch = Data.define(:retrieval, :slug, :row, :rank, :rrf_offset)
 

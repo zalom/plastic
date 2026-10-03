@@ -31,7 +31,7 @@ module Plastic
       end
 
       def persist_file
-        path = File.join(@context.store_root, "discovery", "#{@context.intent_id}.json")
+        path = File.join(@context.scope.root, "discovery", "#{@context.intent_id}.json")
         directory = File.dirname(path)
         FileUtils.mkdir_p(directory)
         Tempfile.create(["discovery", ".json"], directory) { |file| replace(file.path, path) }

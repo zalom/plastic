@@ -41,6 +41,13 @@ class DocumentGetTest < Plastic::TestCase
     assert_equal 2, malformed.code
   end
 
+  def test_batch_fails_on_a_missing_reference_with_exit_1
+    result = plastic("document", "batch", "plastic://global/1/missing.md", table: Plastic::CLI::TABLE)
+
+    assert_equal 1, result.code
+    assert_match(/document/, result.err)
+  end
+
   def test_reports_reference_and_passage_validation_as_structured_errors
     reference = write_document("global", "1", "long.md", "evidence " * 400)
 

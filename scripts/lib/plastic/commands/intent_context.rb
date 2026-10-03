@@ -1,48 +1,22 @@
 # frozen_string_literal: true
 
-require_relative "../cli/command"
-require_relative "../graph"
-require_relative "context_persistence"
-require_relative "context_freshness"
-require_relative "context_source"
-require_relative "context_submission"
-require_relative "context_documents"
-require_relative "context_exchange"
-require_relative "context_owner"
-require "fileutils"
-require "json"
-require "tempfile"
+require_relative "../routine"
 
 module Plastic
   module Commands
     # Persists the agent's selected evidence without judging its relevance.
-    class IntentContext < CLI::Command
+    class IntentContext < Routine
       argument :intent_id, label: "ID", text: "the owning intent"
       option :from, switch: "--from FILE", text: "JSON evidence selection with facts, interpretations, gaps and rulings"
       reads :knowledge
       writes :knowledge
 
-      def call
-        read_context
-      rescue Errno::ENOENT, JSON::ParserError => error
-        raise CLI::Command::Usage, error.message
+      workflow :code_check_context_owner do
+        on :submit, next: :code_submit_context
+        on :read, next: :code_read_context
       end
-
-      private
-
-      def read_context
-        owner.validate(intent_id)
-        output.row("context", exchange.call)
-        output.next_step("none", because: "the retrieval context was read")
-      rescue Graph::RetrievalGraph::MaintenanceRequired, Graph::RetrievalGraph::MissingReference, KeyError => error
-        raise CLI::Command::Failure, error.message
-      end
-
-      def intent_id = parsed.fetch(:intent_id)
-
-      def owner = (@owner ||= ContextOwner.new(scope))
-
-      def exchange = (@exchange ||= ContextExchange.new(graphs:, scope:, intent_id:, submission_path: parsed[:from]))
+      workflow :code_read_context, next: :noop
+      workflow :code_submit_context, next: :noop
     end
   end
 end

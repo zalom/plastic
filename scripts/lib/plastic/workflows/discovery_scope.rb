@@ -14,7 +14,7 @@ module Plastic
 
       def resolve
         selected = source_values
-        selected = [@context.scope_slug] if selected.empty?
+        selected = [@context.scope.slug] if selected.empty?
         validate(selected)
         selected
       end
@@ -32,7 +32,7 @@ module Plastic
       end
 
       def known_stores
-        Dir.glob(File.join(@context.plastic_home, "stores", "*")).filter_map do |path|
+        Dir.glob(File.join(@context.scope.plastic_home, "stores", "*")).filter_map do |path|
           File.basename(path) if File.directory?(path)
         end
       end
