@@ -14,9 +14,7 @@ class ReleaseManifestBuildTest < Minitest::Test
       archive = File.join(directory, "plastic.tgz")
       File.binwrite(archive, "archive bytes")
       output = File.join(directory, "plastic.manifest.json")
-      _stdout, stderr, status = Open3.capture3("ruby", SCRIPT, "--archive", archive, "--output", output,
-        "--version", "2.0.3", "--channel", "latest", "--platform", "darwin",
-        "--architecture", "arm64", chdir: ROOT)
+      _stdout, stderr, status = build(archive, output)
 
       assert_predicate status, :success?, stderr
       manifest = JSON.parse(File.read(output))
@@ -24,5 +22,12 @@ class ReleaseManifestBuildTest < Minitest::Test
       assert_equal "v2.0.3", manifest.dig("release", "tag")
       assert_equal "plastic.tgz", manifest.dig("archive", "name")
     end
+  end
+
+  private
+
+  def build(archive, output)
+    Open3.capture3("ruby", SCRIPT, "--archive", archive, "--output", output, "--version", "2.0.3",
+      "--channel", "latest", "--platform", "darwin", "--architecture", "arm64", chdir: ROOT)
   end
 end
