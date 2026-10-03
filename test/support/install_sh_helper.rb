@@ -73,8 +73,10 @@ module InstallShHelper
     File.chmod(0o755, File.join(package, "bin", "plastic"))
   end
 
+  BUNDLER_ENVIRONMENT = %w[RUBYOPT RUBYLIB BUNDLE_GEMFILE BUNDLE_BIN_PATH BUNDLER_SETUP BUNDLER_VERSION].to_h { |name| [name, nil] }.freeze
+
   def environment(extra = {})
-    { "HOME" => @home, "PATH" => [@fakebin, ENV.fetch("PATH")].join(File::PATH_SEPARATOR) }.merge(extra)
+    BUNDLER_ENVIRONMENT.merge("HOME" => @home, "PATH" => [@fakebin, ENV.fetch("PATH")].join(File::PATH_SEPARATOR)).merge(extra)
   end
 
   def install(*arguments, **extra)
