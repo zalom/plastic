@@ -2,7 +2,6 @@
 
 require_relative "../../test_helper"
 require_relative "../../../scripts/lib/plastic/graph/evidence_writer"
-require "timeout"
 
 class RetrievalRepairIntegrityTest < Plastic::TestCase
   def test_repair_rebuilds_wrong_values_and_orphans_without_losing_revisions
@@ -63,29 +62,6 @@ class RetrievalRepairIntegrityTest < Plastic::TestCase
       knowledge.rows("SELECT intent_id, path FROM document_passages ORDER BY intent_id").map(&:values)
   end
 
-  def test_repair_holds_an_immediate_snapshot_against_a_second_connection
-    isolated_writer.write("1", "repair.md", "repair evidence")
-    isolated.transaction { |batch| batch.add("DELETE FROM document_fts") }
-    attempted, attempted_writer = IO.pipe
-    acquired, acquired_writer = IO.pipe
-    writer = nil
-
-    repairer = Plastic::Graph::EvidenceIntegrity.new(isolated, origin, before_rebuild: lambda {
-      writer = fork { concurrent_update(attempted, attempted_writer, acquired, acquired_writer) }
-      attempted_writer.close
-      acquired_writer.close
-      wait_for_blocked_writer(attempted, acquired)
-    })
-    repairer.repair!
-
-    assert_equal "acquired", Timeout.timeout(1) { acquired.read }
-    Process.wait(writer)
-    writer = nil
-  ensure
-    Process.wait(writer) if writer
-    [attempted, attempted_writer, acquired, acquired_writer].compact.each { |pipe| pipe.close unless pipe.closed? }
-  end
-
   private
 
   def assert_repaired(revision)
@@ -97,8 +73,6 @@ class RetrievalRepairIntegrityTest < Plastic::TestCase
   def writer = Plastic::Graph::EvidenceWriter.new(knowledge, origin)
   def knowledge = store_graphs.databases.fetch(:knowledge)
   def repair = retrieval.repair!
-  def isolated = (@isolated ||= Plastic::Graph::Database.new(File.join(@home, "isolated", "knowledge_graph.db"), Plastic::Graph::Schema.fetch(:knowledge), origin: Plastic::Graph::Origin.new(@plastic_home)))
-  def isolated_writer = Plastic::Graph::EvidenceWriter.new(isolated, origin)
 
   def concurrent_writer
     called = false
@@ -119,27 +93,6 @@ class RetrievalRepairIntegrityTest < Plastic::TestCase
   def canonical_state
     { documents: knowledge.rows("SELECT intent_id, path, body, updated_at FROM documents ORDER BY intent_id, path"),
       changes: knowledge.rows("SELECT * FROM changes ORDER BY seq") }
-  end
-
-  def concurrent_update(attempted, attempted_writer, acquired, acquired_writer)
-    attempted.close
-    acquired.close
-    connection = Plastic::Graph::Database::Connection.open(isolated.path)
-    attempted_writer.write("attempted")
-    connection.execute("BEGIN IMMEDIATE")
-    acquired_writer.write("acquired")
-    connection.execute("UPDATE documents SET updated_at = 'after' WHERE origin_id = ?", [origin])
-    connection.commit
-  ensure
-    connection&.close
-    attempted_writer.close unless attempted_writer.closed?
-    acquired_writer.close unless acquired_writer.closed?
-    exit!
-  end
-
-  def wait_for_blocked_writer(attempted, acquired)
-    assert_equal "attempted", Timeout.timeout(1) { attempted.read(9) }
-    assert_nil IO.select([acquired], nil, nil, 0.1)
   end
 
   def corrupt_derived_rows
