@@ -95,6 +95,24 @@ class InstallerReleaseTest < Minitest::Test
     assert_equal "old", File.read(File.join(installer.active_path, "bin", "plastic")).strip
   end
 
+  def test_a_failed_active_pointer_switch_keeps_the_previous_pointer_and_the_candidate_retryable
+    home = File.join(@root, "home", ".plastic")
+    installer = failing_pointer_activation(home)
+    installer.activate!(staged_candidate("2.0.1"), version: "2.0.1")
+    installer.activate!(staged_candidate("2.0.2"), version: "2.0.2")
+    candidate = staged_candidate("2.0.3")
+    installer.fail_active = true
+
+    assert_raises(InstallerRelease::ActivationError) { installer.activate!(candidate, version: "2.0.3") }
+    assert_equal %w[2.0.2 2.0.1], [installer.active_version, installer.previous_version]
+    assert_path_exists candidate
+
+    installer.fail_active = false
+    installer.activate!(candidate, version: "2.0.3")
+
+    assert_equal %w[2.0.3 2.0.2], [installer.active_version, installer.previous_version]
+  end
+
   def test_activation_requires_candidate_staging_on_the_installation_filesystem
     home = File.join(@root, "home", ".plastic")
     installer = foreign_filesystem_activation(home)
@@ -126,6 +144,20 @@ class InstallerReleaseTest < Minitest::Test
     File.write(File.join(stage, "bin", "plastic"), (version == "2.0.2") ? "old\n" : "new\n")
     File.chmod(0o755, File.join(stage, "bin", "plastic"))
     stage
+  end
+
+  def failing_pointer_activation(home)
+    Class.new(InstallerRelease::Activation) do
+      attr_accessor :fail_active
+
+      private
+
+      def replace_pointer(path, version)
+        raise "injected active pointer failure" if fail_active && path == active_path
+
+        super
+      end
+    end.new(home: home)
   end
 
   def foreign_filesystem_activation(home)
