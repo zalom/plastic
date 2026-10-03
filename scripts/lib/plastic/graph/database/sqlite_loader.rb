@@ -29,7 +29,7 @@ module Plastic
           require "sqlite3"
           true
         rescue LoadError
-          $LOAD_PATH.delete(path) if path
+          $LOAD_PATH.delete(path)
           false
         end
 
@@ -62,7 +62,7 @@ module Plastic
 
         def self.compatible?(path)
           match = /sqlite3-#{Regexp.escape(VERSION)}(?:-([a-z0-9_-]+))?\z/.match(File.basename(File.dirname(path)))
-          match && compatible_platform?(match[2])
+          match && compatible_platform?(match[1])
         end
 
         def self.compatible_platform?(platform)

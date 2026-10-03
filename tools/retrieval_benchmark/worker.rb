@@ -16,10 +16,20 @@ module Plastic
 
       def run
         File.write(@ready, "ready")
-        sleep 0.005 until File.exist?(@start)
+        loop do
+          break if File.exist?(@start)
+
+          sleep 0.005
+        end
         started_at = Time.now.utc.iso8601(6)
         write_revisions
         puts JSON.generate("started_at" => started_at, "finished_at" => Time.now.utc.iso8601(6))
+      end
+
+      def self.run_entrypoint(arguments:, program_name:, file_name:)
+        return unless program_name == file_name
+
+        new(arguments.drop(1)).run
       end
 
       private
@@ -37,4 +47,4 @@ module Plastic
   end
 end
 
-Plastic::RetrievalBenchmark::Worker.new(ARGV.drop(1)).run if $PROGRAM_NAME == __FILE__
+Plastic::RetrievalBenchmark::Worker.run_entrypoint(arguments: ARGV, program_name: $PROGRAM_NAME, file_name: __FILE__)

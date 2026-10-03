@@ -88,6 +88,16 @@ class SqliteLoaderRuntimeTest < Minitest::Test
     end
   end
 
+  def test_rejects_a_sqlite_library_built_for_another_platform
+    Dir.mktmpdir("plastic-sqlite-loader") do |root|
+      incompatible = write_library(root, "sqlite3-2.9.6-impossible-platform")
+
+      assert_nil Loader.sqlite_load_path([root])
+    ensure
+      FileUtils.remove_entry(incompatible, true) if incompatible
+    end
+  end
+
   private
 
   def write_library(root, name)

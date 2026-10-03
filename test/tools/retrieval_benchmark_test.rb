@@ -56,6 +56,9 @@ class RetrievalBenchmarkTest < Minitest::Test
 
       execution = Thread.new { capture_io { Plastic::Graph::EvidenceWriter.stub(:new, writer) { worker.run } }.first }
       Timeout.timeout(1) { sleep 0.005 until File.exist?(ready) }
+      Timeout.timeout(1) { sleep 0.001 until execution.status == "sleep" }
+
+      assert_equal [true, []], [execution.alive?, writes]
       File.write(start, "start")
       output = execution.value
 
@@ -75,43 +78,23 @@ class RetrievalBenchmarkTest < Minitest::Test
       ready = File.join(directory, "ready")
       start = File.join(directory, "start")
       File.write(start, "start")
-      original_program_name = $PROGRAM_NAME
-      original_arguments = ARGV.dup
-      $PROGRAM_NAME = worker
-      ARGV.replace(["writer", File.join(directory, "home"), "0", ready, start, "42", "notes.md"])
+      output, error, status = Open3.capture3(RbConfig.ruby, worker, "writer", File.join(directory, "home"), "0", ready, start, "42", "notes.md")
 
-      output = capture_io { load worker }.first
-
-      assert_equal [true, %w[finished_at started_at]], [File.exist?(ready), JSON.parse(output).keys.sort]
-    ensure
-      $PROGRAM_NAME = original_program_name
-      ARGV.replace(original_arguments)
+      assert_equal [true, "", true, %w[finished_at started_at]], [File.exist?(ready), error, status.success?, JSON.parse(output).keys.sort]
     end
   end
 
   def test_worker_entrypoint_does_not_run_when_the_file_is_loaded_by_another_program
-    Dir.mktmpdir do |directory|
-      worker = File.expand_path("../../tools/retrieval_benchmark/worker.rb", __dir__)
-      ready = File.join(directory, "ready")
-      original_program_name = $PROGRAM_NAME
-      original_arguments = ARGV.dup
-      $PROGRAM_NAME = File.join(directory, "caller.rb")
-      ARGV.replace(["writer", File.join(directory, "home"), "1", ready, File.join(directory, "start"), "42", "notes.md"])
+    calls = []
+    runner = Object.new
+    runner.define_singleton_method(:run) { calls << :run }
+    arguments = %w[worker home 1 ready start 42 notes.md]
 
-      output = capture_io { load worker }.first
+    Plastic::RetrievalBenchmark::Worker.stub(:new, ->(passed) { calls << passed; runner }) do
+      assert_nil Plastic::RetrievalBenchmark::Worker.run_entrypoint(arguments:, program_name: "caller", file_name: "worker")
+      Plastic::RetrievalBenchmark::Worker.run_entrypoint(arguments:, program_name: "worker", file_name: "worker")
 
-      assert_equal [false, ""], [File.exist?(ready), output]
-
-      writes = []
-      writer = Object.new
-      writer.define_singleton_method(:write) { |intent_id, path, body| writes << [intent_id, path, body] }
-      File.write(File.join(directory, "start"), "start")
-      capture_io { Plastic::Graph::EvidenceWriter.stub(:new, writer) { Plastic::RetrievalBenchmark::Worker.new(ARGV.drop(1)).run } }
-
-      assert_equal [10, ["42", "notes.md", "concurrent writer revision 9"]], [writes.length, writes.last]
-    ensure
-      $PROGRAM_NAME = original_program_name
-      ARGV.replace(original_arguments)
+      assert_equal [arguments.drop(1), :run], calls
     end
   end
 

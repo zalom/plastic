@@ -92,18 +92,14 @@ class ArchitectureTest < Plastic::TestCase
   end
 
   def test_reports_no_enola_digest_when_the_executable_is_absent
-    Dir.mktmpdir do |directory|
-      original_path = ENV.fetch("PATH")
-      ENV["PATH"] = directory
+    original_path = ENV.fetch("PATH")
+    ENV["PATH"] = "/usr/bin:/bin"
 
-      identity = Plastic::Architecture::SourceState.new(@home).identity
-
-      assert_nil identity.binary_digest
-    ensure
-      ENV["PATH"] = original_path
-    end
+    refute File.exist?("/usr/bin/enola")
+    refute File.exist?("/bin/enola")
+    assert_nil Plastic::Architecture::SourceState.new(@home).identity.binary_digest
   ensure
-    ENV["PATH"] = original_path if defined?(original_path) && original_path
+    ENV["PATH"] = original_path
   end
 
   def test_marks_a_second_dirty_worktree_edit_as_stale
