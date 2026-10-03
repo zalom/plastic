@@ -29,14 +29,16 @@ module Plastic
       end
 
       def persist_context(body)
-        directory = File.dirname(context_path)
-        FileUtils.mkdir_p(directory)
-        Tempfile.create(["context", ".json"], directory) do |file|
-          file.write(body)
-          file.flush
-          File.rename(file.path, context_path)
-        end
+        FileUtils.mkdir_p(context_directory)
+        Tempfile.create(["context", ".json"], context_directory) { |file| publish(file.path, body) }
       end
+
+      def publish(path, body)
+        File.write(path, body)
+        File.rename(path, context_path)
+      end
+
+      def context_directory = File.dirname(context_path)
 
       def context_path = File.join(scope.root, "context", "#{intent_id}.json")
     end

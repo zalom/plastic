@@ -9,7 +9,7 @@ module Plastic
       end
 
       def retrieval(reference)
-        slug = source(reference)
+        slug = reference[/\Aplastic:\/\/([^\/]+)/, 1]
         verify_store_files(slug)
         verify_backfill(slug)
         Graph.open(home: plastic_home, store: slug).retrieval
@@ -18,8 +18,6 @@ module Plastic
       private
 
       attr_reader :scope
-
-      def source(reference) = reference[/\Aplastic:\/\/([^\/]+)/, 1]
 
       def plastic_home = scope.plastic_home
 

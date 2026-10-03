@@ -38,10 +38,11 @@ module Plastic
 
       def selected_evidence(submission)
         evidence = submission.fetch("evidence")
-        allowed = discovery.fetch("candidates").map { |candidate| candidate.fetch("uri") }
-        evidence.each { |reference| validate_evidence(reference, allowed) }
+        evidence.each { |reference| validate_evidence(reference, discovered_uris) }
         evidence.uniq
       end
+
+      def discovered_uris = discovery.fetch("candidates").map { |candidate| candidate.fetch("uri") }
 
       def validate_evidence(reference, allowed)
         raise CLI::Command::Failure, "evidence was not discovered: #{reference}" unless allowed.include?(reference)
@@ -52,14 +53,8 @@ module Plastic
 
       def metadata(selected)
         { "intent_id" => intent_id, "evidence" => selected,
-          "archive_states" => selected.to_h { |reference| [reference, archived?(reference)] },
+          "archive_states" => selected.to_h { |reference| [reference, source.retrieval(reference).archived_reference?(reference)] },
           "discovery" => discovery.slice("query", "scope") }
-      end
-
-      def archived?(reference)
-        retrieval = source.retrieval(reference)
-        fields = retrieval.fetch_reference(reference)
-        retrieval.archived?(fields.fetch(:intent_id))
       end
     end
   end

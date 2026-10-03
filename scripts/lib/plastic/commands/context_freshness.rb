@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "context_evidence"
+
 module Plastic
   module Commands
     # Reports whether saved evidence still describes the current source state.
@@ -17,18 +19,9 @@ module Plastic
       attr_reader :source
 
       def evidence_state(document, reference)
-        retrieval = source.retrieval(reference)
-        retrieval.fetch_reference(reference)
-        current = retrieval.fetch_reference(strip_revision(reference))
-        archived = retrieval.archived?(current.fetch(:intent_id))
-        state = fresh?(document, reference, current, archived) ? "fresh" : "stale"
-        { "uri" => reference, "state" => state, "archived" => archived }
+        ContextEvidence.new(document:, reference:, retrieval: source.retrieval(reference)).state
       rescue Graph::RetrievalGraph::MissingReference
         missing_or_stale(reference)
-      end
-
-      def fresh?(document, reference, current, archived)
-        current.fetch(:uri) == reference && document.fetch("archive_states", {}).fetch(reference, archived) == archived
       end
 
       def missing_or_stale(reference)
@@ -38,8 +31,6 @@ module Plastic
       rescue Graph::RetrievalGraph::MissingReference
         { "uri" => reference, "state" => "missing" }
       end
-
-      def strip_revision(reference) = reference.sub(/\?revision=[0-9a-f]{64}\z/, "")
     end
   end
 end
