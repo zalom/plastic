@@ -12,7 +12,7 @@ module Plastic
         def edges(intent_id = nil) = read(:edges, intent_id)
 
         def linking(id)
-          @databases.fetch(:knowledge).rows(LINKING_SQL, origin: origin_id, id:, prefix: "#{id}/%").map { |row| Link.from_h(row) }
+          @databases.fetch(:knowledge).rows(LINKING_SQL, origin: origin_id, id:, prefix: "#{id}/%").map { |row| Knowledge::Link.from_h(row) }
         end
       end
     end

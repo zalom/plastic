@@ -2,7 +2,7 @@
 
 require "json"
 require_relative "../code_workflow"
-require_relative "../graph/completion_check"
+require_relative "../graph/work/completion/check"
 
 module Plastic
   module Workflows
@@ -27,7 +27,7 @@ module Plastic
       gate "%{problem}", stops: :refusal, pass: ->(context) { context.problem.nil? }
 
       read "check the completion records" do |context|
-        check = Graph::CompletionCheck.new(context.retrieval, context.intent_id)
+        check = Graph::Work::Completion::Check.new(context.retrieval, context.intent_id)
         context[:requirements] = context.closed ? [] : check.problems
         context[:evidence_example] = JSON.pretty_generate(check.criteria.to_h { |criterion| [criterion, "Describe the evidence for this criterion"] })
         context[:intent_folder] = context.intent.dir
@@ -47,7 +47,7 @@ module Plastic
       end
 
       def self.submission_problem(context)
-        return "--judge takes tests, tool, agent or owner" unless Graph::Node::JUDGES.include?(context.judge)
+        return "--judge takes tests, tool, agent or owner" unless Graph::Work::Node::JUDGES.include?(context.judge)
         return "--evidence names a JSON file inside the intent folder" if context.evidence.to_s.empty?
         return "intent end names no session" if context.session.to_s.empty?
 

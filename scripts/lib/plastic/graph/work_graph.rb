@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
 require "forwardable"
-require_relative "roadmap_item_start"
-require_relative "backup_writer"
+require_relative "knowledge/roadmap/item_start"
+require_relative "knowledge/backup/writer"
 require_relative "printer"
 require_relative "prints"
-require_relative "sync_preview"
-require_relative "work_writers"
+require_relative "knowledge/sync/preview"
+require_relative "work/writers"
 
 module Plastic
   module Graph
@@ -41,7 +41,7 @@ module Plastic
         @databases = databases
         @folder = folder
         @retrieval = retrieval
-        @writers = WorkWriters.new(databases, retrieval, folder, session)
+        @writers = Work::Writers.new(databases, retrieval, folder, session)
       end
 
       # A routine run is call memory, kept off the report.
@@ -72,13 +72,13 @@ module Plastic
 
       # Opens a ready item's intent, with its spec held in rows. Returns
       # [intent_id, problem, kind]; kind is :failure or :refusal, nil on success.
-      def start_roadmap_item(slug, item_id) = RoadmapItemStart.new(@writers).call(slug, item_id)
+      def start_roadmap_item(slug, item_id) = Knowledge::Roadmap::ItemStart.new(@writers).call(slug, item_id)
 
       def print_index = @writers.sync.printer.print([Prints.index(@retrieval)])
 
       def preview_sync(options)
         home = File.dirname(@databases.fetch(:home).path)
-        SyncPreview.new(home, @retrieval.store, options).call
+        Knowledge::Sync::Preview.new(home, @retrieval.store, options).call
       end
 
       # Returns [ok, problem, kind]; kind is :failure or :refusal, nil on success.
@@ -90,7 +90,7 @@ module Plastic
       # Packs home.db and every store's three databases, writes the row, and returns it.
       def backup
         home_db = @databases.fetch(:home)
-        row = BackupWriter.new(File.dirname(home_db.path), session: @writers.session).call
+        row = Knowledge::Backup::Writer.new(File.dirname(home_db.path), session: @writers.session).call
         home_db.transaction { |batch| batch.put(:backups, row, statement: :insert) }
         row
       end

@@ -163,12 +163,12 @@ Each store's `INDEX.md` is a structure note, not a table of contents: it groups 
 Each store's `work_graph.db` holds one intent's nodes and the edges between them, alongside
 its `intents`, `clusters` and `savepoints` tables. A node is one unit of work (`plastic node
 add`); it moves through `open`, `claimed`, `done`, `failed` and `parked`, or leaves the graph
-as `removed` (`Graph::Node::MOVES` is the one source of which moves are legal). An edge
+as `removed` (`Graph::Work::Node::Writer::MOVES` is the one source of which moves are legal). An edge
 (`plastic edge add`) says one node needs another; a guarded SQL insert refuses a self edge, an
 edge touching a missing or removed node, and an edge that would close a loop.
 After the cause of a failed edge addition or removal is fixed, the same command can retry.
 
-`Graph::NodeWriter` and `Graph::EdgeWriter` own these writes. Every state move is a guarded
+`Graph::Work::Node::Writer` and `Graph::Work::Edge::Writer` own these writes. Every state move is a guarded
 `UPDATE ... WHERE state IN (...)`, so two attempts to move the same node cannot both win; the
 one that finds no row back re-reads the node to report why. Claiming a node caps at three
 retries: the fourth claim parks the node with a standing question instead of claiming it, so a
@@ -181,7 +181,7 @@ node that keeps failing surfaces to the owner rather than looping. The full comm
 `knowledge_graph.db` also holds `rulings` and `links`. `plastic intent rule ID TEXT` writes
 the owner's next decision as the next `D` id in that intent; `--supersedes RULING_ID` links it
 to the ruling it replaces, which stays on record rather than being overwritten.
-`Graph::RulingWriter` owns the write; `Graph::Spec` reads an intent's `spec.md` document row
+`Graph::Knowledge::Ruling::Writer` owns the write; `Graph::Knowledge::Spec` reads an intent's `spec.md` document row
 for its done criteria and open decisions, the bullets under a `Done criteria` or `Open
 Questions` heading (a section holding only "None" counts zero).
 

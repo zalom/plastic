@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "../roadmap"
+require_relative "../knowledge/roadmap"
 
 module Plastic
   module Graph
@@ -8,11 +8,11 @@ module Plastic
       # Reads ordered roadmap records for one origin.
       class RoadmapReader
         QUERIES = {
-          roadmap: ["SELECT * FROM roadmaps WHERE origin_id = :origin AND slug = :slug", Roadmap],
-          batches: ["SELECT * FROM batches WHERE origin_id = :origin AND roadmap = :slug ORDER BY position", RoadmapBatch],
-          items: ["SELECT * FROM roadmap_items WHERE origin_id = :origin AND roadmap = :slug ORDER BY batch, position", RoadmapItem],
-          edges: ['SELECT * FROM roadmap_edges WHERE origin_id = :origin AND roadmap = :slug ORDER BY CAST("from" AS INTEGER), "from"', RoadmapEdge],
-          log: ["SELECT * FROM roadmap_log WHERE origin_id = :origin AND roadmap = :slug ORDER BY position", RoadmapLogLine]
+          roadmap: ["SELECT * FROM roadmaps WHERE origin_id = :origin AND slug = :slug", Knowledge::Roadmap],
+          batches: ["SELECT * FROM batches WHERE origin_id = :origin AND roadmap = :slug ORDER BY position", Knowledge::Roadmap::Batch],
+          items: ["SELECT * FROM roadmap_items WHERE origin_id = :origin AND roadmap = :slug ORDER BY batch, position", Knowledge::Roadmap::Item],
+          edges: ['SELECT * FROM roadmap_edges WHERE origin_id = :origin AND roadmap = :slug ORDER BY CAST("from" AS INTEGER), "from"', Knowledge::Roadmap::Edge],
+          log: ["SELECT * FROM roadmap_log WHERE origin_id = :origin AND roadmap = :slug ORDER BY position", Knowledge::Roadmap::LogLine]
         }.freeze
 
         def initialize(database, origin_id)

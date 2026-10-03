@@ -2,13 +2,13 @@
 
 require "forwardable"
 require_relative "../routine_run"
-require_relative "session_reader"
-require_relative "work_reader"
+require_relative "work/session/reader"
+require_relative "work/reader"
 require_relative "source"
-require_relative "link"
-require_relative "roadmap"
-require_relative "archive"
-require_relative "backup"
+require_relative "knowledge/link"
+require_relative "knowledge/roadmap"
+require_relative "knowledge/archive"
+require_relative "knowledge/backup"
 require_relative "retrieval/evidence/writer"
 require_relative "retrieval/evidence/integrity"
 require_relative "retrieval/reference_backfill"
@@ -63,7 +63,7 @@ module Plastic
 
       def intent(intent_id)
         row = @databases.fetch(:work).row("SELECT * FROM intents WHERE intent_id = :intent_id AND origin_id = :origin", intent_id:, origin: origin_id)
-        row && Intent.from_h(row)
+        row && Knowledge::Intent.from_h(row)
       end
 
       def unarchived_intents = intents.reject { |intent| archived?(intent.intent_id) }
@@ -89,9 +89,9 @@ module Plastic
 
       def roadmaps = (@roadmaps ||= Retrieval::RoadmapReader.new(@databases.fetch(:work), origin_id))
 
-      def sessions = (@sessions ||= SessionReader.new(@databases, store:, origin: @origin))
+      def sessions = (@sessions ||= Work::Session::Reader.new(@databases, store:, origin: @origin))
 
-      def work = (@work ||= WorkReader.new(@databases, origin: @origin))
+      def work = (@work ||= Work::Reader.new(@databases, origin: @origin))
 
       def read(name, intent_id = nil) = SOURCES.fetch(name).read(@databases, origin: origin_id, intent_id:)
     end

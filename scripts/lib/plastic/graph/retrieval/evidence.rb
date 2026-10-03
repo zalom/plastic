@@ -46,11 +46,11 @@ module Plastic
           else
             knowledge.rows("SELECT * FROM documents WHERE origin_id = :origin", origin: origin_id)
           end
-          rows.map { |row| Graph::Document.from_h(row) }
+          rows.map { |row| Graph::Knowledge::Document.from_h(row) }
         end
 
         def document(intent_id, path)
-          knowledge.row(DOCUMENT_SQL, intent_id:, path:, origin: origin_id).then { |row| row && Graph::Document.from_h(row) }
+          knowledge.row(DOCUMENT_SQL, intent_id:, path:, origin: origin_id).then { |row| row && Graph::Knowledge::Document.from_h(row) }
         end
 
         def origin_id = @origin.id

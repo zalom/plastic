@@ -4,7 +4,7 @@ require_relative "../../../test_helper"
 
 module RetrievalRoadmapFixtures
   def roadmap_fields(title)
-    Plastic::Graph::RoadmapFields.new(title:, goal: "Deliver #{title}", done: ["Verify #{title}"])
+    Plastic::Graph::Knowledge::Roadmap::Fields.new(title:, goal: "Deliver #{title}", done: ["Verify #{title}"])
   end
 
   def seed_roadmap
@@ -80,7 +80,7 @@ class RetrievalBackupRecordsTest < Plastic::TestCase
 
   def create_backup
     row = { name: "fixture.tar.gz", files: 1, bytes: 7, sha256: Digest::SHA256.hexdigest("archive"), at: Plastic.now, session_id: "fixture" }
-    backup = Plastic::Graph::Backup.from_h(row.transform_keys(&:to_s))
+    backup = Plastic::Graph::Knowledge::Backup.from_h(row.transform_keys(&:to_s))
     FileUtils.mkdir_p(File.dirname(backup_path(backup)))
     File.binwrite(backup_path(backup), "archive")
     store_graphs.databases.fetch(:home).transaction { |batch| batch.put(:backups, row, statement: :insert) }

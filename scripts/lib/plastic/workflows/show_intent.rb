@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../code_workflow"
-require_relative "../graph/spec"
+require_relative "../graph/knowledge/spec"
 require_relative "lines"
 
 module Plastic
@@ -28,7 +28,7 @@ module Plastic
       end
 
       def self.print_spec(context)
-        spec = Graph::Spec.new(context.retrieval, context.intent_id)
+        spec = Graph::Knowledge::Spec.new(context.retrieval, context.intent_id)
         context.print("criteria: #{spec.done_criteria.size}")
         spec.open_decisions.each { |decision| context.print("open decision: #{decision}") }
       end

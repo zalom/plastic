@@ -2,7 +2,7 @@
 
 require_relative "../cli/command"
 require_relative "../graph"
-require_relative "../graph/node_counts"
+require_relative "../graph/work/node/counts"
 
 module Plastic
   module Commands
@@ -24,7 +24,7 @@ module Plastic
         retrieval.intents.select(&:open?).each { |intent| print_intent(retrieval, intent) }
       end
 
-      def print_intent(retrieval, intent) = output.row(*Graph::IntentRow.new(retrieval, intent).to_a)
+      def print_intent(retrieval, intent) = output.row(*Graph::Work::IntentRow.new(retrieval, intent).to_a)
     end
   end
 end

@@ -6,7 +6,7 @@ module Plastic
     module SchemaCatalog
       TYPES = {
         text: "TEXT", kept: "TEXT NOT NULL", integer: "INTEGER",
-        status: "TEXT NOT NULL CHECK(status IN (#{Intent::STATUSES.map { |status| "'#{status}'" }.join(", ")}))"
+        status: "TEXT NOT NULL CHECK(status IN (#{Knowledge::Intent::STATUSES.map { |status| "'#{status}'" }.join(", ")}))"
       }.freeze
 
       TABLES = {

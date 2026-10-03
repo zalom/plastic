@@ -2,9 +2,9 @@
 
 require "digest"
 require "json"
-require_relative "intent"
-require_relative "store_folder"
-require_relative "roadmap_state"
+require_relative "knowledge/intent"
+require_relative "knowledge/store_folder"
+require_relative "knowledge/roadmap/state"
 
 module Plastic
   module Graph
@@ -46,14 +46,14 @@ module Plastic
       def index(retrieval)
         data = { "store" => retrieval.store, "origin_id" => retrieval.origin_id,
                  "intents" => retrieval.unarchived_intents.map(&:index_h), "clusters" => clusters(retrieval.clusters) }
-        Print.text(StoreFolder::INDEX, :work, "#{JSON.pretty_generate(data)}\n")
+        Print.text(Knowledge::StoreFolder::INDEX, :work, "#{JSON.pretty_generate(data)}\n")
       end
 
       def clusters(rows)
         rows.group_by(&:name).map { |name, members| { "name" => name, "intents" => luhmann(members.map(&:intent_id)) } }
       end
 
-      def luhmann(ids) = ids.sort_by { |id| LuhmannId.segments(id) }
+      def luhmann(ids) = ids.sort_by { |id| Knowledge::LuhmannId.segments(id) }
 
       # Every file of the store, read in five queries whatever the number of intents.
       def of_store(retrieval)
@@ -111,7 +111,7 @@ module Plastic
       end
 
       def roadmap_item_line(item, retrieval)
-        state = RoadmapState.of(item, retrieval)
+        state = Knowledge::Roadmap::State.of(item, retrieval)
         mark = (state == "done" || state == "dropped") ? "x" : " "
         "- [#{mark}] #{item.item} #{item.title} — #{state}"
       end

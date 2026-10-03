@@ -10,7 +10,7 @@ class RetrievalGraphTest < Plastic::TestCase
   def index_text(intent, name, body)
     path = "#{intent.dir}/#{name}"
     write(path, body)
-    apply_read(Plastic::Graph::Reader.new(folder, { intent.intent_id => intent }, origin, retrieval:).read(path))
+    apply_read(Plastic::Graph::Knowledge::Reader.new(folder, { intent.intent_id => intent }, origin, retrieval:).read(path))
   end
 
   def test_the_origin_id_is_the_installation_id
@@ -68,7 +68,7 @@ class RetrievalGraphTest < Plastic::TestCase
     intent = open_intent("Unrelated")
     path = "#{intent.dir}/research.txt"
     write(path, "The retrieval evidence stays searchable.\n")
-    apply_read(Plastic::Graph::Reader.new(folder, { intent.intent_id => intent }, origin, retrieval:).read(path))
+    apply_read(Plastic::Graph::Knowledge::Reader.new(folder, { intent.intent_id => intent }, origin, retrieval:).read(path))
 
     result = retrieval.search("retrieval evidence")
 

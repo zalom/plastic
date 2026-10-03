@@ -133,7 +133,7 @@ included. `test/context_budget_bench_test.rb` fails when a surface crosses its c
 | `scripts/lib/plastic/cli.rb` | The dispatcher. |
 | `scripts/lib/plastic/cli/` | The shared classes. |
 | `scripts/lib/plastic/commands/` | One file per command. |
-| `scripts/lib/plastic/graph/` | The kernel's graph layer: the store databases, the printed files and sync. |
+| `scripts/lib/plastic/graph/` | The kernel's graph layer: the store databases, the printed files and sync. Its `knowledge/`, `work/` and `retrieval/` folders hold the three graphs; the files at its root are shared by all three. |
 | `test/plastic/` | The kernel tests, which run in their own process. |
 | `test/cli/` | The acceptance test of the packaged executable, `bin/plastic`, run as installed. |
 | `test/test_helper.rb` | The boot of every test, and `Plastic::TestCase`, the base class of the kernel tests. |
