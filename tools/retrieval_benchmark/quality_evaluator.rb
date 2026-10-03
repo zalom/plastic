@@ -39,9 +39,22 @@ module Plastic
         expected = expected_references(query)
         sample, rows = search_rows(query)
         matched = matching_row(rows, expected)
-        { "id" => query.fetch("id"), "expected_references" => expected.map { |row| row.fetch("uri") }, "rank" => matched && rows.index(matched) + 1,
-          "matched_text" => matched&.fetch("body"), "resolved_qualified_reference" => matched&.fetch("uri"),
-          "returned_references" => rows.map { |row| row.fetch("uri") }, "passed" => !matched.nil?, "command_output_valid" => sample.fetch("output_valid") }
+        passage = matched && fetch_passage(matched)
+        query_result(query, { expected:, sample:, rows:, matched:, passage: })
+      end
+
+      def query_result(query, result)
+        match = match_metadata(result)
+        { "id" => query.fetch("id"), "expected_references" => result.fetch(:expected).map { |row| row.fetch("uri") },
+          "returned_references" => result.fetch(:rows).map { |row| row.fetch("uri") }, "command_output_valid" => result.fetch(:sample).fetch("output_valid"), **match }
+      end
+
+      def match_metadata(result)
+        matched = result.fetch(:matched)
+        passage = result.fetch(:passage)
+        { "rank" => matched && result.fetch(:rows).index(matched) + 1, "matched_text" => passage&.fetch("body"),
+          "resolved_qualified_reference" => matched&.fetch("uri"), "passed" => !passage.nil?,
+          "classification" => classification(matched, passage) }
       end
 
       def search_rows(query)
@@ -54,6 +67,20 @@ module Plastic
           candidate = expected.find { |item| item.fetch("uri") == row.fetch("uri") }
           candidate && row.fetch("body").include?(candidate.fetch("hint"))
         end
+      end
+
+      def fetch_passage(row)
+        argv = [File.join(RetrievalBenchmark::ROOT, "bin", "plastic"), "document", "get", row.fetch("uri"), "--passage", row.fetch("position").to_s, "--json"]
+        sample = Measurements.run_command({ home: @home, argv:, stores: [row.fetch("store")] })
+        document = JSON.parse(sample.fetch("stdout")).dig("result", "document")
+        document if sample.fetch("exit_status").zero? && document
+      end
+
+      def classification(row, passage)
+        return "not_in_top_20" unless row
+        return "passage_fetch_failed" unless passage
+
+        "passage_match"
       end
 
       def expected_references(query)
