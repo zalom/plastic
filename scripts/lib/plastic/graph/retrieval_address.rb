@@ -28,14 +28,19 @@ module Plastic
       private
 
       def parse(uri)
-        match = /\Aplastic:\/\/([^\/]+)\/([^\/]+)\/([^?]*)(?:\?revision=([0-9a-f]{64}))?\z/.match(uri)
-        invalid(uri) unless match
+        store, intent_id, encoded_path, revision = captures(uri)
+        { store:, intent_id:, path: decode_path(uri, encoded_path), revision: }
+      end
 
-        store, intent_id, path, revision = match.captures
-        path = URI::DEFAULT_PARSER.unescape(path).force_encoding(Encoding::UTF_8)
-        invalid(uri) unless path.valid_encoding?
+      def captures(uri) = reference_match(uri).captures
 
-        { store:, intent_id:, path:, revision: }
+      def reference_match(uri)
+        /\Aplastic:\/\/([^\/]+)\/([^\/]+)\/([^?]*)(?:\?revision=([0-9a-f]{64}))?\z/.match(uri) || invalid(uri)
+      end
+
+      def decode_path(uri, encoded_path)
+        path = URI::DEFAULT_PARSER.unescape(encoded_path).force_encoding(Encoding::UTF_8)
+        path.valid_encoding? ? path : invalid(uri)
       end
 
       def invalid(uri) = raise RetrievalGraph::MissingReference, "invalid document reference #{uri.inspect}"

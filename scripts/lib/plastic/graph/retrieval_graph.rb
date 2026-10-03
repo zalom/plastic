@@ -22,9 +22,9 @@ require_relative "retrieval_evidence"
 module Plastic
   # Persists and retrieves the graph records that describe Plastic work.
   module Graph
-    # The read side of the graphs: every check reads from here. Every method
-    # returns records or plain values. Nothing here writes. A method that
-    # takes an intent id reads every intent of the store when given none.
+    # Provides ordinary retrieval reads from graph records. These methods do
+    # not write. Explicit owning-store backfill and repair rebuild derived
+    # tables. A selected-source read never runs either operation.
     class RetrievalGraph
       # Signals that a caller must build the derived retrieval rows first.
       class MaintenanceRequired < StandardError; end

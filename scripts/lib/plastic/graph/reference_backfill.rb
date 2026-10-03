@@ -29,8 +29,7 @@ module Plastic
       def call
         return self if complete?
 
-        legacy_documents.each { |row| write(row) }
-        legacy_references.each { |row| write(row) }
+        scan.each { |row| write_missing(row) }
         mark_complete
         self
       end
@@ -41,6 +40,8 @@ module Plastic
 
       private
 
+      def scan = legacy_documents + legacy_references
+
       def legacy_references
         @references.rows("SELECT name, data, intent_id FROM sqlar WHERE origin_id = :origin", origin: @origin_id)
           .select { |row| EvidenceText.classify(row.fetch("name"), row.fetch("data")) == :text }
@@ -50,7 +51,7 @@ module Plastic
         @knowledge.rows("SELECT intent_id, path, body FROM documents WHERE origin_id = :origin", origin: @origin_id)
       end
 
-      def write(row)
+      def write_missing(row)
         intent_id = row.fetch("intent_id")
         path = row.fetch("path") { row.fetch("name").split("/", 3).last }
         return if head_exists?(intent_id, path)

@@ -24,7 +24,7 @@ module Plastic
         qualified(fields.fetch(:intent_id), fields.fetch(:path), row.fetch("sha256")).merge(body: row.fetch("body"))
       end
 
-      def qualified_reference(intent_id, path, sha256) = qualified(intent_id, path, sha256)
+      def qualified_reference(intent_id, path, revision) = qualified(intent_id, path, revision)
 
       def fetch_passage(reference, position)
         document = fetch(reference)
