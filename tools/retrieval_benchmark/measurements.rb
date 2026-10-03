@@ -30,7 +30,7 @@ module Plastic
 
       def self.environment(command)
         home = command.fetch(:home)
-        { "HOME" => home, "PLASTIC_HOME" => home, "PLASTIC_TMP" => File.join(home, "tmp"), "PLASTIC_SOURCE_PROJECTS" => "", "RUBYOPT" => "" }
+        { "HOME" => home, "PLASTIC_HOME" => home, "PLASTIC_TMP" => File.join(home, "tmp"), "PLASTIC_SOURCE_PROJECTS" => "", "RUBYOPT" => "", "BUNDLER_SETUP" => nil }
       end
 
       def self.sample(command, result)
