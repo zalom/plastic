@@ -9,10 +9,10 @@ module Plastic
     TABLE = {
       # Distribution
       "version" => ["Commands::Version", "Print the installed Plastic version and release channel"],
-      "install" => ["Commands::Install", "Preview or install a verified Plastic release"],
-      "update" => ["Commands::Update", "Preview or install a verified update in the selected channel"],
-      "rollback" => ["Commands::Rollback", "Preview or restore the previous verified Plastic release"],
-      "uninstall" => ["Commands::Uninstall", "Preview or remove the verified Plastic installation"],
+      "install" => ["Commands::Install", "Install the core files and register Plastic with agents"],
+      "update" => ["Commands::Update", "Sync a newer package into the home or name the installer command"],
+      "rollback" => ["Commands::Rollback", "List the version history or name the command that restores one"],
+      "uninstall" => ["Commands::Uninstall", "Remove Plastic from agents and keep the home"],
 
       # Storage
       "intent end" => ["Commands::IntentEnd", "Record explicit criterion acceptance and close a delivered intent"],

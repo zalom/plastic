@@ -1,17 +1,17 @@
 # frozen_string_literal: true
 
-require_relative "installer_status"
+require_relative "../routine"
 
 module Plastic
   module Commands
-    # Prints the active release when one exists, otherwise the shipped one.
-    class Version < InstallerStatus
-      def call
-        plan = installer_plan
-        output.row("version:", plan.installed_version)
-        output.row("channel:", plan.channel)
-        output.next_step("plastic install --dry-run", because: "review the verified installation plan")
-      end
+    # The version of the package this command came from, its channel and the
+    # file it was read from.
+    class Version < Routine
+      workflow :code_show_version, next: :noop
+
+      private
+
+      def keeps_routine_run? = false
     end
   end
 end

@@ -1,11 +1,24 @@
 # frozen_string_literal: true
 
-require_relative "installer_status"
+require_relative "../routine"
+require_relative "../cli/agent_options"
 
 module Plastic
   module Commands
-    class Uninstall < InstallerStatus
-      option :dry_run, switch: "--dry-run", default: false, text: "print the verified release plan without writing files"
+    # Removes the files Plastic registered with the chosen agents. The home
+    # and its stores stay.
+    class Uninstall < Routine
+      extend CLI::AgentOptions
+
+      workflow :code_preview_uninstall do
+        on :done, next: :noop
+        on :continue, next: :code_uninstall_plastic
+      end
+      workflow :code_uninstall_plastic, next: :noop
+
+      private
+
+      def keeps_routine_run? = false
     end
   end
 end

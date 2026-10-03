@@ -25,7 +25,7 @@ class RollbackCommandTest < Plastic::TestCase
     before = tree_snapshot(@plastic_home)
     result = call("rollback", "--version", "2.0.1")
 
-    assert_includes result.out, "PLASTIC_ARCHIVE_URL=https://github.com/zalom/plastic/releases/download/v2.0.1/plastic.tgz sh install.sh"
+    assert_includes result.out, "install.sh | PLASTIC_ARCHIVE_URL=https://github.com/zalom/plastic/releases/download/v2.0.1/plastic.tgz sh"
     assert_equal before, tree_snapshot(@plastic_home)
   end
 

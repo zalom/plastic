@@ -21,6 +21,14 @@ class VersionCommandTest < Plastic::TestCase
     assert_equal "9.2.0-beta.1", JSON.parse(result.out).fetch("result").fetch("version")
   end
 
+  def test_fails_when_the_package_has_no_version_file
+    root = FileUtils.mkdir_p(File.join(@home, "empty")).first
+    result = call("version", env: { "PLASTIC_PACKAGE_ROOT" => root })
+
+    assert_equal 1, result.code
+    assert_includes result.err, "no VERSION file and no package.json"
+  end
+
   def test_reading_the_version_writes_nothing_under_the_home
     before = tree_snapshot(@plastic_home)
     call("version")

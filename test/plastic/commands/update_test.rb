@@ -28,7 +28,7 @@ class UpdateCommandTest < Plastic::TestCase
     before = tree_snapshot(@plastic_home)
     result = call("update", env: { "PLASTIC_PACKAGE_ROOT" => fake_package("99.0.0-alpha.1") })
 
-    assert_match(/PLASTIC_CHANNEL=alpha sh install\.sh/, result.out)
+    assert_match(/install\.sh \| PLASTIC_CHANNEL=alpha sh/, result.out)
     assert_equal before, tree_snapshot(@plastic_home)
   end
 
