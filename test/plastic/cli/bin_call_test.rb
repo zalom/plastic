@@ -72,6 +72,13 @@ class BinCallTest < Plastic::TestCase
     assert_equal "plastic sync down [--overwrite [PATH]] [--merge]\n", call.out
   end
 
+  def test_bin_call_help_for_a_command_keeps_text_help_usable
+    call = plastic_bin("help", "sync", "down", table: Plastic::CLI::TABLE)
+
+    assert_equal 0, call.code
+    assert_equal "plastic sync down [--overwrite [PATH]] [--merge]\n", call.out
+  end
+
   private
 
   def absent_home_environment(env: nil)
