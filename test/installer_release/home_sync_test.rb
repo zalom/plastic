@@ -24,11 +24,10 @@ class InstallerReleaseHomeSyncTest < Minitest::Test
   def test_leaves_a_launcher_the_user_wrote_alone
     FileUtils.mkdir_p(File.dirname(launcher))
     File.write(launcher, "#!/bin/sh\necho mine\n")
-    out = StringIO.new
-    sync(out: out).call
+    sync.call
 
     assert_equal "#!/bin/sh\necho mine\n", File.read(launcher)
-    assert_includes out.string, "#{launcher} is not Plastic's launcher; it stays as it is"
+    assert_includes @out.string, "#{launcher} is not Plastic's launcher; it stays as it is"
   end
 
   def test_leaves_a_launcher_link_to_another_program_alone
@@ -77,34 +76,21 @@ class InstallerReleaseHomeSyncTest < Minitest::Test
     assert_equal({ "statusLine" => { "command" => "/usr/local/bin/mine" } }, read_json(".claude/settings.json"))
   end
 
-def test_prints_the_reinstall_output_and_leaves_the_next_step_to_its_caller
-  installed_home
-  out = StringIO.new
-  sync(run: ->(_env, _command) { ["  synced\nnext: plastic version\nbecause: Plastic 2.0.4 is installed\n", true] }, out: out).call
+  def test_prints_the_reinstall_output_and_leaves_the_next_step_to_its_caller
+    installed_home
+    sync(run: ->(_env, _command) { ["  synced\nnext: plastic version\nbecause: Plastic 2.0.4 is installed\n", true] }).call
 
-  assert_equal "  synced\n", out.string
-end
+    assert_equal "  synced\n", @out.string
+  end
 
-def test_a_failed_reinstall_stops_the_activation
-  installed_home
-  out = StringIO.new
-  error = assert_raises(InstallerRelease::ActivationError) { sync(run: ->(_env, _command) { ["boom\n", false] }, out: out).call }
+  def test_a_failed_reinstall_stops_the_activation
+    installed_home
+    error = assert_raises(InstallerRelease::ActivationError) { sync(run: ->(_env, _command) { ["boom\n", false] }).call }
 
-  assert_equal ["boom\n", "plastic install --reinstall failed; nothing was changed"], [out.string, error.message]
-end
+    assert_equal ["boom\n", "plastic install --reinstall failed; nothing was changed"], [@out.string, error.message]
+  end
 
-def test_a_settings_file_that_is_not_json_names_the_file
-  installed_home
-  settings = File.join(user_home, ".claude", "settings.json")
-  FileUtils.mkdir_p(File.dirname(settings))
-  File.write(settings, "{ not json")
-  error = assert_raises(JSON::ParserError) { sync.call }
-
-  assert_equal ["#{settings} is not valid JSON; nothing was changed. Fix the file and run this again.", "{ not json"],
-    [error.message, File.read(settings)]
-end
-
-def test_names_the_managed_paths_and_never_the_stores
+  def test_names_the_managed_paths_and_never_the_stores
     home_with_stores
     managed = [*in_plastic_home("scripts", "config.yml"), File.join(user_home, ".claude", "settings.json"), check_update, launcher]
 
@@ -125,7 +111,7 @@ def test_names_the_managed_paths_and_never_the_stores
 
   def launcher = File.join(user_home, ".local", "bin", "plastic")
 
-  def sync(run: ->(_env, _command) { ["", true] }, out: StringIO.new)
+  def sync(run: ->(_env, _command) { ["", true] }, out: (@out = StringIO.new))
     home = InstallerRelease::ManagedHome.new(plastic_home: plastic_home, user_home: user_home, launcher: launcher)
     InstallerRelease::HomeSync.new(share: share, home: home, run: run, out: out)
   end

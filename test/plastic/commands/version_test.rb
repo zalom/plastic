@@ -52,24 +52,17 @@ class VersionCommandTest < Plastic::TestCase
     result = call("version", env: { "PATH" => bin_dir })
 
     assert_equal 0, result.code, result.err
-    [/active:\s+99\.0\.0-alpha\.2/, /previous:\s+99\.0\.0-alpha\.1/, /launcher:\s+#{Regexp.escape(File.join(bin_dir, "plastic"))}/,
-      /ruby:\s+#{Regexp.escape(RUBY_VERSION)}/, /sqlite3 bundle:\s+present/, /hooks:\s+point at the active release/,
-      /installer lock:\s+free/, /next:\s+plastic status/].each { |pattern| assert_match pattern, result.out }
-    refute_includes result.out, "repair:"
-    assert_equal before, tree_snapshot(@home)
+    assert_empty unmatched(result.out, healthy_rows), result.out
+    assert_equal [before, false], [tree_snapshot(@home), result.out.include?("repair:")]
   end
 
   def test_names_a_repair_for_each_damaged_part_and_changes_nothing
-    activated("99.0.0-alpha.1")
-    hooks_pointing_at(File.join(@plastic_home, "bin", "plastic"))
-    FileUtils.mkdir_p(File.join(share, "activation"))
+    damaged_installation
     before = tree_snapshot(@home)
     result = call("version", env: { "PATH" => File.join(@home, "nowhere") })
 
-    [/launcher:\s+not on PATH/, /sqlite3 bundle:\s+missing/, /hooks:\s+point at #{Regexp.escape(@plastic_home)}/,
-      /installer lock:\s+an activation was interrupted/, /next:\s+plastic version/].each { |pattern| assert_match pattern, result.out }
-    assert_equal 4, result.out.scan("repair:").size
-    assert_equal before, tree_snapshot(@home)
+    assert_empty unmatched(result.out, damaged_rows), result.out
+    assert_equal [before, 4], [tree_snapshot(@home), result.out.scan("repair:").size]
   end
 
   def test_says_when_no_release_is_activated
@@ -77,6 +70,19 @@ class VersionCommandTest < Plastic::TestCase
 
     assert_match(/active:\s+none/, result.out)
     refute_match(/sqlite3 bundle:/, result.out)
+  end
+
+  def unmatched(out, patterns) = patterns.reject { |pattern| pattern.match?(out) }
+
+  def healthy_rows
+    [/active:\s+99\.0\.0-alpha\.2/, /previous:\s+99\.0\.0-alpha\.1/, /launcher:\s+#{Regexp.escape(File.join(bin_dir, "plastic"))}/,
+      /ruby:\s+#{Regexp.escape(RUBY_VERSION)}/, /sqlite3 bundle:\s+present/, /hooks:\s+point at the active release/,
+      /installer lock:\s+free/, /next:\s+plastic status/]
+  end
+
+  def damaged_rows
+    [/launcher:\s+not on PATH/, /sqlite3 bundle:\s+missing/, /hooks:\s+point at #{Regexp.escape(@plastic_home)}/,
+      /installer lock:\s+an activation was interrupted/, /next:\s+plastic version/]
   end
 
   def healthy_installation
@@ -87,6 +93,12 @@ class VersionCommandTest < Plastic::TestCase
     FileUtils.mkdir_p(bin_dir)
     File.symlink(File.join(share, "active", "bin", "plastic"), File.join(bin_dir, "plastic"))
     hooks_pointing_at(File.join(share, "active", "bin", "plastic"))
+  end
+
+  def damaged_installation
+    activated("99.0.0-alpha.1")
+    hooks_pointing_at(File.join(@plastic_home, "bin", "plastic"))
+    FileUtils.mkdir_p(File.join(share, "activation"))
   end
 
   def hooks_pointing_at(launcher)

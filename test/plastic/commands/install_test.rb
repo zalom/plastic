@@ -5,6 +5,8 @@ require_relative "installer_helper"
 class InstallCommandTest < Plastic::TestCase
   include InstallerHelper
 
+  ENOLA_INSTALLER = "curl -fsSL https://raw.githubusercontent.com/enola-labs/enola/main/install.sh | sh"
+
   def test_a_dry_run_lists_every_core_file_and_changes_no_home
     absent = File.join(@home, "absent", ".plastic")
     result = call("install", "--dry-run", env: { "PLASTIC_HOME" => absent })
@@ -69,14 +71,13 @@ class InstallCommandTest < Plastic::TestCase
     assert_equal 3, result.code
     assert_includes result.err, "--reinstall"
   end
+
   def test_a_first_install_offers_enola_as_an_optional_instruction
     claude_folder
     result = call("install", "--claude")
 
     assert_equal 0, result.code, result.err
-    assert_includes result.out, "Enola maps the code architecture of a project"
-    assert_includes result.out, "It is optional"
-    assert_includes result.out, "curl -fsSL https://raw.githubusercontent.com/enola-labs/enola/main/install.sh | sh"
+    assert_match(/Enola maps the code architecture of a project.*It is optional.*#{Regexp.escape(ENOLA_INSTALLER)}/m, result.out)
     assert_match(/next:\s+plastic version/, result.out)
   end
 
@@ -105,7 +106,6 @@ class InstallCommandTest < Plastic::TestCase
 
     assert_equal 1, result.code
     assert_includes result.err, "#{settings} is not valid JSON; nothing was changed"
-    assert_equal "{ not json", File.read(settings)
-    refute_path_exists File.join(@plastic_home, "VERSION")
+    assert_equal ["{ not json", false], [File.read(settings), File.exist?(File.join(@plastic_home, "VERSION"))]
   end
 end

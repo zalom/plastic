@@ -20,11 +20,17 @@ module InstallerRelease
     attr_reader :files, :launchers
 
     def strip(path)
-      data = JSON.parse(File.read(path))
+      data = parse(path)
       hooks = data["hooks"]
       return unless hooks.is_a?(Hash)
 
       File.write(path, "#{JSON.pretty_generate({ **data, "hooks" => kept(hooks) })}\n")
+    end
+
+    def parse(path)
+      JSON.parse(File.read(path))
+    rescue JSON::ParserError
+      raise JSON::ParserError, "#{path} is not valid JSON; nothing was changed. Fix the file and run this again."
     end
 
     def kept(hooks) = hooks.transform_values { |groups| theirs(groups) }.reject { |_event, groups| groups.empty? }
