@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require "json"
-require "rbconfig"
 require_relative "../../scripts/lib/plastic"
 require_relative "../../scripts/lib/plastic/graph/evidence_writer"
 
@@ -64,7 +63,7 @@ module Plastic
       end
 
       def search_command(query)
-        argv = [RbConfig.ruby, File.join(RetrievalBenchmark::ROOT, "bin", "plastic"), "search", query.fetch("harness_search_terms")]
+        argv = [File.join(RetrievalBenchmark::ROOT, "bin", "plastic"), "search", query.fetch("harness_search_terms")]
         query.fetch("scope").each { |store| argv.concat(["--source-project", store]) }
         argv.concat(["--limit", "20", "--json"])
         { home: @home, argv:, stores: query.fetch("scope") }

@@ -4,7 +4,6 @@ require "digest"
 require "fileutils"
 require "json"
 require "open3"
-require "rbconfig"
 require "tmpdir"
 require "time"
 require_relative "../../scripts/lib/plastic"
@@ -79,7 +78,7 @@ module Plastic
       end
 
       def commands(reference)
-        executable = [RbConfig.ruby, File.join(RetrievalBenchmark::ROOT, "bin", "plastic")]
+        executable = [File.join(RetrievalBenchmark::ROOT, "bin", "plastic")]
         stores = %w[store-1 store-2 store-3]
         { "exact_lookup" => command([*executable, "document", "get", reference.fetch(:uri), "--json"], reference:),
           "single_store_top_20" => command([*executable, "search", "common", "--source-project", stores.first, "--limit", "20", "--json"], stores: [stores.first]),
