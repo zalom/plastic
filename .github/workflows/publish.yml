@@ -100,4 +100,5 @@ jobs:
           gh release create "$TAG" plastic.tgz plastic.manifest.json --target "$GITHUB_SHA" --generate-notes "$kind"
 
       - name: Publish to npm
+        if: github.ref_name == 'main'
         run: npm publish plastic.tgz --provenance --access public --tag "${{ steps.guard.outputs.dist_tag }}"
