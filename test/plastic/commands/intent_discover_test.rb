@@ -32,6 +32,22 @@ class IntentDiscoverTest < Plastic::TestCase
     refute_path_exists store_path("discovery/99.json")
   end
 
+  def test_refuses_unknown_or_unmaintained_source_stores_without_recreating_them
+    open_intent
+    write_document("other", "selected evidence")
+    missing = File.join(@plastic_home, "stores", "other", "work_graph.db")
+    File.delete(missing)
+
+    unknown = plastic("intent", "discover", "1", "evidence", "--source-project", "missing", table: Plastic::CLI::TABLE)
+    unmaintained = plastic("intent", "discover", "1", "evidence", "--source-project", "other", table: Plastic::CLI::TABLE)
+
+    assert_equal 1, unknown.code
+    assert_includes unknown.err, "unknown source projects: missing"
+    assert_equal 1, unmaintained.code
+    assert_includes unmaintained.err, "retrieval maintenance is required before source other can be read"
+    refute_path_exists missing
+  end
+
   def test_records_deterministic_selected_source_candidates
     open_intent
     write_document("global", "global evidence")

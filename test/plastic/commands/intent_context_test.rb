@@ -193,6 +193,19 @@ class IntentContextPersistenceTest < Plastic::TestCase
     assert_equal "stale", read_context.fetch("freshness").fetch("evidence").first.fetch("state")
   end
 
+  def test_reports_selected_evidence_as_missing_when_its_pinned_revision_is_removed
+    open_intent
+    reference = write_document("other", "selected evidence")
+    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
+    submit_context(context_submission(reference))
+    remove_current_head
+    Plastic::Graph.open(home: @plastic_home, store: "other").databases.fetch(:knowledge).transaction do |batch|
+      batch.add("DELETE FROM document_revisions WHERE intent_id = '1' AND path = 'evidence.md' AND origin_id = :origin", origin: origin)
+    end
+
+    assert_equal "missing", read_context.fetch("freshness").fetch("evidence").first.fetch("state")
+  end
+
   def test_reads_the_saved_context_file_when_the_database_record_is_absent
     open_intent
     reference = write_document("other", "selected evidence")
@@ -234,6 +247,26 @@ class IntentContextValidationTest < Plastic::TestCase
     assert_includes result.err, "invalid intent id"
   end
 
+  def test_reports_when_an_owning_intent_has_no_saved_retrieval_context
+    open_intent
+
+    result = plastic("intent", "context", "1", table: Plastic::CLI::TABLE)
+
+    assert_equal 1, result.code
+    assert_includes result.err, "no retrieval context for intent 1"
+  end
+
+  def test_reports_malformed_context_submission_json_as_usage_without_writing_context
+    open_intent
+    write_document("other", "selected evidence")
+    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
+
+    result = submit_raw_context("{")
+
+    assert_equal 2, result.code
+    refute_path_exists store_path("context/1.json")
+  end
+
   def test_rejects_an_unknown_owning_intent_id_before_reading_context
     result = plastic("intent", "context", "99", table: Plastic::CLI::TABLE)
 
@@ -266,6 +299,20 @@ class IntentContextValidationTest < Plastic::TestCase
 
     assert_equal 2, result.code
     assert_equal before, File.binread(store_path("context/1.json"))
+  end
+
+  def test_rejects_non_array_context_categories_without_replacing_saved_context
+    open_intent
+    reference = write_document("other", "selected evidence")
+    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
+    submit_context(context_submission(reference))
+    before = read_context
+    invalid = context_submission(reference).merge("facts" => "not an array")
+
+    result = submit_raw_context(JSON.generate(invalid))
+
+    assert_context_remains(before, result)
+    assert_includes result.err, "must be arrays"
   end
 
   def test_accepts_an_external_provider_without_a_receipt_and_keeps_it_after_backup_restore
