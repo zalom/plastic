@@ -1436,7 +1436,11 @@ class InstallerCore
   end
 
   def hook_pairs(hooks)
-    hooks.flat_map { |event, groups| Array(groups).flat_map { |group| Array(group["hooks"]).map { |hook| [event, hook["command"]] } } }
+    hooks.flat_map { |event, groups| hook_commands(groups).product([event]) }.map(&:reverse)
+  end
+
+  def hook_commands(groups)
+    Array(groups).flat_map { |group| Array(group["hooks"]) }.map { |hook| hook["command"] }
   end
 
   def tilde(path)

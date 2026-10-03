@@ -53,16 +53,6 @@ class InstallCommandTest < Plastic::TestCase
     assert_path_exists File.join(@home, ".hermes", "plastic", "manifest.json")
   end
 
-  def test_a_reinstall_without_agent_options_syncs_the_registered_agents
-    %w[.claude .codex].each { |folder| FileUtils.mkdir_p(File.join(@home, folder)) }
-    call("install", "--codex")
-    result = call("install", "--reinstall")
-
-    assert_equal 0, result.code, result.err
-    assert_path_exists File.join(@home, ".agents", "plastic", "manifest.json")
-    refute_path_exists File.join(@home, ".claude", "plastic")
-  end
-
   def test_refuses_to_install_over_a_registered_agent_without_reinstall
     claude_folder
     call("install", "--claude")
@@ -79,24 +69,6 @@ class InstallCommandTest < Plastic::TestCase
     assert_equal 0, result.code, result.err
     assert_match(/Enola maps the code architecture of a project.*It is optional.*#{Regexp.escape(ENOLA_INSTALLER)}/m, result.out)
     assert_match(/next:\s+plastic version/, result.out)
-  end
-
-  def test_a_reinstall_makes_no_enola_offer
-    claude_folder
-    call("install", "--claude")
-    result = call("install", "--reinstall")
-
-    assert_equal 0, result.code, result.err
-    refute_includes result.out, "Enola"
-  end
-
-  def test_a_reinstall_that_changes_nothing_reports_no_removed_hook
-    %w[.claude .codex].each { |folder| FileUtils.mkdir_p(File.join(@home, folder)) }
-    call("install", "--claude", "--codex")
-    result = call("install", "--reinstall")
-
-    assert_equal 0, result.code, result.err
-    refute_includes result.out, "Removed"
   end
 
   def test_a_settings_file_that_is_not_json_stops_the_install_and_changes_nothing

@@ -2,6 +2,7 @@
 
 require_relative "../code_workflow"
 require_relative "installation"
+require_relative "installation_hooks"
 
 module Plastic
   module Workflows
@@ -18,7 +19,7 @@ module Plastic
         usable, messages = installation.preflight
         messages.each { |line| context.print(line) }
         context[:usable] = usable
-        context[:broken] = Installation.unreadable_settings(context.scope.home)
+        context[:broken] = InstallationHooks.new(home: context.scope.home).unreadable
         context[:pending] = installation.unregistered(Installation.to_install(context))
       end
 

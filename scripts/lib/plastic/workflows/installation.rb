@@ -49,19 +49,6 @@ module Plastic
 
       def self.fetch_command(setting) = "#{INSTALLER} #{setting} sh"
 
-      # The agent settings file that does not parse, which an install would overwrite.
-      def self.unreadable_settings(home)
-        [File.join(home, ".claude", "settings.json"), File.join(home, ".codex", "hooks.json")]
-          .find { |path| File.file?(path) && !parses?(path) }
-      end
-
-      def self.parses?(path)
-        JSON.parse(File.read(path))
-        true
-      rescue JSON::ParserError
-        false
-      end
-
       def read_package_version(root)
         path = self.class.source(root)
         text = File.read(path)
