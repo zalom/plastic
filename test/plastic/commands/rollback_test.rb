@@ -27,11 +27,8 @@ class RollbackCommandTest < Plastic::TestCase
     before = tree_snapshot(share)
     result = call("rollback", "--dry-run")
 
-    assert_equal 0, result.code, result.err
-    assert_match(/active:\s+2\.0\.3/, result.out)
-    assert_match(/to:\s+2\.0\.2/, result.out)
-    assert_match(/releases:\s+2\.0\.2, 2\.0\.3/, result.out)
-    assert_equal before, tree_snapshot(share)
+    assert_match(/active:\s+2\.0\.3\n.*to:\s+2\.0\.2\n.*releases:\s+2\.0\.2, 2\.0\.3/m, result.out)
+    assert_equal [0, before], [result.code, tree_snapshot(share)]
     assert_equal %w[2.0.3 2.0.2], [activation.active_version, activation.previous_version]
   end
 

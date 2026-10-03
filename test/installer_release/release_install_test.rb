@@ -25,8 +25,7 @@ class InstallerReleaseInstallTest < Minitest::Test
       install(release_files, bundle: ->(_path) { raise "bundle failed" })
     end
 
-    assert_equal "bundle failed", error.message
-    assert_equal "2.0.2", activation.active_version
+    assert_equal ["bundle failed", "2.0.2"], [error.message, activation.active_version]
     assert_equal ["releases", "active", "INSTALL.lock"].sort, Dir.children(install_home).sort
   end
 

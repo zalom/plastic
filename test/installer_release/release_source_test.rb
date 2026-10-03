@@ -38,9 +38,9 @@ class InstallerReleaseSourceTest < Minitest::Test
   end
 
   def test_picks_the_newest_complete_release_on_each_channel
-    assert_equal "2.0.3", InstallerRelease::ReleaseFeed.newest(RELEASES, "latest")
-    assert_equal "2.1.0-alpha.2", InstallerRelease::ReleaseFeed.newest(RELEASES, "alpha")
-    assert_equal "2.0.3-beta.1", InstallerRelease::ReleaseFeed.newest(RELEASES, "beta")
+    newest = %w[latest alpha beta].map { |channel| InstallerRelease::ReleaseFeed.newest(RELEASES, channel) }
+
+    assert_equal %w[2.0.3 2.1.0-alpha.2 2.0.3-beta.1], newest
     assert_nil InstallerRelease::ReleaseFeed.newest([], "latest")
   end
 
@@ -52,7 +52,13 @@ class InstallerReleaseSourceTest < Minitest::Test
     assert_equal "2.0.3", source.newest("latest")
     assert source.files("2.0.3", target).verify
     assert_equal "https://github.com/zalom/plastic/releases/download/v2.0.3/plastic.tgz", fetch.downloaded.first
-    assert source.trusted?
+  end
+
+  def test_github_is_a_trusted_source
+    source = InstallerRelease::GithubSource.new(fetch: nil)
+
+    assert_predicate source, :trusted?
+    assert_empty source.notices
   end
 
   def test_a_local_directory_offers_its_own_release_and_claims_no_trust
@@ -61,7 +67,7 @@ class InstallerReleaseSourceTest < Minitest::Test
 
     assert_equal "2.0.3", source.newest("alpha")
     assert_equal File.join(directory, "plastic.tgz"), source.files("2.0.3", @root).archive
-    refute source.trusted?
+    assert_equal ["development mode: reading releases from #{directory}; this claims no release trust"], source.notices
   end
 
   def test_with_no_local_directory_the_source_is_github

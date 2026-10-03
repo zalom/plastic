@@ -10,8 +10,6 @@ module Plastic
     # source that offers newer ones: GitHub, or a local directory that a
     # development run names in PLASTIC_LOCAL_RELEASE.
     class ReleaseUpdate
-      DEVELOPMENT = "development mode: reading releases from %s; this claims no release trust"
-
       attr_reader :activation
 
       def self.of(context, bundle: InstallerRelease::Bundle.new)
@@ -30,9 +28,7 @@ module Plastic
 
       def active_version = activation.active_version
 
-      def warning(context)
-        context.print(format(DEVELOPMENT, context.scope.setting("PLASTIC_LOCAL_RELEASE"))) unless source.trusted?
-      end
+      def notices = source.notices
 
       def newer_release
         active = active_version

@@ -16,7 +16,7 @@ module Plastic
         activation = ReleaseUpdate.of(context).activation
         context[:active] = activation.active_version
         context[:to] = context.target || activation.previous_version
-        context[:releases] = activation.versions
+        context[:releases] = activation.releases.versions
       end
 
       gate "no release is installed under this home; install one with install.sh first", stops: :refusal,

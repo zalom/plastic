@@ -11,10 +11,11 @@ class InstallerReleaseBundleTest < Minitest::Test
     InstallerRelease::Bundle.new(run: ->(env, command) { calls << [env, command] }).call(release_path)
 
     env, command = calls.first
+    runtime = File.join(release_path, "runtime")
+
     assert_equal %w[bundle install --standalone], command.first(3)
-    assert_equal File.join(release_path, "runtime", "Gemfile"), env.fetch("BUNDLE_GEMFILE")
-    assert_equal File.join(release_path, "runtime", "bundle"), env.fetch("BUNDLE_PATH")
-    assert_equal "true", env.fetch("BUNDLE_FROZEN")
+    assert_equal({ "BUNDLE_GEMFILE" => File.join(runtime, "Gemfile"), "BUNDLE_PATH" => File.join(runtime, "bundle"), "BUNDLE_FROZEN" => "true" },
+      env.slice("BUNDLE_GEMFILE", "BUNDLE_PATH", "BUNDLE_FROZEN"))
   end
 
   def test_skips_a_release_without_a_runtime_gemfile

@@ -3,6 +3,7 @@
 require "fileutils"
 require_relative "placement"
 require_relative "pointer"
+require_relative "releases"
 
 module InstallerRelease
   class ActivationError < StandardError; end
@@ -10,13 +11,15 @@ module InstallerRelease
   # Keeps each release in its own directory under releases/ and switches the
   # active and previous pointers between them, one installer at a time.
   class Activation
-    def initialize(home:)
+    attr_reader :releases
+
+    def initialize(home:, releases: Releases.new(home))
       @home = home
-      @releases = File.join(home, "releases")
+      @releases = releases
     end
 
     def activate(candidate, version:, before_switch: nil)
-      placement = Placement.new(candidate, File.join(releases, version))
+      placement = Placement.new(candidate, releases.path(version))
       as_activation_error { with_lock { publish(placement, before_switch) } }
       version
     end
@@ -24,17 +27,11 @@ module InstallerRelease
     def rollback = switch(previous_version || raise(ActivationError, "no previous release is available"))
 
     def switch(version)
-      raise ActivationError, "#{version} is not installed" unless installed?(version)
+      raise ActivationError, "#{version} is not installed" unless releases.installed?(version)
 
       with_lock { switch_to(version) }
       active_version
     end
-
-    def installed?(version) = File.directory?(release_path(version))
-
-    def release_path(version) = File.join(releases, version)
-
-    def versions = File.directory?(releases) ? Dir.children(releases).sort : []
 
     def active_path = File.join(home, "active")
 
@@ -46,7 +43,7 @@ module InstallerRelease
 
     private
 
-    attr_reader :home, :releases
+    attr_reader :home
 
     def as_activation_error
       yield
@@ -67,8 +64,8 @@ module InstallerRelease
 
     def place(placement)
       placement.check
-      FileUtils.mkdir_p(releases)
-      raise ActivationError, "candidate is not on the installation filesystem" unless same_filesystem?(placement.candidate)
+      FileUtils.mkdir_p(releases.root)
+      raise ActivationError, "candidate is not on the installation filesystem" unless releases.same_filesystem?(placement.candidate)
 
       placement.move
     end
@@ -82,7 +79,7 @@ module InstallerRelease
     end
 
     def switch_to(version)
-      Candidate.check(File.join(releases, version), version)
+      Candidate.check(releases.path(version), version)
       Pointer.new(previous_path).keep { move_pointers(version) }
     end
 
@@ -92,12 +89,8 @@ module InstallerRelease
       replace_pointer(active_path, version)
     end
 
-    def same_filesystem?(candidate)
-      File.stat(candidate).dev == File.stat(releases).dev
-    end
-
     def replace_pointer(path, version)
-      Pointer.new(path).point_to(File.join(File.basename(releases), version))
+      Pointer.new(path).point_to(releases.pointer_target(version))
     end
   end
 end

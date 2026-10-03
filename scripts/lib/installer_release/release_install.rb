@@ -17,25 +17,27 @@ module InstallerRelease
     def call(archive:, manifest:, expected:)
       Manifest.check(manifest, archive: archive, expected_release: expected)
       version = expected.fetch("version")
-      return activation.switch(version) if activation.installed?(version)
+      return activation.switch(version) if activation.releases.installed?(version)
 
-      stage(archive, manifest, expected) { |candidate| activate(candidate, version) }
+      stage(archive, version) { |candidate| activate(candidate, version) }
     end
 
     private
 
     attr_reader :activation, :home, :bundle
 
-    def stage(archive, manifest, expected)
+    def stage(archive, version)
       FileUtils.mkdir_p(home)
-      candidate = Staging.create(archive: archive, manifest: manifest, parent: home, expected_release: expected)
-      yield candidate
-    ensure
-      FileUtils.rm_rf(File.dirname(candidate)) if candidate
+      candidate = Staging.create(archive: archive, version: version, parent: home)
+      begin
+        yield candidate
+      ensure
+        FileUtils.rm_rf(File.dirname(candidate))
+      end
     end
 
     def activate(candidate, version)
-      activation.activate(candidate, version: version, before_switch: -> { bundle.call(activation.release_path(version)) })
+      activation.activate(candidate, version: version, before_switch: -> { bundle.call(activation.releases.path(version)) })
     end
   end
 end

@@ -10,10 +10,9 @@ module InstallerRelease
   module ReleaseFeed
     module_function
 
-    def newest(releases, channel)
-      versions = releases.select { |release| complete?(release) }.map { |release| release.fetch("tag_name").delete_prefix("v") }
-      versions.select { |version| on_channel?(version, channel) }.max_by { |version| order(version) }
-    end
+    def newest(releases, channel) = versions(releases).select { |version| on_channel?(version, channel) }.max_by { |version| order(version) }
+
+    def versions(releases) = releases.select { |release| complete?(release) }.map { |release| release.fetch("tag_name").delete_prefix("v") }
 
     def newer?(candidate, current) = (order(candidate) <=> order(current)) == 1
 
@@ -47,6 +46,8 @@ module InstallerRelease
 
     def trusted? = true
 
+    def notices = []
+
     private
 
     attr_reader :fetch
@@ -54,7 +55,10 @@ module InstallerRelease
 
   # A directory holding one release's three files, for development only.
   class LocalSource
+    DEVELOPMENT = "development mode: reading releases from %s; this claims no release trust"
+
     def initialize(directory)
+      @directory = directory
       @files = ReleaseFiles.new(directory)
     end
 
@@ -63,5 +67,7 @@ module InstallerRelease
     def files(_version = nil, _directory = nil) = @files
 
     def trusted? = false
+
+    def notices = [format(DEVELOPMENT, @directory)]
   end
 end

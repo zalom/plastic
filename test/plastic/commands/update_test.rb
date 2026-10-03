@@ -35,9 +35,7 @@ class UpdateCommandTest < Plastic::TestCase
   def test_activates_a_newer_release_on_the_installed_channel
     result = update_with_release("99.0.0-alpha.2")
 
-    assert_equal 0, result.code, result.err
-    assert_equal "99.0.0-alpha.2", activation.active_version
-    assert_equal "99.0.0-alpha.1", activation.previous_version
+    assert_equal [0, "99.0.0-alpha.2", "99.0.0-alpha.1"], [result.code, activation.active_version, activation.previous_version]
     assert_includes result.out, "claims no release trust"
     assert_match(/next:\s+plastic update/, result.out)
   end
@@ -57,7 +55,7 @@ class UpdateCommandTest < Plastic::TestCase
 
     assert_equal 1, result.code
     assert_includes result.err, "archive checksum does not match"
-    assert_equal ["99.0.0-alpha.1"], activation.versions
+    assert_equal ["99.0.0-alpha.1"], activation.releases.versions
   end
 
   def update_with_release(version, directory: local_release(version))

@@ -47,7 +47,7 @@ module Plastic
         context[:active] = release.active_version
         return context.row("run:", Installation.fetch_command("PLASTIC_CHANNEL=#{Installation.of(context).channel}")) unless context.active
 
-        release.warning(context)
+        release.notices.each { |notice| context.print(notice) }
         context[:release] = release.newer_release
       end
     end
