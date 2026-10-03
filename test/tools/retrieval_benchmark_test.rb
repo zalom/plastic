@@ -4,6 +4,7 @@ require_relative "../test_helper"
 require "json"
 require "minitest/mock"
 require "open3"
+require "timeout"
 require_relative "../../tools/retrieval_benchmark"
 require_relative "../../tools/retrieval_benchmark/worker"
 
@@ -46,13 +47,17 @@ class RetrievalBenchmarkTest < Minitest::Test
       worker.define_singleton_method(:graphs) { graphs }
 
       execution = Thread.new { capture_io { Plastic::Graph::EvidenceWriter.stub(:new, writer) { worker.run } }.first }
-      sleep 0.005 until File.exist?(ready)
+      Timeout.timeout(1) { sleep 0.005 until File.exist?(ready) }
       File.write(start, "start")
       output = execution.value
 
       assert_equal [true, 10, ["42", "notes.md", "concurrent writer revision 0"], ["42", "notes.md", "concurrent writer revision 9"]],
         [File.exist?(ready), writes.length, writes.first, writes.last]
       assert_equal %w[finished_at started_at], JSON.parse(output).keys.sort
+    ensure
+      File.write(start, "start") unless File.exist?(start)
+      execution&.join(1)
+      execution&.kill if execution&.alive?
     end
   end
 
