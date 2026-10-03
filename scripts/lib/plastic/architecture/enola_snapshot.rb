@@ -24,7 +24,8 @@ module Plastic
       private
 
       def unavailable_snapshot(base, snapshot_state)
-        state = (base.fetch("state") == "ready") ? snapshot_state : base.fetch("state")
+        tool_state = base.fetch("state")
+        state = (tool_state == "ready") ? snapshot_state : tool_state
         base.merge("snapshot_state" => snapshot_state, "state" => state)
       end
     end
@@ -53,8 +54,11 @@ module Plastic
       def revision = @data.dig("git", "commit")
 
       def state(base, source)
-        return base.fetch("state") unless base.fetch("state") == "ready"
-        return mismatch(source) if mismatch(source)
+        tool_state = base.fetch("state")
+        return tool_state unless tool_state == "ready"
+
+        mismatch = mismatch(source)
+        return mismatch if mismatch
         return "incomplete" unless complete?
 
         "fresh"

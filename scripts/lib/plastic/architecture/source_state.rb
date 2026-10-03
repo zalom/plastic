@@ -66,7 +66,10 @@ module Plastic
 
       def same_revision? = @current.fetch("state") == "fresh" && @saved && @saved["revision"] == @current["revision"]
 
-      def changed_worktree? = @saved["worktree_hash"] && @saved["worktree_hash"] != @worktree_hash
+      def changed_worktree?
+        saved_hash = @saved["worktree_hash"]
+        saved_hash && saved_hash != @worktree_hash
+      end
     end
   end
 end
