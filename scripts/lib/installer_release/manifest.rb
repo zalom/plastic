@@ -26,11 +26,17 @@ module InstallerRelease
 
     def self.validate!(manifest, archive:, expected_release:)
       required_keys!(manifest, REQUIRED_TOP_LEVEL_KEYS, "manifest")
-      required_keys!(manifest.fetch("release"), REQUIRED_RELEASE_KEYS, "release")
-      required_keys!(manifest.fetch("archive"), REQUIRED_ARCHIVE_KEYS, "archive")
-      validate_release!(manifest.fetch("release"), expected_release)
-      validate_archive!(manifest.fetch("archive"), archive)
+      release = manifest.fetch("release")
+      archive_info = manifest.fetch("archive")
+      validate_sections!(release, archive_info)
+      validate_release!(release, expected_release)
+      validate_archive!(archive_info, archive)
       true
+    end
+
+    def self.validate_sections!(release, archive_info)
+      required_keys!(release, REQUIRED_RELEASE_KEYS, "release")
+      required_keys!(archive_info, REQUIRED_ARCHIVE_KEYS, "archive")
     end
 
     def self.validate_release!(release, expected)
