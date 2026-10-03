@@ -39,7 +39,7 @@ need() {
 
 mise_steps="install mise with curl https://mise.run | sh, then run mise use --global ruby@4.0"
 if command -v ruby >/dev/null 2>&1; then
-  ruby_version=$(ruby -e 'print RUBY_VERSION' 2>/dev/null || true)
+  ruby_version=$(ruby --disable-gems -e 'print RUBY_VERSION' 2>/dev/null || true)
   ruby_major="${ruby_version%%.*}"
   case "$ruby_major" in '' | *[!0-9]*) ruby_major=0 ;; esac
   [ "$ruby_major" -ge 4 ] || need "Ruby 4.0 or later (found Ruby $ruby_version)" "$mise_steps" "$mise_steps"
@@ -71,7 +71,7 @@ fetch() { curl --proto '=https' --tlsv1.2 -fsSL "$1" -o "$2"; }
 newest_version() {
   feed=$(curl --proto '=https' --tlsv1.2 -fsSL -H 'Accept: application/vnd.github+json' "$api") ||
     fail "could not read the release list from GitHub"
-  printf '%s' "$feed" | ruby -rjson -e '
+  printf '%s' "$feed" | ruby --disable-gems -rjson -e '
     names = %w[plastic.tgz plastic.tgz.sha256 plastic.manifest.json]
     versions = JSON.parse($stdin.read).filter_map do |release|
       next unless (names - release.fetch("assets").map { |asset| asset["name"] }).empty?
@@ -83,7 +83,7 @@ newest_version() {
 }
 
 manifest_version() {
-  ruby -rjson -e 'print JSON.parse(File.read(ARGV[0])).dig("release", "version")' "$tmp/plastic.manifest.json"
+  ruby --disable-gems -rjson -e 'print JSON.parse(File.read(ARGV[0])).dig("release", "version")' "$tmp/plastic.manifest.json"
 }
 
 [ "$dry_run" = false ] || files="plastic.manifest.json"
@@ -112,7 +112,7 @@ fi
 
 mkdir "$tmp/boot"
 tar -xzf "$tmp/plastic.tgz" -C "$tmp/boot" package/scripts/install-release package/scripts/lib/installer_release.rb package/scripts/lib/installer_release
-ruby "$tmp/boot/package/scripts/install-release" --directory "$tmp" --version "$version" --home "$share" || exit 1
+ruby --disable-gems "$tmp/boot/package/scripts/install-release" --directory "$tmp" --version "$version" --home "$share" || exit 1
 
 mkdir -p "$bin"
 ln -sfn "$share/active/bin/plastic" "$bin/plastic"
