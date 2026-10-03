@@ -50,6 +50,16 @@ class RetrievalBenchmarkTest < Minitest::Test
     end
   end
 
+  def test_checks_the_ranked_passage_instead_of_the_search_excerpt
+    Dir.mktmpdir do |directory|
+      report = Plastic::RetrievalBenchmark.run(output: File.join(directory, "benchmark.json"), corpus_bytes: 20_000, warmup: 0, samples: 1,
+        quality_input: File.expand_path("../../resources/retrieval-quality-review.json", __dir__))
+      answers = report.fetch("quality").fetch("synthetic_top_20")
+
+      assert_equal 10, answers.count { |answer| answer.fetch("passed") }
+    end
+  end
+
   private
 
   def timed_samples(report)
