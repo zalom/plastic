@@ -31,9 +31,10 @@ Each step says who does it:
   bash
   export HOME=/tmp/plastic-tutorial/home
   export PLASTIC_HOME="$HOME/.plastic"
-  export PATH="$PLASTIC_HOME/bin:$PATH"
+  export PATH="$HOME/.local/bin:$PATH"
   mkdir -p "$HOME/.claude"
-  npx -y @zalom/plastic install --claude
+  curl -fsSL https://raw.githubusercontent.com/zalom/plastic/main/install.sh | sh
+  plastic install --claude
   hash -r
   command -v plastic
   ```

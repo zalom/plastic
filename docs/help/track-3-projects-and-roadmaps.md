@@ -106,8 +106,8 @@ is a push to `alpha`, `beta`, or `main`: the version files are bumped in that pu
 tags and publishes. CI never sees your stores, so it closes no intent: each intent is closed
 with `plastic intent end ID --delivered --summary "TEXT"` after its code is merged.
 
-Releases and any npm publish step are described here, not run: this walkthrough stays in a
-sandbox and never touches a real package registry.
+Releases are described here, not run: this walkthrough stays in a sandbox and never makes a
+real GitHub release.
 
 Checkpoint: explain why an intent closes when its code is merged, rather than waiting on a
 release to exist first.

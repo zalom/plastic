@@ -23,7 +23,8 @@ of letting an agent jump straight into editing files.
 Run this once:
 
 ```
-npx -y @zalom/plastic install --claude
+curl -fsSL https://raw.githubusercontent.com/zalom/plastic/main/install.sh | sh
+plastic install --claude
 ```
 
 This sets up a folder at `~/.plastic/` that holds your intents, an index of all

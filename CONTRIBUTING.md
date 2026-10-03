@@ -23,7 +23,7 @@ commits and releases. This page points to the rest.
 2. Add or update the entry in `deprecations.yml` for anything this release removes or
    replaces.
 3. Push the branch: `alpha`, `beta`, or `main`. The push is the release:
-   `.github/workflows/publish.yml` creates the tag, the GitHub release, and the npm publish
-   for a version with no tag yet.
+   `.github/workflows/publish.yml` creates the tag and the GitHub release for a version with
+   no tag yet. The release carries the three files `install.sh` downloads.
 4. Read [docs/release-lines.md](docs/release-lines.md) for the routing rule between the two
    lanes and the stable-line guarantees.
