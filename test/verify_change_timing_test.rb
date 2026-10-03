@@ -32,8 +32,8 @@ class VerifyChangeTimingTest < Minitest::Test
     File.write(full, body)
   end
 
-  def plan(changed:, rails: false, suite: VerifyChange::MINITEST)
-    VerifyChange.new([], root: @root, err: @err, sandbox: { "HOME" => "/nowhere", "PLASTIC_TMP" => "/nowhere" })
+  def plan(changed:, rails: false, suite: VerifyChange::MINITEST, **options)
+    VerifyChange.new([], root: @root, err: @err, sandbox: { "HOME" => "/nowhere", "PLASTIC_TMP" => "/nowhere" }, **options)
       .plan(changed:, extra_tests: [], base: "HEAD", rails:, suite:)
   end
 
@@ -91,11 +91,17 @@ class VerifyChangeTimingTest < Minitest::Test
   end
 
   def test_the_mutation_step_writes_json_under_the_sandbox
-    step = plan(changed: [SOURCE_FILE, TEST_FILE]).steps.find { |candidate| candidate.title == "Mutation testing" }
+    step = plan(changed: [SOURCE_FILE, TEST_FILE], mutation: true).steps.find { |candidate| candidate.title == "Mutation testing" }
 
     output_index = step.command.index("--output")
 
     refute_nil output_index
     assert_equal "/nowhere/mutation_report.json", step.command[output_index + 1]
+  end
+
+  def test_the_frozen_mutation_step_is_left_out_of_the_plan
+    titles = plan(changed: [SOURCE_FILE, TEST_FILE]).steps.map(&:title)
+
+    refute_includes titles, "Mutation testing"
   end
 end
