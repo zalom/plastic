@@ -4,8 +4,23 @@ require_relative "../../test_helper"
 require "json"
 require "open3"
 require "digest"
+require_relative "../../../scripts/lib/plastic/commands/architecture_refresh"
 
 class ArchitectureTest < Plastic::TestCase
+  def test_refresh_preserves_the_saved_receipt_when_enola_generation_fails
+    prior = { "state" => "fresh", "revision" => "abc" }
+    command = refresh_command(adapter_result: { success: false, receipt: prior })
+
+    error = assert_raises(Plastic::CLI::Command::Failure) { command.send(:refreshed_receipt) }
+
+    assert_equal "Enola could not generate an architecture snapshot", error.message
+  end
+
+  def test_refresh_records_the_current_worktree_hash_after_generation
+    command = refresh_command(adapter_result: { success: true, receipt: nil }, current: { "state" => "fresh", "revision" => "abc" })
+
+    assert_equal({ "state" => "fresh", "revision" => "abc", "worktree_hash" => "changed" }, command.send(:refreshed_receipt))
+  end
   def test_reports_a_missing_architecture_snapshot_as_json_and_lists_its_refresh_command
     status = plastic("architecture", "status", "--json", table: Plastic::CLI::TABLE)
     help = plastic("architecture", "refresh", "--help", table: Plastic::CLI::TABLE)
@@ -51,6 +66,18 @@ class ArchitectureTest < Plastic::TestCase
   end
 
   private
+
+  def refresh_command(adapter_result:, current: nil)
+    command = Plastic::Commands::ArchitectureRefresh.allocate
+    adapter = Struct.new(:result) { def refresh(**) = result }.new(adapter_result)
+    state = Struct.new(:worktree_hash).new("changed")
+    command.define_singleton_method(:adapter) { adapter }
+    command.define_singleton_method(:repository) { "/repository" }
+    command.define_singleton_method(:stored_receipt) { { "state" => "fresh" } }
+    command.define_singleton_method(:current_receipt) { current || {} }
+    command.define_singleton_method(:source_state) { state }
+    command
+  end
 
   def architecture_status(repository, arguments: [])
     out = StringIO.new
