@@ -29,4 +29,12 @@ class ArchitectureTest < Plastic::TestCase
     assert_equal 0, result.code, result.err
     assert_includes result.out, "1. Check whether the project has an architecture map"
   end
+
+  def test_help_lists_the_usage_line_and_the_shared_options
+    result = cli("architecture", "status", "--help")
+
+    assert_equal 0, result.code, result.err
+    assert_includes result.out, "plastic architecture status"
+    assert_includes result.out, "--project SLUG"
+  end
 end
