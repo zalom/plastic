@@ -18,7 +18,7 @@ module Plastic
       # Captures the observable result of asking Enola for its version.
       Tool = Data.define(:available, :version, :error) do
         def state
-          return "missing" if !available && error.to_s.match?(/not found|ENOENT/i)
+          return "missing" if !available && error.to_s.match?(/not found|ENOENT|No such file or directory/i)
           return "failed" unless available
           return "unsupported" unless version == VERSION
 

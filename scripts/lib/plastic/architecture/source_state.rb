@@ -29,8 +29,9 @@ module Plastic
       def dirty = !git("status", "--porcelain").first.to_s.strip.empty?
 
       def binary_digest
-        path = `command -v enola`.strip
-        File.file?(path) ? Digest::SHA256.file(path).hexdigest : nil
+        path = ENV.fetch("PATH", "").split(File::PATH_SEPARATOR).map { |directory| File.join(directory, "enola") }
+          .find { |candidate| File.file?(candidate) && File.executable?(candidate) }
+        path && Digest::SHA256.file(path).hexdigest
       rescue Errno::ENOENT
         nil
       end

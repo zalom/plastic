@@ -87,7 +87,7 @@ class ArchitectureSourceStateTest < Plastic::TestCase
     result = plastic("architecture", "status", "--json", table: Plastic::CLI::TABLE)
 
     assert_equal 0, result.code, result.err
-    assert_equal "failed", JSON.parse(result.out).dig("result", "architecture", "state")
+    assert_equal "missing", JSON.parse(result.out).dig("result", "architecture", "state")
   ensure
     ENV["PATH"] = original_path
   end
@@ -118,7 +118,7 @@ class ArchitectureSourceStateTest < Plastic::TestCase
 
   def with_executable_path(directory)
     original = ENV.fetch("PATH")
-    ENV["PATH"] = [directory, original].join(File::PATH_SEPARATOR)
+    ENV["PATH"] = directory
     yield
   ensure
     ENV["PATH"] = original
@@ -219,7 +219,7 @@ class ArchitectureStatusTest < Plastic::TestCase
   end
 
   def run_git(repository, *arguments)
-    output, error, status = Open3.capture3("git", "-C", repository, *arguments)
+    output, error, status = Open3.capture3("git", "-c", "user.name=Fixture", "-c", "user.email=fixture@example.com", "-C", repository, *arguments)
     raise error unless status.success?
 
     output
