@@ -25,9 +25,10 @@ module Plastic
       attr_reader :graphs, :scope, :intent_id
 
       def persist_database(body, architecture, receipt)
+        updated_at = Plastic.now
         graphs.databases.fetch(:knowledge).transaction do |batch|
-          batch.put(:retrieval_contexts, { intent_id:, data: body, updated_at: Plastic.now })
-          batch.put(:architecture_receipts, { provider: architecture.fetch("provider"), data: JSON.pretty_generate(receipt), updated_at: Plastic.now }) if receipt
+          batch.put(:retrieval_contexts, { intent_id:, data: body, updated_at: })
+          batch.put(:architecture_receipts, { provider: architecture.fetch("provider"), data: JSON.pretty_generate(receipt), updated_at: }) if receipt
         end
       end
 
@@ -38,8 +39,9 @@ module Plastic
       end
 
       def persist_context(body)
-        FileUtils.mkdir_p(File.dirname(context_path))
-        Tempfile.create(["context", ".json"], File.dirname(context_path)) do |file|
+        directory = File.dirname(context_path)
+        FileUtils.mkdir_p(directory)
+        Tempfile.create(["context", ".json"], directory) do |file|
           file.write(body)
           file.flush
           File.rename(file.path, context_path)

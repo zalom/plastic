@@ -8,8 +8,8 @@ module Plastic
         @scope = scope
       end
 
-      def validate!(intent_id)
-        validate_id!(intent_id)
+      def validate(intent_id)
+        validate_id(intent_id)
         return if owner_graph.retrieval.intent(intent_id)
 
         raise CLI::Command::Failure, "no intent #{intent_id} in owning store"
@@ -19,7 +19,7 @@ module Plastic
 
       attr_reader :scope
 
-      def validate_id!(intent_id)
+      def validate_id(intent_id)
         return if /\A\d+[a-z0-9]*\z/.match?(intent_id)
 
         raise CLI::Command::Usage, "invalid intent id #{intent_id.inspect}"

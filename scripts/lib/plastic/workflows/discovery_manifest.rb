@@ -41,11 +41,11 @@ module Plastic
       end
 
       def retrieval_for(slug)
-        ensure_store_files!(slug)
+        verify_store_files(slug)
         Graph.open_retrieval(home: @context.plastic_home, store: slug)
       end
 
-      def ensure_store_files!(slug)
+      def verify_store_files(slug)
         root = File.join(@context.plastic_home, "stores", slug)
         missing = Graph::Schema.store.map { |key| Graph::Schema.file(key) }.reject { |file| File.file?(File.join(root, file)) }
         return if missing.empty?

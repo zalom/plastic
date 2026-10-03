@@ -22,7 +22,7 @@ module Plastic
       end
 
       def call
-        validate_intent_id!
+        validate_intent_id
         super
       end
 
@@ -43,13 +43,14 @@ module Plastic
 
       def scope_facts = { scope_slug: scope.slug, plastic_home: scope.plastic_home, store_root: scope.root }
 
-      def validate_intent_id!
+      def validate_intent_id
         id = parsed.fetch(:intent_id)
         raise CLI::Command::Usage, "invalid intent id #{id.inspect}" unless /\A\d+[a-z0-9]*\z/.match?(id)
       end
 
       def report(value, ctx)
-        output.row("discovery", ctx.discovery) if ctx.discovery
+        discovery = ctx.discovery
+        output.row("discovery", discovery) if discovery
         super
       end
     end
