@@ -46,9 +46,14 @@ module Plastic
       private
 
       def timed_samples(command)
-        @warmup.times { self.class.run_command(command) }
-        @samples.times.map { self.class.run_command(command) }
+        runner = self.class.method(:run_command)
+        warm_up(command, runner)
+        measured_samples(command, runner)
       end
+
+      def warm_up(command, runner) = @warmup.times { runner.call(command) }
+
+      def measured_samples(command, runner) = @samples.times.map { runner.call(command) }
     end
   end
 end
