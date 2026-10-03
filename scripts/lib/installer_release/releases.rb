@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "rubygems/version"
+
 module InstallerRelease
   # The releases/ directory of an install home: one directory per installed version.
   class Releases
@@ -13,7 +15,7 @@ module InstallerRelease
 
     def installed?(version) = File.directory?(path(version))
 
-    def versions = File.directory?(root) ? Dir.children(root).sort : []
+    def versions = File.directory?(root) ? Dir.children(root).sort_by { |version| Gem::Version.new(version) } : []
 
     def same_filesystem?(candidate) = File.stat(candidate).dev == File.stat(root).dev
 

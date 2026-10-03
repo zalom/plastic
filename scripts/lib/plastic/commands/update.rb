@@ -4,9 +4,12 @@ require_relative "../routine"
 
 module Plastic
   module Commands
-    # Syncs a newer running package into the home, or names the installer
-    # command that fetches the newest release of the channel.
+    # Syncs a newer running package into the home, or activates the newest
+    # release of the chosen channel, by default the active release's own.
     class Update < Routine
+      option :stable, switch: "--stable", default: false, text: "update from the stable channel"
+      option :beta, switch: "--beta", default: false, text: "update from the beta channel"
+      option :alpha, switch: "--alpha", default: false, text: "update from the alpha channel"
       option :dry_run, switch: "--dry-run", default: false, text: "name both versions and change nothing"
 
       workflow :code_preview_update do

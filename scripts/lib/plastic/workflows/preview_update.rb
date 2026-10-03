@@ -2,6 +2,7 @@
 
 require_relative "../code_workflow"
 require_relative "installation"
+require_relative "release_update"
 
 module Plastic
   module Workflows
@@ -11,6 +12,9 @@ module Plastic
       [facts, steps, outcomes].each(&:clear)
 
       sets :from, :to
+
+      gate "choose one channel: --stable, --beta or --alpha", stops: :refusal,
+        pass: ->(context) { ReleaseUpdate.chosen_channels(context).size <= 1 }
 
       read "compare the installed and the running versions" do |context|
         installation = Installation.of(context)

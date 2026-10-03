@@ -21,8 +21,11 @@ module Plastic
         command.split.map { |word| File.basename(word.delete(%("')), ".rb") }.intersect?(OLD_LAUNCHERS)
       end
 
-      def initialize(command:, config:, launchers:)
+      # Former names the launchers this installation wrote before it moved,
+      # so their groups are replaced, not kept beside the new ones.
+      def initialize(command:, config:, launchers:, former: [])
         @command = command
+        @former = former
         @config = config
         @launchers = launchers
       end
@@ -30,21 +33,19 @@ module Plastic
       # A new Claude Code settings hash, with this installation's hook groups,
       # status line and screens replaced.
       def claude(settings)
-        rewritten = with_events(settings, "claude-code")
-        hooks = rewritten["hooks"]
-        display = [*hooks["MessageDisplay"], *screens_group]
-        display.empty? ? hooks.delete("MessageDisplay") : hooks["MessageDisplay"] = display
-        status_line(rewritten)
+        rewritten = with_events(settings, own_groups("claude-code").merge("MessageDisplay" => screens_group))
+        hooks = rewritten["hooks"].reject { |event, groups| event == "MessageDisplay" && groups.empty? }
+        status_line(rewritten.merge("hooks" => hooks))
       end
 
       # A new Codex hooks.json hash. Codex has no status line or screen events.
-      def codex(hooks_json) = with_events(hooks_json, "codex")
+      def codex(hooks_json) = with_events(hooks_json, own_groups("codex"))
 
       private
 
-      def with_events(settings, harness)
+      def with_events(settings, own)
         kept = Hash(settings["hooks"]).transform_values { |entries| without_ours(entries) }
-        settings.merge("hooks" => kept.merge(own_groups(harness)) { |_event, theirs, ours| theirs + ours })
+        settings.merge("hooks" => kept.merge(own) { |_event, theirs, ours| theirs + ours })
       end
 
       def own_groups(harness) = EVENTS.transform_values { |words| [group(%("#{@command}" #{words} --harness #{harness}))] }
@@ -56,7 +57,7 @@ module Plastic
       def ours?(entry) = Array(entry["hooks"]).any? { |hook| ours_command?(hook["command"].to_s) }
 
       def ours_command?(command)
-        own = [@command, *@launchers.values].compact
+        own = [@command, *@former, *@launchers.values].compact
         own.any? { |path| command == path || command.include?(%("#{path}")) } || self.class.old_launcher?(command)
       end
 

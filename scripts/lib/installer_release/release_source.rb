@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "json"
+require "rubygems/version"
 require_relative "https_fetch"
 require_relative "release_files"
 
@@ -16,7 +17,7 @@ module InstallerRelease
 
     def newer?(candidate, current) = (order(candidate) <=> order(current)) == 1
 
-    def order(version) = version.scan(/\d+/).map(&:to_i)
+    def order(version) = Gem::Version.new(version)
 
     def complete?(release) = (ReleaseFiles::NAMES - release.fetch("assets").map { |asset| asset["name"] }).empty?
 

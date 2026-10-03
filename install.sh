@@ -58,10 +58,6 @@ else
 fi
 [ "$missing" = false ] || exit 1
 
-if [ -e "$bin/plastic" ] && [ ! -L "$bin/plastic" ]; then
-  fail "$bin/plastic exists and is not a link; move it aside and run install.sh again"
-fi
-
 tmp=$(mktemp -d "${TMPDIR:-/tmp}/plastic-install.XXXXXX")
 trap 'rm -rf "$tmp"' EXIT
 trap 'exit 1' INT TERM
@@ -71,15 +67,28 @@ fetch() { curl --proto '=https' --tlsv1.2 -fsSL "$1" -o "$2"; }
 newest_version() {
   feed=$(curl --proto '=https' --tlsv1.2 -fsSL -H 'Accept: application/vnd.github+json' "$api") ||
     fail "could not read the release list from GitHub"
-  printf '%s' "$feed" | ruby --disable-gems -rjson -e '
+  printf '%s' "$feed" | ruby --disable-gems -rjson -rrubygems/version -e '
     names = %w[plastic.tgz plastic.tgz.sha256 plastic.manifest.json]
     versions = JSON.parse($stdin.read).filter_map do |release|
       next unless (names - release.fetch("assets").map { |asset| asset["name"] }).empty?
       version = release.fetch("tag_name").delete_prefix("v")
       version if (version[/-(alpha|beta)\b/, 1] || "latest") == ARGV[0]
     end
-    print versions.max_by { |version| version.scan(/\d+/).map(&:to_i) }
+    print versions.max_by { |version| Gem::Version.new(version) }
   ' "$feed_channel"
+}
+
+inspect_archive() {
+  names=$(tar -tzf "$tmp/plastic.tgz") || fail "plastic.tgz cannot be read"
+  printf '%s\n' "$names" | while IFS= read -r name; do
+    case "$name" in
+      /* | .. | ../* | */.. | */../*) exit 1 ;;
+    esac
+  done || fail "plastic.tgz holds an unsafe entry: an absolute path or a parent directory"
+  kinds=$(tar -tvzf "$tmp/plastic.tgz" | cut -c1 | sort -u | tr -d '\n')
+  case "$kinds" in
+    *[!d-]*) fail "plastic.tgz holds an unsafe entry: a link or a special file" ;;
+  esac
 }
 
 manifest_version() {
@@ -110,12 +119,12 @@ fi
 
 (cd "$tmp" && $digest plastic.tgz.sha256 >/dev/null 2>&1) || fail "plastic.tgz does not match its published checksum"
 
+inspect_archive
 mkdir "$tmp/boot"
 tar -xzf "$tmp/plastic.tgz" -C "$tmp/boot" package/scripts/install-release package/scripts/lib/installer_release.rb package/scripts/lib/installer_release
-ruby --disable-gems "$tmp/boot/package/scripts/install-release" --directory "$tmp" --version "$version" --home "$share" || exit 1
+ruby --disable-gems "$tmp/boot/package/scripts/install-release" --directory "$tmp" --version "$version" --home "$share" \
+  --bin "$bin" --plastic-home "${PLASTIC_HOME:-$HOME/.plastic}" --user-home "$HOME" || exit 1
 
-mkdir -p "$bin"
-ln -sfn "$share/active/bin/plastic" "$bin/plastic"
 say "Plastic $version is active."
 case ":$PATH:" in
   *":$bin:"*) ;;

@@ -100,12 +100,13 @@ class InstallerReleaseActivationTest < Minitest::Test
     refute installer.releases.installed?("2.0.3")
   end
 
-  private
+  def test_lists_the_installed_releases_in_version_order
+    installer = activation_with("2.0.10", "2.0.9", "2.0.10-alpha.1")
 
-  def activation_with(*installed, activation: InstallerRelease::Activation.new(home: install_home))
-    installed.each { |version| activation.activate(staged_candidate(version), version: version) }
-    activation
+    assert_equal %w[2.0.9 2.0.10-alpha.1 2.0.10], installer.releases.versions
   end
+
+  private
 
   def failed_switch
     installer = activation_with("2.0.1", "2.0.2", activation: failing_pointer_activation)
@@ -114,8 +115,6 @@ class InstallerReleaseActivationTest < Minitest::Test
     assert_raises(InstallerRelease::ActivationError) { installer.activate(candidate, version: "2.0.3") }
     [installer, candidate]
   end
-
-  def versions(installer) = [installer.active_version, installer.previous_version]
 
   def failing_pointer_activation
     Class.new(InstallerRelease::Activation) do

@@ -54,8 +54,13 @@ module InstallShHelper
     return directory if Dir.exist?(directory)
 
     write_package(File.join(directory, "package"), version)
+    yield File.join(directory, "package") if block_given?
+    system("tar", "-czf", File.join(directory, "plastic.tgz"), "-C", directory, "package", exception: true)
+    publish(directory, version)
+  end
+
+  def publish(directory, version)
     archive = File.join(directory, "plastic.tgz")
-    system("tar", "-czf", archive, "-C", directory, "package", exception: true)
     identity = InstallerRelease::Manifest.identity(version).merge("platform" => "universal", "architecture" => "universal")
     InstallerRelease::Manifest.write(File.join(directory, "plastic.manifest.json"), archive: archive, release: identity)
     File.write(File.join(directory, "plastic.tgz.sha256"), "#{Digest::SHA256.file(archive).hexdigest}  plastic.tgz\n")

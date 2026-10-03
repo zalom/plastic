@@ -18,7 +18,7 @@ module Plastic
         usable, messages = installation.preflight
         messages.each { |line| context.print(line) }
         context[:usable] = usable
-        context[:pending] = installation.unregistered(Installation.selected(context))
+        context[:pending] = installation.unregistered(Installation.to_install(context))
       end
 
       gate "this machine cannot run Plastic; see above", stops: :failure, pass: ->(context) { context.usable }
@@ -27,7 +27,7 @@ module Plastic
 
       step "install the core files and register the agents", done: ->(context) { !context.installed.nil? } do |context|
         installation = Installation.of(context)
-        selected = Installation.selected(context)
+        selected = Installation.to_install(context)
         lines = Installation.capture { installation.install(selected, reinstall: context.reinstall, force: context.force) }
         lines.each { |line| context.print(line) }
         context[:installed] = installation.version
