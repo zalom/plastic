@@ -2,6 +2,7 @@
 
 require_relative "../test_helper"
 require "json"
+require "open3"
 require_relative "../../tools/retrieval_benchmark"
 
 class RetrievalBenchmarkTest < Minitest::Test
@@ -17,6 +18,16 @@ class RetrievalBenchmarkTest < Minitest::Test
       second = Plastic::RetrievalBenchmark.generate_corpus(File.join(directory, "again"), target_bytes: 20_000, stores: 3)
 
       assert_equal corpus_summary(first), corpus_summary(second)
+    end
+  end
+
+  def test_worker_does_not_execute_when_a_quality_gate_requires_its_source
+    Dir.mktmpdir do |directory|
+      worker = File.expand_path("../../tools/retrieval_benchmark/worker.rb", __dir__)
+      source = File.expand_path("../../scripts/lib/plastic.rb", __dir__)
+      stdout, stderr, status = Open3.capture3(RbConfig.ruby, "-e", "require ARGV.fetch(0)", worker, source, chdir: directory)
+
+      assert_equal [true, "", "", []], [status.success?, stdout, stderr, Dir.children(directory)]
     end
   end
 
