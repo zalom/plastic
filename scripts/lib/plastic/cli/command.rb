@@ -5,6 +5,7 @@ require_relative "command/usage"
 require_relative "command/refusal"
 require_relative "command/failure"
 require_relative "command/environment"
+require_relative "command/help"
 require_relative "declarations"
 require_relative "text_output"
 require_relative "json_output"
@@ -47,21 +48,19 @@ module Plastic
       # error prints the usage line; a refusal or a failure prints its line
       # after the rows.
       def run
-        return help if @argv.include?("--help") || @argv.include?("-h")
+        return help if @argv.intersect?(%w[--help -h])
 
         answer
-      rescue OptionParser::ParseError, Scope::UnknownProject, Usage => error
-        misused(error)
-      rescue Refusal, Failure => error
-        stop(error)
-      rescue Scope::BrokenProjects => error
-        broken(error)
+      rescue OptionParser::ParseError, Scope::UnknownProject, Usage, Refusal, Failure => error
+        settle(error)
       end
 
       def answer
         check_scope
         call
         flush.exit_code
+      rescue Scope::BrokenProjects => error
+        broken(error)
       end
 
       def call
@@ -71,7 +70,7 @@ module Plastic
       def usage_line = self.class.usage_line(words)
 
       def help
-        [usage_line, *help_details].each { |line| output.raw(line) }
+        Help.new(self.class, usage_line).lines.each { |line| output.raw(line) }
         OK
       end
 
@@ -84,22 +83,15 @@ module Plastic
 
       private
 
-      def help_details
-        arguments = self.class.arguments.map { |argument| help_line(argument.usage, argument.text) }
-        options = self.class.options.map { |option| help_line(option.switch, option.text) }
-        [*arguments, *options, "        --json", "        --project SLUG"]
-      end
-
-      def help_line(syntax, text) = format("        %-28s %s", syntax, text)
-
       attr_reader :words, :environment
 
-      # A named project must exist before any work runs.
-      def check_scope = @argv.grep(/\A--project(?:=|$)/).any? && scope.slug
-
-      def misused(error)
-        output.usage(error.message, usage_line)
-        USAGE
+      def settle(error)
+        case error
+        when Refusal, Failure then stop(error)
+        else
+          output.usage(error.message, usage_line)
+          USAGE
+        end
       end
 
       def stop(error)
@@ -114,12 +106,13 @@ module Plastic
         FAILED
       end
 
+      # A named project must exist before any work runs.
+      def check_scope = @argv.grep(/\A--project(?:=|$)/).any? && scope.slug
+
       def parsed
         tool = self.class
         @parsed ||= Parser.new(arguments: tool.arguments, options: tool.options, banner: usage_line).parse(@argv)
       end
-
-      def session = environment.session
 
       # Which store the call works on: --project, then the working directory,
       # then the global store.

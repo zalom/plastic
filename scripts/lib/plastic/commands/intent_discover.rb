@@ -38,7 +38,7 @@ module Plastic
       end
 
       def context(routine_run)
-        Context.new(declared: self.class.declared_facts, facts: routine_run.facts.merge(parsed).merge(scope_facts), graphs:, session:)
+        Context.new(declared: self.class.declared_facts, facts: routine_run.facts.merge(parsed).merge(scope_facts), graphs:, session: environment.session)
       end
 
       def scope_facts = { scope_slug: scope.slug, plastic_home: scope.plastic_home, store_root: scope.root }
