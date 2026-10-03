@@ -3,11 +3,22 @@
 require_relative "../../test_helper"
 
 class IntentDiscoverTest < Plastic::TestCase
-  def test_treats_malformed_or_incomplete_saved_context_as_not_complete
-    context = Struct.new(:terms).new("evidence")
+  def test_replaces_malformed_or_incomplete_saved_context_with_a_fresh_external_handoff
+    open_intent
+    write_document("other", "selected evidence")
+    source = File.join(@plastic_home, "stores", "other", "knowledge_graph.db")
+    before = File.binread(source)
 
-    assert_equal false, Plastic::Workflows::DiscoverRetrieval.send(:context_matches?, { "data" => "not json" }, context)
-    assert_equal false, Plastic::Workflows::DiscoverRetrieval.send(:context_matches?, { "data" => "{}" }, context)
+    %w[not-json {}].each_with_index do |data, index|
+      write_saved_context(data)
+      result = plastic("intent", "discover", "1", "evidence #{index}", "--source-project", "other", "--json", table: Plastic::CLI::TABLE)
+
+      assert_equal 0, result.code, result.err
+      assert_equal "plastic intent context 1 --from FILE --project global", JSON.parse(result.out).fetch("next")
+      assert_equal "evidence #{index}", JSON.parse(result.out).dig("result", "discovery", "query")
+    end
+
+    assert_equal before, File.binread(source)
   end
 
   def test_rejects_a_missing_or_unsafe_owning_intent_before_writing_a_manifest
@@ -86,5 +97,11 @@ class IntentDiscoverTest < Plastic::TestCase
     Plastic::Graph::EvidenceWriter.new(graphs.databases.fetch(:knowledge), origin).write("1", "evidence.md", body)
     graphs.retrieval.backfill!
     graphs.retrieval.archived?("1")
+  end
+
+  def write_saved_context(data)
+    Plastic::Graph.open(home: @plastic_home, store: "global").databases.fetch(:knowledge).transaction do |batch|
+      batch.put(:retrieval_contexts, { intent_id: "1", data:, updated_at: Plastic.now })
+    end
   end
 end
