@@ -83,11 +83,12 @@ class PublishWorkflowTest < Minitest::Test
 
   def test_pull_request_detection_catches_a_real_trigger
     fixture = Psych.safe_load("on:\n  pull_request: {}\n", aliases: false)
+
     assert has_pull_request?(triggers(fixture)), "the predicate must report a real pull_request trigger, or the row above proves nothing"
   end
 
   def test_publish_job_requests_an_id_token
-    assert_equal({"contents" => "write", "id-token" => "write"}, publish_job["permissions"])
+    assert_equal({ "contents" => "write", "id-token" => "write" }, publish_job["permissions"])
   end
 
   def test_workflow_permissions_default_to_read
@@ -104,6 +105,7 @@ class PublishWorkflowTest < Minitest::Test
 
   def test_sets_up_node_with_the_npm_registry
     step = step_using("actions/setup-node@v7")
+
     refute_nil step, "expected an actions/setup-node@v7 step"
     assert_equal "https://registry.npmjs.org", step["with"]["registry-url"]
   end
@@ -121,8 +123,9 @@ class PublishWorkflowTest < Minitest::Test
   def test_guard_runs_before_the_publish
     guard_index = steps.index(guard_step)
     publish_index = steps.index(publish_step)
+
     refute_nil publish_index, "expected a step named 'Publish to npm'"
-    assert guard_index < publish_index, "the guard must run before the publish step"
+    assert_operator guard_index, :<, publish_index, "the guard must run before the publish step"
   end
 
   def test_the_suite_runs_before_the_guard
@@ -156,7 +159,14 @@ class PublishWorkflowTest < Minitest::Test
   def test_the_release_carries_the_archive_at_the_pushed_commit
     run = step_named("Create the tag and the GitHub release")["run"]
 
-    assert_includes run, 'gh release create "$TAG" plastic.tgz --target "$GITHUB_SHA"'
+    assert_includes run, 'gh release create "$TAG" plastic.tgz plastic.manifest.json --target "$GITHUB_SHA"'
+  end
+
+  def test_builds_the_archive_and_manifest_together
+    run = step_named("Build the archive and manifest")["run"]
+
+    assert_includes run, "npm pack"
+    assert_includes run, "scripts/build-release-manifest"
   end
 
   def test_the_release_is_made_before_the_npm_publish
@@ -179,6 +189,7 @@ class PublishWorkflowTest < Minitest::Test
 
   def test_publish_tag_is_exactly_the_guard_output
     run_line = publish_step["run"]
+
     assert_includes run_line, '--tag "${{ steps.guard.outputs.dist_tag }}"'
     refute_match(/\b(alpha|beta|latest)\b/, run_line,
       "the publish run: line must carry no literal channel name; ubuntu-latest and npm@latest legitimately appear elsewhere in the file")
@@ -186,8 +197,9 @@ class PublishWorkflowTest < Minitest::Test
 
   def test_publishes_are_serialized
     concurrency = parsed["concurrency"]
+
     refute_nil concurrency, "expected a top-level concurrency block"
     assert_equal "publish-${{ github.ref }}", concurrency["group"]
-    assert_equal false, concurrency["cancel-in-progress"]
+    refute concurrency["cancel-in-progress"]
   end
 end
