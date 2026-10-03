@@ -15,8 +15,7 @@ module Plastic
       end
 
       # A current document that supplies its head and FTS rows.
-      Document = Data.define(:intent_id, :path, :body, :updated_at) do
-        def digest = Digest::SHA256.hexdigest(body)
+      Document = Data.define(:intent_id, :path, :body, :updated_at, :digest) do
         def passages = EvidenceText.passages(EvidenceText.extract_with_lines(path, body))
         def head_values = [intent_id, path, digest]
         def head_row(origin_id) = { intent_id:, path:, sha256: digest, updated_at:, origin_id: }
@@ -37,7 +36,9 @@ module Plastic
       private
 
       def documents(source)
-        select(source, "documents", "intent_id, path, body, updated_at").map { |row| Document.new(**row.transform_keys(&:to_sym)) }
+        select(source, "documents", "intent_id, path, body, updated_at").map do |row|
+          Document.new(**row.transform_keys(&:to_sym), digest: Digest::SHA256.hexdigest(row.fetch("body")))
+        end
       end
 
       def revisions(source)
