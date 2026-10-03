@@ -26,7 +26,7 @@ class InstallerCommandsTest < Plastic::TestCase
 
     assert_equal 0, text.code
     assert_match(/version:\s+2\.0\.3/, text.out)
-    assert_equal "2.0.3", JSON.parse(json.out).fetch("result").fetch("rows").fetch("version:").first
+    assert_equal "2.0.3", JSON.parse(json.out).fetch("result").fetch("version")
   end
 
   def test_install_and_update_dry_runs_plan_without_changing_an_absent_or_populated_home
@@ -39,7 +39,7 @@ class InstallerCommandsTest < Plastic::TestCase
         result = call(verb, "--dry-run", env: { "PLASTIC_HOME" => home })
 
         assert_equal 0, result.code
-        assert_includes result.out, "preview: #{verb}"
+        assert_match(/preview:\s+#{verb}/, result.out)
         assert_equal before, tree_snapshot(home)
       end
     end

@@ -7,6 +7,13 @@ module Plastic
     # is commands/intent_end.rb. `plastic help` reads this table alone, so
     # listing the commands loads no command. Each family owns its own section.
     TABLE = {
+      # Distribution
+      "version" => ["Commands::Version", "Print the installed Plastic version and release channel"],
+      "install" => ["Commands::Install", "Preview or install a verified Plastic release"],
+      "update" => ["Commands::Update", "Preview or install a verified update in the selected channel"],
+      "rollback" => ["Commands::Rollback", "Preview or restore the previous verified Plastic release"],
+      "uninstall" => ["Commands::Uninstall", "Preview or remove the verified Plastic installation"],
+
       # Storage
       "intent end" => ["Commands::IntentEnd", "Record explicit criterion acceptance and close a delivered intent"],
       "intent new" => ["Commands::IntentNew", "Open an intent: write its rows and print its folder"],
