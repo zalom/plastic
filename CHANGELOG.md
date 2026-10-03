@@ -6,8 +6,7 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 ## Unreleased
 
 - Stage 6 adds deterministic SQLite passage retrieval, immutable document fetches, selected-store
-  search, context manifests, and architecture prompts that tell the agent to map the code with its own tool. Retrieval benchmarks report
-  full-process timings and keep owner-reviewed quality acceptance pending.
+  search, context manifests, and architecture prompts that tell the agent to map the code with its own tool.
 
 - Archive captures complete intent directories before deletion and restores them through `intent archive ID --revert`. `sync up` imports legacy rulings, links, roadmaps, and preserved originals; `--dry-run` previews the same operation in a copy. The separate migration command is removed.
 
