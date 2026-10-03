@@ -29,26 +29,14 @@ module Plastic
       end
 
       def stored_context
-        row = graphs.databases.fetch(:knowledge).row("SELECT data FROM retrieval_contexts WHERE intent_id = :intent_id AND origin_id = :origin",
-          intent_id:, origin: graphs.retrieval.origin_id)
-        return JSON.parse(row.fetch("data")) if row
-
-        JSON.parse(File.read(context_path))
+        documents.read(:context)
       end
 
-      def discovery
-        row = graphs.databases.fetch(:knowledge).row("SELECT data FROM retrieval_discoveries WHERE intent_id = :intent_id AND origin_id = :origin",
-          intent_id:, origin: graphs.retrieval.origin_id)
-        return JSON.parse(row.fetch("data")) if row
-
-        JSON.parse(File.read(discovery_path))
-      end
-
-      def context_path = File.join(scope.root, "context", "#{intent_id}.json")
-
-      def discovery_path = File.join(scope.root, "discovery", "#{intent_id}.json")
+      def discovery = documents.read(:discovery)
 
       def source = (@source ||= ContextSource.new(scope))
+
+      def documents = (@documents ||= ContextDocuments.new(graphs:, scope:, intent_id:))
 
       def submission = (@submission ||= ContextSubmission.new(intent_id:, discovery:, source:))
 
