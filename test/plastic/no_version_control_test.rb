@@ -30,9 +30,16 @@ class NoVersionControlTest < Plastic::TestCase
   end
 
   def test_no_source_starts_a_process
-    calls = SOURCES.flat_map { |path| File.readlines(path).reject { |line| line.strip.start_with?("#") }.grep(SPAWNS) }
+    assert_equal PROCESS_BOUNDARY, process_sources
+    assert_equal 3, process_lines.size
+  end
 
-    assert_equal PROCESS_BOUNDARY, SOURCES.select { |path| File.readlines(path).reject { |line| line.strip.start_with?("#") }.grep(SPAWNS).any? }
-    assert_equal 3, calls.size
+  private
+
+  def process_sources = SOURCES.select { |path| process_lines(path).any? }
+
+  def process_lines(path = nil)
+    paths = path ? [path] : SOURCES
+    paths.flat_map { |source| File.readlines(source).reject { |line| line.strip.start_with?("#") }.grep(SPAWNS) }
   end
 end

@@ -110,5 +110,4 @@ class RetrievalBenchmarkTest < Minitest::Test
     { owner_review: report.fetch("quality").dig("owner_review", "status"), passed: answer.fetch("passed"), rank: answer.fetch("rank"),
       answer_bearing: answer.fetch("matched_text").include?("immutable revisions retain history") }
   end
-
 end
