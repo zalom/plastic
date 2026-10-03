@@ -41,7 +41,7 @@ module Plastic
         def self.validate!
           return if SQLite3::VERSION == VERSION
 
-          raise LoadError, "Plastic requires sqlite3 ~> 2.9 (found #{SQLite3::VERSION})"
+          raise LoadError, "Plastic requires sqlite3 #{VERSION} (found #{SQLite3::VERSION})"
         end
 
         def self.environment_roots
