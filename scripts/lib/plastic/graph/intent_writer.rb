@@ -68,8 +68,13 @@ module Plastic
           batch.put(:intents, intent.new_row, statement: :insert)
           batch.put(:savepoints, intent.first_savepoint(@session))
         end
-        document = intent.document(@retrieval.origin_id)
-        EvidenceWriter.new(@databases.fetch(:knowledge), @retrieval.origin_id).write(document.fetch(:intent_id), document.fetch(:path), document.fetch(:body))
+        write_document(intent)
+      end
+
+      def write_document(intent)
+        origin_id = @retrieval.origin_id
+        document = intent.document(origin_id)
+        EvidenceWriter.new(@databases.fetch(:knowledge), origin_id).write(*document.values_at(:intent_id, :path, :body))
       end
 
       def next_id(parent_id)

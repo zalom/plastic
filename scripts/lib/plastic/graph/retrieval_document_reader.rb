@@ -10,24 +10,19 @@ module Plastic
       end
 
       def current_revision(intent_id, path)
-        row = knowledge.row("SELECT h.sha256 FROM document_heads h WHERE h.intent_id = :intent_id AND h.path = :path AND h.origin_id = :origin", intent_id:, path:, origin: origin_id)
-        raise RetrievalGraph::MissingReference, "no current document #{intent_id}:#{path}" unless row
-
+        row = knowledge.row("SELECT h.sha256 FROM document_heads h WHERE h.intent_id = :intent_id AND h.path = :path AND h.origin_id = :origin", intent_id:, path:, origin: origin_id) ||
+          raise(RetrievalGraph::MissingReference, "no current document #{intent_id}:#{path}")
         row.fetch("sha256")
       end
 
       def fetch(fields)
-        row = document_row(fields)
-        raise RetrievalGraph::MissingReference, "no document #{fields.fetch(:intent_id)}:#{fields.fetch(:path)}" unless row
-
-        row
+        document_row(fields) || raise(RetrievalGraph::MissingReference, "no document #{fields.fetch(:intent_id)}:#{fields.fetch(:path)}")
       end
 
       def passage(fields, position)
         row = knowledge.row("SELECT body, line_start, line_end FROM document_passages WHERE intent_id = :intent_id AND path = :path AND sha256 = :sha256 AND position = :position AND origin_id = :origin",
-          intent_id: fields.fetch(:intent_id), path: fields.fetch(:path), sha256: fields.fetch(:revision), position:, origin: origin_id)
-        raise RetrievalGraph::MissingReference, "no passage #{position}" unless row
-
+          intent_id: fields.fetch(:intent_id), path: fields.fetch(:path), sha256: fields.fetch(:revision), position:, origin: origin_id) ||
+          raise(RetrievalGraph::MissingReference, "no passage #{position}")
         row.transform_keys(&:to_sym)
       end
 
