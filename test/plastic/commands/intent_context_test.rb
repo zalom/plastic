@@ -10,7 +10,7 @@ module IntentContextTestSupport
   def write_document(store, body)
     graphs = Plastic::Graph.open(home: @plastic_home, store:)
     Plastic::Graph::EvidenceWriter.new(graphs.databases.fetch(:knowledge), origin).write("1", "evidence.md", body)
-    graphs.retrieval.backfill!
+    graphs.retrieval.backfill
     graphs.retrieval.archived?("1")
     graphs.retrieval.reference("1", "evidence.md").fetch(:uri)
   end

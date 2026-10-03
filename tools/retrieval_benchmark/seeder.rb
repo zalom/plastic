@@ -27,7 +27,7 @@ module Plastic
         graphs = Graph.open(home: @home, store:)
         graphs.databases.each_value { |database| database.rows("SELECT 1") }
         seed_documents(graphs, paths)
-        graphs.retrieval.backfill!
+        graphs.retrieval.backfill
       end
 
       def seed_documents(graphs, paths)

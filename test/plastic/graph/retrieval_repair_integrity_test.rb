@@ -72,7 +72,7 @@ class RetrievalRepairIntegrityTest < Plastic::TestCase
 
   def writer = Plastic::Graph::EvidenceWriter.new(knowledge, origin)
   def knowledge = store_graphs.databases.fetch(:knowledge)
-  def repair = retrieval.repair!
+  def repair = retrieval.repair
 
   def concurrent_writer
     called = false
@@ -87,7 +87,7 @@ class RetrievalRepairIntegrityTest < Plastic::TestCase
   def repair_after_concurrent_write
     writer.write("1", "repair.md", "old evidence")
     knowledge.transaction { |batch| batch.add("DELETE FROM document_fts") }
-    Plastic::Graph::EvidenceIntegrity.new(knowledge, origin, before_rebuild: concurrent_writer).repair!
+    Plastic::Graph::EvidenceIntegrity.new(knowledge, origin, before_rebuild: concurrent_writer).repair
   end
 
   def canonical_state

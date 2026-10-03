@@ -39,8 +39,10 @@ module Plastic
 
       def search_reference(row) = references.qualified_reference(row.fetch("intent_id"), row.fetch("path"), row.fetch("sha256"))
 
-      def backfill! = @maintenance.backfill!
-      def repair! = @maintenance.repair!
+      # Mutates only derived retrieval rows; this Stage 6 operation has no safe counterpart.
+      def backfill = @maintenance.backfill
+      # Rebuilds only derived retrieval rows from immutable evidence.
+      def repair = @maintenance.repair
 
       private
 

@@ -15,22 +15,24 @@ module Plastic
       end
 
       def ready_documents
-        ensure_backfill!
+        ensure_backfill
         yield
       end
 
       def search(terms, limit:, migrate:)
-        ensure_backfill!(migrate)
+        ensure_backfill(migrate)
         @searcher.call(terms, limit:)
       end
 
-      def backfill! = ReferenceBackfill.new(@databases, origin_id).call
-      def repair! = EvidenceIntegrity.new(knowledge, origin_id).repair!
+      # Mutates only derived retrieval rows; this Stage 6 operation has no safe counterpart.
+      def backfill = ReferenceBackfill.new(@databases, origin_id).call
+      # Rebuilds only derived retrieval rows from immutable evidence.
+      def repair = EvidenceIntegrity.new(knowledge, origin_id).repair
 
       private
 
-      def ensure_backfill!(migrate = true)
-        return backfill! if migrate
+      def ensure_backfill(migrate = true)
+        return backfill if migrate
         return if ReferenceBackfill.complete?(knowledge.path, origin_id)
 
         raise RetrievalGraph::MaintenanceRequired, "retrieval migration is required before a selected source can be read"

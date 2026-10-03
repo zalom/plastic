@@ -24,7 +24,7 @@ module Plastic
         databases.each_value { |database| database.rows("SELECT 1") }
         writer = Graph::EvidenceWriter.new(databases.fetch(:knowledge), graphs.retrieval.origin_id)
         rows.each { |row| writer.write(row.fetch("intent_id"), row.fetch("path"), row.fetch("content")) }
-        graphs.retrieval.backfill!
+        graphs.retrieval.backfill
       end
     end
   end

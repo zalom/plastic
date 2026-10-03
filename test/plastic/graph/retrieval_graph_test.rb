@@ -81,7 +81,7 @@ class RetrievalGraphTest < Plastic::TestCase
             data: Plastic::Graph::SQL::Bytes.new("Archived evidence\n"), intent_id: "1", sha256: "source" }
     put(:references, :sqlar, row)
 
-    2.times { retrieval.backfill! }
+    2.times { retrieval.backfill }
 
     assert_equal [["research.txt", "Archived evidence\n"]], retrieval.search("archived evidence").map { |found| found.values_at("path", "body") }
     assert_equal "Archived evidence\n", retrieval.kept_file_data(row[:name])
@@ -92,14 +92,14 @@ class RetrievalGraphTest < Plastic::TestCase
             data: Plastic::Graph::SQL::Bytes.new("%PDF readable"), intent_id: "1", sha256: "source" }
     put(:references, :sqlar, row)
 
-    retrieval.backfill!
+    retrieval.backfill
 
     assert_equal "%PDF readable", retrieval.kept_file_data(row[:name])
     assert_empty retrieval.search("readable")
   end
 
   def test_backfill_marks_the_retrieval_migration_complete
-    retrieval.backfill!
+    retrieval.backfill
 
     assert_equal "complete", store_graphs.databases.fetch(:knowledge).row("SELECT completed_at FROM retrieval_schema WHERE name = 'retrieval'").fetch("completed_at")
   end
@@ -122,7 +122,7 @@ class RetrievalGraphTest < Plastic::TestCase
     index_text(intent, "repair.txt", "Repairable evidence\n")
     store_graphs.databases.fetch(:knowledge).transaction { |batch| batch.add("DELETE FROM document_fts") }
 
-    retrieval.repair!
+    retrieval.repair
 
     assert_equal ["repair.txt"], retrieval.search("repairable").map { |row| row.fetch("path") }
   end

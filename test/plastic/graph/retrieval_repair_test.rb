@@ -11,7 +11,7 @@ class RetrievalRepairTest < Plastic::TestCase
       index_current_document
       knowledge.transaction { |batch| batch.add("DELETE FROM #{table}") }
 
-      retrieval.repair!
+      retrieval.repair
 
       assert_repaired
     end

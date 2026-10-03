@@ -10,7 +10,7 @@ module SearchTestSupport
   def write_document(store, body, path: "evidence.md")
     graphs = Plastic::Graph.open(home: @plastic_home, store:)
     Plastic::Graph::EvidenceWriter.new(graphs.databases.fetch(:knowledge), origin).write("1", path, body)
-    graphs.retrieval.backfill!
+    graphs.retrieval.backfill
     graphs.retrieval.archived?("1")
   end
 
@@ -90,7 +90,7 @@ module SearchTestAssertionSupport
     graphs = Plastic::Graph.open(home: @plastic_home, store: "global")
     writer = Plastic::Graph::EvidenceWriter.new(graphs.databases.fetch(:knowledge), origin)
     writer.write("1", "evidence.md", "first evidence")
-    graphs.retrieval.backfill!
+    graphs.retrieval.backfill
     hit = sole(graphs.retrieval.search("evidence"))
     replace_and_remove(writer)
 

@@ -39,7 +39,7 @@ module Plastic
 
       def_delegators :sessions, :routine_run, :session, :previous_session, :predecessor, :locks_of, :lock, :last_run, :touched
       def_delegators :work, :ready_nodes, :node, :rulings, :links
-      def_delegators :evidence, :documents, :fetch, :reference, :fetch_reference, :fetch_batch, :fetch_passage, :exact_lookup_plans, :search, :search_reference, :backfill!, :repair!
+      def_delegators :evidence, :documents, :fetch, :reference, :fetch_reference, :fetch_batch, :fetch_passage, :exact_lookup_plans, :search, :search_reference, :backfill, :repair
 
       def initialize(databases, store:, origin:)
         @databases = databases

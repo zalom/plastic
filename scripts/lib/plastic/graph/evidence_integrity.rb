@@ -19,7 +19,8 @@ module Plastic
         @rebuilder = EvidenceIntegrityRebuilder.new(origin_id)
       end
 
-      def repair!
+      # Rebuilds derived rows inside one immediate transaction.
+      def repair
         @database.immediate_transaction do |batch, connection|
           @before_rebuild.call
           snapshot = @snapshot.capture(connection)

@@ -31,7 +31,7 @@ module Plastic
 
         legacy_documents.each { |row| write(row) }
         legacy_references.each { |row| write(row) }
-        complete!
+        mark_complete
         self
       end
 
@@ -69,7 +69,7 @@ module Plastic
           origin: @origin_id, version: SCHEMA_VERSION)
       end
 
-      def complete!
+      def mark_complete
         @knowledge.transaction do |batch|
           batch.add("INSERT INTO retrieval_backfills (name, origin_id, version, completed_at) VALUES ('retrieval', :origin, :version, :completed_at) ON CONFLICT(name, origin_id) DO UPDATE SET version = MAX(version, excluded.version), completed_at = excluded.completed_at",
             origin: @origin_id, version: SCHEMA_VERSION, completed_at: Plastic.now)

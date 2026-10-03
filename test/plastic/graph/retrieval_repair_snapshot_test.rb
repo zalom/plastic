@@ -23,7 +23,7 @@ class RetrievalRepairSnapshotTest < Plastic::TestCase
     isolated.transaction { |batch| batch.add("DELETE FROM document_fts") }
     @pipes = IO.pipe + IO.pipe
     repairer = Plastic::Graph::EvidenceIntegrity.new(isolated, origin, before_rebuild: method(:block_writer))
-    repairer.repair!
+    repairer.repair
     [@writer, acquired]
   end
 
