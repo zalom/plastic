@@ -9,6 +9,7 @@ require_relative "../../scripts/lib/plastic/graph/database/connection_pool"
 
 module Plastic
   module RetrievalBenchmark
+    # Measures reads while a writer updates a document in the same store.
     class Concurrency
       def initialize(benchmark, samples)
         @benchmark = benchmark

@@ -25,8 +25,11 @@ module Plastic
     # returns records or plain values. Nothing here writes. A method that
     # takes an intent id reads every intent of the store when given none.
     class RetrievalGraph
+      # Signals that a caller must build the derived retrieval rows first.
       class MaintenanceRequired < StandardError; end
+      # Signals a qualified retrieval reference that has no stored document.
       class MissingReference < StandardError; end
+      # Signals an FTS query that SQLite cannot safely evaluate.
       class InvalidSearch < StandardError; end
       SEARCH_LIMIT = RetrievalSearch::SEARCH_LIMIT
       extend Forwardable

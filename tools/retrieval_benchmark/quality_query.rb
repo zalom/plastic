@@ -7,6 +7,7 @@ module Plastic
   module RetrievalBenchmark
     # Runs one public top-20 query and checks every returned expected passage.
     class QualityQuery
+      # Carries one search response and its passage-level evidence checks.
       Result = Data.define(:expected, :sample, :rows, :checks)
 
       def initialize(home, query)

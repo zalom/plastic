@@ -2,6 +2,7 @@
 
 module Plastic
   module Graph
+    # Upgrades retrieval tables while retaining each canonical document row.
     module SchemaMigrations
       def migrate_revision_membership(connection)
         sql = connection.get_first_value("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'document_revisions'")

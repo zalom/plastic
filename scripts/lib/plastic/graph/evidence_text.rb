@@ -7,6 +7,7 @@ module Plastic
   module Graph
     # Classifies and extracts text before retrieval stores immutable evidence.
     module EvidenceText
+      # Holds extracted text and the original source line for each character.
       Extraction = Data.define(:body, :lines)
       MARKUP_EXTENSIONS = TextSource::MARKUP_EXTENSIONS
       PASSAGE_SIZE = Passages::SIZE

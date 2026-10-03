@@ -7,6 +7,7 @@ module Plastic
   module Architecture
     # Validates the Enola artifacts against the source state they describe.
     class EnolaSnapshot
+      # Identifies the repository state that an Enola snapshot must describe.
       Source = Data.define(:repository, :revision, :dirty)
 
       def initialize(provenance:)

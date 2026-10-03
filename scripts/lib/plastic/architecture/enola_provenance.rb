@@ -8,12 +8,14 @@ module Plastic
       ARCHIVE_SHA256 = "d31f197bb86ea1eebaa2caa2434e039bf47516daad5455ca400bcfd37923f837"
       BINARY_SHA256 = "9f04b4637e22eac056a85959b20ec68ebe7311b42c20e2b02bd5dfe50edb0f21"
 
+      # Records the checksums that identify the local Enola release.
       Identity = Data.define(:binary_digest, :archive_digest) do
         def verified_for?(version)
           version == VERSION && (binary_digest == BINARY_SHA256 || archive_digest == ARCHIVE_SHA256)
         end
       end
 
+      # Captures the observable result of asking Enola for its version.
       Tool = Data.define(:available, :version, :error) do
         def state
           return "missing" if !available && error.to_s.match?(/not found|ENOENT/i)

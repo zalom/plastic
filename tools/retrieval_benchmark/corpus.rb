@@ -5,6 +5,7 @@ require "fileutils"
 
 module Plastic
   module RetrievalBenchmark
+    # Generates deterministic public documents for retrieval benchmarks.
     class Corpus
       DOCUMENT_BYTES = 4_096
       TEXT = "public benchmark prose Živjeli common retrieval evidence.\n"
