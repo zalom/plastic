@@ -57,6 +57,11 @@ module Plastic
       end
 
       def answer
+        if @argv.intersect?(%w[--help -h])
+          output.raw(usage_line)
+          return output.flush.then { OK }
+        end
+
         check_scope
         call
         flush.exit_code

@@ -38,7 +38,9 @@ module Plastic
     # commands for `plastic help`, and name a command that has no stage yet
     # instead of blaming the words the owner typed.
     def self.bin_call(argv, environment: Command::Environment.current, table: TABLE)
-      return list(argv, table, environment) if argv.empty? || %w[help --help -h].include?(argv.first)
+      first = argv.first
+      return list(argv, table, environment) if first.nil? || %w[--help -h].include?(first)
+      return command_help(argv.drop(1), table, environment) if first == "help"
 
       dispatch(argv, table, environment) { "plastic #{argv.join(" ")} is not in this build yet; it lands with its stage" }
     end
@@ -61,5 +63,23 @@ module Plastic
       output.flush
       Command::OK
     end
+
+    # `plastic help COMMAND` describes that command. It routes through the
+    # command's own early help branch, which is deliberately before scope or
+    # store setup, so help remains safe in an unconfigured environment.
+    def self.command_help(argv, table, environment)
+      name = command_help_name(argv, table)
+      return list(argv, table, environment) unless name
+
+      tool(name, table).call(["--help", *(argv.include?("--json") ? ["--json"] : [])], words: name, environment:)
+    end
+    private_class_method :command_help
+
+    def self.command_help_name(argv, table)
+      words = argv.reject { |word| word == "--json" }
+      name = find(words, table)
+      name if name && words == name.split
+    end
+    private_class_method :command_help_name
   end
 end

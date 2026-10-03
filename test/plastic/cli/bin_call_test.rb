@@ -44,30 +44,25 @@ class BinCallTest < Plastic::TestCase
   end
 
   def test_bin_call_help_for_a_command_returns_its_exact_json_usage_without_a_home
-    home = File.join(Dir.mktmpdir, "absent-home")
-    environment = Plastic::CLI::Command::Environment.new(env: {}, input: StringIO.new, out: StringIO.new,
-      err: StringIO.new, home:, directory: home)
+    home, environment = absent_home_environment(env: {})
 
     code = Plastic::CLI.bin_call(%w[help sync down --json], environment:, table: Plastic::CLI::TABLE)
     document = JSON.parse(environment.out.string)
 
     assert_equal 0, code
     assert_equal ["plastic sync down [--overwrite [PATH]] [--merge]"], document.dig("result", "output")
-    refute_path_exist home
+    refute_path_exists home
   end
 
   def test_bin_call_command_help_returns_its_exact_json_usage_before_scope_resolution
-    home = File.join(Dir.mktmpdir, "absent-home")
-    environment = Plastic::CLI::Command::Environment.new(env: { "PLASTIC_HOME" => home }, input: StringIO.new,
-      out: StringIO.new, err: StringIO.new, home:, directory: home)
+    home, environment = absent_home_environment
 
     code = Plastic::CLI.bin_call(%w[sync down --help --json --project missing], environment:, table: Plastic::CLI::TABLE)
     document = JSON.parse(environment.out.string)
 
     assert_equal 0, code
     assert_equal ["plastic sync down [--overwrite [PATH]] [--merge]"], document.dig("result", "output")
-    assert_empty environment.err.string
-    refute_path_exist home
+    assert_equal ["", false], [environment.err.string, File.exist?(home)]
   end
 
   def test_bin_call_command_help_keeps_text_help_usable
@@ -75,5 +70,14 @@ class BinCallTest < Plastic::TestCase
 
     assert_equal 0, call.code
     assert_equal "plastic sync down [--overwrite [PATH]] [--merge]\n", call.out
+  end
+
+  private
+
+  def absent_home_environment(env: nil)
+    home = File.join(Dir.mktmpdir, "absent-home")
+    environment = Plastic::CLI::Command::Environment.new(env: env || { "PLASTIC_HOME" => home }, input: StringIO.new,
+      out: StringIO.new, err: StringIO.new, home:, directory: home)
+    [home, environment]
   end
 end
