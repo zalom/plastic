@@ -107,6 +107,10 @@
         }
       ]
     },
+    "varar/install.md": {
+      "sourceHash": "fnv1a:82675385",
+      "examples": []
+    },
     "varar/intent-archive.md": {
       "sourceHash": "fnv1a:31a78971",
       "examples": [
@@ -385,6 +389,10 @@
         }
       ]
     },
+    "varar/rollback.md": {
+      "sourceHash": "fnv1a:91a771fe",
+      "examples": []
+    },
     "varar/search.md": {
       "sourceHash": "fnv1a:41cef4cf",
       "examples": []
@@ -433,6 +441,18 @@
           "line": 8
         }
       ]
+    },
+    "varar/uninstall.md": {
+      "sourceHash": "fnv1a:ff527bd7",
+      "examples": []
+    },
+    "varar/update.md": {
+      "sourceHash": "fnv1a:503b322e",
+      "examples": []
+    },
+    "varar/version.md": {
+      "sourceHash": "fnv1a:21a3a33b",
+      "examples": []
     },
     "varar/work-graph.md": {
       "sourceHash": "fnv1a:bc314de4",
