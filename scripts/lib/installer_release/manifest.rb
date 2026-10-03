@@ -2,14 +2,19 @@
 
 require "digest"
 require "json"
+require "openssl"
 
 module InstallerRelease
   class VerificationError < StandardError; end
 
+  # The JSON file published beside the archive. It binds the archive's name
+  # and SHA-256 to one release of the official repository.
   class Manifest
-    REQUIRED_TOP_LEVEL_KEYS = %w[schema release archive ruby compatibility].freeze
-    REQUIRED_RELEASE_KEYS = %w[tag version channel repository platform architecture].freeze
-    REQUIRED_ARCHIVE_KEYS = %w[name sha256].freeze
+    REQUIRED_KEYS = {
+      "manifest" => %w[schema release archive ruby compatibility],
+      "release" => %w[tag version channel repository platform architecture],
+      "archive" => %w[name sha256]
+    }.freeze
 
     def self.build(archive:, release:, ruby_requirement: ">= 4.0.0")
       release_data = release.merge("repository" => official_url(release.fetch("tag")))
@@ -20,56 +25,65 @@ module InstallerRelease
 
     def self.write(path, **arguments)
       value = build(**arguments)
-      File.write(path, JSON.pretty_generate(value) + "\n")
+      File.write(path, "#{JSON.pretty_generate(value)}\n")
       value
     end
 
-    def self.validate!(manifest, archive:, expected_release:)
-      required_keys!(manifest, REQUIRED_TOP_LEVEL_KEYS, "manifest")
-      release = manifest.fetch("release")
-      archive_info = manifest.fetch("archive")
-      validate_sections!(release, archive_info)
-      validate_release!(release, expected_release)
-      validate_archive!(archive_info, archive)
+    def self.check(manifest, archive:, expected_release:)
+      ManifestCheck.new(manifest, archive).call(expected_release)
+    end
+
+    def self.official_url(tag) = "https://github.com/zalom/plastic/releases/tag/#{tag}"
+  end
+
+  # One check of a parsed manifest against the archive on disk and the
+  # release the installer asked for. It raises with the first problem.
+  class ManifestCheck
+    def initialize(manifest, archive)
+      @manifest = manifest
+      @archive = archive
+    end
+
+    def call(expected)
+      check_sections
+      check_release(expected)
+      check_archive(manifest.fetch("archive"))
       true
     end
 
-    def self.validate_sections!(release, archive_info)
-      required_keys!(release, REQUIRED_RELEASE_KEYS, "release")
-      required_keys!(archive_info, REQUIRED_ARCHIVE_KEYS, "archive")
+    private
+
+    attr_reader :archive, :manifest
+
+    def check_sections
+      required("manifest", manifest)
+      %w[release archive].each { |section| required(section, manifest.fetch(section)) }
     end
 
-    def self.validate_release!(release, expected)
-      expected.each { |key, value| fail!("release #{key} does not match") unless release[key] == value }
+    def required(section, value)
+      fail_with("#{section} is not an object") unless value.is_a?(Hash)
+      missing = Manifest::REQUIRED_KEYS.fetch(section).reject { |key| value.key?(key) }
+      fail_with("#{section} is missing #{missing.join(", ")}") unless missing.empty?
+    end
+
+    def release = manifest.fetch("release")
+
+    def check_release(expected)
+      expected.each { |key, value| fail_with("release #{key} does not match") unless release[key] == value }
       tag = release.fetch("tag")
-      fail!("release tag does not match version") unless tag == "v#{release.fetch("version")}"
-      fail!("release repository is not official HTTPS") unless release["repository"] == official_url(tag)
+      fail_with("release tag does not match version") unless tag == "v#{release.fetch("version")}"
+      fail_with("release repository is not official HTTPS") unless release["repository"] == Manifest.official_url(tag)
     end
 
-    def self.validate_archive!(archive_info, archive)
-      fail!("archive name does not match") unless archive_info["name"] == File.basename(archive)
-      digest = Digest::SHA256.file(archive).hexdigest
-      fail!("archive checksum does not match") unless secure_equal?(archive_info["sha256"], digest)
+    def check_archive(section)
+      fail_with("archive name does not match") unless section["name"] == File.basename(archive)
+      fail_with("archive checksum does not match") unless digest_matches?(section["sha256"].to_s)
     end
 
-    def self.required_keys!(value, keys, name)
-      fail!("#{name} is not an object") unless value.is_a?(Hash)
-      missing = keys.reject { |key| value.key?(key) }
-      fail!("#{name} is missing #{missing.join(", ")}") unless missing.empty?
-    end
+    def digest_matches?(given) = OpenSSL.secure_compare(given, Digest::SHA256.file(archive).hexdigest)
 
-    def self.fail!(message)
+    def fail_with(message)
       raise VerificationError, message
-    end
-
-    def self.official_url(tag)
-      "https://github.com/zalom/plastic/releases/tag/#{tag}"
-    end
-
-    def self.secure_equal?(left, right)
-      return false unless left.is_a?(String) && left.bytesize == right.bytesize
-
-      left.bytes.zip(right.bytes).map { |left_byte, right_byte| left_byte ^ right_byte }.reduce(0, :|).zero?
     end
   end
 end

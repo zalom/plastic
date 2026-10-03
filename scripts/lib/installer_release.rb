@@ -2,8 +2,8 @@
 
 require_relative "installer_release/manifest"
 require_relative "installer_release/archive"
+require_relative "installer_release/staging"
 require_relative "installer_release/activation"
-require_relative "installer_release/plan"
 
 module InstallerRelease
 end
