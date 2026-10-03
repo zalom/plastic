@@ -583,18 +583,17 @@ facts in a `read` step on every call, such as `intent link`, do not need it.
 ### Retrieval and companion tools
 
 The retrieval commands open selected store databases for reads, run literal FTS search, and pin
-results to immutable revisions. `architecture refresh --project SLUG` is the only Plastic path
-that runs Enola. It is explicit, preserves the preceding receipt on failure, and records
-provenance and coverage. Search never triggers it.
+results to immutable revisions. `architecture status` and `architecture refresh` are routines
+with one agent workflow each. They print an instruction for the agent and write nothing. No
+Plastic path runs Enola or any other mapping tool.
 
 ### Companion tools: no Plastic code path calls them
 
-Intent 391 (2.0) dissolved every Plastic-owned integration with QMD and Serena. The explicit
-`architecture refresh` command is the Enola exception.
+Intent 391 (2.0) dissolved every Plastic-owned integration with QMD, Serena and Enola.
 `scripts/lib/qmd_sync.rb`, its `scripts/qmd-sync` CLI, and `scripts/lib/power_tools.rb` (the
 presence probes `PowerTools.qmd?`, `.serena?`, `.enola?` that doctor's Serena and Enola
 readiness checks used to call) are all deleted. No Plastic command installs, registers with,
-reindexes, queries, or reports on QMD or Serena. Apart from explicit architecture refresh, no
+reindexes, queries, or reports on QMD or Serena. No
 command queries or reports on Enola: not install, not project creation, not
 intent delivery, not session start, not doctor. `plastic install` no longer registers a QMD
 collection, and `plastic project new` never did.

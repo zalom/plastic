@@ -8,8 +8,8 @@ get REFERENCE` to read immutable evidence. `plastic intent discover` and `plasti
 keep selected evidence and its provenance with an intent.
 
 QMD remains useful for its own semantic or hybrid store search. Serena remains useful for code
-navigation. Enola can provide an architecture receipt when you run `plastic architecture refresh`
-or when you generate a snapshot directly. The receipt names its revision, coverage, limitations,
-and tool hashes. Search does not generate or refresh it.
+navigation. Enola remains useful for mapping a codebase's architecture. `plastic architecture status`
+and `plastic architecture refresh` tell the agent to check or regenerate that map with a tool it
+chooses. Plastic does not run the tool and does not store the map.
 
 No command requires these tools to plan, deliver, or close an intent.

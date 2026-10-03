@@ -21,12 +21,12 @@ class RetrievalDocumentationTest < Minitest::Test
     assert_includes content, "does not write"
   end
 
-  def test_tools_guide_explains_explicit_enola_refresh_and_provenance
+  def test_tools_guide_says_the_architecture_commands_only_instruct_the_agent
     content = File.read(File.join(ROOT, "docs/help/tools.md"))
 
     assert_includes content, "plastic architecture refresh"
-    assert_includes content, "provenance"
-    assert_includes content, "does not refresh Enola"
+    assert_includes content, "print instructions only"
+    assert_includes content, "does not run Enola"
   end
 
   def test_examples_use_context_from_and_qualified_document_references

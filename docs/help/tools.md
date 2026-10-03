@@ -1,8 +1,8 @@
 # Tools
 
-Plastic uses SQLite for deterministic store retrieval. RTK and QMD remain companion tools. Enola
-is optional, but `plastic architecture refresh` can run it when you explicitly request an
-architecture receipt. Search does not refresh Enola.
+Plastic uses SQLite for deterministic store retrieval. RTK, QMD and Enola are companion tools.
+Plastic never runs them and stores none of their output. The `plastic architecture` commands
+only tell the agent to map the code with a tool it chooses.
 
 ### RTK
 
@@ -23,10 +23,11 @@ command starts, registers with, or reads from it.
 ### Enola
 
 Enola reads a codebase's architecture as queryable facts: symbols, dependencies, layers, and the
-findings its explainers compute. Use `plastic architecture status --project SLUG` to read the saved
-receipt. Use `plastic architecture refresh --project SLUG` to run an explicit refresh. The receipt
-records the repository revision, executable and archive hashes, extractor version, coverage, and
-limitations as provenance. A failed refresh preserves the prior receipt.
+findings its explainers compute. `plastic architecture status --project SLUG` tells the agent to
+check whether the project's architecture map is current. `plastic architecture refresh --project
+SLUG` tells the agent to regenerate the map. Both commands print instructions only. The agent
+chooses the mapping tool, runs it, and reads the result. Plastic does not run Enola and does not
+save the map, because the tool can produce it again at any time.
 
 ### Using them together
 

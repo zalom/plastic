@@ -62,7 +62,7 @@ class TableTest < Plastic::TestCase
 
   def test_the_schema_joins_each_database_tables_ddl
     assert_equal [table(:routine_runs).ddl, table(:sessions).ddl, table(:locks).ddl, table(:backups).ddl].join("\n"), Schema.fetch(:home)
-    assert_equal %i[documents document_revisions document_heads document_passages document_fts retrieval_schema retrieval_backfills retrieval_contexts retrieval_discoveries architecture_receipts rulings links printed changes],
+    assert_equal %i[documents document_revisions document_heads document_passages document_fts retrieval_schema retrieval_backfills retrieval_contexts retrieval_discoveries rulings links printed changes],
       Schema.databases.fetch(:knowledge).last
   end
 
@@ -77,8 +77,8 @@ class TableTest < Plastic::TestCase
   end
 
   def test_the_knowledge_schema_has_the_pinned_ddl_and_sqlite_catalog
-    assert_equal "d292ea8f567170ca90c98aa68842e63540259688af3da3a612f1c2ce42be8b0a", Digest::SHA256.hexdigest(Schema.fetch(:knowledge))
-    assert_equal "77ff0e35b52a588ef3bee34e14106d67ccede6e44bbb0ff83a10b4ad6127933e", Digest::SHA256.hexdigest(JSON.generate(schema_catalog))
+    assert_equal "c80c24a8ca0b39c5ffb43d32be98535bbb6c9dde8c8fb51ce9058eb17587602b", Digest::SHA256.hexdigest(Schema.fetch(:knowledge))
+    assert_equal "94ee3468e06f7fbcc93e2c7ca04c6c970440db8d35ff7bef891de587d9197dca", Digest::SHA256.hexdigest(JSON.generate(schema_catalog))
   end
 
   def test_a_tally_names_one_and_many

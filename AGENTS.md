@@ -30,10 +30,9 @@ global rule.
 install-time checked dependency as git (see the Stack section above). Search it before
 re-deriving an existing decision, spec, or outcome. The stores are the memory.
 
-QMD and Serena are companion tools a person runs beside Plastic. Enola is optional architecture
-evidence: `plastic architecture status` reads a saved receipt and `plastic architecture refresh`
-runs it only when explicitly requested. Search never refreshes Enola. The receipt preserves tool
-hashes, revision, coverage, and limitations as provenance. QMD still runs outside Plastic through
+QMD, Serena and Enola are companion tools a person or an agent runs beside Plastic. `plastic
+architecture status` and `plastic architecture refresh` only tell the agent to check or regenerate
+the architecture map with a tool it chooses. Plastic runs no such tool and stores no map. QMD still runs outside Plastic through
 its own `qmd query` or `qmd search` commands.
 
 ## Contributor rules

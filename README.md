@@ -250,8 +250,8 @@ plastic document get REFERENCE --json                           # One immutable 
 plastic document batch REFERENCE... --json                      # Documents in request order
 plastic intent discover 12 recovery flow                         # Save candidate provenance
 plastic intent context 12 --from selected-context.json           # Save agent-selected context
-plastic architecture status --project blog                       # Read the current receipt
-plastic architecture refresh --project blog                      # Explicitly refresh Enola
+plastic architecture status --project blog                       # Tell the agent to check the architecture map
+plastic architecture refresh --project blog                      # Tell the agent to regenerate the map
 ```
 
 ### Stores and databases

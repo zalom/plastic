@@ -7,7 +7,6 @@ module Plastic
         "completions" => ["completion", "completions"],
         "retrieval_contexts" => ["retrieval context", "retrieval contexts"],
         "retrieval_discoveries" => ["retrieval discovery", "retrieval discoveries"],
-        "architecture_receipts" => ["architecture receipt", "architecture receipts"],
         "routine_runs" => ["routine run", "routine runs"], "intents" => %w[intent intents],
         "clusters" => %w[cluster clusters], "nodes" => %w[node nodes], "edges" => %w[edge edges],
         "savepoints" => ["savepoint line", "savepoint lines"], "documents" => %w[document documents],

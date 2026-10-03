@@ -42,7 +42,7 @@ module Plastic
 
       def persistence = (@persistence ||= ContextPersistence.new(graphs:, scope:, intent_id:))
 
-      def freshness = (@freshness ||= ContextFreshness.new(graphs:, scope:, source:))
+      def freshness = (@freshness ||= ContextFreshness.new(source:))
     end
   end
 end

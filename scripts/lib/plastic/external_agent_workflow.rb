@@ -11,14 +11,13 @@ module Plastic
 
       sets :handoff_text, :context_command, :context_complete
 
-      step "select retrieved evidence and provide architecture context", done: ->(context) { context.context_complete }, say: "%{handoff_text}"
-      outcome :handoff, offers: "%{context_command}", because: "an external agent must select evidence and provide architecture context"
+      step "select retrieved evidence", done: ->(context) { context.context_complete }, say: "%{handoff_text}"
+      outcome :handoff, offers: "%{context_command}", because: "an external agent must select the evidence"
       outcome :done, offers: nil, because: "the retrieval context was submitted"
 
       class << self
         def retrieval_handoff(intent_id:, terms:, sources:, project:)
           { "search" => search_command(terms, sources), "evidence" => "plastic document get REF",
-            "architecture" => "external architecture provider records coverage and limitations",
             "context" => Shellwords.join(["plastic", "intent", "context", intent_id, "--from", "FILE", "--project", project]) }
         end
 

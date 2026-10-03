@@ -48,8 +48,7 @@ class RetrievalContextResumeTest < Minitest::Test
   end
 
   def context_submission(reference)
-    { "evidence" => [reference], "facts" => [], "interpretations" => [], "gaps" => [], "rulings" => [],
-      "architecture" => { "provider" => "external", "revision" => "revision", "coverage" => [], "limitations" => [] } }
+    { "evidence" => [reference], "facts" => [], "interpretations" => [], "gaps" => [], "rulings" => [] }
   end
 
   def first_reference

@@ -42,7 +42,7 @@ class LazyCommandDispatchTest < Minitest::Test
       %w[status refresh].each do |command|
         result = run_cli(home, "architecture", command, "--project", "global")
 
-        refute_match(/uninitialized constant/, result.fetch(:err), command)
+        assert_successful_result(result)
       end
     end
   end
@@ -83,7 +83,6 @@ class LazyCommandDispatchTest < Minitest::Test
   end
 
   def context_submission(reference)
-    { "evidence" => [reference], "facts" => [], "interpretations" => [], "gaps" => [], "rulings" => [],
-      "architecture" => { "provider" => "external", "revision" => "abc", "coverage" => [], "limitations" => [] } }
+    { "evidence" => [reference], "facts" => [], "interpretations" => [], "gaps" => [], "rulings" => [] }
   end
 end

@@ -318,23 +318,24 @@ Codex per-role model identity (intent 186): Codex has no vendor alias layer, so 
 
 Model and effort are shipped defaults, independently overridable through `agents.models.codex.<name>` and `agents.efforts.codex.<name>`. A literal Codex model ID still receives medium effort unless effort is explicitly overridden. Primary and Secondary Advisor TOMLs both use `gpt-6-astra`, at medium and high effort respectively.
 
-### Store retrieval and architecture receipts
+### Store retrieval and architecture prompts
 
 `plastic search` reads literal indexed passages from selected SQLite stores. It returns immutable
 qualified references, local rank data, and deterministic federated rank fusion. `document get`
 and `document batch` fetch those references without changing source stores. `intent discover` and
 `intent context` keep selected evidence and provenance with the intent that owns it.
 
-`architecture status --project SLUG` reads a saved Enola receipt. `architecture refresh --project
-SLUG` refreshes one explicitly. Search does not refresh Enola. The receipt records executable and
-archive hashes, repository revision, extractor coverage, and limitations.
+`architecture status --project SLUG` and `architecture refresh --project SLUG` are prompts for
+the agent. The first tells it to check the project's architecture map and the second tells it to
+regenerate the map, with a mapping tool it chooses, such as Enola. Plastic runs no mapping tool
+and stores no map.
 
 ### Store search: sqlite3, native, with companion tools alongside
 
 `plastic search TERMS` is Plastic's own store search index, built on sqlite3 (an install-time
 checked dependency, alongside git; see Conventions above), never optional and never delegated to
 an outside process. No Plastic command starts, registers with, or reads from QMD or Serena.
-Enola refresh is explicit through `architecture refresh --project SLUG`; the other tools remain
+Enola is not called either; all three tools remain
 companion tools a person runs by hand beside Plastic, documented in
 `plastic help tools` (`docs/help/tools.md`) and pointed to by one line in `PLASTIC.md`. Intent
 391 (2.0) dissolved the three optional-tool paths this section used to describe: the per-store

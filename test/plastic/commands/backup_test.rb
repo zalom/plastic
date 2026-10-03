@@ -110,7 +110,7 @@ class BackupRetrievalTest < Plastic::TestCase
   def test_an_unpacked_backup_retains_the_owning_retrieval_context_rows
     home, env = populated_home
     graphs = Plastic::Graph.open(home:, store: "global")
-    body = JSON.generate("intent_id" => "1", "architecture" => { "provider" => "external", "revision" => "abc" })
+    body = JSON.generate("intent_id" => "1", "facts" => ["kept"])
     graphs.databases.fetch(:knowledge).transaction do |batch|
       batch.put(:retrieval_contexts, { intent_id: "1", data: body, updated_at: Plastic.now })
     end
@@ -151,9 +151,7 @@ class BackupRetrievalTest < Plastic::TestCase
   end
 
   def submit_retrieval_context(env, reference)
-    document = { "evidence" => [reference], "facts" => ["backup evidence"], "interpretations" => [], "gaps" => [], "rulings" => [],
-                 "architecture" => { "provider" => "external", "revision" => "abc", "coverage" => ["Ruby"], "limitations" => [],
-                                     "receipt" => { "available" => true, "revision" => "abc" } } }
+    document = { "evidence" => [reference], "facts" => ["backup evidence"], "interpretations" => [], "gaps" => [], "rulings" => [] }
     Tempfile.create(["context", ".json"]) do |file|
       file.write(JSON.generate(document))
       file.flush
@@ -172,6 +170,5 @@ class BackupRetrievalTest < Plastic::TestCase
     assert_equal ["backup evidence"], JSON.parse(readback.out).dig("result", "context", "facts")
     assert rows.row("SELECT data FROM retrieval_discoveries WHERE intent_id = '1'")
     assert rows.row("SELECT data FROM retrieval_contexts WHERE intent_id = '1'")
-    assert rows.row("SELECT data FROM architecture_receipts WHERE provider = 'external'")
   end
 end

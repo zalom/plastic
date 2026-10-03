@@ -17,25 +17,13 @@ module IntentContextTestSupport
 
   def context_submission(reference)
     { "evidence" => [reference], "facts" => ["a source fact"], "interpretations" => ["an agent interpretation"],
-      "gaps" => ["a remaining gap"], "rulings" => ["an owner ruling"],
-      "architecture" => { "provider" => "external", "revision" => "abc", "coverage" => ["Ruby"], "limitations" => ["templates"],
-                          "receipt" => { "available" => true, "revision" => "abc" } } }
+      "gaps" => ["a remaining gap"], "rulings" => ["an owner ruling"] }
   end
 
   def archive_source_intent
     source = Plastic::Graph.open(home: @plastic_home, store: "other")
     source.databases.fetch(:work).transaction do |batch|
       batch.put(:archives, { intent_id: "1", at: Plastic.now, restored_at: nil, session_id: "context-test" })
-    end
-  end
-
-  def replace_architecture_receipt(revision:, available: true)
-    path = store_path("architecture/external.json")
-    FileUtils.mkdir_p(File.dirname(path))
-    receipt = { "provider" => "external", "revision" => revision, "available" => available }
-    File.write(path, JSON.generate(receipt))
-    Plastic::Graph.open(home: @plastic_home, store: "global").databases.fetch(:knowledge).transaction do |batch|
-      batch.put(:architecture_receipts, { provider: "external", data: JSON.generate(receipt), updated_at: Plastic.now })
     end
   end
 
@@ -97,7 +85,7 @@ module IntentContextAssertionSupport
   private
 
   def assert_persisted_context(submission, submitted, readback)
-    fields = %w[evidence facts interpretations gaps rulings architecture]
+    fields = %w[evidence facts interpretations gaps rulings]
 
     assert_equal submission, submitted.slice(*fields)
     assert_equal submission, readback.slice(*fields)
@@ -123,25 +111,9 @@ module IntentContextAssertionSupport
     context.fetch("freshness").fetch("evidence").first
   end
 
-  def assert_architecture_freshness
-    assert_equal "fresh", read_context.fetch("freshness").fetch("architecture").fetch("state")
-    replace_architecture_receipt(revision: "def")
-
-    assert_equal "stale", read_context.fetch("freshness").fetch("architecture").fetch("state")
-    replace_architecture_receipt(revision: "missing", available: false)
-
-    assert_equal "missing", read_context.fetch("freshness").fetch("architecture").fetch("state")
-  end
-
   def assert_context_remains(before, result)
     assert_equal 2, result.code
-    assert_equal before.slice("evidence", "architecture"), read_context.slice("evidence", "architecture")
-  end
-
-  def assert_unsafe_provider_rejected(before, result)
-    assert_equal 2, result.code
-    assert_equal before.slice("evidence", "architecture"), read_context.slice("evidence", "architecture")
-    refute_path_exists File.join(@plastic_home, "stores", "global", "outside.json")
+    assert_equal before.slice("evidence", "facts"), read_context.slice("evidence", "facts")
   end
 end
 
@@ -169,7 +141,7 @@ class IntentContextPersistenceTest < Plastic::TestCase
     write_document("other", "second selected evidence")
     context = read_context
 
-    assert_equal submission.slice("facts", "interpretations", "gaps", "rulings", "architecture"), context.slice("facts", "interpretations", "gaps", "rulings", "architecture")
+    assert_equal submission.slice("facts", "interpretations", "gaps", "rulings"), context.slice("facts", "interpretations", "gaps", "rulings")
     assert_equal [{ "uri" => reference, "state" => "stale", "archived" => false }], context.fetch("freshness").fetch("evidence")
   end
 
@@ -182,13 +154,6 @@ class IntentContextPersistenceTest < Plastic::TestCase
     stale = read_context
 
     assert_archived_context(fresh, stale, reference)
-  end
-
-  def test_reports_architecture_receipt_changes_and_missing_revisions_separately
-    reference = discovered_reference
-    submit_context(context_submission(reference))
-
-    assert_architecture_freshness
   end
 
   def test_reports_a_removed_current_head_as_stale_when_its_pinned_revision_survives
@@ -216,8 +181,8 @@ class IntentContextPersistenceTest < Plastic::TestCase
       batch.add("DELETE FROM retrieval_contexts WHERE intent_id = :intent_id", intent_id: "1")
     end
 
-    assert_equal submission.slice("evidence", "facts", "interpretations", "gaps", "rulings", "architecture"),
-      read_context.slice("evidence", "facts", "interpretations", "gaps", "rulings", "architecture")
+    assert_equal submission.slice("evidence", "facts", "interpretations", "gaps", "rulings"),
+      read_context.slice("evidence", "facts", "interpretations", "gaps", "rulings")
   end
 end
 
@@ -340,7 +305,7 @@ class IntentContextValidationTest < Plastic::TestCase
   private
 
   def assert_legacy_context_preserved(before, result)
-    assert_equal before.slice("evidence", "architecture"), read_context.slice("evidence", "architecture")
+    assert_equal before.slice("evidence", "facts"), read_context.slice("evidence", "facts")
     assert_includes result.err, "evidence revision changed"
   end
 
@@ -352,53 +317,16 @@ class IntentContextValidationTest < Plastic::TestCase
   end
 end
 
-class IntentContextArchitectureValidationTest < Plastic::TestCase
+class IntentContextStoredFieldsTest < Plastic::TestCase
   include IntentContextTestSupport
-  include IntentContextAssertionSupport
-  include IntentContextValidationAssertions
 
-  def test_rejects_invalid_architecture_shapes_and_revisions
+  def test_stores_only_the_context_fields_and_drops_anything_else_the_file_carries
     reference = discovered_reference
-    invalid_architecture = context_submission(reference).merge("architecture" => [])
-    invalid_coverage = context_submission(reference).tap { |document| document.fetch("architecture")["coverage"] = "Ruby" }
-    invalid_revision = context_submission(reference).tap { |document| document.fetch("architecture")["revision"] = 1 }
-
-    assert_invalid_submission(invalid_architecture, 2, "architecture must be an object")
-    assert_invalid_submission(invalid_coverage, 2, "coverage and limitations must be arrays")
-    assert_invalid_submission(invalid_revision, 2, "revision must be a string")
-  end
-
-  def test_accepts_an_external_provider_without_a_receipt_and_keeps_it_after_backup_restore
-    reference = discovered_reference
-    submission = context_submission(reference)
-    submission.fetch("architecture").delete("receipt")
+    submission = context_submission(reference).merge("architecture" => { "provider" => "external" })
 
     submit_context(submission)
 
-    assert_equal submission.fetch("architecture"), read_context.fetch("architecture")
-  end
-
-  def test_rejects_an_invalid_receipt_without_replacing_the_saved_context
-    reference = discovered_reference
-    submit_context(context_submission(reference))
-    before = read_context
-    invalid = context_submission(reference)
-    invalid.fetch("architecture")["receipt"] = []
-
-    result = submit_raw_context(JSON.generate(invalid))
-
-    assert_context_remains(before, result)
-  end
-
-  def test_rejects_an_unsafe_architecture_provider_without_writing_outside_the_owner_directory
-    reference = discovered_reference
-    submit_context(context_submission(reference))
-    before = read_context
-    unsafe = context_submission(reference)
-    unsafe.fetch("architecture")["provider"] = "../../outside"
-
-    result = submit_raw_context(JSON.generate(unsafe))
-
-    assert_unsafe_provider_rejected(before, result)
+    refute read_context.key?("architecture")
+    refute_path_exists store_path("architecture")
   end
 end

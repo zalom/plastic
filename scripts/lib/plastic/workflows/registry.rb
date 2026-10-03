@@ -21,6 +21,8 @@ module Plastic
 
       :code_delivery_next, :agent_advance_delivery, :code_prepare_ending, :agent_finish_intent, :code_close_intent,
       :code_discover_retrieval, :agent_external_agent_workflow,
+      # Architecture: prompts only; the agent maps the code with the tool it chose.
+      :agent_check_architecture, :agent_refresh_architecture,
       # Sessions: the one prose line a session writes about itself.
       :code_write_note,
       # Archive: taking an intent off the checkout and printing it back.

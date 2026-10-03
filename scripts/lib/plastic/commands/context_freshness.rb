@@ -2,22 +2,19 @@
 
 module Plastic
   module Commands
-    # Reports whether saved evidence and architecture still describe current source state.
+    # Reports whether saved evidence still describes the current source state.
     class ContextFreshness
-      def initialize(graphs:, scope:, source:)
-        @graphs = graphs
-        @scope = scope
+      def initialize(source:)
         @source = source
       end
 
       def call(document)
-        { "evidence" => document.fetch("evidence").map { |reference| evidence_state(document, reference) },
-          "architecture" => architecture_state(document.fetch("architecture")) }
+        { "evidence" => document.fetch("evidence").map { |reference| evidence_state(document, reference) } }
       end
 
       private
 
-      attr_reader :graphs, :scope, :source
+      attr_reader :source
 
       def evidence_state(document, reference)
         retrieval = source.retrieval(reference)
@@ -42,31 +39,7 @@ module Plastic
         { "uri" => reference, "state" => "missing" }
       end
 
-      def architecture_state(architecture)
-        receipt = stored_receipt(architecture.fetch("provider"))
-        return status(architecture, "missing") unless receipt.fetch("available", true)
-
-        state = (receipt.fetch("revision") == architecture.fetch("revision")) ? "fresh" : "stale"
-        status(architecture, state)
-      rescue Errno::ENOENT, JSON::ParserError, KeyError
-        status(architecture, "missing")
-      end
-
-      def status(architecture, state)
-        { "provider" => architecture.fetch("provider"), "revision" => architecture.fetch("revision"), "state" => state }
-      end
-
-      def stored_receipt(provider)
-        row = graphs.databases.fetch(:knowledge).row("SELECT data FROM architecture_receipts WHERE provider = :provider AND origin_id = :origin",
-          provider:, origin: graphs.retrieval.origin_id)
-        return JSON.parse(row.fetch("data")) if row
-
-        JSON.parse(File.read(receipt_path(provider)))
-      end
-
       def strip_revision(reference) = reference.sub(/\?revision=[0-9a-f]{64}\z/, "")
-
-      def receipt_path(provider) = File.join(scope.root, "architecture", "#{provider}.json")
     end
   end
 end
