@@ -35,7 +35,7 @@ module Plastic
       attr_reader :components
 
       def current_report(connection)
-        snapshot = components.snapshot.capture(connection)
+        snapshot = components.snapshot.capture_transaction(connection)
         [components.audit.report(snapshot), snapshot]
       end
 
