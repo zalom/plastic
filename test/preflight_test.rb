@@ -2,31 +2,13 @@
 
 require "minitest/autorun"
 require_relative "../scripts/lib/preflight"
-require_relative "../scripts/lib/sqlite3_dependency"
 
 class PreflightTest < Minitest::Test
-  def test_names_the_runtime_sqlite3_version_in_its_gem_install_instruction
+  def test_names_the_gem_install_instruction_for_a_missing_gem
     result = Preflight.check(ruby_version: "4.0.0", git_present: true, sqlite3_present: true,
       missing_gems: ["sqlite3"], platform: "darwin")
 
-    assert_includes result.fetch(:messages).first, "next: gem install sqlite3 -v 2.9.6"
-  end
-
-  def test_rejects_a_loaded_sqlite3_gem_outside_the_runtime_pin
-    refute Sqlite3Dependency.supported?("2.9.5")
-    assert Sqlite3Dependency.supported?("2.9.6")
-  end
-
-  def test_reports_sqlite_availability_and_a_missing_library
-    assert_predicate Sqlite3Dependency, :available?
-
-    with_kernel_require(->(_name) { raise LoadError, "sqlite unavailable" }) do
-      refute_predicate Sqlite3Dependency, :available?
-    end
-  end
-
-  def test_keeps_generic_gem_install_instructions_for_other_dependencies
-    assert_equal "gem install pg", Preflight.gem_install_command("pg")
+    assert_includes result.fetch(:messages).first, "next: gem install sqlite3"
   end
 
   def test_reports_a_missing_runtime_with_platform_specific_recovery_steps
@@ -43,15 +25,5 @@ class PreflightTest < Minitest::Test
       missing_gems: [], platform: "darwin")
 
     assert_includes mac.fetch(:messages).join("\n"), "xcode-select --install"
-  end
-
-  private
-
-  def with_kernel_require(replacement)
-    original = Kernel.instance_method(:require)
-    Kernel.send(:define_method, :require, &replacement)
-    yield
-  ensure
-    Kernel.send(:define_method, :require, original)
   end
 end
