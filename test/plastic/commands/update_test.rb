@@ -32,6 +32,40 @@ class UpdateCommandTest < Plastic::TestCase
     assert_equal before, tree_snapshot(@plastic_home)
   end
 
+  def test_activates_a_newer_release_on_the_installed_channel
+    result = update_with_release("99.0.0-alpha.2")
+
+    assert_equal 0, result.code, result.err
+    assert_equal "99.0.0-alpha.2", activation.active_version
+    assert_equal "99.0.0-alpha.1", activation.previous_version
+    assert_includes result.out, "claims no release trust"
+    assert_match(/next:\s+plastic update/, result.out)
+  end
+
+  def test_says_when_the_active_release_is_the_newest
+    result = update_with_release("99.0.0-alpha.1")
+
+    assert_equal 0, result.code, result.err
+    assert_match(/newest release/, result.out)
+    assert_nil activation.previous_version
+  end
+
+  def test_a_release_that_fails_its_checksum_changes_nothing
+    directory = local_release("99.0.0-alpha.2")
+    File.binwrite(File.join(directory, "plastic.tgz"), "corrupt")
+    result = update_with_release("99.0.0-alpha.2", directory: directory)
+
+    assert_equal 1, result.code
+    assert_includes result.err, "archive checksum does not match"
+    assert_equal ["99.0.0-alpha.1"], activation.versions
+  end
+
+  def update_with_release(version, directory: local_release(version))
+    installed("99.0.0-alpha.1")
+    activated("99.0.0-alpha.1")
+    call("update", env: { "PLASTIC_PACKAGE_ROOT" => fake_package("99.0.0-alpha.1"), "PLASTIC_LOCAL_RELEASE" => directory })
+  end
+
   def test_refuses_to_update_a_home_that_has_no_installation
     result = call("update")
 

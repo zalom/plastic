@@ -66,7 +66,30 @@ class InstallerReleaseActivationTest < Minitest::Test
 
   def test_refuses_a_candidate_on_another_filesystem
     installer = Class.new(InstallerRelease::Activation) do
-      private
+      def test_switches_to_any_installed_release
+    installer = activation_with("2.0.1", "2.0.2", "2.0.3")
+
+    assert_equal "2.0.1", installer.switch("2.0.1")
+    assert_equal %w[2.0.1 2.0.3], versions(installer)
+    assert_equal %w[2.0.1 2.0.2 2.0.3], installer.versions
+    assert installer.installed?("2.0.2")
+  end
+
+  def test_refuses_to_switch_to_a_release_that_is_not_installed
+    installer = activation_with("2.0.2")
+
+    error = assert_raises(InstallerRelease::ActivationError) { installer.switch("1.0.0") }
+    assert_equal "1.0.0 is not installed", error.message
+  end
+
+  def test_a_home_with_no_releases_lists_none
+    installer = InstallerRelease::Activation.new(home: install_home)
+
+    assert_empty installer.versions
+    refute installer.installed?("2.0.3")
+  end
+
+  private
 
       def same_filesystem?(_candidate) = false
     end.new(home: install_home)

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "minitest/autorun"
+require "digest"
 require "fileutils"
 require "rubygems/package"
 require "tmpdir"
@@ -36,6 +37,15 @@ module ReleaseHelper
   end
 
   def manifest_for(archive) = InstallerRelease::Manifest.build(archive: archive, release: release)
+
+  def release_files(version: "2.0.3")
+    archive = archive_with(version: version)
+    directory = File.dirname(archive)
+    identity = InstallerRelease::Manifest.identity(version).merge("platform" => "darwin", "architecture" => "arm64")
+    InstallerRelease::Manifest.write(File.join(directory, "plastic.manifest.json"), archive: archive, release: identity)
+    File.write(File.join(directory, "plastic.tgz.sha256"), "#{Digest::SHA256.file(archive).hexdigest}  plastic.tgz\n")
+    directory
+  end
 
   def tar_archive(name = "entries.tgz")
     path = File.join(@root, name)

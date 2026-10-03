@@ -21,6 +21,17 @@ class InstallerReleaseStagingTest < Minitest::Test
     assert_empty Dir.glob(File.join(@root, "plastic-stage-*"))
   end
 
+  def test_checks_the_manifest_against_the_requested_release_not_its_own
+    archive = archive_with
+    manifest = manifest_for(archive)
+
+    error = assert_raises(InstallerRelease::VerificationError) do
+      InstallerRelease::Staging.create(archive: archive, manifest: manifest, parent: @root,
+        expected_release: release.merge("version" => "2.0.4"))
+    end
+    assert_equal "release version does not match", error.message
+  end
+
   def test_names_what_a_candidate_is_missing
     package = File.join(@root, "package")
     FileUtils.mkdir_p(package)
@@ -34,7 +45,7 @@ class InstallerReleaseStagingTest < Minitest::Test
 
   private
 
-  def stage(archive, manifest) = InstallerRelease::Staging.create(archive: archive, manifest: manifest, parent: @root)
+  def stage(archive, manifest) = InstallerRelease::Staging.create(archive: archive, manifest: manifest, parent: @root, expected_release: release)
 
   def candidate_problem(path)
     error = assert_raises(InstallerRelease::VerificationError) { InstallerRelease::Candidate.check(path, "2.0.3") }

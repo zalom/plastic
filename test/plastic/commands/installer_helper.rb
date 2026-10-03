@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
+require "digest"
 require "json"
+require_relative "../../../scripts/lib/installer_release"
 require_relative "../../test_helper"
 
 # A throwaway package, home and agent folder for the installer commands.
@@ -23,6 +25,33 @@ module InstallerHelper
     File.write(File.join(@plastic_home, "VERSION"), "#{version}\n")
     lines = ledger.map { |number| JSON.generate("version" => number, "action" => "install", "at" => "2026-10-03T12:00:00+02:00") }
     File.write(File.join(@plastic_home, "versions.json"), lines.map { |line| "#{line}\n" }.join)
+  end
+
+  def share = File.join(@home, ".local", "share", "plastic")
+
+  def activation = InstallerRelease::Activation.new(home: share)
+
+  def activated(*versions)
+    versions.each { |version| activation.activate(release_package(File.join(@home, "stage-#{version}"), version), version: version) }
+  end
+
+  def release_package(path, version)
+    FileUtils.mkdir_p(File.join(path, "bin"))
+    File.write(File.join(path, "VERSION"), "#{version}\n")
+    File.write(File.join(path, "bin", "plastic"), "#!/bin/sh\necho #{version}\n")
+    File.chmod(0o755, File.join(path, "bin", "plastic"))
+    path
+  end
+
+  def local_release(version)
+    directory = File.join(@home, "release-#{version}")
+    release_package(File.join(directory, "package"), version)
+    archive = File.join(directory, "plastic.tgz")
+    system("tar", "-czf", archive, "-C", directory, "package", exception: true)
+    identity = InstallerRelease::Manifest.identity(version).merge("platform" => "universal", "architecture" => "universal")
+    InstallerRelease::Manifest.write(File.join(directory, "plastic.manifest.json"), archive: archive, release: identity)
+    File.write(File.join(directory, "plastic.tgz.sha256"), "#{Digest::SHA256.file(archive).hexdigest}  plastic.tgz\n")
+    directory
   end
 
   def claude_folder = FileUtils.mkdir_p(File.join(@home, ".claude")).first
