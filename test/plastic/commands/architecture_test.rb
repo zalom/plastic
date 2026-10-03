@@ -63,6 +63,18 @@ class ArchitectureTest < Plastic::TestCase
     assert_includes help.out, "plastic architecture refresh"
   end
 
+  def test_reports_a_missing_snapshot_when_git_is_unavailable
+    original_path = ENV.fetch("PATH")
+    ENV["PATH"] = ""
+
+    result = plastic("architecture", "status", "--json", table: Plastic::CLI::TABLE)
+
+    assert_equal 0, result.code, result.err
+    assert_equal "missing", JSON.parse(result.out).dig("result", "architecture", "state")
+  ensure
+    ENV["PATH"] = original_path
+  end
+
   def test_marks_a_second_dirty_worktree_edit_as_stale
     Dir.mktmpdir do |repository|
       prepare_repository(repository)
