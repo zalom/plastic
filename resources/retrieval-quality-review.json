@@ -38,8 +38,7 @@
       "id": "immutable-revision-history",
       "harness_search_terms": "immutable revisions history",
       "scope": ["store-1", "store-2", "store-3"],
-      "expected": [{ "store": "store-1", "intent_id": "source", "path": "approved-source.md" }],
-      "relevant_passage_hint": "immutable revisions retain history"
+      "expected": [{ "store": "store-1", "intent_id": "source", "path": "approved-source.md", "relevant_passage_hint": "immutable revisions retain history" }]
     }
   ]
 }
