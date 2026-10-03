@@ -19,8 +19,7 @@ commits and releases. This page points to the rest.
 
 ## Cut a release
 
-1. Bump the three version files: `package.json`, `.claude-plugin/plugin.json`,
-   `.claude-plugin/marketplace.json`.
+1. Bump the version in `package.json`.
 2. Add or update the entry in `deprecations.yml` for anything this release removes or
    replaces.
 3. Push the branch: `alpha`, `beta`, or `main`. The push is the release:
