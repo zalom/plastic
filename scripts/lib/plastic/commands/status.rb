@@ -3,6 +3,7 @@
 require_relative "../cli/command"
 require_relative "../graph"
 require_relative "../graph/work/node/counts"
+require_relative "../graph/work/intent_row"
 
 module Plastic
   module Commands
