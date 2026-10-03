@@ -7,6 +7,7 @@ module Plastic
   module Graph
     # Represents one document with its computed revision and extracted passages.
     class EvidenceDocument
+      # Stores immutable computed fields for one document write.
       Record = Data.define(:intent_id, :path, :body, :revision, :extraction, :passages, :now)
 
       def initialize(intent_id, path, body, now: Plastic.now)
