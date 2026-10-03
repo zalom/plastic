@@ -8,12 +8,25 @@ module EnolaAdapterTestSupport
   private
 
   def snapshot(adapter, repository)
-    adapter.snapshot(repository:, binary_sha256: "unknown", archive_sha256: nil, revision: "abc", dirty: false)
+    adapter.snapshot(source: source(repository), identity: identity("unknown", nil))
+  end
+
+  def source(repository, revision: "abc", dirty: false)
+    Plastic::Architecture::EnolaSnapshot::Source.new(repository:, revision:, dirty:)
+  end
+
+  def identity(binary_digest, archive_digest)
+    Plastic::Architecture::EnolaProvenance::Identity.new(binary_digest:, archive_digest:)
+  end
+
+  def adapter_for(executor = nil, &block)
+    command = Plastic::Architecture::EnolaCommand.new(executor: executor || block)
+    Plastic::Architecture::EnolaAdapter.new(command:)
   end
 
   def assert_fresh_snapshot(adapter, repository)
-    receipt = adapter.snapshot(repository:, binary_sha256: Plastic::Architecture::EnolaAdapter::BINARY_SHA256,
-      archive_sha256: Plastic::Architecture::EnolaAdapter::ARCHIVE_SHA256, revision: "abc", dirty: false)
+    receipt = adapter.snapshot(source: source(repository), identity: identity(Plastic::Architecture::EnolaAdapter::BINARY_SHA256,
+      Plastic::Architecture::EnolaAdapter::ARCHIVE_SHA256))
 
     assert_equal ["fresh", "verified"], receipt.values_at("state", "provenance")
     assert_equal %w[manifests ruby], receipt.fetch("extractors")
@@ -55,11 +68,13 @@ module EnolaAdapterTestSupport
 end
 
 class EnolaAdapterReceiptTest < Plastic::TestCase
-  def test_marks_the_pinned_official_binary_as_verified
-    adapter = Plastic::Architecture::EnolaAdapter.new(executor: ->(*) { ["enola 0.4.18", "", true] })
+  include EnolaAdapterTestSupport
 
-    receipt = adapter.receipt(binary_sha256: Plastic::Architecture::EnolaAdapter::BINARY_SHA256,
-      archive_sha256: Plastic::Architecture::EnolaAdapter::ARCHIVE_SHA256)
+  def test_marks_the_pinned_official_binary_as_verified
+    adapter = adapter_for { ["enola 0.4.18", "", true] }
+
+    receipt = adapter.receipt(identity: identity(Plastic::Architecture::EnolaAdapter::BINARY_SHA256,
+      Plastic::Architecture::EnolaAdapter::ARCHIVE_SHA256))
 
     assert_equal "verified", receipt.fetch("provenance")
     assert_equal "0.4.18", receipt.fetch("version")
@@ -67,27 +82,27 @@ class EnolaAdapterReceiptTest < Plastic::TestCase
   end
 
   def test_accepts_the_pinned_executable_digest_without_an_archive_digest
-    adapter = Plastic::Architecture::EnolaAdapter.new(executor: ->(*) { ["enola 0.4.18", "", true] })
+    adapter = adapter_for { ["enola 0.4.18", "", true] }
 
-    receipt = adapter.receipt(binary_sha256: Plastic::Architecture::EnolaAdapter::BINARY_SHA256, archive_sha256: nil)
+    receipt = adapter.receipt(identity: identity(Plastic::Architecture::EnolaAdapter::BINARY_SHA256, nil))
 
     assert_equal "verified", receipt.fetch("provenance")
   end
 
   def test_marks_a_same_version_unknown_binary_as_unverified
-    adapter = Plastic::Architecture::EnolaAdapter.new(executor: ->(*) { ["enola 0.4.18", "", true] })
+    adapter = adapter_for { ["enola 0.4.18", "", true] }
 
-    assert_equal "unverified", adapter.receipt(binary_sha256: "unknown", archive_sha256: "unknown").fetch("provenance")
+    assert_equal "unverified", adapter.receipt(identity: identity("unknown", "unknown")).fetch("provenance")
   end
 
   def test_distinguishes_missing_unsupported_and_failed_cli_states
-    missing = Plastic::Architecture::EnolaAdapter.new(executor: ->(*) { ["", "not found", false] })
-    unsupported = Plastic::Architecture::EnolaAdapter.new(executor: ->(*) { ["enola 0.5.0", "", true] })
-    failed = Plastic::Architecture::EnolaAdapter.new(executor: ->(*) { ["not JSON", "invalid manifest", false] })
+    missing = adapter_for { ["", "not found", false] }
+    unsupported = adapter_for { ["enola 0.5.0", "", true] }
+    failed = adapter_for { ["not JSON", "invalid manifest", false] }
 
-    assert_equal "missing", missing.receipt(binary_sha256: "unknown", archive_sha256: "unknown").fetch("state")
-    assert_equal "unsupported", unsupported.receipt(binary_sha256: "unknown", archive_sha256: "unknown").fetch("state")
-    assert_equal "failed", failed.receipt(binary_sha256: "unknown", archive_sha256: "unknown").fetch("state")
+    assert_equal "missing", missing.receipt(identity: identity("unknown", "unknown")).fetch("state")
+    assert_equal "unsupported", unsupported.receipt(identity: identity("unknown", "unknown")).fetch("state")
+    assert_equal "failed", failed.receipt(identity: identity("unknown", "unknown")).fetch("state")
   end
 end
 
@@ -97,7 +112,7 @@ class EnolaAdapterSnapshotTest < Plastic::TestCase
   def test_reads_a_matching_complete_snapshot_with_coverage_and_provenance
     Dir.mktmpdir do |repository|
       write_snapshot(repository, commit: "abc", dirty: false, repo_path: repository)
-      adapter = Plastic::Architecture::EnolaAdapter.new(executor: ->(*) { ["enola 0.4.18", "", true] })
+      adapter = adapter_for(->(*) { ["enola 0.4.18", "", true] })
 
       assert_fresh_snapshot(adapter, repository)
     end
@@ -106,7 +121,7 @@ class EnolaAdapterSnapshotTest < Plastic::TestCase
   def test_reads_top_level_enola_quality_fields
     Dir.mktmpdir do |repository|
       write_snapshot(repository, commit: "abc", dirty: false, repo_path: repository, options: { top_level_quality: true })
-      adapter = Plastic::Architecture::EnolaAdapter.new(executor: ->(*) { ["enola 0.4.18", "", true] })
+      adapter = adapter_for(->(*) { ["enola 0.4.18", "", true] })
 
       assert_top_level_quality(adapter, repository)
     end
@@ -114,68 +129,68 @@ class EnolaAdapterSnapshotTest < Plastic::TestCase
 
   def test_marks_a_missing_snapshot
     Dir.mktmpdir do |repository|
-      adapter = Plastic::Architecture::EnolaAdapter.new(executor: ->(*) { ["enola 0.4.18", "", true] })
+      adapter = adapter_for(->(*) { ["enola 0.4.18", "", true] })
 
-      assert_equal "missing", adapter.snapshot(repository:, binary_sha256: "unknown", archive_sha256: "unknown", revision: "abc", dirty: false).fetch("state")
+      assert_equal "missing", adapter.snapshot(source: source(repository), identity: identity("unknown", "unknown")).fetch("state")
     end
   end
 
   def test_marks_invalid_snapshot_metadata
     Dir.mktmpdir do |repository|
-      adapter = Plastic::Architecture::EnolaAdapter.new(executor: ->(*) { ["enola 0.4.18", "", true] })
+      adapter = adapter_for(->(*) { ["enola 0.4.18", "", true] })
 
       FileUtils.mkdir_p(File.join(repository, ".enola"))
       File.write(File.join(repository, ".enola", "snapshot.meta.json"), "bad")
 
-      assert_equal "invalid", adapter.snapshot(repository:, binary_sha256: "unknown", archive_sha256: "unknown", revision: "abc", dirty: false).fetch("state")
+      assert_equal "invalid", adapter.snapshot(source: source(repository), identity: identity("unknown", "unknown")).fetch("state")
     end
   end
 
   def test_marks_a_snapshot_with_an_old_revision_as_stale
     Dir.mktmpdir do |repository|
-      adapter = Plastic::Architecture::EnolaAdapter.new(executor: ->(*) { ["enola 0.4.18", "", true] })
+      adapter = adapter_for(->(*) { ["enola 0.4.18", "", true] })
 
       write_snapshot(repository, commit: "old", dirty: false, repo_path: repository)
 
-      assert_equal "stale", adapter.snapshot(repository:, binary_sha256: "unknown", archive_sha256: "unknown", revision: "abc", dirty: false).fetch("state")
+      assert_equal "stale", adapter.snapshot(source: source(repository), identity: identity("unknown", "unknown")).fetch("state")
     end
   end
 
   def test_marks_a_snapshot_for_another_repository_as_wrong_root
     Dir.mktmpdir do |repository|
-      adapter = Plastic::Architecture::EnolaAdapter.new(executor: ->(*) { ["enola 0.4.18", "", true] })
+      adapter = adapter_for(->(*) { ["enola 0.4.18", "", true] })
 
       write_snapshot(repository, commit: "abc", dirty: false, repo_path: "/other")
 
-      assert_equal "wrong_root", adapter.snapshot(repository:, binary_sha256: "unknown", archive_sha256: "unknown", revision: "abc", dirty: false).fetch("state")
+      assert_equal "wrong_root", adapter.snapshot(source: source(repository), identity: identity("unknown", "unknown")).fetch("state")
     end
   end
 
   def test_marks_a_dirty_snapshot_as_dirty
     Dir.mktmpdir do |repository|
-      adapter = Plastic::Architecture::EnolaAdapter.new(executor: ->(*) { ["enola 0.4.18", "", true] })
+      adapter = adapter_for(->(*) { ["enola 0.4.18", "", true] })
 
       write_snapshot(repository, commit: "abc", dirty: true, repo_path: repository)
 
-      assert_equal "dirty", adapter.snapshot(repository:, binary_sha256: "unknown", archive_sha256: "unknown", revision: "abc", dirty: false).fetch("state")
+      assert_equal "dirty", adapter.snapshot(source: source(repository), identity: identity("unknown", "unknown")).fetch("state")
     end
   end
 
   def test_marks_a_snapshot_without_extractors_as_incomplete
     Dir.mktmpdir do |repository|
-      adapter = Plastic::Architecture::EnolaAdapter.new(executor: ->(*) { ["enola 0.4.18", "", true] })
+      adapter = adapter_for(->(*) { ["enola 0.4.18", "", true] })
 
       write_snapshot(repository, commit: "abc", dirty: false, repo_path: repository, options: { extractors: [] })
 
-      assert_equal "incomplete", adapter.snapshot(repository:, binary_sha256: "unknown", archive_sha256: "unknown", revision: "abc", dirty: false).fetch("state")
+      assert_equal "incomplete", adapter.snapshot(source: source(repository), identity: identity("unknown", "unknown")).fetch("state")
     end
   end
 
   def test_preserves_an_unsupported_tool_state_when_snapshot_metadata_is_missing
     Dir.mktmpdir do |repository|
-      adapter = Plastic::Architecture::EnolaAdapter.new(executor: ->(*) { ["enola 0.5.0", "", true] })
+      adapter = adapter_for(->(*) { ["enola 0.5.0", "", true] })
 
-      receipt = adapter.snapshot(repository:, binary_sha256: "unknown", archive_sha256: nil, revision: "abc", dirty: false)
+      receipt = adapter.snapshot(source: source(repository), identity: identity("unknown", nil))
 
       assert_equal "unsupported", receipt.fetch("state")
       assert_equal "missing", receipt.fetch("snapshot_state")
@@ -186,17 +201,19 @@ class EnolaAdapterSnapshotTest < Plastic::TestCase
     Dir.mktmpdir do |repository|
       write_snapshot(repository, commit: "abc", dirty: false, repo_path: repository)
       File.delete(File.join(repository, ".enola", "facts.jsonl"))
-      adapter = Plastic::Architecture::EnolaAdapter.new(executor: ->(*) { ["enola 0.4.18", "", true] })
+      adapter = adapter_for(->(*) { ["enola 0.4.18", "", true] })
 
-      assert_equal "incomplete", adapter.snapshot(repository:, binary_sha256: "unknown", archive_sha256: nil, revision: "abc", dirty: false).fetch("state")
+      assert_equal "incomplete", adapter.snapshot(source: source(repository), identity: identity("unknown", nil)).fetch("state")
     end
   end
 end
 
 class EnolaAdapterRefreshTest < Plastic::TestCase
+  include EnolaAdapterTestSupport
+
   def test_keeps_the_old_receipt_when_refresh_fails
     calls = []
-    adapter = Plastic::Architecture::EnolaAdapter.new(executor: ->(*command) {
+    adapter = adapter_for(->(*command) {
       calls << command
       ["failed", "generation failed", false]
     })
@@ -210,7 +227,7 @@ class EnolaAdapterRefreshTest < Plastic::TestCase
 
   def test_calls_the_cli_for_an_explicit_refresh
     calls = []
-    adapter = Plastic::Architecture::EnolaAdapter.new(executor: ->(*command) {
+    adapter = adapter_for(->(*command) {
       calls << command
       ["failed", "generation failed", false]
     })
@@ -221,7 +238,7 @@ class EnolaAdapterRefreshTest < Plastic::TestCase
   end
 
   def test_refresh_reports_failure_without_a_prior_receipt
-    adapter = Plastic::Architecture::EnolaAdapter.new(executor: ->(*) { ["failed", "generation failed", false] })
+    adapter = adapter_for(->(*) { ["failed", "generation failed", false] })
 
     result = adapter.refresh(repository: "/repo", prior: nil)
 

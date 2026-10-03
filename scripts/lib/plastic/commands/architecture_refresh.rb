@@ -10,13 +10,9 @@ module Plastic
       writes :knowledge
 
       def call
-        previous = stored_receipt
-        result = adapter.refresh(repository:, prior: previous)
-        raise CLI::Command::Failure, "Enola could not generate an architecture snapshot" unless result.fetch(:success)
-
-        current = current_receipt.merge("worktree_hash" => worktree_hash)
-        persist(current)
-        output.row("architecture", current)
+        receipt = refreshed_receipt
+        persist(receipt)
+        output.row("architecture", receipt)
         output.next_step("none", because: "the architecture snapshot was refreshed")
       end
 
@@ -24,7 +20,12 @@ module Plastic
 
       def adapter = @adapter ||= Architecture::EnolaAdapter.new
 
-      def receipt = adapter.snapshot(repository:, binary_sha256:, archive_sha256: nil, revision:, dirty:)
+      def refreshed_receipt
+        result = adapter.refresh(repository:, prior: stored_receipt)
+        raise CLI::Command::Failure, "Enola could not generate an architecture snapshot" unless result.fetch(:success)
+
+        current_receipt.merge("worktree_hash" => source_state.worktree_hash)
+      end
 
       def persist(receipt)
         graphs.databases.fetch(:knowledge).transaction do |batch|
