@@ -2,6 +2,7 @@
 
 require "fileutils"
 require_relative "journal"
+require_relative "launch_check"
 require_relative "placement"
 require_relative "pointer"
 require_relative "releases"
@@ -19,17 +20,18 @@ module InstallerRelease
 
   # Keeps each release in its own directory under releases/ and switches the
   # active and previous pointers between them, then syncs the home files of
-  # the release it switched to. Each activation, switch and rollback is one
+  # the release it switched to. A release whose launcher does not start and
+  # report its version is never switched to. Each activation, switch and rollback is one
   # transaction under the installer lock: it completes, or the journal puts
   # the pointers, the releases and the home back as they were.
   class Activation
     attr_reader :releases
 
-    def initialize(home:, releases: Releases.new(home), sync: NoSync)
+    def initialize(home:, releases: Releases.new(home), sync: NoSync, launch: LaunchCheck.new)
       @home = home
       @releases = releases
       @sync = sync
-      @transaction = Transaction.new(home, releases, Journal.new(home, releases, sync.method(:paths)))
+      @launch = launch
     end
 
     def activate(candidate, version:, before_switch: nil)
@@ -59,7 +61,9 @@ module InstallerRelease
 
     private
 
-    attr_reader :home, :sync, :transaction
+    attr_reader :home, :sync, :launch
+
+    def transaction = Transaction.new(home, releases, Journal.new(home, releases, sync.method(:paths)))
 
     def publish(placement, before_switch)
       place(placement)
@@ -79,7 +83,9 @@ module InstallerRelease
     end
 
     def switch_to(version)
-      Candidate.check(releases.path(version), version)
+      path = releases.path(version)
+      Candidate.check(path, version)
+      launch.call(path, version)
       move_pointers(version)
       sync.call
     end

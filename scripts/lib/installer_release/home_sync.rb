@@ -4,6 +4,7 @@ require "fileutils"
 require "open3"
 require "securerandom"
 require_relative "hook_strip"
+require_relative "launcher_link"
 require_relative "managed_home"
 
 module InstallerRelease
@@ -50,6 +51,8 @@ module InstallerRelease
 
     def target = File.join(share, "active", "bin", "plastic")
 
+    def launcher_ours? = LauncherLink.new(launcher, share).ours?
+
     def hook_files = [File.join(user_home, ".claude", "settings.json"), File.join(user_home, ".codex", "hooks.json")]
 
     def environment = { "PLASTIC_HOME" => plastic_home, "HOME" => user_home, "RUBYOPT" => nil, "BUNDLE_GEMFILE" => nil }
@@ -62,18 +65,12 @@ module InstallerRelease
     end
 
     def link_launcher
-      return out.puts(format(FOREIGN, launcher, target)) unless ours?
+      return out.puts(format(FOREIGN, launcher, target)) unless launcher_ours?
 
       FileUtils.mkdir_p(File.dirname(launcher))
       temporary = "#{launcher}.#{SecureRandom.hex(8)}"
       File.symlink(target, temporary)
       File.rename(temporary, launcher)
-    end
-
-    def ours?
-      return !File.exist?(launcher) unless File.symlink?(launcher)
-
-      File.expand_path(File.readlink(launcher), File.dirname(launcher)).start_with?("#{share}/")
     end
   end
 end

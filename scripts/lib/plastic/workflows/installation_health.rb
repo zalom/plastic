@@ -11,6 +11,7 @@ module Plastic
     class InstallationHealth
       Check = Data.define(:label, :value, :repair)
       INTERRUPTED = "run the installer again; it restores the interrupted activation before it changes anything"
+      UNMANAGED = "no release is installed; this plastic runs from source or npm"
       INCOMPLETE = "switch to a complete release with plastic rollback or plastic update"
 
       def self.of(context, ruby_version: RUBY_VERSION)
@@ -28,14 +29,20 @@ module Plastic
       end
 
       def checks
-        activation = InstallerRelease::Activation.new(home: share)
-        active = activation.active_version
-        active ? release_checks(active, activation.previous_version || "none") : [Check.new("active:", "none; no release is activated", nil), ruby]
+        managed? ? release_checks(active, activation.previous_version || "none") : unmanaged_checks
       end
+
+      def managed? = File.file?(File.join(activation.active_path, "VERSION"))
 
       private
 
       attr_reader :share, :launcher, :home, :ruby_version
+
+      def activation = (@activation ||= InstallerRelease::Activation.new(home: share))
+
+      def active = activation.active_version
+
+      def unmanaged_checks = [Check.new("active:", "none; no release is activated", nil), Check.new("installation:", UNMANAGED, nil), ruby]
 
       def release_checks(active, previous)
         [Check.new("active:", active, nil), Check.new("previous:", previous, nil), launcher.check, ruby, bundle, hooks, lock]

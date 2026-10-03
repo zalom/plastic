@@ -91,9 +91,9 @@ class VersionCommandTest < Plastic::TestCase
   def test_a_run_with_no_active_release_says_so_and_is_not_reported_whole
     result = call("version")
 
-    assert_equal 0, result.code, result.err
-    assert_match(/installation:\s+no release is installed; this plastic runs from source or npm/, result.out)
-    assert_match(/because:\s+no release is installed, so only Ruby was checked/, result.out)
+    assert_equal [0, ""], [result.code, result.err]
+    assert_empty unmatched(result.out, [/installation:\s+no release is installed; this plastic runs from source or npm/,
+      /because:\s+no release is installed, so only Ruby was checked/]), result.out
     refute_includes result.out, "whole"
   end
 

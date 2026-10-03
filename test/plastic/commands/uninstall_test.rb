@@ -27,6 +27,7 @@ class UninstallCommandTest < Plastic::TestCase
     refute_path_exists File.join(@home, ".claude", "plastic", "manifest.json")
     assert_path_exists File.join(@plastic_home, "VERSION")
   end
+
   def test_removes_the_releases_and_the_launcher_plastic_owns
     installed_release
     result = call("uninstall", "--claude")
