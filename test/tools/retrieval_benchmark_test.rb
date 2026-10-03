@@ -44,11 +44,11 @@ class RetrievalBenchmarkTest < Minitest::Test
       graphs = Struct.new(:databases, :retrieval).new({ knowledge: database }, Struct.new(:origin_id).new("origin"))
       worker = Plastic::RetrievalBenchmark::Worker.new([directory, "1", ready, start, "42", "notes.md"])
       worker.define_singleton_method(:graphs) { graphs }
-      File.write(start, "start")
 
-      output = capture_io do
-        Plastic::Graph::EvidenceWriter.stub(:new, writer) { worker.run }
-      end.first
+      execution = Thread.new { capture_io { Plastic::Graph::EvidenceWriter.stub(:new, writer) { worker.run } }.first }
+      sleep 0.005 until File.exist?(ready)
+      File.write(start, "start")
+      output = execution.value
 
       assert_equal [true, 10, ["42", "notes.md", "concurrent writer revision 0"], ["42", "notes.md", "concurrent writer revision 9"]],
         [File.exist?(ready), writes.length, writes.first, writes.last]
