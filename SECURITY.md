@@ -2,15 +2,18 @@
 
 Plastic runs on your machine. It makes no model call and sends none of your files anywhere.
 
-Three things use the network. The update check hook and `plastic update` ask the npm registry
-for the newest version with `npm view @zalom/plastic dist-tags`. The npm install path
-downloads the package through `npx`. `plastic session commit` in a project whose flow sets
+These things use the network. `install.sh`, the update check hook and `plastic update` read
+the release list from the GitHub API and download a release archive from GitHub over HTTPS.
+Bundler fetches the sqlite3 gem from RubyGems when a release installs. The frozen npm release
+2.0.3 downloads through `npx`. `plastic session commit` in a project whose flow sets
 `mode: pull_request` runs `gh pr create`, which talks to GitHub.
 
 ## Files the installer writes
 
 | Place | What is written |
 | ----- | --------------- |
+| `~/.local/share/plastic/` | The releases, the `active` and `previous` links, the installer lock and the activation record. |
+| `~/.local/bin/plastic` | A link to the active release launcher. |
 | `~/.plastic/` | Scripts, hooks, templates, `PLASTIC.md`, the install ledger `versions.json`, and your stores. |
 | `~/.claude/agents/`, `~/.claude/hooks`, `~/.claude/plastic/` | The Plastic agents and hooks for Claude Code, and the install record (`manifest.json`, `VERSION`). No workflow skills ship: the package's `skills/` holds only the shared `_decision-tables.md`, which the installer places in `~/.plastic/`, and `~/.claude/skills` may be left empty. |
 | `~/.claude/settings.json` | Hook entries, and the status line when you choose it. |
@@ -18,8 +21,9 @@ downloads the package through `npx`. `plastic session commit` in a project whose
 | `~/.codex/AGENTS.md`, `~/.codex/hooks.json`, `~/.codex/agents/` | The same, for Codex CLI. |
 
 The installer replaces only its managed block in `CLAUDE.md` and `AGENTS.md`. Text outside
-the markers stays as you wrote it. `plastic uninstall` removes what the installer wrote and
-leaves your stores in place.
+the markers stays as you wrote it. `plastic uninstall` removes what the installer wrote into your
+agents and leaves your stores in place. It keeps `~/.local/share/plastic` and
+`~/.local/bin/plastic`; delete them by hand to remove the program.
 
 ## Your stores
 

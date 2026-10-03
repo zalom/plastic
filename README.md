@@ -78,51 +78,23 @@ The files are plain Markdown in a Git repository that you own. See
 
 ## Installation
 
-Plastic needs Ruby 4.0 or later. The npm path also needs Node.js 18 or later, because `npx`
-fetches the package. After the install, the `plastic` command runs on Ruby alone.
-
-### npm (recommended)
-
-```bash
-npx -y @zalom/plastic install --claude
-```
-
-Replace `--claude` with `--codex` for Codex CLI, or pass both flags.
-
-The npm path puts the command at `~/.plastic/bin/plastic` and does not change your `PATH`.
-Link the command into a directory that is on your `PATH`:
-
-```bash
-mkdir -p ~/.local/bin
-ln -sf ~/.plastic/bin/plastic ~/.local/bin/plastic
-```
-
-### Other channels
-
-The stable channel carries Plastic 2.0. To install the alpha or beta channel, name it as the
-package version:
-
-```bash
-npx -y @zalom/plastic@alpha install --claude
-```
-
-### Quick install without npm
+Plastic needs Ruby 4.0 or later with Bundler, plus curl, tar, and `sha256sum` or `shasum`.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/zalom/plastic/main/install.sh | sh
 plastic install --claude
 ```
 
-`install.sh` takes the newest release on a channel that carries the archive. The default
-channel is stable; `PLASTIC_CHANNEL` picks another:
+`install.sh` downloads the newest stable release, checks it against its published checksum,
+and links `~/.local/bin/plastic`. Bundler installs the sqlite3 gem inside each release.
+Replace `--claude` with `--codex` for Codex CLI, or pass both flags. After a first install,
+Plastic offers [Enola](INSTALL.md#enola), an optional tool that maps code architecture.
+
+`PLASTIC_CHANNEL` picks the beta or alpha channel:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/zalom/plastic/main/install.sh | PLASTIC_CHANNEL=alpha sh
 ```
-
-Every release that the publish workflow creates carries the archive, stable ones included. To
-move an installed Plastic to another channel later, run `plastic update --beta` or
-`plastic update --alpha`.
 
 ### A clean Mac
 
@@ -133,20 +105,33 @@ curl https://mise.run | sh
 mise use --global ruby@4.0
 ```
 
-### Verify the installation
+### Check the installation
 
 ```bash
-plastic version     # Prints the installed version and the file it came from
-plastic doctor      # Checks the install and the stores
+plastic version     # The version, then a check of each part of the installation
 ```
+
+`plastic version` names the active and previous releases, the launcher on your `PATH`, the
+Ruby version, the sqlite3 bundle, where the hooks point, and the installer lock. It changes
+nothing. When a part is broken, it prints the command that repairs it.
+
+### Move from npm
+
+npm is frozen at the stable release 2.0.3, which stays installable. Nothing newer is published
+there. To move an npm installation to the shell launcher, run `install.sh` once. It points
+the hooks at the new launcher and keeps your stores and settings. See
+[INSTALL.md](INSTALL.md#move-from-npm) for a launcher link you made by hand.
+
+[INSTALL.md](INSTALL.md) covers update, rollback, uninstall and the supported platforms.
 
 ## Quick start
 
 ```bash
 # 1. Install for your agent
-npx -y @zalom/plastic install --claude    # Claude Code
-npx -y @zalom/plastic install --codex     # Codex CLI
-npx -y @zalom/plastic install --all       # Every supported agent
+curl -fsSL https://raw.githubusercontent.com/zalom/plastic/main/install.sh | sh
+plastic install --claude    # Claude Code
+plastic install --codex     # Codex CLI
+plastic install --all       # Every supported agent
 
 # 2. See what is open
 plastic status
@@ -269,16 +254,13 @@ plastic render FILE                   # Print one Markdown file as an HTML page
 ### Product
 ```bash
 plastic install --claude              # Install into Claude Code
-npx -y @zalom/plastic install --reinstall --claude  # Repair an install
+plastic install --reinstall          # Repair an install
 plastic update                        # Next version on the current channel
 plastic update --alpha                # Move to the alpha channel
 plastic rollback                      # Switch back to the previous release
 plastic rollback --version 2.0.0-alpha.27
 plastic uninstall --all               # Remove Plastic from every agent. Your stores stay.
-plastic doctor                        # Check the install and the stores
-plastic doctor --core                 # The fast check that runs at session start
-plastic doctor --json                 # The full report as data
-plastic version                       # The installed version
+plastic version                       # The installed version and a check of the installation
 ```
 
 ### Help and feedback
@@ -297,8 +279,7 @@ plastic feedback "TITLE" < report.md  # Save a problem report and print a link t
 --project SLUG  # Name a project other than the one the working directory is in
 ```
 
-The installer commands and `plastic hook EVENT` do not take `--json`. `plastic doctor` does, and prints its full
-report as the document.
+The installer commands and `plastic hook EVENT` do not take `--json`.
 
 ## Examples
 
@@ -322,28 +303,39 @@ next: plastic intent show 9 --project shop
 because: 9 is the first active intent in shop
 ```
 
-**The installed version:**
+**The installed version and a check of the installation:**
 ```
 $ plastic version
-version  2.0.2
-source   ~/.plastic/VERSION
+version:         2.0.5
+channel:         latest
+source:          ~/.local/share/plastic/active/VERSION
+active:          2.0.5
+previous:        2.0.4
+launcher:        ~/.local/bin/plastic
+ruby:            4.0.3
+sqlite3 bundle:  present
+hooks:           point at the active release
+installer lock:  free
 
 next: plastic status
-because: the command line works, so read the work next
+because: the installation is whole, so read the work next
 ```
 
 The slugs and ids in these examples are samples.
 
 ## Agent hooks
 
-The installer registers hooks in your agent. At session start a hook runs the fast doctor,
-loads the conventions and prints the open items of the day. Each hook calls one launcher:
+The installer registers hooks in your agent. At session start a hook loads the conventions
+and prints where the work stands, and another checks GitHub for a newer release at most once every 12 hours.
+When a session stops or ends, a hook records it. Each hook
+calls the active release launcher under `~/.local/share/plastic`:
 
 ```bash
 plastic hook EVENT      # The agent calls this, not you
 ```
 
-Run `npx -y @zalom/plastic install --reinstall --claude` when hooks do not fire.
+Run `plastic version` when hooks do not fire. It names the repair, which is often
+`plastic install --reinstall`.
 
 ## Supported AI tools
 
@@ -410,7 +402,7 @@ Plastic 2.0 moves from prose skills to one command with direct results.
 - **Backup and migrate.** One archive command, and a store move that runs behind a full copy of the home.
 - **Two advisors, medium effort by default.** Summon the Primary Advisor or the Secondary Advisor on purpose.
 - **Codex CLI as a second agent.** The same install, with OpenAI model ids for each role.
-- **Publishing from branches.** A push to `alpha`, `beta` or `main` publishes to the matching npm channel with provenance.
+- **Releases from branches.** A push to `alpha`, `beta` or `main` creates a GitHub release that `install.sh` reads. npm is frozen at the stable release 2.0.3.
 
 The [changelog](CHANGELOG.md) holds one line for each release.
 
@@ -427,8 +419,9 @@ The [changelog](CHANGELOG.md) holds one line for each release.
 ## Privacy
 
 Plastic runs on your machine. It makes no model call and sends none of your files anywhere.
-Two things use the network: the update check hook and `plastic update`, which ask the npm
-registry for the newest version. See [SECURITY.md](SECURITY.md) for every file the installer writes.
+Three things use the network: `install.sh`, the update check hook and `plastic update`. They read
+the release list from GitHub and download a release from there. Bundler fetches the sqlite3 gem
+from RubyGems when a release installs. See [SECURITY.md](SECURITY.md) for every file the installer writes.
 
 ## Built with Plastic
 
