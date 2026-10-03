@@ -27,4 +27,11 @@ class BackupPreviewTest < Plastic::TestCase
 
     assert_raises(RuntimeError) { publisher.call }
   end
+
+  def test_backup_staging_failure_before_a_path_is_safe
+    home = Dir.mktmpdir
+    File.binwrite(File.join(home, "backups"), "blocked")
+
+    assert_raises(Errno::EEXIST) { Plastic::Graph::BackupWriter.new(home).stage }
+  end
 end
