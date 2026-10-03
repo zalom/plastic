@@ -10,18 +10,20 @@ module Plastic
       end
 
       def remove(dir)
-        paths = retrieval.printed.keys.select { |path| path.start_with?("#{dir}/") }
-        return if paths.empty?
-
-        Schema.store.each { |key| remove_from(key, paths) }
+        keys = printed_keys(dir)
+        Schema.store.each { |key| remove_from(key, keys) } unless keys.empty?
       end
 
       private
 
       attr_reader :databases, :retrieval
 
-      def remove_from(key, paths)
-        databases.fetch(key).transaction { |batch| paths.each { |path| batch.remove(:printed, path:) } }
+      def printed_keys(dir)
+        retrieval.printed.keys.select { |path| path.start_with?("#{dir}/") }.map { |path| { path: } }
+      end
+
+      def remove_from(key, keys)
+        databases.fetch(key).transaction { |batch| batch.remove_all(:printed, keys) }
       end
     end
   end

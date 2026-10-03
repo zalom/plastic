@@ -8,6 +8,8 @@ module Plastic
     class RetrievalArchiveReader
       ARCHIVE_SQL = "SELECT * FROM archives WHERE origin_id = :origin AND intent_id = :intent_id"
 
+      ACTIVE_SQL = "#{ARCHIVE_SQL} AND restored_at IS NULL"
+
       def initialize(database, origin_id)
         @database = database
         @origin_id = origin_id
@@ -18,10 +20,7 @@ module Plastic
         row && Archive.from_h(row)
       end
 
-      def archived?(intent_id)
-        archive = archive_of(intent_id)
-        !archive.nil? && archive.restored_at.nil?
-      end
+      def archived?(intent_id) = @database.rows(ACTIVE_SQL, origin: @origin_id, intent_id:).any?
     end
   end
 end

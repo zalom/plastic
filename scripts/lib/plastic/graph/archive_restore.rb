@@ -12,8 +12,7 @@ module Plastic
       end
 
       def call(intent_id)
-        archive = retrieval.archive_of(intent_id)
-        return unavailable(intent_id) unless active?(archive)
+        return unavailable(intent_id) unless retrieval.archived?(intent_id)
 
         restore(intent_id)
         [true, nil, nil]
@@ -22,8 +21,6 @@ module Plastic
       private
 
       attr_reader :database, :folder, :retrieval, :snapshot
-
-      def active?(archive) = archive && archive.restored_at.nil?
 
       def unavailable(intent_id) = [false, "intent #{intent_id} is not archived", :failure]
 

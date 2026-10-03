@@ -19,9 +19,17 @@ module Plastic
       include Record
 
       OPEN = %w[open active].freeze
+      ARCHIVABLE = %w[done abandoned future].freeze
 
       # Open or active: the work a resume lists.
       def open? = OPEN.include?(status)
+
+      # Why the intent cannot archive, or nil when its status allows it.
+      def archive_refusal
+        return if ARCHIVABLE.include?(status)
+
+        "intent #{intent_id} is #{status}; only done, abandoned and future intents archive"
+      end
 
       # The id and the title, as people name the intent.
       def label = "#{intent_id} #{title}"

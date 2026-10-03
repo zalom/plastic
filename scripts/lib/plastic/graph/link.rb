@@ -10,6 +10,8 @@ module Plastic
     Link = Data.define(:from_ref, :to_ref, :kind, :at, :origin_id) do
       include Record
 
+      def from_intent_id = from_ref.split("/").first
+
       def self.supersedes(ruling, target) = { from_ref: ruling.ref, to_ref: target.ref, kind: "supersedes", at: ruling.at }
     end
     Link::KINDS = %w[cites supersedes answers source chain].freeze
