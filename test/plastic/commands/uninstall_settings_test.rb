@@ -21,6 +21,13 @@ class UninstallSettingsCommandTest < Plastic::TestCase
     assert_equal original, settings["statusLine"]
   end
 
+  def test_keeps_a_status_line_the_user_set
+    edit_settings { |settings| settings.merge("statusLine" => { "type" => "command", "command" => "mine" }) }
+    call("uninstall", "--claude")
+
+    assert_equal "mine", settings.dig("statusLine", "command")
+  end
+
   def test_drops_the_plastic_plugin_and_an_empty_plugin_list
     edit_settings { |settings| settings.merge("enabledPlugins" => { "plastic@plastic" => true }) }
     call("uninstall", "--claude")
