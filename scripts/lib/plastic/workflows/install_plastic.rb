@@ -2,6 +2,7 @@
 
 require_relative "../code_workflow"
 require_relative "installation"
+require_relative "installation_hooks"
 
 module Plastic
   module Workflows
@@ -11,17 +12,20 @@ module Plastic
     class InstallPlastic < CodeWorkflow
       [facts, steps, outcomes].each(&:clear)
 
-      sets :usable, :pending, :installed
+      sets :usable, :broken, :pending, :installed
 
       read "check this machine and the registered agents" do |context|
         installation = Installation.of(context)
         usable, messages = installation.preflight
         messages.each { |line| context.print(line) }
         context[:usable] = usable
+        context[:broken] = InstallationHooks.new(home: context.scope.home).unreadable
         context[:pending] = installation.unregistered(Installation.to_install(context))
       end
 
       gate "this machine cannot run Plastic; see above", stops: :failure, pass: ->(context) { context.usable }
+      gate "%{broken} is not valid JSON; nothing was changed. Fix the file and run this again", stops: :failure,
+        pass: ->(context) { context.broken.nil? }
       gate "Plastic is already installed for every chosen agent; pass --reinstall to sync the files again",
         stops: :refusal, pass: ->(context) { context.reinstall || context.pending.any? }
 

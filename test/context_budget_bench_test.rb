@@ -450,8 +450,8 @@ class ContextBudgetCliTest < Minitest::Test
 end
 
 # Intent 397 cutover: ContextBudgetPostCutBootTest and ContextBudgetSubagentBootTest
-# measured hook-session-start's live additionalContext, row by row. The kernel
-# registers no SessionStart hook yet (hooks.json carries none), so no repo on
-# alpha ships that file any more; ContextBudget.boot reports an honest empty
+# measured hook-session-start's live additionalContext, row by row. The kernel's
+# SessionStart hook is now plastic hook resume (scripts/lib/plastic/hooks/entries.rb),
+# so no repo on alpha ships hook-session-start any more; ContextBudget.boot reports an honest empty
 # context for a repo without it (bin/lib/context_budget.rb), and these two
 # classes, which had no content left to measure, are retired with the hook.

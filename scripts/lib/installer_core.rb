@@ -1435,6 +1435,14 @@ class InstallerCore
     removed
   end
 
+  def hook_pairs(hooks)
+    hooks.flat_map { |event, groups| hook_commands(groups).product([event]) }.map(&:reverse)
+  end
+
+  def hook_commands(groups)
+    Array(groups).flat_map { |group| Array(group["hooks"]) }.map { |hook| hook["command"] }
+  end
+
   def tilde(path)
     path.sub(Dir.home, "~")
   end
@@ -1485,7 +1493,6 @@ class InstallerCore
     hook_dir = File.join(Dir.home, ".claude", "hooks")
 
     removed = purge_stale_plastic_hooks(hooks)
-    report_removed_hook_entries(removed, "settings.json")
     report_reserved_prefix_hooks(hooks)
     settings = kernel_hook_entries.claude(settings)
     hooks = settings["hooks"]
@@ -1515,6 +1522,8 @@ class InstallerCore
         end
       end
     end
+
+    report_removed_hook_entries(removed - hook_pairs(hooks), "settings.json")
 
     existing_status = settings["statusLine"]
     if existing_status && !HookRegistry.claude_purge_command?(existing_status["command"])

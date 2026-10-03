@@ -13,19 +13,25 @@ module Plastic
     class ReleaseUpdate
       CHANNELS = { "stable" => "latest", "beta" => "beta", "alpha" => "alpha" }.freeze
 
+      # The home sync's output joins the call's printed lines, so it prints in
+      # the order it happened.
+      Printed = Data.define(:context) do
+        def puts(text) = text.each_line(chomp: true) { |line| context.print(line) }
+      end
+
       def self.of(context, bundle: InstallerRelease::Bundle.new)
         scope = context.scope
         share = scope.setting("PLASTIC_SHARE", File.join(scope.home, ".local", "share", "plastic"))
-        new(share, InstallerRelease::ReleaseSource.for(scope.setting("PLASTIC_LOCAL_RELEASE")), bundle, home_sync(scope, share))
+        new(share, InstallerRelease::ReleaseSource.for(scope.setting("PLASTIC_LOCAL_RELEASE")), bundle, home_sync(scope, share, Printed.new(context)))
       end
 
       def self.chosen_channels(context) = CHANNELS.keys.select { |name| context.public_send(name) }
 
-      def self.home_sync(scope, share)
+      def self.home_sync(scope, share, out)
         user_home = scope.home
         launcher = File.join(scope.setting("PLASTIC_BIN", File.join(user_home, ".local", "bin")), "plastic")
         home = InstallerRelease::ManagedHome.new(plastic_home: scope.plastic_home, user_home: user_home, launcher: launcher)
-        InstallerRelease::HomeSync.new(share: share, home: home)
+        InstallerRelease::HomeSync.new(share: share, home: home, out: out)
       end
 
       def initialize(share, source, bundle, sync = InstallerRelease::NoSync)
