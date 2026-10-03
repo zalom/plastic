@@ -35,14 +35,15 @@ module Plastic
           end
 
           def resolved
-            advance while first_escape
+            while (first = first_escape)
+              advance(first)
+            end
             @output << @source[@cursor..]
           end
 
           private
 
-          def advance
-            first = first_escape
+          def advance(first)
             append_prefix(first)
             append_escape(first)
           end

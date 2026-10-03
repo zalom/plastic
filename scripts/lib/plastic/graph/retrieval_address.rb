@@ -6,6 +6,8 @@ module Plastic
   module Graph
     # Parses and builds qualified references for one retrieval store.
     class RetrievalAddress
+      UNRESERVED = "-._~".bytes.freeze
+
       def initialize(store) = @store = store
 
       def qualified(intent_id, path, revision)
@@ -53,7 +55,7 @@ module Plastic
 
       # Escapes a document path for its qualified retrieval URI.
       class PathEscaper
-        TABLE = (0..255).map { |byte| ((65..90).cover?(byte) || (97..122).cover?(byte) || (48..57).cover?(byte) || "-._~".bytes.include?(byte)) ? byte.chr : format("%%%02X", byte) }.freeze
+        TABLE = (0..255).map { |byte| ((65..90).cover?(byte) || (97..122).cover?(byte) || (48..57).cover?(byte) || UNRESERVED.include?(byte)) ? byte.chr : format("%%%02X", byte) }.freeze
 
         def initialize(path) = @bytes = path.bytes
 
