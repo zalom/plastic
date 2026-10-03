@@ -124,6 +124,13 @@ class IntentArchiveTest < Plastic::TestCase
     assert retrieval.archived?(intent.intent_id)
   end
 
+  def test_archiving_a_missing_intent_reports_a_failure
+    result = call("99")
+
+    assert_equal 1, result.code
+    assert_includes result.err, "no intent 99"
+  end
+
   private
 
   def archived_document(intent) = retrieval.documents(intent.intent_id).find { |candidate| candidate.path == intent.file }

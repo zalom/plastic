@@ -24,6 +24,14 @@ class RetrievalBenchmarkTest < Minitest::Test
     end
   end
 
+  def test_generates_only_full_documents_when_a_store_size_has_no_remainder
+    Dir.mktmpdir do |directory|
+      corpus = Plastic::RetrievalBenchmark.generate_corpus(directory, target_bytes: 8_192, stores: 1)
+
+      assert_equal [8_192, 2], corpus.values_at("bytes", "documents")
+    end
+  end
+
   def test_worker_does_not_execute_when_a_quality_gate_requires_its_source
     Dir.mktmpdir do |directory|
       worker = File.expand_path("../../tools/retrieval_benchmark/worker.rb", __dir__)
@@ -89,6 +97,27 @@ class RetrievalBenchmarkTest < Minitest::Test
 
       assert_equal({ owner_review: "pending", commands_succeeded: true, no_help: true }, raw_evidence_summary(output, report))
     end
+  end
+
+  def test_persists_a_partial_report_when_a_quality_fixture_is_invalid
+    Dir.mktmpdir do |directory|
+      input = File.join(directory, "invalid-quality.json")
+      output = File.join(directory, "evidence", "benchmark.json")
+      File.write(input, "{")
+
+      report = Plastic::RetrievalBenchmark.run(output:, corpus_bytes: 1_000, warmup: 0, samples: 1, quality_input: input)
+
+      assert_equal "error", report.dig("quality", "status")
+      assert_equal report, JSON.parse(File.read(output))
+    end
+  end
+
+  def test_marks_a_latency_gate_missed_when_its_warm_p95_exceeds_the_target
+    measurements = { "exact_lookup" => [{ "duration_ms" => 101 }], "single_store_top_20" => [{ "duration_ms" => 1 }],
+                     "three_store_rrf_top_20" => [{ "duration_ms" => 1 }] }
+    report = Plastic::RetrievalBenchmark::Report.new({}, measurements, 0, 1).build
+
+    assert_equal "missed", report.dig("acceptance_gates", "latency", "exact_lookup", "status")
   end
 
   def test_records_concurrent_reads_and_explicit_acceptance_gates

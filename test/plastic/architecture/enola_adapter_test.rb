@@ -237,6 +237,12 @@ class EnolaAdapterRefreshTest < Plastic::TestCase
     assert_equal [["enola", "--generate", "/repo"]], calls
   end
 
+  def test_discards_the_prior_receipt_after_a_successful_refresh
+    adapter = adapter_for(->(*) { ["generated", "", true] })
+
+    assert_equal({ success: true, receipt: nil }, adapter.refresh(repository: "/repo", prior: { "state" => "stale" }))
+  end
+
   def test_refresh_reports_failure_without_a_prior_receipt
     adapter = adapter_for(->(*) { ["failed", "generation failed", false] })
 
