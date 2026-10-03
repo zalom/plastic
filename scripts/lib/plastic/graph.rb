@@ -3,7 +3,7 @@
 require_relative "graph/database"
 require_relative "graph/origin"
 require_relative "graph/retrieval_graph"
-require_relative "graph/store_folder"
+require_relative "graph/knowledge/store_folder"
 require_relative "graph/work_graph"
 
 module Plastic
@@ -27,7 +27,7 @@ module Plastic
       root = File.join(home, "stores", store)
       databases = Database.open_home(home).merge(Database.open_store(root, origin))
       retrieval = RetrievalGraph.new(databases, store:, origin:)
-      Graphs.new(work: WorkGraph.new(databases, folder: StoreFolder.new(root), retrieval:, session:), retrieval:, databases:)
+      Graphs.new(work: WorkGraph.new(databases, folder: Knowledge::StoreFolder.new(root), retrieval:, session:), retrieval:, databases:)
     end
   end
 end

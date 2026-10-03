@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../code_workflow"
-require_relative "../graph/roadmap_writer"
+require_relative "../graph/knowledge/roadmap/writer"
 
 module Plastic
   module Workflows
@@ -13,7 +13,7 @@ module Plastic
       sets :batch
 
       step "write the batch", done: ->(context) { !context.batch.nil? } do |context|
-        fields = Graph::RoadmapWriter::Fields.new(title: context.title, goal: context.goal, done: context.done)
+        fields = Graph::Knowledge::Roadmap::Writer::Fields.new(title: context.title, goal: context.goal, done: context.done)
         context[:batch] = context.work.write_batch(context.slug, context.position.to_i, fields:)
       end
 

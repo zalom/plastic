@@ -67,6 +67,12 @@ module Plastic
           self
         end
 
+        # Removes the rows each of `keys` matches, in order.
+        def remove_all(name, keys)
+          keys.each { |values| remove(name, **values) }
+          self
+        end
+
         # Removes the rows `values` match, and logs each one with no row.
         def remove(name, **values)
           table = Schema.table_named(name)

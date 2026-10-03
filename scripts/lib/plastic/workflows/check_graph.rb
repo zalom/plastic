@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../code_workflow"
-require_relative "../graph/findings"
+require_relative "../graph/knowledge/findings"
 
 module Plastic
   module Workflows
@@ -18,7 +18,7 @@ module Plastic
       gate "no intent %{intent_id} in this store", stops: :failure, pass: ->(context) { !context.intent.nil? }
 
       read "find problems" do |context|
-        context[:findings] = Graph::Findings.new(context.retrieval, context.intent_id).all
+        context[:findings] = Graph::Knowledge::Findings.new(context.retrieval, context.intent_id).all
         print_findings(context)
       end
 

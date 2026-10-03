@@ -62,6 +62,19 @@ mise use --global ruby@4.0
 
 The installer checks the Ruby version before it writes anything.
 
+## Install the Ruby dependency
+
+Plastic's retrieval commands require sqlite3 version 2.9.6. The npm package ships
+the Ruby source and does not include `Gemfile.lock`, so install the required version
+in the Ruby you use to run `plastic`:
+
+```bash
+gem install sqlite3 -v 2.9.6
+```
+
+Run this command before `plastic install` when the installer reports that the sqlite3
+gem is missing.
+
 ## Install without npm
 
 `install.sh` installs the newest release on the stable channel, or on the channel that

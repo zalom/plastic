@@ -40,4 +40,11 @@ class StoreDatabaseTest < Plastic::TestCase
 
     refute_includes columns.map { |column| column["name"] }, "store"
   end
+
+  def test_opening_a_knowledge_database_records_its_retrieval_schema_version
+    database = store_graphs.databases.fetch(:knowledge)
+
+    assert_equal [{ "name" => "retrieval", "version" => 1, "completed_at" => nil }],
+      database.rows("SELECT name, version, completed_at FROM retrieval_schema")
+  end
 end

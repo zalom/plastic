@@ -102,7 +102,7 @@ class SyncLegacyMetadataTest < Plastic::TestCase
       root = File.join(dir, "store-a")
       FileUtils.mkdir_p(root)
       File.write(File.join(root, "INDEX.md"), "before")
-      writer = Plastic::Graph::LegacyStoreImport.new(nil, nil, nil, { home: Struct.new(:path).new(File.join(dir, "home.db")) })
+      writer = Plastic::Graph::Knowledge::Legacy::StoreImport.new(nil, nil, nil, { home: Struct.new(:path).new(File.join(dir, "home.db")) })
 
       assert_raises(RuntimeError) { writer.send(:rolled_back_on_error, root) { File.write(File.join(root, "work_graph.db"), "x") && raise("halfway") } }
       assert_equal ["INDEX.md"], Dir.children(root)

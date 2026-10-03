@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../routine"
-require_relative "sync_options"
+require_relative "../cli/sync_options"
 
 module Plastic
   module Commands
@@ -9,7 +9,7 @@ module Plastic
     # A record changed on both sides stops the call, exit 3, and every
     # conflict is listed.
     class SyncDown < Routine
-      extend SyncOptions
+      extend CLI::SyncOptions
 
       workflow :code_sync_down, next: :noop
     end

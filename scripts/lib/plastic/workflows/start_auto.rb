@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../code_workflow"
-require_relative "../graph/spec"
+require_relative "../graph/knowledge/spec"
 
 module Plastic
   module Workflows
@@ -31,7 +31,7 @@ module Plastic
       end
 
       def self.spec_problem(id, context)
-        spec = Graph::Spec.new(context.retrieval, id)
+        spec = Graph::Knowledge::Spec.new(context.retrieval, id)
         return "intent #{id} has an open decision; run plastic intent spec #{id}" if spec.open_decisions.any?
         return "intent #{id} names no done criterion" if spec.done_criteria.empty?
 

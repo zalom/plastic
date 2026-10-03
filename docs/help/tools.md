@@ -1,9 +1,8 @@
 # Tools
 
-No Plastic command depends on RTK, QMD or Enola. Plastic itself calls only git and sqlite3.
-These three are companion tools a person can run beside Plastic, by hand, for the parts Plastic
-does not do itself: condensing shell output, searching the stores by meaning, and reading a
-codebase's architecture as queryable facts.
+Plastic uses SQLite for deterministic store retrieval. RTK, QMD and Enola are companion tools.
+Plastic never runs them and stores none of their output. The `plastic architecture` commands
+only tell the agent to map the code with a tool it chooses.
 
 ### RTK
 
@@ -24,10 +23,11 @@ command starts, registers with, or reads from it.
 ### Enola
 
 Enola reads a codebase's architecture as queryable facts: symbols, dependencies, layers, and the
-findings its explainers compute (cycles, layer violations, dead routes, hotspots). Plastic's own
-checks (the doctor, the change gate) never call it. Generate a snapshot on a repository by hand
-(`enola --generate <repo>`), then query it directly, before or after a Plastic delivery, to see
-what a change did to the structure.
+findings its explainers compute. `plastic architecture status --project SLUG` tells the agent to
+check whether the project's architecture map is current. `plastic architecture refresh --project
+SLUG` tells the agent to regenerate the map. Both commands print instructions only. The agent
+chooses the mapping tool, runs it, and reads the result. Plastic does not run Enola and does not
+save the map, because the tool can produce it again at any time.
 
 ### Using them together
 

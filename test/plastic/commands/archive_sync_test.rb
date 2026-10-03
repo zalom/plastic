@@ -8,17 +8,27 @@ class ArchiveSyncTest < Plastic::TestCase
     plastic("intent", "archive", intent.intent_id, *options, table: Plastic::CLI::TABLE)
   end
 
-  def test_reverted_hand_edits_conflict_instead_of_being_overwritten_by_sync_down
+  def test_revert_restores_the_exact_snapshot_taken_at_archive_time
     intent = open_intent("Unsynced", status: "future")
     path = "#{intent.dir}/#{intent.file}"
     write(path, "owner edit not in document rows")
     archive(intent)
     archive(intent, "--revert")
 
+    assert_equal "owner edit not in document rows", folder.read(path)
+  end
+
+  def test_hand_edits_after_revert_conflict_instead_of_being_overwritten_by_sync_down
+    intent = open_intent("Unsynced", status: "future")
+    path = "#{intent.dir}/#{intent.file}"
+    archive(intent)
+    archive(intent, "--revert")
+    write(path, "owner edit after restore")
+
     result = plastic("sync", "down", table: Plastic::CLI::TABLE)
 
     assert_equal 3, result.code
-    assert_equal "owner edit not in document rows", folder.read(path)
+    assert_equal "owner edit after restore", folder.read(path)
   end
 
   def test_revert_after_failed_archive_does_not_resume_the_archive_operation

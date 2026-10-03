@@ -42,4 +42,12 @@ class BinCallTest < Plastic::TestCase
     assert_includes out, "intent new"
     refute_includes out, "kernel"
   end
+
+  def test_bin_call_help_accepts_help_flags_and_reports_unknown_commands
+    flagged = plastic_bin("help", "--help", table: Plastic::CLI::TABLE)
+    unknown = plastic_bin("help", "not-a-command", table: Plastic::CLI::TABLE)
+
+    assert_equal [0, Plastic::CLI::TABLE.size], [flagged.code, flagged.out.lines.size]
+    assert_equal [2, "plastic: no command \"not-a-command\"; plastic help lists them\n"], [unknown.code, unknown.err]
+  end
 end

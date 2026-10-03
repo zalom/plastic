@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../routine"
-require_relative "../graph/link"
+require_relative "../graph/knowledge/link"
 
 module Plastic
   module Commands
@@ -15,7 +15,7 @@ module Plastic
       writes :knowledge
 
       def call
-        raise CLI::Command::Usage, "KIND takes #{Graph::Link::KINDS.join(", ")}" unless Graph::Link::KINDS.include?(parsed[:kind])
+        raise CLI::Command::Usage, "KIND takes #{Graph::Knowledge::Link::KINDS.join(", ")}" unless Graph::Knowledge::Link::KINDS.include?(parsed[:kind])
 
         super
       end
