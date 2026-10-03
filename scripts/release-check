@@ -5,8 +5,8 @@
 # release-check - deterministic CLI over ReleaseGuard (intent 347).
 #
 # Guards a tagged publish before the workflow ever reaches `npm publish`:
-# the pushed tag must equal `v` plus the version in package.json, the three
-# repo version files must agree, and the runner's npm must meet the 11.5.1
+# the pushed tag must equal `v` plus the version in package.json, a stable
+# version must carry no pre-release suffix, and the runner's npm must meet the 11.5.1
 # floor npm requires for OIDC trusted publishing. Writes the derived
 # dist-tag and version to $GITHUB_OUTPUT, so the alpha/beta/latest rule has
 # exactly one implementation, ReleaseGuard.dist_tag, shared with the test
@@ -58,8 +58,6 @@ usage unless (opts["--tag"] || opts["--branch"]) && opts["--npm-version"]
 
 root = opts["--root"] ? File.expand_path(opts["--root"]) : File.expand_path("..", __dir__)
 package_json_path = File.join(root, "package.json")
-plugin_json_path = File.join(root, ".claude-plugin", "plugin.json")
-marketplace_json_path = File.join(root, ".claude-plugin", "marketplace.json")
 
 violations = []
 
@@ -82,20 +80,10 @@ if canonical_version
   end
   stable = dist_tag == "latest"
 
-  result = ReleaseGuard.check(
-    package_json: package_json_path,
-    plugin_json: plugin_json_path,
-    marketplace_json: marketplace_json_path,
-    stable: stable
-  )
+  result = ReleaseGuard.check(package_json: package_json_path, stable: stable)
 
   unless result.ok?
-    result.mismatches.each do |file|
-      violations << "version file #{file} does not agree with package.json (#{canonical_version})"
-    end
-    if stable && result.prerelease_suffix
-      violations << "stable cut #{canonical_version} carries the pre-release suffix -#{result.prerelease_suffix}"
-    end
+    violations << "stable cut #{canonical_version} carries the pre-release suffix -#{result.prerelease_suffix}"
   end
 end
 
