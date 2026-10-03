@@ -6,6 +6,8 @@ require_relative "context_persistence"
 require_relative "context_freshness"
 require_relative "context_source"
 require_relative "context_submission"
+require_relative "context_exchange"
+require_relative "context_owner"
 require "fileutils"
 require "json"
 require "tempfile"
@@ -20,8 +22,8 @@ module Plastic
       writes :knowledge
 
       def call
-        validate_intent!
-        output.row("context", context)
+        owner.validate!(intent_id)
+        output.row("context", exchange.call)
         output.next_step("none", because: "the retrieval context was read")
       rescue Errno::ENOENT, JSON::ParserError => error
         raise CLI::Command::Usage, error.message
@@ -31,48 +33,11 @@ module Plastic
 
       private
 
-      def validate_intent!
-        id = parsed.fetch(:intent_id)
-        raise CLI::Command::Usage, "invalid intent id #{id.inspect}" unless /\A\d+[a-z0-9]*\z/.match?(id)
-        raise CLI::Command::Failure, "no intent #{id} in owning store" unless Graph.open(home: scope.plastic_home, store: scope.slug).retrieval.intent(id)
-      end
+      def intent_id = parsed.fetch(:intent_id)
 
-      def readback
-        document = stored_context
-        document.merge("freshness" => freshness.call(document))
-      rescue Errno::ENOENT
-        raise CLI::Command::Failure, "no retrieval context for intent #{parsed.fetch(:intent_id)}"
-      end
+      def owner = (@owner ||= ContextOwner.new(scope))
 
-      def discovery
-        row = graphs.databases.fetch(:knowledge).row("SELECT data FROM retrieval_discoveries WHERE intent_id = :intent_id AND origin_id = :origin",
-          intent_id: parsed.fetch(:intent_id), origin: graphs.retrieval.origin_id)
-        return JSON.parse(row.fetch("data")) if row
-
-        JSON.parse(File.read(discovery_path))
-      end
-
-      def context = parsed[:from] ? persistence.persist(submission.validate(parsed.fetch(:from))) : readback
-
-      def context_path = File.join(scope.root, "context", "#{parsed.fetch(:intent_id)}.json")
-
-      def stored_context
-        row = graphs.databases.fetch(:knowledge).row("SELECT data FROM retrieval_contexts WHERE intent_id = :intent_id AND origin_id = :origin",
-          intent_id: parsed.fetch(:intent_id), origin: graphs.retrieval.origin_id)
-        return JSON.parse(row.fetch("data")) if row
-
-        JSON.parse(File.read(context_path))
-      end
-
-      def discovery_path = File.join(scope.root, "discovery", "#{parsed.fetch(:intent_id)}.json")
-
-      def source = (@source ||= ContextSource.new(scope))
-
-      def submission = (@submission ||= ContextSubmission.new(intent_id: parsed.fetch(:intent_id), discovery:, source:))
-
-      def persistence = (@persistence ||= ContextPersistence.new(graphs:, scope:, intent_id: parsed.fetch(:intent_id)))
-
-      def freshness = (@freshness ||= ContextFreshness.new(graphs:, scope:, source:))
+      def exchange = (@exchange ||= ContextExchange.new(graphs:, scope:, intent_id:, submission_path: parsed[:from]))
     end
   end
 end
