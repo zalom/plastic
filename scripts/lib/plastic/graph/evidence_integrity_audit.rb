@@ -11,9 +11,9 @@ module Plastic
       private
 
       def missing(snapshot)
-        revisions = snapshot.fetch(:revisions).map { |row| row.values_at("intent_id", "path", "body", "sha256") }
+        revisions = snapshot.fetch(:revisions)
         snapshot.fetch(:documents).filter_map do |document|
-          "#{document.fetch("intent_id")}:#{document.fetch("path")} has no immutable revision" unless revisions.include?(document.values_at("intent_id", "path", "body", "sha256"))
+          "#{document.intent_id}:#{document.path} has no immutable revision" unless revisions.any? { |revision| revision.matches?(document) }
         end
       end
 
@@ -21,7 +21,7 @@ module Plastic
 
       def expected(snapshot, name)
         documents = snapshot.fetch(:documents)
-        { heads: documents.map { |row| row.values_at("intent_id", "path", "sha256") }, passages: snapshot.fetch(:revisions).flat_map { |row| passage_values(row) }, fts: documents.flat_map { |row| fts_values(row) } }.fetch(name)
+        { heads: documents.map(&:head_values), passages: snapshot.fetch(:revisions).flat_map(&:passage_values), fts: documents.flat_map { |document| fts_values(document) } }.fetch(name)
       end
 
       def actual(snapshot, name)
@@ -29,11 +29,7 @@ module Plastic
         (name == :heads) ? rows.map { |row| row.values_at(0, 1, 2) } : rows
       end
 
-      def passages(row) = EvidenceText.passages(EvidenceText.extract_with_lines(row.fetch("path"), row.fetch("body")))
-
-      def passage_values(row) = passages(row).map { |passage| [row.fetch("sha256"), row.fetch("intent_id"), row.fetch("path"), *passage.values_at(:position, :body, :line_start, :line_end)] }
-
-      def fts_values(row) = passages(row).map { |passage| [row.fetch("intent_id"), row.fetch("path"), passage.fetch(:body), row.fetch("sha256"), passage.fetch(:position)] }
+      def fts_values(document) = document.fts_rows(nil).map { |row| row.values_at(:intent_id, :path, :body, :sha256, :position) }
     end
   end
 end
