@@ -17,6 +17,7 @@ require_relative "retrieval_search"
 require_relative "retrieval_store_read"
 require_relative "retrieval_archive_reader"
 require_relative "retrieval_roadmap_reader"
+require_relative "retrieval_evidence"
 
 module Plastic
   module Graph
@@ -34,6 +35,7 @@ module Plastic
 
       def_delegators :sessions, :routine_run, :session, :previous_session, :predecessor, :locks_of, :lock, :last_run, :touched
       def_delegators :work, :ready_nodes, :node, :rulings, :links
+      def_delegators :evidence, :documents, :fetch, :reference, :fetch_reference, :fetch_batch, :fetch_passage, :exact_lookup_plans, :search, :search_reference, :backfill!, :repair!
 
       def initialize(databases, store:, origin:)
         @databases = databases
@@ -57,44 +59,8 @@ module Plastic
 
       def clusters = read(:clusters)
 
-      def documents(intent_id = nil) = ensure_backfill! && read(:documents, intent_id)
-
-      def fetch(intent_id, path) = ensure_backfill! && @databases.fetch(:knowledge).row(DOCUMENT_SQL, intent_id:, path:, origin: origin_id).then { |row| row && Document.from_h(row) }
-
-      def reference(intent_id, path) = references.reference(intent_id, path)
-
-      def fetch_reference(reference) = references.fetch(reference)
-
-      def fetch_batch(references) = references.map { |reference| fetch_reference(reference) }
-
-      def fetch_passage(reference, position) = references.fetch_passage(reference, position)
-
-      def exact_lookup_plans(intent_id, path)
-        [@databases.fetch(:work).rows("EXPLAIN QUERY PLAN SELECT * FROM intents WHERE intent_id = :intent_id AND origin_id = :origin", intent_id:, origin: origin_id),
-          @databases.fetch(:knowledge).rows("EXPLAIN QUERY PLAN #{DOCUMENT_SQL}", intent_id:, path:, origin: origin_id)]
-      end
-
       DOCUMENT_SQL = "SELECT * FROM documents WHERE intent_id = :intent_id AND path = :path AND origin_id = :origin"
       SEARCH_SQL = RetrievalSearch::SEARCH_SQL
-
-      # Returns current indexed passages in stable lexical-rank order. Plain
-      # words become quoted FTS terms, so caller text never changes the query.
-      def search(terms, limit: 20, migrate: true)
-        ensure_backfill!(migrate)
-        searcher.call(terms, limit:)
-      end
-
-      def search_reference(row)
-        references.qualified_reference(row.fetch("intent_id"), row.fetch("path"), row.fetch("sha256"))
-      end
-
-      def backfill!
-        ReferenceBackfill.new(@databases, origin_id).call
-      end
-
-      def repair!
-        EvidenceIntegrity.new(@databases.fetch(:knowledge), origin_id).repair!
-      end
 
       def savepoints(intent_id = nil) = read(:savepoints, intent_id)
 
@@ -140,16 +106,7 @@ module Plastic
 
       private
 
-      def ensure_backfill!(migrate = true)
-        return backfill! if migrate
-        return if ReferenceBackfill.complete?(@databases.fetch(:knowledge).path, origin_id)
-
-        raise MaintenanceRequired, "retrieval migration is required before a selected source can be read"
-      end
-
-      def references = (@references ||= RetrievalReference.new(@databases, store:, origin: @origin))
-
-      def searcher = (@searcher ||= RetrievalSearch.new(@databases.fetch(:knowledge), origin: @origin))
+      def evidence = (@evidence ||= RetrievalEvidence.new(@databases, store:, origin: @origin))
 
       def stored = (@stored ||= RetrievalStoreRead.new(@databases))
 
