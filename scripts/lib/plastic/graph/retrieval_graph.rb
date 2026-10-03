@@ -21,6 +21,7 @@ require_relative "retrieval_roadmap_reads"
 require_relative "retrieval_store_reads"
 require_relative "retrieval_archive_reads"
 require_relative "retrieval_structure_reads"
+require_relative "exact_lookup_plans"
 require_relative "retrieval_evidence"
 
 module Plastic
@@ -48,7 +49,8 @@ module Plastic
 
       def_delegators :sessions, :routine_run, :session, :previous_session, :predecessor, :locks_of, :lock, :last_run, :touched
       def_delegators :work, :ready_nodes, :node, :rulings, :links
-      def_delegators :evidence, :documents, :fetch, :reference, :fetch_reference, :fetch_batch, :fetch_passage, :exact_lookup_plans, :search, :search_reference, :backfill, :repair
+      def_delegators :evidence, :documents, :fetch, :fetch_reference, :fetch_batch, :fetch_passage, :search, :search_current, :backfill, :repair
+      def_delegators "evidence.references", :reference, :search_reference
 
       def initialize(databases, store:, origin:)
         @databases = databases
@@ -71,6 +73,8 @@ module Plastic
       end
 
       def clusters = read(:clusters)
+
+      def exact_lookup_plans(intent_id, path) = ExactLookupPlans.new(@databases, origin_id).rows(intent_id, path)
 
       DOCUMENT_SQL = "SELECT * FROM documents WHERE intent_id = :intent_id AND path = :path AND origin_id = :origin"
       SEARCH_SQL = RetrievalSearch::SEARCH_SQL

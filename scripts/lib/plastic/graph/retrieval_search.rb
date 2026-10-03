@@ -15,17 +15,17 @@ module Plastic
       end
 
       def call(terms, limit: 20)
-        validate!(terms, limit)
-        database.rows(SEARCH_SQL, query: fts_query(terms), origin: origin.id, limit:)
+        require_valid(terms, limit)
+        database.rows(SEARCH_SQL, query: self.class.fts_query(terms), origin: origin.id, limit:)
       end
+
+      def self.fts_query(terms) = terms.to_s.scan(/[\p{Alnum}_]+/).map { |term| %("#{term}") }.join(" AND ")
 
       private
 
       attr_reader :database, :origin
 
-      def fts_query(terms) = terms.to_s.scan(/[\p{Alnum}_]+/).map { |term| %("#{term}") }.join(" AND ")
-
-      def validate!(terms, limit)
+      def require_valid(terms, limit)
         raise RetrievalGraph::InvalidSearch, "search terms are required" if terms.to_s.scan(/\p{Alnum}+/).empty?
         raise RetrievalGraph::InvalidSearch, "search limit must be between 1 and #{SEARCH_LIMIT}" unless limit.is_a?(Integer) && limit.between?(1, SEARCH_LIMIT)
       end

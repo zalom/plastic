@@ -27,7 +27,7 @@ module Plastic
 
       def store_rows(slug, limit)
         retrieval = SearchStore.new(scope.plastic_home, slug).retrieval
-        retrieval.search(terms, limit:, migrate: false).each_with_index.map do |row, index|
+        retrieval.search_current(terms, limit:).each_with_index.map do |row, index|
           match = SearchMatch.new(retrieval, slug, row, index + 1, rrf_offset)
           SearchResult.new(match, excerpt:).to_h
         end

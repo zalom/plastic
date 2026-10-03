@@ -28,17 +28,15 @@ module Plastic
       private
 
       def one(name, slug)
-        sql, type = query(name)
+        sql, type = QUERIES.fetch(name)
         row = @database.row(sql, origin: @origin_id, slug:)
         row && type.from_h(row)
       end
 
       def many(name, slug)
-        sql, type = query(name)
+        sql, type = QUERIES.fetch(name)
         @database.rows(sql, origin: @origin_id, slug:).map { |row| type.from_h(row) }
       end
-
-      def query(name) = QUERIES.fetch(name)
     end
   end
 end

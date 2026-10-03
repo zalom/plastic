@@ -26,6 +26,8 @@ module Plastic
         qualified(identity, row.fetch("sha256")).merge(body: row.fetch("body"))
       end
 
+      def search_reference(row) = qualified_reference(*row.values_at("intent_id", "path", "sha256"))
+
       def qualified_reference(intent_id, path, revision) = qualified(DocumentIdentity.new(intent_id, path), revision)
 
       def fetch_passage(reference, position)

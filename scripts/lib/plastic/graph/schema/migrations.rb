@@ -28,15 +28,15 @@ module Plastic
 
       private
 
-      def replace_legacy_table(connection, table, copy_sql)
-        connection.transaction(:immediate) do
-          connection.execute_batch <<~SQL
-            ALTER TABLE #{table} RENAME TO #{table}_legacy;
-            #{ddl(table)}
-            #{copy_sql}
-            DROP TABLE #{table}_legacy;
-          SQL
-        end
+      def replace_legacy_table(connection, table, copy_sql) = connection.transaction(:immediate) { run_swap(connection, table, copy_sql) }
+
+      def run_swap(connection, table, copy_sql)
+        connection.execute_batch <<~SQL
+          ALTER TABLE #{table} RENAME TO #{table}_legacy;
+          #{ddl(table)}
+          #{copy_sql}
+          DROP TABLE #{table}_legacy;
+        SQL
       end
     end
   end

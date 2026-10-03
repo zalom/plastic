@@ -10,7 +10,7 @@ module Plastic
       end
 
       def rows(terms)
-        @retrieval.search(terms, migrate: false).each_with_index.map { |row, index| candidate(row, index) }
+        @retrieval.search_current(terms).each_with_index.map { |row, index| candidate(row, index) }
       end
 
       private

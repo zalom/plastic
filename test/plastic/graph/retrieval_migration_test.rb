@@ -49,7 +49,7 @@ class RetrievalMigrationTest < Plastic::TestCase
       create_old_schema
       before = database_bytes
 
-      assert_raises(Plastic::Graph::RetrievalGraph::MaintenanceRequired) { retrieval.search("legacy", migrate: false) }
+      assert_raises(Plastic::Graph::RetrievalGraph::MaintenanceRequired) { retrieval.search_current("legacy") }
       assert_equal before, database_bytes
     end
   end

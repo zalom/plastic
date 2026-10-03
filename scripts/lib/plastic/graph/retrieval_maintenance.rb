@@ -15,12 +15,17 @@ module Plastic
       end
 
       def ready_documents
-        ensure_backfill
+        backfill
         yield
       end
 
-      def search(terms, limit:, migrate:)
-        ensure_backfill(migrate)
+      def search(terms, limit:)
+        backfill
+        @searcher.call(terms, limit:)
+      end
+
+      def search_current(terms, limit:)
+        require_backfilled
         @searcher.call(terms, limit:)
       end
 
@@ -31,8 +36,7 @@ module Plastic
 
       private
 
-      def ensure_backfill(migrate = true)
-        return backfill if migrate
+      def require_backfilled
         return if ReferenceBackfill.complete?(knowledge.path, origin_id)
 
         raise RetrievalGraph::MaintenanceRequired, "retrieval migration is required before a selected source can be read"
