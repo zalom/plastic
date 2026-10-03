@@ -23,6 +23,28 @@ module ReleaseHelper
     FileUtils.remove_entry(@root)
   end
 
+  # Stands in for the home sync: writes two home files, then raises what a
+  # test asks for, such as an Interrupt for a process that stops halfway.
+  class SyncDouble
+    attr_accessor :failure
+    attr_reader :seen
+
+    def initialize(root, activation_home)
+      @root = root
+      @activation_home = activation_home
+      @seen = []
+    end
+
+    def paths = [File.join(@root, "PLASTIC.md"), File.join(@root, "added.md")]
+
+    def call
+      @seen << InstallerRelease::Activation.new(home: @activation_home).active_version
+      File.write(paths.first, "changed\n")
+      File.write(paths.last, "added\n")
+      raise failure if failure
+    end
+  end
+
   def release = RELEASE
 
   def install_home = File.join(@root, "home", ".plastic")

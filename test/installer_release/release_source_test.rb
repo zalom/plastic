@@ -44,6 +44,14 @@ class InstallerReleaseSourceTest < Minitest::Test
     assert_nil InstallerRelease::ReleaseFeed.newest([], "latest")
   end
 
+  def test_orders_versions_as_versions
+    feed = InstallerRelease::ReleaseFeed
+
+    assert feed.newer?("2.0.3", "2.0.3-alpha.5")
+    assert feed.newer?("2.0.10", "2.0.9")
+    refute feed.newer?("2.0.3-beta.1", "2.0.3")
+  end
+
   def test_github_reads_the_newest_release_and_downloads_its_three_files
     fetch = FakeFetch.new(RELEASES, release_files)
     source = InstallerRelease::GithubSource.new(fetch: fetch)

@@ -51,6 +51,16 @@ class InstallCommandTest < Plastic::TestCase
     assert_path_exists File.join(@home, ".hermes", "plastic", "manifest.json")
   end
 
+  def test_a_reinstall_without_agent_options_syncs_the_registered_agents
+    %w[.claude .codex].each { |folder| FileUtils.mkdir_p(File.join(@home, folder)) }
+    call("install", "--codex")
+    result = call("install", "--reinstall")
+
+    assert_equal 0, result.code, result.err
+    assert_path_exists File.join(@home, ".codex", "plastic", "manifest.json")
+    refute_path_exists File.join(@home, ".claude", "plastic")
+  end
+
   def test_refuses_to_install_over_a_registered_agent_without_reinstall
     claude_folder
     call("install", "--claude")
