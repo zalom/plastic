@@ -29,6 +29,8 @@ module Plastic
         @directory = canonical_path(File.expand_path(directory))
       end
 
+      def setting(name, default = nil) = @env.fetch(name, default)
+
       def plastic_home
         @plastic_home ||= @env["PLASTIC_HOME"] || File.join(@home, ".plastic")
       end
