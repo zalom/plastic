@@ -2,8 +2,10 @@
 
 require_relative "../test_helper"
 require "json"
+require "minitest/mock"
 require "open3"
 require_relative "../../tools/retrieval_benchmark"
+require_relative "../../tools/retrieval_benchmark/worker"
 
 class RetrievalBenchmarkTest < Minitest::Test
   def test_declares_reproducible_public_corpora_and_full_cli_measurements
@@ -28,6 +30,49 @@ class RetrievalBenchmarkTest < Minitest::Test
       stdout, stderr, status = Open3.capture3(RbConfig.ruby, "-e", "require ARGV.fetch(0)", worker, source, chdir: directory)
 
       assert_equal [true, "", "", []], [status.success?, stdout, stderr, Dir.children(directory)]
+    end
+  end
+
+  def test_worker_waits_for_the_barrier_and_writes_bounded_revisions
+    Dir.mktmpdir do |directory|
+      ready = File.join(directory, "ready")
+      start = File.join(directory, "start")
+      writes = []
+      writer = Object.new
+      writer.define_singleton_method(:write) { |intent_id, path, body| writes << [intent_id, path, body] }
+      database = Object.new
+      graphs = Struct.new(:databases, :retrieval).new({ knowledge: database }, Struct.new(:origin_id).new("origin"))
+      worker = Plastic::RetrievalBenchmark::Worker.new([directory, "1", ready, start, "42", "notes.md"])
+      worker.define_singleton_method(:graphs) { graphs }
+      File.write(start, "start")
+
+      output = capture_io do
+        Plastic::Graph::EvidenceWriter.stub(:new, writer) { worker.run }
+      end.first
+
+      assert_equal [true, 10, ["42", "notes.md", "concurrent writer revision 0"], ["42", "notes.md", "concurrent writer revision 9"]],
+        [File.exist?(ready), writes.length, writes.first, writes.last]
+      assert_equal %w[finished_at started_at], JSON.parse(output).keys.sort
+    end
+  end
+
+  def test_worker_entrypoint_runs_only_when_its_file_is_the_program
+    Dir.mktmpdir do |directory|
+      worker = File.expand_path("../../tools/retrieval_benchmark/worker.rb", __dir__)
+      ready = File.join(directory, "ready")
+      start = File.join(directory, "start")
+      File.write(start, "start")
+      original_program_name = $PROGRAM_NAME
+      original_arguments = ARGV.dup
+      $PROGRAM_NAME = worker
+      ARGV.replace(["writer", File.join(directory, "home"), "0", ready, start, "42", "notes.md"])
+
+      output = capture_io { load worker }.first
+
+      assert_equal [true, %w[finished_at started_at]], [File.exist?(ready), JSON.parse(output).keys.sort]
+    ensure
+      $PROGRAM_NAME = original_program_name
+      ARGV.replace(original_arguments)
     end
   end
 
