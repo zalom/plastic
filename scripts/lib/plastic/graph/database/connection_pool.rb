@@ -1,10 +1,9 @@
 # frozen_string_literal: true
 
 require "fileutils"
-# The launcher starts Ruby with --disable-gems, so the kernel loads RubyGems
-# itself. The require does nothing when RubyGems is already loaded.
-require "rubygems"
-require "sqlite3"
+require_relative "sqlite_loader"
+
+Plastic::Graph::Database::SqliteLoader.load!
 
 module Plastic
   module Graph
