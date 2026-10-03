@@ -73,6 +73,21 @@ class InstallShTest < Minitest::Test
       assert_equal "previous\n", output
     end
   end
+
+  def test_dry_run_leaves_an_existing_installation_unchanged
+    Dir.mktmpdir do |dir|
+      share = File.join(dir, "share")
+      FileUtils.mkdir_p(share)
+      marker = File.join(share, "user-config")
+      File.write(marker, "keep")
+      archive = archive_in(dir)
+      _out, _err, status = Open3.capture3({ "HOME" => dir, "PLASTIC_SHARE" => share,
+                                             "PLASTIC_ARCHIVE_URL" => "file://#{archive}" }, "sh", SCRIPT, "--dry-run")
+
+      assert_predicate status, :success?
+      assert_equal "keep", File.read(marker)
+    end
+  end
 end
 
 # The installer used to fetch releases/latest/download/plastic.tgz. That URL
