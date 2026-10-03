@@ -48,6 +48,46 @@ class SqliteLoaderRuntimeTest < Minitest::Test
     end
   end
 
+  def test_load_reuses_an_already_loaded_compatible_sqlite_library
+    without_sqlite3 do
+      Object.const_set(:SQLite3, Module.new.tap { |sqlite| sqlite.const_set(:VERSION, "2.9.6") })
+
+      with_kernel_require(->(name) { flunk "load! must not require #{name} when SQLite3 is already loaded" }) do
+        assert_nil Loader.load!(roots: [])
+      end
+    end
+  end
+
+  def test_load_falls_back_after_a_fast_library_load_fails_and_removes_its_path
+    Dir.mktmpdir("plastic-sqlite-loader") do |root|
+      library = write_library(root, "sqlite3-2.9.6")
+      calls = []
+
+      without_sqlite3 do
+        with_kernel_require(->(name) {
+          calls << name
+          raise LoadError, "broken extension" if calls == ["sqlite3"]
+
+          Object.const_set(:SQLite3, Module.new.tap { |sqlite| sqlite.const_set(:VERSION, "2.9.6") }) if name == "sqlite3"
+          true
+        }) do
+          assert_nil Loader.load!(roots: [root])
+        end
+      end
+
+      assert_equal %w[sqlite3 rubygems sqlite3], calls
+      refute_includes $LOAD_PATH, library
+    ensure
+      $LOAD_PATH.delete(library) if library
+    end
+  end
+
+  def test_fast_load_skips_roots_without_a_compatible_sqlite_library
+    Dir.mktmpdir("plastic-sqlite-loader") do |root|
+      refute Loader.fast_load([root])
+    end
+  end
+
   private
 
   def write_library(root, name)

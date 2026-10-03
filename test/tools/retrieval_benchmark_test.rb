@@ -89,6 +89,32 @@ class RetrievalBenchmarkTest < Minitest::Test
     end
   end
 
+  def test_worker_entrypoint_does_not_run_when_the_file_is_loaded_by_another_program
+    Dir.mktmpdir do |directory|
+      worker = File.expand_path("../../tools/retrieval_benchmark/worker.rb", __dir__)
+      ready = File.join(directory, "ready")
+      original_program_name = $PROGRAM_NAME
+      original_arguments = ARGV.dup
+      $PROGRAM_NAME = File.join(directory, "caller.rb")
+      ARGV.replace(["writer", File.join(directory, "home"), "1", ready, File.join(directory, "start"), "42", "notes.md"])
+
+      output = capture_io { load worker }.first
+
+      assert_equal [false, ""], [File.exist?(ready), output]
+
+      writes = []
+      writer = Object.new
+      writer.define_singleton_method(:write) { |intent_id, path, body| writes << [intent_id, path, body] }
+      File.write(File.join(directory, "start"), "start")
+      capture_io { Plastic::Graph::EvidenceWriter.stub(:new, writer) { Plastic::RetrievalBenchmark::Worker.new(ARGV.drop(1)).run } }
+
+      assert_equal [10, ["42", "notes.md", "concurrent writer revision 9"]], [writes.length, writes.last]
+    ensure
+      $PROGRAM_NAME = original_program_name
+      ARGV.replace(original_arguments)
+    end
+  end
+
   def test_worker_writes_revisions_after_the_barrier_opens
     Dir.mktmpdir do |directory|
       home = File.join(directory, "home")
@@ -151,6 +177,48 @@ class RetrievalBenchmarkTest < Minitest::Test
     end
   end
 
+  def test_concurrency_closes_writer_streams_after_a_successful_measurement
+    stdin = StringIO.new
+    stdout = StringIO.new(JSON.generate("started_at" => "2026-10-03T00:00:00.000000Z", "finished_at" => "2026-10-03T00:00:01.000000Z"))
+    stderr = StringIO.new
+    wait = benchmark_wait
+    benchmark = benchmark_for_concurrency
+
+    result = with_benchmark_writer(stdin:, stdout:, stderr:, wait:) do
+      Plastic::RetrievalBenchmark::Concurrency.new(benchmark, 0).measure
+    end
+
+    assert_equal ["no_busy_errors", true, true, true], [result.dig("busy_handling", "status"), stdin.closed?, stdout.closed?, stderr.closed?]
+  end
+
+  def test_concurrency_reports_busy_reader_errors
+    stdin = StringIO.new
+    stdout = StringIO.new(JSON.generate("started_at" => "2026-10-03T00:00:00.000000Z", "finished_at" => "2026-10-03T00:00:01.000000Z"))
+    stderr = StringIO.new
+    wait = benchmark_wait
+    body = "immutable body"
+    reader = { "stdout" => JSON.generate("result" => { "document" => { "body" => body, "revision" => Digest::SHA256.hexdigest(body) } }),
+               "stderr" => "database is locked", "output_valid" => true, "started_at" => "2026-10-03T00:00:00.500000Z" }
+
+    result = with_benchmark_writer(stdin:, stdout:, stderr:, wait:) do
+      Plastic::RetrievalBenchmark::Measurements.stub(:run_command, reader) do
+        Plastic::RetrievalBenchmark::Concurrency.new(benchmark_for_concurrency, 1).measure
+      end
+    end
+
+    assert_equal [1, "busy_errors", true], [result.dig("busy_handling", "busy_failures"), result.dig("busy_handling", "status"), result.dig("reader_samples", 0, "immutable_reference_consistent")]
+  end
+
+  def test_concurrency_re_raises_writer_start_failures_after_cleaning_up_without_streams
+    benchmark = benchmark_for_concurrency
+
+    error = Open3.stub(:popen3, ->(*) { raise Errno::ENOENT, "writer unavailable" }) do
+      assert_raises(Errno::ENOENT) { Plastic::RetrievalBenchmark::Concurrency.new(benchmark, 0).measure }
+    end
+
+    assert_match "writer unavailable", error.message
+  end
+
   def test_scores_the_public_fixture_with_a_ranked_answer_bearing_passage
     Dir.mktmpdir do |directory|
       report = Plastic::RetrievalBenchmark.run(output: File.join(directory, "benchmark.json"), corpus_bytes: 20_000, warmup: 0, samples: 1,
@@ -209,5 +277,22 @@ class RetrievalBenchmarkTest < Minitest::Test
   def quality_summary(report, answer)
     { owner_review: report.fetch("quality").dig("owner_review", "status"), passed: answer.fetch("passed"), rank: answer.fetch("rank"),
       answer_bearing: answer.fetch("matched_text").include?("immutable revisions retain history") }
+  end
+
+  def benchmark_for_concurrency
+    home = "/tmp/plastic-benchmark-home"
+    command = { home:, argv: ["plastic", "document", "get"] }
+    { home:, reference: { intent_id: "42", path: "notes.md" }, commands: { "exact_lookup" => command } }
+  end
+
+  def with_benchmark_writer(stdin:, stdout:, stderr:, wait:)
+    Open3.stub(:popen3, ->(*arguments) {
+      File.write(arguments.fetch(-4), "ready")
+      [stdin, stdout, stderr, wait]
+    }) { yield }
+  end
+
+  def benchmark_wait
+    Struct.new(:status) { def value = status }.new(Struct.new(:exitstatus).new(0))
   end
 end
