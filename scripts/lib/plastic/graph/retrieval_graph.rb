@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 require "forwardable"
-require "digest"
-require "uri"
 require_relative "../routine_run"
 require_relative "session_reader"
 require_relative "work_reader"
@@ -14,6 +12,9 @@ require_relative "backup"
 require_relative "evidence_writer"
 require_relative "evidence_integrity"
 require_relative "reference_backfill"
+require_relative "retrieval_reference"
+require_relative "retrieval_search"
+require_relative "retrieval_store_read"
 
 module Plastic
   module Graph
@@ -24,7 +25,7 @@ module Plastic
       class MaintenanceRequired < StandardError; end
       class MissingReference < StandardError; end
       class InvalidSearch < StandardError; end
-      SEARCH_LIMIT = 100
+      SEARCH_LIMIT = RetrievalSearch::SEARCH_LIMIT
       extend Forwardable
 
       attr_reader :store
@@ -58,34 +59,13 @@ module Plastic
 
       def fetch(intent_id, path) = ensure_backfill! && @databases.fetch(:knowledge).row(DOCUMENT_SQL, intent_id:, path:, origin: origin_id).then { |row| row && Document.from_h(row) }
 
-      def reference(intent_id, path)
-        row = @databases.fetch(:knowledge).row("SELECT h.sha256 FROM document_heads h WHERE h.intent_id = :intent_id AND h.path = :path AND h.origin_id = :origin", intent_id:, path:, origin: origin_id)
-        raise MissingReference, "no current document #{intent_id}:#{path}" unless row
+      def reference(intent_id, path) = references.reference(intent_id, path)
 
-        qualified_reference(intent_id, path, row.fetch("sha256"))
-      end
-
-      def fetch_reference(reference)
-        fields = reference.is_a?(Hash) ? reference.transform_keys(&:to_sym) : parse_reference(reference)
-        raise MissingReference, "source #{fields.fetch(:store)} is not #{store}" unless fields.fetch(:store) == store
-
-        revision = fields[:revision] || fields[:sha256]
-        row = revision ? revision_row(fields, revision) : current_row(fields)
-        raise MissingReference, "no document #{fields.fetch(:intent_id)}:#{fields.fetch(:path)}" unless row
-
-        qualified_reference(fields.fetch(:intent_id), fields.fetch(:path), row.fetch("sha256")).merge(body: row.fetch("body"))
-      end
+      def fetch_reference(reference) = references.fetch(reference)
 
       def fetch_batch(references) = references.map { |reference| fetch_reference(reference) }
 
-      def fetch_passage(reference, position)
-        document = fetch_reference(reference)
-        row = @databases.fetch(:knowledge).row("SELECT body, line_start, line_end FROM document_passages WHERE intent_id = :intent_id AND path = :path AND sha256 = :sha256 AND position = :position AND origin_id = :origin",
-          intent_id: document.fetch(:intent_id), path: document.fetch(:path), sha256: document.fetch(:revision), position:, origin: origin_id)
-        raise MissingReference, "no passage #{position}" unless row
-
-        document.merge(position:, **row.transform_keys(&:to_sym))
-      end
+      def fetch_passage(reference, position) = references.fetch_passage(reference, position)
 
       def exact_lookup_plans(intent_id, path)
         [@databases.fetch(:work).rows("EXPLAIN QUERY PLAN SELECT * FROM intents WHERE intent_id = :intent_id AND origin_id = :origin", intent_id:, origin: origin_id),
@@ -93,20 +73,17 @@ module Plastic
       end
 
       DOCUMENT_SQL = "SELECT * FROM documents WHERE intent_id = :intent_id AND path = :path AND origin_id = :origin"
-      SEARCH_SQL = "SELECT intent_id, path, body, sha256, position, bm25(document_fts) AS score " \
-                   "FROM document_fts WHERE document_fts MATCH :query AND origin_id = :origin " \
-                   "ORDER BY score, intent_id, path, position LIMIT :limit"
+      SEARCH_SQL = RetrievalSearch::SEARCH_SQL
 
       # Returns current indexed passages in stable lexical-rank order. Plain
       # words become quoted FTS terms, so caller text never changes the query.
       def search(terms, limit: 20, migrate: true)
-        validate_search!(terms, limit)
         ensure_backfill!(migrate)
-        @databases.fetch(:knowledge).rows(SEARCH_SQL, query: fts_query(terms), origin: origin_id, limit:)
+        searcher.call(terms, limit:)
       end
 
       def search_reference(row)
-        qualified_reference(row.fetch("intent_id"), row.fetch("path"), row.fetch("sha256"))
+        references.qualified_reference(row.fetch("intent_id"), row.fetch("path"), row.fetch("sha256"))
       end
 
       def backfill!
@@ -174,60 +151,18 @@ module Plastic
       # Kept files with no bytes: a print compares the hash and reads the bytes only to write.
       def kept_files(intent_id = nil) = read(:kept_files, intent_id)
 
-      def kept_file_data(name)
-        row = @databases.fetch(:references).row("SELECT hex(data) AS data FROM sqlar WHERE name = :name", name:)
-        [row.fetch("data")].pack("H*")
-      end
+      def kept_file_data(name) = stored.kept_file_data(name)
 
       # The hash of every file printed from the store's rows, by path.
-      def printed
-        Schema::STORE.flat_map { |key| @databases.fetch(key).rows("SELECT path, sha256 FROM printed") }
-          .to_h { |row| row.values_at("path", "sha256") }
-      end
+      def printed = stored.printed
 
-      def backups
-        @databases.fetch(:home).rows("SELECT * FROM backups ORDER BY at").map { |row| Backup.from_h(row) }
-      end
+      def backups = stored.backups
 
       # "missing" when the archive's file is gone, "changed" when its sha256
       # no longer matches, nil when it reads back the same.
-      def backup_flag(backup)
-        path = File.join(home_dir, "backups", backup.name)
-        return "missing" unless File.exist?(path)
-
-        (Digest::SHA256.file(path).hexdigest == backup.sha256) ? nil : "changed"
-      end
+      def backup_flag(backup) = stored.backup_flag(backup)
 
       private
-
-      def qualified_reference(intent_id, path, sha256)
-        { store:, intent_id:, path:, revision: sha256, uri: "plastic://#{store}/#{intent_id}/#{escape_path(path)}?revision=#{sha256}" }
-      end
-
-      def parse_reference(uri)
-        match = /\Aplastic:\/\/([^\/]+)\/([^\/]+)\/([^?]*)(?:\?revision=([0-9a-f]{64}))?\z/.match(uri)
-        raise MissingReference, "invalid document reference #{uri.inspect}" unless match
-
-        store, intent_id, path, sha256 = match.captures
-        path = URI::DEFAULT_PARSER.unescape(path).force_encoding(Encoding::UTF_8)
-        raise MissingReference, "invalid document reference #{uri.inspect}" unless path.valid_encoding?
-
-        { store:, intent_id:, path:, revision: sha256 }
-      end
-
-      def escape_path(path) = path.bytes.map { |byte| unreserved?(byte) ? byte.chr : format("%%%02X", byte) }.join
-
-      def unreserved?(byte) = byte.between?(65, 90) || byte.between?(97, 122) || byte.between?(48, 57) || "-._~".bytes.include?(byte)
-
-      def revision_row(fields, sha256)
-        @databases.fetch(:knowledge).row("SELECT body, sha256 FROM document_revisions WHERE intent_id = :intent_id AND path = :path AND sha256 = :sha256 AND origin_id = :origin",
-          intent_id: fields.fetch(:intent_id), path: fields.fetch(:path), sha256:, origin: origin_id)
-      end
-
-      def current_row(fields)
-        @databases.fetch(:knowledge).row("SELECT d.body, h.sha256 FROM documents d JOIN document_heads h ON h.intent_id = d.intent_id AND h.path = d.path AND h.origin_id = d.origin_id WHERE d.intent_id = :intent_id AND d.path = :path AND d.origin_id = :origin",
-          intent_id: fields.fetch(:intent_id), path: fields.fetch(:path), origin: origin_id)
-      end
 
       def ensure_backfill!(migrate = true)
         return backfill! if migrate
@@ -236,14 +171,11 @@ module Plastic
         raise MaintenanceRequired, "retrieval migration is required before a selected source can be read"
       end
 
-      def home_dir = File.dirname(@databases.fetch(:home).path)
+      def references = (@references ||= RetrievalReference.new(@databases, store:, origin: @origin))
 
-      def fts_query(terms) = terms.to_s.scan(/[\p{Alnum}_]+/).map { |term| %("#{term}") }.join(" AND ")
+      def searcher = (@searcher ||= RetrievalSearch.new(@databases.fetch(:knowledge), origin: @origin))
 
-      def validate_search!(terms, limit)
-        raise InvalidSearch, "search terms are required" if terms.to_s.scan(/\p{Alnum}+/).empty?
-        raise InvalidSearch, "search limit must be between 1 and #{SEARCH_LIMIT}" unless limit.is_a?(Integer) && limit.between?(1, SEARCH_LIMIT)
-      end
+      def stored = (@stored ||= RetrievalStoreRead.new(@databases))
 
       def sessions = (@sessions ||= SessionReader.new(@databases, store:, origin: @origin))
 

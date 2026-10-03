@@ -2,6 +2,10 @@
 
 require_relative "../cli/command"
 require_relative "../graph"
+require_relative "context_persistence"
+require_relative "context_freshness"
+require_relative "context_source"
+require_relative "context_submission"
 require "fileutils"
 require "json"
 require "tempfile"
@@ -17,7 +21,7 @@ module Plastic
 
       def call
         validate_intent!
-        output.row("context", parsed[:from] ? persist(validated_submission) : readback)
+        output.row("context", context)
         output.next_step("none", because: "the retrieval context was read")
       rescue Errno::ENOENT, JSON::ParserError => error
         raise CLI::Command::Usage, error.message
@@ -35,67 +39,9 @@ module Plastic
 
       def readback
         document = stored_context
-        document.merge("freshness" => freshness(document))
+        document.merge("freshness" => freshness.call(document))
       rescue Errno::ENOENT
         raise CLI::Command::Failure, "no retrieval context for intent #{parsed.fetch(:intent_id)}"
-      end
-
-      def validated_submission
-        submission = JSON.parse(File.read(parsed.fetch(:from)))
-        raise CLI::Command::Usage, "context submission must be a JSON object" unless submission.is_a?(Hash)
-
-        required_fields(submission)
-        evidence = submission.fetch("evidence")
-        validate_evidence(evidence)
-        selected = evidence.uniq
-        submission.merge(submission_metadata(selected))
-      end
-
-      def required_fields(submission)
-        %w[evidence facts interpretations gaps rulings architecture].each { |field| submission.fetch(field) }
-        validate_context_categories(submission)
-        validate_architecture(submission.fetch("architecture"))
-      end
-
-      def submission_metadata(selected)
-        { "intent_id" => parsed.fetch(:intent_id), "evidence" => selected,
-          "archive_states" => selected.to_h { |reference| [reference, archived?(reference)] },
-          "discovery" => discovery.slice("query", "scope") }
-      end
-
-      def validate_context_categories(submission)
-        fields = %w[evidence facts interpretations gaps rulings]
-        return if fields.all? { |field| submission.fetch(field).is_a?(Array) }
-
-        raise CLI::Command::Usage, "evidence, facts, interpretations, gaps, and rulings must be arrays"
-      end
-
-      def validate_architecture(architecture)
-        raise CLI::Command::Usage, "architecture must be an object" unless architecture.is_a?(Hash)
-
-        %w[provider revision coverage limitations].each { |field| architecture.fetch(field) }
-        validate_architecture_identity(architecture)
-        raise CLI::Command::Usage, "architecture coverage and limitations must be arrays" unless %w[coverage limitations].all? { |field| architecture.fetch(field).is_a?(Array) }
-        return unless architecture.key?("receipt") && !architecture.fetch("receipt").is_a?(Hash)
-
-        raise CLI::Command::Usage, "architecture receipt must be an object"
-      end
-
-      def validate_architecture_identity(architecture)
-        provider = architecture.fetch("provider")
-        revision = architecture.fetch("revision")
-        raise CLI::Command::Usage, "architecture provider must be a safe identifier" unless /\A[a-z0-9][a-z0-9_-]*\z/.match?(provider.to_s)
-        raise CLI::Command::Usage, "architecture revision must be a string" unless revision.is_a?(String)
-      end
-
-      def validate_evidence(evidence)
-        allowed = discovery.fetch("candidates").map { |candidate| candidate.fetch("uri") }
-        evidence.each do |reference|
-          raise CLI::Command::Failure, "evidence was not discovered: #{reference}" unless allowed.include?(reference)
-
-          fields = source_retrieval(reference).fetch_reference(reference)
-          raise CLI::Command::Failure, "evidence revision changed: #{reference}" unless fields.fetch(:uri) == reference
-        end
       end
 
       def discovery
@@ -106,73 +52,7 @@ module Plastic
         JSON.parse(File.read(discovery_path))
       end
 
-      def source(reference) = reference[/\Aplastic:\/\/([^\/]+)/, 1]
-
-      def freshness(document)
-        { "evidence" => document.fetch("evidence").map { |reference| evidence_state(document, reference) },
-          "architecture" => architecture_state(document.fetch("architecture")) }
-      end
-
-      def evidence_state(document, reference)
-        retrieval = source_retrieval(reference)
-        retrieval.fetch_reference(reference)
-        current = retrieval.fetch_reference(strip_revision(reference))
-        archived = retrieval.archived?(current.fetch(:intent_id))
-        state = (current.fetch(:uri) == reference && document.fetch("archive_states", {}).fetch(reference, archived) == archived) ? "fresh" : "stale"
-        { "uri" => reference, "state" => state, "archived" => archived }
-      rescue Graph::RetrievalGraph::MissingReference
-        evidence_missing_or_stale(reference)
-      end
-
-      def evidence_missing_or_stale(reference)
-        retrieval = source_retrieval(reference)
-        retrieval.fetch_reference(reference)
-        { "uri" => reference, "state" => "stale" }
-      rescue Graph::RetrievalGraph::MissingReference
-        { "uri" => reference, "state" => "missing" }
-      end
-
-      def archived?(reference)
-        retrieval = source_retrieval(reference)
-        fields = retrieval.fetch_reference(reference)
-        retrieval.archived?(fields.fetch(:intent_id))
-      end
-
-      def architecture_state(architecture)
-        receipt = stored_architecture_receipt(architecture.fetch("provider"))
-        return architecture_status(architecture, "missing") unless receipt.fetch("available", true)
-
-        architecture_status(architecture, (receipt.fetch("revision") == architecture.fetch("revision")) ? "fresh" : "stale")
-      rescue Errno::ENOENT, JSON::ParserError, KeyError
-        architecture_status(architecture, "missing")
-      end
-
-      def architecture_status(architecture, state)
-        { "provider" => architecture.fetch("provider"), "revision" => architecture.fetch("revision"), "state" => state }
-      end
-
-      def stored_architecture_receipt(provider)
-        row = graphs.databases.fetch(:knowledge).row("SELECT data FROM architecture_receipts WHERE provider = :provider AND origin_id = :origin",
-          provider:, origin: graphs.retrieval.origin_id)
-        return JSON.parse(row.fetch("data")) if row
-
-        JSON.parse(File.read(architecture_receipt_path(provider)))
-      end
-
-      def strip_revision(reference) = reference.sub(/\?revision=[0-9a-f]{64}\z/, "")
-
-      def source_retrieval(reference)
-        slug = source(reference)
-        store = File.join(scope.plastic_home, "stores", slug)
-        missing = Graph::Schema::STORE.map { |key| Graph::Schema.file(key) }.reject { |file| File.file?(File.join(store, file)) }
-        raise Graph::RetrievalGraph::MaintenanceRequired, "retrieval maintenance is required before source #{slug} can be read" if missing.any?
-
-        knowledge = File.join(store, "knowledge_graph.db")
-        complete = Graph::ReferenceBackfill.complete?(knowledge, Graph::Origin.new(scope.plastic_home).id)
-        raise Graph::RetrievalGraph::MaintenanceRequired, "retrieval maintenance is required before source #{slug} can be read" unless complete
-
-        Graph.open(home: scope.plastic_home, store: slug).retrieval
-      end
+      def context = parsed[:from] ? persistence.persist(submission.validate(parsed.fetch(:from))) : readback
 
       def context_path = File.join(scope.root, "context", "#{parsed.fetch(:intent_id)}.json")
 
@@ -186,31 +66,13 @@ module Plastic
 
       def discovery_path = File.join(scope.root, "discovery", "#{parsed.fetch(:intent_id)}.json")
 
-      def persist(document)
-        body = JSON.pretty_generate(document)
-        architecture = document.fetch("architecture")
-        receipt = architecture["receipt"]
-        graphs.databases.fetch(:knowledge).transaction do |batch|
-          batch.put(:retrieval_contexts, { intent_id: parsed.fetch(:intent_id), data: body, updated_at: Plastic.now })
-          batch.put(:architecture_receipts, { provider: architecture.fetch("provider"), data: JSON.pretty_generate(receipt), updated_at: Plastic.now }) if receipt
-        end
-        persist_architecture_receipt(architecture) if receipt
-        FileUtils.mkdir_p(File.dirname(context_path))
-        Tempfile.create(["context", ".json"], File.dirname(context_path)) do |file|
-          file.write(body)
-          file.flush
-          File.rename(file.path, context_path)
-        end
-        document
-      end
+      def source = (@source ||= ContextSource.new(scope))
 
-      def persist_architecture_receipt(architecture)
-        path = architecture_receipt_path(architecture.fetch("provider"))
-        FileUtils.mkdir_p(File.dirname(path))
-        File.write(path, JSON.pretty_generate(architecture.fetch("receipt")))
-      end
+      def submission = (@submission ||= ContextSubmission.new(intent_id: parsed.fetch(:intent_id), discovery:, source:))
 
-      def architecture_receipt_path(provider) = File.join(scope.root, "architecture", "#{provider}.json")
+      def persistence = (@persistence ||= ContextPersistence.new(graphs:, scope:, intent_id: parsed.fetch(:intent_id)))
+
+      def freshness = (@freshness ||= ContextFreshness.new(graphs:, scope:, source:))
     end
   end
 end
