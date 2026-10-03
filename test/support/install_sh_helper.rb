@@ -74,9 +74,15 @@ module InstallShHelper
     end
     FileUtils.mkdir_p(File.join(package, "bin"))
     File.write(File.join(package, "VERSION"), "#{version}\n")
-    File.write(File.join(package, "bin", "plastic"), "#!/bin/sh\necho #{version}\n")
+    File.write(File.join(package, "bin", "plastic"), fake_launcher(version))
     File.chmod(0o755, File.join(package, "bin", "plastic"))
   end
+
+  def fake_launcher(version) = <<~SH
+    #!/bin/sh
+    if [ "$*" = "version --json" ]; then echo '{"result":{"version":"#{version}"}}'; exit 0; fi
+    echo #{version}
+  SH
 
   BUNDLER_ENVIRONMENT = %w[RUBYOPT RUBYLIB BUNDLE_GEMFILE BUNDLE_BIN_PATH BUNDLER_SETUP BUNDLER_VERSION].to_h { |name| [name, nil] }.freeze
 

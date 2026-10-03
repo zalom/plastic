@@ -3,6 +3,7 @@
 require_relative "../../installer_release"
 require_relative "installation_hooks"
 require_relative "installation_launcher"
+require_relative "installation_lock"
 
 module Plastic
   module Workflows
@@ -10,7 +11,7 @@ module Plastic
     # names a repair for each broken one. It reads files and changes none.
     class InstallationHealth
       Check = Data.define(:label, :value, :repair)
-      INTERRUPTED = "run the installer again; it restores the interrupted activation before it changes anything"
+      UNMANAGED = "no release is installed; this plastic runs outside a release"
       INCOMPLETE = "switch to a complete release with plastic rollback or plastic update"
 
       def self.of(context, ruby_version: RUBY_VERSION)
@@ -28,17 +29,23 @@ module Plastic
       end
 
       def checks
-        activation = InstallerRelease::Activation.new(home: share)
-        active = activation.active_version
-        active ? release_checks(active, activation.previous_version || "none") : [Check.new("active:", "none; no release is activated", nil), ruby]
+        managed? ? release_checks(active, activation.previous_version || "none") : unmanaged_checks
       end
+
+      def managed? = File.file?(File.join(activation.active_path, "VERSION"))
 
       private
 
       attr_reader :share, :launcher, :home, :ruby_version
 
+      def activation = (@activation ||= InstallerRelease::Activation.new(home: share))
+
+      def active = activation.active_version
+
+      def unmanaged_checks = [Check.new("active:", "none; no release is activated", nil), Check.new("installation:", UNMANAGED, nil), ruby]
+
       def release_checks(active, previous)
-        [Check.new("active:", active, nil), Check.new("previous:", previous, nil), launcher.check, ruby, bundle, hooks, lock]
+        [Check.new("active:", active, nil), Check.new("previous:", previous, nil), launcher.check, ruby, bundle, hooks, InstallationLock.new(share).check]
       end
 
       def hooks = InstallationHooks.new(home:, active: active_launcher).check
@@ -50,17 +57,6 @@ module Plastic
       def bundle
         setup = File.join(share, "active", "runtime", "bundle", "bundler", "setup.rb")
         File.file?(setup) ? Check.new("sqlite3 bundle:", "present", nil) : Check.new("sqlite3 bundle:", "missing (#{setup})", INCOMPLETE)
-      end
-
-      def lock
-        return Check.new("installer lock:", "an activation was interrupted", INTERRUPTED) if File.directory?(File.join(share, "activation"))
-
-        Check.new("installer lock:", held? ? "held by a running installer" : "free", nil)
-      end
-
-      def held?
-        lock_file = File.join(share, "INSTALL.lock")
-        File.file?(lock_file) && File.open(lock_file) { |file| !file.flock(File::LOCK_SH | File::LOCK_NB) }
       end
     end
   end

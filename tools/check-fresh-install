@@ -1,0 +1,158 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "digest"
+require "fileutils"
+require "json"
+require "open3"
+require "rubygems/package"
+require "tmpdir"
+require "zlib"
+require_relative "../scripts/lib/installer_release"
+
+ROOT = File.expand_path("..", __dir__)
+
+# One release built from this checkout the way the publish job lays it out:
+# plastic.tgz with the package files under package/, its checksum, and the
+# manifest. Nothing is downloaded.
+class ReleaseBuild
+  EXTRA = %w[package.json README.md LICENSE].freeze
+
+  def initialize(version, directory)
+    @version = version
+    @directory = directory
+  end
+
+  def call
+    FileUtils.mkdir_p(directory)
+    write_archive
+    File.write("#{archive}.sha256", "#{Digest::SHA256.file(archive).hexdigest}  plastic.tgz\n")
+    InstallerRelease::Manifest.write(File.join(directory, "plastic.manifest.json"), archive:, release:)
+    directory
+  end
+
+  private
+
+  attr_reader :version, :directory
+
+  def archive = File.join(directory, "plastic.tgz")
+
+  def release = InstallerRelease::Manifest.identity(version).merge("platform" => "universal", "architecture" => "universal")
+
+  def write_archive
+    Zlib::GzipWriter.open(archive) do |gzip|
+      Gem::Package::TarWriter.new(gzip) do |tar|
+        package_files.each { |name| add(tar, name, File.binread(File.join(ROOT, name)), File.stat(File.join(ROOT, name)).mode & 0o777) }
+        add(tar, "VERSION", "#{version}\n", 0o644)
+      end
+    end
+  end
+
+  def add(tar, name, content, mode)
+    tar.add_file_simple("package/#{name}", mode, content.bytesize) { |io| io.write(content) }
+  end
+
+  def package_files
+    listed = JSON.parse(File.read(File.join(ROOT, "package.json"))).fetch("files") - ["VERSION"]
+    (listed.flat_map { |entry| expand(entry) } + EXTRA).uniq.sort
+  end
+
+  def expand(entry)
+    return [entry] unless entry.end_with?("/")
+
+    Dir.glob("#{entry}**/*", File::FNM_DOTMATCH, base: ROOT).select { |name| File.file?(File.join(ROOT, name)) }
+  end
+end
+
+# Installs Plastic under an empty home from two releases built out of this
+# checkout, then updates, rolls back and uninstalls it. A step fails when it
+# exits nonzero, writes to standard error, or leaves the wrong release active.
+class FreshInstallCheck
+  CLEARED = %w[PLASTIC_HOME PLASTIC_SHARE PLASTIC_BIN PLASTIC_CHANNEL PLASTIC_PACKAGE_ROOT PLASTIC_LOCAL_RELEASE
+    RUBYOPT RUBYLIB BUNDLE_GEMFILE BUNDLE_BIN_PATH BUNDLER_SETUP BUNDLER_VERSION].freeze
+  AGENTS = %w[.claude .codex].freeze
+
+  def initialize(work)
+    @work = work
+    @home = File.join(work, "home")
+    @first = JSON.parse(File.read(File.join(ROOT, "package.json"))).fetch("version")
+    @second = first.sub(/\d+\z/) { |number| number.to_i.succ.to_s }
+  end
+
+  def call
+    FileUtils.mkdir_p(home)
+    build_releases
+    install
+    upgrade
+    remove
+    puts "fresh install check passed"
+  end
+
+  private
+
+  attr_reader :work, :home, :first, :second
+
+  def install
+    step(first, "sh", File.join(ROOT, "install.sh"))
+    agent_folders
+    step(first, plastic, "install", "--all")
+    step(first, plastic, "version", active: first)
+    step(first, plastic, "status")
+  end
+
+  def upgrade
+    step(second, plastic, "update")
+    step(second, plastic, "version", active: second)
+    step(second, plastic, "rollback")
+    step(second, plastic, "version", active: first)
+  end
+
+  def remove
+    step(second, plastic, "uninstall", "--all")
+    puts "left under the home:", left.map { |name| "  #{name}" }
+    abort "the uninstall left #{stray.join(" and ")}" unless stray.empty?
+    abort "the uninstall left hooks that run the removed launcher in #{stale_hooks.join(", ")}" unless stale_hooks.empty?
+  end
+
+  def agent_folders = AGENTS.each { |folder| FileUtils.mkdir_p(File.join(home, folder)) }
+
+  def left = Dir.glob("**/*", File::FNM_DOTMATCH, base: home).reject { |name| name.end_with?(".") }.sort
+
+  def stray = [share, plastic].select { |path| File.exist?(path) || File.symlink?(path) }
+
+  def stale_hooks
+    left.grep(%r{\A\.(claude|codex|agents)/}).select { |name| File.file?(File.join(home, name)) && File.read(File.join(home, name)).include?(share) }
+  end
+
+  def step(version, *command, active: nil)
+    puts "$ #{command.map { |part| File.basename(part) }.join(" ")}"
+    out, err, status = Open3.capture3(environment(version), *command, chdir: home)
+    puts out
+    problem = problem_of(status, err, out, active)
+    abort "#{problem}\n#{err}" if problem
+  end
+
+  def problem_of(status, err, out, active)
+    return "exited #{status.exitstatus}" unless status.success?
+    return "wrote to standard error" unless err.empty?
+
+    "the active release is not #{active}" if active && !out.match?(/active:\s+#{Regexp.escape(active)}\b/)
+  end
+
+  def environment(version)
+    CLEARED.to_h { |name| [name, nil] }.merge("HOME" => home, "PLASTIC_LOCAL_RELEASE" => release(version),
+      "PATH" => [File.dirname(plastic), ENV.fetch("PATH")].join(File::PATH_SEPARATOR))
+  end
+
+  def release(version) = File.join(work, "releases", version)
+
+  def plastic = File.join(home, ".local", "bin", "plastic")
+
+  def share = File.join(home, ".local", "share", "plastic")
+
+  def build_releases = [first, second].each { |version| ReleaseBuild.new(version, release(version)).call }
+end
+
+Dir.mktmpdir("plastic-fresh-install") do |work|
+  FreshInstallCheck.new(File.realpath(work)).call
+end

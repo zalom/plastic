@@ -263,12 +263,11 @@ plastic uninstall --all               # Remove Plastic from every agent. Your st
 plastic version                       # The installed version and a check of the installation
 ```
 
-### Help and feedback
+### Help
 ```bash
 plastic help                          # All commands and help topics
 plastic help intent end               # The usage line of one command
 plastic help roadmaps                 # One help topic
-plastic feedback "TITLE" < report.md  # Save a problem report and print a link that files it
 ```
 
 ## Global options

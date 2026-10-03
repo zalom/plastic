@@ -71,12 +71,12 @@ class InstallerReleaseActivationRecoveryTest < Minitest::Test
   end
 
   def test_moves_a_flat_share_into_the_releases_layout
-    write_package(install_home, "2.0.1", "flat\n")
+    write_package(install_home, "2.0.1", flat = fake_launcher("2.0.1"))
     installer = activation_with("2.0.3")
 
     assert_equal [%w[2.0.3 2.0.1], %w[2.0.1 2.0.3]], [versions(installer), installer.releases.versions]
     assert_equal %w[INSTALL.lock active previous releases], Dir.children(install_home).sort
-    assert_equal "flat\n", File.read(File.join(installer.previous_path, "bin", "plastic"))
+    assert_equal flat, File.read(File.join(installer.previous_path, "bin", "plastic"))
   end
 
   private
