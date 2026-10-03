@@ -46,6 +46,33 @@ class InstallShTest < Minitest::Test
       refute_path_exists File.join(dir, ".local", "bin", "plastic")
     end
   end
+
+  def test_an_activation_mv_failure_restores_the_prior_shared_command
+    Dir.mktmpdir do |dir|
+      share = File.join(dir, "share")
+      bin = File.join(dir, "bin")
+      FileUtils.mkdir_p(File.join(share, "bin"))
+      File.write(File.join(share, "bin", "plastic"), "#!/bin/sh\necho previous\n")
+      File.chmod(0o755, File.join(share, "bin", "plastic"))
+      FileUtils.mkdir_p(bin)
+      File.symlink(File.join(share, "bin", "plastic"), File.join(bin, "plastic"))
+      fakebin = File.join(dir, "fakebin")
+      FileUtils.mkdir_p(fakebin)
+      File.write(File.join(fakebin, "mv"), <<~SH)
+        #!/bin/sh
+        case "$1" in *stage.*) exit 97 ;; esac
+        exec /bin/mv "$@"
+      SH
+      File.chmod(0o755, File.join(fakebin, "mv"))
+      env = { "HOME" => dir, "PLASTIC_SHARE" => share, "PLASTIC_BIN" => bin,
+              "PLASTIC_ARCHIVE_URL" => "file://#{archive_in(dir)}", "PATH" => "#{fakebin}:#{ENV.fetch("PATH")}" }
+      _out, _err, status = Open3.capture3(env, "sh", SCRIPT)
+
+      assert_equal 1, status.exitstatus
+      output, = Open3.capture2(File.join(bin, "plastic"))
+      assert_equal "previous\n", output
+    end
+  end
 end
 
 # The installer used to fetch releases/latest/download/plastic.tgz. That URL
