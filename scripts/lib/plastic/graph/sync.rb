@@ -56,7 +56,7 @@ module Plastic
 
       # The work graph first, so a new intent's row is in place before its files.
       def write_reads(reads)
-        reads.group_by(&:database).sort_by { |key, _group| Schema::STORE.index(key) }.each do |key, group|
+        reads.group_by(&:database).sort_by { |key, _group| Schema.store.index(key) }.each do |key, group|
           write_group(key, group)
         end
       end

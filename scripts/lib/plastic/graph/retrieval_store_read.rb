@@ -16,7 +16,7 @@ module Plastic
       end
 
       def printed
-        Schema::STORE.flat_map { |key| databases.fetch(key).rows("SELECT path, sha256 FROM printed") }
+        Schema.store.flat_map { |key| databases.fetch(key).rows("SELECT path, sha256 FROM printed") }
           .to_h { |row| row.values_at("path", "sha256") }
       end
 

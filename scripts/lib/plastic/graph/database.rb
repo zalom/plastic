@@ -24,7 +24,7 @@ module Plastic
 
       # The three databases of one store folder. `origin` stamps their rows and their change log.
       def self.open_store(root, origin)
-        Schema::STORE.to_h { |key| [key, new(File.join(root, Schema.file(key)), Schema.fetch(key), origin:)] }
+        Schema.store.to_h { |key| [key, new(File.join(root, Schema.file(key)), Schema.fetch(key), origin:)] }
       end
 
       attr_reader :path, :written

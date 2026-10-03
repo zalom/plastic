@@ -23,7 +23,7 @@ module Plastic
 
       def ensure_files!(slug)
         store = File.join(scope.plastic_home, "stores", slug)
-        missing = Graph::Schema::STORE.map { |key| Graph::Schema.file(key) }.reject { |file| File.file?(File.join(store, file)) }
+        missing = Graph::Schema.store.map { |key| Graph::Schema.file(key) }.reject { |file| File.file?(File.join(store, file)) }
         raise Graph::RetrievalGraph::MaintenanceRequired, message(slug) if missing.any?
       end
 

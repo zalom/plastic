@@ -47,7 +47,7 @@ module Plastic
 
       def ensure_store_files!(slug)
         root = File.join(@context.plastic_home, "stores", slug)
-        missing = Graph::Schema::STORE.map { |key| Graph::Schema.file(key) }.reject { |file| File.file?(File.join(root, file)) }
+        missing = Graph::Schema.store.map { |key| Graph::Schema.file(key) }.reject { |file| File.file?(File.join(root, file)) }
         return if missing.empty?
 
         raise Graph::RetrievalGraph::MaintenanceRequired, "retrieval maintenance is required before source #{slug} can be read"

@@ -78,7 +78,7 @@ module Plastic
 
       def store_entries(store)
         slug = File.basename(store)
-        Schema::STORE.filter_map { |key| self.class.store_entry(store, slug, key) }
+        Schema.store.filter_map { |key| self.class.store_entry(store, slug, key) }
       end
 
       def home_files

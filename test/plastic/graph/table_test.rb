@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "digest"
+require "json"
 require_relative "../../test_helper"
 
 class TableTest < Plastic::TestCase
@@ -61,7 +63,7 @@ class TableTest < Plastic::TestCase
   def test_the_schema_joins_each_database_tables_ddl
     assert_equal [table(:routine_runs).ddl, table(:sessions).ddl, table(:locks).ddl, table(:backups).ddl].join("\n"), Schema.fetch(:home)
     assert_equal %i[documents document_revisions document_heads document_passages document_fts retrieval_schema retrieval_backfills retrieval_contexts retrieval_discoveries architecture_receipts rulings links printed changes],
-      Schema::DATABASES.fetch(:knowledge).last
+      Schema.databases.fetch(:knowledge).last
   end
 
   def test_the_knowledge_schema_has_the_retrieval_tables_and_fts_index
@@ -74,6 +76,11 @@ class TableTest < Plastic::TestCase
     assert_includes Schema.table_named(:document_heads).ddl, 'UNIQUE("intent_id", "path", "origin_id")'
   end
 
+  def test_the_knowledge_schema_has_the_pinned_ddl_and_sqlite_catalog
+    assert_equal "d292ea8f567170ca90c98aa68842e63540259688af3da3a612f1c2ce42be8b0a", Digest::SHA256.hexdigest(Schema.fetch(:knowledge))
+    assert_equal "77ff0e35b52a588ef3bee34e14106d67ccede6e44bbb0ff83a10b4ad6127933e", Digest::SHA256.hexdigest(JSON.generate(schema_catalog))
+  end
+
   def test_a_tally_names_one_and_many
     assert_equal ["1 routine run", "2 savepoint lines", "1 x"],
       [Schema.tally(:routine_runs, 1), Schema.tally("savepoints", 2), Schema.tally(:x, 1)]
@@ -82,5 +89,12 @@ class TableTest < Plastic::TestCase
   def test_a_phrase_joins_one_two_and_three_tallies
     assert_equal ["1 intent", "1 intent and 2 clusters", "1 intent, 2 clusters, and 1 node"],
       [{ intents: 1 }, { intents: 1, clusters: 2 }, { intents: 1, clusters: 2, nodes: 1 }].map { |counts| Schema.phrase(counts) }
+  end
+
+  private
+
+  def schema_catalog
+    database = Plastic::Graph::Database.new(File.join(@home, "schema-contract.db"), Schema.fetch(:knowledge))
+    database.rows("SELECT type, name, tbl_name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY type, name")
   end
 end

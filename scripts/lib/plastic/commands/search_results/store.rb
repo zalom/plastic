@@ -25,7 +25,7 @@ module Plastic
       end
 
       def missing_files
-        Graph::Schema::STORE.map { |key| Graph::Schema.file(key) }.reject { |file| File.file?(File.join(store_root, file)) }
+        Graph::Schema.store.map { |key| Graph::Schema.file(key) }.reject { |file| File.file?(File.join(store_root, file)) }
       end
 
       def store_root = File.join(plastic_home, "stores", slug)

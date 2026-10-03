@@ -105,7 +105,7 @@ module Plastic
         paths = @retrieval.printed.keys.select { |path| path.start_with?("#{dir}/") }
         return if paths.empty?
 
-        Schema::STORE.each do |key|
+        Schema.store.each do |key|
           @databases.fetch(key).transaction { |batch| paths.each { |path| batch.remove(:printed, path:) } }
         end
       end
