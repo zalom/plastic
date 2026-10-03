@@ -23,12 +23,16 @@ module Plastic
           cursor = 0
           @source.to_enum(:scan, @pattern).each do
             match = Regexp.last_match
-            start = match.begin(0)
-            append(fragments, @source[cursor...start], line_at(cursor))
-            append(fragments, yield(match), line_at(start))
-            cursor = match.end(0)
+            cursor = append_match(fragments, cursor, match) { |found| yield(found) }
           end
           cursor
+        end
+
+        def append_match(fragments, cursor, match)
+          start = match.begin(0)
+          append(fragments, @source[cursor...start], line_at(cursor))
+          append(fragments, yield(match), line_at(start))
+          match.end(0)
         end
 
         def append(fragments, value, line)

@@ -7,33 +7,35 @@ module Plastic
       class TextSource
         MARKUP_EXTENSIONS = %w[.html .htm .xml .svg].freeze
 
-        class << self
-          def classify(path, bytes)
-            return :attachment unless utf8_text(bytes).valid_encoding? && !bytes.include?("\0")
+        def initialize(path, bytes)
+          @path = path
+          @bytes = bytes
+        end
 
-            (extension(path) == ".pdf") ? :unsupported : :text
-          end
+        def classify
+          return :attachment unless utf8_text.valid_encoding? && !@bytes.include?("\0")
 
-          def extract(path, bytes) = extract_with_lines(path, bytes)&.body
+          (extension == ".pdf") ? :unsupported : :text
+        end
 
-          def extract_with_lines(path, bytes)
-            return nil unless classify(path, bytes) == :text
+        def extract = extract_with_lines&.body
 
-            extractor(path).extract(utf8_text(bytes))
-          end
+        def extract_with_lines
+          return nil unless classify == :text
 
-          private
+          extractor.extract(utf8_text)
+        end
 
-          def utf8_text(bytes) = bytes.dup.force_encoding(Encoding::UTF_8)
-          def extension(path) = File.extname(path).downcase
+        private
 
-          def extractor(path)
-            extension = extension(path)
-            return MarkupText if MARKUP_EXTENSIONS.include?(extension)
-            return RichText if extension == ".rtf"
+        def utf8_text = @bytes.dup.force_encoding(Encoding::UTF_8)
+        def extension = File.extname(@path).downcase
 
-            PlainText
-          end
+        def extractor
+          return MarkupText if MARKUP_EXTENSIONS.include?(extension)
+          return RichText if extension == ".rtf"
+
+          PlainText
         end
       end
     end

@@ -29,7 +29,7 @@ module Plastic
       def call
         return self if complete?
 
-        scan.each { |row| write_missing(row) }
+        scan { |document| write_missing(document) }
         mark_complete
         self
       end
@@ -40,7 +40,12 @@ module Plastic
 
       private
 
-      def scan = legacy_documents + legacy_references
+      def scan
+        return enum_for(__method__) unless block_given?
+
+        legacy_documents.each { |row| yield LegacyDocument.from_document(row) }
+        legacy_references.each { |row| yield LegacyDocument.from_reference(row) }
+      end
 
       def legacy_references
         @references.rows("SELECT name, data, intent_id FROM sqlar WHERE origin_id = :origin", origin: @origin_id)
@@ -51,12 +56,10 @@ module Plastic
         @knowledge.rows("SELECT intent_id, path, body FROM documents WHERE origin_id = :origin", origin: @origin_id)
       end
 
-      def write_missing(row)
-        intent_id = row.fetch("intent_id")
-        path = row.fetch("path") { row.fetch("name").split("/", 3).last }
+      def write_missing(document)
+        intent_id, path, body = document.deconstruct
         return if head_exists?(intent_id, path)
 
-        body = row.fetch("body") { row.fetch("data").dup.force_encoding(Encoding::UTF_8) }
         EvidenceWriter.new(@knowledge, @origin_id).write(intent_id, path, body)
         @after_write.call
       end
@@ -76,6 +79,17 @@ module Plastic
           batch.add("INSERT INTO retrieval_backfills (name, origin_id, version, completed_at) VALUES ('retrieval', :origin, :version, :completed_at) ON CONFLICT(name, origin_id) DO UPDATE SET version = MAX(version, excluded.version), completed_at = excluded.completed_at",
             origin: @origin_id, version: SCHEMA_VERSION, completed_at: Plastic.now)
           batch.add("UPDATE retrieval_schema SET completed_at = 'complete' WHERE name = 'retrieval'")
+        end
+      end
+
+      # Holds one immutable legacy document before it enters the evidence writer.
+      LegacyDocument = Data.define(:intent_id, :path, :body) do
+        def self.from_document(row)
+          new(row.fetch("intent_id"), row.fetch("path"), row.fetch("body"))
+        end
+
+        def self.from_reference(row)
+          new(row.fetch("intent_id"), row.fetch("name").split("/", 3).last, row.fetch("data").dup.force_encoding(Encoding::UTF_8))
         end
       end
     end

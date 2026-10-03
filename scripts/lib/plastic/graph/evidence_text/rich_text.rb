@@ -24,12 +24,19 @@ module Plastic
 
         def resolve_pairs(source)
           output = String.new
+          append_pairs(source, output)
+          output
+        end
+
+        def append_pairs(source, output)
           cursor = 0
           while (first = escape_at(source, cursor))
             output << source[cursor...first.begin(0)]
-            second = escape_at(source, first.end(0))
-            output << (adjacent_pair(first, second) || first[0])
-            cursor = adjacent_pair(first, second) ? second.end(0) : first.end(0)
+            ending = first.end(0)
+            second = escape_at(source, ending)
+            pair = adjacent_pair(first, second)
+            output << (pair || first[0])
+            cursor = pair ? second.end(0) : ending
           end
           output << source[cursor..]
         end

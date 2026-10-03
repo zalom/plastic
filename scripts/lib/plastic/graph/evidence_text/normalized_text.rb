@@ -8,9 +8,7 @@ module Plastic
         def initialize(fragments) = @fragments = fragments
 
         def build
-          state = State.new
-          @fragments.each { |fragment| state.append(fragment) }
-          state.extraction
+          State.new.build(@fragments)
         end
 
         # Holds the mutable normalized text state for a single extraction.
@@ -21,19 +19,30 @@ module Plastic
             @space = nil
           end
 
+          def build(fragments)
+            fragments.each { |fragment| append(fragment) }
+            extraction
+          end
+
           def append(fragment)
             character, line = fragment
-            return @space ||= line if character.match?(/\s/)
+            return remember_space(line) if character.match?(/\s/)
 
-            append_space
-            @body << character
-            @lines << line
-            @space = nil
+            append_character(character, line)
           end
 
           def extraction = Extraction.new(@body, @lines)
 
           private
+
+          def remember_space(line) = @space ||= line
+
+          def append_character(character, line)
+            append_space
+            @body << character
+            @lines << line
+            @space = nil
+          end
 
           def append_space
             return unless @space && !@body.empty?

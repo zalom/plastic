@@ -15,9 +15,9 @@ module Plastic
 
       module_function
 
-      def classify(path, bytes) = TextSource.classify(path, bytes)
-      def extract(path, bytes) = TextSource.extract(path, bytes)
-      def extract_with_lines(path, bytes) = TextSource.extract_with_lines(path, bytes)
+      def classify(...) = TextSource.new(...).classify
+      def extract(...) = TextSource.new(...).extract
+      def extract_with_lines(...) = TextSource.new(...).extract_with_lines
       def passages(source) = Passages.build(source)
     end
   end
