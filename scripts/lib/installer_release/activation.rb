@@ -1,12 +1,11 @@
 # frozen_string_literal: true
 
 require "fileutils"
-require_relative "flat_share"
-require_relative "install_lock"
 require_relative "journal"
 require_relative "placement"
 require_relative "pointer"
 require_relative "releases"
+require_relative "transaction"
 
 module InstallerRelease
   class ActivationError < StandardError; end
@@ -30,12 +29,12 @@ module InstallerRelease
       @home = home
       @releases = releases
       @sync = sync
-      @journal = Journal.new(home, releases, sync.method(:paths))
+      @transaction = Transaction.new(home, releases, Journal.new(home, releases, sync.method(:paths)))
     end
 
     def activate(candidate, version:, before_switch: nil)
       placement = Placement.new(candidate, releases.path(version))
-      transaction { publish(placement, before_switch) }
+      transaction.run { publish(placement, before_switch) }
       version
     end
 
@@ -44,11 +43,11 @@ module InstallerRelease
     def switch(version)
       raise ActivationError, "#{version} is not installed" unless releases.installed?(version)
 
-      transaction { switch_to(version) }
+      transaction.run { switch_to(version) }
       active_version
     end
 
-    def recover = transaction { nil }
+    def recover = transaction.run { nil }
 
     def active_path = File.join(home, "active")
 
@@ -60,33 +59,7 @@ module InstallerRelease
 
     private
 
-    attr_reader :home, :sync, :journal
-
-    def transaction(&)
-      as_activation_error do
-        InstallLock.hold(home) do
-          journal.recover
-          FlatShare.new(home, releases).migrate
-          journaled(&)
-        end
-      end
-    end
-
-    def journaled
-      journal.open
-      yield.tap { journal.discard }
-    rescue
-      journal.restore
-      raise
-    end
-
-    def as_activation_error
-      yield
-    rescue ActivationError
-      raise
-    rescue => error
-      raise ActivationError, error.message
-    end
+    attr_reader :home, :sync, :transaction
 
     def publish(placement, before_switch)
       place(placement)

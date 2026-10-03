@@ -13,8 +13,6 @@ module Plastic
     class ReleaseUpdate
       CHANNELS = { "stable" => "latest", "beta" => "beta", "alpha" => "alpha" }.freeze
 
-      attr_reader :activation
-
       def self.of(context, bundle: InstallerRelease::Bundle.new)
         scope = context.scope
         share = scope.setting("PLASTIC_SHARE", File.join(scope.home, ".local", "share", "plastic"))
@@ -24,8 +22,9 @@ module Plastic
       def self.chosen_channels(context) = CHANNELS.keys.select { |name| context.public_send(name) }
 
       def self.home_sync(scope, share)
-        launcher = File.join(scope.setting("PLASTIC_BIN", File.join(scope.home, ".local", "bin")), "plastic")
-        home = InstallerRelease::ManagedHome.new(plastic_home: scope.plastic_home, user_home: scope.home, launcher: launcher)
+        user_home = scope.home
+        launcher = File.join(scope.setting("PLASTIC_BIN", File.join(user_home, ".local", "bin")), "plastic")
+        home = InstallerRelease::ManagedHome.new(plastic_home: scope.plastic_home, user_home: user_home, launcher: launcher)
         InstallerRelease::HomeSync.new(share: share, home: home)
       end
 
@@ -34,8 +33,9 @@ module Plastic
         @source = source
         @bundle = bundle
         @sync = sync
-        @activation = InstallerRelease::Activation.new(home: share, sync: sync)
       end
+
+      def activation = InstallerRelease::Activation.new(home: share, sync: sync)
 
       def active_version = activation.active_version
 

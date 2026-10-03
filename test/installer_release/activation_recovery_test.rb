@@ -47,6 +47,14 @@ class InstallerReleaseActivationRecoveryTest < Minitest::Test
     assert_equal [%w[2.0.3 2.0.2], %w[2.0.2 2.0.3], "original\n", false], state(installer).first(4)
   end
 
+  def test_a_journal_stopped_before_its_state_is_discarded
+    installer, = synced_with("2.0.2", "2.0.3")
+    FileUtils.mkdir_p(File.join(install_home, "activation", "home"))
+    installer.recover
+
+    assert_equal [%w[2.0.3 2.0.2], %w[2.0.2 2.0.3], "original\n", false, %w[INSTALL.lock active previous releases]], state(installer)
+  end
+
   def test_a_rollback_syncs_the_home_of_the_release_it_switches_to
     installer, sync = synced_with("2.0.2", "2.0.3")
     installer.rollback

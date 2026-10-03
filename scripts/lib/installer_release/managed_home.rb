@@ -22,6 +22,6 @@ module InstallerRelease
 
     private
 
-    def agent_paths = AGENT.flat_map { |pattern| pattern.include?("*") ? Dir.glob(File.join(user_home, pattern)) : File.join(user_home, pattern) }
+    def agent_paths = AGENT.flat_map { |pattern| Dir.glob(File.join(user_home, pattern)) }
   end
 end

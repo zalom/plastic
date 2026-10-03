@@ -41,10 +41,11 @@ module Plastic
 
       # A reinstall that names no agent syncs the agents already registered.
       def self.to_install(context)
-        named = context.all || AGENT_KEYS.any? { |key| context.public_send(key) }
-        registered = (context.reinstall && !named) ? of(context).installed_agents : []
+        registered = sync_registered?(context) ? of(context).installed_agents : []
         registered.empty? ? selected(context) : registered
       end
+
+      def self.sync_registered?(context) = context.reinstall && !(context.all || AGENT_KEYS.any? { |key| context.public_send(key) })
 
       def self.fetch_command(setting) = "#{INSTALLER} #{setting} sh"
 

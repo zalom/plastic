@@ -69,6 +69,14 @@ class InstallerReleaseHomeSyncTest < Minitest::Test
     assert_equal expected, read_json(".codex/hooks.json")["hooks"]
   end
 
+  def test_leaves_a_settings_file_without_hooks_as_it_is
+    installed_home
+    write_json(".claude/settings.json", "statusLine" => { "command" => "/usr/local/bin/mine" })
+    sync.call
+
+    assert_equal({ "statusLine" => { "command" => "/usr/local/bin/mine" } }, read_json(".claude/settings.json"))
+  end
+
   def test_names_the_managed_paths_and_never_the_stores
     home_with_stores
     managed = [*in_plastic_home("scripts", "config.yml"), File.join(user_home, ".claude", "settings.json"), check_update, launcher]
@@ -98,6 +106,7 @@ class InstallerReleaseHomeSyncTest < Minitest::Test
   def home_with_stores
     installed_home
     FileUtils.mkdir_p([*in_plastic_home("scripts", "stores"), File.dirname(check_update)])
+    write_json(".claude/settings.json", {})
     [*in_plastic_home("config.yml", "plastic.sqlite3"), check_update].each { |path| File.write(path, "") }
   end
 

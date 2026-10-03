@@ -24,10 +24,15 @@ module InstallerRelease
       hooks = data["hooks"]
       return unless hooks.is_a?(Hash)
 
-      data["hooks"] = hooks.transform_values { |groups| Array(groups).reject { |group| ours?(group) } }.reject { |_event, groups| groups.empty? }
-      File.write(path, "#{JSON.pretty_generate(data)}\n")
+      File.write(path, "#{JSON.pretty_generate({ **data, "hooks" => kept(hooks) })}\n")
     end
 
-    def ours?(group) = Array(group["hooks"]).any? { |hook| launchers.any? { |launcher| hook["command"].to_s.include?(launcher) } }
+    def kept(hooks) = hooks.transform_values { |groups| theirs(groups) }.reject { |_event, groups| groups.empty? }
+
+    def theirs(groups) = Array(groups).reject { |group| ours?(group) }
+
+    def ours?(group) = Array(group["hooks"]).any? { |hook| launcher?(hook["command"].to_s) }
+
+    def launcher?(command) = launchers.any? { |launcher| command.include?(launcher) }
   end
 end

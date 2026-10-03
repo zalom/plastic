@@ -7,6 +7,8 @@ module InstallerRelease
   # back removes every managed path the activation left, including new ones,
   # and copies the saved paths back without following links.
   class HomeSnapshot
+    PRESENT = ->(path) { File.exist?(path) || File.symlink?(path) }
+
     def initialize(directory, paths)
       @directory = directory
       @paths = paths
@@ -14,9 +16,10 @@ module InstallerRelease
 
     def take
       FileUtils.mkdir_p(directory)
-      paths.call.select { |path| present?(path) }.each_with_index.map do |path, index|
-        FileUtils.copy_entry(path, File.join(directory, index.to_s))
-        [path, index.to_s]
+      paths.call.select(&PRESENT).each_with_index.map do |path, index|
+        name = index.to_s
+        FileUtils.copy_entry(path, File.join(directory, name))
+        [path, name]
       end
     end
 
@@ -31,7 +34,5 @@ module InstallerRelease
     private
 
     attr_reader :directory, :paths
-
-    def present?(path) = File.exist?(path) || File.symlink?(path)
   end
 end

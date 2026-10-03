@@ -302,9 +302,7 @@ class InstallerCore
     # FileUtils.cp onto an existing file keeps the DESTINATION's old mode, so a copy over a
     # non-executable predecessor would stay non-executable forever and capture3 would raise
     # EACCES into the same silent fail-open this intent is closing.
-    Dir.glob(File.join(plastic_home, "hooks", "*")).each do |f|
-      FileUtils.chmod(0o755, f) if File.file?(f)
-    end
+    FileUtils.chmod(0o755, Dir.glob(File.join(plastic_home, "hooks", "*")).select { |f| File.file?(f) })
 
     global_files = core_files.values.map { |d| File.join(plastic_home, d) }
     global_files << File.join(plastic_home, "VERSION")
