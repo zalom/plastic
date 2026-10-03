@@ -38,8 +38,8 @@ module Plastic
       def evaluate_query(query)
         expected = expected_references(query)
         sample, rows = search_rows(query)
-        matched = matching_row(rows, expected, query.fetch("relevant_passage_hint"))
-        { "id" => query.fetch("id"), "expected_references" => expected, "rank" => matched && rows.index(matched) + 1,
+        matched = matching_row(rows, expected)
+        { "id" => query.fetch("id"), "expected_references" => expected.map { |row| row.fetch("uri") }, "rank" => matched && rows.index(matched) + 1,
           "matched_text" => matched&.fetch("body"), "resolved_qualified_reference" => matched&.fetch("uri"),
           "returned_references" => rows.map { |row| row.fetch("uri") }, "passed" => !matched.nil?, "command_output_valid" => sample.fetch("output_valid") }
       end
@@ -49,13 +49,17 @@ module Plastic
         [sample, JSON.parse(sample.fetch("stdout")).fetch("result").fetch("results")]
       end
 
-      def matching_row(rows, expected, hint)
-        rows.find { |row| expected.include?(row.fetch("uri")) && row.fetch("body").include?(hint) }
+      def matching_row(rows, expected)
+        rows.find do |row|
+          candidate = expected.find { |item| item.fetch("uri") == row.fetch("uri") }
+          candidate && row.fetch("body").include?(candidate.fetch("hint"))
+        end
       end
 
       def expected_references(query)
         query.fetch("expected").map do |row|
-          Graph.open(home: @home, store: row.fetch("store")).retrieval.reference(row.fetch("intent_id"), row.fetch("path")).fetch(:uri)
+          { "uri" => Graph.open(home: @home, store: row.fetch("store")).retrieval.reference(row.fetch("intent_id"), row.fetch("path")).fetch(:uri),
+            "hint" => row.fetch("relevant_passage_hint", query.fetch("relevant_passage_hint")) }
         end
       end
 

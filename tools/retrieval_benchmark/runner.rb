@@ -28,7 +28,7 @@ module Plastic
           benchmark = Seeder.new(directory, corpus).seed
           measurements = Measurements.new(benchmark, @warmup, @samples).measure
           report = Report.new(corpus, measurements, @warmup, @samples).build
-          report["quality"] = QualityEvaluator.new(@quality_input, directory).evaluate if @quality_input
+          report["quality"] = evaluate_quality(directory) if @quality_input
           write_report(report)
           report
         end
@@ -39,6 +39,12 @@ module Plastic
       def write_report(report)
         FileUtils.mkdir_p(File.dirname(File.expand_path(@output)))
         File.write(@output, JSON.pretty_generate(report) + "\n")
+      end
+
+      def evaluate_quality(directory)
+        QualityEvaluator.new(@quality_input, directory).evaluate
+      rescue KeyError, JSON::ParserError => error
+        { "status" => "error", "owner_review" => { "status" => "pending" }, "error" => error.message }
       end
     end
 
@@ -97,8 +103,9 @@ module Plastic
 
       def self.run_command(command)
         started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        started_at = Time.now.utc.iso8601(6)
         stdout, stderr, status = Open3.capture3(environment(command), *command.fetch(:argv))
-        sample(command, stdout, stderr, status, started)
+        sample(command, { stdout:, stderr:, status:, started:, started_at: })
       end
 
       def self.environment(command)
@@ -106,11 +113,11 @@ module Plastic
         { "HOME" => home, "PLASTIC_HOME" => home, "PLASTIC_TMP" => File.join(home, "tmp"), "PLASTIC_SOURCE_PROJECTS" => "", "RUBYOPT" => "" }
       end
 
-      def self.sample(command, stdout, stderr, status, started)
-        { "started_at" => Time.now.utc.iso8601, "duration_ms" => elapsed_ms(started), "exit_status" => status.exitstatus,
-          "argv" => command.fetch(:argv), "stdout" => stdout, "stderr" => stderr,
-          "stdout_sha256" => Digest::SHA256.hexdigest(stdout), "stderr_sha256" => Digest::SHA256.hexdigest(stderr),
-          "output_valid" => OutputValidator.valid?(command, stdout, status) }
+      def self.sample(command, result)
+        { "started_at" => result.fetch(:started_at), "duration_ms" => elapsed_ms(result.fetch(:started)), "exit_status" => result.fetch(:status).exitstatus,
+          "argv" => command.fetch(:argv), "stdout" => result.fetch(:stdout), "stderr" => result.fetch(:stderr),
+          "stdout_sha256" => Digest::SHA256.hexdigest(result.fetch(:stdout)), "stderr_sha256" => Digest::SHA256.hexdigest(result.fetch(:stderr)),
+          "output_valid" => OutputValidator.valid?(command, result.fetch(:stdout), result.fetch(:status)) }
       end
 
       def self.elapsed_ms(started) = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - started) * 1000).round(3)
