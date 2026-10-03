@@ -192,6 +192,20 @@ class IntentContextPersistenceTest < Plastic::TestCase
 
     assert_equal "stale", read_context.fetch("freshness").fetch("evidence").first.fetch("state")
   end
+
+  def test_reads_the_saved_context_file_when_the_database_record_is_absent
+    open_intent
+    reference = write_document("other", "selected evidence")
+    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
+    submission = context_submission(reference)
+    submit_context(submission)
+    Plastic::Graph.open(home: @plastic_home, store: "global").databases.fetch(:knowledge).transaction do |batch|
+      batch.add("DELETE FROM retrieval_contexts WHERE intent_id = :intent_id", intent_id: "1")
+    end
+
+    assert_equal submission.slice("evidence", "facts", "interpretations", "gaps", "rulings", "architecture"),
+      read_context.slice("evidence", "facts", "interpretations", "gaps", "rulings", "architecture")
+  end
 end
 
 class IntentContextValidationTest < Plastic::TestCase
@@ -211,6 +225,20 @@ class IntentContextValidationTest < Plastic::TestCase
     assert_equal 1, result.code
     assert_includes result.err, "retrieval maintenance is required before source other can be read"
     assert_equal before, File.binread(store_path("../other/knowledge_graph.db"))
+  end
+
+  def test_rejects_an_invalid_owning_intent_id_before_reading_context
+    result = plastic("intent", "context", "not-an-id", table: Plastic::CLI::TABLE)
+
+    assert_equal 2, result.code
+    assert_includes result.err, "invalid intent id"
+  end
+
+  def test_rejects_an_unknown_owning_intent_id_before_reading_context
+    result = plastic("intent", "context", "99", table: Plastic::CLI::TABLE)
+
+    assert_equal 1, result.code
+    assert_includes result.err, "no intent 99 in owning store"
   end
 
   def test_does_not_recreate_a_missing_selected_source_work_database
