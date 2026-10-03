@@ -1854,31 +1854,31 @@ class InstallerCore
     settings["hooks"].delete_if { |_, v| v.is_a?(Array) && v.empty? }
     settings.delete("hooks") if settings["hooks"]&.empty?
 
-    statusline_removed = false
-    restored_statusline = nil
-    if HookRegistry.claude_purge_command?(settings.dig("statusLine", "command"))
-      settings.delete("statusLine")
-      statusline_removed = true
-      original_path = File.join(plastic_home, ".cache", "original-statusline.json")
-      if File.exist?(original_path)
-        original = JSON.parse(File.read(original_path)) rescue nil
-        if original.is_a?(Hash)
-          settings["statusLine"] = original
-          restored_statusline = original["command"]
-        end
-      end
-    end
-
-    # Remove from enabledPlugins
-    if settings["enabledPlugins"]
-      settings["enabledPlugins"].delete("plastic@plastic")
-      settings.delete("enabledPlugins") if settings["enabledPlugins"].empty?
-    end
+    statusline_removed = HookRegistry.claude_purge_command?(settings.dig("statusLine", "command"))
+    restored_statusline = restore_claude_statusline(settings) if statusline_removed
+    drop_plastic_plugin(settings)
 
     result = write_json_atomic(settings_path, settings)
     report_removed_hook_entries(removed, "settings.json", qualifier: "Plastic")
     report_removed_statusline(restored_statusline) if statusline_removed
     result
+  end
+
+  def restore_claude_statusline(settings)
+    settings.delete("statusLine")
+    original = read_json_safe(File.join(plastic_home, ".cache", "original-statusline.json"))
+    return unless original.is_a?(Hash)
+
+    settings["statusLine"] = original
+    original["command"]
+  end
+
+  def drop_plastic_plugin(settings)
+    plugins = settings["enabledPlugins"]
+    return unless plugins
+
+    plugins.delete("plastic@plastic")
+    settings.delete("enabledPlugins") if plugins.empty?
   end
 
   # Remove exactly Plastic's entries from ~/.codex/hooks.json (intent 102), mirrors

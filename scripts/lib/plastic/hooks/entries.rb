@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "ownership"
+
 module Plastic
   module Hooks
     # The harness entries the installer writes: one hook group per event,
@@ -8,26 +10,14 @@ module Plastic
     # so a user's own hook or status line is never touched.
     class Entries
       EVENTS = { "SessionStart" => "hook resume", "Stop" => "hook record", "SessionEnd" => "hook record --end" }.freeze
-      # The launchers and the Codex dispatcher earlier installs wrote. A
-      # command is theirs only when one of its words names one of these
-      # files, never by a substring, so a user's plastic-writing-style stays.
-      OLD_LAUNCHERS = %w[session-start check-update savepoint record close capture message-display stop statusline
-        edit-gates bash-gate code-gate create-gate links-gate lock-gate savepoint-pre call-budget qmd-search
-        retrieval-gate model-instructions opus-manual continue future-intent-check auto-arm gate-check
-        power-tools].map { |name| "plastic-#{name}" }.push("codex-hook").freeze
-
-      # True when a word of the command names an earlier install's launcher file.
-      def self.old_launcher?(command)
-        command.split.map { |word| File.basename(word.delete(%("')), ".rb") }.intersect?(OLD_LAUNCHERS)
-      end
 
       # Former names the launchers this installation wrote before it moved,
       # so their groups are replaced, not kept beside the new ones.
       def initialize(command:, config:, launchers:, former: [])
         @command = command
-        @former = former
         @config = config
         @launchers = launchers
+        @ownership = Ownership.new([command, *former, *launchers.values])
       end
 
       # A new Claude Code settings hash, with this installation's hook groups,
@@ -43,10 +33,7 @@ module Plastic
 
       # True when the command runs this installation's launcher, or one an
       # earlier install wrote, so an uninstall removes it.
-      def own?(command)
-        own = [@command, *@former, *@launchers.values].compact
-        own.any? { |path| command == path || command.include?(%("#{path}")) } || self.class.old_launcher?(command)
-      end
+      def own?(command) = @ownership.own?(command)
 
       private
 

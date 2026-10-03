@@ -3,6 +3,7 @@
 require_relative "../../installer_release"
 require_relative "installation_hooks"
 require_relative "installation_launcher"
+require_relative "installation_lock"
 
 module Plastic
   module Workflows
@@ -10,7 +11,6 @@ module Plastic
     # names a repair for each broken one. It reads files and changes none.
     class InstallationHealth
       Check = Data.define(:label, :value, :repair)
-      INTERRUPTED = "run the installer again; it restores the interrupted activation before it changes anything"
       UNMANAGED = "no release is installed; this plastic runs from source or npm"
       INCOMPLETE = "switch to a complete release with plastic rollback or plastic update"
 
@@ -45,7 +45,7 @@ module Plastic
       def unmanaged_checks = [Check.new("active:", "none; no release is activated", nil), Check.new("installation:", UNMANAGED, nil), ruby]
 
       def release_checks(active, previous)
-        [Check.new("active:", active, nil), Check.new("previous:", previous, nil), launcher.check, ruby, bundle, hooks, lock]
+        [Check.new("active:", active, nil), Check.new("previous:", previous, nil), launcher.check, ruby, bundle, hooks, InstallationLock.new(share).check]
       end
 
       def hooks = InstallationHooks.new(home:, active: active_launcher).check
@@ -57,17 +57,6 @@ module Plastic
       def bundle
         setup = File.join(share, "active", "runtime", "bundle", "bundler", "setup.rb")
         File.file?(setup) ? Check.new("sqlite3 bundle:", "present", nil) : Check.new("sqlite3 bundle:", "missing (#{setup})", INCOMPLETE)
-      end
-
-      def lock
-        return Check.new("installer lock:", "an activation was interrupted", INTERRUPTED) if File.directory?(File.join(share, "activation"))
-
-        Check.new("installer lock:", held? ? "held by a running installer" : "free", nil)
-      end
-
-      def held?
-        lock_file = File.join(share, "INSTALL.lock")
-        File.file?(lock_file) && File.open(lock_file) { |file| !file.flock(File::LOCK_SH | File::LOCK_NB) }
       end
     end
   end

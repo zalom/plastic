@@ -2,10 +2,10 @@
 
 require "fileutils"
 require "open3"
-require "securerandom"
 require_relative "hook_strip"
 require_relative "launcher_link"
 require_relative "managed_home"
+require_relative "pointer"
 
 module InstallerRelease
   # Brings the home in line with the active release: links the launcher,
@@ -68,9 +68,7 @@ module InstallerRelease
       return out.puts(format(FOREIGN, launcher, target)) unless launcher_ours?
 
       FileUtils.mkdir_p(File.dirname(launcher))
-      temporary = "#{launcher}.#{SecureRandom.hex(8)}"
-      File.symlink(target, temporary)
-      File.rename(temporary, launcher)
+      Pointer.new(launcher).point_to(target)
     end
   end
 end
