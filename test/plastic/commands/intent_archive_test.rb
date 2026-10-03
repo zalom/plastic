@@ -38,15 +38,15 @@ class IntentArchiveTest < Plastic::TestCase
     assert retrieval.intent(intent.intent_id)
   end
 
-  def test_archiving_an_unlinked_done_intent_keeps_its_document_and_ruling
+  def test_archiving_an_unlinked_done_intent_keeps_its_document_and_ruling_bytes
     intent = open_intent("Target")
     add_ruling(intent)
     mark_done(intent)
 
     call(intent.intent_id)
 
-    assert_equal 1, retrieval.documents(intent.intent_id).size
-    assert_equal 1, retrieval.rulings(intent.intent_id).size
+    assert_equal intent.page(retrieval.origin_id), archived_document(intent).body
+    assert_equal "a ruling", archived_ruling(intent).text
   end
 
   def test_an_open_intents_link_refuses_the_archive
@@ -123,4 +123,10 @@ class IntentArchiveTest < Plastic::TestCase
     assert_equal 0, result.code
     assert retrieval.archived?(intent.intent_id)
   end
+
+  private
+
+  def archived_document(intent) = retrieval.documents(intent.intent_id).find { |candidate| candidate.path == intent.file }
+
+  def archived_ruling(intent) = retrieval.rulings(intent.intent_id).find { |candidate| candidate.id == "D1" }
 end
