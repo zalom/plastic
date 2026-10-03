@@ -16,7 +16,7 @@ module Plastic
         checks = InstallationHealth.of(context).checks
         checks.each { |check| context.row(check.label, check.value) }
         repairs = checks.filter_map(&:repair)
-        repairs.each { |repair| context.print("repair: #{repair}") }
+        repairs.each { |repair| context.row("repair:", repair) }
         context[:repairs] = repairs.size
       end
 
