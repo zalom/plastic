@@ -25,6 +25,11 @@ if [ -z "$CURRENT" ]; then
   exit 0
 fi
 
+# At most one check every 12 hours: a cache younger than that is the answer.
+if [ -n "$(find "$CACHE_FILE" -mmin -720 2>/dev/null)" ]; then
+  exit 0
+fi
+
 # Background check — don't block session start.
 #
 # The three redirects are load-bearing (intent 289). Without them this subshell inherits
@@ -43,7 +48,7 @@ fi
   fi
 
   TARGET=$(printf '%s' "$RELEASES" | env -u RUBYOPT ruby "$SELECTOR" "$CURRENT" 2>/dev/null)
-  CHECKED=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  CHECKED=$(date +%Y-%m-%dT%H:%M:%S%z)
 
   if [ -n "$TARGET" ]; then
     printf '{"current":"%s","latest":"%s","checked":"%s","updateAvailable":true}\n' \

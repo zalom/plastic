@@ -81,6 +81,13 @@ module ReleaseHelper
     stage
   end
 
+  def activation_with(*installed, activation: InstallerRelease::Activation.new(home: install_home))
+    installed.each { |version| activation.activate(staged_candidate(version), version: version) }
+    activation
+  end
+
+  def versions(installer) = [installer.active_version, installer.previous_version]
+
   def write_package(path, version, launcher)
     FileUtils.mkdir_p(File.join(path, "bin"))
     File.write(File.join(path, "VERSION"), "#{version}\n")

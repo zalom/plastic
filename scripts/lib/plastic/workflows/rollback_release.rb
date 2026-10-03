@@ -5,8 +5,8 @@ require_relative "release_update"
 
 module Plastic
   module Workflows
-    # Switches the active pointer to the named release or the previous one.
-    # The files in the home stay as they are until a reinstall syncs them.
+    # Switches the active pointer to the named release or the previous one,
+    # and syncs that release's files into the home in the same activation.
     class RollbackRelease < CodeWorkflow
       [facts, steps, outcomes].each(&:clear)
 
@@ -17,8 +17,7 @@ module Plastic
         context[:switched] = activation.switch(context.target || activation.previous_version)
       end
 
-      outcome :done, offers: "plastic install --reinstall",
-        because: "Plastic %{switched} is active; reinstall to sync its files into the home"
+      outcome :done, offers: "plastic version", because: "Plastic %{switched} is active and the home holds its files"
     end
   end
 end

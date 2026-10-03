@@ -8,31 +8,42 @@ module Plastic
   module Workflows
     # The activated releases under the share directory, and the release
     # source that offers newer ones: GitHub, or a local directory that a
-    # development run names in PLASTIC_LOCAL_RELEASE.
+    # development run names in PLASTIC_LOCAL_RELEASE. Each switch syncs the
+    # home files of the release it switches to.
     class ReleaseUpdate
+      CHANNELS = { "stable" => "latest", "beta" => "beta", "alpha" => "alpha" }.freeze
+
       attr_reader :activation
 
       def self.of(context, bundle: InstallerRelease::Bundle.new)
         scope = context.scope
-        local = scope.setting("PLASTIC_LOCAL_RELEASE")
         share = scope.setting("PLASTIC_SHARE", File.join(scope.home, ".local", "share", "plastic"))
-        new(share, InstallerRelease::ReleaseSource.for(local), bundle)
+        new(share, InstallerRelease::ReleaseSource.for(scope.setting("PLASTIC_LOCAL_RELEASE")), bundle, home_sync(scope, share))
       end
 
-      def initialize(share, source, bundle)
+      def self.chosen_channels(context) = CHANNELS.keys.select { |name| context.public_send(name) }
+
+      def self.home_sync(scope, share)
+        launcher = File.join(scope.setting("PLASTIC_BIN", File.join(scope.home, ".local", "bin")), "plastic")
+        home = InstallerRelease::ManagedHome.new(plastic_home: scope.plastic_home, user_home: scope.home, launcher: launcher)
+        InstallerRelease::HomeSync.new(share: share, home: home)
+      end
+
+      def initialize(share, source, bundle, sync = InstallerRelease::NoSync)
         @share = share
         @source = source
         @bundle = bundle
-        @activation = InstallerRelease::Activation.new(home: share)
+        @sync = sync
+        @activation = InstallerRelease::Activation.new(home: share, sync: sync)
       end
 
       def active_version = activation.active_version
 
       def notices = source.notices
 
-      def newer_release
+      def newer_release(channel = nil)
         active = active_version
-        newest = source.newest(InstallerRelease::Manifest.identity(active).fetch("channel"))
+        newest = source.newest(CHANNELS.fetch(channel) { InstallerRelease::Manifest.identity(active).fetch("channel") })
         newest if newest && InstallerRelease::ReleaseFeed.newer?(newest, active)
       end
 
@@ -40,14 +51,14 @@ module Plastic
         FileUtils.mkdir_p(share)
         Dir.mktmpdir("plastic-download-", share) do |directory|
           files = source.files(version, directory).verify
-          InstallerRelease::ReleaseInstall.new(home: share, bundle: bundle)
+          InstallerRelease::ReleaseInstall.new(home: share, bundle: bundle, sync: sync)
             .call(archive: files.archive, manifest: files.manifest, expected: InstallerRelease::Manifest.identity(version))
         end
       end
 
       private
 
-      attr_reader :share, :source, :bundle
+      attr_reader :share, :source, :bundle, :sync
     end
   end
 end

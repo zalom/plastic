@@ -57,7 +57,7 @@ class InstallCommandTest < Plastic::TestCase
     result = call("install", "--reinstall")
 
     assert_equal 0, result.code, result.err
-    assert_path_exists File.join(@home, ".codex", "plastic", "manifest.json")
+    assert_path_exists File.join(@home, ".agents", "plastic", "manifest.json")
     refute_path_exists File.join(@home, ".claude", "plastic")
   end
 

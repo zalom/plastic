@@ -21,8 +21,11 @@ module Plastic
         command.split.map { |word| File.basename(word.delete(%("')), ".rb") }.intersect?(OLD_LAUNCHERS)
       end
 
-      def initialize(command:, config:, launchers:)
+      # Former names the launchers this installation wrote before it moved,
+      # so their groups are replaced, not kept beside the new ones.
+      def initialize(command:, config:, launchers:, former: [])
         @command = command
+        @former = former
         @config = config
         @launchers = launchers
       end
@@ -56,7 +59,7 @@ module Plastic
       def ours?(entry) = Array(entry["hooks"]).any? { |hook| ours_command?(hook["command"].to_s) }
 
       def ours_command?(command)
-        own = [@command, *@launchers.values].compact
+        own = [@command, *@former, *@launchers.values].compact
         own.any? { |path| command == path || command.include?(%("#{path}")) } || self.class.old_launcher?(command)
       end
 

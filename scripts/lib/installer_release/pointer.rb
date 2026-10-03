@@ -26,14 +26,6 @@ module InstallerRelease
       FileUtils.rm_f(temporary)
     end
 
-    def keep
-      saved = target
-      yield
-    rescue
-      saved ? point_to(saved) : FileUtils.rm_f(path)
-      raise
-    end
-
     private
 
     attr_reader :path

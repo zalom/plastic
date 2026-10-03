@@ -44,11 +44,9 @@ class InstallerReleaseHomeSyncTest < Minitest::Test
     runs = []
     sync(run: ->(env, command) { runs << [env, command] }).call
 
-    env, command = runs.fetch(0)
-    assert_equal [File.join(share, "active", "bin", "plastic"), "install", "--reinstall"], command
-    assert_equal [plastic_home, user_home], env.values_at("PLASTIC_HOME", "HOME")
-    assert_equal [nil, nil], env.values_at("RUBYOPT", "BUNDLE_GEMFILE")
-    assert env.key?("RUBYOPT")
+    expected = { "PLASTIC_HOME" => plastic_home, "HOME" => user_home, "RUBYOPT" => nil, "BUNDLE_GEMFILE" => nil }
+
+    assert_equal [[expected, [File.join(share, "active", "bin", "plastic"), "install", "--reinstall"]]], runs
   end
 
   def test_leaves_a_home_without_an_installation_unsynced
@@ -66,24 +64,16 @@ class InstallerReleaseHomeSyncTest < Minitest::Test
     sync.call
 
     expected = { "SessionStart" => [user_group] }
+
     assert_equal [expected, { "command" => "/usr/local/bin/mine" }], read_json(".claude/settings.json").values_at("hooks", "statusLine")
     assert_equal expected, read_json(".codex/hooks.json")["hooks"]
   end
 
   def test_names_the_managed_paths_and_never_the_stores
-    installed_home
-    FileUtils.mkdir_p([File.join(plastic_home, "scripts"), File.join(plastic_home, "stores"), File.join(user_home, ".claude", "hooks")])
-    %w[config.yml plastic.sqlite3].each { |name| File.write(File.join(plastic_home, name), "") }
-    File.write(File.join(user_home, ".claude", "hooks", "plastic-check-update"), "")
-    paths = sync.paths
+    home_with_stores
+    managed = [*in_plastic_home("scripts", "config.yml"), File.join(user_home, ".claude", "settings.json"), check_update, launcher]
 
-    assert_includes paths, File.join(plastic_home, "scripts")
-    assert_includes paths, File.join(plastic_home, "config.yml")
-    assert_includes paths, File.join(user_home, ".claude", "settings.json")
-    assert_includes paths, File.join(user_home, ".claude", "hooks", "plastic-check-update")
-    assert_includes paths, launcher
-    refute_includes paths, File.join(plastic_home, "stores")
-    refute_includes paths, File.join(plastic_home, "plastic.sqlite3")
+    assert_equal [managed, []], [managed & sync.paths, in_plastic_home("stores", "plastic.sqlite3") & sync.paths]
   end
 
   private
@@ -92,13 +82,23 @@ class InstallerReleaseHomeSyncTest < Minitest::Test
 
   def plastic_home = File.join(user_home, ".plastic")
 
+  def check_update = File.join(user_home, ".claude", "hooks", "plastic-check-update")
+
+  def in_plastic_home(*names) = names.map { |name| File.join(plastic_home, name) }
+
   def share = File.join(user_home, ".local", "share", "plastic")
 
   def launcher = File.join(user_home, ".local", "bin", "plastic")
 
   def sync(run: ->(_env, _command) {}, out: StringIO.new)
-    InstallerRelease::HomeSync.new(share: share, bin: File.dirname(launcher), plastic_home: plastic_home, user_home: user_home,
-      run: run, out: out)
+    home = InstallerRelease::ManagedHome.new(plastic_home: plastic_home, user_home: user_home, launcher: launcher)
+    InstallerRelease::HomeSync.new(share: share, home: home, run: run, out: out)
+  end
+
+  def home_with_stores
+    installed_home
+    FileUtils.mkdir_p([*in_plastic_home("scripts", "stores"), File.dirname(check_update)])
+    [*in_plastic_home("config.yml", "plastic.sqlite3"), check_update].each { |path| File.write(path, "") }
   end
 
   def installed_home
