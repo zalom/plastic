@@ -6,6 +6,8 @@ module Plastic
   module RetrievalBenchmark
     # Runs one public top-20 query and checks every returned expected passage.
     class QualityQuery
+      Result = Data.define(:expected, :sample, :rows, :checks)
+
       def initialize(home, query)
         @home = home
         @query = query
@@ -16,7 +18,7 @@ module Plastic
         sample = Measurements.run_command(search_command)
         rows = JSON.parse(sample.fetch("stdout")).fetch("result").fetch("results")
         checks = rows.filter_map.with_index { |row, index| check(row, expected[row.fetch("uri")], index + 1) }
-        answer(expected, sample, rows, checks)
+        answer(Result.new(expected, sample, rows, checks))
       end
 
       private
@@ -34,12 +36,20 @@ module Plastic
           "body" => passage&.fetch("body"), "matched" => passage&.fetch("body")&.include?(hint) || false }
       end
 
-      def answer(expected, sample, rows, checks)
-        matched = checks.find { |check| check.fetch("matched") }
-        { "id" => @query.fetch("id"), "expected_references" => expected.keys, "returned_references" => rows.map { |row| row.fetch("uri") },
-          "command_output_valid" => sample.fetch("output_valid"), "rank" => matched&.fetch("rank"),
+      def answer(result)
+        matched = result.checks.find { |check| check.fetch("matched") }
+        base_answer(result).merge(match_answer(result, matched))
+      end
+
+      def base_answer(result)
+        { "id" => @query.fetch("id"), "expected_references" => result.expected.keys, "returned_references" => result.rows.map { |row| row.fetch("uri") },
+          "command_output_valid" => result.sample.fetch("output_valid"), "passage_checks" => result.checks }
+      end
+
+      def match_answer(result, matched)
+        { "rank" => matched&.fetch("rank"),
           "matched_text" => matched&.fetch("body"), "resolved_qualified_reference" => matched&.fetch("uri"), "passed" => !matched.nil?,
-          "classification" => classification(checks, matched), "passage_checks" => checks }
+          "classification" => classification(result.checks, matched) }
       end
 
       def fetch_passage(row)
