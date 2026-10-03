@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Plastic
-  module Commands
+  class CLI
     # The switches both sync directions take.
     module SyncOptions
       def self.extended(command)
