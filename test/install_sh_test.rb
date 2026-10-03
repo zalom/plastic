@@ -46,6 +46,57 @@ class InstallShTest < Minitest::Test
       refute_path_exists File.join(dir, ".local", "bin", "plastic")
     end
   end
+
+  def test_an_activation_mv_failure_restores_the_prior_shared_command
+    Dir.mktmpdir do |dir|
+      share, bin = prior_installation(dir)
+      env = { "HOME" => dir, "PLASTIC_SHARE" => share, "PLASTIC_BIN" => bin,
+              "PLASTIC_ARCHIVE_URL" => "file://#{archive_in(dir)}", "PATH" => "#{failing_mv(dir)}:#{ENV.fetch("PATH")}" }
+      _out, _err, status = Open3.capture3(env, "sh", SCRIPT)
+      output, = Open3.capture2(File.join(bin, "plastic"))
+
+      assert_equal 1, status.exitstatus
+      assert_equal "previous\n", output
+    end
+  end
+
+  def prior_installation(dir)
+    share = File.join(dir, "share")
+    bin = File.join(dir, "bin")
+    command = File.join(share, "bin", "plastic")
+    FileUtils.mkdir_p([File.dirname(command), bin])
+    File.write(command, "#!/bin/sh\necho previous\n")
+    File.chmod(0o755, command)
+    File.symlink(command, File.join(bin, "plastic"))
+    [share, bin]
+  end
+
+  def failing_mv(dir)
+    fakebin = File.join(dir, "fakebin")
+    FileUtils.mkdir_p(fakebin)
+    File.write(File.join(fakebin, "mv"), <<~SH)
+      #!/bin/sh
+      case "$1" in *stage.*) exit 97 ;; esac
+      exec /bin/mv "$@"
+    SH
+    File.chmod(0o755, File.join(fakebin, "mv"))
+    fakebin
+  end
+
+  def test_dry_run_leaves_an_existing_installation_unchanged
+    Dir.mktmpdir do |dir|
+      share = File.join(dir, "share")
+      FileUtils.mkdir_p(share)
+      marker = File.join(share, "user-config")
+      File.write(marker, "keep")
+      archive = archive_in(dir)
+      _out, _err, status = Open3.capture3({ "HOME" => dir, "PLASTIC_SHARE" => share,
+                                             "PLASTIC_ARCHIVE_URL" => "file://#{archive}" }, "sh", SCRIPT, "--dry-run")
+
+      assert_predicate status, :success?
+      assert_equal "keep", File.read(marker)
+    end
+  end
 end
 
 # The installer used to fetch releases/latest/download/plastic.tgz. That URL

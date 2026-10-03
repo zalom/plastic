@@ -19,7 +19,7 @@ global rule.
 
 ## Defaults
 - Release process: commit_and_push, github_release, npm_publish
-- Version files: package.json, .claude-plugin/plugin.json, .claude-plugin/marketplace.json
+- Version file: package.json
 - Tag format: v{{version}}
 - All bash scripts must work under macOS /bin/bash 3.2 (no bash 4.x features)
 - Bump all 3 version files on every fix/feature release
@@ -143,4 +143,4 @@ written.
   guarantees, and the intent-41 re-land playbook.
 - Stable-line guarantees, in short: main stays always releasable with no pending revert awaiting
   re-land, a stable release always carries the GitHub Latest badge and no pre-release suffix,
-  and the three version files always agree (checked by `scripts/lib/release_guard.rb`).
+  and the tag always matches the version in `package.json` (checked by `scripts/lib/release_guard.rb`).
