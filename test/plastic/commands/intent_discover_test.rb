@@ -9,7 +9,8 @@ class IntentDiscoverTest < Plastic::TestCase
     source = File.join(@plastic_home, "stores", "other", "knowledge_graph.db")
     before = File.binread(source)
 
-    %w[not-json {}].each_with_index do |data, index|
+    contexts = ["not-json", "{}", JSON.generate("discovery" => { "query" => "evidence 2", "scope" => ["global"] })]
+    contexts.each_with_index do |data, index|
       write_saved_context(data)
       result = plastic("intent", "discover", "1", "evidence #{index}", "--source-project", "other", "--json", table: Plastic::CLI::TABLE)
 

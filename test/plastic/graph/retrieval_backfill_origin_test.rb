@@ -24,6 +24,13 @@ class RetrievalBackfillOriginTest < Plastic::TestCase
     refute_path_exists File.dirname(path)
   end
 
+  def test_completion_probe_treats_an_unreadable_database_file_as_incomplete
+    path = File.join(@home, "not-a-database")
+    File.binwrite(path, "not sqlite")
+
+    refute Plastic::Graph::ReferenceBackfill.complete?(path, origin)
+  end
+
   private
 
   def knowledge = store_graphs.databases.fetch(:knowledge)
