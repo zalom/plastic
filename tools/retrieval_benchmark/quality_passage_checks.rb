@@ -4,6 +4,26 @@ require "json"
 
 module Plastic
   module RetrievalBenchmark
+    # Carries the only search-row fields needed to fetch one bounded passage.
+    QualityPassageCandidate = Data.define(:uri, :position, :store) do
+      def self.from(row) = new(row.fetch("uri"), row.fetch("position"), row.fetch("store"))
+
+      def check(home:, hint:, rank:)
+        passage = fetch(home)
+        { "uri" => uri, "rank" => rank, "position" => position, "hint" => hint,
+          "body" => passage&.fetch("body"), "matched" => passage&.fetch("body")&.include?(hint) || false }
+      end
+
+      private
+
+      def fetch(home)
+        argv = [File.join(RetrievalBenchmark::ROOT, "bin", "plastic"), "document", "get", uri, "--passage", position.to_s, "--json"]
+        sample = Measurements.run_command({ home:, argv:, stores: [store] })
+        document = JSON.parse(sample.fetch("stdout")).dig("result", "document")
+        document if sample.fetch("exit_status").zero? && document
+      end
+    end
+
     # Fetches passages only for references named by a quality query.
     class QualityPassageChecks
       def initialize(home, expected)
@@ -13,24 +33,10 @@ module Plastic
 
       def evaluate(rows)
         rows.filter_map.with_index do |row, index|
-          check(row, index + 1) if @expected.key?(row.fetch("uri"))
+          candidate = QualityPassageCandidate.from(row)
+          uri = candidate.uri
+          candidate.check(home: @home, hint: @expected.fetch(uri), rank: index + 1) if @expected.key?(uri)
         end
-      end
-
-      private
-
-      def check(row, rank)
-        passage = fetch(row)
-        hint = @expected.fetch(row.fetch("uri"))
-        { "uri" => row.fetch("uri"), "rank" => rank, "position" => row.fetch("position"), "hint" => hint,
-          "body" => passage&.fetch("body"), "matched" => passage&.fetch("body")&.include?(hint) || false }
-      end
-
-      def fetch(row)
-        argv = [File.join(RetrievalBenchmark::ROOT, "bin", "plastic"), "document", "get", row.fetch("uri"), "--passage", row.fetch("position").to_s, "--json"]
-        sample = Measurements.run_command({ home: @home, argv:, stores: [row.fetch("store")] })
-        document = JSON.parse(sample.fetch("stdout")).dig("result", "document")
-        document if sample.fetch("exit_status").zero? && document
       end
     end
   end
