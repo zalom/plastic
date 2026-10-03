@@ -18,10 +18,10 @@ class PreflightTest < Minitest::Test
   end
 
   def test_reports_sqlite_availability_and_a_missing_library
-    assert Sqlite3Dependency.available?
+    assert_predicate Sqlite3Dependency, :available?
 
     with_kernel_require(->(_name) { raise LoadError, "sqlite unavailable" }) do
-      refute Sqlite3Dependency.available?
+      refute_predicate Sqlite3Dependency, :available?
     end
   end
 
@@ -32,12 +32,16 @@ class PreflightTest < Minitest::Test
   def test_reports_a_missing_runtime_with_platform_specific_recovery_steps
     linux = Preflight.check(ruby_version: "3.4.0", git_present: false, sqlite3_present: false,
       missing_gems: ["sqlite3"], platform: "linux")
-    mac = Preflight.check(ruby_version: "4.0.0", git_present: false, sqlite3_present: false,
-      missing_gems: [], platform: "darwin")
 
     assert_equal [false, true], linux.values_at(:ok, :fatal)
     assert_includes linux.fetch(:messages).join("\n"), "sudo apt-get install -y git"
     assert_includes linux.fetch(:messages).join("\n"), "sudo apt-get install -y sqlite3"
+  end
+
+  def test_reports_macos_recovery_steps
+    mac = Preflight.check(ruby_version: "4.0.0", git_present: false, sqlite3_present: false,
+      missing_gems: [], platform: "darwin")
+
     assert_includes mac.fetch(:messages).join("\n"), "xcode-select --install"
   end
 

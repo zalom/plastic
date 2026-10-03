@@ -18,6 +18,9 @@ class EvidenceTextTest < Plastic::TestCase
   def test_classifies_supported_text_and_reports_unsupported_or_invalid_bytes
     assert_equal :text, text.classify("data.json", "{\"title\":\"Readable\"}")
     assert_equal :unsupported, text.classify("report.pdf", "%PDF-1.7")
+  end
+
+  def test_keeps_invalid_text_bytes_as_an_attachment
     assert_equal :attachment, text.classify("bad.txt", "\xFF".b)
     assert_nil text.extract("bad.txt", "\xFF".b)
   end

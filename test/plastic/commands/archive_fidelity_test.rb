@@ -3,7 +3,7 @@
 require_relative "../../test_helper"
 require_relative "../../../scripts/lib/plastic/commands/intent_archive"
 
-class ArchiveFidelityTest < Plastic::TestCase
+module ArchiveFidelityFixtures
   def archive(intent, *options)
     plastic("intent", "archive", intent.intent_id, *options, table: Plastic::CLI::TABLE)
   end
@@ -65,6 +65,23 @@ class ArchiveFidelityTest < Plastic::TestCase
     assert_equal 0, result.code, result.err
   end
 
+  def replace_document_rows(intent)
+    store_graphs.databases.fetch(:knowledge).transaction do |batch|
+      batch.write(:documents, "UPDATE documents SET body = 'newer row' WHERE intent_id = :id", id: intent.intent_id)
+    end
+  end
+
+  def archived_with_conflict
+    populated_intent.tap do |intent|
+      assert_archived(intent)
+      File.symlink(folder.root, folder.path(intent.dir))
+    end
+  end
+end
+
+class ArchiveFidelityTest < Plastic::TestCase
+  include ArchiveFidelityFixtures
+
   def test_revert_preserves_bytes_links_directories_modes_and_times
     intent = populated_intent
     before = tree(folder.path(intent.dir))
@@ -73,12 +90,6 @@ class ArchiveFidelityTest < Plastic::TestCase
     assert_reverted(intent)
 
     assert_equal before, tree(folder.path(intent.dir))
-  end
-
-  def replace_document_rows(intent)
-    store_graphs.databases.fetch(:knowledge).transaction do |batch|
-      batch.write(:documents, "UPDATE documents SET body = 'newer row' WHERE intent_id = :id", id: intent.intent_id)
-    end
   end
 
   def test_revert_uses_snapshot_even_when_document_rows_change
@@ -118,13 +129,6 @@ class ArchiveFidelityTest < Plastic::TestCase
     assert_equal 1, archive(intent, "--revert").code
     assert File.symlink?(folder.path(intent.dir))
     assert retrieval.archived?(intent.intent_id)
-  end
-
-  def archived_with_conflict
-    populated_intent.tap do |intent|
-      assert_archived(intent)
-      File.symlink(folder.root, folder.path(intent.dir))
-    end
   end
 
   def test_archive_offers_status_instead_of_revert

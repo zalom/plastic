@@ -39,6 +39,19 @@ module IntentContextTestSupport
     end
   end
 
+  def discovered_reference
+    open_intent
+    reference = write_document("other", "selected evidence")
+    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
+    reference
+  end
+
+  def remove_selected_revision
+    Plastic::Graph.open(home: @plastic_home, store: "other").databases.fetch(:knowledge).transaction do |batch|
+      batch.add("DELETE FROM document_revisions WHERE intent_id = '1' AND path = 'evidence.md' AND origin_id = :origin", origin: origin)
+    end
+  end
+
   def remove_current_head
     graphs = Plastic::Graph.open(home: @plastic_home, store: "other")
     Plastic::Graph::EvidenceWriter.new(graphs.databases.fetch(:knowledge), origin).remove("1", "evidence.md")
@@ -137,9 +150,7 @@ class IntentContextPersistenceTest < Plastic::TestCase
   include IntentContextAssertionSupport
 
   def test_validates_and_persists_agent_selected_evidence_without_writing_source_stores
-    open_intent
-    reference = write_document("other", "selected evidence")
-    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
+    reference = discovered_reference
     before = File.binread(File.join(@plastic_home, "stores", "other", "knowledge_graph.db"))
     submission = context_submission(reference)
     submitted = submit_context(submission, json: true)
@@ -163,9 +174,7 @@ class IntentContextPersistenceTest < Plastic::TestCase
   end
 
   def test_records_selected_archive_state_and_marks_it_stale_without_losing_the_pinned_revision
-    open_intent
-    reference = write_document("other", "selected evidence")
-    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
+    reference = discovered_reference
     submit_context(context_submission(reference))
 
     fresh = read_context
@@ -176,18 +185,14 @@ class IntentContextPersistenceTest < Plastic::TestCase
   end
 
   def test_reports_architecture_receipt_changes_and_missing_revisions_separately
-    open_intent
-    reference = write_document("other", "selected evidence")
-    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
+    reference = discovered_reference
     submit_context(context_submission(reference))
 
     assert_architecture_freshness
   end
 
   def test_reports_a_removed_current_head_as_stale_when_its_pinned_revision_survives
-    open_intent
-    reference = write_document("other", "selected evidence")
-    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
+    reference = discovered_reference
     submit_context(context_submission(reference))
     remove_current_head
 
@@ -195,22 +200,16 @@ class IntentContextPersistenceTest < Plastic::TestCase
   end
 
   def test_reports_selected_evidence_as_missing_when_its_pinned_revision_is_removed
-    open_intent
-    reference = write_document("other", "selected evidence")
-    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
+    reference = discovered_reference
     submit_context(context_submission(reference))
     remove_current_head
-    Plastic::Graph.open(home: @plastic_home, store: "other").databases.fetch(:knowledge).transaction do |batch|
-      batch.add("DELETE FROM document_revisions WHERE intent_id = '1' AND path = 'evidence.md' AND origin_id = :origin", origin: origin)
-    end
+    remove_selected_revision
 
     assert_equal "missing", read_context.fetch("freshness").fetch("evidence").first.fetch("state")
   end
 
   def test_reads_the_saved_context_file_when_the_database_record_is_absent
-    open_intent
-    reference = write_document("other", "selected evidence")
-    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
+    reference = discovered_reference
     submission = context_submission(reference)
     submit_context(submission)
     Plastic::Graph.open(home: @plastic_home, store: "global").databases.fetch(:knowledge).transaction do |batch|
@@ -222,14 +221,22 @@ class IntentContextPersistenceTest < Plastic::TestCase
   end
 end
 
+module IntentContextValidationAssertions
+  def assert_invalid_submission(document, code, message)
+    result = submit_raw_context(JSON.generate(document))
+
+    assert_equal code, result.code
+    assert_includes result.err, message
+  end
+end
+
 class IntentContextValidationTest < Plastic::TestCase
+  include IntentContextValidationAssertions
   include IntentContextTestSupport
   include IntentContextAssertionSupport
 
   def test_reports_retrieval_maintenance_when_a_selected_source_is_not_ready
-    open_intent
-    reference = write_document("other", "selected evidence")
-    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
+    reference = discovered_reference
     submit_context(context_submission(reference))
     mark_retrieval_incomplete
     before = File.binread(store_path("../other/knowledge_graph.db"))
@@ -276,9 +283,7 @@ class IntentContextValidationTest < Plastic::TestCase
   end
 
   def test_does_not_recreate_a_missing_selected_source_work_database
-    open_intent
-    reference = write_document("other", "selected evidence")
-    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
+    reference = discovered_reference
     submit_context(context_submission(reference))
     path = store_path("../other/work_graph.db")
     File.delete(path)
@@ -290,9 +295,7 @@ class IntentContextValidationTest < Plastic::TestCase
   end
 
   def test_rejects_a_non_object_submission_without_replacing_saved_context
-    open_intent
-    reference = write_document("other", "selected evidence")
-    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
+    reference = discovered_reference
     submit_context(context_submission(reference))
     before = File.binread(store_path("context/1.json"))
 
@@ -303,9 +306,7 @@ class IntentContextValidationTest < Plastic::TestCase
   end
 
   def test_rejects_non_array_context_categories_without_replacing_saved_context
-    open_intent
-    reference = write_document("other", "selected evidence")
-    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
+    reference = discovered_reference
     submit_context(context_submission(reference))
     before = read_context
     invalid = context_submission(reference).merge("facts" => "not an array")
@@ -316,10 +317,48 @@ class IntentContextValidationTest < Plastic::TestCase
     assert_includes result.err, "must be arrays"
   end
 
+  def test_rejects_evidence_that_was_not_discovered
+    reference = discovered_reference
+    undiscovered = context_submission(reference).merge("evidence" => ["plastic://other/1/missing.md"])
+
+    assert_invalid_submission(undiscovered, 1, "evidence was not discovered")
+  end
+
+  def test_rejects_an_unpinned_reference_from_a_legacy_discovery_record
+    reference = discovered_reference
+    submit_context(context_submission(reference))
+    before = read_context
+    unpinned = reference.sub(/\?revision=[0-9a-f]{64}\z/, "")
+    store_legacy_discovery(unpinned)
+
+    result = submit_raw_context(JSON.generate(context_submission(unpinned)))
+
+    assert_equal 1, result.code
+    assert_legacy_context_preserved(before, result)
+  end
+
+  private
+
+  def assert_legacy_context_preserved(before, result)
+    assert_equal before.slice("evidence", "architecture"), read_context.slice("evidence", "architecture")
+    assert_includes result.err, "evidence revision changed"
+  end
+
+  def store_legacy_discovery(reference)
+    document = { "query" => "selected", "scope" => ["other"], "candidates" => [{ "uri" => reference }] }
+    Plastic::Graph.open(home: @plastic_home, store: "global").databases.fetch(:knowledge).transaction do |batch|
+      batch.put(:retrieval_discoveries, { intent_id: "1", data: JSON.generate(document), updated_at: Plastic.now })
+    end
+  end
+end
+
+class IntentContextArchitectureValidationTest < Plastic::TestCase
+  include IntentContextTestSupport
+  include IntentContextAssertionSupport
+  include IntentContextValidationAssertions
+
   def test_rejects_invalid_architecture_shapes_and_revisions
-    open_intent
-    reference = write_document("other", "selected evidence")
-    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
+    reference = discovered_reference
     invalid_architecture = context_submission(reference).merge("architecture" => [])
     invalid_coverage = context_submission(reference).tap { |document| document.fetch("architecture")["coverage"] = "Ruby" }
     invalid_revision = context_submission(reference).tap { |document| document.fetch("architecture")["revision"] = 1 }
@@ -329,35 +368,8 @@ class IntentContextValidationTest < Plastic::TestCase
     assert_invalid_submission(invalid_revision, 2, "revision must be a string")
   end
 
-  def test_rejects_evidence_that_was_not_discovered
-    open_intent
-    reference = write_document("other", "selected evidence")
-    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
-    undiscovered = context_submission(reference).merge("evidence" => ["plastic://other/1/missing.md"])
-
-    assert_invalid_submission(undiscovered, 1, "evidence was not discovered")
-  end
-
-  def test_rejects_an_unpinned_reference_from_a_legacy_discovery_record
-    open_intent
-    reference = write_document("other", "selected evidence")
-    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
-    submit_context(context_submission(reference))
-    before = read_context
-    unpinned = reference.sub(/\?revision=[0-9a-f]{64}\z/, "")
-    store_legacy_discovery(unpinned)
-
-    result = submit_raw_context(JSON.generate(context_submission(unpinned)))
-
-    assert_equal 1, result.code
-    assert_equal before.slice("evidence", "architecture"), read_context.slice("evidence", "architecture")
-    assert_includes result.err, "evidence revision changed"
-  end
-
   def test_accepts_an_external_provider_without_a_receipt_and_keeps_it_after_backup_restore
-    open_intent
-    reference = write_document("other", "selected evidence")
-    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
+    reference = discovered_reference
     submission = context_submission(reference)
     submission.fetch("architecture").delete("receipt")
 
@@ -367,9 +379,7 @@ class IntentContextValidationTest < Plastic::TestCase
   end
 
   def test_rejects_an_invalid_receipt_without_replacing_the_saved_context
-    open_intent
-    reference = write_document("other", "selected evidence")
-    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
+    reference = discovered_reference
     submit_context(context_submission(reference))
     before = read_context
     invalid = context_submission(reference)
@@ -381,9 +391,7 @@ class IntentContextValidationTest < Plastic::TestCase
   end
 
   def test_rejects_an_unsafe_architecture_provider_without_writing_outside_the_owner_directory
-    open_intent
-    reference = write_document("other", "selected evidence")
-    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
+    reference = discovered_reference
     submit_context(context_submission(reference))
     before = read_context
     unsafe = context_submission(reference)
@@ -392,21 +400,5 @@ class IntentContextValidationTest < Plastic::TestCase
     result = submit_raw_context(JSON.generate(unsafe))
 
     assert_unsafe_provider_rejected(before, result)
-  end
-
-  private
-
-  def assert_invalid_submission(document, code, message)
-    result = submit_raw_context(JSON.generate(document))
-
-    assert_equal code, result.code
-    assert_includes result.err, message
-  end
-
-  def store_legacy_discovery(reference)
-    document = { "query" => "selected", "scope" => ["other"], "candidates" => [{ "uri" => reference }] }
-    Plastic::Graph.open(home: @plastic_home, store: "global").databases.fetch(:knowledge).transaction do |batch|
-      batch.put(:retrieval_discoveries, { intent_id: "1", data: JSON.generate(document), updated_at: Plastic.now })
-    end
   end
 end

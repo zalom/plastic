@@ -11,6 +11,7 @@ class SchemaMigrationsTest < Minitest::Test
 
     assert_equal 2, connection.transactions
     migrations = connection.batches.reject(&:empty?)
+
     assert_equal %i[document_revisions document_passages], migrations.map { |sql| sql[/ALTER TABLE (\w+)/, 1].to_sym }
     assert migrations.all? { |sql| sql.include?("DROP TABLE") }
   end
@@ -27,21 +28,25 @@ class SchemaMigrationsTest < Minitest::Test
   private
 
   def migration_connection(revision_sql:, passage_sql:)
-    Class.new do
-      attr_reader :batches, :transactions
+    SchemaMigrationConnection.new("document_revisions" => revision_sql, "document_passages" => passage_sql)
+  end
+end
 
-      define_method(:initialize) do
-        @schemas = { "document_revisions" => revision_sql, "document_passages" => passage_sql }
-        @batches = []
-        @transactions = 0
-      end
+class SchemaMigrationConnection
+  attr_reader :batches, :transactions
 
-      define_method(:get_first_value) do |query|
-        @schemas.fetch(query[/name = '([^']+)'/, 1])
-      end
+  def initialize(schemas)
+    @schemas = schemas
+    @batches = []
+    @transactions = 0
+  end
 
-      define_method(:execute_batch) { |sql| @batches << sql }
-      define_method(:transaction) { |_mode, &block| @transactions += 1; block.call }
-    end.new
+  def get_first_value(query) = @schemas.fetch(query[/name = '([^']+)'/, 1])
+
+  def execute_batch(sql) = @batches << sql
+
+  def transaction(_mode)
+    @transactions += 1
+    yield
   end
 end

@@ -6,7 +6,7 @@ require "open3"
 require "digest"
 require_relative "../../../scripts/lib/plastic/commands/architecture_refresh"
 
-class ArchitectureTest < Plastic::TestCase
+class ArchitectureRefreshTest < Plastic::TestCase
   def test_refresh_preserves_the_saved_receipt_when_enola_generation_fails
     prior = { "state" => "fresh", "revision" => "abc" }
     command = refresh_command(adapter_result: { success: false, receipt: prior })
@@ -23,15 +23,9 @@ class ArchitectureTest < Plastic::TestCase
   end
 
   def test_refresh_prints_and_persists_the_new_receipt
-    command = Plastic::Commands::ArchitectureRefresh.allocate
     rows = []
     next_steps = []
-    output = Object.new
-    output.define_singleton_method(:row) { |name, value| rows << [name, value] }
-    output.define_singleton_method(:next_step) { |name, because:| next_steps << [name, because] }
-    command.instance_variable_set(:@output, output)
-    command.define_singleton_method(:refreshed_receipt) { { "state" => "fresh" } }
-    command.define_singleton_method(:persist) { |receipt| @persisted = receipt }
+    command = recorded_refresh(rows, next_steps)
 
     command.call
 
@@ -40,29 +34,52 @@ class ArchitectureTest < Plastic::TestCase
   end
 
   def test_refresh_writes_a_serialized_receipt_to_the_knowledge_database
+    rows = []
+    command = refresh_with_database(rows)
+
+    command.send(:persist, { "state" => "fresh" })
+    table, row = rows.fetch(0)
+
+    assert_equal :architecture_receipts, table
+    assert_equal ["enola", { "state" => "fresh" }], [row.fetch(:provider), JSON.parse(row.fetch(:data))]
+    refute_nil row.fetch(:updated_at)
+  end
+
+  def refresh_command(adapter_result:, current: nil)
     command = Plastic::Commands::ArchitectureRefresh.allocate
-    puts = []
+    adapter = Struct.new(:result) { def refresh(**) = result }.new(adapter_result)
+    state = Struct.new(:worktree_hash).new("changed")
+    command.define_singleton_method(:adapter) { adapter }
+    command.define_singleton_method(:repository) { "/repository" }
+    command.define_singleton_method(:stored_receipt) { { "state" => "fresh" } }
+    command.define_singleton_method(:current_receipt) { current || {} }
+    command.define_singleton_method(:source_state) { state }
+    command
+  end
+
+  def recorded_refresh(rows, next_steps)
+    command = Plastic::Commands::ArchitectureRefresh.allocate
+    output = Object.new
+    output.define_singleton_method(:row) { |name, value| rows << [name, value] }
+    output.define_singleton_method(:next_step) { |name, because:| next_steps << [name, because] }
+    command.instance_variable_set(:@output, output)
+    command.define_singleton_method(:refreshed_receipt) { { "state" => "fresh" } }
+    command.define_singleton_method(:persist) { |receipt| @persisted = receipt }
+    command
+  end
+
+  def refresh_with_database(rows)
+    command = Plastic::Commands::ArchitectureRefresh.allocate
     batch = Object.new
-    batch.define_singleton_method(:put) { |table, row| puts << [table, row] }
+    batch.define_singleton_method(:put) { |table, row| rows << [table, row] }
     database = Object.new
     database.define_singleton_method(:transaction) { |&block| block.call(batch) }
     command.define_singleton_method(:graphs) { Struct.new(:databases).new({ knowledge: database }) }
-
-    command.send(:persist, { "state" => "fresh" })
-
-    assert_equal :architecture_receipts, puts.first.first
-    assert_equal ["enola", { "state" => "fresh" }], [puts.first.last.fetch(:provider), JSON.parse(puts.first.last.fetch(:data))]
-    refute_nil puts.first.last.fetch(:updated_at)
+    command
   end
-  def test_reports_a_missing_architecture_snapshot_as_json_and_lists_its_refresh_command
-    status = plastic("architecture", "status", "--json", table: Plastic::CLI::TABLE)
-    help = plastic("architecture", "refresh", "--help", table: Plastic::CLI::TABLE)
+end
 
-    assert_equal 0, status.code, status.err
-    assert_equal "missing", JSON.parse(status.out).dig("result", "architecture", "state")
-    assert_includes help.out, "plastic architecture refresh"
-  end
-
+class ArchitectureSourceStateTest < Plastic::TestCase
   def test_reports_architecture_status_when_git_and_enola_are_unavailable
     original_path = ENV.fetch("PATH")
     ENV["PATH"] = ""
@@ -80,14 +97,11 @@ class ArchitectureTest < Plastic::TestCase
       executable = File.join(directory, "enola")
       File.write(executable, "#!/bin/sh\nexit 0\n")
       FileUtils.chmod(0o755, executable)
-      original_path = ENV.fetch("PATH")
-      ENV["PATH"] = [directory, original_path].join(File::PATH_SEPARATOR)
+      with_executable_path(directory) do
+        identity = Plastic::Architecture::SourceState.new(@home).identity
 
-      identity = Plastic::Architecture::SourceState.new(@home).identity
-
-      assert_equal Digest::SHA256.file(executable).hexdigest, identity.binary_digest
-    ensure
-      ENV["PATH"] = original_path
+        assert_equal Digest::SHA256.file(executable).hexdigest, identity.binary_digest
+      end
     end
   end
 
@@ -95,11 +109,30 @@ class ArchitectureTest < Plastic::TestCase
     original_path = ENV.fetch("PATH")
     ENV["PATH"] = "/usr/bin:/bin"
 
-    refute File.exist?("/usr/bin/enola")
-    refute File.exist?("/bin/enola")
+    refute_path_exists "/usr/bin/enola"
+    refute_path_exists "/bin/enola"
     assert_nil Plastic::Architecture::SourceState.new(@home).identity.binary_digest
   ensure
     ENV["PATH"] = original_path
+  end
+
+  def with_executable_path(directory)
+    original = ENV.fetch("PATH")
+    ENV["PATH"] = [directory, original].join(File::PATH_SEPARATOR)
+    yield
+  ensure
+    ENV["PATH"] = original
+  end
+end
+
+class ArchitectureStatusTest < Plastic::TestCase
+  def test_reports_a_missing_architecture_snapshot_as_json_and_lists_its_refresh_command
+    status = plastic("architecture", "status", "--json", table: Plastic::CLI::TABLE)
+    help = plastic("architecture", "refresh", "--help", table: Plastic::CLI::TABLE)
+
+    assert_equal 0, status.code, status.err
+    assert_equal "missing", JSON.parse(status.out).dig("result", "architecture", "state")
+    assert_includes help.out, "plastic architecture refresh"
   end
 
   def test_marks_a_second_dirty_worktree_edit_as_stale
@@ -135,20 +168,6 @@ class ArchitectureTest < Plastic::TestCase
 
       assert_equal "plastic architecture refresh --project other", result.fetch("next")
     end
-  end
-
-  private
-
-  def refresh_command(adapter_result:, current: nil)
-    command = Plastic::Commands::ArchitectureRefresh.allocate
-    adapter = Struct.new(:result) { def refresh(**) = result }.new(adapter_result)
-    state = Struct.new(:worktree_hash).new("changed")
-    command.define_singleton_method(:adapter) { adapter }
-    command.define_singleton_method(:repository) { "/repository" }
-    command.define_singleton_method(:stored_receipt) { { "state" => "fresh" } }
-    command.define_singleton_method(:current_receipt) { current || {} }
-    command.define_singleton_method(:source_state) { state }
-    command
   end
 
   def architecture_status(repository, arguments: [])

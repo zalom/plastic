@@ -12,11 +12,8 @@ class IntentDiscoverTest < Plastic::TestCase
     contexts = ["not-json", "{}", JSON.generate("discovery" => { "query" => "evidence 2", "scope" => ["global"] })]
     contexts.each_with_index do |data, index|
       write_saved_context(data)
-      result = plastic("intent", "discover", "1", "evidence #{index}", "--source-project", "other", "--json", table: Plastic::CLI::TABLE)
 
-      assert_equal 0, result.code, result.err
-      assert_equal "plastic intent context 1 --from FILE --project global", JSON.parse(result.out).fetch("next")
-      assert_equal "evidence #{index}", JSON.parse(result.out).dig("result", "discovery", "query")
+      assert_fresh_discovery("evidence #{index}")
     end
 
     assert_equal before, File.binread(source)
@@ -43,10 +40,8 @@ class IntentDiscoverTest < Plastic::TestCase
     unknown = plastic("intent", "discover", "1", "evidence", "--source-project", "missing", table: Plastic::CLI::TABLE)
     unmaintained = plastic("intent", "discover", "1", "evidence", "--source-project", "other", table: Plastic::CLI::TABLE)
 
-    assert_equal 1, unknown.code
-    assert_includes unknown.err, "unknown source projects: missing"
-    assert_equal 1, unmaintained.code
-    assert_includes unmaintained.err, "retrieval maintenance is required before source other can be read"
+    assert_discovery_failure(unknown, "unknown source projects: missing")
+    assert_discovery_failure(unmaintained, "retrieval maintenance is required before source other can be read")
     refute_path_exists missing
   end
 
@@ -76,6 +71,20 @@ class IntentDiscoverTest < Plastic::TestCase
   end
 
   private
+
+  def assert_fresh_discovery(query)
+    result = plastic("intent", "discover", "1", query, "--source-project", "other", "--json", table: Plastic::CLI::TABLE)
+    document = JSON.parse(result.out)
+
+    assert_equal 0, result.code, result.err
+    assert_equal "plastic intent context 1 --from FILE --project global", document.fetch("next")
+    assert_equal query, document.dig("result", "discovery", "query")
+  end
+
+  def assert_discovery_failure(result, message)
+    assert_equal 1, result.code
+    assert_includes result.err, message
+  end
 
   def assert_routine_handoff(run)
     assert_equal "handed_off", run.status
