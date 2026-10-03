@@ -97,7 +97,10 @@ checks each part of the installation:
 | `installer lock` | Whether an installer is running, or an activation was interrupted |
 
 The check changes nothing. For each broken part it prints a `repair:` line with the command
-that fixes it, and its next step is `plastic version` again.
+that fixes it, and it exits 1. Run the repairs, then run `plastic version` again.
+
+When no release is installed, as when Plastic runs from source or from npm, the `installation`
+row says so. Only Ruby is checked, and the check does not report the installation as whole.
 
 ## Update
 
@@ -149,8 +152,9 @@ plastic uninstall --all
 your agents. Pass `--claude` or `--codex` to remove one agent only. `--dry-run` lists what
 the command would remove. Your stores under `~/.plastic` stay.
 
-The releases under `~/.local/share/plastic` and the `~/.local/bin/plastic` link also stay.
-Delete them by hand to remove the program itself.
+Once no agent stays registered, the command also removes the releases under
+`~/.local/share/plastic` and the `~/.local/bin/plastic` link. A `plastic` file there that
+Plastic did not link stays, and the command says so.
 
 ## Move from npm
 
