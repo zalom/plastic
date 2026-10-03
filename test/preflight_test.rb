@@ -8,6 +8,6 @@ class PreflightTest < Minitest::Test
     result = Preflight.check(ruby_version: "4.0.0", git_present: true, sqlite3_present: true,
       missing_gems: ["sqlite3"], platform: "darwin")
 
-    assert_includes result.fetch(:messages), "next: gem install sqlite3 -v 2.9.6"
+    assert_includes result.fetch(:messages).first, "next: gem install sqlite3 -v 2.9.6"
   end
 end
