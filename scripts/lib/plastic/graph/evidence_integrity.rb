@@ -25,7 +25,8 @@ module Plastic
           @before_rebuild.call
           snapshot = @snapshot.capture(connection)
           report = @audit.report(snapshot)
-          raise EvidenceLost, report.fetch(:missing).join("; ") unless report.fetch(:missing).empty?
+          missing = report.fetch(:missing)
+          raise EvidenceLost, missing.join("; ") unless missing.empty?
 
           @rebuilder.rebuild(batch, snapshot)
         end

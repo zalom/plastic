@@ -51,11 +51,12 @@ module Plastic
       end
 
       def write(row)
+        intent_id = row.fetch("intent_id")
         path = row.fetch("path") { row.fetch("name").split("/", 3).last }
-        return if head_exists?(row.fetch("intent_id"), path)
+        return if head_exists?(intent_id, path)
 
         body = row.fetch("body") { row.fetch("data").dup.force_encoding(Encoding::UTF_8) }
-        EvidenceWriter.new(@knowledge, @origin_id).write(row.fetch("intent_id"), path, body)
+        EvidenceWriter.new(@knowledge, @origin_id).write(intent_id, path, body)
         @after_write.call
       end
 

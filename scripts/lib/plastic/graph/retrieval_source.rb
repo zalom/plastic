@@ -5,7 +5,7 @@ require_relative "origin"
 require_relative "retrieval_graph"
 
 module Plastic
-  # Opens the read-only graph components that retrieval commands need.
+  # Contains the persistence and retrieval components for Plastic graph records.
   module Graph
     # Opens only the databases and read graph that document retrieval needs.
     module RetrievalSource

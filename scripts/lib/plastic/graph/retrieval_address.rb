@@ -18,26 +18,27 @@ module Plastic
         parse(reference)
       end
 
-      def verify_store!(fields)
-        return if fields.fetch(:store) == @store
+      def verify_store(fields)
+        source = fields.fetch(:store)
+        return if source == @store
 
-        raise RetrievalGraph::MissingReference, "source #{fields.fetch(:store)} is not #{@store}"
+        raise RetrievalGraph::MissingReference, "source #{source} is not #{@store}"
       end
 
       private
 
       def parse(uri)
         match = /\Aplastic:\/\/([^\/]+)\/([^\/]+)\/([^?]*)(?:\?revision=([0-9a-f]{64}))?\z/.match(uri)
-        invalid!(uri) unless match
+        invalid(uri) unless match
 
         store, intent_id, path, revision = match.captures
         path = URI::DEFAULT_PARSER.unescape(path).force_encoding(Encoding::UTF_8)
-        invalid!(uri) unless path.valid_encoding?
+        invalid(uri) unless path.valid_encoding?
 
         { store:, intent_id:, path:, revision: }
       end
 
-      def invalid!(uri) = raise RetrievalGraph::MissingReference, "invalid document reference #{uri.inspect}"
+      def invalid(uri) = raise RetrievalGraph::MissingReference, "invalid document reference #{uri.inspect}"
 
       def escape(path) = path.bytes.map { |byte| unreserved?(byte) ? byte.chr : format("%%%02X", byte) }.join
 

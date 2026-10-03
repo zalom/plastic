@@ -18,7 +18,7 @@ module Plastic
 
       def fetch(reference)
         fields = address.fields_for(reference)
-        address.verify_store!(fields)
+        address.verify_store(fields)
         row = documents.fetch(fields)
 
         qualified(fields.fetch(:intent_id), fields.fetch(:path), row.fetch("sha256")).merge(body: row.fetch("body"))
