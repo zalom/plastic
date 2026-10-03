@@ -10,7 +10,7 @@ module Plastic
         module_function
 
         def extract(source)
-          rendered = source.gsub(/\\u(-?\d+)\?\\u(-?\d+)\?/) { pair(Regexp.last_match) || Regexp.last_match(0) }
+          rendered = resolve_pairs(source)
           TokenStream.new(rendered, PATTERN).extract { |match| token(match) }
         end
 
@@ -22,8 +22,24 @@ module Plastic
           ""
         end
 
-        def pair(match)
-          high, low = match.captures.map { |value| codepoint(value) }
+        def resolve_pairs(source)
+          output = String.new
+          cursor = 0
+          while (first = escape_at(source, cursor))
+            output << source[cursor...first.begin(0)]
+            second = escape_at(source, first.end(0))
+            output << (adjacent_pair(first, second) || first[0])
+            cursor = adjacent_pair(first, second) ? second.end(0) : first.end(0)
+          end
+          output << source[cursor..]
+        end
+
+        def escape_at(source, offset) = /\\u(-?\d+)\?/.match(source, offset)
+
+        def adjacent_pair(first, second)
+          return unless second&.begin(0) == first.end(0)
+
+          high, low = [first[1], second[1]].map { |value| codepoint(value) }
           return unless high.between?(0xD800, 0xDBFF) && low.between?(0xDC00, 0xDFFF)
 
           (0x10000 + ((high - 0xD800) << 10) + low - 0xDC00).chr(Encoding::UTF_8)

@@ -34,6 +34,12 @@ class EvidenceTextTest < Plastic::TestCase
     assert_equal "žé", text.extract("note.rtf", "{\\rtf1\\ansi\\u382?\\'e9}")
   end
 
+  def test_decodes_a_surrogate_pair_after_an_adjacent_bmp_escape
+    source = "{\\rtf1\\ansi\\u382?\\u-10179?\\u-8704?}"
+
+    assert_equal "ž😀", text.extract("note.rtf", source)
+  end
+
   def test_markup_and_rtf_passages_keep_their_original_source_line_ranges
     html = "<html>\n<style>hidden\ncode</style>\n<body>\n<p>First line</p>\n<p>Second &amp; third</p>\n</body>\n</html>"
     rtf = "{\\rtf1\\ansi\nFirst \\b line\\b0\\par\nSecond \\u382? line\n}"
