@@ -76,6 +76,22 @@ class RetrievalGraphTest < Plastic::TestCase
       result.map { |row| row.values_at("intent_id", "path", "body", "position") }
   end
 
+  def test_search_uses_fts_rank_without_changing_bm25_order_or_cutoff_ties
+    first = open_intent("First")
+    second = open_intent("Second")
+    index_text(first, "z.md", "common term")
+    index_text(second, "a.md", "common term")
+    index_text(second, "b.md", "common term")
+    database = store_graphs.databases.fetch(:knowledge)
+    query = '"common" AND "term"'
+    legacy = database.rows("SELECT intent_id, path, body, sha256, position, bm25(document_fts) AS score FROM document_fts WHERE document_fts MATCH :query AND origin_id = :origin ORDER BY score, intent_id, path, position LIMIT :limit",
+      query:, origin:, limit: 2)
+    plan = database.rows("EXPLAIN QUERY PLAN #{Plastic::Graph::RetrievalGraph::SEARCH_SQL}", query:, origin:, limit: 2)
+
+    assert_equal legacy, retrieval.search("common term", limit: 2)
+    refute plan.any? { |row| row.fetch("detail").include?("USE TEMP B-TREE") }
+  end
+
   def test_backfills_a_text_reference_once_without_removing_its_attachment
     row = { name: "store/1--alpha/research.txt", mode: 0o100644, mtime: 0, sz: 18,
             data: Plastic::Graph::SQL::Bytes.new("Archived evidence\n"), intent_id: "1", sha256: "source" }
