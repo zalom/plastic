@@ -39,7 +39,7 @@ class RetrievalBenchmarkQualityTest < Minitest::Test
 
   def test_reports_a_missing_document_when_a_returned_expected_reference_cannot_be_fetched
     Dir.mktmpdir do |directory|
-      uri = "plastic://global/1/missing.md?revision=#{'a' * 64}"
+      uri = "plastic://global/1/missing.md?revision=#{"a" * 64}"
       rows = [{ "uri" => uri, "position" => 1, "store" => "global" }]
 
       checks = Plastic::RetrievalBenchmark::QualityPassageChecks.new(directory, uri => "evidence").evaluate(rows)

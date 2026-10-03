@@ -9,7 +9,7 @@ module Plastic
     # Builds the public quality report from one candidate fixture and its answers.
     QualityEvaluationReport = Data.define(:candidate, :answers) do
       def build
-        { "status" => candidate.fetch("status"), "owner_review" => { "status" => "pending" }, "synthetic_top_20" => answers,
+        { "status" => candidate.fetch("status"), "owner_review" => candidate.fetch("owner_review", { "status" => "pending" }), "synthetic_top_20" => answers,
           "synthetic_recall" => answers.count { |answer| answer.fetch("passed") }.fdiv(answers.length) }
       end
     end
