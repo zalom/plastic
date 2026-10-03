@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "../../scripts/lib/plastic"
-require_relative "../../scripts/lib/plastic/graph"
-require_relative "../../scripts/lib/plastic/graph/evidence_writer"
+require_relative "benchmark_store_seed"
 
 module Plastic
   module RetrievalBenchmark
@@ -23,17 +21,7 @@ module Plastic
 
       def stores = @corpus.fetch("files").group_by { |path| File.basename(File.dirname(path)) }
 
-      def seed_store(store, paths)
-        graphs = Graph.open(home: @home, store:)
-        graphs.databases.each_value { |database| database.rows("SELECT 1") }
-        seed_documents(graphs, paths)
-        graphs.retrieval.backfill
-      end
-
-      def seed_documents(graphs, paths)
-        writer = Graph::EvidenceWriter.new(graphs.databases.fetch(:knowledge), graphs.retrieval.origin_id)
-        paths.each_with_index { |path, index| writer.write((index + 1).to_s, File.basename(path), File.read(path, encoding: "UTF-8")) }
-      end
+      def seed_store(store, paths) = BenchmarkStoreSeed.new(@home, store, paths.each_with_index.map { |path, index| BenchmarkSeedDocument.from_file(path, index) }).seed
 
       def commands(reference)
         executable = [File.join(RetrievalBenchmark::ROOT, "bin", "plastic")]
