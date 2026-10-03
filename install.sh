@@ -5,9 +5,18 @@ repo="${PLASTIC_REPO:-zalom/plastic}"
 channel="${PLASTIC_CHANNEL:-stable}"
 share="${PLASTIC_SHARE:-$HOME/.local/share/plastic}"
 bin="${PLASTIC_BIN:-$HOME/.local/bin}"
+dry_run=false
+[ "${1:-}" = "--dry-run" ] && dry_run=true
 
 command -v ruby >/dev/null || { echo "plastic needs Ruby 4.0 or later, and no ruby is on the PATH" >&2; exit 1; }
 command -v curl >/dev/null || { echo "plastic's installer needs curl, and no curl is on the PATH" >&2; exit 1; }
+
+if [ "$dry_run" = true ]; then
+  echo "would read release metadata for $repo ($channel)"
+  echo "would stage and activate Plastic under $share"
+  echo "next: plastic install"
+  exit 0
+fi
 
 # The newest release on the channel that actually carries plastic.tgz. A release
 # with no archive, and a pre-release wearing the Latest badge, both used to send
