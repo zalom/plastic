@@ -4,12 +4,17 @@ require_relative "../routine"
 
 module Plastic
   module Commands
-    # Lists the version history of the home, or names the installer command
-    # that brings back one version from it. It changes no file itself.
+    # Switches the active release back to the previous one, or to a named
+    # installed release. A dry run names the switch and changes nothing.
     class Rollback < Routine
-      option :target, switch: "--version VERSION", text: "a version from the history to go back to"
+      option :target, switch: "--version VERSION", text: "an installed release to switch to"
+      option :dry_run, switch: "--dry-run", default: false, text: "name the switch and change nothing"
 
-      workflow :code_show_rollback, next: :noop
+      workflow :code_preview_rollback do
+        on :done, next: :noop
+        on :continue, next: :code_rollback_release
+      end
+      workflow :code_rollback_release, next: :noop
 
       private
 

@@ -74,7 +74,7 @@ module Preflight
 
   def install_command(platform, package)
     if platform.to_s == "linux"
-      "sudo apt-get install -y #{package}"
+      "install #{package} with your distribution's package manager"
     else
       "xcode-select --install"
     end

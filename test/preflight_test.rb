@@ -16,8 +16,10 @@ class PreflightTest < Minitest::Test
       missing_gems: ["sqlite3"], platform: "linux")
 
     assert_equal [false, true], linux.values_at(:ok, :fatal)
-    assert_includes linux.fetch(:messages).join("\n"), "sudo apt-get install -y git"
-    assert_includes linux.fetch(:messages).join("\n"), "sudo apt-get install -y sqlite3"
+    text = linux.fetch(:messages).join("\n")
+    assert_includes text, "install git with your distribution's package manager"
+    assert_includes text, "install sqlite3 with your distribution's package manager"
+    refute_includes text, "apt-get"
   end
 
   def test_reports_macos_recovery_steps

@@ -34,7 +34,7 @@ module Plastic
       :code_backup, :code_backup_list,
       # Distribution: the installer commands over the running package and the home.
       :code_show_version, :code_preview_install, :code_install_plastic, :code_preview_update, :code_update_plastic,
-      :code_show_rollback, :code_preview_uninstall, :code_uninstall_plastic,
+      :code_preview_rollback, :code_rollback_release, :code_preview_uninstall, :code_uninstall_plastic,
       # Work graph: building and moving the nodes and edges of one intent.
       :code_add_node, :code_remove_node, :code_add_edge, :code_remove_edge,
       :code_claim_node, :code_release_node, :code_done_node, :code_fail_node, :code_park_node, :code_answer_node
