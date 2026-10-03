@@ -13,7 +13,7 @@ module Plastic
       def write
         @batch.put(:documents, @document.document_row)
         immutable_rows
-        yield if block_given?
+        yield
         current_rows
       end
 

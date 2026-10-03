@@ -41,8 +41,6 @@ module Plastic
       private
 
       def scan
-        return enum_for(__method__) unless block_given?
-
         legacy_documents.each { |row| yield LegacyDocument.from_document(row) }
         legacy_references.each { |row| yield LegacyDocument.from_reference(row) }
       end
