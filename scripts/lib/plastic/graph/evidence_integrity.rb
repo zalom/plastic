@@ -18,7 +18,7 @@ module Plastic
       def initialize(database, origin_id, before_rebuild: -> {})
         @database = database
         @before_rebuild = before_rebuild
-        @components = Components.new(EvidenceIntegritySnapshot.new(database, origin_id), EvidenceIntegrityAudit.new,
+        @components = Components.new(EvidenceIntegritySnapshot.new(database, origin_id), EvidenceIntegrityAudit,
           EvidenceIntegrityRebuilder.new(origin_id))
       end
 

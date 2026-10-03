@@ -6,30 +6,63 @@ module Plastic
   module Graph
     # Compares derived evidence rows with immutable document revisions.
     class EvidenceIntegrityAudit
-      def report(snapshot) = { repairable: drift?(snapshot), missing: missing(snapshot) }
+      # Compares one derived table's canonical rows with its stored rows.
+      TableComparison = Data.define(:name, :snapshot) do
+        def expected
+          { heads: documents.map(&:head_values), passages: revisions.flat_map(&:passage_values),
+            fts: documents.flat_map { |document| FtsProjection.new(document).values } }.fetch(name)
+        end
 
-      private
+        def actual
+          rows = snapshot.fetch(name).map(&:values)
+          (name == :heads) ? rows.map { |row| row.values_at(0, 1, 2) } : rows
+        end
 
-      def missing(snapshot)
-        revisions = snapshot.fetch(:revisions)
-        snapshot.fetch(:documents).filter_map do |document|
-          "#{document.intent_id}:#{document.path} has no immutable revision" unless revisions.any? { |revision| revision.matches?(document) }
+        def drift? = expected.sort != actual.sort
+
+        private
+
+        def documents = snapshot.fetch(:documents)
+        def revisions = snapshot.fetch(:revisions)
+      end
+
+      # Projects one document's passages into the FTS table's row order.
+      FtsProjection = Data.define(:document) do
+        def values = document.fts_rows(nil).map { |row| row.values_at(:intent_id, :path, :body, :sha256, :position) }
+      end
+
+      # Identifies the immutable revision that belongs to one current document.
+      MembershipKey = Data.define(:intent_id, :path, :body, :digest) do
+        def self.document(document) = new(document.intent_id, document.path, document.body, document.digest)
+        def self.revision(revision) = new(revision.intent_id, revision.path, revision.body, revision.sha256)
+      end
+
+      # Confirms that every current document has its exact immutable revision.
+      ImmutableMembership = Data.define(:documents, :keys) do
+        def missing
+          documents.filter_map do |document|
+            "#{document.intent_id}:#{document.path} has no immutable revision" unless keys.include?(MembershipKey.document(document))
+          end
         end
       end
 
-      def drift?(snapshot) = %i[heads passages fts].any? { |name| expected(snapshot, name).sort != actual(snapshot, name).sort }
+      # Produces the public audit report from one immutable snapshot.
+      Assessment = Data.define(:snapshot) do
+        def report
+          { repairable: comparisons.any?(&:drift?), missing: membership.missing }
+        end
 
-      def expected(snapshot, name)
-        documents = snapshot.fetch(:documents)
-        { heads: documents.map(&:head_values), passages: snapshot.fetch(:revisions).flat_map(&:passage_values), fts: documents.flat_map { |document| fts_values(document) } }.fetch(name)
+        private
+
+        def membership
+          revisions = snapshot.fetch(:revisions).map { |revision| MembershipKey.revision(revision) }.to_set
+          ImmutableMembership.new(snapshot.fetch(:documents), revisions)
+        end
+
+        def comparisons = %i[heads passages fts].map { |name| TableComparison.new(name, snapshot) }
       end
 
-      def actual(snapshot, name)
-        rows = snapshot.fetch(name).map(&:values)
-        (name == :heads) ? rows.map { |row| row.values_at(0, 1, 2) } : rows
-      end
-
-      def fts_values(document) = document.fts_rows(nil).map { |row| row.values_at(:intent_id, :path, :body, :sha256, :position) }
+      def self.report(snapshot) = Assessment.new(snapshot).report
     end
   end
 end
