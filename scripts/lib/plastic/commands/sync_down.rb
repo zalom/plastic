@@ -11,7 +11,17 @@ module Plastic
     class SyncDown < Routine
       extend SyncOptions
 
+      option :dry_run, switch: "--dry-run", default: false, text: "preview the complete sync in a disposable copy"
+
+      workflow :code_preview_sync_down do
+        on :done, next: :noop
+        on :continue, next: :code_sync_down
+      end
       workflow :code_sync_down, next: :noop
+
+      private
+
+      def keeps_routine_run? = !parsed[:dry_run]
     end
   end
 end

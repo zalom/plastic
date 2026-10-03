@@ -97,9 +97,9 @@ module Plastic
 
       def sync_apply(plan) = sync.apply(plan)
 
-      def preview_sync(options)
+      def preview_sync(options, direction: :up)
         home = File.dirname(@databases.fetch(:home).path)
-        SyncPreview.new(home, @retrieval.store, options).call
+        SyncPreview.new(home, @retrieval.store, options, direction:).call
       end
 
       # Returns [ok, problem, kind]; kind is :failure or :refusal, nil on success.

@@ -10,7 +10,7 @@ module Plastic
     REGISTRY = [
       # Storage: intents and the sync of a store folder with its rows.
       :code_write_intent, :code_sync_up, :code_sync_down, :code_add_ruling, :code_show_spec, :code_start_auto,
-      :code_preview_sync,
+      :code_preview_sync, :code_preview_sync_down,
       :code_check_graph, :code_ready_graph, :code_show_graph, :code_show_intent, :code_show_brief, :code_pick_next,
       # Knowledge graph: typed links between intents and rulings.
       :code_add_link, :code_remove_link,

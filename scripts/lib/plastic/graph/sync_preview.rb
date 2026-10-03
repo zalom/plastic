@@ -8,17 +8,17 @@ module Plastic
   module Graph
     # Runs the real sync against a disposable copy of one store.
     class SyncPreview
-      def initialize(home, store, options)
-        @home, @store, @options = home, store, options
+      def initialize(home, store, options, direction: :up)
+        @home, @store, @options, @direction = home, store, options, direction
       end
 
       def call
         Dir.mktmpdir("plastic-sync-preview") do |copy|
           copy_source(copy)
           work = Graph.open(home: copy, store: @store).work
-          plan = work.sync_plan(:up, options)
+          plan = work.sync_plan(@direction, options)
           check(plan)
-          work.sync_apply(plan).map { |line| "preview: #{line}" }
+          [*conflict_lines(plan), *work.sync_apply(plan)].map { |line| "preview: #{line}" }
         end
       end
 
@@ -42,8 +42,9 @@ module Plastic
 
       def check(plan)
         raise Invalid, plan.failure if plan.failure
-        raise Invalid, "conflicts: #{plan.conflicts.join(", ")}" if plan.conflicts.any? && !plan.merging?
       end
+
+      def conflict_lines(plan) = plan.conflicts.map { |path| "conflict: #{path}" }
 
       def copy_source(copy)
         check_source
