@@ -21,6 +21,39 @@ class ArchitectureTest < Plastic::TestCase
 
     assert_equal({ "state" => "fresh", "revision" => "abc", "worktree_hash" => "changed" }, command.send(:refreshed_receipt))
   end
+
+  def test_refresh_prints_and_persists_the_new_receipt
+    command = Plastic::Commands::ArchitectureRefresh.allocate
+    rows = []
+    next_steps = []
+    output = Object.new
+    output.define_singleton_method(:row) { |name, value| rows << [name, value] }
+    output.define_singleton_method(:next_step) { |name, because:| next_steps << [name, because] }
+    command.instance_variable_set(:@output, output)
+    command.define_singleton_method(:refreshed_receipt) { { "state" => "fresh" } }
+    command.define_singleton_method(:persist) { |receipt| @persisted = receipt }
+
+    command.call
+
+    assert_equal [["architecture", { "state" => "fresh" }], ["none", "the architecture snapshot was refreshed"], { "state" => "fresh" }],
+      [rows.first, next_steps.first, command.instance_variable_get(:@persisted)]
+  end
+
+  def test_refresh_writes_a_serialized_receipt_to_the_knowledge_database
+    command = Plastic::Commands::ArchitectureRefresh.allocate
+    puts = []
+    batch = Object.new
+    batch.define_singleton_method(:put) { |table, row| puts << [table, row] }
+    database = Object.new
+    database.define_singleton_method(:transaction) { |&block| block.call(batch) }
+    command.define_singleton_method(:graphs) { Struct.new(:databases).new({ knowledge: database }) }
+
+    command.send(:persist, { "state" => "fresh" })
+
+    assert_equal :architecture_receipts, puts.first.first
+    assert_equal ["enola", { "state" => "fresh" }], [puts.first.last.fetch(:provider), JSON.parse(puts.first.last.fetch(:data))]
+    refute_nil puts.first.last.fetch(:updated_at)
+  end
   def test_reports_a_missing_architecture_snapshot_as_json_and_lists_its_refresh_command
     status = plastic("architecture", "status", "--json", table: Plastic::CLI::TABLE)
     help = plastic("architecture", "refresh", "--help", table: Plastic::CLI::TABLE)
