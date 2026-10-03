@@ -19,12 +19,24 @@ module Plastic
       private
 
       def run_in(directory)
-        corpus = RetrievalBenchmark.generate_corpus(File.join(directory, "corpus"), target_bytes: @options.fetch(:corpus_bytes))
-        benchmark = Seeder.new(directory, corpus).seed
-        report = Report.new(corpus, measure(benchmark), @options.fetch(:warmup), @options.fetch(:samples)).build
-        report["quality"] = quality(directory) if @options.fetch(:quality_input)
+        corpus, benchmark = prepare_benchmark(directory)
+        report = measured_report(corpus, benchmark)
+        attach_quality(report, directory)
         write(report)
         report
+      end
+
+      def prepare_benchmark(directory)
+        corpus = RetrievalBenchmark.generate_corpus(File.join(directory, "corpus"), target_bytes: @options.fetch(:corpus_bytes))
+        [corpus, Seeder.new(directory, corpus).seed]
+      end
+
+      def measured_report(corpus, benchmark)
+        Report.new(corpus, measure(benchmark), @options.fetch(:warmup), @options.fetch(:samples)).build
+      end
+
+      def attach_quality(report, directory)
+        report["quality"] = quality(directory) if @options.fetch(:quality_input)
       end
 
       def measure(benchmark) = Measurements.new(benchmark, @options.fetch(:warmup), @options.fetch(:samples)).measure
