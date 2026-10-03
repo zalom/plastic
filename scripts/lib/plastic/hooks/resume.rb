@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../hook"
+require_relative "../graph"
 require_relative "recap"
 
 module Plastic

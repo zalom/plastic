@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "shellwords"
+require_relative "agent_workflow"
 
 module Plastic
   module Workflows
