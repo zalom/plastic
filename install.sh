@@ -45,14 +45,25 @@ else
 fi
 
 archive=$(mktemp)
-trap 'rm -f "$archive"' EXIT
+stage="$share.stage.$$"
+backup="$share.previous.$$"
+trap 'rm -f "$archive"; rm -rf "$stage"' EXIT
 curl -fsSL "$archive_url" -o "$archive" || { echo "could not download $archive_url" >&2; exit 1; }
 
-rm -rf "$share.new"
-mkdir -p "$share.new" "$bin"
-tar -xzf "$archive" -C "$share.new" --strip-components=1
-rm -rf "$share"
-mv "$share.new" "$share"
+rm -rf "$stage" "$backup"
+mkdir -p "$stage" "$bin"
+tar -xzf "$archive" -C "$stage" --strip-components=1
+[ -x "$stage/bin/plastic" ] || { echo "archive has no executable plastic command" >&2; exit 1; }
+
+if [ -e "$share" ]; then
+  mv "$share" "$backup" || { echo "could not preserve the current installation" >&2; exit 1; }
+fi
+if ! mv "$stage" "$share"; then
+  [ ! -e "$backup" ] || mv "$backup" "$share"
+  echo "could not activate the new installation; restored the previous installation" >&2
+  exit 1
+fi
+rm -rf "$backup"
 ln -sf "$share/bin/plastic" "$bin/plastic"
 
 echo "plastic is installed at $bin/plastic"
