@@ -64,6 +64,16 @@ class TableTest < Plastic::TestCase
       Schema::DATABASES.fetch(:knowledge).last
   end
 
+  def test_the_knowledge_schema_has_the_retrieval_tables_and_fts_index
+    schema = Schema.fetch(:knowledge)
+
+    %w[document_revisions document_heads document_passages retrieval_schema].each do |table_name|
+      assert_includes schema, %(CREATE TABLE IF NOT EXISTS "#{table_name}")
+    end
+    assert_includes schema, 'CREATE VIRTUAL TABLE IF NOT EXISTS "document_fts" USING fts5'
+    assert_includes Schema.table_named(:document_heads).ddl, 'UNIQUE("intent_id", "path", "origin_id")'
+  end
+
   def test_a_tally_names_one_and_many
     assert_equal ["1 routine run", "2 savepoint lines", "1 x"],
       [Schema.tally(:routine_runs, 1), Schema.tally("savepoints", 2), Schema.tally(:x, 1)]

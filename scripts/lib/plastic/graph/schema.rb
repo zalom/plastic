@@ -4,6 +4,8 @@ require_relative "table"
 require_relative "intent"
 require_relative "roadmap"
 require_relative "schema/retrieval"
+require_relative "schema/metadata"
+require_relative "schema/migrations"
 
 module Plastic
   module Graph
@@ -15,6 +17,8 @@ module Plastic
     # every write, and a `printed` table, the hash of every file printed from
     # its rows. The whole design is in docs/contributing/ARCHITECTURE.md.
     module Schema
+      extend SchemaMigrations
+
       # The home keeps `routine_runs`, `sessions` and `locks`, which belong to one machine,
       # not to one store. A store folder keeps the other three tables, one database each.
       #
@@ -90,29 +94,11 @@ module Plastic
       }.freeze
       STORE = %i[work knowledge references].freeze
 
-      # How the report names the rows of a table: one and many.
-      NOUNS = {
-        "completions" => ["completion", "completions"],
-        "retrieval_contexts" => ["retrieval context", "retrieval contexts"],
-        "retrieval_discoveries" => ["retrieval discovery", "retrieval discoveries"],
-        "architecture_receipts" => ["architecture receipt", "architecture receipts"],
-        "routine_runs" => ["routine run", "routine runs"], "intents" => %w[intent intents],
-        "clusters" => %w[cluster clusters], "nodes" => %w[node nodes], "edges" => %w[edge edges],
-        "savepoints" => ["savepoint line", "savepoint lines"], "documents" => %w[document documents],
-        "rulings" => %w[ruling rulings], "links" => %w[link links],
-        "sqlar" => ["kept file", "kept files"], "printed" => ["printed file", "printed files"],
-        "sessions" => %w[session sessions], "locks" => %w[lock locks],
-        "roadmaps" => %w[roadmap roadmaps], "batches" => %w[batch batches],
-        "roadmap_items" => %w[item items], "roadmap_edges" => ["roadmap edge", "roadmap edges"],
-        "roadmap_log" => ["roadmap log line", "roadmap log lines"], "archives" => %w[archive archives],
-        "archive_entries" => ["archive entry", "archive entries"], "backups" => %w[backup backups]
-      }.freeze
+      NOUNS = SchemaMetadata::NOUNS
 
       def self.file(key) = DATABASES.fetch(key).first
 
-      MIGRATIONS = {
-        knowledge: "INSERT OR IGNORE INTO \"retrieval_schema\" (\"name\", \"version\") VALUES ('retrieval', 1);"
-      }.freeze
+      MIGRATIONS = SchemaMetadata::MIGRATIONS
 
       def self.fetch(key) = [*DATABASES.fetch(key).last.map { |name| ddl(name) }, MIGRATIONS[key]].compact.join("\n")
 
@@ -125,38 +111,6 @@ module Plastic
       def self.table_named(name) = TABLES.fetch(name.to_sym)
 
       def self.ddl(name) = RetrievalSchema::FTS.fetch(name) { TABLES.fetch(name).ddl }
-
-      def self.migrate_revision_membership(connection)
-        sql = connection.get_first_value("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'document_revisions'")
-        return unless sql&.include?('UNIQUE("sha256", "origin_id")')
-
-        connection.transaction(:immediate) do
-          connection.execute_batch <<~SQL
-            ALTER TABLE document_revisions RENAME TO document_revisions_legacy;
-            #{ddl(:document_revisions)}
-            INSERT INTO document_revisions (sha256, intent_id, path, body, created_at, origin_id)
-            SELECT sha256, intent_id, path, body, created_at, origin_id FROM document_revisions_legacy;
-            DROP TABLE document_revisions_legacy;
-          SQL
-        end
-      end
-
-      def self.migrate_passage_identity(connection)
-        sql = connection.get_first_value("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'document_passages'")
-        return unless sql
-        return if sql.include?('"intent_id"')
-
-        connection.transaction(:immediate) do
-          connection.execute_batch <<~SQL
-            ALTER TABLE document_passages RENAME TO document_passages_legacy;
-            #{ddl(:document_passages)}
-            INSERT INTO document_passages (sha256, intent_id, path, position, body, line_start, line_end, origin_id)
-            SELECT p.sha256, r.intent_id, r.path, p.position, p.body, p.line_start, p.line_end, p.origin_id
-            FROM document_passages_legacy p JOIN document_revisions r ON r.sha256 = p.sha256 AND r.origin_id = p.origin_id;
-            DROP TABLE document_passages_legacy;
-          SQL
-        end
-      end
 
       # A count of rows with its noun: "1 routine run", "2 routine runs".
       def self.tally(table, count)
