@@ -272,7 +272,7 @@ plastic install --claude              # Install into Claude Code
 npx -y @zalom/plastic install --reinstall --claude  # Repair an install
 plastic update                        # Next version on the current channel
 plastic update --alpha                # Move to the alpha channel
-plastic rollback                      # List the versions this machine has run
+plastic rollback                      # Switch back to the previous release
 plastic rollback --version 2.0.0-alpha.27
 plastic uninstall --all               # Remove Plastic from every agent. Your stores stay.
 plastic doctor                        # Check the install and the stores

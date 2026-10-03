@@ -35,7 +35,7 @@ plastic status
 | Command | What it does |
 | ------- | ------------ |
 | `plastic update` | Moves Plastic to the next version on its channel. |
-| `plastic rollback [--version VERSION]` | Moves to a version this machine has run before. With no version, it lists them. |
+| `plastic rollback [--version VERSION]` | Switches back to the previous release that `install.sh` activated, or to the installed release you name. `--dry-run` names the switch and changes nothing. |
 | `plastic uninstall` | Removes Plastic from this machine's agents. Your stores stay. |
 
 ## Repair an install
@@ -78,9 +78,14 @@ gem is missing.
 ## Install without npm
 
 `install.sh` installs the newest release on the stable channel, or on the channel that
-`PLASTIC_CHANNEL` names. It downloads that release's archive,
-unpacks it under `~/.local/share/plastic` and links `~/.local/bin/plastic`. It needs Ruby and
-curl.
+`PLASTIC_CHANNEL` names (`stable`, `beta` or `alpha`). `PLASTIC_VERSION` picks one release
+instead. The script downloads the release's archive, its `.sha256` checksum file and its
+manifest over HTTPS, and checks the archive against the checksum before it unpacks anything.
+Each release goes into its own directory under `~/.local/share/plastic/releases`, and the
+`active` link points at the one in use. The script links `~/.local/bin/plastic` to it and
+prints a PATH hint. It edits no shell profile. It needs Ruby 4.0 or later with Bundler, curl,
+tar, and `sha256sum` or `shasum`. When one is missing, it names the steps for macOS and Linux.
+`sh install.sh --dry-run` reads the release metadata and changes nothing.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/zalom/plastic/main/install.sh | sh
@@ -90,7 +95,7 @@ plastic install --claude
 To move an installed Plastic to another channel, run `plastic update --beta` or
 `plastic update --alpha`.
 
-When no release on the channel carries the archive, the script reports that and exits, and
-npm is the way to install.
+When no release on the channel carries all three files, the script reports that and exits, and
+npm is the way to install. A failed download or checksum leaves the installed release as it was.
 
 For what the installer writes on your machine, see [SECURITY.md](SECURITY.md).
