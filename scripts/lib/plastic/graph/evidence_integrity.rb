@@ -25,6 +25,7 @@ module Plastic
       # Rebuilds derived rows inside one immediate transaction.
       def repair
         @database.immediate_transaction { |batch, connection| repair_snapshot(batch, connection) }
+        report
       end
 
       def report = components.audit.report(components.snapshot.capture)
