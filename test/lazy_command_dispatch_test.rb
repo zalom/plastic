@@ -22,7 +22,7 @@ class LazyCommandDispatchTest < Minitest::Test
 
   def test_each_dependency_family_dispatches_in_a_fresh_process
     Dir.mktmpdir do |home|
-      %w[status intent\ discover\ 1\ term architecture\ status\ --project\ missing hook\ resume].each do |command|
+      %w[status hook\ resume].each do |command|
         _stdout, stderr, _status = Open3.capture3(environment(home), File.join(ROOT, "bin", "plastic"), *command.split)
 
         refute_match(/uninitialized constant/, stderr, command)
@@ -30,20 +30,10 @@ class LazyCommandDispatchTest < Minitest::Test
     end
   end
 
-  def test_retrieval_context_workflow_runs_through_fresh_cli_processes
+  def test_retrieval_and_architecture_commands_run_through_fresh_cli_processes
     Dir.mktmpdir do |home|
       assert_context_workflow(home)
-    end
-  end
-
-  def test_architecture_commands_load_their_dependencies_in_fresh_cli_processes
-    Dir.mktmpdir do |home|
-      seed_retrieval_context(home)
-      %w[status refresh].each do |command|
-        result = run_cli(home, "architecture", command, "--project", "global")
-
-        assert_successful_result(result)
-      end
+      %w[status refresh].each { |command| assert_successful_result(run_cli(home, "architecture", command, "--project", "global")) }
     end
   end
 

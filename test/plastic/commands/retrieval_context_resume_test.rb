@@ -1,24 +1,10 @@
 # frozen_string_literal: true
 
-require_relative "../test_helper"
-require "fileutils"
-require "json"
-require "open3"
-require "rbconfig"
+require_relative "../../test_helper"
 require "tempfile"
 
-class RetrievalContextResumeTest < Minitest::Test
-  def setup
-    @directory = Dir.mktmpdir("plastic-retrieval-resume")
-    @home = File.join(@directory, ".plastic")
-    @bin = File.expand_path("../../bin/plastic", __dir__)
-  end
-
-  def teardown
-    FileUtils.remove_entry(@directory)
-  end
-
-  def test_real_cli_resumes_only_the_matching_saved_discovery_context
+class RetrievalContextResumeTest < Plastic::TestCase
+  def test_resumes_only_the_matching_saved_discovery_context
     command("intent", "new", "Evidence delivery")
     submit_context(first_reference)
 
@@ -40,11 +26,10 @@ class RetrievalContextResumeTest < Minitest::Test
   private
 
   def command(*arguments)
-    env = { "PLASTIC_HOME" => @home }
-    stdout, stderr, status = Open3.capture3(env, RbConfig.ruby, @bin, *arguments, "--json", chdir: @directory)
+    result = plastic(*arguments, "--json", table: Plastic::CLI::TABLE)
 
-    assert_equal 0, status.exitstatus, stderr
-    JSON.parse(stdout)
+    assert_equal 0, result.code, result.err
+    JSON.parse(result.out)
   end
 
   def context_submission(reference)
