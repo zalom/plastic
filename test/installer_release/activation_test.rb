@@ -10,7 +10,7 @@ class InstallerReleaseActivationTest < Minitest::Test
 
     assert_equal %w[2.0.3 2.0.2], versions(installer)
     assert_equal "2.0.2", installer.rollback
-    assert_equal "old\n", File.read(File.join(installer.active_path, "bin", "plastic"))
+    assert_equal fake_launcher("2.0.2"), File.read(File.join(installer.active_path, "bin", "plastic"))
   end
 
   def test_refuses_a_rollback_without_a_previous_release
@@ -27,8 +27,35 @@ class InstallerReleaseActivationTest < Minitest::Test
     assert_raises(InstallerRelease::ActivationError) do
       installer.activate(candidate, version: "2.0.3", before_switch: -> { raise "injected failure" })
     end
-    assert_equal "old\n", File.read(File.join(installer.active_path, "bin", "plastic"))
+    assert_equal fake_launcher("2.0.2"), File.read(File.join(installer.active_path, "bin", "plastic"))
     assert_path_exists candidate
+  end
+
+  def test_a_release_that_reports_another_version_never_becomes_active
+    installer = activation_with("2.0.2")
+    candidate = staged_candidate("2.0.3")
+    File.write(File.join(candidate, "bin", "plastic"), fake_launcher("2.0.3", reported: "2.0.2"))
+
+    error = assert_raises(InstallerRelease::ActivationError) { installer.activate(candidate, version: "2.0.3") }
+    assert_equal ["the launcher of 2.0.3 reports 2.0.2", ["2.0.2", nil], %w[2.0.2]], [error.message, versions(installer), installer.releases.versions]
+    assert_path_exists candidate
+  end
+
+  def test_a_first_release_that_cannot_start_leaves_no_pointers
+    installer = InstallerRelease::Activation.new(home: install_home)
+    candidate = staged_candidate("2.0.3")
+    File.write(File.join(candidate, "bin", "plastic"), "#!/bin/sh\nexit 1\n")
+
+    assert_raises(InstallerRelease::ActivationError) { installer.activate(candidate, version: "2.0.3") }
+    assert_equal [[nil, nil], []], [versions(installer), installer.releases.versions]
+  end
+
+  def test_refuses_a_rollback_to_a_release_that_cannot_start
+    installer = activation_with("2.0.2", "2.0.3")
+    File.write(File.join(installer.releases.path("2.0.2"), "bin", "plastic"), "#!/bin/sh\nexit 1\n")
+
+    assert_raises(InstallerRelease::ActivationError) { installer.rollback }
+    assert_equal %w[2.0.3 2.0.2], versions(installer)
   end
 
   def test_a_failed_active_pointer_switch_keeps_the_previous_pointer

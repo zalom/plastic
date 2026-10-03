@@ -74,7 +74,11 @@ module InstallShHelper
     end
     FileUtils.mkdir_p(File.join(package, "bin"))
     File.write(File.join(package, "VERSION"), "#{version}\n")
-    File.write(File.join(package, "bin", "plastic"), "#!/bin/sh\necho #{version}\n")
+    File.write(File.join(package, "bin", "plastic"), <<~SH)
+      #!/bin/sh
+      if [ "$*" = "version --json" ]; then echo '{"result":{"version":"#{version}"}}'; exit 0; fi
+      echo #{version}
+    SH
     File.chmod(0o755, File.join(package, "bin", "plastic"))
   end
 

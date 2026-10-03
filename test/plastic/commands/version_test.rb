@@ -72,11 +72,29 @@ class VersionCommandTest < Plastic::TestCase
     assert_equal [before, 4], [tree_snapshot(@home), result.out.scan("repair:").size]
   end
 
+  def test_a_damaged_installation_exits_1_and_names_no_next_command
+    damaged_installation
+    result = call("version")
+
+    assert_equal 1, result.code
+    assert_includes result.err, "a part of the installation is broken; run the repairs named above, then check again"
+    refute_match(/next:/, result.out)
+  end
+
   def test_says_when_no_release_is_activated
     result = call("version")
 
     assert_match(/active:\s+none/, result.out)
     refute_match(/sqlite3 bundle:/, result.out)
+  end
+
+  def test_a_run_with_no_active_release_says_so_and_is_not_reported_whole
+    result = call("version")
+
+    assert_equal 0, result.code, result.err
+    assert_match(/installation:\s+no release is installed; this plastic runs from source or npm/, result.out)
+    assert_match(/because:\s+no release is installed, so only Ruby was checked/, result.out)
+    refute_includes result.out, "whole"
   end
 
   def unmatched(out, patterns) = patterns.reject { |pattern| pattern.match?(out) }
@@ -89,7 +107,7 @@ class VersionCommandTest < Plastic::TestCase
 
   def damaged_rows
     [/launcher:\s+not on PATH/, /sqlite3 bundle:\s+missing/, /hooks:\s+point at #{Regexp.escape(@plastic_home)}/,
-      /installer lock:\s+an activation was interrupted/, /next:\s+plastic version/]
+      /installer lock:\s+an activation was interrupted/]
   end
 
   def healthy_installation
