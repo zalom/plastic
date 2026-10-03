@@ -13,7 +13,7 @@ module Plastic
       reads :knowledge
 
       def call
-        output.row("results", ranked_rows)
+        output.row("results", ranked_rows(search_limit))
         output.next_step("none", because: "the indexed passages were read")
       rescue Graph::RetrievalGraph::InvalidSearch => error
         raise CLI::Command::Usage, error.message
@@ -40,9 +40,9 @@ module Plastic
         raise CLI::Command::Usage, "unknown source projects: #{unknown.join(", ")}" if unknown.any?
       end
 
-      def rows(slug)
+      def rows(slug, limit)
         retrieval = maintained_retrieval(slug)
-        retrieval.search(parsed.fetch(:terms), limit: search_limit, migrate: false).each_with_index.map do |row, index|
+        retrieval.search(parsed.fetch(:terms), limit:, migrate: false).each_with_index.map do |row, index|
           result_row(retrieval, slug, row, index + 1)
         end
       end
@@ -84,12 +84,15 @@ module Plastic
         [normalized, positions]
       end
 
-      def ranked_rows = sources.flat_map { |slug| rows(slug) }.sort_by { |row| [-row.fetch("rrf_score"), row.fetch("uri")] }.take(search_limit)
+      def ranked_rows(limit) = sources.flat_map { |slug| rows(slug, limit) }.sort_by { |row| [-row.fetch("rrf_score"), row.fetch("uri")] }.take(limit)
 
       def rrf(rank) = 1.0 / (60 + rank)
 
       def search_limit
-        Integer(parsed.fetch(:limit))
+        limit = Integer(parsed.fetch(:limit))
+        return limit if limit.between?(1, Graph::RetrievalGraph::SEARCH_LIMIT)
+
+        raise Graph::RetrievalGraph::InvalidSearch, "search limit must be between 1 and #{Graph::RetrievalGraph::SEARCH_LIMIT}"
       rescue ArgumentError, TypeError
         raise Graph::RetrievalGraph::InvalidSearch, "search limit must be an integer"
       end

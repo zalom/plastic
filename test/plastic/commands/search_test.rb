@@ -4,7 +4,109 @@ require_relative "../../test_helper"
 require_relative "../../../scripts/lib/plastic/commands/search"
 require_relative "../../../scripts/lib/plastic/graph/evidence_writer"
 
-class SearchTest < Plastic::TestCase
+module SearchTestSupport
+  private
+
+  def write_document(store, body, path: "evidence.md")
+    graphs = Plastic::Graph.open(home: @plastic_home, store:)
+    Plastic::Graph::EvidenceWriter.new(graphs.databases.fetch(:knowledge), origin).write("1", path, body)
+    graphs.retrieval.backfill!
+    graphs.retrieval.archived?("1")
+  end
+
+  def selected_store_bytes
+    %w[work_graph.db knowledge_graph.db references.db].to_h do |name|
+      path = store_path(name)
+      [name, File.binread(path)]
+    end
+  end
+end
+
+module SearchTestAssertionSupport
+  private
+
+  def assert_scoped_results(loaded, explicit)
+    assert_equal 0, loaded.code
+    assert_includes loaded.out, "global"
+    assert_includes loaded.out, "other"
+    refute_includes explicit.out, "global"
+    assert_includes explicit.out, "other"
+  end
+
+  def assert_fused_rows(result)
+    assert_equal 0, result.code
+    assert_fused_stores(result)
+    assert_fused_ranks(result)
+    assert_fused_scores(result)
+  end
+
+  def fused_rows(result) = JSON.parse(result.out).fetch("result").fetch("results")
+
+  def assert_fused_stores(result) = assert_equal(%w[global other third], fused_rows(result).map { |row| row.fetch("store") })
+
+  def assert_fused_ranks(result) = assert_equal([1, 1, 1], fused_rows(result).map { |row| row.fetch("local_rank") })
+
+  def assert_fused_scores(result) = assert_equal([1.0 / 61, 1.0 / 61, 1.0 / 61], fused_rows(result).map { |row| row.fetch("rrf_score") })
+
+  def assert_scope_result(blank, unknown)
+    assert_equal 0, blank.code
+    assert_includes blank.out, "global"
+    assert_equal 2, unknown.code
+    assert_match(/unknown source projects: missing/, unknown.err)
+  end
+
+  def assert_maintenance_result(result, root, knowledge, references)
+    assert_equal 1, result.code
+    assert_match(/maintenance/, result.out)
+    refute_path_exists File.join(root, "work_graph.db")
+    assert_equal knowledge, File.binread(File.join(root, "knowledge_graph.db"))
+    assert_equal references, File.binread(File.join(root, "references.db"))
+  end
+
+  def assert_pinned_document(hit, document)
+    assert_equal "first evidence", document.fetch(:body)
+    assert_equal hit.fetch("sha256"), document.fetch(:revision)
+    assert_includes document.fetch(:uri), hit.fetch("sha256")
+  end
+
+  def assert_centered_excerpt(result)
+    assert_equal 0, result.code
+    excerpt = JSON.parse(result.out).fetch("result").fetch("results").fetch(0).fetch("body")
+
+    assert_includes excerpt, "needle"
+    assert_includes excerpt, "evidence"
+    refute_match(/\Aprefix/, excerpt)
+  end
+
+  def assert_archived_result(result, before)
+    hit = JSON.parse(result.out).fetch("result").fetch("results").fetch(0)
+
+    assert_equal 0, result.code
+    assert hit.fetch("archived")
+    assert_equal before, selected_store_bytes
+  end
+
+  def historical_document
+    graphs = Plastic::Graph.open(home: @plastic_home, store: "global")
+    writer = Plastic::Graph::EvidenceWriter.new(graphs.databases.fetch(:knowledge), origin)
+    writer.write("1", "evidence.md", "first evidence")
+    graphs.retrieval.backfill!
+    hit = sole(graphs.retrieval.search("evidence"))
+    replace_and_remove(writer)
+
+    [hit, graphs.retrieval.fetch_reference(graphs.retrieval.search_reference(hit))]
+  end
+
+  def replace_and_remove(writer)
+    writer.write("1", "evidence.md", "second evidence")
+    writer.remove("1", "evidence.md")
+  end
+end
+
+class SearchScopeTest < Plastic::TestCase
+  include SearchTestSupport
+  include SearchTestAssertionSupport
+
   def test_searches_loaded_sources_and_explicit_scope_replaces_them
     write_document("global", "global evidence")
     write_document("other", "other evidence")
@@ -12,11 +114,7 @@ class SearchTest < Plastic::TestCase
     loaded = plastic("search", "evidence", "--json", env: { "PLASTIC_SOURCE_PROJECTS" => "global, other" }, table: Plastic::CLI::TABLE)
     explicit = plastic("search", "evidence", "--source-project", "other", "--json", env: { "PLASTIC_SOURCE_PROJECTS" => "global" }, table: Plastic::CLI::TABLE)
 
-    assert_equal 0, loaded.code
-    assert_includes loaded.out, "global"
-    assert_includes loaded.out, "other"
-    refute_includes explicit.out, "global"
-    assert_includes explicit.out, "other"
+    assert_scoped_results(loaded, explicit)
   end
 
   def test_fuses_canonical_selected_sources_with_stable_rrf_order
@@ -26,13 +124,8 @@ class SearchTest < Plastic::TestCase
 
     result = plastic("search", "evidence", "--source-project", "third", "--source-project", " global ",
       "--source-project", "third", "--source-project", "other", "--json", table: Plastic::CLI::TABLE)
-    document = JSON.parse(result.out)
-    rows = document.fetch("result").fetch("results")
 
-    assert_equal 0, result.code
-    assert_equal %w[global other third], rows.map { |row| row.fetch("store") }
-    assert_equal [1, 1, 1], rows.map { |row| row.fetch("local_rank") }
-    assert_equal [1.0 / 61, 1.0 / 61, 1.0 / 61], rows.map { |row| row.fetch("rrf_score") }
+    assert_fused_rows(result)
   end
 
   def test_rejects_invalid_and_excessive_limits
@@ -61,10 +154,7 @@ class SearchTest < Plastic::TestCase
     blank = plastic("search", "evidence", "--source-project", "   ", "--json", table: Plastic::CLI::TABLE)
     unknown = plastic("search", "evidence", "--source-project", "missing", table: Plastic::CLI::TABLE)
 
-    assert_equal 0, blank.code
-    assert_includes blank.out, "global"
-    assert_equal 2, unknown.code
-    assert_match(/unknown source projects: missing/, unknown.err)
+    assert_scope_result(blank, unknown)
   end
 
   def test_centers_an_accent_insensitive_fts_match
@@ -98,27 +188,18 @@ class SearchTest < Plastic::TestCase
 
     result = plastic("search", "evidence", "--source-project", "other", "--json", table: Plastic::CLI::TABLE)
 
-    assert_equal 1, result.code
-    assert_match(/maintenance/, result.out)
-    refute_path_exists File.join(root, "work_graph.db")
-    assert_equal knowledge, File.binread(File.join(root, "knowledge_graph.db"))
-    assert_equal references, File.binread(File.join(root, "references.db"))
+    assert_maintenance_result(result, root, knowledge, references)
   end
+end
+
+class SearchEvidenceTest < Plastic::TestCase
+  include SearchTestSupport
+  include SearchTestAssertionSupport
 
   def test_pins_a_hit_to_its_historical_revision_through_concurrent_replacement_and_removal
-    graphs = Plastic::Graph.open(home: @plastic_home, store: "global")
-    writer = Plastic::Graph::EvidenceWriter.new(graphs.databases.fetch(:knowledge), origin)
-    writer.write("1", "evidence.md", "first evidence")
-    graphs.retrieval.backfill!
-    hit = sole(graphs.retrieval.search("evidence"))
-    writer.write("1", "evidence.md", "second evidence")
-    writer.remove("1", "evidence.md")
+    hit, document = historical_document
 
-    document = graphs.retrieval.fetch_reference(graphs.retrieval.search_reference(hit))
-
-    assert_equal "first evidence", document.fetch(:body)
-    assert_equal hit.fetch("sha256"), document.fetch(:revision)
-    assert_includes document.fetch(:uri), hit.fetch("sha256")
+    assert_pinned_document(hit, document)
   end
 
   def test_centers_the_excerpt_on_nonadjacent_matching_evidence
@@ -127,15 +208,7 @@ class SearchTest < Plastic::TestCase
 
     result = plastic("search", "needle evidence", "--json", table: Plastic::CLI::TABLE)
 
-    assert_equal 0, result.code
-    rows = JSON.parse(result.out).fetch("result").fetch("results")
-
-    assert_equal 1, rows.length, result.out
-    excerpt = rows.fetch(0).fetch("body")
-
-    assert_includes excerpt, "needle"
-    assert_includes excerpt, "evidence"
-    refute_match(/\Aprefix/, excerpt)
+    assert_centered_excerpt(result)
   end
 
   def test_marks_archived_hits_and_leaves_every_selected_store_unchanged
@@ -146,26 +219,7 @@ class SearchTest < Plastic::TestCase
     before = selected_store_bytes
 
     result = plastic("search", "archived evidence", "--source-project", "global", "--json", table: Plastic::CLI::TABLE)
-    hit = JSON.parse(result.out).fetch("result").fetch("results").fetch(0)
 
-    assert_equal 0, result.code
-    assert hit.fetch("archived")
-    assert_equal before, selected_store_bytes
-  end
-
-  private
-
-  def write_document(store, body, path: "evidence.md")
-    graphs = Plastic::Graph.open(home: @plastic_home, store:)
-    Plastic::Graph::EvidenceWriter.new(graphs.databases.fetch(:knowledge), origin).write("1", path, body)
-    graphs.retrieval.backfill!
-    graphs.retrieval.archived?("1")
-  end
-
-  def selected_store_bytes
-    %w[work_graph.db knowledge_graph.db references.db].to_h do |name|
-      path = store_path(name)
-      [name, File.binread(path)]
-    end
+    assert_archived_result(result, before)
   end
 end
