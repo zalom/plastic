@@ -195,6 +195,18 @@ class PublishWorkflowTest < Minitest::Test
       "the publish run: line must carry no literal channel name; ubuntu-latest and npm@latest legitimately appear elsewhere in the file")
   end
 
+  def test_npm_publishes_only_from_main
+    assert_equal "github.ref_name == 'main'", publish_step["if"],
+      "npm publication is frozen on alpha and beta; only main may run the npm publish step"
+  end
+
+  def test_alpha_and_beta_still_make_the_github_release
+    release = step_named("Create the tag and the GitHub release")
+
+    assert_nil release["if"], "the GitHub release with the archive and manifest stays on every channel"
+    assert_nil step_named("Build the archive and manifest")["if"]
+  end
+
   def test_publishes_are_serialized
     concurrency = parsed["concurrency"]
 
