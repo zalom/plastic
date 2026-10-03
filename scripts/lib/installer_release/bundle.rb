@@ -12,20 +12,19 @@ module InstallerRelease
 
     def call(release_path)
       runtime = File.join(release_path, "runtime")
-      gemfile = File.join(runtime, "Gemfile")
-      return false unless File.file?(gemfile)
+      return false unless File.file?(File.join(runtime, "Gemfile"))
 
-      run.call(environment(runtime, gemfile), %w[bundle install --standalone --quiet])
+      run.call(self.class.environment(runtime), %w[bundle install --standalone --quiet])
       true
+    end
+
+    def self.environment(runtime)
+      { "BUNDLE_GEMFILE" => File.join(runtime, "Gemfile"), "BUNDLE_PATH" => File.join(runtime, "bundle"),
+        "BUNDLE_APP_CONFIG" => File.join(runtime, ".bundle"), "BUNDLE_FROZEN" => "true" }
     end
 
     private
 
     attr_reader :run
-
-    def environment(runtime, gemfile)
-      { "BUNDLE_GEMFILE" => gemfile, "BUNDLE_PATH" => File.join(runtime, "bundle"),
-        "BUNDLE_APP_CONFIG" => File.join(runtime, ".bundle"), "BUNDLE_FROZEN" => "true" }
-    end
   end
 end

@@ -26,11 +26,20 @@ module InstallerRelease
     attr_reader :http
 
     def response(url, hops = REDIRECTS)
+      answer = http.get_response(https(url))
+      return answer if answer.is_a?(Net::HTTPSuccess)
+
+      follow(url, answer, hops)
+    end
+
+    def https(url)
       uri = URI(url)
       raise FetchError, "refusing #{url}: not HTTPS" unless uri.scheme == "https"
 
-      answer = http.get_response(uri)
-      return answer if answer.is_a?(Net::HTTPSuccess)
+      uri
+    end
+
+    def follow(url, answer, hops)
       raise FetchError, "#{url} answered #{answer.code}" unless answer.is_a?(Net::HTTPRedirection)
       raise FetchError, "too many redirects from #{url}" if hops.zero?
 
