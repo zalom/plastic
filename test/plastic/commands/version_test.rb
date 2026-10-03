@@ -92,7 +92,7 @@ class VersionCommandTest < Plastic::TestCase
     result = call("version")
 
     assert_equal [0, ""], [result.code, result.err]
-    assert_empty unmatched(result.out, [/installation:\s+no release is installed; this plastic runs from source or npm/,
+    assert_empty unmatched(result.out, [/installation:\s+no release is installed; this plastic runs outside a release/,
       /because:\s+no release is installed, so only Ruby was checked/]), result.out
     refute_includes result.out, "whole"
   end

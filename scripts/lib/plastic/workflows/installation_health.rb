@@ -11,7 +11,7 @@ module Plastic
     # names a repair for each broken one. It reads files and changes none.
     class InstallationHealth
       Check = Data.define(:label, :value, :repair)
-      UNMANAGED = "no release is installed; this plastic runs from source or npm"
+      UNMANAGED = "no release is installed; this plastic runs outside a release"
       INCOMPLETE = "switch to a complete release with plastic rollback or plastic update"
 
       def self.of(context, ruby_version: RUBY_VERSION)
