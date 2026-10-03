@@ -3,6 +3,13 @@
 require_relative "../../test_helper"
 
 class IntentDiscoverTest < Plastic::TestCase
+  def test_treats_malformed_or_incomplete_saved_context_as_not_complete
+    context = Struct.new(:terms).new("evidence")
+
+    assert_equal false, Plastic::Workflows::DiscoverRetrieval.send(:context_matches?, { "data" => "not json" }, context)
+    assert_equal false, Plastic::Workflows::DiscoverRetrieval.send(:context_matches?, { "data" => "{}" }, context)
+  end
+
   def test_rejects_a_missing_or_unsafe_owning_intent_before_writing_a_manifest
     write_document("global", "global evidence")
 
