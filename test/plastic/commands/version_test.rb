@@ -56,6 +56,13 @@ class VersionCommandTest < Plastic::TestCase
     assert_equal [before, false], [tree_snapshot(@home), result.out.include?("repair:")]
   end
 
+  def test_names_the_repairs_after_the_checks
+    damaged_installation
+    out = call("version").out
+
+    assert_operator out.index("repair:"), :>, out.index("installer lock:"), out
+  end
+
   def test_names_a_repair_for_each_damaged_part_and_changes_nothing
     damaged_installation
     before = tree_snapshot(@home)
