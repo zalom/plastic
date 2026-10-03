@@ -19,7 +19,7 @@
 
 require_relative "lib/installer_core"
 require_relative "lib/preflight"
-require_relative "lib/plastic/graph/database/sqlite_loader"
+require_relative "lib/sqlite3_dependency"
 
 class Install < InstallerCore
   def cli(argv = ARGV)
@@ -135,15 +135,12 @@ class Install < InstallerCore
     names.reject { |name| supported_gem?(name) }
   end
 
-  def sqlite3_supported?(version)
-    version == Plastic::Graph::Database::SqliteLoader::VERSION
-  end
-
   private
 
   def supported_gem?(name)
+    return Sqlite3Dependency.available? if name == "sqlite3"
+
     require name
-    return sqlite3_supported?(SQLite3::VERSION) if name == "sqlite3"
 
     true
   rescue LoadError

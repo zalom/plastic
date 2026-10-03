@@ -2,7 +2,7 @@
 
 require "minitest/autorun"
 require_relative "../scripts/lib/preflight"
-require_relative "../scripts/install"
+require_relative "../scripts/lib/sqlite3_dependency"
 
 class PreflightTest < Minitest::Test
   def test_names_the_runtime_sqlite3_version_in_its_gem_install_instruction
@@ -13,9 +13,7 @@ class PreflightTest < Minitest::Test
   end
 
   def test_rejects_a_loaded_sqlite3_gem_outside_the_runtime_pin
-    installer = Install.new(package_root: File.expand_path("..", __dir__), plastic_home: Dir.mktmpdir)
-
-    refute installer.sqlite3_supported?("2.9.5")
-    assert installer.sqlite3_supported?("2.9.6")
+    refute Sqlite3Dependency.supported?("2.9.5")
+    assert Sqlite3Dependency.supported?("2.9.6")
   end
 end
