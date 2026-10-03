@@ -6,6 +6,14 @@ require_relative "../../tools/retrieval_benchmark"
 require_relative "../../tools/retrieval_benchmark/quality_passage_checks"
 
 class RetrievalBenchmarkQualityTest < Minitest::Test
+  def test_projects_owner_accepted_candidate_review_metadata
+    candidate = { "status" => "owner_accepted", "owner_review" => { "status" => "accepted", "reviewed_at" => "2026-10-03" } }
+
+    report = Plastic::RetrievalBenchmark::QualityEvaluationReport.new(candidate, []).build
+
+    assert_equal candidate.fetch("owner_review"), report.fetch("owner_review")
+  end
+
   def test_skips_unexpected_search_rows_when_the_expected_reference_is_not_in_the_top_twenty
     Dir.mktmpdir do |directory|
       input = File.join(directory, "quality.json")
