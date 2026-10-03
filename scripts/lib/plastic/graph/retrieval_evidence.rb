@@ -1,9 +1,7 @@
 # frozen_string_literal: true
 
-require_relative "evidence_integrity"
-require_relative "reference_backfill"
 require_relative "retrieval_reference"
-require_relative "retrieval_search"
+require_relative "retrieval_maintenance"
 
 module Plastic
   module Graph
@@ -15,12 +13,12 @@ module Plastic
         @databases = databases
         @origin = origin
         @references = RetrievalReference.new(databases, store:, origin:)
-        @searcher = RetrievalSearch.new(databases.fetch(:knowledge), origin:)
+        @maintenance = RetrievalMaintenance.new(databases, origin)
       end
 
-      def documents(intent_id = nil) = ensure_backfill! && read_documents(intent_id)
+      def documents(intent_id = nil) = @maintenance.ready_documents { read_documents(intent_id) }
 
-      def fetch(intent_id, path) = ensure_backfill! && document(intent_id, path)
+      def fetch(intent_id, path) = @maintenance.ready_documents { document(intent_id, path) }
 
       def reference(intent_id, path) = references.reference(intent_id, path)
 
@@ -36,24 +34,15 @@ module Plastic
       end
 
       def search(terms, limit: 20, migrate: true)
-        ensure_backfill!(migrate)
-        @searcher.call(terms, limit:)
+        @maintenance.search(terms, limit:, migrate:)
       end
 
       def search_reference(row) = references.qualified_reference(row.fetch("intent_id"), row.fetch("path"), row.fetch("sha256"))
 
-      def backfill! = ReferenceBackfill.new(@databases, origin_id).call
-
-      def repair! = EvidenceIntegrity.new(knowledge, origin_id).repair!
+      def backfill! = @maintenance.backfill!
+      def repair! = @maintenance.repair!
 
       private
-
-      def ensure_backfill!(migrate = true)
-        return backfill! if migrate
-        return if ReferenceBackfill.complete?(knowledge.path, origin_id)
-
-        raise RetrievalGraph::MaintenanceRequired, "retrieval migration is required before a selected source can be read"
-      end
 
       def read_documents(intent_id)
         rows = if intent_id
