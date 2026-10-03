@@ -4,14 +4,13 @@ require "fileutils"
 require "tmpdir"
 
 module InstallerRelease
-  # Checks the manifest against the archive, then unpacks the archive into a
+  # Checks the manifest against the archive and the requested release, then unpacks the archive into a
   # new directory under `parent` and returns the release package inside it.
   # A failure removes the directory it made.
   class Staging
-    def self.create(archive:, manifest:, parent:)
-      release = manifest.fetch("release")
-      Manifest.check(manifest, archive: archive, expected_release: release)
-      new(archive, Dir.mktmpdir("plastic-stage-", parent)).candidate(release.fetch("version"))
+    def self.create(archive:, manifest:, parent:, expected_release:)
+      Manifest.check(manifest, archive: archive, expected_release: expected_release)
+      new(archive, Dir.mktmpdir("plastic-stage-", parent)).candidate(manifest.dig("release", "version"))
     end
 
     def initialize(archive, stage)

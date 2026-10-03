@@ -21,10 +21,20 @@ module InstallerRelease
       version
     end
 
-    def rollback
-      with_lock { switch_to(previous_version || raise(ActivationError, "no previous release is available")) }
+    def rollback = switch(previous_version || raise(ActivationError, "no previous release is available"))
+
+    def switch(version)
+      raise ActivationError, "#{version} is not installed" unless installed?(version)
+
+      with_lock { switch_to(version) }
       active_version
     end
+
+    def installed?(version) = File.directory?(release_path(version))
+
+    def release_path(version) = File.join(releases, version)
+
+    def versions = File.directory?(releases) ? Dir.children(releases).sort : []
 
     def active_path = File.join(home, "active")
 
