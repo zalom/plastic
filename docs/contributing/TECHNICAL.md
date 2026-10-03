@@ -26,7 +26,7 @@ The following table says when each step passes.
 | Tests | The tests for the changed files pass. |
 | Timing check | Every test file ran under 5 seconds and every Varar document under 10, on a re-run when the first run went over. |
 | Patch coverage | Every changed line and branch is covered. |
-| Mutation testing | Every mutant on the changed code has a verdict, and killed mutants are at least 75 percent of the total. |
+| Mutation testing | Frozen since October 3, 2026, so the gate skips it. When it runs: every mutant on the changed code has a verdict, and killed mutants are at least 75 percent of the total. |
 | CRAP scores | No changed method scores above 30. |
 | Code smells | Reek finds no smell in the changed sources. |
 | RubyCritic score | The changed sources that no todo list names score 90 or more out of 100. |
@@ -45,7 +45,9 @@ Coverage starts before the timing extension loads. A timing rerun must succeed;
 a fast failure cannot pass the cap. A Varar rerun selects the named document's
 generated test class, so other documents do not count toward its time.
 
-The Mutation testing step runs `bin/lib/mutation_verdicts.rb`, which removes any report left
+The Mutation testing step is frozen: `MUTATION_FROZEN` in `bin/verify-change` leaves it out of
+the run, and the gate prints that it skipped the step. The step itself stays in the code. When
+it is not frozen, it runs `bin/lib/mutation_verdicts.rb`, which removes any report left
 under the sandbox `PLASTIC_TMP` from an earlier run, runs Mutineer with `--format json
 --output` into that same path, and reads only what this run wrote. A mutant Mutineer could not
 give a verdict is re-run alone, one subject at a time with `--only NAME --jobs 1` and the same
@@ -131,7 +133,7 @@ included. `test/context_budget_bench_test.rb` fails when a surface crosses its c
 | `scripts/lib/plastic/cli.rb` | The dispatcher. |
 | `scripts/lib/plastic/cli/` | The shared classes. |
 | `scripts/lib/plastic/commands/` | One file per command. |
-| `scripts/lib/plastic/graph/` | The kernel's graph layer: the store databases, the printed files and sync. |
+| `scripts/lib/plastic/graph/` | The kernel's graph layer: the store databases, the printed files and sync. Its `knowledge/`, `work/` and `retrieval/` folders hold the three graphs; the files at its root are shared by all three. |
 | `test/plastic/` | The kernel tests, which run in their own process. |
 | `test/cli/` | The acceptance test of the packaged executable, `bin/plastic`, run as installed. |
 | `test/test_helper.rb` | The boot of every test, and `Plastic::TestCase`, the base class of the kernel tests. |

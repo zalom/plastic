@@ -15,6 +15,10 @@ module Plastic
       "session note" => ["Commands::SessionNote", "Write the one prose line of this session"],
       "intent rule" => ["Commands::IntentRule", "Write an owner ruling, with --supersedes to replace an older one"],
       "intent spec" => ["Commands::IntentSpec", "Print the grilling method, then the intent's open decisions"],
+      "intent discover" => ["Commands::IntentDiscover", "Record deterministic retrieval candidates for an intent"],
+      "intent context" => ["Commands::IntentContext", "Read or submit selected retrieval context for an intent"],
+      "architecture status" => ["Commands::ArchitectureStatus", "Tell the agent to check the architecture map with its own tool"],
+      "architecture refresh" => ["Commands::ArchitectureRefresh", "Tell the agent to regenerate the architecture map with its own tool"],
       "auto start" => ["Commands::AutoStart", "Take the delivery lock and set the intent active"],
       "intent show" => ["Commands::IntentShow", "Print one intent's status, criteria, decisions, rulings and nodes"],
       "intent brief" => ["Commands::IntentBrief", "Print an intent's goal, criteria, rulings, ready nodes and command usage"],
@@ -25,6 +29,9 @@ module Plastic
       "intent archive" => ["Commands::IntentArchive", "Archive an intent directory; --revert restores it"],
       "backup" => ["Commands::Backup", "Pack home.db and every store's three databases into one archive"],
       "backup list" => ["Commands::BackupList", "List every backup, flagging a missing or changed file"],
+      "document get" => ["Commands::DocumentGet", "Fetch one current or revision-qualified document"],
+      "document batch" => ["Commands::DocumentBatch", "Fetch qualified documents in request order"],
+      "search" => ["Commands::Search", "Search literal indexed passages across selected stores"],
 
       # Work graph
       "node add" => ["Commands::NodeAdd", "Add a node to an intent's work graph"],

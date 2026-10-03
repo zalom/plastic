@@ -482,24 +482,24 @@ classes it requires directly. No dynamic class lookup from a command name takes 
 `Commands::Status` is a plain `CLI::Command`, not a routine, because it sweeps every store
 under the Plastic home (`scope.known_slugs`) rather than one scoped store: it opens each
 store's graphs in turn (`Graph.open(home:, store: slug)`) and prints its open and active
-intents with their node counts by state (`Graph::IntentRow`, `Graph::NodeCounts`).
+intents with their node counts by state (`Graph::Work::IntentRow`, `Graph::Work::Node::Counts`).
 
-`Commands::Next` picks a live intent through `Graph::NextPick`. Closed intents are
+`Commands::Next` picks a live intent through `Graph::Work::NextPick`. Closed intents are
 excluded even if a lock remains after an interrupted closure. With several candidates,
 the harness gets instructions to choose one. With no open work, the next command is none.
 
-`Graph::DeliveryAction` supplies the actions used by next, brief, ready, and check.
+`Graph::Work::DeliveryAction` supplies the actions used by next, brief, ready, and check.
 Ready nodes lead to claim; failed nodes lead to release. Empty graphs hand planning to
 `AgentWorkflow`, claimed nodes remain with their worker, and parked nodes request the
 owner's answer. Completed graphs lead to `intent end` for explicit acceptance.
 
 `IntentEnd` chains prerequisite checks, an agent verification handoff when records are
-missing, and closure. `CompletionEvidence` accepts a JSON object with every exact done
+missing, and closure. `Graph::Work::Completion::Evidence` accepts a JSON object with every exact done
 criterion as a key and nonempty evidence text as its value. Paths resolve within the
 selected intent folder, including a check after resolving symbolic links. The judge
 attests to the evidence; Plastic does not execute the verification.
 
-`CompletionWriter` stores the criterion snapshot, evidence, judge, outcome hash, session,
+`Graph::Work::Completion::Writer` stores the criterion snapshot, evidence, judge, outcome hash, session,
 and timestamp in `completions`. It commits that row with the delivered status and closure
 time in the work database, then releases the delivery lock in the home database. A repeat
 call preserves the first completion record and retries cleanup. Imported done intents
@@ -524,46 +524,46 @@ this section covers how the code holds together.
 - **Roadmaps.** `roadmap batch`, `roadmap add`, `roadmap show`, `roadmap next`, `roadmap
   drop`, `roadmap start`, `roadmap check`, `roadmap log` and `roadmap edge remove` write and
   read five tables in `work_graph.db`: `roadmaps`, `batches`, `roadmap_items`,
-  `roadmap_edges` and `roadmap_log`. `Graph::RoadmapWriter` owns the writes, and
-  `WorkGraph` delegates to it. `Graph::RoadmapState` derives an item's state every time it
+  `roadmap_edges` and `roadmap_log`. `Graph::Knowledge::Roadmap::Writer` owns the writes, and
+  `WorkGraph` delegates to it. `Graph::Knowledge::Roadmap::State` derives an item's state every time it
   is read. The rows hold only the facts the state comes from: the item's mark, its intent's
   status and its predecessors. Readiness checks whether each predecessor is done or dropped
   without recursively evaluating its predecessors, so imported cycles stay blocked.
-  `RoadmapWriter` rejects a self edge before writing it. `Graph::RoadmapCheck` finds a loop, an edge to an item that is
+  `Graph::Knowledge::Roadmap::Writer` rejects a self edge before writing it. `Graph::Knowledge::Roadmap::Check` finds a loop, an edge to an item that is
   not on the roadmap, and an item whose intent id names no intent. A `roadmap batch` call
-  keeps every field it leaves out: `RoadmapFields#over` takes the stored title, goal and done
+  keeps every field it leaves out: `Graph::Knowledge::Roadmap::Fields#over` takes the stored title, goal and done
   lines in their place, and a new batch with no title is named "Batch N". The call writes the
   roadmap row only when the roadmap has none, so its title and goal stay. `intent brief` prints
   each line of the spec's Goal section as a `goal:` line, and the intent title only when the
   spec has no goal.
 - **Links.** `intent link` and `intent unlink` write and remove rows in the `links` table of
-  `knowledge_graph.db` through `Graph::LinkWriter`. A link to a missing intent fails with
+  `knowledge_graph.db` through `Graph::Knowledge::Link::Writer`. A link to a missing intent fails with
   exit 1. A self link or a repeated link is refused with exit 3.
 - **Archive.** `intent archive ID` and its explicit `--revert` option use
-  `Graph::ArchiveWriter`. `ArchiveTree` reads entries with `lstat`, without following
+  `Graph::Knowledge::Archive::Writer`. `Graph::Knowledge::Archive::Tree` reads entries with `lstat`, without following
   links. The `archives` marker and complete `archive_entries` snapshot commit in one
   work database transaction before filesystem removal. A removal retry checks every
   remaining entry against that snapshot and preserves changed files.
-  `ArchiveSnapshot` restores into a temporary sibling directory, checks its bytes
+  `Graph::Knowledge::Archive::Snapshot` restores into a temporary sibling directory, checks its bytes
   and metadata, then renames it into place. Only then does `restored_at` change.
   Conflicting destinations remain untouched. A directory already published by an
   interrupted call must match the complete snapshot before that call can finish.
   Restore does not print newer semantic rows over archived bytes or mark unsynced
   documents as current. Plain sync reports conflicts for those documents.
-- **Backup.** `backup` and `backup list` go through `Graph::BackupWriter` and the `backups`
+- **Backup.** `backup` and `backup list` go through `Graph::Knowledge::Backup::Writer` and the `backups`
   table of `home.db`. `RetrievalGraph#backup_flag` compares each archive's SHA-256 digest
   with the digest stored at write time. The archive also carries `origin_id`, `config.yml`,
   and `projects.yml` from the Plastic home when present. These files preserve row ownership,
   settings, and project lookup when the archive is unpacked into an empty home.
 
-`Sync::LegacyImport` runs `Graph::LegacyStoreImport` for a store with `INDEX.md` and no
+`Graph::Knowledge::Sync::LegacyImport` runs `Graph::Knowledge::Legacy::StoreImport` for a store with `INDEX.md` and no
 `store/index.json`. One coordinator reads intent files, rulings and source links, imports
-roadmaps, and preserves changed originals. `LegacyDecisions`, `LegacyRoadmaps`, and
-`LegacyOriginals` own those parts. Failed import restores a complete saved copy of the
+roadmaps, and preserves changed originals. `Graph::Knowledge::Legacy::Decisions`, `Graph::Knowledge::Legacy::Roadmaps`, and
+`Graph::Knowledge::Legacy::Originals` own those parts. Failed import restores a complete saved copy of the
 store after disconnecting its database handles. Failure to save that copy leaves the
 original store untouched.
 
-`SyncPreview` copies the selected store and its identity and configuration into a
+`Graph::Knowledge::Sync::Preview` copies the selected store and its identity and configuration into a
 temporary home and runs the same sync there. It rejects symbolic links before copying
 and resolves absolute overwrite paths against the original store. Preview does not keep
 a routine run in the original home. Metadata import no longer requires a separate
@@ -580,13 +580,21 @@ stage 5 workflow that writes, and that can stop, starts with this step: archive,
 roadmap add, roadmap start, roadmap edge remove and unlink. Workflows that recompute their
 facts in a `read` step on every call, such as `intent link`, do not need it.
 
-### companion tools: no Plastic code path calls them
+### Retrieval and companion tools
 
-Intent 391 (2.0) dissolved every Plastic-owned integration with QMD, Serena, and Enola.
+The retrieval commands open selected store databases for reads, run literal FTS search, and pin
+results to immutable revisions. `architecture status` and `architecture refresh` are routines
+with one agent workflow each. They print an instruction for the agent and write nothing. No
+Plastic path runs Enola or any other mapping tool.
+
+### Companion tools: no Plastic code path calls them
+
+Intent 391 (2.0) dissolved every Plastic-owned integration with QMD, Serena and Enola.
 `scripts/lib/qmd_sync.rb`, its `scripts/qmd-sync` CLI, and `scripts/lib/power_tools.rb` (the
 presence probes `PowerTools.qmd?`, `.serena?`, `.enola?` that doctor's Serena and Enola
 readiness checks used to call) are all deleted. No Plastic command installs, registers with,
-reindexes, queries, or reports on any of the three: not install, not project creation, not
+reindexes, queries, or reports on QMD or Serena. No
+command queries or reports on Enola: not install, not project creation, not
 intent delivery, not session start, not doctor. `plastic install` no longer registers a QMD
 collection, and `plastic project new` never did.
 

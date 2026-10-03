@@ -1,51 +1,37 @@
 # Search commands
 
-Plastic keeps a search index of every markdown file in the stores. The index is one SQLite
-file, `~/.plastic/knowledge_graph.db`. It holds each file's text in compressed form and a
-full-text index over that text. The commands need the `sqlite3` command, which macOS ships.
+Plastic indexes readable intent documents as immutable revisions and searchable passages in each store's SQLite databases. `sync up` records changed files before a search can read them.
 
 ## Commands
 
-The following table shows each command and what it does:
-
 | Command | What it does |
-| ------- | ------------ |
-| `plastic index` | Rebuilds the whole index and prints the number of files. |
-| `plastic search TERMS [--project SLUG] [--limit N]` | Prints the best matching paths, each with one excerpt. The limit defaults to 10. |
-| `plastic search --ask "QUESTION"` | Searches with a whole question. See [Ask a question](ask-a-question.md). |
-| `plastic query SQL` | Runs one read-only SQL statement on the index and prints the rows. |
+| --- | --- |
+| `plastic search TERMS [--source-project SLUG] [--limit N]` | Searches literal terms in selected stores. The default limit is 20 passages. |
+| `plastic document get REFERENCE [--passage N]` | Fetches a qualified document. With `--passage N`, fetches one numbered passage. |
+| `plastic document batch REFERENCE...` | Fetches qualified documents in request order. |
+| `plastic intent discover ID TERMS... [--source-project SLUG]` | Records deterministic candidates for an intent. |
+| `plastic intent context ID [--from FILE]` | Reads the latest saved context of an intent, or saves the selection in `FILE`. |
 
-Every command takes `--json`.
+Each command accepts `--json`, which returns every field as structured data. Search reads the selected stores and does not write to them. Pass repeated `--source-project` options to search across several stores. When an agent harness sets `PLASTIC_SOURCE_PROJECTS`, that is the default scope. Explicit options replace that scope.
 
-## Build the index
+## Search literal passages
 
-Run `plastic index` after the stores change. The command builds a new file and then replaces
-the old one, so a failed build leaves the old index in place. The index is never updated in
-part.
-
-## Search
-
-Each term is read as plain text, so a hyphen or a colon in a term is safe. Put a phrase in
-quotation marks to match the words together:
+Search treats terms as literal text. Quotes, punctuation, dashes, and colons do not become FTS operators. Results include the store, immutable qualified reference, passage rank, BM25 metadata, and a bounded excerpt. Federated searches combine each store's local rankings with reciprocal rank fusion and use stable reference ordering for ties.
 
 ```text
-$ plastic search "byte budget" --project plastic --limit 1
-stores/plastic/store/372--skills-and-hooks-to-commands/spec.md  ... Each removal lowers the [byte-budget] test's target ...
-
-next: plastic index
-because: the index was built 2026-09-21 14:40; rebuild it when the stores have changed
+$ plastic search "byte budget" --source-project plastic --limit 20
 ```
 
-The excerpt marks each matched term with brackets. The `because:` line gives the build date,
-so you can tell whether the index is older than your last change.
+Search is deterministic retrieval. It does not call a model, rebuild an index, run a mapping tool, or change archive state.
 
-## Query
+## Fetch a document
 
-The index has one table, `doc`, with the columns `id`, `path`, `sz` and `data`. The view
-`doc_v` gives the text of each file as `body`. The database is opened read-only, so a
-statement that writes fails and changes nothing:
+Use the qualified reference returned by search to read the full document. Add `--passage N` to read one passage by its position, counted from 1. A revision-qualified reference remains readable after a newer head replaces it.
 
 ```text
-$ plastic query "SELECT count(*) AS docs FROM doc"
-1  docs=7956
+$ plastic document get "plastic://plastic/401/spec.md?revision=SHA256" --json
 ```
+
+## Prepare agent context
+
+Use `plastic intent discover` to save candidates and provenance for an intent. An agent selects the evidence and submits it with `plastic intent context`. Plastic validates references and saves the selected context. The agent decides relevance and interpretation. Before a context is saved, `plastic intent context ID` fails with exit code 1 and says that the intent has no retrieval context.

@@ -47,6 +47,13 @@ class RoadmapStartTest < Plastic::TestCase
     assert_includes document.body, "- [ ] item done"
   end
 
+  def test_an_unknown_item_exits_1_and_names_it
+    result = call("r1", "zz")
+
+    assert_equal 1, result.code
+    assert_includes result.err, "no item zz on roadmap r1"
+  end
+
   def test_a_second_start_exits_3
     call("r1", "a")
 

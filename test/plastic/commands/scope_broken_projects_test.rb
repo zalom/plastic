@@ -2,6 +2,7 @@
 
 require_relative "../../test_helper"
 require_relative "../../../scripts/lib/plastic/commands/intent_rule"
+require_relative "../../../scripts/lib/plastic/commands/status"
 
 class ScopeBrokenProjectsTest < Plastic::TestCase
   def call(*args) = plastic("intent", "rule", *args, table: Plastic::CLI::TABLE)
@@ -23,6 +24,16 @@ class ScopeBrokenProjectsTest < Plastic::TestCase
     projects("governing_docs: []\n")
 
     result = call("1", "a ruling")
+
+    assert_equal 1, result.code
+    assert_includes result.err, path
+  end
+
+  def test_a_broken_projects_file_fails_a_command_that_is_not_a_routine
+    path = File.join(@plastic_home, "projects.yml")
+    projects("plastic: [\n")
+
+    result = plastic("status", table: Plastic::CLI::TABLE)
 
     assert_equal 1, result.code
     assert_includes result.err, path

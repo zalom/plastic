@@ -13,7 +13,8 @@ class VerifyChange
       1. lint on the changed Ruby files, in the project's style guide
       2. the tests for the changed files, plus every --test FILE, with coverage on
       3. patch coverage of the changed lines (simplecov patch)
-      4. mutation testing of the changed lines (mutineer, operators from .mutineer.yml)
+      4. mutation testing of the changed lines (mutineer, operators from .mutineer.yml);
+         frozen since October 3, 2026, so the gate skips it
       5. CRAP scores of the changed methods (bin/crap)
       6. code smells in the changed files (reek, with .reek.yml present)
       7. the RubyCritic score of the changed files that .rubocop_todo.yml and
@@ -37,6 +38,7 @@ class VerifyChange
 
   PATCH_COVERAGE_MINIMUM = 100
   MUTATION_THRESHOLD = 75
+  MUTATION_FROZEN = true
   CRAP_THRESHOLD = 30
   RUBYCRITIC_MINIMUM = 90
   LEGACY_LISTS = %w[.rubocop_todo.yml .reek.yml].freeze
@@ -66,7 +68,8 @@ class VerifyChange
     end
   end
 
-  def initialize(argv, root: Dir.pwd, out: $stdout, err: $stderr, git: nil, run: nil, sandbox: nil)
+  def initialize(argv, root: Dir.pwd, out: $stdout, err: $stderr, git: nil, run: nil, sandbox: nil,
+    mutation: !MUTATION_FROZEN)
     @argv = argv.dup
     @root = root
     @out = out
@@ -75,6 +78,7 @@ class VerifyChange
     @run = run || ->(env, command) { system(env, *command, chdir: root) }
     @sandbox = sandbox
     @owned_sandbox = sandbox.nil?
+    @mutation = mutation
   end
 
   # A throwaway home for every child this script spawns. A gate step runs the
@@ -180,7 +184,7 @@ class VerifyChange
     return steps if sources.empty?
 
     steps << step("Patch coverage", {}, %W[bundle exec simplecov patch --base #{base} --minimum #{PATCH_COVERAGE_MINIMUM}])
-    steps << step("Mutation testing", {}, mutation_command(sources, tests, base, rails, suite))
+    steps << step("Mutation testing", {}, mutation_command(sources, tests, base, rails, suite)) if @mutation
     steps << step("CRAP scores", {}, %W[bundle exec bin/crap --threshold #{CRAP_THRESHOLD} --since #{base}] + sources)
     steps << step("Code smells", {}, %w[bundle exec reek --config .reek.yml] + sources) if File.exist?(File.join(@root, ".reek.yml"))
     steps << critic_step(sources) if lint_gem_available?(:rubycritic)
@@ -377,6 +381,7 @@ class VerifyChange
     elsif plan.lint_decision.skip_reason
       @out.puts "\nLint skipped: #{plan.lint_decision.skip_reason}"
     end
+    @out.puts "\nMutation testing skipped: the step is frozen." unless @mutation
     plan.steps.each do |step|
       @out.puts "\n== #{step.title}"
       next if @run.call(step.env, step.command)

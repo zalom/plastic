@@ -13,7 +13,7 @@ module Plastic
 
       def origin = Plastic::Graph::Origin.new(@plastic_home).id
 
-      def folder = Plastic::Graph::StoreFolder.new(store_root)
+      def folder = Plastic::Graph::Knowledge::StoreFolder.new(store_root)
 
       def write(path, text) = folder.write(path, text)
 

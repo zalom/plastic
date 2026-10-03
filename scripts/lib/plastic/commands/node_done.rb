@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../routine"
-require_relative "../graph/node"
+require_relative "../graph/work/node"
 
 module Plastic
   module Commands
@@ -14,7 +14,7 @@ module Plastic
       writes :work
 
       def call
-        raise CLI::Command::Usage, "--judge takes tests, tool, agent or owner" unless Graph::Node::JUDGES.include?(parsed[:judge])
+        raise CLI::Command::Usage, "--judge takes tests, tool, agent or owner" unless Graph::Work::Node::JUDGES.include?(parsed[:judge])
 
         raise CLI::Command::Usage, "--findings must describe the verification" if parsed[:findings].to_s.strip.empty?
 

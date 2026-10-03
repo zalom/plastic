@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../code_workflow"
-require_relative "../graph/roadmap_state"
+require_relative "../graph/knowledge/roadmap/state"
 
 module Plastic
   module Workflows
@@ -27,7 +27,7 @@ module Plastic
       end
 
       def self.print_item(context, item)
-        state = Graph::RoadmapState.of(item, context.retrieval)
+        state = Graph::Knowledge::Roadmap::State.of(item, context.retrieval)
         from = context.retrieval.roadmap_edges(context.slug).select { |edge| edge.to == item.item }.map(&:from)
         waits = from.empty? ? "nothing" : from.join(" ")
         context.print("item #{item.item}: #{item.title} - #{state}, waits for #{waits}")

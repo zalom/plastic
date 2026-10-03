@@ -5,6 +5,13 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+- Stage 6 adds deterministic SQLite passage retrieval, immutable document fetches, selected-store
+  search, context manifests, and architecture prompts that tell the agent to map the code with its own tool.
+  `search`, `document get`, `document batch`, `intent discover`, and `intent context` are routines, and the
+  retrieval classes live under `graph/retrieval/`.
+- The mutation step of `bin/verify-change` is frozen: the gate skips it and says so. The installer preflight
+  reports a gem that does not load and checks no gem version.
+
 - Archive captures complete intent directories before deletion and restores them through `intent archive ID --revert`. `sync up` imports legacy rulings, links, roadmaps, and preserved originals; `--dry-run` previews the same operation in a copy. The separate migration command is removed.
 
 - Stage 5 acceptance documents cover every added command. The test helpers decode multiline specs and isolate Codex session identifiers. CI also runs on pull requests targeting stacked `plastic/` branches.

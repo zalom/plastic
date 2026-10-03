@@ -12,7 +12,3 @@ module Plastic
 end
 
 require_relative "plastic/cli"
-require_relative "plastic/routine"
-require_relative "plastic/code_workflow"
-require_relative "plastic/agent_workflow"
-require_relative "plastic/hook"

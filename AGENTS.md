@@ -30,13 +30,10 @@ global rule.
 install-time checked dependency as git (see the Stack section above). Search it before
 re-deriving an existing decision, spec, or outcome. The stores are the memory.
 
-QMD, Serena, and Enola are companion tools a person can run by hand beside Plastic; see
-`plastic help tools` (`docs/help/tools.md`) for what each one does and how to reach for it.
-Intent 391 (2.0) dissolved every Plastic-owned integration with the three: no Plastic
-command, hook, or script starts, registers with, reindexes, or reads from any of them. When
-QMD is set up, its own `qmd query` (structured intent/lex/vec/hyde) or `qmd search` (BM25,
-no model downloads) runs directly against the store files, outside Plastic, the same as it
-would against any other directory of markdown.
+QMD, Serena and Enola are companion tools a person or an agent runs beside Plastic. `plastic
+architecture status` and `plastic architecture refresh` only tell the agent to check or regenerate
+the architecture map with a tool it chooses. Plastic runs no such tool and stores no map. QMD still runs outside Plastic through
+its own `qmd query` or `qmd search` commands.
 
 ## Contributor rules
 
@@ -147,4 +144,3 @@ written.
 - Stable-line guarantees, in short: main stays always releasable with no pending revert awaiting
   re-land, a stable release always carries the GitHub Latest badge and no pre-release suffix,
   and the three version files always agree (checked by `scripts/lib/release_guard.rb`).
-

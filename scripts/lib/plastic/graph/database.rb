@@ -24,7 +24,7 @@ module Plastic
 
       # The three databases of one store folder. `origin` stamps their rows and their change log.
       def self.open_store(root, origin)
-        Schema::STORE.to_h { |key| [key, new(File.join(root, Schema.file(key)), Schema.fetch(key), origin:)] }
+        Schema.store.to_h { |key| [key, new(File.join(root, Schema.file(key)), Schema.fetch(key), origin:)] }
       end
 
       attr_reader :path, :written
@@ -51,6 +51,19 @@ module Plastic
         batch = Batch.new(origin: @origin)
         yield batch
         batch.empty? ? [] : commit(batch)
+      end
+
+      # Runs a read snapshot and its derived writes in one immediate
+      # transaction. The reader uses the same connection as the eventual
+      # commit, so no writer can change the source rows between them.
+      def immediate_transaction
+        batch = Batch.new(origin: @origin)
+        connected do |connection|
+          connection.atomically do
+            yield batch, connection
+            tally(connection.sets(batch.statements.join)) unless batch.empty?
+          end
+        end
       end
 
       # What this call wrote here, as the report says it:
@@ -82,7 +95,7 @@ module Plastic
       # folder needs no separate setup step.
       def connection
         ConnectionPool.for(path).tap do |connection|
-          connection.execute_batch(@schema) if @schema
+          Schema.prepare(connection, @schema) if @schema
           @schema = nil
         end
       end

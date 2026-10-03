@@ -38,7 +38,9 @@ module Plastic
     # commands for `plastic help`, and name a command that has no stage yet
     # instead of blaming the words the owner typed.
     def self.bin_call(argv, environment: Command::Environment.current, table: TABLE)
-      return list(argv, table, environment) if argv.empty? || %w[help --help -h].include?(argv.first)
+      command = argv.first
+      return list(argv, table, environment) if argv.empty? || %w[--help -h].include?(command)
+      return help(argv, table, environment) if command == "help"
 
       dispatch(argv, table, environment) { "plastic #{argv.join(" ")} is not in this build yet; it lands with its stage" }
     end
@@ -53,13 +55,25 @@ module Plastic
     end
     private_class_method :dispatch
 
+    def self.help(argv, table, environment)
+      words = argv.drop(1)
+      return list(argv, table, environment) if argv.one? || words.all? { |word| %w[--json --help -h].include?(word) }
+
+      dispatch([*words, "--help"], table, environment) do
+        "plastic: no command #{words.join(" ").inspect}; plastic help lists them"
+      end
+    end
+    private_class_method :help
+
     # The shipped commands, one row each, as lines or as one document with --json.
     def self.list(argv, table, environment)
-      printer = argv.include?("--json") ? JsonOutput : TextOutput
-      output = printer.new(out: environment.out, err: environment.err)
+      output = printer(argv).new(out: environment.out, err: environment.err)
       table.each { |name, (_, summary)| output.row(name, summary) }
       output.flush
       Command::OK
     end
+
+    def self.printer(argv) = argv.include?("--json") ? JsonOutput : TextOutput
+    private_class_method :printer
   end
 end

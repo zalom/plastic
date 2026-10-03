@@ -72,19 +72,19 @@ module Plastic
     # A resumed routine run brings back what its workflows found; this call's
     # arguments and options always win, nil included.
     def context(routine_run)
-      Context.new(declared: self.class.declared_facts, facts: routine_run.facts.merge(parsed), graphs:, session:)
+      Context.new(declared: self.class.declared_facts, facts: routine_run.facts.merge(parsed), graphs:, harness: Context::Harness.new(environment.session, scope))
     end
 
     def chain = self.class.chain
 
-    # The printed lines go first on every end, failure included, so a gate
+    # The printed lines and rows go first on every end, failure included, so a gate
     # that says "see above" has something above it. Then the call says what
     # it wrote: the rows, one phrase per database. The end value prints its
     # own last lines and gives the exit code.
     #
     #   wrote: 1 intent and 1 ledger line in work_graph.db
     def report(value, ctx)
-      ctx.printed.each { |line| output.raw(line) }
+      ctx.print_to(output)
       output.row("wrote:", graphs.wrote)
       @exit_code = value.report(output)
     end

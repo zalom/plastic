@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../code_workflow"
-require_relative "../graph/spec"
+require_relative "../graph/knowledge/spec"
 
 module Plastic
   module Workflows
@@ -25,7 +25,7 @@ module Plastic
       end
 
       read "read the open decisions" do |context|
-        spec = Graph::Spec.new(context.retrieval, context.intent_id)
+        spec = Graph::Knowledge::Spec.new(context.retrieval, context.intent_id)
         context[:decisions] = spec.open_decisions
         context[:criteria] = spec.done_criteria
         context.decisions.each { |decision| context.print("open: #{decision}") }

@@ -2,6 +2,7 @@
 
 require_relative "workflow"
 require_relative "failed"
+require_relative "cli/command/usage"
 require_relative "code_workflow/gate"
 require_relative "code_workflow/read"
 require_relative "code_workflow/step"
@@ -90,6 +91,8 @@ module Plastic
     # Nil when the step is done with; otherwise the value that ends the call.
     def perform(step)
       step.run(ctx, self.class)
+    rescue CLI::Command::Usage
+      raise
     rescue => error
       Failed.raised(key, step.name, error)
     end

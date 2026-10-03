@@ -64,6 +64,14 @@ class CodeWorkflowTest < Plastic::TestCase
     assert_equal Plastic::Refused.new(:code_hold, "the owner holds hold"), Flows::Hold.call(context(facts: { mode: "hold" }))
   end
 
+  def test_a_usage_error_raised_in_a_step_is_not_wrapped
+    flow = code do
+      read("misuse") { |_c| raise Plastic::CLI::Command::Usage, "bad input" }
+    end
+
+    assert_raises(Plastic::CLI::Command::Usage) { flow.call(context) }
+  end
+
   def test_a_failure_gate_returns_a_failed_value
     assert_equal Plastic::Failed.new(:code_hold, "gate", "the check broke on break"),
       Flows::Hold.call(context(facts: { mode: "break" }))

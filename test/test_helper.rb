@@ -35,6 +35,7 @@ module Plastic
 
       @booted = true
       require "plastic"
+      require "plastic/graph"
       SQLite3::ForkSafety.suppress_warnings!
       require File.expand_path("fixtures/routines", __dir__)
       Dir[File.join(HELPERS, "*.rb")].each { |helper| require helper }
