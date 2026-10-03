@@ -23,7 +23,7 @@ module Plastic
 
       def document_row = { intent_id:, path:, body:, updated_at: @record.now }
       def revision_row(origin_id) = { sha256: revision, intent_id:, path:, body:, created_at: @record.now, origin_id: }
-      def head_row(origin_id) = { intent_id:, path:, sha256: revision, updated_at: @record.now, origin_id: }
+      def head_row = { intent_id:, path:, sha256: revision, updated_at: @record.now }
     end
   end
 end

@@ -31,8 +31,7 @@ module Plastic
       private
 
       def apply_document(batch, document)
-        EvidenceRows.new(batch, document, @origin_id).write
-        @after_passages.call
+        EvidenceRows.new(batch, document, @origin_id).write { @after_passages.call }
       end
     end
   end
