@@ -1292,31 +1292,13 @@ node kind, and the node input on stdin. `scripts/node-run`, `RunnerUntilEmpty`, 
 `runner watch --dispatch` branch are gone. A watch tick only classifies, and its
 `watch.record` line carries no `dispatched`, `harness`, or `meter` field.
 
-## compaction thresholds and the compact-instructions block (intent 312)
+## the managed block in CLAUDE.md
 
-Two config keys and one installed block tell a session when to compact and what to do
-about it. Nothing in Plastic reads the keys at runtime: the harness reports how much of
-the window is used, and the model acts on the installed block. The keys exist so a user
-can retune the numbers that block states.
-
-```yaml
-context_offer_tokens: 150000    # offer a compaction
-context_insist_tokens: 250000   # insist on one
-```
-
-They are absolute token counts, not percentages, and they resolve through the ordinary
-`scripts/read-config` path (project, then global, then the `DEFAULTS` in that script).
-A ruling of intent 296 settled the numbers from `research--context-thresholds.md`: models are
-reliable only to roughly 50 to 65 percent of advertised context, and the mechanisms
-behind that are architectural, so a percentage that is right at a 200k window would let
-five times as many raw tokens pile up before firing at 1M. The three places the numbers
-live (the `DEFAULTS` hash, `templates/config.yml`, and `InstallerCore#bootstrap`'s seeded
-config) are pinned equal by `test/compact_instructions_test.rb`.
-
-Intent 355's n5 (D7) lowered both numbers again, from 350,000/500,000 to 150,000/250,000:
-a live session that let the window run from 434,000 to 506,000 tokens spent a third of
-that window on 41 calls before it compacted. The three-way pin above still holds; only
-the shipped values moved.
+Plastic installs one block into `~/.claude/CLAUDE.md`. It holds one sentence and one import,
+and nothing else. An owner ruling of 2026-10-05 removed the compaction thresholds from the
+block, together with the `context_offer_tokens` and `context_insist_tokens` config keys:
+nothing in Plastic read the keys, and the instruction did not work. An install or an update
+replaces a block that an older version left behind, so the old text goes with it.
 
 The block itself is `CompactInstructions::BODY` in `scripts/lib/compact_instructions.rb`,
 installed into `~/.claude/CLAUDE.md` as a marked section:
@@ -1327,7 +1309,7 @@ installed into `~/.claude/CLAUDE.md` as a marked section:
 <!-- END PLASTIC COMPACT -->
 ```
 
-Intent 363 added the first line of that block: a Claude Code import, `@~/.plastic/PLASTIC.md`.
+The block is a Claude Code import, `@~/.plastic/PLASTIC.md`.
 An owner ruling makes `PLASTIC.md` the only instruction text Plastic puts in a session, and this
 import is how the harness reads it. The path names the installed copy under the Plastic home,
 because a bare `@PLASTIC.md` would resolve against `~/.claude`, which holds no such file.
@@ -1348,14 +1330,6 @@ else remains. `Rollback#prepare_switch` strips it too before a downgrade hands o
 older package: no older installer knows the section exists, so nothing there would ever
 replace or remove it. The Codex `AGENTS.md` section needs no such treatment, because
 every older package knows that one and rewrites it on the downgrade install.
-
-The doctor check `claude_compact_instructions` (in `check_claude_registration`) reports
-the block present, well formed, and current, comparing the `hash:` in the BEGIN marker
-against `CompactInstructions.body_hash` so a block an older version left behind is
-reported rather than trusted. The Codex `codex_agents_md` check stops at well formed;
-that difference is deliberate, not an oversight. `doctor_core.rb` keeps its own copy of
-the two marker literals, as it does for Codex, but the body and its hash come from the
-shared lib, so the text has exactly one home.
 
 
 ## meter-watch: the rate-limit meter on a timer (intent 355, n5, D6)

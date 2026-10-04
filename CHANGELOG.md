@@ -5,6 +5,7 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+- The block that Plastic installs into `~/.claude/CLAUDE.md` holds only the import of `PLASTIC.md`. The compaction thresholds are gone from the block, and the `context_offer_tokens` and `context_insist_tokens` config keys are removed. An install or an update replaces the older block.
 - Plastic retires npm. A push to `alpha`, `beta` or `main` makes only the tag and the GitHub release,
   built by `scripts/build-release`, the same builder CI and the fresh install check use. `package.json`
   is private. The stable release 2.0.3 stays on npm.

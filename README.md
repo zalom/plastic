@@ -353,8 +353,6 @@ agents for work, verification and research, and two advisors for hard decisions.
 
 ```yaml
 stale_threshold_days: 3              # Age at which a future intent is shown for triage
-context_offer_tokens: 150000         # Context size at which the agent offers to compact
-context_insist_tokens: 250000        # Context size at which the agent insists
 agent:
   type: claude-code                  # The agent that runs Plastic
   parallel_mode: agent-teams         # agent-teams or linear
