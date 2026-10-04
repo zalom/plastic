@@ -64,6 +64,9 @@ jobs:
           VERSION: ${{ steps.guard.outputs.version }}
         run: ruby scripts/build-release --version "$VERSION" --directory release
 
+      - name: Install, update, roll back and uninstall the built files on an empty home
+        run: ruby tools/check-fresh-install --release release
+
       - name: Create the tag and the GitHub release
         env:
           GH_TOKEN: ${{ github.token }}

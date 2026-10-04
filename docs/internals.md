@@ -1739,8 +1739,13 @@ through it, so the archive CI checks is the archive a release carries.
 
 **The suite runs in the release job.** The release job runs `ruby bin/test` before the guard,
 so a red suite stops the release before any tag or GitHub release.
-`test/publish_workflow_test.rb` pins that order. `.github/workflows/test.yml` also runs the suite
-on pushes and pull requests to `main` and `alpha`.
+`.github/workflows/test.yml` also runs the suite on pushes and pull requests to `main` and `alpha`.
+
+**The built files are installed before they are published.** After the build, the release job
+runs `ruby tools/check-fresh-install --release release`. It installs the files in `release/`
+under an empty home, then updates, rolls back and uninstalls, so a release that cannot install
+is never published. No test asserts on the text of the workflow file; only a release run proves
+the workflow.
 
 ## CLI adapter contract
 
