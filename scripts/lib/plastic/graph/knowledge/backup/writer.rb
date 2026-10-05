@@ -40,20 +40,20 @@ module Plastic
 
           def folders = (@folders ||= Folders.new(@root))
 
-          def goal = Databases.goal(@databases)
+          def sources = Databases.chosen(@databases).select { |name| File.file?(File.join(@root, "#{name}.db")) }
 
-          def sources = (@databases || Databases.all).select { |name| File.file?(File.join(@root, "#{name}.db")) }
+          def report(folder, status) = folders.write_report(folder, status:, goal: Databases.goal(@databases))
 
           def copy_all(folder)
-            folders.write_report(folder, status: "in-progress", goal:)
-            sources.each { |name| vacuum(File.join(@root, "#{name}.db"), File.join(folders.path(folder), "#{name}-#{folder}.db")) }
-            folders.write_report(folder, status: "done", goal:)
+            report(folder, "in-progress")
+            sources.each { |name| self.class.vacuum(File.join(@root, "#{name}.db"), File.join(folders.path(folder), "#{name}-#{folder}.db")) }
+            report(folder, "done")
           rescue
-            folders.write_report(folder, status: "error", goal:)
+            report(folder, "error")
             raise
           end
 
-          def vacuum(source, target) = Database::ConnectionPool.for(source).execute("VACUUM INTO ?", [target])
+          def self.vacuum(source, target) = Database::ConnectionPool.for(source).execute("VACUUM INTO ?", [target])
 
           def row(folder)
             { name: "#{@slug}/#{folder}", files: folders.files(folder).size, bytes: folders.bytes(folder),

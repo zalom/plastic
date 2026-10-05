@@ -20,12 +20,12 @@ module Plastic
 
           # The folder names, all of them or those strictly before a time.
           def names(older_than: nil)
-            @folders.names.select { |name| before?(name, older_than) }
+            @folders.names.select { |name| FolderName.before?(name, older_than) }
           end
 
           # The names of this store's rows that have no folder.
           def orphans(older_than: nil)
-            row_names.reject { |name| @folders.exist?(name) }.select { |name| before?(name, older_than) }
+            row_names.reject { |name| @folders.exist?(name) }.select { |name| FolderName.before?(name, older_than) }
           end
 
           # Deletes the folder and its row, or neither.
@@ -39,8 +39,6 @@ module Plastic
           end
 
           private
-
-          def before?(name, time) = time.nil? || FolderName.time(name) < time
 
           def row_names
             prefix = "#{@slug}/"

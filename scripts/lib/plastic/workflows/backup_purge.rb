@@ -14,7 +14,8 @@ module Plastic
 
       # The folder names and orphan row names the call would delete.
       def self.targets(context)
-        cutoff = context.older_than && Graph::Knowledge::Backup::OlderThan.parse(context.older_than)
+        text = context.older_than
+        cutoff = text && Graph::Knowledge::Backup::OlderThan.parse(text)
         purger = context.work.backups.purger
         (purger.names(older_than: cutoff) | purger.orphans(older_than: cutoff)).sort
       end

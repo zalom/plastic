@@ -15,12 +15,16 @@ module Plastic
 
       # The backup folder the call names, or a usage error that names what is missing.
       def self.choose(context)
-        backups = context.work.backups
-        folder = context.latest ? backups.latest_done : context.timestamp
+        folder = context.latest ? context.work.backups.latest_done : context.timestamp
         raise CLI::Command::Usage, "no done backup of #{context.store} to restore" unless folder
-        raise CLI::Command::Usage, "no backup #{folder.inspect} of #{context.store}" unless backups.folders.exist?(folder)
 
-        folder
+        present(context, folder)
+      end
+
+      def self.present(context, folder)
+        return folder if context.work.backups.folders.exist?(folder)
+
+        raise CLI::Command::Usage, "no backup #{folder.inspect} of #{context.store}"
       end
 
       # The database names the restore replaces; a name the backup lacks is a usage error.

@@ -11,6 +11,7 @@ class RetrievalReadCliTest < Minitest::Test
     in_home do |home|
       FileUtils.mkdir_p(File.join(home, "stores", "alpha"))
       File.write(File.join(home, "projects.yml"), "projects:\n  alpha:\n    path: #{home}\n")
+
       assert_success run_cli(home, "intent", "new", "Backup target", "--project", "alpha")
       backup = run_cli(home, "backup", "--store", "alpha")
 

@@ -28,16 +28,26 @@ module Plastic
       end
 
       def refuse_unregistered
-        return if scope.projects.key?(parsed[:store])
+        slug = parsed[:store]
+        projects = scope.projects
+        return if projects.key?(slug)
 
-        raise CLI::Command::Usage, "no registered project named #{parsed[:store].inspect}; the projects are #{scope.projects.keys.sort.join(", ")}"
+        raise CLI::Command::Usage, "no registered project named #{slug.inspect}; the projects are #{projects.keys.sort.join(", ")}"
       end
 
-      def database_list
-        Graph::Knowledge::Backup::Databases.parse(parsed[:databases])
-      rescue Graph::Knowledge::Backup::Databases::Unknown => error
+      def one_of(first, second, give:, both:)
+        given = [first, second].count { |key| parsed[key] }
+        raise CLI::Command::Usage, give if given.zero?
+        raise CLI::Command::Usage, both if given > 1
+      end
+
+      def as_usage(error_class)
+        yield
+      rescue error_class => error
         raise CLI::Command::Usage, error.message
       end
+
+      def database_list = as_usage(Graph::Knowledge::Backup::Databases::Unknown) { Graph::Knowledge::Backup::Databases.parse(parsed[:databases]) }
 
       def scope
         @scope ||= CLI::Scope.new(env: environment.env, home: environment.home, slug: parsed[:store], directory: environment.directory)

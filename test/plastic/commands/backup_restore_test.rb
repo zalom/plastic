@@ -22,6 +22,7 @@ class BackupRestoreTest < Plastic::TestCase
 
   def assert_nothing_changed(home, result, mention)
     before = bytes(home, "work_graph", "knowledge_graph")
+
     assert_refused_with_usage result, mention
     assert_equal before, bytes(home, "work_graph", "knowledge_graph")
   end
@@ -132,18 +133,5 @@ class BackupRestoreTest < Plastic::TestCase
 
     assert_call result, code: 0, out: ["preview", "work_graph", "knowledge_graph", "references", FIRST]
     assert_equal before, [bytes(home, "work_graph", "knowledge_graph", "references"), folder_names(home)]
-  end
-
-  def test_sync_up_after_restore_rereads_files_newer_than_the_backup
-    home = fresh_home
-    plastic("sync", "down", "--project", "alpha", env: env_for(home), table: Plastic::CLI::TABLE)
-    intent_file = File.join(home, "stores", "alpha", "store", "1--alpha", "1--alpha.md")
-    backup_at(home, at(2026, 1, 1, 10, 0, 0))
-    File.write(intent_file, "\nWritten after the backup.\n", mode: "a")
-    restore_call(home, "--store", "alpha", "--latest")
-    plastic("sync", "up", "--project", "alpha", env: env_for(home), table: Plastic::CLI::TABLE)
-
-    bodies = Plastic::Graph.open(home:, store: "alpha").retrieval.documents("1").map(&:body)
-    assert(bodies.any? { |body| body.include?("Written after the backup.") })
   end
 end

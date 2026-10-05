@@ -32,7 +32,8 @@ module BackupHomes
 
   def backup_at(home, time, slug: "alpha", databases: nil)
     home_db = Plastic::Graph.open(home:, store: slug).databases.fetch(:home)
-    Plastic::Graph::Knowledge::Backup::Publisher.new(home_db, File.join(home, "stores", slug), slug, now: time, databases:).call
+    target = Plastic::Graph::Knowledge::Backup::Target.new(home_db, File.join(home, "stores", slug), slug, nil)
+    Plastic::Graph::Knowledge::Backup::Publisher.new(target, now: time, databases:).call
   end
 
   def backups_dir(home, slug = "alpha") = File.join(home, "stores", slug, "backups")

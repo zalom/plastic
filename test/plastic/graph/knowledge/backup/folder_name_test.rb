@@ -19,9 +19,11 @@ class KnowledgeBackupFolderNameTest < Plastic::TestCase
   def test_a_taken_name_gets_the_next_free_suffix
     time = Time.utc(2026, 10, 5, 16, 15, 30)
     FileUtils.mkdir_p(File.join(backups_dir, "20261005161530"))
+
     assert_equal "20261005161530-1", FolderName.for(backups_dir, time)
 
     FileUtils.mkdir_p(File.join(backups_dir, "20261005161530-1"))
+
     assert_equal "20261005161530-2", FolderName.for(backups_dir, time)
   end
 end

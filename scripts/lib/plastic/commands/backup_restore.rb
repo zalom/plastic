@@ -23,9 +23,7 @@ module Plastic
       private
 
       def check_call
-        raise CLI::Command::Usage, "give --timestamp TS or --latest" unless parsed[:timestamp] || parsed[:latest]
-        raise CLI::Command::Usage, "--latest and --timestamp exclude each other" if parsed[:timestamp] && parsed[:latest]
-
+        one_of(:timestamp, :latest, give: "give --timestamp TS or --latest", both: "--latest and --timestamp exclude each other")
         database_list
       end
 

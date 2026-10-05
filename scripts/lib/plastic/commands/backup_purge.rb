@@ -23,16 +23,13 @@ module Plastic
       private
 
       def check_call
-        raise CLI::Command::Usage, "give --older-than DATE or --all" unless parsed[:older_than] || parsed[:all]
-        raise CLI::Command::Usage, "--all and --older-than exclude each other" if parsed[:older_than] && parsed[:all]
-
-        parsed[:older_than] && read_date
+        one_of(:older_than, :all, give: "give --older-than DATE or --all", both: "--all and --older-than exclude each other")
+        read_date
       end
 
       def read_date
-        Graph::Knowledge::Backup::OlderThan.parse(parsed[:older_than])
-      rescue Graph::Knowledge::Backup::OlderThan::Unreadable => error
-        raise CLI::Command::Usage, error.message
+        text = parsed[:older_than]
+        as_usage(Graph::Knowledge::Backup::OlderThan::Unreadable) { Graph::Knowledge::Backup::OlderThan.parse(text) } if text
       end
 
       def keeps_routine_run? = !parsed[:dry_run]

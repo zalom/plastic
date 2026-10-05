@@ -17,7 +17,7 @@ module Plastic
 
           # The names in the list, each once, or nil when no list was given.
           def self.parse(text)
-            return if text.nil?
+            return unless text
 
             names = text.split(",").map(&:strip).uniq
             unknown = names - all
@@ -26,7 +26,13 @@ module Plastic
             names
           end
 
-          def self.goal(names) = names.nil? || names.sort == all.sort ? "full" : "partial:#{names.map { |name| "#{name}.db" }.join(",")}"
+          # The names a call works on: those listed, or all of them.
+          def self.chosen(names) = Array(names).then { |list| list.empty? ? all : list }
+
+          def self.goal(names)
+            listed = chosen(names)
+            listed.sort == all.sort ? "full" : "partial:#{listed.map { |name| "#{name}.db" }.join(",")}"
+          end
         end
       end
     end

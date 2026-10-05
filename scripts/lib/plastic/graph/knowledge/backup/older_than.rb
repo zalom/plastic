@@ -16,13 +16,14 @@ module Plastic
           DATE = /\A\d{4}-\d{2}-\d{2}\z/
           FULL = /\A\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:Z|[+-]\d{2}:?\d{2})\z/
 
-          def self.parse(text)
-            return Time.new(*text.split("-").map(&:to_i)) if DATE.match?(text)
-            return Time.iso8601(text.sub(" ", "T")) if FULL.match?(text)
+          def self.parse(text) = read(text) || raise(Unreadable, "cannot read #{text.inspect} as a date or a time with an offset")
 
-            raise Unreadable, "cannot read #{text.inspect} as a date or a time with an offset"
+          def self.read(text)
+            return Time.new(*text.split("-").map(&:to_i)) if DATE.match?(text)
+
+            Time.iso8601(text.sub(" ", "T")) if FULL.match?(text)
           rescue ArgumentError
-            raise Unreadable, "cannot read #{text.inspect} as a date or a time with an offset"
+            nil
           end
         end
       end

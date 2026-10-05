@@ -21,7 +21,8 @@ module Plastic
       end
 
       def self.print_entry(context, entry)
-        suffix = entry.flag ? " (#{entry.flag})" : ""
+        flag = entry.flag
+        suffix = flag ? " (#{flag})" : ""
         context.print("#{entry.number}  #{entry.folder}  #{entry.started}  #{entry.status}  #{entry.goal}#{suffix}")
       end
 
