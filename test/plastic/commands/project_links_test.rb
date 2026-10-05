@@ -7,7 +7,7 @@ class ProjectLinksTest < Plastic::TestCase
   def links = plastic("project", "links", table: Plastic::CLI::TABLE)
 
   def link(from, to, kind = "cites")
-    store_graphs.databases.fetch(:work).transaction do |batch|
+    store_graphs.databases.fetch(:knowledge).transaction do |batch|
       batch.put(:links, { from_ref: from, to_ref: to, kind:, at: STAMP }, statement: :insert)
     end
   end

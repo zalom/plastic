@@ -35,6 +35,9 @@ outer one. With neither, the global store answers.
 | `plastic status` | Active work in every store. |
 | `plastic graph resume [--stores a,b]` | Where each named project's work stopped, and what runs next. |
 | `plastic next` | The next action in one line. `--why` adds the rule behind it. |
+| `plastic project list` | The registered projects with their paths, and `(no store)` for one whose store folder is missing. |
+| `plastic project new SLUG PATH` | Registers a project in `projects.yml`, keeping every other line, and leaves its store ready for `plastic intent new`. |
+| `plastic project links` | Lists each link whose local end names an intent or a ruling the store lacks, and fails with the count. |
 
 `continue` and `next` read the same frontier: the liveliest roadmap, its open batch, and the
 entries that are ready, in flight or blocked. With no roadmap, both name the first active

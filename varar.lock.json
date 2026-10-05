@@ -335,6 +335,33 @@
         }
       ]
     },
+    "varar/project-links.md": {
+      "sourceHash": "fnv1a:941b47d4",
+      "examples": [
+        {
+          "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
+          "line": 5
+        }
+      ]
+    },
+    "varar/project-list.md": {
+      "sourceHash": "fnv1a:daff2886",
+      "examples": [
+        {
+          "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
+          "line": 5
+        }
+      ]
+    },
+    "varar/project-new.md": {
+      "sourceHash": "fnv1a:904da319",
+      "examples": [
+        {
+          "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
+          "line": 5
+        }
+      ]
+    },
     "varar/roadmap-add.md": {
       "sourceHash": "fnv1a:9d67a8e1",
       "examples": [
@@ -461,7 +488,7 @@
       ]
     },
     "varar/sync-up.md": {
-      "sourceHash": "fnv1a:d9c8d828",
+      "sourceHash": "fnv1a:dc7725d4",
       "examples": [
         {
           "name": "Each row gives the change, the exit code, the result and the rows:",

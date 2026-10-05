@@ -348,6 +348,8 @@ active.
 from `Graph::Work::NextOffer`, the class `Workflows::PickNext` calls for `plastic next`.
 `plastic intent show ID` prints one intent's state screen.
 
+`plastic sync up` builds `Graph::Knowledge::Sync::IntentFolders` from the folders of the store. It gives the intents of the folders that have no row (`intents`) and the folders it cannot read (`problems`, `unreadable`). `Sync#read_up` writes those rows in the work database, reads the changed files, and prints `store/index.json` again from the rows. `Plan` takes no action on the index on the way up. `Workflows::SyncSteps` ends an up sync with a gate that fails when `Plan#unreadable` is not empty. `Commands::ProjectList`, `ProjectNew` and `ProjectLinks` work on `projects.yml` and the links table. `ProjectNew` edits the text of the file, so other entries, keys and comments stay. `Graph::Knowledge::Link::Check` finds the links whose local end holds no intent or ruling.
+
 `doctor.rb` has four scopes:
 
 - **`--core`**: binary pass/error only. Walks agent registration and core files

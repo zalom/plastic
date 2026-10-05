@@ -233,7 +233,10 @@ plastic architecture refresh --project blog                      # Tell the agen
 
 ### Stores and databases
 ```bash
-plastic sync up                       # Bring the databases level with the store files
+plastic sync up                       # Bring the databases level with the store files; an intent folder with no rows gets its rows back
+plastic project list                  # The registered projects with their paths
+plastic project new blog ~/code/blog  # Register a project and leave its store ready for intent new
+plastic project links                 # List the links that name an intent or a ruling this store lacks
 plastic sync up --dry-run             # Show what would change
 plastic sync down                     # Write the store files from the databases
 plastic backup --store alpha          # Copy the databases of one store (or --store global) into a UTC-named folder
