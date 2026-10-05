@@ -428,7 +428,6 @@ class InstallerCore
     legacy = %w[store projects INDEX.md roadmaps].any? { |entry| File.exist?(File.join(plastic_home, entry)) }
     FileUtils.mkdir_p(File.join(plastic_home, "stores", "global")) unless legacy
     FileUtils.mkdir_p(Plastic::StoreLayout.global_store(plastic_home))
-    FileUtils.mkdir_p(Plastic::StoreLayout.projects_root(plastic_home))
 
     write_if_missing(File.join(plastic_home, "config.yml"), <<~YAML)
       version: 3
@@ -460,6 +459,39 @@ class InstallerCore
 
     puts "  \u{2705} Store bootstrapped"
   end
+
+  # Repairs what an earlier install left in the stores of a home, on install
+  # and on update: an empty stray stores/projects folder, and a global
+  # INDEX.md of headings alone. Nothing a person wrote is touched, and no
+  # legacy import runs here.
+  def repair_stores
+    return unless Plastic::StoreLayout.moved?(plastic_home)
+
+    remove_stray_projects_folder
+    remove_bare_global_index
+  end
+
+  def remove_stray_projects_folder
+    stray = File.join(plastic_home, "stores", "projects")
+    return unless File.directory?(stray)
+
+    if Dir.empty?(stray)
+      Dir.rmdir(stray)
+    else
+      puts "  \u26a0 #{stray} holds files and is not a store; left in place"
+    end
+  end
+
+  def remove_bare_global_index
+    index = File.join(Plastic::StoreLayout.global_root(plastic_home), "INDEX.md")
+    return unless File.file?(index) && self.class.bare_index?(index) && Dir.glob(File.join(Plastic::StoreLayout.global_store(plastic_home), "*")).empty?
+
+    File.delete(index)
+    ready_global_store
+  end
+
+  # True when the file has no line but headings and blank lines, so it lists no intent.
+  def self.bare_index?(path) = File.readlines(path).all? { |line| line.strip.empty? || line.start_with?("#") }
 
   # The state a sync up leaves a new store in: the three store databases, so
   # intent new works at once. No INDEX.md is written, which would mark the
