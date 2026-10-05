@@ -31,7 +31,7 @@ class InstallerReleaseRubyPinsTest < Minitest::Test
     assert_equal "https://ghcr.io/v2/homebrew/core/portable-ruby/blobs/sha256:#{intel.fetch("sha256")}", intel.fetch("url")
   end
 
-  def test_reads_a_table_from_any_script
+  def test_the_pins_table_is_read_from_any_script
     table = InstallerRelease::RubyPins.read("x=1\nruby_pins='\narm64-darwin k 4.0.7 12 #{"a" * 64} r https://example.test/r.tgz\n'\n")
 
     assert_equal({ "arm64-darwin" => { "key" => "k", "version" => "4.0.7", "size" => 12, "sha256" => "a" * 64, "root" => "r",

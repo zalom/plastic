@@ -17,7 +17,7 @@ class InstallerReleaseManifestTest < Minitest::Test
     assert_equal Digest::SHA256.file(@archive).hexdigest, @manifest.dig("archive", "sha256")
   end
 
-  def test_writes_the_manifest_as_json
+  def test_the_manifest_is_written_as_json
     path = File.join(@root, "plastic.manifest.json")
     InstallerRelease::Manifest.write(path, archive: @archive, release: release)
 
