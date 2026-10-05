@@ -83,7 +83,7 @@ module Plastic
 
       private
 
-      attr_reader :words, :environment
+      attr_reader :words, :environment, :argv
 
       def settle(error)
         case error

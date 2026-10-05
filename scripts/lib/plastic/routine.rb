@@ -66,12 +66,6 @@ module Plastic
 
     private
 
-    def run_chain
-      finish(open_routine_run)
-    rescue Graph::Database::Error => error
-      raise CLI::Command::Failure, error.message
-    end
-
     def finish(routine_run)
       ctx = context(routine_run)
       report(Traversal.new(chain, ctx, routine_run) { |run| save_routine_run(run) }.call, ctx)

@@ -1,10 +1,11 @@
 # frozen_string_literal: true
 
-require "digest"
 require "fileutils"
 require "find"
 require_relative "../schema"
+require_relative "snapshot"
 require_relative "../knowledge/backup/writer"
+require_relative "../knowledge/backup/sources"
 
 module Plastic
   module Graph
@@ -15,33 +16,38 @@ module Plastic
       # even when its bytes did not.
       class StoreTree
         EPOCH = Time.at(0)
-        DATABASE = /\.db(?:-journal|-wal|-shm)?\z/
+        DATABASE = Snapshot::DATABASE
 
         def initialize(home, copy, slug)
           @home = home
           @copy = copy
           @slug = slug
+          @baseline = nil
         end
 
         def populate
           refuse_folder_links
           FileUtils.mkdir_p(@copy)
-          copy_home_files
-          copy_store_files
-          snapshot_databases
+          copy_all
           @baseline = state
           self
         end
 
-        def changes
-          now = state
-          (@baseline.keys | now.keys).sort.filter_map do |rel|
-            verb = verb(@baseline[rel], now[rel])
-            [verb, File.join(@home, rel)] if verb
-          end
+        def changes = Snapshot.differences(@baseline, state).map { |verb, rel| [verb, File.join(@home, rel)] }
+
+        def self.copy_file(source, target)
+          FileUtils.mkdir_p(File.dirname(target))
+          FileUtils.cp(source, target)
+          File.utime(EPOCH, EPOCH, target)
         end
 
         private
+
+        def copy_all
+          copy_home_files
+          copy_store_files
+          snapshot_databases
+        end
 
         def source_root = File.join(@home, "stores", @slug)
 
@@ -56,7 +62,7 @@ module Plastic
         def copy_home_files
           Knowledge::Backup::Writer::HOME_FILES.each do |name|
             source = File.join(@home, name)
-            copy_file(source, File.join(@copy, name)) if File.file?(source)
+            StoreTree.copy_file(source, File.join(@copy, name)) if File.file?(source)
           end
         end
 
@@ -66,23 +72,19 @@ module Plastic
           Find.find(source_root) { |path| copy_entry(path) }
         end
 
-        def copy_entry(path)
-          target = File.join(@copy, path.delete_prefix("#{@home}/"))
-          return FileUtils.mkdir_p(target) if File.directory?(path) && !File.symlink?(path)
+        def copy_entry(path) = place(path, File.join(@copy, path.delete_prefix("#{@home}/")))
+
+        def place(path, target)
+          link = File.symlink?(path)
+          return FileUtils.mkdir_p(target) if File.directory?(path) && !link
           return if DATABASE.match?(path)
 
-          File.symlink?(path) ? copy_link(path, target) : copy_file(path, target)
-        end
-
-        def copy_file(source, target)
-          FileUtils.mkdir_p(File.dirname(target))
-          FileUtils.cp(source, target)
-          File.utime(EPOCH, EPOCH, target)
+          link ? copy_link(path, target) : StoreTree.copy_file(path, target)
         end
 
         def copy_link(source, target)
           held = File.join(File.dirname(@copy), "sandbox", target.delete_prefix("#{@copy}/"))
-          File.file?(source) ? copy_file(source, held) : FileUtils.mkdir_p(File.dirname(held))
+          File.file?(source) ? StoreTree.copy_file(source, held) : FileUtils.mkdir_p(File.dirname(held))
           FileUtils.mkdir_p(File.dirname(target))
           File.symlink(held, target)
         end
@@ -97,28 +99,11 @@ module Plastic
 
         def sources
           home_db = File.join(@home, "home.db")
-          store = Schema.store.filter_map { |key| Knowledge::Backup::Writer.store_entry(source_root, @slug, key) }
+          store = Schema.store.filter_map { |key| Knowledge::Backup::Sources.entry(source_root, @slug, key) }
           [(["home.db", home_db] if File.file?(home_db)), *store].compact
         end
 
-        def state
-          Dir.glob("**/*", File::FNM_DOTMATCH, base: @copy).to_h do |rel|
-            [rel, fingerprint(File.join(@copy, rel))]
-          end.compact
-        end
-
-        def fingerprint(path)
-          return unless File.file?(path) && !DATABASE.match?(path)
-
-          [Digest::SHA256.file(path).hexdigest, File.mtime(path)]
-        end
-
-        def verb(before, now)
-          return "would add" unless before
-          return "would remove" unless now
-
-          "would change" if before != now
-        end
+        def state = Snapshot.of(@copy)
       end
     end
   end

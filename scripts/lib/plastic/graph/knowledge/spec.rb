@@ -15,7 +15,7 @@ module Plastic
         def initialize(retrieval, intent_id)
           document = retrieval.documents(intent_id).find { |candidate| candidate.path == "spec.md" }
           @lines = document ? document.body.lines.map(&:chomp) : []
-          @present = !document.nil?
+          @present = [document].any?
         end
 
         def present? = @present

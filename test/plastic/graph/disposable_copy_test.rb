@@ -95,6 +95,14 @@ class DisposableCopyTest < Plastic::TestCase
     end
   end
 
+  def test_a_link_to_a_missing_file_is_copied_as_a_link
+    with_seed do |home|
+      File.symlink(File.join(File.dirname(home), "gone.txt"), alpha(home, "dangling.txt"))
+
+      copy_of(home).within { |copy| assert File.symlink?(alpha(copy.path, "dangling.txt")) }
+    end
+  end
+
   def test_a_write_through_a_file_link_never_reaches_the_outside_target
     with_seed do |home|
       outside = linked_file(home)

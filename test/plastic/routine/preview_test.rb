@@ -117,3 +117,23 @@ class RoutinePreviewTest < Plastic::TestCase
     assert_includes error.message, "preview"
   end
 end
+
+class RoutineDatabaseFailureTest < Plastic::TestCase
+  class Failing < Fixtures::Routine
+    argument :name, label: "NAME", text: "who to greet"
+
+    workflow :code_stamp, next: :code_greet
+    workflow :code_greet, next: :noop
+
+    private
+
+    def open_routine_run = raise(Plastic::Graph::Database::Error, "disk full")
+  end
+
+  def test_a_database_error_in_the_chain_ends_the_call_as_a_failure_naming_the_error
+    err = StringIO.new
+    code = Failing.call(["ada"], words: "kernel failing", environment: environment(err:))
+
+    assert_equal [Plastic::CLI::Command::FAILED, true], [code, err.string.include?("disk full")]
+  end
+end

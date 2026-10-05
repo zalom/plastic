@@ -77,7 +77,7 @@ module Plastic
 
       def agent_files(config)
         manifest_files(manifest_path_for(nil, config)).grep(->(file) { File.exist?(file) }) +
-          [emptied_instruction_file(config[:key], config), record_dir_for(config)].compact
+          [emptied_instruction_file(config), record_dir_for(config)].compact
       end
 
       def unregistered(keys) = keys.reject { |key| agent_installed?(key) }

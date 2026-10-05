@@ -31,6 +31,12 @@ module Plastic
 
       private
 
+      def run_chain
+        finish(open_routine_run)
+      rescue Graph::Database::Error => error
+        raise CLI::Command::Failure, error.message
+      end
+
       def previewing? = self.class.previews? && parsed[:dry_run]
 
       def preview
@@ -42,13 +48,17 @@ module Plastic
 
       def preview_in(copy)
         enter(copy)
-        run_chain
-        output.show(copy.changes)
+        run_shown(copy)
       rescue CLI::Command::Refusal, CLI::Command::Failure => error
-        output.show(copy.changes)
         raise error.class, copy.original(error.message)
       ensure
         leave
+      end
+
+      def run_shown(copy)
+        run_chain
+      ensure
+        output.show(copy.changes)
       end
 
       def enter(copy)

@@ -25,7 +25,7 @@ module Plastic
 
     # Prints the reply to the event, if there is one.
     def answer
-      return help if @argv.intersect?(%w[--help -h])
+      return help if argv.intersect?(%w[--help -h])
 
       reply = respond(event)
       environment.out.puts reply if reply

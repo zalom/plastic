@@ -13,6 +13,7 @@ require_relative "../../schema"
 require_relative "tar_entry_writer"
 require_relative "staged"
 require_relative "archive_name"
+require_relative "sources"
 
 module Plastic
   module Graph
@@ -40,12 +41,6 @@ module Plastic
               Database::ConnectionPool.for(source).execute("VACUUM INTO ?", [dest])
               [name, dest]
             end
-          end
-
-          def self.store_entry(store, slug, key)
-            file = Schema.file(key)
-            db = File.join(store, file)
-            ["stores/#{slug}/#{file}", db] if File.exist?(db)
           end
 
           def self.write_tar(path, snapshots)
@@ -80,22 +75,6 @@ module Plastic
             staged.discard_from(backups_dir)
           end
 
-          # Describes a backup without creating the home, archive, or metadata.
-          def self.plan(home)
-            { name: ArchiveName.for(home), files: sources(home).count { |(_name, path)| File.file?(path) } }
-          end
-
-          def self.sources(home)
-            [["home.db", File.join(home, "home.db")]] + store_sources(home)
-          end
-
-          def self.store_sources(home)
-            Dir.glob(File.join(home, "stores", "*")).select { |path| File.directory?(path) }.sort.flat_map do |store|
-              slug = File.basename(store)
-              Schema.store.filter_map { |key| store_entry(store, slug, key) }
-            end
-          end
-
           private
 
           def backups_dir = File.join(@home, "backups").tap { |dir| FileUtils.mkdir_p(dir) }
@@ -111,7 +90,7 @@ module Plastic
             { name:, files:, bytes: File.size(path), sha256: Digest::SHA256.file(path).hexdigest, at: Plastic.now, session_id: @session }
           end
 
-          def sources = self.class.sources(@home)
+          def sources = Sources.of(@home)
 
           def home_files
             HOME_FILES.filter_map do |name|

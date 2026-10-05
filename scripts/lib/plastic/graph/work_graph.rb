@@ -90,7 +90,7 @@ module Plastic
       def backup = Knowledge::Backup::Publisher.new(home_db, home_dir, session: @writers.session).call
 
       # Describes the backup a call would write, without writing anything.
-      def preview_backup = Knowledge::Backup::Writer.plan(home_dir)
+      def preview_backup = Knowledge::Backup::Sources.plan(home_dir)
 
       private
 

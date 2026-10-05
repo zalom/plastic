@@ -13,7 +13,7 @@ module Plastic
 
       def self.lines(value)
         case value
-        when Hash then value.flat_map { |key, item| pair(key, item) }
+        when Hash then value.sum([]) { |key, item| pair(key, item) }
         when Array then value.flat_map { |item| listed(item) }
         else value.to_s.lines.map(&:chomp)
         end

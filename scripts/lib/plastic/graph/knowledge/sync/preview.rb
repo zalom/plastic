@@ -14,15 +14,9 @@ module Plastic
             @home, @store, @options, @direction = home, store, options, direction
           end
 
-          def call
-            Dir.mktmpdir("plastic-sync-preview") do |copy|
-              copy_source(copy)
-              work = Graph.open(home: copy, store: @store).work
-              plan = work.sync_plan(@direction, options)
-              check(plan)
-              [*conflict_lines(plan), *work.sync_apply(plan)].map { |line| "preview: #{line}" }
-            end
-          end
+          def self.conflict_lines(plan) = plan.conflicts.map { |path| "conflict: #{path}" }
+
+          def call = Dir.mktmpdir("plastic-sync-preview") { |copy| lines_in(copy) }.map { |line| "preview: #{line}" }
 
           private
 
@@ -42,18 +36,34 @@ module Plastic
             end
           end
 
-          def check(plan)
-            raise Invalid, plan.failure if plan.failure
+          def lines_in(copy)
+            copy_source(copy)
+            work = Graph.open(home: copy, store: @store).work
+            plan = checked(work.sync_plan(@direction, options))
+            [*Preview.conflict_lines(plan), *work.sync_apply(plan)]
           end
 
-          def conflict_lines(plan) = plan.conflicts.map { |path| "conflict: #{path}" }
+          def checked(plan)
+            failure = plan.failure
+            raise Invalid, failure if failure
+
+            plan
+          end
 
           def copy_source(copy)
             check_source
+            copy_home_files(copy)
+            copy_store(copy)
+          end
+
+          def copy_home_files(copy)
             %w[origin_id config.yml projects.yml].each do |name|
               path = File.join(@home, name)
               FileUtils.cp(path, copy) if File.file?(path)
             end
+          end
+
+          def copy_store(copy)
             parent = File.join(copy, "stores")
             FileUtils.mkdir_p(parent)
             FileUtils.cp_r(source, File.join(parent, @store)) if File.directory?(source)

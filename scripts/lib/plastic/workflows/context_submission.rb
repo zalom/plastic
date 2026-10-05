@@ -31,6 +31,10 @@ module Plastic
       def read(path)
         raise CLI::Command::Usage, "#{path} does not exist" unless File.file?(path)
 
+        parse(path)
+      end
+
+      def parse(path)
         submission = JSON.parse(File.read(path))
         raise CLI::Command::Usage, "#{path} must hold a JSON object" unless submission.is_a?(Hash)
 

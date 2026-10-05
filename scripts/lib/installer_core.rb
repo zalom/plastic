@@ -1715,16 +1715,26 @@ class InstallerCore
     path
   end
 
-  # The instruction file an uninstall deletes because Plastic's section is all it holds.
-  def emptied_instruction_file(key, config)
-    path, prefix, section = if key == "claude"
-      [File.join(config[:dir], "CLAUDE.md"), CLAUDE_SECTION_BEGIN_PREFIX, CLAUDE_SECTION_RE]
-    else
-      [File.join(config[:home_dir] || config[:dir], "AGENTS.md"), CODEX_SECTION_BEGIN_PREFIX, CODEX_SECTION_RE]
-    end
-    return nil unless File.exist?(path) && File.read(path).include?(prefix)
+  INSTRUCTION_SECTIONS = {
+    "claude" => ["CLAUDE.md", CLAUDE_SECTION_BEGIN_PREFIX, CLAUDE_SECTION_RE],
+    "codex" => ["AGENTS.md", CODEX_SECTION_BEGIN_PREFIX, CODEX_SECTION_RE]
+  }.freeze
 
-    resolve_managed_path(path) if File.read(path).sub(/\n?#{section}/, "").strip.empty?
+  # The instruction file an uninstall deletes because Plastic's section is all it holds.
+  def emptied_instruction_file(config)
+    key, home_dir, dir = config.values_at(:key, :home_dir, :dir)
+    name, prefix, section = INSTRUCTION_SECTIONS.fetch(key, INSTRUCTION_SECTIONS["codex"])
+    only_section_path(File.join(home_dir || dir, name), prefix, section)
+  end
+
+  def only_section_path(path, prefix, section)
+    path = resolve_managed_path(path)
+    path if InstallerCore.section_alone?(path, prefix, section)
+  end
+
+  def self.section_alone?(path, prefix, section)
+    held = File.exist?(path) ? File.read(path) : ""
+    held.include?(prefix) && held.sub(/\n?#{section}/, "").strip.empty?
   end
 
   def strip_codex_section(path)

@@ -37,7 +37,7 @@ class KnowledgeBackupWriterTest < Plastic::TestCase
   end
 
   def test_a_store_database_not_yet_written_has_no_entry
-    assert_nil Writer.store_entry(File.join(@backup_home, "stores", "none"), "none", :work)
+    assert_nil Plastic::Graph::Knowledge::Backup::Sources.entry(File.join(@backup_home, "stores", "none"), "none", :work)
   end
 
   def test_each_snapshot_is_a_readable_copy_of_its_database

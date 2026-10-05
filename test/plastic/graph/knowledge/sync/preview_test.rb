@@ -24,6 +24,12 @@ class KnowledgeSyncPreviewTest < Plastic::TestCase
     assert_equal before, snapshot(store_root)
   end
 
+  def test_an_overwrite_path_that_names_no_file_is_refused_naming_the_path
+    error = assert_raises(Plastic::Invalid) { preview(overwrite: "store/9--nothing/spec.md") }
+
+    assert_includes error.message, "store/9--nothing/spec.md names no file"
+  end
+
   def test_a_symbolic_link_is_rejected_before_copying
     target = File.join(@plastic_home, "outside")
     File.write(target, "keep")

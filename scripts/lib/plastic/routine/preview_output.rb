@@ -21,7 +21,7 @@ module Plastic
 
       def row(label, value) = tap { __getobj__.row((label == "wrote:") ? "would write:" : label, value) }
 
-      def next_step(_command, because: BECAUSE) = tap { __getobj__.next_step(@command, because: BECAUSE) }
+      def next_step(*, **) = tap { __getobj__.next_step(@command, because: BECAUSE) }
 
       # The files the call would add, change or remove, then the closing line.
       def show(changes)

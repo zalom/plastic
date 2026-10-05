@@ -20,6 +20,8 @@ module Plastic
       def initialize(home, slug)
         @home = home
         @slug = slug
+        @path = nil
+        @tree = nil
       end
 
       def within
