@@ -204,6 +204,14 @@ class InstallerCoreBootstrapTest < Minitest::Test
     assert_equal [0, true], [call.code, Dir.exist?(global("store", "1--first"))]
   end
 
+  def test_a_first_install_over_a_legacy_home_creates_no_new_global_store
+    FileUtils.mkdir_p(plastic_home)
+    File.write(File.join(plastic_home, "INDEX.md"), "# Index\n")
+    bootstrap
+
+    refute_path_exists global("work_graph.db")
+  end
+
   def test_an_install_over_a_store_that_has_its_index_leaves_it_byte_for_byte
     FileUtils.mkdir_p(global)
     File.binwrite(global("INDEX.md"), "# Index\n\n## Active\n\n- 1 first\n")
