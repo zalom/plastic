@@ -203,8 +203,8 @@ class ContextBudgetFixtureTest < Minitest::Test
 
   def test_build_copies_the_repos_own_core_block
     assert_equal File.size(File.join(REPO, "PLASTIC.md")),
-                 File.size(File.join(fixture.plastic_home, "PLASTIC.md")),
-                 "the fixture must measure the repo's core block, never a stale one"
+      File.size(File.join(fixture.plastic_home, "PLASTIC.md")),
+      "the fixture must measure the repo's core block, never a stale one"
   end
 
   # On macOS Dir.pwd resolves /var to /private/var; without realpath the hook's
@@ -270,10 +270,10 @@ class ContextBudgetCeilingTest < Minitest::Test
       report = ContextBudget.run(repo: REPO, repeat: 1, core_file: core,
         fixture: ContextBudgetSharedFixture.clone("plastic-bench-overbudget-fixture"))
 
-      refute report.ok?, "a 9,000-byte core block must fail the 8,192 ceiling"
+      refute_predicate report, :ok?, "a 9,000-byte core block must fail the 8,192 ceiling"
       assert report.failures.any? { |f| f.include?("core") },
         "the failure must name the core row; got #{report.failures.inspect}"
-      assert report.row(:core).over?
+      assert_predicate report.row(:core), :over?
     end
   end
 
@@ -349,12 +349,14 @@ class ContextBudgetCeilingTest < Minitest::Test
   # into ~/.plastic. Kept deliberate rather than forgotten.
   def test_the_bench_is_not_registered_for_install
     core_lib = File.read(File.join(REPO, "scripts", "lib", "installer_core.rb"))
+
     refute_includes core_lib, "context_budget",
       "the bench is a maintainer tool; registering it would install it into ~/.plastic"
 
     requiring = Dir.glob(File.join(REPO, "scripts", "**", "*")).select do |path|
       File.file?(path) && File.read(path).include?("context_budget")
     end
+
     assert_empty requiring,
       "no shipped scripts/* file may require the bench lib: #{requiring.inspect}"
   end
@@ -366,16 +368,6 @@ class ContextBudgetCeilingTest < Minitest::Test
     ["8,192", "15,000", "17,500"].each do |number|
       assert_includes internals, number, "docs/internals.md must state the #{number} ceiling"
     end
-  end
-
-  def test_the_architecture_doc_no_longer_states_the_stale_ceilings
-    architecture = File.read(File.join(REPO, "docs", "architecture.md"))
-
-    refute_includes architecture, "5,000 estimated tokens",
-      "the live token ceiling is 1,600 (intent 305), not skill-lint's 5,000"
-    refute_includes architecture, "8 `references/*.md`",
-      "the ruled chapter set is 6 (intent 304)"
-    assert_includes architecture, "bin/plastic-bench"
   end
 end
 

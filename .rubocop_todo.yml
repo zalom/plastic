@@ -323,7 +323,6 @@ Layout/ElseAlignment:
     - 'scripts/read-config'
     - 'test/node_input_budget_test.rb'
     - 'test/rebuild_graph_test.rb'
-    - 'test/support/screen_census.rb'
 
 # Offense count: 7
 # This cop supports safe autocorrection (--autocorrect).
@@ -432,7 +431,6 @@ Layout/EndAlignment:
     - 'test/node_input_budget_test.rb'
     - 'test/ready_set_test.rb'
     - 'test/rebuild_graph_test.rb'
-    - 'test/support/screen_census.rb'
 
 # Offense count: 71
 # This cop supports safe autocorrection (--autocorrect).
@@ -455,7 +453,6 @@ Layout/ExtraSpacing:
     - 'test/codex_install_test.rb'
     - 'test/doctor_test.rb'
     - 'test/harness_text_test.rb'
-    - 'test/support/screen_census.rb'
 
 # Offense count: 6
 # This cop supports safe autocorrection (--autocorrect).
@@ -799,7 +796,6 @@ Lint/ShadowedException:
     - 'scripts/lib/session_ledger.rb'
     - 'scripts/select-update-target'
     - 'scripts/update.rb'
-    - 'test/support/screen_census.rb'
 
 # Offense count: 33
 # This cop supports safe autocorrection (--autocorrect).
@@ -1097,7 +1093,6 @@ Metrics/AbcSize:
     - 'test/savepoint_review_commit_test.rb'
     - 'test/savepoint_split_test.rb'
     - 'test/scaffold_intent_test.rb'
-    - 'test/screen_census_test.rb'
     - 'test/screen_paint_test.rb'
     - 'test/screen_width_test.rb'
     - 'test/session_ledger_concurrency_test.rb'
@@ -1114,7 +1109,6 @@ Metrics/AbcSize:
     - 'test/store_discovery_cross_tool_test.rb'
     - 'test/store_provisioning_test.rb'
     - 'test/subtraction_304_test.rb'
-    - 'test/support/screen_census.rb'
     - 'test/tools/crap_test.rb'
     - 'test/update_transaction_test.rb'
     - 'test/update_verb_test.rb'
@@ -1437,7 +1431,6 @@ Metrics/CyclomaticComplexity:
     - 'scripts/scaffold-intent'
     - 'scripts/session-commit'
     - 'scripts/update.rb'
-    - 'test/backfill_308_test.rb'
     - 'test/codex_install_content_test.rb'
     - 'test/codex_install_test.rb'
     - 'test/doctor_session_ledger_test.rb'
@@ -1456,7 +1449,6 @@ Metrics/CyclomaticComplexity:
     - 'test/savepoint_split_test.rb'
     - 'test/screen_width_test.rb'
     - 'test/session_ledger_concurrency_test.rb'
-    - 'test/support/screen_census.rb'
     - 'tools/crap.rb'
 
 # Offense count: 1525
@@ -1595,7 +1587,6 @@ Metrics/MethodLength:
     - 'test/apply_patch_envelope_test.rb'
     - 'test/arm_test.rb'
     - 'test/auto_core_307_test.rb'
-    - 'test/backfill_308_test.rb'
     - 'test/backfill_intent_test.rb'
     - 'test/bridge_retired_test.rb'
     - 'test/capture_hook_test.rb'
@@ -1774,7 +1765,6 @@ Metrics/MethodLength:
     - 'test/store_walker_compat_test.rb'
     - 'test/subtraction_304_test.rb'
     - 'test/support/codex_binary.rb'
-    - 'test/support/screen_census.rb'
     - 'test/tick_with_commit_contract_test.rb'
     - 'test/update_safety_test.rb'
     - 'test/update_transaction_test.rb'
@@ -2033,7 +2023,6 @@ Metrics/PerceivedComplexity:
     - 'test/roadmap_queue_graph_test.rb'
     - 'test/rollback_major_test.rb'
     - 'test/session_ledger_concurrency_test.rb'
-    - 'test/support/screen_census.rb'
     - 'tools/crap.rb'
 
 # Offense count: 2
@@ -2306,7 +2295,6 @@ Minitest/EmptyLineBeforeAssertionMethods:
     - 'test/arm_test.rb'
     - 'test/atomic_write_test.rb'
     - 'test/auto_core_307_test.rb'
-    - 'test/backfill_308_test.rb'
     - 'test/backfill_intent_test.rb'
     - 'test/bin_test_test.rb'
     - 'test/bridge_retired_test.rb'
@@ -2562,7 +2550,6 @@ Minitest/MultipleAssertions:
     - 'test/apply_patch_envelope_test.rb'
     - 'test/arm_test.rb'
     - 'test/auto_core_307_test.rb'
-    - 'test/backfill_308_test.rb'
     - 'test/backfill_intent_test.rb'
     - 'test/bin_test_test.rb'
     - 'test/capture_hook_test.rb'
@@ -2708,7 +2695,6 @@ Minitest/MultipleAssertions:
     - 'test/savepoint_review_commit_test.rb'
     - 'test/savepoint_split_test.rb'
     - 'test/scaffold_intent_test.rb'
-    - 'test/screen_census_test.rb'
     - 'test/screen_paint_test.rb'
     - 'test/screen_width_test.rb'
     - 'test/session_backfill_test.rb'
@@ -3138,7 +3124,6 @@ Style/RedundantFreeze:
     - 'scripts/lib/verify_intent.rb'
     - 'scripts/runner'
     - 'test/auto_core_307_test.rb'
-    - 'test/backfill_308_test.rb'
     - 'test/doctrine_305_test.rb'
     - 'test/end_intent_generated_outcome_test.rb'
     - 'test/gates_removed_test.rb'
@@ -3672,7 +3657,6 @@ Style/TrailingCommaInArrayLiteral:
     - 'scripts/lib/session_ledger.rb'
     - 'scripts/maintenance-run'
     - 'scripts/restore-intent-v1'
-    - 'test/backfill_308_test.rb'
     - 'test/capture_hook_test.rb'
     - 'test/codex_install_test.rb'
     - 'test/config_asks_test.rb'
