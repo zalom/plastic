@@ -38,12 +38,15 @@ module InstallerHelper
   def release_package(path, version)
     FileUtils.mkdir_p(File.join(path, "bin"))
     File.write(File.join(path, "VERSION"), "#{version}\n")
-    File.write(File.join(path, "bin", "plastic"), <<~SH)
-      #!/bin/sh
-      if [ "$*" = "version --json" ]; then echo '{"result":{"version":"#{version}"}}'; exit 0; fi
-      echo "$*" >> "$HOME/launcher-calls"
-      echo #{version}
-    SH
+    File.write(File.join(path, "bin", "plastic"), <<~RUBY)
+      #!/usr/bin/env ruby
+      if ARGV == %w[version --json]
+        puts '{"result":{"version":"#{version}"}}'
+        exit
+      end
+      File.open(File.join(Dir.home, "launcher-calls"), "a") { |calls| calls.puts(ARGV.join(" ")) }
+      puts "#{version}"
+    RUBY
     File.chmod(0o755, File.join(path, "bin", "plastic"))
     path
   end

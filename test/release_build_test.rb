@@ -53,6 +53,20 @@ class ReleaseBuildTest < Minitest::Test
     assert_equal Digest::SHA256.file(archive).hexdigest, manifest.dig("archive", "sha256")
   end
 
+  def test_the_manifest_carries_the_ruby_pins_of_install_sh
+    ReleaseBuild.call(version: "2.0.4", directory: @out, root: @root)
+
+    assert_equal InstallerRelease::RubyPins.read, manifest.dig("ruby", "builds")
+  end
+
+  def test_seal_writes_the_ruby_pins_it_is_given
+    FileUtils.mkdir_p(@out)
+    File.binwrite(archive, "archive bytes")
+    ReleaseBuild.seal("2.0.3", @out, pins: { "arm64-darwin" => { "key" => "k" } })
+
+    assert_equal({ "arm64-darwin" => { "key" => "k" } }, manifest.dig("ruby", "builds"))
+  end
+
   def test_seal_writes_the_checksum_and_manifest_for_an_archive_built_elsewhere
     FileUtils.mkdir_p(@out)
     File.binwrite(archive, "archive bytes")

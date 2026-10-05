@@ -8,20 +8,18 @@ class InstallShDependencyTest < Minitest::Test
   BASE_TOOLS = %w[mktemp rm mkdir ln cat cp uname dirname basename].freeze
 
   def test_names_each_missing_tool_with_both_platforms
-    path = minimal_path(%w[ruby tar])
+    path = minimal_path(%w[tar])
     _out, err, status = Open3.capture3({ "HOME" => @home, "PATH" => path }, "/bin/sh", SCRIPT)
 
     assert_equal 1, status.exitstatus
     assert_empty ["needs curl", "needs sha256sum or shasum", "macOS:", "Linux:"].reject { |text| err.include?(text) }, err
   end
 
-  def test_names_a_ruby_older_than_four
-    write_tool("ruby", "#!/bin/sh\necho 3.3.5\n")
-    _out, err, status = install
+  def test_asks_for_no_ruby_and_no_bundler
+    path = minimal_path(%w[tar])
+    _out, err, = Open3.capture3({ "HOME" => @home, "PATH" => path }, "/bin/sh", SCRIPT)
 
-    assert_equal 1, status.exitstatus
-    assert_includes err, "Ruby 4.0 or later"
-    assert_includes err, "found Ruby 3.3.5"
+    refute_match(/Ruby|Bundler/, err)
   end
 
   private

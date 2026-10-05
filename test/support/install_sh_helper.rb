@@ -29,7 +29,7 @@ module InstallShHelper
   end
 
   FAKE_SHA256SUM = <<~RUBY
-    #!/usr/bin/env -S ruby --disable-gems
+    #!#{RbConfig.ruby} --disable-gems
     require "digest"
     ok = File.readlines(ARGV.fetch(1)).all? do |line|
       sum, name = line.split
@@ -74,16 +74,18 @@ module InstallShHelper
     File.chmod(0o755, File.join(package, "bin", "plastic"))
   end
 
-  def fake_launcher(version) = <<~SH
-    #!/bin/sh
-    if [ "$*" = "version --json" ]; then echo '{"result":{"version":"#{version}"}}'; exit 0; fi
-    echo #{version}
-  SH
+  def fake_launcher(version) = <<~RUBY
+    #!/usr/bin/env ruby
+    puts(ARGV == %w[version --json] ? '{"result":{"version":"#{version}"}}' : "#{version}")
+  RUBY
 
   BUNDLER_ENVIRONMENT = %w[RUBYOPT RUBYLIB BUNDLE_GEMFILE BUNDLE_BIN_PATH BUNDLER_SETUP BUNDLER_VERSION].to_h { |name| [name, nil] }.freeze
 
+  # PLASTIC_RUBY runs the installer with the test's Ruby, so only the tests
+  # of the Ruby download make install.sh fetch one.
   def environment(extra = {})
-    BUNDLER_ENVIRONMENT.merge("HOME" => @home, "PATH" => [@fakebin, ENV.fetch("PATH")].join(File::PATH_SEPARATOR)).merge(extra)
+    BUNDLER_ENVIRONMENT.merge("HOME" => @home, "PLASTIC_RUBY" => RbConfig.ruby,
+      "PATH" => [@fakebin, ENV.fetch("PATH")].join(File::PATH_SEPARATOR)).merge(extra)
   end
 
   def install(*arguments, **extra)
