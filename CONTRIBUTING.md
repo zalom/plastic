@@ -61,8 +61,10 @@ bundle exec ruby bin/verify-change <base commit>
 ```
 
 Run the test of each changed file once. Then run the gate once before the commit: it runs the
-lint, the tests of the changed files with coverage, and the timing check. Do not run the full
-suite on your machine. CI runs it.
+lint, the tests of the changed files with coverage, and the timing check. Just before the pull
+request is created, run the full suite one time with `ruby bin/test` and fix what it finds. After
+the pull request exists, CI takes over: read its failures and fix those, with no more full runs
+on your machine.
 
 ## Add a command
 

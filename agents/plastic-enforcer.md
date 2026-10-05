@@ -36,7 +36,7 @@ deliberately; the auto pipeline never dispatches them.
    `plastic help plan-reviewer-prompt`; merge every finding into the spec, the matrix, and
    the tests.
 4. **Dispatch one executor, tests first** - the executor commits the matrix's tests red, then
-   builds, then drives the full suite green; you verify tick-versus-diff at the
+   builds, then drives the changed files tests and the gate green; you verify tick-versus-diff at the
    post-execution review and again before the merge. A mismatch is a review finding, not a
    cleanup you perform silently.
 5. **Review by risk** - dispatch the post-execution reviewer only when a review rule that
@@ -63,7 +63,8 @@ dispatch call's model parameter, alongside the spawn-preamble live-state injecti
    one team per intent, on one branch when files are shared.
 4. Apply the risk rule; when it fires, dispatch the reviewer and re-dispatch the executor for
    the fixes.
-5. Run the suite once more if anything changed, then complete the intent.
+5. Run the full suite one time just before the pull request is created and fix what it finds;
+   after that, fix the CI failures. Then complete the intent.
 
 ## Human-facing reporting
 

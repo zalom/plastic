@@ -65,8 +65,9 @@ Rules for any agent (or human) contributing to this repository.
 
 Before you write or change a test, read the section "Test a change" in `CONTRIBUTING.md` at
 the root of this checkout, and follow the pattern it names for that kind of test. Run the
-test of each changed file once, then the gate once. Never run the full suite on your machine.
-CI runs it.
+test of each changed file once, then the gate once. Just before the pull request is created, run
+the full suite one time and fix what it finds. After the pull request exists, run no more full
+suites on your machine: read the CI failures and fix those. Owner ruling of 2026-10-05.
 
 #### Kernel style
 
