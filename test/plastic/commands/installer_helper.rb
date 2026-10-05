@@ -38,7 +38,12 @@ module InstallerHelper
   def release_package(path, version)
     FileUtils.mkdir_p(File.join(path, "bin"))
     File.write(File.join(path, "VERSION"), "#{version}\n")
-    File.write(File.join(path, "bin", "plastic"), "#!/bin/sh\necho \"$*\" >> \"$HOME/launcher-calls\"\necho #{version}\n")
+    File.write(File.join(path, "bin", "plastic"), <<~SH)
+      #!/bin/sh
+      if [ "$*" = "version --json" ]; then echo '{"result":{"version":"#{version}"}}'; exit 0; fi
+      echo "$*" >> "$HOME/launcher-calls"
+      echo #{version}
+    SH
     File.chmod(0o755, File.join(path, "bin", "plastic"))
     path
   end

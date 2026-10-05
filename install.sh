@@ -67,15 +67,16 @@ fetch() { curl --proto '=https' --tlsv1.2 -fsSL "$1" -o "$2"; }
 newest_version() {
   feed=$(curl --proto '=https' --tlsv1.2 -fsSL -H 'Accept: application/vnd.github+json' "$api") ||
     fail "could not read the release list from GitHub"
-  printf '%s' "$feed" | ruby --disable-gems -rjson -rrubygems/version -e '
-    names = %w[plastic.tgz plastic.tgz.sha256 plastic.manifest.json]
-    versions = JSON.parse($stdin.read).filter_map do |release|
-      next unless (names - release.fetch("assets").map { |asset| asset["name"] }).empty?
-      version = release.fetch("tag_name").delete_prefix("v")
-      version if (version[/-(alpha|beta)\b/, 1] || "latest") == ARGV[0]
-    end
-    print versions.max_by { |version| Gem::Version.new(version) }
-  ' "$feed_channel"
+  printf '%s' "$feed" > "$tmp/releases.json"
+  ruby --disable-gems -rjson -rrubygems/version - "$tmp/releases.json" "$feed_channel" <<'RUBY'
+names = %w[plastic.tgz plastic.tgz.sha256 plastic.manifest.json]
+versions = JSON.parse(File.read(ARGV[0])).filter_map do |release|
+  next unless (names - release.fetch("assets").map { |asset| asset["name"] }).empty?
+  version = release.fetch("tag_name").delete_prefix("v")
+  version if (version[/-(alpha|beta)\b/, 1] || "latest") == ARGV[1]
+end
+print versions.max_by { |version| Gem::Version.new(version) }
+RUBY
 }
 
 inspect_archive() {

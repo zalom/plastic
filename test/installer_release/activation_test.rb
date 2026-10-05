@@ -10,7 +10,7 @@ class InstallerReleaseActivationTest < Minitest::Test
 
     assert_equal %w[2.0.3 2.0.2], versions(installer)
     assert_equal "2.0.2", installer.rollback
-    assert_equal "old\n", File.read(File.join(installer.active_path, "bin", "plastic"))
+    assert_equal fake_launcher("2.0.2"), File.read(File.join(installer.active_path, "bin", "plastic"))
   end
 
   def test_refuses_a_rollback_without_a_previous_release
@@ -27,7 +27,7 @@ class InstallerReleaseActivationTest < Minitest::Test
     assert_raises(InstallerRelease::ActivationError) do
       installer.activate(candidate, version: "2.0.3", before_switch: -> { raise "injected failure" })
     end
-    assert_equal "old\n", File.read(File.join(installer.active_path, "bin", "plastic"))
+    assert_equal fake_launcher("2.0.2"), File.read(File.join(installer.active_path, "bin", "plastic"))
     assert_path_exists candidate
   end
 

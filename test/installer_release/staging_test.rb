@@ -26,7 +26,7 @@ class InstallerReleaseStagingTest < Minitest::Test
     FileUtils.mkdir_p(package)
 
     assert_equal "candidate has no Plastic launcher", candidate_problem(package)
-    write_package(package, "2.0.3", "new\n")
+    write_package(package, "2.0.3", fake_launcher("2.0.3"))
     File.delete(File.join(package, "VERSION"))
 
     assert_equal "candidate has no version", candidate_problem(package)

@@ -52,7 +52,7 @@ module ReleaseHelper
   def archive_with(version: "2.0.3")
     source = File.join(@root, "source-#{version}")
     package = File.join(source, "package")
-    write_package(package, version, "#!/bin/sh\necho #{version}\n")
+    write_package(package, version, fake_launcher(version))
     archive = File.join(source, "plastic.tgz")
     system("tar", "-czf", archive, "-C", source, "package", exception: true)
     archive
@@ -77,7 +77,7 @@ module ReleaseHelper
 
   def staged_candidate(version)
     stage = File.join(@root, "stage-#{version}")
-    write_package(stage, version, (version == "2.0.2") ? "old\n" : "new\n")
+    write_package(stage, version, fake_launcher(version))
     stage
   end
 
@@ -87,6 +87,14 @@ module ReleaseHelper
   end
 
   def versions(installer) = [installer.active_version, installer.previous_version]
+
+  # A launcher that answers the version probe of an activation with
+  # `reported`, and prints its version on any other call.
+  def fake_launcher(version, reported: version) = <<~SH
+    #!/bin/sh
+    if [ "$*" = "version --json" ]; then echo '{"result":{"version":"#{reported}"}}'; exit 0; fi
+    echo #{version}
+  SH
 
   def write_package(path, version, launcher)
     FileUtils.mkdir_p(File.join(path, "bin"))

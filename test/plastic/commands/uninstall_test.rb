@@ -27,4 +27,15 @@ class UninstallCommandTest < Plastic::TestCase
     refute_path_exists File.join(@home, ".claude", "plastic", "manifest.json")
     assert_path_exists File.join(@plastic_home, "VERSION")
   end
+
+  def test_removes_the_hook_entries_that_run_plastic
+    FileUtils.mkdir_p(File.join(@home, ".codex"))
+    call("install", "--codex")
+    call("uninstall", "--all")
+
+    left = [File.join(@home, ".claude", "settings.json"), File.join(@home, ".codex", "hooks.json")]
+      .select { |path| File.file?(path) && File.read(path).match?(/hook (resume|record)/) }
+
+    assert_empty left
+  end
 end
