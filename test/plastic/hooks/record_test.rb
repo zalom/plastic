@@ -48,7 +48,7 @@ class RecordTest < Plastic::TestCase
   end
 
   def test_a_permit_prints_nothing
-    assert_equal "", call.out
+    assert_call call, code: 0
   end
 
   def test_a_block_prints_the_decision_as_one_json_line
@@ -58,14 +58,12 @@ class RecordTest < Plastic::TestCase
 
     result = call(input: JSON.generate(stop_hook_active: false))
 
-    assert_equal({ "decision" => "block", "reason" => "Plastic: intent 1 still has ready work. Run plastic next for it and " \
-                                                       "dispatch what it prints before stopping." }, JSON.parse(result.out))
+    assert_call result, code: 0, out: %({"decision":"block","reason":"Plastic: intent 1 still has ready work. Run plastic next for it and dispatch what it prints before stopping."}\n)
   end
 
   def test_a_call_with_no_session_prints_one_stderr_line
     result = call(env: {})
 
-    assert_equal ["", 0], [result.out, result.code]
-    assert_includes result.err, "plastic hook: the event names no session; nothing recorded"
+    assert_call result, code: 0, err: "plastic hook: the event names no session; nothing recorded\n"
   end
 end
