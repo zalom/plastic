@@ -3,7 +3,7 @@
 require_relative "../../test_helper"
 
 class NodeDoneTest < Plastic::TestCase
-  USAGE = "plastic node done ID NODE [--judge WHO] --findings TEXT [--repair]\n"
+  USAGE = "plastic node done ID NODE --judge WHO --findings TEXT [--repair]\n"
 
   def cli(*args) = plastic(*args, table: Plastic::CLI::TABLE)
 
@@ -18,6 +18,16 @@ class NodeDoneTest < Plastic::TestCase
     result = cli("node", "done", "1", "n1", "--judge", "tests", "--findings", "ok")
 
     assert_call result, code: 0, out: "node: n1 done\nwrote:  1 node in work_graph.db\n\nnext: plastic graph ready 1 --project global\nbecause: node n1 is done\n"
+  end
+
+  def test_the_usage_line_shows_judge_as_required
+    assert_equal USAGE.chomp, Plastic::Commands::NodeDone.usage_line("node done")
+  end
+
+  def test_a_call_with_no_judge_exits_2_naming_the_switch
+    result = cli("node", "done", "1", "n1", "--findings", "ok")
+
+    assert_call result, code: 2, err: "plastic: missing --judge\n#{USAGE}"
   end
 
   def test_a_bad_judge_exits_2

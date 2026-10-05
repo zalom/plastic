@@ -135,6 +135,15 @@ class SearchScopeTest < Plastic::TestCase
     assert_fused_rows(result)
   end
 
+  def test_plain_output_prints_readable_lines
+    write_document("global", "global evidence")
+
+    result = plastic("search", "evidence", table: Plastic::CLI::TABLE)
+
+    assert_equal [0, ""], [result.code, result.err]
+    refute_match(/\{|=>|\[/, result.out)
+  end
+
   def test_rejects_invalid_and_excessive_limits
     %w[0 101 word].each do |limit|
       result = plastic("search", "evidence", "--limit", limit, table: Plastic::CLI::TABLE)

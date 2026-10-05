@@ -61,6 +61,16 @@ class RecordTest < Plastic::TestCase
     assert_call result, code: 0, out: %({"decision":"block","reason":"Plastic: intent 1 still has ready work. Run plastic next for it and dispatch what it prints before stopping."}\n)
   end
 
+  def test_help_prints_the_usage_and_reads_no_input
+    reader = Class.new { def read(*) = raise("the hook read its input") }.new
+    environment = Plastic::CLI::Command::Environment.new(env: { "PLASTIC_HOME" => @plastic_home }, input: reader,
+      out: StringIO.new, err: StringIO.new, home: @home, directory: @home)
+    code = Plastic::CLI.bin_call(%w[help hook record], environment:, table: Plastic::CLI::TABLE)
+
+    assert_equal [0, ""], [code, environment.err.string]
+    assert_equal "plastic hook record [--harness NAME] [--end]", environment.out.string.lines.first.chomp
+  end
+
   def test_a_call_with_no_session_prints_one_stderr_line
     result = call(env: {})
 

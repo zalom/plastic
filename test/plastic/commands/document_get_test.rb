@@ -29,6 +29,15 @@ class DocumentGetTest < Plastic::TestCase
     assert_call result, code: 0, out: ["first", "revision"]
   end
 
+  def test_plain_output_prints_readable_lines
+    reference = write_document("global", "1", "plain.md", "first line\nsecond line")
+
+    result = get(reference)
+
+    assert_equal [0, ""], [result.code, result.err]
+    refute_match(/\{|=>|\[/, result.out)
+  end
+
   def test_reads_a_current_document_when_its_qualified_reference_omits_a_revision
     write_document("global", "1", "current.md", "current body")
 

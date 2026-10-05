@@ -59,6 +59,16 @@ class IntentDiscoverTest < Plastic::TestCase
     assert_discovery(JSON.parse(result.out).dig("result", "discovery"), result)
   end
 
+  def test_plain_output_prints_readable_lines
+    open_intent
+    write_document("global", "global evidence")
+
+    result = plastic("intent", "discover", "1", "evidence", table: Plastic::CLI::TABLE)
+
+    assert_equal [0, ""], [result.code, result.err]
+    refute_match(/\{|=>|\[/, result.out)
+  end
+
   def test_hands_discovery_to_the_external_agent_through_a_routine
     open_intent
     write_document("global", "global evidence")

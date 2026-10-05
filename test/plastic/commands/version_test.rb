@@ -97,6 +97,17 @@ class VersionCommandTest < Plastic::TestCase
     refute_includes result.out, "whole"
   end
 
+  def test_version_reports_no_hooks_after_an_uninstall_that_names_no_agent
+    activated("99.0.0-alpha.1")
+    FileUtils.mkdir_p(File.join(@home, ".codex"))
+    claude_folder
+    call("install", "--claude", "--codex")
+    call("uninstall")
+    result = call("version")
+
+    assert_match(/hooks:\s+none registered/, result.out)
+  end
+
   def unmatched(out, patterns) = patterns.reject { |pattern| pattern.match?(out) }
 
   def healthy_rows

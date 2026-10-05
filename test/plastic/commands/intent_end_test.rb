@@ -90,6 +90,17 @@ class IntentEndRefusalTest < IntentEndFixture
     assert_equal "active", retrieval.intent("1").status
   end
 
+  def test_the_missing_prerequisites_print_as_a_list
+    intent = ready_intent
+    evidence(intent)
+    store_graphs.databases.fetch(:knowledge).transaction { |batch| batch.remove(:documents, intent_id: "1", path: "outcome.md") }
+
+    result = finish
+
+    assert_includes result.out, "Complete these recorded prerequisites: "
+    refute_includes result.out, '["'
+  end
+
   def test_missing_outcome_cannot_close
     intent = ready_intent
     evidence(intent)

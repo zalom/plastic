@@ -26,6 +26,16 @@ class DocumentBatchTest < Plastic::TestCase
     assert_equal 4, result.out.scan('"store"').size
   end
 
+  def test_plain_output_prints_readable_lines
+    first = write_document("global", "1", "global.md", "global")
+    second = write_document("other", "2", "other.md", "other")
+
+    result = plastic("document", "batch", first, second, table: Plastic::CLI::TABLE)
+
+    assert_equal [0, ""], [result.code, result.err]
+    refute_match(/\{|=>|\[/, result.out)
+  end
+
   def test_batch_fails_on_a_missing_reference_with_exit_1
     result = plastic("document", "batch", "plastic://global/1/missing.md", table: Plastic::CLI::TABLE)
 
