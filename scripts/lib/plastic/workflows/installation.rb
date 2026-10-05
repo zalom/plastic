@@ -45,12 +45,6 @@ module Plastic
         registered.empty? ? selected(context) : registered
       end
 
-      # An uninstall that names no agent removes every registered agent.
-      def self.to_uninstall(context)
-        registered = named?(context) ? [] : of(context).installed_agents
-        registered.empty? ? selected(context) : registered
-      end
-
       def self.sync_registered?(context) = context.reinstall && !named?(context)
 
       def self.named?(context) = context.all || AGENT_KEYS.any? { |key| context.public_send(key) }

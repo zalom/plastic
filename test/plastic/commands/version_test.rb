@@ -137,12 +137,12 @@ end
 class VersionAfterUninstallTest < Plastic::TestCase
   include InstallerHelper
 
-  def test_version_reports_no_hooks_after_an_uninstall_that_names_no_agent
+  def test_version_reports_no_hooks_after_every_agent_is_uninstalled
     activated("99.0.0-alpha.1")
     FileUtils.mkdir_p(File.join(@home, ".codex"))
     claude_folder
     call("install", "--claude", "--codex")
-    call("uninstall")
+    call("uninstall", "--all")
     result = call("version")
 
     refute_match(/hooks:\s+point/, result.out)
