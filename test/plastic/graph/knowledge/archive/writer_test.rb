@@ -1,25 +1,49 @@
 # frozen_string_literal: true
 
+require "delegate"
 require_relative "../../../../test_helper"
-require_relative "../../../../test_helpers/method_replacement"
 require_relative "../../../../../scripts/lib/plastic/graph/knowledge/archive/writer"
 
-class KnowledgeArchiveRecoveryTest < Plastic::TestCase
-  include MethodReplacement
+class KnowledgeArchiveWriterTest < Plastic::TestCase
+  # A database whose transactions fail, as on a full disk.
+  class FullDisk < SimpleDelegator
+    def transaction(*) = raise(Plastic::Graph::Database::Error, "disk full")
+  end
+
+  # A database whose printed-file records cannot be cleared.
+  class StuckPrinted < SimpleDelegator
+    def transaction(*) = super { |batch| yield StuckBatch.new(batch) }
+  end
+
+  # A batch that fails on removing printed-file records.
+  class StuckBatch < SimpleDelegator
+    def remove_all(table, *)
+      raise Plastic::Graph::Database::Error, "disk full" if table == :printed
+
+      super
+    end
+  end
+
+  # A file system that refuses to rename.
+  class BlockedRename < Plastic::Graph::FileSystem
+    def rename(*) = raise(Errno::EACCES, "rename blocked")
+  end
+
+  # A file system that refuses to remove.
+  class BlockedRemoval < Plastic::Graph::FileSystem
+    def remove_entry(*) = raise(Errno::EACCES, "remove blocked")
+  end
 
   def setup
     super
     @intent = open_intent("Recovery", status: "future")
     @graphs = store_graphs
-    @database = @graphs.databases.fetch(:work)
-    @writer = Plastic::Graph::Knowledge::Archive::Writer.new(@graphs.databases, @graphs.retrieval, folder, session: "archive-test")
+    @writer = writer
     @root = folder.path(@intent.dir)
   end
 
   def test_capture_failure_never_removes_the_source
-    with_replacement(@database, :transaction, ->(*) { raise Plastic::Graph::Database::Error, "disk full" }) do
-      assert_raises(Plastic::Graph::Database::Error) { @writer.archive(@intent.intent_id) }
-    end
+    assert_raises(Plastic::Graph::Database::Error) { writer(databases: full_disk).archive(@intent.intent_id) }
 
     assert File.directory?(@root)
     refute retrieval.archived?(@intent.intent_id)
@@ -47,9 +71,7 @@ class KnowledgeArchiveRecoveryTest < Plastic::TestCase
   def test_publication_failure_keeps_archive_and_cleans_staging
     archive_successfully
 
-    with_replacement(File, :rename, ->(*) { raise Errno::EACCES, "rename blocked" }) do
-      refute @writer.restore(@intent.intent_id).first
-    end
+    refute writer(files: BlockedRename.new).restore(@intent.intent_id).first
     check_failed_publication
 
     assert @writer.restore(@intent.intent_id).first
@@ -66,9 +88,7 @@ class KnowledgeArchiveRecoveryTest < Plastic::TestCase
   end
 
   def test_cleanup_failure_after_removal_can_retry
-    with_replacement(@writer, :remove_printed, ->(*) { raise Plastic::Graph::Database::Error, "disk full" }) do
-      assert_raises(Plastic::Graph::Database::Error) { @writer.archive(@intent.intent_id) }
-    end
+    assert_raises(Plastic::Graph::Database::Error) { writer(databases: stuck_printed).archive(@intent.intent_id) }
     archive_successfully
 
     refute_path_exists @root
@@ -86,6 +106,14 @@ class KnowledgeArchiveRecoveryTest < Plastic::TestCase
 
   private
 
+  def writer(databases: @graphs.databases, **collaborators)
+    Plastic::Graph::Knowledge::Archive::Writer.new(databases, @graphs.retrieval, folder, session: "archive-test", **collaborators)
+  end
+
+  def full_disk = @graphs.databases.merge(work: FullDisk.new(@graphs.databases.fetch(:work)))
+
+  def stuck_printed = @graphs.databases.merge(references: StuckPrinted.new(@graphs.databases.fetch(:references)))
+
   def archive_successfully
     assert @writer.archive(@intent.intent_id).first
   end
@@ -97,16 +125,12 @@ class KnowledgeArchiveRecoveryTest < Plastic::TestCase
   end
 
   def fail_marker
-    with_replacement(@database, :transaction, ->(*) { raise Plastic::Graph::Database::Error, "disk full" }) do
-      assert_raises(Plastic::Graph::Database::Error) { @writer.restore(@intent.intent_id) }
-    end
+    assert_raises(Plastic::Graph::Database::Error) { writer(databases: full_disk).restore(@intent.intent_id) }
     assert retrieval.archived?(@intent.intent_id)
   end
 
   def interrupt_removal
-    with_replacement(FileUtils, :remove_entry, ->(*) { raise Errno::EACCES, "remove blocked" }) do
-      refute @writer.archive(@intent.intent_id).first
-    end
+    refute writer(files: BlockedRemoval.new).archive(@intent.intent_id).first
     assert retrieval.archived?(@intent.intent_id)
     assert File.directory?(@root)
   end

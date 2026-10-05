@@ -41,41 +41,29 @@ class TestTimingsTest < Minitest::Test
     assert_in_delta 4.0, totals.fetch(file), 0.0001
   end
 
-  # Minitest.reporter is set only while plugins are initializing, before any
-  # test runs (its own docs say so), so this drives the guard the same way
-  # the real init does: no ENV var, no file, and no reporter ever touched.
-  def test_without_a_timings_file_nothing_is_written
-    ENV.delete("PLASTIC_TEST_TIMINGS")
+  # A composite reporter that keeps what is added to it.
+  class Composite
+    attr_reader :added
 
-    Minitest.plugin_test_timings_init({})
+    def initialize = @added = []
 
-    refute_path_exists @path
+    def <<(reporter) = @added << reporter
   end
 
-  # With PLASTIC_TEST_TIMINGS named, the real init path (a reporter already
-  # set, as Minitest's plugin sequence guarantees) reads the ENV var once and
-  # adds a TestTimings::Reporter at that path. A mutant that drops the
-  # `path = ENV.fetch(...)` assignment reads an undefined local here instead
-  # of failing this assertion, so this test catches it.
+  def test_without_a_timings_file_no_reporter_is_added
+    composite = Composite.new
+
+    Minitest.plugin_test_timings_init({}, env: {}, composite:)
+
+    assert_empty composite.added
+  end
+
   def test_with_a_timings_file_a_reporter_is_added
-    ENV["PLASTIC_TEST_TIMINGS"] = @path
-    fake, added = fake_reporter
-    original = Minitest.reporter
-    Minitest.reporter = fake
+    composite = Composite.new
 
-    Minitest.plugin_test_timings_init({})
+    Minitest.plugin_test_timings_init({}, env: { "PLASTIC_TEST_TIMINGS" => @path }, composite:)
 
-    assert_instance_of TestTimings::Reporter, added.call
-  ensure
-    Minitest.reporter = original
-    ENV.delete("PLASTIC_TEST_TIMINGS")
-  end
-
-  def fake_reporter
-    added = nil
-    fake = Object.new
-    fake.define_singleton_method(:<<) { |reporter| added = reporter }
-    [fake, -> { added }]
+    assert_equal [TestTimings::Reporter], composite.added.map(&:class)
   end
 
   def test_a_varar_class_is_booked_to_its_document_from_the_list
@@ -119,6 +107,18 @@ class TestTimingsTest < Minitest::Test
     assert_includes error.message, "test/plain_test.rb"
     assert_includes error.message, "6.2"
     assert_includes out, "test/plain_test.rb"
+  end
+
+  def test_a_missing_timings_file_fails_and_names_the_path
+    error = assert_raises(TestTimings::Caps::Failure) { TestTimings::Caps.new(@path, rerun: nil).check }
+
+    assert_equal "missing timings file: #{@path}", error.message
+  end
+
+  def test_without_a_varar_config_a_result_is_booked_to_its_source_file
+    documents = TestTimings::Documents.new(root: File.dirname(SampleTest.marker_file))
+
+    assert_equal "test_timings_test.rb", documents.book(FakeResult.new("TestTimingsTest::SampleTest", "test_one", 1.0))
   end
 
   def check_caps(seconds, rerun:)

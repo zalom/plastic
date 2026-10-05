@@ -59,4 +59,7 @@ fi
   fi
 ) >/dev/null 2>&1 </dev/null &
 
+# A test names PLASTIC_UPDATE_CHECK_WAIT to see the background check finish.
+[ -n "$PLASTIC_UPDATE_CHECK_WAIT" ] && wait
+
 exit 0

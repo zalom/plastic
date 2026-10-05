@@ -32,13 +32,12 @@ class DocumentGetTest < Plastic::TestCase
     %w[plastic://unknown/1/plan.md plastic://global/1/missing.md].each do |reference|
       result = plastic("document", "get", reference, table: Plastic::CLI::TABLE)
 
-      assert_equal 1, result.code
-      assert_match(/document|project|maintenance/, result.err)
+      assert_call result, code: 1, err: /document|project|maintenance/
     end
 
     malformed = plastic("document", "get", "broken", table: Plastic::CLI::TABLE)
 
-    assert_equal 2, malformed.code
+    assert_call malformed, code: 2, err: /broken/
   end
 
   def test_batch_fails_on_a_missing_reference_with_exit_1
@@ -46,6 +45,7 @@ class DocumentGetTest < Plastic::TestCase
 
     assert_equal 1, result.code
     assert_match(/document/, result.err)
+    assert_equal "", result.out
   end
 
   def test_reports_reference_and_passage_validation_as_structured_errors

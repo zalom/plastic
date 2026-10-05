@@ -11,9 +11,10 @@ module Plastic
         class IntegritySnapshot
           TABLES = { heads: ["document_heads", "intent_id, path, sha256"], passages: ["document_passages", "sha256, intent_id, path, position, body, line_start, line_end"], fts: ["document_fts", "intent_id, path, body, sha256, position"] }.freeze
 
-          def initialize(database, origin_id)
+          def initialize(database, origin_id, digester: Digest::SHA256)
             @database = database
             @origin_id = origin_id
+            @digester = digester
           end
 
           def capture = capture_with(Evidence::IntegrityDatabaseSource.new(@database))
@@ -26,7 +27,7 @@ module Plastic
             TABLES.to_h { |name, (table, columns)| [name, select(reader, table, columns)] }.merge(revisions: revisions(reader), documents: documents(reader))
           end
 
-          def documents(reader) = select(reader, "documents", "intent_id, path, body, updated_at").map { |row| Evidence::IntegrityDocument.from_row(row) }
+          def documents(reader) = select(reader, "documents", "intent_id, path, body, updated_at").map { |row| Evidence::IntegrityDocument.from_row(row, digester: @digester) }
 
           def revisions(reader) = select(reader, "document_revisions", "intent_id, path, body, sha256").map { |row| Evidence::IntegrityRevision.from_row(row) }
 

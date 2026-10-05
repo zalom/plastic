@@ -9,18 +9,19 @@ module Plastic
     # hook already blocked, it permits, so the session can always end. Any
     # error permits.
     class StopGate
-      def initialize(event:, stop_hook:, retrieval:, session_id:)
-        @event = event
-        @stop_hook = stop_hook
+      def initialize(event:, stop_hook:, retrieval:, session_id:, now: Time.now)
+        @armed = event[:stop_hook_active] != true && stop_hook
         @retrieval = retrieval
         @session_id = session_id
+        @now = now
       end
 
       # The block hash, or nil to permit.
       def decision
-        return nil unless block?
+        intent_id = @armed && lock&.intent_id
+        return nil unless intent_id && @retrieval.ready_nodes(intent_id).any?
 
-        { "decision" => "block", "reason" => "Plastic: intent #{lock.intent_id} still has ready work. Run plastic next " \
+        { "decision" => "block", "reason" => "Plastic: intent #{intent_id} still has ready work. Run plastic next " \
                                               "for it and dispatch what it prints before stopping." }
       rescue
         nil
@@ -28,13 +29,7 @@ module Plastic
 
       private
 
-      def block?
-        @event[:stop_hook_active] != true && @stop_hook && lock && @retrieval.ready_nodes(lock.intent_id).any?
-      end
-
-      def lock
-        @lock ||= @retrieval.locks_of(@session_id).find { |held| held.store == @retrieval.store && held.mode == "auto" && held.live? }
-      end
+      def lock = @retrieval.locks_of(@session_id).find { |held| held.store == @retrieval.store && held.mode == "auto" && held.live?(@now) }
     end
   end
 end

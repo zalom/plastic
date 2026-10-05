@@ -79,6 +79,8 @@ class SyncLegacyMetadataTest < Plastic::TestCase
     result = plastic("roadmap", "show", "ship", table: Plastic::CLI::TABLE)
 
     assert_includes result.out, "batch 1: Ship the client\n"
+    assert_equal 0, result.code
+    assert_equal "", result.err
   end
 
   def test_a_roadmap_title_loses_its_roadmap_prefix
@@ -134,6 +136,8 @@ class SyncLegacyMetadataTest < Plastic::TestCase
   end
 
   def test_an_unknown_roadmap_is_refused
-    assert_equal 1, plastic("roadmap", "show", "nosuch", table: Plastic::CLI::TABLE).code
+    call = plastic("roadmap", "show", "nosuch", table: Plastic::CLI::TABLE)
+
+    assert_call call, code: 1, err: "plastic: code_show_roadmap, gate: no roadmap nosuch\n"
   end
 end

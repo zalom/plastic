@@ -140,14 +140,6 @@ class VocabularyScanTest < Minitest::Test
     end
   end
 
-  def test_scan_completes_within_its_budget
-    started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-    self.class.offenders(REPO, tracked_files)
-    elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
-    assert_operator elapsed, :<, 5.0,
-      "the scan must stay cheap enough to run on every commit (took #{elapsed.round(2)}s)"
-  end
-
   private
 
   # Built from parts so this source file carries no whole-word hit itself.

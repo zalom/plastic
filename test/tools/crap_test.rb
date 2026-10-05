@@ -41,7 +41,7 @@ class CrapTest < Minitest::Test
     assert_equal ["Shop::Order#plain", "Shop::Order#branchy", "Shop::Order.build"], found.map { _1[:name] }
   end
 
-  def test_counts_cyclomatic_complexity
+  def test_it_counts_the_cyclomatic_complexity_of_a_method
     assert_equal [1, 7, 3], found.map { _1[:complexity] }
   end
 
@@ -49,7 +49,7 @@ class CrapTest < Minitest::Test
     assert_equal [[3, 5], [7, 16], [18, 23]], found.map { [_1[:first_line], _1[:last_line]] }
   end
 
-  def test_formula_matches_crap4j
+  def test_the_score_formula_matches_crap4j
     assert_equal 6.0, Crap.formula(6, 1.0)
     assert_equal 42.0, Crap.formula(6, 0.0)
     assert_equal 10.5, Crap.formula(6, 0.5)

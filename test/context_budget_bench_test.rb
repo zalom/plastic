@@ -77,7 +77,7 @@ class ContextBudgetMeasureTest < Minitest::Test
     refute_equal body.length, m.bytes
   end
 
-  def test_measure_counts_lines
+  def test_measure_counts_the_lines_of_a_text
     assert_equal 3, ContextBudget.measure("a\nb\nc\n").lines
   end
 

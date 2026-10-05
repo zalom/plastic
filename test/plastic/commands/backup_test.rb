@@ -112,7 +112,7 @@ class BackupRetrievalTest < Plastic::TestCase
     graphs = Plastic::Graph.open(home:, store: "global")
     body = JSON.generate("intent_id" => "1", "facts" => ["kept"])
     graphs.databases.fetch(:knowledge).transaction do |batch|
-      batch.put(:retrieval_contexts, { intent_id: "1", data: body, updated_at: Plastic.now })
+      batch.put(:retrieval_contexts, { intent_id: "1", data: body, updated_at: STAMP })
     end
 
     Dir.mktmpdir do |restored|
@@ -127,7 +127,7 @@ class BackupRetrievalTest < Plastic::TestCase
     reference = write_retrieval_document(home, "backup evidence")
     discovery = plastic("intent", "discover", "1", "backup", "--json", env:, table: Plastic::CLI::TABLE)
 
-    assert_equal 0, discovery.code
+    assert_equal [0, "backup", ""], [discovery.code, JSON.parse(discovery.out).dig("result", "discovery", "query"), discovery.err]
     submit_retrieval_context(env, reference)
 
     Dir.mktmpdir do |restored|

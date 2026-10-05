@@ -70,6 +70,8 @@ class NextTest < Plastic::TestCase
     result = call
 
     assert_includes result.out, "Ask the owner: which way"
+    assert_equal 0, result.code
+    assert_equal "", result.err
   end
 
   def test_a_failed_node_offers_release
@@ -83,6 +85,8 @@ class NextTest < Plastic::TestCase
     result = call
 
     assert_includes result.out, "next: plastic node release #{intent.intent_id} n1"
+    assert_equal 0, result.code
+    assert_equal "", result.err
   end
 
   def test_every_live_node_done_offers_intent_end
@@ -96,6 +100,8 @@ class NextTest < Plastic::TestCase
     result = call
 
     assert_includes result.out, "next: plastic intent end #{intent.intent_id}"
+    assert_equal 0, result.code
+    assert_equal "", result.err
   end
 
   def test_an_open_node_left_offers_claim

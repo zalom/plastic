@@ -18,7 +18,7 @@ module Plastic
 
         # A current document that supplies its head and FTS rows.
         IntegrityDocument = Data.define(:intent_id, :path, :body, :updated_at, :digest) do
-          def self.from_row(row) = new(**row.transform_keys(&:to_sym), digest: Digest::SHA256.hexdigest(row.fetch("body")))
+          def self.from_row(row, digester: Digest::SHA256) = new(**row.transform_keys(&:to_sym), digest: digester.hexdigest(row.fetch("body")))
           def passages = Evidence::Text.passages(Evidence::Text.extract_with_lines(path, body))
           def head_values = [intent_id, path, digest]
           def head_row(origin_id) = { intent_id:, path:, sha256: digest, updated_at:, origin_id: }

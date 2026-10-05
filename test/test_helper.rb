@@ -24,6 +24,7 @@ module Plastic
   # kernel test class inherits from this one, not when the file loads.
   class TestCase < Minitest::Test
     HELPERS = File.expand_path("test_helpers", __dir__)
+    STAMP = "2026-10-05T10:00:00+02:00"
 
     def self.inherited(subclass)
       super
@@ -39,7 +40,7 @@ module Plastic
       SQLite3::ForkSafety.suppress_warnings!
       require File.expand_path("fixtures/routines", __dir__)
       Dir[File.join(HELPERS, "*.rb")].each { |helper| require helper }
-      include StoreHelper, CommandHelper, WorkflowHelper, DatabaseHelper
+      include StoreHelper, CommandHelper, WorkflowHelper, DatabaseHelper, CallAssertions
     end
 
     def self.fixtures(name = nil)

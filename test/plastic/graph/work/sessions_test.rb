@@ -75,8 +75,8 @@ class WorkSessionsTest < Plastic::TestCase
 
   def test_touched_orders_the_most_recent_intent_first
     opened = graphs(session: "s-1")
-    opened.work.save_routine_run(closed_run("1"))
-    opened.work.save_routine_run(closed_run("2", at: (Time.now + 1).iso8601))
+    opened.work.save_routine_run(closed_run("1", at: STAMP))
+    opened.work.save_routine_run(closed_run("2", at: "2026-10-05T10:00:01+02:00"))
 
     assert_equal %w[2 1], opened.retrieval.touched("s-1")
   end

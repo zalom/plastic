@@ -14,7 +14,7 @@ class IntentArchiveTest < Plastic::TestCase
   end
 
   def add_ruling(intent)
-    row = { intent_id: intent.intent_id, id: "D1", text: "a ruling", supersedes: nil, at: Plastic.now }
+    row = { intent_id: intent.intent_id, id: "D1", text: "a ruling", supersedes: nil, at: STAMP }
     store_graphs.databases.fetch(:knowledge).transaction { |batch| batch.put(:rulings, row, statement: :insert) }
   end
 
@@ -57,7 +57,7 @@ class IntentArchiveTest < Plastic::TestCase
 
     result = call(target.intent_id)
 
-    assert_equal 3, result.code
+    assert_call result, code: 3, err: "plastic: refused, intent 2 links to 1\nThis step belongs to the owner. Stop and ask; do not retry with a flag.\n"
     assert folder.exist?("#{target.dir}/#{target.file}")
   end
 
@@ -88,7 +88,8 @@ class IntentArchiveTest < Plastic::TestCase
 
     result = plastic("sync", "down", table: Plastic::CLI::TABLE)
 
-    assert_equal 0, result.code
+    assert_call result, code: 0,
+      out: "printed store/index.json\nnext: plastic next --project global\nbecause: the files hold every row that changed\n"
     refute folder.exist?(intent.dir)
   end
 

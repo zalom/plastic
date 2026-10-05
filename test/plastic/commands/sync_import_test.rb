@@ -31,8 +31,7 @@ class SyncImportTest < Plastic::TestCase
     before = snapshot(store_root)
     result = plastic("sync", "up", "--dry-run", table: Plastic::CLI::TABLE)
 
-    assert_equal 0, result.code
-    assert_includes result.out, "preview"
+    assert_call result, code: 0, out: ["preview"]
     assert_equal before, snapshot(store_root)
   end
 end

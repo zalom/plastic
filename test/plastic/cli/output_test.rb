@@ -37,7 +37,7 @@ class OutputTest < Plastic::TestCase
     assert_equal({ "result" => { "id" => "7" }, "next" => nil, "because" => nil }, JSON.parse(@out.string))
   end
 
-  def test_flush_prints_once
+  def test_flush_prints_the_output_only_once
     printer = output.next_step("plastic next", because: "why")
     printer.flush
     printer.flush
@@ -85,7 +85,7 @@ class OutputTest < Plastic::TestCase
       JSON.parse(@out.string))
   end
 
-  def test_json_is_known
+  def test_json_is_on_only_when_asked_for
     assert_predicate output(json: true), :json?
     refute_predicate output, :json?
   end

@@ -12,9 +12,7 @@ class RoadmapBatchTest < Plastic::TestCase
 
     result = plastic("roadmap", "show", "r1", table: Plastic::CLI::TABLE)
 
-    assert_includes result.out, "Ship it"
-    assert_includes result.out, "a done"
-    assert_includes result.out, "b done"
+    assert_call result, code: 0, out: ["Ship it", "a done", "b done"]
   end
 
   def test_a_second_call_on_the_same_batch_rewrites_it

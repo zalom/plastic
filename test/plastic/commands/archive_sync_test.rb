@@ -27,7 +27,7 @@ class ArchiveSyncTest < Plastic::TestCase
 
     result = plastic("sync", "down", table: Plastic::CLI::TABLE)
 
-    assert_equal 3, result.code
+    assert_call result, code: 3, err: ["plastic: refused, changed on both sides since the last print, nothing written: #{path}"]
     assert_equal "owner edit after restore", folder.read(path)
   end
 

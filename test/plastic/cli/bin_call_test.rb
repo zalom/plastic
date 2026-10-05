@@ -11,6 +11,7 @@ class BinCallTest < Plastic::TestCase
 
     assert_equal 0, call.code
     assert_includes call.out, "session"
+    assert_equal "", call.err
   end
 
   def test_bin_call_names_a_command_with_no_stage_yet
@@ -18,6 +19,7 @@ class BinCallTest < Plastic::TestCase
 
     assert_equal 2, call.code
     assert_equal "plastic nothing here is not in this build yet; it lands with its stage\n", call.err
+    assert_equal "", call.out
   end
 
   def test_bin_call_with_no_words_lists_only_the_shipped_table
@@ -25,22 +27,24 @@ class BinCallTest < Plastic::TestCase
 
     assert_equal 0, call.code
     assert_equal Plastic::CLI::TABLE.size, call.out.lines.size
+    assert_equal "", call.err
   end
 
   def test_bin_call_help_json_prints_the_shipped_commands_as_one_document
     call = plastic_bin("help", "--json", table: Plastic::CLI::TABLE)
     document = JSON.parse(call.out)
 
-    assert_equal 0, call.code
+    assert_equal [0, ""], [call.code, call.err]
     assert_equal Plastic::CLI::TABLE.keys, document.fetch("result").keys
     assert_nil document.fetch("next")
   end
 
   def test_bin_call_help_lists_the_shipped_commands
-    out = plastic_bin("help", table: Plastic::CLI::TABLE).out
+    call = plastic_bin("help", table: Plastic::CLI::TABLE)
 
-    assert_includes out, "intent new"
-    refute_includes out, "kernel"
+    assert_equal [0, ""], [call.code, call.err]
+    assert_includes call.out, "intent new"
+    refute_includes call.out, "kernel"
   end
 
   def test_bin_call_help_accepts_help_flags_and_reports_unknown_commands

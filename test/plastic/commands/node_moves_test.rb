@@ -20,6 +20,7 @@ class NodeMovesTest < Plastic::TestCase
 
     assert_equal 1, result.code
     assert_includes result.err, "node n1 is open; it cannot move to open"
+    assert_equal "", result.out
   end
 
   def test_a_bad_judge_exits_2
@@ -30,6 +31,8 @@ class NodeMovesTest < Plastic::TestCase
     result = plastic("node", "done", "1", "n1", "--judge", "vibes", "--findings", "ok", table: Plastic::CLI::TABLE)
 
     assert_equal 2, result.code
+    assert_equal "", result.out
+    assert_equal "plastic: --judge takes tests, tool, agent or owner\nplastic node done ID NODE [--judge WHO] --findings TEXT [--repair]\n", result.err
   end
 
   def test_failing_an_open_node_is_refused
@@ -39,6 +42,8 @@ class NodeMovesTest < Plastic::TestCase
     result = plastic("node", "fail", "1", "n1", "--reason", "boom", table: Plastic::CLI::TABLE)
 
     assert_equal 1, result.code
+    assert_equal "", result.out
+    assert_equal "plastic: code_fail_node, gate: node n1 is open; it cannot move to failed\n", result.err
   end
 
   def test_parking_an_open_node_is_refused
@@ -48,6 +53,8 @@ class NodeMovesTest < Plastic::TestCase
     result = plastic("node", "park", "1", "n1", "--question", "which way?", table: Plastic::CLI::TABLE)
 
     assert_equal 1, result.code
+    assert_equal "", result.out
+    assert_equal "plastic: code_park_node, gate: node n1 is open; it cannot move to parked\n", result.err
   end
 
   def test_answering_an_open_node_is_refused
@@ -57,6 +64,8 @@ class NodeMovesTest < Plastic::TestCase
     result = plastic("node", "answer", "1", "n1", "--answer", "go left", table: Plastic::CLI::TABLE)
 
     assert_equal 1, result.code
+    assert_equal "", result.out
+    assert_equal "plastic: code_answer_node, gate: node n1 is open; it cannot move to open\n", result.err
   end
 
   def test_a_refused_move_moves_on_the_next_call
@@ -68,6 +77,8 @@ class NodeMovesTest < Plastic::TestCase
     result = plastic("node", "fail", "1", "n1", "--reason", "boom", table: Plastic::CLI::TABLE)
 
     assert_includes result.out, "node: n1 failed"
+    assert_equal 0, result.code
+    assert_equal "", result.err
   end
 
   def test_moving_a_missing_node_names_it
@@ -77,6 +88,7 @@ class NodeMovesTest < Plastic::TestCase
 
     assert_equal 1, result.code
     assert_includes result.err, "no node n9 in intent 1"
+    assert_equal "", result.out
   end
 
   def test_a_move_takes_the_intent_and_the_node_as_its_subject

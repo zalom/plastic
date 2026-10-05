@@ -38,6 +38,7 @@ class CliTest < Plastic::TestCase
 
     assert_equal 2, call.code
     assert_equal "plastic: no command \"nothing here\"; plastic help lists them\n", call.err
+    assert_equal "", call.out
   end
 
   def test_no_words_asks_for_help
@@ -52,6 +53,7 @@ class CliTest < Plastic::TestCase
 
     assert_equal 2, call.code
     assert_equal "plastic: missing NAME\nplastic kernel two NAME\n", call.err
+    assert_equal "", call.out
   end
 
   def test_an_unknown_project_exits_2
@@ -59,17 +61,22 @@ class CliTest < Plastic::TestCase
 
     assert_equal 2, call.code
     assert_includes call.err, "no project named \"nope\"; this machine has global"
+    assert_equal "", call.out
   end
 
   def test_a_known_project_runs_the_call
     FileUtils.mkdir_p(File.join(@plastic_home, "stores", "plastic"))
 
-    assert_equal 0, plastic("kernel", "two", "ada", "--project", "plastic").code
+    call = plastic("kernel", "two", "ada", "--project", "plastic")
+
+    assert_equal [0, "hello ada\nnext: plastic kernel two ada\nbecause: greeted ada\n", ""], [call.code, call.out, call.err]
   end
 
   def test_json_prints_the_result_next_and_because
-    document = JSON.parse(plastic("kernel", "two", "ada", "--json").out)
+    call = plastic("kernel", "two", "ada", "--json")
+    document = JSON.parse(call.out)
 
+    assert_equal [0, ""], [call.code, call.err]
     assert_equal ["hello ada"], document.dig("result", "output")
     assert_equal ["plastic kernel two ada", "greeted ada"], document.values_at("next", "because")
   end
@@ -80,6 +87,7 @@ class CliTest < Plastic::TestCase
 
     assert_equal 3, call.code
     assert_equal({ "kind" => "refused", "message" => "the owner holds hold" }, document.dig("result", "error"))
+    assert_equal "plastic: refused, the owner holds hold\nThis step belongs to the owner. Stop and ask; do not retry with a flag.\n", call.err
   end
 
   def test_describe_says_what_a_tool_takes_and_writes

@@ -42,6 +42,13 @@ module SearchTestAssertionSupport
 
   def fused_rows(result) = JSON.parse(result.out).fetch("result").fetch("results")
 
+  def search_rows(query)
+    result = plastic("search", query, "--json", table: Plastic::CLI::TABLE)
+
+    assert_equal [0, ""], [result.code, result.err]
+    fused_rows(result)
+  end
+
   def assert_fused_stores(result) = assert_equal(%w[global other third], fused_rows(result).map { |row| row.fetch("store") })
 
   def assert_fused_ranks(result) = assert_equal([1, 1, 1], fused_rows(result).map { |row| row.fetch("local_rank") })
@@ -81,7 +88,7 @@ module SearchTestAssertionSupport
   def assert_archived_result(result, before)
     hit = JSON.parse(result.out).fetch("result").fetch("results").fetch(0)
 
-    assert_equal 0, result.code
+    assert_equal [0, ""], [result.code, result.err]
     assert hit.fetch("archived")
     assert_equal before, selected_store_bytes
   end
@@ -133,6 +140,7 @@ class SearchScopeTest < Plastic::TestCase
       result = plastic("search", "evidence", "--limit", limit, table: Plastic::CLI::TABLE)
 
       assert_equal 2, result.code
+      assert_equal "", result.out
       assert_match(/limit/, result.err)
     end
   end
@@ -140,12 +148,10 @@ class SearchScopeTest < Plastic::TestCase
   def test_defaults_to_twenty_results_and_bounds_each_excerpt
     25.times { |index| write_document("global", "needle #{index}", path: "#{index}.md") }
 
-    result = plastic("search", "needle", "--json", table: Plastic::CLI::TABLE)
-    rows = JSON.parse(result.out).fetch("result").fetch("results")
+    rows = search_rows("needle")
 
-    assert_equal 0, result.code
     assert_equal 20, rows.length
-    assert rows.all? { |row| row.fetch("body").length <= 320 }
+    assert(rows.all? { |row| row.fetch("body").length <= 320 })
   end
 
   def test_blank_scope_falls_back_and_unknown_scope_fails
@@ -164,16 +170,15 @@ class SearchScopeTest < Plastic::TestCase
 
     assert_equal 0, result.code
     assert_includes excerpt, "café"
+    assert_equal "", result.err
   end
 
   def test_keeps_an_accent_insensitive_match_after_combining_mark_fillers
     body = ("é " * 180) + "café"
     write_document("global", body)
 
-    result = plastic("search", "cafe", "--json", table: Plastic::CLI::TABLE)
-    excerpt = JSON.parse(result.out).fetch("result").fetch("results").fetch(0).fetch("body")
+    excerpt = search_rows("cafe").fetch(0).fetch("body")
 
-    assert_equal 0, result.code
     assert_operator excerpt.length, :<=, 320
     assert_includes excerpt, "café"
   end

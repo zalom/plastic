@@ -18,16 +18,16 @@ class LocksTest < Plastic::TestCase
   end
 
   def test_a_lock_renewed_moments_ago_is_live
-    put(:home, :locks, { store: "global", intent_id: "1", session_id: "s-1", mode: "auto", taken_at: Plastic.now, renewed_at: Plastic.now })
+    put(:home, :locks, { store: "global", intent_id: "1", session_id: "s-1", mode: "auto", taken_at: STAMP, renewed_at: STAMP })
 
-    assert_predicate retrieval.lock("1"), :live?
+    assert retrieval.lock("1").live?(Time.iso8601(STAMP) + 60)
   end
 
   def test_a_lock_renewed_before_the_ttl_is_lapsed
-    old = (Time.now - 3600).iso8601
+    old = "2026-10-05T09:00:00+02:00"
     put(:home, :locks, { store: "global", intent_id: "1", session_id: "s-1", mode: "auto", taken_at: old, renewed_at: old })
 
-    refute_predicate retrieval.lock("1"), :live?
+    refute retrieval.lock("1").live?(Time.iso8601(STAMP) + 60)
   end
 
   def test_renew_locks_updates_every_row_this_session_holds_and_counts_them

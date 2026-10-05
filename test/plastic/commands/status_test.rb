@@ -19,7 +19,7 @@ class StatusTest < Plastic::TestCase
     assert_includes result.out, "Beta"
   end
 
-  def test_offers_next
+  def test_status_offers_plastic_next_as_the_next_command
     open_intent
 
     result = call
@@ -39,5 +39,7 @@ class StatusTest < Plastic::TestCase
     plastic("node", "claim", "1", "n1", table: Plastic::CLI::TABLE)
 
     assert_includes call.out, "claimed: 1, open: 1"
+    assert_equal 0, call.code
+    assert_equal "", call.err
   end
 end

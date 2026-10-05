@@ -14,7 +14,7 @@ class KnowledgeSyncTest < Plastic::TestCase
 
   def change_row(path, body)
     store_graphs.databases[:knowledge].transaction do |batch|
-      batch.put(:documents, { intent_id: "1", path: File.basename(path), body:, updated_at: Plastic.now })
+      batch.put(:documents, { intent_id: "1", path: File.basename(path), body:, updated_at: STAMP })
     end
   end
 

@@ -23,7 +23,7 @@ module IntentContextTestSupport
   def archive_source_intent
     source = Plastic::Graph.open(home: @plastic_home, store: "other")
     source.databases.fetch(:work).transaction do |batch|
-      batch.put(:archives, { intent_id: "1", at: Plastic.now, restored_at: nil, session_id: "context-test" })
+      batch.put(:archives, { intent_id: "1", at: Plastic::TestCase::STAMP, restored_at: nil, session_id: "context-test" })
     end
   end
 
@@ -208,8 +208,7 @@ class IntentContextValidationTest < Plastic::TestCase
 
     result = plastic("intent", "context", "1", table: Plastic::CLI::TABLE)
 
-    assert_equal 1, result.code
-    assert_includes result.err, "retrieval maintenance is required before source other can be read"
+    assert_call result, code: 1, err: ["retrieval maintenance is required before source other can be read"]
     assert_equal before, File.binread(store_path("../other/knowledge_graph.db"))
   end
 
@@ -218,6 +217,7 @@ class IntentContextValidationTest < Plastic::TestCase
 
     assert_equal 2, result.code
     assert_includes result.err, "invalid intent id"
+    assert_equal "", result.out
   end
 
   def test_reports_when_an_owning_intent_has_no_saved_retrieval_context
@@ -227,6 +227,7 @@ class IntentContextValidationTest < Plastic::TestCase
 
     assert_equal 1, result.code
     assert_includes result.err, "no retrieval context for intent 1"
+    assert_equal "", result.out
   end
 
   def test_reports_malformed_context_submission_json_as_usage_without_writing_context
@@ -236,7 +237,7 @@ class IntentContextValidationTest < Plastic::TestCase
 
     result = submit_raw_context("{")
 
-    assert_equal 2, result.code
+    assert_call result, code: 2, err: "plastic: expected object key, got EOF at line 1 column 2\nplastic intent context ID [--from FILE]\n"
     refute_path_exists store_path("context/1.json")
   end
 
@@ -245,6 +246,7 @@ class IntentContextValidationTest < Plastic::TestCase
 
     assert_equal 1, result.code
     assert_includes result.err, "no intent 99 in owning store"
+    assert_equal "", result.out
   end
 
   def test_does_not_recreate_a_missing_selected_source_work_database
@@ -255,7 +257,7 @@ class IntentContextValidationTest < Plastic::TestCase
 
     result = plastic("intent", "context", "1", table: Plastic::CLI::TABLE)
 
-    assert_equal 1, result.code
+    assert_call result, code: 1, err: "plastic: code_read_context, gate: retrieval maintenance is required before source other can be read\n"
     refute_path_exists path
   end
 
@@ -312,7 +314,7 @@ class IntentContextValidationTest < Plastic::TestCase
   def store_legacy_discovery(reference)
     document = { "query" => "selected", "scope" => ["other"], "candidates" => [{ "uri" => reference }] }
     Plastic::Graph.open(home: @plastic_home, store: "global").databases.fetch(:knowledge).transaction do |batch|
-      batch.put(:retrieval_discoveries, { intent_id: "1", data: JSON.generate(document), updated_at: Plastic.now })
+      batch.put(:retrieval_discoveries, { intent_id: "1", data: JSON.generate(document), updated_at: Plastic::TestCase::STAMP })
     end
   end
 end

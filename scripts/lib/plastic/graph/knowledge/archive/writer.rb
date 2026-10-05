@@ -18,23 +18,21 @@ module Plastic
         # Commits a full directory snapshot before removal, and restores that
         # snapshot before clearing the archived marker.
         class Writer
-          def initialize(databases, retrieval, folder, session: nil)
+          def initialize(databases, retrieval, folder, session: nil, files: FileSystem.new)
             @databases = databases
             @retrieval = retrieval
             @folder = folder
-            @session = session
+            @collaborators = { session:, files: }
           end
 
           # Returns [ok, problem, kind]; kind is :failure or :refusal, nil on success.
-          def archive(intent_id)
-            archive_operation.call(intent_id)
-          rescue Tree::Error, SystemCallError => error
-            [false, error.message, :failure]
-          end
+          def archive(intent_id) = self.class.attempt { archive_operation.call(intent_id) }
 
           # Returns [ok, problem, kind]; kind is :failure, nil on success.
-          def restore(intent_id)
-            restore_operation.call(intent_id)
+          def restore(intent_id) = self.class.attempt { restore_operation.call(intent_id) }
+
+          def self.attempt
+            yield
           rescue Tree::Error, SystemCallError => error
             [false, error.message, :failure]
           end
@@ -43,13 +41,11 @@ module Plastic
 
           def origin_id = @retrieval.origin_id
 
-          def snapshot(intent_id) = Snapshot.new(@databases.fetch(:work), intent_id, origin_id)
+          def snapshot(intent_id) = Snapshot.new(@databases.fetch(:work), intent_id, origin_id, files: @collaborators[:files])
 
-          def remove_printed(dir)
-            PrintedCleanup.new(@databases, @retrieval).remove(dir)
-          end
+          def remove_printed(dir) = PrintedCleanup.new(@databases, @retrieval).remove(dir)
 
-          def capture = Capture.new(@databases.fetch(:work), @folder, origin_id, session: @session)
+          def capture = Capture.new(@databases.fetch(:work), @folder, origin_id, session: @collaborators[:session])
 
           def guard = Guard.new(@retrieval)
 
