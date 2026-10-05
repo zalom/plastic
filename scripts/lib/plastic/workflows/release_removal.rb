@@ -2,14 +2,18 @@
 
 require "fileutils"
 require_relative "../../installer_release"
+require_relative "../../installer_release/share_entries"
 
 module Plastic
   module Workflows
-    # The releases under the share directory and the launcher linked to
-    # them, which an uninstall removes once no agent stays registered. A
-    # share without releases and a launcher Plastic does not own stay.
+    # The releases and Rubies under the share directory and the launcher
+    # linked to them, which an uninstall removes once no agent stays
+    # registered. Only the entries Plastic makes go: other files in the
+    # share, a share without releases, and a launcher Plastic does not own
+    # stay.
     class ReleaseRemoval
       FOREIGN = "%s is not Plastic's launcher; it stays"
+      UNKNOWN = "%s holds files Plastic did not make; they stay"
 
       def self.of(context)
         scope = context.scope
@@ -17,6 +21,8 @@ module Plastic
         new(share: scope.setting("PLASTIC_SHARE", File.join(home, ".local", "share", "plastic")),
           launcher: File.join(scope.setting("PLASTIC_BIN", File.join(home, ".local", "bin")), "plastic"))
       end
+
+      def self.gone?(path) = !File.exist?(path) && !File.symlink?(path)
 
       def initialize(share:, launcher:)
         @share = share
@@ -27,8 +33,10 @@ module Plastic
 
       def call
         removed = planned
-        removed.each { |path| FileUtils.rm_rf(path) }
-        removed.map { |path| ["removed:", path] } + kept
+        launcher = link.path
+        FileUtils.rm_f(launcher) if removed.include?(launcher)
+        InstallerRelease::ShareEntries.new(share).remove if removed.include?(share)
+        rows(removed)
       end
 
       private
@@ -37,7 +45,15 @@ module Plastic
 
       def releases? = File.directory?(File.join(share, "releases")) || File.file?(File.join(share, "VERSION"))
 
-      def kept = link.ours? ? [] : [["kept:", format(FOREIGN, link.path)]]
+      def rows(removed)
+        gone, stayed = removed.partition { |path| self.class.gone?(path) }
+        gone.map { |path| ["removed:", path] } + kept(stayed)
+      end
+
+      def kept(stayed)
+        foreign = link.ours? ? [] : [["kept:", format(FOREIGN, link.path)]]
+        foreign + stayed.map { |path| ["kept:", format(UNKNOWN, path)] }
+      end
     end
   end
 end

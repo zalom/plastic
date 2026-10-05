@@ -18,9 +18,11 @@ class InstallerReleaseRubyPinsTest < Minitest::Test
   end
 
   def test_jdx_serves_apple_silicon_and_both_linux_builds
-    %w[arm64-darwin x86_64-linux aarch64-linux].each do |platform|
-      assert pins.dig(platform, "url").start_with?("https://github.com/jdx/ruby/releases/download/4.0.7-2/"), platform
+    others = %w[arm64-darwin x86_64-linux aarch64-linux].reject do |platform|
+      pins.dig(platform, "url").start_with?("https://github.com/jdx/ruby/releases/download/4.0.7-2/")
     end
+
+    assert_empty others
   end
 
   def test_homebrew_serves_intel_macs_by_the_pinned_fingerprint

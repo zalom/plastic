@@ -10,7 +10,7 @@ module InstallerRelease
   # the next activation. VERSION moves last, so a stopped move is finished
   # by the next installer.
   class FlatShare
-    KEPT = %w[releases active previous INSTALL.lock activation VERSION].freeze
+    KEPT = %w[releases rubies active previous INSTALL.lock activation VERSION].freeze
     DOWNLOADS = /\Aplastic-(?:stage|download)-/
 
     def initialize(home, releases)

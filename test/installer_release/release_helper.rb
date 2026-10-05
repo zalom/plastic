@@ -23,6 +23,23 @@ module ReleaseHelper
     FileUtils.remove_entry(@root)
   end
 
+  # Stands in for HttpsFetch: copies a local archive and records each address
+  # with its headers.
+  class FetchDouble
+    attr_reader :asked
+
+    def initialize(archive)
+      @archive = archive
+      @asked = []
+    end
+
+    def download(url, path, headers)
+      @asked << [url, headers]
+      FileUtils.cp(@archive, path)
+      path
+    end
+  end
+
   # Stands in for the home sync: writes two home files, then raises what a
   # test asks for, such as an Interrupt for a process that stops halfway.
   class SyncDouble

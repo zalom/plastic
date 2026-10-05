@@ -15,10 +15,14 @@ ROOT = File.expand_path("..", __dir__)
 # first release is the given directory of built files, so a release job
 # installs the files it is about to publish. A step fails when it
 # exits nonzero, writes to standard error, or leaves the wrong release active.
+# Every step runs with a PATH that holds no Ruby, so install.sh must bring its
+# own and the launcher must start it by its full path.
 class FreshInstallCheck
   CLEARED = %w[PLASTIC_HOME PLASTIC_SHARE PLASTIC_BIN PLASTIC_CHANNEL PLASTIC_PACKAGE_ROOT PLASTIC_LOCAL_RELEASE
     RUBYOPT RUBYLIB BUNDLE_GEMFILE BUNDLE_BIN_PATH BUNDLER_SETUP BUNDLER_VERSION].freeze
   AGENTS = %w[.claude .codex].freeze
+  TOOLS = %w[sh mktemp rm mkdir ln cat cp dirname basename uname sysctl ldd tar gzip grep wc tr cut sort chmod mv curl
+    sha256sum shasum git sqlite3].freeze
 
   def initialize(work, built = nil)
     @work = work
@@ -90,7 +94,18 @@ class FreshInstallCheck
 
   def environment(version)
     CLEARED.to_h { |name| [name, nil] }.merge("HOME" => home, "PLASTIC_LOCAL_RELEASE" => release(version),
-      "PATH" => [File.dirname(plastic), ENV.fetch("PATH")].join(File::PATH_SEPARATOR))
+      "PATH" => [File.dirname(plastic), toolbox].join(File::PATH_SEPARATOR))
+  end
+
+  def toolbox
+    folder = File.join(work, "toolbox")
+    FileUtils.mkdir_p(folder)
+    TOOLS.each do |tool|
+      found = ENV.fetch("PATH").split(File::PATH_SEPARATOR).map { |dir| File.join(dir, tool) }.find { |path| File.executable?(path) }
+      link = File.join(folder, tool)
+      File.symlink(found, link) if found && !File.symlink?(link)
+    end
+    folder
   end
 
   def release(version) = (built if version == first) || File.join(work, "releases", version)
@@ -110,4 +125,6 @@ OptionParser.new { |options| options.on("--release DIRECTORY") { |directory| bui
 
 Dir.mktmpdir("plastic-fresh-install") do |work|
   FreshInstallCheck.new(File.realpath(work), built).call
+ensure
+  system("chmod", "-R", "u+w", work)
 end

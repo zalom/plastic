@@ -38,18 +38,20 @@ module InstallerHelper
   def release_package(path, version)
     FileUtils.mkdir_p(File.join(path, "bin"))
     File.write(File.join(path, "VERSION"), "#{version}\n")
-    File.write(File.join(path, "bin", "plastic"), <<~RUBY)
-      #!/usr/bin/env ruby
-      if ARGV == %w[version --json]
-        puts '{"result":{"version":"#{version}"}}'
-        exit
-      end
-      File.open(File.join(Dir.home, "launcher-calls"), "a") { |calls| calls.puts(ARGV.join(" ")) }
-      puts "#{version}"
-    RUBY
+    File.write(File.join(path, "bin", "plastic"), recording_launcher(version))
     File.chmod(0o755, File.join(path, "bin", "plastic"))
     path
   end
+
+  def recording_launcher(version) = <<~RUBY
+    #!/usr/bin/env ruby
+    if ARGV == %w[version --json]
+      puts '{"result":{"version":"#{version}"}}'
+      exit
+    end
+    File.open(File.join(Dir.home, "launcher-calls"), "a") { |calls| calls.puts(ARGV.join(" ")) }
+    puts "#{version}"
+  RUBY
 
   def local_release(version)
     directory = File.join(@home, "release-#{version}")

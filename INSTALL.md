@@ -6,21 +6,19 @@ itself.
 
 ## What you need
 
-- Ruby 4.0 or later, with Bundler
 - curl and tar
 - `sha256sum` or `shasum`
 
 When one is missing, `install.sh` stops before it writes anything and names the steps for
 macOS and Linux.
 
+You need no Ruby of your own: `install.sh` brings Ruby 4.0.7. It runs on macOS, and on Linux with glibc 2.29 or later. Alpine and other musl systems
+are not supported. On Windows, install Plastic inside WSL; there is no native Windows install.
+
 ## A clean Mac
 
-macOS ships Ruby 2.6, which is too old. Install a newer Ruby first:
-
-```bash
-curl https://mise.run | sh
-mise use --global ruby@4.0
-```
+A clean Mac needs nothing more. `install.sh` brings the Ruby Plastic runs on, so Plastic never
+uses the Ruby 2.6 that macOS ships.
 
 ## Install
 
@@ -34,19 +32,29 @@ or pass `--all` for every supported agent.
 
 `install.sh` does these things:
 
-1. Reads the release list from GitHub and picks the newest release on the channel.
-2. Downloads the release archive, its `.sha256` checksum file and its manifest over HTTPS.
-3. Checks the archive against the checksum, and refuses an archive that holds a link or a path
+1. Picks the Ruby build for your platform: a jdx/ruby build on Apple silicon and Linux, or the
+   Homebrew portable Ruby on an Intel Mac. A Rosetta shell on Apple silicon gets the Apple silicon
+   build. It checks the download against its pinned size and SHA-256, refuses an archive that holds
+   a link or a path outside it, starts the Ruby once, and moves it into a read-only directory under
+   `~/.local/share/plastic/rubies`. A Ruby already there is reused.
+2. Reads the release list from GitHub and picks the newest release on the channel.
+3. Downloads the release archive, its `.sha256` checksum file and its manifest over HTTPS.
+4. Checks the archive against the checksum, and refuses an archive that holds a link or a path
    outside it.
-4. Unpacks the release into its own directory under `~/.local/share/plastic/releases`, and has
-   Bundler install the sqlite3 gem inside that directory.
-5. Points the `active` link at the new release, and links `~/.local/bin/plastic` to it.
+5. Unpacks the release into its own directory under `~/.local/share/plastic/releases`, has the
+   Bundler of that Ruby install the sqlite3 gem inside that directory, and writes a launcher that
+   starts that Ruby by its full path.
+6. Points the `active` link at the new release, and links `~/.local/bin/plastic` to it.
 
 A failed download or checksum leaves the installed release as it was. The script edits no
 shell profile. When `~/.local/bin` is not on your `PATH`, it prints the line to add.
 
 `sh install.sh --dry-run` reads the release metadata and changes nothing. `PLASTIC_VERSION`
 installs one named release instead of the newest.
+For development, `PLASTIC_RUBY` names a Ruby to run instead, and `install.sh` downloads no Ruby.
+
+An update reuses the Ruby it already has, or adds the one a newer release pins beside it. Each
+release keeps the Ruby it was installed with, so a rollback starts the Ruby the older release ran on.
 
 The last line of `install.sh` names the next command. On a first install it is
 `plastic install`. When Plastic is already installed, `install.sh` brings the agent files in
@@ -188,15 +196,16 @@ active release.
 
 ## Supported platforms
 
-`install.sh` targets macOS and Linux, including WSL. The evidence differs by platform:
+`install.sh` targets macOS and Linux, including WSL. CI installs, updates, rolls back and
+uninstalls Plastic with no Ruby on `PATH` on each platform in this table except WSL:
 
-| Platform | Evidence |
-| -------- | -------- |
-| macOS on Apple silicon | Install, update and rollback checked by hand |
-| Linux on x86_64 | The test suite runs in CI; no install checked by hand |
-| macOS on Intel | Not verified |
-| Linux on ARM | Not verified |
-| WSL | Not verified |
+| Platform | Ruby | Evidence |
+| -------- | ---- | -------- |
+| macOS on Apple silicon | jdx/ruby 4.0.7-2 | CI, and checked by hand |
+| macOS on Intel | Homebrew portable Ruby 4.0.7 | CI |
+| Linux on x86_64, glibc 2.29 or later | jdx/ruby 4.0.7-2 | CI |
+| Linux on ARM, glibc 2.29 or later | jdx/ruby 4.0.7-2 | CI |
+| WSL | jdx/ruby 4.0.7-2, as on Linux | Not verified |
 
 Report a problem on a platform that is not verified as an issue at
 <https://github.com/zalom/plastic/issues>.

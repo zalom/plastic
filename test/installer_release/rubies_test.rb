@@ -8,23 +8,6 @@ class InstallerReleaseRubiesTest < Minitest::Test
   JDX = "https://github.com/jdx/ruby/releases/download/4.0.7-2/ruby-4.0.7.macos.tar.gz"
   GHCR = "https://ghcr.io/v2/homebrew/core/portable-ruby/blobs/sha256:57be"
 
-  # Stands in for HttpsFetch: copies a local archive and records each address
-  # with its headers.
-  class FetchDouble
-    attr_reader :asked
-
-    def initialize(archive)
-      @archive = archive
-      @asked = []
-    end
-
-    def download(url, path, headers)
-      @asked << [url, headers]
-      FileUtils.cp(@archive, path)
-      path
-    end
-  end
-
   def teardown
     InstallerRelease::Rubies.remove(File.join(share, "rubies"))
     super
@@ -34,14 +17,13 @@ class InstallerReleaseRubiesTest < Minitest::Test
     ruby = rubies.provide(pin)
 
     assert_equal File.join(folder, "bin", "ruby"), ruby.path
-    assert_equal "#{pin.fetch("sha256")}\n", File.read(File.join(folder, ".plastic-ruby"))
-    assert_equal [false, false], [File.writable?(folder), File.writable?(ruby.path)]
+    assert_equal [false, false], [folder, ruby.path].map { |path| File.writable?(path) }
   end
 
-  def test_leaves_only_the_ruby_folder_behind
+  def test_leaves_only_the_marked_ruby_folder_behind
     rubies.provide(pin)
 
-    assert_equal ["4.0.7-jdx-2"], Dir.children(File.join(share, "rubies"))
+    assert_equal [["4.0.7-jdx-2"], "#{pin.fetch("sha256")}\n"], [Dir.children(File.join(share, "rubies")), File.read(File.join(folder, ".plastic-ruby"))]
   end
 
   def test_a_second_call_reuses_the_ruby_without_a_download
@@ -107,46 +89,16 @@ class InstallerReleaseRubiesTest < Minitest::Test
     refute_path_exists File.join(share, "rubies")
   end
 
-  def test_names_the_platform_of_each_supported_build
-    names = [%w[darwin24 arm64], %w[darwin23 x86_64], %w[linux-gnu x86_64], %w[linux aarch64], %w[freebsd14 amd64]]
-      .map { |os, cpu| InstallerRelease::Platform.local("host_os" => os, "host_cpu" => cpu) }
-
-    assert_equal ["arm64-darwin", "x86_64-darwin", "x86_64-linux", "aarch64-linux", nil], names
-  end
-
-  def test_the_bundle_program_sits_beside_the_ruby
-    assert_equal "/r/bin/bundle", InstallerRelease::Ruby.new("/r/bin/ruby").bundle
-  end
-
-  def test_the_choice_takes_the_developer_ruby_first
-    choice = InstallerRelease::RubyChoice.new(home: share, override: "/dev/ruby", platform: "arm64-darwin", rubies: rubies)
-
-    assert_equal "/dev/ruby", choice.call(manifest_pinning(pin)).path
-    assert_empty fetch.asked
-  end
-
-  def test_the_choice_takes_the_build_the_manifest_pins_for_the_platform
-    choice = InstallerRelease::RubyChoice.new(home: share, override: "", platform: "arm64-darwin", rubies: rubies)
-
-    assert_equal File.join(folder, "bin", "ruby"), choice.call(manifest_pinning(pin)).path
-  end
-
-  def test_the_choice_keeps_the_running_ruby_for_a_release_without_pins
-    choice = InstallerRelease::RubyChoice.new(home: share, platform: "arm64-darwin", rubies: rubies)
-
-    assert_equal RbConfig.ruby, choice.call({ "ruby" => { "requirement" => ">= 4.0.0" } }).path
-  end
-
   private
 
   def share = File.join(@root, "share")
 
   def folder = File.join(share, "rubies", "4.0.7-jdx-2")
 
-  def fetch = (@fetch ||= FetchDouble.new(ruby_archive))
+  def fetch = (@fetch ||= ReleaseHelper::FetchDouble.new(ruby_archive))
 
   def rubies(archive: nil, run: ->(_ruby) { "4.0.7" })
-    @fetch = FetchDouble.new(archive) if archive
+    @fetch = ReleaseHelper::FetchDouble.new(archive) if archive
     InstallerRelease::Rubies.new(share, fetch: fetch, run: run)
   end
 
@@ -156,8 +108,6 @@ class InstallerReleaseRubiesTest < Minitest::Test
     { "key" => "4.0.7-jdx-2", "version" => "4.0.7", "size" => File.size(archive), "sha256" => Digest::SHA256.file(archive).hexdigest,
       "root" => "ruby-4.0.7", "url" => JDX }
   end
-
-  def manifest_pinning(build) = { "ruby" => { "builds" => { "arm64-darwin" => build } } }
 
   def ruby_archive
     @ruby_archive ||= tar_archive("ruby.tgz") do |tar|

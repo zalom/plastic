@@ -6,7 +6,8 @@ require "uri"
 module InstallerRelease
   class FetchError < StandardError; end
 
-  # Reads and downloads over HTTPS only, following a few redirects.
+  # Reads and downloads over HTTPS only, following a few redirects. The
+  # headers go to the first address only, never to a redirect target.
   class HttpsFetch
     REDIRECTS = 5
 
@@ -16,8 +17,8 @@ module InstallerRelease
 
     def read(url) = response(url).body
 
-    def download(url, path)
-      File.binwrite(path, read(url))
+    def download(url, path, headers = {})
+      File.binwrite(path, response(url, headers).body)
       path
     end
 
@@ -25,8 +26,8 @@ module InstallerRelease
 
     attr_reader :http
 
-    def response(url, hops = REDIRECTS)
-      answer = http.get_response(https(url))
+    def response(url, headers = {}, hops = REDIRECTS)
+      answer = http.get_response(https(url), headers)
       return answer if answer.is_a?(Net::HTTPSuccess)
 
       follow(url, answer, hops)
@@ -43,7 +44,7 @@ module InstallerRelease
       raise FetchError, "#{url} answered #{answer.code}" unless answer.is_a?(Net::HTTPRedirection)
       raise FetchError, "too many redirects from #{url}" if hops.zero?
 
-      response(answer["location"], hops - 1)
+      response(answer["location"], {}, hops - 1)
     end
   end
 end

@@ -76,15 +76,18 @@ The files are plain Markdown in a Git repository that you own. See
 
 ## Installation
 
-Plastic needs Ruby 4.0 or later with Bundler, plus curl, tar, and `sha256sum` or `shasum`.
+Plastic needs curl, tar, and `sha256sum` or `shasum`. `install.sh` brings its own Ruby 4.0.7.
+It runs on macOS, and on Linux with glibc 2.29 or later. Alpine and other musl systems
+are not supported. On Windows, install Plastic inside WSL; there is no native Windows install.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/zalom/plastic/main/install.sh | sh
 plastic install --claude
 ```
 
-`install.sh` downloads the newest stable release, checks it against its published checksum,
-and links `~/.local/bin/plastic`. Bundler installs the sqlite3 gem inside each release.
+`install.sh` downloads Ruby 4.0.7 for your platform and checks it by its pinned size and SHA-256.
+It then downloads the newest stable release, checks it against its published checksum, and links
+`~/.local/bin/plastic`. The Bundler of that Ruby installs the sqlite3 gem inside each release.
 Replace `--claude` with `--codex` for Codex CLI, or pass both flags. After a first install,
 Plastic offers [Enola](INSTALL.md#enola), an optional tool that maps code architecture.
 
@@ -96,12 +99,8 @@ curl -fsSL https://raw.githubusercontent.com/zalom/plastic/main/install.sh | PLA
 
 ### A clean Mac
 
-macOS ships Ruby 2.6, which is too old. Install a newer Ruby first:
-
-```bash
-curl https://mise.run | sh
-mise use --global ruby@4.0
-```
+A clean Mac needs nothing more. `install.sh` brings the Ruby Plastic runs on, so Plastic never
+uses the Ruby 2.6 that macOS ships.
 
 ### Check the installation
 
@@ -414,7 +413,9 @@ The [changelog](CHANGELOG.md) holds one line for each release.
 
 Plastic runs on your machine. It makes no model call and sends none of your files anywhere.
 Three things use the network: `install.sh`, the update check hook and `plastic update`. They read
-the release list from GitHub and download a release from there. Bundler fetches the sqlite3 gem
+the release list from GitHub and download a release from there. `install.sh` and `plastic update`
+also download Ruby: from the jdx/ruby releases on GitHub, or from the Homebrew registry on an Intel
+Mac. Bundler fetches the sqlite3 gem
 from RubyGems when a release installs. See [SECURITY.md](SECURITY.md) for every file the installer writes.
 
 ## Built with Plastic

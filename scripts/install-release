@@ -24,7 +24,8 @@ begin
   home = InstallerRelease::ManagedHome.new(plastic_home: options[:plastic_home], user_home: options[:user_home],
     launcher: File.join(options[:bin], "plastic"))
   sync = InstallerRelease::HomeSync.new(share: options[:home], home: home)
-  InstallerRelease::ReleaseInstall.new(home: options[:home], sync: sync).call(archive: files.archive, manifest: files.manifest, expected: expected)
+  choice = InstallerRelease::RubyChoice.new(home: options[:home], override: ENV.fetch("PLASTIC_RUBY", ""))
+  InstallerRelease::ReleaseInstall.new(home: options[:home], sync: sync, choice: choice).call(archive: files.archive, manifest: files.manifest, expected: expected)
 rescue => error
   abort "plastic: v#{options[:version]}: #{error.message}"
 end
