@@ -76,8 +76,8 @@ class GreeterTest < Minitest::Test
 end
 ```
 
-Add an `AGENTS.md` file at the repository root. `plastic project new` refuses to register a
-repository without one. A line or two describing the project is enough.
+Add an `AGENTS.md` file at the repository root. `plastic install` registers only a
+repository that has one. A line or two describing the project is enough.
 
 Commit everything on `main`. A scratch `HOME` has no Git identity, so set one for this
 repository first, with your own name and email:
@@ -95,8 +95,7 @@ git commit -m "chore: greeter"
 **Plastic.** From inside the repository, run:
 
 ```sh
-plastic project new greeter --path "$PWD"
-plastic project links
+plastic install --claude
 ```
 
 `project new` creates the project store at `~/.plastic/stores/greeter/` and records the
@@ -190,7 +189,7 @@ Add a keyword argument with the default "Hello".
 ```text
 | S1 | open | Add a failing test for the greeting keyword |
 | S2 | open | Add the greeting keyword to Greeter.greet |
-next: plastic intent step 1 --project greeter
+next: plastic next --project greeter
 because: the checklist has unfinished work
 ```
 
@@ -199,7 +198,7 @@ Until `spec.md` is written, the same screen points back at `plastic intent spec 
 
 ## 6. Do the work (Exec)
 
-**Plastic.** `plastic intent step 1` prints the next unchecked item. On a checklist intent, it
+**Plastic.** `plastic next` prints the next unchecked item. On a checklist intent, it
 does not run anything:
 
 ```text
@@ -239,7 +238,7 @@ ArgumentError: wrong number of arguments (given 2, expected 1)
 Commit the red test. Then tick the item in `checklist.md` in the intent directory: change
 `- [ ]` to `- [x]`.
 
-Run `plastic intent step 1` again for the second item. Change `lib/greeter.rb`:
+Run `plastic next` again for the second item. Change `lib/greeter.rb`:
 
 ```ruby
 module Greeter
@@ -256,7 +255,7 @@ Run the tests again. Both pass:
 ```
 
 Commit, and tick the second item. `plastic intent show 1` now points at
-`plastic intent verify 1`, because every checklist item is complete.
+`plastic intent end 1`, because every checklist item is complete.
 
 To keep the commit on the record, add a note to the savepoint. Replace `<sha>` with the commit
 hash:
@@ -304,7 +303,7 @@ plastic intent note 1 "Both greeter tests pass on the branch; outcome.md written
 
 `--kind` takes `Review`, `Commit`, or `Report`. Without it, the note is a `Report`.
 
-Then run `plastic intent verify 1`. It runs the per-intent doctor check, the em-dash guard,
+Then run `plastic intent end 1`. It runs the per-intent doctor check, the em-dash guard,
 and a diffstat of the code branch against `main`. Every check passes, and the command exits 0:
 
 ```text
@@ -320,8 +319,8 @@ next: plastic intent end 1 --delivered --summary "TEXT" --project greeter
 because: a clean verify is what makes the close trustworthy
 ```
 
-If a check fails, fix what it names and run `plastic intent verify 1` again. Do not close the
-intent while verify fails.
+If a check fails, fix what it names and run `plastic intent end 1` again. Do not close the
+intent while the check fails.
 
 ## 8. Merge the code (Git)
 
@@ -400,9 +399,9 @@ run. They do not run the team; your harness does that.
    Run from inside a conversation session, `auto start` refuses with exit 3 unless you pass
    `--allow-inline`. Exit 3 means the step belongs to the owner: stop and report it.
 
-2. `plastic auto brief ID` prints the preamble the dispatched agent reads first.
-3. `plastic auto lock status ID` shows who holds the lock and where the worktree is.
-4. `plastic auto report ID` prints the report contract and the review rules the lead follows.
+2. `plastic intent brief ID` prints the preamble the dispatched agent reads first.
+3. `plastic intent show ID` shows who holds the lock and where the worktree is.
+4. `plastic next` prints the report contract and the review rules the lead follows.
 5. The close is the same `plastic intent end` as in step 9, with the same merge check.
 
 `plastic intent end ID --delivered` refuses an intent that nobody worked on. The spec, plan,

@@ -14,7 +14,7 @@ File location: `roadmaps/{slug}.md`, a sibling of `INDEX.md`, wherever `INDEX.md
 inside `store/` (store holds intent directories, not project artifacts). For a project that is its
 root, `~/.plastic/stores/{slug}/roadmaps/`, beside `project.yml`; for the global store it is
 `~/.plastic/stores/global/roadmaps/`, beside its `INDEX.md`. Legacy homes keep their
-previous paths until `plastic migrate stores` moves them. `roadmaps/` lists only live (open or
+previous paths until an update moves them. `roadmaps/` lists only live (open or
 in-flight) roadmaps: once a roadmap's goal is reached, move it by hand to
 `roadmaps/archived/{slug}.md`. Its ledger and its screens still resolve it there.
 
@@ -22,8 +22,7 @@ A roadmap file from the template has five sections, in order: a title/meta heade
 `## Graph`, `## Batches`, and an append-only dated `## Log`.
 `## Goal` is a checkable prose condition read by a human or agent, not an executable checker.
 `## Graph` holds the `needs` edges between entries, and the batches are computed from them;
-`plastic roadmap migrate` writes a Graph section for a roadmap that has none, from its current
-batch order. `## Batches` holds ordered batches; entries inside a batch are parallel-safe,
+A roadmap that has no Graph section is rebuilt from its batch order. `## Batches` holds ordered batches; entries inside a batch are parallel-safe,
 batches run sequentially, top to bottom. A roadmap written before owner ruling 145
 may instead use the legacy `## Waves` heading; the tooling accepts both, but never renames an
 existing roadmap file to migrate it.

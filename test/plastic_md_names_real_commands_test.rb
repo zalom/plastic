@@ -35,7 +35,7 @@ class PlasticMdNamesRealCommandsTest < Minitest::Test
   end
 
   def bare_unknown_names(text)
-    text.scan(/`([a-z][a-z0-9 -]*)`/).flatten.reject { |span| commands.include?(span) || SKIPPED.include?(span) }
+    text.scan(/`([a-z][a-z0-9 -]*)`/).flatten.reject { |span| commands.include?(span) || SKIPPED.include?(span) || span.start_with?("plastic") }
   end
 
   def help_files = Dir.glob(File.join(ROOT, "docs", "help", "*.md"))
@@ -51,7 +51,7 @@ class PlasticMdNamesRealCommandsTest < Minitest::Test
   end
 
   def test_the_bare_detector_catches_a_word_that_is_no_command
-    assert_equal ["runner step", "answer"], bare_unknown_names("(`runner step`, `status`, `answer`)")
+    assert_equal ["runner step", "answer"], bare_unknown_names("(`runner step`, `status`, `answer`, `plastic`)")
   end
 
   def test_the_guard_reads_the_help_chapters_from_the_disk

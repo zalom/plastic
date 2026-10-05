@@ -34,7 +34,7 @@ for the doctor fix hint `backfilled_complete`.
 The close never refuses for a document it can write itself. Doctor's per-intent structure
 check runs after the backfill as a report: an unchecked box, a malformed intent file, or
 a wrong-disposition outcome.md is named on stderr, the close proceeds, and
-`plastic intent verify <id>` keeps reporting it until fixed.
+`plastic intent show <id>` keeps reporting it until fixed.
 
 ## Insights from a writer that cannot write the file
 
@@ -45,5 +45,5 @@ intent file still returns its report, so the insight survives.
 
 The stages map to commands: What is `plastic intent new`, Why is `plastic intent spec` and
 `plastic intent rule`, How is the spec, plan and checklist (or `graph.md`) the agent writes,
-and Exec is `plastic intent step`, `plastic intent verify` and `plastic intent end`.
+and Exec is `plastic next`, `plastic node done` and `plastic intent end`.
 `plastic help tutorial` walks all of them once.

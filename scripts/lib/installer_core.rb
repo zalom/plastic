@@ -56,8 +56,8 @@ class InstallerCore
   # wholesale, and it never drifts because it only ever points, never duplicates.
   CODEX_AGENTS_MD_BODY = <<~MD.freeze
     Plastic is installed for this agent. Plastic is intent-driven state management: work runs
-    in one of three modes, direct, thinking, or auto (a team drives the runner loop:
-    `runner step`, `status`, `answer`). Do not jump straight to code.
+    in one of three modes, direct, thinking, or auto (an agent team drives the delivery with
+    `plastic status` and `plastic next`). Do not jump straight to code.
 
     Standing rules:
     - The command line is ~/.plastic/PLASTIC.md. Read it and follow it exactly. The

@@ -42,8 +42,8 @@ not delivered inline. The owner may approve an inline take with `--allow-inline`
 the harness spawns the team, and the team takes the intent. Exit 3 means stop and report; never
 retry with another flag on your own.
 
-`plastic auto brief ID` prints the preamble the spawned lead starts from, and
-`plastic auto lock status ID` shows who holds the lock.
+`plastic intent brief ID` prints the preamble the spawned lead starts from, and
+`plastic intent show ID` shows who holds the lock.
 
 Checkpoint: name the one precondition auto needs before it will start: the intent you name
 must already exist in the store the command resolves to.
