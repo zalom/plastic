@@ -8,7 +8,7 @@ module Plastic
     # Moves a claimed node to done, judged by tests, tool, agent or owner.
     class NodeDone < Routine
       node_subject
-      option :judge, switch: "--judge WHO", text: "tests, tool, agent or owner"
+      option :judge, switch: "--judge WHO", text: "tests, tool, agent or owner", required: true
       option :findings, switch: "--findings TEXT", text: "what the judge found", required: true
       option :repair, switch: "--repair", text: "record verification for an already done node", default: false
       writes :work

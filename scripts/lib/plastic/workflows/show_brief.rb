@@ -23,6 +23,15 @@ module Plastic
 
       sets :intent
 
+      CRITERIA_HEADING = 'the done criteria are the bullets under its "## Done criteria" heading'
+
+      def self.spec_line(context, spec)
+        file = "#{context.intent.dir}/spec.md"
+        return "spec: #{file}; #{CRITERIA_HEADING}" if spec.present?
+
+        "spec: none yet; the agent writes #{file}, and #{CRITERIA_HEADING}"
+      end
+
       NODE_AND_EDGE_COMMANDS = [
         Commands::NodeAdd, Commands::NodeRemove, Commands::NodeClaim, Commands::NodeRelease, Commands::NodeDone,
         Commands::NodeFail, Commands::NodePark, Commands::NodeAnswer, Commands::EdgeAdd, Commands::EdgeRemove
@@ -37,7 +46,7 @@ module Plastic
       read "print the goal and its criteria" do |context|
         spec = Graph::Knowledge::Spec.new(context.retrieval, context.intent_id)
         spec.goal_lines.then { |lines| lines.empty? ? [context.intent.title] : lines }.each { |line| context.print("goal: #{line}") }
-        context.print("spec: #{context.intent.dir}/spec.md")
+        context.print(ShowBrief.spec_line(context, spec))
         spec.done_criteria.each { |criterion| context.print("criterion: #{criterion}") }
       end
 

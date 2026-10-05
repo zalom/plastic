@@ -55,8 +55,10 @@ module Plastic
             "plastic node answer #{@intent_id} #{node.id} --answer TEXT."]
         end
 
+        def worker_clause(node) = node.by.to_s.empty? ? "" : " with its worker #{node.by}"
+
         def claimed_action(node)
-          [nil, "node #{node.id} is already claimed", "Continue node #{node.id} with its worker #{node.by}. " \
+          [nil, "node #{node.id} is already claimed", "Continue node #{node.id}#{worker_clause(node)}. " \
             "Record the result with plastic node done #{@intent_id} #{node.id} --judge tests|tool|agent|owner --findings TEXT, " \
             "or record a failure with plastic node fail #{@intent_id} #{node.id} --reason TEXT."]
         end
