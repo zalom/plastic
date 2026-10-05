@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../code_workflow"
-require_relative "../graph/roadmap_state"
+require_relative "../graph/knowledge/roadmap/state"
 
 module Plastic
   module Workflows
@@ -20,7 +20,7 @@ module Plastic
       end
 
       def self.states_of(context)
-        items_of(context).map { |item| [item, Graph::RoadmapState.of(item, context.retrieval)] }
+        items_of(context).map { |item| [item, Graph::Knowledge::Roadmap::State.of(item, context.retrieval)] }
       end
 
       read "find the first ready item, or say what is in the way" do |context|

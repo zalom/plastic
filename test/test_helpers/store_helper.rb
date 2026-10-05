@@ -13,7 +13,7 @@ module Plastic
 
       def origin = Plastic::Graph::Origin.new(@plastic_home).id
 
-      def folder = Plastic::Graph::StoreFolder.new(store_root)
+      def folder = Plastic::Graph::Knowledge::StoreFolder.new(store_root)
 
       def write(path, text) = folder.write(path, text)
 
@@ -25,6 +25,12 @@ module Plastic
         intent = work.write_intent(title:, **fields)
         work.print_intent(intent.intent_id)
         intent
+      end
+
+      # Reads every changed file of the store into its rows, as plastic sync up does.
+      def sync_up
+        work = store_graphs.work
+        work.sync_apply(work.sync_plan(:up, {}))
       end
 
       # Writes the rows one read adds, in the database that owns them.

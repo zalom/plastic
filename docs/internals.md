@@ -251,7 +251,7 @@ that store's `INDEX.md` (`~/.plastic/stores/global/doctor-exclusions` for the gl
 `(intent_id, rule)` pairs. The format
 is `/etc/hosts`-shaped: one `rule_name id id id` line per rule, blank lines and `#` comments
 ignored, duplicate rule lines unioned. It is a plain-text config table, not a markdown document
-(no `.md` extension), and it never ships in the npm package: `scripts/lib/rule_catalog.rb`
+(no `.md` extension), and it never ships in the release archive: `scripts/lib/rule_catalog.rb`
 (`RuleCatalog::EXCLUDABLE_CHECKS`, one key in v1, `savepoint_operational`) is the vocabulary of
 doctor check names an exclusion file may name, and `scripts/lib/doctor_exclusions.rb`
 (`DoctorExclusions.load`/`.parse`/`.rules_for`) is the pure-parse-plus-thin-IO loader, never
@@ -482,24 +482,24 @@ classes it requires directly. No dynamic class lookup from a command name takes 
 `Commands::Status` is a plain `CLI::Command`, not a routine, because it sweeps every store
 under the Plastic home (`scope.known_slugs`) rather than one scoped store: it opens each
 store's graphs in turn (`Graph.open(home:, store: slug)`) and prints its open and active
-intents with their node counts by state (`Graph::IntentRow`, `Graph::NodeCounts`).
+intents with their node counts by state (`Graph::Work::IntentRow`, `Graph::Work::Node::Counts`).
 
-`Commands::Next` picks a live intent through `Graph::NextPick`. Closed intents are
+`Commands::Next` picks a live intent through `Graph::Work::NextPick`. Closed intents are
 excluded even if a lock remains after an interrupted closure. With several candidates,
 the harness gets instructions to choose one. With no open work, the next command is none.
 
-`Graph::DeliveryAction` supplies the actions used by next, brief, ready, and check.
+`Graph::Work::DeliveryAction` supplies the actions used by next, brief, ready, and check.
 Ready nodes lead to claim; failed nodes lead to release. Empty graphs hand planning to
 `AgentWorkflow`, claimed nodes remain with their worker, and parked nodes request the
 owner's answer. Completed graphs lead to `intent end` for explicit acceptance.
 
 `IntentEnd` chains prerequisite checks, an agent verification handoff when records are
-missing, and closure. `CompletionEvidence` accepts a JSON object with every exact done
+missing, and closure. `Graph::Work::Completion::Evidence` accepts a JSON object with every exact done
 criterion as a key and nonempty evidence text as its value. Paths resolve within the
 selected intent folder, including a check after resolving symbolic links. The judge
 attests to the evidence; Plastic does not execute the verification.
 
-`CompletionWriter` stores the criterion snapshot, evidence, judge, outcome hash, session,
+`Graph::Work::Completion::Writer` stores the criterion snapshot, evidence, judge, outcome hash, session,
 and timestamp in `completions`. It commits that row with the delivered status and closure
 time in the work database, then releases the delivery lock in the home database. A repeat
 call preserves the first completion record and retries cleanup. Imported done intents
@@ -524,46 +524,46 @@ this section covers how the code holds together.
 - **Roadmaps.** `roadmap batch`, `roadmap add`, `roadmap show`, `roadmap next`, `roadmap
   drop`, `roadmap start`, `roadmap check`, `roadmap log` and `roadmap edge remove` write and
   read five tables in `work_graph.db`: `roadmaps`, `batches`, `roadmap_items`,
-  `roadmap_edges` and `roadmap_log`. `Graph::RoadmapWriter` owns the writes, and
-  `WorkGraph` delegates to it. `Graph::RoadmapState` derives an item's state every time it
+  `roadmap_edges` and `roadmap_log`. `Graph::Knowledge::Roadmap::Writer` owns the writes, and
+  `WorkGraph` delegates to it. `Graph::Knowledge::Roadmap::State` derives an item's state every time it
   is read. The rows hold only the facts the state comes from: the item's mark, its intent's
   status and its predecessors. Readiness checks whether each predecessor is done or dropped
   without recursively evaluating its predecessors, so imported cycles stay blocked.
-  `RoadmapWriter` rejects a self edge before writing it. `Graph::RoadmapCheck` finds a loop, an edge to an item that is
+  `Graph::Knowledge::Roadmap::Writer` rejects a self edge before writing it. `Graph::Knowledge::Roadmap::Check` finds a loop, an edge to an item that is
   not on the roadmap, and an item whose intent id names no intent. A `roadmap batch` call
-  keeps every field it leaves out: `RoadmapFields#over` takes the stored title, goal and done
+  keeps every field it leaves out: `Graph::Knowledge::Roadmap::Fields#over` takes the stored title, goal and done
   lines in their place, and a new batch with no title is named "Batch N". The call writes the
   roadmap row only when the roadmap has none, so its title and goal stay. `intent brief` prints
   each line of the spec's Goal section as a `goal:` line, and the intent title only when the
   spec has no goal.
 - **Links.** `intent link` and `intent unlink` write and remove rows in the `links` table of
-  `knowledge_graph.db` through `Graph::LinkWriter`. A link to a missing intent fails with
+  `knowledge_graph.db` through `Graph::Knowledge::Link::Writer`. A link to a missing intent fails with
   exit 1. A self link or a repeated link is refused with exit 3.
 - **Archive.** `intent archive ID` and its explicit `--revert` option use
-  `Graph::ArchiveWriter`. `ArchiveTree` reads entries with `lstat`, without following
+  `Graph::Knowledge::Archive::Writer`. `Graph::Knowledge::Archive::Tree` reads entries with `lstat`, without following
   links. The `archives` marker and complete `archive_entries` snapshot commit in one
   work database transaction before filesystem removal. A removal retry checks every
   remaining entry against that snapshot and preserves changed files.
-  `ArchiveSnapshot` restores into a temporary sibling directory, checks its bytes
+  `Graph::Knowledge::Archive::Snapshot` restores into a temporary sibling directory, checks its bytes
   and metadata, then renames it into place. Only then does `restored_at` change.
   Conflicting destinations remain untouched. A directory already published by an
   interrupted call must match the complete snapshot before that call can finish.
   Restore does not print newer semantic rows over archived bytes or mark unsynced
   documents as current. Plain sync reports conflicts for those documents.
-- **Backup.** `backup` and `backup list` go through `Graph::BackupWriter` and the `backups`
+- **Backup.** `backup` and `backup list` go through `Graph::Knowledge::Backup::Writer` and the `backups`
   table of `home.db`. `RetrievalGraph#backup_flag` compares each archive's SHA-256 digest
   with the digest stored at write time. The archive also carries `origin_id`, `config.yml`,
   and `projects.yml` from the Plastic home when present. These files preserve row ownership,
   settings, and project lookup when the archive is unpacked into an empty home.
 
-`Sync::LegacyImport` runs `Graph::LegacyStoreImport` for a store with `INDEX.md` and no
+`Graph::Knowledge::Sync::LegacyImport` runs `Graph::Knowledge::Legacy::StoreImport` for a store with `INDEX.md` and no
 `store/index.json`. One coordinator reads intent files, rulings and source links, imports
-roadmaps, and preserves changed originals. `LegacyDecisions`, `LegacyRoadmaps`, and
-`LegacyOriginals` own those parts. Failed import restores a complete saved copy of the
+roadmaps, and preserves changed originals. `Graph::Knowledge::Legacy::Decisions`, `Graph::Knowledge::Legacy::Roadmaps`, and
+`Graph::Knowledge::Legacy::Originals` own those parts. Failed import restores a complete saved copy of the
 store after disconnecting its database handles. Failure to save that copy leaves the
 original store untouched.
 
-`SyncPreview` copies the selected store and its identity and configuration into a
+`Graph::Knowledge::Sync::Preview` copies the selected store and its identity and configuration into a
 temporary home and runs the same sync there. It rejects symbolic links before copying
 and resolves absolute overwrite paths against the original store. Preview does not keep
 a routine run in the original home. Metadata import no longer requires a separate
@@ -580,13 +580,21 @@ stage 5 workflow that writes, and that can stop, starts with this step: archive,
 roadmap add, roadmap start, roadmap edge remove and unlink. Workflows that recompute their
 facts in a `read` step on every call, such as `intent link`, do not need it.
 
-### companion tools: no Plastic code path calls them
+### Retrieval and companion tools
 
-Intent 391 (2.0) dissolved every Plastic-owned integration with QMD, Serena, and Enola.
+The retrieval commands open selected store databases for reads, run literal FTS search, and pin
+results to immutable revisions. `architecture status` and `architecture refresh` are routines
+with one agent workflow each. They print an instruction for the agent and write nothing. No
+Plastic path runs Enola or any other mapping tool.
+
+### Companion tools: no Plastic code path calls them
+
+Intent 391 (2.0) dissolved every Plastic-owned integration with QMD, Serena and Enola.
 `scripts/lib/qmd_sync.rb`, its `scripts/qmd-sync` CLI, and `scripts/lib/power_tools.rb` (the
 presence probes `PowerTools.qmd?`, `.serena?`, `.enola?` that doctor's Serena and Enola
 readiness checks used to call) are all deleted. No Plastic command installs, registers with,
-reindexes, queries, or reports on any of the three: not install, not project creation, not
+reindexes, queries, or reports on QMD or Serena. No
+command queries or reports on Enola: not install, not project creation, not
 intent delivery, not session start, not doctor. `plastic install` no longer registers a QMD
 collection, and `plastic project new` never did.
 
@@ -1284,31 +1292,13 @@ node kind, and the node input on stdin. `scripts/node-run`, `RunnerUntilEmpty`, 
 `runner watch --dispatch` branch are gone. A watch tick only classifies, and its
 `watch.record` line carries no `dispatched`, `harness`, or `meter` field.
 
-## compaction thresholds and the compact-instructions block (intent 312)
+## the managed block in CLAUDE.md
 
-Two config keys and one installed block tell a session when to compact and what to do
-about it. Nothing in Plastic reads the keys at runtime: the harness reports how much of
-the window is used, and the model acts on the installed block. The keys exist so a user
-can retune the numbers that block states.
-
-```yaml
-context_offer_tokens: 150000    # offer a compaction
-context_insist_tokens: 250000   # insist on one
-```
-
-They are absolute token counts, not percentages, and they resolve through the ordinary
-`scripts/read-config` path (project, then global, then the `DEFAULTS` in that script).
-A ruling of intent 296 settled the numbers from `research--context-thresholds.md`: models are
-reliable only to roughly 50 to 65 percent of advertised context, and the mechanisms
-behind that are architectural, so a percentage that is right at a 200k window would let
-five times as many raw tokens pile up before firing at 1M. The three places the numbers
-live (the `DEFAULTS` hash, `templates/config.yml`, and `InstallerCore#bootstrap`'s seeded
-config) are pinned equal by `test/compact_instructions_test.rb`.
-
-Intent 355's n5 (D7) lowered both numbers again, from 350,000/500,000 to 150,000/250,000:
-a live session that let the window run from 434,000 to 506,000 tokens spent a third of
-that window on 41 calls before it compacted. The three-way pin above still holds; only
-the shipped values moved.
+Plastic installs one block into `~/.claude/CLAUDE.md`. It holds one sentence and one import,
+and nothing else. An owner ruling of 2026-10-05 removed the compaction thresholds from the
+block, together with the `context_offer_tokens` and `context_insist_tokens` config keys:
+nothing in Plastic read the keys, and the instruction did not work. An install or an update
+replaces a block that an older version left behind, so the old text goes with it.
 
 The block itself is `CompactInstructions::BODY` in `scripts/lib/compact_instructions.rb`,
 installed into `~/.claude/CLAUDE.md` as a marked section:
@@ -1319,7 +1309,7 @@ installed into `~/.claude/CLAUDE.md` as a marked section:
 <!-- END PLASTIC COMPACT -->
 ```
 
-Intent 363 added the first line of that block: a Claude Code import, `@~/.plastic/PLASTIC.md`.
+The block is a Claude Code import, `@~/.plastic/PLASTIC.md`.
 An owner ruling makes `PLASTIC.md` the only instruction text Plastic puts in a session, and this
 import is how the harness reads it. The path names the installed copy under the Plastic home,
 because a bare `@PLASTIC.md` would resolve against `~/.claude`, which holds no such file.
@@ -1340,14 +1330,6 @@ else remains. `Rollback#prepare_switch` strips it too before a downgrade hands o
 older package: no older installer knows the section exists, so nothing there would ever
 replace or remove it. The Codex `AGENTS.md` section needs no such treatment, because
 every older package knows that one and rewrites it on the downgrade install.
-
-The doctor check `claude_compact_instructions` (in `check_claude_registration`) reports
-the block present, well formed, and current, comparing the `hash:` in the BEGIN marker
-against `CompactInstructions.body_hash` so a block an older version left behind is
-reported rather than trusted. The Codex `codex_agents_md` check stops at well formed;
-that difference is deliberate, not an oversight. `doctor_core.rb` keeps its own copy of
-the two marker literals, as it does for Codex, but the body and its hash come from the
-shared lib, so the text has exactly one home.
 
 
 ## meter-watch: the rate-limit meter on a timer (intent 355, n5, D6)
@@ -1694,53 +1676,72 @@ across both node commands). On success it prints a parsable summary
 (`path=... sha=... tokens=... hop_tokens=... attempt=...`) and the exact `node-transition
 running` command to record, both of which intent 340's runner parses.
 
-## trusted publishing over OIDC (intent 347)
+## GitHub releases (intents 347, 376, 402)
 
-`@zalom/plastic` used to depend on a long-lived npm access token sitting in one maintainer's
-`~/.npmrc`. On 2026-09-08 that token had expired, the alpha.18 release stalled at the publish
-step, and the package reached the registry only the next morning after a manual `npm publish`
-from a detached checkout of the tag. `.github/workflows/publish.yml` closes that failure mode
-structurally: no npm token exists anywhere, on any machine or in any GitHub secret.
+`.github/workflows/publish.yml` makes every release. It talks to no package registry and holds
+no token beyond the job's own `contents: write`. Plastic retired npm on 2026-10-03: the stable
+release 2.0.3 stays on npm, and nothing newer goes there. `INSTALL.md` says how an npm copy
+moves to `install.sh`.
 
 **The trigger (intent 376).** A push to `alpha`, `beta` or `main` is the release. The workflow
 reads the version from `package.json`. When the tag for that version exists, it stops. Otherwise
-it runs the suite and the guard, packs one archive, creates the tag and the GitHub release
-with `plastic.tgz` attached, and publishes that same archive to npm. To release, change the
-version in the three version files and push the branch. `install.sh` at the repository root
-downloads the archive of the latest stable release, unpacks it under `~/.local/share/plastic` and links
-`~/.local/bin/plastic`.
+it runs the suite and the guard, builds the release files, and creates the tag and the GitHub
+release with them attached. To release, change the version in `package.json` and push the
+branch. `install.sh` at the repository root downloads the archive of the release its channel
+names, unpacks it under `~/.local/share/plastic` and links `~/.local/bin/plastic`.
 
-**The mechanism.** The publish job is granted `id-token: write`. The npm CLI detects the OIDC environment, fetches a short-lived
-token scoped to this repository and this exact workflow filename, and presents it to the
-registry instead of an `_authToken`. The registry compares the token's claims against the
-trusted publisher registered on npmjs.com and publishes only on an exact match. The trust is
-pinned to the workflow file's name, not to a person: anyone who can push to a channel branch can
-publish, and renaming `publish.yml` silently breaks every future release, which is why a test
-pins the path.
+**Each release runs its own Ruby (intent 402a).** `install.sh` pins one Ruby 4.0.7 build for each
+platform in its `ruby_pins` table: jdx/ruby `4.0.7-2` for macOS on Apple silicon and both Linux
+builds, and the Homebrew portable Ruby from ghcr.io for an Intel Mac, which needs the anonymous
+header `Authorization: Bearer QQ==`. It detects the platform with `uname`, takes the Apple silicon
+build in a Rosetta shell, and stops on musl. It downloads to a temporary directory, checks the
+size, the SHA-256 and the archive entries, unpacks into a staging directory under `rubies/`, starts
+the Ruby once with `openssl`, `zlib` and `psych`, writes the `.plastic-ruby` marker, and renames the
+directory into place before it makes it read-only. `InstallerRelease::RubyPins` reads the same
+table, so `ReleaseBuild` writes it into the manifest under `ruby.builds`, and `Rubies` repeats the
+same steps in Ruby when `plastic update` meets a release that pins a Ruby the share lacks.
+`ReleaseLauncher` moves the Ruby entry point to `libexec/plastic` and writes a `bin/plastic` shell
+script that runs it with that Ruby's full path, and `Bundle` runs that Ruby's own `bin/bundle`.
+It also writes `bin/ruby`, a shell script that starts the same Ruby, so `hooks/check-update`
+runs on `~/.local/share/plastic/active/bin/ruby` and never on a Ruby from `PATH`. With no active
+release, the update check does nothing.
+`PLASTIC_RUBY` overrides the choice for development. `ReleaseRemoval` removes only the entries
+`FlatShare::KEPT` names and stopped downloads, and makes the read-only Rubies writable first.
+An uninstall runs on one of those Rubies, so `ShareEntries` decides whether the share goes before
+the first removal and removes the `rubies` folder last, and `ReleaseRemoval` prints its closing
+lines from that answer, never from the disk after the removal. Every file the uninstall
+needs is loaded before the share goes, and a child process test runs it on a copied share.
 
 **The guard.** `scripts/release-check`, a thin CLI over `scripts/lib/release_guard.rb`, runs
-before the publish step. It asserts that the pushed branch publishes the channel the version
-suffix names (`alpha`, `beta`, or `main` for a version with no suffix), that the three repo version files agree
-(`ReleaseGuard.check`, `scripts/lib/release_guard.rb`),
-and that the runner's npm meets the 11.5.1 floor OIDC requires, comparing version segments
-numerically so `11.10.0` does not lose to `11.5.1` as a string. It writes the derived dist-tag
-to `$GITHUB_OUTPUT` by appending, never truncating, so another step's output in the same file
+before the build. It asserts that the pushed branch releases the channel the version names
+(`alpha`, `beta`, or `main` for a version with no suffix), and that a stable version carries no
+pre-release suffix (`ReleaseGuard.check`). It writes the version, the channel and the tag to
+`$GITHUB_OUTPUT` by appending, never truncating, so another step's output in the same file
 survives.
 
-**One dist-tag rule, one implementation.** `ReleaseGuard.dist_tag(version)` returns `alpha` for
-an `-alpha` suffix, `beta` for `-beta`, `latest` for no suffix at all, and the raw suffix itself
-(never `latest`) for anything else. The workflow's `--tag` argument is always
-`${{ steps.guard.outputs.dist_tag }}`, never a literal, because the alternative - a second,
-untested implementation of the same rule in shell - is exactly the kind of drift that would put
-an alpha on `latest` and pull every stable user onto it at their next `plastic update`.
+**One channel rule, one implementation.** `InstallerRelease::Manifest.identity(version)` returns
+`alpha` for an `-alpha` suffix, `beta` for `-beta`, and `latest` for any other version. The
+guard, the release manifest and `install.sh` all read the channel through it. The release step
+marks a `latest` channel as the Latest release and any other channel as a pre-release, and it
+reads the channel only from the guard's output, never from a literal. A second rule in shell is
+the drift that would put an alpha on Latest and pull every stable user onto it.
 
-**The suite runs in the publish job.** The publish job runs `ruby bin/test` before the guard,
-so a red suite stops the release before any tag, GitHub release, or npm publish.
-`test/publish_workflow_test.rb` pins that order. `.github/workflows/test.yml` also runs the suite
-on pushes and pull requests to `main` and `alpha`.
+**One builder.** `scripts/build-release`, a CLI over `scripts/lib/release_build.rb`, writes
+`plastic.tgz`, `plastic.tgz.sha256` and `plastic.manifest.json`. The archive holds under
+`package/` the files `package.json` lists in `files`, plus `package.json`, `README.md`,
+`LICENSE` and a `VERSION` file. The publish workflow, the packaged executable check in
+`.github/workflows/test.yml`, `tools/check-fresh-install` and the `install.sh` tests all build
+through it, so the archive CI checks is the archive a release carries.
 
-**The `npm` environment.** The publish job runs in the GitHub environment named `npm`, and its
-URL points at the package page on npmjs.com.
+**The suite runs in the release job.** The release job runs `ruby bin/test` before the guard,
+so a red suite stops the release before any tag or GitHub release.
+`.github/workflows/test.yml` also runs the suite on pushes and pull requests to `main` and `alpha`.
+
+**The built files are installed before they are published.** After the build, the release job
+runs `ruby tools/check-fresh-install --release release`. It installs the files in `release/`
+under an empty home, then updates, rolls back and uninstalls, so a release that cannot install
+is never published. No test asserts on the text of the workflow file; only a release run proves
+the workflow.
 
 ## CLI adapter contract
 

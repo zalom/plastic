@@ -47,6 +47,13 @@ class RoadmapStartTest < Plastic::TestCase
     assert_includes document.body, "- [ ] item done"
   end
 
+  def test_an_unknown_item_exits_1_and_names_it
+    result = call("r1", "zz")
+
+    assert_equal 1, result.code
+    assert_includes result.err, "no item zz on roadmap r1"
+  end
+
   def test_a_second_start_exits_3
     call("r1", "a")
 
@@ -60,7 +67,7 @@ class RoadmapStartTest < Plastic::TestCase
 
     result = call("r1", "b")
 
-    assert_equal 3, result.code
+    assert_call result, code: 3, err: "plastic: refused, item b is blocked, not ready\nThis step belongs to the owner. Stop and ask; do not retry with a flag.\n"
     assert_nil item_row("b").intent_id
   end
 end

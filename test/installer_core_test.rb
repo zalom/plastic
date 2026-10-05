@@ -1,0 +1,176 @@
+# frozen_string_literal: true
+
+require "minitest/autorun"
+require "fileutils"
+require "json"
+require "tmpdir"
+require_relative "../scripts/lib/installer_core"
+
+# A throwaway home for each InstallerCore test.
+module InstallerCoreHome
+  def setup
+    @home = Dir.mktmpdir("installer-core")
+  end
+
+  def teardown
+    FileUtils.rm_rf(@home)
+  end
+
+  def installer(package_root = Dir.pwd) = InstallerCore.new(package_root: package_root, plastic_home: File.join(@home, ".plastic"))
+
+  def read_json(*parts) = JSON.parse(File.read(File.join(*parts)))
+end
+
+class InstallerCoreHooksTest < Minitest::Test
+  include InstallerCoreHome
+
+  def settings_with(settings)
+    path = File.join(@home, "settings.json")
+    File.write(path, JSON.generate(settings))
+    path
+  end
+
+  def install(settings, times: 1)
+    path = settings_with(settings)
+    times.times { capture_io { installer.merge_claude_hooks(path) } }
+    JSON.parse(File.read(path))
+  end
+
+  def rebind(package_root, hooks)
+    FileUtils.mkdir_p(package_root)
+    File.write(File.join(package_root, "VERSION"), "2.0.3\n")
+    path = settings_with("hooks" => hooks)
+    capture_io { installer(package_root).merge_claude_hooks(path) }
+    JSON.parse(File.read(path))
+  end
+
+  def commands(settings, event) = Array(settings["hooks"][event]).flat_map { |group| group["hooks"].map { |hook| hook["command"] } }
+
+  def test_the_install_writes_the_kernel_hooks
+    settings = install({})
+    kernel = %("#{File.join(@home, ".plastic", "bin", "plastic")}")
+    expected = { "SessionStart" => "#{kernel} hook resume --harness claude-code",
+                 "Stop" => "#{kernel} hook record --harness claude-code", "SessionEnd" => "#{kernel} hook record --end" }
+
+    assert_empty(expected.reject { |event, text| commands(settings, event).any? { |cmd| cmd.include?(text) } })
+  end
+
+  def test_the_install_keeps_check_update
+    assert(commands(install({}), "SessionStart").any? { |cmd| cmd.end_with?("plastic-check-update") })
+  end
+
+  def test_a_release_install_binds_the_hooks_to_the_active_launcher
+    share = File.join(@home, ".local", "share", "plastic")
+    former = %(env -u RUBYOPT "#{File.join(@home, ".plastic", "bin", "plastic")}" hook resume --harness claude-code || true)
+    settings = rebind(File.join(share, "releases", "2.0.3"), "SessionStart" => [{ "matcher" => "", "hooks" => [{ "type" => "command", "command" => former }] }])
+
+    resume = commands(settings, "SessionStart").grep(/hook resume/)
+
+    assert_equal [%(env -u RUBYOPT "#{File.join(share, "active", "bin", "plastic")}" hook resume --harness claude-code || true)], resume
+  end
+
+  def test_a_second_install_keeps_one_group_per_event
+    assert_equal 1, commands(install({}, times: 2), "Stop").size
+  end
+
+  def test_removing_the_hooks_keeps_the_hooks_of_the_person
+    own = { "type" => "command", "command" => "echo mine" }
+    path = settings_with("hooks" => { "Stop" => [{ "matcher" => "", "hooks" => [own] }] })
+    capture_io { installer.merge_claude_hooks(path) }
+    capture_io { installer.remove_claude_hooks(path) }
+
+    assert_equal ["echo mine"], commands(JSON.parse(File.read(path)), "Stop")
+  end
+end
+
+class InstallerCoreTest < Minitest::Test
+  include InstallerCoreHome
+
+  def agents_file = File.join(@home, "AGENTS.md")
+
+  def test_the_ledger_and_the_manifest_carry_local_time_with_its_offset
+    installer.ledger_append("2.0.3", "install")
+    installer.write_manifest([], File.join(@home, "manifest.json"))
+
+    times = [read_json(@home, ".plastic", "versions.json")["at"], read_json(@home, "manifest.json")["created"]]
+
+    assert_empty(times.grep_v(/[+-]\d\d:\d\d\z/))
+  end
+
+  def test_the_ledger_reads_back_its_rows_in_order_and_skips_a_broken_line
+    installer.ledger_append("2.0.2", "install")
+    File.write(installer.ledger_path, "{ broken\n", mode: "a")
+    installer.ledger_append("2.0.3", "update", harness: "claude")
+
+    assert_equal [%w[2.0.2 2.0.3], "claude"], [installer.ledger_read.map { |row| row["version"] }, installer.ledger_current["harness"]]
+  end
+
+  def test_versions_compare_by_semver_and_an_unparsed_version_compares_to_nil
+    assert_equal [-1, 1, nil], [installer.semver_compare("2.0.0-beta.1", "2.0.0"), installer.semver_compare("2.0.10", "2.0.9"), installer.semver_compare("2.0", "2.0.0")]
+  end
+
+  def test_the_version_names_its_channel_and_its_stability
+    assert_equal [%w[alpha beta latest], 1], [%w[2.0.0-alpha.1 2.0.0-beta.1 2.0.3].map { |version| installer.channel_for(version) }, installer.stability_rank("beta")]
+  end
+
+  def test_the_agent_flags_name_the_agent_keys
+    assert_equal [%w[codex], %w[claude codex hermes]], [installer.agent_keys_from(%w[--codex --verbose]), installer.agent_keys_from(%w[--all --claude])]
+  end
+
+  def test_a_marked_section_is_appended_then_replaced_in_place
+    File.write(agents_file, "# Mine\n")
+
+    assert_equal %i[appended replaced], [installer.inject_marked_section(agents_file, body: "one"), installer.inject_marked_section(agents_file, body: "two")]
+    assert_equal 1, File.read(agents_file).scan(InstallerCore::CODEX_SECTION_BEGIN_PREFIX).size
+  end
+
+  def test_stripping_the_marked_section_gives_back_the_file_of_the_person
+    File.write(agents_file, "# Mine\n")
+    installer.inject_marked_section(agents_file, body: "one")
+    installer.strip_marked_section(agents_file)
+
+    assert_equal "# Mine\n", File.read(agents_file)
+  end
+
+  def test_a_section_with_no_end_marker_is_refused
+    File.write(agents_file, "#{InstallerCore::CODEX_SECTION_BEGIN_PREFIX} -->\nhalf\n")
+
+    assert_equal :refused, installer.inject_marked_section(agents_file, body: "one")
+  end
+
+  def test_frontmatter_splits_from_the_body
+    assert_equal [[{ "name" => "lead" }, "Body\n"], [{}, "Body\n"]], [installer.split_frontmatter("---\nname: lead\n---\nBody\n"), installer.split_frontmatter("Body\n")]
+  end
+
+  def test_toml_strings_escape_quotes_backslashes_and_newlines
+    assert_equal ['a \\"b\\" \\\\ c', "a\n\\\"\\\"\\\""], [installer.toml_inline_escape("a \"b\"\n\\ c"), installer.toml_ml_escape("a\r\n\"\"\"")]
+  end
+
+  def test_json_with_comments_and_trailing_commas_is_read_and_garbage_is_nil
+    File.write(File.join(@home, "loose.json"), %({ "a": 1, // note\n }))
+    File.write(File.join(@home, "garbage.json"), "{ broken")
+
+    assert_equal [{ "a" => 1 }, nil], %w[loose garbage].map { |name| installer.read_json_safe(File.join(@home, "#{name}.json")) }
+  end
+
+  def test_a_file_that_exists_is_not_overwritten
+    path = File.join(@home, "note.md")
+    installer.write_if_missing(path, "first\n")
+    installer.write_if_missing(path, "second\n")
+
+    assert_equal "first\n", File.read(path)
+  end
+
+  def test_a_sibling_that_shares_a_prefix_is_not_contained
+    root = File.join(@home, "x")
+
+    assert_equal [true, true, false], [File.join(root, "a"), root, "#{root}-evil"].map { |path| installer.path_contained?(path, [root]) }
+  end
+
+  def test_the_former_advisor_names_move_to_the_current_names
+    config = { "advisor" => { "claude" => { "default" => "plastic-advisor" } }, "agents" => { "models" => { "claude" => { "plastic-faux-advisor" => "opus" } } } }
+    migrated = installer.migrate_advisor_config(config)
+
+    assert_equal ["plastic-primary-advisor", { "plastic-secondary-advisor" => "opus" }], [migrated.dig("advisor", "claude", "default"), migrated.dig("agents", "models", "claude")]
+  end
+end

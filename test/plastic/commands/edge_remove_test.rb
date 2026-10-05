@@ -16,6 +16,8 @@ class EdgeRemoveTest < Plastic::TestCase
     result = plastic("edge", "remove", "1", "n1", "n2", table: Plastic::CLI::TABLE)
 
     assert_equal 1, result.code
+    assert_equal "", result.out
+    assert_equal "plastic: code_remove_edge, gate: no edge n1 to n2 in intent 1\n", result.err
   end
 
   def test_retry_after_adding_the_missing_edge_succeeds
@@ -24,12 +26,12 @@ class EdgeRemoveTest < Plastic::TestCase
     add_node("b")
     failed = plastic("edge", "remove", "1", "n1", "n2", table: Plastic::CLI::TABLE)
 
-    assert_includes failed.err, "no edge n1 to n2 in intent 1"
+    assert_call failed, code: 1, err: ["no edge n1 to n2 in intent 1"]
     plastic("edge", "add", "1", "n1", "n2", table: Plastic::CLI::TABLE)
 
     result = plastic("edge", "remove", "1", "n1", "n2", table: Plastic::CLI::TABLE)
 
-    assert_equal 0, result.code
+    assert_call result, code: 0, out: ["edge: n1 to n2 removed"]
     assert_empty store_graphs.retrieval.edges("1")
   end
 
@@ -41,7 +43,8 @@ class EdgeRemoveTest < Plastic::TestCase
 
     result = plastic("edge", "remove", "1", "n1", "n2", table: Plastic::CLI::TABLE)
 
-    assert_equal 0, result.code
+    assert_call result, code: 0,
+      out: "edge: n1 to n2 removed\nwrote:  1 edge in work_graph.db\n\nnext: plastic graph show 1 --project global\nbecause: edge n1 to n2 is gone\n"
     assert_empty store_graphs.databases.fetch(:work).rows("SELECT * FROM edges")
   end
 end

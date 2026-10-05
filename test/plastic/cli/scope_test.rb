@@ -18,6 +18,11 @@ class ScopeTest < Plastic::TestCase
     assert_equal @plastic_home, scope.plastic_home
   end
 
+  def test_a_setting_comes_from_the_environment_or_its_default
+    assert_equal "x", scope(env: { "PLASTIC_SOURCE_PROJECTS" => "x" }).setting("PLASTIC_SOURCE_PROJECTS", "")
+    assert_equal "", scope(env: {}).setting("PLASTIC_SOURCE_PROJECTS", "")
+  end
+
   def test_the_home_falls_back_to_the_home_directory
     assert_equal File.join(@home, ".plastic"), scope(env: {}).plastic_home
   end

@@ -14,7 +14,7 @@ class IntentArchiveTest < Plastic::TestCase
   end
 
   def add_ruling(intent)
-    row = { intent_id: intent.intent_id, id: "D1", text: "a ruling", supersedes: nil, at: Plastic.now }
+    row = { intent_id: intent.intent_id, id: "D1", text: "a ruling", supersedes: nil, at: STAMP }
     store_graphs.databases.fetch(:knowledge).transaction { |batch| batch.put(:rulings, row, statement: :insert) }
   end
 
@@ -38,15 +38,15 @@ class IntentArchiveTest < Plastic::TestCase
     assert retrieval.intent(intent.intent_id)
   end
 
-  def test_archiving_an_unlinked_done_intent_keeps_its_document_and_ruling
+  def test_archiving_an_unlinked_done_intent_keeps_its_document_and_ruling_bytes
     intent = open_intent("Target")
     add_ruling(intent)
     mark_done(intent)
 
     call(intent.intent_id)
 
-    assert_equal 1, retrieval.documents(intent.intent_id).size
-    assert_equal 1, retrieval.rulings(intent.intent_id).size
+    assert_equal intent.page(retrieval.origin_id), archived_document(intent).body
+    assert_equal "a ruling", archived_ruling(intent).text
   end
 
   def test_an_open_intents_link_refuses_the_archive
@@ -57,7 +57,7 @@ class IntentArchiveTest < Plastic::TestCase
 
     result = call(target.intent_id)
 
-    assert_equal 3, result.code
+    assert_call result, code: 3, err: "plastic: refused, intent 2 links to 1\nThis step belongs to the owner. Stop and ask; do not retry with a flag.\n"
     assert folder.exist?("#{target.dir}/#{target.file}")
   end
 
@@ -79,17 +79,6 @@ class IntentArchiveTest < Plastic::TestCase
 
     assert_equal 0, result.code
     refute folder.exist?("#{intent.dir}/#{intent.file}")
-  end
-
-  def test_sync_down_after_an_archive_prints_nothing_back
-    intent = open_intent("Target")
-    mark_done(intent)
-    call(intent.intent_id)
-
-    result = plastic("sync", "down", table: Plastic::CLI::TABLE)
-
-    assert_equal 0, result.code
-    refute folder.exist?(intent.dir)
   end
 
   def test_a_refused_archive_is_refused_again_on_the_next_call
@@ -123,4 +112,36 @@ class IntentArchiveTest < Plastic::TestCase
     assert_equal 0, result.code
     assert retrieval.archived?(intent.intent_id)
   end
+
+  def test_archiving_a_missing_intent_reports_a_failure
+    result = call("99")
+
+    assert_call result, code: 1, err: ["no intent 99"]
+  end
+
+  def test_revert_restores_the_exact_snapshot_taken_at_archive_time
+    intent = open_intent("Unsynced", status: "future")
+    path = "#{intent.dir}/#{intent.file}"
+    write(path, "owner edit not in document rows")
+    call(intent.intent_id)
+    call(intent.intent_id, "--revert")
+
+    assert_equal "owner edit not in document rows", folder.read(path)
+  end
+
+  def test_revert_of_an_intent_that_was_never_archived_fails_and_leaves_it_live
+    intent = open_intent("Open")
+    call(intent.intent_id)
+
+    result = call(intent.intent_id, "--revert")
+
+    assert_call result, code: 1, err: ["not archived"]
+    refute retrieval.archived?(intent.intent_id)
+  end
+
+  private
+
+  def archived_document(intent) = retrieval.documents(intent.intent_id).find { |candidate| candidate.path == intent.file }
+
+  def archived_ruling(intent) = retrieval.rulings(intent.intent_id).find { |candidate| candidate.id == "D1" }
 end

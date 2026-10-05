@@ -13,6 +13,13 @@ require_relative "../../../scripts/lib/plastic/commands/edge_add"
 class NodeClaimTest < Plastic::TestCase
   def add_node(title) = plastic("node", "add", "1", title, "--criterion", "done", table: Plastic::CLI::TABLE)
 
+  def two_linked_nodes
+    open_intent
+    add_node("a")
+    add_node("b")
+    plastic("edge", "add", "1", "n1", "n2", table: Plastic::CLI::TABLE)
+  end
+
   def claim(*args) = plastic("node", "claim", "1", *args, table: Plastic::CLI::TABLE)
 
   def test_claiming_a_done_node_is_refused
@@ -24,6 +31,8 @@ class NodeClaimTest < Plastic::TestCase
     result = claim("n1")
 
     assert_equal 1, result.code
+    assert_equal "", result.out
+    assert_equal "plastic: code_claim_node, gate: node n1 is done; it cannot move to claimed\n", result.err
   end
 
   def test_claiming_a_parked_node_is_refused
@@ -35,6 +44,8 @@ class NodeClaimTest < Plastic::TestCase
     result = claim("n1")
 
     assert_equal 1, result.code
+    assert_equal "", result.out
+    assert_equal "plastic: code_claim_node, gate: node n1 is parked; it cannot move to claimed\n", result.err
   end
 
   def test_claiming_a_removed_node_is_refused
@@ -45,6 +56,8 @@ class NodeClaimTest < Plastic::TestCase
     result = claim("n1")
 
     assert_equal 1, result.code
+    assert_equal "", result.out
+    assert_equal "plastic: code_claim_node, gate: node n1 is removed; it cannot move to claimed\n", result.err
   end
 
   def test_claiming_an_already_claimed_node_is_refused
@@ -67,6 +80,8 @@ class NodeClaimTest < Plastic::TestCase
     result = claim("n1")
 
     assert_includes result.out, "last reason: boom"
+    assert_equal 0, result.code
+    assert_equal "", result.err
   end
 
   def fail_and_release
@@ -90,29 +105,24 @@ class NodeClaimTest < Plastic::TestCase
   end
 
   def test_claiming_a_node_that_needs_an_open_node_is_refused
-    open_intent
-    add_node("a")
-    add_node("b")
-    plastic("edge", "add", "1", "n1", "n2", table: Plastic::CLI::TABLE)
+    two_linked_nodes
 
     result = claim("n2")
 
     assert_equal 1, result.code
     assert_includes result.err, "node n2 needs a node that is not done"
+    assert_equal "", result.out
   end
 
   def test_a_node_refused_for_its_needs_is_claimed_once_they_are_done
-    open_intent
-    add_node("a")
-    add_node("b")
-    plastic("edge", "add", "1", "n1", "n2", table: Plastic::CLI::TABLE)
+    two_linked_nodes
     claim("n2")
     claim("n1")
     plastic("node", "done", "1", "n1", "--judge", "tests", "--findings", "ok", table: Plastic::CLI::TABLE)
 
     result = claim("n2")
 
-    assert_equal 0, result.code
+    assert_call result, code: 0, out: ["because: node n2 is claimed\n"]
     assert_equal "claimed", store_graphs.retrieval.node("1", "n2").state
   end
 
@@ -130,6 +140,9 @@ class NodeClaimTest < Plastic::TestCase
     open_intent
     plastic("node", "add", "1", "a", "--criterion", "done", "--input", "docs/a.md", table: Plastic::CLI::TABLE)
 
-    assert_includes claim("n1").out, "input: docs/a.md"
+    call = claim("n1")
+
+    assert_equal [0, ""], [call.code, call.err]
+    assert_includes call.out, "input: docs/a.md"
   end
 end

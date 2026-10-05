@@ -5,6 +5,14 @@ require_relative "../../test_helper"
 class RetrievalGraphTest < Plastic::TestCase
   def put(key, table, row) = store_graphs.databases[key].transaction { |batch| batch.put(table, row) }
 
+  def saved_passages = store_graphs.databases.fetch(:knowledge).rows("SELECT position, body FROM document_passages ORDER BY position")
+
+  def index_text(intent, name, body)
+    path = "#{intent.dir}/#{name}"
+    write(path, body)
+    apply_read(Plastic::Graph::Knowledge::Reader.new(folder, { intent.intent_id => intent }, origin, retrieval:).read(path))
+  end
+
   def test_the_origin_id_is_the_installation_id
     assert_equal [origin, "global"], [retrieval.origin_id, retrieval.store]
   end
@@ -54,5 +62,68 @@ class RetrievalGraphTest < Plastic::TestCase
     put(:knowledge, :printed, { path: "store/1--a/spec.md", sha256: "b", at: "t" })
 
     assert_equal({ "store/index.json" => "a", "store/1--a/spec.md" => "b" }, retrieval.printed)
+  end
+
+  def test_searches_indexed_passages_without_matching_an_intent_title
+    intent = open_intent("Unrelated")
+    path = "#{intent.dir}/research.txt"
+    write(path, "The retrieval evidence stays searchable.\n")
+    apply_read(Plastic::Graph::Knowledge::Reader.new(folder, { intent.intent_id => intent }, origin, retrieval:).read(path))
+
+    result = retrieval.search("retrieval evidence")
+
+    assert_equal [[intent.intent_id, "research.txt", "The retrieval evidence stays searchable.\n", 1]],
+      result.map { |row| row.values_at("intent_id", "path", "body", "position") }
+  end
+
+  def test_backfills_a_text_reference_once_without_removing_its_attachment
+    row = { name: "store/1--alpha/research.txt", mode: 0o100644, mtime: 0, sz: 18,
+            data: Plastic::Graph::SQL::Bytes.new("Archived evidence\n"), intent_id: "1", sha256: "source" }
+    put(:references, :sqlar, row)
+
+    2.times { retrieval.backfill }
+
+    assert_equal [["research.txt", "Archived evidence\n"]], retrieval.search("archived evidence").map { |found| found.values_at("path", "body") }
+    assert_equal "Archived evidence\n", retrieval.kept_file_data(row[:name])
+  end
+
+  def test_keeps_unsupported_textual_attachments_without_indexing_or_crashing
+    row = { name: "store/1--alpha/report.pdf", mode: 0o100644, mtime: 0, sz: 12,
+            data: Plastic::Graph::SQL::Bytes.new("%PDF readable"), intent_id: "1", sha256: "source" }
+    put(:references, :sqlar, row)
+
+    retrieval.backfill
+
+    assert_equal "%PDF readable", retrieval.kept_file_data(row[:name])
+    assert_empty retrieval.search("readable")
+  end
+
+  def test_backfill_marks_the_retrieval_migration_complete
+    retrieval.backfill
+
+    assert_equal "complete", store_graphs.databases.fetch(:knowledge).row("SELECT completed_at FROM retrieval_schema WHERE name = 'retrieval'").fetch("completed_at")
+  end
+
+  def test_an_intents_initial_document_is_searchable
+    intent = open_intent("Retrieval planning")
+
+    assert_equal [[intent.intent_id, intent.file]], retrieval.search("retrieval planning").map { |row| row.values_at("intent_id", "path") }
+  end
+
+  def test_splits_long_unicode_text_into_bounded_passages
+    intent = open_intent("Passages")
+    index_text(intent, "long.txt", "ž" * 1700)
+
+    assert_equal [[1, 1600], [2, 300]], saved_passages.last(2).map { |row| [row.fetch("position"), row.fetch("body").length] }
+  end
+
+  def test_repairs_a_missing_fts_row_from_immutable_evidence
+    intent = open_intent("Repair")
+    index_text(intent, "repair.txt", "Repairable evidence\n")
+    store_graphs.databases.fetch(:knowledge).transaction { |batch| batch.add("DELETE FROM document_fts") }
+
+    retrieval.repair
+
+    assert_equal ["repair.txt"], retrieval.search("repairable").map { |row| row.fetch("path") }
   end
 end

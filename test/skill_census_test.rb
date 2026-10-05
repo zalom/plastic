@@ -209,7 +209,7 @@ class SkillCensusHistoryTest < Minitest::Test
     SkillCensus::HistoryScanner.new(FIXTURE_HISTORY, cutoff: cutoff).scan
   end
 
-  def test_history_typed_counts
+  def test_history_counts_each_call_by_type
     result = scan
     typed_names = result.typed.map(&:name)
 
@@ -276,7 +276,7 @@ class SkillCensusHistoryTest < Minitest::Test
     assert_equal Date.new(2026, 6, 1), doctor_event.date
   end
 
-  def test_history_monthly_rows
+  def test_history_counts_the_calls_of_each_month
     result = scan
 
     assert_equal 6, result.monthly["2026-06"]
@@ -288,7 +288,7 @@ end
 # S4 - Agent invocation classification
 # ---------------------------------------------------------------------------
 class SkillCensusCallsTest < Minitest::Test
-  def test_skill_call_counts
+  def test_each_skill_call_is_counted_once
     Dir.mktmpdir("skill-census-s4") do |dir|
       write_jsonl(dir, "proj/s1.jsonl", [
         { "type" => "assistant", "uuid" => "a1", "timestamp" => "2026-07-01T00:00:00Z",
@@ -880,7 +880,7 @@ class SkillCensusCliTest < Minitest::Test
     end
   end
 
-  def test_cli_json_format
+  def test_the_command_prints_json_when_asked
     out, err, status = run_cli("--history", FIXTURE_HISTORY, "--transcripts", FIXTURE_TRANSCRIPTS,
                                 "--skills-dir", FIXTURE_SKILLS, "--format", "json")
 

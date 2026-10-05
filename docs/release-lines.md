@@ -2,8 +2,9 @@
 
 The two release lanes, the version-line map, and the intent-41 re-land playbook. This page
 was written for the 1.x releasing skill, which intent 372 retired. In 2.0 a push to `alpha`,
-`beta`, or `main` is the release: `.github/workflows/publish.yml` creates the tag, the GitHub
-release, and the npm publish for a version that has no tag yet. The lanes, the routing rule,
+`beta`, or `main` is the release: `.github/workflows/publish.yml` creates the tag and the GitHub
+release for a version that has no tag yet. `install.sh` and `plastic update` install from those
+releases. The lanes, the routing rule,
 and the stable-line guarantees still apply. The version-line map and the intent-41 playbook
 are 1.x history, kept as they stood.
 
@@ -18,11 +19,11 @@ are 1.x history, kept as they stood.
 ## The two lanes
 
 **Default lane.** Branch, merge to `main` with `--no-ff`, bump the version files, and push:
-the push to `main` publishes to npm `latest`. It is the path for additive,
+the push to `main` makes a GitHub release on the `latest` channel. It is the path for additive,
 suite-verifiable, low-blast-radius work: new skills, prose, deterministic scripts, anything a
 green Minitest run can fully vouch for.
 
-**Beta-verified lane.** Branch, merge to the `beta` branch, publish to the npm `beta` dist-tag,
+**Beta-verified lane.** Branch, merge to the `beta` branch, release on the `beta` channel,
 verify in real use, then merge `beta` into `main` and cut stable. It sits on top of the
 promotion mechanics (a push to each branch in turn, linear only); it names when to use them,
 not new machinery.
@@ -49,11 +50,10 @@ What an external `latest` user can rely on:
 1. `main` is always green and releasable. No pending revert awaiting re-land sits on `main`.
    When something needs beta verification, it comes out of `main` the same day that need is
    found (the 226023f precedent), never left half-landed.
-2. A stable release carries no pre-release suffix, publishes to npm `latest`, and the newest
+2. A stable release carries no pre-release suffix, releases on the `latest` channel, and the newest
    stable release always carries the GitHub "Latest" badge (`gh release create --latest` on
    every cut).
-3. The three repo version files (`package.json`, `.claude-plugin/plugin.json`,
-   `.claude-plugin/marketplace.json`) always agree. Checked mechanically by
+3. The release tag always matches the version in `package.json`. Checked mechanically by
    `scripts/lib/release_guard.rb`.
 4. A stable cut collects only intents that cleared their lane's bar: default-lane intents by a
    green suite, beta-lane intents by suite green plus their lane's own verification (real-use

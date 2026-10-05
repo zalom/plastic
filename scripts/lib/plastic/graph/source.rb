@@ -1,13 +1,13 @@
 # frozen_string_literal: true
 
-require_relative "intent"
-require_relative "cluster"
-require_relative "document"
-require_relative "savepoint"
-require_relative "node"
-require_relative "edge"
-require_relative "ruling"
-require_relative "kept_file"
+require_relative "knowledge/intent"
+require_relative "work/cluster"
+require_relative "knowledge/document"
+require_relative "work/savepoint"
+require_relative "work/node"
+require_relative "work/edge"
+require_relative "knowledge/ruling"
+require_relative "knowledge/archive/kept_file"
 
 module Plastic
   module Graph
@@ -25,14 +25,14 @@ module Plastic
 
     # The named sources RetrievalGraph#read picks from.
     SOURCES = {
-      intents: Source.new(Intent, :work, "intents", "*", "intent_id"),
-      clusters: Source.new(Cluster, :work, "clusters", "*", "name, intent_id"),
-      documents: Source.new(Document, :knowledge, "documents", "*", "intent_id, path"),
-      savepoints: Source.new(Savepoint, :work, "savepoints", "*", "intent_id, position"),
-      nodes: Source.new(Node, :work, "nodes", "*", "intent_id, id"),
-      edges: Source.new(Edge, :work, "edges", "*", 'intent_id, "from", "to", kind'),
-      rulings: Source.new(Ruling, :knowledge, "rulings", "*", "intent_id, id"),
-      kept_files: Source.new(KeptFile, :references, "sqlar", "name, mode, mtime, sz, intent_id, sha256, origin_id",
+      intents: Source.new(Knowledge::Intent, :work, "intents", "*", "intent_id"),
+      clusters: Source.new(Work::Cluster, :work, "clusters", "*", "name, intent_id"),
+      documents: Source.new(Knowledge::Document, :knowledge, "documents", "*", "intent_id, path"),
+      savepoints: Source.new(Work::Savepoint, :work, "savepoints", "*", "intent_id, position"),
+      nodes: Source.new(Work::Node, :work, "nodes", "*", "intent_id, id"),
+      edges: Source.new(Work::Edge, :work, "edges", "*", 'intent_id, "from", "to", kind'),
+      rulings: Source.new(Knowledge::Ruling, :knowledge, "rulings", "*", "intent_id, id"),
+      kept_files: Source.new(Knowledge::Archive::KeptFile, :references, "sqlar", "name, mode, mtime, sz, intent_id, sha256, origin_id",
         "intent_id, name")
     }.freeze
   end

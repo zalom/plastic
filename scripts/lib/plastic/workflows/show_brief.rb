@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../code_workflow"
-require_relative "../graph/spec"
+require_relative "../graph/knowledge/spec"
 require_relative "lines"
 require_relative "../commands/node_add"
 require_relative "../commands/node_remove"
@@ -35,7 +35,7 @@ module Plastic
       gate "no intent %{intent_id} in this store", stops: :failure, pass: ->(context) { !context.intent.nil? }
 
       read "print the goal and its criteria" do |context|
-        spec = Graph::Spec.new(context.retrieval, context.intent_id)
+        spec = Graph::Knowledge::Spec.new(context.retrieval, context.intent_id)
         spec.goal_lines.then { |lines| lines.empty? ? [context.intent.title] : lines }.each { |line| context.print("goal: #{line}") }
         context.print("spec: #{context.intent.dir}/spec.md")
         spec.done_criteria.each { |criterion| context.print("criterion: #{criterion}") }

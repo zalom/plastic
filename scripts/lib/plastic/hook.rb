@@ -37,7 +37,7 @@ module Plastic
 
     # The session the event names, else the environment's; nil when neither
     # names one. A hook with no session id writes no row.
-    def session_id = event[:session_id] || session
+    def session_id = event[:session_id] || environment.session
 
     # Where the session runs: the event's cwd, else the process's directory.
     def directory = event[:cwd] || environment.directory

@@ -27,8 +27,6 @@ new install writes every key except `project_roots`:
 | --- | ------- | ------- |
 | `project_roots` | `~/.plastic/projects` and `~/.plastic/stores` | The parent folders searched for this session's delivery locks. Projects themselves are found through `projects.yml`. |
 | `stale_threshold_days` | `3` | The age at which a future intent is shown for triage. |
-| `context_offer_tokens` | `150000` | The context size at which the agent offers to compact. |
-| `context_insist_tokens` | `250000` | The context size at which the agent insists on compacting. |
 | `agent.type` | `claude-code` | The agent that runs Plastic. |
 | `agent.parallel_mode` | `agent-teams` | `agent-teams` runs teammates in parallel. `linear` uses subagents only. |
 

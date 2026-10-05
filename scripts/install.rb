@@ -2,12 +2,11 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 
-# Plastic — `install` verb. Runs via `npx @zalom/plastic install` (bin/plastic.js) or directly.
+# Plastic — `install` verb. Runs as `plastic install` from a release install.sh placed, or directly.
 # Usage: ruby scripts/install.rb [--claude|--codex|--hermes|--all] [--reinstall] [--force] [--help]
 #
-# The package version selects the channel: `npx @zalom/plastic@alpha install --claude` (or
-# a pinned `@2.0.0-alpha.1`). The channel flags this verb once listed never selected a
-# package and were removed in 2.0 (intent 310).
+# install.sh selects the channel through PLASTIC_CHANNEL. The channel flags this verb once
+# listed never selected a package and were removed in 2.0 (intent 310).
 #
 # One-shot by design:
 #   - no install present  -> fresh install + bootstrap store
@@ -55,8 +54,8 @@ class Install < InstallerCore
       new_agents = selected.reject { |key| agent_installed?(key) }
       if new_agents.empty?
         warn "Plastic v#{installed_version} is already installed."
-        warn "  - To upgrade:        npx @zalom/plastic update"
-        warn "  - To re-sync files:  npx @zalom/plastic install --reinstall"
+        warn "  - To upgrade:        plastic update"
+        warn "  - To re-sync files:  plastic install --reinstall"
         return 1
       end
 
@@ -222,7 +221,7 @@ class Install < InstallerCore
       plastic install — install or re-sync Plastic for an agent
 
       Usage:
-        npx @zalom/plastic install [options]
+        plastic install [options]
 
       Agent options:
         --claude      Install for Claude Code
@@ -230,8 +229,8 @@ class Install < InstallerCore
         --hermes      Install for Hermes
         --all         Install for all supported agents
 
-      Channel: pin the package, e.g. `npx @zalom/plastic@alpha install --claude`
-        (@latest is stable and the default; @beta and @alpha are the other channels)
+      Channel: install.sh reads stable unless PLASTIC_CHANNEL names beta or alpha;
+        plastic update --stable, --beta or --alpha moves an installed release
 
       Other options:
         --reinstall          Re-sync core files for the installed version (repair). Store untouched.

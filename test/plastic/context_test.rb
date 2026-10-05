@@ -6,7 +6,7 @@ class ContextTest < Plastic::TestCase
   Graphs = Data.define(:work, :retrieval, :databases)
 
   def context(declared: %i[id title], facts: { id: "7" }, graphs: {}, session: nil)
-    Plastic::Context.new(declared:, facts:, graphs:, session:)
+    Plastic::Context.new(declared:, facts:, graphs:, harness: Plastic::Context::Harness.new(session))
   end
 
   def test_a_declared_fact_reads_as_a_method
@@ -45,6 +45,33 @@ class ContextTest < Plastic::TestCase
     ctx.print("two")
 
     assert_equal %w[one two], ctx.printed
+  end
+
+  def test_row_keeps_its_place_among_the_printed_lines
+    ctx = context
+
+    assert_same ctx, ctx.row("results", [1])
+    ctx.print("after")
+
+    assert_equal %w[after], ctx.printed
+  end
+
+  def test_print_to_gives_lines_raw_and_rows_labelled
+    output = Struct.new(:calls) do
+      def raw(line) = calls << [:raw, line]
+      def row(label, value) = calls << [:row, label, value]
+    end.new([])
+
+    context.print("one").row("results", [1]).print_to(output)
+
+    assert_equal [[:raw, "one"], [:row, "results", [1]]], output.calls
+  end
+
+  def test_the_harness_gives_the_session_and_the_scope
+    harness = Plastic::Context::Harness.new("abc", :scope)
+    ctx = Plastic::Context.new(declared: [], facts: {}, graphs: {}, harness:)
+
+    assert_equal ["abc", :scope], [ctx.session, ctx.scope]
   end
 
   def test_fill_puts_the_facts_in_the_template

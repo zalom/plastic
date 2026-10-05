@@ -8,6 +8,7 @@ class RoutineTest < Plastic::TestCase
 
     assert_equal 0, call.code
     assert_equal "hello ada\nnext: plastic kernel two ada\nbecause: greeted ada\n", call.out
+    assert_equal "", call.err
   end
 
   def test_a_tool_that_writes_nothing_still_keeps_a_routine_run_row
@@ -25,6 +26,7 @@ class RoutineTest < Plastic::TestCase
     assert_equal 0, call.code
     assert_equal "1. Write the draft to #{path}\nnext: plastic kernel draft notes\n" \
                  "because: the draft for notes is not written yet\n", call.out
+    assert_equal "", call.err
   end
 
   def test_the_hand_off_is_kept_as_an_open_routine_run_row
@@ -42,8 +44,7 @@ class RoutineTest < Plastic::TestCase
     File.write(File.join(@home, "notes.md"), "draft")
     call = plastic("kernel", "draft", "notes", "--dir", @home)
 
-    assert_equal 0, call.code
-    assert_equal "next: none\nbecause: the draft for notes is written, stamped #{stamp}\n", call.out
+    assert_call call, code: 0, out: "next: none\nbecause: the draft for notes is written, stamped #{stamp}\n"
     assert_equal "finished", routine_run("kernel draft", "notes").status
   end
 
@@ -75,21 +76,30 @@ class RoutineTest < Plastic::TestCase
     call = plastic("kernel", "who", env: { "PLASTIC_SESSION" => "", "CLAUDE_CODE_SESSION_ID" => "cc-1" })
 
     assert_includes call.out, "session \"cc-1\""
+    assert_equal 0, call.code
+    assert_equal "", call.err
   end
 
-def test_a_codex_session_reaches_the_context
-  call = plastic("kernel", "who", env: { "PLASTIC_SESSION" => "", "CLAUDE_CODE_SESSION_ID" => "", "CODEX_THREAD_ID" => "cx-1" })
+  def test_a_codex_session_reaches_the_context
+    call = plastic("kernel", "who", env: { "PLASTIC_SESSION" => "", "CLAUDE_CODE_SESSION_ID" => "", "CODEX_THREAD_ID" => "cx-1" })
 
-  assert_includes call.out, "session \"cx-1\""
-end
+    assert_includes call.out, "session \"cx-1\""
+    assert_equal 0, call.code
+    assert_equal "", call.err
+  end
 
   def test_the_plastic_session_variable_wins
     call = plastic("kernel", "who", env: { "PLASTIC_SESSION" => "p-1", "CLAUDE_CODE_SESSION_ID" => "cc-1" })
 
     assert_includes call.out, "session \"p-1\""
+    assert_equal 0, call.code
+    assert_equal "", call.err
   end
 
   def test_no_session_reads_as_nil
-    assert_includes plastic("kernel", "who").out, "session nil"
+    call = plastic("kernel", "who")
+
+    assert_equal [0, ""], [call.code, call.err]
+    assert_includes call.out, "session nil"
   end
 end

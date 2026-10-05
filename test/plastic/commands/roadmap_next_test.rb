@@ -45,6 +45,8 @@ class RoadmapNextTest < Plastic::TestCase
     result = call("r1")
 
     assert_includes result.out, "b: ready"
+    assert_equal 0, result.code
+    assert_equal "", result.err
   end
 
   def test_an_imported_cycle_is_blocked_without_recursing

@@ -1,25 +1,8 @@
 {
   "name": "@zalom/plastic",
   "version": "2.0.3",
+  "private": true,
   "description": "Intent-driven idea development system for AI coding agents",
-  "type": "module",
-  "bin": {
-    "plastic": "bin/plastic"
-  },
-  "engines": {
-    "node": ">=18.0.0"
-  },
-  "keywords": [
-    "intent-driven",
-    "idea-development",
-    "zettelkasten",
-    "ai-agent",
-    "multi-agent",
-    "neuroplasticity",
-    "claude-code",
-    "codex-cli",
-    "hermes"
-  ],
   "author": {
     "name": "Zlatko Alomerovic",
     "email": "zlatko.alomerovic@gmail.com"
@@ -42,6 +25,9 @@
     "templates/",
     "PLASTIC.md",
     "deprecations.yml",
-    "config_asks.yml"
+    "config_asks.yml",
+    "runtime/Gemfile",
+    "runtime/Gemfile.lock",
+    "VERSION"
   ]
 }

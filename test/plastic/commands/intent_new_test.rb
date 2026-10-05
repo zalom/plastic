@@ -10,7 +10,7 @@ class IntentNewTest < Plastic::TestCase
 
   def test_the_command_reads_its_title_and_names_its_switches
     assert_equal ["intent new", "Open an intent: write its rows and print its folder",
-      "plastic intent new TITLE [--parent ID] [--ref REF] [--after ID] [--kind KIND] [--status STATUS] [--slug SLUG]", [:title]],
+      "plastic intent new TITLE... [--parent ID] [--ref REF] [--after ID] [--kind KIND] [--status STATUS] [--slug SLUG]", [:title]],
       description.values_at(:name, :summary, :usage, :subject)
     assert_equal({ name: :title, label: "TITLE", text: "what the intent is for, in words", rest: true, optional: false },
       description[:arguments].first)
@@ -31,7 +31,7 @@ class IntentNewTest < Plastic::TestCase
     result = plastic("intent", "new", "Beta", "--after", "1", table: Plastic::CLI::TABLE)
     links = store_graphs.retrieval.links("1")
 
-    assert_equal 0, result.code
+    assert_call result, code: 0, out: ["intent: 2\n"]
     assert_equal 1, links.size
   end
 
@@ -47,7 +47,7 @@ class IntentNewTest < Plastic::TestCase
   def test_after_naming_a_missing_intent_fails_with_no_intent_written
     result = plastic("intent", "new", "Beta", "--after", "9", table: Plastic::CLI::TABLE)
 
-    assert_equal 1, result.code
+    assert_call result, code: 1, err: "plastic: code_write_intent, gate: no intent 9 in this store to link after\n"
     assert_empty store_graphs.retrieval.intents
   end
 end

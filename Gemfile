@@ -5,6 +5,7 @@ gem "benchmark", "~> 0.4"
 
 group :development, :test do
   gem "minitest", "~> 6.0"
+  gem "minitest-mock", "~> 5.27"
   gem "simplecov", "~> 1.0"
   gem "mutineer", "~> 1.0"
   gem "skunk", "~> 0.5"

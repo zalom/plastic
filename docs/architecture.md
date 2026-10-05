@@ -72,7 +72,7 @@ Homes created before the stores layout use the legacy layout. There the global s
 The rule of thumb: if the work changes a specific project's code it is tactical and belongs in that project's store; otherwise it is strategic and belongs in the global store. When in doubt, global. Stores are personal and local; the Plastic home is git-tracked locally but never pushed to a remote.
 
 `varar/store-layout.md` checks fresh installation and legacy migration separately for
-Claude Code and Codex. Its Ruby fixtures execute an npm archive in disposable homes,
+Claude Code and Codex. Its Ruby fixtures execute a release archive in disposable homes,
 including harness registration and public project and intent creation. These deterministic
 checks supplement the live authenticated agent runs; they do not claim full doctor or
 all-command acceptance.
@@ -163,12 +163,12 @@ Each store's `INDEX.md` is a structure note, not a table of contents: it groups 
 Each store's `work_graph.db` holds one intent's nodes and the edges between them, alongside
 its `intents`, `clusters` and `savepoints` tables. A node is one unit of work (`plastic node
 add`); it moves through `open`, `claimed`, `done`, `failed` and `parked`, or leaves the graph
-as `removed` (`Graph::Node::MOVES` is the one source of which moves are legal). An edge
+as `removed` (`Graph::Work::Node::Writer::MOVES` is the one source of which moves are legal). An edge
 (`plastic edge add`) says one node needs another; a guarded SQL insert refuses a self edge, an
 edge touching a missing or removed node, and an edge that would close a loop.
 After the cause of a failed edge addition or removal is fixed, the same command can retry.
 
-`Graph::NodeWriter` and `Graph::EdgeWriter` own these writes. Every state move is a guarded
+`Graph::Work::Node::Writer` and `Graph::Work::Edge::Writer` own these writes. Every state move is a guarded
 `UPDATE ... WHERE state IN (...)`, so two attempts to move the same node cannot both win; the
 one that finds no row back re-reads the node to report why. Claiming a node caps at three
 retries: the fourth claim parks the node with a standing question instead of claiming it, so a
@@ -181,7 +181,7 @@ node that keeps failing surfaces to the owner rather than looping. The full comm
 `knowledge_graph.db` also holds `rulings` and `links`. `plastic intent rule ID TEXT` writes
 the owner's next decision as the next `D` id in that intent; `--supersedes RULING_ID` links it
 to the ruling it replaces, which stays on record rather than being overwritten.
-`Graph::RulingWriter` owns the write; `Graph::Spec` reads an intent's `spec.md` document row
+`Graph::Knowledge::Ruling::Writer` owns the write; `Graph::Knowledge::Spec` reads an intent's `spec.md` document row
 for its done criteria and open decisions, the bullets under a `Done criteria` or `Open
 Questions` heading (a section holding only "None" counts zero).
 
@@ -275,7 +275,8 @@ The tooling layer is thin and sits on top of the store. The parts that supply de
 
 - **Skills**: no workflow skill ships in 2.0. Intents 304 and 372 retired the former `SKILL.md` packages into the `plastic` command and the `docs/help/*.md` chapters. The `skills/` directory still holds one shared fragment, `skills/_decision-tables.md`; the installer copies top-level `_`-prefixed Markdown fragments into `~/.plastic/` rather than into a skill directory. The general skill-authoring standard lives in the `skill-creating` and `skill-evaluating` skills at [zalom/agent-skills](https://github.com/zalom/agent-skills), and `docs/skill-authoring.md` keeps the Plastic-only rules.
 - **Agents**: role files shipped in `agents/` that the installer syncs into each harness agent directory (Claude, Codex, Hermes) and tracks in that harness's manifest, so they prune on update and uninstall cleanly. Seven ship. In auto mode `plastic-enforcer` leads and reviews and `plastic-executor` builds, one team per intent. `plastic-node-work`, `plastic-node-research` and `plastic-node-verify` run the nodes the graph runner dispatches. `plastic-primary-advisor` and `plastic-secondary-advisor` are consultation agents. See `docs/help/agent-architecture.md` for the team model.
-- **Hooks**: lifecycle event handlers, registered from one source of truth, `HookRegistry` (`scripts/lib/hook_registry.rb`). On Claude Code, SessionStart runs `session-start` (core doctor, boot banner, day summary) and `check-update`; UserPromptSubmit runs `capture`, which captures the prompt into the day ledger; PreCompact runs `savepoint`, which saves intent state; SessionEnd runs `close`, which closes the session; Stop runs `stop`; MessageDisplay runs `message-display`; and one PostToolUse hook, `record` (`hooks/record` -> `scripts/hook-record`, on Write, Edit, NotebookEdit, and the six Serena edit tools), appends the savepoint line, refreshes the delivery-lock lease, and promotes the day-ledger line. The edit-path gates and the stage-transition gates were removed in 2.0 (intent 302): no hook gates a write on the lock or the stage, and doctor checks replace enforcement. Codex reaches a subset of these hooks through one dispatcher, `scripts/codex-hook`, registered in `~/.codex/hooks.json` from the same `HookRegistry`. The command `plastic hook EVENT` runs the same launcher for one event (`call-budget`, `capture`, `close`, `record`, `savepoint`, `session-start` or `stop`). It passes standard input through, prints nothing of its own and returns the launcher exit status unchanged. The registered hook entries still call the launchers directly (intent 372).
+- **Installation**: `install.sh` brings the Ruby Plastic runs on. It pins one build for each platform by address, SHA-256 and size in its `ruby_pins` table: jdx/ruby for Apple silicon and Linux, and the Homebrew portable Ruby for an Intel Mac. Each Ruby lives in its own read-only directory, `~/.local/share/plastic/rubies/<key>`. `scripts/build-release` copies the pins into the release manifest, and `InstallerRelease::RubyChoice` (`scripts/lib/installer_release/rubies.rb`) reads them back on install and update. Each release gets a shell launcher, `releases/<version>/bin/plastic`, that starts its Ruby by its full path and runs the Ruby entry point at `libexec/plastic`, and a `bin/ruby` that starts the same Ruby for the `check-update` hook. An uninstall removes the Rubies last, since it runs on one of them.
+- **Hooks**: lifecycle event handlers. The kernel writes three hook groups, defined in `Plastic::Hooks::Entries` (`scripts/lib/plastic/hooks/entries.rb`): SessionStart runs `plastic hook resume`, Stop runs `plastic hook record`, and SessionEnd runs `plastic hook record --end`. Each one calls the active release launcher, `~/.local/share/plastic/active/bin/plastic`, so an update or a rollback needs no hook rewrite. A copy installed from npm calls `~/.plastic/bin/plastic` instead, and `install.sh` rebinds those hooks to the active launcher. `HookRegistry` (`scripts/lib/hook_registry.rb`) adds `check-update` on SessionStart and keeps the names of retired hooks, which the installer purges from an old `settings.json` or `~/.codex/hooks.json`. Codex receives the same three kernel groups in `~/.codex/hooks.json`. The edit-path gates and the stage-transition gates were removed in 2.0 (intent 302): no hook gates a write on the lock or the stage.
 - **Scripts**: small deterministic Ruby programs that encode mechanical rules, for example assigning the next Folgezettel ID from the existing IDs in a store. Most `plastic` commands run one of them. `plastic intent new` runs `scripts/new-intent`, which allocates the id, creates the directory tree, renders the born-complete intent file, writes the placeholder lifecycle files, wires the reciprocal links, and self-validates (intent 60b); the command then adds the intent's line to `## Active` in INDEX.md. `new-intent` touches neither git nor project creation. `plastic intent verify` runs `scripts/verify-intent`, which merges doctor, an added-line em-dash diff guard, a diffstat check, and an optional caller-supplied suite command into one verdict; Plastic runs no version control command (intent 390), so the em-dash guard scans diff text the caller supplies (`--diff-file`) instead of running `git diff` itself, printing the `git diff` command to run when none is supplied, and the diffstat check prints the `git diff --stat` command instead of running it. `plastic intent end` runs `scripts/end-intent`, `plastic auto start` and `plastic auto lock` run `scripts/plastic-lock`, and `plastic intent step` and `plastic intent answer` run `scripts/runner`. `plastic feedback` runs `scripts/feedback-report`, backed by `scripts/lib/feedback_report.rb` (intent 174): it redacts secrets, writes a local report file, and builds a prefilled GitHub issue URL, with no send path anywhere in the code. Deterministic by construction.
 - **Templates**: the fixed FORM of each artifact (its sections, their order, frontmatter fields, file name). Two people following the same template produce artifacts of identical shape even when the words differ. Deterministic by construction.
 - **Conventions**: `PLASTIC.md` (installed at `~/.plastic/PLASTIC.md`) is the always-on core. On Claude Code, the installer's managed block in `~/.claude/CLAUDE.md` imports it with an `@~/.plastic/PLASTIC.md` line; on Codex, the managed block in `~/.codex/AGENTS.md` points at it. A dedicated Minitest test (`test/plastic_core_budget_test.rb`) holds it under 200 lines, 1,600 estimated tokens and 8,192 bytes, and `bin/plastic-bench` measures it (intents 223 and 313). Deeper doctrine ships as the `docs/help/*.md` chapters, which `plastic help TOPIC` prints on demand. Intent 372 retired the 1.x conventions skill and its chapter load lines.
@@ -318,12 +319,25 @@ Codex per-role model identity (intent 186): Codex has no vendor alias layer, so 
 
 Model and effort are shipped defaults, independently overridable through `agents.models.codex.<name>` and `agents.efforts.codex.<name>`. A literal Codex model ID still receives medium effort unless effort is explicitly overridden. Primary and Secondary Advisor TOMLs both use `gpt-6-astra`, at medium and high effort respectively.
 
-### store search: sqlite3, native, with companion tools alongside
+### Store retrieval and architecture prompts
+
+`plastic search` reads literal indexed passages from selected SQLite stores. It returns immutable
+qualified references, local rank data, and deterministic federated rank fusion. `document get`
+and `document batch` fetch those references without changing source stores. `intent discover` and
+`intent context` keep selected evidence and provenance with the intent that owns it.
+
+`architecture status --project SLUG` and `architecture refresh --project SLUG` are prompts for
+the agent. The first tells it to check the project's architecture map and the second tells it to
+regenerate the map, with a mapping tool it chooses, such as Enola. Plastic runs no mapping tool
+and stores no map.
+
+### Store search: sqlite3, native, with companion tools alongside
 
 `plastic search TERMS` is Plastic's own store search index, built on sqlite3 (an install-time
 checked dependency, alongside git; see Conventions above), never optional and never delegated to
-an outside process. No Plastic command starts, registers with, or reads from QMD, Serena, or
-Enola: those three are companion tools a person runs by hand, beside Plastic, documented in
+an outside process. No Plastic command starts, registers with, or reads from QMD or Serena.
+Enola is not called either; all three tools remain
+companion tools a person runs by hand beside Plastic, documented in
 `plastic help tools` (`docs/help/tools.md`) and pointed to by one line in `PLASTIC.md`. Intent
 391 (2.0) dissolved the three optional-tool paths this section used to describe: the per-store
 QMD collection topology and its `scripts/lib/qmd_sync.rb` / `scripts/qmd-sync` CLI, the

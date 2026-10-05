@@ -22,12 +22,16 @@ module Plastic
 
       GLOBAL = "global"
 
+      attr_reader :home
+
       def initialize(env:, home:, slug: nil, directory: Dir.pwd)
         @env = env
         @home = home
         @requested = slug
         @directory = canonical_path(File.expand_path(directory))
       end
+
+      def setting(name, default = nil) = @env.fetch(name, default)
 
       def plastic_home
         @plastic_home ||= @env["PLASTIC_HOME"] || File.join(@home, ".plastic")
@@ -38,6 +42,8 @@ module Plastic
       end
 
       def root = File.join(plastic_home, "stores", slug)
+
+      def project_path = projects.fetch(slug, @directory)
 
       def known_slugs
         dirs = Dir.glob(File.join(plastic_home, "stores", "*")).select { |path| File.directory?(path) }
@@ -54,15 +60,14 @@ module Plastic
       private
 
       def read_projects(path)
-        data = load_projects(path)
-        projects = data.is_a?(Hash) ? data["projects"] : nil
+        projects = load_projects(path)
         raise BrokenProjects, "#{path} does not hold a map of projects" unless projects.is_a?(Hash)
 
         projects.to_h { |slug, info| [slug.to_s, info.is_a?(Hash) ? info["path"].to_s : ""] }
       end
 
       def load_projects(path)
-        YAML.safe_load_file(path)
+        Hash.try_convert(YAML.safe_load_file(path))&.fetch("projects", nil)
       rescue Psych::SyntaxError => error
         raise BrokenProjects, "#{path} does not parse: #{error.message}"
       end

@@ -105,7 +105,7 @@ one of the other two review rules that `plastic auto report ID` prints fires:
 - `hooks/`, `scripts/hook-*`, `scripts/lib/hook_registry.rb`
 - `scripts/lib/lock.rb`, `scripts/lib/arm.rb`, `scripts/plastic-lock`, `scripts/end-intent`
 - `scripts/lib/installer_core.rb`, `scripts/install*`, `scripts/update.rb`
-- `package.json`, `.claude-plugin/*.json`, `CHANGELOG.md`
+- `package.json`, `CHANGELOG.md`
 
 Grow this list here and in the `REVIEW_RULES` text of `plastic auto report`.
 

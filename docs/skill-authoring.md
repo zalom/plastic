@@ -31,7 +31,7 @@ Plastic stands on its own. Skills and agents use Plastic's own defaults, and an 
 
 ## Hooks
 
-Plastic registers its hooks in `scripts/lib/hook_registry.rb`, the one source of truth: the installer builds the agent's hook settings from it, and a test pins `hooks/hooks.json`, the legacy plugin surface, to it. Before you author a new hook, read an existing one of the same shape: `scripts/hook-session-start` for SessionStart, or `scripts/hook-savepoint` for PreCompact.
+The kernel's hooks are `plastic hook` commands. `Plastic::Hooks::Entries` (`scripts/lib/plastic/hooks/entries.rb`) names the event each one runs on, and the installer writes them into the agent's settings. `scripts/lib/hook_registry.rb` holds the update check and the names of retired hooks. Before you author a new hook, read `scripts/lib/plastic/hooks/resume.rb` for SessionStart, or `scripts/lib/plastic/hooks/record.rb` for Stop and SessionEnd.
 
 ## Dashes
 

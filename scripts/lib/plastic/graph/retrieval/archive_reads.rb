@@ -1,0 +1,15 @@
+# frozen_string_literal: true
+
+module Plastic
+  module Graph
+    module Retrieval
+      # Exposes archive and retained-file reads through a retrieval graph.
+      module ArchiveReads
+        def archived?(intent_id) = archives.archived?(intent_id)
+        def archived_reference?(reference) = archived?(fetch_reference(reference).fetch(:intent_id))
+        def kept_files(intent_id = nil) = read(:kept_files, intent_id)
+        def kept_file_data(name) = stored.kept_file_data(name)
+      end
+    end
+  end
+end

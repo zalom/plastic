@@ -5,10 +5,10 @@ require "minitest/autorun"
 require "json"
 
 # Intent 211 - founding hard rule (owner ruling 2026-07-16): no Plastic artifact shipped in the
-# npm package may embed personal/user-specific store data (intent-id lists, per-user snapshots,
+# release archive may embed personal/user-specific store data (intent-id lists, per-user snapshots,
 # allowlists keyed on one store's contents). Proven by the legacy_bookend_amnesty.rb precedent
 # (intent 170a), which shipped ~63 of the owner's own intent ids to every installer before 211
-# removed it. This guard scans every file the npm "files" set would actually ship (derived from
+# removed it. This guard scans every file the package.json "files" set would actually ship (derived from
 # package.json itself, never a hand list - matching install_packaging_test.rb's precedent) for
 # the same shape: a frozen array/hash literal carrying five or more Folgezettel-shaped id tokens.
 

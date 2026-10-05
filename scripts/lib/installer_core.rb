@@ -9,6 +9,7 @@ require "digest"
 require "time"
 require "tmpdir"
 require_relative "hook_registry"
+require_relative "plastic/clock"
 require_relative "plastic/config"
 require_relative "plastic/hooks/entries"
 require_relative "agent_models"
@@ -184,7 +185,7 @@ class InstallerCore
   # tolerant of legacy rows that carry no "harness" key at all.
   def ledger_append(entry_version, action, harness: nil)
     FileUtils.mkdir_p(plastic_home)
-    entry = { "version" => entry_version, "action" => action, "at" => Time.now.utc.iso8601 }
+    entry = { "version" => entry_version, "action" => action, "at" => Plastic.now }
     entry["harness"] = harness if harness
     File.open(ledger_path, "a") { |f| f.puts(JSON.generate(entry)) }
   end
@@ -300,11 +301,8 @@ class InstallerCore
     # Same treatment for the hook launchers, and UNCONDITIONAL on update as well as install:
     # FileUtils.cp onto an existing file keeps the DESTINATION's old mode, so a copy over a
     # non-executable predecessor would stay non-executable forever and capture3 would raise
-    # EACCES into the same silent fail-open this intent is closing. *.json is skipped because
-    # hooks.json is a registry, not a program (same reasoning as test/rubyopt_clearing_test.rb).
-    Dir.glob(File.join(plastic_home, "hooks", "*")).each do |f|
-      FileUtils.chmod(0o755, f) if File.file?(f) && !f.end_with?(".json")
-    end
+    # EACCES into the same silent fail-open this intent is closing.
+    FileUtils.chmod(0o755, Dir.glob(File.join(plastic_home, "hooks", "*")).select { |f| File.file?(f) })
 
     global_files = core_files.values.map { |d| File.join(plastic_home, d) }
     global_files << File.join(plastic_home, "VERSION")
@@ -339,8 +337,8 @@ class InstallerCore
   # files from every install for five weeks (intent 190), and a new hook must register itself.
   # No path rewrite on this copy, unlike install_claude's: the launchers resolve their core
   # through "$SCRIPT_DIR/../scripts/", which from ~/.plastic/hooks/ already lands on
-  # ~/.plastic/scripts/. Copied whole, hooks.json and run-hook and statusline included: all
-  # three are inert at that path, and an exclusion list is exactly the maintenance this avoids.
+  # ~/.plastic/scripts/. Copied whole, statusline included: it is inert at that path, and an
+  # exclusion list is exactly the maintenance this avoids.
   def hook_files
     Dir.glob(File.join(package_root, "hooks", "*")).each_with_object({}) do |path, acc|
       next unless File.file?(path)
@@ -435,8 +433,6 @@ class InstallerCore
       version: 3
       execution_mode: subagent-driven
       stale_threshold_days: 3
-      context_offer_tokens: 150000
-      context_insist_tokens: 250000
       hash_length: 6
       hash_algorithm: sha256-base36
       max_slug_words: 5
@@ -866,7 +862,6 @@ class InstallerCore
     Dir.glob(File.join(hook_source, "*")).each do |f|
       next unless File.file?(f)
       basename = File.basename(f)
-      next if %w[hooks.json run-hook].include?(basename)
       dest_name = basename.start_with?("plastic-") ? basename : "plastic-#{basename}"
       dest = File.join(hooks_dir, dest_name)
       content = File.read(f)
@@ -1069,8 +1064,19 @@ class InstallerCore
   # entries treat the old check-update launcher as stale and the registry adds
   # it back.
   def kernel_hook_entries
-    Plastic::Hooks::Entries.new(command: File.join(plastic_home, "bin", "plastic"),
-                                config: Plastic::Config.new(plastic_home), launchers: {})
+    home_launcher = File.join(plastic_home, "bin", "plastic")
+    Plastic::Hooks::Entries.new(command: hook_launcher, config: Plastic::Config.new(plastic_home), launchers: {},
+                                former: [home_launcher] - [hook_launcher])
+  end
+
+  # A package installed as a release runs from share/releases/<version>, and
+  # its hooks run the active launcher, so the next activation needs no hook
+  # rewrite. Any other package runs the launcher copied into the home.
+  def hook_launcher
+    releases = File.dirname(package_root)
+    return File.join(plastic_home, "bin", "plastic") unless File.basename(releases) == "releases"
+
+    File.join(File.dirname(releases), "active", "bin", "plastic")
   end
 
   def statusline_on? = Plastic::Config.new(plastic_home).flag(["statusline"], default: true)
@@ -1427,6 +1433,14 @@ class InstallerCore
     removed
   end
 
+  def hook_pairs(hooks)
+    hooks.flat_map { |event, groups| hook_commands(groups).product([event]) }.map(&:reverse)
+  end
+
+  def hook_commands(groups)
+    Array(groups).flat_map { |group| Array(group["hooks"]) }.map { |hook| hook["command"] }
+  end
+
   def tilde(path)
     path.sub(Dir.home, "~")
   end
@@ -1477,7 +1491,6 @@ class InstallerCore
     hook_dir = File.join(Dir.home, ".claude", "hooks")
 
     removed = purge_stale_plastic_hooks(hooks)
-    report_removed_hook_entries(removed, "settings.json")
     report_reserved_prefix_hooks(hooks)
     settings = kernel_hook_entries.claude(settings)
     hooks = settings["hooks"]
@@ -1507,6 +1520,8 @@ class InstallerCore
         end
       end
     end
+
+    report_removed_hook_entries(removed - hook_pairs(hooks), "settings.json")
 
     existing_status = settings["statusLine"]
     if existing_status && !HookRegistry.claude_purge_command?(existing_status["command"])
@@ -1818,7 +1833,7 @@ class InstallerCore
       settings["hooks"][event] = groups.map do |group|
         if group.is_a?(Hash) && group["hooks"].is_a?(Array)
           group["hooks"].reject! do |h|
-            HookRegistry.claude_purge_command?(h["command"]) && (removed << [event, h["command"]])
+            uninstalled_hook?(HookRegistry.method(:claude_purge_command?), h["command"]) && (removed << [event, h["command"]])
           end
           group unless group["hooks"].empty?
         elsif group.is_a?(Hash) && group["command"]
@@ -1837,31 +1852,31 @@ class InstallerCore
     settings["hooks"].delete_if { |_, v| v.is_a?(Array) && v.empty? }
     settings.delete("hooks") if settings["hooks"]&.empty?
 
-    statusline_removed = false
-    restored_statusline = nil
-    if HookRegistry.claude_purge_command?(settings.dig("statusLine", "command"))
-      settings.delete("statusLine")
-      statusline_removed = true
-      original_path = File.join(plastic_home, ".cache", "original-statusline.json")
-      if File.exist?(original_path)
-        original = JSON.parse(File.read(original_path)) rescue nil
-        if original.is_a?(Hash)
-          settings["statusLine"] = original
-          restored_statusline = original["command"]
-        end
-      end
-    end
-
-    # Remove from enabledPlugins
-    if settings["enabledPlugins"]
-      settings["enabledPlugins"].delete("plastic@plastic")
-      settings.delete("enabledPlugins") if settings["enabledPlugins"].empty?
-    end
+    statusline_removed = HookRegistry.claude_purge_command?(settings.dig("statusLine", "command"))
+    restored_statusline = restore_claude_statusline(settings) if statusline_removed
+    self.class.drop_plastic_plugin(settings)
 
     result = write_json_atomic(settings_path, settings)
     report_removed_hook_entries(removed, "settings.json", qualifier: "Plastic")
     report_removed_statusline(restored_statusline) if statusline_removed
     result
+  end
+
+  def restore_claude_statusline(settings)
+    settings.delete("statusLine")
+    original = read_json_safe(File.join(plastic_home, ".cache", "original-statusline.json"))
+    return unless original.is_a?(Hash)
+
+    settings["statusLine"] = original
+    original["command"]
+  end
+
+  def self.drop_plastic_plugin(settings)
+    plugins = settings["enabledPlugins"]
+    return unless plugins
+
+    plugins.delete("plastic@plastic")
+    settings.delete("enabledPlugins") if plugins.empty?
   end
 
   # Remove exactly Plastic's entries from ~/.codex/hooks.json (intent 102), mirrors
@@ -1882,7 +1897,7 @@ class InstallerCore
         next g unless g.is_a?(Hash) && Array(g["hooks"]).is_a?(Array)
 
         g["hooks"] = Array(g["hooks"]).reject do |h|
-          HookRegistry.codex_purge_command?(h["command"]) && (removed << [event, h["command"]])
+          uninstalled_hook?(HookRegistry.method(:codex_purge_command?), h["command"]) && (removed << [event, h["command"]])
         end
         g["hooks"].empty? ? nil : g
       end.compact
@@ -1899,6 +1914,10 @@ class InstallerCore
     report_removed_hook_entries(removed, "hooks.json", qualifier: "Plastic")
     hooks_json_path
   end
+
+  # A hook an uninstall removes: one the registry purges, or one that runs
+  # Plastic's own launcher.
+  def uninstalled_hook?(purge, command) = purge.call(command) || kernel_hook_entries.own?(command.to_s)
 
   # --- Utilities ---
 
@@ -1966,7 +1985,7 @@ class InstallerCore
       entries[f] = Digest::SHA256.file(f).hexdigest if File.exist?(f)
     end
 
-    data = { "version" => "1", "created" => Time.now.utc.iso8601, "files" => entries }
+    data = { "version" => "1", "created" => Plastic.now, "files" => entries }
     File.write(manifest_path, JSON.pretty_generate(data) + "\n")
   end
 

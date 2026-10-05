@@ -23,7 +23,7 @@ class BackupPreviewTest < Plastic::TestCase
 
   def test_backup_publisher_does_not_discard_when_staging_fails
     writer = StageFailureWriter.new
-    publisher = Plastic::Graph::BackupPublisher.new(nil, nil, writer:)
+    publisher = Plastic::Graph::Knowledge::Backup::Publisher.new(nil, nil, writer:)
 
     assert_raises(RuntimeError) { publisher.call }
   end
@@ -32,6 +32,6 @@ class BackupPreviewTest < Plastic::TestCase
     home = Dir.mktmpdir
     File.binwrite(File.join(home, "backups"), "blocked")
 
-    assert_raises(Errno::EEXIST) { Plastic::Graph::BackupWriter.new(home).stage }
+    assert_raises(Errno::EEXIST) { Plastic::Graph::Knowledge::Backup::Writer.new(home).stage }
   end
 end

@@ -1,0 +1,25 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    sqlite3 (2.9.6-aarch64-linux-gnu)
+    sqlite3 (2.9.6-arm64-darwin)
+    sqlite3 (2.9.6-x86_64-darwin)
+    sqlite3 (2.9.6-x86_64-linux-gnu)
+
+PLATFORMS
+  aarch64-linux-gnu
+  arm64-darwin
+  x86_64-darwin
+  x86_64-linux
+
+DEPENDENCIES
+  sqlite3 (~> 2.9)
+
+CHECKSUMS
+  sqlite3 (2.9.6-aarch64-linux-gnu) sha256=d8b1f7d23efd7abac285775a9566562fc7debfef79d594e3a20354406fb7907c
+  sqlite3 (2.9.6-arm64-darwin) sha256=849b5d7f795e60fe25076d62c72dd722beb45b3850b516ad978d60ee848ec15b
+  sqlite3 (2.9.6-x86_64-darwin) sha256=b5842fea77781c14da03fa7bc0feb82db03a69e135affcb6f5399cbd2797a5f3
+  sqlite3 (2.9.6-x86_64-linux-gnu) sha256=613188ce02f614126ddbc38c5e217ccffd6306d0dcd9adca9764547aa890a634
+
+BUNDLED WITH
+  4.0.20

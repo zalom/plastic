@@ -12,6 +12,7 @@ load File.expand_path("../bin/verify-change", __dir__) unless defined?(VerifyCha
 # own steps, through the same `step` method every other check uses, so the
 # sandbox HOME and PLASTIC_TMP apply to them too.
 class VerifyChangeTimingTest < Minitest::Test
+  REPO = File.expand_path("..", __dir__)
   TEST_FILE = "test/plastic/new_routine_test.rb"
   SOURCE_FILE = "bin/lib/new_routine.rb"
 
@@ -32,8 +33,8 @@ class VerifyChangeTimingTest < Minitest::Test
     File.write(full, body)
   end
 
-  def plan(changed:, rails: false, suite: VerifyChange::MINITEST)
-    VerifyChange.new([], root: @root, err: @err, sandbox: { "HOME" => "/nowhere", "PLASTIC_TMP" => "/nowhere" })
+  def plan(changed:, rails: false, suite: VerifyChange::MINITEST, **options)
+    VerifyChange.new([], root: @root, err: @err, sandbox: { "HOME" => "/nowhere", "PLASTIC_TMP" => "/nowhere" }, **options)
       .plan(changed:, extra_tests: [], base: "HEAD", rails:, suite:)
   end
 
@@ -49,9 +50,9 @@ class VerifyChangeTimingTest < Minitest::Test
     write("bin/lib/test_timings.rb", "abort 'coverage started too late' unless Coverage.running?\n")
     step = plan(changed: [TEST_FILE]).steps.find { |candidate| candidate.title == "Tests with coverage" }
 
-    output, status = Open3.capture2e(*step.command.drop(2), chdir: @root)
+    _, err, status = Open3.capture3(*step.command.drop(2), chdir: @root)
 
-    assert_predicate status, :success?, output
+    assert_equal [0, ""], [status.exitstatus, err]
   end
 
   def test_the_timing_check_is_its_own_step_after_the_tests
@@ -64,13 +65,19 @@ class VerifyChangeTimingTest < Minitest::Test
     assert_operator timing_index, :>, tests_index
   end
 
-  def test_missing_timings_fail_the_step
+  def test_missing_timings_fail_the_step_and_name_the_path
     step = plan(changed: [TEST_FILE]).steps.find { |candidate| candidate.title == "Timing check" }
-    missing = File.join(Dir.mktmpdir("verify-change-timing-missing"), "absent.json")
+    missing = File.join(@root, "absent.json")
 
-    _, status = Open3.capture2e(step.env, *step.command.map { |word| (word == "/nowhere/test_timings.json") ? missing : word }, chdir: @root)
+    out, err, status = Open3.capture3(step.env, *in_repository(step.command, "/nowhere/test_timings.json" => missing), chdir: REPO)
 
-    refute_predicate status, :success?
+    assert_equal [1, "", "missing timings file: #{missing}\n"], [status.exitstatus, out, err]
+  end
+
+  def in_repository(command, swaps)
+    script = File.join(@root, "bin/lib/test_timings.rb")
+    swaps = swaps.merge(script => File.join(REPO, "bin/lib/test_timings.rb"))
+    command.drop(2).map { |word| swaps.fetch(word, word) }
   end
 
   def test_other_suites_skip_the_timing_check_and_say_so
@@ -91,11 +98,17 @@ class VerifyChangeTimingTest < Minitest::Test
   end
 
   def test_the_mutation_step_writes_json_under_the_sandbox
-    step = plan(changed: [SOURCE_FILE, TEST_FILE]).steps.find { |candidate| candidate.title == "Mutation testing" }
+    step = plan(changed: [SOURCE_FILE, TEST_FILE], mutation: true).steps.find { |candidate| candidate.title == "Mutation testing" }
 
     output_index = step.command.index("--output")
 
     refute_nil output_index
     assert_equal "/nowhere/mutation_report.json", step.command[output_index + 1]
+  end
+
+  def test_the_frozen_mutation_step_is_left_out_of_the_plan
+    titles = plan(changed: [SOURCE_FILE, TEST_FILE]).steps.map(&:title)
+
+    refute_includes titles, "Mutation testing"
   end
 end

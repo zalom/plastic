@@ -34,7 +34,7 @@ class WorkflowTest < Plastic::TestCase
     assert_includes error.message, "workflows/stamp"
   end
 
-  def test_sets_declares_facts
+  def test_sets_declares_the_facts_a_workflow_writes
     assert_equal [:draft_path], Flows::FindDraft.facts
   end
 

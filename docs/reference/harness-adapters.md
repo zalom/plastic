@@ -65,17 +65,17 @@ The intent screen (intent 316a, refined by intent 316a1) splits into two halves,
 way in code, docs and spec so the boundary cannot rot silently. Each file in the split carries one
 of two exact header lines, and no core file may justify a choice by any one harness's behavior.
 
-**Harness-agnostic core** — `scripts/lib/intent_screen.rb`, `scripts/lib/intent_screen_ansi.rb`,
+**Harness-agnostic core:** `scripts/lib/intent_screen.rb`, `scripts/lib/intent_screen_ansi.rb`,
 and `scripts/intent-screen` (it holds the plain/ANSI selection, so it belongs on the core side too).
 Header line: `Harness-agnostic core: no harness assumption lives here.`
 
-**Claude adapter** — `scripts/lib/message_display.rb`, `scripts/hook-message-display`, and
+**Claude adapter:** `scripts/lib/message_display.rb`, `scripts/hook-message-display`, and
 `hooks/message-display`. Header line:
 `Claude adapter: Claude Code only; the core is harness-agnostic.`
 
-The only Claude-driven choice the core used to make on its own — stripping backticks and `*`/`__`
+The only Claude-driven choice the core used to make on its own was stripping backticks and `*`/`__`
 emphasis runs before text reaches a raw ANSI block, because Claude Code still Markdown-processes
-`displayContent` even inside one — is now an option the adapter supplies rather than a default the
+`displayContent` even inside one. That choice is now an option the adapter supplies rather than a default the
 core imposes. `IntentScreenAnsi.render` takes `markdown_safe:`, defaulting to `false`: the
 harness-neutral default, because the core's other renderer (`IntentScreen.render`) is itself a
 Markdown surface that preserves backticks, and stripping a user's own text is a concession one
@@ -94,12 +94,12 @@ display-surface matrix. This split is what makes it possible to ask honestly abo
 
 | Harness | Install | Standing conventions | Live state | Record | Statusline | Subagent teams |
 |---|---|---|---|---|---|---|
-| Claude Code | npm, `plastic install --claude` | native `CLAUDE.md`, plus the compact-instructions marked section injected into `~/.claude/CLAUDE.md` | six hooks through `settings.json` | post-write `record` (savepoint, lock heartbeat, day ledger) | yes | yes |
-| Codex CLI | npm, `plastic install --codex` | marked section injected into `~/.codex/AGENTS.md` | six hooks through `~/.codex/hooks.json`, all dispatched by one command | post-write `record` on `apply_patch` | no | no, a single agent walks the whole cycle |
-| Hermes | npm, `plastic install --hermes` | none | none | none | no | no |
+| Claude Code | `install.sh`, then `plastic install --claude` | native `CLAUDE.md`, plus the compact-instructions marked section injected into `~/.claude/CLAUDE.md` | three kernel hooks and the update check through `settings.json` | post-write `record` (savepoint, lock heartbeat, day ledger) | yes | yes |
+| Codex CLI | `install.sh`, then `plastic install --codex` | marked section injected into `~/.codex/AGENTS.md` | three kernel hooks through `~/.codex/hooks.json` | post-write `record` on `apply_patch` | no | no, a single agent walks the whole cycle |
+| Hermes | `install.sh`, then `plastic install --hermes` | none | none | none | no | no |
 
-1. Plastic installs from npm only, for every harness above (owner ruling of 2026-08-08).
-   No other install path exists or is planned.
+1. Plastic installs through `install.sh` for every harness above (owner ruling of 2026-10-03,
+   which supersedes the npm-only ruling of 2026-08-08). See [INSTALL.md](../../INSTALL.md).
 2. Hermes copies skills and agent files and wires nothing else. It is a packaging target,
    not a working adapter.
 3. Codex receives its skill text with paths and command prefixes rewritten at install time

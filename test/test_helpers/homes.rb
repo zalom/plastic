@@ -24,7 +24,7 @@ module Plastic
       # instead of copying the whole fixture back on every test.
       class Home
         Pool = Plastic::Graph::Database::ConnectionPool
-        DATABASE_PATTERN, JOURNAL_PATTERN = Plastic::Graph::StoreFolder::IGNORED
+        DATABASE_PATTERN, JOURNAL_PATTERN = Plastic::Graph::Knowledge::StoreFolder::IGNORED
 
         attr_reader :dir
 
@@ -203,7 +203,7 @@ module Plastic
 
         def graphs = Plastic::Graph.open(home: @plastic_home, store: "global")
 
-        def folder = Plastic::Graph::StoreFolder.new(store_root)
+        def folder = Plastic::Graph::Knowledge::StoreFolder.new(store_root)
 
         def copy_store
           store = @data["store"] or return
@@ -220,7 +220,7 @@ module Plastic
 
         def sync_up
           current = graphs
-          sync = Plastic::Graph::Sync.new(folder:, retrieval: current.retrieval, databases: current.databases)
+          sync = Plastic::Graph::Knowledge::Sync.new(folder:, retrieval: current.retrieval, databases: current.databases)
           sync.apply(sync.plan(:up, {}))
         end
       end

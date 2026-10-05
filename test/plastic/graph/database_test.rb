@@ -72,6 +72,13 @@ class DatabaseTest < Plastic::TestCase
     assert_equal [[], false], [database.transaction { |_batch| nil }, File.exist?(File.join(@home, "x.db"))]
   end
 
+  def test_an_empty_immediate_transaction_runs_no_derived_write
+    database = Database.new(File.join(@home, "immediate.db"), "")
+
+    assert_nil database.immediate_transaction { |_batch, _connection| nil }
+    assert_empty database.written
+  end
+
   def test_returning_rows_come_back_in_order
     returned = database.transaction do |batch|
       batch.write(:routine_runs, "INSERT INTO routine_runs(name) VALUES (:name) RETURNING name", name: "a")

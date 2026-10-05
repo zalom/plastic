@@ -1,0 +1,31 @@
+#!/usr/bin/env -S ruby --disable-gems
+# frozen_string_literal: true
+
+require "optparse"
+
+require_relative "lib/installer_release"
+
+options = { bin: File.join(Dir.home, ".local", "bin"), plastic_home: File.join(Dir.home, ".plastic"), user_home: Dir.home }
+OptionParser.new do |parser|
+  parser.on("--directory PATH") { |value| options[:directory] = value }
+  parser.on("--version VERSION") { |value| options[:version] = value }
+  parser.on("--home PATH") { |value| options[:home] = value }
+  parser.on("--bin PATH") { |value| options[:bin] = value }
+  parser.on("--plastic-home PATH") { |value| options[:plastic_home] = value }
+  parser.on("--user-home PATH") { |value| options[:user_home] = value }
+end.parse!
+
+missing = %i[directory version home].reject { |key| options[key] }
+abort "missing required options: #{missing.join(", ")}" unless missing.empty?
+
+begin
+  files = InstallerRelease::ReleaseFiles.new(options[:directory]).verify
+  expected = InstallerRelease::Manifest.identity(options[:version])
+  home = InstallerRelease::ManagedHome.new(plastic_home: options[:plastic_home], user_home: options[:user_home],
+    launcher: File.join(options[:bin], "plastic"))
+  sync = InstallerRelease::HomeSync.new(share: options[:home], home: home)
+  choice = InstallerRelease::RubyChoice.new(home: options[:home], override: ENV.fetch("PLASTIC_RUBY", ""))
+  InstallerRelease::ReleaseInstall.new(home: options[:home], sync: sync, choice: choice).call(archive: files.archive, manifest: files.manifest, expected: expected)
+rescue => error
+  abort "plastic: v#{options[:version]}: #{error.message}"
+end

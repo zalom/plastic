@@ -9,7 +9,11 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -19,17 +23,44 @@ jobs:
           ruby-version: '4.0'
       - name: Install the test gems
         run: bundle install
+      - name: Check install.sh with shellcheck
+        if: runner.os == 'Linux'
+        run: shellcheck -s sh install.sh
+      - name: Make an empty home for the suite
+        run: mkdir -p "$RUNNER_TEMP/suite-home"
       - name: Run the full suite
+        env:
+          HOME: ${{ runner.temp }}/suite-home
         run: ruby bin/test
       - name: Run the acceptance documents
+        env:
+          HOME: ${{ runner.temp }}/suite-home
         run: ruby bin/test --system
-      - uses: actions/setup-node@v7
-        with:
-          node-version: '24'
-          package-manager-cache: false
+      - name: Check that the suite wrote nothing into the home
+        run: |
+          written=$(find "$RUNNER_TEMP/suite-home" -mindepth 1)
+          if [ -n "$written" ]; then
+            echo "the suite wrote into the empty home:"
+            echo "$written"
+            exit 1
+          fi
       - name: Verify the packaged executable
         run: |
-          package_dir=$(mktemp -d)
-          archive=$(npm pack --silent --pack-destination "$package_dir")
-          tar -xzf "$package_dir/$archive" -C "$package_dir"
-          PLASTIC_ACCEPTANCE_BIN="$package_dir/package/bin/plastic" ruby bin/test --only test/cli/release_contract_test.rb
+          release=$(mktemp -d)
+          ruby scripts/build-release --version "$(ruby -rjson -e 'print JSON.parse(File.read("package.json")).fetch("version")')" --directory "$release"
+          tar -xzf "$release/plastic.tgz" -C "$release"
+          PLASTIC_ACCEPTANCE_BIN="$release/package/bin/plastic" ruby bin/test --only test/cli/release_contract_test.rb
+
+  install:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest, macos-15-intel]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '4.0'
+      - name: Install, update, roll back and uninstall Plastic on an empty home with no Ruby on PATH
+        run: ruby tools/check-fresh-install

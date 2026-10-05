@@ -13,13 +13,13 @@ class StopGateTest < Plastic::TestCase
   end
 
   def take_lock(intent_id, mode: "auto", live: true)
-    at = live ? Plastic.now : (Time.now - 3600).iso8601
+    at = live ? STAMP : "2026-10-05T09:00:00+02:00"
     put(:home, :locks, { store: "global", intent_id:, session_id: "s-1", mode:, taken_at: at, renewed_at: at })
   end
 
   def put(key, table, row) = store_graphs.databases[key].transaction { |batch| batch.put(table, row) }
 
-  def gate(event: {}, stop_hook: true) = StopGate.new(event:, stop_hook:, retrieval:, session_id: "s-1")
+  def gate(event: {}, stop_hook: true) = StopGate.new(event:, stop_hook:, retrieval:, session_id: "s-1", now: Time.iso8601(STAMP) + 60)
 
   def test_blocks_when_every_condition_holds
     take_lock("1")
@@ -64,7 +64,7 @@ class StopGateTest < Plastic::TestCase
     assert_nil gate.decision
   end
 
-  def test_an_error_permits
+  def test_an_error_while_reading_permits_the_stop
     broken = StopGate.new(event: {}, stop_hook: true, retrieval: nil, session_id: "s-1")
 
     assert_nil broken.decision

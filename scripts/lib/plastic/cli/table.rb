@@ -7,6 +7,13 @@ module Plastic
     # is commands/intent_end.rb. `plastic help` reads this table alone, so
     # listing the commands loads no command. Each family owns its own section.
     TABLE = {
+      # Distribution
+      "version" => ["Commands::Version", "Print the installed Plastic version and release channel"],
+      "install" => ["Commands::Install", "Install the core files and register Plastic with agents"],
+      "update" => ["Commands::Update", "Sync a newer package into the home or name the installer command"],
+      "rollback" => ["Commands::Rollback", "List the version history or name the command that restores one"],
+      "uninstall" => ["Commands::Uninstall", "Remove Plastic from agents and keep the home"],
+
       # Storage
       "intent end" => ["Commands::IntentEnd", "Record explicit criterion acceptance and close a delivered intent"],
       "intent new" => ["Commands::IntentNew", "Open an intent: write its rows and print its folder"],
@@ -15,6 +22,10 @@ module Plastic
       "session note" => ["Commands::SessionNote", "Write the one prose line of this session"],
       "intent rule" => ["Commands::IntentRule", "Write an owner ruling, with --supersedes to replace an older one"],
       "intent spec" => ["Commands::IntentSpec", "Print the grilling method, then the intent's open decisions"],
+      "intent discover" => ["Commands::IntentDiscover", "Record deterministic retrieval candidates for an intent"],
+      "intent context" => ["Commands::IntentContext", "Read or submit selected retrieval context for an intent"],
+      "architecture status" => ["Commands::ArchitectureStatus", "Tell the agent to check the architecture map with its own tool"],
+      "architecture refresh" => ["Commands::ArchitectureRefresh", "Tell the agent to regenerate the architecture map with its own tool"],
       "auto start" => ["Commands::AutoStart", "Take the delivery lock and set the intent active"],
       "intent show" => ["Commands::IntentShow", "Print one intent's status, criteria, decisions, rulings and nodes"],
       "intent brief" => ["Commands::IntentBrief", "Print an intent's goal, criteria, rulings, ready nodes and command usage"],
@@ -25,6 +36,9 @@ module Plastic
       "intent archive" => ["Commands::IntentArchive", "Archive an intent directory; --revert restores it"],
       "backup" => ["Commands::Backup", "Pack home.db and every store's three databases into one archive"],
       "backup list" => ["Commands::BackupList", "List every backup, flagging a missing or changed file"],
+      "document get" => ["Commands::DocumentGet", "Fetch one current or revision-qualified document"],
+      "document batch" => ["Commands::DocumentBatch", "Fetch qualified documents in request order"],
+      "search" => ["Commands::Search", "Search literal indexed passages across selected stores"],
 
       # Work graph
       "node add" => ["Commands::NodeAdd", "Add a node to an intent's work graph"],

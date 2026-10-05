@@ -1,0 +1,130 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "fileutils"
+require "json"
+require "open3"
+require "optparse"
+require "tmpdir"
+require_relative "../scripts/lib/release_build"
+
+ROOT = File.expand_path("..", __dir__)
+
+# Installs Plastic under an empty home from two releases built out of this
+# checkout, then updates, rolls back and uninstalls it. With --release, the
+# first release is the given directory of built files, so a release job
+# installs the files it is about to publish. A step fails when it
+# exits nonzero, writes to standard error, or leaves the wrong release active.
+# Every step runs with a PATH that holds no Ruby, so install.sh must bring its
+# own and the launcher must start it by its full path.
+class FreshInstallCheck
+  CLEARED = %w[PLASTIC_HOME PLASTIC_SHARE PLASTIC_BIN PLASTIC_CHANNEL PLASTIC_PACKAGE_ROOT PLASTIC_LOCAL_RELEASE
+    RUBYOPT RUBYLIB BUNDLE_GEMFILE BUNDLE_BIN_PATH BUNDLER_SETUP BUNDLER_VERSION].freeze
+  AGENTS = %w[.claude .codex].freeze
+  TOOLS = %w[sh mktemp rm mkdir ln cat cp dirname basename uname sysctl ldd tar gzip grep wc tr cut sort chmod mv curl
+    sha256sum shasum git sqlite3].freeze
+
+  def initialize(work, built = nil)
+    @work = work
+    @built = built
+    @home = File.join(work, "home")
+    @first = JSON.parse(File.read(File.join(ROOT, "package.json"))).fetch("version")
+    @second = first.sub(/\d+\z/) { |number| number.to_i.succ.to_s }
+  end
+
+  def call
+    FileUtils.mkdir_p(home)
+    build_releases
+    install
+    upgrade
+    remove
+    puts "fresh install check passed"
+  end
+
+  private
+
+  attr_reader :work, :built, :home, :first, :second
+
+  def install
+    step(first, "sh", File.join(ROOT, "install.sh"))
+    agent_folders
+    step(first, plastic, "install", "--all")
+    step(first, plastic, "version", active: first)
+    step(first, plastic, "status")
+  end
+
+  def upgrade
+    step(second, plastic, "update")
+    step(second, plastic, "version", active: second)
+    step(second, plastic, "rollback")
+    step(second, plastic, "version", active: first)
+  end
+
+  def remove
+    step(second, plastic, "uninstall", "--all")
+    puts "left under the home:", left.map { |name| "  #{name}" }
+    abort "the uninstall left #{stray.join(" and ")}" unless stray.empty?
+    abort "the uninstall left hooks that run the removed launcher in #{stale_hooks.join(", ")}" unless stale_hooks.empty?
+  end
+
+  def agent_folders = AGENTS.each { |folder| FileUtils.mkdir_p(File.join(home, folder)) }
+
+  def left = Dir.glob("**/*", File::FNM_DOTMATCH, base: home).reject { |name| name.end_with?(".") }.sort
+
+  def stray = [share, plastic].select { |path| File.exist?(path) || File.symlink?(path) }
+
+  def stale_hooks
+    left.grep(%r{\A\.(claude|codex|agents)/}).select { |name| File.file?(File.join(home, name)) && File.read(File.join(home, name)).include?(share) }
+  end
+
+  def step(version, *command, active: nil)
+    puts "$ #{command.map { |part| File.basename(part) }.join(" ")}"
+    out, err, status = Open3.capture3(environment(version), *command, chdir: home)
+    puts out
+    problem = problem_of(status, err, out, active)
+    abort "#{problem}\n#{err}" if problem
+  end
+
+  def problem_of(status, err, out, active)
+    return "exited #{status.exitstatus}" unless status.success?
+    return "wrote to standard error" unless err.empty?
+
+    "the active release is not #{active}" if active && !out.match?(/active:\s+#{Regexp.escape(active)}\b/)
+  end
+
+  def environment(version)
+    CLEARED.to_h { |name| [name, nil] }.merge("HOME" => home, "PLASTIC_LOCAL_RELEASE" => release(version),
+      "PATH" => [File.dirname(plastic), toolbox].join(File::PATH_SEPARATOR))
+  end
+
+  def toolbox
+    folder = File.join(work, "toolbox")
+    FileUtils.mkdir_p(folder)
+    TOOLS.each do |tool|
+      found = ENV.fetch("PATH").split(File::PATH_SEPARATOR).map { |dir| File.join(dir, tool) }.find { |path| File.executable?(path) }
+      link = File.join(folder, tool)
+      File.symlink(found, link) if found && !File.symlink?(link)
+    end
+    folder
+  end
+
+  def release(version) = (built if version == first) || File.join(work, "releases", version)
+
+  def plastic = File.join(home, ".local", "bin", "plastic")
+
+  def share = File.join(home, ".local", "share", "plastic")
+
+  def build_releases
+    [first, second].reject { |version| release(version) == built }
+      .each { |version| ReleaseBuild.call(version:, directory: release(version), root: ROOT) }
+  end
+end
+
+built = nil
+OptionParser.new { |options| options.on("--release DIRECTORY") { |directory| built = File.realpath(directory) } }.parse!
+
+Dir.mktmpdir("plastic-fresh-install") do |work|
+  FreshInstallCheck.new(File.realpath(work), built).call
+ensure
+  system("chmod", "-R", "u+w", work)
+end

@@ -12,7 +12,7 @@ class NextIdTest < Minitest::Test
     assert_equal "D4", Plastic::Graph::NextId.after(rows, prefix: "D")
   end
 
-  def test_starts_at_one
+  def test_the_first_id_after_no_ids_is_one
     assert_equal "n1", Plastic::Graph::NextId.after([], prefix: "n")
   end
 end

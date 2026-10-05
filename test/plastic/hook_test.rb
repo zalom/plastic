@@ -7,10 +7,13 @@ class HookTest < Plastic::TestCase
     call = plastic("hook", "echo", input: %({"session_id": "s-1"}))
 
     assert_equal [0, "session s-1\n"], [call.code, call.out]
+    assert_equal "", call.err
   end
 
   def test_a_hook_with_no_input_reads_an_empty_event
-    assert_equal "session \n", plastic("hook", "echo", input: "  ").out
+    call = plastic("hook", "echo", input: "  ")
+
+    assert_equal [0, "session \n", ""], [call.code, call.out, call.err]
   end
 
   def test_a_hook_with_no_reply_prints_nothing

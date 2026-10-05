@@ -20,12 +20,22 @@ module Plastic
       :code_remove_roadmap_edge,
 
       :code_delivery_next, :agent_advance_delivery, :code_prepare_ending, :agent_finish_intent, :code_close_intent,
+      :code_discover_retrieval, :agent_external_agent_workflow,
+      # Retrieval reads: search, qualified documents and the saved context of an intent.
+      :code_search, :code_get_document, :code_batch_documents, :code_check_context_owner, :code_read_context,
+      :code_submit_context,
+      # Architecture: prompts only; the agent maps the code with the tool it chose.
+      :agent_check_architecture, :agent_refresh_architecture,
       # Sessions: the one prose line a session writes about itself.
       :code_write_note,
       # Archive: taking an intent off the checkout and printing it back.
       :code_choose_archive, :code_archive_intent, :code_restore_intent,
       # Backups: one gzipped tar of every database on the machine.
       :code_preview_backup, :code_backup, :code_backup_list,
+      # Distribution: the installer commands over the running package and the home.
+      :code_show_version, :code_check_installation, :code_preview_install, :code_install_plastic, :agent_offer_enola,
+      :code_preview_update, :code_update_plastic,
+      :code_preview_rollback, :code_rollback_release, :code_preview_uninstall, :code_uninstall_plastic,
       # Work graph: building and moving the nodes and edges of one intent.
       :code_add_node, :code_remove_node, :code_add_edge, :code_remove_edge,
       :code_claim_node, :code_release_node, :code_done_node, :code_fail_node, :code_park_node, :code_answer_node

@@ -53,23 +53,4 @@ class TableTest < Plastic::TestCase
     assert_match(/\AINSERT INTO changes\("table", "key", operation, "row", at, origin_id\) SELECT 'printed', json_object\('path', "path"\), 'remove', NULL, #{at}, 'o' FROM "printed" WHERE "path" IS 'p'\z/o, remove)
     assert_includes put, %('put', json_object('path', "path", 'sha256', "sha256", 'at', "at", 'origin_id', "origin_id"), )
   end
-
-  def test_the_schema_names_each_database_file
-    assert_equal %w[home.db work_graph.db knowledge_graph.db references.db], %i[home work knowledge references].map { |key| Schema.file(key) }
-  end
-
-  def test_the_schema_joins_each_database_tables_ddl
-    assert_equal [table(:routine_runs).ddl, table(:sessions).ddl, table(:locks).ddl, table(:backups).ddl].join("\n"), Schema.fetch(:home)
-    assert_equal 5, Schema.fetch(:knowledge).lines.size
-  end
-
-  def test_a_tally_names_one_and_many
-    assert_equal ["1 routine run", "2 savepoint lines", "1 x"],
-      [Schema.tally(:routine_runs, 1), Schema.tally("savepoints", 2), Schema.tally(:x, 1)]
-  end
-
-  def test_a_phrase_joins_one_two_and_three_tallies
-    assert_equal ["1 intent", "1 intent and 2 clusters", "1 intent, 2 clusters, and 1 node"],
-      [{ intents: 1 }, { intents: 1, clusters: 2 }, { intents: 1, clusters: 2, nodes: 1 }].map { |counts| Schema.phrase(counts) }
-  end
 end

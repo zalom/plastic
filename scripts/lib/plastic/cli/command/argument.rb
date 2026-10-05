@@ -6,7 +6,10 @@ module Plastic
       # One word a command takes. A rest argument takes every word left; an
       # optional one may be missing.
       Argument = Data.define(:name, :label, :text, :rest, :optional) do
-        def usage = optional ? "[#{label}]" : label
+        def usage
+          value = rest ? "#{label}..." : label
+          optional ? "[#{value}]" : value
+        end
 
         # This argument's value in `words`, the words left after the
         # switches. A blank value counts as missing: nil when optional, a
