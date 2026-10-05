@@ -71,7 +71,7 @@ module Plastic
 
       def help
         Help.new(self.class, usage_line).lines.each { |line| output.raw(line) }
-        OK
+        output.flush.then { OK }
       end
 
       # The rows go out before any error line, so a failed call still says
