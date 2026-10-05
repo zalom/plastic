@@ -40,7 +40,7 @@ module Plastic
 
           # The database names a restore would replace.
           def held_in(timestamp, names: nil)
-            held = @target.folders.files(timestamp).map { |file| file.delete_suffix("-#{timestamp}.db") }
+            held = held_names(timestamp)
             chosen = Array(names)
             missing = chosen - held
             raise Missing, "the backup #{timestamp} does not hold #{missing.first.inspect}" if missing.any?
@@ -66,6 +66,8 @@ module Plastic
           end
 
           private
+
+          def held_names(timestamp) = @target.folders.files(timestamp).map { |file| file.delete_suffix("-#{timestamp}.db") }
 
           def refuse(timestamp)
             message = refusal(timestamp)

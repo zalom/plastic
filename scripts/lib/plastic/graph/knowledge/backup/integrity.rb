@@ -17,24 +17,29 @@ module Plastic
           def initialize(path, name)
             @path = path
             @name = name
+            @database = nil
           end
 
           def call
-            database = SQLite3::Database.new(@path, readonly: true)
-            reject("fails the integrity check") unless database.get_first_value("PRAGMA quick_check") == "ok"
-            missing = expected - tables(database)
-            reject("lacks the tables #{missing.join(", ")}") unless missing.empty?
+            @database = SQLite3::Database.new(@path, readonly: true)
+            verify
           rescue SQLite3::Exception => error
             reject("is not a readable database: #{error.message}")
           ensure
-            database&.close
+            @database&.close
           end
 
           private
 
           def reject(reason) = raise(Rejected, "#{@path} #{reason}")
 
-          def tables(database) = database.execute("SELECT name FROM sqlite_master WHERE type = 'table'").flatten
+          def verify
+            reject("fails the integrity check") unless @database.get_first_value("PRAGMA quick_check") == "ok"
+            missing = expected - tables
+            reject("lacks the tables #{missing.join(", ")}") unless missing.empty?
+          end
+
+          def tables = @database.execute("SELECT name FROM sqlite_master WHERE type = 'table'").flatten
 
           def expected
             key = Schema.store.find { |candidate| Schema.file(candidate) == "#{@name}.db" }

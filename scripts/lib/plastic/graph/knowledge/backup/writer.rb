@@ -36,6 +36,8 @@ module Plastic
             row(folder)
           end
 
+          def self.vacuum(source, target) = Database::ConnectionPool.for(source).execute("VACUUM INTO ?", [target])
+
           private
 
           def folders = (@folders ||= Folders.new(@root))
@@ -46,14 +48,17 @@ module Plastic
 
           def copy_all(folder)
             report(folder, "in-progress")
-            sources.each { |name| self.class.vacuum(File.join(@root, "#{name}.db"), File.join(folders.path(folder), "#{name}-#{folder}.db")) }
+            copy(folder)
             report(folder, "done")
           rescue
             report(folder, "error")
             raise
           end
 
-          def self.vacuum(source, target) = Database::ConnectionPool.for(source).execute("VACUUM INTO ?", [target])
+          def copy(folder)
+            sources.each { |name| self.class.vacuum(File.join(@root, "#{name}.db"), File.join(folders.path(folder), "#{name}-#{folder}.db")) }
+          end
+
 
           def row(folder)
             { name: "#{@slug}/#{folder}", files: folders.files(folder).size, bytes: folders.bytes(folder),

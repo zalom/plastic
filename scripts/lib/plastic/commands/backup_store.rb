@@ -35,8 +35,8 @@ module Plastic
         raise CLI::Command::Usage, "no registered project named #{slug.inspect}; the projects are #{projects.keys.sort.join(", ")}"
       end
 
-      def one_of(first, second, give:, both:)
-        given = [first, second].count { |key| parsed[key] }
+      def one_of(keys, give:, both:)
+        given = keys.count { |key| parsed[key] }
         raise CLI::Command::Usage, give if given.zero?
         raise CLI::Command::Usage, both if given > 1
       end

@@ -19,6 +19,14 @@ class KnowledgeBackupPurgerTest < Plastic::TestCase
     assert_equal 4, Dir.children(File.join(backups_dir(home), "20260101100000")).size
   end
 
+  def test_a_failed_row_delete_with_no_folder_just_raises
+    refusing = Object.new
+    def refusing.transaction = raise(StandardError, "the row cannot be deleted")
+    purger = Purger.new(refusing, File.join(fresh_home, "stores", "alpha"), "alpha")
+
+    assert_raises(StandardError) { purger.remove("20260101100000") }
+  end
+
   def test_a_folder_is_purged_whatever_its_status
     home = fresh_home
     backup_at(home, at(2026, 1, 1, 10, 0, 0))

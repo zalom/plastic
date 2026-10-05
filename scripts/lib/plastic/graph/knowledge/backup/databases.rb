@@ -31,7 +31,7 @@ module Plastic
 
           def self.goal(names)
             listed = chosen(names)
-            listed.sort == all.sort ? "full" : "partial:#{listed.map { |name| "#{name}.db" }.join(",")}"
+            (listed.sort == all.sort) ? "full" : "partial:#{listed.map { |name| "#{name}.db" }.join(",")}"
           end
         end
       end

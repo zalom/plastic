@@ -126,6 +126,10 @@ class BackupRestoreTest < Plastic::TestCase
     assert_call result, code: 0, out: ["restore: backed up the current databases as", "next: plastic sync up --dry-run --project alpha"]
   end
 
+  def test_restoring_the_latest_with_no_done_backup_refuses_with_usage
+    assert_refused_with_usage restore_call(fresh_home, "--store", "alpha", "--latest"), "no done backup of alpha to restore"
+  end
+
   def test_a_preview_lists_the_databases_and_changes_nothing
     home = seeded_home
     before = [bytes(home, "work_graph", "knowledge_graph", "references"), folder_names(home)]

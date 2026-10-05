@@ -68,4 +68,10 @@ class KnowledgeBackupWriterTest < Plastic::TestCase
     assert_equal [3, "alpha/20260101100000", folders.digest("20260101100000")], row.values_at(:files, :name, :sha256)
     assert_equal row.fetch(:bytes), folders.bytes("20260101100000")
   end
+
+  def test_a_store_with_no_database_has_nothing_to_back_up
+    writer = Backup::Writer.new(Dir.mktmpdir, "alpha", now: at(2026, 1, 1, 10, 0, 0))
+
+    assert_raises(Backup::Writer::Error) { writer.call }
+  end
 end

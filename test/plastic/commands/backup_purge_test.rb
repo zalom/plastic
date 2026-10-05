@@ -21,6 +21,12 @@ class BackupPurgeTest < Plastic::TestCase
     assert_equal 4, folder_names(home).size
   end
 
+  def test_purging_all_when_there_are_no_backups_says_nothing_was_purged
+    result = purge_call(fresh_home, "--store", "alpha", "--all")
+
+    assert_equal [0, true], [result.code, result.out.include?("purged: nothing")]
+  end
+
   def test_a_call_without_store_refuses_with_the_usage_line
     assert_refused_with_usage purge_call(fresh_home, "--all"), "--store"
   end

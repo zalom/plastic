@@ -23,7 +23,7 @@ module Plastic
       private
 
       def check_call
-        one_of(:older_than, :all, give: "give --older-than DATE or --all", both: "--all and --older-than exclude each other")
+        one_of(%i[older_than all], give: "give --older-than DATE or --all", both: "--all and --older-than exclude each other")
         read_date
       end
 

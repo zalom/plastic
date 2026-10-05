@@ -23,7 +23,7 @@ module Plastic
       private
 
       def check_call
-        one_of(:timestamp, :latest, give: "give --timestamp TS or --latest", both: "--latest and --timestamp exclude each other")
+        one_of(%i[timestamp latest], give: "give --timestamp TS or --latest", both: "--latest and --timestamp exclude each other")
         database_list
       end
 

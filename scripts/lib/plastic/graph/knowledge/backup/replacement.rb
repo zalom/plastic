@@ -16,11 +16,14 @@ module Plastic
           # Applies every replacement, or undoes the ones that were applied.
           def self.apply_all(replacements)
             applied = []
-            replacements.each { |replacement| applied << replacement.apply }
-            applied.each(&:commit)
+            apply_each(replacements, applied).each(&:commit)
           rescue
             applied.reverse_each(&:undo)
             raise
+          end
+
+          def self.apply_each(replacements, applied)
+            replacements.each_with_object(applied) { |replacement, list| list << replacement.apply }
           end
 
           def initialize(source, target)
@@ -31,11 +34,8 @@ module Plastic
           end
 
           def apply
-            SIDECARS.each { |suffix| FileUtils.rm_f("#{@target}#{suffix}") }
-            FileUtils.cp(@source, copy)
-            move_aside
-            File.rename(copy, @target)
-            @placed = true
+            prepare
+            place
             self
           rescue
             undo
@@ -52,6 +52,17 @@ module Plastic
           end
 
           private
+
+          def prepare
+            SIDECARS.each { |suffix| FileUtils.rm_f("#{@target}#{suffix}") }
+            FileUtils.cp(@source, copy)
+          end
+
+          def place
+            move_aside
+            File.rename(copy, @target)
+            @placed = true
+          end
 
           def copy = "#{@target}.restoring"
 
