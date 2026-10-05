@@ -74,8 +74,6 @@ Rules for any agent (or human) contributing to this repository.
   Minitest reports just that one file's tests and you get a falsely small green run. The
   loader command above requires every `test/*_test.rb` file, so the whole suite runs.
 - Confirm that the changed files' tests and the change gate are green before committing code changes.
-- Lock and worktree tests must stay hermetic: inject `PLASTIC_TMP` plus explicit paths and
-  never write with the ambient session id (`test/hermeticity_guard_test.rb` enforces this).
 
 #### Kernel style
 
