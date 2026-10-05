@@ -47,7 +47,7 @@ module Plastic
 
       def known_slugs
         dirs = Dir.glob(File.join(plastic_home, "stores", "*")).select { |path| File.directory?(path) }
-        (dirs.map { |path| File.basename(path) } | projects.keys | [GLOBAL]).sort
+        (dirs.map { |path| File.basename(path) } | [GLOBAL]).sort
       end
 
       # The projects file at the home, as slug => path. A file that does not
@@ -79,7 +79,7 @@ module Plastic
       end
 
       def requested_slug
-        return @requested if known_slugs.include?(@requested)
+        return @requested if known_slugs.include?(@requested) || projects.key?(@requested)
 
         raise UnknownProject, "no project named #{@requested.inspect}; this machine has #{known_slugs.join(", ")}"
       end
