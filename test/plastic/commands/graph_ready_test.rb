@@ -36,7 +36,7 @@ class GraphReadyTest < Plastic::TestCase
     refute_includes result.out, "ready: n2 b"
   end
 
-  def test_claimed_work_stays_with_its_worker
+  def test_claimed_work_with_no_worker_names_none
     two_linked_nodes
     plastic("node", "claim", "1", "n1", table: Plastic::CLI::TABLE)
     plastic("node", "done", "1", "n1", "--judge", "owner", "--findings", "ok", table: Plastic::CLI::TABLE)
@@ -44,7 +44,7 @@ class GraphReadyTest < Plastic::TestCase
 
     result = call("1")
 
-    assert_call result, code: 0, out: ["Continue node n2 with its worker"]
+    assert_call result, code: 0, out: ["Continue node n2. Record the result"]
     refute_includes result.out, "ready:"
   end
 end
