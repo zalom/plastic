@@ -563,10 +563,11 @@ roadmaps, and preserves changed originals. `Graph::Knowledge::Legacy::Decisions`
 store after disconnecting its database handles. Failure to save that copy leaves the
 original store untouched.
 
-`Graph::Knowledge::Sync::Preview` copies the selected store and its identity and configuration into a
-temporary home and runs the same sync there. It rejects symbolic links before copying
-and resolves absolute overwrite paths against the original store. Preview does not keep
-a routine run in the original home. Metadata import no longer requires a separate
+`Graph::DisposableCopy` copies the selected store and its identity and configuration into a
+temporary home, with `Graph::StoreTree` listing the files, and the sync runs there. It rejects
+links to folders before copying and resolves absolute overwrite paths against the original store.
+`Routine::Preview` adds `--dry-run` to any command that declares `previews`; `Routine::PreviewOutput`
+prints what the call would write. Preview does not keep a routine run in the original home. Metadata import no longer requires a separate
 migration command. The compatibility cleanup flag applies only after successful first
 import; later sync does not delete legacy source files.
 

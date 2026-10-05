@@ -46,7 +46,7 @@ Plastic keeps the shape of the work fixed and leaves the thinking to you and you
 | Find an old decision | Searches every store, ranked, with one excerpt for each match |
 | Run many projects | Keeps one store for each project, plus a global store, all in plain Markdown and Git |
 | Steer a long delivery | Reads a roadmap as a graph and names the entry most worth continuing |
-| Protect the record | Writes one archive of the three databases, as of the last `plastic sync`, with `config.yml`, `projects.yml`, and `INDEX.md` |
+| Protect the record | Writes one archive of the three databases, as of the last `plastic sync up`, with `config.yml`, `projects.yml`, and `INDEX.md` |
 
 Every result ends with a `next:` line and a `because:` line. The `--json` option prints the
 same result as data with stable keys. Every command takes it except the installer commands
@@ -67,7 +67,7 @@ a plan, and delivery. The execution plan can use a checklist or a graph of depen
 
 For graph work, `graph.md` links nodes by their dependencies, and `nodes/` holds the
 instructions for each node. Plastic uses those dependencies and the node transitions in
-`savepoint.md` to determine which work is ready. `plastic intent step ID` runs the next
+`savepoint.md` to determine which work is ready. `plastic next` names the next
 graph step once the session holds the delivery lock. For checklist work, the same command
 reports the next unfinished item.
 
@@ -149,7 +149,7 @@ Restart your agent after the install. For the full path, read
   -----------------              -------                     ----------------------------
   plastic intent new "..."  -->  creates the intent     -->  12--slug/12--slug.md
   plastic intent rule 12    -->  records a ruling       -->  Insights in 12--slug/12--slug.md
-  plastic intent step 12    -->  names the next step    -->  checklist.md, or graph.md and nodes/
+  plastic next              -->  names the next step    -->  checklist.md, or graph.md and nodes/
   plastic intent end 12     -->  closes the intent      -->  outcome.md, INDEX.md
 
         ^                                                              |
@@ -183,45 +183,41 @@ plastic intent new "LINE" --parent 12 # Create a branch of intent 12
 plastic intent show 12                # Print the state screen
 plastic intent spec 12                # State screen, then the speccing rules
 plastic intent rule 12 "TEXT"         # Record a ruling in Insights
-plastic intent note 12 "TEXT"         # Append a savepoint note
-plastic intent step 12                # Name the next checklist item, or run the next graph step
-plastic intent answer 12 --node n3 --decision "TEXT"   # Answer a node that needs a decision
-plastic intent verify 12              # Run the merge-gate checks
+plastic session note "TEXT"           # Append a savepoint note
+plastic intent brief 12               # Print the brief an agent starts from
+plastic intent link 12 cites 7        # Link intent 12 to intent 7
+plastic intent unlink 12 cites 7 --dry-run   # Preview the removal of a link
+plastic intent archive 12 --dry-run   # Preview an archive
 plastic intent end 12 --delivered --summary "TEXT"     # Close as delivered
 plastic intent end 12 --abandoned --summary "TEXT"     # Close as abandoned
 ```
 
-### Projects
+### Graphs and roadmaps
 ```bash
-plastic project list                  # Every store this machine holds
-plastic project new blog --path ~/code/blog   # Register and provision a project
-plastic project links                 # Rebuild every Links section from frontmatter
-```
-
-### Roadmaps
-```bash
+plastic graph show 12                 # The work graph of intent 12
+plastic graph show 12 --dry-run       # The same call in a disposable copy
+plastic graph ready 12                # The nodes ready to start
+plastic graph check 12                # Find cycles and dangling ids
+plastic node done 12 n3 --judge tests --findings "TEXT"   # Close a node
+plastic node answer 12 n3 --decision "TEXT"               # Answer a node that needs a decision
+plastic node remove 12 n3 --dry-run   # Preview a node removal
+plastic edge remove 12 n2 n3 --dry-run   # Preview an edge removal
 plastic roadmap next                  # The roadmap most worth continuing
 plastic roadmap show SLUG             # The state screen of one roadmap
+plastic roadmap show SLUG --dry-run   # The same call in a disposable copy
 plastic roadmap check SLUG            # Find cycles and dangling ids in the graph
-plastic roadmap migrate SLUG          # Write the graph section from the batches
+plastic roadmap drop SLUG ITEM --dry-run        # Preview a dropped item
+plastic roadmap edge remove SLUG FROM TO --dry-run   # Preview an edge removal
 plastic roadmap log SLUG EVENT "TEXT" # Append a line to the roadmap ledger
 ```
+
+A `--dry-run` call runs in a disposable copy of the store. It prints what it would
+write, never touches the original, and ends with the same call without `--dry-run`.
 
 ### Auto teams
 ```bash
 plastic auto start 12                  # Arm the delivery lock for this session
-plastic auto brief 12 --role executor # Print the spawn preamble for one role
-plastic auto report 12                # Completion report, then the review rules
-plastic auto lock status 12           # Inspect the delivery lock
-plastic auto lock fix 12              # Repair a broken lock
-plastic auto lock release 12          # Release the lock
-```
-
-### Sessions
-```bash
-plastic session summary               # Open items and recent activity in the day ledger
-plastic session commit "SUMMARY"      # Commit one verified checklist item
-plastic session handoff               # Write this session's hand-off
+plastic intent brief 12 --role executor # Print the spawn preamble for one role
 ```
 
 ### Search
@@ -237,14 +233,11 @@ plastic architecture refresh --project blog                      # Tell the agen
 
 ### Stores and databases
 ```bash
-plastic sync                          # Bring the store files and the three databases level
-plastic sync --dry-run                # Show what would change
-plastic checkout                      # Restore missing store files from the databases
+plastic sync up                       # Bring the databases level with the store files
+plastic sync up --dry-run             # Show what would change
+plastic sync down                     # Write the store files from the databases
 plastic backup                        # One archive of the three databases and the config
-plastic backup --list                 # Name, size and date of each archive
-plastic migrate stores --dry-run      # Preview the move of every store under stores/
-plastic migrate stores                # Move them, behind a full copy of the home
-plastic render FILE                   # Print one Markdown file as an HTML page
+plastic backup list                   # Name, size and date of each archive
 ```
 
 ### Product

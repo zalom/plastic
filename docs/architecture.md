@@ -505,6 +505,18 @@ another session, held by this session, or not held at all. It no longer
 reports an agent lock that does not exist. The `next:` line no longer implies
 that a commit landed; the printed line above it says whether one did.
 
+### Preview in a disposable copy
+
+A command that declares `previews` takes `--dry-run`. `Graph::DisposableCopy` snapshots the
+databases of one store with `VACUUM INTO`, copies its files and its home configuration into a
+temporary home, and refuses a link to a folder. The routine runs its whole chain against that
+copy, and `Routine::PreviewOutput` prints each line with a `preview:` prefix, names the
+original path and never the copy, lists the files the call would add, change or remove, and
+closes with `preview complete; the original store was not changed`. A chain that holds an
+agent workflow cannot preview, because the agent's steps run outside the copy. The copy is
+deleted when the call ends.
+
+
 ### Sync preview
 
 `plastic sync` rebuilds `work_graph.db` and `references.db` on every run. When
