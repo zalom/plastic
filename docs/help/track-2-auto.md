@@ -93,10 +93,10 @@ line.
 
 ### 5. Continue and where-was-I after time away
 
-Run `plastic continue`.
+Run `plastic graph resume`.
 
-Artifact: where the project stands and a `next:` line naming what runs next. `plastic
-continue` only reads: it takes no lock and changes no file. To resume one intent, run
+Artifact: where the work stopped and a `next:` line naming what runs next. `plastic graph
+resume` only reads: it takes no lock and changes no file. To resume one intent, run
 `plastic intent show ID`; its Next row names the step it resumes at, read from the files on
 disk.
 

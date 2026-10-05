@@ -18,11 +18,12 @@ module Plastic
 
         def none? = candidates.empty?
 
-        private
-
+        # The intents the pick chooses among: the locked ones, else the active, else the open.
         def candidates
           @candidates ||= [locked_intents, by_status("active"), by_status("open")].find { |found| found.any? } || []
         end
+
+        private
 
         def locked_intents
           store = @retrieval.store

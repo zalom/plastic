@@ -241,23 +241,43 @@ class GraphResumeTest < Plastic::TestCase
     assert_empty Plastic::Graph.open(home: @plastic_home, store: "c").retrieval.intents
   end
 
-  def test_sync_up_rebuilds_the_rows_of_a_folder_that_holds_its_index
+  def test_sync_up_stops_at_the_index_of_a_folder_with_no_rows_for_the_owner_to_settle
+    register("c")
+    store_intent("src", "First")
+    copy_intent_files("src", "c")
+
+    result = plastic("sync", "up", "--project", "c", table: Plastic::CLI::TABLE)
+
+    assert_equal 3, result.code
+    assert_empty Plastic::Graph.open(home: @plastic_home, store: "c").retrieval.intents
+  end
+
+  def test_sync_up_with_overwrite_rebuilds_the_rows_of_a_folder_that_holds_its_index
     register("c")
     intent = store_intent("src", "First")
     copy_intent_files("src", "c")
 
-    result = plastic("sync", "up", "--project", "c", table: Plastic::CLI::TABLE)
+    result = plastic("sync", "up", "--project", "c", "--overwrite", table: Plastic::CLI::TABLE)
 
     assert_equal 0, result.code
     assert_equal [intent.intent_id], Plastic::Graph.open(home: @plastic_home, store: "c").retrieval.intents.map(&:intent_id)
   end
 
-  def test_rows_missing_with_an_index_name_sync_up_as_the_rebuild
+  def test_rows_missing_with_an_index_name_the_rebuild_and_leave_it_to_the_owner
     register("c")
     store_intent("src", "First")
     copy_intent_files("src", "c")
 
-    assert_includes lines(call("--stores", "c")), "then: plastic sync up --project c (because the files hold intents the rows lack)"
+    assert_includes lines(call("--stores", "c")),
+      "then: plastic sync up --project c --overwrite rebuilds them from the files; the owner settles that step"
+  end
+
+  def test_a_store_with_rows_missing_offers_no_next_command
+    register("c")
+    store_intent("src", "First")
+    copy_intent_files("src", "c")
+
+    assert_equal "next: plastic status", next_line(call("--stores", "c"))
   end
 
   def copy_intent_files(from, to)

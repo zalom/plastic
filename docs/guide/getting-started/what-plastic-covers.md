@@ -10,7 +10,7 @@
 | `plastic hook EVENT` | Runs one harness hook event through its launcher and returns the launcher exit status. The agent harness calls it, not you. |
 | `plastic version [--json]` | Prints the installed Plastic version. |
 | `plastic status [--json]` | Shows active work in every store. |
-| `plastic continue [--project SLUG] [--json]` | Shows where one project stands and what runs next. |
+| `plastic graph resume [--stores a,b] [--json]` | Shows where each named project's work stopped and what runs next. |
 | `plastic next [--why] [--project SLUG] [--json]` | Prints the next action in one line. |
 | `plastic install [--claude] [--codex] [--hermes] [--all]` | Installs Plastic into this machine's agents. |
 | `plastic update [--claude] [--codex] [--hermes] [--all]` | Moves Plastic to the next version on its channel. |

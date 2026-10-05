@@ -55,6 +55,7 @@ module Plastic
       "edge remove" => ["Commands::EdgeRemove", "Remove an edge"],
       "graph check" => ["Commands::GraphCheck", "Find a judge missing, an isolated node, a retry cap or no done criterion"],
       "graph ready" => ["Commands::GraphReady", "List the nodes ready to claim"],
+      "graph resume" => ["Commands::GraphResume", "Say where each named store's work stopped and what runs next"],
       "graph show" => ["Commands::GraphShow", "Print every node and edge, then reprint graph.json from rows"],
 
       # Roadmaps: a named plan, held as rows instead of a hand-kept file.

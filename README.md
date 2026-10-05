@@ -170,8 +170,8 @@ Plastic follows four rules:
 ### Orientation
 ```bash
 plastic status                        # Active work in every store
-plastic continue                      # Where this project stands and what runs next
-plastic continue --project blog       # The same, for a named project
+plastic graph resume                  # Where this project's work stopped and what runs next
+plastic graph resume --stores blog,shop  # The same, for several named projects
 plastic next                          # The next action in one line
 plastic next --why                    # The next action, with the reasoning
 ```
@@ -282,7 +282,7 @@ global    0 active
 blog      1 active  14
 shop      2 active  7, 9
 
-next: plastic continue --project shop
+next: plastic graph resume --stores shop
 because: the working directory is inside shop
 ```
 

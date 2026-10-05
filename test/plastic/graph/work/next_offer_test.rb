@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require_relative "../../../test_helper"
+require_relative "../../../../scripts/lib/plastic/graph/work/next_pick"
+require_relative "../../../../scripts/lib/plastic/graph/work/next_offer"
 
 class WorkNextOfferTest < Plastic::TestCase
   def offer

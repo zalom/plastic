@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../../test_helper"
+require_relative "../../../../scripts/lib/plastic/graph/work/last_savepoints"
 
 class WorkLastSavepointsTest < Plastic::TestCase
   def test_an_intent_with_one_savepoint_gives_its_line
