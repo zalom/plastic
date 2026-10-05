@@ -23,6 +23,9 @@ module Plastic
             @folders.names.select { |name| FolderName.before?(name, older_than) }
           end
 
+          # The names of the folders whose backup failed.
+          def failed = @folders.names.select { |name| @folders.status(name) == "failed" }
+
           # The names of this store's rows that have no folder.
           def orphans(older_than: nil)
             row_names.reject { |name| @folders.exist?(name) }.select { |name| FolderName.before?(name, older_than) }

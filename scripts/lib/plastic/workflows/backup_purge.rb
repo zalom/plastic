@@ -6,7 +6,7 @@ require_relative "../graph/knowledge/backup/older_than"
 module Plastic
   module Workflows
     # Deletes the backup folders of one store with their rows: all of them, or
-    # those strictly before a time. A row with no folder goes with them.
+    # those strictly before a time, or those that failed. A row with no folder goes with them.
     class BackupPurge < CodeWorkflow
       [facts, steps, outcomes].each(&:clear)
 
@@ -14,9 +14,11 @@ module Plastic
 
       # The folder names and orphan row names the call would delete.
       def self.targets(context)
+        purger = context.work.backups.purger
+        return purger.failed if context.failed
+
         text = context.older_than
         cutoff = text && Graph::Knowledge::Backup::OlderThan.parse(text)
-        purger = context.work.backups.purger
         (purger.names(older_than: cutoff) | purger.orphans(older_than: cutoff)).sort
       end
 

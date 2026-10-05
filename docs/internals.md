@@ -552,7 +552,11 @@ this section covers how the code holds together.
   documents as current. Plain sync reports conflicts for those documents.
 - **Backup.** The four `backup` commands go through `WorkGraph#backups`, a
   `Graph::Knowledge::Backup::StoreBackups` for one store. `Writer` copies the databases
-  into the folder with `VACUUM INTO` and keeps `status.yml`. `Publisher` adds the row of
+  into the folder with `VACUUM INTO` and keeps `status.yml`. `Log` writes `backup.log` one
+  line at a time; `Log.line` is the one place that sets the shape of a line, and `Writer`
+  takes the copy step and the live sink as arguments. `StreamingScope` carries the live
+  sink from `plastic backup --live` to the writer. `Purger#failed` names the folders
+  whose status is `failed`. `Publisher` adds the row of
   `home.db`'s `backups` table and removes the folder when the insert fails. `Purger`
   deletes a folder and its row together and puts the folder back when the row delete
   fails. `Restorer` checks the delivery lock and the status, writes a safety backup, runs

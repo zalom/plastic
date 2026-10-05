@@ -28,7 +28,7 @@
       ]
     },
     "varar/backup-purge.md": {
-      "sourceHash": "fnv1a:d0a75b05",
+      "sourceHash": "fnv1a:37375b65",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",

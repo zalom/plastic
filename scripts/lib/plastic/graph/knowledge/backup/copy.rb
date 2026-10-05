@@ -14,6 +14,25 @@ module Plastic
         # so a test can watch the log between two copies, and the live sink
         # gets each log line as it is written.
         class Copy
+          # Where one backup goes: the store root, the folders of the store and the new folder's name, and its log once the copy starts.
+          Slot = Struct.new(:root, :folders, :folder, :log) do
+            def path = folders.path(folder)
+
+            def source(name) = File.join(root, "#{name}.db")
+
+            def target(name) = File.join(path, "#{name}-#{folder}.db")
+
+            # Copies each named database and logs its line; gives the bytes copied.
+            def copy_all(names, copier) = names.sum { |name| copy(name, copier).tap { |size| log.database(name, size) } }
+
+            def write_status(status, goal) = folders.write_report(folder, status:, goal:)
+
+            # Copies one database with the step passed in, and gives the size of the copy.
+            def copy(name, copier)
+              File.size(target(name).tap { |to| copier.call(source(name), to) })
+            end
+          end
+
           def self.vacuum(source, target) = Database::ConnectionPool.for(source).execute("VACUUM INTO ?", [target])
 
           def initialize(now:, databases: nil, copier: self.class.method(:vacuum), live: ->(_line) {})
@@ -26,29 +45,29 @@ module Plastic
           # The databases of the store this copy would take, by name.
           def sources(root) = Databases.chosen(@databases).select { |name| File.file?(File.join(root, "#{name}.db")) }
 
-          # Copies each source into the folder: in-progress, then done, or error with the reason in the log.
-          def call(root, folders, folder)
-            log = Log.new(folders.path(folder), now: @now, live: @live)
-            report(folders, folder, "in-progress")
-            bytes = each_copy(root, folders.path(folder), folder, log)
-            log.done(sources(root).size, bytes)
-            report(folders, folder, "done")
+          # Copies each source into the folder: in-progress, then done, or failed with the reason in the log.
+          def call(slot)
+            slot.log = Log.new(slot.path, now: @now, live: @live)
+            copy_into(slot)
           rescue => error
-            log.failed(error.message)
-            report(folders, folder, "error")
+            fail_with(slot, error)
             raise
           end
 
           private
 
-          def report(folders, folder, status) = folders.write_report(folder, status:, goal: Databases.goal(@databases))
+          def copy_into(slot)
+            report(slot, "in-progress")
+            names = sources(slot.root)
+            slot.log.done(names.size, slot.copy_all(names, @copier))
+            report(slot, "done")
+          end
 
-          def each_copy(root, path, folder, log)
-            sources(root).sum do |name|
-              target = File.join(path, "#{name}-#{folder}.db")
-              @copier.call(File.join(root, "#{name}.db"), target)
-              File.size(target).tap { |size| log.database(name, size) }
-            end
+          def report(slot, status) = slot.write_status(status, Databases.goal(@databases))
+
+          def fail_with(slot, error)
+            slot.log.failed(error.message)
+            report(slot, "failed")
           end
         end
       end

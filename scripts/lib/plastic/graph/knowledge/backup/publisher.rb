@@ -10,9 +10,9 @@ module Plastic
       class Backup
         # Writes a complete backup folder with its row, or neither.
         class Publisher
-          def initialize(target, now:, databases: nil)
+          def initialize(target, now:, databases: nil, live: ->(_line) {})
             @target = target
-            @writer = Writer.new(target.root, target.slug, now:, databases:)
+            @writer = Writer.new(target.root, target.slug, now:, copy: Copy.new(now:, databases:, live:))
           end
 
           def call

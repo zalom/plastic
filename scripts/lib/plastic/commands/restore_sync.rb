@@ -8,7 +8,6 @@ module Plastic
       UP = "up: reads the files into the rows. Where a file is newer, it replaces the restored row."
       NEITHER = "neither: changes nothing; the rows and the files stay as they are."
       QUESTION = "sync the restored store?\n  #{DOWN}\n  #{UP}\n  #{NEITHER}\nanswer down, up or neither:"
-      ANSWERS = %w[down up neither].freeze
       ASK_NEXT = "ask the person whether to sync the restored %{store} store up or down: #{DOWN} #{UP} " \
                  "Then run plastic sync down --project %{store} or plastic sync up --project %{store}; " \
                  "restore never syncs by itself".freeze
@@ -26,7 +25,7 @@ module Plastic
         dialog = context.scope.dialog
         return "none" unless dialog.terminal?
 
-        dialog.choose(QUESTION, choices: ANSWERS) || "neither"
+        dialog.choose(QUESTION, choices: %w[down up neither]) || "neither"
       end
 
       def chosen(name) = ->(context) { context.sync_choice == name }

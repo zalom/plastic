@@ -29,7 +29,7 @@ module Plastic
 
           def done(databases, bytes) = write("backup", result: "done", databases:, bytes:)
 
-          def failed(reason) = write("backup", result: "error", reason:)
+          def failed(reason) = write("backup", result: "failed", reason:)
 
           private
 

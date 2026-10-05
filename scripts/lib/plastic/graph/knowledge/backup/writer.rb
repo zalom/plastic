@@ -2,8 +2,7 @@
 
 require "fileutils"
 require_relative "../backup"
-require_relative "../../database"
-require_relative "databases"
+require_relative "copy"
 require_relative "folder_name"
 require_relative "folders"
 
@@ -14,50 +13,31 @@ module Plastic
         # Copies the store databases into a new backup folder with VACUUM INTO,
         # so a writer elsewhere never corrupts the copy. The folder carries a
         # status file: in-progress before the first copy, done after the last,
-        # error when a copy fails. A database that does not exist is never
-        # created.
+        # failed when a copy fails. A database that does not exist is never
+        # created. Copy does the copying and keeps backup.log.
         class Writer
           # Nothing to copy.
           class Error < StandardError; end
 
-          def initialize(store_root, slug, now:, databases: nil)
+          def initialize(store_root, slug, now:, databases: nil, copy: Copy.new(now:, databases:))
             @root = store_root
             @slug = slug
             @now = now
-            @databases = databases
+            @copy = copy
           end
 
           def call
-            raise Error, "no store database to back up in #{@root}" if sources.empty?
+            raise Error, "no store database to back up in #{@root}" if @copy.sources(@root).empty?
 
             folder = FolderName.for(folders.dir, @now)
             FileUtils.mkdir_p(folders.path(folder))
-            copy_all(folder)
+            @copy.call(Copy::Slot.new(@root, folders, folder))
             row(folder)
           end
-
-          def self.vacuum(source, target) = Database::ConnectionPool.for(source).execute("VACUUM INTO ?", [target])
 
           private
 
           def folders = (@folders ||= Folders.new(@root))
-
-          def sources = Databases.chosen(@databases).select { |name| File.file?(File.join(@root, "#{name}.db")) }
-
-          def report(folder, status) = folders.write_report(folder, status:, goal: Databases.goal(@databases))
-
-          def copy_all(folder)
-            report(folder, "in-progress")
-            copy(folder)
-            report(folder, "done")
-          rescue
-            report(folder, "error")
-            raise
-          end
-
-          def copy(folder)
-            sources.each { |name| self.class.vacuum(File.join(@root, "#{name}.db"), File.join(folders.path(folder), "#{name}-#{folder}.db")) }
-          end
 
           def row(folder)
             { name: "#{@slug}/#{folder}", files: folders.files(folder).size, bytes: folders.bytes(folder),

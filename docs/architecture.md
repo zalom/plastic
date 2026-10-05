@@ -229,14 +229,17 @@ its unresolved items as blocked, and `roadmap check` identifies the loop.
 global store (`--store global`, the one name that is not a key of `projects.yml`), with
 `VACUUM INTO`, into `stores/SLUG/backups/YYYYMMDDHHMMSS/`. The folder name is the UTC time,
 with `-1`, `-2` added on a collision. `--databases LIST` copies only the named ones. A
-`status.yml` in the folder holds `status:` (`in-progress`, `done` or `error`) and `goal:`
-(`full` or `partial:` and the file names). A finished backup also gets one row in the
+`status.yml` in the folder holds `status:` (`in-progress`, `done` or `failed`) and `goal:`
+(`full` or `partial:` and the file names). `backup.log` in the folder gets one line for each database (name, size in bytes, result)
+and a last line that says the backup is done, or failed and why. Every line starts with a UTC
+time and is on disk before the next copy starts. `plastic backup --live` prints each line
+as it is written. A finished backup also gets one row in the
 `backups` table of `home.db`, named `SLUG/TS`.
 `plastic backup list --store SLUG` reads the folders and shows the number, the folder name,
 the local start time, the status and the goal. It exits 1 for a backup whose row is
 missing on disk or changed, and does not fail for a folder with no row.
-`plastic backup purge --store SLUG (--older-than DATE | --all)` deletes folders and rows
-before a UTC time. `plastic backup restore --store SLUG (--timestamp TS | --latest)` puts
+`plastic backup purge --store SLUG (--older-than DATE | --all | --failed)` deletes folders
+and rows before a UTC time, all of them, or the folders whose status is `failed`. `plastic backup restore --store SLUG (--timestamp TS | --latest)` puts
 back a `done` backup after a safety backup of the current databases. It refuses while a
 delivery lock is fresh. It never syncs by itself, because a sync can undo a restore. With a terminal it asks
 whether to sync down, sync up or neither, gives one line for each answer, and runs the
