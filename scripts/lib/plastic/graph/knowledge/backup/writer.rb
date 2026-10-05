@@ -1,109 +1,63 @@
 # frozen_string_literal: true
 
-require_relative "../backup"
-require "rubygems"
-require "rubygems/package"
-require "zlib"
-require "digest"
 require "fileutils"
-require "securerandom"
-require "tmpdir"
+require_relative "../backup"
 require_relative "../../database"
-require_relative "../../schema"
-require_relative "tar_entry_writer"
-require_relative "staged"
-require_relative "archive_name"
-require_relative "sources"
+require_relative "databases"
+require_relative "folder_name"
+require_relative "folders"
 
 module Plastic
   module Graph
     module Knowledge
       class Backup
-        # Packs home.db and every store's three databases into one gzipped tar
-        # under backups/. Each database is snapshotted with VACUUM INTO into a
-        # temporary folder before packing, so a writer elsewhere never corrupts
-        # the archive. An entry name too long for a USTAR header gets a GNU
-        # long-name header first, so a long store name or a deep home path
-        # never stops the write.
+        # Copies the store databases into a new backup folder with VACUUM INTO,
+        # so a writer elsewhere never corrupts the copy. The folder carries a
+        # status file: in-progress before the first copy, done after the last,
+        # error when a copy fails. A database that does not exist is never
+        # created.
         class Writer
-          HOME_FILES = %w[origin_id config.yml projects.yml].freeze
+          # Nothing to copy.
+          class Error < StandardError; end
 
-          def initialize(home, session: nil)
-            @home = home
-            @session = session
+          def initialize(store_root, slug, now:, databases: nil)
+            @root = store_root
+            @slug = slug
+            @now = now
+            @databases = databases
           end
 
-          # A snapshot of each source, taken with VACUUM INTO, so a writer
-          # elsewhere during the pack never corrupts the archive.
-          def self.vacuum(tmp, entries)
-            entries.each_with_index.map do |(name, source), index|
-              dest = File.join(tmp, index.to_s)
-              Database::ConnectionPool.for(source).execute("VACUUM INTO ?", [dest])
-              [name, dest]
-            end
-          end
+          def call
+            raise Error, "no store database to back up in #{@root}" if sources.empty?
 
-          def self.write_tar(path, snapshots)
-            Zlib::GzipWriter.open(path) { |gz| write_entries(gz, snapshots) }
-          end
-
-          def self.write_entries(gz, snapshots)
-            tar = Gem::Package::TarWriter.new(gz)
-            writer = TarEntryWriter.new(tar, gz)
-            snapshots.each { |name, dest| writer.add(name, File.binread(dest)) }
-            tar.close
-          end
-
-          # Writes a complete archive to a private path. The work graph publishes
-          # it only with the matching metadata transaction.
-          def stage
-            name = ArchiveName.for(@home)
-            path = staging_path(name)
-            stage_archive(name, path)
-          rescue
-            FileUtils.rm_f(path) if path
-            raise
-          end
-
-          # Makes a complete staged archive visible under its unique final name.
-          def publish(staged)
-            staged.publish_to(backups_dir)
-          end
-
-          # Removes a staged or newly published archive after a failed transaction.
-          def discard(staged)
-            staged.discard_from(backups_dir)
+            folder = FolderName.for(folders.dir, @now)
+            FileUtils.mkdir_p(folders.path(folder))
+            copy_all(folder)
+            row(folder)
           end
 
           private
 
-          def backups_dir = File.join(@home, "backups").tap { |dir| FileUtils.mkdir_p(dir) }
+          def folders = (@folders ||= Folders.new(@root))
 
-          def staging_path(name) = File.join(backups_dir, ".#{name}.#{SecureRandom.hex(8)}.tmp")
+          def goal = Databases.goal(@databases)
 
-          def stage_archive(name, path)
-            files = pack(path)
-            Staged.new(row: archive_row(name, files, path), path:)
+          def sources = (@databases || Databases.all).select { |name| File.file?(File.join(@root, "#{name}.db")) }
+
+          def copy_all(folder)
+            folders.write_report(folder, status: "in-progress", goal:)
+            sources.each { |name| vacuum(File.join(@root, "#{name}.db"), File.join(folders.path(folder), "#{name}-#{folder}.db")) }
+            folders.write_report(folder, status: "done", goal:)
+          rescue
+            folders.write_report(folder, status: "error", goal:)
+            raise
           end
 
-          def archive_row(name, files, path)
-            { name:, files:, bytes: File.size(path), sha256: Digest::SHA256.file(path).hexdigest, at: Plastic.now, session_id: @session }
-          end
+          def vacuum(source, target) = Database::ConnectionPool.for(source).execute("VACUUM INTO ?", [target])
 
-          def sources = Sources.of(@home)
-
-          def home_files
-            HOME_FILES.filter_map do |name|
-              path = File.join(@home, name)
-              [name, path] if File.file?(path)
-            end
-          end
-
-          def pack(path)
-            entries = sources
-            writer = self.class
-            Dir.mktmpdir("plastic-backup") { |tmp| writer.write_tar(path, writer.vacuum(tmp, entries) + home_files) }
-            entries.size
+          def row(folder)
+            { name: "#{@slug}/#{folder}", files: folders.files(folder).size, bytes: folders.bytes(folder),
+              sha256: folders.digest(folder), at: Plastic.now(@now) }
           end
         end
       end

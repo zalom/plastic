@@ -85,6 +85,42 @@ class KnowledgeBackupRestorerTest < Plastic::TestCase
     assert_equal 2, intent_count(@restore_home)
   end
 
+  def mark(status) = Plastic::Graph::Knowledge::Backup::Folders.new(root).write_report(STAMP, status:, goal: "full")
+
+  def test_a_backup_that_is_not_done_is_refused_naming_its_status
+    mark("in-progress")
+    error = assert_raises(Restorer::NotDone) { restorer.call(STAMP) }
+
+    assert_includes error.message, "in-progress"
+  end
+
+  def test_a_backup_marked_error_replaces_nothing
+    mark("error")
+    before = bytes("work_graph")
+
+    assert_raises(Restorer::NotDone) { restorer.call(STAMP) }
+    assert_equal before, bytes("work_graph")
+  end
+
+  def test_a_restore_of_a_listed_database_replaces_only_that_database
+    before = bytes("knowledge_graph")
+    restorer.call(STAMP, databases: %w[work_graph])
+
+    assert_equal [1, before], [intent_count(@restore_home), bytes("knowledge_graph")]
+  end
+
+  def test_a_database_the_backup_does_not_hold_is_refused
+    backup_at(@restore_home, at(2026, 2, 1, 10, 0, 0), databases: %w[work_graph])
+
+    assert_raises(Restorer::Missing) { restorer.call("20260201100000", databases: %w[references]) }
+  end
+
+  def test_the_status_file_is_never_copied_into_the_store
+    restorer.call(STAMP)
+
+    refute_includes Dir.children(root), "status.yml"
+  end
+
   def test_a_restore_closes_the_open_connections_of_the_store
     intent_count(@restore_home)
     restorer.call(STAMP)

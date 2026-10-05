@@ -2,7 +2,7 @@
 
 require "forwardable"
 require_relative "knowledge/roadmap/item_start"
-require_relative "knowledge/backup/publisher"
+require_relative "knowledge/backup/store_backups"
 require_relative "printer"
 require_relative "prints"
 require_relative "knowledge/sync/preview"
@@ -86,11 +86,8 @@ module Plastic
         @writers.archives.archive(intent_id)
       end
 
-      # Packs home.db and every store's three databases, writes the row, and returns it.
-      def backup = Knowledge::Backup::Publisher.new(home_db, home_dir, session: @writers.session).call
-
-      # Describes the backup a call would write, without writing anything.
-      def preview_backup = Knowledge::Backup::Sources.plan(home_dir)
+      # The backups of this store: write, preview, list, purge and restore.
+      def backups = Knowledge::Backup::StoreBackups.new(home_db, File.join(home_dir, "stores", @retrieval.store), @retrieval.store, session: @writers.session)
 
       private
 

@@ -52,11 +52,48 @@ class BackupRestoreTest < Plastic::TestCase
     assert_nothing_changed home, restore_call(home, "--store", "alpha", "--timestamp", "20200101000000"), "20200101000000"
   end
 
-  def test_a_name_the_backup_does_not_hold_refuses
+  def test_a_database_the_backup_does_not_hold_refuses
     home = fresh_home
-    backup_at(home, at(2026, 1, 1, 10, 0, 0), name: "work_graph")
+    backup_at(home, at(2026, 1, 1, 10, 0, 0), databases: %w[work_graph])
 
-    assert_nothing_changed home, restore_call(home, "--store", "alpha", "--timestamp", FIRST, "--name", "references"), "references"
+    assert_nothing_changed home, restore_call(home, "--store", "alpha", "--timestamp", FIRST, "--databases", "references"), "references"
+  end
+
+  def mark_second(home, status)
+    Plastic::Graph::Knowledge::Backup::Folders.new(File.join(home, "stores", "alpha")).write_report(SECOND, status:, goal: "full")
+  end
+
+  def test_a_database_name_that_is_unknown_refuses_and_names_it
+    home = seeded_home
+
+    assert_nothing_changed home, restore_call(home, "--store", "alpha", "--latest", "--databases", "nope"), "nope"
+  end
+
+  def test_a_comma_list_restores_each_listed_database
+    home = seeded_home
+    knowledge = bytes(home, "knowledge_graph")
+    restore_call(home, "--store", "alpha", "--timestamp", FIRST, "--databases", "work_graph,work_graph")
+
+    assert_equal [1, knowledge], [intent_count(home), bytes(home, "knowledge_graph")]
+  end
+
+  def test_latest_skips_a_backup_that_is_not_done
+    home = seeded_home
+    mark_second(home, "in-progress")
+    restore_call(home, "--store", "alpha", "--latest")
+
+    assert_equal 1, intent_count(home)
+  end
+
+  def test_timestamp_naming_a_backup_that_is_not_done_refuses_with_its_status
+    home = seeded_home
+    mark_second(home, "error")
+    before = bytes(home, "work_graph")
+    result = restore_call(home, "--store", "alpha", "--timestamp", SECOND)
+
+    assert_equal [3, ""], [result.code, result.out]
+    assert_includes result.err, "error"
+    assert_equal before, bytes(home, "work_graph")
   end
 
   def test_latest_restores_the_newest_folder
@@ -73,10 +110,10 @@ class BackupRestoreTest < Plastic::TestCase
     assert_equal 1, intent_count(home)
   end
 
-  def test_name_restores_only_that_database
+  def test_databases_restores_only_that_database
     home = seeded_home
     knowledge = bytes(home, "knowledge_graph")
-    restore_call(home, "--store", "alpha", "--timestamp", FIRST, "--name", "work_graph")
+    restore_call(home, "--store", "alpha", "--timestamp", FIRST, "--databases", "work_graph")
 
     assert_equal [1, knowledge], [intent_count(home), bytes(home, "knowledge_graph")]
   end
@@ -99,13 +136,14 @@ class BackupRestoreTest < Plastic::TestCase
 
   def test_sync_up_after_restore_rereads_files_newer_than_the_backup
     home = fresh_home
-    spec = Dir.glob(File.join(home, "stores", "alpha", "store", "*", "spec.md")).first
+    plastic("sync", "down", "--project", "alpha", env: env_for(home), table: Plastic::CLI::TABLE)
+    intent_file = File.join(home, "stores", "alpha", "store", "1--alpha", "1--alpha.md")
     backup_at(home, at(2026, 1, 1, 10, 0, 0))
-    File.write(spec, "# Spec\n\nWritten after the backup.\n")
+    File.write(intent_file, "\nWritten after the backup.\n", mode: "a")
     restore_call(home, "--store", "alpha", "--latest")
     plastic("sync", "up", "--project", "alpha", env: env_for(home), table: Plastic::CLI::TABLE)
 
-    body = Plastic::Graph.open(home:, store: "alpha").retrieval.documents("1").find { |document| document.path == "spec.md" }&.body
-    assert_includes body, "Written after the backup."
+    bodies = Plastic::Graph.open(home:, store: "alpha").retrieval.documents("1").map(&:body)
+    assert(bodies.any? { |body| body.include?("Written after the backup.") })
   end
 end

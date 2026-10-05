@@ -28,18 +28,4 @@ class RetrievalStoreReadTest < Plastic::TestCase
 
     assert_equal %w[a.tar.gz b.tar.gz], store_read.backups.map(&:name)
   end
-
-  def test_a_backup_flag_looks_for_the_archive_in_the_home
-    backup("a.tar.gz")
-
-    assert_equal "missing", store_read.backup_flag(store_read.backups.first)
-  end
-
-  def test_a_backup_whose_archive_matches_has_no_flag
-    FileUtils.mkdir_p(File.join(@plastic_home, "backups"))
-    File.write(File.join(@plastic_home, "backups", "a.tar.gz"), "bytes")
-    backup("a.tar.gz", sha256: Digest::SHA256.hexdigest("bytes"))
-
-    assert_nil store_read.backup_flag(store_read.backups.first)
-  end
 end

@@ -8,9 +8,10 @@ require_relative "support/kernel_command"
 # One row of a command walk: the setup lines run in order on a fresh home,
 # each one required to succeed, then the call itself, all as session s-1.
 # A setup line `write PATH TEXT` writes TEXT, with \n as a line break, to
-# PATH in the store instead of calling the command line, and `legacy`
+# PATH in the store instead of calling the command line, `register SLUG`
+# makes a store directory and lists it in projects.yml, and `legacy`
 # copies the legacy store fixture in. A cell drops the usage lines a brief
-# prints, reads each time as TIME, each backup name as STAMP and each byte
+# prints, reads each time as TIME, each backup folder name as STAMP and each byte
 # count as SIZE, and squeezes the spaces that align columns. A cell written as a code span is compared by
 # the text inside it.
 module CommandWalk
@@ -28,20 +29,27 @@ module CommandWalk
 
   def plain(cell) = cell.delete_prefix("`").delete_suffix("`")
 
+  def register(kernel, slug)
+    FileUtils.mkdir_p(File.join(kernel.plastic_home, "stores", slug))
+    File.write(File.join(kernel.plastic_home, "projects.yml"), "projects:\n  #{slug}:\n    path: #{kernel.home}\n")
+  end
+
   def quoted(row, cells) = cells.to_h { |key, value| [key, row[key].to_s.start_with?("`") ? "`#{value}`" : value] }
 
   def set_up(kernel, words)
     return kernel.write(words[1], words[2].gsub("\\n", "\n")) if words.first == "write"
     return kernel.copy_legacy_store if words == ["legacy"]
+    return register(kernel, words[1]) if words.first == "register"
 
     kernel.run!(*words, env: SESSION)
   end
 
   TIME = /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}/
-  STAMP = /plastic-\d{8}-\d{6}/
+  STAMP = /(?<![\d-])\d{14}(?:-\d+)?(?!\d)/
   SIZE = /\d+ bytes/
+  START = /\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/
 
-  def normal(line) = line.gsub(TIME, "TIME").gsub(STAMP, "plastic-STAMP").gsub(SIZE, "SIZE bytes").squeeze(" ")
+  def normal(line) = line.gsub(TIME, "TIME").gsub(START, "TIME").gsub(STAMP, "STAMP").gsub(SIZE, "SIZE bytes").squeeze(" ")
 
   def cells(call)
     lines = call.out.lines(chomp: true).map { |line| normal(line) }

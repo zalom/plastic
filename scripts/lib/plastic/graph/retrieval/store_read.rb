@@ -23,13 +23,9 @@ module Plastic
           databases.fetch(:home).rows("SELECT * FROM backups ORDER BY at").map { |row| Knowledge::Backup.from_h(row) }
         end
 
-        def backup_flag(backup) = backup.flag(home_dir)
-
         private
 
         attr_reader :databases
-
-        def home_dir = File.dirname(databases.fetch(:home).path)
       end
     end
   end

@@ -34,7 +34,7 @@ class BackupTest < Plastic::TestCase
     folder = folder_names(home).first
 
     assert_match(/\A\d{14}\z/, folder)
-    assert_equal DATABASES.map { |name| "#{name}-#{folder}.db" }, Dir.children(File.join(backups_dir(home), folder)).sort
+    assert_equal DATABASES.map { |name| "#{name}-#{folder}.db" }, Dir.children(File.join(backups_dir(home), folder)).grep(/\.db\z/).sort
   end
 
   def test_a_backup_writes_one_row_named_for_the_store_and_the_folder
@@ -44,20 +44,44 @@ class BackupTest < Plastic::TestCase
     assert_equal ["alpha/#{folder_names(home).first}"], row_names(home)
   end
 
-  def test_name_backs_up_only_that_database
+  def test_databases_backs_up_only_that_database
     home = fresh_home
-    backup_call(home, "--store", "alpha", "--name", "work_graph")
+    backup_call(home, "--store", "alpha", "--databases", "work_graph")
     folder = folder_names(home).first
 
-    assert_equal ["work_graph-#{folder}.db"], Dir.children(File.join(backups_dir(home), folder))
+    assert_equal ["work_graph-#{folder}.db"], Dir.children(File.join(backups_dir(home), folder)).grep(/\.db\z/)
   end
 
   def test_an_unknown_name_refuses_and_lists_the_three
     home = fresh_home
-    result = backup_call(home, "--store", "alpha", "--name", "home")
+    result = backup_call(home, "--store", "alpha", "--databases", "home")
 
     assert_refused_with_usage result, DATABASES.join(", ")
     assert_empty folder_names(home)
+  end
+
+  def test_databases_takes_a_comma_list_and_counts_a_repeat_once
+    home = fresh_home
+    backup_call(home, "--store", "alpha", "--databases", "work_graph,references,work_graph")
+    folder = folder_names(home).first
+
+    assert_equal ["references-#{folder}.db", "status.yml", "work_graph-#{folder}.db"], Dir.children(File.join(backups_dir(home), folder)).sort
+  end
+
+  def test_a_backup_is_marked_done_with_the_goal_full
+    home = fresh_home
+    backup_call(home, "--store", "alpha")
+    report = YAML.safe_load_file(File.join(backups_dir(home), folder_names(home).first, "status.yml"))
+
+    assert_equal %w[done full], report.values_at("status", "goal")
+  end
+
+  def test_a_partial_backup_names_the_files_in_its_goal
+    home = fresh_home
+    backup_call(home, "--store", "alpha", "--databases", "work_graph")
+    report = YAML.safe_load_file(File.join(backups_dir(home), folder_names(home).first, "status.yml"))
+
+    assert_equal "partial:work_graph.db", report.fetch("goal")
   end
 
   def test_a_preview_writes_no_folder_and_no_row

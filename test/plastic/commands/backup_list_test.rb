@@ -36,6 +36,24 @@ class BackupListTest < Plastic::TestCase
     assert_match(/^2\s+20260301093000\s+#{at(*SECOND).localtime.strftime("%Y-%m-%d %H:%M:%S")}/, out)
   end
 
+  def test_the_list_shows_the_status_and_the_goal_after_the_start_time
+    home = fresh_home
+    backup_at(home, at(*FIRST))
+    backup_at(home, at(*SECOND), databases: %w[work_graph])
+    out = list_call(home, "--store", "alpha").out
+
+    assert_match(/^1\s+20260101100000\s+\S+ \S+\s+done\s+full/, out)
+    assert_match(/^2\s+20260301093000\s+\S+ \S+\s+done\s+partial:work_graph\.db/, out)
+  end
+
+  def test_a_folder_without_a_status_file_shows_unknown
+    home = fresh_home
+    backup_at(home, at(*FIRST))
+    File.delete(File.join(backups_dir(home), "20260101100000", "status.yml"))
+
+    assert_match(/^1\s+20260101100000\s+\S+ \S+\s+unknown/, list_call(home, "--store", "alpha").out)
+  end
+
   def test_a_changed_file_is_flagged_and_fails_the_call
     home = fresh_home
     backup_at(home, at(*FIRST))

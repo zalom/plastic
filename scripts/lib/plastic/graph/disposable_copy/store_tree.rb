@@ -4,8 +4,6 @@ require "fileutils"
 require "find"
 require_relative "../schema"
 require_relative "snapshot"
-require_relative "../knowledge/backup/writer"
-require_relative "../knowledge/backup/sources"
 
 module Plastic
   module Graph
@@ -17,6 +15,7 @@ module Plastic
       class StoreTree
         EPOCH = Time.at(0)
         DATABASE = Snapshot::DATABASE
+        HOME_FILES = %w[origin_id config.yml projects.yml].freeze
 
         def initialize(home, copy, slug)
           @home = home
@@ -60,7 +59,7 @@ module Plastic
         end
 
         def copy_home_files
-          Knowledge::Backup::Writer::HOME_FILES.each do |name|
+          HOME_FILES.each do |name|
             source = File.join(@home, name)
             StoreTree.copy_file(source, File.join(@copy, name)) if File.file?(source)
           end
@@ -99,8 +98,14 @@ module Plastic
 
         def sources
           home_db = File.join(@home, "home.db")
-          store = Schema.store.filter_map { |key| Knowledge::Backup::Sources.entry(source_root, @slug, key) }
+          store = Schema.store.filter_map { |key| store_entry(key) }
           [(["home.db", home_db] if File.file?(home_db)), *store].compact
+        end
+
+        def store_entry(key)
+          file = Schema.file(key)
+          path = File.join(source_root, file)
+          ["stores/#{@slug}/#{file}", path] if File.exist?(path)
         end
 
         def state = Snapshot.of(@copy)
