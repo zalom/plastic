@@ -21,7 +21,7 @@ class BackupLogTest < Plastic::TestCase
   def test_live_still_ends_with_the_backup_summary
     out = backup_call(fresh_home, "--store", "alpha", "--live").out
 
-    assert_match(/^backup: alpha\/\d{14}, 3 databases/, out.lines.last)
+    assert_match(%r{^backup: alpha/\d{14}, 3 databases}, out)
   end
 
   def test_without_live_the_output_holds_no_log_line

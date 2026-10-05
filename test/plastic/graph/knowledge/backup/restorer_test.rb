@@ -94,8 +94,8 @@ class KnowledgeBackupRestorerTest < Plastic::TestCase
     assert_includes error.message, "in-progress"
   end
 
-  def test_a_backup_marked_error_replaces_nothing
-    mark("error")
+  def test_a_backup_marked_failed_replaces_nothing
+    mark("failed")
     before = bytes("work_graph")
 
     assert_raises(Restorer::NotDone) { restorer.call(STAMP) }

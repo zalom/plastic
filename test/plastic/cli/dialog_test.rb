@@ -14,19 +14,19 @@ class DialogTest < Plastic::TestCase
   def dialog(input, json: false) = Plastic::CLI::Dialog.new(input:, output: Output.new([], json))
 
   def test_a_terminal_input_is_a_person
-    assert dialog(Terminal.new).terminal?
+    assert_predicate dialog(Terminal.new), :terminal?
   end
 
   def test_a_pipe_is_no_person
-    refute dialog(StringIO.new).terminal?
+    refute_predicate dialog(StringIO.new), :terminal?
   end
 
   def test_a_stream_that_cannot_say_it_is_a_terminal_is_no_person
-    refute dialog(Object.new).terminal?
+    refute_predicate dialog(Object.new), :terminal?
   end
 
   def test_json_output_is_never_asked_to_wait_for_a_person
-    refute dialog(Terminal.new, json: true).terminal?
+    refute_predicate dialog(Terminal.new, json: true), :terminal?
   end
 
   def test_a_known_answer_comes_back_lowercased

@@ -16,7 +16,7 @@ class KnowledgeBackupPurgerTest < Plastic::TestCase
 
     assert_raises(StandardError) { purger.remove("20260101100000") }
     assert_equal ["20260101100000"], folder_names(home)
-    assert_equal 4, Dir.children(File.join(backups_dir(home), "20260101100000")).size
+    assert_equal 5, Dir.children(File.join(backups_dir(home), "20260101100000")).size
   end
 
   def test_a_failed_row_delete_with_no_folder_just_raises
@@ -30,7 +30,7 @@ class KnowledgeBackupPurgerTest < Plastic::TestCase
   def test_a_folder_is_purged_whatever_its_status
     home = fresh_home
     backup_at(home, at(2026, 1, 1, 10, 0, 0))
-    Plastic::Graph::Knowledge::Backup::Folders.new(File.join(home, "stores", "alpha")).write_report("20260101100000", status: "error", goal: "full")
+    Plastic::Graph::Knowledge::Backup::Folders.new(File.join(home, "stores", "alpha")).write_report("20260101100000", status: "failed", goal: "full")
     home_db = Plastic::Graph.open(home:, store: "alpha").databases.fetch(:home)
     Purger.new(home_db, File.join(home, "stores", "alpha"), "alpha").remove("20260101100000")
 

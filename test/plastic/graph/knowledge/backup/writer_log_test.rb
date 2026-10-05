@@ -9,8 +9,8 @@ class KnowledgeBackupWriterLogTest < Plastic::TestCase
   STAMP = "20260101100000"
   TIME = /\A\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z /
 
-  def writer(home, copier: Backup::Writer.method(:vacuum), live: ->(_line) {}, databases: nil)
-    Backup::Writer.new(File.join(home, "stores", "alpha"), "alpha", now: at(2026, 1, 1, 10, 0, 0), databases:, copier:, live:)
+  def writer(home, copier: Backup::Copy.method(:vacuum), live: ->(_line) {}, databases: nil)
+    Backup::Writer.new(File.join(home, "stores", "alpha"), "alpha", now: at(2026, 1, 1, 10, 0, 0), copy: Backup::Copy.new(now: at(2026, 1, 1, 10, 0, 0), databases:, copier:, live:))
   end
 
   def log_path(home) = File.join(backups_dir(home), STAMP, "backup.log")
@@ -49,14 +49,14 @@ class KnowledgeBackupWriterLogTest < Plastic::TestCase
     home = fresh_home
 
     assert_raises(StandardError) { writer(home, copier: broken).call }
-    assert_match(/backup result=error reason=disk is full/, log_lines(home).last)
+    assert_match(/backup result=failed reason=disk is full/, log_lines(home).last)
   end
 
   def test_a_failing_copy_still_marks_the_folder_error
     home = fresh_home
 
     assert_raises(StandardError) { writer(home, copier: broken).call }
-    assert_equal "error", Backup::Folders.new(File.join(home, "stores", "alpha")).status(STAMP)
+    assert_equal "failed", Backup::Folders.new(File.join(home, "stores", "alpha")).status(STAMP)
   end
 
   def test_the_first_database_line_is_in_the_file_before_the_second_copy_starts
@@ -64,7 +64,7 @@ class KnowledgeBackupWriterLogTest < Plastic::TestCase
     seen = []
     copier = lambda do |source, target|
       seen << (File.exist?(log_path(home)) ? log_lines(home).size : 0)
-      Backup::Writer.vacuum(source, target)
+      Backup::Copy.vacuum(source, target)
     end
     writer(home, copier:).call
 

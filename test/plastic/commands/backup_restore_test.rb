@@ -88,12 +88,12 @@ class BackupRestoreTest < Plastic::TestCase
 
   def test_timestamp_naming_a_backup_that_is_not_done_refuses_with_its_status
     home = seeded_home
-    mark_second(home, "error")
+    mark_second(home, "failed")
     before = bytes(home, "work_graph")
     result = restore_call(home, "--store", "alpha", "--timestamp", SECOND)
 
     assert_equal [3, ""], [result.code, result.out]
-    assert_includes result.err, "error"
+    assert_includes result.err, "failed"
     assert_equal before, bytes(home, "work_graph")
   end
 
