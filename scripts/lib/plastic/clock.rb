@@ -4,5 +4,5 @@ require "time"
 
 # The one source of the time Plastic writes: local time with its offset.
 module Plastic
-  def self.now = Time.now.iso8601
+  def self.now(time = Time.now) = time.iso8601
 end

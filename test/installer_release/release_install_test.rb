@@ -35,9 +35,9 @@ class InstallerReleaseInstallTest < Minitest::Test
 
   def test_the_launcher_runs_with_an_empty_path
     install(release_files)
-    out, status = Open3.capture2e({ "HOME" => @root, "PATH" => "" }, File.join(release_path("2.0.3"), "bin", "plastic"))
+    out, err, status = Open3.capture3({ "HOME" => @root, "PATH" => "" }, File.join(release_path("2.0.3"), "bin", "plastic"))
 
-    assert_equal ["2.0.3\n", true], [out, status.success?]
+    assert_equal ["2.0.3\n", "", true], [out, err, status.success?]
   end
 
   def test_an_update_to_another_ruby_keeps_the_ruby_of_the_older_release

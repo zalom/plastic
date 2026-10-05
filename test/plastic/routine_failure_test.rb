@@ -6,17 +6,14 @@ class RoutineFailureTest < Plastic::TestCase
   def test_a_refusal_gate_exits_3_with_the_owner_line
     call = plastic("kernel", "gate", "hold")
 
-    assert_equal 3, call.code
-    assert_equal "plastic: refused, the owner holds hold\n" \
-                 "This step belongs to the owner. Stop and ask; do not retry with a flag.\n", call.err
+    assert_call call, code: 3, err: "plastic: refused, the owner holds hold\nThis step belongs to the owner. Stop and ask; do not retry with a flag.\n"
     assert_equal "refused", routine_run("kernel gate", nil).status
   end
 
   def test_a_failure_gate_exits_1_and_names_the_workflow
     call = plastic("kernel", "gate", "break")
 
-    assert_equal 1, call.code
-    assert_equal "plastic: code_hold, gate: the check broke on break\n", call.err
+    assert_call call, code: 1, err: "plastic: code_hold, gate: the check broke on break\n"
     assert_equal 1, routine_run("kernel gate", nil).exit_code
   end
 
@@ -25,6 +22,7 @@ class RoutineFailureTest < Plastic::TestCase
 
     assert_equal 0, call.code
     assert_equal "next: none\nbecause: passed pass\n", call.out
+    assert_equal "", call.err
   end
 
   def test_a_step_that_raises_fails_with_the_error
@@ -32,6 +30,7 @@ class RoutineFailureTest < Plastic::TestCase
 
     assert_equal 1, call.code
     assert_equal "plastic: code_break, explode: RuntimeError: boom\n", call.err
+    assert_equal "", call.out
   end
 
   def test_a_step_whose_done_check_still_fails_fails_the_call
@@ -39,6 +38,7 @@ class RoutineFailureTest < Plastic::TestCase
 
     assert_equal 1, call.code
     assert_equal "plastic: code_stuck, never lands: the step ran and its done check still fails\n", call.err
+    assert_equal "", call.out
   end
 
   def test_a_closing_line_with_no_value_fails_the_call
@@ -46,6 +46,7 @@ class RoutineFailureTest < Plastic::TestCase
 
     assert_equal 1, call.code
     assert_includes call.err, "code_hole, closing: Plastic::Invalid: no value for missing"
+    assert_equal "", call.out
   end
 
   def test_a_hand_off_that_stops_as_a_failure_exits_1
@@ -53,6 +54,7 @@ class RoutineFailureTest < Plastic::TestCase
 
     assert_equal 1, call.code
     assert_equal "1. Review the change\nnext: none\nbecause: the review is open\n", call.out
+    assert_equal "", call.err
   end
 
   def test_a_database_error_fails_the_call
@@ -62,5 +64,6 @@ class RoutineFailureTest < Plastic::TestCase
 
     assert_equal 1, call.code
     assert_includes call.err, "home.db"
+    assert_equal "", call.out
   end
 end

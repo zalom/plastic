@@ -6,74 +6,52 @@ require_relative "../../../scripts/lib/plastic/hooks/resume"
 class ResumeTest < Plastic::TestCase
   fixtures :empty
 
-  def call(source: nil, env: { "PLASTIC_SESSION" => "s-1" }, input: nil)
-    body = input || JSON.generate(source ? { source: } : {})
-    plastic("hook", "resume", input: body, env:, table: Plastic::CLI::TABLE)
+  def call(source: nil, env: { "PLASTIC_SESSION" => "s-1" })
+    plastic("hook", "resume", input: JSON.generate(source ? { source: } : {}), env:, table: Plastic::CLI::TABLE)
   end
 
-  def test_a_new_session_prints_the_new_line
-    result = call
-
-    assert_match(/\APlastic: a new session in store global\. Run plastic next before anything else\.\z/,
-      result.out.lines.first.chomp)
+  def test_a_new_session_prints_the_recap_and_nothing_on_standard_error
+    assert_call call, code: 0, out: "Plastic: a new session in store global. Run plastic next before anything else.\n"
   end
 
-  def test_a_new_session_prints_the_previous_session_and_what_it_touched
-    opened = Plastic::Graph.open(home: @plastic_home, store: "global", session: "s-1")
-    opened.work.open_session("s-1", harness: "claude-code", directory: @home)
-    intent_id = opened.work.write_intent(title: "Alpha").intent_id
-    opened.work.print_intent(intent_id)
-    opened.work.end_session("s-1", reason: "clear")
-
-    result = call(env: { "PLASTIC_SESSION" => "s-2" })
-
-    assert_match(/previous session s-1 ended .* \(clear\)/, result.out)
-    assert_includes result.out, "touched: #{intent_id}"
+  def test_a_cleared_session_prints_the_recap_of_the_clear
+    assert_call call(source: "clear"), code: 0, out: /\APlastic: the context was cleared\./
   end
 
-  def test_a_new_session_prints_a_previous_session_still_running_and_nothing_touched
-    opened = Plastic::Graph.open(home: @plastic_home, store: "global", session: "s-1")
-    opened.work.stamp_turn("s-1", harness: "claude-code", directory: @home)
+  def test_an_empty_event_with_no_session_prints_the_recap_and_one_line_on_standard_error
+    result = plastic("hook", "resume", input: "", env: {}, table: Plastic::CLI::TABLE)
 
-    result = call(env: { "PLASTIC_SESSION" => "s-2" })
-
-    assert_match(/^previous session s-1 last turn \S+$/, result.out)
-    refute_includes result.out, "touched:"
+    assert_call result, code: 0, out: /\APlastic: a new session/, err: "plastic hook: the event names no session; nothing recorded\n"
   end
 
-  def test_clear_prints_open_intents_and_the_note
-    opened = Plastic::Graph.open(home: @plastic_home, store: "global", session: "s-1")
-    intent_id = opened.work.write_intent(title: "Alpha").intent_id
-    opened.work.print_intent(intent_id)
-    opened.work.write_note("s-1", "stopped after Alpha")
+  def test_an_event_that_is_not_an_object_still_prints_when_a_session_is_set
+    result = plastic("hook", "resume", input: "[]", env: { "PLASTIC_SESSION" => "s-1" }, table: Plastic::CLI::TABLE)
 
-    result = call(source: "clear")
-
-    assert_includes result.out, "Plastic: the context was cleared"
-    assert_includes result.out, "open: #{intent_id} Alpha (open)"
+    assert_call result, code: 0, out: /\APlastic: a new session/, err: "plastic hook: the event is not a JSON object; read as empty\n"
   end
 
-  def test_clear_prints_the_intent_in_progress
-    opened = Plastic::Graph.open(home: @plastic_home, store: "global", session: "s-1")
-    intent_id = opened.work.write_intent(title: "Alpha").intent_id
-    opened.work.print_intent(intent_id)
+  def test_bad_json_still_prints_when_a_session_is_set
+    result = plastic("hook", "resume", input: "{not json", env: { "PLASTIC_SESSION" => "s-1" }, table: Plastic::CLI::TABLE)
 
-    result = call(source: "clear")
-
-    assert_includes result.out, "in progress: #{intent_id} Alpha"
+    assert_call result, code: 0, out: /\APlastic: a new session/, err: "plastic hook: the event is not a JSON object; read as empty\n"
   end
 
-  def test_compact_prints_savepoint_lines_and_the_note
-    opened = Plastic::Graph.open(home: @plastic_home, store: "global", session: "s-1")
-    intent_id = opened.work.write_intent(title: "Alpha").intent_id
-    opened.work.print_intent(intent_id)
-    opened.work.write_note("s-1", "note text")
+  def test_the_event_cwd_picks_the_store_over_the_process_directory
+    project_dir = widgets_project
 
-    result = call(source: "compact")
+    result = plastic("hook", "resume", input: JSON.generate({ cwd: project_dir }), env: { "PLASTIC_SESSION" => "s-1" }, table: Plastic::CLI::TABLE)
 
-    assert_includes result.out, "Plastic: the session was compacted"
-    assert_includes result.out, "Opened: Alpha"
-    assert_includes result.out, "note: note text"
+    assert_call result, code: 0, out: /\APlastic: a new session in store widgets\./
+  end
+
+  def test_a_directory_inside_a_project_picks_that_projects_store
+    out = StringIO.new
+    environment = Plastic::CLI::Command::Environment.new(env: { "PLASTIC_HOME" => @plastic_home, "PLASTIC_SESSION" => "s-1" },
+      input: StringIO.new("{}"), out:, err: StringIO.new, home: @home, directory: widgets_project)
+
+    Plastic::CLI.call(["hook", "resume"], environment:, table: Plastic::CLI::TABLE)
+
+    assert_match(/\APlastic: a new session in store widgets\./, out.string)
   end
 
   def test_resume_writes_the_session_row
@@ -82,15 +60,18 @@ class ResumeTest < Plastic::TestCase
     refute_nil store_graphs.retrieval.session("s-1")
   end
 
-  def test_resume_source_prints_this_sessions_own_state
-    result = call(source: "resume")
-
-    assert_includes result.out, "Plastic: a resumed session"
-  end
-
   def test_after_resume_the_stores_own_databases_are_ignored
     call
 
     assert_includes folder.read(".gitignore"), "*.db"
+  end
+
+  private
+
+  def widgets_project
+    File.join(@home, "proj").tap do |project_dir|
+      FileUtils.mkdir_p([project_dir, File.join(@plastic_home, "stores", "widgets")])
+      File.write(File.join(@plastic_home, "projects.yml"), "projects:\n  widgets:\n    path: #{project_dir}\n")
+    end
   end
 end

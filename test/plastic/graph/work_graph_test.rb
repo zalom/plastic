@@ -5,6 +5,8 @@ require_relative "../../test_helper"
 class WorkGraphTest < Plastic::TestCase
   def work = store_graphs.work
 
+  def run_session(graphs) = graphs.databases[:home].row("SELECT session_id FROM routine_runs WHERE subject = 1").fetch("session_id")
+
   def test_write_intent_returns_the_intent_and_ignores_the_databases
     intent = work.write_intent(title: "Alpha")
 
@@ -40,5 +42,15 @@ class WorkGraphTest < Plastic::TestCase
     work.print_intent("1")
 
     assert folder.exist?(".gitignore")
+  end
+
+  def test_a_second_session_rerunning_a_tool_moves_the_run_but_keeps_the_earlier_savepoint_lines
+    first = Plastic::Graph.open(home: @plastic_home, store: "global", session: "s-1").work
+    first.print_intent(first.write_intent(title: "Alpha").intent_id)
+    second = Plastic::Graph.open(home: @plastic_home, store: "global", session: "s-2")
+    second.work.save_routine_run(Plastic::RoutineRun.fresh("intent end", "1"))
+
+    assert_equal "s-2", run_session(second)
+    assert_equal "s-1", second.retrieval.savepoints("1").first.session_id
   end
 end

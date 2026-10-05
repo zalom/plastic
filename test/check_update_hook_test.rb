@@ -10,7 +10,7 @@ require "tmpdir"
 class CheckUpdateHookTest < Minitest::Test
   SOURCE = File.read(File.expand_path("../hooks/check-update", __dir__))
 
-  def test_names_curl
+  def test_the_hook_reads_releases_through_curl
     assert_match(/curl/, SOURCE)
   end
 
@@ -18,7 +18,7 @@ class CheckUpdateHookTest < Minitest::Test
     assert_match(%r{https://api\.github\.com/repos/zalom/plastic/releases}, SOURCE)
   end
 
-  def test_never_names_npm
+  def test_the_hook_never_names_npm_anywhere
     refute_match(/npm/, SOURCE)
   end
 end
@@ -52,17 +52,16 @@ class CheckUpdateThrottleTest < Minitest::Test
   def teardown = FileUtils.rm_rf(@dir)
 
   def test_a_cache_younger_than_twelve_hours_skips_the_check
-    run_hook
-    sleep 0.5
+    assert_equal ["", "", 0], run_hook
 
     refute_path_exists @calls
   end
 
   def test_a_cache_older_than_twelve_hours_checks_again
-    File.utime(Time.now - (13 * 3600), Time.now - (13 * 3600), cache)
-    run_hook
+    File.utime(Time.at(0), Time.at(0), cache)
 
-    assert wait_for(@calls), "the hook did not read the release list"
+    assert_equal ["", "", 0], run_hook
+    assert_path_exists @calls, "the hook did not read the release list"
   end
 
   private
@@ -70,17 +69,9 @@ class CheckUpdateThrottleTest < Minitest::Test
   def cache = File.join(@home, ".cache", "update-check.json")
 
   def run_hook
-    env = { "HOME" => @dir, "PLASTIC_HOME" => @home, "PATH" => "#{File.join(@dir, "bin")}:#{ENV.fetch("PATH")}" }
-    system(env, HOOK, out: File::NULL, err: File::NULL, exception: true)
-  end
-
-  def wait_for(path)
-    50.times do
-      return true if File.exist?(path)
-
-      sleep 0.1
-    end
-    false
+    env = { "HOME" => @dir, "PLASTIC_HOME" => @home, "PLASTIC_UPDATE_CHECK_WAIT" => "1", "PATH" => "#{File.join(@dir, "bin")}:#{ENV.fetch("PATH")}" }
+    out, err, status = Open3.capture3(env, HOOK)
+    [out, err, status.exitstatus]
   end
 end
 

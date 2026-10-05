@@ -23,7 +23,7 @@ module Plastic
 
       def source_values
         values = @context.source_projects
-        (values.empty? ? ENV.fetch("PLASTIC_SOURCE_PROJECTS", "").split(",") : values).map(&:strip).reject(&:empty?).uniq.sort
+        (values.empty? ? @context.scope.setting("PLASTIC_SOURCE_PROJECTS", "").split(",") : values).map(&:strip).reject(&:empty?).uniq.sort
       end
 
       def validate(selected)

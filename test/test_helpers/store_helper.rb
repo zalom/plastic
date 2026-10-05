@@ -27,6 +27,12 @@ module Plastic
         intent
       end
 
+      # Reads every changed file of the store into its rows, as plastic sync up does.
+      def sync_up
+        work = store_graphs.work
+        work.sync_apply(work.sync_plan(:up, {}))
+      end
+
       # Writes the rows one read adds, in the database that owns them.
       def apply_read(read) = store_graphs.databases.fetch(read.database).transaction { |batch| batch.apply([read.apply]) }
 

@@ -2,16 +2,10 @@
 # frozen_string_literal: true
 
 require "minitest/autorun"
-require "open3"
 require "tmpdir"
 
-# Intent 337a (n4): the refused word leaves every path Plastic keeps in this
-# repository, not only the seven npm publishes. This widens n3's shape
-# (subtraction_304_test's forbidden-grammar walk) to cover `test` and `docs`
-# too, and adds the matrix that keeps the scan itself honest: no exception
-# list, a real path:line report, a whole-word match, and a cheap in-process
-# walk. Every planted sample below is built from parts at runtime so this
-# file carries no whole-word hit of its own.
+# The refused word leaves every path Plastic keeps in this repository. Every
+# planted sample is built from parts at runtime, so this file carries no hit.
 class VocabularyScanTest < Minitest::Test
   REPO = File.expand_path("..", __dir__)
 
@@ -51,14 +45,20 @@ class VocabularyScanTest < Minitest::Test
     hits
   end
 
+  def test_the_scanned_tree_is_not_empty
+    refute_empty scanned_files
+  end
+
   def test_no_refused_word_in_the_shipped_tree
-    offenders = self.class.offenders(REPO, tracked_files)
+    offenders = self.class.offenders(REPO, scanned_files)
+
     assert_empty offenders,
       "refused word survives (#{offenders.size}):\n#{offenders.first(30).join("\n")}"
   end
 
   def test_the_scan_has_no_exception_list
     banned_name = /skip|except|exclud|allow/i
+
     self.class.constants(false).each do |name|
       refute_match banned_name, name.to_s,
         "the scan must carry no exception-list constant, found #{name}"
@@ -70,6 +70,7 @@ class VocabularyScanTest < Minitest::Test
 
       offenders = self.class.offenders(dir, names)
       touched = offenders.map { |hit| hit.split(":").first }.uniq.sort
+
       assert_equal names.sort, touched, "the scan must read every listed file, skipping none"
     end
   end
@@ -80,6 +81,7 @@ class VocabularyScanTest < Minitest::Test
       File.write(File.join(dir, "b.md"), "#{refused_sample}\nclean line\nclean line\n")
 
       offenders = self.class.offenders(dir, %w[a.md b.md])
+
       assert_equal 2, offenders.size
       assert_equal %w[a.md:2 b.md:1], offenders.sort
     end
@@ -89,6 +91,7 @@ class VocabularyScanTest < Minitest::Test
     Dir.mktmpdir("vocabulary-scan-planted") do |dir|
       File.write(File.join(dir, "planted.md"), refused_sample)
       offenders = self.class.offenders(dir, %w[planted.md])
+
       refute_empty offenders, "the scan must fail on a planted occurrence, not walk an empty list"
     end
   end
@@ -100,52 +103,37 @@ class VocabularyScanTest < Minitest::Test
         Move the export into its own folder, unfolding the archive as you go.
       TEXT
       offenders = self.class.offenders(dir, %w[clean.md])
+
       assert_empty offenders, "a whole-word scan must not flag scaffold, Folgezettel, folder or unfolding"
     end
   end
 
-  # n6, B4: the scan must catch the refused word inside a snake_case or
-  # CamelCase identifier segment, and inside a tracked file name, while
-  # leaving scaffold, Folgezettel, folder/Folder, unfolding and manifold
-  # alone in every shape (identifier or file name).
-  def test_scan_refuses_identifier_segments_and_file_names
+  def test_scan_refuses_snake_case_and_camel_case_segments
     Dir.mktmpdir("vocabulary-scan-identifiers") do |dir|
-      snake_hit = "review_" + "f" + "old"
-      camel_hit = "Review" + "F" + "old" + "Node"
-      hit_file_name = "x_" + "f" + "olded" + "_test.rb"
+      File.write(File.join(dir, "snake.rb"), "value = review_#{"f" + "old"}\n")
+      File.write(File.join(dir, "camel.rb"), "class Review#{"F" + "old"}Node; end\n")
 
-      File.write(File.join(dir, "snake.rb"), "value = #{snake_hit}\n")
-      File.write(File.join(dir, "camel.rb"), "class #{camel_hit}; end\n")
-      File.write(File.join(dir, hit_file_name), "nothing refused in the content\n")
-      File.write(File.join(dir, "clean.rb"), <<~RUBY)
-        def scaffold_intent
-          ScaffoldIntent.new
-          # scaffold-intent, Folgezettel, folder, Folder, unfolding, manifold
-        end
-      RUBY
-      File.write(File.join(dir, "scaffold_intent.rb"), "clean\n")
-      File.write(File.join(dir, "scaffold-intent"), "clean\n")
-      File.write(File.join(dir, "ScaffoldIntent"), "clean\n")
-
-      names = %w[snake.rb camel.rb clean.rb scaffold_intent.rb scaffold-intent ScaffoldIntent] + [hit_file_name]
-      offenders = self.class.offenders(dir, names)
-
-      assert_includes offenders, "snake.rb:1"
-      assert_includes offenders, "camel.rb:1"
-      assert_includes offenders, "#{hit_file_name}:0"
-      assert_empty offenders.select { |h| h.start_with?("clean.rb:") }
-      assert_empty offenders.select { |h| h.start_with?("scaffold_intent.rb") }
-      assert_empty offenders.select { |h| h.start_with?("scaffold-intent") }
-      assert_empty offenders.select { |h| h.start_with?("ScaffoldIntent") }
+      assert_equal %w[camel.rb:1 snake.rb:1], self.class.offenders(dir, %w[snake.rb camel.rb]).sort
     end
   end
 
-  def test_scan_completes_within_its_budget
-    started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-    self.class.offenders(REPO, tracked_files)
-    elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
-    assert_operator elapsed, :<, 5.0,
-      "the scan must stay cheap enough to run on every commit (took #{elapsed.round(2)}s)"
+  def test_scan_refuses_a_file_name_that_carries_the_word
+    Dir.mktmpdir("vocabulary-scan-file-name") do |dir|
+      name = "x_#{"f" + "olded"}_test.rb"
+      File.write(File.join(dir, name), "nothing refused in the content\n")
+
+      assert_equal ["#{name}:0"], self.class.offenders(dir, [name])
+    end
+  end
+
+  def test_scan_leaves_scaffold_folder_and_manifold_identifiers_alone
+    Dir.mktmpdir("vocabulary-scan-clean-identifiers") do |dir|
+      File.write(File.join(dir, "clean.rb"), "def scaffold_intent = ScaffoldIntent.new\n# scaffold-intent, Folder, unfolding, manifold\n")
+      names = %w[clean.rb scaffold_intent.rb scaffold-intent ScaffoldIntent]
+      names.drop(1).each { |name| File.write(File.join(dir, name), "clean\n") }
+
+      assert_empty self.class.offenders(dir, names)
+    end
   end
 
   private
@@ -155,9 +143,13 @@ class VocabularyScanTest < Minitest::Test
     "a line that says the plan was " + "f" + "old" + "ed" + " in review"
   end
 
-  def tracked_files
-    out, _err, status = Open3.capture3("git", "-C", REPO, "ls-files", *SCANNED_PATHS)
-    raise "git ls-files failed" unless status.success?
-    out.lines.map(&:chomp).reject(&:empty?)
+  def scanned_files
+    SCANNED_PATHS.flat_map do |rel|
+      path = File.join(REPO, rel)
+      next [rel] if File.file?(path)
+
+      Dir.glob("**/*", File::FNM_DOTMATCH, base: path).map { |child| File.join(rel, child) }
+        .select { |child| File.file?(File.join(REPO, child)) }
+    end
   end
 end

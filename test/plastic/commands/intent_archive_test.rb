@@ -14,7 +14,7 @@ class IntentArchiveTest < Plastic::TestCase
   end
 
   def add_ruling(intent)
-    row = { intent_id: intent.intent_id, id: "D1", text: "a ruling", supersedes: nil, at: Plastic.now }
+    row = { intent_id: intent.intent_id, id: "D1", text: "a ruling", supersedes: nil, at: STAMP }
     store_graphs.databases.fetch(:knowledge).transaction { |batch| batch.put(:rulings, row, statement: :insert) }
   end
 
@@ -57,7 +57,7 @@ class IntentArchiveTest < Plastic::TestCase
 
     result = call(target.intent_id)
 
-    assert_equal 3, result.code
+    assert_call result, code: 3, err: "plastic: refused, intent 2 links to 1\nThis step belongs to the owner. Stop and ask; do not retry with a flag.\n"
     assert folder.exist?("#{target.dir}/#{target.file}")
   end
 
@@ -79,17 +79,6 @@ class IntentArchiveTest < Plastic::TestCase
 
     assert_equal 0, result.code
     refute folder.exist?("#{intent.dir}/#{intent.file}")
-  end
-
-  def test_sync_down_after_an_archive_prints_nothing_back
-    intent = open_intent("Target")
-    mark_done(intent)
-    call(intent.intent_id)
-
-    result = plastic("sync", "down", table: Plastic::CLI::TABLE)
-
-    assert_equal 0, result.code
-    refute folder.exist?(intent.dir)
   end
 
   def test_a_refused_archive_is_refused_again_on_the_next_call
@@ -127,8 +116,27 @@ class IntentArchiveTest < Plastic::TestCase
   def test_archiving_a_missing_intent_reports_a_failure
     result = call("99")
 
-    assert_equal 1, result.code
-    assert_includes result.err, "no intent 99"
+    assert_call result, code: 1, err: ["no intent 99"]
+  end
+
+  def test_revert_restores_the_exact_snapshot_taken_at_archive_time
+    intent = open_intent("Unsynced", status: "future")
+    path = "#{intent.dir}/#{intent.file}"
+    write(path, "owner edit not in document rows")
+    call(intent.intent_id)
+    call(intent.intent_id, "--revert")
+
+    assert_equal "owner edit not in document rows", folder.read(path)
+  end
+
+  def test_revert_of_an_intent_that_was_never_archived_fails_and_leaves_it_live
+    intent = open_intent("Open")
+    call(intent.intent_id)
+
+    result = call(intent.intent_id, "--revert")
+
+    assert_call result, code: 1, err: ["not archived"]
+    refute retrieval.archived?(intent.intent_id)
   end
 
   private

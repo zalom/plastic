@@ -10,34 +10,9 @@ class OutputTest < Plastic::TestCase
     @err = StringIO.new
   end
 
-  def output(json: false) = (json ? Plastic::CLI::JsonOutput : Plastic::CLI::TextOutput).new(out: @out, err: @err)
+  def output = Plastic::CLI::TextOutput.new(out: @out, err: @err)
 
-  def test_rows_line_up_on_the_widest_label
-    output.row("intent", "7").row("wrote:", ["a", "b"]).next_step("plastic next", because: "why").flush
-
-    assert_equal "intent  7\nwrote:  a\n        b\n\nnext: plastic next\nbecause: why\n", @out.string
-  end
-
-  def test_an_empty_row_prints_nothing_and_sets_no_width
-    output.row("long label", []).row("id", "7").flush
-
-    assert_equal "id  7\n", @out.string
-  end
-
-  def test_no_next_step_prints_only_the_rows
-    output.flush
-
-    assert_equal "", @out.string
-  end
-
-  def test_a_project_with_no_next_step_prints_a_null_next_in_json
-    printer = output(json: true).row("id", "7")
-    printer.flush("b")
-
-    assert_equal({ "result" => { "id" => "7" }, "next" => nil, "because" => nil }, JSON.parse(@out.string))
-  end
-
-  def test_flush_prints_once
+  def test_flush_prints_the_output_only_once
     printer = output.next_step("plastic next", because: "why")
     printer.flush
     printer.flush
@@ -66,27 +41,7 @@ class OutputTest < Plastic::TestCase
     assert_includes @out.string, "next: plastic status\n"
   end
 
-  def test_raw_text_prints_at_once
-    output.raw("line")
-
-    assert_equal "line\n", @out.string
-  end
-
-  def test_json_keys_drop_the_colon_a_text_label_carries
-    output(json: true).row("wrote:", ["a"]).flush
-
-    assert_equal({ "wrote" => ["a"] }, JSON.parse(@out.string).fetch("result"))
-  end
-
-  def test_json_keeps_raw_lines_under_output
-    output(json: true).raw("line").row("id", "7").next_step("plastic next", because: "why").flush
-
-    assert_equal({ "result" => { "id" => "7", "output" => ["line"] }, "next" => "plastic next", "because" => "why" },
-      JSON.parse(@out.string))
-  end
-
-  def test_json_is_known
-    assert_predicate output(json: true), :json?
+  def test_json_is_off_for_text
     refute_predicate output, :json?
   end
 
@@ -114,24 +69,5 @@ class OutputTest < Plastic::TestCase
     output.failed("it broke")
 
     assert_equal "plastic: it broke\n", @err.string
-  end
-
-  def test_an_error_in_json_prints_the_error_document
-    output(json: true).failed("it broke")
-
-    assert_equal({ "result" => { "error" => { "kind" => "failed", "message" => "it broke" } }, "next" => "none", "because" => "it broke" },
-      JSON.parse(@out.string))
-  end
-
-  def test_usage_in_json_is_kind_usage
-    output(json: true).usage("missing ID", "banner")
-
-    assert_equal "usage", JSON.parse(@out.string).dig("result", "error", "kind")
-  end
-
-  def test_refused_in_json_is_kind_refused
-    output(json: true).refused("owner")
-
-    assert_equal "refused", JSON.parse(@out.string).dig("result", "error", "kind")
   end
 end

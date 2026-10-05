@@ -19,15 +19,18 @@ class IntentDiscoverTest < Plastic::TestCase
     assert_equal before, File.binread(source)
   end
 
-  def test_rejects_a_missing_or_unsafe_owning_intent_before_writing_a_manifest
+  def test_rejects_a_missing_owning_intent_before_writing_a_manifest
     write_document("global", "global evidence")
 
     missing = plastic("intent", "discover", "99", "evidence", "--json", table: Plastic::CLI::TABLE)
-    unsafe = plastic("intent", "discover", "../escape", "evidence", "--json", table: Plastic::CLI::TABLE)
 
-    assert_equal 1, missing.code
-    assert_equal 2, unsafe.code
+    assert_call missing, code: 1, out: ["code_discover_retrieval, gate: no intent 99 in owning store"],
+      err: "plastic: code_discover_retrieval, gate: no intent 99 in owning store\n"
     refute_path_exists store_path("discovery/99.json")
+  end
+
+  def test_rejects_an_unsafe_owning_intent_as_usage
+    assert_call plastic("intent", "discover", "../escape", "evidence", "--json", table: Plastic::CLI::TABLE), code: 2, out: ['"kind": "usage"', 'invalid intent id \"../escape\"'], err: /invalid intent id "\.\.\/escape"/
   end
 
   def test_refuses_unknown_or_unmaintained_source_stores_without_recreating_them
@@ -52,11 +55,8 @@ class IntentDiscoverTest < Plastic::TestCase
 
     result = plastic("intent", "discover", "1", "evidence", "--source-project", "other", "--source-project", "global", "--json", table: Plastic::CLI::TABLE)
 
-    assert_equal 0, result.code
-    document = JSON.parse(result.out)
-    manifest = document.fetch("result").fetch("discovery")
-
-    assert_discovery(manifest, result)
+    assert_equal [0, ""], [result.code, result.err]
+    assert_discovery(JSON.parse(result.out).dig("result", "discovery"), result)
   end
 
   def test_hands_discovery_to_the_external_agent_through_a_routine
@@ -66,8 +66,9 @@ class IntentDiscoverTest < Plastic::TestCase
     result = plastic("intent", "discover", "1", "evidence", "--json", table: Plastic::CLI::TABLE)
     run = Plastic::Graph.open(home: @plastic_home, store: "global").retrieval.last_run("1")
 
-    assert_equal 0, result.code
+    assert_equal [0, ""], [result.code, result.err]
     assert_routine_handoff(run)
+    assert_equal "evidence", JSON.parse(result.out).dig("result", "discovery", "query")
   end
 
   private
@@ -82,8 +83,7 @@ class IntentDiscoverTest < Plastic::TestCase
   end
 
   def assert_discovery_failure(result, message)
-    assert_equal 1, result.code
-    assert_includes result.err, message
+    assert_call result, code: 1, err: [message]
   end
 
   def assert_routine_handoff(run)
@@ -128,7 +128,7 @@ class IntentDiscoverTest < Plastic::TestCase
 
   def write_saved_context(data)
     Plastic::Graph.open(home: @plastic_home, store: "global").databases.fetch(:knowledge).transaction do |batch|
-      batch.put(:retrieval_contexts, { intent_id: "1", data:, updated_at: Plastic.now })
+      batch.put(:retrieval_contexts, { intent_id: "1", data:, updated_at: STAMP })
     end
   end
 end

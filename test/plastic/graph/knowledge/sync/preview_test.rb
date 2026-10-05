@@ -11,7 +11,7 @@ class KnowledgeSyncPreviewTest < Plastic::TestCase
 
   def conflicting_spec
     store_graphs.databases[:knowledge].transaction do |batch|
-      batch.put(:documents, { intent_id: "1", path: "spec.md", body: "row change", updated_at: Plastic.now })
+      batch.put(:documents, { intent_id: "1", path: "spec.md", body: "row change", updated_at: STAMP })
     end
     write(SPEC, "file change")
   end

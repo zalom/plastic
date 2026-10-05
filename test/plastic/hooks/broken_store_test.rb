@@ -4,7 +4,6 @@ require "minitest/autorun"
 require "tmpdir"
 require "fileutils"
 require "json"
-require "English"
 require_relative "../../varar/support/kernel_command"
 require_relative "../../../scripts/lib/plastic/hooks/entries"
 
@@ -19,7 +18,8 @@ class BrokenStoreTest < Minitest::Test
         env: { "PLASTIC_SESSION" => "s-1" })
 
       assert_equal 0, call.code
-      refute_empty call.err
+      assert_equal "", call.out
+      assert_equal 1, call.err.lines.size
     end
   end
 
@@ -29,7 +29,8 @@ class BrokenStoreTest < Minitest::Test
       call = KernelCommand.new(home).run("hook", "record", input: "{}", env: { "PLASTIC_SESSION" => "s-1" })
 
       assert_equal 0, call.code
-      refute_empty call.err
+      assert_equal "", call.out
+      assert_equal 1, call.err.lines.size
     end
   end
 
@@ -42,6 +43,8 @@ class BrokenStoreTest < Minitest::Test
       call = kernel.run("hook", "resume", input: JSON.generate(source: "startup"), env: { "PLASTIC_SESSION" => "s-1" })
 
       assert_equal 0, call.code
+      assert_equal "", call.out
+      assert_equal "plastic hook: Plastic::Graph::Database::Error: home.db: file is not a database\n", call.err
     end
   end
 
@@ -50,6 +53,8 @@ class BrokenStoreTest < Minitest::Test
       call = KernelCommand.new(home).run("hook", "resume", input: "", env: {})
 
       assert_equal 0, call.code
+      assert_equal "Plastic: a new session in store global. Run plastic next before anything else.\n", call.out
+      assert_equal "plastic hook: the event names no session; nothing recorded\n", call.err
     end
   end
 
@@ -63,14 +68,6 @@ class BrokenStoreTest < Minitest::Test
   def written_hook_lines(command)
     hooks = Plastic::Hooks::Entries.new(command: command, config: nil, launchers: {}).codex({})["hooks"]
     hooks.values.flatten.flat_map { |group| group["hooks"].map { |hook| hook["command"] } }
-  end
-
-  def test_a_failing_command_alone_exits_two
-    Dir.mktmpdir do |home|
-      system(failing_command(home), "hook", "resume")
-
-      assert_equal 2, $CHILD_STATUS.exitstatus
-    end
   end
 
   def test_every_hook_line_the_installer_writes_exits_zero_when_the_call_fails

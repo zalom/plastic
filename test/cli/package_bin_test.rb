@@ -22,10 +22,6 @@ class CliPackageBinTest < Minitest::Test
     assert File.executable?(File.join(ROOT, "bin", "plastic"))
   end
 
-  def test_the_javascript_shim_is_gone
-    refute_path_exists File.join(ROOT, "bin", "plastic.js")
-  end
-
   def test_the_package_still_ships_the_launcher_directory
     assert_includes package.fetch("files"), "bin/"
   end

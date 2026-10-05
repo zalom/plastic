@@ -30,12 +30,12 @@ class RecordTest < Plastic::TestCase
   end
 
   def test_a_lapsed_lock_still_naming_this_session_is_renewed
-    lapsed = (Time.now - 3600).iso8601
+    lapsed = "2026-10-05T09:00:00+02:00"
     put(:home, :locks, { store: "global", intent_id: "1", session_id: "s-1", mode: "auto", taken_at: lapsed, renewed_at: lapsed })
 
     call
 
-    assert_predicate store_graphs.retrieval.lock("1"), :live?
+    refute_equal lapsed, store_graphs.retrieval.lock("1").renewed_at
   end
 
   def test_end_sets_the_reason_and_not_the_turn
@@ -48,24 +48,22 @@ class RecordTest < Plastic::TestCase
   end
 
   def test_a_permit_prints_nothing
-    assert_equal "", call.out
+    assert_call call, code: 0
   end
 
   def test_a_block_prints_the_decision_as_one_json_line
     File.write(File.join(@plastic_home, "config.yml"), "runner:\n  stop_hook: true\n")
-    put(:home, :locks, { store: "global", intent_id: "1", session_id: "s-1", mode: "auto", taken_at: Plastic.now, renewed_at: Plastic.now })
+    put(:home, :locks, { store: "global", intent_id: "1", session_id: "s-1", mode: "auto", taken_at: STAMP, renewed_at: STAMP })
     put(:work, :nodes, { intent_id: "1", id: "a", state: "open" })
 
     result = call(input: JSON.generate(stop_hook_active: false))
 
-    assert_equal({ "decision" => "block", "reason" => "Plastic: intent 1 still has ready work. Run plastic next for it and " \
-                                                       "dispatch what it prints before stopping." }, JSON.parse(result.out))
+    assert_call result, code: 0, out: %({"decision":"block","reason":"Plastic: intent 1 still has ready work. Run plastic next for it and dispatch what it prints before stopping."}\n)
   end
 
   def test_a_call_with_no_session_prints_one_stderr_line
     result = call(env: {})
 
-    assert_equal ["", 0], [result.out, result.code]
-    assert_includes result.err, "plastic hook: the event names no session; nothing recorded"
+    assert_call result, code: 0, err: "plastic hook: the event names no session; nothing recorded\n"
   end
 end

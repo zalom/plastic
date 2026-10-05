@@ -101,8 +101,16 @@ class RealHomeGuardTest < Minitest::Test
     assert_empty installer_spawns(source)
   end
 
+  def scanned_test_files
+    Dir[File.join(ROOT, "test", "**", "*_test.rb")]
+  end
+
+  def test_the_scan_reads_a_list_of_test_files_that_is_not_empty
+    refute_empty scanned_test_files
+  end
+
   def test_every_test_that_spawns_an_installer_gives_it_a_throwaway_home
-    offenders = Dir[File.join(ROOT, "test", "**", "*_test.rb")].sort.reject do |path|
+    offenders = scanned_test_files.sort.reject do |path|
       source = File.read(path)
       installer_spawns(source).empty? || source.include?(%("HOME"))
     end

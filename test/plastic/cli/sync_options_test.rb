@@ -24,7 +24,7 @@ class SyncOptionsTest < Plastic::TestCase
       [Plastic::Commands::SyncUp, Plastic::Commands::SyncDown].map { |command| [*command.describe.to_h.values_at(:name, :summary), command.chain.keys] }
   end
 
-  def test_both_chains_verify
+  def test_both_sync_chains_pass_verify
     assert_equal [true, true], [Plastic::Commands::SyncUp.verify, Plastic::Commands::SyncDown.verify]
   end
 end

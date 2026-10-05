@@ -79,7 +79,7 @@ class RetrievalBackupRecordsTest < Plastic::TestCase
   private
 
   def create_backup
-    row = { name: "fixture.tar.gz", files: 1, bytes: 7, sha256: Digest::SHA256.hexdigest("archive"), at: Plastic.now, session_id: "fixture" }
+    row = { name: "fixture.tar.gz", files: 1, bytes: 7, sha256: Digest::SHA256.hexdigest("archive"), at: STAMP, session_id: "fixture" }
     backup = Plastic::Graph::Knowledge::Backup.from_h(row.transform_keys(&:to_s))
     FileUtils.mkdir_p(File.dirname(backup_path(backup)))
     File.binwrite(backup_path(backup), "archive")

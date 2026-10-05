@@ -143,7 +143,7 @@ class MutationVerdictsTest < Minitest::Test
     assert_includes error.message, "threshold"
   end
 
-  def test_no_mutants_passes
+  def test_a_run_with_no_mutants_passes
     write_report(summary: { "killed" => 0, "survived" => 0 })
 
     score = gate.call

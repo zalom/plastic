@@ -10,6 +10,13 @@ class GraphReadyTest < Plastic::TestCase
 
   def add_node(title) = plastic("node", "add", "1", title, "--criterion", "done", table: Plastic::CLI::TABLE)
 
+  def two_linked_nodes
+    open_intent
+    add_node("a")
+    add_node("b")
+    plastic("edge", "add", "1", "n1", "n2", table: Plastic::CLI::TABLE)
+  end
+
   def test_an_open_node_with_no_need_is_ready
     open_intent
     add_node("a")
@@ -21,29 +28,23 @@ class GraphReadyTest < Plastic::TestCase
   end
 
   def test_a_node_whose_need_is_not_done_is_not_ready
-    open_intent
-    add_node("a")
-    add_node("b")
-    plastic("edge", "add", "1", "n1", "n2", table: Plastic::CLI::TABLE)
+    two_linked_nodes
 
     result = call("1")
 
-    assert_includes result.out, "ready: n1 a"
+    assert_call result, code: 0, out: ["ready: n1 a"]
     refute_includes result.out, "ready: n2 b"
   end
 
   def test_claimed_work_stays_with_its_worker
-    open_intent
-    add_node("a")
-    add_node("b")
-    plastic("edge", "add", "1", "n1", "n2", table: Plastic::CLI::TABLE)
+    two_linked_nodes
     plastic("node", "claim", "1", "n1", table: Plastic::CLI::TABLE)
     plastic("node", "done", "1", "n1", "--judge", "owner", "--findings", "ok", table: Plastic::CLI::TABLE)
     plastic("node", "claim", "1", "n2", table: Plastic::CLI::TABLE)
 
     result = call("1")
 
+    assert_call result, code: 0, out: ["Continue node n2 with its worker"]
     refute_includes result.out, "ready:"
-    assert_includes result.out, "Continue node n2 with its worker"
   end
 end

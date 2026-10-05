@@ -23,13 +23,23 @@ class InstallerReleaseHttpsFetchTest < Minitest::Test
     end
   end
 
-  def test_reads_a_url_over_https
+  # A success answer that carries its body, the way a read answer does.
+  class Ok < Net::HTTPOK
+    attr_reader :body
+
+    def initialize(body)
+      super("1.1", "200", "OK")
+      @body = body
+    end
+  end
+
+  def test_a_url_over_https_is_read
     http = FakeHttp.new("https://example.test/a" => ok("body"))
 
     assert_equal "body", fetch(http).read("https://example.test/a")
   end
 
-  def test_follows_a_redirect
+  def test_a_redirect_is_followed_to_its_target
     http = FakeHttp.new("https://example.test/a" => redirect("https://cdn.example.test/b"), "https://cdn.example.test/b" => ok("moved"))
 
     assert_equal "moved", fetch(http).read("https://example.test/a")
@@ -79,11 +89,7 @@ class InstallerReleaseHttpsFetchTest < Minitest::Test
 
   def fetch(http) = InstallerRelease::HttpsFetch.new(http: http)
 
-  def ok(body)
-    response = Net::HTTPOK.new("1.1", "200", "OK")
-    response.define_singleton_method(:body) { body }
-    response
-  end
+  def ok(body) = Ok.new(body)
 
   def redirect(location)
     response = Net::HTTPFound.new("1.1", "302", "Found")
