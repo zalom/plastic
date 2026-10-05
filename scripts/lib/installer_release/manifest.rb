@@ -34,6 +34,11 @@ module InstallerRelease
     end
 
     def self.official_url(tag) = "https://github.com/zalom/plastic/releases/tag/#{tag}"
+
+    def self.identity(version)
+      channel = version[/-(alpha|beta)\b/, 1] || "latest"
+      { "version" => version, "tag" => "v#{version}", "channel" => channel }
+    end
   end
 
   # One check of a parsed manifest against the archive on disk and the

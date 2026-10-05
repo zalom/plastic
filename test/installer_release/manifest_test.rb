@@ -45,6 +45,12 @@ class InstallerReleaseManifestTest < Minitest::Test
     assert_equal "release repository is not official HTTPS", problem(with_release("repository" => "http://x"), {})
   end
 
+  def test_names_the_identity_of_a_version_with_its_channel
+    assert_equal({ "tag" => "v2.0.3", "version" => "2.0.3", "channel" => "latest" }, InstallerRelease::Manifest.identity("2.0.3"))
+    assert_equal "alpha", InstallerRelease::Manifest.identity("2.1.0-alpha.4").fetch("channel")
+    assert_equal "beta", InstallerRelease::Manifest.identity("2.1.0-beta.1").fetch("channel")
+  end
+
   private
 
   def with_release(changes) = @manifest.merge("release" => @manifest.fetch("release").merge(changes))

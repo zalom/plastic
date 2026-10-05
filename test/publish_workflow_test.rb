@@ -159,7 +159,14 @@ class PublishWorkflowTest < Minitest::Test
   def test_the_release_carries_the_archive_at_the_pushed_commit
     run = step_named("Create the tag and the GitHub release")["run"]
 
-    assert_includes run, 'gh release create "$TAG" plastic.tgz plastic.manifest.json --target "$GITHUB_SHA"'
+    assert_includes run, 'gh release create "$TAG" plastic.tgz plastic.tgz.sha256 plastic.manifest.json --target "$GITHUB_SHA"'
+  end
+
+  def test_the_archive_carries_its_version_and_checksum
+    run = step_named("Build the archive and manifest")["run"]
+
+    assert_operator run.index('printf "%s\n" "$VERSION" > VERSION'), :<, run.index("npm pack")
+    assert_includes run, "sha256sum plastic.tgz > plastic.tgz.sha256"
   end
 
   def test_builds_the_archive_and_manifest_together

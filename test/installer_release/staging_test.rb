@@ -7,7 +7,7 @@ class InstallerReleaseStagingTest < Minitest::Test
 
   def test_stages_a_verified_candidate_in_its_own_directory
     archive = archive_with
-    candidate = stage(archive, manifest_for(archive))
+    candidate = stage(archive)
 
     assert candidate.start_with?(File.join(@root, "plastic-stage-"))
     assert_equal "2.0.3\n", File.read(File.join(candidate, "VERSION"))
@@ -16,7 +16,7 @@ class InstallerReleaseStagingTest < Minitest::Test
   def test_removes_the_stage_when_the_candidate_is_unusable
     archive = archive_with(version: "2.0.2")
 
-    error = assert_raises(InstallerRelease::VerificationError) { stage(archive, manifest_for(archive)) }
+    error = assert_raises(InstallerRelease::VerificationError) { stage(archive) }
     assert_equal "candidate version does not match", error.message
     assert_empty Dir.glob(File.join(@root, "plastic-stage-*"))
   end
@@ -34,7 +34,7 @@ class InstallerReleaseStagingTest < Minitest::Test
 
   private
 
-  def stage(archive, manifest) = InstallerRelease::Staging.create(archive: archive, manifest: manifest, parent: @root)
+  def stage(archive) = InstallerRelease::Staging.create(archive: archive, version: "2.0.3", parent: @root)
 
   def candidate_problem(path)
     error = assert_raises(InstallerRelease::VerificationError) { InstallerRelease::Candidate.check(path, "2.0.3") }
