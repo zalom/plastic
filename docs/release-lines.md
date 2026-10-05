@@ -52,8 +52,7 @@ What an external `latest` user can rely on:
 2. A stable release carries no pre-release suffix, publishes to npm `latest`, and the newest
    stable release always carries the GitHub "Latest" badge (`gh release create --latest` on
    every cut).
-3. The three repo version files (`package.json`, `.claude-plugin/plugin.json`,
-   `.claude-plugin/marketplace.json`) always agree. Checked mechanically by
+3. The release tag always matches the version in `package.json`. Checked mechanically by
    `scripts/lib/release_guard.rb`.
 4. A stable cut collects only intents that cleared their lane's bar: default-lane intents by a
    green suite, beta-lane intents by suite green plus their lane's own verification (real-use

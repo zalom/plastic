@@ -1713,8 +1713,8 @@ structurally: no npm token exists anywhere, on any machine or in any GitHub secr
 **The trigger (intent 376).** A push to `alpha`, `beta` or `main` is the release. The workflow
 reads the version from `package.json`. When the tag for that version exists, it stops. Otherwise
 it runs the suite and the guard, packs one archive, creates the tag and the GitHub release
-with `plastic.tgz` attached, and publishes that same archive to npm. To release, change the
-version in the three version files and push the branch. `install.sh` at the repository root
+with `plastic.tgz` attached. On `main` it also publishes that same archive to npm. To release,
+change the version in `package.json` and push the branch. `install.sh` at the repository root
 downloads the archive of the latest stable release, unpacks it under `~/.local/share/plastic` and links
 `~/.local/bin/plastic`.
 

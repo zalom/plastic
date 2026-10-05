@@ -22,6 +22,8 @@ module Plastic
 
       GLOBAL = "global"
 
+      attr_reader :home
+
       def initialize(env:, home:, slug: nil, directory: Dir.pwd)
         @env = env
         @home = home
