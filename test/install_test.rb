@@ -5,12 +5,12 @@ require "stringio"
 require "tmpdir"
 require_relative "../scripts/install"
 
-class InstallerRuntimeTest < Minitest::Test
+class InstallTest < Minitest::Test
   class Probe < Install
     attr_accessor :gate, :selected, :registered, :runs
 
-    def initialize(home)
-      super(package_root: File.expand_path("..", __dir__), plastic_home: home, version: "2.1.0")
+    def initialize(home, version)
+      super(package_root: File.expand_path("..", __dir__), plastic_home: home, version:)
       @gate = 0
       @selected = []
       @registered = []
@@ -78,9 +78,7 @@ class InstallerRuntimeTest < Minitest::Test
 
   def with_probe(version: "2.1.0")
     Dir.mktmpdir("plastic-installer-runtime") do |home|
-      installer = Probe.new(home)
-      installer.instance_variable_set(:@version, version)
-      yield installer
+      yield Probe.new(home, version)
     end
   end
 end
