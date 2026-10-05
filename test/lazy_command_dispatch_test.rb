@@ -22,11 +22,9 @@ class LazyCommandDispatchTest < Minitest::Test
 
   def test_each_dependency_family_dispatches_in_a_fresh_process
     Dir.mktmpdir do |home|
-      %w[status hook\ resume].each do |command|
-        result = run_cli(home, *command.split)
-
-        assert_equal [0, ""], [result.fetch(:status).exitstatus, result.fetch(:err)], command
-        refute_empty result.fetch(:out), command
+      [run_cli(home, "status"), run_cli(home, "hook", "resume", stdin_data: '{"session_id":"s1"}')].each do |result|
+        assert_equal [0, ""], [result.fetch(:status).exitstatus, result.fetch(:err)]
+        refute_empty result.fetch(:out)
       end
     end
   end
@@ -40,10 +38,15 @@ class LazyCommandDispatchTest < Minitest::Test
 
   private
 
-  def environment(home) = { "HOME" => home, "PLASTIC_HOME" => home, "PLASTIC_TMP" => File.join(home, "tmp") }
+  SESSION_VARIABLES = %w[PLASTIC_SESSION CLAUDE_CODE_SESSION_ID CODEX_SESSION_ID CODEX_THREAD_ID].freeze
 
-  def run_cli(home, *argv)
-    out, err, status = Open3.capture3(environment(home), File.join(ROOT, "bin", "plastic"), *argv)
+  def environment(home)
+    SESSION_VARIABLES.to_h { |variable| [variable, nil] }
+      .merge("HOME" => home, "PLASTIC_HOME" => home, "PLASTIC_TMP" => File.join(home, "tmp"))
+  end
+
+  def run_cli(home, *argv, stdin_data: "")
+    out, err, status = Open3.capture3(environment(home), File.join(ROOT, "bin", "plastic"), *argv, stdin_data:)
     { out:, err:, status: }
   end
 
