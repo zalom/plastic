@@ -1,79 +1,28 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-require "digest"
 require "fileutils"
 require "json"
 require "open3"
-require "rubygems/package"
+require "optparse"
 require "tmpdir"
-require "zlib"
-require_relative "../scripts/lib/installer_release"
+require_relative "../scripts/lib/release_build"
 
 ROOT = File.expand_path("..", __dir__)
 
-# One release built from this checkout the way the publish job lays it out:
-# plastic.tgz with the package files under package/, its checksum, and the
-# manifest. Nothing is downloaded.
-class ReleaseBuild
-  EXTRA = %w[package.json README.md LICENSE].freeze
-
-  def initialize(version, directory)
-    @version = version
-    @directory = directory
-  end
-
-  def call
-    FileUtils.mkdir_p(directory)
-    write_archive
-    File.write("#{archive}.sha256", "#{Digest::SHA256.file(archive).hexdigest}  plastic.tgz\n")
-    InstallerRelease::Manifest.write(File.join(directory, "plastic.manifest.json"), archive:, release:)
-    directory
-  end
-
-  private
-
-  attr_reader :version, :directory
-
-  def archive = File.join(directory, "plastic.tgz")
-
-  def release = InstallerRelease::Manifest.identity(version).merge("platform" => "universal", "architecture" => "universal")
-
-  def write_archive
-    Zlib::GzipWriter.open(archive) do |gzip|
-      Gem::Package::TarWriter.new(gzip) do |tar|
-        package_files.each { |name| add(tar, name, File.binread(File.join(ROOT, name)), File.stat(File.join(ROOT, name)).mode & 0o777) }
-        add(tar, "VERSION", "#{version}\n", 0o644)
-      end
-    end
-  end
-
-  def add(tar, name, content, mode)
-    tar.add_file_simple("package/#{name}", mode, content.bytesize) { |io| io.write(content) }
-  end
-
-  def package_files
-    listed = JSON.parse(File.read(File.join(ROOT, "package.json"))).fetch("files") - ["VERSION"]
-    (listed.flat_map { |entry| expand(entry) } + EXTRA).uniq.sort
-  end
-
-  def expand(entry)
-    return [entry] unless entry.end_with?("/")
-
-    Dir.glob("#{entry}**/*", File::FNM_DOTMATCH, base: ROOT).select { |name| File.file?(File.join(ROOT, name)) }
-  end
-end
-
 # Installs Plastic under an empty home from two releases built out of this
-# checkout, then updates, rolls back and uninstalls it. A step fails when it
+# checkout, then updates, rolls back and uninstalls it. With --release, the
+# first release is the given directory of built files, so a release job
+# installs the files it is about to publish. A step fails when it
 # exits nonzero, writes to standard error, or leaves the wrong release active.
 class FreshInstallCheck
   CLEARED = %w[PLASTIC_HOME PLASTIC_SHARE PLASTIC_BIN PLASTIC_CHANNEL PLASTIC_PACKAGE_ROOT PLASTIC_LOCAL_RELEASE
     RUBYOPT RUBYLIB BUNDLE_GEMFILE BUNDLE_BIN_PATH BUNDLER_SETUP BUNDLER_VERSION].freeze
   AGENTS = %w[.claude .codex].freeze
 
-  def initialize(work)
+  def initialize(work, built = nil)
     @work = work
+    @built = built
     @home = File.join(work, "home")
     @first = JSON.parse(File.read(File.join(ROOT, "package.json"))).fetch("version")
     @second = first.sub(/\d+\z/) { |number| number.to_i.succ.to_s }
@@ -90,7 +39,7 @@ class FreshInstallCheck
 
   private
 
-  attr_reader :work, :home, :first, :second
+  attr_reader :work, :built, :home, :first, :second
 
   def install
     step(first, "sh", File.join(ROOT, "install.sh"))
@@ -144,15 +93,21 @@ class FreshInstallCheck
       "PATH" => [File.dirname(plastic), ENV.fetch("PATH")].join(File::PATH_SEPARATOR))
   end
 
-  def release(version) = File.join(work, "releases", version)
+  def release(version) = (built if version == first) || File.join(work, "releases", version)
 
   def plastic = File.join(home, ".local", "bin", "plastic")
 
   def share = File.join(home, ".local", "share", "plastic")
 
-  def build_releases = [first, second].each { |version| ReleaseBuild.new(version, release(version)).call }
+  def build_releases
+    [first, second].reject { |version| release(version) == built }
+      .each { |version| ReleaseBuild.call(version:, directory: release(version), root: ROOT) }
+  end
 end
 
+built = nil
+OptionParser.new { |options| options.on("--release DIRECTORY") { |directory| built = File.realpath(directory) } }.parse!
+
 Dir.mktmpdir("plastic-fresh-install") do |work|
-  FreshInstallCheck.new(File.realpath(work)).call
+  FreshInstallCheck.new(File.realpath(work), built).call
 end

@@ -4,8 +4,7 @@ Plastic runs on your machine. It makes no model call and sends none of your file
 
 These things use the network. `install.sh`, the update check hook and `plastic update` read
 the release list from the GitHub API and download a release archive from GitHub over HTTPS.
-Bundler fetches the sqlite3 gem from RubyGems when a release installs. The frozen npm release
-2.0.3 downloads through `npx`. `plastic session commit` in a project whose flow sets
+Bundler fetches the sqlite3 gem from RubyGems when a release installs. `plastic session commit` in a project whose flow sets
 `mode: pull_request` runs `gh pr create`, which talks to GitHub.
 
 ## Files the installer writes

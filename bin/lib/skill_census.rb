@@ -22,7 +22,7 @@ require "set"
 # and is never installed into ~/.plastic. Stdlib only, no network, no eval.
 #
 # This file and its CLI never resolve the running process's home directory
-# or its home environment variable: `bin/` ships in the npm tarball, so a
+# or its home environment variable: `bin/` ships in the release archive, so a
 # default rooted there would make a published executable read any
 # installer's transcripts. `--history` and `--transcripts` are required,
 # with no default.

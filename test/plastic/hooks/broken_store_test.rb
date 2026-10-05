@@ -6,6 +6,7 @@ require "fileutils"
 require "json"
 require "English"
 require_relative "../../varar/support/kernel_command"
+require_relative "../../../scripts/lib/plastic/hooks/entries"
 
 # Hooks on a broken store: the harness never sees a crash. Each test builds
 # its own Dir.mktmpdir home, never the shared template other tests reuse, so
@@ -52,14 +53,34 @@ class BrokenStoreTest < Minitest::Test
     end
   end
 
-  def test_the_wrapper_exits_zero_even_when_the_call_fails
-    Dir.mktmpdir do |home|
-      kernel = KernelCommand.new(home)
-      broken = "#{RbConfig.ruby} -e 'exit 2'"
-      status = system("env -u RUBYOPT #{broken} || true", chdir: kernel.home)
+  def failing_command(home)
+    File.join(home, "plastic").tap do |path|
+      File.write(path, "#!/bin/sh\nexit 2\n")
+      File.chmod(0o755, path)
+    end
+  end
 
-      assert status
-      assert_equal 0, $CHILD_STATUS.exitstatus
+  def written_hook_lines(command)
+    hooks = Plastic::Hooks::Entries.new(command: command, config: nil, launchers: {}).codex({})["hooks"]
+    hooks.values.flatten.flat_map { |group| group["hooks"].map { |hook| hook["command"] } }
+  end
+
+  def test_a_failing_command_alone_exits_two
+    Dir.mktmpdir do |home|
+      system(failing_command(home), "hook", "resume")
+
+      assert_equal 2, $CHILD_STATUS.exitstatus
+    end
+  end
+
+  def test_every_hook_line_the_installer_writes_exits_zero_when_the_call_fails
+    Dir.mktmpdir do |home|
+      lines = written_hook_lines(failing_command(home))
+
+      assert_equal Plastic::Hooks::Entries::EVENTS.size, lines.size
+      lines.each do |line|
+        assert system(line, chdir: home), "#{line} did not exit zero"
+      end
     end
   end
 end

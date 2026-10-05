@@ -27,7 +27,7 @@ class CliReleaseContractTest < Minitest::Test
   end
 
   def command(*args)
-    env = { "PLASTIC_HOME" => File.join(@dir, ".plastic") }
+    env = { "HOME" => @dir, "PLASTIC_HOME" => File.join(@dir, ".plastic") }
     stdout, stderr, status = Open3.capture3(env, RbConfig.ruby, @bin, *args, "--json", chdir: @dir)
     [JSON.parse(stdout), stderr, status.exitstatus]
   end

@@ -25,14 +25,13 @@ command exits with code 2.
 ## Repair a broken install
 
 Hooks do not fire, agents are missing, or an old plugin layout is left over. Run the installer
-again from the package:
+again:
 
 ```bash
-npx -y @zalom/plastic install --reinstall --claude
+plastic install --reinstall --claude
 ```
 
-In 2.0.2, the installed `plastic install --reinstall` stops with `same file` because it copies
-`PLASTIC.md` onto itself. Run it through `npx`.
+`plastic version` names each broken part and prints the command that repairs it.
 
 The installer is safe to repeat. It removes files that Plastic no longer ships and any old
 plugin layout.

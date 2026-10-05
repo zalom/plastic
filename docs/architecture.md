@@ -72,7 +72,7 @@ Homes created before the stores layout use the legacy layout. There the global s
 The rule of thumb: if the work changes a specific project's code it is tactical and belongs in that project's store; otherwise it is strategic and belongs in the global store. When in doubt, global. Stores are personal and local; the Plastic home is git-tracked locally but never pushed to a remote.
 
 `varar/store-layout.md` checks fresh installation and legacy migration separately for
-Claude Code and Codex. Its Ruby fixtures execute an npm archive in disposable homes,
+Claude Code and Codex. Its Ruby fixtures execute a release archive in disposable homes,
 including harness registration and public project and intent creation. These deterministic
 checks supplement the live authenticated agent runs; they do not claim full doctor or
 all-command acceptance.

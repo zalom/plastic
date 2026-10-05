@@ -48,18 +48,8 @@ RuboCop runs with the Standard configuration as its base, plus `rubocop-minitest
 
 ## Tests
 
-1. Write the tests first and commit them red, in one commit.
-2. Write the code.
-3. Run the named tests for the change, then the gates once.
-
-Run only the changed files' tests, once each; the full suite is never run locally, CI runs it.
-
-- Unit tests use Minitest. Acceptance tests are Varar documents under `varar/`, with their
-  step files under `test/varar/`.
-- The kernel tests live under `test/plastic/` and run in their own process.
-- A test never writes under the real `~/.claude` or `~/.plastic`.
-  `test/real_home_guard_test.rb` enforces this.
-- A test that cannot fail proves nothing. Show once that a new guard fails.
+The patterns and the rules for every test are in
+[Test a change](../../CONTRIBUTING.md#test-a-change). They are written in that one place.
 
 ## Branches
 
@@ -68,10 +58,10 @@ Each long-lived branch has one role.
 - **`alpha` is for development.** Feature and stage pull requests stack on `alpha`, and CI
   runs the suite on each one.
 - **`beta` is for local testing.** It is reset from `alpha` when a whole feature is merged
-  there, and it never takes a direct commit. It publishes under the `beta` npm tag, on a
+  there, and it never takes a direct commit. It releases on the `beta` channel, on a
   version that ends in `-beta.N`.
-- **`main` is for everyday use.** It publishes under the `latest` npm tag, on a version with
+- **`main` is for everyday use.** It releases on the `latest` channel, on a version with
   no suffix.
 
 A fix needed today goes to `main` in its own pull request. Then `main` is merged into `alpha`.
-`scripts/release-check` checks that each branch publishes the right kind of version.
+`scripts/release-check` checks that each branch releases the right kind of version.

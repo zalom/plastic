@@ -2,11 +2,11 @@
 #
 # Turns a GitHub releases list into the newest version per channel. The
 # GitHub releases API is the source of truth for intent 391's curl-based
-# update path: no npm, no dist-tags. A release's tag_name carries the
-# channel: "-alpha" or "-beta" in the tag marks a bleeding channel, anything
-# else counts as stable and lands in the "latest" slot, matching the old
-# npm dist-tag name so compute_target's channel logic stays unchanged. A
-# draft release is skipped: it is not a real, installable release yet.
+# update path. A release's tag_name carries the channel: "-alpha" or
+# "-beta" in the tag marks a bleeding channel, anything else counts as
+# stable and lands in the "latest" slot, the name install.sh and
+# compute_target read. A draft release is skipped: it is not a real,
+# installable release yet.
 
 module ReleaseChannels
   module_function

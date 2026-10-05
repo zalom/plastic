@@ -10,15 +10,15 @@ around broken data. A legitimately absent value is not broken data. Owner ruling
 global rule.
 
 ## Stack
-- Language: Ruby (scripts), JavaScript/Node.js (npm package, installer)
-- Framework: npm package that ships the installer and the `plastic` command (`bin/plastic`). The
+- Language: Ruby (scripts, installer, the `plastic` command)
+- Framework: a GitHub release archive that `install.sh` installs, holding the installer and the `plastic` command (`bin/plastic`). The
   former workflow skills no longer ship; `skills/` keeps only the shared `_decision-tables.md`.
-- Testing: Minitest. See the Testing section below for the correct full-suite command.
+- Testing: Minitest and Varar. `CONTRIBUTING.md` holds the patterns every test follows.
 - Source: this repository. The source command line runs as `ruby bin/plastic`.
 - Remote: git@github.com:zalom/plastic.git
 
 ## Defaults
-- Release process: commit_and_push, github_release, npm_publish
+- Release process: commit_and_push, github_release
 - Version file: package.json
 - Tag format: v{{version}}
 - All bash scripts must work under macOS /bin/bash 3.2 (no bash 4.x features)
@@ -60,22 +60,13 @@ Rules for any agent (or human) contributing to this repository.
   else stays judgment and stays with the agent. Make no exceptions for convenience.
 
 ### Testing
-- Run each change's tests once, on the changed files only: `ruby bin/test --only test/FILE_test.rb`.
-  Then run the change gate once: `bin/verify-change origin/alpha`.
-- The full suite runs once for each pull request, just before the pull request opens, and again in CI.
-  Never run it after every change. When a deletion breaks tests widely, find them with a search
-  for the deleted names, not with the suite.
-- The full suite command is:
-  ```
-  ruby -Itest -e 'Dir["test/*_test.rb"].each { |f| require File.expand_path(f) }'
-  ```
-- Do NOT use `ruby -Itest test/*_test.rb`. The shell expands the glob into many arguments,
-  and Ruby runs only the FIRST file as the program (the rest land in `ARGV`, unloaded), so
-  Minitest reports just that one file's tests and you get a falsely small green run. The
-  loader command above requires every `test/*_test.rb` file, so the whole suite runs.
-- Confirm that the changed files' tests and the change gate are green before committing code changes.
-- Lock and worktree tests must stay hermetic: inject `PLASTIC_TMP` plus explicit paths and
-  never write with the ambient session id (`test/hermeticity_guard_test.rb` enforces this).
+
+@CONTRIBUTING.md
+
+Before you write or change a test, read the section "Test a change" in `CONTRIBUTING.md` at
+the root of this checkout, and follow the pattern it names for that kind of test. Run the
+test of each changed file once, then the gate once. Never run the full suite on your machine.
+CI runs it.
 
 #### Kernel style
 
@@ -83,7 +74,7 @@ The Metrics cops are on for the whole repository in `.rubocop.yml`. `.rubocop_to
 
 #### Branches
 
-`alpha` guards development. Feature and stage pull requests stack on `alpha`, and CI runs the suite on each. `beta` guards local testing. It is reset from `alpha` when a whole feature is merged there, never takes direct commits, and publishes under the `beta` npm tag on a `-beta.N` version. `main` is everyday use and publishes under `latest` on a version with no suffix. A fix needed today goes to `main` by its own pull request, and `main` is merged into `alpha` after. `scripts/release-check` enforces the branch-to-suffix pairing. Ruled 2026-09-30.
+`alpha` guards development. Feature and stage pull requests stack on `alpha`, and CI runs the suite on each. `beta` guards local testing. It is reset from `alpha` when a whole feature is merged there, never takes direct commits, and releases on the `beta` channel on a `-beta.N` version. `main` is everyday use and releases on the `latest` channel on a version with no suffix. A fix needed today goes to `main` by its own pull request, and `main` is merged into `alpha` after. `scripts/release-check` enforces the branch-to-suffix pairing. Ruled 2026-09-30.
 
 ### Worktrees and the single-owner lock
 - Single owner, mandatory. Exactly one session or agent develops an intent's delivery at a
@@ -132,8 +123,8 @@ written.
 - Use Conventional Commits (`feat:`, `fix:`, `docs:`, `refactor:`, `chore:`).
 - Bump all version files listed in Defaults on every fix or feature release.
 - A push to `alpha`, `beta` or `main` is the release (intent 376). `.github/workflows/publish.yml`
-  creates the tag, the GitHub release and the npm publish for a version with no tag yet (OIDC
-  trusted publishing, intent 347). Do not run `npm publish` or create a tag by hand.
+  creates the tag and the GitHub release for a version with no tag yet. It builds the release
+  files with `scripts/build-release`. Do not create a tag or a release by hand.
 - Run the changed files' tests and the change gate before committing code changes (see the Testing section).
 - Never push `~/.plastic/`. The global store is local-only and may contain private data.
 - Core Plastic intents carry no release numbers; the intent schema stays release-agnostic. A release is a collection of intents: a cut (tag) bundles whichever intents have landed since the previous cut. The cut does not close them: CI never sees the stores, and each intent is closed with `plastic intent end` after its code merges. Which release an intent lands in, and the shipped release history, live in `CHANGELOG.md` at the repo root, not in the intent file and not in PLASTIC.md.

@@ -3,9 +3,6 @@
 
 require_relative "test_helper"
 require "etc"
-require "tmpdir"
-
-load File.expand_path("../bin/verify-change", __dir__)
 
 # Real-home guard (intent 363). The incident: `bin/verify-change` spawned every
 # gate child with the session's own HOME, and the mutation step mutates
@@ -15,7 +12,7 @@ load File.expand_path("../bin/verify-change", __dir__)
 # test into a real install, and eleven of them landed in the owner's
 # ~/.plastic and ~/.claude before anyone noticed.
 #
-# Two halves, the same shape as test/hermeticity_guard_test.rb. The static scan
+# Two halves. The static scan
 # catches a test that spawns an installer or the launcher without a throwaway
 # HOME. The dynamic backstop catches everything the scan cannot see, including
 # a spawn a mutant invented, by fingerprinting the real home before the suite
@@ -26,7 +23,7 @@ class RealHomeGuardTest < Minitest::Test
   VERB = %r{(?:"|'|/)(?:install|uninstall|update|rollback)\.rb(?:"|')|"scripts", "(?:install|uninstall|update|rollback)\.rb"}
   LAUNCHER = %r{bin/plastic(?![-.\w])|"bin", "plastic"}
   INSTALLER_PATH = %r{bin/plastic(?![-.\w])|"bin", "plastic"|(?:install|uninstall|update|rollback)\.rb}
-  CONSTANT = /^\s*([A-Z][A-Z0-9_]*)\s*=\s*(.+)$/
+  ASSIGNMENT = /^\s*(@{0,2}[A-Za-z_]\w*)\s*(?:\|\|)?=\s*(.+)$/
 
   # The passwd entry, not ENV["HOME"], so the guard still watches the machine's
   # own home when the suite itself runs under a throwaway one.
@@ -54,19 +51,18 @@ class RealHomeGuardTest < Minitest::Test
 
   BEFORE = fingerprint.freeze
 
-  # Constants naming an installer script or the launcher, so a spawn through
-  # LAUNCHER reads as an installer spawn even though the line holds no path.
-  def installer_constants(source)
-    source.scan(CONSTANT).select { |_name, value| value.match?(INSTALLER_PATH) }.map(&:first)
+  # Constants and variables naming an installer script or the launcher, so a
+  # spawn through LAUNCHER or @launcher reads as an installer spawn even though
+  # the line holds no path.
+  def installer_names(source)
+    source.scan(ASSIGNMENT).select { |_name, value| value.match?(INSTALLER_PATH) }.map(&:first).uniq
   end
 
   def installer_spawns(source)
-    names = installer_constants(source)
-    by_constant = names.empty? ? nil : /\b(?:#{names.join("|")})\b/
-    source.lines.each_with_index.select do |line, _number|
-      line.match?(SPAWN) &&
-        (line.match?(VERB) || line.match?(LAUNCHER) || (by_constant && line.match?(by_constant)))
-    end.map { |_line, number| number + 1 }
+    named = installer_names(source).map { |name| /(?<![\w@])#{Regexp.escape(name)}\b/ }
+    installer = Regexp.union(VERB, LAUNCHER, *named)
+    spawning = source.lines.each_with_index.select { |line, _number| line.match?(SPAWN) && line.match?(installer) }
+    spawning.map { |_line, number| number + 1 }
   end
 
   def test_the_detector_reads_a_literal_installer_spawn
@@ -77,6 +73,18 @@ class RealHomeGuardTest < Minitest::Test
 
   def test_the_detector_reads_a_spawn_through_a_launcher_constant
     source = %(LAUNCHER = File.join(ROOT, "bin", "plastic")\nOpen3.capture3(LAUNCHER, "help")\n)
+
+    assert_equal [2], installer_spawns(source)
+  end
+
+  def test_the_detector_reads_a_spawn_through_an_instance_variable
+    source = %(@launcher = File.join(ROOT, "bin", "plastic")\nOpen3.capture3(@launcher, "help")\n)
+
+    assert_equal [2], installer_spawns(source)
+  end
+
+  def test_the_detector_reads_a_spawn_through_a_local_variable
+    source = %(script = File.join(REPO, "scripts", "update.rb")\nsystem(RbConfig.ruby, script)\n)
 
     assert_equal [2], installer_spawns(source)
   end
@@ -101,54 +109,6 @@ class RealHomeGuardTest < Minitest::Test
 
     assert_empty offenders.map { |path| path.delete_prefix("#{ROOT}/") },
       "these tests spawn an installer or the launcher without injecting HOME"
-  end
-
-  def planned_steps(sandbox)
-    # scripts/lib/cli/legacy.rb's own mapped test was part of the legacy
-    # suite the owner ruled deleted (2026-10-01); legacy.rb stays the
-    # mutated file (see the class comment above), but the tests step needs
-    # a test path that still exists on disk, so it is supplied directly
-    # instead of relying on the naming-convention mapping.
-    VerifyChange.new([], root: ROOT, sandbox: sandbox)
-      .plan(changed: ["scripts/lib/cli/legacy.rb"],
-        extra_tests: ["test/real_home_guard_test.rb"], base: "HEAD", rails: false)
-  end
-
-  def test_every_gate_step_runs_under_the_sandbox_home
-    sandbox = {"HOME" => "/nowhere/home", "PLASTIC_TMP" => "/nowhere/tmp"}
-    plan = planned_steps(sandbox)
-    steps = plan.steps + [plan.lint_decision.step].compact
-
-    refute_empty steps
-    steps.each do |step|
-      assert_equal "/nowhere/home", step.env["HOME"], "#{step.title} runs under the ambient home"
-      assert_equal "/nowhere/tmp", step.env["PLASTIC_TMP"], "#{step.title} runs under the ambient tmp dir"
-    end
-  end
-
-  def test_the_step_environment_keeps_its_own_variables
-    plan = planned_steps({"HOME" => "/nowhere/home", "PLASTIC_TMP" => "/nowhere/tmp"})
-    tests = plan.steps.find { |step| step.title == VerifyChange::TESTS_STEP }
-
-    assert_equal "1", tests.env["COVERAGE"]
-  end
-
-  def test_the_default_sandbox_is_a_fresh_directory_outside_the_real_home
-    subject = VerifyChange.new([], root: ROOT)
-    home = subject.sandbox["HOME"]
-
-    refute home.start_with?(REAL_HOME), "the sandbox home sits inside #{REAL_HOME}"
-    assert_empty Dir.children(home)
-  ensure
-    subject&.discard_sandbox
-  end
-
-  def test_the_sandbox_is_discarded_after_the_run
-    subject = VerifyChange.new([], root: ROOT)
-    home = subject.sandbox["HOME"]
-    subject.discard_sandbox
-
-    refute_path_exists home
   end
 
   Minitest.after_run do

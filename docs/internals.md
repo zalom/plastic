@@ -251,7 +251,7 @@ that store's `INDEX.md` (`~/.plastic/stores/global/doctor-exclusions` for the gl
 `(intent_id, rule)` pairs. The format
 is `/etc/hosts`-shaped: one `rule_name id id id` line per rule, blank lines and `#` comments
 ignored, duplicate rule lines unioned. It is a plain-text config table, not a markdown document
-(no `.md` extension), and it never ships in the npm package: `scripts/lib/rule_catalog.rb`
+(no `.md` extension), and it never ships in the release archive: `scripts/lib/rule_catalog.rb`
 (`RuleCatalog::EXCLUDABLE_CHECKS`, one key in v1, `savepoint_operational`) is the vocabulary of
 doctor check names an exclusion file may name, and `scripts/lib/doctor_exclusions.rb`
 (`DoctorExclusions.load`/`.parse`/`.rules_for`) is the pure-parse-plus-thin-IO loader, never
@@ -1292,31 +1292,13 @@ node kind, and the node input on stdin. `scripts/node-run`, `RunnerUntilEmpty`, 
 `runner watch --dispatch` branch are gone. A watch tick only classifies, and its
 `watch.record` line carries no `dispatched`, `harness`, or `meter` field.
 
-## compaction thresholds and the compact-instructions block (intent 312)
+## the managed block in CLAUDE.md
 
-Two config keys and one installed block tell a session when to compact and what to do
-about it. Nothing in Plastic reads the keys at runtime: the harness reports how much of
-the window is used, and the model acts on the installed block. The keys exist so a user
-can retune the numbers that block states.
-
-```yaml
-context_offer_tokens: 150000    # offer a compaction
-context_insist_tokens: 250000   # insist on one
-```
-
-They are absolute token counts, not percentages, and they resolve through the ordinary
-`scripts/read-config` path (project, then global, then the `DEFAULTS` in that script).
-A ruling of intent 296 settled the numbers from `research--context-thresholds.md`: models are
-reliable only to roughly 50 to 65 percent of advertised context, and the mechanisms
-behind that are architectural, so a percentage that is right at a 200k window would let
-five times as many raw tokens pile up before firing at 1M. The three places the numbers
-live (the `DEFAULTS` hash, `templates/config.yml`, and `InstallerCore#bootstrap`'s seeded
-config) are pinned equal by `test/compact_instructions_test.rb`.
-
-Intent 355's n5 (D7) lowered both numbers again, from 350,000/500,000 to 150,000/250,000:
-a live session that let the window run from 434,000 to 506,000 tokens spent a third of
-that window on 41 calls before it compacted. The three-way pin above still holds; only
-the shipped values moved.
+Plastic installs one block into `~/.claude/CLAUDE.md`. It holds one sentence and one import,
+and nothing else. An owner ruling of 2026-10-05 removed the compaction thresholds from the
+block, together with the `context_offer_tokens` and `context_insist_tokens` config keys:
+nothing in Plastic read the keys, and the instruction did not work. An install or an update
+replaces a block that an older version left behind, so the old text goes with it.
 
 The block itself is `CompactInstructions::BODY` in `scripts/lib/compact_instructions.rb`,
 installed into `~/.claude/CLAUDE.md` as a marked section:
@@ -1327,7 +1309,7 @@ installed into `~/.claude/CLAUDE.md` as a marked section:
 <!-- END PLASTIC COMPACT -->
 ```
 
-Intent 363 added the first line of that block: a Claude Code import, `@~/.plastic/PLASTIC.md`.
+The block is a Claude Code import, `@~/.plastic/PLASTIC.md`.
 An owner ruling makes `PLASTIC.md` the only instruction text Plastic puts in a session, and this
 import is how the harness reads it. The path names the installed copy under the Plastic home,
 because a bare `@PLASTIC.md` would resolve against `~/.claude`, which holds no such file.
@@ -1348,14 +1330,6 @@ else remains. `Rollback#prepare_switch` strips it too before a downgrade hands o
 older package: no older installer knows the section exists, so nothing there would ever
 replace or remove it. The Codex `AGENTS.md` section needs no such treatment, because
 every older package knows that one and rewrites it on the downgrade install.
-
-The doctor check `claude_compact_instructions` (in `check_claude_registration`) reports
-the block present, well formed, and current, comparing the `hash:` in the BEGIN marker
-against `CompactInstructions.body_hash` so a block an older version left behind is
-reported rather than trusted. The Codex `codex_agents_md` check stops at well formed;
-that difference is deliberate, not an oversight. `doctor_core.rb` keeps its own copy of
-the two marker literals, as it does for Codex, but the body and its hash come from the
-shared lib, so the text has exactly one home.
 
 
 ## meter-watch: the rate-limit meter on a timer (intent 355, n5, D6)
@@ -1702,53 +1676,50 @@ across both node commands). On success it prints a parsable summary
 (`path=... sha=... tokens=... hop_tokens=... attempt=...`) and the exact `node-transition
 running` command to record, both of which intent 340's runner parses.
 
-## trusted publishing over OIDC (intent 347)
+## GitHub releases (intents 347, 376, 402)
 
-`@zalom/plastic` used to depend on a long-lived npm access token sitting in one maintainer's
-`~/.npmrc`. On 2026-09-08 that token had expired, the alpha.18 release stalled at the publish
-step, and the package reached the registry only the next morning after a manual `npm publish`
-from a detached checkout of the tag. `.github/workflows/publish.yml` closes that failure mode
-structurally: no npm token exists anywhere, on any machine or in any GitHub secret.
+`.github/workflows/publish.yml` makes every release. It talks to no package registry and holds
+no token beyond the job's own `contents: write`. Plastic retired npm on 2026-10-03: the stable
+release 2.0.3 stays on npm, and nothing newer goes there. `INSTALL.md` says how an npm copy
+moves to `install.sh`.
 
 **The trigger (intent 376).** A push to `alpha`, `beta` or `main` is the release. The workflow
 reads the version from `package.json`. When the tag for that version exists, it stops. Otherwise
-it runs the suite and the guard, packs one archive, creates the tag and the GitHub release
-with `plastic.tgz` attached. On `main` it also publishes that same archive to npm. To release,
-change the version in `package.json` and push the branch. `install.sh` at the repository root
-downloads the archive of the latest stable release, unpacks it under `~/.local/share/plastic` and links
-`~/.local/bin/plastic`.
-
-**The mechanism.** The publish job is granted `id-token: write`. The npm CLI detects the OIDC environment, fetches a short-lived
-token scoped to this repository and this exact workflow filename, and presents it to the
-registry instead of an `_authToken`. The registry compares the token's claims against the
-trusted publisher registered on npmjs.com and publishes only on an exact match. The trust is
-pinned to the workflow file's name, not to a person: anyone who can push to a channel branch can
-publish, and renaming `publish.yml` silently breaks every future release, which is why a test
-pins the path.
+it runs the suite and the guard, builds the release files, and creates the tag and the GitHub
+release with them attached. To release, change the version in `package.json` and push the
+branch. `install.sh` at the repository root downloads the archive of the release its channel
+names, unpacks it under `~/.local/share/plastic` and links `~/.local/bin/plastic`.
 
 **The guard.** `scripts/release-check`, a thin CLI over `scripts/lib/release_guard.rb`, runs
-before the publish step. It asserts that the pushed branch publishes the channel the version
-suffix names (`alpha`, `beta`, or `main` for a version with no suffix), that the three repo version files agree
-(`ReleaseGuard.check`, `scripts/lib/release_guard.rb`),
-and that the runner's npm meets the 11.5.1 floor OIDC requires, comparing version segments
-numerically so `11.10.0` does not lose to `11.5.1` as a string. It writes the derived dist-tag
-to `$GITHUB_OUTPUT` by appending, never truncating, so another step's output in the same file
+before the build. It asserts that the pushed branch releases the channel the version names
+(`alpha`, `beta`, or `main` for a version with no suffix), and that a stable version carries no
+pre-release suffix (`ReleaseGuard.check`). It writes the version, the channel and the tag to
+`$GITHUB_OUTPUT` by appending, never truncating, so another step's output in the same file
 survives.
 
-**One dist-tag rule, one implementation.** `ReleaseGuard.dist_tag(version)` returns `alpha` for
-an `-alpha` suffix, `beta` for `-beta`, `latest` for no suffix at all, and the raw suffix itself
-(never `latest`) for anything else. The workflow's `--tag` argument is always
-`${{ steps.guard.outputs.dist_tag }}`, never a literal, because the alternative - a second,
-untested implementation of the same rule in shell - is exactly the kind of drift that would put
-an alpha on `latest` and pull every stable user onto it at their next `plastic update`.
+**One channel rule, one implementation.** `InstallerRelease::Manifest.identity(version)` returns
+`alpha` for an `-alpha` suffix, `beta` for `-beta`, and `latest` for any other version. The
+guard, the release manifest and `install.sh` all read the channel through it. The release step
+marks a `latest` channel as the Latest release and any other channel as a pre-release, and it
+reads the channel only from the guard's output, never from a literal. A second rule in shell is
+the drift that would put an alpha on Latest and pull every stable user onto it.
 
-**The suite runs in the publish job.** The publish job runs `ruby bin/test` before the guard,
-so a red suite stops the release before any tag, GitHub release, or npm publish.
-`test/publish_workflow_test.rb` pins that order. `.github/workflows/test.yml` also runs the suite
-on pushes and pull requests to `main` and `alpha`.
+**One builder.** `scripts/build-release`, a CLI over `scripts/lib/release_build.rb`, writes
+`plastic.tgz`, `plastic.tgz.sha256` and `plastic.manifest.json`. The archive holds under
+`package/` the files `package.json` lists in `files`, plus `package.json`, `README.md`,
+`LICENSE` and a `VERSION` file. The publish workflow, the packaged executable check in
+`.github/workflows/test.yml`, `tools/check-fresh-install` and the `install.sh` tests all build
+through it, so the archive CI checks is the archive a release carries.
 
-**The `npm` environment.** The publish job runs in the GitHub environment named `npm`, and its
-URL points at the package page on npmjs.com.
+**The suite runs in the release job.** The release job runs `ruby bin/test` before the guard,
+so a red suite stops the release before any tag or GitHub release.
+`.github/workflows/test.yml` also runs the suite on pushes and pull requests to `main` and `alpha`.
+
+**The built files are installed before they are published.** After the build, the release job
+runs `ruby tools/check-fresh-install --release release`. It installs the files in `release/`
+under an empty home, then updates, rolls back and uninstalls, so a release that cannot install
+is never published. No test asserts on the text of the workflow file; only a release run proves
+the workflow.
 
 ## CLI adapter contract
 

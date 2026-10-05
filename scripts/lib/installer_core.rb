@@ -433,8 +433,6 @@ class InstallerCore
       version: 3
       execution_mode: subagent-driven
       stale_threshold_days: 3
-      context_offer_tokens: 150000
-      context_insist_tokens: 250000
       hash_length: 6
       hash_algorithm: sha256-base36
       max_slug_words: 5

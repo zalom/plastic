@@ -2,11 +2,6 @@ version: 3
 project_roots:
   - ~/.plastic/projects
 stale_threshold_days: 3
-# When to compact. Absolute token counts for a 1M window (15 and 25 percent), not
-# percentages: models are reliable only to roughly 50 to 65 percent of advertised
-# context, so a percentage that is right at 200k floats to an untested size at 1M.
-context_offer_tokens: 150000
-context_insist_tokens: 250000
 execution_mode: subagent-driven
 # The hook entries the installer writes into the harness. Off by default,
 # runner.stop_hook arms the stop gate (docs/contributing/ARCHITECTURE.md,
