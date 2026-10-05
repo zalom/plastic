@@ -239,7 +239,7 @@ plastic sync down                     # Write the store files from the databases
 plastic backup --store alpha          # Copy the databases of one store (or --store global) into a UTC-named folder
 plastic backup list --store alpha     # Folder, start time, status and goal of each backup
 plastic backup purge --store alpha --older-than 2026-09-01   # Delete older backups
-plastic backup restore --store alpha --latest   # Put the newest done backup back
+plastic backup restore --store alpha --latest   # Put the newest done backup back, then ask: sync down, sync up or neither
 ```
 
 ### Product

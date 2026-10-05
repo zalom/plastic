@@ -238,8 +238,12 @@ missing on disk or changed, and does not fail for a folder with no row.
 `plastic backup purge --store SLUG (--older-than DATE | --all)` deletes folders and rows
 before a UTC time. `plastic backup restore --store SLUG (--timestamp TS | --latest)` puts
 back a `done` backup after a safety backup of the current databases. It refuses while a
-delivery lock is fresh. The next step it offers is `plastic sync up --dry-run --project SLUG`,
-because sync up rereads the files newer than the backup.
+delivery lock is fresh. It never syncs by itself, because a sync can undo a restore. With a terminal it asks
+whether to sync down, sync up or neither, gives one line for each answer, and runs the
+chosen sync for the same store; an unknown answer is asked once more and then counts as
+neither. With no terminal, and under `--json`, it asks nothing and its `next:` line tells the
+agent to ask the person. `--dry-run` and a refused restore ask nothing. A terminal is an
+input stream that answers `tty?`; `CLI::Dialog` decides it from `Environment#input`.
 
 `plastic sync up` imports a selected legacy store completely: intents, rulings, source
 and chain links, roadmaps, and preserved original bytes. It then handles ordinary hand

@@ -39,11 +39,13 @@ deletes the backups made strictly before it. Add `--dry-run` to see which ones.
 
 `plastic backup restore` only restores a backup whose status is `done`. `--latest` picks
 the newest one. It refuses while a delivery lock is fresh. Before it changes anything it
-backs up the current databases, so the restore can be undone with a second restore. Then
-run the step it offers:
+backs up the current databases, so the restore can be undone with a second restore.
 
-```text
-$ plastic sync up --dry-run --project SLUG
-```
+A restore never syncs by itself. At a terminal it asks you to choose:
 
-Sync up rereads the files that are newer than the backup.
+- `down` prints the files from the restored rows. File edits made after the backup are lost.
+- `up` reads the files into the rows. Where a file is newer, it replaces the restored row.
+- `neither` changes nothing; the rows and the files stay as they are.
+
+When no terminal is there, such as when an agent runs it, the restore asks nothing. Its
+`next:` line tells the agent to ask you which one you want.
