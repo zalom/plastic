@@ -45,4 +45,73 @@ class VersionCommandTest < Plastic::TestCase
       assert_includes files, "scripts/lib/plastic/commands/#{name}.rb"
     end
   end
+
+  def test_reports_a_healthy_installation_and_changes_nothing
+    healthy_installation
+    before = tree_snapshot(@home)
+    result = call("version", env: { "PATH" => bin_dir })
+
+    assert_equal 0, result.code, result.err
+    assert_empty unmatched(result.out, healthy_rows), result.out
+    assert_equal [before, false], [tree_snapshot(@home), result.out.include?("repair:")]
+  end
+
+  def test_names_the_repairs_after_the_checks
+    damaged_installation
+    out = call("version").out
+
+    assert_operator out.index("repair:"), :>, out.index("installer lock:"), out
+  end
+
+  def test_names_a_repair_for_each_damaged_part_and_changes_nothing
+    damaged_installation
+    before = tree_snapshot(@home)
+    result = call("version", env: { "PATH" => File.join(@home, "nowhere") })
+
+    assert_empty unmatched(result.out, damaged_rows), result.out
+    assert_equal [before, 4], [tree_snapshot(@home), result.out.scan("repair:").size]
+  end
+
+  def test_says_when_no_release_is_activated
+    result = call("version")
+
+    assert_match(/active:\s+none/, result.out)
+    refute_match(/sqlite3 bundle:/, result.out)
+  end
+
+  def unmatched(out, patterns) = patterns.reject { |pattern| pattern.match?(out) }
+
+  def healthy_rows
+    [/active:\s+99\.0\.0-alpha\.2/, /previous:\s+99\.0\.0-alpha\.1/, /launcher:\s+#{Regexp.escape(File.join(bin_dir, "plastic"))}/,
+      /ruby:\s+#{Regexp.escape(RUBY_VERSION)}/, /sqlite3 bundle:\s+present/, /hooks:\s+point at the active release/,
+      /installer lock:\s+free/, /next:\s+plastic status/]
+  end
+
+  def damaged_rows
+    [/launcher:\s+not on PATH/, /sqlite3 bundle:\s+missing/, /hooks:\s+point at #{Regexp.escape(@plastic_home)}/,
+      /installer lock:\s+an activation was interrupted/, /next:\s+plastic version/]
+  end
+
+  def healthy_installation
+    activated("99.0.0-alpha.1", "99.0.0-alpha.2")
+    setup = File.join(share, "active", "runtime", "bundle", "bundler", "setup.rb")
+    FileUtils.mkdir_p(File.dirname(setup))
+    File.write(setup, "")
+    FileUtils.mkdir_p(bin_dir)
+    File.symlink(File.join(share, "active", "bin", "plastic"), File.join(bin_dir, "plastic"))
+    hooks_pointing_at(File.join(share, "active", "bin", "plastic"))
+  end
+
+  def damaged_installation
+    activated("99.0.0-alpha.1")
+    hooks_pointing_at(File.join(@plastic_home, "bin", "plastic"))
+    FileUtils.mkdir_p(File.join(share, "activation"))
+  end
+
+  def hooks_pointing_at(launcher)
+    command = { "type" => "command", "command" => "env -u RUBYOPT \"#{launcher}\" hook resume --harness claude-code || true" }
+    File.write(File.join(claude_folder, "settings.json"), JSON.generate("hooks" => { "SessionStart" => [{ "matcher" => "", "hooks" => [command] }] }))
+  end
+
+  def bin_dir = File.join(@home, ".local", "bin")
 end

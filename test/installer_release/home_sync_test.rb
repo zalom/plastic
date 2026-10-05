@@ -24,11 +24,10 @@ class InstallerReleaseHomeSyncTest < Minitest::Test
   def test_leaves_a_launcher_the_user_wrote_alone
     FileUtils.mkdir_p(File.dirname(launcher))
     File.write(launcher, "#!/bin/sh\necho mine\n")
-    out = StringIO.new
-    sync(out: out).call
+    sync.call
 
     assert_equal "#!/bin/sh\necho mine\n", File.read(launcher)
-    assert_includes out.string, "#{launcher} is not Plastic's launcher; it stays as it is"
+    assert_includes @out.string, "#{launcher} is not Plastic's launcher; it stays as it is"
   end
 
   def test_leaves_a_launcher_link_to_another_program_alone
@@ -42,7 +41,7 @@ class InstallerReleaseHomeSyncTest < Minitest::Test
   def test_syncs_an_installed_home_through_the_active_release
     installed_home
     runs = []
-    sync(run: ->(env, command) { runs << [env, command] }).call
+    sync(run: ->(env, command) { runs << [env, command] && ["", true] }).call
 
     expected = { "PLASTIC_HOME" => plastic_home, "HOME" => user_home, "RUBYOPT" => nil, "BUNDLE_GEMFILE" => nil }
 
@@ -51,7 +50,7 @@ class InstallerReleaseHomeSyncTest < Minitest::Test
 
   def test_leaves_a_home_without_an_installation_unsynced
     runs = []
-    sync(run: ->(env, command) { runs << [env, command] }).call
+    sync(run: ->(env, command) { runs << [env, command] && ["", true] }).call
 
     assert_empty runs
     refute_path_exists plastic_home
@@ -77,6 +76,20 @@ class InstallerReleaseHomeSyncTest < Minitest::Test
     assert_equal({ "statusLine" => { "command" => "/usr/local/bin/mine" } }, read_json(".claude/settings.json"))
   end
 
+  def test_prints_the_reinstall_output_and_leaves_the_next_step_to_its_caller
+    installed_home
+    sync(run: ->(_env, _command) { ["  synced\nnext: plastic version\nbecause: Plastic 2.0.4 is installed\n", true] }).call
+
+    assert_equal "  synced\n", @out.string
+  end
+
+  def test_a_failed_reinstall_stops_the_activation
+    installed_home
+    error = assert_raises(InstallerRelease::ActivationError) { sync(run: ->(_env, _command) { ["boom\n", false] }).call }
+
+    assert_equal ["boom\n", "plastic install --reinstall failed; nothing was changed"], [@out.string, error.message]
+  end
+
   def test_names_the_managed_paths_and_never_the_stores
     home_with_stores
     managed = [*in_plastic_home("scripts", "config.yml"), File.join(user_home, ".claude", "settings.json"), check_update, launcher]
@@ -98,7 +111,7 @@ class InstallerReleaseHomeSyncTest < Minitest::Test
 
   def launcher = File.join(user_home, ".local", "bin", "plastic")
 
-  def sync(run: ->(_env, _command) {}, out: StringIO.new)
+  def sync(run: ->(_env, _command) { ["", true] }, out: (@out = StringIO.new))
     home = InstallerRelease::ManagedHome.new(plastic_home: plastic_home, user_home: user_home, launcher: launcher)
     InstallerRelease::HomeSync.new(share: share, home: home, run: run, out: out)
   end

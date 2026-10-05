@@ -98,4 +98,21 @@ class UpdateCommandTest < Plastic::TestCase
     assert_equal 3, result.code
     assert_includes result.err, "plastic install"
   end
+
+  def test_prints_the_release_notice_before_the_home_sync_output
+    lines = update_with_release("99.0.0-alpha.2").out.lines(chomp: true)
+    notice = lines.index { |line| line.include?("claims no release trust") }
+
+    assert_operator notice, :<, lines.index("99.0.0-alpha.2").to_i
+  end
+
+  def test_a_settings_file_that_is_not_json_names_the_file_and_changes_nothing
+    settings = File.join(claude_folder, "settings.json")
+    File.write(settings, "{ not json")
+    result = update_with_release("99.0.0-alpha.2")
+
+    assert_equal 1, result.code
+    assert_includes result.err, "#{settings} is not valid JSON; nothing was changed"
+    assert_equal ["99.0.0-alpha.1", "{ not json"], [activation.active_version, File.read(settings)]
+  end
 end

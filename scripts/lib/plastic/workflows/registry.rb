@@ -33,7 +33,8 @@ module Plastic
       # Backups: one gzipped tar of every database on the machine.
       :code_backup, :code_backup_list,
       # Distribution: the installer commands over the running package and the home.
-      :code_show_version, :code_preview_install, :code_install_plastic, :code_preview_update, :code_update_plastic,
+      :code_show_version, :code_check_installation, :code_preview_install, :code_install_plastic, :agent_offer_enola,
+      :code_preview_update, :code_update_plastic,
       :code_preview_rollback, :code_rollback_release, :code_preview_uninstall, :code_uninstall_plastic,
       # Work graph: building and moving the nodes and edges of one intent.
       :code_add_node, :code_remove_node, :code_add_edge, :code_remove_edge,

@@ -17,7 +17,8 @@ module Plastic
         on :done, next: :noop
         on :continue, next: :code_install_plastic
       end
-      workflow :code_install_plastic, next: :noop
+      workflow :code_install_plastic, next: :agent_offer_enola
+      workflow :agent_offer_enola, next: :noop
 
       private
 

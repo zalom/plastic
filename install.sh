@@ -120,10 +120,13 @@ fi
 (cd "$tmp" && $digest plastic.tgz.sha256 >/dev/null 2>&1) || fail "plastic.tgz does not match its published checksum"
 
 inspect_archive
+plastic_home="${PLASTIC_HOME:-$HOME/.plastic}"
+next_step="plastic install"
+[ ! -f "$plastic_home/VERSION" ] || next_step="plastic version"
 mkdir "$tmp/boot"
 tar -xzf "$tmp/plastic.tgz" -C "$tmp/boot" package/scripts/install-release package/scripts/lib/installer_release.rb package/scripts/lib/installer_release
 ruby --disable-gems "$tmp/boot/package/scripts/install-release" --directory "$tmp" --version "$version" --home "$share" \
-  --bin "$bin" --plastic-home "${PLASTIC_HOME:-$HOME/.plastic}" --user-home "$HOME" || exit 1
+  --bin "$bin" --plastic-home "$plastic_home" --user-home "$HOME" || exit 1
 
 say "Plastic $version is active."
 case ":$PATH:" in
@@ -131,4 +134,4 @@ case ":$PATH:" in
   *) say "$bin is not on your PATH. Add this line to your shell profile:"
      say "  export PATH=\"$bin:\$PATH\"" ;;
 esac
-say "next: plastic install"
+say "next: $next_step"
