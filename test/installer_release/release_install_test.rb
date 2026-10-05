@@ -27,6 +27,12 @@ class InstallerReleaseInstallTest < Minitest::Test
     assert_includes launcher, "exec #{RbConfig.ruby} --disable-gems -rrbconfig #{File.join(release_path("2.0.3"), "libexec", "plastic")} \"$@\""
   end
 
+  def test_the_release_names_its_ruby_for_the_hooks
+    install(release_files)
+
+    assert_equal "#!/bin/sh\nexec #{RbConfig.ruby} \"$@\"\n", File.read(File.join(release_path("2.0.3"), "bin", "ruby"))
+  end
+
   def test_the_launcher_runs_with_an_empty_path
     install(release_files)
     out, status = Open3.capture2e({ "HOME" => @root, "PATH" => "" }, File.join(release_path("2.0.3"), "bin", "plastic"))
