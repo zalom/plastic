@@ -1,51 +1,37 @@
 # frozen_string_literal: true
 
-require "zlib"
-require "rubygems/package"
 require_relative "../../../../test_helper"
-require_relative "../../../../../scripts/lib/plastic/graph/knowledge/backup/writer"
 
 class KnowledgeBackupWriterTest < Plastic::TestCase
-  Writer = Plastic::Graph::Knowledge::Backup::Writer
+  include BackupHomes
 
-  def setup
-    super
-    @backup_home = File.join(@home, "backup-home")
-    Plastic::Graph.open(home: @backup_home, store: "plastic").work.write_intent(title: "Alpha")
-    File.write(File.join(@backup_home, "config.yml"), "statusline: on\n")
+  Backup = Plastic::Graph::Knowledge::Backup
+
+  def test_a_failed_copy_leaves_no_backup_folder_and_no_row
+    home = fresh_home
+    Plastic::Graph::Database::ConnectionPool.release(File.join(home, "stores", "alpha"))
+    File.write(store_file(home, "work_graph"), "not a database")
+
+    assert_raises(StandardError) { backup_at(home, at(2026, 1, 1, 10, 0, 0)) }
+    assert_empty folder_names(home)
+    assert_empty row_names(home)
   end
 
-  def entries(name)
-    Zlib::GzipReader.open(File.join(@backup_home, "backups", name)) do |gz|
-      Gem::Package::TarReader.new(gz) { |tar| return tar.map(&:full_name) }
-    end
+  def test_a_failed_row_insert_removes_the_folder
+    home = fresh_home
+    Plastic::Graph.open(home:, store: "alpha").databases.fetch(:home).execute("DROP TABLE backups")
+
+    assert_raises(StandardError) { backup_at(home, at(2026, 1, 1, 10, 0, 0)) }
+    assert_empty folder_names(home)
   end
 
-  def test_the_archive_holds_home_db_each_written_store_database_and_the_home_files
-    row = Writer.new(@backup_home, session: "s-1").then { |writer| writer.publish(writer.stage) }
+  def test_the_row_counts_the_databases_and_digests_the_sorted_names_and_digests
+    home = fresh_home
+    row = backup_at(home, at(2026, 1, 1, 10, 0, 0))
+    folder = File.join(backups_dir(home), "20260101100000")
 
-    assert_equal %w[home.db stores/plastic/work_graph.db stores/plastic/knowledge_graph.db origin_id config.yml],
-      entries(row.fetch(:name))
-  end
-
-  def test_the_row_counts_the_databases_and_hashes_the_archive
-    row = Writer.new(@backup_home, session: "s-1").then { |writer| writer.publish(writer.stage) }
-    path = File.join(@backup_home, "backups", row.fetch(:name))
-
-    assert_equal [3, Digest::SHA256.file(path).hexdigest, File.size(path), "s-1"], row.values_at(:files, :sha256, :bytes, :session_id)
-    assert_match(/\Aplastic-\d{8}-\d{6}\.tar\.gz\z/, row.fetch(:name))
-  end
-
-  def test_a_store_database_not_yet_written_has_no_entry
-    assert_nil Plastic::Graph::Knowledge::Backup::Sources.entry(File.join(@backup_home, "stores", "none"), "none", :work)
-  end
-
-  def test_each_snapshot_is_a_readable_copy_of_its_database
-    source = File.join(@backup_home, "stores", "plastic", "work_graph.db")
-    Dir.mktmpdir do |tmp|
-      name, dest = Writer.vacuum(tmp, [["work", source]]).first
-
-      assert_equal ["work", 1], [name, Plastic::Graph::Database::ConnectionPool.for(dest).get_first_value("SELECT count(*) FROM intents")]
-    end
+    assert_equal [3, "alpha/20260101100000", Backup::Folders.new(File.join(home, "stores", "alpha")).digest("20260101100000")],
+      row.values_at(:files, :name, :sha256)
+    assert_equal row.fetch(:bytes), Dir.children(folder).sum { |file| File.size(File.join(folder, file)) }
   end
 end
