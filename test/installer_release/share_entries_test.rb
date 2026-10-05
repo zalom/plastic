@@ -17,21 +17,18 @@ class InstallerReleaseShareEntriesTest < Minitest::Test
     assert_equal "rubies", entries.order.last
   end
 
-  def test_a_share_of_plastic_entries_only_empties
-    assert entries.prepare
-  end
-
-  def test_a_share_with_a_file_plastic_did_not_make_stays
-    File.write(File.join(share, "notes.txt"), "mine")
-
-    refute entries.prepare
-  end
-
   def test_removes_a_read_only_ruby_and_the_emptied_share
     FileUtils.chmod_R("a-w", File.join(share, "rubies"))
-    entries.remove
 
+    assert entries.remove
     refute_path_exists share
+  end
+
+  def test_a_share_with_a_file_plastic_did_not_make_stays_with_that_file
+    File.write(File.join(share, "notes.txt"), "mine")
+
+    refute entries.remove
+    assert_equal ["notes.txt"], Dir.children(share)
   end
 
   private

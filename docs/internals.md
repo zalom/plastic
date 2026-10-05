@@ -1702,8 +1702,15 @@ table, so `ReleaseBuild` writes it into the manifest under `ruby.builds`, and `R
 same steps in Ruby when `plastic update` meets a release that pins a Ruby the share lacks.
 `ReleaseLauncher` moves the Ruby entry point to `libexec/plastic` and writes a `bin/plastic` shell
 script that runs it with that Ruby's full path, and `Bundle` runs that Ruby's own `bin/bundle`.
+It also writes `bin/ruby`, a shell script that starts the same Ruby, so `hooks/check-update`
+runs on `~/.local/share/plastic/active/bin/ruby` and never on a Ruby from `PATH`. With no active
+release, the update check does nothing.
 `PLASTIC_RUBY` overrides the choice for development. `ReleaseRemoval` removes only the entries
 `FlatShare::KEPT` names and stopped downloads, and makes the read-only Rubies writable first.
+An uninstall runs on one of those Rubies, so `ShareEntries` decides whether the share goes before
+the first removal and removes the `rubies` folder last, and `ReleaseRemoval` prints its closing
+lines from that answer, never from the disk after the removal. Every file the uninstall
+needs is loaded before the share goes, and a child process test runs it on a copied share.
 
 **The guard.** `scripts/release-check`, a thin CLI over `scripts/lib/release_guard.rb`, runs
 before the build. It asserts that the pushed branch releases the channel the version names

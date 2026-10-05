@@ -95,12 +95,9 @@ class CheckUpdateRubyTest < Minitest::Test
     @dir = Dir.mktmpdir("plastic-check-update-ruby")
     FileUtils.mkdir_p([File.join(plastic_home, ".cache"), bin])
     File.write(File.join(plastic_home, "VERSION"), "2.0.3\n")
-    TOOLS.each { |tool| File.symlink(tool_path(tool), File.join(bin, tool)) }
-    File.write(File.join(bin, "curl"), %(#!/bin/sh\nprintf '%s' '[{"tag_name":"v2.0.4","draft":false}]'\n))
-    File.chmod(0o755, File.join(bin, "curl"))
+    tools
     active_ruby(@dir)
-    File.mkfifo(cache)
-    File.utime(Time.now - (13 * 3600), Time.now - (13 * 3600), cache)
+    stale_cache
   end
 
   def teardown = FileUtils.rm_rf(@dir)
@@ -119,6 +116,18 @@ class CheckUpdateRubyTest < Minitest::Test
   def bin = File.join(@dir, "bin")
 
   def cache = File.join(plastic_home, ".cache", "update-check.json")
+
+  def stale_cache
+    File.mkfifo(cache)
+    stale = Time.now - (13 * 3600)
+    File.utime(stale, stale, cache)
+  end
+
+  def tools
+    TOOLS.each { |tool| File.symlink(tool_path(tool), File.join(bin, tool)) }
+    File.write(File.join(bin, "curl"), %(#!/bin/sh\nprintf '%s' '[{"tag_name":"v2.0.4","draft":false}]'\n))
+    File.chmod(0o755, File.join(bin, "curl"))
+  end
 
   def tool_path(tool) = ENV.fetch("PATH").split(":").map { |dir| File.join(dir, tool) }.find { |path| File.executable?(path) }
 

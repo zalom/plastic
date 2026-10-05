@@ -18,6 +18,7 @@ class UninstallRunningRubyTest < Minitest::Test
     FileUtils.mkdir_p(File.join(@home, ".claude"))
     KernelCommand.new(@home).run!("install", "--claude")
     copied_release
+    FileUtils.chmod_R("a-w", ruby_folder)
   end
 
   def teardown
@@ -47,18 +48,28 @@ class UninstallRunningRubyTest < Minitest::Test
       "RUBYOPT" => nil, "BUNDLER_SETUP" => nil, "PLASTIC_PACKAGE_ROOT" => nil }
   end
 
-  def copied_release
-    release = File.join(share, "releases", "99.0.0")
-    FileUtils.mkdir_p([File.join(release, "libexec"), File.join(ruby_folder, "bin"), File.dirname(launcher)])
-    FileUtils.cp_r(File.join(REPO, "scripts"), release)
-    FileUtils.cp(File.join(REPO, "package.json"), release)
+  def release = File.join(share, "releases", "99.0.0")
+
+  def active = File.join(share, "active")
+
+  def ruby_program = File.join(ruby_folder, "bin", "ruby")
+
+  def copy(source, target = release) = FileUtils.cp_r(File.join(REPO, source), target)
+
+  def copied_kernel
+    FileUtils.mkdir_p([File.join(release, "libexec"), File.dirname(launcher)])
+    copy("scripts")
+    copy("package.json")
+    copy(File.join("bin", "plastic"), File.join(release, "libexec", "plastic"))
     File.write(File.join(release, "VERSION"), "99.0.0\n")
-    FileUtils.cp(File.join(REPO, "bin", "plastic"), File.join(release, "libexec", "plastic"))
-    script(File.join(ruby_folder, "bin", "ruby"), "exec #{RbConfig.ruby} \"$@\"")
-    script(File.join(release, "bin", "plastic"), "exec #{ruby_folder}/bin/ruby #{release}/libexec/plastic \"$@\"")
-    File.symlink(release, File.join(share, "active"))
-    File.symlink(File.join(share, "active", "bin", "plastic"), launcher)
-    FileUtils.chmod_R("a-w", ruby_folder)
+  end
+
+  def copied_release
+    copied_kernel
+    script(ruby_program, "exec #{RbConfig.ruby} \"$@\"")
+    script(File.join(release, "bin", "plastic"), "exec #{ruby_program} #{release}/libexec/plastic \"$@\"")
+    File.symlink(release, active)
+    File.symlink(File.join(active, "bin", "plastic"), launcher)
   end
 
   def script(path, line)

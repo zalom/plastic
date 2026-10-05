@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require "find"
 require "fileutils"
 require "open3"
 require "tmpdir"
@@ -23,7 +22,7 @@ module InstallerRelease
     RUN = ->(ruby) { Open3.capture2e(ruby, "--disable-gems", "-rrbconfig", "-e", SMOKE).first }
 
     def self.remove(path)
-      Find.find(path) { |entry| File.chmod(0o755, entry) if File.directory?(entry) && !File.symlink?(entry) } if File.exist?(path)
+      FileUtils.chmod_R("u+w", path, force: true)
       FileUtils.rm_rf(path)
     end
 
