@@ -8,8 +8,9 @@ module Plastic
   module Workflows
     # Syncs a newer running package into the home for the registered agents.
     # When the running package is not newer, activates the newest release of
-    # the active release's channel. With no release activated yet, names the
-    # installer command that installs one.
+    # the chosen channel, or of the active release's channel, and syncs its
+    # files into the home. With no release activated yet, names the installer
+    # command that installs one.
     class UpdatePlastic < CodeWorkflow
       [facts, steps, outcomes].each(&:clear)
 
@@ -27,7 +28,7 @@ module Plastic
         context[:synced] = true
       end
 
-      read "find a newer release on the active channel" do |context|
+      read "find a newer release on the chosen channel" do |context|
         newest_release(context) unless context.newer
       end
 
@@ -36,8 +37,8 @@ module Plastic
       end
 
       outcome :done, if: ->(context) { context.synced }, offers: "plastic version", because: "the home holds Plastic %{to}"
-      outcome :activated, if: ->(context) { context.activated }, offers: "plastic update",
-        because: "Plastic %{activated} is active; update again to sync its files into the home"
+      outcome :activated, if: ->(context) { context.activated }, offers: "plastic version",
+        because: "Plastic %{activated} is active and the home holds its files"
       outcome :current, if: ->(context) { context.active }, offers: "plastic version",
         because: "Plastic %{active} is the newest release on its channel"
       outcome :fetch, offers: "plastic update", because: "run the installer command above, then update again"
@@ -50,10 +51,13 @@ module Plastic
 
       def self.newer_release(context, release)
         release.notices.each { |notice| context.print(notice) }
-        context[:release] = release.newer_release
+        context[:release] = release.newer_release(ReleaseUpdate.chosen_channels(context).first)
       end
 
-      def self.fetch_hint(context) = context.row("run:", Installation.fetch_command("PLASTIC_CHANNEL=#{Installation.of(context).channel}"))
+      def self.fetch_hint(context)
+        channel = ReleaseUpdate.chosen_channels(context).first || ReleaseUpdate::CHANNELS.key(Installation.of(context).channel)
+        context.row("run:", Installation.fetch_command("PLASTIC_CHANNEL=#{channel}"))
+      end
     end
   end
 end

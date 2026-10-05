@@ -6,10 +6,11 @@ require_relative "bundle"
 module InstallerRelease
   # Installs one verified release: checks its manifest against the requested
   # release, stages it, installs its runtime gems, then switches to it. A
-  # release that is already installed is switched to without staging.
+  # release that is already installed is switched to without staging. The
+  # switch syncs the home through the given home sync.
   class ReleaseInstall
-    def initialize(home:, bundle: Bundle.new)
-      @activation = Activation.new(home: home)
+    def initialize(home:, bundle: Bundle.new, sync: NoSync)
+      @activation = Activation.new(home: home, sync: sync)
       @home = home
       @bundle = bundle
     end

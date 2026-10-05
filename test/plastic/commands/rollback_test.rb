@@ -11,7 +11,29 @@ class RollbackCommandTest < Plastic::TestCase
 
     assert_equal 0, result.code, result.err
     assert_equal %w[2.0.2 2.0.3], [activation.active_version, activation.previous_version]
-    assert_match(/next:\s+plastic install --reinstall/, result.out)
+    assert_match(/next:\s+plastic version/, result.out)
+  end
+
+  def test_syncs_the_home_files_of_the_release_it_switches_to
+    activated("2.0.2", "2.0.3")
+    installed("2.0.3")
+    result = call("rollback")
+
+    assert_equal 0, result.code, result.err
+    assert_equal ["install --reinstall"], launcher_calls
+    assert_equal File.join(share, "active", "bin", "plastic"), File.readlink(File.join(@home, ".local", "bin", "plastic"))
+  end
+
+  def test_refuses_while_another_installer_holds_the_lock
+    activated("2.0.2", "2.0.3")
+    result = File.open(File.join(share, "INSTALL.lock"), "a") do |lock|
+      lock.flock(File::LOCK_EX)
+      call("rollback")
+    end
+
+    assert_equal 1, result.code
+    assert_includes result.err, "another Plastic installer is running"
+    assert_equal "2.0.3", activation.active_version
   end
 
   def test_switches_to_a_named_installed_release

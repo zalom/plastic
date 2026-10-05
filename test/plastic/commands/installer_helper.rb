@@ -38,7 +38,7 @@ module InstallerHelper
   def release_package(path, version)
     FileUtils.mkdir_p(File.join(path, "bin"))
     File.write(File.join(path, "VERSION"), "#{version}\n")
-    File.write(File.join(path, "bin", "plastic"), "#!/bin/sh\necho #{version}\n")
+    File.write(File.join(path, "bin", "plastic"), "#!/bin/sh\necho \"$*\" >> \"$HOME/launcher-calls\"\necho #{version}\n")
     File.chmod(0o755, File.join(path, "bin", "plastic"))
     path
   end
@@ -53,6 +53,8 @@ module InstallerHelper
     File.write(File.join(directory, "plastic.tgz.sha256"), "#{Digest::SHA256.file(archive).hexdigest}  plastic.tgz\n")
     directory
   end
+
+  def launcher_calls = File.exist?(File.join(@home, "launcher-calls")) ? File.readlines(File.join(@home, "launcher-calls"), chomp: true) : []
 
   def claude_folder = FileUtils.mkdir_p(File.join(@home, ".claude")).first
 
