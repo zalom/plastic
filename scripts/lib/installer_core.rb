@@ -511,7 +511,7 @@ class InstallerCore
   def agent_installed?(key)
     config = agent_config(key)
     return false unless config
-    !manifest_files(manifest_path_for(key, config)).empty?
+    manifest_files(manifest_path_for(key, config)).any? { |file| File.exist?(file) }
   end
 
   # Agent keys whose per-agent record exists (intent 210, D2): folder-with-VERSION =
@@ -1713,6 +1713,18 @@ class InstallerCore
       write_text_atomic(path, stripped)
     end
     path
+  end
+
+  # The instruction file an uninstall deletes because Plastic's section is all it holds.
+  def emptied_instruction_file(key, config)
+    path, prefix, section = if key == "claude"
+      [File.join(config[:dir], "CLAUDE.md"), CLAUDE_SECTION_BEGIN_PREFIX, CLAUDE_SECTION_RE]
+    else
+      [File.join(config[:home_dir] || config[:dir], "AGENTS.md"), CODEX_SECTION_BEGIN_PREFIX, CODEX_SECTION_RE]
+    end
+    return nil unless File.exist?(path) && File.read(path).include?(prefix)
+
+    resolve_managed_path(path) if File.read(path).sub(/\n?#{section}/, "").strip.empty?
   end
 
   def strip_codex_section(path)

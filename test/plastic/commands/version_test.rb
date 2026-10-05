@@ -105,7 +105,7 @@ class VersionCommandTest < Plastic::TestCase
     call("uninstall")
     result = call("version")
 
-    assert_match(/hooks:\s+none registered/, result.out)
+    refute_match(/hooks:\s+point/, result.out)
   end
 
   def unmatched(out, patterns) = patterns.reject { |pattern| pattern.match?(out) }

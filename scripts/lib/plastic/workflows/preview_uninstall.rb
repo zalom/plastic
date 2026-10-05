@@ -15,7 +15,7 @@ module Plastic
       read "list the files the uninstall would remove" do |context|
         if context.dry_run
           installation = Installation.of(context)
-          selected = Installation.selected(context)
+          selected = Installation.to_uninstall(context)
           installation.planned_removals(selected).each { |path| context.row("remove:", path) }
           releases = (installation.installed_agents - selected).empty? ? ReleaseRemoval.of(context).planned : []
           releases.each { |path| context.row("remove:", path) }

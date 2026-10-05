@@ -16,7 +16,7 @@ module Plastic
 
       step "remove the agent files", done: ->(context) { context.removed } do |context|
         installation = Installation.of(context)
-        selected = Installation.selected(context)
+        selected = Installation.to_uninstall(context)
         Installation.capture { installation.handle_uninstall(selected) }.each { |line| context.print(line) }
         context[:removed] = true
       end
