@@ -7,7 +7,7 @@ module Plastic
     # Persists the agent's selected evidence without judging its relevance.
     class IntentContext < Routine
       argument :intent_id, label: "ID", text: "the owning intent"
-      option :from, switch: "--from FILE", text: "JSON evidence selection with facts, interpretations, gaps and rulings"
+      option :from, switch: "--from FILE", text: "JSON file holding the arrays evidence, facts, interpretations, gaps and rulings"
       reads :knowledge
       writes :knowledge
 

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "output"
+require_relative "readable"
 
 module Plastic
   class CLI
@@ -27,11 +28,13 @@ module Plastic
 
       def row_lines
         width = label_width
-        result.rows.flat_map { |label, value| self.class.lines_for(label, Array(value), width) }
+        result.rows.flat_map { |label, value| self.class.lines_for(label, items_of(value), width) }
       end
 
+      def items_of(value) = Readable.structured?(value) ? Readable.lines(value) : Array(value)
+
       def label_width
-        widths = result.rows.reject { |_label, value| Array(value).empty? }.map { |label, _value| label.length }
+        widths = result.rows.reject { |_label, value| items_of(value).empty? }.map { |label, _value| label.length }
         widths.empty? ? 0 : widths.max + LABEL_GAP
       end
     end

@@ -37,7 +37,7 @@ module Plastic
       missing = names - present.keys
       raise Invalid, "no value for #{missing.join(", ")} in #{template.inspect}" if missing.any?
 
-      format(template, **present)
+      format(template, **present.transform_values { |value| value.is_a?(Array) ? value.join(", ") : value })
     end
   end
 end

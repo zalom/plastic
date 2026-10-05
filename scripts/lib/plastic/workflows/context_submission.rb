@@ -9,6 +9,7 @@ module Plastic
     # Validates the agent-selected context before the owning store writes it.
     class ContextSubmission
       CATEGORY_FIELDS = %w[evidence facts interpretations gaps rulings].freeze
+      FIELD_LIST = "evidence, facts, interpretations, gaps and rulings"
 
       def initialize(intent_id:, discovery:, source:)
         @intent_id = intent_id
@@ -17,10 +18,8 @@ module Plastic
       end
 
       def validate(path)
-        submission = JSON.parse(File.read(path))
-        raise CLI::Command::Usage, "context submission must be a JSON object" unless submission.is_a?(Hash)
-
-        require_fields(submission)
+        submission = read(path)
+        require_fields(path, submission)
         selected = selected_evidence(submission)
         submission.slice(*CATEGORY_FIELDS).merge(metadata(selected))
       end
@@ -29,8 +28,20 @@ module Plastic
 
       attr_reader :intent_id, :discovery, :source
 
-      def require_fields(submission)
-        CATEGORY_FIELDS.each { |field| submission.fetch(field) }
+      def read(path)
+        raise CLI::Command::Usage, "#{path} does not exist" unless File.file?(path)
+
+        submission = JSON.parse(File.read(path))
+        raise CLI::Command::Usage, "#{path} must hold a JSON object" unless submission.is_a?(Hash)
+
+        submission
+      rescue JSON::ParserError => error
+        raise CLI::Command::Usage, "#{path} is not valid JSON: #{error.message}"
+      end
+
+      def require_fields(path, submission)
+        raise CLI::Command::Usage, "#{path} needs the arrays #{FIELD_LIST}" unless (CATEGORY_FIELDS - submission.keys).empty?
+
         validate_categories(submission)
       end
 
