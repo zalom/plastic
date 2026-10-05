@@ -43,4 +43,14 @@ class RoadmapEdgeRemoveTest < Plastic::TestCase
       out: "edge: a to d removed\nwrote:  1 roadmap edge in work_graph.db\n\nnext: plastic roadmap show r1 --project global\nbecause: edge a to d is gone\n"
     refute_includes edges.map { |edge| [edge.from, edge.to] }, %w[a d]
   end
+
+  def test_preview_matches_apply_on_an_identical_home
+    twin = twin_run("roadmap", "edge", "remove", "r1", "a", "c") do |home|
+      seed_roadmap(home, "a", "b")
+      call_in(home, "roadmap", "add", "r1", "1", "c", "--title", "C", "--after", "a", "--after", "b")
+    end
+
+    assert_preview_matches_apply(twin)
+    assert_equal 0, twin.previewed.code
+  end
 end

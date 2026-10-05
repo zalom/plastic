@@ -10,6 +10,7 @@ require_relative "context"
 require_relative "routine_run"
 require_relative "routine/chain"
 require_relative "routine/traversal"
+require_relative "routine/preview"
 require_relative "workflow"
 require_relative "graph"
 
@@ -27,6 +28,9 @@ module Plastic
   # because: through its `outcome` lines. Routine::Chain holds the keys and
   # edges and checks them; Routine::Traversal walks them.
   class Routine < CLI::Command
+    extend Preview::Declaration
+    include Preview
+
     class << self
       def workflow(key, **edge, &branches)
         chain.add(key, edge[:next], &branches)
@@ -52,14 +56,12 @@ module Plastic
         end
       end
 
-      def chain_problems = chain.problems(declared_names)
+      def chain_problems = chain.problems(declared_names) + preview_problems
     end
 
     def call
       self.class.verify
-      finish(open_routine_run)
-    rescue Graph::Database::Error => error
-      raise CLI::Command::Failure, error.message
+      previewing? ? preview : run_chain
     end
 
     private

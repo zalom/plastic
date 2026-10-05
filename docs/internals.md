@@ -550,11 +550,16 @@ this section covers how the code holds together.
   interrupted call must match the complete snapshot before that call can finish.
   Restore does not print newer semantic rows over archived bytes or mark unsynced
   documents as current. Plain sync reports conflicts for those documents.
-- **Backup.** `backup` and `backup list` go through `Graph::Knowledge::Backup::Writer` and the `backups`
-  table of `home.db`. `RetrievalGraph#backup_flag` compares each archive's SHA-256 digest
-  with the digest stored at write time. The archive also carries `origin_id`, `config.yml`,
-  and `projects.yml` from the Plastic home when present. These files preserve row ownership,
-  settings, and project lookup when the archive is unpacked into an empty home.
+- **Backup.** The four `backup` commands go through `WorkGraph#backups`, a
+  `Graph::Knowledge::Backup::StoreBackups` for one store. `Writer` copies the databases
+  into the folder with `VACUUM INTO` and keeps `status.yml`. `Publisher` adds the row of
+  `home.db`'s `backups` table and removes the folder when the insert fails. `Purger`
+  deletes a folder and its row together and puts the folder back when the row delete
+  fails. `Restorer` checks the delivery lock and the status, writes a safety backup, runs
+  `quick_check`, and swaps the files by rename with rollback. `Backup#flag` compares the
+  SHA-256 digest of the sorted file names and digests with the one stored at write time.
+  `BackupStore` adds the required `--store` option to the four commands and refuses a slug
+  that is neither `global` nor a key of `projects.yml`. `Databases.parse` reads `--databases`.
 
 `Graph::Knowledge::Sync::LegacyImport` runs `Graph::Knowledge::Legacy::StoreImport` for a store with `INDEX.md` and no
 `store/index.json`. One coordinator reads intent files, rulings and source links, imports
@@ -563,10 +568,11 @@ roadmaps, and preserves changed originals. `Graph::Knowledge::Legacy::Decisions`
 store after disconnecting its database handles. Failure to save that copy leaves the
 original store untouched.
 
-`Graph::Knowledge::Sync::Preview` copies the selected store and its identity and configuration into a
-temporary home and runs the same sync there. It rejects symbolic links before copying
-and resolves absolute overwrite paths against the original store. Preview does not keep
-a routine run in the original home. Metadata import no longer requires a separate
+`Graph::DisposableCopy` copies the selected store and its identity and configuration into a
+temporary home, with `Graph::StoreTree` listing the files, and the sync runs there. It rejects
+links to folders before copying and resolves absolute overwrite paths against the original store.
+`Routine::Preview` adds `--dry-run` to any command that declares `previews`; `Routine::PreviewOutput`
+prints what the call would write. Preview does not keep a routine run in the original home. Metadata import no longer requires a separate
 migration command. The compatibility cleanup flag applies only after successful first
 import; later sync does not delete legacy source files.
 
@@ -756,7 +762,9 @@ savepoint's `Commit` ledger has entries and no checklist item is ticked.
 
 ## store layout and the stores move (intent 370)
 
-Fresh bootstrap creates `stores/global/store` and `stores/global/INDEX.md`. Legacy data
+Fresh bootstrap creates `stores/global/store` and the three store databases, as a sync up
+leaves a store, and no `INDEX.md`, so `plastic intent new` works at once. `Scope` also resolves a registered project whose store folder does not exist yet, reading
+`projects.yml` only for a slug that is neither `global` nor an existing store folder. Legacy data
 (`store`, `projects`, `INDEX.md`, or `roadmaps` at the home root) keeps bootstrap on the old
 layout until explicit migration. Bootstrap on an already migrated home never recreates `projects/`.
 The context-budget benchmark seeds its fixture through the same store path resolver, so it

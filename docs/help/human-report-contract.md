@@ -44,7 +44,7 @@ reply, nothing before it, no fence, or the hook cannot paint it.
 | the agent | "where are we" (an unnamed status ask) | `report-screen session` |
 | the agent | "why so long" | `report-screen delay` |
 
-`plastic intent end` and `plastic intent step` print no screen of their own.
+`plastic intent end` and `plastic next` print no screen of their own.
 
 ## A roadmap's own three reports (intent 331c)
 

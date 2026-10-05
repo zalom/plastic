@@ -74,7 +74,20 @@ class InstallTest < Minitest::Test
     end
   end
 
+  def test_the_closing_line_names_something_the_release_ships
+    with_probe do |installer|
+      out, = capture_io { installer.send(:print_results, [{ agent: "Claude Code", success: true, files: 3 }], :install) }
+
+      assert_includes shipped_names(installer), out[/Next: (?:read|run plastic help) (\S+)/, 1]
+    end
+  end
+
   private
+
+  def shipped_names(installer)
+    topics = installer.help_files.keys.map { |path| File.basename(path, ".md") }
+    topics + installer.core_files.values
+  end
 
   def with_probe(version: "2.1.0")
     Dir.mktmpdir("plastic-installer-runtime") do |home|

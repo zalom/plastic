@@ -32,7 +32,7 @@ in 2.0, intent 304; the lead writes the Why and How record itself):
   prints, an optional dispatch before any code exists.
 - **the post-execution reviewer**: a fresh agent on the prompt that
   `plastic help code-quality-reviewer-prompt` prints, dispatched only when a review rule from
-  `plastic auto report ID` fires; never the maker.
+  `plastic help agent-architecture` fires; never the maker.
 
 One agent boot (the executor) is the minimum delivery; the plan reviewer is a second,
 optional boot when the lead calls for review before code, and the post-execution reviewer is
@@ -100,33 +100,33 @@ worktree, and the record are how the team keeps one delivery in one place.
 ### The risk list
 
 The post-execution reviewer runs when the executor's diff touches any of these paths, or when
-one of the other two review rules that `plastic auto report ID` prints fires:
+one of the other two review rules in this chapter fires:
 
 - `hooks/`, `scripts/hook-*`, `scripts/lib/hook_registry.rb`
 - `scripts/lib/lock.rb`, `scripts/lib/arm.rb`, `scripts/plastic-lock`, `scripts/end-intent`
 - `scripts/lib/installer_core.rb`, `scripts/install*`, `scripts/update.rb`
 - `package.json`, `CHANGELOG.md`
 
-Grow this list here and in the `REVIEW_RULES` text of `plastic auto report`.
+Grow this list here.
 
 ### Headless Note
 
 In a headless or background run the session id may be unset. `plastic-lock arm` then keys the
 lock by a derived session key, the record hook still writes the savepoint ledger from the
-written path, and the lead verifies state from the files (`plastic auto lock status ID`,
-which wraps `plastic-lock status`, `savepoint.md`, the diff) rather than from a hook it assumes fired.
+written path, and the lead verifies state from the files (`plastic intent show ID`,
+`savepoint.md`, the diff) rather than from a hook it assumes fired.
 
 ### Delegation
 
 The roles are thin handoff contracts, not a spawning engine. Dispatch runs through Plastic's
-own engine, `plastic intent step`: one executor for the consolidated action, the two
+own engine, `plastic next`: one executor for the consolidated action, the two
 reviewer prompts as fresh agents. The team model defines who hands what to whom and where the
 reviews sit; the engine does the actual spawning.
 
 ### Fallback by Case
 
 If the harness supports agent dispatch, auto mode dispatches through
-`plastic intent step`. If the harness has no agent dispatch at all (Codex CLI today), the
+`plastic next`. If the harness has no agent dispatch at all (Codex CLI today), the
 lead walks the five steps itself: it still writes the matrix and the tests first, and reviews
 its own plan against the matrix before code, saying so in `## Insights`.
 

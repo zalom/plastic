@@ -225,11 +225,21 @@ explicit sync conflict resolution. A plain sync cannot silently overwrite them.
 Roadmap writes reject an item that depends on itself. Reading an imported cycle reports
 its unresolved items as blocked, and `roadmap check` identifies the loop.
 
-`plastic backup` packs `home.db`, each store's three databases, and the home's `origin_id`,
-`config.yml`, and `projects.yml` when present into one gzipped archive under `backups/`.
-The identity file lets an unpacked backup read the rows under their original owner.
-`plastic backup list` flags an archive that is missing or that changed
-since it was written.
+`plastic backup --store SLUG` copies the three databases of one registered store, or of the
+global store (`--store global`, the one name that is not a key of `projects.yml`), with
+`VACUUM INTO`, into `stores/SLUG/backups/YYYYMMDDHHMMSS/`. The folder name is the UTC time,
+with `-1`, `-2` added on a collision. `--databases LIST` copies only the named ones. A
+`status.yml` in the folder holds `status:` (`in-progress`, `done` or `error`) and `goal:`
+(`full` or `partial:` and the file names). A finished backup also gets one row in the
+`backups` table of `home.db`, named `SLUG/TS`.
+`plastic backup list --store SLUG` reads the folders and shows the number, the folder name,
+the local start time, the status and the goal. It exits 1 for a backup whose row is
+missing on disk or changed, and does not fail for a folder with no row.
+`plastic backup purge --store SLUG (--older-than DATE | --all)` deletes folders and rows
+before a UTC time. `plastic backup restore --store SLUG (--timestamp TS | --latest)` puts
+back a `done` backup after a safety backup of the current databases. It refuses while a
+delivery lock is fresh. The next step it offers is `plastic sync up --dry-run --project SLUG`,
+because sync up rereads the files newer than the backup.
 
 `plastic sync up` imports a selected legacy store completely: intents, rulings, source
 and chain links, roadmaps, and preserved original bytes. It then handles ordinary hand
@@ -249,7 +259,7 @@ after success, it removes `INDEX.md` and archives done or abandoned intents. Ord
 later sync does not repeat cleanup. Explicit archive reversal uses
 `plastic intent archive ID --revert`.
 
-Backups recover the same installation, including its origin identity. They are not a
+Backups recover the databases of one store on the same installation. They are not a
 colleague handover format. Team transport is deferred, and Plastic stores are not shared
 through Git.
 
@@ -504,6 +514,18 @@ worktree. Its note now names the real delivery lock of that intent: held by
 another session, held by this session, or not held at all. It no longer
 reports an agent lock that does not exist. The `next:` line no longer implies
 that a commit landed; the printed line above it says whether one did.
+
+### Preview in a disposable copy
+
+A command that declares `previews` takes `--dry-run`. `Graph::DisposableCopy` snapshots the
+databases of one store with `VACUUM INTO`, copies its files and its home configuration into a
+temporary home, and refuses a link to a folder. The routine runs its whole chain against that
+copy, and `Routine::PreviewOutput` prints each line with a `preview:` prefix, names the
+original path and never the copy, lists the files the call would add, change or remove, and
+closes with `preview complete; the original store was not changed`. A chain that holds an
+agent workflow cannot preview, because the agent's steps run outside the copy. The copy is
+deleted when the call ends.
+
 
 ### Sync preview
 

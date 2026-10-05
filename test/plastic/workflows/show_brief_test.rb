@@ -23,6 +23,25 @@ class ShowBriefTest < Plastic::TestCase
     assert_equal ["goal: Ship it", "criterion: It works"], printed.grep(/\A(goal|criterion):/)
   end
 
+  def spec_line(context) = context.printed.find { |line| line.start_with?("spec:") }
+
+  def test_the_brief_says_who_writes_the_spec_and_names_the_criteria_heading
+    open_intent
+
+    line = spec_line(brief.last)
+
+    assert_includes line, "none yet; the agent writes"
+    assert_includes line, '"## Done criteria"'
+  end
+
+  def test_the_brief_of_an_intent_with_a_spec_names_the_file_and_the_criteria_heading
+    intent = open_intent
+    write("#{intent.dir}/spec.md", "# Spec\n\n## Done criteria\n- It works\n")
+    sync_up
+
+    assert_equal "spec: #{intent.dir}/spec.md; the done criteria are the bullets under its \"## Done criteria\" heading", spec_line(brief.last)
+  end
+
   def test_superseded_rulings_and_ready_nodes_are_listed
     open_intent
     store_graphs.work.add_ruling(intent_id: "1", text: "Old")

@@ -55,37 +55,10 @@ class RetrievalRoadmapRecordsTest < Plastic::TestCase
 end
 
 class RetrievalBackupRecordsTest < Plastic::TestCase
-  def test_reads_backup_metadata_and_recognizes_an_unchanged_archive
-    backup = create_backup
-
-    assert_equal [backup.name], retrieval.backups.map(&:name)
-    assert_nil retrieval.backup_flag(backup)
-  end
-
-  def test_reports_a_missing_backup_archive
-    backup = create_backup
-    File.unlink(backup_path(backup))
-
-    assert_equal "missing", retrieval.backup_flag(backup)
-  end
-
-  def test_reports_changed_backup_bytes
-    backup = create_backup
-    File.binwrite(backup_path(backup), "changed")
-
-    assert_equal "changed", retrieval.backup_flag(backup)
-  end
-
-  private
-
-  def create_backup
-    row = { name: "fixture.tar.gz", files: 1, bytes: 7, sha256: Digest::SHA256.hexdigest("archive"), at: STAMP, session_id: "fixture" }
-    backup = Plastic::Graph::Knowledge::Backup.from_h(row.transform_keys(&:to_s))
-    FileUtils.mkdir_p(File.dirname(backup_path(backup)))
-    File.binwrite(backup_path(backup), "archive")
+  def test_reads_backup_metadata
+    row = { name: "alpha/20260101100000", files: 3, bytes: 7, sha256: Digest::SHA256.hexdigest("archive"), at: STAMP, session_id: "fixture" }
     store_graphs.databases.fetch(:home).transaction { |batch| batch.put(:backups, row, statement: :insert) }
-    backup
-  end
 
-  def backup_path(backup) = File.join(@plastic_home, "backups", backup.name)
+    assert_equal ["alpha/20260101100000"], retrieval.backups.map(&:name)
+  end
 end

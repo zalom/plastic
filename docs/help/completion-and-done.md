@@ -58,8 +58,8 @@ no other step restates either (see `plastic help human-report-contract`).
 
 #### session commit records the item, you land it
 
-`plastic session commit "SUMMARY" [--ref REF]` is how a verified checklist item gets recorded.
-It runs `scripts/session-commit`, which appends one `Item` savepoint line to the day ledger and
+`plastic session note "SUMMARY" --kind Commit` is how a verified checklist item gets recorded.
+It appends one `Item` savepoint line to the day ledger and
 prints, as its `next:` line, the exact instruction to run. Plastic writes no commit itself: no
 `git`, no `gh`, no `glab`.
 

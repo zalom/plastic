@@ -32,11 +32,11 @@ class ContextSubmissionTest < Plastic::TestCase
   def test_a_submission_that_is_not_an_object_is_a_usage_error
     error = assert_raises(Plastic::CLI::Command::Usage) { validate([]) }
 
-    assert_equal "context submission must be a JSON object", error.message
+    assert_match(/submission\.json must hold a JSON object\z/, error.message)
   end
 
   def test_a_missing_category_raises
-    assert_raises(KeyError) { validate({ "evidence" => [] }) }
+    assert_raises(Plastic::CLI::Command::Usage) { validate({ "evidence" => [] }) }
   end
 
   def test_a_category_that_is_not_a_list_is_a_usage_error

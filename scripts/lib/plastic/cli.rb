@@ -2,11 +2,15 @@
 
 require_relative "cli/command"
 require_relative "cli/table"
+require_relative "cli/listing"
+require_relative "cli/topics"
 
 module Plastic
   # The command line of the kernel: finds the command that argv names in
   # TABLE, loads its class, and hands it the call.
   class CLI
+    TOPICS = File.expand_path("../../../docs/help", __dir__)
+
     # The command the words name: the longest table entry that starts argv,
     # so `auto lock renew` wins over `auto lock`.
     def self.find(argv, table = TABLE)
@@ -25,11 +29,18 @@ module Plastic
 
     def self.file_of(klass) = klass.split("::").map { |part| Plastic.snake(part) }.join("/")
 
+    Context = Struct.new(:environment, :table, :topics) do
+      def environment_and_table = [environment, table]
+
+      def self.build(given) = new(environment: Command::Environment.current, table: TABLE, topics: TOPICS, **given)
+    end
+
     # The whole of bin/plastic: find the command, hand it the rest of argv and
     # its own words. A hook reads its event from the environment's input;
     # other tools ignore it.
-    def self.call(argv, environment: Command::Environment.current, table: TABLE)
-      dispatch(argv.empty? ? ["help"] : argv, table, environment) do
+    def self.call(argv, **given)
+      context = Context.build(given)
+      dispatch(argv.empty? ? ["help"] : argv, context) do
         "plastic: no command #{argv.first(2).join(" ").inspect}; plastic help lists them"
       end
     end
@@ -37,16 +48,20 @@ module Plastic
     # The whole of bin/plastic: run a shipped command, list the shipped
     # commands for `plastic help`, and name a command that has no stage yet
     # instead of blaming the words the owner typed.
-    def self.bin_call(argv, environment: Command::Environment.current, table: TABLE)
-      command = argv.first
-      return list(argv, table, environment) if argv.empty? || %w[--help -h].include?(command)
-      return help(argv, table, environment) if command == "help"
+    def self.bin_call(argv, **given) = route(argv, Context.build(given))
 
-      dispatch(argv, table, environment) { "plastic #{argv.join(" ")} is not in this build yet; it lands with its stage" }
+    def self.route(argv, context)
+      command = argv.first.to_s
+      return list(argv, context) if command.empty? || %w[--help -h].include?(command)
+      return help(argv, context) if command == "help"
+
+      dispatch(argv, context) { "plastic #{argv.join(" ")} is not in this build yet; it lands with its stage" }
     end
+    private_class_method :route
 
     # Runs the command the words name, or prints the block's line and exits 2.
-    def self.dispatch(argv, table, environment)
+    def self.dispatch(argv, context)
+      environment, table = context.environment_and_table
       name = find(argv, table)
       return tool(name, table).call(argv.drop(name.split.size), words: name, environment:) if name
 
@@ -55,25 +70,29 @@ module Plastic
     end
     private_class_method :dispatch
 
-    def self.help(argv, table, environment)
+    def self.help(argv, context)
       words = argv.drop(1)
-      return list(argv, table, environment) if argv.one? || words.all? { |word| %w[--json --help -h].include?(word) }
+      return list(argv, context) if argv.one? || words.all? { |word| %w[--json --help -h].include?(word) }
 
-      dispatch([*words, "--help"], table, environment) do
-        "plastic: no command #{words.join(" ").inspect}; plastic help lists them"
-      end
+      topic_or_help(words, context)
     end
     private_class_method :help
 
-    # The shipped commands, one row each, as lines or as one document with --json.
-    def self.list(argv, table, environment)
-      output = printer(argv).new(out: environment.out, err: environment.err)
-      table.each { |name, (_, summary)| output.row(name, summary) }
-      output.flush
+    def self.topic_or_help(words, context)
+      text = Topics.new(context.topics, context.table).read(words)
+      return print_topic(text, context) if text
+
+      dispatch([*words, "--help"], context) { "plastic: no command #{words.join(" ").inspect}; plastic help lists them" }
+    end
+    private_class_method :topic_or_help
+
+    def self.print_topic(text, context)
+      context.environment.out.print text
       Command::OK
     end
+    private_class_method :print_topic
 
-    def self.printer(argv) = argv.include?("--json") ? JsonOutput : TextOutput
-    private_class_method :printer
+    def self.list(argv, context) = Listing.new(*context.environment_and_table).call(argv)
+    private_class_method :list
   end
 end

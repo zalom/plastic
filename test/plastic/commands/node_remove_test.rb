@@ -31,4 +31,26 @@ class NodeRemoveTest < Plastic::TestCase
     assert_equal 0, result.code
     assert_equal "removed", store_graphs.retrieval.node("1", "n1").state
   end
+
+  def test_preview_matches_apply_on_an_identical_home
+    twin = twin_run("node", "remove", "1", "n1") do |home|
+      seed_intents(home, "Alpha")
+      seed_nodes(home, "a", "b")
+      call_in(home, "edge", "add", "1", "n1", "n2")
+    end
+
+    assert_preview_matches_apply(twin)
+    assert_equal 0, twin.previewed.code
+  end
+
+  def test_a_preview_of_a_missing_node_refuses_like_the_apply
+    twin = twin_run("node", "remove", "1", "n9") do |home|
+      seed_intents(home, "Alpha")
+      seed_nodes(home, "a")
+    end
+
+    assert_preview_matches_apply(twin)
+    refute_equal 0, twin.previewed.code
+    assert_includes twin.previewed.err, "n9"
+  end
 end

@@ -10,6 +10,7 @@ module Plastic
       argument :intent_id, label: "ID", text: "the intent to archive"
       option :revert, switch: "--revert", text: "restore the archived directory exactly"
       writes :work, :knowledge, :references
+      previews
 
       workflow :code_choose_archive do
         on :archive, next: :code_archive_intent

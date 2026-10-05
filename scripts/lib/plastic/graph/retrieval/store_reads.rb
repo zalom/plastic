@@ -7,7 +7,6 @@ module Plastic
       module StoreReads
         def printed = stored.printed
         def backups = stored.backups
-        def backup_flag(backup) = stored.backup_flag(backup)
       end
     end
   end

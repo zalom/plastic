@@ -18,7 +18,7 @@ This chapter holds the linking rules for an intent's frontmatter and the branch-
   It equals the projection of `sources` (first) then `chain`. Never hand-write or hand-edit a
   `## Links` line, and never auto-delete one. The edge lives in the frontmatter graph; the
   section is regenerated from it (doctor `graph_links_projection` enforces this identity). To
-  add a link, add the frontmatter edge, then run `plastic project links` to reproject.
+  add a link, add the frontmatter edge, then run `plastic intent link` to reproject.
 
 - Links are decided by CONTEXT INFLUENCE, not by shared files, shared symbols, or a topic
   similarity score. The question is whether one intent's context actually informed another.

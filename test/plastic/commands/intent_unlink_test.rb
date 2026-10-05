@@ -44,4 +44,15 @@ class IntentUnlinkTest < Plastic::TestCase
     assert_equal 0, result.code
     assert_empty store_graphs.retrieval.links("1")
   end
+
+  def test_preview_matches_apply_on_an_identical_home
+    twin = twin_run("intent", "unlink", "1", "cites", "2") do |home|
+      seed_intents(home, "Alpha", "Beta")
+      call_in(home, "intent", "link", "1", "cites", "2")
+      call_in(home, "intent", "link", "1", "chain", "2")
+    end
+
+    assert_preview_matches_apply(twin)
+    assert_equal 0, twin.previewed.code
+  end
 end

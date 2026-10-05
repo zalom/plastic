@@ -2,7 +2,18 @@
 
 require_relative "../../test_helper"
 
+module DiscoveryDocuments
+  def write_document(store, body)
+    graphs = Plastic::Graph.open(home: @plastic_home, store:)
+    Plastic::Graph::Retrieval::Evidence::Writer.new(graphs.databases.fetch(:knowledge), origin).write("1", "evidence.md", body)
+    graphs.retrieval.backfill
+    graphs.retrieval.archived?("1")
+  end
+end
+
 class IntentDiscoverTest < Plastic::TestCase
+  include DiscoveryDocuments
+
   def test_replaces_malformed_or_incomplete_saved_context_with_a_fresh_external_handoff
     open_intent
     write_document("other", "selected evidence")
@@ -119,16 +130,23 @@ class IntentDiscoverTest < Plastic::TestCase
     assert_equal "plastic intent context 1 --from FILE --project global", JSON.parse(result.out).fetch("next")
   end
 
-  def write_document(store, body)
-    graphs = Plastic::Graph.open(home: @plastic_home, store:)
-    Plastic::Graph::Retrieval::Evidence::Writer.new(graphs.databases.fetch(:knowledge), origin).write("1", "evidence.md", body)
-    graphs.retrieval.backfill
-    graphs.retrieval.archived?("1")
-  end
-
   def write_saved_context(data)
     Plastic::Graph.open(home: @plastic_home, store: "global").databases.fetch(:knowledge).transaction do |batch|
       batch.put(:retrieval_contexts, { intent_id: "1", data:, updated_at: STAMP })
     end
+  end
+end
+
+class IntentDiscoverOutputTest < Plastic::TestCase
+  include DiscoveryDocuments
+
+  def test_plain_output_prints_readable_lines
+    open_intent
+    write_document("global", "global evidence")
+
+    result = plastic("intent", "discover", "1", "evidence", table: Plastic::CLI::TABLE)
+
+    assert_equal [0, ""], [result.code, result.err]
+    refute_match(/\{|=>|\[/, result.out)
   end
 end

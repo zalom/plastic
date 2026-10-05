@@ -11,10 +11,9 @@ class RetrievalStoreReadsTest < Plastic::TestCase
     assert_equal({ "store/index.json" => "a" }, retrieval.printed)
   end
 
-  def test_the_retrieval_graph_reads_the_backups_and_their_flags
-    put(:home, :backups, { name: "a.tar.gz", files: 1, bytes: 1, sha256: "x", at: STAMP })
-    read = retrieval
+  def test_the_retrieval_graph_reads_the_backups
+    put(:home, :backups, { name: "alpha/20260101100000", files: 1, bytes: 1, sha256: "x", at: STAMP })
 
-    assert_equal [["a.tar.gz", "missing"]], read.backups.map { |backup| [backup.name, read.backup_flag(backup)] }
+    assert_equal ["alpha/20260101100000"], retrieval.backups.map(&:name)
   end
 end

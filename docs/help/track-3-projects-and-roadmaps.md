@@ -36,7 +36,7 @@ into a whole new project.
 Make the project directory yourself and write its `AGENTS.md`, carrying forward at least one
 decision from the founding intent. Plastic does not create the directory or fill that file;
 that is ordinary agent work, done once, before the project exists. Once the directory exists,
-run `plastic project new SLUG --path PATH` to register it in `projects.yml` and provision and
+run `plastic install` to register it in `projects.yml` and provision and
 validate its store.
 
 Artifact: a new project directory with its `AGENTS.md`, the project's own intent store, and a
@@ -68,7 +68,7 @@ across one or more batches.
 
 Run `plastic roadmap check <slug>` to confirm the file parses. A roadmap copied from the
 template may have no `## Graph` section yet; `check` then exits 1 and names
-`plastic roadmap migrate <slug>`, which writes the section from the batches. Then run
+the missing section, which you write from the batches. Then run
 `plastic roadmap show <slug>` to see it rendered as a report.
 
 Artifact: a new `roadmaps/<slug>.md` file, sitting next to the project's `INDEX.md`, listing

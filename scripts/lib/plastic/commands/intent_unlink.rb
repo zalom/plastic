@@ -10,6 +10,7 @@ module Plastic
       argument :intent_id, label: "ID", text: "the intent this link starts from"
       argument :kind, label: "KIND", text: "cites, supersedes, answers, source or chain"
       argument :target, label: "TARGET", text: "the link's other end, as written when it was added"
+      previews
       writes :knowledge
 
       workflow :code_remove_link, next: :noop

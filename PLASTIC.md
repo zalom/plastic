@@ -11,6 +11,8 @@ giving the rule that chose it. Run it unless asked for something else.
 
 `--json` gives any command's result as data, except the installer commands and `plastic hook`.
 
+git is a hard dependency: Plastic needs it installed, and agents run it, never Plastic's code.
+
 Pull request: What, Why, How, Tests (`plastic help completion-and-done`).
 
 Agents run every command, from opening an intent to closing it, without asking. A person

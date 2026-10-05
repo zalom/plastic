@@ -44,6 +44,10 @@ class PlasticMdBatch0ConventionsTest < Minitest::Test
                  "must state the EnterWorktree non-repo-launch-directory condition")
   end
 
+  def test_plastic_md_says_git_is_a_hard_dependency
+    assert_includes normalized_body, "git is a hard dependency"
+  end
+
   # --- 151: insight-append ships on every install and update ---------------
 
   # --- 154: new-intent style-preserving chain wiring + quoting -------------

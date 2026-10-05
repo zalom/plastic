@@ -29,6 +29,8 @@ module Plastic
 
     def to_h = @values.dup
 
+    def self.joined(values) = values.transform_values { |value| value.is_a?(Array) ? value.join(", ") : value }
+
     # Fills %{name} from the facts. A name with no value raises, so a
     # printed command never carries a hole.
     def fill(template)
@@ -37,7 +39,7 @@ module Plastic
       missing = names - present.keys
       raise Invalid, "no value for #{missing.join(", ")} in #{template.inspect}" if missing.any?
 
-      format(template, **present)
+      format(template, **Facts.joined(present))
     end
   end
 end

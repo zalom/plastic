@@ -70,6 +70,12 @@ module Plastic
           connections.keep_if { |path, _connection| keep.include?(path) }
         end
 
+        # Closes the connections of every database file under the `prefix` folder.
+        def self.release(prefix)
+          folder = File.join(prefix, "")
+          connections.keys.select { |path| path.start_with?(folder) }.each { |path| connections.delete(path).close }
+        end
+
         def self.connections
           pid = Process.pid
           @connections = {} unless @pid == pid

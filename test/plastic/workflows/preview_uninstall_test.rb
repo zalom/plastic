@@ -41,7 +41,7 @@ class PreviewUninstallTest < Plastic::TestCase
     install_for("claude", "codex")
     activated("2.0.3")
 
-    _, context = preview
+    _, context = preview(claude: true)
 
     refute_includes removed(context), share
   end
