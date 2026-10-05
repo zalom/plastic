@@ -11,6 +11,7 @@ module Plastic
       argument :kind, label: "KIND", text: "cites, supersedes, answers, source or chain"
       argument :target, label: "TARGET", text: "the link's other end, as written when it was added"
       writes :knowledge
+      previews
 
       workflow :code_remove_link, next: :noop
     end

@@ -45,16 +45,11 @@ class RoadmapShowTest < Plastic::TestCase
     with_home do |home|
       seed_roadmap(home, "a")
       call_in(home, "roadmap", "show", "r1")
-      outside = File.join(File.dirname(home), "outside")
-      FileUtils.mv(File.join(home, "stores", "global", "roadmaps"), outside)
-      File.symlink(outside, File.join(home, "stores", "global", "roadmaps"))
-      before = [snapshot(home), snapshot(outside)]
+      linked = linked_preview(home, File.join(home, "stores", "global", "roadmaps"), "roadmap", "show", "r1")
 
-      result = call_in(home, "roadmap", "show", "r1", "--dry-run")
-
-      assert_equal 3, result.code
-      assert_includes result.err, File.join(home, "stores", "global", "roadmaps")
-      assert_equal before, [snapshot(home), snapshot(outside)]
+      assert_equal 3, linked.result.code
+      assert_includes linked.result.err, linked.link
+      assert linked.untouched
     end
   end
 end

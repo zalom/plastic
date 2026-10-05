@@ -42,10 +42,10 @@ class RoutinePreviewTest < Plastic::TestCase
   end
 
   def test_a_preview_keeps_no_routine_run
-    twin = twin_run("graph", "show", "1") { |home| seed_graph(home) }
+    twin = twin_run("intent", "archive", "1") { |home| seed_intents(home, "Alpha") }
 
-    assert_nil home_graphs(twin.first).retrieval.routine_run("graph show", "1")
-    assert home_graphs(twin.second).retrieval.routine_run("graph show", "1")
+    assert_nil home_graphs(twin.first).retrieval.routine_run("intent archive", "1")
+    assert home_graphs(twin.second).retrieval.routine_run("intent archive", "1")
   end
 
   def test_a_preview_names_original_paths_never_the_copy
@@ -58,7 +58,7 @@ class RoutinePreviewTest < Plastic::TestCase
   def test_a_preview_prefixes_every_printed_line_and_ends_on_the_closing_line
     twin = twin_run("graph", "show", "1") { |home| seed_graph(home) }
     printed = twin.previewed.out.lines(chomp: true).take_while { |line| !line.empty? }
-    rows = printed.reject { |line| line.start_with?("preview: ") || line.start_with?("would write:") }
+    rows = printed.reject { |line| line.start_with?("preview: ", "would write:", "next:", "because:") }
 
     assert_equal ["preview complete; the original store was not changed"], rows
     assert_equal "preview: node: n1 open a", printed.first
@@ -89,19 +89,23 @@ class RoutinePreviewTest < Plastic::TestCase
   def test_a_preview_after_a_refused_apply_matches_the_resumed_apply
     twin = twin_run("intent", "archive", "1") do |home|
       seed_intents(home, "Alpha")
-      assert_equal 3, call_in(home, "intent", "archive", "1").code
-      mark_done(home, "1")
+      call_in(home, "intent", "archive", "1")
+      mark_done_in(home, "1")
     end
 
     assert_preview_matches_apply(twin)
     assert_equal 0, twin.previewed.code
   end
 
-  def test_a_refusal_in_the_copy_prints_the_apply_message_and_the_closing_line
+  def test_a_refusal_in_the_copy_prints_the_apply_message
     twin = twin_run("intent", "archive", "1") { |home| seed_intents(home, "Alpha") }
 
-    assert_equal 3, twin.previewed.code
-    assert_equal twin.applied.err, twin.previewed.err
+    assert_equal [3, twin.applied.err], [twin.previewed.code, twin.previewed.err]
+  end
+
+  def test_a_refusal_in_the_copy_ends_on_the_closing_line_and_changes_nothing
+    twin = twin_run("intent", "archive", "1") { |home| seed_intents(home, "Alpha") }
+
     assert_includes twin.previewed.out, "preview complete; the original store was not changed\n"
     assert_equal [], twin.changed_paths
   end

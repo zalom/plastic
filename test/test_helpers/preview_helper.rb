@@ -17,10 +17,10 @@ module Plastic
         def changed_paths = (before.keys | after.keys).reject { |path| before[path] == after[path] }
 
         def previewed_lines
-          lines(previewed.out).filter_map { |line| line.delete_prefix("preview: ").sub("would write:", "wrote:") unless dropped?(line) }
+          lines(previewed.out).filter_map { |line| line.delete_prefix("preview: ").sub("would write:", "wrote:") unless dropped?(line) }.map { |line| line.squeeze(" ") }
         end
 
-        def applied_lines = lines(applied.out)
+        def applied_lines = lines(applied.out).map { |line| line.squeeze(" ") }
 
         def preview_paths = previewed.out.lines(chomp: true).filter_map { |line| line.delete_prefix("preview: would ") if line.start_with?("preview: would ") }
 
@@ -30,7 +30,7 @@ module Plastic
 
         def lines(text)
           text.lines(chomp: true).reject { |line| line.empty? || line.start_with?("next:", "because:") }
-            .map { |line| line.gsub(first, "HOME").gsub(second, "HOME").squeeze(" ") }
+            .map { |line| line.gsub(first, "HOME").gsub(second, "HOME") }
         end
       end
 
@@ -47,27 +47,49 @@ module Plastic
       def home_graphs(home) = Plastic::Graph.open(home:, store: "global")
 
       def twin_run(*argv)
-        Dir.mktmpdir("plastic-twins") do |root|
-          first = File.join(root, "first", ".plastic")
-          second = File.join(root, "second", ".plastic")
-          yield first
-          FileUtils.mkdir_p(File.dirname(second))
-          FileUtils.cp_r(first, File.dirname(second))
-          before = snapshot(first)
-          previewed = call_in(first, *argv, "--dry-run")
-          after = snapshot(first)
-          Twins.new(previewed:, applied: call_in(second, *argv), before:, after:, first:, second:)
-        ensure
+        root = Dir.mktmpdir("plastic-twins")
+        (@twin_roots ||= []) << root
+        first = File.join(root, "first", ".plastic")
+        second = File.join(root, "second", ".plastic")
+        yield first
+        FileUtils.mkdir_p(File.dirname(second))
+        FileUtils.cp_r(first, File.dirname(second))
+        before = snapshot(first)
+        previewed = call_in(first, *argv, "--dry-run")
+        Twins.new(previewed:, applied: call_in(second, *argv), before:, after: snapshot(first), first:, second:)
+      end
+
+      def after_teardown
+        super
+        Array(@twin_roots).each do |root|
           Plastic::Graph::Database::ConnectionPool.release(root)
+          FileUtils.rm_rf(root)
         end
       end
 
       def assert_preview_matches_apply(twin)
         assert_equal [], twin.changed_paths
-        assert_equal twin.applied.code, twin.previewed.code, [twin.previewed.out, twin.previewed.err].inspect
+        assert_same_answer(twin)
+        assert_includes twin.previewed.out, "#{CLOSING}\n"
+      end
+
+      def assert_same_answer(twin)
+        assert_equal twin.applied.code, twin.previewed.code
         assert_equal twin.applied_lines, twin.previewed_lines
         assert_equal twin.applied.err, twin.previewed.err
-        assert_includes twin.previewed.out, "#{CLOSING}\n"
+      end
+
+      # Moves the folder at `link` outside the home, links it back, and previews
+      # `argv`; the outside folder is read before and after.
+      LinkedPreview = Data.define(:result, :link, :untouched)
+
+      def linked_preview(home, link, *argv)
+        outside = File.join(File.dirname(home), "outside")
+        FileUtils.mv(link, outside)
+        File.symlink(outside, link)
+        before = [snapshot(home), snapshot(outside)]
+        result = call_in(home, *argv, "--dry-run")
+        LinkedPreview.new(result:, link:, untouched: before == [snapshot(home), snapshot(outside)])
       end
 
       def seed_intents(home, *titles) = titles.each { |title| call_in(home, "intent", "new", title) }

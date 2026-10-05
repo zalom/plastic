@@ -40,8 +40,8 @@ module Plastic
 
       # One switch the tool takes, as `option :dir, switch: "--dir DIR", text: "where"`,
       # with `default:` for its value when the call leaves it out.
-      def option(name, repeatable: false, required: false, **shape)
-        default = repeatable ? [] : nil
+      def option(name, repeatable: false, required: false, default: nil, **shape)
+        default = [] if repeatable
         options << Command::Option.new(name:, default:, repeatable:, required:, **shape)
       end
 

@@ -10,6 +10,7 @@ module Plastic
       node_subject
       option :reason, switch: "--reason TEXT", text: "why the node is removed"
       writes :work
+      previews
 
       workflow :code_remove_node, next: :noop
     end

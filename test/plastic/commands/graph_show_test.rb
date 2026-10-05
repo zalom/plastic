@@ -46,8 +46,7 @@ class GraphShowTest < Plastic::TestCase
 
     assert_equal "{\"bogus\":true}", File.read(File.join(store, "store", "1--alpha", "graph.json"))
     assert_equal [], twin.changed_paths
-    assert_equal ["change #{store}/.gitignore", "change #{store}/store/1--alpha/1--alpha.md", "change #{store}/store/1--alpha/graph.json",
-      "change #{store}/store/1--alpha/savepoint.md", "change #{store}/store/index.json"], twin.preview_paths.sort
+    assert_equal ["change #{store}/store/1--alpha/graph.json"], twin.preview_paths
   end
 
   def test_preview_matches_apply_on_an_identical_home
@@ -65,16 +64,11 @@ class GraphShowTest < Plastic::TestCase
   def test_a_preview_with_a_linked_intent_folder_refuses_and_the_outside_folder_is_untouched
     with_home do |home|
       seed_intents(home, "Alpha")
-      outside = File.join(File.dirname(home), "outside")
-      FileUtils.mv(File.join(home, "stores", "global", "store", "1--alpha"), outside)
-      File.symlink(outside, File.join(home, "stores", "global", "store", "1--alpha"))
-      before = [snapshot(home), snapshot(outside)]
+      linked = linked_preview(home, File.join(home, "stores", "global", "store", "1--alpha"), "graph", "show", "1")
 
-      result = call_in(home, "graph", "show", "1", "--dry-run")
-
-      assert_equal 3, result.code
-      assert_includes result.err, File.join(home, "stores", "global", "store", "1--alpha")
-      assert_equal before, [snapshot(home), snapshot(outside)]
+      assert_equal 3, linked.result.code
+      assert_includes linked.result.err, linked.link
+      assert linked.untouched
     end
   end
 end

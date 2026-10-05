@@ -10,6 +10,7 @@ module Plastic
       argument :slug, label: "SLUG", text: "the roadmap"
       option :position, switch: "--batch N", text: "only this batch"
       writes :work
+      previews
 
       workflow :code_show_roadmap, next: :noop
     end
