@@ -79,11 +79,8 @@ measure lines that the branch did not change. For a branch of `alpha`, the base 
 
 ## The tests
 
-Run only the changed files' tests, once each; the full suite is never run locally, CI runs it.
-
-```bash
-ruby bin/test --only test/plastic/routine_test.rb
-```
+The patterns and the rules for every test are in
+[Test a change](../../CONTRIBUTING.md#test-a-change). This section tells how the runs are built.
 
 CI runs the full suite on every push to `main` and `alpha`, and on every pull request
 into them. It runs `bin/test` with no argument for the unit layer, then `bin/test --system` for

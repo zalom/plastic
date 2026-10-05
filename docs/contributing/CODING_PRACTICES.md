@@ -48,18 +48,8 @@ RuboCop runs with the Standard configuration as its base, plus `rubocop-minitest
 
 ## Tests
 
-1. Write the tests first and commit them red, in one commit.
-2. Write the code.
-3. Run the named tests for the change, then the gates once.
-
-Run only the changed files' tests, once each; the full suite is never run locally, CI runs it.
-
-- Unit tests use Minitest. Acceptance tests are Varar documents under `varar/`, with their
-  step files under `test/varar/`.
-- The kernel tests live under `test/plastic/` and run in their own process.
-- A test never writes under the real `~/.claude` or `~/.plastic`.
-  `test/real_home_guard_test.rb` enforces this.
-- A test that cannot fail proves nothing. Show once that a new guard fails.
+The patterns and the rules for every test are in
+[Test a change](../../CONTRIBUTING.md#test-a-change). They are written in that one place.
 
 ## Branches
 
