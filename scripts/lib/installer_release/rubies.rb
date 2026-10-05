@@ -20,7 +20,7 @@ module InstallerRelease
     LIMITS = Archive::Limits.new(bytes: 1024 * 1024 * 1024, entries: 50_000)
     GHCR = { "Authorization" => "Bearer QQ==" }.freeze
     SMOKE = 'require "openssl"; require "zlib"; require "psych"; print RUBY_VERSION'
-    RUN = ->(ruby) { Open3.capture2e(ruby, "-e", SMOKE).first }
+    RUN = ->(ruby) { Open3.capture2e(ruby, "--disable-gems", "-rrbconfig", "-e", SMOKE).first }
 
     def self.remove(path)
       Find.find(path) { |entry| File.chmod(0o755, entry) if File.directory?(entry) && !File.symlink?(entry) } if File.exist?(path)

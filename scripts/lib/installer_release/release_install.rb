@@ -55,7 +55,7 @@ module InstallerRelease
     def self.write(candidate, ruby, release_path)
       launcher = move_entry(candidate)
       entry = Shellwords.escape(File.join(release_path, "libexec", "plastic"))
-      File.write(launcher, "#!/bin/sh\nexec #{Shellwords.escape(ruby.path)} --disable-gems #{entry} \"$@\"\n")
+      File.write(launcher, "#!/bin/sh\nexec #{Shellwords.escape(ruby.path)} --disable-gems -rrbconfig #{entry} \"$@\"\n")
       File.chmod(0o755, launcher)
     end
 

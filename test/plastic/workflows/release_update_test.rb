@@ -11,14 +11,14 @@ class ReleaseUpdateTest < Plastic::TestCase
     result = update_to("99.0.0-alpha.2", "PLASTIC_RUBY" => developer_ruby)
 
     assert_equal 0, result.code, result.err
-    assert_includes active_launcher, "exec #{developer_ruby} --disable-gems"
+    assert_includes active_launcher, "exec #{developer_ruby} --disable-gems -rrbconfig"
   end
 
   def test_a_release_without_pins_runs_on_the_ruby_that_updates_it
     result = update_to("99.0.0-alpha.2")
 
     assert_equal 0, result.code, result.err
-    assert_includes active_launcher, "exec #{RbConfig.ruby} --disable-gems"
+    assert_includes active_launcher, "exec #{RbConfig.ruby} --disable-gems -rrbconfig"
   end
 
   private

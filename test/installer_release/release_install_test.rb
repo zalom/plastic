@@ -24,12 +24,12 @@ class InstallerReleaseInstallTest < Minitest::Test
     install(release_files)
     launcher = File.read(File.join(release_path("2.0.3"), "bin", "plastic"))
 
-    assert_includes launcher, "exec #{RbConfig.ruby} --disable-gems #{File.join(release_path("2.0.3"), "libexec", "plastic")} \"$@\""
+    assert_includes launcher, "exec #{RbConfig.ruby} --disable-gems -rrbconfig #{File.join(release_path("2.0.3"), "libexec", "plastic")} \"$@\""
   end
 
   def test_the_launcher_runs_with_an_empty_path
     install(release_files)
-    out, status = Open3.capture2e({ "PATH" => "" }, File.join(release_path("2.0.3"), "bin", "plastic"))
+    out, status = Open3.capture2e({ "HOME" => @root, "PATH" => "" }, File.join(release_path("2.0.3"), "bin", "plastic"))
 
     assert_equal ["2.0.3\n", true], [out, status.success?]
   end

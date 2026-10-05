@@ -115,7 +115,7 @@ install_ruby() {
   mkdir -p "$rubies"
   stage=$(mktemp -d "$rubies/.stage-XXXXXX")
   tar -xzf "$tmp/ruby.tar.gz" -C "$stage" || fail "the Ruby archive cannot be unpacked"
-  started=$("$stage/$ruby_root/bin/ruby" -e 'require "openssl"; require "zlib"; require "psych"; print RUBY_VERSION' 2>&1) || true
+  started=$("$stage/$ruby_root/bin/ruby" --disable-gems -rrbconfig -e 'require "openssl"; require "zlib"; require "psych"; print RUBY_VERSION' 2>&1) || true
   [ "$started" = "$ruby_version" ] || fail "the downloaded Ruby does not start: $started"
   printf '%s\n' "$ruby_sha" > "$stage/$ruby_root/.plastic-ruby"
   mv "$stage/$ruby_root" "$rubies/$ruby_key"
@@ -130,8 +130,9 @@ marked() { [ "$(cat "$1/$ruby_key/.plastic-ruby" 2>/dev/null || true)" = "$ruby_
 choose_ruby() {
   detect_platform
   pin=$(printf '%s\n' "$ruby_pins" | grep "^$platform ") || fail "install.sh pins no Ruby for $platform"
-  set -- $pin
-  ruby_key=$2 ruby_version=$3 ruby_size=$4 ruby_sha=$5 ruby_root=$6 ruby_url=$7
+  read -r _ ruby_key ruby_version ruby_size ruby_sha ruby_root ruby_url <<EOF
+$pin
+EOF
   rubies="$share/rubies"
   if ! marked "$rubies"; then
     [ ! -e "$rubies/$ruby_key" ] || fail "$rubies/$ruby_key holds another Ruby; remove that folder and run this again"
@@ -198,7 +199,7 @@ next_step="plastic install"
 [ ! -f "$plastic_home/VERSION" ] || next_step="plastic version"
 mkdir "$tmp/boot"
 tar -xzf "$tmp/plastic.tgz" -C "$tmp/boot" package/scripts/install-release package/scripts/lib/installer_release.rb package/scripts/lib/installer_release
-"$ruby" --disable-gems "$tmp/boot/package/scripts/install-release" --directory "$tmp" --version "$version" --home "$share" \
+"$ruby" --disable-gems -rrbconfig "$tmp/boot/package/scripts/install-release" --directory "$tmp" --version "$version" --home "$share" \
   --bin "$bin" --plastic-home "$plastic_home" --user-home "$HOME" || exit 1
 
 say "Plastic $version is active."
