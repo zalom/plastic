@@ -26,6 +26,20 @@ class RuntimeBundleTest < Minitest::Test
     assert_includes runtime, "    sqlite3 (#{version}-x86_64-linux-gnu)"
   end
 
+  def test_the_runtime_lock_covers_every_platform_install_sh_pins_a_ruby_for
+    runtime = File.read(File.join(REPO, "runtime", "Gemfile.lock"))
+    platforms = runtime[/^PLATFORMS\n(.*?)\n\n/m, 1].split
+
+    assert_equal %w[aarch64-linux-gnu arm64-darwin x86_64-darwin x86_64-linux], platforms.sort
+    assert_includes runtime, "    sqlite3 (#{runtime[/sqlite3 \((\d[^-)]*)/, 1]}-x86_64-darwin)"
+  end
+
+  def test_the_runtime_lock_names_the_bundler_of_the_pinned_ruby
+    runtime = File.read(File.join(REPO, "runtime", "Gemfile.lock"))
+
+    assert_equal "4.0.20", runtime[/^BUNDLED WITH\n\s+(\S+)/, 1]
+  end
+
   def test_the_package_ships_the_runtime_gemfile_and_version
     files = JSON.parse(File.read(File.join(REPO, "package.json"))).fetch("files")
 

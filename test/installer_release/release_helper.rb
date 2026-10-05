@@ -23,6 +23,23 @@ module ReleaseHelper
     FileUtils.remove_entry(@root)
   end
 
+  # Stands in for HttpsFetch: copies a local archive and records each address
+  # with its headers.
+  class FetchDouble
+    attr_reader :asked
+
+    def initialize(archive)
+      @archive = archive
+      @asked = []
+    end
+
+    def download(url, path, headers)
+      @asked << [url, headers]
+      FileUtils.cp(@archive, path)
+      path
+    end
+  end
+
   # Stands in for the home sync: writes two home files, then raises what a
   # test asks for, such as an Interrupt for a process that stops halfway.
   class SyncDouble
@@ -52,7 +69,7 @@ module ReleaseHelper
   def archive_with(version: "2.0.3")
     source = File.join(@root, "source-#{version}")
     package = File.join(source, "package")
-    write_package(package, version, fake_launcher(version))
+    write_package(package, version, ruby_launcher(version))
     archive = File.join(source, "plastic.tgz")
     system("tar", "-czf", archive, "-C", source, "package", exception: true)
     archive
@@ -95,6 +112,13 @@ module ReleaseHelper
     if [ "$*" = "version --json" ]; then echo '{"result":{"version":"#{reported}"}}'; exit 0; fi
     echo #{version}
   SH
+
+  # The Ruby launcher of a release package, which install moves to
+  # libexec/plastic and starts with the release's Ruby.
+  def ruby_launcher(version) = <<~RUBY
+    #!/usr/bin/env ruby
+    puts(ARGV == %w[version --json] ? '{"result":{"version":"#{version}"}}' : "#{version}")
+  RUBY
 
   def write_package(path, version, launcher)
     FileUtils.mkdir_p(File.join(path, "bin"))

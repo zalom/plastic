@@ -22,7 +22,10 @@ module Plastic
       def self.of(context, bundle: InstallerRelease::Bundle.new)
         scope = context.scope
         share = scope.setting("PLASTIC_SHARE", File.join(scope.home, ".local", "share", "plastic"))
-        new(share, InstallerRelease::ReleaseSource.for(scope.setting("PLASTIC_LOCAL_RELEASE")), bundle, home_sync(scope, share, Printed.new(context)))
+        sync = home_sync(scope, share, Printed.new(context))
+        choice = InstallerRelease::RubyChoice.new(home: share, override: scope.setting("PLASTIC_RUBY", ""))
+        new(share, InstallerRelease::ReleaseSource.for(scope.setting("PLASTIC_LOCAL_RELEASE")), sync,
+          InstallerRelease::ReleaseInstall.new(home: share, bundle: bundle, sync: sync, choice: choice))
       end
 
       def self.chosen_channels(context) = CHANNELS.keys.select { |name| context.public_send(name) }
@@ -34,11 +37,11 @@ module Plastic
         InstallerRelease::HomeSync.new(share: share, home: home, out: out)
       end
 
-      def initialize(share, source, bundle, sync = InstallerRelease::NoSync)
+      def initialize(share, source, sync, install)
         @share = share
         @source = source
-        @bundle = bundle
         @sync = sync
+        @install = install
       end
 
       def activation = InstallerRelease::Activation.new(home: share, sync: sync)
@@ -57,14 +60,13 @@ module Plastic
         FileUtils.mkdir_p(share)
         Dir.mktmpdir("plastic-download-", share) do |directory|
           files = source.files(version, directory).verify
-          InstallerRelease::ReleaseInstall.new(home: share, bundle: bundle, sync: sync)
-            .call(archive: files.archive, manifest: files.manifest, expected: InstallerRelease::Manifest.identity(version))
+          install.call(archive: files.archive, manifest: files.manifest, expected: InstallerRelease::Manifest.identity(version))
         end
       end
 
       private
 
-      attr_reader :share, :source, :bundle, :sync
+      attr_reader :share, :source, :sync, :install
     end
   end
 end
