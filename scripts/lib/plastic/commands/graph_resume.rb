@@ -11,26 +11,33 @@ module Plastic
     # Says where each named store's work stopped and what runs next. It reads
     # the rows and writes nothing.
     class GraphResume < CLI::Command
+      SEVERAL = "store %s is the first named with work; each then: line holds a store's own next command"
+
       reads :work, :knowledge
       option :stores, switch: "--stores LIST", text: "the stores to read, comma separated: registered projects or global; the call's own store when left out"
 
       def call
         refuse_project
-        reports = store_slugs.map { |slug| report(slug) }
-        reports.each { |found| found.rows.each { |label, value| output.row(label, value) } }
-        offer_next(reports)
+        offer_next(store_slugs.map { |slug| report(slug) }.each { |found| print_rows(found) })
       end
 
       private
+
+      def print_rows(found)
+        found.rows.each { |label, value| output.row(label, value) }
+      end
 
       def refuse_project
         raise CLI::Command::Usage, "--stores names the stores; --project does not apply" if parsed[:stores] && parsed[:project]
       end
 
       def store_slugs
-        names = parsed[:stores]&.split(",")&.map(&:strip)&.uniq
-        return [scope.slug] if names.nil?
+        stores = parsed[:stores]
+        stores ? named(stores) : [scope.slug]
+      end
 
+      def named(stores)
+        names = stores.split(",").map(&:strip).uniq
         raise CLI::Command::Usage, "name at least one store after --stores" if names.empty?
 
         names.each { |name| refuse_unregistered(name) }
@@ -44,20 +51,24 @@ module Plastic
       end
 
       def report(slug)
-        retrieval = Graph.open(home: scope.plastic_home, store: slug, session: environment.session).retrieval
-        folder = Graph::Knowledge::StoreFolder.new(File.join(scope.plastic_home, "stores", slug))
-        Graph::Work::StoreResume.new(retrieval, folder, environment.session)
+        home = scope.plastic_home
+        session = environment.session
+        retrieval = Graph.open(home:, store: slug, session:).retrieval
+        Graph::Work::StoreResume.new(retrieval, Graph::Knowledge::StoreFolder.new(File.join(home, "stores", slug)), session)
       end
 
       def offer_next(reports)
         found = reports.find(&:next_step)
         return output.next_step("plastic status", because: "no store has open work") unless found
 
-        command, why = found.next_step
-        output.next_step(in_store(command, found.slug), because: reports.size > 1 ? several(found.slug) : why)
+        offer(found, reports)
       end
 
-      def several(slug) = "store #{slug} is the first named with work; each then: line holds a store's own next command"
+      def offer(found, reports)
+        command, why = found.next_step
+        slug = found.slug
+        output.next_step(in_store(command, slug), because: reports.one? ? why : format(SEVERAL, slug))
+      end
 
       def in_store(command, slug)
         return command if slug == scope.slug || command.include?("--project")

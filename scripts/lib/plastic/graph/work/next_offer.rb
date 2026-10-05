@@ -13,6 +13,13 @@ module Plastic
       class NextOffer
         CHOOSE = "Inspect plastic status, choose an intent ID, and run plastic intent brief ID."
 
+        # What the spec still lacks, or nil when it is clear.
+        def self.spec_gap(spec)
+          return "an open decision" if spec.open_decisions.any?
+
+          "no done criteria" if spec.done_criteria.empty?
+        end
+
         def initialize(retrieval, pick)
           @retrieval = retrieval
           @pick = pick
@@ -31,16 +38,11 @@ module Plastic
 
         def for_intent(intent)
           id = intent.intent_id
-          spec = Knowledge::Spec.new(@retrieval, id)
-          return spec_offer(id, spec) if spec.done_criteria.empty? || spec.open_decisions.any?
+          gap = self.class.spec_gap(Knowledge::Spec.new(@retrieval, id))
+          return ["plastic intent spec #{id}", "intent #{id} has #{gap}", nil] if gap
           return ["plastic auto start #{id}", "intent #{id} is open", nil] if intent.status == "open"
 
           DeliveryAction.new(@retrieval, id).call
-        end
-
-        def spec_offer(id, spec)
-          reason = spec.open_decisions.any? ? "an open decision" : "no done criteria"
-          ["plastic intent spec #{id}", "intent #{id} has #{reason}", nil]
         end
       end
     end

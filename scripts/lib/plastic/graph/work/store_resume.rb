@@ -3,6 +3,7 @@
 require_relative "next_pick"
 require_relative "next_offer"
 require_relative "last_savepoints"
+require_relative "node_lines"
 require_relative "../knowledge/store_folder"
 
 module Plastic
@@ -14,75 +15,81 @@ module Plastic
       # folder holds intent folders says so and names what rebuilds the rows.
       class StoreResume
         SAVEPOINTS = 5
-        IN_PROGRESS = %w[claimed parked failed].freeze
         GAP = "no command rebuilds these rows today"
         REBUILD = "plastic sync up --project %s --overwrite rebuilds them from the files; the owner settles that step"
 
-        def initialize(retrieval, folder, session)
-          @retrieval = retrieval
-          @folder = folder
-          @session = session
+        # The files of a store hold intents its rows lost.
+        class Rebuild
+          def initialize(slug, folder)
+            @slug = slug
+            @folder = folder
+          end
+
+          def rows
+            [["store:", @slug], ["rows:", "none; the files hold #{@folder.intent_dirs.size} intent folders"], ["then:", then_text]]
+          end
+
+          def next_step = nil
+
+          private
+
+          def then_text = @folder.exist?(Knowledge::StoreFolder::INDEX) ? format(REBUILD, @slug) : GAP
         end
 
-        def slug = @retrieval.store
+        # The rows hold the store's work.
+        class InPlay
+          def initialize(retrieval, session)
+            @retrieval = retrieval
+            @pick = NextPick.new(retrieval, session)
+            @offer = NextOffer.new(retrieval, @pick).call
+          end
+
+          def rows = [["store:", @retrieval.store], *in_play_rows, *node_rows, *savepoint_rows, ["then:", then_text]]
+
+          def next_step
+            command, why, = @offer
+            [command || "plastic next", why] unless command == "none"
+          end
+
+          private
+
+          def then_text
+            command, why, handoff = @offer
+            handoff || "#{command} (because #{why})"
+          end
+
+          def in_play_rows
+            return [["in play:", "none alone"], *@pick.candidates.map { |intent| ["open:", intent.heading] }] if @pick.ambiguous?
+
+            [["in play:", @pick.none? ? "none" : @pick.intent.heading]]
+          end
+
+          def node_rows
+            intent = @pick.intent
+            intent ? NodeLines.new(@retrieval.nodes(intent.intent_id)).rows : []
+          end
+
+          def savepoint_rows
+            intent = @pick.intent
+            return [] unless intent
+
+            LastSavepoints.new(@retrieval, SAVEPOINTS).lines(intent.intent_id).map { |line| ["savepoint:", line] }
+          end
+        end
+
+        attr_reader :slug
+
+        def initialize(retrieval, folder, session)
+          @slug = retrieval.store
+          rebuild = retrieval.intents.empty? && folder.intent_dirs.any?
+          @view = rebuild ? Rebuild.new(@slug, folder) : InPlay.new(retrieval, session)
+        end
 
         # The label and value of each line to print, the store first.
-        def rows = [["store:", slug], *body_rows, ["then:", then_text]]
+        def rows = @view.rows
 
         # The command to run next and why, or nil when the store has none.
-        def next_step
-          return if rebuild?
-
-          command, why, = offer
-          return if command == "none"
-
-          [command || "plastic next", why]
-        end
-
-        private
-
-        def pick = @pick ||= NextPick.new(@retrieval, @session)
-
-        def offer = @offer ||= NextOffer.new(@retrieval, pick).call
-
-        def rebuild? = @retrieval.intents.empty? && @folder.intent_dirs.any?
-
-        def indexed? = @folder.exist?(Knowledge::StoreFolder::INDEX)
-
-        def then_text
-          return (indexed? ? format(REBUILD, slug) : GAP) if rebuild?
-
-          command, why, handoff = offer
-          handoff || "#{command} (because #{why})"
-        end
-
-        def body_rows
-          return [["rows:", "none; the files hold #{@folder.intent_dirs.size} intent folders"]] if rebuild?
-
-          [*in_play_rows, *node_rows, *savepoint_rows]
-        end
-
-        def in_play_rows
-          return [["in play:", "none alone"], *pick.candidates.map { |intent| ["open:", intent.heading] }] if pick.ambiguous?
-
-          [["in play:", pick.none? ? "none" : pick.intent.heading]]
-        end
-
-        def nodes = pick.intent ? @retrieval.nodes(pick.intent.intent_id) : []
-
-        def node_rows = [*done_rows, *progress_rows]
-
-        def done_rows = nodes.select { |node| node.state == "done" }.map { |node| ["done:", "#{node.id} #{node.title}"] }
-
-        def progress_rows
-          nodes.select { |node| IN_PROGRESS.include?(node.state) }.map { |node| ["in progress:", "#{node.id} #{node.state} #{node.title}"] }
-        end
-
-        def savepoint_rows
-          return [] unless pick.intent
-
-          LastSavepoints.new(@retrieval, SAVEPOINTS).lines(pick.intent.intent_id).map { |line| ["savepoint:", line] }
-        end
+        def next_step = @view.next_step
       end
     end
   end

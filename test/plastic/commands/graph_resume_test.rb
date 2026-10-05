@@ -11,7 +11,8 @@ require_relative "../../../scripts/lib/plastic/commands/node_fail"
 require_relative "../../../scripts/lib/plastic/commands/node_park"
 require_relative "../../../scripts/lib/plastic/commands/sync_up"
 
-class GraphResumeTest < Plastic::TestCase
+# Calls and fixtures the graph resume tests share.
+module GraphResumeHelper
   CLEAR_SPEC = "# Spec\n\n## Done criteria\n- ships\n\n## Open Questions\n- none\n"
 
   def call(*args) = plastic("graph", "resume", *args, table: Plastic::CLI::TABLE)
@@ -61,13 +62,22 @@ class GraphResumeTest < Plastic::TestCase
     intent
   end
 
+  def copy_intent_files(from, to)
+    source = store_folder(from)
+    target = store_folder(to)
+    Dir.glob("store/**/*", base: source.root).select { |rel| source.exist?(rel) }.each { |rel| target.write(rel, source.read(rel)) }
+  end
+end
+
+class GraphResumeTest < Plastic::TestCase
+  include GraphResumeHelper
+
   def test_one_store_names_the_intent_in_play
     intent_with_nodes_in_each_state
 
     result = call
 
-    assert_equal 0, result.code
-    assert_equal "", result.err
+    assert_equal [0, ""], [result.code, result.err]
     assert_includes lines(result), "store: global"
     assert_includes lines(result), "in play: 1 Alpha (active)"
   end
@@ -141,10 +151,21 @@ class GraphResumeTest < Plastic::TestCase
   end
 
   def test_no_store_with_work_sends_the_agent_to_plastic_status
-    result = call
-
-    assert_equal "next: plastic status", next_line(result)
+    assert_equal "next: plastic status", next_line(call)
   end
+
+  def test_a_resume_changes_no_database_and_no_file
+    intent_with_nodes_in_each_state
+    before = snapshot(store_root)
+
+    call
+
+    assert_equal before, snapshot(store_root)
+  end
+end
+
+class GraphResumeStoresTest < Plastic::TestCase
+  include GraphResumeHelper
 
   def test_two_stores_print_in_the_order_named
     register("b")
@@ -195,6 +216,13 @@ class GraphResumeTest < Plastic::TestCase
     assert_includes result.err, "no registered project named \"nope\"; the projects are b"
   end
 
+  def test_stores_naming_no_store_exits_2
+    result = call("--stores", ",")
+
+    assert_equal [2, ""], [result.code, result.out]
+    assert_includes result.err, "name at least one store"
+  end
+
   def test_stores_with_project_exits_2
     register("b")
 
@@ -212,6 +240,10 @@ class GraphResumeTest < Plastic::TestCase
 
     assert_equal ["store: b"], lines(result).grep(/\Astore:/)
   end
+end
+
+class GraphResumeRebuildTest < Plastic::TestCase
+  include GraphResumeHelper
 
   def test_rows_missing_and_files_present_say_how_many_intent_folders_the_files_hold
     register("c")
@@ -278,20 +310,5 @@ class GraphResumeTest < Plastic::TestCase
     copy_intent_files("src", "c")
 
     assert_equal "next: plastic status", next_line(call("--stores", "c"))
-  end
-
-  def copy_intent_files(from, to)
-    source = store_folder(from)
-    target = store_folder(to)
-    Dir.glob("store/**/*", base: source.root).select { |rel| source.exist?(rel) }.each { |rel| target.write(rel, source.read(rel)) }
-  end
-
-  def test_a_resume_changes_no_database_and_no_file
-    intent_with_nodes_in_each_state
-    before = snapshot(store_root)
-
-    call
-
-    assert_equal before, snapshot(store_root)
   end
 end
