@@ -42,9 +42,7 @@ module Plastic
           def held_in(timestamp, names: nil)
             held = held_names(timestamp)
             chosen = Array(names)
-            missing = chosen - held
-            raise Missing, "the backup #{timestamp} does not hold #{missing.first.inspect}" if missing.any?
-
+            require_held(timestamp, chosen - held)
             chosen.empty? ? held : chosen
           end
 
@@ -68,6 +66,10 @@ module Plastic
           private
 
           def held_names(timestamp) = @target.folders.files(timestamp).map { |file| file.delete_suffix("-#{timestamp}.db") }
+
+          def require_held(timestamp, missing)
+            raise Missing, "the backup #{timestamp} does not hold #{missing.first.inspect}" if missing.any?
+          end
 
           def refuse(timestamp)
             message = refusal(timestamp)

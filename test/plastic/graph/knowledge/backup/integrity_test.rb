@@ -33,6 +33,21 @@ class KnowledgeBackupIntegrityTest < Plastic::TestCase
     assert_includes error.message, path
   end
 
+  def test_a_database_whose_pages_are_damaged_fails_the_integrity_check
+    path = File.join(Dir.mktmpdir, "work_graph-1.db")
+    database = SQLite3::Database.new(path)
+    database.execute("CREATE TABLE t (a TEXT, b TEXT)")
+    200.times { |n| database.execute("INSERT INTO t VALUES (?, ?)", ["a#{"a" * 50}#{n}", "b#{"b" * 50}#{n}"]) }
+    database.close
+    File.open(path, "r+b") do |file|
+      file.seek(3 * 4096 - 200)
+      file.write("\x00".b * 100)
+    end
+    error = assert_raises(Integrity::Rejected) { Integrity.new(path, "work_graph").call }
+
+    assert_includes error.message, "fails the integrity check"
+  end
+
   def test_a_database_that_lacks_the_schema_tables_is_rejected
     path = File.join(Dir.mktmpdir, "work_graph-1.db")
     SQLite3::Database.new(path).tap { |database| database.execute("CREATE TABLE other (id INTEGER)") }.close

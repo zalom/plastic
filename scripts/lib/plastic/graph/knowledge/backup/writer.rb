@@ -59,7 +59,6 @@ module Plastic
             sources.each { |name| self.class.vacuum(File.join(@root, "#{name}.db"), File.join(folders.path(folder), "#{name}-#{folder}.db")) }
           end
 
-
           def row(folder)
             { name: "#{@slug}/#{folder}", files: folders.files(folder).size, bytes: folders.bytes(folder),
               sha256: folders.digest(folder), at: Plastic.now(@now) }
