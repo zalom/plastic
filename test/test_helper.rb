@@ -40,7 +40,7 @@ module Plastic
       SQLite3::ForkSafety.suppress_warnings!
       require File.expand_path("fixtures/routines", __dir__)
       Dir[File.join(HELPERS, "*.rb")].each { |helper| require helper }
-      include StoreHelper, CommandHelper, WorkflowHelper, DatabaseHelper, CallAssertions
+      include StoreHelper, CommandHelper, WorkflowHelper, DatabaseHelper, CallAssertions, PreviewHelper
     end
 
     def self.fixtures(name = nil)

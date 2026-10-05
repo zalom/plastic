@@ -47,4 +47,16 @@ class EdgeRemoveTest < Plastic::TestCase
       out: "edge: n1 to n2 removed\nwrote:  1 edge in work_graph.db\n\nnext: plastic graph show 1 --project global\nbecause: edge n1 to n2 is gone\n"
     assert_empty store_graphs.databases.fetch(:work).rows("SELECT * FROM edges")
   end
+
+  def test_preview_matches_apply_on_an_identical_home
+    twin = twin_run("edge", "remove", "1", "n1", "n2") do |home|
+      seed_intents(home, "Alpha")
+      seed_nodes(home, "a", "b", "c")
+      call_in(home, "edge", "add", "1", "n1", "n2")
+      call_in(home, "edge", "add", "1", "n2", "n3")
+    end
+
+    assert_preview_matches_apply(twin)
+    assert_equal 0, twin.previewed.code
+  end
 end
