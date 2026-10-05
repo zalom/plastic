@@ -80,13 +80,6 @@ class KnowledgeSyncTest < Plastic::TestCase
     assert_equal "Renamed", retrieval.intent("1").title
   end
 
-  def test_an_index_that_does_not_parse_is_refused
-    write("store/index.json", "{")
-    error = assert_raises(Plastic::Invalid) { sync.read([SPEC]) }
-
-    assert_match(/\Astore\/index.json does not parse: /, error.message)
-  end
-
   def test_print_says_each_path_it_wrote
     print = Plastic::Graph::Prints::Print.text("store/1--alpha/notes.md", :knowledge, "n\n")
 
@@ -107,17 +100,9 @@ class KnowledgeSyncTest < Plastic::TestCase
     assert_equal Digest::SHA256.hexdigest("# Spec\n"), retrieval.printed[SPEC]
   end
 
-  def list_beta_in_the_index
-    data = JSON.parse(folder.read("store/index.json"))
-    data["intents"] << data["intents"].first.merge("intent_id" => "2", "slug" => "beta", "title" => "Beta")
-    write("store/index.json", JSON.generate(data))
-  end
+  def test_a_broken_index_does_not_stop_the_read_of_another_file
+    write("store/index.json", "{")
 
-  def test_read_takes_a_folder_whose_intent_only_the_index_lists
-    list_beta_in_the_index
-    write("store/2--beta/spec.md", "# Beta\n")
-    sync.read(["store/index.json", "store/2--beta/spec.md"])
-
-    assert_equal ["# Beta\n"], retrieval.documents("2").map(&:body)
+    assert_equal ["read #{SPEC}"], sync.read([SPEC])
   end
 end

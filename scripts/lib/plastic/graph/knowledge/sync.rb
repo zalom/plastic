@@ -11,6 +11,7 @@ require_relative "store_folder"
 require_relative "sync/plan"
 require_relative "sync/resolution"
 require_relative "sync/legacy_import"
+require_relative "sync/intent_folders"
 
 module Plastic
   module Graph
@@ -35,7 +36,16 @@ module Plastic
           return LegacyImport.new(self, @folder, @retrieval, @databases).call if plan.legacy
 
           printer.record(plan.taking(:record).map(&:print))
-          (plan.direction == :up) ? read(plan.taking(:read).map(&:path)) : print(plan.taking(:print).map(&:print))
+          (plan.direction == :up) ? read_up(plan) : print(plan.taking(:print).map(&:print))
+        end
+
+        # Sync up: the rows of the folders that have none first, then every file
+        # changed, then the index printed again from the rows.
+        def read_up(plan)
+          write_folder_intents
+          lines = read(plan.taking(:read).map(&:path))
+          printer.print([Prints.index(@retrieval)])
+          lines
         end
 
         # Reads files into rows, one transaction per database, then prints
@@ -72,17 +82,12 @@ module Plastic
           printer.print(reads.map { |found| fresh[found.path] || found.kept_print(@folder) })
         end
 
-        # The intents of the rows, and those a hand edit of store/index.json adds or changes.
-        def known_intents
-          (@retrieval.intents + index_intents).to_h { |intent| [intent.intent_id, intent] }
-        end
+        # The intents of the rows. store/index.json is never read for them: the folders are.
+        def known_intents = @retrieval.intents.to_h { |intent| [intent.intent_id, intent] }
 
-        def index_intents
-          return [] unless @folder.exist?(StoreFolder::INDEX)
-
-          Array(JSON.parse(@folder.read(StoreFolder::INDEX))["intents"]).map { |entry| Intent.from_h(entry) }
-        rescue JSON::ParserError => error
-          raise Invalid, "#{StoreFolder::INDEX} does not parse: #{error.message.lines.first.strip}"
+        def write_folder_intents
+          rows = IntentFolders.new(@folder, @retrieval).intents.map(&:new_row)
+          @databases.fetch(:work).transaction { |batch| batch.put_all(:intents, rows) } if rows.any?
         end
       end
     end

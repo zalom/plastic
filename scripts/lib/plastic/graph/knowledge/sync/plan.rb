@@ -2,6 +2,7 @@
 
 require_relative "entry"
 require_relative "resolution"
+require_relative "intent_folders"
 require_relative "../../prints"
 require_relative "../store_folder"
 
@@ -10,28 +11,38 @@ module Plastic
     module Knowledge
       class Sync
         # What one sync would do, before it does anything. `legacy` marks a
-        # store whose INDEX.md waits to be imported, and `problem` a call that
-        # cannot run.
-        Plan = Data.define(:resolution, :entries, :legacy, :problem)
+        # store whose INDEX.md waits to be imported, `problem` a call that
+        # cannot run, and `unreadable` the intent folders no row can be read
+        # from, one line each. The files of those folders are no entries.
+        Plan = Data.define(:resolution, :entries, :legacy, :problem, :unreadable)
 
         # Each entry's action, and what the sync writes.
         class Plan
+          def initialize(resolution:, entries:, legacy:, problem:, unreadable: [])
+            super
+          end
+
           def self.build(folder, retrieval, resolution)
             legacy = folder.legacy?
             up = resolution.up?
-            new(resolution:, entries: entries(folder, retrieval), legacy: up && legacy,
-              problem: (legacy_problem if legacy && !up))
+            folders = legacy ? nil : IntentFolders.new(folder, retrieval)
+            new(resolution:, entries: entries(folder, retrieval, folders), legacy: up && legacy,
+              problem: (legacy_problem if legacy && !up), unreadable: folders&.problems || [])
           end
 
-          def self.entries(folder, retrieval)
+          def self.entries(folder, retrieval, folders = nil)
             prints = Prints.of_store(retrieval).to_h { |print| [print.path, print] }
             printed = retrieval.printed
-            (prints.keys | on_disk(folder) | printed.keys).sort.map do |path|
+            (prints.keys | on_disk(folder, folders) | printed.keys).sort.map do |path|
               Entry.new(path, folder.digest(path), printed[path], prints.fetch(path, Entry::NO_PRINT))
             end
           end
 
-          def self.on_disk(folder) = [*(StoreFolder::INDEX if folder.exist?(StoreFolder::INDEX)), *folder.intent_files]
+          def self.on_disk(folder, folders = nil)
+            skipped = folders&.unreadable.to_a
+            files = folder.intent_files.reject { |path| skipped.any? { |dir| path.start_with?("#{dir}/") } }
+            [*(StoreFolder::INDEX if folder.exist?(StoreFolder::INDEX)), *files]
+          end
 
           def self.legacy_problem = "this store still has #{StoreFolder::LEGACY_INDEX}; run plastic sync up to import it first"
 
@@ -59,8 +70,11 @@ module Plastic
 
           private
 
+          # The generated graph view, and the index, which the rows print again after a read.
+          def ignored_up?(path) = StoreFolder.graph_view?(path) || path == StoreFolder::INDEX
+
           def settled(entry)
-            return :none if direction == :up && StoreFolder.graph_view?(entry.path)
+            return :none if direction == :up && ignored_up?(entry.path)
 
             action = entry.action(direction)
             (action == :conflict && resolution.overwrites?(entry.path)) ? resolution.side : action
