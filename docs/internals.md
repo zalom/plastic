@@ -550,11 +550,16 @@ this section covers how the code holds together.
   interrupted call must match the complete snapshot before that call can finish.
   Restore does not print newer semantic rows over archived bytes or mark unsynced
   documents as current. Plain sync reports conflicts for those documents.
-- **Backup.** `backup` and `backup list` go through `Graph::Knowledge::Backup::Writer` and the `backups`
-  table of `home.db`. `RetrievalGraph#backup_flag` compares each archive's SHA-256 digest
-  with the digest stored at write time. The archive also carries `origin_id`, `config.yml`,
-  and `projects.yml` from the Plastic home when present. These files preserve row ownership,
-  settings, and project lookup when the archive is unpacked into an empty home.
+- **Backup.** The four `backup` commands go through `WorkGraph#backups`, a
+  `Graph::Knowledge::Backup::StoreBackups` for one store. `Writer` copies the databases
+  into the folder with `VACUUM INTO` and keeps `status.yml`. `Publisher` adds the row of
+  `home.db`'s `backups` table and removes the folder when the insert fails. `Purger`
+  deletes a folder and its row together and puts the folder back when the row delete
+  fails. `Restorer` checks the delivery lock and the status, writes a safety backup, runs
+  `quick_check`, and swaps the files by rename with rollback. `Backup#flag` compares the
+  SHA-256 digest of the sorted file names and digests with the one stored at write time.
+  `BackupStore` adds the required `--store` option to the four commands and refuses a slug
+  that is not a key of `projects.yml`. `Databases.parse` reads `--databases`.
 
 `Graph::Knowledge::Sync::LegacyImport` runs `Graph::Knowledge::Legacy::StoreImport` for a store with `INDEX.md` and no
 `store/index.json`. One coordinator reads intent files, rulings and source links, imports

@@ -59,7 +59,7 @@ could not hold it safely.
 | `plastic roadmap drop SLUG ITEM --dry-run` | The roadmap rows the dropped item would change. |
 | `plastic roadmap edge remove SLUG FROM TO --dry-run` | The roadmap edge rows the removal would delete. |
 
-`plastic sync up`, `plastic sync down` and `plastic backup` keep their own previews.
+`plastic sync up`, `plastic sync down` and `plastic backup` keep their own previews. `plastic backup purge` and `plastic backup restore` take `--dry-run` and list what they would delete or put back.
 `plastic uninstall --dry-run` lists every path the uninstall would remove.
 
 ## Installer commands

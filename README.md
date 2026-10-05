@@ -236,8 +236,10 @@ plastic architecture refresh --project blog                      # Tell the agen
 plastic sync up                       # Bring the databases level with the store files
 plastic sync up --dry-run             # Show what would change
 plastic sync down                     # Write the store files from the databases
-plastic backup                        # One archive of the three databases and the config
-plastic backup list                   # Name, size and date of each archive
+plastic backup --store alpha          # Copy the databases of one store into a UTC-named folder
+plastic backup list --store alpha     # Folder, start time, status and goal of each backup
+plastic backup purge --store alpha --older-than 2026-09-01   # Delete older backups
+plastic backup restore --store alpha --latest   # Put the newest done backup back
 ```
 
 ### Product
@@ -385,7 +387,7 @@ Plastic 2.0 moves from prose skills to one command with direct results.
 - **Roadmaps are graphs too.** `plastic roadmap check` finds cycles and dangling ids.
 - **Search without a service.** One SQLite file holds a full-text index of every store.
 - **Three databases.** The Markdown files stay the record that commands write and read. `plastic sync` reads changed files into `knowledge_graph.db`, writes changed rows back out, refuses when both changed, and rebuilds `work_graph.db` and `references.db`. `plastic checkout` restores missing files from the databases and never overwrites a changed file.
-- **Backup and migrate.** One archive command, and a store move that runs behind a full copy of the home.
+- **Backup and migrate.** Per-store backup, list, purge and restore commands, and a store move that runs behind a full copy of the home.
 - **Two advisors, medium effort by default.** Summon the Primary Advisor or the Secondary Advisor on purpose.
 - **Codex CLI as a second agent.** The same install, with OpenAI model ids for each role.
 - **Releases from branches.** A push to `alpha`, `beta` or `main` creates a GitHub release that `install.sh` reads.
