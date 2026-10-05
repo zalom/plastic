@@ -55,12 +55,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest, macos-15-intel]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: '4.0'
-      - name: Install, update, roll back and uninstall Plastic on an empty home
+      - name: Install, update, roll back and uninstall Plastic on an empty home with no Ruby on PATH
         run: ruby tools/check-fresh-install

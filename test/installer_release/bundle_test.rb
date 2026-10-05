@@ -5,22 +5,33 @@ require_relative "release_helper"
 class InstallerReleaseBundleTest < Minitest::Test
   include ReleaseHelper
 
+  RUBY = InstallerRelease::Ruby.new("/opt/plastic/rubies/4.0.7-jdx-2/bin/ruby")
+
   def test_installs_the_runtime_gems_into_the_release_standalone
-    release_path = release_with_gemfile
-    calls = []
-    InstallerRelease::Bundle.new(run: ->(env, command) { calls << [env, command] }).call(release_path)
+    env, command = bundled.first
+    runtime = File.join(@root, "release", "runtime")
 
-    env, command = calls.first
-    runtime = File.join(release_path, "runtime")
-
-    assert_equal %w[bundle install --standalone], command.first(3)
+    assert_equal %w[install --standalone], command[1, 2]
     assert_equal({ "BUNDLE_GEMFILE" => File.join(runtime, "Gemfile"), "BUNDLE_PATH" => File.join(runtime, "bundle"), "BUNDLE_FROZEN" => "true" },
       env.slice("BUNDLE_GEMFILE", "BUNDLE_PATH", "BUNDLE_FROZEN"))
   end
 
+  def test_runs_the_bundle_program_beside_the_chosen_ruby
+    env, command = bundled.first
+
+    assert_equal "/opt/plastic/rubies/4.0.7-jdx-2/bin/bundle", command.first
+    assert_equal "/opt/plastic/rubies/4.0.7-jdx-2/bin", env.fetch("PATH").split(File::PATH_SEPARATOR).first
+  end
+
+  def test_uses_the_bundler_of_the_chosen_ruby_and_no_outside_gems
+    env, = bundled.first
+
+    assert_equal({ "BUNDLE_VERSION" => "system", "GEM_HOME" => nil, "GEM_PATH" => nil }, env.slice("BUNDLE_VERSION", "GEM_HOME", "GEM_PATH"))
+  end
+
   def test_skips_a_release_without_a_runtime_gemfile
     calls = []
-    installed = InstallerRelease::Bundle.new(run: ->(*arguments) { calls << arguments }).call(@root)
+    installed = InstallerRelease::Bundle.new(run: ->(*arguments) { calls << arguments }).call(@root, RUBY)
 
     refute installed
     assert_empty calls
@@ -32,6 +43,12 @@ class InstallerReleaseBundleTest < Minitest::Test
   end
 
   private
+
+  def bundled
+    calls = []
+    InstallerRelease::Bundle.new(run: ->(env, command) { calls << [env, command] }).call(release_with_gemfile, RUBY)
+    calls
+  end
 
   def release_with_gemfile
     runtime = File.join(@root, "release", "runtime")

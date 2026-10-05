@@ -17,10 +17,10 @@ class ReleaseBuild
     seal(version, directory)
   end
 
-  def self.seal(version, directory)
+  def self.seal(version, directory, pins: InstallerRelease::RubyPins.read)
     archive = File.join(directory, ARCHIVE)
     File.write("#{archive}.sha256", "#{Digest::SHA256.file(archive).hexdigest}  #{ARCHIVE}\n")
     release = InstallerRelease::Manifest.identity(version).merge("platform" => "universal", "architecture" => "universal")
-    InstallerRelease::Manifest.write(File.join(directory, "plastic.manifest.json"), archive:, release:)
+    InstallerRelease::Manifest.write(File.join(directory, "plastic.manifest.json"), archive:, release:, ruby_builds: pins)
   end
 end

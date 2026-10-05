@@ -1690,6 +1690,28 @@ release with them attached. To release, change the version in `package.json` and
 branch. `install.sh` at the repository root downloads the archive of the release its channel
 names, unpacks it under `~/.local/share/plastic` and links `~/.local/bin/plastic`.
 
+**Each release runs its own Ruby (intent 402a).** `install.sh` pins one Ruby 4.0.7 build for each
+platform in its `ruby_pins` table: jdx/ruby `4.0.7-2` for macOS on Apple silicon and both Linux
+builds, and the Homebrew portable Ruby from ghcr.io for an Intel Mac, which needs the anonymous
+header `Authorization: Bearer QQ==`. It detects the platform with `uname`, takes the Apple silicon
+build in a Rosetta shell, and stops on musl. It downloads to a temporary directory, checks the
+size, the SHA-256 and the archive entries, unpacks into a staging directory under `rubies/`, starts
+the Ruby once with `openssl`, `zlib` and `psych`, writes the `.plastic-ruby` marker, and renames the
+directory into place before it makes it read-only. `InstallerRelease::RubyPins` reads the same
+table, so `ReleaseBuild` writes it into the manifest under `ruby.builds`, and `Rubies` repeats the
+same steps in Ruby when `plastic update` meets a release that pins a Ruby the share lacks.
+`ReleaseLauncher` moves the Ruby entry point to `libexec/plastic` and writes a `bin/plastic` shell
+script that runs it with that Ruby's full path, and `Bundle` runs that Ruby's own `bin/bundle`.
+It also writes `bin/ruby`, a shell script that starts the same Ruby, so `hooks/check-update`
+runs on `~/.local/share/plastic/active/bin/ruby` and never on a Ruby from `PATH`. With no active
+release, the update check does nothing.
+`PLASTIC_RUBY` overrides the choice for development. `ReleaseRemoval` removes only the entries
+`FlatShare::KEPT` names and stopped downloads, and makes the read-only Rubies writable first.
+An uninstall runs on one of those Rubies, so `ShareEntries` decides whether the share goes before
+the first removal and removes the `rubies` folder last, and `ReleaseRemoval` prints its closing
+lines from that answer, never from the disk after the removal. Every file the uninstall
+needs is loaded before the share goes, and a child process test runs it on a copied share.
+
 **The guard.** `scripts/release-check`, a thin CLI over `scripts/lib/release_guard.rb`, runs
 before the build. It asserts that the pushed branch releases the channel the version names
 (`alpha`, `beta`, or `main` for a version with no suffix), and that a stable version carries no

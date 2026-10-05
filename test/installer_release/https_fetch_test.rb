@@ -8,15 +8,17 @@ class InstallerReleaseHttpsFetchTest < Minitest::Test
 
   # Answers each URL from a table, the way Net::HTTP.get_response would.
   class FakeHttp
-    attr_reader :asked
+    attr_reader :asked, :headers
 
     def initialize(answers)
       @answers = answers
       @asked = []
+      @headers = []
     end
 
-    def get_response(uri)
+    def get_response(uri, headers)
       @asked << uri.to_s
+      @headers << headers
       @answers.fetch(uri.to_s)
     end
   end
@@ -64,6 +66,13 @@ class InstallerReleaseHttpsFetchTest < Minitest::Test
     fetch(FakeHttp.new("https://example.test/a" => ok("bytes"))).download("https://example.test/a", path)
 
     assert_equal "bytes", File.binread(path)
+  end
+
+  def test_sends_the_headers_to_the_first_address_only
+    http = FakeHttp.new("https://example.test/a" => redirect("https://cdn.example.test/b"), "https://cdn.example.test/b" => ok("moved"))
+    fetch(http).download("https://example.test/a", File.join(@root, "asset"), "Authorization" => "Bearer QQ==")
+
+    assert_equal [{ "Authorization" => "Bearer QQ==" }, {}], http.headers
   end
 
   private

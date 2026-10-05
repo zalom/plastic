@@ -11,6 +11,8 @@ CACHE_DIR="$PLASTIC_HOME/.cache"
 CACHE_FILE="$CACHE_DIR/update-check.json"
 VERSION_FILE="$PLASTIC_HOME/VERSION"
 SELECTOR="$SCRIPT_DIR/../scripts/select-update-target"
+# The Ruby the active release runs on, never one from PATH.
+RUBY="${PLASTIC_SHARE:-$HOME/.local/share/plastic}/active/bin/ruby"
 RELEASES_URL="https://api.github.com/repos/zalom/plastic/releases?per_page=50"
 
 mkdir -p "$CACHE_DIR"
@@ -41,13 +43,15 @@ fi
 # nothing is lost by sending its descriptors to /dev/null; what changes is that the
 # inherited pipes close at fork, so the last write end disappears when THIS script exits.
 (
+  [ -x "$RUBY" ] || exit 0
+
   RELEASES=$(curl -fsSL "$RELEASES_URL" 2>/dev/null)
 
   if [ -z "$RELEASES" ]; then
     exit 0
   fi
 
-  TARGET=$(printf '%s' "$RELEASES" | env -u RUBYOPT ruby "$SELECTOR" "$CURRENT" 2>/dev/null)
+  TARGET=$(printf '%s' "$RELEASES" | env -u RUBYOPT "$RUBY" "$SELECTOR" "$CURRENT" 2>/dev/null)
   CHECKED=$(date +%Y-%m-%dT%H:%M:%S%z)
 
   if [ -n "$TARGET" ]; then
