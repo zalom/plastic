@@ -25,7 +25,13 @@ class SyncUpFoldersTest < Plastic::TestCase
     intent
   end
 
-  def intent_ids = retrieval.intents.map(&:intent_id)
+  def add_ghost_to_index
+    data = JSON.parse(folder.read("store/index.json"))
+    data["intents"] << data["intents"].first.merge("intent_id" => "2", "slug" => "ghost", "title" => "Ghost")
+    write("store/index.json", JSON.generate(data))
+  end
+
+  def intent_ids =retrieval.intents.map(&:intent_id)
 
   def index_ids = JSON.parse(folder.read("store/index.json"))["intents"].map { |entry| entry["intent_id"] }
 
@@ -51,9 +57,7 @@ class SyncUpFoldersTest < Plastic::TestCase
 
   def test_an_index_entry_whose_folder_is_gone_gets_no_row_and_the_index_is_printed_again
     copy_from_src("First")
-    data = JSON.parse(folder.read("store/index.json"))
-    data["intents"] << data["intents"].first.merge("intent_id" => "2", "slug" => "ghost", "title" => "Ghost")
-    write("store/index.json", JSON.generate(data))
+    add_ghost_to_index
 
     assert_equal 0, sync.code
     assert_equal [["1"], ["1"]], [intent_ids, index_ids]

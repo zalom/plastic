@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../prints"
+require_relative "../store_folder"
 
 module Plastic
   module Graph
@@ -17,6 +18,10 @@ module Plastic
           NO_PRINT = Prints::Print.new(nil, nil, nil, nil)
 
           def rows_sha = print.sha256
+
+          # A path a sync up never reads: the generated graph view, and the
+          # index, which the rows print again after a read.
+          def generated? = StoreFolder.graph_view?(path) || path == StoreFolder::INDEX
 
           # The file already holds what the rows print.
           def level? = file_sha && file_sha == rows_sha

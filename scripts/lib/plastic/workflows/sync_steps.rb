@@ -53,11 +53,15 @@ module Plastic
         sets :failure, :conflicts, :merging, :unreadable, :lines
         plan_steps(direction)
         apply_steps(direction)
-        gate UNREADABLE, stops: :failure, pass: SyncSteps.check(:readable?) if direction == :up
-        outcome :done, offers: "plastic next", because: NAMES.fetch(direction)
+        end_steps(direction)
       end
 
       private
+
+      def end_steps(direction)
+        gate UNREADABLE, stops: :failure, pass: SyncSteps.check(:readable?) if direction == :up
+        outcome :done, offers: "plastic next", because: NAMES.fetch(direction)
+      end
 
       def plan_steps(direction)
         read("plan the sync") { |context| SyncSteps.note(context, SyncSteps.plan(context, direction)) }

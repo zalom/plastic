@@ -60,9 +60,14 @@ class ProjectNewTest < Plastic::TestCase
     text = File.read(projects_file)
 
     assert_includes text, "  api:\n    path: /tmp/api\n    note: keep\n"
-    assert_includes text, "other: 1"
-    assert_includes text, "# mine"
-    assert_equal({ "api" => "/tmp/api", "blog" => File.realpath(checkout) },
-      YAML.load_file(projects_file)["projects"].transform_values { |entry| File.realpath(entry["path"]) rescue entry["path"] })
+    assert_equal ["other: 1", "# mine"], [text[/other: 1/], text[/# mine/]]
+  end
+
+  def test_the_new_project_is_listed_with_its_folder_beside_the_others
+    File.write(projects_file, "projects:\n  api:\n    path: /tmp/api\n")
+    make("blog", checkout)
+    projects = YAML.load_file(projects_file)["projects"]
+
+    assert_equal ["/tmp/api", File.realpath(checkout)], [projects["api"]["path"], File.realpath(projects["blog"]["path"])]
   end
 end

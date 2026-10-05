@@ -29,7 +29,7 @@ module Plastic
             intent_id, ruling_id = ref.split("/", 2)
             return false unless intents.include?(intent_id)
 
-            ruling_id.nil? || @retrieval.rulings(intent_id).any? { |ruling| ruling.id == ruling_id }
+            !ruling_id || @retrieval.rulings(intent_id).any? { |ruling| ruling.id == ruling_id }
           end
 
           def intents = (@intents ||= @retrieval.intents.map(&:intent_id))

@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative "rebuild"
 require_relative "next_pick"
 require_relative "next_offer"
 require_relative "last_savepoints"
@@ -14,28 +15,6 @@ module Plastic
       # folder holds intent folders says so and names sync up, which rebuilds the rows.
       class StoreResume
         SAVEPOINTS = 5
-        REBUILD = "plastic sync up --project %s"
-        REBUILD_WHY = "the files hold intents the rows lost, and sync up reads every intent folder"
-
-        # The files of a store hold intents its rows lost.
-        class Rebuild
-          def initialize(slug, folder)
-            @slug = slug
-            @folder = folder
-          end
-
-          def rows
-            [["store:", @slug], ["rows:", "none; the files hold #{@folder.intent_dirs.size} intent folders"], ["then:", then_text]]
-          end
-
-          def next_step = [command, REBUILD_WHY]
-
-          private
-
-          def command = format(REBUILD, @slug)
-
-          def then_text = command
-        end
 
         # The rows hold the store's work.
         class InPlay

@@ -34,6 +34,20 @@ class KnowledgeSyncIntentFoldersTest < Plastic::TestCase
     assert_match(%r{\Astore/2--beta: its intent file does not parse}, folders.problems.first)
   end
 
+  def test_an_intent_file_with_bytes_that_are_not_text_is_a_problem
+    write("store/2--beta/2--beta.md", "\xFF\xFE\n".b)
+
+    assert_equal ["store/2--beta: its intent file does not parse: it has no id, intent, created in its front matter"], folders.problems
+  end
+
+  def test_two_folders_with_one_number_are_each_named_with_the_other
+    write("store/2--beta/2--beta.md", page("2", "Beta"))
+    write("store/2--gamma/2--gamma.md", page("2", "Gamma"))
+
+    assert_equal ["store/2--beta: its number 2 is also the number of store/2--gamma",
+      "store/2--gamma: its number 2 is also the number of store/2--beta"], folders.problems
+  end
+
   def test_the_unreadable_folders_are_listed_by_path
     write("store/7--stray/spec.md", "x\n")
 

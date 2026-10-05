@@ -37,6 +37,14 @@ class ProjectLinksTest < Plastic::TestCase
     assert_equal [0, ""], [links.code, links.err]
   end
 
+  def test_several_broken_links_are_counted_in_the_plural
+    open_intent
+    link("1", "8")
+    link("1", "9")
+
+    assert_match(/2 links name/, links.err)
+  end
+
   def test_a_reference_into_another_store_is_not_checked
     open_intent
     link("1", "other:5")

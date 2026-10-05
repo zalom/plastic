@@ -1,9 +1,8 @@
 # frozen_string_literal: true
 
-require_relative "entry"
+require_relative "entry_list"
 require_relative "resolution"
 require_relative "intent_folders"
-require_relative "../../prints"
 require_relative "../store_folder"
 
 module Plastic
@@ -30,19 +29,9 @@ module Plastic
               problem: (legacy_problem if legacy && !up), unreadable: folders&.problems || [])
           end
 
-          def self.entries(folder, retrieval, folders = nil)
-            prints = Prints.of_store(retrieval).to_h { |print| [print.path, print] }
-            printed = retrieval.printed
-            (prints.keys | on_disk(folder, folders) | printed.keys).sort.map do |path|
-              Entry.new(path, folder.digest(path), printed[path], prints.fetch(path, Entry::NO_PRINT))
-            end
-          end
+          def self.entries(folder, retrieval, folders = nil) = EntryList.new(folder, retrieval, folders).entries
 
-          def self.on_disk(folder, folders = nil)
-            skipped = folders&.unreadable.to_a
-            files = folder.intent_files.reject { |path| skipped.any? { |dir| path.start_with?("#{dir}/") } }
-            [*(StoreFolder::INDEX if folder.exist?(StoreFolder::INDEX)), *files]
-          end
+          def self.on_disk(folder, folders = nil) = EntryList.new(folder, nil, folders).on_disk
 
           def self.legacy_problem = "this store still has #{StoreFolder::LEGACY_INDEX}; run plastic sync up to import it first"
 
@@ -70,11 +59,8 @@ module Plastic
 
           private
 
-          # The generated graph view, and the index, which the rows print again after a read.
-          def ignored_up?(path) = StoreFolder.graph_view?(path) || path == StoreFolder::INDEX
-
           def settled(entry)
-            return :none if direction == :up && ignored_up?(entry.path)
+            return :none if direction == :up && entry.generated?
 
             action = entry.action(direction)
             (action == :conflict && resolution.overwrites?(entry.path)) ? resolution.side : action
