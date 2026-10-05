@@ -23,8 +23,12 @@ class BackupTest < Plastic::TestCase
     assert_empty folder_names(home, "nowhere")
   end
 
-  def test_the_global_store_refuses_because_it_is_not_a_registered_project
-    assert_refused_with_usage backup_call(fresh_home, "--store", "global"), "global"
+  def test_the_global_store_is_accepted
+    home = fresh_home
+    seed_store(home, "global")
+
+    assert_equal 0, backup_call(home, "--store", "global").code
+    assert_equal 1, folder_names(home, "global").size
   end
 
   def test_a_backup_holds_only_the_three_store_databases_named_with_the_timestamp

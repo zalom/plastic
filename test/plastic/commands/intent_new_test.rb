@@ -44,6 +44,14 @@ class IntentNewTest < Plastic::TestCase
     assert_equal ["2", "source"], [link.from_ref, link.kind]
   end
 
+  def test_a_registered_project_with_no_store_folder_gets_its_intent
+    home = Dir.mktmpdir
+    File.write(File.join(home, "projects.yml"), "projects:\n  fresh:\n    path: #{Dir.mktmpdir}\n")
+    result = plastic("intent", "new", "First", "--project", "fresh", env: { "PLASTIC_HOME" => home }, table: Plastic::CLI::TABLE)
+
+    assert_equal [0, true], [result.code, Dir.exist?(File.join(home, "stores", "fresh", "store", "1--first"))]
+  end
+
   def test_after_naming_a_missing_intent_fails_with_no_intent_written
     result = plastic("intent", "new", "Beta", "--after", "9", table: Plastic::CLI::TABLE)
 

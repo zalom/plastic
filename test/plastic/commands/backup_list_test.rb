@@ -17,6 +17,14 @@ class BackupListTest < Plastic::TestCase
     assert_refused_with_usage list_call(fresh_home, "--store", "nowhere"), "nowhere"
   end
 
+  def test_the_global_store_is_listed_from_its_own_folder
+    home = fresh_home
+    seed_store(home, "global")
+    backup_at(home, at(*FIRST), slug: "global")
+
+    assert_call list_call(home, "--store", "global"), code: 0, out: %w[20260101100000]
+  end
+
   def test_the_list_shows_each_timestamp
     home = fresh_home
     backup_at(home, at(*FIRST))

@@ -5,6 +5,7 @@ require "fileutils"
 require "json"
 require "tmpdir"
 require_relative "../scripts/lib/installer_core"
+require_relative "varar/support/kernel_command"
 
 # A throwaway home for each InstallerCore test.
 module InstallerCoreHome
@@ -172,5 +173,42 @@ class InstallerCoreTest < Minitest::Test
     migrated = installer.migrate_advisor_config(config)
 
     assert_equal ["plastic-primary-advisor", { "plastic-secondary-advisor" => "opus" }], [migrated.dig("advisor", "claude", "default"), migrated.dig("agents", "models", "claude")]
+  end
+end
+
+class InstallerCoreBootstrapTest < Minitest::Test
+  include InstallerCoreHome
+
+  def plastic_home = File.join(@home, ".plastic")
+
+  def global(*parts) = File.join(plastic_home, "stores", "global", *parts)
+
+  def bootstrap = capture_io { installer.bootstrap }
+
+  def test_a_first_install_writes_no_legacy_index_into_the_global_store
+    bootstrap
+
+    refute_path_exists global("INDEX.md")
+  end
+
+  def test_a_first_install_creates_the_three_store_databases
+    bootstrap
+
+    assert_equal %w[knowledge_graph.db references.db work_graph.db], Dir.children(global).grep(/\.db\z/).sort
+  end
+
+  def test_a_first_install_leaves_the_store_ready_for_intent_new
+    bootstrap
+    call = KernelCommand.new(@home).run("intent", "new", "First")
+
+    assert_equal [0, true], [call.code, Dir.exist?(global("store", "1--first"))]
+  end
+
+  def test_an_install_over_a_store_that_has_its_index_leaves_it_byte_for_byte
+    FileUtils.mkdir_p(global)
+    File.binwrite(global("INDEX.md"), "# Index\n\n## Active\n\n- 1 first\n")
+    bootstrap
+
+    assert_equal "# Index\n\n## Active\n\n- 1 first\n", File.binread(global("INDEX.md"))
   end
 end

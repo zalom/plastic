@@ -21,6 +21,16 @@ class BackupPurgeTest < Plastic::TestCase
     assert_equal 4, folder_names(home).size
   end
 
+  def test_purging_the_global_store_removes_its_own_folders_and_leaves_the_others
+    home = fresh_home
+    seed_store(home, "global")
+    backup_at(home, at(2026, 1, 1, 10, 0, 0), slug: "global")
+    backup_at(home, at(2026, 1, 1, 10, 0, 0))
+
+    assert_equal 0, purge_call(home, "--store", "global", "--all").code
+    assert_equal [[], 1], [folder_names(home, "global"), folder_names(home).size]
+  end
+
   def test_purging_all_when_there_are_no_backups_says_nothing_was_purged
     result = purge_call(fresh_home, "--store", "alpha", "--all")
 
