@@ -10,7 +10,7 @@ module Plastic
 
       def environment(env: {}, input: "", out: StringIO.new, err: StringIO.new)
         Plastic::CLI::Command::Environment.new(env: { "PLASTIC_HOME" => @plastic_home }.merge(env),
-          input: StringIO.new(input), out:, err:, home: @home, directory: @home)
+          input: input.respond_to?(:gets) ? input : StringIO.new(input), out:, err:, home: @home, directory: @home)
       end
 
       def plastic(*argv, env: {}, input: "", table: Fixtures::TABLE)
