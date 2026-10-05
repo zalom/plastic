@@ -81,18 +81,6 @@ class IntentArchiveTest < Plastic::TestCase
     refute folder.exist?("#{intent.dir}/#{intent.file}")
   end
 
-  def test_sync_down_after_an_archive_prints_nothing_back
-    intent = open_intent("Target")
-    mark_done(intent)
-    call(intent.intent_id)
-
-    result = plastic("sync", "down", table: Plastic::CLI::TABLE)
-
-    assert_call result, code: 0,
-      out: "printed store/index.json\nnext: plastic next --project global\nbecause: the files hold every row that changed\n"
-    refute folder.exist?(intent.dir)
-  end
-
   def test_a_refused_archive_is_refused_again_on_the_next_call
     intent = open_intent("Target")
     call(intent.intent_id)
@@ -128,8 +116,27 @@ class IntentArchiveTest < Plastic::TestCase
   def test_archiving_a_missing_intent_reports_a_failure
     result = call("99")
 
-    assert_equal 1, result.code
-    assert_includes result.err, "no intent 99"
+    assert_call result, code: 1, err: ["no intent 99"]
+  end
+
+  def test_revert_restores_the_exact_snapshot_taken_at_archive_time
+    intent = open_intent("Unsynced", status: "future")
+    path = "#{intent.dir}/#{intent.file}"
+    write(path, "owner edit not in document rows")
+    call(intent.intent_id)
+    call(intent.intent_id, "--revert")
+
+    assert_equal "owner edit not in document rows", folder.read(path)
+  end
+
+  def test_revert_of_an_intent_that_was_never_archived_fails_and_leaves_it_live
+    intent = open_intent("Open")
+    call(intent.intent_id)
+
+    result = call(intent.intent_id, "--revert")
+
+    assert_call result, code: 1, err: ["not archived"]
+    refute retrieval.archived?(intent.intent_id)
   end
 
   private

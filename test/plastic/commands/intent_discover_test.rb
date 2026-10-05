@@ -30,7 +30,7 @@ class IntentDiscoverTest < Plastic::TestCase
   end
 
   def test_rejects_an_unsafe_owning_intent_as_usage
-    assert_equal 2, plastic("intent", "discover", "../escape", "evidence", "--json", table: Plastic::CLI::TABLE).code
+    assert_call plastic("intent", "discover", "../escape", "evidence", "--json", table: Plastic::CLI::TABLE), code: 2, out: ['"kind": "usage"', 'invalid intent id \"../escape\"'], err: /invalid intent id "\.\.\/escape"/
   end
 
   def test_refuses_unknown_or_unmaintained_source_stores_without_recreating_them

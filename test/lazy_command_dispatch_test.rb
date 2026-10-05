@@ -23,9 +23,10 @@ class LazyCommandDispatchTest < Minitest::Test
   def test_each_dependency_family_dispatches_in_a_fresh_process
     Dir.mktmpdir do |home|
       %w[status hook\ resume].each do |command|
-        _stdout, stderr, _status = Open3.capture3(environment(home), File.join(ROOT, "bin", "plastic"), *command.split)
+        result = run_cli(home, *command.split)
 
-        refute_match(/uninitialized constant/, stderr, command)
+        assert_equal [0, ""], [result.fetch(:status).exitstatus, result.fetch(:err)], command
+        refute_empty result.fetch(:out), command
       end
     end
   end

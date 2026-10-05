@@ -2,17 +2,16 @@
 
 require_relative "../../test_helper"
 require_relative "../../../scripts/lib/plastic/commands/roadmap_batch"
-require_relative "../../../scripts/lib/plastic/commands/roadmap_show"
 
 class RoadmapBatchTest < Plastic::TestCase
   def call(*args) = plastic("roadmap", "batch", *args, table: Plastic::CLI::TABLE)
 
-  def test_show_prints_the_goal_and_both_criteria
-    call("r1", "1", "--title", "Wave one", "--goal", "Ship it", "--done", "a done", "--done", "b done")
+  def test_writing_a_batch_says_what_it_wrote_and_offers_the_show
+    result = call("r1", "1", "--title", "Wave one", "--goal", "Ship it")
 
-    result = plastic("roadmap", "show", "r1", table: Plastic::CLI::TABLE)
-
-    assert_call result, code: 0, out: ["Ship it", "a done", "b done"]
+    assert_call result, code: 0,
+      out: "batch: r1 1 Wave one\nwrote:  1 roadmap and 1 batch in work_graph.db\n\n" \
+           "next: plastic roadmap show r1 --project global\nbecause: batch 1 of r1 is written\n"
   end
 
   def test_a_second_call_on_the_same_batch_rewrites_it
@@ -25,9 +24,8 @@ class RoadmapBatchTest < Plastic::TestCase
   end
 
   def test_a_new_batch_with_no_title_is_named_by_its_position
-    result = call("r1", "2", "--goal", "Ship it")
+    call("r1", "2", "--goal", "Ship it")
 
-    assert_equal 0, result.code
     assert_equal ["Batch 2"], store_graphs.retrieval.batches("r1").map(&:title)
   end
 

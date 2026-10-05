@@ -2,7 +2,7 @@
 
 require_relative "../../test_helper"
 
-class SyncImportTest < Plastic::TestCase
+class SyncUpTest < Plastic::TestCase
   fixtures :legacy
 
   def import = plastic("sync", "up", table: Plastic::CLI::TABLE)
@@ -12,15 +12,22 @@ class SyncImportTest < Plastic::TestCase
     write("store/1--ai-infra/spec.md", "# Spec\n\n## Decisions\n- D1 Keep local ownership\n")
   end
 
-  def test_sync_imports_legacy_rulings_and_links_together
+  def test_sync_up_offers_the_next_action_once_the_rows_hold_the_files
     legacy_metadata
 
-    assert_equal 0, import.code
+    assert_call import, code: 0,
+      out: ["imported INDEX.md: 2 intents", "next: plastic next --project global\nbecause: the rows hold every file changed by hand\n"]
+  end
+
+  def test_sync_up_imports_legacy_rulings_and_links_together
+    legacy_metadata
+    import
+
     assert_equal ["D1 Keep local ownership"], retrieval.rulings("1").map(&:text)
     assert retrieval.links("1").any? { |link| link.kind == "source" && link.to_ref == "global:51" }
   end
 
-  def test_sync_imports_the_roadmap
+  def test_sync_up_imports_the_roadmap
     legacy_metadata
     import
 

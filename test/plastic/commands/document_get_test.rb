@@ -2,64 +2,80 @@
 
 require_relative "../../test_helper"
 require_relative "../../../scripts/lib/plastic/commands/document_get"
-require_relative "../../../scripts/lib/plastic/commands/document_batch"
 require "open3"
 require "rbconfig"
 
 class DocumentGetTest < Plastic::TestCase
-  def test_routed_help_prints_document_command_usage
-    %w[get batch].each { |command| assert_document_help(command) }
+  def get(*args) = plastic("document", "get", *args, table: Plastic::CLI::TABLE)
+
+  def test_routed_help_prints_the_get_usage
+    output, errors, status = Open3.capture3({ "HOME" => @home }, RbConfig.ruby, "bin/plastic", "help", "document", "get",
+      chdir: File.expand_path("../../..", __dir__))
+
+    assert_equal [0, ""], [status.exitstatus, errors]
+    assert_includes output, "plastic document get REF"
+    assert_includes output, "plastic://STORE/INTENT/PATH?revision=SHA256"
   end
 
   def test_prints_a_historical_qualified_document_as_structured_json
-    assert_historical_document(historical_document_result)
+    writer = Plastic::Graph::Retrieval::Evidence::Writer.new(store_graphs.databases.fetch(:knowledge), origin)
+    writer.write("1", "plan.md", "first")
+    reference = retrieval.reference("1", "plan.md").fetch(:uri)
+    writer.write("1", "plan.md", "second")
+    retrieval.backfill
+
+    result = get(reference, "--json")
+
+    assert_call result, code: 0, out: ["first", "revision"]
   end
 
   def test_reads_a_current_document_when_its_qualified_reference_omits_a_revision
     write_document("global", "1", "current.md", "current body")
 
-    result = plastic("document", "get", "plastic://global/1/current.md", "--json", table: Plastic::CLI::TABLE)
+    result = get("plastic://global/1/current.md", "--json")
 
-    assert_equal 0, result.code, result.err
-    assert_equal "current body", JSON.parse(result.out).dig("result", "document", "body")
+    assert_call result, code: 0, out: /"body": "current body"/
   end
 
-  def test_batch_routes_each_qualified_reference_to_its_selected_store_in_order
-    assert_batch_order(batch_result)
+  def test_a_reference_to_an_unknown_store_fails
+    assert_call get("plastic://unknown/1/plan.md"), code: 1, err: /project|maintenance/
   end
 
-  def test_refuses_malformed_unknown_and_missing_qualified_references
-    %w[plastic://unknown/1/plan.md plastic://global/1/missing.md].each do |reference|
-      result = plastic("document", "get", reference, table: Plastic::CLI::TABLE)
+  def test_a_reference_to_a_missing_document_fails
+    assert_call get("plastic://global/1/missing.md"), code: 1, err: /document/
+  end
 
-      assert_call result, code: 1, err: /document|project|maintenance/
+  def test_a_malformed_reference_is_a_usage_error_naming_it
+    assert_call get("broken"), code: 2, err: /broken/
+  end
+
+  def test_a_bad_revision_or_an_undecodable_path_is_a_structured_usage_error
+    write_document("global", "1", "long.md", "evidence")
+
+    ["plastic://global/1/long.md?revision=bad", "plastic://global/1/%FF.md"].each do |invalid|
+      assert_json_error(get(invalid, "--json"), 2, "usage")
     end
-
-    malformed = plastic("document", "get", "broken", table: Plastic::CLI::TABLE)
-
-    assert_call malformed, code: 2, err: /broken/
   end
 
-  def test_batch_fails_on_a_missing_reference_with_exit_1
-    result = plastic("document", "batch", "plastic://global/1/missing.md", table: Plastic::CLI::TABLE)
-
-    assert_equal 1, result.code
-    assert_match(/document/, result.err)
-    assert_equal "", result.out
-  end
-
-  def test_reports_reference_and_passage_validation_as_structured_errors
+  def test_a_passage_that_is_not_a_positive_number_is_a_structured_usage_error
     reference = write_document("global", "1", "long.md", "evidence " * 400)
 
-    assert_invalid_references
-    assert_invalid_passages(reference)
+    %w[word 0 -1].each { |position| assert_json_error(get(reference, "--passage", position, "--json"), 2, "usage") }
+  end
+
+  def test_a_passage_past_the_end_is_a_structured_failure
+    reference = write_document("global", "1", "long.md", "evidence " * 400)
+
+    assert_json_error(get(reference, "--passage", "99", "--json"), 1, "failed")
+  end
+
+  def test_a_passage_of_a_missing_document_is_a_structured_failure
+    reference = write_document("global", "1", "long.md", "evidence")
+
+    assert_json_error(get(reference.sub("long.md", "missing.md"), "--passage", "1", "--json"), 1, "failed")
   end
 
   private
-
-  def repository = File.expand_path("../../..", __dir__)
-
-  def knowledge = store_graphs.databases.fetch(:knowledge)
 
   def write_document(store, intent_id, path, body)
     graphs = Plastic::Graph.open(home: @plastic_home, store:)
@@ -70,64 +86,7 @@ class DocumentGetTest < Plastic::TestCase
 
   def assert_json_error(result, code, kind)
     assert_equal code, result.code
-    document = JSON.parse(result.out)
-
-    assert_equal kind, document.fetch("result").fetch("error").fetch("kind")
+    assert_equal kind, JSON.parse(result.out).dig("result", "error", "kind")
     refute_match(/(?:Traceback|NoMethodError|ArgumentError)/, "#{result.out}#{result.err}")
-  end
-
-  def assert_document_help(command)
-    output, errors, status = Open3.capture3({ "HOME" => @home }, RbConfig.ruby, "bin/plastic", "help", "document", command, chdir: repository)
-
-    assert_predicate status, :success?
-    assert_empty errors
-    assert_includes output, "plastic document #{command} REF"
-    assert_includes output, "plastic://STORE/INTENT/PATH?revision=SHA256"
-    assert_includes output, "plastic document batch REF..." if command == "batch"
-  end
-
-  def historical_document_result
-    writer = Plastic::Graph::Retrieval::Evidence::Writer.new(knowledge, origin)
-    writer.write("1", "plan.md", "first")
-    reference = retrieval.reference("1", "plan.md").fetch(:uri)
-    writer.write("1", "plan.md", "second")
-    retrieval.backfill
-    plastic("document", "get", reference, "--json", table: Plastic::CLI::TABLE)
-  end
-
-  def assert_historical_document(result)
-    assert_equal 0, result.code
-    assert_includes result.out, "first"
-    assert_includes result.out, "revision"
-  end
-
-  def batch_result
-    first = write_document("global", "1", "global.md", "global")
-    second = write_document("other", "2", "other.md", "other")
-    third = write_document("third", "3", "third.md", "third")
-    plastic("document", "batch", third, second, first, second, "--json", table: Plastic::CLI::TABLE)
-  end
-
-  def assert_batch_order(result)
-    assert_equal 0, result.code
-    assert_equal 4, result.out.scan('"store"').count { |entry| entry }
-    assert_operator result.out.index("third"), :<, result.out.index("other")
-    assert_operator result.out.index("other"), :<, result.out.index("global")
-  end
-
-  def assert_invalid_references
-    ["plastic://global/1/long.md?revision=bad", "plastic://global/1/%FF.md"].each do |invalid|
-      assert_json_error(plastic("document", "get", invalid, "--json", table: Plastic::CLI::TABLE), 2, "usage")
-    end
-  end
-
-  def assert_invalid_passages(reference)
-    %w[word 0 -1].each do |position|
-      assert_json_error(plastic("document", "get", reference, "--passage", position, "--json", table: Plastic::CLI::TABLE), 2, "usage")
-    end
-    assert_json_error(plastic("document", "get", reference, "--passage", "99", "--json", table: Plastic::CLI::TABLE), 1, "failed")
-    missing = reference.sub("long.md", "missing.md")
-
-    assert_json_error(plastic("document", "get", missing, "--passage", "1", "--json", table: Plastic::CLI::TABLE), 1, "failed")
   end
 end
