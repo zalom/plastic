@@ -7,6 +7,8 @@ module Plastic
   # The command line of the kernel: finds the command that argv names in
   # TABLE, loads its class, and hands it the call.
   class CLI
+    TOPICS = File.expand_path("../../../docs/help", __dir__)
+
     # The command the words name: the longest table entry that starts argv,
     # so `auto lock renew` wins over `auto lock`.
     def self.find(argv, table = TABLE)
@@ -37,10 +39,10 @@ module Plastic
     # The whole of bin/plastic: run a shipped command, list the shipped
     # commands for `plastic help`, and name a command that has no stage yet
     # instead of blaming the words the owner typed.
-    def self.bin_call(argv, environment: Command::Environment.current, table: TABLE)
+    def self.bin_call(argv, environment: Command::Environment.current, table: TABLE, topics: TOPICS)
       command = argv.first
       return list(argv, table, environment) if argv.empty? || %w[--help -h].include?(command)
-      return help(argv, table, environment) if command == "help"
+      return help(argv, table, environment, topics) if command == "help"
 
       dispatch(argv, table, environment) { "plastic #{argv.join(" ")} is not in this build yet; it lands with its stage" }
     end
@@ -55,15 +57,28 @@ module Plastic
     end
     private_class_method :dispatch
 
-    def self.help(argv, table, environment)
+    def self.help(argv, table, environment, topics)
       words = argv.drop(1)
       return list(argv, table, environment) if argv.one? || words.all? { |word| %w[--json --help -h].include?(word) }
+      return topic(words.first, topics, environment) if topic?(words, table, topics)
 
       dispatch([*words, "--help"], table, environment) do
         "plastic: no command #{words.join(" ").inspect}; plastic help lists them"
       end
     end
     private_class_method :help
+
+    def self.topic?(words, table, topics) = words.one? && find(words, table).nil? && File.file?(topic_path(words.first, topics))
+    private_class_method :topic?
+
+    def self.topic(word, topics, environment)
+      environment.out.print File.read(topic_path(word, topics))
+      Command::OK
+    end
+    private_class_method :topic
+
+    def self.topic_path(word, topics) = File.join(topics, "#{word}.md")
+    private_class_method :topic_path
 
     # The shipped commands, one row each, as lines or as one document with --json.
     def self.list(argv, table, environment)
