@@ -19,7 +19,7 @@ class RoadmapPrintTest < Plastic::TestCase
     item("b", after: ["a"], batch: 2)
 
     assert_equal ["batch 1: T - G", "  done: it ships", "item a: A - ready, waits for nothing",
-                  "batch 2: Later", "item b: B - blocked, waits for a"], printed
+      "batch 2: Later", "item b: B - blocked, waits for a"], printed
   end
 
   def test_a_position_prints_only_its_batch
