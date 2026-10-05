@@ -225,7 +225,8 @@ explicit sync conflict resolution. A plain sync cannot silently overwrite them.
 Roadmap writes reject an item that depends on itself. Reading an imported cycle reports
 its unresolved items as blocked, and `roadmap check` identifies the loop.
 
-`plastic backup --store SLUG` copies the three databases of one registered store, with
+`plastic backup --store SLUG` copies the three databases of one registered store, or of the
+global store (`--store global`, the one name that is not a key of `projects.yml`), with
 `VACUUM INTO`, into `stores/SLUG/backups/YYYYMMDDHHMMSS/`. The folder name is the UTC time,
 with `-1`, `-2` added on a collision. `--databases LIST` copies only the named ones. A
 `status.yml` in the folder holds `status:` (`in-progress`, `done` or `error`) and `goal:`

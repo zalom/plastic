@@ -12,6 +12,7 @@ require_relative "hook_registry"
 require_relative "plastic/clock"
 require_relative "plastic/config"
 require_relative "plastic/hooks/entries"
+require_relative "plastic/graph"
 require_relative "agent_models"
 require_relative "harness_text"
 require_relative "compact_instructions"
@@ -443,19 +444,7 @@ class InstallerCore
 
     write_if_missing(File.join(plastic_home, "projects.yml"), "---\nprojects: {}\n")
 
-    write_if_missing(File.join(Plastic::StoreLayout.global_root(plastic_home), "INDEX.md"), <<~MD)
-      # Index
-
-      ## Active
-
-      ## Future
-
-      ## Clusters
-
-      ## Abandoned
-
-      ## Completed
-    MD
+    ready_global_store unless legacy
 
     write_if_missing(File.join(plastic_home, "AGENTS.md"), <<~MD)
       # Plastic: Agent Instructions
@@ -470,6 +459,14 @@ class InstallerCore
     MD
 
     puts "  \u{2705} Store bootstrapped"
+  end
+
+  # The state a sync up leaves a new store in: the three store databases, so
+  # intent new works at once. No INDEX.md is written, which would mark the
+  # store as one still to import.
+  def ready_global_store
+    graphs = Plastic::Graph.open(home: plastic_home, store: Plastic::StoreLayout::GLOBAL)
+    graphs.databases.values_at(:knowledge, :work, :references).each { |database| database.rows("SELECT 1") }
   end
 
   # --- Agent adapters ---

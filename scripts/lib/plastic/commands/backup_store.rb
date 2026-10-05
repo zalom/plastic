@@ -30,7 +30,7 @@ module Plastic
       def refuse_unregistered
         slug = parsed[:store]
         projects = scope.projects
-        return if projects.key?(slug)
+        return if slug == CLI::Scope::GLOBAL || projects.key?(slug)
 
         raise CLI::Command::Usage, "no registered project named #{slug.inspect}; the projects are #{projects.keys.sort.join(", ")}"
       end

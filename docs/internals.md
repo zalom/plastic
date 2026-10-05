@@ -559,7 +559,7 @@ this section covers how the code holds together.
   `quick_check`, and swaps the files by rename with rollback. `Backup#flag` compares the
   SHA-256 digest of the sorted file names and digests with the one stored at write time.
   `BackupStore` adds the required `--store` option to the four commands and refuses a slug
-  that is not a key of `projects.yml`. `Databases.parse` reads `--databases`.
+  that is neither `global` nor a key of `projects.yml`. `Databases.parse` reads `--databases`.
 
 `Graph::Knowledge::Sync::LegacyImport` runs `Graph::Knowledge::Legacy::StoreImport` for a store with `INDEX.md` and no
 `store/index.json`. One coordinator reads intent files, rulings and source links, imports
@@ -762,7 +762,9 @@ savepoint's `Commit` ledger has entries and no checklist item is ticked.
 
 ## store layout and the stores move (intent 370)
 
-Fresh bootstrap creates `stores/global/store` and `stores/global/INDEX.md`. Legacy data
+Fresh bootstrap creates `stores/global/store` and the three store databases, as a sync up
+leaves a store, and no `INDEX.md`, so `plastic intent new` works at once. `Scope#known_slugs`
+also lists the registered projects, so a project whose store folder does not exist yet resolves. Legacy data
 (`store`, `projects`, `INDEX.md`, or `roadmaps` at the home root) keeps bootstrap on the old
 layout until explicit migration. Bootstrap on an already migrated home never recreates `projects/`.
 The context-budget benchmark seeds its fixture through the same store path resolver, so it

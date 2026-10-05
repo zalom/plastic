@@ -129,7 +129,7 @@ class ScopeTest < Plastic::TestCase
   def test_a_registered_project_with_no_store_folder_is_a_known_slug
     File.write(File.join(@plastic_home, "projects.yml"), "projects:\n  fresh:\n    path: #{Dir.mktmpdir}\n")
 
-    assert_equal %w[fresh global], scope(slug: "fresh").known_slugs
+    assert_equal %w[fresh global plastic], scope(slug: "fresh").known_slugs
   end
 
   def test_the_known_slugs_are_the_store_directories_and_global

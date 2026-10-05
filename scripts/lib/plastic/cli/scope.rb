@@ -47,7 +47,7 @@ module Plastic
 
       def known_slugs
         dirs = Dir.glob(File.join(plastic_home, "stores", "*")).select { |path| File.directory?(path) }
-        (dirs.map { |path| File.basename(path) } | [GLOBAL]).sort
+        (dirs.map { |path| File.basename(path) } | projects.keys | [GLOBAL]).sort
       end
 
       # The projects file at the home, as slug => path. A file that does not
