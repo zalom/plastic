@@ -56,14 +56,18 @@ class InstallCommandTest < Plastic::TestCase
   def test_all_registers_an_agent_whose_manifest_lists_files_that_are_gone
     %w[.claude .codex].each { |folder| FileUtils.mkdir_p(File.join(@home, folder)) }
     call("install", "--claude")
-    stale = File.join(@home, ".agents", "plastic", "manifest.json")
-    FileUtils.mkdir_p(File.dirname(stale))
-    File.write(stale, JSON.generate("files" => { File.join(@home, ".agents", "gone.md") => "0" }))
+    write_stale_manifest
     result = call("install", "--all")
 
     assert_equal 0, result.code, result.err
     refute_match(/Codex.*already registered/, result.out)
     assert_path_exists File.join(@home, ".codex", "hooks.json")
+  end
+
+  def write_stale_manifest
+    stale = File.join(@home, ".agents", "plastic", "manifest.json")
+    FileUtils.mkdir_p(File.dirname(stale))
+    File.write(stale, JSON.generate("files" => { File.join(@home, ".agents", "gone.md") => "0" }))
   end
 
   def test_refuses_to_install_over_a_registered_agent_without_reinstall
