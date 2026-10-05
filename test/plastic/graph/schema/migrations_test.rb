@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/graph/schema"
+require_relative "../../../test_helper"
+require_relative "../../../../scripts/lib/plastic/graph/schema"
 
 class SchemaMigrationsTest < Minitest::Test
   def test_rebuilds_both_legacy_tables_in_an_immediate_transaction
