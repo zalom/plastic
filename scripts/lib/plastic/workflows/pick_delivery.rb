@@ -30,21 +30,19 @@ module Plastic
       end
 
       def self.pick_item(context)
-        states = item_states(context)
-        context[:open] = states.filter_map { |item, state| item.item unless %w[done dropped].include?(state) }
-        context[:intent_id] = first_item(states, "in flight") { |item| free?(item.intent_id, context) }&.intent_id
-        context[:ready_id] = first_item(states, "ready")&.item
+        items = items_by_state(context)
+        context[:open] = items.except("done", "dropped").values.flatten.map(&:item)
+        context[:intent_id] = free_item(items["in flight"], context)&.intent_id
+        context[:ready_id] = items["ready"]&.first&.item
       end
 
-      def self.item_states(context)
+      # The roadmap's items grouped by state, each group in batch then item order.
+      def self.items_by_state(context)
         retrieval = context.retrieval
-        retrieval.roadmap_items(context.id).map { |item| [item, Graph::Knowledge::Roadmap::State.of(item, retrieval)] }
+        retrieval.roadmap_items(context.id).group_by { |item| Graph::Knowledge::Roadmap::State.of(item, retrieval) }
       end
 
-      # The first item in the wanted state that the block, when given, accepts.
-      def self.first_item(states, wanted)
-        states.find { |item, state| state == wanted && (!block_given? || yield(item)) }&.first
-      end
+      def self.free_item(items, context) = items&.find { |item| free?(item.intent_id, context) }
 
       # Neither parked nor held by another session's live lock.
       def self.free?(intent_id, context)
