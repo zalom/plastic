@@ -2,11 +2,11 @@
 
 require "fileutils"
 require "tmpdir"
-require_relative "../../../config"
 require_relative "decisions"
 require_relative "roadmaps"
 require_relative "originals"
 require_relative "import_rollback"
+require_relative "import_cleanup"
 
 module Plastic
   module Graph
@@ -23,7 +23,7 @@ module Plastic
 
           def call
             lines, counts = imported(parsed_roadmaps)
-            remove_imported(counts) if remove_after_import?
+            ImportCleanup.new(@folder, @retrieval, @home).call(counts)
             [*lines, "imported metadata: #{Schema.phrase(counts)}"]
           end
 
@@ -67,24 +67,6 @@ module Plastic
           end
 
           def tally = Hash.new(0).merge(intents: @retrieval.intents.size, documents: @retrieval.documents.size, savepoints: @retrieval.savepoints.size)
-
-          def remove_after_import? = Config.new(@home).flag(%w[migrate remove_after_import], default: false)
-
-          # Runs only after the store imported with no error. A failure here keeps
-          # the rows already written and says what was left in place.
-          def remove_imported(counts)
-            archive_done_intents(graphs.work, counts)
-            @folder.delete(StoreFolder::LEGACY_INDEX)
-          rescue => error
-            raise Invalid, "#{store}: imported, but removing the imported files stopped: #{error.message}"
-          end
-
-          def archive_done_intents(work, counts)
-            archived = done_intent_ids.count { |id| work.archive_intent(id).first }
-            counts[:archived] += archived if archived.positive?
-          end
-
-          def done_intent_ids = @retrieval.intents.select(&:closed?).map(&:intent_id)
         end
       end
     end

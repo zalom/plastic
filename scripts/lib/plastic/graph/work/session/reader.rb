@@ -3,6 +3,7 @@
 require_relative "../../../routine_run"
 require_relative "../session"
 require_relative "../../lock"
+require_relative "touched"
 
 module Plastic
   module Graph
@@ -17,15 +18,6 @@ module Plastic
               AND (:directory IS NULL OR directory = :directory) AND (:reason IS NULL OR end_reason = :reason)
             ORDER BY COALESCE(last_turn_at, started_at) DESC LIMIT 1
           SQL
-
-          # A routine run names the intent_id its facts kept, else its subject;
-          # intent new takes a title as its subject and keeps the id in its facts.
-          TOUCHED_RUNS_SQL = <<~SQL
-            SELECT updated_at AS at, COALESCE(json_extract(facts, '$.intent_id'), NULLIF(subject, '')) AS intent_id
-            FROM routine_runs WHERE store = :store AND session_id = :session_id
-          SQL
-
-          TOUCHED_SAVES_SQL = "SELECT at, intent_id FROM savepoints WHERE origin_id = :origin AND session_id = :session_id"
 
           LAST_RUN_SQL = <<~SQL
             SELECT * FROM routine_runs WHERE store = :store
@@ -82,15 +74,8 @@ module Plastic
             row && RoutineRun.from_row(row, row.fetch("subject"))
           end
 
-          # Intent ids this session touched, most recent first: routine runs of
-          # this store with this session id, and savepoint lines with this
-          # session id (review A6: a line sync up rewrote from the file carries
-          # no session, so it never counts here).
-          def touched(session_id)
-            rows = local.rows(TOUCHED_RUNS_SQL, store: @store, session_id:) +
-              @databases.fetch(:work).rows(TOUCHED_SAVES_SQL, origin: @origin.id, session_id:)
-            rows.map { |row| row.values_at("at", "intent_id") }.select(&:last).sort_by { |pair| pair.first.to_s }.reverse.map(&:last).uniq
-          end
+          # Intent ids this session touched, most recent first.
+          def touched(session_id) = Touched.new(@databases, store: @store, origin: @origin).call(session_id)
 
           private
 
