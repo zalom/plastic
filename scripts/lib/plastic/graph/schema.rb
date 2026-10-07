@@ -3,7 +3,6 @@
 require_relative "table"
 require_relative "knowledge/intent"
 require_relative "knowledge/roadmap"
-require_relative "schema/retrieval"
 require_relative "schema/metadata"
 require_relative "schema/migrations"
 require_relative "schema/catalog"
@@ -26,7 +25,7 @@ module Plastic
 
       def self.table_named(name) = tables.fetch(name.to_sym)
 
-      def self.ddl(name) = RetrievalSchema::FTS.fetch(name) { table_named(name).ddl }
+      def self.ddl(name) = SchemaCatalog::VIRTUAL.fetch(name) { table_named(name).ddl }
 
       def self.tally(table, count)
         name = table.to_s
@@ -44,6 +43,8 @@ module Plastic
       def self.databases = SchemaCatalog::DATABASES
       def self.store = SchemaCatalog::STORE
       def self.tables = SchemaCatalog::TABLES
+      def self.legacy_tables = SchemaCatalog::MARKS.fetch(:legacy)
+      def self.later_tables = SchemaCatalog::MARKS.fetch(:since)
 
       def self.migrations = SchemaMetadata::MIGRATIONS
       def self.nouns = SchemaMetadata::NOUNS

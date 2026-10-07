@@ -15,7 +15,7 @@ class SchemaTest < Plastic::TestCase
 
   def test_the_schema_joins_each_database_tables_ddl
     assert_equal [table(:routine_runs).ddl, table(:sessions).ddl, table(:locks).ddl, table(:backups).ddl].join("\n"), Schema.fetch(:local)
-    assert_equal %i[documents document_revisions document_heads document_passages document_fts retrieval_schema retrieval_backfills retrieval_contexts retrieval_discoveries rulings links printed changes],
+    assert_equal %i[documents legacy_intents_data document_revisions document_heads document_passages document_fts retrieval_schema retrieval_backfills retrieval_contexts retrieval_discoveries rulings links printed changes],
       Schema.databases.fetch(:knowledge).last
   end
 
@@ -30,13 +30,14 @@ class SchemaTest < Plastic::TestCase
   end
 
   def test_the_knowledge_schema_has_the_pinned_ddl_and_sqlite_catalog
-    assert_equal "c80c24a8ca0b39c5ffb43d32be98535bbb6c9dde8c8fb51ce9058eb17587602b", Digest::SHA256.hexdigest(Schema.fetch(:knowledge))
-    assert_equal "94ee3468e06f7fbcc93e2c7ca04c6c970440db8d35ff7bef891de587d9197dca", Digest::SHA256.hexdigest(JSON.generate(schema_catalog))
+    assert_equal "05ceced76cebfb0a415ea455267902a66c75fecadde1941898d62cfa88e7aae9", Digest::SHA256.hexdigest(Schema.fetch(:knowledge))
+    assert_equal "9480cf34c99dfffaf3c8f575e1cb7838e17dc9d7b2f760c9c6b9a9341c2861d4", Digest::SHA256.hexdigest(JSON.generate(schema_catalog))
   end
 
   def test_a_tally_names_one_and_many
     assert_equal ["1 routine run", "2 savepoint lines", "1 x"],
       [Schema.tally(:routine_runs, 1), Schema.tally("savepoints", 2), Schema.tally(:x, 1)]
+    assert_equal ["1 legacy file", "6 legacy files"], [Schema.tally(:legacy_intents_data, 1), Schema.tally(:legacy_intents_data, 6)]
   end
 
   def test_a_phrase_joins_one_two_and_three_tallies

@@ -4,6 +4,8 @@ require "digest"
 require "json"
 require_relative "../../retrieval/evidence/writer"
 require_relative "../../retrieval/evidence/text"
+require_relative "../../retrieval/evidence/removal"
+require_relative "../legacy_path"
 require_relative "folder_file"
 require_relative "../../work/edge"
 require_relative "../../work/node"
@@ -16,7 +18,8 @@ module Plastic
       class Reader
         # One file of an intent folder and the rows it reads into: graph.json
         # into nodes and edges, savepoint.md into savepoint lines, a Markdown
-        # document into its row, and any other file kept whole as bytes.
+        # document into its row, a plan, checklist or action file into a legacy row,
+        # and any other file kept whole as bytes.
         class IntentFile
           KEPT_MODE = 0o100644
           KINDS = { "graph.json" => %i[work graph], "savepoint.md" => %i[work savepoint] }.freeze
@@ -34,7 +37,13 @@ module Plastic
 
           private
 
-          def kind = KINDS.fetch(@file.rel) { document? ? %i[knowledge document] : %i[references kept] }
+          def kind = KINDS.fetch(@file.rel) { text_kind }
+
+          def text_kind
+            return %i[references kept] unless document?
+
+            LegacyPath.legacy?(@file.rel) ? %i[knowledge legacy] : %i[knowledge document]
+          end
 
           def text = @file.bytes.force_encoding(Encoding::UTF_8)
 
@@ -60,6 +69,13 @@ module Plastic
 
           def document(batch)
             Retrieval::Evidence::Writer.new(nil, @origin_id).apply(batch, @intent_id, @file.rel, text)
+          end
+
+          # The row replaces the document, head and search rows the path held before it was legacy.
+          def legacy(batch)
+            rel = @file.rel
+            batch.put(:legacy_intents_data, { intent_id: @intent_id, path: rel, body: text, updated_at: Plastic.now })
+            Retrieval::Evidence::Removal.new(batch, @origin_id).remove(@intent_id, rel)
           end
 
           def kept(batch)

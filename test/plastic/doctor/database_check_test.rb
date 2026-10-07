@@ -14,6 +14,7 @@ class DoctorDatabaseCheckTest < Plastic::TestCase
     database(path, :work)
 
     assert_nil problem
+    assert_nil Plastic::Doctor::DatabaseCheck.new(path, :work).note
   end
 
   def test_a_missing_file_is_named_and_stays_missing
@@ -26,6 +27,25 @@ class DoctorDatabaseCheckTest < Plastic::TestCase
     drop_table(path, "nodes")
 
     assert_equal "work_graph.db lacks the tables intents, nodes", problem
+  end
+
+  def test_a_database_lacking_only_a_new_table_passes_with_a_note
+    knowledge = File.join(@home, "checked", "knowledge_graph.db")
+    database(knowledge, :knowledge)
+    drop_table(knowledge, "legacy_intents_data")
+    check = Plastic::Doctor::DatabaseCheck.new(knowledge, :knowledge)
+
+    assert_nil check.problem
+    assert_equal "knowledge_graph.db lacks the table legacy_intents_data; the next open creates it", check.note
+  end
+
+  def test_a_database_lacking_a_new_table_and_an_old_one_names_only_the_old_one
+    knowledge = File.join(@home, "checked", "knowledge_graph.db")
+    database(knowledge, :knowledge)
+    drop_table(knowledge, "legacy_intents_data")
+    drop_table(knowledge, "documents")
+
+    assert_equal "knowledge_graph.db lacks the table documents", Plastic::Doctor::DatabaseCheck.new(knowledge, :knowledge).problem
   end
 
   def test_a_file_that_is_not_a_database_is_named

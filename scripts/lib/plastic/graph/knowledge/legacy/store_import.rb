@@ -66,7 +66,8 @@ module Plastic
             end
           end
 
-          def tally = Hash.new(0).merge(intents: @retrieval.intents.size, documents: @retrieval.documents.size, savepoints: @retrieval.savepoints.size)
+          def tally = Hash.new(0).merge(intents: @retrieval.intents.size, documents: @retrieval.documents.size,
+            legacy_intents_data: @retrieval.legacy_intents_data.size, savepoints: @retrieval.savepoints.size)
         end
       end
     end

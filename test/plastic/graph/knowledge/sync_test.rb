@@ -65,6 +65,26 @@ class KnowledgeSyncTest < Plastic::TestCase
     assert_equal before, snapshot(store_path("store/1--alpha"))
   end
 
+  def with_legacy_plan
+    store_graphs.databases[:knowledge].transaction do |batch|
+      batch.put(:legacy_intents_data, { intent_id: "1", path: "plan.md", body: "# Plan\r\n", updated_at: STAMP })
+    end
+    run_sync(:down)
+  end
+
+  def test_sync_down_prints_a_legacy_plan_byte_for_byte
+    with_legacy_plan
+
+    assert_equal "# Plan\r\n", folder.read("store/1--alpha/plan.md")
+  end
+
+  def test_sync_down_prints_a_deleted_plan_back_from_its_legacy_row
+    with_legacy_plan
+    folder.delete("store/1--alpha/plan.md")
+
+    assert_equal ["printed store/1--alpha/plan.md"], run_sync(:down)
+  end
+
   def test_an_emptied_savepoint_drops_its_lines_and_keeps_its_file
     write("store/1--alpha/savepoint.md", "")
 

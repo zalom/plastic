@@ -7,6 +7,7 @@ module Plastic
       module StoreReads
         def printed = stored.printed
         def backups = stored.backups
+        def legacy_intents_data(intent_id = nil) = read(:legacy_intents_data, intent_id)
       end
     end
   end

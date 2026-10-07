@@ -3,6 +3,8 @@
 require_relative "../archive"
 require_relative "../../retrieval/evidence/writer"
 require_relative "../../retrieval/evidence/text"
+require_relative "../../retrieval/evidence/removal"
+require_relative "../legacy_path"
 
 module Plastic
   module Graph
@@ -30,7 +32,16 @@ module Plastic
             path, data = entry.values_at(:path, :data)
             return unless classifier.classify(path, data) == :text
 
-            writer.write(intent_id, path, data.dup.force_encoding(Encoding::UTF_8))
+            text = data.dup.force_encoding(Encoding::UTF_8)
+            LegacyPath.legacy?(path) ? legacy(intent_id, path, text) : writer.write(intent_id, path, text)
+          end
+
+          # A plan, checklist or action file is old data: it is kept whole and never searched.
+          def legacy(intent_id, path, text)
+            database.transaction do |batch|
+              batch.put(:legacy_intents_data, { intent_id:, path:, body: text, updated_at: Plastic.now })
+              Retrieval::Evidence::Removal.new(batch, origin_id).remove(intent_id, path)
+            end
           end
         end
       end

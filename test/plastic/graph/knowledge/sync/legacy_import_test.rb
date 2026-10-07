@@ -41,6 +41,31 @@ class KnowledgeSyncLegacyImportTest < Plastic::TestCase
     assert_equal [[], true], [retrieval.intents, folder.exist?("INDEX.md")]
   end
 
+  def rows_of(sql) = store_graphs.databases.fetch(:knowledge).rows(sql)
+
+  def test_a_first_import_keeps_plan_checklist_and_actions_in_legacy_rows
+    import
+
+    assert_equal %w[actions/.gitkeep checklist.md plan.md], rows_of("SELECT path FROM legacy_intents_data WHERE intent_id = '1' ORDER BY path").map { |row| row["path"] }
+  end
+
+  def test_a_first_import_keeps_the_plan_whole
+    import
+    body = rows_of("SELECT body FROM legacy_intents_data WHERE intent_id = '1' AND path = 'plan.md'").first["body"]
+
+    assert_equal folder.read("store/1--ai-infra/plan.md").dup.force_encoding(Encoding::UTF_8), body
+  end
+
+  def test_a_first_import_leaves_the_other_files_as_documents
+    import
+
+    assert_equal %w[1--ai-infra.md outcome.md spec.md], rows_of("SELECT path FROM documents WHERE intent_id = '1' ORDER BY path").map { |row| row["path"] }
+  end
+
+  def test_the_import_metadata_line_names_the_legacy_files
+    assert_includes import.last, "2 intents, 6 documents, 6 legacy files, 2 savepoint lines"
+  end
+
   def test_a_sync_up_plan_on_a_legacy_store_imports_it
     assert_equal "imported INDEX.md: 2 intents and 0 clusters", sync.apply(sync.plan(:up, {})).first
   end
