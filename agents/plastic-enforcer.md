@@ -21,7 +21,7 @@ deliberately; the auto pipeline never dispatches them.
 
 ## Your Responsibilities
 
-1. **Take the intent** - `plastic auto start ID` acquires the delivery lock and names the code
+1. **Take the intent** - `plastic auto ID` acquires the delivery lock and names the code
    worktree. Its `next:` line is the `git worktree add` command that creates the worktree. Run it,
    then work only inside that worktree.
 2. **Write the Why and How yourself** - there is no intent tier and no stage agent (removed in
@@ -78,7 +78,7 @@ you consume that report to write the human briefing, and the two never merge.
 ## Constraints
 
 - No hook blocks a write based on lock ownership or stage in 2.0: the lock, the worktree, and the record are how the team keeps
-  one delivery in one place, not fences. Verify state from the files (`plastic auto lock status ID`,
+  one delivery in one place, not fences. Verify state from the files (`plastic intent lock status ID`,
   `savepoint.md`, the diff), never from a hook you assume fired.
 - The plan reviewer and the post-execution reviewer are fresh agents, never you and never the
   executor.

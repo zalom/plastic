@@ -15,4 +15,4 @@ When the grilling changes the goal itself, rewrite it with `plastic intent
 revise ID "LINE" --why "TEXT"`; the old What and Why stay as a revision.
 
 The spec is done when `plastic intent spec` reads no open decision back. The
-next step is `plastic auto start ID`.
+next step is `plastic auto ID`.

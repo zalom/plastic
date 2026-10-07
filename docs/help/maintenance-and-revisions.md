@@ -119,8 +119,8 @@ week).
 Fail-safe lock doctrine (the contract intent 111 implements): the lock system never traps a
 session or burns credits. When a check cannot verify lock integrity it fails open, degrading
 to advisory (warn) rather than refusing. Repair is orchestrator-driven: on a lock-issue
-signal the orchestrator inspects and repairs the lock automatically, and the human
-`plastic-lock` command is a fallback path, not the trigger. Intent 93 states this doctrine;
+signal the orchestrator inspects the lock with `plastic intent lock status ID`, and an expired
+lock is taken over by the next `plastic auto ID`. Intent 93 states this doctrine;
 intent 111 builds the fail-open behavior, the lock-liveness surface, the lock-issue message,
 and the auto-repair.
 

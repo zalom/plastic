@@ -30,7 +30,7 @@ class PickNextTest < Plastic::TestCase
   def test_a_specified_open_intent_offers_the_start
     specified_intent
 
-    assert_equal [:done, "plastic auto start 1", "intent 1 is open"], pick
+    assert_equal [:done, "plastic auto 1", "intent 1 is open"], pick
   end
 
   def test_an_active_intent_offers_its_next_node

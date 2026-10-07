@@ -81,12 +81,10 @@ account therefore always exists: agent-authored when present, deterministically 
 otherwise. This structures the finish notification only; in-flight observations stay in
 `## Insights`, no progress chatter is added.
 
-Immediately after an agent returns and before the next handoff, the lead records the
-delegate's activity through `plastic-lock delegate --intent-dir <intent-dir> --delegate <id>
---status finished|failed`. `finished` requires a usable agent-authored or synthesized completion
-report. A blocked or errored return, or one with no report that can be synthesized, is `failed`
-and stops the handoff under the normal error procedure. Activity status is descriptive and does
-not revoke the registered delegate's authorization.
+Immediately after an agent returns and before the next handoff, the lead judges the return.
+A usable agent-authored or synthesized completion report means the delegate finished. A
+blocked or errored return, or one with no report that can be synthesized, failed and stops the
+handoff under the normal error procedure.
 
 ### Review Ownership
 
@@ -103,7 +101,8 @@ The post-execution reviewer runs when the executor's diff touches any of these p
 one of the other two review rules in this chapter fires:
 
 - `hooks/`, `scripts/hook-*`, `scripts/lib/hook_registry.rb`
-- `scripts/lib/lock.rb`, `scripts/lib/arm.rb`, `scripts/plastic-lock`, `scripts/end-intent`
+- `scripts/lib/plastic/graph/lock.rb`, `scripts/lib/plastic/workflows/start_auto.rb`,
+  `scripts/lib/plastic/graph/work/completion/writer.rb`
 - `scripts/lib/installer_core.rb`, `scripts/install*`, `scripts/update.rb`
 - `package.json`, `CHANGELOG.md`
 
@@ -111,9 +110,9 @@ Grow this list here.
 
 ### Headless Note
 
-In a headless or background run the session id may be unset. `plastic-lock arm` then keys the
-lock by a derived session key, the record hook still writes the savepoint ledger from the
-written path, and the lead verifies state from the files (`plastic intent show ID`,
+In a headless or background run the session id may be unset. `plastic auto ID` then keys the
+lock by a derived session key, and the lead verifies state from the rows and the files
+(`plastic intent lock status ID`,
 `savepoint.md`, the diff) rather than from a hook it assumes fired.
 
 ### Delegation
@@ -149,7 +148,7 @@ tests first, one suite run per intent.
 
 Human owns What and Why for human-initiated intents. The team assists (research, exploration)
 but the human drives until handoff. When Why is complete, or the human runs
-`plastic auto start ID`, the auto team takes over How and Exec autonomously.
+`plastic auto ID`, the auto team takes over How and Exec autonomously.
 
 - **Safe-by-default:** the executor always prefers non-destructive routes (rename vs delete,
   additive migrations, backups before changes). Destructive actions on existing projects

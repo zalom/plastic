@@ -14,7 +14,7 @@ class IntentEndFixture < Plastic::TestCase
     write("#{intent.dir}/spec.md", "# Spec\n\n## Done criteria\n- #{CRITERION}\n")
     write("#{intent.dir}/outcome.md", "# Outcome\n\nDelivered and verified.\n")
     cli("sync", "up")
-    cli("auto", "start", "1")
+    cli("auto", "1")
     cli("node", "add", "1", "Deliver", "--criterion", CRITERION)
     cli("node", "claim", "1", "n1")
     cli("node", "done", "1", "n1", "--judge", "tests", "--findings", "Acceptance passes")

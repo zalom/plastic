@@ -40,7 +40,7 @@ module Plastic
           id = intent.intent_id
           gap = self.class.spec_gap(Knowledge::Spec.new(@retrieval, id))
           return ["plastic intent spec #{id}", "intent #{id} has #{gap}", nil] if gap
-          return ["plastic auto start #{id}", "intent #{id} is open", nil] if intent.status == "open"
+          return ["plastic auto #{id}", "intent #{id} is open", nil] if intent.status == "open"
 
           DeliveryAction.new(@retrieval, id).call
         end

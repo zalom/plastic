@@ -1,123 +1,82 @@
 # Locks and Worktrees
 
-This chapter holds the delivery lock, claims, worktrees, the fail-safe doctrine, and the station-by-station delivery table. Since 2.0 (intent 302) nothing here blocks a write: the lock and the worktree are how an auto team keeps one delivery in one place, recorded by the record hook, not enforced by a hook.
+This chapter holds the delivery lock, the code worktree and the station-by-station delivery
+table. Since 2.0 (intent 302) nothing here blocks a write: the lock and the worktree are how an
+auto team keeps one delivery in one place, not fences.
 
-### Delivery Isolation and the Single-Owner Lock
+### The delivery lock
 
-The delivery lock names the session delivering an intent, as its owner or a delegate. Locks
-and worktrees exist only for auto teams: an interactive session working direct or thinking
-takes no lock and records into its day ledger instead (the oldest day in the last seven whose
-checklist carries the session's line, else today).
+The delivery lock names the session delivering an intent in auto mode. Locks and worktrees
+exist only for auto teams: an interactive session working direct or thinking takes no lock.
 
-For an auto team, exactly one team develops an intent's delivery at a time. Ownership is
-session-keyed and durable: arming acquires `delivery.lock` inside the intent directory
-(atomically, O_EXCL). The session id is the authorization identity. Descriptive provenance
-records the controller's explicit `harness`, `agent`, `model`, `thread`, and `mode` values,
-but never grants access and is never inferred from transcripts or filesystem paths. Missing
-fields on legacy locks display as `Unknown`. Liveness is a lease: the record hook refreshes
-the lock file's mtime on every write the owning session makes, and that mtime is the sole
-heartbeat truth. The lock counts as stale only when the mtime is older than the TTL. No
-process id is consulted anywhere. The lock file is the truth of who owns a delivery. Another team that finds a fresh lock backs off; a stale lock is reclaimed only
-by explicit takeover, which replaces the lock and appends an audit line to the intent's
-savepoint.md. Rearming the same session preserves its acquired identity and refreshes known
-provenance; an explicit takeover replaces the controller and starts new provenance.
-Subagents spawned by the owner write under the owner's lock once registered as delegates.
-Delegate activity status (`active`, `finished`, or `failed`) is descriptive and does not revoke
-the session's string-array authorization. A registered delegate remains authorized until a
-separate authorization-removal mechanism exists. Finished and failed delegate activity is
-retained as descriptive history, bounded to the 20 most recent terminal entries. A controller,
-a delegate, and an artifact claim are distinct evidence: controller ownership authorizes the
-delivery, delegate registration authorizes a child session, and a claim selects one current
-writer for one artifact. Disarm clears the delivery lock only (intent 390: Plastic runs no
-version control command, so it never merges or removes a worktree); when a worktree was
-provisioned, disarm names the `git worktree remove` instruction for the closer to run by hand,
-after committing and merging. Repair
-is one idempotent function with two entry points: the `plastic-lock` command (`who`, status,
-fix, release, reclaim, delegate) so repair self-heals. `who` is read-only and reports the controller, mtime heartbeat, delegates, and
-claims from durable files. This is mandatory for auto teams, not a convention.
+For an auto team, exactly one session develops an intent's delivery at a time. The lock is one
+row of the `locks` table in the machine's `local.db`, keyed by the store and the intent. The row
+holds the session id, the mode, and the times the lock was taken and last renewed. The session
+id is the only authorization identity. Liveness is a lease: the record hook (`plastic hook record`)
+renews every lock row the session holds, and a lock counts as expired when its renewal is older than the TTL of 1800
+seconds.
+
+`plastic auto ID` takes the lock. Another session that finds a live lock gets exit 3 and backs
+off. An expired lock is taken over by the next `plastic auto ID`. Ending the intent with
+`plastic intent end` releases the lock. To read a lock back, run `plastic intent lock status ID`.
+It prints the session, the mode, the taken and renewed times, whether the lock is live or
+expired, and the code worktree when the store's project names a repository.
 
 The record hook resolves the current session in a fixed precedence: the stdin `session_id`
 first, then the `CLAUDE_CODE_SESSION_ID` environment variable, then a derived key when neither
-is present. A session's `.tmp/` directory is purge-eligible by terminal state, not by age: it
-holds nothing durable, and losing it costs nothing. See [`docs/internals.md`](https://github.com/zalom/plastic/blob/main/docs/internals.md) for depth.
+is present. See [`docs/internals.md`](https://github.com/zalom/plastic/blob/main/docs/internals.md) for depth.
 
-The delivery lock arbitrates at the whole-intent grain: it decides who may work an intent at
-all. Underneath it, a per-artifact claim token (intent 111) is a coordination record at the
-file grain: it names who, among those already holding the delivery lock, is the one writer for
-one lifecycle file right now. Claims live in `.claims/<artifact>.claim` inside the intent
-directory, one small JSON file per artifact, scoped strictly per-intent-per-artifact, never
-session-global. Since 2.0 nothing enforces a claim at write time; a team lead takes and
-releases claims through `plastic-lock claim` and `release-claim` to coordinate its executors,
-and `plastic-lock status` lists any live claims alongside the delivery lock. A stale or corrupt
-claim is reported there, never acted on. See [`docs/internals.md`](https://github.com/zalom/plastic/blob/main/docs/internals.md) for the full mechanism.
+There is exactly one lock in Plastic. An earlier two-lock doctrine proposed a second
+maintenance lock; intent 112 built it and was abandoned before merge, and intent 197 rejects a
+second lock outright: a lock held by a maintenance session could be mistaken by a resuming
+session for an active delivery. Maintenance detects a live delivery lock and defers; it never
+takes a lock of its own.
 
-There is exactly one lock in Plastic: `delivery.lock` (exclusive, one owner plus delegates),
-shipped by intent 108. An earlier two-lock doctrine proposed a second `maintenance.lock`
-(short TTL, structural move-and-record only); intent 112 built it in full and was then
-abandoned before merge on a design pivot, so nothing from it ever shipped (`lock.rb`'s
-`TYPES` seam is the only trace left). Intent 197 rejects the second lock outright rather than
-reviving it: a lock held by a maintenance session could be mistaken by a resuming session
-for an active delivery. Maintenance instead DETECTS `delivery.lock`'s freshness
-(`Lock.fresh?`) and defers when fresh; it never acquires any lock of its own and leaves none
-behind. See "WORK vs MAINTENANCE" in `references/maintenance-and-revisions.md` for the full
-doctrine.
+### The code worktree
 
-Every code-touching auto intent gets its own git worktree named `{id}--{slug}`, and all code
-edits for that intent happen inside it. Plastic runs no version control command, so it creates
-this worktree deterministically without creating it: `plastic auto start ID` resolves the
-project repo from `projects.yml`, computes the expected path and branch, and prints the
-`git -C <repo> worktree add <path> -b <branch>` for the agent to run -- isolation never depends
-on the current working directory, but the workspace itself is the agent's own step. There is
-one worktree per project intent, the code worktree at
-`<repo>/.claude/worktrees/{id}--{slug}` (branch `plastic/{id}--{slug}`).
+In auto mode the worktree is the lock: the intent's code worktree is where its one delivery
+happens. Every code-touching auto intent gets its own git worktree named `{id}--{slug}`, and all
+code edits for that intent happen inside it. Plastic runs no version control command, so it
+never creates the worktree. `plastic auto ID` resolves the project repository from
+`projects.yml`, computes the path and branch, and prints them:
 
-Plastic does not provision a second worktree for lifecycle-doc writes. Two things cover that
-need instead. First, the harness's own native worktree: Claude Code manages its own code
-worktree at `<repo>/.claude/worktrees/{name}`, and Codex manages its own at
-`$CODEX_HOME/worktrees` (default `~/.codex/worktrees`); both exist on their own, independent of
-anything Plastic provisions. Second, intent 197's branch-from-main plus scoped commit, which
-gives store writes their own write safety without a dedicated worktree. Plastic tried a second,
-dedicated store worktree at `<plastic_home>/.worktrees/{id}--{slug}` first; agents never wrote
-into it, because every delivering agent writes lifecycle docs straight to the main store
-checkout, so intent 178 retired the store worktree in favor of the two mechanisms above.
+```text
+worktree: /home/you/greeter/.claude/worktrees/2--shout
+branch: plastic/2--shout
+next: git -C /home/you/greeter worktree add /home/you/greeter/.claude/worktrees/2--shout -b plastic/2--shout
+```
 
-A store-only intent that touches no project code (pure research or decision intents in the
-global store, or a non-git repo) gets the lock only: no repo resolves, so `auto start` names no
-worktree path and the next step stays the preamble read. This reads the same in the screen
-whether the repo simply has not resolved yet or never will; it is not a failure, only nothing
-to report.
+While the folder does not exist, that `git -C <repo> worktree add <path> -b <branch>` command is
+the `next:` line, and the agent runs it. Once the folder exists, the `next:` line is
+`plastic intent brief ID`. There is one worktree per project intent, the code worktree at
+`<repo>/.claude/worktrees/{id}--{slug}` on branch `plastic/{id}--{slug}`.
 
-Cleanup is part of the End tail, and it is the closer's own step: `end-intent` neither checks
-that the code is merged nor removes the worktree (intent 390). It disarms, which clears the
-lock and, when a worktree was provisioned, prints the `git worktree remove` instruction. Run
-that after committing and merging, so no worktree is ever left orphaned, and clear a stale
-worktree reference with `git worktree prune`.
+Plastic does not provision a second worktree for lifecycle-doc writes. The harness's own native
+worktree covers that need: Claude Code manages its own worktrees at
+`<repo>/.claude/worktrees/{name}`, and Codex manages its own at `$CODEX_HOME/worktrees` (default
+`~/.codex/worktrees`). Intent 178 retired the dedicated store worktree Plastic tried first.
 
+A store-only intent that touches no project code (a research or decision intent in the global
+store, or a store whose project names no repository) gets the lock only: no repository
+resolves, so `plastic auto ID` prints no worktree and the next step is the brief. This is not a
+failure, only nothing to report.
+
+Cleanup is the closer's own step: Plastic neither checks that the code is merged nor removes the
+worktree (intent 390). After committing and merging, run `git worktree remove` on the code
+worktree, so no worktree is ever left orphaned, and clear a stale worktree reference with
+`git worktree prune`.
 
 #### Intent delivery, station by station
 
-How one auto-team intent travels from boarding to the End tail, and what the lock and
-the record hook do at each station. Nothing in the third column blocks; the fourth column is
-what gets written down.
+How one auto-team intent travels from boarding to the end, and what the lock does at each
+station. Nothing in the third column blocks; the fourth column is what gets written down.
 
 | Station | Delivered artifact | Lock steps | Record |
 |---|---|---|---|
-| Start (board) | none (a procedure, not a stage) | `plastic-lock fix` self-heals stale, corrupt, or legacy state; arm (`plastic auto start ID`, the only public entry) acquires `delivery.lock` (O_EXCL, session-keyed), prints the code worktree's expected path and branch for the agent to create | savepoint confirms the boarding station |
-| What (create) | `<id>--<slug>.md`, born complete | no lock yet; `new-intent` validates the file it writes (`scripts/validate-intent`) | savepoint `What` line; intent listed in INDEX `## Active` |
-| Why | `spec.md` | owner writes refresh the lease (lock file mtime heartbeat) | savepoint `Why started`, `Why spec.md created` |
-| How | `plan.md`, `actions/ACTION_N.md` (at least one), `checklist.md` | heartbeat on writes | savepoint `How started`, `How plan.md created`, `How checklist.md created`, `Exec started` |
-| Exec | code on the intent branch, checklist checked off | heartbeat; code edits confined to the provisioned worktree; delegates write under the owner's lock | checklist boxes; savepoint milestones; the day-ledger line promotes when a project file lands |
-| End (done) | mandatory `outcome.md` (`disposition: delivered\|abandoned`), INDEX moves to Completed or Abandoned | ordered End tail: verify the code is merged (Plastic never merges it), remove the worktree, disarm clears `delivery.lock`; no QMD reindex runs; `end-intent` backfills a placeholder `outcome.md` from the record and its structure check reports (never refuses) | the savepoint's terminal `delivered` (or `abandoned`) line; takeover audits, if any, remain in savepoint.md |
-| Maintenance (Future, Terminal, or Active-with-a-stale-or-no-lock) | `revisions.md` move-and-record entries | detects (never acquires) `delivery.lock`; defers and reports while the target's lock is FRESH (`Lock.fresh?`); a stale or absent lock is not-active, maintenance proceeds | append-only, rule-tagged `revisions.md` entry written in the same operation as the change, or the change is refused; lands via a fresh branch off store main merged back as one closed op, never `git add -A` |
-
-## The write guard is not residue
-
-`<type>.write.lock` (usually `delivery.write.lock`) is a deliberate sibling
-inode used only for `flock`: no owner, no timestamp, no content, and it is
-NEVER unlinked - deleting it while a writer holds the flock hands the next
-writer a fresh inode at the same path, so two writers hold "the" guard at
-once (see `scripts/lib/lock.rb`, the write-guard comment). A zero-byte
-`*.write.lock` in a completed intent directory is by design; no cleaner may
-sweep it, and it is already inside the store's `*.lock` gitignore rule.
-(Intent 317a, A2: a review misread it as stale residue and nearly shipped
-the sweep.)
+| What (create) | the intent's rows and its folder | no lock yet | the intent row |
+| Why | `spec.md` | no lock yet; `plastic intent spec ID` names the open decisions | the spec and the rulings as rows |
+| Start (board) | none (a procedure, not a stage) | `plastic auto ID` takes the lock row and sets the intent active, then prints the code worktree and its git command | the lock row in `local.db` |
+| How | the work graph of the intent | the record hook renews the lock | node and edge rows |
+| Exec | code on the intent branch | renewal continues; code edits stay in the code worktree | node results |
+| End (done) | `outcome.md` | `plastic intent end ID` closes the intent and releases the lock; the closer merges the code and removes the worktree | the intent closed as done |
+| Maintenance | revisions | detects a live lock and defers; never takes one | the revision rows |

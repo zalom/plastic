@@ -12,7 +12,7 @@ module IntentEndAcceptance
     kernel.write("store/1--alpha/spec.md", "# Spec\n## Done criteria\n- Ships\n")
     kernel.write("store/1--alpha/outcome.md", "# Outcome\nVerified the delivery.\n")
     kernel.run!("sync", "up", env: SESSION)
-    kernel.run!("auto", "start", "1", env: SESSION)
+    kernel.run!("auto", "1", env: SESSION)
     kernel.run!("node", "add", "1", "Ship", "--criterion", "Ships", env: SESSION)
     kernel.run!("node", "claim", "1", "n1", env: SESSION)
     kernel.run!("node", "done", "1", "n1", "--judge", "tool", "--findings", "Fixture verification passed", env: SESSION)

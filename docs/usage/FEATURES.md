@@ -42,6 +42,17 @@ outer one. With neither, the global store answers.
 entries that are ready, in flight or blocked. With no roadmap, both name the first active
 intent instead.
 
+## Auto mode
+
+| Command | Result |
+| ------- | ------ |
+| `plastic auto ID` | Takes the delivery lock of one intent for this session, sets it active, and prints its code worktree and branch. While the worktree folder is missing, the `next:` line is the `git worktree add` command that creates it. Given a roadmap slug, it arms the first item in flight, or names `plastic roadmap start SLUG ITEM` for the first ready item. |
+| `plastic intent lock status ID` | The session that holds the intent's lock, its mode, when it was taken and renewed, whether it is live or expired, and the code worktree. |
+
+`plastic auto` takes exactly one id and runs no version control command: it prints the
+worktree command, and the agent runs it. A live lock of another session refuses with exit 3,
+and an expired lock is taken over. `plastic intent end` releases the lock.
+
 ## Rulings and revisions
 
 | Command | Result |

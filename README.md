@@ -222,7 +222,9 @@ write, never touches the original, and ends with the same call without `--dry-ru
 
 ### Auto teams
 ```bash
-plastic auto start 12                  # Arm the delivery lock for this session
+plastic auto 12                        # Take the delivery lock and print the code worktree
+plastic auto my-roadmap                # Deliver the next item of a roadmap
+plastic intent lock status 12          # Show who holds the lock
 plastic intent brief 12 --role executor # Print the spawn preamble for one role
 ```
 

@@ -130,12 +130,11 @@ lost or stale copy costs nothing.
 
 ## When you see a lock
 
-`delivery.lock` appears in an intent directory when `plastic auto start` arms it for an auto
-team. It names the owning session and stays fresh while that session's hooks touch it. An
-interactive session takes one only with `plastic auto start ID --allow-inline` and the owner's
-approval. To inspect a lock, run `plastic auto lock status ID`. Taking over a lock whose owner
-has gone quiet is the owner's step: the internal `plastic-lock reclaim` does it and records it
-in the intent's `savepoint.md`. The public commands refuse a foreign lock with exit 3.
+A lock is a row in the machine's `local.db`, taken when `plastic auto ID` arms an intent for
+an auto team. The intent directory no longer holds a `delivery.lock` file. The row names the
+owning session and stays live while that session's record hook renews it. To inspect a lock,
+run `plastic intent lock status ID`. A live lock of another session is refused with exit 3;
+an expired one is taken over by the next `plastic auto ID`.
 
 ## What to read next
 
