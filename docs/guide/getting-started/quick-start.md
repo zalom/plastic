@@ -4,13 +4,14 @@ Plastic is one command, `plastic`. Three commands open a session.
 
 ```bash
 plastic status
-plastic continue
+plastic graph resume
 plastic next
 ```
 
 - `plastic status` shows the active work in every store.
-- `plastic continue` shows where the project in the current directory stands and what runs
-  next. Add `--project SLUG` to name another project.
+- `plastic graph resume` shows where the work of the project in the current directory
+  stopped and what runs next. Add `--stores a,b` to read several projects. When a person
+  says "continue", this is the command to run.
 - `plastic next` prints that one action on its own. Add `--why` to see the rule that chose it.
 
 ## Read a result

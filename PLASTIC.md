@@ -3,8 +3,9 @@
 Plastic is one command, `plastic`. `plastic help` lists commands, `plastic help <command>`
 gives one command's options, and `plastic help tools` covers RTK, QMD and Enola.
 
-`plastic status` shows active work in every store. `plastic continue` says where
-your project stands and what runs next. `plastic next` prints that one action.
+`plastic status` shows active work in every store. `plastic graph resume` says where
+the work stopped and what runs next, across several projects with `--stores a,b`. When a
+person says "continue", run it. `plastic next` prints that one action.
 
 Every command ends with a `next:` line naming what to run now, and a `because:` line
 giving the rule that chose it. Run it unless asked for something else.

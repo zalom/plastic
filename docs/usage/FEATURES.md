@@ -33,7 +33,7 @@ outer one. With neither, the global store answers.
 | Command | Result |
 | ------- | ------ |
 | `plastic status` | Active work in every store. |
-| `plastic continue` | Where one project stands, and what runs next. |
+| `plastic graph resume [--stores a,b]` | Where each named project's work stopped, and what runs next. |
 | `plastic next` | The next action in one line. `--why` adds the rule behind it. |
 
 `continue` and `next` read the same frontier: the liveliest roadmap, its open batch, and the

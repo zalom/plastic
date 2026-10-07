@@ -6,10 +6,9 @@ require_relative "../scripts/lib/installer_core"
 
 # The text that tells an agent which commands exist names only commands that
 # exist: PLASTIC.md, the block written to the Codex AGENTS.md and every help
-# chapter. `plastic continue` is skipped by name: its name is under a ruling.
+# chapter.
 class PlasticMdNamesRealCommandsTest < Minitest::Test
   ROOT = File.expand_path("..", __dir__)
-  SKIPPED = ["continue"].freeze
   SPAN = /`plastic ([^`]*)`/
   WORD = /\A[a-z][a-z0-9-]*\z/
 
@@ -20,7 +19,7 @@ class PlasticMdNamesRealCommandsTest < Minitest::Test
   def words_of(span) = span.split.take_while { |word| word.match?(WORD) }
 
   def command_named?(words)
-    (1..words.size).any? { |size| commands.include?(words.first(size).join(" ")) } || group?(words) || SKIPPED.include?(words.first)
+    (1..words.size).any? { |size| commands.include?(words.first(size).join(" ")) } || group?(words)
   end
 
   def group?(words) = words.one? && commands.any? { |name| name.start_with?("#{words.first} ") }
@@ -35,7 +34,7 @@ class PlasticMdNamesRealCommandsTest < Minitest::Test
   end
 
   def bare_unknown_names(text)
-    text.scan(/`([a-z][a-z0-9 -]*)`/).flatten.reject { |span| commands.include?(span) || SKIPPED.include?(span) || span.start_with?("plastic") }
+    text.scan(/`([a-z][a-z0-9 -]*)`/).flatten.reject { |span| commands.include?(span) || span.start_with?("plastic") }
   end
 
   def help_files = Dir.glob(File.join(ROOT, "docs", "help", "*.md"))
@@ -45,7 +44,7 @@ class PlasticMdNamesRealCommandsTest < Minitest::Test
   end
 
   def test_the_detector_leaves_commands_topics_and_placeholders_alone
-    text = "`plastic intent new TITLE`, `plastic help tutorial`, `plastic help TOPIC`, `plastic hook`, `plastic continue`"
+    text = "`plastic intent new TITLE`, `plastic help tutorial`, `plastic help TOPIC`, `plastic hook`, `plastic graph resume`"
 
     assert_empty unknown_names(text)
   end

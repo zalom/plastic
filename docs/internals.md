@@ -196,8 +196,8 @@ status writer throughout; the ledger, like the intent-dir one, is sugar, never a
 The roadmap read path (intent 148) sits on top of that ledger. `scripts/lib/roadmap_queue.rb`
 (`RoadmapQueue`, constructor-DI and hermetic: clock and paths injected, no eval, no ENV or global
 config seam; a thin `scripts/roadmap-next` CLI wraps it, both registered in
-`InstallerCore#core_files` and covered by a hermetic test) is the one roadmap reader. `plastic
-next` and `plastic continue` read its queue mode through `scripts/lib/cli/frontier.rb`; its which
+`InstallerCore#core_files` and covered by a hermetic test) is the one roadmap reader. The command
+line no longer reads its queue mode; its which
 mode (`--which`, tie candidates for a human choosing) has no caller left now that the dashboard
 is gone (intent 392), and stays exercised only by `test/roadmap_queue_test.rb`. It does two
 things: liveness-ranks the tier's `roadmaps/*.md`
@@ -341,10 +341,12 @@ is a real em dash or a plain hyphen on READ; every write still emits the real em
 both `end-intent`'s own INDEX-move parser and any caller asking whether an intent is still
 active.
 
-`plastic continue` does not read the intent ledger. It prints the project's store root, its
-active intents, and its liveliest roadmap with that roadmap's frontier, then one next step:
-the frontier's step when a roadmap exists, else `plastic intent show ID` for the first active
-intent. `plastic intent show ID` prints that intent's state screen.
+`plastic graph resume` (`Commands::GraphResume`) reads rows only and writes nothing. One
+`Graph::Work::StoreResume` for each named store builds the lines: the intent in play from
+`Graph::Work::NextPick`, its done and in-progress nodes, the last savepoints from
+`Graph::Work::LastSavepoints` (which the session-start recap reads too), and the next command
+from `Graph::Work::NextOffer`, the class `Workflows::PickNext` calls for `plastic next`.
+`plastic intent show ID` prints one intent's state screen.
 
 `doctor.rb` has four scopes:
 

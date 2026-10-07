@@ -43,7 +43,7 @@ Run `plastic intent show ID`.
 
 Artifact: none. The command only reads. It prints the intent's state screen, and its `next:`
 line names the step to run: `plastic intent spec ID` while the intent has no spec or graph.
-`plastic continue` reads the same way for the whole project. Neither takes a lock.
+`plastic graph resume` reads the same way for the whole store. Neither takes a lock.
 
 Checkpoint: name the step the `next:` line points at, and why.
 

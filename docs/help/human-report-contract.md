@@ -1,6 +1,6 @@
 # Human Report Contract (the report screens, intent 317)
 
-D15: the prose EM-to-CTO briefing this doc used to define is retired. The orchestrator now
+The prose EM-to-CTO briefing this doc used to define is retired (ruling D15). The orchestrator now
 prints one of these report screens, filled from the record by `scripts/report-screen`, never
 written by eye:
 
@@ -37,7 +37,7 @@ reply, nothing before it, no fence, or the hook cannot paint it.
 | `plastic intent spec` | any invocation | `report-screen state`, then the speccing rules |
 | `plastic roadmap show` | any invocation | `report-screen roadmap ... state` |
 | `plastic status` | any invocation | in-process (`Scope#stores`) |
-| `plastic continue` | any invocation | in-process rows: project, root, active, roadmap |
+| `plastic graph resume` | any invocation | in-process rows: store, in play, done, in progress, savepoint, then |
 | the auto team's lead | the How boundary, before the executor | `report-screen plan` |
 | the auto team's lead | each of the five triggers | `report-screen state` |
 | the auto team's lead | close | `report-screen delivered` |

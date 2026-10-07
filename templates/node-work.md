@@ -16,7 +16,7 @@ budget: 100000
 ## Steps
 1. Red: the matrix's tests above, committed before any code.
 2. Write the code that makes them pass.
-3. Green, then the whole suite at its baseline.
+3. Green: the changed files tests, then the gate.
 
 ## Proven by
 (filled at close from the ledger: commit, suite counts, review verdict)

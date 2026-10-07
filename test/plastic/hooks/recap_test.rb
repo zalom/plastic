@@ -46,7 +46,7 @@ class RecapTest < Plastic::TestCase
 
     lines = recap(source: "clear")
 
-    assert_equal "Plastic: the context was cleared. The rows below carry the state; run plastic next.", lines.first
+    assert_equal "Plastic: the context was cleared. The rows below carry the state; run plastic graph resume.", lines.first
     assert_includes lines, "open: #{intent_id} Alpha (open)"
   end
 
@@ -62,7 +62,7 @@ class RecapTest < Plastic::TestCase
 
     lines = recap(source: "compact")
 
-    assert_equal "Plastic: the session was compacted. The rows below carry the state; run plastic next.", lines.first
+    assert_equal "Plastic: the session was compacted. The rows below carry the state; run plastic graph resume.", lines.first
     assert lines.any? { |line| line.include?("Opened: Alpha") }
     assert_equal "note: note text", lines.last
   end
@@ -92,6 +92,6 @@ class RecapTest < Plastic::TestCase
   end
 
   def test_a_resumed_session_says_so
-    assert_equal ["Plastic: a resumed session. The rows below carry the state; run plastic next."], recap(source: "resume")
+    assert_equal ["Plastic: a resumed session. The rows below carry the state; run plastic graph resume."], recap(source: "resume")
   end
 end

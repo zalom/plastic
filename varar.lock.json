@@ -28,7 +28,7 @@
       ]
     },
     "varar/backup-purge.md": {
-      "sourceHash": "fnv1a:37375b65",
+      "sourceHash": "fnv1a:c80c7945",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -98,6 +98,15 @@
         }
       ]
     },
+    "varar/graph-resume.md": {
+      "sourceHash": "fnv1a:3af77c98",
+      "examples": [
+        {
+          "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
+          "line": 5
+        }
+      ]
+    },
     "varar/graph-show.md": {
       "sourceHash": "fnv1a:151afd5a",
       "examples": [
@@ -117,7 +126,7 @@
       ]
     },
     "varar/hook-resume.md": {
-      "sourceHash": "fnv1a:e66535df",
+      "sourceHash": "fnv1a:e127a48e",
       "examples": [
         {
           "name": "Each row gives the source, the session, the exit code, the first line and the names:",
