@@ -43,7 +43,7 @@ module Plastic
 
           def expected
             key = Schema.store.find { |candidate| Schema.file(candidate) == "#{@name}.db" }
-            Schema.databases.fetch(key).last.map(&:to_s)
+            Schema.databases.fetch(key).last.map(&:to_s) - Schema.later_tables.map(&:to_s)
           end
         end
       end

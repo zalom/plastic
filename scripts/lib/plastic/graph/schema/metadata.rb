@@ -10,7 +10,7 @@ module Plastic
         "routine_runs" => ["routine run", "routine runs"], "intents" => %w[intent intents],
         "clusters" => %w[cluster clusters], "nodes" => %w[node nodes], "edges" => %w[edge edges],
         "savepoints" => ["savepoint line", "savepoint lines"], "documents" => %w[document documents],
-        "rulings" => %w[ruling rulings], "links" => %w[link links],
+        "legacy_intents_data" => ["legacy file", "legacy files"], "rulings" => %w[ruling rulings], "links" => %w[link links],
         "sqlar" => ["kept file", "kept files"], "printed" => ["printed file", "printed files"],
         "sessions" => %w[session sessions], "locks" => %w[lock locks],
         "roadmaps" => %w[roadmap roadmaps], "batches" => %w[batch batches],

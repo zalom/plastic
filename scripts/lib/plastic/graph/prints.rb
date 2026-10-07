@@ -4,7 +4,7 @@ require "digest"
 require "json"
 require_relative "knowledge/intent"
 require_relative "knowledge/store_folder"
-require_relative "knowledge/roadmap/state"
+require_relative "roadmap_print"
 
 module Plastic
   module Graph
@@ -55,7 +55,7 @@ module Plastic
 
       def luhmann(ids) = ids.sort_by { |id| Knowledge::LuhmannId.segments(id) }
 
-      # Every file of the store, read in five queries whatever the number of intents.
+      # Every file of the store, read in six queries whatever the number of intents.
       def of_store(retrieval)
         rows = Contents.read(retrieval)
         [index(retrieval), *retrieval.unarchived_intents.flat_map { |intent| of_intent(retrieval, intent, rows) }]
@@ -64,11 +64,19 @@ module Plastic
       def of_intent(retrieval, intent, rows = nil)
         id = intent.intent_id
         rows ||= Contents.read(retrieval, id)
-        [*documents(intent, rows.documents(id)), *savepoint(intent, rows.savepoints(id)),
+        legacy = rows.legacy_intents_data(id)
+        dir = intent.dir
+        [*documents(dir, rows.documents(id), legacy), *text_files(dir, legacy), *savepoint(intent, rows.savepoints(id)),
           graph(intent, rows.nodes(id), rows.edges(id)), *kept_files(retrieval, rows.kept_files(id))]
       end
 
-      def documents(intent, rows) = rows.map { |document| Print.text("#{intent.dir}/#{document.path}", :knowledge, document.body) }
+      # A path held as a legacy row and as a document prints from the legacy row only.
+      def documents(dir, rows, legacy)
+        held = legacy.map(&:path)
+        text_files(dir, rows.reject { |document| held.include?(document.path) })
+      end
+
+      def text_files(dir, rows) = rows.map { |row| Print.text("#{dir}/#{row.path}", :knowledge, row.body) }
 
       # A kept file is compared by its hash; its bytes are read only to write it.
       def kept_files(retrieval, rows)
@@ -91,53 +99,20 @@ module Plastic
 
       def plain(record) = record.to_h.except(:origin_id).transform_keys(&:to_s)
 
-      def roadmap(retrieval, slug)
-        row = retrieval.roadmap(slug)
-        lines = ["# #{row.title}", "", *goal_lines(row.goal), *roadmap_batches(retrieval, slug),
-          "## Graph", "", *roadmap_edge_lines(retrieval, slug), "", "## Log", "", *roadmap_log_lines(retrieval, slug)]
-        Print.text("roadmaps/#{slug}.md", :work, "#{lines.join("\n")}\n")
-      end
-
-      def goal_lines(goal) = goal ? ["## Goal", "", goal, ""] : []
-
-      def roadmap_batches(retrieval, slug)
-        retrieval.batches(slug).flat_map { |batch| roadmap_batch_lines(retrieval, slug, batch) }
-      end
-
-      def roadmap_batch_lines(retrieval, slug, batch)
-        items = retrieval.roadmap_items(slug).select { |item| item.batch == batch.position }
-        ["## Batch #{batch.position}: #{batch.title}", "", *batch.done_lines.map { |line| "- #{line}" }, "",
-          *items.map { |item| roadmap_item_line(item, retrieval) }, ""]
-      end
-
-      def roadmap_item_line(item, retrieval)
-        state = Knowledge::Roadmap::State.of(item, retrieval)
-        mark = (state == "done" || state == "dropped") ? "x" : " "
-        "- [#{mark}] #{item.item} #{item.title} — #{state}"
-      end
-
-      def roadmap_edge_lines(retrieval, slug)
-        retrieval.roadmap_items(slug).map do |item|
-          from = retrieval.roadmap_edges(slug).select { |edge| edge.to == item.item }.map(&:from)
-          "- #{item.item} needs #{from.empty? ? "nothing" : from.join(" ")}"
-        end
-      end
-
-      def roadmap_log_lines(retrieval, slug)
-        retrieval.roadmap_log(slug).map { |line| "- #{line.at} #{line.text}" }
-      end
+      def roadmap(retrieval, slug) = Print.text("roadmaps/#{slug}.md", :work, RoadmapPrint.new(retrieval, slug).text)
 
       # The rows of one intent or of the whole store, grouped by intent.
       Contents = Data.define(:groups)
 
       # The rows of each table, by intent.
       class Contents
+        TABLES = %i[documents legacy_intents_data savepoints nodes edges kept_files].freeze
+
         def self.read(retrieval, intent_id = nil)
-          tables = %i[documents savepoints nodes edges kept_files]
-          new(tables.to_h { |table| [table, retrieval.public_send(table, intent_id).group_by(&:intent_id)] })
+          new(TABLES.to_h { |table| [table, retrieval.public_send(table, intent_id).group_by(&:intent_id)] })
         end
 
-        %i[documents savepoints nodes edges kept_files].each do |table|
+        TABLES.each do |table|
           define_method(table) { |intent_id| groups.fetch(table).fetch(intent_id, []) }
         end
       end

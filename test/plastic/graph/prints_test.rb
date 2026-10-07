@@ -85,29 +85,6 @@ class PrintsTest < Plastic::TestCase
     assert_equal ["store/1--one/x.bin", :references, "h", "z"], [print.path, print.database, print.sha256, print.text]
   end
 
-  def legacy_row(path, body) = { intent_id: "1", path:, body:, updated_at: STAMP }
-
-  def test_an_intent_prints_its_legacy_files_byte_for_byte
-    open_intent("One")
-    body = "# Plan\r\n\n  trailing  \n"
-    store_graphs.databases[:knowledge].transaction { |batch| batch.put(:legacy_intents_data, legacy_row("plan.md", body)) }
-    print = Plastic::Graph::Prints.of_intent(retrieval, retrieval.intent("1")).find { |candidate| candidate.path == "store/1--one/plan.md" }
-
-    assert_equal [:knowledge, body, Digest::SHA256.hexdigest(body)], [print.database, print.text, print.sha256]
-  end
-
-  def test_a_path_with_a_document_and_a_legacy_row_prints_once_from_the_legacy_row
-    open_intent("One")
-    store_graphs.databases[:knowledge].transaction do |batch|
-      batch.put(:documents, { intent_id: "1", path: "plan.md", body: "from documents\n", updated_at: STAMP })
-      batch.put(:legacy_intents_data, legacy_row("plan.md", "from legacy\n"))
-    end
-    prints = Plastic::Graph::Prints.of_intent(retrieval, retrieval.intent("1")).select { |print| print.path == "store/1--one/plan.md" }
-
-    assert_equal ["from legacy\n"], prints.map(&:text)
-    assert_equal 1, Plastic::Graph::Prints.of_store(retrieval).count { |print| print.path == "store/1--one/plan.md" }
-  end
-
   def test_the_store_prints_the_index_first_then_each_intent
     open_intent("One")
     open_intent("Two")

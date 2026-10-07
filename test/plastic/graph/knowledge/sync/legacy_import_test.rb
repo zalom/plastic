@@ -41,15 +41,25 @@ class KnowledgeSyncLegacyImportTest < Plastic::TestCase
     assert_equal [[], true], [retrieval.intents, folder.exist?("INDEX.md")]
   end
 
+  def rows_of(sql) = store_graphs.databases.fetch(:knowledge).rows(sql)
+
   def test_a_first_import_keeps_plan_checklist_and_actions_in_legacy_rows
     import
-    knowledge = store_graphs.databases.fetch(:knowledge)
-    legacy = knowledge.rows("SELECT path, body FROM legacy_intents_data WHERE intent_id = '1' ORDER BY path")
-    documents = knowledge.rows("SELECT path FROM documents WHERE intent_id = '1' ORDER BY path").map { |row| row["path"] }
 
-    assert_equal %w[actions/.gitkeep checklist.md plan.md], legacy.map { |row| row["path"] }
-    assert_equal folder.read("store/1--ai-infra/plan.md"), legacy.last["body"]
-    assert_equal %w[1--ai-infra.md outcome.md spec.md], documents
+    assert_equal %w[actions/.gitkeep checklist.md plan.md], rows_of("SELECT path FROM legacy_intents_data WHERE intent_id = '1' ORDER BY path").map { |row| row["path"] }
+  end
+
+  def test_a_first_import_keeps_the_plan_whole
+    import
+    body = rows_of("SELECT body FROM legacy_intents_data WHERE intent_id = '1' AND path = 'plan.md'").first["body"]
+
+    assert_equal folder.read("store/1--ai-infra/plan.md").dup.force_encoding(Encoding::UTF_8), body
+  end
+
+  def test_a_first_import_leaves_the_other_files_as_documents
+    import
+
+    assert_equal %w[1--ai-infra.md outcome.md spec.md], rows_of("SELECT path FROM documents WHERE intent_id = '1' ORDER BY path").map { |row| row["path"] }
   end
 
   def test_the_import_metadata_line_names_the_legacy_files

@@ -1834,3 +1834,30 @@ publish job ran no suite. The suite was red on hosted Linux runners for hermetic
 gating a publish on it would have moved the release stall onto the runner. The suite ran only
 before the tag was cut. The publish job has since gained the suite step, which runs before the
 guard.
+
+## The schema file and legacy tables
+
+`scripts/lib/plastic/graph/db/schema.rb` is the one schema file. It reads like a Rails schema:
+`Plastic::Graph::SCHEMA_FILE = SchemaFile.define(version: N) do ... end` holds one `create_table`
+per table, one `create_virtual_table` for the search index, and one `database` line per database
+that lists its tables in order. `Graph::SchemaFile` builds the table definitions; `SchemaCatalog`
+reads them and `Schema` serves the DDL, so nothing else declares a table. The DDL of every
+table that existed before the file is byte for byte the same, and `test/plastic/graph/db/schema_test.rb`
+pins each one by hash.
+
+Two marks sit on a table. `legacy: true` says the table holds old data that nothing new reads.
+`since: VERSION` says databases older than VERSION lack the table; the next open creates it, so
+the backup check and `plastic doctor` do not fail on its absence, and the doctor notes it.
+
+`legacy_intents_data` is the first legacy table. It holds `plan.md`, `checklist.md` and every text
+file under `actions/` of an intent, whole. Such a file is not a document, so it is not searched:
+the reader removes its document rows and keeps its revisions. The prints still write it back
+byte for byte.
+
+To retire a kind of data:
+
+1. Mark its table `legacy: true` in the schema file.
+2. Stop writing it from new code and stop reading it, except in the plumbing that writes,
+   prints, counts and declares it.
+3. Add its name to the allowed list of `test/legacy_tables_guard_test.rb` only for that plumbing.
+4. Leave its DDL unchanged; a legacy table is never dropped.

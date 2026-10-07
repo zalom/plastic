@@ -3,6 +3,7 @@
 require_relative "knowledge/intent"
 require_relative "work/cluster"
 require_relative "knowledge/document"
+require_relative "knowledge/legacy_intents_data"
 require_relative "work/savepoint"
 require_relative "work/node"
 require_relative "work/edge"
@@ -28,6 +29,7 @@ module Plastic
       intents: Source.new(Knowledge::Intent, :work, "intents", "*", "intent_id"),
       clusters: Source.new(Work::Cluster, :work, "clusters", "*", "name, intent_id"),
       documents: Source.new(Knowledge::Document, :knowledge, "documents", "*", "intent_id, path"),
+      legacy_intents_data: Source.new(Knowledge::LegacyIntentsData, :knowledge, "legacy_intents_data", "*", "intent_id, path"),
       savepoints: Source.new(Work::Savepoint, :work, "savepoints", "*", "intent_id, position"),
       nodes: Source.new(Work::Node, :work, "nodes", "*", "intent_id, id"),
       edges: Source.new(Work::Edge, :work, "edges", "*", 'intent_id, "from", "to", kind'),

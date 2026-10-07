@@ -78,12 +78,21 @@ class KnowledgeReaderIntentFileTest < Plastic::TestCase
     assert_empty retrieval.documents("1").map(&:path) & %w[plan.md checklist.md actions/ACTION_1.md]
   end
 
-  def test_reading_a_legacy_path_removes_its_old_document_row
-    knowledge = store_graphs.databases.fetch(:knowledge)
-    Plastic::Graph::Retrieval::Evidence::Writer.new(knowledge, origin).write("1", "plan.md", "old plan\n")
+  def read_over_an_old_document
+    Plastic::Graph::Retrieval::Evidence::Writer.new(store_graphs.databases.fetch(:knowledge), origin).write("1", "plan.md", "old plan\n")
     read_in("plan.md", "new plan\n")
+  end
+
+  def test_reading_a_legacy_path_removes_its_old_document_row
+    read_over_an_old_document
 
     assert_equal [[], [["plan.md", "new plan\n"]]], [retrieval.documents("1").select { |document| document.path == "plan.md" }, legacy_rows]
+  end
+
+  def test_reading_a_legacy_path_removes_its_head_and_search_rows
+    read_over_an_old_document
+    knowledge = store_graphs.databases.fetch(:knowledge)
+
     assert_equal [0, 0], [knowledge.rows("SELECT * FROM document_heads WHERE path = 'plan.md'").size,
       knowledge.rows("SELECT * FROM document_fts WHERE path = 'plan.md'").size]
   end

@@ -591,3 +591,10 @@ This section describes Plastic 1.x. It is not current behavior.
 - **Stage agents.** Each lifecycle stage had its own agent: discovery for What, brainstorming and spec agents for Why, a planner for How, the executor for Exec, and a curator for Done. Intent 304 removed all of them except `plastic-executor`.
 - **The dashboard skill.** A prose skill filled Markdown board templates from the `dashboard.rb --data` payload. It was retired with the other skills.
 - **The continue router.** A continue skill chose among a project route, an intent route that read the intent's savepoint first, and a roadmap route. `plastic graph resume` replaced it.
+
+## One schema file
+
+Every table is declared once, in `scripts/lib/plastic/graph/db/schema.rb`. A table marked
+`legacy: true` holds old data that nothing new reads; `legacy_intents_data` keeps the plan,
+checklist and action files of each intent. `docs/internals.md` has the four steps to retire a
+kind of data.

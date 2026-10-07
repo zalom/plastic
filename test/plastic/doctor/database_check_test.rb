@@ -14,6 +14,7 @@ class DoctorDatabaseCheckTest < Plastic::TestCase
     database(path, :work)
 
     assert_nil problem
+    assert_nil Plastic::Doctor::DatabaseCheck.new(path, :work).note
   end
 
   def test_a_missing_file_is_named_and_stays_missing
