@@ -2,7 +2,7 @@
 
 require_relative "../../test_helper"
 require_relative "../../../scripts/lib/plastic/commands/next"
-require_relative "../../../scripts/lib/plastic/commands/auto_start"
+require_relative "../../../scripts/lib/plastic/commands/auto"
 require_relative "../../../scripts/lib/plastic/commands/node_add"
 require_relative "../../../scripts/lib/plastic/commands/node_claim"
 require_relative "../../../scripts/lib/plastic/commands/node_done"
@@ -19,7 +19,7 @@ class NextTest < Plastic::TestCase
 
   def clear_spec(intent) = write_spec(intent, "# Spec\n\n## Done criteria\n- ships\n\n## Open Questions\n- none\n")
 
-  def start(intent) = plastic("auto", "start", intent.intent_id, env: { "PLASTIC_SESSION" => "s-1" }, table: Plastic::CLI::TABLE)
+  def start(intent) = plastic("auto", intent.intent_id, env: { "PLASTIC_SESSION" => "s-1" }, table: Plastic::CLI::TABLE)
 
   def add_node(intent, title) = plastic("node", "add", intent.intent_id, title, "--criterion", "done", table: Plastic::CLI::TABLE)
 
@@ -46,7 +46,7 @@ class NextTest < Plastic::TestCase
 
     result = call
 
-    assert_includes result.out, "next: plastic auto start #{intent.intent_id}"
+    assert_includes result.out, "next: plastic auto #{intent.intent_id}"
   end
 
   def test_no_nodes_hands_planning_to_the_harness

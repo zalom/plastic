@@ -3,7 +3,7 @@
 require_relative "../../test_helper"
 require_relative "../../../scripts/lib/plastic/commands/graph_resume"
 require_relative "../../../scripts/lib/plastic/commands/next"
-require_relative "../../../scripts/lib/plastic/commands/auto_start"
+require_relative "../../../scripts/lib/plastic/commands/auto"
 require_relative "../../../scripts/lib/plastic/commands/node_add"
 require_relative "../../../scripts/lib/plastic/commands/node_claim"
 require_relative "../../../scripts/lib/plastic/commands/node_done"
@@ -44,7 +44,7 @@ module GraphResumeHelper
     intent = open_intent(title)
     write("#{intent.dir}/spec.md", CLEAR_SPEC)
     plastic("sync", "up", table: Plastic::CLI::TABLE)
-    plastic("auto", "start", intent.intent_id, env: { "PLASTIC_SESSION" => "s-1" }, table: Plastic::CLI::TABLE)
+    plastic("auto", intent.intent_id, env: { "PLASTIC_SESSION" => "s-1" }, table: Plastic::CLI::TABLE)
     intent
   end
 
@@ -184,7 +184,7 @@ class GraphResumeStoresTest < Plastic::TestCase
 
     result = call("--stores", "b,global")
 
-    assert_equal "next: plastic auto start 1 --project b", next_line(result)
+    assert_equal "next: plastic auto 1 --project b", next_line(result)
     assert_includes lines(result).find { |line| line.start_with?("because:") }, "store b"
   end
 
@@ -194,7 +194,7 @@ class GraphResumeStoresTest < Plastic::TestCase
 
     result = call("--stores", "global,b")
 
-    assert_equal "next: plastic auto start 1 --project b", next_line(result)
+    assert_equal "next: plastic auto 1 --project b", next_line(result)
   end
 
   def test_each_then_line_holds_a_stores_own_next_command
@@ -204,7 +204,7 @@ class GraphResumeStoresTest < Plastic::TestCase
     result = call("--stores", "global,b")
 
     assert_includes lines(result), "then: none (because nothing is open)"
-    assert_includes lines(result), "then: plastic auto start 1 (because intent 1 is open)"
+    assert_includes lines(result), "then: plastic auto 1 (because intent 1 is open)"
   end
 
   def test_a_name_that_is_no_project_exits_2_and_lists_the_projects

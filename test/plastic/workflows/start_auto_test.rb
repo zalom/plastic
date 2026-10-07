@@ -48,7 +48,7 @@ class WorkflowStartAutoTest < Plastic::TestCase
   def test_a_call_with_no_session_fails
     specified_intent
 
-    assert_equal "code_start_auto, gate: auto start names no session", start(session: nil).message
+    assert_equal "code_start_auto, gate: plastic auto names no session", start(session: nil).message
   end
 
   def test_an_unknown_intent_fails

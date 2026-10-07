@@ -5,10 +5,16 @@ require_relative "../test_helper"
 
 class CliTest < Plastic::TestCase
   def test_find_picks_the_longest_command_the_words_start
-    table = { "auto lock" => [], "auto lock renew" => [] }
+    table = { "intent lock" => [], "intent lock status" => [] }
 
-    assert_equal "auto lock renew", Plastic::CLI.find(%w[auto lock renew 7], table)
-    assert_equal "auto lock", Plastic::CLI.find(%w[auto lock 7], table)
+    assert_equal "intent lock status", Plastic::CLI.find(%w[intent lock status 7], table)
+    assert_equal "intent lock", Plastic::CLI.find(%w[intent lock 7], table)
+  end
+
+  def test_the_table_has_one_auto_entry_and_intent_lock_status
+    auto_words = Plastic::CLI::TABLE.keys.select { |name| name.split.first == "auto" }
+
+    assert_equal [["auto"], "Commands::IntentLockStatus"], [auto_words, Plastic::CLI::TABLE.dig("intent lock status", 0)]
   end
 
   def test_find_returns_nil_for_unknown_words

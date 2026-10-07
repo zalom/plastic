@@ -9,7 +9,7 @@ class DeliveryHandoffTest < Plastic::TestCase
     intent = open_intent
     write("#{intent.dir}/spec.md", "# Spec\n\n## Done criteria\n- Ships\n")
     cli("sync", "up")
-    cli("auto", "start", "1")
+    cli("auto", "1")
     intent
   end
 
