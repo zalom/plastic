@@ -72,7 +72,7 @@ module Plastic
       end
 
       # Prints the worktree and its branch; while the folder does not exist,
-      # its git command becomes the next: line.
+      # the command that adds it becomes the next: line.
       def self.name_worktree(context, worktree)
         return unless worktree
 
