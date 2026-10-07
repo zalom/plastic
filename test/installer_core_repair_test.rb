@@ -74,6 +74,15 @@ class InstallerCoreRepairTest < Minitest::Test
     assert_equal EMPTY_INDEX, File.read(global("INDEX.md"))
   end
 
+  def test_a_reinstall_makes_a_launcher_that_lost_its_executable_bit_executable_again
+    capture_io { installer.distribute(:install, tmp_dirs: []) }
+    launcher = File.join(plastic_home, "bin", "plastic")
+    File.chmod(0o644, launcher)
+    capture_io { installer.distribute(:update, tmp_dirs: []) }
+
+    assert File.executable?(launcher), "#{launcher} is not executable after the reinstall"
+  end
+
   def test_a_legacy_home_is_left_alone
     FileUtils.mkdir_p(File.join(plastic_home, "projects"))
     File.write(File.join(plastic_home, "INDEX.md"), EMPTY_INDEX)

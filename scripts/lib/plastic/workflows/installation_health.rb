@@ -14,8 +14,9 @@ module Plastic
       UNMANAGED = "no release is installed; this plastic runs outside a release"
       INCOMPLETE = "switch to a complete release with plastic rollback or plastic update"
 
-      def self.of(context, ruby_version: RUBY_VERSION)
-        scope = context.scope
+      def self.of(context, ruby_version: RUBY_VERSION) = at(context.scope, ruby_version:)
+
+      def self.at(scope, ruby_version: RUBY_VERSION)
         home = scope.home
         new(share: scope.setting("PLASTIC_SHARE", File.join(home, ".local", "share", "plastic")),
           bin: scope.setting("PLASTIC_BIN", File.join(home, ".local", "bin")), path: scope.setting("PATH", ""), home:, ruby_version:)
@@ -28,9 +29,9 @@ module Plastic
         @ruby_version = ruby_version
       end
 
-      def checks
-        managed? ? release_checks(active, activation.previous_version || "none") : unmanaged_checks
-      end
+      def checks = managed? ? parts.insert(-2, hooks) : parts
+
+      def parts = managed? ? release_checks(active, activation.previous_version || "none") : unmanaged_checks
 
       def managed? = File.file?(File.join(activation.active_path, "VERSION"))
 
@@ -45,7 +46,7 @@ module Plastic
       def unmanaged_checks = [Check.new("active:", "none; no release is activated", nil), Check.new("installation:", UNMANAGED, nil), ruby]
 
       def release_checks(active, previous)
-        [Check.new("active:", active, nil), Check.new("previous:", previous, nil), launcher.check, ruby, bundle, hooks, InstallationLock.new(share).check]
+        [Check.new("active:", active, nil), Check.new("previous:", previous, nil), launcher.check, ruby, bundle, InstallationLock.new(share).check]
       end
 
       def hooks = InstallationHooks.new(home:, active: active_launcher).check

@@ -106,11 +106,16 @@ uses the Ruby 2.6 that macOS ships.
 
 ```bash
 plastic version     # The version, then a check of each part of the installation
+plastic doctor      # The installation, the databases and the hooks of this agent
 ```
 
 `plastic version` names the active and previous releases, the launcher on your `PATH`, the
 Ruby version, the sqlite3 bundle, where the hooks point, and the installer lock. It changes
 nothing. When a part is broken, it prints the command that repairs it.
+
+`plastic doctor` also opens each database and reads the hooks and instruction files of the
+agent it runs in. It prints one row for each check, then the repair for each finding, and exits
+1 when it finds a problem.
 
 ### Move from npm
 
@@ -258,6 +263,7 @@ plastic rollback                      # Switch back to the previous release
 plastic rollback --version 2.0.0-alpha.27
 plastic uninstall --all               # Remove Plastic from every agent. Your stores stay.
 plastic version                       # The installed version and a check of the installation
+plastic doctor                        # The installation, the databases and the hooks of this agent
 ```
 
 ### Help
@@ -330,8 +336,8 @@ calls the active release launcher under `~/.local/share/plastic`:
 plastic hook EVENT      # The agent calls this, not you
 ```
 
-Run `plastic version` when hooks do not fire. It names the repair, which is often
-`plastic install --reinstall`.
+Run `plastic doctor` when hooks do not fire. It names the repair, which is often
+`plastic install --claude --reinstall`.
 
 ## Supported AI tools
 

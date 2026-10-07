@@ -9,6 +9,7 @@ module Plastic
     TABLE = {
       # Distribution
       "version" => ["Commands::Version", "Print the installed Plastic version and release channel"],
+      "doctor" => ["Commands::Doctor", "Check the installation, the databases and the hooks of this harness, and name each repair"],
       "install" => ["Commands::Install", "Install the core files and register Plastic with agents"],
       "update" => ["Commands::Update", "Sync a newer package into the home or name the installer command"],
       "rollback" => ["Commands::Rollback", "List the version history or name the command that restores one"],

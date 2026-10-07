@@ -44,6 +44,19 @@ class InstallationHealthTest < Plastic::TestCase
     assert_equal ["none registered", nil], [hooks.value, hooks.repair]
   end
 
+  def test_the_parts_leave_out_the_hooks_check_that_reads_every_harness
+    health = Plastic::Workflows::InstallationHealth.new(share: share, bin: File.join(@home, ".local", "bin"), path: "", home: @home, ruby_version: "4.0.0")
+
+    assert_equal health.checks.map(&:label) - ["hooks:"], health.parts.map(&:label)
+  end
+
+  def test_a_home_with_no_release_has_no_hooks_check
+    health = Plastic::Workflows::InstallationHealth.new(share: File.join(@home, "none"), bin: File.join(@home, ".local", "bin"), path: "", home: @home,
+      ruby_version: "4.0.0")
+
+    refute_includes health.checks.map(&:label), "hooks:"
+  end
+
   def check(label, ruby_version: "4.0.0", path: "")
     health = Plastic::Workflows::InstallationHealth.new(share: share, bin: File.join(@home, ".local", "bin"), path: path, home: @home, ruby_version: ruby_version)
     health.checks.find { |item| item.label == label }
