@@ -85,10 +85,9 @@ class IntentEndMapTest < IntentEndFixture
 
     result = cli("intent", "end", "1")
 
-    assert_equal 0, result.code
+    assert_equal [0, ""], [result.code, result.err]
     assert_includes result.out, "fetch the architecture map once more"
     assert_includes result.out, "outcome.md"
-    assert_empty result.err
   end
 end
 

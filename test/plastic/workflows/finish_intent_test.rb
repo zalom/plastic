@@ -33,9 +33,6 @@ class FinishIntentTest < Plastic::TestCase
   def test_open_records_and_no_evidence_print_records_map_and_evidence_in_order
     steps = finish(requirements: ["outcome.md"]).steps
 
-    assert_equal 3, steps.size
-    assert_match(/prerequisites/, steps[0])
-    assert_match(/architecture map/, steps[1])
-    assert_match(/completion\.json/, steps[2])
+    assert_equal ["prerequisites", "architecture map", "completion.json"], steps.map { |text| text[/prerequisites|architecture map|completion\.json/] }
   end
 end

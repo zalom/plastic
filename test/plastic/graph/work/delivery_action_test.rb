@@ -25,14 +25,9 @@ class WorkDeliveryActionTest < Plastic::TestCase
     assert_includes instructions, "plastic node add 1 TITLE --criterion TEXT"
   end
 
-def test_the_planning_instruction_starts_with_fetching_the_architecture_map
-  instructions = action.last
-
-  assert instructions.start_with?("Before you plan, fetch the architecture map as current as possible with an architecture mapping tool such as Enola, or map the code yourself; Plastic runs no tool. Read the intent's goal")
-  assert_includes instructions, "such as Enola"
-  assert_includes instructions, "map the code yourself"
-  assert_includes instructions, "Plastic runs no tool"
-end
+  def test_the_planning_instruction_starts_with_fetching_the_architecture_map
+    assert action.last.start_with?("Before you plan, fetch the architecture map as current as possible with an architecture mapping tool such as Enola, or map the code yourself; Plastic runs no tool. Read the intent's goal")
+  end
 
   def test_a_ready_node_is_claimed
     plan("Build")

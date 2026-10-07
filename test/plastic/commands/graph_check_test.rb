@@ -114,9 +114,8 @@ class GraphCheckTest < Plastic::TestCase
 
     result = call("1")
 
-    assert_equal 0, result.code
+    assert_equal [0, ""], [result.code, result.err]
     assert_includes result.out, "Before you plan, fetch the architecture map as current as possible with an architecture mapping tool such as Enola, or map the code yourself; Plastic runs no tool."
     assert_includes result.out, "plastic node add"
-    assert_empty result.err
   end
 end
