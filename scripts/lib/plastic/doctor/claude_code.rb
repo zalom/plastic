@@ -14,6 +14,11 @@ module Plastic
       AGENTS_IMPORT = "@AGENTS.md"
       AGENTS_LINE = /\A#{Regexp.escape(AGENTS_IMPORT)}\s*\z/
 
+      def self.project(slug, file)
+        Check.new("CLAUDE.md #{slug}:", "#{file} imports AGENTS.md", "add the line #{AGENTS_IMPORT} to #{file}")
+          .judged(InstructionLine.new(file, AGENTS_LINE).problem)
+      end
+
       def initialize(scope, running:)
         @scope = scope
         @running = running
@@ -34,12 +39,7 @@ module Plastic
         Check.new("CLAUDE.md:", "#{file} imports PLASTIC.md", ClaudeHooks::REPAIR).judged(InstructionLine.new(file, IMPORT_LINE).problem)
       end
 
-      def projects = scope.projects.map { |slug, path| project(slug, File.join(path, "CLAUDE.md")) }
-
-      def project(slug, file)
-        Check.new("CLAUDE.md #{slug}:", "#{file} imports AGENTS.md", "add the line #{AGENTS_IMPORT} to #{file}")
-          .judged(InstructionLine.new(file, AGENTS_LINE).problem)
-      end
+      def projects = scope.projects.map { |slug, path| ClaudeCode.project(slug, File.join(path, "CLAUDE.md")) }
     end
   end
 end
