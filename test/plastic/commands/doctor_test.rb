@@ -13,9 +13,10 @@ class DoctorCommandTest < Plastic::TestCase
   def setup
     super
     whole_home
+    @package = fake_package(RUNNING)
   end
 
-  def doctor(*argv, env: {}) = call("doctor", *argv, env: { "PLASTIC_PACKAGE_ROOT" => fake_package(RUNNING) }.merge(env))
+  def doctor(*argv, env: {}) = call("doctor", *argv, env: { "PLASTIC_PACKAGE_ROOT" => @package }.merge(env))
 
   def test_a_whole_home_prints_ok_rows_and_exits_0
     result = doctor

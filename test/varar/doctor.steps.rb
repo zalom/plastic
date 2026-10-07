@@ -72,7 +72,7 @@ module DoctorWalk
 end
 
 steps do
-  sensor("the damage, the exit code, the check, the repair and the exit code after the repair") do |_state, row|
+  sensor("the damage, the exit code, the check, the repair and the exit code after repair") do |_state, row|
     DoctorWalk.call(row)
   end
 end

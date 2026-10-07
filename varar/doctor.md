@@ -11,7 +11,7 @@ row that holds the finding, and the repair column the repair the doctor printed,
 for the project folder. Last, the row runs that repair, or makes that file edit, and runs the
 doctor again.
 
-Each row gives the damage, the exit code, the check, the repair and the exit code after the repair:
+Each row gives the damage, the exit code, the check, the repair and the exit code after repair:
 
 | damage                                    | exit | check             | repair                                       | after repair |
 | ----------------------------------------- | ---: | ----------------- | -------------------------------------------- | -----------: |
