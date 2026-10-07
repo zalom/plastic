@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "digest"
+require_relative "evidence"
 require_relative "../../knowledge/spec"
 require_relative "../node"
 
@@ -25,6 +26,16 @@ module Plastic
 
           def outcome_hash = Digest::SHA256.hexdigest(outcome.body)
 
+          # The completion fields this check attests, once nothing blocks closure and the evidence answers every criterion.
+          def attestation(evidence)
+            found = problems
+            raise Invalid, found.join(" ") if found.any?
+
+            done = criteria
+            Evidence.validate(evidence, done)
+            { criteria: done, evidence:, outcome_sha256: outcome_hash }
+          end
+
           private
 
           def spec = @spec ||= Knowledge::Spec.new(@retrieval, @intent_id)
@@ -36,16 +47,22 @@ module Plastic
           def work_problem
             nodes = live_nodes
             return "Plan at least one work node with plastic node add #{@intent_id} TITLE --criterion TEXT." if nodes.empty?
-            return "Finish every live work node before ending intent #{@intent_id}." unless nodes.all? { |node| node.state == "done" }
-            return nil if nodes.all? { |node| verified?(node) }
+
+            unfinished_problem(nodes) || unverified_problem(nodes)
+          end
+
+          def unfinished_problem(nodes)
+            "Finish every live work node before ending intent #{@intent_id}." unless nodes.all? { |node| node.state == "done" }
+          end
+
+          def unverified_problem(nodes)
+            return if nodes.all?(&:verified?)
 
             "Every done node needs a valid judge and nonempty findings. Recheck the work, then use plastic node done #{@intent_id} NODE " \
               "--repair --judge tests|tool|agent|owner --findings TEXT to record the actual verification."
           end
 
           def live_nodes = @retrieval.nodes(@intent_id).reject { |node| node.state == "removed" }
-
-          def verified?(node) = Node::JUDGES.include?(node.judge) && !node.findings.to_s.strip.empty?
 
           def outcome_problem
             "Write a substantive outcome.md in the intent folder and run plastic sync up." if outcome&.body.to_s.gsub(/^\s*#.*$/, "").strip.empty?

@@ -18,8 +18,6 @@ class SyncLegacyMetadataTest < Plastic::TestCase
 
   def apply = plastic("sync", "up", table: Plastic::CLI::TABLE)
 
-  def remove_after_import = File.write(File.join(@plastic_home, "config.yml"), "migrate:\n  remove_after_import: true\n")
-
   def spec_with(decisions) = "# Spec\n\n## Decisions\n#{decisions.map { |line| "- #{line}\n" }.join}"
 
   def test_colliding_ruling_ids_take_the_next_free_number
@@ -104,35 +102,20 @@ class SyncLegacyMetadataTest < Plastic::TestCase
       root = File.join(dir, "store-a")
       FileUtils.mkdir_p(root)
       File.write(File.join(root, "INDEX.md"), "before")
-      writer = Plastic::Graph::Knowledge::Legacy::StoreImport.new(nil, nil, nil, { local: Struct.new(:path).new(File.join(dir, "local.db")) })
+      rollback = Plastic::Graph::Knowledge::Legacy::ImportRollback.new(root)
 
-      assert_raises(RuntimeError) { writer.send(:rolled_back_on_error, root) { File.write(File.join(root, "work_graph.db"), "x") && raise("halfway") } }
+      assert_raises(RuntimeError) { rollback.call { File.write(File.join(root, "work_graph.db"), "x") && raise("halfway") } }
       assert_equal ["INDEX.md"], Dir.children(root)
     end
   end
 
-  def test_the_import_keeps_index_md
-    apply
+  def test_a_roadmap_line_it_cannot_read_refuses_the_import
+    write("roadmaps/ship.md", "# Ship\n\n## Batches\n\n- [ ] 9 A\n")
 
-    assert folder.exist?("INDEX.md")
-  end
+    call = apply
 
-  def test_index_md_goes_after_the_import_when_the_flag_is_on
-    remove_after_import
-
-    apply
-
-    refute folder.exist?("INDEX.md")
-    assert_equal %w[1 1a], retrieval.intents.map(&:intent_id).sort
-  end
-
-  def test_regular_sync_keeps_source_files_after_import
-    apply
-    remove_after_import
-
-    apply
-
-    assert folder.exist?("INDEX.md")
+    assert_equal 1, call.code
+    assert_includes call.err, "no status on roadmap item"
   end
 
   def test_an_unknown_roadmap_is_refused

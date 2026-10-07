@@ -22,6 +22,9 @@ module Plastic
         # An open node that is missing from the intent's ready nodes, because a
         # node it needs is not done.
         def waiting?(ready_nodes) = state == "open" && ready_nodes.none? { |ready| ready.id == id }
+
+        # A done node a known judge checked and wrote nonempty findings for.
+        def verified? = Node::JUDGES.include?(judge) && !findings.to_s.strip.empty?
       end
       Node::STATES = %w[open claimed done failed parked removed].freeze
       Node::JUDGES = %w[tests tool agent owner].freeze

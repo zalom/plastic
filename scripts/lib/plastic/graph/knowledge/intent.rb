@@ -20,10 +20,14 @@ module Plastic
         include Record
 
         OPEN = %w[open active].freeze
+        CLOSED = %w[done abandoned].freeze
         ARCHIVABLE = %w[done abandoned future].freeze
 
         # Open or active: the work a resume lists.
         def open? = OPEN.include?(status)
+
+        # Done or abandoned: the work is over.
+        def closed? = CLOSED.include?(status)
 
         # Why the intent cannot archive, or nil when its status allows it.
         def archive_refusal
