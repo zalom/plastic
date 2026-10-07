@@ -13,7 +13,7 @@ module Plastic
       sets :name, :files, :bytes
 
       step "write the backup folder", done: ->(context) { !context.name.nil? } do |context|
-        row = context.work.backups.write(databases: Graph::Knowledge::Backup::Databases.parse(context.databases))
+        row = context.work.backups.write(databases: Graph::Knowledge::Backup::Databases.parse(context.databases), live: context.scope.live)
         context[:name] = row.fetch(:name)
         context[:files] = row.fetch(:files)
         context[:bytes] = row.fetch(:bytes)

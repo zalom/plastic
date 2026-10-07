@@ -88,12 +88,12 @@ class BackupRestoreTest < Plastic::TestCase
 
   def test_timestamp_naming_a_backup_that_is_not_done_refuses_with_its_status
     home = seeded_home
-    mark_second(home, "error")
+    mark_second(home, "failed")
     before = bytes(home, "work_graph")
     result = restore_call(home, "--store", "alpha", "--timestamp", SECOND)
 
     assert_equal [3, ""], [result.code, result.out]
-    assert_includes result.err, "error"
+    assert_includes result.err, "failed"
     assert_equal before, bytes(home, "work_graph")
   end
 
@@ -123,7 +123,7 @@ class BackupRestoreTest < Plastic::TestCase
     home = seeded_home
     result = restore_call(home, "--store", "alpha", "--timestamp", FIRST)
 
-    assert_call result, code: 0, out: ["restore: backed up the current databases as", "next: plastic sync up --dry-run --project alpha"]
+    assert_call result, code: 0, out: ["restore: backed up the current databases as", "next: ask the person"]
   end
 
   def test_restoring_the_latest_with_no_done_backup_refuses_with_usage

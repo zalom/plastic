@@ -552,7 +552,11 @@ this section covers how the code holds together.
   documents as current. Plain sync reports conflicts for those documents.
 - **Backup.** The four `backup` commands go through `WorkGraph#backups`, a
   `Graph::Knowledge::Backup::StoreBackups` for one store. `Writer` copies the databases
-  into the folder with `VACUUM INTO` and keeps `status.yml`. `Publisher` adds the row of
+  into the folder with `VACUUM INTO` and keeps `status.yml`. `Log` writes `backup.log` one
+  line at a time; `Log.line` is the one place that sets the shape of a line, and `Writer`
+  takes the copy step and the live sink as arguments. `StreamingScope` carries the live
+  sink from `plastic backup --live` to the writer. `Purger#failed` names the folders
+  whose status is `failed`. `Publisher` adds the row of
   `home.db`'s `backups` table and removes the folder when the insert fails. `Purger`
   deletes a folder and its row together and puts the folder back when the row delete
   fails. `Restorer` checks the delivery lock and the status, writes a safety backup, runs
@@ -560,6 +564,12 @@ this section covers how the code holds together.
   SHA-256 digest of the sorted file names and digests with the one stored at write time.
   `BackupStore` adds the required `--store` option to the four commands and refuses a slug
   that is neither `global` nor a key of `projects.yml`. `Databases.parse` reads `--databases`.
+  After a restore, `BackupRestore` asks which sync to run through `CLI::Dialog`, built by
+  `BackupRestore#scope` from `Environment#input` and the output, and reached as `context.scope.dialog`
+  (`Commands::AskingScope`). A
+  terminal is an input that answers `tty?`, and never under `--json`. The answer picks the
+  outcome `sync_down`, `sync_up` or `kept`, and the chain runs the sync workflows for the same
+  store; with no terminal the outcome is `done` and its `next:` tells the agent to ask.
 
 `Graph::Knowledge::Sync::LegacyImport` runs `Graph::Knowledge::Legacy::StoreImport` for a store with `INDEX.md` and no
 `store/index.json`. One coordinator reads intent files, rulings and source links, imports
@@ -769,6 +779,12 @@ leaves a store, and no `INDEX.md`, so `plastic intent new` works at once. `Scope
 layout until explicit migration. Bootstrap on an already migrated home never recreates `projects/`.
 The context-budget benchmark seeds its fixture through the same store path resolver, so it
 measures active intents in the layout produced by the real installer.
+
+Bootstrap makes no `projects` folder: project stores are made when a project is registered.
+`InstallerCore#repair_stores` runs on every install and update of a home with the stores layout. It
+removes an empty `stores/projects` folder, and reports one that holds files and leaves it. It
+also removes a global `INDEX.md` whose lines are headings and blanks only, when the global
+`store/` holds no intent folder, and then readies the three databases. It runs no legacy import.
 
 `scripts/lib/store_layout.rb` is the one place that turns a home and a slug into a store path.
 `Plastic::StoreLayout.moved?(home)` is true when `stores/` exists. Every script asks it for the

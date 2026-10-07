@@ -6,12 +6,13 @@ require_relative "../graph/knowledge/backup/older_than"
 
 module Plastic
   module Commands
-    # Deletes backups of one registered store: all of them, or those before a date.
+    # Deletes backups of one registered store: all of them, those before a date, or those that failed.
     class BackupPurge < Routine
       include BackupStore
 
       option :older_than, switch: "--older-than DATE", text: "delete the backups before this date or time"
       option :all, switch: "--all", default: false, text: "delete every backup of the store"
+      option :failed, switch: "--failed", default: false, text: "delete every backup whose status is failed"
       option :dry_run, switch: "--dry-run", default: false, text: "list what would be deleted and delete nothing"
 
       workflow :code_preview_backup_purge do
@@ -23,7 +24,7 @@ module Plastic
       private
 
       def check_call
-        one_of(%i[older_than all], give: "give --older-than DATE or --all", both: "--all and --older-than exclude each other")
+        one_of(%i[older_than all failed], give: "give --older-than DATE, --all or --failed", both: "--older-than, --all and --failed exclude each other")
         read_date
       end
 

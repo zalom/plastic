@@ -3,6 +3,7 @@
 require_relative "../code_workflow"
 require_relative "../cli/command/usage"
 require_relative "../graph/knowledge/backup/databases"
+require_relative "../commands/restore_sync"
 
 module Plastic
   module Workflows
@@ -50,12 +51,9 @@ module Plastic
       end
 
       read "say what was replaced" do |context|
-        context.print("restore: backed up the current databases as #{context.safety}")
-        context.restored.each { |name| context.print("restore: #{name} from #{context.folder}") }
+        Commands::RestoreSync.say(context, "restore: backed up the current databases as #{context.safety}")
+        context.restored.each { |name| Commands::RestoreSync.say(context, "restore: #{name} from #{context.folder}") }
       end
-
-      outcome :done, offers: "plastic sync up --dry-run --project %{store}",
-        because: "files newer than the backup are not in the rows until a sync up reads them"
     end
   end
 end

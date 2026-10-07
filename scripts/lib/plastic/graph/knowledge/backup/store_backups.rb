@@ -24,7 +24,7 @@ module Plastic
 
           def folders = @target.folders
 
-          def write(databases: nil) = Publisher.new(@target, now: @clock.now, databases:).call
+          def write(databases: nil, live: ->(_line) {}) = Publisher.new(@target, now: @clock.now, databases:, live:).call
 
           # The folder a backup would be written to and the databases it would copy.
           def plan(databases: nil)

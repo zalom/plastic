@@ -69,7 +69,7 @@ class BackupTest < Plastic::TestCase
     backup_call(home, "--store", "alpha", "--databases", "work_graph,references,work_graph")
     folder = folder_names(home).first
 
-    assert_equal ["references-#{folder}.db", "status.yml", "work_graph-#{folder}.db"], Dir.children(File.join(backups_dir(home), folder)).sort
+    assert_equal ["backup.log", "references-#{folder}.db", "status.yml", "work_graph-#{folder}.db"], Dir.children(File.join(backups_dir(home), folder)).sort
   end
 
   def test_a_backup_is_marked_done_with_the_goal_full
