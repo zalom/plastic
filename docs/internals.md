@@ -325,11 +325,11 @@ direction, `--prune` writes no `revisions.md` entries.
 Session resolution feeds the record hook and the lock (intent 52). Claude Code does not
 export a session id env var into the hook environment; it passes `session_id` on the hook
 stdin JSON. A launcher such as `hooks/record` pipes stdin unchanged to its Ruby script
-(`scripts/hook-record`), and the Ruby script parses `session_id` out of the JSON. `Arm.resolve_session` takes the first non-empty of three
+(`scripts/hook-record`), and the Ruby script parses `session_id` out of the JSON. The session resolver takes the first non-empty of three
 sources, in precedence order: the explicit stdin `session_id`, the `CLAUDE_CODE_SESSION_ID`
 environment variable, and a derived `auto-<digest>` key (a short SHA256 of `store/intent_id`).
-The derived key is deterministic, so a session-less arm and a later session-less check resolve
-to the same session key, and a null session can never be persisted to `delivery.lock`.
+The derived key is deterministic, so a session-less take and a later session-less check resolve
+to the same session key, and a null session is never written to a lock row.
 
 Leftover cleanup happens at install and update, not at arm or disarm: `InstallerCore#distribute`
 deletes every `store/.tmp/*/current` file and every `plastic-<session>--<id>.json` file sitting
@@ -465,12 +465,12 @@ live command line retires, the separate test process ends. See
 `scripts/lib/plastic/cli/table.rb` routes 20 work graph commands against `work_graph.db` and
 `knowledge_graph.db`: `node add`, `node remove`, `node claim`, `node release`, `node done`,
 `node fail`, `node park`, `node answer`, `edge add`, `edge remove`, `intent spec`, `intent
-rule`, `auto start`, `graph check`, `graph ready`, `graph show`, `intent show`, `intent
+rule`, `auto`, `graph check`, `graph ready`, `graph show`, `intent show`, `intent
 brief`, `status`, and `next`. See [architecture](architecture.md#the-work-graph) for the node
 and edge state machine and the ruling/spec mechanics; this section covers the four read
 commands stage 4 added on top of them.
 
-`StartAuto.delivery_started?` checks both active status and a live auto lock held by the
+`StartAuto.delivery_started?` checks both active status and a live lock in auto mode held by the
 calling session before skipping the write. The foreign live-lock gate still runs first.
 `AddEdge` and `RemoveEdge` clear a failed result before retrying the write. Their gates
 still report why an edge could not be added or removed.
@@ -746,7 +746,7 @@ applied that rule with thin CLIs over `scripts/lib/` modules. Three of them rema
 the commit, merge, and worktree-removal steps for the agent or owner to run by hand (intent
 390: Plastic runs no version control command, so it never inspects, merges, or removes the
 code worktree itself). `scripts/end-intent` runs the same backfill as
-`scaffold-intent` at close. The arm step is `plastic auto start ID`.
+`scaffold-intent` at close. The arm step is `plastic auto ID`.
 
 `scripts/scaffold-intent` is one CLI with one verb, `backfill` (its `spec`, `checklist`, and
 `outcome` subcommands were removed in 2.0, intent 308). It runs `BackfillIntent`
@@ -918,141 +918,44 @@ Claude Code and Astra on Codex; Primary uses medium effort, and Secondary uses h
   consultation roles summoned deliberately by the user or the main session. Both default
   to Fable on Claude Code and Astra on Codex. Primary uses medium effort. Secondary uses high.
 
-## worktree provisioning and the delivery lock (intent 73c)
+## the delivery lock and the code worktree (intent 413)
 
-The harness worktree tool assumes the current directory IS the repo root, which
-is false for Plastic (cwd is often the parent of the repo subdir). When that
-mismatch occurred the tool silently degraded to a feature branch on the shared
-checkout, so parallel intent deliveries were not isolated. Plastic supplies its
-own isolation instead, deterministic and cwd-independent.
+The delivery lock is one row of the `locks` table in the machine's `local.db`, read as
+`Graph::Lock` (`scripts/lib/plastic/graph/lock.rb`): the store, the intent id, the session id,
+the mode, and the `taken_at` and `renewed_at` times. `Lock#live?` is true while `renewed_at`
+lies within the TTL of 1800 seconds. The earlier `delivery.lock` file, the internal lock
+program with its `arm`, `fix`, `reclaim`, `delegate` and `claim` verbs, the per-artifact claim
+files, and the old start and lock subcommands of `plastic auto` are retired. Owner ruling of 2026-10-07: in auto mode the worktree is the lock, `plastic auto ID`
+is the only auto command, and lock commands live under `intent lock`.
 
-- **Single source of truth**: `scripts/lib/worktree.rb` (module `Worktree`) is
-  the only definition of how an intent's worktree path and lock are computed.
-  Plastic runs no version control command (owner ruling 2026-09-24, intent
-  390): `Worktree` only computes the deterministic path and branch a project
-  intent's code worktree would have and never shells to `git`. It is
-  hermetic, idempotent, uses no eval, and does no global-constant injection,
-  mirroring `intent_validator.rb` and `store_provisioning.rb`.
-- **One worktree, id-first name**: `Worktree.paths` is pure and returns the
-  code worktree (`<repo>/.claude/worktrees/{id}--{slug}`, branch
-  `plastic/{id}--{slug}`). A paired store worktree used to exist; intent 178
-  retired it, and store-write safety for lifecycle docs now comes from intent
-  197's branch-from-main plus scoped-commit mechanism.
-  `Worktree.repo_for` resolves the abs repo path from `projects.yml` (reusing the
-  `YAML.safe_load` pattern used across `scripts/lib`), or nil.
-- **Reports, never runs git** (intent 390): `Arm.worktree_block` resolves the
-  slug from the intent dir, derives the code worktree's path and branch
-  through `Worktree.paths`, and reports `provisioned` as whether that path
-  already exists on disk -- `code` and `code_branch` name the expected
-  workspace whether or not it exists yet; only a store-only project (no repo
-  resolves) leaves them blank. Neither `Arm.arm`, `Arm.disarm`, nor
-  `Arm.repair` takes a `runner:` seam or runs git. `release`, `finish`,
-  `merge_branch`, `current_branch`, `remove_worktree`, `prune`, `git_repo?`,
-  and `ensure_gitignored` are gone from `Worktree`; when a worktree was
-  provisioned, `Arm.disarm` names the `git worktree remove` instruction as a
-  `worktree_removal` result field, and `end-intent` prints it for the closer
-  to run by hand, after committing and merging. `Worktree::ShellRunner` is
-  gone too (intent 390 part B): `node_worktree.rb` and the `runner_*`
-  node-graph modules now compute the same path/branch/commit-line instructions
-  for the graph's own node worktrees -- `provision` reports `provisioned` only
-  when the path already exists on disk, `merge` names the `git merge --no-ff
-  --no-edit` instruction into the intent branch, and `release` names the `git
-  worktree remove` instruction on a terminal state -- creating, merging, and
-  removing nothing itself, in every one of these modules alike.
-- **Unified `PLASTIC_HOME` seam** (intent 169): every CLI-script and hook entry
-  point resolves its sandbox override from the single env var `PLASTIC_HOME`
-  (`read-config`, `hook-capture`, `provision-project-store`,
-  `validate-intent`, `doctor.rb`, `install.rb`, `hooks/check-update`); an older,
-  differently-named env var that only `read-config` read was hard-cut, not
-  aliased. Holding this seam is a level mismatch: the env var names the
-  plastic_home ROOT (`~/.plastic`), and scripts turn it into store paths through
-  `StoreLayout`, while `worktree.rb`'s
-  `home:` kwarg names the OS HOME (the PARENT of `.plastic`) and computes
-  `plastic_home = File.expand_path(File.join(home, ".plastic"))` internally, so
-  threading the env value straight into `home:` would yield a
-  `~/.plastic/.plastic` bug. `Arm.home_for` therefore never reads the env: it
-  derives `home` from the already-sandboxed intent directory's store path
-  (anchored on the `.plastic` path segment, via the pure `Worktree.home_from_store`
-  helper), falling back to its `home: Dir.home` default only when the store is
-  blank or unrecognized. This closes a real incident where a sandboxed board,
-  with no override, planted a git worktree in the operator's actual
-  `~/.plastic` back when `Worktree.provision` did the resolving; deriving from
-  the store trusts the already-sandboxed value over the ambient environment,
-  and the same derivation now guards every path `Arm.worktree_block` computes.
-  The derivation only engages when the store's plastic-home segment is
-  literally named `.plastic` (a sandbox home like `/tmp/x/.plastic` works; an
-  arbitrarily named root does not, and it falls back to the passed `home:`).
+- **Take.** `plastic auto ID` (`Commands::Auto`) runs `Workflows::PickDelivery`, then
+  `Workflows::StartAuto`. `StartAuto` refuses (exit 3) an open decision, no done criterion, a
+  done or abandoned intent, and a live lock held by another session, and fails (exit 1) when
+  the call names no session. Otherwise `work.take_lock` writes the row in `auto` mode and the
+  intent goes active. An expired lock is taken over by the same call.
+- **Renew.** The Stop hook (`plastic hook record`, `Hooks::Record`) renews every lock row the
+  session holds through `work.renew_locks`.
+- **Release.** `plastic intent end` releases the row (`Completion::Writer#release_lock`).
+- **Read.** `plastic intent lock status ID` (`Commands::IntentLockStatus`, `Workflows::ShowLock`)
+  prints `lock: none`, or the session, the mode, the taken and renewed times and `live` or
+  `expired`, and then `worktree: PATH` when a repository resolves. Its next step is
+  `plastic auto ID` for no lock or an expired one, and `plastic intent brief ID` for a live
+  one. An unknown intent is refused with exit 3.
+- **Roadmap slug.** When the word does not have the shape of an intent id, `PickDelivery`
+  reads the roadmap. It arms the first item in flight (open, active or parked intent), in
+  batch then item order, that is not parked and not held by another session's live lock. With
+  none in flight it arms nothing: the first ready item gets `plastic roadmap start SLUG ITEM`,
+  a delivered roadmap and a roadmap that waits get `plastic roadmap show SLUG`. An unknown
+  roadmap fails with exit 1.
 
-- **Foreign locks refuse with exit 3**: `plastic-lock` exits 3 when the lock
-  belongs to someone else: `arm` on a held, stale, or excluded lock, `fix` that
-  cannot repair a held or stale lock, `release` by a session that is not the
-  owner, and `reclaim` on a fresh lock. Each refusal prints a hint that names a
-  public command (`plastic auto lock status ID`); `Arm.stale_hint` carries the
-  stale wording. `arm` on an unreadable lock exits 1 and names `plastic auto
-  lock fix ID`. `Arm.repair` stamps `run_mode: auto` on a lock it rebuilds from
-  nothing, and keeps the mode of a lock it keeps. `plastic auto start` passes
-  `--harness`, `--agent`, `--model`, and `--thread` through, infers the
-  `claude` harness from `CLAUDE_CODE_SESSION_ID`, and prints the lock and the
-  worktree unless `--json` is given. The runner's re-arm hint is
-  `plastic auto start ID`.
-
-- **Three distinct evidence layers and bounded delegate history** (intent 108a):
-  the controller record proves whole-intent authority; a registered delegate record
-  authorizes one child session under that controller; a claim record identifies
-  one current writer for one artifact among already-authorized sessions. Delegate
-  activity status (`active`, `finished`, or `failed`) is observational and does not
-  remove the session from the string-array authorization list. A delegate remains
-  authorized until a separate removal mechanism exists. Finished and failed activity
-  history is capped at the 20 most recent terminal entries.
-
-## per-artifact claim tokens (intent 111)
-
-The delivery lock above resolves ownership at the whole-intent grain: it answers
-who may work an intent at all, not who may write one specific lifecycle file
-right now. Two writers that both hold the lock, whether two registered
-delegates or two subagents that inherited one `CLAUDE_CODE_SESSION_ID`, can
-write the same file, so nothing arbitrates a
-same-time write to `spec.md`, `plan.md`, `checklist.md`, or the intent file
-itself. Intent 111 adds a second, lighter layer underneath the delivery lock.
-Since the gates were removed in 2.0 (intent 302), no write path checks a claim: a
-claim is a cooperative signal that writers and orchestrators read through
-`plastic-lock`.
-
-- **Storage.** `module Claim` lives in `scripts/lib/lock.rb`, sibling to
-  `module Lock`, and never touches `Lock`'s functions. Each claim is one small
-  JSON file, `.claims/<artifact>.claim`, inside the intent directory (for
-  example `spec.md.claim`, `plan.md.claim`), carrying `artifact`,
-  `owner_session`, `acquired_at`, and `delegate` (nil unless set). Keeping one
-  file per artifact means acquiring one artifact's claim never contends on
-  another, and a corrupt or stale claim on one file cannot wedge the others.
-- **Scope, per-intent-per-artifact, never session-global.** A claim's on-disk
-  path is always `<intent_dir>/.claims/<artifact>.claim`, so it can only ever
-  affect one artifact of one intent. This is the hard guard against recreating
-  the collision-90 failure mode, where an over-armed lock froze unrelated
-  sessions.
-- **Exclusivity is O_EXCL at acquire, not session-equality.**
-  `Claim.acquire_claim` creates the file with `File::EXCL`; the first writer
-  wins (`:acquired`). Any later acquire against a FRESH existing claim returns
-  `:held` and names the holder, even when the caller shares the holder's
-  session id. A fresh claim is never idempotently re-granted; a genuine sole
-  writer acquires once and keeps the claim alive with `Claim.heartbeat`.
-- **Fail open, always, as a named contract.** `Claim.fail_open?(intent_dir,
-  artifact, ttl:, now:)` is the one place this behavior is defined and tested:
-  true only when a claim FILE exists but is unresolvable (stale past the TTL,
-  or corrupt). On a true result, the claim yields to the current writer rather
-  than blocking it: `plastic-lock claim` takes a stale claim over and says so on
-  stderr, and `plastic-lock status` reports each claim with whether it is fresh. Absence of a
-  claim is plain dormancy, not a fail-open condition. Intent 112, which planned
-  a maintenance lock on top of this test, was abandoned: no maintenance lock
-  exists, and a terminal intent directory is edited only on an explicit owner
-  grant.
-- **CLI and visibility.** `plastic-lock claim --artifact <name>` acquires a
-  claim (exit 1 and names the holder when one is already held, even by the
-  same session; takes over a stale claim automatically); `plastic-lock
-  release-claim --artifact <name>` frees it. `plastic-lock status` lists every
-  claim file, each with its artifact, owner session or delegate, acquired-at
-  time, and whether it is still fresh, so an orchestrator checking status before
-  respawning a helper can see a live writer on an artifact and skip the respawn.
+**The worktree is reported, never created.** Plastic runs no version control command (intent
+390). `Workflows::Worktree.of(scope, intent)` resolves the project repository from
+`projects.yml` and derives the code worktree at `<repo>/.claude/worktrees/{id}--{slug}` on
+branch `plastic/{id}--{slug}`. `StartAuto` prints `worktree:` and `branch:`; while the folder
+is missing, its `next:` line is the shell-escaped
+`git -C <repo> worktree add <path> -b <branch>`, which the agent runs. Once the folder exists,
+or when no repository resolves, the next step is `plastic intent brief ID`. The closer removes
+the worktree by hand after the merge.
 
 ## doctor: Codex hook registry vs. dispatcher agreement (intent 200)
 
@@ -1297,21 +1200,14 @@ on. The savepoint append does not depend on `open_day` having run: it calls
 the day ledger can still write its one savepoint line. Only a usage error (no `--cwd`, no
 `--summary`) exits 2 and writes nothing.
 
-**`plastic auto start` reports a worktree, it never creates one.** The companion half of this
-cut: `Arm.worktree_block` (see the worktree-provisioning section above) computes the expected
-code worktree's path and branch with no git call, and `scripts/lib/cli/commands/auto_start.rb`
-renders them on the screen (`present`/`not yet created`, from `provisioned`) and, when a repo
-resolves, prints the exact `git -C <repo> worktree add <path> -b <branch>` as the `next:` line
--- Plastic names the command, the agent runs it. A store-only project (no repo resolves) keeps
-the previous next step, `plastic auto brief ID`, since there is no workspace to create.
+**`plastic auto ID` reports a worktree, it never creates one.** `Workflows::Worktree` computes
+the expected code worktree's path and branch with no git call, and `StartAuto` prints them and,
+while the folder is missing, the exact `git -C <repo> worktree add <path> -b <branch>` as the
+`next:` line. Plastic names the command, the agent runs it. A store-only project (no repo
+resolves) prints no worktree, and the next step is `plastic intent brief ID`.
 
-**`plastic auto start` takes a roadmap slug (intent 391).** When the argument names no intent
-directory and `roadmaps/<slug>.md` exists, `AutoStart` reads the roadmap through
-`RoadmapGraph.analyze`. A missing `## Graph` section, a cycle, or a dangling id exits 1 and
-names `plastic roadmap check`. Otherwise it arms the first `ready` id in file order, the same
-arm an intent id takes, and prints the rest as the `queue` row. With nothing ready, a
-`blocked` entry exits 3, because it needs an owner decision. With no blocked entry either,
-it prints `ready none` and names `plastic roadmap show` as the next step.
+**`plastic auto` takes a roadmap slug (intents 391 and 413).** See the delivery lock section
+above for how `PickDelivery` picks the item in flight or offers the ready one.
 
 **The Codex adapter prints, it never runs (intent 391).** `HarnessAdapter.render` gives a
 Codex node the same dispatch line as Claude Code, plus a `run:` line from
@@ -1789,9 +1685,7 @@ stores, including creation, screens, project scope, direct progression, graph
 lock prerequisites, and blocked Future work.
 
 `IntentStep` forwards graph returns, harness selection, and the explicit core-drift
-override to the runner. `AutoStart` exposes the owner-approved inline override;
-without it, a started conversation session returns refusal code 3. Lock screens
-read `owner_session`, with the older `session` field as a compatibility fallback.
+override to the runner. `plastic intent lock status ID` reads the lock row from `local.db`.
 The renderer supports both the RDoc 7 constructor with options and RDoc 8's
 keyword constructor, so an installed package does not depend on the development
 bundle's RDoc version.

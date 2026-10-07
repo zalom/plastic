@@ -152,7 +152,7 @@ The following table lists the same classes. Each one sits in the `Plastic` modul
 | `Graph::Knowledge::Legacy::Index` | Reads the `INDEX.md` of a store written before `store/index.json`. |
 | `Hook` | The base class of a hook command. It prints a plain text reply and always exits 0. |
 | `Hooks::Recap` | The lines `hook resume` prints, from rows alone: the first line, the open intents, the previous session, the intent in progress and the note. |
-| `Hooks::StopGate` | Whether `hook record` blocks a stop: the harness, the config flag, a live auto lock and a ready node, all four. |
+| `Hooks::StopGate` | Whether `hook record` blocks a stop: the harness, the config flag, a live delivery lock held in auto mode and a ready node, all four. |
 | `Hooks::Entries` | The harness hook groups, status line and screens entry the installer writes into Claude Code and Codex. |
 | `Config` | Reads `config.yml`; a missing or broken file never stops a hook or a command, it reads every flag at its default. |
 

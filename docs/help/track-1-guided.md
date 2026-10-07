@@ -78,8 +78,7 @@ Checkpoint: open `graph.md` and point at the one node this worked example needs.
 Run `plastic next`.
 
 Graph execution needs the delivery lock. Without it, `plastic next` names
-`plastic auto start ID` as the next step. From a conversation session, `auto start` refuses with
-exit 3 unless the owner approves `--allow-inline`; stop and report the refusal.
+`plastic auto ID` as the next step. When that command exits 3, stop and report the refusal.
 
 Teach the loop: `plastic graph ready ID` lists which nodes are ready. Close a finished node with
 `plastic node done`. `plastic node answer` closes a node that waits on an owner's ruling.

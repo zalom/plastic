@@ -20,30 +20,30 @@ track touches a real project.
 ### 1. Board a small intent and choose auto
 
 Start from an active intent (create one first with `plastic intent new` if none
-exists, the same way as track 1 station 1). Run `plastic auto start ID`.
+exists, the same way as track 1 station 1). Run `plastic auto ID`. It takes exactly one id.
 
-Artifact: the delivery lock arms (`delivery.lock` in the intent directory). The command names
-the code worktree at `<repo>/.claude/worktrees/ID--slug` on branch `plastic/ID--slug`, and its
-`next:` line is the `git worktree add` command that creates it:
+Artifact: the delivery lock is taken (a row in the machine's `local.db`) and the intent goes
+active. When the store's project names a repository, the command names the code worktree at
+`<repo>/.claude/worktrees/ID--slug` on branch `plastic/ID--slug`, and its `next:` line is the
+`git worktree add` command that creates it:
 
 ```text
-intent    2--shout
-lock      acquired by auto-9184f6c4fa, auto mode
-worktree  /home/you/greeter/.claude/worktrees/2--shout (not yet created)
+worktree: /home/you/greeter/.claude/worktrees/2--shout
+branch: plastic/2--shout
+next: git -C /home/you/greeter worktree add /home/you/greeter/.claude/worktrees/2--shout -b plastic/2--shout
 ```
 
-To start a roadmap instead, pass its slug: `plastic auto start SLUG` arms the first intent
-in the roadmap's file order whose dependencies are all delivered, and prints the rest of the
-ready queue. A cycle or an unknown id in the graph exits 1. A blocked entry with nothing
-ready exits 3. When nothing is ready, the next step is `plastic roadmap show SLUG`.
+To deliver a roadmap instead, pass its slug: `plastic auto SLUG` arms the first item in
+flight, in batch then item order, that is neither parked nor held by another session. When
+no item is in flight, it arms nothing: a ready item gets `plastic roadmap start SLUG ITEM` as
+the next step, and a roadmap that is delivered or waits gets `plastic roadmap show SLUG`. An
+unknown roadmap exits 1.
 
-Run from inside a conversation session, `plastic auto start` refuses with exit 3: an intent is
-not delivered inline. The owner may approve an inline take with `--allow-inline`. Otherwise
-the harness spawns the team, and the team takes the intent. Exit 3 means stop and report; never
-retry with another flag on your own.
+An intent with an open decision or no done criterion, or one another session holds, is
+refused with exit 3. Exit 3 means stop and report; never retry with another flag on your own.
 
 `plastic intent brief ID` prints the preamble the spawned lead starts from, and
-`plastic intent show ID` shows who holds the lock.
+`plastic intent lock status ID` shows who holds the lock.
 
 Checkpoint: name the one precondition auto needs before it will start: the intent you name
 must already exist in the store the command resolves to.
@@ -73,7 +73,7 @@ Checkpoint: name one thing auto will always stop and ask about, rather than deci
 ### 3. Walking the record
 
 No new command. Auto keeps one delivery in one place and writes down every move: the delivery
-lock (one owner at a time, a `delivery.lock` file in the intent directory), the worktree (code
+lock (one owner at a time, a row in `local.db`), the worktree (code
 edits land on the intent's own branch), the savepoint ledger (one line per lifecycle file the
 team writes), and the day ledger (the request that started this run moves from pending to open
 when the first project file lands). Nothing blocks the team; the record is how you follow it.

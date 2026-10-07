@@ -79,17 +79,15 @@ The Metrics cops are on for the whole repository in `.rubocop.yml`. `.rubocop_to
 
 ### Worktrees and the single-owner lock
 - Single owner, mandatory. Exactly one session or agent develops an intent's delivery at a
-  time. Ownership is a session-keyed `delivery.lock` file in the intent directory; liveness
-  is a lease (the owner's hooks refresh the file mtime on tool activity, stale means the
-  heartbeat is older than the TTL); the lock file is the truth of ownership. If you find a fresh lock owned by another session, back
-  off. The public commands refuse a foreign lock with exit 3; inspect it with
-  `plastic auto lock status ID`. A stale lock is reclaimed only through the internal
-  `plastic-lock reclaim`, an owner step (audited in
-  savepoint.md); disarm clears the lock, and `plastic-lock fix` is the repair path for
-  corrupt or legacy state.
+  time. Ownership is a session-keyed lock row in the machine's `local.db`; liveness is a
+  lease (the record hook renews the row on tool activity, and a lock expires when its renewal
+  is older than the TTL); the lock row is the truth of ownership. If you find a live lock owned
+  by another session, back off. `plastic auto ID` refuses a foreign live lock with exit 3;
+  inspect it with `plastic intent lock status ID`. An expired lock is taken over by the next
+  `plastic auto ID`, and `plastic intent end` releases the lock.
 - Every code-touching intent gets its own worktree named `{id}--{slug}`, and code edits happen
   only inside it. Plastic runs no version control command, so it does not create this worktree:
-  at arm time (`plastic auto start ID`, the only public arm), it resolves the repo from
+  at arm time (`plastic auto ID`, the only auto command), it resolves the repo from
   `projects.yml`, computes the expected path and branch, and prints the exact
   `git -C <repo> worktree add <path> -b <branch>` for the agent to run. The code worktree lives
   at `<repo>/.claude/worktrees/{id}--{slug}` on branch `plastic/{id}--{slug}`. It is the only

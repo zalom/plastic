@@ -6,22 +6,18 @@ an agent used to read as prose.
 
 ## Auto commands
 
-The following table shows each auto command and what it does:
+The following table shows each command an auto team runs and what it does:
 
 | Command | What it does |
 | ------- | ------------ |
-| `plastic auto start ID\|ROADMAP-SLUG [--allow-inline] [--harness NAME] [--agent NAME] [--model MODEL] [--thread ID]` | Arms the delivery lock of intent `ID` for this session and prints the lock and the code worktree. Given a roadmap slug, it arms the roadmap's first ready intent in file order and prints the rest of the queue. An intent id wins over a roadmap with the same name. The flags record who delivers; under Claude Code the harness defaults to `claude`. From a conversation session, `start` refuses with exit 3 unless you pass `--allow-inline` with the owner's approval. |
-| `plastic auto brief ID [--role ROLE]` | Prints the text that a spawned agent starts from. With `--role advisor`, it adds the advisor shapes. |
-| `plastic auto report ID [--role ROLE]` | Prints the intent's completion report, then the rules for a review by risk. |
-| `plastic auto lock status ID` | Prints who holds the delivery lock and how fresh it is. |
-| `plastic auto lock fix ID` | Repairs a corrupt or old-format lock and prints what it did. |
-| `plastic auto lock release ID` | Releases the lock. |
+| `plastic auto ID` | Takes the delivery lock of intent `ID` for this session, sets the intent active, and prints the code worktree and its branch. While the worktree folder is missing, the `next:` line is the `git worktree add` command that creates it. Given a roadmap slug instead, it arms the roadmap's first item in flight, or names `plastic roadmap start SLUG ITEM` for the first ready item. |
+| `plastic intent lock status ID` | Prints the session that holds the lock, its mode, when it was taken and renewed, whether it is live or expired, and the code worktree. |
+| `plastic intent brief ID` | Prints the text that a spawned agent starts from. |
 
-Every command takes `--json`. `plastic auto` alone lists the subcommands. An unknown intent
-exits 1, and an unknown lock verb exits 2. A lock that belongs to another session exits 3:
-`take` and `lock fix` refuse a held or stale lock, and `lock release` refuses a session that
-does not own the lock. The refusal names `plastic auto lock status ID`, which shows the owner.
-Reclaiming a stale lock is the owner's step.
+`plastic auto` takes exactly one id. An unknown roadmap exits 1. A live lock that belongs to
+another session exits 3, and so do an open decision and a missing done criterion. Run
+`plastic intent lock status ID` to see who holds the lock. An expired lock is taken over by
+the next `plastic auto ID`, and `plastic intent end` releases the lock.
 
 ## Session commands
 
