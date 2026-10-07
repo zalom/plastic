@@ -19,19 +19,32 @@ module Plastic
           def initialize(body, intent_id)
             @lines = body.split("\n", -1)
             @intent_id = intent_id
+            @revised = []
           end
+
+          # The section's blank lines kept around the new text; an empty section gets one blank line each side.
+          def self.filled(old, text)
+            return ["", text, ""] if old.all?(&:empty?)
+
+            before = old.take_while(&:empty?)
+            after = old.reverse.take_while(&:empty?)
+            before + [text] + after
+          end
+
+          # The lines of a section, from its heading up to the next heading.
+          def self.lead(start, lines) = lines[(start + 1)..].take_while { |text| !text.match?(HEADING) }
 
           # The text under `## Context`, as one line.
           def why
             start = @lines.index("## Context")
-            start ? lead(start).reject(&:empty?).join(" ") : ""
+            start ? Revision.lead(start, @lines).reject(&:empty?).join(" ") : ""
           end
 
           def revise(line, why = nil)
-            lines = @lines.map { |text| retitle(text, line) }
-            lines = replace_lead(lines, "## Intent", line)
-            lines = rewhy(lines, why) if why
-            lines.join("\n")
+            @revised = @lines.map { |text| retitle(text, line) }
+            replace_lead("## Intent", line)
+            rewhy(why) if why
+            @revised.join("\n")
           end
 
           private
@@ -48,30 +61,18 @@ module Plastic
             close ? @lines.index(text) <= close : false
           end
 
-          def rewhy(lines, why)
-            return replace_lead(lines, "## Context", why) if lines.include?("## Context")
+          def rewhy(why)
+            return replace_lead("## Context", why) if @revised.include?("## Context")
 
-            at = lines.index("## Outcome") || lines.size
-            lines.dup.insert(at, "## Context", "", why, "")
+            @revised.insert(@revised.index("## Outcome") || @revised.size, "## Context", "", why, "")
           end
 
-          def replace_lead(lines, heading, text)
-            start = lines.index(heading)
-            return lines unless start
+          def replace_lead(heading, text)
+            start = @revised.index(heading)
+            return unless start
 
-            old = lead(start, lines)
-            lines[0..start] + filled(old, text) + lines[(start + 1 + old.size)..]
-          end
-
-          def lead(start, lines = @lines) = lines[(start + 1)..].take_while { |text| !text.match?(HEADING) }
-
-          # The section's blank lines kept around the new text; an empty section gets one blank line each side.
-          def filled(old, text)
-            return ["", text, ""] if old.all?(&:empty?)
-
-            before = old.take_while(&:empty?)
-            after = old.reverse.take_while(&:empty?)
-            before + [text] + after
+            old = Revision.lead(start, @revised)
+            @revised[start + 1, old.size] = Revision.filled(old, text)
           end
         end
       end

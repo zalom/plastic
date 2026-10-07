@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "revision"
+require_relative "reviser/change"
 require_relative "../store_folder"
 require_relative "../../retrieval/evidence/writer"
 
@@ -12,19 +12,6 @@ module Plastic
         # the knowledge graph, then its title row. The old revision row stays,
         # so the old text reads back by its qualified reference.
         class Reviser
-          # One revise of one intent: the file row it starts from, and the new What and Why.
-          Change = Data.define(:intent, :document, :line, :why) do
-            def path = "#{intent.dir}/#{intent.file}"
-
-            def revision = Revision.new(document.body, intent.intent_id)
-
-            def old_why = revision.why
-
-            def body = revision.revise(line, why)
-
-            def same? = line == intent.title && body == document.body
-          end
-
           TITLE_SQL = <<~SQL
             UPDATE intents SET title = :title, updated_at = :now
             WHERE intent_id = :intent_id AND origin_id = :origin AND status NOT IN ('done', 'abandoned')
@@ -38,37 +25,26 @@ module Plastic
 
           # The change, or nil when the intent has no file row.
           def change(intent, line, why)
-            document = @retrieval.fetch(intent.intent_id, intent.file)
-            document && Change.new(intent:, document:, line:, why:)
+            key = intent.document_key
+            document = @retrieval.fetch(*key)
+            document && Change.new(intent:, document:, history: uri(key), edited: edited(intent), line:, why:)
           end
-
-          # Why the change cannot be written, or nil.
-          def problem(change) = line_problem(change.line) || edit_problem(change) || same_problem(change)
 
           # Writes the change and returns the qualified references of the old and the new revision.
           def write(change)
-            intent_id = change.intent.intent_id
-            path = change.intent.file
-            old = @retrieval.reference(intent_id, path)
-            Retrieval::Evidence::Writer.new(@databases.fetch(:knowledge), @retrieval.origin_id).write(intent_id, path, change.body)
-            write_title(intent_id, change.line)
-            [old, @retrieval.reference(intent_id, path)].map { |reference| reference.fetch(:uri) }
+            key = change.intent.document_key
+            Retrieval::Evidence::Writer.new(@databases.fetch(:knowledge), @retrieval.origin_id).write(*key, change.body)
+            write_title(key.first, change.line)
+            [change.history, uri(key)]
           end
 
           private
 
-          def line_problem(line)
-            "the new What is one line; it holds a line break" if line.include?("\n")
-          end
+          def uri(key) = @retrieval.reference(*key).fetch(:uri)
 
-          def edit_problem(change)
+          def edited(intent)
             printed = @retrieval.printed
-            edited = [change.path, StoreFolder::INDEX].find { |path| @folder.exist?(path) && @folder.digest(path) != printed[path] }
-            "#{edited} changed by hand since the last print; run plastic sync up first" if edited
-          end
-
-          def same_problem(change)
-            "intent #{change.intent.intent_id} already reads this What and Why; nothing to change" if change.same?
+            ["#{intent.dir}/#{intent.file}", StoreFolder::INDEX].find { |path| @folder.exist?(path) && @folder.digest(path) != printed[path] }
           end
 
           def write_title(intent_id, title)

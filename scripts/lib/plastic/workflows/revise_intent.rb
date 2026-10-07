@@ -25,7 +25,7 @@ module Plastic
 
       read "check the change" do |context|
         context[:change] = context.work.revision(context.intent, context.line, context.why)
-        context[:problem] = context.change ? context.work.revision_problem(context.change) : "intent #{context.intent_id} has no file row; run plastic sync up first"
+        context[:problem] = context.change ? context.change.problem : "intent #{context.intent_id} has no file row; run plastic sync up first"
       end
 
       gate "%{problem}", stops: :failure, pass: ->(context) { context.problem.nil? }

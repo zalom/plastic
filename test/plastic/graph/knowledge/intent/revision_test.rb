@@ -95,6 +95,14 @@ class IntentRevisionTest < Plastic::TestCase
     assert_includes revised, %(intent: "Say \\"hi\\": now"\n)
   end
 
+  def test_a_page_without_front_matter_or_intent_section_keeps_an_intent_line_in_its_text
+    assert_equal "# 7 - New line\n\nintent: keep\n", revise("# 7 - Old line\n\nintent: keep\n", "New line")
+  end
+
+  def test_the_why_of_a_page_without_context_is_empty
+    assert_equal "", Plastic::Graph::Knowledge::Intent::Revision.new(NO_CONTEXT_PAGE, "7").why
+  end
+
   def test_the_why_reads_the_context_lead_as_one_line
     why = Plastic::Graph::Knowledge::Intent::Revision.new(LEGACY_PAGE, "415").why
 

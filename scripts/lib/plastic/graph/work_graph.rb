@@ -22,7 +22,6 @@ module Plastic
       def_delegator "@writers.intents", :problem, :intent_problem
       def_delegator "@writers.intents", :ref_line
       def_delegator "@writers.revisions", :change, :revision
-      def_delegator "@writers.revisions", :problem, :revision_problem
       def_delegator "@writers.revisions", :write, :revise_intent
       def_delegator "@writers.completions", :close, :close_intent
       def_delegator "@writers.completions", :evidence, :completion_evidence
