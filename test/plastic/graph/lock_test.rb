@@ -20,7 +20,7 @@ class LockTest < Plastic::TestCase
   end
 
   def test_a_lock_reads_from_its_home_row
-    store_graphs.databases[:home].transaction do |batch|
+    store_graphs.databases[:local].transaction do |batch|
       batch.put(:locks, { store: "global", intent_id: "1", session_id: "s-1", mode: "auto", taken_at: STAMP, renewed_at: STAMP })
     end
 

@@ -59,6 +59,17 @@ class DisposableCopyTest < Plastic::TestCase
     end
   end
 
+  def test_a_home_db_not_yet_renamed_is_copied_and_read_as_local_db
+    with_seed do |home|
+      Plastic::Graph.open(home:, store: "global").databases[:local].transaction { |batch| batch.insert(:routine_runs, { store: "global", tool: "t", subject: "" }) }
+      Plastic::Graph::Database::ConnectionPool.release(home)
+      File.rename(File.join(home, "local.db"), File.join(home, "home.db"))
+      copy_of(home).within do |copy|
+        assert_equal 1, Plastic::Graph.open(home: copy.path, store: "global").databases[:local].row("SELECT count(*) AS n FROM routine_runs WHERE tool = 't'").fetch("n")
+      end
+    end
+  end
+
   def test_the_copy_is_removed_after_the_block
     with_seed do |home|
       kept = copy_of(home).within(&:path)

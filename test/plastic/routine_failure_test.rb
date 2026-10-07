@@ -63,7 +63,7 @@ class RoutineFailureTest < Plastic::TestCase
     call = plastic("kernel", "gate", "pass")
 
     assert_equal 1, call.code
-    assert_includes call.err, "home.db"
+    assert_includes call.err, "local.db"
     assert_equal "", call.out
   end
 end

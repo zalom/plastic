@@ -5,7 +5,7 @@ require_relative "../../test_helper"
 class WorkGraphTest < Plastic::TestCase
   def work = store_graphs.work
 
-  def run_session(graphs) = graphs.databases[:home].row("SELECT session_id FROM routine_runs WHERE subject = 1").fetch("session_id")
+  def run_session(graphs) = graphs.databases[:local].row("SELECT session_id FROM routine_runs WHERE subject = 1").fetch("session_id")
 
   def test_write_intent_returns_the_intent_and_ignores_the_databases
     intent = work.write_intent(title: "Alpha")

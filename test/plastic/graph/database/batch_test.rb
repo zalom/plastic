@@ -53,7 +53,7 @@ class DatabaseBatchTest < Plastic::TestCase
     assert_match(/WHERE changes\(\) > 0;\z/, batch.statements.last)
   end
 
-  def test_the_home_database_keeps_no_change_log
+  def test_the_local_database_keeps_no_change_log
     batch = Batch.new.put(:locks, { store: "s", intent_id: "1", session_id: "x", mode: "auto", taken_at: STAMP, renewed_at: STAMP })
 
     assert_empty(batch.statements.grep(/INSERT INTO changes/))

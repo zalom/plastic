@@ -17,12 +17,12 @@ class KnowledgeBackupRestorerTest < Plastic::TestCase
 
   def root = File.join(@restore_home, "stores", "alpha")
 
-  def home_db = Plastic::Graph.open(home: @restore_home, store: "alpha").databases.fetch(:home)
+  def local_db = Plastic::Graph.open(home: @restore_home, store: "alpha").databases.fetch(:local)
 
-  def restorer(now: at(2026, 6, 1, 12, 0, 0)) = Restorer.new(home_db, root, "alpha", now:)
+  def restorer(now: at(2026, 6, 1, 12, 0, 0)) = Restorer.new(local_db, root, "alpha", now:)
 
   def take_lock(renewed_at)
-    home_db.transaction do |batch|
+    local_db.transaction do |batch|
       batch.put(:locks, { store: "alpha", intent_id: 1, session_id: "s-1", mode: "auto", taken_at: renewed_at, renewed_at: }, statement: :insert)
     end
   end
@@ -48,7 +48,7 @@ class KnowledgeBackupRestorerTest < Plastic::TestCase
     restorer.call(STAMP)
 
     assert_equal [STAMP, "20260601120000"], folder_names(@restore_home)
-    assert_equal 2, home_db.row("SELECT count(*) AS n FROM backups").fetch("n")
+    assert_equal 2, local_db.row("SELECT count(*) AS n FROM backups").fetch("n")
   end
 
   def test_a_file_that_fails_the_check_replaces_nothing

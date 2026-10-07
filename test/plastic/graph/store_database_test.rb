@@ -12,7 +12,7 @@ class StoreDatabaseTest < Plastic::TestCase
   def test_the_databases_sit_in_the_store_folder
     databases = store_graphs.databases
 
-    assert_equal File.join(@plastic_home, "home.db"), databases[:home].path
+    assert_equal File.join(@plastic_home, "local.db"), databases[:local].path
     %i[work knowledge references].zip(%w[work_graph.db knowledge_graph.db references.db]).each do |key, file|
       assert_equal store_path(file), databases[key].path
     end

@@ -31,8 +31,8 @@ class KnowledgeBackupPurgerTest < Plastic::TestCase
     home = fresh_home
     backup_at(home, at(2026, 1, 1, 10, 0, 0))
     Plastic::Graph::Knowledge::Backup::Folders.new(File.join(home, "stores", "alpha")).write_report("20260101100000", status: "failed", goal: "full")
-    home_db = Plastic::Graph.open(home:, store: "alpha").databases.fetch(:home)
-    Purger.new(home_db, File.join(home, "stores", "alpha"), "alpha").remove("20260101100000")
+    local_db = Plastic::Graph.open(home:, store: "alpha").databases.fetch(:local)
+    Purger.new(local_db, File.join(home, "stores", "alpha"), "alpha").remove("20260101100000")
 
     assert_empty folder_names(home)
   end

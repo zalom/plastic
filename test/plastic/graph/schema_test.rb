@@ -10,11 +10,11 @@ class SchemaTest < Plastic::TestCase
   def table(name) = Schema.table_named(name)
 
   def test_the_schema_names_each_database_file
-    assert_equal %w[home.db work_graph.db knowledge_graph.db references.db], %i[home work knowledge references].map { |key| Schema.file(key) }
+    assert_equal %w[local.db work_graph.db knowledge_graph.db references.db], %i[local work knowledge references].map { |key| Schema.file(key) }
   end
 
   def test_the_schema_joins_each_database_tables_ddl
-    assert_equal [table(:routine_runs).ddl, table(:sessions).ddl, table(:locks).ddl, table(:backups).ddl].join("\n"), Schema.fetch(:home)
+    assert_equal [table(:routine_runs).ddl, table(:sessions).ddl, table(:locks).ddl, table(:backups).ddl].join("\n"), Schema.fetch(:local)
     assert_equal %i[documents document_revisions document_heads document_passages document_fts retrieval_schema retrieval_backfills retrieval_contexts retrieval_discoveries rulings links printed changes],
       Schema.databases.fetch(:knowledge).last
   end

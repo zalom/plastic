@@ -55,10 +55,10 @@ class ChangeLogTest < Plastic::TestCase
     assert_equal "6162", JSON.parse(sole(changes(references))["row"])["data"]
   end
 
-  def test_the_home_database_keeps_no_change_log
-    home = store_graphs.databases[:home]
-    home.transaction { |batch| batch.put(:routine_runs, { store: "global", tool: "x", subject: "" }) }
+  def test_the_local_database_keeps_no_change_log
+    local = store_graphs.databases[:local]
+    local.transaction { |batch| batch.put(:routine_runs, { store: "global", tool: "x", subject: "" }) }
 
-    assert_empty home.rows("SELECT name FROM sqlite_master WHERE name = 'changes'")
+    assert_empty local.rows("SELECT name FROM sqlite_master WHERE name = 'changes'")
   end
 end

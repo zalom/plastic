@@ -12,14 +12,14 @@ class SessionNoteTest < Plastic::TestCase
     result = call("stopped", "after", "Beta", env: { "PLASTIC_SESSION" => "s-1" })
 
     assert_equal "stopped after Beta", store_graphs.retrieval.session("s-1").note
-    assert_includes result.out, "1 session in home.db"
+    assert_includes result.out, "1 session in local.db"
   end
 
   def test_a_second_note_replaces_the_first_with_no_new_row
     call("first", env: { "PLASTIC_SESSION" => "s-1" })
     call("second", env: { "PLASTIC_SESSION" => "s-1" })
 
-    assert_equal ["second"], store_graphs.databases[:home].rows("SELECT note FROM sessions WHERE session_id = 's-1'").map { |row| row.fetch("note") }
+    assert_equal ["second"], store_graphs.databases[:local].rows("SELECT note FROM sessions WHERE session_id = 's-1'").map { |row| row.fetch("note") }
   end
 
   def test_a_call_with_no_session_fails

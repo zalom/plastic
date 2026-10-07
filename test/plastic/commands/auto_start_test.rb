@@ -84,7 +84,7 @@ class AutoStartTest < Plastic::TestCase
   end
 
   def expire_lock
-    store_graphs.databases.fetch(:home).transaction do |batch|
+    store_graphs.databases.fetch(:local).transaction do |batch|
       batch.add("UPDATE locks SET renewed_at = '2000-01-01T00:00:00Z'")
     end
   end

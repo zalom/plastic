@@ -12,7 +12,7 @@ class RetrievalStoreReadsTest < Plastic::TestCase
   end
 
   def test_the_retrieval_graph_reads_the_backups
-    put(:home, :backups, { name: "alpha/20260101100000", files: 1, bytes: 1, sha256: "x", at: STAMP })
+    put(:local, :backups, { name: "alpha/20260101100000", files: 1, bytes: 1, sha256: "x", at: STAMP })
 
     assert_equal ["alpha/20260101100000"], retrieval.backups.map(&:name)
   end
