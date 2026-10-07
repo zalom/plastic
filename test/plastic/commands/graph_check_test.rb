@@ -107,4 +107,15 @@ class GraphCheckTest < Plastic::TestCase
     assert_equal 0, result.code
     assert_includes result.out, "no findings"
   end
+
+  def test_a_clean_intent_with_no_nodes_asks_for_the_map_before_planning
+    intent = open_intent
+    write_spec(intent, "# Spec\n\n## Done criteria\n- ships\n")
+
+    result = call("1")
+
+    assert_equal [0, ""], [result.code, result.err]
+    assert_includes result.out, "Before you plan, fetch the architecture map as current as possible with an architecture mapping tool such as Enola, or map the code yourself; Plastic runs no tool."
+    assert_includes result.out, "plastic node add"
+  end
 end

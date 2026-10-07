@@ -9,8 +9,8 @@ module Plastic
     class RefreshArchitecture < AgentWorkflow
       step "refresh the architecture map", done: ->(_context) { false },
         say: "Regenerate the project's architecture map with an architecture mapping tool such as Enola; the choice of " \
-          "tool is yours. Read the new map for context. When you deliver an intent, name the tool, the source revision " \
-          "the map describes, what it covers and what it leaves out in the context you submit for that intent."
+          "tool is yours. Read the new map for context. When you deliver an intent, note the tool, the source revision " \
+          "the map describes, what it covers and what it leaves out under Verification in outcome.md."
 
       outcome :handoff, offers: nil, because: "the agent refreshes the architecture map with its own tool"
       outcome :done, offers: nil, because: "the architecture map was refreshed"

@@ -79,6 +79,18 @@ class IntentEndTest < IntentEndFixture
   end
 end
 
+class IntentEndMapTest < IntentEndFixture
+  def test_a_bare_end_before_acceptance_asks_to_confirm_the_architecture_map
+    ready_intent
+
+    result = cli("intent", "end", "1")
+
+    assert_equal [0, ""], [result.code, result.err]
+    assert_includes result.out, "fetch the architecture map once more"
+    assert_includes result.out, "outcome.md"
+  end
+end
+
 class IntentEndRefusalTest < IntentEndFixture
   def test_missing_criterion_evidence_cannot_close
     intent = ready_intent

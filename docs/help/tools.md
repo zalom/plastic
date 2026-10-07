@@ -29,6 +29,11 @@ SLUG` tells the agent to regenerate the map. Both commands print instructions on
 chooses the mapping tool, runs it, and reads the result. Plastic does not run Enola and does not
 save the map, because the tool can produce it again at any time.
 
+Plastic also asks for the map at two points of an intent. When it hands planning to the agent, it
+tells the agent to fetch the map first. In `plastic intent end`, it tells the agent to fetch the map
+once more and to note the tool and the source revision under Verification in outcome.md. These are
+reminders only. Plastic does not check them.
+
 ### Using them together
 
 Reach for RTK on every shell command's output, for QMD when a question is answered somewhere in

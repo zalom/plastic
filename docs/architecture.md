@@ -354,7 +354,9 @@ and `document batch` fetch those references without changing source stores. `int
 `architecture status --project SLUG` and `architecture refresh --project SLUG` are prompts for
 the agent. The first tells it to check the project's architecture map and the second tells it to
 regenerate the map, with a mapping tool it chooses, such as Enola. Plastic runs no mapping tool
-and stores no map.
+and stores no map. Plastic also prints the same kind of instruction when it hands planning to the agent
+("fetch the map before you plan") and in `plastic intent end` ("fetch it once more and note the tool
+and revision under Verification in outcome.md"). It does not check that the agent did either.
 
 ### Store search: sqlite3, native, with companion tools alongside
 

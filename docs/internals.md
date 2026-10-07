@@ -605,7 +605,10 @@ facts in a `read` step on every call, such as `intent link`, do not need it.
 The retrieval commands open selected store databases for reads, run literal FTS search, and pin
 results to immutable revisions. `architecture status` and `architecture refresh` are routines
 with one agent workflow each. They print an instruction for the agent and write nothing. No
-Plastic path runs Enola or any other mapping tool.
+Plastic path runs Enola or any other mapping tool. The same instruction appears in two more places:
+the planning handoff of `DeliveryAction` asks for the map before the agent plans, and the
+`confirm the architecture map` step of `FinishIntent` asks for it once more after delivery. Both
+are advice. Plastic does not check that the map was fetched and does not store it.
 
 ### Companion tools: no Plastic code path calls them
 

@@ -18,9 +18,21 @@ class FinishIntentTest < Plastic::TestCase
   end
 
   def test_missing_evidence_names_the_folder_and_the_end_command
-    step = sole(finish.steps)
+    step = finish.steps.find { |text| text.include?("completion.json") }
 
     assert_includes step, "Write completion.json inside store/1--alpha"
     assert_includes step, "plastic intent end 1 --judge tests|tool|agent|owner --evidence completion.json"
+  end
+
+  def test_missing_evidence_asks_to_confirm_the_architecture_map
+    step = finish.steps.find { |text| text.include?("fetch the architecture map once more") }
+
+    assert_includes step, "outcome.md"
+  end
+
+  def test_open_records_and_no_evidence_print_records_map_and_evidence_in_order
+    steps = finish(requirements: ["outcome.md"]).steps
+
+    assert_equal ["prerequisites", "architecture map", "completion.json"], steps.map { |text| text[/prerequisites|architecture map|completion\.json/] }
   end
 end
