@@ -19,8 +19,7 @@ it. The order of steps that the skills used to carry in prose lives in these two
 ## The same result as data
 
 Add `--json` to any command except `install`, `update`, `rollback`, `uninstall` and `hook`.
-`doctor` reads the flag itself and prints its report as a JSON document. The keys are stable, so
-a script can read them.
+The command prints its rows as a JSON document. The keys are stable, so a script can read them.
 
 ## Scope
 
@@ -81,6 +80,22 @@ could not hold it safely.
 `plastic install`, `plastic update`, `plastic rollback` and `plastic uninstall` run the
 installer scripts as child processes. A script that exits 3 makes the command exit 3, and any
 other failure exits 1. See [INSTALL.md](../../INSTALL.md).
+
+## Check the installation
+
+| Command | Result |
+| ------- | ------ |
+| `plastic version` | The version, the releases, the launcher, Ruby, the sqlite3 bundle, the hooks and the installer lock. |
+| `plastic doctor` | One row for each check of this harness, then one repair row. Exits 0 when every check passes and 1 on a finding. |
+
+`plastic doctor` checks the version record, Ruby, the sqlite3 gem, the machine database, each
+registered project's store and its three databases, PLASTIC.md, and each project's AGENTS.md.
+In Claude Code it also checks the Claude version record, the hooks in
+`~/.claude/settings.json`, the import line in `~/.claude/CLAUDE.md`, and each project's
+CLAUDE.md. A row reads `ok` or names the finding. The repair row lists each repair once: a
+command, or a line to add to a file. The doctor reads files and opens the databases read-only,
+so it changes nothing. `--harness NAME` checks a named harness instead of the one the call runs
+in.
 
 ## Help that costs nothing
 

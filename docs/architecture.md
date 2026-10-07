@@ -488,9 +488,10 @@ introduced that layout. This refusal happens before installation or hook cleanup
 Legacy homes retain their existing rollback behavior.
 
 `plastic project links` saves its audit under the current global store's
-`resources/` directory. Its dry-run writes no files. Use
-`plastic doctor --agent claude`, `--agent codex`, or `--agent hermes` to select
-the harness being diagnosed.
+`resources/` directory. Its dry-run writes no files. `plastic doctor` checks the
+harness it runs in, and `plastic doctor --harness NAME` checks a named one. Each
+harness has its own module in `Plastic::Doctor::HARNESSES`; Claude Code is the
+first.
 
 ### Closing checks
 

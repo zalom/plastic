@@ -1054,6 +1054,29 @@ claim is a cooperative signal that writers and orchestrators read through
   time, and whether it is still fresh, so an orchestrator checking status before
   respawning a helper can see a live writer on an artifact and skip the respawn.
 
+## the doctor of each harness (intent 414)
+
+`plastic doctor` runs the `code_check_health` workflow
+(`scripts/lib/plastic/workflows/check_health.rb`). The workflow asks `Plastic::Doctor` for the
+checks: `Doctor::Core` for every harness, then the module that `Doctor::HARNESSES` names for
+the harness. `--harness NAME` picks the module. Without it, the doctor picks Codex when a Codex
+session variable is set, and Claude Code otherwise. A harness with no module exits 2 and names
+the harnesses that have one.
+
+`Doctor::Core` checks the version record, the parts that `plastic version` checks, the sqlite3
+gem, the machine database, PLASTIC.md, and each registered project's store and AGENTS.md. The
+machine database's file name comes from `Graph::Schema`, never a literal, so a rename of the
+file changes no doctor code. `Doctor::DatabaseCheck` opens a database read-only and compares
+its tables with the tables its schema creates. `Doctor::ClaudeCode` checks the Claude version
+record, each hook event in `~/.claude/settings.json`, the import line in `~/.claude/CLAUDE.md`,
+and each project's CLAUDE.md. A hook passes when every file its command names exists and is
+executable.
+
+Each check is a `Doctor::Check`: a label, a value that starts with `ok` or names the finding,
+and the repair. The workflow prints the rows, then one `repair:` row with each repair once,
+and fails its gate on any finding. A new harness adds one class with a public `checks` and one
+row in `HARNESSES`.
+
 ## doctor: Codex hook registry vs. dispatcher agreement (intent 200)
 
 `codex_hooks_registered_check` (`scripts/lib/doctor_core.rb`) only diffs `~/.codex/hooks.json`'s content
