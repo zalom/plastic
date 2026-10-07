@@ -45,7 +45,9 @@ module Plastic
         registered.empty? ? selected(context) : registered
       end
 
-      def self.sync_registered?(context) = context.reinstall && !(context.all || AGENT_KEYS.any? { |key| context.public_send(key) })
+      def self.sync_registered?(context) = context.reinstall && !named?(context)
+
+      def self.named?(context) = context.all || AGENT_KEYS.any? { |key| context.public_send(key) }
 
       def self.fetch_command(setting) = "#{INSTALLER} #{setting} sh"
 
@@ -67,7 +69,10 @@ module Plastic
 
       def planned_removals(keys) = keys.filter_map { |key| agent_config(key) }.flat_map { |config| agent_files(config) }
 
-      def agent_files(config) = manifest_files(manifest_path_for(nil, config)).grep(->(file) { File.exist?(file) }) + [record_dir_for(config)]
+      def agent_files(config)
+        manifest_files(manifest_path_for(nil, config)).grep(->(file) { File.exist?(file) }) +
+          [emptied_instruction_file(config), record_dir_for(config)].compact
+      end
 
       def unregistered(keys) = keys.reject { |key| agent_installed?(key) }
 

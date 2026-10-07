@@ -180,7 +180,7 @@ class Install < InstallerCore
     puts "\n\u{2705} Plastic v#{version} #{verb}."
     puts "   Registered for: #{installed.map { |r| r[:agent] }.join(", ")}"
     puts "   Run /clear (or restart your agent) to pick up new conventions."
-    puts "   Next: read docs/guides/your-first-intent-in-10-minutes.md\n\n"
+    puts "   Next: run plastic help tutorial\n\n"
 
     print_codex_hook_trust_reminder(installed)
   end

@@ -33,9 +33,7 @@ version control command, so it never merges or removes a worktree); when a workt
 provisioned, disarm names the `git worktree remove` instruction for the closer to run by hand,
 after committing and merging. Repair
 is one idempotent function with two entry points: the `plastic-lock` command (`who`, status,
-fix, release, reclaim, delegate) and the public `plastic auto lock status|fix|release ID`
-commands that wrap it, so repair
-self-heals. `who` is read-only and reports the controller, mtime heartbeat, delegates, and
+fix, release, reclaim, delegate) so repair self-heals. `who` is read-only and reports the controller, mtime heartbeat, delegates, and
 claims from durable files. This is mandatory for auto teams, not a convention.
 
 The record hook resolves the current session in a fixed precedence: the stdin `session_id`

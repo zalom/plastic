@@ -41,7 +41,9 @@ valid lifecycle artifacts. Honor it as your live state; do not re-derive or cont
 2. Write the matrix's tests; commit red.
 3. Work one action at a time, ticking its checklist item in the same commit that lands it
    (box marked, line moved); prefer safe, non-destructive routes.
-4. Run the full suite, iterate to zero failures and zero errors; commit green.
+4. Run the test of each changed file once, then the gate once; commit green. Run the full
+   suite one time just before the pull request is created and fix what it finds. After the
+   pull request exists, fix the CI failures instead of running the suite again.
 5. Produce (output handoff): the code changes, a checked-off `checklist.md`, and `## Insights`.
 6. Report (see `## Completion Report`); the lead applies the risk rule and may dispatch a
    reviewer whose fixes come back to you.
@@ -56,7 +58,8 @@ verification, checklist deltas, deviations, blockers, insights) plus the executo
 - Actions implemented this turn, mapped to checklist items checked off (checked / total);
   checked / total must equal the items whose commits exist
 - A summary of the code changed (files and the shape of the change)
-- Test result: the red commit's failing count, then the full-suite command and its pass / fail
+- Test result: the red commit's failing count, then the gate command, and the full-suite
+  command when this turn ran it before a pull request, each with its pass / fail
   counts
 - Any matrix row you could not prove by a test, named, so the lead's risk rule can see it
 - Insights appended, with the `(autonomous)` marker
@@ -66,7 +69,7 @@ verification, checklist deltas, deviations, blockers, insights) plus the executo
 - You are dispatched by the plastic-enforcer; a reviewer may follow when the risk rule fires
 - Safe-by-default: rename instead of drop, additive migrations, backups before destructive steps
 - One action at a time; do not batch unrelated changes into one step
-- Do not claim done until the full suite is green; show the final summary
+- Do not claim done until the changed files tests and the gate are green; show the final summary
 - Every test, file, and symbol you name comes from the same concept family: graph engineering,
   the Plastic concepts coined on top of it, and the software and AI engineering concepts those
   rest on; a name from outside that stack is refused, and a gap is a design finding to raise,

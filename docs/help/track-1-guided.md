@@ -43,7 +43,7 @@ Run `plastic intent show ID`.
 
 Artifact: none. The command only reads. It prints the intent's state screen, and its `next:`
 line names the step to run: `plastic intent spec ID` while the intent has no spec or graph.
-`plastic continue` reads the same way for the whole project. Neither takes a lock.
+`plastic graph resume` reads the same way for the whole store. Neither takes a lock.
 
 Checkpoint: name the step the `next:` line points at, and why.
 
@@ -65,8 +65,7 @@ is already sitting in `## Insights`, in writing.
 ### 4. How, write the graph
 
 In the same conversation, the agent turns the rulings into the graph. It writes `graph.md` from
-`templates/graph.md`. No command creates it; once it exists, the runner behind
-`plastic intent step` and `plastic intent answer` updates it.
+`templates/graph.md`. No command creates it; once it exists, `plastic node done` and `plastic node answer` update it.
 
 Artifact: `graph.md` (nodes, edges, dispatch policy) and one `nodes/N.md` file per node this
 small delivery needs. A delivery this size is one node; many independent tasks instead get
@@ -74,28 +73,25 @@ one node each, dispatched in parallel by the runner.
 
 Checkpoint: open `graph.md` and point at the one node this worked example needs.
 
-### 5. Exec, drive the runner loop
+### 5. Exec, drive the graph loop
 
-Run `plastic intent step ID`.
+Run `plastic next`.
 
-Graph execution needs the delivery lock. Without it, `intent step` names
+Graph execution needs the delivery lock. Without it, `plastic next` names
 `plastic auto start ID` as the next step. From a conversation session, `auto start` refuses with
 exit 3 unless the owner approves `--allow-inline`; stop and report the refusal.
 
-Teach the loop: `plastic intent step ID` runs the internal `runner step`, which computes which
-nodes are ready and prints a spawn block to dispatch. Pass a returned node back with
-`plastic intent step ID --return NODE=PATH`. `plastic intent answer ID --node NODE --decision
-"TEXT"` closes a node that waits on an owner's ruling. The internal
-`ruby ~/.plastic/scripts/runner status <intent_dir>` reads the ledger (running, done, blocked,
-or waiting on a decision); no public command wraps it. Call `step` again after each
-dispatched node returns, until the graph is empty.
+Teach the loop: `plastic graph ready ID` lists which nodes are ready. Close a finished node with
+`plastic node done`. `plastic node answer` closes a node that waits on an owner's ruling.
+`plastic graph show ID` reads the ledger (running, done, blocked, or waiting on a decision).
+Call `plastic next` again after each node returns, until the graph is empty.
 
 Artifact: the actual change on disk (the new README Usage section, or, in the global-store
 fallback, a short written note saved as the intent's deliverable) and every node in
 `graph.md` at a terminal status.
 
-Checkpoint: run `runner status` and confirm no node is left running or blocked, before
-moving to station 6. When the graph is complete, `intent step` names `plastic intent verify ID`.
+Checkpoint: run `plastic graph show ID` and confirm no node is left running or blocked, before
+moving to station 6. When the graph is complete, `plastic next` names `plastic intent end ID`.
 
 ### 6. End
 
@@ -115,8 +111,7 @@ two, exactly the README section (or note) just delivered.
 
 ## Wrap and where to go next
 
-That is the full cycle once: create, graph, runner step, end. Run `plastic help tutorial` for
+That is the full cycle once: create, graph, node done, end. Run `plastic help tutorial` for
 the checklist path with a merged code change. Read
-[`your-first-intent-in-10-minutes.md`](https://github.com/zalom/plastic/blob/main/docs/guides/your-first-intent-in-10-minutes.md) for the same path condensed to a single
-read, and [`reading-the-ledgers.md`](https://github.com/zalom/plastic/blob/main/docs/guides/reading-the-ledgers.md) for where each station wrote its
+[`reading-the-ledgers.md`](https://github.com/zalom/plastic/blob/main/docs/guides/reading-the-ledgers.md) for where each station wrote its
 work down.

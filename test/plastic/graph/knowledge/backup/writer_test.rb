@@ -1,51 +1,77 @@
 # frozen_string_literal: true
 
-require "zlib"
-require "rubygems/package"
 require_relative "../../../../test_helper"
-require_relative "../../../../../scripts/lib/plastic/graph/knowledge/backup/writer"
 
 class KnowledgeBackupWriterTest < Plastic::TestCase
-  Writer = Plastic::Graph::Knowledge::Backup::Writer
+  include BackupHomes
 
-  def setup
-    super
-    @backup_home = File.join(@home, "backup-home")
-    Plastic::Graph.open(home: @backup_home, store: "plastic").work.write_intent(title: "Alpha")
-    File.write(File.join(@backup_home, "config.yml"), "statusline: on\n")
+  Backup = Plastic::Graph::Knowledge::Backup
+
+  def failing_backup(home)
+    Plastic::Graph::Database::ConnectionPool.release(File.join(home, "stores", "alpha"))
+    File.write(store_file(home, "work_graph"), "not a database")
+    assert_raises(StandardError) { backup_at(home, at(2026, 1, 1, 10, 0, 0)) }
   end
 
-  def entries(name)
-    Zlib::GzipReader.open(File.join(@backup_home, "backups", name)) do |gz|
-      Gem::Package::TarReader.new(gz) { |tar| return tar.map(&:full_name) }
-    end
+  def test_a_failed_copy_leaves_no_row
+    home = fresh_home
+    failing_backup(home)
+
+    assert_empty row_names(home)
   end
 
-  def test_the_archive_holds_home_db_each_written_store_database_and_the_home_files
-    row = Writer.new(@backup_home, session: "s-1").call
+  def test_a_failed_copy_marks_the_folder_failed
+    home = fresh_home
+    failing_backup(home)
 
-    assert_equal %w[home.db stores/plastic/work_graph.db stores/plastic/knowledge_graph.db origin_id config.yml],
-      entries(row.fetch(:name))
+    assert_equal "failed", Backup::Folders.new(File.join(home, "stores", "alpha")).status("20260101100000")
   end
 
-  def test_the_row_counts_the_databases_and_hashes_the_archive
-    row = Writer.new(@backup_home, session: "s-1").call
-    path = File.join(@backup_home, "backups", row.fetch(:name))
+  def test_a_finished_backup_is_marked_done_with_its_goal
+    home = fresh_home
+    backup_at(home, at(2026, 1, 1, 10, 0, 0), databases: %w[work_graph])
+    folders = Backup::Folders.new(File.join(home, "stores", "alpha"))
 
-    assert_equal [3, Digest::SHA256.file(path).hexdigest, File.size(path), "s-1"], row.values_at(:files, :sha256, :bytes, :session_id)
-    assert_match(/\Aplastic-\d{8}-\d{6}\.tar\.gz\z/, row.fetch(:name))
+    assert_equal ["done", "partial:work_graph.db"], [folders.status("20260101100000"), folders.goal("20260101100000")]
   end
 
-  def test_a_store_database_not_yet_written_has_no_entry
-    assert_nil Writer.store_entry(File.join(@backup_home, "stores", "none"), "none", :work)
+  def test_a_full_backup_has_the_goal_full
+    home = fresh_home
+    backup_at(home, at(2026, 1, 1, 10, 0, 0))
+
+    assert_equal "full", Backup::Folders.new(File.join(home, "stores", "alpha")).goal("20260101100000")
   end
 
-  def test_each_snapshot_is_a_readable_copy_of_its_database
-    source = File.join(@backup_home, "stores", "plastic", "work_graph.db")
-    Dir.mktmpdir do |tmp|
-      name, dest = Writer.vacuum(tmp, [["work", source]]).first
+  def test_a_folder_without_a_status_file_is_unknown
+    home = fresh_home
+    FileUtils.mkdir_p(File.join(backups_dir(home), "20260101100000"))
 
-      assert_equal ["work", 1], [name, Plastic::Graph::Database::ConnectionPool.for(dest).get_first_value("SELECT count(*) FROM intents")]
-    end
+    assert_equal "unknown", Backup::Folders.new(File.join(home, "stores", "alpha")).status("20260101100000")
+  end
+
+  def test_a_failed_row_insert_removes_the_folder
+    home = fresh_home
+    refusing = Object.new
+    def refusing.transaction = raise(StandardError, "the row cannot be written")
+    target = Backup::Target.new(refusing, File.join(home, "stores", "alpha"), "alpha", nil)
+    publisher = Backup::Publisher.new(target, now: at(2026, 1, 1, 10, 0, 0))
+
+    assert_raises(StandardError) { publisher.call }
+    assert_empty folder_names(home)
+  end
+
+  def test_the_row_counts_the_databases_and_digests_the_sorted_names_and_digests
+    home = fresh_home
+    row = backup_at(home, at(2026, 1, 1, 10, 0, 0))
+    folders = Backup::Folders.new(File.join(home, "stores", "alpha"))
+
+    assert_equal [3, "alpha/20260101100000", folders.digest("20260101100000")], row.values_at(:files, :name, :sha256)
+    assert_equal row.fetch(:bytes), folders.bytes("20260101100000")
+  end
+
+  def test_a_store_with_no_database_has_nothing_to_back_up
+    writer = Backup::Writer.new(Dir.mktmpdir, "alpha", now: at(2026, 1, 1, 10, 0, 0))
+
+    assert_raises(Backup::Writer::Error) { writer.call }
   end
 end

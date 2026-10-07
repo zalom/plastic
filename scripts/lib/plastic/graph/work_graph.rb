@@ -2,7 +2,7 @@
 
 require "forwardable"
 require_relative "knowledge/roadmap/item_start"
-require_relative "knowledge/backup/writer"
+require_relative "knowledge/backup/store_backups"
 require_relative "printer"
 require_relative "prints"
 require_relative "knowledge/sync/preview"
@@ -78,9 +78,8 @@ module Plastic
 
       def print_index = @writers.sync.printer.print([Prints.index(@retrieval)])
 
-      def preview_sync(options)
-        home = File.dirname(@databases.fetch(:home).path)
-        Knowledge::Sync::Preview.new(home, @retrieval.store, options).call
+      def preview_sync(options, direction: :up)
+        Knowledge::Sync::Preview.new(home_dir, @retrieval.store, options, direction:).call
       end
 
       # Returns [ok, problem, kind]; kind is :failure or :refusal, nil on success.
@@ -89,13 +88,17 @@ module Plastic
         @writers.archives.archive(intent_id)
       end
 
-      # Packs home.db and every store's three databases, writes the row, and returns it.
-      def backup
-        home_db = @databases.fetch(:home)
-        row = Knowledge::Backup::Writer.new(File.dirname(home_db.path), session: @writers.session).call
-        home_db.transaction { |batch| batch.put(:backups, row, statement: :insert) }
-        row
+      # The backups of this store: write, preview, list, purge and restore.
+      def backups
+        store = @retrieval.store
+        Knowledge::Backup::StoreBackups.new(home_db, File.join(home_dir, "stores", store), store, session: @writers.session)
       end
+
+      private
+
+      def home_db = @databases.fetch(:home)
+
+      def home_dir = File.dirname(home_db.path)
     end
   end
 end

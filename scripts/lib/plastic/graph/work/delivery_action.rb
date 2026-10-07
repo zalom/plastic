@@ -5,14 +5,20 @@ module Plastic
     module Work
       # The next concrete action for a delivery, or instructions for the harness.
       class DeliveryAction
+        def self.worker_clause(node)
+          worker = node.by.to_s
+          worker.empty? ? "" : " with its worker #{worker}"
+        end
+
+        def self.acting(node) = (yield(node, node.id) if node)
+
         def initialize(retrieval, intent_id)
           @retrieval = retrieval
           @intent_id = intent_id
         end
 
         def call
-          intent = @retrieval.intent(@intent_id)
-          return ["none", "intent #{@intent_id} is closed", nil] unless intent.open?
+          return ["none", "intent #{@intent_id} is closed", nil] unless @retrieval.intent(@intent_id).open?
           return planning if live.empty?
           return ["plastic intent end #{@intent_id}", "the nodes are done; verify the intent's criteria", nil] if live.all? { |node| node.state == "done" }
 
@@ -23,6 +29,8 @@ module Plastic
 
         def live = @live ||= @retrieval.nodes(@intent_id).reject { |node| node.state == "removed" }
 
+        def live_in(state) = live.find { |node| node.state == state }
+
         def planning
           [nil, "the harness must plan this intent", "Read the intent's goal and done criteria. Add work with " \
             "plastic node add #{@intent_id} TITLE --criterion TEXT, then add dependencies with plastic edge add. " \
@@ -30,35 +38,34 @@ module Plastic
         end
 
         def pending_action
-          failed = live.find { |node| node.state == "failed" }
-          return ["plastic node release #{@intent_id} #{failed.id}", "node #{failed.id} failed; release it before retrying", nil] if failed
-
-          ready = @retrieval.ready_nodes(@intent_id).first
-          return ["plastic node claim #{@intent_id} #{ready.id}", "node #{ready.id} is ready", nil] if ready
-
-          waiting_action
+          step("release", live_in("failed"), "failed; release it before retrying") ||
+            step("claim", @retrieval.ready_nodes(@intent_id).first, "is ready") || waiting_action
         end
 
-        def waiting_action
-          parked = live.find { |node| node.state == "parked" }
-          return parked_action(parked) if parked
+        def step(verb, node, reason)
+          DeliveryAction.acting(node) { |_, id| ["plastic node #{verb} #{@intent_id} #{id}", "node #{id} #{reason}", nil] }
+        end
 
-          claimed = live.find { |node| node.state == "claimed" }
-          return claimed_action(claimed) if claimed
+        def waiting_action = parked_action(live_in("parked")) || claimed_action(live_in("claimed")) || blocked_action
 
+        def blocked_action
           [nil, "dependencies block the remaining nodes", "Inspect plastic graph show #{@intent_id} and repair the dependencies " \
             "through edge commands before claiming more work."]
         end
 
         def parked_action(node)
-          [nil, "the owner must answer node #{node.id}", "Ask the owner: #{node.question}. Record their answer with " \
-            "plastic node answer #{@intent_id} #{node.id} --answer TEXT."]
+          DeliveryAction.acting(node) do |held, id|
+            [nil, "the owner must answer node #{id}", "Ask the owner: #{held.question}. Record their answer with " \
+              "plastic node answer #{@intent_id} #{id} --answer TEXT."]
+          end
         end
 
         def claimed_action(node)
-          [nil, "node #{node.id} is already claimed", "Continue node #{node.id} with its worker #{node.by}. " \
-            "Record the result with plastic node done #{@intent_id} #{node.id} --judge tests|tool|agent|owner --findings TEXT, " \
-            "or record a failure with plastic node fail #{@intent_id} #{node.id} --reason TEXT."]
+          DeliveryAction.acting(node) do |held, id|
+            [nil, "node #{id} is already claimed", "Continue node #{id}#{DeliveryAction.worker_clause(held)}. " \
+              "Record the result with plastic node done #{@intent_id} #{id} --judge tests|tool|agent|owner --findings TEXT, " \
+              "or record a failure with plastic node fail #{@intent_id} #{id} --reason TEXT."]
+          end
         end
       end
     end

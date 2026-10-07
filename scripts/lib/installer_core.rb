@@ -12,6 +12,7 @@ require_relative "hook_registry"
 require_relative "plastic/clock"
 require_relative "plastic/config"
 require_relative "plastic/hooks/entries"
+require_relative "plastic/graph"
 require_relative "agent_models"
 require_relative "harness_text"
 require_relative "compact_instructions"
@@ -56,8 +57,8 @@ class InstallerCore
   # wholesale, and it never drifts because it only ever points, never duplicates.
   CODEX_AGENTS_MD_BODY = <<~MD.freeze
     Plastic is installed for this agent. Plastic is intent-driven state management: work runs
-    in one of three modes, direct, thinking, or auto (a team drives the runner loop:
-    `runner step`, `status`, `answer`). Do not jump straight to code.
+    in one of three modes, direct, thinking, or auto (an agent team drives the delivery with
+    `plastic status` and `plastic next`). Do not jump straight to code.
 
     Standing rules:
     - The command line is ~/.plastic/PLASTIC.md. Read it and follow it exactly. The
@@ -427,7 +428,6 @@ class InstallerCore
     legacy = %w[store projects INDEX.md roadmaps].any? { |entry| File.exist?(File.join(plastic_home, entry)) }
     FileUtils.mkdir_p(File.join(plastic_home, "stores", "global")) unless legacy
     FileUtils.mkdir_p(Plastic::StoreLayout.global_store(plastic_home))
-    FileUtils.mkdir_p(Plastic::StoreLayout.projects_root(plastic_home))
 
     write_if_missing(File.join(plastic_home, "config.yml"), <<~YAML)
       version: 3
@@ -443,19 +443,7 @@ class InstallerCore
 
     write_if_missing(File.join(plastic_home, "projects.yml"), "---\nprojects: {}\n")
 
-    write_if_missing(File.join(Plastic::StoreLayout.global_root(plastic_home), "INDEX.md"), <<~MD)
-      # Index
-
-      ## Active
-
-      ## Future
-
-      ## Clusters
-
-      ## Abandoned
-
-      ## Completed
-    MD
+    ready_global_store unless legacy
 
     write_if_missing(File.join(plastic_home, "AGENTS.md"), <<~MD)
       # Plastic: Agent Instructions
@@ -470,6 +458,47 @@ class InstallerCore
     MD
 
     puts "  \u{2705} Store bootstrapped"
+  end
+
+  # Repairs what an earlier install left in the stores of a home, on install
+  # and on update: an empty stray stores/projects folder, and a global
+  # INDEX.md of headings alone. Nothing a person wrote is touched, and no
+  # legacy import runs here.
+  def repair_stores
+    return unless Plastic::StoreLayout.moved?(plastic_home)
+
+    remove_stray_projects_folder
+    remove_bare_global_index
+  end
+
+  def remove_stray_projects_folder
+    stray = File.join(plastic_home, "stores", "projects")
+    return unless File.directory?(stray)
+
+    if Dir.empty?(stray)
+      Dir.rmdir(stray)
+    else
+      puts "  \u26a0 #{stray} holds files and is not a store; left in place"
+    end
+  end
+
+  def remove_bare_global_index
+    index = File.join(Plastic::StoreLayout.global_root(plastic_home), "INDEX.md")
+    return unless File.file?(index) && self.class.bare_index?(index) && Dir.glob(File.join(Plastic::StoreLayout.global_store(plastic_home), "*")).empty?
+
+    File.delete(index)
+    ready_global_store
+  end
+
+  # True when the file has no line but headings and blank lines, so it lists no intent.
+  def self.bare_index?(path) = File.readlines(path).all? { |line| line.strip.empty? || line.start_with?("#") }
+
+  # The state a sync up leaves a new store in: the three store databases, so
+  # intent new works at once. No INDEX.md is written, which would mark the
+  # store as one still to import.
+  def ready_global_store
+    graphs = Plastic::Graph.open(home: plastic_home, store: Plastic::StoreLayout::GLOBAL)
+    graphs.databases.values_at(:knowledge, :work, :references).each { |database| database.rows("SELECT 1") }
   end
 
   # --- Agent adapters ---
@@ -511,7 +540,7 @@ class InstallerCore
   def agent_installed?(key)
     config = agent_config(key)
     return false unless config
-    !manifest_files(manifest_path_for(key, config)).empty?
+    manifest_files(manifest_path_for(key, config)).any? { |file| File.exist?(file) }
   end
 
   # Agent keys whose per-agent record exists (intent 210, D2): folder-with-VERSION =
@@ -1713,6 +1742,28 @@ class InstallerCore
       write_text_atomic(path, stripped)
     end
     path
+  end
+
+  INSTRUCTION_SECTIONS = {
+    "claude" => ["CLAUDE.md", CLAUDE_SECTION_BEGIN_PREFIX, CLAUDE_SECTION_RE],
+    "codex" => ["AGENTS.md", CODEX_SECTION_BEGIN_PREFIX, CODEX_SECTION_RE]
+  }.freeze
+
+  # The instruction file an uninstall deletes because Plastic's section is all it holds.
+  def emptied_instruction_file(config)
+    key, home_dir, dir = config.values_at(:key, :home_dir, :dir)
+    name, prefix, section = INSTRUCTION_SECTIONS.fetch(key, INSTRUCTION_SECTIONS["codex"])
+    only_section_path(File.join(home_dir || dir, name), prefix, section)
+  end
+
+  def only_section_path(path, prefix, section)
+    path = resolve_managed_path(path)
+    path if InstallerCore.section_alone?(path, prefix, section)
+  end
+
+  def self.section_alone?(path, prefix, section)
+    held = File.exist?(path) ? File.read(path) : ""
+    held.include?(prefix) && held.sub(/\n?#{section}/, "").strip.empty?
   end
 
   def strip_codex_section(path)

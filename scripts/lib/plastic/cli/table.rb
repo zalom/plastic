@@ -17,6 +17,9 @@ module Plastic
       # Storage
       "intent end" => ["Commands::IntentEnd", "Record explicit criterion acceptance and close a delivered intent"],
       "intent new" => ["Commands::IntentNew", "Open an intent: write its rows and print its folder"],
+      "project list" => ["Commands::ProjectList", "List the registered projects with their paths"],
+      "project new" => ["Commands::ProjectNew", "Register a project and leave its store ready for intent new"],
+      "project links" => ["Commands::ProjectLinks", "List the links that name an intent or a ruling this store lacks"],
       "sync up" => ["Commands::SyncUp", "Read the files changed by hand into rows"],
       "sync down" => ["Commands::SyncDown", "Print the rows that changed into files"],
       "session note" => ["Commands::SessionNote", "Write the one prose line of this session"],
@@ -35,8 +38,10 @@ module Plastic
       "intent link" => ["Commands::IntentLink", "Write a typed link from an intent to a ref"],
       "intent unlink" => ["Commands::IntentUnlink", "Remove a link"],
       "intent archive" => ["Commands::IntentArchive", "Archive an intent directory; --revert restores it"],
-      "backup" => ["Commands::Backup", "Pack home.db and every store's three databases into one archive"],
-      "backup list" => ["Commands::BackupList", "List every backup, flagging a missing or changed file"],
+      "backup" => ["Commands::Backup", "Copy one store's databases into a new backup folder"],
+      "backup list" => ["Commands::BackupList", "List one store's backups with status and goal, flagging a missing or changed file"],
+      "backup purge" => ["Commands::BackupPurge", "Delete one store's backups, all or those before a date"],
+      "backup restore" => ["Commands::BackupRestore", "Replace one store's databases with those of a done backup"],
       "document get" => ["Commands::DocumentGet", "Fetch one current or revision-qualified document"],
       "document batch" => ["Commands::DocumentBatch", "Fetch qualified documents in request order"],
       "search" => ["Commands::Search", "Search literal indexed passages across selected stores"],
@@ -54,6 +59,7 @@ module Plastic
       "edge remove" => ["Commands::EdgeRemove", "Remove an edge"],
       "graph check" => ["Commands::GraphCheck", "Find a judge missing, an isolated node, a retry cap or no done criterion"],
       "graph ready" => ["Commands::GraphReady", "List the nodes ready to claim"],
+      "graph resume" => ["Commands::GraphResume", "Say where each named store's work stopped and what runs next"],
       "graph show" => ["Commands::GraphShow", "Print every node and edge, then reprint graph.json from rows"],
 
       # Roadmaps: a named plan, held as rows instead of a hand-kept file.

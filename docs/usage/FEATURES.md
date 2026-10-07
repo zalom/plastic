@@ -33,8 +33,11 @@ outer one. With neither, the global store answers.
 | Command | Result |
 | ------- | ------ |
 | `plastic status` | Active work in every store. |
-| `plastic continue` | Where one project stands, and what runs next. |
+| `plastic graph resume [--stores a,b]` | Where each named project's work stopped, and what runs next. |
 | `plastic next` | The next action in one line. `--why` adds the rule behind it. |
+| `plastic project list` | The registered projects with their paths, and `(no store)` for one whose store folder is missing. |
+| `plastic project new SLUG PATH` | Registers a project in `projects.yml`, keeping every other line, and leaves its store ready for `plastic intent new`. |
+| `plastic project links` | Lists each link whose local end names an intent or a ruling the store lacks, and fails with the count. |
 
 `continue` and `next` read the same frontier: the liveliest roadmap, its open batch, and the
 entries that are ready, in flight or blocked. With no roadmap, both name the first active
@@ -50,6 +53,28 @@ intent instead.
 `intent revise` writes the intent file as a new revision and keeps the old one, so the old
 What and Why read back with `plastic document get`. A done or abandoned intent refuses with
 exit 3.
+
+## Preview a change with --dry-run
+
+Eight commands take `--dry-run`. It runs the whole call in a disposable copy of the store
+and its home files, prints each file the call would add, change or remove, and ends with
+`preview complete; the original store was not changed`. The `next:` line is the same call
+without `--dry-run`. A store that holds a link to a folder is refused, because the copy
+could not hold it safely.
+
+| Command | What the preview shows |
+| ------- | ---------------------- |
+| `plastic edge remove ID FROM TO --dry-run` | The work graph rows the removed edge would change. |
+| `plastic node remove ID NODE --dry-run` | The node and edge rows the removal would delete. |
+| `plastic graph show ID --dry-run` | The files the render would write for the work graph. |
+| `plastic intent unlink ID KIND TARGET --dry-run` | The links the removal would delete. |
+| `plastic intent archive ID --dry-run` | The files the archive would remove, and the rows it keeps. |
+| `plastic roadmap show SLUG --dry-run` | The files the state screen would write. |
+| `plastic roadmap drop SLUG ITEM --dry-run` | The roadmap rows the dropped item would change. |
+| `plastic roadmap edge remove SLUG FROM TO --dry-run` | The roadmap edge rows the removal would delete. |
+
+`plastic sync up`, `plastic sync down`, `plastic intent revise` and `plastic backup` keep their own previews. `plastic backup --live` prints each line of the backup's `backup.log` as it is written. `plastic backup purge` (with `--older-than`, `--all` or `--failed`) and `plastic backup restore` take `--dry-run` and list what they would delete or put back. After a restore, `plastic backup restore` asks at a terminal whether to sync down, sync up or neither, and tells an agent to ask the person.
+`plastic uninstall --dry-run` lists every path the uninstall would remove.
 
 ## Installer commands
 

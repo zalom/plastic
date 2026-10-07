@@ -34,10 +34,12 @@ class SubmitContextTest < Plastic::TestCase
     assert_raises(Plastic::CLI::Command::Usage) { submit("not json") }
   end
 
-  def test_a_submission_missing_a_category_fails_the_call
+  def test_a_submission_missing_a_category_is_a_usage_error
     discovered
 
-    assert_kind_of Plastic::Failed, submit({ "evidence" => [] }).first
+    error = assert_raises(Plastic::CLI::Command::Usage) { submit({ "evidence" => [] }) }
+
+    assert_includes error.message, "needs the arrays evidence, facts, interpretations, gaps and rulings"
   end
 
   def test_a_submission_without_a_discovery_is_a_usage_error

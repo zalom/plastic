@@ -87,7 +87,7 @@ relocation holds itself to the identical rule.
 
 Doctor stays a detector: core and full checks, every installed agent, both global and project
 stores. It gains no write path of its own. The "Fix all" prompt
-(the retired `skills/doctor/SKILL.md`; in 2.0 each `plastic doctor` finding names its own repair) is a ROUTER: for each fixable finding it dispatches to the tool
+(the retired `skills/doctor/SKILL.md`; in 2.0 each finding names its own repair) is a ROUTER: for each fixable finding it dispatches to the tool
 that already owns that class of repair (`project-links`, `rebuild-graph`,
 `restore-intent-v1`, or the curator, via `scripts/maintenance-run` where applicable), and
 those tools perform the mutation and write the `revisions.md` receipt - never doctor itself.

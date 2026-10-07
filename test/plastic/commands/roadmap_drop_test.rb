@@ -29,4 +29,11 @@ class RoadmapDropTest < Plastic::TestCase
 
     assert_call result, code: 1, err: "plastic: code_drop_roadmap_item, gate: no item z on roadmap r1\n"
   end
+
+  def test_preview_matches_apply_on_an_identical_home
+    twin = twin_run("roadmap", "drop", "r1", "a") { |home| seed_roadmap(home, "a", "b") }
+
+    assert_preview_matches_apply(twin)
+    assert_equal 0, twin.previewed.code
+  end
 end

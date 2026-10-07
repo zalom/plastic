@@ -79,7 +79,7 @@ module Plastic
       end
 
       def requested_slug
-        return @requested if known_slugs.include?(@requested)
+        return @requested if known_slugs.include?(@requested) || projects.key?(@requested)
 
         raise UnknownProject, "no project named #{@requested.inspect}; this machine has #{known_slugs.join(", ")}"
       end

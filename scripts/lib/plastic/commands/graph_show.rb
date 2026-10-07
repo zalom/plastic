@@ -8,6 +8,7 @@ module Plastic
     class GraphShow < Routine
       intent_subject
       writes :work
+      previews
       workflow :code_show_graph, next: :noop
     end
   end

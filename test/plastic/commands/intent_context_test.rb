@@ -173,6 +173,16 @@ class IntentContextPersistenceTest < Plastic::TestCase
     assert_equal "missing", read_context.fetch("freshness").fetch("evidence").first.fetch("state")
   end
 
+  def test_plain_output_prints_readable_lines
+    reference = discovered_reference
+    submit_context(context_submission(reference))
+
+    result = plastic("intent", "context", "1", table: Plastic::CLI::TABLE)
+
+    assert_equal [0, ""], [result.code, result.err]
+    refute_match(/\{|=>|\[/, result.out)
+  end
+
   def test_reads_the_saved_context_file_when_the_database_record_is_absent
     reference = discovered_reference
     submission = context_submission(reference)
@@ -228,17 +238,6 @@ class IntentContextValidationTest < Plastic::TestCase
     assert_equal 1, result.code
     assert_includes result.err, "no retrieval context for intent 1"
     assert_equal "", result.out
-  end
-
-  def test_reports_malformed_context_submission_json_as_usage_without_writing_context
-    open_intent
-    write_document("other", "selected evidence")
-    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
-
-    result = submit_raw_context("{")
-
-    assert_call result, code: 2, err: "plastic: expected object key, got EOF at line 1 column 2\nplastic intent context ID [--from FILE]\n"
-    refute_path_exists store_path("context/1.json")
   end
 
   def test_rejects_an_unknown_owning_intent_id_before_reading_context
@@ -330,5 +329,53 @@ class IntentContextStoredFieldsTest < Plastic::TestCase
 
     refute read_context.key?("architecture")
     refute_path_exists store_path("architecture")
+  end
+end
+
+class IntentContextInputTest < Plastic::TestCase
+  include IntentContextValidationAssertions
+  include IntentContextTestSupport
+  include IntentContextAssertionSupport
+
+  def test_reports_malformed_context_submission_json_as_usage_without_writing_context
+    open_intent
+    write_document("other", "selected evidence")
+    plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
+
+    file = File.join(@home, "broken.json")
+    File.write(file, "{")
+
+    result = plastic("intent", "context", "1", "--from", file, table: Plastic::CLI::TABLE)
+
+    assert_equal 2, result.code
+    assert_match(/\Aplastic: #{Regexp.escape(file)} is not valid JSON: /, result.err)
+    refute_path_exists store_path("context/1.json")
+  end
+
+  def test_a_missing_context_file_exits_2_naming_the_file
+    discovered_reference
+    file = File.join(@home, "absent.json")
+
+    result = plastic("intent", "context", "1", "--from", file, table: Plastic::CLI::TABLE)
+
+    assert_equal [2, ""], [result.code, result.out]
+    assert_equal "plastic: #{file} does not exist\nplastic intent context ID [--from FILE]\n", result.err
+  end
+
+  def test_a_context_file_with_no_arrays_exits_2_naming_the_file_and_the_five_keys
+    discovered_reference
+    file = File.join(@home, "empty.json")
+    File.write(file, "{}")
+
+    result = plastic("intent", "context", "1", "--from", file, table: Plastic::CLI::TABLE)
+
+    assert_equal [2, ""], [result.code, result.out]
+    assert_includes result.err, "plastic: #{file} needs the arrays evidence, facts, interpretations, gaps and rulings"
+  end
+
+  def test_the_from_help_lists_all_five_arrays
+    result = plastic("intent", "context", "--help", table: Plastic::CLI::TABLE)
+
+    assert_includes result.out, "evidence, facts, interpretations, gaps and rulings"
   end
 end

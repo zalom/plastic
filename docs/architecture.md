@@ -230,16 +230,37 @@ explicit sync conflict resolution. A plain sync cannot silently overwrite them.
 Roadmap writes reject an item that depends on itself. Reading an imported cycle reports
 its unresolved items as blocked, and `roadmap check` identifies the loop.
 
-`plastic backup` packs `home.db`, each store's three databases, and the home's `origin_id`,
-`config.yml`, and `projects.yml` when present into one gzipped archive under `backups/`.
-The identity file lets an unpacked backup read the rows under their original owner.
-`plastic backup list` flags an archive that is missing or that changed
-since it was written.
+`plastic backup --store SLUG` copies the three databases of one registered store, or of the
+global store (`--store global`, the one name that is not a key of `projects.yml`), with
+`VACUUM INTO`, into `stores/SLUG/backups/YYYYMMDDHHMMSS/`. The folder name is the UTC time,
+with `-1`, `-2` added on a collision. `--databases LIST` copies only the named ones. A
+`status.yml` in the folder holds `status:` (`in-progress`, `done` or `failed`) and `goal:`
+(`full` or `partial:` and the file names). `backup.log` in the folder gets one line for each database (name, size in bytes, result)
+and a last line that says the backup is done, or failed and why. Every line starts with a UTC
+time and is on disk before the next copy starts. `plastic backup --live` prints each line
+as it is written. A finished backup also gets one row in the
+`backups` table of `home.db`, named `SLUG/TS`.
+`plastic backup list --store SLUG` reads the folders and shows the number, the folder name,
+the local start time, the status and the goal. It exits 1 for a backup whose row is
+missing on disk or changed, and does not fail for a folder with no row.
+`plastic backup purge --store SLUG (--older-than DATE | --all | --failed)` deletes folders
+and rows before a UTC time, all of them, or the folders whose status is `failed`. `plastic backup restore --store SLUG (--timestamp TS | --latest)` puts
+back a `done` backup after a safety backup of the current databases. It refuses while a
+delivery lock is fresh. It never syncs by itself, because a sync can undo a restore. With a terminal it asks
+whether to sync down, sync up or neither, gives one line for each answer, and runs the
+chosen sync for the same store; an unknown answer is asked once more and then counts as
+neither. With no terminal, and under `--json`, it asks nothing and its `next:` line tells the
+agent to ask the person. `--dry-run` and a refused restore ask nothing. A terminal is an
+input stream that answers `tty?`; `CLI::Dialog` decides it from `Environment#input`.
 
 `plastic sync up` imports a selected legacy store completely: intents, rulings, source
 and chain links, roadmaps, and preserved original bytes. It then handles ordinary hand
 edits through the same command. Use `--project SLUG` to select each store. The separate
 migration command has been removed.
+
+`plastic sync up` reads every intent folder of a store, whatever `store/index.json` says. The folders are the true state on disk, and the index is a local convenience that the sync prints again from the rows after it reads. A folder with no intent row gives a row built from the front matter of its own intent file, with status `open`. A folder that cannot give a row, because it has no intent file, the file does not parse, or its number is shared with another folder, is named with its reason and none of its files are read. The other folders are read, and the call exits 1. A folder with no row cannot conflict, since no row exists to overwrite, so the rule that refuses a silent overwrite still applies only to a file whose rows also changed.
+
+`plastic project list`, `plastic project new SLUG PATH` and `plastic project links` manage the projects of `projects.yml`. `project new` refuses a bad name (exit 2), `global` and a name registered at another path (exit 3), and a path that is not a folder (exit 1). It leaves the three store databases ready.
 
 `plastic sync up --dry-run` runs the same operation in a disposable copy. It refuses a
 source tree containing symbolic links so a preview cannot write through one into the
@@ -254,7 +275,7 @@ after success, it removes `INDEX.md` and archives done or abandoned intents. Ord
 later sync does not repeat cleanup. Explicit archive reversal uses
 `plastic intent archive ID --revert`.
 
-Backups recover the same installation, including its origin identity. They are not a
+Backups recover the databases of one store on the same installation. They are not a
 colleague handover format. Team transport is deferred, and Plastic stores are not shared
 through Git.
 
@@ -372,7 +393,7 @@ Boot is owned by hooks, so it runs by construction on every session start, not a
 
 Install-time statusline choice is separate from the render-time hook above: `InstallerCore#statusline_choice` decides, once per install, whether to write Plastic's statusline over an existing one. A fresh settings file with no statusline gets Plastic's line with no prompt. An existing non-Plastic line triggers a keep-or-switch prompt in an interactive session, honors `--statusline keep|plastic` to skip the prompt, defaults to keeping the user's line in a non-interactive session, and is never re-asked on `--reinstall` (a repair keeps whatever is already configured). `merge_claude_hooks` still backs up the prior line to `~/.plastic/.cache/original-statusline.json` regardless of the choice, so a later switch or an uninstall can restore it.
 
-`plastic status` and `plastic continue` then orient the session. Neither runs the health check, loads core, or sets the statusline, since the hooks already did. `plastic continue [--project SLUG]` prints the project, its store root, its active intents, and its liveliest roadmap with that roadmap's frontier batch. It then names one next step: the frontier's step when a roadmap exists, else `plastic intent show ID` for the first active intent, else `plastic help`. `plastic next` prints the same next action on one line. Both read it through one `Frontier` class over `RoadmapQueue`, which ranks roadmaps deterministically rather than by eye (intent 148).
+`plastic status` and `plastic graph resume` then orient the session. Neither runs the health check, loads core, or sets the statusline, since the hooks already did. `plastic graph resume [--stores a,b]` reads the rows of each named store, the call's own store when none is named, and writes nothing. For each store it prints the intent in play, its done nodes, its claimed, parked and failed nodes, its last five savepoint lines, and `then:`, the store's own next command. The intent in play is the one `plastic next` picks (`Graph::Work::NextPick`), and the next command comes from the same `Graph::Work::NextOffer` that `plastic next` reads, so the two never differ. With several open intents and no lock it says `in play: none alone` and lists them. A store whose rows hold no intent while its folder holds intent folders says so, and its `then:` is `plastic sync up`, which rebuilds the rows from the folders. When a person says "continue", the agent runs this command and works from its output.
 
 Each roadmap carries a ledger (intent 134): a name-paired `roadmaps/<slug>.savepoint.md`, the machine counterpart to the human `## Log`, which follows its roadmap into `roadmaps/archived/` on close. `plastic roadmap log SLUG EVENT "TEXT"` appends to it (the events are created, dispatched, parked, merged, release, handoff, closed, added, reordered, wave and batch), and `RoadmapQueue` reads its last line as the roadmap's last-event time when it ranks roadmaps. The ledger is never a status source: `INDEX.md` stays the source of intent status.
 
@@ -437,7 +458,7 @@ Plastic no longer runs.
 
 The dashboard is gone (intent 392). In its place, the `capture` hook runs `scripts/report-screen state --all` against the working directory's store when a prompt is exactly `continue`: the project store when the working directory maps to one, else the global store. It adds the plain-text roster (`report-screen state --all STORE_ROOT`) to the model context, and the same roster painted with `--ansi` to the user's terminal.
 
-Same store state gives the same output regardless of model. Roadmaps are the planning surface: `plastic next` and `plastic continue` read the roadmap frontier through `RoadmapQueue`, and `report-screen state` stays a state view.
+Same store state gives the same output regardless of model. Roadmaps are the planning surface: `plastic next` and `plastic graph resume` read the next action from the work graph rows, and `report-screen state` stays a state view.
 
 ## CLI output and progression
 
@@ -510,6 +531,18 @@ another session, held by this session, or not held at all. It no longer
 reports an agent lock that does not exist. The `next:` line no longer implies
 that a commit landed; the printed line above it says whether one did.
 
+### Preview in a disposable copy
+
+A command that declares `previews` takes `--dry-run`. `Graph::DisposableCopy` snapshots the
+databases of one store with `VACUUM INTO`, copies its files and its home configuration into a
+temporary home, and refuses a link to a folder. The routine runs its whole chain against that
+copy, and `Routine::PreviewOutput` prints each line with a `preview:` prefix, names the
+original path and never the copy, lists the files the call would add, change or remove, and
+closes with `preview complete; the original store was not changed`. A chain that holds an
+agent workflow cannot preview, because the agent's steps run outside the copy. The copy is
+deleted when the call ends.
+
+
 ### Sync preview
 
 `plastic sync` rebuilds `work_graph.db` and `references.db` on every run. When
@@ -561,4 +594,4 @@ This section describes Plastic 1.x. It is not current behavior.
 - **Direct mode.** A booted session rested in direct mode, and the `plastic-direct` skill routed each prompt on a time estimate. A change of about five minutes ran inline, a vague prompt was offered a thinking intent, and a larger change was offered a dedicated intent. Intent 372 retired the skill.
 - **Stage agents.** Each lifecycle stage had its own agent: discovery for What, brainstorming and spec agents for Why, a planner for How, the executor for Exec, and a curator for Done. Intent 304 removed all of them except `plastic-executor`.
 - **The dashboard skill.** A prose skill filled Markdown board templates from the `dashboard.rb --data` payload. It was retired with the other skills.
-- **The continue router.** A continue skill chose among a project route, an intent route that read the intent's savepoint first, and a roadmap route. `plastic continue` replaced it.
+- **The continue router.** A continue skill chose among a project route, an intent route that read the intent's savepoint first, and a roadmap route. `plastic graph resume` replaced it.

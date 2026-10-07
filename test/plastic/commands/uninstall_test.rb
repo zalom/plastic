@@ -20,6 +20,19 @@ class UninstallCommandTest < Plastic::TestCase
     assert_equal before, tree_snapshot(@home)
   end
 
+  def test_the_preview_lists_every_path_the_uninstall_removes
+    activated("2.0.0")
+    paths = home_paths
+    listed = call("uninstall", "--all", "--dry-run").out.scan(/^remove:\s+(\S+)/).flatten
+
+    call("uninstall", "--all")
+    gone = paths.reject { |entry| File.exist?(entry) || File.symlink?(entry) }
+
+    assert_empty gone.reject { |entry| listed.any? { |item| entry == item || entry.start_with?("#{item}/") } }
+  end
+
+  def home_paths = Dir.glob(File.join(@home, "**", "*"), File::FNM_DOTMATCH).reject { |entry| entry.end_with?("/.", "/..") }
+
   def test_removes_the_agent_files_and_keeps_the_home
     result = call("uninstall", "--claude")
 

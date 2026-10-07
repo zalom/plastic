@@ -10,7 +10,7 @@
 | `plastic hook EVENT` | Runs one harness hook event through its launcher and returns the launcher exit status. The agent harness calls it, not you. |
 | `plastic version [--json]` | Prints the installed Plastic version. |
 | `plastic status [--json]` | Shows active work in every store. |
-| `plastic continue [--project SLUG] [--json]` | Shows where one project stands and what runs next. |
+| `plastic graph resume [--stores a,b] [--json]` | Shows where each named project's work stopped and what runs next. |
 | `plastic next [--why] [--project SLUG] [--json]` | Prints the next action in one line. |
 | `plastic install [--claude] [--codex] [--hermes] [--all]` | Installs Plastic into this machine's agents. |
 | `plastic update [--claude] [--codex] [--hermes] [--all]` | Moves Plastic to the next version on its channel. |
@@ -23,7 +23,7 @@
 | `plastic search TERMS`, `plastic document get`, `plastic document batch` | Searches selected stores and fetches immutable evidence. See [Search commands](search-commands.md). |
 | `plastic intent discover`, `plastic intent context` | Records retrieval candidates and selected agent context. |
 | `plastic architecture status`, `plastic architecture refresh` | Tells the agent to check or regenerate the architecture map with a tool it chooses, such as Enola. |
-| `plastic backup [--list]` | Writes one archive of the three databases and the top-level files. See [Backup command](backup-command.md). |
+| `plastic backup --store SLUG` | Copies the three databases of one store into a UTC-named folder, with `list`, `purge` and `restore`. See [Backup command](backup-command.md). |
 | `plastic migrate stores [--dry-run]` | Moves every store under `~/.plastic/stores/`, after a copy of the home. See [Migrate command](migrate-command.md). |
 | `plastic sync [--dry-run]`, `plastic checkout` | Writes the stores into the three databases, and writes the databases back out as files. See [Sync commands](sync-commands.md). |
 | `plastic render FILE` | Renders one Markdown file as a styled HTML page. |

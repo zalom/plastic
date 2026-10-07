@@ -1,14 +1,16 @@
 # frozen_string_literal: true
 
+require_relative "../graph/work/last_savepoints"
+
 module Plastic
   module Hooks
     # What a session start prints for one session: the state the rows alone
     # carry, so a cleared or compacted session reads it back.
     class Recap
       FIRST_LINES = {
-        "clear" => "Plastic: the context was cleared. The rows below carry the state; run plastic next.",
-        "compact" => "Plastic: the session was compacted. The rows below carry the state; run plastic next.",
-        "resume" => "Plastic: a resumed session. The rows below carry the state; run plastic next."
+        "clear" => "Plastic: the context was cleared. The rows below carry the state; run plastic graph resume.",
+        "compact" => "Plastic: the session was compacted. The rows below carry the state; run plastic graph resume.",
+        "resume" => "Plastic: a resumed session. The rows below carry the state; run plastic graph resume."
       }.freeze
       MAX_OPEN = 10
       SAVEPOINT_LINES = 5
@@ -66,7 +68,7 @@ module Plastic
       end
 
       def savepoint_lines(intent_id)
-        @retrieval.savepoints(intent_id).last(SAVEPOINT_LINES).map { |savepoint| "  #{savepoint.line}" }
+        Graph::Work::LastSavepoints.new(@retrieval, SAVEPOINT_LINES).lines(intent_id).map { |line| "  #{line}" }
       end
 
       # The first open intent this session touched, else the one its predecessor touched.

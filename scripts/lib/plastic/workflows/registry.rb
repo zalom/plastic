@@ -10,7 +10,7 @@ module Plastic
     REGISTRY = [
       # Storage: intents and the sync of a store folder with its rows.
       :code_write_intent, :code_sync_up, :code_sync_down, :code_add_ruling, :code_revise_intent, :code_show_spec, :code_start_auto,
-      :code_preview_sync,
+      :code_preview_sync, :code_preview_sync_down,
       :code_check_graph, :code_ready_graph, :code_show_graph, :code_show_intent, :code_show_brief, :code_pick_next,
       # Knowledge graph: typed links between intents and rulings.
       :code_add_link, :code_remove_link,
@@ -30,8 +30,9 @@ module Plastic
       :code_write_note,
       # Archive: taking an intent off the checkout and printing it back.
       :code_choose_archive, :code_archive_intent, :code_restore_intent,
-      # Backups: one gzipped tar of every database on the machine.
-      :code_backup, :code_backup_list,
+      # Backups: one folder per backup of one store, with purge and restore.
+      :code_preview_backup, :code_backup, :code_backup_list,
+      :code_preview_backup_purge, :code_backup_purge, :code_preview_backup_restore, :code_backup_restore, :code_ask_restore_sync,
       # Distribution: the installer commands over the running package and the home.
       :code_show_version, :code_check_installation, :code_preview_install, :code_install_plastic, :agent_offer_enola,
       :code_preview_update, :code_update_plastic,

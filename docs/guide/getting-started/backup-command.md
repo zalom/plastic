@@ -1,51 +1,54 @@
 # Backup command
 
-`plastic backup` writes one archive that holds everything Plastic needs to rebuild your stores.
-Plastic sends nothing anywhere. Copying the archive off the machine is your choice.
+`plastic backup` copies the databases of one store into a folder on your machine.
+Plastic sends nothing anywhere. Copying the folder off the machine is your choice.
 
 ## Commands
 
+Every command needs `--store SLUG`, the name of a store in `~/.plastic/projects.yml`.
 The following table shows each command and what it does:
 
 | Command | What it does |
 | ------- | ------------ |
-| `plastic backup` | Writes one archive under `~/.plastic/backups/`. |
-| `plastic backup --list` | Prints the name, the size and the date of each archive. |
+| `plastic backup --store SLUG [--databases LIST] [--live] [--dry-run]` | Copies the databases into `~/.plastic/stores/SLUG/backups/YYYYMMDDHHMMSS/`. |
+| `plastic backup list --store SLUG` | Prints the number, the folder, the start time, the status and the goal of each backup. |
+| `plastic backup purge --store SLUG (--older-than DATE \| --all \| --failed) [--dry-run]` | Deletes the backups before a date, all of them, or those that failed. |
+| `plastic backup restore --store SLUG (--timestamp TS \| --latest) [--databases LIST] [--dry-run]` | Puts a backup back. |
 
-Both commands take `--json`. Run `plastic sync` first, because the backup copies the three
-databases and exits 1 when one is missing.
+All commands take `--json`. `LIST` is a comma list of `work_graph`, `knowledge_graph` and
+`references`. Leave `--databases` out for all three.
 
-## What the archive holds
+## What a backup holds
 
-The archive is named `plastic-backup--YYYYMMDDTHHMMSSZ.tar.gz`, with the time in UTC. The
-following table shows its entries:
+The folder name is the UTC time of the backup. The following table shows its entries:
 
 | Entry | Holds |
 | ----- | ----- |
-| `knowledge_graph.db`, `work_graph.db`, `references.db` | A consistent copy of each database, taken while other commands may still write. |
-| `config.yml`, `projects.yml`, `INDEX.md` | The files at the top of `~/.plastic`, when they exist. |
-| `manifest.json` | The Plastic version, the time, and the size and SHA-256 hash of every other entry. |
+| `work_graph-TS.db`, `knowledge_graph-TS.db`, `references-TS.db` | A consistent copy of each database, taken while other commands may still write. |
+| `backup.log` | One line for each database copied and a last line for the result, each with a UTC time. `--live` prints the lines as they are written. Restore and list ignore it. |
+| `status.yml` | `status:` is `in-progress`, `done` or `failed`. `goal:` is `full` or `partial:` and the file names. |
 
-Plastic writes the archive under a draft name and renames it at the end, so a failed run
-leaves no archive behind.
+`backup list` shows the start time in your time zone. It exits 1 when a backup with a row
+is missing or changed.
+
+## Purge
+
+`--older-than` takes a date, read as local midnight, or a full time with an offset. It
+deletes the backups made strictly before it. `--failed` deletes every backup whose status
+is `failed`, and never one that is `in-progress` or `done`. Give exactly one of `--older-than`,
+`--all` and `--failed`. Add `--dry-run` to see which ones.
 
 ## Restore
 
-To restore, follow these steps:
+`plastic backup restore` only restores a backup whose status is `done`. `--latest` picks
+the newest one. It refuses while a delivery lock is fresh. Before it changes anything it
+backs up the current databases, so the restore can be undone with a second restore.
 
-1. Unpack the archive into an empty `~/.plastic`:
+A restore never syncs by itself. At a terminal it asks you to choose:
 
-   ```text
-   $ mkdir ~/.plastic && tar -xzf plastic-backup--20260921T130233Z.tar.gz -C ~/.plastic
-   ```
+- `down` prints the files from the restored rows. File edits made after the backup are lost.
+- `up` reads the files into the rows. Where a file is newer, it replaces the restored row.
+- `neither` changes nothing; the rows and the files stay as they are.
 
-1. Restore the files from the databases:
-
-   ```text
-   $ plastic checkout
-   ```
-
-The restore brings back every markdown file and every other file in the stores, byte for
-byte. It does not bring back lock files, files under `.tmp`, `.DS_Store` files, empty
-directories or the `.git` directories. Keep your own copy of a store's git history when you
-need it.
+When no terminal is there, such as when an agent runs it, the restore asks nothing. Its
+`next:` line tells the agent to ask you which one you want.

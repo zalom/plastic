@@ -8,9 +8,9 @@ the last row Claude Code has started a new session, s-2, after s-1 ended with th
 
 Each row gives the source, the session, the exit code, the first line and the names:
 
-| source  | session | exit | first line                                                                             | names                                       |
-| ------- | ------- | ---: | -------------------------------------------------------------------------------------- | ------------------------------------------- |
-| startup | s-1     |    0 | Plastic: a new session in store global. Run plastic next before anything else.         | Alpha, Beta, intent new, stopped after Beta |
-| clear   | s-1     |    0 | Plastic: the context was cleared. The rows below carry the state; run plastic next.    | Alpha, Beta, intent new, stopped after Beta |
-| compact | s-1     |    0 | Plastic: the session was compacted. The rows below carry the state; run plastic next.  | Alpha, Beta, intent new, stopped after Beta |
-| clear   | s-2     |    0 | Plastic: the context was cleared. The rows below carry the state; run plastic next.    | Alpha, Beta, intent new, stopped after Beta |
+| source  | session | exit | first line                                                                                    | names                                       |
+| ------- | ------- | ---: | --------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| startup | s-1     |    0 | Plastic: a new session in store global. Run plastic next before anything else.                | Alpha, Beta, intent new, stopped after Beta |
+| clear   | s-1     |    0 | Plastic: the context was cleared. The rows below carry the state; run plastic graph resume.   | Alpha, Beta, intent new, stopped after Beta |
+| compact | s-1     |    0 | Plastic: the session was compacted. The rows below carry the state; run plastic graph resume. | Alpha, Beta, intent new, stopped after Beta |
+| clear   | s-2     |    0 | Plastic: the context was cleared. The rows below carry the state; run plastic graph resume.   | Alpha, Beta, intent new, stopped after Beta |

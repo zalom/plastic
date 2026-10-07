@@ -126,6 +126,12 @@ class ScopeTest < Plastic::TestCase
     assert_equal File.join(@plastic_home, "stores", "plastic"), scope(slug: "plastic").root
   end
 
+  def test_a_registered_project_with_no_store_folder_resolves
+    File.write(File.join(@plastic_home, "projects.yml"), "projects:\n  fresh:\n    path: #{Dir.mktmpdir}\n")
+
+    assert_equal "fresh", scope(slug: "fresh").slug
+  end
+
   def test_the_known_slugs_are_the_store_directories_and_global
     File.write(File.join(@plastic_home, "stores", "a-file"), "")
 

@@ -56,6 +56,15 @@ class WorkDeliveryActionTest < Plastic::TestCase
     assert_includes action.last, "with its worker worker"
   end
 
+  def test_a_claimed_node_with_no_worker_name_never_prints_an_empty_name
+    plan("Build")
+    @work.claim_node(intent_id: "1", id: "n1", by: nil)
+    instructions = action.last
+
+    refute_includes instructions, "worker ."
+    assert_includes instructions, "Continue node n1. Record the result"
+  end
+
   def test_nodes_waiting_on_a_claimed_node_report_the_claim
     plan("Build", "Test")
     @work.add_edge(intent_id: "1", from: "n1", to: "n2")

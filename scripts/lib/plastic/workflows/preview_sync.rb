@@ -10,7 +10,7 @@ module Plastic
 
       read "preview the sync in an isolated copy" do |context|
         if context.dry_run
-          context.work.preview_sync(overwrite: context.overwrite, merge: context.merge).each { |line| context.print(line) }
+          context.work.preview_sync({ overwrite: context.overwrite, merge: context.merge }).each { |line| context.print(line) }
           context.print("preview complete; the original store was not changed")
         end
       end

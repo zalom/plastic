@@ -14,7 +14,7 @@ class FinishIntentTest < Plastic::TestCase
   end
 
   def test_missing_records_are_handed_to_the_agent
-    assert_equal "Complete these recorded prerequisites: [\"outcome.md\"]", finish(requirements: ["outcome.md"]).steps.first
+    assert_equal "Complete these recorded prerequisites: outcome.md", finish(requirements: ["outcome.md"]).steps.first
   end
 
   def test_missing_evidence_names_the_folder_and_the_end_command

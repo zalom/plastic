@@ -196,8 +196,8 @@ status writer throughout; the ledger, like the intent-dir one, is sugar, never a
 The roadmap read path (intent 148) sits on top of that ledger. `scripts/lib/roadmap_queue.rb`
 (`RoadmapQueue`, constructor-DI and hermetic: clock and paths injected, no eval, no ENV or global
 config seam; a thin `scripts/roadmap-next` CLI wraps it, both registered in
-`InstallerCore#core_files` and covered by a hermetic test) is the one roadmap reader. `plastic
-next` and `plastic continue` read its queue mode through `scripts/lib/cli/frontier.rb`; its which
+`InstallerCore#core_files` and covered by a hermetic test) is the one roadmap reader. The command
+line no longer reads its queue mode; its which
 mode (`--which`, tie candidates for a human choosing) has no caller left now that the dashboard
 is gone (intent 392), and stays exercised only by `test/roadmap_queue_test.rb`. It does two
 things: liveness-ranks the tier's `roadmaps/*.md`
@@ -341,10 +341,14 @@ is a real em dash or a plain hyphen on READ; every write still emits the real em
 both `end-intent`'s own INDEX-move parser and any caller asking whether an intent is still
 active.
 
-`plastic continue` does not read the intent ledger. It prints the project's store root, its
-active intents, and its liveliest roadmap with that roadmap's frontier, then one next step:
-the frontier's step when a roadmap exists, else `plastic intent show ID` for the first active
-intent. `plastic intent show ID` prints that intent's state screen.
+`plastic graph resume` (`Commands::GraphResume`) reads rows only and writes nothing. One
+`Graph::Work::StoreResume` for each named store builds the lines: the intent in play from
+`Graph::Work::NextPick`, its done and in-progress nodes, the last savepoints from
+`Graph::Work::LastSavepoints` (which the session-start recap reads too), and the next command
+from `Graph::Work::NextOffer`, the class `Workflows::PickNext` calls for `plastic next`.
+`plastic intent show ID` prints one intent's state screen.
+
+`plastic sync up` builds `Graph::Knowledge::Sync::IntentFolders` from the folders of the store. It gives the intents of the folders that have no row (`intents`) and the folders it cannot read (`problems`, `unreadable`). `Sync#read_up` writes those rows in the work database, reads the changed files, and prints `store/index.json` again from the rows. `Plan` takes no action on the index on the way up. `Workflows::SyncSteps` ends an up sync with a gate that fails when `Plan#unreadable` is not empty. `Commands::ProjectList`, `ProjectNew` and `ProjectLinks` work on `projects.yml` and the links table. `ProjectNew` edits the text of the file, so other entries, keys and comments stay. `Graph::Knowledge::Link::Check` finds the links whose local end holds no intent or ruling.
 
 `doctor.rb` has four scopes:
 
@@ -550,11 +554,26 @@ this section covers how the code holds together.
   interrupted call must match the complete snapshot before that call can finish.
   Restore does not print newer semantic rows over archived bytes or mark unsynced
   documents as current. Plain sync reports conflicts for those documents.
-- **Backup.** `backup` and `backup list` go through `Graph::Knowledge::Backup::Writer` and the `backups`
-  table of `home.db`. `RetrievalGraph#backup_flag` compares each archive's SHA-256 digest
-  with the digest stored at write time. The archive also carries `origin_id`, `config.yml`,
-  and `projects.yml` from the Plastic home when present. These files preserve row ownership,
-  settings, and project lookup when the archive is unpacked into an empty home.
+- **Backup.** The four `backup` commands go through `WorkGraph#backups`, a
+  `Graph::Knowledge::Backup::StoreBackups` for one store. `Writer` copies the databases
+  into the folder with `VACUUM INTO` and keeps `status.yml`. `Log` writes `backup.log` one
+  line at a time; `Log.line` is the one place that sets the shape of a line, and `Writer`
+  takes the copy step and the live sink as arguments. `StreamingScope` carries the live
+  sink from `plastic backup --live` to the writer. `Purger#failed` names the folders
+  whose status is `failed`. `Publisher` adds the row of
+  `home.db`'s `backups` table and removes the folder when the insert fails. `Purger`
+  deletes a folder and its row together and puts the folder back when the row delete
+  fails. `Restorer` checks the delivery lock and the status, writes a safety backup, runs
+  `quick_check`, and swaps the files by rename with rollback. `Backup#flag` compares the
+  SHA-256 digest of the sorted file names and digests with the one stored at write time.
+  `BackupStore` adds the required `--store` option to the four commands and refuses a slug
+  that is neither `global` nor a key of `projects.yml`. `Databases.parse` reads `--databases`.
+  After a restore, `BackupRestore` asks which sync to run through `CLI::Dialog`, built by
+  `BackupRestore#scope` from `Environment#input` and the output, and reached as `context.scope.dialog`
+  (`Commands::AskingScope`). A
+  terminal is an input that answers `tty?`, and never under `--json`. The answer picks the
+  outcome `sync_down`, `sync_up` or `kept`, and the chain runs the sync workflows for the same
+  store; with no terminal the outcome is `done` and its `next:` tells the agent to ask.
 
 `Graph::Knowledge::Sync::LegacyImport` runs `Graph::Knowledge::Legacy::StoreImport` for a store with `INDEX.md` and no
 `store/index.json`. One coordinator reads intent files, rulings and source links, imports
@@ -563,10 +582,11 @@ roadmaps, and preserves changed originals. `Graph::Knowledge::Legacy::Decisions`
 store after disconnecting its database handles. Failure to save that copy leaves the
 original store untouched.
 
-`Graph::Knowledge::Sync::Preview` copies the selected store and its identity and configuration into a
-temporary home and runs the same sync there. It rejects symbolic links before copying
-and resolves absolute overwrite paths against the original store. Preview does not keep
-a routine run in the original home. Metadata import no longer requires a separate
+`Graph::DisposableCopy` copies the selected store and its identity and configuration into a
+temporary home, with `Graph::StoreTree` listing the files, and the sync runs there. It rejects
+links to folders before copying and resolves absolute overwrite paths against the original store.
+`Routine::Preview` adds `--dry-run` to any command that declares `previews`; `Routine::PreviewOutput`
+prints what the call would write. Preview does not keep a routine run in the original home. Metadata import no longer requires a separate
 migration command. The compatibility cleanup flag applies only after successful first
 import; later sync does not delete legacy source files.
 
@@ -756,11 +776,19 @@ savepoint's `Commit` ledger has entries and no checklist item is ticked.
 
 ## store layout and the stores move (intent 370)
 
-Fresh bootstrap creates `stores/global/store` and `stores/global/INDEX.md`. Legacy data
+Fresh bootstrap creates `stores/global/store` and the three store databases, as a sync up
+leaves a store, and no `INDEX.md`, so `plastic intent new` works at once. `Scope` also resolves a registered project whose store folder does not exist yet, reading
+`projects.yml` only for a slug that is neither `global` nor an existing store folder. Legacy data
 (`store`, `projects`, `INDEX.md`, or `roadmaps` at the home root) keeps bootstrap on the old
 layout until explicit migration. Bootstrap on an already migrated home never recreates `projects/`.
 The context-budget benchmark seeds its fixture through the same store path resolver, so it
 measures active intents in the layout produced by the real installer.
+
+Bootstrap makes no `projects` folder: project stores are made when a project is registered.
+`InstallerCore#repair_stores` runs on every install and update of a home with the stores layout. It
+removes an empty `stores/projects` folder, and reports one that holds files and leaves it. It
+also removes a global `INDEX.md` whose lines are headings and blanks only, when the global
+`store/` holds no intent folder, and then readies the three databases. It runs no legacy import.
 
 `scripts/lib/store_layout.rb` is the one place that turns a home and a slug into a store path.
 `Plastic::StoreLayout.moved?(home)` is true when `stores/` exists. Every script asks it for the

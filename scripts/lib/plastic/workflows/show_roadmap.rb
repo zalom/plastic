@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../code_workflow"
-require_relative "../graph/knowledge/roadmap/state"
+require_relative "roadmap_print"
 
 module Plastic
   module Workflows
@@ -14,27 +14,8 @@ module Plastic
 
       gate "no roadmap %{slug}", stops: :failure, pass: ->(context) { !context.retrieval.roadmap(context.slug).nil? }
 
-      def self.batches_of(context)
-        all = context.retrieval.batches(context.slug)
-        context.position ? all.select { |row| row.position == context.position.to_i } : all
-      end
-
-      def self.print_batch(context, batch)
-        context.print(["batch #{batch.position}: #{batch.title}", batch.goal].compact.reject(&:empty?).join(" - "))
-        batch.done_lines.each { |line| context.print("  done: #{line}") }
-        context.retrieval.roadmap_items(context.slug).select { |item| item.batch == batch.position }
-          .each { |item| print_item(context, item) }
-      end
-
-      def self.print_item(context, item)
-        state = Graph::Knowledge::Roadmap::State.of(item, context.retrieval)
-        from = context.retrieval.roadmap_edges(context.slug).select { |edge| edge.to == item.item }.map(&:from)
-        waits = from.empty? ? "nothing" : from.join(" ")
-        context.print("item #{item.item}: #{item.title} - #{state}, waits for #{waits}")
-      end
-
       read "print each batch and item" do |context|
-        batches_of(context).each { |batch| print_batch(context, batch) }
+        RoadmapPrint.call(context)
       end
 
       step "reprint the roadmap file", done: ->(context) { !context.printed_paths.nil? } do |context|

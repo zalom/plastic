@@ -42,8 +42,8 @@ not delivered inline. The owner may approve an inline take with `--allow-inline`
 the harness spawns the team, and the team takes the intent. Exit 3 means stop and report; never
 retry with another flag on your own.
 
-`plastic auto brief ID` prints the preamble the spawned lead starts from, and
-`plastic auto lock status ID` shows who holds the lock.
+`plastic intent brief ID` prints the preamble the spawned lead starts from, and
+`plastic intent show ID` shows who holds the lock.
 
 Checkpoint: name the one precondition auto needs before it will start: the intent you name
 must already exist in the store the command resolves to.
@@ -93,10 +93,10 @@ line.
 
 ### 5. Continue and where-was-I after time away
 
-Run `plastic continue`.
+Run `plastic graph resume`.
 
-Artifact: where the project stands and a `next:` line naming what runs next. `plastic
-continue` only reads: it takes no lock and changes no file. To resume one intent, run
+Artifact: where the work stopped and a `next:` line naming what runs next. `plastic graph
+resume` only reads: it takes no lock and changes no file. To resume one intent, run
 `plastic intent show ID`; its Next row names the step it resumes at, read from the files on
 disk.
 

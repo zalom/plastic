@@ -12,6 +12,7 @@ module Plastic
     # harness reads them back through `describe`.
     module Declarations
       GRAPHS = %i[work knowledge retrieval references].freeze
+      OPTION_DEFAULTS = { repeatable: false, required: false }.freeze
 
       # The arguments that name the thing a call works on, such as the
       # intent id and the node id. A tool that writes keeps one open routine
@@ -40,9 +41,8 @@ module Plastic
 
       # One switch the tool takes, as `option :dir, switch: "--dir DIR", text: "where"`,
       # with `default:` for its value when the call leaves it out.
-      def option(name, repeatable: false, required: false, **shape)
-        default = repeatable ? [] : nil
-        options << Command::Option.new(name:, default:, repeatable:, required:, **shape)
+      def option(name, **shape)
+        options << Command::Option.new(name:, **OPTION_DEFAULTS.merge(default: shape[:repeatable] ? [] : nil, **shape))
       end
 
       # Which graphs the tool reads or writes. Every read goes through the
