@@ -127,7 +127,7 @@ class GraphResumeTest < Plastic::TestCase
 
     result = call
 
-    assert_includes lines(result), "then: Read the intent's goal and done criteria. Add work with plastic node add 1 TITLE --criterion TEXT, " \
+    assert_includes lines(result), "then: Before you plan, fetch the architecture map as current as possible with an architecture mapping tool such as Enola, or map the code yourself; Plastic runs no tool. Read the intent's goal and done criteria. Add work with plastic node add 1 TITLE --criterion TEXT, " \
       "then add dependencies with plastic edge add. Use plastic graph ready 1 after the plan is recorded."
     refute_includes result.out, "then: (because"
   end

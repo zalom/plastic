@@ -10,4 +10,11 @@ class RefreshArchitectureTest < Plastic::TestCase
     assert_match(/the choice of tool is yours/, sole(outcome.steps))
     assert_equal "the agent refreshes the architecture map with its own tool", outcome.because
   end
+
+  def test_the_refresh_names_outcome_md_as_the_record_place
+    outcome, = run_workflow(Plastic::Workflows::RefreshArchitecture)
+
+    assert_includes sole(outcome.steps), "under Verification in outcome.md"
+    refute_includes sole(outcome.steps), "context you submit"
+  end
 end

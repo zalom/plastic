@@ -25,6 +25,15 @@ class WorkDeliveryActionTest < Plastic::TestCase
     assert_includes instructions, "plastic node add 1 TITLE --criterion TEXT"
   end
 
+def test_the_planning_instruction_starts_with_fetching_the_architecture_map
+  instructions = action.last
+
+  assert instructions.start_with?("Before you plan, fetch the architecture map as current as possible with an architecture mapping tool such as Enola, or map the code yourself; Plastic runs no tool. Read the intent's goal")
+  assert_includes instructions, "such as Enola"
+  assert_includes instructions, "map the code yourself"
+  assert_includes instructions, "Plastic runs no tool"
+end
+
   def test_a_ready_node_is_claimed
     plan("Build")
 
@@ -46,6 +55,7 @@ class WorkDeliveryActionTest < Plastic::TestCase
 
     assert_equal [nil, "the owner must answer node n1"], action.first(2)
     assert_includes action.last, "Ask the owner: Which store?."
+    refute_includes action.last, "architecture map"
   end
 
   def test_a_claimed_node_names_its_worker
@@ -54,6 +64,7 @@ class WorkDeliveryActionTest < Plastic::TestCase
 
     assert_equal [nil, "node n1 is already claimed"], action.first(2)
     assert_includes action.last, "with its worker worker"
+    refute_includes action.last, "architecture map"
   end
 
   def test_a_claimed_node_with_no_worker_name_never_prints_an_empty_name
@@ -79,6 +90,7 @@ class WorkDeliveryActionTest < Plastic::TestCase
     @work.remove_node(intent_id: "1", id: "n1")
 
     assert_equal [nil, "dependencies block the remaining nodes"], action.first(2)
+    refute_includes action.last, "architecture map"
   end
 
   def test_all_nodes_done_points_to_the_intent_end
