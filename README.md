@@ -183,6 +183,7 @@ plastic intent new "LINE" --parent 12 # Create a branch of intent 12
 plastic intent show 12                # Print the state screen
 plastic intent spec 12                # State screen, then the speccing rules
 plastic intent rule 12 "TEXT"         # Record a ruling in Insights
+plastic intent revise 12 "LINE" --why "TEXT"  # Rewrite the What and the Why, keeping the old text
 plastic session note "TEXT"           # Append a savepoint note
 plastic intent brief 12               # Print the brief an agent starts from
 plastic intent link 12 cites 7        # Link intent 12 to intent 7

@@ -11,6 +11,8 @@ that is a ruling.
 Record each owner decision with `plastic intent rule ID "TEXT"`. When a new
 ruling replaces an older one, name it with `--supersedes RULING_ID`, and the
 older ruling stays on record with the link that marks it superseded.
+When the grilling changes the goal itself, rewrite it with `plastic intent
+revise ID "LINE" --why "TEXT"`; the old What and Why stay as a revision.
 
 The spec is done when `plastic intent spec` reads no open decision back. The
 next step is `plastic auto start ID`.

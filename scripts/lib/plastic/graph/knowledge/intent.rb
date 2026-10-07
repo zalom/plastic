@@ -47,6 +47,9 @@ module Plastic
 
         def file = "#{intent_id}--#{slug}.md"
 
+        # The intent id and the path that find the intent's own file in the knowledge graph.
+        def document_key = [intent_id, file]
+
         # The row a new intent writes; the database gives `id` and stamps `origin_id`.
         def new_row = to_h.except(:id, :origin_id)
 

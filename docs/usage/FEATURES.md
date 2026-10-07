@@ -43,6 +43,17 @@ outer one. With neither, the global store answers.
 entries that are ready, in flight or blocked. With no roadmap, both name the first active
 intent instead.
 
+## Rulings and revisions
+
+| Command | Result |
+| ------- | ------ |
+| `plastic intent rule ID "TEXT"` | The next owner ruling, D1, D2 and on. `--supersedes RULING_ID` links it to the ruling it replaces. |
+| `plastic intent revise ID "LINE"` | The intent's new What, and its new Why with `--why "TEXT"`. `--dry-run` prints the change and writes nothing. |
+
+`intent revise` writes the intent file as a new revision and keeps the old one, so the old
+What and Why read back with `plastic document get`. A done or abandoned intent refuses with
+exit 3.
+
 ## Preview a change with --dry-run
 
 Eight commands take `--dry-run`. It runs the whole call in a disposable copy of the store
@@ -62,7 +73,7 @@ could not hold it safely.
 | `plastic roadmap drop SLUG ITEM --dry-run` | The roadmap rows the dropped item would change. |
 | `plastic roadmap edge remove SLUG FROM TO --dry-run` | The roadmap edge rows the removal would delete. |
 
-`plastic sync up`, `plastic sync down` and `plastic backup` keep their own previews. `plastic backup --live` prints each line of the backup's `backup.log` as it is written. `plastic backup purge` (with `--older-than`, `--all` or `--failed`) and `plastic backup restore` take `--dry-run` and list what they would delete or put back. After a restore, `plastic backup restore` asks at a terminal whether to sync down, sync up or neither, and tells an agent to ask the person.
+`plastic sync up`, `plastic sync down`, `plastic intent revise` and `plastic backup` keep their own previews. `plastic backup --live` prints each line of the backup's `backup.log` as it is written. `plastic backup purge` (with `--older-than`, `--all` or `--failed`) and `plastic backup restore` take `--dry-run` and list what they would delete or put back. After a restore, `plastic backup restore` asks at a terminal whether to sync down, sync up or neither, and tells an agent to ask the person.
 `plastic uninstall --dry-run` lists every path the uninstall would remove.
 
 ## Installer commands
