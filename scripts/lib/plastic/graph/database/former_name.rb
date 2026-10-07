@@ -4,26 +4,37 @@ module Plastic
   module Graph
     class Database
       # The name a database file had before, such as home.db before local.db.
-      # Moving it renames the file and its journal files, once, and only when
-      # no file has the new name yet.
+      # The first move renames the file and its journal files, and only when
+      # no file has the new name yet. Later moves do nothing.
       class FormerName
         SUFFIXES = ["-journal", "-wal", "-shm", ""].freeze
 
+        # The phrase the report prints for the rename, or nil when nothing moved.
+        attr_reader :said
+
         def initialize(path)
           @path = path
+          @pending = true
+          @said = nil
         end
 
-        # The phrase the report prints for the rename, or nil when nothing moved.
         def move_to(target)
-          return unless File.file?(@path) && !File.exist?(target)
+          return @said unless @pending
 
-          SUFFIXES.each { |suffix| move("#{@path}#{suffix}", "#{target}#{suffix}") }
-          "#{File.basename(@path)} renamed to #{File.basename(target)}"
+          @pending = false
+          @said = rename(target)
         end
 
         private
 
-        def move(from, to) = File.exist?(from) && File.rename(from, to)
+        def rename(target)
+          return unless File.file?(@path) && !File.exist?(target)
+
+          moves(target).each { |from, to| File.rename(from, to) }
+          "#{File.basename(@path)} renamed to #{File.basename(target)}"
+        end
+
+        def moves(target) = SUFFIXES.map { |suffix| ["#{@path}#{suffix}", "#{target}#{suffix}"] }.select { |from, _to| File.exist?(from) }
       end
     end
   end
