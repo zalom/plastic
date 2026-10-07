@@ -60,20 +60,22 @@ class DoctorCommandTest < Plastic::TestCase
   end
 end
 
-# The doctor as a person runs it: a child process on a home made by the
-# kernel's own commands, then one damage and the repair the doctor names.
 class DoctorProcessTest < Minitest::Test
   def test_the_repair_the_doctor_names_makes_the_next_doctor_pass_that_check
     Dir.mktmpdir("doctor-process") do |home|
       kernel = KernelCommand.new(home)
       project = FileUtils.mkdir_p(File.join(home, "alpha")).first
-      kernel.run!("project", "new", "alpha", project)
-      FileUtils.rm_f(File.join(kernel.plastic_home, "stores", "alpha", "references.db"))
-      found = kernel.run("doctor")
+      found = damaged(kernel, project)
       kernel.run!("project", "new", "alpha", project)
 
       assert_equal [1, true], [found.code, found.out.include?("plastic project new alpha #{project}")]
       assert_match(/store alpha:\s+ok/, kernel.run("doctor").out)
     end
+  end
+
+  def damaged(kernel, project)
+    kernel.run!("project", "new", "alpha", project)
+    FileUtils.rm_f(File.join(kernel.plastic_home, "stores", "alpha", "references.db"))
+    kernel.run("doctor")
   end
 end

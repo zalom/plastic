@@ -10,7 +10,9 @@ module Plastic
   module Doctor
     class ClaudeCode
       IMPORT = CompactInstructions::BODY.lines.map(&:strip).find { |line| line.start_with?("@") }
+      IMPORT_LINE = /\A#{Regexp.escape(IMPORT)}\s*\z/
       AGENTS_IMPORT = "@AGENTS.md"
+      AGENTS_LINE = /\A#{Regexp.escape(AGENTS_IMPORT)}\s*\z/
 
       def initialize(scope, running:)
         @scope = scope
@@ -29,17 +31,15 @@ module Plastic
 
       def import
         file = File.join(folder, "CLAUDE.md")
-        Check.of("CLAUDE.md:", InstructionLine.new(file, line(IMPORT)).problem, detail: "#{file} imports PLASTIC.md", repair: ClaudeHooks::REPAIR)
+        Check.new("CLAUDE.md:", "#{file} imports PLASTIC.md", ClaudeHooks::REPAIR).judged(InstructionLine.new(file, IMPORT_LINE).problem)
       end
 
       def projects = scope.projects.map { |slug, path| project(slug, File.join(path, "CLAUDE.md")) }
 
       def project(slug, file)
-        Check.of("CLAUDE.md #{slug}:", InstructionLine.new(file, line(AGENTS_IMPORT)).problem, detail: "#{file} imports AGENTS.md",
-          repair: "add the line #{AGENTS_IMPORT} to #{file}")
+        Check.new("CLAUDE.md #{slug}:", "#{file} imports AGENTS.md", "add the line #{AGENTS_IMPORT} to #{file}")
+          .judged(InstructionLine.new(file, AGENTS_LINE).problem)
       end
-
-      def line(text) = /\A#{Regexp.escape(text)}\s*\z/
     end
   end
 end

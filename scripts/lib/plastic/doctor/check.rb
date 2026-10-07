@@ -7,9 +7,12 @@ module Plastic
 
       def self.finding(label, text, repair) = new(label, text, repair)
 
-      def self.of(label, problem, detail:, repair:) = problem ? finding(label, problem, repair) : ok(label, detail)
+      def self.from(part)
+        label, value, repair = part.to_h.values_at(:label, :value, :repair)
+        repair ? finding(label, value, repair) : ok(label, value)
+      end
 
-      def self.from(part) = of(part.label, part.repair && part.value, detail: part.value, repair: part.repair)
+      def judged(problem) = problem ? with(value: problem) : with(value: "ok, #{value}", repair: nil)
 
       def to_a = [label, value, repair]
     end

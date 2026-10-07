@@ -28,6 +28,12 @@ class DoctorClaudeHooksTest < Plastic::TestCase
       checks.map(&:to_a)
   end
 
+  def test_settings_that_hold_a_list_have_no_plastic_hook
+    write(settings_path, "[]")
+
+    assert_equal(["no Plastic hook"] * 3, checks.map(&:value))
+  end
+
   def test_missing_settings_are_one_finding
     File.delete(settings_path)
 

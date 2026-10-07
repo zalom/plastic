@@ -6,9 +6,6 @@ require_relative "../../test_helper"
 require_relative "../../../scripts/lib/compact_instructions"
 require_relative "../../../scripts/lib/plastic/hooks/entries"
 
-# A Claude Code home the doctor finds whole: the version records, PLASTIC.md,
-# the machine database, one registered project with its store and its
-# instruction files, and the three hooks pointing at an executable file.
 module WholeHome
   RUNNING = "9.1.0"
   SLUG = "alpha"

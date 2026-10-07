@@ -75,11 +75,10 @@ class InstallerCoreRepairTest < Minitest::Test
   end
 
   def test_a_reinstall_makes_a_launcher_that_lost_its_executable_bit_executable_again
-    kernel = KernelCommand.new(@home)
-    kernel.run!("install")
+    capture_io { installer.distribute(:install, tmp_dirs: []) }
     launcher = File.join(plastic_home, "bin", "plastic")
     File.chmod(0o644, launcher)
-    kernel.run!("install", "--reinstall")
+    capture_io { installer.distribute(:update, tmp_dirs: []) }
 
     assert File.executable?(launcher), "#{launcher} is not executable after the reinstall"
   end

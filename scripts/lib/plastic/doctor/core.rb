@@ -15,7 +15,19 @@ module Plastic
         SQLite3::VERSION
       end
       SCHEMA = Graph::Schema
+      STORE = SCHEMA.store
       PLASTIC_LINE = /PLASTIC\.md/
+
+      def self.store_problem(folder)
+        problems = STORE.filter_map { |key| DatabaseCheck.new(File.join(folder, SCHEMA.file(key)), key).problem }
+        problems.join("; ") unless problems.empty?
+      end
+
+      def self.agents(slug, path)
+        file = File.join(path, "AGENTS.md")
+        Check.new("AGENTS.md #{slug}:", "#{file} names PLASTIC.md", "add a line naming ~/.plastic/PLASTIC.md to #{file}")
+          .judged(InstructionLine.new(file, PLASTIC_LINE).problem)
+      end
 
       def initialize(scope, running:, loader: SQLITE)
         @scope = scope
@@ -42,29 +54,21 @@ module Plastic
       end
 
       def machine_database
-        key = (SCHEMA.databases.keys - SCHEMA.store).first
+        key = (SCHEMA.databases.keys - STORE).first
         file = SCHEMA.file(key)
-        Check.of("#{file}:", DatabaseCheck.new(File.join(home, file), key).problem, detail: "every table present", repair: "plastic next")
+        Check.new("#{file}:", "every table present", "plastic next").judged(DatabaseCheck.new(File.join(home, file), key).problem)
       end
 
       def plastic_md
         path = File.join(home, "PLASTIC.md")
-        Check.of("PLASTIC.md:", (File.file?(path) ? nil : "#{path} is missing"), detail: path, repair: "plastic install --reinstall")
+        Check.new("PLASTIC.md:", path, "plastic install --reinstall").judged(File.file?(path) ? nil : "#{path} is missing")
       end
 
-      def project(slug, path) = [store(slug, path), agents(slug, path)]
+      def project(slug, path) = [store(slug, path), Core.agents(slug, path)]
 
       def store(slug, path)
-        folder = File.join(home, "stores", slug)
-        problems = SCHEMA.store.filter_map { |key| DatabaseCheck.new(File.join(folder, SCHEMA.file(key)), key).problem }
-        Check.of("store #{slug}:", problems.empty? ? nil : problems.join("; "), detail: "#{SCHEMA.store.size} databases, every table present",
-          repair: "plastic project new #{slug} #{Shellwords.escape(path)}")
-      end
-
-      def agents(slug, path)
-        file = File.join(path, "AGENTS.md")
-        Check.of("AGENTS.md #{slug}:", InstructionLine.new(file, PLASTIC_LINE).problem, detail: "#{file} names PLASTIC.md",
-          repair: "add a line naming ~/.plastic/PLASTIC.md to #{file}")
+        Check.new("store #{slug}:", "#{STORE.size} databases, every table present", "plastic project new #{slug} #{Shellwords.escape(path)}")
+          .judged(Core.store_problem(File.join(home, "stores", slug)))
       end
     end
   end

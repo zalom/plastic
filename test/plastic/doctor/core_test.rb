@@ -20,7 +20,7 @@ class DoctorCoreTest < Plastic::TestCase
   end
 
   def test_every_check_that_passes_says_ok
-    assert(checks.reject(&:repair).all? { |item| item.value.start_with?("ok, ") }, checks.map(&:value).inspect)
+    assert_empty(checks.reject(&:repair).reject { |item| item.value.start_with?("ok, ") })
   end
 
   def test_a_stale_version_record_names_the_reinstall

@@ -6,7 +6,6 @@ require_relative "../../scripts/lib/plastic/doctor"
 class DoctorTest < Plastic::TestCase
   include WholeHome
 
-  # A harness module written beside the Claude Code one, as intent 418 adds Codex.
   class Other
     def initialize(_scope, running:) = @running = running
 
@@ -14,32 +13,28 @@ class DoctorTest < Plastic::TestCase
   end
 
   def test_a_call_with_no_codex_variable_checks_claude_code
-    assert_equal "claude-code", Plastic::Doctor.harness(scope, nil)
+    assert_equal "claude-code", Plastic::Doctor.harness(scope)
   end
 
   def test_a_codex_variable_picks_codex
-    assert_equal "codex", Plastic::Doctor.harness(scope("CODEX_THREAD_ID" => "t-1"), nil)
-  end
-
-  def test_a_named_harness_wins_over_the_variables
-    assert_equal "claude-code", Plastic::Doctor.harness(scope("CODEX_THREAD_ID" => "t-1"), "claude-code")
+    assert_equal "codex", Plastic::Doctor.harness(scope("CODEX_THREAD_ID" => "t-1"))
   end
 
   def test_a_harness_with_no_module_is_a_usage_error_naming_the_ones_that_have_one
-    error = assert_raises(Plastic::CLI::Command::Usage) { Plastic::Doctor.checks(scope, harness: "codex", running: RUNNING) }
+    error = assert_raises(Plastic::CLI::Command::Usage) { Plastic::Doctor.kind("codex") }
 
     assert_equal "no doctor for the harness codex; harnesses with one: claude-code", error.message
   end
 
   def test_a_module_passed_beside_claude_code_is_found_by_name
-    harnesses = Plastic::Doctor::HARNESSES.merge("other" => Other)
-    checks = Plastic::Doctor.checks(scope, harness: "other", running: RUNNING, harnesses:)
+    kind = Plastic::Doctor.kind("other", Plastic::Doctor::HARNESSES.merge("other" => Other))
+    checks = Plastic::Doctor.checks(scope, kind, running: RUNNING)
 
     assert_equal ["other:", "ok, #{RUNNING}"], checks.last.to_a.first(2)
   end
 
   def test_the_core_checks_come_first_for_every_harness
-    checks = Plastic::Doctor.checks(scope, harness: "claude-code", running: RUNNING)
+    checks = Plastic::Doctor.checks(scope, Plastic::Doctor.kind("claude-code"), running: RUNNING)
 
     assert_equal "version:", checks.first.label
   end

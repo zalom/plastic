@@ -6,6 +6,8 @@ require_relative "installation"
 
 module Plastic
   module Workflows
+    # Runs the checks of the shared parts and of one harness, prints a row for
+    # each, and names each repair once. It reads files and changes none.
     class CheckHealth < CodeWorkflow
       [facts, steps, outcomes].each(&:clear)
 
@@ -26,7 +28,7 @@ module Plastic
 
       def self.checks(context)
         scope = context.scope
-        Doctor.checks(scope, harness: Doctor.harness(scope, context.harness_name), running: running(context))
+        Doctor.checks(scope, Doctor.kind(context.harness_name || Doctor.harness(scope)), running: running(context))
       end
 
       def self.running(context) = Installation.source(Installation.package_root(context.scope)) && Installation.of(context).version

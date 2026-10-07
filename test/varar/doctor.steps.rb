@@ -5,8 +5,6 @@ require "json"
 require "tmpdir"
 require_relative "support/kernel_command"
 
-# One row of the doctor walk: a home made by the kernel's own commands, one
-# damage, the doctor, the repair it names, and the doctor again.
 module DoctorWalk
   DAMAGES = {
     "none" => ->(_kernel, _project) {},
@@ -25,14 +23,19 @@ module DoctorWalk
       kernel = KernelCommand.new(home)
       project = whole(kernel)
       DAMAGES.fetch(row["damage"]).call(kernel, project)
-      found = kernel.run("doctor", "--json")
-      result = JSON.parse(found.out).fetch("result")
-      repair = Array(result["repair"]).first
-      run_repair(kernel, repair)
-      row.merge("exit" => found.code.to_s, "check" => finding(result), "repair" => repair.to_s.sub(project, "PROJECT").then { |text| text.empty? ? "none" : text },
-        "after repair" => kernel.run("doctor").code.to_s)
+      row.merge(walk(kernel, project))
     end
   end
+
+  def walk(kernel, project)
+    found = kernel.run("doctor", "--json")
+    result = JSON.parse(found.out).fetch("result")
+    repair = Array(result["repair"]).first
+    run_repair(kernel, repair)
+    { "exit" => found.code.to_s, "check" => finding(result), "repair" => shown(repair, project), "after repair" => kernel.run("doctor").code.to_s }
+  end
+
+  def shown(repair, project) = repair ? repair.sub(project, "PROJECT") : "none"
 
   def whole(kernel)
     project = FileUtils.mkdir_p(File.join(kernel.home, "alpha")).first
