@@ -2,6 +2,7 @@
 
 require "json"
 require_relative "../intent"
+require_relative "revision/section"
 
 module Plastic
   module Graph
@@ -14,31 +15,14 @@ module Plastic
         # replaced; a part it lacks is not added, except a Why with no
         # `## Context`, which gets one before `## Outcome`.
         class Revision
-          HEADING = /\A##?#? /
-
           def initialize(body, intent_id)
             @lines = body.split("\n", -1)
             @intent_id = intent_id
             @revised = []
           end
 
-          # The section's blank lines kept around the new text; an empty section gets one blank line each side.
-          def self.filled(old, text)
-            return ["", text, ""] if old.all?(&:empty?)
-
-            before = old.take_while(&:empty?)
-            after = old.reverse.take_while(&:empty?)
-            before + [text] + after
-          end
-
-          # The lines of a section, from its heading up to the next heading.
-          def self.lead(start, lines) = lines[(start + 1)..].take_while { |text| !text.match?(HEADING) }
-
           # The text under `## Context`, as one line.
-          def why
-            start = @lines.index("## Context")
-            start ? Revision.lead(start, @lines).reject(&:empty?).join(" ") : ""
-          end
+          def why = Section.lead(@lines.index("## Context") || @lines.size, @lines).reject(&:empty?).join(" ")
 
           def revise(line, why = nil)
             @revised = @lines.map { |text| retitle(text, line) }
@@ -58,7 +42,7 @@ module Plastic
 
           def front_matter?(text)
             close = @lines.first == "---" && @lines.drop(1).index("---")
-            close ? @lines.index(text) <= close : false
+            close && @lines.index(text) <= close
           end
 
           def rewhy(why)
@@ -71,8 +55,8 @@ module Plastic
             start = @revised.index(heading)
             return unless start
 
-            old = Revision.lead(start, @revised)
-            @revised[start + 1, old.size] = Revision.filled(old, text)
+            old = Section.lead(start, @revised)
+            @revised[start + 1, old.size] = Section.filled(old, text)
           end
         end
       end

@@ -13,7 +13,7 @@ module Plastic
           Change = Data.define(:intent, :document, :history, :edited, :line, :why) do
             def revision = Revision.new(document.body, intent.intent_id)
 
-            def old_why = revision.why
+            def old_why = revision.why.sub(/\A\z/, "none")
 
             def body = revision.revise(line, why)
 

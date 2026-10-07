@@ -10,15 +10,9 @@ class IntentReviseTest < Plastic::TestCase
 
   def body = retrieval.fetch("1", FILE).body
 
-  def revisions
-    store_graphs.databases.fetch(:knowledge).row("SELECT COUNT(*) AS n FROM document_revisions WHERE path = :path", path: FILE).fetch("n")
-  end
+  def revisions = store_graphs.databases.fetch(:knowledge).row("SELECT COUNT(*) AS n FROM document_revisions WHERE path = :path", path: FILE).fetch("n")
 
-  def set_status(status)
-    store_graphs.databases.fetch(:work).transaction do |batch|
-      batch.write(:intents, "UPDATE intents SET status = :status WHERE intent_id = '1'", status:)
-    end
-  end
+  def set_status(status) = store_graphs.databases.fetch(:work).transaction { |batch| batch.write(:intents, "UPDATE intents SET status = :status WHERE intent_id = '1'", status:) }
 
   def test_a_revise_changes_the_title_row_and_writes_a_second_revision
     open_intent
@@ -43,9 +37,8 @@ class IntentReviseTest < Plastic::TestCase
     open_intent
 
     result = call("1", "Beta, after grilling")
-    reference = result.out[%r{history: (plastic://\S+)}, 1]
 
-    assert_includes retrieval.fetch_reference(reference).fetch(:body), "## Intent\n\nAlpha\n"
+    assert_includes retrieval.fetch_reference(result.out[%r{history: (plastic://\S+)}, 1]).fetch(:body), "## Intent\n\nAlpha\n"
   end
 
   def test_a_dry_run_prints_both_whats_and_writes_no_row
@@ -56,6 +49,16 @@ class IntentReviseTest < Plastic::TestCase
     assert_equal 0, result.code, result.err
     assert_includes result.out, "what was: Alpha\nwhat: Beta, after grilling\n"
     assert_equal ["Alpha", 1], [retrieval.intent("1").title, revisions]
+  end
+
+  def test_a_dry_run_prints_the_old_why_or_none
+    open_intent
+
+    first = call("1", "Beta", "--why", "The owner moved the goal")
+    second = call("1", "Gamma", "--why", "The goal moved again", "--dry-run")
+
+    assert_includes first.out, "why was: none\nwhy: The owner moved the goal\n"
+    assert_includes second.out, "why was: The owner moved the goal\nwhy: The goal moved again\n"
   end
 
   def test_a_done_intent_refuses_with_exit_3_and_no_row_written

@@ -200,6 +200,15 @@
         }
       ]
     },
+    "varar/intent-revise.md": {
+      "sourceHash": "fnv1a:65a83e21",
+      "examples": [
+        {
+          "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
+          "line": 5
+        }
+      ]
+    },
     "varar/intent-rule.md": {
       "sourceHash": "fnv1a:ee9b36d6",
       "examples": [
