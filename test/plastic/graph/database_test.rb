@@ -30,9 +30,9 @@ class DatabaseTest < Plastic::TestCase
 
   def test_a_folder_that_cannot_be_made_names_the_file
     File.write(File.join(@home, "taken"), "")
-    error = assert_raises(Database::Error) { Database.new(File.join(@home, "taken", "home.db"), "").rows("SELECT 1") }
+    error = assert_raises(Database::Error) { Database.new(File.join(@home, "taken", "local.db"), "").rows("SELECT 1") }
 
-    assert_match(/\Ahome\.db: /, error.message)
+    assert_match(/\Alocal\.db: /, error.message)
   end
 
   def test_a_failed_write_inside_an_open_transaction_undoes_only_itself
@@ -46,11 +46,11 @@ class DatabaseTest < Plastic::TestCase
     connection.rollback
   end
 
-  def test_open_home_opens_the_home_database
-    databases = Database.open_home("/home")
+  def test_open_local_opens_the_local_database
+    databases = Database.open_local("/home")
 
-    assert_equal [:home], databases.keys
-    assert_equal ["/home/home.db", "home.db"], [databases[:home].path, databases[:home].file]
+    assert_equal [:local], databases.keys
+    assert_equal ["/home/local.db", "local.db"], [databases[:local].path, databases[:local].file]
   end
 
   def test_the_schema_is_made_on_the_first_read
@@ -109,9 +109,9 @@ class DatabaseTest < Plastic::TestCase
   end
 
   def test_a_new_database_makes_its_folder
-    scratch("home.db").rows("CREATE TABLE t(a)")
+    scratch("local.db").rows("CREATE TABLE t(a)")
 
-    assert_path_exists File.join(@home, "scratch", "home.db")
+    assert_path_exists File.join(@home, "scratch", "local.db")
   end
 
   def test_puts_and_applies_return_the_batch_so_writes_chain

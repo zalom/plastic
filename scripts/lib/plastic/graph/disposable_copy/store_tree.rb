@@ -1,9 +1,10 @@
 # frozen_string_literal: true
 
 require "fileutils"
-require "find"
 require_relative "../schema"
 require_relative "snapshot"
+require_relative "store_files"
+require_relative "database_copy"
 
 module Plastic
   module Graph
@@ -14,7 +15,6 @@ module Plastic
       # even when its bytes did not.
       class StoreTree
         EPOCH = Time.at(0)
-        DATABASE = Snapshot::DATABASE
         HOME_FILES = %w[origin_id config.yml projects.yml].freeze
 
         def initialize(home, copy, slug)
@@ -25,9 +25,7 @@ module Plastic
         end
 
         def populate
-          refuse_folder_links
-          FileUtils.mkdir_p(@copy)
-          copy_all
+          copy_all(StoreFiles.new(@home, @copy, @slug).tap(&:refuse_folder_links))
           @baseline = state
           self
         end
@@ -42,20 +40,11 @@ module Plastic
 
         private
 
-        def copy_all
+        def copy_all(files)
+          FileUtils.mkdir_p(@copy)
           copy_home_files
-          copy_store_files
-          snapshot_databases
-        end
-
-        def source_root = File.join(@home, "stores", @slug)
-
-        def refuse_folder_links
-          return unless File.exist?(source_root) || File.symlink?(source_root)
-
-          Find.find(source_root) do |path|
-            raise Refused, "preview cannot copy folder link #{path}; the original store was not changed" if File.symlink?(path) && File.directory?(path)
-          end
+          files.call
+          DatabaseCopy.new(@home, @copy, @slug).call
         end
 
         def copy_home_files
@@ -63,49 +52,6 @@ module Plastic
             source = File.join(@home, name)
             StoreTree.copy_file(source, File.join(@copy, name)) if File.file?(source)
           end
-        end
-
-        def copy_store_files
-          return unless File.directory?(source_root)
-
-          Find.find(source_root) { |path| copy_entry(path) }
-        end
-
-        def copy_entry(path) = place(path, File.join(@copy, path.delete_prefix("#{@home}/")))
-
-        def place(path, target)
-          link = File.symlink?(path)
-          return FileUtils.mkdir_p(target) if File.directory?(path) && !link
-          return if DATABASE.match?(path)
-
-          link ? copy_link(path, target) : StoreTree.copy_file(path, target)
-        end
-
-        def copy_link(source, target)
-          held = File.join(File.dirname(@copy), "sandbox", target.delete_prefix("#{@copy}/"))
-          File.file?(source) ? StoreTree.copy_file(source, held) : FileUtils.mkdir_p(File.dirname(held))
-          FileUtils.mkdir_p(File.dirname(target))
-          File.symlink(held, target)
-        end
-
-        def snapshot_databases
-          sources.each do |name, source|
-            target = File.join(@copy, name)
-            FileUtils.mkdir_p(File.dirname(target))
-            Database::ConnectionPool.for(source).execute("VACUUM INTO ?", [target])
-          end
-        end
-
-        def sources
-          home_db = File.join(@home, "home.db")
-          store = Schema.store.filter_map { |key| store_entry(key) }
-          [(["home.db", home_db] if File.file?(home_db)), *store].compact
-        end
-
-        def store_entry(key)
-          file = Schema.file(key)
-          path = File.join(source_root, file)
-          ["stores/#{@slug}/#{file}", path] if File.exist?(path)
         end
 
         def state = Snapshot.of(@copy)

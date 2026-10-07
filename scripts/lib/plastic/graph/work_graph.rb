@@ -49,7 +49,7 @@ module Plastic
       # A routine run is call memory, kept off the report.
       def save_routine_run(routine_run)
         row = routine_run.to_h.merge(store: @retrieval.store, subject: routine_run.subject.to_s, session_id: @writers.session)
-        @databases.fetch(:home).transaction { |batch| batch.put(:routine_runs, row) }
+        @databases.fetch(:local).transaction { |batch| batch.put(:routine_runs, row) }
         routine_run
       end
 
@@ -91,14 +91,14 @@ module Plastic
       # The backups of this store: write, preview, list, purge and restore.
       def backups
         store = @retrieval.store
-        Knowledge::Backup::StoreBackups.new(home_db, File.join(home_dir, "stores", store), store, session: @writers.session)
+        Knowledge::Backup::StoreBackups.new(local_db, File.join(home_dir, "stores", store), store, session: @writers.session)
       end
 
       private
 
-      def home_db = @databases.fetch(:home)
+      def local_db = @databases.fetch(:local)
 
-      def home_dir = File.dirname(home_db.path)
+      def home_dir = File.dirname(local_db.path)
     end
   end
 end

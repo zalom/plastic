@@ -20,7 +20,7 @@ module Plastic
         end
 
         def backups
-          databases.fetch(:home).rows("SELECT * FROM backups ORDER BY at").map { |row| Knowledge::Backup.from_h(row) }
+          databases.fetch(:local).rows("SELECT * FROM backups ORDER BY at").map { |row| Knowledge::Backup.from_h(row) }
         end
 
         private

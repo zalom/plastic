@@ -19,8 +19,8 @@ module Plastic
       # A statement failed, or the file cannot be opened.
       class Error < StandardError; end
 
-      # The database of the home, for what belongs to one machine.
-      def self.open_home(home) = { home: new(File.join(home, Schema.file(:home)), Schema.fetch(:home)) }
+      # The local database, for what belongs to one machine.
+      def self.open_local(home) = { local: Local.new(home) }
 
       # The three databases of one store folder. `origin` stamps their rows and their change log.
       def self.open_store(root, origin)
@@ -70,6 +70,9 @@ module Plastic
       # "1 intent and 1 savepoint line in work_graph.db". Nil when nothing.
       def written_phrase = written.empty? ? nil : "#{Schema.phrase(written)} in #{file}"
 
+      # What the report says of this database: what this call wrote.
+      def phrases = [written_phrase].compact
+
       private
 
       def commit(batch)
@@ -102,3 +105,5 @@ module Plastic
     end
   end
 end
+
+require_relative "database/local"

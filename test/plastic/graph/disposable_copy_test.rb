@@ -30,6 +30,12 @@ module DisposableCopyFixtures
     [alpha(home, "folder"), outside]
   end
 
+  def rename_to_home_db(home)
+    Plastic::Graph.open(home:, store: "global").databases[:local].transaction { |batch| batch.insert(:routine_runs, { store: "global", tool: "t", subject: "" }) }
+    Plastic::Graph::Database::ConnectionPool.release(home)
+    File.rename(File.join(home, "local.db"), File.join(home, "home.db"))
+  end
+
   def rework(copy_path)
     File.write(alpha(copy_path, "notes.txt"), "changed\n")
     File.delete(alpha(copy_path, "savepoint.md"))
@@ -55,6 +61,16 @@ class DisposableCopyTest < Plastic::TestCase
       copy_of(home).within do |copy|
         assert_equal "kept\n", File.read(alpha(copy.path, "notes.txt"))
         assert_equal File.read(File.join(home, "origin_id")), File.read(File.join(copy.path, "origin_id"))
+      end
+    end
+  end
+
+  def test_a_home_db_not_yet_renamed_is_copied_and_read_as_local_db
+    with_seed do |home|
+      rename_to_home_db(home)
+
+      copy_of(home).within do |copy|
+        assert_equal 1, Plastic::Graph.open(home: copy.path, store: "global").databases[:local].row("SELECT count(*) AS n FROM routine_runs WHERE tool = 't'").fetch("n")
       end
     end
   end

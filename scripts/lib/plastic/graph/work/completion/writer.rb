@@ -29,14 +29,8 @@ module Plastic
           private
 
           def write_completion(intent_id, judge, evidence)
-            check = Check.new(@retrieval, intent_id)
-            raise Invalid, check.problems.join(" ") if check.problems.any?
-
-            Evidence.validate(evidence, check.criteria)
-            now = Plastic.now
-            row = { intent_id:, at: now, session_id: @session, judge:, criteria: check.criteria, evidence:,
-                    outcome_sha256: check.outcome_hash }
-            commit_completion(row)
+            attestation = Check.new(@retrieval, intent_id).attestation(evidence)
+            commit_completion({ intent_id:, at: Plastic.now, session_id: @session, judge:, **attestation })
           end
 
           def commit_completion(row)
@@ -50,14 +44,23 @@ module Plastic
           end
 
           def release_lock(intent_id)
+            lock = releasable_lock(intent_id)
+            delete_lock(lock) if lock
+          end
+
+          def releasable_lock(intent_id)
             completion = @retrieval.completion(intent_id)
             lock = @retrieval.lock(intent_id)
             return unless completion && lock
-            return if lock.live? && lock.session_id != completion.fetch("session_id")
 
-            @databases.fetch(:home).transaction do |batch|
+            holder = lock.session_id
+            lock unless lock.live? && holder != completion.fetch("session_id")
+          end
+
+          def delete_lock(lock)
+            @databases.fetch(:local).transaction do |batch|
               batch.write(:locks, "DELETE FROM locks WHERE store = :store AND intent_id = :intent_id AND session_id = :session_id AND renewed_at = :renewed_at",
-                store: @retrieval.store, intent_id:, session_id: lock.session_id, renewed_at: lock.renewed_at)
+                store: @retrieval.store, **lock.to_h.slice(:intent_id, :session_id, :renewed_at))
             end
           end
         end

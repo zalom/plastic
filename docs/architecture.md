@@ -239,7 +239,7 @@ with `-1`, `-2` added on a collision. `--databases LIST` copies only the named o
 and a last line that says the backup is done, or failed and why. Every line starts with a UTC
 time and is on disk before the next copy starts. `plastic backup --live` prints each line
 as it is written. A finished backup also gets one row in the
-`backups` table of `home.db`, named `SLUG/TS`.
+`backups` table of `local.db`, named `SLUG/TS`.
 `plastic backup list --store SLUG` reads the folders and shows the number, the folder name,
 the local start time, the status and the goal. It exits 1 for a backup whose row is
 missing on disk or changed, and does not fail for a folder with no row.

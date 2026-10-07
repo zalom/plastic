@@ -14,7 +14,7 @@ class StopGateTest < Plastic::TestCase
 
   def take_lock(intent_id, mode: "auto", live: true)
     at = live ? STAMP : "2026-10-05T09:00:00+02:00"
-    put(:home, :locks, { store: "global", intent_id:, session_id: "s-1", mode:, taken_at: at, renewed_at: at })
+    put(:local, :locks, { store: "global", intent_id:, session_id: "s-1", mode:, taken_at: at, renewed_at: at })
   end
 
   def put(key, table, row) = store_graphs.databases[key].transaction { |batch| batch.put(table, row) }

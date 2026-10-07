@@ -51,16 +51,26 @@ class GraphTest < Plastic::TestCase
 
   def test_wrote_has_one_phrase_per_database_written
     opened = graphs
-    opened.databases[:home].transaction { |batch| batch.insert(:routine_runs, { store: "plastic", tool: "x", subject: "" }) }
+    opened.databases[:local].transaction { |batch| batch.insert(:routine_runs, { store: "plastic", tool: "x", subject: "" }) }
 
-    assert_equal ["1 routine run in home.db"], opened.wrote
+    assert_equal ["1 routine run in local.db"], opened.wrote
+  end
+
+  def test_wrote_says_the_rename_first
+    machine = File.join(@home, "machine")
+    Plastic::Graph::Database.new(File.join(machine, "home.db"), Plastic::Graph::Schema.fetch(:local)).rows("SELECT 1")
+    Plastic::Graph::Database::ConnectionPool.release(machine)
+    opened = Plastic::Graph.open(home: machine, store: "plastic")
+    opened.databases[:local].transaction { |batch| batch.insert(:routine_runs, { store: "plastic", tool: "x", subject: "" }) }
+
+    assert_equal ["home.db renamed to local.db", "1 routine run in local.db"], opened.wrote
   end
 
   def test_a_session_given_at_open_stamps_the_routine_run_row
     opened = Plastic::Graph.open(home: @plastic_home, store: "plastic", session: "s-1")
     opened.work.save_routine_run(closed_run)
 
-    row = opened.databases[:home].row("SELECT session_id FROM routine_runs WHERE tool = 'intent end' AND subject = '7'")
+    row = opened.databases[:local].row("SELECT session_id FROM routine_runs WHERE tool = 'intent end' AND subject = '7'")
 
     assert_equal "s-1", row.fetch("session_id")
   end

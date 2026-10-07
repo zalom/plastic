@@ -13,7 +13,7 @@ module Plastic
       class Batch
         attr_reader :statements
 
-        # `origin` names the installation that writes; the home database has none and keeps no log.
+        # `origin` names the installation that writes; the local database has none and keeps no log.
         def initialize(origin: nil)
           @statements = []
           @origin = origin

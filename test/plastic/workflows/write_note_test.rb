@@ -15,7 +15,7 @@ class WriteNoteTest < Plastic::TestCase
     outcome, context = note("s-1")
 
     assert_equal [:done, ["note: tests first"]], [outcome, context.printed]
-    assert_equal "tests first", store_graphs.databases[:home].row("SELECT note FROM sessions WHERE session_id = 's-1'").fetch("note")
+    assert_equal "tests first", store_graphs.databases[:local].row("SELECT note FROM sessions WHERE session_id = 's-1'").fetch("note")
   end
 
   def test_a_call_with_no_session_fails_the_call

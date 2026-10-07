@@ -27,7 +27,7 @@ module Plastic
 
           def insert(row)
             row = row.merge(session_id: @target.session)
-            @target.home_db.transaction { |batch| batch.put(:backups, row, statement: :insert) }
+            @target.local_db.transaction { |batch| batch.put(:backups, row, statement: :insert) }
             row
           end
         end

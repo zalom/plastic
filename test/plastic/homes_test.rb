@@ -104,7 +104,7 @@ class HomesTest < Plastic::TestCase
   end
 
   def test_rollback_journals_are_left_to_the_rollback
-    journal = File.join(@plastic_home, "home.db-journal")
+    journal = File.join(@plastic_home, "local.db-journal")
     File.write(journal, "not a real journal, just a marker")
 
     @template.reset

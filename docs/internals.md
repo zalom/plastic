@@ -505,7 +505,7 @@ attests to the evidence; Plastic does not execute the verification.
 
 `Graph::Work::Completion::Writer` stores the criterion snapshot, evidence, judge, outcome hash, session,
 and timestamp in `completions`. It commits that row with the delivered status and closure
-time in the work database, then releases the delivery lock in the home database. A repeat
+time in the work database, then releases the delivery lock in the local database. A repeat
 call preserves the first completion record and retries cleanup. Imported done intents
 remain closed without gaining an invented attestation. `node done --repair` explicitly
 records verification for an already done node; it preserves the node's attempt count.
@@ -561,7 +561,7 @@ this section covers how the code holds together.
   takes the copy step and the live sink as arguments. `StreamingScope` carries the live
   sink from `plastic backup --live` to the writer. `Purger#failed` names the folders
   whose status is `failed`. `Publisher` adds the row of
-  `home.db`'s `backups` table and removes the folder when the insert fails. `Purger`
+  `local.db`'s `backups` table and removes the folder when the insert fails. `Purger`
   deletes a folder and its row together and puts the folder back when the row delete
   fails. `Restorer` checks the delivery lock and the status, writes a safety backup, runs
   `quick_check`, and swaps the files by rename with rollback. `Backup#flag` compares the

@@ -31,8 +31,8 @@ module BackupHomes
   def env_for(home) = { "PLASTIC_HOME" => home }
 
   def backup_at(home, time, slug: "alpha", databases: nil)
-    home_db = Plastic::Graph.open(home:, store: slug).databases.fetch(:home)
-    target = Plastic::Graph::Knowledge::Backup::Target.new(home_db, File.join(home, "stores", slug), slug, nil)
+    local_db = Plastic::Graph.open(home:, store: slug).databases.fetch(:local)
+    target = Plastic::Graph::Knowledge::Backup::Target.new(local_db, File.join(home, "stores", slug), slug, nil)
     Plastic::Graph::Knowledge::Backup::Publisher.new(target, now: time, databases:).call
   end
 

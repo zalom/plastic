@@ -1,7 +1,7 @@
 # plastic hook record
 
 `plastic hook record` answers the Stop event: it stamps the session's last turn on its row in
-home.db and prints nothing, so the session stops. With `--end` it answers SessionEnd instead
+local.db and prints nothing, so the session stops. With `--end` it answers SessionEnd instead
 and sets only the end time and the reason. Session s-1 opens the store with `hook resume`
 before each row. A call that names no session records nothing, and a call that names a new
 session opens a row for it. Stage 3 has no locks, so the stop gate has nothing to block.

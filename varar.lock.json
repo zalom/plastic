@@ -117,7 +117,7 @@
       ]
     },
     "varar/hook-record.md": {
-      "sourceHash": "fnv1a:bf8789ed",
+      "sourceHash": "fnv1a:bce06197",
       "examples": [
         {
           "name": "Each row gives the arguments, the event, the session, the exit code, the message and the row:",

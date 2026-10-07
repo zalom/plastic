@@ -53,9 +53,11 @@ the top of the home until `bin/plastic` switches to the kernel, a later stage.
 Each store keeps its rows in three SQLite databases inside its own folder: `work_graph.db`,
 `knowledge_graph.db` and `references.db`. The store folder's `.gitignore` lists them, so they
 are never versioned. The files printed from them are. The home keeps one database of its own,
-`home.db`, for what belongs to one machine rather than one store: `routine_runs`, `sessions`
+`local.db`, for what belongs to one machine rather than one store: `routine_runs`, `sessions`
 and `locks`. `routine_runs` and `locks` carry a `store` column; `sessions` carries one too,
-alongside the `directory` the session ran in. A session row tells the story of the work: who
+alongside the `directory` the session ran in. The file was named `home.db` before; on a machine
+that still has it, the first use renames it and its journal files to `local.db`, and the call that
+renamed it says so once on its `wrote:` line. A session row tells the story of the work: who
 ran what, when, in which session. Graph rows tell the story of the project. The two join on
 the intent id, never on a drawn session graph.
 
@@ -132,15 +134,15 @@ The following table lists the same classes. Each one sits in the `Plastic` modul
 | `CodeWorkflow` | Ruby steps that run in order: gates, reads and steps. It returns an outcome name. |
 | `AgentWorkflow` | Steps in plain words for the agent. It hands off while any step is left undone. |
 | `Context` and `Facts` | The named values of one call. A name that no one declared raises at once. |
-| `RoutineRun` | One call of one tool on one subject, kept as a row of `home.db`. |
+| `RoutineRun` | One call of one tool on one subject, kept as a row of `local.db`. |
 | `Graph::Database` | One SQLite file, read and written through the `sqlite3` gem. Each write logs its `changes` row in the same transaction. |
 | `Graph::Origin` | The id of this installation, made at the home on first use. |
 | `Graph::WorkGraph` | The writes of a command: routine runs, sessions, locks, intents, and the files printed after them. |
-| `Graph::Work::Session` | One row of `home.db`'s `sessions` table: a harness run, from its first turn to its end reason. |
-| `Graph::Lock` | One row of `home.db`'s `locks` table: the session holding the delivery lock of one intent. `live?` checks its TTL. |
+| `Graph::Work::Session` | One row of `local.db`'s `sessions` table: a harness run, from its first turn to its end reason. |
+| `Graph::Lock` | One row of `local.db`'s `locks` table: the session holding the delivery lock of one intent. `live?` checks its TTL. |
 | `Graph::RetrievalGraph` | The reads of a command, one table at a time. |
-| `Graph::Work::Session::Writer` | The writes to `home.db`'s `sessions` and `locks` tables. `WorkGraph` hands those writes to it. |
-| `Graph::Work::Session::Reader` | The reads of `home.db`'s routine runs, sessions and locks, and the intents a session touched. `RetrievalGraph` hands those reads to it. |
+| `Graph::Work::Session::Writer` | The writes to `local.db`'s `sessions` and `locks` tables. `WorkGraph` hands those writes to it. |
+| `Graph::Work::Session::Reader` | The reads of `local.db`'s routine runs, sessions and locks, and the intents a session touched. `RetrievalGraph` hands those reads to it. |
 | `Graph::Knowledge::Intent::Writer` | Checks and writes a new intent: its Luhmann id, its rows and its folder. |
 | `Graph::Printer` | Prints files from their rows and records each hash in `printed`. |
 | `Graph::Knowledge::Reader` | Reads a file changed by hand back into its rows: `store/index.json` through `IndexFile`, and a file of an intent folder through `IntentFile`. |
@@ -198,7 +200,7 @@ code, so no workflow picks a number.
 ### The routine run row
 
 A routine run is one call of one tool on one subject. A tool that writes keeps it as a row of
-the `routine_runs` table in `home.db`, which sits at the top of the Plastic home. The key
+the `routine_runs` table in `local.db`, which sits at the top of the Plastic home. The key
 is the store, the tool and the subject. A tool that writes nothing keeps its routine run in
 memory only.
 

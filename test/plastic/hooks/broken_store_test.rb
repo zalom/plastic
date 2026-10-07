@@ -38,13 +38,13 @@ class BrokenStoreTest < Minitest::Test
     Dir.mktmpdir do |home|
       kernel = KernelCommand.new(home)
       kernel.run!("intent", "new", "Alpha")
-      File.binwrite(File.join(kernel.plastic_home, "home.db"), "not a sqlite file")
+      File.binwrite(File.join(kernel.plastic_home, "local.db"), "not a sqlite file")
 
       call = kernel.run("hook", "resume", input: JSON.generate(source: "startup"), env: { "PLASTIC_SESSION" => "s-1" })
 
       assert_equal 0, call.code
       assert_equal "", call.out
-      assert_equal "plastic hook: Plastic::Graph::Database::Error: home.db: file is not a database\n", call.err
+      assert_equal "plastic hook: Plastic::Graph::Database::Error: local.db: file is not a database\n", call.err
     end
   end
 
