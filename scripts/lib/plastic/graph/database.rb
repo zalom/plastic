@@ -4,6 +4,7 @@ require_relative "schema"
 require_relative "sql"
 require_relative "database/batch"
 require_relative "database/connection_pool"
+require_relative "database/former_name"
 
 module Plastic
   module Graph
@@ -19,8 +20,12 @@ module Plastic
       # A statement failed, or the file cannot be opened.
       class Error < StandardError; end
 
-      # The database of the home, for what belongs to one machine.
-      def self.open_home(home) = { home: new(File.join(home, Schema.file(:home)), Schema.fetch(:home)) }
+      # The local database, for what belongs to one machine. A home.db left
+      # from before becomes local.db on the first use.
+      def self.open_local(home)
+        former = FormerName.new(File.join(home, "home.db"))
+        { local: new(File.join(home, Schema.file(:local)), Schema.fetch(:local), former:) }
+      end
 
       # The three databases of one store folder. `origin` stamps their rows and their change log.
       def self.open_store(root, origin)
@@ -29,10 +34,11 @@ module Plastic
 
       attr_reader :path, :written
 
-      def initialize(path, schema, origin: nil)
+      def initialize(path, schema, origin: nil, former: nil)
         @path = path
         @schema = schema
         @origin = origin
+        @former = former
         @written = Hash.new(0)
       end
 
@@ -70,6 +76,9 @@ module Plastic
       # "1 intent and 1 savepoint line in work_graph.db". Nil when nothing.
       def written_phrase = written.empty? ? nil : "#{Schema.phrase(written)} in #{file}"
 
+      # The rename this call made, then what it wrote.
+      def phrases = [@renamed, written_phrase].compact
+
       private
 
       def commit(batch)
@@ -94,10 +103,16 @@ module Plastic
       # The connection, with the schema made on the first call, so a new
       # folder needs no separate setup step.
       def connection
+        rename_former
         ConnectionPool.for(path).tap do |connection|
           Schema.prepare(connection, @schema) if @schema
           @schema = nil
         end
+      end
+
+      def rename_former
+        @renamed = @former.move_to(path) if @former
+        @former = nil
       end
     end
   end

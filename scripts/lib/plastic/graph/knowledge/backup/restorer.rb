@@ -32,13 +32,13 @@ module Plastic
             raise Missing, "the backup #{timestamp} does not hold #{missing.first.inspect}" if missing.any?
           end
 
-          def initialize(home_db, store_root, slug, now:, session: nil)
-            @target = Target.new(home_db, store_root, slug, session)
+          def initialize(local_db, store_root, slug, now:, session: nil)
+            @target = Target.new(local_db, store_root, slug, session)
             @now = now
           end
 
           def locked?
-            rows = @target.home_db.rows("SELECT * FROM locks WHERE store = :store", store: @target.slug)
+            rows = @target.local_db.rows("SELECT * FROM locks WHERE store = :store", store: @target.slug)
             rows.map { |row| Lock.from_h(row) }.any? { |lock| lock.live?(@now) }
           end
 

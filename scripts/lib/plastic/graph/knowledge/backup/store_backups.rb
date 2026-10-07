@@ -17,8 +17,8 @@ module Plastic
           # One line of the list: a folder, its row or both.
           Entry = Struct.new(:number, :folder, :started, :status, :goal, :flag)
 
-          def initialize(home_db, store_root, slug, session: nil, clock: Time)
-            @target = Target.new(home_db, store_root, slug, session)
+          def initialize(local_db, store_root, slug, session: nil, clock: Time)
+            @target = Target.new(local_db, store_root, slug, session)
             @clock = clock
           end
 
@@ -33,7 +33,7 @@ module Plastic
           end
 
           # This store's rows, oldest first.
-          def rows = @target.home_db.rows("SELECT * FROM backups ORDER BY at").map { |row| Backup.from_h(row) }.select { |backup| backup.name.start_with?("#{@target.slug}/") }
+          def rows = @target.local_db.rows("SELECT * FROM backups ORDER BY at").map { |row| Backup.from_h(row) }.select { |backup| backup.name.start_with?("#{@target.slug}/") }
 
           # Every folder and every row of this store, in the order of their names.
           def entries
@@ -41,9 +41,9 @@ module Plastic
             (folders.names | held.keys).sort.each_with_index.map { |name, index| entry(index + 1, name, held[name]) }
           end
 
-          def purger = Purger.new(@target.home_db, @target.root, @target.slug)
+          def purger = Purger.new(@target.local_db, @target.root, @target.slug)
 
-          def restorer = Restorer.new(@target.home_db, @target.root, @target.slug, now: @clock.now, session: @target.session)
+          def restorer = Restorer.new(@target.local_db, @target.root, @target.slug, now: @clock.now, session: @target.session)
 
           # The newest folder marked done, or nil.
           def latest_done = folders.names.reverse.find { |name| folders.status(name) == "done" }

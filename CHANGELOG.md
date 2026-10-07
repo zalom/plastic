@@ -5,6 +5,7 @@ Release history for Plastic, one line per cut. Commit-level detail lives in
 
 ## Unreleased
 
+- The one database each machine keeps is renamed from `home.db` to `local.db`, ready for local and remote stores. A machine that still has `home.db` gets it renamed on first use, rows and all, and the call that renamed it says so once.
 - The block that Plastic installs into `~/.claude/CLAUDE.md` holds only the import of `PLASTIC.md`. The compaction thresholds are gone from the block, and the `context_offer_tokens` and `context_insist_tokens` config keys are removed. An install or an update replaces the older block.
 - Plastic retires npm. A push to `alpha`, `beta` or `main` makes only the tag and the GitHub release,
   built by `scripts/build-release`, the same builder CI and the fresh install check use. `package.json`

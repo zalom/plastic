@@ -31,7 +31,7 @@ module Plastic
 
         def completions = built(:completions) { Completion::Writer.new(databases, retrieval, folder, session:) }
 
-        def sessions = built(:sessions) { Session::Writer.new(databases.fetch(:home), store: retrieval.store) }
+        def sessions = built(:sessions) { Session::Writer.new(databases.fetch(:local), store: retrieval.store) }
 
         def intents = built(:intents) { Knowledge::Intent::Writer.new(databases, retrieval, folder, session:) }
 

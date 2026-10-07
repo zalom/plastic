@@ -12,8 +12,8 @@ module Plastic
         # Deletes backups of one store. The folders on disk decide what
         # exists; a folder goes with its row, a row with no folder goes alone.
         class Purger
-          def initialize(home_db, store_root, slug)
-            @home_db = home_db
+          def initialize(local_db, store_root, slug)
+            @local_db = local_db
             @slug = slug
             @folders = Folders.new(store_root)
           end
@@ -45,7 +45,7 @@ module Plastic
 
           def row_names
             prefix = "#{@slug}/"
-            @home_db.rows("SELECT name FROM backups").map { |row| row.fetch("name") }.select { |name| name.start_with?(prefix) }.map { |name| name.delete_prefix(prefix) }
+            @local_db.rows("SELECT name FROM backups").map { |row| row.fetch("name") }.select { |name| name.start_with?(prefix) }.map { |name| name.delete_prefix(prefix) }
           end
 
           def move_aside(name)
@@ -54,7 +54,7 @@ module Plastic
             File.join(@folders.dir, ".#{name}.purging").tap { |aside| File.rename(@folders.path(name), aside) }
           end
 
-          def delete_row(name) = @home_db.transaction { |batch| batch.remove(:backups, name: "#{@slug}/#{name}") }
+          def delete_row(name) = @local_db.transaction { |batch| batch.remove(:backups, name: "#{@slug}/#{name}") }
         end
       end
     end

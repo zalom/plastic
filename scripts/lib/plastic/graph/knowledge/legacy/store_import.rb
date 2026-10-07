@@ -20,7 +20,7 @@ module Plastic
 
           def initialize(reader, folder, retrieval, databases)
             @reader, @folder, @retrieval, @databases = reader, folder, retrieval, databases
-            @home = File.dirname(databases.fetch(:home).path)
+            @home = File.dirname(databases.fetch(:local).path)
             @decisions = Decisions.new
             @originals = Originals.new
             @roadmaps = Roadmaps.new

@@ -97,9 +97,12 @@ module Plastic
         end
 
         def sources
-          home_db = File.join(@home, "home.db")
           store = Schema.store.filter_map { |key| store_entry(key) }
-          [(["home.db", home_db] if File.file?(home_db)), *store].compact
+          [local_entry, *store].compact
+        end
+
+        def local_entry
+          [Schema.file(:local), "home.db"].map { |file| [file, File.join(@home, file)] }.find { |_file, path| File.file?(path) }
         end
 
         def store_entry(key)

@@ -55,7 +55,7 @@ module Plastic
             return unless completion && lock
             return if lock.live? && lock.session_id != completion.fetch("session_id")
 
-            @databases.fetch(:home).transaction do |batch|
+            @databases.fetch(:local).transaction do |batch|
               batch.write(:locks, "DELETE FROM locks WHERE store = :store AND intent_id = :intent_id AND session_id = :session_id AND renewed_at = :renewed_at",
                 store: @retrieval.store, intent_id:, session_id: lock.session_id, renewed_at: lock.renewed_at)
             end

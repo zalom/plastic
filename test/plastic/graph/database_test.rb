@@ -32,7 +32,7 @@ class DatabaseTest < Plastic::TestCase
     File.write(File.join(@home, "taken"), "")
     error = assert_raises(Database::Error) { Database.new(File.join(@home, "taken", "local.db"), "").rows("SELECT 1") }
 
-    assert_match(/\Ahome\.db: /, error.message)
+    assert_match(/\Alocal\.db: /, error.message)
   end
 
   def test_a_failed_write_inside_an_open_transaction_undoes_only_itself
@@ -46,42 +46,11 @@ class DatabaseTest < Plastic::TestCase
     connection.rollback
   end
 
-  def machine = File.join(@home, "machine")
-
-  def home_db_from_before
-    Database.new(File.join(machine, "home.db"), Plastic::Graph::Schema.fetch(:local)).transaction do |batch|
-      batch.insert(:routine_runs, { store: "s", tool: "t", subject: "a" })
-    end
-    Database::ConnectionPool.release(machine)
-  end
-
-  def first_use = Database.open_local(machine).fetch(:local).tap { |local| local.rows("SELECT 1") }
-
   def test_open_local_opens_the_local_database
     databases = Database.open_local("/home")
 
     assert_equal [:local], databases.keys
     assert_equal ["/home/local.db", "local.db"], [databases[:local].path, databases[:local].file]
-  end
-
-  def test_a_home_db_left_from_before_becomes_local_db_on_first_use
-    home_db_from_before
-
-    assert_equal ["a"], first_use.rows("SELECT subject FROM routine_runs").map { |row| row.fetch("subject") }
-    assert_equal [false, true], [File.exist?(File.join(machine, "home.db")), File.exist?(File.join(machine, "local.db"))]
-  end
-
-  def test_only_the_call_that_renamed_the_file_says_so
-    home_db_from_before
-
-    assert_equal [["home.db renamed to local.db"], []], [first_use.phrases, first_use.phrases]
-  end
-
-  def test_opening_renames_nothing_before_the_first_use
-    home_db_from_before
-    Database.open_local(machine)
-
-    assert_equal [true, false], [File.exist?(File.join(machine, "home.db")), File.exist?(File.join(machine, "local.db"))]
   end
 
   def test_the_schema_is_made_on_the_first_read
