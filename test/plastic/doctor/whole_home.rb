@@ -10,6 +10,18 @@ module WholeHome
   RUNNING = "9.1.0"
   SLUG = "alpha"
 
+  def setup
+    super
+    @home = File.realpath(Dir.mktmpdir("plastic-doctor"))
+    @plastic_home = File.join(@home, ".plastic")
+  end
+
+  def teardown
+    Plastic::Graph::Database::ConnectionPool.release(@home)
+    FileUtils.rm_rf(@home)
+    super
+  end
+
   def scope(env = {}) = scoped_harness(env:).scope
 
   def claude_dir = File.join(@home, ".claude")
