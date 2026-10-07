@@ -12,7 +12,7 @@ module Plastic
     TOPICS = File.expand_path("../../../docs/help", __dir__)
 
     # The command the words name: the longest table entry that starts argv,
-    # so `auto lock renew` wins over `auto lock`.
+    # so `intent lock status` wins over `intent lock`.
     def self.find(argv, table = TABLE)
       table.keys.select { |name| starts?(argv, name.split) }.max_by(&:size)
     end

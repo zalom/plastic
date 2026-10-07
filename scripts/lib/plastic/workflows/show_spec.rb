@@ -35,7 +35,7 @@ module Plastic
         because: "an open decision is still unrecorded"
       outcome :no_criterion, if: ->(context) { context.criteria.empty? }, offers: "plastic sync up",
         because: "the spec names no done criterion; write them in spec.md first"
-      outcome :done, offers: "plastic auto start %{intent_id}", because: "the spec carries no open decision"
+      outcome :done, offers: "plastic auto %{intent_id}", because: "the spec carries no open decision"
     end
   end
 end
