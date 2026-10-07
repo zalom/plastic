@@ -12,8 +12,7 @@ class IntentReviseCommandTest < Minitest::Test
 
       call = kernel.run("intent", "revise", "1", "Beta, after grilling", "--why", "The owner moved the goal")
 
-      assert_equal 0, call.code, call.err
-      assert_equal "", call.err
+      assert_equal [0, ""], [call.code, call.err]
       assert_includes call.out, "what: Beta, after grilling"
       assert_equal [["Beta, after grilling"]], kernel.rows("work_graph.db", "SELECT title FROM intents")
     end

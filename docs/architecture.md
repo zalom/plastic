@@ -181,6 +181,11 @@ node that keeps failing surfaces to the owner rather than looping. The full comm
 `knowledge_graph.db` also holds `rulings` and `links`. `plastic intent rule ID TEXT` writes
 the owner's next decision as the next `D` id in that intent; `--supersedes RULING_ID` links it
 to the ruling it replaces, which stays on record rather than being overwritten.
+`plastic intent revise ID LINE [--why TEXT]` rewrites the What and the Why after grilling:
+`Graph::Knowledge::Intent::Reviser` writes the intent file as a new document revision, with the
+new line under `## Intent` and the new lead under `## Context`, then the title in the intents
+row. The old revision row stays, and the call prints its qualified reference. A done or
+abandoned intent refuses with exit 3, and the call prints no file: `plastic sync down` does.
 `Graph::Knowledge::Ruling::Writer` owns the write; `Graph::Knowledge::Spec` reads an intent's `spec.md` document row
 for its done criteria and open decisions, the bullets under a `Done criteria` or `Open
 Questions` heading (a section holding only "None" counts zero).

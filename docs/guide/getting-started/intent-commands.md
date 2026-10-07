@@ -14,6 +14,7 @@ The following table lists the commands in the order that an intent uses them:
 | `plastic intent show ID` | Prints the state screen of the intent. |
 | `plastic intent spec ID` | Prints the state screen, then the rules for writing the specification. |
 | `plastic intent rule ID "TEXT"` | Records an owner ruling in the Insights section of the intent. |
+| `plastic intent revise ID "LINE" [--why "TEXT"] [--dry-run]` | Rewrites the What and the Why of the intent after grilling. The old text stays as an earlier revision of the intent file. |
 | `plastic intent note ID "TEXT"` | Appends a note to the savepoint ledger of the intent. |
 | `plastic intent step ID` | On a graph intent, runs the next ready step of the graph; this session must hold the delivery lock. On a checklist intent, prints the next unchecked item and runs nothing. |
 | `plastic intent answer ID --node NODE --decision "TEXT"` | Answers a step that waits for a decision. |

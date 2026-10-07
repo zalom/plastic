@@ -40,6 +40,17 @@ outer one. With neither, the global store answers.
 entries that are ready, in flight or blocked. With no roadmap, both name the first active
 intent instead.
 
+## Rulings and revisions
+
+| Command | Result |
+| ------- | ------ |
+| `plastic intent rule ID "TEXT"` | The next owner ruling, D1, D2 and on. `--supersedes RULING_ID` links it to the ruling it replaces. |
+| `plastic intent revise ID "LINE"` | The intent's new What, and its new Why with `--why "TEXT"`. `--dry-run` prints the change and writes nothing. |
+
+`intent revise` writes the intent file as a new revision and keeps the old one, so the old
+What and Why read back with `plastic document get`. A done or abandoned intent refuses with
+exit 3.
+
 ## Installer commands
 
 `plastic install`, `plastic update`, `plastic rollback` and `plastic uninstall` run the

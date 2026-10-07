@@ -4,6 +4,7 @@ require "forwardable"
 require_relative "completion/writer"
 require_relative "session/writer"
 require_relative "../knowledge/intent/writer"
+require_relative "../knowledge/intent/reviser"
 require_relative "node/writer"
 require_relative "edge/writer"
 require_relative "../knowledge/ruling/writer"
@@ -34,6 +35,8 @@ module Plastic
         def sessions = built(:sessions) { Session::Writer.new(databases.fetch(:home), store: retrieval.store) }
 
         def intents = built(:intents) { Knowledge::Intent::Writer.new(databases, retrieval, folder, session:) }
+
+        def revisions = built(:revisions) { Knowledge::Intent::Reviser.new(databases, retrieval, folder) }
 
         def nodes = built(:nodes) { Node::Writer.new(databases, retrieval) }
 

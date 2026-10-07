@@ -53,12 +53,7 @@ class IntentRevisionTest < Plastic::TestCase
   def revise(body, line, why = nil) = Plastic::Graph::Knowledge::Intent::Revision.new(body, "7").revise(line, why)
 
   def test_a_new_line_replaces_the_heading_the_front_matter_and_the_intent_section
-    revised = revise(KERNEL_PAGE, "New line")
-
-    assert_includes revised, %(intent: "New line"\n)
-    assert_includes revised, "# 7 - New line\n"
-    assert_includes revised, "## Intent\n\nNew line\n\n## Context"
-    refute_includes revised, "Old line"
+    assert_equal KERNEL_PAGE.gsub("Old line", "New line"), revise(KERNEL_PAGE, "New line")
   end
 
   def test_without_why_the_context_section_is_unchanged

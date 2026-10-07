@@ -20,17 +20,23 @@ class IntentReviseTest < Plastic::TestCase
     end
   end
 
-  def test_a_revise_changes_the_title_row_and_the_head_revision
+  def test_a_revise_changes_the_title_row_and_writes_a_second_revision
     open_intent
 
-    result = call("1", "Beta, after grilling", "--why", "The owner moved the goal")
+    result = call("1", "Beta, after grilling")
 
     assert_equal 0, result.code, result.err
-    assert_equal "Beta, after grilling", retrieval.intent("1").title
+    assert_equal ["Beta, after grilling", 2], [retrieval.intent("1").title, revisions]
+    assert_includes result.out, "next: plastic sync down"
+  end
+
+  def test_a_revise_with_why_writes_the_new_what_and_why_into_the_head_revision
+    open_intent
+
+    call("1", "Beta, after grilling", "--why", "The owner moved the goal")
+
     assert_includes body, "## Intent\n\nBeta, after grilling\n"
     assert_includes body, "## Context\n\nThe owner moved the goal\n"
-    assert_equal 2, revisions
-    assert_includes result.out, "next: plastic sync down"
   end
 
   def test_the_old_revision_still_reads_back_by_its_printed_reference
@@ -48,10 +54,8 @@ class IntentReviseTest < Plastic::TestCase
     result = call("1", "Beta, after grilling", "--dry-run")
 
     assert_equal 0, result.code, result.err
-    assert_includes result.out, "what was: Alpha"
-    assert_includes result.out, "what: Beta, after grilling"
-    assert_equal "Alpha", retrieval.intent("1").title
-    assert_equal 1, revisions
+    assert_includes result.out, "what was: Alpha\nwhat: Beta, after grilling\n"
+    assert_equal ["Alpha", 1], [retrieval.intent("1").title, revisions]
   end
 
   def test_a_done_intent_refuses_with_exit_3_and_no_row_written
@@ -62,8 +66,7 @@ class IntentReviseTest < Plastic::TestCase
 
     assert_equal 3, result.code
     assert_includes result.err, "intent 1 is done"
-    assert_equal "Alpha", retrieval.intent("1").title
-    assert_equal 1, revisions
+    assert_equal ["Alpha", 1], [retrieval.intent("1").title, revisions]
   end
 
   def test_a_parked_intent_is_revised
@@ -81,13 +84,13 @@ class IntentReviseTest < Plastic::TestCase
     assert_includes result.err, "no intent 9 in this store"
   end
 
-  def test_an_empty_line_fails_with_exit_1_and_no_row_written
+  def test_an_empty_line_is_a_usage_error_with_no_row_written
     open_intent
 
     result = call("1", "  ")
 
-    assert_equal 1, result.code
-    assert_includes result.err, "the new What is empty"
+    assert_equal 2, result.code
+    assert_includes result.err, "missing LINE"
     assert_equal 1, revisions
   end
 
