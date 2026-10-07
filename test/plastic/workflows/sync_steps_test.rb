@@ -6,12 +6,12 @@ require_relative "../../../scripts/lib/plastic/workflows/sync_up"
 require_relative "../../../scripts/lib/plastic/workflows/sync_down"
 
 class SyncStepsTest < Plastic::TestCase
-  DECLARED = %i[overwrite merge failure conflicts merging lines].freeze
+  DECLARED = %i[overwrite merge failure conflicts merging unreadable lines].freeze
   PLAIN = "changed on both sides since the last print, nothing written: a.md, b.md; pass --overwrite PATH, --overwrite or --merge"
   LEFT = "changed on both sides since the last print, left as they are: a.md; pass --overwrite PATH or --overwrite"
 
   # A plan as the steps read it.
-  Plan = Data.define(:failure, :conflicts, :merging, :pending) do
+  Plan = Data.define(:failure, :conflicts, :merging, :pending, :unreadable) do
     def merging? = merging
   end
 
@@ -37,7 +37,7 @@ class SyncStepsTest < Plastic::TestCase
   end
 
   def run_sync(flow, plan: {}, **options)
-    work = Work.new(Plan.new(failure: nil, conflicts: [], merging: false, pending: 1, **plan))
+    work = Work.new(Plan.new(failure: nil, conflicts: [], merging: false, pending: 1, unreadable: [], **plan))
     facts = { overwrite: false, merge: false }.merge(options)
     context = Plastic::Context.new(declared: DECLARED, facts:, graphs: { work: })
     [flow.call(context), context.printed, work.calls]
@@ -108,14 +108,14 @@ class SyncStepsTest < Plastic::TestCase
     steps = Plastic::Workflows::SyncSteps
     gates = flow.steps.grep(Plastic::CodeWorkflow::Gate).map(&:reason)
 
-    assert_equal ["plan the sync", "gate", "gate", "apply the changes", "say what changed", "gate"], flow.steps.map(&:name)
-    assert_equal ["%{failure}", steps::REFUSED_BEFORE, steps::REFUSED_AFTER], gates
+    assert_equal ["plan the sync", "gate", "gate", "apply the changes", "say what changed", "gate", "gate"], flow.steps.map(&:name)
+    assert_equal ["%{failure}", steps::REFUSED_BEFORE, steps::REFUSED_AFTER, steps::UNREADABLE], gates
     assert_equal ["plastic next"], flow.outcomes.map(&:offers)
   end
 
   def test_a_plan_note_clears_the_lines_of_an_earlier_apply
     context = Plastic::Context.new(declared: DECLARED, facts: { lines: ["read a.md"] }, graphs: {})
-    Plastic::Workflows::SyncSteps.note(context, Plan.new(failure: nil, conflicts: [], merging: false, pending: 1))
+    Plastic::Workflows::SyncSteps.note(context, Plan.new(failure: nil, conflicts: [], merging: false, pending: 1, unreadable: []))
 
     assert_nil context.lines
   end

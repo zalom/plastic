@@ -30,7 +30,7 @@ module SyncUpAcceptance
       "work_graph.db", "SELECT name || ' holds ' || intent_id FROM clusters"],
     "savepoint.md emptied" => [->(kernel) { kernel.write("store/1--alpha/savepoint.md", "") }, "work_graph.db",
       "SELECT count(*) || ' savepoint lines' FROM savepoints"],
-    "a folder with no intent row" => [->(kernel) { kernel.write("store/7--stray/spec.md", "# Stray\n") }, "knowledge_graph.db", SPEC],
+    "a folder with no intent file" => [->(kernel) { kernel.write("store/7--stray/spec.md", "# Stray\n") }, "knowledge_graph.db", SPEC],
     "index.json of another origin" => [->(kernel) { edit_index(kernel) { |entry| entry.merge("origin_id" => "beef") } },
       "work_graph.db", TITLE],
     "index.json that does not parse" => [->(kernel) { kernel.write("store/index.json", "{") }, "work_graph.db", TITLE]

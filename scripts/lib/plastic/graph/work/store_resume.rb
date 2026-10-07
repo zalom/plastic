@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
+require_relative "rebuild"
 require_relative "next_pick"
 require_relative "next_offer"
 require_relative "last_savepoints"
 require_relative "node_lines"
-require_relative "../knowledge/store_folder"
 
 module Plastic
   module Graph
@@ -12,29 +12,9 @@ module Plastic
       # Where one store's work stopped, read from its rows alone: the intent
       # in play, its done and in-progress nodes, its last savepoints and the
       # command that runs next. A store whose rows hold no intent while its
-      # folder holds intent folders says so and names what rebuilds the rows.
+      # folder holds intent folders says so and names sync up, which rebuilds the rows.
       class StoreResume
         SAVEPOINTS = 5
-        GAP = "no command rebuilds these rows today"
-        REBUILD = "plastic sync up --project %s --overwrite rebuilds them from the files; the owner settles that step"
-
-        # The files of a store hold intents its rows lost.
-        class Rebuild
-          def initialize(slug, folder)
-            @slug = slug
-            @folder = folder
-          end
-
-          def rows
-            [["store:", @slug], ["rows:", "none; the files hold #{@folder.intent_dirs.size} intent folders"], ["then:", then_text]]
-          end
-
-          def next_step = nil
-
-          private
-
-          def then_text = @folder.exist?(Knowledge::StoreFolder::INDEX) ? format(REBUILD, @slug) : GAP
-        end
 
         # The rows hold the store's work.
         class InPlay

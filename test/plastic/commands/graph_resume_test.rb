@@ -256,59 +256,47 @@ class GraphResumeRebuildTest < Plastic::TestCase
     assert_includes lines(result), "rows: none; the files hold 2 intent folders"
   end
 
-  def test_rows_missing_with_no_index_say_no_command_rebuilds_them
+  def test_rows_missing_with_no_index_name_sync_up_as_the_step
     register("c")
     FileUtils.mkdir_p(File.join(@plastic_home, "stores", "c", "store", "1--first"))
 
-    assert_includes lines(call("--stores", "c")), "then: no command rebuilds these rows today"
+    assert_includes lines(call("--stores", "c")), "then: plastic sync up --project c"
   end
 
-  def test_sync_up_refuses_an_intent_folder_with_no_row_and_no_index
+  def test_sync_up_fails_on_an_intent_folder_with_no_intent_file_and_writes_no_row
     register("c")
     store_folder("c").write("store/1--first/spec.md", CLEAR_SPEC)
 
     result = plastic("sync", "up", "--project", "c", table: Plastic::CLI::TABLE)
 
-    refute_equal 0, result.code
+    assert_equal 1, result.code
     assert_empty Plastic::Graph.open(home: @plastic_home, store: "c").retrieval.intents
   end
 
-  def test_sync_up_stops_at_the_index_of_a_folder_with_no_rows_for_the_owner_to_settle
-    register("c")
-    store_intent("src", "First")
-    copy_intent_files("src", "c")
-
-    result = plastic("sync", "up", "--project", "c", table: Plastic::CLI::TABLE)
-
-    assert_equal 3, result.code
-    assert_empty Plastic::Graph.open(home: @plastic_home, store: "c").retrieval.intents
-  end
-
-  def test_sync_up_with_overwrite_rebuilds_the_rows_of_a_folder_that_holds_its_index
+  def test_sync_up_rebuilds_the_rows_of_a_folder_that_holds_its_index_with_no_flag
     register("c")
     intent = store_intent("src", "First")
     copy_intent_files("src", "c")
 
-    result = plastic("sync", "up", "--project", "c", "--overwrite", table: Plastic::CLI::TABLE)
+    result = plastic("sync", "up", "--project", "c", table: Plastic::CLI::TABLE)
 
     assert_equal 0, result.code
     assert_equal [intent.intent_id], Plastic::Graph.open(home: @plastic_home, store: "c").retrieval.intents.map(&:intent_id)
   end
 
-  def test_rows_missing_with_an_index_name_the_rebuild_and_leave_it_to_the_owner
+  def test_rows_missing_with_an_index_name_sync_up_as_the_step
     register("c")
     store_intent("src", "First")
     copy_intent_files("src", "c")
 
-    assert_includes lines(call("--stores", "c")),
-      "then: plastic sync up --project c --overwrite rebuilds them from the files; the owner settles that step"
+    assert_includes lines(call("--stores", "c")), "then: plastic sync up --project c"
   end
 
-  def test_a_store_with_rows_missing_offers_no_next_command
+  def test_a_store_with_rows_missing_offers_sync_up_as_the_next_command
     register("c")
     store_intent("src", "First")
     copy_intent_files("src", "c")
 
-    assert_equal "next: plastic status", next_line(call("--stores", "c"))
+    assert_equal "next: plastic sync up --project c", next_line(call("--stores", "c"))
   end
 end

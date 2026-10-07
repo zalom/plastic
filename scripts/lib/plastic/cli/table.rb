@@ -17,6 +17,9 @@ module Plastic
       # Storage
       "intent end" => ["Commands::IntentEnd", "Record explicit criterion acceptance and close a delivered intent"],
       "intent new" => ["Commands::IntentNew", "Open an intent: write its rows and print its folder"],
+      "project list" => ["Commands::ProjectList", "List the registered projects with their paths"],
+      "project new" => ["Commands::ProjectNew", "Register a project and leave its store ready for intent new"],
+      "project links" => ["Commands::ProjectLinks", "List the links that name an intent or a ruling this store lacks"],
       "sync up" => ["Commands::SyncUp", "Read the files changed by hand into rows"],
       "sync down" => ["Commands::SyncDown", "Print the rows that changed into files"],
       "session note" => ["Commands::SessionNote", "Write the one prose line of this session"],
