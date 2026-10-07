@@ -34,12 +34,12 @@ class KnowledgeReaderIntentFileTest < Plastic::TestCase
   end
 
   def test_a_markdown_file_reads_into_a_document
-    assert_equal :knowledge, read_in("plan.md", "# Plan\n")
-    assert_equal "# Plan\n", retrieval.documents("1").find { |document| document.path == "plan.md" }.body
+    assert_equal :knowledge, read_in("notes.md", "# Notes\n")
+    assert_equal "# Notes\n", retrieval.documents("1").find { |document| document.path == "notes.md" }.body
   end
 
   def test_a_document_write_keeps_an_immutable_revision_head_passage_and_fts_row
-    read_in("plan.md", "# Retrieval\n\nIndexed evidence\n")
+    read_in("notes.md", "# Retrieval\n\nIndexed evidence\n")
 
     row = store_graphs.databases.fetch(:knowledge).row("SELECT body, sha256, position FROM document_fts WHERE document_fts MATCH 'evidence'")
 
@@ -68,6 +68,46 @@ class KnowledgeReaderIntentFileTest < Plastic::TestCase
 
     assert_equal [0o100644, 2, Digest::SHA256.hexdigest("\x00\xFF".b)], [file.mode, file.sz, file.sha256]
     assert_equal "\x00\xFF".b, retrieval.kept_file_data(file.name)
+  end
+
+  def legacy_rows = retrieval.legacy_intents_data("1").map { |row| [row.path, row.body] }
+
+  def test_a_plan_a_checklist_and_an_action_file_read_into_legacy_rows
+    assert_equal [:knowledge] * 3, [read_in("plan.md", "# Plan\n"), read_in("checklist.md", "- [ ] one\n"), read_in("actions/ACTION_1.md", "# A\n")]
+    assert_equal [["actions/ACTION_1.md", "# A\n"], ["checklist.md", "- [ ] one\n"], ["plan.md", "# Plan\n"]], legacy_rows
+    assert_empty retrieval.documents("1").map(&:path) & %w[plan.md checklist.md actions/ACTION_1.md]
+  end
+
+  def test_reading_a_legacy_path_removes_its_old_document_row
+    knowledge = store_graphs.databases.fetch(:knowledge)
+    Plastic::Graph::Retrieval::Evidence::Writer.new(knowledge, origin).write("1", "plan.md", "old plan\n")
+    read_in("plan.md", "new plan\n")
+
+    assert_equal [[], [["plan.md", "new plan\n"]]], [retrieval.documents("1").select { |document| document.path == "plan.md" }, legacy_rows]
+    assert_equal [0, 0], [knowledge.rows("SELECT * FROM document_heads WHERE path = 'plan.md'").size,
+      knowledge.rows("SELECT * FROM document_fts WHERE path = 'plan.md'").size]
+  end
+
+  def test_a_legacy_read_logs_a_change_row
+    read_in("plan.md", "# Plan\n")
+    logged = store_graphs.databases.fetch(:knowledge).rows("SELECT \"table\", operation FROM changes WHERE \"table\" = 'legacy_intents_data'")
+
+    assert_equal [{ "table" => "legacy_intents_data", "operation" => "put" }], logged
+  end
+
+  def test_a_binary_file_under_actions_stays_a_kept_file
+    assert_equal :references, read_in("actions/data.bin", "\x00\xFF".b)
+    assert_equal [[], true], [legacy_rows, !kept("actions/data.bin").nil?]
+  end
+
+  def test_an_empty_file_under_actions_is_a_legacy_row
+    assert_equal :knowledge, read_in("actions/.gitkeep", "")
+    assert_equal [["actions/.gitkeep", ""]], legacy_rows
+  end
+
+  def test_spec_md_stays_a_document
+    assert_equal :knowledge, read_in("spec.md", "# Spec\n")
+    assert_equal [[], ["# Spec\n"]], [legacy_rows, retrieval.documents("1").select { |document| document.path == "spec.md" }.map(&:body)]
   end
 
   def test_every_valid_utf8_reference_without_a_nul_is_a_document

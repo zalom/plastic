@@ -41,6 +41,21 @@ class KnowledgeSyncLegacyImportTest < Plastic::TestCase
     assert_equal [[], true], [retrieval.intents, folder.exist?("INDEX.md")]
   end
 
+  def test_a_first_import_keeps_plan_checklist_and_actions_in_legacy_rows
+    import
+    knowledge = store_graphs.databases.fetch(:knowledge)
+    legacy = knowledge.rows("SELECT path, body FROM legacy_intents_data WHERE intent_id = '1' ORDER BY path")
+    documents = knowledge.rows("SELECT path FROM documents WHERE intent_id = '1' ORDER BY path").map { |row| row["path"] }
+
+    assert_equal %w[actions/.gitkeep checklist.md plan.md], legacy.map { |row| row["path"] }
+    assert_equal folder.read("store/1--ai-infra/plan.md"), legacy.last["body"]
+    assert_equal %w[1--ai-infra.md outcome.md spec.md], documents
+  end
+
+  def test_the_import_metadata_line_names_the_legacy_files
+    assert_includes import.last, "2 intents, 6 documents, 6 legacy files, 2 savepoint lines"
+  end
+
   def test_a_sync_up_plan_on_a_legacy_store_imports_it
     assert_equal "imported INDEX.md: 2 intents and 0 clusters", sync.apply(sync.plan(:up, {})).first
   end
