@@ -30,17 +30,28 @@ module Plastic
       end
 
       def self.pick_item(context)
-        states = context.retrieval.roadmap_items(context.id).map { |item| [item, Graph::Knowledge::Roadmap::State.of(item, context.retrieval)] }
-        context[:open] = states.reject { |_item, state| %w[done dropped].include?(state) }.map { |item, _state| item.item }
-        context[:intent_id] = states.find { |item, state| state == "in flight" && free?(item.intent_id, context) }&.first&.intent_id
-        context[:ready_id] = states.find { |_item, state| state == "ready" }&.first&.item
+        states = item_states(context)
+        context[:open] = states.filter_map { |item, state| item.item unless %w[done dropped].include?(state) }
+        context[:intent_id] = first_item(states, "in flight") { |item| free?(item.intent_id, context) }&.intent_id
+        context[:ready_id] = first_item(states, "ready")&.item
+      end
+
+      def self.item_states(context)
+        retrieval = context.retrieval
+        retrieval.roadmap_items(context.id).map { |item| [item, Graph::Knowledge::Roadmap::State.of(item, retrieval)] }
+      end
+
+      # The first item in the wanted state that the block, when given, accepts.
+      def self.first_item(states, wanted)
+        states.find { |item, state| state == wanted && (!block_given? || yield(item)) }&.first
       end
 
       # Neither parked nor held by another session's live lock.
       def self.free?(intent_id, context)
-        lock = context.retrieval.lock(intent_id)
+        retrieval = context.retrieval
+        lock = retrieval.lock(intent_id)
         held = lock && lock.session_id != context.session && lock.live?
-        context.retrieval.intent(intent_id).status != "parked" && !held
+        retrieval.intent(intent_id).status != "parked" && !held
       end
 
       outcome :intent, if: ->(context) { !context.intent_id.nil? }

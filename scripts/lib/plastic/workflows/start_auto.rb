@@ -53,8 +53,10 @@ module Plastic
       gate "%{problem}", stops: :refusal, pass: ->(context) { context.problem.nil? }
 
       def self.delivery_started?(context)
-        lock = context.retrieval.lock(context.intent_id)
-        context.retrieval.intent(context.intent_id).status == "active" &&
+        retrieval = context.retrieval
+        intent_id = context.intent_id
+        lock = retrieval.lock(intent_id)
+        retrieval.intent(intent_id).status == "active" &&
           lock&.session_id == context.session && lock.mode == "auto" && lock.live?
       end
 
@@ -68,17 +70,17 @@ module Plastic
         context[:worktree_command] = nil
         name_worktree(context, Worktree.of(context.scope, context.intent))
       end
-      
+
       # Prints the worktree and its branch; while the folder does not exist,
       # its git command becomes the next: line.
       def self.name_worktree(context, worktree)
         return unless worktree
-      
+
         context.print("worktree: #{worktree.path}")
         context.print("branch: #{worktree.branch}")
         context[:worktree_command] = worktree.command unless worktree.present?
       end
-      
+
       outcome :worktree, if: ->(context) { !context.worktree_command.nil? }, offers: "%{worktree_command}",
         because: "intent %{intent_id} is active and its code worktree does not exist yet"
       outcome :done, offers: "plastic intent brief %{intent_id}", because: "intent %{intent_id} is active"
