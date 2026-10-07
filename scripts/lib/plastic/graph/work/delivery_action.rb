@@ -32,7 +32,9 @@ module Plastic
         def live_in(state) = live.find { |node| node.state == state }
 
         def planning
-          [nil, "the harness must plan this intent", "Read the intent's goal and done criteria. Add work with " \
+          [nil, "the harness must plan this intent", "Before you plan, fetch the architecture map as current as " \
+            "possible with an architecture mapping tool such as Enola, or map the code yourself; Plastic runs no tool. " \
+            "Read the intent's goal and done criteria. Add work with " \
             "plastic node add #{@intent_id} TITLE --criterion TEXT, then add dependencies with plastic edge add. " \
             "Use plastic graph ready #{@intent_id} after the plan is recorded."]
         end
