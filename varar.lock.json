@@ -183,11 +183,11 @@
       "examples": []
     },
     "varar/intent-end.md": {
-      "sourceHash": "fnv1a:8b5cc98c",
+      "sourceHash": "fnv1a:8b90a071",
       "examples": [
         {
           "name": "The rows below use a disposable fixture with one verified node and outcome. Each row gives the closure case, the exit code, the status, the completion records and the next line:",
-          "line": 23
+          "line": 43
         }
       ]
     },
