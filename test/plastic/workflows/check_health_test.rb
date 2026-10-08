@@ -45,7 +45,10 @@ class CheckHealthTest < Plastic::TestCase
     assert_equal ["plastic next", "plastic install --claude --reinstall"], printed_row(check.last, "repair:")
   end
 
-  def test_a_codex_session_with_no_codex_module_is_a_usage_error
-    assert_raises(Plastic::CLI::Command::Usage) { check("CODEX_THREAD_ID" => "t-1") }
+  def test_a_codex_session_with_no_install_reports_the_missing_record
+    outcome, context = check("CODEX_THREAD_ID" => "t-1")
+
+    assert_equal GATE, outcome.message
+    assert_includes printed_row(context, "codex record:"), "no installation record"
   end
 end

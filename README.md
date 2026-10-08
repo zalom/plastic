@@ -338,8 +338,10 @@ calls the active release launcher under `~/.local/share/plastic`:
 plastic hook EVENT      # The agent calls this, not you
 ```
 
-Run `plastic doctor` when hooks do not fire. It names the repair, which is often
-`plastic install --claude --reinstall`.
+Run `plastic doctor` when hooks do not fire. Use `--harness codex` or
+`--harness claude-code` to choose the installation to check. Codex hook trust
+remains unverified; review the current definitions in `/hooks`. The doctor names
+each repair, such as `plastic install --codex --reinstall`.
 
 ## Supported AI tools
 

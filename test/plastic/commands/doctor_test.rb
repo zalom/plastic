@@ -2,6 +2,7 @@
 
 require_relative "installer_helper"
 require_relative "../doctor/whole_home"
+require_relative "../doctor/codex_home"
 require_relative "../../varar/support/kernel_command"
 
 class DoctorCommandTest < Plastic::TestCase
@@ -43,11 +44,11 @@ class DoctorCommandTest < Plastic::TestCase
     assert_equal ["plastic next", "plastic install --claude --reinstall"], document.fetch("result").fetch("repair")
   end
 
-  def test_a_harness_with_no_module_exits_2_and_names_claude_code
-    result = doctor("--harness", "codex")
+  def test_a_harness_with_no_module_exits_2_and_names_available_harnesses
+    result = doctor("--harness", "unknown")
 
     assert_equal 2, result.code
-    assert_includes result.err, "harnesses with one: claude-code"
+    assert_includes result.err, "harnesses with one: claude-code, codex"
   end
 
   def test_the_doctor_changes_no_file_under_the_home
@@ -77,5 +78,54 @@ class DoctorProcessTest < Minitest::Test
     kernel.run!("project", "new", "alpha", project)
     FileUtils.rm_f(File.join(kernel.plastic_home, "stores", "alpha", "references.db"))
     kernel.run("doctor")
+  end
+end
+
+class CodexDoctorCommandTest < Plastic::TestCase
+  include InstallerHelper
+  include CodexHome
+
+  def setup
+    super
+    whole_codex
+    @package = fake_package(RUNNING)
+  end
+
+  def doctor(*argv, env: {}) = call("doctor", *argv, env: { "PLASTIC_PACKAGE_ROOT" => @package }.merge(env))
+
+  def test_an_explicit_codex_call_passes_without_claude_files
+    FileUtils.rm_rf(claude_dir)
+    result = doctor("--harness", "codex")
+
+    assert_equal [0, ""], [result.code, result.err]
+    assert_includes result.out, "codex record:"
+    refute_includes result.out, "claude record:"
+  end
+
+  def test_an_inferred_codex_call_prints_the_core_and_codex_checks
+    result = doctor(env: { "CODEX_THREAD_ID" => "thread-418" })
+
+    assert_equal [0, ""], [result.code, result.err]
+    assert_includes result.out, "codex record:"
+    assert_includes result.out, "sqlite3 gem:"
+  end
+
+  def test_a_codex_json_finding_has_one_repair_and_exits_1
+    File.chmod(0o644, codex_launcher)
+    result = doctor("--harness", "codex", "--json")
+    repairs = JSON.parse(result.out).fetch("result").fetch("repair")
+
+    assert_equal [1, ["plastic install --codex --reinstall"]], [result.code, repairs]
+    assert_includes result.err, DoctorCommandTest::GATE
+  end
+
+  def test_a_damaged_codex_home_is_unchanged_after_the_doctor
+    File.delete(codex_record)
+    File.delete(machine_path)
+    before = tree_snapshot(@home)
+    result = doctor("--harness", "codex")
+
+    assert_equal [1, before], [result.code, tree_snapshot(@home)]
+    assert_includes result.err, DoctorCommandTest::GATE
   end
 end

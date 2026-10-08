@@ -92,7 +92,10 @@ of its own. Each finding names its repair: a command that owns that class of rep
 `plastic next`, `plastic project new SLUG PATH` or `plastic install --claude --reinstall`, or a
 line to add to a file. Those commands make the change, never the doctor. A harness gets its
 checks from its own module beside the shared ones, so a second harness adds a module and
-changes no other.
+changes no other. Claude Code and Codex have modules. The Codex module
+checks its record in `~/.agents/plastic/VERSION`, the current kernel hook commands
+and launchers in `~/.codex/hooks.json`, and its AGENTS.md line. Trust is unverified;
+review `/hooks` in Codex. This reminder does not fail the file checks.
 
 Corrected history (D18): an earlier version of this section described a terminal-immutability
 gate "intent 112 enforces" and a two-lock model. Intent 112 built that gate in full and was

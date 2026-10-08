@@ -64,10 +64,10 @@
       ]
     },
     "varar/doctor.md": {
-      "sourceHash": "fnv1a:a7d8cbe8",
+      "sourceHash": "fnv1a:2d017014",
       "examples": [
         {
-          "name": "Each row gives the damage, the exit code, the check, the repair and the exit code after repair:",
+          "name": "Each row gives the harness, the damage, the exit code, the check, the repair and the exit code after repair:",
           "line": 14
         }
       ]
