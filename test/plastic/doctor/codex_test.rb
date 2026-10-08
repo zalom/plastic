@@ -22,10 +22,10 @@ class DoctorCodexTest < Plastic::TestCase
     assert_empty checks.filter_map(&:repair)
   end
 
-  def test_a_missing_record_names_the_codex_install
+  def test_a_missing_record_names_the_codex_reinstall
     File.delete(codex_record)
 
-    assert_equal "plastic install --codex", check("codex record:").repair
+    assert_equal "plastic install --codex --reinstall", check("codex record:").repair
   end
 
   def test_a_stale_record_names_the_codex_reinstall

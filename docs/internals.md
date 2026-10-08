@@ -1864,3 +1864,22 @@ To retire a kind of data:
    prints, counts and declares it.
 3. Add its name to the allowed list of `test/legacy_tables_guard_test.rb` only for that plumbing.
 4. Leave its DDL unchanged; a legacy table is never dropped.
+
+## Codex doctor in the kernel
+
+Intent 418 adds `Doctor::Codex` to the registry beside Claude Code. The shared
+`Doctor::Core` checks installation parts and registered project databases.
+Codex reads its version record from `~/.agents/plastic/VERSION`, matching the
+installer's record directory, and reads its hooks and AGENTS.md from `~/.codex`.
+A different `CODEX_HOME` produces a finding because the installer uses `~/.codex`.
+
+`CodexHookCommand` parses shell words without running them. Each registered event
+must call the corresponding command in `Hooks::Entries::EVENTS` with
+`--harness codex` through an executable launcher named `plastic`. It accepts the
+installer's `env -u RUBYOPT` prefix and `|| true` suffix. Retired dispatchers,
+another harness, malformed JSON, and malformed hook groups produce findings.
+
+The kernel doctor does not read Codex's private trust records or run a hook.
+Its `hook trust` row says that trust is unverified and asks the person to review
+`/hooks`. That row has no repair and does not change the exit code. Passing file
+checks does not establish runtime configuration or hook execution.

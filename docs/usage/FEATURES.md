@@ -103,7 +103,12 @@ other failure exits 1. See [INSTALL.md](../../INSTALL.md).
 registered project's store and its three databases, PLASTIC.md, and each project's AGENTS.md.
 In Claude Code it also checks the Claude version record, the hooks in
 `~/.claude/settings.json`, the import line in `~/.claude/CLAUDE.md`, and each project's
-CLAUDE.md. A row reads `ok` or names the finding. The repair row lists each repair once: a
+CLAUDE.md. In Codex it checks the record in `~/.agents/plastic/VERSION`, the
+hook commands and executable launchers in `~/.codex/hooks.json`, and the PLASTIC.md
+line in `~/.codex/AGENTS.md`. It reports a custom `CODEX_HOME` that differs from the
+installer location. Hook trust prints an unverified reminder to review `/hooks`;
+that reminder does not change the exit code. A row reads `ok` or names the finding.
+The repair row lists each repair once: a
 command, or a line to add to a file. The doctor reads files and opens the databases read-only,
 so it changes nothing. `--harness NAME` checks a named harness instead of the one the call runs
 in.

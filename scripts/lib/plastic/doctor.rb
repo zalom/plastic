@@ -3,10 +3,11 @@
 require_relative "cli/command/usage"
 require_relative "doctor/core"
 require_relative "doctor/claude_code"
+require_relative "doctor/codex"
 
 module Plastic
   module Doctor
-    HARNESSES = { "claude-code" => ClaudeCode }.freeze
+    HARNESSES = { "claude-code" => ClaudeCode, "codex" => Codex }.freeze
     CODEX_VARIABLES = %w[CODEX_THREAD_ID CODEX_SESSION_ID].freeze
 
     def self.harness(scope) = codex?(scope) ? "codex" : "claude-code"

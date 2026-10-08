@@ -487,8 +487,10 @@ Legacy homes retain their existing rollback behavior.
 `plastic project links` saves its audit under the current global store's
 `resources/` directory. Its dry-run writes no files. `plastic doctor` checks the
 harness it runs in, and `plastic doctor --harness NAME` checks a named one. Each
-harness has its own module in `Plastic::Doctor::HARNESSES`; Claude Code is the
-first.
+harness has its own module in `Plastic::Doctor::HARNESSES`: Claude Code and Codex.
+Codex reuses the shared installation and database checks. Its module reads the
+record under `.agents/plastic`, the hooks under `.codex`, and Codex AGENTS.md.
+Hook trust remains unverified and prints a reminder without failing file checks.
 
 ### Closing checks
 
