@@ -21,9 +21,9 @@ class DoctorTest < Plastic::TestCase
   end
 
   def test_a_harness_with_no_module_is_a_usage_error_naming_the_ones_that_have_one
-    error = assert_raises(Plastic::CLI::Command::Usage) { Plastic::Doctor.kind("codex") }
+    error = assert_raises(Plastic::CLI::Command::Usage) { Plastic::Doctor.kind("unknown") }
 
-    assert_equal "no doctor for the harness codex; harnesses with one: claude-code", error.message
+    assert_equal "no doctor for the harness unknown; harnesses with one: claude-code, codex", error.message
   end
 
   def test_a_module_passed_beside_claude_code_is_found_by_name

@@ -43,11 +43,11 @@ class DoctorCommandTest < Plastic::TestCase
     assert_equal ["plastic next", "plastic install --claude --reinstall"], document.fetch("result").fetch("repair")
   end
 
-  def test_a_harness_with_no_module_exits_2_and_names_claude_code
-    result = doctor("--harness", "codex")
+  def test_a_harness_with_no_module_exits_2_and_names_available_harnesses
+    result = doctor("--harness", "unknown")
 
     assert_equal 2, result.code
-    assert_includes result.err, "harnesses with one: claude-code"
+    assert_includes result.err, "harnesses with one: claude-code, codex"
   end
 
   def test_the_doctor_changes_no_file_under_the_home
