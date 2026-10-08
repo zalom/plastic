@@ -75,6 +75,10 @@ class PrepareEndingTest < PrepareEndingFixture
     assert_equal :closed, prepare.first
   end
 
+  def test_a_missing_intent_fails_at_the_first_gate
+    assert_includes prepare.first.message, "no intent 1 in this store"
+  end
+
   def test_another_live_session_lock_is_refused
     ready_intent
     store_graphs.work.take_lock("1", session_id: "s-2", mode: "auto")

@@ -8,23 +8,24 @@ module Plastic
   module Workflows
     # Reads closure prerequisites and the explicit criterion attestation. An abandoned close reads only the outcome.
     class PrepareEnding < CodeWorkflow
-      sets :intent, :closed, :closable, :problem, :requirements, :attestation, :evidence_example, :intent_folder,
+      ENDINGS = {
+        false => { reached: "done", statuses: %w[open active], text: "open or active" },
+        true => { reached: "abandoned", statuses: %w[open active parked future], text: "open, active, parked or future" }
+      }.freeze
+
+      sets :intent, :closed, :closable, :ending, :problem, :requirements, :attestation, :evidence_example, :intent_folder,
         :merge_recorded, :map_recorded
 
       read "read the intent" do |context|
         context[:intent] = context.retrieval.intent(context.intent_id)
-        context[:closable] = context.abandoned ? "open, active, parked or future" : "open or active"
-        context[:closed] = context.intent&.status == (context.abandoned ? "abandoned" : "done")
+        context[:ending] = ENDINGS.fetch(context.abandoned == true)
+        context[:closable] = context.ending.fetch(:text)
+        context[:closed] = context.intent&.status == context.ending.fetch(:reached)
       end
 
       gate "no intent %{intent_id} in this store", stops: :failure, pass: ->(context) { !context.intent.nil? }
       gate "intent %{intent_id} is not %{closable}", stops: :failure,
-        pass: ->(context) { context.closed || closable?(context) }
-
-      def self.closable?(context)
-        statuses = context.abandoned ? %w[open active parked future] : %w[open active]
-        statuses.include?(context.intent.status)
-      end
+        pass: ->(context) { context.closed || context.ending.fetch(:statuses).include?(context.intent.status) }
 
       read "check delivery ownership" do |context|
         lock = context.retrieval.lock(context.intent_id)
@@ -37,29 +38,37 @@ module Plastic
         check = Graph::Work::Completion::Check.new(context.retrieval, context.intent_id)
         context[:intent_folder] = context.intent.dir
         context[:attestation] = nil
+        context[:requirements] = []
         context[:problem] = context.abandoned ? abandon_problem(context, check) : delivery_problem(context, check)
       end
 
       def self.abandon_problem(context, check) = (check.abandon_problems.first unless context.closed)
 
       def self.delivery_problem(context, check)
-        context[:requirements] = context.closed ? [] : check.record_problems
-        context[:merge_recorded] = check.merge_recorded?
-        context[:map_recorded] = check.map_recorded?
+        record_facts(context, check)
         context[:evidence_example] = JSON.pretty_generate(check.criteria.transform_values { "Describe the evidence for this criterion" })
         evidence_problem(context, check)
       end
 
-      def self.evidence_problem(context, check)
-        return nil if context.closed || (context.judge.nil? && context.evidence.nil?)
-        problem = submission_problem(context)
-        return problem if problem
+      def self.record_facts(context, check)
+        context[:requirements] = check.record_problems unless context.closed
+        context[:merge_recorded], context[:map_recorded] = check.verification.then { |found| [found.merged?, found.architecture_map?] }
+      end
 
-        context[:attestation] = context.work.completion_evidence(context.intent_id, context.evidence, check.criteria.keys)
-        nil
+      def self.evidence_problem(context, check)
+        return unless submitted?(context)
+
+        submission_problem(context) || attest(context, check)
       rescue Invalid => error
         error.message
       end
+
+      def self.attest(context, check)
+        context[:attestation] = context.work.completion_evidence(context.intent_id, context.evidence, check.criteria.keys)
+        nil
+      end
+
+      def self.submitted?(context) = !context.closed && [context.judge, context.evidence].any?
 
       def self.submission_problem(context)
         return "--judge takes tests, tool, agent or owner" unless Graph::Work::Node::JUDGES.include?(context.judge)

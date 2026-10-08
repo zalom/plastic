@@ -10,7 +10,7 @@ class WorkCompletionEvidenceTest < Plastic::TestCase
     @intent = open_intent
   end
 
-  def read(path, criteria = ["It works"]) = Evidence.read(folder, @intent, path, criteria)
+  def read(path, criteria = ["It works"]) = Evidence.new(folder, @intent).read(path, criteria)
 
   def refusal(path) = assert_raises(Plastic::Invalid) { read(path) }.message
 

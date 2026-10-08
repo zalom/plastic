@@ -14,6 +14,13 @@ module Plastic
         def initialize(retrieval, intent_id)
           document = retrieval.documents(intent_id).find { |candidate| candidate.path == "outcome.md" }
           @lines = document ? document.body.lines.map(&:chomp) : []
+          @headings = @lines.map { |line| line.match(HEADING) }
+        end
+
+        # The messages that ask for the records this outcome lacks.
+        def missing_records
+          [("Add a line starting Merged: to the Verification section of outcome.md and run plastic sync up." unless merged?),
+            ("Add a line starting Architecture map: to the Verification section of outcome.md and run plastic sync up." unless architecture_map?)].compact
         end
 
         def merged? = recorded?("Merged")
@@ -29,16 +36,16 @@ module Plastic
         end
 
         def section
-          start = @lines.index { |line| heading(line)&.last&.casecmp?("Verification") }
+          start = @headings.index { |found| found && found[2].casecmp?("Verification") }
           return [] unless start
 
-          depth = heading(@lines[start]).first
-          @lines[(start + 1)..].take_while { |line| (heading(line)&.first || depth + 1) > depth }
+          @lines[(start + 1)...section_end(start)]
         end
 
-        def heading(line)
-          found = line.match(HEADING)
-          [found[1].size, found[2]] if found
+        def section_end(start)
+          depth = @headings[start][1].size
+          later = @headings.each_with_index.drop(start + 1)
+          later.find { |found, _index| found && found[1].size <= depth }&.last || @lines.size
         end
       end
     end

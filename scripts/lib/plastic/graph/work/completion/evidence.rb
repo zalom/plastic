@@ -9,22 +9,16 @@ module Plastic
       module Completion
         # Reads criterion evidence only from a file inside the selected intent.
         class Evidence
-          def self.read(folder, intent, path, criteria)
-            full = scoped_path(folder, intent, path)
-            validate(JSON.parse(File.read(full, encoding: "UTF-8")), criteria)
-          rescue SystemCallError, JSON::ParserError => error
-            raise Invalid, "cannot read criterion evidence: #{error.message.lines.first.strip}"
+          def initialize(folder, intent)
+            @folder = folder
+            @dir = intent.dir
+            @intent_id = intent.intent_id
           end
 
-          def self.scoped_path(folder, intent, path)
-            root = File.realpath(folder.path(intent.dir))
-            candidate = File.expand_path(path, root)
-            raise Invalid, "evidence must be a file inside intent #{intent.intent_id}" unless candidate.start_with?("#{root}/")
-
-            full = File.realpath(candidate)
-            raise Invalid, "evidence must stay inside intent #{intent.intent_id}" unless full.start_with?("#{root}/")
-
-            full
+          def read(path, keys)
+            Evidence.validate(JSON.parse(File.read(scoped_path(path), encoding: "UTF-8")), keys)
+          rescue SystemCallError, JSON::ParserError => error
+            raise Invalid, "cannot read criterion evidence: #{error.message.lines.first.strip}"
           end
 
           def self.validate(evidence, keys)
@@ -37,13 +31,30 @@ module Plastic
           end
 
           def self.key_problems(evidence, keys)
-            found = { "missing keys" => keys - evidence.keys, "extra keys" => evidence.keys - keys, "blank keys" => blank_keys(evidence, keys) }
+            given = evidence.keys
+            found = { "missing keys" => keys - given, "extra keys" => given - keys, "blank keys" => blank_keys(evidence, keys) }
             found.reject { |_label, names| names.empty? }.map { |label, names| "#{label}: #{names.join(", ")}" }
           end
 
           def self.blank_keys(evidence, keys)
             evidence.select { |key, value| keys.include?(key) && !(value.is_a?(String) && !value.strip.empty?) }.keys
           end
+
+          private
+
+          def scoped_path(path)
+            candidate = File.expand_path(path, root)
+            raise Invalid, "evidence must be a file inside intent #{@intent_id}" unless inside?(candidate)
+
+            full = File.realpath(candidate)
+            raise Invalid, "evidence must stay inside intent #{@intent_id}" unless inside?(full)
+
+            full
+          end
+
+          def root = @root ||= File.realpath(@folder.path(@dir))
+
+          def inside?(path) = path.start_with?("#{root}/")
         end
       end
     end

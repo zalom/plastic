@@ -17,7 +17,7 @@ module Plastic
           end
 
           def evidence(intent_id, path, keys)
-            Evidence.read(@folder, @retrieval.intent(intent_id), path, keys)
+            Evidence.new(@folder, @retrieval.intent(intent_id)).read(path, keys)
           end
 
           def close(intent_id, judge:, evidence:)
