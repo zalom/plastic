@@ -24,15 +24,19 @@ class FinishIntentTest < Plastic::TestCase
     assert_includes step, "plastic intent end 1 --judge tests|tool|agent|owner --evidence completion.json"
   end
 
-  def test_missing_evidence_asks_to_confirm_the_architecture_map
-    step = finish.steps.find { |text| text.include?("fetch the architecture map once more") }
-
-    assert_includes step, "outcome.md"
-  end
-
-  def test_open_records_and_no_evidence_print_records_map_and_evidence_in_order
+  def test_the_map_step_lives_in_the_merge_check
     steps = finish(requirements: ["outcome.md"]).steps
 
-    assert_equal ["prerequisites", "architecture map", "completion.json"], steps.map { |text| text[/prerequisites|architecture map|completion\.json/] }
+    refute(steps.any? { |text| text.include?("architecture map") })
+  end
+
+  def test_open_records_and_no_evidence_print_records_and_evidence_in_order
+    steps = finish(requirements: ["outcome.md"]).steps
+
+    assert_equal ["prerequisites", "completion.json"], steps.map { |text| text[/prerequisites|completion\.json/] }
+  end
+
+  def test_the_evidence_step_names_the_criterion_keys
+    assert_includes finish.steps.find { |text| text.include?("completion.json") }, "criterion key"
   end
 end

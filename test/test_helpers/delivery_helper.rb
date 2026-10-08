@@ -4,6 +4,8 @@ module Plastic
   class TestCase
     # Intents at the points of delivery the workflow tests start from.
     module DeliveryHelper
+      VERIFICATION = "\n## Verification\n- Merged: plastic/1 into alpha at abc123\n- Architecture map: enola at abc123\n"
+
       def specified_intent(spec = "## Done criteria\n- It works\n")
         intent = open_intent
         write("#{intent.dir}/spec.md", "# Spec\n\n#{spec}")
@@ -12,9 +14,9 @@ module Plastic
       end
 
       # Spec, outcome and one node judged done: nothing stands in the way of the end.
-      def ready_intent
-        intent = specified_intent
-        write("#{intent.dir}/outcome.md", "# Outcome\n\nDelivered.\n")
+      def ready_intent(verification: VERIFICATION, spec: "## Done criteria\n- It works\n")
+        intent = specified_intent(spec)
+        write("#{intent.dir}/outcome.md", "# Outcome\n\nDelivered.\n#{verification}")
         sync_up
         work = store_graphs.work
         work.add_node(intent_id: "1", title: "Build")

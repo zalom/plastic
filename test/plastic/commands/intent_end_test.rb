@@ -4,15 +4,17 @@ require_relative "../../test_helper"
 
 class IntentEndFixture < Plastic::TestCase
   CRITERION = "The delivery works"
+  KEY = "delivery-works"
+  VERIFICATION = "\n## Verification\n- Merged: plastic/1 into alpha at abc123\n- Architecture map: enola at abc123\n"
 
   def cli(*args, session: "delivery")
     plastic(*args, table: Plastic::CLI::TABLE, env: { "PLASTIC_SESSION" => session })
   end
 
-  def ready_intent
+  def ready_intent(verification: VERIFICATION)
     intent = open_intent
-    write("#{intent.dir}/spec.md", "# Spec\n\n## Done criteria\n- #{CRITERION}\n")
-    write("#{intent.dir}/outcome.md", "# Outcome\n\nDelivered and verified.\n")
+    write("#{intent.dir}/spec.md", "# Spec\n\n## Done criteria\n- [ ] [#{KEY}] #{CRITERION}\n")
+    write("#{intent.dir}/outcome.md", "# Outcome\n\nDelivered and verified.\n#{verification}")
     cli("sync", "up")
     cli("auto", "1")
     cli("node", "add", "1", "Deliver", "--criterion", CRITERION)
@@ -21,7 +23,7 @@ class IntentEndFixture < Plastic::TestCase
     intent
   end
 
-  def evidence(intent, values = { CRITERION => "Acceptance passes in the target environment" })
+  def evidence(intent, values = { KEY => "Acceptance passes in the target environment" })
     write("#{intent.dir}/completion.json", JSON.generate(values))
   end
 
@@ -52,8 +54,8 @@ class IntentEndTest < IntentEndFixture
     row = retrieval.completion("1")
 
     assert_equal "agent", row.fetch("judge")
-    assert_equal [CRITERION], JSON.parse(row.fetch("criteria"))
-    assert_equal Digest::SHA256.hexdigest("# Outcome\n\nDelivered and verified.\n"), row.fetch("outcome_sha256")
+    assert_equal({ KEY => CRITERION }, JSON.parse(row.fetch("criteria")))
+    assert_equal Digest::SHA256.hexdigest("# Outcome\n\nDelivered and verified.\n#{VERIFICATION}"), row.fetch("outcome_sha256")
   end
 
   def test_repeating_closure_keeps_the_first_record_and_cleans_its_lock
@@ -79,15 +81,138 @@ class IntentEndTest < IntentEndFixture
   end
 end
 
-class IntentEndMapTest < IntentEndFixture
-  def test_a_bare_end_before_acceptance_asks_to_confirm_the_architecture_map
-    ready_intent
+class IntentEndMergeCheckTest < IntentEndFixture
+  def test_a_bare_end_asks_for_the_merge_and_the_architecture_map
+    ready_intent(verification: "")
 
     result = cli("intent", "end", "1")
 
     assert_equal [0, ""], [result.code, result.err]
-    assert_includes result.out, "fetch the architecture map once more"
-    assert_includes result.out, "outcome.md"
+    assert_includes result.out, "- Merged: "
+    assert_includes result.out, "- Architecture map: "
+  end
+
+  def test_a_bare_end_without_the_records_closes_nothing
+    ready_intent(verification: "")
+    cli("intent", "end", "1")
+
+    assert_equal "active", retrieval.intent("1").status
+  end
+
+  def test_a_submission_without_the_merge_record_hands_over_the_merge_check
+    evidence(ready_intent(verification: "\n## Verification\n- Architecture map: enola at abc123\n"))
+
+    result = finish
+
+    assert_equal [0, ""], [result.code, result.err]
+    assert_includes result.out, "- Merged: "
+    assert_includes result.out, "next: none"
+  end
+
+  def test_a_submission_without_the_merge_record_closes_nothing
+    evidence(ready_intent(verification: "\n## Verification\n- Architecture map: enola at abc123\n"))
+    finish
+
+    assert_equal "active", retrieval.intent("1").status
+  end
+
+  def test_the_chain_has_no_problems
+    assert_empty Plastic::Commands::IntentEnd.chain_problems
+  end
+end
+
+class IntentEndAbandonTest < IntentEndFixture
+  def droppable(outcome: "# Outcome\n\nDropped: the need went away.\n", **fields)
+    intent = open_intent("Alpha", **fields)
+    write("#{intent.dir}/outcome.md", outcome) if outcome
+    cli("sync", "up")
+    intent
+  end
+
+  def abandon(*extra) = cli("intent", "end", "1", "--abandoned", *extra)
+
+  def test_abandoning_an_open_intent_with_only_an_outcome_closes_it
+    droppable
+
+    result = abandon
+
+    assert_equal [0, "", "abandoned"], [result.code, result.err, retrieval.intent("1").status]
+    assert_includes result.out, "intent: 1 abandoned"
+    assert_includes result.out, "next: none"
+  end
+
+  def test_abandoning_sets_the_disposition_and_writes_no_completion
+    droppable
+    abandon
+
+    assert_equal ["abandoned", nil], [retrieval.intent("1").disposition, retrieval.completion("1")]
+  end
+
+  def test_abandoning_a_future_intent_closes_it
+    droppable(status: "future")
+
+    assert_equal [0, "abandoned"], [abandon.code, retrieval.intent("1").status]
+  end
+
+  def test_abandoning_an_active_intent_releases_its_lock
+    droppable
+    cli("auto", "1")
+
+    assert_equal [0, nil], [abandon.code, retrieval.lock("1")]
+  end
+
+  def test_repeating_the_abandon_cleans_its_lock
+    droppable
+    abandon
+    store_graphs.work.take_lock("1", session_id: "delivery", mode: "auto")
+
+    assert_equal [0, nil], [abandon.code, retrieval.lock("1")]
+  end
+
+  def test_an_abandon_after_a_delivered_handoff_abandons
+    droppable
+    cli("intent", "end", "1")
+
+    assert_equal [0, "abandoned"], [abandon.code, retrieval.intent("1").status]
+  end
+
+  def test_abandoned_with_a_judge_is_a_usage_error
+    droppable
+    result = abandon("--judge", "agent")
+
+    assert_equal 2, result.code
+    assert_includes result.err, "--abandoned"
+    assert_equal "open", retrieval.intent("1").status
+  end
+
+  def test_abandoned_with_evidence_is_a_usage_error
+    droppable
+    result = abandon("--evidence", "completion.json")
+
+    assert_equal 2, result.code
+    assert_includes result.err, "--abandoned"
+  end
+
+  def test_a_live_foreign_lock_refuses_the_abandon
+    droppable
+    store_graphs.work.take_lock("1", session_id: "someone-else", mode: "auto")
+
+    assert_equal [3, "open"], [abandon.code, retrieval.intent("1").status]
+  end
+
+  def test_abandoning_without_an_outcome_fails
+    droppable(outcome: nil)
+
+    result = abandon
+
+    assert_equal [1, "open"], [result.code, retrieval.intent("1").status]
+    assert_includes result.out + result.err, "outcome.md"
+  end
+
+  def test_a_done_intent_cannot_be_abandoned
+    open_intent(status: "done")
+
+    assert_equal [1, "done"], [abandon.code, retrieval.intent("1").status]
   end
 end
 
@@ -193,7 +318,7 @@ class IntentEndPrerequisitesTest < IntentEndFixture
 
   def link_foreign_evidence(intent)
     other = open_intent("Other")
-    write("#{other.dir}/evidence.json", JSON.generate({ CRITERION => "Checked" }))
+    write("#{other.dir}/evidence.json", JSON.generate({ KEY => "Checked" }))
     File.symlink(folder.path("#{other.dir}/evidence.json"), folder.path("#{intent.dir}/completion.json"))
   end
 
