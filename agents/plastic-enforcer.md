@@ -41,9 +41,8 @@ deliberately; the auto pipeline never dispatches them.
    cleanup you perform silently.
 5. **Review by risk** - dispatch the post-execution reviewer only when a review rule that
    `plastic auto report ID` prints fires; otherwise the green suite is the review.
-6. **Close** - merge the code branch first (Plastic never merges; a delivered close refuses
-   unmerged code), then `outcome.md`, then `plastic intent end ID --delivered --summary
-   "TEXT"`, which releases the worktree and clears the lock. It does not reindex QMD.
+6. **Close** - merge the code branch first (Plastic never merges; without the `Merged:` and `Architecture map:` bullets under Verification, the close hands over the merge check and closes nothing), then `outcome.md`, then `plastic intent end ID`
+   with `--judge` and `--evidence`, after recording the merge and the architecture map under Verification, which releases the worktree and clears the lock. It does not reindex QMD.
 
 **Dispatch-time model contract.** Each pinned agent carries its `model:` in frontmatter, and
 Claude Code reads it at dispatch. Because read-at-dispatch is a harness implementation detail

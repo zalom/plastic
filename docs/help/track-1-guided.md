@@ -94,11 +94,12 @@ moving to station 6. When the graph is complete, `plastic next` names `plastic i
 
 ### 6. End
 
-Run `plastic intent end ID --delivered --summary "TEXT"`. Add `--dry-run` first to see what
-the close would do without writing anything.
+Run `plastic intent end ID`. It asks for the merge and architecture map records under
+Verification in outcome.md, then for `--judge` and `--evidence` by criterion key. Use
+`plastic intent end ID --abandoned` for an intent that will not ship.
 
 When the intent has a code branch or worktree, merge the branch yourself first. Plastic does
-not merge, and a delivered close refuses unmerged code with exit 1.
+not merge, and a delivered close needs the `Merged:` line under Verification in outcome.md; Plastic does not check the merge itself.
 
 Artifact: a real `outcome.md` (Summary, Delivered, Verification, Follow-ups) generated from
 `graph.md` and the ledger (the same model as the internal `scripts/outcome-report`), the

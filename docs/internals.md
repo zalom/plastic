@@ -495,11 +495,10 @@ the harness gets instructions to choose one. With no open work, the next command
 `Graph::Work::DeliveryAction` supplies the actions used by next, brief, ready, and check.
 Ready nodes lead to claim; failed nodes lead to release. Empty graphs hand planning to
 `AgentWorkflow`, claimed nodes remain with their worker, and parked nodes request the
-owner's answer. Completed graphs lead to `intent end` for explicit acceptance.
+owner's answer. Completed graphs lead to `intent end` for explicit acceptance. `Workflows::PrepareEnding` routes it to `CheckMerge` (merge and map records missing), `CloseIntent` (ready), `AbandonIntent` (`--abandoned`) or `FinishIntent`; evidence matches done criteria by key (`Knowledge::Spec#keyed_criteria`, `Evidence.validate`), and `Knowledge::Outcome` reads the Verification bullets.
 
 `IntentEnd` chains prerequisite checks, an agent verification handoff when records are
-missing, and closure. `Graph::Work::Completion::Evidence` accepts a JSON object with every exact done
-criterion as a key and nonempty evidence text as its value. Paths resolve within the
+missing, and closure. `Graph::Work::Completion::Evidence` accepts a JSON object that maps every criterion key (the bracketed key, or the full text of an unkeyed criterion) to nonempty evidence text; a refusal names the missing, extra and blank keys. Paths resolve within the
 selected intent folder, including a check after resolving symbolic links. The judge
 attests to the evidence; Plastic does not execute the verification.
 
@@ -938,7 +937,7 @@ is the only auto command, and lock commands live under `intent lock`.
   intent goes active. An expired lock is taken over by the same call.
 - **Renew.** The Stop hook (`plastic hook record`, `Hooks::Record`) renews every lock row the
   session holds through `work.renew_locks`.
-- **Release.** `plastic intent end` releases the row (`Completion::Writer#release_lock`).
+- **Release.** `plastic intent end` releases the row (`Completion::Writer#release_lock`), delivered or abandoned (`Completion::Writer#abandon`).
 - **Read.** `plastic intent lock status ID` (`Commands::IntentLockStatus`, `Workflows::ShowLock`)
   prints `lock: none`, or the session, the mode, the taken and renewed times and `live` or
   `expired`, and then `worktree: PATH` when a repository resolves. Its next step is

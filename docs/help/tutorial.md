@@ -315,7 +315,7 @@ diffstat against main:
  2 files changed, 6 insertions(+), 2 deletions(-)
 report lines:
 2026-09-23T11:50:28Z  Report  Both greeter tests pass on the branch; outcome.md written
-next: plastic intent end 1 --delivered --summary "TEXT" --project greeter
+next: plastic intent end 1 --project greeter
 because: a clean verify is what makes the close trustworthy
 ```
 
@@ -324,20 +324,15 @@ intent while the check fails.
 
 ## 8. Merge the code (Git)
 
-Plastic does not merge. Its delivered close refuses code that is not merged.
+Plastic does not merge. Its delivered close needs the `Merged:` line under Verification in outcome.md.
 
 **Plastic.** Try the close while the repository is still on the code branch:
 
 ```sh
-plastic intent end 1 --delivered --summary "Greeter.greet takes an optional greeting word; the default stays Hello."
+plastic intent end 1 --judge tool --evidence completion.json
 ```
 
-It exits 1 and writes nothing:
-
-```text
-end-intent: refusing a delivered close: the repo checkout /home/you/greeter is on the code branch plastic/1--custom-greeting itself, so the code is not merged anywhere. Check out the branch you release from, merge plastic/1--custom-greeting into it, then run the close again
-end-intent: nothing was merged, written, or released
-```
+It hands over the merge check and closes nothing.
 
 **You.** Merge the branch and run the tests on `main`:
 
@@ -349,22 +344,13 @@ ruby -Ilib test/greeter_test.rb
 
 ## 9. Close the intent as delivered
 
-**Plastic.** Preview the close first:
+**Plastic.** Close the intent:
 
 ```sh
-plastic intent end 1 --delivered --summary "Greeter.greet takes an optional greeting word; the default stays Hello." --dry-run
+plastic intent end 1 --judge tool --evidence completion.json
 ```
 
-The dry run lists what the close would do: move the `INDEX.md` entry to `## Completed`, append
-the terminal savepoint line, commit the store repository, and release the lock and the code
-worktree. It ends with:
-
-```text
-next: none
-because: the dry run wrote nothing and found nothing that would refuse the close
-```
-
-Run the same command without `--dry-run`. The close fills the records that are still
+The close fills the records that are still
 placeholders from the record itself. Here that is the action file:
 
 ```text
@@ -404,7 +390,7 @@ run. They do not run the team; your harness does that.
 4. `plastic next` prints the report contract and the review rules the lead follows.
 5. The close is the same `plastic intent end` as in step 9, with the same merge check.
 
-`plastic intent end ID --delivered` refuses an intent that nobody worked on. The spec, plan,
+`plastic intent end ID` refuses an intent that nobody worked on. The spec, plan,
 checklist, and outcome are still placeholders, and the worktree has no changes. Close it with
 `--abandoned` instead:
 
