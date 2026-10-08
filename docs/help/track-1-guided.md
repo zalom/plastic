@@ -94,8 +94,9 @@ moving to station 6. When the graph is complete, `plastic next` names `plastic i
 
 ### 6. End
 
-Run `plastic intent end ID --delivered --summary "TEXT"`. Add `--dry-run` first to see what
-the close would do without writing anything.
+Run `plastic intent end ID`. It asks for the merge and architecture map records under
+Verification in outcome.md, then for `--judge` and `--evidence` by criterion key. Use
+`plastic intent end ID --abandoned` for an intent that will not ship.
 
 When the intent has a code branch or worktree, merge the branch yourself first. Plastic does
 not merge, and a delivered close refuses unmerged code with exit 1.

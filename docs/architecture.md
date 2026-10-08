@@ -281,10 +281,15 @@ through Git.
 ## Delivery acceptance
 
 A graph with all nodes done advances to `intent end`. Closure also requires recorded
-criteria, resolved decisions, a substantive outcome, and an explicit judge's evidence
-for every criterion. The evidence and outcome hash remain in a completion row. Plastic
+criteria, resolved decisions, a substantive outcome whose `## Verification` section holds a
+`Merged:` and an `Architecture map:` bullet, and an explicit judge's evidence for every
+criterion key. A criterion carries a key in square brackets, or its full text is the key. The evidence and outcome hash remain in a completion row. Plastic
 records this acceptance; the harness or owner performs the verification. Successful
-closure releases the delivery lock and ends with no next command.
+closure releases the delivery lock and ends with no next command. The session that delivered the
+intent closes it after its code is merged, with no lock handover. When the merge or map record is
+missing, `Workflows::CheckMerge` hands the agent both steps. `plastic intent end ID --abandoned`
+(`Workflows::AbandonIntent`) closes an intent that will not ship from a substantive outcome alone.
+An intent needs at least one live node; small work needs no intent, because the session rows record it.
 
 An empty graph hands planning to the harness. Claimed work stays with its worker,
 parked work needs the owner's answer, and failed work advances to release before retry.
@@ -356,7 +361,7 @@ the agent. The first tells it to check the project's architecture map and the se
 regenerate the map, with a mapping tool it chooses, such as Enola. Plastic runs no mapping tool
 and stores no map. Plastic also prints the same kind of instruction when it hands planning to the agent
 ("fetch the map before you plan") and in `plastic intent end` ("fetch it once more and note the tool
-and revision under Verification in outcome.md"). It does not check that the agent did either.
+and revision as the Architecture map: line under Verification in outcome.md"). It does not check that the agent did either.
 
 ### Store search: sqlite3, native, with companion tools alongside
 

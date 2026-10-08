@@ -315,7 +315,7 @@ diffstat against main:
  2 files changed, 6 insertions(+), 2 deletions(-)
 report lines:
 2026-09-23T11:50:28Z  Report  Both greeter tests pass on the branch; outcome.md written
-next: plastic intent end 1 --delivered --summary "TEXT" --project greeter
+next: plastic intent end 1 --project greeter
 because: a clean verify is what makes the close trustworthy
 ```
 
@@ -329,7 +329,7 @@ Plastic does not merge. Its delivered close refuses code that is not merged.
 **Plastic.** Try the close while the repository is still on the code branch:
 
 ```sh
-plastic intent end 1 --delivered --summary "Greeter.greet takes an optional greeting word; the default stays Hello."
+plastic intent end 1 --judge tool --evidence completion.json
 ```
 
 It exits 1 and writes nothing:
@@ -352,7 +352,7 @@ ruby -Ilib test/greeter_test.rb
 **Plastic.** Preview the close first:
 
 ```sh
-plastic intent end 1 --delivered --summary "Greeter.greet takes an optional greeting word; the default stays Hello." --dry-run
+plastic intent end 1 --judge tool --evidence completion.json
 ```
 
 The dry run lists what the close would do: move the `INDEX.md` entry to `## Completed`, append
@@ -404,7 +404,7 @@ run. They do not run the team; your harness does that.
 4. `plastic next` prints the report contract and the review rules the lead follows.
 5. The close is the same `plastic intent end` as in step 9, with the same merge check.
 
-`plastic intent end ID --delivered` refuses an intent that nobody worked on. The spec, plan,
+`plastic intent end ID` refuses an intent that nobody worked on. The spec, plan,
 checklist, and outcome are still placeholders, and the worktree has no changes. Close it with
 `--abandoned` instead:
 

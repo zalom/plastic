@@ -104,7 +104,7 @@ No command run here; describe the step instead. Each delivered intent's code mer
 as it lands. When the batch (or a meaningful slice of it) is ready to ship, cutting a release
 is a push to `alpha`, `beta`, or `main`: the version files are bumped in that push, and CI
 tags and publishes. CI never sees your stores, so it closes no intent: each intent is closed
-with `plastic intent end ID --delivered --summary "TEXT"` after its code is merged.
+with `plastic intent end ID --judge tool --evidence completion.json` after its code is merged.
 
 Releases are described here, not run: this walkthrough stays in a sandbox and never makes a
 real GitHub release.

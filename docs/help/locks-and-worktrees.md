@@ -78,5 +78,5 @@ station. Nothing in the third column blocks; the fourth column is what gets writ
 | Start (board) | none (a procedure, not a stage) | `plastic auto ID` takes the lock row and sets the intent active, then prints the code worktree and its git command | the lock row in `local.db` |
 | How | the work graph of the intent | the record hook renews the lock | node and edge rows |
 | Exec | code on the intent branch | renewal continues; code edits stay in the code worktree | node results |
-| End (done) | `outcome.md` | `plastic intent end ID` closes the intent and releases the lock; the closer merges the code and removes the worktree | the intent closed as done |
+| End (done) | `outcome.md` | `plastic intent end ID` closes the intent and releases the lock; the session that delivered it closes it after the code is merged, with no lock handover | the intent closed as done |
 | Maintenance | revisions | detects a live lock and defers; never takes one | the revision rows |

@@ -105,7 +105,7 @@ at and how that matched what was actually on disk.
 
 ### 6. The close
 
-The lead closes the intent with `plastic intent end ID --delivered --summary "TEXT"`. The
+The lead closes the intent with `plastic intent end ID --judge tool --evidence completion.json`. The
 close checks that the code branch is merged and refuses with exit 1 when it is not; Plastic
 does not merge. It also refuses to deliver an untouched scaffold. On success it writes
 `outcome.md` from the record, moves the intent to `## Completed`, and releases the lock and
