@@ -297,7 +297,7 @@ class IntentEndPrerequisitesTest < IntentEndFixture
   def test_an_open_decision_prevents_closure
     intent = ready_intent
     evidence(intent)
-    write("#{intent.dir}/spec.md", "# Spec\n## Done criteria\n- #{CRITERION}\n## Open Questions\n- Which release?\n")
+    write("#{intent.dir}/spec.md", "# Spec\n## Done criteria\n- [#{KEY}] #{CRITERION}\n## Open Questions\n- Which release?\n")
     cli("sync", "up")
 
     result = finish

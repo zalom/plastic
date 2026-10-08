@@ -3,6 +3,7 @@
 require "digest"
 require_relative "evidence"
 require_relative "../../knowledge/spec"
+require_relative "../../knowledge/outcome"
 require_relative "../node"
 
 module Plastic
@@ -16,13 +17,28 @@ module Plastic
             @intent_id = intent_id
           end
 
-          def criteria = spec.done_criteria
+          # Each done criterion's key mapped to its text; a criterion repeated word for word counts once.
+          def criteria = spec.keyed_criteria.uniq.to_h { |criterion| [criterion.key, criterion.text] }
 
           def outcome = @retrieval.documents(@intent_id).find { |document| document.path == "outcome.md" }
 
-          def problems
-            [criteria_problem, decisions_problem, work_problem, outcome_problem].compact
+          def problems = record_problems + verification_problems
+
+          def record_problems
+            [criteria_problem, key_problem, decisions_problem, work_problem, outcome_problem].compact
           end
+
+          # The merge and the architecture map are recorded under Verification in outcome.md.
+          def verification_problems
+            [("Add a line starting Merged: to the Verification section of outcome.md and run plastic sync up." unless merge_recorded?),
+              ("Add a line starting Architecture map: to the Verification section of outcome.md and run plastic sync up." unless map_recorded?)].compact
+          end
+
+          def abandon_problems = [outcome_problem].compact
+
+          def merge_recorded? = verification.merged?
+
+          def map_recorded? = verification.architecture_map?
 
           def outcome_hash = Digest::SHA256.hexdigest(outcome.body)
 
@@ -32,13 +48,20 @@ module Plastic
             raise Invalid, found.join(" ") if found.any?
 
             done = criteria
-            Evidence.validate(evidence, done)
+            Evidence.validate(evidence, done.keys)
             { criteria: done, evidence:, outcome_sha256: outcome_hash }
           end
 
           private
 
           def spec = @spec ||= Knowledge::Spec.new(@retrieval, @intent_id)
+
+          def verification = Knowledge::Outcome.new(@retrieval, @intent_id)
+
+          def key_problem
+            clashes = spec.keyed_criteria.uniq.group_by(&:key).select { |_key, same| same.size > 1 }.keys
+            "Give each done criterion in spec.md its own key; #{clashes.join(", ")} names two different criteria." if clashes.any?
+          end
 
           def criteria_problem = ("Write the done criteria in spec.md and run plastic sync up." if criteria.empty?)
 

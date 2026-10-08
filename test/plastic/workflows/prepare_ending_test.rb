@@ -52,7 +52,7 @@ class PrepareEndingTest < PrepareEndingFixture
 
     outcome, = prepare(judge: "tests", evidence: evidence_file(intent, { "Other" => "text" }))
 
-    assert_includes outcome.message, "code_prepare_ending, gate: evidence must map every done criterion key"
+    assert_includes outcome.message, "code_prepare_ending, gate: evidence must map every criterion key"
   end
 
   def test_evidence_by_text_for_a_keyed_criterion_fails_the_call

@@ -24,6 +24,7 @@ module Plastic
       def_delegator "@writers.revisions", :change, :revision
       def_delegator "@writers.revisions", :write, :revise_intent
       def_delegator "@writers.completions", :close, :close_intent
+      def_delegator "@writers.completions", :abandon, :abandon_intent
       def_delegator "@writers.completions", :evidence, :completion_evidence
       def_delegators "@writers.nodes", :add_node, :remove_node, :claim_node, :release_node, :done_node, :fail_node,
         :park_node, :answer_node, :repair_done_node

@@ -8,6 +8,8 @@ module Plastic
       # prefix removed. A section that holds only "None" counts zero. No spec
       # row means no criteria and no decisions.
       class Spec
+        Criterion = Data.define(:key, :text)
+
         DONE = /\A#+\s*(Done criteria|Acceptance Criteria|Acceptance)\s*\z/i
         OPEN = /\A#+\s*(Open Questions|Open decisions)\s*\z/i
         GOAL = /\A#+\s*Goals?\s*\z/i
@@ -22,6 +24,10 @@ module Plastic
 
         def done_criteria = bullets_under(DONE)
 
+        # Each done criterion with its key: the bracketed key that starts the
+        # bullet, or the full text when the bullet carries none.
+        def keyed_criteria = done_criteria.map { |text| Spec.criterion(text) }
+
         # Each line of the goal section, a bullet read without its dash.
         def goal_lines = section(GOAL).map { |line| Spec.bullet(line) || line.strip }.reject(&:empty?)
 
@@ -30,6 +36,13 @@ module Plastic
         BULLET = /\A[-*]\s*(?:\[[ xX]\]\s*)?(.+)\z/
 
         def self.bullet(line) = line[BULLET, 1]&.strip
+
+        KEYED = /\A\[([a-z0-9][a-z0-9-]{1,31})\]\s+(.+)\z/
+
+        def self.criterion(text)
+          key, rest = text.match(KEYED)&.captures
+          key ? Criterion.new(key:, text: rest) : Criterion.new(key: text, text:)
+        end
 
         private
 
