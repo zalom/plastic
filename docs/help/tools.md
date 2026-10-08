@@ -31,8 +31,9 @@ save the map, because the tool can produce it again at any time.
 
 Plastic also asks for the map at two points of an intent. When it hands planning to the agent, it
 tells the agent to fetch the map first. In `plastic intent end`, it tells the agent to fetch the map
-once more and to note the tool and the source revision under Verification in outcome.md. These are
-reminders only. Plastic does not check them.
+once more and to note the tool and the source revision as the Architecture map: line under Verification in outcome.md. The planning
+reminder is not checked. At the close, Plastic refuses a delivered close whose outcome.md lacks
+the line, but it does not check that the map is true.
 
 ### Using them together
 

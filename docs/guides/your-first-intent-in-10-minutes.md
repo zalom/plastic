@@ -62,8 +62,7 @@ one pass. The other two modes, direct (type the change and it happens) and think
 
 The agent now runs Why, then How, then Exec, one after another, without you
 needing to steer each step. When it closes the intent with `plastic intent end`, the close writes
-`outcome.md`, which records what was delivered. The close refuses code that is not
-merged, so the merge comes first. That file is the proof
+`outcome.md`, which records what was delivered. The close needs the `Merged:` line under Verification in outcome.md, so the merge comes first. That file is the proof
 your work is done. Your intent also moves to the "Completed" section of the
 index, so you can find it again later.
 

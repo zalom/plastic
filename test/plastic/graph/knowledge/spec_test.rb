@@ -44,6 +44,28 @@ class KnowledgeSpecTest < Plastic::TestCase
     assert_equal [[], [], []], [read.done_criteria, read.open_decisions, read.goal_lines]
   end
 
+  def keyed(body) = spec(body).keyed_criteria.map { |criterion| [criterion.key, criterion.text] }
+
+  def test_a_bracketed_key_names_the_criterion
+    assert_equal [["abandon-close", "The close works"]], keyed("## Done criteria\n- [ ] [abandon-close] The close works\n")
+  end
+
+  def test_a_criterion_without_a_key_uses_its_text_as_key
+    assert_equal [["It ships", "It ships"]], keyed("## Done criteria\n- It ships\n")
+  end
+
+  def test_a_checkbox_is_not_a_key
+    assert_equal [["x done", "x done"], ["[a] one", "[a] one"]], keyed("## Done criteria\n- [x] x done\n- [a] one\n")
+  end
+
+  def test_a_bare_key_is_its_own_text
+    assert_equal [["[only-key]", "[only-key]"]], keyed("## Done criteria\n- [only-key]\n")
+  end
+
+  def test_done_criteria_keep_the_bracketed_key_in_their_text
+    assert_equal ["[abandon-close] The close works"], spec("## Done criteria\n- [ ] [abandon-close] The close works\n").done_criteria
+  end
+
   def test_a_bullet_reads_nil_for_a_line_that_is_not_one
     assert_equal ["Done", nil], [Spec.bullet("- [X] Done "), Spec.bullet("Done")]
   end
