@@ -156,7 +156,7 @@ class PrepareEndingAbandonTest < PrepareEndingFixture
   def test_a_done_intent_cannot_be_abandoned
     droppable(status: "done")
 
-    assert_includes prepare(abandoned: true).first.message, "gate:"
+    assert_equal "code_prepare_ending, gate: intent 1 is not open, active, parked or future", prepare(abandoned: true).first.message
   end
 
   def test_abandoning_an_abandoned_intent_routes_to_the_abandon

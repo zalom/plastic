@@ -19,6 +19,16 @@ class AbandonIntentTest < Plastic::TestCase
     assert_equal "abandoned", retrieval.intent("1").status
   end
 
+  def test_a_stale_done_fact_still_abandons
+    intent = open_intent
+    write("#{intent.dir}/outcome.md", "# Outcome\n\nDropped.\n")
+    sync_up
+
+    run_workflow(Plastic::Workflows::AbandonIntent, graphs: session_graphs, intent_id: "1", abandon_ended: true)
+
+    assert_equal "abandoned", retrieval.intent("1").status
+  end
+
   def test_an_intent_without_an_outcome_fails
     open_intent
 
