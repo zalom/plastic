@@ -361,7 +361,7 @@ the agent. The first tells it to check the project's architecture map and the se
 regenerate the map, with a mapping tool it chooses, such as Enola. Plastic runs no mapping tool
 and stores no map. Plastic also prints the same kind of instruction when it hands planning to the agent
 ("fetch the map before you plan") and in `plastic intent end` ("fetch it once more and note the tool
-and revision as the Architecture map: line under Verification in outcome.md"). It does not check that the agent did either.
+and revision as the Architecture map: line under Verification in outcome.md"). It does not check the planning fetch; a delivered close refuses an outcome.md without the `Architecture map:` line, but does not check that the map is true.
 
 ### Store search: sqlite3, native, with companion tools alongside
 

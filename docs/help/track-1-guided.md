@@ -99,7 +99,7 @@ Verification in outcome.md, then for `--judge` and `--evidence` by criterion key
 `plastic intent end ID --abandoned` for an intent that will not ship.
 
 When the intent has a code branch or worktree, merge the branch yourself first. Plastic does
-not merge, and a delivered close refuses unmerged code with exit 1.
+not merge, and a delivered close needs the `Merged:` line under Verification in outcome.md; Plastic does not check the merge itself.
 
 Artifact: a real `outcome.md` (Summary, Delivered, Verification, Follow-ups) generated from
 `graph.md` and the ledger (the same model as the internal `scripts/outcome-report`), the

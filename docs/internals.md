@@ -498,8 +498,7 @@ Ready nodes lead to claim; failed nodes lead to release. Empty graphs hand plann
 owner's answer. Completed graphs lead to `intent end` for explicit acceptance. `Workflows::PrepareEnding` routes it to `CheckMerge` (merge and map records missing), `CloseIntent` (ready), `AbandonIntent` (`--abandoned`) or `FinishIntent`; evidence matches done criteria by key (`Knowledge::Spec#keyed_criteria`, `Evidence.validate`), and `Knowledge::Outcome` reads the Verification bullets.
 
 `IntentEnd` chains prerequisite checks, an agent verification handoff when records are
-missing, and closure. `Graph::Work::Completion::Evidence` accepts a JSON object with every exact done
-criterion as a key and nonempty evidence text as its value. Paths resolve within the
+missing, and closure. `Graph::Work::Completion::Evidence` accepts a JSON object that maps every criterion key (the bracketed key, or the full text of an unkeyed criterion) to nonempty evidence text; a refusal names the missing, extra and blank keys. Paths resolve within the
 selected intent folder, including a check after resolving symbolic links. The judge
 attests to the evidence; Plastic does not execute the verification.
 

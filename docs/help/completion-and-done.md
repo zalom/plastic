@@ -36,6 +36,12 @@ required a real `git status` or `git merge-base`, which Plastic no longer runs.
 `--discard-worktree-changes` is still accepted for backward compatibility but changes
 nothing.
 
+Evidence is a JSON object from each criterion key (the bracketed key, or the full text of an
+unkeyed criterion) to nonempty text. A delivered close also needs the `Merged:` and
+`Architecture map:` bullets under `## Verification` in outcome.md; when either is missing it
+hands over the merge check with exit 0 and closes nothing. `plastic intent end ID --abandoned`
+closes an intent that will not ship.
+
 `scripts/end-intent` performs this order's disarm step as its own step 5, mechanically,
 since intent 188: a session no longer needs a separate one-liner for it, and the script's own
 exit code (0) is the single fact a caller needs that the intent is closed AND its delivery

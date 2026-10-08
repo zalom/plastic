@@ -40,18 +40,6 @@ acceptance. Closure requires finished work, node verification, resolved decision
 and a substantive outcome stored by sync up. It releases the delivery lock.
 Repeating closure preserves the first acceptance record and completes lock cleanup.
 
-## Abandon an intent
-
-```sh
-plastic intent end ID --abandoned
-```
-
-This closes an open, active, parked or future intent that will not ship. outcome.md must
-say why. The close needs no criteria, nodes, judge, evidence or merge record, writes no
-completion row, and releases the lock. With `--judge` or `--evidence` it is a usage error
-(exit 2). Calling it again only finishes the lock cleanup.
-
-
 After the records are ready, submit the acceptance:
 
 ```sh
@@ -70,3 +58,14 @@ plastic node done ID NODE --repair --judge tool --findings "Actual findings"
 
 The repair preserves the done state and attempt count. Ordinary node completion
 requires a claimed node and nonempty findings.
+
+## Abandon an intent
+
+```sh
+plastic intent end ID --abandoned
+```
+
+This closes an open, active, parked or future intent that will not ship. outcome.md must
+say why. The close needs no criteria, nodes, judge, evidence or merge record, writes no
+completion row, and releases the lock. With `--judge` or `--evidence` it is a usage error
+(exit 2). Calling it again only finishes the lock cleanup.
