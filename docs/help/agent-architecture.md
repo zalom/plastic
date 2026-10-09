@@ -24,10 +24,10 @@ roles plus two reviewer prompts dispatched as fresh agents (the four stage agent
 in 2.0, intent 304; the lead writes the Why and How record itself):
 
 - **plastic-enforcer** (the lead, spans the whole cycle): takes the intent, writes `spec.md`,
-  `plan.md`, the action files with their failure-mode matrix, and `checklist.md`; has the plan
+  the action files with their failure-mode matrix, and the work graph; has the plan
   reviewed before code; dispatches the executor; applies the risk rule; closes.
-- **plastic-executor** (Exec): commits the matrix's tests red, writes the code, checks off
-  `checklist.md`, appends `## Insights`, and drives the suite green.
+- **plastic-executor** (Exec): commits the matrix's tests red, writes the code, records each
+  graph node done, appends `## Insights`, and drives the suite green.
 - **the plan reviewer**: a fresh agent on the prompt that `plastic help plan-reviewer-prompt`
   prints, an optional dispatch before any code exists.
 - **the post-execution reviewer**: a fresh agent on the prompt that
@@ -41,13 +41,13 @@ a third only when risk calls for it.
 ### Handoff Contracts
 
 The lead hands the executor one constructed context bundle: the spec decisions, the plan, the
-action files with their matrix, the checklist, and the worktree path. The executor hands back
-the code, the red and green commits, a checked-off checklist, `## Insights`, and its completion
+action files with their matrix, the work graph, and the worktree path. The executor hands back
+the code, the red and green commits, its done nodes with findings, `## Insights`, and its completion
 report. Dispatch is sequential on a single branch, because the deliverables share files.
 
 The chain: intent `## Intent` / `## Context`, then enriched `## Context` plus `### Decisions`,
-then `spec.md`, then `plan.md` plus `actions/` plus `checklist.md`, then an optional plan
-review, then the code changes plus a checked-off checklist plus `## Insights`.
+then `spec.md`, then `actions/` plus the work graph, then an optional plan
+review, then the code changes plus done nodes plus `## Insights`.
 
 ### Spawn Preamble (L2 live-state injection)
 
@@ -76,7 +76,7 @@ mandatory (decision-shaping), but child-agent honor is best-effort across harnes
 so it is never a hard block. When an agent returns no usable report, the lead runs
 `scripts/agent-report <intent_dir> --role <role>`, a pure function of the intent dir (no network,
 clock, or randomness, mirroring `spawn-preamble`) that emits a filesystem-derived report from the
-savepoint, the artifacts present, the checklist checked/total, and the outcome line. A handoff
+savepoint, the artifacts present, the nodes done/total, and the outcome line. A handoff
 account therefore always exists: agent-authored when present, deterministically reconstructed
 otherwise. This structures the finish notification only; in-flight observations stay in
 `## Insights`, no progress chatter is added.

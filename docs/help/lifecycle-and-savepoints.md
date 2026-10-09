@@ -11,30 +11,15 @@ happened:
 
 - the intent file: `## Context` and `### Decisions` (written in Why) and `## Insights`
   (one line per ruling, appended as it happens);
-- checklist.md: the items, ticked as they are actually performed;
+- graph.json: the nodes, each marked done as it is actually performed;
 - savepoint.md: the append-only stage ledger, written by the hooks and the scripts;
 - the commits on the intent's branch.
 
-The four judgment documents (spec.md, plan.md, actions/, outcome.md) are written when
-there is something to say. In thinking mode an agent writes them during Why and How; the
-`plastic intent` Next row asks for `spec.md`, then `plan.md` and `checklist.md`, before it
-points at execution. In direct mode they usually stay as the scaffold placeholder until the
-close, and
-`scripts/end-intent` then backfills each one still missing or still a placeholder from
-the live record (intent 308): `## Problem` from `## Intent`, `## Decisions` from
-`### Decisions`, `## Acceptance Criteria`, `## Steps`, `## Items`, `## Delivered`, and
-`## Follow-ups` from the checklist, `## Notes` from `## Insights`, `## Verification` from
-the diff on the intent's own worktree, and outcome.md's `disposition:` from the close.
-Every other section keeps the template's stub text; nothing is invented. A backfilled
-file carries a marker comment on the line after its title, and the savepoint gains one
-`Exec  backfilled <list>` line. A file with hand-written content, even under a leftover
-sentinel line, is never touched. The same writer is exposed as `scaffold-intent backfill`
-for the doctor fix hint `backfilled_complete`.
-
-The close never refuses for a document it can write itself. Doctor's per-intent structure
-check runs after the backfill as a report: an unchecked box, a malformed intent file, or
-a wrong-disposition outcome.md is named on stderr, the close proceeds, and
-`plastic intent show <id>` keeps reporting it until fixed.
+The judgment documents (spec.md, actions/, outcome.md) are written when there is
+something to say. An agent writes them during Why and How; the `plastic intent` Next row asks
+for `spec.md`, then the work graph, before it points at execution. `plastic intent end` writes
+none of them. It prints what is missing, and the agent writes it. `plastic intent show <id>`
+keeps reporting a malformed intent file or a wrong-disposition outcome.md until it is fixed.
 
 ## Insights from a writer that cannot write the file
 
@@ -44,6 +29,6 @@ agent that can write the file) persists it via the helper. A session that cannot
 intent file still returns its report, so the insight survives.
 
 The stages map to commands: What is `plastic intent new`, Why is `plastic intent spec` and
-`plastic intent rule`, How is the spec, plan and checklist (or `graph.md`) the agent writes,
+`plastic intent rule`, How is the spec and the work graph the agent writes,
 and Exec is `plastic next`, `plastic node done` and `plastic intent end`.
 `plastic help tutorial` walks all of them once.

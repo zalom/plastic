@@ -105,11 +105,13 @@ at and how that matched what was actually on disk.
 
 ### 6. The close
 
-The lead closes the intent with `plastic intent end ID --judge tool --evidence completion.json`. The
-close needs the `Merged:` and `Architecture map:` bullets under Verification in outcome.md and hands the agent the merge check when either is missing; Plastic
-does not merge. It also refuses to deliver an untouched scaffold. On success it writes
-`outcome.md` from the record, moves the intent to `## Completed`, and releases the lock and
-the worktree.
+The lead closes the intent with `plastic intent end ID`. The
+close needs every live node done, every criterion covered, an accepted verdict at or after the
+newest node change, and the `Merged:` and `Architecture map:` bullets under Verification in
+outcome.md; with a required pull request it also needs the `Pull request:` and `Approved:`
+bullets. When something is missing, the command prints it and closes nothing. Plastic does not
+merge. On success it writes the completion row, moves the intent to `## Completed`, releases
+the lock, and hands the agent the steps that stop the processes and agents the intent started.
 
 Checkpoint: open `outcome.md` and read its Summary.
 
