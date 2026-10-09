@@ -34,7 +34,7 @@ module IntentEndAcceptance
   end
 
   def self.judge(kernel, verdict)
-    kernel.run!("intent", "judge", "1", "--verdict", verdict, "--findings", "Reviewed the delivery", env: SESSION)
+    kernel.run!("intent", "verdict", "1", verdict, "Reviewed the delivery", env: SESSION)
   end
 
   def self.withhold_merge_record(kernel)

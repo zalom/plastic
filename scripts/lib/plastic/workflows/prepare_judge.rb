@@ -26,7 +26,6 @@ module Plastic
       gate "intent %{intent_id} has used both review rounds; the owner takes the next step", stops: :refusal,
         pass: ->(context) { context.retrieval.verdicts(context.intent_id).size < Graph::Work::Verdict::ROUNDS }
 
-      outcome :recording, if: ->(context) { context.verdict }
       outcome :accepted, if: ->(context) { latest(context)&.verdict == "accept" }, offers: "plastic intent end %{intent_id}",
         because: "intent %{intent_id} is accepted"
       outcome :judging

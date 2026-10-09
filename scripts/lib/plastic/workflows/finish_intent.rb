@@ -9,7 +9,7 @@ module Plastic
       step "finish the required records", done: ->(context) { context.requirements.empty? },
         say: "Complete these recorded prerequisites: %{requirements}"
       step "have the delivery judged", done: ->(context) { context.judged },
-        say: "No accepted review counts yet. Run plastic intent judge %{intent_id} and record the verdict of the next review round. " \
+        say: "No accepted review counts yet. Run plastic intent judge %{intent_id}; the judge records the verdict of the next review round with plastic intent verdict. " \
           "Then run plastic intent end %{intent_id} again."
 
       outcome :handoff, offers: nil, because: "the harness must record the missing prerequisites and have the delivery judged"

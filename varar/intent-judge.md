@@ -1,14 +1,11 @@
 # plastic intent judge
 
-`plastic intent judge ID` prints the steps of the judge: read the spec and the findings of every node, decide, and record the verdict. `--verdict accept|revise --findings TEXT` writes the verdict row of the next review round; both options come together. A revise offers `plastic node add` for the fix node. An accept offers `plastic intent end`. A review has two rounds: a second revise is written and then refused as the owner's step, and a call after two verdicts is refused. A missing, done or abandoned intent fails. The rows below run the storage kernel's command line in a fresh home each time, as session s-1. A setup lists the calls made first, in order, split by a semicolon.
+`plastic intent judge ID` takes no options. It prints the steps that start a reasoning judge agent (the harness picks which kind) and tells the judge to record its verdict with `plastic intent verdict ID accept|revise TEXT`. It writes no row. After an accept it says so and offers `plastic intent end`. After two verdicts it is refused as the owner's step. A missing, done or abandoned intent fails. The rows below run the storage kernel's command line in a fresh home each time, as session s-1. A setup lists the calls made first, in order, split by a semicolon.
 
 Each row gives the setup, the call, the exit code, the result and the next line:
 
 | setup | call | exit | result | next line |
 | ----- | ---- | ---- | ------ | --------- |
-| intent new Alpha | intent judge 1 --verdict accept --findings "Every criterion holds" | 0 | verdict: accept round 1 | plastic intent end 1 --project global |
-| intent new Alpha | intent judge 1 --verdict revise --findings "One edge fails" | 0 | verdict: revise round 1 | plastic node add 1 TITLE --criterion KEY --project global |
-| intent new Alpha ; intent judge 1 --verdict accept --findings "Holds" | intent judge 1 | 0 | none | plastic intent end 1 --project global |
-| intent new Alpha ; intent judge 1 --verdict revise --findings "One" | intent judge 1 --verdict revise --findings "Two" | 3 | verdict: revise round 2 / the review round is used: intent 1 was sent back twice, and the owner takes the next step | none |
-| intent new Alpha | intent judge 1 --verdict maybe --findings "x" | 2 | --verdict takes accept or revise | none |
-| none | intent judge 9 --verdict accept --findings "x" | 1 | no intent 9 in this store | none |
+| intent new Alpha ; intent verdict 1 accept "Holds" | intent judge 1 | 0 | none | plastic intent end 1 --project global |
+| intent new Alpha | intent judge 1 --verdict accept | 2 | invalid option: --verdict | none |
+| none | intent judge 9 | 1 | no intent 9 in this store | none |
