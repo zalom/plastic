@@ -20,11 +20,15 @@ module Plastic
 
       def call
         value = visit(@chain.entry)
-        @save.call(@routine_run.close(value, @ctx.facts))
-        value
+        keep(value)
+        printed = yield(value)
+        keep(printed) unless printed.equal?(value)
+        printed
       end
 
       private
+
+      def keep(value) = @save.call(@routine_run.close(value, @ctx.facts))
 
       def visit(key)
         workflow = @chain.fetch(key)
