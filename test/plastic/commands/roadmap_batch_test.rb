@@ -10,7 +10,7 @@ class RoadmapBatchTest < Plastic::TestCase
     result = call("r1", "1", "--title", "Wave one", "--goal", "Ship it")
 
     assert_call result, code: 0,
-      out: "batch: r1 1 Wave one\nwrote:  1 routine run in local.db\n        1 roadmap and 1 batch in work_graph.db\n\n" \
+      out: "batch: r1 1 Wave one\nwrote:  1 routine run in local.db\n        1 roadmap and 1 batch in work_graph.db\nfiles:  roadmaps/r1.md\n\n" \
            "next: plastic roadmap show r1 --project global\nbecause: batch 1 of r1 is written\n"
   end
 

@@ -7,17 +7,22 @@ module Plastic
     # database that owns the rows. The next call compares a file with that
     # hash to know whether it changed by hand.
     class Printer
+      # Every path this printer has written, in order, once each.
+      attr_reader :written
+
       def initialize(folder, databases, retrieval)
         @folder = folder
         @databases = databases
         @retrieval = retrieval
+        @written = []
       end
 
       # The paths it wrote.
       def print(prints)
-        written = prints.reject { |print| print.level?(@folder) }.each { |print| print.write_to(@folder) }
+        paths = prints.reject { |print| print.level?(@folder) }.each { |print| print.write_to(@folder) }.map(&:path)
         record(prints)
-        written.map(&:path)
+        @written |= paths
+        paths
       end
 
       # Records the hash of each print, so the next sync knows the file is level.

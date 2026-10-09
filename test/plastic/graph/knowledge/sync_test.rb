@@ -8,7 +8,7 @@ class KnowledgeSyncTest < Plastic::TestCase
   SPEC = "store/1--alpha/spec.md"
   FILE = "store/1--alpha/1--alpha.md"
 
-  def sync = Plastic::Graph::Knowledge::Sync.new(folder:, retrieval:, databases: store_graphs.databases)
+  def sync = (@sync ||= Plastic::Graph::Knowledge::Sync.new(folder:, retrieval:, databases: store_graphs.databases))
 
   def run_sync(direction, **options) = sync.apply(sync.plan(direction, options))
 
@@ -32,7 +32,7 @@ class KnowledgeSyncTest < Plastic::TestCase
     change_row(FILE, "from rows\n")
 
     assert_equal ["read #{SPEC}"], run_sync(:up)
-    assert_equal ["printed #{FILE}"], run_sync(:down)
+    assert_equal [[], [FILE]], [run_sync(:down), sync.printer.written]
     assert_equal ["# Edited\n", "from rows\n"], [body(SPEC), folder.read(FILE)]
   end
 
@@ -45,7 +45,8 @@ class KnowledgeSyncTest < Plastic::TestCase
     change_row(SPEC, "in rows\n")
     change_row(FILE, "row only\n")
 
-    assert_equal ["printed #{FILE}"], run_sync(:down, merge: true)
+    assert_equal [], run_sync(:down, merge: true)
+    assert_equal [FILE], sync.printer.written
     assert_equal ["by hand\n", "in rows\n"], [folder.read(SPEC), body(SPEC)]
   end
 
@@ -82,7 +83,8 @@ class KnowledgeSyncTest < Plastic::TestCase
     with_legacy_plan
     folder.delete("store/1--alpha/plan.md")
 
-    assert_equal ["printed store/1--alpha/plan.md"], run_sync(:down)
+    assert_equal [], run_sync(:down)
+    assert_equal ["store/1--alpha/plan.md"], sync.printer.written
   end
 
   def test_an_emptied_savepoint_drops_its_lines_and_keeps_its_file
@@ -103,7 +105,8 @@ class KnowledgeSyncTest < Plastic::TestCase
   def test_print_says_each_path_it_wrote
     print = Plastic::Graph::Prints::Print.text("store/1--alpha/notes.md", :knowledge, "n\n")
 
-    assert_equal [["printed store/1--alpha/notes.md"], []], [sync.print([print]), sync.print([print])]
+    assert_equal [[], []], [sync.print([print]), sync.print([print])]
+    assert_equal ["store/1--alpha/notes.md"], sync.printer.written
   end
 
   def test_a_sync_keeps_the_databases_out_of_versioning

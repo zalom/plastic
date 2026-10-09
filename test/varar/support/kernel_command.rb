@@ -19,7 +19,13 @@ class KernelCommand
   # One call: its exit code, what it printed and what it said went wrong.
   Call = Data.define(:code, :out, :err) do
     # The lines that tell what the call did: neither the database report nor next: and because:.
-    def said = out.lines(chomp: true).grep_v(/\A(?:wrote:|  |next:|because:|\z)/)
+    def said = out.lines(chomp: true).grep_v(/\A(?:wrote:|files:|  |next:|because:|\z)/)
+
+    # The files the call printed, from the files: row.
+    def files
+      block = out.lines(chomp: true).drop_while { |line| !line.start_with?("files:") }.take_while { |line| !line.empty? }
+      block.map { |line| line.delete_prefix("files:").strip }.join(" / ").then { |text| text.empty? ? "none" : text }
+    end
 
     # The reason a stopped call gives, without the prefix that names the workflow.
     def reason = err.lines.first.to_s.chomp.sub(/\Aplastic: (?:refused, |code_\w+, [^:]+: (?:Plastic::Invalid: )?)?/, "")

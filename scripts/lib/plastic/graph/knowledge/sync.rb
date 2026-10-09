@@ -49,7 +49,10 @@ module Plastic
 
         def read(paths) = FileReads.new(folder: @folder, retrieval: @retrieval, databases: @databases, printer: printer).call(paths)
 
-        def print(prints) = printer.print(prints).map { |path| "printed #{path}" }
+        def print(prints)
+          printer.print(prints)
+          []
+        end
 
         def printer = (@printer ||= Printer.new(@folder, @databases, @retrieval))
       end

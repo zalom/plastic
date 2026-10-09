@@ -15,7 +15,7 @@ class RoadmapDropTest < Plastic::TestCase
     result = cli("roadmap", "drop", "r1", "a")
 
     assert_call result, code: 0,
-      out: "dropped: a\nwrote:  1 routine run in local.db\n        1 item in work_graph.db\n\nnext: plastic roadmap next r1 --project global\nbecause: item a no longer blocks its successors\n"
+      out: "dropped: a\nwrote:  1 routine run in local.db\n        1 item in work_graph.db\nfiles:  roadmaps/r1.md\n\nnext: plastic roadmap next r1 --project global\nbecause: item a no longer blocks its successors\n"
   end
 
   def test_dropping_on_a_missing_roadmap_names_it

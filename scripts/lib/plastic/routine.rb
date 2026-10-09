@@ -83,14 +83,19 @@ module Plastic
 
     # The printed lines and rows go first on every end, failure included, so a gate
     # that says "see above" has something above it. Then the call says what
-    # it wrote: the rows, one phrase per database. The end value prints its
-    # own last lines and gives the exit code.
+    # it wrote: the rows, one phrase per database, and the files it
+    # printed. The end value prints its own last lines and gives the exit code.
     #
     #   wrote: 1 intent and 1 ledger line in work_graph.db
     def report(value, ctx)
       ctx.print_to(output)
-      output.row("wrote:", graphs.wrote) if touches_graphs?
+      report_graphs if touches_graphs?
       @exit_code = value.report(output)
+    end
+
+    def report_graphs
+      output.row("wrote:", graphs.wrote)
+      output.row("files:", graphs.printed)
     end
 
     def touches_graphs? = !self.class.graphless?

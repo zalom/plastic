@@ -81,6 +81,9 @@ module Plastic
 
       def print_index = @writers.sync.printer.print([Prints.index(@retrieval)])
 
+      # The paths this call printed, relative to the store folder.
+      def printed = @writers.sync.printer.written
+
       def preview_sync(options, direction: :up)
         Knowledge::Sync::Preview.new(home_dir, @retrieval.store, options, direction:).call
       end

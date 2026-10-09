@@ -44,7 +44,7 @@ class EdgeRemoveTest < Plastic::TestCase
     result = plastic("edge", "remove", "1", "n1", "n2", table: Plastic::CLI::TABLE)
 
     assert_call result, code: 0,
-      out: "edge: n1 to n2 removed\nwrote:  1 routine run in local.db\n        1 edge in work_graph.db\n\nnext: plastic graph show 1 --project global\nbecause: edge n1 to n2 is gone\n"
+      out: "edge: n1 to n2 removed\nwrote:  1 routine run in local.db\n        1 edge in work_graph.db\nfiles:  store/1--alpha/graph.json\n\nnext: plastic graph show 1 --project global\nbecause: edge n1 to n2 is gone\n"
     assert_empty store_graphs.databases.fetch(:work).rows("SELECT * FROM edges")
   end
 

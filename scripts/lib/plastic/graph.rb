@@ -17,6 +17,9 @@ module Plastic
   module Graph
     # The open graphs of one store, and the databases they sit on.
     Graphs = Data.define(:work, :retrieval, :databases) do
+      # The files this call printed, relative to the store folder.
+      def printed = work.printed
+
       # One phrase per database that this call wrote to, after any rename it made.
       def wrote = databases.values.flat_map(&:phrases)
 

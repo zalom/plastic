@@ -17,7 +17,7 @@ class NodeImpedeTest < Plastic::TestCase
     result = cli("node", "impede", "1", "n1", "no access to the host")
 
     assert_call result, code: 0,
-      out: "node: n1 impeded\nwrote:  1 routine run in local.db\n        1 node in work_graph.db\n\nnext: plastic node resolve 1 n1 TEXT --project global\nbecause: node n1 is impeded\n"
+      out: "node: n1 impeded\nwrote:  1 routine run in local.db\n        1 node in work_graph.db\nfiles:  store/1--alpha/graph.json\n\nnext: plastic node resolve 1 n1 TEXT --project global\nbecause: node n1 is impeded\n"
   end
 
   def test_the_impediment_is_stored_as_the_reason

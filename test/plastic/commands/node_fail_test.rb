@@ -17,7 +17,7 @@ class NodeFailTest < Plastic::TestCase
 
     result = cli("node", "fail", "1", "n1", "boom")
 
-    assert_call result, code: 0, out: "node: n1 failed\nwrote:  1 routine run in local.db\n        1 node in work_graph.db\n\nnext: plastic node release 1 n1 --project global\nbecause: node n1 is failed\n"
+    assert_call result, code: 0, out: "node: n1 failed\nwrote:  1 routine run in local.db\n        1 node in work_graph.db\nfiles:  store/1--alpha/graph.json\n\nnext: plastic node release 1 n1 --project global\nbecause: node n1 is failed\n"
   end
 
   def test_failing_an_open_node_is_refused
