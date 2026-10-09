@@ -977,7 +977,7 @@ the harness. `--harness NAME` picks the module. Without it, the doctor picks Cod
 session variable is set, and Claude Code otherwise. A harness with no module exits 2 and names
 the harnesses that have one.
 
-`Doctor::Core` checks the version record, the parts that `plastic version` checks, the sqlite3
+`Doctor::Core` checks the version record, the parts of the installation, the sqlite3
 gem, the machine database, PLASTIC.md, and each registered project's store and AGENTS.md. The
 machine database's file name comes from `Graph::Schema`, never a literal, so a rename of the
 file changes no doctor code. `Doctor::DatabaseCheck` opens a database read-only and compares

@@ -98,7 +98,7 @@ other failure exits 1. See [INSTALL.md](../../INSTALL.md).
 
 | Command | Result |
 | ------- | ------ |
-| `plastic version` | The version, the releases, the launcher, Ruby, the sqlite3 bundle, the hooks and the installer lock. |
+| `plastic version` | The version, the release channel and the file the version came from. |
 | `plastic doctor` | One row for each check of this harness, then one repair row. Exits 0 when every check passes and 1 on a finding. |
 
 `plastic doctor` checks the version record, Ruby, the sqlite3 gem, the machine database, each

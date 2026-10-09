@@ -9,8 +9,7 @@ module Plastic
     class Version < Routine
       graphless
 
-      workflow :code_show_version, next: :code_check_installation
-      workflow :code_check_installation, next: :noop
+      workflow :code_show_version, next: :noop
     end
   end
 end
