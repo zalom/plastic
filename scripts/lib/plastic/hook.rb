@@ -30,9 +30,7 @@ module Plastic
     def answer
       return help if argv.intersect?(%w[--help -h])
 
-      reply = respond(event)
-      environment.out.puts reply if reply
-      CLI::Command::OK
+      print_reply(respond(event))
     rescue OptionParser::ParseError => error
       refuse_option(error)
     end
@@ -55,6 +53,11 @@ module Plastic
     end
 
     private
+
+    def print_reply(reply)
+      environment.out.puts reply if reply
+      CLI::Command::OK
+    end
 
     def refuse_option(error)
       environment.err.puts "plastic: #{error.message}", usage_line
