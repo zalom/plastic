@@ -3,6 +3,7 @@
 require_relative "../../test_helper"
 require_relative "../commands/installer_helper"
 require "json"
+require "shellwords"
 require_relative "../../../scripts/lib/plastic/cli/projects_file"
 require_relative "../../../scripts/lib/plastic/graph/retrieval/source"
 
@@ -16,8 +17,27 @@ class MissingStoreTest < Plastic::TestCase
       call = call_in(home, "intent", "show", "1", "--project", "fresh")
 
       assert_equal 1, call.code
-      assert_includes call.out, "next: plastic project new fresh PATH"
+      assert_includes call.out, "next: plastic project new fresh #{File.join(File.dirname(home), "fresh")}"
       refute_path_exists File.join(home, "stores", "fresh")
+    end
+  end
+
+  def test_the_line_for_a_registered_project_runs_as_written_and_makes_its_store
+    with_home do |home|
+      register(home, "fresh")
+      line = call_in(home, "intent", "show", "1", "--project", "fresh").out[/^next: (.*)$/, 1]
+
+      assert_equal 0, call_in(home, *Shellwords.split(line).drop(1)).code
+      assert_path_exists File.join(home, "stores", "fresh")
+    end
+  end
+
+  def test_an_unregistered_project_keeps_the_path_placeholder
+    with_home do |home|
+      call = call_in(home, "intent", "show", "1", "--project", "nowhere")
+
+      assert_equal 2, call.code
+      refute_includes call.out, "project new nowhere /"
     end
   end
 
