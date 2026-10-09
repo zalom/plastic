@@ -28,7 +28,7 @@ class ScopeTest < Plastic::TestCase
   end
 
   def test_a_named_project_wins
-    assert_equal "plastic", scope(slug: "plastic").slug
+    assert_equal ["plastic", "plastic", nil], [scope(slug: "plastic").slug, scope(slug: "plastic").named_slug, scope.named_slug]
   end
 
   def test_an_unknown_project_names_the_known_ones
