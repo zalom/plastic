@@ -127,4 +127,12 @@ class PrintAfterWriteTest < Plastic::TestCase
     assert_equal 1, result.code
     refute_empty result.err
   end
+  def test_a_print_that_cannot_write_leaves_a_failed_routine_run_not_a_finished_one
+    intent = open_keyed_intent
+    FileUtils.rm_f(store_path("#{intent.dir}/graph.json"))
+    FileUtils.mkdir_p(store_path("#{intent.dir}/graph.json"))
+    run_cli("node", "add", "1", "first", "--criterion", "done")
+
+    assert_equal "failed", retrieval.routine_run("node add", "1").status
+  end
 end
