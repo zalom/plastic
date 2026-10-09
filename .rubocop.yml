@@ -22,8 +22,8 @@ AllCops:
 Style/Encoding:
   Enabled: false
 
-# Standard turns the Metrics cops off. The owner ruled them on for the whole
-# repository on 2026-09-30: a method or class that trips one is split, never excused.
+# Standard turns the Metrics cops off. They are on for the whole repository:
+# a method or class that trips one is split, never excused.
 Metrics/AbcSize:
   Enabled: true
 Metrics/BlockNesting:
@@ -41,6 +41,5 @@ Metrics/ParameterLists:
 Metrics/PerceivedComplexity:
   Enabled: true
 
-# The owner's preference, ruled 2026-09-30.
 Layout/SpaceInsideHashLiteralBraces:
   EnforcedStyle: space

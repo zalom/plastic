@@ -15,7 +15,7 @@ its JSON form.
 
 ## The shared classes
 
-`CLI` lives in `scripts/lib/cli.rb`; the rest live under `scripts/lib/cli/`.
+`CLI` lives in `scripts/lib/plastic/cli.rb`; the rest live under `scripts/lib/plastic/cli/`.
 
 | Class | Job |
 | ----- | --- |

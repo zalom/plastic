@@ -110,7 +110,7 @@ file comparison. Teardown also closes any database the test opened. The tests ru
 commands would.
 - **Acceptance documents** under `varar/` run each command of the storage kernel in a child
   Ruby process, against a fresh home. The steps read the rows back through the `sqlite3`
-  gem, on a connection of their own. `bin/plastic` routes to the kernel (intent 397), so the
+  gem, on a connection of their own. `bin/plastic` routes to the kernel, so the
   steps call it either through the packaged executable or the kernel's own command line
   directly, by the case. `bin/test --system` runs them through `test/varar_test.rb`. The change
   gate never passes that file to the mutation run.
@@ -124,7 +124,7 @@ included. `test/context_budget_bench_test.rb` fails when a surface crosses its c
 
 | Path | Holds |
 | ---- | ----- |
-| `bin/plastic` | The launcher; points at the kernel (intent 397). |
+| `bin/plastic` | The launcher; points at the kernel. |
 | `scripts/lib/plastic.rb` | The entry of the tri-graph kernel. |
 | `scripts/lib/plastic/` | The kernel: its command line, routines, workflows, end values and graph layer. |
 | `scripts/lib/plastic/cli.rb` | The dispatcher. |

@@ -68,8 +68,9 @@ on your machine.
 
 ## Add a command
 
-1. Add one row to `scripts/lib/cli/table.rb`: the name, the file, the class and the help line.
-2. Add one file under `scripts/lib/cli/commands/` with a `USAGE_LINE` and a public `call`.
+1. Add one row to `scripts/lib/plastic/cli/table.rb`: the command words, the class and the help line.
+2. Add the class in one file under `scripts/lib/plastic/commands/`, named after it: `Commands::IntentEnd`
+   lives in `intent_end.rb`. Follow `architecture_status.rb` for the smallest example.
 3. Write the tests first and commit them red. Follow [Test a change](#test-a-change).
 4. Run the gates once: `bundle exec ruby bin/verify-change <base commit>`.
 5. Add the command to [README.md](README.md) and [docs/usage/FEATURES.md](docs/usage/FEATURES.md) in the same change.
