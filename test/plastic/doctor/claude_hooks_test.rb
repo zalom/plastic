@@ -46,6 +46,20 @@ class DoctorClaudeHooksTest < Plastic::TestCase
     assert_equal ["no Plastic hook", REPAIR], check("SessionEnd").to_h.values_at(:value, :repair)
   end
 
+  def test_an_entry_that_still_names_record_end_is_drift_with_its_repair
+    write_hooks("SessionStart" => "\"#{hook_file}\" hook resume", "Stop" => "\"#{hook_file}\" hook record",
+      "SessionEnd" => "\"#{hook_file}\" hook record --end")
+
+    assert_equal ["names the retired hook record --end", REPAIR], check("SessionEnd").to_h.values_at(:value, :repair)
+  end
+
+  def test_a_current_end_entry_is_not_drift
+    write_hooks("SessionStart" => "\"#{hook_file}\" hook resume", "Stop" => "\"#{hook_file}\" hook record",
+      "SessionEnd" => "\"#{hook_file}\" hook end")
+
+    assert_nil check("SessionEnd").repair
+  end
+
   def test_a_hook_file_that_is_gone_is_a_finding
     File.delete(hook_file)
 

@@ -15,7 +15,7 @@ steps do
       kernel.run!("intent", "new", "Beta", env: session)
       kernel.run!("session", "note", "stopped", "after", "Beta", env: session)
       if row["session"] != "s-1"
-        kernel.run!("hook", "record", "--end", input: JSON.generate(reason: "clear"), env: session)
+        kernel.run!("hook", "end", input: JSON.generate(reason: "clear"), env: session)
         session = { "CLAUDE_CODE_SESSION_ID" => row["session"] }
       end
       call = kernel.run("hook", "resume", input: JSON.generate(source: row["source"]), env: session)

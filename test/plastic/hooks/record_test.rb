@@ -38,15 +38,6 @@ class RecordTest < Plastic::TestCase
     refute_equal lapsed, store_graphs.retrieval.lock("1").renewed_at
   end
 
-  def test_end_sets_the_reason_and_not_the_turn
-    call("--end", input: JSON.generate(reason: "clear"))
-
-    session = store_graphs.retrieval.session("s-1")
-
-    assert_equal "clear", session.end_reason
-    assert_nil session.last_turn_at
-  end
-
   def test_a_permit_prints_nothing
     assert_call call, code: 0
   end
@@ -68,7 +59,7 @@ class RecordTest < Plastic::TestCase
     code = Plastic::CLI.bin_call(%w[help hook record], environment:, table: Plastic::CLI::TABLE)
 
     assert_equal [0, ""], [code, environment.err.string]
-    assert_equal "plastic hook record [--harness NAME] [--end]", environment.out.string.lines.first.chomp
+    assert_equal "plastic hook record [--harness NAME]", environment.out.string.lines.first.chomp
   end
 
   def test_a_call_with_no_session_prints_one_stderr_line

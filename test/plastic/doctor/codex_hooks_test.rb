@@ -65,7 +65,7 @@ class DoctorCodexHooksTest < Plastic::TestCase
   end
 
   def test_a_command_for_a_different_event_does_not_pass
-    change_codex_hook("SessionEnd") { |hook| hook["command"].sub!(" --end", "") }
+    change_codex_hook("SessionEnd") { |hook| hook["command"].sub!("hook end", "hook record") }
 
     assert_equal "plastic install --codex --reinstall", check("SessionEnd").repair
   end

@@ -51,7 +51,7 @@ class InstallerCoreHooksTest < Minitest::Test
     settings = install({})
     kernel = %("#{File.join(@home, ".plastic", "bin", "plastic")}")
     expected = { "SessionStart" => "#{kernel} hook resume --harness claude-code",
-                 "Stop" => "#{kernel} hook record --harness claude-code", "SessionEnd" => "#{kernel} hook record --end" }
+                 "Stop" => "#{kernel} hook record --harness claude-code", "SessionEnd" => "#{kernel} hook end --harness claude-code" }
 
     assert_empty(expected.reject { |event, text| commands(settings, event).any? { |cmd| cmd.include?(text) } })
   end
