@@ -56,7 +56,7 @@ module Plastic
       def self.review_facts(context)
         review = Graph::Work::Completion::Review.of(context)
         context[:judged] = review.counting?
-        context[:missing] = (context.requirements + (review.counting? ? [] : [NOT_JUDGED])).join(" ")
+        context[:missing] = (context.requirements + (context.judged ? [] : [NOT_JUDGED])).join(" ")
         context[:used_up] = review.used_up?
       end
 
