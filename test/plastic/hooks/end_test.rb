@@ -26,7 +26,7 @@ class EndTest < Plastic::TestCase
   end
 
   def test_end_takes_no_harness_option
-    assert_call call("--harness", "codex"), code: 0, err: "plastic hook: OptionParser::InvalidOption: invalid option: --harness\n"
+    assert_call call("--harness", "codex"), code: 0, err: "plastic: invalid option: --harness\nplastic hook end\n"
   end
 
   def test_a_call_with_no_session_prints_one_stderr_line
