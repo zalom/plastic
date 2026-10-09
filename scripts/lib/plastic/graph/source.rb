@@ -7,6 +7,8 @@ require_relative "knowledge/legacy_intents_data"
 require_relative "work/savepoint"
 require_relative "work/node"
 require_relative "work/edge"
+require_relative "work/approval"
+require_relative "work/verdict"
 require_relative "knowledge/ruling"
 require_relative "knowledge/archive/kept_file"
 
@@ -33,6 +35,8 @@ module Plastic
       savepoints: Source.new(Work::Savepoint, :work, "savepoints", "*", "intent_id, position"),
       nodes: Source.new(Work::Node, :work, "nodes", "*", "intent_id, id"),
       edges: Source.new(Work::Edge, :work, "edges", "*", 'intent_id, "from", "to", kind'),
+      approvals: Source.new(Work::Approval, :work, "approvals", "*", "intent_id"),
+      verdicts: Source.new(Work::Verdict, :work, "verdicts", "*", "intent_id, round"),
       rulings: Source.new(Knowledge::Ruling, :knowledge, "rulings", "*", "intent_id, id"),
       kept_files: Source.new(Knowledge::Archive::KeptFile, :references, "sqlar", "name, mode, mtime, sz, intent_id, sha256, origin_id",
         "intent_id, name")
