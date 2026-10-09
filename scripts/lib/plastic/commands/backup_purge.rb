@@ -10,6 +10,8 @@ module Plastic
     class BackupPurge < Routine
       include BackupStore
 
+      writes :work
+
       option :older_than, switch: "--older-than DATE", text: "delete the backups before this date or time"
       option :all, switch: "--all", default: false, text: "delete every backup of the store"
       option :failed, switch: "--failed", default: false, text: "delete every backup whose status is failed"
@@ -32,8 +34,6 @@ module Plastic
         text = parsed[:older_than]
         as_usage(Graph::Knowledge::Backup::OlderThan::Unreadable) { Graph::Knowledge::Backup::OlderThan.parse(text) } if text
       end
-
-      def keeps_routine_run? = !parsed[:dry_run]
     end
   end
 end

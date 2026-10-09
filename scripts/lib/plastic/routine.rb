@@ -107,9 +107,8 @@ module Plastic
       graphs.work.save_routine_run(routine_run) if keeps_routine_run?
     end
 
-    # Every command keeps its routine run, so the session that reads a call
-    # back sees the same row a write left: a read's facts and next command
-    # are call memory too.
-    def keeps_routine_run? = true
+    # A command that writes keeps its routine run, so a resumed write finds
+    # its facts. A read, and a dry run, keep none.
+    def keeps_routine_run? = self.class.writes.any? && !parsed[:dry_run]
   end
 end

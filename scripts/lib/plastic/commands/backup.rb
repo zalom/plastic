@@ -10,6 +10,8 @@ module Plastic
     class Backup < Routine
       include BackupStore
 
+      writes :work
+
       option :databases, switch: "--databases LIST", text: "the databases to copy, comma separated; all of them when left out"
       option :live, switch: "--live", default: false, text: "print each line of the backup log as it is written"
       option :dry_run, switch: "--dry-run", default: false, text: "preview the backup without writing a folder"
@@ -25,8 +27,6 @@ module Plastic
       def check_call = database_list
 
       def scope = @scope ||= StreamingScope.for(environment, slug: parsed[:store], output: (parsed[:live] ? output : nil))
-
-      def keeps_routine_run? = !parsed[:dry_run]
     end
   end
 end

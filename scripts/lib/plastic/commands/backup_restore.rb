@@ -10,6 +10,8 @@ module Plastic
     class BackupRestore < Routine
       include BackupStore
 
+      writes :work
+
       option :timestamp, switch: "--timestamp TS", text: "the backup to restore, by its folder name"
       option :latest, switch: "--latest", default: false, text: "restore the newest backup that is done"
       option :databases, switch: "--databases LIST", text: "the databases to restore, comma separated; all the backup holds when left out"
@@ -35,8 +37,6 @@ module Plastic
         one_of(%i[timestamp latest], give: "give --timestamp TS or --latest", both: "--latest and --timestamp exclude each other")
         database_list
       end
-
-      def keeps_routine_run? = !parsed[:dry_run]
 
       def scope = @scope ||= AskingScope.for(environment, slug: parsed[:store], output:)
     end

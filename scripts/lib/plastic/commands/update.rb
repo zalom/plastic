@@ -17,10 +17,6 @@ module Plastic
         on :continue, next: :code_update_plastic
       end
       workflow :code_update_plastic, next: :noop
-
-      private
-
-      def keeps_routine_run? = false
     end
   end
 end

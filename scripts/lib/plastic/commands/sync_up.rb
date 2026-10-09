@@ -20,8 +20,6 @@ module Plastic
       workflow :code_sync_up, next: :noop
 
       private
-
-      def keeps_routine_run? = !parsed[:dry_run]
     end
   end
 end

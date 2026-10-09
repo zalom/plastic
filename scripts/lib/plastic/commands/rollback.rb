@@ -15,10 +15,6 @@ module Plastic
         on :continue, next: :code_rollback_release
       end
       workflow :code_rollback_release, next: :noop
-
-      private
-
-      def keeps_routine_run? = false
     end
   end
 end

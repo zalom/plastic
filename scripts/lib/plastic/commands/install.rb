@@ -19,10 +19,6 @@ module Plastic
       end
       workflow :code_install_plastic, next: :agent_offer_enola
       workflow :agent_offer_enola, next: :noop
-
-      private
-
-      def keeps_routine_run? = false
     end
   end
 end
