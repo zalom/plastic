@@ -2,6 +2,7 @@
 
 require "json"
 require_relative "check"
+require_relative "codex_hook_command"
 require_relative "../hooks/entries"
 
 module Plastic
@@ -46,7 +47,15 @@ module Plastic
       def event_check(event, groups)
         return Check.finding("hook #{event}:", "names the retired #{RETIRED}", REPAIR) if commands(groups).any? { |command| command.include?(RETIRED) }
 
+        stale = stale_line(event, groups)
+        return Check.finding("hook #{event}:", "names the stale command line #{stale}", REPAIR) if stale
+
         ClaudeHooks.event_check(event, files(groups))
+      end
+
+      def stale_line(event, groups)
+        expected = Hooks::Entries::EVENTS.fetch(event).then { |words| format(words, "claude-code") }.split
+        commands(groups).filter_map { |command| CodexHookCommand.new(command, home:).arguments }.find { |arguments| arguments != expected }&.join(" ")
       end
 
       def read = Hash(Hash.try_convert(JSON.parse(File.read(path)))&.fetch("hooks", nil))
