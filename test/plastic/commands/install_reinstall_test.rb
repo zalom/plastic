@@ -37,7 +37,7 @@ class InstallReinstallTest < Plastic::TestCase
   def test_the_reinstall_option_says_it_makes_the_stores_that_are_missing
     help = call("install", "--help").out
 
-    assert_includes help, "makes the global store and local.db when they are missing or behind"
+    assert_includes help, "sync the files again and make the global store and local.db when they are missing or behind"
   end
 
   private

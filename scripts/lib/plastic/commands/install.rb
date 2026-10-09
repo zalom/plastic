@@ -12,7 +12,7 @@ module Plastic
 
       extend CLI::AgentOptions
 
-      option :reinstall, switch: "--reinstall", default: false, text: "sync the files again for agents already registered"
+      option :reinstall, switch: "--reinstall", default: false, text: "sync the files again and make the global store and local.db when they are missing or behind"
       option :force, switch: "--force", default: false, text: "replace agent files Plastic did not write"
 
       workflow :code_preview_install do
