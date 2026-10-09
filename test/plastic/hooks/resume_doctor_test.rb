@@ -13,11 +13,11 @@ class ResumeDoctorTest < Plastic::TestCase
   FAILING = ->(_scope, _harness) { [Check.new("launcher:", "missing", "run plastic install --reinstall"), Check.new("hooks:", "stale", "run plastic init")] }
   BROKEN = ->(_scope, _harness) { raise "the doctor broke" }
 
-  def resume(health)
+  def resume(health, source: nil)
     out = StringIO.new
     err = StringIO.new
     environment = Plastic::CLI::Command::Environment.new(env: { "PLASTIC_HOME" => @plastic_home, "PLASTIC_SESSION" => "s-1" },
-      input: StringIO.new("{}"), out:, err:, home: @home, directory: @home)
+      input: StringIO.new(JSON.generate({ source: }.compact)), out:, err:, home: @home, directory: @home)
     code = Plastic::Hooks::Resume.call([], environment:, health:)
     [code, out.string, err.string]
   end
@@ -28,6 +28,18 @@ class ResumeDoctorTest < Plastic::TestCase
     assert_equal [0, ""], [code, err]
     assert_equal ["Plastic: doctor found 2 failing checks; run plastic doctor."], out.lines(chomp: true).grep(/doctor/)
     assert_match(/\APlastic: a new session in store global\./, out)
+  end
+
+  def test_a_session_that_starts_fresh_runs_the_doctor
+    _code, out, _err = resume(FAILING, source: "startup")
+
+    assert_equal 1, out.lines.grep(/doctor found/).size
+  end
+
+  def test_a_resumed_compacted_or_cleared_session_never_runs_the_doctor
+    lines = %w[resume compact clear].flat_map { |source| resume(FAILING, source:)[1].lines.grep(/doctor/) }
+
+    assert_empty lines
   end
 
   def test_every_check_passing_prints_nothing_about_doctor
