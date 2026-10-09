@@ -101,10 +101,7 @@ class MissingGlobalStoreRepairTest < Plastic::TestCase
   include InstallerHelper
 
   def test_the_install_line_next_prints_for_a_missing_global_store_runs_and_makes_the_store
-    FileUtils.mkdir_p(File.join(@home, ".claude"))
-    call("install", "--claude")
-    Plastic::Graph::Database::ConnectionPool.release(@home)
-    FileUtils.rm_rf(File.join(@plastic_home, "stores"))
+    installed_home_without_stores
 
     stopped = call("intent", "show", "1")
     line = stopped.out[/^next: (.*)$/, 1]

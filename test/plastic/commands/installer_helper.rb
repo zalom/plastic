@@ -66,6 +66,13 @@ module InstallerHelper
 
   def launcher_calls = File.exist?(File.join(@home, "launcher-calls")) ? File.readlines(File.join(@home, "launcher-calls"), chomp: true) : []
 
+  def installed_home_without_stores
+    FileUtils.mkdir_p(File.join(@home, ".claude"))
+    call("install", "--claude")
+    Plastic::Graph::Database::ConnectionPool.release(@home)
+    FileUtils.rm_rf(File.join(@plastic_home, "stores"))
+  end
+
   def claude_folder = FileUtils.mkdir_p(File.join(@home, ".claude")).first
 
   def tree_snapshot(path)

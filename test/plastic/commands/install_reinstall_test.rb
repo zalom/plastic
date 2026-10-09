@@ -26,10 +26,7 @@ class InstallReinstallTest < Plastic::TestCase
   end
 
   def test_a_reinstall_makes_the_global_store_and_the_machine_database_again
-    FileUtils.mkdir_p(File.join(@home, ".claude"))
-    call("install", "--claude")
-    Plastic::Graph::Database::ConnectionPool.release(@home)
-    FileUtils.rm_rf(File.join(@plastic_home, "stores"))
+    installed_home_without_stores
     FileUtils.rm_f(File.join(@plastic_home, Plastic::Graph::Schema.file(machine_key)))
     result = call("install", "--reinstall")
 
