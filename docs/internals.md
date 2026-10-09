@@ -1705,7 +1705,7 @@ exit codes and stderr diagnostics, with an error object for JSON callers.
 `IntentProgress` reads lifecycle prerequisites and checklist items through the
 existing screen reader. A direct step prints its first incomplete item without
 starting the graph runner. A graph step uses the runner's ownership resolver
-before dispatch. Lock inspection and search end with `next: none`.
+before dispatch. A call with no next command prints a `because:` line and no `next:` line; `--json` gives `"next": null`.
 
 `test/cli/release_contract_test.rb` exercises the actual executable with isolated
 stores, including creation, screens, project scope, direct progression, graph

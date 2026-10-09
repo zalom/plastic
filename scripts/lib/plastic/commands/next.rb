@@ -9,6 +9,7 @@ module Plastic
       reads :work, :knowledge
       workflow :code_pick_next do
         on :done, next: :noop
+        on :nothing, next: :noop
         on :agent_needed, next: :agent_advance_delivery
       end
       workflow :agent_advance_delivery, next: :noop

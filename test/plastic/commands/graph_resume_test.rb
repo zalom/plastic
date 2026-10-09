@@ -149,7 +149,7 @@ class GraphResumeTest < Plastic::TestCase
     result = call
 
     assert_includes lines(result), "in play: none"
-    assert_includes lines(result), "then: none (because nothing is open)"
+    assert_includes lines(result), "then: nothing is open"
   end
 
   def test_no_store_with_work_sends_the_agent_to_plastic_status
@@ -205,7 +205,7 @@ class GraphResumeStoresTest < Plastic::TestCase
 
     result = call("--stores", "global,b")
 
-    assert_includes lines(result), "then: none (because nothing is open)"
+    assert_includes lines(result), "then: nothing is open"
     assert_includes lines(result), "then: plastic auto 1 (because intent 1 is open)"
   end
 

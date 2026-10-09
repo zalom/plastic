@@ -108,7 +108,7 @@
       ]
     },
     "varar/graph-resume.md": {
-      "sourceHash": "fnv1a:5eaf4a3b",
+      "sourceHash": "fnv1a:f40a0455",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -219,7 +219,7 @@
       ]
     },
     "varar/intent-lock-status.md": {
-      "sourceHash": "fnv1a:71f385de",
+      "sourceHash": "fnv1a:ce7f7bd1",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -282,7 +282,7 @@
       ]
     },
     "varar/intent-spec.md": {
-      "sourceHash": "fnv1a:7435e6e9",
+      "sourceHash": "fnv1a:a54e09ae",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the first line, the open lines and the next line:",

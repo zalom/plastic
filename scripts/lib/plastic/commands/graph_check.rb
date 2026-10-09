@@ -11,6 +11,7 @@ module Plastic
       workflow :code_check_graph, next: :code_delivery_next
       workflow :code_delivery_next do
         on :done, next: :noop
+        on :nothing, next: :noop
         on :agent_needed, next: :agent_advance_delivery
       end
       workflow :agent_advance_delivery, next: :noop

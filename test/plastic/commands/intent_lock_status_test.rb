@@ -13,7 +13,7 @@ class IntentLockStatusTest < Plastic::TestCase
 
     result = call("1")
 
-    assert_equal [0, "next: none"], [result.code, next_line(result)]
+    assert_equal [0, nil], [result.code, next_line(result)]
     assert_includes result.out, "because: the owner must give the go-ahead for intent 1"
     assert_includes result.out, "Ask the owner for the go-ahead."
   end

@@ -10,8 +10,8 @@ class WorkNextOfferTest < Plastic::TestCase
     Plastic::Graph::Work::NextOffer.new(retrieval, pick).call
   end
 
-  def test_nothing_open_offers_none_with_no_handoff
-    assert_equal ["none", "nothing is open", nil], offer
+  def test_nothing_open_offers_no_command_with_no_handoff
+    assert_equal [nil, "nothing is open", nil], offer
   end
 
   def test_an_intent_with_no_done_criteria_offers_the_spec

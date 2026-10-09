@@ -135,7 +135,7 @@ class NextTest < Plastic::TestCase
   def test_nothing_open_has_no_next_action
     result = call
 
-    assert_includes result.out, "next: none"
+    refute_match(/^next: /, result.out)
   end
 end
 
@@ -146,6 +146,6 @@ class NextWithoutGoAheadTest < Plastic::TestCase
     plastic("sync", "up", table: Plastic::CLI::TABLE)
     result = plastic("next", table: Plastic::CLI::TABLE)
 
-    assert_call result, code: 0, out: "1. Ask the owner for the go-ahead. Only after the owner gives it, record it with plastic intent approve 1.\nnext: none\nbecause: the owner must give the go-ahead for intent 1\n"
+    assert_call result, code: 0, out: "1. Ask the owner for the go-ahead. Only after the owner gives it, record it with plastic intent approve 1.\nbecause: the owner must give the go-ahead for intent 1\n"
   end
 end

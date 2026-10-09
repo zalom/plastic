@@ -38,7 +38,7 @@ class JsonOutputTest < Plastic::TestCase
   def test_an_error_prints_the_error_document
     output.failed("it broke")
 
-    assert_equal({ "result" => { "error" => { "kind" => "failed", "message" => "it broke" } }, "next" => "none", "because" => "it broke" },
+    assert_equal({ "result" => { "error" => { "kind" => "failed", "message" => "it broke" } }, "next" => nil, "because" => "it broke" },
       document)
   end
 

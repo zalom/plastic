@@ -99,7 +99,7 @@ class RoutinePreviewTest < Plastic::TestCase
   def test_a_refusal_in_the_copy_prints_the_apply_message
     twin = twin_run("intent", "archive", "1") { |home| seed_intents(home, "Alpha") }
 
-    assert_equal [3, twin.applied.err], [twin.previewed.code, twin.previewed.err]
+    assert_equal [1, twin.applied.err], [twin.previewed.code, twin.previewed.err]
   end
 
   def test_a_refusal_in_the_copy_ends_on_the_closing_line_and_changes_nothing

@@ -353,7 +353,6 @@ intent started.
 `plastic intent show 1` shows the intent done:
 
 ```text
-next: none
 because: the intent is completed
 ```
 

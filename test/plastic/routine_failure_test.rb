@@ -21,7 +21,7 @@ class RoutineFailureTest < Plastic::TestCase
     call = plastic("kernel", "gate", "pass")
 
     assert_equal 0, call.code
-    assert_equal "#{RUN_ROW}\nnext: none\nbecause: passed pass\n", call.out
+    assert_equal "#{RUN_ROW}\nbecause: passed pass\n", call.out
     assert_equal "", call.err
   end
 
@@ -53,7 +53,7 @@ class RoutineFailureTest < Plastic::TestCase
     call = plastic("kernel", "review")
 
     assert_equal 1, call.code
-    assert_equal "1. Review the change\nnext: none\nbecause: the review is open\n", call.out
+    assert_equal "1. Review the change\nbecause: the review is open\n", call.out
     assert_equal "", call.err
   end
 

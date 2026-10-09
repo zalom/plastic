@@ -1,6 +1,6 @@
 # plastic intent lock status
 
-`plastic intent lock status ID` prints the delivery lock of one intent: the session that holds it, its mode, when it was taken and renewed, and whether it is still live. When the store's project names a repository, it also prints the intent's code worktree. With no lock it says so and offers `plastic auto ID` once the owner's go-ahead is recorded; before it, the next line is none and the output asks the owner. The rows below run the storage kernel's command line in a fresh home each time, as session s-1. A setup lists the calls made first, in order, split by a semicolon; `write PATH TEXT` writes a file in the store instead. TIME stands for a timestamp.
+`plastic intent lock status ID` prints the delivery lock of one intent: the session that holds it, its mode, when it was taken and renewed, and whether it is still live. When the store's project names a repository, it also prints the intent's code worktree. With no lock it says so and offers `plastic auto ID` once the owner's go-ahead is recorded; before it, the call prints no next line and the output asks the owner. The rows below run the storage kernel's command line in a fresh home each time, as session s-1. A setup lists the calls made first, in order, split by a semicolon; `write PATH TEXT` writes a file in the store instead. TIME stands for a timestamp.
 
 Each row gives the setup, the call, the exit code, the result and the next line:
 

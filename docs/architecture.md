@@ -508,7 +508,7 @@ files still close through the backfill.
 
 `--dry-run` runs the same refusals as the real close and writes nothing. It
 refuses an untouched scaffold and a hollow delivered report. A passing dry run
-ends with `next: none`. Checking that the code was actually merged, and
+ends with a `because:` line and no `next:` line. Checking that the code was actually merged, and
 checking the worktree for uncommitted changes, are both retired (intent 390):
 each required a real git command Plastic no longer runs; the merge instruction
 prints instead, unconditionally, for the closer to run themselves.

@@ -48,8 +48,8 @@ class WorkflowTest < Plastic::TestCase
     assert_equal ["plastic kernel two ada", "greeted ada"], Flows::Greet.closing(:done, context)
   end
 
-  def test_closing_with_no_offer_prints_none
-    assert_equal ["none", "passed hold"], Flows::Hold.closing(:done, context(facts: { mode: "hold" }))
+  def test_closing_with_no_offer_names_no_command
+    assert_equal [nil, "passed hold"], Flows::Hold.closing(:done, context(facts: { mode: "hold" }))
   end
 
   def test_closing_with_no_because_raises

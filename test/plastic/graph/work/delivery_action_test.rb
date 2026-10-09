@@ -126,6 +126,6 @@ class WorkDeliveryActionTest < Plastic::TestCase
   def test_a_closed_intent_has_no_action
     @work.write_intent(title: "Beta", status: "done")
 
-    assert_equal ["none", "intent 2 is closed", nil], action("2")
+    assert_equal [nil, "intent 2 is closed", nil], action("2")
   end
 end

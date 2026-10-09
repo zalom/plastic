@@ -35,7 +35,7 @@ class IntentSpecTest < Plastic::TestCase
 
     result = call(intent.intent_id)
 
-    assert_equal [0, "next: none"], [result.code, result.out[/^next: .*/]]
+    assert_equal [0, nil], [result.code, result.out[/^next: .*/]]
     assert_includes result.out, "because: the owner must give the go-ahead for intent #{intent.intent_id}"
     assert_includes result.out, "Ask the owner for the go-ahead. Only after the owner gives it, record it with plastic intent approve #{intent.intent_id}."
   end

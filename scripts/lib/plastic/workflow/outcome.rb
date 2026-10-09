@@ -10,8 +10,8 @@ module Plastic
 
       def holds?(ctx) = fallback? || check.call(ctx)
 
-      # The next: and because: lines, filled from the facts.
-      def closing(ctx) = [offers ? ctx.fill(offers) : "none", ctx.fill(because)]
+      # The next: command, nil when the outcome offers none, and the because: line, filled from the facts.
+      def closing(ctx) = [offers ? ctx.fill(offers) : nil, ctx.fill(because)]
 
       def templates = [offers, because].compact
     end
