@@ -52,10 +52,8 @@ module Plastic
 
         def file = FILE
 
-        # Why a closed intent takes no `takes`, or nil.
         def takes_problem(takes) = ("intent #{intent_id} is #{status}; it takes no #{takes}" if closed?)
 
-        # The id and own file among the paths of the intent's document rows; an intent imported before the fixed name keeps ID--slug.md.
         def key_among(paths) = [intent_id, paths.include?(file) ? file : "#{intent_id}--#{slug}.md"]
 
         # The row a new intent writes; the database gives `id` and stamps `origin_id`.

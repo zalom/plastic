@@ -35,7 +35,8 @@ class WorkCompletionWorkCheckTest < Plastic::TestCase
     write("#{retrieval.intent("1").dir}/spec.md", keyed_spec)
     sync_up
 
-    assert_match(/n2.*gone|gone.*n2/m, problem)
+    assert_includes problem, "- n2 (gone)"
+    refute_includes problem, "Fix the spec"
   end
 
   def test_a_done_node_with_findings_and_no_judge_counts_as_verified

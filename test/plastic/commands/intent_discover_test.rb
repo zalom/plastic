@@ -151,3 +151,9 @@ class IntentDiscoverOutputTest < Plastic::TestCase
     refute_match(/\{|=>|\[/, result.out)
   end
 end
+
+class IntentDiscoverDeclarationTest < Minitest::Test
+  def test_the_command_writes_the_work_graph_and_the_knowledge_graph
+    assert_equal %i[knowledge work], Plastic::Commands::IntentDiscover.writes.sort
+  end
+end

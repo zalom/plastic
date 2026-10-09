@@ -3,6 +3,7 @@
 require_relative "../../test_helper"
 require "json"
 require "tempfile"
+require_relative "../../../scripts/lib/plastic/commands/intent_context"
 
 module IntentContextTestSupport
   private
@@ -368,5 +369,11 @@ class IntentContextInputTest < Plastic::TestCase
     result = plastic("intent", "context", "--help", table: Plastic::CLI::TABLE)
 
     assert_includes result.out, "evidence, facts, interpretations, gaps and rulings"
+  end
+end
+
+class IntentContextDeclarationTest < Minitest::Test
+  def test_the_command_writes_the_work_graph_and_the_knowledge_graph
+    assert_equal %i[knowledge work], Plastic::Commands::IntentContext.writes.sort
   end
 end

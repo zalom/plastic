@@ -46,9 +46,8 @@ module Plastic
           def orphan_problem(nodes) = (stray_text(nodes) if @keys.any?)
 
           def stray_text(nodes)
-            nodes.reject { |node| @keys.include?(node.criterion) }.map(&:keyed_label).join(", ").then do |list|
-              "Node #{list} names a criterion key that spec.md no longer has. Fix the spec or replace the node." unless list.empty?
-            end
+            labels = nodes.reject { |node| @keys.include?(node.criterion) }.map { |node| "- #{node.keyed_label}" }
+            "These done nodes have no criterion key, or a key spec.md lacks:\n#{labels.join("\n")}" unless labels.empty?
           end
 
           def live_nodes = @retrieval.nodes(@intent_id).select(&:live?)

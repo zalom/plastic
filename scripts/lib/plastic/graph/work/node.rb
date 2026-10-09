@@ -25,7 +25,6 @@ module Plastic
         # node it needs is not done.
         def waiting?(ready_nodes) = state == "open" && ready_nodes.none? { |ready| ready.id == id }
 
-        # A done node with nonempty findings.
         def live? = state != "removed"
 
         def serves?(key) = criterion == key
@@ -36,6 +35,7 @@ module Plastic
 
         def changed_at = updated_at && Time.parse(updated_at)
 
+        # A done node with nonempty findings.
         def verified? = state == "done" && !findings.to_s.strip.empty?
       end
       Node::STATES = %w[open claimed done failed needs_info impeded removed].freeze

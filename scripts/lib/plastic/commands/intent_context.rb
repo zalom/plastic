@@ -9,7 +9,7 @@ module Plastic
       argument :intent_id, label: "ID", text: "the owning intent"
       option :from, switch: "--from FILE", text: "JSON file holding the arrays evidence, facts, interpretations, gaps and rulings"
       reads :knowledge
-      writes :knowledge
+      writes :knowledge, :work
 
       workflow :code_check_context_owner do
         on :submit, next: :code_submit_context
