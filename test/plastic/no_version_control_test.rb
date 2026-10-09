@@ -8,20 +8,13 @@ class NoVersionControlTest < Plastic::TestCase
   ROOT = File.expand_path("../../scripts/lib", __dir__)
   SOURCES = [File.join(ROOT, "plastic.rb"), *Dir.glob(File.join(ROOT, "plastic", "**", "*.rb"))].freeze
   SPAWNS = /\b(?:system|spawn|exec|popen\w*|capture2e?|capture3|pipeline\w*)\b|`|%x/
-  # `plastic auto` prints the worktree command for the agent to run. This one
-  # file formats that line and runs nothing.
-  PRINTS_THE_WORKTREE_COMMAND = File.join(ROOT, "plastic", "workflows", "worktree.rb")
 
   def test_the_kernel_has_sources
     assert_operator SOURCES.size, :>, 20
   end
 
-  def test_the_worktree_command_file_is_a_source
-    assert_includes SOURCES, PRINTS_THE_WORKTREE_COMMAND
-  end
-
   def test_no_source_names_a_version_control_program
-    offenders = (SOURCES - [PRINTS_THE_WORKTREE_COMMAND]).select { |path| File.read(path).match?(/\b(?:git|gh|npm)\b/) }
+    offenders = SOURCES.select { |path| File.read(path).match?(/\b(?:git|gh|npm)\b/) }
 
     assert_empty offenders
   end
