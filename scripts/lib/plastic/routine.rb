@@ -37,7 +37,7 @@ module Plastic
 
     class << self
       # A call that takes --dry-run also knows the call without it, for the next: line.
-      def declared_names = options.any? { |option| option.name == :dry_run } ? super + [:original_command] : super
+      def declared_names = (options.any? { |option| option.name == :dry_run }) ? super + [:original_command] : super
 
       def workflow(key, **edge, &branches)
         chain.add(key, edge[:next], &branches)
@@ -83,8 +83,6 @@ module Plastic
     def context(routine_run)
       Context.new(declared: self.class.declared_facts, facts: routine_run.facts.merge(parsed).merge(preview_facts), graphs: routine_graphs, harness: Context::Harness.new(environment.session, scope))
     end
-
-    def preview_facts = parsed[:dry_run] ? { original_command: } : {}
 
     def chain = self.class.chain
 

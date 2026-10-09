@@ -71,6 +71,8 @@ module Plastic
 
       def leave = (@scope, @graphs = @kept)
 
+      def preview_facts = parsed[:dry_run] ? { original_command: } : {}
+
       def original_command = Shellwords.join(["plastic", *words.to_s.split, *@argv.reject { |word| word == "--dry-run" }])
     end
   end
