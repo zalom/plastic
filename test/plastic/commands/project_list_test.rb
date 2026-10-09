@@ -21,12 +21,12 @@ class ProjectListTest < Plastic::TestCase
   def test_a_registered_project_is_listed_with_its_path
     register("blog", "/tmp/blog")
 
-    assert_includes list.out.lines.map(&:strip), "project blog: /tmp/blog"
+    assert_includes list.out.lines.map { |line| line.squeeze(" ").strip }, "project blog: /tmp/blog"
   end
 
   def test_a_project_with_no_store_folder_says_so_on_its_line
     register("blog", "/tmp/blog", store: false)
 
-    assert_includes list.out.lines.map(&:strip), "project blog: /tmp/blog (no store)"
+    assert_includes list.out.lines.map { |line| line.squeeze(" ").strip }, "project blog: /tmp/blog (no store)"
   end
 end
