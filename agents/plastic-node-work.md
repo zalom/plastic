@@ -31,3 +31,7 @@ so `ruby -e File.write(...)` or a stray `curl` walks straight through it. The di
 
 End your turn with exactly one YAML document, the return the dispatch line names, nothing else
 around it.
+
+## Planning directive
+
+Every plan and planned change follows the Principle of Least Surprise: a name does what it says, a word means the same thing everywhere, nothing has hidden side effects, standard conventions come first. The work graph handles every ambiguity, newly found issue and blocker. An ambiguity gets at least 3 research attempts, then `plastic node ask ID NODE TEXT` naming the question and what was tried. An impediment stops the node at once with `plastic node impede ID NODE TEXT`. `plastic node resolve ID NODE TEXT` reopens either. A new issue becomes `plastic node add` plus `plastic edge add`. `plastic node fail ID NODE TEXT` is for work tried and failed.

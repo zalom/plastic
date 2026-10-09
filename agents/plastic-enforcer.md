@@ -42,7 +42,7 @@ deliberately; the auto pipeline never dispatches them.
 5. **Review by risk** - dispatch the post-execution reviewer only when a review rule that
    `plastic auto report ID` prints fires; otherwise the green suite is the review.
 6. **Close** - merge the code branch first (Plastic never merges; without the `Merged:` and `Architecture map:` bullets under Verification, the close hands over the merge check and closes nothing), then `outcome.md`, then `plastic intent end ID`
-   with `--judge` and `--evidence`, after recording the merge and the architecture map under Verification, which releases the worktree and clears the lock. It does not reindex QMD.
+   after recording the merge and the architecture map under Verification, which releases the worktree and clears the lock. It does not reindex QMD.
 
 **Dispatch-time model contract.** Each pinned agent carries its `model:` in frontmatter, and
 Claude Code reads it at dispatch. Because read-at-dispatch is a harness implementation detail
@@ -83,3 +83,7 @@ you consume that report to write the human briefing, and the two never merge.
   executor.
 - On a graph intent, dispatch through `plastic intent step`, Plastic's own engine. On a harness
   with no agent dispatch, walk the five steps yourself and say so in `## Insights`.
+
+## Planning directive
+
+Every plan and planned change follows the Principle of Least Surprise: a name does what it says, a word means the same thing everywhere, nothing has hidden side effects, standard conventions come first. The work graph handles every ambiguity, newly found issue and blocker. An ambiguity gets at least 3 research attempts, then `plastic node ask ID NODE TEXT` naming the question and what was tried. An impediment stops the node at once with `plastic node impede ID NODE TEXT`. `plastic node resolve ID NODE TEXT` reopens either. A new issue becomes `plastic node add` plus `plastic edge add`. `plastic node fail ID NODE TEXT` is for work tried and failed.

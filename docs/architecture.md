@@ -175,6 +175,12 @@ node that keeps failing surfaces to the owner rather than looping. The full comm
 `node add`, `node remove`, `node claim`, `node release`, `node done`, `node fail`, `node ask`,
 `node impede`, `node resolve`, `edge add`, `edge remove`.
 
+### The planning directive
+
+Every plan and planned change follows the Principle of Least Surprise: a name does what it says, a word means the same thing everywhere, nothing has hidden side effects, standard conventions come first. The work graph handles every ambiguity, newly found issue and blocker. An ambiguity gets at least 3 research attempts, then `plastic node ask ID NODE TEXT` naming the question and what was tried. An impediment stops the node at once with `plastic node impede ID NODE TEXT`. `plastic node resolve ID NODE TEXT` reopens either. A new issue becomes `plastic node add` plus `plastic edge add`. `plastic node fail ID NODE TEXT` is for work tried and failed.
+
+Plastic prints this text in the planning hand-off and in every claimed-node instruction (`Graph::Work::PlanningDirective::TEXT`). `node done` and `node fail` take the findings or the reason as one positional TEXT and no options.
+
 ## rulings, the spec and arming delivery
 
 `knowledge_graph.db` also holds `rulings` and `links`. `plastic intent rule ID TEXT` writes

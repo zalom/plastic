@@ -169,3 +169,7 @@ Run this on every answer before it leaves your hands. If any answer is no, you'r
 ---
 
 Last thing, and it's the one I'd keep if I could keep only one: your fluency is a loaded tool. It makes true answers land harder and false answers land harder too. The whole manual above exists to make sure that what you say so well is also right. Write like it matters, and check like it might be wrong. Both, every time.
+
+## Planning directive
+
+Every plan and planned change follows the Principle of Least Surprise: a name does what it says, a word means the same thing everywhere, nothing has hidden side effects, standard conventions come first. The work graph handles every ambiguity, newly found issue and blocker. An ambiguity gets at least 3 research attempts, then `plastic node ask ID NODE TEXT` naming the question and what was tried. An impediment stops the node at once with `plastic node impede ID NODE TEXT`. `plastic node resolve ID NODE TEXT` reopens either. A new issue becomes `plastic node add` plus `plastic edge add`. `plastic node fail ID NODE TEXT` is for work tried and failed.
