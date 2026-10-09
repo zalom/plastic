@@ -55,3 +55,25 @@ class IntentApproveTest < Plastic::TestCase
     assert_equal "1", graph.fetch("approval").fetch("intent_id")
   end
 end
+
+class IntentApproveCriterionTest < Plastic::TestCase
+  include LifecycleHelper
+
+  def test_an_intent_with_no_done_criterion_exits_1_with_no_row_and_offers_the_spec
+    open_intent
+
+    result = cli("intent", "approve", "1")
+
+    assert_equal [1, []], [result.code, work_rows("approvals")]
+    assert_match(/^next: plastic intent spec 1/, result.out)
+    assert_includes result.err, "intent 1 names no done criterion"
+  end
+
+  def test_an_intent_with_a_done_criterion_is_approved_as_before
+    specified
+
+    result = cli("intent", "approve", "1")
+
+    assert_equal [0, ["1"]], [result.code, work_rows("approvals").map { |row| row.fetch("intent_id") }]
+  end
+end
