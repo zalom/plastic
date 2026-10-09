@@ -237,7 +237,7 @@
       ]
     },
     "varar/intent-new.md": {
-      "sourceHash": "fnv1a:d9e78ed6",
+      "sourceHash": "fnv1a:24cc5bc6",
       "examples": [
         {
           "name": "Each row gives the store, the call, the exit code, the index, the files and what it says:",
@@ -309,7 +309,7 @@
       ]
     },
     "varar/legacy-import.md": {
-      "sourceHash": "fnv1a:cfdbc4a3",
+      "sourceHash": "fnv1a:0ab8b37f",
       "examples": [
         {
           "name": "Each row gives the fixture, the call, the exit code, the result, the intents and the files of 1:",
@@ -507,7 +507,7 @@
       ]
     },
     "varar/roadmap-start.md": {
-      "sourceHash": "fnv1a:356c1e72",
+      "sourceHash": "fnv1a:0abffdd6",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -542,7 +542,7 @@
       ]
     },
     "varar/sync-down.md": {
-      "sourceHash": "fnv1a:3a35a4ae",
+      "sourceHash": "fnv1a:e388e808",
       "examples": [
         {
           "name": "Each row gives the change, the call, the exit code, the result, the file and the row:",
