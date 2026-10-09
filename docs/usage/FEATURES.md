@@ -51,7 +51,8 @@ intent instead.
 
 `plastic auto` takes exactly one id and runs no version control command: it prints the
 worktree command, and the agent runs it. A live lock of another session refuses with exit 3,
-and an expired lock is taken over. `plastic intent end` releases the lock.
+and an expired lock is taken over. `plastic auto ID` refuses an intent without the go-ahead
+that `plastic intent approve ID` writes. `plastic intent end` and `plastic intent abandon` release the lock.
 
 ## Rulings and revisions
 
