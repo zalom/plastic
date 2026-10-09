@@ -6,8 +6,8 @@ require_relative "../../../scripts/lib/plastic/workflows/preview_update"
 class PreviewUpdateTest < Plastic::TestCase
   include InstallerHelper
 
-  def preview(dry_run: true, **channels)
-    facts = { stable: false, beta: false, alpha: false }.merge(channels)
+  def preview(dry_run: true, **options)
+    facts = { channel: nil }.merge(options)
     env = { "PLASTIC_PACKAGE_ROOT" => fake_package("2.0.5") }
     run_workflow(Plastic::Workflows::PreviewUpdate, harness: scoped_harness(env:), dry_run:, **facts)
   end
@@ -25,12 +25,6 @@ class PreviewUpdateTest < Plastic::TestCase
 
     assert_equal [Plastic::Refused, "Plastic is not installed under this home; run plastic install first"],
       [outcome.class, outcome.message]
-  end
-
-  def test_two_channels_are_refused
-    installed("2.0.1")
-
-    assert_equal "choose one channel: --stable, --beta or --alpha", preview(beta: true, alpha: true).first.message
   end
 
   def test_a_real_run_prints_nothing_and_continues

@@ -48,22 +48,28 @@ class UpdateCommandTest < Plastic::TestCase
   end
 
   def test_takes_the_channel_the_documentation_names
-    result = update_with_release("99.0.0-alpha.2", "--alpha")
+    result = update_with_release("99.0.0-alpha.2", "--channel", "alpha")
 
     assert_equal [0, "99.0.0-alpha.2"], [result.code, activation.active_version], result.err
   end
 
-  def test_refuses_more_than_one_channel
-    result = update_with_release("99.0.0-alpha.2", "--alpha", "--beta")
+  def test_the_old_channel_switches_are_gone
+    installed("99.0.0-alpha.1")
 
-    assert_equal 3, result.code
-    assert_includes result.err, "choose one channel"
+    %w[--stable --beta --alpha].each { |switch| assert_equal 2, call("update", switch).code, switch }
+  end
+
+  def test_an_unknown_channel_name_is_a_usage_error
+    result = update_with_release("99.0.0-alpha.2", "--channel", "nightly")
+
+    assert_equal 2, result.code
+    assert_includes result.err, "stable, beta or alpha"
     assert_equal "99.0.0-alpha.1", activation.active_version
   end
 
   def test_names_the_chosen_channel_in_the_installer_command
     installed("99.0.0-alpha.1")
-    result = call("update", "--beta", env: { "PLASTIC_PACKAGE_ROOT" => fake_package("99.0.0-alpha.1") })
+    result = call("update", "--channel", "beta", env: { "PLASTIC_PACKAGE_ROOT" => fake_package("99.0.0-alpha.1") })
 
     assert_match(/install\.sh \| PLASTIC_CHANNEL=beta sh/, result.out)
   end
