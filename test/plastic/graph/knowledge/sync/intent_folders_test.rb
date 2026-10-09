@@ -25,7 +25,7 @@ class KnowledgeSyncIntentFoldersTest < Plastic::TestCase
   def test_a_folder_with_no_intent_file_is_a_problem_with_its_name_and_reason
     write("store/7--stray/spec.md", "x\n")
 
-    assert_equal ["store/7--stray: no intent file store/7--stray/7--stray.md"], folders.problems
+    assert_equal ["store/7--stray: no intent file intent.md or 7--stray.md"], folders.problems
   end
 
   def test_an_intent_file_whose_id_differs_from_its_folder_is_a_problem

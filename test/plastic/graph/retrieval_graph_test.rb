@@ -36,7 +36,7 @@ class RetrievalGraphTest < Plastic::TestCase
     %w[One Two].each { |title| store_graphs.work.write_intent(title:) }
     read = retrieval
 
-    assert_equal [%w[1 2], ["2"], ["2--two.md"]], [read.savepoints.map(&:intent_id), read.savepoints("2").map(&:intent_id),
+    assert_equal [%w[1 2], ["2"], ["intent.md"]], [read.savepoints.map(&:intent_id), read.savepoints("2").map(&:intent_id),
       read.documents("2").map(&:path)]
   end
 

@@ -19,7 +19,7 @@ class IntentArchivePreviewTest < Plastic::TestCase
 
     assert_equal [], twin.changed_paths
     assert_includes twin.preview_paths, "remove #{folder}/notes.txt"
-    assert_includes twin.preview_paths, "remove #{folder}/1--target.md"
+    assert_includes twin.preview_paths, "remove #{folder}/intent.md"
   end
 
   def test_an_archive_preview_leaves_the_link_target_untouched

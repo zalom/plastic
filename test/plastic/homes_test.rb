@@ -93,7 +93,7 @@ class HomesTest < Plastic::TestCase
   end
 
   def test_a_changed_mode_is_put_back
-    path = store_path("1--alpha.md")
+    path = store_path("intent.md")
     original_mode = File.stat(path).mode & 0o777
     changed_mode = (original_mode == 0o600) ? 0o644 : 0o600
     File.chmod(changed_mode, path)
