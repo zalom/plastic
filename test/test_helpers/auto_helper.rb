@@ -40,6 +40,7 @@ module Plastic
       def active_intent
         intent = open_intent
         write_spec(intent, "# Spec\n\n## Done criteria\n- ships\n")
+        approve(intent.intent_id)
         store_graphs.work.activate_intent(intent.intent_id)
         intent
       end

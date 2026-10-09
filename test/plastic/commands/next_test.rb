@@ -19,7 +19,10 @@ class NextTest < Plastic::TestCase
 
   def clear_spec(intent) = write_spec(intent, "# Spec\n\n## Done criteria\n- ships\n\n## Open Questions\n- none\n")
 
-  def start(intent) = plastic("auto", intent.intent_id, env: { "PLASTIC_SESSION" => "s-1" }, table: Plastic::CLI::TABLE)
+  def start(intent)
+    plastic("intent", "approve", intent.intent_id, table: Plastic::CLI::TABLE)
+    plastic("auto", intent.intent_id, env: { "PLASTIC_SESSION" => "s-1" }, table: Plastic::CLI::TABLE)
+  end
 
   def add_node(intent, title) = plastic("node", "add", intent.intent_id, title, "--criterion", "done", table: Plastic::CLI::TABLE)
 

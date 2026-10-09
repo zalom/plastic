@@ -26,6 +26,7 @@ module Plastic
       "session note" => ["Commands::SessionNote", "Write the one prose line of this session"],
       "intent rule" => ["Commands::IntentRule", "Write an owner ruling, with --supersedes to replace an older one"],
       "intent revise" => ["Commands::IntentRevise", "Rewrite an intent's What and Why after grilling, keeping the old text as a revision"],
+      "intent approve" => ["Commands::IntentApprove", "Write the owner's go-ahead for an intent; auto refuses an intent without it"],
       "intent spec" => ["Commands::IntentSpec", "Print the grilling method, then the intent's open decisions"],
       "intent discover" => ["Commands::IntentDiscover", "Record deterministic retrieval candidates for an intent"],
       "intent context" => ["Commands::IntentContext", "Read or submit selected retrieval context for an intent"],

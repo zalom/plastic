@@ -14,6 +14,7 @@ module IntentEndAcceptance
     kernel.write("store/1--alpha/spec.md", "# Spec\n## Done criteria\n- [ ] [ships] Ships\n")
     kernel.write("store/1--alpha/outcome.md", VERIFIED)
     kernel.run!("sync", "up", env: SESSION)
+    kernel.run!("intent", "approve", "1", env: SESSION)
     kernel.run!("auto", "1", env: SESSION)
     kernel.run!("node", "add", "1", "Ship", "--criterion", "Ships", env: SESSION)
     kernel.run!("node", "claim", "1", "n1", env: SESSION)

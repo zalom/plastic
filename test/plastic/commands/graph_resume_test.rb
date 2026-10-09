@@ -44,6 +44,7 @@ module GraphResumeHelper
     intent = open_intent(title)
     write("#{intent.dir}/spec.md", CLEAR_SPEC)
     plastic("sync", "up", table: Plastic::CLI::TABLE)
+    plastic("intent", "approve", intent.intent_id, table: Plastic::CLI::TABLE)
     plastic("auto", intent.intent_id, env: { "PLASTIC_SESSION" => "s-1" }, table: Plastic::CLI::TABLE)
     intent
   end
