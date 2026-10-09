@@ -8,13 +8,7 @@ module Plastic
     class GraphReady < Routine
       intent_subject
       reads :work
-      workflow :code_ready_graph, next: :code_delivery_next
-      workflow :code_delivery_next do
-        on :done, next: :noop
-        on :nothing, next: :noop
-        on :agent_needed, next: :agent_advance_delivery
-      end
-      workflow :agent_advance_delivery, next: :noop
+      workflow :code_ready_graph, next: :noop
     end
   end
 end

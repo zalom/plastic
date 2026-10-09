@@ -25,7 +25,7 @@ class GraphReadyTest < Plastic::TestCase
 
     assert_equal 0, result.code
     assert_includes result.out, "ready: n1 a"
-    assert_includes result.out.lines(chomp: true), "next: plastic node claim 1 n1"
+    assert_match(/^next: plastic node claim 1 n1\b/, result.out)
   end
 
   def test_a_node_whose_need_is_not_done_is_not_ready

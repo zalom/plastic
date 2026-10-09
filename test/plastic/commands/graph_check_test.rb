@@ -106,7 +106,7 @@ class GraphCheckTest < Plastic::TestCase
 
     result = call("1")
 
-    assert_includes result.out.lines(chomp: true), "next: plastic node claim 1 n1"
+    assert_match(/^next: plastic node claim 1 n1\b/, result.out)
   end
 
   def test_a_clean_intent_with_no_ready_node_has_no_next_line_and_a_reason

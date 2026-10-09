@@ -1,6 +1,6 @@
 # plastic graph check
 
-`plastic graph check ID` prints each problem it finds in an intent's work graph: a done node with no findings, an isolated node, a retry cap or no done criterion. Any finding fails the call. The rows below run the storage kernel's command line in a fresh home each time, as session s-1. A setup lists the calls made first, in order, split by a semicolon; `write PATH TEXT` writes a file in the store instead. TIME stands for a timestamp.
+`plastic graph check ID` prints each problem it finds in an intent's work graph: a done node with no findings, an isolated node, a retry cap or no done criterion. Any finding fails the call. A clean graph offers the first ready node to claim. The rows below run the storage kernel's command line in a fresh home each time, as session s-1. A setup lists the calls made first, in order, split by a semicolon; `write PATH TEXT` writes a file in the store instead. TIME stands for a timestamp.
 
 Each row gives the setup, the call, the exit code, the result and the next line:
 
