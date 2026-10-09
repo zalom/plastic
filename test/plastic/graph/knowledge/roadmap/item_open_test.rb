@@ -7,8 +7,8 @@ class KnowledgeRoadmapItemOpenTest < Plastic::TestCase
     super
     @work = store_graphs.work
     @work.write_batch("plan", 1, fields: fields(goal: "Ship batch", done: "Batch done"))
-    @work.add_item("plan", "a", 1, fields: fields(title: "Item A", goal: "Ship A", done: "A done"), after: nil)
-    @work.add_item("plan", "b", 1, fields: fields(title: "Item B"), after: "a")
+    @work.add_item("plan", "a", 1, fields: fields(title: "Item A", goal: "Ship A", done: "A done"), needs: nil)
+    @work.add_item("plan", "b", 1, fields: fields(title: "Item B"), needs: "a")
   end
 
   def fields(title: nil, goal: nil, done: nil) = Plastic::Graph::Knowledge::Roadmap::Fields.new(title:, goal:, done:)

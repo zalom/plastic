@@ -10,8 +10,8 @@ module RetrievalRoadmapFixtures
   def seed_roadmap
     work.write_batch("delivery", 2, fields: roadmap_fields("Later"))
     work.write_batch("delivery", 1, fields: roadmap_fields("First"))
-    work.add_item("delivery", "a", 1, fields: roadmap_fields("Evidence"), after: [])
-    work.add_item("delivery", "b", 2, fields: roadmap_fields("Review"), after: ["a"])
+    work.add_item("delivery", "a", 1, fields: roadmap_fields("Evidence"), needs: [])
+    work.add_item("delivery", "b", 2, fields: roadmap_fields("Review"), needs: ["a"])
     work.add_log("delivery", "First entry")
     work.add_log("delivery", "Second entry")
   end

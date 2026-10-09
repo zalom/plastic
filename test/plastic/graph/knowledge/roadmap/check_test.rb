@@ -8,8 +8,8 @@ class KnowledgeRoadmapCheckTest < Plastic::TestCase
     super
     @work = store_graphs.work
     @work.write_batch("plan", 1, fields: fields)
-    @work.add_item("plan", "a", 1, fields:, after: nil)
-    @work.add_item("plan", "b", 1, fields:, after: "a")
+    @work.add_item("plan", "a", 1, fields:, needs: nil)
+    @work.add_item("plan", "b", 1, fields:, needs: "a")
   end
 
   def fields = Plastic::Graph::Knowledge::Roadmap::Fields.new(title: "T", goal: nil, done: nil)

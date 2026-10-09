@@ -11,7 +11,7 @@ class KnowledgeRoadmapWriterTest < Plastic::TestCase
 
   def fields(title: nil, goal: nil, done: nil) = Plastic::Graph::Knowledge::Roadmap::Fields.new(title:, goal:, done:)
 
-  def item(name, after: nil) = @work.add_item("plan", name, 1, fields: fields(title: name.upcase), after:)
+  def item(name, needs: nil) = @work.add_item("plan", name, 1, fields: fields(title: name.upcase), needs:)
 
   def edges = @graphs.retrieval.roadmap_edges("plan").map { |edge| [edge.from, edge.to] }
 
