@@ -12,14 +12,14 @@ class ProjectLinksTest < Plastic::TestCase
     end
   end
 
-  def test_a_link_to_a_missing_intent_is_listed_and_fails_with_the_count
+  def test_a_link_to_a_missing_intent_is_listed_and_exits_zero_with_the_count
     open_intent
     link("1", "9")
     result = links
 
-    assert_equal 1, result.code
+    assert_equal [0, ""], [result.code, result.err]
     assert_includes result.out.lines.map(&:strip), "1 cites 9"
-    assert_match(/1 link/, result.err)
+    assert_match(/1 link names an intent or a ruling this store lacks/, result.out)
   end
 
   def test_a_link_to_a_missing_ruling_is_listed
@@ -42,7 +42,7 @@ class ProjectLinksTest < Plastic::TestCase
     link("1", "8")
     link("1", "9")
 
-    assert_match(/2 links name/, links.err)
+    assert_match(/2 links name/, links.out)
   end
 
   def test_a_reference_into_another_store_is_not_checked
