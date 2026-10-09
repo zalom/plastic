@@ -11,8 +11,7 @@ module Plastic
     # that gives the rule behind it. TextOutput prints them as lines and
     # JsonOutput, for `--json`, as one document with stable keys. Results go
     # to the output stream and diagnostics to the error stream, so a caller
-    # can pipe one without the other. Nothing here colors its output. The
-    # report shape is in docs/reference/report.md.
+    # can pipe one without the other. Nothing here colors its output.
     class Output
       def initialize(out:, err:)
         @out = out
