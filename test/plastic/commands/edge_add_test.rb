@@ -43,7 +43,7 @@ class EdgeAddTest < Plastic::TestCase
     result = call("1", "n1", "n2")
 
     assert_equal 1, result.code
-    assert_equal "", result.out
+    assert_equal RUN_ROW, result.out
     assert_equal "plastic: code_add_edge, gate: edge n1 to n2 would loop or names a missing node\n", result.err
   end
 

@@ -61,6 +61,18 @@ module Plastic
       super
     end
 
+    # The facts as plain JSON values: a Data object or a Struct becomes a hash, at any depth.
+    def self.plain(value)
+      case value
+      in Data | Struct then plain(value.to_h)
+      in Hash then value.transform_values { |inner| plain(inner) }
+      in Array then value.map { |inner| plain(inner) }
+      else value
+      end
+    end
+
+    def to_h = super.merge(facts: self.class.plain(facts))
+
     def open? = OPEN.include?(status)
 
     def key = [tool, subject].compact.join(" ")

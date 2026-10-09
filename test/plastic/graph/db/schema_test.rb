@@ -109,8 +109,8 @@ class DbSchemaTest < Plastic::TestCase
     assert_empty file.tables.fetch(:things).key
   end
 
-  def test_the_printed_table_is_neither_logged_nor_counted_and_routine_runs_are_not_counted
-    assert_equal [false, false, true, false], [Schema.table_named(:printed).logged?, Schema.table_named(:printed).counted?,
+  def test_the_printed_table_is_neither_logged_nor_counted_and_routine_runs_are_counted
+    assert_equal [false, false, true, true], [Schema.table_named(:printed).logged?, Schema.table_named(:printed).counted?,
       Schema.table_named(:changes).logged?, Schema.table_named(:routine_runs).counted?]
   end
 

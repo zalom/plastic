@@ -26,7 +26,7 @@ class NodeClaimRefusalTest < Plastic::TestCase
     result = claim("n1")
 
     assert_equal 1, result.code
-    assert_equal "", result.out
+    assert_equal RUN_ROW, result.out
     assert_equal "plastic: code_claim_node, gate: node n1 is done; it cannot move to claimed\n", result.err
   end
 
@@ -39,7 +39,7 @@ class NodeClaimRefusalTest < Plastic::TestCase
     result = claim("n1")
 
     assert_equal 1, result.code
-    assert_equal "", result.out
+    assert_equal RUN_ROW, result.out
     assert_equal "plastic: code_claim_node, gate: node n1 is needs_info; it cannot move to claimed\n", result.err
   end
 
@@ -51,7 +51,7 @@ class NodeClaimRefusalTest < Plastic::TestCase
     result = claim("n1")
 
     assert_equal 1, result.code
-    assert_equal "", result.out
+    assert_equal RUN_ROW, result.out
     assert_equal "plastic: code_claim_node, gate: node n1 is removed; it cannot move to claimed\n", result.err
   end
 

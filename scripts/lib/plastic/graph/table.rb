@@ -38,8 +38,8 @@ module Plastic
       # The printed table is what this machine printed, so it is never logged.
       def logged? = name != :printed
 
-      # Machine state that the report leaves out: the printed hashes and the routine runs.
-      def counted? = !%i[printed routine_runs].include?(name)
+      # Machine state that the report leaves out: the printed hashes.
+      def counted? = name != :printed
 
       # The `changes` row of a put or a remove of the rows `match` names.
       # Built from literals, never bound: a bound name would also match text

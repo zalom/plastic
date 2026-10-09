@@ -41,12 +41,12 @@ class GraphTest < Plastic::TestCase
     assert_nil graphs("global").retrieval.routine_run("intent end", "7")
   end
 
-  def test_saving_a_routine_run_is_kept_off_the_report
+  def test_saving_a_routine_run_is_named_in_the_report
     opened = graphs
     run = opened.work.save_routine_run(closed_run)
 
     assert_equal "7", run.subject
-    assert_empty opened.wrote
+    assert_equal ["1 routine run in local.db"], opened.wrote
   end
 
   def test_wrote_has_one_phrase_per_database_written

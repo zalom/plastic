@@ -27,6 +27,9 @@ module Plastic
         Schema.store.to_h { |key| [key, new(File.join(root, Schema.file(key)), Schema.fetch(key), origin:)] }
       end
 
+      # A call saves its routine run at each step, and it is still one row.
+      RUNS = "routine_runs"
+
       attr_reader :path, :written
 
       def initialize(path, schema, origin: nil)
@@ -86,7 +89,7 @@ module Plastic
         returned
       end
 
-      def count(table, rows) = @written[table] += rows
+      def count(table, rows) = @written[table] = (table == RUNS) ? [@written[table], rows].max : @written[table] + rows
 
       def connected
         yield connection

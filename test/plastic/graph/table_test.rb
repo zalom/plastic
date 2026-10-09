@@ -43,7 +43,7 @@ class TableTest < Plastic::TestCase
   def test_which_tables_carry_an_origin_a_log_and_a_count
     flags = %i[clusters printed routine_runs].map { |name| [table(name).origin?, table(name).logged?, table(name).counted?] }
 
-    assert_equal [[true, true, true], [true, false, false], [false, true, false]], flags
+    assert_equal [[true, true, true], [true, false, false], [false, true, true]], flags
   end
 
   def test_a_change_row_logs_a_put_with_the_row_and_a_remove_without

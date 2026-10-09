@@ -95,7 +95,7 @@ class IntentDiscoverTest < Plastic::TestCase
   end
 
   def assert_discovery_failure(result, message)
-    assert_call result, code: 1, err: [message]
+    assert_call result, code: 1, out: RUN_ROW, err: [message]
   end
 
   def assert_routine_handoff(run)

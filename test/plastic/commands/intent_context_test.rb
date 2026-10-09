@@ -207,7 +207,7 @@ class IntentContextValidationTest < Plastic::TestCase
 
     result = plastic("intent", "context", "1", table: Plastic::CLI::TABLE)
 
-    assert_call result, code: 1, err: ["retrieval maintenance is required before source other can be read"]
+    assert_call result, code: 1, out: RUN_ROW, err: ["retrieval maintenance is required before source other can be read"]
     assert_equal before, File.binread(store_path("../other/knowledge_graph.db"))
   end
 
@@ -226,7 +226,7 @@ class IntentContextValidationTest < Plastic::TestCase
 
     assert_equal 1, result.code
     assert_includes result.err, "no retrieval context for intent 1"
-    assert_equal "", result.out
+    assert_equal RUN_ROW, result.out
   end
 
   def test_rejects_an_unknown_owning_intent_id_before_reading_context
@@ -234,7 +234,7 @@ class IntentContextValidationTest < Plastic::TestCase
 
     assert_equal 1, result.code
     assert_includes result.err, "no intent 99 in owning store"
-    assert_equal "", result.out
+    assert_equal RUN_ROW, result.out
   end
 
   def test_does_not_recreate_a_missing_selected_source_work_database
@@ -245,7 +245,7 @@ class IntentContextValidationTest < Plastic::TestCase
 
     result = plastic("intent", "context", "1", table: Plastic::CLI::TABLE)
 
-    assert_call result, code: 1, err: "plastic: code_read_context, gate: retrieval maintenance is required before source other can be read\n"
+    assert_call result, code: 1, out: RUN_ROW, err: "plastic: code_read_context, gate: retrieval maintenance is required before source other can be read\n"
     refute_path_exists path
   end
 
