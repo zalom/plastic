@@ -26,7 +26,7 @@ class EndTest < Plastic::TestCase
   end
 
   def test_end_takes_no_harness_option
-    assert_equal 2, call("--harness", "codex").code
+    assert_call call("--harness", "codex"), code: 0, err: "plastic hook: OptionParser::InvalidOption: invalid option: --harness\n"
   end
 
   def test_a_call_with_no_session_prints_one_stderr_line
@@ -38,7 +38,7 @@ class EndTest < Plastic::TestCase
       out: StringIO.new, err: StringIO.new, home: @home, directory: @home)
     Plastic::CLI.bin_call(%w[help hook end], environment:, table: Plastic::CLI::TABLE)
 
-    assert_equal "plastic hook end [--harness NAME]", environment.out.string.lines.first.chomp
+    assert_equal "plastic hook end", environment.out.string.lines.first.chomp
   end
 
   def test_record_no_longer_takes_end
