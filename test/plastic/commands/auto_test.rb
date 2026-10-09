@@ -29,14 +29,15 @@ class AutoTest < Plastic::TestCase
     assert_includes result.err, "intent 1 has an open decision; run plastic intent spec 1"
   end
 
-  def test_no_done_criteria_refuses
+  def test_no_done_criteria_exits_1_and_offers_the_spec
     intent = open_intent
     write_spec(intent, "# Spec\n\n## Open Questions\n- none\n")
 
     result = call(intent.intent_id)
 
-    assert_equal 3, result.code
+    assert_equal 1, result.code
     assert_includes result.err, "intent 1 names no done criterion"
+    assert_match(/^next: plastic intent spec 1/, result.out)
   end
 
   def test_another_sessions_live_lock_refuses_and_is_kept
@@ -49,7 +50,7 @@ class AutoTest < Plastic::TestCase
     assert_includes result.err, "intent 1 is locked by session s-2"
   end
 
-  def test_a_done_intent_refuses
+  def test_a_done_intent_exits_1_and_offers_plastic_next
     open_intent
     store_graphs.databases.fetch(:work).transaction do |batch|
       batch.write(:intents, "UPDATE intents SET status = 'done' WHERE intent_id = :intent_id", intent_id: "1")
@@ -57,8 +58,19 @@ class AutoTest < Plastic::TestCase
 
     result = call("1")
 
-    assert_equal 3, result.code
+    assert_equal 1, result.code
     assert_includes result.err, "intent 1 is done"
+    assert_match(/^next: plastic next/, result.out)
+  end
+
+  def test_an_intent_with_a_criterion_and_no_go_ahead_still_exits_3
+    intent = open_intent
+    write_spec(intent, CLEAR_SPEC)
+
+    result = call(intent.intent_id)
+
+    assert_equal 3, result.code
+    assert_includes result.err, "intent 1 has no go-ahead"
   end
 
   def test_a_call_with_no_session_fails

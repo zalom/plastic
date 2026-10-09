@@ -61,13 +61,14 @@ class IntentArchiveTest < Plastic::TestCase
     assert folder.exist?("#{target.dir}/#{target.file}")
   end
 
-  def test_an_open_intent_refuses_the_archive_naming_its_state
+  def test_an_open_intent_exits_1_naming_its_state_and_offers_intent_end
     intent = open_intent("Target")
 
     result = call(intent.intent_id)
 
-    assert_equal 3, result.code
-    assert_includes "#{result.out}#{result.err}", "open"
+    assert_equal 1, result.code
+    assert_includes result.err, "open"
+    assert_match(/^next: plastic intent end 1/, result.out)
   end
 
   def test_a_hand_edited_file_is_captured_before_archive
@@ -81,13 +82,13 @@ class IntentArchiveTest < Plastic::TestCase
     refute folder.exist?("#{intent.dir}/#{intent.file}")
   end
 
-  def test_a_refused_archive_is_refused_again_on_the_next_call
+  def test_an_archive_that_failed_fails_again_on_the_next_call
     intent = open_intent("Target")
     call(intent.intent_id)
 
     result = call(intent.intent_id)
 
-    assert_equal 3, result.code
+    assert_equal 1, result.code
     refute retrieval.archived?(intent.intent_id)
   end
 
