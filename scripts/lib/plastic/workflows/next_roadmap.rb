@@ -40,7 +40,7 @@ module Plastic
         blocking.each { |item, state| context.print("#{item.item}: #{state}") }
       end
 
-      outcome :ready, if: ->(context) { !context.ready.nil? }, offers: "plastic roadmap start %{slug} %{ready_id}",
+      outcome :ready, if: ->(context) { !context.ready.nil? }, offers: "plastic roadmap open %{slug} %{ready_id}",
         because: "item %{ready_id} is ready"
       outcome :delivered, if: ->(context) { context.open.empty? }, offers: "plastic roadmap show %{slug}",
         because: "every item of %{slug} is done or dropped"

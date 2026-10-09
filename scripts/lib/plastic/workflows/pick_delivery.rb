@@ -53,7 +53,7 @@ module Plastic
       end
 
       outcome :intent, if: ->(context) { !context.intent_id.nil? }
-      outcome :ready, if: ->(context) { !context.ready_id.nil? }, offers: "plastic roadmap start %{id} %{ready_id}",
+      outcome :ready, if: ->(context) { !context.ready_id.nil? }, offers: "plastic roadmap open %{id} %{ready_id}",
         because: "item %{ready_id} is ready"
       outcome :delivered, if: ->(context) { context.open.empty? }, offers: "plastic roadmap show %{id}",
         because: "every item of %{id} is done or dropped"

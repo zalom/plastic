@@ -35,7 +35,7 @@ module KnowledgeGraphAcceptance
   # Each check in walk order; a row runs every check before its own.
   CHECKS = {
     "roadmap next make-it-useful --batch 1" => /\A\S+: \w+\z/,
-    "roadmap start make-it-useful 2" => /\Aintent: /,
+    "roadmap open make-it-useful 2" => /\Aintent: /,
     "intent brief 2" => /\A(?:goal|criterion): /
   }.freeze
 

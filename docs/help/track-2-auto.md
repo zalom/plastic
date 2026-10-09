@@ -36,7 +36,7 @@ next: plastic intent brief 2
 
 To deliver a roadmap instead, pass its slug: `plastic auto SLUG` arms the first item in
 flight, in batch then item order, that is neither parked nor held by another session. When
-no item is in flight, it arms nothing: a ready item gets `plastic roadmap start SLUG ITEM` as
+no item is in flight, it arms nothing: a ready item gets `plastic roadmap open SLUG ITEM` as
 the next step, and a roadmap that is delivered or waits gets `plastic roadmap show SLUG`. An
 unknown roadmap exits 1.
 

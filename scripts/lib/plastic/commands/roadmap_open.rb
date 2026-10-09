@@ -5,10 +5,10 @@ require_relative "../routine"
 module Plastic
   module Commands
     # Opens a ready roadmap item's intent, with its spec held in rows.
-    class RoadmapStart < Routine
+    class RoadmapOpen < Routine
       subject :slug
       argument :slug, label: "SLUG", text: "the roadmap"
-      argument :item_id, label: "ITEM", text: "the item to start"
+      argument :item_id, label: "ITEM", text: "the item to open"
       writes :work, :knowledge, :references
       prints :roadmap, :intent
 

@@ -534,7 +534,7 @@ Stage 5 adds the knowledge commands in four groups. See
 this section covers how the code holds together.
 
 - **Roadmaps.** `roadmap batch`, `roadmap add`, `roadmap show`, `roadmap next`, `roadmap
-  drop`, `roadmap start`, `roadmap check`, `roadmap log` and `roadmap edge remove` write and
+  drop`, `roadmap open`, `roadmap check`, `roadmap log` and `roadmap edge remove` write and
   read five tables in `work_graph.db`: `roadmaps`, `batches`, `roadmap_items`,
   `roadmap_edges` and `roadmap_log`. `Graph::Knowledge::Roadmap::Writer` owns the writes, and
   `WorkGraph` delegates to it. `Graph::Knowledge::Roadmap::State` derives an item's state every time it
@@ -601,7 +601,7 @@ same subject reopens it. Its stored facts come back into the context, so a step 
 check reads those facts would skip and the old stop would replay. `CodeWorkflow.forget_stop`
 adds a `read` step that clears the named facts when the earlier call left a `problem`. Every
 stage 5 workflow that writes, and that can stop, starts with this step: archive, restore,
-roadmap add, roadmap start, roadmap edge remove and unlink. Workflows that recompute their
+roadmap add, roadmap open, roadmap edge remove and unlink. Workflows that recompute their
 facts in a `read` step on every call, such as `intent link`, do not need it.
 
 ### Retrieval and companion tools
@@ -951,7 +951,7 @@ is the only auto command, and lock commands live under `intent lock`.
 - **Roadmap slug.** When the word does not have the shape of an intent id, `PickDelivery`
   reads the roadmap. It arms the first item in flight (open, active or parked intent), in
   batch then item order, that is not parked and not held by another session's live lock. With
-  none in flight it arms nothing: the first ready item gets `plastic roadmap start SLUG ITEM`,
+  none in flight it arms nothing: the first ready item gets `plastic roadmap open SLUG ITEM`,
   a delivered roadmap and a roadmap that waits get `plastic roadmap show SLUG`. An unknown
   roadmap fails with exit 1.
 

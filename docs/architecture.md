@@ -210,7 +210,7 @@ Dropping a missing roadmap item fails before any write and names the missing roa
 
 A roadmap is a plan of several intents, kept as rows in `work_graph.db`. It holds batches.
 Each batch has a goal and done criteria, and each item in a batch can need other items.
-`plastic roadmap batch` and `plastic roadmap add` write the plan. `plastic roadmap start`
+`plastic roadmap batch` and `plastic roadmap add` write the plan. `plastic roadmap open`
 opens a ready item's intent and copies the item's goal and done criteria into that intent's
 spec. An item's state is never stored. It is derived on each read from its intent's status
 and from the items it needs: done, dropped, in flight, blocked or ready. `plastic roadmap
@@ -404,7 +404,7 @@ Each roadmap carries a ledger (intent 134): a name-paired `roadmaps/<slug>.savep
 
 ## the delivery lock and the record hook
 
-The delivery lock is one row of the `locks` table in the machine's `local.db` (`Graph::Lock`), keyed by the store and the intent, and names the session delivering the intent. `plastic auto ID` (`Workflows::StartAuto`) takes it; `plastic intent end` releases it. Given a roadmap slug, `plastic auto SLUG` (`Workflows::PickDelivery`) arms the roadmap's first item in flight that is neither parked nor held by another session, and offers `plastic roadmap start SLUG ITEM` for the first ready item when none is in flight (intent 413). A live lock held by another session is refused with exit 3, never taken over.
+The delivery lock is one row of the `locks` table in the machine's `local.db` (`Graph::Lock`), keyed by the store and the intent, and names the session delivering the intent. `plastic auto ID` (`Workflows::StartAuto`) takes it; `plastic intent end` releases it. Given a roadmap slug, `plastic auto SLUG` (`Workflows::PickDelivery`) arms the roadmap's first item in flight that is neither parked nor held by another session, and offers `plastic roadmap open SLUG ITEM` for the first ready item when none is in flight (intent 413). A live lock held by another session is refused with exit 3, never taken over.
 
 Plastic starts no agent process (intent 391). The runner prints a dispatch line for the live session on every harness. On Codex it adds the `codex exec` command for that node, and the session runs it.
 
