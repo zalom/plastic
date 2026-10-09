@@ -23,9 +23,9 @@ class RetrievalStoreReadTest < Plastic::TestCase
   end
 
   def test_backups_read_in_time_order
-    backup("b.tar.gz")
-    backup("a.tar.gz")
+    backup("b-backup")
+    backup("a-backup")
 
-    assert_equal %w[a.tar.gz b.tar.gz], store_read.backups.map(&:name)
+    assert_equal %w[a-backup b-backup], store_read.backups.map(&:name)
   end
 end
