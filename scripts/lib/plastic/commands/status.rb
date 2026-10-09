@@ -13,18 +13,27 @@ module Plastic
       reads :work
 
       def call
-        output.rows(slugs.flat_map { |slug| store_rows(slug) })
-        output.next_step("plastic next", because: "pick the one to work on")
+        projects = scope.projects
+        output.rows(slugs.flat_map { |slug| store_rows(slug, projects) })
+        offer_next
       end
 
       private
 
       def slugs = scope.requested? ? [scope.slug] : scope.known_slugs
 
-      def store_rows(slug)
+      def offer_next
+        return output.next_step("plastic next", because: "pick the one to work on") unless @create_store
+
+        output.next_step(@create_store, because: "the project has no store")
+      end
+
+      def store_rows(slug, projects)
         show_store(slug)
       rescue Graph::MissingStore => error
-        [["store:", "#{slug} has no store folder; run #{error.next_command}"]]
+        command = error.next_command(projects[slug])
+        @create_store = command if scope.requested?
+        [["store:", "#{slug} has no store folder; run #{command}"]]
       end
 
       def show_store(slug)
