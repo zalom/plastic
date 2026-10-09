@@ -73,7 +73,8 @@ module Plastic
 
       def self.verified?(context) = context.merge_recorded && context.map_recorded
 
-      outcome :closed, if: ->(context) { context.closed }
+      outcome :closed, if: ->(context) { context.closed },
+        offers: "plastic next", because: "intent %{intent_id} is already done"
       outcome :agent_needed, if: ->(context) { !context.requirements.empty? || !context.judged }
       outcome :unverified, if: ->(context) { !verified?(context) }
       outcome :ready

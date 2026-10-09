@@ -13,7 +13,7 @@ module Plastic
 
       workflow :code_prepare_ending do
         on :unverified, next: :agent_check_merge
-        on :closed, next: :code_close_intent
+        on :closed, next: :noop
         on :ready, next: :code_close_intent
         on :agent_needed, next: :agent_finish_intent
       end

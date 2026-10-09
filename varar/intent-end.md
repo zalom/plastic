@@ -29,7 +29,7 @@ up the review rounds and the command refuses with exit 3.
 The close writes a completion record with judge `verdict`, and the evidence maps
 each criterion key to the done nodes that serve it and their findings. It releases
 the delivery lock, prints the intent's files and hands the agent the wind-down step.
-A repeated close exits 1 and keeps the first record.
+A repeated close exits 0, says the intent is already done, offers plastic next and keeps the first record.
 
 The rows below use a disposable fixture with one verified node and outcome.
 Each row gives the closure case, the exit code, the status, the completion records and the next line:
@@ -39,4 +39,4 @@ Each row gives the closure case, the exit code, the status, the completion recor
 | request verification | 0 | active | 0 | none |
 | unverified close | 0 | active | 0 | none |
 | accept delivery | 0 | done | 1 | none |
-| repeat closure | 1 | done | 1 | none |
+| repeat closure | 0 | done | 1 | plastic next --project global |
