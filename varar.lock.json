@@ -108,7 +108,7 @@
       ]
     },
     "varar/graph-ready.md": {
-      "sourceHash": "fnv1a:4baebb44",
+      "sourceHash": "fnv1a:89395d09",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -184,7 +184,7 @@
       ]
     },
     "varar/intent-brief.md": {
-      "sourceHash": "fnv1a:4c75a7b9",
+      "sourceHash": "fnv1a:2e7c22d0",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -327,7 +327,7 @@
       ]
     },
     "varar/next.md": {
-      "sourceHash": "fnv1a:c8ea4981",
+      "sourceHash": "fnv1a:abedc824",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -354,7 +354,7 @@
       ]
     },
     "varar/node-claim.md": {
-      "sourceHash": "fnv1a:1aeb4ed9",
+      "sourceHash": "fnv1a:e0be06f1",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -363,7 +363,7 @@
       ]
     },
     "varar/node-done.md": {
-      "sourceHash": "fnv1a:420941e8",
+      "sourceHash": "fnv1a:85ded67f",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -372,7 +372,7 @@
       ]
     },
     "varar/node-fail.md": {
-      "sourceHash": "fnv1a:2ad84908",
+      "sourceHash": "fnv1a:3b1ec47c",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -390,7 +390,7 @@
       ]
     },
     "varar/node-release.md": {
-      "sourceHash": "fnv1a:5eaaf8f4",
+      "sourceHash": "fnv1a:a52b0ba2",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",

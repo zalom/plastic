@@ -506,8 +506,8 @@ attests to the evidence; Plastic does not execute the verification.
 and timestamp in `completions`. It commits that row with the delivered status and closure
 time in the work database, then releases the delivery lock in the local database. A repeat
 call preserves the first completion record and retries cleanup. Imported done intents
-remain closed without gaining an invented attestation. `node done --repair` explicitly
-records verification for an already done node; it preserves the node's attempt count.
+remain closed without gaining an invented attestation. `node done ID NODE TEXT` on an
+already done node replaces its findings; it preserves the node's attempt count.
 
 `graph.json` is a generated view. Sync up skips it, direct Reader import refuses it,
 and sync down or graph show renders it from rows. Legacy import skips graph.json too;

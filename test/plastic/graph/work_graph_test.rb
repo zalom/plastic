@@ -17,7 +17,7 @@ class WorkGraphTest < Plastic::TestCase
   def test_print_intent_prints_the_index_and_the_intent_files
     work.write_intent(title: "Alpha")
 
-    assert_equal %w[store/index.json store/1--alpha/1--alpha.md store/1--alpha/savepoint.md store/1--alpha/graph.json],
+    assert_equal %w[store/index.json store/1--alpha/intent.md store/1--alpha/savepoint.md store/1--alpha/graph.json],
       work.print_intent("1")
     assert_empty work.print_intent("1")
   end

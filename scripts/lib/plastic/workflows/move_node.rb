@@ -13,9 +13,9 @@ module Plastic
       MOVES = {
         release_node: { state: "open", step: "release the node", say: "say what was released", fields: [],
                         offers: "plastic node claim %{intent_id} %{id}" },
-        done_node: { state: "done", step: "finish the node", say: "say what was done", fields: %i[findings],
+        done_node: { state: "done", step: "finish the node", say: "say what was done", fields: { findings: :text },
                      offers: "plastic graph ready %{intent_id}" },
-        fail_node: { state: "failed", step: "fail the node", say: "say what failed", fields: %i[reason],
+        fail_node: { state: "failed", step: "fail the node", say: "say what failed", fields: { reason: :text },
                      offers: "plastic node release %{intent_id} %{id}" },
         ask_node: { state: "needs_info", step: "ask the owner", say: "say what was asked", fields: { question: :text },
                     offers: "plastic node resolve %{intent_id} %{id} TEXT" },

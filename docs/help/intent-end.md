@@ -53,10 +53,10 @@ symbolic links outside the folder are refused.
 If an existing done node has no verification, check it again and record the result:
 
 ```sh
-plastic node done ID NODE --repair --judge tool --findings "Actual findings"
+plastic node done ID NODE "Actual findings"
 ```
 
-The repair preserves the done state and attempt count. Ordinary node completion
+The second call preserves the done state and attempt count. Ordinary node completion
 requires a claimed node and nonempty findings.
 
 ## Abandon an intent

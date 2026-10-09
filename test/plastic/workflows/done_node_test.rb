@@ -11,8 +11,8 @@ class WorkflowDoneNodeTest < Plastic::TestCase
     store_graphs.work.claim_node(intent_id: "1", id: "n1", by: "s-1")
   end
 
-  def finish(repair: nil, findings: "green")
-    run_workflow(Plastic::Workflows::DoneNode, intent_id: "1", id: "n1", findings:, repair:).first
+  def finish(text: "green")
+    run_workflow(Plastic::Workflows::DoneNode, intent_id: "1", id: "n1", text:).first
   end
 
   def node = retrieval.node("1", "n1")
@@ -23,17 +23,11 @@ class WorkflowDoneNodeTest < Plastic::TestCase
     assert_equal [:done, "done", "green"], [outcome, node.state, node.findings]
   end
 
-  def test_a_done_node_is_repaired_with_new_findings
+  def test_a_done_node_takes_new_findings
     finish
 
-    finish(repair: true, findings: "rechecked")
+    finish(text: "rechecked")
 
     assert_equal "rechecked", node.findings
-  end
-
-  def test_a_done_node_without_repair_is_refused
-    finish
-
-    assert_equal "code_done_node, gate: node n1 is done; it cannot move to done", finish.message
   end
 end

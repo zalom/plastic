@@ -33,7 +33,7 @@ module Plastic
         keys.each_key.with_index(1) do |key, number|
           cli("node", "add", "1", "Deliver #{key}", "--criterion", key)
           cli("node", "claim", "1", "n#{number}")
-          cli("node", "done", "1", "n#{number}", "--findings", "Acceptance passes for #{key}")
+          cli("node", "done", "1", "n#{number}", "Acceptance passes for #{key}")
         end
       end
 

@@ -83,7 +83,7 @@ class NextTest < Plastic::TestCase
     start(intent)
     add_node(intent, "a")
     plastic("node", "claim", intent.intent_id, "n1", table: Plastic::CLI::TABLE)
-    plastic("node", "fail", intent.intent_id, "n1", "--reason", "broke", table: Plastic::CLI::TABLE)
+    plastic("node", "fail", intent.intent_id, "n1", "broke", table: Plastic::CLI::TABLE)
 
     result = call
 
@@ -98,7 +98,7 @@ class NextTest < Plastic::TestCase
     start(intent)
     add_node(intent, "a")
     plastic("node", "claim", intent.intent_id, "n1", table: Plastic::CLI::TABLE)
-    plastic("node", "done", intent.intent_id, "n1", "--findings", "ok", table: Plastic::CLI::TABLE)
+    plastic("node", "done", intent.intent_id, "n1", "ok", table: Plastic::CLI::TABLE)
 
     result = call
 

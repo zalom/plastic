@@ -11,13 +11,13 @@ require_relative "../../../scripts/lib/plastic/commands/node_release"
 require_relative "../../../scripts/lib/plastic/commands/edge_add"
 
 class NodeClaimTest < Plastic::TestCase
-  def test_the_claim_offers_findings_and_no_judge
+  def test_the_claim_offers_the_text_and_no_judge
     open_intent
     add_node("a")
 
     out = claim("n1").out
 
-    assert_includes out, "--findings"
+    assert_includes out, "plastic node done 1 n1 TEXT"
     refute_includes out, "--judge"
   end
 
@@ -40,7 +40,7 @@ class NodeClaimTest < Plastic::TestCase
     open_intent
     add_node("a")
     claim("n1")
-    plastic("node", "done", "1", "n1", "--findings", "ok", table: Plastic::CLI::TABLE)
+    plastic("node", "done", "1", "n1", "ok", table: Plastic::CLI::TABLE)
 
     result = claim("n1")
 
@@ -88,7 +88,7 @@ class NodeClaimTest < Plastic::TestCase
     open_intent
     add_node("a")
     claim("n1")
-    plastic("node", "fail", "1", "n1", "--reason", "boom", table: Plastic::CLI::TABLE)
+    plastic("node", "fail", "1", "n1", "boom", table: Plastic::CLI::TABLE)
     plastic("node", "release", "1", "n1", table: Plastic::CLI::TABLE)
 
     result = claim("n1")
@@ -100,7 +100,7 @@ class NodeClaimTest < Plastic::TestCase
 
   def fail_and_release
     claim("n1")
-    plastic("node", "fail", "1", "n1", "--reason", "boom", table: Plastic::CLI::TABLE)
+    plastic("node", "fail", "1", "n1", "boom", table: Plastic::CLI::TABLE)
     plastic("node", "release", "1", "n1", table: Plastic::CLI::TABLE)
   end
 
@@ -132,7 +132,7 @@ class NodeClaimTest < Plastic::TestCase
     two_linked_nodes
     claim("n2")
     claim("n1")
-    plastic("node", "done", "1", "n1", "--findings", "ok", table: Plastic::CLI::TABLE)
+    plastic("node", "done", "1", "n1", "ok", table: Plastic::CLI::TABLE)
 
     result = claim("n2")
 

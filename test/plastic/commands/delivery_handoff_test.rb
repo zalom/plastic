@@ -25,7 +25,7 @@ class DeliveryHandoffTest < Plastic::TestCase
     active_intent
     cli("node", "add", "1", "Ship", "--criterion", KEY)
     cli("node", "claim", "1", "n1")
-    cli("node", "done", "1", "n1", "--findings", "Checked")
+    cli("node", "done", "1", "n1", "Checked")
 
     result = cli("graph", "ready", "1")
 
@@ -39,6 +39,6 @@ class DeliveryHandoffTest < Plastic::TestCase
     claimed = cli("node", "claim", "1", "n1").out
 
     [brief, claimed].each { |text| refute_includes text, "--judge" }
-    assert_includes claimed, "--findings"
+    assert_includes claimed, "plastic node done 1 n1 TEXT"
   end
 end

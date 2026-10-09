@@ -4,15 +4,14 @@ require_relative "../routine"
 
 module Plastic
   module Commands
-    # Moves a claimed node to done, with its findings.
+    # Moves a claimed node to done, with its findings. A done node takes new findings in place of the old.
     class NodeDone < Routine
       node_subject
-      option :findings, switch: "--findings TEXT", text: "what the work showed", required: true
-      option :repair, switch: "--repair", text: "record verification for an already done node", default: false
+      argument :text, label: "TEXT", text: "what the work showed"
       writes :work
 
       def call
-        raise CLI::Command::Usage, "--findings must describe the verification" if parsed[:findings].to_s.strip.empty?
+        raise CLI::Command::Usage, "TEXT must describe the verification" if parsed[:text].to_s.strip.empty?
 
         super
       end

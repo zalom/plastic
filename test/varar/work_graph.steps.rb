@@ -28,10 +28,10 @@ module WorkGraphAcceptance
 
   NODE_LIFECYCLE = [
     %w[node claim 1 n1],
-    ["node", "fail", "1", "n1", "--reason", "broke"],
+    ["node", "fail", "1", "n1", "broke"],
     %w[node release 1 n1],
     %w[node claim 1 n1],
-    ["node", "done", "1", "n1", "--findings", "it passed"]
+    ["node", "done", "1", "n1", "it passed"]
   ].freeze
 
   # Opens the intent and runs every call of the narrative in order: the

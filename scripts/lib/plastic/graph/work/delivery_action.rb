@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "planning_directive"
+
 module Plastic
   module Graph
     module Work
@@ -36,7 +38,7 @@ module Plastic
             "possible with an architecture mapping tool such as Enola, or map the code yourself; Plastic runs no tool. " \
             "Read the intent's goal and done criteria. Add work with " \
             "plastic node add #{@intent_id} TITLE --criterion KEY, then add dependencies with plastic edge add. " \
-            "Use plastic graph ready #{@intent_id} after the plan is recorded."]
+            "Use plastic graph ready #{@intent_id} after the plan is recorded. #{PlanningDirective::TEXT}"]
         end
 
         def pending_action
@@ -72,8 +74,8 @@ module Plastic
         def claimed_action(node)
           DeliveryAction.acting(node) do |held, id|
             [nil, "node #{id} is already claimed", "Continue node #{id}#{DeliveryAction.worker_clause(held)}. " \
-              "Record the result with plastic node done #{@intent_id} #{id} --findings TEXT, " \
-              "or record a failure with plastic node fail #{@intent_id} #{id} --reason TEXT."]
+              "Record the result with plastic node done #{@intent_id} #{id} TEXT, " \
+              "or record a failure with plastic node fail #{@intent_id} #{id} TEXT. #{PlanningDirective::TEXT}"]
           end
         end
       end

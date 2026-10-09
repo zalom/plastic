@@ -16,7 +16,7 @@ module IntentEndAcceptance
     kernel.run!("auto", "1", env: SESSION)
     kernel.run!("node", "add", "1", "Ship", "--criterion", "ships", env: SESSION)
     kernel.run!("node", "claim", "1", "n1", env: SESSION)
-    kernel.run!("node", "done", "1", "n1", "--findings", "Fixture verification passed", env: SESSION)
+    kernel.run!("node", "done", "1", "n1", "Fixture verification passed", env: SESSION)
   end
 
   def self.call(kind)

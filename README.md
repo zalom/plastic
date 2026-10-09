@@ -204,7 +204,7 @@ plastic graph show 12                 # The work graph of intent 12
 plastic graph show 12 --dry-run       # The same call in a disposable copy
 plastic graph ready 12                # The nodes ready to start
 plastic graph check 12                # Find cycles and dangling ids
-plastic node done 12 n3 --judge tests --findings "TEXT"   # Close a node
+plastic node done 12 n3 "TEXT"   # Close a node
 plastic node resolve 12 n3 "TEXT"                       # Resolve a node that needs info or is impeded
 plastic node remove 12 n3 --dry-run   # Preview a node removal
 plastic edge remove 12 n2 n3 --dry-run   # Preview an edge removal

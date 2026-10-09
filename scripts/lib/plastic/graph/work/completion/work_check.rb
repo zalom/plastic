@@ -34,7 +34,7 @@ module Plastic
             return if nodes.all?(&:verified?)
 
             "Every done node needs nonempty findings. Recheck the work, then use plastic node done #{@intent_id} NODE " \
-              "--repair --findings TEXT to record the actual verification."
+              "TEXT to record the actual verification."
           end
 
           def uncovered_problem(nodes)

@@ -295,8 +295,8 @@ An empty graph hands planning to the harness. Claimed work stays with its worker
 work in needs_info waits for the owner's resolution, and failed work advances to release before retry.
 These handoffs use the agent workflow DSL and stop until the harness records its action.
 
-Node completion requires nonempty findings. `node done --repair` records missing
-verification for a done node after the work is checked again. `graph.json` always flows
+Node completion requires nonempty findings. `node done ID NODE TEXT` on a done node
+replaces its findings after the work is checked again. `graph.json` always flows
 from database rows to the checkout; sync never imports its node or edge content.
 
 ## component map

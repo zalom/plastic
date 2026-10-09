@@ -29,6 +29,23 @@ class WorkDeliveryActionTest < Plastic::TestCase
     assert action.last.start_with?("Before you plan, fetch the architecture map as current as possible with an architecture mapping tool such as Enola, or map the code yourself; Plastic runs no tool. Read the intent's goal")
   end
 
+  def test_the_planning_instruction_carries_the_planning_directive
+    assert_includes action.last, Plastic::Graph::Work::PlanningDirective::TEXT
+  end
+
+  def test_the_planning_directive_names_the_research_attempts_and_both_stops
+    text = Plastic::Graph::Work::PlanningDirective::TEXT
+
+    assert_equal [true, true, true], ["at least 3 attempts", "plastic node ask ID NODE TEXT", "plastic node impede ID NODE TEXT"].map { |part| text.include?(part) }
+  end
+
+  def test_the_claimed_node_instruction_carries_the_planning_directive
+    plan("Build")
+    claim("n1")
+
+    assert_equal [true, true, true], ["Principle of Least Surprise", "plastic node done 1 n1 TEXT", "plastic node fail 1 n1 TEXT"].map { |part| action.last.include?(part) }
+  end
+
   def test_a_ready_node_is_claimed
     plan("Build")
 

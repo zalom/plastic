@@ -19,8 +19,7 @@ module Plastic
           MOVES = {
             remove_node: { to: "removed", from: %w[open] },
             release_node: { to: "open", from: %w[claimed failed] },
-            done_node: { to: "done", from: %w[claimed] },
-            repair_done_node: { to: "done", from: %w[done] },
+            done_node: { to: "done", from: %w[claimed done] },
             fail_node: { to: "failed", from: %w[claimed] },
             ask_node: { to: "needs_info", from: %w[claimed] },
             impede_node: { to: "impeded", from: %w[claimed] },
