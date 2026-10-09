@@ -83,18 +83,6 @@ class IntentDiscoverTest < Plastic::TestCase
     assert_equal "evidence", JSON.parse(result.out).dig("result", "discovery", "query")
   end
 
-  def test_the_printed_candidates_carry_a_passage_and_uri_and_not_the_body
-    open_intent
-    write_document("other", "selected evidence " * 40)
-
-    candidate = plastic("intent", "discover", "1", "evidence", "--source-project", "other", "--json", table: Plastic::CLI::TABLE)
-      .then { |result| JSON.parse(result.out).dig("result", "discovery", "candidates", 0) }
-
-    assert_operator candidate.fetch("passage").length, :<=, 320
-    assert_match(%r{\Aplastic://other/1/evidence\.md}, candidate.fetch("uri"))
-    assert(%w[body score rrf_score local_rank sha256].none? { |key| candidate.key?(key) })
-  end
-
   private
 
   def assert_fresh_discovery(query)
@@ -128,7 +116,7 @@ class IntentDiscoverTest < Plastic::TestCase
   end
 
   def assert_candidates(manifest)
-    assert manifest.fetch("candidates").all? { |candidate| candidate.key?("uri") && candidate.key?("revision") && candidate.key?("archived") }
+    assert manifest.fetch("candidates").all? { |candidate| candidate.key?("uri") && candidate.key?("passage") && candidate.key?("archived") }
   end
 
   def assert_workflow(manifest)
@@ -139,9 +127,14 @@ class IntentDiscoverTest < Plastic::TestCase
   end
 
   def assert_persisted_manifest(manifest, result)
-    assert_equal manifest, JSON.parse(File.read(Dir[store_path("store/*/context.json")].first)).fetch("discovery")
+    assert_same_manifest(manifest, JSON.parse(File.read(Dir[store_path("store/*/context.json")].first)).fetch("discovery"))
     refute_path_exists store_path("discovery/1.json")
     assert_equal "plastic intent context 1 --from FILE --project global", JSON.parse(result.out).fetch("next")
+  end
+
+  def assert_same_manifest(printed, saved)
+    assert_equal printed.except("candidates"), saved.except("candidates")
+    assert_equal printed.fetch("candidates").map { |row| row.fetch("uri") }, saved.fetch("candidates").map { |row| row.fetch("uri") }
   end
 
   def write_saved_context(data)
@@ -152,6 +145,17 @@ class IntentDiscoverTest < Plastic::TestCase
 end
 
 class IntentDiscoverOutputTest < Plastic::TestCase
+  def test_the_printed_candidates_carry_a_passage_and_uri_and_not_the_body
+    open_intent
+    write_document("other", "selected evidence " * 40)
+
+    candidate = plastic("intent", "discover", "1", "evidence", "--source-project", "other", "--json", table: Plastic::CLI::TABLE)
+      .then { |result| JSON.parse(result.out).dig("result", "discovery", "candidates", 0) }
+
+    assert_operator candidate.fetch("passage").length, :<=, 320
+    assert_match(%r{\Aplastic://other/1/evidence\.md}, candidate.fetch("uri"))
+    assert(%w[body score rrf_score local_rank sha256].none? { |key| candidate.key?(key) })
+  end
   include DiscoveryDocuments
 
   def test_plain_output_prints_readable_lines

@@ -5,6 +5,8 @@ require_relative "../code_workflow"
 require_relative "intent_id_format"
 require_relative "discovery_scope"
 require_relative "discovery_manifest"
+require_relative "passage_rows"
+require_relative "../graph/retrieval/search/excerpt"
 require_relative "discovery_persistence"
 
 module Plastic
@@ -42,13 +44,19 @@ module Plastic
       end
 
       read "report the discovery" do |context|
-        context.row("discovery", context.discovery)
+        context.row("discovery", printed(context))
       end
 
       outcome :done, offers: nil, because: "retrieval discovery is recorded"
 
       class << self
         private
+
+        def printed(context)
+          excerpt = Graph::Retrieval::Search::Excerpt.new(context.terms)
+          discovery = context.discovery.transform_keys(&:to_s)
+          discovery.merge("candidates" => PassageRows.new(passage_of: ->(row) { excerpt.call(row.fetch("body")) }).call(discovery.fetch("candidates")))
+        end
 
         def context_matches?(row, context)
           return false unless row

@@ -135,7 +135,7 @@ class SearchScopeTest < Plastic::TestCase
     assert_fused_rows(result)
   end
 
-  def test_a_hit_prints_its_rank_passage_and_uri_and_no_body_or_score
+  def test_a_hit_prints_its_rank_passage_and_uri_first
     write_document("global", "global evidence")
 
     hit = search_rows("evidence").fetch(0)
@@ -143,7 +143,12 @@ class SearchScopeTest < Plastic::TestCase
     assert_equal %w[rank passage uri], hit.keys.first(3)
     assert_equal [1, "global evidence"], hit.values_at("rank", "passage")
     assert_match(%r{\Aplastic://global/1/evidence\.md\?revision=}, hit.fetch("uri"))
-    assert(%w[body score rrf_score local_rank sha256].none? { |key| hit.key?(key) })
+  end
+
+  def test_a_hit_prints_no_body_and_no_score
+    write_document("global", "global evidence")
+
+    assert(search_rows("evidence").fetch(0).keys.none? { |key| %w[body score rrf_score local_rank sha256].include?(key) })
   end
 
   def test_plain_output_prints_readable_lines

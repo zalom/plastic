@@ -20,7 +20,7 @@ class RetrievalContextResumeTest < Plastic::TestCase
     search = command("search", "Evidence", "--source-project", "global")
 
     assert_equal reference, document.dig("result", "document", "uri")
-    assert_includes search.dig("result", "results").map { |row| row.fetch("uri") }, reference
+    assert_includes search.dig("result", "rows").map { |row| row.fetch("uri") }, reference
   end
 
   private
@@ -28,7 +28,7 @@ class RetrievalContextResumeTest < Plastic::TestCase
   def command(*arguments)
     result = plastic(*arguments, "--json", table: Plastic::CLI::TABLE)
 
-    assert_equal 0, result.code, result.err
+    assert_equal 0, result.code, result.out
     JSON.parse(result.out)
   end
 
