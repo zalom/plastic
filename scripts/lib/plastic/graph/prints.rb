@@ -15,6 +15,7 @@ module Plastic
     # - store/ID--SLUG/PATH is a document, byte for byte.
     # - store/ID--SLUG/savepoint.md holds the savepoint lines.
     # - store/ID--SLUG/graph.json holds the go-ahead, the verdicts, the nodes with their criterion keys and the edges.
+    # - store/ID--SLUG/context.json holds the saved discovery and context of the intent.
     # - any other file of the folder is a kept file, from the SQL archive.
     #
     # The same rows always print the same bytes, so a hash tells whether a
@@ -67,7 +68,7 @@ module Plastic
         legacy = rows.legacy_intents_data(id)
         dir = intent.dir
         [*documents(dir, rows.documents(id), legacy), *text_files(dir, legacy), *savepoint(intent, rows.savepoints(id)),
-          graph(intent, rows), *kept_files(retrieval, rows.kept_files(id))]
+          graph(intent, rows), *context(intent, rows), *kept_files(retrieval, rows.kept_files(id))]
       end
 
       # A path held as a legacy row and as a document prints from the legacy row only.
@@ -99,6 +100,22 @@ module Plastic
         Print.text("#{intent.dir}/graph.json", :work, "#{JSON.pretty_generate(data)}\n")
       end
 
+      def context(intent, rows)
+        id = intent.intent_id
+        held = [rows.discoveries(id).first, rows.contexts(id).first]
+        return [] if held.compact.empty?
+
+        data = { "intent" => id, "discovery" => readable(held.first),
+                 "context" => readable(held.last) }
+        [Print.text("#{intent.dir}/context.json", :knowledge, "#{JSON.pretty_generate(data)}\n")]
+      end
+
+      def readable(row)
+        JSON.parse(row.data) if row
+      rescue JSON::ParserError
+        nil
+      end
+
       def plain_all(records) = records.map { |record| plain(record) }
 
       def plain(record) = record.to_h.except(:origin_id).transform_keys(&:to_s)
@@ -110,7 +127,7 @@ module Plastic
 
       # The rows of each table, by intent.
       class Contents
-        TABLES = %i[documents legacy_intents_data savepoints nodes edges approvals verdicts kept_files].freeze
+        TABLES = %i[documents legacy_intents_data savepoints nodes edges approvals verdicts contexts discoveries kept_files].freeze
 
         def self.read(retrieval, intent_id = nil)
           new(TABLES.to_h { |table| [table, retrieval.public_send(table, intent_id).group_by(&:intent_id)] })

@@ -5,6 +5,11 @@ require_relative "../../../scripts/lib/plastic/workflows/context_documents"
 require_relative "../../../scripts/lib/plastic/workflows/context_persistence"
 
 class ContextDocumentsTest < Plastic::TestCase
+  def setup
+    super
+    open_intent
+  end
+
   def context = call_context(intent_id: "1")
 
   def read(kind) = Plastic::Workflows::ContextDocuments.new(context).read(kind)

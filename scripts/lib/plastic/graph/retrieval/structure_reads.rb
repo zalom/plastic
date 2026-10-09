@@ -13,6 +13,8 @@ module Plastic
         def approvals(intent_id = nil) = read(:approvals, intent_id)
         def approval(intent_id) = approvals(intent_id).first
         def verdicts(intent_id = nil) = read(:verdicts, intent_id)
+        def contexts(intent_id = nil) = read(:contexts, intent_id)
+        def discoveries(intent_id = nil) = read(:discoveries, intent_id)
 
         def linking(id)
           @databases.fetch(:knowledge).rows(LINKING_SQL, origin: origin_id, id:, prefix: "#{id}/%").map { |row| Knowledge::Link.from_h(row) }

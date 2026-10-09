@@ -182,18 +182,6 @@ class IntentContextPersistenceTest < Plastic::TestCase
     assert_equal [0, ""], [result.code, result.err]
     refute_match(/\{|=>|\[/, result.out)
   end
-
-  def test_reads_the_saved_context_file_when_the_database_record_is_absent
-    reference = discovered_reference
-    submission = context_submission(reference)
-    submit_context(submission)
-    Plastic::Graph.open(home: @plastic_home, store: "global").databases.fetch(:knowledge).transaction do |batch|
-      batch.add("DELETE FROM retrieval_contexts WHERE intent_id = :intent_id", intent_id: "1")
-    end
-
-    assert_equal submission.slice("evidence", "facts", "interpretations", "gaps", "rulings"),
-      read_context.slice("evidence", "facts", "interpretations", "gaps", "rulings")
-  end
 end
 
 module IntentContextValidationAssertions
@@ -263,12 +251,12 @@ class IntentContextValidationTest < Plastic::TestCase
   def test_rejects_a_non_object_submission_without_replacing_saved_context
     reference = discovered_reference
     submit_context(context_submission(reference))
-    before = File.binread(Dir[store_path("*/context.json")].first)
+    before = File.binread(Dir[store_path("store/*/context.json")].first)
 
     result = submit_raw_context("[]")
 
     assert_equal 2, result.code
-    assert_equal before, File.binread(Dir[store_path("*/context.json")].first)
+    assert_equal before, File.binread(Dir[store_path("store/*/context.json")].first)
   end
 
   def test_rejects_non_array_context_categories_without_replacing_saved_context
@@ -349,7 +337,7 @@ class IntentContextInputTest < Plastic::TestCase
 
     assert_equal 2, result.code
     assert_match(/\Aplastic: #{Regexp.escape(file)} is not valid JSON: /, result.err)
-    assert_empty Dir[store_path("*/context.json")]
+    assert_nil JSON.parse(File.read(Dir[store_path("store/*/context.json")].first)).fetch("context")
   end
 
   def test_a_missing_context_file_exits_2_naming_the_file
