@@ -15,18 +15,13 @@ module Plastic
       def call
         broken = broken_links
         broken.each { |link| output.raw("#{link.from_ref} #{link.kind} #{link.to_ref}") }
-        output.raw(broken_line(broken.size)) if broken.any?
+        output.raw(Graph::Knowledge::Link::Check.summary(broken.size)) if broken.any?
         output.next_step("plastic status", because: "every link names an intent or a ruling this store holds")
       end
 
       private
 
       def broken_links = Graph::Knowledge::Link::Check.new(graphs.databases, graphs.retrieval).broken
-
-      def broken_line(count)
-        noun = (count == 1) ? "link names" : "links name"
-        "#{count} #{noun} an intent or a ruling this store lacks"
-      end
     end
   end
 end

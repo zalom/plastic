@@ -47,6 +47,16 @@ class GraphReadyTest < Plastic::TestCase
 
     assert_equal [0, ""], [result.code, result.err]
     refute_match(/^next:/, result.out)
+  end
+
+  def test_claimed_work_says_why_nothing_is_ready
+    two_linked_nodes
+    plastic("node", "claim", "1", "n1", table: Plastic::CLI::TABLE)
+    plastic("node", "done", "1", "n1", "ok", table: Plastic::CLI::TABLE)
+    plastic("node", "claim", "1", "n2", table: Plastic::CLI::TABLE)
+
+    result = call("1")
+
     assert_includes result.out, "because: no node is ready to claim"
     refute_includes result.out, "ready:"
   end

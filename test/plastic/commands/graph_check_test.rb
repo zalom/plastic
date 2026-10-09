@@ -117,6 +117,14 @@ class GraphCheckTest < Plastic::TestCase
 
     assert_equal [0, ""], [result.code, result.err]
     refute_match(/^next:/, result.out)
+  end
+
+  def test_a_clean_intent_with_no_ready_node_says_why_and_does_not_replan
+    intent = open_keyed_intent
+    write_spec(intent, "# Spec\n\n## Done criteria\n- [done] ships\n")
+
+    result = call("1")
+
     assert_includes result.out, "because: no node is ready to claim"
     refute_includes result.out, "Before you plan"
   end

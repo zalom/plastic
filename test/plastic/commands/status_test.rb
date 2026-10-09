@@ -32,7 +32,13 @@ class StatusTest < Plastic::TestCase
 
     assert_equal 0, result.code
     assert_includes result.out, "other"
-    assert_includes result.out, "Beta"
+  end
+
+  def test_a_second_store_lists_its_intents
+    open_keyed_intent
+    Plastic::Graph.create(home: @plastic_home, store: "other").work.write_intent(title: "Beta")
+
+    assert_includes call.out, "Beta"
   end
 
   def test_status_for_one_project_lists_only_its_store
@@ -43,8 +49,14 @@ class StatusTest < Plastic::TestCase
 
     assert_equal 0, result.code
     assert_match(/store:\s+other/, result.out)
-    assert_includes result.out, "Beta"
     refute_match(/store:\s+global/, result.out)
+  end
+
+  def test_status_for_one_project_lists_its_intents
+    open_keyed_intent
+    Plastic::Graph.create(home: @plastic_home, store: "other").work.write_intent(title: "Beta")
+
+    assert_includes call("--project", "other").out, "Beta"
   end
 
   def test_a_call_scoped_to_global_by_fallback_gets_no_project_in_its_next_line
