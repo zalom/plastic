@@ -13,9 +13,6 @@ module Plastic
 
       sets :from, :to
 
-      gate "choose one channel: --stable, --beta or --alpha", stops: :refusal,
-        pass: ->(context) { ReleaseUpdate.chosen_channels(context).size <= 1 }
-
       read "compare the installed and the running versions" do |context|
         installation = Installation.of(context)
         context[:from] = installation.installed_version

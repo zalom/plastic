@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../routine"
+require_relative "../workflows/release_update"
 
 module Plastic
   module Commands
@@ -9,10 +10,15 @@ module Plastic
     class Update < Routine
       graphless
 
-      option :stable, switch: "--stable", default: false, text: "update from the stable channel"
-      option :beta, switch: "--beta", default: false, text: "update from the beta channel"
-      option :alpha, switch: "--alpha", default: false, text: "update from the alpha channel"
+      option :channel, switch: "--channel NAME", text: "update from this channel: stable, beta or alpha"
       option :dry_run, switch: "--dry-run", default: false, text: "name both versions and change nothing"
+
+      def call
+        channel = parsed[:channel]
+        raise CLI::Command::Usage, "--channel takes stable, beta or alpha" unless channel.to_s.empty? || Workflows::ReleaseUpdate::CHANNELS.key?(channel)
+
+        super
+      end
 
       workflow :code_preview_update do
         on :done, next: :noop

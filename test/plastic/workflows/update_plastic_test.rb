@@ -6,8 +6,8 @@ require_relative "../../../scripts/lib/plastic/workflows/update_plastic"
 class UpdatePlasticTest < Plastic::TestCase
   include InstallerHelper
 
-  def update(env: {}, **channels)
-    facts = { stable: false, beta: false, alpha: false }.merge(channels)
+  def update(env: {}, **options)
+    facts = { channel: nil }.merge(options)
     run_workflow(Plastic::Workflows::UpdatePlastic, harness: scoped_harness(env: { "PLASTIC_SHARE" => share }.merge(env)), **facts)
   end
 
@@ -34,7 +34,7 @@ class UpdatePlasticTest < Plastic::TestCase
   def test_the_chosen_channel_goes_into_the_installer_command
     installed("99.0.0-alpha.1")
 
-    _, context = update(env: current("99.0.0-alpha.1"), beta: true)
+    _, context = update(env: current("99.0.0-alpha.1"), channel: "beta")
 
     assert_includes printed_row(context, "run:"), "PLASTIC_CHANNEL=beta"
   end

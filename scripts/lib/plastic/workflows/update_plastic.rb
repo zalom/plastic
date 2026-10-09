@@ -51,11 +51,11 @@ module Plastic
 
       def self.newer_release(context, release)
         release.notices.each { |notice| context.print(notice) }
-        context[:release] = release.newer_release(ReleaseUpdate.chosen_channels(context).first)
+        context[:release] = release.newer_release(context.channel)
       end
 
       def self.fetch_hint(context)
-        channel = ReleaseUpdate.chosen_channels(context).first || ReleaseUpdate::CHANNELS.key(Installation.of(context).channel)
+        channel = context.channel || ReleaseUpdate::CHANNELS.key(Installation.of(context).channel)
         context.row("run:", Installation.fetch_command("PLASTIC_CHANNEL=#{channel}"))
       end
     end

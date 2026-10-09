@@ -22,7 +22,7 @@ curl -fsSL https://raw.githubusercontent.com/zalom/plastic/main/install.sh | PLA
 ```
 
 `plastic update` stays on the channel of the active release. To move to another channel, run
-`plastic update --stable`, `plastic update --beta` or `plastic update --alpha`.
+`plastic update --channel stable`, `plastic update --channel beta` or `plastic update --channel alpha`.
 
 ## What uninstall removes
 
