@@ -82,7 +82,6 @@ could not hold it safely.
 | `plastic intent unlink ID KIND TARGET --dry-run` | The links the removal would delete. |
 | `plastic intent archive ID --dry-run` | The files the archive would remove, and the rows it keeps. |
 | `plastic intent unarchive ID [--dry-run]` | The archived directory restored exactly as archived. |
-| `plastic roadmap show SLUG --dry-run` | The files the state screen would write. |
 | `plastic roadmap drop SLUG ITEM --dry-run` | The roadmap rows the dropped item would change. |
 | `plastic roadmap edge remove SLUG FROM TO --dry-run` | The roadmap edge rows the removal would delete. |
 

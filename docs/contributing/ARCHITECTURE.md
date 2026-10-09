@@ -160,7 +160,7 @@ The following table lists the same classes. Each one sits in the `Plastic` modul
 
 ### The life of a routine call
 
-![One call of plastic intent end 12 --as delivered, top to bottom. The kernel opens the databases and picks up the routine run. Find the intent has one gate, intent 12 exists, which fails with exit 1. Check the write lock reads the lock and has two gates that refuse with exit 3. Check the ending has three gates and two outcomes, written and missing. On written, Close the intent runs three steps and finishes with exit 0. On missing, Write the outcome hands off to the agent with exit 0, and the next call finishes once the outcome is recorded.](../resources/routine-call.svg)
+![One call of plastic intent end 12, top to bottom. The kernel opens the databases and picks up the routine run. Find the intent has one gate, intent 12 exists, which fails with exit 1. Check the write lock reads the lock and has two gates that refuse with exit 3. Check the ending has three gates and two outcomes, written and missing. On written, Close the intent runs three steps and finishes with exit 0. On missing, Write the outcome hands off to the agent with exit 0, and the next call finishes once the outcome is recorded.](../resources/routine-call.svg)
 
 The figure shows the shape of every routine call: the kernel opens the databases and the
 routine run, each workflow runs its gates, reads, steps and outcomes in order, and the call

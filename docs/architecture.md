@@ -215,7 +215,7 @@ opens a ready item's intent and copies the item's goal and done criteria into th
 spec. An item's state is never stored. It is derived on each read from its intent's status
 and from the items it needs: done, dropped, in flight, blocked or ready. `plastic roadmap
 next` prints the first ready item, or what is in the way. `plastic roadmap show` prints the
-plan and reprints `roadmaps/<slug>.md` from the rows.
+plan from the rows to the terminal and writes no file.
 
 `plastic intent link` writes a typed link from one intent to another. A link to a live intent
 stops that intent from being archived.

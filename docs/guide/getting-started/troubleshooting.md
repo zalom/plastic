@@ -42,12 +42,11 @@ Run `plastic doctor`. It checks the install and every store, and prints one line
 finding. Add `--json` for the full report as data.
 Each finding that is not a pass names its own repair.
 
-The following table lists the three forms of the command:
+The following table lists the two forms of the command:
 
 | Command | What it checks |
 | ------- | -------------- |
 | `plastic doctor` | The install and every store. |
-| `plastic doctor --core` | The install only. This check is fast. |
 | `plastic doctor --store WHICH` | One store. `WHICH` is `global` or a project slug. |
 
 The command exits with code 1 when the doctor reports a warning or a failure.

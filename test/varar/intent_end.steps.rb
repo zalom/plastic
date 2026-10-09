@@ -46,7 +46,7 @@ module IntentEndAcceptance
     status = kernel.rows("work_graph.db", "SELECT status FROM intents ORDER BY CAST(intent_id AS INTEGER) DESC LIMIT 1").flatten.first
     count = kernel.rows("work_graph.db", "SELECT COUNT(*) FROM completions").flatten.first
     { "exit" => result.code.to_s, "status" => status, "completion records" => count.to_s,
-      "next line" => (result.out.lines.grep(/^next:/).first || "next: none").strip.delete_prefix("next: ") }
+      "next line" => result.out.lines.grep(/^next:/).first&.strip&.delete_prefix("next: ") || "no next line" }
   end
 end
 

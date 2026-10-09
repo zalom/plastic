@@ -5,8 +5,7 @@ README states the idea; this document explains the operational mechanics: how
 Plastic makes work come out the same shape no matter who or what produces it,
 and which scripts, hooks, and checks hold that shape in 2.0.
 
-Status note for 2.0: no workflow skills ship. Intent 372 replaced the last ones with
-`plastic` commands and `plastic help` chapters. `skills/` keeps only the shared
+Status note for 2.0: no workflow skills ship. `plastic` commands and `plastic help` chapters replaced the last ones. `skills/` keeps only the shared
 `_decision-tables.md`, which the installer places in `~/.plastic/`. Every section above
 the last one describes 2.0. The 1.x skill design lives in one place, the final section,
 "History: the 1.x skill design". For command usage, run `plastic help COMMAND`; the
@@ -63,12 +62,12 @@ Codex. The manifest tracks the installed files, so they prune on update and unin
 
 ## the-harness-system
 
-No hook gates an edit on its content or stage in 2.0. Intent 302 removed the edit-path gates, the create gate,
-and the stage-transition gates. No `PreToolUse` hook remains: the `call-budget` guard was
+No hook gates an edit on its content or stage in 2.0. The edit-path gates, the create gate,
+and the stage-transition gates are gone. No `PreToolUse` hook remains: the `call-budget` guard was
 removed on 2026-09-24, and a node's call budget is now a sentence in its input that the
 subagent honors itself. The `record` hook writes the savepoint line, refreshes
 the lock heartbeat, and updates the day ledger. Doctor checks and the close checks in
-`scripts/end-intent` report what the gates once blocked (intent 308).
+`scripts/end-intent` report what the gates once blocked.
 
 A **harness** is anything that constrains a brain step toward blueprint-conforming
 form. Harnesses come in two layers, distinguished by *who needs them*.
@@ -89,7 +88,7 @@ Three mechanisms:
 Convention ships in two places. `PLASTIC.md` (installed at `~/.plastic/PLASTIC.md`) is the
 always-on core: the small set of rules primed at every session start. A dedicated Minitest
 test, `test/plastic_core_budget_test.rb`, holds it under 200 lines, 1,600 estimated tokens,
-and 8,192 bytes. That test is the regrowth guard: two prior splits (intents 13b, 127) each
+and 8,192 bytes. That test is the regrowth guard: two prior splits each
 shrank the file once, with nothing holding the boundary. Longer doctrine lives in the
 chapters under `docs/help/`, which `plastic help TOPIC` prints.
 
@@ -127,18 +126,18 @@ three-mechanism agent-extra set (eval, hook + instruction, template) is
 (the context-full savepoint is the felt-savepoint behavior bound to a second
 trigger, not a new mechanism).
 
-The cycle-step savepoint ledger (intent 34) is a clear instance of this. `savepoint.md`
+The cycle-step savepoint ledger is a clear instance of this. `savepoint.md`
 is no longer a hand-written prose note; it is a deterministic, append-only, one-line-per-
 milestone ledger (newest at the bottom) that the `record` hook writes automatically at
 each lifecycle boundary. That is the existing hook mechanism bound to the artifact-write
 trigger, with the ledger as a derived form-fix on top. It is sugar over the conventions,
 never a source of truth: state stays derivable from files-on-disk and the ledger is
 rebuildable via `Savepoint.rebuild_savepoint`. The ledger and the stage derivation it rests on
-live in `scripts/lib/savepoint.rb` (intent 303).
+live in `scripts/lib/savepoint.rb`.
 
-State-from-ledger (intent 81) makes the ledger the read-once answer to "what stage, and is it
+State-from-ledger makes the ledger the read-once answer to "what stage, and is it
 done", so a resuming agent reads `savepoint.md` first instead of probing which files exist. The
-grammar adds these line classes to intent 34's artifact-landing milestones, all keyed by
+grammar adds these line classes to the artifact-landing milestones, all keyed by
 a `(stage, milestone)` pair for idempotency (`Savepoint.savepoint_recorded_pairs`):
 
 - a **born `What` line**, stamped by `new-intent` at creation (not left to a hook firing), so
@@ -160,14 +159,14 @@ mtime drifts forward as `## Insights` are appended through the lifecycle.
 move-and-record change: the misplaced section, file, or ref, where it came from, the rule it
 broke, and its prior content. `scripts/lib/revisions_writer.rb` (`RevisionsWriter`) appends
 one entry per change for `project-links`, `rebuild-graph`, and the `rebuild-savepoint` tool;
-`restore-intent-v1` writes its own entry. Plastic runs no version control command (intent 390):
+`restore-intent-v1` writes its own entry. Plastic runs no version control command:
 `scripts/maintenance-run` makes the change and its receipt on disk, then prints the `git add`
 and `git commit` instruction for the closer to run by hand. A hand edit that moves content
 records its entry the same way; `plastic
 help maintenance-and-revisions` has the format. The file exists only when maintenance
 happened, so its presence is itself the signal.
 
-The roadmap savepoint ledger (intent 134) mirrors the cycle-step mechanism for roadmaps, which
+The roadmap savepoint ledger mirrors the cycle-step mechanism for roadmaps, which
 carried no comparable machine record of their own `## Log`. `scripts/lib/roadmap_savepoint.rb`
 (constructor-DI, hermetic: clock and paths injected, no eval, no ENV or global config seam; a
 thin `scripts/roadmap-savepoint` CLI wraps it, both registered in `InstallerCore#core_files`)
@@ -191,18 +190,18 @@ dropped, not fabricated). `plastic roadmap log SLUG EVENT "TEXT"` calls `append`
 liveness, purely as a read. `INDEX.md` stays the single
 status writer throughout; the ledger, like the intent-dir one, is sugar, never a source of truth.
 
-The roadmap read path (intent 148) sits on top of that ledger. `scripts/lib/roadmap_queue.rb`
+The roadmap read path sits on top of that ledger. `scripts/lib/roadmap_queue.rb`
 (`RoadmapQueue`, constructor-DI and hermetic: clock and paths injected, no eval, no ENV or global
 config seam; a thin `scripts/roadmap-next` CLI wraps it, both registered in
 `InstallerCore#core_files` and covered by a hermetic test) is the one roadmap reader. The command
 line no longer reads its queue mode; its which
 mode (`--which`, tie candidates for a human choosing) has no caller left now that the dashboard
-is gone (intent 392), and stays exercised only by `test/roadmap_queue_test.rb`. It does two
+is gone, and stays exercised only by `test/roadmap_queue_test.rb`. It does two
 things: liveness-ranks the tier's `roadmaps/*.md`
 (a `delivering` or `blocked` entry wins, else the newest ledger or `## Log` timestamp, read
 through `RoadmapSavepoint.ledger_path_for`), and within the winning roadmap selects the frontier
 batch. When the roadmap's `## Graph` section carries edges, the frontier is the first
-topological layer of that graph holding a dispatchable or in-flight entry (intent 336).
+topological layer of that graph holding a dispatchable or in-flight entry.
 Otherwise the frontier batch is the first batch, top to bottom, holding a `queued` or `delivering`
 entry; that batch's `queued` entries in file order are dispatchable (the head is next), a
 `delivering` entry marks the batch in-flight and gates the next batch, a `blocked` entry is surfaced
@@ -217,13 +216,13 @@ deterministically (newest ledger line, then slug ascending) and flags `tie: true
 DB-ready but not DB-dependent: `RoadmapQueue` is the single seam a future 147 DB-backed read
 swaps behind without changing either caller. A sibling seam covers ranking itself: dispatchable
 candidates are value-ordered by an injected `ranker:` (default `FileOrderRanker`, today's file
-order), reported as `ranking_strategy` in the payload, so intent 173's decision-systems
+order), reported as `ranking_strategy` in the payload, so the decision-systems
 recommendation can replace the ordering rule without reworking parsing, frontier detection, or
 the rest of the JSON contract.
 
 A companion rule keeps the intent-dir ledger itself honest. `Savepoint.savepoint_phantom_lines`
-(intent 134) is pure and disk-only, no lock or session resolution and no writes, matching
-intent 52's decoupling precedent: it flags a `savepoint.md` line that disk evidence contradicts,
+ is pure and disk-only, no lock or session resolution and no writes, matching
+the decoupling precedent: it flags a `savepoint.md` line that disk evidence contradicts,
 in three classes: a file-landing milestone (built from the same map `savepoint_milestone` uses)
 whose file is absent or still a sentinel placeholder; a duplicate `(stage, milestone)` pair (the
 later occurrence is the one flagged); or a state line, `How  started` or `Exec  started`, whose
@@ -241,8 +240,8 @@ Done-bookend repair (rebuild the skeleton, then re-append the terminal line from
 evidence) stays reserved for an explicit human grant.
 
 Some `savepoint_operational` gaps can never legitimately close: a terminal intent with no real
-`outcome.md` has no disposition to echo, and a ruling of intent 219 forbids ever inventing one, so the warning
-would otherwise recur forever. Intent 274 gives each store a `doctor-exclusions` file, sibling to
+`outcome.md` has no disposition to echo, and an earlier ruling forbids ever inventing one, so the warning
+would otherwise recur forever. Each store has a `doctor-exclusions` file, sibling to
 that store's `INDEX.md` (`~/.plastic/stores/global/doctor-exclusions` for the global store,
 `~/.plastic/stores/<slug>/doctor-exclusions` for a project; a legacy home keeps it beside
 `~/.plastic/INDEX.md` and `~/.plastic/projects/<slug>/INDEX.md`), recording knowingly-exempt
@@ -260,20 +259,20 @@ loader error forces `savepoint_operational` to `warn` with the error text in `de
 broken exclusion file is loud rather than silently permissive. `check_done_signals` loads one
 exclusion file per store and routes a suppressed `savepoint_operational` finding to a dedicated
 `:excluded` bucket inside `done_signal_findings_for_dir` rather than a post-filter over rendered
-`details` strings (keeping intent 222's single-source-of-truth guarantee intact); the key is
+`details` strings (keeping the single-source-of-truth guarantee intact); the key is
 `(intent_id, rule)`, never bare `intent_id`, so excluding `savepoint_operational` for an intent
 has no effect on `signals_complete`'s independent report for that same intent. The check's
 message always merges in the honest count and the file's path once any exclusion applies, and
 reaches `pass` once every remaining gap is excluded.
 
 The same registration also holds on doctor's per-intent surface: `doctor.rb --intent <id>`'s
-`intent_savepoint_truthful` check (intent 222) reports the same fact for one intent, so intent
+`intent_savepoint_truthful` check reports the same fact for one intent, so intent
 281 routes its missing-`savepoint.md` branch through the same loader under the same rule id,
 `savepoint_operational`, rather than minting a second rule name for one gap. That surface
 honors the exclusion only when the intent is terminal in its store's `INDEX.md`, which is the
 condition the store-wide sweep already applies, so a stray id can never silence the live,
 repairable warning `scripts/end-intent`'s pre-write structure check raises on a still-Active intent. The
-phantom-line half of that check stays non-suppressible by id or scope, per intent 211.
+phantom-line half of that check stays non-suppressible by id or scope.
 
 `RuleCatalog::REVISION_RULES` shares the
 same file as a second, unrelated axis: the `[rule: <tag>]` vocabulary every `revisions.md` entry
@@ -299,7 +298,7 @@ instruction for the closer to run by hand.
 
 A registered row can go dead: the intent's gap got repaired, the id was mistyped when the row was
 written, or the intent directory is gone. Left alone, the exclusion file only ever grows into an
-unreviewable list. Intent 280 has `check_done_signals` diff the loaded table against the same
+unreviewable list. `check_done_signals` diffs the loaded table against the same
 INDEX/directory/finding walk it already runs, via one pure predicate,
 `DoctorExclusions.dead_rows(loaded, consumed:, known_ids:)`, that is handed the walk's results and
 has no access to the file itself - the same self-diff trap 208 named for a different check stays
@@ -320,7 +319,7 @@ has nothing to suppress *yet*). A rule left with zero ids after pruning is dropp
 rather than rendered as a bare `rule_name` line, which the loader would reject. Like the add
 direction, `--prune` writes no `revisions.md` entries.
 
-Session resolution feeds the record hook and the lock (intent 52). Claude Code does not
+Session resolution feeds the record hook and the lock. Claude Code does not
 export a session id env var into the hook environment; it passes `session_id` on the hook
 stdin JSON. A launcher such as `hooks/record` pipes stdin unchanged to its Ruby script
 (`scripts/hook-record`), and the Ruby script parses `session_id` out of the JSON. The session resolver takes the first non-empty of three
@@ -348,39 +347,24 @@ from `Graph::Work::NextOffer`, the class `Workflows::PickNext` calls for `plasti
 
 `plastic sync up` builds `Graph::Knowledge::Sync::IntentFolders` from the folders of the store. It gives the intents of the folders that have no row (`intents`) and the folders it cannot read (`problems`, `unreadable`). `Sync#read_up` writes those rows in the work database, reads the changed files, and prints `store/index.json` again from the rows. `Plan` takes no action on the index on the way up. `Workflows::SyncSteps` ends an up sync with a gate that fails when `Plan#unreadable` is not empty. `Commands::ProjectList`, `ProjectNew` and `ProjectLinks` work on `projects.yml` and the links table. `ProjectNew` edits the text of the file, so other entries, keys and comments stay. `Graph::Knowledge::Link::Check` finds the links whose local end holds no intent or ruling.
 
-`doctor.rb` has four scopes:
-
-- **`--core`**: binary pass/error only. Walks agent registration and core files
-  (hooks, scripts, PLASTIC.md, VERSION, version match) and compares each
-  file's content against its SHA256 in the install manifests. The global manifest
-  (`~/.plastic/manifest.json`) covers PLASTIC.md and global scripts; the agent-side
-  manifest (`~/.claude/plastic/manifest.json`) covers hooks, the shared
-  `_decision-tables.md`, and the installed `agents/` role files, so `--core` SHA-verifies the role files too.
-  Agent registration also runs an `agents_exist` check that passes when at least one
-  `plastic-*.md` role file is present in the harness agent directory. The
-  installer writes both manifests on every install or update. `--core` skips all
-  store inventory walks so it returns in well under a second. Result is binary: exit 0
-  on pass, non-zero on error, never a warning.
+`doctor.rb` has three scopes:
 
 - **`--store [global|<slug>]`**: three-state (pass / warn / fail). Walks store state:
   intent well-formedness, INDEX sections, conventions, and link validity. Without an
   argument it checks all stores; `global` checks only the global store; a project slug
   checks only that project's store.
 
-- **`--intent ID`**: three-state, one intent only, never a store sweep (intent 222).
+- **`--intent ID`**: three-state, one intent only, never a store sweep.
   `verify-intent` runs it, and `end-intent` runs it as its self-check at close.
 
 - **Full run (no flag)**: three-state. Walks every check category (global store,
   conventions across all intents, agent registration, core files, project stores,
-  deprecations, runtime, display). This is what `plastic doctor` runs. After every
-  `plastic update`, the core check runs by default and the full run runs with
-  `--full-doctor`. Both are informational: they print the report but do not block or
-  revert the update.
+  deprecations, runtime, display). This is what `plastic doctor` runs.
 
-The `display` category (intent 331e) holds four checks. `display_hook_registered` (defined in
+The `display` category holds four checks. `display_hook_registered` (defined in
 `scripts/lib/doctor_core.rb`, the SessionStart boot path) catches the MessageDisplay hook
 missing from settings.json, registered to a foreign command, or registered but pointing at a
-launcher that is missing or not executable; it is the only display check `--core` runs.
+launcher that is missing or not executable and runs in the boot path.
 `display_hook_paints`, `display_not_defeated`, and `display_surfaces_documented` (all three in
 `scripts/doctor.rb`, never the boot path, since they need `Open3`/`Timeout` to spawn a real
 subprocess) run only in the full doctor. `display_hook_paints` replays a shipped fixture
@@ -402,11 +386,11 @@ spawned by the agent application, so the ruby your shell has is not always the r
 get. The check reports only. It never pins an interpreter and never repairs.
 
 The project-stores category includes an additive `project_store_dir` check
-(intent 61): when a registered project's `store/` directory is missing, it warns
+: when a registered project's `store/` directory is missing, it warns
 and is fixable, with the fix `provision-project-store {slug}`. Doctor stays
 read-only: it prints that repair, and the user or agent runs it.
 
-`plastic feedback "TITLE"` (intent 174) follows the same engine-in-lib, thin-CLI shape as
+`plastic feedback "TITLE"` follows the same engine-in-lib, thin-CLI shape as
 `doctor.rb`: `FeedbackReport` in `scripts/lib/feedback_report.rb` is a constructor-DI
 engine (redact secrets, fill the version token, resolve a collision-safe report
 path, cap the encoded URL at 7500 bytes with a page-one-plus-marker overflow), and
@@ -417,7 +401,7 @@ to send it.
 `plastic hook resume` runs the whole doctor in-process (reusing the `Doctor` checks, no second
 process spawn) and names `plastic doctor` in one line only when a check fails.
 
-The hook surfaces that banner on two channels from a single `BootBanner` renderer (intent 54):
+The hook surfaces that banner on two channels from a single `BootBanner` renderer:
 `hookSpecificOutput.additionalContext` (added to the model's context) and the top-level
 `systemMessage` (rendered in the user's terminal, and re-fired on `/clear`). The banner is
 binary: success produces one line, error produces one line with a prompt to run a doctor.
@@ -425,8 +409,7 @@ The error line still names `/plastic-doctor`, a 1.x skill that no longer ships; 
 working command is `plastic doctor`. This is a known gap in `scripts/lib/boot_banner.rb`.
 Sharing one renderer means the visible line and the model-facing line cannot drift.
 
-`hook-capture` follows the same two-channel shape for the report roster (intent 392, replacing
-the dashboard). When the prompt is exactly `continue` (ignoring case and surrounding spaces),
+`hook-capture` follows the same two-channel shape for the report roster. When the prompt is exactly `continue` (ignoring case and surrounding spaces),
 it runs `report-screen state --all` against the working directory's store (the project store,
 or the global store when the directory maps to no project) and adds that plain-text roster to
 `additionalContext`, then emits the same roster painted with `--ansi` as the top-level
@@ -445,7 +428,7 @@ check artifacts: `new-intent`, `validate-intent`, `scaffold-intent`, `verify-int
 context. Doctor reports what is off. No eval suite or eval runner ships, so nothing replays a
 recorded eval against a produced artifact.
 
-### the tri-graph kernel: built, not wired (intent 394)
+### the tri-graph kernel: built, not wired
 
 Stage 1 of the tri-graph build landed the kernel under `scripts/lib/plastic/`. It has the
 command line, routines, code and agent workflows, the four end values, the routine run row,
@@ -453,12 +436,12 @@ and a graph layer with one table, `routine_runs` in `work_graph.db`. The live co
 under `scripts/lib/cli.rb` still serves every command, and the kernel tests run in a process
 of their own because both define some of the same constant names.
 
-Stage 4, intent 399, added the work graph command set to the kernel's command table. Stage 5,
-intent 400, added the knowledge graph command set. Both sets are described below. When the
+Stage 4 added the work graph command set to the kernel's command table. Stage 5,
+Stage 5 added the knowledge graph command set. Both sets are described below. When the
 live command line retires, the separate test process ends. See
 [the contributor architecture page](contributing/ARCHITECTURE.md) for how a routine call runs.
 
-### the work graph command set (intent 399)
+### the work graph command set
 
 `scripts/lib/plastic/cli/table.rb` routes 20 work graph commands against `work_graph.db` and
 `knowledge_graph.db`: `node add`, `node remove`, `node claim`, `node release`, `node done`,
@@ -488,7 +471,7 @@ intents with their node counts by state (`Graph::Work::IntentRow`, `Graph::Work:
 
 `Commands::Next` picks a live intent through `Graph::Work::NextPick`. Closed intents are
 excluded even if a lock remains after an interrupted closure. With several candidates,
-the harness gets instructions to choose one. With no open work, the next command is none.
+the harness gets instructions to choose one. With no open work, the call prints no `next:` line.
 
 `Graph::Work::DeliveryAction` supplies the actions used by next, brief, ready, and check.
 Ready nodes lead to claim; failed nodes lead to release. Empty graphs hand planning to
@@ -522,7 +505,7 @@ both, direct Reader import refuses them, and sync down or graph show renders the
 Legacy import skips them too;
 its node and edge state can only be created through the graph commands.
 
-### the knowledge graph command set (intent 400)
+### the knowledge graph command set
 
 `DropRoadmapItem` reads and checks the roadmap and item before its write step.
 `PreviewSync` runs a disposable copy and offers `sync up` after the preview.
@@ -617,7 +600,7 @@ are advice. Plastic does not check that the map was fetched and does not store i
 
 ### Companion tools: no Plastic code path calls them
 
-Intent 391 (2.0) dissolved every Plastic-owned integration with QMD, Serena and Enola.
+Plastic owns no integration with QMD, Serena and Enola; these files are gone.
 `scripts/lib/qmd_sync.rb`, its `scripts/qmd-sync` CLI, and `scripts/lib/power_tools.rb` (the
 presence probes `PowerTools.qmd?`, `.serena?`, `.enola?` that doctor's Serena and Enola
 readiness checks used to call) are all deleted. No Plastic command installs, registers with,
@@ -632,17 +615,17 @@ each one; `PLASTIC.md` carries a single pointer to that chapter, and no other Pl
 names them. `plastic search TERMS` is Plastic's own store search index, built on sqlite3 (an
 install-time checked dependency, alongside git), never delegated to an outside process.
 
-History: the power-tools `UserPromptSubmit` hook (removed in 2.0, intent 309) used to remind
-on every prompt to prefer these tools; until intent 246 it also injected scored `qmd search`
-hits, which intent 225 measured at 0.24 intent-level recall@3 against a plain ripgrep control
+History: the power-tools `UserPromptSubmit` hook (removed in 2.0) used to remind
+on every prompt to prefer these tools; until it was removed it also injected scored `qmd search`
+hits, which a measurement put at 0.24 intent-level recall@3 against a plain ripgrep control
 at 0.18, while agent-driven `qmd query` scored 0.71, so the injection went first and the
-reminder stayed on its own until it too was removed in 2.0 (intent 309). The name `power-tools` is in
+reminder stayed on its own until it too was removed in 2.0. The name `power-tools` is in
 `HookRegistry::RETIRED_HOOK_NAMES`, so an old settings.json or `~/.codex/hooks.json` entry is
 purged on the next install or update.
 
 ### intent born-complete validation
 
-An intent can be born missing a required frontmatter field (intent 51 was created
+An intent can be born missing a required frontmatter field (one was created
 with no `chain` key, and nothing caught it until a later doctor run). The fix is
 one shared definition of "born complete" that creation and diagnosis both consult.
 
@@ -658,16 +641,16 @@ one shared definition of "born complete" that creation and diagnosis both consul
   repairable through its `fix_hint` (the intent-19a pattern: doctor never writes;
   it prints the repair and the user or agent runs it), and a `frontmatter_valid` check flags
   malformed `sources` or `chain`. There is no `--fix` flag on `doctor.rb`.
-- **Section structure (intent 60b)**: the validator also carries
+- **Section structure**: the validator also carries
   `SANCTIONED_SECTIONS` plus a pure `validate_sections`, merged into `validate`, so
   born-complete now means frontmatter complete AND the sanctioned `##` section set
   present with no unknown sections. The same consumers (the CLI, `end-intent`, doctor)
-  share this one definition (the create gate that once shared it was removed in 2.0, intent 302). See the sanctioned-creation-path
+  share this one definition (the create gate that once shared it was removed in 2.0. See the sanctioned-creation-path
   section below.
 - **Scope boundary**: this is per-intent frontmatter and section validity only.
-  Store-wide `sources`/`chain` symmetry across intents is owned by intent 49 (below).
+  Store-wide `sources`/`chain` symmetry across intents is owned by the sync check (below).
 
-### store-wide graph rebuild (intent 49)
+### store-wide graph rebuild
 
 Per-intent validation cannot see asymmetry between intents, so the cross-intent
 `sources`/`chain` graph is maintained by a separate, pure-logic-plus-IO pair:
@@ -691,7 +674,7 @@ Per-intent validation cannot see asymmetry between intents, so the cross-intent
   style-preserving rewrite of just the `sources:`/`chain:` arrays in a content
   string. It detects flow (`["40"]`) vs block (`- '1a'`) style per array and
   preserves it, leaves every other key and the whole body byte-identical, never
-  touches `## Links` (that projection is intent 72), and is a no-op when the arrays
+  touches `## Links` (that projection is `LinksProjection`), and is a no-op when the arrays
   are unchanged.
 - **`scripts/rebuild-graph`** (executable IO shell, DI `--plastic-home`/`--dry-run`/
   `--audit-path`): loads every store `StoreDiscovery` finds (the global store plus each
@@ -699,7 +682,7 @@ Per-intent validation cannot see asymmetry between intents, so the cross-intent
   store, emits a per-store before/after audit grouped by kind (dedupes,
   formative-edge resolutions, backlinks, cross-store repoints/collapses, drops), then writes the
   changed frontmatter back. Pure Ruby (no bash). It runs no git itself, and neither does
-  `maintenance-run --tool rebuild-graph --apply` (intent 390): it writes the change and its
+  `maintenance-run --tool rebuild-graph --apply`: it writes the change and its
   `revisions.md` receipt, then prints the commit instruction for the closer to run by hand.
   `~/.plastic` is never pushed.
 - **Doctor's `graph_cross_store_resolution` check**: the i1/i3/i4 checks
@@ -710,9 +693,9 @@ Per-intent validation cannot see asymmetry between intents, so the cross-intent
   are filtered to the scoped origin), flagging dead and relocated-stale refs
   alongside i1/i3/i4. Its fix hint points at `scripts/rebuild-graph`.
 
-## sanctioned creation path (intent 60b)
+## sanctioned creation path
 
-Intent 60 enforced the born-complete OUTCOME but not the PROCESS: an agent can
+The born-complete OUTCOME is enforced but not the PROCESS: an agent can
 bypass `plastic intent new` and hand-author intent files with the same Write
 primitive the command's script uses. Process-purity is unprovable (the script and a
 hand-author look identical at the tool layer), so the achievable targets are the
@@ -744,12 +727,12 @@ Portability (D9): the `new-intent` CLI is the lever, and it works on any harness
 hook blocks a hand-authored intent file in 2.0; `validate-intent` and doctor's
 `section_structure` check report one.
 
-## delivery scripts (intent 213)
+## delivery scripts
 
 `AGENTS.md` states the classification rule: a step becomes a script only when its output is
 a pure function of already-committed artifacts (spec.md, outcome.md,
-test results, the diff). Everything else stays judgment and stays with the agent. Intent 213
-applied that rule with thin CLIs over `scripts/lib/` modules. Three of them remain:
+test results, the diff). Everything else stays judgment and stays with the agent. Thin CLIs
+apply that rule over `scripts/lib/` modules. Three of them remain:
 `scripts/scaffold-intent`, `scripts/verify-intent`, and `scripts/exec-worktree`, which prints
 the commit, merge, and worktree-removal steps for the agent or owner to run by hand (intent
 390: Plastic runs no version control command, so it never inspects, merges, or removes the
@@ -757,7 +740,7 @@ code worktree itself). `scripts/end-intent` runs the same backfill as
 `scaffold-intent` at close. The arm step is `plastic auto ID`.
 
 `scripts/scaffold-intent` is one CLI with one verb, `backfill` (its `spec`, `checklist`, and
-`outcome` subcommands were removed in 2.0, intent 308). It runs `BackfillIntent`
+`outcome` subcommands were removed in 2.0). It runs `BackfillIntent`
 (`scripts/lib/backfill_intent.rb`), the writer `scripts/end-intent` runs at every close: each
 of spec.md, `actions/ACTION_1.md`, and outcome.md that is missing or still the
 placeholder is written from the record (the intent file, the diff on the
@@ -765,8 +748,8 @@ intent's own worktree), every judgment section keeps the template's stub, and a 
 hand-written content is never touched. `end-intent` then runs doctor's per-intent structure
 check as a self-check that reports and proceeds; the exit-6 refusal is gone.
 
-Before that backfill runs, `end-intent` calls `scripts/lib/outcome_report.rb` (`OutcomeReport`,
-intent 339): for an intent with a `graph.md`, it generates `outcome.md` from the graph, the
+Before that backfill runs, `end-intent` calls `scripts/lib/outcome_report.rb` (`OutcomeReport`):
+for an intent with a `graph.md`, it generates `outcome.md` from the graph, the
 `nodes/` files, and the node ledger - `## Delivered` rows are done work nodes labeled by node
 id, `## Verification` cites the ledger's typed evidence fields, `## Graph diff` names any
 planned-but-not-done, undeclared, retried, or stale node, and `## Findings` renders the intent
@@ -779,10 +762,10 @@ checking or regenerating the file outside a close.
 `scripts/verify-intent` merges doctor scoped to the intent, the added-line em-dash diff guard
 (the first standing implementation of that check), a diffstat, and an optional
 caller-supplied suite command into one verdict. It does not invent a project test-command
-config. The doctor scan includes the `intent_ticks_lag` warning (intent 329): a WARN when the
+config. The doctor scan includes the `intent_ticks_lag` warning: a WARN when the
 savepoint's `Commit` ledger has entries and no checklist item is ticked.
 
-## store layout and the stores move (intent 370)
+## store layout and the stores move
 
 Fresh bootstrap creates `stores/global/store` and the three store databases, as a sync up
 leaves a store, and no `INDEX.md`, so `plastic intent new` works at once. `Scope` also resolves a registered project whose store folder does not exist yet, reading
@@ -837,10 +820,10 @@ one shared definition of store creation that creation and repair both consult.
   registration; and doctor's read-only `project_store_dir` check, which warns and
   prints `provision-project-store {slug}` as its fix.
 - **Scope boundary**: the provisioner is pure filesystem. It never edits
-  `projects.yml`. Since intent 391 nothing registers a store with any search index;
+  `projects.yml`. Nothing registers a store with any search index;
   a person who runs QMD by hand points it at the store directory themselves.
 
-## per-agent model resolution and installer application (intent 116)
+## per-agent model resolution and installer application
 
 Every agent in `agents/*.md` pins an explicit model and effort in its own frontmatter.
 The five lifecycle and node roles use a Claude Code alias and `effort: medium`, tiered by
@@ -890,7 +873,7 @@ Claude Code and Astra on Codex; Primary uses medium effort, and Secondary uses h
   agent_model_overrides` (default claude scope), so the override lands identically
   for those two harness targets on install, update, and repair. `install_codex`
   instead calls `generate_codex_agents` with `models: agent_model_overrides(harness:
-  "codex")` (intent 102a, rescoped at intent 185, model mapping added at intent 186):
+  "codex")`:
   Codex reads standalone `~/.codex/agents/<name>.toml` files, not the `.md` frontmatter
   format, so a tier alias (opus, sonnet, haiku) resolves to BOTH a `model` line (from
   `AgentModels::CODEX_MODEL_BY_ALIAS`, model first) and a `model_reasoning_effort`
@@ -903,7 +886,7 @@ Claude Code and Astra on Codex; Primary uses medium effort, and Secondary uses h
   agent TOML contract.
 - **Graph runtime contract**: `RunnerPolicy` resolves model and effort for the active harness.
   `RunnerDispatch` records both on `running`, and the Codex dispatch block prints a
-  `codex exec` command that passes both. Plastic never runs it (intent 391). A research node can declare one Markdown report under `resources/`.
+  `codex exec` command that passes both. Plastic never runs it. A research node can declare one Markdown report under `resources/`.
   The read-only node returns its content in YAML and `RunnerAbsorb` performs the confined,
   atomic write after validation.
 - **Dispatch-time contract (belt-and-braces)**: because Claude Code reading
@@ -926,7 +909,7 @@ Claude Code and Astra on Codex; Primary uses medium effort, and Secondary uses h
   consultation roles summoned deliberately by the user or the main session. Both default
   to Fable on Claude Code and Astra on Codex. Primary uses medium effort. Secondary uses high.
 
-## the delivery lock and the code worktree (intent 413)
+## the delivery lock and the code worktree
 
 The delivery lock is one row of the `locks` table in the machine's `local.db`, read as
 `Graph::Lock` (`scripts/lib/plastic/graph/lock.rb`): the store, the intent id, the session id,
@@ -963,7 +946,7 @@ branch `plastic/{id}--{slug}`. `StartAuto` prints `worktree:` and `branch:`, and
 makes the worktree at that path on that branch. The next step is `plastic intent brief ID`. The closer removes
 the worktree by hand after the merge.
 
-## the doctor of each harness (intent 414)
+## the doctor of each harness
 
 `plastic doctor` runs the `code_check_health` workflow
 (`scripts/lib/plastic/workflows/check_health.rb`). The workflow asks `Plastic::Doctor` for the
@@ -986,7 +969,7 @@ and the repair. The workflow prints the rows, then one `repair:` row with each r
 and fails its gate on any finding. A new harness adds one class with a public `checks` and one
 row in `HARNESSES`.
 
-## doctor: Codex hook registry vs. dispatcher agreement (intent 200)
+## doctor: Codex hook registry vs. dispatcher agreement
 
 `codex_hooks_registered_check` (`scripts/lib/doctor_core.rb`) only diffs `~/.codex/hooks.json`'s content
 against what `HookRegistry.codex_hooks_json` would emit; both sides come from the registry,
@@ -994,11 +977,11 @@ so a pass proves only that the registry agrees with itself. It never looks at
 `scripts/codex-hook`, the actual dispatcher every Codex tool call runs through, so it cannot
 see a registered gate with no real branch there, or a dispatcher branch nobody registers.
 Both shipped: `links-gate` registered and reported healthy with no dispatcher branch in
-v1.4.0 (intent 192), invisible to doctor and the suite until intent 198 found it by hand;
-`bash-gate` fully implemented but never registered on Codex (intent 203), so a shell write
+v1.4.0, invisible to doctor and the suite until a person found it by hand;
+`bash-gate` fully implemented but never registered on Codex, so a shell write
 bypassed every gate while doctor again reported Codex healthy.
 
-`codex_hooks_implemented_check` (intent 200) closes both directions: the dispatcher's
+`codex_hooks_implemented_check` closes both directions: the dispatcher's
 supported-gate list is read out of `scripts/codex-hook` itself by plain source-text
 extraction (`codex_dispatcher_gate_names`, its `STATE_HOOKS` constant plus its
 top-level `case gate` statement's `when "..."` labels), never a hand-kept duplicate in
@@ -1009,13 +992,13 @@ self-checking: if it finds zero gate names (a future reshape of the dispatcher t
 longer matches), the check fails loudly and says the dispatcher could not be read, rather
 than silently reporting the healthy pass a zero-name read would otherwise produce.
 
-## installer: hook purge by registry (intent 275)
+## installer: hook purge by registry
 
 `purge_stale_plastic_hooks` decided ownership of a settings.json hook entry with
 `cmd.to_s.include?("plastic-")`: any command carrying that substring anywhere was deleted
 before the merge rewrote Plastic's own registrations. On 2026-08-23 the 1.11.0 update applied
 this to the owner's own SessionStart hook, `~/.claude/hooks/plastic-writing-style`, registered
-outside `HookRegistry` (global intent 32b). The entry vanished from settings.json with no
+outside `HookRegistry`. The entry vanished from settings.json with no
 message, and the writing-style skill stopped loading in every session until `/plastic-doctor`
 found the orphaned launcher a day later. Three sibling functions carried the identical shape:
 `purge_stale_codex_hooks` (`cmd.include?("codex-hook")`), `remove_claude_hooks`, and
@@ -1052,7 +1035,7 @@ registry did not recognize, and prints it under its own header naming the reserv
 rule. Had that existed in 1.11.0, the update would have said "kept `plastic-writing-style`,
 the prefix is reserved" instead of deleting the hook without a word.
 
-Intent 278 extended the same reporting to the two remove paths.
+The same reporting covers the two remove paths.
 `remove_claude_hooks` and `remove_codex_hooks` collect the entries they delete the same
 way the purges do and print them through `report_removed_hook_entries`, which took a
 `qualifier:` argument so an uninstall reads "Removed 3 Plastic hook entries" instead of
@@ -1060,7 +1043,7 @@ the merge's "stale" wording. The statusline swap-back, which is a restored value
 than a deleted entry, reports on its own line. No Plastic edit to a user's hook
 configuration is silent now, on either harness, on either path.
 
-## doctor: unowned hook entries and stray skills (intent 276)
+## doctor: unowned hook entries and stray skills
 
 Moving hook ownership to registry membership fixed the write side, but it narrowed the read
 side without replacing it. `hooks_registered` and `hooks_match_registry` both filter
@@ -1078,7 +1061,7 @@ naming collision in someone else's file, Plastic will not touch it, and the reme
 rename by its owner, mirroring the notice `merge_claude_hooks` already prints at merge time.
 Mode (b), a current registration whose launcher is missing from disk, fails: it is Plastic's
 own registration silently doing nothing. Mode (b) keys off `claude_current_command?`
-(current registrations only, intent 277), not `claude_purge_command?` (current plus retired
+(current registrations only), not `claude_purge_command?` (current plus retired
 plus non-hook launchers): testing against the purge predicate would fire on every install
 still carrying a retired entry, since a retired launcher's file is absent from every current
 install by design. That case already belongs to `hooks_match_registry`, so a retired entry is
@@ -1086,7 +1069,7 @@ skipped here rather than double-reported. A third-party hook carrying no `plasti
 silent: it is none of Plastic's business, and warning on it would false-positive on every
 user with an unrelated hook.
 
-The skills half of the reserved prefix extends `stray_skills_check` (intent 158a) rather than
+The skills half of the reserved prefix extends `stray_skills_check` rather than
 duplicating it: the manifest-diff ownership test it already runs, a `plastic-*` skill
 directory the manifest does not track is a stray, was already correct. What 276 fixed is that
 a missing or unreadable manifest made the check return `nil` and vanish from the report
@@ -1098,7 +1081,7 @@ reserved for hooks and skills alike, and `stray_skills` runs through the same sh
 `check_flat_skills_and_stray` call every non-Claude agent directory (Codex, Hermes) already
 uses, so the fix reaches them with no second implementation.
 
-## the day ledger and append-ledger (intent 297)
+## the day ledger and append-ledger
 
 The session intent day ledger is one shared ledger per calendar day per person, in the
 global store, project agnostic, with every line tagged by the session and project that
@@ -1164,30 +1147,30 @@ start.
 
 **The consumer list.** Who builds on this contract, and what each one needs:
 
-- intent 298: the session-start and post-tool hooks, and the heartbeat
+- The session-start and post-tool hooks, and the heartbeat
   under `.tmp/<session>/`, and capture and record.
-- intent 300 (delivered): `scripts/session-commit`, which appends one `Item` or `Note`
+- `scripts/session-commit`, which appends one `Item` or `Note`
   savepoint line per commit. See "the session branch model and session-commit" below.
   Only `plastic session commit` runs it; the record hook stopped spawning it on 2026-09-24.
-- intent 301: close, `file-session-intent`, `promote-session-item`, and the carry-forward of
+- Close, `file-session-intent`, `promote-session-item`, and the carry-forward of
   open items, which is why `append-ledger item` exists alongside `pending`.
-- intent 311 (delivered): `write-handoff` (the per-session hand-off in the day directory,
+- `write-handoff` (the per-session hand-off in the day directory,
   written at every tick, at PreCompact through `hook-savepoint`, and at close) and
   `day-summary` (the bounded block the session-start hook injects after the joined line).
   Both are renderers over the same two files, regenerated in full on every write.
 
-A recorded hazard, so intent 301 does not discover it mid-Exec: `LinksProjection` resolves a
+A recorded hazard, so the close step does not discover it mid-Exec: `LinksProjection` resolves a
 ref by scanning store-root children, so a later intent whose `sources` names a day id raises
 `UnresolvedRef`, its `## Links` goes unwritten, and doctor's links check may flag it. The fix
 is either a resolver that knows `.sessions/` or a frontmatter-only link that projection
-skips, and it belongs to intent 301, not here.
+skips, and it belongs to the close step, not here.
 
-## session-commit records, it never commits (intent 390)
+## session-commit records, it never commits
 
 `scripts/session-commit --cwd <dir> --summary <text> [--ref REF]` is how a verified checklist
 item gets a permanent record. It runs no version control command. It never shells to `git` or
 `gh`, so `scripts/lib/session_git.rb`, its `runner:`/`gh_runner:` seams, and the flow-resolution
-and pull-request-body logic that used to live behind it (intent 300) are gone. What replaced
+and pull-request-body logic that used to live behind it are gone. What replaced
 them is two plain steps: append one savepoint line, then print the instruction that names the
 actual commit for the caller to run.
 
@@ -1223,7 +1206,7 @@ Plastic itself.
 the savepoint append in their own rescues, and `main` carries a top-level one, so a store or
 ledger failure (a read-only store directory, an installed layout missing `templates/`) degrades
 to exit 0 with the instruction still printed, rather than a raw Ruby backtrace and a crashed
-calling process -- the same exit-0-always contract intent 298's `record` hook already depended
+calling process -- the same exit-0-always contract the `record` hook already depended
 on. The savepoint append does not depend on `open_day` having run: it calls
 `FileUtils.mkdir_p` on the day directory itself first, so a damaged install that cannot open
 the day ledger can still write its one savepoint line. Only a usage error (no `--cwd`, no
@@ -1234,10 +1217,10 @@ the expected code worktree's path and branch with no git call, and `StartAuto` p
 `worktree:` and `branch:` rows. The agent makes the worktree. A store-only project (no repo
 resolves) prints no worktree, and the next step is `plastic intent brief ID`.
 
-**`plastic auto` takes a roadmap slug (intents 391 and 413).** See the delivery lock section
+**`plastic auto` takes a roadmap slug.** See the delivery lock section
 above for how `PickDelivery` picks the item in flight or offers the ready one.
 
-**The Codex adapter prints, it never runs (intent 391).** `HarnessAdapter.render` gives a
+**The Codex adapter prints, it never runs.** `HarnessAdapter.render` gives a
 Codex node the same dispatch line as Claude Code, plus a `run:` line from
 `CodexAdapter.command_line`: the `codex exec` argv with the sandbox and `--add-dir` for the
 node kind, and the node input on stdin. `scripts/node-run`, `RunnerUntilEmpty`, and the
@@ -1284,7 +1267,7 @@ replace or remove it. The Codex `AGENTS.md` section needs no such treatment, bec
 every older package knows that one and rewrites it on the downgrade install.
 
 
-## meter-watch: the rate-limit meter on a timer (intent 355, n5, D6)
+## meter-watch: the rate-limit meter on a timer
 
 `scripts/meter-watch` reads the owner's rate-limit cache
 (`~/.plastic/.cache/rate-limits.json`, written by the owner's live statusline hook, not
@@ -1326,13 +1309,13 @@ This is a living document. When Plastic's architecture, lifecycle, conventions,
 hooks, or harnesses change, this file and `architecture.md` must be
 updated in the same change.
 
-## the session close path and the next-day sweep (intent 301)
+## the session close path and the next-day sweep
 
-Three pieces close the loop the day ledger (intent 297) and the capture and record hooks
-(intent 298) opened.
+Three pieces close the loop the day ledger and the capture and record hooks
+ opened.
 
 - `hooks/close` and `scripts/hook-close` run at `SessionEnd` on both harnesses (Codex since
-  intent 309, through `scripts/codex-hook`'s detached hand-off). The script reads `session_id`, `cwd`, and `reason` from the hook's stdin JSON and
+  the hand-off through `scripts/codex-hook`'s detached hand-off). The script reads `session_id`, `cwd`, and `reason` from the hook's stdin JSON and
   takes the Plastic home from argv. It is a no-op for the reasons `clear` and `resume`, which do
   not end a session. Otherwise it flips this session's pending `[~]` lines to dropped `[-]`,
   writes one `Note` when it dropped any, removes `.tmp/<session-id>/`, and, when the session's
@@ -1363,10 +1346,10 @@ lock with one `pwrite` per line.
 
 The general skill-authoring guides moved to the `skill-creating` and `skill-evaluating` skills in [zalom/agent-skills](https://github.com/zalom/agent-skills); `docs/skill-authoring.md` keeps the Plastic-only rules.
 
-## the context budget bench (intent 313)
+## the context budget bench
 
-Intent 296 ruled two numbers for how much doctrine a session reads at boot: the core block
-under 8,192 bytes, and the whole per-boot read under 15,000. Until intent 313 both were
+Two numbers rule for how much doctrine a session reads at boot: the core block
+under 8,192 bytes, and the whole per-boot read under 15,000. Earlier both were
 estimates in a design document, and the only enforcement on disk measured two static files
 without ever running the thing that injects context. `bin/plastic-bench` measures it instead.
 
@@ -1399,8 +1382,8 @@ different interpreter.
 
 | Row | What it is | Ceiling |
 |---|---|---|
-| core block | `PLASTIC.md` bytes | **under 8,192**, intent 296's ruling |
-| boot injection | the `additionalContext` `hook-session-start` emits for the fixture | **under 15,000**, intent 296's whole-read ruling |
+| core block | `PLASTIC.md` bytes | **under 8,192** |
+| boot injection | the `additionalContext` `hook-session-start` emits for the fixture | **under 15,000** |
 | skill catalog | every `skills/*/SKILL.md` frontmatter `name` + `description` value the harness loads | reported |
 | agent catalog | every `agents/*.md` frontmatter `name` + `description` value | reported |
 | boot injection + skill catalog | the two above | **under 17,500**, a 313 ratchet, lower it, never raise it |
@@ -1426,7 +1409,7 @@ The bench is a maintainer tool. It lives under `bin/` beside `bin/test`, is deli
 from `installer_core.rb`'s manifest, and is never installed into `~/.plastic`: it reads this
 repository's own files and a fixture it builds, so it has no meaning on an installed copy.
 
-## the ScreenPaint registry, and late-capable engagement (intent 331a)
+## the ScreenPaint registry, and late-capable engagement
 
 Before 331a, `scripts/lib/screen_paint.rb` recognized a screen's opening line against one
 hard-coded `OPENER_RE`, and `MessageDisplay` (the `hooks/message-display` adapter) let only
@@ -1447,7 +1430,7 @@ set of lines recognized as an opener is unchanged. A caller-added kind lives in 
 glob-requires `lib/screens/*.rb` (sorted, tolerating an absent or empty directory), and
 `installer_core.rb`'s glob-derived `screen_files` (mirroring `template_files`/`hook_files`)
 ships that file to an installed `~/.plastic` - "add a file, not a diff" is otherwise false for
-an installed copy, not just an in-repo one. Intent 331b's `plan` kind (`report-screen plan
+an installed copy, not just an in-repo one. The `plan` kind (`report-screen plan
 <intent_dir>`, the pre-delivery report) is the first caller-added kind built this way, in
 `scripts/lib/screens/plan.rb`.
 
@@ -1474,7 +1457,7 @@ neither half matching alone, still falls back to plain - a known, accepted limit
 engagement only ever looks at one chunk's delta at a time, never a cross-chunk reassembly, before
 deciding.
 
-**The decision marker (intent 331a1).** Claude Code's concurrent chunk processes race chunk 0's
+**The decision marker.** Claude Code's concurrent chunk processes race chunk 0's
 own Ruby boot (about 150 ms), and a later chunk judged before SCREEN or NOSCREEN exists used to
 fall back to the cheap shape test and pass through plain whenever it wasn't. `hooks/message-
 display` now stakes a `PENDING` file with builtins the moment chunk 0 is handed off, before Ruby
@@ -1487,7 +1470,7 @@ index, capped at `max_wait_ms` - so a chunk deep into a long streamed message wa
 for a decision that is certainly on its way, and `write_screen`/`write_noscreen` both remove
 `PENDING` the moment they run, so it is never both there and stale at once for long.
 
-## the report roster (`report-screen state --all`, intent 392 replacing the dashboard)
+## the report roster (`report-screen state --all`)
 
 The dashboard (`scripts/dashboard.rb`, its `--screen` renderer, `scripts/lib/dashboard_screen.rb`,
 `templates/dashboard-screen.md`, and the `:dashboard` `ScreenPaint` kind) is gone. The one place
@@ -1502,7 +1485,7 @@ No rendered header across the report-screen family reads "What" any more: the id
 "Graph ID", the title column is "Intent", every Steps table reads `Step | Status | Detail`,
 the plan screen's own reads `Step | Action | Detail`, Risks read `N | Risk`, and the
 `delivered` screen's own three tables read `Row | Detail | Proven by`, `Kind | Detail |
-Source`, and `N | Need | Reason` (intent 331f, D5/D7). `ReportScreen.fit_screen(text, limit:
+Source`, and `N | Need | Reason`. `ReportScreen.fit_screen(text, limit:
 115)` is the one shared pass every public render entry point calls last: a fitting screen
 returns byte-identical, an over-limit table shrinks its widest shrinkable column first (floor
 8, a progress-bar column never shrinks, ties break leftmost), and a row that is still over the
@@ -1511,7 +1494,7 @@ No rendered row exceeds 115 visible columns; the bound is measured on the whole
 pipe-delimited row, never on one cell, since a cell short enough on its own can still drift the
 row past the bound once a progress bar, a lead, and the separators are added.
 
-## roadmap screens: the roadmap verb, `RoadmapQueue#roadmap`, and the Log fallback (intent 331c)
+## roadmap screens: the roadmap verb, `RoadmapQueue#roadmap`, and the Log fallback
 
 A roadmap gets the same three reports an intent has (`report-screen roadmap <roadmap.md>
 plan|state|delivered [--ansi] [--store-root <dir>]`), read entirely from files already on disk:
@@ -1523,7 +1506,7 @@ private `queue`/`which` the auto loop already calls: for ONE roadmap file it ret
 path, grouping label (`RoadmapSavepoint.grouping_heading`, "Batches" or "Waves"), the batches with
 each entry's id, title text, and INDEX-reconciled status, and the frontier
 (`RoadmapQueue`'s own private `frontier_for` - a screen never re-derives which batch is live).
-Intent 336 (G3) taught `frontier_for` to follow a roadmap's own `## Graph` section when one
+`frontier_for` follows a roadmap's own `## Graph` section when one
 carries real edges, falling back to wave order otherwise; `roadmap(path)` reads whichever path
 `frontier_for` takes with no change of its own. `ENTRY`'s regex gained a capture group for the
 entry's own title text between the id and
@@ -1534,7 +1517,7 @@ stayed green unchanged, since nothing public in `queue`/`which` reads that new g
 paired `.savepoint.md` into `[Time, event, detail]` triples in file order - the format
 `RoadmapQueue`'s own liveness ranking already parses inline, now a public reader so a screen never
 re-derives the "<iso>  <event>  <detail>" line shape a second way. When a roadmap carries no ledger
-file at all (an archived roadmap moved before intent 134 shipped a ledger for it, `manual-first.md`
+file at all (an archived roadmap moved before the roadmap ledger shipped for it, `manual-first.md`
 among them), `ReportScreen.roadmap_events` falls back to the `## Log` lines, classified through
 `RoadmapSavepoint.classify_event` (made public; same `KEYWORD_TABLE`, no second vocabulary) and
 timestamped from each Log line's own date and time - so a fully-shipped roadmap with no ledger file
@@ -1563,7 +1546,7 @@ it from an all-letter word that happens to be valid hex.
 that are strict subsets of the shipped `intent`/`delivered` openers. No `paint:` lambda: the
 palette stays `IntentScreenAnsi`'s shared pipeline, exactly like every shipped kind before it.
 
-## the node input command (intent 338, G5)
+## the node input command
 
 A node agent is stateless (327 D45): its whole input is its node input. `DataBoundary`
 (`scripts/lib/data_boundary.rb`) owns the trust boundary a node input is built over. A data
@@ -1593,15 +1576,15 @@ from `graph.md`'s edges (never the node envelope, which 327 D41 removed `needs` 
 counted only from an attributed well-formed `done` line, and the lease from `--holder`/`--expires`/
 `--model` or the last `running` line or `lease: none` plus a stop directive (spec D9, C7). The
 landed-commits block that once ran an injected git runner after a reclaim (spec D14, C11) is
-gone: Plastic runs no version control command (intent 390). The record block carries only
+gone: Plastic runs no version control command. The record block carries only
 `## Intent` (the floor, never
 cut), `### Decisions` (falling back to a top-level `## Decisions` when the nested one is
 absent) and the last three `## Insights` entries, with a kind-aware exclusion of any
 `### Findings` subsection for a verify node (spec D12, C23) anchored to the `## Insights` body
-itself, so a `### Findings` living under `## Context` (intent 109's own shape) is never
+itself, so a `### Findings` living under `## Context` (an older shape) is never
 touched. The knowledge hop is one level and never transitive (spec D13): each frontmatter
 `sources:` entry contributes only its `## Outcome` and its `### Decisions` (or, when the
-record carries none - about half the store, intent 327 among them - that source's own
+record carries none - about half the store - that source's own
 `spec.md` `## Decisions`), capped at `hop_tokens` with a truncation note, and disabled
 entirely at `--hop-tokens 0` (224's kill criterion, spec D7).
 
@@ -1626,23 +1609,23 @@ unknown node), 3 an unreadable/unparsable graph, node file or record, 4 overflow
 attempt conflict (spec D17, shared exit-code family so a runner routes on the same codes
 across both node commands). On success it prints a parsable summary
 (`path=... sha=... tokens=... hop_tokens=... attempt=...`) and the exact `node-transition
-running` command to record, both of which intent 340's runner parses.
+running` command to record, both of which the runner parses.
 
-## GitHub releases (intents 347, 376, 402)
+## GitHub releases
 
 `.github/workflows/publish.yml` makes every release. It talks to no package registry and holds
 no token beyond the job's own `contents: write`. Plastic retired npm on 2026-10-03: the stable
 release 2.0.3 stays on npm, and nothing newer goes there. `INSTALL.md` says how an npm copy
 moves to `install.sh`.
 
-**The trigger (intent 376).** A push to `alpha`, `beta` or `main` is the release. The workflow
+**The trigger.** A push to `alpha`, `beta` or `main` is the release. The workflow
 reads the version from `package.json`. When the tag for that version exists, it stops. Otherwise
 it runs the suite and the guard, builds the release files, and creates the tag and the GitHub
 release with them attached. To release, change the version in `package.json` and push the
 branch. `install.sh` at the repository root downloads the archive of the release its channel
 names, unpacks it under `~/.local/share/plastic` and links `~/.local/bin/plastic`.
 
-**Each release runs its own Ruby (intent 402a).** `install.sh` pins one Ruby 4.0.7 build for each
+**Each release runs its own Ruby.** `install.sh` pins one Ruby 4.0.7 build for each
 platform in its `ruby_pins` table: jdx/ruby `4.0.7-2` for macOS on Apple silicon and both Linux
 builds, and the Homebrew portable Ruby from ghcr.io for an Intel Mac, which needs the anonymous
 header `Authorization: Bearer QQ==`. It detects the platform with `uname`, takes the Apple silicon
@@ -1742,7 +1725,7 @@ defaulting to `false` otherwise); a code worktree only counts as changed when
 `worktree_changed?` reads true. `end-intent` exits 8 on a delivered close of
 such an intent, before any write.
 
-Plastic runs no version control command (intent 390), so `end-intent` no longer
+Plastic runs no version control command, so `end-intent` no longer
 checks whether the code was actually merged before a delivered close.
 `worktree_changed?` (called from `untouched_scaffold.rb` above) is the one
 remaining worktree check, and it fails open: it names the code worktree's
@@ -1759,7 +1742,7 @@ Plastic no longer runs.
 
 `end-intent --dry-run` copies the intent to a scratch directory. It runs the
 same outcome generation and backfill on that copy, then applies the
-hollow-report gate (exit 7). Exits 5 and 9 are both retired (intent 390): each
+hollow-report gate (exit 7). Exits 5 and 9 are both retired: each
 named a real git check (dirty-worktree status, merge ancestry) Plastic no
 longer runs, and `--discard-worktree-changes` is accepted but changes nothing
 now that there is nothing left to discard a check against. The dry run still
@@ -1806,7 +1789,7 @@ output template. The mixed ones were template- or script-backed skills with free
 plus two recorded `evals.json` files.
 
 **Stage agents.** 1.x shipped one agent per lifecycle stage beside the enforcer and the
-executor. The stage agents were removed in 2.0 (intent 304). The enforcer now writes the Why
+executor. The stage agents were removed in 2.0. The enforcer now writes the Why
 and How itself.
 
 **The harness inventory.** 1.x counted 23 harness entries: 7 hard-block, 10 soft-steer, and 6
@@ -1814,15 +1797,15 @@ advisory. The advisory ones included two `evals.json` files that no runner ever 
 same audit listed 13 net-new harnesses to build, led by the `spec.md` and `outcome.md`
 templates, which did ship, and a form-assertion eval runner, which never did.
 
-**Three-tier conventions.** 1.x shipped convention in tiers (intent 223): `PLASTIC.md` as
+**Three-tier conventions.** 1.x shipped convention in tiers: `PLASTIC.md` as
 the always-on core, held under 500 lines and 5,000 estimated tokens, and a shared conventions
 skill whose chapters other skills loaded by path. 2.0 keeps `PLASTIC.md` and moves the longer doctrine into the
 chapters that `plastic help TOPIC` prints.
 
 **Gates.** 1.x hooks blocked writes: edit-path gates, a create gate, and stage-transition gates
 checked the lock, the worktree, links, and the stage before an edit landed. Claims were checked
-by those gates too. The gates were removed in 2.0 (intent 302). Doctor checks and the close
-checks in `scripts/end-intent` now report what the gates once blocked (intent 308).
+by those gates too. The gates were removed in 2.0. Doctor checks and the close
+checks in `scripts/end-intent` now report what the gates once blocked.
 
 **Skill-era readers.** In 1.x, skills read the ledgers and acted on them: a savepoint skill
 verified the ledger, a discovery agent ran after an intent was activated, a feedback skill filed
@@ -1831,10 +1814,10 @@ to doctor, which stays read-only and prints each repair.
 
 **Releasing.** The 1.x releasing skill ran the release actions a project listed, including a
 local `npm publish`. Plastic's own project used a workflow variant that confirmed and followed the
-`publish.yml` run instead of publishing locally. Intent 372 retired the skill. In 2.0 a push to
+`publish.yml` run instead of publishing locally. The skill is retired. In 2.0 a push to
 `alpha`, `beta`, or `main` is the release.
 
-**The publish suite step (intent 347, D7).** When trusted publishing first shipped, the
+**The publish suite step.** When trusted publishing first shipped, the
 publish job ran no suite. The suite was red on hosted Linux runners for hermeticity reasons, so
 gating a publish on it would have moved the release stall onto the runner. The suite ran only
 before the tag was cut. The publish job has since gained the suite step, which runs before the
@@ -1869,7 +1852,7 @@ To retire a kind of data:
 
 ## Codex doctor in the kernel
 
-Intent 418 adds `Doctor::Codex` to the registry beside Claude Code. The shared
+`Doctor::Codex` joins the registry beside Claude Code. The shared
 `Doctor::Core` checks installation parts and registered project databases.
 Codex reads its version record from `~/.agents/plastic/VERSION`, matching the
 installer's record directory, and reads its hooks and AGENTS.md from `~/.codex`.
