@@ -37,12 +37,12 @@ class IntentDiscoverTest < Plastic::TestCase
     missing = plastic("intent", "discover", "99", "evidence", "--json", table: Plastic::CLI::TABLE)
 
     assert_call missing, code: 1, out: ["code_discover_retrieval, gate: no intent 99 in owning store"],
-      err: "plastic: no intent 99 in owning store\n"
+      err: ""
     assert_empty Dir[store_path("store/*/context.json")]
   end
 
   def test_rejects_an_unsafe_owning_intent_as_usage
-    assert_call plastic("intent", "discover", "../escape", "evidence", "--json", table: Plastic::CLI::TABLE), code: 2, out: ['"kind": "usage"', 'invalid intent id \"../escape\"'], err: /invalid intent id "\.\.\/escape"/
+    assert_call plastic("intent", "discover", "../escape", "evidence", "--json", table: Plastic::CLI::TABLE), code: 2, out: ['"kind": "usage"', 'invalid intent id \"../escape\"'], err: ""
   end
 
   def test_refuses_unknown_or_unmaintained_source_stores_without_recreating_them
@@ -81,6 +81,18 @@ class IntentDiscoverTest < Plastic::TestCase
     assert_equal [0, ""], [result.code, result.err]
     assert_routine_handoff(run)
     assert_equal "evidence", JSON.parse(result.out).dig("result", "discovery", "query")
+  end
+
+  def test_the_printed_candidates_carry_a_passage_and_uri_and_not_the_body
+    open_intent
+    write_document("other", "selected evidence " * 40)
+
+    candidate = plastic("intent", "discover", "1", "evidence", "--source-project", "other", "--json", table: Plastic::CLI::TABLE)
+      .then { |result| JSON.parse(result.out).dig("result", "discovery", "candidates", 0) }
+
+    assert_operator candidate.fetch("passage").length, :<=, 320
+    assert_match(%r{\Aplastic://other/1/evidence\.md}, candidate.fetch("uri"))
+    assert(%w[body score rrf_score local_rank sha256].none? { |key| candidate.key?(key) })
   end
 
   private
