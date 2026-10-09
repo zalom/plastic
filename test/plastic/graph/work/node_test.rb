@@ -22,11 +22,11 @@ class WorkNodeTest < Plastic::TestCase
   end
 
   def test_a_node_with_findings_and_no_judge_is_verified
-    assert node("n1", "done", findings: "green").verified?
+    assert_predicate node("n1", "done", findings: "green"), :verified?
   end
 
   def test_a_node_with_blank_findings_is_not_verified
-    refute node("n1", "done", findings: " ").verified?
+    refute_predicate node("n1", "done", findings: " "), :verified?
   end
 
   def test_the_judge_list_is_gone

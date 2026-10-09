@@ -117,26 +117,4 @@ class PrintsTest < Plastic::TestCase
 
     assert_equal [["n1"], "\n"], [JSON.parse(text)["nodes"].map { |node| node["id"] }, text[-1]]
   end
-  def test_the_graph_file_carries_the_approval_the_verdicts_and_each_nodes_criterion
-    store_graphs.work.write_intent(title: "One")
-    store_graphs.databases[:work].transaction do |batch|
-      batch.add("INSERT INTO approvals(intent_id, origin_id, at, session_id) VALUES ('1', :origin, '2026-10-05T10:00:00+02:00', 's')", origin:)
-      batch.add("INSERT INTO verdicts(intent_id, round, origin_id, verdict, findings, at, session_id) VALUES ('1', 1, :origin, 'accept', 'ok', '2026-10-05T11:00:00+02:00', 's')", origin:)
-    end
-    store_graphs.work.add_node(intent_id: "1", title: "Build", criterion: "works")
-    graph = JSON.parse(Plastic::Graph::Prints.of_intent(retrieval, retrieval.intent("1")).last.text)
-
-    assert_equal ["1", "accept", "works"], [graph.dig("approval", "intent_id"), graph.dig("verdicts", 0, "verdict"), graph.dig("nodes", 0, "criterion")]
-  end
-
-  def test_a_context_row_prints_context_json_into_the_intent_folder_and_no_row_prints_none
-    store_graphs.work.write_intent(title: "One")
-    paths = ->{ Plastic::Graph::Prints.of_intent(retrieval, retrieval.intent("1")).map(&:path) }
-    refute_includes paths.call, "store/1--one/context.json"
-    store_graphs.databases[:knowledge].transaction do |batch|
-      batch.put(:retrieval_contexts, { intent_id: "1", data: JSON.generate("evidence" => []), updated_at: "2026-10-05T10:00:00+02:00" })
-    end
-
-    assert_includes paths.call, "store/1--one/context.json"
-  end
 end

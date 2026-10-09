@@ -99,6 +99,7 @@ class SyncUpFoldersTest < Plastic::TestCase
     assert_equal 0, sync.code
     assert_equal before, snapshot(store_root)
   end
+
   def test_a_folder_holding_only_the_dated_intent_file_is_read
     write("store/4--gamma/4--gamma.md", page("4", "Gamma"))
 

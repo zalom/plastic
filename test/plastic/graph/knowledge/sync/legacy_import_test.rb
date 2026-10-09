@@ -69,6 +69,7 @@ class KnowledgeSyncLegacyImportTest < Plastic::TestCase
   def test_a_sync_up_plan_on_a_legacy_store_imports_it
     assert_equal "imported INDEX.md: 2 intents and 0 clusters", sync.apply(sync.plan(:up, {})).first
   end
+
   def test_a_printed_context_json_is_not_imported_as_a_document
     folder.write("store/1--ai-infra/context.json", "{}")
     import

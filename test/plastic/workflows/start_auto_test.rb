@@ -57,6 +57,7 @@ class WorkflowStartAutoTest < Plastic::TestCase
   def test_an_unknown_intent_fails
     assert_equal "code_start_auto, gate: no intent 9 in this store", start(intent_id: "9").message
   end
+
   def test_an_intent_without_a_go_ahead_is_refused_naming_the_approve_command_and_takes_no_lock
     specified_intent
 
@@ -64,8 +65,7 @@ class WorkflowStartAutoTest < Plastic::TestCase
 
     assert_kind_of Plastic::Refused, outcome
     assert_includes outcome.message, "plastic intent approve 1"
-    assert_nil retrieval.lock("1")
-    assert_equal "open", retrieval.intent("1").status
+    assert_equal [nil, "open"], [retrieval.lock("1"), retrieval.intent("1").status]
   end
 
   def test_an_intent_with_a_go_ahead_starts

@@ -38,9 +38,7 @@ class NodeAddTest < Plastic::TestCase
 
     result = call("1", "do the thing", "--criterion", "nope")
 
-    assert_equal 1, result.code
-    assert_includes result.err, "works"
-    assert_includes result.err, "other"
+    assert_equal [1, true], [result.code, %w[works other].all? { |key| result.err.include?(key) }]
     assert_empty nodes
   end
 
@@ -55,9 +53,7 @@ class NodeAddTest < Plastic::TestCase
 
     result = call("1", "do the thing", "--criterion", KEY)
 
-    assert_equal 1, result.code
-    assert_match(/done criteria/, result.err)
-    assert_includes result.err, "sync up"
+    assert_equal [1, true], [result.code, result.err.include?("done criteria") && result.err.include?("sync up")]
     assert_empty nodes
   end
 

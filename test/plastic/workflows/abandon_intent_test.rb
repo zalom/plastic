@@ -34,6 +34,7 @@ class AbandonIntentTest < Plastic::TestCase
 
     assert_kind_of Plastic::Failed, abandon.first
   end
+
   def test_an_abandon_with_no_supersedes_link_is_cancelled
     intent = open_intent
     write("#{intent.dir}/outcome.md", "# Outcome\n\nDropped.\n\n## Verification\n- Reverted: nothing delivered\n")

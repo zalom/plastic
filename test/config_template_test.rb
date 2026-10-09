@@ -5,7 +5,7 @@ class ConfigTemplateTest < Minitest::Test
   TEMPLATE = File.expand_path("../../templates/config.yml", __FILE__)
 
   def setup
-    @config = YAML.safe_load(File.read(TEMPLATE))
+    @config = YAML.safe_load_file(TEMPLATE)
   end
 
   def test_the_template_is_config_version_3

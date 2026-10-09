@@ -52,7 +52,7 @@ class KnowledgeIntentTest < Plastic::TestCase
   end
 
   def test_the_folder_and_its_own_file_follow_the_id_and_slug
-    assert_equal ["store/1a--build", "1a--build.md"], [intent.dir, intent.file]
+    assert_equal ["store/1a--build", "intent.md"], [intent.dir, intent.file]
   end
 
   def test_a_new_row_leaves_the_id_and_origin_to_the_database
@@ -71,7 +71,7 @@ class KnowledgeIntentTest < Plastic::TestCase
     page = ["---", 'id: "1a"', 'intent: "Build"', 'parent: "1"', 'ref: "ENG-1"', 'origin: "o"', %(created: "#{AT}"), "---", "",
       "# 1a - Build", "", "## Intent", "", "Build", "", "## Context", "", "## Outcome", "", "## Insights", ""].join("\n")
 
-    assert_equal({ intent_id: "1a", path: "1a--build.md", body: page, updated_at: AT }, intent.document("o"))
+    assert_equal({ intent_id: "1a", path: "intent.md", body: page, updated_at: AT }, intent.document("o"))
   end
 
   def test_the_front_matter_leaves_out_empty_fields

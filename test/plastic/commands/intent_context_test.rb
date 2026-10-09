@@ -330,15 +330,18 @@ class IntentContextInputTest < Plastic::TestCase
     write_document("other", "selected evidence")
     plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
 
-    file = File.join(@home, "broken.json")
-    File.write(file, "{")
+    file = broken_json_file
 
     result = plastic("intent", "context", "1", "--from", file, table: Plastic::CLI::TABLE)
 
     assert_equal 2, result.code
     assert_match(/\Aplastic: #{Regexp.escape(file)} is not valid JSON: /, result.err)
-    assert_nil JSON.parse(File.read(Dir[store_path("store/*/context.json")].first)).fetch("context")
+    assert_nil printed_context.fetch("context")
   end
+
+  def broken_json_file = File.join(@home, "broken.json").tap { |file| File.write(file, "{") }
+
+  def printed_context = JSON.parse(File.read(Dir[store_path("store/*/context.json")].first))
 
   def test_a_missing_context_file_exits_2_naming_the_file
     discovered_reference

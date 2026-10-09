@@ -31,7 +31,7 @@ class ContextPersistenceTest < Plastic::TestCase
   def test_nothing_is_written_at_the_store_root
     persist
 
-    refute File.exist?(store_path("context/1.json"))
+    refute_path_exists store_path("context/1.json")
   end
 
   def test_the_document_comes_back_unchanged
