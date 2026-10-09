@@ -10,7 +10,7 @@ class WorkflowRemoveRoadmapEdgeTest < Plastic::TestCase
     super
     roadmap
     item("a")
-    item("b", after: ["a"])
+    item("b", needs: ["a"])
   end
 
   def remove(from) = run_workflow(Plastic::Workflows::RemoveRoadmapEdge, slug: "r1", from:, to: "b")

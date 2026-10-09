@@ -15,7 +15,7 @@ class WorkflowNextRoadmapTest < Plastic::TestCase
   def next_item(slug: "r1", position: nil) = run_workflow(Plastic::Workflows::NextRoadmap, slug:, position:)
 
   def test_the_first_ready_item_is_offered_and_blocked_items_are_named
-    item("b", after: ["a"])
+    item("b", needs: ["a"])
 
     outcome, context = next_item
 

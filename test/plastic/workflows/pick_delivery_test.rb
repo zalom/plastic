@@ -85,7 +85,7 @@ class WorkflowPickDeliveryTest < Plastic::TestCase
   def test_a_blocked_item_waits
     roadmap
     item("a")
-    item("b", after: ["a"])
+    item("b", needs: ["a"])
     store_graphs.work.take_lock(started("a"), session_id: "s-2", mode: "auto")
 
     outcome, = pick("r1")

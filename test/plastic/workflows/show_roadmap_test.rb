@@ -11,7 +11,7 @@ class WorkflowShowRoadmapTest < Plastic::TestCase
   def test_each_batch_is_printed_with_its_criteria_and_items
     roadmap(done: "it ships")
     item("a")
-    item("b", after: ["a"])
+    item("b", needs: ["a"])
 
     outcome, context = show
 
