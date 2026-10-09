@@ -121,6 +121,6 @@ class SyncLegacyMetadataTest < Plastic::TestCase
   def test_an_unknown_roadmap_is_refused
     call = plastic("roadmap", "show", "nosuch", table: Plastic::CLI::TABLE)
 
-    assert_call call, code: 1, out: RUN_ROW, err: "plastic: code_show_roadmap, gate: no roadmap nosuch\n"
+    assert_call call, code: 1, out: "", err: "plastic: code_show_roadmap, gate: no roadmap nosuch\n"
   end
 end

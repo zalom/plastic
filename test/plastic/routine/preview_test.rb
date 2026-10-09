@@ -1,14 +1,13 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-%w[intent_archive intent_unlink node_remove edge_remove roadmap_drop roadmap_edge_remove graph_show roadmap_show].each do |name|
+%w[intent_archive intent_unlink node_remove edge_remove roadmap_drop roadmap_edge_remove].each do |name|
   require_relative "../../../scripts/lib/plastic/commands/#{name}"
 end
 
 class RoutinePreviewTest < Plastic::TestCase
   COMMANDS = [Plastic::Commands::IntentArchive, Plastic::Commands::IntentUnlink, Plastic::Commands::NodeRemove,
-    Plastic::Commands::EdgeRemove, Plastic::Commands::RoadmapDrop, Plastic::Commands::RoadmapEdgeRemove,
-    Plastic::Commands::GraphShow, Plastic::Commands::RoadmapShow].freeze
+    Plastic::Commands::EdgeRemove, Plastic::Commands::RoadmapDrop, Plastic::Commands::RoadmapEdgeRemove].freeze
 
   # A chain that holds an agent workflow, with the preview declared.
   class PreviewedDraft < Fixtures::Routine
@@ -35,7 +34,7 @@ class RoutinePreviewTest < Plastic::TestCase
   end
 
   def test_a_preview_leaves_every_byte_of_the_home_unchanged
-    twin = twin_run("graph", "show", "1") { |home| seed_graph(home) }
+    twin = twin_run("node", "remove", "1", "n1", "--reason", "r") { |home| seed_graph(home) }
 
     assert_equal 0, twin.previewed.code, twin.previewed.err
     assert_equal [], twin.changed_paths
@@ -49,25 +48,25 @@ class RoutinePreviewTest < Plastic::TestCase
   end
 
   def test_a_preview_names_original_paths_never_the_copy
-    twin = twin_run("graph", "show", "1") { |home| seed_graph(home) }
+    twin = twin_run("node", "remove", "1", "n1", "--reason", "r") { |home| seed_graph(home) }
 
     refute_includes twin.previewed.out, "plastic-preview"
     assert_includes twin.previewed.out, "preview: would change #{twin.first}/stores/global/store/1--alpha/graph.json"
   end
 
   def test_a_preview_prefixes_every_printed_line_and_ends_on_the_closing_line
-    twin = twin_run("graph", "show", "1") { |home| seed_graph(home) }
+    twin = twin_run("node", "remove", "1", "n1", "--reason", "r") { |home| seed_graph(home) }
     printed = twin.previewed.out.lines(chomp: true).take_while { |line| !line.empty? }
     rows = printed.reject { |line| line.start_with?("preview: ", "would write:", "next:", "because:") }
 
     assert_equal ["preview complete; the original store was not changed"], rows
-    assert_equal "preview: node: n1 open a", printed.first
+    assert_equal "preview: node: n1 removed", printed.first
   end
 
   def test_a_preview_offers_the_same_command_without_dry_run
-    twin = twin_run("graph", "show", "1") { |home| seed_graph(home) }
+    twin = twin_run("node", "remove", "1", "n1", "--reason", "r") { |home| seed_graph(home) }
 
-    assert_includes twin.previewed.out, "next: plastic graph show 1 --project global\n"
+    assert_includes twin.previewed.out, "next: plastic node remove 1 n1 --reason r --project global\n"
     assert_includes twin.previewed.out, "because: the preview wrote only to a disposable copy\n"
   end
 
@@ -78,12 +77,12 @@ class RoutinePreviewTest < Plastic::TestCase
   end
 
   def test_a_json_preview_returns_the_preview_lines_and_the_next_command
-    twin = twin_run("graph", "show", "1", "--json") { |home| seed_graph(home) }
+    twin = twin_run("node", "remove", "1", "n1", "--reason", "r", "--json") { |home| seed_graph(home) }
     document = JSON.parse(twin.previewed.out)
 
-    assert_equal "preview: node: n1 open a", document.dig("result", "output").first
+    assert_equal "preview: node: n1 removed", document.dig("result", "output").first
     assert_equal "preview complete; the original store was not changed", document.dig("result", "output").last
-    assert_equal "plastic graph show 1 --json --project global", document["next"]
+    assert_equal "plastic node remove 1 n1 --reason r --json --project global", document["next"]
   end
 
   def test_a_preview_after_a_refused_apply_matches_the_resumed_apply

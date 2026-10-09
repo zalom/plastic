@@ -25,12 +25,14 @@ class RoadmapShowTest < Plastic::TestCase
     cli("roadmap", "batch", "r1", "1", "--title", "T", "--goal", "G", "--done", "d")
     path = store_path("roadmaps/r1.md")
     File.write(path, "hand edit\n")
-    before = store_graphs.databases.fetch(:work).row("SELECT count(*) AS n FROM routine_runs").fetch("n")
+    before = run_count
 
     result = cli("roadmap", "show", "r1")
 
     assert_equal "hand edit\n", File.read(path)
-    assert_equal before, store_graphs.databases.fetch(:work).row("SELECT count(*) AS n FROM routine_runs").fetch("n")
+    assert_equal before, run_count
     assert_equal "", result.out.lines.grep(/^wrote:/).join
   end
+
+  def run_count = store_graphs.databases.fetch(:local).row("SELECT count(*) AS n FROM routine_runs").fetch("n")
 end

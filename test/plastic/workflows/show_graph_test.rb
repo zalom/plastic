@@ -17,15 +17,6 @@ class WorkflowShowGraphTest < Plastic::TestCase
     assert_equal [:done, ["node: n1 open Build", "node: n2 open Ship", "edge: n1 to n2"]], [outcome, context.printed]
   end
 
-  def test_graph_json_is_rewritten_from_the_rows
-    intent = open_intent
-    write("#{intent.dir}/graph.json", "hand edit")
-
-    show
-
-    refute_equal "hand edit", File.read(store_path("#{intent.dir}/graph.json"))
-  end
-
   def test_an_unknown_intent_fails_the_call
     assert_equal "code_show_graph, gate: no intent 9 in this store", show("9").first.message
   end

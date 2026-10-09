@@ -4,11 +4,11 @@ require_relative "../routine"
 
 module Plastic
   module Commands
-    # Prints one intent's nodes and edges, then reprints graph.json from rows.
+    # Prints one intent's nodes and edges from the rows. It reads and writes nothing.
     class GraphShow < Routine
       intent_subject
-      writes :work
-      previews
+      reads :work
+
       workflow :code_show_graph, next: :noop
     end
   end
