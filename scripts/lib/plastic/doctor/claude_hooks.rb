@@ -9,6 +9,7 @@ module Plastic
     class ClaudeHooks
       REPAIR = "plastic install --claude --reinstall"
       PLASTIC_FILE = /\Aplastic(?:-|\z)/
+      RETIRED = "hook record --end"
 
       def self.event_check(event, files)
         label = "hook #{event}:"
@@ -33,7 +34,7 @@ module Plastic
         return [Check.finding("hooks:", "#{path} is missing", REPAIR)] unless File.file?(path)
 
         hooks = read
-        Hooks::Entries::EVENTS.keys.map { |event| ClaudeHooks.event_check(event, files(hooks[event])) }
+        Hooks::Entries::EVENTS.keys.map { |event| event_check(event, hooks[event]) }
       rescue JSON::ParserError
         [Check.finding("hooks:", "#{path} is not valid JSON", "fix the JSON in #{path}, then run #{REPAIR}")]
       end
@@ -41,6 +42,12 @@ module Plastic
       private
 
       attr_reader :path, :home
+
+      def event_check(event, groups)
+        return Check.finding("hook #{event}:", "names the retired #{RETIRED}", REPAIR) if commands(groups).any? { |command| command.include?(RETIRED) }
+
+        ClaudeHooks.event_check(event, files(groups))
+      end
 
       def read = Hash(Hash.try_convert(JSON.parse(File.read(path)))&.fetch("hooks", nil))
 

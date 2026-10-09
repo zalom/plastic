@@ -9,16 +9,14 @@ require_relative "stop_gate"
 module Plastic
   module Hooks
     # Stop: stamps the session's last turn, renews its live locks, then runs
-    # the stop gate. SessionEnd, with --end, only sets the end time and the
-    # reason: no stamp, no renewal, no gate.
+    # the stop gate.
     class Record < Hook
       option :harness, switch: "--harness NAME", text: "the harness calling this hook", default: "claude-code"
-      option :end, switch: "--end", text: "the session end event: set the reason and stop", default: false
 
       def respond(event)
         return no_session unless session_id
 
-        parsed[:end] ? end_session(event) : stop(event)
+        stop(event)
       end
 
       private
@@ -29,11 +27,6 @@ module Plastic
       end
 
       def graphs = (@graphs ||= Graph.open(home: scope.plastic_home, store: scope.slug, session: session_id))
-
-      def end_session(event)
-        graphs.work.end_session(session_id, reason: event[:reason])
-        nil
-      end
 
       def stop(event)
         work = graphs.work

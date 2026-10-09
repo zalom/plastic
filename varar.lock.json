@@ -125,12 +125,21 @@
         }
       ]
     },
+    "varar/hook-end.md": {
+      "sourceHash": "fnv1a:72bcd54f",
+      "examples": [
+        {
+          "name": "Each row gives the arguments, the end event, the session, the exit code, the message and the ended row:",
+          "line": 8
+        }
+      ]
+    },
     "varar/hook-record.md": {
-      "sourceHash": "fnv1a:37a6d3c0",
+      "sourceHash": "fnv1a:0c8dbf8c",
       "examples": [
         {
           "name": "Each row gives the arguments, the event, the session, the exit code, the message and the row:",
-          "line": 9
+          "line": 8
         }
       ]
     },
@@ -166,7 +175,7 @@
       ]
     },
     "varar/intent-archive.md": {
-      "sourceHash": "fnv1a:50e28bdf",
+      "sourceHash": "fnv1a:408e5894",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -286,6 +295,15 @@
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the first line, the open lines and the next line:",
+          "line": 5
+        }
+      ]
+    },
+    "varar/intent-unarchive.md": {
+      "sourceHash": "fnv1a:aabacee6",
+      "examples": [
+        {
+          "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
           "line": 5
         }
       ]

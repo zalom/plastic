@@ -9,7 +9,7 @@ module Plastic
     # replaces this installation's own groups and keeps everyone else's,
     # so a user's own hook or status line is never touched.
     class Entries
-      EVENTS = { "SessionStart" => "hook resume", "Stop" => "hook record", "SessionEnd" => "hook record --end" }.freeze
+      EVENTS = { "SessionStart" => "hook resume", "Stop" => "hook record", "SessionEnd" => "hook end" }.freeze
 
       # Former names the launchers this installation wrote before it moved,
       # so their groups are replaced, not kept beside the new ones.

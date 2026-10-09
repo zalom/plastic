@@ -84,7 +84,8 @@ module Plastic
 
       # Hooks: the harness calls these on an event; see docs/contributing/ARCHITECTURE.md.
       "hook resume" => ["Hooks::Resume", "SessionStart: print the state the rows carry"],
-      "hook record" => ["Hooks::Record", "Stop: stamp the turn, renew locks, run the stop gate"]
+      "hook record" => ["Hooks::Record", "Stop: stamp the turn, renew locks, run the stop gate"],
+      "hook end" => ["Hooks::End", "SessionEnd: set the session's end time and reason"]
     }.freeze
   end
 end

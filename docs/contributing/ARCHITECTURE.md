@@ -239,13 +239,13 @@ hook is not a routine. It prints no `next:` line and keeps no routine run.
 
 ![What the harness fires and what Plastic does. Session start, once when the session opens and again after a compaction, runs plastic hook continue, which prints the open intents of this store, the locks this session holds and today's hand-off lines. End of the turn runs plastic hook record, which renews the live locks of this session. Prompt sent, before a tool runs, after a tool ran, before a compaction and session end run nothing. A third column names the hooks the proposal had and why each one goes.](../resources/hook-events.svg)
 
-Two hooks ship today; `continue` in the figure above is `resume`, renamed because the harness
+Three hooks ship today; `continue` in the figure above is `resume`, renamed because the harness
 itself uses the word `continue`. `plastic hook resume` replies to the session start event in
 all three cases Claude Code's `source` field tells apart, a new session, a clear and a
 compaction, printing the open intents, the previous session's end and what it touched, the
 intent in progress with its last savepoint lines, and its note, from rows alone. `plastic hook
 record` replies to the stop event: it stamps the session's last turn, renews its live locks,
-and runs the stop gate. `plastic hook record --end` replies to the session end event: it sets
+and runs the stop gate. `plastic hook end` replies to the session end event: it sets
 the end time and the reason and does nothing else, because only that event knows why a session
 ended.
 

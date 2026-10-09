@@ -976,7 +976,7 @@ class InstallerCore
   end
 
   # The kernel's own hook groups: hook resume on SessionStart, hook record on
-  # Stop and SessionEnd. Written before the registry's groups, because the
+  # Stop, hook end on SessionEnd. Written before the registry's groups, because the
   # entries treat the old check-update launcher as stale and the registry adds
   # it back.
   def kernel_hook_entries
