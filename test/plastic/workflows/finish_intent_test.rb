@@ -5,7 +5,7 @@ require_relative "../../../scripts/lib/plastic/workflows/finish_intent"
 
 class FinishIntentTest < Plastic::TestCase
   def finish(requirements: [], judged: false)
-    run_workflow(Plastic::Workflows::FinishIntent, intent_id: "1", requirements:, judged:, intent_folder: "store/1--alpha").first
+    run_workflow(Plastic::Workflows::FinishIntent, intent_id: "1", requirements:, judged:, missing: (requirements + (judged ? [] : ["No accepted review counts yet."])).join(" "), intent_folder: "store/1--alpha").first
   end
 
   def test_nothing_missing_is_done
@@ -14,6 +14,12 @@ class FinishIntentTest < Plastic::TestCase
 
   def test_missing_records_are_handed_to_the_agent
     assert_equal "Complete these recorded prerequisites: outcome.md", finish(requirements: ["outcome.md"], judged: true).steps.first
+  end
+
+  def test_the_hand_off_because_names_what_is_missing
+    outcome = finish(requirements: ["Write a substantive outcome.md."], judged: true)
+
+    assert_equal "intent 1 cannot end yet. Write a substantive outcome.md.", outcome.because
   end
 
   def test_no_counting_verdict_names_the_judge_command
