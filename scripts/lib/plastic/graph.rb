@@ -19,6 +19,8 @@ module Plastic
     Graphs = Data.define(:work, :retrieval, :databases) do
       # One phrase per database that this call wrote to, after any rename it made.
       def wrote = databases.values.flat_map(&:phrases)
+
+      def wrote_rows? = databases.values.any?(&:wrote_rows?)
     end
 
     # Opening refuses a store folder that does not exist, and reads no file
@@ -38,7 +40,7 @@ module Plastic
     def self.create(home:, store:, session: nil)
       FileUtils.mkdir_p(File.join(home, "stores", store))
       opened = Graph.open(home:, store:, session:)
-      opened.databases.values_at(:knowledge, :work, :references).each { |database| database.rows("SELECT 1") }
+      opened.databases.values_at(:knowledge, :work, :references, :local).each { |database| database.rows("SELECT 1") }
       opened
     end
   end

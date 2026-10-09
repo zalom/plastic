@@ -56,7 +56,7 @@ module Plastic
       def machine_database
         key = (SCHEMA.databases.keys - STORE).first
         file = SCHEMA.file(key)
-        Check.new("#{file}:", "every table present", "plastic install").judged(DatabaseCheck.new(File.join(home, file), key).problem)
+        Check.new("#{file}:", "every table present", "plastic install --reinstall").judged(DatabaseCheck.new(File.join(home, file), key).problem)
       end
 
       def plastic_md

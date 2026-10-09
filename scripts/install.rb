@@ -78,7 +78,7 @@ class Install < InstallerCore
     mode = fresh ? :install : :update # :update here means "re-sync, skip bootstrap"
 
     distribute(mode)
-    bootstrap if fresh
+    fresh ? bootstrap : ready_global_store
     migrate_advisor_config_file(File.join(plastic_home, "config.yml"))
     apply_config_flags(argv)
 
