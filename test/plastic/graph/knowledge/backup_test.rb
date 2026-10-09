@@ -7,7 +7,7 @@ class KnowledgeBackupTest < Plastic::TestCase
 
   NAME = "alpha/20260101100000"
 
-  def row = Plastic::Graph.open(home: @flag_home, store: "alpha").retrieval.backups.find { |backup| backup.name == NAME }
+  def row = Plastic::Graph.create(home: @flag_home, store: "alpha").retrieval.backups.find { |backup| backup.name == NAME }
 
   def setup
     super

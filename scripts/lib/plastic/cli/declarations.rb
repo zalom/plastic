@@ -49,6 +49,11 @@ module Plastic
 
       def writes(*graphs) = graphs_for(:@writes, graphs)
 
+      # Marks a tool that opens no graph, so it runs in a home with no store.
+      def graphless = (@graphless = true)
+
+      def graphless? = @graphless == true
+
       def arguments = (@arguments ||= [])
 
       def options = (@options ||= [])

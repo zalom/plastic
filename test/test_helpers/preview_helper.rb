@@ -37,9 +37,11 @@ module Plastic
 
       def call_in(home, *argv) = plastic(*argv, env: { "PLASTIC_HOME" => home }, table: Plastic::CLI::TABLE)
 
-      def with_home
+      def with_home(global: true)
         Dir.mktmpdir("plastic-preview-home") do |root|
-          yield File.join(root, ".plastic")
+          home = File.join(root, ".plastic")
+          Plastic::Graph.create(home:, store: "global") if global
+          yield home
         ensure
           Plastic::Graph::Database::ConnectionPool.release(root)
         end
@@ -48,16 +50,20 @@ module Plastic
       def home_graphs(home) = Plastic::Graph.open(home:, store: "global")
 
       def twin_run(*argv)
-        root = Dir.mktmpdir("plastic-twins")
-        (@twin_roots ||= []) << root
-        first = File.join(root, "first", ".plastic")
-        second = File.join(root, "second", ".plastic")
+        first, second = twin_homes
+        Plastic::Graph.create(home: first, store: "global")
         yield first
         FileUtils.mkdir_p(File.dirname(second))
         FileUtils.cp_r(first, File.dirname(second))
         before = snapshot(first)
         previewed = call_in(first, *argv, "--dry-run")
         Twins.new(previewed:, applied: call_in(second, *argv), before:, after: snapshot(first), first:, second:)
+      end
+
+      def twin_homes
+        root = Dir.mktmpdir("plastic-twins")
+        (@twin_roots ||= []) << root
+        [File.join(root, "first", ".plastic"), File.join(root, "second", ".plastic")]
       end
 
       def after_teardown

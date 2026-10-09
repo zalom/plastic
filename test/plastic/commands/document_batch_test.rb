@@ -45,7 +45,7 @@ class DocumentBatchTest < Plastic::TestCase
   private
 
   def write_document(store, intent_id, path, body)
-    graphs = Plastic::Graph.open(home: @plastic_home, store:)
+    graphs = Plastic::Graph.create(home: @plastic_home, store:)
     Plastic::Graph::Retrieval::Evidence::Writer.new(graphs.databases.fetch(:knowledge), origin).write(intent_id, path, body)
     graphs.retrieval.backfill
     graphs.retrieval.reference(intent_id, path).fetch(:uri)

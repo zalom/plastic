@@ -74,7 +74,7 @@ module Plastic
     # A resumed routine run brings back what its workflows found; this call's
     # arguments and options always win, nil included.
     def context(routine_run)
-      Context.new(declared: self.class.declared_facts, facts: routine_run.facts.merge(parsed), graphs:, harness: Context::Harness.new(environment.session, scope))
+      Context.new(declared: self.class.declared_facts, facts: routine_run.facts.merge(parsed), graphs: routine_graphs, harness: Context::Harness.new(environment.session, scope))
     end
 
     def chain = self.class.chain
@@ -87,9 +87,13 @@ module Plastic
     #   wrote: 1 intent and 1 ledger line in work_graph.db
     def report(value, ctx)
       ctx.print_to(output)
-      output.row("wrote:", graphs.wrote)
+      output.row("wrote:", graphs.wrote) if touches_graphs?
       @exit_code = value.report(output)
     end
+
+    def touches_graphs? = !self.class.graphless?
+
+    def routine_graphs = touches_graphs? ? graphs : {}
 
     # The open routine run for this tool and subject, or a new one.
     def open_routine_run

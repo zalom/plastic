@@ -18,6 +18,7 @@ require "rbconfig"
 class CliReleaseContractTest < Minitest::Test
   def setup
     @dir = Dir.mktmpdir("plastic-release-contract")
+    FileUtils.mkdir_p(File.join(@dir, ".plastic", "stores", "global"))
     @bin = ENV.fetch("PLASTIC_ACCEPTANCE_BIN") { File.expand_path("../../bin/plastic", __dir__) }
     @result, @error, @status = command("intent", "new", "A sample delivery")
   end

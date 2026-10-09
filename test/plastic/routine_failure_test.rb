@@ -58,8 +58,9 @@ class RoutineFailureTest < Plastic::TestCase
   end
 
   def test_a_database_error_fails_the_call
-    @plastic_home = File.join(@home, "plain-file")
-    File.write(@plastic_home, "not a directory")
+    @plastic_home = File.join(Dir.mktmpdir, ".plastic")
+    FileUtils.mkdir_p(File.join(@plastic_home, "stores", "global"))
+    File.write(File.join(@plastic_home, "local.db"), "not a database")
     call = plastic("kernel", "gate", "pass")
 
     assert_equal 1, call.code

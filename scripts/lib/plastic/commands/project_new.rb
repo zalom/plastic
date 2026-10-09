@@ -43,8 +43,7 @@ module Plastic
       end
 
       def make_ready(slug)
-        graphs = Graph.open(home: scope.plastic_home, store: slug, session: environment.session)
-        graphs.databases.values_at(:knowledge, :work, :references).each { |database| database.rows("SELECT 1") }
+        Graph.create(home: scope.plastic_home, store: slug, session: environment.session)
       end
 
       def announce(slug, path)

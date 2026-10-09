@@ -10,7 +10,7 @@ class StatusTest < Plastic::TestCase
 
   def test_a_second_store_is_not_missed
     open_keyed_intent
-    Plastic::Graph.open(home: @plastic_home, store: "other").work.write_intent(title: "Beta")
+    Plastic::Graph.create(home: @plastic_home, store: "other").work.write_intent(title: "Beta")
 
     result = call
 

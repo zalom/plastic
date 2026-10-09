@@ -9,7 +9,7 @@ module IntentContextTestSupport
   private
 
   def write_document(store, body)
-    graphs = Plastic::Graph.open(home: @plastic_home, store:)
+    graphs = Plastic::Graph.create(home: @plastic_home, store:)
     Plastic::Graph::Retrieval::Evidence::Writer.new(graphs.databases.fetch(:knowledge), origin).write("1", "evidence.md", body)
     graphs.retrieval.backfill
     graphs.retrieval.archived?("1")
@@ -22,7 +22,7 @@ module IntentContextTestSupport
   end
 
   def archive_source_intent
-    source = Plastic::Graph.open(home: @plastic_home, store: "other")
+    source = Plastic::Graph.create(home: @plastic_home, store: "other")
     source.databases.fetch(:work).transaction do |batch|
       batch.put(:archives, { intent_id: "1", at: Plastic::TestCase::STAMP, restored_at: nil, session_id: "context-test" })
     end
@@ -36,18 +36,18 @@ module IntentContextTestSupport
   end
 
   def remove_selected_revision
-    Plastic::Graph.open(home: @plastic_home, store: "other").databases.fetch(:knowledge).transaction do |batch|
+    Plastic::Graph.create(home: @plastic_home, store: "other").databases.fetch(:knowledge).transaction do |batch|
       batch.add("DELETE FROM document_revisions WHERE intent_id = '1' AND path = 'evidence.md' AND origin_id = :origin", origin: origin)
     end
   end
 
   def remove_current_head
-    graphs = Plastic::Graph.open(home: @plastic_home, store: "other")
+    graphs = Plastic::Graph.create(home: @plastic_home, store: "other")
     Plastic::Graph::Retrieval::Evidence::Writer.new(graphs.databases.fetch(:knowledge), origin).remove("1", "evidence.md")
   end
 
   def mark_retrieval_incomplete
-    graphs = Plastic::Graph.open(home: @plastic_home, store: "other")
+    graphs = Plastic::Graph.create(home: @plastic_home, store: "other")
     graphs.databases.fetch(:knowledge).transaction do |batch|
       batch.add("UPDATE retrieval_backfills SET version = 0 WHERE name = 'retrieval' AND origin_id = :origin", origin: origin)
     end
@@ -103,7 +103,7 @@ module IntentContextAssertionSupport
     refute fresh_evidence.fetch("archived")
     assert_equal "stale", stale_evidence.fetch("state")
     assert stale_evidence.fetch("archived")
-    document = Plastic::Graph.open(home: @plastic_home, store: "other").retrieval.fetch_reference(reference)
+    document = Plastic::Graph.create(home: @plastic_home, store: "other").retrieval.fetch_reference(reference)
 
     assert_equal "selected evidence", document.fetch(:body)
   end

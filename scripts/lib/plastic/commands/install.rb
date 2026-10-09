@@ -8,6 +8,8 @@ module Plastic
     # Copies the core files of the running package into the home and
     # registers Plastic with the chosen agents.
     class Install < Routine
+      graphless
+
       extend CLI::AgentOptions
 
       option :reinstall, switch: "--reinstall", default: false, text: "sync the files again for agents already registered"

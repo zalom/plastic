@@ -3,9 +3,9 @@
 require_relative "../../../../test_helper"
 
 class WorkSessionWriterTest < Plastic::TestCase
-  def work = Plastic::Graph.open(home: @plastic_home, store: "plastic").work
+  def work = Plastic::Graph.create(home: @plastic_home, store: "plastic").work
 
-  def reader = Plastic::Graph.open(home: @plastic_home, store: "plastic").retrieval
+  def reader = Plastic::Graph.create(home: @plastic_home, store: "plastic").retrieval
 
   def test_open_session_sets_started_at_once_and_keeps_it_on_a_second_open
     work.open_session("s-1", harness: "claude-code", directory: "/a")
@@ -50,7 +50,7 @@ class WorkSessionWriterTest < Plastic::TestCase
 
   def test_renew_locks_counts_every_lock_the_session_names_in_any_store
     work.take_lock("1", session_id: "s-1", mode: "auto")
-    Plastic::Graph.open(home: @plastic_home, store: "other").work.take_lock("2", session_id: "s-1", mode: "auto")
+    Plastic::Graph.create(home: @plastic_home, store: "other").work.take_lock("2", session_id: "s-1", mode: "auto")
     work.take_lock("3", session_id: "s-2", mode: "auto")
 
     assert_equal 2, work.renew_locks("s-1")

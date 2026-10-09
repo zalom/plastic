@@ -18,7 +18,7 @@ class BackupRestorePromptTest < Plastic::TestCase
   def edit_file(home) = File.write(intent_file(home), "\nWritten after the backup.\n", mode: "a")
 
   def edited_rows?(home)
-    Plastic::Graph.open(home:, store: "alpha").retrieval.documents("1").any? { |doc| doc.body.include?("Written after the backup.") }
+    Plastic::Graph.create(home:, store: "alpha").retrieval.documents("1").any? { |doc| doc.body.include?("Written after the backup.") }
   end
 
   def edited_file?(home) = File.read(intent_file(home)).include?("Written after the backup.")

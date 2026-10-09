@@ -2,6 +2,7 @@
 
 require "json"
 require_relative "cli/command"
+require_relative "graph/missing_store"
 
 module Plastic
   # A tool the harness calls on an event. Plastic has two: the session
@@ -18,6 +19,8 @@ module Plastic
   class Hook < CLI::Command
     def self.call(argv, environment: CLI::Command::Environment.current, **rest)
       new(argv, environment:, **rest).answer
+    rescue Graph::MissingStore
+      CLI::Command::OK
     rescue => error
       environment.err.puts "plastic hook: #{error.class}: #{error.message}"
       CLI::Command::OK

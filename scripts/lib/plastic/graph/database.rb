@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative "missing_store"
 require_relative "schema"
 require_relative "sql"
 require_relative "database/batch"
@@ -21,6 +22,15 @@ module Plastic
 
       # The local database, for what belongs to one machine.
       def self.open_local(home) = { local: Local.new(home) }
+
+      # The store folder under the home, which must exist.
+      def self.store_root(home, store)
+        root = File.join(home, "stores", store)
+        raise Error, "#{home}: the plastic home is not a folder" if File.exist?(home) && !File.directory?(home)
+        raise MissingStore, store unless File.directory?(root)
+
+        root
+      end
 
       # The three databases of one store folder. `origin` stamps their rows and their change log.
       def self.open_store(root, origin)

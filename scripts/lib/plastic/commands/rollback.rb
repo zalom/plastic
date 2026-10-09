@@ -7,6 +7,8 @@ module Plastic
     # Switches the active release back to the previous one, or to a named
     # installed release. A dry run names the switch and changes nothing.
     class Rollback < Routine
+      graphless
+
       option :target, switch: "--version VERSION", text: "an installed release to switch to"
       option :dry_run, switch: "--dry-run", default: false, text: "name the switch and change nothing"
 

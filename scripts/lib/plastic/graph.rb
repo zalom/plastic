@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
+require "fileutils"
 require_relative "graph/database"
+require_relative "graph/missing_store"
 require_relative "graph/origin"
 require_relative "graph/retrieval_graph"
 require_relative "graph/knowledge/store_folder"
@@ -19,15 +21,25 @@ module Plastic
       def wrote = databases.values.flat_map(&:phrases)
     end
 
-    # Opening reads no file and makes none: the origin id and the databases
-    # appear on the first read or write. `session` names the harness session
-    # that made the call, stamped on the rows it writes.
+    # Opening refuses a store folder that does not exist, and reads no file
+    # and makes none: the origin id and the databases appear on the first
+    # read or write. `session` names the harness session that made the call,
+    # stamped on the rows it writes.
     def self.open(home:, store:, session: nil)
+      root = Database.store_root(home, store)
       origin = Origin.new(home)
-      root = File.join(home, "stores", store)
       databases = Database.open_local(home).merge(Database.open_store(root, origin))
       retrieval = RetrievalGraph.new(databases, store:, origin:)
       Graphs.new(work: WorkGraph.new(databases, folder: Knowledge::StoreFolder.new(root), retrieval:, session:), retrieval:, databases:)
+    end
+
+    # Makes the store folder and its databases, then opens it. The one way
+    # a store comes to exist.
+    def self.create(home:, store:, session: nil)
+      FileUtils.mkdir_p(File.join(home, "stores", store))
+      opened = Graph.open(home:, store:, session:)
+      opened.databases.values_at(:knowledge, :work, :references).each { |database| database.rows("SELECT 1") }
+      opened
     end
   end
 end

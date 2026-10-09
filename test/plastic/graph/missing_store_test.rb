@@ -2,42 +2,42 @@
 
 require_relative "../../test_helper"
 require "json"
+require_relative "../../../scripts/lib/plastic/cli/projects_file"
+require_relative "../../../scripts/lib/plastic/graph/retrieval/source"
 
 class MissingStoreTest < Plastic::TestCase
   include Plastic::TestCase::PreviewHelper
 
   def test_reading_a_registered_project_with_no_store_fails_and_makes_nothing
     with_home do |home|
-      Plastic::Graph.create(home:, store: "global")
       register(home, "fresh")
 
       call = call_in(home, "intent", "show", "1", "--project", "fresh")
 
       assert_equal 1, call.code
       assert_includes call.out, "next: plastic project new fresh PATH"
-      refute File.exist?(File.join(home, "stores", "fresh"))
+      refute_path_exists File.join(home, "stores", "fresh")
     end
   end
 
   def test_a_search_in_a_project_with_no_store_makes_nothing
     with_home do |home|
-      Plastic::Graph.create(home:, store: "global")
       register(home, "fresh")
 
       call = call_in(home, "search", "anything", "--project", "fresh")
 
       assert_equal 1, call.code
-      refute File.exist?(File.join(home, "stores", "fresh"))
+      refute_path_exists File.join(home, "stores", "fresh")
     end
   end
 
   def test_reading_with_no_global_store_names_the_install_and_makes_nothing
-    with_home do |home|
+    with_home(global: false) do |home|
       call = call_in(home, "intent", "show", "1")
 
       assert_equal 1, call.code
       assert_includes call.out, "next: plastic install"
-      refute File.exist?(File.join(home, "stores"))
+      refute_path_exists File.join(home, "stores")
     end
   end
 
@@ -53,7 +53,7 @@ class MissingStoreTest < Plastic::TestCase
   end
 
   def test_the_hooks_exit_quietly_and_make_nothing_when_the_store_is_missing
-    with_home do |home|
+    with_home(global: false) do |home|
       event = JSON.generate(session_id: "s-1", cwd: home)
 
       %w[record resume].each do |name|
@@ -61,12 +61,12 @@ class MissingStoreTest < Plastic::TestCase
 
         assert_equal [0, "", ""], [call.code, call.out, call.err], name
       end
-      refute File.exist?(File.join(home, "stores"))
+      refute_path_exists File.join(home, "stores")
     end
   end
 
   def test_status_lists_the_stores_it_can_read_when_one_has_no_folder
-    with_home do |home|
+    with_home(global: false) do |home|
       Plastic::Graph.create(home:, store: "other")
 
       call = call_in(home, "status")
@@ -77,7 +77,7 @@ class MissingStoreTest < Plastic::TestCase
   end
 
   def test_create_makes_a_store_that_opens_and_open_refuses_one_that_is_missing
-    with_home do |home|
+    with_home(global: false) do |home|
       assert_raises(Plastic::Graph::MissingStore) { Plastic::Graph.open(home:, store: "fresh") }
       assert_raises(Plastic::Graph::MissingStore) { Plastic::Graph.open_retrieval(home:, store: "fresh") }
 

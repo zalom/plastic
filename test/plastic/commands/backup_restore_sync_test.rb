@@ -8,7 +8,7 @@ class BackupRestoreSyncTest < Plastic::TestCase
 
   def sync(home, direction) = plastic("sync", direction, "--project", "alpha", env: env_for(home), table: Plastic::CLI::TABLE)
 
-  def bodies(home) = Plastic::Graph.open(home:, store: "alpha").retrieval.documents("1").map(&:body)
+  def bodies(home) = Plastic::Graph.create(home:, store: "alpha").retrieval.documents("1").map(&:body)
 
   def test_sync_up_after_restore_rereads_files_newer_than_the_backup
     home = fresh_home

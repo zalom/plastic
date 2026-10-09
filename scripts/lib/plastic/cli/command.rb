@@ -7,6 +7,7 @@ require_relative "command/failure"
 require_relative "command/environment"
 require_relative "command/help"
 require_relative "declarations"
+require_relative "../graph/missing_store"
 require_relative "text_output"
 require_relative "json_output"
 require_relative "scope"
@@ -61,6 +62,8 @@ module Plastic
         flush.exit_code
       rescue Scope::BrokenProjects => error
         broken(error)
+      rescue Graph::MissingStore => error
+        stop(Failure.new(error.message, next_command: error.next_command))
       end
 
       def call

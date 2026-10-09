@@ -3,7 +3,7 @@
 require_relative "../test_helper"
 
 class GraphTest < Plastic::TestCase
-  def graphs(store = "plastic") = Plastic::Graph.open(home: @plastic_home, store:)
+  def graphs(store = "plastic") = Plastic::Graph.create(home: @plastic_home, store:)
 
   def closed_run(subject = "7")
     Plastic::RoutineRun.fresh("intent end", subject).advance(:code_a, :code_b)
@@ -60,14 +60,14 @@ class GraphTest < Plastic::TestCase
     machine = File.join(@home, "machine")
     Plastic::Graph::Database.new(File.join(machine, "home.db"), Plastic::Graph::Schema.fetch(:local)).rows("SELECT 1")
     Plastic::Graph::Database::ConnectionPool.release(machine)
-    opened = Plastic::Graph.open(home: machine, store: "plastic")
+    opened = Plastic::Graph.create(home: machine, store: "plastic")
     opened.databases[:local].transaction { |batch| batch.insert(:routine_runs, { store: "plastic", tool: "x", subject: "" }) }
 
     assert_equal ["home.db renamed to local.db", "1 routine run in local.db"], opened.wrote
   end
 
   def test_a_session_given_at_open_stamps_the_routine_run_row
-    opened = Plastic::Graph.open(home: @plastic_home, store: "plastic", session: "s-1")
+    opened = Plastic::Graph.create(home: @plastic_home, store: "plastic", session: "s-1")
     opened.work.save_routine_run(closed_run)
 
     row = opened.databases[:local].row("SELECT session_id FROM routine_runs WHERE tool = 'intent end' AND subject = '7'")

@@ -7,6 +7,8 @@ module Plastic
     # The version of the package this command came from, its channel and the
     # file it was read from.
     class Version < Routine
+      graphless
+
       workflow :code_show_version, next: :code_check_installation
       workflow :code_check_installation, next: :noop
     end

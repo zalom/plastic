@@ -8,6 +8,8 @@ module Plastic
     # Removes the files Plastic registered with the chosen agents. The home
     # and its stores stay.
     class Uninstall < Routine
+      graphless
+
       extend CLI::AgentOptions
 
       workflow :code_preview_uninstall do

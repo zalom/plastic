@@ -7,7 +7,7 @@ class ReadKeepsNoRunTest < Plastic::TestCase
   include BackupHomes
 
   def runs(home = @plastic_home, store = "global")
-    Plastic::Graph.open(home:, store:).databases.fetch(:local).row("SELECT COUNT(*) AS n FROM routine_runs").fetch("n")
+    Plastic::Graph.create(home:, store:).databases.fetch(:local).row("SELECT COUNT(*) AS n FROM routine_runs").fetch("n")
   end
 
   def added_by(&call)

@@ -47,6 +47,7 @@ class KernelCommand
     @env = { "HOME" => home, "PLASTIC_HOME" => plastic_home, "PLASTIC_TMP" => File.join(home, "tmp"),
              "CLAUDE_CODE_SESSION_ID" => nil, "PLASTIC_SESSION" => nil, "CODEX_SESSION_ID" => nil, "CODEX_THREAD_ID" => nil,
              "RUBYOPT" => nil, "BUNDLER_SETUP" => nil }
+    FileUtils.mkdir_p(store) unless File.exist?(plastic_home)
   end
 
   def plastic_home = File.join(home, ".plastic")
@@ -87,7 +88,7 @@ class KernelCommand
   end
 
   def copy_legacy_store
-    FileUtils.mkdir_p(File.dirname(store))
+    FileUtils.rm_rf(store)
     FileUtils.cp_r(LEGACY_STORE, store)
   end
 

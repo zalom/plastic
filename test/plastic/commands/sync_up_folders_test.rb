@@ -16,7 +16,7 @@ class SyncUpFoldersTest < Plastic::TestCase
 
   # An intent made in the store "src", its files copied into the global store.
   def copy_from_src(title)
-    source = Plastic::Graph.open(home: @plastic_home, store: "src")
+    source = Plastic::Graph.create(home: @plastic_home, store: "src")
     intent = source.work.write_intent(title:)
     source.work.print_intent(intent.intent_id)
     root = File.join(@plastic_home, "stores", "src")
