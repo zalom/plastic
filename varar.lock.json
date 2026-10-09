@@ -236,6 +236,15 @@
         }
       ]
     },
+    "varar/intent-note.md": {
+      "sourceHash": "fnv1a:499bc78f",
+      "examples": [
+        {
+          "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
+          "line": 5
+        }
+      ]
+    },
     "varar/intent-restore.md": {
       "sourceHash": "fnv1a:dc7830a7",
       "examples": [
@@ -542,10 +551,10 @@
       ]
     },
     "varar/sync-down.md": {
-      "sourceHash": "fnv1a:e388e808",
+      "sourceHash": "fnv1a:07e0c4ff",
       "examples": [
         {
-          "name": "Each row gives the change, the call, the exit code, the result, the file and the row:",
+          "name": "Each row gives the change, the call, the exit code, the result, the files, the file and the row:",
           "line": 10
         }
       ]

@@ -27,6 +27,7 @@ module Plastic
       "session note" => ["Commands::SessionNote", "Write the one prose line of this session"],
       "intent rule" => ["Commands::IntentRule", "Write an owner ruling, with --supersedes to replace an older one"],
       "intent revise" => ["Commands::IntentRevise", "Rewrite an intent's What and Why after grilling, keeping the old text as a revision"],
+      "intent note" => ["Commands::IntentNote", "Add one line under Notes in the outcome of an intent, keeping the earlier text as a revision"],
       "intent approve" => ["Commands::IntentApprove", "Write the owner's go-ahead for an intent; auto refuses an intent without it"],
       "intent judge" => ["Commands::IntentJudge", "Print the steps that start the judge of an intent"],
       "intent verdict" => ["Commands::IntentVerdict", "Record the verdict of the next review round of an intent"],

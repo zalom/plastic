@@ -5,6 +5,7 @@ require_relative "completion/writer"
 require_relative "session/writer"
 require_relative "../knowledge/intent/writer"
 require_relative "../knowledge/intent/reviser"
+require_relative "../knowledge/intent/noter"
 require_relative "node/writer"
 require_relative "edge/writer"
 require_relative "approval/writer"
@@ -39,6 +40,8 @@ module Plastic
         def intents = built(:intents) { Knowledge::Intent::Writer.new(databases, retrieval, folder, session:) }
 
         def revisions = built(:revisions) { Knowledge::Intent::Reviser.new(databases, retrieval, folder) }
+
+        def notes = built(:notes) { Knowledge::Intent::Noter.new(databases, retrieval, folder) }
 
         def nodes = built(:nodes) { Node::Writer.new(databases, retrieval) }
 

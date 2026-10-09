@@ -9,7 +9,7 @@ module Plastic
     # `verify` before any step runs. Each family owns its own section.
     REGISTRY = [
       # Storage: intents and the sync of a store folder with its rows.
-      :code_write_intent, :code_sync_up, :code_sync_down, :code_add_ruling, :code_revise_intent, :code_show_spec, :code_approve_intent, :code_prepare_judge, :code_prepare_verdict, :agent_judge_intent, :code_record_verdict, :code_start_auto, :code_pick_delivery,
+      :code_write_intent, :code_sync_up, :code_sync_down, :code_add_ruling, :code_revise_intent, :code_note_intent, :code_show_spec, :code_approve_intent, :code_prepare_judge, :code_prepare_verdict, :agent_judge_intent, :code_record_verdict, :code_start_auto, :code_pick_delivery,
       :code_show_lock,
       :code_preview_sync, :code_preview_sync_down,
       :code_check_graph, :code_ready_graph, :code_show_graph, :code_show_intent, :code_show_brief, :code_pick_next,
