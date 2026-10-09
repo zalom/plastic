@@ -67,7 +67,16 @@ class IntentNoteTest < Plastic::TestCase
 
     result = call("1", "text", "--kind", "Typo")
 
-    assert_equal [2, OUTCOME], [result.code, body]
+    assert_equal [2, OUTCOME, true], [result.code, body, result.err.include?("KIND takes Review, Commit, Report")]
+  end
+
+  def test_an_outcome_file_edited_by_hand_fails_the_note_and_writes_nothing
+    intent = with_outcome
+    write("#{intent.dir}/#{FILE}", "#{OUTCOME}\nEdited by hand.\n")
+    before = revisions
+    result = call("1", "all checks pass")
+
+    assert_equal [1, before, true], [result.code, revisions, result.err.include?("run plastic sync up first")]
   end
 
   def test_the_outcome_file_is_printed_from_the_rows
