@@ -37,6 +37,8 @@ module Plastic
         @plastic_home ||= @env["PLASTIC_HOME"] || File.join(@home, ".plastic")
       end
 
+      def requested? = !@requested.nil?
+
       def slug
         @slug ||= resolve_slug
       end

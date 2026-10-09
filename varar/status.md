@@ -1,6 +1,6 @@
 # plastic status
 
-`plastic status` lists each store with its open and active intents, and counts each intent's nodes by state. The rows below run the storage kernel's command line in a fresh home each time, as session s-1. A setup lists the calls made first, in order, split by a semicolon; `write PATH TEXT` writes a file in the store instead. TIME stands for a timestamp.
+`plastic status` lists each store with its open and active intents, and counts each intent's nodes by state. With `--project NAME` it lists only that store. The rows below run the storage kernel's command line in a fresh home each time, as session s-1. A setup lists the calls made first, in order, split by a semicolon; `write PATH TEXT` writes a file in the store instead. TIME stands for a timestamp.
 
 Each row gives the setup, the call, the exit code, the result and the next line:
 

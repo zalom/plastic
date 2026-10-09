@@ -13,11 +13,13 @@ module Plastic
       reads :work
 
       def call
-        scope.known_slugs.each { |slug| print_store(slug) }
+        slugs.each { |slug| print_store(slug) }
         output.next_step("plastic next", because: "pick the one to work on")
       end
 
       private
+
+      def slugs = scope.requested? ? [scope.slug] : scope.known_slugs
 
       def print_store(slug)
         show_store(slug)
