@@ -46,6 +46,15 @@ class VersionCommandTest < Plastic::TestCase
     end
   end
 
+  def test_a_home_whose_installation_check_fails_still_exits_0_with_the_version
+    damaged_installation
+    result = call("version")
+
+    assert_equal [0, ""], [result.code, result.err]
+    assert_match(/version:\s+\S+/, result.out)
+    refute_match(/repair:|installer lock:|launcher:/, result.out)
+  end
+
   def test_reports_a_healthy_installation_and_changes_nothing
     healthy_installation
     before = tree_snapshot(@home)
