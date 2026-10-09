@@ -8,6 +8,7 @@ class DocsStaleWordsGuardTest < Minitest::Test
   VARAR = Dir["varar/*.md", base: ROOT] + Dir["test/varar/*.rb", base: ROOT]
   STALE = /doctor --core|next: none|intent end \S+ --(?!project|json)|\bEvery command ends with/
   INTENT_ID = /\bintents? \d+/i
+  DATE = /\b20\d\d-\d\d-\d\d\b/
 
   def stale_words(text, pattern = STALE) = text.scan(pattern)
 
@@ -27,6 +28,14 @@ class DocsStaleWordsGuardTest < Minitest::Test
 
   def test_internals_names_no_intent_by_number
     assert_empty found(["docs/internals.md"], INTENT_ID)
+  end
+
+  def test_internals_names_no_date
+    assert_empty found(["docs/internals.md"], DATE)
+  end
+
+  def test_the_date_detector_catches_a_date_and_leaves_a_version_alone
+    assert_equal ["2026-09-24"], stale_words("removed on 2026-09-24 in version 2.0.3", DATE)
   end
 
   def test_the_detector_catches_each_stale_phrase
