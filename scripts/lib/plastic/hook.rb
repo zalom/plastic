@@ -34,8 +34,7 @@ module Plastic
       environment.out.puts reply if reply
       CLI::Command::OK
     rescue OptionParser::ParseError => error
-      environment.err.puts "plastic: #{error.message}", usage_line
-      CLI::Command::OK
+      refuse_option(error)
     end
 
     # The event JSON the harness writes on stdin, with symbol keys, read
@@ -56,6 +55,11 @@ module Plastic
     end
 
     private
+
+    def refuse_option(error)
+      environment.err.puts "plastic: #{error.message}", usage_line
+      CLI::Command::OK
+    end
 
     def read_event
       text = environment.input.read.to_s
