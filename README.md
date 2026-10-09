@@ -149,12 +149,16 @@ Restart your agent after the install. For the full path, read
 
 ## How it works
 
+An intent moves through the phases below: the go-ahead, the nodes, the judge, the close and the abandon.
+
+![The phases of an intent](docs/images/intent-lifecycle-phases.svg)
+
 ```
   You or your agent              plastic                     ~/.plastic/stores/SLUG/store
   -----------------              -------                     ----------------------------
-  plastic intent new "..."  -->  creates the intent     -->  12--slug/12--slug.md
-  plastic intent rule 12    -->  records a ruling       -->  Insights in 12--slug/12--slug.md
-  plastic next              -->  names the next step    -->  checklist.md, or graph.md and nodes/
+  plastic intent new "..."  -->  creates the intent     -->  12--slug/intent.md
+  plastic intent rule 12    -->  records a ruling       -->  Insights in 12--slug/intent.md
+  plastic next              -->  names the next step    -->  graph.json, printed from the node rows
   plastic intent end 12     -->  closes the intent      -->  outcome.md, INDEX.md
 
         ^                                                              |
