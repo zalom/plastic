@@ -72,6 +72,7 @@ module Plastic
       "graph show" => ["Commands::GraphShow", "Print every node and edge of an intent"],
 
       # Roadmaps: a named plan, held as rows instead of a hand-kept file.
+      "roadmap new" => ["Commands::RoadmapNew", "Create a roadmap; write its batches with roadmap batch"],
       "roadmap batch" => ["Commands::RoadmapBatch", "Write one roadmap batch's goal and done criteria"],
       "roadmap add" => ["Commands::RoadmapAdd", "Add an item to a roadmap batch, with the items it needs"],
       "roadmap show" => ["Commands::RoadmapShow", "Print a roadmap's batches and items"],

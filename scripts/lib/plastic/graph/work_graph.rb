@@ -38,7 +38,7 @@ module Plastic
       def_delegators "@writers.links", :add_link, :remove_link
       def_delegator "@writers.links", :target_problem, :link_target_problem
       def_delegator "@writers.links", :refusal, :link_refusal
-      def_delegators "@writers.roadmaps", :write_batch, :add_item, :start_item, :drop_item, :remove_roadmap_edge, :add_log
+      def_delegators "@writers.roadmaps", :create_roadmap, :write_batch, :add_item, :start_item, :drop_item, :remove_roadmap_edge, :add_log
       def_delegator "@writers.sync", :plan, :sync_plan
       def_delegator "@writers.sync", :apply, :sync_apply
       # The snapshot restores exact bytes; printing live rows would replace them.

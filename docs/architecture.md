@@ -210,7 +210,7 @@ Dropping a missing roadmap item fails before any write and names the missing roa
 
 A roadmap is a plan of several intents, kept as rows in `work_graph.db`. It holds batches.
 Each batch has a goal and done criteria, and each item in a batch can need other items.
-`plastic roadmap batch` and `plastic roadmap add` write the plan. `plastic roadmap open`
+`plastic roadmap new`, `plastic roadmap batch` and `plastic roadmap add` write the plan. `plastic roadmap open`
 opens a ready item's intent and copies the item's goal and done criteria into that intent's
 spec. An item's state is never stored. It is derived on each read from its intent's status
 and from the items it needs: done, dropped, in flight, blocked or ready. `plastic roadmap

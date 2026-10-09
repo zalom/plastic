@@ -16,7 +16,7 @@ module Plastic
       # Knowledge graph: typed links between intents and rulings.
       :code_add_link, :code_remove_link,
       # Roadmaps: batches and items held as rows, with a derived state per item.
-      :code_write_roadmap_batch, :code_add_roadmap_item, :code_show_roadmap, :code_next_roadmap,
+      :code_create_roadmap, :code_write_roadmap_batch, :code_add_roadmap_item, :code_show_roadmap, :code_next_roadmap,
       :code_drop_roadmap_item, :code_start_roadmap_item, :code_check_roadmap, :code_log_roadmap,
       :code_remove_roadmap_edge,
 

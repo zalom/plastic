@@ -533,7 +533,7 @@ Stage 5 adds the knowledge commands in four groups. See
 [architecture](architecture.md#roadmaps-links-archive-and-backup) for what each group does;
 this section covers how the code holds together.
 
-- **Roadmaps.** `roadmap batch`, `roadmap add`, `roadmap show`, `roadmap next`, `roadmap
+- **Roadmaps.** `roadmap new`, `roadmap batch`, `roadmap add`, `roadmap show`, `roadmap next`, `roadmap
   drop`, `roadmap open`, `roadmap check`, `roadmap log` and `roadmap edge remove` write and
   read five tables in `work_graph.db`: `roadmaps`, `batches`, `roadmap_items`,
   `roadmap_edges` and `roadmap_log`. `Graph::Knowledge::Roadmap::Writer` owns the writes, and
@@ -544,8 +544,9 @@ this section covers how the code holds together.
   `Graph::Knowledge::Roadmap::Writer` rejects a self edge before writing it. `Graph::Knowledge::Roadmap::Check` finds a loop, an edge to an item that is
   not on the roadmap, and an item whose intent id names no intent. A `roadmap batch` call
   keeps every field it leaves out: `Graph::Knowledge::Roadmap::Fields#over` takes the stored title, goal and done
-  lines in their place, and a new batch with no title is named "Batch N". The call writes the
-  roadmap row only when the roadmap has none, so its title and goal stay. `intent brief` prints
+  lines in their place, and a new batch with no title is named "Batch N". A `roadmap batch` call on a
+  roadmap that `roadmap new` has not made exits 1 and offers `roadmap new`; `roadmap new` writes the
+  roadmap row. `intent brief` prints
   each line of the spec's Goal section as a `goal:` line, and the intent title only when the
   spec has no goal.
 - **Links.** `intent link` and `intent unlink` write and remove rows in the `links` table of

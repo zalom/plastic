@@ -32,6 +32,14 @@ module Plastic
           # Writes the batch's goal and done criteria, and the roadmap row the
           # first time it is named. A field left out keeps the batch's word for
           # it, and a new batch with no title is called "Batch N".
+          def create_roadmap(slug, title:, goal:)
+            now = Plastic.now
+            @databases.fetch(:work).transaction do |batch|
+              batch.put(:roadmaps, roadmap_row(slug, now).merge(title: title || slug, goal:), statement: :insert)
+            end
+            @retrieval.roadmap(slug)
+          end
+
           def write_batch(slug, position, fields:)
             now = Plastic.now
             kept = fields.over(find_batch(slug, position), "Batch #{position}")
