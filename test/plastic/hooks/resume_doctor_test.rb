@@ -48,14 +48,16 @@ end
 
 class ResumeDoctorMissingStoreTest < Plastic::TestCase
   def test_a_missing_store_stays_quiet_and_never_runs_the_doctor
-    out = StringIO.new
-    err = StringIO.new
-    asked = []
-    environment = Plastic::CLI::Command::Environment.new(env: { "PLASTIC_HOME" => @plastic_home, "PLASTIC_SESSION" => "s-1" },
-      input: StringIO.new("{}"), out:, err:, home: @home, directory: @home)
+    with_home(global: false) do |home|
+      out = StringIO.new
+      err = StringIO.new
+      asked = []
+      environment = Plastic::CLI::Command::Environment.new(env: { "PLASTIC_HOME" => home, "PLASTIC_SESSION" => "s-1" },
+        input: StringIO.new("{}"), out:, err:, home: File.dirname(home), directory: File.dirname(home))
 
-    code = Plastic::Hooks::Resume.call([], environment:, health: ->(scope) { asked << scope && [] })
+      code = Plastic::Hooks::Resume.call([], environment:, health: ->(scope) { asked << scope && [] })
 
-    assert_equal [0, "", "", []], [code, out.string, err.string, asked]
+      assert_equal [0, "", "", []], [code, out.string, err.string, asked]
+    end
   end
 end

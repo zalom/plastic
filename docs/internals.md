@@ -414,8 +414,8 @@ path, cap the encoded URL at 7500 bytes with a page-one-plus-marker overflow), a
 from standard input. The report is saved as a draft, and the user opens the printed URL
 to send it.
 
-`hook-session-start` calls `--core` in-process (reusing the `Doctor` class, no second
-process spawn) to drive the boot banner on every session start (intent 36a).
+`plastic hook resume` runs the whole doctor in-process (reusing the `Doctor` checks, no second
+process spawn) and names `plastic doctor` in one line only when a check fails.
 
 The hook surfaces that banner on two channels from a single `BootBanner` renderer (intent 54):
 `hookSpecificOutput.additionalContext` (added to the model's context) and the top-level

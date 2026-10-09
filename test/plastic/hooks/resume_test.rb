@@ -11,7 +11,7 @@ class ResumeTest < Plastic::TestCase
   end
 
   def test_a_new_session_prints_the_recap_and_nothing_on_standard_error
-    assert_call call, code: 0, out: "Plastic: a new session in store global. Run plastic next before anything else.\n"
+    assert_call call, code: 0, out: /\APlastic: a new session in store global\. Run plastic next before anything else\.\n/
   end
 
   def test_a_cleared_session_prints_the_recap_of_the_clear
