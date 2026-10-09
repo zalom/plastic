@@ -11,12 +11,10 @@ class RoutineTest < Plastic::TestCase
     assert_equal "", call.err
   end
 
-  def test_a_tool_that_writes_nothing_still_keeps_a_routine_run_row
+  def test_a_tool_that_writes_nothing_keeps_no_routine_run_row
     plastic("kernel", "two", "ada")
 
-    run = routine_run("kernel two", "")
-
-    assert_equal "finished", run.status
+    assert_nil routine_run("kernel two", "")
   end
 
   def test_an_agent_workflow_hands_off_with_its_steps
