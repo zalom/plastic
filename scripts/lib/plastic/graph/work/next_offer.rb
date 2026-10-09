@@ -46,12 +46,16 @@ module Plastic
 
         def for_intent(intent)
           id = intent.intent_id
-          gap = self.class.spec_gap(Knowledge::Spec.new(@retrieval, id))
+          gap = gap_of(id)
           return ["plastic intent spec #{id}", "intent #{id} has #{gap}", nil] if gap
-          return self.class.go_ahead_offer(@retrieval, id) if intent.status == "open"
+          return open_offer(id) if intent.status == "open"
 
           DeliveryAction.new(@retrieval, id).call
         end
+
+        def gap_of(id) = self.class.spec_gap(Knowledge::Spec.new(@retrieval, id))
+
+        def open_offer(id) = self.class.go_ahead_offer(@retrieval, id)
       end
     end
   end
