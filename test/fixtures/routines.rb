@@ -11,7 +11,7 @@ require_relative "../../scripts/lib/plastic/hook"
 module Fixtures
   module Workflows
     REGISTRY = %i[code_stamp code_greet code_find_draft agent_write_draft code_hold code_hole
-      code_break code_stuck agent_review code_who code_choose agent_greet].freeze
+      code_break code_stuck agent_review code_who code_choose agent_greet code_offer].freeze
 
     class Stamp < Plastic::CodeWorkflow
       sets :stamp
@@ -50,6 +50,14 @@ module Fixtures
     class Hold < Plastic::CodeWorkflow
       gate "the owner holds %{mode}", stops: :refusal, pass: ->(c) { c.mode != "hold" }
       gate "the check broke on %{mode}", stops: :failure, pass: ->(c) { c.mode != "break" }
+
+      outcome :done, because: "passed %{mode}"
+    end
+
+    class Offer < Plastic::CodeWorkflow
+      gate "the check broke on %{mode}", stops: :failure, offers: "plastic kernel two %{mode}", pass: ->(c) { c.mode != "break" }
+      gate "the owner holds %{mode}", stops: :refusal, offers: "plastic kernel two %{mode}", pass: ->(c) { c.mode != "hold" }
+      gate "nothing follows %{mode}", stops: :failure, pass: ->(c) { c.mode != "plain" }
 
       outcome :done, because: "passed %{mode}"
     end
@@ -125,6 +133,12 @@ module Fixtures
     workflow :code_hold, next: :noop
   end
 
+  class Offering < Routine
+    argument :mode, label: "MODE", text: "pass, hold, break or plain"
+
+    workflow :code_offer, next: :noop
+  end
+
   class Holed < Routine
     workflow :code_hole, next: :noop
   end
@@ -162,6 +176,7 @@ module Fixtures
     "kernel two" => ["Fixtures::TwoStep", "Greet in two steps"],
     "kernel draft" => ["Fixtures::Draft", "Hand a draft to the agent"],
     "kernel gate" => ["Fixtures::Gate", "Stop at a gate"],
+    "kernel offer" => ["Fixtures::Offering", "Stop at a gate that offers a command"],
     "kernel hole" => ["Fixtures::Holed", "Close on a fact with no value"],
     "kernel break" => ["Fixtures::Broken", "Raise inside a step"],
     "kernel stuck" => ["Fixtures::Stalled", "Run a step that never lands"],
