@@ -23,10 +23,10 @@ class RoadmapLinesTest < Minitest::Test
   def test_an_item_names_its_state_and_the_items_it_waits_for
     edges = [Edge.new(from: "a", to: "b"), Edge.new(from: "c", to: "d")]
 
-    assert_equal "item b: B - blocked, waits for a", lines.item(Item.new(item: "b", title: "B"), "blocked", edges)
+    assert_equal "item b: B - blocked, needs a", lines.item(Item.new(item: "b", title: "B"), "blocked", edges)
   end
 
   def test_an_item_with_no_edge_waits_for_nothing
-    assert_equal "item a: A - ready, waits for nothing", lines.item(Item.new(item: "a", title: "A"), "ready", [])
+    assert_equal "item a: A - ready, needs nothing", lines.item(Item.new(item: "a", title: "A"), "ready", [])
   end
 end

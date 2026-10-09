@@ -16,7 +16,7 @@ class WorkflowShowRoadmapTest < Plastic::TestCase
     outcome, context = show
 
     assert_equal :done, outcome
-    assert_equal ["batch 1: T - G", "  done: it ships", "item a: A - ready, waits for nothing", "item b: B - blocked, waits for a"],
+    assert_equal ["batch 1: T - G", "  done: it ships", "item a: A - ready, needs nothing", "item b: B - blocked, needs a"],
       context.printed
   end
 

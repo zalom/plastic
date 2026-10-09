@@ -63,7 +63,7 @@ class RoadmapStartTest < Plastic::TestCase
   end
 
   def test_a_blocked_item_exits_3_with_no_intent_row
-    plastic("roadmap", "add", "r1", "1", "b", "--title", "B", "--after", "a", table: Plastic::CLI::TABLE)
+    plastic("roadmap", "add", "r1", "1", "b", "--title", "B", "--needs", "a", table: Plastic::CLI::TABLE)
 
     result = call("r1", "b")
 

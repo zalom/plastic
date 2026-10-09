@@ -12,7 +12,7 @@ class RoadmapShowTest < Plastic::TestCase
     result = cli("roadmap", "show", "r1")
 
     assert_call result, code: 0, out: ["batch 1: Wave one - Ship it\n  done: a done\n  done: b done\n",
-      "item a: A - ", "waits for nothing", "next: plastic roadmap next r1"]
+      "item a: A - ", "needs nothing", "next: plastic roadmap next r1"]
   end
 
   def test_show_on_a_missing_roadmap_names_it

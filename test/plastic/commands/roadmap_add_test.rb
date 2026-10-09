@@ -9,18 +9,24 @@ class RoadmapAddTest < Plastic::TestCase
 
   def batch(n = "1") = plastic("roadmap", "batch", "r1", n, "--title", "T", "--goal", "G", "--done", "d", table: Plastic::CLI::TABLE)
 
-  def test_after_naming_an_item_off_the_roadmap_exits_1_with_nothing_written
+  def test_after_is_gone
     batch
 
-    result = call("r1", "1", "a", "--title", "A", "--after", "ghost")
+    assert_equal 2, call("r1", "1", "a", "--title", "A", "--after", "ghost").code
+  end
+
+  def test_needs_naming_an_item_off_the_roadmap_exits_1_with_nothing_written
+    batch
+
+    result = call("r1", "1", "a", "--title", "A", "--needs", "ghost")
 
     assert_equal 1, result.code
     assert_empty store_graphs.retrieval.roadmap_items("r1")
   end
 
-  def test_after_naming_an_item_off_the_roadmap_writes_no_edge
+  def test_needs_naming_an_item_off_the_roadmap_writes_no_edge
     batch
-    call("r1", "1", "a", "--title", "A", "--after", "ghost")
+    call("r1", "1", "a", "--title", "A", "--needs", "ghost")
 
     assert_empty store_graphs.retrieval.roadmap_edges("r1")
   end
@@ -28,9 +34,9 @@ class RoadmapAddTest < Plastic::TestCase
   def test_a_loop_exits_3_and_one_edge_row_exists
     batch
     call("r1", "1", "a", "--title", "A")
-    call("r1", "1", "b", "--title", "B", "--after", "a")
+    call("r1", "1", "b", "--title", "B", "--needs", "a")
 
-    result = call("r1", "1", "a", "--after", "b")
+    result = call("r1", "1", "a", "--needs", "b")
 
     assert_equal 3, result.code
     assert_equal 1, store_graphs.retrieval.roadmap_edges("r1").size
@@ -50,7 +56,7 @@ class RoadmapAddTest < Plastic::TestCase
     batch
     call("r1", "1", "a", "--title", "A")
 
-    result = call("r1", "1", "a", "--after", "a")
+    result = call("r1", "1", "a", "--needs", "a")
 
     assert_equal 3, result.code
     assert_empty store_graphs.retrieval.roadmap_edges("r1")
