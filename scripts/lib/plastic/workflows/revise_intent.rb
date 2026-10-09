@@ -47,7 +47,7 @@ module Plastic
         context.print("history: #{context.old_reference}") unless context.dry_run
       end
 
-      outcome :previewed, if: ->(context) { context.dry_run }, offers: "plastic intent show %{intent_id}",
+      outcome :previewed, if: ->(context) { context.dry_run }, offers: "%{original_command}",
         because: "the dry run wrote nothing"
       outcome :done, offers: nil, because: "the rows and the files hold the new What and Why"
 

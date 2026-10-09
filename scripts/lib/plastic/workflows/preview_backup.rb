@@ -16,7 +16,7 @@ module Plastic
         context.print("preview: backup #{context.store}/#{plan.fetch(:folder)}, #{plan.fetch(:databases).join(", ")}; the original store was not changed")
       end
 
-      outcome :done, if: ->(context) { context.dry_run }, offers: "plastic backup --store %{store}",
+      outcome :done, if: ->(context) { context.dry_run }, offers: "%{original_command}",
         because: "the preview wrote no folder or row"
       outcome :continue, offers: "plastic backup --store %{store}", because: "apply the requested backup"
     end

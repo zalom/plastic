@@ -16,7 +16,7 @@ module Plastic
         end
       end
 
-      outcome :done, if: ->(context) { context.dry_run }, offers: "plastic sync down",
+      outcome :done, if: ->(context) { context.dry_run }, offers: "%{original_command}",
         because: "the preview wrote only to a disposable copy"
       outcome :continue, offers: "plastic sync down", because: "apply the requested sync"
     end

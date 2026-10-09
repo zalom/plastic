@@ -29,7 +29,7 @@ module Plastic
         end
       end
 
-      outcome :done, if: ->(context) { context.dry_run }, offers: "plastic update", because: "the preview changed no file"
+      outcome :done, if: ->(context) { context.dry_run }, offers: "%{original_command}", because: "the preview changed no file"
       outcome :continue, offers: "plastic update", because: "update the home"
     end
   end
