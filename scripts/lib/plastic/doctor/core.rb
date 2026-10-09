@@ -35,7 +35,7 @@ module Plastic
         @loader = loader
       end
 
-      def checks = [version, *release, sqlite, machine_database, plastic_md, *scope.projects.flat_map { |slug, path| project(slug, path) }]
+      def checks = [version, *release, sqlite, machine_database, global_store, plastic_md, *scope.projects.flat_map { |slug, path| project(slug, path) }]
 
       private
 
@@ -57,6 +57,11 @@ module Plastic
         key = (SCHEMA.databases.keys - STORE).first
         file = SCHEMA.file(key)
         Check.new("#{file}:", "every table present", "plastic install --reinstall").judged(DatabaseCheck.new(File.join(home, file), key).problem)
+      end
+
+      def global_store
+        path = File.join(home, "stores", "global")
+        Check.new("global store:", path, "plastic install --reinstall").judged(File.directory?(path) ? nil : "#{path} is missing")
       end
 
       def plastic_md
