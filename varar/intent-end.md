@@ -14,31 +14,22 @@ bullets under `## Verification`:
 - Architecture map: enola at abc123
 ```
 
-Without both bullets, the command hands the agent the merge-check steps and closes
-nothing. Plastic runs no version control command; it records what the agent writes.
+The command takes only the intent. It closes when the latest review verdict is an
+accept that no live node has outdated, every done criterion has a done node with
+findings, and the outcome is substantive. Each missing piece hands the agent the
+steps for it and closes nothing: the record problems and a missing verdict go to
+the finish steps, a missing merge or map bullet goes to the merge check. Plastic
+runs no version control command; it records what the agent writes.
 
-Submit the acceptance with `--judge tests`, `--judge tool`, `--judge agent`, or
-`--judge owner`, and `--evidence completion.json`. The evidence file lives inside the
-intent folder. It maps each criterion key from the spec to a nonempty description of
-its verification. A done criterion takes its key in square brackets: `- [ ] [ships] Ships`.
-A criterion without a key uses its full text as its key.
+With `review.pull_request` set to `required` in config.yml, the outcome also needs a
+`Pull request:` bullet. The `Approved:` bullet is the person's approval; without it
+the command refuses with exit 3 and the close waits. A second revise verdict uses
+up the review rounds and the command refuses with exit 3.
 
-```json
-{
-  "ships": "Fixture acceptance verified"
-}
-```
-
-The judge attests to this evidence. Plastic records the attestation and outcome
-hash; it does not rerun the verification. Use owner only for explicit owner
-acceptance. Closure requires finished work, node verification, resolved decisions,
-the two verification bullets, and a substantive outcome stored by sync up. An
-intent needs at least one live node. It releases the delivery lock.
-Repeating closure preserves the first acceptance record and completes lock cleanup.
-
-`plastic intent end ID --abandoned` closes an intent that will never ship. It needs
-only an outcome.md that says why. It takes no `--judge` or `--evidence`, writes no
-completion record, and works on an open, active, parked or future intent.
+The close writes a completion record with judge `verdict`, and the evidence maps
+each criterion key to the done nodes that serve it and their findings. It releases
+the delivery lock, prints the intent's files and hands the agent the wind-down step.
+A repeated close exits 1 and keeps the first record.
 
 The rows below use a disposable fixture with one verified node and outcome.
 Each row gives the closure case, the exit code, the status, the completion records and the next line:
@@ -46,8 +37,6 @@ Each row gives the closure case, the exit code, the status, the completion recor
 | closure case | exit | status | completion records | next line |
 | --- | --- | --- | --- | --- |
 | request verification | 0 | active | 0 | none |
-| missing criterion evidence | 1 | active | 0 | none |
 | unverified close | 0 | active | 0 | none |
 | accept delivery | 0 | done | 1 | none |
-| repeat closure | 0 | done | 1 | none |
-| abandon | 0 | abandoned | 0 | none |
+| repeat closure | 1 | done | 1 | none |

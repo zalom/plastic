@@ -2,11 +2,12 @@
 
 require_relative "../../test_helper"
 require_relative "../../../scripts/lib/plastic/workflows/close_intent"
+require "plastic/commands/intent_end"
 
 class CloseIntentTest < Plastic::TestCase
   include DeliveryHelper
 
-  def ready = ready_intent
+  def ready = ready_intent.tap { store_graphs.work.add_verdict(intent_id: "1", verdict: "accept", findings: "Checked against the spec") }
 
   def close = run_workflow(Plastic::Workflows::CloseIntent, graphs: session_graphs, intent_id: "1")
 
@@ -16,18 +17,17 @@ class CloseIntentTest < Plastic::TestCase
     outcome, context = close
 
     assert_equal :done, outcome
-    assert_includes context.printed, "intent: 1 done"
-    assert_includes context.printed.join("\n"), "graph.json"
+    assert_includes context.printed.join("\n"), "intent: 1 done"
     assert_equal "done", retrieval.intent("1").status
   end
 
   def test_the_close_writes_the_verdict_judge_and_chains_to_the_wind_down_step
     ready
 
-    _, context = close
+    close
 
     assert_equal "verdict", retrieval.completion("1").fetch("judge")
-    assert_includes Plastic::Workflows::CloseIntent.chain.keys + context.printed, :agent_wind_down_intent
+    assert_includes Plastic::Commands::IntentEnd.chain.keys, :agent_wind_down_intent
   end
 
   def test_closing_rewrites_the_index

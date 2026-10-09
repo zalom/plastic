@@ -21,10 +21,10 @@ class WorkCompletionCheckTest < Plastic::TestCase
     sync_up
   end
 
-  def done_node(judge: "tests", findings: "green")
-    @work.add_node(intent_id: "1", title: "Build")
+  def done_node(criterion: "It works", findings: "green")
+    @work.add_node(intent_id: "1", title: "Build", criterion:)
     @work.claim_node(intent_id: "1", id: "n1", by: "a")
-    @work.done_node(intent_id: "1", id: "n1", judge:, findings:)
+    @work.done_node(intent_id: "1", id: "n1", findings:)
   end
 
   def test_a_spec_with_criteria_a_verified_node_and_an_outcome_has_no_problem
@@ -52,12 +52,12 @@ class WorkCompletionCheckTest < Plastic::TestCase
   def test_an_intent_with_no_live_node_asks_for_a_plan
     files
 
-    assert_equal ["Plan at least one work node with plastic node add 1 TITLE --criterion KEY."], check.problems
+    assert_equal ["Plan at least one work node with plastic node add 1 TITLE --criterion KEY.", "Cover every done criterion with a done node. No done node serves: It works."], check.problems
   end
 
   def test_an_unfinished_node_asks_for_the_work_to_finish
     files
-    @work.add_node(intent_id: "1", title: "Build")
+    @work.add_node(intent_id: "1", title: "Build", criterion: "It works")
 
     assert_equal ["Finish every live work node before ending intent 1."], check.problems
   end
@@ -85,7 +85,7 @@ class WorkCompletionCheckTest < Plastic::TestCase
 
   def test_two_criteria_with_one_key_ask_for_distinct_keys
     files(spec: "## Done criteria\n- [ ] [same-key] One\n- [ ] [same-key] Two\n")
-    done_node
+    done_node(criterion: "same-key")
 
     assert_equal ["Give each done criterion in spec.md its own key; same-key names two different criteria."], check.problems
   end
@@ -126,13 +126,5 @@ class WorkCompletionCheckTest < Plastic::TestCase
     files(spec: "# Spec\n", outcome: "# Outcome\n")
 
     assert_equal ["Write a substantive outcome.md in the intent folder and run plastic sync up."], check.abandon_problems
-  end
-
-  def test_the_attestation_keeps_each_key_with_its_text
-    files(spec: "## Done criteria\n- [ ] [works] It works\n")
-    done_node
-    evidence = { "works" => "the tests pass" }
-
-    assert_equal({ criteria: { "works" => "It works" }, evidence:, outcome_sha256: check.outcome_hash }, check.attestation(evidence))
   end
 end

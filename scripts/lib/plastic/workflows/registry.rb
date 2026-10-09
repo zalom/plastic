@@ -20,7 +20,7 @@ module Plastic
       :code_drop_roadmap_item, :code_start_roadmap_item, :code_check_roadmap, :code_log_roadmap,
       :code_remove_roadmap_edge,
 
-      :code_delivery_next, :agent_advance_delivery, :code_prepare_ending, :agent_finish_intent, :code_close_intent,
+      :code_delivery_next, :agent_advance_delivery, :code_prepare_ending, :agent_finish_intent, :code_close_intent, :agent_wind_down_intent,
       :code_discover_retrieval, :agent_external_agent_workflow,
       # Retrieval reads: search, qualified documents and the saved context of an intent.
       :code_search, :code_get_document, :code_batch_documents, :code_check_context_owner, :code_read_context,

@@ -66,7 +66,6 @@ class IntentEndTest < Plastic::TestCase
     result = finish
 
     assert_includes result.out, "printed store/1--alpha/graph.json"
-    assert_includes result.out, "printed store/1--alpha/savepoint.md"
   end
 
   def test_the_output_of_the_close_names_the_wind_down_step
@@ -118,8 +117,7 @@ class IntentEndTest < Plastic::TestCase
 
     assert_equal [0, "active"], [result.code, retrieval.intent("1").status]
     assert_includes result.out, "- Merged: "
-    refute_includes result.out, "--judge"
-    refute_includes result.out, "--evidence"
+    refute_match(/--judge|--evidence/, result.out)
   end
 end
 

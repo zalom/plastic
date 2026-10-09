@@ -16,7 +16,7 @@ module Plastic
       "uninstall" => ["Commands::Uninstall", "Remove Plastic from agents and keep the home"],
 
       # Storage
-      "intent end" => ["Commands::IntentEnd", "Close an intent: record criterion acceptance after the merge, or abandon it"],
+      "intent end" => ["Commands::IntentEnd", "Close a delivered intent once its verdict, nodes and outcome allow it, or print what is missing"],
       "intent new" => ["Commands::IntentNew", "Open an intent: write its rows and print its folder"],
       "project list" => ["Commands::ProjectList", "List the registered projects with their paths"],
       "project new" => ["Commands::ProjectNew", "Register a project and leave its store ready for intent new"],

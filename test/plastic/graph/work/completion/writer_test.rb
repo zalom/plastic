@@ -71,6 +71,14 @@ class WorkCompletionWriterTest < WorkCompletionWriterFixture
     assert_equal "s-2", retrieval.lock("1").session_id
   end
 
+  def test_abandoning_a_done_intent_changes_nothing
+    ready
+    writer.close("1")
+    writer.abandon("1")
+
+    assert_equal %w[done delivered], retrieval.intent("1").to_h.values_at(:status, :disposition)
+  end
+
   def test_the_file_evidence_reader_is_gone
     refute_respond_to writer, :evidence
     refute_respond_to @graphs.work, :completion_evidence
@@ -129,13 +137,5 @@ class WorkCompletionAbandonTest < WorkCompletionWriterFixture
   def test_abandoning_without_an_outcome_raises_and_writes_nothing
     assert_raises(Plastic::Invalid) { writer.abandon("1") }
     assert_equal "open", retrieval.intent("1").status
-  end
-
-  def test_abandoning_a_done_intent_changes_nothing
-    ready
-    writer.close("2")
-    writer.abandon("2")
-
-    assert_equal %w[done delivered], retrieval.intent("2").to_h.values_at(:status, :disposition)
   end
 end
