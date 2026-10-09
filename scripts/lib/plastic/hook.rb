@@ -33,6 +33,9 @@ module Plastic
       reply = respond(event)
       environment.out.puts reply if reply
       CLI::Command::OK
+    rescue OptionParser::ParseError => error
+      environment.err.puts "plastic: #{error.message}", usage_line
+      CLI::Command::OK
     end
 
     # The event JSON the harness writes on stdin, with symbol keys, read

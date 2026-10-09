@@ -16,7 +16,7 @@ steps do
       sessions = kernel.rows("../../local.db", "SELECT session_id, harness, last_turn_at, ended_at, end_reason FROM sessions")
       id, harness, turn, ended, reason = sessions.find { |session| session[0] == (env.empty? ? "s-1" : row["session"]) }
       shown = "#{id} #{harness}, #{turn ? "turn stamped" : "no turn"}, #{ended ? "ended #{reason}" : "open"}"
-      row.merge("exit" => call.code.to_s, "message" => call.err.strip.empty? ? "none" : call.err.strip, "row" => shown)
+      row.merge("exit" => call.code.to_s, "message" => call.err.strip.empty? ? "none" : call.err.strip.tr("\n", " "), "row" => shown)
     end
   end
 end
