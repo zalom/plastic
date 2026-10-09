@@ -4,9 +4,9 @@
 
 Each row gives the setup, the call, the exit code, the result and the next line:
 
-| setup            | call                                                      | exit | result                                                             | next line                              |
-| ---------------- | --------------------------------------------------------- | ---- | ------------------------------------------------------------------ | -------------------------------------- |
-| intent new Alpha | `intent revise 1 "Beta" --dry-run`                        | 0    | what was: Alpha / what: Beta                                       | plastic intent show 1 --project global |
-| intent new Alpha | `intent revise 1 "Beta" --why "The goal moved" --dry-run` | 0    | what was: Alpha / what: Beta / why was: none / why: The goal moved | plastic intent show 1 --project global |
-| intent new Alpha | `intent revise 1 "Alpha"`                                 | 1    | intent 1 already reads this What and Why; nothing to change        | none                                   |
-| none             | `intent revise 9 "Beta"`                                  | 1    | no intent 9 in this store                                          | none                                   |
+| setup            | call                                                      | exit | result                                                             | next line                                                            |
+| ---------------- | --------------------------------------------------------- | ---- | ------------------------------------------------------------------ | -------------------------------------------------------------------- |
+| intent new Alpha | `intent revise 1 "Beta" --dry-run`                        | 0    | what was: Alpha / what: Beta                                       | plastic intent revise 1 Beta --project global                        |
+| intent new Alpha | `intent revise 1 "Beta" --why "The goal moved" --dry-run` | 0    | what was: Alpha / what: Beta / why was: none / why: The goal moved | plastic intent revise 1 Beta --why The\ goal\ moved --project global |
+| intent new Alpha | `intent revise 1 "Alpha"`                                 | 1    | intent 1 already reads this What and Why; nothing to change        | none                                                                 |
+| none             | `intent revise 9 "Beta"`                                  | 1    | no intent 9 in this store                                          | none                                                                 |
