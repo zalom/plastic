@@ -8,7 +8,7 @@ module Plastic
     # Syncs a newer running package into the home, or activates the newest
     # release of the chosen channel, by default the active release's own.
     class Update < Routine
-      graphless
+      opens_no_store
 
       option :channel, switch: "--channel NAME", text: "update from this channel: stable, beta or alpha"
       option :dry_run, switch: "--dry-run", default: false, text: "name both versions and change nothing"

@@ -11,7 +11,7 @@ module Plastic
         output.row("files:", graphs.printed)
       end
 
-      def touches_graphs? = !self.class.graphless?
+      def touches_graphs? = !self.class.opens_no_store?
 
       def routine_graphs = touches_graphs? ? graphs : {}
     end

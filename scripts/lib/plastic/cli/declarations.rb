@@ -57,9 +57,9 @@ module Plastic
         (@prints ||= []).concat(kinds)
       end
 
-      def graphless = (@graphless = true)
+      def opens_no_store = (@opens_no_store = true)
 
-      def graphless? = @graphless == true
+      def opens_no_store? = @opens_no_store == true
 
       def arguments = (@arguments ||= [])
 
