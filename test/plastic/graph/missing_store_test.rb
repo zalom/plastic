@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
+require_relative "../commands/installer_helper"
 require "json"
 require_relative "../../../scripts/lib/plastic/cli/projects_file"
 require_relative "../../../scripts/lib/plastic/graph/retrieval/source"
@@ -93,5 +94,23 @@ class MissingStoreTest < Plastic::TestCase
     folder = File.join(File.dirname(home), slug)
     FileUtils.mkdir_p(folder)
     Plastic::CLI::ProjectsFile.new(File.join(home, "projects.yml")).add(slug, folder)
+  end
+end
+
+class MissingGlobalStoreRepairTest < Plastic::TestCase
+  include InstallerHelper
+
+  def test_the_install_line_next_prints_for_a_missing_global_store_runs_and_makes_the_store
+    FileUtils.mkdir_p(File.join(@home, ".claude"))
+    call("install", "--claude")
+    Plastic::Graph::Database::ConnectionPool.release(@home)
+    FileUtils.rm_rf(File.join(@plastic_home, "stores"))
+
+    stopped = call("intent", "show", "1")
+    line = stopped.out[/^next: (.*)$/, 1]
+    repaired = call(*line.split.drop(1))
+
+    assert_equal [1, "plastic install --reinstall", 0], [stopped.code, line, repaired.code], repaired.err
+    assert_path_exists File.join(@plastic_home, "stores", "global")
   end
 end
