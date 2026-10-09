@@ -57,9 +57,9 @@ module Plastic
         error_document(message, "refused", offer)
       end
 
-      def failed(message, offer = Offer.none(message))
+      def failed(message, offer = Offer.none(message), source: nil)
         @err.puts "plastic: #{message}"
-        error_document(message, "failed", offer)
+        error_document(source ? "#{source}: #{message}" : message, "failed", offer)
       end
 
       private

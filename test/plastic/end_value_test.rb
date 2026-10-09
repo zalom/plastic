@@ -32,7 +32,7 @@ class EndValueTest < Plastic::TestCase
     error.report(@output)
 
     assert_equal [1, 1], [Plastic::Failed.new(:code_a, "step", "broke").exit_code, error.exit_code]
-    assert_equal "plastic: code_a, step: broke\n", @err.string
+    assert_equal "plastic: broke\n", @err.string
   end
 
   def test_refused_raises_a_refusal_that_exits_3

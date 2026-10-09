@@ -4,8 +4,9 @@ require_relative "end_value"
 
 module Plastic
   # A step raised, its done check still fails after the body ran, or a gate
-  # with stops: :failure stopped the call. Exit 1; the message goes to stderr
-  # through the Failure error the boundary prints.
+  # with stops: :failure stopped the call. Exit 1; the reason goes to stderr
+  # through the Failure error the boundary prints; the workflow key stays
+  # in the JSON error.
   Failed = Data.define(:workflow, :step, :reason, :next_command) do
     include EndValue
 
@@ -18,6 +19,6 @@ module Plastic
 
     def message = "#{workflow}, #{step}: #{reason}"
 
-    def report(_output) = raise(CLI::Command::Failure.new(message, next_command:, because: reason))
+    def report(_output) = raise(CLI::Command::Failure.new(reason, next_command:, because: reason, source: "#{workflow}, #{step}"))
   end
 end
