@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/workflows/start_roadmap_item"
+require_relative "../../../scripts/lib/plastic/workflows/open_roadmap_item"
 
-class StartRoadmapItemTest < Plastic::TestCase
+class OpenRoadmapItemTest < Plastic::TestCase
   include RoadmapHelper
 
   def setup
@@ -12,7 +12,7 @@ class StartRoadmapItemTest < Plastic::TestCase
     item("a")
   end
 
-  def start(item_id) = run_workflow(Plastic::Workflows::StartRoadmapItem, slug: "r1", item_id:)
+  def start(item_id) = run_workflow(Plastic::Workflows::OpenRoadmapItem, slug: "r1", item_id:)
 
   def test_a_ready_item_opens_its_intent_and_prints_its_files
     outcome, context = start("a")
@@ -31,6 +31,6 @@ class StartRoadmapItemTest < Plastic::TestCase
   end
 
   def test_an_unknown_item_fails_the_call
-    assert_equal "code_start_roadmap_item, gate: no item z on roadmap r1", start("z").first.message
+    assert_equal "code_open_roadmap_item, gate: no item z on roadmap r1", start("z").first.message
   end
 end

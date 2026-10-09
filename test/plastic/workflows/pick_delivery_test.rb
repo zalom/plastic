@@ -11,7 +11,7 @@ class WorkflowPickDeliveryTest < Plastic::TestCase
     run_workflow(Plastic::Workflows::PickDelivery, harness: scoped_harness(session:), graphs: session_graphs, id:, **facts)
   end
 
-  def started(item_id) = store_graphs.work.start_roadmap_item("r1", item_id).first
+  def started(item_id) = store_graphs.work.open_roadmap_item("r1", item_id).first
 
   def test_an_intent_id_is_the_intent_to_deliver
     outcome, context = pick("7")

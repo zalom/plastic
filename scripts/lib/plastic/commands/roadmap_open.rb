@@ -12,7 +12,7 @@ module Plastic
       writes :work, :knowledge, :references
       prints :roadmap, :intent
 
-      workflow :code_start_roadmap_item, next: :noop
+      workflow :code_open_roadmap_item, next: :noop
     end
   end
 end

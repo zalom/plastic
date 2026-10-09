@@ -10,7 +10,7 @@ module Plastic
     module Knowledge
       class Roadmap
         # Opens a ready roadmap item's intent, with its spec held in rows.
-        class ItemStart
+        class ItemOpen
           extend Forwardable
 
           def_delegators :@writers, :databases, :retrieval
@@ -35,7 +35,7 @@ module Plastic
           def open_intent(slug, item)
             intent_id = @writers.intents.write(title: item.title).intent_id
             write_spec(intent_id, item.spec_body(retrieval.batches(slug)))
-            @writers.roadmaps.start_item(slug, item.item, intent_id)
+            @writers.roadmaps.open_item(slug, item.item, intent_id)
             link_source(intent_id, slug)
             [intent_id, nil, nil]
           end

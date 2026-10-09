@@ -83,6 +83,7 @@ class IntentUnarchiveTest < Plastic::TestCase
     document = store_graphs.retrieval.documents(intent.intent_id).find { |row| row.path == intent.file }
     write("#{intent.dir}/#{intent.file}", document.body)
   end
+
   def test_the_output_says_unarchived
     intent = archived_intent
 

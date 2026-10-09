@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require "forwardable"
-require_relative "knowledge/roadmap/item_start"
+require_relative "knowledge/roadmap/item_open"
 require_relative "knowledge/backup/store_backups"
 require_relative "printer"
 require_relative "prints"
@@ -38,12 +38,12 @@ module Plastic
       def_delegators "@writers.links", :add_link, :remove_link
       def_delegator "@writers.links", :target_problem, :link_target_problem
       def_delegator "@writers.links", :refusal, :link_refusal
-      def_delegators "@writers.roadmaps", :create_roadmap, :write_batch, :add_item, :start_item, :drop_item, :remove_roadmap_edge, :add_log
+      def_delegators "@writers.roadmaps", :create_roadmap, :write_batch, :add_item, :open_item, :drop_item, :remove_roadmap_edge, :add_log
       def_delegator "@writers.sync", :plan, :sync_plan
       def_delegator "@writers.sync", :apply, :sync_apply
       # The snapshot restores exact bytes; printing live rows would replace them.
       # Returns [ok, problem, kind]; kind is :failure, nil on success. Restores the saved directory.
-      def_delegator "@writers.archives", :restore, :restore_intent
+      def_delegator "@writers.archives", :restore, :unarchive_intent
 
       def initialize(databases, folder:, retrieval:, session: nil)
         @databases = databases
@@ -80,7 +80,7 @@ module Plastic
 
       # Opens a ready item's intent, with its spec held in rows. Returns
       # [intent_id, problem, kind]; kind is :failure or :refusal, nil on success.
-      def start_roadmap_item(slug, item_id) = Knowledge::Roadmap::ItemStart.new(@writers).call(slug, item_id)
+      def open_roadmap_item(slug, item_id) = Knowledge::Roadmap::ItemOpen.new(@writers).call(slug, item_id)
 
       def print_index = @writers.sync.printer.print([Prints.index(@retrieval)])
 

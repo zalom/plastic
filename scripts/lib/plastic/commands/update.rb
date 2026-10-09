@@ -15,7 +15,7 @@ module Plastic
 
       def call
         channel = parsed[:channel]
-        raise CLI::Command::Usage, "--channel takes stable, beta or alpha" unless channel.to_s.empty? || Workflows::ReleaseUpdate::CHANNELS.key?(channel)
+        raise CLI::Command::Usage, "--channel takes stable, beta or alpha" unless [nil, *Workflows::ReleaseUpdate::CHANNELS.keys].include?(channel)
 
         super
       end

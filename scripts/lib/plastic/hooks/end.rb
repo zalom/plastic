@@ -6,7 +6,6 @@ require_relative "../graph"
 module Plastic
   module Hooks
     # SessionEnd: sets the session's end time and the reason the event names.
-    # No stamp, no renewal, no gate.
     class End < Hook
       option :harness, switch: "--harness NAME", text: "the harness calling this hook", default: "claude-code"
 

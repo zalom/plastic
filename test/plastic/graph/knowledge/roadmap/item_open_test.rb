@@ -2,7 +2,7 @@
 
 require_relative "../../../../test_helper"
 
-class KnowledgeRoadmapItemStartTest < Plastic::TestCase
+class KnowledgeRoadmapItemOpenTest < Plastic::TestCase
   def setup
     super
     @work = store_graphs.work
@@ -13,7 +13,7 @@ class KnowledgeRoadmapItemStartTest < Plastic::TestCase
 
   def fields(title: nil, goal: nil, done: nil) = Plastic::Graph::Knowledge::Roadmap::Fields.new(title:, goal:, done:)
 
-  def start(item) = store_graphs.work.start_roadmap_item("plan", item)
+  def start(item) = store_graphs.work.open_roadmap_item("plan", item)
 
   def test_a_ready_item_opens_an_intent_named_after_it
     assert_equal ["1", nil, nil], start("a")

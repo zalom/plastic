@@ -5,7 +5,7 @@ require_relative "../code_workflow"
 module Plastic
   module Workflows
     # Restores the archived directory snapshot, including bytes and metadata.
-    class RestoreIntent < CodeWorkflow
+    class UnarchiveIntent < CodeWorkflow
       [facts, steps, outcomes].each(&:clear)
 
       sets :problem, :ok
@@ -13,7 +13,7 @@ module Plastic
       forget_stop :problem, :ok
 
       step "restore the intent", done: ->(context) { !context.ok.nil? || !context.problem.nil? } do |context|
-        ok, problem, = context.work.restore_intent(context.intent_id)
+        ok, problem, = context.work.unarchive_intent(context.intent_id)
         context[:ok] = ok
         context[:problem] = problem
       end

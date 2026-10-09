@@ -1,6 +1,6 @@
 # plastic roadmap edge remove
 
-`plastic roadmap edge remove SLUG FROM TO` removes the edge that makes TO wait for FROM. The rows below run the storage kernel's command line in a fresh home each time, as session s-1. A setup lists the calls made first, in order, split by a semicolon; `write PATH TEXT` writes a file in the store instead. TIME stands for a timestamp.
+`plastic roadmap edge remove SLUG FROM TO` removes the needs edge by which TO needs FROM. The rows below run the storage kernel's command line in a fresh home each time, as session s-1. A setup lists the calls made first, in order, split by a semicolon; `write PATH TEXT` writes a file in the store instead. TIME stands for a timestamp.
 
 Each row gives the setup, the call, the exit code, the result and the next line:
 

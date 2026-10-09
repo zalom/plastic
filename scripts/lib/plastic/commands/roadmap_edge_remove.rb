@@ -4,7 +4,7 @@ require_relative "../routine"
 
 module Plastic
   module Commands
-    # Removes one after edge. Fails when no such edge exists.
+    # Removes one needs edge. Fails when no such edge exists.
     class RoadmapEdgeRemove < Routine
       subject :slug
       argument :slug, label: "SLUG", text: "the roadmap"

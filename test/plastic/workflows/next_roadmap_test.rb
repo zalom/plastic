@@ -33,7 +33,7 @@ class WorkflowNextRoadmapTest < Plastic::TestCase
   end
 
   def test_items_in_flight_leave_the_roadmap_waiting
-    store_graphs.work.start_roadmap_item("r1", "a")
+    store_graphs.work.open_roadmap_item("r1", "a")
 
     assert_equal [:waiting, ["a: in flight"]], next_item.then { |outcome, context| [outcome, context.printed] }
   end

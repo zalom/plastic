@@ -15,7 +15,7 @@ module Plastic
       sets :roadmap
 
       step "create the roadmap", done: ->(context) { !context.roadmap.nil? } do |context|
-        context[:roadmap] = context.work.create_roadmap(context.slug, title: context.title, goal: context.goal)
+        context[:roadmap] = context.work.create_roadmap(context.slug, title: context.title || context.slug, goal: context.goal)
       end
 
       read "say what was created" do |context|

@@ -35,13 +35,13 @@ class KnowledgeRoadmapCheckTest < Plastic::TestCase
   end
 
   def test_an_item_naming_a_missing_intent_is_named
-    @work.start_item("plan", "a", "9")
+    @work.open_item("plan", "a", "9")
 
     assert_equal ["item a names no intent 9"], findings
   end
 
   def test_an_item_naming_a_present_intent_is_not
-    @work.start_item("plan", "a", @work.write_intent(title: "Alpha").intent_id)
+    @work.open_item("plan", "a", @work.write_intent(title: "Alpha").intent_id)
 
     assert_empty findings
   end

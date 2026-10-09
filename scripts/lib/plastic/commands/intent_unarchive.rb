@@ -12,7 +12,7 @@ module Plastic
       prints :index
       previews
 
-      workflow :code_restore_intent, next: :noop
+      workflow :code_unarchive_intent, next: :noop
     end
   end
 end

@@ -100,10 +100,10 @@ class PrintAfterWriteTest < Plastic::TestCase
     assert_includes File.read(store_path("roadmaps/r1.md")), "A"
   end
 
-  def test_roadmap_drop_and_start_print_the_roadmap_file_and_the_intent
+  def test_roadmap_drop_and_open_print_the_roadmap_file_and_the_intent
     roadmap_with_two_items
     run_cli("roadmap", "drop", "r1", "b")
-    run_cli("roadmap", "start", "r1", "a")
+    run_cli("roadmap", "open", "r1", "a")
 
     assert_files_level("roadmaps/")
     assert_path_exists store_path("store/1--a/graph.json")

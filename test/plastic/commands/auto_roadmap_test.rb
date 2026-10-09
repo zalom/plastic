@@ -41,7 +41,7 @@ class AutoRoadmapTest < Plastic::TestCase
   def test_a_roadmap_item_without_a_go_ahead_is_refused_with_no_lock
     roadmap
     item("a")
-    intent_id, = store_graphs.work.start_roadmap_item("r1", "a")
+    intent_id, = store_graphs.work.open_roadmap_item("r1", "a")
 
     result = call("r1")
 
@@ -52,7 +52,7 @@ class AutoRoadmapTest < Plastic::TestCase
   def test_a_roadmap_arms_its_in_flight_item
     roadmap
     item("a")
-    intent_id, = store_graphs.work.start_roadmap_item("r1", "a")
+    intent_id, = store_graphs.work.open_roadmap_item("r1", "a")
     plastic("intent", "approve", intent_id, table: Plastic::CLI::TABLE)
 
     result = call("r1")
@@ -73,7 +73,7 @@ class AutoRoadmapTest < Plastic::TestCase
     roadmap
     item("a")
     item("b")
-    store_graphs.work.start_roadmap_item("r1", "a")
+    store_graphs.work.open_roadmap_item("r1", "a")
     failed = call("r1", env: { "PLASTIC_SESSION" => "" })
     store_graphs.work.drop_item("r1", "a")
 

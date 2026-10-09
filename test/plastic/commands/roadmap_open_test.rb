@@ -55,7 +55,7 @@ class RoadmapOpenTest < Plastic::TestCase
     assert_includes result.err, "no item zz on roadmap r1"
   end
 
-  def test_a_second_start_exits_3
+  def test_a_second_open_exits_3
     call("r1", "a")
 
     result = call("r1", "a")

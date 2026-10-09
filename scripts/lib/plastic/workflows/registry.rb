@@ -17,7 +17,7 @@ module Plastic
       :code_add_link, :code_remove_link,
       # Roadmaps: batches and items held as rows, with a derived state per item.
       :code_create_roadmap, :code_write_roadmap_batch, :code_add_roadmap_item, :code_show_roadmap, :code_next_roadmap,
-      :code_drop_roadmap_item, :code_start_roadmap_item, :code_check_roadmap, :code_log_roadmap,
+      :code_drop_roadmap_item, :code_open_roadmap_item, :code_check_roadmap, :code_log_roadmap,
       :code_remove_roadmap_edge,
 
       :code_delivery_next, :agent_advance_delivery, :code_prepare_ending, :agent_finish_intent, :code_close_intent, :agent_wind_down_intent,
@@ -30,7 +30,7 @@ module Plastic
       # Sessions: the one prose line a session writes about itself.
       :code_write_note,
       # Archive: taking an intent off the checkout and printing it back.
-      :code_archive_intent, :code_restore_intent,
+      :code_archive_intent, :code_unarchive_intent,
       # Backups: one folder per backup of one store, with purge and restore.
       :code_preview_backup, :code_backup, :code_backup_list,
       :code_preview_backup_purge, :code_backup_purge, :code_preview_backup_restore, :code_backup_restore,

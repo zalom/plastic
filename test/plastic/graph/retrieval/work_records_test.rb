@@ -45,7 +45,7 @@ class RetrievalRoadmapRecordsTest < Plastic::TestCase
 
   def test_starting_a_roadmap_item_indexes_its_spec_as_immutable_evidence
     seed_roadmap
-    intent_id, problem, kind = work.start_roadmap_item("delivery", "a")
+    intent_id, problem, kind = work.open_roadmap_item("delivery", "a")
     document = retrieval.fetch_reference(retrieval.reference(intent_id, "spec.md"))
 
     assert_equal ["1", nil, nil], [intent_id, problem, kind]
