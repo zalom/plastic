@@ -39,6 +39,17 @@ class IntentLockStatusTest < Plastic::TestCase
     assert_includes result.out, "lock: session s-2, mode auto"
   end
 
+  def test_a_done_intent_prints_no_next_line_and_says_it_is_done
+    open_intent
+    store_graphs.databases.fetch(:work).transaction { |batch| batch.write(:intents, "UPDATE intents SET status = 'done' WHERE intent_id = '1'") }
+
+    result = call("1")
+
+    assert_equal [0, nil, ""], [result.code, next_line(result), result.err]
+    assert_includes result.out, "because: intent 1 is done"
+    assert_includes result.out, "lock: none\n"
+  end
+
   def test_an_unknown_intent_fails
     result = call("9")
 
