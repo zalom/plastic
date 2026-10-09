@@ -17,9 +17,9 @@ module Plastic
         out.puts JSON.pretty_generate(result.document(project))
       end
 
-      def error_document(message, kind)
+      def error_document(message, kind, next_command, because)
         row("error", { "kind" => kind, "message" => message })
-        next_step("none", because: message)
+        next_step(next_command || "none", because:)
         flush
       end
     end

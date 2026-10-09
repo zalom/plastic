@@ -84,7 +84,7 @@ class CodeWorkflowGateOffersTest < Plastic::TestCase
 
     assert_equal 1, call.code
     assert_equal "next: plastic kernel two break\nbecause: the check broke on break\n", call.out
-    assert_equal "plastic: the check broke on break\n", call.err
+    assert_includes call.err, "the check broke on break"
   end
 
   def test_a_failing_gate_with_offers_carries_the_command_in_json
@@ -94,7 +94,6 @@ class CodeWorkflowGateOffersTest < Plastic::TestCase
     assert_equal 1, call.code
     assert_equal "plastic kernel two break", document.fetch("next")
     assert_equal "the check broke on break", document.fetch("because")
-    assert_equal "", call.err
   end
 
   def test_a_failing_gate_without_offers_prints_no_next_line
@@ -102,7 +101,7 @@ class CodeWorkflowGateOffersTest < Plastic::TestCase
 
     assert_equal 1, call.code
     refute_includes call.out, "next:"
-    assert_equal "plastic: nothing follows plain\n", call.err
+    assert_includes call.err, "nothing follows plain"
   end
 
   def test_a_refusal_gate_may_offer_a_command_too

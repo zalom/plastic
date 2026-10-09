@@ -50,7 +50,7 @@ module Plastic
         enter(copy)
         run_shown(copy)
       rescue CLI::Command::Refusal, CLI::Command::Failure => error
-        raise error.class, copy.original(error.message)
+        raise error.rebuilt(copy.original(error.message))
       ensure
         leave
       end

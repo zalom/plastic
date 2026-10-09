@@ -95,8 +95,9 @@ module Plastic
       end
 
       def stop(error)
-        flush unless output.json?
+        output.flush_rows(scope.slug) unless output.json?
         error.report(output)
+        flush
         error.exit_code
       end
 

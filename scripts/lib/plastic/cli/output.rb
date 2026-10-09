@@ -22,6 +22,8 @@ module Plastic
 
       def json? = false
 
+      def flush_rows(_project = nil) = self
+
       def row(label, value) = tap { @result.row(label, value) }
 
       def next_step(command, because:) = tap { @result.offer(command, because) }
@@ -44,17 +46,17 @@ module Plastic
 
       def usage(message, banner)
         @err.puts "plastic: #{message}", banner
-        error_document(message, "usage")
+        error_document(message, "usage", nil, message)
       end
 
-      def refused(message)
+      def refused(message, next_command: nil, because: message)
         @err.puts "plastic: refused, #{message}", "This step belongs to the owner. Stop and ask; do not retry with a flag."
-        error_document(message, "refused")
+        error_document(message, "refused", next_command, because)
       end
 
-      def failed(message)
+      def failed(message, next_command: nil, because: message)
         @err.puts "plastic: #{message}"
-        error_document(message, "failed")
+        error_document(message, "failed", next_command, because)
       end
 
       private
@@ -62,7 +64,7 @@ module Plastic
       attr_reader :out, :result
 
       # A text answer says nothing more on an error; the error line is enough.
-      def error_document(_message, _kind) = self
+      def error_document(_message, _kind, next_command, because) = next_command ? next_step(next_command, because:) : self
     end
   end
 end
