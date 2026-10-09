@@ -26,10 +26,19 @@ class WorkflowShowLockTest < Plastic::TestCase
 
   def test_no_lock_says_none
     open_intent
+    store_graphs.work.approve_intent("1")
 
     outcome, context = show
 
     assert_equal [:none, ["lock: none"]], [outcome, lines(context)]
+  end
+
+  def test_no_lock_and_no_go_ahead_needs_the_agent_to_ask_the_owner
+    open_intent
+
+    outcome, context = show
+
+    assert_equal [:agent_needed, "the owner must give the go-ahead for intent 1"], [outcome, context.why]
   end
 
   def test_a_live_lock_names_its_session
@@ -44,6 +53,7 @@ class WorkflowShowLockTest < Plastic::TestCase
 
   def test_an_expired_lock_says_expired
     open_intent
+    store_graphs.work.approve_intent("1")
     store_graphs.work.take_lock("1", session_id: "s-2", mode: "auto")
     expire_lock
 

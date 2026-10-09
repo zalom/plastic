@@ -8,8 +8,19 @@ class IntentLockStatusTest < Plastic::TestCase
 
   def next_line(result) = result.out.lines(chomp: true).find { |line| line.start_with?("next: ") }
 
-  def test_an_intent_with_no_lock_says_none_and_offers_auto
+  def test_an_intent_with_no_lock_and_no_go_ahead_asks_the_owner_and_offers_no_command
     open_intent
+
+    result = call("1")
+
+    assert_equal [0, "next: none"], [result.code, next_line(result)]
+    assert_includes result.out, "because: the owner must give the go-ahead for intent 1"
+    assert_includes result.out, "Ask the owner for the go-ahead."
+  end
+
+  def test_an_approved_intent_with_no_lock_says_none_and_offers_auto
+    open_intent
+    plastic("intent", "approve", "1", table: Plastic::CLI::TABLE)
 
     result = call("1")
 

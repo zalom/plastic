@@ -2,6 +2,7 @@
 
 require_relative "../code_workflow"
 require_relative "worktree"
+require_relative "go_ahead"
 
 module Plastic
   module Workflows
@@ -9,9 +10,11 @@ module Plastic
     # and renewed, and whether it is still live; then the code worktree when
     # the store's project names a repository. Refuses an unknown id.
     class ShowLock < CodeWorkflow
+      extend GoAhead
+
       [facts, steps, outcomes].each(&:clear)
 
-      sets :intent, :state
+      sets :intent, :state, :why, :handoff_text
 
       read "find the intent" do |context|
         context[:intent] = context.retrieval.intent(context.intent_id)
@@ -27,6 +30,8 @@ module Plastic
         context.print("worktree: #{worktree.path}") if worktree
       end
 
+      reads_go_ahead
+
       def self.state_of(lock)
         return "none" unless lock
 
@@ -37,6 +42,7 @@ module Plastic
         "lock: session #{lock.session_id}, mode #{lock.mode}, taken #{lock.taken_at}, renewed #{lock.renewed_at}, #{state}"
       end
 
+      outcome :agent_needed, if: ->(context) { context.state != "live" && !context.handoff_text.nil? }
       outcome :none, if: ->(context) { context.state == "none" }, offers: "plastic auto %{intent_id}",
         because: "intent %{intent_id} holds no lock"
       outcome :expired, if: ->(context) { context.state == "expired" }, offers: "plastic auto %{intent_id}",
