@@ -67,6 +67,13 @@ class UpdateCommandTest < Plastic::TestCase
     assert_equal "99.0.0-alpha.1", activation.active_version
   end
 
+  def test_an_empty_channel_name_is_a_usage_error
+    result = update_with_release("99.0.0-alpha.2", "--channel", "")
+
+    assert_equal 2, result.code
+    assert_includes result.err, "stable, beta or alpha"
+  end
+
   def test_names_the_chosen_channel_in_the_installer_command
     installed("99.0.0-alpha.1")
     result = call("update", "--channel", "beta", env: { "PLASTIC_PACKAGE_ROOT" => fake_package("99.0.0-alpha.1") })
