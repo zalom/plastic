@@ -9,15 +9,6 @@
       "sourceHash": "fnv1a:09cffb93",
       "examples": []
     },
-    "varar/auto-start.md": {
-      "sourceHash": "fnv1a:56e6f39c",
-      "examples": [
-        {
-          "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
-          "line": 5
-        }
-      ]
-    },
     "varar/auto.md": {
       "sourceHash": "fnv1a:73113461",
       "examples": [
@@ -135,7 +126,7 @@
       ]
     },
     "varar/hook-record.md": {
-      "sourceHash": "fnv1a:bce06197",
+      "sourceHash": "fnv1a:37a6d3c0",
       "examples": [
         {
           "name": "Each row gives the arguments, the event, the session, the exit code, the message and the row:",

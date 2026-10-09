@@ -103,15 +103,15 @@ class InstallerCoreTest < Minitest::Test
     File.write(installer.ledger_path, "{ broken\n", mode: "a")
     installer.ledger_append("2.0.3", "update", harness: "claude")
 
-    assert_equal [%w[2.0.2 2.0.3], "claude"], [installer.ledger_read.map { |row| row["version"] }, installer.ledger_current["harness"]]
+    assert_equal [%w[2.0.2 2.0.3], "claude"], [installer.ledger_read.map { |row| row["version"] }, installer.ledger_read.last["harness"]]
   end
 
   def test_versions_compare_by_semver_and_an_unparsed_version_compares_to_nil
     assert_equal [-1, 1, nil], [installer.semver_compare("2.0.0-beta.1", "2.0.0"), installer.semver_compare("2.0.10", "2.0.9"), installer.semver_compare("2.0", "2.0.0")]
   end
 
-  def test_the_version_names_its_channel_and_its_stability
-    assert_equal [%w[alpha beta latest], 1], [%w[2.0.0-alpha.1 2.0.0-beta.1 2.0.3].map { |version| installer.channel_for(version) }, installer.stability_rank("beta")]
+  def test_the_version_names_its_channel
+    assert_equal %w[alpha beta latest], %w[2.0.0-alpha.1 2.0.0-beta.1 2.0.3].map { |version| installer.channel_for(version) }
   end
 
   def test_the_agent_flags_name_the_agent_keys
@@ -218,5 +218,52 @@ class InstallerCoreBootstrapTest < Minitest::Test
     bootstrap
 
     assert_equal "# Index\n\n## Active\n\n- 1 first\n", File.binread(global("INDEX.md"))
+  end
+end
+
+class InstallerCoreCodexTest < Minitest::Test
+  include InstallerCoreHome
+
+  def codex = { key: "codex", name: "Codex CLI", dir: File.join(@home, ".agents"), home_dir: File.join(@home, ".codex") }
+
+  def write(path, text)
+    FileUtils.mkdir_p(File.dirname(path))
+    File.write(path, text)
+  end
+
+  def test_a_codex_install_writes_each_agent_as_toml_and_records_the_version
+    result = nil
+    capture_io { result = installer.install_codex(codex, false) }
+
+    assert_equal [true, true, true],
+      [result[:success], File.exist?(File.join(@home, ".codex", "agents", "plastic-executor.toml")),
+        File.exist?(File.join(@home, ".agents", "plastic", "VERSION"))]
+  end
+
+  def test_a_codex_install_from_a_package_with_no_skills_folder_writes_no_skills
+    package = File.join(@home, "package")
+    write(File.join(package, "VERSION"), "2.0.3\n")
+    capture_io { installer(package).install_codex(codex, false) }
+
+    refute_path_exists File.join(@home, ".agents", "skills")
+  end
+
+  def test_the_core_files_reach_the_plastic_home_with_their_manifest
+    capture_io { installer.distribute(:install, tmp_dirs: []) }
+    manifest = read_json(@home, ".plastic", "manifest.json")
+
+    assert_includes manifest["files"].keys, File.join(@home, ".plastic", "bin", "plastic")
+  end
+
+  def test_a_skill_folder_is_copied_whole_and_a_shared_fragment_lands_in_the_plastic_home
+    source = File.join(@home, "skills")
+    write(File.join(source, "demo", "refs", "a.md"), "a\n")
+    write(File.join(source, "_shared.md"), "shared\n")
+    root = File.join(@home, "installed")
+
+    installed = installer.install_skills_flat(source, root)
+
+    assert_equal [File.join(root, "plastic-demo", "refs", "a.md"), File.join(@home, ".plastic", "_shared.md")].sort,
+      installed.sort
   end
 end

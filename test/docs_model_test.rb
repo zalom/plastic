@@ -3,9 +3,9 @@
 
 require "minitest/autorun"
 
-# The docs describe the 2.0 model: two modes plus auto, the record hook, the day
+# The docs describe the model: two modes plus auto, the record hook, the day
 # ledger and the lock.
-class Doctrine305Test < Minitest::Test
+class DocsModelTest < Minitest::Test
   ROOT = File.expand_path("..", __dir__)
   ADAPTERS = File.join(ROOT, "docs", "reference", "harness-adapters.md")
   GUIDES = File.join(ROOT, "docs", "guides")

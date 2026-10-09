@@ -96,11 +96,11 @@ class CliTest < Plastic::TestCase
     assert_equal "plastic: refused, the owner holds hold\nThis step belongs to the owner. Stop and ask; do not retry with a flag.\n", call.err
   end
 
-  def test_describe_says_what_a_tool_takes_and_writes
-    description = Fixtures::Draft.describe("kernel draft")
+  def test_the_declarations_say_what_a_tool_takes_and_writes
+    draft = Fixtures::Draft
 
-    assert_equal "plastic kernel draft NAME [--dir DIR]", description.usage
-    assert_equal [[:name], [], [:work]], [description.subject, description.reads, description.writes]
+    assert_equal "plastic kernel draft NAME [--dir DIR]", draft.usage_line("kernel draft")
+    assert_equal [[:name], [], [:work]], [draft.subject, draft.reads, draft.writes]
   end
 
   def test_a_class_in_the_table_has_its_first_words
@@ -115,7 +115,6 @@ class CliTest < Plastic::TestCase
 
   def test_a_class_outside_the_table_has_no_tool_name
     assert_nil Fixtures::Draft.tool_name
-    assert_nil Fixtures::Draft.describe.name
   end
 
   def test_an_unknown_graph_is_invalid

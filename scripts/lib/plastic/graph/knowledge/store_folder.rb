@@ -47,9 +47,6 @@ module Plastic
 
         def delete(rel) = FileUtils.rm_f(path(rel))
 
-        # Removes a whole folder of the checkout, such as an archived intent's.
-        def remove_dir(rel) = FileUtils.rm_rf(path(rel))
-
         def own_file(dir)
           fixed = "#{dir}/#{Intent::FILE}"
           exist?(fixed) ? fixed : "#{dir}/#{File.basename(dir)}.md"

@@ -9,7 +9,7 @@ require "tmpdir"
 class VocabularyScanTest < Minitest::Test
   REPO = File.expand_path("..", __dir__)
 
-  SCANNED_PATHS = %w[scripts hooks agents skills templates bin test docs PLASTIC.md].freeze
+  SCANNED_PATHS = %w[scripts hooks agents skills bin test docs PLASTIC.md].freeze
 
   # Two segment rules (n6, B4), combined so each keeps its own case
   # sensitivity (Regexp.union wraps each branch in its own (?i-mx:...), so

@@ -7,8 +7,8 @@ require "tmpdir"
 
 load File.expand_path("../bin/verify-change", __dir__)
 
-# Every step of the change gate runs under a throwaway home (intent 363), so a
-# test the gate starts cannot reach the machine's own ~/.plastic or ~/.claude.
+# Every step of the change gate runs under a throwaway home, so a test the gate
+# starts cannot reach the machine's own ~/.plastic or ~/.claude.
 class VerifyChangeSandboxTest < Minitest::Test
   ROOT = File.expand_path("..", __dir__)
   REAL_HOME = Etc.getpwuid(Process.uid).dir

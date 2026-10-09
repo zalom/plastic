@@ -40,8 +40,6 @@ module InstallerRelease
       version
     end
 
-    def rollback = switch(previous_version || raise(ActivationError, "no previous release is available"))
-
     def switch(version)
       raise ActivationError, "#{version} is not installed" unless releases.installed?(version)
 

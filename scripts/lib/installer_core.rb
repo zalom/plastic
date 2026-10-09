@@ -14,7 +14,6 @@ require_relative "plastic/config"
 require_relative "plastic/hooks/entries"
 require_relative "plastic/graph"
 require_relative "agent_models"
-require_relative "harness_text"
 require_relative "compact_instructions"
 require_relative "engine_permissions"
 
@@ -74,17 +73,6 @@ class InstallerCore
 
   attr_reader :package_root, :plastic_home, :version, :agents
 
-  def store_layout_compatible?(target)
-    !Plastic::StoreLayout.moved?(plastic_home) || semver_compare(target, "2.0.0-alpha.28") >= 0
-  end
-
-  def refuse_incompatible_store_layout(target)
-    return if store_layout_compatible?(target)
-
-    warn "Plastic #{target} cannot read stores/ in #{plastic_home}. Keep a version that supports this layout."
-    true
-  end
-
   def initialize(package_root:, plastic_home: DEFAULT_PLASTIC_HOME, version: nil, agents: DEFAULT_AGENTS)
     @package_root = package_root
     @plastic_home = plastic_home
@@ -122,14 +110,6 @@ class InstallerCore
     when /-beta/ then "beta"
     else "latest"
     end
-  end
-
-  # Stability ranking: stable(latest) > beta > alpha. Higher = more stable.
-  STABILITY = { "alpha" => 0, "beta" => 1, "latest" => 2 }.freeze
-
-  def stability_rank(version_or_channel)
-    ch = STABILITY.key?(version_or_channel) ? version_or_channel : channel_for(version_or_channel)
-    STABILITY[ch] || 2
   end
 
   # --- Semver (§11) - parse/compare, shared by update + rollback ---
@@ -198,11 +178,6 @@ class InstallerCore
       next if raw.empty?
       JSON.parse(raw) rescue nil
     end
-  end
-
-  # Most recent ledger entry, or nil.
-  def ledger_current
-    ledger_read.last
   end
 
   # --- Agent selection helpers (shared by install/uninstall) ---
@@ -283,7 +258,6 @@ class InstallerCore
 
     FileUtils.mkdir_p(plastic_home)
     FileUtils.mkdir_p(File.join(plastic_home, "scripts", "lib"))
-    FileUtils.mkdir_p(File.join(plastic_home, "templates"))
     FileUtils.mkdir_p(File.join(plastic_home, "hooks"))
 
     core_files.each do |src, dest|
@@ -301,7 +275,7 @@ class InstallerCore
     # Same treatment for the hook launchers, and UNCONDITIONAL on update as well as install:
     # FileUtils.cp onto an existing file keeps the DESTINATION's old mode, so a copy over a
     # non-executable predecessor would stay non-executable forever and capture3 would raise
-    # EACCES into the same silent fail-open this intent is closing.
+    # EACCES, and the hook would fail open with no message.
     FileUtils.chmod(0o755, Dir.glob(%w[hooks bin].map { |dir| File.join(plastic_home, dir, "*") }).select { |f| File.file?(f) })
 
     global_files = core_files.values.map { |d| File.join(plastic_home, d) }
@@ -316,25 +290,7 @@ class InstallerCore
     puts "  \u{2705} Core files synced (v#{version})#{pruned.positive? ? ", #{pruned} stale file(s) pruned" : ""}"
   end
 
-  # Templates ship in full: every file under templates/ in the repo must reach
-  # ~/.plastic/templates/ on install/update. Derived from Dir.glob so a new
-  # template file added later is registered automatically, closing the
-  # whack-a-mole pattern that hid templates/index.md and templates/project.yml
-  # from every install.
-  def template_files
-    Dir.glob(File.join(package_root, "templates", "*")).each_with_object({}) do |path, acc|
-      next unless File.file?(path)
-
-      rel = File.join("templates", File.basename(path))
-      acc[rel] = rel
-    end
-  end
-
-  # Hook launchers ship in full: scripts/codex-hook resolves a live-state launcher at
-  # __dir__/../hooks/<gate>, which is ~/.plastic/hooks/<gate> once installed, so the launchers
-  # have to BE there or every Codex live-state hook fails open with no message.
-  # Glob-derived for the same reason template_files is: a hand-written list hid two template
-  # files from every install, and a new hook must register itself.
+  # Hook launchers ship in full. Glob-derived, so a new hook registers itself.
   # No path rewrite on this copy, unlike install_claude's: the launchers resolve their core
   # through "$SCRIPT_DIR/../scripts/", which from ~/.plastic/hooks/ already lands on
   # ~/.plastic/scripts/. Copied whole, statusline included: it is inert at that path, and an
@@ -348,22 +304,8 @@ class InstallerCore
     end
   end
 
-  # A screen kind file (scripts/lib/screens/<kind>.rb)
-  # must reach an installed ~/.plastic the same way a new template or hook
-  # does - glob-derived, so "add a file, not a diff" is actually true for an
-  # installed Plastic, not just an in-repo one. This repo ships none yet;
-  # the glob answers {} until one exists.
-  def screen_files
-    Dir.glob(File.join(package_root, "scripts", "lib", "screens", "*.rb")).each_with_object({}) do |path, acc|
-      next unless File.file?(path)
-
-      rel = File.join("scripts", "lib", "screens", File.basename(path))
-      acc[rel] = rel
-    end
-  end
-
   # The kernel command line. Glob-derived for the reason
-  # screen_files is: a command is one file under scripts/lib/plastic/commands,
+  # hook_files is: a command is one file under scripts/lib/plastic/commands,
   # and a hand-written manifest would make it two files and a diff. The
   # launcher bin/plastic requires scripts/lib/plastic.rb by a relative path,
   # so the whole subtree travels together or an installed copy LoadErrors on
@@ -378,7 +320,7 @@ class InstallerCore
 
   # `plastic help TOPIC` reads docs/help/TOPIC.md from
   # package_root the same way it reads a command's file, so the chapter has to
-  # ship the same way a template does: glob-derived, one file added and it
+  # ship the same way a hook does: glob-derived, one file added and it
   # installs with no diff here.
   def help_files
     Dir.glob(File.join(package_root, "docs", "help", "*.md")).each_with_object({}) do |path, acc|
@@ -389,16 +331,15 @@ class InstallerCore
 
   # Files copied into ~/.plastic on install/update. Every verb script + the shared lib
   # must be here so the installed ~/.plastic/scripts copy is self-complete (sync-guarded
-  # by install_sync_test). The templates and screen-kind halves are glob-derived
-  # (template_files, screen_files above); the rest stays a hand-written literal.
+  # by install_sync_test). The hooks, the kernel and the help chapters are
+  # glob-derived (hook_files, cli_files, help_files above); the rest stays a
+  # hand-written literal.
   def core_files
-    hand_registered_files.merge(template_files).merge(hook_files).merge(screen_files).merge(cli_files)
-      .merge(help_files)
+    hand_registered_files.merge(hook_files).merge(cli_files).merge(help_files)
   end
 
-  # Files copied into ~/.plastic on install/update. The kernel command tree, the
-  # templates and the hook launchers are glob-derived (cli_files, template_files,
-  # hook_files above); this hand-written set is what glob cannot find on its own:
+  # Files copied into ~/.plastic on install/update. The kernel command tree and
+  # the hook launchers are glob-derived (cli_files, hook_files above); this hand-written set is what glob cannot find on its own:
   # the installer chain itself (only the files bin/lib's
   # context budget bench calls through scripts/install.rb), the launcher, and the
   # three root files every install needs before any store exists.
@@ -406,7 +347,6 @@ class InstallerCore
     {
       "PLASTIC.md" => "PLASTIC.md",
       "deprecations.yml" => "deprecations.yml",
-      "config_asks.yml" => "config_asks.yml",
       "bin/plastic" => "bin/plastic",
       "scripts/install.rb" => "scripts/install.rb",
       "scripts/lib/installer_core.rb" => "scripts/lib/installer_core.rb",
@@ -414,7 +354,6 @@ class InstallerCore
       "scripts/lib/store_layout.rb" => "scripts/lib/store_layout.rb",
       "scripts/lib/hook_registry.rb" => "scripts/lib/hook_registry.rb",
       "scripts/lib/agent_models.rb" => "scripts/lib/agent_models.rb",
-      "scripts/lib/harness_text.rb" => "scripts/lib/harness_text.rb",
       "scripts/lib/compact_instructions.rb" => "scripts/lib/compact_instructions.rb",
       "scripts/lib/engine_permissions.rb" => "scripts/lib/engine_permissions.rb",
       "scripts/lib/version_number.rb" => "scripts/lib/version_number.rb"
@@ -430,14 +369,6 @@ class InstallerCore
 
     write_if_missing(File.join(plastic_home, "config.yml"), <<~YAML)
       version: 3
-      execution_mode: subagent-driven
-      stale_threshold_days: 3
-      hash_length: 6
-      hash_algorithm: sha256-base36
-      max_slug_words: 5
-      agent:
-        type: claude-code
-        parallel_mode: agent-teams
     YAML
 
     write_if_missing(File.join(plastic_home, "projects.yml"), "---\nprojects: {}\n")
@@ -458,39 +389,6 @@ class InstallerCore
 
     puts "  \u{2705} Store bootstrapped"
   end
-
-  # Repairs what an earlier install left in the stores of a home, on install
-  # and on update: an empty stray stores/projects folder, and a global
-  # INDEX.md of headings alone. Nothing a person wrote is touched, and no
-  # legacy import runs here.
-  def repair_stores
-    return unless Plastic::StoreLayout.moved?(plastic_home)
-
-    remove_stray_projects_folder
-    remove_bare_global_index
-  end
-
-  def remove_stray_projects_folder
-    stray = File.join(plastic_home, "stores", "projects")
-    return unless File.directory?(stray)
-
-    if Dir.empty?(stray)
-      Dir.rmdir(stray)
-    else
-      puts "  \u26a0 #{stray} holds files and is not a store; left in place"
-    end
-  end
-
-  def remove_bare_global_index
-    index = File.join(Plastic::StoreLayout.global_root(plastic_home), "INDEX.md")
-    return unless File.file?(index) && self.class.bare_index?(index) && Dir.glob(File.join(Plastic::StoreLayout.global_store(plastic_home), "*")).empty?
-
-    File.delete(index)
-    ready_global_store
-  end
-
-  # True when the file has no line but headings and blank lines, so it lists no intent.
-  def self.bare_index?(path) = File.readlines(path).all? { |line| line.strip.empty? || line.start_with?("#") }
 
   # The state a sync up leaves a new store in: the three store databases, so
   # intent new works at once. No INDEX.md is written, which would mark the
@@ -946,16 +844,7 @@ class InstallerCore
     installed = []
     skills_source = File.join(package_root, "skills")
     skill_exclude = advisor_enabled? ? [] : ["agent-advisor"]
-    # Codex is the one harness that gets its instruction text projected at
-    # copy time. skill_names comes from the real skills/ listing, so the rewrite table
-    # maintains itself as skills are added and renamed. Every OTHER install path passes
-    # no transform and keeps the byte-for-byte copy.
-    skill_names = Dir.children(skills_source).select { |e| File.directory?(File.join(skills_source, e)) }
-    codex_transform = lambda do |content, rel|
-      HarnessText.for_codex(content, rel_path: rel, skill_names: skill_names)
-    end
-    installed += install_skills_flat(skills_source, File.join(config[:dir], "skills"),
-                                     exclude: skill_exclude, transform: codex_transform) if File.directory?(skills_source)
+    installed += install_skills_flat(skills_source, File.join(config[:dir], "skills"), exclude: skill_exclude) if File.directory?(skills_source)
     # Codex-scoped overrides only (agents.models.codex.*): a literal Claude
     # model id set under agents.models.claude.* (or the legacy flat form,
     # which resolves as claude) must never reach a Codex TOML.
@@ -1109,29 +998,16 @@ class InstallerCore
 
   def statusline_on? = Plastic::Config.new(plastic_home).flag(["statusline"], default: true)
 
-  def codex_dispatcher_path
-    File.join(plastic_home, "scripts", "codex-hook")
-  end
-
-  # ~/.codex/hooks.json merge. Guide-settled shape [guide Part 3]:
-  # top-level {"hooks": {<Event>: [...]}}, identical to Claude's settings.json
-  # hooks shape, so this mirrors merge_claude_hooks against a different file.
-  # Both harnesses match ownership by registry, not a
-  # substring: Codex by dispatcher filename equality, because its hooks are
-  # arguments to one shared dispatcher command rather than per-hook launcher
-  # files the way Claude's plastic-<name> launchers are.
+  # ~/.codex/hooks.json merge: top-level {"hooks": {<Event>: [...]}}, the same
+  # shape as Claude's settings.json hooks, so this mirrors merge_claude_hooks
+  # against a different file. Entries an earlier install wrote through the
+  # retired codex-hook dispatcher are purged first, then the kernel entries go in.
   def merge_codex_hooks(hooks_json_path)
     data = read_json_safe(hooks_json_path) || {}
     hooks = data["hooks"] ||= {}
     removed = purge_stale_codex_hooks(hooks)
     report_removed_hook_entries(removed, "hooks.json")
     data = kernel_hook_entries.codex(data)
-    hooks = data["hooks"]
-    plastic = HookRegistry.codex_hooks_json(dispatcher_path: codex_dispatcher_path)
-    plastic.each do |event, groups|
-      hooks[event] ||= []
-      Array(groups).each { |g| hooks[event] << g }
-    end
     write_json_atomic(hooks_json_path, data)
   end
 
@@ -1191,19 +1067,17 @@ class InstallerCore
   # instead, so every skill can read it from one shared location. `exclude` skips
   # named top-level skill directories entirely (the agent-advisor skill
   # when advisor.enabled is false).
-  def install_skills_flat(skills_source, skills_root, exclude: [], transform: nil)
+  def install_skills_flat(skills_source, skills_root, exclude: [])
     installed = []
     FileUtils.mkdir_p(skills_root)
 
     Dir.children(skills_source).reject { |e| e.start_with?(".") || exclude.include?(e) }.each do |entry|
       src = File.join(skills_source, entry)
       if File.directory?(src)
-        installed += copy_dir_recursive(src, File.join(skills_root, "plastic-#{entry}"),
-                                        transform: transform, rel_prefix: entry)
+        installed += copy_dir_recursive(src, File.join(skills_root, "plastic-#{entry}"))
       elsif entry.start_with?("_") && entry.end_with?(".md")
         # Shared fragments land in the HARNESS-NEUTRAL plastic_home, shared
-        # with any co-installed Claude. Never transformed, or a Codex install would
-        # corrupt Claude's copy of the same file.
+        # with any co-installed harness.
         FileUtils.mkdir_p(plastic_home)
         dest = File.join(plastic_home, entry)
         FileUtils.cp(src, dest)
@@ -1700,20 +1574,11 @@ class InstallerCore
 
   # --- The two blocks Plastic ships, each with its own marker pair ---
 
-  def codex_section(body: CODEX_AGENTS_MD_BODY)
-    marked_section(body: body)
-  end
-
   def inject_codex_agents_md(path, body: CODEX_AGENTS_MD_BODY)
     inject_marked_section(path, body: body)
   end
 
   # The compact-instructions block for ~/.claude/CLAUDE.md.
-  def claude_compact_section(body: CompactInstructions::BODY)
-    marked_section(body: body, begin_prefix: CLAUDE_SECTION_BEGIN_PREFIX,
-                   end_marker: CLAUDE_SECTION_END)
-  end
-
   def inject_claude_compact_md(path, body: CompactInstructions::BODY)
     inject_marked_section(path, body: body, begin_prefix: CLAUDE_SECTION_BEGIN_PREFIX,
                           end_marker: CLAUDE_SECTION_END, section_re: CLAUDE_SECTION_RE)
@@ -1975,22 +1840,16 @@ class InstallerCore
     agents.find { |a| a[:key] == key }
   end
 
-  def copy_dir_recursive(src, dest, transform: nil, rel_prefix: "")
+  def copy_dir_recursive(src, dest)
     files = []
     FileUtils.mkdir_p(dest)
     Dir.entries(src).reject { |e| e.start_with?(".") }.each do |entry|
       src_path = File.join(src, entry)
       dest_path = File.join(dest, entry)
-      rel = rel_prefix.empty? ? entry : File.join(rel_prefix, entry)
       if File.directory?(src_path)
-        files += copy_dir_recursive(src_path, dest_path, transform: transform, rel_prefix: rel)
+        files += copy_dir_recursive(src_path, dest_path)
       elsif File.file?(src_path)
-        if transform && File.extname(entry) == ".md"
-          File.write(dest_path, transform.call(File.read(src_path), rel))
-          File.chmod(File.stat(src_path).mode & 0o7777, dest_path)
-        else
-          FileUtils.cp(src_path, dest_path)
-        end
+        FileUtils.cp(src_path, dest_path)
         files << dest_path
       end
     end

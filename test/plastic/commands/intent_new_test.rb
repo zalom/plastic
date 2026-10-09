@@ -6,7 +6,8 @@ require_relative "../../../scripts/lib/plastic/commands/intent_new"
 class IntentNewTest < Plastic::TestCase
   IntentNew = Plastic::Commands::IntentNew
 
-  def description = IntentNew.describe.to_h
+  def description = { name: IntentNew.tool_name, summary: Plastic::CLI::TABLE.dig(IntentNew.tool_name, 1), usage: IntentNew.usage_line, subject: IntentNew.subject,
+                      arguments: IntentNew.arguments.map(&:to_h), options: IntentNew.options.map(&:to_h), writes: IntentNew.writes }
 
   def test_the_command_reads_its_title_and_names_its_switches
     assert_equal ["intent new", "Open an intent: write its rows and print its folder",

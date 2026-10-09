@@ -71,6 +71,6 @@ class NodeAddTest < Plastic::TestCase
   end
 
   def test_takes_the_intent_as_its_subject
-    assert_equal [:intent_id], Plastic::Commands::NodeAdd.describe.subject
+    assert_equal [:intent_id], Plastic::Commands::NodeAdd.subject
   end
 end

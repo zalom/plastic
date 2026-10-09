@@ -28,7 +28,6 @@ module EnginePermissions
     "Edit(~/.plastic/scripts/**)",
     "Edit(~/.plastic/skills/**)",
     "Edit(~/.plastic/hooks/**)",
-    "Edit(~/.plastic/templates/**)",
   ].freeze
 
   # Returns a new settings hash with ENTRIES merged into permissions.deny, appended

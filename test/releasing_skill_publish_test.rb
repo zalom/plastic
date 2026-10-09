@@ -4,7 +4,7 @@
 require "minitest/autorun"
 require "yaml"
 
-# ReleasingSkillPublishTest (intent 347, S4): the release doctrine names the publish workflow.
+# The release doctrine names the publish workflow.
 class ReleasingSkillPublishTest < Minitest::Test
   REPO = File.expand_path("..", __dir__)
   AGENTS_PATH = File.join(REPO, "AGENTS.md")
@@ -16,11 +16,8 @@ class ReleasingSkillPublishTest < Minitest::Test
   end
 end
 
-# CiWorkflowTest (intent 347, S6): test.yml has run green on `main` only, and
-# `main` has never received the 2.0 alpha line, so the suite has not proven
-# itself on a hosted runner in its current form since 2026-08-25. Extends the
-# trigger to `alpha` and to manual dispatch, and points it at the same
-# `ruby bin/test` the release gate runs (D7).
+# The CI workflow test.yml triggers on `alpha` and on manual dispatch, and runs
+# the same `ruby bin/test` the release gate runs.
 class CiWorkflowTest < Minitest::Test
   REPO = File.expand_path("..", __dir__)
   PATH = File.join(REPO, ".github", "workflows", "test.yml")

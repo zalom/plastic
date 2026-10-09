@@ -57,7 +57,7 @@ class InstallerReleaseActivationRecoveryTest < Minitest::Test
 
   def test_a_rollback_syncs_the_home_of_the_release_it_switches_to
     installer, sync = synced_with("2.0.2", "2.0.3")
-    installer.rollback
+    installer.switch(installer.previous_version)
 
     assert_equal %w[2.0.2 2.0.3 2.0.2], sync.seen
   end
@@ -66,7 +66,7 @@ class InstallerReleaseActivationRecoveryTest < Minitest::Test
     installer, sync = synced_with("2.0.2", "2.0.3")
     sync.failure = RuntimeError.new("injected sync failure")
 
-    assert_raises(InstallerRelease::ActivationError) { installer.rollback }
+    assert_raises(InstallerRelease::ActivationError) { installer.switch(installer.previous_version) }
     assert_equal [%w[2.0.3 2.0.2], "original\n"], [versions(installer), home_file]
   end
 

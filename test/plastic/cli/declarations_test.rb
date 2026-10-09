@@ -51,12 +51,6 @@ class DeclarationsTest < Plastic::TestCase
     assert_equal "intent new", Plastic::Commands::IntentNew.tool_name
   end
 
-  def test_describe_carries_the_summary_from_the_table
-    description = Plastic::Commands::IntentNew.describe
-
-    assert_equal ["intent new", Plastic::CLI::TABLE.dig("intent new", 1)], [description.name, description.summary]
-  end
-
   def test_declared_names_list_arguments_then_options
     declared = tool do
       argument :id, label: "ID", text: "the intent"

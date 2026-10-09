@@ -62,10 +62,9 @@ class InstallerReleaseSourceTest < Minitest::Test
     assert_equal "https://github.com/zalom/plastic/releases/download/v2.0.3/plastic.tgz", fetch.downloaded.first
   end
 
-  def test_github_is_a_trusted_source
+  def test_github_gives_no_notice
     source = InstallerRelease::GithubSource.new(fetch: nil)
 
-    assert_predicate source, :trusted?
     assert_empty source.notices
   end
 

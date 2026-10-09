@@ -28,7 +28,7 @@ class RoutinePreviewTest < Plastic::TestCase
 
   def test_each_removing_command_declares_the_dry_run_switch
     declared = COMMANDS.map do |command|
-      command.describe.to_h[:options].find { |option| option[:name] == :dry_run }&.slice(:switch, :default, :text)
+      command.options.map(&:to_h).find { |option| option[:name] == :dry_run }&.slice(:switch, :default, :text)
     end
 
     assert_equal [{ switch: "--dry-run", default: false, text: "preview the call in a disposable copy" }] * COMMANDS.size, declared

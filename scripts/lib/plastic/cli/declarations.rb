@@ -3,13 +3,11 @@
 require_relative "../invalid"
 require_relative "command/argument"
 require_relative "command/option"
-require_relative "command/description"
 
 module Plastic
   class CLI
     # The words a command's class body declares itself with: what the tool
-    # takes, what it works on, and which graphs it reads and writes. The
-    # harness reads them back through `describe`.
+    # takes, what it works on, and which graphs it reads and writes.
     module Declarations
       GRAPHS = %i[work knowledge retrieval references].freeze
       OPTION_DEFAULTS = { repeatable: false, required: false }.freeze
@@ -65,11 +63,6 @@ module Plastic
       end
 
       def usage_line(tool = tool_name) = ["plastic", tool, *(arguments + options).map(&:usage)].join(" ")
-
-      def describe(tool = tool_name)
-        Command::Description.new(name: tool, summary: TABLE.dig(tool, 1), usage: usage_line(tool), subject:,
-          arguments: arguments.map(&:to_h), options: options.map(&:to_h), reads:, writes:)
-      end
 
       private
 

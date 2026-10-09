@@ -21,7 +21,6 @@ require_relative "retrieval/roadmap_reads"
 require_relative "retrieval/store_reads"
 require_relative "retrieval/archive_reads"
 require_relative "retrieval/structure_reads"
-require_relative "retrieval/exact_lookup_plans"
 require_relative "retrieval/evidence"
 
 module Plastic
@@ -73,8 +72,6 @@ module Plastic
       end
 
       def clusters = read(:clusters)
-
-      def exact_lookup_plans(intent_id, path) = Retrieval::ExactLookupPlans.new(@databases, origin_id).rows(intent_id, path)
 
       DOCUMENT_SQL = "SELECT * FROM documents WHERE intent_id = :intent_id AND path = :path AND origin_id = :origin"
       SEARCH_SQL = Retrieval::Search::SEARCH_SQL

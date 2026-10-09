@@ -2,25 +2,17 @@
 
 # Shared model-tier resolution for Plastic subagents.
 #
-# TIER_DEFAULTS mirrors the shipped `agents/*.md` frontmatter so `read-config`
-# can answer `agents.models.<basename>` with the built-in default. The installer
-# does NOT use TIER_DEFAULTS: it applies only genuine config overrides via
-# `override_map`, so shipped frontmatter with no override passes through
-# unchanged.
+# TIER_DEFAULTS mirrors the shipped `agents/*.md` frontmatter, so
+# `shipped_model_for` answers `agents.models.<basename>` with the built-in
+# default. The installer does NOT use TIER_DEFAULTS: it applies only genuine
+# config overrides via `override_map`, so shipped frontmatter with no override
+# passes through unchanged.
 module AgentModels
   # Claude Code aliases only (never pinned ids, never Fable). Keys are the agent
   # file basenames without the `.md` extension.
-  # The three per-kind node agents, dispatched by
-  # HarnessAdapter::AGENT_TYPE_BY_KIND. work and research resolve the
-  # executor tier, verify the advisor tier, mirroring RunnerPolicy's
-  # model_role split: work and research run on plastic-executor's
-  # own tier, and verify on the lifecycle advisor tier, never the cheap tier.
   TIER_DEFAULTS = {
     "plastic-enforcer" => "opus",
-    "plastic-executor" => "sonnet",
-    "plastic-node-work" => "sonnet",
-    "plastic-node-verify" => "opus",
-    "plastic-node-research" => "sonnet"
+    "plastic-executor" => "sonnet"
   }.freeze
 
   # The two consultation agents are Primary Advisor and Secondary Advisor.

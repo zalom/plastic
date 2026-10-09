@@ -2,9 +2,9 @@
 # frozen_string_literal: true
 
 # HookRegistry: THE single source of truth for Plastic's hook registration.
-# InstallerCore#merge_claude_hooks and #merge_codex_hooks
-# build settings.json/hooks.json entries from it; nothing else may hand-roll
-# a matcher. Change registrations HERE and only here.
+# InstallerCore#merge_claude_hooks builds settings.json entries from it, and
+# #merge_codex_hooks purges the hooks.json entries it names; nothing else may
+# hand-roll a matcher. Change registrations HERE and only here.
 #
 # `events` registers only check-update, whose launcher (hooks/check-update)
 # and target (scripts/select-update-target) both ship. RETIRED_HOOK_NAMES
@@ -36,43 +36,6 @@ module HookRegistry
         ] },
       ],
     }
-  end
-
-  # Codex registration (~/.codex/hooks.json). Derived from `events`. These
-  # three constants list no hook names today; codex_hooks_json keeps running so
-  # the shape stays settled, it just has nothing to project yet.
-  CODEX_POST_HOOKS = [].freeze
-
-  # Live-state events registered WHOLE: see CODEX_POST_HOOKS above.
-  CODEX_LIVE_STATE_EVENTS = [].freeze
-
-  # SessionEnd on Codex: see CODEX_POST_HOOKS above.
-  CODEX_SESSION_END_HOOKS = [].freeze
-
-  def codex_hooks_json(dispatcher_path:)
-    status_by_name = events.values.flatten.flat_map { |g| g["hooks"] }
-                           .each_with_object({}) { |h, m| m[h["name"]] = h["status"] }
-    cmd = ->(name) {
-      { "type" => "command",
-        "command" => "\"#{dispatcher_path}\" #{name}",
-        "statusMessage" => status_by_name[name].to_s }
-    }
-    # Validate the Codex name against the single source of truth, `events`. An event
-    # with nothing left in `events` (every current CODEX_* list is empty, see above)
-    # reads as no names rather than a missing-key crash.
-    post_order = Array(events["PostToolUse"]).flat_map { |g| g["hooks"].map { |h| h["name"] } }
-    post = (CODEX_POST_HOOKS & post_order).map { |n| cmd.call(n) }
-
-    result = {
-      "PostToolUse" => [{ "matcher" => "apply_patch", "hooks" => post }],
-    }
-    CODEX_LIVE_STATE_EVENTS.each do |event|
-      names = Array(events[event]).flat_map { |g| g["hooks"].map { |h| h["name"] } }
-      result[event] = [{ "matcher" => "", "hooks" => names.map { |n| cmd.call(n) } }]
-    end
-    end_order = Array(events["SessionEnd"]).flat_map { |g| g["hooks"].map { |h| h["name"] } }
-    result["SessionEnd"] = [{ "matcher" => "", "hooks" => (CODEX_SESSION_END_HOOKS & end_order).map { |n| cmd.call(n) } }]
-    result
   end
 
   # Flattened, deduplicated Claude launcher names for every hook `events`
@@ -122,18 +85,6 @@ module HookRegistry
   # now, the non-hook launchers we place, and what we used to register.
   def claude_purgeable_launcher_names
     (claude_launcher_names + CLAUDE_NON_HOOK_LAUNCHERS + RETIRED_CLAUDE_LAUNCHERS).uniq.sort
-  end
-
-  # Current Codex hook names, from the same sources codex_hooks_json builds from.
-  def codex_hook_names
-    live = CODEX_LIVE_STATE_EVENTS.flat_map do |event|
-      events[event].flat_map { |g| g["hooks"].map { |h| h["name"] } }
-    end
-    (CODEX_POST_HOOKS + live + CODEX_SESSION_END_HOOKS).uniq.sort
-  end
-
-  def codex_purgeable_hook_names
-    (codex_hook_names + RETIRED_HOOK_NAMES).uniq.sort
   end
 
   # Is this settings.json hook command one of OURS?

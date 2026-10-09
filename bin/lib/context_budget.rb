@@ -66,8 +66,7 @@ module ContextBudget
 
   Measurement = Struct.new(:lines, :words, :tokens, :bytes, :tokens_by_bytes)
 
-  # The word-based token estimate is skill_lint.rb:104's arithmetic exactly, so
-  # the bench and skill-lint can never report different numbers for one file.
+  # The token estimate is the word count times 1.3.
   # bytes / 4 is a second, independent estimate printed for cross-check. Neither
   # is a tokenizer; both are deterministic and offline.
   def self.measure(body)
@@ -76,7 +75,7 @@ module ContextBudget
                     body.bytesize, (body.bytesize / 4.0).round)
   end
 
-  # skill_lint.rb:82-90's split, so a skill's frontmatter is counted once (in the
+  # Splits a skill at its frontmatter, so the frontmatter is counted once (in the
   # catalog row) and its body once (in the median-body row), never both.
   def self.split_skill(content)
     parts = content.split("---", 3)
@@ -455,7 +454,7 @@ end
     lines << "  time      ms min/median/max #{stat_line(ms_samples)} - indicative only, never a pass/fail signal"
     lines << "  fixture   a real `scripts/install.rb --claude` into a temporary HOME, then a fixed store"
     lines << "            (1 active + 2 future global intents, 1 active + 1 future project intents)"
-    lines << "  estimator words * 1.3 (skill-lint's arithmetic) as tokens(w); bytes / 4 as tokens(b) - neither is a tokenizer"
+    lines << "  estimator words * 1.3 as tokens(w); bytes / 4 as tokens(b) - neither is a tokenizer"
     lines << ""
     lines << format("  %-52s %8s %9s %9s %9s %9s", "row", "bytes", "tokens(w)", "tokens(b)", "ceiling", "headroom")
 

@@ -28,7 +28,7 @@ class InstallerReleaseActivationLaunchTest < Minitest::Test
     installer = activation_with("2.0.2", "2.0.3")
     File.write(File.join(installer.releases.path("2.0.2"), "bin", "plastic"), "#!/bin/sh\nexit 1\n")
 
-    assert_raises(InstallerRelease::ActivationError) { installer.rollback }
+    assert_raises(InstallerRelease::ActivationError) { installer.switch(installer.previous_version) }
     assert_equal %w[2.0.3 2.0.2], versions(installer)
   end
 end

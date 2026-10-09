@@ -12,10 +12,9 @@ require "stringio"
 
 require_relative "../bin/lib/context_budget"
 
-# Intent 313: the context budget bench. Intent 296 ruled two numbers (the core
-# block under 8,192 bytes, the whole per-boot doctrine read under 15,000) and
-# nothing measured either one. These tests pin what the bench measures, that it
-# measures it hermetically, and that a crossed ceiling turns the suite red.
+# The context budget bench. The core block stays under 8,192 bytes and the whole
+# per-boot doctrine read under 15,000. These tests pin what the bench measures,
+# that it measures it hermetically, and that a crossed ceiling turns the suite red.
 #
 # Hermetic and DI throughout: every fixture is a Dir.mktmpdir with its own HOME
 # and PLASTIC_HOME, the boot subprocess's env is injectable and asserted, and no
@@ -53,10 +52,7 @@ end
 # The estimator, the skill split, the catalog and the median: pure functions over
 # strings and a synthetic two-skill tree.
 class ContextBudgetMeasureTest < Minitest::Test
-  # skill_lint.rb:104 is `(body.split(/\s+/).reject(&:empty?).length * 1.3).round`.
-  # If this drifts, the bench and skill-lint report different token counts for the
-  # same file, which is the one thing D1 exists to prevent.
-  def test_measure_uses_skill_lints_arithmetic
+  def test_measure_counts_tokens_as_words_times_one_point_three
     body = (["word"] * 40).join(" ")
     m = ContextBudget.measure(body)
 
@@ -81,8 +77,7 @@ class ContextBudgetMeasureTest < Minitest::Test
     assert_equal 3, ContextBudget.measure("a\nb\nc\n").lines
   end
 
-  # skill_lint.rb:82-90: content.split("---", 3), parts[1] frontmatter, parts[2] body.
-  def test_split_skill_matches_skill_lints_split
+  def test_split_skill_separates_the_frontmatter_from_the_body
     content = "---\nname: x\ndescription: y\n---\n\n# Body\n\ntext\n"
     frontmatter, body = ContextBudget.split_skill(content)
 
@@ -236,13 +231,6 @@ class ContextBudgetFixtureTest < Minitest::Test
   end
 end
 
-# Intent 397 cutover: ContextBudgetBootTest measured hook-session-start's real,
-# live additionalContext (the project banner, the doctor status line, the active
-# intent, the stale-future cut). The kernel registers no SessionStart hook yet, so
-# no repo on alpha ships that file any more; ContextBudget.boot now reports an
-# honest empty context for a repo without it (bin/lib/context_budget.rb), and this
-# class, which had no live content left to measure, is retired with the hook.
-
 class ContextBudgetCeilingTest < Minitest::Test
   REPO = ContextBudgetSharedFixture::REPO
 
@@ -251,8 +239,7 @@ class ContextBudgetCeilingTest < Minitest::Test
   # so they share the one real install every other read-only case shares.
   def fixture = ContextBudgetSharedFixture.fixture
 
-  # The ruled numbers (intent 296) plus the one ratchet intent 313 adds. A change
-  # here is a change to a ruling and must be argued, not typed.
+  # The ceilings are fixed numbers; changing one must be argued, not typed.
   def test_ceilings_are_the_ruled_numbers
     assert_equal 8_192, ContextBudget::CEILINGS[:core]
     assert_equal 15_000, ContextBudget::CEILINGS[:boot]
@@ -260,7 +247,7 @@ class ContextBudgetCeilingTest < Minitest::Test
     assert_equal 15_000, ContextBudget::WORKING_SET_TARGET
   end
 
-  # Can-fail proof (intent 208): the bench must be observed reporting a failure,
+  # Can-fail proof: the bench must be observed reporting a failure,
   # driven by an injected over-budget core rather than by editing a real file.
   def test_an_over_budget_core_turns_the_report_red
     Dir.mktmpdir("plastic-bench-overbudget") do |dir|
@@ -302,8 +289,7 @@ class ContextBudgetCeilingTest < Minitest::Test
   end
 
   # A repo carrying a hook-session-start file, to exercise the injectable
-  # runner below without this repo's own tree, which no longer ships one
-  # (intent 397 cutover: the kernel registers no SessionStart hook yet).
+  # runner below without this repo's own tree, which ships none.
   def repo_with_hook
     dir = Dir.mktmpdir("plastic-bench-hook-repo")
     Minitest.after_run { FileUtils.remove_entry(dir) }
@@ -440,10 +426,3 @@ class ContextBudgetCliTest < Minitest::Test
     assert_match(/usage/i, out)
   end
 end
-
-# Intent 397 cutover: ContextBudgetPostCutBootTest and ContextBudgetSubagentBootTest
-# measured hook-session-start's live additionalContext, row by row. The kernel's
-# SessionStart hook is now plastic hook resume (scripts/lib/plastic/hooks/entries.rb),
-# so no repo on alpha ships hook-session-start any more; ContextBudget.boot reports an honest empty
-# context for a repo without it (bin/lib/context_budget.rb), and these two
-# classes, which had no content left to measure, are retired with the hook.

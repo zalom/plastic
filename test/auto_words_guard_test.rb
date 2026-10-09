@@ -2,7 +2,7 @@
 
 require_relative "test_helper"
 
-# Retired auto words guard (intent 413). `plastic auto ID` is the only auto
+# Retired auto words guard. `plastic auto ID` is the only auto
 # command and the lock is read with `plastic intent lock status ID`, so no
 # shipped document and no kernel file names `auto start`, `auto lock` or the
 # old `plastic-lock` script. The reviews under docs/reviews and CHANGELOG.md
