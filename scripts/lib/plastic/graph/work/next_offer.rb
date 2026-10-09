@@ -40,9 +40,16 @@ module Plastic
           id = intent.intent_id
           gap = self.class.spec_gap(Knowledge::Spec.new(@retrieval, id))
           return ["plastic intent spec #{id}", "intent #{id} has #{gap}", nil] if gap
-          return ["plastic auto #{id}", "intent #{id} is open", nil] if intent.status == "open"
+          return open_offer(id) if intent.status == "open"
 
           DeliveryAction.new(@retrieval, id).call
+        end
+
+        def open_offer(id)
+          return ["plastic auto #{id}", "intent #{id} is open", nil] if @retrieval.approval(id)
+
+          [nil, "the owner must give the go-ahead for intent #{id}", "Ask the owner for the go-ahead. " \
+            "Only after the owner gives it, record it with plastic intent approve #{id}."]
         end
       end
     end

@@ -27,8 +27,15 @@ class PickNextTest < Plastic::TestCase
     assert_equal "intent 1 has an open decision", pick.last
   end
 
-  def test_a_specified_open_intent_offers_the_start
+  def test_a_specified_open_intent_without_a_go_ahead_asks_the_owner
     specified_intent
+
+    assert_equal [:agent_needed, nil, "the owner must give the go-ahead for intent 1"], pick
+  end
+
+  def test_a_specified_open_intent_with_a_go_ahead_offers_the_start
+    specified_intent
+    store_graphs.work.approve_intent("1")
 
     assert_equal [:done, "plastic auto 1", "intent 1 is open"], pick
   end

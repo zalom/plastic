@@ -43,9 +43,23 @@ class NextTest < Plastic::TestCase
     assert_includes result.out, "next: plastic intent spec #{intent.intent_id}"
   end
 
-  def test_an_open_status_offers_auto_start
+  def test_a_spec_without_a_go_ahead_asks_the_owner_and_offers_no_command
     intent = open_intent
     clear_spec(intent)
+
+    result = call
+
+    assert_equal 0, result.code
+    assert_includes result.out, "next: none"
+    assert_includes result.out, "because: the owner must give the go-ahead for intent #{intent.intent_id}"
+    assert_includes result.out, "Ask the owner for the go-ahead. Only after the owner gives it, record it with plastic intent approve #{intent.intent_id}."
+    refute_match(/^next: plastic (auto|intent approve)/, result.out)
+  end
+
+  def test_an_open_status_with_a_go_ahead_offers_auto_start
+    intent = open_intent
+    clear_spec(intent)
+    plastic("intent", "approve", intent.intent_id, table: Plastic::CLI::TABLE)
 
     result = call
 

@@ -300,7 +300,7 @@
       ]
     },
     "varar/intent-verdict.md": {
-      "sourceHash": "fnv1a:dd5e2611",
+      "sourceHash": "fnv1a:59f1114d",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -327,7 +327,7 @@
       ]
     },
     "varar/next.md": {
-      "sourceHash": "fnv1a:abedc824",
+      "sourceHash": "fnv1a:769a5b08",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",

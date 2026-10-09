@@ -38,6 +38,7 @@ module GraphResumeHelper
   def clear_spec(slug, intent)
     store_folder(slug).write("#{intent.dir}/spec.md", CLEAR_SPEC)
     plastic("sync", "up", "--project", slug, table: Plastic::CLI::TABLE)
+    plastic("intent", "approve", intent.intent_id, "--project", slug, table: Plastic::CLI::TABLE)
   end
 
   def ready_intent(title = "Alpha")
