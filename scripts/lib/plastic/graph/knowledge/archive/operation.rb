@@ -29,7 +29,7 @@ module Plastic
 
           def archive(intent)
             problem = guard.problem(intent)
-            return refused(problem, intent) if problem
+            return [false, problem, intent.archive_refusal_kind] if problem
 
             capture.capture(intent)
             complete(intent)
@@ -41,8 +41,6 @@ module Plastic
           end
 
           def missing(intent_id) = [false, "no intent #{intent_id}", :failure]
-
-          def refused(problem, intent) = [false, problem, intent.archive_refusal ? :unfinished : :refusal]
         end
       end
     end

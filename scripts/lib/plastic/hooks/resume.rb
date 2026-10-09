@@ -16,26 +16,34 @@ module Plastic
       # The doctor run the hook asks: the failing checks of the whole doctor for this scope.
       FAILING_CHECKS = ->(scope) { Doctor.checks(scope, Doctor.kind(Doctor.harness(scope)), running: nil).select(&:repair) }
 
+      DOCTOR_LINE = lambda do |count|
+        "Plastic: doctor found #{count} failing #{(count == 1) ? "check" : "checks"}; run plastic doctor."
+      end
+
       def initialize(argv, health: FAILING_CHECKS, **rest)
         super(argv, **rest)
         @health = health
       end
 
       def respond(event)
-        graphs = Graph.open(home: scope.plastic_home, store: scope.slug, session: session_id)
-        open_session_row(graphs.work)
-        recap = Recap.new(graphs.retrieval, session_id:, source: event[:source], directory:).lines
-        [*recap, doctor_line].compact.join("\n")
+        [*recap(event), doctor_line].compact.join("\n")
       end
 
       private
 
-      def doctor_line
-        failing = @health.call(scope)
-        "Plastic: doctor found #{failing.size} failing #{(failing.size == 1) ? "check" : "checks"}; run plastic doctor." unless failing.empty?
+      def recap(event)
+        graphs = Graph.open(home: scope.plastic_home, store: scope.slug, session: session_id)
+        open_session_row(graphs.work)
+        Recap.new(graphs.retrieval, session_id:, source: event[:source], directory:).lines
+      end
+
+      def doctor_line = failing_count.then { |count| DOCTOR_LINE.call(count) if count.positive? }
+
+      def failing_count
+        @health.call(scope).size
       rescue => error
         environment.err.puts "plastic hook: #{error.message}"
-        nil
+        0
       end
 
       # The store's databases stay out of its versioning before any read.

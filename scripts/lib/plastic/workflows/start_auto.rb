@@ -30,17 +30,17 @@ module Plastic
         nil
       end
 
-def self.criterion_problem(id, context)
-  return nil unless Graph::Knowledge::Spec.new(context.retrieval, id).done_criteria.empty?
+      def self.criterion_problem(id, context)
+        return nil unless Graph::Knowledge::Spec.new(context.retrieval, id).done_criteria.empty?
 
-  "intent #{id} names no done criterion"
-end
+        "intent #{id} names no done criterion"
+      end
 
-def self.decision_problem(id, context)
-  return nil unless Graph::Knowledge::Spec.new(context.retrieval, id).open_decisions.any?
+      def self.decision_problem(id, context)
+        return nil unless Graph::Knowledge::Spec.new(context.retrieval, id).open_decisions.any?
 
-  "intent #{id} has an open decision; run plastic intent spec #{id}"
-end
+        "intent #{id} has an open decision; run plastic intent spec #{id}"
+      end
 
       def self.lock_problem(id, context)
         lock = context.retrieval.lock(id)

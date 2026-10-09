@@ -67,8 +67,7 @@ class IntentReviseTest < Plastic::TestCase
 
     result = call("1", "Beta, after grilling")
 
-    assert_equal 1, result.code
-    assert_includes result.err, "intent 1 is done"
+    assert_equal [1, true], [result.code, result.err.include?("intent 1 is done")]
     assert_match(/^next: plastic next/, result.out)
     assert_equal ["Alpha", 1], [retrieval.intent("1").title, revisions]
   end

@@ -66,8 +66,7 @@ class IntentArchiveTest < Plastic::TestCase
 
     result = call(intent.intent_id)
 
-    assert_equal 1, result.code
-    assert_includes result.err, "open"
+    assert_equal [1, true], [result.code, result.err.include?("open")]
     assert_match(/^next: plastic intent end 1/, result.out)
   end
 
