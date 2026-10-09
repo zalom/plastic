@@ -7,8 +7,9 @@ gives one command's options, and `plastic help tools` covers RTK, QMD and Enola.
 the work stopped and what runs next, across several projects with `--stores a,b`. When a
 person says "continue", run it. `plastic next` prints that one action.
 
-Every command ends with a `next:` line naming what to run now, and a `because:` line
-giving the rule that chose it. Run it unless asked for something else.
+A command ends with a `next:` line naming what to run now, and a `because:` line
+giving the rule that chose it. Run it unless asked for something else. A call with
+nothing to run next prints no `next:` line and still prints `because:`.
 
 `--json` gives any command's result as data, except the installer commands and `plastic hook`.
 

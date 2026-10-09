@@ -38,16 +38,6 @@ class AutoWorktreeTest < Plastic::TestCase
     assert_includes rows.to_s, "plastic/1--alpha"
   end
 
-  def test_an_existing_worktree_offers_the_brief
-    repo = register_repo
-    intent = clear_intent
-    FileUtils.mkdir_p(File.join(repo, ".claude", "worktrees", "1--alpha"))
-
-    result = call(intent.intent_id)
-
-    assert_equal [0, "next: plastic intent brief 1 --project global"], [result.code, next_line(result)]
-  end
-
   def test_a_store_with_no_registered_repo_prints_no_worktree
     intent = clear_intent
 

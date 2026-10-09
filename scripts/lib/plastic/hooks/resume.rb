@@ -13,8 +13,7 @@ module Plastic
     class Resume < Hook
       option :harness, switch: "--harness NAME", text: "the harness calling this hook", default: "claude-code"
 
-      # The doctor run the hook asks: the failing checks of the whole doctor for this scope.
-      FAILING_CHECKS = ->(scope) { Doctor.checks(scope, Doctor.kind(Doctor.harness(scope)), running: nil).select(&:repair) }
+      FAILING_CHECKS = ->(scope, harness) { Doctor.failing(scope, harness:) }
 
       DOCTOR_LINE = lambda do |count|
         "Plastic: doctor found #{count} failing #{(count == 1) ? "check" : "checks"}; run plastic doctor."
@@ -40,7 +39,7 @@ module Plastic
       def doctor_line = failing_count.then { |count| DOCTOR_LINE.call(count) if count.positive? }
 
       def failing_count
-        @health.call(scope).size
+        @health.call(scope, parsed[:harness]).size
       rescue => error
         environment.err.puts "plastic hook: #{error.message}"
         0

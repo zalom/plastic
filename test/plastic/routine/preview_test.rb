@@ -96,14 +96,20 @@ class RoutinePreviewTest < Plastic::TestCase
     assert_equal 0, twin.previewed.code
   end
 
-  def test_a_refusal_in_the_copy_prints_the_apply_message
-    twin = twin_run("intent", "archive", "1") { |home| seed_intents(home, "Alpha") }
+  def seed_linked_archive(home)
+    seed_intents(home, "Alpha", "Beta")
+    mark_done_in(home, "1")
+    call_in(home, "intent", "link", "2", "cites", "1")
+  end
 
-    assert_equal [1, twin.applied.err], [twin.previewed.code, twin.previewed.err]
+  def test_a_refusal_in_the_copy_prints_the_apply_message
+    twin = twin_run("intent", "archive", "1") { |home| seed_linked_archive(home) }
+
+    assert_equal [3, twin.applied.err], [twin.previewed.code, twin.previewed.err]
   end
 
   def test_a_refusal_in_the_copy_ends_on_the_closing_line_and_changes_nothing
-    twin = twin_run("intent", "archive", "1") { |home| seed_intents(home, "Alpha") }
+    twin = twin_run("intent", "archive", "1") { |home| seed_linked_archive(home) }
 
     assert_includes twin.previewed.out, "preview complete; the original store was not changed\n"
     assert_equal [], twin.changed_paths

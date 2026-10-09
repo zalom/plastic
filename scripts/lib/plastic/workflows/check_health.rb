@@ -14,7 +14,7 @@ module Plastic
       sets :repairs
 
       read "check the installation, the databases, the hooks and the instruction files of the harness" do |context|
-        checks = CheckHealth.checks(context)
+        checks = Doctor.run(context.scope, harness: context.harness_name || Doctor.harness(context.scope))
         checks.each { |check| context.row(check.label, check.value) }
         repairs = checks.filter_map(&:repair).uniq
         context.row("repair:", repairs) unless repairs.empty?
@@ -25,13 +25,6 @@ module Plastic
         pass: ->(context) { context.repairs.zero? }
 
       outcome :done, offers: "plastic status", because: "every check passed, so read the work next"
-
-      def self.checks(context)
-        scope = context.scope
-        Doctor.checks(scope, Doctor.kind(context.harness_name || Doctor.harness(scope)), running: running(context))
-      end
-
-      def self.running(context) = Installation.source(Installation.package_root(context.scope)) && Installation.of(context).version
     end
   end
 end

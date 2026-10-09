@@ -37,9 +37,6 @@ module Plastic
           "intent #{intent_id} is #{status}; only done, abandoned and future intents archive"
         end
 
-        # How the archive reports its refusal: a status that cannot archive is a failure to fix, any other problem a refusal.
-        def archive_refusal_kind = archive_refusal ? :unfinished : :refusal
-
         # The id and the title, as people name the intent.
         def label = "#{intent_id} #{title}"
 

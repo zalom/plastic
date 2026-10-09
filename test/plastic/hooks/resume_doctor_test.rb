@@ -9,9 +9,9 @@ class ResumeDoctorTest < Plastic::TestCase
 
   Check = Plastic::Doctor::Check
 
-  PASSING = ->(_scope) { [] }
-  FAILING = ->(_scope) { [Check.new("launcher:", "missing", "run plastic install --reinstall"), Check.new("hooks:", "stale", "run plastic init")] }
-  BROKEN = ->(_scope) { raise "the doctor broke" }
+  PASSING = ->(_scope, _harness) { [] }
+  FAILING = ->(_scope, _harness) { [Check.new("launcher:", "missing", "run plastic install --reinstall"), Check.new("hooks:", "stale", "run plastic init")] }
+  BROKEN = ->(_scope, _harness) { raise "the doctor broke" }
 
   def resume(health)
     out = StringIO.new
@@ -33,8 +33,7 @@ class ResumeDoctorTest < Plastic::TestCase
   def test_every_check_passing_prints_nothing_about_doctor
     code, out, err = resume(PASSING)
 
-    assert_equal [0, ""], [code, err]
-    refute_match(/doctor/i, out)
+    assert_equal [0, "Plastic: a new session in store global. Run plastic next before anything else.\n", ""], [code, out, err]
   end
 
   def test_a_doctor_that_breaks_still_prints_the_recap_and_exits_0
@@ -55,7 +54,7 @@ class ResumeDoctorMissingStoreTest < Plastic::TestCase
       environment = Plastic::CLI::Command::Environment.new(env: { "PLASTIC_HOME" => home, "PLASTIC_SESSION" => "s-1" },
         input: StringIO.new("{}"), out:, err:, home: File.dirname(home), directory: File.dirname(home))
 
-      code = Plastic::Hooks::Resume.call([], environment:, health: ->(scope) { asked << scope && [] })
+      code = Plastic::Hooks::Resume.call([], environment:, health: ->(scope, _harness) { asked << scope && [] })
 
       assert_equal [0, "", "", []], [code, out.string, err.string, asked]
     end

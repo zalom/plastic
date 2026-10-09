@@ -4,6 +4,7 @@ require_relative "cli/command/usage"
 require_relative "doctor/core"
 require_relative "doctor/claude_code"
 require_relative "doctor/codex"
+require_relative "workflows/installation"
 
 module Plastic
   module Doctor
@@ -21,5 +22,11 @@ module Plastic
     end
 
     def self.checks(scope, kind, running:) = Core.new(scope, running:).checks + kind.new(scope, running:).checks
+
+    def self.run(scope, harness:)
+      checks(scope, kind(harness), running: Workflows::Installation.running(scope))
+    end
+
+    def self.failing(scope, harness:) = run(scope, harness:).select(&:repair)
   end
 end
