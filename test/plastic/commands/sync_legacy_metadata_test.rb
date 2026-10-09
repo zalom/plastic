@@ -12,7 +12,7 @@ class SyncLegacyMetadataTest < Plastic::TestCase
 
     ## Batches
 
-    - [x] 1 Build ai-infra — delivered
+    - [x] 1 Build alpha — delivered
     - [ ] 1a Deploy the gateway — queued
   MARKDOWN
 
@@ -21,7 +21,7 @@ class SyncLegacyMetadataTest < Plastic::TestCase
   def spec_with(decisions) = "# Spec\n\n## Decisions\n#{decisions.map { |line| "- #{line}\n" }.join}"
 
   def test_colliding_ruling_ids_take_the_next_free_number
-    write("store/1--ai-infra/spec.md", spec_with(["D1 Use Proxmox", "D1 Use LiteLLM", "Keep it local"]))
+    write("store/1--alpha-service/spec.md", spec_with(["D1 Use a shared server", "D1 Use one gateway", "Keep it local"]))
 
     apply
 
@@ -29,12 +29,12 @@ class SyncLegacyMetadataTest < Plastic::TestCase
   end
 
   def test_spec_decisions_win_over_the_intent_file
-    write("store/1--ai-infra/spec.md", spec_with(["D1 Use Proxmox"]))
-    write("store/1--ai-infra/1--ai-infra.md", "#{folder.read("store/1--ai-infra/1--ai-infra.md")}\n## Decisions\n- D1 Use Proxmox servers\n")
+    write("store/1--alpha-service/spec.md", spec_with(["D1 Use a shared server"]))
+    write("store/1--alpha-service/1--alpha-service.md", "#{folder.read("store/1--alpha-service/1--alpha-service.md")}\n## Decisions\n- D1 Use shared servers\n")
 
     apply
 
-    assert_equal ["D1 Use Proxmox"], retrieval.rulings("1").map(&:text)
+    assert_equal ["D1 Use a shared server"], retrieval.rulings("1").map(&:text)
   end
 
   def test_a_roadmap_with_no_batch_heading_lands_in_batch_one

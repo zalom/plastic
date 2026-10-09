@@ -1,5 +1,5 @@
 <!-- plastic:placeholder -->
-# Plan: Deploy a LiteLLM gateway on Proxmox with a stable local model alias
+# Plan: Deploy beta behind one stable address
 
 ## Goal
 {{GOAL}}

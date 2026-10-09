@@ -8,8 +8,8 @@ class SyncUpTest < Plastic::TestCase
   def import = plastic("sync", "up", table: Plastic::CLI::TABLE)
 
   def legacy_metadata
-    write("roadmaps/ship.md", "# Ship\n\n## Batches\n\n- [ ] 1 Build ai-infra — queued\n")
-    write("store/1--ai-infra/spec.md", "# Spec\n\n## Decisions\n- D1 Keep local ownership\n")
+    write("roadmaps/ship.md", "# Ship\n\n## Batches\n\n- [ ] 1 Build alpha — queued\n")
+    write("store/1--alpha-service/spec.md", "# Spec\n\n## Decisions\n- D1 Keep local ownership\n")
   end
 
   def test_sync_up_offers_the_next_action_once_the_rows_hold_the_files

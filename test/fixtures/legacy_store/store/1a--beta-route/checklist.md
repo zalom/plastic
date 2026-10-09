@@ -1,5 +1,5 @@
 <!-- plastic:placeholder -->
-# Checklist: Deploy a LiteLLM gateway on Proxmox with a stable local model alias
+# Checklist: Deploy beta behind one stable address
 
 ## In Progress
 - [ ] ...

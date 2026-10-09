@@ -1,5 +1,5 @@
 <!-- plastic:placeholder -->
-# Checklist: Build ai-infra from the founding design
+# Checklist: Build alpha from the founding design
 
 ## In Progress
 - [ ] ...

@@ -1,5 +1,5 @@
 <!-- plastic:placeholder -->
-# Plan: Build ai-infra from the founding design
+# Plan: Build alpha from the founding design
 
 ## Goal
 {{GOAL}}

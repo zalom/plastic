@@ -13,7 +13,7 @@ class KnowledgeSyncLegacyImportTest < Plastic::TestCase
     lines = import
 
     assert_equal "imported INDEX.md: 2 intents and 0 clusters", lines.first
-    assert_includes lines, "read store/1--ai-infra/spec.md"
+    assert_includes lines, "read store/1--alpha-service/spec.md"
     assert_equal [true, true], [folder.exist?("INDEX.md"), folder.exist?("store/index.json")]
   end
 
@@ -21,13 +21,13 @@ class KnowledgeSyncLegacyImportTest < Plastic::TestCase
     import
     first, child = retrieval.intents
 
-    assert_equal %w[1 active ai-infra], first.to_h.values_at(:intent_id, :status, :slug)
+    assert_equal %w[1 active alpha-service], first.to_h.values_at(:intent_id, :status, :slug)
     assert_equal %w[1a 1 future], child.to_h.values_at(:intent_id, :parent_id, :status)
     refute_nil first.opened_at
   end
 
   def test_an_intent_with_no_own_file_imports_with_no_kind_or_date
-    folder.delete("store/1a--litellm-proxmox-gateway/1a--litellm-proxmox-gateway.md")
+    folder.delete("store/1a--beta-route/1a--beta-route.md")
     import
 
     assert_equal [nil, nil], retrieval.intent("1a").to_h.values_at(:kind, :opened_at)
@@ -53,13 +53,13 @@ class KnowledgeSyncLegacyImportTest < Plastic::TestCase
     import
     body = rows_of("SELECT body FROM legacy_intents_data WHERE intent_id = '1' AND path = 'plan.md'").first["body"]
 
-    assert_equal folder.read("store/1--ai-infra/plan.md").dup.force_encoding(Encoding::UTF_8), body
+    assert_equal folder.read("store/1--alpha-service/plan.md").dup.force_encoding(Encoding::UTF_8), body
   end
 
   def test_a_first_import_leaves_the_other_files_as_documents
     import
 
-    assert_equal %w[1--ai-infra.md outcome.md spec.md], rows_of("SELECT path FROM documents WHERE intent_id = '1' ORDER BY path").map { |row| row["path"] }
+    assert_equal %w[1--alpha-service.md outcome.md spec.md], rows_of("SELECT path FROM documents WHERE intent_id = '1' ORDER BY path").map { |row| row["path"] }
   end
 
   def test_the_import_metadata_line_names_the_legacy_files
@@ -71,7 +71,7 @@ class KnowledgeSyncLegacyImportTest < Plastic::TestCase
   end
 
   def test_a_printed_context_json_is_not_imported_as_a_document
-    folder.write("store/1--ai-infra/context.json", "{}")
+    folder.write("store/1--alpha-service/context.json", "{}")
     import
 
     assert_empty rows_of("SELECT * FROM documents WHERE path = 'context.json'")
