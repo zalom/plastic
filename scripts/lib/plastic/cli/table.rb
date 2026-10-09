@@ -48,7 +48,7 @@ module Plastic
       "intent unarchive" => ["Commands::IntentUnarchive", "Restore an archived intent's directory exactly as it was archived"],
       "backup" => ["Commands::Backup", "Copy one store's databases into a new backup folder"],
       "backup list" => ["Commands::BackupList", "List one store's backups with status and goal, flagging a missing or changed file"],
-      "backup purge" => ["Commands::BackupPurge", "Delete one store's backups, all or those before a date"],
+      "backup purge" => ["Commands::BackupPurge", "Delete one store's backups; give one of --all, --failed or --older-than"],
       "backup restore" => ["Commands::BackupRestore", "Replace one store's databases with those of a done backup"],
       "document get" => ["Commands::DocumentGet", "Fetch one current or revision-qualified document"],
       "document batch" => ["Commands::DocumentBatch", "Fetch qualified documents in request order"],
