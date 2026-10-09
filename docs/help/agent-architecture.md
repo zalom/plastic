@@ -49,7 +49,7 @@ The chain: intent `## Intent` / `## Context`, then enriched `## Context` plus `#
 then `spec.md`, then `actions/` plus the work graph, then an optional plan
 review, then the code changes plus done nodes plus `## Insights`.
 
-### Spawn Preamble (L2 live-state injection)
+### Spawn Preamble (live-state injection)
 
 Every dispatched agent is booted with a spawn preamble: the lead runs
 `scripts/spawn-preamble <intent_dir> --role <role>` and prepends its output to the agent's
@@ -57,7 +57,7 @@ prompt. The preamble is a pure function of the intent directory on disk (no netw
 no randomness), so it is deterministic and rebuildable. It carries the active intent id and
 intent line, the current lifecycle stage (the last savepoint line, else the stage derived from
 which lifecycle files exist), the cycle role, and the honoring instruction that the agent must
-emit valid lifecycle artifacts and not hallucinate intents or stages. This is the standard L2
+emit valid lifecycle artifacts and not hallucinate intents or stages. This is the standard
 live-state mechanism for harnesses whose spawned sub-agents do not inherit the top-level
 session event. See [`harness-adapters.md`](https://github.com/zalom/plastic/blob/main/docs/reference/harness-adapters.md) for how it slots into the per-harness contract.
 

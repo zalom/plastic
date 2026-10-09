@@ -47,7 +47,7 @@ Each step says who does it:
   builds do not include it, and gems installed under your normal `HOME` may not be found from
   the scratch one. Run `gem install minitest` if the check fails.
 
-## 1. Create a small Ruby project
+## Create a small Ruby project
 
 **You.** Create a Git repository named `greeter` with one method and one test:
 
@@ -90,7 +90,7 @@ git add .
 git commit -m "chore: greeter"
 ```
 
-## 2. Register the project
+## Register the project
 
 **Plastic.** From inside the repository, run:
 
@@ -102,7 +102,7 @@ plastic install --claude
 repository path in `~/.plastic/projects.yml`. Every later command run inside this repository
 resolves to the `greeter` store. From anywhere else, add `--project greeter`.
 
-## 3. Create the intent (What)
+## Create the intent (What)
 
 **Plastic.** Run:
 
@@ -125,7 +125,7 @@ The directory holds the intent file `intent.md`, placeholder files `spec.md`
 and `outcome.md`, and empty `actions/` and `resources/` folders.
 The intent is listed under `## Active` in `~/.plastic/stores/greeter/INDEX.md`.
 
-## 4. Record the rulings (Why)
+## Record the rulings (Why)
 
 **Plastic.** Run `plastic intent spec 1`. It prints the intent's state screen and the rules the
 speccing conversation follows: one question at a time, two or three approaches with a
@@ -144,7 +144,7 @@ by the ruling text.
 `intent rule` writes only to `## Insights`. If you keep a `### Decisions` list in the intent
 file, write it yourself.
 
-## 5. Write the spec and plan the graph (How)
+## Write the spec and plan the graph (How)
 
 **You or your agent** write `spec.md` in the intent directory. No command writes it. It
 replaces the placeholder that `intent new` created. Each done criterion carries a key in
@@ -187,7 +187,7 @@ with their criterion keys, and the edges. Plastic reprints it from the rows. `pl
 check 1` finds a done node with no findings, an isolated node, or a criterion no node covers.
 `plastic intent show 1` lists the nodes and points at execution.
 
-## 6. Do the work (Exec)
+## Do the work (Exec)
 
 **Plastic.** `plastic graph ready 1` lists the nodes ready to claim. Claim one, and Plastic
 prints its brief:
@@ -260,7 +260,7 @@ hash:
 plastic session note "<sha> greeting keyword, tests green"
 ```
 
-## 7. Judge the work
+## Judge the work
 
 **Plastic.** `plastic intent judge 1` prints the steps that start the judge. It takes no
 options:
@@ -280,7 +280,7 @@ A `revise` verdict sends the agent back to add a fix node with `plastic node add
 has two rounds, and a second `revise` is the owner's step: exit 3. An `accept` verdict that
 is older than the newest change of a live node does not count.
 
-## 8. Write the outcome and merge the code (Git)
+## Write the outcome and merge the code (Git)
 
 **You or your agent** replace the `outcome.md` placeholder in the intent directory. The shape
 follows `templates/outcome.md`:
@@ -334,7 +334,7 @@ Add the bullets to `## Verification`, then store the file:
 plastic sync up --project greeter
 ```
 
-## 9. Close the intent as delivered
+## Close the intent as delivered
 
 **Plastic.** Close the intent. The command takes no options:
 
@@ -343,7 +343,7 @@ plastic intent end 1 --project greeter
 ```
 
 The close needs every live node done, every criterion covered, an accepted verdict that is
-not older than the newest node change, and the `Verification` bullets of step 8. When
+not older than the newest node change, and the `Verification` bullets you wrote in the outcome. When
 something is missing, the command prints it and closes nothing. When everything holds, the
 close writes the completion row with the judge verdict and the evidence built from the rows:
 each criterion key with its done nodes and their findings. It releases the lock, prints the
@@ -361,7 +361,7 @@ because: the intent is completed
 
 ## The same change in auto mode
 
-In auto mode, an agent team does steps 4 to 9. The commands below set up and inspect that
+In auto mode, an agent team does the work from the rulings to the close. The commands below set up and inspect that
 run. They do not run the team; your harness does that.
 
 1. `plastic auto ID` refuses with exit 3 until `plastic intent approve ID` has written the
@@ -381,7 +381,7 @@ run. They do not run the team; your harness does that.
 2. `plastic intent brief ID` prints the preamble the dispatched agent reads first.
 3. `plastic intent lock status ID` shows who holds the lock and where the worktree is.
 4. `plastic next` prints the report contract and the review rules the lead follows.
-5. The close is the same `plastic intent end` as in step 9, with the same merge check.
+5. The close is the same `plastic intent end` as in the close above, with the same merge check.
 
 `plastic intent end ID` refuses an intent that has no done criterion, no accepted verdict or
 no merge record. An intent that will not ship closes with `plastic intent abandon`, which

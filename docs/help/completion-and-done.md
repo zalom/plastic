@@ -2,7 +2,7 @@
 
 This chapter holds what "intent done" means and the End-stage tail.
 
-#### What "intent done" means (intent 93)
+## What "intent done" means (intent 93)
 
 Completion is one law with three signals, and they must agree. INDEX `## Completed` /
 `## Abandoned` is the single canonical terminal marker: it is the store-wide ledger a fresh
@@ -43,7 +43,7 @@ a done intent is never moved back to `## Active`.
 One report per audience: a delivery produces `outcome.md` plus one EM-to-CTO owner report, and
 no other step restates either (see `plastic help human-report-contract`).
 
-#### session commit records the item, you land it
+## Session commit records the item, you land it
 
 `plastic session note "SUMMARY" --kind Commit` is how a verified checklist item gets recorded.
 It appends one `Item` savepoint line to the day ledger and
@@ -55,7 +55,7 @@ Inside one, it names the project's path and says to commit there the way that re
 `AGENTS.md` says -- the project owns its own commit conventions, this page does not restate
 them.
 
-#### The pull request description
+## The pull request description
 
 A pull request that closes a delivery carries four headings, in this order:
 
