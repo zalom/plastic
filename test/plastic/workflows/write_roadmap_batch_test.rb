@@ -5,10 +5,11 @@ require_relative "../../../scripts/lib/plastic/workflows/write_roadmap_batch"
 
 class WriteRoadmapBatchTest < Plastic::TestCase
   def write_batch(title)
+    store_graphs.work.create_roadmap("r1", title: nil, goal: nil) unless retrieval.roadmap("r1")
     run_workflow(Plastic::Workflows::WriteRoadmapBatch, slug: "r1", position: "1", title:, goal: "Ship", done: "it ships")
   end
 
-  def test_a_new_batch_names_its_roadmap_and_is_printed
+  def test_a_batch_is_written_and_printed
     outcome, context = write_batch("First")
 
     assert_equal [:done, ["batch: r1 1 First"]], [outcome, context.printed]

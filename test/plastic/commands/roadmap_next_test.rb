@@ -10,6 +10,7 @@ class RoadmapNextTest < Plastic::TestCase
 
   def setup
     super
+    plastic("roadmap", "new", "r1", table: Plastic::CLI::TABLE)
     plastic("roadmap", "batch", "r1", "1", "--title", "T", "--goal", "G", "--done", "d", table: Plastic::CLI::TABLE)
     plastic("roadmap", "add", "r1", "1", "a", "--title", "A", table: Plastic::CLI::TABLE)
     plastic("roadmap", "add", "r1", "1", "b", "--title", "B", "--needs", "a", table: Plastic::CLI::TABLE)

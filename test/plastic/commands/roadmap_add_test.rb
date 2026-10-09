@@ -7,7 +7,10 @@ require_relative "../../../scripts/lib/plastic/commands/roadmap_add"
 class RoadmapAddTest < Plastic::TestCase
   def call(*args) = plastic("roadmap", "add", *args, table: Plastic::CLI::TABLE)
 
-  def batch(n = "1") = plastic("roadmap", "batch", "r1", n, "--title", "T", "--goal", "G", "--done", "d", table: Plastic::CLI::TABLE)
+  def batch(n = "1")
+    plastic("roadmap", "new", "r1", table: Plastic::CLI::TABLE) unless store_graphs.retrieval.roadmap("r1")
+    plastic("roadmap", "batch", "r1", n, "--title", "T", "--goal", "G", "--done", "d", table: Plastic::CLI::TABLE)
+  end
 
   def test_after_is_gone
     batch

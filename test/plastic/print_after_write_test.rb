@@ -86,6 +86,7 @@ class PrintAfterWriteTest < Plastic::TestCase
   end
 
   def roadmap_with_two_items
+    run_cli("roadmap", "new", "r1")
     run_cli("roadmap", "batch", "r1", "1", "--title", "T", "--goal", "G", "--done", "d")
     run_cli("roadmap", "add", "r1", "1", "a", "--title", "A", "--goal", "Item goal", "--done", "item done")
     run_cli("roadmap", "add", "r1", "1", "b", "--title", "B")
