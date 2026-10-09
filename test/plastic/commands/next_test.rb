@@ -17,7 +17,7 @@ class NextTest < Plastic::TestCase
     plastic("sync", "up", table: Plastic::CLI::TABLE)
   end
 
-  def clear_spec(intent) = write_spec(intent, "# Spec\n\n## Done criteria\n- ships\n\n## Open Questions\n- none\n")
+  def clear_spec(intent) = write_spec(intent, "# Spec\n\n## Done criteria\n- [done] ships\n\n## Open Questions\n- none\n")
 
   def start(intent)
     plastic("intent", "approve", intent.intent_id, table: Plastic::CLI::TABLE)
@@ -98,7 +98,7 @@ class NextTest < Plastic::TestCase
     start(intent)
     add_node(intent, "a")
     plastic("node", "claim", intent.intent_id, "n1", table: Plastic::CLI::TABLE)
-    plastic("node", "done", intent.intent_id, "n1", "--judge", "owner", "--findings", "ok", table: Plastic::CLI::TABLE)
+    plastic("node", "done", intent.intent_id, "n1", "--findings", "ok", table: Plastic::CLI::TABLE)
 
     result = call
 

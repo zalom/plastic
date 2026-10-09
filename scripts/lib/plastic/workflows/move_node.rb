@@ -13,7 +13,7 @@ module Plastic
       MOVES = {
         release_node: { state: "open", step: "release the node", say: "say what was released", fields: [],
                         offers: "plastic node claim %{intent_id} %{id}" },
-        done_node: { state: "done", step: "finish the node", say: "say what was done", fields: %i[judge findings],
+        done_node: { state: "done", step: "finish the node", say: "say what was done", fields: %i[findings],
                      offers: "plastic graph ready %{intent_id}" },
         fail_node: { state: "failed", step: "fail the node", say: "say what failed", fields: %i[reason],
                      offers: "plastic node release %{intent_id} %{id}" },

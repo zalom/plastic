@@ -71,7 +71,7 @@ module Plastic
       def self.submitted?(context) = !context.closed && [context.judge, context.evidence].any?
 
       def self.submission_problem(context)
-        return "--judge takes tests, tool, agent or owner" unless Graph::Work::Node::JUDGES.include?(context.judge)
+        return "--judge takes tests, tool, agent or owner" unless %w[tests tool agent owner].include?(context.judge)
         return "--evidence names a JSON file inside the intent folder" if context.evidence.to_s.empty?
         return "intent end names no session" if context.session.to_s.empty?
 

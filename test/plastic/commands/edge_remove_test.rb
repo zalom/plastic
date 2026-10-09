@@ -9,7 +9,7 @@ class EdgeRemoveTest < Plastic::TestCase
   def add_node(title) = plastic("node", "add", "1", title, "--criterion", "done", table: Plastic::CLI::TABLE)
 
   def test_a_missing_edge_exits_1
-    open_intent
+    open_keyed_intent
     add_node("a")
     add_node("b")
 
@@ -21,7 +21,7 @@ class EdgeRemoveTest < Plastic::TestCase
   end
 
   def test_retry_after_adding_the_missing_edge_succeeds
-    open_intent
+    open_keyed_intent
     add_node("a")
     add_node("b")
     failed = plastic("edge", "remove", "1", "n1", "n2", table: Plastic::CLI::TABLE)
@@ -36,7 +36,7 @@ class EdgeRemoveTest < Plastic::TestCase
   end
 
   def test_removing_an_existing_edge_succeeds
-    open_intent
+    open_keyed_intent
     add_node("a")
     add_node("b")
     plastic("edge", "add", "1", "n1", "n2", table: Plastic::CLI::TABLE)

@@ -9,7 +9,7 @@ class StatusTest < Plastic::TestCase
   def call(*args) = plastic("status", *args, table: Plastic::CLI::TABLE)
 
   def test_a_second_store_is_not_missed
-    open_intent
+    open_keyed_intent
     Plastic::Graph.open(home: @plastic_home, store: "other").work.write_intent(title: "Beta")
 
     result = call
@@ -20,7 +20,7 @@ class StatusTest < Plastic::TestCase
   end
 
   def test_status_offers_plastic_next_as_the_next_command
-    open_intent
+    open_keyed_intent
 
     result = call
 
@@ -28,13 +28,13 @@ class StatusTest < Plastic::TestCase
   end
 
   def test_an_intent_without_nodes_says_so
-    open_intent
+    open_keyed_intent
 
     assert_includes call.out, "no nodes"
   end
 
   def test_counts_the_nodes_of_an_intent_by_state
-    open_intent
+    open_keyed_intent
     2.times { |i| plastic("node", "add", "1", "node #{i}", "--criterion", "done", table: Plastic::CLI::TABLE) }
     plastic("node", "claim", "1", "n1", table: Plastic::CLI::TABLE)
 

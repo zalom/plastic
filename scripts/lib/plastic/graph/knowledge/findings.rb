@@ -8,14 +8,8 @@ module Plastic
       # The five checks `plastic graph check` runs on one intent's live nodes
       # (every node but a removed one) and its spec.
       class Findings
-        def self.judge_finding(node)
-          "node #{node.id} is done with no judge" if node.state == "done" && !node.judge
-        end
-
-        def self.tests_finding(node)
-          return nil unless node.state == "done" && node.judge == "tests"
-
-          "node #{node.id} judged by tests with no findings" if node.findings.to_s.strip.empty?
+        def self.findings_finding(node)
+          "node #{node.id} is done with no findings" if node.state == "done" && node.findings.to_s.strip.empty?
         end
 
         def self.retry_finding(node)
@@ -38,7 +32,7 @@ module Plastic
 
         def node_findings = live.flat_map { |node| findings_for(node) }
 
-        def findings_for(node) = [Findings.judge_finding(node), Findings.tests_finding(node), edge_finding(node), Findings.retry_finding(node)].compact
+        def findings_for(node) = [Findings.findings_finding(node), edge_finding(node), Findings.retry_finding(node)].compact
 
         def edge_finding(node)
           return nil if live.size < 2 || touches?(node)

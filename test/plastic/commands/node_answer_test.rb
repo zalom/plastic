@@ -7,7 +7,7 @@ class NodeAnswerTest < Plastic::TestCase
 
   def setup
     super
-    open_intent
+    open_keyed_intent
     cli("node", "add", "1", "a", "--criterion", "done")
   end
 

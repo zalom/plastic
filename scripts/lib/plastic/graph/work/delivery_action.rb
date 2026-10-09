@@ -35,7 +35,7 @@ module Plastic
           [nil, "the harness must plan this intent", "Before you plan, fetch the architecture map as current as " \
             "possible with an architecture mapping tool such as Enola, or map the code yourself; Plastic runs no tool. " \
             "Read the intent's goal and done criteria. Add work with " \
-            "plastic node add #{@intent_id} TITLE --criterion TEXT, then add dependencies with plastic edge add. " \
+            "plastic node add #{@intent_id} TITLE --criterion KEY, then add dependencies with plastic edge add. " \
             "Use plastic graph ready #{@intent_id} after the plan is recorded."]
         end
 
@@ -65,7 +65,7 @@ module Plastic
         def claimed_action(node)
           DeliveryAction.acting(node) do |held, id|
             [nil, "node #{id} is already claimed", "Continue node #{id}#{DeliveryAction.worker_clause(held)}. " \
-              "Record the result with plastic node done #{@intent_id} #{id} --judge tests|tool|agent|owner --findings TEXT, " \
+              "Record the result with plastic node done #{@intent_id} #{id} --findings TEXT, " \
               "or record a failure with plastic node fail #{@intent_id} #{id} --reason TEXT."]
           end
         end

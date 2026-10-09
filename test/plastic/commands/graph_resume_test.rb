@@ -13,7 +13,7 @@ require_relative "../../../scripts/lib/plastic/commands/sync_up"
 
 # Calls and fixtures the graph resume tests share.
 module GraphResumeHelper
-  CLEAR_SPEC = "# Spec\n\n## Done criteria\n- ships\n\n## Open Questions\n- none\n"
+  CLEAR_SPEC = "# Spec\n\n## Done criteria\n- [done] ships\n\n## Open Questions\n- none\n"
 
   def call(*args) = plastic("graph", "resume", *args, table: Plastic::CLI::TABLE)
 
@@ -57,7 +57,7 @@ module GraphResumeHelper
     intent = ready_intent
     %w[a b c d].each { |title| add_node(intent, title) }
     %w[n1 n2 n3 n4].each { |node_id| node("claim", intent, node_id) }
-    node("done", intent, "n1", "--judge", "owner", "--findings", "ok")
+    node("done", intent, "n1", "--findings", "ok")
     node("fail", intent, "n3", "--reason", "broke")
     node("park", intent, "n4", "--question", "which way")
     intent
@@ -128,7 +128,7 @@ class GraphResumeTest < Plastic::TestCase
 
     result = call
 
-    assert_includes lines(result), "then: Before you plan, fetch the architecture map as current as possible with an architecture mapping tool such as Enola, or map the code yourself; Plastic runs no tool. Read the intent's goal and done criteria. Add work with plastic node add 1 TITLE --criterion TEXT, " \
+    assert_includes lines(result), "then: Before you plan, fetch the architecture map as current as possible with an architecture mapping tool such as Enola, or map the code yourself; Plastic runs no tool. Read the intent's goal and done criteria. Add work with plastic node add 1 TITLE --criterion KEY, " \
       "then add dependencies with plastic edge add. Use plastic graph ready 1 after the plan is recorded."
     refute_includes result.out, "then: (because"
   end

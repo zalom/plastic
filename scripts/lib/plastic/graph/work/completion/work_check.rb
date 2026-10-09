@@ -15,7 +15,7 @@ module Plastic
 
           def problem
             nodes = live_nodes
-            return "Plan at least one work node with plastic node add #{@intent_id} TITLE --criterion TEXT." if nodes.empty?
+            return "Plan at least one work node with plastic node add #{@intent_id} TITLE --criterion KEY." if nodes.empty?
 
             unfinished_problem(nodes) || unverified_problem(nodes)
           end
@@ -29,8 +29,8 @@ module Plastic
           def unverified_problem(nodes)
             return if nodes.all?(&:verified?)
 
-            "Every done node needs a valid judge and nonempty findings. Recheck the work, then use plastic node done #{@intent_id} NODE " \
-              "--repair --judge tests|tool|agent|owner --findings TEXT to record the actual verification."
+            "Every done node needs nonempty findings. Recheck the work, then use plastic node done #{@intent_id} NODE " \
+              "--repair --findings TEXT to record the actual verification."
           end
 
           def live_nodes = @retrieval.nodes(@intent_id).reject { |node| node.state == "removed" }

@@ -19,13 +19,13 @@ class CheckGraphTest < Plastic::TestCase
     assert_equal [:done, ["no findings"]], [outcome, context.printed]
   end
 
-  def test_a_done_node_with_no_judge_is_a_finding_that_fails_the_call
+  def test_a_done_node_with_no_findings_is_a_finding_that_fails_the_call
     specified
     store_graphs.work.add_node(intent_id: "1", title: "a", criterion: "done", state: "done")
 
     outcome, context = check
 
-    assert_equal ["finding: node n1 is done with no judge"], context.printed
+    assert_equal ["finding: node n1 is done with no findings"], context.printed
     assert_equal "code_check_graph, gate: see the findings above", outcome.message
   end
 

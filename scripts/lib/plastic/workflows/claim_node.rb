@@ -51,7 +51,7 @@ module Plastic
         context.print("last reason: #{node.reason}") if node.reason
       end
 
-      outcome :done, offers: "plastic node done %{intent_id} %{id} --judge tests --findings TEXT",
+      outcome :done, offers: "plastic node done %{intent_id} %{id} --findings TEXT",
         because: "node %{id} is claimed"
     end
   end

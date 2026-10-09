@@ -52,7 +52,7 @@ class WorkCompletionCheckTest < Plastic::TestCase
   def test_an_intent_with_no_live_node_asks_for_a_plan
     files
 
-    assert_equal ["Plan at least one work node with plastic node add 1 TITLE --criterion TEXT."], check.problems
+    assert_equal ["Plan at least one work node with plastic node add 1 TITLE --criterion KEY."], check.problems
   end
 
   def test_an_unfinished_node_asks_for_the_work_to_finish
@@ -66,7 +66,7 @@ class WorkCompletionCheckTest < Plastic::TestCase
     files
     done_node(findings: " ")
 
-    assert_match(/\AEvery done node needs a valid judge and nonempty findings/, check.problems.first)
+    assert_match(/\AEvery done node needs nonempty findings/, check.problems.first)
   end
 
   def test_an_outcome_of_only_headings_asks_for_a_substantive_one

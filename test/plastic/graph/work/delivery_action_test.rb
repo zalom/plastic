@@ -22,7 +22,7 @@ class WorkDeliveryActionTest < Plastic::TestCase
     command, reason, instructions = action
 
     assert_equal [nil, "the harness must plan this intent"], [command, reason]
-    assert_includes instructions, "plastic node add 1 TITLE --criterion TEXT"
+    assert_includes instructions, "plastic node add 1 TITLE --criterion KEY"
   end
 
   def test_the_planning_instruction_starts_with_fetching_the_architecture_map

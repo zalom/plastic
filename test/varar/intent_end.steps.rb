@@ -16,9 +16,9 @@ module IntentEndAcceptance
     kernel.run!("sync", "up", env: SESSION)
     kernel.run!("intent", "approve", "1", env: SESSION)
     kernel.run!("auto", "1", env: SESSION)
-    kernel.run!("node", "add", "1", "Ship", "--criterion", "Ships", env: SESSION)
+    kernel.run!("node", "add", "1", "Ship", "--criterion", "ships", env: SESSION)
     kernel.run!("node", "claim", "1", "n1", env: SESSION)
-    kernel.run!("node", "done", "1", "n1", "--judge", "tool", "--findings", "Fixture verification passed", env: SESSION)
+    kernel.run!("node", "done", "1", "n1", "--findings", "Fixture verification passed", env: SESSION)
     kernel.write("store/1--alpha/completion.json", JSON.generate({ "ships" => "Fixture acceptance verified" }))
   end
 

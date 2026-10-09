@@ -11,24 +11,24 @@ class WorkflowDoneNodeTest < Plastic::TestCase
     store_graphs.work.claim_node(intent_id: "1", id: "n1", by: "s-1")
   end
 
-  def finish(repair: nil, judge: "tests")
-    run_workflow(Plastic::Workflows::DoneNode, intent_id: "1", id: "n1", judge:, findings: "green", repair:).first
+  def finish(repair: nil, findings: "green")
+    run_workflow(Plastic::Workflows::DoneNode, intent_id: "1", id: "n1", findings:, repair:).first
   end
 
   def node = retrieval.node("1", "n1")
 
-  def test_a_claimed_node_is_done_with_its_judge_and_findings
+  def test_a_claimed_node_is_done_with_its_findings
     outcome = finish
 
-    assert_equal [:done, "done", "tests", "green"], [outcome, node.state, node.judge, node.findings]
+    assert_equal [:done, "done", "green"], [outcome, node.state, node.findings]
   end
 
-  def test_a_done_node_is_repaired_with_a_new_judge
+  def test_a_done_node_is_repaired_with_new_findings
     finish
 
-    finish(repair: true, judge: "owner")
+    finish(repair: true, findings: "rechecked")
 
-    assert_equal "owner", node.judge
+    assert_equal "rechecked", node.findings
   end
 
   def test_a_done_node_without_repair_is_refused

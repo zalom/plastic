@@ -8,7 +8,7 @@ module Plastic
     class NodeAdd < Routine
       intent_subject
       argument :title, label: "TITLE", text: "what the node is for"
-      option :criterion, switch: "--criterion TEXT", text: "what done means", required: true
+      option :criterion, switch: "--criterion KEY", text: "the key of the spec done criterion this node serves", required: true
       option :input, switch: "--input PATH", text: "a file the node reads"
       writes :work
 
