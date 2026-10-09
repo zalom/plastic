@@ -20,6 +20,7 @@ module Plastic
       }.freeze
 
       MIGRATIONS = {
+        work: "UPDATE \"nodes\" SET \"state\" = 'needs_info' WHERE \"state\" = 'parked';",
         knowledge: "INSERT OR IGNORE INTO \"retrieval_schema\" (\"name\", \"version\") VALUES ('retrieval', 1);"
       }.freeze
     end

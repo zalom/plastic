@@ -27,6 +27,14 @@ class NodeResolveTest < Plastic::TestCase
     assert_equal "open", retrieval.node("1", "n1").state
   end
 
+  def test_a_node_row_left_parked_by_an_older_database_resolves_and_blocks_nothing
+    store_graphs.databases.fetch(:work).transaction { |batch| batch.add("UPDATE nodes SET state = 'parked' WHERE id = 'n1'") }
+
+    result = cli("node", "resolve", "1", "n1", "go left")
+
+    assert_equal [0, ["n1"]], [result.code, retrieval.ready_nodes("1").map(&:id)]
+  end
+
   def test_resolving_a_claimed_node_is_refused
     result = cli("node", "resolve", "1", "n1", "go left")
 
