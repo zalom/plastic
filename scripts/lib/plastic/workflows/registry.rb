@@ -30,7 +30,7 @@ module Plastic
       # Sessions: the one prose line a session writes about itself.
       :code_write_note,
       # Archive: taking an intent off the checkout and printing it back.
-      :code_choose_archive, :code_archive_intent, :code_restore_intent,
+      :code_archive_intent, :code_restore_intent,
       # Backups: one folder per backup of one store, with purge and restore.
       :code_preview_backup, :code_backup, :code_backup_list,
       :code_preview_backup_purge, :code_backup_purge, :code_preview_backup_restore, :code_backup_restore,

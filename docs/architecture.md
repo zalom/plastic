@@ -226,7 +226,7 @@ empty directories, symlink targets, file modes and modification times. Open inte
 and intents linked from live work are refused. Special files are refused before
 removal. Archived intents stay out of `sync down`.
 
-`plastic intent archive ID --revert` restores the snapshot. It preserves conflicting
+`plastic intent unarchive ID` restores the snapshot. It preserves conflicting
 files and keeps the archived marker until the directory is restored. An interrupted
 call can retry; a completed archive offers `status`, so following its next command
 does not undo it. Restored hand edits that differ from live document rows need
@@ -275,7 +275,7 @@ First import retains the source checkout by default. The existing
 `migrate.remove_after_import` configuration remains supported for that first import only:
 after success, it removes `INDEX.md` and archives done or abandoned intents. Ordinary
 later sync does not repeat cleanup. Explicit archive reversal uses
-`plastic intent archive ID --revert`.
+`plastic intent unarchive ID`.
 
 Backups recover the databases of one store on the same installation. They are not a
 colleague handover format. Team transport is deferred, and Plastic stores are not shared

@@ -21,7 +21,7 @@ module Plastic
       gate "%{problem}", stops: :failure, pass: ->(context) { context.problem.nil? }
 
       read "say it was restored" do |context|
-        context.print("intent: #{context.intent_id} restored")
+        context.print("intent: #{context.intent_id} unarchived")
       end
 
       outcome :done, offers: "plastic intent show %{intent_id}", because: "intent %{intent_id} is back on the checkout"

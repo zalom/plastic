@@ -551,7 +551,7 @@ this section covers how the code holds together.
 - **Links.** `intent link` and `intent unlink` write and remove rows in the `links` table of
   `knowledge_graph.db` through `Graph::Knowledge::Link::Writer`. A link to a missing intent fails with
   exit 1. A self link or a repeated link is refused with exit 3.
-- **Archive.** `intent archive ID` and its explicit `--revert` option use
+- **Archive.** `intent archive ID` and `intent unarchive ID` use
   `Graph::Knowledge::Archive::Writer`. `Graph::Knowledge::Archive::Tree` reads entries with `lstat`, without following
   links. The `archives` marker and complete `archive_entries` snapshot commit in one
   work database transaction before filesystem removal. A removal retry checks every
