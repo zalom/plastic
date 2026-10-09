@@ -37,7 +37,7 @@ class IntentDiscoverTest < Plastic::TestCase
     missing = plastic("intent", "discover", "99", "evidence", "--json", table: Plastic::CLI::TABLE)
 
     assert_call missing, code: 1, out: ["code_discover_retrieval, gate: no intent 99 in owning store"],
-      err: "plastic: code_discover_retrieval, gate: no intent 99 in owning store\n"
+      err: "plastic: no intent 99 in owning store\n"
     assert_empty Dir[store_path("store/*/context.json")]
   end
 

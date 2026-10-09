@@ -4,8 +4,8 @@
 
 Each row gives the setup, the call, the exit code, the result and the next line:
 
-| setup | call | exit | result | next line |
-| --- | --- | --- | --- | --- |
-| intent new Alpha ; write store/1--alpha/spec.md "# Spec\n\n## Done criteria\n\n- [tests-pass] tests pass\n" ; sync up ; node add 1 Build --criterion tests-pass ; node claim 1 n1 ; node ask 1 n1 "which harness" | node resolve 1 n1 "Claude Code" | 0 | node: n1 open | plastic node claim 1 n1 --project global |
-| intent new Alpha ; write store/1--alpha/spec.md "# Spec\n\n## Done criteria\n\n- [tests-pass] tests pass\n" ; sync up ; node add 1 Build --criterion tests-pass ; node claim 1 n1 ; node impede 1 n1 "no access" | node resolve 1 n1 "access granted" | 0 | node: n1 open | plastic node claim 1 n1 --project global |
-| intent new Alpha ; write store/1--alpha/spec.md "# Spec\n\n## Done criteria\n\n- [tests-pass] tests pass\n" ; sync up ; node add 1 Build --criterion tests-pass | node resolve 1 n1 "Claude Code" | 1 | node n1 is open; it cannot move to open | none |
+| setup                                                                                                                                                                                                             | call                               | exit | result                                  | next line               |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- | ---- | --------------------------------------- | ----------------------- |
+| intent new Alpha ; write store/1--alpha/spec.md "# Spec\n\n## Done criteria\n\n- [tests-pass] tests pass\n" ; sync up ; node add 1 Build --criterion tests-pass ; node claim 1 n1 ; node ask 1 n1 "which harness" | node resolve 1 n1 "Claude Code"    | 0    | node: n1 open                           | plastic node claim 1 n1 |
+| intent new Alpha ; write store/1--alpha/spec.md "# Spec\n\n## Done criteria\n\n- [tests-pass] tests pass\n" ; sync up ; node add 1 Build --criterion tests-pass ; node claim 1 n1 ; node impede 1 n1 "no access"  | node resolve 1 n1 "access granted" | 0    | node: n1 open                           | plastic node claim 1 n1 |
+| intent new Alpha ; write store/1--alpha/spec.md "# Spec\n\n## Done criteria\n\n- [tests-pass] tests pass\n" ; sync up ; node add 1 Build --criterion tests-pass                                                   | node resolve 1 n1 "Claude Code"    | 1    | node n1 is open; it cannot move to open | none                    |

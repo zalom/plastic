@@ -4,7 +4,7 @@
 
 Each row gives the setup, the call, the exit code, the result and the next line:
 
-| setup                                               | call             | exit | result                   | next line                               |
-| --------------------------------------------------- | ---------------- | ---- | ------------------------ | --------------------------------------- |
-| intent new Later --status future ; intent archive 1 | intent unarchive 1        | 0    | intent: 1 unarchived     | plastic intent show 1 --project global |
-| intent new Later --status future                    | intent unarchive 1        | 1    | intent 1 is not archived | none                                    |
+| setup                                               | call               | exit | result                   | next line             |
+| --------------------------------------------------- | ------------------ | ---- | ------------------------ | --------------------- |
+| intent new Later --status future ; intent archive 1 | intent unarchive 1 | 0    | intent: 1 unarchived     | plastic intent show 1 |
+| intent new Later --status future                    | intent unarchive 1 | 1    | intent 1 is not archived | none                  |

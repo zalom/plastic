@@ -66,7 +66,7 @@ class RoutinePreviewTest < Plastic::TestCase
   def test_a_preview_offers_the_same_command_without_dry_run
     twin = twin_run("node", "remove", "1", "n1", "--reason", "r") { |home| seed_graph(home) }
 
-    assert_includes twin.previewed.out, "next: plastic node remove 1 n1 --reason r --project global\n"
+    assert_includes twin.previewed.out, "next: plastic node remove 1 n1 --reason r\n"
     assert_includes twin.previewed.out, "because: the preview wrote only to a disposable copy\n"
   end
 
@@ -82,7 +82,7 @@ class RoutinePreviewTest < Plastic::TestCase
 
     assert_equal "preview: node: n1 removed", document.dig("result", "output").first
     assert_equal "preview complete; the original store was not changed", document.dig("result", "output").last
-    assert_equal "plastic node remove 1 n1 --reason r --json --project global", document["next"]
+    assert_equal "plastic node remove 1 n1 --reason r --json", document["next"]
   end
 
   def test_a_preview_after_a_refused_apply_matches_the_resumed_apply

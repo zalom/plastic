@@ -4,8 +4,8 @@
 
 Each row gives the setup, the call, the exit code, the result and the next line:
 
-| setup | call | exit | result | next line |
-| ----- | ---- | ---- | ------ | --------- |
-| intent new Alpha ; intent verdict 1 accept "Holds" | intent judge 1 | 0 | none | plastic intent end 1 --project global |
-| intent new Alpha | intent judge 1 --verdict accept | 2 | invalid option: --verdict | none |
-| none | intent judge 9 | 1 | no intent 9 in this store | none |
+| setup                                              | call                            | exit | result                    | next line            |
+| -------------------------------------------------- | ------------------------------- | ---- | ------------------------- | -------------------- |
+| intent new Alpha ; intent verdict 1 accept "Holds" | intent judge 1                  | 0    | none                      | plastic intent end 1 |
+| intent new Alpha                                   | intent judge 1 --verdict accept | 2    | invalid option: --verdict | none                 |
+| none                                               | intent judge 9                  | 1    | no intent 9 in this store | none                 |

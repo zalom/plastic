@@ -55,7 +55,7 @@ class GraphCheckTest < Plastic::TestCase
 
     assert_equal 1, result.code
     assert_equal "finding: intent 1 names no done criterion\n", result.out
-    assert_equal "plastic: code_check_graph, gate: see the findings above\n", result.err
+    assert_equal "plastic: see the findings above\n", result.err
   end
 
   def test_retries_over_the_cap_is_a_finding

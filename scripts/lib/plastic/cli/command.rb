@@ -78,7 +78,7 @@ module Plastic
       # The rows go out before any error line, so a failed call still says
       # what it wrote.
       def flush
-        output.flush(scope.slug)
+        output.flush(named_project)
         self
       end
 
@@ -98,7 +98,7 @@ module Plastic
       end
 
       def stop(error)
-        output.flush_rows(scope.slug) unless output.json?
+        output.flush_rows(named_project) unless output.json?
         error.report(output)
         flush
         error.exit_code
@@ -109,6 +109,8 @@ module Plastic
         output.failed(error.message)
         FAILED
       end
+
+      def named_project = scope.slug.then { |slug| slug if scope.requested? }
 
       # A named project must exist before any work runs.
       def check_scope = @argv.grep(/\A--project(?:=|$)/).any? && scope.slug

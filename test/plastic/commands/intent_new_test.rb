@@ -79,7 +79,7 @@ class IntentNewTest < Plastic::TestCase
   def test_after_naming_a_missing_intent_fails_with_no_intent_written
     result = plastic("intent", "new", "Beta", "--after", "9", table: Plastic::CLI::TABLE)
 
-    assert_call result, code: 1, out: RUN_ROW, err: "plastic: code_write_intent, gate: no intent 9 in this store to link after\n"
+    assert_call result, code: 1, out: RUN_ROW, err: "plastic: no intent 9 in this store to link after\n"
     assert_empty store_graphs.retrieval.intents
   end
 end

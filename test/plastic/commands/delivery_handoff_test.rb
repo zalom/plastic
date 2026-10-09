@@ -27,7 +27,7 @@ class DeliveryHandoffTest < Plastic::TestCase
     cli("node", "claim", "1", "n1")
     cli("node", "done", "1", "n1", "Checked")
 
-    result = cli("graph", "ready", "1")
+    result = cli("next")
 
     assert_includes result.out, "next: plastic intent end 1"
   end

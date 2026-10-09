@@ -19,7 +19,7 @@ class NodeRemoveTest < Plastic::TestCase
 
     assert_equal 1, result.code
     assert_equal RUN_ROW, result.out
-    assert_equal "plastic: code_remove_node, gate: node n1 is claimed; it cannot move to removed\n", result.err
+    assert_equal "plastic: node n1 is claimed; it cannot move to removed\n", result.err
   end
 
   def test_removing_an_open_node_moves_it_to_removed
