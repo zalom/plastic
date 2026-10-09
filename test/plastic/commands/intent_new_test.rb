@@ -10,7 +10,7 @@ class IntentNewTest < Plastic::TestCase
                       arguments: IntentNew.arguments.map(&:to_h), options: IntentNew.options.map(&:to_h), writes: IntentNew.writes }
 
   def test_the_command_reads_its_title_and_names_its_switches
-    assert_equal ["intent new", "Open an intent: write its rows and print its folder",
+    assert_equal ["intent new", "Open an intent: write its rows and its folder",
       "plastic intent new TITLE... [--parent ID] [--ref REF] [--after ID] [--kind KIND] [--status STATUS]", [:title]],
       description.values_at(:name, :summary, :usage, :subject)
     assert_equal({ name: :title, label: "TITLE", text: "what the intent is for, in words", rest: true, optional: false },

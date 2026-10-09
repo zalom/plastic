@@ -18,7 +18,7 @@ class SyncOptionsTest < Plastic::TestCase
 
   def test_each_direction_runs_its_own_workflow
     assert_equal [["sync up", "Read the files changed by hand into rows", %i[code_preview_sync code_sync_up]],
-      ["sync down", "Print the rows that changed into files", %i[code_preview_sync_down code_sync_down]]],
+      ["sync down", "Write the rows that changed into files", %i[code_preview_sync_down code_sync_down]]],
       [Plastic::Commands::SyncUp, Plastic::Commands::SyncDown].map { |command| [command.tool_name, Plastic::CLI::TABLE.dig(command.tool_name, 1), command.chain.keys] }
   end
 
