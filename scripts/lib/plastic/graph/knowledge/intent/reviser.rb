@@ -25,14 +25,14 @@ module Plastic
 
           # The change, or nil when the intent has no file row.
           def change(intent, line, why)
-            key = intent.document_key
+            key = key_of(intent)
             document = @retrieval.fetch(*key)
             document && Change.new(intent:, document:, history: uri(key), edited: edited(intent), line:, why:)
           end
 
           # Writes the change and returns the qualified references of the old and the new revision.
           def write(change)
-            key = change.intent.document_key
+            key = key_of(change.intent)
             Retrieval::Evidence::Writer.new(@databases.fetch(:knowledge), @retrieval.origin_id).write(*key, change.body)
             write_title(key.first, change.line)
             [change.history, uri(key)]
@@ -40,11 +40,16 @@ module Plastic
 
           private
 
+          def key_of(intent)
+            paths = @retrieval.documents(intent.intent_id).map(&:path)
+            [intent.intent_id, paths.include?(intent.file) ? intent.file : intent.dated_file]
+          end
+
           def uri(key) = @retrieval.reference(*key).fetch(:uri)
 
           def edited(intent)
             printed = @retrieval.printed
-            ["#{intent.dir}/#{intent.file}", StoreFolder::INDEX].find { |path| @folder.exist?(path) && @folder.digest(path) != printed[path] }
+            ["#{intent.dir}/#{key_of(intent).last}", StoreFolder::INDEX].find { |path| @folder.exist?(path) && @folder.digest(path) != printed[path] }
           end
 
           def write_title(intent_id, title)

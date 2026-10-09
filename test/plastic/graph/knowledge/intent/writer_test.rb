@@ -59,7 +59,7 @@ class KnowledgeIntentWriterTest < Plastic::TestCase
     writer.write(title: "Alpha")
 
     assert_equal ["Opened: Alpha"], retrieval.savepoints("1").map(&:text)
-    assert_equal ["1--alpha.md"], retrieval.documents("1").map(&:path)
+    assert_equal ["intent.md"], retrieval.documents("1").map(&:path)
   end
 
   def test_write_carries_the_session_onto_the_first_savepoint_line

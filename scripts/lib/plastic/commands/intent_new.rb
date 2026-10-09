@@ -14,7 +14,6 @@ module Plastic
       option :after, switch: "--after ID", text: "an intent this one grows out of, linked as source"
       option :kind, switch: "--kind KIND", text: "the kind of work", default: "work"
       option :status, switch: "--status STATUS", text: "open, active, parked or future", default: "open"
-      option :slug, switch: "--slug SLUG", text: "the folder name after the id"
       writes :work, :knowledge, :references
 
       workflow :code_write_intent, next: :noop

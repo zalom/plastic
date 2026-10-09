@@ -19,6 +19,7 @@ module Plastic
       class Intent
         include Record
 
+        FILE = "intent.md"
         OPEN = %w[open active].freeze
         CLOSED = %w[done abandoned].freeze
         ARCHIVABLE = %w[done abandoned future].freeze
@@ -49,10 +50,10 @@ module Plastic
         # The intent's folder, relative to the store folder.
         def dir = "store/#{intent_id}--#{slug}"
 
-        def file = "#{intent_id}--#{slug}.md"
+        def file = FILE
 
-        # The intent id and the path that find the intent's own file in the knowledge graph.
-        def document_key = [intent_id, file]
+        # The own file of an intent imported before the fixed name.
+        def dated_file = "#{intent_id}--#{slug}.md"
 
         # The row a new intent writes; the database gives `id` and stamps `origin_id`.
         def new_row = to_h.except(:id, :origin_id)

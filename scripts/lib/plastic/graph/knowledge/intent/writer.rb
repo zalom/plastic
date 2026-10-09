@@ -30,7 +30,7 @@ module Plastic
             Ref.parse(ref)&.problem(@retrieval)
           end
 
-          # `fields` may name the ref, the kind, the status and the slug; a field left out or nil takes its default.
+          # `fields` may name the ref, the kind and the status; a field left out or nil takes its default.
           def write(title:, parent_id: nil, **fields)
             now = Plastic.now
             values = DEFAULTS.merge(fields.compact)

@@ -51,7 +51,7 @@ module Plastic
 
           # The fields at the head of the intent's own file.
           def front_matter(dir)
-            file = "#{dir}/#{File.basename(dir)}.md"
+            file = @folder.own_file(dir)
             text = @folder.exist?(file) ? @folder.read(file).force_encoding(Encoding::UTF_8) : ""
             text[FRONT_MATTER, 1].to_s.scan(FIELD).to_h
           end

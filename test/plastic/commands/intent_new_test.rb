@@ -31,8 +31,13 @@ class IntentNewTest < Plastic::TestCase
 
     assert_equal 0, result.code
     assert_includes row, "intent.md"
-    assert_path_exists store_path("1--alpha-thing/intent.md")
-    refute_path_exists store_path("1--alpha-thing/1--alpha-thing.md")
+    assert_path_exists store_path("store/1--alpha-thing/intent.md")
+  end
+
+  def test_the_intent_folder_holds_no_dated_file
+    plastic("intent", "new", "Alpha thing", table: Plastic::CLI::TABLE)
+
+    refute_path_exists store_path("store/1--alpha-thing/1--alpha-thing.md")
   end
 
   def test_the_slug_option_is_a_usage_error_and_writes_no_intent

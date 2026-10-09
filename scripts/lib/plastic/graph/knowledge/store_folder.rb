@@ -2,6 +2,7 @@
 
 require "digest"
 require "fileutils"
+require_relative "intent"
 
 module Plastic
   module Graph
@@ -48,6 +49,12 @@ module Plastic
 
         # Removes a whole folder of the checkout, such as an archived intent's.
         def remove_dir(rel) = FileUtils.rm_rf(path(rel))
+
+        # The own file of an intent folder: intent.md when it exists, else the dated ID--SLUG.md.
+        def own_file(dir)
+          fixed = "#{dir}/#{Intent::FILE}"
+          exist?(fixed) ? fixed : "#{dir}/#{File.basename(dir)}.md"
+        end
 
         def intent_dirs = Dir.glob("store/*--*/", base: root).map { |dir| dir.chomp("/") }.sort
 

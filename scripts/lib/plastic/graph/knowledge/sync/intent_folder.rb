@@ -22,7 +22,7 @@ module Plastic
 
           # Why no row can be read from this folder, as one line naming it, or nil.
           def problem
-            return "#{dir}: no intent file #{file}" unless @folder.exist?(file)
+            return "#{dir}: no intent file #{Intent::FILE} or #{File.basename(dir)}.md" unless @folder.exist?(file)
 
             reason = intent_file.problem
             "#{dir}: its intent file does not parse: #{reason}" if reason
@@ -42,7 +42,7 @@ module Plastic
 
           private
 
-          def file = "#{dir}/#{File.basename(dir)}.md"
+          def file = @folder.own_file(dir)
 
           def intent_file = (@intent_file ||= IntentFile.new(@folder.read(file), number))
         end

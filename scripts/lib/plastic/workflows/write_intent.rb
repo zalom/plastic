@@ -20,7 +20,7 @@ module Plastic
 
       step "write the intent", done: ->(context) { !context.intent_id.nil? } do |context|
         intent = context.work.write_intent(title: context.title, parent_id: context.parent_id, ref: context.ref, kind: context.kind,
-          status: context.status, slug: context.slug)
+          status: context.status)
         context[:intent_id] = intent.intent_id
       end
 
