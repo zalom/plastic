@@ -102,7 +102,10 @@ module Plastic
         returned
       end
 
-      def count(table, rows) = @written[table] = (table == RUNS) ? [@written[table], rows].max : @written[table] + rows
+      def count(table, rows)
+        before = @written[table]
+        @written[table] = (table == RUNS) ? [before, rows].max : before + rows
+      end
 
       def connected
         yield connection

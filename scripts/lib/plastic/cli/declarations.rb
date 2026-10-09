@@ -50,8 +50,6 @@ module Plastic
 
       def writes(*graphs) = graphs_for(:@writes, graphs)
 
-      # Which files the tool prints after it writes: `prints :intent` for the
-      # intent it worked on, `:roadmap` for the roadmap, `:index` for store/index.json.
       def prints(*kinds)
         unknown = kinds - PRINTS
         raise Invalid, "#{name}: unknown print #{unknown.join(", ")}" if unknown.any?
@@ -59,7 +57,6 @@ module Plastic
         (@prints ||= []).concat(kinds)
       end
 
-      # Marks a tool that opens no graph, so it runs in a home with no store.
       def graphless = (@graphless = true)
 
       def graphless? = @graphless == true

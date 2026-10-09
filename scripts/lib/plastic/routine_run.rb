@@ -63,10 +63,11 @@ module Plastic
 
     # The facts as plain JSON values: a Data object or a Struct becomes a hash, at any depth.
     def self.plain(value)
+      each = method(:plain)
       case value
       in Data | Struct then plain(value.to_h)
-      in Hash then value.transform_values { |inner| plain(inner) }
-      in Array then value.map { |inner| plain(inner) }
+      in Hash then value.transform_values(&each)
+      in Array then value.map(&each)
       else value
       end
     end

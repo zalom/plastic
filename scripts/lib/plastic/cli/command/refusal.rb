@@ -16,7 +16,7 @@ module Plastic
 
         def exit_code = REFUSED
 
-        def report(output) = output.refused(message, next_command:, because:)
+        def report(output) = output.refused(message, Offer.new(next_command, because))
 
         def rebuilt(message) = self.class.new(message, next_command:, because:)
       end

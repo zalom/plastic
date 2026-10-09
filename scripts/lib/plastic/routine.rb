@@ -12,6 +12,7 @@ require_relative "routine/chain"
 require_relative "routine/traversal"
 require_relative "routine/preview"
 require_relative "routine/printing"
+require_relative "routine/graph_report"
 require_relative "workflow"
 require_relative "graph"
 
@@ -32,6 +33,7 @@ module Plastic
     extend Preview::Declaration
     include Preview
     include Printing
+    include GraphReport
 
     class << self
       def workflow(key, **edge, &branches)
@@ -92,15 +94,6 @@ module Plastic
       report_graphs if touches_graphs?
       @exit_code = value.report(output)
     end
-
-    def report_graphs
-      output.row("wrote:", graphs.wrote)
-      output.row("files:", graphs.printed)
-    end
-
-    def touches_graphs? = !self.class.graphless?
-
-    def routine_graphs = touches_graphs? ? graphs : {}
 
     # The open routine run for this tool and subject, or a new one.
     def open_routine_run

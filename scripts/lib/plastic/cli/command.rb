@@ -52,7 +52,7 @@ module Plastic
         return help if @argv.intersect?(%w[--help -h])
 
         answer
-      rescue OptionParser::ParseError, Scope::UnknownProject, Usage, Refusal, Failure => error
+      rescue OptionParser::ParseError, Scope::UnknownProject, Usage, Refusal, Failure, Graph::MissingStore => error
         settle(error)
       end
 
@@ -62,8 +62,6 @@ module Plastic
         flush.exit_code
       rescue Scope::BrokenProjects => error
         broken(error)
-      rescue Graph::MissingStore => error
-        stop(Failure.new(error.message, next_command: error.next_command))
       end
 
       def call
@@ -89,10 +87,12 @@ module Plastic
       attr_reader :words, :environment, :argv
 
       def settle(error)
+        message = error.message
         case error
         when Refusal, Failure then stop(error)
+        when Graph::MissingStore then stop(Failure.new(message, next_command: error.next_command))
         else
-          output.usage(error.message, usage_line)
+          output.usage(message, usage_line)
           USAGE
         end
       end

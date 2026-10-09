@@ -30,11 +30,11 @@ module Plastic
       # A check that stops the call when pass: is false, and prints `reason`.
       # stops: :refusal ends in exit 3 and names an owner step. stops:
       # :failure ends in exit 1 and names something the agent can fix.
-      # `offers:` names the command that next: prints when the gate stops.
-      def gate(reason, stops:, pass:, offers: nil)
+      def gate(reason, **rule)
+        stops = rule.fetch(:stops)
         raise Invalid, "#{name}: a gate stops as :refusal or :failure" unless STOPS.include?(stops)
 
-        steps << Gate.new(reason, stops, pass, offers)
+        steps << Gate.new(reason, stops, rule.fetch(:pass), rule[:offers])
       end
 
       # A step that changes nothing on disk. It runs on every call, rerun

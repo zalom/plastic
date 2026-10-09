@@ -7,8 +7,7 @@ require_relative "../refused"
 module Plastic
   class CodeWorkflow < Workflow
     # A check that stops the call unless its pass: lambda holds. It prints
-    # its reason as a refusal, exit 3, or as a failure, exit 1, and offers the
-    # command that next: prints, if it names one.
+    # its reason as a refusal, exit 3, or as a failure, exit 1.
     Gate = Data.define(:reason, :stops, :pass, :offers) do
       def name = "gate"
 

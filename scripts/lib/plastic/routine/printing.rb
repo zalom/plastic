@@ -6,11 +6,7 @@ require_relative "../handed_off"
 
 module Plastic
   class Routine < CLI::Command
-    # `prints :intent` in a routine's class body prints the files of the intent
-    # the call worked on after the chain, from the rows it wrote. `prints :roadmap`
-    # prints the roadmap file, and `prints :index` prints store/index.json. A
-    # call that ends Failed or Refused, or wrote no row but its routine run,
-    # prints nothing.
+    # Prints the files a finished call wrote, for the kinds its class declares.
     module Printing
       private
 
@@ -26,10 +22,11 @@ module Plastic
       end
 
       def print_files(ctx)
+        facts = ctx.facts
         self.class.prints.each do |kind|
           case kind
-          when :intent then print_intent(ctx.facts[:intent_id])
-          when :roadmap then print_roadmap(ctx.facts[:slug])
+          when :intent then print_intent(facts[:intent_id])
+          when :roadmap then print_roadmap(facts[:slug])
           else graphs.work.print_index
           end
         end

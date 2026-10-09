@@ -18,8 +18,6 @@ module Plastic
         on :continue, next: :code_sync_up
       end
       workflow :code_sync_up, next: :noop
-
-      private
     end
   end
 end

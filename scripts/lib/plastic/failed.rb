@@ -5,8 +5,7 @@ require_relative "end_value"
 module Plastic
   # A step raised, its done check still fails after the body ran, or a gate
   # with stops: :failure stopped the call. Exit 1; the message goes to stderr
-  # through the Failure error the boundary prints. A gate that offers a command
-  # leaves it as next_command, and the boundary prints it after the error.
+  # through the Failure error the boundary prints.
   Failed = Data.define(:workflow, :step, :reason, :next_command) do
     include EndValue
 

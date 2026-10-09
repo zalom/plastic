@@ -105,8 +105,7 @@ class KnowledgeSyncTest < Plastic::TestCase
   def test_print_says_each_path_it_wrote
     print = Plastic::Graph::Prints::Print.text("store/1--alpha/notes.md", :knowledge, "n\n")
 
-    assert_equal [[], []], [sync.print([print]), sync.print([print])]
-    assert_equal ["store/1--alpha/notes.md"], sync.printer.written
+    assert_equal [["store/1--alpha/notes.md"], []], [sync.printer.print([print]), sync.printer.print([print])]
   end
 
   def test_a_sync_keeps_the_databases_out_of_versioning

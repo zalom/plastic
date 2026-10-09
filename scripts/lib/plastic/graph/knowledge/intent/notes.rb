@@ -4,15 +4,19 @@ module Plastic
   module Graph
     module Knowledge
       class Intent
-        # The text of an outcome with one more line under its `## Notes` heading.
-        # The heading is added at the end when the outcome has none.
+        # The Notes section of an intent outcome.
         class Notes
           HEADING = "## Notes"
           KINDS = %w[Review Commit Report].freeze
           STARTER = "# Outcome"
 
-          def initialize(body)
-            @lines = body.to_s.empty? ? [STARTER] : body.lines.map(&:chomp)
+          def self.for(body)
+            lines = body.to_s.lines.map(&:chomp)
+            new(lines.empty? ? [STARTER] : lines)
+          end
+
+          def initialize(lines)
+            @lines = lines
           end
 
           def add(kind, text)
@@ -35,10 +39,14 @@ module Plastic
           end
 
           def last_line_of_section(start)
+            stop = section_end(start)
+            stop -= 1 while stop > start && @lines[stop].empty?
+            stop
+          end
+
+          def section_end(start)
             following = @lines[(start + 1)..].index { |text| text.start_with?("## ") }
-            last = following ? start + following : @lines.size - 1
-            last -= 1 while last > start && @lines[last].empty?
-            last
+            following ? start + following : @lines.size - 1
           end
         end
       end

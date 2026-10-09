@@ -15,8 +15,6 @@ module Plastic
       prints :intent
 
       workflow :code_revise_intent, next: :noop
-
-      private
     end
   end
 end
