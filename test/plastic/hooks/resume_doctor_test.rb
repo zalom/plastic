@@ -61,3 +61,27 @@ class ResumeDoctorMissingStoreTest < Plastic::TestCase
     end
   end
 end
+
+require_relative "../commands/installer_helper"
+require_relative "../doctor/whole_home"
+
+class ResumeHealthyHomeTest < Plastic::TestCase
+  include InstallerHelper
+  include WholeHome
+
+  def setup
+    super
+    whole_home
+    @package = fake_package(RUNNING)
+  end
+
+  def test_an_installed_healthy_home_gives_no_doctor_line
+    env = { "PLASTIC_PACKAGE_ROOT" => @package, "PLASTIC_SESSION" => "s-1" }
+    doctor = call("doctor", env:)
+    resume = call("hook", "resume", "--harness", "claude-code", env:)
+
+    assert_equal [0, 0, ""], [doctor.code, resume.code, resume.err]
+    assert_match(/\APlastic: a new session/, resume.out)
+    refute_match(/doctor/i, resume.out)
+  end
+end
