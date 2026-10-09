@@ -9,6 +9,8 @@ module Plastic
       module Completion
         # The judge's rounds of one intent: the verdict counts when it is the latest accept and no live node changed after it.
         class Review
+          def self.of(context) = new(context.retrieval, context.intent_id)
+
           def initialize(retrieval, intent_id)
             @retrieval = retrieval
             @intent_id = intent_id
@@ -16,7 +18,7 @@ module Plastic
 
           def counting? = latest&.verdict == "accept" && live_times.all? { |time| time <= Time.parse(latest.at) }
 
-          def used_up? = latest&.verdict == "revise" && latest.round >= Verdict::ROUNDS
+          def used_up? = @retrieval.verdicts(@intent_id).size >= Verdict::ROUNDS && !counting?
 
           def problem = ("No accepted review counts yet. Run plastic intent judge #{@intent_id}." unless counting?)
 

@@ -13,7 +13,7 @@ module Plastic
       end
 
       gate "%{problem}", stops: :failure, pass: ->(context) { context.problem.nil? }
-      gate "intent %{intent_id} has used both review rounds; the owner takes the next step", stops: :refusal,
+      gate "the judge's review round of intent %{intent_id} is used; the owner decides between abandoning the intent and a follow-up intent", stops: :refusal,
         pass: ->(context) { context.work.rounds_left?(context.intent_id) }
 
       outcome :recording

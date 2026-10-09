@@ -8,6 +8,6 @@ Each row gives the setup, the call, the exit code, the result and the next line:
 | ----- | ---- | ---- | ------ | --------- |
 | intent new Alpha | intent verdict 1 accept "Every criterion holds" | 0 | verdict: accept round 1 | plastic intent end 1 --project global |
 | intent new Alpha | intent verdict 1 revise "One edge fails" | 0 | verdict: revise round 1 | plastic node add 1 TITLE --criterion KEY --project global |
-| intent new Alpha ; intent verdict 1 revise "One" | intent verdict 1 revise "Two" | 3 | verdict: revise round 2 / the review round is used: intent 1 was sent back twice, and the owner takes the next step | none |
+| intent new Alpha ; intent verdict 1 revise "One" | intent verdict 1 revise "Two" | 3 | verdict: revise round 2 / the judge's review round of intent 1 is used; the owner decides between abandoning the intent and a follow-up intent | none |
 | intent new Alpha | intent verdict 1 maybe "x" | 2 | the verdict takes accept or revise | none |
 | none | intent verdict 9 accept "x" | 1 | no intent 9 in this store | none |

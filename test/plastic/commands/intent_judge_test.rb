@@ -48,6 +48,35 @@ class IntentJudgeTest < Plastic::TestCase
     assert_match(/^next: plastic intent end 1/, result.out)
   end
 
+  def test_an_accept_older_than_a_node_prints_the_judge_steps_again
+    put_verdict(1, "accept", EARLY)
+    set_node_times(LATE)
+    result = judge
+
+    assert_equal 0, result.code
+    assert_includes result.out, "plastic intent verdict 1 accept|revise TEXT"
+  end
+
+  def test_a_revise_then_a_stale_accept_exits_3_with_the_round_used
+    put_verdict(1, "revise", EARLY)
+    put_verdict(2, "accept", MIDDLE)
+    set_node_times(LATE)
+    result = judge
+
+    assert_equal 3, result.code
+    assert_includes result.err, "the judge's review round of intent 1 is used"
+    assert_includes result.err, "abandoning the intent"
+  end
+
+  def test_a_third_verdict_after_a_revise_and_a_stale_accept_exits_3_with_two_rows
+    put_verdict(1, "revise", EARLY)
+    put_verdict(2, "accept", MIDDLE)
+    set_node_times(LATE)
+    result = cli("intent", "verdict", "1", "accept", "again")
+
+    assert_equal [3, 2], [result.code, verdicts.size]
+  end
+
   def test_two_judge_calls_write_no_row
     judge
     judge

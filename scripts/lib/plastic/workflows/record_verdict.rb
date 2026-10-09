@@ -2,6 +2,7 @@
 
 require_relative "../code_workflow"
 require_relative "../graph/work/verdict"
+require_relative "../graph/work/completion/review"
 
 module Plastic
   module Workflows
@@ -19,8 +20,8 @@ module Plastic
 
       def self.latest(context) = context.retrieval.verdicts(context.intent_id).max_by(&:round)
 
-      gate "the review round is used: intent %{intent_id} was sent back twice, and the owner takes the next step", stops: :refusal,
-        pass: ->(context) { !(latest(context).verdict == "revise" && latest(context).round >= Graph::Work::Verdict::ROUNDS) }
+      gate "the judge's review round of intent %{intent_id} is used; the owner decides between abandoning the intent and a follow-up intent", stops: :refusal,
+        pass: ->(context) { !Graph::Work::Completion::Review.of(context).used_up? }
 
       outcome :revise, if: ->(context) { latest(context).verdict == "revise" }, offers: "plastic node add %{intent_id} TITLE --criterion KEY",
         because: "the judge asked for a revision; add a node that fixes it"

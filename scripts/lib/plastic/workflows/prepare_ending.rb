@@ -50,7 +50,7 @@ module Plastic
       end
 
       def self.review_facts(context)
-        review = Graph::Work::Completion::Review.new(context.retrieval, context.intent_id)
+        review = Graph::Work::Completion::Review.of(context)
         context[:judged] = review.counting?
         context[:used_up] = review.used_up?
       end
@@ -65,7 +65,7 @@ module Plastic
 
       def self.ready_for_approval?(context) = context.requirements.empty? && context.judged
 
-      gate "intent %{intent_id} has used both review rounds; the owner takes the next step", stops: :refusal,
+      gate "the judge's review round of intent %{intent_id} is used; the owner decides between abandoning the intent and a follow-up intent", stops: :refusal,
         pass: ->(context) { !context.used_up }
       gate "the pull request of intent %{intent_id} waits for the person's approval; add the line Approved: to the Verification section of outcome.md once they approve, then run plastic sync up",
         stops: :refusal, pass: ->(context) { !context.awaiting_approval }

@@ -88,6 +88,26 @@ class PrepareEndingTest < PrepareEndingFixture
     assert_kind_of Plastic::Refused, prepare.first
   end
 
+  def test_a_revise_then_a_stale_accept_is_a_refusal
+    specified
+    delivered_nodes
+    put_verdict(1, "revise", EARLY)
+    put_verdict(2, "accept", MIDDLE)
+    set_node_times(LATE)
+
+    assert_kind_of Plastic::Refused, prepare.first
+  end
+
+  def test_a_revise_then_a_counting_accept_is_ready
+    specified
+    delivered_nodes
+    set_node_times(EARLY)
+    put_verdict(1, "revise", EARLY)
+    put_verdict(2, "accept", LATE)
+
+    assert_equal :ready, prepare.first
+  end
+
   def test_a_missing_intent_fails_at_the_first_gate
     assert_includes prepare.first.message, "no intent 1 in this store"
   end

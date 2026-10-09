@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../code_workflow"
+require_relative "../graph/work/completion/review"
 
 module Plastic
   module Workflows
@@ -13,12 +14,10 @@ module Plastic
       end
 
       gate "%{problem}", stops: :failure, pass: ->(context) { context.problem.nil? }
-      def self.latest(context) = context.retrieval.verdicts(context.intent_id).max_by(&:round)
+      gate "the judge's review round of intent %{intent_id} is used; the owner decides between abandoning the intent and a follow-up intent", stops: :refusal,
+        pass: ->(context) { !Graph::Work::Completion::Review.of(context).used_up? }
 
-      gate "intent %{intent_id} has used both review rounds; the owner takes the next step", stops: :refusal,
-        pass: ->(context) { context.work.rounds_left?(context.intent_id) }
-
-      outcome :accepted, if: ->(context) { latest(context)&.verdict == "accept" }, offers: "plastic intent end %{intent_id}",
+      outcome :accepted, if: ->(context) { Graph::Work::Completion::Review.of(context).counting? }, offers: "plastic intent end %{intent_id}",
         because: "intent %{intent_id} is accepted"
       outcome :judging
     end
