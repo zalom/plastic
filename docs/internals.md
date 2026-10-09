@@ -958,10 +958,8 @@ is the only auto command, and lock commands live under `intent lock`.
 **The worktree is reported, never created.** Plastic runs no version control command (intent
 390). `Workflows::Worktree.of(scope, intent)` resolves the project repository from
 `projects.yml` and derives the code worktree at `<repo>/.claude/worktrees/{id}--{slug}` on
-branch `plastic/{id}--{slug}`. `StartAuto` prints `worktree:` and `branch:`; while the folder
-is missing, its `next:` line is the shell-escaped
-`git -C <repo> worktree add <path> -b <branch>`, which the agent runs. Once the folder exists,
-or when no repository resolves, the next step is `plastic intent brief ID`. The closer removes
+branch `plastic/{id}--{slug}`. `StartAuto` prints `worktree:` and `branch:`, and the agent
+makes the worktree at that path on that branch. The next step is `plastic intent brief ID`. The closer removes
 the worktree by hand after the merge.
 
 ## the doctor of each harness (intent 414)
@@ -1231,9 +1229,8 @@ the day ledger can still write its one savepoint line. Only a usage error (no `-
 `--summary`) exits 2 and writes nothing.
 
 **`plastic auto ID` reports a worktree, it never creates one.** `Workflows::Worktree` computes
-the expected code worktree's path and branch with no git call, and `StartAuto` prints them and,
-while the folder is missing, the exact `git -C <repo> worktree add <path> -b <branch>` as the
-`next:` line. Plastic names the command, the agent runs it. A store-only project (no repo
+the expected code worktree's path and branch with no git call, and `StartAuto` prints them as
+`worktree:` and `branch:` rows. The agent makes the worktree. A store-only project (no repo
 resolves) prints no worktree, and the next step is `plastic intent brief ID`.
 
 **`plastic auto` takes a roadmap slug (intents 391 and 413).** See the delivery lock section

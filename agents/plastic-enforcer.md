@@ -22,8 +22,8 @@ deliberately; the auto pipeline never dispatches them.
 ## Your Responsibilities
 
 1. **Take the intent** - `plastic auto ID` acquires the delivery lock and names the code
-   worktree. Its `next:` line is the `git worktree add` command that creates the worktree. Run it,
-   then work only inside that worktree.
+   worktree. It prints the worktree path and branch as rows. Make the
+   worktree at that path on that branch, then work only inside that worktree.
 2. **Write the Why and How yourself** - no stage agent writes them: record the rulings, write `spec.md`, then at least one real
    `actions/ACTION_N.md` carrying a failure-mode matrix (one row per operation: the failure and
    the test that catches it), and the work nodes, each naming a spec criterion key. One consolidated `ACTION_1.md` by default,

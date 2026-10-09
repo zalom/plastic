@@ -366,13 +366,14 @@ run. They do not run the team; your harness does that.
 
 1. `plastic auto ID` refuses with exit 3 until `plastic intent approve ID` has written the
    go-ahead. Then it takes the delivery lock and names the code worktree at
-   `<repo>/.claude/worktrees/ID--slug` on branch `plastic/ID--slug`. Its `next:` line is the
-   `git worktree add` command that creates the worktree.
+   `<repo>/.claude/worktrees/ID--slug` on branch `plastic/ID--slug`. It prints both as rows;
+   make the worktree at that path on that branch.
 
    ```text
    worktree: /home/you/greeter/.claude/worktrees/2--shout
    branch: plastic/2--shout
-   next: git -C /home/you/greeter worktree add /home/you/greeter/.claude/worktrees/2--shout -b plastic/2--shout
+
+   next: plastic intent brief 2
    ```
 
    An intent with an open decision or no done criterion is refused with exit 3. Exit 3 means

@@ -24,13 +24,14 @@ exists, the same way as track 1 station 1). Run `plastic auto ID`. It takes exac
 
 Artifact: the delivery lock is taken (a row in the machine's `local.db`) and the intent goes
 active. When the store's project names a repository, the command names the code worktree at
-`<repo>/.claude/worktrees/ID--slug` on branch `plastic/ID--slug`, and its `next:` line is the
-`git worktree add` command that creates it:
+`<repo>/.claude/worktrees/ID--slug` on branch `plastic/ID--slug`, and prints both as rows. The
+agent makes the worktree at that path on that branch:
 
 ```text
 worktree: /home/you/greeter/.claude/worktrees/2--shout
 branch: plastic/2--shout
-next: git -C /home/you/greeter worktree add /home/you/greeter/.claude/worktrees/2--shout -b plastic/2--shout
+
+next: plastic intent brief 2
 ```
 
 To deliver a roadmap instead, pass its slug: `plastic auto SLUG` arms the first item in

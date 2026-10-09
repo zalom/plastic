@@ -10,7 +10,7 @@
       "examples": []
     },
     "varar/auto.md": {
-      "sourceHash": "fnv1a:73113461",
+      "sourceHash": "fnv1a:285bad32",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",

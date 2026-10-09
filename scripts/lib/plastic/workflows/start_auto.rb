@@ -13,7 +13,7 @@ module Plastic
     class StartAuto < CodeWorkflow
       [facts, steps, outcomes].each(&:clear)
 
-      sets :problem, :intent, :worktree_command
+      sets :problem, :intent
 
       read "read the intent and its spec" do |context|
         context[:intent] = context.retrieval.intent(context.intent_id)
@@ -73,22 +73,16 @@ module Plastic
       end
 
       read "name the code worktree" do |context|
-        context[:worktree_command] = nil
         name_worktree(context, Worktree.of(context.scope, context.intent))
       end
 
-      # Prints the worktree and its branch; while the folder does not exist,
-      # the command that adds it becomes the next: line.
       def self.name_worktree(context, worktree)
         return unless worktree
 
         context.print("worktree: #{worktree.path}")
         context.print("branch: #{worktree.branch}")
-        context[:worktree_command] = worktree.command unless worktree.present?
       end
 
-      outcome :worktree, if: ->(context) { !context.worktree_command.nil? }, offers: "%{worktree_command}",
-        because: "intent %{intent_id} is active and its code worktree does not exist yet"
       outcome :done, offers: "plastic intent brief %{intent_id}", because: "intent %{intent_id} is active"
     end
   end
