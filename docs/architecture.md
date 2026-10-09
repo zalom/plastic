@@ -29,7 +29,7 @@ The inner, finite life of a single intent is **What to Why to How to Exec**:
 
 - **What**: the desire is captured (the intent file with `## Intent` filled).
 - **Why**: the desire is justified and decided (`## Context` plus `spec.md`).
-- **How**: the work is planned (`plan.md` plus `checklist.md` plus at least one real `actions/ACTION_N.md`).
+- **How**: the work is planned as a work graph: nodes, each tied to a done-criterion key of `spec.md`, and the edges between them. `graph.json` is the checklist.
 - **Exec**: the work is carried out and the result recorded (`outcome.md` plus the `## Outcome` summary).
 
 Once Exec completes, the intent is done.
@@ -79,14 +79,14 @@ all-command acceptance.
 
 ### intent directory contents
 
-Every intent is a folder named `ID--slug/` inside a store's `store/` folder. Lifecycle artifacts (spec, plan, checklist, outcome) always live in this intent directory in the store, never in the project repository.
+Every intent is a folder named `ID--slug/` inside a store's `store/` folder. Lifecycle artifacts (spec, outcome, the work graph print) always live in this intent directory in the store, never in the project repository.
 
 ```
 ID--slug/
-  ID--slug.md     # the intent file (its base name equals the folder name)
+  intent.md       # the intent file (an imported folder keeps ID--slug.md)
   spec.md         # the Why deliverable
-  plan.md         # the How deliverable (planning)
-  checklist.md    # the How deliverable (execution registry)
+  graph.json      # the checklist, printed from rows: go-ahead, verdicts, nodes with criterion keys, edges
+  context.json    # saved discovery and context, printed from rows when a row exists
   outcome.md      # the Exec deliverable (a disposition: delivered|abandoned header at close)
   savepoint.md    # deterministic cycle-step ledger, written automatically
   graph.md        # the node graph `plastic intent step` runs (Goal, Decisions, Graph, Status)
@@ -96,7 +96,7 @@ ID--slug/
   resources/      # research, references, snapshots, diagrams
 ```
 
-`plastic intent new` runs `scripts/new-intent`, which creates the intent file, `actions/`, `resources/`, the born `What` line in `savepoint.md`, and placeholder copies of `spec.md`, `plan.md`, `checklist.md`, and `outcome.md`. Each placeholder starts with `<!-- plastic:placeholder -->`, so a file that still carries that line is not a real artifact. The other files appear when the command that uses them first runs. At close, `plastic intent end` backfills `spec.md`, `plan.md`, `actions/ACTION_1.md`, and `outcome.md` from the record wherever a file is missing or still a placeholder.
+`plastic intent new` runs `scripts/new-intent`, which creates the intent file `intent.md`, `actions/`, `resources/`, the born `What` line in `savepoint.md`, and placeholder copies of `spec.md` and `outcome.md`. Each placeholder starts with `<!-- plastic:placeholder -->`, so a file that still carries that line is not a real artifact. The other files appear when the command that uses them first runs. At close, `plastic intent end` backfills `spec.md`, `actions/ACTION_1.md`, and `outcome.md` from the record wherever a file is missing or still a placeholder.
 
 Lifecycle artifacts use those exact reserved names and live directly in the intent folder, never in subfolders and never renamed. All other supporting material goes in `resources/`. State is not stored in a status field. The INDEX.md terminal sections are the canonical done marker (see "intent done and the end tail" below), and the stage is derived from which artifacts carry real content. `revisions.md` is not a lifecycle artifact: it appears only when structural maintenance relocated a misplaced section, file, or ref out of a delivered intent, so its existence signals structural (not conceptual) change.
 
@@ -129,7 +129,7 @@ The day id is the local wall-clock date, digits only with no hyphen, so it satis
 At `SessionEnd` the `close` hook drops the session's never-acted-on pending lines, removes its
 `.tmp/<session-id>/` scratch, and, if the session crossed midnight, files yesterday in the
 background. The real backstop is the first boot of a new day: `hook-session-start` files every
-unclosed prior day (backfilled `spec.md`, `plan.md`, `actions/ACTION_1.md`, `outcome.md` from the
+unclosed prior day (backfilled `spec.md`, `actions/ACTION_1.md`, `outcome.md` from the
 ledger, open items carried into today, a `closed:` stamp), three days per boot at most.
 `promote-session-item` turns one ledger line into a registered intent. See `docs/internals.md`,
 "the session close path and the next-day sweep".
@@ -286,15 +286,11 @@ through Git.
 
 ## Delivery acceptance
 
-A graph with all nodes done advances to `intent end`. Closure also requires recorded
-criteria, resolved decisions, a substantive outcome whose `## Verification` section holds a
-`Merged:` and an `Architecture map:` bullet, and an explicit judge's evidence for every
-criterion key. A criterion carries a key in square brackets, or its full text is the key. The evidence and outcome hash remain in a completion row. Plastic
-records this acceptance; the harness or owner performs the verification. Successful
-closure releases the delivery lock and ends with no next command. The session that delivered the
-intent closes it after its code is merged, with no lock handover. When the merge or map record is
-missing, `Workflows::CheckMerge` hands the agent both steps. `plastic intent end ID --abandoned`
-(`Workflows::AbandonIntent`) closes an intent that will not ship from a substantive outcome alone.
+`plastic intent approve ID` writes the owner's go-ahead; `plastic auto ID` refuses (exit 3) an intent without it. A node is added with `--criterion KEY`, a done-criterion key of `spec.md`, and is done with `plastic node done ID NODE TEXT`, the text being its findings. `plastic intent judge ID` prints the steps that start a reasoning judge, and the judge records its verdict with `plastic intent verdict ID accept|revise TEXT`. A review has two rounds; a second `revise` is the owner's step (exit 3).
+
+`plastic intent end ID` takes no options. It closes the intent when every live node is done, every criterion key is covered by a done node, the latest verdict is `accept` and is not older than the newest node change, and `outcome.md` is substantive with a `## Verification` section holding a `Merged:` and an `Architecture map:` bullet. With `review.pull_request: required` (the default) the section also holds a `Pull request:` bullet and, before the close, an `Approved:` bullet; a pull request without approval is a refusal (exit 3). With `off` neither bullet is asked for. The completion row holds `judge` `verdict` and the evidence built from rows: each criterion key with its done nodes and their findings. Closing releases the delivery lock, prints the intent's files and hands the agent the wind-down steps (`Workflows::WindDownIntent`): stop the processes and agents the intent started. Missing records the agent can write come back as a handoff; when the merge or map record is missing, `Workflows::CheckMerge` hands the agent both steps.
+
+`plastic intent abandon ID` takes no options. It hands the agent the revert steps (`Workflows::RevertIntent`) until `outcome.md` holds a `Reverted:` bullet under `## Verification`, then closes the intent as abandoned with no completion row. The disposition is `superseded` when a `supersedes` link from another intent points at it, otherwise `cancelled`.
 An intent needs at least one live node; small work needs no intent, because the session rows record it.
 
 An empty graph hands planning to the harness. Claimed work stays with its worker,
@@ -505,12 +501,12 @@ Hook trust remains unverified and prints a reminder without failing file checks.
 
 ### Closing checks
 
-`plastic intent end --delivered` refuses an untouched scaffold. An untouched
+`plastic intent end` refuses an untouched scaffold. An untouched
 scaffold has only placeholder lifecycle files, no action or graph, no savepoint
 entries after the first What line, and its code worktree (when one is expected)
 still resolves to the same path Plastic would provision, since Plastic runs no
 version control command and cannot inspect it further than that. Close it
-with `--abandoned`, or do the work first. Legacy intents with missing lifecycle
+with `plastic intent abandon`, or do the work first. Legacy intents with missing lifecycle
 files still close through the backfill.
 
 `--dry-run` runs the same refusals as the real close and writes nothing. It
