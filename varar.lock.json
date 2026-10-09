@@ -318,7 +318,7 @@
       ]
     },
     "varar/legacy-import.md": {
-      "sourceHash": "fnv1a:0ab8b37f",
+      "sourceHash": "fnv1a:f6911c95",
       "examples": [
         {
           "name": "Each row gives the fixture, the call, the exit code, the result, the intents and the files of 1:",
