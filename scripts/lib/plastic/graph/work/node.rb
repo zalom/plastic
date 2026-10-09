@@ -11,7 +11,8 @@ module Plastic
       #
       #   open -> claimed -> done
       #                   -> failed -> open
-      #                   -> parked -> open
+      #                   -> needs_info -> open
+      #                   -> impeded -> open
       #   open -> removed
       Node = Data.define(:intent_id, :id, :kind, :title, :criterion, :state, :by, :input, :output, :question, :answer,
         :reason, :judge, :verdict, :findings, :retries, :updated_at, :origin_id) do
@@ -26,7 +27,7 @@ module Plastic
         # A done node with nonempty findings.
         def verified? = state == "done" && !findings.to_s.strip.empty?
       end
-      Node::STATES = %w[open claimed done failed parked removed].freeze
+      Node::STATES = %w[open claimed done failed needs_info impeded removed].freeze
     end
   end
 end

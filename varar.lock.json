@@ -335,8 +335,8 @@
         }
       ]
     },
-    "varar/node-answer.md": {
-      "sourceHash": "fnv1a:87086d03",
+    "varar/node-ask.md": {
+      "sourceHash": "fnv1a:ae5ab756",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -371,8 +371,8 @@
         }
       ]
     },
-    "varar/node-park.md": {
-      "sourceHash": "fnv1a:7b29c05c",
+    "varar/node-impede.md": {
+      "sourceHash": "fnv1a:73671a13",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -391,6 +391,15 @@
     },
     "varar/node-remove.md": {
       "sourceHash": "fnv1a:1a038781",
+      "examples": [
+        {
+          "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
+          "line": 5
+        }
+      ]
+    },
+    "varar/node-resolve.md": {
+      "sourceHash": "fnv1a:88efa245",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",

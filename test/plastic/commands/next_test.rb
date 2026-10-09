@@ -7,7 +7,7 @@ require_relative "../../../scripts/lib/plastic/commands/node_add"
 require_relative "../../../scripts/lib/plastic/commands/node_claim"
 require_relative "../../../scripts/lib/plastic/commands/node_done"
 require_relative "../../../scripts/lib/plastic/commands/node_fail"
-require_relative "../../../scripts/lib/plastic/commands/node_park"
+require_relative "../../../scripts/lib/plastic/commands/node_ask"
 
 class NextTest < Plastic::TestCase
   def call(*args) = plastic("next", *args, table: Plastic::CLI::TABLE)
@@ -62,13 +62,13 @@ class NextTest < Plastic::TestCase
     assert_includes result.out, "plastic node add #{intent.intent_id} TITLE"
   end
 
-  def test_a_parked_node_requests_the_owner_answer
+  def test_a_needs_info_node_requests_the_owner_answer
     intent = open_intent
     clear_spec(intent)
     start(intent)
     add_node(intent, "a")
     plastic("node", "claim", intent.intent_id, "n1", table: Plastic::CLI::TABLE)
-    plastic("node", "park", intent.intent_id, "n1", "--question", "which way", table: Plastic::CLI::TABLE)
+    plastic("node", "ask", intent.intent_id, "n1", "which way", table: Plastic::CLI::TABLE)
 
     result = call
 

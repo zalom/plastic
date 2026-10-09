@@ -5,7 +5,7 @@ module Plastic
     module Work
       # The done and in-progress lines of one intent's nodes.
       class NodeLines
-        IN_PROGRESS = %w[claimed parked failed].freeze
+        IN_PROGRESS = %w[claimed needs_info impeded failed].freeze
 
         def initialize(nodes)
           @nodes = nodes

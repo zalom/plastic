@@ -65,7 +65,7 @@ is already sitting in `## Insights`, in writing.
 ### 4. How, write the graph
 
 In the same conversation, the agent turns the rulings into the graph. It writes `graph.md` from
-`templates/graph.md`. No command creates it; once it exists, `plastic node done` and `plastic node answer` update it.
+`templates/graph.md`. No command creates it; once it exists, `plastic node done` and `plastic node resolve` update it.
 
 Artifact: `graph.md` (nodes, edges, dispatch policy) and one `nodes/N.md` file per node this
 small delivery needs. A delivery this size is one node; many independent tasks instead get
@@ -81,7 +81,7 @@ Graph execution needs the delivery lock. Without it, `plastic next` names
 `plastic auto ID` as the next step. When that command exits 3, stop and report the refusal.
 
 Teach the loop: `plastic graph ready ID` lists which nodes are ready. Close a finished node with
-`plastic node done`. `plastic node answer` closes a node that waits on an owner's ruling.
+`plastic node done`. `plastic node resolve` reopens a node that waits on an owner's ruling.
 `plastic graph show ID` reads the ledger (running, done, blocked, or waiting on a decision).
 Call `plastic next` again after each node returns, until the graph is empty.
 

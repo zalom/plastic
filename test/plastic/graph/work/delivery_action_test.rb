@@ -43,14 +43,24 @@ class WorkDeliveryActionTest < Plastic::TestCase
     assert_equal ["plastic node release 1 n1", "node n1 failed; release it before retrying", nil], action
   end
 
-  def test_a_parked_node_asks_the_owner_its_question
+  def test_a_needs_info_node_asks_the_owner_its_question
     plan("Build")
     claim("n1")
-    @work.park_node(intent_id: "1", id: "n1", question: "Which store?")
+    @work.ask_node(intent_id: "1", id: "n1", question: "Which store?")
 
     assert_equal [nil, "the owner must answer node n1"], action.first(2)
     assert_includes action.last, "Ask the owner: Which store?."
     refute_includes action.last, "architecture map"
+  end
+
+  def test_an_impeded_node_names_its_impediment
+    plan("Build")
+    claim("n1")
+    @work.impede_node(intent_id: "1", id: "n1", reason: "no access")
+
+    assert_equal [nil, "node n1 is impeded"], action.first(2)
+    assert_includes action.last, "no access"
+    assert_includes action.last, "plastic node resolve 1 n1 TEXT"
   end
 
   def test_a_claimed_node_names_its_worker

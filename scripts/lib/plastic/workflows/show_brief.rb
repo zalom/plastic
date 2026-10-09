@@ -9,8 +9,9 @@ require_relative "../commands/node_claim"
 require_relative "../commands/node_release"
 require_relative "../commands/node_done"
 require_relative "../commands/node_fail"
-require_relative "../commands/node_park"
-require_relative "../commands/node_answer"
+require_relative "../commands/node_ask"
+require_relative "../commands/node_impede"
+require_relative "../commands/node_resolve"
 require_relative "../commands/edge_add"
 require_relative "../commands/edge_remove"
 
@@ -34,7 +35,7 @@ module Plastic
 
       NODE_AND_EDGE_COMMANDS = [
         Commands::NodeAdd, Commands::NodeRemove, Commands::NodeClaim, Commands::NodeRelease, Commands::NodeDone,
-        Commands::NodeFail, Commands::NodePark, Commands::NodeAnswer, Commands::EdgeAdd, Commands::EdgeRemove
+        Commands::NodeFail, Commands::NodeAsk, Commands::NodeImpede, Commands::NodeResolve, Commands::EdgeAdd, Commands::EdgeRemove
       ].freeze
 
       read "find the intent" do |context|

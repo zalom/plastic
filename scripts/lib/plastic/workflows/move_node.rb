@@ -17,10 +17,12 @@ module Plastic
                      offers: "plastic graph ready %{intent_id}" },
         fail_node: { state: "failed", step: "fail the node", say: "say what failed", fields: %i[reason],
                      offers: "plastic node release %{intent_id} %{id}" },
-        park_node: { state: "parked", step: "park the node", say: "say what was parked", fields: %i[question],
-                     offers: "plastic node answer %{intent_id} %{id} --answer TEXT" },
-        answer_node: { state: "open", step: "answer the node", say: "say what was answered", fields: %i[answer],
-                       offers: "plastic node claim %{intent_id} %{id}" },
+        ask_node: { state: "needs_info", step: "ask the owner", say: "say what was asked", fields: { question: :text },
+                    offers: "plastic node resolve %{intent_id} %{id} TEXT" },
+        impede_node: { state: "impeded", step: "record the impediment", say: "say what impedes the node", fields: { reason: :text },
+                       offers: "plastic node resolve %{intent_id} %{id} TEXT" },
+        resolve_node: { state: "open", step: "resolve the node", say: "say what was resolved", fields: { answer: :text },
+                        offers: "plastic node claim %{intent_id} %{id}" },
         remove_node: { state: "removed", step: "remove the node", say: "say what was removed", fields: %i[reason],
                        offers: "plastic graph ready %{intent_id}" }
       }.freeze
@@ -64,7 +66,7 @@ module Plastic
         context[:moved] = !context.problem
       end
 
-      def self.fields(context, shape) = shape.fetch(:fields).to_h { |name| [name, context.public_send(name)] }
+      def self.fields(context, shape) = shape.fetch(:fields).to_h { |name, source| [name, context.public_send(source || name)] }
 
       def self.refusal(context, state)
         intent_id, id = context.intent_id, context.id

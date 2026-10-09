@@ -22,12 +22,13 @@ module Plastic
             done_node: { to: "done", from: %w[claimed] },
             repair_done_node: { to: "done", from: %w[done] },
             fail_node: { to: "failed", from: %w[claimed] },
-            park_node: { to: "parked", from: %w[claimed] },
-            answer_node: { to: "open", from: %w[parked], resets_retries: true }
+            ask_node: { to: "needs_info", from: %w[claimed] },
+            impede_node: { to: "impeded", from: %w[claimed] },
+            resolve_node: { to: "open", from: %w[needs_info impeded], resets_retries: true }
           }.freeze
 
           CLAIM_MOVE = { to: "claimed", from: %w[open] }.freeze
-          CAP_MOVE = { to: "parked", from: %w[open] }.freeze
+          CAP_MOVE = { to: "needs_info", from: %w[open] }.freeze
 
           def initialize(databases, retrieval)
             @databases = databases

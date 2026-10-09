@@ -48,17 +48,24 @@ module Plastic
           DeliveryAction.acting(node) { |_, id| ["plastic node #{verb} #{@intent_id} #{id}", "node #{id} #{reason}", nil] }
         end
 
-        def waiting_action = parked_action(live_in("parked")) || claimed_action(live_in("claimed")) || blocked_action
+        def waiting_action = needs_info_action(live_in("needs_info")) || impeded_action(live_in("impeded")) || claimed_action(live_in("claimed")) || blocked_action
 
         def blocked_action
           [nil, "dependencies block the remaining nodes", "Inspect plastic graph show #{@intent_id} and repair the dependencies " \
             "through edge commands before claiming more work."]
         end
 
-        def parked_action(node)
+        def needs_info_action(node)
           DeliveryAction.acting(node) do |held, id|
-            [nil, "the owner must answer node #{id}", "Ask the owner: #{held.question}. Record their answer with " \
-              "plastic node answer #{@intent_id} #{id} --answer TEXT."]
+            [nil, "the owner must answer node #{id}", "Ask the owner: #{held.question}. Record the resolution with " \
+              "plastic node resolve #{@intent_id} #{id} TEXT."]
+          end
+        end
+
+        def impeded_action(node)
+          DeliveryAction.acting(node) do |held, id|
+            [nil, "node #{id} is impeded", "Node #{id} is impeded: #{held.reason}. Clear the impediment, then record the resolution with " \
+              "plastic node resolve #{@intent_id} #{id} TEXT."]
           end
         end
 

@@ -494,7 +494,7 @@ the harness gets instructions to choose one. With no open work, the next command
 
 `Graph::Work::DeliveryAction` supplies the actions used by next, brief, ready, and check.
 Ready nodes lead to claim; failed nodes lead to release. Empty graphs hand planning to
-`AgentWorkflow`, claimed nodes remain with their worker, and parked nodes request the
+`AgentWorkflow`, claimed nodes remain with their worker, and needs_info nodes request the
 owner's answer. Completed graphs lead to `intent end` for explicit acceptance. `Workflows::PrepareEnding` routes it to `CheckMerge` (merge and map records missing), `CloseIntent` (ready), `AbandonIntent` (`--abandoned`) or `FinishIntent`; evidence matches done criteria by key (`Knowledge::Spec#keyed_criteria`, `Evidence.validate`), and `Knowledge::Outcome` reads the Verification bullets.
 
 `IntentEnd` chains prerequisite checks, an agent verification handoff when records are

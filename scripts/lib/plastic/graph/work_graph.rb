@@ -26,7 +26,7 @@ module Plastic
       def_delegator "@writers.completions", :close, :close_intent
       def_delegator "@writers.completions", :abandon, :abandon_intent
       def_delegators "@writers.nodes", :add_node, :remove_node, :claim_node, :release_node, :done_node, :fail_node,
-        :park_node, :answer_node, :repair_done_node
+        :ask_node, :impede_node, :resolve_node, :repair_done_node
       def_delegator "@writers.approvals", :approve, :approve_intent
       def_delegator "@writers.verdicts", :add_verdict
       def_delegators "@writers.edges", :add_edge, :remove_edge

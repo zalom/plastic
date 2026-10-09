@@ -40,7 +40,7 @@ module Plastic
       :code_preview_rollback, :code_rollback_release, :code_preview_uninstall, :code_uninstall_plastic,
       # Work graph: building and moving the nodes and edges of one intent.
       :code_add_node, :code_remove_node, :code_add_edge, :code_remove_edge,
-      :code_claim_node, :code_release_node, :code_done_node, :code_fail_node, :code_park_node, :code_answer_node
+      :code_claim_node, :code_release_node, :code_done_node, :code_fail_node, :code_ask_node, :code_impede_node, :code_resolve_node
     ].freeze
   end
 end

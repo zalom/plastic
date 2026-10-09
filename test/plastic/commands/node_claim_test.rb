@@ -5,7 +5,7 @@ require_relative "../../../scripts/lib/plastic/commands/node_claim"
 require_relative "../../../scripts/lib/plastic/commands/node_add"
 require_relative "../../../scripts/lib/plastic/commands/node_remove"
 require_relative "../../../scripts/lib/plastic/commands/node_done"
-require_relative "../../../scripts/lib/plastic/commands/node_park"
+require_relative "../../../scripts/lib/plastic/commands/node_ask"
 require_relative "../../../scripts/lib/plastic/commands/node_fail"
 require_relative "../../../scripts/lib/plastic/commands/node_release"
 require_relative "../../../scripts/lib/plastic/commands/edge_add"
@@ -49,17 +49,17 @@ class NodeClaimTest < Plastic::TestCase
     assert_equal "plastic: code_claim_node, gate: node n1 is done; it cannot move to claimed\n", result.err
   end
 
-  def test_claiming_a_parked_node_is_refused
+  def test_claiming_a_needs_info_node_is_refused
     open_intent
     add_node("a")
     claim("n1")
-    plastic("node", "park", "1", "n1", "--question", "which way?", table: Plastic::CLI::TABLE)
+    plastic("node", "ask", "1", "n1", "which way?", table: Plastic::CLI::TABLE)
 
     result = claim("n1")
 
     assert_equal 1, result.code
     assert_equal "", result.out
-    assert_equal "plastic: code_claim_node, gate: node n1 is parked; it cannot move to claimed\n", result.err
+    assert_equal "plastic: code_claim_node, gate: node n1 is needs_info; it cannot move to claimed\n", result.err
   end
 
   def test_claiming_a_removed_node_is_refused
@@ -104,7 +104,7 @@ class NodeClaimTest < Plastic::TestCase
     plastic("node", "release", "1", "n1", table: Plastic::CLI::TABLE)
   end
 
-  def test_the_fourth_claim_parks_the_node_and_keeps_its_findings
+  def test_the_fourth_claim_moves_the_node_to_needs_info_and_keeps_its_findings
     open_intent
     add_node("a")
     3.times { fail_and_release }
@@ -114,7 +114,7 @@ class NodeClaimTest < Plastic::TestCase
     assert_equal 3, result.code
     node = store_graphs.retrieval.node("1", "n1")
 
-    assert_equal "parked", node.state
+    assert_equal "needs_info", node.state
     assert_equal "boom", node.reason
   end
 

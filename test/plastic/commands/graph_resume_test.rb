@@ -8,7 +8,7 @@ require_relative "../../../scripts/lib/plastic/commands/node_add"
 require_relative "../../../scripts/lib/plastic/commands/node_claim"
 require_relative "../../../scripts/lib/plastic/commands/node_done"
 require_relative "../../../scripts/lib/plastic/commands/node_fail"
-require_relative "../../../scripts/lib/plastic/commands/node_park"
+require_relative "../../../scripts/lib/plastic/commands/node_ask"
 require_relative "../../../scripts/lib/plastic/commands/sync_up"
 
 # Calls and fixtures the graph resume tests share.
@@ -59,7 +59,7 @@ module GraphResumeHelper
     %w[n1 n2 n3 n4].each { |node_id| node("claim", intent, node_id) }
     node("done", intent, "n1", "--findings", "ok")
     node("fail", intent, "n3", "--reason", "broke")
-    node("park", intent, "n4", "--question", "which way")
+    node("ask", intent, "n4", "which way")
     intent
   end
 
@@ -89,12 +89,12 @@ class GraphResumeTest < Plastic::TestCase
     assert_includes lines(call), "done: n1 a"
   end
 
-  def test_claimed_failed_and_parked_nodes_print_as_in_progress_lines
+  def test_claimed_failed_and_needs_info_nodes_print_as_in_progress_lines
     intent_with_nodes_in_each_state
 
     assert_includes lines(call), "in progress: n2 claimed b"
     assert_includes lines(call), "in progress: n3 failed c"
-    assert_includes lines(call), "in progress: n4 parked d"
+    assert_includes lines(call), "in progress: n4 needs_info d"
   end
 
   def test_a_done_node_is_not_listed_as_in_progress
