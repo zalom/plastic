@@ -18,7 +18,7 @@ class DiscoverRetrievalTest < Plastic::TestCase
     outcome, context = discover
 
     assert_equal [:done, "alpha"], [outcome, JSON.parse(saved_discovery.fetch("data")).fetch("query")]
-    assert_equal ["global"], printed_row(context, "discovery").fetch(:scope)
+    assert_equal ["global"], printed_row(context, "discovery").fetch("scope")
   end
 
   def test_the_agent_is_told_how_to_submit_the_context

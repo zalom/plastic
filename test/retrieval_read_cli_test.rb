@@ -28,7 +28,7 @@ class RetrievalReadCliTest < Minitest::Test
       search = run_cli(home, "search", "Search", "--json")
 
       assert_success search
-      assert_includes JSON.parse(search.fetch(:out)).dig("result", "results").map { |row| row.fetch("store") }, "global"
+      assert_includes JSON.parse(search.fetch(:out)).dig("result", "rows").map { |row| row.fetch("store") }, "global"
     end
   end
 

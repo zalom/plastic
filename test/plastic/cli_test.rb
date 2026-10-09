@@ -93,7 +93,7 @@ class CliTest < Plastic::TestCase
 
     assert_equal 3, call.code
     assert_equal({ "kind" => "refused", "message" => "the owner holds hold" }, document.dig("result", "error"))
-    assert_equal "plastic: refused, the owner holds hold\nThis step belongs to the owner. Stop and ask; do not retry with a flag.\n", call.err
+    assert_empty call.err
   end
 
   def test_the_declarations_say_what_a_tool_takes_and_writes

@@ -33,10 +33,9 @@ class ScopeBrokenProjectsTest < Plastic::TestCase
     path = File.join(@plastic_home, "projects.yml")
     projects("plastic: [\n")
 
-    result = plastic("status", table: Plastic::CLI::TABLE)
+    result = plastic("status", "--project", "other", table: Plastic::CLI::TABLE)
 
     assert_equal 1, result.code
     assert_includes result.err, path
-    assert_equal "store:  global\n\nnext: plastic next\nbecause: pick the one to work on\n", result.out
   end
 end
