@@ -40,7 +40,7 @@ module SearchTestAssertionSupport
     assert_fused_scores(result)
   end
 
-  def fused_rows(result) = JSON.parse(result.out).fetch("result").fetch("results")
+  def fused_rows(result) = JSON.parse(result.out).fetch("result").fetch("rows")
 
   def search_rows(query)
     result = plastic("search", query, "--json", table: Plastic::CLI::TABLE)
@@ -78,7 +78,7 @@ module SearchTestAssertionSupport
 
   def assert_centered_excerpt(result)
     assert_equal 0, result.code
-    excerpt = JSON.parse(result.out).fetch("result").fetch("results").fetch(0).fetch("body")
+    excerpt = JSON.parse(result.out).fetch("result").fetch("rows").fetch(0).fetch("body")
 
     assert_includes excerpt, "needle"
     assert_includes excerpt, "evidence"
@@ -86,7 +86,7 @@ module SearchTestAssertionSupport
   end
 
   def assert_archived_result(result, before)
-    hit = JSON.parse(result.out).fetch("result").fetch("results").fetch(0)
+    hit = JSON.parse(result.out).fetch("result").fetch("rows").fetch(0)
 
     assert_equal [0, ""], [result.code, result.err]
     assert hit.fetch("archived")
@@ -175,7 +175,7 @@ class SearchScopeTest < Plastic::TestCase
   def test_centers_an_accent_insensitive_fts_match
     write_document("global", ("prefix " * 100) + "café")
     result = plastic("search", "cafe", "--json", table: Plastic::CLI::TABLE)
-    excerpt = JSON.parse(result.out).fetch("result").fetch("results").fetch(0).fetch("body")
+    excerpt = JSON.parse(result.out).fetch("result").fetch("rows").fetch(0).fetch("body")
 
     assert_equal 0, result.code
     assert_includes excerpt, "café"
