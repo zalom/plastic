@@ -34,6 +34,12 @@ class InstallReinstallTest < Plastic::TestCase
     assert_equal [nil, nil], [machine_problem, Plastic::Doctor::Core.store_problem(File.join(@plastic_home, "stores", "global"))]
   end
 
+  def test_the_reinstall_option_says_it_makes_the_stores_that_are_missing
+    help = call("install", "--help").out
+
+    assert_includes help, "makes the global store and local.db when they are missing or behind"
+  end
+
   private
 
   def machine_key = (Plastic::Graph::Schema.databases.keys - Plastic::Graph::Schema.store).first
