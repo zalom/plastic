@@ -15,6 +15,8 @@ runner:
 # its done and abandoned intents are archived. Their rows stay.
 migrate:
   remove_after_import: false
+review:
+  pull_request: required
 hash_length: 6
 hash_algorithm: sha256-base36
 max_slug_words: 5

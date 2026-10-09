@@ -25,6 +25,12 @@ module Plastic
       default
     end
 
+    def choice(path, default:, allowed:)
+      value = dig(path)
+      value = "off" if value == false
+      allowed.include?(value) ? value : default
+    end
+
     private
 
     def dig(path)

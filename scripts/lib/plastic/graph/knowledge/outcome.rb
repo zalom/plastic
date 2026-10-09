@@ -27,6 +27,12 @@ module Plastic
 
         def architecture_map? = recorded?("Architecture map")
 
+        def pull_request? = recorded?("Pull request")
+
+        def approved? = recorded?("Approved")
+
+        def reverted? = recorded?("Reverted")
+
         def verification = section.filter_map { |line| line[BULLET, 1]&.delete("*")&.strip }
 
         private
