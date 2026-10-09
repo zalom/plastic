@@ -126,4 +126,8 @@ class KnowledgeReaderIntentFileTest < Plastic::TestCase
     assert_equal ["1--alpha.md", "data.json", "notes.txt", "resources/notes.md"], retrieval.documents("1").map(&:path).sort
     assert_equal [true], [!kept("odd.md").nil?]
   end
+  def test_context_json_cannot_become_a_document
+    assert_raises(Plastic::Invalid) { read_in("context.json", JSON.generate("intent" => "1", "context" => {})) }
+    assert_empty retrieval.documents("1").select { |document| document.path == "context.json" }
+  end
 end

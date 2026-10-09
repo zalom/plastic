@@ -19,7 +19,7 @@ class CliReleaseContractTest < Minitest::Test
   def setup
     @dir = Dir.mktmpdir("plastic-release-contract")
     @bin = ENV.fetch("PLASTIC_ACCEPTANCE_BIN") { File.expand_path("../../bin/plastic", __dir__) }
-    @result, @error, @status = command("intent", "new", "A sample delivery", "--slug", "sample")
+    @result, @error, @status = command("intent", "new", "A sample delivery")
   end
 
   def teardown
@@ -38,8 +38,8 @@ class CliReleaseContractTest < Minitest::Test
   end
 
   def test_the_real_process_writes_the_intent_and_prints_its_folder
-    assert_equal ["intent: 1", "printed store/index.json", "printed store/1--sample/1--sample.md",
-      "printed store/1--sample/savepoint.md", "printed store/1--sample/graph.json"],
+    assert_equal ["intent: 1", "printed store/index.json", "printed store/1--a-sample-delivery/intent.md",
+      "printed store/1--a-sample-delivery/savepoint.md", "printed store/1--a-sample-delivery/graph.json"],
       @result.dig("result", "output")
   end
 

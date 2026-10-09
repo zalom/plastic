@@ -37,7 +37,7 @@ class IntentDiscoverTest < Plastic::TestCase
 
     assert_call missing, code: 1, out: ["code_discover_retrieval, gate: no intent 99 in owning store"],
       err: "plastic: code_discover_retrieval, gate: no intent 99 in owning store\n"
-    refute_path_exists store_path("discovery/99.json")
+    assert_empty Dir[store_path("**/context.json")]
   end
 
   def test_rejects_an_unsafe_owning_intent_as_usage
@@ -126,7 +126,8 @@ class IntentDiscoverTest < Plastic::TestCase
   end
 
   def assert_persisted_manifest(manifest, result)
-    assert_equal manifest, JSON.parse(File.read(store_path("discovery/1.json")))
+    assert_equal manifest, JSON.parse(File.read(Dir[store_path("*/context.json")].first)).fetch("discovery")
+    refute_path_exists store_path("discovery/1.json")
     assert_equal "plastic intent context 1 --from FILE --project global", JSON.parse(result.out).fetch("next")
   end
 

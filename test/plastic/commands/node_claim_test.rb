@@ -11,7 +11,21 @@ require_relative "../../../scripts/lib/plastic/commands/node_release"
 require_relative "../../../scripts/lib/plastic/commands/edge_add"
 
 class NodeClaimTest < Plastic::TestCase
-  def add_node(title) = plastic("node", "add", "1", title, "--criterion", "done", table: Plastic::CLI::TABLE)
+  def test_the_claim_offers_findings_and_no_judge
+    open_intent
+    add_node("a")
+
+    out = claim("n1").out
+
+    assert_includes out, "--findings"
+    refute_includes out, "--judge"
+  end
+
+  def add_node(title)
+    write("store/1--alpha/spec.md", "# Spec\n\n## Done criteria\n- [done] Done\n")
+    sync_up
+    plastic("node", "add", "1", title, "--criterion", "done", table: Plastic::CLI::TABLE)
+  end
 
   def two_linked_nodes
     open_intent
@@ -26,7 +40,7 @@ class NodeClaimTest < Plastic::TestCase
     open_intent
     add_node("a")
     claim("n1")
-    plastic("node", "done", "1", "n1", "--judge", "tests", "--findings", "ok", table: Plastic::CLI::TABLE)
+    plastic("node", "done", "1", "n1", "--findings", "ok", table: Plastic::CLI::TABLE)
 
     result = claim("n1")
 
@@ -118,7 +132,7 @@ class NodeClaimTest < Plastic::TestCase
     two_linked_nodes
     claim("n2")
     claim("n1")
-    plastic("node", "done", "1", "n1", "--judge", "tests", "--findings", "ok", table: Plastic::CLI::TABLE)
+    plastic("node", "done", "1", "n1", "--findings", "ok", table: Plastic::CLI::TABLE)
 
     result = claim("n2")
 
@@ -138,6 +152,8 @@ class NodeClaimTest < Plastic::TestCase
 
   def test_the_brief_names_the_input_file
     open_intent
+    write("store/1--alpha/spec.md", "# Spec\n\n## Done criteria\n- [done] Done\n")
+    sync_up
     plastic("node", "add", "1", "a", "--criterion", "done", "--input", "docs/a.md", table: Plastic::CLI::TABLE)
 
     call = claim("n1")

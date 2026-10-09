@@ -263,12 +263,12 @@ class IntentContextValidationTest < Plastic::TestCase
   def test_rejects_a_non_object_submission_without_replacing_saved_context
     reference = discovered_reference
     submit_context(context_submission(reference))
-    before = File.binread(store_path("context/1.json"))
+    before = File.binread(Dir[store_path("*/context.json")].first)
 
     result = submit_raw_context("[]")
 
     assert_equal 2, result.code
-    assert_equal before, File.binread(store_path("context/1.json"))
+    assert_equal before, File.binread(Dir[store_path("*/context.json")].first)
   end
 
   def test_rejects_non_array_context_categories_without_replacing_saved_context
@@ -349,7 +349,7 @@ class IntentContextInputTest < Plastic::TestCase
 
     assert_equal 2, result.code
     assert_match(/\Aplastic: #{Regexp.escape(file)} is not valid JSON: /, result.err)
-    refute_path_exists store_path("context/1.json")
+    assert_empty Dir[store_path("*/context.json")]
   end
 
   def test_a_missing_context_file_exits_2_naming_the_file

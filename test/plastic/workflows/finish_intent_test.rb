@@ -4,39 +4,25 @@ require_relative "../../test_helper"
 require_relative "../../../scripts/lib/plastic/workflows/finish_intent"
 
 class FinishIntentTest < Plastic::TestCase
-  def finish(requirements: [], attestation: nil)
-    run_workflow(Plastic::Workflows::FinishIntent, intent_id: "1", requirements:, attestation:, intent_folder: "store/1--alpha",
-      evidence_example: "{}").first
+  def finish(requirements: [], judged: false)
+    run_workflow(Plastic::Workflows::FinishIntent, intent_id: "1", requirements:, judged:, intent_folder: "store/1--alpha").first
   end
 
-  def test_records_and_evidence_in_place_are_done
-    assert_equal :done, finish(attestation: { "It works" => "green" })
+  def test_nothing_missing_is_done
+    assert_equal :done, finish(judged: true)
   end
 
   def test_missing_records_are_handed_to_the_agent
-    assert_equal "Complete these recorded prerequisites: outcome.md", finish(requirements: ["outcome.md"]).steps.first
+    assert_equal "Complete these recorded prerequisites: outcome.md", finish(requirements: ["outcome.md"], judged: true).steps.first
   end
 
-  def test_missing_evidence_names_the_folder_and_the_end_command
-    step = finish.steps.find { |text| text.include?("completion.json") }
-
-    assert_includes step, "Write completion.json inside store/1--alpha"
-    assert_includes step, "plastic intent end 1 --judge tests|tool|agent|owner --evidence completion.json"
+  def test_no_counting_verdict_names_the_judge_command
+    assert_includes finish.steps.join("\n"), "plastic intent judge 1"
   end
 
-  def test_the_map_step_lives_in_the_merge_check
-    steps = finish(requirements: ["outcome.md"]).steps
+  def test_the_steps_name_neither_removed_option
+    text = finish(requirements: ["outcome.md"]).steps.join("\n")
 
-    refute(steps.any? { |text| text.include?("architecture map") })
-  end
-
-  def test_open_records_and_no_evidence_print_records_and_evidence_in_order
-    steps = finish(requirements: ["outcome.md"]).steps
-
-    assert_equal ["prerequisites", "completion.json"], steps.map { |text| text[/prerequisites|completion\.json/] }
-  end
-
-  def test_the_evidence_step_names_the_criterion_keys
-    assert_includes finish.steps.find { |text| text.include?("completion.json") }, "criterion key"
+    ["--judge", "--evidence", "completion.json"].each { |part| refute_includes text, part }
   end
 end

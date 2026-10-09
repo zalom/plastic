@@ -15,10 +15,10 @@ class ContextDocumentsTest < Plastic::TestCase
     assert_equal({ "query" => "row" }, read(:context))
   end
 
-  def test_with_no_row_the_file_of_the_store_is_read
+  def test_a_file_of_the_store_root_is_never_read
     write("discovery/1.json", JSON.generate("query" => "file"))
 
-    assert_equal({ "query" => "file" }, read(:discovery))
+    assert_raises(Errno::ENOENT) { read(:discovery) }
   end
 
   def test_with_neither_the_read_raises

@@ -35,4 +35,8 @@ class ConfigTemplateTest < Minitest::Test
   def test_the_execution_mode_is_subagent_driven
     assert_equal "subagent-driven", @config["execution_mode"]
   end
+
+  def test_a_pull_request_review_is_required_by_default
+    assert_equal "required", @config.dig("review", "pull_request")
+  end
 end

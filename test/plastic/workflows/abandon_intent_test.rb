@@ -10,7 +10,7 @@ class AbandonIntentTest < Plastic::TestCase
 
   def test_an_intent_with_an_outcome_is_abandoned_and_named
     intent = open_intent
-    write("#{intent.dir}/outcome.md", "# Outcome\n\nDropped.\n")
+    write("#{intent.dir}/outcome.md", "# Outcome\n\nDropped.\n\n## Verification\n- Reverted: nothing delivered\n")
     sync_up
 
     outcome, context = abandon
@@ -33,5 +33,13 @@ class AbandonIntentTest < Plastic::TestCase
     open_intent
 
     assert_kind_of Plastic::Failed, abandon.first
+  end
+  def test_an_abandon_with_no_supersedes_link_is_cancelled
+    intent = open_intent
+    write("#{intent.dir}/outcome.md", "# Outcome\n\nDropped.\n\n## Verification\n- Reverted: nothing delivered\n")
+    sync_up
+    abandon
+
+    assert_equal "cancelled", retrieval.intent("1").disposition
   end
 end
