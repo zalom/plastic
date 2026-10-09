@@ -28,7 +28,7 @@ class SyncDownTest < Plastic::TestCase
     intent = open_intent("Unsynced", status: "future")
     path = "#{intent.dir}/#{intent.file}"
     archive(intent)
-    archive(intent, "--revert")
+    plastic("intent", "unarchive", intent.intent_id, table: Plastic::CLI::TABLE)
     write(path, "owner edit after restore")
 
     result = sync_down

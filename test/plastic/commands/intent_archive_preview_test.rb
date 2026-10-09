@@ -28,8 +28,8 @@ class IntentArchivePreviewTest < Plastic::TestCase
     assert_equal "outside", File.read(File.join(File.dirname(twin.first), "outside.txt"))
   end
 
-  def test_a_revert_preview_matches_apply_on_an_identical_home
-    twin = twin_run("intent", "archive", "1", "--revert") do |home|
+  def test_an_unarchive_preview_matches_apply_on_an_identical_home
+    twin = twin_run("intent", "unarchive", "1") do |home|
       seed_intents(home, "Target")
       mark_done_in(home, "1")
       call_in(home, "intent", "archive", "1")
@@ -39,12 +39,12 @@ class IntentArchivePreviewTest < Plastic::TestCase
     assert_equal 0, twin.previewed.code
   end
 
-  def test_a_revert_preview_of_an_intent_already_restored_fails_like_the_apply
-    twin = twin_run("intent", "archive", "1", "--revert") do |home|
+  def test_an_unarchive_preview_of_an_intent_already_restored_fails_like_the_apply
+    twin = twin_run("intent", "unarchive", "1") do |home|
       seed_intents(home, "Target")
       mark_done_in(home, "1")
       call_in(home, "intent", "archive", "1")
-      call_in(home, "intent", "archive", "1", "--revert")
+      call_in(home, "intent", "unarchive", "1")
     end
 
     assert_preview_matches_apply(twin)
