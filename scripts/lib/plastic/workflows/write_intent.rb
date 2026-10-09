@@ -42,7 +42,8 @@ module Plastic
       outcome :done, offers: "plastic next", because: "intent %{intent_id} has its rows and its printed files"
 
       def self.after_problem(context)
-        "no intent #{context.after} in this store to link after" if context.after && !context.retrieval.intent(context.after)
+        after = context.after
+        "no intent #{after} in this store to link after" if after && !context.retrieval.intent(after)
       end
     end
   end

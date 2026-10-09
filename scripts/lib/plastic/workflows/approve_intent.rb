@@ -11,14 +11,7 @@ module Plastic
       sets :problem
 
       read "check the intent" do |context|
-        intent = context.retrieval.intent(context.intent_id)
-        context[:problem] = problem_for(intent, context.intent_id)
-      end
-
-      def self.problem_for(intent, intent_id)
-        return "no intent #{intent_id} in this store" unless intent
-
-        "intent #{intent_id} is #{intent.status}; it takes no go-ahead" if %w[done abandoned].include?(intent.status)
+        context[:problem] = context.work.open_intent_problem(context.intent_id, "go-ahead")
       end
 
       gate "%{problem}", stops: :failure, pass: ->(context) { context.problem.nil? }

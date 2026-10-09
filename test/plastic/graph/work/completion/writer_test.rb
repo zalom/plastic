@@ -79,6 +79,15 @@ class WorkCompletionWriterTest < WorkCompletionWriterFixture
     assert_equal %w[done delivered], retrieval.intent("1").to_h.values_at(:status, :disposition)
   end
 
+  def test_closing_a_done_intent_again_releases_the_lock_it_still_holds
+    ready
+    writer.close("1")
+    @graphs.work.take_lock("1", session_id: "s-1", mode: "auto")
+    writer.close("1")
+
+    assert_nil retrieval.lock("1")
+  end
+
   def test_the_file_evidence_reader_is_gone
     refute_respond_to writer, :evidence
     refute_respond_to @graphs.work, :completion_evidence
@@ -132,6 +141,15 @@ class WorkCompletionAbandonTest < WorkCompletionWriterFixture
     writer.abandon("1")
 
     assert_equal "s-2", retrieval.lock("1").session_id
+  end
+
+  def test_abandoning_an_abandoned_intent_again_releases_the_lock_it_still_holds
+    dropped
+    writer.abandon("1")
+    @graphs.work.take_lock("1", session_id: "s-1", mode: "auto")
+    writer.abandon("1")
+
+    assert_nil retrieval.lock("1")
   end
 
   def test_abandoning_without_an_outcome_raises_and_writes_nothing

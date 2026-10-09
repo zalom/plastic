@@ -16,10 +16,11 @@ module Plastic
       end
 
       def persist
+        intent_id = @context.intent_id
         @context.database(:knowledge).transaction do |batch|
-          batch.put(:retrieval_discoveries, { intent_id: @context.intent_id, data: @body, updated_at: Plastic.now })
+          batch.put(:retrieval_discoveries, { intent_id:, data: @body, updated_at: Plastic.now })
         end
-        @context.work.print_intent(@context.intent_id)
+        @context.work.print_intent(intent_id)
       end
     end
   end

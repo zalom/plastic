@@ -10,12 +10,6 @@ module Plastic
       argument :text, label: "TEXT", text: "what the work showed"
       writes :work
 
-      def call
-        raise CLI::Command::Usage, "TEXT must describe the verification" if parsed[:text].to_s.strip.empty?
-
-        super
-      end
-
       workflow :code_done_node, next: :noop
     end
   end

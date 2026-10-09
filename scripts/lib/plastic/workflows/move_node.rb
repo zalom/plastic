@@ -37,7 +37,7 @@ module Plastic
 
       def self.intent_steps
         read("find the intent") { |context| context[:intent] = context.retrieval.intent(context.intent_id) }
-        gate "no intent %{intent_id} in this store", stops: :failure, pass: ->(context) { !context.intent.nil? }
+        gate "no intent %{intent_id} in this store", stops: :failure, pass: ->(context) { context.intent }
       end
 
       def self.move_steps(verb, shape)

@@ -15,13 +15,18 @@ module Plastic
             @session = session
           end
 
-          def add_verdict(intent_id:, verdict:, findings:, at: Plastic.now)
+          def add_verdict(intent_id:, at: Plastic.now, **fields)
             round = @retrieval.verdicts(intent_id).size + 1
-            return nil if round > Verdict::ROUNDS
+            insert({ intent_id:, round:, at:, session_id: @session, **fields }) unless round > Verdict::ROUNDS
+          end
 
-            row = { intent_id:, round:, verdict:, findings:, at:, session_id: @session }
+          def rounds_left?(intent_id) = @retrieval.verdicts(intent_id).size < Verdict::ROUNDS
+
+          private
+
+          def insert(row)
             @databases.fetch(:work).transaction { |batch| batch.put(:verdicts, row, statement: :insert) }
-            @retrieval.verdicts(intent_id).find { |found| found.round == round }
+            @retrieval.verdicts(row[:intent_id]).find { |found| found.round == row[:round] }
           end
         end
       end

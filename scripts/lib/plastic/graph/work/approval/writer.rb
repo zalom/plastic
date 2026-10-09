@@ -14,10 +14,11 @@ module Plastic
             @session = session
           end
 
-          def approve(intent_id, at: Plastic.now)
-            existing = @retrieval.approval(intent_id)
-            return existing if existing
+          def approve(intent_id, at: Plastic.now) = @retrieval.approval(intent_id) || insert(intent_id, at)
 
+          private
+
+          def insert(intent_id, at)
             @databases.fetch(:work).transaction { |batch| batch.put(:approvals, { intent_id:, at:, session_id: @session }, statement: :insert) }
             @retrieval.approval(intent_id)
           end

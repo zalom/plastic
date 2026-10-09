@@ -28,14 +28,19 @@ module Plastic
           def call = Legacy::StoreImport.new(self, @folder, @retrieval, @databases).call
 
           def read_rows
-            parsed = Legacy::Index.parse(@folder.read(Graph::Knowledge::StoreFolder::LEGACY_INDEX).force_encoding(Encoding::UTF_8))
-            write(parsed.check(@folder.intent_dirs))
+            parsed = write_index
             read = @sync.read(@folder.intent_files.reject { |path| Graph::Knowledge::StoreFolder.graph_view?(path) })
             finish
             ["imported #{Graph::Knowledge::StoreFolder::LEGACY_INDEX}: #{Schema.phrase(parsed.counts)}", *read]
           end
 
           private
+
+          def write_index
+            Legacy::Index.parse(@folder.read(Graph::Knowledge::StoreFolder::LEGACY_INDEX).force_encoding(Encoding::UTF_8)).tap do |parsed|
+              write(parsed.check(@folder.intent_dirs))
+            end
+          end
 
           def write(parsed)
             now = Plastic.now

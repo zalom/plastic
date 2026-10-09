@@ -39,15 +39,14 @@ module Plastic
 
       def self.record_facts(context)
         check = Graph::Work::Completion::Check.new(context.retrieval, context.intent_id)
-        required = review_required?(context)
-        context[:requirements] = check.record_problems + (required ? pull_request_problems(check) : [])
+        context[:requirements] = check.record_problems + (review_required?(context) ? pull_request_problems(check) : [])
         review_facts(context)
-        verification_facts(context, check.verification, required)
+        verification_facts(context, check.verification)
       end
 
-      def self.verification_facts(context, verification, required)
+      def self.verification_facts(context, verification)
         context[:merge_recorded], context[:map_recorded] = [verification.merged?, verification.architecture_map?]
-        context[:awaiting_approval] = required && ready_for_approval?(context) && !verification.approved?
+        context[:awaiting_approval] = review_required?(context) && ready_for_approval?(context) && !verification.approved?
       end
 
       def self.review_facts(context)

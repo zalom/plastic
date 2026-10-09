@@ -19,17 +19,9 @@ module Plastic
       workflow :code_record_verdict, next: :noop
 
       def call(*)
-        verdict_problem&.then { |text| raise CLI::Command::Usage, text }
+        raise CLI::Command::Usage, "the verdict takes accept or revise" unless VERDICTS.include?(parsed[:verdict])
 
         super
-      end
-
-      private
-
-      def verdict_problem
-        return "the verdict takes accept or revise" unless VERDICTS.include?(parsed[:verdict])
-
-        "the findings need text" if parsed[:findings].to_s.strip.empty?
       end
     end
   end

@@ -11,10 +11,11 @@ module Plastic
       end
 
       def persist(document)
+        intent_id = context.intent_id
         context.database(:knowledge).transaction do |batch|
-          batch.put(:retrieval_contexts, { intent_id: context.intent_id, data: JSON.pretty_generate(document), updated_at: Plastic.now })
+          batch.put(:retrieval_contexts, { intent_id:, data: JSON.pretty_generate(document), updated_at: Plastic.now })
         end
-        context.work.print_intent(context.intent_id)
+        context.work.print_intent(intent_id)
         document
       end
 

@@ -19,6 +19,7 @@ module Plastic
 
       def_delegators "@writers.sessions", :open_session, :stamp_turn, :end_session, :write_note, :take_lock, :renew_locks
       def_delegator "@writers.intents", :activate, :activate_intent
+      def_delegator "@writers.intents", :open_problem, :open_intent_problem
       def_delegator "@writers.intents", :problem, :intent_problem
       def_delegator "@writers.intents", :ref_line
       def_delegator "@writers.revisions", :change, :revision
@@ -28,7 +29,7 @@ module Plastic
       def_delegators "@writers.nodes", :add_node, :remove_node, :claim_node, :release_node, :done_node, :fail_node,
         :ask_node, :impede_node, :resolve_node
       def_delegator "@writers.approvals", :approve, :approve_intent
-      def_delegator "@writers.verdicts", :add_verdict
+      def_delegators "@writers.verdicts", :add_verdict, :rounds_left?
       def_delegators "@writers.edges", :add_edge, :remove_edge
       def_delegators "@writers.rulings", :add_ruling
       def_delegators "@writers.links", :add_link, :remove_link

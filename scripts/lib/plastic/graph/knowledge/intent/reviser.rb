@@ -40,10 +40,9 @@ module Plastic
 
           private
 
-          def key_of(intent)
-            paths = @retrieval.documents(intent.intent_id).map(&:path)
-            [intent.intent_id, paths.include?(intent.file) ? intent.file : intent.dated_file]
-          end
+          def key_of(intent) = intent.key_among(paths_of(intent))
+
+          def paths_of(intent) = @retrieval.documents(intent.intent_id).map(&:path)
 
           def uri(key) = @retrieval.reference(*key).fetch(:uri)
 

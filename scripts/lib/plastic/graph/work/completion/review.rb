@@ -24,7 +24,7 @@ module Plastic
 
           def latest = @latest ||= @retrieval.verdicts(@intent_id).max_by(&:round)
 
-          def live_times = @retrieval.nodes(@intent_id).reject { |node| node.state == "removed" }.filter_map { |node| node.updated_at && Time.parse(node.updated_at) }
+          def live_times = @retrieval.nodes(@intent_id).select(&:live?).filter_map(&:changed_at)
         end
       end
     end

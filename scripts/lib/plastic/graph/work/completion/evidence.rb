@@ -10,11 +10,11 @@ module Plastic
             @nodes = retrieval.nodes(intent_id).select(&:verified?)
           end
 
-          def by_criterion(keys) = keys.to_h { |key| [key, served_by(key).map { |node| "#{node.id}: #{node.findings.strip}" }.join("; ")] }
+          def by_criterion(keys) = keys.to_h { |key| [key, evidence_of(key)] }
 
           private
 
-          def served_by(key) = @nodes.select { |node| node.criterion == key }
+          def evidence_of(key) = @nodes.select { |node| node.serves?(key) }.map(&:evidence).join("; ")
         end
       end
     end

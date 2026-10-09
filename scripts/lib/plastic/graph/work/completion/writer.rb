@@ -48,9 +48,7 @@ module Plastic
           end
 
           def disposition(intent_id)
-            replaced = @retrieval.linking(intent_id).any? do |link|
-              link.kind == "supersedes" && link.to_ref == intent_id && link.from_intent_id != intent_id
-            end
+            replaced = @retrieval.linking(intent_id).any? { |link| link.supersedes_from_another?(intent_id) }
             replaced ? "superseded" : "cancelled"
           end
 

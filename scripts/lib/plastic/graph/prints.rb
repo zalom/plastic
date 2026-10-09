@@ -59,16 +59,17 @@ module Plastic
       # Every file of the store, read in eight queries whatever the number of intents.
       def of_store(retrieval)
         rows = Contents.read(retrieval)
-        [index(retrieval), *retrieval.unarchived_intents.flat_map { |intent| of_intent(retrieval, intent, rows) }]
+        [index(retrieval), *retrieval.unarchived_intents.flat_map { |intent| of_intent_contents(retrieval, intent, rows) }]
       end
 
-      def of_intent(retrieval, intent, rows = nil)
+      def of_intent(retrieval, intent) = of_intent_contents(retrieval, intent, Contents.read(retrieval, intent.intent_id))
+
+      def of_intent_contents(retrieval, intent, contents)
         id = intent.intent_id
-        rows ||= Contents.read(retrieval, id)
-        legacy = rows.legacy_intents_data(id)
+        legacy = contents.legacy_intents_data(id)
         dir = intent.dir
-        [*documents(dir, rows.documents(id), legacy), *text_files(dir, legacy), *savepoint(intent, rows.savepoints(id)),
-          graph(intent, rows), *context(intent, rows), *kept_files(retrieval, rows.kept_files(id))]
+        [*documents(dir, contents.documents(id), legacy), *text_files(dir, legacy), *savepoint(intent, contents.savepoints(id)),
+          graph(intent, contents), *context(intent, contents), *kept_files(retrieval, contents.kept_files(id))]
       end
 
       # A path held as a legacy row and as a document prints from the legacy row only.

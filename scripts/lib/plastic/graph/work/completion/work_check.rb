@@ -16,10 +16,10 @@ module Plastic
 
           def problems
             nodes = live_nodes
-            return [plan_problem, uncovered_problem(nodes)].compact if nodes.empty?
+            blocking = blocking_problem(nodes)
+            return [blocking] if blocking && nodes.any?
 
-            node_problem = unfinished_problem(nodes) || unverified_problem(nodes)
-            node_problem ? [node_problem] : [uncovered_problem(nodes), orphan_problem(nodes)].compact
+            [blocking, uncovered_problem(nodes), orphan_problem(nodes)].compact
           end
 
           private
@@ -37,20 +37,21 @@ module Plastic
               "TEXT to record the actual verification."
           end
 
-          def uncovered_problem(nodes)
-            missing = @keys - nodes.map(&:criterion)
-            "Cover every done criterion with a done node. No done node serves: #{missing.join(", ")}." if missing.any?
+          def blocking_problem(nodes) = nodes.empty? ? plan_problem : unfinished_problem(nodes) || unverified_problem(nodes)
+
+          def uncovered_problem(nodes) = missing_keys(nodes).join(", ").then { |list| "Cover every done criterion with a done node. No done node serves: #{list}." unless list.empty? }
+
+          def missing_keys(nodes) = @keys - nodes.map(&:criterion)
+
+          def orphan_problem(nodes) = (stray_text(nodes) if @keys.any?)
+
+          def stray_text(nodes)
+            nodes.reject { |node| @keys.include?(node.criterion) }.map(&:keyed_label).join(", ").then do |list|
+              "Node #{list} names a criterion key that spec.md no longer has. Fix the spec or replace the node." unless list.empty?
+            end
           end
 
-          def orphan_problem(nodes)
-            stray = nodes.reject { |node| @keys.include?(node.criterion) }
-            return if @keys.empty? || stray.empty?
-
-            "Node #{stray.map { |node| "#{node.id} (#{node.criterion || "no key"})" }.join(", ")} names a criterion key that spec.md no longer has. " \
-              "Fix the spec or replace the node."
-          end
-
-          def live_nodes = @retrieval.nodes(@intent_id).reject { |node| node.state == "removed" }
+          def live_nodes = @retrieval.nodes(@intent_id).select(&:live?)
         end
       end
     end

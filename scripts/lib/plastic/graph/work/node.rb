@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "time"
 require_relative "../record"
 
 module Plastic
@@ -25,6 +26,16 @@ module Plastic
         def waiting?(ready_nodes) = state == "open" && ready_nodes.none? { |ready| ready.id == id }
 
         # A done node with nonempty findings.
+        def live? = state != "removed"
+
+        def serves?(key) = criterion == key
+
+        def keyed_label = "#{id} (#{criterion || "no key"})"
+
+        def evidence = "#{id}: #{findings.strip}"
+
+        def changed_at = updated_at && Time.parse(updated_at)
+
         def verified? = state == "done" && !findings.to_s.strip.empty?
       end
       Node::STATES = %w[open claimed done failed needs_info impeded removed].freeze

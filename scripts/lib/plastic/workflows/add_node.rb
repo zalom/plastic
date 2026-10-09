@@ -13,8 +13,7 @@ module Plastic
       sets :problem, :id
 
       read "check the intent" do |context|
-        intent = context.retrieval.intent(context.intent_id)
-        context[:problem] = intent_problem(intent, context.intent_id) || criterion_problem(context)
+        context[:problem] = context.work.open_intent_problem(context.intent_id, "nodes") || criterion_problem(context)
       end
 
       gate "%{problem}", stops: :failure, pass: ->(context) { context.problem.nil? }
@@ -30,20 +29,15 @@ module Plastic
       end
 
       def self.criterion_problem(context)
-        spec = Graph::Knowledge::Spec.new(context.retrieval, context.intent_id)
-        return "intent #{context.intent_id} has no synced spec.md; write its done criteria, then run plastic sync up" unless spec.present?
+        intent_id = context.intent_id
+        spec = Graph::Knowledge::Spec.new(context.retrieval, intent_id)
+        return "intent #{intent_id} has no synced spec.md; write its done criteria, then run plastic sync up" unless spec.present?
 
-        keys = spec.criteria_by_key.keys
-        return nil if keys.include?(context.criterion)
-
-        "criterion #{context.criterion.inspect} is not a done criterion key of spec.md; the keys are: #{keys.join(", ")}"
+        key_problem(spec.criteria_by_key.keys, context.criterion)
       end
 
-      def self.intent_problem(intent, intent_id)
-        return "no intent #{intent_id} in this store" unless intent
-
-        status = intent.status
-        "intent #{intent_id} is #{status}; it takes no nodes" if %w[done abandoned].include?(status)
+      def self.key_problem(keys, criterion)
+        "criterion #{criterion.inspect} is not a done criterion key of spec.md; the keys are: #{keys.join(", ")}" unless keys.include?(criterion)
       end
 
       outcome :done, offers: "plastic node claim %{intent_id} %{id}", because: "node %{id} is open"
