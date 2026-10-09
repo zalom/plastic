@@ -19,6 +19,9 @@ module Plastic
         context[:kind] = kind
       end
 
+      gate "%{problem}", stops: :failure, offers: "plastic intent end %{intent_id}",
+        because: "only a done, abandoned or future intent archives; end it first",
+        pass: ->(context) { context.kind != :unfinished }
       gate "%{problem}", stops: :failure, pass: ->(context) { context.kind != :failure }
       gate "%{problem}", stops: :refusal, pass: ->(context) { context.kind != :refusal }
 

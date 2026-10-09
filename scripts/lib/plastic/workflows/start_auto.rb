@@ -13,17 +13,14 @@ module Plastic
     class StartAuto < CodeWorkflow
       [facts, steps, outcomes].each(&:clear)
 
-      sets :problem, :intent
+      sets :problem, :closed_problem, :spec_problem, :intent
 
       read "read the intent and its spec" do |context|
         context[:intent] = context.retrieval.intent(context.intent_id)
-        context[:problem] = problem_for(context)
-      end
-
-      def self.problem_for(context)
         id = context.intent_id
-        state_problem(id, context.intent) || spec_problem(id, context) || lock_problem(id, context) ||
-          approval_problem(id, context)
+        context[:closed_problem] = state_problem(id, context.intent)
+        context[:spec_problem] = criterion_problem(id, context)
+        context[:problem] = decision_problem(id, context) || lock_problem(id, context) || approval_problem(id, context)
       end
 
       def self.state_problem(id, intent)
@@ -33,13 +30,17 @@ module Plastic
         nil
       end
 
-      def self.spec_problem(id, context)
-        spec = Graph::Knowledge::Spec.new(context.retrieval, id)
-        return "intent #{id} has an open decision; run plastic intent spec #{id}" if spec.open_decisions.any?
-        return "intent #{id} names no done criterion" if spec.done_criteria.empty?
+def self.criterion_problem(id, context)
+  return nil unless Graph::Knowledge::Spec.new(context.retrieval, id).done_criteria.empty?
 
-        nil
-      end
+  "intent #{id} names no done criterion"
+end
+
+def self.decision_problem(id, context)
+  return nil unless Graph::Knowledge::Spec.new(context.retrieval, id).open_decisions.any?
+
+  "intent #{id} has an open decision; run plastic intent spec #{id}"
+end
 
       def self.lock_problem(id, context)
         lock = context.retrieval.lock(id)
@@ -57,6 +58,10 @@ module Plastic
 
       gate "no intent %{intent_id} in this store", stops: :failure, pass: ->(context) { !context.intent.nil? }
       gate "plastic auto names no session", stops: :failure, pass: ->(context) { !context.session.nil? }
+      gate "%{closed_problem}", stops: :failure, offers: "plastic next", because: "a closed intent cannot be armed; pick other work",
+        pass: ->(context) { context.closed_problem.nil? }
+      gate "%{spec_problem}", stops: :failure, offers: "plastic intent spec %{intent_id}",
+        because: "the spec needs a done criterion", pass: ->(context) { context.spec_problem.nil? }
       gate "%{problem}", stops: :refusal, pass: ->(context) { context.problem.nil? }
 
       def self.delivery_started?(context)

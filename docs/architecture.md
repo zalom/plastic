@@ -197,9 +197,9 @@ Questions` heading (a section holding only "None" counts zero).
 
 `plastic intent spec ID` prints `docs/grilling.md`, the grilling method, then the intent's
 open decisions, so the next step is always either `intent rule` or `auto`.
-`plastic auto ID` refuses (exit 3) an open decision, no done criterion, a done or
-abandoned intent, and a live lock held by another session; it fails (exit 1) when the call
-names no session. Otherwise it takes the lock in `auto` mode, sets the intent active, and
+`plastic auto ID` refuses (exit 3) an open decision, a missing go-ahead and a live lock held by
+another session; it fails (exit 1) with a `next:` line for no done criterion (`plastic intent
+spec ID`) and for a done or abandoned intent (`plastic next`), and when the call names no session. Otherwise it takes the lock in `auto` mode, sets the intent active, and
 prints the code worktree. An already active intent still needs a live lock in auto mode held
 by the calling session; running the command takes a missing or expired lock.
 

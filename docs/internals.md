@@ -936,9 +936,9 @@ files, and the old start and lock subcommands of `plastic auto` are retired. Own
 is the only auto command, and lock commands live under `intent lock`.
 
 - **Take.** `plastic auto ID` (`Commands::Auto`) runs `Workflows::PickDelivery`, then
-  `Workflows::StartAuto`. `StartAuto` refuses (exit 3) an open decision, no done criterion, a
-  done or abandoned intent, and a live lock held by another session, and fails (exit 1) when
-  the call names no session. Otherwise `work.take_lock` writes the row in `auto` mode and the
+  `Workflows::StartAuto`. `StartAuto` refuses (exit 3) an open decision, a missing go-ahead and a live lock held by
+  another session, and fails (exit 1) with a `next:` line for no done criterion and for a done
+  or abandoned intent, and when the call names no session. Otherwise `work.take_lock` writes the row in `auto` mode and the
   intent goes active. An expired lock is taken over by the same call.
 - **Renew.** The Stop hook (`plastic hook record`, `Hooks::Record`) renews every lock row the
   session holds through `work.renew_locks`.
