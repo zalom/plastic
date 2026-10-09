@@ -5,7 +5,7 @@ require_relative "../../../scripts/lib/plastic/workflows/write_roadmap_batch"
 
 class WriteRoadmapBatchTest < Plastic::TestCase
   def write_batch(title)
-    store_graphs.work.create_roadmap("r1", title: nil, goal: nil) unless retrieval.roadmap("r1")
+    store_graphs.work.create_roadmap("r1", title: "r1", goal: nil) unless retrieval.roadmap("r1")
     run_workflow(Plastic::Workflows::WriteRoadmapBatch, slug: "r1", position: "1", title:, goal: "Ship", done: "it ships")
   end
 
