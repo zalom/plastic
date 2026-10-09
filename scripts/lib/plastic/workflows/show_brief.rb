@@ -24,13 +24,11 @@ module Plastic
 
       sets :intent
 
-      CRITERIA_HEADING = 'the done criteria are the bullets under its "## Done criteria" heading'
-
       def self.spec_line(context, spec)
         file = "#{context.intent.dir}/spec.md"
-        return "spec: #{file}; #{CRITERIA_HEADING}" if spec.present?
+        return "spec: #{file}; #{Lines::CRITERIA}" if spec.present?
 
-        "spec: none yet; the agent writes #{file}, and #{CRITERIA_HEADING}"
+        "spec: none yet; the agent writes #{file}, and #{Lines::CRITERIA}"
       end
 
       NODE_AND_EDGE_COMMANDS = [
