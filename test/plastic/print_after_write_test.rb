@@ -85,17 +85,23 @@ class PrintAfterWriteTest < Plastic::TestCase
     assert_path_exists store_path("store/1--fresh/graph.json")
   end
 
-  def test_roadmap_writes_print_the_roadmap_file
+  def roadmap_with_two_items
     run_cli("roadmap", "batch", "r1", "1", "--title", "T", "--goal", "G", "--done", "d")
     run_cli("roadmap", "add", "r1", "1", "a", "--title", "A", "--goal", "Item goal", "--done", "item done")
     run_cli("roadmap", "add", "r1", "1", "b", "--title", "B")
+  end
+
+  def test_roadmap_adds_and_logs_print_the_roadmap_file
+    roadmap_with_two_items
     run_cli("roadmap", "log", "r1", "a", "a log line")
 
     assert_files_level("roadmaps/")
     assert_includes File.read(store_path("roadmaps/r1.md")), "A"
-    run_cli("roadmap", "drop", "r1", "b")
+  end
 
-    assert_files_level("roadmaps/")
+  def test_roadmap_drop_and_start_print_the_roadmap_file_and_the_intent
+    roadmap_with_two_items
+    run_cli("roadmap", "drop", "r1", "b")
     run_cli("roadmap", "start", "r1", "a")
 
     assert_files_level("roadmaps/")

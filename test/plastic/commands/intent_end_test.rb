@@ -59,13 +59,13 @@ class IntentEndTest < Plastic::TestCase
     assert_includes evidence.fetch(KEY).to_s, "Acceptance passes for works"
   end
 
-  def test_the_close_prints_the_graph_file
+  def test_the_close_prints_the_index_showing_the_intent_done
     accepted_intent
     review_off
 
     finish
 
-    assert_path_exists store_path("store/1--alpha/graph.json")
+    assert_equal "done", listed("1").fetch("status")
   end
 
   def test_the_output_of_the_close_names_the_wind_down_step
