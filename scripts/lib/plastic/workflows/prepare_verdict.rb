@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../code_workflow"
+require_relative "review_round"
 
 module Plastic
   module Workflows
@@ -13,7 +14,7 @@ module Plastic
       end
 
       gate "%{problem}", stops: :failure, pass: ->(context) { context.problem.nil? }
-      gate "the judge's review round of intent %{intent_id} is used; the owner decides between abandoning the intent and a follow-up intent", stops: :refusal,
+      gate ReviewRound::MESSAGE, stops: :refusal,
         pass: ->(context) { context.work.rounds_left?(context.intent_id) }
 
       outcome :recording

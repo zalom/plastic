@@ -43,7 +43,9 @@ module Plastic
 
       def self.after_problem(context)
         after = context.after
-        "no intent #{after} in this store to link after" if after && !context.retrieval.intent(after)
+        return unless after
+
+        "no intent #{after} in this store to link after" unless context.retrieval.intent(after)
       end
     end
   end

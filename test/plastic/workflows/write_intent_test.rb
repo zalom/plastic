@@ -27,10 +27,16 @@ class WriteIntentTest < Plastic::TestCase
     def ref_line(ref) = "ref: #{ref}, in words"
   end
 
-  def run_flow(problem: nil, **facts)
+  class Retrieval
+    def initialize(*ids) = @ids = ids
+
+    def intent(id) = (id if @ids.include?(id))
+  end
+
+  def run_flow(problem: nil, retrieval: Retrieval.new, **facts)
     work = Work.new(problem)
     context = Plastic::Context.new(declared: DECLARED, facts: { title: "Build", status: "open", kind: "work" }.merge(facts),
-      graphs: { work: })
+      graphs: { work:, retrieval: })
     [WriteIntent.call(context), context.printed, work.calls]
   end
 
@@ -52,6 +58,18 @@ class WriteIntentTest < Plastic::TestCase
 
     assert_equal [Plastic::Failed, "code_write_intent, gate: no intent 9 in this store to be the parent"], [outcome.class, outcome.message]
     assert_equal [[], [:problem]], [printed, calls.map(&:first)]
+  end
+
+  def test_an_after_that_names_no_intent_fails_the_call
+    outcome, = run_flow(after: "9")
+
+    assert_equal [Plastic::Failed, "code_write_intent, gate: no intent 9 in this store to link after"], [outcome.class, outcome.message]
+  end
+
+  def test_an_after_that_names_an_intent_passes_the_check_and_writes
+    _, _, calls = run_flow(after: "9", retrieval: Retrieval.new("9"))
+
+    assert_includes calls.map(&:first), :write
   end
 
   def test_the_outcome_offers_the_next_command_and_names_the_intent

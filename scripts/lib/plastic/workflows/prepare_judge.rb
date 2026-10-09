@@ -2,11 +2,14 @@
 
 require_relative "../code_workflow"
 require_relative "../graph/work/completion/review"
+require_relative "review_round"
 
 module Plastic
   module Workflows
     # Reads the intent and its judge rounds: a missing or closed intent fails, both rounds used is the owner's step.
     class PrepareJudge < CodeWorkflow
+      extend ReviewRound
+
       sets :problem
 
       read "check the intent" do |context|
@@ -14,8 +17,7 @@ module Plastic
       end
 
       gate "%{problem}", stops: :failure, pass: ->(context) { context.problem.nil? }
-      gate "the judge's review round of intent %{intent_id} is used; the owner decides between abandoning the intent and a follow-up intent", stops: :refusal,
-        pass: ->(context) { !Graph::Work::Completion::Review.of(context).used_up? }
+      review_round_gate
 
       outcome :accepted, if: ->(context) { Graph::Work::Completion::Review.of(context).counting? }, offers: "plastic intent end %{intent_id}",
         because: "intent %{intent_id} is accepted"

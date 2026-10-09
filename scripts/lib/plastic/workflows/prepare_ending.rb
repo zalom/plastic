@@ -4,6 +4,8 @@ require_relative "../code_workflow"
 require_relative "../config"
 require_relative "../graph/work/completion/check"
 require_relative "../graph/work/completion/review"
+require_relative "delivery_ownership"
+require_relative "review_round"
 
 module Plastic
   module Workflows
@@ -21,8 +23,7 @@ module Plastic
         pass: ->(context) { context.closed || %w[open active].include?(context.intent.status) }
 
       read "check delivery ownership" do |context|
-        lock = context.retrieval.lock(context.intent_id)
-        context[:problem] = (lock && lock.session_id != context.session && lock.live?) ? "intent #{context.intent_id} is locked by session #{lock.session_id}" : nil
+        context[:problem] = DeliveryOwnership.problem(context)
       end
 
       gate "%{problem}", stops: :refusal, pass: ->(context) { context.problem.nil? }
@@ -65,7 +66,7 @@ module Plastic
 
       def self.ready_for_approval?(context) = context.requirements.empty? && context.judged
 
-      gate "the judge's review round of intent %{intent_id} is used; the owner decides between abandoning the intent and a follow-up intent", stops: :refusal,
+      gate ReviewRound::MESSAGE, stops: :refusal,
         pass: ->(context) { !context.used_up }
       gate "the pull request of intent %{intent_id} waits for the person's approval; add the line Approved: to the Verification section of outcome.md once they approve, then run plastic sync up",
         stops: :refusal, pass: ->(context) { !context.awaiting_approval }

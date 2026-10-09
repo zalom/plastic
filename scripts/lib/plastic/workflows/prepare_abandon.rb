@@ -2,6 +2,7 @@
 
 require_relative "../code_workflow"
 require_relative "../graph/work/completion/check"
+require_relative "delivery_ownership"
 
 module Plastic
   module Workflows
@@ -19,8 +20,7 @@ module Plastic
         pass: ->(context) { !%w[done abandoned].include?(context.status) }
 
       read "check delivery ownership" do |context|
-        lock = context.retrieval.lock(context.intent_id)
-        context[:problem] = (lock && lock.session_id != context.session && lock.live?) ? "intent #{context.intent_id} is locked by session #{lock.session_id}" : nil
+        context[:problem] = DeliveryOwnership.problem(context)
         context[:intent_folder] = context.intent.dir
         context[:reverted] = Graph::Work::Completion::Check.new(context.retrieval, context.intent_id).verification.reverted?
       end

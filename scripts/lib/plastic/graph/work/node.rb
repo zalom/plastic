@@ -31,6 +31,8 @@ module Plastic
 
         def keyed_label = "#{id} (#{criterion || "no key"})"
 
+        def bullet = "- #{keyed_label}"
+
         def evidence = "#{id}: #{findings.strip}"
 
         def changed_at = updated_at && Time.parse(updated_at)

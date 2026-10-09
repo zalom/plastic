@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../node"
+require_relative "stray_nodes"
 
 module Plastic
   module Graph
@@ -45,10 +46,7 @@ module Plastic
 
           def orphan_problem(nodes) = (stray_text(nodes) if @keys.any?)
 
-          def stray_text(nodes)
-            labels = nodes.reject { |node| @keys.include?(node.criterion) }.map { |node| "- #{node.keyed_label}" }
-            "These done nodes have no criterion key, or a key spec.md lacks:\n#{labels.join("\n")}" unless labels.empty?
-          end
+          def stray_text(nodes) = StrayNodes.message(nodes, @keys)
 
           def live_nodes = @retrieval.nodes(@intent_id).select(&:live?)
         end
