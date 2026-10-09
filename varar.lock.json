@@ -126,7 +126,7 @@
       ]
     },
     "varar/hook-end.md": {
-      "sourceHash": "fnv1a:da82593a",
+      "sourceHash": "fnv1a:43a47ba1",
       "examples": [
         {
           "name": "Each row gives the arguments, the end event, the session, the exit code, the message and the ended row:",
