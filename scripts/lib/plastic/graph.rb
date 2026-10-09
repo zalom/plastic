@@ -42,9 +42,12 @@ module Plastic
     # a store comes to exist.
     def self.create(home:, store:, session: nil)
       FileUtils.mkdir_p(File.join(home, "stores", store))
-      opened = Graph.open(home:, store:, session:)
-      opened.databases.values_at(:knowledge, :work, :references, :local).each { |database| database.rows("SELECT 1") }
-      opened
+      ready(Graph.open(home:, store:, session:))
+    end
+
+    def self.ready(graphs)
+      graphs.databases.values_at(:knowledge, :work, :references, :local).each { |database| database.rows("SELECT 1") }
+      graphs.tap { graphs.retrieval.backfill }
     end
   end
 end
