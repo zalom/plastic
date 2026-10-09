@@ -3,7 +3,7 @@
 
 require "json"
 
-# Mechanical guard for stable-cut version preconditions (intent 155). Reads
+# Mechanical guard for stable-cut version preconditions. Reads
 # the version from package.json, the one repo version file, and, when a
 # stable/latest cut is declared, checks that it carries no pre-release
 # suffix. Pure function over an injected path: no ENV reads, no eval, no

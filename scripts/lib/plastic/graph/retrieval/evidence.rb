@@ -31,7 +31,7 @@ module Plastic
 
         def search_current(terms, limit: 20) = @maintenance.search_current(terms, limit:)
 
-        # Mutates only derived retrieval rows; this Stage 6 operation has no safe counterpart.
+        # Mutates only derived retrieval rows; this operation has no safe counterpart.
         def backfill = @maintenance.backfill
         # Rebuilds only derived retrieval rows from immutable evidence.
         def repair = @maintenance.repair

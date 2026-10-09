@@ -3,7 +3,7 @@
 # frozen_string_literal: true
 
 # Runs the Minitest unit suite in a single process, either the whole suite or a
-# named subset via --only (intent 355, n4, D5). --system runs the Varar
+# named subset via --only. --system runs the Varar
 # acceptance documents instead. Every run, named or full,
 # goes through FailuresReporter, so a green run costs one line and a red run
 # prints only the failures plus that line, never a dot per test.
@@ -11,7 +11,7 @@
 # `release.verify` used to be `ruby -Itest test/*_test.rb`, but Ruby runs only
 # the first glob-expanded file as the program — the rest land in ARGV and are
 # never required. The release gate exercised one test file, reported green, and
-# let releases ship over real failures (intent 30). Pointing verify at this
+# let releases ship over real failures. Pointing verify at this
 # script keeps the runner in version control and guarantees every test file is
 # loaded.
 
@@ -53,7 +53,7 @@ else
 
   # The kernel under scripts/lib/plastic/ defines the same constants as the
   # live command line, so its tests run in a process of their own until the
-  # live one retires (intent 394).
+  # live one retires.
   kernel, files = files.partition { |f| f.start_with?(kernel_dir) }
 end
 kernel_passed = kernel.empty? || system(RbConfig.ruby, __FILE__, "--only", *kernel)

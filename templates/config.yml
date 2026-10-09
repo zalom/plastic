@@ -27,7 +27,7 @@ agent:
 architect:
   style:
 
-# Per-agent model override (intent 116), harness-scoped. Uncomment and set to
+# Per-agent model override, harness-scoped. Uncomment and set to
 # a Claude Code alias (opus, sonnet, haiku) to override the shipped tier for
 # one agent on one harness. The legacy flat form (agents.models.<name>: value,
 # no harness nesting) still works and is read as the claude harness; nested

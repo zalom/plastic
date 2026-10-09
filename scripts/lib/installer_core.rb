@@ -21,7 +21,7 @@ require_relative "engine_permissions"
 # Shared installer machinery, instantiable with injected package root / store / agent
 # map so the verb scripts (install/update/uninstall/rollback) and their tests can run
 # hermetically (no eval, no global-constant rewriting). Mirrors the DI recipe proven in
-# doctor.rb / install.rb (intents 30a, 30a1). Library only - no CLI, no $PROGRAM_NAME guard.
+# doctor.rb / install.rb. Library only - no CLI, no $PROGRAM_NAME guard.
 class InstallerCore
   DEFAULT_PLASTIC_HOME = File.join(Dir.home, ".plastic")
 
@@ -41,7 +41,7 @@ class InstallerCore
   # Regex matching exactly one managed section (BEGIN line .. END line), non-greedy.
   CODEX_SECTION_RE = /^<!-- BEGIN PLASTIC INTEGRATION.*?-->\n.*?\n<!-- END PLASTIC INTEGRATION -->\n?/m
 
-  # Claude CLAUDE.md marked-section markers (intent 312). A pair of its own, not the
+  # Claude CLAUDE.md marked-section markers. A pair of its own, not the
   # Codex literals: the two managed files can be one file (a user who symlinks
   # ~/.claude/CLAUDE.md at ~/.codex/AGENTS.md, or the reverse), and a shared literal
   # would let one body silently replace the other and an uninstall of one strip both.
@@ -94,7 +94,7 @@ class InstallerCore
 
   # Reads the package version from `package.json` when present (the source
   # tree, and any dev checkout), falling back to the bare `VERSION` file the
-  # installer copies to `~/.plastic` (row B, spec 315b): an installed system
+  # installer copies to `~/.plastic`: an installed system
   # carries VERSION but never package.json, so `rollback.rb` and `update.rb`
   # constructing an InstallerCore with `package_root: ~/.plastic` crashed with
   # a raw Errno::ENOENT before this fallback existed. Raises a named error,
@@ -180,9 +180,9 @@ class InstallerCore
   end
 
   # Append a single immutable entry. Opens in append mode; never rewrites prior lines.
-  # action ∈ { install, reinstall, update, downgrade }. `harness` (intent 210, G5) names
+  # action ∈ { install, reinstall, update, downgrade }. `harness` names
   # which agent this row records a sync for (claude/codex/hermes); optional so a
-  # core-only or pre-210 caller still writes a valid, readable row. Readers must stay
+  # core-only caller or one that predates the field still writes a valid, readable row. Readers must stay
   # tolerant of legacy rows that carry no "harness" key at all.
   def ledger_append(entry_version, action, harness: nil)
     FileUtils.mkdir_p(plastic_home)
@@ -278,8 +278,7 @@ class InstallerCore
     manifest_path = File.join(plastic_home, "manifest.json")
     # Capture the prior manifest before the copy loop touches anything, so a
     # file dropped from core_files (renamed/removed) can be pruned below
-    # instead of orphaning forever. Mirrors install_for_agent's prune (D14
-    # Why-gate correction: this global path never had it).
+    # instead of orphaning forever. Mirrors install_for_agent's prune.
     old_files = manifest_files(manifest_path)
 
     FileUtils.mkdir_p(plastic_home)
@@ -321,7 +320,7 @@ class InstallerCore
   # ~/.plastic/templates/ on install/update. Derived from Dir.glob so a new
   # template file added later is registered automatically, closing the
   # whack-a-mole pattern that hid templates/index.md and templates/project.yml
-  # from every install for five weeks (intent 190).
+  # from every install.
   def template_files
     Dir.glob(File.join(package_root, "templates", "*")).each_with_object({}) do |path, acc|
       next unless File.file?(path)
@@ -333,9 +332,9 @@ class InstallerCore
 
   # Hook launchers ship in full: scripts/codex-hook resolves a live-state launcher at
   # __dir__/../hooks/<gate>, which is ~/.plastic/hooks/<gate> once installed, so the launchers
-  # have to BE there or every Codex live-state hook fails open with no message (intent 249).
+  # have to BE there or every Codex live-state hook fails open with no message.
   # Glob-derived for the same reason template_files is: a hand-written list hid two template
-  # files from every install for five weeks (intent 190), and a new hook must register itself.
+  # files from every install, and a new hook must register itself.
   # No path rewrite on this copy, unlike install_claude's: the launchers resolve their core
   # through "$SCRIPT_DIR/../scripts/", which from ~/.plastic/hooks/ already lands on
   # ~/.plastic/scripts/. Copied whole, statusline included: it is inert at that path, and an
@@ -349,7 +348,7 @@ class InstallerCore
     end
   end
 
-  # Intent 331a (D6/R7): a screen kind file (scripts/lib/screens/<kind>.rb)
+  # A screen kind file (scripts/lib/screens/<kind>.rb)
   # must reach an installed ~/.plastic the same way a new template or hook
   # does - glob-derived, so "add a file, not a diff" is actually true for an
   # installed Plastic, not just an in-repo one. This repo ships none yet;
@@ -363,7 +362,7 @@ class InstallerCore
     end
   end
 
-  # The kernel command line (intent 397 cutover). Glob-derived for the reason
+  # The kernel command line. Glob-derived for the reason
   # screen_files is: a command is one file under scripts/lib/plastic/commands,
   # and a hand-written manifest would make it two files and a diff. The
   # launcher bin/plastic requires scripts/lib/plastic.rb by a relative path,
@@ -377,7 +376,7 @@ class InstallerCore
     end
   end
 
-  # `plastic help TOPIC` (intent 372, family 4) reads docs/help/TOPIC.md from
+  # `plastic help TOPIC` reads docs/help/TOPIC.md from
   # package_root the same way it reads a command's file, so the chapter has to
   # ship the same way a template does: glob-derived, one file added and it
   # installs with no diff here.
@@ -400,7 +399,7 @@ class InstallerCore
   # Files copied into ~/.plastic on install/update. The kernel command tree, the
   # templates and the hook launchers are glob-derived (cli_files, template_files,
   # hook_files above); this hand-written set is what glob cannot find on its own:
-  # the installer chain itself (intent 397 cutover kept only the files bin/lib's
+  # the installer chain itself (only the files bin/lib's
   # context budget bench calls through scripts/install.rb), the launcher, and the
   # three root files every install needs before any store exists.
   def hand_registered_files
@@ -504,7 +503,7 @@ class InstallerCore
   # --- Agent adapters ---
 
   # Uniform per-agent install record dir: <agent-dir>/plastic/ holds VERSION and
-  # manifest.json for every agent (intent 210, D2). Claude already used this; Codex
+  # manifest.json for every agent. Claude already used this; Codex
   # and Hermes are migrated onto it so one rule covers all agents and doctor's existing
   # version_match probe (<dir>/plastic/VERSION) lands on it.
   def record_dir_for(config)
@@ -525,7 +524,7 @@ class InstallerCore
     (data["files"] || {}).keys
   end
 
-  # Per-agent registration probe (intent 198, D7 follow-up). `installed?` in
+  # Per-agent registration probe. `installed?` in
   # install.rb only answers "is Plastic core installed at all", which cannot
   # tell two harnesses apart: once core is present, install.rb's old gate
   # refused to add ANY new harness, even one that had never been touched. This
@@ -543,7 +542,7 @@ class InstallerCore
     manifest_files(manifest_path_for(key, config)).any? { |file| File.exist?(file) }
   end
 
-  # Agent keys whose per-agent record exists (intent 210, D2): folder-with-VERSION =
+  # Agent keys whose per-agent record exists: folder-with-VERSION =
   # registered. Reads the record, never a written config list. Fail-open: an unreadable
   # record is simply "not installed" here (doctor reports integrity separately).
   def installed_agents
@@ -559,7 +558,7 @@ class InstallerCore
     config = agent_config(key)
     return { agent: config[:name], success: false, reason: "Unknown agent" } unless config
 
-    # Presence probe (intent 198, Decision D1): an agent that declares its own
+    # Presence probe: an agent that declares its own
     # home directory (Codex, home_dir: ~/.codex) is checked THERE, because
     # config[:dir] (~/.agents) is the shared cross-tool skills root, not
     # anything Codex itself creates. A fresh Codex install has no ~/.agents
@@ -579,7 +578,7 @@ class InstallerCore
 
     # Capture the prior manifest so we can prune files that no longer ship
     # (renamed/removed skills) after a re-copy. This gives leftover-free updates.
-    # Union in the legacy flat manifest's files too (intent 210, Codex migration): an
+    # Union in the legacy flat manifest's files too (Codex migration): an
     # agent still on the pre-migration <dir>/plastic-manifest.json record tracked files
     # the new per-agent manifest never lists, so without the union prune would miss them.
     old_files = manifest_files(manifest_path_for(key, config))
@@ -598,7 +597,7 @@ class InstallerCore
     result[:pruned] = pruned if pruned.positive?
 
     # The legacy manifest is fully superseded once the new one is written; delete it so
-    # the migration is one-shot (intent 210, D2).
+    # the migration is one-shot.
     if File.exist?(legacy_path) && legacy_path != manifest_path_for(key, config)
       File.delete(legacy_path)
     end
@@ -606,7 +605,7 @@ class InstallerCore
     result
   end
 
-  # --- Per-agent transaction with auto-restore (intent 210, D3) ---
+  # --- Per-agent transaction with auto-restore ---
 
   def backup_dir_for(config)
     File.join(plastic_home, "backups", config[:key])
@@ -616,7 +615,7 @@ class InstallerCore
   # a restore puts the manifest and the files it describes back in sync; otherwise a
   # restored file set would be checked against the just-written NEW manifest and fail
   # verification all over again), into the backup dir, mirroring their absolute paths
-  # under it. Replaces any prior snapshot (one snapshot kept, D3). Returns the list of
+  # under it. Replaces any prior snapshot (one snapshot kept). Returns the list of
   # (source_abs) files snapshotted.
   def snapshot_agent(config)
     dir = backup_dir_for(config)
@@ -633,7 +632,7 @@ class InstallerCore
     files
   end
 
-  # Restore the snapshot back over the live tree for this agent (auto-restore, D3/D4).
+  # Restore the snapshot back over the live tree for this agent (auto-restore).
   def restore_agent(config)
     dir = backup_dir_for(config)
     Dir.glob(File.join(dir, "**", "*")).each do |src|
@@ -646,7 +645,7 @@ class InstallerCore
 
   # True when every file listed in the agent manifest exists on disk with the recorded
   # hash. A missing or mismatched listed file is the falsifiable failure that triggers
-  # auto-restore (intent 210, G4/G8).
+  # auto-restore.
   def verify_agent_manifest(config)
     path = manifest_path_for(config[:key], config)
     return false unless File.exist?(path)
@@ -656,7 +655,7 @@ class InstallerCore
     files.all? { |f, h| File.exist?(f) && Digest::SHA256.file(f).hexdigest == h }
   end
 
-  # Per-agent transaction (intent 210, D3): snapshot -> apply -> verify -> auto-restore on
+  # Per-agent transaction: snapshot -> apply -> verify -> auto-restore on
   # failure. Forward-fix: a failure here never touches other agents. On a fresh install
   # (no prior manifest) verify-failure prunes the partial write instead of restoring.
   def transactional_install_for_agent(key, force, argv: [], input: $stdin, reinstall: false)
@@ -687,7 +686,7 @@ class InstallerCore
   # Delete tracked files present in the old manifest but absent from the new one,
   # then remove any now-empty skill directories they lived in.
   #
-  # `root:` is a mandatory containment boundary (intent 223 F5): every manifest path
+  # `root:` is a mandatory containment boundary: every manifest path
   # is read back from JSON written by write_manifest and could, on a hand-edited or
   # otherwise corrupt manifest, name a path outside the install this call is pruning
   # (for example `distribute` prunes against `~/.plastic/`, `install_for_agent` prunes
@@ -722,7 +721,7 @@ class InstallerCore
     removed
   end
 
-  # Intent 344 (G11, D10): leftovers from the retired per-session day pointer
+  # Leftovers from the retired per-session day pointer
   # and the retired inter-hook coordination key. A `current` candidate is
   # real only when reached with no symlink between plastic_home and the
   # session directory: a store root's own real path must equal the plain
@@ -836,7 +835,7 @@ class InstallerCore
     Array(roots).any? { |root| expanded == root || expanded.start_with?(root + File::SEPARATOR) }
   end
 
-  # Intent 223 (post-delivery hardening): the user's entire intent history lives under
+  # The user's entire intent history lives under
   # `plastic_home/store` (the global store) and `plastic_home/projects` (every project
   # store). `distribute` legitimately prunes with `root: plastic_home`, which CONTAINS
   # both directories, so the ordinary `root:` containment check in `prune_removed_files`
@@ -860,7 +859,7 @@ class InstallerCore
   # which do not cover `plastic_home`, so those two files could never actually be
   # pruned (every attempt printed "Skipped prune of ... outside ..." to stderr).
   #
-  # Fix scope (intent 223 N3): add each shared fragment's exact FILE path as its
+  # Fix scope: add each shared fragment's exact FILE path as its
   # own containment root, never `plastic_home` itself as a directory root.
   # `path_contained?` only matches a candidate that equals a root exactly or
   # lives under `root + separator`; a root that is itself a file path can never
@@ -924,12 +923,12 @@ class InstallerCore
     choice = statusline_choice(settings_path, argv: argv, input: input, reinstall: reinstall)
     merge_claude_hooks(settings_path, choice: choice)
 
-    # The engine deny rule (intent 340b, G7c, n3, D4): a second ownership
+    # The engine deny rule: a second ownership
     # mechanism from the hook merge above, so it is its own call rather than a
     # branch inside merge_claude_hooks.
     merge_engine_permissions(settings_path)
 
-    # Instruction injection (intent 312): the compact-instructions block into
+    # Instruction injection: the compact-instructions block into
     # ~/.claude/CLAUDE.md. A partial-ownership user file, so it is NOT manifest-tracked
     # (stripped surgically on uninstall), the same treatment ~/.codex/AGENTS.md gets.
     inject_claude_compact_md(File.join(config[:dir], "CLAUDE.md"))
@@ -947,7 +946,7 @@ class InstallerCore
     installed = []
     skills_source = File.join(package_root, "skills")
     skill_exclude = advisor_enabled? ? [] : ["agent-advisor"]
-    # Intent 239: Codex is the one harness that gets its instruction text projected at
+    # Codex is the one harness that gets its instruction text projected at
     # copy time. skill_names comes from the real skills/ listing, so the rewrite table
     # maintains itself as skills are added and renamed. Every OTHER install path passes
     # no transform and keeps the byte-for-byte copy.
@@ -967,17 +966,17 @@ class InstallerCore
       advisor_enabled: advisor_enabled?
     )
 
-    # Instruction injection (L1): Plastic standing conventions into ~/.codex/AGENTS.md.
+    # Instruction injection: Plastic standing conventions into ~/.codex/AGENTS.md.
     # Partial-ownership file, so it is NOT manifest-tracked (stripped surgically on uninstall).
     FileUtils.mkdir_p(config[:home_dir])
     inject_codex_agents_md(File.join(config[:home_dir], "AGENTS.md"))
 
-    # L3 hooks (intent 102): register into ~/.codex/hooks.json (user scope, defeats the
+    # Hooks: register into ~/.codex/hooks.json (user scope, defeats the
     # worktree bug). Partial-ownership file, so it is merged and NOT manifest-tracked
     # (stripped surgically on uninstall), same treatment as AGENTS.md.
     merge_codex_hooks(File.join(config[:home_dir], "hooks.json"))
 
-    # Uniform per-agent record (intent 210, D2): write VERSION alongside the manifest,
+    # Uniform per-agent record: write VERSION alongside the manifest,
     # the same shape install_claude already writes.
     version_file = File.join(record_dir_for(config), "VERSION")
     File.write(version_file, "#{version}\n")
@@ -987,7 +986,7 @@ class InstallerCore
     { agent: config[:name], success: true, files: installed.size }
   end
 
-  # --- Codex agent TOML generation (intent 102a) ---
+  # --- Codex agent TOML generation ---
   #
   # Codex reads standalone TOML agent files at ~/.codex/agents/*.toml (config[:home_dir]),
   # never the ~/.agents/agents/*.md copy the shared install_agents writes (that root is
@@ -1114,10 +1113,10 @@ class InstallerCore
     File.join(plastic_home, "scripts", "codex-hook")
   end
 
-  # ~/.codex/hooks.json merge (intent 102). Guide-settled shape [guide Part 3]:
+  # ~/.codex/hooks.json merge. Guide-settled shape [guide Part 3]:
   # top-level {"hooks": {<Event>: [...]}}, identical to Claude's settings.json
   # hooks shape, so this mirrors merge_claude_hooks against a different file.
-  # Both harnesses now match ownership by registry (intent 275), not a
+  # Both harnesses match ownership by registry, not a
   # substring: Codex by dispatcher filename equality, because its hooks are
   # arguments to one shared dispatcher command rather than per-hook launcher
   # files the way Claude's plastic-<name> launchers are.
@@ -1137,7 +1136,7 @@ class InstallerCore
   end
 
   # Returns [[event, command], ...] for every entry removed, mirroring
-  # purge_stale_plastic_hooks. Ownership comes from HookRegistry (intent 275).
+  # purge_stale_plastic_hooks. Ownership comes from HookRegistry.
   def purge_stale_codex_hooks(hooks)
     removed = []
 
@@ -1175,7 +1174,7 @@ class InstallerCore
     installed += install_skills_flat(skills_source, File.join(config[:dir], "skills"), exclude: skill_exclude) if File.directory?(skills_source)
     installed += install_agents(File.join(config[:dir], "agents"), models: agent_model_overrides, efforts: agent_effort_overrides, advisor_enabled: advisor_enabled?)
 
-    # Uniform per-agent record (intent 210, D2): write VERSION alongside the manifest,
+    # Uniform per-agent record: write VERSION alongside the manifest,
     # the same shape install_claude already writes.
     version_file = File.join(record_dir_for(config), "VERSION")
     File.write(version_file, "#{version}\n")
@@ -1190,7 +1189,7 @@ class InstallerCore
   # Any top-level underscore-prefixed markdown fragment (e.g. `_decision-tables.md`,
   # `_decision-tables.md`) is a shared non-skill fragment and relocates to ~/.plastic/
   # instead, so every skill can read it from one shared location. `exclude` skips
-  # named top-level skill directories entirely (intent 185: the agent-advisor skill
+  # named top-level skill directories entirely (the agent-advisor skill
   # when advisor.enabled is false).
   def install_skills_flat(skills_source, skills_root, exclude: [], transform: nil)
     installed = []
@@ -1202,7 +1201,7 @@ class InstallerCore
         installed += copy_dir_recursive(src, File.join(skills_root, "plastic-#{entry}"),
                                         transform: transform, rel_prefix: entry)
       elsif entry.start_with?("_") && entry.end_with?(".md")
-        # Spec D8: shared fragments land in the HARNESS-NEUTRAL plastic_home, shared
+        # Shared fragments land in the HARNESS-NEUTRAL plastic_home, shared
         # with any co-installed Claude. Never transformed, or a Codex install would
         # corrupt Claude's copy of the same file.
         FileUtils.mkdir_p(plastic_home)
@@ -1483,7 +1482,7 @@ class InstallerCore
 
   # The statusline swap-back on uninstall is not an [event, command] pair: it is a
   # value restored, not an entry deleted. It gets its own line rather than being
-  # forced into the entry list (intent 278).
+  # forced into the entry list.
   def report_removed_statusline(restored_command, file_label = "settings.json")
     puts "  \u{1f9f9} Removed Plastic's statusLine from #{file_label}."
     return if restored_command.nil? || restored_command.to_s.empty?
@@ -1491,10 +1490,10 @@ class InstallerCore
     puts "     - restored your original statusLine: #{tilde(restored_command.to_s)}"
   end
 
-  # The other half of intent 275: a hook the purge KEPT because the registry does not
-  # know it, but whose name carries Plastic's prefix. Silence here is what let the
-  # 1.11.0 update delete the owner's plastic-writing-style hook unnoticed; now the
-  # update says the prefix is reserved and the hook stays.
+  # A hook the purge KEPT because the registry does not know it, but whose name
+  # carries Plastic's prefix. Silence here would let an update delete the owner's
+  # own plastic-* hook unnoticed; instead the update says the prefix is reserved
+  # and the hook stays.
   def report_reserved_prefix_hooks(hooks)
     kept = hooks.flat_map do |_event, groups|
       next [] unless groups.is_a?(Array)
@@ -1524,15 +1523,15 @@ class InstallerCore
     settings = kernel_hook_entries.claude(settings)
     hooks = settings["hooks"]
 
-    # Single source of truth (intent 108, D7): registrations live in
+    # Single source of truth: registrations live in
     # HookRegistry; this merge only translates them into settings.json.
     plastic_hooks = HookRegistry.claude_settings_hooks(hook_dir: hook_dir)
 
     plastic_hooks.each do |event, group|
       hooks[event] ||= []
 
-      # An event may map to a LIST of plastic groups (none does since the edit-path
-      # gates left in 2.0, intent 302; the shape stays). The purge pass above already removed all
+      # An event may map to a LIST of plastic groups (none does today; the
+      # shape stays). The purge pass above already removed all
       # prior plastic groups, so appending each desired group fresh is idempotent
       # across re-runs and never collapses two matchers into one group.
       groups = group.is_a?(Array) ? group : [group]
@@ -1568,7 +1567,7 @@ class InstallerCore
   end
 
   # Returns [[event, command], ...] for every entry removed, so merge_claude_hooks
-  # can report it. Ownership comes from HookRegistry (intent 275), never a substring.
+  # can report it. Ownership comes from HookRegistry, never a substring.
   def purge_stale_plastic_hooks(hooks)
     removed = []
     hooks.delete("statusLine")
@@ -1598,9 +1597,9 @@ class InstallerCore
     removed
   end
 
-  # --- The engine deny rule (intent 340b, G7c, n3) ---
+  # --- The engine deny rule ---
   #
-  # A second ownership mechanism from merge_claude_hooks above (D4, node n3): a
+  # A second ownership mechanism from merge_claude_hooks above: a
   # permissions.deny entry is a bare string with no marker in it, so EnginePermissions
   # owns its four entries by exact-string membership, not by a plastic- launcher
   # basename. This pair only does the read-modify-write; EnginePermissions.merge_into
@@ -1636,11 +1635,11 @@ class InstallerCore
     true
   end
 
-  # --- Codex AGENTS.md marked-section injection (22a/Beads pattern) ---
+  # --- Codex AGENTS.md marked-section injection ---
   # New primitive: markdown marked-section merge, the analog of merge_claude_hooks'
   # JSON read-modify-write for a partial-ownership text file. Three states
   # (create/append/replace), a body freshness hash in the BEGIN marker, atomic
-  # writes, and the 22a safety rule: never write when the existing section can't
+  # writes, and one safety rule: never write when the existing section can't
   # be parsed (a BEGIN marker with no matching END).
 
   # Atomic text writer, mirrors write_json_atomic.
@@ -1656,7 +1655,7 @@ class InstallerCore
   # A managed instruction file may be a symlink into a dotfiles repo. write_text_atomic
   # renames a temp file over its argument, which would replace the link with a regular
   # file and silently detach it, so every read and write resolves the link first and the
-  # change lands on its target (intent 312).
+  # change lands on its target.
   def resolve_managed_path(path)
     File.symlink?(path) ? File.realpath(path) : path
   rescue Errno::ENOENT
@@ -1686,7 +1685,7 @@ class InstallerCore
     has_begin = content.include?(begin_prefix)
     has_end = content.include?(end_marker)
 
-    # 22a safety rule: never write if the existing section cannot be parsed.
+    # Safety rule: never write if the existing section cannot be parsed.
     return :refused if has_begin && !has_end
 
     if has_begin
@@ -1709,7 +1708,7 @@ class InstallerCore
     inject_marked_section(path, body: body)
   end
 
-  # The compact-instructions block for ~/.claude/CLAUDE.md (intent 312).
+  # The compact-instructions block for ~/.claude/CLAUDE.md.
   def claude_compact_section(body: CompactInstructions::BODY)
     marked_section(body: body, begin_prefix: CLAUDE_SECTION_BEGIN_PREFIX,
                    end_marker: CLAUDE_SECTION_END)
@@ -1850,7 +1849,7 @@ class InstallerCore
       remove_engine_permissions(settings_path) if File.exist?(settings_path)
       removed.concat(migrate_legacy_plugin(config[:dir]))
 
-      # The compact-instructions block in the user-owned CLAUDE.md (intent 312): a
+      # The compact-instructions block in the user-owned CLAUDE.md: a
       # surgical strip, never the manifest whole-file-delete path above.
       stripped = strip_claude_compact_section(File.join(config[:dir], "CLAUDE.md"))
       removed << stripped if stripped
@@ -1858,7 +1857,7 @@ class InstallerCore
 
     # Codex: surgically strip Plastic's marked section from the user-owned AGENTS.md
     # (dedicated pair, never the manifest whole-file-delete path above), plus the
-    # Plastic entries from hooks.json (intent 102).
+    # Plastic entries from hooks.json.
     if key == "codex"
       agents_md = File.join(config[:home_dir], "AGENTS.md")
       stripped = strip_codex_section(agents_md)
@@ -1930,7 +1929,7 @@ class InstallerCore
     settings.delete("enabledPlugins") if plugins.empty?
   end
 
-  # Remove exactly Plastic's entries from ~/.codex/hooks.json (intent 102), mirrors
+  # Remove exactly Plastic's entries from ~/.codex/hooks.json, mirrors
   # remove_claude_hooks against the Codex file/purge predicate. Returns the path
   # when it acted (rewritten or deleted), nil on no-op, mirroring strip_codex_section's
   # convention so the caller only records an actual change.
@@ -2008,8 +2007,7 @@ class InstallerCore
     # plain garbage). A nested begin/rescue is required here because a
     # method-level `rescue` clause never catches an exception raised from
     # INSIDE a sibling rescue clause's own body (only from the main body);
-    # doctor_core.rb#read_json_safe carries the same fix for the same reason
-    # (intent 331e, F5).
+    # doctor_core.rb#read_json_safe carries the same fix for the same reason.
     begin
       content = File.read(path).gsub(%r{//[^\n]*}, "").gsub(/,(\s*[}\]])/, '\1')
       JSON.parse(content)

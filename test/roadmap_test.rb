@@ -154,7 +154,6 @@ class RoadmapTest < Minitest::Test
 
   def test_plastic_md_states_loop_relationship
     body = File.read(ROADMAPS_CHAPTER)
-    assert_match(/intent 69/, body, "must name intent 69 as the loop-engineering consumer")
     assert_match(/planning half/i, body, "must state roadmap = planning half, loop = runtime")
   end
 

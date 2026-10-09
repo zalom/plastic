@@ -1,10 +1,10 @@
 # Locks and Worktrees
 
 This chapter holds the delivery lock, the code worktree and the station-by-station delivery
-table. Since 2.0 (intent 302) nothing here blocks a write: the lock and the worktree are how an
+table. Nothing here blocks a write: the lock and the worktree are how an
 auto team keeps one delivery in one place, not fences.
 
-### The delivery lock
+## The delivery lock
 
 The delivery lock names the session delivering an intent in auto mode. Locks and worktrees
 exist only for auto teams: an interactive session working direct or thinking takes no lock.
@@ -26,13 +26,11 @@ The record hook resolves the current session in a fixed precedence: the stdin `s
 first, then the `CLAUDE_CODE_SESSION_ID` environment variable, then a derived key when neither
 is present. See [`docs/internals.md`](https://github.com/zalom/plastic/blob/main/docs/internals.md) for depth.
 
-There is exactly one lock in Plastic. An earlier two-lock doctrine proposed a second
-maintenance lock; intent 112 built it and was abandoned before merge, and intent 197 rejects a
-second lock outright: a lock held by a maintenance session could be mistaken by a resuming
-session for an active delivery. Maintenance detects a live delivery lock and defers; it never
+There is exactly one lock in Plastic. A second lock for maintenance would mislead: a resuming
+session could mistake a lock held by a maintenance session for an active delivery. Maintenance detects a live delivery lock and defers; it never
 takes a lock of its own.
 
-### The code worktree
+## The code worktree
 
 In auto mode the worktree is the lock: the intent's code worktree is where its one delivery
 happens. Every code-touching auto intent gets its own git worktree named `{id}--{slug}`, and all
@@ -54,7 +52,7 @@ the `next:` line, and the agent runs it. Once the folder exists, the `next:` lin
 Plastic does not provision a second worktree for lifecycle-doc writes. The harness's own native
 worktree covers that need: Claude Code manages its own worktrees at
 `<repo>/.claude/worktrees/{name}`, and Codex manages its own at `$CODEX_HOME/worktrees` (default
-`~/.codex/worktrees`). Intent 178 retired the dedicated store worktree Plastic tried first.
+`~/.codex/worktrees`).
 
 A store-only intent that touches no project code (a research or decision intent in the global
 store, or a store whose project names no repository) gets the lock only: no repository
@@ -62,11 +60,11 @@ resolves, so `plastic auto ID` prints no worktree and the next step is the brief
 failure, only nothing to report.
 
 Cleanup is the closer's own step: Plastic neither checks that the code is merged nor removes the
-worktree (intent 390). After committing and merging, run `git worktree remove` on the code
+worktree. After committing and merging, run `git worktree remove` on the code
 worktree, so no worktree is ever left orphaned, and clear a stale worktree reference with
 `git worktree prune`.
 
-#### Intent delivery, station by station
+### Intent delivery, station by station
 
 How one auto-team intent travels from boarding to the end, and what the lock does at each
 station. Nothing in the third column blocks; the fourth column is what gets written down.

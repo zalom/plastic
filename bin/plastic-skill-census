@@ -2,10 +2,10 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 
-# Plastic skill usage census (intent 324). Counts typed /plastic-* commands
+# Plastic skill usage census. Counts typed /plastic-* commands
 # from the prompt history against agent-invoked Skill calls, loads, and
-# attribution from the transcript tree, so D19 (which Plastic verbs stay
-# visible as slash commands) is decided on measured use.
+# attribution from the transcript tree, so the choice of which Plastic verbs stay
+# visible as slash commands is decided on measured use.
 #
 # Maintainer tool: it reads the paths given to it and is never installed
 # into ~/.plastic. This file never resolves the running process's home

@@ -1,4 +1,4 @@
-# Agent Completion Report Contract
+# Agent completion report contract
 
 Every agent dispatched by the auto-mode enforcer MUST end its turn with a structured
 completion report. This doc defines that report: one common envelope plus a per-role payload.
@@ -11,13 +11,13 @@ role prompts (`agents/plastic-*.md`) reproduce, and the deterministic fallback
 
 The report is the agent's FINAL MESSAGE (its return value), not a side-channel file. Every
 harness hands a spawned agent's final text back to the dispatcher, so the final message is the
-one carrier that works everywhere (decision D1). The report structures the FINISH notification
-only. In-flight observations still go in `## Insights`; the report does not add progress chatter
-(decision D5). An agent that finishes correct artifacts but goes idle without a report has not
+one carrier that works everywhere. The report structures the FINISH notification
+only. In-flight observations still go in `## Insights`; the report does not add progress chatter.
+An agent that finishes correct artifacts but goes idle without a report has not
 completed its handoff: the agent that did the work is the cheapest, most accurate source of the
 account.
 
-## Prose-stripped (intent 84)
+## Prose-stripped
 
 The report is the envelope and the per-role payload, nothing else. Dispatched and background
 subagents report and do their job; they do not narrate. Strip conversational prose: no
@@ -50,12 +50,10 @@ Every role report, whatever the stage, carries these fields:
 Multi-item payload fields (ordered actions, insights, checklist deltas) default to tables;
 single fields stay prose.
 
-Each role appends a payload that fulfils its place in the What, Why, How, Exec cycle (decision
-D2). The payload is what makes the report useful to the orchestrator beyond the envelope.
+Each role appends a payload that fulfils its place in the What, Why, How, Exec cycle.
+The payload is what makes the report useful to the orchestrator beyond the envelope.
 
-The stage-agent role sections (brainstorming, spec-specialist, planner) were removed in 2.0
-(intent 304): the orchestrator writes the Why and How artifacts itself and reports nothing to
-itself. The lead dispatches three roles: the plan reviewer, the executor, and the
+The orchestrator writes the Why and How artifacts itself and reports nothing to itself. The lead dispatches three roles: the plan reviewer, the executor, and the
 post-execution reviewer. The plan reviewer returns the shape in `plastic help
 plan-reviewer-prompt`; the other two carry the payloads below.
 
@@ -76,7 +74,7 @@ plan-reviewer-prompt`; the other two carry the payloads below.
 
 Decision-shaping (the preamble plus these prompts) makes the report mandatory, but child-agent
 honor is best-effort across harnesses (Tier B/C in [`harness-adapters.md`](https://github.com/zalom/plastic/blob/main/docs/reference/harness-adapters.md)), so the
-contract is never a hard block (decision D3). When a dispatched agent returns no usable report
+contract is never a hard block. When a dispatched agent returns no usable report
 (it went idle, emitted only a bare ping, or its message was lost to a mid-run interjection), the
 enforcer synthesizes one:
 
@@ -87,9 +85,8 @@ scripts/agent-report <intent_dir> --role <role>
 `scripts/agent-report` is a pure function of the intent directory (no network, clock, or
 randomness, mirroring `scripts/spawn-preamble`): it reads the current stage from the savepoint
 ledger, the lifecycle artifacts present, the checklist checked / total, and the `## Outcome`
-line, and emits a filesystem-derived report labelled `synthesized`. So a handoff account always
-exists: authored by the agent when possible, reconstructed deterministically when not. This
-formalizes the by-hand reconstruction the orchestrator did while delivering intent 68.
+line, and emits a filesystem-derived report labeled `synthesized`. So a handoff account always
+exists: authored by the agent when possible, reconstructed deterministically when not.
 
 ## Insights delivery
 

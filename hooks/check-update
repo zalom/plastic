@@ -2,8 +2,8 @@
 # plastic-hook-version: 2.0.0
 # Runs on SessionStart — checks the GitHub releases list for a newer version on the
 # installed channel, writes cache. Channel-aware: reads every published release and
-# picks the best upgrade target instead of blindly trusting the newest tag (intent 391,
-# G5: a curl call against the GitHub releases API is the only outside call this hook makes).
+# picks the best upgrade target instead of blindly trusting the newest tag (a curl
+# call against the GitHub releases API is the only outside call this hook makes).
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PLASTIC_HOME="${PLASTIC_HOME:-$HOME/.plastic}"
@@ -34,7 +34,7 @@ fi
 
 # Background check — don't block session start.
 #
-# The three redirects are load-bearing (intent 289). Without them this subshell inherits
+# The three redirects are load-bearing. Without them this subshell inherits
 # the caller's stdout, stderr, and stdin. A caller that reads those pipes to EOF then
 # blocks for as long as the curl call takes, not for as long as this script takes:
 # scripts/codex-hook drives this launcher through Open3.capture3 under a 5 s timeout, and

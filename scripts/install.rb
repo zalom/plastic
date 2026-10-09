@@ -5,8 +5,7 @@
 # Plastic — `install` verb. Runs as `plastic install` from a release install.sh placed, or directly.
 # Usage: ruby scripts/install.rb [--claude|--codex|--hermes|--all] [--reinstall] [--force] [--help]
 #
-# install.sh selects the channel through PLASTIC_CHANNEL. The channel flags this verb once
-# listed never selected a package and were removed in 2.0 (intent 310).
+# install.sh selects the channel through PLASTIC_CHANNEL.
 #
 # One-shot by design:
 #   - no install present  -> fresh install + bootstrap store
@@ -48,7 +47,7 @@ class Install < InstallerCore
       # agent is present, a machine that has NEVER installed a second harness
       # (e.g. Codex, with no ~/.agents, no ~/.codex/hooks.json) must still be
       # able to add it. Refuse only when EVERY selected agent already has its
-      # own registration (intent 198, D7); otherwise proceed with just the
+      # own registration; otherwise proceed with just the
       # unregistered ones, and report the already-registered ones without
       # silently re-syncing them (that is what --reinstall is for).
       new_agents = selected.reject { |key| agent_installed?(key) }
@@ -91,8 +90,8 @@ class Install < InstallerCore
     results += already_registered.map { |key| already_registered_result(key) }
 
     action = ledger_action || (fresh ? "install" : "reinstall")
-    # One ledger row per successfully-synced agent, carrying its harness (intent 210,
-    # G5). A run where nothing agent-specific succeeded (or selected was empty) still
+    # One ledger row per successfully-synced agent, carrying its harness. A run
+    # where nothing agent-specific succeeded (or selected was empty) still
     # gets a single core-only row, so the version/action event is never silently
     # dropped from the ledger.
     synced = results.select { |r| r[:success] && r[:key] }
@@ -185,7 +184,7 @@ class Install < InstallerCore
     print_codex_hook_trust_reminder(installed)
   end
 
-  # Per-agent transaction summary (intent 210, D3): agent | from -> to | ok/failed.
+  # Per-agent transaction summary: agent | from -> to | ok/failed.
   # Skipped for a run with only one result, where the line above already says it all.
   def print_agent_summary(results)
     return if results.size <= 1
@@ -201,12 +200,12 @@ class Install < InstallerCore
   end
 
   # Codex hooks are installed but INERT until a human reviews and trusts each
-  # hook definition via /hooks (intent 198, Decision D2); Codex keys trust to
+  # hook definition via /hooks; Codex keys trust to
   # the hook's current command hash, so a future release that changes a hook
   # command re-arms the review. Printed only when a harness that declares its
   # own home_dir (Codex today) actually installed successfully in this run.
   # Data-driven from `agents`, never a hardcoded harness name, mirroring the
-  # same reasoning as the D1 presence-probe fix.
+  # same reasoning as the presence probe.
   def print_codex_hook_trust_reminder(installed)
     codex_like = agents.select { |a| a.key?(:home_dir) }
     return if codex_like.none? { |a| installed.any? { |r| r[:agent] == a[:name] } }

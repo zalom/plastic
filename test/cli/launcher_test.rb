@@ -63,7 +63,7 @@ class CliLauncherTest < Minitest::Test
   def test_an_unknown_command_exits_with_the_usage_code
     out, err, status = Open3.capture3(@env, LAUNCHER, "stauts")
 
-    assert_equal [2, "", "plastic stauts is not in this build yet; it lands with its stage\n"], [status.exitstatus, out, err]
+    assert_equal [2, "", "plastic stauts is not a command; run plastic help for the list\n"], [status.exitstatus, out, err]
   end
 
   def test_the_launcher_starts_without_rubygems

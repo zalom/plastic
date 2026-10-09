@@ -7,9 +7,9 @@ require "date"
 require "time"
 require "set"
 
-# SkillCensus (intent 324): counts typed /plastic-* commands against
-# agent-invoked Skill calls, so D19 (which Plastic verbs stay visible as
-# slash commands) is ruled on measured use rather than taste.
+# SkillCensus: counts typed /plastic-* commands against agent-invoked Skill
+# calls, so the choice of which Plastic verbs stay visible as slash commands
+# rests on measured use rather than taste.
 #
 # Two sources, never mixed. `HistoryScanner` reads ~/.claude/history.jsonl
 # for typed commands: the transcript tree is pruned to about 45 days and
@@ -91,9 +91,9 @@ module SkillCensus
 
   # Roster skills this instrument cannot observe through the Skill tool or a
   # typed command, with the mechanism that reaches them instead (review 4).
-  # plastic-agent-advisor and plastic-direct were retired by intent 372 (family 5) into
-  # RETIRED above: their skill directories are gone, so Roster.load never yields a row for
-  # them any more, and a MECHANISMS entry that no row can reach is dead.
+  # plastic-agent-advisor and plastic-direct are in RETIRED above: their skill
+  # directories are gone, so Roster.load never yields a row for them, and a
+  # MECHANISMS entry that no row can reach is dead.
   MECHANISMS = {
     "plastic-conventions" => "read as references/*.md from inside other skills",
     "plastic-feedback" => "routed by the SessionStart hook and PLASTIC.md",
@@ -106,7 +106,7 @@ module SkillCensus
   LOAD_PREFIX = "Base directory for this skill:"
 
   # The pre-npm plugin colon namespace maps onto the hyphen form before the
-  # name map is consulted (D10): plastic:update normalises to plastic-update.
+  # name map is consulted: plastic:update normalises to plastic-update.
   def self.normalize(raw)
     raw.sub(":", "-")
   end
@@ -333,7 +333,7 @@ module SkillCensus
 
         # A post-cutoff block is counted only in the self-generated bucket and
         # never touches seen_tool_use_ids, so it cannot consume an id a
-        # pre-cutoff block would later need (D16).
+        # pre-cutoff block would later need.
         if after_cutoff
           state[:self_generated_calls] += 1
           next
@@ -342,7 +342,7 @@ module SkillCensus
         id = block["id"]
         next if id && !state[:seen_tool_use_ids].add?(id)
 
-        # Only the plastic: colon namespace maps onto the hyphen form (D10);
+        # Only the plastic: colon namespace maps onto the hyphen form;
         # a plugin-prefixed non-Plastic name like claudish-to-english:claudish
         # must appear verbatim in other_skills, not split on its own colon.
         name = raw.start_with?("plastic:") ? SkillCensus.normalize(raw) : raw
@@ -758,7 +758,7 @@ module SkillCensus
         "",
         "History records excluded by the cutoff: #{history_self.length}.",
         "",
-        "Transcript records excluded by the cutoff, per dimension (D16: the cutoff gates " \
+        "Transcript records excluded by the cutoff, per dimension (the cutoff gates " \
         "every count, not only typed commands):",
         "",
         "| dimension | excluded |",

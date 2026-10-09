@@ -3,8 +3,8 @@
 
 require_relative "version_number"
 
-# Pure, dependency-injected pre-flight checks for Plastic's runtime dependencies
-# (intent 38, narrowed by intent 391). Takes injected probes (ruby version, git
+# Pure, dependency-injected pre-flight checks for Plastic's runtime dependencies.
+# Takes injected probes (ruby version, git
 # presence, sqlite3 presence, missing gems, platform) and returns a plain decision: ok / fatal
 # plus branded messages.
 #

@@ -304,7 +304,7 @@ meter_seg() {   # $1 = label, $2 = raw percentage
 M5=$(meter_seg "5h" "$M5_PCT")
 M7=$(meter_seg "7d" "$M7_PCT")
 
-# --- Rate-limits cache for MeterWatch (graph.md D11) ---
+# --- Rate-limits cache for MeterWatch ---
 # Written only when the payload carries a meter at all; an API-key session
 # with no rate_limits section leaves the cache untouched. A present meter
 # with no matching value writes null rather than dropping the key, so

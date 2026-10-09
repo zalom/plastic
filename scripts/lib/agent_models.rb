@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# Shared model-tier resolution for Plastic subagents (intent 116).
+# Shared model-tier resolution for Plastic subagents.
 #
 # TIER_DEFAULTS mirrors the shipped `agents/*.md` frontmatter so `read-config`
 # can answer `agents.models.<basename>` with the built-in default. The installer
@@ -10,10 +10,10 @@
 module AgentModels
   # Claude Code aliases only (never pinned ids, never Fable). Keys are the agent
   # file basenames without the `.md` extension.
-  # The three per-kind node agents (intent 340b, G7c, n2), dispatched by
+  # The three per-kind node agents, dispatched by
   # HarnessAdapter::AGENT_TYPE_BY_KIND. work and research resolve the
   # executor tier, verify the advisor tier, mirroring RunnerPolicy's
-  # model_role split (327 D12): work and research run on plastic-executor's
+  # model_role split: work and research run on plastic-executor's
   # own tier, and verify on the lifecycle advisor tier, never the cheap tier.
   TIER_DEFAULTS = {
     "plastic-enforcer" => "opus",
@@ -54,10 +54,10 @@ module AgentModels
     "plastic-secondary-advisor" => "high"
   }.freeze
 
-  # Codex model id per tier alias (intent 186). Codex has NO vendor alias layer: every model id
+  # Codex model id per tier alias. Codex has NO vendor alias layer: every model id
   # is a literal versioned string that rots (gpt-5.2 / gpt-5.3-codex already deprecated), which is
-  # why 116 D1 / 102a Decision B refused to pin a raw id per role file. This resolves that by
-  # centralizing every id in ONE map: Plastic owns the alias, so per-role identity costs a single
+  # why no role file pins a raw id. Every id sits in ONE map instead: Plastic owns the alias,
+  # so per-role identity costs a single
   # line to refresh on a Codex deprecation plus a Plastic release, and no per-role file carries a
   # raw id. opus (deepest reasoning tier) -> the flagship Sol; sonnet (execution tier) -> the
   # balanced Terra; haiku (lightest) -> the fast/cheap Luna. This is a shipped

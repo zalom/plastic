@@ -1,9 +1,9 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 
-# EnginePermissions: the engine deny rule (intent 340b, G7c, n3). A permissions.deny
+# EnginePermissions: the engine deny rule. A permissions.deny
 # block merged into settings.json at install so the engine directories are not
-# editable by a dispatched agent (C25's self-preservation half).
+# editable by a dispatched agent.
 #
 # Claude Code accepts a Write(...) path rule and never consults it: Edit(...) is the
 # rule that covers Write, MultiEdit and NotebookEdit. Every entry below names Edit,

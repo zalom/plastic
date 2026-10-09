@@ -191,8 +191,8 @@ class VerifyChange
     steps.compact
   end
 
-  # A file that a todo lists was written before the 2026-09-30 ruling, and its
-  # offenses and smells stay hidden. RubyCritic scores only the other files.
+  # A file that a todo lists is legacy code, and its offenses and smells stay
+  # hidden. RubyCritic scores only the other files.
   def critic_step(sources)
     legacy, scored = sources.partition { |path| legacy?(path) }
     @err.puts "Not checked by RubyCritic, because #{LEGACY_LISTS.join(" or ")} lists them: #{legacy.join(", ")}" unless legacy.empty?
@@ -269,7 +269,7 @@ class VerifyChange
     LintDecision.new(nil, "no style guide found")
   end
 
-  # Local adaptation (intent 363): RuboCop reads .rubocop_with_todo.yml here, which
+  # Local adaptation: RuboCop reads .rubocop_with_todo.yml here, which
   # is .rubocop.yml plus the generated todo. The todo holds this repository's 16,116
   # pre-existing offences, so a lint run reports what the change did and nothing
   # else. .rubocop.yml, the todo-free config, is what the repository is measured
