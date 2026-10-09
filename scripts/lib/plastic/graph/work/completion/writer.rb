@@ -41,10 +41,17 @@ module Plastic
             raise Invalid, found.join(" ") if found.any?
 
             @databases.fetch(:work).transaction do |batch|
-              batch.write(:intents, "UPDATE intents SET status = 'abandoned', disposition = 'abandoned', closed_at = :now, updated_at = :now " \
+              batch.write(:intents, "UPDATE intents SET status = 'abandoned', disposition = :disposition, closed_at = :now, updated_at = :now " \
                 "WHERE intent_id = :intent_id AND origin_id = :origin AND status IN ('open', 'active', 'parked', 'future')",
-                now: Plastic.now, intent_id:, origin: @retrieval.origin_id)
+                now: Plastic.now, intent_id:, origin: @retrieval.origin_id, disposition: disposition(intent_id))
             end
+          end
+
+          def disposition(intent_id)
+            replaced = @retrieval.linking(intent_id).any? do |link|
+              link.kind == "supersedes" && link.to_ref == intent_id && link.from_intent_id != intent_id
+            end
+            replaced ? "superseded" : "cancelled"
           end
 
           def write_completion(intent_id)

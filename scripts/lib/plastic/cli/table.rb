@@ -16,6 +16,7 @@ module Plastic
       "uninstall" => ["Commands::Uninstall", "Remove Plastic from agents and keep the home"],
 
       # Storage
+      "intent abandon" => ["Commands::IntentAbandon", "Close an intent that will not ship once outcome.md records the revert, or print the revert steps"],
       "intent end" => ["Commands::IntentEnd", "Close a delivered intent once its verdict, nodes and outcome allow it, or print what is missing"],
       "intent new" => ["Commands::IntentNew", "Open an intent: write its rows and print its folder"],
       "project list" => ["Commands::ProjectList", "List the registered projects with their paths"],

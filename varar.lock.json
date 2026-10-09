@@ -156,6 +156,15 @@
       "sourceHash": "fnv1a:82675385",
       "examples": []
     },
+    "varar/intent-abandon.md": {
+      "sourceHash": "fnv1a:38d2ae27",
+      "examples": [
+        {
+          "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
+          "line": 7
+        }
+      ]
+    },
     "varar/intent-approve.md": {
       "sourceHash": "fnv1a:1699758d",
       "examples": [
