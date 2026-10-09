@@ -38,6 +38,19 @@ class NoNextNoneTest < Plastic::TestCase
     refute_equal "none", answer.fetch("next")
   end
 
+  def test_a_search_with_no_hit_on_a_fresh_home_prints_no_next_line_and_exits_0
+    result = plastic("search", "nothing-matches-this", table: Plastic::CLI::TABLE)
+
+    assert_equal [0, [], ""], [result.code, next_lines(result), result.err]
+  end
+
+  def test_a_document_lookup_that_finds_nothing_prints_no_next_line
+    result = plastic("document", "get", "plastic://global/1/spec.md", table: Plastic::CLI::TABLE)
+
+    assert_equal [1, []], [result.code, next_lines(result)]
+    refute_includes result.out, "retrieval migration"
+  end
+
   def test_no_command_text_output_has_no_closing_next_line
     output = Plastic::CLI::Result.new.tap { |answer| answer.offer(nil, "a reason") }
 
