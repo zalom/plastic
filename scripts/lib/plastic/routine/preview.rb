@@ -21,6 +21,9 @@ module Plastic
 
         def previews? = @previews == true
 
+        # A call that takes --dry-run also knows the call without it, for the next: line.
+        def declared_names = (options.any? { |option| option.name == :dry_run }) ? super + [:original_command] : super
+
         def preview_problems
           return [] unless previews?
 

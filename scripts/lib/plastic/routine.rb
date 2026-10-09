@@ -36,9 +36,6 @@ module Plastic
     include GraphReport
 
     class << self
-      # A call that takes --dry-run also knows the call without it, for the next: line.
-      def declared_names = (options.any? { |option| option.name == :dry_run }) ? super + [:original_command] : super
-
       def workflow(key, **edge, &branches)
         chain.add(key, edge[:next], &branches)
       end
