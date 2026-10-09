@@ -19,6 +19,18 @@ class StatusTest < Plastic::TestCase
     assert_includes result.out, "Beta"
   end
 
+  def test_status_for_one_project_lists_only_its_store
+    open_keyed_intent
+    Plastic::Graph.create(home: @plastic_home, store: "other").work.write_intent(title: "Beta")
+
+    result = call("--project", "other")
+
+    assert_equal 0, result.code
+    assert_match(/store:\s+other/, result.out)
+    assert_includes result.out, "Beta"
+    refute_match(/store:\s+global/, result.out)
+  end
+
   def test_status_offers_plastic_next_as_the_next_command
     open_keyed_intent
 
