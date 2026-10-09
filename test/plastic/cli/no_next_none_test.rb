@@ -48,7 +48,7 @@ class NoNextNoneTest < Plastic::TestCase
     result = plastic("document", "get", "plastic://global/1/spec.md", table: Plastic::CLI::TABLE)
 
     assert_equal [1, []], [result.code, next_lines(result)]
-    refute_includes result.out, "retrieval migration"
+    refute_includes result.err, "maintenance is required"
   end
 
   def test_no_command_text_output_has_no_closing_next_line
