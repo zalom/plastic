@@ -23,52 +23,16 @@ class GraphShowTest < Plastic::TestCase
     assert_call result, code: 0, out: ["node: n1 open a", "edge: n1 to n2"]
   end
 
-  def test_a_hand_edited_graph_json_is_overwritten_from_rows
+  def test_a_hand_edited_graph_json_survives_the_call_and_no_row_is_added
     intent = open_keyed_intent
     add_node("a")
     File.write(graph_path(intent), '{"bogus":true}')
+    before = store_graphs.databases.fetch(:work).row("SELECT count(*) AS n FROM routine_runs").fetch("n")
 
-    call("1")
+    result = call("1")
 
-    written = JSON.parse(File.read(graph_path(intent)))
-
-    refute written.key?("bogus")
-    assert_equal 1, written.fetch("nodes").size
-  end
-
-  def test_a_preview_leaves_graph_json_as_it_was
-    twin = twin_run("graph", "show", "1") do |home|
-      seed_intents(home, "Alpha")
-      seed_nodes(home, "a")
-      File.write(File.join(home, "stores", "global", "store", "1--alpha", "graph.json"), '{"bogus":true}')
-    end
-    store = File.join(twin.first, "stores", "global")
-
-    assert_equal "{\"bogus\":true}", File.read(File.join(store, "store", "1--alpha", "graph.json"))
-    assert_equal [], twin.changed_paths
-    assert_equal ["change #{store}/store/1--alpha/graph.json"], twin.preview_paths
-  end
-
-  def test_preview_matches_apply_on_an_identical_home
-    twin = twin_run("graph", "show", "1") do |home|
-      seed_intents(home, "Alpha")
-      seed_nodes(home, "a", "b")
-      call_in(home, "edge", "add", "1", "n1", "n2")
-    end
-
-    assert_preview_matches_apply(twin)
-    assert_includes twin.previewed_lines, "node: n1 open a"
-    assert_includes twin.previewed_lines, "edge: n1 to n2"
-  end
-
-  def test_a_preview_with_a_linked_intent_folder_refuses_and_the_outside_folder_is_untouched
-    with_home do |home|
-      seed_intents(home, "Alpha")
-      linked = linked_preview(home, File.join(home, "stores", "global", "store", "1--alpha"), "graph", "show", "1")
-
-      assert_equal 3, linked.result.code
-      assert_includes linked.result.err, linked.link
-      assert linked.untouched
-    end
+    assert_equal '{"bogus":true}', File.read(graph_path(intent))
+    assert_equal before, store_graphs.databases.fetch(:work).row("SELECT count(*) AS n FROM routine_runs").fetch("n")
+    assert_equal "", result.out.lines.grep(/^wrote:/).join
   end
 end
