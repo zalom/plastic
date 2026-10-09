@@ -49,15 +49,15 @@ class FreshInstallCheck
     step(first, "sh", File.join(ROOT, "install.sh"))
     agent_folders
     step(first, plastic, "install", "--all")
-    step(first, plastic, "version", active: first)
+    step(first, plastic, "doctor", active: first)
     step(first, plastic, "status")
   end
 
   def upgrade
     step(second, plastic, "update")
-    step(second, plastic, "version", active: second)
+    step(second, plastic, "doctor", active: second)
     step(second, plastic, "rollback")
-    step(second, plastic, "version", active: first)
+    step(second, plastic, "doctor", active: first)
   end
 
   def remove
@@ -89,7 +89,7 @@ class FreshInstallCheck
     return "exited #{status.exitstatus}" unless status.success?
     return "wrote to standard error" unless err.empty?
 
-    "the active release is not #{active}" if active && !out.match?(/active:\s+#{Regexp.escape(active)}\b/)
+    "the active release is not #{active}" if active && !out.match?(/^active:\s+ok, #{Regexp.escape(active)}\b/)
   end
 
   def environment(version)
