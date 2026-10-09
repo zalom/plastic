@@ -15,6 +15,7 @@ class KernelCommand
   KERNEL = File.expand_path("../../../scripts/lib/plastic", __dir__)
   LEGACY_STORE = File.expand_path("../../fixtures/legacy_store", __dir__)
   PROGRAM = "require ARGV.shift; exit Plastic::CLI.call(ARGV)"
+  CREATE = "require ARGV.shift; Plastic::Graph.create(home: ENV.fetch('PLASTIC_HOME'), store: 'global')"
 
   # One call: its exit code, what it printed and what it said went wrong.
   Call = Data.define(:code, :out, :err) do
@@ -53,7 +54,7 @@ class KernelCommand
     @env = { "HOME" => home, "PLASTIC_HOME" => plastic_home, "PLASTIC_TMP" => File.join(home, "tmp"),
              "CLAUDE_CODE_SESSION_ID" => nil, "PLASTIC_SESSION" => nil, "CODEX_SESSION_ID" => nil, "CODEX_THREAD_ID" => nil,
              "RUBYOPT" => nil, "BUNDLER_SETUP" => nil }
-    FileUtils.mkdir_p(store) unless File.exist?(plastic_home)
+    create_store unless File.exist?(plastic_home)
   end
 
   def plastic_home = File.join(home, ".plastic")
@@ -78,6 +79,11 @@ class KernelCommand
   end
 
   def read(rel) = File.read(path(rel))
+
+  def create_store
+    _, err, status = Open3.capture3(@env, RbConfig.ruby, "-e", CREATE, KERNEL, chdir: home)
+    raise "the global store was not made: #{err}" unless status.success?
+  end
 
   def write(rel, text)
     FileUtils.mkdir_p(File.dirname(path(rel)))
