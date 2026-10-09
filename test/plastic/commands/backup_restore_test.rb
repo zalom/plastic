@@ -123,7 +123,7 @@ class BackupRestoreTest < Plastic::TestCase
     home = seeded_home
     result = restore_call(home, "--store", "alpha", "--timestamp", FIRST)
 
-    assert_call result, code: 0, out: ["restore: backed up the current databases as", "next: ask the person"]
+    assert_call result, code: 0, out: ["restore: backed up the current databases as", "next: plastic sync down --project"]
   end
 
   def test_restoring_the_latest_with_no_done_backup_refuses_with_usage
