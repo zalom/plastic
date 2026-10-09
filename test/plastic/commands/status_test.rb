@@ -8,6 +8,22 @@ require_relative "../../../scripts/lib/plastic/commands/node_claim"
 class StatusTest < Plastic::TestCase
   def call(*args) = plastic("status", *args, table: Plastic::CLI::TABLE)
 
+  def test_a_registered_project_without_a_store_names_its_path_in_the_project_new_line
+    File.write(File.join(@plastic_home, "projects.yml"), "---\nprojects:\n  blog:\n    path: /tmp/blog\n")
+
+    result = call("--project", "blog")
+
+    assert_includes result.out, "run plastic project new blog /tmp/blog"
+  end
+
+  def test_a_project_without_a_store_offers_the_project_new_line_as_next
+    File.write(File.join(@plastic_home, "projects.yml"), "---\nprojects:\n  blog:\n    path: /tmp/blog\n")
+
+    result = call("--project", "blog")
+
+    assert_equal ["next: plastic project new blog /tmp/blog"], result.out.lines(chomp: true).grep(/\Anext: /)
+  end
+
   def test_a_second_store_is_not_missed
     open_keyed_intent
     Plastic::Graph.create(home: @plastic_home, store: "other").work.write_intent(title: "Beta")

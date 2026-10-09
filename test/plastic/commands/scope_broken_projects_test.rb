@@ -33,7 +33,7 @@ class ScopeBrokenProjectsTest < Plastic::TestCase
     path = File.join(@plastic_home, "projects.yml")
     projects("plastic: [\n")
 
-    result = plastic("status", "--project", "other", table: Plastic::CLI::TABLE)
+    result = plastic("status", table: Plastic::CLI::TABLE)
 
     assert_equal 1, result.code
     assert_includes result.err, path
