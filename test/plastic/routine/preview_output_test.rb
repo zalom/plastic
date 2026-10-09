@@ -22,7 +22,7 @@ class RoutinePreviewOutputTest < Minitest::Test
   def test_a_wrote_row_reads_as_would_write
     @output.row("wrote:", "1 intent")
 
-    assert_equal [["would write:", "1 intent"]], @recorded.rows
+    assert_equal [["would write:", ["1 routine run in local.db", "1 intent"]]], @recorded.rows
   end
 
   def test_any_other_row_passes_through_unchanged

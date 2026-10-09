@@ -64,7 +64,7 @@ class RoutinePreviewTest < Plastic::TestCase
   def test_a_preview_prefixes_every_printed_line_and_ends_on_the_closing_line
     twin = twin_run("node", "remove", "1", "n1", "--reason", "r") { |home| seed_graph(home) }
     printed = twin.previewed.out.lines(chomp: true).take_while { |line| !line.empty? }
-    rows = printed.reject { |line| line.start_with?("preview: ", "would write:", "files:", "next:", "because:") }
+    rows = printed.reject { |line| line.start_with?("preview: ", "would write:", "files:", "next:", "because:") || line.match?(/\A\s+\d/) }
 
     assert_equal ["preview complete; the original store was not changed"], rows
     assert_equal "preview: node: n1 removed", printed.first

@@ -9,7 +9,6 @@ module Plastic
     # own home sits inside a transaction, which a copy of its databases
     # cannot see; these homes are plain files on disk.
     module PreviewHelper
-      RUN_WROTE = /wrote:\s+1 routine run in local\.db\n(\s+(?=\d))?/
       CLOSING = "preview complete; the original store was not changed"
 
       # One call run twice: a preview on the first home and the apply on an
@@ -21,7 +20,7 @@ module Plastic
           lines(previewed.out).filter_map { |line| line.delete_prefix("preview: ").sub("would write:", "wrote:") unless dropped?(line) }.map { |line| line.squeeze(" ") }
         end
 
-        def applied_lines = lines(applied.out.gsub(RUN_WROTE) { Regexp.last_match(1) ? "wrote: " : "" }).map { |line| line.squeeze(" ") }
+        def applied_lines = lines(applied.out).map { |line| line.squeeze(" ") }
 
         def preview_paths = previewed.out.lines(chomp: true).filter_map { |line| line.delete_prefix("preview: would ") if line.start_with?("preview: would ") }
 
