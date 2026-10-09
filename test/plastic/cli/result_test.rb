@@ -20,6 +20,11 @@ class ResultTest < Minitest::Test
     assert_equal "plastic help", result("plastic help").next_command("a")
   end
 
+  def test_a_command_the_scoped_list_no_longer_names_never_gains_a_project
+    assert_equal "plastic continue", result("plastic continue").next_command("a")
+    assert_equal "plastic query x", result("plastic query x").next_command("a")
+  end
+
   def test_with_no_next_step_there_are_no_closing_lines
     assert_empty Plastic::CLI::Result.new.closing_lines("a")
   end

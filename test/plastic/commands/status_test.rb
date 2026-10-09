@@ -31,6 +31,18 @@ class StatusTest < Plastic::TestCase
     refute_match(/store:\s+global/, result.out)
   end
 
+  def test_a_call_scoped_to_global_by_fallback_gets_no_project_in_its_next_line
+    open_keyed_intent
+
+    assert_includes call.out.lines(chomp: true), "next: plastic next"
+  end
+
+  def test_a_call_that_named_the_project_keeps_it_in_its_next_line
+    open_keyed_intent
+
+    assert_includes call("--project", "global").out.lines(chomp: true), "next: plastic next --project global"
+  end
+
   def test_status_offers_plastic_next_as_the_next_command
     open_keyed_intent
 
