@@ -22,11 +22,28 @@ class WorkDeliveryActionTest < Plastic::TestCase
     command, reason, instructions = action
 
     assert_equal [nil, "the harness must plan this intent"], [command, reason]
-    assert_includes instructions, "plastic node add 1 TITLE --criterion TEXT"
+    assert_includes instructions, "plastic node add 1 TITLE --criterion KEY"
   end
 
   def test_the_planning_instruction_starts_with_fetching_the_architecture_map
     assert action.last.start_with?("Before you plan, fetch the architecture map as current as possible with an architecture mapping tool such as Enola, or map the code yourself; Plastic runs no tool. Read the intent's goal")
+  end
+
+  def test_the_planning_instruction_carries_the_planning_directive
+    assert_includes action.last, Plastic::Graph::Work::PlanningDirective::TEXT
+  end
+
+  def test_the_planning_directive_names_the_research_attempts_and_both_stops
+    text = Plastic::Graph::Work::PlanningDirective::TEXT
+
+    assert_equal [true, true, true], ["at least 3 attempts", "plastic node ask ID NODE TEXT", "plastic node impede ID NODE TEXT"].map { |part| text.include?(part) }
+  end
+
+  def test_the_claimed_node_instruction_carries_the_planning_directive
+    plan("Build")
+    claim("n1")
+
+    assert_equal [true, true, true], ["Principle of Least Surprise", "plastic node done 1 n1 TEXT", "plastic node fail 1 n1 TEXT"].map { |part| action.last.include?(part) }
   end
 
   def test_a_ready_node_is_claimed
@@ -43,14 +60,24 @@ class WorkDeliveryActionTest < Plastic::TestCase
     assert_equal ["plastic node release 1 n1", "node n1 failed; release it before retrying", nil], action
   end
 
-  def test_a_parked_node_asks_the_owner_its_question
+  def test_a_needs_info_node_asks_the_owner_its_question
     plan("Build")
     claim("n1")
-    @work.park_node(intent_id: "1", id: "n1", question: "Which store?")
+    @work.ask_node(intent_id: "1", id: "n1", question: "Which store?")
 
     assert_equal [nil, "the owner must answer node n1"], action.first(2)
     assert_includes action.last, "Ask the owner: Which store?."
     refute_includes action.last, "architecture map"
+  end
+
+  def test_an_impeded_node_names_its_impediment
+    plan("Build")
+    claim("n1")
+    @work.impede_node(intent_id: "1", id: "n1", reason: "no access")
+
+    assert_equal [nil, "node n1 is impeded"], action.first(2)
+    assert_includes action.last, "no access"
+    assert_includes action.last, "plastic node resolve 1 n1 TEXT"
   end
 
   def test_a_claimed_node_names_its_worker

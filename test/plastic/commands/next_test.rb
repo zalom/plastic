@@ -7,7 +7,7 @@ require_relative "../../../scripts/lib/plastic/commands/node_add"
 require_relative "../../../scripts/lib/plastic/commands/node_claim"
 require_relative "../../../scripts/lib/plastic/commands/node_done"
 require_relative "../../../scripts/lib/plastic/commands/node_fail"
-require_relative "../../../scripts/lib/plastic/commands/node_park"
+require_relative "../../../scripts/lib/plastic/commands/node_ask"
 
 class NextTest < Plastic::TestCase
   def call(*args) = plastic("next", *args, table: Plastic::CLI::TABLE)
@@ -17,9 +17,12 @@ class NextTest < Plastic::TestCase
     plastic("sync", "up", table: Plastic::CLI::TABLE)
   end
 
-  def clear_spec(intent) = write_spec(intent, "# Spec\n\n## Done criteria\n- ships\n\n## Open Questions\n- none\n")
+  def clear_spec(intent) = write_spec(intent, "# Spec\n\n## Done criteria\n- [done] ships\n\n## Open Questions\n- none\n")
 
-  def start(intent) = plastic("auto", intent.intent_id, env: { "PLASTIC_SESSION" => "s-1" }, table: Plastic::CLI::TABLE)
+  def start(intent)
+    plastic("intent", "approve", intent.intent_id, table: Plastic::CLI::TABLE)
+    plastic("auto", intent.intent_id, env: { "PLASTIC_SESSION" => "s-1" }, table: Plastic::CLI::TABLE)
+  end
 
   def add_node(intent, title) = plastic("node", "add", intent.intent_id, title, "--criterion", "done", table: Plastic::CLI::TABLE)
 
@@ -40,9 +43,10 @@ class NextTest < Plastic::TestCase
     assert_includes result.out, "next: plastic intent spec #{intent.intent_id}"
   end
 
-  def test_an_open_status_offers_auto_start
+  def test_an_open_status_with_a_go_ahead_offers_auto_start
     intent = open_intent
     clear_spec(intent)
+    plastic("intent", "approve", intent.intent_id, table: Plastic::CLI::TABLE)
 
     result = call
 
@@ -59,13 +63,13 @@ class NextTest < Plastic::TestCase
     assert_includes result.out, "plastic node add #{intent.intent_id} TITLE"
   end
 
-  def test_a_parked_node_requests_the_owner_answer
+  def test_a_needs_info_node_requests_the_owner_answer
     intent = open_intent
     clear_spec(intent)
     start(intent)
     add_node(intent, "a")
     plastic("node", "claim", intent.intent_id, "n1", table: Plastic::CLI::TABLE)
-    plastic("node", "park", intent.intent_id, "n1", "--question", "which way", table: Plastic::CLI::TABLE)
+    plastic("node", "ask", intent.intent_id, "n1", "which way", table: Plastic::CLI::TABLE)
 
     result = call
 
@@ -80,7 +84,7 @@ class NextTest < Plastic::TestCase
     start(intent)
     add_node(intent, "a")
     plastic("node", "claim", intent.intent_id, "n1", table: Plastic::CLI::TABLE)
-    plastic("node", "fail", intent.intent_id, "n1", "--reason", "broke", table: Plastic::CLI::TABLE)
+    plastic("node", "fail", intent.intent_id, "n1", "broke", table: Plastic::CLI::TABLE)
 
     result = call
 
@@ -95,7 +99,7 @@ class NextTest < Plastic::TestCase
     start(intent)
     add_node(intent, "a")
     plastic("node", "claim", intent.intent_id, "n1", table: Plastic::CLI::TABLE)
-    plastic("node", "done", intent.intent_id, "n1", "--judge", "owner", "--findings", "ok", table: Plastic::CLI::TABLE)
+    plastic("node", "done", intent.intent_id, "n1", "ok", table: Plastic::CLI::TABLE)
 
     result = call
 
@@ -132,5 +136,16 @@ class NextTest < Plastic::TestCase
     result = call
 
     assert_includes result.out, "next: none"
+  end
+end
+
+class NextWithoutGoAheadTest < Plastic::TestCase
+  def test_a_spec_without_a_go_ahead_asks_the_owner_and_offers_no_command
+    intent = open_intent
+    write("#{intent.dir}/spec.md", "# Spec\n\n## Done criteria\n- [done] ships\n\n## Open Questions\n- none\n")
+    plastic("sync", "up", table: Plastic::CLI::TABLE)
+    result = plastic("next", table: Plastic::CLI::TABLE)
+
+    assert_call result, code: 0, out: "1. Ask the owner for the go-ahead. Only after the owner gives it, record it with plastic intent approve 1.\nnext: none\nbecause: the owner must give the go-ahead for intent 1\n"
   end
 end

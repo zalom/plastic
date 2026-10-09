@@ -99,4 +99,27 @@ class SyncUpFoldersTest < Plastic::TestCase
     assert_equal 0, sync.code
     assert_equal before, snapshot(store_root)
   end
+
+  def test_a_folder_holding_only_the_dated_intent_file_is_read
+    write("store/4--gamma/4--gamma.md", page("4", "Gamma"))
+
+    assert_equal 0, sync.code
+    assert_equal ["Gamma"], retrieval.intents.map(&:title)
+  end
+
+  def test_a_folder_holding_only_intent_md_is_read
+    write("store/5--delta/intent.md", page("5", "Delta"))
+
+    assert_equal 0, sync.code
+    assert_equal ["Delta"], retrieval.intents.map(&:title)
+  end
+
+  def test_a_printed_context_json_with_no_row_is_not_imported_as_a_document
+    hand_folder("2", "beta", "Beta")
+    write("store/2--beta/context.json", JSON.generate("intent" => "2", "context" => { "forged" => true }))
+    sync
+
+    assert_equal 0, store_graphs.databases[:knowledge].rows("SELECT * FROM documents WHERE path = 'context.json'").size
+    assert_empty store_graphs.databases[:knowledge].rows("SELECT * FROM retrieval_contexts")
+  end
 end

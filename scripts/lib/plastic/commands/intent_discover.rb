@@ -11,7 +11,7 @@ module Plastic
       argument :terms, label: "TERMS", text: "literal search terms", rest: true
       option :source_projects, switch: "--source-project SLUG", text: "a source store", repeatable: true
       reads :knowledge
-      writes :knowledge
+      writes :knowledge, :work
 
       workflow :code_discover_retrieval, next: :agent_external_agent_workflow
       workflow :agent_external_agent_workflow, next: :noop

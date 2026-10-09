@@ -34,4 +34,10 @@ class CheckMergeTest < Plastic::TestCase
   def test_the_steps_say_plastic_runs_no_version_control_command
     assert_includes check.steps.join("\n"), "Plastic runs no version control command"
   end
+
+  def test_the_steps_name_neither_removed_option
+    text = check.steps.join("\n")
+
+    ["--judge", "--evidence"].each { |option| refute_includes text, option }
+  end
 end

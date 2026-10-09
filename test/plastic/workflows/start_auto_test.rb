@@ -10,8 +10,11 @@ class WorkflowStartAutoTest < Plastic::TestCase
     run_workflow(Plastic::Workflows::StartAuto, harness: scoped_harness(session:), graphs: session_graphs, intent_id:).first
   end
 
+  def approve(intent_id = "1") = plastic("intent", "approve", intent_id, table: Plastic::CLI::TABLE)
+
   def test_a_specified_intent_goes_active_under_this_session_lock
     specified_intent
+    approve
 
     outcome = start
 
@@ -53,5 +56,22 @@ class WorkflowStartAutoTest < Plastic::TestCase
 
   def test_an_unknown_intent_fails
     assert_equal "code_start_auto, gate: no intent 9 in this store", start(intent_id: "9").message
+  end
+
+  def test_an_intent_without_a_go_ahead_is_refused_naming_the_approve_command_and_takes_no_lock
+    specified_intent
+
+    outcome = start
+
+    assert_kind_of Plastic::Refused, outcome
+    assert_includes outcome.message, "plastic intent approve 1"
+    assert_equal [nil, "open"], [retrieval.lock("1"), retrieval.intent("1").status]
+  end
+
+  def test_an_intent_with_a_go_ahead_starts
+    specified_intent
+    approve
+
+    assert_equal :done, start
   end
 end

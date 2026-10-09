@@ -28,14 +28,19 @@ module Plastic
           def call = Legacy::StoreImport.new(self, @folder, @retrieval, @databases).call
 
           def read_rows
-            parsed = Legacy::Index.parse(@folder.read(Graph::Knowledge::StoreFolder::LEGACY_INDEX).force_encoding(Encoding::UTF_8))
-            write(parsed.check(@folder.intent_dirs))
+            parsed = write_index
             read = @sync.read(@folder.intent_files.reject { |path| Graph::Knowledge::StoreFolder.graph_view?(path) })
             finish
             ["imported #{Graph::Knowledge::StoreFolder::LEGACY_INDEX}: #{Schema.phrase(parsed.counts)}", *read]
           end
 
           private
+
+          def write_index
+            Legacy::Index.parse(@folder.read(Graph::Knowledge::StoreFolder::LEGACY_INDEX).force_encoding(Encoding::UTF_8)).tap do |parsed|
+              write(parsed.check(@folder.intent_dirs))
+            end
+          end
 
           def write(parsed)
             now = Plastic.now
@@ -51,7 +56,7 @@ module Plastic
 
           # The fields at the head of the intent's own file.
           def front_matter(dir)
-            file = "#{dir}/#{File.basename(dir)}.md"
+            file = @folder.own_file(dir)
             text = @folder.exist?(file) ? @folder.read(file).force_encoding(Encoding::UTF_8) : ""
             text[FRONT_MATTER, 1].to_s.scan(FIELD).to_h
           end

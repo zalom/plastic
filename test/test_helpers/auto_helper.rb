@@ -13,9 +13,12 @@ module Plastic
         plastic("sync", "up", table: Plastic::CLI::TABLE)
       end
 
+      def approve(intent_id = "1") = plastic("intent", "approve", intent_id, table: Plastic::CLI::TABLE)
+
       def clear_intent
         intent = open_intent
         write_spec(intent, CLEAR_SPEC)
+        approve(intent.intent_id)
         intent
       end
 
@@ -37,6 +40,7 @@ module Plastic
       def active_intent
         intent = open_intent
         write_spec(intent, "# Spec\n\n## Done criteria\n- ships\n")
+        approve(intent.intent_id)
         store_graphs.work.activate_intent(intent.intent_id)
         intent
       end

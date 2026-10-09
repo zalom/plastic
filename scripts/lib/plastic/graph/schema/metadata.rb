@@ -16,10 +16,11 @@ module Plastic
         "roadmaps" => %w[roadmap roadmaps], "batches" => %w[batch batches],
         "roadmap_items" => %w[item items], "roadmap_edges" => ["roadmap edge", "roadmap edges"],
         "roadmap_log" => ["roadmap log line", "roadmap log lines"], "archives" => %w[archive archives],
-        "archive_entries" => ["archive entry", "archive entries"], "backups" => %w[backup backups]
+        "archive_entries" => ["archive entry", "archive entries"], "backups" => %w[backup backups], "approvals" => ["go-ahead", "go-aheads"], "verdicts" => %w[verdict verdicts]
       }.freeze
 
       MIGRATIONS = {
+        work: "UPDATE \"nodes\" SET \"state\" = 'needs_info' WHERE \"state\" = 'parked';",
         knowledge: "INSERT OR IGNORE INTO \"retrieval_schema\" (\"name\", \"version\") VALUES ('retrieval', 1);"
       }.freeze
     end

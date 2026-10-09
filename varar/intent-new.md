@@ -9,10 +9,10 @@ Each row gives the store, the call, the exit code, the index, the files and what
 
 | store                | call                  | exit | index | files                                  | says                                                                                  |
 | -------------------- | --------------------- | ---: | ----- | -------------------------------------- | ------------------------------------------------------------------------------------- |
-| empty                | Build the thing       |    0 | 1     | 1--build-the-thing.md, graph.json, savepoint.md | intent 1 has its rows and its printed files                                    |
-| one intent           | Child --parent 1      |    0 | 1, 1a | 1a--child.md, graph.json, savepoint.md | intent 1a has its rows and its printed files                                          |
-| one intent           | Second --ref 1-ORIGIN |    0 | 1, 2  | 2--second.md, graph.json, savepoint.md | ref: intent 1 of this installation                                                    |
-| empty                | Ticketed --ref ENG-12 |    0 | 1     | 1--ticketed.md, graph.json, savepoint.md | ref: ENG-12                                                                         |
+| empty                | Build the thing       |    0 | 1     | graph.json, intent.md, savepoint.md | intent 1 has its rows and its printed files                                    |
+| one intent           | Child --parent 1      |    0 | 1, 1a | graph.json, intent.md, savepoint.md | intent 1a has its rows and its printed files                                          |
+| one intent           | Second --ref 1-ORIGIN |    0 | 1, 2  | graph.json, intent.md, savepoint.md | ref: intent 1 of this installation                                                    |
+| empty                | Ticketed --ref ENG-12 |    0 | 1     | graph.json, intent.md, savepoint.md | ref: ENG-12                                                                         |
 | empty                | Orphan --parent 9     |    1 | none  | none                                   | no intent 9 in this store to be the parent                                            |
 | one intent           | Second --ref 5-ORIGIN |    1 | 1     | none                                   | no intent 5 of this installation for the ref                                          |
 | empty                | Late --status done    |    1 | none  | none                                   | a new intent takes the status open, active, parked or future, not done                |

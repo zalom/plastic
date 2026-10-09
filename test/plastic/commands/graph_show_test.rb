@@ -13,7 +13,7 @@ class GraphShowTest < Plastic::TestCase
   def graph_path(intent) = store_path("#{intent.dir}/graph.json")
 
   def test_prints_each_node_and_edge
-    open_intent
+    open_keyed_intent
     add_node("a")
     add_node("b")
     plastic("edge", "add", "1", "n1", "n2", table: Plastic::CLI::TABLE)
@@ -24,7 +24,7 @@ class GraphShowTest < Plastic::TestCase
   end
 
   def test_a_hand_edited_graph_json_is_overwritten_from_rows
-    intent = open_intent
+    intent = open_keyed_intent
     add_node("a")
     File.write(graph_path(intent), '{"bogus":true}')
 

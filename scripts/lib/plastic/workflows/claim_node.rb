@@ -5,7 +5,7 @@ require_relative "../code_workflow"
 module Plastic
   module Workflows
     # Claims an open node whose needed nodes are done. The fourth claim of a
-    # node parks it instead, with the owner's question, and refuses. A refused
+    # node moves to needs_info instead, with the owner's question, and refuses. A refused
     # claim keeps its routine run open, so the next call claims again.
     class ClaimNode < CodeWorkflow
       [facts, steps, outcomes].each(&:clear)
@@ -51,7 +51,7 @@ module Plastic
         context.print("last reason: #{node.reason}") if node.reason
       end
 
-      outcome :done, offers: "plastic node done %{intent_id} %{id} --judge tests --findings TEXT",
+      outcome :done, offers: "plastic node done %{intent_id} %{id} TEXT",
         because: "node %{id} is claimed"
     end
   end

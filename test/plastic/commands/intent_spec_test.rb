@@ -29,6 +29,27 @@ class IntentSpecTest < Plastic::TestCase
     assert_includes result.out, "open: which store wins"
   end
 
+  def test_a_clear_spec_without_a_go_ahead_asks_the_owner_and_offers_no_command
+    intent = open_intent
+    write_spec(intent, "# Spec\n\n## Done criteria\n- ships\n")
+
+    result = call(intent.intent_id)
+
+    assert_equal [0, "next: none"], [result.code, result.out[/^next: .*/]]
+    assert_includes result.out, "because: the owner must give the go-ahead for intent #{intent.intent_id}"
+    assert_includes result.out, "Ask the owner for the go-ahead. Only after the owner gives it, record it with plastic intent approve #{intent.intent_id}."
+  end
+
+  def test_a_clear_spec_with_a_go_ahead_offers_auto
+    intent = open_intent
+    write_spec(intent, "# Spec\n\n## Done criteria\n- ships\n")
+    plastic("intent", "approve", intent.intent_id, table: Plastic::CLI::TABLE)
+
+    result = call(intent.intent_id)
+
+    assert_includes result.out, "next: plastic auto #{intent.intent_id}"
+  end
+
   def test_no_spec_misses_no_open_decision
     intent = open_intent
 

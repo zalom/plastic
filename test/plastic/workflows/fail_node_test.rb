@@ -10,7 +10,7 @@ class WorkflowFailNodeTest < Plastic::TestCase
     store_graphs.work.add_node(intent_id: "1", title: "Build", criterion: "it runs")
   end
 
-  def fail_node = run_workflow(Plastic::Workflows::FailNode, intent_id: "1", id: "n1", reason: "red")
+  def fail_node = run_workflow(Plastic::Workflows::FailNode, intent_id: "1", id: "n1", text: "red")
 
   def test_a_claimed_node_fails_with_its_reason
     store_graphs.work.claim_node(intent_id: "1", id: "n1", by: "s-1")

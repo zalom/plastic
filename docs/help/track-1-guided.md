@@ -29,9 +29,9 @@ directory (see station 5). Either way, nothing in this track touches a real proj
 Run `plastic intent new` and describe the work in plain words, for example "add a
 short Usage section to this project's README."
 
-Artifact: a new intent directory, `{id}--slug.md`, plus the sentinel placeholder lifecycle
-files (`spec.md`, `plan.md`, `checklist.md`, `outcome.md`) and empty `actions/` and
-`resources/` folders.
+Artifact: a new intent directory, `{id}--slug/` holding `intent.md`, the placeholder
+files `spec.md` and `outcome.md`, `graph.json`, and empty `actions/` and `resources/`
+folders.
 
 Checkpoint: open the new file. It already has a real id and a one-line description; nothing
 was hand-typed into it directly. That is the point: intents are always scaffolded by the
@@ -65,7 +65,7 @@ is already sitting in `## Insights`, in writing.
 ### 4. How, write the graph
 
 In the same conversation, the agent turns the rulings into the graph. It writes `graph.md` from
-`templates/graph.md`. No command creates it; once it exists, `plastic node done` and `plastic node answer` update it.
+`templates/graph.md`. No command creates it; once it exists, `plastic node done` and `plastic node resolve` update it.
 
 Artifact: `graph.md` (nodes, edges, dispatch policy) and one `nodes/N.md` file per node this
 small delivery needs. A delivery this size is one node; many independent tasks instead get
@@ -81,7 +81,7 @@ Graph execution needs the delivery lock. Without it, `plastic next` names
 `plastic auto ID` as the next step. When that command exits 3, stop and report the refusal.
 
 Teach the loop: `plastic graph ready ID` lists which nodes are ready. Close a finished node with
-`plastic node done`. `plastic node answer` closes a node that waits on an owner's ruling.
+`plastic node done`. `plastic node resolve` reopens a node that waits on an owner's ruling.
 `plastic graph show ID` reads the ledger (running, done, blocked, or waiting on a decision).
 Call `plastic next` again after each node returns, until the graph is empty.
 
@@ -94,9 +94,10 @@ moving to station 6. When the graph is complete, `plastic next` names `plastic i
 
 ### 6. End
 
-Run `plastic intent end ID`. It asks for the merge and architecture map records under
-Verification in outcome.md, then for `--judge` and `--evidence` by criterion key. Use
-`plastic intent end ID --abandoned` for an intent that will not ship.
+Run `plastic intent end ID`. It takes no options. It needs every live node done, every
+criterion covered, an accepted verdict from `plastic intent judge ID` and
+`plastic intent verdict ID accept TEXT`, and the merge and architecture map records under
+Verification in outcome.md. Use `plastic intent abandon ID` for an intent that will not ship.
 
 When the intent has a code branch or worktree, merge the branch yourself first. Plastic does
 not merge, and a delivered close needs the `Merged:` line under Verification in outcome.md; Plastic does not check the merge itself.

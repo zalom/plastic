@@ -7,7 +7,7 @@ require_relative "worktree"
 module Plastic
   module Workflows
     # Arms delivery on an intent: refuses an open decision, no done
-    # criteria, a done or abandoned intent, or another session's live lock;
+    # criteria, no go-ahead row, a done or abandoned intent, or another session's live lock;
     # fails with no session named; otherwise takes the lock and goes active,
     # then prints the code worktree when the store's project names a repository.
     class StartAuto < CodeWorkflow
@@ -22,7 +22,8 @@ module Plastic
 
       def self.problem_for(context)
         id = context.intent_id
-        state_problem(id, context.intent) || spec_problem(id, context) || lock_problem(id, context)
+        state_problem(id, context.intent) || spec_problem(id, context) || lock_problem(id, context) ||
+          approval_problem(id, context)
       end
 
       def self.state_problem(id, intent)
@@ -46,6 +47,12 @@ module Plastic
         return nil unless lock && holder != context.session && lock.live?
 
         "intent #{id} is locked by session #{holder}"
+      end
+
+      def self.approval_problem(id, context)
+        return nil if context.retrieval.approval(id)
+
+        "intent #{id} has no go-ahead; the owner approves it with plastic intent approve #{id}"
       end
 
       gate "no intent %{intent_id} in this store", stops: :failure, pass: ->(context) { !context.intent.nil? }

@@ -47,15 +47,15 @@ class WorkNodeWriterTest < Plastic::TestCase
     assert_equal :blocked, @work.claim_node(intent_id: "1", id: "n2", by: "a").first
   end
 
-  def test_a_fourth_claim_parks_the_node_for_the_owner
+  def test_a_fourth_claim_moves_the_node_to_needs_info_for_the_owner
     add
     3.times do
       @work.claim_node(intent_id: "1", id: "n1", by: "a")
       @work.release_node(intent_id: "1", id: "n1")
     end
-    state, parked = @work.claim_node(intent_id: "1", id: "n1", by: "a")
+    state, held = @work.claim_node(intent_id: "1", id: "n1", by: "a")
 
-    assert_equal [:capped, "parked", "claimed 3 times; the owner decides"], [state, parked.state, parked.question]
+    assert_equal [:capped, "needs_info", "claimed 3 times; the owner decides"], [state, held.state, held.question]
   end
 
   def test_a_move_from_a_state_it_does_not_leave_writes_nothing
@@ -73,11 +73,11 @@ class WorkNodeWriterTest < Plastic::TestCase
     assert_equal %w[done tests green], [done.state, done.judge, done.findings]
   end
 
-  def test_an_answer_reopens_a_parked_node_with_its_tries_reset
+  def test_a_resolution_reopens_a_needs_info_node_with_its_tries_reset
     add
     @work.claim_node(intent_id: "1", id: "n1", by: "a")
-    @work.park_node(intent_id: "1", id: "n1", question: "which?")
-    answered = @work.answer_node(intent_id: "1", id: "n1", answer: "this one")
+    @work.ask_node(intent_id: "1", id: "n1", question: "which?")
+    answered = @work.resolve_node(intent_id: "1", id: "n1", answer: "this one")
 
     assert_equal ["open", 0, "this one"], [answered.state, answered.retries, answered.answer]
   end

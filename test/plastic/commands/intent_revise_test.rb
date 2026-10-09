@@ -4,7 +4,7 @@ require_relative "../../test_helper"
 require_relative "../../../scripts/lib/plastic/commands/intent_revise"
 
 class IntentReviseTest < Plastic::TestCase
-  FILE = "1--alpha.md"
+  FILE = "intent.md"
 
   def call(*args) = plastic("intent", "revise", *args, table: Plastic::CLI::TABLE)
 

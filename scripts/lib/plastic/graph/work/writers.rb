@@ -7,6 +7,8 @@ require_relative "../knowledge/intent/writer"
 require_relative "../knowledge/intent/reviser"
 require_relative "node/writer"
 require_relative "edge/writer"
+require_relative "approval/writer"
+require_relative "verdict/writer"
 require_relative "../knowledge/ruling/writer"
 require_relative "../knowledge/link/writer"
 require_relative "../knowledge/roadmap/writer"
@@ -41,6 +43,10 @@ module Plastic
         def nodes = built(:nodes) { Node::Writer.new(databases, retrieval) }
 
         def edges = built(:edges) { Edge::Writer.new(databases, retrieval) }
+
+        def approvals = built(:approvals) { Approval::Writer.new(databases, retrieval, session:) }
+
+        def verdicts = built(:verdicts) { Verdict::Writer.new(databases, retrieval, session:) }
 
         def rulings = built(:rulings) { Knowledge::Ruling::Writer.new(databases, retrieval, session:) }
 

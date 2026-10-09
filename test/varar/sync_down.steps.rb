@@ -25,7 +25,7 @@ module SyncDownAcceptance
     "spec changed on both sides" => ->(kernel) { both_sides(kernel) },
     "both sides and own file row" => lambda do |kernel|
       both_sides(kernel)
-      change_row(kernel, "1--alpha.md", "row only")
+      change_row(kernel, "intent.md", "row only")
     end
   }.freeze
 

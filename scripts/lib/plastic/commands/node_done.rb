@@ -1,25 +1,14 @@
 # frozen_string_literal: true
 
 require_relative "../routine"
-require_relative "../graph/work/node"
 
 module Plastic
   module Commands
-    # Moves a claimed node to done, judged by tests, tool, agent or owner.
+    # Moves a claimed node to done, with its findings. A done node takes new findings in place of the old.
     class NodeDone < Routine
       node_subject
-      option :judge, switch: "--judge WHO", text: "tests, tool, agent or owner", required: true
-      option :findings, switch: "--findings TEXT", text: "what the judge found", required: true
-      option :repair, switch: "--repair", text: "record verification for an already done node", default: false
+      argument :text, label: "TEXT", text: "what the work showed"
       writes :work
-
-      def call
-        raise CLI::Command::Usage, "--judge takes tests, tool, agent or owner" unless Graph::Work::Node::JUDGES.include?(parsed[:judge])
-
-        raise CLI::Command::Usage, "--findings must describe the verification" if parsed[:findings].to_s.strip.empty?
-
-        super
-      end
 
       workflow :code_done_node, next: :noop
     end

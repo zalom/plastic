@@ -18,8 +18,8 @@ This day ledger holds the checklist and savepoint lines that every session touch
 no plan, no actions, and no id that participates in a store's Folgezettel graph.
 
 ## Outcome
-`checklist.md` and `savepoint.md` appear inside this day's directory on first append,
-each written under an exclusive file lock so concurrent sessions never lose or
+`savepoint.md` appears inside this day's directory on first append,
+written under an exclusive file lock so concurrent sessions never lose or
 interleave a line.
 
 ## Insights

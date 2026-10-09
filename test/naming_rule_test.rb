@@ -62,12 +62,12 @@ class NamingRuleTest < Minitest::Test
   end
 
   def test_executor_contract_sections_are_unchanged
-    assert_equal ["## Your Responsibilities", "## How You Work", "## Completion Report", "## Constraints"],
+    assert_equal ["## Your Responsibilities", "## How You Work", "## Completion Report", "## Constraints", "## Planning directive"],
       headings(File.read(EXECUTOR_MD))
   end
 
   def test_enforcer_contract_sections_are_unchanged
-    assert_equal ["## Your Responsibilities", "## How You Work", "## Human-facing reporting", "## Constraints"],
+    assert_equal ["## Your Responsibilities", "## How You Work", "## Human-facing reporting", "## Constraints", "## Planning directive"],
       headings(File.read(ENFORCER_MD))
   end
 end

@@ -13,15 +13,15 @@ module Plastic
         intent
       end
 
-      # Spec, outcome and one node judged done: nothing stands in the way of the end.
+      # Spec, outcome and one node done: nothing stands in the way of the end.
       def ready_intent(verification: VERIFICATION, spec: "## Done criteria\n- It works\n")
         intent = specified_intent(spec)
         write("#{intent.dir}/outcome.md", "# Outcome\n\nDelivered.\n#{verification}")
         sync_up
         work = store_graphs.work
-        work.add_node(intent_id: "1", title: "Build")
+        work.add_node(intent_id: "1", title: "Build", criterion: "It works")
         work.claim_node(intent_id: "1", id: "n1", by: "a")
-        work.done_node(intent_id: "1", id: "n1", judge: "tests", findings: "green")
+        work.done_node(intent_id: "1", id: "n1", findings: "green")
         intent
       end
 

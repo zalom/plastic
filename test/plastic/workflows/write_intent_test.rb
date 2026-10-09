@@ -5,7 +5,7 @@ require_relative "../../../scripts/lib/plastic/workflows/write_intent"
 
 class WriteIntentTest < Plastic::TestCase
   WriteIntent = Plastic::Workflows::WriteIntent
-  DECLARED = %i[title parent_id ref after kind status slug problem intent_id linked printed_paths].freeze
+  DECLARED = %i[title parent_id ref after kind status problem intent_id linked printed_paths].freeze
 
   # The work graph as WriteIntent calls it, keeping each call.
   class Work
@@ -27,20 +27,26 @@ class WriteIntentTest < Plastic::TestCase
     def ref_line(ref) = "ref: #{ref}, in words"
   end
 
-  def run_flow(problem: nil, **facts)
+  class Retrieval
+    def initialize(*ids) = @ids = ids
+
+    def intent(id) = (id if @ids.include?(id))
+  end
+
+  def run_flow(problem: nil, retrieval: Retrieval.new, **facts)
     work = Work.new(problem)
     context = Plastic::Context.new(declared: DECLARED, facts: { title: "Build", status: "open", kind: "work" }.merge(facts),
-      graphs: { work: })
+      graphs: { work:, retrieval: })
     [WriteIntent.call(context), context.printed, work.calls]
   end
 
   def test_the_intent_is_written_then_printed_then_named
-    outcome, printed, calls = run_flow(parent_id: "1", ref: "ENG-1", slug: "build")
+    outcome, printed, calls = run_flow(parent_id: "1", ref: "ENG-1")
 
     assert_equal :done, outcome
     assert_equal ["intent: 1a", "ref: ENG-1, in words", "printed store/index.json", "printed store/1a--build/1a--build.md"], printed
     assert_equal [[:problem, { parent_id: "1", ref: "ENG-1", status: "open" }],
-      [:write, { title: "Build", parent_id: "1", ref: "ENG-1", kind: "work", status: "open", slug: "build" }], [:print, "1a"]], calls
+      [:write, { title: "Build", parent_id: "1", ref: "ENG-1", kind: "work", status: "open" }], [:print, "1a"]], calls
   end
 
   def test_no_ref_prints_no_ref_line
@@ -52,6 +58,18 @@ class WriteIntentTest < Plastic::TestCase
 
     assert_equal [Plastic::Failed, "code_write_intent, gate: no intent 9 in this store to be the parent"], [outcome.class, outcome.message]
     assert_equal [[], [:problem]], [printed, calls.map(&:first)]
+  end
+
+  def test_an_after_that_names_no_intent_fails_the_call
+    outcome, = run_flow(after: "9")
+
+    assert_equal [Plastic::Failed, "code_write_intent, gate: no intent 9 in this store to link after"], [outcome.class, outcome.message]
+  end
+
+  def test_an_after_that_names_an_intent_passes_the_check_and_writes
+    _, _, calls = run_flow(after: "9", retrieval: Retrieval.new("9"))
+
+    assert_includes calls.map(&:first), :write
   end
 
   def test_the_outcome_offers_the_next_command_and_names_the_intent

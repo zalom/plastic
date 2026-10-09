@@ -27,6 +27,14 @@ module Plastic
         intent
       end
 
+      # An open intent whose synced spec.md holds one done criterion, so a node can name its key.
+      def open_keyed_intent(title = "Alpha", key: "done", **fields)
+        intent = open_intent(title, **fields)
+        write("#{intent.dir}/spec.md", "# Spec\n\n## Done criteria\n- [ ] [#{key}] it is done\n")
+        sync_up
+        intent
+      end
+
       # Reads every changed file of the store into its rows, as plastic sync up does.
       def sync_up
         work = store_graphs.work

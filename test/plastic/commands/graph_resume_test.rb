@@ -8,12 +8,12 @@ require_relative "../../../scripts/lib/plastic/commands/node_add"
 require_relative "../../../scripts/lib/plastic/commands/node_claim"
 require_relative "../../../scripts/lib/plastic/commands/node_done"
 require_relative "../../../scripts/lib/plastic/commands/node_fail"
-require_relative "../../../scripts/lib/plastic/commands/node_park"
+require_relative "../../../scripts/lib/plastic/commands/node_ask"
 require_relative "../../../scripts/lib/plastic/commands/sync_up"
 
 # Calls and fixtures the graph resume tests share.
 module GraphResumeHelper
-  CLEAR_SPEC = "# Spec\n\n## Done criteria\n- ships\n\n## Open Questions\n- none\n"
+  CLEAR_SPEC = "# Spec\n\n## Done criteria\n- [done] ships\n\n## Open Questions\n- none\n"
 
   def call(*args) = plastic("graph", "resume", *args, table: Plastic::CLI::TABLE)
 
@@ -38,12 +38,14 @@ module GraphResumeHelper
   def clear_spec(slug, intent)
     store_folder(slug).write("#{intent.dir}/spec.md", CLEAR_SPEC)
     plastic("sync", "up", "--project", slug, table: Plastic::CLI::TABLE)
+    plastic("intent", "approve", intent.intent_id, "--project", slug, table: Plastic::CLI::TABLE)
   end
 
   def ready_intent(title = "Alpha")
     intent = open_intent(title)
     write("#{intent.dir}/spec.md", CLEAR_SPEC)
     plastic("sync", "up", table: Plastic::CLI::TABLE)
+    plastic("intent", "approve", intent.intent_id, table: Plastic::CLI::TABLE)
     plastic("auto", intent.intent_id, env: { "PLASTIC_SESSION" => "s-1" }, table: Plastic::CLI::TABLE)
     intent
   end
@@ -56,9 +58,9 @@ module GraphResumeHelper
     intent = ready_intent
     %w[a b c d].each { |title| add_node(intent, title) }
     %w[n1 n2 n3 n4].each { |node_id| node("claim", intent, node_id) }
-    node("done", intent, "n1", "--judge", "owner", "--findings", "ok")
-    node("fail", intent, "n3", "--reason", "broke")
-    node("park", intent, "n4", "--question", "which way")
+    node("done", intent, "n1", "ok")
+    node("fail", intent, "n3", "broke")
+    node("ask", intent, "n4", "which way")
     intent
   end
 
@@ -88,12 +90,12 @@ class GraphResumeTest < Plastic::TestCase
     assert_includes lines(call), "done: n1 a"
   end
 
-  def test_claimed_failed_and_parked_nodes_print_as_in_progress_lines
+  def test_claimed_failed_and_needs_info_nodes_print_as_in_progress_lines
     intent_with_nodes_in_each_state
 
     assert_includes lines(call), "in progress: n2 claimed b"
     assert_includes lines(call), "in progress: n3 failed c"
-    assert_includes lines(call), "in progress: n4 parked d"
+    assert_includes lines(call), "in progress: n4 needs_info d"
   end
 
   def test_a_done_node_is_not_listed_as_in_progress
@@ -127,7 +129,7 @@ class GraphResumeTest < Plastic::TestCase
 
     result = call
 
-    assert_includes lines(result), "then: Before you plan, fetch the architecture map as current as possible with an architecture mapping tool such as Enola, or map the code yourself; Plastic runs no tool. Read the intent's goal and done criteria. Add work with plastic node add 1 TITLE --criterion TEXT, " \
+    assert_includes lines(result).find { |line| line.start_with?("then: ") }, "Before you plan, fetch the architecture map as current as possible with an architecture mapping tool such as Enola, or map the code yourself; Plastic runs no tool. Read the intent's goal and done criteria. Add work with plastic node add 1 TITLE --criterion KEY, " \
       "then add dependencies with plastic edge add. Use plastic graph ready 1 after the plan is recorded."
     refute_includes result.out, "then: (because"
   end

@@ -3,12 +3,12 @@
 ## What you will do
 
 This tutorial takes one small change to a Ruby project from a new intent to a delivered
-close. You create the intent, record a ruling, write the spec, plan, and checklist, make the
-change on a branch with a failing test first, merge the branch, and close the intent as
-delivered. At the end, the intent sits under `## Completed` with the `outcome.md` you wrote and
-a verification that passed.
+close. You create the intent, record a ruling, write the spec, plan the work graph, make the
+change on a branch with a failing test first, have the work judged, merge the branch, and close
+the intent as delivered. At the end, the intent sits under `## Completed` with the
+`outcome.md` you wrote and a verification that passed.
 
-The tutorial uses the checklist path, which needs no hooks, no lock, and no agent team. Every
+The tutorial uses the guided path, which needs no hooks, no lock, and no agent team. Every
 command here was run in a disposable `HOME` and `PLASTIC_HOME`. The output blocks come from
 that run, and some are shortened. Paths, times, commit hashes, and lock names differ on your
 machine: `/home/you` stands for your home directory.
@@ -47,7 +47,7 @@ Each step says who does it:
   builds do not include it, and gems installed under your normal `HOME` may not be found from
   the scratch one. Run `gem install minitest` if the check fails.
 
-## 1. Create a small Ruby project
+## Create a small Ruby project
 
 **You.** Create a Git repository named `greeter` with one method and one test:
 
@@ -90,7 +90,7 @@ git add .
 git commit -m "chore: greeter"
 ```
 
-## 2. Register the project
+## Register the project
 
 **Plastic.** From inside the repository, run:
 
@@ -102,27 +102,30 @@ plastic install --claude
 repository path in `~/.plastic/projects.yml`. Every later command run inside this repository
 resolves to the `greeter` store. From anywhere else, add `--project greeter`.
 
-## 3. Create the intent (What)
+## Create the intent (What)
 
 **Plastic.** Run:
 
 ```sh
-plastic intent new "Let Greeter.greet take an optional greeting word" --slug custom-greeting
+plastic intent new "Let Greeter.greet take an optional greeting word"
 ```
 
 The output names the new intent directory and the next step:
 
 ```text
-/home/you/.plastic/stores/greeter/store/1--custom-greeting
+intent: 1
+printed store/1--let-greeter-greet-take-an-optional/intent.md
+printed store/1--let-greeter-greet-take-an-optional/savepoint.md
+printed store/1--let-greeter-greet-take-an-optional/graph.json
 next: plastic intent spec 1 --project greeter
 because: a new intent has no specification yet
 ```
 
-The directory holds the intent file `1--custom-greeting.md`, placeholder files `spec.md`,
-`plan.md`, `checklist.md`, and `outcome.md`, and empty `actions/` and `resources/` folders.
+The directory holds the intent file `intent.md`, placeholder files `spec.md`
+and `outcome.md`, and empty `actions/` and `resources/` folders.
 The intent is listed under `## Active` in `~/.plastic/stores/greeter/INDEX.md`.
 
-## 4. Record the rulings (Why)
+## Record the rulings (Why)
 
 **Plastic.** Run `plastic intent spec 1`. It prints the intent's state screen and the rules the
 speccing conversation follows: one question at a time, two or three approaches with a
@@ -141,12 +144,11 @@ by the ruling text.
 `intent rule` writes only to `## Insights`. If you keep a `### Decisions` list in the intent
 file, write it yourself.
 
-## 5. Write the spec, the plan, and the checklist (How)
+## Write the spec and plan the graph (How)
 
-**You or your agent** write three files in the intent directory. No command writes them. Each
-file replaces the placeholder that `intent new` created.
-
-`spec.md` states the accepted scope:
+**You or your agent** write `spec.md` in the intent directory. No command writes it. It
+replaces the placeholder that `intent new` created. Each done criterion carries a key in
+square brackets, and the work graph ties every node to one key:
 
 ```markdown
 # Spec: Optional greeting word
@@ -167,53 +169,37 @@ Add a keyword argument with the default "Hello".
 - The default stays "Hello", so existing callers are unchanged.
 
 ## Acceptance Criteria
-- [ ] The new test passes and the old test still passes.
+- [ ] [greeting] The new test passes and the old test still passes.
 ```
 
-`plan.md` follows `templates/plan.md`: a `## Goal`, the `## Steps`, and `## Notes`.
-`checklist.md` follows `templates/checklist.md`, with one checkbox for each piece of work:
-
-```markdown
-# Checklist: Optional greeting word
-
-## In Progress
-- [ ] Add a failing test for the greeting keyword
-- [ ] Add the greeting keyword to Greeter.greet
-
-## Completed
-(move items here when done)
-```
-
-**Plastic.** `plastic intent show 1` now reads the checklist and points at execution:
-
-```text
-| S1 | open | Add a failing test for the greeting keyword |
-| S2 | open | Add the greeting keyword to Greeter.greet |
-next: plastic next --project greeter
-because: the checklist has unfinished work
-```
-
-Until `spec.md` is written, the same screen points back at `plastic intent spec 1`. Until
-`plan.md` and `checklist.md` are written, it says so in the `because:` line.
-
-## 6. Do the work (Exec)
-
-**Plastic.** `plastic next` prints the next unchecked item. On a checklist intent, it
-does not run anything:
-
-```text
-work       Add a failing test for the greeting keyword
-checklist  /home/you/.plastic/stores/greeter/store/1--custom-greeting/checklist.md
-
-next: none
-because: perform this checklist item, record its verification, then run plastic intent show 1 --project greeter
-```
-
-**You or your agent** do the item on a branch. The branch name `plastic/1--custom-greeting`
-matches the name `plastic auto` prints, so the close can find it:
+**Plastic.** Give the go-ahead, then add the nodes. The go-ahead is the owner's step, and
+`plastic auto` refuses an intent without it:
 
 ```sh
-git switch -c plastic/1--custom-greeting
+plastic intent approve 1 --project greeter
+plastic node add 1 "Add a failing test for the greeting keyword" --criterion greeting --project greeter
+plastic node add 1 "Add the greeting keyword to Greeter.greet" --criterion greeting --project greeter
+plastic edge add 1 N2 N1 --project greeter
+```
+
+`graph.json` in the intent directory is the checklist: the go-ahead, the verdicts, the nodes
+with their criterion keys, and the edges. Plastic reprints it from the rows. `plastic graph
+check 1` finds a done node with no findings, an isolated node, or a criterion no node covers.
+`plastic intent show 1` lists the nodes and points at execution.
+
+## Do the work (Exec)
+
+**Plastic.** `plastic graph ready 1` lists the nodes ready to claim. Claim one, and Plastic
+prints its brief:
+
+```sh
+plastic node claim 1 N1 --project greeter
+```
+
+**You or your agent** do the node on a branch:
+
+```sh
+git switch -c plastic/1--let-greeter-greet-take-an-optional
 ```
 
 Add the new test to `test/greeter_test.rb`:
@@ -235,10 +221,13 @@ ArgumentError: wrong number of arguments (given 2, expected 1)
 2 runs, 1 assertions, 0 failures, 1 errors, 0 skips
 ```
 
-Commit the red test. Then tick the item in `checklist.md` in the intent directory: change
-`- [ ]` to `- [x]`.
+Commit the red test. Then record the findings, which marks the node done:
 
-Run `plastic next` again for the second item. Change `lib/greeter.rb`:
+```sh
+plastic node done 1 N1 "Test added and red: ArgumentError on the greeting keyword" --project greeter
+```
+
+Claim the second node. Change `lib/greeter.rb`:
 
 ```ruby
 module Greeter
@@ -254,21 +243,47 @@ Run the tests again. Both pass:
 2 runs, 2 assertions, 0 failures, 0 errors, 0 skips
 ```
 
-Commit, and tick the second item. `plastic intent show 1` now points at
-`plastic intent end 1`, because every checklist item is complete.
+Commit, and record the findings:
 
-To keep the commit on the record, add a note to the savepoint. Replace `<sha>` with the commit
+```sh
+plastic node done 1 N2 "Greeter.greet takes greeting:, default Hello; both tests green" --project greeter
+```
+
+When a node cannot go on, `plastic node fail ID NODE TEXT` records why, `plastic node ask ID
+NODE TEXT` puts a question to the owner, and `plastic node impede ID NODE TEXT` records an
+impediment. `plastic node resolve ID NODE TEXT` reopens a node that waits on an answer.
+
+To keep the commit on the record, write a session note. Replace `<sha>` with the commit
 hash:
 
 ```sh
-plastic intent note 1 "<sha> greeting keyword, tests green" --kind Commit
+plastic session note "<sha> greeting keyword, tests green"
 ```
 
-## 7. Write the outcome and verify
+## Judge the work
+
+**Plastic.** `plastic intent judge 1` prints the steps that start the judge. It takes no
+options:
+
+```sh
+plastic intent judge 1 --project greeter
+```
+
+**The judge**, a reasoning agent, reads the spec, the nodes and their findings, and the
+code. It records its verdict, with its findings as the text:
+
+```sh
+plastic intent verdict 1 accept "The new test and the old test pass; the default is unchanged." --project greeter
+```
+
+A `revise` verdict sends the agent back to add a fix node with `plastic node add`. A review
+has two rounds, and a second `revise` is the owner's step: exit 3. An `accept` verdict that
+is older than the newest change of a live node does not count.
+
+## Write the outcome and merge the code (Git)
 
 **You or your agent** replace the `outcome.md` placeholder in the intent directory. The shape
-follows `templates/outcome.md`. The `disposition` must match the close you plan, and each
-`## Delivered` row names one checklist step:
+follows `templates/outcome.md`:
 
 ```markdown
 ---
@@ -282,8 +297,8 @@ Greeter.greet takes an optional greeting word; the default stays Hello.
 ## Delivered
 | Row | What |
 | --- | --- |
-| S1 | A test for the greeting keyword |
-| S2 | The greeting keyword on Greeter.greet |
+| N1 | A test for the greeting keyword |
+| N2 | The greeting keyword on Greeter.greet |
 
 ## Verification
 - The new test passes and the old test still passes: `ruby -Ilib test/greeter_test.rb` printed 2 runs, 0 failures.
@@ -295,84 +310,62 @@ None
 None
 ```
 
-**Plastic.** Record what you verified as a report note:
-
-```sh
-plastic intent note 1 "Both greeter tests pass on the branch; outcome.md written" --kind Report
-```
-
-`--kind` takes `Review`, `Commit`, or `Report`. Without it, the note is a `Report`.
-
-Then run `plastic intent end 1`. It runs the per-intent doctor check, the em-dash guard,
-and a diffstat of the code branch against `main`. Every check passes, and the command exits 0:
-
-```text
-doctor: pass
-em-dash guard: pass (0 violations)
-diffstat against main:
- lib/greeter.rb       | 4 ++--
- test/greeter_test.rb | 4 ++++
- 2 files changed, 6 insertions(+), 2 deletions(-)
-report lines:
-2026-09-23T11:50:28Z  Report  Both greeter tests pass on the branch; outcome.md written
-next: plastic intent end 1 --project greeter
-because: a clean verify is what makes the close trustworthy
-```
-
-If a check fails, fix what it names and run `plastic intent end 1` again. Do not close the
-intent while the check fails.
-
-## 8. Merge the code (Git)
-
-Plastic does not merge. Its delivered close needs the `Merged:` line under Verification in outcome.md.
-
-**Plastic.** Try the close while the repository is still on the code branch:
-
-```sh
-plastic intent end 1 --judge tool --evidence completion.json
-```
-
-It hands over the merge check and closes nothing.
+Plastic does not merge. The delivered close needs the `Merged:` and `Architecture map:`
+bullets under Verification in outcome.md. With `review.pull_request` set to `required`, the
+default, it also needs a `Pull request:` bullet and, once the person approves, an `Approved:`
+bullet. A project that sets it to `off` skips those two.
 
 **You.** Merge the branch and run the tests on `main`:
 
 ```sh
 git switch main
-git merge --no-ff plastic/1--custom-greeting
+git merge --no-ff plastic/1--let-greeter-greet-take-an-optional
 ruby -Ilib test/greeter_test.rb
 ```
 
-## 9. Close the intent as delivered
+Add the bullets to `## Verification`, then store the file:
 
-**Plastic.** Close the intent:
+```markdown
+- Merged: plastic/1--let-greeter-greet-take-an-optional into main at <commit>
+- Architecture map: enola at <source revision>
+```
 
 ```sh
-plastic intent end 1 --judge tool --evidence completion.json
+plastic sync up --project greeter
 ```
 
-The close fills the records that are still
-placeholders from the record itself. Here that is the action file:
+## Close the intent as delivered
 
-```text
-end-intent: backfilled actions/ACTION_1.md from the record
+**Plastic.** Close the intent. The command takes no options:
+
+```sh
+plastic intent end 1 --project greeter
 ```
 
-`plastic intent show 1` now shows both steps done:
+The close needs every live node done, every criterion covered, an accepted verdict that is
+not older than the newest node change, and the `Verification` bullets you wrote in the outcome. When
+something is missing, the command prints it and closes nothing. When everything holds, the
+close writes the completion row with the judge verdict and the evidence built from the rows:
+each criterion key with its done nodes and their findings. It releases the lock, prints the
+intent's files, and hands the agent the wind-down steps: stop the processes and agents the
+intent started.
+
+`plastic intent show 1` shows the intent done:
 
 ```text
 next: none
 because: the intent is completed
 ```
 
-`outcome.md` keeps what you wrote. The close writes the `--summary` text into the intent file's
-`## Outcome` section.
+`outcome.md` keeps what you wrote.
 
 ## The same change in auto mode
 
-In auto mode, an agent team does steps 4 to 9. The commands below set up and inspect that
+In auto mode, an agent team does the work from the rulings to the close. The commands below set up and inspect that
 run. They do not run the team; your harness does that.
 
-1. `plastic auto ID` takes the delivery lock and names the code worktree at
+1. `plastic auto ID` refuses with exit 3 until `plastic intent approve ID` has written the
+   go-ahead. Then it takes the delivery lock and names the code worktree at
    `<repo>/.claude/worktrees/ID--slug` on branch `plastic/ID--slug`. Its `next:` line is the
    `git worktree add` command that creates the worktree.
 
@@ -388,17 +381,19 @@ run. They do not run the team; your harness does that.
 2. `plastic intent brief ID` prints the preamble the dispatched agent reads first.
 3. `plastic intent lock status ID` shows who holds the lock and where the worktree is.
 4. `plastic next` prints the report contract and the review rules the lead follows.
-5. The close is the same `plastic intent end` as in step 9, with the same merge check.
+5. The close is the same `plastic intent end` as in the close above, with the same merge check.
 
-`plastic intent end ID` refuses an intent that nobody worked on. The spec, plan,
-checklist, and outcome are still placeholders, and the worktree has no changes. Close it with
-`--abandoned` instead:
+`plastic intent end ID` refuses an intent that has no done criterion, no accepted verdict or
+no merge record. An intent that will not ship closes with `plastic intent abandon`, which
+takes no options. It hands over the revert steps until `outcome.md` holds a `Reverted:`
+bullet under `## Verification`:
 
 ```sh
-plastic intent end 2 --abandoned --summary "Probe of the auto contract only."
+plastic intent abandon 2 --project greeter
 ```
 
-The abandoned close also removes the code worktree.
+The close sets the status to `abandoned`, with the disposition `superseded` when another
+intent supersedes it and `cancelled` otherwise, and writes no completion row.
 
 ## Where to go next
 

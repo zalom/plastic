@@ -38,10 +38,22 @@ class AutoRoadmapTest < Plastic::TestCase
     assert_includes result.err, "no roadmap r9"
   end
 
+  def test_a_roadmap_item_without_a_go_ahead_is_refused_with_no_lock
+    roadmap
+    item("a")
+    intent_id, = store_graphs.work.start_roadmap_item("r1", "a")
+
+    result = call("r1")
+
+    assert_equal [3, []], [result.code, lock_rows]
+    assert_includes result.err, "plastic intent approve #{intent_id}"
+  end
+
   def test_a_roadmap_arms_its_in_flight_item
     roadmap
     item("a")
     intent_id, = store_graphs.work.start_roadmap_item("r1", "a")
+    plastic("intent", "approve", intent_id, table: Plastic::CLI::TABLE)
 
     result = call("r1")
 

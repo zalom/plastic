@@ -11,14 +11,14 @@ class GraphReadyTest < Plastic::TestCase
   def add_node(title) = plastic("node", "add", "1", title, "--criterion", "done", table: Plastic::CLI::TABLE)
 
   def two_linked_nodes
-    open_intent
+    open_keyed_intent
     add_node("a")
     add_node("b")
     plastic("edge", "add", "1", "n1", "n2", table: Plastic::CLI::TABLE)
   end
 
   def test_an_open_node_with_no_need_is_ready
-    open_intent
+    open_keyed_intent
     add_node("a")
 
     result = call("1")
@@ -39,7 +39,7 @@ class GraphReadyTest < Plastic::TestCase
   def test_claimed_work_with_no_worker_names_none
     two_linked_nodes
     plastic("node", "claim", "1", "n1", table: Plastic::CLI::TABLE)
-    plastic("node", "done", "1", "n1", "--judge", "owner", "--findings", "ok", table: Plastic::CLI::TABLE)
+    plastic("node", "done", "1", "n1", "ok", table: Plastic::CLI::TABLE)
     plastic("node", "claim", "1", "n2", table: Plastic::CLI::TABLE)
 
     result = call("1")

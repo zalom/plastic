@@ -5,7 +5,7 @@ class ConfigTemplateTest < Minitest::Test
   TEMPLATE = File.expand_path("../../templates/config.yml", __FILE__)
 
   def setup
-    @config = YAML.safe_load(File.read(TEMPLATE))
+    @config = YAML.safe_load_file(TEMPLATE)
   end
 
   def test_the_template_is_config_version_3
@@ -34,5 +34,9 @@ class ConfigTemplateTest < Minitest::Test
 
   def test_the_execution_mode_is_subagent_driven
     assert_equal "subagent-driven", @config["execution_mode"]
+  end
+
+  def test_a_pull_request_review_is_required_by_default
+    assert_equal "required", @config.dig("review", "pull_request")
   end
 end

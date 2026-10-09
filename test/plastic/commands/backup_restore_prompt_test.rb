@@ -13,7 +13,7 @@ class BackupRestorePromptTest < Plastic::TestCase
 
   def sync_down(home) = plastic("sync", "down", "--project", "alpha", env: env_for(home), table: Plastic::CLI::TABLE)
 
-  def intent_file(home) = File.join(home, "stores", "alpha", "store", "1--alpha", "1--alpha.md")
+  def intent_file(home) = File.join(home, "stores", "alpha", "store", "1--alpha", "intent.md")
 
   def edit_file(home) = File.write(intent_file(home), "\nWritten after the backup.\n", mode: "a")
 

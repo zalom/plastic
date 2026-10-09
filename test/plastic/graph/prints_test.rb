@@ -37,7 +37,7 @@ class PrintsTest < Plastic::TestCase
     graphs.work.print_intent("1")
     printed = store_graphs.retrieval.printed
 
-    %w[store/index.json store/1--one/1--one.md store/1--one/graph.json store/1--one/savepoint.md].each do |path|
+    %w[store/index.json store/1--one/intent.md store/1--one/graph.json store/1--one/savepoint.md].each do |path|
       assert_equal Digest::SHA256.file(store_path(path)).hexdigest, printed.fetch(path)
     end
   end
@@ -64,7 +64,7 @@ class PrintsTest < Plastic::TestCase
     store_graphs.work.write_intent(title: "One")
     store_graphs.databases[:work].transaction { |batch| batch.remove(:savepoints, intent_id: "1") }
 
-    assert_equal %w[store/1--one/1--one.md store/1--one/graph.json],
+    assert_equal %w[store/1--one/intent.md store/1--one/graph.json],
       Plastic::Graph::Prints.of_intent(retrieval, retrieval.intent("1")).map(&:path)
   end
 
@@ -73,7 +73,7 @@ class PrintsTest < Plastic::TestCase
     store_graphs.databases[:work].transaction { |batch| batch.put(:edges, { intent_id: "1", from: "a", to: "b", kind: "needs" }) }
     graph = JSON.parse(Plastic::Graph::Prints.of_intent(retrieval, retrieval.intent("1")).last.text)
 
-    assert_equal({ "intent" => "1", "nodes" => [], "edges" => [{ "intent_id" => "1", "from" => "a", "to" => "b", "kind" => "needs" }] }, graph)
+    assert_equal({ "intent" => "1", "approval" => nil, "verdicts" => [], "nodes" => [], "edges" => [{ "intent_id" => "1", "from" => "a", "to" => "b", "kind" => "needs" }] }, graph)
   end
 
   def test_a_kept_file_print_reads_its_bytes_only_to_write
@@ -89,7 +89,7 @@ class PrintsTest < Plastic::TestCase
     open_intent("One")
     open_intent("Two")
 
-    assert_equal %w[store/index.json store/1--one/1--one.md store/1--one/savepoint.md store/1--one/graph.json store/2--two/2--two.md
+    assert_equal %w[store/index.json store/1--one/intent.md store/1--one/savepoint.md store/1--one/graph.json store/2--two/intent.md
       store/2--two/savepoint.md store/2--two/graph.json], Plastic::Graph::Prints.of_store(retrieval).map(&:path)
   end
 

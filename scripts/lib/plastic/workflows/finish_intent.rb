@@ -4,18 +4,15 @@ require_relative "../agent_workflow"
 
 module Plastic
   module Workflows
-    # The harness verifies each criterion and writes the outcome before attesting.
+    # The harness writes the records the close needs and has the work judged.
     class FinishIntent < AgentWorkflow
       step "finish the required records", done: ->(context) { context.requirements.empty? },
         say: "Complete these recorded prerequisites: %{requirements}"
-      step "record the acceptance evidence", done: ->(context) { !context.attestation.nil? },
-        say: "Verify every done criterion. Write completion.json inside %{intent_folder}, using this JSON shape, where each key is a criterion key from spec.md:\n%{evidence_example}\n" \
-          "Replace each description with actual evidence. Write outcome.md there and run plastic sync up. " \
-          "Then run plastic intent end %{intent_id} --judge tests|tool|agent|owner --evidence completion.json. " \
-          "Choose the judge that actually accepted the intent. Use owner only for an explicit owner acceptance. " \
-          "Plastic records this attestation; it does not run the checks itself."
+      step "have the delivery judged", done: ->(context) { context.judged },
+        say: "No accepted review counts yet. Run plastic intent judge %{intent_id}; the judge records the verdict of the next review round with plastic intent verdict. " \
+          "Then run plastic intent end %{intent_id} again."
 
-      outcome :handoff, offers: nil, because: "the harness must verify the intent and record its outcome"
+      outcome :handoff, offers: nil, because: "the harness must record the missing prerequisites and have the delivery judged"
       outcome :done, offers: nil, because: "the completion records are ready"
     end
   end

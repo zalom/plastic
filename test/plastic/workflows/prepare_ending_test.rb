@@ -4,69 +4,119 @@ require_relative "../../test_helper"
 require_relative "../../../scripts/lib/plastic/workflows/prepare_ending"
 
 class PrepareEndingFixture < Plastic::TestCase
-  include DeliveryHelper
+  include LifecycleHelper
 
-  KEYED = "## Done criteria\n- [ ] [works] It works\n"
-
-  def prepare(session: "s-1", judge: nil, evidence: nil, abandoned: false)
-    run_workflow(Plastic::Workflows::PrepareEnding, harness: scoped_harness(session:), graphs: session_graphs, intent_id: "1", judge:, evidence:, abandoned:)
+  def prepare(session: "delivery")
+    run_workflow(Plastic::Workflows::PrepareEnding, harness: scoped_harness(session:), graphs: session_graphs(session), intent_id: "1")
   end
 
-  def evidence_file(intent, body = { "It works" => "the tests pass" })
-    write("#{intent.dir}/completion.json", JSON.generate(body))
-    "completion.json"
-  end
+  def session_graphs(session) = Plastic::Graph.open(home: @plastic_home, store: "global", session:)
 end
 
 class PrepareEndingTest < PrepareEndingFixture
-  def test_a_ready_intent_with_its_evidence_is_ready_to_end
-    intent = ready_intent
+  def test_an_accepted_delivered_intent_is_ready_to_end
+    accepted_intent
 
-    outcome, context = prepare(judge: "tests", evidence: evidence_file(intent))
-
-    assert_equal [:ready, { "It works" => "the tests pass" }], [outcome, context.attestation]
+    assert_equal :ready, prepare.first
   end
 
-  def test_keyed_evidence_is_ready
-    intent = ready_intent(spec: KEYED)
+  def test_no_verdict_row_hands_over_to_the_agent
+    specified
+    delivered_nodes
 
-    assert_equal :ready, prepare(judge: "tests", evidence: evidence_file(intent, { "works" => "ok" })).first
+    assert_equal :agent_needed, prepare.first
   end
 
-  def test_an_intent_without_evidence_needs_the_agent_with_an_example
-    ready_intent
+  def test_a_latest_verdict_of_revise_is_not_ready
+    specified
+    delivered_nodes
+    set_node_times(EARLY)
+    put_verdict(1, "revise", LATE)
 
-    outcome, context = prepare
-
-    assert_equal [:agent_needed, { "It works" => "Describe the evidence for this criterion" }], [outcome, JSON.parse(context.evidence_example)]
+    refute_equal :ready, prepare.first
   end
 
-  def test_the_example_is_keyed_by_the_criterion_keys
-    ready_intent(spec: KEYED)
+  def test_an_accept_older_than_a_live_node_is_not_ready
+    specified
+    delivered_nodes
+    put_verdict(1, "accept", EARLY)
+    set_node_times(LATE)
 
-    assert_equal({ "works" => "Describe the evidence for this criterion" }, JSON.parse(prepare.last.evidence_example))
+    refute_equal :ready, prepare.first
   end
 
-  def test_evidence_that_misses_a_criterion_fails_the_call
-    intent = ready_intent
+  def test_an_accept_at_the_same_second_as_the_node_is_ready
+    specified
+    delivered_nodes
+    put_verdict(1, "accept", MIDDLE)
+    set_node_times(MIDDLE)
 
-    outcome, = prepare(judge: "tests", evidence: evidence_file(intent, { "Other" => "text" }))
-
-    assert_includes outcome.message, "code_prepare_ending, gate: evidence must map every criterion key"
+    assert_equal :ready, prepare.first
   end
 
-  def test_evidence_by_text_for_a_keyed_criterion_fails_the_call
-    intent = ready_intent(spec: KEYED)
+  def test_the_same_instant_written_with_another_offset_is_ready
+    specified
+    delivered_nodes
+    put_verdict(1, "accept", "2026-10-05T09:00:00Z")
+    set_node_times("2026-10-05T11:00:00+02:00")
 
-    outcome, = prepare(judge: "tests", evidence: evidence_file(intent, { "It works" => "text" }))
-
-    assert_includes outcome.message, "missing keys: works"
+    assert_equal :ready, prepare.first
   end
 
-  def test_an_unknown_judge_fails_the_call
-    ready_intent
+  def test_a_removed_node_does_not_age_the_verdict
+    accepted_intent
+    cli("node", "add", "1", "Extra", "--criterion", KEY)
+    cli("node", "remove", "1", "n2")
+    store_graphs.databases.fetch(:work).transaction { |batch| batch.add("UPDATE nodes SET updated_at = :at WHERE id = 'n2'", at: "2026-10-06T10:00:00+02:00") }
 
-    assert_equal "code_prepare_ending, gate: --judge takes tests, tool, agent or owner", prepare(judge: "luck", evidence: "x").first.message
+    assert_equal :ready, prepare.first
+  end
+
+  def test_a_live_node_that_is_not_done_is_not_ready
+    accepted_intent
+    cli("node", "add", "1", "Extra", "--criterion", KEY)
+
+    refute_equal :ready, prepare.first
+  end
+
+  def test_a_second_revise_is_a_refusal
+    specified
+    delivered_nodes
+    put_verdict(1, "revise", MIDDLE)
+    put_verdict(2, "revise", LATE)
+
+    assert_kind_of Plastic::Refused, prepare.first
+  end
+
+  def test_a_revise_then_a_stale_accept_is_a_refusal
+    specified
+    delivered_nodes
+    put_verdict(1, "revise", EARLY)
+    put_verdict(2, "accept", MIDDLE)
+    set_node_times(LATE)
+
+    assert_kind_of Plastic::Refused, prepare.first
+  end
+
+  def test_a_revise_then_a_counting_accept_is_ready
+    specified
+    delivered_nodes
+    set_node_times(EARLY)
+    put_verdict(1, "revise", EARLY)
+    put_verdict(2, "accept", LATE)
+
+    assert_equal :ready, prepare.first
+  end
+
+  def test_a_missing_intent_fails_at_the_first_gate
+    assert_includes prepare.first.message, "no intent 1 in this store"
+  end
+
+  def test_another_live_session_lock_is_refused
+    accepted_intent
+    store_graphs.work.take_lock("1", session_id: "s-2", mode: "auto")
+
+    assert_kind_of Plastic::Refused, prepare.first
   end
 
   def test_a_done_intent_is_already_closed
@@ -75,106 +125,53 @@ class PrepareEndingTest < PrepareEndingFixture
     assert_equal :closed, prepare.first
   end
 
-  def test_a_missing_intent_fails_at_the_first_gate
-    assert_includes prepare.first.message, "no intent 1 in this store"
-  end
-
-  def test_another_live_session_lock_is_refused
-    ready_intent
-    store_graphs.work.take_lock("1", session_id: "s-2", mode: "auto")
-
-    outcome, = prepare
-
-    assert_equal [Plastic::Refused, "intent 1 is locked by session s-2"], [outcome.class, outcome.message]
-  end
-
-  def test_an_abandoned_intent_fails_the_delivered_call
+  def test_an_abandoned_intent_fails_the_call
     open_intent(status: "abandoned")
 
-    assert_equal "code_prepare_ending, gate: intent 1 is not open or active", prepare.first.message
+    assert_kind_of Plastic::Failed, prepare.first
   end
 end
 
-class PrepareEndingVerificationTest < PrepareEndingFixture
-  def test_evidence_without_the_verification_records_is_unverified
-    intent = ready_intent(verification: "")
-
-    outcome, = prepare(judge: "tests", evidence: evidence_file(intent))
-
-    assert_equal :unverified, outcome
-  end
-
-  def test_a_bare_call_without_the_verification_records_is_unverified
-    ready_intent(verification: "")
-
+class PrepareEndingRecordsTest < PrepareEndingFixture
+  def test_a_criterion_with_no_done_node_hands_over_naming_its_key
+    accepted_intent
+    write("#{open_intent_dir}/spec.md", keyed_spec({ KEY => CRITERION, "extra" => "Also" }))
+    sync_up
     outcome, context = prepare
 
-    assert_equal [:unverified, false, false], [outcome, context.merge_recorded, context.map_recorded]
+    assert_equal :agent_needed, outcome
+    assert_includes context.requirements.join(" "), "extra"
   end
 
-  def test_requirements_hold_only_the_record_problems
-    ready_intent(verification: "")
+  def open_intent_dir = retrieval.intent("1").dir
 
-    assert_empty prepare.last.requirements
+  def test_without_the_merge_and_map_records_the_merge_check_comes_after_the_record_problems
+    accepted_intent(records: nil)
+    write("#{open_intent_dir}/outcome.md", "# Outcome\n\nDelivered.\n\n## Verification\n#{PULL_REQUEST}#{APPROVED}")
+    sync_up
+
+    assert_equal :unverified, prepare.first
   end
 
-  def test_missing_records_come_before_the_merge_check
-    specified_intent
+  def test_with_review_required_a_missing_pull_request_bullet_hands_over
+    accepted_intent(records: MERGE_RECORDS)
 
     outcome, context = prepare
 
     assert_equal :agent_needed, outcome
-    refute_empty context.requirements
-  end
-end
-
-class PrepareEndingAbandonTest < PrepareEndingFixture
-  def droppable(**fields)
-    intent = open_intent("Alpha", **fields)
-    write("#{intent.dir}/outcome.md", "# Outcome\n\nDropped: the need went away.\n")
-    sync_up
+    assert_includes context.requirements.join(" "), "Pull request:"
   end
 
-  def test_an_open_intent_without_criteria_or_nodes_routes_to_the_abandon
-    droppable
+  def test_with_review_required_a_pull_request_without_approval_is_a_refusal
+    accepted_intent(records: MERGE_RECORDS + PULL_REQUEST)
 
-    assert_equal [:abandoning, nil], [prepare(abandoned: true).first, prepare(abandoned: true).last.problem]
+    assert_kind_of Plastic::Refused, prepare.first
   end
 
-  def test_a_future_intent_can_be_abandoned
-    droppable(status: "future")
+  def test_with_review_off_no_pull_request_bullets_are_asked
+    review_off
+    accepted_intent(records: MERGE_RECORDS)
 
-    assert_equal :abandoning, prepare(abandoned: true).first
-  end
-
-  def test_a_parked_intent_can_be_abandoned
-    droppable(status: "parked")
-
-    assert_equal :abandoning, prepare(abandoned: true).first
-  end
-
-  def test_a_done_intent_cannot_be_abandoned
-    droppable(status: "done")
-
-    assert_equal "code_prepare_ending, gate: intent 1 is not open, active, parked or future", prepare(abandoned: true).first.message
-  end
-
-  def test_abandoning_an_abandoned_intent_routes_to_the_abandon
-    open_intent(status: "abandoned")
-
-    assert_equal :abandoning, prepare(abandoned: true).first
-  end
-
-  def test_abandoning_a_foreign_locked_intent_is_refused
-    droppable
-    store_graphs.work.take_lock("1", session_id: "s-2", mode: "auto")
-
-    assert_kind_of Plastic::Refused, prepare(abandoned: true).first
-  end
-
-  def test_an_abandon_without_a_substantive_outcome_fails_the_call
-    open_intent
-
-    assert_includes prepare(abandoned: true).first.message, "outcome.md"
+    assert_equal :ready, prepare.first
   end
 end

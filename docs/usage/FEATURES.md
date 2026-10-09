@@ -51,13 +51,14 @@ intent instead.
 
 `plastic auto` takes exactly one id and runs no version control command: it prints the
 worktree command, and the agent runs it. A live lock of another session refuses with exit 3,
-and an expired lock is taken over. `plastic intent end` releases the lock.
+and an expired lock is taken over. `plastic auto ID` refuses an intent without the go-ahead
+that `plastic intent approve ID` writes. `plastic intent end` and `plastic intent abandon` release the lock.
 
 ## Rulings and revisions
 
 | Command | Result |
 | ------- | ------ |
-| `plastic intent rule ID "TEXT"` | The next owner ruling, D1, D2 and on. `--supersedes RULING_ID` links it to the ruling it replaces. |
+| `plastic intent rule ID "TEXT"` | The next owner ruling, numbered in order (D1, D2 and on). `--supersedes RULING_ID` links it to the ruling it replaces. |
 | `plastic intent revise ID "LINE"` | The intent's new What, and its new Why with `--why "TEXT"`. `--dry-run` prints the change and writes nothing. |
 
 `intent revise` writes the intent file as a new revision and keeps the old one, so the old

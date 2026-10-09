@@ -22,7 +22,7 @@ module Plastic
         # and any other file kept whole as bytes.
         class IntentFile
           KEPT_MODE = 0o100644
-          KINDS = { "graph.json" => %i[work graph], "savepoint.md" => %i[work savepoint] }.freeze
+          KINDS = { "graph.json" => %i[work graph], "context.json" => %i[work context], "savepoint.md" => %i[work savepoint] }.freeze
 
           def initialize(folder, intent, path, origin_id, retrieval: nil)
             @file = FolderFile.new(folder, path, path.delete_prefix("#{intent.dir}/"))
@@ -53,6 +53,10 @@ module Plastic
 
           def graph(_batch)
             raise Invalid, "graph.json is generated from rows; use node and edge commands to change the graph"
+          end
+
+          def context(_batch)
+            raise Invalid, "context.json is generated from rows; use intent context and intent discover to change it"
           end
 
           def savepoint(batch)

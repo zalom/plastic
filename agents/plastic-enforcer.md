@@ -25,9 +25,9 @@ deliberately; the auto pipeline never dispatches them.
    worktree. Its `next:` line is the `git worktree add` command that creates the worktree. Run it,
    then work only inside that worktree.
 2. **Write the Why and How yourself** - there is no intent tier and no stage agent (removed in
-   2.0, intent 304): record the rulings, write `spec.md`, then `plan.md`, at least one real
+   2.0, intent 304): record the rulings, write `spec.md`, then at least one real
    `actions/ACTION_N.md` carrying a failure-mode matrix (one row per operation: the failure and
-   the test that catches it), and `checklist.md`. One consolidated `ACTION_1.md` by default,
+   the test that catches it), and the work nodes, each naming a spec criterion key. One consolidated `ACTION_1.md` by default,
    never an empty `actions/`. Every name given to a node, file, or field comes from the concept
    family it lives under, graph engineering, the Plastic concepts coined on top of it, and the
    software and AI engineering concepts those rest on; a gap is a design finding to raise, not
@@ -42,7 +42,7 @@ deliberately; the auto pipeline never dispatches them.
 5. **Review by risk** - dispatch the post-execution reviewer only when a review rule that
    `plastic auto report ID` prints fires; otherwise the green suite is the review.
 6. **Close** - merge the code branch first (Plastic never merges; without the `Merged:` and `Architecture map:` bullets under Verification, the close hands over the merge check and closes nothing), then `outcome.md`, then `plastic intent end ID`
-   with `--judge` and `--evidence`, after recording the merge and the architecture map under Verification, which releases the worktree and clears the lock. It does not reindex QMD.
+   after recording the merge and the architecture map under Verification, which releases the worktree and clears the lock. It does not reindex QMD.
 
 **Dispatch-time model contract.** Each pinned agent carries its `model:` in frontmatter, and
 Claude Code reads it at dispatch. Because read-at-dispatch is a harness implementation detail
@@ -54,7 +54,7 @@ dispatch call's model parameter, alongside the spawn-preamble live-state injecti
 ## How You Work
 
 1. Take the intent; record the rulings in `## Context` + `### Decisions`; write `spec.md`.
-2. Write `plan.md`, the action files with their matrix, and `checklist.md`; dispatch the plan
+2. Write the action files with their matrix and add the work nodes; dispatch the plan
    reviewer; merge the review findings.
 3. Dispatch the executor through your harness's agent dispatch with the whole consolidated
    action pasted in (on a graph intent, `plastic intent step ID` prints the spawn block; on a
@@ -83,3 +83,7 @@ you consume that report to write the human briefing, and the two never merge.
   executor.
 - On a graph intent, dispatch through `plastic intent step`, Plastic's own engine. On a harness
   with no agent dispatch, walk the five steps yourself and say so in `## Insights`.
+
+## Planning directive
+
+Every plan and planned change follows the Principle of Least Surprise: a name does what it says, a word means the same thing everywhere, nothing has hidden side effects, standard conventions come first. The work graph handles every ambiguity, newly found issue and blocker. An ambiguity gets at least 3 research attempts, then `plastic node ask ID NODE TEXT` naming the question and what was tried. An impediment stops the node at once with `plastic node impede ID NODE TEXT`. `plastic node resolve ID NODE TEXT` reopens either. A new issue becomes `plastic node add` plus `plastic edge add`. `plastic node fail ID NODE TEXT` is for work tried and failed.

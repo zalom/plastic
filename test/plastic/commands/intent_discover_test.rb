@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
+require_relative "../../../scripts/lib/plastic/commands/intent_discover"
 
 module DiscoveryDocuments
   def write_document(store, body)
@@ -37,7 +38,7 @@ class IntentDiscoverTest < Plastic::TestCase
 
     assert_call missing, code: 1, out: ["code_discover_retrieval, gate: no intent 99 in owning store"],
       err: "plastic: code_discover_retrieval, gate: no intent 99 in owning store\n"
-    refute_path_exists store_path("discovery/99.json")
+    assert_empty Dir[store_path("store/*/context.json")]
   end
 
   def test_rejects_an_unsafe_owning_intent_as_usage
@@ -126,7 +127,8 @@ class IntentDiscoverTest < Plastic::TestCase
   end
 
   def assert_persisted_manifest(manifest, result)
-    assert_equal manifest, JSON.parse(File.read(store_path("discovery/1.json")))
+    assert_equal manifest, JSON.parse(File.read(Dir[store_path("store/*/context.json")].first)).fetch("discovery")
+    refute_path_exists store_path("discovery/1.json")
     assert_equal "plastic intent context 1 --from FILE --project global", JSON.parse(result.out).fetch("next")
   end
 
@@ -148,5 +150,11 @@ class IntentDiscoverOutputTest < Plastic::TestCase
 
     assert_equal [0, ""], [result.code, result.err]
     refute_match(/\{|=>|\[/, result.out)
+  end
+end
+
+class IntentDiscoverDeclarationTest < Minitest::Test
+  def test_the_command_writes_the_work_graph_and_the_knowledge_graph
+    assert_equal %i[knowledge work], Plastic::Commands::IntentDiscover.writes.sort
   end
 end

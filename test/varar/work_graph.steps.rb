@@ -18,25 +18,30 @@ module WorkGraphAcceptance
     ["intent", "rule", "1", "Direct mode only", "--supersedes", "D1"]
   ].freeze
 
+  SPEC = "# Spec\n\n## Done criteria\n\n- [ ] [it-is-done] it is done\n- [ ] [it-builds] it builds\n"
+
   NODES_AND_EDGE = [
-    ["node", "add", "1", "do the thing", "--criterion", "it is done"],
-    ["node", "add", "1", "build it", "--criterion", "it builds"],
+    ["node", "add", "1", "do the thing", "--criterion", "it-is-done"],
+    ["node", "add", "1", "build it", "--criterion", "it-builds"],
     %w[edge add 1 n1 n2]
   ].freeze
 
   NODE_LIFECYCLE = [
     %w[node claim 1 n1],
-    ["node", "fail", "1", "n1", "--reason", "broke"],
+    ["node", "fail", "1", "n1", "broke"],
     %w[node release 1 n1],
     %w[node claim 1 n1],
-    ["node", "done", "1", "n1", "--judge", "tests", "--findings", "it passed"]
+    ["node", "done", "1", "n1", "it passed"]
   ].freeze
 
   # Opens the intent and runs every call of the narrative in order: the
   # rulings, the nodes and the edge, then the node's claim-fail-release-
   # claim-done cycle.
   def self.build(kernel)
-    [*RULINGS, *NODES_AND_EDGE, *NODE_LIFECYCLE].each { |args| kernel.run!(*args) }
+    [*RULINGS].each { |args| kernel.run!(*args) }
+    kernel.write("store/1--alpha/spec.md", SPEC)
+    kernel.run!("sync", "up")
+    [*NODES_AND_EDGE, *NODE_LIFECYCLE].each { |args| kernel.run!(*args) }
   end
 end
 

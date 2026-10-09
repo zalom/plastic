@@ -66,4 +66,9 @@ class KnowledgeStoreFolderTest < Plastic::TestCase
 
     assert_equal "*.db\n*.db-journal\n", @folder.read(".gitignore")
   end
+
+  def test_the_context_file_of_an_intent_folder_is_a_generated_view
+    assert Plastic::Graph::Knowledge::StoreFolder.graph_view?("store/1--alpha/context.json")
+    refute Plastic::Graph::Knowledge::StoreFolder.graph_view?("store/1--alpha/notes.json")
+  end
 end

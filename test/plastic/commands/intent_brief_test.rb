@@ -18,7 +18,7 @@ class IntentBriefTest < Plastic::TestCase
     write_spec(intent, "# Spec\n\n## Done criteria\n- ships\n")
     plastic("intent", "rule", intent.intent_id, "Flowbite styles every delivery", table: Plastic::CLI::TABLE)
     plastic("intent", "rule", intent.intent_id, "Direct mode only", "--supersedes", "D1", table: Plastic::CLI::TABLE)
-    plastic("node", "add", intent.intent_id, "do the thing", "--criterion", "it is done", table: Plastic::CLI::TABLE)
+    plastic("node", "add", intent.intent_id, "do the thing", "--criterion", "ships", table: Plastic::CLI::TABLE)
     intent
   end
 

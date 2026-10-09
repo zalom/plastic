@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require "digest"
-require_relative "evidence"
 require_relative "work_check"
 require_relative "../../knowledge/spec"
 require_relative "../../knowledge/outcome"
@@ -11,7 +10,7 @@ module Plastic
   module Graph
     module Work
       module Completion
-        # Stored prerequisites for delivered closure. Evidence is a judge's attestation.
+        # Stored prerequisites for delivered closure.
         class Check
           def initialize(retrieval, intent_id)
             @retrieval = retrieval
@@ -25,7 +24,7 @@ module Plastic
           def problems = record_problems + verification_problems
 
           def record_problems
-            [criteria_problem, key_problem, decisions_problem, WorkCheck.new(@retrieval, @intent_id).problem, outcome_problem].compact
+            [criteria_problem, key_problem, decisions_problem, *WorkCheck.new(@retrieval, @intent_id, criteria.keys).problems, outcome_problem].compact
           end
 
           def verification_problems = verification.missing_records
@@ -35,16 +34,6 @@ module Plastic
           def verification = @verification ||= Knowledge::Outcome.new(@retrieval, @intent_id)
 
           def outcome_hash = Digest::SHA256.hexdigest(outcome.body)
-
-          # The completion fields this check attests, once nothing blocks closure and the evidence answers every criterion.
-          def attestation(evidence)
-            found = problems
-            raise Invalid, found.join(" ") if found.any?
-
-            done = criteria
-            Evidence.validate(evidence, done.keys)
-            { criteria: done, evidence:, outcome_sha256: outcome_hash }
-          end
 
           private
 

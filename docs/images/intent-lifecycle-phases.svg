@@ -1,0 +1,146 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 580" role="img" aria-labelledby="phases-title phases-desc" font-family="IBM Plex Sans, system-ui, -apple-system, Segoe UI, sans-serif">
+  <title id="phases-title">How Plastic delivers an intent</title>
+  <desc id="phases-desc">Three phases. What: start and context. Why: grilling and one spec. You say deliver. How: plan the graph, stateless nodes with tests first, verify every node, the judge, the pull request. Then intent end, or intent abandon at any step.</desc>
+  <defs><marker id="phases-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--line, #6b7483)"/></marker></defs>
+  <style>.box { fill: var(--paper, #e9e5dc); stroke: var(--line, #6b7483); stroke-width: 1; }
+.panel { fill: var(--card, #f4f1ea); stroke: var(--rule, #c9c3b6); stroke-width: 1; }
+.t { fill: var(--ink, #1f2530); font-size: 14px; font-weight: 600; }
+.s { fill: var(--muted, #3f4754); font-size: 11.5px; }
+.m { fill: var(--ink, #1f2530); font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; font-size: 11px; }
+.n { fill: var(--paper, #e9e5dc); font-size: 11px; font-weight: 700; }
+.phase { fill: var(--ink, #1f2530); font-size: 12px; font-weight: 700; letter-spacing: .1em; }
+.phase-s { fill: var(--muted, #3f4754); font-size: 11.5px; }
+.flow { stroke: var(--line, #6b7483); stroke-width: 1.5; fill: none; }
+.dot { fill: var(--line, #6b7483); }
+.rule { stroke: var(--rule, #c9c3b6); stroke-width: 1; }
+</style>
+<rect class="panel" x="20" y="20" width="436" height="168" rx="10"/>
+<text class="phase" x="34" y="42">WHAT</text>
+<text class="phase-s" x="86" y="42">the intent and its context</text>
+
+<g transform="translate(33,52)">
+  <rect class="box" width="196" height="124" rx="8"/>
+  <rect width="6" height="124" rx="3" fill="var(--code, #0b5e55)"/>
+  <circle cx="25" cy="22" r="11" fill="var(--code, #0b5e55)"/><text class="n" x="25" y="26" text-anchor="middle">1</text>
+  <text class="t" x="44" y="27">Start</text>
+  <text class="m" x="16" y="52">intent new TITLE</text>
+  <text class="s" x="16" y="73">A ref: a ticket such as</text><text class="s" x="16" y="88">Linear, or a stored intent</text>
+</g>
+
+<g transform="translate(247,52)">
+  <rect class="box" width="196" height="124" rx="8"/>
+  <rect width="6" height="124" rx="3" fill="var(--agent, #7d4405)"/>
+  <circle cx="25" cy="22" r="11" fill="var(--agent, #7d4405)"/><text class="n" x="25" y="26" text-anchor="middle">2</text>
+  <text class="t" x="44" y="27">Context</text>
+  <text class="m" x="16" y="52">intent discover · context</text>
+  <text class="s" x="16" y="73">Store, ticket and code;</text><text class="s" x="16" y="88">Enola may run here</text>
+</g>
+
+<path class="flow" d="M 229 110 L 245 110" marker-end="url(#phases-arrow)"/>
+<rect class="panel" x="476" y="20" width="436" height="168" rx="10"/>
+<text class="phase" x="490" y="42">WHY</text>
+<text class="phase-s" x="532" y="42">the decisions</text>
+
+<g transform="translate(489,52)">
+  <rect class="box" width="196" height="124" rx="8"/>
+  <rect width="6" height="124" rx="3" fill="var(--owner, #4a2a99)"/>
+  <circle cx="25" cy="22" r="11" fill="var(--owner, #4a2a99)"/><text class="n" x="25" y="26" text-anchor="middle">3</text>
+  <text class="t" x="44" y="27">Grilling</text>
+  <text class="m" x="16" y="52">intent spec · intent rule</text>
+  <text class="s" x="16" y="73">The agent asks why and what</text><text class="s" x="16" y="88">goes first; you answer</text>
+</g>
+
+<g transform="translate(703,52)">
+  <rect class="box" width="196" height="124" rx="8"/>
+  <rect width="6" height="124" rx="3" fill="var(--agent, #7d4405)"/>
+  <circle cx="25" cy="22" r="11" fill="var(--agent, #7d4405)"/><text class="n" x="25" y="26" text-anchor="middle">4</text>
+  <text class="t" x="44" y="27">One spec</text>
+  <text class="m" x="16" y="52">spec.md</text>
+  <text class="s" x="16" y="73">Done criteria with keys;</text><text class="s" x="16" y="88">every decision closed</text>
+</g>
+
+<path class="flow" d="M 685 110 L 701 110" marker-end="url(#phases-arrow)"/>
+<path class="flow" d="M 456 110 L 474 110" marker-end="url(#phases-arrow)"/>
+<g transform="translate(932,52)">
+  <rect class="box" width="168" height="124" rx="8"/>
+  <rect width="6" height="124" rx="3" fill="var(--owner, #4a2a99)"/>
+  <circle cx="25" cy="22" r="11" fill="var(--owner, #4a2a99)"/><text class="n" x="25" y="26" text-anchor="middle">5</text>
+  <text class="t" x="44" y="27">You say deliver</text>
+  <text class="m" x="16" y="52">intent approve ID</text>
+  <text class="s" x="16" y="73">The go-ahead; the</text><text class="s" x="16" y="88">How phase starts</text>
+</g>
+
+<path class="flow" d="M 912 110 L 930 110" marker-end="url(#phases-arrow)"/>
+<rect class="panel" x="20" y="222" width="1080" height="168" rx="10"/>
+<text class="phase" x="34" y="244">HOW</text>
+<text class="phase-s" x="76" y="244">the work graph, delivered node by node</text>
+
+<g transform="translate(33,254)">
+  <rect class="box" width="196" height="124" rx="8"/>
+  <rect width="6" height="124" rx="3" fill="var(--agent, #7d4405)"/>
+  <circle cx="25" cy="22" r="11" fill="var(--agent, #7d4405)"/><text class="n" x="25" y="26" text-anchor="middle">6</text>
+  <text class="t" x="44" y="27">Plan the graph</text>
+  <text class="m" x="16" y="52">node add · edge add</text>
+  <text class="s" x="16" y="73">What goes first, and what</text><text class="s" x="16" y="88">can run side by side:</text>
+</g>
+
+<path class="flow" d="M 229 312 L 245 312" marker-end="url(#phases-arrow)"/>
+<g transform="translate(247,254)">
+  <rect class="box" width="196" height="124" rx="8"/>
+  <rect width="6" height="124" rx="3" fill="var(--agent, #7d4405)"/>
+  <circle cx="25" cy="22" r="11" fill="var(--agent, #7d4405)"/><text class="n" x="25" y="26" text-anchor="middle">7</text>
+  <text class="t" x="44" y="27">Stateless nodes</text>
+  <text class="m" x="16" y="52">node claim · node done</text>
+  <text class="s" x="16" y="73">Tests first, then code;</text><text class="s" x="16" y="88">just enough context</text>
+</g>
+
+<path class="flow" d="M 443 312 L 459 312" marker-end="url(#phases-arrow)"/>
+<g transform="translate(461,254)">
+  <rect class="box" width="196" height="124" rx="8"/>
+  <rect width="6" height="124" rx="3" fill="var(--code, #0b5e55)"/>
+  <circle cx="25" cy="22" r="11" fill="var(--code, #0b5e55)"/><text class="n" x="25" y="26" text-anchor="middle">8</text>
+  <text class="t" x="44" y="27">Verify every node</text>
+  <text class="m" x="16" y="52">graph.json</text>
+  <text class="s" x="16" y="73">Every done criterion has</text><text class="s" x="16" y="88">its delivered nodes</text>
+</g>
+
+<path class="flow" d="M 657 312 L 673 312" marker-end="url(#phases-arrow)"/>
+<g transform="translate(675,254)">
+  <rect class="box" width="196" height="124" rx="8"/>
+  <rect width="6" height="124" rx="3" fill="var(--agent, #7d4405)"/>
+  <circle cx="25" cy="22" r="11" fill="var(--agent, #7d4405)"/><text class="n" x="25" y="26" text-anchor="middle">9</text>
+  <text class="t" x="44" y="27">Judge reasons</text>
+  <text class="m" x="16" y="52">intent judge ID</text>
+  <text class="s" x="16" y="73">Mostly an agent; or Jev,</text><text class="s" x="16" y="88">or a person</text>
+</g>
+
+<path class="flow" d="M 871 312 L 887 312" marker-end="url(#phases-arrow)"/>
+<g transform="translate(889,254)">
+  <rect class="box" width="196" height="124" rx="8"/>
+  <rect width="6" height="124" rx="3" fill="var(--owner, #4a2a99)"/>
+  <circle cx="25" cy="22" r="11" fill="var(--owner, #4a2a99)"/><text class="n" x="25" y="26" text-anchor="middle">10</text>
+  <text class="t" x="44" y="27">Pull request</text>
+  <text class="m" x="16" y="52">one per code intent</text>
+  <text class="s" x="16" y="73">A person checks it before</text><text class="s" x="16" y="88">the merge; on by default</text>
+</g>
+
+<line class="rule" style="stroke: var(--line, #6b7483)" x1="54" y1="358" x2="90" y2="348"/><line class="rule" style="stroke: var(--line, #6b7483)" x1="54" y1="358" x2="90" y2="368"/><line class="rule" style="stroke: var(--line, #6b7483)" x1="90" y1="348" x2="126" y2="358"/><line class="rule" style="stroke: var(--line, #6b7483)" x1="90" y1="368" x2="126" y2="358"/><circle cx="54" cy="358" r="4.5" fill="var(--agent, #7d4405)"/><circle cx="90" cy="348" r="4.5" fill="var(--agent, #7d4405)"/><circle cx="90" cy="368" r="4.5" fill="var(--agent, #7d4405)"/><circle cx="126" cy="358" r="4.5" fill="var(--agent, #7d4405)"/><text class="s" x="138" y="362">two in parallel</text>
+<path class="flow" d="M 1016 168 L 1016 204 L 131 204 L 131 220" marker-end="url(#phases-arrow)"/>
+<path class="flow" d="M 784 378 L 784 404 L 355 404 L 355 380" stroke-dasharray="4 3" marker-end="url(#phases-arrow)"/>
+<text class="s" x="440" y="420">a revise verdict: the harness adds a fix node</text>
+<g transform="translate(674,436)">
+  <rect width="426" height="96" rx="12" fill="var(--end-bg, #d9e2f0)" stroke="var(--end, #23406f)" stroke-width="1.5"/>
+  <text class="t" x="18" y="30">plastic intent end ID</text>
+  <text class="s" x="18" y="54">No options. Closes in code what code can: rows, lock,</text>
+  <text class="s" x="18" y="70">prints. Tells the agent the rest, such as winding down processes.</text>
+</g>
+<g transform="translate(20,436)">
+  <rect width="630" height="96" rx="12" fill="var(--paper, #e9e5dc)" stroke="var(--end, #23406f)" stroke-width="1.5" stroke-dasharray="6 4"/>
+  <text class="t" x="18" y="30">plastic intent abandon ID</text>
+  <text class="s" x="18" y="54">No options, at any step. The agent reverts what this intent delivered, by a pull request,</text>
+  <text class="s" x="18" y="70">then closes it as cancelled; or as superseded, when another intent already covers it.</text>
+</g>
+
+<path class="flow" d="M 1031 378 L 1031 434" marker-end="url(#phases-arrow)"/>
+<rect x="674" y="552" width="11" height="11" rx="2" fill="var(--code, #0b5e55)"/><text class="s" x="691" y="562">Plastic code</text><rect x="804" y="552" width="11" height="11" rx="2" fill="var(--agent, #7d4405)"/><text class="s" x="821" y="562">agent</text><rect x="934" y="552" width="11" height="11" rx="2" fill="var(--owner, #4a2a99)"/><text class="s" x="951" y="562">you</text>
+</svg>

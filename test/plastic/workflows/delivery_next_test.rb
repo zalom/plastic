@@ -23,6 +23,6 @@ class DeliveryNextTest < Plastic::TestCase
     outcome, context = next_action
 
     assert_equal :agent_needed, outcome
-    assert_includes context.handoff_text, "plastic node add 1 TITLE --criterion TEXT"
+    assert_includes context.handoff_text, "plastic node add 1 TITLE --criterion KEY"
   end
 end

@@ -36,12 +36,12 @@ class KnowledgeFindingsTest < Plastic::TestCase
     assert_equal ["intent 1 names no done criterion"], findings
   end
 
-  def test_a_node_judged_by_tests_with_blank_findings_is_named
+  def test_a_done_node_with_blank_findings_is_named
     criteria
     @work.add_node(intent_id: "1", title: "Build")
     finish("n1", findings: " ")
 
-    assert_equal ["node n1 judged by tests with no findings"], findings
+    assert_equal ["node n1 is done with no findings"], findings
   end
 
   def test_a_node_with_no_edge_among_several_is_named
@@ -59,10 +59,10 @@ class KnowledgeFindingsTest < Plastic::TestCase
     assert_empty findings
   end
 
-  def test_a_done_node_with_no_judge_is_named
-    node = Plastic::Graph::Work::Node.from_h({ id: "n1", state: "done", judge: nil })
+  def test_a_done_node_with_no_findings_is_named
+    node = Plastic::Graph::Work::Node.from_h({ id: "n1", state: "done", findings: " " })
 
-    assert_equal "node n1 is done with no judge", Findings.judge_finding(node)
+    assert_equal "node n1 is done with no findings", Findings.findings_finding(node)
   end
 
   def test_more_than_three_retries_are_named_and_three_are_not

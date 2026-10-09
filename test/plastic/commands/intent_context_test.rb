@@ -3,6 +3,7 @@
 require_relative "../../test_helper"
 require "json"
 require "tempfile"
+require_relative "../../../scripts/lib/plastic/commands/intent_context"
 
 module IntentContextTestSupport
   private
@@ -182,18 +183,6 @@ class IntentContextPersistenceTest < Plastic::TestCase
     assert_equal [0, ""], [result.code, result.err]
     refute_match(/\{|=>|\[/, result.out)
   end
-
-  def test_reads_the_saved_context_file_when_the_database_record_is_absent
-    reference = discovered_reference
-    submission = context_submission(reference)
-    submit_context(submission)
-    Plastic::Graph.open(home: @plastic_home, store: "global").databases.fetch(:knowledge).transaction do |batch|
-      batch.add("DELETE FROM retrieval_contexts WHERE intent_id = :intent_id", intent_id: "1")
-    end
-
-    assert_equal submission.slice("evidence", "facts", "interpretations", "gaps", "rulings"),
-      read_context.slice("evidence", "facts", "interpretations", "gaps", "rulings")
-  end
 end
 
 module IntentContextValidationAssertions
@@ -263,12 +252,12 @@ class IntentContextValidationTest < Plastic::TestCase
   def test_rejects_a_non_object_submission_without_replacing_saved_context
     reference = discovered_reference
     submit_context(context_submission(reference))
-    before = File.binread(store_path("context/1.json"))
+    before = File.binread(Dir[store_path("store/*/context.json")].first)
 
     result = submit_raw_context("[]")
 
     assert_equal 2, result.code
-    assert_equal before, File.binread(store_path("context/1.json"))
+    assert_equal before, File.binread(Dir[store_path("store/*/context.json")].first)
   end
 
   def test_rejects_non_array_context_categories_without_replacing_saved_context
@@ -342,15 +331,18 @@ class IntentContextInputTest < Plastic::TestCase
     write_document("other", "selected evidence")
     plastic("intent", "discover", "1", "selected", "--source-project", "other", table: Plastic::CLI::TABLE)
 
-    file = File.join(@home, "broken.json")
-    File.write(file, "{")
+    file = broken_json_file
 
     result = plastic("intent", "context", "1", "--from", file, table: Plastic::CLI::TABLE)
 
     assert_equal 2, result.code
     assert_match(/\Aplastic: #{Regexp.escape(file)} is not valid JSON: /, result.err)
-    refute_path_exists store_path("context/1.json")
+    assert_nil printed_context.fetch("context")
   end
+
+  def broken_json_file = File.join(@home, "broken.json").tap { |file| File.write(file, "{") }
+
+  def printed_context = JSON.parse(File.read(Dir[store_path("store/*/context.json")].first))
 
   def test_a_missing_context_file_exits_2_naming_the_file
     discovered_reference
@@ -377,5 +369,11 @@ class IntentContextInputTest < Plastic::TestCase
     result = plastic("intent", "context", "--help", table: Plastic::CLI::TABLE)
 
     assert_includes result.out, "evidence, facts, interpretations, gaps and rulings"
+  end
+end
+
+class IntentContextDeclarationTest < Minitest::Test
+  def test_the_command_writes_the_work_graph_and_the_knowledge_graph
+    assert_equal %i[knowledge work], Plastic::Commands::IntentContext.writes.sort
   end
 end

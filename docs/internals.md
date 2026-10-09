@@ -143,8 +143,6 @@ a `(stage, milestone)` pair for idempotency (`Savepoint.savepoint_recorded_pairs
 
 - a **born `What` line**, stamped by `new-intent` at creation (not left to a hook firing), so
   even a freshly parked future intent carries the first bookend deterministically;
-- an **`Exec  started` line**, which the `record` hook appends when a real `checklist.md`
-  lands (`Savepoint.append_exec_started`);
 - a **terminal `Done delivered|abandoned` line**, written by the completion path
   (`Savepoint.append_terminal_savepoint`) as the intent transfers into INDEX's Completed/Abandoned
   section. Disposition lives in INDEX (no frontmatter status); the ledger echoes it.
@@ -464,7 +462,7 @@ live command line retires, the separate test process ends. See
 
 `scripts/lib/plastic/cli/table.rb` routes 20 work graph commands against `work_graph.db` and
 `knowledge_graph.db`: `node add`, `node remove`, `node claim`, `node release`, `node done`,
-`node fail`, `node park`, `node answer`, `edge add`, `edge remove`, `intent spec`, `intent
+`node fail`, `node ask`, `node impede`, `node resolve`, `edge add`, `edge remove`, `intent spec`, `intent
 rule`, `auto`, `graph check`, `graph ready`, `graph show`, `intent show`, `intent
 brief`, `status`, and `next`. See [architecture](architecture.md#the-work-graph) for the node
 and edge state machine and the ruling/spec mechanics; this section covers the four read
@@ -494,23 +492,34 @@ the harness gets instructions to choose one. With no open work, the next command
 
 `Graph::Work::DeliveryAction` supplies the actions used by next, brief, ready, and check.
 Ready nodes lead to claim; failed nodes lead to release. Empty graphs hand planning to
-`AgentWorkflow`, claimed nodes remain with their worker, and parked nodes request the
-owner's answer. Completed graphs lead to `intent end` for explicit acceptance. `Workflows::PrepareEnding` routes it to `CheckMerge` (merge and map records missing), `CloseIntent` (ready), `AbandonIntent` (`--abandoned`) or `FinishIntent`; evidence matches done criteria by key (`Knowledge::Spec#keyed_criteria`, `Evidence.validate`), and `Knowledge::Outcome` reads the Verification bullets.
+`AgentWorkflow`, claimed nodes remain with their worker, and needs_info nodes request the
+owner's answer, and impeded nodes stop with their impediment until `node resolve` reopens them. Completed graphs lead to `intent judge`, then `intent end`. `Workflows::PrepareEnding` routes `intent end` to `FinishIntent` (records missing, or no counting verdict), a refusal (a used review round, or a pull request waiting for approval), `CheckMerge` (merge and map records missing) or `CloseIntent` (ready). `Knowledge::Outcome` reads the `Pull request:`, `Approved:`, `Merged:`, `Architecture map:` and `Reverted:` bullets of `## Verification`.
 
-`IntentEnd` chains prerequisite checks, an agent verification handoff when records are
-missing, and closure. `Graph::Work::Completion::Evidence` accepts a JSON object that maps every criterion key (the bracketed key, or the full text of an unkeyed criterion) to nonempty evidence text; a refusal names the missing, extra and blank keys. Paths resolve within the
-selected intent folder, including a check after resolving symbolic links. The judge
-attests to the evidence; Plastic does not execute the verification.
+`IntentEnd` takes only the intent id. It chains the record checks, an agent handoff when records are
+missing, and closure. `Graph::Work::Completion::Check` requires every live node done with findings,
+every done-criterion key covered by a done live node, and no node whose key the spec lacks.
+`Graph::Work::Completion::Review` reads the verdict rows: a verdict counts when it is `accept`, is
+the latest round, and is not older than the newest `updated_at` of the live nodes. A judge has two
+rounds. `Graph::Work::Completion::Evidence` builds the evidence from rows: each criterion key maps
+to its done nodes and their findings. With `review.pull_request` `required` (the default;
+`off` skips both) `outcome.md` also needs a `Pull request:` bullet, and the owner's `Approved:` bullet before the close.
 
-`Graph::Work::Completion::Writer` stores the criterion snapshot, evidence, judge, outcome hash, session,
+`IntentAbandon` takes only the intent id. `Workflows::PrepareAbandon` refuses a foreign live lock
+and hands `RevertIntent` to the agent until `outcome.md` holds a `Reverted:` bullet; the close
+then sets the status `abandoned`, with the disposition `superseded` when a `supersedes` link from
+another intent points at the intent, otherwise `cancelled`, and writes no completion row.
+
+`Graph::Work::Completion::Writer` stores the criterion snapshot, evidence, the judge `verdict`, outcome hash, session,
 and timestamp in `completions`. It commits that row with the delivered status and closure
-time in the work database, then releases the delivery lock in the local database. A repeat
+time in the work database, then releases the delivery lock in the local database. `CloseIntent` then prints the intent's files and hands the agent `WindDownIntent`: stop the processes and agents the intent started. A repeat
 call preserves the first completion record and retries cleanup. Imported done intents
-remain closed without gaining an invented attestation. `node done --repair` explicitly
-records verification for an already done node; it preserves the node's attempt count.
+remain closed without gaining an invented record. `node done ID NODE TEXT` on an
+already done node replaces its findings; it preserves the node's attempt count.
 
-`graph.json` is a generated view. Sync up skips it, direct Reader import refuses it,
-and sync down or graph show renders it from rows. Legacy import skips graph.json too;
+`graph.json` is a generated view of the go-ahead, the verdicts, the nodes with their criterion keys
+and the edges. `context.json` is a generated view of the saved discovery and context. Sync up skips
+both, direct Reader import refuses them, and sync down or graph show renders them from rows.
+Legacy import skips them too;
 its node and edge state can only be created through the graph commands.
 
 ### the knowledge graph command set (intent 400)
@@ -741,7 +750,7 @@ hook blocks a hand-authored intent file in 2.0; `validate-intent` and doctor's
 ## delivery scripts (intent 213)
 
 `AGENTS.md` states the classification rule: a step becomes a script only when its output is
-a pure function of already-committed artifacts (spec.md, plan.md, checklist.md, outcome.md,
+a pure function of already-committed artifacts (spec.md, outcome.md,
 test results, the diff). Everything else stays judgment and stays with the agent. Intent 213
 applied that rule with thin CLIs over `scripts/lib/` modules. Three of them remain:
 `scripts/scaffold-intent`, `scripts/verify-intent`, and `scripts/exec-worktree`, which prints
@@ -753,8 +762,8 @@ code worktree itself). `scripts/end-intent` runs the same backfill as
 `scripts/scaffold-intent` is one CLI with one verb, `backfill` (its `spec`, `checklist`, and
 `outcome` subcommands were removed in 2.0, intent 308). It runs `BackfillIntent`
 (`scripts/lib/backfill_intent.rb`), the writer `scripts/end-intent` runs at every close: each
-of spec.md, plan.md, `actions/ACTION_1.md`, and outcome.md that is missing or still the
-placeholder is written from the record (the intent file, the checklist, the diff on the
+of spec.md, `actions/ACTION_1.md`, and outcome.md that is missing or still the
+placeholder is written from the record (the intent file, the diff on the
 intent's own worktree), every judgment section keeps the template's stub, and a file with
 hand-written content is never touched. `end-intent` then runs doctor's per-intent structure
 check as a self-check that reports and proceeds; the exit-6 refusal is gone.
@@ -1339,7 +1348,7 @@ Three pieces close the loop the day ledger (intent 297) and the capture and reco
 - `scripts/file-session-intent --day <YYYYMMDD> [--carry-to <YYYYMMDD>]` files a day: pending
   lines become dropped, open lines are carried into the target day once (deduplicated against
   the target before the append, flipped to moved `[>]` after it, so a rerun after a crash never
-  duplicates), the four documents `spec.md`, `plan.md`, `actions/ACTION_1.md`, and `outcome.md`
+  duplicates), the three documents `spec.md`, `actions/ACTION_1.md`, and `outcome.md`
   are regenerated from the ledger alone (`scripts/lib/session_backfill.rb`), and the day file
   gains a `closed:` timestamp. A day whose checklist is newer than its `closed:` stamp is filed
   again. Prints `filed <day>` or `skipped <day>: closed`; a filing error goes to stderr and the

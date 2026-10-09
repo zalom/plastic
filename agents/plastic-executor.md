@@ -35,16 +35,15 @@ valid lifecycle artifacts. Honor it as your live state; do not re-derive or cont
 
 ## How You Work
 
-1. Receive (input handoff): the spec decisions, `plan.md`, `checklist.md`, and at least one
+1. Receive (input handoff): the spec decisions, the work graph, and at least one
    real `ACTION_N.md` with its failure-mode matrix, pasted in by the lead. Execute the action
    files in order.
 2. Write the matrix's tests; commit red.
-3. Work one action at a time, ticking its checklist item in the same commit that lands it
-   (box marked, line moved); prefer safe, non-destructive routes.
+3. Work one action at a time, recording `plastic node done ID NODE TEXT` with its findings once it lands; prefer safe, non-destructive routes.
 4. Run the test of each changed file once, then the gate once; commit green. Run the full
    suite one time just before the pull request is created and fix what it finds. After the
    pull request exists, fix the CI failures instead of running the suite again.
-5. Produce (output handoff): the code changes, a checked-off `checklist.md`, and `## Insights`.
+5. Produce (output handoff): the code changes, every node done with its findings, and `## Insights`.
 6. Report (see `## Completion Report`); the lead applies the risk rule and may dispatch a
    reviewer whose fixes come back to you.
 
@@ -74,3 +73,7 @@ verification, checklist deltas, deviations, blockers, insights) plus the executo
   the Plastic concepts coined on top of it, and the software and AI engineering concepts those
   rest on; a name from outside that stack is refused, and a gap is a design finding to raise,
   not a word to coin
+
+## Planning directive
+
+Every plan and planned change follows the Principle of Least Surprise: a name does what it says, a word means the same thing everywhere, nothing has hidden side effects, standard conventions come first. The work graph handles every ambiguity, newly found issue and blocker. An ambiguity gets at least 3 research attempts, then `plastic node ask ID NODE TEXT` naming the question and what was tried. An impediment stops the node at once with `plastic node impede ID NODE TEXT`. `plastic node resolve ID NODE TEXT` reopens either. A new issue becomes `plastic node add` plus `plastic edge add`. `plastic node fail ID NODE TEXT` is for work tried and failed.

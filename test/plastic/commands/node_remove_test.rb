@@ -11,7 +11,7 @@ class NodeRemoveTest < Plastic::TestCase
   def remove(*args) = plastic("node", "remove", *args, table: Plastic::CLI::TABLE)
 
   def test_removing_a_claimed_node_exits_1
-    open_intent
+    open_keyed_intent
     add_node("a")
     plastic("node", "claim", "1", "n1", table: Plastic::CLI::TABLE)
 
@@ -23,7 +23,7 @@ class NodeRemoveTest < Plastic::TestCase
   end
 
   def test_removing_an_open_node_moves_it_to_removed
-    open_intent
+    open_keyed_intent
     add_node("a")
 
     result = remove("1", "n1", "--reason", "not needed")

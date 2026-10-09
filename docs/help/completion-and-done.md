@@ -2,7 +2,7 @@
 
 This chapter holds what "intent done" means and the End-stage tail.
 
-#### What "intent done" means (intent 93)
+## What "intent done" means (intent 93)
 
 Completion is one law with three signals, and they must agree. INDEX `## Completed` /
 `## Abandoned` is the single canonical terminal marker: it is the store-wide ledger a fresh
@@ -17,39 +17,20 @@ self-declares its disposition through a `disposition: delivered|abandoned` front
 header. The delivered path authors it with the result; the abandoned path authors it with
 the abandonment reason and no longer leaves the scaffolded placeholder sentinel in place.
 
-The canonical End tail runs in this order: `outcome.md -> INDEX terminal -> the terminal
-savepoint line -> commit -> disarm (Worktree.release -> Lock.release)`. `plastic intent end`
-runs all of it through `scripts/end-intent`. The close does not reindex QMD: no public close
-path calls `qmd-sync`, so the QMD index catches up only when you run `qmd-sync` yourself.
+`plastic intent end ID` takes no options. It closes the intent when the rows allow it:
+every live node done, every criterion covered, an accepted verdict at or after the newest live
+node change, and `Merged:` and `Architecture map:` bullets under `## Verification` in
+outcome.md. With `review.pull_request` set to `required`, the default, it also needs a
+`Pull request:` bullet and an `Approved:` bullet. An unapproved pull request is a refusal
+(exit 3), and a live lock of another session is a refusal (exit 3). Anything else that is
+missing comes back as a handoff with exit 0, and nothing closes. The close does not reindex
+QMD, and Plastic never merges or runs version control.
 
-`scripts/end-intent` never merges code, and never checks that it is merged (intent 390:
-Plastic runs no version control command). A delivered close authors the record and
-disarms; it does not ask Git whether the code worktree's branch landed anywhere. If code
-work is still open, merge it yourself, on your own schedule, before or after the intent
-closes -- the close no longer blocks on it.
-
-A delivered close still refuses, as exit 1, an untouched scaffold (script exit 8) and a hollow
-report whose `## Delivered` rows do not match the action files (script exit 7). A live foreign
-lock is script exit 4, which `plastic intent end` reports as exit 3. The dirty-worktree
-check (former exit 5) and the unmerged-branch check (former exit 9) are retired: both
-required a real `git status` or `git merge-base`, which Plastic no longer runs.
-`--discard-worktree-changes` is still accepted for backward compatibility but changes
-nothing.
-
-Evidence is a JSON object from each criterion key (the bracketed key, or the full text of an
-unkeyed criterion) to nonempty text. A delivered close also needs the `Merged:` and
-`Architecture map:` bullets under `## Verification` in outcome.md; when either is missing it
-hands over the merge check with exit 0 and closes nothing. `plastic intent end ID --abandoned`
-closes an intent that will not ship.
-
-`scripts/end-intent` performs this order's disarm step as its own step 5, mechanically,
-since intent 188: a session no longer needs a separate one-liner for it, and the script's own
-exit code (0) is the single fact a caller needs that the intent is closed AND its delivery
-lock is gone. A pre-flight lock guard runs before anything is written (refuses a live
-foreign session, reclaims a stale one with an audit line). Disarm itself only clears the
-delivery lock; when a worktree was provisioned for the intent, it never removes that
-worktree (intent 390) -- it names the `git worktree remove` instruction, and end-intent
-prints it for the closer to run by hand, after committing and merging.
+The completion row holds the judge `verdict` and the evidence built from the rows: each
+criterion key with its done nodes and their findings. The close releases the delivery lock,
+prints the intent files, and hands the agent the steps that stop the processes and agents the
+intent started. `plastic intent abandon ID` closes an intent that will not ship, once
+outcome.md holds a `Reverted:` bullet; it writes no completion row.
 
 The post-done access window is lock-bounded: `[INDEX terminal -> Lock.release]`. Through it
 the completing session keeps full read and write access to the terminal directory (108's
@@ -62,7 +43,7 @@ a done intent is never moved back to `## Active`.
 One report per audience: a delivery produces `outcome.md` plus one EM-to-CTO owner report, and
 no other step restates either (see `plastic help human-report-contract`).
 
-#### session commit records the item, you land it
+## Session commit records the item, you land it
 
 `plastic session note "SUMMARY" --kind Commit` is how a verified checklist item gets recorded.
 It appends one `Item` savepoint line to the day ledger and
@@ -74,7 +55,7 @@ Inside one, it names the project's path and says to commit there the way that re
 `AGENTS.md` says -- the project owns its own commit conventions, this page does not restate
 them.
 
-#### The pull request description
+## The pull request description
 
 A pull request that closes a delivery carries four headings, in this order:
 

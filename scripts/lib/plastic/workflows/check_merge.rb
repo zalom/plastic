@@ -16,7 +16,7 @@ module Plastic
         say: "Now that the work is delivered, fetch the architecture map once more, with the tool you used before planning " \
           "or by mapping the code yourself, and confirm that it describes the delivered code. Then add the line " \
           "'- Architecture map: <tool> at <source revision>' under ## Verification in %{intent_folder}/outcome.md. " \
-          "Run plastic sync up and then plastic intent end %{intent_id} again, with the same --judge and --evidence when you already submitted them."
+          "Run plastic sync up and then plastic intent end %{intent_id} again."
 
       outcome :handoff, offers: nil, because: "the agent checks the merge and the architecture map and records both in outcome.md"
       outcome :done, offers: nil, because: "the merge and the architecture map are recorded"

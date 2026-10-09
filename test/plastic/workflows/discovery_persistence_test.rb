@@ -6,6 +6,11 @@ require_relative "../../../scripts/lib/plastic/workflows/discovery_persistence"
 class DiscoveryPersistenceTest < Plastic::TestCase
   DOCUMENT = { "query" => "alpha", "candidates" => [] }.freeze
 
+  def setup
+    super
+    open_intent
+  end
+
   def persist = Plastic::Workflows::DiscoveryPersistence.persist(call_context(intent_id: "1"), DOCUMENT)
 
   def test_the_manifest_is_written_as_a_row
@@ -15,10 +20,15 @@ class DiscoveryPersistenceTest < Plastic::TestCase
     assert_equal DOCUMENT, JSON.parse(row.fetch("data"))
   end
 
-  def test_the_manifest_replaces_the_file_of_the_store
-    write("discovery/1.json", "{}")
+  def test_the_manifest_is_printed_into_the_intent_folder
     persist
 
-    assert_equal DOCUMENT, JSON.parse(File.read(store_path("discovery/1.json")))
+    assert_equal DOCUMENT, JSON.parse(File.read(store_path("store/1--alpha/context.json"))).fetch("discovery")
+  end
+
+  def test_nothing_is_written_at_the_store_root
+    persist
+
+    refute_path_exists store_path("discovery/1.json")
   end
 end

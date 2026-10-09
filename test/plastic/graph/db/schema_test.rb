@@ -55,7 +55,7 @@ class DbSchemaTest < Plastic::TestCase
     assert_equal({
       local: ["local.db", %i[routine_runs sessions locks backups]],
       work: ["work_graph.db", %i[intents clusters nodes edges savepoints completions printed changes roadmaps batches roadmap_items
-        roadmap_edges roadmap_log archives archive_entries]],
+        roadmap_edges roadmap_log archives archive_entries approvals verdicts]],
       knowledge: ["knowledge_graph.db", %i[documents legacy_intents_data document_revisions document_heads document_passages document_fts
         retrieval_schema retrieval_backfills retrieval_contexts retrieval_discoveries rulings links printed changes]],
       references: ["references.db", %i[sqlar printed changes]]
@@ -81,7 +81,7 @@ class DbSchemaTest < Plastic::TestCase
   def test_the_schema_file_loads_in_a_fresh_ruby
     out, err, status = Open3.capture3(RbConfig.ruby, "-r", SCHEMA_PATH, "-e", "print Plastic::Graph::SCHEMA_FILE.version")
 
-    assert_equal [true, "20261007000000", ""], [status.success?, out, err]
+    assert_equal [true, "20261009000000", ""], [status.success?, out, err]
   end
 
   def test_the_schema_file_marks_legacy_intents_data_legacy

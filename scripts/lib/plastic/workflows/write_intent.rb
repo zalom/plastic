@@ -20,7 +20,7 @@ module Plastic
 
       step "write the intent", done: ->(context) { !context.intent_id.nil? } do |context|
         intent = context.work.write_intent(title: context.title, parent_id: context.parent_id, ref: context.ref, kind: context.kind,
-          status: context.status, slug: context.slug)
+          status: context.status)
         context[:intent_id] = intent.intent_id
       end
 
@@ -42,7 +42,10 @@ module Plastic
       outcome :done, offers: "plastic next", because: "intent %{intent_id} has its rows and its printed files"
 
       def self.after_problem(context)
-        "no intent #{context.after} in this store to link after" if context.after && !context.retrieval.intent(context.after)
+        after = context.after
+        return unless after
+
+        "no intent #{after} in this store to link after" unless context.retrieval.intent(after)
       end
     end
   end

@@ -2,6 +2,7 @@
 
 require "digest"
 require "fileutils"
+require_relative "intent"
 
 module Plastic
   module Graph
@@ -49,10 +50,15 @@ module Plastic
         # Removes a whole folder of the checkout, such as an archived intent's.
         def remove_dir(rel) = FileUtils.rm_rf(path(rel))
 
+        def own_file(dir)
+          fixed = "#{dir}/#{Intent::FILE}"
+          exist?(fixed) ? fixed : "#{dir}/#{File.basename(dir)}.md"
+        end
+
         def intent_dirs = Dir.glob("store/*--*/", base: root).map { |dir| dir.chomp("/") }.sort
 
         # The graph view is generated from node and edge rows.
-        def self.graph_view?(path) = path.match?(%r{\Astore/[^/]+/graph\.json\z})
+        def self.graph_view?(path) = path.match?(%r{\Astore/[^/]+/(?:graph|context)\.json\z})
 
         # Every file of every intent folder, dot files included.
         def intent_files = intent_dirs.flat_map { |dir| files(dir) }
