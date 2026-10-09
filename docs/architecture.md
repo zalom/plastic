@@ -209,11 +209,11 @@ A sync preview reports what it would import and offers `plastic sync up`.
 Dropping a missing roadmap item fails before any write and names the missing roadmap or item.
 
 A roadmap is a plan of several intents, kept as rows in `work_graph.db`. It holds batches.
-Each batch has a goal and done criteria, and each item in a batch can wait on other items.
+Each batch has a goal and done criteria, and each item in a batch can need other items.
 `plastic roadmap batch` and `plastic roadmap add` write the plan. `plastic roadmap start`
 opens a ready item's intent and copies the item's goal and done criteria into that intent's
 spec. An item's state is never stored. It is derived on each read from its intent's status
-and from the items it waits on: done, dropped, in flight, blocked or ready. `plastic roadmap
+and from the items it needs: done, dropped, in flight, blocked or ready. `plastic roadmap
 next` prints the first ready item, or what is in the way. `plastic roadmap show` prints the
 plan and reprints `roadmaps/<slug>.md` from the rows.
 

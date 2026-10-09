@@ -73,7 +73,7 @@ module Plastic
 
       # Roadmaps: a named plan, held as rows instead of a hand-kept file.
       "roadmap batch" => ["Commands::RoadmapBatch", "Write one roadmap batch's goal and done criteria"],
-      "roadmap add" => ["Commands::RoadmapAdd", "Add an item to a roadmap batch, after whichever items it waits on"],
+      "roadmap add" => ["Commands::RoadmapAdd", "Add an item to a roadmap batch, with the items it needs"],
       "roadmap show" => ["Commands::RoadmapShow", "Print a roadmap's batches and items"],
       "roadmap next" => ["Commands::RoadmapNext", "Print the first ready item, or what is in the way"],
       "roadmap drop" => ["Commands::RoadmapDrop", "Mark a roadmap item dropped; its edges stay as rows"],
