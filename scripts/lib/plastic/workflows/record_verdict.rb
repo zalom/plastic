@@ -17,7 +17,6 @@ module Plastic
 
       step "write the verdict", done: ->(context) { rounds(context) > context.rounds_before } do |context|
         context.work.add_verdict(intent_id: context.intent_id, verdict: context.verdict, findings: context.findings)
-        context.work.print_intent(context.intent_id)
         context.print("verdict: #{context.verdict} round #{rounds(context)}")
       end
 

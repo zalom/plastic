@@ -12,6 +12,7 @@ module Plastic
       option :why, switch: "--why TEXT", text: "the new Why, the lead text of ## Context"
       option :dry_run, switch: "--dry-run", default: false, text: "print the change and write nothing"
       writes :work, :knowledge
+      prints :intent
 
       workflow :code_revise_intent, next: :noop
 

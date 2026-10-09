@@ -55,7 +55,7 @@
       ]
     },
     "varar/doctor.md": {
-      "sourceHash": "fnv1a:2d017014",
+      "sourceHash": "fnv1a:6b4246ca",
       "examples": [
         {
           "name": "Each row gives the harness, the damage, the exit code, the check, the repair and the exit code after repair:",
@@ -117,7 +117,7 @@
       ]
     },
     "varar/graph-show.md": {
-      "sourceHash": "fnv1a:84d280e0",
+      "sourceHash": "fnv1a:4ace7729",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -228,7 +228,7 @@
       ]
     },
     "varar/intent-new.md": {
-      "sourceHash": "fnv1a:24cc5bc6",
+      "sourceHash": "fnv1a:678f057e",
       "examples": [
         {
           "name": "Each row gives the store, the call, the exit code, the index, the files and what it says:",
@@ -507,7 +507,7 @@
       ]
     },
     "varar/roadmap-start.md": {
-      "sourceHash": "fnv1a:0abffdd6",
+      "sourceHash": "fnv1a:f6c82fb0",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",

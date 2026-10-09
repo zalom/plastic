@@ -15,7 +15,6 @@ module Plastic
         context.database(:knowledge).transaction do |batch|
           batch.put(:retrieval_contexts, { intent_id:, data: JSON.pretty_generate(document), updated_at: Plastic.now })
         end
-        context.work.print_intent(intent_id)
         document
       end
 

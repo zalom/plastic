@@ -11,6 +11,7 @@ require_relative "routine_run"
 require_relative "routine/chain"
 require_relative "routine/traversal"
 require_relative "routine/preview"
+require_relative "routine/printing"
 require_relative "workflow"
 require_relative "graph"
 
@@ -30,6 +31,7 @@ module Plastic
   class Routine < CLI::Command
     extend Preview::Declaration
     include Preview
+    include Printing
 
     class << self
       def workflow(key, **edge, &branches)
@@ -68,7 +70,7 @@ module Plastic
 
     def finish(routine_run)
       ctx = context(routine_run)
-      report(Traversal.new(chain, ctx, routine_run) { |run| save_routine_run(run) }.call, ctx)
+      report(printing(Traversal.new(chain, ctx, routine_run) { |run| save_routine_run(run) }.call, ctx), ctx)
     end
 
     # A resumed routine run brings back what its workflows found; this call's

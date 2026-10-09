@@ -9,6 +9,7 @@ module Plastic
       node_subject
       argument :text, label: "TEXT", text: "the question and what was tried"
       writes :work
+      prints :intent
 
       workflow :code_ask_node, next: :noop
     end

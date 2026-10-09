@@ -20,7 +20,7 @@ class SyncDownTest < Plastic::TestCase
     archive(intent)
 
     assert_call sync_down, code: 0,
-      out: "printed store/index.json\n#{RUN_ROW}\nnext: plastic next --project global\nbecause: the files hold every row that changed\n"
+      out: "#{RUN_ROW}\nnext: plastic next --project global\nbecause: the files hold every row that changed\n"
     refute folder.exist?(intent.dir)
   end
 

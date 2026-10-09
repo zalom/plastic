@@ -83,6 +83,9 @@ module Plastic
       # "1 intent and 1 savepoint line in work_graph.db". Nil when nothing.
       def written_phrase = written.empty? ? nil : "#{Schema.phrase(written)} in #{file}"
 
+      # Whether this call wrote a row other than its routine run.
+      def wrote_rows? = written.keys.any? { |table| table != RUNS }
+
       # What the report says of this database: what this call wrote.
       def phrases = [written_phrase].compact
 

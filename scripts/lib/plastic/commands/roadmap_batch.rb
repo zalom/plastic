@@ -13,6 +13,7 @@ module Plastic
       option :goal, switch: "--goal GOAL", text: "the batch's goal"
       option :done, switch: "--done TEXT", text: "one done criterion; repeat for more", repeatable: true
       writes :work
+      prints :roadmap
 
       workflow :code_write_roadmap_batch, next: :noop
     end

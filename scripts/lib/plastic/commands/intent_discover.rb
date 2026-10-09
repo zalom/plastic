@@ -12,6 +12,7 @@ module Plastic
       option :source_projects, switch: "--source-project SLUG", text: "a source store", repeatable: true
       reads :knowledge
       writes :knowledge, :work
+      prints :intent
 
       workflow :code_discover_retrieval, next: :agent_external_agent_workflow
       workflow :agent_external_agent_workflow, next: :noop

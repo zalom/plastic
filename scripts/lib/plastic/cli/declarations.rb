@@ -10,6 +10,7 @@ module Plastic
     # takes, what it works on, and which graphs it reads and writes.
     module Declarations
       GRAPHS = %i[work knowledge retrieval references].freeze
+      PRINTS = %i[intent roadmap index].freeze
       OPTION_DEFAULTS = { repeatable: false, required: false }.freeze
 
       # The arguments that name the thing a call works on, such as the
@@ -48,6 +49,15 @@ module Plastic
       def reads(*graphs) = graphs_for(:@reads, graphs)
 
       def writes(*graphs) = graphs_for(:@writes, graphs)
+
+      # Which files the tool prints after it writes: `prints :intent` for the
+      # intent it worked on, `:roadmap` for the roadmap, `:index` for store/index.json.
+      def prints(*kinds)
+        unknown = kinds - PRINTS
+        raise Invalid, "#{name}: unknown print #{unknown.join(", ")}" if unknown.any?
+
+        (@prints ||= []).concat(kinds)
+      end
 
       # Marks a tool that opens no graph, so it runs in a home with no store.
       def graphless = (@graphless = true)

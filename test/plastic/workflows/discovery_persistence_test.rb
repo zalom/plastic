@@ -20,12 +20,6 @@ class DiscoveryPersistenceTest < Plastic::TestCase
     assert_equal DOCUMENT, JSON.parse(row.fetch("data"))
   end
 
-  def test_the_manifest_is_printed_into_the_intent_folder
-    persist
-
-    assert_equal DOCUMENT, JSON.parse(File.read(store_path("store/1--alpha/context.json"))).fetch("discovery")
-  end
-
   def test_nothing_is_written_at_the_store_root
     persist
 

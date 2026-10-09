@@ -9,6 +9,7 @@ module Plastic
       node_subject
       argument :text, label: "TEXT", text: "what the work showed"
       writes :work
+      prints :intent
 
       workflow :code_done_node, next: :noop
     end

@@ -9,6 +9,7 @@ module Plastic
       node_subject
       argument :text, label: "TEXT", text: "why it failed"
       writes :work
+      prints :intent
 
       workflow :code_fail_node, next: :noop
     end

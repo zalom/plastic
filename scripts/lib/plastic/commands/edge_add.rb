@@ -11,6 +11,7 @@ module Plastic
       argument :from, label: "FROM", text: "the node that must be done first"
       argument :to, label: "TO", text: "the node that waits on it"
       writes :work
+      prints :intent
 
       workflow :code_add_edge, next: :noop
     end

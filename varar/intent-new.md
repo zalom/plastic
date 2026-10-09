@@ -9,8 +9,8 @@ Each row gives the store, the call, the exit code, the index, the files and what
 
 | store                | call                  | exit | index | files                                  | says                                                                                  |
 | -------------------- | --------------------- | ---: | ----- | -------------------------------------- | ------------------------------------------------------------------------------------- |
-| empty                | Build the thing       |    0 | 1     | graph.json, intent.md, savepoint.md | intent 1 has its rows and its printed files                                    |
-| one intent           | Child --parent 1      |    0 | 1, 1a | graph.json, intent.md, savepoint.md | intent 1a has its rows and its printed files                                          |
+| empty                | Build the thing       |    0 | 1     | graph.json, intent.md, savepoint.md | intent 1 has its rows and its files                                    |
+| one intent           | Child --parent 1      |    0 | 1, 1a | graph.json, intent.md, savepoint.md | intent 1a has its rows and its files                                          |
 | one intent           | Second --ref 1-ORIGIN |    0 | 1, 2  | graph.json, intent.md, savepoint.md | ref: intent 1 of this installation                                                    |
 | empty                | Ticketed --ref ENG-12 |    0 | 1     | graph.json, intent.md, savepoint.md | ref: ENG-12                                                                         |
 | empty                | Orphan --parent 9     |    1 | none  | none                                   | no intent 9 in this store to be the parent                                            |

@@ -12,7 +12,6 @@ module Plastic
 
       step "abandon the intent and finish cleanup", done: ->(context) { context.abandon_ended == true } do |context|
         context.work.abandon_intent(context.intent_id)
-        context.work.print_index
         context.print("intent: #{context.intent_id} abandoned")
         context[:abandon_ended] = true
       end

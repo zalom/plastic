@@ -12,6 +12,7 @@ module Plastic
       argument :verdict, label: "accept|revise", text: "the verdict of this review round"
       argument :findings, label: "TEXT", text: "what the review showed"
       writes :work
+      prints :intent
 
       workflow :code_prepare_verdict do
         on :recording, next: :code_record_verdict

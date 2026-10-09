@@ -8,6 +8,7 @@ module Plastic
     class IntentApprove < Routine
       intent_subject
       writes :work
+      prints :intent
 
       workflow :code_approve_intent, next: :noop
     end

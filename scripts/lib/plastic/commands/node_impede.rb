@@ -9,6 +9,7 @@ module Plastic
       node_subject
       argument :text, label: "TEXT", text: "the impediment"
       writes :work
+      prints :intent
 
       workflow :code_impede_node, next: :noop
     end

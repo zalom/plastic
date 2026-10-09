@@ -15,6 +15,7 @@ module Plastic
       option :done, switch: "--done TEXT", text: "one done criterion; repeat for more", repeatable: true
       option :after, switch: "--after ITEM", text: "an item this one waits on; repeat for more", repeatable: true
       writes :work
+      prints :roadmap
 
       workflow :code_add_roadmap_item, next: :noop
     end

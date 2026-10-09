@@ -8,6 +8,7 @@ module Plastic
     class IntentEnd < Routine
       intent_subject
       writes :work
+      prints :intent
       reads :knowledge
 
       workflow :code_prepare_ending do

@@ -18,7 +18,6 @@ module Plastic
 
       step "write the go-ahead", done: ->(context) { !context.retrieval.approval(context.intent_id).nil? } do |context|
         context.work.approve_intent(context.intent_id)
-        context.work.print_intent(context.intent_id)
       end
 
       read "say what was written" do |context|

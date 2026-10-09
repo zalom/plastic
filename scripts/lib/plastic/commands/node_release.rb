@@ -8,6 +8,7 @@ module Plastic
     class NodeRelease < Routine
       node_subject
       writes :work
+      prints :intent
 
       workflow :code_release_node, next: :noop
     end

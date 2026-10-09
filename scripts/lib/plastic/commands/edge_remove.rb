@@ -10,6 +10,7 @@ module Plastic
       argument :from, label: "FROM", text: "the edge's start"
       argument :to, label: "TO", text: "the edge's end"
       writes :work
+      prints :intent
       previews
 
       workflow :code_remove_edge, next: :noop

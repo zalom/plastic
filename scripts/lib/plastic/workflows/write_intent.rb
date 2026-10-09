@@ -4,12 +4,12 @@ require_relative "../code_workflow"
 
 module Plastic
   module Workflows
-    # Writes a new intent's rows, then prints its folder and store/index.json.
+    # Writes a new intent's rows; the command prints its folder and store/index.json.
     class WriteIntent < CodeWorkflow
       # Declares the whole chain, so a second load of the class replaces the first.
       [facts, steps, outcomes].each(&:clear)
 
-      sets :problem, :intent_id, :linked, :printed_paths
+      sets :problem, :intent_id, :linked
 
       read "check the call" do |context|
         context[:problem] = context.work.intent_problem(parent_id: context.parent_id, ref: context.ref, status: context.status) ||
@@ -29,17 +29,12 @@ module Plastic
         context[:linked] = true
       end
 
-      step "print its files", done: ->(context) { !context.printed_paths.nil? } do |context|
-        context[:printed_paths] = context.work.print_intent(context.intent_id)
-      end
-
       read "say what was written" do |context|
         context.print("intent: #{context.intent_id}")
         context.print(context.work.ref_line(context.ref)) if context.ref
-        context.printed_paths.each { |path| context.print("printed #{path}") }
       end
 
-      outcome :done, offers: "plastic next", because: "intent %{intent_id} has its rows and its printed files"
+      outcome :done, offers: "plastic next", because: "intent %{intent_id} has its rows and its files"
 
       def self.after_problem(context)
         after = context.after

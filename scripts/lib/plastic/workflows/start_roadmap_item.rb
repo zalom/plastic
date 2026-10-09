@@ -9,7 +9,7 @@ module Plastic
     class StartRoadmapItem < CodeWorkflow
       [facts, steps, outcomes].each(&:clear)
 
-      sets :problem, :kind, :intent_id, :printed_paths
+      sets :problem, :kind, :intent_id
 
       forget_stop :problem, :kind
 
@@ -23,13 +23,8 @@ module Plastic
       gate "%{problem}", stops: :failure, pass: ->(context) { context.kind != :failure }
       gate "%{problem}", stops: :refusal, pass: ->(context) { context.kind != :refusal }
 
-      step "print its files", done: ->(context) { !context.printed_paths.nil? } do |context|
-        context[:printed_paths] = context.work.print_intent(context.intent_id)
-      end
-
       read "say what was opened" do |context|
         context.print("intent: #{context.intent_id}")
-        context.printed_paths.each { |path| context.print("printed #{path}") }
       end
 
       outcome :done, offers: "plastic intent brief %{intent_id}", because: "item %{item_id} opened as intent %{intent_id}"
