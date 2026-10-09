@@ -576,12 +576,8 @@ this section covers how the code holds together.
   SHA-256 digest of the sorted file names and digests with the one stored at write time.
   `BackupStore` adds the required `--store` option to the four commands and refuses a slug
   that is neither `global` nor a key of `projects.yml`. `Databases.parse` reads `--databases`.
-  After a restore, `BackupRestore` asks which sync to run through `CLI::Dialog`, built by
-  `BackupRestore#scope` from `Environment#input` and the output, and reached as `context.scope.dialog`
-  (`Commands::AskingScope`). A
-  terminal is an input that answers `tty?`, and never under `--json`. The answer picks the
-  outcome `sync_down`, `sync_up` or `kept`, and the chain runs the sync workflows for the same
-  store; with no terminal the outcome is `done` and its `next:` tells the agent to ask.
+  A restore asks no question and runs no sync. `BackupRestore` ends with the outcome `done`, and its
+  `next:` line is `plastic sync down --project STORE`.
 
 `Graph::Knowledge::Sync::LegacyImport` runs `Graph::Knowledge::Legacy::StoreImport` for a store with `INDEX.md` and no
 `store/index.json`. One coordinator reads intent files, rulings and source links, imports

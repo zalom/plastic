@@ -44,11 +44,7 @@ is `failed`, and never one that is `in-progress` or `done`. Give exactly one of 
 the newest one. It refuses while a delivery lock is fresh. Before it changes anything it
 backs up the current databases, so the restore can be undone with a second restore.
 
-A restore never syncs by itself. At a terminal it asks you to choose:
-
-- `down` prints the files from the restored rows. File edits made after the backup are lost.
-- `up` reads the files into the rows. Where a file is newer, it replaces the restored row.
-- `neither` changes nothing; the rows and the files stay as they are.
-
-When no terminal is there, such as when an agent runs it, the restore asks nothing. Its
-`next:` line tells the agent to ask you which one you want.
+A restore never syncs by itself, and it asks no question, at a terminal or without one. It replaces
+the databases and ends with `next: plastic sync down --project STORE`. Run that line to write the
+files from the restored rows; file edits made after the backup are lost. To keep a file that is newer
+than the backup, run `plastic sync up --project STORE` instead.
