@@ -33,10 +33,7 @@ module Plastic
           # first time it is named. A field left out keeps the batch's word for
           # it, and a new batch with no title is called "Batch N".
           def create_roadmap(slug, title:, goal:)
-            now = Plastic.now
-            @databases.fetch(:work).transaction do |batch|
-              batch.put(:roadmaps, roadmap_row(slug, now).merge(title: title || slug, goal:), statement: :insert)
-            end
+            @databases.fetch(:work).transaction { |batch| batch.put(:roadmaps, roadmap_row(slug, Plastic.now).merge(title: title || slug, goal:), statement: :insert) }
             @retrieval.roadmap(slug)
           end
 
