@@ -10,10 +10,9 @@ require "tmpdir"
 require "yaml"
 require_relative "../../scripts/lib/store_layout"
 
-# ContextBudget (intent 313): the measurement behind Plastic's two ruled context
-# numbers. Intent 296 ruled the core block under 8,192 bytes and the whole
-# per-boot doctrine read under 15,000, and until this module both were estimates
-# in a design document. Everything here is measured: the bench builds a fixture
+# ContextBudget: the measurement behind Plastic's two context numbers. The core
+# block stays under 8,192 bytes and the whole per-boot doctrine read under
+# 15,000. Everything here is measured: the bench builds a fixture
 # home by running the real installer into a temporary HOME, runs the real
 # `scripts/hook-session-start` against it N times, and reports what a boot
 # actually costs.
@@ -27,30 +26,27 @@ require_relative "../../scripts/lib/store_layout"
 # injectable. Nothing reads the real ~/.plastic or ~/.claude, and nothing here
 # touches the network.
 module ContextBudget
-  # The two ruled ceilings (intent 296) plus the one ratchet intent 313 adds.
+  # The two ceilings plus the one ratchet.
   #
-  #   core              PLASTIC.md, the always-on core block. 296's ruling.
-  #   boot              the additionalContext hook-session-start emits. 296's
-  #                     whole-read ruling, enforced on the only quantity that is
+  #   core              PLASTIC.md, the always-on core block.
+  #   boot              the additionalContext hook-session-start emits. The
+  #                     whole-read ceiling, enforced on the only quantity that is
   #                     actually read on every boot and can be measured exactly.
   #   boot_plus_catalog boot injection plus the skill catalog the harness loads.
-  #                     Not a ruling: a 313 ratchet over the measured 16,537, so
+  #                     A ratchet over the measured 16,537, so
   #                     the second-largest per-boot cost cannot regrow unwatched.
   #                     Lower it as the catalog shrinks; never raise it.
   #   standing          every byte Plastic puts into a session before it does
   #                     any work: the core block, the boot injection, the skill
-  #                     catalog and the agent catalog. The owner ruled on
-  #                     2026-10-01 that only what Plastic introduces can be
-  #                     capped, never the whole context, and set the cap at
-  #                     5,000 bytes, about 1,250 tokens. It replaces the intent
-  #                     363 ratchet, which sat just above the measured size and
-  #                     only ever moved down.
+  #                     catalog and the agent catalog. Only what Plastic
+  #                     introduces can be capped, never the whole context; the
+  #                     cap is 5,000 bytes, about 1,250 tokens.
   CEILINGS = { core: 8_192, boot: 15_000, boot_plus_catalog: 17_500, standing: 5_000 }.freeze
 
   # The doctrine working set (boot + _decision-tables.md + the median skill body)
   # is reported against this target, never enforced: its median term steps by
   # about a kilobyte whenever a skill is added or removed, so a suite that went
-  # red on that step would enforce nothing anybody ruled. The gap is printed.
+  # red on that step would enforce nothing. The gap is printed.
   WORKING_SET_TARGET = 15_000
 
   DEFAULT_REPEAT = 5
@@ -70,8 +66,7 @@ module ContextBudget
 
   Measurement = Struct.new(:lines, :words, :tokens, :bytes, :tokens_by_bytes)
 
-  # The word-based token estimate is skill_lint.rb:104's arithmetic exactly, so
-  # the bench and skill-lint can never report different numbers for one file.
+  # The token estimate is the word count times 1.3.
   # bytes / 4 is a second, independent estimate printed for cross-check. Neither
   # is a tokenizer; both are deterministic and offline.
   def self.measure(body)
@@ -80,7 +75,7 @@ module ContextBudget
                     body.bytesize, (body.bytesize / 4.0).round)
   end
 
-  # skill_lint.rb:82-90's split, so a skill's frontmatter is counted once (in the
+  # Splits a skill at its frontmatter, so the frontmatter is counted once (in the
   # catalog row) and its body once (in the median-body row), never both.
   def self.split_skill(content)
     parts = content.split("---", 3)
@@ -272,7 +267,7 @@ module ContextBudget
   # Runs the real hook once. Returns [additionalContext, elapsed_ms]. A failed or
   # empty boot raises rather than scoring as a small, passing number.
   #
-  # Intent 397 cutover: the kernel registers no SessionStart hook yet, so no
+  # The kernel registers no SessionStart hook yet, so no
   # repo on alpha ships scripts/hook-session-start any more. A repo without the
   # file boots to an empty context, deterministically, with no process spawned
   # and no runner call; the measurement reports the truth, that nothing runs.
@@ -452,14 +447,14 @@ end
     ms_samples = report.samples.map(&:ms)
 
     lines = []
-    lines << "Plastic context budget bench (intent 313)"
+    lines << "Plastic context budget bench"
     lines << ""
     lines << "  ruby      #{report.ruby_version}  (#{report.ruby_bin})"
     lines << "  repeats   #{report.repeat}  boot bytes min/median/max #{stat_line(byte_samples)}"
     lines << "  time      ms min/median/max #{stat_line(ms_samples)} - indicative only, never a pass/fail signal"
     lines << "  fixture   a real `scripts/install.rb --claude` into a temporary HOME, then a fixed store"
     lines << "            (1 active + 2 future global intents, 1 active + 1 future project intents)"
-    lines << "  estimator words * 1.3 (skill-lint's arithmetic) as tokens(w); bytes / 4 as tokens(b) - neither is a tokenizer"
+    lines << "  estimator words * 1.3 as tokens(w); bytes / 4 as tokens(b) - neither is a tokenizer"
     lines << ""
     lines << format("  %-52s %8s %9s %9s %9s %9s", "row", "bytes", "tokens(w)", "tokens(b)", "ceiling", "headroom")
 
@@ -474,7 +469,7 @@ end
     working_set = report.row(:working_set)
     if working_set&.target
       lines << ""
-      lines << "  The doctrine working set is reported against intent 296's ruled target of " \
+      lines << "  The doctrine working set is reported against the target of " \
                "#{working_set.target} bytes, not enforced:"
       lines << "  it stands at #{working_set.bytes} (#{format('%+d', working_set.gap)} against the target), " \
                "where the fragment is #{report.fragment} bytes."

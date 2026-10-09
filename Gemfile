@@ -5,10 +5,8 @@ gem "benchmark", "~> 0.4"
 
 group :development, :test do
   gem "minitest", "~> 6.0"
-  gem "minitest-mock", "~> 5.27"
   gem "simplecov", "~> 1.0"
   gem "mutineer", "~> 1.0"
-  gem "skunk", "~> 0.5"
   gem "rubycritic", "~> 4.12"
   gem "flog", "~> 4.9"
   gem "reek", "~> 6.5", require: false

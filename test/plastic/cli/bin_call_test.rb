@@ -18,7 +18,7 @@ class BinCallTest < Plastic::TestCase
     call = plastic_bin("nothing", "here")
 
     assert_equal 2, call.code
-    assert_equal "plastic nothing here is not in this build yet; it lands with its stage\n", call.err
+    assert_equal "plastic nothing here is not a command; run plastic help for the list\n", call.err
     assert_equal "", call.out
   end
 

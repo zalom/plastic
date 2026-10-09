@@ -394,26 +394,6 @@ plastic uninstall --all     # Remove hooks, agents and conventions from every ag
 
 Your stores under `~/.plastic` stay.
 
-## What changed in 2.0
-
-Plastic 2.0 moves from prose skills to one command with direct results.
-
-- **One `plastic` command.** More than 40 commands replace the former workflow skills, which no longer ship.
-- **Direct results.** Every command ends with `next:` and `because:`. Every command except the
-  installer commands and `plastic hook` takes `--json`.
-- **Plans are graphs.** An intent holds nodes and edges, and a ready set names what runs next.
-- **A ledger with refusals.** Node transitions are appended to `savepoint.md`, and an invalid transition is refused.
-- **Generated outcomes.** When a graph intent closes with `outcome.md` still a placeholder, the close builds it from the graph, the nodes and the ledger. An `outcome.md` you wrote is kept.
-- **Roadmaps are graphs too.** `plastic roadmap check` finds cycles and dangling ids.
-- **Search without a service.** One SQLite file holds a full-text index of every store.
-- **Three databases.** The Markdown files stay the record that commands write and read. `plastic sync` reads changed files into `knowledge_graph.db`, writes changed rows back out, refuses when both changed, and rebuilds `work_graph.db` and `references.db`. `plastic checkout` restores missing files from the databases and never overwrites a changed file.
-- **Backup and migrate.** Per-store backup, list, purge and restore commands, and a store move that runs behind a full copy of the home.
-- **Two advisors, medium effort by default.** Summon the Primary Advisor or the Secondary Advisor on purpose.
-- **Codex CLI as a second agent.** The same install, with OpenAI model ids for each role.
-- **Releases from branches.** A push to `alpha`, `beta` or `main` creates a GitHub release that `install.sh` reads.
-
-The [changelog](CHANGELOG.md) holds one line for each release.
-
 ## Documentation
 
 - **[INSTALL.md](INSTALL.md)**: every install path.
@@ -423,6 +403,7 @@ The [changelog](CHANGELOG.md) holds one line for each release.
 - **[docs/architecture.md](docs/architecture.md)**: the structure, the store layout and the stage table.
 - **[docs/internals.md](docs/internals.md)**: how Plastic stays deterministic.
 - **[docs/contributing/](docs/contributing/ARCHITECTURE.md)**: the command architecture, the coding practices and the gates.
+- **[CHANGELOG.md](CHANGELOG.md)**: one entry for each release.
 
 ## Privacy
 

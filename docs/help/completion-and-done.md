@@ -2,7 +2,7 @@
 
 This chapter holds what "intent done" means and the End-stage tail.
 
-## What "intent done" means (intent 93)
+## What "intent done" means
 
 Completion is one law with three signals, and they must agree. INDEX `## Completed` /
 `## Abandoned` is the single canonical terminal marker: it is the store-wide ledger a fresh

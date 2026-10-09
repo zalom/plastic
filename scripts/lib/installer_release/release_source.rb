@@ -45,8 +45,6 @@ module InstallerRelease
       ReleaseFiles.new(directory)
     end
 
-    def trusted? = true
-
     def notices = []
 
     private
@@ -66,8 +64,6 @@ module InstallerRelease
     def newest(_channel) = files.manifest.dig("release", "version")
 
     def files(_version = nil, _directory = nil) = @files
-
-    def trusted? = false
 
     def notices = [format(DEVELOPMENT, @directory)]
   end

@@ -14,6 +14,25 @@ module Crap
     end
   end
 
+  # The new-side start line and line count of one zero-context diff hunk.
+  HUNK = /\A@@ -\S+ \+(\d+)(?:,(\d+))? @@/
+
+  # One hunk of a zero-context diff: the file, its new-side span and its body lines.
+  Hunk = Struct.new(:file, :start, :count, :body) do
+    def span = count.zero? ? [start] : (start...(start + count)).to_a
+
+    def added = body.select { |line| line.start_with?("+") }
+
+    def code_removed? = body.any? { |line| line.start_with?("-") && !Crap.comment?(line) }
+
+    def code_lines
+      return span if body.empty?
+
+      kept = span.zip(added).filter_map { |number, line| number unless Crap.comment?(line.to_s) }
+      (kept.empty? && code_removed?) ? [start] : kept
+    end
+  end
+
   module_function
 
   def formula(complexity, coverage)
@@ -76,16 +95,33 @@ module Crap
   end
 
   def changed_lines(diff)
-    file = nil
-    diff.each_line.with_object(Hash.new { |hash, key| hash[key] = [] }) do |line, changed|
-      if line.start_with?("+++ ")
-        file = line.sub(%r{\A\+\+\+ (b/)?}, "").strip
-      elsif (hunk = line.match(/\A@@ -\S+ \+(\d+)(?:,(\d+))? @@/))
-        start = hunk[1].to_i
-        count = hunk[2] ? hunk[2].to_i : 1
-        changed[file].concat(count.zero? ? [start] : (start...(start + count)).to_a)
-      end
+    hunks(diff).each_with_object(Hash.new { |hash, key| hash[key] = [] }) do |hunk, changed|
+      changed[hunk.file].concat(hunk.code_lines)
     end
+  end
+
+  def hunks(diff)
+    file = nil
+    diff.each_line.with_object([]) do |line, found|
+      file = target(line) || file
+      add_hunk_line(found, file, line)
+    end
+  end
+
+  def add_hunk_line(found, file, line)
+    header = line.match(HUNK)
+    return found << Hunk.new(file, header[1].to_i, (header[2] || 1).to_i, []) if header
+
+    found.last.body << line if found.any? && body_line?(line)
+  end
+
+  def target(line) = line.start_with?("+++ ") ? line.sub(%r{\A\+\+\+ (b/)?}, "").strip : nil
+
+  def body_line?(line) = line.match?(/\A[+-]/) && !line.match?(%r{\A(\+\+\+ |--- (a/|/dev/null))})
+
+  def comment?(line)
+    code = line[1..].to_s.strip
+    code.empty? || code.start_with?("#")
   end
 
   def touched?(found, changed)

@@ -1,7 +1,7 @@
 .DS_Store
-node_modules/
 *.log
 .claude/worktrees/
+.claude/settings.local.json
 
 .serena/
 .enola/

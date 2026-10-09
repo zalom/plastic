@@ -1,7 +1,7 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 
-# VersionNumber - dotted version comparison without RubyGems (intent 363).
+# VersionNumber - dotted version comparison without RubyGems.
 #
 # The launcher starts as `ruby --disable-gems`, which saves about 26 of the 40
 # milliseconds a plain Ruby process costs, so no file a command loads may reach

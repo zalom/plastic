@@ -136,9 +136,9 @@ class CrapTest < Minitest::Test
     assert_includes out.string, "Usage: bin/crap"
   end
 
-  # Intent 363 added these: they are the branches of the vendored tool that its
-  # own tests leave open, and the patch-coverage gate counts every line of a
-  # file on the commit that brings it in.
+  # These cover the branches of the vendored tool that its own tests leave open;
+  # the patch-coverage gate counts every line of a file on the commit that brings
+  # it in.
   def test_an_empty_body_has_no_decisions
     assert_equal 0, Crap.decisions(nil)
   end
@@ -171,6 +171,18 @@ class CrapTest < Minitest::Test
     diff = "+++ b/lib/a.rb\n@@ -1 +7,0 @@\n"
 
     assert_equal({ "lib/a.rb" => [7] }, Crap.changed_lines(diff))
+  end
+
+  def test_a_changed_comment_or_blank_line_marks_nothing
+    diff = "+++ b/lib/a.rb\n@@ -7 +7,2 @@\n-  # old note\n+  # new note\n+\n@@ -20,0 +21 @@\n+  total = 1\n"
+
+    assert_equal({ "lib/a.rb" => [21] }, Crap.changed_lines(diff))
+  end
+
+  def test_a_removed_line_of_code_marks_the_hunk_start
+    diff = "+++ b/lib/a.rb\n@@ -7,2 +6,0 @@\n-  # note\n-  total = 1\n"
+
+    assert_equal({ "lib/a.rb" => [6] }, Crap.changed_lines(diff))
   end
 
   def test_the_cli_globs_the_default_directories_when_no_path_is_given

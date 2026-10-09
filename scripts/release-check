@@ -2,7 +2,7 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 
-# release-check - deterministic CLI over ReleaseGuard (intent 347).
+# release-check - deterministic CLI over ReleaseGuard.
 #
 # Guards a release before the workflow builds it: the tag must equal `v`
 # plus the version in package.json, the branch must release the channel the

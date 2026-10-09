@@ -3,16 +3,13 @@
 
 require "minitest/autorun"
 
-# Intent 329 - a tick is two edits (mark the box `[x]`, move the line to `## Completed`),
+# A tick is two edits (mark the box `[x]`, move the line to `## Completed`),
 # made in the same commit that lands the work. This contract test pins that wording in every
 # place that states the rule: the executor and enforcer agent bodies, and docs/internals.md.
 # String/section assertions only, no filesystem fixtures needed: these are real repo files,
 # read directly.
 #
-# O1/O2 (the canonical definition in skills/intent-executing/SKILL.md's `## Tick-as-you-land`
-# and its implementer-prompt.md template) were retired by intent 372 (family 2):
-# intent-executing moved into `plastic intent step`, a command, so the rule's canonical
-# statement now lives only in the agent bodies this file still pins.
+# The rule's canonical statement lives in the agent bodies this file pins.
 class TickWithCommitContractTest < Minitest::Test
   ROOT = File.expand_path("..", __dir__)
   EXECUTOR = File.join(ROOT, "agents/plastic-executor.md")
@@ -31,7 +28,7 @@ class TickWithCommitContractTest < Minitest::Test
 
   def body_of(path) = squeeze(File.read(path))
 
-  # --- O3: agents/plastic-executor.md (M7, M8, M9, M10) ---------------------------------
+  # --- agents/plastic-executor.md ---------------------------------
 
   def test_executor_responsibility_ties_the_tick_to_the_commit
     body = section(File.read(EXECUTOR), "## Your Responsibilities")
@@ -50,14 +47,14 @@ class TickWithCommitContractTest < Minitest::Test
       "recording `plastic node done ID NODE TEXT` with its findings once it lands"
   end
 
-  # Intent 329 post-execution fix: the same requirement, named in the executor agent body
-  # itself, so an executor that never opens the skill still sees it.
+  # The same requirement is named in the executor agent body itself, so an executor
+  # that never opens a skill still sees it.
   def test_executor_requires_the_savepoint_commit_line
     assert_includes body_of(EXECUTOR),
       'scripts/savepoint-note <intent_dir> --kind Commit --text "<sha> <what it proves>"'
   end
 
-  # D12, hard constraint: the frontmatter `description:` block feeds the context-budget
+  # The frontmatter `description:` block feeds the context-budget
   # catalog ceiling and the Codex TOML `description` field; it must never be touched.
   def test_agent_frontmatter_descriptions_are_unchanged
     executor_front = File.readlines(EXECUTOR, chomp: true)[0..7].join("\n")
@@ -86,7 +83,7 @@ class TickWithCommitContractTest < Minitest::Test
     FRONT
   end
 
-  # --- O4: agents/plastic-enforcer.md (M11, M12) ----------------------------------------
+  # --- agents/plastic-enforcer.md ----------------------------------------
 
   def test_enforcer_verifies_ticks_at_review_and_merge
     assert_includes section(File.read(ENFORCER), "## Your Responsibilities"),
@@ -98,13 +95,7 @@ class TickWithCommitContractTest < Minitest::Test
       "A mismatch is a review finding, not a cleanup you perform silently."
   end
 
-  # O5 (test_auto_exec_step_names_tick_versus_diff, test_auto_completion_gate_checks_ticks_
-  # against_the_diff) was retired by intent 372 (family 5): skills/auto/SKILL.md is gone, its
-  # Exec step and Completion gate content did not move to a successor file, and the rule they
-  # pinned is the same one O3/O4 above already pin on agents/plastic-executor.md and
-  # agents/plastic-enforcer.md.
-
-  # --- O7: docs/internals.md (M15) -------------------------------------------------------
+  # --- docs/internals.md -------------------------------------------------------
 
   def test_internals_doc_names_the_tick_lag_warning
     body = body_of(INTERNALS)

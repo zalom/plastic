@@ -5,19 +5,12 @@ require_relative "release_helper"
 class InstallerReleaseActivationTest < Minitest::Test
   include ReleaseHelper
 
-  def test_keeps_a_previous_version_and_rolls_back
+  def test_keeps_a_previous_version_and_switches_back_to_it
     installer = activation_with("2.0.2", "2.0.3")
 
     assert_equal %w[2.0.3 2.0.2], versions(installer)
-    assert_equal "2.0.2", installer.rollback
+    assert_equal "2.0.2", installer.switch(installer.previous_version)
     assert_equal fake_launcher("2.0.2"), File.read(File.join(installer.active_path, "bin", "plastic"))
-  end
-
-  def test_refuses_a_rollback_without_a_previous_release
-    installer = activation_with("2.0.2")
-
-    error = assert_raises(InstallerRelease::ActivationError) { installer.rollback }
-    assert_equal "no previous release is available", error.message
   end
 
   def test_a_failure_before_the_switch_leaves_the_old_active_usable

@@ -1,18 +1,14 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 
-# HookRegistry: THE single source of truth for Plastic's hook registration
-# (intent 108, D7). InstallerCore#merge_claude_hooks and #merge_codex_hooks
-# build settings.json/hooks.json entries from it; nothing else may hand-roll
-# a matcher. Change registrations HERE and only here.
+# HookRegistry: THE single source of truth for Plastic's hook registration.
+# InstallerCore#merge_claude_hooks builds settings.json entries from it, and
+# #merge_codex_hooks purges the hooks.json entries it names; nothing else may
+# hand-roll a matcher. Change registrations HERE and only here.
 #
-# Intent 397 cutover: session-start, savepoint, record, close, capture,
-# message-display, stop, and the codex-hook dispatcher are retired with the
-# legacy scripts that were their launchers (see RETIRED_HOOK_NAMES below for
-# the purge entries this drops). `events` keeps only check-update, whose
-# launcher (hooks/check-update) and target (scripts/select-update-target)
-# both still ship. Stage 3 (intent 398) adds the kernel's own hook resume
-# and hook record entries in their place.
+# `events` registers only check-update, whose launcher (hooks/check-update)
+# and target (scripts/select-update-target) both ship. RETIRED_HOOK_NAMES
+# below lists the hooks that older installs registered, for the purge.
 module HookRegistry
   module_function
 
@@ -42,48 +38,8 @@ module HookRegistry
     }
   end
 
-  # Codex registration (~/.codex/hooks.json, intent 102). Derived from `events`
-  # through the codex-hook dispatcher, deleted in the intent 397 cutover along
-  # with every name these three constants used to list (record, the three
-  # live-state events' hooks, close). Empty until stage 3 (intent 398) gives
-  # Codex its own hook resume and hook record entries; codex_hooks_json keeps
-  # running so the shape stays settled, it just has nothing to project yet.
-  CODEX_POST_HOOKS = [].freeze
-
-  # Live-state events registered WHOLE (intent 199): see CODEX_POST_HOOKS above.
-  CODEX_LIVE_STATE_EVENTS = [].freeze
-
-  # SessionEnd on Codex (intent 309): see CODEX_POST_HOOKS above.
-  CODEX_SESSION_END_HOOKS = [].freeze
-
-  def codex_hooks_json(dispatcher_path:)
-    status_by_name = events.values.flatten.flat_map { |g| g["hooks"] }
-                           .each_with_object({}) { |h, m| m[h["name"]] = h["status"] }
-    cmd = ->(name) {
-      { "type" => "command",
-        "command" => "\"#{dispatcher_path}\" #{name}",
-        "statusMessage" => status_by_name[name].to_s }
-    }
-    # Validate the Codex name against the single source of truth, `events`. An event
-    # with nothing left in `events` (every current CODEX_* list is empty, see above)
-    # reads as no names rather than a missing-key crash.
-    post_order = Array(events["PostToolUse"]).flat_map { |g| g["hooks"].map { |h| h["name"] } }
-    post = (CODEX_POST_HOOKS & post_order).map { |n| cmd.call(n) }
-
-    result = {
-      "PostToolUse" => [{ "matcher" => "apply_patch", "hooks" => post }],
-    }
-    CODEX_LIVE_STATE_EVENTS.each do |event|
-      names = Array(events[event]).flat_map { |g| g["hooks"].map { |h| h["name"] } }
-      result[event] = [{ "matcher" => "", "hooks" => names.map { |n| cmd.call(n) } }]
-    end
-    end_order = Array(events["SessionEnd"]).flat_map { |g| g["hooks"].map { |h| h["name"] } }
-    result["SessionEnd"] = [{ "matcher" => "", "hooks" => (CODEX_SESSION_END_HOOKS & end_order).map { |n| cmd.call(n) } }]
-    result
-  end
-
   # Flattened, deduplicated Claude launcher names for every hook `events`
-  # registers (intent 204): each hook name maps to a hooks/<name> launcher
+  # registers: each hook name maps to a hooks/<name> launcher
   # installed as ~/.claude/hooks/plastic-<name>. The single derivation doctor's
   # hooks_exist/hooks_executable/hooks_no_orphans checks read from, so a
   # hand-kept list of launchers can never drift out of step with `events`
@@ -94,12 +50,12 @@ module HookRegistry
   end
 
   # Launchers the installer places in the agent's hooks dir that `events` does not
-  # register (intent 204): plastic-statusline is the settings["statusLine"] command.
+  # register: plastic-statusline is the settings["statusLine"] command.
   # Defined here rather than in doctor_core so the installer's purge can recognise it
   # without depending on the doctor; Doctor::CLAUDE_NON_HOOK_LAUNCHERS aliases it.
   CLAUDE_NON_HOOK_LAUNCHERS = %w[plastic-statusline].freeze
 
-  # Hook names Plastic HAS registered and no longer does (intent 275). Purge-only:
+  # Hook names Plastic HAS registered and no longer does. Purge-only:
   # an old install still carries these entries in settings.json / hooks.json, and
   # nothing else can tell us they were ever ours.
   #
@@ -131,19 +87,7 @@ module HookRegistry
     (claude_launcher_names + CLAUDE_NON_HOOK_LAUNCHERS + RETIRED_CLAUDE_LAUNCHERS).uniq.sort
   end
 
-  # Current Codex hook names, from the same sources codex_hooks_json builds from.
-  def codex_hook_names
-    live = CODEX_LIVE_STATE_EVENTS.flat_map do |event|
-      events[event].flat_map { |g| g["hooks"].map { |h| h["name"] } }
-    end
-    (CODEX_POST_HOOKS + live + CODEX_SESSION_END_HOOKS).uniq.sort
-  end
-
-  def codex_purgeable_hook_names
-    (codex_hook_names + RETIRED_HOOK_NAMES).uniq.sort
-  end
-
-  # Is this settings.json hook command one of OURS? (intent 275)
+  # Is this settings.json hook command one of OURS?
   #
   # Ownership is registry membership, never a substring: the substring test this
   # replaced deleted a user's own ~/.claude/hooks/plastic-writing-style hook on
@@ -154,7 +98,7 @@ module HookRegistry
     command_basenames(cmd).any? { |name| known.include?(name) }
   end
 
-  # Is this settings.json hook command one Plastic registers TODAY? (intent 277)
+  # Is this settings.json hook command one Plastic registers TODAY?
   #
   # The narrower twin of claude_purge_command?. The purge asks "was this ever
   # ours", because it has to recognise an old entry in order to remove it. A

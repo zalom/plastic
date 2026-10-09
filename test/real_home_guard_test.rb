@@ -4,17 +4,12 @@
 require_relative "test_helper"
 require "etc"
 
-# Real-home guard (intent 363). The incident: `bin/verify-change` spawned every
-# gate child with the session's own HOME, and the mutation step mutates
-# scripts/lib/cli/legacy.rb, where `@runner = runner || DEFAULT_RUNNER` decides
-# whether an installer verb runs its injected test runner or spawns the real
-# scripts/install.rb. A mutant that defeats the injection turns a hermetic unit
-# test into a real install, and eleven of them landed in the owner's
-# ~/.plastic and ~/.claude before anyone noticed.
+# Real-home guard. A test that spawns an installer or the launcher must run
+# under a throwaway HOME, so the machine's own ~/.plastic and ~/.claude stay
+# untouched.
 #
-# Two halves. The static scan
-# catches a test that spawns an installer or the launcher without a throwaway
-# HOME. The dynamic backstop catches everything the scan cannot see, including
+# Two halves. The static scan catches a test that spawns an installer or the
+# launcher without a throwaway HOME. The dynamic backstop catches everything the scan cannot see, including
 # a spawn a mutant invented, by fingerprinting the real home before the suite
 # runs and again after it.
 class RealHomeGuardTest < Minitest::Test
@@ -96,7 +91,7 @@ class RealHomeGuardTest < Minitest::Test
   end
 
   def test_the_detector_ignores_a_neighbouring_binary_with_a_longer_name
-    source = %(CENSUS = File.join(REPO, "bin/plastic-skill-census")\nOpen3.capture3(CENSUS, "--json")\n)
+    source = %(CENSUS = File.join(REPO, "bin/plastic-sample")\nOpen3.capture3(CENSUS, "--json")\n)
 
     assert_empty installer_spawns(source)
   end

@@ -6,7 +6,7 @@ require_relative "lib/bin_test_support"
 class BinTestKernelTest < Minitest::Test
   include BinTestSupport
 
-  # Intent 394: the kernel under scripts/lib/plastic/ defines the same
+  # The kernel under scripts/lib/plastic/ defines the same
   # constants as the live command line, so its tests run in their own process.
   LIVE = <<~RUBY
     require "minitest/autorun"

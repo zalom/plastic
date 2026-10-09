@@ -55,7 +55,7 @@ module Plastic
       return list(argv, context) if command.empty? || %w[--help -h].include?(command)
       return help(argv, context) if command == "help"
 
-      dispatch(argv, context) { "plastic #{argv.join(" ")} is not in this build yet; it lands with its stage" }
+      dispatch(argv, context) { "plastic #{argv.join(" ")} is not a command; run plastic help for the list" }
     end
     private_class_method :route
 

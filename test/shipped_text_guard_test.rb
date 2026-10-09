@@ -4,14 +4,13 @@ require "minitest/autorun"
 
 class ShippedTextGuardTest < Minitest::Test
   ROOT = File.expand_path("..", __dir__)
-  SUBJECTS = Dir[File.join(ROOT, "templates", "**", "*"), File.join(ROOT, "agents", "**", "*")].select { |path| File.file?(path) }
+  SUBJECTS = Dir[File.join(ROOT, "agents", "**", "*")].select { |path| File.file?(path) }
   REMOVED = /(?<![\w-])(?:plan|checklist)\.md|--slug|ID--slug\.md/
 
   def removed_names(text) = text.scan(REMOVED)
 
   def test_the_subjects_are_read_from_the_disk
     refute_empty SUBJECTS
-    assert(SUBJECTS.any? { |path| path.end_with?("templates/agents.md") })
     assert(SUBJECTS.any? { |path| path.include?("/agents/plastic-executor.md") })
   end
 

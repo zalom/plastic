@@ -52,7 +52,7 @@ class CliReleaseContractTest < Minitest::Test
     code = Plastic::CLI.bin_call(%w[report], environment: environment(out:, err:))
 
     assert_equal 2, code
-    assert_equal "plastic report is not in this build yet; it lands with its stage\n", err.string
+    assert_equal "plastic report is not a command; run plastic help for the list\n", err.string
   end
 
   def test_help_lists_only_the_shipped_commands

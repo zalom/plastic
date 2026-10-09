@@ -7,10 +7,10 @@ require "tmpdir"
 require "tempfile"
 require_relative "../bin/lib/context_budget"
 
-# The standing surface (intent 363, plan step 7): every byte Plastic puts into a
-# session before it does any work. bin/plastic-bench is the one script that
-# measures it, the agent catalog included. The ceiling is the owner's cap of
-# 2026-10-01 on what Plastic alone introduces, 5,000 bytes.
+# The standing surface: every byte Plastic puts into a session before it does
+# any work. bin/plastic-bench is the one script that measures it, the agent
+# catalog included. The ceiling is a cap on what Plastic alone introduces,
+# 5,000 bytes.
 class ContextBudgetAgentsTest < Minitest::Test
   REPO = File.expand_path("..", __dir__)
 
@@ -99,9 +99,8 @@ class ContextBudgetAgentsTest < Minitest::Test
     assert_equal parts, report.row(:standing).bytes
   end
 
-  # The owner ruled on 2026-10-01 that a cap sits only on what Plastic introduces,
-  # never on the whole context, and set it at 5,000 bytes. It replaces the intent
-  # 363 ratchet that followed each skill family's deletion down to 3,608.
+  # The cap sits only on what Plastic introduces, never on the whole context,
+  # and is 5,000 bytes.
   def test_the_standing_ceiling_is_the_owners_cap
     assert_equal 5_000, ContextBudget::CEILINGS[:standing]
   end

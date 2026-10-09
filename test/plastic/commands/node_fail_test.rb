@@ -42,10 +42,10 @@ class NodeFailTest < Plastic::TestCase
   end
 
   def test_a_move_takes_the_intent_the_node_and_the_reason
-    description = Plastic::Commands::NodeFail.describe
+    node_fail = Plastic::Commands::NodeFail
 
-    assert_equal [:intent_id, :id], description.subject
+    assert_equal [:intent_id, :id], node_fail.subject
     assert_equal [["ID", "the intent"], ["NODE", "the node"], ["TEXT", "why it failed"]],
-      description.arguments.map { |argument| argument.values_at(:label, :text) }
+      node_fail.arguments.map { |argument| argument.to_h.values_at(:label, :text) }
   end
 end

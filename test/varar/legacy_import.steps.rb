@@ -6,14 +6,14 @@ require "tmpdir"
 require_relative "support/kernel_command"
 
 module LegacyImportAcceptance
-  DIR = "store/1--ai-infra"
+  DIR = "store/1--alpha-service"
   INTENTS = "SELECT intent_id || ' ' || status || ' ' || coalesce('since ' || opened_at, 'undated') FROM intents ORDER BY intent_id"
 
   # Each fixture: what it does to the copied store before the files of 1 are taken.
   FIXTURES = {
     "as written" => ->(_kernel) {},
     "1a without its own file" => lambda do |kernel|
-      FileUtils.rm(kernel.path("store/1a--litellm-proxmox-gateway/1a--litellm-proxmox-gateway.md"))
+      FileUtils.rm(kernel.path("store/1a--beta-route/1a--beta-route.md"))
     end,
     "a folder with no entry" => ->(kernel) { kernel.write("store/9--stray/spec.md", "# Stray\n") },
     "imported" => ->(kernel) { kernel.run!("sync", "up") }

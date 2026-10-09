@@ -11,4 +11,4 @@ M5. PLASTIC.md is 53,558 B (~13.4k tok) not 55,558/13.9k; wrong figure repeated 
 
 ## Corrected savings table
 Lazy/skip qmd probe: 577ms/retrieval (laziness beats cache). --disable-gems: ~106ms/edit. Delete shims: ~455ms/edit but effort M + removes non-user bail-out. Merge 5 hooks into 1: floor 56ms, SUBSUMES both prior fixes. Fix prompt-path qmd-search: ~1,000ms/prompt, top felt win (not in report).
-Bench scripts: /Users/zlatko/.claude/jobs/5b84ee0b/tmp/bench.rb, bench2.rb.
+Bench scripts: `bench.rb` and `bench2.rb`, run from a temporary folder.

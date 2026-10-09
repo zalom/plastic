@@ -2,7 +2,7 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 
-# Plastic context budget bench (intent 313). Measures what a session boot costs
+# Plastic context budget bench. Measures what a session boot costs
 # in context: the core block, the SessionStart injection, the skill catalog the
 # harness loads beside it, and the doctrine working set. Exits non-zero when a
 # ceiling is crossed or when repeated boots of a fixed fixture disagree.

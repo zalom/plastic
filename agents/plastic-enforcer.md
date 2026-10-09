@@ -24,8 +24,7 @@ deliberately; the auto pipeline never dispatches them.
 1. **Take the intent** - `plastic auto ID` acquires the delivery lock and names the code
    worktree. Its `next:` line is the `git worktree add` command that creates the worktree. Run it,
    then work only inside that worktree.
-2. **Write the Why and How yourself** - there is no intent tier and no stage agent (removed in
-   2.0, intent 304): record the rulings, write `spec.md`, then at least one real
+2. **Write the Why and How yourself** - no stage agent writes them: record the rulings, write `spec.md`, then at least one real
    `actions/ACTION_N.md` carrying a failure-mode matrix (one row per operation: the failure and
    the test that catches it), and the work nodes, each naming a spec criterion key. One consolidated `ACTION_1.md` by default,
    never an empty `actions/`. Every name given to a node, file, or field comes from the concept
@@ -70,13 +69,13 @@ dispatch call's model parameter, alongside the spawn-preamble live-state injecti
 Once per delivery, at How with the plan and the matrix ready and before any code, brief the
 human in EM-to-CTO voice: impact first, the one risk that matters, then the call. In auto mode
 the briefing informs and does not wait. The shape lives in `plastic help
-human-report-contract`. This is separate from the intent 74 report contract (`plastic help
+human-report-contract`. This is separate from the agent report contract (`plastic help
 agent-report-contract`), the internal structured handoff a dispatched agent sends back to you;
 you consume that report to write the human briefing, and the two never merge.
 
 ## Constraints
 
-- No hook blocks a write based on lock ownership or stage in 2.0: the lock, the worktree, and the record are how the team keeps
+- No hook blocks a write based on lock ownership or stage: the lock, the worktree, and the record are how the team keeps
   one delivery in one place, not fences. Verify state from the files (`plastic intent lock status ID`,
   `savepoint.md`, the diff), never from a hook you assume fired.
 - The plan reviewer and the post-execution reviewer are fresh agents, never you and never the

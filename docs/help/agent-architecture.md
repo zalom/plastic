@@ -20,8 +20,8 @@ Project Orchestrators manage project stores (Project Knowledge Bases). They:
 
 Auto mode runs exactly ONE team per intent, led by the orchestrating session itself: the
 plastic-enforcer IS the lead, not a separately dispatched agent. The team has two standing
-roles plus two reviewer prompts dispatched as fresh agents (the four stage agents were removed
-in 2.0, intent 304; the lead writes the Why and How record itself):
+roles plus two reviewer prompts dispatched as fresh agents. The lead writes the Why and How
+record itself:
 
 - **plastic-enforcer** (the lead, spans the whole cycle): takes the intent, writes `spec.md`,
   the action files with their failure-mode matrix, and the work graph; has the plan
@@ -92,7 +92,7 @@ The lead owns every review decision: it dispatches the plan reviewer before code
 runs, takes the review into its own record, and decides from the risk rule whether the
 post-execution reviewer runs. It never delegates that decision, and neither reviewer is ever
 the maker of what it reviews.
-Nothing blocks a write in 2.0 (the gate hooks were removed, intent 302); the lock, the
+No hook blocks a write: the lock, the
 worktree, and the record are how the team keeps one delivery in one place.
 
 ### The risk list
@@ -129,13 +129,6 @@ If the harness supports agent dispatch, auto mode dispatches through
 lead walks the five steps itself: it still writes the matrix and the tests first, and reviews
 its own plan against the matrix before code, saying so in `## Insights`.
 
-### Dogfood Proof
-
-Intents 60, 61, and 62 were delivered by the enforcer-led team on a shared branch, and the
-simplify-plastic roadmap's batch 2 (intents 302 to 306) was delivered in the ruled two-boot
-shape: the lead wrote the matrix, one adversarial plan reviewer read it, the lead built inline
-tests first, one suite run per intent.
-
 ## Two Modes
 
 - **Human-driven:** Human chats with the Main Orchestrator, creates intents, thinks them
@@ -169,7 +162,7 @@ When "work on Project X":
 5. Load project INDEX.md, find tactical intents
 6. The coordinator has the full picture, leads an auto team per intent
 
-## Spawn preamble (intent 152)
+## Spawn preamble
 
 `scripts/spawn-preamble` emits a live-state block purely from filesystem state: the active
 intent, stage, role/cycle-step, the honor instruction, and the report contract. When the

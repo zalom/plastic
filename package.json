@@ -22,10 +22,8 @@
     "docs/grilling.md",
     "hooks/",
     "agents/",
-    "templates/",
     "PLASTIC.md",
     "deprecations.yml",
-    "config_asks.yml",
     "runtime/Gemfile",
     "runtime/Gemfile.lock",
     "VERSION"

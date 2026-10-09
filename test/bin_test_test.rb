@@ -7,7 +7,7 @@ require "fileutils"
 require "open3"
 require_relative "lib/bin_test_support"
 
-# Intent 355 (n4), matrix 4.1-4.7. Drives bin/test as a subprocess against a
+# Drives bin/test as a subprocess against a
 # tmpdir root holding tiny fixture test files, never the real suite: the real
 # bin/test and failures_reporter.rb are copied into the fixture root so the
 # script's own __dir__-relative paths resolve inside the tmpdir.

@@ -6,8 +6,7 @@ Intent-driven state management for AI coding sessions.
 
 Wrong data (a blank record, a junk field, a failed fetch or import) is fixed first. When it
 cannot be fixed, the erroneous records are removed. Never design, code, test, or screenshot
-around broken data. A legitimately absent value is not broken data. Owner ruling 2026-09-05,
-global rule.
+around broken data. A legitimately absent value is not broken data.
 
 ## Stack
 - Language: Ruby (scripts, installer, the `plastic` command)
@@ -67,7 +66,7 @@ Before you write or change a test, read the section "Test a change" in `CONTRIBU
 the root of this checkout, and follow the pattern it names for that kind of test. Run the
 test of each changed file once, then the gate once. Just before the pull request is created, run
 the full suite one time and fix what it finds. After the pull request exists, run no more full
-suites on your machine: read the CI failures and fix those. Owner ruling of 2026-10-05.
+suites on your machine: read the CI failures and fix those.
 
 #### Kernel style
 
@@ -91,7 +90,7 @@ The Metrics cops are on for the whole repository in `.rubocop.yml`. `.rubocop_to
   `projects.yml`, computes the expected path and branch, and prints the exact
   `git -C <repo> worktree add <path> -b <branch>` for the agent to run. The code worktree lives
   at `<repo>/.claude/worktrees/{id}--{slug}` on branch `plastic/{id}--{slug}`. It is the only
-  worktree: store-write safety for lifecycle docs comes from intent 197's branch-from-main plus
+  worktree: store-write safety for lifecycle docs comes from branch-from-main plus
   scoped commits, not a second worktree.
 - Do isolated feature work in that worktree, not the shared checkout, so parallel sessions and
   the main working copy stay clean. Run and test inside it, then merge the branch back.
@@ -121,7 +120,7 @@ written.
   message, never work around the hook.
 - Use Conventional Commits (`feat:`, `fix:`, `docs:`, `refactor:`, `chore:`).
 - Bump all version files listed in Defaults on every fix or feature release.
-- A push to `alpha`, `beta` or `main` is the release (intent 376). `.github/workflows/publish.yml`
+- A push to `alpha`, `beta` or `main` is the release. `.github/workflows/publish.yml`
   creates the tag and the GitHub release for a version with no tag yet. It builds the release
   files with `scripts/build-release`. Do not create a tag or a release by hand.
 - Run the changed files' tests and the change gate before committing code changes (see the Testing section).
@@ -129,8 +128,8 @@ written.
 - Core Plastic intents carry no release numbers; the intent schema stays release-agnostic. A release is a collection of intents: a cut (tag) bundles whichever intents have landed since the previous cut. The cut does not close them: CI never sees the stores, and each intent is closed with `plastic intent end` after its code merges. Which release an intent lands in, and the shipped release history, live in `CHANGELOG.md` at the repo root, not in the intent file and not in PLASTIC.md.
 - Two release lanes exist: default (straight to main) and beta-verified (beta branch, beta
   channel, real-use verification, then main). Read
-  `docs/release-lines.md` for the routing rule, the stable-line
-  guarantees, and the intent-41 re-land playbook.
+  `docs/release-lines.md` for the routing rule and the stable-line
+  guarantees.
 - Stable-line guarantees, in short: main stays always releasable with no pending revert awaiting
   re-land, a stable release always carries the GitHub Latest badge and no pre-release suffix,
   and the tag always matches the version in `package.json` (checked by `scripts/lib/release_guard.rb`).

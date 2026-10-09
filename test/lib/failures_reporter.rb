@@ -3,7 +3,7 @@
 
 require "minitest"
 
-# FailuresReporter (intent 355, n4, D5): a Minitest reporter that prints only
+# FailuresReporter: a Minitest reporter that prints only
 # what a named run needs back - each failure with its file, line and message,
 # then the summary line - never a dot per test and never the "Run options" /
 # "# Running:" preamble. A green run costs one line; a red run costs the

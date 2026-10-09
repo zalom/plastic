@@ -4,9 +4,9 @@ require "open3"
 require "rbconfig"
 require "tmpdir"
 
-# G5 (intent 391): hooks/check-update reads the GitHub releases list through curl,
-# never npm. Source-text check (matrix row "check-update hook"): the script names curl
-# and the releases URL, and never names npm.
+# hooks/check-update reads the GitHub releases list through curl, never npm.
+# Source-text check: the script names curl and the releases URL, and never
+# names npm.
 class CheckUpdateHookTest < Minitest::Test
   SOURCE = File.read(File.expand_path("../hooks/check-update", __dir__))
 

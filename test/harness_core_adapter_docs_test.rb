@@ -3,11 +3,8 @@
 
 require "minitest/autorun"
 
-# Intent 316a1, O2: docs/reference/harness-adapters.md has no intent-screen
-# page at all before this intent (grep -rln "intent screen\|MessageDisplay\|
-# IntentScreenAnsi" docs/ returns nothing), so this is a new section, not an
-# edit. Modeled on test/harness_support_docs_test.rb's pattern: read the
-# file, slice by heading, assert on the prose.
+# docs/reference/harness-adapters.md carries a section on the harness-agnostic
+# core and its adapters. Read the file, slice by heading, assert on the prose.
 class HarnessCoreAdapterDocsTest < Minitest::Test
   ROOT = File.expand_path("..", __dir__)
   ADAPTERS_DOC = File.join(ROOT, "docs", "reference", "harness-adapters.md")

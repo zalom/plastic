@@ -26,10 +26,6 @@ class ReportScreenSkillContractTest < Minitest::Test
     ["every harness", "harness name"].each { |phrase| assert_includes contract, phrase }
   end
 
-  def test_outcome_template_names_the_owning_heading
-    assert_includes read("templates/outcome.md"), "owns the matrix table"
-  end
-
   def test_human_report_contract_names_the_session_screen
     assert_includes contract, "report-screen session"
   end

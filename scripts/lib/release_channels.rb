@@ -1,7 +1,7 @@
 # plastic-script-version: 1.0.0
 #
 # Turns a GitHub releases list into the newest version per channel. The
-# GitHub releases API is the source of truth for intent 391's curl-based
+# GitHub releases API is the source of truth for the curl-based
 # update path. A release's tag_name carries the channel: "-alpha" or
 # "-beta" in the tag marks a bleeding channel, anything else counts as
 # stable and lands in the "latest" slot, the name install.sh and

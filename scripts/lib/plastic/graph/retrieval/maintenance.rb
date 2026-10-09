@@ -30,7 +30,7 @@ module Plastic
           @searcher.call(terms, limit:)
         end
 
-        # Mutates only derived retrieval rows; this Stage 6 operation has no safe counterpart.
+        # Mutates only derived retrieval rows; this operation has no safe counterpart.
         def backfill = ReferenceBackfill.new(@databases, origin_id).call
         # Rebuilds only derived retrieval rows from immutable evidence.
         def repair = Evidence::Integrity.new(knowledge, origin_id).repair
