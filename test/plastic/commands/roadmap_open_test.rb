@@ -3,10 +3,10 @@
 require_relative "../../test_helper"
 require_relative "../../../scripts/lib/plastic/commands/roadmap_batch"
 require_relative "../../../scripts/lib/plastic/commands/roadmap_add"
-require_relative "../../../scripts/lib/plastic/commands/roadmap_start"
+require_relative "../../../scripts/lib/plastic/commands/roadmap_open"
 
-class RoadmapStartTest < Plastic::TestCase
-  def call(*args) = plastic("roadmap", "start", *args, table: Plastic::CLI::TABLE)
+class RoadmapOpenTest < Plastic::TestCase
+  def call(*args) = plastic("roadmap", "open", *args, table: Plastic::CLI::TABLE)
 
   def setup
     super
