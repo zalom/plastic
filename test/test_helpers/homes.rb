@@ -192,7 +192,8 @@ module Plastic
 
         def load
           copy_store
-          Plastic::Graph.create(home: @plastic_home, store: "global").databases.each_value { |database| database.rows("SELECT 1") }
+          FileUtils.mkdir_p(store_root)
+          graphs.databases.each_value { |database| database.rows("SELECT 1") }
           @data.fetch("intents", []).each { |intent| open_intent(intent) }
           sync_up if @data["sync"]
         end

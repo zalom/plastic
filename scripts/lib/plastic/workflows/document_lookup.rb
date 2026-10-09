@@ -3,6 +3,8 @@
 require_relative "../cli/command/usage"
 require_relative "../cli/scope"
 require_relative "../graph"
+require_relative "../graph/origin"
+require_relative "../graph/retrieval/reference_backfill"
 require_relative "../graph/retrieval_graph"
 require_relative "../graph/retrieval/source"
 require_relative "document_reference"
@@ -50,9 +52,11 @@ module Plastic
 
       def maintained_retrieval(slug)
         home = context.scope.plastic_home
-        raise Graph::RetrievalGraph::MaintenanceRequired, "retrieval maintenance is required before source #{slug} can be read" unless File.file?(File.join(home, "stores", slug, "knowledge_graph.db"))
+        knowledge = File.join(home, "stores", slug, "knowledge_graph.db")
+        complete = Graph::Retrieval::ReferenceBackfill.complete?(knowledge, Graph::Origin.new(home).id)
+        raise Graph::RetrievalGraph::MaintenanceRequired, "retrieval maintenance is required before source #{slug} can be read" unless complete
 
-        Graph.open_retrieval(home:, store: slug).tap(&:backfill)
+        Graph.open_retrieval(home:, store: slug)
       end
     end
   end

@@ -29,7 +29,7 @@ module Plastic
 
           def store_rows(slug, limit)
             retrieval = Search::Results::Store.new(plastic_home, slug).retrieval
-            retrieval.search(terms, limit:).each_with_index.map do |row, index|
+            retrieval.search_current(terms, limit:).each_with_index.map do |row, index|
               match = Search::Results::Match.new(retrieval, slug, row, index + 1, rrf_offset)
               Search::Results::Result.new(match, excerpt:).to_h
             end
