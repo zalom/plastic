@@ -996,7 +996,7 @@ than silently reporting the healthy pass a zero-name read would otherwise produc
 
 `purge_stale_plastic_hooks` decided ownership of a settings.json hook entry with
 `cmd.to_s.include?("plastic-")`: any command carrying that substring anywhere was deleted
-before the merge rewrote Plastic's own registrations. On 2026-08-23 the 1.11.0 update applied
+before the merge rewrote Plastic's own registrations. In version 1.11.0 the update applied
 this to the owner's own SessionStart hook, `~/.claude/hooks/plastic-writing-style`, registered
 outside `HookRegistry`. The entry vanished from settings.json with no
 message, and the writing-style skill stopped loading in every session until `/plastic-doctor`
@@ -1230,7 +1230,7 @@ node kind, and the node input on stdin. `scripts/node-run`, `RunnerUntilEmpty`, 
 ## the managed block in CLAUDE.md
 
 Plastic installs one block into `~/.claude/CLAUDE.md`. It holds one sentence and one import,
-and nothing else. An owner ruling of 2026-10-05 removed the compaction thresholds from the
+and nothing else. The owner removed the compaction thresholds from the
 block, together with the `context_offer_tokens` and `context_insist_tokens` config keys:
 nothing in Plastic read the keys, and the instruction did not work. An install or an update
 replaces a block that an older version left behind, so the old text goes with it.
@@ -1387,7 +1387,7 @@ different interpreter.
 | skill catalog | every `skills/*/SKILL.md` frontmatter `name` + `description` value the harness loads | reported |
 | agent catalog | every `agents/*.md` frontmatter `name` + `description` value | reported |
 | boot injection + skill catalog | the two above | **under 17,500**, a 313 ratchet, lower it, never raise it |
-| standing surface | core block + boot injection + both catalogs | **under 5,000**, the owner's cap of 2026-10-01 on what Plastic alone introduces |
+| standing surface | core block + boot injection + both catalogs | **under 5,000**, the owner's cap on what Plastic alone introduces |
 | median skill body | the median `SKILL.md` body, frontmatter excluded | reported |
 | doctrine working set | boot injection + `skills/_decision-tables.md` + the median skill body | reported against the 15,000 target, with its gap |
 
@@ -1614,7 +1614,7 @@ running` command to record, both of which the runner parses.
 ## GitHub releases
 
 `.github/workflows/publish.yml` makes every release. It talks to no package registry and holds
-no token beyond the job's own `contents: write`. Plastic retired npm on 2026-10-03: the stable
+no token beyond the job's own `contents: write`. Plastic retired npm: the stable
 release 2.0.3 stays on npm, and nothing newer goes there. `INSTALL.md` says how an npm copy
 moves to `install.sh`.
 
