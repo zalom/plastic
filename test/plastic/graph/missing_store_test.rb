@@ -37,7 +37,7 @@ class MissingStoreTest < Plastic::TestCase
       call = call_in(home, "intent", "show", "1")
 
       assert_equal 1, call.code
-      assert_includes call.out, "next: plastic install"
+      assert_includes call.out, "next: plastic install --reinstall"
       refute_path_exists File.join(home, "stores")
     end
   end

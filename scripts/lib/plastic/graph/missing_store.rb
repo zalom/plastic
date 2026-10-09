@@ -13,7 +13,7 @@ module Plastic
         super(global? ? "the global store does not exist" : "the store of project #{store} does not exist")
       end
 
-      def next_command = global? ? "plastic install" : "plastic project new #{store} PATH"
+      def next_command = global? ? "plastic install --reinstall" : "plastic project new #{store} PATH"
 
       private
 
