@@ -19,7 +19,8 @@ class IntentLockStatusTest < Plastic::TestCase
   end
 
   def test_an_approved_intent_with_no_lock_says_none_and_offers_auto
-    open_intent
+    write("#{open_intent.dir}/spec.md", "# Spec\n\n## Done criteria\n- It works\n")
+    plastic("sync", "up", table: Plastic::CLI::TABLE)
     plastic("intent", "approve", "1", table: Plastic::CLI::TABLE)
 
     result = call("1")

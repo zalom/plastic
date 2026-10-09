@@ -157,7 +157,7 @@
       ]
     },
     "varar/intent-approve.md": {
-      "sourceHash": "fnv1a:1699758d",
+      "sourceHash": "fnv1a:12c39d97",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -192,7 +192,7 @@
       "examples": []
     },
     "varar/intent-end.md": {
-      "sourceHash": "fnv1a:a6682dff",
+      "sourceHash": "fnv1a:46afe925",
       "examples": [
         {
           "name": "The rows below use a disposable fixture with one verified node and outcome. Each row gives the closure case, the exit code, the status, the completion records and the next line:",
@@ -219,7 +219,7 @@
       ]
     },
     "varar/intent-lock-status.md": {
-      "sourceHash": "fnv1a:74f182ab",
+      "sourceHash": "fnv1a:71f385de",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",

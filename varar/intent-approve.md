@@ -6,6 +6,7 @@ Each row gives the setup, the call, the exit code, the result and the next line:
 
 | setup            | call              | exit | result                    | next line                           |
 | ---------------- | ----------------- | ---- | ------------------------- | ----------------------------------- |
-| intent new Alpha | intent approve 1  | 0    | approved: 1               | plastic auto 1 --project global     |
-| intent new Alpha ; intent approve 1 | intent approve 1 | 0 | approved: 1          | plastic auto 1 --project global     |
+| intent new Alpha ; write store/1--alpha/spec.md "# Spec\n\n## Done criteria\n\n- the CLI ships\n" ; sync up | intent approve 1  | 0    | approved: 1               | plastic auto 1 --project global     |
+| intent new Alpha | intent approve 1 | 1 | intent 1 names no done criterion | plastic intent spec 1 --project global |
+| intent new Alpha ; write store/1--alpha/spec.md "# Spec\n\n## Done criteria\n\n- the CLI ships\n" ; sync up ; intent approve 1 | intent approve 1 | 0 | approved: 1          | plastic auto 1 --project global     |
 | none             | intent approve 9  | 1    | no intent 9 in this store | none                                |

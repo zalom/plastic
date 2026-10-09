@@ -6,7 +6,7 @@ class IntentApproveTest < Plastic::TestCase
   include LifecycleHelper
 
   def test_approving_an_open_intent_writes_one_go_ahead_row
-    open_intent
+    specified
 
     result = cli("intent", "approve", "1")
 
@@ -15,7 +15,7 @@ class IntentApproveTest < Plastic::TestCase
   end
 
   def test_approving_twice_keeps_one_row_and_exits_0_both_times
-    open_intent
+    specified
 
     codes = [cli("intent", "approve", "1").code, cli("intent", "approve", "1").code]
 
@@ -24,7 +24,7 @@ class IntentApproveTest < Plastic::TestCase
   end
 
   def test_the_go_ahead_row_names_the_session
-    open_intent
+    specified
     cli("intent", "approve", "1", session: "s-7")
 
     assert_equal "s-7", work_rows("approvals").first.fetch("session_id")
@@ -47,7 +47,7 @@ class IntentApproveTest < Plastic::TestCase
   end
 
   def test_the_go_ahead_prints_into_the_graph_file
-    open_intent
+    specified
     cli("intent", "approve", "1")
 
     graph = JSON.parse(File.read(store_path("store/1--alpha/graph.json")))
