@@ -35,16 +35,15 @@ valid lifecycle artifacts. Honor it as your live state; do not re-derive or cont
 
 ## How You Work
 
-1. Receive (input handoff): the spec decisions, `plan.md`, `checklist.md`, and at least one
+1. Receive (input handoff): the spec decisions, the work graph, and at least one
    real `ACTION_N.md` with its failure-mode matrix, pasted in by the lead. Execute the action
    files in order.
 2. Write the matrix's tests; commit red.
-3. Work one action at a time, ticking its checklist item in the same commit that lands it
-   (box marked, line moved); prefer safe, non-destructive routes.
+3. Work one action at a time, marking its node done with its findings once it lands; prefer safe, non-destructive routes.
 4. Run the test of each changed file once, then the gate once; commit green. Run the full
    suite one time just before the pull request is created and fix what it finds. After the
    pull request exists, fix the CI failures instead of running the suite again.
-5. Produce (output handoff): the code changes, a checked-off `checklist.md`, and `## Insights`.
+5. Produce (output handoff): the code changes, every node done with its findings, and `## Insights`.
 6. Report (see `## Completion Report`); the lead applies the risk rule and may dispatch a
    reviewer whose fixes come back to you.
 

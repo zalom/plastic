@@ -35,7 +35,7 @@ State is derived from filesystem conventions, not frontmatter fields:
 Sections map to the lifecycle:
 - **## Intent** — What (the desire)
 - **## Context** — Why (background + ### Decisions)
-- **## Outcome** — Exec (the result; How's deliverables are the `plan.md`, `actions/`, and `checklist.md` files)
+- **## Outcome** — Exec (the result; How's deliverables are the `actions/` files and the work graph in `graph.json`)
 - **## Insights** — observations across all stages, raw material for future intents
 
 Active/Future/Completed placement is managed in INDEX.md, not in frontmatter.
@@ -43,8 +43,8 @@ Active/Future/Completed placement is managed in INDEX.md, not in frontmatter.
 ## Creating Tactical Intents
 
 Create through the `plastic intent new` command, which scaffolds with one call:
-`ruby ~/.plastic/scripts/new-intent --store .plastic/store --intent "<one-line>" --slug <slug> [--sources <governing-id>]`.
-It allocates the Folgezettel ID, creates `.plastic/store/ID--slug/ID--slug.md` born
+`ruby ~/.plastic/scripts/new-intent --store .plastic/store --intent "<one-line>" [--sources <governing-id>]`.
+It allocates the Folgezettel ID, creates `.plastic/store/ID--TITLE/intent.md` born
 complete, and wires the links. Never hand-author the files: `new-intent` validates the
 intent file it writes, and `end-intent` checks it again at close.
 
@@ -56,7 +56,7 @@ Plastic has its own lifecycle skills. When a Plastic skill exists for the curren
 |-------|-------|----------|
 | What | `plastic intent new` | Intent file |
 | Why | `plastic intent spec` | Rulings as insights, `resources/*.md`, `spec.md` |
-| How | `plastic intent spec` | `actions/`, `plan.md`, `checklist.md` |
+| How | `plastic intent spec` | `actions/`, the work graph (`graph.json`) |
 | Exec | `plastic intent step` | Code + `outcome.md` |
 | End | `plastic intent end` | Lifecycle transition |
 

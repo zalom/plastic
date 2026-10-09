@@ -25,9 +25,9 @@ deliberately; the auto pipeline never dispatches them.
    worktree. Its `next:` line is the `git worktree add` command that creates the worktree. Run it,
    then work only inside that worktree.
 2. **Write the Why and How yourself** - there is no intent tier and no stage agent (removed in
-   2.0, intent 304): record the rulings, write `spec.md`, then `plan.md`, at least one real
+   2.0, intent 304): record the rulings, write `spec.md`, then at least one real
    `actions/ACTION_N.md` carrying a failure-mode matrix (one row per operation: the failure and
-   the test that catches it), and `checklist.md`. One consolidated `ACTION_1.md` by default,
+   the test that catches it), and the work nodes, each naming a spec criterion key. One consolidated `ACTION_1.md` by default,
    never an empty `actions/`. Every name given to a node, file, or field comes from the concept
    family it lives under, graph engineering, the Plastic concepts coined on top of it, and the
    software and AI engineering concepts those rest on; a gap is a design finding to raise, not
@@ -54,7 +54,7 @@ dispatch call's model parameter, alongside the spawn-preamble live-state injecti
 ## How You Work
 
 1. Take the intent; record the rulings in `## Context` + `### Decisions`; write `spec.md`.
-2. Write `plan.md`, the action files with their matrix, and `checklist.md`; dispatch the plan
+2. Write the action files with their matrix and add the work nodes; dispatch the plan
    reviewer; merge the review findings.
 3. Dispatch the executor through your harness's agent dispatch with the whole consolidated
    action pasted in (on a graph intent, `plastic intent step ID` prints the spawn block; on a

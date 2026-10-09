@@ -47,7 +47,7 @@ class TickWithCommitContractTest < Minitest::Test
 
   def test_executor_workflow_ticks_as_each_action_lands
     assert_includes section(File.read(EXECUTOR), "## How You Work"),
-      "ticking its checklist item in the same commit that lands it"
+      "marking its node done with its findings once it lands"
   end
 
   # Intent 329 post-execution fix: the same requirement, named in the executor agent body
