@@ -25,8 +25,8 @@ class EndTest < Plastic::TestCase
     refute_nil store_graphs.retrieval.session("s-1").ended_at
   end
 
-  def test_end_takes_the_harness_the_installer_writes
-    assert_call call("--harness", "codex"), code: 0
+  def test_end_takes_no_harness_option
+    assert_equal 2, call("--harness", "codex").code
   end
 
   def test_a_call_with_no_session_prints_one_stderr_line
