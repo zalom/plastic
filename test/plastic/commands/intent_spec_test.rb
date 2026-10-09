@@ -20,6 +20,13 @@ class IntentSpecTest < Plastic::TestCase
     assert_includes result.out, "# The grilling"
   end
 
+  def test_the_spec_line_shows_one_example_criterion
+    intent = open_intent
+    write_spec(intent, "# Spec\n\n## Done criteria\n- ships\n")
+
+    assert_includes call(intent.intent_id).out, "spec: the done criteria are the bullets under its \"## Done criteria\" heading, each written - [c1] text"
+  end
+
   def test_an_open_decision_is_printed
     intent = open_intent
     write_spec(intent, "# Spec\n\n## Open Questions\n- which store wins\n")
