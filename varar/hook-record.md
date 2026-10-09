@@ -4,7 +4,7 @@
 local.db and prints nothing, so the session stops. With `--end` it answers SessionEnd instead
 and sets only the end time and the reason. Session s-1 opens the store with `hook resume`
 before each row. A call that names no session records nothing, and a call that names a new
-session opens a row for it. Stage 3 has no locks, so the stop gate has nothing to block.
+session opens a row for it. No lock is held, so the stop gate has nothing to block.
 
 Each row gives the arguments, the event, the session, the exit code, the message and the row:
 
