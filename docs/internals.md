@@ -64,7 +64,7 @@ Codex. The manifest tracks the installed files, so they prune on update and unin
 
 No hook gates an edit on its content or stage in 2.0. The edit-path gates, the create gate,
 and the stage-transition gates are gone. No `PreToolUse` hook remains: the `call-budget` guard was
-removed on 2026-09-24, and a node's call budget is now a sentence in its input that the
+removed, and a node's call budget is now a sentence in its input that the
 subagent honors itself. The `record` hook writes the savepoint line, refreshes
 the lock heartbeat, and updates the day ledger. Doctor checks and the close checks in
 `scripts/end-intent` report what the gates once blocked.
@@ -916,7 +916,7 @@ The delivery lock is one row of the `locks` table in the machine's `local.db`, r
 the mode, and the `taken_at` and `renewed_at` times. `Lock#live?` is true while `renewed_at`
 lies within the TTL of 1800 seconds. The earlier `delivery.lock` file, the internal lock
 program with its `arm`, `fix`, `reclaim`, `delegate` and `claim` verbs, the per-artifact claim
-files, and the old start and lock subcommands of `plastic auto` are retired. Owner ruling of 2026-10-07: in auto mode the worktree is the lock, `plastic auto ID`
+files, and the old start and lock subcommands of `plastic auto` are retired. In auto mode the worktree is the lock, `plastic auto ID`
 is the only auto command, and lock commands live under `intent lock`.
 
 - **Take.** `plastic auto ID` (`Commands::Auto`) runs `Workflows::PickDelivery`, then
@@ -1151,7 +1151,7 @@ start.
   under `.tmp/<session>/`, and capture and record.
 - `scripts/session-commit`, which appends one `Item` or `Note`
   savepoint line per commit. See "the session branch model and session-commit" below.
-  Only `plastic session commit` runs it; the record hook stopped spawning it on 2026-09-24.
+  Only `plastic session commit` runs it; the record hook no longer spawns it.
 - Close, `file-session-intent`, `promote-session-item`, and the carry-forward of
   open items, which is why `append-ledger item` exists alongside `pending`.
 - `write-handoff` (the per-session hand-off in the day directory,
