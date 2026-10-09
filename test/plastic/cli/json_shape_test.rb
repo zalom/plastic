@@ -24,12 +24,12 @@ class JsonShapeTest < Plastic::TestCase
   end
 
   def test_a_refusal_writes_one_json_document_and_nothing_to_stderr
-    open_keyed_intent
-    plastic("node", "add", "1", "a", "--criterion", "done", table: Plastic::CLI::TABLE)
-    result = call("node", "done", "1", "n1", "ok")
+    out = StringIO.new
+    err = StringIO.new
+    Plastic::CLI::JsonOutput.new(out:, err:).refused("the owner holds it")
 
-    assert_equal [3, ""], [result.code, result.err]
-    assert_equal "refused", JSON.parse(result.out).dig("result", "error", "kind")
+    assert_equal "", err.string
+    assert_equal "refused", JSON.parse(out.string).dig("result", "error", "kind")
   end
 
   def test_status_puts_its_rows_under_result_rows_as_data

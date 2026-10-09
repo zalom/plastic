@@ -29,6 +29,8 @@ module Plastic
 
       def row(label, value) = tap { @result.row(label, value) }
 
+      def rows(entries) = tap { entries.each { |label, value| row(label, value) } }
+
       def next_step(command, because:) = tap { @result.offer(command, because) }
 
       # Prints the answer once. `project` is the store the call named, so a
@@ -48,23 +50,25 @@ module Plastic
       end
 
       def usage(message, banner)
-        @err.puts "plastic: #{message}", banner
+        diagnose("plastic: #{message}", banner)
         error_document(message, "usage", Offer.none(message))
       end
 
       def refused(message, offer = Offer.none(message))
-        @err.puts "plastic: refused, #{message}", "This step belongs to the owner. Stop and ask; do not retry with a flag."
+        diagnose("plastic: refused, #{message}", "This step belongs to the owner. Stop and ask; do not retry with a flag.")
         error_document(message, "refused", offer)
       end
 
       def failed(message, offer = Offer.none(message), source: nil)
-        @err.puts "plastic: #{message}"
+        diagnose("plastic: #{message}")
         error_document(source ? "#{source}: #{message}" : message, "failed", offer)
       end
 
       private
 
       attr_reader :out, :result
+
+      def diagnose(*lines) = @err.puts(*lines)
 
       def error_document(_message, _kind, offer) = offer.apply(self)
     end

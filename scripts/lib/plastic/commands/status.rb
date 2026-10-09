@@ -13,7 +13,7 @@ module Plastic
       reads :work
 
       def call
-        slugs.each { |slug| print_store(slug) }
+        output.rows(slugs.flat_map { |slug| store_rows(slug) })
         output.next_step("plastic next", because: "pick the one to work on")
       end
 
@@ -21,19 +21,16 @@ module Plastic
 
       def slugs = scope.requested? ? [scope.slug] : scope.known_slugs
 
-      def print_store(slug)
+      def store_rows(slug)
         show_store(slug)
       rescue Graph::MissingStore => error
-        output.row("store:", "#{slug} has no store folder; run #{error.next_command}")
+        [["store:", "#{slug} has no store folder; run #{error.next_command}"]]
       end
 
       def show_store(slug)
         retrieval = Graph.open(home: scope.plastic_home, store: slug).retrieval
-        output.row("store:", slug)
-        retrieval.intents.select(&:open?).each { |intent| print_intent(retrieval, intent) }
+        [["store:", slug], *retrieval.intents.select(&:open?).map { |intent| Graph::Work::IntentRow.new(retrieval, intent).to_a }]
       end
-
-      def print_intent(retrieval, intent) = output.row(*Graph::Work::IntentRow.new(retrieval, intent).to_a)
     end
   end
 end

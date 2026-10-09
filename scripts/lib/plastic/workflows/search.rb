@@ -16,7 +16,7 @@ module Plastic
       forget_stop :problem
 
       read "search the indexed passages" do |context|
-        context.row("results", SearchQuery.new(context).rows)
+        context.row("rows", SearchQuery.new(context).rows)
       rescue Graph::RetrievalGraph::MaintenanceRequired => error
         context[:problem] = error.message
       end
