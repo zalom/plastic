@@ -60,7 +60,8 @@ ruby bin/test --only test/plastic/commands/intent_new_test.rb
 bundle exec ruby bin/verify-change <base commit>
 ```
 
-Run the test of each changed file once. Then run the gate once before the commit: it runs the
+Run the test of each changed file once. When you change a command, workflow or graph class, run
+`ruby tools/command-reference` and commit the pages it rewrites. Then run the gate once before the commit: it runs the
 lint, the tests of the changed files with coverage, and the timing check. Just before the pull
 request is created, run the full suite one time with `ruby bin/test` and fix what it finds. After
 the pull request exists, CI takes over: read its failures and fix those, with no more full runs
@@ -72,8 +73,9 @@ on your machine.
 2. Add the class in one file under `scripts/lib/plastic/commands/`, named after it: `Commands::IntentEnd`
    lives in `intent_end.rb`. Follow `architecture_status.rb` for the smallest example.
 3. Write the tests first and commit them red. Follow [Test a change](#test-a-change).
-4. Run the gates once: `bundle exec ruby bin/verify-change <base commit>`.
-5. Add the command to [README.md](README.md) and [docs/usage/FEATURES.md](docs/usage/FEATURES.md) in the same change.
+4. Write the command's reference pages: run `ruby tools/command-reference` and commit the pages under `docs/reference/commands/`.
+5. Run the gates once: `bundle exec ruby bin/verify-change <base commit>`.
+6. Add the command to [README.md](README.md) and [docs/usage/FEATURES.md](docs/usage/FEATURES.md) in the same change.
 
 ## Cut a release
 

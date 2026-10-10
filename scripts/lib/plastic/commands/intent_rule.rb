@@ -4,7 +4,7 @@ require_relative "../routine"
 
 module Plastic
   module Commands
-    # Writes one owner ruling against an intent, numbered D1, D2 and on.
+    # Writes one owner ruling against an intent, numbered in order, one after the last.
     # --supersedes names an older ruling and links the two.
     class IntentRule < Routine
       intent_subject
