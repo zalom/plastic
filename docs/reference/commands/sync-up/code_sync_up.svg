@@ -1,0 +1,164 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 682" width="760" height="682" role="img" xml:space="preserve">
+<title>How SyncUp runs in plastic sync up</title>
+<style>.ground { fill: #e9e5dc; }
+.card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
+.lane-code { fill: #d5e8e3; stroke: #0d6b61; stroke-width: 1.5; }
+.lane-agent { fill: #f1e2c7; stroke: #9a5508; stroke-width: 1.5; }
+.stop-refusal { fill: #e4dcf5; stroke: #5b35b0; stroke-width: 1.2; }
+.stop-failure { fill: #f4d9d4; stroke: #a8261b; stroke-width: 1.2; }
+.end { fill: #d9e2f0; stroke: #2c4a7a; stroke-width: 1.2; }
+.wire { fill: none; stroke: #7c8594; stroke-width: 1.4; }
+.wire-read { fill: none; stroke: #7c8594; stroke-width: 1.4; stroke-dasharray: 5 3; }
+.wire-refusal { fill: none; stroke: #5b35b0; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.wire-failure { fill: none; stroke: #a8261b; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.head { fill: #7c8594; }
+.t { fill: #1f2530; font: 12px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.tb { fill: #1f2530; font: 600 13px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.tm { fill: #1f2530; font: 11.5px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.tag { font: 600 10px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; letter-spacing: .06em; }
+.tag-code { fill: #0d6b61; } .tag-agent { fill: #9a5508; } .tag-refusal { fill: #5b35b0; }
+.tag-failure { fill: #a8261b; } .tag-end { fill: #2c4a7a; } .tag-muted { fill: #4f5866; }
+.tm.tag-muted { font-size: 10.5px; }
+.db { fill: #d9e2f0; stroke: #2c4a7a; stroke-width: 1.2; }
+.codebox { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
+.cx { fill: #1f2530; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; white-space: pre; }
+.cx-n { fill: #4f5866; font: 11px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.cx-k { fill: #5b35b0; } .cx-s { fill: #9a5508; } .cx-y { fill: #0d6b61; }
+.cx-w { fill: #2c4a7a; font-weight: 600; } .cx-t { fill: #a8261b; } .cx-c { fill: #4f5866; font-style: italic; }
+.badge { fill: #2c4a7a; } .badge-t { fill: #e9e5dc; font: 600 11px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.bracket { fill: none; stroke: #2c4a7a; stroke-width: 1.4; }
+.term { fill: #16191e; stroke: #7c8594; stroke-width: 1; }
+.term-t { fill: #e6e2d8; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.term-p { fill: #8fd18f; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.term-m { fill: #a3abb6; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.big { font: 700 36px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+
+@media (prefers-color-scheme: dark) {
+.ground { fill: #171a1f; }
+.card { fill: #20242b; stroke: #8a93a2; stroke-width: 1; }
+.lane-code { fill: #173a36; stroke: #5cc4b4; stroke-width: 1.5; }
+.lane-agent { fill: #3d2e17; stroke: #e5a95a; stroke-width: 1.5; }
+.stop-refusal { fill: #2d2445; stroke: #b59cf2; stroke-width: 1.2; }
+.stop-failure { fill: #45211e; stroke: #f2958a; stroke-width: 1.2; }
+.end { fill: #1f2c42; stroke: #97b6e8; stroke-width: 1.2; }
+.wire { fill: none; stroke: #8a93a2; stroke-width: 1.4; }
+.wire-read { fill: none; stroke: #8a93a2; stroke-width: 1.4; stroke-dasharray: 5 3; }
+.wire-refusal { fill: none; stroke: #b59cf2; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.wire-failure { fill: none; stroke: #f2958a; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.head { fill: #8a93a2; }
+.t { fill: #e8e4da; font: 12px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.tb { fill: #e8e4da; font: 600 13px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.tm { fill: #e8e4da; font: 11.5px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.tag { font: 600 10px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; letter-spacing: .06em; }
+.tag-code { fill: #5cc4b4; } .tag-agent { fill: #e5a95a; } .tag-refusal { fill: #b59cf2; }
+.tag-failure { fill: #f2958a; } .tag-end { fill: #97b6e8; } .tag-muted { fill: #b3b9c3; }
+.tm.tag-muted { font-size: 10.5px; }
+.db { fill: #1f2c42; stroke: #97b6e8; stroke-width: 1.2; }
+.codebox { fill: #20242b; stroke: #8a93a2; stroke-width: 1; }
+.cx { fill: #e8e4da; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; white-space: pre; }
+.cx-n { fill: #b3b9c3; font: 11px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.cx-k { fill: #b59cf2; } .cx-s { fill: #e5a95a; } .cx-y { fill: #5cc4b4; }
+.cx-w { fill: #97b6e8; font-weight: 600; } .cx-t { fill: #f2958a; } .cx-c { fill: #b3b9c3; font-style: italic; }
+.badge { fill: #97b6e8; } .badge-t { fill: #171a1f; font: 600 11px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.bracket { fill: none; stroke: #97b6e8; stroke-width: 1.4; }
+.term { fill: #16191e; stroke: #8a93a2; stroke-width: 1; }
+.term-t { fill: #e6e2d8; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.term-p { fill: #8fd18f; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.term-m { fill: #a3abb6; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.big { font: 700 36px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+}</style>
+<rect width="100%" height="100%" class="ground"/>
+<text x="16" y="22" class="tb" text-anchor="start">SyncUp</text>
+<text x="436" y="22" class="tm tag-muted" text-anchor="end">sync_up.rb:9</text>
+<rect x="16" y="34" width="420" height="45" rx="6" class="card"/>
+<text x="26" y="49" class="tag tag-muted" text-anchor="start">READ</text>
+<text x="426" y="49" class="tm tag-muted" text-anchor="end">sync_steps.rb:67</text>
+<text x="26" y="66" class="t" text-anchor="start">plan the sync</text>
+<path d="M 226 79 L 226 89" class="wire"/>
+<path d="M 221 81 L 226 89 L 231 81 Z" class="head"/>
+<rect x="16" y="89" width="420" height="45" rx="6" class="card"/>
+<text x="26" y="104" class="tag tag-muted" text-anchor="start">GATE</text>
+<text x="426" y="104" class="tm tag-muted" text-anchor="end">sync_steps.rb:68</text>
+<text x="26" y="121" class="tm" text-anchor="start">passes when public_send(name, context)</text>
+<path d="M 436 107 L 464 107" class="wire-failure"/>
+<path d="M 456 102 L 464 107 L 456 112 Z" class="head"/>
+<rect x="466" y="89" width="270" height="42" rx="6" class="stop-failure"/>
+<text x="476" y="104" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1, FAILED</text>
+<text x="476" y="120" class="tm" text-anchor="start">%{failure}</text>
+<path d="M 226 134 L 226 144" class="wire"/>
+<path d="M 221 136 L 226 144 L 231 136 Z" class="head"/>
+<rect x="16" y="144" width="420" height="98" rx="6" class="card"/>
+<text x="26" y="159" class="tag tag-muted" text-anchor="start">GATE</text>
+<text x="426" y="159" class="tm tag-muted" text-anchor="end">sync_steps.rb:69</text>
+<text x="26" y="176" class="tm" text-anchor="start">passes when public_send(name, context)</text>
+<path d="M 436 162 L 464 162" class="wire-refusal"/>
+<path d="M 456 157 L 464 162 L 456 167 Z" class="head"/>
+<rect x="466" y="144" width="270" height="98" rx="6" class="stop-refusal"/>
+<text x="476" y="159" class="tag tag-refusal" text-anchor="start">STOPS, EXIT 3, REFUSED</text>
+<text x="476" y="175" class="tm" text-anchor="start">changed on both sides since</text>
+<text x="476" y="189" class="tm" text-anchor="start">the last print, nothing</text>
+<text x="476" y="203" class="tm" text-anchor="start">written: %{conflicts}; pass</text>
+<text x="476" y="217" class="tm" text-anchor="start">--overwrite PATH, --overwrite</text>
+<text x="476" y="231" class="tm" text-anchor="start">or --merge</text>
+<path d="M 226 242 L 226 252" class="wire"/>
+<path d="M 221 244 L 226 252 L 231 244 Z" class="head"/>
+<rect x="16" y="252" width="420" height="59" rx="6" class="card"/>
+<text x="26" y="267" class="tag tag-muted" text-anchor="start">STEP</text>
+<text x="426" y="267" class="tm tag-muted" text-anchor="end">sync_steps.rb:73</text>
+<text x="26" y="284" class="t" text-anchor="start">apply the changes</text>
+<text x="26" y="299" class="tm" text-anchor="start">done when plan(context, direction).pending.zero?</text>
+<path d="M 436 270 L 464 270" class="wire-failure"/>
+<path d="M 456 265 L 464 270 L 456 275 Z" class="head"/>
+<rect x="466" y="252" width="270" height="56" rx="6" class="stop-failure"/>
+<text x="476" y="267" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1, FAILED</text>
+<text x="476" y="283" class="tm" text-anchor="start">the step ran and its done</text>
+<text x="476" y="297" class="tm" text-anchor="start">check still fails</text>
+<path d="M 226 311 L 226 321" class="wire"/>
+<path d="M 221 313 L 226 321 L 231 313 Z" class="head"/>
+<rect x="16" y="321" width="420" height="45" rx="6" class="card"/>
+<text x="26" y="336" class="tag tag-muted" text-anchor="start">READ</text>
+<text x="426" y="336" class="tm tag-muted" text-anchor="end">sync_steps.rb:74</text>
+<text x="26" y="353" class="t" text-anchor="start">say what changed</text>
+<path d="M 226 366 L 226 376" class="wire"/>
+<path d="M 221 368 L 226 376 L 231 368 Z" class="head"/>
+<rect x="16" y="376" width="420" height="98" rx="6" class="card"/>
+<text x="26" y="391" class="tag tag-muted" text-anchor="start">GATE</text>
+<text x="426" y="391" class="tm tag-muted" text-anchor="end">sync_steps.rb:75</text>
+<text x="26" y="408" class="tm" text-anchor="start">passes when public_send(name, context)</text>
+<path d="M 436 394 L 464 394" class="wire-refusal"/>
+<path d="M 456 389 L 464 394 L 456 399 Z" class="head"/>
+<rect x="466" y="376" width="270" height="98" rx="6" class="stop-refusal"/>
+<text x="476" y="391" class="tag tag-refusal" text-anchor="start">STOPS, EXIT 3, REFUSED</text>
+<text x="476" y="407" class="tm" text-anchor="start">changed on both sides since</text>
+<text x="476" y="421" class="tm" text-anchor="start">the last print, left as they</text>
+<text x="476" y="435" class="tm" text-anchor="start">are: %{conflicts}; pass</text>
+<text x="476" y="449" class="tm" text-anchor="start">--overwrite PATH or</text>
+<text x="476" y="463" class="tm" text-anchor="start">--overwrite</text>
+<path d="M 226 474 L 226 484" class="wire"/>
+<path d="M 221 476 L 226 484 L 231 476 Z" class="head"/>
+<rect x="16" y="484" width="420" height="98" rx="6" class="card"/>
+<text x="26" y="499" class="tag tag-muted" text-anchor="start">GATE</text>
+<text x="426" y="499" class="tm tag-muted" text-anchor="end">sync_steps.rb:62</text>
+<text x="26" y="516" class="tm" text-anchor="start">passes when public_send(name, context)</text>
+<path d="M 436 502 L 464 502" class="wire-failure"/>
+<path d="M 456 497 L 464 502 L 456 507 Z" class="head"/>
+<rect x="466" y="484" width="270" height="98" rx="6" class="stop-failure"/>
+<text x="476" y="499" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1, FAILED</text>
+<text x="476" y="515" class="tm" text-anchor="start">intent folders that could not</text>
+<text x="476" y="529" class="tm" text-anchor="start">be read, the others were read:</text>
+<text x="476" y="543" class="tm" text-anchor="start">%{unreadable} fix or remove</text>
+<text x="476" y="557" class="tm" text-anchor="start">each folder named, then run</text>
+<text x="476" y="571" class="tm" text-anchor="start">plastic sync up again</text>
+<path d="M 226 582 L 226 592" class="wire"/>
+<path d="M 221 584 L 226 592 L 231 584 Z" class="head"/>
+<text x="16" y="604" class="tag tag-muted" text-anchor="start">ENDS ON</text>
+<rect x="16" y="612" width="300" height="56" rx="6" class="card"/>
+<text x="26" y="628" class="tm" text-anchor="start">:done</text>
+<text x="26" y="644" class="tm tag-muted" text-anchor="start">always</text>
+<path d="M 316 628 L 352 628" class="wire"/>
+<path d="M 344 623 L 352 628 L 344 633 Z" class="head"/>
+<rect x="352" y="612" width="392" height="56" rx="6" class="end"/>
+<text x="362" y="629" class="t" text-anchor="start">the call finishes, exit 0</text>
+<text x="362" y="643" class="t" text-anchor="start">next: plastic next</text>
+<text x="362" y="657" class="t" text-anchor="start">because: the rows hold every file changed by hand</text>
+</svg>

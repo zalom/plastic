@@ -1,0 +1,135 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 940 405" width="940" height="405" role="img" xml:space="preserve">
+<title>How the plastic intent end command class is declared</title>
+<style>.ground { fill: #e9e5dc; }
+.card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
+.lane-code { fill: #d5e8e3; stroke: #0d6b61; stroke-width: 1.5; }
+.lane-agent { fill: #f1e2c7; stroke: #9a5508; stroke-width: 1.5; }
+.stop-refusal { fill: #e4dcf5; stroke: #5b35b0; stroke-width: 1.2; }
+.stop-failure { fill: #f4d9d4; stroke: #a8261b; stroke-width: 1.2; }
+.end { fill: #d9e2f0; stroke: #2c4a7a; stroke-width: 1.2; }
+.wire { fill: none; stroke: #7c8594; stroke-width: 1.4; }
+.wire-read { fill: none; stroke: #7c8594; stroke-width: 1.4; stroke-dasharray: 5 3; }
+.wire-refusal { fill: none; stroke: #5b35b0; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.wire-failure { fill: none; stroke: #a8261b; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.head { fill: #7c8594; }
+.t { fill: #1f2530; font: 12px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.tb { fill: #1f2530; font: 600 13px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.tm { fill: #1f2530; font: 11.5px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.tag { font: 600 10px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; letter-spacing: .06em; }
+.tag-code { fill: #0d6b61; } .tag-agent { fill: #9a5508; } .tag-refusal { fill: #5b35b0; }
+.tag-failure { fill: #a8261b; } .tag-end { fill: #2c4a7a; } .tag-muted { fill: #4f5866; }
+.tm.tag-muted { font-size: 10.5px; }
+.db { fill: #d9e2f0; stroke: #2c4a7a; stroke-width: 1.2; }
+.codebox { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
+.cx { fill: #1f2530; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; white-space: pre; }
+.cx-n { fill: #4f5866; font: 11px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.cx-k { fill: #5b35b0; } .cx-s { fill: #9a5508; } .cx-y { fill: #0d6b61; }
+.cx-w { fill: #2c4a7a; font-weight: 600; } .cx-t { fill: #a8261b; } .cx-c { fill: #4f5866; font-style: italic; }
+.badge { fill: #2c4a7a; } .badge-t { fill: #e9e5dc; font: 600 11px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.bracket { fill: none; stroke: #2c4a7a; stroke-width: 1.4; }
+.term { fill: #16191e; stroke: #7c8594; stroke-width: 1; }
+.term-t { fill: #e6e2d8; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.term-p { fill: #8fd18f; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.term-m { fill: #a3abb6; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.big { font: 700 36px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+
+@media (prefers-color-scheme: dark) {
+.ground { fill: #171a1f; }
+.card { fill: #20242b; stroke: #8a93a2; stroke-width: 1; }
+.lane-code { fill: #173a36; stroke: #5cc4b4; stroke-width: 1.5; }
+.lane-agent { fill: #3d2e17; stroke: #e5a95a; stroke-width: 1.5; }
+.stop-refusal { fill: #2d2445; stroke: #b59cf2; stroke-width: 1.2; }
+.stop-failure { fill: #45211e; stroke: #f2958a; stroke-width: 1.2; }
+.end { fill: #1f2c42; stroke: #97b6e8; stroke-width: 1.2; }
+.wire { fill: none; stroke: #8a93a2; stroke-width: 1.4; }
+.wire-read { fill: none; stroke: #8a93a2; stroke-width: 1.4; stroke-dasharray: 5 3; }
+.wire-refusal { fill: none; stroke: #b59cf2; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.wire-failure { fill: none; stroke: #f2958a; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.head { fill: #8a93a2; }
+.t { fill: #e8e4da; font: 12px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.tb { fill: #e8e4da; font: 600 13px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.tm { fill: #e8e4da; font: 11.5px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.tag { font: 600 10px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; letter-spacing: .06em; }
+.tag-code { fill: #5cc4b4; } .tag-agent { fill: #e5a95a; } .tag-refusal { fill: #b59cf2; }
+.tag-failure { fill: #f2958a; } .tag-end { fill: #97b6e8; } .tag-muted { fill: #b3b9c3; }
+.tm.tag-muted { font-size: 10.5px; }
+.db { fill: #1f2c42; stroke: #97b6e8; stroke-width: 1.2; }
+.codebox { fill: #20242b; stroke: #8a93a2; stroke-width: 1; }
+.cx { fill: #e8e4da; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; white-space: pre; }
+.cx-n { fill: #b3b9c3; font: 11px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.cx-k { fill: #b59cf2; } .cx-s { fill: #e5a95a; } .cx-y { fill: #5cc4b4; }
+.cx-w { fill: #97b6e8; font-weight: 600; } .cx-t { fill: #f2958a; } .cx-c { fill: #b3b9c3; font-style: italic; }
+.badge { fill: #97b6e8; } .badge-t { fill: #171a1f; font: 600 11px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.bracket { fill: none; stroke: #97b6e8; stroke-width: 1.4; }
+.term { fill: #16191e; stroke: #8a93a2; stroke-width: 1; }
+.term-t { fill: #e6e2d8; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.term-p { fill: #8fd18f; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.term-m { fill: #a3abb6; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.big { font: 700 36px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+}</style>
+<rect width="100%" height="100%" class="ground"/>
+<rect x="16" y="16" width="572" height="375" rx="6" class="codebox"/>
+<text x="44" y="36" class="cx-n" text-anchor="end">8</text>
+<text x="54.0" y="36" class="cx"><tspan class="cx-k">class</tspan> <tspan class="cx-t">IntentEnd</tspan> &lt; <tspan class="cx-t">Routine</tspan></text>
+<text x="44" y="55" class="cx-n" text-anchor="end">9</text>
+<text x="68.5" y="55" class="cx"><tspan class="cx-w">intent_subject</tspan></text>
+<text x="44" y="74" class="cx-n" text-anchor="end">10</text>
+<text x="68.5" y="74" class="cx"><tspan class="cx-w">writes</tspan> <tspan class="cx-y">:work</tspan></text>
+<text x="44" y="93" class="cx-n" text-anchor="end">11</text>
+<text x="68.5" y="93" class="cx">prints <tspan class="cx-y">:intent</tspan></text>
+<text x="44" y="112" class="cx-n" text-anchor="end">12</text>
+<text x="68.5" y="112" class="cx"><tspan class="cx-w">reads</tspan> <tspan class="cx-y">:knowledge</tspan></text>
+<text x="44" y="131" class="cx-n" text-anchor="end">13</text>
+<text x="54.0" y="131" class="cx"></text>
+<text x="44" y="150" class="cx-n" text-anchor="end">14</text>
+<text x="68.5" y="150" class="cx"><tspan class="cx-w">workflow</tspan> <tspan class="cx-y">:code_prepare_ending</tspan> <tspan class="cx-k">do</tspan></text>
+<text x="44" y="169" class="cx-n" text-anchor="end">15</text>
+<text x="83.0" y="169" class="cx"><tspan class="cx-w">on</tspan> <tspan class="cx-y">:unverified</tspan>, <tspan class="cx-y">next:</tspan> <tspan class="cx-y">:agent_check_merge</tspan></text>
+<text x="44" y="188" class="cx-n" text-anchor="end">16</text>
+<text x="83.0" y="188" class="cx"><tspan class="cx-w">on</tspan> <tspan class="cx-y">:closed</tspan>, <tspan class="cx-y">next:</tspan> <tspan class="cx-y">:noop</tspan></text>
+<text x="44" y="207" class="cx-n" text-anchor="end">17</text>
+<text x="83.0" y="207" class="cx"><tspan class="cx-w">on</tspan> <tspan class="cx-y">:ready</tspan>, <tspan class="cx-y">next:</tspan> <tspan class="cx-y">:code_close_intent</tspan></text>
+<text x="44" y="226" class="cx-n" text-anchor="end">18</text>
+<text x="83.0" y="226" class="cx"><tspan class="cx-w">on</tspan> <tspan class="cx-y">:agent_needed</tspan>, <tspan class="cx-y">next:</tspan> <tspan class="cx-y">:agent_finish_intent</tspan></text>
+<text x="44" y="245" class="cx-n" text-anchor="end">19</text>
+<text x="68.5" y="245" class="cx"><tspan class="cx-k">end</tspan></text>
+<text x="44" y="264" class="cx-n" text-anchor="end">20</text>
+<text x="68.5" y="264" class="cx"><tspan class="cx-w">workflow</tspan> <tspan class="cx-y">:agent_finish_intent</tspan>, <tspan class="cx-y">next:</tspan> <tspan class="cx-y">:noop</tspan></text>
+<text x="44" y="283" class="cx-n" text-anchor="end">21</text>
+<text x="68.5" y="283" class="cx"><tspan class="cx-w">workflow</tspan> <tspan class="cx-y">:agent_check_merge</tspan>, <tspan class="cx-y">next:</tspan> <tspan class="cx-y">:noop</tspan></text>
+<text x="44" y="302" class="cx-n" text-anchor="end">22</text>
+<text x="68.5" y="302" class="cx"><tspan class="cx-w">workflow</tspan> <tspan class="cx-y">:code_close_intent</tspan> <tspan class="cx-k">do</tspan></text>
+<text x="44" y="321" class="cx-n" text-anchor="end">23</text>
+<text x="83.0" y="321" class="cx"><tspan class="cx-w">on</tspan> <tspan class="cx-y">:done</tspan>, <tspan class="cx-y">next:</tspan> <tspan class="cx-y">:agent_wind_down_intent</tspan></text>
+<text x="44" y="340" class="cx-n" text-anchor="end">24</text>
+<text x="68.5" y="340" class="cx"><tspan class="cx-k">end</tspan></text>
+<text x="44" y="359" class="cx-n" text-anchor="end">25</text>
+<text x="68.5" y="359" class="cx"><tspan class="cx-w">workflow</tspan> <tspan class="cx-y">:agent_wind_down_intent</tspan>, <tspan class="cx-y">next:</tspan> <tspan class="cx-y">:noop</tspan></text>
+<text x="44" y="378" class="cx-n" text-anchor="end">26</text>
+<text x="54.0" y="378" class="cx"><tspan class="cx-k">end</tspan></text>
+<rect x="612" y="22" width="296" height="56" rx="6" class="card"/>
+<circle cx="626" cy="34" r="8" class="badge"/>
+<text x="626" y="38" class="badge-t" text-anchor="middle">1</text>
+<text x="642" y="37" class="tag tag-end" text-anchor="start">THE COMMAND</text>
+<text x="622" y="53" class="tb" text-anchor="start">plastic intent end</text>
+<text x="622" y="68" class="tm" text-anchor="start">a Routine: it runs a chain</text>
+<rect x="612" y="84" width="296" height="56" rx="6" class="card"/>
+<circle cx="626" cy="96" r="8" class="badge"/>
+<text x="626" y="100" class="badge-t" text-anchor="middle">2</text>
+<text x="642" y="99" class="tag tag-end" text-anchor="start">INPUTS</text>
+<text x="622" y="115" class="tb" text-anchor="start">what it takes</text>
+<text x="622" y="130" class="tm" text-anchor="start">ID  the intent</text>
+<rect x="612" y="146" width="296" height="71" rx="6" class="card"/>
+<circle cx="626" cy="158" r="8" class="badge"/>
+<text x="626" y="162" class="badge-t" text-anchor="middle">3</text>
+<text x="642" y="161" class="tag tag-end" text-anchor="start">GRAPHS</text>
+<text x="622" y="177" class="tb" text-anchor="start">graphs it reads and writes</text>
+<text x="622" y="192" class="tm" text-anchor="start">writes work</text>
+<text x="622" y="207" class="tm" text-anchor="start">reads knowledge</text>
+<rect x="612" y="223" width="296" height="56" rx="6" class="card"/>
+<circle cx="626" cy="235" r="8" class="badge"/>
+<text x="626" y="239" class="badge-t" text-anchor="middle">4</text>
+<text x="642" y="238" class="tag tag-end" text-anchor="start">THE CHAIN</text>
+<text x="622" y="254" class="tb" text-anchor="start">5 workflows</text>
+<text x="622" y="269" class="tm" text-anchor="start">starts at :code_prepare_ending</text>
+</svg>

@@ -1,0 +1,133 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 453" width="760" height="453" role="img" xml:space="preserve">
+<title>How DropRoadmapItem runs in plastic roadmap drop</title>
+<style>.ground { fill: #e9e5dc; }
+.card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
+.lane-code { fill: #d5e8e3; stroke: #0d6b61; stroke-width: 1.5; }
+.lane-agent { fill: #f1e2c7; stroke: #9a5508; stroke-width: 1.5; }
+.stop-refusal { fill: #e4dcf5; stroke: #5b35b0; stroke-width: 1.2; }
+.stop-failure { fill: #f4d9d4; stroke: #a8261b; stroke-width: 1.2; }
+.end { fill: #d9e2f0; stroke: #2c4a7a; stroke-width: 1.2; }
+.wire { fill: none; stroke: #7c8594; stroke-width: 1.4; }
+.wire-read { fill: none; stroke: #7c8594; stroke-width: 1.4; stroke-dasharray: 5 3; }
+.wire-refusal { fill: none; stroke: #5b35b0; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.wire-failure { fill: none; stroke: #a8261b; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.head { fill: #7c8594; }
+.t { fill: #1f2530; font: 12px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.tb { fill: #1f2530; font: 600 13px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.tm { fill: #1f2530; font: 11.5px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.tag { font: 600 10px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; letter-spacing: .06em; }
+.tag-code { fill: #0d6b61; } .tag-agent { fill: #9a5508; } .tag-refusal { fill: #5b35b0; }
+.tag-failure { fill: #a8261b; } .tag-end { fill: #2c4a7a; } .tag-muted { fill: #4f5866; }
+.tm.tag-muted { font-size: 10.5px; }
+.db { fill: #d9e2f0; stroke: #2c4a7a; stroke-width: 1.2; }
+.codebox { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
+.cx { fill: #1f2530; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; white-space: pre; }
+.cx-n { fill: #4f5866; font: 11px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.cx-k { fill: #5b35b0; } .cx-s { fill: #9a5508; } .cx-y { fill: #0d6b61; }
+.cx-w { fill: #2c4a7a; font-weight: 600; } .cx-t { fill: #a8261b; } .cx-c { fill: #4f5866; font-style: italic; }
+.badge { fill: #2c4a7a; } .badge-t { fill: #e9e5dc; font: 600 11px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.bracket { fill: none; stroke: #2c4a7a; stroke-width: 1.4; }
+.term { fill: #16191e; stroke: #7c8594; stroke-width: 1; }
+.term-t { fill: #e6e2d8; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.term-p { fill: #8fd18f; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.term-m { fill: #a3abb6; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.big { font: 700 36px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+
+@media (prefers-color-scheme: dark) {
+.ground { fill: #171a1f; }
+.card { fill: #20242b; stroke: #8a93a2; stroke-width: 1; }
+.lane-code { fill: #173a36; stroke: #5cc4b4; stroke-width: 1.5; }
+.lane-agent { fill: #3d2e17; stroke: #e5a95a; stroke-width: 1.5; }
+.stop-refusal { fill: #2d2445; stroke: #b59cf2; stroke-width: 1.2; }
+.stop-failure { fill: #45211e; stroke: #f2958a; stroke-width: 1.2; }
+.end { fill: #1f2c42; stroke: #97b6e8; stroke-width: 1.2; }
+.wire { fill: none; stroke: #8a93a2; stroke-width: 1.4; }
+.wire-read { fill: none; stroke: #8a93a2; stroke-width: 1.4; stroke-dasharray: 5 3; }
+.wire-refusal { fill: none; stroke: #b59cf2; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.wire-failure { fill: none; stroke: #f2958a; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.head { fill: #8a93a2; }
+.t { fill: #e8e4da; font: 12px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.tb { fill: #e8e4da; font: 600 13px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.tm { fill: #e8e4da; font: 11.5px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.tag { font: 600 10px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; letter-spacing: .06em; }
+.tag-code { fill: #5cc4b4; } .tag-agent { fill: #e5a95a; } .tag-refusal { fill: #b59cf2; }
+.tag-failure { fill: #f2958a; } .tag-end { fill: #97b6e8; } .tag-muted { fill: #b3b9c3; }
+.tm.tag-muted { font-size: 10.5px; }
+.db { fill: #1f2c42; stroke: #97b6e8; stroke-width: 1.2; }
+.codebox { fill: #20242b; stroke: #8a93a2; stroke-width: 1; }
+.cx { fill: #e8e4da; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; white-space: pre; }
+.cx-n { fill: #b3b9c3; font: 11px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.cx-k { fill: #b59cf2; } .cx-s { fill: #e5a95a; } .cx-y { fill: #5cc4b4; }
+.cx-w { fill: #97b6e8; font-weight: 600; } .cx-t { fill: #f2958a; } .cx-c { fill: #b3b9c3; font-style: italic; }
+.badge { fill: #97b6e8; } .badge-t { fill: #171a1f; font: 600 11px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.bracket { fill: none; stroke: #97b6e8; stroke-width: 1.4; }
+.term { fill: #16191e; stroke: #8a93a2; stroke-width: 1; }
+.term-t { fill: #e6e2d8; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.term-p { fill: #8fd18f; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.term-m { fill: #a3abb6; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.big { font: 700 36px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+}</style>
+<rect width="100%" height="100%" class="ground"/>
+<text x="16" y="22" class="tb" text-anchor="start">DropRoadmapItem</text>
+<text x="436" y="22" class="tm tag-muted" text-anchor="end">drop_roadmap_item.rb:9</text>
+<rect x="16" y="34" width="420" height="60" rx="6" class="card"/>
+<text x="26" y="49" class="tag tag-muted" text-anchor="start">GATE</text>
+<text x="426" y="49" class="tm tag-muted" text-anchor="end">drop_roadmap_item.rb:14</text>
+<text x="26" y="66" class="tm" text-anchor="start">passes when</text>
+<text x="26" y="81" class="tm" text-anchor="start">!context.retrieval.roadmap(context.slug).nil?</text>
+<path d="M 436 52 L 464 52" class="wire-failure"/>
+<path d="M 456 47 L 464 52 L 456 57 Z" class="head"/>
+<rect x="466" y="34" width="270" height="42" rx="6" class="stop-failure"/>
+<text x="476" y="49" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1, FAILED</text>
+<text x="476" y="65" class="tm" text-anchor="start">no roadmap %{slug}</text>
+<path d="M 226 94 L 226 104" class="wire"/>
+<path d="M 221 96 L 226 104 L 231 96 Z" class="head"/>
+<rect x="16" y="104" width="420" height="45" rx="6" class="card"/>
+<text x="26" y="119" class="tag tag-muted" text-anchor="start">READ</text>
+<text x="426" y="119" class="tm tag-muted" text-anchor="end">drop_roadmap_item.rb:16</text>
+<text x="26" y="136" class="t" text-anchor="start">find the item</text>
+<path d="M 226 149 L 226 159" class="wire"/>
+<path d="M 221 151 L 226 159 L 231 151 Z" class="head"/>
+<rect x="16" y="159" width="420" height="56" rx="6" class="card"/>
+<text x="26" y="174" class="tag tag-muted" text-anchor="start">GATE</text>
+<text x="426" y="174" class="tm tag-muted" text-anchor="end">drop_roadmap_item.rb:20</text>
+<text x="26" y="191" class="tm" text-anchor="start">passes when !context.item.nil?</text>
+<path d="M 436 177 L 464 177" class="wire-failure"/>
+<path d="M 456 172 L 464 177 L 456 182 Z" class="head"/>
+<rect x="466" y="159" width="270" height="56" rx="6" class="stop-failure"/>
+<text x="476" y="174" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1, FAILED</text>
+<text x="476" y="190" class="tm" text-anchor="start">no item %{item_id} on roadmap</text>
+<text x="476" y="204" class="tm" text-anchor="start">%{slug}</text>
+<path d="M 226 215 L 226 225" class="wire"/>
+<path d="M 221 217 L 226 225 L 231 217 Z" class="head"/>
+<rect x="16" y="225" width="420" height="59" rx="6" class="card"/>
+<text x="26" y="240" class="tag tag-muted" text-anchor="start">STEP</text>
+<text x="426" y="240" class="tm tag-muted" text-anchor="end">drop_roadmap_item.rb:22</text>
+<text x="26" y="257" class="t" text-anchor="start">drop the item</text>
+<text x="26" y="272" class="tm" text-anchor="start">done when context.dropped</text>
+<path d="M 436 243 L 464 243" class="wire-failure"/>
+<path d="M 456 238 L 464 243 L 456 248 Z" class="head"/>
+<rect x="466" y="225" width="270" height="56" rx="6" class="stop-failure"/>
+<text x="476" y="240" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1, FAILED</text>
+<text x="476" y="256" class="tm" text-anchor="start">the step ran and its done</text>
+<text x="476" y="270" class="tm" text-anchor="start">check still fails</text>
+<path d="M 226 284 L 226 294" class="wire"/>
+<path d="M 221 286 L 226 294 L 231 286 Z" class="head"/>
+<rect x="16" y="294" width="420" height="45" rx="6" class="card"/>
+<text x="26" y="309" class="tag tag-muted" text-anchor="start">READ</text>
+<text x="426" y="309" class="tm tag-muted" text-anchor="end">drop_roadmap_item.rb:26</text>
+<text x="26" y="326" class="t" text-anchor="start">say what was dropped</text>
+<path d="M 226 339 L 226 349" class="wire"/>
+<path d="M 221 341 L 226 349 L 231 341 Z" class="head"/>
+<text x="16" y="361" class="tag tag-muted" text-anchor="start">ENDS ON</text>
+<rect x="16" y="369" width="300" height="70" rx="6" class="card"/>
+<text x="26" y="385" class="tm" text-anchor="start">:done</text>
+<text x="26" y="401" class="tm tag-muted" text-anchor="start">always</text>
+<path d="M 316 385 L 352 385" class="wire"/>
+<path d="M 344 380 L 352 385 L 344 390 Z" class="head"/>
+<rect x="352" y="369" width="392" height="70" rx="6" class="end"/>
+<text x="362" y="386" class="t" text-anchor="start">the call finishes, exit 0</text>
+<text x="362" y="400" class="t" text-anchor="start">next: plastic roadmap next %{slug}</text>
+<text x="362" y="414" class="t" text-anchor="start">because: item %{item_id} no longer blocks its</text>
+<text x="362" y="428" class="t" text-anchor="start">successors</text>
+</svg>

@@ -1,0 +1,21 @@
+# frozen_string_literal: true
+
+module CommandReference
+  module Markdown
+    # A comment turned into paragraphs and code blocks.
+    class Prose
+      SHARED = 0.75
+      LONGER = 2
+
+      def self.lines(comment) = Snippet.blocks(comment).flat_map { |kind, body| (kind == :code) ? ["```ruby", body, "```", ""] : [body, ""] }
+
+      def self.repeats?(summary, comment)
+        small, large = [words(summary), words(Array(comment).join(" "))].sort_by(&:size)
+        size = small.size
+        size.positive? && large.size <= LONGER * size && (small & large).size >= SHARED * size
+      end
+
+      def self.words(text) = text.to_s.downcase.gsub("\u0027s", "").scan(/[a-z]+/).map { |word| word.delete_suffix("s") }.uniq
+    end
+  end
+end
