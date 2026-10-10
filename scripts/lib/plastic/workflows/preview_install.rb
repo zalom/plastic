@@ -17,7 +17,7 @@ module Plastic
         end
       end
 
-      outcome :done, if: ->(context) { context.dry_run }, offers: "plastic install",
+      outcome :done, if: ->(context) { context.dry_run }, offers: "%{original_command}",
         because: "the preview changed no file"
       outcome :continue, offers: "plastic install", because: "install the core files"
     end

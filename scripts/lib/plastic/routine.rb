@@ -78,7 +78,7 @@ module Plastic
     # A resumed routine run brings back what its workflows found; this call's
     # arguments and options always win, nil included.
     def context(routine_run)
-      Context.new(declared: self.class.declared_facts, facts: routine_run.facts.merge(parsed), graphs: routine_graphs, harness: Context::Harness.new(environment.session, scope))
+      Context.new(declared: self.class.declared_facts, facts: routine_run.facts.merge(parsed).merge(preview_facts), graphs: routine_graphs, harness: Context::Harness.new(environment.session, scope))
     end
 
     def chain = self.class.chain

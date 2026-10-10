@@ -1,6 +1,6 @@
 # plastic sync down
 
-`plastic sync down` prints the rows that changed into files. A record changed on both sides
+`plastic sync down` writes the rows that changed into files. A record changed on both sides
 since the last print is a conflict. A plain call writes nothing while one waits and exits 3,
 naming every conflict. `--overwrite PATH` settles one record on the side of the direction,
 `--overwrite` settles them all, and `--merge` applies the one-sided changes and leaves the

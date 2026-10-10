@@ -5,10 +5,13 @@ require_relative "../graph/knowledge/roadmap/writer"
 
 module Plastic
   module Workflows
-    # Writes a roadmap batch's goal and done criteria, and the roadmap row
-    # the first time it is named.
+    # Writes a roadmap batch's goal and done criteria on a roadmap that exists.
     class WriteRoadmapBatch < CodeWorkflow
       [facts, steps, outcomes].each(&:clear)
+
+      gate "no roadmap %{slug}", stops: :failure, offers: "plastic roadmap new %{slug}",
+        because: "a batch belongs to a roadmap that roadmap new created",
+        pass: ->(context) { !context.retrieval.roadmap(context.slug).nil? }
 
       sets :batch
 

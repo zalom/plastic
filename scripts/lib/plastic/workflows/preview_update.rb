@@ -13,9 +13,6 @@ module Plastic
 
       sets :from, :to
 
-      gate "choose one channel: --stable, --beta or --alpha", stops: :refusal,
-        pass: ->(context) { ReleaseUpdate.chosen_channels(context).size <= 1 }
-
       read "compare the installed and the running versions" do |context|
         installation = Installation.of(context)
         context[:from] = installation.installed_version
@@ -32,7 +29,7 @@ module Plastic
         end
       end
 
-      outcome :done, if: ->(context) { context.dry_run }, offers: "plastic update", because: "the preview changed no file"
+      outcome :done, if: ->(context) { context.dry_run }, offers: "%{original_command}", because: "the preview changed no file"
       outcome :continue, offers: "plastic update", because: "update the home"
     end
   end

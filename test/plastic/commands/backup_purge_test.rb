@@ -37,6 +37,23 @@ class BackupPurgeTest < Plastic::TestCase
     assert_equal [0, true], [result.code, result.out.include?("purged: nothing")]
   end
 
+  def help_lines
+    environment = Plastic::CLI::Command::Environment.new(env: { "PLASTIC_HOME" => @plastic_home }, input: StringIO.new,
+      out: StringIO.new, err: StringIO.new, home: @home, directory: @home)
+    Plastic::CLI.bin_call(%w[help backup purge], environment:, table: Plastic::CLI::TABLE)
+    environment.out.string.lines.map(&:chomp)
+  end
+
+  def test_the_usage_line_says_one_of_the_three_filters_is_required
+    assert_equal "plastic backup purge --store SLUG (--older-than DATE | --all | --failed) [--dry-run]", help_lines.first
+  end
+
+  def test_the_help_line_says_one_filter_is_required
+    summary = Plastic::CLI::TABLE.fetch("backup purge").last
+
+    assert_includes summary, "one of --all, --failed or --older-than"
+  end
+
   def test_a_call_without_store_refuses_with_the_usage_line
     assert_refused_with_usage purge_call(fresh_home, "--all"), "--store"
   end

@@ -199,6 +199,7 @@ plastic intent brief 12               # Print the brief an agent starts from
 plastic intent link 12 cites 7        # Link intent 12 to intent 7
 plastic intent unlink 12 cites 7 --dry-run   # Preview the removal of a link
 plastic intent archive 12 --dry-run   # Preview an archive
+plastic intent unarchive 12             # Restore an archived intent
 plastic intent end 12 --judge tool --evidence completion.json  # Close as delivered, after the merge
 plastic intent end 12 --abandoned                  # Close as abandoned; outcome.md says why
 ```
@@ -265,7 +266,7 @@ plastic backup restore --store alpha --latest   # Put the newest done backup bac
 plastic install --claude              # Install into Claude Code
 plastic install --reinstall          # Repair an install
 plastic update                        # Next version on the current channel
-plastic update --alpha                # Move to the alpha channel
+plastic update --channel alpha        # Move to the alpha channel
 plastic rollback                      # Switch back to the previous release
 plastic rollback --version 2.0.0-alpha.27
 plastic uninstall --all               # Remove Plastic from every agent. Your stores stay.

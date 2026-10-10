@@ -7,6 +7,7 @@ class RoadmapDropTest < Plastic::TestCase
 
   def setup
     super
+    cli("roadmap", "new", "r1")
     cli("roadmap", "batch", "r1", "1", "--title", "T", "--goal", "G", "--done", "d")
     cli("roadmap", "add", "r1", "1", "a", "--title", "A")
   end

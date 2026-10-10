@@ -28,8 +28,6 @@ module Plastic
           InstallerRelease::ReleaseInstall.new(home: share, bundle: bundle, sync: sync, choice: choice))
       end
 
-      def self.chosen_channels(context) = CHANNELS.keys.select { |name| context.public_send(name) }
-
       def self.home_sync(scope, share, out)
         user_home = scope.home
         launcher = File.join(scope.setting("PLASTIC_BIN", File.join(user_home, ".local", "bin")), "plastic")

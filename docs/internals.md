@@ -533,8 +533,8 @@ Stage 5 adds the knowledge commands in four groups. See
 [architecture](architecture.md#roadmaps-links-archive-and-backup) for what each group does;
 this section covers how the code holds together.
 
-- **Roadmaps.** `roadmap batch`, `roadmap add`, `roadmap show`, `roadmap next`, `roadmap
-  drop`, `roadmap start`, `roadmap check`, `roadmap log` and `roadmap edge remove` write and
+- **Roadmaps.** `roadmap new`, `roadmap batch`, `roadmap add`, `roadmap show`, `roadmap next`, `roadmap
+  drop`, `roadmap open`, `roadmap check`, `roadmap log` and `roadmap edge remove` write and
   read five tables in `work_graph.db`: `roadmaps`, `batches`, `roadmap_items`,
   `roadmap_edges` and `roadmap_log`. `Graph::Knowledge::Roadmap::Writer` owns the writes, and
   `WorkGraph` delegates to it. `Graph::Knowledge::Roadmap::State` derives an item's state every time it
@@ -544,14 +544,15 @@ this section covers how the code holds together.
   `Graph::Knowledge::Roadmap::Writer` rejects a self edge before writing it. `Graph::Knowledge::Roadmap::Check` finds a loop, an edge to an item that is
   not on the roadmap, and an item whose intent id names no intent. A `roadmap batch` call
   keeps every field it leaves out: `Graph::Knowledge::Roadmap::Fields#over` takes the stored title, goal and done
-  lines in their place, and a new batch with no title is named "Batch N". The call writes the
-  roadmap row only when the roadmap has none, so its title and goal stay. `intent brief` prints
+  lines in their place, and a new batch with no title is named "Batch N". A `roadmap batch` call on a
+  roadmap that `roadmap new` has not made exits 1 and offers `roadmap new`; `roadmap new` writes the
+  roadmap row. `intent brief` prints
   each line of the spec's Goal section as a `goal:` line, and the intent title only when the
   spec has no goal.
 - **Links.** `intent link` and `intent unlink` write and remove rows in the `links` table of
   `knowledge_graph.db` through `Graph::Knowledge::Link::Writer`. A link to a missing intent fails with
   exit 1. A self link or a repeated link is refused with exit 3.
-- **Archive.** `intent archive ID` and its explicit `--revert` option use
+- **Archive.** `intent archive ID` and `intent unarchive ID` use
   `Graph::Knowledge::Archive::Writer`. `Graph::Knowledge::Archive::Tree` reads entries with `lstat`, without following
   links. The `archives` marker and complete `archive_entries` snapshot commit in one
   work database transaction before filesystem removal. A removal retry checks every
@@ -601,7 +602,7 @@ same subject reopens it. Its stored facts come back into the context, so a step 
 check reads those facts would skip and the old stop would replay. `CodeWorkflow.forget_stop`
 adds a `read` step that clears the named facts when the earlier call left a `problem`. Every
 stage 5 workflow that writes, and that can stop, starts with this step: archive, restore,
-roadmap add, roadmap start, roadmap edge remove and unlink. Workflows that recompute their
+roadmap add, roadmap open, roadmap edge remove and unlink. Workflows that recompute their
 facts in a `read` step on every call, such as `intent link`, do not need it.
 
 ### Retrieval and companion tools
@@ -951,7 +952,7 @@ is the only auto command, and lock commands live under `intent lock`.
 - **Roadmap slug.** When the word does not have the shape of an intent id, `PickDelivery`
   reads the roadmap. It arms the first item in flight (open, active or parked intent), in
   batch then item order, that is not parked and not held by another session's live lock. With
-  none in flight it arms nothing: the first ready item gets `plastic roadmap start SLUG ITEM`,
+  none in flight it arms nothing: the first ready item gets `plastic roadmap open SLUG ITEM`,
   a delivered roadmap and a roadmap that waits get `plastic roadmap show SLUG`. An unknown
   roadmap fails with exit 1.
 

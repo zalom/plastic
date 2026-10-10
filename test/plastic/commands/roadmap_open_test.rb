@@ -3,13 +3,14 @@
 require_relative "../../test_helper"
 require_relative "../../../scripts/lib/plastic/commands/roadmap_batch"
 require_relative "../../../scripts/lib/plastic/commands/roadmap_add"
-require_relative "../../../scripts/lib/plastic/commands/roadmap_start"
+require_relative "../../../scripts/lib/plastic/commands/roadmap_open"
 
-class RoadmapStartTest < Plastic::TestCase
-  def call(*args) = plastic("roadmap", "start", *args, table: Plastic::CLI::TABLE)
+class RoadmapOpenTest < Plastic::TestCase
+  def call(*args) = plastic("roadmap", "open", *args, table: Plastic::CLI::TABLE)
 
   def setup
     super
+    plastic("roadmap", "new", "r1", table: Plastic::CLI::TABLE)
     plastic("roadmap", "batch", "r1", "1", "--title", "T", "--goal", "Batch goal", "--done", "batch done",
       table: Plastic::CLI::TABLE)
     plastic("roadmap", "add", "r1", "1", "a", "--title", "A", "--goal", "Item goal", "--done", "item done",
@@ -54,7 +55,7 @@ class RoadmapStartTest < Plastic::TestCase
     assert_includes result.err, "no item zz on roadmap r1"
   end
 
-  def test_a_second_start_exits_3
+  def test_a_second_open_exits_3
     call("r1", "a")
 
     result = call("r1", "a")
@@ -63,7 +64,7 @@ class RoadmapStartTest < Plastic::TestCase
   end
 
   def test_a_blocked_item_exits_3_with_no_intent_row
-    plastic("roadmap", "add", "r1", "1", "b", "--title", "B", "--after", "a", table: Plastic::CLI::TABLE)
+    plastic("roadmap", "add", "r1", "1", "b", "--title", "B", "--needs", "a", table: Plastic::CLI::TABLE)
 
     result = call("r1", "b")
 

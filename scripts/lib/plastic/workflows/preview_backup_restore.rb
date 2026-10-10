@@ -17,7 +17,7 @@ module Plastic
         context.print("preview: the current databases would be backed up first; the original store was not changed")
       end
 
-      outcome :done, if: ->(context) { context.dry_run }, offers: "plastic backup restore --store %{store}",
+      outcome :done, if: ->(context) { context.dry_run }, offers: "%{original_command}",
         because: "the preview replaced nothing"
       outcome :continue, offers: "plastic backup restore --store %{store}", because: "apply the requested restore"
     end

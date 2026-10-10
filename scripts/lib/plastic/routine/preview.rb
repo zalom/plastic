@@ -21,6 +21,8 @@ module Plastic
 
         def previews? = @previews == true
 
+        def declared_names = (options.any? { |option| option.name == :dry_run }) ? super + [:original_command] : super
+
         def preview_problems
           return [] unless previews?
 
@@ -70,6 +72,8 @@ module Plastic
       end
 
       def leave = (@scope, @graphs = @kept)
+
+      def preview_facts = parsed[:dry_run] ? { original_command: } : {}
 
       def original_command = Shellwords.join(["plastic", *words.to_s.split, *@argv.reject { |word| word == "--dry-run" }])
     end

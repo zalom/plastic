@@ -5,9 +5,9 @@ require_relative "cli/command"
 require_relative "graph/missing_store"
 
 module Plastic
-  # A tool the harness calls on an event. Plastic has two: the session
-  # start, and the end of every turn. Hooks keep the harness's contract,
-  # which differs from a tool's:
+  # A tool the harness calls on an event. Plastic has three: the session
+  # start, the end of every turn, and the session end. Hooks keep the
+  # harness's contract, which differs from a tool's:
   #
   #   stdout  plain text; Claude Code adds it to the agent's context on the
   #           session start event, and shows it nowhere on the stop event

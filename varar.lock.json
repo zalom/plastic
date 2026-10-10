@@ -10,7 +10,7 @@
       "examples": []
     },
     "varar/auto.md": {
-      "sourceHash": "fnv1a:69fca61e",
+      "sourceHash": "fnv1a:21896450",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -28,7 +28,7 @@
       ]
     },
     "varar/backup-purge.md": {
-      "sourceHash": "fnv1a:c80c7945",
+      "sourceHash": "fnv1a:ac626462",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -37,7 +37,7 @@
       ]
     },
     "varar/backup-restore.md": {
-      "sourceHash": "fnv1a:d5562bae",
+      "sourceHash": "fnv1a:8e3601c6",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -125,12 +125,21 @@
         }
       ]
     },
+    "varar/hook-end.md": {
+      "sourceHash": "fnv1a:72bcd54f",
+      "examples": [
+        {
+          "name": "Each row gives the arguments, the end event, the session, the exit code, the message and the ended row:",
+          "line": 8
+        }
+      ]
+    },
     "varar/hook-record.md": {
-      "sourceHash": "fnv1a:37a6d3c0",
+      "sourceHash": "fnv1a:0c8dbf8c",
       "examples": [
         {
           "name": "Each row gives the arguments, the event, the session, the exit code, the message and the row:",
-          "line": 9
+          "line": 8
         }
       ]
     },
@@ -166,7 +175,7 @@
       ]
     },
     "varar/intent-archive.md": {
-      "sourceHash": "fnv1a:50e28bdf",
+      "sourceHash": "fnv1a:408e5894",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -255,7 +264,7 @@
       ]
     },
     "varar/intent-revise.md": {
-      "sourceHash": "fnv1a:65a83e21",
+      "sourceHash": "fnv1a:4baedb88",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -290,6 +299,15 @@
         }
       ]
     },
+    "varar/intent-unarchive.md": {
+      "sourceHash": "fnv1a:aabacee6",
+      "examples": [
+        {
+          "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
+          "line": 5
+        }
+      ]
+    },
     "varar/intent-unlink.md": {
       "sourceHash": "fnv1a:9dfe196c",
       "examples": [
@@ -309,7 +327,7 @@
       ]
     },
     "varar/knowledge-graph.md": {
-      "sourceHash": "fnv1a:b381cdcc",
+      "sourceHash": "fnv1a:3923fe0c",
       "examples": [
         {
           "name": "Each row gives the step, the exit code and what it shows:",
@@ -444,7 +462,7 @@
       ]
     },
     "varar/roadmap-add.md": {
-      "sourceHash": "fnv1a:9d67a8e1",
+      "sourceHash": "fnv1a:43ae07c4",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -453,7 +471,7 @@
       ]
     },
     "varar/roadmap-batch.md": {
-      "sourceHash": "fnv1a:c90ace08",
+      "sourceHash": "fnv1a:065868b7",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -462,7 +480,7 @@
       ]
     },
     "varar/roadmap-check.md": {
-      "sourceHash": "fnv1a:e3de57dd",
+      "sourceHash": "fnv1a:c33c89a3",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -471,7 +489,7 @@
       ]
     },
     "varar/roadmap-drop.md": {
-      "sourceHash": "fnv1a:482473f7",
+      "sourceHash": "fnv1a:63b82f1e",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -480,7 +498,7 @@
       ]
     },
     "varar/roadmap-edge-remove.md": {
-      "sourceHash": "fnv1a:c3146628",
+      "sourceHash": "fnv1a:02380fa2",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -489,7 +507,16 @@
       ]
     },
     "varar/roadmap-log.md": {
-      "sourceHash": "fnv1a:5f21ca50",
+      "sourceHash": "fnv1a:a8ecf1f4",
+      "examples": [
+        {
+          "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
+          "line": 5
+        }
+      ]
+    },
+    "varar/roadmap-new.md": {
+      "sourceHash": "fnv1a:4e1323c0",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -498,7 +525,16 @@
       ]
     },
     "varar/roadmap-next.md": {
-      "sourceHash": "fnv1a:477fd8f0",
+      "sourceHash": "fnv1a:20d41cc4",
+      "examples": [
+        {
+          "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
+          "line": 5
+        }
+      ]
+    },
+    "varar/roadmap-open.md": {
+      "sourceHash": "fnv1a:0f385651",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -507,7 +543,7 @@
       ]
     },
     "varar/roadmap-show.md": {
-      "sourceHash": "fnv1a:b2fc3ef2",
+      "sourceHash": "fnv1a:d9857d4f",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -551,7 +587,7 @@
       ]
     },
     "varar/sync-down.md": {
-      "sourceHash": "fnv1a:07e0c4ff",
+      "sourceHash": "fnv1a:ea06976f",
       "examples": [
         {
           "name": "Each row gives the change, the call, the exit code, the result, the files, the file and the row:",
@@ -582,7 +618,7 @@
       "examples": []
     },
     "varar/update.md": {
-      "sourceHash": "fnv1a:503b322e",
+      "sourceHash": "fnv1a:cdcd1600",
       "examples": []
     },
     "varar/version.md": {

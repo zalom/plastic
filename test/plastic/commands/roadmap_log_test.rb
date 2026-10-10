@@ -9,6 +9,7 @@ class RoadmapLogTest < Plastic::TestCase
 
   def setup
     super
+    plastic("roadmap", "new", "r1", table: Plastic::CLI::TABLE)
     plastic("roadmap", "batch", "r1", "1", "--title", "T", "--goal", "G", "--done", "d", table: Plastic::CLI::TABLE)
   end
 

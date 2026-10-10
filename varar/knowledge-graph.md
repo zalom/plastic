@@ -11,5 +11,5 @@ Each row gives the step, the exit code and what it shows:
 | step                                  | exit | shows                                                                                                        |
 | ------------------------------------- | ---: | ------------------------------------------------------------------------------------------------------------ |
 | roadmap next make-it-useful --batch 1 |    0 | 2: ready, 3: ready                                                                                           |
-| roadmap start make-it-useful 2        |    0 | intent: 2                                                                                                    |
+| roadmap open make-it-useful 2        |    0 | intent: 2                                                                                                    |
 | intent brief 2                        |    0 | goal: Close the two blockers, criterion: a guest sees only their own order, criterion: add to cart works on every page |

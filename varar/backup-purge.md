@@ -4,9 +4,9 @@
 
 Each row gives the setup, the call, the exit code, the result and the next line:
 
-| setup | call | exit | result | next line |
-| ----- | ---- | ---- | ------ | --------- |
-| register alpha ; intent new Alpha --project alpha ; backup --store alpha | backup purge --store alpha --all | 0 | purged: alpha/STAMP | plastic backup list --store alpha |
-| register alpha ; intent new Alpha --project alpha ; backup --store alpha | backup purge --store alpha --all --dry-run | 0 | preview: purge alpha/STAMP / preview: the original store was not changed | plastic backup purge --store alpha |
-| register alpha ; intent new Alpha --project alpha ; backup --store alpha | backup purge --store alpha --older-than 2000-01-01 | 0 | purged: nothing | plastic backup list --store alpha |
-| register alpha ; intent new Alpha --project alpha ; backup --store alpha | backup purge --store alpha --failed | 0 | purged: nothing | plastic backup list --store alpha |
+| setup                                                                    | call                                               | exit | result                                                                   | next line                                |
+| ------------------------------------------------------------------------ | -------------------------------------------------- | ---- | ------------------------------------------------------------------------ | ---------------------------------------- |
+| register alpha ; intent new Alpha --project alpha ; backup --store alpha | backup purge --store alpha --all                   | 0    | purged: alpha/STAMP                                                      | plastic backup list --store alpha        |
+| register alpha ; intent new Alpha --project alpha ; backup --store alpha | backup purge --store alpha --all --dry-run         | 0    | preview: purge alpha/STAMP / preview: the original store was not changed | plastic backup purge --store alpha --all |
+| register alpha ; intent new Alpha --project alpha ; backup --store alpha | backup purge --store alpha --older-than 2000-01-01 | 0    | purged: nothing                                                          | plastic backup list --store alpha        |
+| register alpha ; intent new Alpha --project alpha ; backup --store alpha | backup purge --store alpha --failed                | 0    | purged: nothing                                                          | plastic backup list --store alpha        |

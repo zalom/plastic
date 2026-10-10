@@ -12,6 +12,8 @@ module Plastic
 
       writes :work
 
+      def self.usage_line(tool = tool_name) = super.sub("[--older-than DATE] [--all] [--failed]", "(--older-than DATE | --all | --failed)")
+
       option :older_than, switch: "--older-than DATE", text: "delete the backups before this date or time"
       option :all, switch: "--all", default: false, text: "delete every backup of the store"
       option :failed, switch: "--failed", default: false, text: "delete every backup whose status is failed"

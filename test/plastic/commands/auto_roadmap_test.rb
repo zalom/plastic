@@ -41,7 +41,7 @@ class AutoRoadmapTest < Plastic::TestCase
   def test_a_roadmap_item_without_a_go_ahead_is_refused_with_no_lock
     roadmap
     item("a")
-    intent_id, = store_graphs.work.start_roadmap_item("r1", "a")
+    intent_id, = store_graphs.work.open_roadmap_item("r1", "a")
 
     result = call("r1")
 
@@ -52,7 +52,7 @@ class AutoRoadmapTest < Plastic::TestCase
   def test_a_roadmap_arms_its_in_flight_item
     roadmap
     item("a")
-    intent_id, = store_graphs.work.start_roadmap_item("r1", "a")
+    intent_id, = store_graphs.work.open_roadmap_item("r1", "a")
     plastic("intent", "approve", intent_id, table: Plastic::CLI::TABLE)
 
     result = call("r1")
@@ -60,25 +60,25 @@ class AutoRoadmapTest < Plastic::TestCase
     assert_equal [0, "s-1", "active"], [result.code, retrieval.lock(intent_id)&.session_id, retrieval.intent(intent_id).status]
   end
 
-  def test_a_roadmap_with_a_ready_item_offers_roadmap_start
+  def test_a_roadmap_with_a_ready_item_offers_roadmap_open
     roadmap
     item("a")
 
     result = call("r1")
 
-    assert_equal [0, [], "next: plastic roadmap start r1 a --project global"], [result.code, lock_rows, next_line(result)]
+    assert_equal [0, [], "next: plastic roadmap open r1 a --project global"], [result.code, lock_rows, next_line(result)]
   end
 
   def test_a_resumed_roadmap_call_never_arms_a_stale_intent
     roadmap
     item("a")
     item("b")
-    store_graphs.work.start_roadmap_item("r1", "a")
+    store_graphs.work.open_roadmap_item("r1", "a")
     failed = call("r1", env: { "PLASTIC_SESSION" => "" })
     store_graphs.work.drop_item("r1", "a")
 
     result = call("r1")
 
-    assert_equal [1, 0, [], "next: plastic roadmap start r1 b --project global"], [failed.code, result.code, lock_rows, next_line(result)]
+    assert_equal [1, 0, [], "next: plastic roadmap open r1 b --project global"], [failed.code, result.code, lock_rows, next_line(result)]
   end
 end

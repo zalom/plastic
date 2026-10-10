@@ -8,6 +8,8 @@ module ArchiveFidelityFixtures
     plastic("intent", "archive", intent.intent_id, *options, table: Plastic::CLI::TABLE)
   end
 
+  def unarchive(intent) = plastic("intent", "unarchive", intent.intent_id, table: Plastic::CLI::TABLE)
+
   def future_intent = open_intent("Snapshot", status: "future")
 
   def populated_intent
@@ -60,7 +62,7 @@ module ArchiveFidelityFixtures
   end
 
   def assert_reverted(intent)
-    result = archive(intent, "--revert")
+    result = unarchive(intent)
 
     assert_equal 0, result.code, result.err
   end
@@ -126,7 +128,7 @@ class ArchiveFidelityTest < Plastic::TestCase
   def test_revert_preserves_conflicting_symlink_and_archive_marker
     intent = archived_with_conflict
 
-    assert_equal 1, archive(intent, "--revert").code
+    assert_equal 1, unarchive(intent).code
     assert File.symlink?(folder.path(intent.dir))
     assert retrieval.archived?(intent.intent_id)
   end

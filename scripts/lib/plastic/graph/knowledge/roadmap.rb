@@ -52,7 +52,7 @@ module Plastic
         end
       end
 
-      # An edge between two items of the same roadmap: `to` waits for `from`.
+      # An edge between two items of the same roadmap: `to` needs `from`.
       Roadmap::Edge = Data.define(:roadmap, :from, :to, :kind, :origin_id) do
         include Record
       end

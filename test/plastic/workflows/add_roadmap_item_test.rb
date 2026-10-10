@@ -8,8 +8,8 @@ class AddRoadmapItemTest < Plastic::TestCase
 
   def batch = store_graphs.work.write_batch("r1", 1, fields: Fields.new(title: "T", goal: "G", done: "d"))
 
-  def add(item_id, after: []) = run_workflow(Plastic::Workflows::AddRoadmapItem, slug: "r1", item_id:, position: "1",
-    title: item_id.upcase, goal: nil, done: nil, after:)
+  def add(item_id, needs: []) = run_workflow(Plastic::Workflows::AddRoadmapItem, slug: "r1", item_id:, position: "1",
+    title: item_id.upcase, goal: nil, done: nil, needs:)
 
   def test_an_item_is_added_to_its_batch_and_named
     batch
@@ -30,9 +30,9 @@ class AddRoadmapItemTest < Plastic::TestCase
   def test_a_loop_is_refused_with_one_edge_left
     batch
     add("a")
-    add("b", after: ["a"])
+    add("b", needs: ["a"])
 
-    outcome, = add("a", after: ["b"])
+    outcome, = add("a", needs: ["b"])
 
     assert_kind_of Plastic::Refused, outcome
     assert_equal 1, retrieval.roadmap_edges("r1").size

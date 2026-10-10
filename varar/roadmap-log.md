@@ -4,7 +4,7 @@
 
 Each row gives the setup, the call, the exit code, the result and the next line:
 
-| setup                                                                 | call                               | exit | result               | next line                                  |
-| --------------------------------------------------------------------- | ---------------------------------- | ---- | -------------------- | ------------------------------------------ |
-| roadmap batch shop 1 --title Blockers --goal "guest checkout is safe" | roadmap log shop "batch 1 planned" | 0    | log: batch 1 planned | plastic roadmap show shop --project global |
-| none                                                                  | roadmap log shop "batch 1 planned" | 1    | no roadmap shop      | none                                       |
+| setup                                                                                    | call                               | exit | result               | next line                                  |
+| ---------------------------------------------------------------------------------------- | ---------------------------------- | ---- | -------------------- | ------------------------------------------ |
+| roadmap new shop ; roadmap batch shop 1 --title Blockers --goal "guest checkout is safe" | roadmap log shop "batch 1 planned" | 0    | log: batch 1 planned | plastic roadmap show shop --project global |
+| none                                                                                     | roadmap log shop "batch 1 planned" | 1    | no roadmap shop      | none                                       |

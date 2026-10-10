@@ -4,12 +4,12 @@ require_relative "test_helper"
 
 # Retired auto words guard. `plastic auto ID` is the only auto
 # command and the lock is read with `plastic intent lock status ID`, so no
-# shipped document and no kernel file names `auto start`, `auto lock` or the
-# old `plastic-lock` script. The reviews under docs/reviews and CHANGELOG.md
+# shipped document and no kernel file names `auto start`, `auto lock`, the
+# old `plastic-lock` script or `roadmap start`, which is `roadmap open`. The reviews under docs/reviews and CHANGELOG.md
 # are history and keep the words they were written with.
 class AutoWordsGuardTest < Minitest::Test
   ROOT = File.expand_path("..", __dir__)
-  RETIRED = /\bauto start\b|\bauto lock\b|\bplastic-lock\b/
+  RETIRED = /\bauto start\b|\bauto lock\b|\bplastic-lock\b|\broadmap start\b/
 
   def subjects
     documents = %w[README.md AGENTS.md agents/*.md docs/**/*.md scripts/lib/plastic/**/*.rb]
@@ -34,6 +34,10 @@ class AutoWordsGuardTest < Minitest::Test
 
   def test_the_detector_catches_a_retired_command
     assert retired?("run plastic auto start 7 to arm it")
+  end
+
+  def test_the_detector_catches_the_retired_roadmap_command
+    assert retired?("run plastic roadmap start r1 a")
   end
 
   def test_the_detector_leaves_the_new_words_alone

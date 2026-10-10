@@ -29,6 +29,11 @@ module Plastic
             @session = session
           end
 
+          def create_roadmap(slug, title:, goal:)
+            @databases.fetch(:work).transaction { |batch| batch.put(:roadmaps, roadmap_row(slug, Plastic.now).merge(title:, goal:), statement: :insert) }
+            @retrieval.roadmap(slug)
+          end
+
           # Writes the batch's goal and done criteria, and the roadmap row the
           # first time it is named. A field left out keeps the batch's word for
           # it, and a new batch with no title is called "Batch N".
@@ -69,7 +74,7 @@ module Plastic
           end
 
           # Records the intent an item was opened as.
-          def start_item(slug, item, intent_id)
+          def open_item(slug, item, intent_id)
             now = Plastic.now
             changed(:roadmap_items) do |batch|
               batch.write(:roadmap_items, "UPDATE roadmap_items SET intent_id = :intent_id, updated_at = :now " \

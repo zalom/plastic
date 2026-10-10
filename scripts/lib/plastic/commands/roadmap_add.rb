@@ -4,7 +4,7 @@ require_relative "../routine"
 
 module Plastic
   module Commands
-    # Adds one item to a roadmap batch, after whichever items it waits on.
+    # Adds one item to a roadmap batch, with the items it needs.
     class RoadmapAdd < Routine
       subject :slug
       argument :slug, label: "SLUG", text: "the roadmap"
@@ -13,7 +13,7 @@ module Plastic
       option :title, switch: "--title TITLE", text: "the item's title"
       option :goal, switch: "--goal GOAL", text: "the item's goal"
       option :done, switch: "--done TEXT", text: "one done criterion; repeat for more", repeatable: true
-      option :after, switch: "--after ITEM", text: "an item this one waits on; repeat for more", repeatable: true
+      option :needs, switch: "--needs ITEM", text: "an item this one needs; repeat for more", repeatable: true
       writes :work
       prints :roadmap
 

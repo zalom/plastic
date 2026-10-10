@@ -16,7 +16,7 @@ module Plastic
   module Graph
     module Knowledge
       # Levels a store folder and its rows in one direction. Sync up reads the
-      # files people changed into rows; sync down prints the rows that changed
+      # files people changed into rows; sync down writes the rows that changed
       # into files. A record changed on both sides since the last print is a
       # conflict, and only an overwrite settles it.
       class Sync

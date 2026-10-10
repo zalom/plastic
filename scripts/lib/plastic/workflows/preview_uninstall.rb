@@ -23,7 +23,7 @@ module Plastic
         end
       end
 
-      outcome :done, if: ->(context) { context.dry_run }, offers: "plastic uninstall",
+      outcome :done, if: ->(context) { context.dry_run }, offers: "%{original_command}",
         because: "the preview changed no file"
       outcome :continue, offers: "plastic uninstall", because: "remove Plastic from the chosen agents"
     end

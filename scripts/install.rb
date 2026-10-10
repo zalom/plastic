@@ -230,7 +230,7 @@ class Install < InstallerCore
         --all         Install for all supported agents
 
       Channel: install.sh reads stable unless PLASTIC_CHANNEL names beta or alpha;
-        plastic update --stable, --beta or --alpha moves an installed release
+        plastic update --channel NAME moves an installed release
 
       Other options:
         --reinstall          Re-sync core files for the installed version (repair). Store untouched.

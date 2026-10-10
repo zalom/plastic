@@ -18,12 +18,12 @@ module Plastic
       # Storage
       "intent abandon" => ["Commands::IntentAbandon", "Close an intent that will not ship once outcome.md records the revert, or print the revert steps"],
       "intent end" => ["Commands::IntentEnd", "Close a delivered intent once its verdict, nodes and outcome allow it, or print what is missing"],
-      "intent new" => ["Commands::IntentNew", "Open an intent: write its rows and print its folder"],
+      "intent new" => ["Commands::IntentNew", "Open an intent: write its rows and its folder"],
       "project list" => ["Commands::ProjectList", "List the registered projects with their paths"],
       "project new" => ["Commands::ProjectNew", "Register a project and leave its store ready for intent new"],
       "project links" => ["Commands::ProjectLinks", "List the links that name an intent or a ruling this store lacks"],
       "sync up" => ["Commands::SyncUp", "Read the files changed by hand into rows"],
-      "sync down" => ["Commands::SyncDown", "Print the rows that changed into files"],
+      "sync down" => ["Commands::SyncDown", "Write the rows that changed into files"],
       "session note" => ["Commands::SessionNote", "Write the one prose line of this session"],
       "intent rule" => ["Commands::IntentRule", "Write an owner ruling, with --supersedes to replace an older one"],
       "intent revise" => ["Commands::IntentRevise", "Rewrite an intent's What and Why after grilling, keeping the old text as a revision"],
@@ -44,10 +44,11 @@ module Plastic
       "next" => ["Commands::Next", "Pick the intent in play and offer its next command"],
       "intent link" => ["Commands::IntentLink", "Write a typed link from an intent to a ref"],
       "intent unlink" => ["Commands::IntentUnlink", "Remove a link"],
-      "intent archive" => ["Commands::IntentArchive", "Archive an intent directory; --revert restores it"],
+      "intent archive" => ["Commands::IntentArchive", "Archive an intent directory"],
+      "intent unarchive" => ["Commands::IntentUnarchive", "Restore an archived intent's directory exactly as it was archived"],
       "backup" => ["Commands::Backup", "Copy one store's databases into a new backup folder"],
       "backup list" => ["Commands::BackupList", "List one store's backups with status and goal, flagging a missing or changed file"],
-      "backup purge" => ["Commands::BackupPurge", "Delete one store's backups, all or those before a date"],
+      "backup purge" => ["Commands::BackupPurge", "Delete one store's backups; give one of --all, --failed or --older-than"],
       "backup restore" => ["Commands::BackupRestore", "Replace one store's databases with those of a done backup"],
       "document get" => ["Commands::DocumentGet", "Fetch one current or revision-qualified document"],
       "document batch" => ["Commands::DocumentBatch", "Fetch qualified documents in request order"],
@@ -71,19 +72,21 @@ module Plastic
       "graph show" => ["Commands::GraphShow", "Print every node and edge of an intent"],
 
       # Roadmaps: a named plan, held as rows instead of a hand-kept file.
+      "roadmap new" => ["Commands::RoadmapNew", "Create a roadmap; write its batches with roadmap batch"],
       "roadmap batch" => ["Commands::RoadmapBatch", "Write one roadmap batch's goal and done criteria"],
-      "roadmap add" => ["Commands::RoadmapAdd", "Add an item to a roadmap batch, after whichever items it waits on"],
+      "roadmap add" => ["Commands::RoadmapAdd", "Add an item to a roadmap batch, with the items it needs"],
       "roadmap show" => ["Commands::RoadmapShow", "Print a roadmap's batches and items"],
       "roadmap next" => ["Commands::RoadmapNext", "Print the first ready item, or what is in the way"],
       "roadmap drop" => ["Commands::RoadmapDrop", "Mark a roadmap item dropped; its edges stay as rows"],
-      "roadmap start" => ["Commands::RoadmapStart", "Open a ready item's intent, with its spec held in rows"],
+      "roadmap open" => ["Commands::RoadmapOpen", "Open a ready item's intent, with its spec held in rows"],
       "roadmap check" => ["Commands::RoadmapCheck", "List a roadmap's loops, dangling edges and items with no intent"],
       "roadmap log" => ["Commands::RoadmapLog", "Append a log line to a roadmap, stamped with the session id"],
-      "roadmap edge remove" => ["Commands::RoadmapEdgeRemove", "Remove one after edge from a roadmap"],
+      "roadmap edge remove" => ["Commands::RoadmapEdgeRemove", "Remove one needs edge from a roadmap"],
 
       # Hooks: the harness calls these on an event; see docs/contributing/ARCHITECTURE.md.
       "hook resume" => ["Hooks::Resume", "SessionStart: print the state the rows carry"],
-      "hook record" => ["Hooks::Record", "Stop: stamp the turn, renew locks, run the stop gate"]
+      "hook record" => ["Hooks::Record", "Stop: stamp the turn, renew locks, run the stop gate"],
+      "hook end" => ["Hooks::End", "SessionEnd: set the session's end time and reason"]
     }.freeze
   end
 end

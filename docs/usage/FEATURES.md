@@ -46,7 +46,7 @@ intent instead.
 
 | Command | Result |
 | ------- | ------ |
-| `plastic auto ID` | Takes the delivery lock of one intent for this session, sets it active, and prints its code worktree and branch. The agent makes the worktree at the printed path on the printed branch. Given a roadmap slug, it arms the first item in flight, or names `plastic roadmap start SLUG ITEM` for the first ready item. |
+| `plastic auto ID` | Takes the delivery lock of one intent for this session, sets it active, and prints its code worktree and branch. The agent makes the worktree at the printed path on the printed branch. Given a roadmap slug, it arms the first item in flight, or names `plastic roadmap open SLUG ITEM` for the first ready item. |
 | `plastic intent lock status ID` | The session that holds the intent's lock, its mode, when it was taken and renewed, whether it is live or expired, and the code worktree. |
 
 `plastic auto` takes exactly one id and runs no version control command: it prints the
@@ -81,6 +81,7 @@ could not hold it safely.
 | `plastic graph show ID --dry-run` | The files the render would write for the work graph. |
 | `plastic intent unlink ID KIND TARGET --dry-run` | The links the removal would delete. |
 | `plastic intent archive ID --dry-run` | The files the archive would remove, and the rows it keeps. |
+| `plastic intent unarchive ID [--dry-run]` | The archived directory restored exactly as archived. |
 | `plastic roadmap show SLUG --dry-run` | The files the state screen would write. |
 | `plastic roadmap drop SLUG ITEM --dry-run` | The roadmap rows the dropped item would change. |
 | `plastic roadmap edge remove SLUG FROM TO --dry-run` | The roadmap edge rows the removal would delete. |

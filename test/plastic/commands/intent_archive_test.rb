@@ -119,26 +119,6 @@ class IntentArchiveTest < Plastic::TestCase
     assert_call result, code: 1, out: RUN_ROW, err: ["no intent 99"]
   end
 
-  def test_revert_restores_the_exact_snapshot_taken_at_archive_time
-    intent = open_intent("Unsynced", status: "future")
-    path = "#{intent.dir}/#{intent.file}"
-    write(path, "owner edit not in document rows")
-    call(intent.intent_id)
-    call(intent.intent_id, "--revert")
-
-    assert_equal "owner edit not in document rows", folder.read(path)
-  end
-
-  def test_revert_of_an_intent_that_was_never_archived_fails_and_leaves_it_live
-    intent = open_intent("Open")
-    call(intent.intent_id)
-
-    result = call(intent.intent_id, "--revert")
-
-    assert_call result, code: 1, out: RUN_ROW, err: ["not archived"]
-    refute retrieval.archived?(intent.intent_id)
-  end
-
   private
 
   def archived_document(intent) = retrieval.documents(intent.intent_id).find { |candidate| candidate.path == intent.file }

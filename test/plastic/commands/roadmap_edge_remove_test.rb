@@ -10,10 +10,11 @@ class RoadmapEdgeRemoveTest < Plastic::TestCase
 
   def setup
     super
+    plastic("roadmap", "new", "r1", table: Plastic::CLI::TABLE)
     plastic("roadmap", "batch", "r1", "1", "--title", "T", "--goal", "G", "--done", "d", table: Plastic::CLI::TABLE)
     plastic("roadmap", "add", "r1", "1", "a", "--title", "A", table: Plastic::CLI::TABLE)
     plastic("roadmap", "add", "r1", "1", "b", "--title", "B", table: Plastic::CLI::TABLE)
-    plastic("roadmap", "add", "r1", "1", "c", "--title", "C", "--after", "a", "--after", "b", table: Plastic::CLI::TABLE)
+    plastic("roadmap", "add", "r1", "1", "c", "--title", "C", "--needs", "a", "--needs", "b", table: Plastic::CLI::TABLE)
   end
 
   def edges = store_graphs.retrieval.roadmap_edges("r1")
@@ -35,7 +36,7 @@ class RoadmapEdgeRemoveTest < Plastic::TestCase
 
   def test_a_failed_removal_succeeds_once_the_edge_exists
     call("r1", "a", "d")
-    plastic("roadmap", "add", "r1", "1", "d", "--title", "D", "--after", "a", table: Plastic::CLI::TABLE)
+    plastic("roadmap", "add", "r1", "1", "d", "--title", "D", "--needs", "a", table: Plastic::CLI::TABLE)
 
     result = call("r1", "a", "d")
 
@@ -47,7 +48,7 @@ class RoadmapEdgeRemoveTest < Plastic::TestCase
   def test_preview_matches_apply_on_an_identical_home
     twin = twin_run("roadmap", "edge", "remove", "r1", "a", "c") do |home|
       seed_roadmap(home, "a", "b")
-      call_in(home, "roadmap", "add", "r1", "1", "c", "--title", "C", "--after", "a", "--after", "b")
+      call_in(home, "roadmap", "add", "r1", "1", "c", "--title", "C", "--needs", "a", "--needs", "b")
     end
 
     assert_preview_matches_apply(twin)

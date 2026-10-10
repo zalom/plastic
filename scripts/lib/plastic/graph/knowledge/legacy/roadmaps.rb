@@ -56,7 +56,7 @@ module Plastic
           def add_item(graphs, slug, item, fields)
             id = item.item
             graphs.work.add_item(slug, id, item.batch || 1, fields:, after: [])
-            graphs.work.start_item(slug, id, id) if graphs.retrieval.intent(id)
+            graphs.work.open_item(slug, id, id) if graphs.retrieval.intent(id)
           end
 
           # The `.savepoint.md` sibling: one line per event, its time stamp first.

@@ -4,7 +4,7 @@ require_relative "../code_workflow"
 
 module Plastic
   module Workflows
-    # Removes one after edge; fails when no such edge exists.
+    # Removes one needs edge; fails when no such edge exists.
     class RemoveRoadmapEdge < CodeWorkflow
       [facts, steps, outcomes].each(&:clear)
 
