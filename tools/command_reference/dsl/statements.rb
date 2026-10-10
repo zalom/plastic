@@ -2,39 +2,6 @@
 
 module CommandReference
   module Dsl
-    # One line of code with its file line number; a gap row stands for code left out.
-    CodeRow = Data.define(:number, :text) do
-      def gap? = text == "⋯"
-
-      def blank? = text.strip.empty?
-
-      def vacant? = blank? || gap?
-
-      def head = text.strip.split(/[\s(]/).first.to_s
-
-      def kept?(words) = blank? || text.start_with?("class ", "end") || words.include?(head)
-
-      def spread(layout) = layout.lines(text).each_with_index.map { |line, at| CodeRow.new(at.zero? ? number : nil, line) }
-    end
-
-    # The lines of one class in a file, unindented to the class line, with their file line numbers.
-    class ClassRows
-      def initialize(lines, name)
-        @lines = lines
-        @name = name
-      end
-
-      def rows = (start..stop).map { |index| CodeRow.new(index + 1, @lines[index].delete_prefix(indent)) }
-
-      private
-
-      def start = @start ||= @lines.index { |text| text.match?(/^\s*class #{@name}\b/) }
-
-      def indent = @indent ||= @lines[start][/\A */]
-
-      def stop = @stop ||= (start...@lines.size).find { |index| @lines[index] == "#{indent}end" }
-    end
-
     # One row per statement: continued lines joined, blocks shortened, other code left out behind a gap row.
     class Statements
       WORDS = %w[workflow on option argument intent_subject node_subject subject reads writes sets read gate step outcome forget_stop].freeze
