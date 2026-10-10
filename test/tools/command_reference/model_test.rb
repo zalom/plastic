@@ -51,15 +51,17 @@ class CommandReferenceModelTest < Minitest::Test
   end
 
   def test_every_row_links_a_line_that_holds_its_own_statement
-    CommandReferenceHelper.pages.each_value do |page|
-      rows_of(page).each do |row|
-        refute_nil row.line, "#{page.words}: #{row.name}"
-        text = source_line(row.file, row.line)
+    CommandReferenceHelper.pages.each_value { |page| rows_of(page).each { |row| assert_row_statement(page, row) } }
+  end
 
-        assert_match STEP_LINE, text, "#{page.words}: #{row.name} at #{row.file}:#{row.line}"
-        assert statement?(row, text), "#{page.words}: #{row.name} at #{row.file}:#{row.line}: #{text.strip}"
-      end
-    end
+  def assert_row_statement(page, row)
+    label = "#{page.words}: #{row.name} at #{row.file}:#{row.line}"
+
+    refute_nil row.line, label
+    text = source_line(row.file, row.line)
+
+    assert_match STEP_LINE, text, label
+    assert statement?(row, text), "#{label}: #{text.strip}"
   end
 
   def statement?(row, text)

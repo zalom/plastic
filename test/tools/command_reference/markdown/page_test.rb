@@ -74,6 +74,7 @@ class CommandReferenceMarkdownPageTest < Minitest::Test
   def test_the_ending_column_holds_words_and_never_raw_ruby
     CommandReferenceHelper.files.select { |path, _| path.end_with?("README.md") && path.include?("/commands/") }.each do |path, body|
       endings = body.split("## Outcomes").last.to_s
+
       refute_match(/\braise\b|next_step|CLI::|Command::|\bgate\b\(/, endings, path)
     end
   end

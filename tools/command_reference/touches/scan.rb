@@ -3,23 +3,27 @@
 module CommandReference
   class Touches
     # Reads the files a command runs and lists the graph calls in them, then
-    # the tables each call reads or writes.
+    # the tables each call reads or writes. A call leads to the code that runs
+    # it, and that code to more calls, a few hops deep.
     class Scan
       CALL = /\b(work|retrieval)\.(\w+[?!]?)(?:\.(\w+[?!]?))?/
-      WRITE = ->(table) { /put\(:#{table}\b|INTO "?#{table}\b|UPDATE "?#{table}\b|DELETE FROM "?#{table}\b|(?:write|insert)_rows\(:#{table}\b/ }
+      QUOTE = '\\\\?"?'
+      WRITE = ->(table) { /put\(:#{table}\b|INTO #{QUOTE}#{table}\b|UPDATE #{QUOTE}#{table}\b|DELETE FROM #{QUOTE}#{table}\b|(?:write|insert)_rows\(:#{table}\b/ }
       KEYWORD = ->(table) { /(?<![\w.:])#{table}:(?!:)/ }
       ROWS = /\b(?:write|insert)_rows\b/
-      MENTION = ->(table) { /(?<![.\w]):#{table}\b|"#{table}"|(?:FROM|JOIN)\s+"?#{table}\b/ }
+      MENTION = ->(table) { /(?<![.\w]):#{table}\b|\\?"#{table}\\?"|(?:FROM|JOIN)\s+#{QUOTE}#{table}\b/ }
+      HOPS = 3
 
       def initialize(source, facade, schema)
         @source = source
         @facade = facade
         @schema = schema
+        @helpers = Helpers.new(source)
       end
 
       def call(files)
-        targets = targets_of(files)
-        Touches.new(entries: targets.flat_map { |target| entries(target) }, components: targets.filter_map(&:part), files: [], schema: @schema)
+        targets = reached(files)
+        Touches.new(entries: targets.flat_map { |target| entries_of(target.text) }, components: targets.filter_map(&:part), files: [], schema: @schema)
       end
 
       def self.mode_of(text, table)
@@ -30,25 +34,23 @@ module CommandReference
 
       private
 
-      def targets_of(files)
-        files.flat_map { |file| calls(file) }.flat_map { |side, method, hop| @facade.targets(side.to_sym, method, hop) }
-          .uniq { |target| [target.file, target.text.hash] }
+      def reached(files)
+        found = (files.flat_map { |file| from_text(@source.lines(file).join("\n")) } + @helpers.call(files)).uniq(&:key)
+        frontier = found
+        HOPS.times { found += (frontier = widen(frontier, found)) }
+        found
       end
 
-      def calls(file) = @source.lines(file).join("\n").scan(CALL).map { |side, method, hop| [side, method, hop] }
-
-      def entries(target)
-        found = entries_of(target.text)
-        found.empty? ? deeper(target) : found
+      def widen(frontier, found)
+        known = found.to_set(&:key)
+        frontier.flat_map { |target| onward(target) }.uniq(&:key).reject { |target| known.include?(target.key) }
       end
+
+      def onward(target) = from_text(target.text) + @facade.follow(target)
+
+      def from_text(text) = text.scan(CALL).flat_map { |side, method, hop| @facade.targets(side.to_sym, method, hop) }
 
       def entries_of(text) = @schema.tables.filter_map { |table| entry(text, table) }
-
-      def deeper(target)
-        whole = @source.lines(target.file).join("\n")
-        names = whole.scan(/\b([A-Z]\w*(?:::[A-Z]\w+)*)\.new\b/).flatten.uniq
-        names.filter_map { |name| @facade.constant_file(name) }.uniq.flat_map { |file| entries_of(@source.lines(file).join("\n")) }
-      end
 
       def entry(text, table)
         mode = Scan.mode_of(text, table)

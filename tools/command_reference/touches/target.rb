@@ -2,11 +2,12 @@
 
 module CommandReference
   class Touches
-    # One method of a graph class and the text it runs: the method itself and
-    # the methods of the same file it calls. A method the file does not define
-    # reads as the whole file.
+    # One method of a graph class and the text it runs: the method itself, the
+    # methods of the same file it calls and the constants they use. No method,
+    # or a method the file does not define, reads as the whole file.
     class Target
       CALL = /\b([a-z_]\w*[?!]?)/
+      CONSTANT = /\b([A-Z][A-Z0-9_]*)\b/
 
       attr_reader :file, :component
 
@@ -19,14 +20,21 @@ module CommandReference
 
       def part = (Part.new(component, file) if component)
 
-      def text = (@text ||= closure.empty? ? whole : closure)
+      def key = [file, @method.to_s]
+
+      def text = (@text ||= closure.empty? ? whole : [closure, constants].join("\n"))
 
       private
 
       def whole = @source.lines(@file).join("\n")
 
       def closure
-        @closure ||= names.filter_map { |name| body(name) }.join("\n")
+        @closure ||= @method ? names.filter_map { |name| body(name) }.join("\n") : ""
+      end
+
+      def constants
+        reader = ConstantText.new(@source, @file)
+        closure.scan(CONSTANT).flatten.uniq.filter_map { |name| reader.of(name) }.join("\n")
       end
 
       def names

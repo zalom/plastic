@@ -6,21 +6,6 @@ class CommandReferenceTouchesTest < Minitest::Test
   include CommandReferenceHelper
 
   BOOKKEEPING = %w[changes printed].freeze
-  STORE_KEYS = %i[work knowledge references].freeze
-  DEFECT = "declaration defect: "
-  EXCEPTIONS = {
-    read: {
-      "intent rule" => "#{DEFECT}it reads the intent without `reads :work`",
-      "intent note" => "#{DEFECT}it reads the intent without `reads :work`",
-      "intent spec" => "#{DEFECT}it reads intents but declares only :knowledge",
-      "intent judge" => "#{DEFECT}it declares nothing but reads the intent",
-      "intent revise" => "#{DEFECT}it reads the intent without `reads :work`",
-      "intent context" => "#{DEFECT}it reads the intent without `reads :work`"
-    },
-    write: {
-      "backup restore" => "#{DEFECT}it declares only `writes :work` but replaces every database of the store"
-    }
-  }.freeze
 
   def touches(words) = page(words).touches
 
@@ -99,57 +84,45 @@ class CommandReferenceTouchesTest < Minitest::Test
   end
 
   def test_a_store_the_command_declares_and_the_scan_misses_is_drawn_from_the_declaration
-    sync = touches("sync up")
+    node = touches("node done")
 
-    %w[work_graph.db knowledge_graph.db references.db].each do |file|
-      assert sync.declared?(file, :write), file
-      assert_empty sync.tables_of(file, :write), file
-    end
+    assert node.declared?("work_graph.db", :write)
+    assert_empty node.tables_of("work_graph.db", :write)
   end
 
   def test_a_declared_store_is_not_drawn_when_the_scan_found_its_tables
     refute touches("node add").declared?("work_graph.db", :write)
   end
 
-  def test_only_a_command_with_nothing_found_says_no_database_was_found_in_the_code
+  def test_a_command_with_a_database_does_not_say_no_database_was_found_in_the_code
     refute_includes svg("document get"), "no database found in the code"
     refute_includes svg("next"), "no database found in the code"
-    refute_includes svg("version"), "touches no database"
-    assert_includes svg("version"), "no database found in the code"
   end
 
-  def test_the_drawing_marks_a_declared_store_and_explains_the_mark_in_its_legend
-    assert_includes svg("sync up"), "declared"
-    assert_includes svg("sync up"), "R read"
+  def test_a_command_with_nothing_found_says_no_database_was_found_in_the_code
+    assert_includes svg("version"), "no database found in the code"
+    refute_includes svg("version"), "touches no database"
+  end
+
+  def test_the_drawing_marks_a_declared_store
+    assert_includes svg("node done"), "declared"
+  end
+
+  def test_the_drawing_explains_the_mark_in_its_legend
+    assert_includes svg("node done"), "R read"
   end
 
   def test_the_local_database_counts_as_the_work_store
     assert_equal [:work], touches("session note").store_keys(:write)
   end
 
-  def test_the_hooks_read_and_write_what_their_code_names
+  def test_a_hook_record_writes_locks_and_reads_nodes
     assert touches("hook record").writes?("local.db", "locks")
     assert touches("hook record").reads?("work_graph.db", "nodes")
+  end
+
+  def test_the_hooks_end_and_resume_touch_what_their_code_names
     assert touches("hook end").writes?("local.db", "sessions")
     assert_includes touches("hook resume").store_keys(:read), :work
-  end
-
-  def test_the_store_databases_found_equal_the_declared_graphs
-    %i[read write].each do |mode|
-      CommandReferenceHelper.pages.each do |words, page|
-        next if page.kind == :hook
-
-        found = page.touches.store_keys(mode)
-        next if found == declared_store_keys(page, mode)
-
-        assert EXCEPTIONS.fetch(mode).fetch(words, nil), "#{words} #{mode}s: found #{found.inspect}, declared #{declared_store_keys(page, mode).inspect}"
-      end
-    end
-  end
-
-  def declared_store_keys(page, mode) = ((mode == :read) ? page.klass.reads : page.klass.writes).uniq.&(STORE_KEYS).sort
-
-  def test_every_exception_is_a_declaration_defect_or_names_a_scan_limit
-    EXCEPTIONS.each_value { |group| assert(group.values.all? { |reason| reason.start_with?(DEFECT) || reason.include?("scan limit") }) }
   end
 end

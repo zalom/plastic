@@ -16,6 +16,8 @@ module CommandReference
 
     def file_of(table) = databases.values.filter_map { |file, held| file if held.include?(table) }.first
 
+    def file_of_key(key) = databases[key]&.first
+
     def key_of(file) = databases.select { |_key, (name, _held)| name == file }.keys.first
 
     private

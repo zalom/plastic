@@ -14,14 +14,15 @@ module CommandReference
 
     attr_reader :entries, :components, :files, :schema
 
-    def initialize(entries:, components:, files:, schema:)
+    def initialize(entries:, components:, files:, schema:, declared: {})
       @entries = entries.uniq
       @components = components.uniq
       @files = files
       @schema = schema
+      @declared = declared
     end
 
-    def empty? = entries.empty? && files.empty?
+    def empty? = database_files.empty? && files.empty?
 
     def writes?(file, table) = entries.include?(Entry.new(file, table, :write))
 
@@ -29,10 +30,20 @@ module CommandReference
 
     def tables(mode) = entries.select { |entry| entry.mode == mode }.map(&:table).uniq
 
-    def database_files = entries.map(&:file).uniq.sort
+    def database_files = (entries.map(&:file) + declared_files(:read) + declared_files(:write)).uniq.sort
+
+    def declared?(file, mode) = declared_files(mode).include?(file) && tables_of(file, mode).empty?
+
+    def in?(file, mode) = declared?(file, mode) || tables_of(file, mode).any?
 
     def tables_of(file, modes = MODES) = entries.select { |entry| entry.on?(file, Array(modes)) }.map(&:table).uniq.sort
 
-    def store_keys = database_files.filter_map { |file| schema.key_of(file) }.reject { |key| key == :local }
+    def store_keys(modes = MODES)
+      Array(modes).flat_map { |mode| database_files.select { |file| in?(file, mode) } }.filter_map { |file| schema.key_of(file) }.map { |key| (key == :local) ? :work : key }.uniq.sort
+    end
+
+    private
+
+    def declared_files(mode) = @declared.fetch(mode, []).filter_map { |key| schema.file_of_key(key) }
   end
 end

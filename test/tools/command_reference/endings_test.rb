@@ -86,8 +86,8 @@ class CommandReferenceEndingsTest < Minitest::Test
     %w[backup\ restore backup\ purge].each do |words|
       texts = raise_texts(words)
 
-      assert(texts.any? { |text| text.include?("give") }, words)
-      assert(texts.any? { |text| text.include?("error.message") }, words)
+      assert_includes texts.join("\n"), "give", words
+      assert_includes texts.join("\n"), "error.message", words
     end
   end
 
