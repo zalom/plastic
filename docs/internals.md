@@ -914,7 +914,8 @@ Claude Code and Astra on Codex; Primary uses medium effort, and Secondary uses h
 The delivery lock is one row of the `locks` table in the machine's `local.db`, read as
 `Graph::Lock` (`scripts/lib/plastic/graph/lock.rb`): the store, the intent id, the session id,
 the mode, and the `taken_at` and `renewed_at` times. `Lock::Liveness` owns the liveness rule,
-and every reader of a lock asks it through `retrieval.liveness(lock)`. A lock of an ended session
+and every reader of a lock asks it through `retrieval.liveness(lock)`, which reads the session's
+`ended_at` and the claimed nodes (`Session::Claims`, as `Lock::Claim` values). A lock of an ended session
 is never live. Otherwise it is live while `renewed_at` lies within `Lock::TTL` (1800 seconds),
 or while the lock's session holds a node of the intent in the `claimed` state, claimed (`by`
 the session, at `updated_at`) within `Lock::NODE_LIMIT` (7200 seconds). `Liveness#why` names
