@@ -6,7 +6,7 @@ module ArchitectureFigures
   # Part of the figure builder; see docs/contributing/ARCHITECTURE.md.
   module CommandCall
     META = Diagram::Meta.new(file: "command-call.svg", width: 1160, height: 580, title: "One command from call to report",
-      desc: "The call plastic intent new runs through ten steps. bin/plastic hands the words to CLI, which finds the row in CLI::TABLE. A Routine opens the Graph and runs the chain through Routine::Traversal. Workflows::WriteIntent writes the rows, Graph::Printer prints the files, and the report ends with exit code 0.")
+      desc: "The call plastic intent new runs through 10 steps. bin/plastic hands the words to CLI, which finds the row in CLI::TABLE. A Routine opens the Graph and runs the chain through Routine::Traversal. Workflows::WriteIntent writes the rows, Graph::Printer prints the files, and the report ends with exit code 0.")
     STEPS = [
       ["bin/plastic", "Runs CLI with the words", "of the call."],
       ["CLI", "Finds the row for intent new", "in CLI::TABLE."],
