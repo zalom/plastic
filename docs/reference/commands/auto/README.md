@@ -2,8 +2,6 @@
 
 Deliver one intent or one roadmap in auto mode: take the lock and print the worktree.
 
-Delivers one intent or one roadmap in auto mode: picks the intent, takes the lock, sets it active and prints its code worktree.
-
 ```sh
 plastic auto ID
 ```

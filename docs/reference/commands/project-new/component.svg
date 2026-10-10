@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 88" width="980" height="88" role="img" xml:space="preserve">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 279" width="980" height="279" role="img" xml:space="preserve">
 <title>What plastic project new touches</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
@@ -75,5 +75,26 @@
 <text x="766" y="20" class="tag tag-muted" text-anchor="start">FILES IT PRINTS</text>
 <rect x="16" y="34" width="140" height="40" rx="6" class="lane-code"/>
 <text x="26" y="58" class="tm" text-anchor="start">plastic project new</text>
-<text x="556" y="58" class="tm tag-muted" text-anchor="start">touches no database</text>
+<rect x="336" y="34" width="196" height="28" rx="6" class="card"/>
+<text x="344" y="52" class="tm" text-anchor="start">CLI::ProjectName</text>
+<rect x="336" y="68" width="196" height="28" rx="6" class="card"/>
+<text x="344" y="86" class="tm" text-anchor="start">CLI::ProjectsFile</text>
+<rect x="556" y="34" width="186" height="45" rx="14" class="db"/>
+<text x="568" y="52" class="tb" text-anchor="start">knowledge_graph.db</text>
+<text x="568" y="68" class="tm" text-anchor="start">declared  W</text>
+<path d="M 536 45 L 556 45" class="wire"/>
+<path d="M 548 40 L 556 45 L 548 50 Z" class="head"/>
+<rect x="556" y="93" width="186" height="45" rx="14" class="db"/>
+<text x="568" y="111" class="tb" text-anchor="start">references.db</text>
+<text x="568" y="127" class="tm" text-anchor="start">declared  W</text>
+<path d="M 536 104 L 556 104" class="wire"/>
+<path d="M 548 99 L 556 104 L 548 109 Z" class="head"/>
+<rect x="556" y="152" width="186" height="45" rx="14" class="db"/>
+<text x="568" y="170" class="tb" text-anchor="start">work_graph.db</text>
+<text x="568" y="186" class="tm" text-anchor="start">declared  W</text>
+<path d="M 536 163 L 556 163" class="wire"/>
+<path d="M 548 158 L 556 163 L 548 168 Z" class="head"/>
+<text x="556" y="223" class="tm tag-muted" text-anchor="start">R read  W write</text>
+<text x="556" y="237" class="tm tag-muted" text-anchor="start">declared: named by the</text>
+<text x="556" y="251" class="tm tag-muted" text-anchor="start">command, tables not found</text>
 </svg>

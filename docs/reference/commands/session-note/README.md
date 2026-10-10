@@ -2,8 +2,6 @@
 
 Write the one prose line of this session.
 
-Writes the one prose line of a session: what the routine runs cannot say.
-
 ```sh
 plastic session note TEXT...
 ```

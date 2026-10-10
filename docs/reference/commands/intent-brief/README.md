@@ -2,8 +2,6 @@
 
 Print an intent's goal, criteria, rulings, ready nodes and command usage.
 
-Prints the goal, the done criteria, the rulings with superseded ones marked, the ready nodes and the usage of the node and edge commands.
-
 ```sh
 plastic intent brief ID
 ```

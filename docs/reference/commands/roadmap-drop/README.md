@@ -2,8 +2,6 @@
 
 Mark a roadmap item dropped; its edges stay as rows.
 
-Marks a roadmap item dropped. Its edges stay as rows.
-
 ```sh
 plastic roadmap drop SLUG ITEM [--dry-run]
 ```

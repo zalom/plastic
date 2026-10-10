@@ -2,8 +2,6 @@
 
 Print the first ready item, or what is in the way.
 
-Prints the first ready item of a roadmap, or what is in the way.
-
 ```sh
 plastic roadmap next SLUG [--batch N]
 ```

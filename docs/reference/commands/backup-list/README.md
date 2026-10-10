@@ -2,8 +2,6 @@
 
 List one store's backups with status and goal, flagging a missing or changed file.
 
-Lists the backups of one registered store, flagging a missing or changed file.
-
 ```sh
 plastic backup list --store SLUG
 ```
@@ -67,8 +65,5 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | a backup is missing or changed; see above | 1 | prints no next: line | [`backup_list.rb:29`](../../../../scripts/lib/plastic/workflows/backup_list.rb#L29) |
 | every backup with a row is on disk and unchanged | 0 | plastic backup --store %{store} | [`backup_list.rb:31`](../../../../scripts/lib/plastic/workflows/backup_list.rb#L31) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:97`](../../../../scripts/lib/plastic/code_workflow.rb#L97) |
-| raise CLI::Command::Usage, "name the store with --store; --project does not apply" if parsed[:project] | 2 | prints no next: line | [`backup_store.rb:27`](../../../../scripts/lib/plastic/commands/backup_store.rb#L27) |
-| raise CLI::Command::Usage, "no registered project named #{slug.inspect}; the projects are #{projects.keys.sort.join(", ")}" | 2 | prints no next: line | [`backup_store.rb:35`](../../../../scripts/lib/plastic/commands/backup_store.rb#L35) |
-| raise CLI::Command::Usage, give if given.zero? | 2 | prints no next: line | [`backup_store.rb:40`](../../../../scripts/lib/plastic/commands/backup_store.rb#L40) |
-| raise CLI::Command::Usage, both if given > 1 | 2 | prints no next: line | [`backup_store.rb:41`](../../../../scripts/lib/plastic/commands/backup_store.rb#L41) |
-| raise CLI::Command::Usage, error.message | 2 | prints no next: line | [`backup_store.rb:47`](../../../../scripts/lib/plastic/commands/backup_store.rb#L47) |
+| Usage error: name the store with --store; --project does not apply | 2 | prints no next: line | [`backup_store.rb:27`](../../../../scripts/lib/plastic/commands/backup_store.rb#L27) |
+| Usage error: no registered project named %{slug}; the projects are %{projects} | 2 | prints no next: line | [`backup_store.rb:35`](../../../../scripts/lib/plastic/commands/backup_store.rb#L35) |

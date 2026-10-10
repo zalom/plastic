@@ -2,8 +2,6 @@
 
 Install the core files and register Plastic with agents.
 
-Copies the core files of the running package into the home and registers Plastic with the chosen agents.
-
 ```sh
 plastic install [--claude] [--codex] [--hermes] [--all] [--dry-run] [--reinstall] [--force]
 ```

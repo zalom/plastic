@@ -79,5 +79,9 @@
 <text x="184" y="52" class="tm" text-anchor="start">PreviewUninstall</text>
 <rect x="176" y="68" width="140" height="28" rx="6" class="lane-code"/>
 <text x="184" y="86" class="tm" text-anchor="start">UninstallPlastic</text>
-<text x="556" y="58" class="tm tag-muted" text-anchor="start">touches no database</text>
+<rect x="336" y="34" width="196" height="28" rx="6" class="card"/>
+<text x="344" y="52" class="tm" text-anchor="start">Workflows::Installation</text>
+<rect x="336" y="68" width="196" height="28" rx="6" class="card"/>
+<text x="344" y="86" class="tm" text-anchor="start">Workflows::ReleaseRemoval</text>
+<text x="556" y="58" class="tm tag-muted" text-anchor="start">no database found in the code</text>
 </svg>

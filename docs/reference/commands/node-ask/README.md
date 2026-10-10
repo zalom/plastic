@@ -2,8 +2,6 @@
 
 Move a claimed node to needs_info with a question for the owner.
 
-Moves a claimed node to needs_info, with the question for the owner.
-
 ```sh
 plastic node ask ID NODE TEXT
 ```

@@ -19,9 +19,9 @@ The command is `ProjectNew`, in [`project_new.rb:13`](../../../../scripts/lib/pl
 
 ![What plastic project new touches](component.svg)
 
-## Before the chain
+## The command
 
-The command's own `call`, at [`project_new.rb:18`](../../../../scripts/lib/plastic/commands/project_new.rb#L18), runs first:
+The command's `call`, at [`project_new.rb:18`](../../../../scripts/lib/plastic/commands/project_new.rb#L18):
 
 ```ruby
 def call
@@ -43,6 +43,6 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| raise CLI::Command::Failure, "#{path} is not a directory" unless File.directory?(path) | 1 | prints no next: line | [`project_new.rb:32`](../../../../scripts/lib/plastic/commands/project_new.rb#L32) |
-| raise CLI::Command::Refusal, "#{slug} is registered at #{known}, not at #{path}; edit projects.yml to move it" if known | 3 | prints no next: line | [`project_new.rb:40`](../../../../scripts/lib/plastic/commands/project_new.rb#L40) |
-| output.next_step("plastic intent new TITLE --project #{slug}", because: "the project is registered and its store is ready") | 0 | plastic intent new TITLE --project #{slug} | [`project_new.rb:51`](../../../../scripts/lib/plastic/commands/project_new.rb#L51) |
+| Failed: %{path} is not a directory | 1 | prints no next: line | [`project_new.rb:32`](../../../../scripts/lib/plastic/commands/project_new.rb#L32) |
+| Refused: %{slug} is registered at %{known}, not at %{path}; edit projects.yml to move it | 3 | prints no next: line | [`project_new.rb:40`](../../../../scripts/lib/plastic/commands/project_new.rb#L40) |
+| Offers the next command | 0 | plastic intent new TITLE --project #{slug} | [`project_new.rb:51`](../../../../scripts/lib/plastic/commands/project_new.rb#L51) |

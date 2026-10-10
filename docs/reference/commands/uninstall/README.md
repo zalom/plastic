@@ -2,8 +2,6 @@
 
 Remove Plastic from agents and keep the home.
 
-Removes the files Plastic registered with the chosen agents. The home and its stores stay.
-
 ```sh
 plastic uninstall [--claude] [--codex] [--hermes] [--all] [--dry-run]
 ```

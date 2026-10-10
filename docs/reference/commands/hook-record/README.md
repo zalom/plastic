@@ -2,8 +2,6 @@
 
 Stop: stamp the turn, renew locks, run the stop gate.
 
-Stop: stamps the session's last turn, renews its live locks, then runs the stop gate.
-
 ```sh
 plastic hook record [--harness NAME]
 ```
@@ -18,9 +16,9 @@ The command is `Record`, in [`record.rb:13`](../../../../scripts/lib/plastic/hoo
 
 ![What plastic hook record touches](component.svg)
 
-## Before the chain
+## The command
 
-The command's own `call`, at [`record.rb:16`](../../../../scripts/lib/plastic/hooks/record.rb#L16), runs first:
+The hook's `respond`, at [`record.rb:16`](../../../../scripts/lib/plastic/hooks/record.rb#L16):
 
 ```ruby
 def respond(event)

@@ -2,8 +2,6 @@
 
 Release a claimed or failed node back to open.
 
-Releases a claimed or failed node back to open.
-
 ```sh
 plastic node release ID NODE
 ```

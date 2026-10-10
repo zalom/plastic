@@ -2,8 +2,6 @@
 
 Create a roadmap; write its batches with roadmap batch.
 
-Creates a roadmap; its batches come from roadmap batch.
-
 ```sh
 plastic roadmap new NAME [--title TITLE] [--goal GOAL]
 ```

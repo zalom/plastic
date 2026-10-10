@@ -2,8 +2,6 @@
 
 Reopen a needs_info or impeded node with its resolution.
 
-Reopens a needs_info or impeded node with its resolution and resets its retries.
-
 ```sh
 plastic node resolve ID NODE TEXT
 ```

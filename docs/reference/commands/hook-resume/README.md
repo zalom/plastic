@@ -18,9 +18,9 @@ The command is `Resume`, in [`resume.rb:13`](../../../../scripts/lib/plastic/hoo
 
 ![What plastic hook resume touches](component.svg)
 
-## Before the chain
+## The command
 
-The command's own `call`, at [`resume.rb:29`](../../../../scripts/lib/plastic/hooks/resume.rb#L29), runs first:
+The hook's `respond`, at [`resume.rb:29`](../../../../scripts/lib/plastic/hooks/resume.rb#L29):
 
 ```ruby
 def respond(event)

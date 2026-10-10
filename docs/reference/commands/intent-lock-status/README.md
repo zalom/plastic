@@ -2,8 +2,6 @@
 
 Print the session that holds an intent's lock, and its worktree.
 
-Prints the session that holds an intent's lock, and its code worktree.
-
 ```sh
 plastic intent lock status ID
 ```

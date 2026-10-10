@@ -2,8 +2,6 @@
 
 Close a delivered intent once its verdict, nodes and outcome allow it, or print what is missing.
 
-Closes a delivered intent once the rows, the verdict and outcome.md allow it, and hands over what is missing.
-
 ```sh
 plastic intent end ID
 ```

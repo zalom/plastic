@@ -81,9 +81,12 @@
 <text x="344" y="52" class="tm" text-anchor="start">Edge::Writer</text>
 <rect x="556" y="34" width="186" height="45" rx="14" class="db"/>
 <text x="568" y="52" class="tb" text-anchor="start">work_graph.db</text>
-<text x="568" y="68" class="tm" text-anchor="start">edges  R</text>
-<path d="M 556 53 L 536 53" class="wire-read"/>
-<path d="M 544 48 L 536 53 L 544 58 Z" class="head"/>
+<text x="568" y="68" class="tm" text-anchor="start">edges  W</text>
+<path d="M 536 45 L 556 45" class="wire"/>
+<path d="M 548 40 L 556 45 L 548 50 Z" class="head"/>
+<text x="556" y="105" class="tm tag-muted" text-anchor="start">R read  W write</text>
+<text x="556" y="119" class="tm tag-muted" text-anchor="start">declared: named by the</text>
+<text x="556" y="133" class="tm tag-muted" text-anchor="start">command, tables not found</text>
 <rect x="766" y="34" width="200" height="28" rx="6" class="card"/>
 <text x="774" y="52" class="tm" text-anchor="start">store/index.json</text>
 <rect x="766" y="68" width="200" height="28" rx="6" class="card"/>

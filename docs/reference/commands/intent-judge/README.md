@@ -2,8 +2,6 @@
 
 Print the steps that start the judge of an intent.
 
-Prints the steps that start a reasoning judge for an intent, and where its verdict is recorded.
-
 ```sh
 plastic intent judge ID
 ```

@@ -2,8 +2,6 @@
 
 Restore an archived intent's directory exactly as it was archived.
 
-Puts an archived intent's directory back on the checkout exactly as it was archived.
-
 ```sh
 plastic intent unarchive ID [--dry-run]
 ```

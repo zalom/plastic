@@ -2,8 +2,6 @@
 
 SessionEnd: set the session's end time and reason.
 
-SessionEnd: sets the session's end time and the reason the event names.
-
 ```sh
 plastic hook end
 ```
@@ -14,9 +12,9 @@ The command is `End`, in [`end.rb:9`](../../../../scripts/lib/plastic/hooks/end.
 
 ![What plastic hook end touches](component.svg)
 
-## Before the chain
+## The command
 
-The command's own `call`, at [`end.rb:10`](../../../../scripts/lib/plastic/hooks/end.rb#L10), runs first:
+The hook's `respond`, at [`end.rb:10`](../../../../scripts/lib/plastic/hooks/end.rb#L10):
 
 ```ruby
 def respond(event)

@@ -2,8 +2,6 @@
 
 Close an intent that will not ship once outcome.md records the revert, or print the revert steps.
 
-Abandons an intent that will not ship once outcome.md records the revert, and hands over the revert steps until then.
-
 ```sh
 plastic intent abandon ID
 ```

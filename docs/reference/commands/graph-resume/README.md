@@ -2,8 +2,6 @@
 
 Say where each named store's work stopped and what runs next.
 
-Says where each named store's work stopped and what runs next. It reads the rows and writes nothing.
-
 ```sh
 plastic graph resume [--stores LIST]
 ```
@@ -18,9 +16,9 @@ The command is `GraphResume`, in [`graph_resume.rb:13`](../../../../scripts/lib/
 
 ![What plastic graph resume touches](component.svg)
 
-## Before the chain
+## The command
 
-The command's own `call`, at [`graph_resume.rb:19`](../../../../scripts/lib/plastic/commands/graph_resume.rb#L19), runs first:
+The command's `call`, at [`graph_resume.rb:19`](../../../../scripts/lib/plastic/commands/graph_resume.rb#L19):
 
 ```ruby
 def call
@@ -39,8 +37,8 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| raise CLI::Command::Usage, "--stores names the stores; --project does not apply" if parsed[:stores] && parsed[:project] | 2 | prints no next: line | [`graph_resume.rb:31`](../../../../scripts/lib/plastic/commands/graph_resume.rb#L31) |
-| raise CLI::Command::Usage, "name at least one store after --stores" if names.empty? | 2 | prints no next: line | [`graph_resume.rb:41`](../../../../scripts/lib/plastic/commands/graph_resume.rb#L41) |
-| raise CLI::Command::Usage, "no registered project named #{name.inspect}; the projects are #{projects.keys.sort.join(", ")}" | 2 | prints no next: line | [`graph_resume.rb:50`](../../../../scripts/lib/plastic/commands/graph_resume.rb#L50) |
-| return output.next_step("plastic status", because: "no store has open work") unless found | 0 | plastic status | [`graph_resume.rb:62`](../../../../scripts/lib/plastic/commands/graph_resume.rb#L62) |
-| output.next_step(in_store(command, slug), because: reports.one? ? why : format(SEVERAL, slug)) | 0 | decided at run time | [`graph_resume.rb:70`](../../../../scripts/lib/plastic/commands/graph_resume.rb#L70) |
+| Usage error: --stores names the stores; --project does not apply | 2 | prints no next: line | [`graph_resume.rb:31`](../../../../scripts/lib/plastic/commands/graph_resume.rb#L31) |
+| Usage error: name at least one store after --stores | 2 | prints no next: line | [`graph_resume.rb:41`](../../../../scripts/lib/plastic/commands/graph_resume.rb#L41) |
+| Usage error: no registered project named %{name}; the projects are %{projects} | 2 | prints no next: line | [`graph_resume.rb:50`](../../../../scripts/lib/plastic/commands/graph_resume.rb#L50) |
+| Offers the next command | 0 | plastic status | [`graph_resume.rb:62`](../../../../scripts/lib/plastic/commands/graph_resume.rb#L62) |
+| Offers the next command | 0 | decided at run time | [`graph_resume.rb:70`](../../../../scripts/lib/plastic/commands/graph_resume.rb#L70) |

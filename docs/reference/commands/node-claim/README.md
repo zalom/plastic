@@ -2,8 +2,6 @@
 
 Claim an open node and print its brief.
 
-Claims an open node: moves it to claimed and prints its brief.
-
 ```sh
 plastic node claim ID NODE
 ```

@@ -2,8 +2,6 @@
 
 Write one roadmap batch's goal and done criteria.
 
-Writes one roadmap batch's goal and done criteria.
-
 ```sh
 plastic roadmap batch SLUG N [--title TITLE] [--goal GOAL] [--done TEXT]
 ```

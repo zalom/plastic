@@ -2,8 +2,6 @@
 
 Fetch qualified documents in request order.
 
-Fetches requested qualified documents in the exact request order.
-
 ```sh
 plastic document batch REF...
 ```

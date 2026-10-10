@@ -14,9 +14,9 @@ The command is `ProjectList`, in [`project_list.rb:9`](../../../../scripts/lib/p
 
 ![What plastic project list touches](component.svg)
 
-## Before the chain
+## The command
 
-The command's own `call`, at [`project_list.rb:12`](../../../../scripts/lib/plastic/commands/project_list.rb#L12), runs first:
+The command's `call`, at [`project_list.rb:12`](../../../../scripts/lib/plastic/commands/project_list.rb#L12):
 
 ```ruby
 def call
@@ -38,5 +38,5 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| return output.next_step("plastic project new SLUG PATH", because: "no project is registered yet") if projects.empty? | 0 | plastic project new SLUG PATH | [`project_list.rb:15`](../../../../scripts/lib/plastic/commands/project_list.rb#L15) |
-| output.next_step("plastic status", because: "the projects are listed") | 0 | plastic status | [`project_list.rb:17`](../../../../scripts/lib/plastic/commands/project_list.rb#L17) |
+| Offers the next command | 0 | plastic project new SLUG PATH | [`project_list.rb:15`](../../../../scripts/lib/plastic/commands/project_list.rb#L15) |
+| Offers the next command | 0 | plastic status | [`project_list.rb:17`](../../../../scripts/lib/plastic/commands/project_list.rb#L17) |

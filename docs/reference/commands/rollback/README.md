@@ -2,8 +2,6 @@
 
 Switch the active release back to the previous one or to a named installed one.
 
-Switches the active release back to the previous one, or to a named installed release. A dry run names the switch and changes nothing.
-
 ```sh
 plastic rollback [--version VERSION] [--dry-run]
 ```

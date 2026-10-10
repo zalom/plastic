@@ -2,8 +2,6 @@
 
 Add one line under Notes in the outcome of an intent, keeping the earlier text as a revision.
 
-Adds one line under `## Notes` in the intent's outcome.md. The earlier text stays as an earlier revision of the file.
-
 ```sh
 plastic intent note ID TEXT [--kind KIND]
 ```
@@ -74,4 +72,4 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | %{problem} | 1 | prints no next: line | [`note_intent.rb:23`](../../../../scripts/lib/plastic/workflows/note_intent.rb#L23) |
 | the outcome holds the note | 0 | prints no next: line | [`note_intent.rb:33`](../../../../scripts/lib/plastic/workflows/note_intent.rb#L33) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:97`](../../../../scripts/lib/plastic/code_workflow.rb#L97) |
-| raise CLI::Command::Usage, "KIND takes #{kinds.join(", ")}" unless kinds.include?(parsed[:kind]) | 2 | prints no next: line | [`intent_note.rb:19`](../../../../scripts/lib/plastic/commands/intent_note.rb#L19) |
+| Usage error: KIND takes %{kinds} | 2 | prints no next: line | [`intent_note.rb:19`](../../../../scripts/lib/plastic/commands/intent_note.rb#L19) |

@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 212" width="980" height="212" role="img" xml:space="preserve">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 382" width="980" height="382" role="img" xml:space="preserve">
 <title>What plastic intent context touches</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
@@ -81,11 +81,46 @@
 <text x="184" y="86" class="tm" text-anchor="start">ReadContext</text>
 <rect x="176" y="102" width="140" height="28" rx="6" class="lane-code"/>
 <text x="184" y="120" class="tm" text-anchor="start">SubmitContext</text>
-<rect x="556" y="34" width="186" height="45" rx="14" class="db"/>
-<text x="568" y="52" class="tb" text-anchor="start">work_graph.db</text>
-<text x="568" y="68" class="tm" text-anchor="start">intents  R</text>
+<rect x="336" y="34" width="196" height="28" rx="6" class="card"/>
+<text x="344" y="52" class="tm" text-anchor="start">Failed</text>
+<rect x="336" y="68" width="196" height="28" rx="6" class="card"/>
+<text x="344" y="86" class="tm" text-anchor="start">Workflows::ContextReadback</text>
+<rect x="336" y="102" width="196" height="28" rx="6" class="card"/>
+<text x="344" y="120" class="tm" text-anchor="start">Workflows::ContextDocuments</text>
+<rect x="336" y="136" width="196" height="28" rx="6" class="card"/>
+<text x="344" y="154" class="tm" text-anchor="start">Retrieval::Context::Source</text>
+<rect x="336" y="170" width="196" height="28" rx="6" class="card"/>
+<text x="344" y="188" class="tm" text-anchor="start">Workflows::ContextSubmission</text>
+<rect x="336" y="204" width="196" height="28" rx="6" class="card"/>
+<text x="344" y="222" class="tm" text-anchor="start">Workflows::ContextPersistence</text>
+<rect x="336" y="238" width="196" height="28" rx="6" class="card"/>
+<text x="344" y="256" class="tm" text-anchor="start">Graph::Retrieval::Context::Freshness</text>
+<rect x="336" y="272" width="196" height="28" rx="6" class="card"/>
+<text x="344" y="290" class="tm" text-anchor="start">Origin</text>
+<rect x="336" y="306" width="196" height="28" rx="6" class="card"/>
+<text x="344" y="324" class="tm" text-anchor="start">Retrieval::Evidence</text>
+<rect x="336" y="340" width="196" height="28" rx="6" class="card"/>
+<text x="344" y="358" class="tm" text-anchor="start">Retrieval::Context::Evidence</text>
+<rect x="556" y="34" width="186" height="75" rx="14" class="db"/>
+<text x="568" y="52" class="tb" text-anchor="start">knowledge_graph.db</text>
+<text x="568" y="68" class="tm" text-anchor="start">documents  R</text>
+<text x="568" y="83" class="tm" text-anchor="start">retrieval_contexts  RW</text>
+<text x="568" y="98" class="tm" text-anchor="start">retrieval_discoveries  R</text>
+<path d="M 536 45 L 556 45" class="wire"/>
+<path d="M 548 40 L 556 45 L 548 50 Z" class="head"/>
 <path d="M 556 53 L 536 53" class="wire-read"/>
 <path d="M 544 48 L 536 53 L 544 58 Z" class="head"/>
+<rect x="556" y="123" width="186" height="60" rx="14" class="db"/>
+<text x="568" y="141" class="tb" text-anchor="start">work_graph.db</text>
+<text x="568" y="157" class="tm" text-anchor="start">intents  R</text>
+<text x="568" y="172" class="tm" text-anchor="start">declared  W</text>
+<path d="M 536 134 L 556 134" class="wire"/>
+<path d="M 548 129 L 556 134 L 548 139 Z" class="head"/>
+<path d="M 556 142 L 536 142" class="wire-read"/>
+<path d="M 544 137 L 536 142 L 544 147 Z" class="head"/>
+<text x="556" y="209" class="tm tag-muted" text-anchor="start">R read  W write</text>
+<text x="556" y="223" class="tm tag-muted" text-anchor="start">declared: named by the</text>
+<text x="556" y="237" class="tm tag-muted" text-anchor="start">command, tables not found</text>
 <rect x="766" y="34" width="200" height="28" rx="6" class="card"/>
 <text x="774" y="52" class="tm" text-anchor="start">store/index.json</text>
 <rect x="766" y="68" width="200" height="28" rx="6" class="card"/>

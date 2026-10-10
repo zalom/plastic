@@ -2,8 +2,6 @@
 
 Write the owner's go-ahead for an intent; auto refuses an intent without it.
 
-Writes the owner's go-ahead for an intent. `plastic auto` refuses an intent without it.
-
 ```sh
 plastic intent approve ID
 ```

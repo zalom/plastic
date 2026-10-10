@@ -2,8 +2,6 @@
 
 Mark a claimed node done, with its findings as TEXT.
 
-Moves a claimed node to done, with its findings. A done node takes new findings in place of the old.
-
 ```sh
 plastic node done ID NODE TEXT
 ```

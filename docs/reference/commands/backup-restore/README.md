@@ -2,8 +2,6 @@
 
 Replace one store's databases with those of a done backup.
 
-Replaces the databases of one registered store with those of a done backup.
-
 ```sh
 plastic backup restore --store SLUG [--timestamp TS] [--latest] [--databases LIST] [--dry-run]
 ```
@@ -32,6 +30,15 @@ def call
   refuse_unregistered
   check_call
   super
+end
+```
+
+The command's own `check_call`, at [`backup_restore.rb:28`](../../../../scripts/lib/plastic/commands/backup_restore.rb#L28), runs inside it:
+
+```ruby
+def check_call
+  one_of(%i[timestamp latest], give: "give --timestamp TS or --latest", both: "--latest and --timestamp exclude each other")
+  database_list
 end
 ```
 
@@ -92,8 +99,8 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | %{refusal} | 3 | prints no next: line | [`backup_restore.rb:44`](../../../../scripts/lib/plastic/workflows/backup_restore.rb#L44) |
 | the rows are restored and the files are not; sync down writes the files from the rows | 0 | plastic sync down --project %{store} | [`backup_restore.rb:57`](../../../../scripts/lib/plastic/workflows/backup_restore.rb#L57) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:97`](../../../../scripts/lib/plastic/code_workflow.rb#L97) |
-| raise CLI::Command::Usage, "name the store with --store; --project does not apply" if parsed[:project] | 2 | prints no next: line | [`backup_store.rb:27`](../../../../scripts/lib/plastic/commands/backup_store.rb#L27) |
-| raise CLI::Command::Usage, "no registered project named #{slug.inspect}; the projects are #{projects.keys.sort.join(", ")}" | 2 | prints no next: line | [`backup_store.rb:35`](../../../../scripts/lib/plastic/commands/backup_store.rb#L35) |
-| raise CLI::Command::Usage, give if given.zero? | 2 | prints no next: line | [`backup_store.rb:40`](../../../../scripts/lib/plastic/commands/backup_store.rb#L40) |
-| raise CLI::Command::Usage, both if given > 1 | 2 | prints no next: line | [`backup_store.rb:41`](../../../../scripts/lib/plastic/commands/backup_store.rb#L41) |
-| raise CLI::Command::Usage, error.message | 2 | prints no next: line | [`backup_store.rb:47`](../../../../scripts/lib/plastic/commands/backup_store.rb#L47) |
+| Usage error: name the store with --store; --project does not apply | 2 | prints no next: line | [`backup_store.rb:27`](../../../../scripts/lib/plastic/commands/backup_store.rb#L27) |
+| Usage error: no registered project named %{slug}; the projects are %{projects} | 2 | prints no next: line | [`backup_store.rb:35`](../../../../scripts/lib/plastic/commands/backup_store.rb#L35) |
+| Usage error | 2 | prints no next: line | [`backup_store.rb:40`](../../../../scripts/lib/plastic/commands/backup_store.rb#L40) |
+| Usage error | 2 | prints no next: line | [`backup_store.rb:41`](../../../../scripts/lib/plastic/commands/backup_store.rb#L41) |
+| Usage error | 2 | prints no next: line | [`backup_store.rb:47`](../../../../scripts/lib/plastic/commands/backup_store.rb#L47) |

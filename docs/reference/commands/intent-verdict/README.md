@@ -2,8 +2,6 @@
 
 Record the verdict of the next review round of an intent.
 
-Records the verdict of the next review round, with the findings behind it.
-
 ```sh
 plastic intent verdict ID accept|revise TEXT
 ```
@@ -94,4 +92,4 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | the judge asked for a revision; add a node that fixes it | 0 | plastic node add %{intent_id} TITLE --criterion KEY | [`record_verdict.rb:29`](../../../../scripts/lib/plastic/workflows/record_verdict.rb#L29) |
 | intent %{intent_id} is accepted | 0 | plastic intent end %{intent_id} | [`record_verdict.rb:31`](../../../../scripts/lib/plastic/workflows/record_verdict.rb#L31) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:97`](../../../../scripts/lib/plastic/code_workflow.rb#L97) |
-| raise CLI::Command::Usage, "the verdict takes accept or revise" unless VERDICTS.include?(parsed[:verdict]) | 2 | prints no next: line | [`intent_verdict.rb:23`](../../../../scripts/lib/plastic/commands/intent_verdict.rb#L23) |
+| Usage error: the verdict takes accept or revise | 2 | prints no next: line | [`intent_verdict.rb:23`](../../../../scripts/lib/plastic/commands/intent_verdict.rb#L23) |

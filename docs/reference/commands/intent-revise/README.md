@@ -2,8 +2,6 @@
 
 Rewrite an intent's What and Why after grilling, keeping the old text as a revision.
 
-Rewrites the What and the Why of an intent after grilling. The old text stays as an earlier revision of the intent's file.
-
 ```sh
 plastic intent revise ID LINE [--why TEXT] [--dry-run]
 ```

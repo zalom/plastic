@@ -2,8 +2,6 @@
 
 Tell the agent to regenerate the architecture map with its own tool.
 
-Tells the agent to regenerate the project's architecture map with its own tool.
-
 ```sh
 plastic architecture refresh
 ```

@@ -2,8 +2,6 @@
 
 Tell the agent to check the architecture map with its own tool.
 
-Tells the agent to check the project's architecture map with its own tool.
-
 ```sh
 plastic architecture status
 ```

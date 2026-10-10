@@ -75,5 +75,5 @@
 <text x="766" y="20" class="tag tag-muted" text-anchor="start">FILES IT PRINTS</text>
 <rect x="16" y="34" width="140" height="40" rx="6" class="lane-code"/>
 <text x="26" y="58" class="tm" text-anchor="start">plastic project list</text>
-<text x="556" y="58" class="tm tag-muted" text-anchor="start">touches no database</text>
+<text x="556" y="58" class="tm tag-muted" text-anchor="start">no database found in the code</text>
 </svg>

@@ -2,8 +2,6 @@
 
 Add a node to an intent's work graph.
 
-Adds one node to an intent's work graph, open and ready.
-
 ```sh
 plastic node add ID TITLE --criterion KEY [--input PATH]
 ```

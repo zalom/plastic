@@ -2,8 +2,6 @@
 
 List the nodes ready to claim.
 
-Lists the nodes ready to claim: open, with every need done.
-
 ```sh
 plastic graph ready ID
 ```

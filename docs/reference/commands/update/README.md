@@ -99,4 +99,4 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | Plastic %{active} is the newest release on its channel | 0 | plastic version | [`update_plastic.rb:42`](../../../../scripts/lib/plastic/workflows/update_plastic.rb#L42) |
 | run the installer command above, then update again | 0 | plastic update | [`update_plastic.rb:44`](../../../../scripts/lib/plastic/workflows/update_plastic.rb#L44) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:97`](../../../../scripts/lib/plastic/code_workflow.rb#L97) |
-| raise CLI::Command::Usage, "--channel takes stable, beta or alpha" unless [nil, *Workflows::ReleaseUpdate::CHANNELS.keys].include?(channel) | 2 | prints no next: line | [`update.rb:18`](../../../../scripts/lib/plastic/commands/update.rb#L18) |
+| Usage error: --channel takes stable, beta or alpha | 2 | prints no next: line | [`update.rb:18`](../../../../scripts/lib/plastic/commands/update.rb#L18) |

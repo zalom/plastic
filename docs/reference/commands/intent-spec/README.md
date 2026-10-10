@@ -2,8 +2,6 @@
 
 Print the grilling method, then the intent's open decisions.
 
-Prints the grilling method, then one intent's open decisions.
-
 ```sh
 plastic intent spec ID
 ```

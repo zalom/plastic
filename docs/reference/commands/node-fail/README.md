@@ -2,8 +2,6 @@
 
 Mark a claimed node failed, with the reason as TEXT.
 
-Moves a claimed node to failed, with the reason.
-
 ```sh
 plastic node fail ID NODE TEXT
 ```

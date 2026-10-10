@@ -2,8 +2,6 @@
 
 Print one intent's status, criteria, decisions, rulings and nodes.
 
-Prints one intent: its status, criteria count, open decisions, rulings, nodes and last savepoint lines.
-
 ```sh
 plastic intent show ID
 ```

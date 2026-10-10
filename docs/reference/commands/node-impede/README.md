@@ -2,8 +2,6 @@
 
 Move a claimed node to impeded with the impediment.
 
-Moves a claimed node to impeded, with the impediment.
-
 ```sh
 plastic node impede ID NODE TEXT
 ```

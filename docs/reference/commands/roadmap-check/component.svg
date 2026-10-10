@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 88" width="980" height="88" role="img" xml:space="preserve">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 251" width="980" height="251" role="img" xml:space="preserve">
 <title>What plastic roadmap check touches</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
@@ -77,5 +77,22 @@
 <text x="26" y="58" class="tm" text-anchor="start">plastic roadmap check</text>
 <rect x="176" y="34" width="140" height="28" rx="6" class="lane-code"/>
 <text x="184" y="52" class="tm" text-anchor="start">CheckRoadmap</text>
-<text x="556" y="58" class="tm tag-muted" text-anchor="start">touches no database</text>
+<rect x="336" y="34" width="196" height="28" rx="6" class="card"/>
+<text x="344" y="52" class="tm" text-anchor="start">Knowledge::Roadmap::Check</text>
+<rect x="336" y="68" width="196" height="28" rx="6" class="card"/>
+<text x="344" y="86" class="tm" text-anchor="start">Retrieval::RoadmapReader</text>
+<rect x="556" y="34" width="186" height="135" rx="14" class="db"/>
+<text x="568" y="52" class="tb" text-anchor="start">work_graph.db</text>
+<text x="568" y="68" class="tm" text-anchor="start">batches  R</text>
+<text x="568" y="83" class="tm" text-anchor="start">edges  R</text>
+<text x="568" y="98" class="tm" text-anchor="start">intents  R</text>
+<text x="568" y="113" class="tm" text-anchor="start">roadmap_edges  R</text>
+<text x="568" y="128" class="tm" text-anchor="start">roadmap_items  R</text>
+<text x="568" y="143" class="tm" text-anchor="start">roadmap_log  R</text>
+<text x="568" y="158" class="tm" text-anchor="start">roadmaps  R</text>
+<path d="M 556 53 L 536 53" class="wire-read"/>
+<path d="M 544 48 L 536 53 L 544 58 Z" class="head"/>
+<text x="556" y="195" class="tm tag-muted" text-anchor="start">R read  W write</text>
+<text x="556" y="209" class="tm tag-muted" text-anchor="start">declared: named by the</text>
+<text x="556" y="223" class="tm tag-muted" text-anchor="start">command, tables not found</text>
 </svg>

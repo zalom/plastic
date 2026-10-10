@@ -2,8 +2,6 @@
 
 Open a ready item's intent, with its spec held in rows.
 
-Opens a ready roadmap item's intent, with its spec held in rows.
-
 ```sh
 plastic roadmap open SLUG ITEM
 ```

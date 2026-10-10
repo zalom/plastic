@@ -2,8 +2,6 @@
 
 Append a log line to a roadmap, stamped with the session id.
 
-Appends a log line to a roadmap, stamped with the session id.
-
 ```sh
 plastic roadmap log SLUG TEXT...
 ```

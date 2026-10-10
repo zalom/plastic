@@ -2,8 +2,6 @@
 
 Add an item to a roadmap batch, with the items it needs.
 
-Adds one item to a roadmap batch, with the items it needs.
-
 ```sh
 plastic roadmap add SLUG N ITEM [--title TITLE] [--goal GOAL] [--done TEXT] [--needs ITEM]
 ```

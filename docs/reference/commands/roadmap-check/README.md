@@ -2,8 +2,6 @@
 
 List a roadmap's loops, dangling edges and items with no intent.
 
-Lists a roadmap's loops, dangling edges and items with no intent.
-
 ```sh
 plastic roadmap check SLUG
 ```

@@ -2,8 +2,6 @@
 
 Pick the intent in play and offer its next command.
 
-Picks the intent this session is working on and offers its next command.
-
 ```sh
 plastic next
 ```
