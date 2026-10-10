@@ -11,7 +11,7 @@ module Plastic
   module Workflows
     # Reads what closing an intent needs: the rows, the judge's verdict, outcome.md and, by the review setting, the pull request.
     class PrepareEnding < CodeWorkflow
-      sets :intent, :closed, :problem, :requirements, :judged, :used_up, :awaiting_approval, :intent_folder, :merge_recorded, :map_recorded
+      sets :intent, :closed, :problem, :requirements, :judged, :used_up, :awaiting_approval, :intent_folder, :merge_recorded, :map_recorded, :missing
 
       read "read the intent" do |context|
         context[:intent] = context.retrieval.intent(context.intent_id)
@@ -35,8 +35,11 @@ module Plastic
         context[:used_up] = false
         context[:awaiting_approval] = false
         context[:merge_recorded] = context[:map_recorded] = false
+        context[:missing] = ""
         record_facts(context) unless context.closed
       end
+
+      NOT_JUDGED = "No accepted review counts yet."
 
       def self.record_facts(context)
         check = Graph::Work::Completion::Check.new(context.retrieval, context.intent_id)
@@ -53,6 +56,7 @@ module Plastic
       def self.review_facts(context)
         review = Graph::Work::Completion::Review.of(context)
         context[:judged] = review.counting?
+        context[:missing] = (context.requirements + (context.judged ? [] : [NOT_JUDGED])).join(" ")
         context[:used_up] = review.used_up?
       end
 

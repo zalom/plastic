@@ -16,7 +16,7 @@ plastic next
 
 ## Read a result
 
-Every command ends with two lines:
+A command ends with two lines:
 
 ```text
 next: plastic status
@@ -24,7 +24,7 @@ because: the command line works, so read the work next
 ```
 
 The `next:` line names the command to run now. The `because:` line gives the rule that chose
-it. Add `--json` to any of these commands to get the same result as data.
+it. A call with nothing to run next prints no `next:` line and still prints `because:`. Add `--json` to any of these commands to get the same result as data.
 
 ## Find a command
 

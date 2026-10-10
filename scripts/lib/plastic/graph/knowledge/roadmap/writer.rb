@@ -49,16 +49,16 @@ module Plastic
 
           # Adds an item to batch N. Returns nil, nil when the batch is missing;
           # Returns [item, problem, kind]. kind is :failure or :refusal, nil on success.
-          def add_item(slug, item, batch_position, fields:, after:)
+          def add_item(slug, item, batch_position, fields:, needs:)
             return [nil, "no batch #{batch_position} on roadmap #{slug}", :failure] unless batch?(slug, batch_position)
 
-            missing = Array(after).find { |from| @retrieval.roadmap_items(slug).none? { |row| row.item == from } }
+            missing = Array(needs).find { |from| @retrieval.roadmap_items(slug).none? { |row| row.item == from } }
             return [nil, "no item #{missing} on roadmap #{slug}", :failure] if missing
 
-            looped = Array(after).find { |from| loop?(slug, from, item) }
+            looped = Array(needs).find { |from| loop?(slug, from, item) }
             return [nil, "an edge from #{looped} to #{item} would loop", :refusal] if looped
 
-            write_item(slug, item, batch_position, fields, after)
+            write_item(slug, item, batch_position, fields, needs)
           end
 
           def drop_item(slug, item)
@@ -109,12 +109,12 @@ module Plastic
             from == to || !@databases.fetch(:work).row(LOOP_SQL, origin: origin_id, roadmap: slug, from:, to:).nil?
           end
 
-          def write_item(slug, item, batch_position, fields, after)
+          def write_item(slug, item, batch_position, fields, needs)
             now = Plastic.now
             existing = @retrieval.roadmap_items(slug).any? { |row| row.item == item }
             @databases.fetch(:work).transaction do |batch|
               batch.put(:roadmap_items, item_row(slug, item, batch_position, fields, now), statement: :insert) unless existing
-              Array(after).each { |from| batch.put(:roadmap_edges, { roadmap: slug, from:, to: item, kind: "after" }, statement: :insert) }
+              Array(needs).each { |from| batch.put(:roadmap_edges, { roadmap: slug, from:, to: item, kind: "after" }, statement: :insert) }
             end
             [@retrieval.roadmap_items(slug).find { |row| row.item == item }, nil, nil]
           end

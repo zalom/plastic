@@ -54,10 +54,17 @@ class RoutinePreviewTest < Plastic::TestCase
     assert_includes twin.previewed.out, "preview: would change #{twin.first}/stores/global/store/1--alpha/graph.json"
   end
 
+  def test_a_dry_run_names_the_routine_run_row_the_real_call_keeps
+    twin = twin_run("node", "remove", "1", "n1", "--reason", "r") { |home| seed_graph(home) }
+
+    assert_match(/would write:\s+1 routine run in local\.db\n\s+1 node in work_graph\.db/, twin.previewed.out)
+    assert_match(/wrote:\s+1 routine run in local\.db\n\s+1 node in work_graph\.db/, twin.applied.out)
+  end
+
   def test_a_preview_prefixes_every_printed_line_and_ends_on_the_closing_line
     twin = twin_run("node", "remove", "1", "n1", "--reason", "r") { |home| seed_graph(home) }
     printed = twin.previewed.out.lines(chomp: true).take_while { |line| !line.empty? }
-    rows = printed.reject { |line| line.start_with?("preview: ", "would write:", "files:", "next:", "because:") }
+    rows = printed.reject { |line| line.start_with?("preview: ", "would write:", "files:", "next:", "because:") || line.match?(/\A\s+\d/) }
 
     assert_equal ["preview complete; the original store was not changed"], rows
     assert_equal "preview: node: n1 removed", printed.first
@@ -66,7 +73,7 @@ class RoutinePreviewTest < Plastic::TestCase
   def test_a_preview_offers_the_same_command_without_dry_run
     twin = twin_run("node", "remove", "1", "n1", "--reason", "r") { |home| seed_graph(home) }
 
-    assert_includes twin.previewed.out, "next: plastic node remove 1 n1 --reason r --project global\n"
+    assert_includes twin.previewed.out, "next: plastic node remove 1 n1 --reason r\n"
     assert_includes twin.previewed.out, "because: the preview wrote only to a disposable copy\n"
   end
 
@@ -82,7 +89,7 @@ class RoutinePreviewTest < Plastic::TestCase
 
     assert_equal "preview: node: n1 removed", document.dig("result", "output").first
     assert_equal "preview complete; the original store was not changed", document.dig("result", "output").last
-    assert_equal "plastic node remove 1 n1 --reason r --json --project global", document["next"]
+    assert_equal "plastic node remove 1 n1 --reason r --json", document["next"]
   end
 
   def test_a_preview_after_a_refused_apply_matches_the_resumed_apply

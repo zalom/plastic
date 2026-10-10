@@ -245,7 +245,7 @@ class IntentContextValidationTest < Plastic::TestCase
 
     result = plastic("intent", "context", "1", table: Plastic::CLI::TABLE)
 
-    assert_call result, code: 1, out: RUN_ROW, err: "plastic: code_read_context, gate: retrieval maintenance is required before source other can be read\n"
+    assert_call result, code: 1, out: RUN_ROW, err: "plastic: retrieval maintenance is required before source other can be read\n"
     refute_path_exists path
   end
 

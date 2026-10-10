@@ -4,8 +4,8 @@
 
 Each row gives the setup, the call, the exit code, the result and the next line:
 
-| setup                              | call                  | exit | result                                               | next line                          |
-| ---------------------------------- | --------------------- | ---- | ---------------------------------------------------- | ---------------------------------- |
-| intent new Alpha ; intent new Beta | intent link 1 cites 2 | 0    | link: 1 cites 2                                      | plastic sync down --project global |
-| intent new Alpha                   | intent link 1 chain 9 | 1    | no intent 9 in this store                            | none                               |
-| intent new Alpha ; intent new Beta | intent link 1 likes 2 | 2    | KIND takes cites, supersedes, answers, source, chain | none                               |
+| setup                              | call                  | exit | result                                               | next line         |
+| ---------------------------------- | --------------------- | ---- | ---------------------------------------------------- | ----------------- |
+| intent new Alpha ; intent new Beta | intent link 1 cites 2 | 0    | link: 1 cites 2                                      | plastic sync down |
+| intent new Alpha                   | intent link 1 chain 9 | 1    | no intent 9 in this store                            | none              |
+| intent new Alpha ; intent new Beta | intent link 1 likes 2 | 2    | KIND takes cites, supersedes, answers, source, chain | none              |

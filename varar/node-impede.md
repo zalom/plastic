@@ -4,7 +4,7 @@
 
 Each row gives the setup, the call, the exit code, the result and the next line:
 
-| setup | call | exit | result | next line |
-| --- | --- | --- | --- | --- |
-| intent new Alpha ; write store/1--alpha/spec.md "# Spec\n\n## Done criteria\n\n- [tests-pass] tests pass\n" ; sync up ; node add 1 Build --criterion tests-pass ; node claim 1 n1 | node impede 1 n1 "no access to the host" | 0 | node: n1 impeded | plastic node resolve 1 n1 TEXT --project global |
-| intent new Alpha ; write store/1--alpha/spec.md "# Spec\n\n## Done criteria\n\n- [tests-pass] tests pass\n" ; sync up ; node add 1 Build --criterion tests-pass | node impede 1 n1 "no access to the host" | 1 | node n1 is open; it cannot move to impeded | none |
+| setup                                                                                                                                                                             | call                                     | exit | result                                     | next line                      |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- | ---- | ------------------------------------------ | ------------------------------ |
+| intent new Alpha ; write store/1--alpha/spec.md "# Spec\n\n## Done criteria\n\n- [tests-pass] tests pass\n" ; sync up ; node add 1 Build --criterion tests-pass ; node claim 1 n1 | node impede 1 n1 "no access to the host" | 0    | node: n1 impeded                           | plastic node resolve 1 n1 TEXT |
+| intent new Alpha ; write store/1--alpha/spec.md "# Spec\n\n## Done criteria\n\n- [tests-pass] tests pass\n" ; sync up ; node add 1 Build --criterion tests-pass                   | node impede 1 n1 "no access to the host" | 1    | node n1 is open; it cannot move to impeded | none                           |

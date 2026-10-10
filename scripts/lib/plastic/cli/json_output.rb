@@ -11,7 +11,11 @@ module Plastic
 
       def raw(text) = tap { result.line(text) }
 
+      def rows(entries) = row("rows", entries.map { |label, value| { label.delete_suffix(":") => value } })
+
       private
+
+      def diagnose(*_lines) = nil
 
       def print_answer(project)
         out.puts JSON.pretty_generate(result.document(project))

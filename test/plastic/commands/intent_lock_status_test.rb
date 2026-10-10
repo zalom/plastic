@@ -25,7 +25,7 @@ class IntentLockStatusTest < Plastic::TestCase
 
     result = call("1")
 
-    assert_equal [0, "next: plastic auto 1 --project global", ""], [result.code, next_line(result), result.err]
+    assert_equal [0, "next: plastic auto 1", ""], [result.code, next_line(result), result.err]
     assert_includes result.out, "lock: none\n"
   end
 
@@ -35,7 +35,7 @@ class IntentLockStatusTest < Plastic::TestCase
 
     result = call("1")
 
-    assert_equal [0, "next: plastic intent brief 1 --project global"], [result.code, next_line(result)]
+    assert_equal [0, "next: plastic intent brief 1"], [result.code, next_line(result)]
     assert_includes result.out, "lock: session s-2, mode auto"
   end
 

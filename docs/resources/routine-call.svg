@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 1740" role="img" aria-label="The events of one call of plastic intent end, from the top down. The call opens the kernel, which opens the databases and the routine run. Then Find the intent, Check the write lock and Check the ending run in turn; each gate that fails stops the call in the right column with exit 1 or exit 3. Check the ending ends on written or missing. On written, Close the intent closes the intent, drops the lock and writes the day ledger line, and the call finishes. On missing, the agent writes the outcome, and the call hands off."><defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#1f2328"/></marker></defs><rect x="40" y="20" width="700" height="44" rx="6" style="fill:#FFFFFF;stroke:#1A1D23" stroke-width="2.4"/>
-<text x="390.0" y="40" font-size="13" font-weight="700" text-anchor="middle" fill="#1f2328">plastic intent end 12 --as delivered</text>
+<text x="390.0" y="40" font-size="13" font-weight="700" text-anchor="middle" fill="#1f2328">plastic intent end 12</text>
 <polyline points="80,64 80,94" fill="none" stroke="#1f2328" stroke-width="1.3" marker-end="url(#ah)"/>
 <text x="790" y="88" font-size="12" font-weight="700" text-anchor="start" style="fill:#3D434E">Where the call stops</text>
 <rect x="40" y="96" width="700" height="56" rx="6" style="fill:#EDEBE6;stroke:#6B7285" stroke-width="1.3"/>
@@ -145,10 +145,10 @@
 <rect x="60" y="1569" width="660" height="75" rx="18" style="fill:#FFFFFF;stroke:#1A1D23" stroke-width="2.4"/>
 <text x="78" y="1589" font-size="12.5" font-weight="700" text-anchor="start" fill="#1f2328">Handed off, exit 0</text>
 <text x="78" y="1607" font-size="10.5" font-weight="400" text-anchor="start" fill="#1f2328" style="font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-ligatures:none">prints the steps that are left, numbered</text>
-<text x="78" y="1622" font-size="10.5" font-weight="400" text-anchor="start" fill="#1f2328" style="font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-ligatures:none">next: plastic intent end 12 --as delivered</text>
+<text x="78" y="1622" font-size="10.5" font-weight="400" text-anchor="start" fill="#1f2328" style="font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-ligatures:none">next: plastic intent end 12</text>
 <text x="78" y="1637" font-size="10.5" font-weight="400" text-anchor="start" fill="#1f2328" style="font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-ligatures:none">because: the intent closes once its outcome is recorded</text>
 <rect x="60" y="1656" width="660" height="60" rx="18" style="fill:#FFFFFF;stroke:#1A1D23" stroke-width="2.4"/>
 <text x="78" y="1676" font-size="12.5" font-weight="700" text-anchor="start" fill="#1f2328">Finished, exit 0, once every step is done</text>
-<text x="78" y="1694" font-size="10.5" font-weight="400" text-anchor="start" fill="#1f2328" style="font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-ligatures:none">next: plastic intent end 12 --as delivered</text>
+<text x="78" y="1694" font-size="10.5" font-weight="400" text-anchor="start" fill="#1f2328" style="font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-ligatures:none">next: plastic intent end 12</text>
 <text x="78" y="1709" font-size="10.5" font-weight="400" text-anchor="start" fill="#1f2328" style="font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;font-variant-ligatures:none">because: the outcome is recorded; the next call closes the intent</text>
 <polyline points="20,964 20,1396" fill="none" stroke="#1f2328" stroke-width="1.3"/></svg>

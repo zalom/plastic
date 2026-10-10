@@ -200,8 +200,8 @@ plastic intent link 12 cites 7        # Link intent 12 to intent 7
 plastic intent unlink 12 cites 7 --dry-run   # Preview the removal of a link
 plastic intent archive 12 --dry-run   # Preview an archive
 plastic intent unarchive 12             # Restore an archived intent
-plastic intent end 12 --judge tool --evidence completion.json  # Close as delivered, after the merge
-plastic intent end 12 --abandoned                  # Close as abandoned; outcome.md says why
+plastic intent end 12                   # Close as delivered, after the merge
+plastic intent abandon 12               # Close as abandoned
 ```
 
 ### Graphs and roadmaps
@@ -216,7 +216,6 @@ plastic node remove 12 n3 --dry-run   # Preview a node removal
 plastic edge remove 12 n2 n3 --dry-run   # Preview an edge removal
 plastic roadmap next                  # The roadmap most worth continuing
 plastic roadmap show SLUG             # The state screen of one roadmap
-plastic roadmap show SLUG --dry-run   # The same call in a disposable copy
 plastic roadmap check SLUG            # Find cycles and dangling ids in the graph
 plastic roadmap drop SLUG ITEM --dry-run        # Preview a dropped item
 plastic roadmap edge remove SLUG FROM TO --dry-run   # Preview an edge removal

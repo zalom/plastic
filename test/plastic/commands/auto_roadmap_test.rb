@@ -66,7 +66,7 @@ class AutoRoadmapTest < Plastic::TestCase
 
     result = call("r1")
 
-    assert_equal [0, [], "next: plastic roadmap open r1 a --project global"], [result.code, lock_rows, next_line(result)]
+    assert_equal [0, [], "next: plastic roadmap open r1 a"], [result.code, lock_rows, next_line(result)]
   end
 
   def test_a_resumed_roadmap_call_never_arms_a_stale_intent
@@ -79,6 +79,6 @@ class AutoRoadmapTest < Plastic::TestCase
 
     result = call("r1")
 
-    assert_equal [1, 0, [], "next: plastic roadmap open r1 b --project global"], [failed.code, result.code, lock_rows, next_line(result)]
+    assert_equal [1, 0, [], "next: plastic roadmap open r1 b"], [failed.code, result.code, lock_rows, next_line(result)]
   end
 end

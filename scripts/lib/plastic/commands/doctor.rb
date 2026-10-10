@@ -5,7 +5,7 @@ require_relative "../routine"
 module Plastic
   module Commands
     class Doctor < Routine
-      graphless
+      opens_no_store
 
       option :harness_name, switch: "--harness NAME", text: "the harness to check, such as claude-code; the one the call runs in when left out"
 

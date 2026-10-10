@@ -12,7 +12,7 @@ module Plastic
       "doctor" => ["Commands::Doctor", "Check the installation, the databases and the hooks of this harness, and name each repair"],
       "install" => ["Commands::Install", "Install the core files and register Plastic with agents"],
       "update" => ["Commands::Update", "Sync a newer package into the home or name the installer command"],
-      "rollback" => ["Commands::Rollback", "List the version history or name the command that restores one"],
+      "rollback" => ["Commands::Rollback", "Switch the active release back to the previous one or to a named installed one"],
       "uninstall" => ["Commands::Uninstall", "Remove Plastic from agents and keep the home"],
 
       # Storage

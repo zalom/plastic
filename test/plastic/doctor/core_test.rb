@@ -69,6 +69,17 @@ class DoctorCoreTest < Plastic::TestCase
     assert_equal 3, check("store #{SLUG}:").value.scan("is missing").size
   end
 
+  def test_a_missing_global_store_names_the_reinstall
+    FileUtils.rm_rf(File.join(@plastic_home, "stores", "global"))
+    global = check("global store:")
+
+    assert_equal ["#{File.join(@plastic_home, "stores", "global")} is missing", "plastic install --reinstall"], [global.value, global.repair]
+  end
+
+  def test_a_present_global_store_says_ok
+    assert_nil check("global store:").repair
+  end
+
   def test_a_missing_plastic_md_names_the_reinstall
     File.delete(File.join(@plastic_home, "PLASTIC.md"))
 

@@ -25,8 +25,13 @@ module Plastic
       def launcher(event)
         tokens = CodexHookCommand.words(command)
         path = tokens.first.to_s
-        expected = Hooks::Entries::EVENTS.fetch(event).split + %w[--harness codex]
+        expected = Hooks::Entries::EVENTS.fetch(event).then { |words| format(words, "codex") }.split
         expand(path) if CodexHookCommand.plastic?(path) && tokens.drop(1) == expected
+      end
+
+      def arguments
+        tokens = CodexHookCommand.words(command)
+        tokens.drop(1) if CodexHookCommand.plastic?(expand(tokens.first.to_s))
       end
 
       private

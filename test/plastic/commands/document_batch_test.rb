@@ -37,6 +37,7 @@ class DocumentBatchTest < Plastic::TestCase
   end
 
   def test_batch_fails_on_a_missing_reference_with_exit_1
+    write_document("global", "1", "present.md", "here")
     result = plastic("document", "batch", "plastic://global/1/missing.md", table: Plastic::CLI::TABLE)
 
     assert_call result, code: 1, err: /document/

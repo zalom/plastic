@@ -17,13 +17,13 @@ class NodeFailTest < Plastic::TestCase
 
     result = cli("node", "fail", "1", "n1", "boom")
 
-    assert_call result, code: 0, out: "node: n1 failed\nwrote:  1 routine run in local.db\n        1 node in work_graph.db\nfiles:  store/1--alpha/graph.json\n\nnext: plastic node release 1 n1 --project global\nbecause: node n1 is failed\n"
+    assert_call result, code: 0, out: "node: n1 failed\nwrote:  1 routine run in local.db\n        1 node in work_graph.db\nfiles:  store/1--alpha/graph.json\n\nnext: plastic node release 1 n1\nbecause: node n1 is failed\n"
   end
 
   def test_failing_an_open_node_is_refused
     result = cli("node", "fail", "1", "n1", "boom")
 
-    assert_call result, code: 1, out: RUN_ROW, err: "plastic: code_fail_node, gate: node n1 is open; it cannot move to failed\n"
+    assert_call result, code: 1, out: RUN_ROW, err: "plastic: node n1 is open; it cannot move to failed\n"
   end
 
   def test_a_refused_move_moves_on_the_next_call
@@ -38,7 +38,7 @@ class NodeFailTest < Plastic::TestCase
   def test_failing_a_missing_node_names_it
     result = cli("node", "fail", "1", "n9", "boom")
 
-    assert_call result, code: 1, out: RUN_ROW, err: "plastic: code_fail_node, gate: no node n9 in intent 1\n"
+    assert_call result, code: 1, out: RUN_ROW, err: "plastic: no node n9 in intent 1\n"
   end
 
   def test_a_move_takes_the_intent_the_node_and_the_reason

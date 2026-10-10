@@ -2,6 +2,7 @@
 
 require_relative "../code_workflow"
 require_relative "../graph/retrieval_graph"
+require_relative "passage_rows"
 require_relative "search_query"
 
 module Plastic
@@ -16,7 +17,7 @@ module Plastic
       forget_stop :problem
 
       read "search the indexed passages" do |context|
-        context.row("results", SearchQuery.new(context).rows)
+        context.row("rows", PassageRows.new.call(SearchQuery.new(context).rows))
       rescue Graph::RetrievalGraph::MaintenanceRequired => error
         context[:problem] = error.message
       end

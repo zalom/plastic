@@ -10,7 +10,7 @@ class RoadmapNewTest < Plastic::TestCase
     result = call("r1", "--title", "Make it useful", "--goal", "Close the blockers")
 
     assert_equal [0, "Make it useful", "Close the blockers"], [result.code, *store_graphs.retrieval.roadmap("r1").to_h.values_at(:title, :goal)]
-    assert_includes result.out, "next: plastic roadmap batch r1 1 --project global"
+    assert_includes result.out, "next: plastic roadmap batch r1 1"
   end
 
   def test_a_roadmap_with_no_title_is_titled_by_its_name

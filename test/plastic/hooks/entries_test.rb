@@ -25,7 +25,7 @@ class EntriesTest < Minitest::Test
 
     assert_equal [%(env -u RUBYOPT "#{COMMAND}" hook resume --harness claude-code || true)], commands_for(@settings["hooks"], "SessionStart")
     assert_equal [%(env -u RUBYOPT "#{COMMAND}" hook record --harness claude-code || true)], commands_for(@settings["hooks"], "Stop")
-    assert_equal [%(env -u RUBYOPT "#{COMMAND}" hook end --harness claude-code || true)], commands_for(@settings["hooks"], "SessionEnd")
+    assert_equal [%(env -u RUBYOPT "#{COMMAND}" hook end || true)], commands_for(@settings["hooks"], "SessionEnd")
   end
 
   def test_owns_its_hook_commands_and_no_one_elses

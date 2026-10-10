@@ -39,7 +39,7 @@ class ShowBriefTest < Plastic::TestCase
     write("#{intent.dir}/spec.md", "# Spec\n\n## Done criteria\n- It works\n")
     sync_up
 
-    assert_equal "spec: #{intent.dir}/spec.md; the done criteria are the bullets under its \"## Done criteria\" heading", spec_line(brief.last)
+    assert_equal "spec: #{intent.dir}/spec.md; the done criteria are the bullets under its \"## Done criteria\" heading, each written - [c1] text", spec_line(brief.last)
   end
 
   def test_superseded_rulings_and_ready_nodes_are_listed

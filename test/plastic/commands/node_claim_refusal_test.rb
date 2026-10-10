@@ -27,7 +27,7 @@ class NodeClaimRefusalTest < Plastic::TestCase
 
     assert_equal 1, result.code
     assert_equal RUN_ROW, result.out
-    assert_equal "plastic: code_claim_node, gate: node n1 is done; it cannot move to claimed\n", result.err
+    assert_equal "plastic: node n1 is done; it cannot move to claimed\n", result.err
   end
 
   def test_claiming_a_needs_info_node_is_refused
@@ -40,7 +40,7 @@ class NodeClaimRefusalTest < Plastic::TestCase
 
     assert_equal 1, result.code
     assert_equal RUN_ROW, result.out
-    assert_equal "plastic: code_claim_node, gate: node n1 is needs_info; it cannot move to claimed\n", result.err
+    assert_equal "plastic: node n1 is needs_info; it cannot move to claimed\n", result.err
   end
 
   def test_claiming_a_removed_node_is_refused
@@ -52,7 +52,7 @@ class NodeClaimRefusalTest < Plastic::TestCase
 
     assert_equal 1, result.code
     assert_equal RUN_ROW, result.out
-    assert_equal "plastic: code_claim_node, gate: node n1 is removed; it cannot move to claimed\n", result.err
+    assert_equal "plastic: node n1 is removed; it cannot move to claimed\n", result.err
   end
 
   def test_claiming_an_already_claimed_node_is_refused

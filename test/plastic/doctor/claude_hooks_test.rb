@@ -76,10 +76,31 @@ class DoctorClaudeHooksTest < Plastic::TestCase
     launcher = File.join(@home, "bin", "plastic")
     write(launcher, "#!/bin/sh\n")
     File.chmod(0o755, launcher)
-    write_hooks(Plastic::Hooks::Entries::EVENTS.to_h { |event, words| [event, "env -u RUBYOPT \"#{launcher}\" #{words} || true"] })
+    write_hooks(Plastic::Hooks::Entries::EVENTS.to_h { |event, words| [event, "env -u RUBYOPT \"#{launcher}\" #{format(words, "claude-code")} || true"] })
 
     assert_equal(["ok, plastic"] * 3, checks.map(&:value))
   end
+
+  def test_a_launcher_whose_end_entry_still_names_a_harness_is_drift_with_its_repair
+    write_hooks(launcher_lines.merge("SessionEnd" => "\"#{plastic_launcher}\" hook end --harness claude-code"))
+
+    assert_equal ["names the stale command line hook end --harness claude-code", REPAIR], check("SessionEnd").to_h.values_at(:value, :repair)
+  end
+
+  def test_a_launcher_whose_resume_entry_names_no_harness_is_drift
+    write_hooks(launcher_lines.merge("SessionStart" => "\"#{plastic_launcher}\" hook resume"))
+
+    assert_equal REPAIR, check("SessionStart").repair
+  end
+
+  def plastic_launcher
+    File.join(@home, "bin", "plastic").tap do |launcher|
+      write(launcher, "#!/bin/sh\n")
+      File.chmod(0o755, launcher)
+    end
+  end
+
+  def launcher_lines = Plastic::Hooks::Entries::EVENTS.to_h { |event, words| [event, "\"#{plastic_launcher}\" #{format(words, "claude-code")}"] }
 
   def test_a_path_from_the_home_folder_is_read_under_the_home
     write_hooks(Plastic::Hooks::Entries::EVENTS.keys.to_h { |event| [event, "~/.claude/hooks/plastic-resume"] })

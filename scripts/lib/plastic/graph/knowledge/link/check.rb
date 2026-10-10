@@ -12,6 +12,11 @@ module Plastic
         class Check
           ALL_SQL = "SELECT * FROM links WHERE origin_id = :origin ORDER BY from_ref, to_ref, kind"
 
+          def self.summary(count)
+            noun = (count == 1) ? "link names" : "links name"
+            "#{count} #{noun} an intent or a ruling this store lacks"
+          end
+
           def initialize(databases, retrieval)
             @databases = databases
             @retrieval = retrieval

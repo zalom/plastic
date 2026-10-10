@@ -17,7 +17,7 @@ class WorkflowSearchTest < Plastic::TestCase
 
     outcome, context = search([])
 
-    assert_equal [:done, ["evidence.md"]], [outcome, printed_row(context, "results").map { |row| row.fetch("path") }]
+    assert_equal [:done, ["evidence.md"]], [outcome, printed_row(context, "rows").map { |row| row.fetch("path") }]
   end
 
   def test_a_store_without_its_databases_fails_the_call

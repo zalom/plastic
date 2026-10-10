@@ -38,4 +38,11 @@ class DoctorTest < Plastic::TestCase
 
     assert_equal "version:", checks.first.label
   end
+
+  def test_a_broken_home_names_repair_commands_and_never_plastic_next
+    repairs = Plastic::Doctor.run(scope, harness: "claude-code").filter_map(&:repair).uniq
+
+    refute_empty repairs
+    refute(repairs.any? { |repair| repair.include?("plastic next") })
+  end
 end

@@ -51,7 +51,7 @@ class InstallerCoreHooksTest < Minitest::Test
     settings = install({})
     kernel = %("#{File.join(@home, ".plastic", "bin", "plastic")}")
     expected = { "SessionStart" => "#{kernel} hook resume --harness claude-code",
-                 "Stop" => "#{kernel} hook record --harness claude-code", "SessionEnd" => "#{kernel} hook end --harness claude-code" }
+                 "Stop" => "#{kernel} hook record --harness claude-code", "SessionEnd" => "#{kernel} hook end" }
 
     assert_empty(expected.reject { |event, text| commands(settings, event).any? { |cmd| cmd.include?(text) } })
   end
@@ -202,6 +202,20 @@ class InstallerCoreBootstrapTest < Minitest::Test
     call = KernelCommand.new(@home).run("intent", "new", "First")
 
     assert_equal [0, true], [call.code, Dir.exist?(global("store", "1--first"))]
+  end
+
+  def test_a_first_install_leaves_the_store_readable_by_search
+    bootstrap
+    call = KernelCommand.new(@home).run("search", "nothing-matches-this")
+
+    assert_equal [0, ""], [call.code, call.err]
+  end
+
+  def test_a_first_install_leaves_the_store_readable_by_document_get
+    bootstrap
+    call = KernelCommand.new(@home).run("document", "get", "plastic://global/1/spec.md")
+
+    refute_includes call.err, "maintenance is required"
   end
 
   def test_a_first_install_over_a_legacy_home_creates_no_new_global_store

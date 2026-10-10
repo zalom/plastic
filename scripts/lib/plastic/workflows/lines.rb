@@ -5,6 +5,8 @@ module Plastic
     # The print lines the show workflows share: one node, one ready node,
     # the rulings of an intent, each superseded one marked.
     module Lines
+      CRITERIA = 'the done criteria are the bullets under its "## Done criteria" heading, each written - [c1] text'
+
       def self.node(node) = "node: #{node.id} #{node.state} #{node.title}"
 
       def self.ready_node(node) = "ready: #{node.id} #{node.title}"

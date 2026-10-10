@@ -6,6 +6,6 @@ that store. Use `--project` to select another store.
 
 Each row gives the setup, the call, the exit code, the result and the next line:
 
-| setup | call | exit | result | next line |
-| --- | --- | ---: | --- | --- |
-| none | sync up --dry-run | 0 | preview complete; the original store was not changed | plastic sync up --project global |
+| setup | call              | exit | result                                               | next line       |
+| ----- | ----------------- | ---- | ---------------------------------------------------- | --------------- |
+| none  | sync up --dry-run | 0    | preview complete; the original store was not changed | plastic sync up |

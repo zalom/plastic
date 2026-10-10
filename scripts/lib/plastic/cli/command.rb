@@ -78,7 +78,7 @@ module Plastic
       # The rows go out before any error line, so a failed call still says
       # what it wrote.
       def flush
-        output.flush(scope.slug)
+        output.flush(scope.named_slug)
         self
       end
 
@@ -90,7 +90,7 @@ module Plastic
         message = error.message
         case error
         when Refusal, Failure then stop(error)
-        when Graph::MissingStore then stop(Failure.new(message, next_command: error.next_command))
+        when Graph::MissingStore then stop(Failure.new(message, next_command: error.next_command(scope.projects[error.store])))
         else
           output.usage(message, usage_line)
           USAGE
@@ -98,7 +98,7 @@ module Plastic
       end
 
       def stop(error)
-        output.flush_rows(scope.slug) unless output.json?
+        output.flush_rows(scope.named_slug) unless output.json?
         error.report(output)
         flush
         error.exit_code

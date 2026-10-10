@@ -22,7 +22,7 @@ class OpenRoadmapItemTest < Plastic::TestCase
   end
 
   def test_a_blocked_item_is_refused_with_no_intent
-    item("b", after: ["a"])
+    item("b", needs: ["a"])
 
     outcome, = start("b")
 

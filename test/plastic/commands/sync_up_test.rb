@@ -16,7 +16,7 @@ class SyncUpTest < Plastic::TestCase
     legacy_metadata
 
     assert_call import, code: 0,
-      out: ["imported INDEX.md: 2 intents", "next: plastic next --project global\nbecause: the rows hold every file changed by hand\n"]
+      out: ["imported INDEX.md: 2 intents", "next: plastic next\nbecause: the rows hold every file changed by hand\n"]
   end
 
   def test_sync_up_imports_legacy_rulings_and_links_together

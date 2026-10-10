@@ -11,8 +11,7 @@ module Plastic
     # that gives the rule behind it. TextOutput prints them as lines and
     # JsonOutput, for `--json`, as one document with stable keys. Results go
     # to the output stream and diagnostics to the error stream, so a caller
-    # can pipe one without the other. Nothing here colors its output. The
-    # report shape is in docs/reference/report.md.
+    # can pipe one without the other. Nothing here colors its output.
     class Output
       def initialize(out:, err:)
         @out = out
@@ -28,6 +27,8 @@ module Plastic
       def flush_rows(_project = nil) = self
 
       def row(label, value) = tap { @result.row(label, value) }
+
+      def rows(entries) = tap { entries.each { |label, value| row(label, value) } }
 
       def next_step(command, because:) = tap { @result.offer(command, because) }
 
@@ -48,23 +49,25 @@ module Plastic
       end
 
       def usage(message, banner)
-        @err.puts "plastic: #{message}", banner
+        diagnose("plastic: #{message}", banner)
         error_document(message, "usage", Offer.none(message))
       end
 
       def refused(message, offer = Offer.none(message))
-        @err.puts "plastic: refused, #{message}", "This step belongs to the owner. Stop and ask; do not retry with a flag."
+        diagnose("plastic: refused, #{message}", "This step belongs to the owner. Stop and ask; do not retry with a flag.")
         error_document(message, "refused", offer)
       end
 
-      def failed(message, offer = Offer.none(message))
-        @err.puts "plastic: #{message}"
-        error_document(message, "failed", offer)
+      def failed(message, offer = Offer.none(message), source: nil)
+        diagnose("plastic: #{message}")
+        error_document(source ? "#{source}: #{message}" : message, "failed", offer)
       end
 
       private
 
       attr_reader :out, :result
+
+      def diagnose(*lines) = @err.puts(*lines)
 
       def error_document(_message, _kind, offer) = offer.apply(self)
     end

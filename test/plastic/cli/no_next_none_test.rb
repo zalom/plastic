@@ -5,6 +5,8 @@ require_relative "../../test_helper"
 class NoNextNoneTest < Plastic::TestCase
   def next_lines(result) = result.out.lines(chomp: true).grep(/\Anext: /)
 
+  def leave_as_the_installer_does = Plastic::Graph.create(home: @plastic_home, store: "global")
+
   def test_nothing_open_prints_no_next_line_and_says_why
     result = plastic("next", table: Plastic::CLI::TABLE)
 
@@ -36,6 +38,21 @@ class NoNextNoneTest < Plastic::TestCase
 
     assert_nil answer.fetch("next")
     refute_equal "none", answer.fetch("next")
+  end
+
+  def test_a_search_with_no_hit_on_a_fresh_home_prints_no_next_line_and_exits_0
+    leave_as_the_installer_does
+    result = plastic("search", "nothing-matches-this", table: Plastic::CLI::TABLE)
+
+    assert_equal [0, [], ""], [result.code, next_lines(result), result.err]
+  end
+
+  def test_a_document_lookup_that_finds_nothing_prints_no_next_line
+    leave_as_the_installer_does
+    result = plastic("document", "get", "plastic://global/1/spec.md", table: Plastic::CLI::TABLE)
+
+    assert_equal [1, []], [result.code, next_lines(result)]
+    refute_includes result.err, "maintenance is required"
   end
 
   def test_no_command_text_output_has_no_closing_next_line

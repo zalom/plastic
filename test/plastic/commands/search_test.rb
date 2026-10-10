@@ -40,7 +40,7 @@ module SearchTestAssertionSupport
     assert_fused_scores(result)
   end
 
-  def fused_rows(result) = JSON.parse(result.out).fetch("result").fetch("results")
+  def fused_rows(result) = JSON.parse(result.out).fetch("result").fetch("rows")
 
   def search_rows(query)
     result = plastic("search", query, "--json", table: Plastic::CLI::TABLE)
@@ -51,9 +51,9 @@ module SearchTestAssertionSupport
 
   def assert_fused_stores(result) = assert_equal(%w[global other third], fused_rows(result).map { |row| row.fetch("store") })
 
-  def assert_fused_ranks(result) = assert_equal([1, 1, 1], fused_rows(result).map { |row| row.fetch("local_rank") })
+  def assert_fused_ranks(result) = assert_equal([1, 2, 3], fused_rows(result).map { |row| row.fetch("rank") })
 
-  def assert_fused_scores(result) = assert_equal([1.0 / 61, 1.0 / 61, 1.0 / 61], fused_rows(result).map { |row| row.fetch("rrf_score") })
+  def assert_fused_scores(result) = assert(fused_rows(result).none? { |row| row.key?("score") || row.key?("rrf_score") || row.key?("body") })
 
   def assert_scope_result(blank, unknown)
     assert_equal 0, blank.code
@@ -78,7 +78,7 @@ module SearchTestAssertionSupport
 
   def assert_centered_excerpt(result)
     assert_equal 0, result.code
-    excerpt = JSON.parse(result.out).fetch("result").fetch("results").fetch(0).fetch("body")
+    excerpt = JSON.parse(result.out).fetch("result").fetch("rows").fetch(0).fetch("passage")
 
     assert_includes excerpt, "needle"
     assert_includes excerpt, "evidence"
@@ -86,7 +86,7 @@ module SearchTestAssertionSupport
   end
 
   def assert_archived_result(result, before)
-    hit = JSON.parse(result.out).fetch("result").fetch("results").fetch(0)
+    hit = JSON.parse(result.out).fetch("result").fetch("rows").fetch(0)
 
     assert_equal [0, ""], [result.code, result.err]
     assert hit.fetch("archived")
@@ -135,6 +135,22 @@ class SearchScopeTest < Plastic::TestCase
     assert_fused_rows(result)
   end
 
+  def test_a_hit_prints_its_rank_passage_and_uri_first
+    write_document("global", "global evidence")
+
+    hit = search_rows("evidence").fetch(0)
+
+    assert_equal %w[rank passage uri], hit.keys.first(3)
+    assert_equal [1, "global evidence"], hit.values_at("rank", "passage")
+    assert_match(%r{\Aplastic://global/1/evidence\.md\?revision=}, hit.fetch("uri"))
+  end
+
+  def test_a_hit_prints_no_body_and_no_score
+    write_document("global", "global evidence")
+
+    assert(search_rows("evidence").fetch(0).keys.none? { |key| %w[body score rrf_score local_rank sha256].include?(key) })
+  end
+
   def test_plain_output_prints_readable_lines
     write_document("global", "global evidence")
 
@@ -160,7 +176,7 @@ class SearchScopeTest < Plastic::TestCase
     rows = search_rows("needle")
 
     assert_equal 20, rows.length
-    assert(rows.all? { |row| row.fetch("body").length <= 320 })
+    assert(rows.all? { |row| row.fetch("passage").length <= 320 })
   end
 
   def test_blank_scope_falls_back_and_unknown_scope_fails
@@ -175,7 +191,7 @@ class SearchScopeTest < Plastic::TestCase
   def test_centers_an_accent_insensitive_fts_match
     write_document("global", ("prefix " * 100) + "café")
     result = plastic("search", "cafe", "--json", table: Plastic::CLI::TABLE)
-    excerpt = JSON.parse(result.out).fetch("result").fetch("results").fetch(0).fetch("body")
+    excerpt = JSON.parse(result.out).fetch("result").fetch("rows").fetch(0).fetch("passage")
 
     assert_equal 0, result.code
     assert_includes excerpt, "café"
@@ -186,7 +202,7 @@ class SearchScopeTest < Plastic::TestCase
     body = ("é " * 180) + "café"
     write_document("global", body)
 
-    excerpt = search_rows("cafe").fetch(0).fetch("body")
+    excerpt = search_rows("cafe").fetch(0).fetch("passage")
 
     assert_operator excerpt.length, :<=, 320
     assert_includes excerpt, "café"

@@ -10,7 +10,7 @@ class CheckRoadmapTest < Plastic::TestCase
     super
     work = store_graphs.work
     work.write_batch("r1", 1, fields: Fields.new(title: "T", goal: "G", done: "d"))
-    work.add_item("r1", "a", 1, fields: Fields.new(title: "A", goal: nil, done: nil), after: [])
+    work.add_item("r1", "a", 1, fields: Fields.new(title: "A", goal: nil, done: nil), needs: [])
   end
 
   def check(slug = "r1") = run_workflow(Plastic::Workflows::CheckRoadmap, slug:)

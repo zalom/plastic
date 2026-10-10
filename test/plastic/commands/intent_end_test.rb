@@ -106,6 +106,16 @@ class IntentEndTest < Plastic::TestCase
     assert_includes result.out, "plastic intent judge 1"
   end
 
+  def test_the_handoff_because_names_the_missing_outcome_and_not_the_judge
+    accepted_intent(records: nil)
+    review_off
+
+    because = finish.out.lines(chomp: true).grep(/\Abecause:/).first
+
+    assert_match(/outcome\.md/, because)
+    refute_match(/judged/, because)
+  end
+
   def test_the_chain_has_no_problems
     assert_empty Plastic::Commands::IntentEnd.chain_problems
   end

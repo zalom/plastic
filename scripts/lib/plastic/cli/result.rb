@@ -9,7 +9,7 @@ module Plastic
     # gives the rule behind it.
     class Result
       # The commands whose next: line keeps --project when the call named one.
-      SCOPED = /\Aplastic (?:intent|auto|roadmap|continue|next|search|query|graph|node|edge|doctor|sync)\b/
+      SCOPED = /\Aplastic (?:intent|auto|roadmap|next|search|graph|node|edge|doctor|sync)\b/
 
       attr_reader :rows, :because
 

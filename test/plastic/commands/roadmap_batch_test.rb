@@ -16,13 +16,13 @@ class RoadmapBatchTest < Plastic::TestCase
 
     assert_call result, code: 0,
       out: "batch: r1 1 Wave one\nwrote:  1 routine run in local.db\n        1 batch in work_graph.db\nfiles:  roadmaps/r1.md\n\n" \
-           "next: plastic roadmap show r1 --project global\nbecause: batch 1 of r1 is written\n"
+           "next: plastic roadmap show r1\nbecause: batch 1 of r1 is written\n"
   end
 
   def test_a_batch_on_an_unknown_roadmap_exits_1_and_offers_roadmap_new
     result = call("ghost", "1", "--title", "T")
 
-    assert_equal [1, "next: plastic roadmap new ghost --project global"], [result.code, result.out.lines.grep(/^next:/).first&.chomp]
+    assert_equal [1, "next: plastic roadmap new ghost"], [result.code, result.out.lines.grep(/^next:/).first&.chomp]
     assert_includes result.err, "no roadmap ghost"
   end
 

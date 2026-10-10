@@ -3,6 +3,7 @@
 require_relative "../code_workflow"
 require_relative "../graph/knowledge/spec"
 require_relative "go_ahead"
+require_relative "lines"
 
 module Plastic
   module Workflows
@@ -25,6 +26,7 @@ module Plastic
 
       read "print the grilling method" do |context|
         context.print(File.read(GRILLING))
+        context.print("spec: #{Lines::CRITERIA}")
       end
 
       read "read the open decisions" do |context|

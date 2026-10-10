@@ -17,7 +17,7 @@ module Plastic
       step "add the item", done: ->(context) { !context.item.nil? || !context.problem.nil? } do |context|
         fields = Graph::Knowledge::Roadmap::Writer::Fields.new(title: context.title, goal: context.goal, done: context.done)
         item, problem, kind = context.work.add_item(context.slug, context.item_id, context.position.to_i,
-          fields:, after: context.needs)
+          fields:, needs: context.needs)
         context[:item] = item
         context[:problem] = problem
         context[:kind] = kind

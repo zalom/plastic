@@ -19,7 +19,7 @@ class RoadmapShowTest < Plastic::TestCase
   def test_show_on_a_missing_roadmap_names_it
     result = cli("roadmap", "show", "r9")
 
-    assert_call result, code: 1, out: "", err: "plastic: code_show_roadmap, gate: no roadmap r9\n"
+    assert_call result, code: 1, out: "", err: "plastic: no roadmap r9\n"
   end
 
   def test_a_hand_edited_roadmap_file_survives_the_call_and_no_row_is_added

@@ -11,7 +11,7 @@ module Plastic
 
       def call
         projects = scope.projects
-        projects.sort.each { |slug, path| output.raw("#{slug}: #{path}#{NO_STORE unless store?(slug)}") }
+        projects.sort.each { |slug, path| output.row("project", "#{slug}: #{path}#{NO_STORE unless store?(slug)}") }
         return output.next_step("plastic project new SLUG PATH", because: "no project is registered yet") if projects.empty?
 
         output.next_step("plastic status", because: "the projects are listed")

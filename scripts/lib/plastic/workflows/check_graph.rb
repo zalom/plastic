@@ -9,7 +9,7 @@ module Plastic
     class CheckGraph < CodeWorkflow
       [facts, steps, outcomes].each(&:clear)
 
-      sets :intent, :findings
+      sets :intent, :findings, :first
 
       read "find the intent" do |context|
         context[:intent] = context.retrieval.intent(context.intent_id)
@@ -31,7 +31,12 @@ module Plastic
 
       gate "see the findings above", stops: :failure, pass: ->(context) { context.findings.empty? }
 
-      outcome :done, offers: "plastic graph ready %{intent_id}", because: "no findings"
+      read "find the first ready node" do |context|
+        context[:first] = context.retrieval.ready_nodes(context.intent_id).first&.id
+      end
+
+      outcome :nothing, if: ->(context) { context.first.nil? }, offers: nil, because: "no node is ready to claim"
+      outcome :done, offers: "plastic node claim %{intent_id} %{first}", because: "node %{first} is ready"
     end
   end
 end

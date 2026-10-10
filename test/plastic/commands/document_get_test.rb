@@ -51,6 +51,8 @@ class DocumentGetTest < Plastic::TestCase
   end
 
   def test_a_reference_to_a_missing_document_fails
+    retrieval.backfill
+
     assert_call get("plastic://global/1/missing.md"), code: 1, err: /document/
   end
 

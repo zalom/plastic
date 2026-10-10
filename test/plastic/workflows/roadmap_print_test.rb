@@ -16,7 +16,7 @@ class RoadmapPrintTest < Plastic::TestCase
     roadmap(done: "it ships")
     store_graphs.work.write_batch("r1", 2, fields: roadmap_fields("Later"))
     item("a")
-    item("b", after: ["a"], batch: 2)
+    item("b", needs: ["a"], batch: 2)
 
     assert_equal ["batch 1: T - G", "  done: it ships", "item a: A - ready, needs nothing",
       "batch 2: Later", "item b: B - blocked, needs a"], printed

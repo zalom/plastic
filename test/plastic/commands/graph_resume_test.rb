@@ -120,7 +120,7 @@ class GraphResumeTest < Plastic::TestCase
     intent = ready_intent
     add_node(intent, "a")
 
-    assert_equal "next: plastic node claim 1 n1 --project global", next_line(call)
+    assert_equal "next: plastic node claim 1 n1", next_line(call)
     assert_equal next_line(plastic("next", table: Plastic::CLI::TABLE)), next_line(call)
   end
 

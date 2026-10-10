@@ -29,7 +29,7 @@ class KernelCommand
     end
 
     # The reason a stopped call gives, without the prefix that names the workflow.
-    def reason = err.lines.first.to_s.chomp.sub(/\Aplastic: (?:refused, |code_\w+, [^:]+: (?:Plastic::Invalid: )?)?/, "")
+    def reason = err.lines.first.to_s.chomp.sub(/\Aplastic: (?:refused, )?(?:Plastic::Invalid: )?/, "")
 
     # What the call did, then why it stopped, in one cell.
     def result = [*said, *(reason unless code.zero?)].join(" / ").then { |text| text.empty? ? "none" : text }

@@ -11,7 +11,7 @@ class KnowledgeRoadmapWriterTest < Plastic::TestCase
 
   def fields(title: nil, goal: nil, done: nil) = Plastic::Graph::Knowledge::Roadmap::Fields.new(title:, goal:, done:)
 
-  def item(name, after: nil) = @work.add_item("plan", name, 1, fields: fields(title: name.upcase), after:)
+  def item(name, needs: nil) = @work.add_item("plan", name, 1, fields: fields(title: name.upcase), needs:)
 
   def edges = @graphs.retrieval.roadmap_edges("plan").map { |edge| [edge.from, edge.to] }
 
@@ -32,7 +32,7 @@ class KnowledgeRoadmapWriterTest < Plastic::TestCase
   def test_items_take_the_next_position_in_their_batch_and_write_their_edges
     @work.write_batch("plan", 1, fields: fields)
     item("a")
-    added, problem, kind = item("b", after: "a")
+    added, problem, kind = item("b", needs: "a")
 
     assert_equal [2, nil, nil], [added.position, problem, kind]
     assert_equal [%w[a b]], edges
@@ -45,15 +45,15 @@ class KnowledgeRoadmapWriterTest < Plastic::TestCase
   def test_an_item_after_a_missing_item_fails
     @work.write_batch("plan", 1, fields: fields)
 
-    assert_equal [nil, "no item z on roadmap plan", :failure], item("a", after: "z")
+    assert_equal [nil, "no item z on roadmap plan", :failure], item("a", needs: "z")
   end
 
   def test_an_edge_that_would_loop_is_refused
     @work.write_batch("plan", 1, fields: fields)
     item("a")
-    item("b", after: "a")
+    item("b", needs: "a")
 
-    assert_equal [nil, "an edge from b to a would loop", :refusal], item("a", after: "b")
+    assert_equal [nil, "an edge from b to a would loop", :refusal], item("a", needs: "b")
     assert_equal [%w[a b]], edges
   end
 
@@ -61,7 +61,7 @@ class KnowledgeRoadmapWriterTest < Plastic::TestCase
     @work.write_batch("plan", 1, fields: fields)
     item("a")
 
-    assert_equal :refusal, item("a", after: "a").last
+    assert_equal :refusal, item("a", needs: "a").last
   end
 
   def test_dropping_an_item_marks_it_and_reports_whether_a_row_changed
@@ -75,7 +75,7 @@ class KnowledgeRoadmapWriterTest < Plastic::TestCase
   def test_removing_an_edge_reports_true_then_false
     @work.write_batch("plan", 1, fields: fields)
     item("a")
-    item("b", after: "a")
+    item("b", needs: "a")
 
     assert_equal [true, false], Array.new(2) { @work.remove_roadmap_edge("plan", "a", "b") }
   end

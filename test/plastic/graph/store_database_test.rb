@@ -41,10 +41,17 @@ class StoreDatabaseTest < Plastic::TestCase
     refute_includes columns.map { |column| column["name"] }, "store"
   end
 
-  def test_opening_a_knowledge_database_records_its_retrieval_schema_version
-    database = store_graphs.databases.fetch(:knowledge)
+  def retrieval_schema(graphs) = graphs.databases.fetch(:knowledge).rows("SELECT name, version, completed_at FROM retrieval_schema")
+
+  def test_opening_a_knowledge_database_records_its_retrieval_schema_version_without_completing_it
+    FileUtils.mkdir_p(File.join(@plastic_home, "stores", "opened"))
 
     assert_equal [{ "name" => "retrieval", "version" => 1, "completed_at" => nil }],
-      database.rows("SELECT name, version, completed_at FROM retrieval_schema")
+      retrieval_schema(Plastic::Graph.open(home: @plastic_home, store: "opened"))
+  end
+
+  def test_a_store_made_by_create_has_its_retrieval_backfill_complete
+    assert_equal [{ "name" => "retrieval", "version" => 1, "completed_at" => "complete" }],
+      retrieval_schema(Plastic::Graph.create(home: @plastic_home, store: "made"))
   end
 end

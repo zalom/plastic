@@ -55,7 +55,7 @@ class GraphCheckTest < Plastic::TestCase
 
     assert_equal 1, result.code
     assert_equal "finding: intent 1 names no done criterion\n", result.out
-    assert_equal "plastic: code_check_graph, gate: see the findings above\n", result.err
+    assert_equal "plastic: see the findings above\n", result.err
   end
 
   def test_retries_over_the_cap_is_a_finding
@@ -99,14 +99,33 @@ class GraphCheckTest < Plastic::TestCase
     assert_includes result.out, "no findings"
   end
 
-  def test_a_clean_intent_with_no_nodes_asks_for_the_map_before_planning
+  def test_a_clean_graph_offers_the_first_ready_node
+    intent = open_keyed_intent
+    add_node("a")
+    write_spec(intent, "# Spec\n\n## Done criteria\n- [done] ships\n")
+
+    result = call("1")
+
+    assert_match(/^next: plastic node claim 1 n1\b/, result.out)
+  end
+
+  def test_a_clean_intent_with_no_ready_node_has_no_next_line_and_a_reason
     intent = open_keyed_intent
     write_spec(intent, "# Spec\n\n## Done criteria\n- [done] ships\n")
 
     result = call("1")
 
     assert_equal [0, ""], [result.code, result.err]
-    assert_includes result.out, "Before you plan, fetch the architecture map as current as possible with an architecture mapping tool such as Enola, or map the code yourself; Plastic runs no tool."
-    assert_includes result.out, "plastic node add"
+    refute_match(/^next:/, result.out)
+  end
+
+  def test_a_clean_intent_with_no_ready_node_says_why_and_does_not_replan
+    intent = open_keyed_intent
+    write_spec(intent, "# Spec\n\n## Done criteria\n- [done] ships\n")
+
+    result = call("1")
+
+    assert_includes result.out, "because: no node is ready to claim"
+    refute_includes result.out, "Before you plan"
   end
 end

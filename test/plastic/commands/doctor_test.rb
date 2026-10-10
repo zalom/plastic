@@ -116,7 +116,7 @@ class CodexDoctorCommandTest < Plastic::TestCase
     repairs = JSON.parse(result.out).fetch("result").fetch("repair")
 
     assert_equal [1, ["plastic install --codex --reinstall"]], [result.code, repairs]
-    assert_includes result.err, DoctorCommandTest::GATE
+    assert_empty result.err
   end
 
   def test_a_damaged_codex_home_is_unchanged_after_the_doctor

@@ -47,6 +47,17 @@ class DeclarationsTest < Plastic::TestCase
     assert_includes error.message, "unknown graph weather"
   end
 
+  def test_opens_no_store_marks_a_command_that_opens_no_store
+    assert_equal [true, false], [tool { opens_no_store }.opens_no_store?, tool {}.opens_no_store?]
+  end
+
+  def test_no_source_names_the_old_graphless_declaration
+    sources = Dir[File.join(__dir__, "../../../scripts/**/*.rb")]
+
+    refute_empty sources
+    assert_empty sources.select { |path| File.read(path).include?("graphless") }
+  end
+
   def test_the_tool_name_is_the_words_the_table_gives_the_class
     assert_equal "intent new", Plastic::Commands::IntentNew.tool_name
   end

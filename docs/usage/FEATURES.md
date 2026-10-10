@@ -36,7 +36,7 @@ outer one. With neither, the global store answers.
 | `plastic next` | The next action in one line. `--why` adds the rule behind it. |
 | `plastic project list` | The registered projects with their paths, and `(no store)` for one whose store folder is missing. |
 | `plastic project new SLUG PATH` | Registers a project in `projects.yml`, keeping every other line, and leaves its store ready for `plastic intent new`. |
-| `plastic project links` | Lists each link whose local end names an intent or a ruling the store lacks, and fails with the count. |
+| `plastic project links` | Lists each link whose local end names an intent or a ruling the store lacks, and prints the count. |
 
 `continue` and `next` read the same frontier: the liveliest roadmap, its open batch, and the
 entries that are ready, in flight or blocked. With no roadmap, both name the first active
@@ -82,7 +82,6 @@ could not hold it safely.
 | `plastic intent unlink ID KIND TARGET --dry-run` | The links the removal would delete. |
 | `plastic intent archive ID --dry-run` | The files the archive would remove, and the rows it keeps. |
 | `plastic intent unarchive ID [--dry-run]` | The archived directory restored exactly as archived. |
-| `plastic roadmap show SLUG --dry-run` | The files the state screen would write. |
 | `plastic roadmap drop SLUG ITEM --dry-run` | The roadmap rows the dropped item would change. |
 | `plastic roadmap edge remove SLUG FROM TO --dry-run` | The roadmap edge rows the removal would delete. |
 

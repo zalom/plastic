@@ -40,7 +40,7 @@ plastic intent new "Add a --version flag that prints the current version"
 ```
 
 Do not write the intent file by hand. `plastic intent new` scaffolds it, so the file is
-complete and valid from the start. Every command ends with a `next:` line that names the
+complete and valid from the start. A command ends with a `next:` line that names the
 command to run after it.
 
 ## Step 3: Hand it to auto

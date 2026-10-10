@@ -7,8 +7,6 @@ module Plastic
   module Hooks
     # SessionEnd: sets the session's end time and the reason the event names.
     class End < Hook
-      option :harness, switch: "--harness NAME", text: "the harness calling this hook", default: "claude-code"
-
       def respond(event)
         return no_session unless session_id
 

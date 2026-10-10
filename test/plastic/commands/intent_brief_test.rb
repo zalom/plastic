@@ -32,6 +32,12 @@ class IntentBriefTest < Plastic::TestCase
     assert_includes result.out, "criterion: ships"
   end
 
+  def test_the_spec_line_shows_one_example_criterion
+    intent = briefed_intent
+
+    assert_includes call(intent.intent_id).out, "- [c1] "
+  end
+
   def test_names_each_goal_line_the_spec_holds
     intent = open_intent
     write_spec(intent, "# Spec\n\n## Goal\n\nClose the two blockers\nLock down guest orders\n\n## Done criteria\n- ships\n")

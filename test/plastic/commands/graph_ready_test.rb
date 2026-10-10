@@ -25,6 +25,7 @@ class GraphReadyTest < Plastic::TestCase
 
     assert_equal 0, result.code
     assert_includes result.out, "ready: n1 a"
+    assert_match(/^next: plastic node claim 1 n1\b/, result.out)
   end
 
   def test_a_node_whose_need_is_not_done_is_not_ready
@@ -36,7 +37,7 @@ class GraphReadyTest < Plastic::TestCase
     refute_includes result.out, "ready: n2 b"
   end
 
-  def test_claimed_work_with_no_worker_names_none
+  def test_claimed_work_leaves_nothing_ready_and_no_next_line
     two_linked_nodes
     plastic("node", "claim", "1", "n1", table: Plastic::CLI::TABLE)
     plastic("node", "done", "1", "n1", "ok", table: Plastic::CLI::TABLE)
@@ -44,7 +45,19 @@ class GraphReadyTest < Plastic::TestCase
 
     result = call("1")
 
-    assert_call result, code: 0, out: ["Continue node n2. Record the result"]
+    assert_equal [0, ""], [result.code, result.err]
+    refute_match(/^next:/, result.out)
+  end
+
+  def test_claimed_work_says_why_nothing_is_ready
+    two_linked_nodes
+    plastic("node", "claim", "1", "n1", table: Plastic::CLI::TABLE)
+    plastic("node", "done", "1", "n1", "ok", table: Plastic::CLI::TABLE)
+    plastic("node", "claim", "1", "n2", table: Plastic::CLI::TABLE)
+
+    result = call("1")
+
+    assert_includes result.out, "because: no node is ready to claim"
     refute_includes result.out, "ready:"
   end
 end

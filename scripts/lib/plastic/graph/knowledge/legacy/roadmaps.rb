@@ -55,7 +55,7 @@ module Plastic
           # An imported item keys by its intent id, so it names that intent when the store holds one.
           def add_item(graphs, slug, item, fields)
             id = item.item
-            graphs.work.add_item(slug, id, item.batch || 1, fields:, after: [])
+            graphs.work.add_item(slug, id, item.batch || 1, fields:, needs: [])
             graphs.work.open_item(slug, id, id) if graphs.retrieval.intent(id)
           end
 

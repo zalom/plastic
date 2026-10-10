@@ -15,7 +15,7 @@ class AutoWorktreeTest < Plastic::TestCase
 
     worktree = File.join(repo, ".claude", "worktrees", "1--alpha")
 
-    assert_equal [0, "next: plastic intent brief 1 --project global"], [result.code, next_line(result)]
+    assert_equal [0, "next: plastic intent brief 1"], [result.code, next_line(result)]
     assert_includes result.out, "worktree: #{worktree}\n"
     assert_includes result.out, "branch: plastic/1--alpha\n"
   end

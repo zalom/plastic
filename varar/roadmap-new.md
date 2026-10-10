@@ -4,8 +4,8 @@
 
 Each row gives the setup, the call, the exit code, the result and the next line:
 
-| setup            | call                                                          | exit | result                      | next line                                     |
-| ---------------- | ------------------------------------------------------------- | ---- | --------------------------- | --------------------------------------------- |
-| none             | roadmap new shop --title Shop --goal "guest checkout is safe" | 0    | roadmap: shop Shop          | plastic roadmap batch shop 1 --project global |
-| none             | roadmap new shop                                              | 0    | roadmap: shop shop          | plastic roadmap batch shop 1 --project global |
-| roadmap new shop | roadmap new shop                                              | 1    | roadmap shop already exists | plastic roadmap show shop --project global    |
+| setup            | call                                                          | exit | result                      | next line                    |
+| ---------------- | ------------------------------------------------------------- | ---- | --------------------------- | ---------------------------- |
+| none             | roadmap new shop --title Shop --goal "guest checkout is safe" | 0    | roadmap: shop Shop          | plastic roadmap batch shop 1 |
+| none             | roadmap new shop                                              | 0    | roadmap: shop shop          | plastic roadmap batch shop 1 |
+| roadmap new shop | roadmap new shop                                              | 1    | roadmap shop already exists | plastic roadmap show shop    |

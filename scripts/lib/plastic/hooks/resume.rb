@@ -9,11 +9,13 @@ module Plastic
   module Hooks
     # SessionStart: opens the session row, then prints the Recap the rows
     # alone carry, and one line naming plastic doctor when a doctor check
-    # fails. Nothing here is call memory: a hook keeps no routine run.
+    # fails on a session that starts fresh. Nothing here is call memory: a hook keeps no routine run.
     class Resume < Hook
       option :harness, switch: "--harness NAME", text: "the harness calling this hook", default: "claude-code"
 
       FAILING_CHECKS = ->(scope, harness) { Doctor.failing(scope, harness:) }
+
+      FRESH_SOURCES = ["", "startup"].freeze
 
       DOCTOR_LINE = lambda do |count|
         "Plastic: doctor found #{count} failing #{(count == 1) ? "check" : "checks"}; run plastic doctor."
@@ -25,7 +27,7 @@ module Plastic
       end
 
       def respond(event)
-        [*recap(event), doctor_line].compact.join("\n")
+        [*recap(event), doctor_line(event)].compact.join("\n")
       end
 
       private
@@ -36,7 +38,11 @@ module Plastic
         Recap.new(graphs.retrieval, session_id:, source: event[:source], directory:).lines
       end
 
-      def doctor_line = failing_count.then { |count| DOCTOR_LINE.call(count) if count.positive? }
+      def doctor_line(event)
+        return unless FRESH_SOURCES.include?(event[:source].to_s)
+
+        failing_count.then { |count| DOCTOR_LINE.call(count) if count.positive? }
+      end
 
       def failing_count
         @health.call(scope, parsed[:harness]).size
