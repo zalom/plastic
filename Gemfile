@@ -2,6 +2,7 @@ source "https://rubygems.org"
 
 gem "sqlite3", "~> 2.9"
 gem "benchmark", "~> 0.4"
+gem "tty-prompt", "~> 0.23.1"
 
 group :development, :test do
   gem "minitest", "~> 6.0"

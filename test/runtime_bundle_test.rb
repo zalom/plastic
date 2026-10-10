@@ -6,15 +6,15 @@ require "json"
 require "open3"
 require "tmpdir"
 
-# The release archive carries a runtime Gemfile for the sqlite3 gem, and the
+# The release archive carries a runtime Gemfile for the run-time gems, and the
 # launcher loads the standalone bundle that activation builds beside it.
 class RuntimeBundleTest < Minitest::Test
   REPO = File.expand_path("..", __dir__)
 
-  def test_the_runtime_gemfile_names_only_sqlite3
+  def test_the_runtime_gemfile_names_sqlite3_and_tty_prompt
     gemfile = File.read(File.join(REPO, "runtime", "Gemfile"))
 
-    assert_equal ["sqlite3"], gemfile.scan(/^gem "([^"]+)"/).flatten
+    assert_equal %w[sqlite3 tty-prompt], gemfile.scan(/^gem "([^"]+)"/).flatten
   end
 
   def test_the_runtime_lock_pins_the_development_sqlite3
@@ -24,6 +24,14 @@ class RuntimeBundleTest < Minitest::Test
 
     assert_includes runtime, "    sqlite3 (#{version}-arm64-darwin)"
     assert_includes runtime, "    sqlite3 (#{version}-x86_64-linux-gnu)"
+  end
+
+  def test_the_runtime_lock_pins_the_development_tty_prompt
+    runtime = File.read(File.join(REPO, "runtime", "Gemfile.lock"))
+    development = File.read(File.join(REPO, "Gemfile.lock"))
+    version = development[/^    tty-prompt \(([^)]+)\)/, 1]
+
+    assert_includes runtime, "    tty-prompt (#{version})"
   end
 
   def test_the_runtime_lock_covers_every_platform_install_sh_pins_a_ruby_for

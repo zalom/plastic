@@ -78,6 +78,8 @@ GEM
     parser (3.3.12.0)
       ast (~> 2.4.1)
       racc
+    pastel (0.8.0)
+      tty-color (~> 0.5)
     path_expander (2.0.1)
     prism (1.9.0)
     public_suffix (7.0.5)
@@ -157,6 +159,16 @@ GEM
       rubocop-performance (~> 1.26.0)
     thread_safe (0.3.6)
     tsort (0.2.0)
+    tty-color (0.6.0)
+    tty-cursor (0.7.1)
+    tty-prompt (0.23.1)
+      pastel (~> 0.8)
+      tty-reader (~> 0.8)
+    tty-reader (0.9.0)
+      tty-cursor (~> 0.7)
+      tty-screen (~> 0.8)
+      wisper (~> 2.0)
+    tty-screen (0.8.2)
     tty-which (0.5.0)
     unicode-display_width (2.6.0)
     varar (0.8.1)
@@ -175,6 +187,7 @@ GEM
       axiom-types (~> 0.1)
       coercible (~> 1.0)
       descendants_tracker (~> 0.0, >= 0.0.3)
+    wisper (2.0.1)
     zeitwerk (2.8.3)
 
 PLATFORMS
@@ -195,6 +208,7 @@ DEPENDENCIES
   simplecov (~> 1.0)
   sqlite3 (~> 2.9)
   standard
+  tty-prompt (~> 0.23.1)
   varar-minitest
 
 CHECKSUMS
@@ -231,6 +245,7 @@ CHECKSUMS
   ostruct (0.6.3) sha256=95a2ed4a4bd1d190784e666b47b2d3f078e4a9efda2fccf18f84ddc6538ed912
   parallel (2.2.0) sha256=e1059c5fd7b649558a0aec38a769f06a42942bdb40503d005a59c352fe011cd8
   parser (3.3.12.0) sha256=21a6d7f755d5a24dfbdc6e6b772e4e879a52e7631a88bc5a3a134606052c9828
+  pastel (0.8.0) sha256=481da9fb7d2f6e6b1a08faf11fa10363172dc40fd47848f096ae21209f805a75
   path_expander (2.0.1) sha256=2de201164bff4719cc4d0b3767286e9977cc832a59c4d70abab571ec86cb41e4
   prism (1.9.0) sha256=7b530c6a9f92c24300014919c9dcbc055bf4cdf51ec30aed099b06cd6674ef85
   public_suffix (7.0.5) sha256=1a8bb08f1bbea19228d3bed6e5ed908d1cb4f7c2726d18bd9cadf60bc676f623
@@ -257,6 +272,11 @@ CHECKSUMS
   standard-performance (1.9.0) sha256=49483d31be448292951d80e5e67cdcb576c2502103c7b40aec6f1b6e9c88e3f2
   thread_safe (0.3.6) sha256=9ed7072821b51c57e8d6b7011a8e282e25aeea3a4065eab326e43f66f063b05a
   tsort (0.2.0) sha256=9650a793f6859a43b6641671278f79cfead60ac714148aabe4e3f0060480089f
+  tty-color (0.6.0) sha256=6f9c37ca3a4e2367fb2e6d09722762647d6f455c111f05b59f35730eeb24332a
+  tty-cursor (0.7.1) sha256=79534185e6a777888d88628b14b6a1fdf5154a603f285f80b1753e1908e0bf48
+  tty-prompt (0.23.1) sha256=fcdbce905238993f27eecfdf67597a636bc839d92192f6a0eef22b8166449ec8
+  tty-reader (0.9.0) sha256=c62972c985c0b1566f0e56743b6a7882f979d3dc32ff491ed490a076f899c2b1
+  tty-screen (0.8.2) sha256=c090652115beae764336c28802d633f204fb84da93c6a968aa5d8e319e819b50
   tty-which (0.5.0) sha256=5824055f0d6744c97e7c4426544f01d519c40d1806ef2ef47d9854477993f466
   unicode-display_width (2.6.0) sha256=12279874bba6d5e4d2728cef814b19197dbb10d7a7837a869bab65da943b7f5a
   varar (0.8.1) sha256=ae05bf6e1aec387f53693c6a53447f92f2d7b8ac9cc43e859b0f217a227cbf96
@@ -265,6 +285,7 @@ CHECKSUMS
   varar-minitest (0.8.1) sha256=f13fa98e094163f130246fc560b197a52cfa8fe1c7d66af0e1eba5b0c904130e
   varar-runner (0.8.1) sha256=6fb67fd8f0dcd581e5249b268679e5b77bce863e5ff81d3bc0759ef632873c64
   virtus (2.0.0) sha256=8841dae4eb7fcc097320ba5ea516bf1839e5d056c61ee27138aa4bddd6e3d1c2
+  wisper (2.0.1) sha256=ce17bc5c3a166f241a2e6613848b025c8146fce2defba505920c1d1f3f88fae6
   zeitwerk (2.8.3) sha256=2c85125a8467ce069e20123d1e709a08955c9d29c118c25b46b7b7fafdbb92e5
 
 BUNDLED WITH

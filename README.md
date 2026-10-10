@@ -87,7 +87,7 @@ plastic install --claude
 
 `install.sh` downloads Ruby 4.0.7 for your platform and checks it by its pinned size and SHA-256.
 It then downloads the newest stable release, checks it against its published checksum, and links
-`~/.local/bin/plastic`. The Bundler of that Ruby installs the sqlite3 gem inside each release.
+`~/.local/bin/plastic`. The Bundler of that Ruby installs the sqlite3 and tty-prompt gems inside each release.
 Replace `--claude` with `--codex` for Codex CLI, or pass both flags. After a first install,
 Plastic offers [Enola](INSTALL.md#enola), an optional tool that maps code architecture.
 
@@ -404,7 +404,7 @@ Plastic runs on your machine. It makes no model call and sends none of your file
 Three things use the network: `install.sh`, the update check hook and `plastic update`. They read
 the release list from GitHub and download a release from there. `install.sh` and `plastic update`
 also download Ruby: from the jdx/ruby releases on GitHub, or from the Homebrew registry on an Intel
-Mac. Bundler fetches the sqlite3 gem
+Mac. Bundler fetches the sqlite3 and tty-prompt gems
 from RubyGems when a release installs. See [SECURITY.md](SECURITY.md) for every file the installer writes.
 
 ## Built with Plastic
