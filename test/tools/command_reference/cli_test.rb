@@ -26,7 +26,7 @@ class CommandReferenceCliTest < Minitest::Test
 
       assert_equal 0, code
       assert_equal "index", File.read(File.join(root, "docs/reference/commands/README.md"))
-      refute File.exist?(File.join(root, "docs/reference/commands/gone/README.md"))
+      refute_path_exists File.join(root, "docs/reference/commands/gone/README.md")
     end
   end
 

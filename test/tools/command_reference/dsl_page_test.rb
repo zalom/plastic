@@ -13,8 +13,10 @@ class CommandReferenceDslPageTest < Minitest::Test
     dsl.examples.each do |command|
       words = command.split
       key = Plastic::CLI::TABLE.keys.select { |candidate| words.first(candidate.split.size) == candidate.split }.max_by(&:size)
+
       refute_nil key, command
       declared = CommandReferenceHelper.pages.fetch(key).options.map { |option| option.switch.split.first }
+
       assert_empty words.grep(/\A--/) - declared, command
     end
   end

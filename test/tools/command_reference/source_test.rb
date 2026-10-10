@@ -5,6 +5,8 @@ require_relative "../../command_reference_helper"
 class CommandReferenceSourceTest < Minitest::Test
   include CommandReferenceHelper
 
+  def setup = CommandReferenceHelper.pages
+
   def source = CommandReference::Source.new(CommandReferenceHelper::ROOT)
 
   def test_the_comment_above_a_class_is_read_without_its_marker

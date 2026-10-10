@@ -94,6 +94,7 @@ class CommandReferenceModelTest < Minitest::Test
     CommandReferenceHelper.pages.each_value do |page|
       rows_of(page).each do |row|
         total = File.readlines(File.join(CommandReferenceHelper::ROOT, row.file)).size
+
         assert_operator row.line, :<=, total, "#{page.words}: #{row.name}"
       end
     end
