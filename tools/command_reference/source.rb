@@ -35,6 +35,6 @@ module CommandReference
 
     private
 
-    def absolute(file) = file.start_with?("/") ? file : File.join(@root, file)
+    def absolute(file) = File.join(@root, file)
   end
 end

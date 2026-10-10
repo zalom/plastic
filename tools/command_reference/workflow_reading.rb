@@ -16,7 +16,7 @@ module CommandReference
 
     def declared = @declared ||= Object.const_source_location(@workflow.name)
 
-    def files = @files ||= [@source.relative(declared.first), *[*parents, *modules].filter_map { |mod| module_file(mod) }].uniq
+    def files = @files ||= [@source.relative(declared.first), *[*parents, *modules].map { |mod| module_file(mod) }].uniq
 
     def holders(value) = modules.flat_map { |mod| WorkflowHomes.holding(mod, value) }
 
@@ -24,12 +24,9 @@ module CommandReference
 
     def parents = @workflow.ancestors.drop(1).take_while { |mod| mod.superclass != Plastic::Workflow }.grep(Class)
 
-    def modules = @workflow.singleton_class.included_modules.select { |mod| mod.name&.start_with?(MODULES) }
+    def modules = @workflow.singleton_class.included_modules.select { |mod| mod.name.to_s.start_with?(MODULES) }
 
-    def module_file(mod)
-      found = Object.const_source_location(mod.name)&.first
-      @source.relative(found) if found
-    end
+    def module_file(mod) = @source.relative(Object.const_source_location(mod.name).first)
   end
 
   # One workflow read from the kernel: where it lives and what it declares, in the order it runs.

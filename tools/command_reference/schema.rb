@@ -14,9 +14,9 @@ module CommandReference
 
     def tables = databases.values.flat_map(&:last).uniq - BOOKKEEPING
 
-    def file_of(table) = databases.values.find { |_file, held| held.include?(table) }&.first
+    def file_of(table) = databases.values.filter_map { |file, held| file if held.include?(table) }.first
 
-    def key_of(file) = databases.find { |_key, (name, _held)| name == file }&.first
+    def key_of(file) = databases.select { |_key, (name, _held)| name == file }.keys.first
 
     private
 

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 KERNEL_LIB = File.expand_path("../scripts/lib", __dir__)
-$LOAD_PATH.unshift(KERNEL_LIB) unless $LOAD_PATH.include?(KERNEL_LIB)
+$LOAD_PATH.unshift(KERNEL_LIB).uniq!
 
 require "plastic"
 require "plastic/graph"
