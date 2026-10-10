@@ -63,31 +63,31 @@ class WorkflowShowLockTest < Plastic::TestCase
     assert_match(/, expired: no renewal within 30 minutes and no open node\z/, lines(context).first)
   end
 
-def test_a_lapsed_lock_held_by_an_open_node_says_which_node
-  open_intent
-  store_graphs.work.take_lock("1", session_id: "s-2", mode: "auto")
-  expire_lock
-  store_graphs.databases.fetch(:work).transaction do |batch|
-    batch.put(:nodes, { intent_id: "1", id: "n1", state: "claimed", by: "s-2", updated_at: Plastic.now })
+  def test_a_lapsed_lock_held_by_an_open_node_says_which_node
+    open_intent
+    store_graphs.work.take_lock("1", session_id: "s-2", mode: "auto")
+    expire_lock
+    store_graphs.databases.fetch(:work).transaction do |batch|
+      batch.put(:nodes, { intent_id: "1", id: "n1", state: "claimed", by: "s-2", updated_at: Plastic.now })
+    end
+
+    outcome, context = show
+
+    assert_equal :live, outcome
+    assert_match(/, live: node n1 open since \S+\z/, lines(context).first)
   end
 
-  outcome, context = show
+  def test_a_lock_of_an_ended_session_says_the_session_ended
+    open_intent
+    store_graphs.work.approve_intent("1")
+    store_graphs.work.take_lock("1", session_id: "s-2", mode: "auto")
+    store_graphs.work.end_session("s-2", reason: "clear")
 
-  assert_equal :live, outcome
-  assert_match(/, live: node n1 open since \S+\z/, lines(context).first)
-end
+    outcome, context = show
 
-def test_a_lock_of_an_ended_session_says_the_session_ended
-  open_intent
-  store_graphs.work.approve_intent("1")
-  store_graphs.work.take_lock("1", session_id: "s-2", mode: "auto")
-  store_graphs.work.end_session("s-2", reason: "clear")
-
-  outcome, context = show
-
-  assert_equal :expired, outcome
-  assert_match(/, expired: session s-2 ended \S+\z/, lines(context).first)
-end
+    assert_equal :expired, outcome
+    assert_match(/, expired: session s-2 ended \S+\z/, lines(context).first)
+  end
 
   def test_a_registered_repo_prints_the_worktree
     File.write(File.join(@plastic_home, "projects.yml"), "projects:\n  global:\n    path: /r/repo\n")
