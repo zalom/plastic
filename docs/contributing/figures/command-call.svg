@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1160 580" role="img" aria-labelledby="command-call-title command-call-desc" font-family="IBM Plex Sans, system-ui, -apple-system, Segoe UI, sans-serif">
+  <title id="command-call-title">One command from call to report</title>
+  <desc id="command-call-desc">The call plastic intent new runs through ten steps. bin/plastic hands the words to CLI, which finds the row in CLI::TABLE. A Routine opens the Graph and runs the chain through Routine::Traversal. Workflows::WriteIntent writes the rows, Graph::Printer prints the files, and the report ends with exit code 0.</desc>
+  <defs><marker id="command-call-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--line, #6b7483)"/></marker></defs>
+  <style>svg { --ink: #1f2530; --muted: #3f4754; --line: #6b7483; --paper: #e9e5dc; --card: #f4f1ea; --rule: #c9c3b6; --code: #0b5e55; --agent: #7d4405; --owner: #4a2a99; --owner-bg: #e4dcf5; --end: #23406f; --end-bg: #d9e2f0; }
+@media (prefers-color-scheme: dark) { svg { --ink: #e8e6e1; --muted: #b4bac4; --line: #8a93a3; --paper: #1d2128; --card: #262b34; --rule: #3b424e; --code: #5fd0c0; --agent: #e0a24f; --owner: #b9a2ff; --owner-bg: #2f2750; --end: #8fb0e8; --end-bg: #1f2d45; } }
+.background { fill: var(--paper, #e9e5dc); }
+.box { fill: var(--card, #f4f1ea); stroke: var(--line, #6b7483); stroke-width: 1; }
+.zone { fill: none; stroke: var(--line, #6b7483); stroke-width: 1.2; stroke-dasharray: 6 4; }
+.t { fill: var(--ink, #1f2530); font-size: 14px; font-weight: 600; }
+.s { fill: var(--muted, #3f4754); font-size: 11.5px; }
+.al { fill: var(--ink, #1f2530); font-size: 11.5px; stroke: var(--paper, #e9e5dc); stroke-width: 4px; paint-order: stroke; }
+.m { fill: var(--ink, #1f2530); font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; font-size: 12px; font-weight: 600; }
+.r { fill: var(--ink, #1f2530); font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; font-size: 11px; }
+.flow { stroke: var(--line, #6b7483); stroke-width: 1.5; fill: none; }</style>
+  <rect class="background" width="100%" height="100%"/>
+<rect class="box" x="15" y="20" width="207" height="94" rx="8"/><rect x="15" y="20" width="6" height="94" rx="3" fill="var(--code, #0b5e55)"/>
+<text class="m" x="31" y="44">bin/plastic</text><text class="s" x="31" y="61">[Step 1]</text>
+<text class="s" x="31" y="81">Runs CLI with the words</text>
+<text class="s" x="31" y="96">of the call.</text>
+<rect class="box" x="242" y="20" width="207" height="94" rx="8"/><rect x="242" y="20" width="6" height="94" rx="3" fill="var(--code, #0b5e55)"/>
+<text class="m" x="258" y="44">CLI</text><text class="s" x="258" y="61">[Step 2]</text>
+<text class="s" x="258" y="81">Finds the row for intent new</text>
+<text class="s" x="258" y="96">in CLI::TABLE.</text>
+<rect class="box" x="469" y="20" width="207" height="94" rx="8"/><rect x="469" y="20" width="6" height="94" rx="3" fill="var(--code, #0b5e55)"/>
+<text class="m" x="485" y="44">Commands::IntentNew</text><text class="s" x="485" y="61">[Step 3]</text>
+<text class="s" x="485" y="81">Loaded on demand; its</text>
+<text class="s" x="485" y="96">options are read.</text>
+<rect class="box" x="696" y="20" width="207" height="94" rx="8"/><rect x="696" y="20" width="6" height="94" rx="3" fill="var(--code, #0b5e55)"/>
+<text class="m" x="712" y="44">Routine</text><text class="s" x="712" y="61">[Step 4]</text>
+<text class="s" x="712" y="81">Opens the Graph and</text>
+<text class="s" x="712" y="96">starts a RoutineRun.</text>
+<rect class="box" x="923" y="20" width="207" height="94" rx="8"/><rect x="923" y="20" width="6" height="94" rx="3" fill="var(--code, #0b5e55)"/>
+<text class="m" x="939" y="44">Routine::Traversal</text><text class="s" x="939" y="61">[Step 5]</text>
+<text class="s" x="939" y="81">Runs the chain through</text>
+<text class="s" x="939" y="96">Workflows::REGISTRY.</text>
+<rect class="box" x="923" y="170" width="207" height="94" rx="8"/><rect x="923" y="170" width="6" height="94" rx="3" fill="var(--code, #0b5e55)"/>
+<text class="m" x="939" y="194">Workflows::WriteIntent</text><text class="s" x="939" y="211">[Step 6]</text>
+<text class="s" x="939" y="231">Checks the call, then</text>
+<text class="s" x="939" y="246">writes the rows.</text>
+<rect class="box" x="696" y="170" width="207" height="94" rx="8"/><rect x="696" y="170" width="6" height="94" rx="3" fill="var(--code, #0b5e55)"/>
+<text class="m" x="712" y="194">Graph::Printer</text><text class="s" x="712" y="211">[Step 7]</text>
+<text class="s" x="712" y="231">Prints the files of</text>
+<text class="s" x="712" y="246">the intent folder.</text>
+<rect class="box" x="469" y="170" width="207" height="94" rx="8"/><rect x="469" y="170" width="6" height="94" rx="3" fill="var(--code, #0b5e55)"/>
+<text class="m" x="485" y="194">Routine</text><text class="s" x="485" y="211">[Step 8]</text>
+<text class="s" x="485" y="231">Saves the RoutineRun</text>
+<text class="s" x="485" y="246">and builds the report.</text>
+<rect class="box" x="242" y="170" width="207" height="79" rx="8"/><rect x="242" y="170" width="6" height="79" rx="3" fill="var(--code, #0b5e55)"/>
+<text class="m" x="258" y="194">CLI</text><text class="s" x="258" y="211">[Step 9]</text>
+<text class="s" x="258" y="231">Prints the report.</text>
+<rect class="box" x="15" y="170" width="207" height="94" rx="8"/><rect x="15" y="170" width="6" height="94" rx="3" fill="var(--code, #0b5e55)"/>
+<text class="m" x="31" y="194">bin/plastic</text><text class="s" x="31" y="211">[Step 10]</text>
+<text class="s" x="31" y="231">Exits with code 0:</text>
+<text class="s" x="31" y="246">the value is Finished.</text>
+<path class="flow" d="M 222 67.0 L 242 67.0" marker-end="url(#command-call-arrow)"/>
+<path class="flow" d="M 449 67.0 L 469 67.0" marker-end="url(#command-call-arrow)"/>
+<path class="flow" d="M 676 67.0 L 696 67.0" marker-end="url(#command-call-arrow)"/>
+<path class="flow" d="M 903 67.0 L 923 67.0" marker-end="url(#command-call-arrow)"/>
+<path class="flow" d="M 1026.5 114 L 1026.5 170" marker-end="url(#command-call-arrow)"/>
+<path class="flow" d="M 923 217.0 L 903 217.0" marker-end="url(#command-call-arrow)"/>
+<path class="flow" d="M 696 217.0 L 676 217.0" marker-end="url(#command-call-arrow)"/>
+<path class="flow" d="M 469 217.0 L 459 217.0 L 459 209.5 L 449 209.5" marker-end="url(#command-call-arrow)"/>
+<path class="flow" d="M 242 209.5 L 232 209.5 L 232 217.0 L 222 217.0" marker-end="url(#command-call-arrow)"/>
+<text class="t" x="15" y="340">What the call prints</text>
+<rect class="box" x="15" y="352" width="1130" height="180" rx="8" stroke="var(--rule, #c9c3b6)"/>
+<text class="r" x="31" y="376">intent: ID</text>
+<text class="r" x="31" y="392">wrote: 1 routine run in local.db</text>
+<text class="r" x="31" y="408">1 intent and 1 savepoint line in work_graph.db</text>
+<text class="r" x="31" y="424">1 document and 1 document_heads in knowledge_graph.db</text>
+<text class="r" x="31" y="440">files: store/index.json</text>
+<text class="r" x="31" y="456">store/ID--slug/intent.md</text>
+<text class="r" x="31" y="472">store/ID--slug/savepoint.md</text>
+<text class="r" x="31" y="488">store/ID--slug/graph.json</text>
+<text class="r" x="31" y="504">next: plastic next</text>
+<text class="r" x="31" y="520">because: intent ID has its rows and its files</text>
+</svg>

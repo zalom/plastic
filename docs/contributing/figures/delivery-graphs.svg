@@ -1,0 +1,122 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1160 770" role="img" aria-labelledby="delivery-graphs-title delivery-graphs-desc" font-family="IBM Plex Sans, system-ui, -apple-system, Segoe UI, sans-serif">
+  <title id="delivery-graphs-title">What each delivery step does to the three graphs</title>
+  <desc id="delivery-graphs-desc">For each step of delivery, the rows the knowledge graph, the retrieval graph and the work graph receive, give or print as files.</desc>
+  <defs><marker id="delivery-graphs-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--line, #6b7483)"/></marker></defs>
+  <style>svg { --ink: #1f2530; --muted: #3f4754; --line: #6b7483; --paper: #e9e5dc; --card: #f4f1ea; --rule: #c9c3b6; --code: #0b5e55; --agent: #7d4405; --owner: #4a2a99; --owner-bg: #e4dcf5; --end: #23406f; --end-bg: #d9e2f0; }
+@media (prefers-color-scheme: dark) { svg { --ink: #e8e6e1; --muted: #b4bac4; --line: #8a93a3; --paper: #1d2128; --card: #262b34; --rule: #3b424e; --code: #5fd0c0; --agent: #e0a24f; --owner: #b9a2ff; --owner-bg: #2f2750; --end: #8fb0e8; --end-bg: #1f2d45; } }
+.background { fill: var(--paper, #e9e5dc); }
+.box { fill: var(--card, #f4f1ea); stroke: var(--line, #6b7483); stroke-width: 1; }
+.zone { fill: none; stroke: var(--line, #6b7483); stroke-width: 1.2; stroke-dasharray: 6 4; }
+.t { fill: var(--ink, #1f2530); font-size: 14px; font-weight: 600; }
+.s { fill: var(--muted, #3f4754); font-size: 11.5px; }
+.al { fill: var(--ink, #1f2530); font-size: 11.5px; stroke: var(--paper, #e9e5dc); stroke-width: 4px; paint-order: stroke; }
+.m { fill: var(--ink, #1f2530); font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; font-size: 12px; font-weight: 600; }
+.r { fill: var(--ink, #1f2530); font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; font-size: 11px; }
+.flow { stroke: var(--line, #6b7483); stroke-width: 1.5; fill: none; }</style>
+  <rect class="background" width="100%" height="100%"/>
+<text class="t" x="30" y="28">Step and its commands</text>
+<text class="t" x="320" y="28">Knowledge graph</text>
+<text class="t" x="590" y="28">Retrieval graph</text>
+<text class="t" x="860" y="28">Work graph</text>
+<line x1="30" y1="44" x2="1130" y2="44" stroke="var(--rule, #c9c3b6)" stroke-width="1"/>
+<text class="t" x="30" y="64">1  Start</text>
+<text class="m" x="30" y="82">intent new</text>
+<circle cx="325" cy="60" r="4" fill="var(--ink, #1f2530)"/>
+<text class="s" x="338" y="64">the intent document</text>
+<circle cx="865" cy="60" r="4" fill="var(--ink, #1f2530)"/>
+<text class="s" x="878" y="64">the intent row</text>
+<rect x="861" y="72" width="8" height="8" fill="none" stroke="var(--ink, #1f2530)" stroke-width="1.4"/>
+<text class="s" x="878" y="80">the folder, store/index.json</text>
+<line x1="30" y1="94" x2="1130" y2="94" stroke="var(--rule, #c9c3b6)" stroke-width="1"/>
+<text class="t" x="30" y="114">2  Context</text>
+<text class="m" x="30" y="132">intent discover</text>
+<text class="m" x="30" y="148">intent context</text>
+<circle cx="325" cy="110" r="3.5" fill="none" stroke="var(--ink, #1f2530)" stroke-width="1.4"/>
+<text class="s" x="338" y="114">documents, rulings, links</text>
+<circle cx="595" cy="110" r="4" fill="var(--ink, #1f2530)"/>
+<text class="s" x="608" y="114">discoveries and context</text>
+<rect x="591" y="122" width="8" height="8" fill="none" stroke="var(--ink, #1f2530)" stroke-width="1.4"/>
+<text class="s" x="608" y="130">context.json</text>
+<line x1="30" y1="160" x2="1130" y2="160" stroke="var(--rule, #c9c3b6)" stroke-width="1"/>
+<text class="t" x="30" y="180">3  Grilling</text>
+<text class="m" x="30" y="198">intent spec</text>
+<text class="m" x="30" y="214">intent rule</text>
+<circle cx="325" cy="176" r="4" fill="var(--ink, #1f2530)"/>
+<text class="s" x="338" y="180">a ruling for each decision</text>
+<circle cx="595" cy="176" r="3.5" fill="none" stroke="var(--ink, #1f2530)" stroke-width="1.4"/>
+<text class="s" x="608" y="180">the intent&#39;s context</text>
+<line x1="30" y1="226" x2="1130" y2="226" stroke="var(--rule, #c9c3b6)" stroke-width="1"/>
+<text class="t" x="30" y="246">4  One spec</text>
+<text class="m" x="30" y="264">spec.md</text>
+<circle cx="325" cy="242" r="4" fill="var(--ink, #1f2530)"/>
+<text class="s" x="338" y="246">done criteria with keys</text>
+<line x1="30" y1="276" x2="1130" y2="276" stroke="var(--rule, #c9c3b6)" stroke-width="1"/>
+<text class="t" x="30" y="296">5  You say deliver</text>
+<text class="m" x="30" y="314">intent approve</text>
+<circle cx="865" cy="292" r="4" fill="var(--ink, #1f2530)"/>
+<text class="s" x="878" y="296">the go-ahead row</text>
+<line x1="30" y1="326" x2="1130" y2="326" stroke="var(--rule, #c9c3b6)" stroke-width="1"/>
+<text class="t" x="30" y="346">6  Plan the graph</text>
+<text class="m" x="30" y="364">node add</text>
+<text class="m" x="30" y="380">edge add</text>
+<circle cx="325" cy="342" r="3.5" fill="none" stroke="var(--ink, #1f2530)" stroke-width="1.4"/>
+<text class="s" x="338" y="346">the done criteria keys</text>
+<circle cx="595" cy="342" r="3.5" fill="none" stroke="var(--ink, #1f2530)" stroke-width="1.4"/>
+<text class="s" x="608" y="346">the intent&#39;s context</text>
+<circle cx="865" cy="342" r="4" fill="var(--ink, #1f2530)"/>
+<text class="s" x="878" y="346">nodes and edges</text>
+<rect x="861" y="354" width="8" height="8" fill="none" stroke="var(--ink, #1f2530)" stroke-width="1.4"/>
+<text class="s" x="878" y="362">graph.json, the checklist</text>
+<line x1="30" y1="392" x2="1130" y2="392" stroke="var(--rule, #c9c3b6)" stroke-width="1"/>
+<text class="t" x="30" y="412">7  Work the nodes</text>
+<text class="m" x="30" y="430">node claim</text>
+<text class="m" x="30" y="446">node done</text>
+<circle cx="325" cy="408" r="3.5" fill="none" stroke="var(--ink, #1f2530)" stroke-width="1.4"/>
+<text class="s" x="338" y="412">the spec and its rulings</text>
+<circle cx="595" cy="408" r="3.5" fill="none" stroke="var(--ink, #1f2530)" stroke-width="1.4"/>
+<text class="s" x="608" y="412">the node&#39;s context</text>
+<circle cx="865" cy="408" r="4" fill="var(--ink, #1f2530)"/>
+<text class="s" x="878" y="412">claims, retries, findings</text>
+<rect x="861" y="420" width="8" height="8" fill="none" stroke="var(--ink, #1f2530)" stroke-width="1.4"/>
+<text class="s" x="878" y="428">graph.json</text>
+<line x1="30" y1="458" x2="1130" y2="458" stroke="var(--rule, #c9c3b6)" stroke-width="1"/>
+<text class="t" x="30" y="478">8  Judge</text>
+<text class="m" x="30" y="496">intent judge</text>
+<circle cx="325" cy="474" r="3.5" fill="none" stroke="var(--ink, #1f2530)" stroke-width="1.4"/>
+<text class="s" x="338" y="478">spec, rulings, outcome.md</text>
+<circle cx="865" cy="474" r="4" fill="var(--ink, #1f2530)"/>
+<text class="s" x="878" y="478">the verdict</text>
+<rect x="861" y="486" width="8" height="8" fill="none" stroke="var(--ink, #1f2530)" stroke-width="1.4"/>
+<text class="s" x="878" y="494">graph.json</text>
+<line x1="30" y1="508" x2="1130" y2="508" stroke="var(--rule, #c9c3b6)" stroke-width="1"/>
+<text class="t" x="30" y="528">9  Review</text>
+<text class="m" x="30" y="546">outcome.md</text>
+<circle cx="325" cy="524" r="4" fill="var(--ink, #1f2530)"/>
+<text class="s" x="338" y="528">the pull request and approval</text>
+<line x1="30" y1="558" x2="1130" y2="558" stroke="var(--rule, #c9c3b6)" stroke-width="1"/>
+<text class="t" x="30" y="578">10  Close</text>
+<text class="m" x="30" y="596">intent end</text>
+<circle cx="325" cy="574" r="3.5" fill="none" stroke="var(--ink, #1f2530)" stroke-width="1.4"/>
+<text class="s" x="338" y="578">outcome.md</text>
+<circle cx="865" cy="574" r="3.5" fill="none" stroke="var(--ink, #1f2530)" stroke-width="1.4"/>
+<text class="s" x="878" y="578">the verdict and every node</text>
+<circle cx="865" cy="590" r="4" fill="var(--ink, #1f2530)"/>
+<text class="s" x="878" y="594">status done, lock released</text>
+<rect x="861" y="602" width="8" height="8" fill="none" stroke="var(--ink, #1f2530)" stroke-width="1.4"/>
+<text class="s" x="878" y="610">store/index.json</text>
+<line x1="30" y1="624" x2="1130" y2="624" stroke="var(--rule, #c9c3b6)" stroke-width="1" stroke-dasharray="5 4"/>
+<text class="t" x="30" y="644">Any time</text>
+<text class="m" x="30" y="662">intent abandon</text>
+<circle cx="325" cy="640" r="4" fill="var(--ink, #1f2530)"/>
+<text class="s" x="338" y="644">a supersedes link, if any</text>
+<circle cx="865" cy="640" r="4" fill="var(--ink, #1f2530)"/>
+<text class="s" x="878" y="644">status abandoned</text>
+<rect x="861" y="652" width="8" height="8" fill="none" stroke="var(--ink, #1f2530)" stroke-width="1.4"/>
+<text class="s" x="878" y="660">store/index.json</text>
+<circle cx="35" cy="736" r="4" fill="var(--ink, #1f2530)"/>
+<text class="s" x="48" y="740">writes rows</text>
+<circle cx="215" cy="736" r="3.5" fill="none" stroke="var(--ink, #1f2530)" stroke-width="1.4"/>
+<text class="s" x="228" y="740">reads rows</text>
+<rect x="391" y="732" width="8" height="8" fill="none" stroke="var(--ink, #1f2530)" stroke-width="1.4"/>
+<text class="s" x="408" y="740">prints a file</text>
+</svg>

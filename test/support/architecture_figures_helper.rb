@@ -22,6 +22,7 @@ module ArchitectureFiguresHelper
     require "plastic/graph"
     require "plastic/cli/table"
     require "plastic/workflows/registry"
+    true
   end
 
   def class_exists?(ref)
@@ -42,7 +43,7 @@ module ArchitectureFiguresHelper
     case type
     when "class" then class_exists?(ref)
     when "command" then load_kernel && Plastic::CLI::TABLE.key?(ref)
-    when "workflow" then load_kernel && Plastic::Workflows::REGISTRY.key?(ref.delete_prefix(":").to_sym)
+    when "workflow" then load_kernel && Plastic::Workflows::REGISTRY.include?(ref.delete_prefix(":").to_sym)
     when "table" then (schema.tables.keys - schema.legacy).include?(ref.to_sym)
     when "database" then schema.databases.values.map(&:first).include?(ref)
     when "store_file" then Dir[File.join(ROOT, "scripts", "lib", "plastic", "**", "*.rb")].any? { |file| File.read(file).include?(ref) }
