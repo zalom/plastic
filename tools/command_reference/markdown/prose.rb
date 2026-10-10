@@ -14,7 +14,7 @@ module CommandReference
         small.any? && large.size <= LONGER * small.size && (small & large).size >= SHARED * small.size
       end
 
-      def self.words(text) = text.to_s.downcase.scan(/[a-z]+/).map { |word| word.delete_suffix("s") }.uniq
+      def self.words(text) = text.to_s.downcase.gsub("\u0027s", "").scan(/[a-z]+/).map { |word| word.delete_suffix("s") }.uniq
     end
   end
 end
