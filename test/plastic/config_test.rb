@@ -101,6 +101,7 @@ class ConfigTest < Plastic::TestCase
     text = "global:\n  advisor:\n    enabled: false\nharnesses:\n  codex:\n    agents:\n      models:\n        plastic-executor: gpt-x\n"
 
     expected = { "advisor" => { "enabled" => false }, "agents" => { "models" => { "plastic-executor" => "gpt-x" } } }
+
     harness_config(text, "codex") { |cfg| assert_equal expected, cfg.overrides }
   end
 

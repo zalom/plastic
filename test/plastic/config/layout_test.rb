@@ -9,7 +9,7 @@ class ConfigLayoutTest < Plastic::TestCase
   def test_a_file_with_sections_is_already_in_the_layout
     data = { "version" => 3, "global" => { "statusline" => false } }
 
-    assert layout(data).sectioned?
+    assert_predicate layout(data), :sectioned?
     assert_equal data, layout(data).sections
   end
 
@@ -27,6 +27,7 @@ class ConfigLayoutTest < Plastic::TestCase
     data = { "agents" => { "models" => { "plastic-executor" => "haiku", "claude" => { "plastic-enforcer" => "sonnet" } } } }
 
     expected = { "plastic-executor" => "haiku", "plastic-enforcer" => "sonnet" }
+
     assert_equal expected, layout(data).sections.dig("harnesses", "claude-code", "agents", "models")
   end
 
