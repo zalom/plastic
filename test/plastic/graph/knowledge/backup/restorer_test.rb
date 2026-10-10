@@ -44,6 +44,15 @@ class KnowledgeBackupRestorerTest < Plastic::TestCase
     assert_equal 1, intent_count(@restore_home)
   end
 
+def test_a_lapsed_delivery_lock_held_by_an_open_node_refuses_the_restore
+  take_lock(at(2026, 6, 1, 9, 0, 0).iso8601)
+  Plastic::Graph.open(home: @restore_home, store: "alpha").databases.fetch(:work).transaction do |batch|
+    batch.put(:nodes, { intent_id: "1", id: "n1", state: "claimed", by: "s-1", updated_at: at(2026, 6, 1, 11, 0, 0).iso8601 })
+  end
+
+  assert_raises(Restorer::Locked) { restorer.call(STAMP) }
+end
+
   def test_a_restore_first_backs_up_the_current_databases
     restorer.call(STAMP)
 
