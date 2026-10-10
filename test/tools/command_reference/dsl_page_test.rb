@@ -13,9 +13,16 @@ class CommandReferenceDslPageTest < Minitest::Test
     dsl.examples.each { |command| assert_empty command.split.grep(/\A--/) - declared_switches(command), command }
   end
 
+  def test_the_words_of_every_example_command_are_a_table_key
+    dsl.examples.each do |command|
+      words = command.split.take_while { |word| word.match?(/\A[a-z][a-z-]*\z/) }.join(" ")
+
+      assert Plastic::CLI::TABLE.key?(words), "#{command}: #{words.inspect}"
+    end
+  end
+
   def declared_switches(command)
-    words = command.split
-    key = Plastic::CLI::TABLE.keys.select { |candidate| words.first(candidate.split.size) == candidate.split }.max_by(&:size)
+    key = Plastic::CLI::TABLE.keys.select { |candidate| command.split.first(candidate.split.size) == candidate.split }.max_by(&:size)
 
     refute_nil key, command
     CommandReferenceHelper.pages.fetch(key).options.map { |option| option.switch.split.first }

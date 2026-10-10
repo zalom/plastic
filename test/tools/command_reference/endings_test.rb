@@ -72,4 +72,30 @@ class CommandReferenceEndingsTest < Minitest::Test
       end
     end
   end
+
+  def raise_texts(words) = page(words).endings.select { |ending| ending.kind == :raise && ending.file.end_with?("backup_store.rb") }.map { |ending| source_line(ending.file, ending.line) }
+
+  def test_a_backup_command_lists_only_the_raises_its_call_can_reach
+    texts = raise_texts("backup list")
+
+    refute_empty texts
+    assert(texts.none? { |text| text.include?("give") || text.include?("error.message") })
+  end
+
+  def test_a_backup_command_with_a_check_call_lists_the_raises_that_check_reaches
+    %w[backup\ restore backup\ purge].each do |words|
+      texts = raise_texts(words)
+
+      assert(texts.any? { |text| text.include?("give") }, words)
+      assert(texts.any? { |text| text.include?("error.message") }, words)
+    end
+  end
+
+  def test_the_own_check_call_of_a_backup_command_is_part_of_its_own_call
+    check = page("backup restore").own_call.check
+
+    assert_equal "scripts/lib/plastic/commands/backup_restore.rb", check.file
+    assert_includes check.code.join("\n"), "one_of"
+    assert_nil page("backup list").own_call.check
+  end
 end

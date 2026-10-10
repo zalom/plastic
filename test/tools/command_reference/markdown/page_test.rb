@@ -38,4 +38,56 @@ class CommandReferenceMarkdownPageTest < Minitest::Test
   def test_the_outcomes_table_names_the_exit_and_the_code
     assert_includes text("intent end"), "| Ending | Exit | next: | Code |"
   end
+
+  def prose(page) = CommandReference::Markdown::Prose.lines(page.comment).first
+
+  NO_CHAIN = ["hook end", "hook record", "hook resume", "graph resume", "project links", "project list", "status", "project new"].freeze
+
+  def test_a_no_chain_page_names_the_command_call_and_never_says_before_the_chain
+    NO_CHAIN.each do |words|
+      body = text(words)
+
+      refute_includes body, "Before the chain", words
+      assert_includes body, "## The command", words
+    end
+  end
+
+  def test_a_command_page_names_its_call_and_a_hook_page_names_its_respond
+    assert_match(/The command's `call`, at \[`status\.rb:\d+`\]/, text("status"))
+    assert_match(/The hook's `respond`, at \[`record\.rb:\d+`\]/, text("hook record"))
+    refute_includes text("hook record"), "own `call`"
+  end
+
+  def test_a_routine_with_its_own_call_keeps_the_section_before_the_chain
+    assert_includes text("update"), "## Before the chain"
+  end
+
+  def test_the_class_comment_is_skipped_when_it_repeats_the_summary_and_kept_when_it_adds_more
+    status = page("status")
+    sync = page("sync up")
+
+    refute_includes text("status"), prose(status)
+    refute_includes text("hook record"), prose(page("hook record"))
+    assert_includes text("sync up"), prose(sync)
+  end
+
+  def test_the_ending_column_holds_words_and_never_raw_ruby
+    CommandReferenceHelper.files.select { |path, _| path.end_with?("README.md") && path.include?("/commands/") }.each do |path, body|
+      endings = body.split("## Outcomes").last.to_s
+      refute_match(/\braise\b|next_step|CLI::|Command::|\bgate\b\(/, endings, path)
+    end
+  end
+
+  def test_an_ending_says_its_kind_in_words_with_the_literal_message
+    assert_includes text("backup list"), "Usage error: name the store with --store; --project does not apply"
+    assert_includes text("project list"), "Offers the next command"
+  end
+
+  def test_the_own_call_section_shows_the_check_call_next_to_the_module_call
+    body = text("backup restore")
+
+    assert_includes body, "`check_call`"
+    assert_includes body, "one_of(%i[timestamp latest]"
+    refute_includes text("backup list"), "`check_call`, at"
+  end
 end

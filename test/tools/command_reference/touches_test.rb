@@ -7,40 +7,24 @@ class CommandReferenceTouchesTest < Minitest::Test
 
   BOOKKEEPING = %w[changes printed].freeze
   STORE_KEYS = %i[work knowledge references].freeze
-
-  # A command whose scan and declaration differ, with the reason, reported to the lead.
+  DEFECT = "declaration defect: "
   EXCEPTIONS = {
-    "intent abandon" => "the knowledge write goes through the sync layer several calls deep, past the scan's reach",
-    "intent end" => "the knowledge write goes through the sync layer several calls deep, past the scan's reach",
-    "intent new" => "the knowledge write goes through the sync layer several calls deep, past the scan's reach",
-    "project new" => "the knowledge write goes through the sync layer several calls deep, past the scan's reach",
-    "project links" => "the work happens several calls deep in the document or evidence layer, past the scan's reach",
-    "sync up" => "the references database is touched inside the sync layer, past the scan's reach",
-    "sync down" => "the references database is touched inside the sync layer, past the scan's reach",
-    "session note" => "the note lands in local.db, which the store keys leave out, while the declaration says work",
-    "intent rule" => "the intent problem reads add the work database to a command declared knowledge only",
-    "intent revise" => "the knowledge write goes through the sync layer several calls deep, past the scan's reach",
-    "intent note" => "the note is kept by a noter whose database the declaration names knowledge, and the scan sees work reads",
-    "intent spec" => "the spec read reaches the knowledge graph through evidence reads, past the scan's reach",
-    "intent discover" => "the discovery reads references the declaration leaves out",
-    "intent context" => "the work happens several calls deep in the document or evidence layer, past the scan's reach",
-    "next" => "the work happens several calls deep in the document or evidence layer, past the scan's reach",
-    "intent archive" => "the knowledge write goes through the sync layer several calls deep, past the scan's reach",
-    "intent unarchive" => "the knowledge write goes through the sync layer several calls deep, past the scan's reach",
-    "backup" => "the declaration is coarser than the code, which touches local.db only",
-    "backup purge" => "the declaration is coarser than the code, which touches local.db only",
-    "backup restore" => "the declaration is coarser than the code, which touches local.db only",
-    "document get" => "the work happens several calls deep in the document or evidence layer, past the scan's reach",
-    "document batch" => "the work happens several calls deep in the document or evidence layer, past the scan's reach",
-    "search" => "the work happens several calls deep in the document or evidence layer, past the scan's reach",
-    "graph resume" => "the work happens several calls deep in the document or evidence layer, past the scan's reach",
-    "roadmap show" => "the roadmap read goes through the roadmap reader, past the scan's reach",
-    "roadmap next" => "the roadmap read goes through the roadmap reader, past the scan's reach",
-    "roadmap check" => "the roadmap read goes through the roadmap reader, past the scan's reach",
-    "roadmap open" => "the knowledge write goes through the sync layer several calls deep, past the scan's reach"
+    read: {
+      "intent rule" => "#{DEFECT}it reads the intent without `reads :work`",
+      "intent note" => "#{DEFECT}it reads the intent without `reads :work`",
+      "intent spec" => "#{DEFECT}it reads intents but declares only :knowledge",
+      "intent judge" => "#{DEFECT}it declares nothing but reads the intent",
+      "intent revise" => "#{DEFECT}it reads the intent without `reads :work`",
+      "intent context" => "#{DEFECT}it reads the intent without `reads :work`"
+    },
+    write: {
+      "backup restore" => "#{DEFECT}it declares only `writes :work` but replaces every database of the store"
+    }
   }.freeze
 
   def touches(words) = page(words).touches
+
+  def svg(words) = CommandReference::Figures::Component.new(page(words)).canvas.standalone
 
   def test_a_delegated_writer_method_writes_the_table_of_its_writer
     assert touches("node add").writes?("work_graph.db", "nodes")
@@ -87,20 +71,85 @@ class CommandReferenceTouchesTest < Minitest::Test
     assert_includes touches("intent end").files, "store/index.json"
   end
 
-  def test_the_store_databases_found_equal_the_declared_graphs
-    CommandReferenceHelper.pages.each do |words, page|
-      next unless page.kind == :routine || page.kind == :command
+  def test_a_private_accessor_behind_a_facade_method_is_followed_to_its_reader
+    assert touches("roadmap show").reads?("work_graph.db", "roadmaps")
+    assert_includes touches("roadmap show").components.map(&:name), "Retrieval::RoadmapReader"
+  end
 
-      found = page.touches.store_keys.sort
-      next if found == declared_store_keys(page)
+  def test_a_facade_method_that_builds_a_helper_resolves_to_the_helper_and_not_the_facade_file
+    refute touches("intent discover").reads?("local.db", "routine_runs")
+    assert_includes touches("roadmap open").components.map(&:name), "Knowledge::Roadmap::ItemOpen"
+  end
 
-      assert EXCEPTIONS.fetch(words, nil), "#{words}: found #{found.inspect}, declared #{declared_store_keys(page).inspect}"
+  def test_an_escaped_update_statement_is_a_write
+    assert_equal :write, CommandReference::Touches::Scan.mode_of('batch.add("UPDATE \"locks\" SET x = 1")', "locks")
+    assert touches("hook record").writes?("local.db", "locks")
+  end
+
+  def test_the_sql_of_a_constant_a_method_uses_is_part_of_the_method
+    assert touches("hook record").reads?("work_graph.db", "nodes")
+  end
+
+  def test_the_plastic_classes_a_workflow_names_are_components_and_are_scanned
+    {
+      "intent spec" => "Knowledge::Spec", "intent end" => "Work::Completion::Check", "next" => "Work::NextPick",
+      "project links" => "Knowledge::Link::Check", "search" => "Workflows::SearchQuery", "document get" => "Workflows::DocumentLookup"
+    }.each { |words, name| assert_includes touches(words).components.map(&:name), name, words }
+    assert_includes touches("next").components.map(&:name), "Work::NextOffer"
+  end
+
+  def test_a_store_the_command_declares_and_the_scan_misses_is_drawn_from_the_declaration
+    sync = touches("sync up")
+
+    %w[work_graph.db knowledge_graph.db references.db].each do |file|
+      assert sync.declared?(file, :write), file
+      assert_empty sync.tables_of(file, :write), file
     end
   end
 
-  def declared_store_keys(page) = ((page.klass.reads + page.klass.writes).uniq & STORE_KEYS).sort
+  def test_a_declared_store_is_not_drawn_when_the_scan_found_its_tables
+    refute touches("node add").declared?("work_graph.db", :write)
+  end
 
-  def test_every_exception_names_its_reason
-    assert(EXCEPTIONS.values.all? { |reason| reason.to_s.split.size > 3 })
+  def test_only_a_command_with_nothing_found_says_no_database_was_found_in_the_code
+    refute_includes svg("document get"), "no database found in the code"
+    refute_includes svg("next"), "no database found in the code"
+    refute_includes svg("version"), "touches no database"
+    assert_includes svg("version"), "no database found in the code"
+  end
+
+  def test_the_drawing_marks_a_declared_store_and_explains_the_mark_in_its_legend
+    assert_includes svg("sync up"), "declared"
+    assert_includes svg("sync up"), "R read"
+  end
+
+  def test_the_local_database_counts_as_the_work_store
+    assert_equal [:work], touches("session note").store_keys(:write)
+  end
+
+  def test_the_hooks_read_and_write_what_their_code_names
+    assert touches("hook record").writes?("local.db", "locks")
+    assert touches("hook record").reads?("work_graph.db", "nodes")
+    assert touches("hook end").writes?("local.db", "sessions")
+    assert_includes touches("hook resume").store_keys(:read), :work
+  end
+
+  def test_the_store_databases_found_equal_the_declared_graphs
+    %i[read write].each do |mode|
+      CommandReferenceHelper.pages.each do |words, page|
+        next if page.kind == :hook
+
+        found = page.touches.store_keys(mode)
+        next if found == declared_store_keys(page, mode)
+
+        assert EXCEPTIONS.fetch(mode).fetch(words, nil), "#{words} #{mode}s: found #{found.inspect}, declared #{declared_store_keys(page, mode).inspect}"
+      end
+    end
+  end
+
+  def declared_store_keys(page, mode) = ((mode == :read) ? page.klass.reads : page.klass.writes).uniq.&(STORE_KEYS).sort
+
+  def test_every_exception_is_a_declaration_defect_or_names_a_scan_limit
+    EXCEPTIONS.each_value { |group| assert(group.values.all? { |reason| reason.start_with?(DEFECT) || reason.include?("scan limit") }) }
   end
 end

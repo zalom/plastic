@@ -50,13 +50,24 @@ class CommandReferenceModelTest < Minitest::Test
     assert_includes hook.own_call.code.first, "def respond"
   end
 
-  def test_every_row_and_outcome_links_a_line_that_holds_its_statement
+  def test_every_row_links_a_line_that_holds_its_own_statement
     CommandReferenceHelper.pages.each_value do |page|
       rows_of(page).each do |row|
         refute_nil row.line, "#{page.words}: #{row.name}"
-        assert_match STEP_LINE, source_line(row.file, row.line), "#{page.words}: #{row.name} at #{row.file}:#{row.line}"
+        text = source_line(row.file, row.line)
+
+        assert_match STEP_LINE, text, "#{page.words}: #{row.name} at #{row.file}:#{row.line}"
+        assert statement?(row, text), "#{page.words}: #{row.name} at #{row.file}:#{row.line}: #{text.strip}"
       end
     end
+  end
+
+  def statement?(row, text)
+    code = text.strip
+    return code.start_with?("def forget_stop") if row.name == "forget a stop of an earlier call"
+
+    literal = code[/\A\w+\s*\(?\s*"([^"]*)"/, 1]
+    code.match?(/\A(?:def \w+ = )?(gate|read|step|agent)\b/) && (literal.nil? || literal.include?("\#{") || literal == row.name)
   end
 
   def test_every_outcome_links_its_outcome_line_or_the_workflow
@@ -68,11 +79,16 @@ class CommandReferenceModelTest < Minitest::Test
   end
 
   def test_shared_and_class_method_steps_link_the_file_that_holds_them
-    claim = gate_rows("node claim")
-
-    refute_empty claim
     assert_equal ["scripts/lib/plastic/workflows/sync_steps.rb"], gate_rows("sync up").map(&:file).uniq
-    assert(claim.all? { |row| source_line(row.file, row.line).match?(/\bgate\b/) })
+  end
+
+  def test_every_row_of_node_claim_and_sync_up_has_a_file_and_a_line_that_match
+    %w[node\ claim sync\ up].each do |words|
+      rows_of(page(words)).each do |row|
+        refute_nil row.file, "#{words}: #{row.name}"
+        assert_match STEP_LINE, source_line(row.file, row.line), "#{words}: #{row.name}"
+      end
+    end
   end
 
   def gate_rows(words) = page(words).flows.flat_map(&:rows).select { |row| row.kind == :gate }
@@ -81,7 +97,7 @@ class CommandReferenceModelTest < Minitest::Test
     row = page("auto").flows.flat_map(&:rows).find { |found| found.check.to_s.include?("delivery_started?") }
 
     refute_nil row
-    assert_match(/step/, source_line(row.file, row.line))
+    assert_includes source_line(row.file, row.line), "delivery_started?"
   end
 
   def test_a_forgotten_stop_links_the_workflow_base_file
