@@ -42,7 +42,7 @@ or pass `--all` for every supported agent.
 4. Checks the archive against the checksum, and refuses an archive that holds a link or a path
    outside it.
 5. Unpacks the release into its own directory under `~/.local/share/plastic/releases`, has the
-   Bundler of that Ruby install the sqlite3 gem inside that directory, and writes a launcher that
+   Bundler of that Ruby install the sqlite3 and tty-prompt gems inside that directory, and writes a launcher that
    starts that Ruby by its full path.
 6. Points the `active` link at the new release, and links `~/.local/bin/plastic` to it.
 
