@@ -25,13 +25,9 @@ module Plastic
           picked = @prompt.multi_select(question, labels, default: Choice.preselected(choices), help: HELP,
             show_help: :always, echo: false, per_page: labels.size)
           Chosen.new(labels: labels & picked)
-        rescue interrupt
+        rescue TTY::Reader::InputInterrupt
           Left.new
         end
-
-        private
-
-        def interrupt = defined?(TTY::Reader::InputInterrupt) ? TTY::Reader::InputInterrupt : Interrupt
       end
     end
   end
