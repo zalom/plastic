@@ -5,14 +5,22 @@ require "cgi/escape"
 module ArchitectureFigures
   # Part of the figure builder; see docs/contributing/ARCHITECTURE.md.
   module Palette
-    LIGHT = {
-      ink: "#1f2530", muted: "#3f4754", line: "#6b7483", paper: "#e9e5dc", card: "#f4f1ea", rule: "#c9c3b6",
-      code: "#0b5e55", agent: "#7d4405", owner: "#4a2a99", owner_bg: "#e4dcf5", end: "#23406f", end_bg: "#d9e2f0"
-    }.freeze
-    DARK = {
-      ink: "#e8e6e1", muted: "#b4bac4", line: "#8a93a3", paper: "#1d2128", card: "#262b34", rule: "#3b424e",
-      code: "#5fd0c0", agent: "#e0a24f", owner: "#b9a2ff", owner_bg: "#2f2750", end: "#8fb0e8", end_bg: "#1f2d45"
-    }.freeze
+    COLORS = <<~TABLE.lines.map(&:split).freeze
+      ink #1f2530 #e8e6e1
+      muted #3f4754 #b4bac4
+      line #6b7483 #8a93a3
+      paper #e9e5dc #1d2128
+      card #f4f1ea #262b34
+      rule #c9c3b6 #3b424e
+      code #0b5e55 #5fd0c0
+      agent #7d4405 #e0a24f
+      owner #4a2a99 #b9a2ff
+      owner_bg #e4dcf5 #2f2750
+      end #23406f #8fb0e8
+      end_bg #d9e2f0 #1f2d45
+    TABLE
+    LIGHT = COLORS.to_h { |name, light, _dark| [name.to_sym, light] }.freeze
+    DARK = COLORS.to_h { |name, _light, dark| [name.to_sym, dark] }.freeze
 
     MONO = 'font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;'
     RULES = {

@@ -7,17 +7,17 @@ module ArchitectureFigures
   module Graphs
     META = Diagram::Meta.new(file: "graphs.svg", width: 1160, height: 480, title: "The three graphs and their databases",
       desc: "The work graph lives in work_graph.db. The knowledge graph and the retrieval graph both live in knowledge_graph.db. Graph::WorkGraph and Graph::RetrievalGraph read and write the rows, and Graph::Printer prints them as files.")
-    BOXES = {
-      work_class: { left: 30, top: 20, width: 330, name: "Graph::WorkGraph", mono: true, kind: "class", tone: :code, lines: ["Opens the work graph."] },
-      retrieval_class: { left: 490, top: 20, width: 330, name: "Graph::RetrievalGraph", mono: true, kind: "class", tone: :code, lines: ["Opens the knowledge and", "retrieval graphs."] },
-      work: { left: 30, top: 170, width: 330, name: "Work graph", kind: "graph", tone: :agent, lines: ["What is being built: intents, with", "their nodes and the edges between."] },
-      knowledge: { left: 490, top: 170, width: 330, name: "Knowledge graph", kind: "graph", tone: :owner, lines: ["What is known: documents,", "rulings and the links between."] },
-      retrieval: { left: 850, top: 170, width: 290, name: "Retrieval graph", kind: "graph", tone: :end, lines: ["What is found: the search index", "over the documents."] },
-      work_db: { type: :cylinder, left: 30, top: 300, width: 330, name: "work_graph.db", lines: ["intents, nodes, edges"] },
-      knowledge_db: { type: :cylinder, left: 490, top: 300, width: 650, name: "knowledge_graph.db", lines: ["documents, rulings, links, document_heads"] },
-      printer: { left: 30, top: 400, width: 330, name: "Graph::Printer", mono: true, tone: :line },
-      files: { left: 490, top: 396, width: 650, name: "Files in the store folder", tone: :line, lines: ["spec.md, graph.json, savepoint.md, outcome.md"] }
-    }.freeze
+    BOXES = Diagram.parse(<<~TABLE).freeze
+      work_class | | 30 20 330 | Graph::WorkGraph | class | code | mono | Opens the work graph.
+      retrieval_class | | 490 20 330 | Graph::RetrievalGraph | class | code | mono | Opens the knowledge and / retrieval graphs.
+      work | | 30 170 330 | Work graph | graph | agent | | What is being built: intents, with / their nodes and the edges between.
+      knowledge | | 490 170 330 | Knowledge graph | graph | owner | | What is known: documents, / rulings and the links between.
+      retrieval | | 850 170 290 | Retrieval graph | graph | end | | What is found: the search index / over the documents.
+      work_db | cylinder | 30 300 330 | work_graph.db | | | | intents, nodes, edges
+      knowledge_db | cylinder | 490 300 650 | knowledge_graph.db | | | | documents, rulings, links, document_heads
+      printer | | 30 400 330 | Graph::Printer | | line | mono |
+      files | | 490 396 650 | Files in the store folder | | line | | spec.md, graph.json, savepoint.md, outcome.md
+    TABLE
     ARROWS = [
       ["work_class.bottom", "work.top", ["opens"]],
       ["retrieval_class.bottom@0.25", "knowledge.top@0.25", ["opens"]],

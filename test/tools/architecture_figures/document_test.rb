@@ -42,7 +42,7 @@ class ArchitectureFiguresDocumentTest < Minitest::Test
 
   def tracked_texts
     out, _err, _status = Open3.capture3("git", "-C", ROOT, "ls-files")
-    out.lines.map(&:strip).reject { |path| excluded?(path) }
+    out.lines.map(&:strip).reject { |path| excluded?(path) || !File.file?(File.join(ROOT, path)) }
       .to_h { |path| [path, File.binread(File.join(ROOT, path)).force_encoding("UTF-8")] }.select { |_path, text| text.valid_encoding? && !text.include?("\0") }
   end
 

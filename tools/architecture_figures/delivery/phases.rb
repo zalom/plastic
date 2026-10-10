@@ -8,23 +8,23 @@ module ArchitectureFigures
     module Phases
       META = Diagram::Meta.new(file: "delivery-phases.svg", width: 1160, height: 560, title: "How an intent is delivered",
         desc: "An intent starts in What, where it gets its context. Why grills it into a spec and rulings. The owner gives the go-ahead. How plans the work graph, runs the nodes, judges the result and opens the pull request. intent end or intent abandon closes it.")
-      BOXES = {
-        what: { type: :zone, left: 10, top: 10, width: 260, height: 398, name: "WHAT" },
-        why: { type: :zone, left: 290, top: 10, width: 260, height: 398, name: "WHY" },
-        go: { type: :zone, left: 570, top: 10, width: 240, height: 398, name: "GO-AHEAD" },
-        how: { type: :zone, left: 830, top: 10, width: 320, height: 398, name: "HOW" },
-        new: { left: 30, top: 44, width: 220, name: "intent new", mono: true, kind: "1  Start", tone: :code, lines: ["Writes the intent."] },
-        discover: { left: 30, top: 134, width: 220, name: "intent discover", mono: true, kind: "2  Context", tone: :code, lines: ["Gathers what is known."] },
-        spec: { left: 310, top: 44, width: 220, name: "intent spec", mono: true, kind: "3  Grilling", tone: :agent, lines: ["Asks until all is settled."] },
-        rule: { left: 310, top: 134, width: 220, name: "intent rule", mono: true, kind: "4  One spec", tone: :agent, lines: ["Records each ruling."] },
-        approve: { left: 590, top: 94, width: 200, name: "intent approve", mono: true, kind: "5  You say deliver", tone: :owner, lines: ["The go-ahead."] },
-        add: { left: 850, top: 44, width: 280, name: "node add", mono: true, kind: "6  Plan the graph", tone: :code, lines: ["Nodes, and edges for the order."] },
-        claim: { left: 850, top: 134, width: 280, name: "node claim", mono: true, kind: "7  Work the nodes", tone: :code, lines: ["Each node, claimed and done."] },
-        judge: { left: 850, top: 224, width: 280, name: "intent judge", mono: true, kind: "8  Judge", tone: :agent, lines: ["Reasons over the finished work."] },
-        pull: { left: 850, top: 314, width: 280, name: "Pull request", kind: "9  Review", tone: :owner, lines: ["The owner approves and merges."] },
-        finish: { left: 850, top: 450, width: 280, name: "intent end", mono: true, kind: "10  Close", tone: :end, lines: ["Records the completion."] },
-        abandon: { left: 30, top: 450, width: 280, name: "intent abandon", mono: true, kind: "Any time", tone: :line, lines: ["Closes an intent that stops."] }
-      }.freeze
+      BOXES = Diagram.parse(<<~TABLE).freeze
+        what | zone | 10 10 260 398 | WHAT | | | |
+        why | zone | 290 10 260 398 | WHY | | | |
+        go | zone | 570 10 240 398 | GO-AHEAD | | | |
+        how | zone | 830 10 320 398 | HOW | | | |
+        new | | 30 44 220 | intent new | 1  Start | code | mono | Writes the intent.
+        discover | | 30 134 220 | intent discover | 2  Context | code | mono | Gathers what is known.
+        spec | | 310 44 220 | intent spec | 3  Grilling | agent | mono | Asks until all is settled.
+        rule | | 310 134 220 | intent rule | 4  One spec | agent | mono | Records each ruling.
+        approve | | 590 94 200 | intent approve | 5  You say deliver | owner | mono | The go-ahead.
+        add | | 850 44 280 | node add | 6  Plan the graph | code | mono | Nodes, and edges for the order.
+        claim | | 850 134 280 | node claim | 7  Work the nodes | code | mono | Each node, claimed and done.
+        judge | | 850 224 280 | intent judge | 8  Judge | agent | mono | Reasons over the finished work.
+        pull | | 850 314 280 | Pull request | 9  Review | owner | | The owner approves and merges.
+        finish | | 850 450 280 | intent end | 10  Close | end | mono | Records the completion.
+        abandon | | 30 450 280 | intent abandon | Any time | line | mono | Closes an intent that stops.
+      TABLE
       ARROWS = [
         %w[new.bottom discover.top], %w[discover.right spec.left], %w[spec.bottom rule.top], %w[rule.right approve.left],
         %w[approve.right add.left], %w[add.bottom claim.top], %w[claim.bottom judge.top], %w[judge.bottom pull.top], %w[pull.bottom finish.top]

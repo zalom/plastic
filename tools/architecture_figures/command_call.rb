@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require_relative "diagram"
-require_relative "terminal"
 
 module ArchitectureFigures
   # Part of the figure builder; see docs/contributing/ARCHITECTURE.md.

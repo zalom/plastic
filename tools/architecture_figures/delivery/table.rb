@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require_relative "../diagram"
-require_relative "../matrix"
 
 module ArchitectureFigures
   module Delivery
@@ -9,19 +8,29 @@ module ArchitectureFigures
     module Table
       META = Diagram::Meta.new(file: "delivery-graphs.svg", width: 1160, height: 770, title: "What each delivery step does to the three graphs",
         desc: "For each step of delivery, the rows the knowledge graph, the retrieval graph and the work graph receive, give or print as files.")
-      ROWS = [
-        { title: "1  Start", commands: ["intent new"], cells: [[[:writes, "the intent document"]], [], [[:writes, "the intent row"], [:prints, "the folder, store/index.json"]]] },
-        { title: "2  Context", commands: ["intent discover", "intent context"], cells: [[[:reads, "documents, rulings, links"]], [[:writes, "discoveries and context"], [:prints, "context.json"]], []] },
-        { title: "3  Grilling", commands: ["intent spec", "intent rule"], cells: [[[:writes, "a ruling for each decision"]], [[:reads, "the intent's context"]], []] },
-        { title: "4  One spec", commands: ["spec.md"], cells: [[[:writes, "done criteria with keys"]], [], []] },
-        { title: "5  You say deliver", commands: ["intent approve"], cells: [[], [], [[:writes, "the go-ahead row"]]] },
-        { title: "6  Plan the graph", commands: ["node add", "edge add"], cells: [[[:reads, "the done criteria keys"]], [[:reads, "the intent's context"]], [[:writes, "nodes and edges"], [:prints, "graph.json, the checklist"]]] },
-        { title: "7  Work the nodes", commands: ["node claim", "node done"], cells: [[[:reads, "the spec and its rulings"]], [[:reads, "the node's context"]], [[:writes, "claims, retries, findings"], [:prints, "graph.json"]]] },
-        { title: "8  Judge", commands: ["intent judge"], cells: [[[:reads, "spec, rulings, outcome.md"]], [], [[:writes, "the verdict"], [:prints, "graph.json"]]] },
-        { title: "9  Review", commands: ["outcome.md"], cells: [[[:writes, "the pull request and approval"]], [], []] },
-        { title: "10  Close", commands: ["intent end"], cells: [[[:reads, "outcome.md"]], [], [[:reads, "the verdict and every node"], [:writes, "status done, lock released"], [:prints, "store/index.json"]]] },
-        { title: "Any time", commands: ["intent abandon"], dashed: true, cells: [[[:writes, "a supersedes link, if any"]], [], [[:writes, "status abandoned"], [:prints, "store/index.json"]]] }
-      ].freeze
+      def self.row(line)
+        title, commands, dashed, cells = line.strip.split(" | ", 4)
+        { title: title, commands: commands.split(", "), dashed: (true if dashed == "dashed"), cells: cells.split(" || ").map { |cell| items(cell) } }.compact
+      end
+
+      def self.items(cell) = (cell == "-") ? [] : cell.split(" ; ").map { |item| mark(item) }
+
+      def self.mark(item) = item.split(": ", 2).then { |verb, text| [verb.to_sym, text] }
+
+      TEXT = <<~STEPS
+        1  Start | intent new | - | writes: the intent document || - || writes: the intent row ; prints: the folder, store/index.json
+        2  Context | intent discover, intent context | - | reads: documents, rulings, links || writes: discoveries and context ; prints: context.json || -
+        3  Grilling | intent spec, intent rule | - | writes: a ruling for each decision || reads: the intent's context || -
+        4  One spec | spec.md | - | writes: done criteria with keys || - || -
+        5  You say deliver | intent approve | - | - || - || writes: the go-ahead row
+        6  Plan the graph | node add, edge add | - | reads: the done criteria keys || reads: the intent's context || writes: nodes and edges ; prints: graph.json, the checklist
+        7  Work the nodes | node claim, node done | - | reads: the spec and its rulings || reads: the node's context || writes: claims, retries, findings ; prints: graph.json
+        8  Judge | intent judge | - | reads: spec, rulings, outcome.md || - || writes: the verdict ; prints: graph.json
+        9  Review | outcome.md | - | writes: the pull request and approval || - || -
+        10  Close | intent end | - | reads: outcome.md || - || reads: the verdict and every node ; writes: status done, lock released ; prints: store/index.json
+        Any time | intent abandon | dashed | writes: a supersedes link, if any || - || writes: status abandoned ; prints: store/index.json
+      STEPS
+      ROWS = TEXT.lines.map { |line| row(line) }.freeze
       TABLE = Shapes::Matrix.new(left: 30, top: 10, columns: [290, 560, 830], heads: ["Step and its commands", "Knowledge graph", "Retrieval graph", "Work graph"], rows: ROWS)
       KEY = [Shapes::Mark.new(left: 30, top: 740, verb: :writes, text: "writes rows"), Shapes::Mark.new(left: 210, top: 740, verb: :reads, text: "reads rows"), Shapes::Mark.new(left: 390, top: 740, verb: :prints, text: "prints a file")].freeze
 

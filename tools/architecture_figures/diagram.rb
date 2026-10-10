@@ -2,32 +2,18 @@
 
 require_relative "canvas"
 require_relative "shapes"
+require_relative "diagram/route"
+require_relative "diagram/rows"
 
 module ArchitectureFigures
   # A figure built from named boxes and arrows between their sides. See docs/contributing/ARCHITECTURE.md.
   class Diagram
     # The file name, size, title and description of one figure.
     Meta = Data.define(:file, :width, :height, :title, :desc)
-    # The path of one arrow: straight when its ends line up, otherwise bent.
-    Route = Data.define(:start, :finish, :out, :into) do
-      def points = aligned? ? [start, finish] : [start, *corners, finish]
-
-      private
-
-      def aligned? = start.first == finish.first || start.last == finish.last
-
-      def flat = [out, into].map { |side| %i[left right].include?(side) }
-
-      def corners
-        (sx, sy), (fx, fy) = start, finish
-        mx = (sx + fx) / 2
-        my = (sy + fy) / 2
-        { [true, false] => [[fx, sy]], [false, true] => [[sx, fy]],
-          [true, true] => [[mx, sy], [mx, fy]], [false, false] => [[sx, my], [fx, my]] }.fetch(flat)
-      end
-    end
     TYPES = { box: Shapes::Box, cylinder: Shapes::Cylinder, zone: Shapes::Zone }.freeze
     DEFAULTS = { box: { kind: nil, lines: [], tone: :line, mono: false }, cylinder: { lines: [], tone: :code }, zone: {} }.freeze
+
+    def self.parse(table) = Rows.parse(table)
 
     def self.shape(attrs)
       type = attrs.fetch(:type, :box)

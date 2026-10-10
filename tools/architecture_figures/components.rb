@@ -7,24 +7,24 @@ module ArchitectureFigures
   module Components
     META = Diagram::Meta.new(file: "components.svg", width: 1240, height: 640, title: "The components of the plastic kernel",
       desc: "The command line finds a command in CLI::TABLE and builds a Routine. The Routine opens the Graph, runs the workflow chain through Routine::Traversal and reports one of four end values. Commands, workflows and graphs are separate groups of classes.")
-    BOXES = {
-      dispatch: { type: :zone, left: 10, top: 10, width: 1220, height: 150, name: "Dispatch: one command in, one report out" },
-      cli: { left: 30, top: 44, width: 270, name: "CLI", mono: true, kind: "class", tone: :code, lines: ["Reads the words, finds the row."] },
-      table: { left: 330, top: 44, width: 270, name: "CLI::TABLE", mono: true, kind: "constant", tone: :line, lines: ["One row for each command."] },
-      routine: { left: 630, top: 44, width: 270, name: "Routine", mono: true, kind: "class", tone: :code, lines: ["Runs one command to a report."] },
-      hook: { left: 930, top: 44, width: 270, name: "Hook", mono: true, kind: "class", tone: :agent, lines: ["Answers the three hook events."] },
-      commands: { type: :zone, left: 10, top: 190, width: 600, height: 190, name: "Commands" },
-      declarations: { left: 30, top: 222, width: 270, name: "CLI::Declarations", mono: true, kind: "module", tone: :line, lines: ["Options a command declares."] },
-      scope: { left: 330, top: 222, width: 260, name: "CLI::Scope", mono: true, kind: "class", tone: :line, lines: ["Which project and store."] },
-      workflows: { type: :zone, left: 640, top: 190, width: 590, height: 190, name: "Workflows" },
-      registry: { left: 660, top: 222, width: 270, name: "Workflows::REGISTRY", mono: true, kind: "constant", tone: :line, lines: ["Every workflow by name."] },
-      traversal: { left: 950, top: 222, width: 260, name: "Routine::Traversal", mono: true, kind: "class", tone: :code, lines: ["Walks the chain of workflows."] },
-      graphs: { type: :zone, left: 10, top: 410, width: 1220, height: 215, name: "Graphs" },
-      graph: { left: 30, top: 444, width: 270, name: "Graph", mono: true, kind: "module", tone: :code, lines: ["Opens the databases."] },
-      work: { left: 330, top: 444, width: 270, name: "Graph::WorkGraph", mono: true, kind: "class", tone: :line, lines: ["Intents, nodes and edges."] },
-      retrieval: { left: 630, top: 444, width: 270, name: "Graph::RetrievalGraph", mono: true, kind: "class", tone: :line, lines: ["Documents, rulings, links."] },
-      printer: { left: 930, top: 444, width: 270, name: "Graph::Printer", mono: true, kind: "class", tone: :line, lines: ["Prints the rows as files."] }
-    }.freeze
+    BOXES = Diagram.parse(<<~TABLE).freeze
+      dispatch | zone | 10 10 1220 150 | Dispatch: one command in, one report out | | | |
+      cli | | 30 44 270 | CLI | class | code | mono | Reads the words, finds the row.
+      table | | 330 44 270 | CLI::TABLE | constant | line | mono | One row for each command.
+      routine | | 630 44 270 | Routine | class | code | mono | Runs one command to a report.
+      hook | | 930 44 270 | Hook | class | agent | mono | Answers the three hook events.
+      commands | zone | 10 190 600 190 | Commands | | | |
+      declarations | | 30 222 270 | CLI::Declarations | module | line | mono | Options a command declares.
+      scope | | 330 222 260 | CLI::Scope | class | line | mono | Which project and store.
+      workflows | zone | 640 190 590 190 | Workflows | | | |
+      registry | | 660 222 270 | Workflows::REGISTRY | constant | line | mono | Every workflow by name.
+      traversal | | 950 222 260 | Routine::Traversal | class | code | mono | Walks the chain of workflows.
+      graphs | zone | 10 410 1220 215 | Graphs | | | |
+      graph | | 30 444 270 | Graph | module | code | mono | Opens the databases.
+      work | | 330 444 270 | Graph::WorkGraph | class | line | mono | Intents, nodes and edges.
+      retrieval | | 630 444 270 | Graph::RetrievalGraph | class | line | mono | Documents, rulings, links.
+      printer | | 930 444 270 | Graph::Printer | class | line | mono | Prints the rows as files.
+    TABLE
     ARROWS = [
       ["cli.right", "table.left", ["finds"]],
       ["table.right", "routine.left", ["builds"]],

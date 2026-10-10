@@ -1,12 +1,9 @@
 # frozen_string_literal: true
 
-require_relative "shapes"
-
 module ArchitectureFigures
-  # Part of the figure builder; see docs/contributing/ARCHITECTURE.md.
   module Shapes
     # A box of terminal output lines.
-    Terminal = Data.define(:left, :top, :width, :lines) do
+    class Terminal < Data.define(:left, :top, :width, :lines)
       def height = (16 * lines.size) + 20
 
       def markup(_id) = [frame, *rows].join("\n")

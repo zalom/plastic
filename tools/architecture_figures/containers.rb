@@ -7,20 +7,20 @@ module ArchitectureFigures
   module Containers
     META = Diagram::Meta.new(file: "containers.svg", width: 1160, height: 600, title: "What runs and where Plastic keeps its data",
       desc: "The plastic program reads and writes four SQLite databases: local.db in the home, and work_graph.db, knowledge_graph.db and references.db in each store. Files are printed from the rows into the store folder, and a sync up reads hand edits back. Backups are copies of a store's databases.")
-    BOXES = {
-      home: { type: :zone, left: 10, top: 10, width: 1140, height: 170, name: "Plastic home" },
-      instructions: { left: 30, top: 44, width: 230, name: "PLASTIC.md", kind: "file", tone: :agent, lines: ["The always-on instructions", "the harness imports."] },
-      program: { left: 290, top: 44, width: 250, name: "bin/plastic", mono: true, kind: "program", tone: :code, lines: ["Ruby. One command, plastic,", "and the three hooks."] },
-      local: { type: :cylinder, left: 580, top: 50, width: 240, name: "local.db", lines: ["routine_runs, sessions,", "locks, backups"] },
-      registry: { left: 860, top: 44, width: 270, name: "config.yml, projects.yml", kind: "files", tone: :line, lines: ["Settings, and the list of", "projects: slug to repository."] },
-      store: { type: :zone, left: 10, top: 215, width: 1140, height: 375, name: "A store: one for each project, under stores/" },
-      work: { type: :cylinder, left: 40, top: 250, width: 250, name: "work_graph.db", lines: ["intents, nodes, edges"] },
-      knowledge: { type: :cylinder, left: 320, top: 250, width: 250, name: "knowledge_graph.db", lines: ["documents, rulings, links"] },
-      references: { type: :cylinder, left: 600, top: 250, width: 250, name: "references.db", lines: ["sqlar"] },
-      backups: { left: 880, top: 244, width: 250, name: "backups/", kind: "folder", tone: :line, lines: ["Copies of the three databases,", "one folder for each backup."] },
-      index: { left: 40, top: 430, width: 250, name: "store/index.json", mono: true, kind: "file", tone: :line, lines: ["Every intent, in order."] },
-      folder: { left: 320, top: 430, width: 530, name: "ID--slug/", kind: "intent folder", tone: :line, lines: ["spec.md, graph.json, savepoint.md,", "outcome.md and context.json, printed from the rows."] }
-    }.freeze
+    BOXES = Diagram.parse(<<~TABLE).freeze
+      home | zone | 10 10 1140 170 | Plastic home | | | |
+      instructions | | 30 44 230 | PLASTIC.md | file | agent | | The always-on instructions / the harness imports.
+      program | | 290 44 250 | bin/plastic | program | code | mono | Ruby. One command, plastic, / and the three hooks.
+      local | cylinder | 580 50 240 | local.db | | | | routine_runs, sessions, / locks, backups
+      registry | | 860 44 270 | config.yml, projects.yml | files | line | | Settings, and the list of / projects: slug to repository.
+      store | zone | 10 215 1140 375 | A store: one for each project, under stores/ | | | |
+      work | cylinder | 40 250 250 | work_graph.db | | | | intents, nodes, edges
+      knowledge | cylinder | 320 250 250 | knowledge_graph.db | | | | documents, rulings, links
+      references | cylinder | 600 250 250 | references.db | | | | sqlar
+      backups | | 880 244 250 | backups/ | folder | line | | Copies of the three databases, / one folder for each backup.
+      index | | 40 430 250 | store/index.json | file | line | mono | Every intent, in order.
+      folder | | 320 430 530 | ID--slug/ | intent folder | line | | spec.md, graph.json, savepoint.md, / outcome.md and context.json, printed from the rows.
+    TABLE
     ARROWS = [
       ["program.right", "local.left", ["rows"]],
       ["program.bottom@0.2", "work.top", ["reads and writes rows"]],
