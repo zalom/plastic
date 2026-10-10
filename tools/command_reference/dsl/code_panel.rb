@@ -23,38 +23,40 @@ module CommandReference
 
       def width = (GUTTER + @chars * CHAR + 12).ceil
 
-      def draw(x, y)
-        @canvas.rect(x, y, width, @rows.size * LINE + 14, "codebox")
-        @rows.each_with_index.map { |row, index| line(row, x, y + 20 + index * LINE) }
+      def draw(origin)
+        @canvas.rect(Figures::Box.new(origin.left, origin.top, width, @rows.size * LINE + 14), "codebox")
+        @rows.each_with_index.map { |row, index| line(row, origin.shift(0, 20 + index * LINE)).top }
       end
 
       private
 
-      def line(row, x, base)
-        @canvas.text(x + GUTTER - 10, base, row.number, "cx-n", anchor: "end") if row.number
-        (row.text == "⋯") ? @canvas.text(x + GUTTER, base, "⋯ other code", "cx-n") : @canvas.raw(code(x + GUTTER, base, row.text), base + 6)
+      def line(row, base)
+        number(row.number, base)
+        start = base.shift(GUTTER, 0)
+        row.gap? ? @canvas.text(start, "⋯ other code", "cx-n") : @canvas.raw(Tokens.new(row.text).svg(start), base.top + 6)
         base
       end
 
-      def code(x, base, text)
-        %(<text x="#{x + text[/\A */].size * CHAR}" y="#{base}" class="cx">#{Tokens.new(text.lstrip).spans}</text>)
-      end
+      def number(found, base) = (@canvas.text(base.shift(GUTTER - 10, 0).ending, found, "cx-n") if found)
     end
 
     # The colored pieces of one line of code.
     class Tokens
       def initialize(text)
-        @scanner = StringScanner.new(text)
+        @indent = text[/\A */].size
+        @scanner = StringScanner.new(text.lstrip)
       end
 
-      def spans = runs.map { |css, words| css ? %(<tspan class="#{css}">#{CGI.escapeHTML(words)}</tspan>) : CGI.escapeHTML(words) }.join
+      def svg(start) = %(<text x="#{start.left + @indent * CodePanel::CHAR}" y="#{start.top}" class="cx">#{spans}</text>)
+
+      def spans = runs.map { |css, words| css ? %(<tspan class="#{css}">#{words}</tspan>) : words }.join
 
       private
 
       def runs
         parts = []
         parts << piece until @scanner.eos?
-        parts.chunk_while { |first, second| first.first == second.first }.map { |run| [run.first.first, run.map(&:last).join] }
+        parts.chunk_while { |first, second| first.first == second.first }.map { |run| [run.first.first, CGI.escapeHTML(run.map(&:last).join)] }
       end
 
       def piece

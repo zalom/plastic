@@ -5,50 +5,71 @@ module CommandReference
     # One step of a workflow, with the box of the stop it can cause on its right.
     class StepBox
       WIDE = 420
-      TAGS = { read: "READ", gate: "GATE", step: "STEP", agent: "AGENT STEP" }.freeze
+      STOP_TAGS = { refusal: "STOPS, EXIT 3, REFUSED", failure: "STOPS, EXIT 1, FAILED" }.freeze
+      # How one kind of row looks: its tag, its box and its lines.
+      Voice = Data.define(:tag, :tag_css, :box_css, :line_css, :checks)
+      VOICES = {
+        read: Voice.new("READ", "tag tag-muted", "card", "t", false),
+        gate: Voice.new("GATE", "tag tag-muted", "card", "tm", false),
+        step: Voice.new("STEP", "tag tag-muted", "card", "t", true),
+        agent: Voice.new("AGENT STEP", "tag tag-agent", "lane-agent", "t", true)
+      }.freeze
 
-      def initialize(drawing, flow, row)
+      def initialize(drawing, row)
         @drawing = drawing
-        @flow = flow
         @row = row
+        @voice = VOICES.fetch(row.kind)
       end
 
       def draw(top)
-        height = [30 + words.size * 15 + check.size * 14, stop_height].max
-        @drawing.rect(Workflow::SPINE, top, WIDE, height, (@row.kind == :agent) ? "lane-agent" : "card")
-        tags(top)
-        lines(top)
-        stop(top) if @row.stops
-        @drawing.wire([[Workflow::SPINE + WIDE / 2, top + height], [Workflow::SPINE + WIDE / 2, top + height + 10]])
-        top + height
+        frame = Box.new(Workflow::SPINE, top, WIDE, height)
+        @drawing.rect(frame, @voice.box_css)
+        annotate(frame)
+        connector(frame.foot)
+        frame.bottom
       end
 
       private
 
-      def words = @words ||= Words.wrap((@row.kind == :gate) ? "passes when #{@row.check}" : @row.name, 56)
+      def connector(foot) = @drawing.wire([foot, foot.shift(0, 10)])
 
-      def check = @check ||= %i[step agent].include?(@row.kind) ? Words.wrap("done when #{@row.check}", 52) : []
-
-      def tags(top)
-        @drawing.text(Workflow::SPINE + 10, top + 15, TAGS.fetch(@row.kind), (@row.kind == :agent) ? "tag tag-agent" : "tag tag-muted")
-        @drawing.text(Workflow::SPINE + WIDE - 10, top + 15, "#{File.basename(@row.file)}:#{@row.line}", "tm tag-muted", anchor: "end")
+      def annotate(frame)
+        heading(frame)
+        body(frame)
+        stop(frame) if @row.stops
       end
 
-      def lines(top)
-        words.each_with_index { |line, at| @drawing.text(Workflow::SPINE + 10, top + 32 + at * 15, line, (@row.kind == :gate) ? "tm" : "t") }
-        check.each_with_index { |line, at| @drawing.text(Workflow::SPINE + 10, top + 32 + words.size * 15 + at * 14, line, "tm") }
-      end
+      def height = [30 + words.size * 15 + check.size * 14, stop_height].max
 
-      def reason = @reason ||= Words.wrap((@row.kind == :gate) ? @row.name : "the step ran and its done check still fails", 30)
+      def words = @words ||= Words.wrap(@row.headline, 56)
+
+      def check = @check ||= @voice.checks ? Words.wrap("done when #{@row.check}", 52) : []
+
+      def reason = @reason ||= Words.wrap(@row.reason, 30)
 
       def stop_height = @row.stops ? 28 + reason.size * 14 : 0
 
-      def stop(top)
-        edge = Workflow::SPINE + WIDE
-        @drawing.wire([[edge, top + 18], [edge + 28, top + 18]], "wire-#{@row.stops}")
-        @drawing.rect(edge + 30, top, 270, stop_height, "stop-#{@row.stops}")
-        @drawing.text(edge + 40, top + 15, (@row.stops == :refusal) ? "STOPS, EXIT 3, REFUSED" : "STOPS, EXIT 1, FAILED", "tag tag-#{@row.stops}")
-        reason.each_with_index { |line, at| @drawing.text(edge + 40, top + 31 + at * 14, line, "tm") }
+      def heading(frame)
+        @drawing.text(frame.at(10, 15), @voice.tag, @voice.tag_css)
+        @drawing.text(frame.at(WIDE - 10, 15).ending, @row.location, "tm tag-muted")
+      end
+
+      def body(frame)
+        @drawing.roomy(frame.at(10, 32), words, @voice.line_css)
+        @drawing.paragraph(frame.at(10, 32 + words.size * 15), check, "tm")
+      end
+
+      def stop(frame)
+        kind = @row.stops
+        panel = Box.new(frame.right + 30, frame.top, 270, stop_height)
+        @drawing.wire([frame.at(WIDE, 18), frame.at(WIDE + 28, 18)], "wire-#{kind}")
+        @drawing.rect(panel, "stop-#{kind}")
+        stop_words(panel, kind)
+      end
+
+      def stop_words(panel, kind)
+        @drawing.text(panel.at(10, 15), STOP_TAGS.fetch(kind), "tag tag-#{kind}")
+        @drawing.paragraph(panel.at(10, 31), reason, "tm")
       end
     end
   end

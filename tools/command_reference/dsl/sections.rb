@@ -11,7 +11,9 @@ module CommandReference
 
       private
 
-      def link(key, pattern) = @links.code(DslPage::FILES.fetch(key), @dsl.line(key, pattern))
+      attr_reader :dsl, :links
+
+      def link(key, pattern) = links.code(DslPage::FILES.fetch(key), dsl.line(key, pattern))
 
       def opening(title, image, alt) = ["---", "", "## #{title}", "", "![#{alt}](#{image})", ""]
     end
@@ -19,8 +21,10 @@ module CommandReference
     # Declare a command.
     class CommandSection < Section
       def lines
-        [*opening("Declare a command", "declare-command.svg", "The plastic #{@dsl.page.words} class beside what each part of it declares"),
-          "The class of [`plastic #{@dsl.page.words}`](../commands/#{@dsl.page.slug}/README.md), from #{@links.code(@dsl.page.file, @dsl.page.line)}. " \
+        page = dsl.page
+        words = page.words
+        [*opening("Declare a command", "declare-command.svg", "The plastic #{words} class beside what each part of it declares"),
+          "The class of [`plastic #{words}`](../commands/#{page.slug}/README.md), from #{links.code(page.file, page.line)}. " \
           "The numbers match each part of the class to what it declares. Long lines are wrapped.", "",
           "| # | Word | What it declares | Defined in |", "| --- | --- | --- | --- |", *rows, ""]
       end
@@ -44,7 +48,7 @@ module CommandReference
     # Wire the chain.
     class ChainSection < Section
       def lines
-        [*opening("Wire the chain", "chain.svg", "The chain of plastic #{@dsl.page.words}"),
+        [*opening("Wire the chain", "chain.svg", "The chain of plastic #{dsl.page.words}"),
           "Each `workflow` line draws a box, and each `on` line draws a wire between two boxes, labeled with the outcomes it carries.", "",
           "| Line | What it means | Defined in |", "| --- | --- | --- |", *rows, "",
           "The first `workflow` line is the entry. An `on` line wins over a plain `next:`.", "",
@@ -80,9 +84,10 @@ module CommandReference
     # Declare a code workflow.
     class CodeSection < Section
       def lines
-        flow = @dsl.code_flow
-        [*opening("Declare a code workflow", "code-workflow.svg", "The #{Words.short(flow)} workflow beside what each line does when it runs"),
-          "`#{Words.short(flow)}`, the workflow `:#{flow.key}`, from #{@links.code(@dsl.flow_file(flow), @dsl.flow_line(flow))}. " \
+        flow = dsl.code_flow
+        name = Words.short(flow)
+        [*opening("Declare a code workflow", "code-workflow.svg", "The #{name} workflow beside what each line does when it runs"),
+          "`#{name}`, the workflow `:#{flow.key}`, from #{links.code(dsl.flow_file(flow), dsl.flow_line(flow))}. " \
           "The lines run from top to bottom. A block shows as `do ... end`, code that is not a DSL line shows as a gap, and long lines are wrapped and cut short.", "",
           "| Word | Shape | When it runs | Stops the call | Defined in |", "| --- | --- | --- | --- | --- |", *rows, "",
           "A block does the work. A keyword lambda, `done:`, `pass:` or `if:`, answers a question and changes nothing.", "",
@@ -91,12 +96,25 @@ module CommandReference
 
       private
 
-      def rows
+      def rows = [*head_rows, *gate_rows, *tail_rows]
+
+      def head_rows
         [
           "| `sets` | `sets :intent, :status` | when the class loads | never | #{link(:workflow, /def sets\b/)} |",
-          "| `read` | `read \"name\" do` then `end` | on every call, a rerun included | only when it raises: exit 1 | #{link(:code, /def read\b/)} |",
-          "| `gate` | `gate \"reason\", stops: :failure, pass: ->(c) { ... }` | in its place | when `pass:` is false: exit 1, the agent can fix it | #{link(:code, /def gate\b/)} |",
-          "| `gate` | `gate \"reason\", stops: :refusal, pass: ->(c) { ... }` | in its place | when `pass:` is false: exit 3, the owner's step | #{link(:code, /def gate\b/)} |",
+          "| `read` | `read \"name\" do` then `end` | on every call, a rerun included | only when it raises: exit 1 | #{link(:code, /def read\b/)} |"
+        ]
+      end
+
+      def gate_rows
+        gate = link(:code, /def gate\b/)
+        [
+          "| `gate` | `gate \"reason\", stops: :failure, pass: ->(c) { ... }` | in its place | when `pass:` is false: exit 1, the agent can fix it | #{gate} |",
+          "| `gate` | `gate \"reason\", stops: :refusal, pass: ->(c) { ... }` | in its place | when `pass:` is false: exit 3, the owner's step | #{gate} |"
+        ]
+      end
+
+      def tail_rows
+        [
           "| `step` | `step \"name\", done: ->(c) { ... } do` then `end` | while `done:` is false, and `done:` must hold after it | when it raises: exit 1 | #{link(:code, /def step\b/)} |",
           "| `forget_stop` | `forget_stop :problem` | on every call | never | #{link(:code, /def forget_stop\b/)} |",
           "| `outcome` | `outcome :name, if: ->(c) { ... }` | after the steps: the first whose `if:` holds wins | never | #{link(:code, /def outcome\b/)} |",
@@ -108,9 +126,10 @@ module CommandReference
     # Declare an agent workflow.
     class AgentSection < Section
       def lines
-        flow = @dsl.agent_flow
-        [*opening("Declare an agent workflow", "agent-workflow.svg", "The #{Words.short(flow)} workflow beside what a call prints for the agent"),
-          "`#{Words.short(flow)}`, the workflow `:#{flow.key}`, from #{@links.code(@dsl.flow_file(flow), @dsl.flow_line(flow))}.", "",
+        flow = dsl.agent_flow
+        name = Words.short(flow)
+        [*opening("Declare an agent workflow", "agent-workflow.svg", "The #{name} workflow beside what a call prints for the agent"),
+          "`#{name}`, the workflow `:#{flow.key}`, from #{links.code(dsl.flow_file(flow), dsl.flow_line(flow))}.", "",
           "| Word | Shape | What it does | Defined in |", "| --- | --- | --- | --- |", *rows, "",
           "An agent workflow always ends the chain. The agent reports its work through a plastic command, and the next call checks the steps again.", ""]
       end

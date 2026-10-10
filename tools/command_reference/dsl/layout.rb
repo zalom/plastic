@@ -8,80 +8,103 @@ module CommandReference
         @width = width
       end
 
-      def rows(code_rows)
-        code_rows.flat_map { |row| lines(row.text).each_with_index.map { |text, at| CodeRow.new(at.zero? ? row.number : nil, text) } }
+      def rows(code_rows) = code_rows.flat_map { |row| row.spread(self) }
+
+      def lines(text) = (text.size <= @width) ? [text] : Wrapper.new(text, @width).lines
+    end
+
+    # Packs the pieces of one statement into lines no wider than a width.
+    class Wrapper
+      def initialize(text, width)
+        @indent = text[/\A */]
+        @pieces = Splitter.new(text.strip).pieces
+        @width = width
+        @packed = []
       end
 
-      def lines(text)
-        return [text] if text.size <= @width
-
-        indent = text[/\A */]
-        pieces = pieces(text.strip)
-        lines = ["#{indent}#{pieces.shift}"]
-        pieces.each { |piece| add(lines, piece, indent) }
-        lines.map { |line| fit(line) }
+      def lines
+        @pieces.each { |piece| add(piece) }
+        @packed.map { |line| Fitter.new(line, @width).to_s }
       end
 
       private
 
-      def add(lines, piece, indent)
-        if lines.last.size + 1 + piece.size <= @width
-          lines[-1] = "#{lines.last} #{piece}"
-        else
-          lines << "#{indent}  #{piece}"
-        end
+      def add(piece) = @packed.empty? ? @packed << "#{@indent}#{piece}" : place(piece)
+
+      def place(piece) = fits?(piece) ? @packed[-1] = "#{@packed.last} #{piece}" : @packed << "#{@indent}  #{piece}"
+
+      def fits?(piece) = @packed.last.size + 1 + piece.size <= @width
+    end
+
+    # Cuts a line to a width: long strings shortened, then braces folded away, then the end cut off.
+    class Fitter
+      BRACES = /\{ (?!… \})[^{}]* \}/
+      STRING = /"[^"]*"/
+
+      def initialize(text, width)
+        @text = text
+        @width = width
       end
 
-      def pieces(text)
-        cuts = Splitter.new(text).cuts
-        ([0] + cuts.map(&:last)).zip(cuts.map(&:first) + [text.size]).map { |from, to| text[from...to] }
+      def to_s
+        shorten
+        squash
+        long? ? "#{@text[0, @width - 1]}…" : @text
       end
 
-      def fit(line)
-        line = shorten(line)
-        line = line.sub(/\{ (?!… \})[^{}]* \}/, "{ … }") while line.size > @width && line.match?(/\{ (?!… \})[^{}]* \}/)
-        (line.size > @width) ? "#{line[0, @width - 1]}…" : line
+      private
+
+      def long? = @text.size > @width
+
+      def shorten
+        @text = trim(longest) while long? && longest.to_s.size > 12
       end
 
-      def shorten(text)
-        while text.size > @width && (longest = text.scan(/"[^"]*"/).max_by(&:size)) && longest.size > 12
-          text = text.sub(longest, "#{longest[0, [longest.size - (text.size - @width) - 2, 8].max]}…\"")
-        end
-        text
+      def squash
+        @text = @text.sub(BRACES, "{ … }") while long? && @text.match?(BRACES)
       end
+
+      def longest = @text.scan(STRING).max_by(&:size)
+
+      def trim(string) = @text.sub(string, "#{string[0, [string.size - (@text.size - @width) - 2, 8].max]}…\"")
     end
 
     # Finds the places a statement may break: after a top-level comma, or before a trailing `if`.
     class Splitter
+      BREAKS = { ", " => [1, 2], " if " => [3, 4] }.freeze
+
       def initialize(text)
         @text = text
-      end
-
-      def cuts
         @depth = 0
         @quoted = false
-        @text.each_char.with_index.filter_map { |char, index| cut(char, index) }
       end
+
+      def pieces
+        cuts = self.cuts
+        ([0] + cuts.map(&:last)).zip(cuts.map(&:first) + [@text.size]).map { |from, to| @text[from...to] }
+      end
+
+      def cuts = @cuts ||= @text.each_char.with_index.filter_map { |char, index| cut(char, index) }
 
       private
 
       def cut(char, index)
-        return quote(char) if @quoted || char == '"'
+        quote = char == '"'
+        @quoted = !@quoted if quote
+        return if quote || @quoted
 
-        @depth += "([{".include?(char) ? 1 : 0
-        @depth -= ")]}".include?(char) ? 1 : 0
-        break_at(char, index) if @depth.zero?
+        nest(char)
+        break_at(index) if @depth.zero?
       end
 
-      def quote(char)
-        @quoted = !@quoted if char == '"'
-        nil
+      def nest(char)
+        @depth += 1 if "([{".include?(char)
+        @depth -= 1 if ")]}".include?(char)
       end
 
-      def break_at(char, index)
-        return [index + 1, index + 2] if char == "," && @text[index + 1] == " "
-
-        [index + 3, index + 4] if @text[index, 4] == " if "
+      def break_at(index)
+        token, offsets = BREAKS.find { |text, _| @text[index, text.size] == text }
+        offsets.map { |offset| index + offset } if token
       end
     end
   end

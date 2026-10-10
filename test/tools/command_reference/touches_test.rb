@@ -91,13 +91,14 @@ class CommandReferenceTouchesTest < Minitest::Test
     CommandReferenceHelper.pages.each do |words, page|
       next unless page.kind == :routine || page.kind == :command
 
-      declared = (page.klass.reads + page.klass.writes).uniq & STORE_KEYS
       found = page.touches.store_keys.sort
-      next if found == declared.sort
+      next if found == declared_store_keys(page)
 
-      assert EXCEPTIONS.fetch(words, nil), "#{words}: found #{found.inspect}, declared #{declared.sort.inspect}"
+      assert EXCEPTIONS.fetch(words, nil), "#{words}: found #{found.inspect}, declared #{declared_store_keys(page).inspect}"
     end
   end
+
+  def declared_store_keys(page) = ((page.klass.reads + page.klass.writes).uniq & STORE_KEYS).sort
 
   def test_every_exception_names_its_reason
     assert(EXCEPTIONS.values.all? { |reason| reason.to_s.split.size > 3 })

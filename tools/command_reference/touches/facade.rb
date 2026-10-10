@@ -8,8 +8,6 @@ module CommandReference
       GRAPH = "scripts/lib/plastic/graph"
       FILES = { work: "#{GRAPH}/work_graph.rb", retrieval: "#{GRAPH}/retrieval_graph.rb" }.freeze
       WRITERS = "#{GRAPH}/work/writers.rb"
-      SINGLE = /def_delegator\s+("?[:@\w.]+"?),\s*:(\w+[?!]?)(?:,\s*:(\w+[?!]?))?/
-      PLURAL = /def_delegators\s+("?[:@\w.]+"?),\s*(.+)/
       CONSTANT = /([A-Z]\w*(?:::[A-Z]\w*)*)\.new/
 
       def initialize(source, root)
@@ -25,7 +23,7 @@ module CommandReference
       end
 
       def constant_file(klass)
-        tail = klass.split("::").last(2).map { |part| snake(part) }.join("/")
+        tail = klass.split("::").last(2).map { |part| Plastic.snake(part) }.join("/")
         Dir.glob("#{@root}/#{GRAPH}/**/#{tail}.rb").map { |path| @source.relative(path) }.min
       end
 
@@ -39,7 +37,8 @@ module CommandReference
       def direct(file, method)
         return unless @source.find_line(file, /^\s*def #{Regexp.escape(method)}\b/)
 
-        [Target.new(@source, file, method, nil), *writers_of(file, method)]
+        target = Target.new(@source, file, method, nil)
+        [target, *writers_of(target.text, file)]
       end
 
       def included(side, method)
@@ -49,11 +48,10 @@ module CommandReference
       end
 
       def modules(file)
-        @source.lines(file).filter_map { |row| row[/include Retrieval::(\w+)/, 1] }.map { |name| "#{GRAPH}/retrieval/#{snake(name)}.rb" }
+        @source.lines(file).filter_map { |row| row[/include Retrieval::(\w+)/, 1] }.map { |name| "#{GRAPH}/retrieval/#{Plastic.snake(name)}.rb" }
       end
 
-      def writers_of(file, method)
-        text = Target.new(@source, file, method, nil).text
+      def writers_of(text, file)
         text.scan(/@writers\.(\w+)(?:\.(\w+))?/).filter_map { |writer, call| class_target("@writers.#{writer}", call, file) }.flatten
       end
 
@@ -68,36 +66,19 @@ module CommandReference
         [Target.new(@source, file, hop, klass)]
       end
 
-      def delegations(file)
-        @delegations[file] ||= begin
-          text = @source.lines(file).join("\n").gsub(/,\s*\n\s*/, ", ")
-          singles(text).merge(plurals(text))
-        end
-      end
-
-      def singles(text)
-        text.scan(SINGLE).to_h { |accessor, real, aliased| [aliased || real, [accessor, real]] }
-      end
-
-      def plurals(text)
-        text.scan(PLURAL).flat_map { |accessor, names| names.scan(/:(\w+[?!]?)/).flatten.map { |name| [name, [accessor, name]] } }.to_h
-      end
+      def delegations(file) = (@delegations[file] ||= Delegations.new(@source, file).table)
 
       def class_target(accessor, real, file)
         segment = accessor.delete('":@').split(".").last
         klass = class_name(segment, accessor.include?("@writers") ? WRITERS : file) or return
         found = constant_file(klass) or return
-        [Target.new(@source, found, real || segment, klass)]
+        [Target.new(@source, found, [real, segment].compact.first, klass)]
       end
 
       def class_name(segment, file)
-        @source.lines(file).each do |text|
-          return text[CONSTANT, 1] if text.match?(/def #{segment}\b.*#{CONSTANT}/) || text.match?(/built\(:#{segment}\)\s*\{.*#{CONSTANT}/)
-        end
-        nil
+        pattern = /def #{segment}\b.*#{CONSTANT}|built\(:#{segment}\)\s*\{.*#{CONSTANT}/
+        @source.lines(file).grep(pattern).first&.then { |text| text[CONSTANT, 1] }
       end
-
-      def snake(name) = name.gsub(/([a-z\d])([A-Z])/, '\1_\2').downcase
     end
   end
 end

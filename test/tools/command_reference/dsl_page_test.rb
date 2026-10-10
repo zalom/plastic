@@ -10,15 +10,15 @@ class CommandReferenceDslPageTest < Minitest::Test
 
   def test_every_example_command_is_a_table_key_with_declared_options
     refute_empty dsl.examples
-    dsl.examples.each do |command|
-      words = command.split
-      key = Plastic::CLI::TABLE.keys.select { |candidate| words.first(candidate.split.size) == candidate.split }.max_by(&:size)
+    dsl.examples.each { |command| assert_empty command.split.grep(/\A--/) - declared_switches(command), command }
+  end
 
-      refute_nil key, command
-      declared = CommandReferenceHelper.pages.fetch(key).options.map { |option| option.switch.split.first }
+  def declared_switches(command)
+    words = command.split
+    key = Plastic::CLI::TABLE.keys.select { |candidate| words.first(candidate.split.size) == candidate.split }.max_by(&:size)
 
-      assert_empty words.grep(/\A--/) - declared, command
-    end
+    refute_nil key, command
+    CommandReferenceHelper.pages.fetch(key).options.map { |option| option.switch.split.first }
   end
 
   def test_the_example_page_is_picked_by_its_words

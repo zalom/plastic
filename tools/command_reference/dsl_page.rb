@@ -26,15 +26,15 @@ module CommandReference
 
     def examples = ["#{EXAMPLE} #{page.arguments.map(&:label).join(" ")}".strip]
 
-    def code_flow = Plastic::Workflow.fetch(:code_revise_intent)
+    def code_flow = @code_flow ||= Plastic::Workflow.fetch(:code_revise_intent)
 
-    def agent_flow = Plastic::Workflow.fetch(:agent_check_merge)
+    def agent_flow = @agent_flow ||= Plastic::Workflow.fetch(:agent_check_merge)
 
     def line(key, pattern) = @source.find_line(FILES.fetch(key), pattern)
 
     def flow_file(flow) = @source.relative(Object.const_source_location(flow.name).first)
 
-    def flow_line(flow) = Object.const_source_location(flow.name).last
+    def flow_line(flow) = @source.find_line(flow_file(flow), /^\s*class #{Words.short(flow)}\b/)
 
     def ends
       @ends ||= @source.lines("scripts/lib/plastic/finished.rb").filter_map { |text| text.match(/^\s*#\s+(\w+)\s+exit (\d)\s+(.*)$/) }.map do |found|
@@ -44,16 +44,21 @@ module CommandReference
       end
     end
 
-    def drawings
-      {
-        "declare-command.svg" => Dsl::DeclareCommand.new(page, class_rows(page.file, "IntentEnd")),
-        "code-workflow.svg" => Dsl::CodeFlow.new(Words.short(code_flow), statements(code_flow)),
-        "agent-workflow.svg" => Dsl::AgentFlow.new(Words.short(agent_flow), statements(agent_flow)),
-        "endings.svg" => Dsl::EndValues.new(ends)
-      }.transform_values { |drawing| drawing.canvas.to_s(true) }.merge("chain.svg" => Figures::Chain.new(page).canvas.to_s(true))
-    end
+    def drawings = figures.transform_values { |drawing| drawing.canvas.standalone }
 
     private
+
+    def figures
+      home = page
+      { "declare-command.svg" => Dsl::DeclareCommand.new(home, class_rows(home.file, "IntentEnd")), **workflow_figures,
+        "endings.svg" => Dsl::EndValues.new(ends), "chain.svg" => Figures::Chain.new(home) }
+    end
+
+    def workflow_figures
+      { "code-workflow.svg" => flow_figure(Dsl::CodeFlow, code_flow), "agent-workflow.svg" => flow_figure(Dsl::AgentFlow, agent_flow) }
+    end
+
+    def flow_figure(type, flow) = type.new(Words.short(flow), statements(flow))
 
     def class_rows(file, name) = Dsl::ClassRows.new(@source.lines(file), name).rows
 

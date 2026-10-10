@@ -28,7 +28,7 @@ class CommandReferenceSourceTest < Minitest::Test
   end
 
   def test_comment_lines_read_as_paragraphs_and_code_blocks
-    blocks = source.blocks(["Text one", "more.", "", "  code line", "", "Text two."])
+    blocks = CommandReference::Snippet.blocks(["Text one", "more.", "", "  code line", "", "Text two."])
 
     assert_equal [[:text, "Text one more."], [:code, "code line"], [:text, "Text two."]], blocks
   end

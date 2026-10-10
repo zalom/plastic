@@ -18,15 +18,24 @@ module CommandReference
       end
 
       def call(files)
-        targets = files.flat_map { |file| calls(file) }.flat_map { |side, method, hop| @facade.targets(side.to_sym, method, hop) }.uniq { |t| [t.file, t.text.hash] }
-        Touches.new(entries: targets.flat_map { |target| entries(target) }, components: parts(targets), files: [], schema: @schema)
+        targets = targets_of(files)
+        Touches.new(entries: targets.flat_map { |target| entries(target) }, components: targets.filter_map(&:part), files: [], schema: @schema)
+      end
+
+      def self.mode_of(text, table)
+        return :write if text.match?(WRITE.call(table)) || (text.match?(ROWS) && text.match?(KEYWORD.call(table)))
+
+        :read if text.match?(MENTION.call(table))
       end
 
       private
 
-      def calls(file) = @source.lines(file).join("\n").scan(CALL).map { |side, method, hop| [side, method, hop] }
+      def targets_of(files)
+        files.flat_map { |file| calls(file) }.flat_map { |side, method, hop| @facade.targets(side.to_sym, method, hop) }
+          .uniq { |target| [target.file, target.text.hash] }
+      end
 
-      def parts(targets) = targets.filter_map { |target| Part.new(target.component, target.file) if target.component }
+      def calls(file) = @source.lines(file).join("\n").scan(CALL).map { |side, method, hop| [side, method, hop] }
 
       def entries(target)
         found = entries_of(target.text)
@@ -42,14 +51,8 @@ module CommandReference
       end
 
       def entry(text, table)
-        mode = mode_of(text, table)
+        mode = Scan.mode_of(text, table)
         Entry.new(@schema.file_of(table), table, mode) if mode
-      end
-
-      def mode_of(text, table)
-        return :write if text.match?(WRITE.call(table)) || (text.match?(ROWS) && text.match?(KEYWORD.call(table)))
-
-        :read if text.match?(MENTION.call(table))
       end
     end
   end

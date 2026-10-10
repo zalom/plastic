@@ -24,7 +24,7 @@ module CommandReference
         [*opening("How a call ends", "endings.svg", "The four ways a plastic call ends, each with its exit code"),
           "No workflow picks an exit code. A call ends in one of these four values, and the value prints the last lines and gives the code.", "",
           "| Value | Exit | Defined in |", "| --- | --- | --- |",
-          *@dsl.ends.map { |value| "| `#{value.fetch(:name)}` | #{value.fetch(:exit_code)} | #{@links.code(value.fetch(:file), value.fetch(:line))} |" }, "",
+          *dsl.ends.map { |value| "| `#{value.fetch(:name)}` | #{value.fetch(:exit_code)} | #{links.code(value.fetch(:file), value.fetch(:line))} |" }, "",
           "## How any call can end", "",
           "These endings hold for every command, so a command page lists only its own.", "",
           "| Ending | Exit | next: | Code |", "| --- | --- | --- | --- |", *rows, ""]
@@ -32,9 +32,13 @@ module CommandReference
 
       private
 
-      def rows = KERNEL.map { |ending| row(ending[0], ending[1], ending[2], DslPage::FILES.fetch(ending[3]), ending[4]) } + OTHER.map { |ending| row(*ending) }
+      def rows = (KERNEL + OTHER).map { |ending| row(ending) }
 
-      def row(words, code, next_text, file, pattern) = "| #{words} | #{code} | #{next_text} | #{@links.code(file, @dsl.source.find_line(file, pattern))} |"
+      def row(ending)
+        words, code, next_text, file, pattern = ending
+        path = DslPage::FILES.fetch(file, file)
+        "| #{words} | #{code} | #{next_text} | #{links.code(path, dsl.source.find_line(path, pattern))} |"
+      end
     end
 
     # The files that define the DSL.
@@ -47,7 +51,7 @@ module CommandReference
 
       def lines
         ["---", "", "## Where the DSL lives", "", "| File | What it defines |", "| --- | --- |",
-          *ROWS.map { |key, words| "| #{@links.file(DslPage::FILES.fetch(key))} | #{words} |" }, ""]
+          *ROWS.map { |key, words| "| #{links.file(DslPage::FILES.fetch(key))} | #{words} |" }, ""]
       end
     end
   end

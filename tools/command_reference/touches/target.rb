@@ -17,6 +17,8 @@ module CommandReference
         @component = component
       end
 
+      def part = (Part.new(component, file) if component)
+
       def text = (@text ||= closure.empty? ? whole : closure)
 
       private
@@ -29,7 +31,7 @@ module CommandReference
 
       def names
         queue = [@method.to_s]
-        queue.each { |name| (calls(name) - queue).each { |found| queue << found } }
+        queue.each { |name| queue.concat(calls(name) - queue) }
         queue
       end
 

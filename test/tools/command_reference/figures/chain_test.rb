@@ -14,15 +14,15 @@ class CommandReferenceChainFigureTest < Minitest::Test
 
   def test_the_chain_svg_is_well_formed_for_a_chain_a_command_and_a_hook
     ["intent end", "project list", "hook end"].each do |words|
-      assert_equal "svg", REXML::Document.new(figure(words).to_s(true)).root.name, words
+      assert_equal "svg", REXML::Document.new(figure(words).standalone).root.name, words
     end
   end
 
   def test_the_chain_svg_names_each_workflow
-    assert_includes figure("intent end").to_s(true), "PrepareEnding"
+    assert_includes figure("intent end").standalone, "PrepareEnding"
   end
 
   def test_the_chain_svg_holds_no_timestamp_or_absolute_path
-    refute_match(%r{20\d\d-\d\d-\d\d|/Users/}, figure("intent end").to_s(true))
+    refute_match(%r{20\d\d-\d\d-\d\d|/Users/}, figure("intent end").standalone)
   end
 end

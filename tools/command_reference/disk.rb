@@ -11,30 +11,30 @@ module CommandReference
       @root = root
     end
 
-    def files = paths.to_h { |path| [path, File.read(File.join(@root, path))] }
+    def files = paths.to_h { |path| [path, File.read(absolute(path))] }
 
     def write(files)
-      (paths - files.keys).each { |path| FileUtils.rm_f(File.join(@root, path)) }
+      (paths - files.keys).each { |path| FileUtils.rm_f(absolute(path)) }
       files.each { |path, text| put(path, text) }
       prune
     end
 
     private
 
-    def paths
-      FOLDERS.flat_map { |folder| Dir.glob("**/*", base: File.join(@root, folder)).sort.map { |path| File.join(folder, path) } }.select { |path| File.file?(File.join(@root, path)) }
-    end
+    def absolute(*parts) = File.join(@root, *parts)
+
+    def paths = FOLDERS.flat_map { |folder| listed(folder) }.select { |path| File.file?(absolute(path)) }
+
+    def listed(folder) = Dir.glob("**/*", base: absolute(folder)).sort.map { |path| File.join(folder, path) }
 
     def put(path, text)
-      target = File.join(@root, path)
+      target = absolute(path)
       FileUtils.mkdir_p(File.dirname(target))
       File.write(target, text) unless File.exist?(target) && File.read(target) == text
     end
 
-    def prune
-      FOLDERS.each do |folder|
-        Dir.glob("**/*/", base: File.join(@root, folder)).sort.reverse.each { |dir| Dir.rmdir(File.join(@root, folder, dir)) if Dir.empty?(File.join(@root, folder, dir)) }
-      end
-    end
+    def prune = FOLDERS.flat_map { |folder| nested(folder) }.each { |dir| Dir.rmdir(dir) if Dir.empty?(dir) }
+
+    def nested(folder) = Dir.glob("**/*/", base: absolute(folder)).sort.reverse.map { |dir| absolute(folder, dir) }
   end
 end

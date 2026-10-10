@@ -68,13 +68,14 @@ class CommandReferenceModelTest < Minitest::Test
   end
 
   def test_shared_and_class_method_steps_link_the_file_that_holds_them
-    claim = page("node claim").flows.flat_map(&:rows).select { |row| row.kind == :gate }
-    sync = page("sync up").flows.flat_map(&:rows).select { |row| row.kind == :gate }
+    claim = gate_rows("node claim")
 
     refute_empty claim
-    assert_equal ["scripts/lib/plastic/workflows/sync_steps.rb"], sync.map(&:file).uniq
+    assert_equal ["scripts/lib/plastic/workflows/sync_steps.rb"], gate_rows("sync up").map(&:file).uniq
     assert(claim.all? { |row| source_line(row.file, row.line).match?(/\bgate\b/) })
   end
+
+  def gate_rows(words) = page(words).flows.flat_map(&:rows).select { |row| row.kind == :gate }
 
   def test_the_auto_page_builds_and_links_a_method_check_to_its_definition
     row = page("auto").flows.flat_map(&:rows).find { |found| found.check.to_s.include?("delivery_started?") }
