@@ -10,7 +10,7 @@ class ArchitectureFiguresNamesTest < Minitest::Test
   ALLOWED = %w[GitHub SQLite].freeze
   CODE_TOKEN = /\b(?:[A-Z][a-z0-9]+(?:[A-Z][a-z0-9]*)+|[A-Z]\w*::\w+(?:::\w+)*)\b/
 
-  def undeclared(texts, labels) = texts.flat_map { |style, text| style == "m" ? [text] : text.scan(CODE_TOKEN) }.uniq - labels - ALLOWED
+  def undeclared(texts, labels) = texts.flat_map { |style, text| (style == "m") ? [text] : text.scan(CODE_TOKEN) }.uniq - labels - ALLOWED
 
   def test_the_subjects_are_read_from_the_disk
     refute_empty declared_names
@@ -34,7 +34,7 @@ class ArchitectureFiguresNamesTest < Minitest::Test
   def test_every_declared_label_is_drawn
     drawn = drawn_texts.map(&:last)
 
-    declared_names.each { |_type, label, _ref| assert(drawn.any? { |text| whole_token?(label, text) }, label) }
+    declared_names.each { |_type, label, _ref| assert_predicate drawn.select { |text| whole_token?(label, text) }, :any?, label }
   end
 
   def test_the_label_detector_matches_a_whole_token_only

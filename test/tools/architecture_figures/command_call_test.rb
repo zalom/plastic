@@ -19,15 +19,18 @@ class ArchitectureFiguresCommandCallTest < Minitest::Test
   def real_report
     Dir.mktmpdir do |home|
       _out, err, status = Open3.capture3({ "RUBYOPT" => "" }, "ruby", "-I", File.join(ROOT, "scripts", "lib"), "-e", CREATE_STORE, home)
+
       assert_predicate status, :success?, err
+
       out, err, status = Open3.capture3(environment(home), File.join(ROOT, "bin", "plastic"), "intent", "new", "Sample title")
+
       assert_predicate status, :success?, err
       out.lines.map { |line| normalize(line) }.reject(&:empty?)
     end
   end
 
   def test_the_drawn_report_lines_match_a_real_intent_new
-    drawn = texts(ArchitectureFigures.render.fetch("command-call.svg")).select { |style, _text| style == "r" }.map { |_style, text| normalize(text) }
+    drawn = texts(ArchitectureFigures.render.fetch("command-call.svg")).filter_map { |style, text| normalize(text) if style == "r" }
 
     refute_empty drawn
     assert_empty drawn - real_report

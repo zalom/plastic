@@ -19,8 +19,7 @@ class DocsStaleWordsGuardTest < Minitest::Test
   def test_the_subjects_are_read_from_the_disk
     refute_empty PAGES
     refute_empty VARAR
-    assert_includes PAGES, "docs/internals.md"
-    assert_includes PAGES, "docs/contributing/ARCHITECTURE.md"
+    assert_equal %w[docs/contributing/ARCHITECTURE.md docs/internals.md], PAGES & %w[docs/contributing/ARCHITECTURE.md docs/internals.md]
   end
 
   def test_no_page_or_acceptance_document_uses_a_removed_option_or_next_line

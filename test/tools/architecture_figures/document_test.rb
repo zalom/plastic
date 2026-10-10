@@ -38,9 +38,11 @@ class ArchitectureFiguresDocumentTest < Minitest::Test
     links.reject { |fragment| slugs.include?(fragment) }
   end
 
+  def excluded?(path) = path.start_with?("docs/reviews/") || path == "CHANGELOG.md" || path.end_with?("architecture_figures/document_test.rb")
+
   def tracked_texts
     out, _err, _status = Open3.capture3("git", "-C", ROOT, "ls-files")
-    out.lines.map(&:strip).reject { |path| path.start_with?("docs/reviews/") || path == "CHANGELOG.md" || path.end_with?("architecture_figures/document_test.rb") }
+    out.lines.map(&:strip).reject { |path| excluded?(path) }
       .to_h { |path| [path, File.binread(File.join(ROOT, path)).force_encoding("UTF-8")] }.select { |_path, text| text.valid_encoding? && !text.include?("\0") }
   end
 
@@ -62,7 +64,7 @@ class ArchitectureFiguresDocumentTest < Minitest::Test
 
   def test_every_class_and_path_the_document_names_exists
     assert_empty unknown_names(document)
-    assert_equal ["Frontier", "scripts/lib/plastic/gone.rb"], unknown_names("`Frontier` `Graph::WorkGraph` `scripts/lib/plastic/gone.rb` `scripts/lib/plastic/cli.rb` `Owner`")
+    assert_equal ["IntentProgress", "scripts/lib/plastic/gone.rb"], unknown_names("`IntentProgress` `Graph::WorkGraph` `scripts/lib/plastic/gone.rb` `scripts/lib/plastic/cli.rb` `Owner`")
   end
 
   def test_the_document_names_no_removed_class_or_command
@@ -81,6 +83,9 @@ class ArchitectureFiguresDocumentTest < Minitest::Test
     assert_match OLD_PAGE, "](architecture.md#the-work-graph)"
     assert_match OLD_PAGE, "`docs/architecture.md`"
     assert_match OLD_PAGE, "![x](../resources/hook-events.svg)"
+  end
+
+  def test_the_old_page_detector_leaves_similar_names_alone
     refute_match OLD_PAGE, "agent-architecture.md and contributing/ARCHITECTURE.md"
   end
 

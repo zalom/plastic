@@ -34,23 +34,29 @@ module ArchitectureFiguresHelper
     false
   end
 
+  CHECKS = {
+    "class" => :class_check, "command" => :command_check, "workflow" => :workflow_check, "table" => :table_check,
+    "database" => :database_check, "store_file" => :store_file_check, "path" => :path_check
+  }.freeze
+
   def schema
     load_kernel
     Plastic::Graph::SCHEMA_FILE
   end
 
   def name_exists?(type, ref)
-    case type
-    when "class" then class_exists?(ref)
-    when "command" then load_kernel && Plastic::CLI::TABLE.key?(ref)
-    when "workflow" then load_kernel && Plastic::Workflows::REGISTRY.include?(ref.delete_prefix(":").to_sym)
-    when "table" then (schema.tables.keys - schema.legacy).include?(ref.to_sym)
-    when "database" then schema.databases.values.map(&:first).include?(ref)
-    when "store_file" then Dir[File.join(ROOT, "scripts", "lib", "plastic", "**", "*.rb")].any? { |file| File.read(file).include?(ref) }
-    when "path" then File.exist?(File.join(ROOT, ref))
-    else false
-    end
+    check = CHECKS.fetch(type, :never)
+    respond_to?(check, true) ? send(check, ref) : false
   end
+
+  def never(_ref) = false
+  def class_check(ref) = class_exists?(ref)
+  def command_check(ref) = load_kernel && Plastic::CLI::TABLE.key?(ref)
+  def workflow_check(ref) = load_kernel && Plastic::Workflows::REGISTRY.include?(ref.delete_prefix(":").to_sym)
+  def table_check(ref) = (schema.tables.keys - schema.legacy).include?(ref.to_sym)
+  def database_check(ref) = schema.databases.values.map(&:first).include?(ref)
+  def store_file_check(ref) = Dir[File.join(ROOT, "scripts", "lib", "plastic", "**", "*.rb")].any? { |file| File.read(file).include?(ref) }
+  def path_check(ref) = File.exist?(File.join(ROOT, ref))
 
   def missing_names(names) = names.reject { |type, _label, ref| name_exists?(type, ref) }
 end

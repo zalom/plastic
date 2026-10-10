@@ -55,7 +55,7 @@ class ArchitectureFiguresTest < Minitest::Test
 
   def test_every_id_is_prefixed_by_its_file_and_unique_across_figures
     ids = ArchitectureFigures.render.flat_map do |name, svg|
-      svg.scan(/\bid="([^"]+)"/).flatten.each { |id| assert id.start_with?("#{File.basename(name, ".svg")}-"), id }
+      svg.scan(/\bid="([^"]+)"/).flatten.each { |id| assert_match(/\A#{File.basename(name, ".svg")}-/, id) }
     end
 
     assert_equal ids.uniq, ids
