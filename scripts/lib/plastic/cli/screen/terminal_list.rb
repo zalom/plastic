@@ -9,6 +9,7 @@ module Plastic
       # toggles, Enter confirms and Ctrl+C leaves with no change.
       class TerminalList
         HELP = "(Space toggles, Ctrl+A picks all, Enter confirms, Ctrl+C leaves with no change)"
+        PAGE = 20
 
         # A prompt on `input` and `stream`, loaded only when a person is there to answer it.
         def self.prompt(input, stream, env: ENV)
@@ -21,12 +22,15 @@ module Plastic
         end
 
         def call(question, choices)
-          labels = choices.map(&:label)
-          picked = @prompt.multi_select(question, labels, default: Choice.preselected(choices), help: HELP,
-            show_help: :always, echo: false, per_page: labels.size)
-          Chosen.new(labels: labels & picked)
+          Chosen.new(labels: pick(question, choices.map(&:label), Choice.preselected(choices)))
         rescue TTY::Reader::InputInterrupt
           Left.new
+        end
+
+        private
+
+        def pick(question, labels, preselected)
+          labels & @prompt.multi_select(question, labels, default: preselected, help: HELP, show_help: :always, echo: false, per_page: PAGE)
         end
       end
     end
