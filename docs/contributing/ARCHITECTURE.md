@@ -1,177 +1,169 @@
 # Architecture
 
-This page covers the `plastic` command. The system architecture, with the two processes and
-the store layout, is in [docs/architecture.md](../architecture.md).
+This page is the map of Plastic. Each section opens with a drawing, and the tables under it
+name the parts. The drawings are generated: rebuild them with `ruby bin/architecture-figures`
+after a change to the system, and commit the files in `docs/contributing/figures/`.
 
-## The life of a command
+## The system and what it talks to
 
-`bin/plastic` runs the dispatcher. The dispatcher finds the command in its table, prints the
-usage line on `--help` without building anything, or builds the command and sends it `call`
-and then `flush`. The call exits 0, 1, 2 or 3.
+![Plastic and what it talks to. The owner gives goals, answers and the go-ahead to Plastic through the agent harness. The harness runs plastic commands and fires hook events. Plastic reads where each project lives. The agent edits the project repositories in a worktree, and pushes a pull request to GitHub, where the owner reviews and merges it.](figures/context.svg)
 
-The dispatcher's table is one frozen hash: the command's name, its file, its class and its
-help line. The `call` method does the work of one command, and `flush` prints the result or
-its JSON form.
+| Actor | What it is | What passes between it and Plastic |
+| ----- | ---------- | ---------------------------------- |
+| Owner | The person who decides what to build. | Goals, answers to questions and the go-ahead to deliver. The owner reviews and merges the pull request. |
+| Agent harness | Claude Code or Codex. | The harness runs `plastic` commands and fires the hook events. |
+| Project repositories | The code of each project. | Plastic reads where each project lives from `projects.yml`. The agent edits the code in a worktree made for each intent. |
+| GitHub | The host of the pull request and of CI. | The agent pushes a branch and opens the pull request. Plastic runs no `git` command. |
 
-## The shared classes
+## What runs and where it keeps data
 
-`CLI` lives in `scripts/lib/plastic/cli.rb`; the rest live under `scripts/lib/plastic/cli/`.
+![What runs and where Plastic keeps its data. The Plastic home holds PLASTIC.md, bin/plastic, local.db, config.yml, projects.yml, backups and one store for each project. A store holds work_graph.db, knowledge_graph.db and references.db, and prints store/index.json and an intent folder for each intent from the rows.](figures/containers.svg)
 
-| Class | Job |
-| ----- | --- |
-| `CLI` | Finds the command in `TABLE`, answers `--help`, suggests the closest name. |
-| `TABLE` | The whole command line in one hash. `plastic help` reads it and loads nothing. |
-| `Command` | The base class. Its class method `call` maps errors to exit codes. |
-| `Output` | Prints rows, the `next:` and `because:` lines, and the `--json` form. |
-| `Scope` | Decides which store a command works on. |
-| `Frontier` | Reads what comes next in a scope, for `next` and `continue`. |
-| `Legacy` | Runs a script that has no library behind it, and hands back its exit status. |
-| `IntentProgress` | Picks the next command for one intent, for `intent show` and `intent step`. |
+One program, `bin/plastic`, serves every command and the three hooks. Everything it keeps lives
+under the Plastic home.
 
-## Errors and exit codes
+| Place | Holds |
+| ----- | ----- |
+| `PLASTIC.md` | The always-on instructions that the harness imports. |
+| `local.db` | What belongs to one machine: `routine_runs`, `sessions`, `locks` and `backups`. |
+| `config.yml`, `projects.yml` | The settings, and the list of projects from slug to repository. |
+| `stores/SLUG/` | One store for each project, plus the global store. |
+| `stores/SLUG/backups/` | Copies of the three databases, one folder for each backup. |
+| `store/index.json` | Every intent and cluster of the store in Luhmann order. It carries no print time. |
+| `store/ID--slug/` | An intent folder: `intent.md`, `spec.md`, `graph.json`, `savepoint.md`, `outcome.md` and `context.json`, printed from the rows. |
 
-A command raises, and the class method `call` maps the error.
+A store keeps its rows in three SQLite databases. The store folder's `.gitignore` lists them,
+so they are never versioned. The files printed from them are.
 
-| Raised | Exit code |
-| ------ | --------- |
-| Nothing | 0 |
-| `Failure` | 1 |
-| `Usage`, `OptionParser::ParseError`, `Scope::UnknownProject` | 2 |
-| `Refusal` | 3 |
+| Database | Tables |
+| -------- | ------ |
+| `work_graph.db` | `intents`, `clusters`, `nodes`, `edges`, `savepoints`, `completions`, `approvals`, `verdicts`, `roadmaps`, `batches`, `roadmap_items`, `roadmap_edges`, `roadmap_log`, `archives`, `archive_entries` |
+| `knowledge_graph.db` | `documents`, `document_revisions`, `document_heads`, `rulings`, `links`, and the search tables of the retrieval graph |
+| `references.db` | `sqlar` |
 
-## Injection
+Every store database also has two bookkeeping tables:
 
-A command receives its streams, environment, home directory and working directory as
-arguments. No command reads `ENV`, `Dir.home` or `$stdout` directly, so a test never touches
-the real store.
+- `changes` logs every write: the table, the row key, put or remove, the whole row, the time and
+  the origin. The log row is written in the same transaction as the write.
+- `printed` keeps the hash of every file printed from the rows, as of the last print.
 
-## The three databases
+Every row carries `origin_id`, the id of the installation that wrote it. The id sits in a file
+at the home and is made on first use. Every stored time is UTC.
 
-This section describes the kernel's storage. The live command line keeps its own databases at
-the top of the home until `bin/plastic` switches to the kernel, a later stage.
+An intent row has its number in `id`, its Luhmann id in `intent_id`, the Luhmann id of its
+parent in `parent_id`, and an optional `ref` to an intent it follows. Its status is one of six:
+open, active, parked, future, done or abandoned.
 
-Each store keeps its rows in three SQLite databases inside its own folder: `work_graph.db`,
-`knowledge_graph.db` and `references.db`. The store folder's `.gitignore` lists them, so they
-are never versioned. The files printed from them are. The home keeps one database of its own,
-`local.db`, for what belongs to one machine rather than one store: `routine_runs`, `sessions`
-and `locks`. `routine_runs` and `locks` carry a `store` column; `sessions` carries one too,
-alongside the `directory` the session ran in. The file was named `home.db` before; on a machine
-that still has it, the first use renames it and its journal files to `local.db`, and the call that
-renamed it says so once on its `wrote:` line. A session row tells the story of the work: who
-ran what, when, in which session. Graph rows tell the story of the project. The two join on
-the intent id, never on a drawn session graph.
+## The components of the kernel
 
-Every row that a store database writes carries `origin_id`, the id of the installation that
-wrote it. The id sits in a file at the home and is made on first use. Each store database has
-two more tables:
+![The components of the plastic kernel. CLI finds a row in CLI::TABLE, builds the command and runs it. A command is a Routine, which walks a chain of workflows with Routine::Traversal and finds each workflow in Workflows::REGISTRY, or a Hook. Workflows open the graphs: Graph::WorkGraph, Graph::RetrievalGraph and Graph::Printer.](figures/components.svg)
 
-- **`changes`** logs every write: the table, the row key, put or remove, the whole row, the
-  time and the origin. The log row is written in the same transaction as the write, so a
-  failed write leaves no log row.
-- **`printed`** keeps the hash of every file printed from the rows, as of the last print.
+The kernel lives under `scripts/lib/plastic/`, and `scripts/lib/plastic.rb` loads it. A class
+loads on first use, so `plastic help` reads the table and loads no command.
 
-An intent row has its own number in `id` and its Luhmann id in `intent_id`. It also has the
-Luhmann id of its parent in `parent_id`, an optional `ref` to an intent it follows, and
-`origin_id`. Its status is one of six: open, active, parked, future, done or abandoned.
+| Component | File | What it owns |
+| --------- | ---- | ------------ |
+| `CLI` | `scripts/lib/plastic/cli.rb` | Finds the longest entry in the table that starts the arguments, answers `--help`, suggests the closest name. |
+| `CLI::TABLE` | `scripts/lib/plastic/cli/table.rb` | The whole command line in one frozen hash: the words, the class and the help line. |
+| `CLI::Command` | `scripts/lib/plastic/cli/command.rb` | The base class. It parses the arguments, runs the call, prints and maps errors to exit codes. |
+| `CLI::Scope` | `scripts/lib/plastic/cli/scope.rb` | Which project and store a command works on. |
+| `CLI::Output` | `scripts/lib/plastic/cli/output.rb` | Prints rows, the `next:` and `because:` lines, and the `--json` form. |
+| `Routine` | `scripts/lib/plastic/routine.rb` | A command whose work is a chain of workflows, written as data in the class body. |
+| `Routine::Chain` | `scripts/lib/plastic/routine/chain.rb` | The workflow keys in order and the edges between them. It lists every wiring fault at once. |
+| `Routine::Traversal` | `scripts/lib/plastic/routine/traversal.rb` | One pass along a chain. It runs each workflow and follows the edge its outcome takes. |
+| `CodeWorkflow` | `scripts/lib/plastic/code_workflow.rb` | Ruby steps that run in order: gates, reads and steps. It returns an outcome name. |
+| `AgentWorkflow` | `scripts/lib/plastic/agent_workflow.rb` | Steps in plain words for the agent. It hands off while any step is left undone. |
+| `Workflows::REGISTRY` | `scripts/lib/plastic/workflows/registry.rb` | Every workflow by name. |
+| `Context`, `Facts` | `scripts/lib/plastic/context.rb`, `scripts/lib/plastic/facts.rb` | The named values of one call. A name that no one declared raises at once. |
+| `RoutineRun` | `scripts/lib/plastic/routine_run.rb` | One call of one tool on one subject, kept as a row of `local.db`. |
+| `Hook` | `scripts/lib/plastic/hook.rb` | The base class of a hook command. It prints a plain text reply and always exits 0. |
+| `Hooks::Recap`, `Hooks::StopGate`, `Hooks::Entries` | `scripts/lib/plastic/hooks/` | The text `hook resume` prints, the decision whether `hook record` blocks a stop, and the hook entries the installer writes for Claude Code and Codex. |
+| `Graph::Database` | `scripts/lib/plastic/graph/database.rb` | One SQLite file, read and written through the `sqlite3` gem. A write is one transaction and logs its `changes` row. |
+| `Graph::WorkGraph` | `scripts/lib/plastic/graph/work_graph.rb` | The writes of a command: routine runs, sessions, locks, intents, nodes and edges. |
+| `Graph::RetrievalGraph` | `scripts/lib/plastic/graph/retrieval_graph.rb` | The reads of a command, one table at a time. |
+| `Graph::Printer` | `scripts/lib/plastic/graph/printer.rb` | Prints files from their rows and records each hash in `printed`. |
+| `Graph::Knowledge::Sync` | `scripts/lib/plastic/graph/knowledge/sync.rb` | Compares each file, its rows and its last print, and plans and applies a sync. |
 
-`store/index.json` lists every intent and cluster of the store in Luhmann order. It replaces
-`INDEX.md`. It carries no print time, so rows that did not change print the same bytes.
+`Plastic.now` is the one source of the time. A command receives its streams, environment, home
+directory and working directory as arguments. No command reads `ENV`, `Dir.home` or `$stdout`
+directly, so a test never touches the real store.
 
-### Sync up and sync down
+Every table is declared once, in `scripts/lib/plastic/graph/db/schema.rb`. A table marked
+`legacy: true` holds old data that nothing new reads.
 
-`plastic intent new` writes an intent's rows and prints its folder in the same call. The two
-sync commands keep the files and the rows level after a hand edit. Three hashes decide what
-happens to each file: the file on disk, the text printed from the rows now, and the last print
-that `printed` records.
+## The three graphs
 
-The following table lists what each command does with one file.
+![The three graphs and their databases. Graph::WorkGraph opens the work graph in work_graph.db. Graph::RetrievalGraph opens the knowledge graph and the retrieval graph in knowledge_graph.db. Graph::Printer prints the rows as files in the store folder.](figures/graphs.svg)
 
-| The file and its rows | `sync up` | `sync down` |
-| --------------------- | --------- | ----------- |
-| The file equals its rows. | Records the hash when it is new. | Records the hash when it is new. |
-| Only the file changed. | Reads the file into its rows. | Leaves the file. |
-| Only the rows changed, or the file is missing. | Leaves the rows. | Prints the file. |
-| Both changed. | A conflict. | A conflict. |
+| Graph | Database | What it holds | Written by | Read by |
+| ----- | -------- | ------------- | ---------- | ------- |
+| Work graph | `work_graph.db` | What is being built: intents, with their nodes and the edges between them, savepoints, roadmaps and archives. | `Graph::WorkGraph` | `plastic next`, `plastic continue`, `plastic intent show` |
+| Knowledge graph | `knowledge_graph.db` | What is known: documents with their revisions, rulings and links. | `plastic intent new`, `plastic intent rule`, `plastic sync up` | `plastic search`, `plastic intent spec` |
+| Retrieval graph | `knowledge_graph.db` | What is found: the passages and the search index over the documents. | `plastic sync up` | `Graph::RetrievalGraph` |
 
-A plain sync with a conflict writes nothing, exits 3 and lists every conflict. With
-`--overwrite PATH`, the one file at that path takes the side of the command: `sync up` keeps
-the file, and `sync down` keeps the rows. `--overwrite` alone does the same for every
-conflict. `--merge` applies the one-sided changes, then exits 3 and lists the conflicts left.
+A node is one unit of work. It moves through `open`, `claimed`, `done`, `failed`,
+`needs_info` and `impeded`, or leaves the graph as `removed`. `Graph::Work::Node::Writer` owns
+the moves, and each move is a guarded `UPDATE`, so two attempts on one node cannot both win.
+The fourth claim of a node that keeps failing moves it to `needs_info` with a standing question.
+An edge says one node needs another. `Graph::Work::Edge::Writer` refuses a self edge, an edge to
+a missing or removed node, and an edge that would close a loop.
 
-A store written before `store/index.json` has an `INDEX.md` instead. `sync up` on such a store
-reads `INDEX.md` once, writes its intents and clusters, reads the intent folders, prints the
-whole store, and leaves `INDEX.md` in place. `sync down` fails on such a store until `sync up` has
-imported it.
+| Move | Command |
+| ---- | ------- |
+| Add or remove a node | `plastic node add`, `plastic node remove` |
+| Take or give back a node | `plastic node claim`, `plastic node release` |
+| Finish or fail a node | `plastic node done`, `plastic node fail` |
+| Ask the owner, stop, or reopen | `plastic node ask`, `plastic node impede`, `plastic node resolve` |
+| Wire the order | `plastic edge add`, `plastic edge remove` |
 
-## The tri-graph kernel
+Every plan follows the Principle of Least Surprise. An ambiguity gets research and then
+`plastic node ask`. A blocker stops its node with `plastic node impede`. A newly found issue
+becomes `plastic node add` plus `plastic edge add`. `Graph::Work::PlanningDirective` holds the
+text that Plastic prints in the planning hand-off.
 
-A second command line sits beside the live one. It is the kernel of the tri-graph design, the
-design that moves Plastic's work into three graph databases. The kernel is stage 1 of eight in
-that build. It lives under `scripts/lib/plastic/`, and `scripts/lib/plastic.rb` loads it.
+## How an intent is delivered
 
-The kernel has three commands, added in stage 2: `intent new`, `sync up` and `sync down`.
-`bin/plastic` does not call it yet, so the live command line still serves every command. The
-three databases section above describes the storage these commands use.
+![How an intent is delivered, in 10 steps under four headings. What: start, context, grilling and one spec. Why: you say deliver. Go-ahead and How: plan the graph, work the nodes. Then judge, review by pull request, and close. Abandon is open at any time.](figures/delivery-phases.svg)
 
-The kernel ships in the install manifest, so an installed copy carries it. It defines some of
-the same constant names as the live command line, such as the command base class and the
-output class. So its tests run in a separate process, as the tests section of the
-[technical reference](TECHNICAL.md) describes.
+| Step | Command | What it writes |
+| ---- | ------- | -------------- |
+| Start | `plastic intent new` | The intent row and its folder. |
+| Context | `plastic intent discover` | The context the intent starts from. |
+| Grilling | `plastic intent spec` | Nothing. It prints the method and the open decisions. |
+| One spec | `plastic intent rule`, `plastic intent revise` | A ruling, or a new revision of the What and the Why. |
+| Go-ahead | `plastic intent approve` | The approval row. `plastic auto` refuses without it. |
+| Plan the graph | `plastic node add`, `plastic edge add` | Nodes and edges, and `graph.json`. |
+| Work the nodes | `plastic auto`, `plastic node claim`, `plastic node done` | The delivery lock, then each node's findings. |
+| Judge | `plastic intent judge`, `plastic intent verdict` | The verdict row. |
+| Review | The pull request | Nothing in the store. The owner approves and merges. |
+| Close | `plastic intent end` | The completion row, and the release of the lock. |
 
-### The kernel's classes
+![What each delivery step does to the three graphs. A matrix of the steps against the work, knowledge and retrieval graphs and the files, marking each as a write, a read or a print.](figures/delivery-graphs.svg)
 
-![The kernel's classes. CLI looks up TABLE and runs the command class. CLI::Command is the base class; Group, Hook and Routine subclass it. Routine builds a Context, keeps a RoutineRun and runs each workflow key. Workflow finds a key's class through REGISTRY and returns one of the end values Finished, HandedOff, Failed or Refused. CodeWorkflow and AgentWorkflow are its two lanes, and both reach the Graphs through the context.](../resources/kernel-classes.svg)
+`plastic auto ID` takes the delivery lock and sets the intent active. It refuses with exit 3 for
+an open decision, a missing go-ahead, and a live lock held by another session. The lock is one
+row of `local.db`, keyed by the store and the intent, and it names the session. A lock is live
+for 1800 seconds after its last renewal, and `hook record` renews it. Plastic computes the path
+and branch of the code worktree, `<repo>/.claude/worktrees/ID--slug` on `plastic/ID--slug`, and
+prints them. The agent makes the worktree.
 
-The following table lists the same classes. Each one sits in the `Plastic` module.
+`plastic intent end ID` takes no options. It closes the intent when every live node is done,
+every criterion key of `spec.md` is covered by a done node, the latest verdict is `accept` and
+is newer than the last node change, and `outcome.md` has a `## Verification` section. Closing
+releases the lock and hands the agent the wind-down steps in `Workflows::WindDownIntent`.
+`plastic intent abandon ID` hands the agent the revert steps in `Workflows::RevertIntent`, then
+closes the intent as abandoned.
 
-| Class | Job |
-| ----- | --- |
-| `CLI` | Finds the longest entry in its command table that starts the arguments, and loads that command's class on first use. |
-| `CLI::Command` | The base class of every command. It parses the arguments, runs the call, prints, and maps errors to exit codes. |
-| `Routine` | A command whose work is a chain of workflows. The chain is written as data in the class body. |
-| `Routine::Chain` | The workflow keys in order and the edges between them. It lists every wiring fault at once. |
-| `Routine::Traversal` | One pass along a chain. It runs each workflow and follows the edge its outcome takes. |
-| `CodeWorkflow` | Ruby steps that run in order: gates, reads and steps. It returns an outcome name. |
-| `AgentWorkflow` | Steps in plain words for the agent. It hands off while any step is left undone. |
-| `Context` and `Facts` | The named values of one call. A name that no one declared raises at once. |
-| `RoutineRun` | One call of one tool on one subject, kept as a row of `local.db`. |
-| `Graph::Database` | One SQLite file, read and written through the `sqlite3` gem. Each write logs its `changes` row in the same transaction. |
-| `Graph::Origin` | The id of this installation, made at the home on first use. |
-| `Graph::WorkGraph` | The writes of a command: routine runs, sessions, locks, intents, and the files printed after them. |
-| `Graph::Work::Session` | One row of `local.db`'s `sessions` table: a harness run, from its first turn to its end reason. |
-| `Graph::Lock` | One row of `local.db`'s `locks` table: the session holding the delivery lock of one intent. `live?` checks its TTL. |
-| `Graph::RetrievalGraph` | The reads of a command, one table at a time. |
-| `Graph::Work::Session::Writer` | The writes to `local.db`'s `sessions` and `locks` tables. `WorkGraph` hands those writes to it. |
-| `Graph::Work::Session::Reader` | The reads of `local.db`'s routine runs, sessions and locks, and the intents a session touched. `RetrievalGraph` hands those reads to it. |
-| `Graph::Knowledge::Intent::Writer` | Checks and writes a new intent: its Luhmann id, its rows and its folder. |
-| `Graph::Printer` | Prints files from their rows and records each hash in `printed`. |
-| `Graph::Knowledge::Reader` | Reads a file changed by hand back into its rows: `store/index.json` through `IndexFile`, and a file of an intent folder through `IntentFile`. |
-| `Graph::Knowledge::Sync` | Compares each file, its rows and its last print, and plans and applies a sync. |
-| `Graph::Knowledge::Sync::Resolution` | Holds how one sync settles a conflict: `--overwrite PATH`, `--overwrite` alone, or `--merge`. |
-| `Graph::Knowledge::LuhmannId` | Splits, sorts and extends Luhmann ids, such as the next child of `307a`. |
-| `Graph::Knowledge::Legacy::Index` | Reads the `INDEX.md` of a store written before `store/index.json`. |
-| `Hook` | The base class of a hook command. It prints a plain text reply and always exits 0. |
-| `Hooks::Recap` | The lines `hook resume` prints, from rows alone: the first line, the open intents, the previous session, the intent in progress and the note. |
-| `Hooks::StopGate` | Whether `hook record` blocks a stop: the harness, the config flag, a live delivery lock held in auto mode and a ready node, all four. |
-| `Hooks::Entries` | The harness hook groups, status line and screens entry the installer writes into Claude Code and Codex. |
-| `Config` | Reads `config.yml`; a missing or broken file never stops a hook or a command, it reads every flag at its default. |
+## One command from call to report
 
-`Plastic.now` is the one source of the time. It gives the local time with its offset.
+![One command from call to report. The harness or a person runs plastic intent new. The CLI looks up the row and builds the command, the Routine walks its chain of workflows, and the call ends in one of four values. The terminal shows the report: the intent line, the wrote line, the files, and the next and because lines.](figures/command-call.svg)
 
-### The life of a routine call
+`bin/plastic` runs the dispatcher. It finds the command in the table, prints the usage line on
+`--help` without building anything, or builds the command and sends it `call` and then `flush`.
+The `call` method does the work, and `flush` prints the report or its `--json` form.
 
-![One call of plastic intent end 12, top to bottom. The kernel opens the databases and picks up the routine run. Find the intent has one gate, intent 12 exists, which fails with exit 1. Check the write lock reads the lock and has two gates that refuse with exit 3. Check the ending has three gates and two outcomes, written and missing. On written, Close the intent runs three steps and finishes with exit 0. On missing, Write the outcome hands off to the agent with exit 0, and the next call finishes once the outcome is recorded.](../resources/routine-call.svg)
-
-The figure shows the shape of every routine call: the kernel opens the databases and the
-routine run, each workflow runs its gates, reads, steps and outcomes in order, and the call
-ends in one of the four values below. The command it draws, `intent end`, lands in a later stage.
-
-A usage error still exits 2, as it does in the live command line.
-
-### The chain and its four endings
-
-A routine names its chain in its class body. Each `workflow` line gives a key and the edge
-that each outcome takes. The special key `:noop` ends the chain.
+A routine names its chain in its class body. Each `workflow` line gives a key and the edge that
+each outcome takes. The key `:noop` ends the chain.
 
 ```ruby
 workflow :code_check_write_lock, next: :code_check_ending
@@ -182,33 +174,29 @@ end
 ```
 
 `Routine.verify` checks the chain once per process, before the first workflow runs. It raises
-one error that lists every fault, so a reordered chain never skips a workflow in silence. It
-finds these faults:
+one error that lists every fault: an edge that points backward or to an unknown key, a
+workflow no edge reaches, an outcome with no edge, an agent workflow that is not last, an
+ending with no `because:` line, and a printed line that names an undeclared fact.
 
-- An edge points backward, or to a key that is not in the chain.
-- No edge reaches a workflow.
-- An outcome has no edge, or an edge names an outcome the workflow never returns.
-- An agent workflow is not the last workflow of the chain.
-- An outcome ends the chain, and no outcome line gives its `because:` line.
-- A printed line names a fact that no one declares.
+A call ends in one of four values. Each value prints its own last lines and gives the exit code,
+so no workflow picks a number.
 
-A call ends in one of four values. Each value prints its own last lines and gives the exit
-code, so no workflow picks a number.
+| End value | Meaning | Exit code |
+| --------- | ------- | --------- |
+| `Finished` | The chain ended. | 0 |
+| `HandedOff` | The agent has steps to do. The next call picks up where this one stopped. | 0 |
+| `Failed` | A step broke. | 1 |
+| `Refused` | A step belongs to the owner. | 3 |
 
-![Above, the chain of the intent end routine: FindIntent, CheckWriteLock and CheckEnding, which ends on written to CloseIntent or on missing to WriteOutcome, an agent workflow, and then :noop, where the report prints next: and because: from the last workflow. Below, inside one code workflow: read runs on every call and changes nothing on disk; step runs while done: is false and changes state; gate stops the whole call unless pass: holds, as Refused with exit 3 or Failed with exit 1; outcome is the first if: that holds.](../resources/routine-chain.svg)
+A usage error exits 2. A command raises, and the class method `call` maps the error: `Failure`
+gives 1, `Usage` and an unknown project give 2, and `Refusal` gives 3.
 
 ### The routine run row
 
 A routine run is one call of one tool on one subject. A tool that writes keeps it as a row of
-the `routine_runs` table in `local.db`, which sits at the top of the Plastic home. The key
-is the store, the tool and the subject. A tool that writes nothing keeps its routine run in
-memory only.
-
-The traversal saves the row after each workflow, and again when the call ends. The row holds
-the facts the call found, the workflows that finished, the workflow it stopped at, and the
-lines it printed last.
-
-The following table lists the status values of a routine run.
+`routine_runs` in `local.db`, keyed by the store, the tool and the subject. A tool that writes
+nothing keeps it in memory. The traversal saves the row after each workflow and again when the
+call ends.
 
 | Status | What it means | What the next call does |
 | ------ | ------------- | ----------------------- |
@@ -218,40 +206,67 @@ The following table lists the status values of a routine run.
 | `refused` | The owner holds a step. | Asks again. |
 | `finished` | The chain ended. | Starts a new routine run. |
 
-An open routine run restarts at the first workflow with its saved facts. A step that changes
-state has a done check, so a change that already happened is skipped and never runs twice.
-
-`Graph::Database` reaches its file through the `sqlite3` gem. The `ConnectionPool` keeps one
-connection per database file for the life of the Ruby process, the way a Rails process keeps
-one connection per database. A connection opens on first use and closes at exit, and a forked
-child opens its own. Each connection returns rows as hashes, turns foreign keys on and waits
-on a busy file. A write is one transaction that takes the write lock first, and a failed
-statement rolls the whole transaction back and raises with SQLite's error line. Inside a
-transaction that is already open, such as a test's, the write is a savepoint instead, so a
-failure undoes only that write. The first call of a `Database` runs the schema, so a new home
-or store needs no setup step. The report counts the rows a call wrote and prints them on its
-`wrote:` line.
+A step that changes state has a done check, so a change that already happened is skipped and
+never runs twice.
 
 ### The hook reply
 
-A hook is a command that the harness calls on an event, such as the start of a session. A
-hook is not a routine. It prints no `next:` line and keeps no routine run.
+A hook is a command that the harness calls on an event. It is not a routine: it prints no
+`next:` line and keeps no routine run. It reads the event as JSON on stdin, prints a plain text
+reply, and always exits 0. On an error it prints one line on stderr and still exits 0, so a
+broken hook never breaks the session.
 
-![What the harness fires and what Plastic does. Session start, once when the session opens and again after a compaction, runs plastic hook continue, which prints the open intents of this store, the locks this session holds and today's hand-off lines. End of the turn runs plastic hook record, which renews the live locks of this session. Prompt sent, before a tool runs, after a tool ran, before a compaction and session end run nothing. A third column names the hooks the proposal had and why each one goes.](../resources/hook-events.svg)
+| Event | Command | What it does |
+| ----- | ------- | ------------ |
+| Session start: a new session, a clear or a compaction | `plastic hook resume` | Prints the open intents, the previous session, the intent in progress with its last savepoint lines, and the note. |
+| End of a turn | `plastic hook record` | Stamps the session's last turn, renews its live locks, and runs the stop gate. |
+| Session end | `plastic hook end` | Sets the end time and the reason. |
+| Every other event | Nothing | No hook runs. |
 
-Three hooks ship today; `continue` in the figure above is `resume`, renamed because the harness
-itself uses the word `continue`. `plastic hook resume` replies to the session start event in
-all three cases Claude Code's `source` field tells apart, a new session, a clear and a
-compaction, printing the open intents, the previous session's end and what it touched, the
-intent in progress with its last savepoint lines, and its note, from rows alone. `plastic hook
-record` replies to the stop event: it stamps the session's last turn, renews its live locks,
-and runs the stop gate. `plastic hook end` replies to the session end event: it sets
-the end time and the reason and does nothing else, because only that event knows why a session
-ended.
+### Sync
 
-A hook call reads the event as JSON on stdin, hands it to the subclass, prints the returned
-text on stdout when there is any, and exits 0. On any error it prints one line on stderr and
-still exits 0.
+`plastic intent new` writes an intent's rows and prints its folder in the same call. The two
+sync commands keep the files and the rows level after a hand edit. Three hashes decide what
+happens to each file: the file on disk, the text printed from the rows now, and the last print
+that `printed` records.
 
-Claude Code adds the text to the agent's context on the session start event. A broken hook
-never breaks the session, because the hook always exits 0.
+| The file and its rows | `sync up` | `sync down` |
+| --------------------- | --------- | ----------- |
+| The file equals its rows. | Records the hash when it is new. | Records the hash when it is new. |
+| Only the file changed. | Reads the file into its rows. | Leaves the file. |
+| Only the rows changed, or the file is missing. | Leaves the rows. | Prints the file. |
+| Both changed. | A conflict. | A conflict. |
+
+A plain sync with a conflict writes nothing, exits 3 and lists every conflict. With
+`--overwrite PATH`, the file at that path takes the side of the command: `sync up` keeps the
+file, and `sync down` keeps the rows. `--overwrite` alone does the same for every conflict.
+`--merge` applies the one-sided changes, then exits 3 and lists the conflicts left.
+
+`plastic sync up` reads every intent folder of a store. A folder with no row gives a row built
+from its intent file. A folder that cannot give a row is named with its reason, and the call
+exits 1. A command that declares `previews` takes `--dry-run`: `Graph::DisposableCopy` runs the
+whole chain against a temporary copy of the store and prints what the call would change.
+
+## Roadmaps, links, archive and backup
+
+A roadmap is a plan of several intents, kept as rows in `work_graph.db`. It holds batches. Each
+batch has a goal and done criteria, and each item can need other items. `plastic roadmap new`,
+`plastic roadmap batch` and `plastic roadmap add` write the plan. `plastic roadmap open` opens a
+ready item's intent and copies the item's goal and done criteria into its spec. An item's state
+is never stored: it is derived on each read as done, dropped, in flight, blocked or ready.
+`plastic roadmap next` prints the first ready item, and `plastic roadmap check` names a cycle.
+
+| Command | What it does |
+| ------- | ------------ |
+| `plastic intent link` | Writes a typed link from one intent to another. A link to a live intent stops that intent from being archived. |
+| `plastic intent archive ID` | Saves the whole intent folder in `work_graph.db`, then removes it. Open and linked intents are refused. |
+| `plastic intent unarchive ID` | Restores the snapshot. Conflicting files are preserved. |
+| `plastic backup --store SLUG` | Copies the three databases with `VACUUM INTO` into `stores/SLUG/backups/YYYYMMDDHHMMSS/`, with a `status.yml` and a `backup.log`. |
+| `plastic backup list --store SLUG` | Lists the backups of a store. |
+| `plastic backup purge --store SLUG` | Deletes backups older than a date, all of them, or the failed ones. |
+| `plastic backup restore --store SLUG` | Puts back a finished backup after a safety backup of the current databases. It refuses while a delivery lock is fresh. |
+
+A restore never syncs by itself, because a sync can undo it. It ends with
+`next: plastic sync down --project STORE`, which writes the files from the restored rows.
+Backups recover one store on the same installation. They are not a way to hand work to a
+colleague.

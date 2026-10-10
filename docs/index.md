@@ -6,12 +6,12 @@ Start here, then follow the area you need.
 - [guide/](guide/index.md): install, quick start, configuration, the command list, agents
   and troubleshooting.
 - [usage/](usage/FEATURES.md): features, the audit guide and tracking.
-- [contributing/](contributing/ARCHITECTURE.md): the command architecture, the tri-graph
-  kernel beside it, the coding practices, the branches, and the gates.
+- [contributing/](contributing/ARCHITECTURE.md): the system architecture in drawings, the command
+  architecture, the coding practices, the branches, and the gates.
 
 ## Orientation
-- [architecture.md](architecture.md): system structure, the two processes, the store
-  layout, and the component map.
+- [contributing/ARCHITECTURE.md](contributing/ARCHITECTURE.md): the system and its parts in
+  drawings, the store layout, and the component map.
 - [internals.md](internals.md): how Plastic stays deterministic, the determinism
   breakdown, and the harness system.
 
