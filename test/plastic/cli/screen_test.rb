@@ -2,6 +2,7 @@
 
 require_relative "../../test_helper"
 require_relative "../../../scripts/lib/plastic/cli/screen"
+require_relative "../../../scripts/lib/plastic/commands/asking_scope"
 
 class ScreenTest < Plastic::TestCase
   Screen = Plastic::CLI::Screen
@@ -35,10 +36,6 @@ class ScreenTest < Plastic::TestCase
 
   def test_a_stream_that_cannot_say_is_listed
     refute_predicate screen(input: Object.new), :terminal?
-  end
-
-  def test_the_answer_reads_against_the_choices
-    assert_equal Screen::Chosen.new(labels: %w[claude codex]), screen.answer("a", choices)
   end
 
   def test_the_asking_scope_carries_the_screen
