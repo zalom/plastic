@@ -7,11 +7,6 @@ module CommandReference
     # it, and that code to more calls, a few hops deep.
     class Scan
       CALL = /\b(work|retrieval)\.(\w+[?!]?)(?:\.(\w+[?!]?))?/
-      QUOTE = '\\\\?"?'
-      WRITE = ->(table) { /put\(:#{table}\b|INTO #{QUOTE}#{table}\b|UPDATE #{QUOTE}#{table}\b|DELETE FROM #{QUOTE}#{table}\b|(?:write|insert)_rows\(:#{table}\b/ }
-      KEYWORD = ->(table) { /(?<![\w.:])#{table}:(?!:)/ }
-      ROWS = /\b(?:write|insert)_rows\b/
-      MENTION = ->(table) { /(?<![.\w]):#{table}\b|\\?"#{table}\\?"|(?:FROM|JOIN)\s+#{QUOTE}#{table}\b/ }
       HOPS = 3
 
       def initialize(source, facade, schema)
@@ -26,19 +21,13 @@ module CommandReference
         Touches.new(entries: targets.flat_map { |target| entries_of(target.text) }, components: targets.filter_map(&:part), files: [], schema: @schema)
       end
 
-      def self.mode_of(text, table)
-        return :write if text.match?(WRITE.call(table)) || (text.match?(ROWS) && text.match?(KEYWORD.call(table)))
-
-        :read if text.match?(MENTION.call(table))
-      end
+      def self.mode_of(text, table) = Mode.of(text, table)
 
       private
 
       def reached(files)
-        found = (files.flat_map { |file| from_text(@source.lines(file).join("\n")) } + @helpers.call(files)).uniq(&:key)
-        frontier = found
-        HOPS.times { found += (frontier = widen(frontier, found)) }
-        found
+        seeds = (files.flat_map { |file| from_text(@source.lines(file).join("\n")) } + @helpers.call(files)).uniq(&:key)
+        HOPS.times.reduce([seeds, seeds]) { |(found, frontier), _| [found + (more = widen(frontier, found)), more] }.first
       end
 
       def widen(frontier, found)
@@ -53,7 +42,7 @@ module CommandReference
       def entries_of(text) = @schema.tables.filter_map { |table| entry(text, table) }
 
       def entry(text, table)
-        mode = Scan.mode_of(text, table)
+        mode = Mode.of(text, table)
         Entry.new(@schema.file_of(table), table, mode) if mode
       end
     end

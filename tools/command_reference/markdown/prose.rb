@@ -11,7 +11,8 @@ module CommandReference
 
       def self.repeats?(summary, comment)
         small, large = [words(summary), words(Array(comment).join(" "))].sort_by(&:size)
-        small.any? && large.size <= LONGER * small.size && (small & large).size >= SHARED * small.size
+        size = small.size
+        size.positive? && large.size <= LONGER * size && (small & large).size >= SHARED * size
       end
 
       def self.words(text) = text.to_s.downcase.gsub("\u0027s", "").scan(/[a-z]+/).map { |word| word.delete_suffix("s") }.uniq

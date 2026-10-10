@@ -10,6 +10,17 @@ module CommandReference
       PREFIX = /\A(?:Plastic::)(?:Graph::)?/
       BASES = [Exception, Plastic::Workflow, Plastic::CLI::Command, Plastic::Hook].freeze
       PREFIXES = ["", "Workflows::"].freeze
+      HELPER = ->(found) { found.is_a?(Class) && found.name.start_with?("Plastic::") && BASES.none? { |base| found <= base } }
+
+      def self.klass(name)
+        PREFIXES.each do |prefix|
+          found = Plastic.const_get("#{prefix}#{name}")
+          return found if HELPER.call(found)
+        rescue NameError, LoadError
+          next
+        end
+        nil
+      end
 
       def initialize(source)
         @source = source
@@ -17,30 +28,17 @@ module CommandReference
 
       def call(files)
         own = files.to_set
-        found = files.flat_map { |file| names(file) }.uniq.filter_map { |name| klass(name) }.uniq
-        found.filter_map { |klass| target(klass, own) }.uniq { |target| target.part }
+        files.flat_map { |file| names(file) }.uniq.filter_map { |name| self.class.klass(name) }.uniq.filter_map { |klass| target(klass, own) }.uniq(&:part)
       end
 
       private
 
       def names(file) = @source.lines(file).reject { |row| row.lstrip.start_with?("#") }.join("\n").scan(NAME)
 
-      def klass(name)
-        PREFIXES.each do |prefix|
-          found = Plastic.const_get("#{prefix}#{name}")
-          return found if helper?(found)
-        rescue NameError, LoadError
-          next
-        end
-        nil
-      end
-
-      def helper?(found) = found.is_a?(Class) && found.name&.start_with?("Plastic::") && BASES.none? { |base| found <= base }
-
       def target(klass, own)
-        path = Object.const_source_location(klass.name)&.first or return
-        file = @source.relative(path)
-        Target.new(@source, file, nil, klass.name.sub(PREFIX, "")) unless own.include?(file) || file.start_with?("/")
+        name = klass.name
+        file = @source.relative(Object.const_source_location(name).first)
+        Target.new(@source, file, nil, name.sub(PREFIX, "")) unless own.include?(file)
       end
     end
   end

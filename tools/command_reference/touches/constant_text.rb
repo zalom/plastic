@@ -13,18 +13,19 @@ module CommandReference
         @file = file
       end
 
-      def of(name)
-        line = @source.find_line(@file, /^\s*#{Regexp.escape(name)}\s*=/) or return
-        rows = @source.lines(@file).drop(line - 1)
+      def self.text(rows)
         tag = rows.first[HEREDOC, 2]
-        (tag ? heredoc(rows, tag) : continued(rows)).join("\n")
+        (tag ? rows.take(rows.index { |row| row.strip == tag }.to_i + 1) : rows.slice_after { |row| !row.match?(CONTINUES) }.first).join("\n")
       end
+
+      def of(name) = (rows = rows_from(name)) && self.class.text(rows)
 
       private
 
-      def heredoc(rows, tag) = rows.take((rows.index { |row| row.strip == tag } || 0) + 1)
-
-      def continued(rows) = rows.slice_after { |row| !row.match?(CONTINUES) }.first
+      def rows_from(name)
+        line = @source.find_line(@file, /^\s*#{Regexp.escape(name)}\s*=/)
+        @source.lines(@file).drop(line - 1) if line
+      end
     end
   end
 end

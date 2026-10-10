@@ -17,7 +17,7 @@ module CommandReference
     private
 
     def bodies
-      @bodies ||= names.flat_map { |name| @files.filter_map { |file| body(file, name) } }
+      @bodies ||= names.product(@files).filter_map { |name, file| body(file, name) }
     end
 
     def names
@@ -26,17 +26,19 @@ module CommandReference
       queue
     end
 
-    def called(name) = @files.filter_map { |file| text(file, name) }.flat_map { |code| code.scan(WORD).flatten.select { |word| known?(word) } }
+    def called(name) = @files.filter_map { |file| text(file, name) }.flat_map { |code| known_words(code) }
 
-    def text(file, name) = (line = @source.find_line(file, definition(name))) && @source.method_lines(file, line).join("\n")
+    def known_words(code) = code.scan(WORD).flatten.select { |word| known?(word) }
+
+    def text(file, name) = (line = line_of(file, name)) && @source.method_lines(file, line).join("\n")
 
     def body(file, name)
-      line = @source.find_line(file, definition(name))
+      line = line_of(file, name)
       [file, line..(line + @source.method_lines(file, line).size - 1)] if line
     end
 
-    def known?(word) = @files.any? { |file| @source.find_line(file, definition(word)) }
+    def known?(word) = @files.any? { |file| line_of(file, word) }
 
-    def definition(name) = /^\s*def #{Regexp.escape(name)}\b/
+    def line_of(path, word) = @source.find_line(path, /^\s*def #{Regexp.escape(word)}\b/)
   end
 end

@@ -16,6 +16,7 @@ module CommandReference
         command: Column.new(16, 140, "lane-code"), flows: Column.new(176, 140, "lane-code"), parts: Column.new(336, 196, "card"),
         databases: Column.new(556, 186, "db"), files: Column.new(766, 200, "card")
       }.freeze
+      LEFT = COLUMNS.fetch(:databases).left
       LEGEND = ["R read  W write", "declared: named by the", "command, tables not found"].freeze
       TITLES = { command: "COMMAND", flows: "WORKFLOWS", parts: "CLASSES", databases: "DATABASES", files: "FILES IT PRINTS" }.freeze
 
@@ -68,18 +69,16 @@ module CommandReference
       end
 
       def databases
-        return @drawing.text(Point.new(left, 58), "no database found in the code", "tm tag-muted") if @touches.database_files.empty?
+        files = @touches.database_files
+        return @drawing.text(Point.new(LEFT, 58), "no database found in the code", "tm tag-muted") if files.empty?
 
-        bottom = @touches.database_files.reduce(34) { |top, file| DatabaseBox.new(@drawing, @touches, file).draw(top) + 14 }
-        legend(bottom + 12)
+        legend(files.reduce(34) { |top, file| DatabaseBox.new(@drawing, @touches, file).draw(top) + 14 } + 12)
       end
 
       def legend(top)
-        @drawing.paragraph(Point.new(left, top), LEGEND, "tm tag-muted")
+        @drawing.paragraph(Point.new(LEFT, top), LEGEND, "tm tag-muted")
         @drawing.grow(top + (LEGEND.size * 14))
       end
-
-      def left = COLUMNS.fetch(:databases).left
     end
   end
 end

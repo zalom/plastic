@@ -27,7 +27,10 @@ module CommandReference
           "The words on this page, such as gate, step and outcome, are explained in [the command DSL](#{DSL}).", ""]
       end
 
-      def comment = Prose.repeats?(@page.summary, @page.comment) ? [] : Prose.lines(@page.comment)
+      def comment
+        text = @page.comment
+        Prose.repeats?(@page.summary, text) ? [] : Prose.lines(text)
+      end
 
       def inputs
         rows = @page.arguments.map { |arg| "| `#{arg.label}` | #{arg.text} | |" } + @page.options.map { |opt| "| `#{opt.switch}` | #{opt.text} | #{Page.default(opt)} |" }
@@ -40,20 +43,21 @@ module CommandReference
         own = @page.own_call
         return [] unless own
 
-        [*own_heading(own), "", "```ruby", *own.code, "```", "", *check_call(own)]
+        [*own_heading(own), "", "```ruby", *own.code, "```", "", *check_call(own.check)]
       end
 
       def own_heading(own)
-        return ["## Before the chain", "", "The command's own `call`, at #{@links.at(own)}, runs first:"] if @page.flows.any?
-        return ["## The command", "", "The hook's `respond`, at #{@links.at(own)}:"] if @page.kind == :hook
+        link = @links.at(own)
+        return ["## Before the chain", "", "The command's own `call`, at #{link}, runs first:"] if @page.flows.any?
+        return ["## The command", "", "The hook's `respond`, at #{link}:"] if @page.kind == :hook
 
-        ["## The command", "", "The command's `call`, at #{@links.at(own)}:"]
+        ["## The command", "", "The command's `call`, at #{link}:"]
       end
 
-      def check_call(own)
-        return [] unless own.check
+      def check_call(check)
+        return [] unless check
 
-        ["The command's own `check_call`, at #{@links.at(own.check)}, runs inside it:", "", "```ruby", *own.check.code, "```", ""]
+        ["The command's own `check_call`, at #{@links.at(check)}, runs inside it:", "", "```ruby", *check.code, "```", ""]
       end
 
       def flow
