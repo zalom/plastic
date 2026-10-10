@@ -18,11 +18,14 @@ module Plastic
       FOLDERS = %i[dir home_dir].freeze
       INSTALLER = "curl -fsSL https://raw.githubusercontent.com/zalom/plastic/main/install.sh |"
 
-      def self.of(context)
-        scope = context.scope
+      def self.of(context) = for_scope(context.scope)
+
+      def self.for_scope(scope)
         new(package_root: package_root(scope), plastic_home: scope.plastic_home,
           agents: InstallerCore::DEFAULT_AGENTS.map { |agent| rehome(agent, scope.home) })
       end
+
+      def self.running(scope) = source(package_root(scope)) && for_scope(scope).version
 
       def self.package_root(scope) = scope.setting("PLASTIC_PACKAGE_ROOT", PACKAGE_ROOT)
 

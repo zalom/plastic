@@ -75,13 +75,14 @@ class IntentEndTest < Plastic::TestCase
     assert_match(/stop/i, finish.out)
   end
 
-  def test_a_second_end_exits_1_and_keeps_one_completion_row
+  def test_a_second_end_exits_0_says_the_intent_is_already_done_and_keeps_one_completion_row
     closed_intent
 
     result = finish
 
-    assert_equal 1, result.code
-    assert_equal 1, work_rows("completions").size
+    assert_equal [0, 1, ""], [result.code, work_rows("completions").size, result.err]
+    assert_match(/already done/, result.out)
+    assert_match(/^next: plastic next/, result.out)
   end
 
   def test_a_live_foreign_lock_refuses_the_close

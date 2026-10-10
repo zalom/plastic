@@ -38,9 +38,9 @@ module Plastic
         "#{step} --project #{Shellwords.escape(project)}"
       end
 
-      # The last two lines of a text answer, or none when no next step is set.
+      # The last lines of a text answer: next: when a command is offered, then because: when a reason is given.
       def closing_lines(project)
-        @next_step ? ["next: #{next_command(project)}", "because: #{because}"] : []
+        [("next: #{next_command(project)}" if @next_step), ("because: #{because}" if because)].compact
       end
 
       # The JSON answer, with the same three parts and stable keys. A text

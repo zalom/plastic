@@ -8,7 +8,7 @@ class RetrievalContextResumeTest < Plastic::TestCase
     command("intent", "new", "Evidence delivery")
     submit_context(first_reference)
 
-    assert_equal "none", command("intent", "discover", "1", "Evidence").fetch("next")
+    assert_nil command("intent", "discover", "1", "Evidence").fetch("next")
     assert_changed_discovery(command("intent", "discover", "1", "delivery"))
   end
 
@@ -45,7 +45,7 @@ class RetrievalContextResumeTest < Plastic::TestCase
       file.write(JSON.generate(context_submission(reference)))
       file.flush
 
-      assert_equal "none", command("intent", "context", "1", "--from", file.path).fetch("next")
+      assert_nil command("intent", "context", "1", "--from", file.path).fetch("next")
     end
   end
 

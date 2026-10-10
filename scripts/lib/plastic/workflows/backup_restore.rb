@@ -3,7 +3,6 @@
 require_relative "../code_workflow"
 require_relative "../cli/command/usage"
 require_relative "../graph/knowledge/backup/databases"
-require_relative "../commands/restore_sync"
 
 module Plastic
   module Workflows
@@ -51,9 +50,12 @@ module Plastic
       end
 
       read "say what was replaced" do |context|
-        Commands::RestoreSync.say(context, "restore: backed up the current databases as #{context.safety}")
-        context.restored.each { |name| Commands::RestoreSync.say(context, "restore: #{name} from #{context.folder}") }
+        context.print("restore: backed up the current databases as #{context.safety}")
+        context.restored.each { |name| context.print("restore: #{name} from #{context.folder}") }
       end
+
+      outcome :done, offers: "plastic sync down --project %{store}",
+        because: "the rows are restored and the files are not; sync down writes the files from the rows"
     end
   end
 end

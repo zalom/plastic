@@ -20,7 +20,7 @@ module Plastic
         end
 
         def call
-          return ["none", "intent #{@intent_id} is closed", nil] unless @retrieval.intent(@intent_id).open?
+          return [nil, "intent #{@intent_id} is closed", nil] unless @retrieval.intent(@intent_id).open?
           return planning if live.empty?
           return ["plastic intent end #{@intent_id}", "the nodes are done; verify the intent's criteria", nil] if live.all? { |node| node.state == "done" }
 

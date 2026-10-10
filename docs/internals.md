@@ -414,8 +414,8 @@ path, cap the encoded URL at 7500 bytes with a page-one-plus-marker overflow), a
 from standard input. The report is saved as a draft, and the user opens the printed URL
 to send it.
 
-`hook-session-start` calls `--core` in-process (reusing the `Doctor` class, no second
-process spawn) to drive the boot banner on every session start (intent 36a).
+`plastic hook resume` runs the whole doctor in-process (reusing the `Doctor` checks, no second
+process spawn) and names `plastic doctor` in one line only when a check fails.
 
 The hook surfaces that banner on two channels from a single `BootBanner` renderer (intent 54):
 `hookSpecificOutput.additionalContext` (added to the model's context) and the top-level
@@ -576,12 +576,8 @@ this section covers how the code holds together.
   SHA-256 digest of the sorted file names and digests with the one stored at write time.
   `BackupStore` adds the required `--store` option to the four commands and refuses a slug
   that is neither `global` nor a key of `projects.yml`. `Databases.parse` reads `--databases`.
-  After a restore, `BackupRestore` asks which sync to run through `CLI::Dialog`, built by
-  `BackupRestore#scope` from `Environment#input` and the output, and reached as `context.scope.dialog`
-  (`Commands::AskingScope`). A
-  terminal is an input that answers `tty?`, and never under `--json`. The answer picks the
-  outcome `sync_down`, `sync_up` or `kept`, and the chain runs the sync workflows for the same
-  store; with no terminal the outcome is `done` and its `next:` tells the agent to ask.
+  A restore asks no question and runs no sync. `BackupRestore` ends with the outcome `done`, and its
+  `next:` line is `plastic sync down --project STORE`.
 
 `Graph::Knowledge::Sync::LegacyImport` runs `Graph::Knowledge::Legacy::StoreImport` for a store with `INDEX.md` and no
 `store/index.json`. One coordinator reads intent files, rulings and source links, imports
@@ -940,9 +936,9 @@ files, and the old start and lock subcommands of `plastic auto` are retired. Own
 is the only auto command, and lock commands live under `intent lock`.
 
 - **Take.** `plastic auto ID` (`Commands::Auto`) runs `Workflows::PickDelivery`, then
-  `Workflows::StartAuto`. `StartAuto` refuses (exit 3) an open decision, no done criterion, a
-  done or abandoned intent, and a live lock held by another session, and fails (exit 1) when
-  the call names no session. Otherwise `work.take_lock` writes the row in `auto` mode and the
+  `Workflows::StartAuto`. `StartAuto` refuses (exit 3) an open decision, a missing go-ahead and a live lock held by
+  another session, and fails (exit 1) with a `next:` line for no done criterion and for a done
+  or abandoned intent, and when the call names no session. Otherwise `work.take_lock` writes the row in `auto` mode and the
   intent goes active. An expired lock is taken over by the same call.
 - **Renew.** The Stop hook (`plastic hook record`, `Hooks::Record`) renews every lock row the
   session holds through `work.renew_locks`.
@@ -962,10 +958,8 @@ is the only auto command, and lock commands live under `intent lock`.
 **The worktree is reported, never created.** Plastic runs no version control command (intent
 390). `Workflows::Worktree.of(scope, intent)` resolves the project repository from
 `projects.yml` and derives the code worktree at `<repo>/.claude/worktrees/{id}--{slug}` on
-branch `plastic/{id}--{slug}`. `StartAuto` prints `worktree:` and `branch:`; while the folder
-is missing, its `next:` line is the shell-escaped
-`git -C <repo> worktree add <path> -b <branch>`, which the agent runs. Once the folder exists,
-or when no repository resolves, the next step is `plastic intent brief ID`. The closer removes
+branch `plastic/{id}--{slug}`. `StartAuto` prints `worktree:` and `branch:`, and the agent
+makes the worktree at that path on that branch. The next step is `plastic intent brief ID`. The closer removes
 the worktree by hand after the merge.
 
 ## the doctor of each harness (intent 414)
@@ -977,7 +971,7 @@ the harness. `--harness NAME` picks the module. Without it, the doctor picks Cod
 session variable is set, and Claude Code otherwise. A harness with no module exits 2 and names
 the harnesses that have one.
 
-`Doctor::Core` checks the version record, the parts that `plastic version` checks, the sqlite3
+`Doctor::Core` checks the version record, the parts of the installation, the sqlite3
 gem, the machine database, PLASTIC.md, and each registered project's store and AGENTS.md. The
 machine database's file name comes from `Graph::Schema`, never a literal, so a rename of the
 file changes no doctor code. `Doctor::DatabaseCheck` opens a database read-only and compares
@@ -1235,9 +1229,8 @@ the day ledger can still write its one savepoint line. Only a usage error (no `-
 `--summary`) exits 2 and writes nothing.
 
 **`plastic auto ID` reports a worktree, it never creates one.** `Workflows::Worktree` computes
-the expected code worktree's path and branch with no git call, and `StartAuto` prints them and,
-while the folder is missing, the exact `git -C <repo> worktree add <path> -b <branch>` as the
-`next:` line. Plastic names the command, the agent runs it. A store-only project (no repo
+the expected code worktree's path and branch with no git call, and `StartAuto` prints them as
+`worktree:` and `branch:` rows. The agent makes the worktree. A store-only project (no repo
 resolves) prints no worktree, and the next step is `plastic intent brief ID`.
 
 **`plastic auto` takes a roadmap slug (intents 391 and 413).** See the delivery lock section
@@ -1712,7 +1705,7 @@ exit codes and stderr diagnostics, with an error object for JSON callers.
 `IntentProgress` reads lifecycle prerequisites and checklist items through the
 existing screen reader. A direct step prints its first incomplete item without
 starting the graph runner. A graph step uses the runner's ownership resolver
-before dispatch. Lock inspection and search end with `next: none`.
+before dispatch. A call with no next command prints a `because:` line and no `next:` line; `--json` gives `"next": null`.
 
 `test/cli/release_contract_test.rb` exercises the actual executable with isolated
 stores, including creation, screens, project scope, direct progression, graph

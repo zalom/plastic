@@ -47,8 +47,7 @@ command to run after it.
 
 Ask your agent to deliver the intent in auto mode. The agent runs `plastic auto ID`,
 which takes the delivery lock (so no other team works on the same intent at the same time)
-and prints the `git worktree add` command that makes a worktree for the code. The agent runs
-that command, then spawns the `plastic-enforcer` lead, which
+and prints the path and branch of the worktree for the code. The agent makes that worktree, then spawns the `plastic-enforcer` lead, which
 writes the record, dispatches an executor, and reviews by risk. It stops to ask you something
 only at a few important moments.
 

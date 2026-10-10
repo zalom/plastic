@@ -33,9 +33,9 @@ module Plastic
       :code_choose_archive, :code_archive_intent, :code_restore_intent,
       # Backups: one folder per backup of one store, with purge and restore.
       :code_preview_backup, :code_backup, :code_backup_list,
-      :code_preview_backup_purge, :code_backup_purge, :code_preview_backup_restore, :code_backup_restore, :code_ask_restore_sync,
+      :code_preview_backup_purge, :code_backup_purge, :code_preview_backup_restore, :code_backup_restore,
       # Distribution: the installer commands over the running package and the home.
-      :code_show_version, :code_check_installation, :code_check_health, :code_preview_install, :code_install_plastic, :agent_offer_enola,
+      :code_show_version, :code_check_health, :code_preview_install, :code_install_plastic, :agent_offer_enola,
       :code_preview_update, :code_update_plastic,
       :code_preview_rollback, :code_rollback_release, :code_preview_uninstall, :code_uninstall_plastic,
       # Work graph: building and moving the nodes and edges of one intent.

@@ -42,7 +42,7 @@ class RoutineTest < Plastic::TestCase
     File.write(File.join(@home, "notes.md"), "draft")
     call = plastic("kernel", "draft", "notes", "--dir", @home)
 
-    assert_call call, code: 0, out: "#{RUN_ROW}\nnext: none\nbecause: the draft for notes is written, stamped #{stamp}\n"
+    assert_call call, code: 0, out: "#{RUN_ROW}\nbecause: the draft for notes is written, stamped #{stamp}\n"
     assert_equal "finished", routine_run("kernel draft", "notes").status
   end
 

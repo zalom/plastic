@@ -61,14 +61,14 @@ class IntentReviseTest < Plastic::TestCase
     assert_includes second.out, "why was: The owner moved the goal\nwhy: The goal moved again\n"
   end
 
-  def test_a_done_intent_refuses_with_exit_3_and_no_row_written
+  def test_a_done_intent_exits_1_with_no_row_written_and_offers_plastic_next
     open_intent
     set_status("done")
 
     result = call("1", "Beta, after grilling")
 
-    assert_equal 3, result.code
-    assert_includes result.err, "intent 1 is done"
+    assert_equal [1, true], [result.code, result.err.include?("intent 1 is done")]
+    assert_match(/^next: plastic next/, result.out)
     assert_equal ["Alpha", 1], [retrieval.intent("1").title, revisions]
   end
 

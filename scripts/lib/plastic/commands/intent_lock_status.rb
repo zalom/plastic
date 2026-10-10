@@ -10,6 +10,7 @@ module Plastic
       reads :work
 
       workflow :code_show_lock do
+        on :closed, next: :noop
         on :none, next: :noop
         on :expired, next: :noop
         on :live, next: :noop

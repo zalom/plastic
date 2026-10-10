@@ -27,15 +27,15 @@ module Plastic
           def rows = [["store:", @retrieval.store], *in_play_rows, *node_rows, *savepoint_rows, ["then:", then_text]]
 
           def next_step
-            command, why, = @offer
-            [command || "plastic next", why] unless command == "none"
+            command, why, handoff = @offer
+            [command || "plastic next", why] if command || handoff
           end
 
           private
 
           def then_text
             command, why, handoff = @offer
-            handoff || "#{command} (because #{why})"
+            handoff || (command ? "#{command} (because #{why})" : why)
           end
 
           def in_play_rows

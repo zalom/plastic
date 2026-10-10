@@ -28,11 +28,19 @@ module Plastic
           attr_reader :capture, :completion, :guard, :retrieval
 
           def archive(intent)
-            problem = guard.problem(intent)
-            return refused(problem) if problem
+            problem = problem_of(intent)
+            return problem if problem
 
             capture.capture(intent)
             complete(intent)
+          end
+
+          def problem_of(intent)
+            unfinished = intent.archive_refusal
+            return [false, unfinished, :unfinished] if unfinished
+
+            problem = guard.problem(intent)
+            [false, problem, :refusal] if problem
           end
 
           def complete(intent)
@@ -41,8 +49,6 @@ module Plastic
           end
 
           def missing(intent_id) = [false, "no intent #{intent_id}", :failure]
-
-          def refused(problem) = [false, problem, :refusal]
         end
       end
     end

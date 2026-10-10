@@ -10,7 +10,7 @@
       "examples": []
     },
     "varar/auto.md": {
-      "sourceHash": "fnv1a:73113461",
+      "sourceHash": "fnv1a:69fca61e",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -37,7 +37,7 @@
       ]
     },
     "varar/backup-restore.md": {
-      "sourceHash": "fnv1a:92e58c98",
+      "sourceHash": "fnv1a:d5562bae",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -108,7 +108,7 @@
       ]
     },
     "varar/graph-resume.md": {
-      "sourceHash": "fnv1a:5eaf4a3b",
+      "sourceHash": "fnv1a:f40a0455",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -157,7 +157,7 @@
       ]
     },
     "varar/intent-approve.md": {
-      "sourceHash": "fnv1a:1699758d",
+      "sourceHash": "fnv1a:12c39d97",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -166,7 +166,7 @@
       ]
     },
     "varar/intent-archive.md": {
-      "sourceHash": "fnv1a:31a78971",
+      "sourceHash": "fnv1a:50e28bdf",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -192,7 +192,7 @@
       "examples": []
     },
     "varar/intent-end.md": {
-      "sourceHash": "fnv1a:a6682dff",
+      "sourceHash": "fnv1a:46afe925",
       "examples": [
         {
           "name": "The rows below use a disposable fixture with one verified node and outcome. Each row gives the closure case, the exit code, the status, the completion records and the next line:",
@@ -219,7 +219,7 @@
       ]
     },
     "varar/intent-lock-status.md": {
-      "sourceHash": "fnv1a:74f182ab",
+      "sourceHash": "fnv1a:ce7f7bd1",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -282,7 +282,7 @@
       ]
     },
     "varar/intent-spec.md": {
-      "sourceHash": "fnv1a:7435e6e9",
+      "sourceHash": "fnv1a:a54e09ae",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the first line, the open lines and the next line:",

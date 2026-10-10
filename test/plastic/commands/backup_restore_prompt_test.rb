@@ -11,101 +11,71 @@ end
 class BackupRestorePromptTest < Plastic::TestCase
   include BackupHomes
 
+  NEXT = "plastic sync down --project alpha"
+
   def sync_down(home) = plastic("sync", "down", "--project", "alpha", env: env_for(home), table: Plastic::CLI::TABLE)
 
   def intent_file(home) = File.join(home, "stores", "alpha", "store", "1--alpha", "intent.md")
-
-  def edit_file(home) = File.write(intent_file(home), "\nWritten after the backup.\n", mode: "a")
-
-  def edited_rows?(home)
-    Plastic::Graph.create(home:, store: "alpha").retrieval.documents("1").any? { |doc| doc.body.include?("Written after the backup.") }
-  end
-
-  def edited_file?(home) = File.read(intent_file(home)).include?("Written after the backup.")
 
   def backed_up_home
     home = fresh_home
     sync_down(home)
     backup_at(home, at(2026, 1, 1, 10, 0, 0))
+    File.write(intent_file(home), "\nWritten after the backup.\n", mode: "a")
     home
   end
 
-  def restore_answering(home, answers, *extra)
-    input = TerminalInput.new(answers)
-    [plastic("backup", "restore", "--store", "alpha", "--latest", *extra, env: env_for(home), table: Plastic::CLI::TABLE, input:), input]
+  def restore_with(home, input)
+    plastic("backup", "restore", "--store", "alpha", "--latest", env: env_for(home), table: Plastic::CLI::TABLE, input:)
   end
 
-  def test_answering_down_prints_the_files_from_the_restored_rows
+  def test_with_a_terminal_no_input_is_read_and_no_file_changes
     home = backed_up_home
-    File.delete(intent_file(home))
-    result, = restore_answering(home, "down\n")
+    before = File.read(intent_file(home))
+    input = TerminalInput.new("up\n")
+    result = restore_with(home, input)
 
-    assert_equal [0, true], [result.code, File.exist?(intent_file(home))]
+    assert_equal [0, 0, before], [result.code, input.pos, File.read(intent_file(home))]
   end
 
-  def test_the_question_gives_one_line_for_each_answer
-    result, = restore_answering(backed_up_home, "neither\n")
-
-    assert_call result, code: 0, out: ["File edits made after the backup are lost", "replaces the restored row", "the rows and the files stay as they are"]
-  end
-
-  def test_answering_up_reads_the_files_newer_than_the_backup_into_the_rows
+  def test_with_no_terminal_no_input_is_read_and_no_file_changes
     home = backed_up_home
-    edit_file(home)
-    restore_answering(home, "up\n")
-
-    assert edited_rows?(home)
-  end
-
-  def test_answering_neither_changes_no_row_and_no_file
-    home = backed_up_home
-    edit_file(home)
-    result, = restore_answering(home, "neither\n")
-
-    assert_equal [0, false, true], [result.code, edited_rows?(home), edited_file?(home)]
-  end
-
-  def test_an_unknown_answer_twice_counts_as_neither
-    home = backed_up_home
-    edit_file(home)
-    result, = restore_answering(home, "maybe\nsoon\n")
-
-    assert_equal [0, false, true], [result.code, edited_rows?(home), edited_file?(home)]
-  end
-
-  def test_an_unknown_answer_is_asked_again_once
-    home = backed_up_home
-    edit_file(home)
-    restore_answering(home, "maybe\nup\n")
-
-    assert edited_rows?(home)
-  end
-
-  def test_with_no_terminal_no_sync_runs_and_the_input_is_not_read
-    home = backed_up_home
-    edit_file(home)
+    before = File.read(intent_file(home))
     input = StringIO.new("up\n")
-    result = plastic("backup", "restore", "--store", "alpha", "--latest", env: env_for(home), table: Plastic::CLI::TABLE, input:)
+    result = restore_with(home, input)
 
-    assert_equal [0, 0, false], [result.code, input.pos, edited_rows?(home)]
+    assert_equal [0, 0, before], [result.code, input.pos, File.read(intent_file(home))]
   end
 
-  def test_with_no_terminal_next_tells_the_agent_to_ask_with_both_explanations
-    result = restore_call(backed_up_home, "--store", "alpha", "--latest")
+  def test_the_restore_ends_with_the_sync_down_line_with_a_terminal_and_without
+    [TerminalInput.new(""), StringIO.new("")].each do |input|
+      result = restore_with(backed_up_home, input)
 
-    assert_call result, code: 0, out: ["next: ask the person", "File edits made after the backup are lost", "replaces the restored row"]
+      assert_call result, code: 0, out: ["next: #{NEXT}"]
+      refute_match(/sync the restored store|answer down, up or neither|ask the person/, result.out)
+    end
   end
 
-  def test_a_preview_asks_nothing_and_syncs_nothing
+  def test_the_line_it_ends_with_runs_as_written
     home = backed_up_home
-    edit_file(home)
-    result, input = restore_answering(home, "up\n", "--dry-run")
+    restore_with(home, StringIO.new(""))
+    result = plastic("sync", "down", "--project", "alpha", env: env_for(home), table: Plastic::CLI::TABLE)
 
-    assert_equal [0, 0, false], [result.code, input.pos, edited_rows?(home)]
+    assert_equal 0, result.code, result.err
   end
 
-  def test_a_refused_restore_asks_nothing
-    result, input = restore_answering(backed_up_home, "up\n", "--timestamp", "20200101000000")
+  def test_a_preview_reads_no_input_and_syncs_nothing
+    home = backed_up_home
+    before = File.read(intent_file(home))
+    input = TerminalInput.new("up\n")
+    result = plastic("backup", "restore", "--store", "alpha", "--latest", "--dry-run", env: env_for(home), table: Plastic::CLI::TABLE, input:)
+
+    assert_equal [0, 0, before], [result.code, input.pos, File.read(intent_file(home))]
+  end
+
+  def test_a_refused_restore_reads_no_input
+    input = TerminalInput.new("up\n")
+    result = plastic("backup", "restore", "--store", "alpha", "--latest", "--timestamp", "20200101000000", env: env_for(backed_up_home), table: Plastic::CLI::TABLE, input:)
 
     assert_equal [2, 0], [result.code, input.pos]
   end

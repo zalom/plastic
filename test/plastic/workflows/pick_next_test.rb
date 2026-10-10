@@ -11,8 +11,8 @@ class PickNextTest < Plastic::TestCase
     [outcome, context.next_command, context.why]
   end
 
-  def test_nothing_open_offers_none
-    assert_equal [:done, "none", "nothing is open"], pick
+  def test_nothing_open_offers_no_command
+    assert_equal [:nothing, nil, "nothing is open"], pick
   end
 
   def test_an_intent_without_criteria_offers_its_spec

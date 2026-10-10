@@ -19,7 +19,7 @@ module Plastic
 
       def error_document(message, kind, offer)
         row("error", { "kind" => kind, "message" => message })
-        next_step(offer.command || "none", because: offer.because)
+        next_step(offer.command, because: offer.because)
         flush
       end
     end

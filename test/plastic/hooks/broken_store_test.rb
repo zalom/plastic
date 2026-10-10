@@ -53,7 +53,7 @@ class BrokenStoreTest < Minitest::Test
       call = KernelCommand.new(home).run("hook", "resume", input: "", env: {})
 
       assert_equal 0, call.code
-      assert_equal "Plastic: a new session in store global. Run plastic next before anything else.\n", call.out
+      assert_equal "Plastic: a new session in store global. Run plastic next before anything else.\nPlastic: doctor found 5 failing checks; run plastic doctor.\n", call.out
       assert_equal "plastic hook: the event names no session; nothing recorded\n", call.err
     end
   end

@@ -41,11 +41,12 @@ never creates the worktree. `plastic auto ID` resolves the project repository fr
 ```text
 worktree: /home/you/greeter/.claude/worktrees/2--shout
 branch: plastic/2--shout
-next: git -C /home/you/greeter worktree add /home/you/greeter/.claude/worktrees/2--shout -b plastic/2--shout
+
+next: plastic intent brief 2
+because: intent 2 is active
 ```
 
-While the folder does not exist, that `git -C <repo> worktree add <path> -b <branch>` command is
-the `next:` line, and the agent runs it. Once the folder exists, the `next:` line is
+The agent makes the worktree at the printed path on the printed branch, then runs the `next:` line,
 `plastic intent brief ID`. There is one worktree per project intent, the code worktree at
 `<repo>/.claude/worktrees/{id}--{slug}` on branch `plastic/{id}--{slug}`.
 
@@ -73,7 +74,7 @@ station. Nothing in the third column blocks; the fourth column is what gets writ
 |---|---|---|---|
 | What (create) | the intent's rows and its folder | no lock yet | the intent row |
 | Why | `spec.md` | no lock yet; `plastic intent spec ID` names the open decisions | the spec and the rulings as rows |
-| Start (board) | none (a procedure, not a stage) | `plastic auto ID` takes the lock row and sets the intent active, then prints the code worktree and its git command | the lock row in `local.db` |
+| Start (board) | none (a procedure, not a stage) | `plastic auto ID` takes the lock row and sets the intent active, then prints the code worktree path and branch | the lock row in `local.db` |
 | How | the work graph of the intent | the record hook renews the lock | node and edge rows |
 | Exec | code on the intent branch | renewal continues; code edits stay in the code worktree | node results |
 | End (done) | `outcome.md` | `plastic intent end ID` closes the intent and releases the lock; the session that delivered it closes it after the code is merged, with no lock handover | the intent closed as done |

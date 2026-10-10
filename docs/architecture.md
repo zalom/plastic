@@ -197,9 +197,9 @@ Questions` heading (a section holding only "None" counts zero).
 
 `plastic intent spec ID` prints `docs/grilling.md`, the grilling method, then the intent's
 open decisions, so the next step is always either `intent rule` or `auto`.
-`plastic auto ID` refuses (exit 3) an open decision, no done criterion, a done or
-abandoned intent, and a live lock held by another session; it fails (exit 1) when the call
-names no session. Otherwise it takes the lock in `auto` mode, sets the intent active, and
+`plastic auto ID` refuses (exit 3) an open decision, a missing go-ahead and a live lock held by
+another session; it fails (exit 1) with a `next:` line for no done criterion (`plastic intent
+spec ID`) and for a done or abandoned intent (`plastic next`), and when the call names no session. Otherwise it takes the lock in `auto` mode, sets the intent active, and
 prints the code worktree. An already active intent still needs a live lock in auto mode held
 by the calling session; running the command takes a missing or expired lock.
 
@@ -251,12 +251,9 @@ missing on disk or changed, and does not fail for a folder with no row.
 `plastic backup purge --store SLUG (--older-than DATE | --all | --failed)` deletes folders
 and rows before a UTC time, all of them, or the folders whose status is `failed`. `plastic backup restore --store SLUG (--timestamp TS | --latest)` puts
 back a `done` backup after a safety backup of the current databases. It refuses while a
-delivery lock is fresh. It never syncs by itself, because a sync can undo a restore. With a terminal it asks
-whether to sync down, sync up or neither, gives one line for each answer, and runs the
-chosen sync for the same store; an unknown answer is asked once more and then counts as
-neither. With no terminal, and under `--json`, it asks nothing and its `next:` line tells the
-agent to ask the person. `--dry-run` and a refused restore ask nothing. A terminal is an
-input stream that answers `tty?`; `CLI::Dialog` decides it from `Environment#input`.
+delivery lock is fresh. It never syncs by itself, because a sync can undo a restore. It asks no question, at a terminal or
+without one, and ends with `next: plastic sync down --project STORE`, which writes the files from the restored rows.
+`--dry-run` and a refused restore ask nothing.
 
 `plastic sync up` imports a selected legacy store completely: intents, rulings, source
 and chain links, roadmaps, and preserved original bytes. It then handles ordinary hand
@@ -394,9 +391,9 @@ Project store creation has a single source of truth: the `scripts/provision-proj
 
 Boot is owned by hooks, so it runs by construction on every session start, not as prose a skill follows (intent 36a):
 
-1. **Core doctor**: `hook-session-start` runs `doctor.rb --core` in-process, reusing the `Doctor` class so there is one source of truth for core health. The core check is binary (pass or error, never warn): it compares every core file against the SHA256 recorded in the install manifests (`~/.plastic/manifest.json` for global scripts and PLASTIC.md; `~/.claude/plastic/manifest.json` for agent-side files), and also confirms hooks are registered, scripts are executable, and the installed version matches.
+1. **Doctor**: `plastic hook resume` runs the whole doctor in-process, reusing the `Doctor` checks, so there is one source of truth for health. It prints one line, `Plastic: doctor found N failing checks; run plastic doctor.`, only when a check fails, and nothing about the doctor when all pass. A doctor that breaks writes its message to standard error and the recap still prints. The hook stays quiet on a missing store and always exits 0.
 2. **Load context**: the hook does not inject `PLASTIC.md` (intent 341). The harness loads it through the installer's managed instruction block (see Conventions above). The hook reads the store INDEX.md and projects.yml, detects the current project by matching the working directory, and adds the project banner, deprecation and update notices, the first-boot sweep result, and the day summary. Deeper doctrine is printed on demand by `plastic help TOPIC`, not primed at boot.
-3. **Boot banner and version**: the result of the core check drives a binary banner. It names the installed version and ends in `doctor --core run: success` on pass, or `doctor --core run: error` plus a pointer to doctor on error. The banner is emitted on both the `hookSpecificOutput.additionalContext` channel (model-facing) and the top-level `systemMessage` channel (visible in the user's terminal). One `BootBanner` renderer feeds both channels so they cannot drift (intent 54). The hook never blocks (always exits 0).
+3. **Recap**: the hook prints the recap of the session store, then the doctor line when a check fails. The hook never blocks (always exits 0).
 4. **Statusline**: the `plastic-statusline` command renders the statusline. It is not a hook event: the installer writes it as Claude Code's `statusLine` setting, and only when the install-time choice below selects Plastic's line.
 
 Install-time statusline choice is separate from the render-time hook above: `InstallerCore#statusline_choice` decides, once per install, whether to write Plastic's statusline over an existing one. A fresh settings file with no statusline gets Plastic's line with no prompt. An existing non-Plastic line triggers a keep-or-switch prompt in an interactive session, honors `--statusline keep|plastic` to skip the prompt, defaults to keeping the user's line in a non-interactive session, and is never re-asked on `--reinstall` (a repair keeps whatever is already configured). `merge_claude_hooks` still backs up the prior line to `~/.plastic/.cache/original-statusline.json` regardless of the choice, so a later switch or an uninstall can restore it.
@@ -423,7 +420,7 @@ Removed in 2.0 (intent 302): the edit-path gates (edit, bash, code, lock, links)
 
 An intent whose delivery touches code runs in its own git worktree, and an intent's delivery is single-owner: exactly one session develops it at a time. In auto mode the worktree is the lock: the code worktree is where the one delivery happens, and the lock row records which session owns it (intent 413). The row holds the session id, the mode, and the times the lock was taken and last renewed. The session id is the sole authorization identity. Liveness is a lease against the 1800-second TTL (`Graph::Lock#live?`): the record hook renews the row, a live foreign lock means back off, and an expired one is taken over by the next `plastic auto ID`. `plastic intent lock status ID` (`Workflows::ShowLock`) reads the row back: session, mode, taken and renewed times, live or expired, and the code worktree. The earlier `delivery.lock` file, the internal lock program and the old start and lock subcommands of `plastic auto` are retired.
 
-Plastic computes the worktree path deterministically and cwd-independently, but it creates nothing (intent 390): `Workflows::Worktree` resolves the project repo from `projects.yml`, derives the path and branch a code worktree would have, and checks whether that path already exists on disk. `plastic auto ID` prints `worktree:` and `branch:`, and while the folder is missing its `next:` line is `git -C <repo> worktree add <path> -b <branch>`, which the agent runs itself. One worktree is expected per project intent, named `{id}--{slug}`: the code worktree at `<repo>/.claude/worktrees/{id}--{slug}` on branch `plastic/{id}--{slug}`, where all code edits happen. A second, store worktree used to exist; intent 178 retired it. The closer removes the code worktree by hand after committing and merging.
+Plastic computes the worktree path deterministically and cwd-independently, but it creates nothing (intent 390): `Workflows::Worktree` resolves the project repo from `projects.yml`, derives the path and branch a code worktree would have. `plastic auto ID` prints `worktree:` and `branch:`, and the agent makes the worktree at that path on that branch itself. One worktree is expected per project intent, named `{id}--{slug}`: the code worktree at `<repo>/.claude/worktrees/{id}--{slug}` on branch `plastic/{id}--{slug}`, where all code edits happen. A second, store worktree used to exist; intent 178 retired it. The closer removes the code worktree by hand after committing and merging.
 
 An intent whose store resolves no repository (a research or decision intent in the global store, or a project with no path) still gets the lock; `plastic auto ID` prints no worktree, and the next step is the brief.
 
@@ -511,7 +508,7 @@ files still close through the backfill.
 
 `--dry-run` runs the same refusals as the real close and writes nothing. It
 refuses an untouched scaffold and a hollow delivered report. A passing dry run
-ends with `next: none`. Checking that the code was actually merged, and
+ends with a `because:` line and no `next:` line. Checking that the code was actually merged, and
 checking the worktree for uncommitted changes, are both retired (intent 390):
 each required a real git command Plastic no longer runs; the merge instruction
 prints instead, unconditionally, for the closer to run themselves.

@@ -13,13 +13,14 @@ class IntentLockStatusTest < Plastic::TestCase
 
     result = call("1")
 
-    assert_equal [0, "next: none"], [result.code, next_line(result)]
+    assert_equal [0, nil], [result.code, next_line(result)]
     assert_includes result.out, "because: the owner must give the go-ahead for intent 1"
     assert_includes result.out, "Ask the owner for the go-ahead."
   end
 
   def test_an_approved_intent_with_no_lock_says_none_and_offers_auto
-    open_intent
+    write("#{open_intent.dir}/spec.md", "# Spec\n\n## Done criteria\n- It works\n")
+    plastic("sync", "up", table: Plastic::CLI::TABLE)
     plastic("intent", "approve", "1", table: Plastic::CLI::TABLE)
 
     result = call("1")
@@ -36,6 +37,17 @@ class IntentLockStatusTest < Plastic::TestCase
 
     assert_equal [0, "next: plastic intent brief 1 --project global"], [result.code, next_line(result)]
     assert_includes result.out, "lock: session s-2, mode auto"
+  end
+
+  def test_a_done_intent_prints_no_next_line_and_says_it_is_done
+    open_intent
+    store_graphs.databases.fetch(:work).transaction { |batch| batch.write(:intents, "UPDATE intents SET status = 'done' WHERE intent_id = '1'") }
+
+    result = call("1")
+
+    assert_equal [0, nil, ""], [result.code, next_line(result), result.err]
+    assert_includes result.out, "because: intent 1 is done"
+    assert_includes result.out, "lock: none\n"
   end
 
   def test_an_unknown_intent_fails

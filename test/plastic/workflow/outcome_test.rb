@@ -28,8 +28,8 @@ class OutcomeTest < Minitest::Test
     assert_equal ["plastic next n1", "n1 is ready"], outcome.closing(Facts.new("n1"))
   end
 
-  def test_an_outcome_that_offers_nothing_closes_on_none
-    assert_equal ["none", "n1 is ready"], outcome(offers: nil).closing(Facts.new("n1"))
+  def test_an_outcome_that_offers_nothing_closes_on_no_command
+    assert_equal [nil, "n1 is ready"], outcome(offers: nil).closing(Facts.new("n1"))
   end
 
   def test_templates_leave_out_a_missing_offer

@@ -14,10 +14,11 @@ module Plastic
 
       [facts, steps, outcomes].each(&:clear)
 
-      sets :intent, :state, :why, :handoff_text
+      sets :intent, :state, :status, :why, :handoff_text
 
       read "find the intent" do |context|
         context[:intent] = context.retrieval.intent(context.intent_id)
+        context[:status] = context.intent&.status
       end
 
       gate "no intent %{intent_id} in this store", stops: :failure, pass: ->(context) { !context.intent.nil? }
@@ -42,6 +43,8 @@ module Plastic
         "lock: session #{lock.session_id}, mode #{lock.mode}, taken #{lock.taken_at}, renewed #{lock.renewed_at}, #{state}"
       end
 
+      outcome :closed, if: ->(context) { %w[done abandoned].include?(context.intent.status) }, offers: nil,
+        because: "intent %{intent_id} is %{status}"
       outcome :agent_needed, if: ->(context) { context.state != "live" && !context.handoff_text.nil? }
       outcome :none, if: ->(context) { context.state == "none" }, offers: "plastic auto %{intent_id}",
         because: "intent %{intent_id} holds no lock"

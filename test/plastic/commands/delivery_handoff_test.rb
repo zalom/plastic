@@ -18,7 +18,7 @@ class DeliveryHandoffTest < Plastic::TestCase
     result = cli("intent", "brief", "1")
 
     assert_includes result.out, "plastic node add"
-    assert_includes result.out, "next: none"
+    refute_match(/^next: /, result.out)
   end
 
   def test_a_done_graph_leads_to_explicit_intent_verification

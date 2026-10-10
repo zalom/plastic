@@ -31,13 +31,15 @@ class WorkflowStartAutoTest < Plastic::TestCase
   def test_a_spec_without_criteria_is_refused
     specified_intent("## Goal\n- Ship\n")
 
-    assert_equal "intent 1 names no done criterion", start.message
+    assert_kind_of Plastic::Failed, start
+    assert_includes start.message, "intent 1 names no done criterion"
   end
 
   def test_a_done_intent_is_refused
     open_intent(status: "done")
 
-    assert_equal "intent 1 is done", start.message
+    assert_kind_of Plastic::Failed, start
+    assert_includes start.message, "intent 1 is done"
   end
 
   def test_another_live_session_lock_is_refused_and_kept

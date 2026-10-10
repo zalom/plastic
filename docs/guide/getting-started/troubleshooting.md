@@ -31,7 +31,7 @@ again:
 plastic install --reinstall --claude
 ```
 
-`plastic version` names each broken part and prints the command that repairs it.
+`plastic doctor` names each broken part and prints the command that repairs it.
 
 The installer is safe to repeat. It removes files that Plastic no longer ships and any old
 plugin layout.

@@ -21,15 +21,7 @@ module Plastic
         on :done, next: :noop
         on :continue, next: :code_backup_restore
       end
-      workflow :code_backup_restore, next: :code_ask_restore_sync
-      workflow :code_ask_restore_sync do
-        on :sync_down, next: :code_sync_down
-        on :sync_up, next: :code_sync_up
-        on :kept, next: :noop
-        on :done, next: :noop
-      end
-      workflow :code_sync_down, next: :noop
-      workflow :code_sync_up, next: :noop
+      workflow :code_backup_restore, next: :noop
 
       private
 

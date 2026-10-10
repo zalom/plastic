@@ -20,7 +20,8 @@ module Plastic
 
       gate "no intent %{intent_id} in this store", stops: :failure, pass: ->(context) { !context.intent.nil? }
 
-      gate "intent %{intent_id} is %{status}; a closed intent keeps its What and Why", stops: :refusal,
+      gate "intent %{intent_id} is %{status}; a closed intent keeps its What and Why", stops: :failure,
+        offers: "plastic next", because: "a closed intent keeps its What and Why; pick other work",
         pass: ->(context) { !CLOSED.include?(context.status) }
 
       read "check the change" do |context|

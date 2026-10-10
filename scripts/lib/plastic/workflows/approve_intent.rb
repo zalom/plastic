@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../code_workflow"
+require_relative "../graph/knowledge/spec"
 
 module Plastic
   module Workflows
@@ -15,6 +16,10 @@ module Plastic
       end
 
       gate "%{problem}", stops: :failure, pass: ->(context) { context.problem.nil? }
+
+      gate "intent %{intent_id} names no done criterion", stops: :failure, offers: "plastic intent spec %{intent_id}",
+        because: "an approval needs a done criterion to judge the delivery by; write one in spec.md",
+        pass: ->(context) { !Graph::Knowledge::Spec.new(context.retrieval, context.intent_id).done_criteria.empty? }
 
       step "write the go-ahead", done: ->(context) { !context.retrieval.approval(context.intent_id).nil? } do |context|
         context.work.approve_intent(context.intent_id)

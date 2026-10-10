@@ -105,15 +105,15 @@ uses the Ruby 2.6 that macOS ships.
 ### Check the installation
 
 ```bash
-plastic version     # The version, then a check of each part of the installation
+plastic version     # The version and the release channel
 plastic doctor      # The installation, the databases and the hooks of this agent
 ```
 
-`plastic version` names the active and previous releases, the launcher on your `PATH`, the
-Ruby version, the sqlite3 bundle, where the hooks point, and the installer lock. It changes
-nothing. When a part is broken, it prints the command that repairs it.
+`plastic version` prints the version, the release channel and the file the version came from.
+It changes nothing and checks nothing else.
 
-`plastic doctor` also opens each database and reads the hooks and instruction files of the
+`plastic doctor` checks the releases, the launcher on your `PATH`, the Ruby version, the sqlite3
+bundle, where the hooks point and the installer lock. It also opens each database and reads the hooks and instruction files of the
 agent it runs in. It prints one row for each check, then the repair for each finding, and exits
 1 when it finds a problem.
 
@@ -257,7 +257,7 @@ plastic backup --store alpha --live   # The same, printing each line of backup.l
 plastic backup list --store alpha     # Folder, start time, status and goal of each backup
 plastic backup purge --store alpha --older-than 2026-09-01   # Delete older backups
 plastic backup purge --store alpha --failed   # Delete the backups that failed
-plastic backup restore --store alpha --latest   # Put the newest done backup back, then ask: sync down, sync up or neither
+plastic backup restore --store alpha --latest   # Put the newest done backup back; it ends with the sync down line
 ```
 
 ### Product
@@ -269,7 +269,7 @@ plastic update --alpha                # Move to the alpha channel
 plastic rollback                      # Switch back to the previous release
 plastic rollback --version 2.0.0-alpha.27
 plastic uninstall --all               # Remove Plastic from every agent. Your stores stay.
-plastic version                       # The installed version and a check of the installation
+plastic version                       # The installed version and its channel
 plastic doctor                        # The installation, the databases and the hooks of this agent
 ```
 
@@ -312,22 +312,15 @@ next: plastic intent show 9 --project shop
 because: 9 is the first active intent in shop
 ```
 
-**The installed version and a check of the installation:**
+**The installed version:**
 ```
 $ plastic version
 version:         2.0.5
 channel:         latest
 source:          ~/.local/share/plastic/active/VERSION
-active:          2.0.5
-previous:        2.0.4
-launcher:        ~/.local/bin/plastic
-ruby:            4.0.3
-sqlite3 bundle:  present
-hooks:           point at the active release
-installer lock:  free
 
 next: plastic status
-because: the installation is whole, so read the work next
+because: the command line works, so read the work next
 ```
 
 The slugs and ids in these examples are samples.
