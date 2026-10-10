@@ -49,6 +49,15 @@ class CommandReferenceTouchesDeclarationTest < Minitest::Test
     end
   end
 
+  def test_a_helper_class_that_is_one_of_the_scanned_files_is_not_listed_again
+    source = CommandReferenceHelper.model.source
+    spec = "scripts/lib/plastic/graph/knowledge/spec.rb"
+    helpers = CommandReference::Touches::Helpers.new(source)
+
+    assert_includes helpers.call(["scripts/lib/plastic/workflows/show_spec.rb"]).map(&:file), spec
+    refute_includes helpers.call(["scripts/lib/plastic/workflows/show_spec.rb", spec]).map(&:file), spec
+  end
+
   def declared_store_keys(page, mode)
     declared = (mode == :read) ? page.klass.reads + page.klass.writes : page.klass.writes
     declared.uniq.&(STORE_KEYS).sort
