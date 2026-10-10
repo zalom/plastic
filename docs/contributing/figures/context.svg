@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1160 372" role="img" aria-labelledby="context-title context-desc" font-family="IBM Plex Sans, system-ui, -apple-system, Segoe UI, sans-serif">
+  <title id="context-title">Plastic and what it talks to</title>
+  <desc id="context-desc">The owner gives goals to an agent harness. The harness runs plastic commands and fires hook events. Plastic reads where each project lives and keeps its work as rows. The harness edits the project repositories and pushes to GitHub, where the owner reviews and merges the pull request.</desc>
+  <defs><marker id="context-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--line, #6b7483)"/></marker></defs>
+  <style>svg { --ink: #1f2530; --muted: #3f4754; --line: #6b7483; --paper: #e9e5dc; --card: #f4f1ea; --rule: #c9c3b6; --code: #0b5e55; --agent: #7d4405; --owner: #4a2a99; --owner-bg: #e4dcf5; --end: #23406f; --end-bg: #d9e2f0; }
+@media (prefers-color-scheme: dark) { svg { --ink: #e8e6e1; --muted: #b4bac4; --line: #8a93a3; --paper: #1d2128; --card: #262b34; --rule: #3b424e; --code: #5fd0c0; --agent: #e0a24f; --owner: #b9a2ff; --owner-bg: #2f2750; --end: #8fb0e8; --end-bg: #1f2d45; } }
+.background { fill: var(--paper, #e9e5dc); }
+.box { fill: var(--card, #f4f1ea); stroke: var(--line, #6b7483); stroke-width: 1; }
+.zone { fill: none; stroke: var(--line, #6b7483); stroke-width: 1.2; stroke-dasharray: 6 4; }
+.t { fill: var(--ink, #1f2530); font-size: 14px; font-weight: 600; }
+.s { fill: var(--muted, #3f4754); font-size: 11.5px; }
+.al { fill: var(--ink, #1f2530); font-size: 11.5px; stroke: var(--paper, #e9e5dc); stroke-width: 4px; paint-order: stroke; }
+.m { fill: var(--ink, #1f2530); font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; font-size: 12px; font-weight: 600; }
+.r { fill: var(--ink, #1f2530); font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; font-size: 11px; }
+.flow { stroke: var(--line, #6b7483); stroke-width: 1.5; fill: none; }</style>
+  <rect class="background" width="100%" height="100%"/>
+<rect class="box" x="30" y="30" width="250" height="94" rx="8"/><rect x="30" y="30" width="6" height="94" rx="3" fill="var(--owner, #4a2a99)"/>
+<text class="t" x="46" y="54">Owner</text><text class="s" x="46" y="71">[person]</text>
+<text class="s" x="46" y="91">Decides what to build and gives</text>
+<text class="s" x="46" y="106">the go-ahead to deliver it.</text>
+<rect class="box" x="30" y="205" width="250" height="94" rx="8"/><rect x="30" y="205" width="6" height="94" rx="3" fill="var(--agent, #7d4405)"/>
+<text class="t" x="46" y="229">Agent harness</text><text class="s" x="46" y="246">[software]</text>
+<text class="s" x="46" y="266">Claude Code or Codex: runs the</text>
+<text class="s" x="46" y="281">agent and fires the hook events.</text>
+<rect class="box" x="440" y="190" width="280" height="124" rx="8"/><rect x="440" y="190" width="6" height="124" rx="3" fill="var(--code, #0b5e55)"/>
+<text class="t" x="456" y="214">Plastic</text><text class="s" x="456" y="231">[software system]</text>
+<text class="s" x="456" y="251">The plastic command and its hooks.</text>
+<text class="s" x="456" y="266">Keeps the work of every intent as</text>
+<text class="s" x="456" y="281">rows in SQLite files, one store for</text>
+<text class="s" x="456" y="296">each project. Runs no git command.</text>
+<rect class="box" x="880" y="205" width="250" height="94" rx="8"/><rect x="880" y="205" width="6" height="94" rx="3" fill="var(--line, #6b7483)"/>
+<text class="t" x="896" y="229">Project repositories</text><text class="s" x="896" y="246">[software]</text>
+<text class="s" x="896" y="266">The code. The agent edits it in a</text>
+<text class="s" x="896" y="281">worktree made for each intent.</text>
+<rect class="box" x="880" y="30" width="250" height="94" rx="8"/><rect x="880" y="30" width="6" height="94" rx="3" fill="var(--end, #23406f)"/>
+<text class="t" x="896" y="54">GitHub</text><text class="s" x="896" y="71">[external system]</text>
+<text class="s" x="896" y="91">Holds the pull request and runs</text>
+<text class="s" x="896" y="106">the tests in CI.</text>
+<path class="flow" d="M 280 77.0 L 880 77.0" marker-end="url(#context-arrow)"/>
+<text class="al" x="580" y="70" text-anchor="middle">reviews and merges the pull request</text>
+<path class="flow" d="M 155.0 124 L 155.0 205" marker-end="url(#context-arrow)"/>
+<text class="al" x="155" y="169" text-anchor="middle">goals, answers,</text>
+<text class="al" x="155" y="182" text-anchor="middle">go-ahead</text>
+<path class="flow" d="M 280 252.0 L 440 252.0" marker-end="url(#context-arrow)"/>
+<text class="al" x="360" y="232" text-anchor="middle">plastic commands;</text>
+<text class="al" x="360" y="245" text-anchor="middle">hook events</text>
+<path class="flow" d="M 720 252.0 L 880 252.0" stroke-dasharray="4 3" marker-end="url(#context-arrow)"/>
+<text class="al" x="800" y="232" text-anchor="middle">reads where each</text>
+<text class="al" x="800" y="245" text-anchor="middle">project lives</text>
+<path class="flow" d="M 1005.0 205 L 1005.0 124" marker-end="url(#context-arrow)"/>
+<text class="al" x="1005" y="169" text-anchor="middle">git push,</text>
+<text class="al" x="1005" y="182" text-anchor="middle">pull request</text>
+<rect x="30" y="340" width="11" height="11" rx="2" fill="var(--owner, #4a2a99)"/><text class="s" x="47" y="350">person</text>
+<rect x="180" y="340" width="11" height="11" rx="2" fill="var(--agent, #7d4405)"/><text class="s" x="197" y="350">agent harness</text>
+<rect x="330" y="340" width="11" height="11" rx="2" fill="var(--code, #0b5e55)"/><text class="s" x="347" y="350">Plastic</text>
+<rect x="480" y="340" width="11" height="11" rx="2" fill="var(--line, #6b7483)"/><text class="s" x="497" y="350">project code</text>
+<rect x="630" y="340" width="11" height="11" rx="2" fill="var(--end, #23406f)"/><text class="s" x="647" y="350">outside system</text>
+</svg>

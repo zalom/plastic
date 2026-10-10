@@ -447,7 +447,7 @@ live command line retires, the separate test process ends. See
 `knowledge_graph.db`: `node add`, `node remove`, `node claim`, `node release`, `node done`,
 `node fail`, `node ask`, `node impede`, `node resolve`, `edge add`, `edge remove`, `intent spec`, `intent
 rule`, `auto`, `graph check`, `graph ready`, `graph show`, `intent show`, `intent
-brief`, `status`, and `next`. See [architecture](architecture.md#the-work-graph) for the node
+brief`, `status`, and `next`. See [architecture](contributing/ARCHITECTURE.md#the-three-graphs) for the node
 and edge state machine and the ruling/spec mechanics; this section covers the four read
 commands stage 4 added on top of them.
 
@@ -513,7 +513,7 @@ The acceptance helper decodes escaped line breaks in spec examples and clears al
 session environment variables before passing the session declared by each example.
 
 Stage 5 adds the knowledge commands in four groups. See
-[architecture](architecture.md#roadmaps-links-archive-and-backup) for what each group does;
+[architecture](contributing/ARCHITECTURE.md#roadmaps-links-archive-and-backup) for what each group does;
 this section covers how the code holds together.
 
 - **Roadmaps.** `roadmap new`, `roadmap batch`, `roadmap add`, `roadmap show`, `roadmap next`, `roadmap
@@ -1306,8 +1306,8 @@ starting a background job is the owner's decision, not the installer's.
 ## living-document
 
 This is a living document. When Plastic's architecture, lifecycle, conventions,
-hooks, or harnesses change, this file and `architecture.md` must be
-updated in the same change.
+hooks, or harnesses change, this file and `contributing/ARCHITECTURE.md` must be
+updated in the same change, and the figures rebuilt with `ruby bin/architecture-figures`.
 
 ## the session close path and the next-day sweep
 
