@@ -6,7 +6,9 @@ require_relative "delivery/table"
 module ArchitectureFigures
   # The two delivery figures. See docs/contributing/ARCHITECTURE.md.
   module Delivery
-    def self.files = Phases.files.merge(Table.files)
+    def self.diagrams = Phases.diagrams + Table.diagrams
+
+    def self.files = Diagram.merge(diagrams)
 
     def self.names = Phases.names + Table.names
   end

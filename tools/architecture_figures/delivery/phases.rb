@@ -16,7 +16,7 @@ module ArchitectureFigures
         new | | 30 44 220 | intent new | 1  Start | code | mono | Writes the intent.
         discover | | 30 134 220 | intent discover | 2  Context | code | mono | Gathers what is known.
         spec | | 310 44 220 | intent spec | 3  Grilling | agent | mono | Asks until all is settled.
-        rule | | 310 134 220 | intent rule | 4  One spec | agent | mono | Records each ruling.
+        rule | | 310 134 220 | intent rule | 4  One spec | agent | mono | Rulings, and revisions.
         approve | | 590 94 200 | intent approve | 5  You say deliver | owner | mono | The go-ahead.
         add | | 850 44 280 | node add | 6  Plan the graph | code | mono | Nodes, and edges for the order.
         claim | | 850 134 280 | node claim | 7  Work the nodes | code | mono | Each node, claimed and done.
@@ -31,7 +31,9 @@ module ArchitectureFigures
       ].freeze
       COMMANDS = ["intent new", "intent discover", "intent spec", "intent rule", "intent approve", "node add", "node claim", "intent judge", "intent end", "intent abandon"].freeze
 
-      def self.files = Diagram.new(META, BOXES, ARROWS).files
+      def self.diagrams = [Diagram.new(META, BOXES, ARROWS)]
+
+      def self.files = Diagram.merge(diagrams)
 
       def self.names = COMMANDS.map { |name| ["command", name, name] }
     end

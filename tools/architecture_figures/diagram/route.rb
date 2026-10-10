@@ -4,11 +4,15 @@ module ArchitectureFigures
   class Diagram
     # The path of one arrow: straight when its ends line up, otherwise bent.
     class Route < Data.define(:start, :finish, :out, :into)
-      def points = aligned? ? [start, finish] : [start, *corners, finish]
+      def points = aligned? ? [start, snapped] : [start, *corners, finish]
 
       private
 
-      def aligned? = start.first == finish.first || start.last == finish.last
+      def aligned? = near?(start.first, finish.first) || near?(start.last, finish.last)
+
+      def near?(one, other) = (one - other).abs < 1
+
+      def snapped = near?(start.first, finish.first) ? [start.first, finish.last] : [finish.first, start.last]
 
       def flat = [out, into].map { |side| %i[left right].include?(side) }
 

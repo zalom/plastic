@@ -29,7 +29,7 @@
 <text class="s" x="326" y="105">Asks until all is settled.</text>
 <rect class="box" x="310" y="134" width="220" height="79" rx="8"/><rect x="310" y="134" width="6" height="79" rx="3" fill="var(--agent, #7d4405)"/>
 <text class="m" x="326" y="158">intent rule</text><text class="s" x="326" y="175">[4  One spec]</text>
-<text class="s" x="326" y="195">Records each ruling.</text>
+<text class="s" x="326" y="195">Rulings, and revisions.</text>
 <rect class="box" x="590" y="94" width="200" height="79" rx="8"/><rect x="590" y="94" width="6" height="79" rx="3" fill="var(--owner, #4a2a99)"/>
 <text class="m" x="606" y="118">intent approve</text><text class="s" x="606" y="135">[5  You say deliver]</text>
 <text class="s" x="606" y="155">The go-ahead.</text>

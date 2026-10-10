@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1160 480" role="img" aria-labelledby="graphs-title graphs-desc" font-family="IBM Plex Sans, system-ui, -apple-system, Segoe UI, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1160 640" role="img" aria-labelledby="graphs-title graphs-desc" font-family="IBM Plex Sans, system-ui, -apple-system, Segoe UI, sans-serif">
   <title id="graphs-title">The three graphs and their databases</title>
-  <desc id="graphs-desc">The work graph lives in work_graph.db. The knowledge graph and the retrieval graph both live in knowledge_graph.db. Graph::WorkGraph and Graph::RetrievalGraph read and write the rows, and Graph::Printer prints them as files.</desc>
+  <desc id="graphs-desc">Graph::WorkGraph writes the rows of every graph and Graph::RetrievalGraph reads them. The work graph lives in work_graph.db. The knowledge graph and the retrieval graph both live in knowledge_graph.db. Graph::Printer prints the rows as files in the store folder.</desc>
   <defs><marker id="graphs-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--line, #6b7483)"/></marker></defs>
   <style>svg { --ink: #1f2530; --muted: #3f4754; --line: #6b7483; --paper: #e9e5dc; --card: #f4f1ea; --rule: #c9c3b6; --code: #0b5e55; --agent: #7d4405; --owner: #4a2a99; --owner-bg: #e4dcf5; --end: #23406f; --end-bg: #d9e2f0; }
 @media (prefers-color-scheme: dark) { svg { --ink: #e8e6e1; --muted: #b4bac4; --line: #8a93a3; --paper: #1d2128; --card: #262b34; --rule: #3b424e; --code: #5fd0c0; --agent: #e0a24f; --owner: #b9a2ff; --owner-bg: #2f2750; --end: #8fb0e8; --end-bg: #1f2d45; } }
@@ -14,25 +14,21 @@
 .r { fill: var(--ink, #1f2530); font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; font-size: 11px; }
 .flow { stroke: var(--line, #6b7483); stroke-width: 1.5; fill: none; }</style>
   <rect class="background" width="100%" height="100%"/>
-<rect class="box" x="30" y="20" width="330" height="79" rx="8"/><rect x="30" y="20" width="6" height="79" rx="3" fill="var(--code, #0b5e55)"/>
+<rect class="box" x="30" y="20" width="1110" height="79" rx="8"/><rect x="30" y="20" width="6" height="79" rx="3" fill="var(--line, #6b7483)"/>
 <text class="m" x="46" y="44">Graph::WorkGraph</text><text class="s" x="46" y="61">[class]</text>
-<text class="s" x="46" y="81">Opens the work graph.</text>
-<rect class="box" x="490" y="20" width="330" height="94" rx="8"/><rect x="490" y="20" width="6" height="94" rx="3" fill="var(--code, #0b5e55)"/>
-<text class="m" x="506" y="44">Graph::RetrievalGraph</text><text class="s" x="506" y="61">[class]</text>
-<text class="s" x="506" y="81">Opens the knowledge and</text>
-<text class="s" x="506" y="96">retrieval graphs.</text>
-<rect class="box" x="30" y="170" width="330" height="94" rx="8"/><rect x="30" y="170" width="6" height="94" rx="3" fill="var(--agent, #7d4405)"/>
-<text class="t" x="46" y="194">Work graph</text><text class="s" x="46" y="211">[graph]</text>
-<text class="s" x="46" y="231">What is being built: intents, with</text>
-<text class="s" x="46" y="246">their nodes and the edges between.</text>
-<rect class="box" x="490" y="170" width="330" height="94" rx="8"/><rect x="490" y="170" width="6" height="94" rx="3" fill="var(--owner, #4a2a99)"/>
-<text class="t" x="506" y="194">Knowledge graph</text><text class="s" x="506" y="211">[graph]</text>
-<text class="s" x="506" y="231">What is known: documents,</text>
-<text class="s" x="506" y="246">rulings and the links between.</text>
-<rect class="box" x="850" y="170" width="290" height="94" rx="8"/><rect x="850" y="170" width="6" height="94" rx="3" fill="var(--end, #23406f)"/>
-<text class="t" x="866" y="194">Retrieval graph</text><text class="s" x="866" y="211">[graph]</text>
-<text class="s" x="866" y="231">What is found: the search index</text>
-<text class="s" x="866" y="246">over the documents.</text>
+<text class="s" x="46" y="81">The write side: it writes the rows of every graph.</text>
+<rect class="box" x="30" y="160" width="330" height="94" rx="8"/><rect x="30" y="160" width="6" height="94" rx="3" fill="var(--agent, #7d4405)"/>
+<text class="t" x="46" y="184">Work graph</text><text class="s" x="46" y="201">[graph]</text>
+<text class="s" x="46" y="221">What is being built: intents, with</text>
+<text class="s" x="46" y="236">their nodes and the edges between.</text>
+<rect class="box" x="490" y="160" width="330" height="94" rx="8"/><rect x="490" y="160" width="6" height="94" rx="3" fill="var(--owner, #4a2a99)"/>
+<text class="t" x="506" y="184">Knowledge graph</text><text class="s" x="506" y="201">[graph]</text>
+<text class="s" x="506" y="221">What is known: documents,</text>
+<text class="s" x="506" y="236">rulings and the links between.</text>
+<rect class="box" x="850" y="160" width="290" height="94" rx="8"/><rect x="850" y="160" width="6" height="94" rx="3" fill="var(--end, #23406f)"/>
+<text class="t" x="866" y="184">Retrieval graph</text><text class="s" x="866" y="201">[graph]</text>
+<text class="s" x="866" y="221">What is found: the search index</text>
+<text class="s" x="866" y="236">over the documents.</text>
 <path class="box" d="M 30 309 L 30 358 A 165.0 9 0 0 0 360 358 L 360 309 Z"/>
 <ellipse class="box" cx="195.0" cy="309" rx="165.0" ry="9" style="stroke: var(--code, #0b5e55)"/>
 <text class="m" x="195.0" y="336" text-anchor="middle">work_graph.db</text>
@@ -41,22 +37,31 @@
 <ellipse class="box" cx="815.0" cy="309" rx="325.0" ry="9" style="stroke: var(--code, #0b5e55)"/>
 <text class="m" x="815.0" y="336" text-anchor="middle">knowledge_graph.db</text>
 <text class="s" x="815.0" y="354" text-anchor="middle">documents, rulings, links, document_heads</text>
-<rect class="box" x="30" y="400" width="330" height="48" rx="8"/><rect x="30" y="400" width="6" height="48" rx="3" fill="var(--line, #6b7483)"/>
-<text class="m" x="46" y="424">Graph::Printer</text>
-<rect class="box" x="490" y="396" width="650" height="63" rx="8"/><rect x="490" y="396" width="6" height="63" rx="3" fill="var(--line, #6b7483)"/>
-<text class="t" x="506" y="420">Files in the store folder</text>
-<text class="s" x="506" y="441">spec.md, graph.json, savepoint.md, outcome.md</text>
-<path class="flow" d="M 195.0 99 L 195.0 170" marker-end="url(#graphs-arrow)"/>
-<text class="al" x="195" y="139" text-anchor="middle">opens</text>
-<path class="flow" d="M 572.5 114 L 572.5 170" marker-end="url(#graphs-arrow)"/>
-<text class="al" x="573" y="146" text-anchor="middle">opens</text>
-<path class="flow" d="M 737.5 114 L 737.5 142 L 922.5 142 L 922.5 170" marker-end="url(#graphs-arrow)"/>
-<path class="flow" d="M 195.0 264 L 195.0 300" marker-end="url(#graphs-arrow)"/>
-<text class="al" x="195" y="286" text-anchor="middle">rows</text>
-<path class="flow" d="M 360 424.0 L 425 424.0 L 425 427.5 L 490 427.5" marker-end="url(#graphs-arrow)"/>
-<text class="al" x="393" y="417" text-anchor="middle">prints</text>
-<path class="flow" d="M 655.0 264 L 655.0 282 L 620.0 282 L 620.0 300" marker-end="url(#graphs-arrow)"/>
-<text class="al" x="638" y="275" text-anchor="middle">rows</text>
-<path class="flow" d="M 995.0 264 L 995.0 282 L 1010.0 282 L 1010.0 300" marker-end="url(#graphs-arrow)"/>
-<text class="al" x="995" y="277" text-anchor="middle">rows</text>
+<rect class="box" x="30" y="420" width="1110" height="79" rx="8"/><rect x="30" y="420" width="6" height="79" rx="3" fill="var(--line, #6b7483)"/>
+<text class="m" x="46" y="444">Graph::RetrievalGraph</text><text class="s" x="46" y="461">[class]</text>
+<text class="s" x="46" y="481">The read side: it reads the rows of every graph and writes nothing.</text>
+<rect class="box" x="30" y="540" width="330" height="79" rx="8"/><rect x="30" y="540" width="6" height="79" rx="3" fill="var(--line, #6b7483)"/>
+<text class="m" x="46" y="564">Graph::Printer</text><text class="s" x="46" y="581">[class]</text>
+<text class="s" x="46" y="601">Prints the rows as files.</text>
+<rect class="box" x="490" y="540" width="650" height="63" rx="8"/><rect x="490" y="540" width="6" height="63" rx="3" fill="var(--line, #6b7483)"/>
+<text class="t" x="506" y="564">Files in the store folder</text>
+<text class="s" x="506" y="585">spec.md, graph.json, savepoint.md, outcome.md</text>
+<path class="flow" d="M 196.5 99 L 196.5 129 L 195.0 129 L 195.0 160" marker-end="url(#graphs-arrow)"/>
+<text class="al" x="195" y="149" text-anchor="middle">writes</text>
+<path class="flow" d="M 660.6798 99 L 660.6798 129 L 655.0 129 L 655.0 160" marker-end="url(#graphs-arrow)"/>
+<text class="al" x="655" y="149" text-anchor="middle">writes</text>
+<path class="flow" d="M 1003.7697 99 L 1003.7697 129 L 995.0 129 L 995.0 160" marker-end="url(#graphs-arrow)"/>
+<text class="al" x="995" y="149" text-anchor="middle">writes</text>
+<path class="flow" d="M 195.0 254 L 195.0 300" marker-end="url(#graphs-arrow)"/>
+<text class="al" x="195" y="281" text-anchor="middle">rows</text>
+<path class="flow" d="M 655.0 254 L 655.0 300" marker-end="url(#graphs-arrow)"/>
+<text class="al" x="655" y="281" text-anchor="middle">rows</text>
+<path class="flow" d="M 995.0 254 L 995.0 300" marker-end="url(#graphs-arrow)"/>
+<text class="al" x="995" y="281" text-anchor="middle">rows</text>
+<path class="flow" d="M 196.5 420 L 196.5 393 L 195.0 393 L 195.0 367" marker-end="url(#graphs-arrow)"/>
+<text class="al" x="197" y="411" text-anchor="middle">reads</text>
+<path class="flow" d="M 585.0 420 L 585.0 393 L 815.0 393 L 815.0 367" marker-end="url(#graphs-arrow)"/>
+<text class="al" x="700" y="386" text-anchor="middle">reads</text>
+<path class="flow" d="M 360 579.5 L 425 579.5 L 425 571.5 L 490 571.5" marker-end="url(#graphs-arrow)"/>
+<text class="al" x="393" y="573" text-anchor="middle">prints</text>
 </svg>

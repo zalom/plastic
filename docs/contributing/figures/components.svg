@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 640" role="img" aria-labelledby="components-title components-desc" font-family="IBM Plex Sans, system-ui, -apple-system, Segoe UI, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 955" role="img" aria-labelledby="components-title components-desc" font-family="IBM Plex Sans, system-ui, -apple-system, Segoe UI, sans-serif">
   <title id="components-title">The components of the plastic kernel</title>
-  <desc id="components-desc">The command line finds a command in CLI::TABLE and builds a Routine. The Routine opens the Graph, runs the workflow chain through Routine::Traversal and reports one of four end values. Commands, workflows and graphs are separate groups of classes.</desc>
+  <desc id="components-desc">The command line finds a row in CLI::TABLE and builds a Routine. The Routine runs the workflow chain through Routine::Traversal, which finds each workflow in Workflows::REGISTRY, and it opens the Graph. Graph::WorkGraph writes every database through Graph::Work::Writers, Graph::RetrievalGraph reads every database, and Graph::Printer prints files.</desc>
   <defs><marker id="components-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--line, #6b7483)"/></marker></defs>
   <style>svg { --ink: #1f2530; --muted: #3f4754; --line: #6b7483; --paper: #e9e5dc; --card: #f4f1ea; --rule: #c9c3b6; --code: #0b5e55; --agent: #7d4405; --owner: #4a2a99; --owner-bg: #e4dcf5; --end: #23406f; --end-bg: #d9e2f0; }
 @media (prefers-color-scheme: dark) { svg { --ink: #e8e6e1; --muted: #b4bac4; --line: #8a93a3; --paper: #1d2128; --card: #262b34; --rule: #3b424e; --code: #5fd0c0; --agent: #e0a24f; --owner: #b9a2ff; --owner-bg: #2f2750; --end: #8fb0e8; --end-bg: #1f2d45; } }
@@ -14,54 +14,100 @@
 .r { fill: var(--ink, #1f2530); font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; font-size: 11px; }
 .flow { stroke: var(--line, #6b7483); stroke-width: 1.5; fill: none; }</style>
   <rect class="background" width="100%" height="100%"/>
-<rect class="zone" x="10" y="10" width="1220" height="150" rx="12"/><text class="s" x="24" y="30">Dispatch: one command in, one report out</text>
-<rect class="zone" x="10" y="190" width="600" height="190" rx="12"/><text class="s" x="24" y="210">Commands</text>
-<rect class="zone" x="640" y="190" width="590" height="190" rx="12"/><text class="s" x="654" y="210">Workflows</text>
-<rect class="zone" x="10" y="410" width="1220" height="215" rx="12"/><text class="s" x="24" y="430">Graphs</text>
-<rect class="box" x="30" y="44" width="270" height="79" rx="8"/><rect x="30" y="44" width="6" height="79" rx="3" fill="var(--code, #0b5e55)"/>
-<text class="m" x="46" y="68">CLI</text><text class="s" x="46" y="85">[class]</text>
-<text class="s" x="46" y="105">Reads the words, finds the row.</text>
-<rect class="box" x="330" y="44" width="270" height="79" rx="8"/><rect x="330" y="44" width="6" height="79" rx="3" fill="var(--line, #6b7483)"/>
-<text class="m" x="346" y="68">CLI::TABLE</text><text class="s" x="346" y="85">[constant]</text>
-<text class="s" x="346" y="105">One row for each command.</text>
-<rect class="box" x="630" y="44" width="270" height="79" rx="8"/><rect x="630" y="44" width="6" height="79" rx="3" fill="var(--code, #0b5e55)"/>
-<text class="m" x="646" y="68">Routine</text><text class="s" x="646" y="85">[class]</text>
-<text class="s" x="646" y="105">Runs one command to a report.</text>
-<rect class="box" x="930" y="44" width="270" height="79" rx="8"/><rect x="930" y="44" width="6" height="79" rx="3" fill="var(--agent, #7d4405)"/>
-<text class="m" x="946" y="68">Hook</text><text class="s" x="946" y="85">[class]</text>
-<text class="s" x="946" y="105">Answers the three hook events.</text>
-<rect class="box" x="30" y="222" width="270" height="79" rx="8"/><rect x="30" y="222" width="6" height="79" rx="3" fill="var(--line, #6b7483)"/>
-<text class="m" x="46" y="246">CLI::Declarations</text><text class="s" x="46" y="263">[module]</text>
-<text class="s" x="46" y="283">Options a command declares.</text>
-<rect class="box" x="330" y="222" width="260" height="79" rx="8"/><rect x="330" y="222" width="6" height="79" rx="3" fill="var(--line, #6b7483)"/>
-<text class="m" x="346" y="246">CLI::Scope</text><text class="s" x="346" y="263">[class]</text>
-<text class="s" x="346" y="283">Which project and store.</text>
-<rect class="box" x="660" y="222" width="270" height="79" rx="8"/><rect x="660" y="222" width="6" height="79" rx="3" fill="var(--line, #6b7483)"/>
-<text class="m" x="676" y="246">Workflows::REGISTRY</text><text class="s" x="676" y="263">[constant]</text>
-<text class="s" x="676" y="283">Every workflow by name.</text>
-<rect class="box" x="950" y="222" width="260" height="79" rx="8"/><rect x="950" y="222" width="6" height="79" rx="3" fill="var(--code, #0b5e55)"/>
-<text class="m" x="966" y="246">Routine::Traversal</text><text class="s" x="966" y="263">[class]</text>
-<text class="s" x="966" y="283">Walks the chain of workflows.</text>
-<rect class="box" x="30" y="444" width="270" height="79" rx="8"/><rect x="30" y="444" width="6" height="79" rx="3" fill="var(--code, #0b5e55)"/>
-<text class="m" x="46" y="468">Graph</text><text class="s" x="46" y="485">[module]</text>
-<text class="s" x="46" y="505">Opens the databases.</text>
-<rect class="box" x="330" y="444" width="270" height="79" rx="8"/><rect x="330" y="444" width="6" height="79" rx="3" fill="var(--line, #6b7483)"/>
-<text class="m" x="346" y="468">Graph::WorkGraph</text><text class="s" x="346" y="485">[class]</text>
-<text class="s" x="346" y="505">Intents, nodes and edges.</text>
-<rect class="box" x="630" y="444" width="270" height="79" rx="8"/><rect x="630" y="444" width="6" height="79" rx="3" fill="var(--line, #6b7483)"/>
-<text class="m" x="646" y="468">Graph::RetrievalGraph</text><text class="s" x="646" y="485">[class]</text>
-<text class="s" x="646" y="505">Documents, rulings, links.</text>
-<rect class="box" x="930" y="444" width="270" height="79" rx="8"/><rect x="930" y="444" width="6" height="79" rx="3" fill="var(--line, #6b7483)"/>
-<text class="m" x="946" y="468">Graph::Printer</text><text class="s" x="946" y="485">[class]</text>
-<text class="s" x="946" y="505">Prints the rows as files.</text>
-<path class="flow" d="M 300 83.5 L 330 83.5" marker-end="url(#components-arrow)"/>
-<text class="al" x="315" y="77" text-anchor="middle">finds</text>
-<path class="flow" d="M 600 83.5 L 630 83.5" marker-end="url(#components-arrow)"/>
-<text class="al" x="615" y="77" text-anchor="middle">builds</text>
-<path class="flow" d="M 765.0 123 L 765.0 172 L 1028.0 172 L 1028.0 222" marker-end="url(#components-arrow)"/>
-<text class="al" x="897" y="165" text-anchor="middle">runs</text>
-<path class="flow" d="M 950 261.5 L 930 261.5" marker-end="url(#components-arrow)"/>
-<text class="al" x="940" y="255" text-anchor="middle">looks up</text>
-<path class="flow" d="M 684.0 123 L 684.0 283 L 165.0 283 L 165.0 444" marker-end="url(#components-arrow)"/>
-<text class="al" x="425" y="276" text-anchor="middle">opens</text>
+<rect class="zone" x="10" y="10" width="1220" height="235" rx="12"/><text class="s" x="24" y="30">Commands: one call in, one report out</text>
+<rect class="zone" x="190" y="285" width="840" height="240" rx="12"/><text class="s" x="204" y="305">Workflows</text>
+<rect class="zone" x="10" y="565" width="1220" height="376" rx="12"/><text class="s" x="24" y="585">Graph module</text>
+<rect class="box" x="30" y="44" width="260" height="79" rx="8"/><rect x="30" y="44" width="6" height="79" rx="3" fill="var(--code, #0b5e55)"/>
+<text class="m" x="46" y="68">Routine</text><text class="s" x="46" y="85">[class]</text>
+<text class="s" x="46" y="105">Runs one command to a report.</text>
+<rect class="box" x="390" y="44" width="230" height="79" rx="8"/><rect x="390" y="44" width="6" height="79" rx="3" fill="var(--code, #0b5e55)"/>
+<text class="m" x="406" y="68">CLI</text><text class="s" x="406" y="85">[class]</text>
+<text class="s" x="406" y="105">Reads the words.</text>
+<rect class="box" x="720" y="44" width="230" height="79" rx="8"/><rect x="720" y="44" width="6" height="79" rx="3" fill="var(--line, #6b7483)"/>
+<text class="m" x="736" y="68">CLI::TABLE</text><text class="s" x="736" y="85">[constant]</text>
+<text class="s" x="736" y="105">One row for each command.</text>
+<rect class="box" x="390" y="150" width="230" height="79" rx="8"/><rect x="390" y="150" width="6" height="79" rx="3" fill="var(--line, #6b7483)"/>
+<text class="m" x="406" y="174">CLI::Declarations</text><text class="s" x="406" y="191">[module]</text>
+<text class="s" x="406" y="211">Options a command declares.</text>
+<rect class="box" x="720" y="150" width="230" height="79" rx="8"/><rect x="720" y="150" width="6" height="79" rx="3" fill="var(--line, #6b7483)"/>
+<text class="m" x="736" y="174">CLI::Scope</text><text class="s" x="736" y="191">[class]</text>
+<text class="s" x="736" y="211">Which project and store.</text>
+<rect class="box" x="1000" y="150" width="210" height="79" rx="8"/><rect x="1000" y="150" width="6" height="79" rx="3" fill="var(--agent, #7d4405)"/>
+<text class="m" x="1016" y="174">Hook</text><text class="s" x="1016" y="191">[class]</text>
+<text class="s" x="1016" y="211">Answers the hook events.</text>
+<rect class="box" x="205" y="317" width="230" height="79" rx="8"/><rect x="205" y="317" width="6" height="79" rx="3" fill="var(--code, #0b5e55)"/>
+<text class="m" x="221" y="341">Routine::Traversal</text><text class="s" x="221" y="358">[class]</text>
+<text class="s" x="221" y="378">Walks the chain of workflows.</text>
+<rect class="box" x="495" y="317" width="230" height="79" rx="8"/><rect x="495" y="317" width="6" height="79" rx="3" fill="var(--line, #6b7483)"/>
+<text class="m" x="511" y="341">Workflows::REGISTRY</text><text class="s" x="511" y="358">[constant]</text>
+<text class="s" x="511" y="378">Every workflow by name.</text>
+<rect class="box" x="495" y="430" width="230" height="79" rx="8"/><rect x="495" y="430" width="6" height="79" rx="3" fill="var(--line, #6b7483)"/>
+<text class="m" x="511" y="454">CodeWorkflow</text><text class="s" x="511" y="471">[class]</text>
+<text class="s" x="511" y="491">Ruby steps, in order.</text>
+<rect class="box" x="785" y="430" width="230" height="79" rx="8"/><rect x="785" y="430" width="6" height="79" rx="3" fill="var(--agent, #7d4405)"/>
+<text class="m" x="801" y="454">AgentWorkflow</text><text class="s" x="801" y="471">[class]</text>
+<text class="s" x="801" y="491">Steps in words for the agent.</text>
+<rect class="box" x="30" y="601" width="770" height="79" rx="8"/><rect x="30" y="601" width="6" height="79" rx="3" fill="var(--line, #6b7483)"/>
+<text class="m" x="46" y="625">Graph::WorkGraph</text><text class="s" x="46" y="642">[class]</text>
+<text class="s" x="46" y="662">The write side of every database.</text>
+<rect class="box" x="880" y="601" width="330" height="79" rx="8"/><rect x="880" y="601" width="6" height="79" rx="3" fill="var(--line, #6b7483)"/>
+<text class="m" x="896" y="625">Graph::Work::Writers</text><text class="s" x="896" y="642">[class]</text>
+<text class="s" x="896" y="662">Does the writes for the work graph.</text>
+<path class="box" d="M 30 744 L 30 778 A 85.0 9 0 0 0 200 778 L 200 744 Z"/>
+<ellipse class="box" cx="115.0" cy="744" rx="85.0" ry="9" style="stroke: var(--code, #0b5e55)"/>
+<text class="m" x="115.0" y="771" text-anchor="middle">local.db</text>
+<path class="box" d="M 230 744 L 230 778 A 85.0 9 0 0 0 400 778 L 400 744 Z"/>
+<ellipse class="box" cx="315.0" cy="744" rx="85.0" ry="9" style="stroke: var(--code, #0b5e55)"/>
+<text class="m" x="315.0" y="771" text-anchor="middle">work_graph.db</text>
+<path class="box" d="M 430 744 L 430 778 A 85.0 9 0 0 0 600 778 L 600 744 Z"/>
+<ellipse class="box" cx="515.0" cy="744" rx="85.0" ry="9" style="stroke: var(--code, #0b5e55)"/>
+<text class="m" x="515.0" y="771" text-anchor="middle">knowledge_graph.db</text>
+<path class="box" d="M 630 744 L 630 778 A 85.0 9 0 0 0 800 778 L 800 744 Z"/>
+<ellipse class="box" cx="715.0" cy="744" rx="85.0" ry="9" style="stroke: var(--code, #0b5e55)"/>
+<text class="m" x="715.0" y="771" text-anchor="middle">references.db</text>
+<rect class="box" x="880" y="722" width="330" height="79" rx="8"/><rect x="880" y="722" width="6" height="79" rx="3" fill="var(--code, #0b5e55)"/>
+<text class="m" x="896" y="746">Graph::Database</text><text class="s" x="896" y="763">[class]</text>
+<text class="s" x="896" y="783">One SQLite file, one transaction a write.</text>
+<rect class="box" x="30" y="842" width="770" height="79" rx="8"/><rect x="30" y="842" width="6" height="79" rx="3" fill="var(--line, #6b7483)"/>
+<text class="m" x="46" y="866">Graph::RetrievalGraph</text><text class="s" x="46" y="883">[class]</text>
+<text class="s" x="46" y="903">The read side of every database. It writes nothing.</text>
+<rect class="box" x="880" y="842" width="330" height="79" rx="8"/><rect x="880" y="842" width="6" height="79" rx="3" fill="var(--line, #6b7483)"/>
+<text class="m" x="896" y="866">Graph::Printer</text><text class="s" x="896" y="883">[class]</text>
+<text class="s" x="896" y="903">Prints the rows as files.</text>
+<path class="flow" d="M 620 83.5 L 720 83.5" marker-end="url(#components-arrow)"/>
+<text class="al" x="670" y="77" text-anchor="middle">finds the row</text>
+<path class="flow" d="M 390 83.5 L 290 83.5" marker-end="url(#components-arrow)"/>
+<text class="al" x="340" y="77" text-anchor="middle">builds</text>
+<path class="flow" d="M 274.99800000000005 123 L 274.99800000000005 317" marker-end="url(#components-arrow)"/>
+<text class="al" x="275" y="224" text-anchor="middle">runs</text>
+<path class="flow" d="M 435 356.5 L 495 356.5" marker-end="url(#components-arrow)"/>
+<text class="al" x="465" y="350" text-anchor="middle">looks up</text>
+<path class="flow" d="M 610.0 396 L 610.0 430" marker-end="url(#components-arrow)"/>
+<text class="al" x="610" y="417" text-anchor="middle">holds</text>
+<path class="flow" d="M 725 356.5 L 900.0 356.5 L 900.0 430" marker-end="url(#components-arrow)"/>
+<text class="al" x="813" y="350" text-anchor="middle">holds</text>
+<path class="flow" d="M 100.2 123 L 100.2 565" marker-end="url(#components-arrow)"/>
+<text class="al" x="100" y="348" text-anchor="middle">opens</text>
+<path class="flow" d="M 115.0003 680 L 115.0003 735" marker-end="url(#components-arrow)"/>
+<text class="al" x="115" y="712" text-anchor="middle">writes</text>
+<path class="flow" d="M 315.00010000000003 680 L 315.00010000000003 735" marker-end="url(#components-arrow)"/>
+<text class="al" x="315" y="712" text-anchor="middle">writes</text>
+<path class="flow" d="M 514.9999 680 L 514.9999 735" marker-end="url(#components-arrow)"/>
+<text class="al" x="515" y="712" text-anchor="middle">writes</text>
+<path class="flow" d="M 714.9997 680 L 714.9997 735" marker-end="url(#components-arrow)"/>
+<text class="al" x="715" y="712" text-anchor="middle">writes</text>
+<path class="flow" d="M 115.0003 842 L 115.0003 787" marker-end="url(#components-arrow)"/>
+<text class="al" x="115" y="819" text-anchor="middle">reads</text>
+<path class="flow" d="M 315.00010000000003 842 L 315.00010000000003 787" marker-end="url(#components-arrow)"/>
+<text class="al" x="315" y="819" text-anchor="middle">reads</text>
+<path class="flow" d="M 514.9999 842 L 514.9999 787" marker-end="url(#components-arrow)"/>
+<text class="al" x="515" y="819" text-anchor="middle">reads</text>
+<path class="flow" d="M 714.9997 842 L 714.9997 787" marker-end="url(#components-arrow)"/>
+<text class="al" x="715" y="819" text-anchor="middle">reads</text>
+<path class="flow" d="M 800 640.5 L 880 640.5" marker-end="url(#components-arrow)"/>
+<text class="al" x="840" y="634" text-anchor="middle">delegates</text>
+<path class="flow" d="M 1045.0 680 L 1045.0 722" marker-end="url(#components-arrow)"/>
+<text class="al" x="1045" y="705" text-anchor="middle">uses</text>
+<path class="flow" d="M 800 881.5 L 840 881.5 L 840 761.5 L 880 761.5" marker-end="url(#components-arrow)"/>
+<text class="al" x="840" y="826" text-anchor="middle">uses</text>
 </svg>

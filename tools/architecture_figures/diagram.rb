@@ -4,6 +4,7 @@ require_relative "canvas"
 require_relative "shapes"
 require_relative "diagram/route"
 require_relative "diagram/rows"
+require_relative "diagram/collisions"
 
 module ArchitectureFigures
   # A figure built from named boxes and arrows between their sides. See docs/contributing/ARCHITECTURE.md.
@@ -27,7 +28,11 @@ module ArchitectureFigures
       @extras = extras
     end
 
+    def self.merge(diagrams) = diagrams.map(&:files).reduce(:merge)
+
     def files = { @meta.file => to_svg }
+
+    def collisions = Collisions.new(arrows: arrows, obstacles: obstacles).list
 
     def to_svg
       canvas = Canvas.new(@meta.file, @meta.width, @meta.height, @meta.title, @meta.desc)
@@ -37,7 +42,12 @@ module ArchitectureFigures
 
     private
 
-    def zones = @boxes.values.grep(Shapes::Zone)
+    def obstacles
+      cards = others.to_h { |shape| [shape.name, shape.bounds] }
+      zones.each_with_object(cards) { |zone, found| found["the title of #{zone.name}"] = zone.title_bounds }
+    end
+
+    def zones =@boxes.values.grep(Shapes::Zone)
 
     def others = @boxes.values.reject { |shape| shape.is_a?(Shapes::Zone) }
 

@@ -3,4 +3,4 @@
 
 require_relative "../tools/architecture_figures"
 
-ArchitectureFigures.build("docs/contributing/figures")
+ArchitectureFigures.build(File.expand_path("../docs/contributing/figures", __dir__))

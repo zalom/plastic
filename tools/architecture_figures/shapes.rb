@@ -18,6 +18,8 @@ module ArchitectureFigures
 
       def bottom = top + height
 
+      def bounds = [left, top, right, bottom]
+
       def anchor(side, fraction = 0.5)
         across = left + (fraction * width)
         down = top + (fraction * height)

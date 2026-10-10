@@ -6,6 +6,10 @@ module ArchitectureFigures
     class Arrow < Data.define(:points, :note, :dashed)
       def markup(id) = [path(id), *words].join("\n")
 
+      def segments = points.each_cons(2).to_a
+
+      def note_bounds = note.each_with_index.map { |line, row| spot(row).then { |across, down, _| [across - (line.size * 3.3), down - 10, across + (line.size * 3.3), down + 3] } }
+
       private
 
       def path(id) = %(<path class="flow" d="#{points.each_with_index.map { |(px, py), at| "#{at.zero? ? "M" : "L"} #{px} #{py}" }.join(" ")}"#{' stroke-dasharray="4 3"' if dashed} marker-end="url(##{id}-arrow)"/>)

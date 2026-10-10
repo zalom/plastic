@@ -36,7 +36,10 @@ module ArchitectureFigures
       sides.each_with_index.map { |(out, into), at| ["step#{at}.#{out}", "step#{at + 1}.#{into}"] }
     end
 
-    def self.files = Diagram.new(META, boxes, arrows, [Shapes::Label.new(left: 15, top: 340, text: "What the call prints", style: "t"), Shapes::Terminal.new(left: 15, top: 352, width: 1130, lines: REPORT)]).files
+    def self.diagrams = [Diagram.new(META, boxes, arrows, [Shapes::Label.new(left: 15, top: 340, text: "What the call prints", style: "t"), Shapes::Terminal.new(left: 15, top: 352, width: 1130, lines: REPORT)])]
+
+
+    def self.files = Diagram.merge(diagrams)
 
     def self.names = NAMES
   end

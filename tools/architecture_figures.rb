@@ -12,7 +12,9 @@ require_relative "architecture_figures/command_call"
 module ArchitectureFigures
   FIGURES = [Context, Containers, Components, Graphs, Delivery, CommandCall].freeze
 
-  def self.render = FIGURES.reduce({}) { |files, figure| files.merge(figure.files) }
+  def self.diagrams = FIGURES.flat_map(&:diagrams)
+
+  def self.render = Diagram.merge(diagrams)
 
   def self.build(dir)
     FileUtils.mkdir_p(dir)

@@ -24,7 +24,10 @@ module ArchitectureFigures
     EXTRAS = [Shapes::Key.new(left: 30, top: 350, items: [[:owner, "person"], [:agent, "agent harness"], [:code, "Plastic"], [:line, "project code"], [:end, "outside system"]])].freeze
     NAMES = [].freeze
 
-    def self.files = Diagram.new(META, BOXES, ARROWS, EXTRAS).files
+    def self.diagrams = [Diagram.new(META, BOXES, ARROWS, EXTRAS)]
+
+
+    def self.files = Diagram.merge(diagrams)
 
     def self.names = NAMES
   end
