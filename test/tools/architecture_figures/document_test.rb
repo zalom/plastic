@@ -38,12 +38,13 @@ class ArchitectureFiguresDocumentTest < Minitest::Test
     links.reject { |fragment| slugs.include?(fragment) }
   end
 
-  def excluded?(path) = path.start_with?("docs/reviews/") || path == "CHANGELOG.md" || path.end_with?("architecture_figures/document_test.rb")
+  def excluded?(path) = path.start_with?("docs/reviews/") || path == "CHANGELOG.md" || path.end_with?("architecture_figures/document_test.rb") || !File.file?(File.join(ROOT, path))
+
+  def text_of(path) = File.binread(File.join(ROOT, path)).force_encoding("UTF-8")
 
   def tracked_texts
     out, _err, _status = Open3.capture3("git", "-C", ROOT, "ls-files")
-    out.lines.map(&:strip).reject { |path| excluded?(path) || !File.file?(File.join(ROOT, path)) }
-      .to_h { |path| [path, File.binread(File.join(ROOT, path)).force_encoding("UTF-8")] }.select { |_path, text| text.valid_encoding? && !text.include?("\0") }
+    out.lines.map(&:strip).reject { |path| excluded?(path) }.to_h { |path| [path, text_of(path)] }.select { |_path, text| text.valid_encoding? && !text.include?("\0") }
   end
 
   def test_the_subjects_are_read_from_the_disk
