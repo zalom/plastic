@@ -20,18 +20,19 @@ class DocsStaleWordsGuardTest < Minitest::Test
     refute_empty PAGES
     refute_empty VARAR
     assert_includes PAGES, "docs/internals.md"
+    assert_includes PAGES, "docs/contributing/ARCHITECTURE.md"
   end
 
   def test_no_page_or_acceptance_document_uses_a_removed_option_or_next_line
     assert_empty found(PAGES + VARAR)
   end
 
-  def test_internals_names_no_intent_by_number
-    assert_empty found(["docs/internals.md"], INTENT_ID)
+  def test_internals_and_architecture_name_no_intent_by_number
+    assert_empty found(["docs/internals.md", "docs/contributing/ARCHITECTURE.md"], INTENT_ID)
   end
 
-  def test_internals_names_no_date
-    assert_empty found(["docs/internals.md"], DATE)
+  def test_internals_and_architecture_name_no_date
+    assert_empty found(["docs/internals.md", "docs/contributing/ARCHITECTURE.md"], DATE)
   end
 
   def test_the_date_detector_catches_a_date_and_leaves_a_version_alone
