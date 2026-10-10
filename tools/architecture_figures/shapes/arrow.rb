@@ -8,9 +8,17 @@ module ArchitectureFigures
 
       def segments = points.each_cons(2).to_a
 
-      def note_bounds = note.each_with_index.map { |line, row| spot(row).then { |across, down, _| [across - (line.size * 3.3), down - 10, across + (line.size * 3.3), down + 3] } }
+      def reaches = segments.map { |(ax, ay), (bx, by)| [[ax, bx].min, [ay, by].min, [ax, bx].max, [ay, by].max] } + note_bounds
+
+      def note_bounds = note.each_index.map { |row| reach(row) }
 
       private
+
+      def reach(row)
+        across, down = spot(row)
+        half = note[row].size * 3.3
+        [across - half, down - 10, across + half, down + 3]
+      end
 
       def path(id) = %(<path class="flow" d="#{points.each_with_index.map { |(px, py), at| "#{at.zero? ? "M" : "L"} #{px} #{py}" }.join(" ")}"#{' stroke-dasharray="4 3"' if dashed} marker-end="url(##{id}-arrow)"/>)
 

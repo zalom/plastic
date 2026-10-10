@@ -8,11 +8,13 @@ module ArchitectureFigures
 
       private
 
-      def aligned? = near?(start.first, finish.first) || near?(start.last, finish.last)
+      def aligned? = vertical? || horizontal?
 
-      def near?(one, other) = (one - other).abs < 1
+      def vertical? = (start.first - finish.first).abs < 1
 
-      def snapped = near?(start.first, finish.first) ? [start.first, finish.last] : [finish.first, start.last]
+      def horizontal? = (start.last - finish.last).abs < 1
+
+      def snapped = vertical? ? [start.first, finish.last] : [finish.first, start.last]
 
       def flat = [out, into].map { |side| %i[left right].include?(side) }
 

@@ -26,7 +26,6 @@ module ArchitectureFigures
 
     def self.diagrams = [Diagram.new(META, BOXES, ARROWS, EXTRAS)]
 
-
     def self.files = Diagram.merge(diagrams)
 
     def self.names = NAMES
