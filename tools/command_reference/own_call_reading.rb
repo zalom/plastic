@@ -11,16 +11,37 @@ module CommandReference
     end
 
     def call
-      method = @klass.instance_method((@klass <= Plastic::Hook) ? :respond : :call)
+      method = @klass.instance_method(name)
       read(method) unless OWNERS.include?(method.owner)
     end
 
     private
 
+    def name = (@klass <= Plastic::Hook) ? :respond : :call
+
     def read(method)
+      home, line = place(method)
+      OwnCall.new(home, line, @source.method_lines(home, line), check(method), reachable(home))
+    end
+
+    def check(call_method)
+      return unless @klass.private_method_defined?(:check_call)
+
+      method = @klass.instance_method(:check_call)
+      return if method.owner == call_method.owner
+
+      home, line = place(method)
+      Place.new(home, line, @source.method_lines(home, line))
+    end
+
+    def reachable(home)
+      own = @source.relative(Object.const_source_location(@klass.name).first)
+      CallClosure.new(@source, [own, home].uniq, [name.to_s, "check_call"]).lines(home) unless home == own
+    end
+
+    def place(method)
       path, line = method.source_location
-      home = @source.relative(path)
-      OwnCall.new(home, line, @source.method_lines(home, line))
+      [@source.relative(path), line]
     end
   end
 end

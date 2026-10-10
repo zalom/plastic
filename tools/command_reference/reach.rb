@@ -5,6 +5,8 @@ module CommandReference
   Reach = Data.define(:kind, :files, :flows, :own_call) do
     def hook? = kind == :hook
 
+    def reachable(file) = (own_call.reachable if own_call && own_call.file == file)
+
     def raising? = flows.any?(&:raising?)
 
     def all_endings(scans, rescued) = [*flows.flat_map(&:endings), *rescued, *file_endings(scans), *hook_endings(scans)]

@@ -10,7 +10,7 @@ module CommandReference
       @source = source
     end
 
-    def call(reach) = reach.all_endings(reach.files.map { |file| FileEndings.new(@source, file) }, rescued(reach))
+    def call(reach) = reach.all_endings(reach.files.map { |file| FileEndings.new(@source, file, only: reach.reachable(file)) }, rescued(reach))
 
     private
 

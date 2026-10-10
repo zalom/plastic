@@ -21,11 +21,13 @@ module CommandReference
       private
 
       def head
-        ["# plastic #{@page.words}", "", "#{@page.summary}.", "", *Prose.lines(@page.comment),
+        ["# plastic #{@page.words}", "", "#{@page.summary}.", "", *comment,
           "```sh", @page.usage, "```", "",
           "The command is `#{Words.short(@page.klass)}`, in #{@links.code(@page.file, @page.line)}. " \
           "The words on this page, such as gate, step and outcome, are explained in [the command DSL](#{DSL}).", ""]
       end
+
+      def comment = Prose.repeats?(@page.summary, @page.comment) ? [] : Prose.lines(@page.comment)
 
       def inputs
         rows = @page.arguments.map { |arg| "| `#{arg.label}` | #{arg.text} | |" } + @page.options.map { |opt| "| `#{opt.switch}` | #{opt.text} | #{Page.default(opt)} |" }
@@ -38,7 +40,20 @@ module CommandReference
         own = @page.own_call
         return [] unless own
 
-        ["## Before the chain", "", "The command's own `call`, at #{@links.at(own)}, runs first:", "", "```ruby", *own.code, "```", ""]
+        [*own_heading(own), "", "```ruby", *own.code, "```", "", *check_call(own)]
+      end
+
+      def own_heading(own)
+        return ["## Before the chain", "", "The command's own `call`, at #{@links.at(own)}, runs first:"] if @page.flows.any?
+        return ["## The command", "", "The hook's `respond`, at #{@links.at(own)}:"] if @page.kind == :hook
+
+        ["## The command", "", "The command's `call`, at #{@links.at(own)}:"]
+      end
+
+      def check_call(own)
+        return [] unless own.check
+
+        ["The command's own `check_call`, at #{@links.at(own.check)}, runs inside it:", "", "```ruby", *own.check.code, "```", ""]
       end
 
       def flow

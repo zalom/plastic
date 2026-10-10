@@ -3,12 +3,14 @@
 module CommandReference
   # The endings one source file spells out: raised errors, next: lines and stop decisions.
   class FileEndings
-    RAISES = { "Usage" => 2, "Refusal" => 3, "Failure" => 1 }.freeze
-    RAISE_LINE = /\braise (?:CLI::)?(?:Command::)?(Usage|Refusal|Failure)\b/
+    RAISES = { "Usage" => [2, "Usage error"], "Refusal" => [3, "Refused"], "Failure" => [1, "Failed"] }.freeze
+    RAISE_LINE = /\braise (?:CLI::)?(?:Command::)?(Usage|Refusal|Failure)\b(?:, "(.*)")?/
     NEXT_LINE = /\bnext_step\((?:"([^"]+)"|[^,)]+)/
+    OFFERS = "Offers the next command"
 
-    def initialize(source, file)
+    def initialize(source, file, only: nil)
       @file = file
+      @only = only
       @lines = source.lines(file)
     end
 
@@ -23,14 +25,19 @@ module CommandReference
     def raises
       found do |text, number|
         match = RAISE_LINE.match(text) or next
-        Ending.new(:raise, RAISES.fetch(match[1]), Endings::NONE, text.strip, @file, number)
+        next if @only && !@only.include?(number)
+
+        code, kind = RAISES.fetch(match[1])
+        Ending.new(:raise, code, Endings::NONE, message(kind, match[2]), @file, number)
       end
     end
+
+    def message(kind, literal) = literal ? "#{kind}: #{literal.gsub(/\#\{([^}]*)\}/) { "%{#{Regexp.last_match(1)[/[a-z_]\w*/] || "value"}}" }}" : kind
 
     def next_steps
       found do |text, number|
         match = text.match(NEXT_LINE) or next
-        Ending.new(:next_step, 0, match[1] || Endings::RUNTIME, text.strip, @file, number)
+        Ending.new(:next_step, 0, match[1] || Endings::RUNTIME, OFFERS, @file, number)
       end
     end
 
