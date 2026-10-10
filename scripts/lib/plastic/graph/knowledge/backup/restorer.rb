@@ -38,8 +38,9 @@ module Plastic
           end
 
           def locked?
-            rows = @target.local_db.rows("SELECT * FROM locks WHERE store = :store", store: @target.slug)
-            rows.map { |row| Lock.from_h(row) }.any? { |lock| lock.live?(@now) }
+            local = @target.local_db
+            rows = local.rows("SELECT * FROM locks WHERE store = :store", store: @target.slug)
+            rows.map { |row| Lock.from_h(row) }.any? { |lock| Lock::Liveness.read(lock, local:, work:).live?(@now) }
           end
 
           # The database names a restore would replace.
@@ -68,6 +69,8 @@ module Plastic
           end
 
           private
+
+          def work = Database.new(File.join(@target.root, Schema.file(:work)), Schema.fetch(:work))
 
           def held_names(timestamp) = @target.folders.files(timestamp).map { |file| file.delete_suffix("-#{timestamp}.db") }
 

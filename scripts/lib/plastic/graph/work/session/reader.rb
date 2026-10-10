@@ -74,6 +74,9 @@ module Plastic
             row && RoutineRun.from_row(row, row.fetch("subject"))
           end
 
+          # The Lock::Liveness of `lock`; a lock of another store reads no claims.
+          def liveness(lock) = Lock::Liveness.read(lock, local:, work: (@databases.fetch(:work) if lock.store == @store))
+
           # Intent ids this session touched, most recent first.
           def touched(session_id) = Touched.new(@databases, store: @store, origin: @origin).call(session_id)
 

@@ -48,7 +48,7 @@ module Plastic
       def self.free?(intent_id, context)
         retrieval = context.retrieval
         lock = retrieval.lock(intent_id)
-        held = lock && lock.session_id != context.session && lock.live?
+        held = lock && lock.session_id != context.session && retrieval.liveness(lock).live?
         retrieval.intent(intent_id).status != "parked" && !held
       end
 
