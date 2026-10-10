@@ -32,15 +32,15 @@ module Plastic
             raise Missing, "the backup #{timestamp} does not hold #{missing.first.inspect}" if missing.any?
           end
 
-          def initialize(local_db, store_root, slug, now:, session: nil)
-            @target = Target.new(local_db, store_root, slug, session)
+          def initialize(local_db, store_root, retrieval, now:, session: nil)
+            @target = Target.new(local_db, store_root, retrieval.store, session)
+            @retrieval = retrieval
             @now = now
           end
 
           def locked?
-            local = @target.local_db
-            rows = local.rows("SELECT * FROM locks WHERE store = :store", store: @target.slug)
-            rows.map { |row| Lock.from_h(row) }.any? { |lock| Lock::Liveness.read(lock, local:, work:).live?(@now) }
+            rows = @target.local_db.rows("SELECT * FROM locks WHERE store = :store", store: @target.slug)
+            rows.map { |row| Lock.from_h(row) }.any? { |lock| @retrieval.liveness(lock).live?(@now) }
           end
 
           # The database names a restore would replace.
@@ -69,8 +69,6 @@ module Plastic
           end
 
           private
-
-          def work = Database.new(File.join(@target.root, Schema.file(:work)), Schema.fetch(:work))
 
           def held_names(timestamp) = @target.folders.files(timestamp).map { |file| file.delete_suffix("-#{timestamp}.db") }
 
