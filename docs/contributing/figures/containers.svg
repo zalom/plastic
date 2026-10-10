@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1160 770" role="img" aria-labelledby="containers-title containers-desc" font-family="IBM Plex Sans, system-ui, -apple-system, Segoe UI, sans-serif">
+  <title id="containers-title">What runs and where Plastic keeps its data</title>
+  <desc id="containers-desc">The install folder holds the active release, which is the plastic program. The Plastic home holds a bin/plastic pointer to it, and local.db. The program reads and writes four SQLite databases: local.db in the home, and work_graph.db, knowledge_graph.db and references.db in each store. Files and roadmaps are printed from the rows into the store folder, and a sync up reads hand edits back. Backups are copies of a store&#39;s databases.</desc>
+  <defs><marker id="containers-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--line, #6b7483)"/></marker></defs>
+  <style>svg { --ink: #1f2530; --muted: #3f4754; --line: #6b7483; --paper: #e9e5dc; --card: #f4f1ea; --rule: #c9c3b6; --code: #0b5e55; --agent: #7d4405; --owner: #4a2a99; --owner-bg: #e4dcf5; --end: #23406f; --end-bg: #d9e2f0; }
+@media (prefers-color-scheme: dark) { svg { --ink: #e8e6e1; --muted: #b4bac4; --line: #8a93a3; --paper: #1d2128; --card: #262b34; --rule: #3b424e; --code: #5fd0c0; --agent: #e0a24f; --owner: #b9a2ff; --owner-bg: #2f2750; --end: #8fb0e8; --end-bg: #1f2d45; } }
+.background { fill: var(--paper, #e9e5dc); }
+.box { fill: var(--card, #f4f1ea); stroke: var(--line, #6b7483); stroke-width: 1; }
+.zone { fill: none; stroke: var(--line, #6b7483); stroke-width: 1.2; stroke-dasharray: 6 4; }
+.t { fill: var(--ink, #1f2530); font-size: 14px; font-weight: 600; }
+.s { fill: var(--muted, #3f4754); font-size: 11.5px; }
+.al { fill: var(--ink, #1f2530); font-size: 11.5px; stroke: var(--paper, #e9e5dc); stroke-width: 4px; paint-order: stroke; }
+.m { fill: var(--ink, #1f2530); font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; font-size: 12px; font-weight: 600; }
+.r { fill: var(--ink, #1f2530); font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; font-size: 11px; }
+.flow { stroke: var(--line, #6b7483); stroke-width: 1.5; fill: none; }</style>
+  <rect class="background" width="100%" height="100%"/>
+<rect class="zone" x="10" y="10" width="1140" height="135" rx="12"/><text class="s" x="24" y="30">Plastic install: ~/.local/share/plastic</text>
+<rect class="zone" x="10" y="165" width="1140" height="170" rx="12"/><text class="s" x="24" y="185">Plastic home</text>
+<rect class="zone" x="10" y="370" width="1140" height="390" rx="12"/><text class="s" x="24" y="390">A store</text>
+<rect class="box" x="30" y="44" width="230" height="94" rx="8"/><rect x="30" y="44" width="6" height="94" rx="3" fill="var(--line, #6b7483)"/>
+<text class="t" x="46" y="68">~/.local/bin/plastic</text><text class="s" x="46" y="85">[link]</text>
+<text class="s" x="46" y="105">Found on the PATH,</text>
+<text class="s" x="46" y="120">where you run plastic.</text>
+<rect class="box" x="330" y="44" width="260" height="94" rx="8"/><rect x="330" y="44" width="6" height="94" rx="3" fill="var(--code, #0b5e55)"/>
+<text class="t" x="346" y="68">active/bin/plastic</text><text class="s" x="346" y="85">[program]</text>
+<text class="s" x="346" y="105">Ruby. One command, plastic,</text>
+<text class="s" x="346" y="120">and the three hooks.</text>
+<rect class="box" x="660" y="44" width="220" height="94" rx="8"/><rect x="660" y="44" width="6" height="94" rx="3" fill="var(--line, #6b7483)"/>
+<text class="t" x="676" y="68">releases/VERSION/</text><text class="s" x="676" y="85">[folder]</text>
+<text class="s" x="676" y="105">One folder for each release;</text>
+<text class="s" x="676" y="120">active points to one.</text>
+<rect class="box" x="940" y="44" width="190" height="94" rx="8"/><rect x="940" y="44" width="6" height="94" rx="3" fill="var(--line, #6b7483)"/>
+<text class="t" x="956" y="68">rubies/</text><text class="s" x="956" y="85">[folder]</text>
+<text class="s" x="956" y="105">The Ruby each release</text>
+<text class="s" x="956" y="120">runs on.</text>
+<rect class="box" x="30" y="199" width="230" height="94" rx="8"/><rect x="30" y="199" width="6" height="94" rx="3" fill="var(--agent, #7d4405)"/>
+<text class="t" x="46" y="223">PLASTIC.md</text><text class="s" x="46" y="240">[file]</text>
+<text class="s" x="46" y="260">The always-on instructions</text>
+<text class="s" x="46" y="275">the harness imports.</text>
+<rect class="box" x="330" y="199" width="260" height="94" rx="8"/><rect x="330" y="199" width="6" height="94" rx="3" fill="var(--code, #0b5e55)"/>
+<text class="m" x="346" y="223">bin/plastic</text><text class="s" x="346" y="240">[pointer]</text>
+<text class="s" x="346" y="260">A launcher that points to</text>
+<text class="s" x="346" y="275">the active program.</text>
+<path class="box" d="M 640 214 L 640 278 A 105.0 9 0 0 0 850 278 L 850 214 Z"/>
+<ellipse class="box" cx="745.0" cy="214" rx="105.0" ry="9" style="stroke: var(--code, #0b5e55)"/>
+<text class="m" x="745.0" y="241" text-anchor="middle">local.db</text>
+<text class="s" x="745.0" y="259" text-anchor="middle">routine_runs, sessions,</text>
+<text class="s" x="745.0" y="274" text-anchor="middle">locks, backups</text>
+<rect class="box" x="880" y="199" width="250" height="94" rx="8"/><rect x="880" y="199" width="6" height="94" rx="3" fill="var(--line, #6b7483)"/>
+<text class="t" x="896" y="223">config.yml, projects.yml</text><text class="s" x="896" y="240">[files]</text>
+<text class="s" x="896" y="260">Settings, and the list of</text>
+<text class="s" x="896" y="275">projects: slug to repository.</text>
+<path class="box" d="M 40 414 L 40 463 A 125.0 9 0 0 0 290 463 L 290 414 Z"/>
+<ellipse class="box" cx="165.0" cy="414" rx="125.0" ry="9" style="stroke: var(--code, #0b5e55)"/>
+<text class="m" x="165.0" y="441" text-anchor="middle">work_graph.db</text>
+<text class="s" x="165.0" y="459" text-anchor="middle">intents, nodes, edges</text>
+<path class="box" d="M 320 414 L 320 463 A 125.0 9 0 0 0 570 463 L 570 414 Z"/>
+<ellipse class="box" cx="445.0" cy="414" rx="125.0" ry="9" style="stroke: var(--code, #0b5e55)"/>
+<text class="m" x="445.0" y="441" text-anchor="middle">knowledge_graph.db</text>
+<text class="s" x="445.0" y="459" text-anchor="middle">documents, rulings, links</text>
+<path class="box" d="M 600 414 L 600 463 A 125.0 9 0 0 0 850 463 L 850 414 Z"/>
+<ellipse class="box" cx="725.0" cy="414" rx="125.0" ry="9" style="stroke: var(--code, #0b5e55)"/>
+<text class="m" x="725.0" y="441" text-anchor="middle">references.db</text>
+<text class="s" x="725.0" y="459" text-anchor="middle">sqlar</text>
+<rect class="box" x="880" y="399" width="250" height="94" rx="8"/><rect x="880" y="399" width="6" height="94" rx="3" fill="var(--line, #6b7483)"/>
+<text class="t" x="896" y="423">backups/</text><text class="s" x="896" y="440">[folder]</text>
+<text class="s" x="896" y="460">Copies of the three databases,</text>
+<text class="s" x="896" y="475">one folder for each backup.</text>
+<rect class="box" x="40" y="585" width="250" height="79" rx="8"/><rect x="40" y="585" width="6" height="79" rx="3" fill="var(--line, #6b7483)"/>
+<text class="m" x="56" y="609">store/index.json</text><text class="s" x="56" y="626">[file]</text>
+<text class="s" x="56" y="646">Every intent, in order.</text>
+<rect class="box" x="320" y="585" width="250" height="94" rx="8"/><rect x="320" y="585" width="6" height="94" rx="3" fill="var(--line, #6b7483)"/>
+<text class="t" x="336" y="609">roadmaps/</text><text class="s" x="336" y="626">[folder]</text>
+<text class="s" x="336" y="646">One file for each roadmap,</text>
+<text class="s" x="336" y="661">printed from the rows.</text>
+<rect class="box" x="600" y="585" width="530" height="94" rx="8"/><rect x="600" y="585" width="6" height="94" rx="3" fill="var(--line, #6b7483)"/>
+<text class="t" x="616" y="609">ID--slug/</text><text class="s" x="616" y="626">[intent folder]</text>
+<text class="s" x="616" y="646">spec.md, graph.json, savepoint.md,</text>
+<text class="s" x="616" y="661">outcome.md and context.json, printed from the rows.</text>
+<path class="flow" d="M 260 91.0 L 330 91.0" stroke-dasharray="4 3" marker-end="url(#containers-arrow)"/>
+<text class="al" x="295" y="84" text-anchor="middle">points to</text>
+<path class="flow" d="M 590 91.0 L 660 91.0" stroke-dasharray="4 3" marker-end="url(#containers-arrow)"/>
+<text class="al" x="625" y="84" text-anchor="middle">points to</text>
+<path class="flow" d="M 460.0 199 L 460.0 138" stroke-dasharray="4 3" marker-end="url(#containers-arrow)"/>
+<text class="al" x="460" y="173" text-anchor="middle">points to</text>
+<path class="flow" d="M 590 246.0 L 640 246.0" marker-end="url(#containers-arrow)"/>
+<text class="al" x="615" y="239" text-anchor="middle">rows</text>
+<path class="flow" d="M 382.0 293 L 382.0 349 L 165.0 349 L 165.0 405" marker-end="url(#containers-arrow)"/>
+<text class="al" x="274" y="342" text-anchor="middle">reads and writes rows</text>
+<path class="flow" d="M 460.0 293 L 460.0 349 L 445.0 349 L 445.0 405" marker-end="url(#containers-arrow)"/>
+<path class="flow" d="M 538.0 293 L 538.0 349 L 725.0 349 L 725.0 405" marker-end="url(#containers-arrow)"/>
+<path class="flow" d="M 165.0 472 L 165.0 585" marker-end="url(#containers-arrow)"/>
+<text class="al" x="165" y="533" text-anchor="middle">printed</text>
+<path class="flow" d="M 252.5 472 L 252.5 528 L 357.5 528 L 357.5 585" marker-end="url(#containers-arrow)"/>
+<path class="flow" d="M 445.0 472 L 445.0 528 L 706.0 528 L 706.0 585" marker-end="url(#containers-arrow)"/>
+<text class="al" x="576" y="508" text-anchor="middle">printed from the rows;</text>
+<text class="al" x="576" y="521" text-anchor="middle">sync up reads edits back</text>
+</svg>

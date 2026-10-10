@@ -138,7 +138,9 @@ included. `test/context_budget_bench_test.rb` fails when a surface crosses its c
 | `test/fixtures/homes/` | The homes the kernel tests start from, one file each. |
 | `test/fixtures/routines.rb` | The routines, workflows and hooks that exist only for the kernel tests. |
 | `test/fixtures/legacy_store/` | A copy of a store written before `store/index.json`, for the import tests. |
-| `docs/resources/` | The figures of these pages, copied from the tri-graph proposal pages. |
+| `tools/architecture_figures*` | The plain Ruby that draws the architecture figures. |
+| `bin/architecture-figures` | Rebuilds the figures: `ruby bin/architecture-figures`. |
+| `docs/contributing/figures/` | The generated SVG figures of `ARCHITECTURE.md`. |
 | `varar/` | The acceptance documents. |
 | `test/varar/` | The step files for the acceptance documents. |
 | `test/varar/support/kernel_command.rb` | Runs the kernel's command line in a child process for the storage documents. |

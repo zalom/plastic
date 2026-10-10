@@ -5,7 +5,7 @@ commits and releases. This page points to the rest.
 
 | Read | For |
 | ---- | --- |
-| [docs/contributing/ARCHITECTURE.md](docs/contributing/ARCHITECTURE.md) | How the `plastic` command is built, and where the system architecture lives. |
+| [docs/contributing/ARCHITECTURE.md](docs/contributing/ARCHITECTURE.md) | The system architecture in drawings, and how the `plastic` command is built. |
 | [docs/contributing/CODING_PRACTICES.md](docs/contributing/CODING_PRACTICES.md) | How Ruby is written, linted and scored here. |
 | [docs/contributing/TECHNICAL.md](docs/contributing/TECHNICAL.md) | The gates, the byte budget and the test layout. |
 

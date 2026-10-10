@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1160 560" role="img" aria-labelledby="delivery-phases-title delivery-phases-desc" font-family="IBM Plex Sans, system-ui, -apple-system, Segoe UI, sans-serif">
+  <title id="delivery-phases-title">How an intent is delivered</title>
+  <desc id="delivery-phases-desc">An intent starts in What, where it gets its context. Why grills it into a spec and rulings. The owner gives the go-ahead. How plans the work graph, runs the nodes, judges the result and opens the pull request. intent end or intent abandon closes it.</desc>
+  <defs><marker id="delivery-phases-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--line, #6b7483)"/></marker></defs>
+  <style>svg { --ink: #1f2530; --muted: #3f4754; --line: #6b7483; --paper: #e9e5dc; --card: #f4f1ea; --rule: #c9c3b6; --code: #0b5e55; --agent: #7d4405; --owner: #4a2a99; --owner-bg: #e4dcf5; --end: #23406f; --end-bg: #d9e2f0; }
+@media (prefers-color-scheme: dark) { svg { --ink: #e8e6e1; --muted: #b4bac4; --line: #8a93a3; --paper: #1d2128; --card: #262b34; --rule: #3b424e; --code: #5fd0c0; --agent: #e0a24f; --owner: #b9a2ff; --owner-bg: #2f2750; --end: #8fb0e8; --end-bg: #1f2d45; } }
+.background { fill: var(--paper, #e9e5dc); }
+.box { fill: var(--card, #f4f1ea); stroke: var(--line, #6b7483); stroke-width: 1; }
+.zone { fill: none; stroke: var(--line, #6b7483); stroke-width: 1.2; stroke-dasharray: 6 4; }
+.t { fill: var(--ink, #1f2530); font-size: 14px; font-weight: 600; }
+.s { fill: var(--muted, #3f4754); font-size: 11.5px; }
+.al { fill: var(--ink, #1f2530); font-size: 11.5px; stroke: var(--paper, #e9e5dc); stroke-width: 4px; paint-order: stroke; }
+.m { fill: var(--ink, #1f2530); font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; font-size: 12px; font-weight: 600; }
+.r { fill: var(--ink, #1f2530); font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; font-size: 11px; }
+.flow { stroke: var(--line, #6b7483); stroke-width: 1.5; fill: none; }</style>
+  <rect class="background" width="100%" height="100%"/>
+<rect class="zone" x="10" y="10" width="260" height="398" rx="12"/><text class="s" x="24" y="30">WHAT</text>
+<rect class="zone" x="290" y="10" width="260" height="398" rx="12"/><text class="s" x="304" y="30">WHY</text>
+<rect class="zone" x="570" y="10" width="240" height="398" rx="12"/><text class="s" x="584" y="30">GO-AHEAD</text>
+<rect class="zone" x="830" y="10" width="320" height="398" rx="12"/><text class="s" x="844" y="30">HOW</text>
+<rect class="box" x="30" y="44" width="220" height="79" rx="8"/><rect x="30" y="44" width="6" height="79" rx="3" fill="var(--code, #0b5e55)"/>
+<text class="m" x="46" y="68">intent new</text><text class="s" x="46" y="85">[1  Start]</text>
+<text class="s" x="46" y="105">Writes the intent.</text>
+<rect class="box" x="30" y="134" width="220" height="79" rx="8"/><rect x="30" y="134" width="6" height="79" rx="3" fill="var(--code, #0b5e55)"/>
+<text class="m" x="46" y="158">intent discover</text><text class="s" x="46" y="175">[2  Context]</text>
+<text class="s" x="46" y="195">Gathers what is known.</text>
+<rect class="box" x="310" y="44" width="220" height="79" rx="8"/><rect x="310" y="44" width="6" height="79" rx="3" fill="var(--agent, #7d4405)"/>
+<text class="m" x="326" y="68">intent spec</text><text class="s" x="326" y="85">[3  Grilling]</text>
+<text class="s" x="326" y="105">Asks until all is settled.</text>
+<rect class="box" x="310" y="134" width="220" height="79" rx="8"/><rect x="310" y="134" width="6" height="79" rx="3" fill="var(--agent, #7d4405)"/>
+<text class="m" x="326" y="158">intent rule</text><text class="s" x="326" y="175">[4  One spec]</text>
+<text class="s" x="326" y="195">Rulings, and revisions.</text>
+<rect class="box" x="590" y="94" width="200" height="79" rx="8"/><rect x="590" y="94" width="6" height="79" rx="3" fill="var(--owner, #4a2a99)"/>
+<text class="m" x="606" y="118">intent approve</text><text class="s" x="606" y="135">[5  You say deliver]</text>
+<text class="s" x="606" y="155">The go-ahead.</text>
+<rect class="box" x="850" y="44" width="280" height="79" rx="8"/><rect x="850" y="44" width="6" height="79" rx="3" fill="var(--code, #0b5e55)"/>
+<text class="m" x="866" y="68">node add</text><text class="s" x="866" y="85">[6  Plan the graph]</text>
+<text class="s" x="866" y="105">Nodes, and edges for the order.</text>
+<rect class="box" x="850" y="134" width="280" height="79" rx="8"/><rect x="850" y="134" width="6" height="79" rx="3" fill="var(--code, #0b5e55)"/>
+<text class="m" x="866" y="158">node claim</text><text class="s" x="866" y="175">[7  Work the nodes]</text>
+<text class="s" x="866" y="195">Each node, claimed and done.</text>
+<rect class="box" x="850" y="224" width="280" height="79" rx="8"/><rect x="850" y="224" width="6" height="79" rx="3" fill="var(--agent, #7d4405)"/>
+<text class="m" x="866" y="248">intent judge</text><text class="s" x="866" y="265">[8  Judge]</text>
+<text class="s" x="866" y="285">Reasons over the finished work.</text>
+<rect class="box" x="850" y="314" width="280" height="79" rx="8"/><rect x="850" y="314" width="6" height="79" rx="3" fill="var(--owner, #4a2a99)"/>
+<text class="t" x="866" y="338">Pull request</text><text class="s" x="866" y="355">[9  Review]</text>
+<text class="s" x="866" y="375">The owner approves and merges.</text>
+<rect class="box" x="850" y="450" width="280" height="79" rx="8"/><rect x="850" y="450" width="6" height="79" rx="3" fill="var(--end, #23406f)"/>
+<text class="m" x="866" y="474">intent end</text><text class="s" x="866" y="491">[10  Close]</text>
+<text class="s" x="866" y="511">Records the completion.</text>
+<rect class="box" x="30" y="450" width="280" height="79" rx="8"/><rect x="30" y="450" width="6" height="79" rx="3" fill="var(--line, #6b7483)"/>
+<text class="m" x="46" y="474">intent abandon</text><text class="s" x="46" y="491">[Any time]</text>
+<text class="s" x="46" y="511">Closes an intent that stops.</text>
+<path class="flow" d="M 140.0 123 L 140.0 134" marker-end="url(#delivery-phases-arrow)"/>
+<path class="flow" d="M 250 173.5 L 280 173.5 L 280 83.5 L 310 83.5" marker-end="url(#delivery-phases-arrow)"/>
+<path class="flow" d="M 420.0 123 L 420.0 134" marker-end="url(#delivery-phases-arrow)"/>
+<path class="flow" d="M 530 173.5 L 560 173.5 L 560 133.5 L 590 133.5" marker-end="url(#delivery-phases-arrow)"/>
+<path class="flow" d="M 790 133.5 L 820 133.5 L 820 83.5 L 850 83.5" marker-end="url(#delivery-phases-arrow)"/>
+<path class="flow" d="M 990.0 123 L 990.0 134" marker-end="url(#delivery-phases-arrow)"/>
+<path class="flow" d="M 990.0 213 L 990.0 224" marker-end="url(#delivery-phases-arrow)"/>
+<path class="flow" d="M 990.0 303 L 990.0 314" marker-end="url(#delivery-phases-arrow)"/>
+<path class="flow" d="M 990.0 393 L 990.0 450" marker-end="url(#delivery-phases-arrow)"/>
+</svg>

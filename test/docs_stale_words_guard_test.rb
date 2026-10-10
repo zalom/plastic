@@ -1,14 +1,15 @@
 # frozen_string_literal: true
 
 require "minitest/autorun"
+require_relative "support/stale_words"
 
 class DocsStaleWordsGuardTest < Minitest::Test
+  include StaleWords
+
   ROOT = File.expand_path("..", __dir__)
   PAGES = (["README.md"] + Dir["docs/**/*.md", base: ROOT]).reject { |path| path.start_with?("docs/reviews/") }
   VARAR = Dir["varar/*.md", base: ROOT] + Dir["test/varar/*.rb", base: ROOT]
   STALE = /doctor --core|next: none|intent end \S+ --(?!project|json)|\bEvery command ends with/
-  INTENT_ID = /\bintents? \d+/i
-  DATE = /\b20\d\d-\d\d-\d\d\b/
 
   def stale_words(text, pattern = STALE) = text.scan(pattern)
 
@@ -19,19 +20,19 @@ class DocsStaleWordsGuardTest < Minitest::Test
   def test_the_subjects_are_read_from_the_disk
     refute_empty PAGES
     refute_empty VARAR
-    assert_includes PAGES, "docs/internals.md"
+    assert_equal %w[docs/contributing/ARCHITECTURE.md docs/internals.md], PAGES & %w[docs/contributing/ARCHITECTURE.md docs/internals.md]
   end
 
   def test_no_page_or_acceptance_document_uses_a_removed_option_or_next_line
     assert_empty found(PAGES + VARAR)
   end
 
-  def test_internals_names_no_intent_by_number
-    assert_empty found(["docs/internals.md"], INTENT_ID)
+  def test_internals_and_architecture_name_no_intent_by_number
+    assert_empty found(["docs/internals.md", "docs/contributing/ARCHITECTURE.md"], INTENT_ID)
   end
 
-  def test_internals_names_no_date
-    assert_empty found(["docs/internals.md"], DATE)
+  def test_internals_and_architecture_name_no_date
+    assert_empty found(["docs/internals.md", "docs/contributing/ARCHITECTURE.md"], DATE)
   end
 
   def test_the_date_detector_catches_a_date_and_leaves_a_version_alone

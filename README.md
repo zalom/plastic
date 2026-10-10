@@ -72,7 +72,7 @@ graph step once the session holds the delivery lock. For checklist work, the sam
 reports the next unfinished item.
 
 The files are plain Markdown in a Git repository that you own. See
-[the architecture](docs/architecture.md) for the full store layout.
+[the architecture](docs/contributing/ARCHITECTURE.md) for the full store layout.
 
 ## Installation
 
@@ -394,9 +394,8 @@ Your stores under `~/.plastic` stay.
 - **[docs/guide/](docs/guide/index.md)**: getting started with the `plastic` command.
 - **[docs/guides/](docs/guides/index.md)**: task guides, from your first intent to picking a mode.
 - **[docs/usage/](docs/usage/FEATURES.md)**: features, the audit guide and tracking.
-- **[docs/architecture.md](docs/architecture.md)**: the structure, the store layout and the stage table.
 - **[docs/internals.md](docs/internals.md)**: how Plastic stays deterministic.
-- **[docs/contributing/](docs/contributing/ARCHITECTURE.md)**: the command architecture, the coding practices and the gates.
+- **[docs/contributing/](docs/contributing/ARCHITECTURE.md)**: the system architecture in drawings, the command architecture, the coding practices and the gates.
 - **[CHANGELOG.md](CHANGELOG.md)**: one entry for each release.
 
 ## Privacy
