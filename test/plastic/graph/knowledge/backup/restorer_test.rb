@@ -17,7 +17,7 @@ class KnowledgeBackupRestorerTest < Plastic::TestCase
 
   def root = File.join(@restore_home, "stores", "alpha")
 
-  def local_db = Plastic::Graph.open(home: @restore_home, store: "alpha").databases.fetch(:local)
+  def local_db = Plastic::Graph.create(home: @restore_home, store: "alpha").databases.fetch(:local)
 
   def restorer(now: at(2026, 6, 1, 12, 0, 0)) = Restorer.new(local_db, root, "alpha", now:)
 

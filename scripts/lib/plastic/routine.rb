@@ -11,6 +11,8 @@ require_relative "routine_run"
 require_relative "routine/chain"
 require_relative "routine/traversal"
 require_relative "routine/preview"
+require_relative "routine/printing"
+require_relative "routine/graph_report"
 require_relative "workflow"
 require_relative "graph"
 
@@ -30,6 +32,8 @@ module Plastic
   class Routine < CLI::Command
     extend Preview::Declaration
     include Preview
+    include Printing
+    include GraphReport
 
     class << self
       def workflow(key, **edge, &branches)
@@ -68,26 +72,26 @@ module Plastic
 
     def finish(routine_run)
       ctx = context(routine_run)
-      report(Traversal.new(chain, ctx, routine_run) { |run| save_routine_run(run) }.call, ctx)
+      report(printing(Traversal.new(chain, ctx, routine_run) { |run| save_routine_run(run) }.call, ctx), ctx)
     end
 
     # A resumed routine run brings back what its workflows found; this call's
     # arguments and options always win, nil included.
     def context(routine_run)
-      Context.new(declared: self.class.declared_facts, facts: routine_run.facts.merge(parsed), graphs:, harness: Context::Harness.new(environment.session, scope))
+      Context.new(declared: self.class.declared_facts, facts: routine_run.facts.merge(parsed), graphs: routine_graphs, harness: Context::Harness.new(environment.session, scope))
     end
 
     def chain = self.class.chain
 
     # The printed lines and rows go first on every end, failure included, so a gate
     # that says "see above" has something above it. Then the call says what
-    # it wrote: the rows, one phrase per database. The end value prints its
-    # own last lines and gives the exit code.
+    # it wrote: the rows, one phrase per database, and the files it
+    # printed. The end value prints its own last lines and gives the exit code.
     #
     #   wrote: 1 intent and 1 ledger line in work_graph.db
     def report(value, ctx)
       ctx.print_to(output)
-      output.row("wrote:", graphs.wrote)
+      report_graphs if touches_graphs?
       @exit_code = value.report(output)
     end
 
@@ -107,9 +111,8 @@ module Plastic
       graphs.work.save_routine_run(routine_run) if keeps_routine_run?
     end
 
-    # Every command keeps its routine run, so the session that reads a call
-    # back sees the same row a write left: a read's facts and next command
-    # are call memory too.
-    def keeps_routine_run? = true
+    # A command that writes keeps its routine run, so a resumed write finds
+    # its facts. A read, and a dry run, keep none.
+    def keeps_routine_run? = self.class.writes.any? && !parsed[:dry_run]
   end
 end

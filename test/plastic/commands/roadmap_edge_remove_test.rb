@@ -40,7 +40,7 @@ class RoadmapEdgeRemoveTest < Plastic::TestCase
     result = call("r1", "a", "d")
 
     assert_call result, code: 0,
-      out: "edge: a to d removed\nwrote:  1 roadmap edge in work_graph.db\n\nnext: plastic roadmap show r1 --project global\nbecause: edge a to d is gone\n"
+      out: "edge: a to d removed\nwrote:  1 routine run in local.db\n        1 roadmap edge in work_graph.db\nfiles:  roadmaps/r1.md\n\nnext: plastic roadmap show r1 --project global\nbecause: edge a to d is gone\n"
     refute_includes edges.map { |edge| [edge.from, edge.to] }, %w[a d]
   end
 

@@ -8,6 +8,7 @@ module Plastic
     class IntentAbandon < Routine
       intent_subject
       writes :work
+      prints :index
       reads :knowledge
 
       workflow :code_prepare_abandon do

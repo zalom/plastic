@@ -3,6 +3,8 @@
 require_relative "../test_helper"
 
 class RoutineRunTest < Plastic::TestCase
+  include LifecycleHelper
+
   def fresh = Plastic::RoutineRun.fresh("intent end", "7")
 
   def test_a_fresh_routine_run_is_running_with_nothing_found
@@ -84,5 +86,35 @@ class RoutineRunTest < Plastic::TestCase
       "facts" => "{}", "finished" => "[]")
 
     refute_includes Plastic::RoutineRun.from_row(row, "7").to_h.keys, :session_id
+  end
+
+  Seen = Data.define(:id, :tags)
+
+  def saved_facts(facts)
+    run = fresh.close(Plastic::Finished.new(next_command: nil, because: "done"), facts)
+    store_graphs.work.save_routine_run(run)
+    JSON.parse(store_graphs.databases.fetch(:local).row("SELECT facts FROM routine_runs").fetch("facts"))
+  end
+
+  def test_facts_holding_a_data_object_are_saved_as_a_plain_hash
+    saved = saved_facts(seen: Seen.new(id: "7", tags: %w[a]))
+
+    assert_equal({ "seen" => { "id" => "7", "tags" => %w[a] } }, saved)
+  end
+
+  def test_a_data_object_inside_an_array_is_saved_as_a_hash_too
+    saved = saved_facts(list: [Seen.new(id: "1", tags: []), { "deep" => Seen.new(id: "2", tags: []) }])
+
+    assert_equal [{ "id" => "1", "tags" => [] }, { "deep" => { "id" => "2", "tags" => [] } }], saved.fetch("list")
+    refute_includes saved.to_s, "#<data"
+  end
+
+  def test_a_node_add_wrote_row_names_the_routine_run
+    specified
+    cli("intent", "approve", "1")
+    cli("auto", "1")
+    call = cli("node", "add", "1", "Deliver it", "--criterion", KEY)
+
+    assert_includes call.out, "1 routine run in local.db"
   end
 end

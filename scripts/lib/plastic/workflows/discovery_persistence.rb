@@ -20,7 +20,6 @@ module Plastic
         @context.database(:knowledge).transaction do |batch|
           batch.put(:retrieval_discoveries, { intent_id:, data: @body, updated_at: Plastic.now })
         end
-        @context.work.print_intent(intent_id)
       end
     end
   end

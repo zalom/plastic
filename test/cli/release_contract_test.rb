@@ -18,6 +18,7 @@ require "rbconfig"
 class CliReleaseContractTest < Minitest::Test
   def setup
     @dir = Dir.mktmpdir("plastic-release-contract")
+    FileUtils.mkdir_p(File.join(@dir, ".plastic", "stores", "global"))
     @bin = ENV.fetch("PLASTIC_ACCEPTANCE_BIN") { File.expand_path("../../bin/plastic", __dir__) }
     @result, @error, @status = command("intent", "new", "A sample delivery")
   end
@@ -38,9 +39,8 @@ class CliReleaseContractTest < Minitest::Test
   end
 
   def test_the_real_process_writes_the_intent_and_prints_its_folder
-    assert_equal ["intent: 1", "printed store/index.json", "printed store/1--a-sample-delivery/intent.md",
-      "printed store/1--a-sample-delivery/savepoint.md", "printed store/1--a-sample-delivery/graph.json"],
-      @result.dig("result", "output")
+    assert_equal ["intent: 1"], @result.dig("result", "output")
+    assert_path_exists File.join(@dir, ".plastic", "stores", "global", "store", "1--a-sample-delivery", "graph.json")
   end
 
   def test_the_real_process_names_the_next_step

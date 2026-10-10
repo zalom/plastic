@@ -3,10 +3,10 @@
 require_relative "../../test_helper"
 
 class StoreDatabaseTest < Plastic::TestCase
-  def test_a_write_makes_the_store_files
-    Plastic::Graph.open(home: @plastic_home, store: "fresh").work.write_intent(title: "Alpha")
+  def test_creating_a_store_makes_the_store_files
+    Plastic::Graph.create(home: @plastic_home, store: "fresh").work.write_intent(title: "Alpha")
 
-    assert_equal %w[knowledge_graph.db work_graph.db], Dir.children(File.join(@plastic_home, "stores", "fresh")).grep(/\.db\z/).sort
+    assert_equal %w[knowledge_graph.db references.db work_graph.db], Dir.children(File.join(@plastic_home, "stores", "fresh")).grep(/\.db\z/).sort
   end
 
   def test_the_databases_sit_in_the_store_folder

@@ -22,6 +22,8 @@ class RetrievalReadCliTest < Minitest::Test
 
   def test_search_reads_the_index_in_a_fresh_cli_process
     in_home do |home|
+      FileUtils.mkdir_p(File.join(home, "stores", "global"))
+
       assert_success run_cli(home, "intent", "new", "Search target")
       search = run_cli(home, "search", "Search", "--json")
 

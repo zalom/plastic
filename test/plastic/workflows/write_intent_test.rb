@@ -5,7 +5,7 @@ require_relative "../../../scripts/lib/plastic/workflows/write_intent"
 
 class WriteIntentTest < Plastic::TestCase
   WriteIntent = Plastic::Workflows::WriteIntent
-  DECLARED = %i[title parent_id ref after kind status problem intent_id linked printed_paths].freeze
+  DECLARED = %i[title parent_id ref after kind status problem intent_id linked].freeze
 
   # The work graph as WriteIntent calls it, keeping each call.
   class Work
@@ -21,8 +21,6 @@ class WriteIntentTest < Plastic::TestCase
     def intent_problem(**call) = (@calls << [:problem, call]) && @problem
 
     def write_intent(**intent) = (@calls << [:write, intent]) && Written.new("1a")
-
-    def print_intent(intent_id) = (@calls << [:print, intent_id]) && %w[store/index.json store/1a--build/1a--build.md]
 
     def ref_line(ref) = "ref: #{ref}, in words"
   end
@@ -40,17 +38,17 @@ class WriteIntentTest < Plastic::TestCase
     [WriteIntent.call(context), context.printed, work.calls]
   end
 
-  def test_the_intent_is_written_then_printed_then_named
+  def test_the_intent_is_written_then_named
     outcome, printed, calls = run_flow(parent_id: "1", ref: "ENG-1")
 
     assert_equal :done, outcome
-    assert_equal ["intent: 1a", "ref: ENG-1, in words", "printed store/index.json", "printed store/1a--build/1a--build.md"], printed
+    assert_equal ["intent: 1a", "ref: ENG-1, in words"], printed
     assert_equal [[:problem, { parent_id: "1", ref: "ENG-1", status: "open" }],
-      [:write, { title: "Build", parent_id: "1", ref: "ENG-1", kind: "work", status: "open" }], [:print, "1a"]], calls
+      [:write, { title: "Build", parent_id: "1", ref: "ENG-1", kind: "work", status: "open" }]], calls
   end
 
   def test_no_ref_prints_no_ref_line
-    assert_equal ["intent: 1a", "printed store/index.json", "printed store/1a--build/1a--build.md"], run_flow[1]
+    assert_equal ["intent: 1a"], run_flow[1]
   end
 
   def test_a_problem_fails_the_call_before_any_write
@@ -75,7 +73,7 @@ class WriteIntentTest < Plastic::TestCase
   def test_the_outcome_offers_the_next_command_and_names_the_intent
     outcome = WriteIntent.outcomes.first
 
-    assert_equal [:done, "plastic next", "intent %{intent_id} has its rows and its printed files"],
+    assert_equal [:done, "plastic next", "intent %{intent_id} has its rows and its files"],
       [outcome.name, outcome.offers, outcome.because]
   end
 

@@ -15,15 +15,28 @@ module Plastic
         items.each_with_index.map { |item, index| "#{(index.zero? ? label : "").ljust(width)}#{item}" }
       end
 
+      def initialize(out:, err:)
+        super
+        @rows_flushed = false
+      end
+
       def raw(text) = tap { out.puts(text) }
+
+      def flush_rows(_project = nil)
+        return self if flushed? || @rows_flushed
+
+        @rows_flushed = true
+        lines = row_lines
+        out.puts(lines) unless lines.empty?
+        self
+      end
 
       private
 
       def print_answer(project)
-        rows = row_lines
-        closing = result.closing_lines(project)
-        lines = (rows.empty? || closing.empty?) ? rows + closing : [*rows, "", *closing]
-        out.puts(lines) unless lines.empty?
+        rows = @rows_flushed ? [] : row_lines
+        lines = [rows, result.closing_lines(project)].reject(&:empty?).reduce { |above, below| [*above, "", *below] }
+        out.puts(lines) if lines
       end
 
       def row_lines

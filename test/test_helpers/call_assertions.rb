@@ -4,6 +4,8 @@
 # output and standard error. A String must equal the stream, a Regexp must
 # match it, and an Array names parts the stream must include.
 module CallAssertions
+  RUN_ROW = "wrote:  1 routine run in local.db\n"
+
   def assert_call(call, code:, out: "", err: "")
     assert_equal code, call.code, "exit code"
     assert_stream out, call.out, "standard output"

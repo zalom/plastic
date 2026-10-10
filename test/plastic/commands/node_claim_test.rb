@@ -77,7 +77,7 @@ class NodeClaimTest < Plastic::TestCase
 
     assert_equal 1, result.code
     assert_includes result.err, "node n2 needs a node that is not done"
-    assert_equal "", result.out
+    assert_equal RUN_ROW, result.out
   end
 
   def test_a_node_refused_for_its_needs_is_claimed_once_they_are_done

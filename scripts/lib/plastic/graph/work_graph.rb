@@ -7,6 +7,7 @@ require_relative "printer"
 require_relative "prints"
 require_relative "knowledge/sync/preview"
 require_relative "work/writers"
+require_relative "knowledge/intent/noter"
 
 module Plastic
   module Graph
@@ -24,6 +25,8 @@ module Plastic
       def_delegator "@writers.intents", :ref_line
       def_delegator "@writers.revisions", :change, :revision
       def_delegator "@writers.revisions", :write, :revise_intent
+      def_delegator :noter, :problem, :note_problem
+      def_delegator :noter, :write, :note_intent
       def_delegator "@writers.completions", :close, :close_intent
       def_delegator "@writers.completions", :abandon, :abandon_intent
       def_delegators "@writers.nodes", :add_node, :remove_node, :claim_node, :release_node, :done_node, :fail_node,
@@ -80,6 +83,11 @@ module Plastic
       def start_roadmap_item(slug, item_id) = Knowledge::Roadmap::ItemStart.new(@writers).call(slug, item_id)
 
       def print_index = @writers.sync.printer.print([Prints.index(@retrieval)])
+
+      # The paths this call printed, relative to the store folder.
+      def printed = @writers.sync.printer.written
+
+      def noter = (@noter ||= Knowledge::Intent::Noter.new(@writers.databases, @writers.retrieval, @writers.folder))
 
       def preview_sync(options, direction: :up)
         Knowledge::Sync::Preview.new(home_dir, @retrieval.store, options, direction:).call

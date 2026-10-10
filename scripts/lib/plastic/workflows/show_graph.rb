@@ -5,12 +5,11 @@ require_relative "lines"
 
 module Plastic
   module Workflows
-    # Prints each node and edge, then overwrites graph.json from rows: the
-    # file is never read, so a hand edit never feeds back into the graph.
+    # Prints each node and edge from the rows. It never reads or writes graph.json.
     class ShowGraph < CodeWorkflow
       [facts, steps, outcomes].each(&:clear)
 
-      sets :intent, :printed_paths
+      sets :intent
 
       read "find the intent" do |context|
         context[:intent] = context.retrieval.intent(context.intent_id)
@@ -23,11 +22,7 @@ module Plastic
         context.retrieval.edges(context.intent_id).each { |edge| context.print("edge: #{edge.from} to #{edge.to}") }
       end
 
-      step "reprint graph.json", done: ->(context) { !context.printed_paths.nil? } do |context|
-        context[:printed_paths] = context.work.print_intent(context.intent_id)
-      end
-
-      outcome :done, offers: "plastic graph ready %{intent_id}", because: "graph.json matches the rows"
+      outcome :done, offers: "plastic graph ready %{intent_id}", because: "the rows hold this graph"
     end
   end
 end

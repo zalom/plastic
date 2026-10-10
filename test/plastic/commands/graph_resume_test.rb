@@ -29,7 +29,7 @@ module GraphResumeHelper
   def store_folder(slug) = Plastic::Graph::Knowledge::StoreFolder.new(File.join(@plastic_home, "stores", slug))
 
   def store_intent(slug, title)
-    work = Plastic::Graph.open(home: @plastic_home, store: slug).work
+    work = Plastic::Graph.create(home: @plastic_home, store: slug).work
     intent = work.write_intent(title:)
     work.print_intent(intent.intent_id)
     intent
@@ -272,7 +272,7 @@ class GraphResumeRebuildTest < Plastic::TestCase
     result = plastic("sync", "up", "--project", "c", table: Plastic::CLI::TABLE)
 
     assert_equal 1, result.code
-    assert_empty Plastic::Graph.open(home: @plastic_home, store: "c").retrieval.intents
+    assert_empty Plastic::Graph.create(home: @plastic_home, store: "c").retrieval.intents
   end
 
   def test_sync_up_rebuilds_the_rows_of_a_folder_that_holds_its_index_with_no_flag
@@ -283,7 +283,7 @@ class GraphResumeRebuildTest < Plastic::TestCase
     result = plastic("sync", "up", "--project", "c", table: Plastic::CLI::TABLE)
 
     assert_equal 0, result.code
-    assert_equal [intent.intent_id], Plastic::Graph.open(home: @plastic_home, store: "c").retrieval.intents.map(&:intent_id)
+    assert_equal [intent.intent_id], Plastic::Graph.create(home: @plastic_home, store: "c").retrieval.intents.map(&:intent_id)
   end
 
   def test_rows_missing_with_an_index_name_sync_up_as_the_step

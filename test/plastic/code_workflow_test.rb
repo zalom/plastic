@@ -77,3 +77,45 @@ class CodeWorkflowTest < Plastic::TestCase
       Flows::Hold.call(context(facts: { mode: "break" }))
   end
 end
+
+class CodeWorkflowGateOffersTest < Plastic::TestCase
+  def test_a_failing_gate_with_offers_exits_1_and_prints_its_next_line
+    call = plastic("kernel", "offer", "break")
+
+    assert_equal 1, call.code
+    assert_equal "next: plastic kernel two break\nbecause: the check broke on break\n", call.out
+    assert_includes call.err, "the check broke on break"
+  end
+
+  def test_a_failing_gate_with_offers_carries_the_command_in_json
+    call = plastic("kernel", "offer", "break", "--json")
+    document = JSON.parse(call.out)
+
+    assert_equal 1, call.code
+    assert_equal "plastic kernel two break", document.fetch("next")
+    assert_equal "the check broke on break", document.fetch("because")
+  end
+
+  def test_a_failing_gate_without_offers_prints_no_next_line
+    call = plastic("kernel", "offer", "plain")
+
+    assert_equal 1, call.code
+    refute_includes call.out, "next:"
+    assert_includes call.err, "nothing follows plain"
+  end
+
+  def test_a_refusal_gate_may_offer_a_command_too
+    call = plastic("kernel", "offer", "hold")
+
+    assert_equal 3, call.code
+    assert_equal "next: plastic kernel two hold\nbecause: the owner holds hold\n", call.out
+    assert_includes call.err, "plastic: refused, the owner holds hold"
+  end
+
+  def test_a_gate_that_passes_still_ends_the_chain_normally
+    call = plastic("kernel", "offer", "fine")
+
+    assert_equal 0, call.code
+    assert_includes call.out, "because: passed fine"
+  end
+end

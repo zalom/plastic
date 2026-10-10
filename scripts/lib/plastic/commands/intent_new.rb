@@ -15,6 +15,7 @@ module Plastic
       option :kind, switch: "--kind KIND", text: "the kind of work", default: "work"
       option :status, switch: "--status STATUS", text: "open, active, parked or future", default: "open"
       writes :work, :knowledge, :references
+      prints :intent
 
       workflow :code_write_intent, next: :noop
     end

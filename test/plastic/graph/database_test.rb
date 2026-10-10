@@ -81,12 +81,12 @@ class DatabaseTest < Plastic::TestCase
 
   def test_returning_rows_come_back_in_order
     returned = database.transaction do |batch|
-      batch.write(:routine_runs, "INSERT INTO routine_runs(name) VALUES (:name) RETURNING name", name: "a")
-      batch.write(:routine_runs, "INSERT INTO routine_runs(name) VALUES (:name) RETURNING name", name: "b")
+      batch.write(:tallies, "INSERT INTO tallies(name) VALUES (:name) RETURNING name", name: "a")
+      batch.write(:tallies, "INSERT INTO tallies(name) VALUES (:name) RETURNING name", name: "b")
     end
 
     assert_equal [[{ "name" => "a" }], [{ "name" => "b" }]], returned
-    assert_equal({ "routine_runs" => 2 }, database.written)
+    assert_equal({ "tallies" => 2 }, database.written)
   end
 
   def test_a_conflict_clause_skips_the_duplicate

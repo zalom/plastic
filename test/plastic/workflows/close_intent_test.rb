@@ -30,13 +30,6 @@ class CloseIntentTest < Plastic::TestCase
     assert_includes Plastic::Commands::IntentEnd.chain.keys, :agent_wind_down_intent
   end
 
-  def test_closing_rewrites_the_index
-    ready
-    close
-
-    assert_includes File.read(store_path("store/index.json")), "\"done\""
-  end
-
   def test_an_intent_with_problems_fails_with_no_completion
     open_intent
 

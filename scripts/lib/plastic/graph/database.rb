@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative "missing_store"
 require_relative "schema"
 require_relative "sql"
 require_relative "database/batch"
@@ -22,10 +23,22 @@ module Plastic
       # The local database, for what belongs to one machine.
       def self.open_local(home) = { local: Local.new(home) }
 
+      # The store folder under the home, which must exist.
+      def self.store_root(home, store)
+        root = File.join(home, "stores", store)
+        raise Error, "#{home}: the plastic home is not a folder" if File.exist?(home) && !File.directory?(home)
+        raise MissingStore, store unless File.directory?(root)
+
+        root
+      end
+
       # The three databases of one store folder. `origin` stamps their rows and their change log.
       def self.open_store(root, origin)
         Schema.store.to_h { |key| [key, new(File.join(root, Schema.file(key)), Schema.fetch(key), origin:)] }
       end
+
+      # A call saves its routine run at each step, and it is still one row.
+      RUNS = "routine_runs"
 
       attr_reader :path, :written
 
@@ -70,6 +83,9 @@ module Plastic
       # "1 intent and 1 savepoint line in work_graph.db". Nil when nothing.
       def written_phrase = written.empty? ? nil : "#{Schema.phrase(written)} in #{file}"
 
+      # Whether this call wrote a row other than its routine run.
+      def wrote_rows? = written.keys.any? { |table| table != RUNS }
+
       # What the report says of this database: what this call wrote.
       def phrases = [written_phrase].compact
 
@@ -86,7 +102,10 @@ module Plastic
         returned
       end
 
-      def count(table, rows) = @written[table] += rows
+      def count(table, rows)
+        before = @written[table]
+        @written[table] = (table == RUNS) ? [before, rows].max : before + rows
+      end
 
       def connected
         yield connection

@@ -14,6 +14,7 @@ module WholeHome
     super
     @home = File.realpath(Dir.mktmpdir("plastic-doctor"))
     @plastic_home = File.join(@home, ".plastic")
+    FileUtils.mkdir_p(File.join(@plastic_home, "stores", "global"))
   end
 
   def teardown

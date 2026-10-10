@@ -10,6 +10,7 @@ module Plastic
       argument :slug, label: "SLUG", text: "the roadmap"
       argument :item_id, label: "ITEM", text: "the item to start"
       writes :work, :knowledge, :references
+      prints :roadmap, :intent
 
       workflow :code_start_roadmap_item, next: :noop
     end

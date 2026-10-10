@@ -67,7 +67,7 @@ class RoadmapStartTest < Plastic::TestCase
 
     result = call("r1", "b")
 
-    assert_call result, code: 3, err: "plastic: refused, item b is blocked, not ready\nThis step belongs to the owner. Stop and ask; do not retry with a flag.\n"
+    assert_call result, code: 3, out: RUN_ROW, err: "plastic: refused, item b is blocked, not ready\nThis step belongs to the owner. Stop and ask; do not retry with a flag.\n"
     assert_nil item_row("b").intent_id
   end
 end

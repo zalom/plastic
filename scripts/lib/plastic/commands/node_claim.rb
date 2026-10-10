@@ -8,6 +8,7 @@ module Plastic
     class NodeClaim < Routine
       node_subject
       writes :work
+      prints :intent
 
       workflow :code_claim_node, next: :noop
     end

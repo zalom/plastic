@@ -32,8 +32,10 @@ module LegacyImportAcceptance
   def self.result(call)
     return call.result unless call.code.zero?
 
-    counts = call.said.group_by { |line| line[/\A(read|printed) /, 1] }
-    [*counts[nil], *counts.except(nil).map { |verb, lines| "#{lines.size} files #{verb}" }].join(" / ").then { |text| text.empty? ? "none" : text }
+    lines = call.said
+    counts = { "read" => lines.grep(/\Aread /), "printed" => call.files.split(" / ") - ["none"] }
+    rows = [*lines.grep_v(/\Aread /), *counts.reject { |_, found| found.empty? }.map { |verb, found| "#{found.size} files #{verb}" }]
+    rows.empty? ? "none" : rows.join(" / ")
   end
 
   # Whether every file 1 held before the call holds the same bytes after it.

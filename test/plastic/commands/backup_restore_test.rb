@@ -92,7 +92,7 @@ class BackupRestoreTest < Plastic::TestCase
     before = bytes(home, "work_graph")
     result = restore_call(home, "--store", "alpha", "--timestamp", SECOND)
 
-    assert_equal [3, ""], [result.code, result.out]
+    assert_equal [3, RUN_ROW], [result.code, result.out]
     assert_includes result.err, "failed"
     assert_equal before, bytes(home, "work_graph")
   end

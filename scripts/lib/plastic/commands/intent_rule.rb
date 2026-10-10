@@ -11,6 +11,7 @@ module Plastic
       argument :text, label: "TEXT", text: "the ruling, in the owner's words"
       option :supersedes, switch: "--supersedes RULING_ID", text: "an older ruling this one replaces"
       writes :knowledge
+      prints :intent
 
       workflow :code_add_ruling, next: :noop
     end

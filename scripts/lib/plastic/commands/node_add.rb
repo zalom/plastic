@@ -11,6 +11,7 @@ module Plastic
       option :criterion, switch: "--criterion KEY", text: "the key of the spec done criterion this node serves", required: true
       option :input, switch: "--input PATH", text: "a file the node reads"
       writes :work
+      prints :intent
 
       workflow :code_add_node, next: :noop
     end

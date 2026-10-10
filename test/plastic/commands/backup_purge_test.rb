@@ -80,7 +80,7 @@ class BackupPurgeTest < Plastic::TestCase
 
   def test_a_folder_with_no_row_is_deleted
     home = seeded_home
-    Plastic::Graph.open(home:, store: "alpha").databases.fetch(:local).transaction { |batch| batch.remove(:backups, name: "alpha/#{stamps.first}") }
+    Plastic::Graph.create(home:, store: "alpha").databases.fetch(:local).transaction { |batch| batch.remove(:backups, name: "alpha/#{stamps.first}") }
     purge_call(home, "--store", "alpha", "--all")
 
     assert_empty folder_names(home)

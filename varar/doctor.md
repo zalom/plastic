@@ -18,7 +18,7 @@ Each row gives the harness, the damage, the exit code, the check, the repair and
 | claude-code | none                                      |    0 | none              | none                                         |            0 |
 | claude-code | remove references.db from the store       |    1 | store alpha       | plastic project new alpha PROJECT            |            0 |
 | claude-code | drop the intents table from work_graph.db |    1 | store alpha       | plastic project new alpha PROJECT            |            0 |
-| claude-code | remove the machine database               |    1 | machine database  | plastic next                                 |            0 |
+| claude-code | remove the machine database               |    1 | machine database  | plastic install --reinstall                  |            0 |
 | claude-code | make the launcher not executable          |    1 | hook SessionStart | plastic install --claude --reinstall         |            0 |
 | claude-code | clear the Plastic block from CLAUDE.md    |    1 | CLAUDE.md         | plastic install --claude --reinstall         |            0 |
 | claude-code | clear the project CLAUDE.md               |    1 | CLAUDE.md alpha   | add the line @AGENTS.md to PROJECT/CLAUDE.md |            0 |

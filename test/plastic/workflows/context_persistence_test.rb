@@ -20,14 +20,6 @@ class ContextPersistenceTest < Plastic::TestCase
     assert_equal DOCUMENT, JSON.parse(row.fetch("data"))
   end
 
-  def test_the_context_is_printed_into_the_intent_folder
-    persist
-    printed = JSON.parse(File.read(store_path("store/1--alpha/context.json")))
-
-    assert_equal DOCUMENT, printed.fetch("context")
-    assert_equal "1", printed.fetch("intent")
-  end
-
   def test_nothing_is_written_at_the_store_root
     persist
 

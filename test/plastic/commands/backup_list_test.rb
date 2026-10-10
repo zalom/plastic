@@ -85,7 +85,7 @@ class BackupListTest < Plastic::TestCase
   def test_a_folder_with_no_row_is_listed_as_no_row_and_does_not_fail
     home = fresh_home
     backup_at(home, at(*FIRST))
-    Plastic::Graph.open(home:, store: "alpha").databases.fetch(:local).transaction { |batch| batch.remove(:backups, name: "alpha/20260101100000") }
+    Plastic::Graph.create(home:, store: "alpha").databases.fetch(:local).transaction { |batch| batch.remove(:backups, name: "alpha/20260101100000") }
     result = list_call(home, "--store", "alpha")
 
     assert_call result, code: 0, out: ["20260101100000", "(no row)"]

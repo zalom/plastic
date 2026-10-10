@@ -10,6 +10,7 @@ module Plastic
       node_subject
       argument :text, label: "TEXT", text: "the resolution"
       writes :work
+      prints :intent
 
       workflow :code_resolve_node, next: :noop
     end

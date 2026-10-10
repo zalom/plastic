@@ -11,6 +11,7 @@ module Plastic
       argument :from, label: "FROM", text: "the edge's start"
       argument :to, label: "TO", text: "the edge's end"
       writes :work
+      prints :roadmap
       previews
 
       workflow :code_remove_roadmap_edge, next: :noop

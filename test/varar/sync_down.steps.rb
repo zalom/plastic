@@ -42,12 +42,12 @@ module SyncDownAcceptance
 end
 
 steps do
-  sensor("the change, the call, the exit code, the result, the file and the row") do |_state, row|
+  sensor("the change, the call, the exit code, the result, the files, the file and the row") do |_state, row|
     Dir.mktmpdir("varar-sync-down") do |home|
       kernel = KernelCommand.new(home)
       SyncDownAcceptance.prepare(kernel, row["change"])
       call = kernel.run(*row["call"].split)
-      row.merge("exit" => call.code.to_s, "result" => call.result, "file" => SyncDownAcceptance.file(kernel),
+      row.merge("exit" => call.code.to_s, "result" => call.result, "files" => call.files, "file" => SyncDownAcceptance.file(kernel),
         "row" => SyncDownAcceptance.row(kernel))
     end
   end

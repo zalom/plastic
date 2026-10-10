@@ -13,6 +13,7 @@ module Plastic
       argument :kind, label: "KIND", text: "cites, supersedes, answers, source or chain"
       argument :target, label: "TARGET", text: "an intent, a ruling, or a ref with a store prefix"
       writes :knowledge
+      prints :intent
 
       def call
         raise CLI::Command::Usage, "KIND takes #{Graph::Knowledge::Link::KINDS.join(", ")}" unless Graph::Knowledge::Link::KINDS.include?(parsed[:kind])

@@ -10,7 +10,8 @@
 # One-shot by design:
 #   - no install present  -> fresh install + bootstrap store
 #   - already installed   -> refuse (point at `update` / `--reinstall`)
-#   - --reinstall         -> re-sync core files for the installed version (repair); store untouched
+#   - --reinstall         -> sync the core files again for the installed version, and make the global
+#                            store and local.db when they are missing or behind
 #
 # `update` and `versions` delegate their file-sync here via `--reinstall --ledger-action <action>`,
 # so install.rb is the single file-syncer; the ledger action is contextual.
@@ -78,7 +79,7 @@ class Install < InstallerCore
     mode = fresh ? :install : :update # :update here means "re-sync, skip bootstrap"
 
     distribute(mode)
-    bootstrap if fresh
+    fresh ? bootstrap : ready_global_store
     migrate_advisor_config_file(File.join(plastic_home, "config.yml"))
     apply_config_flags(argv)
 

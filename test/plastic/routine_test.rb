@@ -11,12 +11,10 @@ class RoutineTest < Plastic::TestCase
     assert_equal "", call.err
   end
 
-  def test_a_tool_that_writes_nothing_still_keeps_a_routine_run_row
+  def test_a_tool_that_writes_nothing_keeps_no_routine_run_row
     plastic("kernel", "two", "ada")
 
-    run = routine_run("kernel two", "")
-
-    assert_equal "finished", run.status
+    assert_nil routine_run("kernel two", "")
   end
 
   def test_an_agent_workflow_hands_off_with_its_steps
@@ -24,7 +22,7 @@ class RoutineTest < Plastic::TestCase
     path = File.join(@home, "notes.md")
 
     assert_equal 0, call.code
-    assert_equal "1. Write the draft to #{path}\nnext: plastic kernel draft notes\n" \
+    assert_equal "1. Write the draft to #{path}\n#{RUN_ROW}\nnext: plastic kernel draft notes\n" \
                  "because: the draft for notes is not written yet\n", call.out
     assert_equal "", call.err
   end
@@ -44,7 +42,7 @@ class RoutineTest < Plastic::TestCase
     File.write(File.join(@home, "notes.md"), "draft")
     call = plastic("kernel", "draft", "notes", "--dir", @home)
 
-    assert_call call, code: 0, out: "next: none\nbecause: the draft for notes is written, stamped #{stamp}\n"
+    assert_call call, code: 0, out: "#{RUN_ROW}\nnext: none\nbecause: the draft for notes is written, stamped #{stamp}\n"
     assert_equal "finished", routine_run("kernel draft", "notes").status
   end
 

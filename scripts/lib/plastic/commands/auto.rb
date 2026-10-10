@@ -10,6 +10,7 @@ module Plastic
       subject :id
       argument :id, label: "ID", text: "the intent id or the roadmap slug"
       writes :work
+      prints :intent
 
       workflow :code_pick_delivery, next: :noop do
         on :intent, next: :code_start_auto

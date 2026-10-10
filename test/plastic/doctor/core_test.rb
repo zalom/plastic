@@ -52,7 +52,8 @@ class DoctorCoreTest < Plastic::TestCase
     File.delete(machine_path)
     database = check("#{schema.file(machine_key)}:")
 
-    assert_equal ["#{machine_path} is missing", "plastic next"], [database.value, database.repair]
+    assert_equal ["#{machine_path} is missing", "plastic install --reinstall"], [database.value, database.repair]
+    refute_includes database.repair, "plastic next"
   end
 
   def test_a_store_that_lacks_a_table_names_the_table_and_the_repair

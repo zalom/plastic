@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "installer_helper"
+require_relative "../../../scripts/lib/plastic/doctor"
 
 class InstallReinstallTest < Plastic::TestCase
   include InstallerHelper
@@ -22,5 +23,28 @@ class InstallReinstallTest < Plastic::TestCase
 
     assert_equal 0, result.code, result.err
     assert_equal [false, false], [result.out.include?("Removed"), result.out.include?("Enola")], result.out
+  end
+
+  def test_a_reinstall_makes_the_global_store_and_the_machine_database_again
+    installed_home_without_stores
+    FileUtils.rm_f(File.join(@plastic_home, Plastic::Graph::Schema.file(machine_key)))
+    result = call("install", "--reinstall")
+
+    assert_equal 0, result.code, result.err
+    assert_equal [nil, nil], [machine_problem, Plastic::Doctor::Core.store_problem(File.join(@plastic_home, "stores", "global"))]
+  end
+
+  def test_the_reinstall_option_says_it_makes_the_stores_that_are_missing
+    help = call("install", "--help").out
+
+    assert_includes help, "sync the files again and make the global store and local.db when they are missing or behind"
+  end
+
+  private
+
+  def machine_key = (Plastic::Graph::Schema.databases.keys - Plastic::Graph::Schema.store).first
+
+  def machine_problem
+    Plastic::Doctor::DatabaseCheck.new(File.join(@plastic_home, Plastic::Graph::Schema.file(machine_key)), machine_key).problem
   end
 end

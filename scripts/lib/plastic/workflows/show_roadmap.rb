@@ -6,11 +6,9 @@ require_relative "roadmap_print"
 module Plastic
   module Workflows
     # Prints each batch with its goal and done criteria, then each item with
-    # its derived state, and reprints roadmaps/SLUG.md from rows.
+    # its derived state, from the rows.
     class ShowRoadmap < CodeWorkflow
       [facts, steps, outcomes].each(&:clear)
-
-      sets :printed_paths
 
       gate "no roadmap %{slug}", stops: :failure, pass: ->(context) { !context.retrieval.roadmap(context.slug).nil? }
 
@@ -18,11 +16,7 @@ module Plastic
         RoadmapPrint.call(context)
       end
 
-      step "reprint the roadmap file", done: ->(context) { !context.printed_paths.nil? } do |context|
-        context[:printed_paths] = context.work.print_roadmap(context.slug)
-      end
-
-      outcome :done, offers: "plastic roadmap next %{slug}", because: "the roadmap file matches the rows"
+      outcome :done, offers: "plastic roadmap next %{slug}", because: "the rows hold this roadmap"
     end
   end
 end

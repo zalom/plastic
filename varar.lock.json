@@ -55,7 +55,7 @@
       ]
     },
     "varar/doctor.md": {
-      "sourceHash": "fnv1a:2d017014",
+      "sourceHash": "fnv1a:6b4246ca",
       "examples": [
         {
           "name": "Each row gives the harness, the damage, the exit code, the check, the repair and the exit code after repair:",
@@ -117,7 +117,7 @@
       ]
     },
     "varar/graph-show.md": {
-      "sourceHash": "fnv1a:84d280e0",
+      "sourceHash": "fnv1a:4ace7729",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -228,11 +228,20 @@
       ]
     },
     "varar/intent-new.md": {
-      "sourceHash": "fnv1a:24cc5bc6",
+      "sourceHash": "fnv1a:678f057e",
       "examples": [
         {
           "name": "Each row gives the store, the call, the exit code, the index, the files and what it says:",
           "line": 8
+        }
+      ]
+    },
+    "varar/intent-note.md": {
+      "sourceHash": "fnv1a:499bc78f",
+      "examples": [
+        {
+          "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
+          "line": 5
         }
       ]
     },
@@ -309,7 +318,7 @@
       ]
     },
     "varar/legacy-import.md": {
-      "sourceHash": "fnv1a:0ab8b37f",
+      "sourceHash": "fnv1a:f6911c95",
       "examples": [
         {
           "name": "Each row gives the fixture, the call, the exit code, the result, the intents and the files of 1:",
@@ -507,7 +516,7 @@
       ]
     },
     "varar/roadmap-start.md": {
-      "sourceHash": "fnv1a:0abffdd6",
+      "sourceHash": "fnv1a:f6c82fb0",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -542,10 +551,10 @@
       ]
     },
     "varar/sync-down.md": {
-      "sourceHash": "fnv1a:e388e808",
+      "sourceHash": "fnv1a:07e0c4ff",
       "examples": [
         {
-          "name": "Each row gives the change, the call, the exit code, the result, the file and the row:",
+          "name": "Each row gives the change, the call, the exit code, the result, the files, the file and the row:",
           "line": 10
         }
       ]

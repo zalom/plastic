@@ -8,9 +8,11 @@ module Plastic
     # Copies the core files of the running package into the home and
     # registers Plastic with the chosen agents.
     class Install < Routine
+      graphless
+
       extend CLI::AgentOptions
 
-      option :reinstall, switch: "--reinstall", default: false, text: "sync the files again for agents already registered"
+      option :reinstall, switch: "--reinstall", default: false, text: "sync the files again and make the global store and local.db when they are missing or behind"
       option :force, switch: "--force", default: false, text: "replace agent files Plastic did not write"
 
       workflow :code_preview_install do
@@ -19,10 +21,6 @@ module Plastic
       end
       workflow :code_install_plastic, next: :agent_offer_enola
       workflow :agent_offer_enola, next: :noop
-
-      private
-
-      def keeps_routine_run? = false
     end
   end
 end

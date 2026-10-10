@@ -8,7 +8,7 @@ module SearchTestSupport
   private
 
   def write_document(store, body, path: "evidence.md")
-    graphs = Plastic::Graph.open(home: @plastic_home, store:)
+    graphs = Plastic::Graph.create(home: @plastic_home, store:)
     Plastic::Graph::Retrieval::Evidence::Writer.new(graphs.databases.fetch(:knowledge), origin).write("1", path, body)
     graphs.retrieval.backfill
     graphs.retrieval.archived?("1")
@@ -195,7 +195,7 @@ class SearchScopeTest < Plastic::TestCase
   def test_reports_maintenance_without_recreating_a_missing_selected_store_database
     write_document("other", "other evidence")
     root = File.join(@plastic_home, "stores", "other")
-    Plastic::Graph.open(home: @plastic_home, store: "other").retrieval.archived?("1")
+    Plastic::Graph.create(home: @plastic_home, store: "other").retrieval.archived?("1")
     knowledge = File.binread(File.join(root, "knowledge_graph.db"))
     references = File.binread(File.join(root, "references.db"))
     File.delete(File.join(root, "work_graph.db"))

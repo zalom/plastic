@@ -394,8 +394,7 @@ class InstallerCore
   # intent new works at once. No INDEX.md is written, which would mark the
   # store as one still to import.
   def ready_global_store
-    graphs = Plastic::Graph.open(home: plastic_home, store: Plastic::StoreLayout::GLOBAL)
-    graphs.databases.values_at(:knowledge, :work, :references).each { |database| database.rows("SELECT 1") }
+    Plastic::Graph.create(home: plastic_home, store: Plastic::StoreLayout::GLOBAL)
   end
 
   # --- Agent adapters ---

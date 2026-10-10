@@ -16,12 +16,12 @@ class NodeReleaseTest < Plastic::TestCase
 
     result = cli("node", "release", "1", "n1")
 
-    assert_call result, code: 0, out: "node: n1 open\nwrote:  1 node in work_graph.db\n\nnext: plastic node claim 1 n1 --project global\nbecause: node n1 is open\n"
+    assert_call result, code: 0, out: "node: n1 open\nwrote:  1 routine run in local.db\n        1 node in work_graph.db\nfiles:  store/1--alpha/graph.json\n\nnext: plastic node claim 1 n1 --project global\nbecause: node n1 is open\n"
   end
 
   def test_releasing_an_open_node_is_refused
     result = cli("node", "release", "1", "n1")
 
-    assert_call result, code: 1, err: "plastic: code_release_node, gate: node n1 is open; it cannot move to open\n"
+    assert_call result, code: 1, out: RUN_ROW, err: "plastic: code_release_node, gate: node n1 is open; it cannot move to open\n"
   end
 end

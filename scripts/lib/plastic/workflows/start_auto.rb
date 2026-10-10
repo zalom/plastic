@@ -70,7 +70,6 @@ module Plastic
       step "take the lock and go active", done: method(:delivery_started?) do |context|
         context.work.take_lock(context.intent_id, session_id: context.session, mode: "auto")
         context.work.activate_intent(context.intent_id)
-        context.work.print_intent(context.intent_id)
       end
 
       read "name the code worktree" do |context|

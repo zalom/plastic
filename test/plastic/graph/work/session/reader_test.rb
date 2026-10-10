@@ -3,7 +3,7 @@
 require_relative "../../../../test_helper"
 
 class WorkSessionReaderTest < Plastic::TestCase
-  def graphs(session: nil, store: "plastic") = Plastic::Graph.open(home: @plastic_home, store:, session:)
+  def graphs(session: nil, store: "plastic") = Plastic::Graph.create(home: @plastic_home, store:, session:)
 
   def reader = graphs.retrieval
 

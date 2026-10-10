@@ -15,11 +15,18 @@ class KernelCommand
   KERNEL = File.expand_path("../../../scripts/lib/plastic", __dir__)
   LEGACY_STORE = File.expand_path("../../fixtures/legacy_store", __dir__)
   PROGRAM = "require ARGV.shift; exit Plastic::CLI.call(ARGV)"
+  CREATE = "kernel = ARGV.shift; require kernel; require File.join(kernel, %q(graph)); Plastic::Graph.create(home: ENV.fetch('PLASTIC_HOME'), store: 'global')"
 
   # One call: its exit code, what it printed and what it said went wrong.
   Call = Data.define(:code, :out, :err) do
     # The lines that tell what the call did: neither the database report nor next: and because:.
-    def said = out.lines(chomp: true).grep_v(/\A(?:wrote:|  |next:|because:|\z)/)
+    def said = out.lines(chomp: true).grep_v(/\A(?:wrote:|files:|  |next:|because:|\z)/)
+
+    # The files the call printed, from the files: row.
+    def files
+      block = out.lines(chomp: true).drop_while { |line| !line.start_with?("files:") }.take_while { |line| !line.empty? }
+      block.map { |line| line.delete_prefix("files:").strip }.join(" / ").then { |text| text.empty? ? "none" : text }
+    end
 
     # The reason a stopped call gives, without the prefix that names the workflow.
     def reason = err.lines.first.to_s.chomp.sub(/\Aplastic: (?:refused, |code_\w+, [^:]+: (?:Plastic::Invalid: )?)?/, "")
@@ -47,6 +54,7 @@ class KernelCommand
     @env = { "HOME" => home, "PLASTIC_HOME" => plastic_home, "PLASTIC_TMP" => File.join(home, "tmp"),
              "CLAUDE_CODE_SESSION_ID" => nil, "PLASTIC_SESSION" => nil, "CODEX_SESSION_ID" => nil, "CODEX_THREAD_ID" => nil,
              "RUBYOPT" => nil, "BUNDLER_SETUP" => nil }
+    create_store unless File.exist?(plastic_home)
   end
 
   def plastic_home = File.join(home, ".plastic")
@@ -72,6 +80,11 @@ class KernelCommand
 
   def read(rel) = File.read(path(rel))
 
+  def create_store
+    _, err, status = Open3.capture3(@env, RbConfig.ruby, "-e", CREATE, KERNEL, chdir: home)
+    raise "the global store was not made: #{err}" unless status.success?
+  end
+
   def write(rel, text)
     FileUtils.mkdir_p(File.dirname(path(rel)))
     File.write(path(rel), text)
@@ -87,7 +100,7 @@ class KernelCommand
   end
 
   def copy_legacy_store
-    FileUtils.mkdir_p(File.dirname(store))
+    FileUtils.rm_rf(store)
     FileUtils.cp_r(LEGACY_STORE, store)
   end
 

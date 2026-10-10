@@ -12,7 +12,7 @@ class SessionNoteTest < Plastic::TestCase
     result = call("stopped", "after", "Beta", env: { "PLASTIC_SESSION" => "s-1" })
 
     assert_equal "stopped after Beta", store_graphs.retrieval.session("s-1").note
-    assert_includes result.out, "1 session in local.db"
+    assert_includes result.out, "1 session and 1 routine run in local.db"
   end
 
   def test_a_second_note_replaces_the_first_with_no_new_row

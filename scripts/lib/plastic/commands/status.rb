@@ -20,6 +20,12 @@ module Plastic
       private
 
       def print_store(slug)
+        show_store(slug)
+      rescue Graph::MissingStore => error
+        output.row("store:", "#{slug} has no store folder; run #{error.next_command}")
+      end
+
+      def show_store(slug)
         retrieval = Graph.open(home: scope.plastic_home, store: slug).retrieval
         output.row("store:", slug)
         retrieval.intents.select(&:open?).each { |intent| print_intent(retrieval, intent) }

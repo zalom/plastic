@@ -9,6 +9,9 @@ module Plastic
 
       def store_path(path) = File.join(store_root, path)
 
+      # The row store/index.json lists for an intent, nil when it lists none.
+      def listed(id) = JSON.parse(File.read(store_path("store/index.json"))).fetch("intents").find { |row| row.fetch("intent_id") == id }
+
       def store_graphs = Plastic::Graph.open(home: @plastic_home, store: "global")
 
       def origin = Plastic::Graph::Origin.new(@plastic_home).id

@@ -8,10 +8,10 @@ class WrittenPhraseTest < Plastic::TestCase
   end
 
   def test_one_table_written_is_one_phrase
-    insert("a")
-    insert("b")
+    insert("a", table: :tallies)
+    insert("b", table: :tallies)
 
-    assert_equal "2 routine runs in work_graph.db", database.written_phrase
+    assert_equal "2 tallies in work_graph.db", database.written_phrase
   end
 
   def test_two_tables_join_with_and

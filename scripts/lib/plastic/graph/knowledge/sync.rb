@@ -35,7 +35,7 @@ module Plastic
           return LegacyImport.new(self, @folder, @retrieval, @databases).call if plan.legacy
 
           printer.record(plan.taking(:record).map(&:print))
-          (plan.direction == :up) ? read_up(plan) : print(plan.taking(:print).map(&:print))
+          (plan.direction == :up) ? read_up(plan) : print_down(plan)
         end
 
         # Sync up: the rows of the folders that have none first, then every file
@@ -49,7 +49,10 @@ module Plastic
 
         def read(paths) = FileReads.new(folder: @folder, retrieval: @retrieval, databases: @databases, printer: printer).call(paths)
 
-        def print(prints) = printer.print(prints).map { |path| "printed #{path}" }
+        def print_down(plan)
+          printer.print(plan.taking(:print).map(&:print))
+          []
+        end
 
         def printer = (@printer ||= Printer.new(@folder, @databases, @retrieval))
       end

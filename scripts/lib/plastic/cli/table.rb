@@ -27,6 +27,7 @@ module Plastic
       "session note" => ["Commands::SessionNote", "Write the one prose line of this session"],
       "intent rule" => ["Commands::IntentRule", "Write an owner ruling, with --supersedes to replace an older one"],
       "intent revise" => ["Commands::IntentRevise", "Rewrite an intent's What and Why after grilling, keeping the old text as a revision"],
+      "intent note" => ["Commands::IntentNote", "Add one line under Notes in the outcome of an intent, keeping the earlier text as a revision"],
       "intent approve" => ["Commands::IntentApprove", "Write the owner's go-ahead for an intent; auto refuses an intent without it"],
       "intent judge" => ["Commands::IntentJudge", "Print the steps that start the judge of an intent"],
       "intent verdict" => ["Commands::IntentVerdict", "Record the verdict of the next review round of an intent"],
@@ -67,12 +68,12 @@ module Plastic
       "graph check" => ["Commands::GraphCheck", "Find a done node with no findings, an isolated node, a retry cap or no done criterion"],
       "graph ready" => ["Commands::GraphReady", "List the nodes ready to claim"],
       "graph resume" => ["Commands::GraphResume", "Say where each named store's work stopped and what runs next"],
-      "graph show" => ["Commands::GraphShow", "Print every node and edge, then reprint graph.json from rows"],
+      "graph show" => ["Commands::GraphShow", "Print every node and edge of an intent"],
 
       # Roadmaps: a named plan, held as rows instead of a hand-kept file.
       "roadmap batch" => ["Commands::RoadmapBatch", "Write one roadmap batch's goal and done criteria"],
       "roadmap add" => ["Commands::RoadmapAdd", "Add an item to a roadmap batch, after whichever items it waits on"],
-      "roadmap show" => ["Commands::RoadmapShow", "Print a roadmap's batches and items, then reprint its file"],
+      "roadmap show" => ["Commands::RoadmapShow", "Print a roadmap's batches and items"],
       "roadmap next" => ["Commands::RoadmapNext", "Print the first ready item, or what is in the way"],
       "roadmap drop" => ["Commands::RoadmapDrop", "Mark a roadmap item dropped; its edges stay as rows"],
       "roadmap start" => ["Commands::RoadmapStart", "Open a ready item's intent, with its spec held in rows"],

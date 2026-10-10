@@ -18,38 +18,21 @@ class RoadmapShowTest < Plastic::TestCase
   def test_show_on_a_missing_roadmap_names_it
     result = cli("roadmap", "show", "r9")
 
-    assert_call result, code: 1, err: "plastic: code_show_roadmap, gate: no roadmap r9\n"
+    assert_call result, code: 1, out: "", err: "plastic: code_show_roadmap, gate: no roadmap r9\n"
   end
 
-  def test_a_preview_leaves_the_roadmap_file_as_it_was
-    twin = twin_run("roadmap", "show", "r1") do |home|
-      seed_roadmap(home, "a")
-      call_in(home, "roadmap", "show", "r1")
-      File.write(File.join(home, "stores", "global", "roadmaps", "r1.md"), "hand edit\n")
-    end
-    path = File.join(twin.first, "stores", "global", "roadmaps", "r1.md")
+  def test_a_hand_edited_roadmap_file_survives_the_call_and_no_row_is_added
+    cli("roadmap", "batch", "r1", "1", "--title", "T", "--goal", "G", "--done", "d")
+    path = store_path("roadmaps/r1.md")
+    File.write(path, "hand edit\n")
+    before = run_count
+
+    result = cli("roadmap", "show", "r1")
 
     assert_equal "hand edit\n", File.read(path)
-    assert_equal [], twin.changed_paths
-    assert_includes twin.preview_paths, "change #{path}"
+    assert_equal before, run_count
+    assert_equal "", result.out.lines.grep(/^wrote:/).join
   end
 
-  def test_preview_matches_apply_on_an_identical_home
-    twin = twin_run("roadmap", "show", "r1") { |home| seed_roadmap(home, "a", "b") }
-
-    assert_preview_matches_apply(twin)
-    assert_includes twin.previewed_lines, "batch 1: T - G"
-  end
-
-  def test_a_preview_with_a_linked_roadmaps_folder_refuses_and_the_outside_folder_is_untouched
-    with_home do |home|
-      seed_roadmap(home, "a")
-      call_in(home, "roadmap", "show", "r1")
-      linked = linked_preview(home, File.join(home, "stores", "global", "roadmaps"), "roadmap", "show", "r1")
-
-      assert_equal 3, linked.result.code
-      assert_includes linked.result.err, linked.link
-      assert linked.untouched
-    end
-  end
+  def run_count = store_graphs.databases.fetch(:local).row("SELECT count(*) AS n FROM routine_runs").fetch("n")
 end

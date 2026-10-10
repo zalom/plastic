@@ -12,6 +12,7 @@ module Plastic
       argument :target, label: "TARGET", text: "the link's other end, as written when it was added"
       previews
       writes :knowledge
+      prints :intent
 
       workflow :code_remove_link, next: :noop
     end

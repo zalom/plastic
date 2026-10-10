@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "json"
+require_relative "offer"
 require_relative "result"
 
 module Plastic
@@ -21,6 +22,10 @@ module Plastic
       end
 
       def json? = false
+
+      def flushed? = @flushed
+
+      def flush_rows(_project = nil) = self
 
       def row(label, value) = tap { @result.row(label, value) }
 
@@ -44,25 +49,24 @@ module Plastic
 
       def usage(message, banner)
         @err.puts "plastic: #{message}", banner
-        error_document(message, "usage")
+        error_document(message, "usage", Offer.none(message))
       end
 
-      def refused(message)
+      def refused(message, offer = Offer.none(message))
         @err.puts "plastic: refused, #{message}", "This step belongs to the owner. Stop and ask; do not retry with a flag."
-        error_document(message, "refused")
+        error_document(message, "refused", offer)
       end
 
-      def failed(message)
+      def failed(message, offer = Offer.none(message))
         @err.puts "plastic: #{message}"
-        error_document(message, "failed")
+        error_document(message, "failed", offer)
       end
 
       private
 
       attr_reader :out, :result
 
-      # A text answer says nothing more on an error; the error line is enough.
-      def error_document(_message, _kind) = self
+      def error_document(_message, _kind, offer) = offer.apply(self)
     end
   end
 end

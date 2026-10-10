@@ -6,14 +6,14 @@ class RoutineFailureTest < Plastic::TestCase
   def test_a_refusal_gate_exits_3_with_the_owner_line
     call = plastic("kernel", "gate", "hold")
 
-    assert_call call, code: 3, err: "plastic: refused, the owner holds hold\nThis step belongs to the owner. Stop and ask; do not retry with a flag.\n"
+    assert_call call, code: 3, out: RUN_ROW, err: "plastic: refused, the owner holds hold\nThis step belongs to the owner. Stop and ask; do not retry with a flag.\n"
     assert_equal "refused", routine_run("kernel gate", nil).status
   end
 
   def test_a_failure_gate_exits_1_and_names_the_workflow
     call = plastic("kernel", "gate", "break")
 
-    assert_call call, code: 1, err: "plastic: code_hold, gate: the check broke on break\n"
+    assert_call call, code: 1, out: RUN_ROW, err: "plastic: code_hold, gate: the check broke on break\n"
     assert_equal 1, routine_run("kernel gate", nil).exit_code
   end
 
@@ -21,7 +21,7 @@ class RoutineFailureTest < Plastic::TestCase
     call = plastic("kernel", "gate", "pass")
 
     assert_equal 0, call.code
-    assert_equal "next: none\nbecause: passed pass\n", call.out
+    assert_equal "#{RUN_ROW}\nnext: none\nbecause: passed pass\n", call.out
     assert_equal "", call.err
   end
 
@@ -58,8 +58,9 @@ class RoutineFailureTest < Plastic::TestCase
   end
 
   def test_a_database_error_fails_the_call
-    @plastic_home = File.join(@home, "plain-file")
-    File.write(@plastic_home, "not a directory")
+    @plastic_home = File.join(Dir.mktmpdir, ".plastic")
+    FileUtils.mkdir_p(File.join(@plastic_home, "stores", "global"))
+    File.write(File.join(@plastic_home, "local.db"), "not a database")
     call = plastic("kernel", "gate", "pass")
 
     assert_equal 1, call.code

@@ -1,6 +1,6 @@
 # plastic graph show
 
-`plastic graph show ID` prints every node and edge, then prints graph.json again from the rows, so a hand edit of the file never feeds back. The rows below run the storage kernel's command line in a fresh home each time, as session s-1. A setup lists the calls made first, in order, split by a semicolon; `write PATH TEXT` writes a file in the store instead. TIME stands for a timestamp.
+`plastic graph show ID` prints every node and edge from the rows. It reads and writes no file. The rows below run the storage kernel's command line in a fresh home each time, as session s-1. A setup lists the calls made first, in order, split by a semicolon; `write PATH TEXT` writes a file in the store instead. TIME stands for a timestamp.
 
 Each row gives the setup, the call, the exit code, the result and the next line:
 

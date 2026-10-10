@@ -48,7 +48,7 @@ module Plastic
 
       outcome :previewed, if: ->(context) { context.dry_run }, offers: "plastic intent show %{intent_id}",
         because: "the dry run wrote nothing"
-      outcome :done, offers: "plastic sync down", because: "the rows hold the new What and Why; sync down prints the files"
+      outcome :done, offers: nil, because: "the rows and the files hold the new What and Why"
 
       def self.show_why(context, change)
         context.print("why was: #{change.old_why}")

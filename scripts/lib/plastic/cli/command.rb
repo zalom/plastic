@@ -7,6 +7,7 @@ require_relative "command/failure"
 require_relative "command/environment"
 require_relative "command/help"
 require_relative "declarations"
+require_relative "../graph/missing_store"
 require_relative "text_output"
 require_relative "json_output"
 require_relative "scope"
@@ -51,7 +52,7 @@ module Plastic
         return help if @argv.intersect?(%w[--help -h])
 
         answer
-      rescue OptionParser::ParseError, Scope::UnknownProject, Usage, Refusal, Failure => error
+      rescue OptionParser::ParseError, Scope::UnknownProject, Usage, Refusal, Failure, Graph::MissingStore => error
         settle(error)
       end
 
@@ -86,17 +87,20 @@ module Plastic
       attr_reader :words, :environment, :argv
 
       def settle(error)
+        message = error.message
         case error
         when Refusal, Failure then stop(error)
+        when Graph::MissingStore then stop(Failure.new(message, next_command: error.next_command))
         else
-          output.usage(error.message, usage_line)
+          output.usage(message, usage_line)
           USAGE
         end
       end
 
       def stop(error)
-        flush unless output.json?
+        output.flush_rows(scope.slug) unless output.json?
         error.report(output)
+        flush
         error.exit_code
       end
 

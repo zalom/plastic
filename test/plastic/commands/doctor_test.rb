@@ -32,7 +32,7 @@ class DoctorCommandTest < Plastic::TestCase
     result = doctor
 
     assert_equal 1, result.code
-    assert_match(/repair:\s+plastic next/, result.out)
+    assert_match(/repair:\s+plastic install/, result.out)
     assert_includes result.err, GATE
   end
 
@@ -41,7 +41,7 @@ class DoctorCommandTest < Plastic::TestCase
     File.chmod(0o644, hook_file)
     document = JSON.parse(doctor("--json").out)
 
-    assert_equal ["plastic next", "plastic install --claude --reinstall"], document.fetch("result").fetch("repair")
+    assert_equal ["plastic install --reinstall", "plastic install --claude --reinstall"], document.fetch("result").fetch("repair")
   end
 
   def test_a_harness_with_no_module_exits_2_and_names_available_harnesses

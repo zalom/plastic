@@ -7,7 +7,6 @@ module Plastic
     # Prints the steps that start a reasoning judge for an intent, and where its verdict is recorded.
     class IntentJudge < Routine
       intent_subject
-      writes :work
 
       workflow :code_prepare_judge do
         on :judging, next: :agent_judge_intent

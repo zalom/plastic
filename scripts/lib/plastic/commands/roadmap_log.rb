@@ -10,6 +10,7 @@ module Plastic
       argument :slug, label: "SLUG", text: "the roadmap"
       argument :text, label: "TEXT", text: "the log line", rest: true
       writes :work
+      prints :roadmap
 
       workflow :code_log_roadmap, next: :noop
     end

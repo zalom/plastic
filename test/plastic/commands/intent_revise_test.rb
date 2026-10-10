@@ -21,7 +21,7 @@ class IntentReviseTest < Plastic::TestCase
 
     assert_equal 0, result.code, result.err
     assert_equal ["Beta, after grilling", 2], [retrieval.intent("1").title, revisions]
-    assert_includes result.out, "next: plastic sync down"
+    refute_includes result.out, "plastic sync down"
   end
 
   def test_a_revise_with_why_writes_the_new_what_and_why_into_the_head_revision
@@ -138,13 +138,13 @@ class IntentReviseTest < Plastic::TestCase
     assert_includes result.err, "intent 1 has no file row"
   end
 
-  def test_after_a_revise_sync_down_prints_the_file_with_no_conflict
+  def test_after_a_revise_the_file_already_equals_the_rows
     open_intent
     call("1", "Beta, after grilling")
 
     plan = store_graphs.work.sync_plan(:down, {})
 
     assert_empty plan.conflicts
-    assert_includes plan.taking(:print).map(&:path), "store/1--alpha/#{FILE}"
+    refute_includes plan.taking(:print).map(&:path), "store/1--alpha/#{FILE}"
   end
 end

@@ -12,7 +12,6 @@ module Plastic
 
       step "close the intent and finish cleanup", done: ->(context) { context.ended == true } do |context|
         context.work.close_intent(context.intent_id)
-        context.work.print_intent(context.intent_id).each { |path| context.print("printed #{path}") }
         context.print("intent: #{context.intent_id} done")
         context[:ended] = true
       end
