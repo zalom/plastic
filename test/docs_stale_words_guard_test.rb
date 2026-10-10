@@ -1,14 +1,15 @@
 # frozen_string_literal: true
 
 require "minitest/autorun"
+require_relative "support/stale_words"
 
 class DocsStaleWordsGuardTest < Minitest::Test
+  include StaleWords
+
   ROOT = File.expand_path("..", __dir__)
   PAGES = (["README.md"] + Dir["docs/**/*.md", base: ROOT]).reject { |path| path.start_with?("docs/reviews/") }
   VARAR = Dir["varar/*.md", base: ROOT] + Dir["test/varar/*.rb", base: ROOT]
   STALE = /doctor --core|next: none|intent end \S+ --(?!project|json)|\bEvery command ends with/
-  INTENT_ID = /\bintents? \d+/i
-  DATE = /\b20\d\d-\d\d-\d\d\b/
 
   def stale_words(text, pattern = STALE) = text.scan(pattern)
 

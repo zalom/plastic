@@ -31,6 +31,10 @@ class ArchitectureFiguresDocumentTest < Minitest::Test
     backticked(text).select { |name| name.match?(CLASS_NAME) ? !class_exists?(name.delete_prefix("Plastic::")) : name.match?(PATH_NAME) && !File.exist?(File.join(ROOT, name)) }
   end
 
+  def unknown_commands(text)
+    backticked(text).filter_map { |span| span[/\Aplastic((?: [a-z][a-z-]*)+)/, 1]&.strip }.uniq.reject { |words| words == "help" || command_check(words) }
+  end
+
   def slug(heading) = heading.strip.downcase.gsub(/[^\w\s-]/, "").tr(" ", "-")
 
   def broken_anchors(text, links)
@@ -66,6 +70,11 @@ class ArchitectureFiguresDocumentTest < Minitest::Test
   def test_every_class_and_path_the_document_names_exists
     assert_empty unknown_names(document)
     assert_equal ["IntentProgress", "scripts/lib/plastic/gone.rb"], unknown_names("`IntentProgress` `Graph::WorkGraph` `scripts/lib/plastic/gone.rb` `scripts/lib/plastic/cli.rb` `Owner`")
+  end
+
+  def test_every_plastic_command_the_document_names_is_in_the_command_table
+    assert_empty unknown_commands(document)
+    assert_equal ["frobnicate"], unknown_commands("`plastic frobnicate` and `plastic intent new` and `plastic help` and `plastic node add ID`")
   end
 
   def test_the_document_names_no_removed_class_or_command
