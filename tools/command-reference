@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-require_relative "../tools/command_reference"
+require_relative "command_reference"
 
 exit CommandReference::CLI.new(ARGV, root: File.expand_path("..", __dir__)).run
