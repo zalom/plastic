@@ -103,9 +103,9 @@ class StartHealthyHomeTest < Plastic::TestCase
   end
 
   def test_an_installed_healthy_home_gives_no_doctor_line
-    env = { "PLASTIC_PACKAGE_ROOT" => @package, "PLASTIC_SESSION" => "s-1" }
+    env = { "PLASTIC_PACKAGE_ROOT" => @package, "CLAUDE_CODE_SESSION_ID" => "s-1" }
     doctor = call("doctor", env:)
-    resume = call("hook", "start", env: env.merge("CLAUDE_CODE_SESSION_ID" => "s-1"))
+    resume = call("hook", "start", env:)
 
     assert_equal [0, 0, ""], [doctor.code, resume.code, resume.err]
     assert_match(/\APlastic: a new session/, resume.out)
