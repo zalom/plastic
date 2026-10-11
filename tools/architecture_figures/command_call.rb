@@ -19,7 +19,7 @@ module ArchitectureFigures
       ["CLI", "Prints the report."],
       ["bin/plastic", "Exits with code 0:", "the value is Finished."]
     ].freeze
-    REPORT = ["intent: ID", "wrote: 1 routine run in local.db", "1 intent and 1 savepoint line in work_graph.db", "1 document and 1 document_heads in knowledge_graph.db",
+    REPORT = ["intent: ID", "wrote: 1 routine run in local.db", "1 intent and 1 savepoint line in work_graph.db", "1 document and 1 document head in knowledge_graph.db",
       "files: store/index.json", "store/ID--slug/intent.md", "store/ID--slug/savepoint.md", "store/ID--slug/graph.json", "next: plastic next", "because: intent ID has its rows and its files"].freeze
     NAMES = [["path", "bin/plastic", "bin/plastic"], ["command", "intent new", "intent new"], *%w[CLI CLI::TABLE Commands::IntentNew Routine RoutineRun Routine::Traversal Workflows::REGISTRY Workflows::WriteIntent Graph::Printer Finished].map { |name| ["class", name, name] }].freeze
 

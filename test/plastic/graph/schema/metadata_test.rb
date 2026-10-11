@@ -3,17 +3,13 @@
 require_relative "../../../test_helper"
 require_relative "../../../../scripts/lib/plastic/graph/schema"
 
-class SchemaNounsTest < Minitest::Test
-  def test_every_declared_table_has_a_noun
-    declared = Plastic::Graph::Schema.tables.keys + Plastic::Graph::SchemaCatalog::VIRTUAL.keys
+class SchemaMetadataTest < Minitest::Test
+  def test_every_declared_table_has_a_singular_and_a_plural_noun
+    declared = (Plastic::Graph::Schema.tables.keys + Plastic::Graph::SchemaCatalog::VIRTUAL.keys).map(&:to_s)
     nouns = Plastic::Graph::Schema.nouns
 
-    declared.each do |name|
-      forms = nouns.fetch(name.to_s) { flunk "#{name} has no noun in schema/metadata.rb" }
-
-      assert_equal 2, forms.size, name
-      assert forms.none?(&:empty?), name
-    end
+    refute_empty declared
+    assert_empty declared.reject { |name| nouns.fetch(name, []).count { |form| !form.empty? } == 2 }
   end
 
   def test_tally_names_a_document_head_in_plain_words
