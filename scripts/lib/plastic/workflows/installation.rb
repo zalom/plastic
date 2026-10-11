@@ -16,7 +16,6 @@ module Plastic
     class Installation < ::Install
       PACKAGE_ROOT = File.expand_path("../../../..", __dir__)
       SOURCES = %w[VERSION package.json].freeze
-      AGENT_KEYS = %w[claude codex hermes].freeze
       FOLDERS = %i[dir home_dir].freeze
       INSTALLER = "curl -fsSL https://raw.githubusercontent.com/zalom/plastic/main/install.sh |"
 
@@ -37,13 +36,6 @@ module Plastic
         agent.to_h { |key, value| [key, FOLDERS.include?(key) ? File.join(home, Pathname(value).relative_path_from(Dir.home).to_s) : value] }
       end
 
-      def self.selected(context)
-        return AGENT_KEYS if context.all
-
-        chosen = AGENT_KEYS.select { |key| context.public_send(key) }
-        chosen.empty? ? ["claude"] : chosen
-      end
-
       def self.fetch_command(setting) = "#{INSTALLER} #{setting} sh"
 
       def read_package_version(root)
@@ -60,13 +52,6 @@ module Plastic
         core_files.filter_map do |source, destination|
           [File.exist?(File.join(plastic_home, destination)) ? "replace" : "add", destination] if File.exist?(File.join(package_root, source))
         end
-      end
-
-      def planned_removals(keys) = keys.filter_map { |key| agent_config(key) }.flat_map { |config| agent_files(config) }
-
-      def agent_files(config)
-        manifest_files(manifest_path_for(nil, config)).grep(->(file) { File.exist?(file) }) +
-          [emptied_instruction_file(config), record_dir_for(config)].compact
       end
 
       def synced = installed_agents.select { |key| Harnesses.installed_by(key) }

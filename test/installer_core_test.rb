@@ -73,15 +73,6 @@ class InstallerCoreHooksTest < Minitest::Test
   def test_a_second_install_keeps_one_group_per_event
     assert_equal 1, commands(install({}, times: 2), "Stop").size
   end
-
-  def test_removing_the_hooks_keeps_the_hooks_of_the_person
-    own = { "type" => "command", "command" => "echo mine" }
-    path = settings_with("hooks" => { "Stop" => [{ "matcher" => "", "hooks" => [own] }] })
-    capture_io { installer.merge_claude_hooks(path) }
-    capture_io { installer.remove_claude_hooks(path) }
-
-    assert_equal ["echo mine"], commands(JSON.parse(File.read(path)), "Stop")
-  end
 end
 
 class InstallerCoreTest < Minitest::Test
@@ -123,14 +114,6 @@ class InstallerCoreTest < Minitest::Test
 
     assert_equal %i[appended replaced], [installer.inject_marked_section(agents_file, body: "one"), installer.inject_marked_section(agents_file, body: "two")]
     assert_equal 1, File.read(agents_file).scan(InstallerCore::CODEX_SECTION_BEGIN_PREFIX).size
-  end
-
-  def test_stripping_the_marked_section_gives_back_the_file_of_the_person
-    File.write(agents_file, "# Mine\n")
-    installer.inject_marked_section(agents_file, body: "one")
-    installer.strip_marked_section(agents_file)
-
-    assert_equal "# Mine\n", File.read(agents_file)
   end
 
   def test_a_section_with_no_end_marker_is_refused

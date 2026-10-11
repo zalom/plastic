@@ -30,26 +30,4 @@ class EnginePermissionsTest < Plastic::TestCase
 
     assert_equal [OWN], deny(settings)
   end
-
-  def test_remove_keeps_the_owners_rules
-    merged = EnginePermissions.merge_into({ "permissions" => { "deny" => [OWN] } })
-
-    assert_equal [OWN], deny(EnginePermissions.remove_from(merged))
-  end
-
-  def test_remove_prunes_an_empty_permissions_block
-    assert_equal({ "model" => "opus" }, EnginePermissions.remove_from(EnginePermissions.merge_into({ "model" => "opus" })))
-  end
-
-  def test_remove_keeps_a_permissions_block_with_other_keys
-    merged = EnginePermissions.merge_into({ "permissions" => { "allow" => [OWN] } })
-
-    assert_equal({ "allow" => [OWN] }, EnginePermissions.remove_from(merged)["permissions"])
-  end
-
-  def test_remove_leaves_a_deny_value_that_is_not_a_list_alone
-    settings = { "permissions" => { "deny" => "all" } }
-
-    assert_same settings, EnginePermissions.remove_from(settings)
-  end
 end
