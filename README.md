@@ -151,7 +151,7 @@ Restart your agent after the install. For the full path, read
 
 An intent moves through the phases below: the go-ahead, the nodes, the judge, the close and the abandon.
 
-![The phases of an intent](docs/images/intent-lifecycle-phases.svg)
+![How an intent is delivered: What, Why, go-ahead and How, then judge, review by pull request and close. Abandon is open at any time.](docs/contributing/figures/delivery-phases.svg)
 
 ```
   You or your agent              plastic                     ~/.plastic/stores/SLUG/store
