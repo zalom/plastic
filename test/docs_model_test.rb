@@ -3,7 +3,7 @@
 
 require "minitest/autorun"
 
-# The docs describe the model: two modes plus auto, the record hook, the day
+# The docs describe the model: two modes plus auto, the hooks of each harness, the day
 # ledger and the lock.
 class DocsModelTest < Minitest::Test
   ROOT = File.expand_path("..", __dir__)
@@ -11,11 +11,16 @@ class DocsModelTest < Minitest::Test
   GUIDES = File.join(ROOT, "docs", "guides")
   LEDGERS_GUIDE = File.join(GUIDES, "reading-the-ledgers.md")
 
-  def test_adapters_doc_names_the_record_hook_and_the_shell_write_caveat
+  def test_adapters_doc_names_the_hooks_of_each_harness
     body = File.read(ADAPTERS).gsub(/\s+/, " ")
 
-    ["`record`", "three kernel hooks and the update check through `settings.json`", "does not include `Bash`"]
-      .each { |phrase| assert_includes body, phrase }
+    ["`hook start`, `hook stop` and `hook end`", "the update check", "no hooks"].each { |phrase| assert_includes body, phrase }
+  end
+
+  def test_adapters_doc_names_no_removed_hook
+    body = File.read(ADAPTERS)
+
+    ["`record`", "spawn preamble", "delivery.lock", "day ledger"].each { |phrase| refute_includes body, phrase }
   end
 
   def test_the_ledgers_guide_names_the_savepoint_the_day_ledger_and_the_lock

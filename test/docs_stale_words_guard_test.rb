@@ -9,6 +9,7 @@ class DocsStaleWordsGuardTest < Minitest::Test
   ROOT = File.expand_path("..", __dir__)
   PAGES = ["README.md"] + Dir["docs/**/*.md", base: ROOT]
   VARAR = Dir["varar/*.md", base: ROOT] + Dir["test/varar/*.rb", base: ROOT]
+  OWNERS = %w[docs/contributing/ARCHITECTURE.md docs/reference/harness-adapters.md].freeze
   STALE = /doctor --core|next: none|intent end \S+ --(?!project|json)|\bEvery command ends with/
 
   def stale_words(text, pattern = STALE) = text.scan(pattern)
@@ -20,19 +21,19 @@ class DocsStaleWordsGuardTest < Minitest::Test
   def test_the_subjects_are_read_from_the_disk
     refute_empty PAGES
     refute_empty VARAR
-    assert_includes PAGES, "docs/contributing/ARCHITECTURE.md"
+    OWNERS.each { |page| assert_includes PAGES, page }
   end
 
   def test_no_page_or_acceptance_document_uses_a_removed_option_or_next_line
     assert_empty found(PAGES + VARAR)
   end
 
-  def test_the_architecture_names_no_intent_by_number
-    assert_empty found(["docs/contributing/ARCHITECTURE.md"], INTENT_ID)
+  def test_the_owner_pages_name_no_intent_by_number
+    assert_empty found(OWNERS, INTENT_ID)
   end
 
-  def test_the_architecture_names_no_date
-    assert_empty found(["docs/contributing/ARCHITECTURE.md"], DATE)
+  def test_the_owner_pages_name_no_date
+    assert_empty found(OWNERS, DATE)
   end
 
   def test_the_date_detector_catches_a_date_and_leaves_a_version_alone
