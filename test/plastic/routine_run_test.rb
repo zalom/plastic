@@ -57,6 +57,12 @@ class RoutineRunTest < Plastic::TestCase
     assert_equal ["failed", nil, "code_a, step: broke", 1], [run.status, run.next_command, run.because, run.exit_code]
   end
 
+  def test_closing_on_a_failure_with_a_because_line_keeps_that_line
+    run = fresh.close(Plastic::Failed.new(:code_a, "gate", "broke", nil, "the rule"), {})
+
+    assert_equal ["failed", "the rule", 1], [run.status, run.because, run.exit_code]
+  end
+
   def test_closing_on_a_refusal_is_refused
     run = fresh.close(Plastic::Refused.new(:code_a, "owner"), {})
 
