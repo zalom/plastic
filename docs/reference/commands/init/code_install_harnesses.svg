@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 178" width="980" height="178" role="img" xml:space="preserve">
-<title>What plastic uninstall touches</title>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 408" width="760" height="408" role="img" xml:space="preserve">
+<title>How InstallHarnesses runs in plastic init</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
 .lane-code { fill: #d5e8e3; stroke: #0d6b61; stroke-width: 1.5; }
@@ -68,26 +68,61 @@
 .big { font: 700 36px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
 }</style>
 <rect width="100%" height="100%" class="ground"/>
-<text x="16" y="20" class="tag tag-muted" text-anchor="start">COMMAND</text>
-<text x="176" y="20" class="tag tag-muted" text-anchor="start">WORKFLOWS</text>
-<text x="336" y="20" class="tag tag-muted" text-anchor="start">CLASSES</text>
-<text x="556" y="20" class="tag tag-muted" text-anchor="start">DATABASES</text>
-<text x="766" y="20" class="tag tag-muted" text-anchor="start">FILES IT PRINTS</text>
-<rect x="16" y="34" width="140" height="40" rx="6" class="lane-code"/>
-<text x="26" y="58" class="tm" text-anchor="start">plastic uninstall</text>
-<rect x="176" y="34" width="140" height="28" rx="6" class="lane-code"/>
-<text x="184" y="52" class="tm" text-anchor="start">ChooseInstallations</text>
-<rect x="176" y="68" width="140" height="28" rx="6" class="lane-code"/>
-<text x="184" y="86" class="tm" text-anchor="start">PreviewUninstall</text>
-<rect x="176" y="102" width="140" height="28" rx="6" class="lane-code"/>
-<text x="184" y="120" class="tm" text-anchor="start">UninstallPlastic</text>
-<rect x="336" y="34" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="52" class="tm" text-anchor="start">CLI::Screen::Choice</text>
-<rect x="336" y="68" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="86" class="tm" text-anchor="start">CLI::Screen::Answer</text>
-<rect x="336" y="102" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="120" class="tm" text-anchor="start">Workflows::Installation</text>
-<rect x="336" y="136" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="154" class="tm" text-anchor="start">Workflows::ReleaseRemoval</text>
-<text x="556" y="58" class="tm tag-muted" text-anchor="start">no database found in the code</text>
+<text x="16" y="22" class="tb" text-anchor="start">InstallHarnesses</text>
+<text x="436" y="22" class="tm tag-muted" text-anchor="end">install_harnesses.rb:12</text>
+<rect x="16" y="34" width="420" height="45" rx="6" class="card"/>
+<text x="26" y="49" class="tag tag-muted" text-anchor="start">READ</text>
+<text x="426" y="49" class="tm tag-muted" text-anchor="end">install_harnesses.rb:17</text>
+<text x="26" y="66" class="t" text-anchor="start">check this machine and the harness settings files</text>
+<path d="M 226 79 L 226 89" class="wire"/>
+<path d="M 221 81 L 226 89 L 231 81 Z" class="head"/>
+<rect x="16" y="89" width="420" height="56" rx="6" class="card"/>
+<text x="26" y="104" class="tag tag-muted" text-anchor="start">GATE</text>
+<text x="426" y="104" class="tm tag-muted" text-anchor="end">install_harnesses.rb:24</text>
+<text x="26" y="121" class="tm" text-anchor="start">passes when context.usable</text>
+<path d="M 436 107 L 464 107" class="wire-failure"/>
+<path d="M 456 102 L 464 107 L 456 112 Z" class="head"/>
+<rect x="466" y="89" width="270" height="56" rx="6" class="stop-failure"/>
+<text x="476" y="104" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1, FAILED</text>
+<text x="476" y="120" class="tm" text-anchor="start">this machine cannot run</text>
+<text x="476" y="134" class="tm" text-anchor="start">Plastic; see above</text>
+<path d="M 226 145 L 226 155" class="wire"/>
+<path d="M 221 147 L 226 155 L 231 147 Z" class="head"/>
+<rect x="16" y="155" width="420" height="70" rx="6" class="card"/>
+<text x="26" y="170" class="tag tag-muted" text-anchor="start">GATE</text>
+<text x="426" y="170" class="tm tag-muted" text-anchor="end">install_harnesses.rb:25</text>
+<text x="26" y="187" class="tm" text-anchor="start">passes when context.broken.nil?</text>
+<path d="M 436 173 L 464 173" class="wire-failure"/>
+<path d="M 456 168 L 464 173 L 456 178 Z" class="head"/>
+<rect x="466" y="155" width="270" height="70" rx="6" class="stop-failure"/>
+<text x="476" y="170" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1, FAILED</text>
+<text x="476" y="186" class="tm" text-anchor="start">%{broken} is not valid JSON;</text>
+<text x="476" y="200" class="tm" text-anchor="start">nothing was changed. Fix the</text>
+<text x="476" y="214" class="tm" text-anchor="start">file and run this again</text>
+<path d="M 226 225 L 226 235" class="wire"/>
+<path d="M 221 227 L 226 235 L 231 227 Z" class="head"/>
+<rect x="16" y="235" width="420" height="59" rx="6" class="card"/>
+<text x="26" y="250" class="tag tag-muted" text-anchor="start">STEP</text>
+<text x="426" y="250" class="tm tag-muted" text-anchor="end">install_harnesses.rb:28</text>
+<text x="26" y="267" class="t" text-anchor="start">install Plastic into the picked harnesses</text>
+<text x="26" y="282" class="tm" text-anchor="start">done when !context.installed.nil?</text>
+<path d="M 436 253 L 464 253" class="wire-failure"/>
+<path d="M 456 248 L 464 253 L 456 258 Z" class="head"/>
+<rect x="466" y="235" width="270" height="56" rx="6" class="stop-failure"/>
+<text x="476" y="250" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1, FAILED</text>
+<text x="476" y="266" class="tm" text-anchor="start">the step ran and its done</text>
+<text x="476" y="280" class="tm" text-anchor="start">check still fails</text>
+<path d="M 226 294 L 226 304" class="wire"/>
+<path d="M 221 296 L 226 304 L 231 296 Z" class="head"/>
+<text x="16" y="316" class="tag tag-muted" text-anchor="start">ENDS ON</text>
+<rect x="16" y="324" width="300" height="70" rx="6" class="card"/>
+<text x="26" y="340" class="tm" text-anchor="start">:done</text>
+<text x="26" y="356" class="tm tag-muted" text-anchor="start">always</text>
+<path d="M 316 340 L 352 340" class="wire"/>
+<path d="M 344 335 L 352 340 L 344 345 Z" class="head"/>
+<rect x="352" y="324" width="392" height="70" rx="6" class="end"/>
+<text x="362" y="341" class="t" text-anchor="start">the call finishes, exit 0</text>
+<text x="362" y="355" class="t" text-anchor="start">next: plastic doctor --harness %{checked}</text>
+<text x="362" y="369" class="t" text-anchor="start">because: Plastic %{installed} is installed into</text>
+<text x="362" y="383" class="t" text-anchor="start">%{harnesses}</text>
 </svg>

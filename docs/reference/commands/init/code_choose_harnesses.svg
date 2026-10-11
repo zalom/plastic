@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 178" width="980" height="178" role="img" xml:space="preserve">
-<title>What plastic uninstall touches</title>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 336" width="760" height="336" role="img" xml:space="preserve">
+<title>How ChooseHarnesses runs in plastic init</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
 .lane-code { fill: #d5e8e3; stroke: #0d6b61; stroke-width: 1.5; }
@@ -68,26 +68,41 @@
 .big { font: 700 36px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
 }</style>
 <rect width="100%" height="100%" class="ground"/>
-<text x="16" y="20" class="tag tag-muted" text-anchor="start">COMMAND</text>
-<text x="176" y="20" class="tag tag-muted" text-anchor="start">WORKFLOWS</text>
-<text x="336" y="20" class="tag tag-muted" text-anchor="start">CLASSES</text>
-<text x="556" y="20" class="tag tag-muted" text-anchor="start">DATABASES</text>
-<text x="766" y="20" class="tag tag-muted" text-anchor="start">FILES IT PRINTS</text>
-<rect x="16" y="34" width="140" height="40" rx="6" class="lane-code"/>
-<text x="26" y="58" class="tm" text-anchor="start">plastic uninstall</text>
-<rect x="176" y="34" width="140" height="28" rx="6" class="lane-code"/>
-<text x="184" y="52" class="tm" text-anchor="start">ChooseInstallations</text>
-<rect x="176" y="68" width="140" height="28" rx="6" class="lane-code"/>
-<text x="184" y="86" class="tm" text-anchor="start">PreviewUninstall</text>
-<rect x="176" y="102" width="140" height="28" rx="6" class="lane-code"/>
-<text x="184" y="120" class="tm" text-anchor="start">UninstallPlastic</text>
-<rect x="336" y="34" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="52" class="tm" text-anchor="start">CLI::Screen::Choice</text>
-<rect x="336" y="68" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="86" class="tm" text-anchor="start">CLI::Screen::Answer</text>
-<rect x="336" y="102" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="120" class="tm" text-anchor="start">Workflows::Installation</text>
-<rect x="336" y="136" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="154" class="tm" text-anchor="start">Workflows::ReleaseRemoval</text>
-<text x="556" y="58" class="tm tag-muted" text-anchor="start">no database found in the code</text>
+<text x="16" y="22" class="tb" text-anchor="start">ChooseHarnesses</text>
+<text x="436" y="22" class="tm tag-muted" text-anchor="end">choose_harnesses.rb:11</text>
+<rect x="16" y="34" width="420" height="60" rx="6" class="card"/>
+<text x="26" y="49" class="tag tag-muted" text-anchor="start">READ</text>
+<text x="426" y="49" class="tm tag-muted" text-anchor="end">choose_harnesses.rb:16</text>
+<text x="26" y="66" class="t" text-anchor="start">find the installed harnesses and read the person&#39;s</text>
+<text x="26" y="81" class="t" text-anchor="start">answer</text>
+<path d="M 226 94 L 226 104" class="wire"/>
+<path d="M 221 96 L 226 104 L 231 96 Z" class="head"/>
+<text x="16" y="116" class="tag tag-muted" text-anchor="start">ENDS ON</text>
+<rect x="16" y="124" width="300" height="84" rx="6" class="card"/>
+<text x="26" y="140" class="tm" text-anchor="start">:none</text>
+<text x="26" y="156" class="tm tag-muted" text-anchor="start">when context.found.empty?</text>
+<path d="M 316 140 L 352 140" class="wire"/>
+<path d="M 344 135 L 352 140 L 344 145 Z" class="head"/>
+<rect x="352" y="124" width="392" height="84" rx="6" class="end"/>
+<text x="362" y="141" class="t" text-anchor="start">the call finishes, exit 0</text>
+<text x="362" y="155" class="t" text-anchor="start">next: plastic init</text>
+<text x="362" y="169" class="t" text-anchor="start">because: no registered harness was found: no</text>
+<text x="362" y="183" class="t" text-anchor="start">settings folder in the home and no program on the</text>
+<text x="362" y="197" class="t" text-anchor="start">PATH; install one, then run this again</text>
+<rect x="16" y="216" width="300" height="56" rx="6" class="card"/>
+<text x="26" y="232" class="tm" text-anchor="start">:left</text>
+<text x="26" y="248" class="tm tag-muted" text-anchor="start">when context.picked.empty?</text>
+<path d="M 316 232 L 352 232" class="wire"/>
+<path d="M 344 227 L 352 232 L 344 237 Z" class="head"/>
+<rect x="352" y="216" width="392" height="56" rx="6" class="end"/>
+<text x="362" y="233" class="t" text-anchor="start">the call finishes, exit 0</text>
+<text x="362" y="247" class="t" text-anchor="start">next: plastic init</text>
+<text x="362" y="261" class="t" text-anchor="start">because: the person left with no change</text>
+<rect x="16" y="280" width="300" height="42" rx="6" class="card"/>
+<text x="26" y="296" class="tm" text-anchor="start">:chosen</text>
+<text x="26" y="312" class="tm tag-muted" text-anchor="start">otherwise</text>
+<path d="M 316 296 L 352 296" class="wire"/>
+<path d="M 344 291 L 352 296 L 344 301 Z" class="head"/>
+<rect x="352" y="280" width="392" height="42" rx="6" class="lane-code"/>
+<text x="362" y="297" class="t" text-anchor="start">next workflow: InstallHarnesses</text>
 </svg>

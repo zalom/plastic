@@ -69,11 +69,11 @@
 }</style>
 <rect width="100%" height="100%" class="ground"/>
 <text x="16" y="22" class="tb" text-anchor="start">UninstallPlastic</text>
-<text x="436" y="22" class="tm tag-muted" text-anchor="end">uninstall_plastic.rb:12</text>
+<text x="436" y="22" class="tm tag-muted" text-anchor="end">uninstall_plastic.rb:13</text>
 <rect x="16" y="34" width="420" height="59" rx="6" class="card"/>
 <text x="26" y="49" class="tag tag-muted" text-anchor="start">STEP</text>
-<text x="426" y="49" class="tm tag-muted" text-anchor="end">uninstall_plastic.rb:17</text>
-<text x="26" y="66" class="t" text-anchor="start">remove the agent files</text>
+<text x="426" y="49" class="tm tag-muted" text-anchor="end">uninstall_plastic.rb:20</text>
+<text x="26" y="66" class="t" text-anchor="start">remove what each record lists</text>
 <text x="26" y="81" class="tm" text-anchor="start">done when context.removed</text>
 <path d="M 436 52 L 464 52" class="wire-failure"/>
 <path d="M 456 47 L 464 52 L 456 57 Z" class="head"/>
@@ -85,7 +85,7 @@
 <path d="M 221 95 L 226 103 L 231 95 Z" class="head"/>
 <rect x="16" y="103" width="420" height="59" rx="6" class="card"/>
 <text x="26" y="118" class="tag tag-muted" text-anchor="start">STEP</text>
-<text x="426" y="118" class="tm tag-muted" text-anchor="end">uninstall_plastic.rb:24</text>
+<text x="426" y="118" class="tm tag-muted" text-anchor="end">uninstall_plastic.rb:29</text>
 <text x="26" y="135" class="t" text-anchor="start">remove the releases and the launcher</text>
 <text x="26" y="150" class="tm" text-anchor="start">done when context.releases_removed</text>
 <path d="M 436 121 L 464 121" class="wire-failure"/>
@@ -104,7 +104,7 @@
 <path d="M 344 203 L 352 208 L 344 213 Z" class="head"/>
 <rect x="352" y="192" width="392" height="70" rx="6" class="end"/>
 <text x="362" y="209" class="t" text-anchor="start">the call finishes, exit 0</text>
-<text x="362" y="223" class="t" text-anchor="start">next: plastic install</text>
-<text x="362" y="237" class="t" text-anchor="start">because: Plastic is removed from the chosen</text>
-<text x="362" y="251" class="t" text-anchor="start">agents; the home stays</text>
+<text x="362" y="223" class="t" text-anchor="start">next: plastic init</text>
+<text x="362" y="237" class="t" text-anchor="start">because: Plastic is removed from %{harnesses}; the</text>
+<text x="362" y="251" class="t" text-anchor="start">home stays</text>
 </svg>
