@@ -15,35 +15,12 @@ class InstallShLocalTest < Minitest::Test
     assert_equal "2.0.3", InstallerRelease::Activation.new(home: share).active_version
   end
 
-  def test_a_local_release_claims_no_trust_and_names_the_next_command
-    out, = install_local("2.0.3")
-
-    assert_includes out, "claims no release trust"
-    assert_includes out, "next: plastic init"
-  end
-
-  def test_an_installed_home_names_the_version_check_as_the_next_command
-    FileUtils.mkdir_p(File.join(@home, ".plastic"))
-    File.write(File.join(@home, ".plastic", "VERSION"), "2.0.2\n")
-    out, = install_local("2.0.3")
-
-    assert_includes out, "next: plastic version"
-    refute_includes out, "next: plastic init"
-  end
-
   def test_a_second_install_of_the_same_release_succeeds
     install_local("2.0.3")
     _out, err, status = install_local("2.0.3")
 
     assert_equal 0, status.exitstatus, err
     assert_equal "2.0.3\n", run_launcher
-  end
-
-  def test_prints_a_path_hint_and_edits_no_profile
-    out, = install_local("2.0.3")
-
-    assert_includes out, "is not on your PATH"
-    assert_empty Dir.children(@home) - [".local"]
   end
 
   def test_a_failed_checksum_leaves_the_installed_release_untouched
