@@ -52,6 +52,24 @@ class ConfigDocumentTest < Plastic::TestCase
     assert_equal({ "global" => { "statusline" => false } }, saved)
   end
 
+def test_a_section_that_holds_no_mapping_takes_the_setting_as_its_mapping
+  document("global: 5\n").set(%w[runner stop_hook], true)
+
+  assert_equal({ "global" => { "runner" => { "stop_hook" => true } } }, saved)
+end
+
+def test_a_file_that_holds_no_mapping_is_written_as_the_sections
+  document("- a\n").set(%w[statusline], false)
+
+  assert_equal({ "global" => { "statusline" => false } }, saved)
+end
+
+def test_an_empty_file_takes_the_setting
+  document("").set(%w[statusline], false)
+
+  assert_equal({ "global" => { "statusline" => false } }, saved)
+end
+
   def test_migrate_rewrites_a_flat_file_and_reports_it
     assert document("statusline: true\n").migrate
     assert_equal({ "global" => { "statusline" => true } }, saved)

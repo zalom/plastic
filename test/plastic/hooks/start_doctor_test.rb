@@ -32,6 +32,12 @@ class StartDoctorTest < Plastic::TestCase
     assert_match(/\APlastic: a new session in store global\./, out)
   end
 
+def test_one_failing_check_is_named_as_one_check
+  _code, out, _err = resume(->(_scope, _harness) { [Check.new("hooks:", "stale", "run plastic init")] })
+
+  assert_equal ["Plastic: doctor found 1 failing check; run plastic doctor."], out.lines(chomp: true).grep(/doctor/)
+end
+
   def test_a_session_that_starts_fresh_runs_the_doctor
     _code, out, _err = resume(FAILING, source: "startup")
 

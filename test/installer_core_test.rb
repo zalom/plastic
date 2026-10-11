@@ -332,6 +332,13 @@ class InstallerCoreConfigTest < Minitest::Test
     assert_equal [false, "plastic-secondary-advisor"], [config.dig("global", "advisor", "enabled"), config.dig("harnesses", "claude-code", "advisor", "default")]
   end
 
+  def test_with_no_advisor_flag_the_config_is_left_alone
+    config_with("version: 3\n")
+    installer.apply_config_flags([])
+
+    assert_equal({ "version" => 3 }, config)
+  end
+
   def test_a_flat_config_moves_into_the_sections_and_loses_the_agent_type
     config_with("version: 3\nagent:\n  type: claude-code\nstatusline: false\n")
     installer.migrate_config

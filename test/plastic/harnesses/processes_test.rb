@@ -29,6 +29,13 @@ class HarnessProcessesTest < Plastic::TestCase
     assert_empty Plastic::Harnesses::Processes.new(root: File.join(@home, "none"), pid: 40).ancestors
   end
 
+def test_a_process_entry_that_cannot_be_read_ends_the_ancestors
+  root = proc_root(40 => ["ruby", 30], 30 => ["zsh", 1])
+  File.chmod(0o000, File.join(root, "30", "stat"))
+
+  assert_empty Plastic::Harnesses::Processes.new(root:, pid: 40).ancestors
+end
+
   def test_none_has_no_ancestors
     assert_empty Plastic::Harnesses::Processes.none.ancestors
   end
