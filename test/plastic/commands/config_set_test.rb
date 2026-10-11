@@ -18,6 +18,12 @@ class ConfigSetTest < Plastic::TestCase
     assert_includes result.out, "next: plastic config get runner.stop_hook"
   end
 
+  def test_false_is_written_as_false
+    result = set("screens", "false")
+
+    assert_equal [0, { "screens" => false }], [result.code, saved["global"]]
+  end
+
   def test_a_harness_setting_is_written_under_that_harness_only
     set("agents.models.plastic-executor", "haiku", "--harness", "claude-code")
 
