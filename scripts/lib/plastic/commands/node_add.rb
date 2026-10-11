@@ -10,6 +10,7 @@ module Plastic
       argument :title, label: "TITLE", text: "what the node is for"
       option :criterion, switch: "--criterion KEY", text: "the key of the spec done criterion this node serves", required: true
       option :input, switch: "--input PATH", text: "a file the node reads"
+      reads :knowledge
       writes :work
       prints :intent
 

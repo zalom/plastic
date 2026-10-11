@@ -10,7 +10,7 @@ module Plastic
     # ruling the store does not hold. It writes nothing; it prints the
     # count when any link is broken.
     class ProjectLinks < CLI::Command
-      reads :knowledge
+      reads :work, :knowledge
 
       def call
         broken = broken_links

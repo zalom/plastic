@@ -7,7 +7,7 @@ module Plastic
     # Prints the grilling method, then one intent's open decisions.
     class IntentSpec < Routine
       intent_subject
-      reads :knowledge
+      reads :work, :knowledge
 
       workflow :code_show_spec do
         on :open, next: :noop

@@ -9,6 +9,8 @@ module Plastic
     class BackupList < Routine
       include BackupStore
 
+      reads :work
+
       workflow :code_backup_list, next: :noop
     end
   end

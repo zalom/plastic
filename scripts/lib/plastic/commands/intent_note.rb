@@ -11,6 +11,7 @@ module Plastic
       intent_subject
       argument :text, label: "TEXT", text: "the note, one line"
       option :kind, switch: "--kind KIND", default: "Report", text: "Review, Commit or Report"
+      reads :work
       writes :knowledge
       prints :intent
 
