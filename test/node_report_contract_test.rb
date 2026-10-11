@@ -5,12 +5,11 @@ require "minitest/autorun"
 
 # A dispatched agent commits its code and reports; the main session records.
 # This contract test pins that wording in the executor and planner agent
-# bodies, and the tick-lag warning in docs/internals.md.
+# bodies.
 class NodeReportContractTest < Minitest::Test
   ROOT = File.expand_path("..", __dir__)
   EXECUTOR = File.join(ROOT, "agents/plastic-executor.md")
   PLANNER = File.join(ROOT, "agents/plastic-planner.md")
-  INTERNALS = File.join(ROOT, "docs/internals.md")
 
   def squeeze(text) = text.gsub(/\s+/, " ")
 
@@ -81,12 +80,5 @@ class NodeReportContractTest < Minitest::Test
 
   def test_planner_frontmatter_description
     assert_equal PLANNER_FRONT, front(PLANNER)
-  end
-
-  def test_internals_doc_names_the_tick_lag_warning
-    body = body_of(INTERNALS)
-
-    assert_includes body, "intent_ticks_lag"
-    assert_match(/doctor scan includes/i, body)
   end
 end

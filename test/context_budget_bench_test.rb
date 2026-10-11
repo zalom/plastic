@@ -348,11 +348,11 @@ class ContextBudgetCeilingTest < Minitest::Test
   end
 
   def test_the_docs_name_the_bench_and_its_ceilings
-    internals = File.read(File.join(REPO, "docs", "internals.md"))
+    technical = File.read(File.join(REPO, "docs", "contributing", "TECHNICAL.md"))
 
-    assert_includes internals, "bin/plastic-bench"
-    ["8,192", "15,000", "17,500"].each do |number|
-      assert_includes internals, number, "docs/internals.md must state the #{number} ceiling"
+    assert_includes technical, "bin/plastic-bench"
+    ["8,192", "15,000", "17,500", "5,000"].each do |number|
+      assert_includes technical, number, "docs/contributing/TECHNICAL.md must state the #{number} ceiling"
     end
   end
 end

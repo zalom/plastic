@@ -43,7 +43,7 @@ module ContextBudget
   #                     cap is 5,000 bytes, about 1,250 tokens.
   CEILINGS = { core: 8_192, boot: 15_000, boot_plus_catalog: 17_500, standing: 5_000 }.freeze
 
-  # The doctrine working set (boot + _decision-tables.md + the median skill body)
+  # The doctrine working set (boot + the median skill body)
   # is reported against this target, never enforced: its median term steps by
   # about a kilobyte whenever a skill is added or removed, so a suite that went
   # red on that step would enforce nothing. The gap is printed.
@@ -313,7 +313,7 @@ module ContextBudget
     end
   end
 
-  Report = Struct.new(:rows, :samples, :context, :repeat, :fragment, :ruby_version, :ruby_bin, keyword_init: true) do
+  Report = Struct.new(:rows, :samples, :context, :repeat, :ruby_version, :ruby_bin, keyword_init: true) do
     def row(key)
       rows.find { |candidate| candidate.key == key }
     end
@@ -384,7 +384,6 @@ module ContextBudget
 
     Report.new(rows: build_rows(fixture: fixture, repo: repo, context: contexts.first),
                samples: samples, context: contexts.first, repeat: repeat,
-               fragment: fragment_bytes(repo: repo),
                ruby_version: RUBY_VERSION, ruby_bin: RbConfig.ruby)
   end
 
@@ -395,11 +394,10 @@ def self.build_rows(fixture:, repo:, context:)
   agents = measure(agent_catalog_text(repo: repo))
   bodies = skill_body_sizes(repo: repo)
   median_body = median(bodies)
-  fragment = fragment_bytes(repo: repo)
 
   combined = boot_measurement.bytes + catalog.bytes
   standing = core.bytes + boot_measurement.bytes + catalog.bytes + agents.bytes
-  working_set = boot_measurement.bytes + fragment + median_body
+  working_set = boot_measurement.bytes + median_body
 
   # tokens(w) is a word count of a real body, so the rows that are arithmetic
   # over other rows (a sum, a median) print "-" there rather than a number that
@@ -417,7 +415,7 @@ def self.build_rows(fixture:, repo:, context:)
     row(:standing, "standing surface (core + boot + both catalogs)", standing,
         ceiling: CEILINGS[:standing]),
     row(:median_skill_body, "median skill body (of #{bodies.length})", median_body),
-    row(:working_set, "doctrine working set (boot + fragment + median body)",
+    row(:working_set, "doctrine working set (boot + median body)",
         working_set, target: WORKING_SET_TARGET),
   ]
 end
@@ -431,11 +429,6 @@ def self.skill_catalog_text(repo:)
     "#{data["name"]}#{data["description"]}"
   end.join
 end
-
-  def self.fragment_bytes(repo:)
-    path = File.join(repo, "skills", "_decision-tables.md")
-    File.file?(path) ? File.size(path) : 0
-  end
 
 def self.row(key, label, bytes, tokens: nil, ceiling: nil, target: nil)
   Row.new(key: key, label: label, bytes: bytes, tokens: tokens,
@@ -471,8 +464,7 @@ end
       lines << ""
       lines << "  The doctrine working set is reported against the target of " \
                "#{working_set.target} bytes, not enforced:"
-      lines << "  it stands at #{working_set.bytes} (#{format('%+d', working_set.gap)} against the target), " \
-               "where the fragment is #{report.fragment} bytes."
+      lines << "  it stands at #{working_set.bytes} (#{format('%+d', working_set.gap)} against the target)."
       lines << "  Its median term steps by about a kilobyte whenever a skill is added or removed; " \
                "the skill bodies are the gap."
     end

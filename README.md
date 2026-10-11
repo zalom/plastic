@@ -37,16 +37,16 @@ Plastic keeps the shape of the work fixed and leaves the thinking to you and you
 
 | You want to | What Plastic does |
 |-------------|-------------------|
-| Start from a rough idea | Creates one intent directory with an id, a slug and a born-complete intent file |
+| Start from a rough idea | Creates one intent with an id and a slug: its rows and its folder |
 | Keep the reasons | Appends each ruling to the Insights section of the intent file |
-| Plan the work | Holds the plan as a checklist or as a graph of nodes, and names the next step |
+| Plan the work | Holds the plan as a graph of nodes, and names the nodes ready to claim |
 | Resume tomorrow | Prints where a project stands and the next action in one line |
-| Hand work to an agent team | Arms a delivery lock, briefs each role and reports the result |
-| Close the work | Checks the merge and the records, fills placeholder records, and moves the intent to Completed or Abandoned |
+| Hand work to agents | Takes the delivery lock, prints the brief an agent starts from, and records each node's report |
+| Close the work | Closes a delivered intent once its verdict, nodes and outcome allow it, or prints what is missing |
 | Find an old decision | Searches every store, ranked, with one excerpt for each match |
-| Run many projects | Keeps one store for each project, plus a global store, all in plain Markdown and Git |
-| Steer a long delivery | Reads a roadmap as a graph and names the entry most worth continuing |
-| Protect the record | Writes one archive of the three databases, as of the last `plastic sync up`, with `config.yml`, `projects.yml`, and `INDEX.md` |
+| Run many projects | Keeps one store for each project, plus a global store: SQLite databases, printed to plain Markdown |
+| Steer a long delivery | Reads a roadmap as a graph and prints its first ready item |
+| Protect the record | Copies one store's databases into a new backup folder, and puts a backup back |
 
 Every result ends with a `next:` line and a `because:` line. The `--json` option prints the
 same result as data with stable keys. Every command takes it except the installer commands
@@ -55,23 +55,21 @@ script for the harness.
 
 ## How the record is built
 
-Each intent is one directory. Its record grows from the original intention through decisions,
-a plan, and delivery. The execution plan can use a checklist or a graph of dependent nodes.
+Each intent is one set of rows in the store's databases, printed to one folder. Its record grows
+from the original intention through decisions, a plan of dependent nodes, and delivery.
 
 | Stage | Question | File on disk |
 |-------|----------|--------------|
-| What | What is the intention? | `{id}--slug.md` |
-| Why | What context, evidence, and decisions shape it? | `spec.md` |
-| How | What is the plan? | `plan.md`; `checklist.md` and `actions/`, or `graph.md` and `nodes/` |
+| What | What is the intention? | `intent.md` |
+| Why | What context, evidence, and decisions shape it? | `spec.md`, `context.json` |
+| How | What is the plan? | `graph.json` |
 | Exec | What happened, and what was delivered? | `savepoint.md`, `outcome.md` |
 
-For graph work, `graph.md` links nodes by their dependencies, and `nodes/` holds the
-instructions for each node. Plastic uses those dependencies and the node transitions in
-`savepoint.md` to determine which work is ready. `plastic next` names the next
-graph step once the session holds the delivery lock. For checklist work, the same command
-reports the next unfinished item.
+`graph.json` prints the nodes and the edges between them. Plastic reads the node states and the
+edges to determine which work is ready, and `plastic graph ready ID` lists the nodes ready to
+claim. `plastic next` picks the intent in play and offers its next command.
 
-The files are plain Markdown in a Git repository that you own. See
+The printed files are plain Markdown and JSON in a folder that you own. See
 [the architecture](docs/contributing/ARCHITECTURE.md) for the full store layout.
 
 ## Installation
@@ -158,7 +156,7 @@ An intent moves through the phases below: the go-ahead, the nodes, the judge, th
   plastic intent new "..."  -->  creates the intent     -->  12--slug/intent.md
   plastic intent rule 12    -->  records a ruling       -->  Insights in 12--slug/intent.md
   plastic next              -->  names the next step    -->  graph.json, printed from the node rows
-  plastic intent end 12     -->  closes the intent      -->  outcome.md, INDEX.md
+  plastic intent end 12     -->  closes the intent      -->  outcome.md, store/index.json
 
         ^                                                              |
         |            next: one command       because: one reason       |
@@ -168,9 +166,9 @@ An intent moves through the phases below: the go-ahead, the nodes, the judge, th
 Plastic follows four rules:
 
 1. **Commands print state and rules.** The judgment stays with you and the agent.
-2. **The ledger is append-only.** `savepoint.md` holds one line for each event, so a new
+2. **The savepoint is append-only.** `savepoint.md` holds one line for each step, so a new
    session resumes from the last line.
-3. **Status is derived.** Plastic reads what is ready from the graph and the ledger.
+3. **Status is derived.** Plastic reads what is ready from the node rows and their edges.
 4. **Nothing leaves the machine.** Plastic makes no model call and sends none of your files anywhere.
 
 ## Commands
@@ -181,20 +179,18 @@ plastic status                        # Active work in every store
 plastic graph resume                  # Where this project's work stopped and what runs next
 plastic graph resume --stores blog,shop  # The same, for several named projects
 plastic next                          # The next action in one line
-plastic next --why                    # The next action, with the reasoning
 ```
 
 ### Intents
 ```bash
-plastic intent new "LINE"             # Create an intent
-plastic intent new "LINE" --parent 12 # Create a branch of intent 12
+plastic intent new "TITLE"            # Create an intent
+plastic intent new "TITLE" --parent 12  # Create a branch of intent 12
 plastic intent show 12                # Print the state screen
 plastic intent spec 12                # State screen, then the speccing rules
 plastic intent rule 12 "TEXT"         # Record a ruling in Insights
 plastic intent revise 12 "LINE" --why "TEXT"  # Rewrite the What and the Why, keeping the old text
 plastic intent note 12 "TEXT"                     # Add a line under Notes in outcome.md; --kind Review, Commit or Report
-plastic session note "TEXT"           # Append a savepoint note
-plastic intent brief 12               # Print the brief an agent starts from
+plastic session note "TEXT"           # Write the one prose line of this session
 plastic intent link 12 cites 7        # Link intent 12 to intent 7
 plastic intent unlink 12 cites 7 --dry-run   # Preview the removal of a link
 plastic intent archive 12 --dry-run   # Preview an archive
@@ -206,19 +202,19 @@ plastic intent abandon 12               # Close as abandoned
 ### Graphs and roadmaps
 ```bash
 plastic graph show 12                 # The work graph of intent 12
-plastic graph show 12 --dry-run       # The same call in a disposable copy
 plastic graph ready 12                # The nodes ready to start
-plastic graph check 12                # Find cycles and dangling ids
-plastic node done 12 n3 "TEXT"   # Close a node
-plastic node resolve 12 n3 "TEXT"                       # Resolve a node that needs info or is impeded
+plastic graph check 12                # Find a done node with no findings, an isolated node or a retry cap
+plastic node claim 12 n3              # Claim a ready node
+plastic node done 12 n3 "TEXT"        # Close a claimed node with its findings
+plastic node resolve 12 n3 "TEXT"     # Reopen a node that needs info or is impeded
 plastic node remove 12 n3 --dry-run   # Preview a node removal
 plastic edge remove 12 n2 n3 --dry-run   # Preview an edge removal
-plastic roadmap next                  # The roadmap most worth continuing
+plastic roadmap next SLUG             # The first ready item of a roadmap
 plastic roadmap show SLUG             # The state screen of one roadmap
-plastic roadmap check SLUG            # Find cycles and dangling ids in the graph
+plastic roadmap check SLUG            # List loops, dangling edges and items with no intent
 plastic roadmap drop SLUG ITEM --dry-run        # Preview a dropped item
 plastic roadmap edge remove SLUG FROM TO --dry-run   # Preview an edge removal
-plastic roadmap log SLUG EVENT "TEXT" # Append a line to the roadmap ledger
+plastic roadmap log SLUG "TEXT"       # Append a log line to a roadmap
 ```
 
 A `--dry-run` call runs in a disposable copy of the store. It prints what it would
@@ -229,7 +225,7 @@ write, never touches the original, and ends with the same call without `--dry-ru
 plastic auto 12                        # Take the delivery lock and print the code worktree
 plastic auto my-roadmap                # Deliver the next item of a roadmap
 plastic intent lock status 12          # Show who holds the lock
-plastic intent brief 12 --role executor # Print the spawn preamble for one role
+plastic intent brief 12                # Print the brief an agent starts from
 ```
 
 ### Search
@@ -351,7 +347,7 @@ each repair, such as `plastic install --reinstall`.
 |------|---------|-------|
 | **Claude Code** | `plastic init` | Supported |
 | **Codex CLI** | `plastic init` | Supported |
-| **Hermes** | `plastic init` | Skills and agents only, with no hooks |
+| **Hermes** | `plastic init` | Agents only, with no hooks |
 
 The `plastic` command itself needs no agent. It runs in any shell with Ruby. See
 [harness support](docs/reference/harness-adapters.md) for the detail on each agent.
@@ -399,7 +395,6 @@ stores under `~/.plastic` stay.
 - **[docs/guide/](docs/guide/index.md)**: getting started with the `plastic` command.
 - **[docs/guides/](docs/guides/index.md)**: task guides, from your first intent to picking a mode.
 - **[docs/usage/](docs/usage/FEATURES.md)**: features, the audit guide and tracking.
-- **[docs/internals.md](docs/internals.md)**: how Plastic stays deterministic.
 - **[docs/contributing/](docs/contributing/ARCHITECTURE.md)**: the system architecture in drawings, the command architecture, the coding practices and the gates.
 - **[CHANGELOG.md](CHANGELOG.md)**: one entry for each release.
 

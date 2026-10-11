@@ -6,8 +6,7 @@ These things use the network. `install.sh`, the update check hook and `plastic u
 the release list from the GitHub API and download a release archive from GitHub over HTTPS.
 `install.sh` and `plastic update` download Ruby from the jdx/ruby releases on GitHub, or from
 the Homebrew registry on an Intel Mac, and check it by its pinned size and SHA-256.
-Bundler fetches the sqlite3 gem from RubyGems when a release installs. `plastic session commit` in a project whose flow sets
-`mode: pull_request` runs `gh pr create`, which talks to GitHub.
+Bundler fetches the sqlite3 and tty-prompt gems from RubyGems when a release installs.
 
 ## Files the installer writes
 
@@ -15,11 +14,12 @@ Bundler fetches the sqlite3 gem from RubyGems when a release installs. `plastic 
 | ----- | --------------- |
 | `~/.local/share/plastic/` | The releases, the read-only Rubies under `rubies/`, the `active` and `previous` links, the installer lock and the activation record. |
 | `~/.local/bin/plastic` | A link to the active release launcher. |
-| `~/.plastic/` | Scripts, hooks, templates, `PLASTIC.md`, the install ledger `versions.json`, and your stores. |
-| `~/.claude/agents/`, `~/.claude/hooks`, `~/.claude/plastic/` | The Plastic agents and hooks for Claude Code, and the install record (`manifest.json`, `VERSION`). No workflow skills ship: the package's `skills/` holds only the shared `_decision-tables.md`, which the installer places in `~/.plastic/`, and `~/.claude/skills` may be left empty. |
+| `~/.plastic/` | Scripts, hooks, the help chapters, `PLASTIC.md`, `deprecations.yml`, the install ledger `versions.json`, and your stores. |
+| `~/.claude/agents/`, `~/.claude/hooks`, `~/.claude/plastic/` | The Plastic agents and hooks for Claude Code, and the install record (`manifest.json`, `VERSION`). |
 | `~/.claude/settings.json` | Hook entries, and the status line when you choose it. |
 | `~/.claude/CLAUDE.md` | One managed block between the `BEGIN PLASTIC` and `END PLASTIC` markers. |
 | `~/.codex/AGENTS.md`, `~/.codex/hooks.json`, `~/.codex/agents/` | The same, for Codex CLI. |
+| `~/.hermes/agents/`, `~/.hermes/plastic/` | The Plastic agents for Hermes, and the install record. |
 
 The installer replaces only its managed block in `CLAUDE.md` and `AGENTS.md`. Text outside
 the markers stays as you wrote it. `plastic uninstall` removes what the installer wrote into your

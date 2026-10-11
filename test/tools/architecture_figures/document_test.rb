@@ -42,7 +42,7 @@ class ArchitectureFiguresDocumentTest < Minitest::Test
     links.reject { |fragment| slugs.include?(fragment) }
   end
 
-  def excluded?(path) = path.start_with?("docs/reviews/") || path == "CHANGELOG.md" || path.end_with?("architecture_figures/document_test.rb") || !File.file?(File.join(ROOT, path))
+  def excluded?(path) = path == "CHANGELOG.md" || path.end_with?("architecture_figures/document_test.rb") || !File.file?(File.join(ROOT, path))
 
   def text_of(path) = File.binread(File.join(ROOT, path)).force_encoding("UTF-8")
 

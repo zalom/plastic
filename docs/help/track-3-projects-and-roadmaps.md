@@ -5,7 +5,7 @@
 For someone ready to see a founding idea grow past a single intent: into a small real
 project, a handful of related intents, and a roadmap that plans and tracks them as one
 batch. After this track, a small project (a personal todo app, in the walkthrough below)
-will exist with more than one intent inside it and a roadmap file describing the batch.
+will exist with more than one intent inside it and a roadmap describing the batch.
 
 ## Before you start
 
@@ -13,7 +13,7 @@ Run `plastic update` first, so the commands below match what is
 actually installed.
 
 Work in a sandbox: this whole track is a walked example. It creates a real project directory
-and a real roadmap file on disk, but the project is a throwaway one made for learning, not
+and a real roadmap, but the project is a throwaway one made for learning, not
 one this tutorial keeps or ships.
 
 ## Stations
@@ -36,8 +36,7 @@ into a whole new project.
 Make the project directory yourself and write its `AGENTS.md`, carrying forward at least one
 decision from the founding intent. Plastic does not create the directory or fill that file;
 that is ordinary agent work, done once, before the project exists. Once the directory exists,
-run `plastic install` to register it in `projects.yml` and provision and
-validate its store.
+run `plastic project new SLUG PATH` to register it in `projects.yml` and create its store.
 
 Artifact: a new project directory with its `AGENTS.md`, the project's own intent store, and a
 new entry in `projects.yml` registering it.
@@ -58,24 +57,21 @@ in the global store.
 
 ### 4. Plan a delivery batch
 
-Copy `templates/roadmap.md` to `roadmaps/<slug>.md`, next to the project's `INDEX.md`, and fill
-it by hand: a title and short meta header, a `## Goal` section in prose describing what "done"
-looks like for the whole batch, a `## Batches` section (an ordered list of groups of intents;
-intents inside one batch are safe to run in parallel, batches themselves run one after another),
-and an append-only, dated `## Log`. `INDEX.md` stays the single source of truth for each
-intent's status; the roadmap only mirrors it. List the two or more intents from station 3
-across one or more batches.
+Create the roadmap with `plastic roadmap new NAME --title TITLE --goal GOAL`. The goal is prose
+that describes what "done" looks like for the whole batch. Write each batch with
+`plastic roadmap batch SLUG N --title TITLE`, and add its items with
+`plastic roadmap add SLUG N ITEM --title TITLE --needs ITEM`. Items inside one batch are safe
+to run in parallel, and batches run one after another. Plan at least two items across one or
+more batches. Each item becomes an intent when `plastic roadmap open SLUG ITEM` opens it.
 
-Run `plastic roadmap check <slug>` to confirm the file parses. A roadmap copied from the
-template may have no `## Graph` section yet; `check` then exits 1 and names
-the missing section, which you write from the batches. Then run
-`plastic roadmap show <slug>` to see it rendered as a report.
+Run `plastic roadmap check SLUG` to list any loop, dangling edge or item with no intent. Then
+run `plastic roadmap show SLUG` to see it rendered as a report.
 
-Artifact: a new `roadmaps/<slug>.md` file, sitting next to the project's `INDEX.md`, listing
-the two or more intents from station 3 across one or more batches.
+Artifact: the roadmap's rows, printed to `roadmaps/<slug>.md` in the project's store, with its
+`## Goal`, one `## Batch N` section for each batch, `## Graph` and `## Log`.
 
-Checkpoint: name which of the two intents from station 3 share a batch (so they run in
-parallel) and which one, if any, sits in a later batch (so it waits).
+Checkpoint: name which of the items share a batch (so they run in parallel) and which one, if
+any, sits in a later batch (so it waits).
 
 ### 5. Drive delivery with /goal
 
@@ -84,10 +80,10 @@ and Claude keeps working, turn after turn, until a fast checker model confirms f
 Claude has actually reported that the condition holds; `/goal` never reads files on its own,
 so the condition has to name a check Claude's own output can prove.
 
-Turn the roadmap's `## Goal` and current `## Batches` into that condition, for example:
+Turn the roadmap's `## Goal` and current batch into that condition, for example:
 
-`/goal every intent in batch 1 of roadmaps/<slug>.md shows Completed in INDEX.md, and the test
-suite is green`
+`/goal every item in batch 1 of plastic roadmap show <slug> shows done, and the test suite is
+green`
 
 Claude then works through the batch itself, one intent at a time, and stops on its own once the
 checker agrees the condition holds. Run `/goal` with no argument at any point to see how long
@@ -95,8 +91,8 @@ it has run and how many turns it has spent; run `/goal clear` to stop it before 
 
 On a harness without `/goal`, just tell the agent to deliver the roadmap in auto mode instead.
 
-Checkpoint: point at the exact file (`roadmaps/<slug>.md`) whose `## Goal` and `## Batches`
-sections you turned into the condition above.
+Checkpoint: point at the exact file (`roadmaps/<slug>.md`) whose `## Goal` and batch section
+you turned into the condition above.
 
 ### 6. Merge discipline and releases
 

@@ -12,15 +12,14 @@ Start here, then follow the area you need.
 ## Orientation
 - [contributing/ARCHITECTURE.md](contributing/ARCHITECTURE.md): the system and its parts in
   drawings, the store layout, and the component map.
-- [internals.md](internals.md): how Plastic stays deterministic, the determinism
-  breakdown, and the harness system.
+- [reference/harness-adapters.md](reference/harness-adapters.md): the harness registry, how a
+  hook names its session and its harness, and what Plastic installs into each harness.
 
 ## Areas (growing)
 - [concepts/](concepts/): the model behind Plastic (how intents are sourced and chained).
 - [guides/](guides/): task-oriented walkthroughs (your first intent, picking a mode, reading
   the ledgers and a delivered intent).
 - [reference/](reference/): the harness adapters.
-- [adr/](adr/): architecture decision records, numbered. It holds no record yet.
 
 These areas fill in over time. The README covers the pitch and install; this folder covers
 how Plastic works and how to work with it.

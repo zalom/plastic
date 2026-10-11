@@ -95,8 +95,23 @@ loads on first use, so `plastic help` reads the table and loads no command.
 directory and working directory as arguments. No command reads `ENV`, `Dir.home` or `$stdout`
 directly, so a test never touches the real store.
 
-Every table is declared once, in `scripts/lib/plastic/graph/db/schema.rb`. A table marked
-`legacy: true` holds old data that nothing new reads.
+Every table is declared once, in `scripts/lib/plastic/graph/db/schema.rb`. The class in
+`scripts/lib/plastic/graph/db/schema_file.rb` builds the table definitions from it, and `Graph::Schema` serves their DDL, so nothing else
+declares a table. `test/plastic/graph/db/schema_test.rb` pins the DDL of each table by hash.
+Two marks sit on a table:
+
+| Mark | Meaning |
+| ---- | ------- |
+| `legacy: true` | The table holds old data that nothing new reads. |
+| `since: VERSION` | Databases older than VERSION lack the table. The next open creates it, so the backup check and `plastic doctor` do not fail on its absence, and the doctor notes it. |
+
+To retire a kind of data:
+
+1. Mark its table `legacy: true` in the schema file.
+2. Stop writing it from new code and stop reading it, except in the plumbing that writes,
+   prints, counts and declares it.
+3. Add its name to the allowed list of `test/legacy_tables_guard_test.rb` only for that plumbing.
+4. Leave its DDL unchanged. A legacy table is never dropped.
 
 ## The three graphs
 
@@ -110,6 +125,8 @@ it reads every database and writes nothing. The commands below reach them throug
 | Work graph | `work_graph.db` | What is being built: intents, with their nodes and the edges between them, savepoints, roadmaps and archives. | `Graph::WorkGraph` | `plastic next`, `plastic intent show` |
 | Knowledge graph | `knowledge_graph.db` | What is known: documents with their revisions, rulings and links. | `plastic intent new`, `plastic intent rule`, `plastic sync up` | `plastic search`, `plastic intent spec` |
 | Retrieval graph | `knowledge_graph.db` | What is found: the passages and the search index over the documents. | `plastic sync up` | `plastic search` |
+
+![How a node moves through its states. node add writes an open node. The main session claims it with node claim as it dispatches the agent, and the claim keeps the delivery lock live. node done records the judged report. node fail, node ask and node impede stop the node, and node release or node resolve reopens it. node remove takes an open node out of the graph.](figures/node-lifecycle.svg)
 
 A node is one unit of work. It moves through `open`, `claimed`, `done`, `failed`,
 `needs_info` and `impeded`, or leaves the graph as `removed`. `Graph::Work::Node::Writer` owns

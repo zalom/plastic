@@ -209,7 +209,6 @@ Metrics/MethodLength:
     - 'test/compact_instructions_test.rb'
     - 'test/context_budget_bench_test.rb'
     - 'test/engine_permissions_test.rb'
-    - 'test/harness_core_adapter_docs_test.rb'
     - 'test/hook_registry_test.rb'
     - 'test/installer_core_test.rb'
     - 'test/naming_rule_test.rb'
@@ -283,7 +282,6 @@ Minitest/EmptyLineBeforeAssertionMethods:
     - 'test/context_budget_bench_test.rb'
     - 'test/docs_model_test.rb'
     - 'test/engine_permissions_test.rb'
-    - 'test/harness_core_adapter_docs_test.rb'
     - 'test/harness_support_docs_test.rb'
     - 'test/hook_registry_test.rb'
     - 'test/installer_core_test.rb'
@@ -297,7 +295,6 @@ Minitest/EmptyLineBeforeAssertionMethods:
     - 'test/release_guard_test.rb'
     - 'test/release_verify_test.rb'
     - 'test/releasing_skill_publish_test.rb'
-    - 'test/report_screen_skill_contract_test.rb'
     - 'test/roadmap_test.rb'
     - 'test/tick_with_commit_contract_test.rb'
     - 'test/vocabulary_scan_test.rb'
@@ -319,7 +316,6 @@ Minitest/MultipleAssertions:
     - 'test/preflight_test.rb'
     - 'test/release_check_test.rb'
     - 'test/release_guard_test.rb'
-    - 'test/report_screen_skill_contract_test.rb'
     - 'test/vocabulary_scan_test.rb'
 
 # Offense count: 181

@@ -102,10 +102,10 @@ delivery in one place.
 
 The post-execution reviewer runs when the executor's diff touches any of these paths:
 
-- `hooks/`, `scripts/hook-*`, `scripts/lib/hook_registry.rb`
+- `hooks/`, `scripts/lib/plastic/hooks/`, `scripts/lib/hook_registry.rb`
 - `scripts/lib/plastic/graph/lock.rb`, `scripts/lib/plastic/workflows/start_auto.rb`,
   `scripts/lib/plastic/graph/work/completion/writer.rb`
-- `scripts/lib/installer_core.rb`, `scripts/install*`, `scripts/update.rb`
+- `scripts/lib/installer_core.rb`, `scripts/install.rb`, `scripts/install-release`
 - `package.json`, `CHANGELOG.md`
 
 Grow this list here.
@@ -152,15 +152,6 @@ When "work on Project X":
 1. Read `projects.yml`, find the project path
 2. Load global config (defaults)
 3. Load project config (overrides)
-4. Load global INDEX.md, find hub intents tagged `project-<name>`
-5. Load project INDEX.md, find tactical intents
+4. Read the global store's intents in its `store/index.json`, and find the ones about the project
+5. Read the project store's intents in its `store/index.json`
 6. The coordinator has the full picture and runs an auto team per intent as its main session
-
-## Spawn preamble
-
-`scripts/spawn-preamble` emits a live-state block purely from filesystem state: the active
-intent, stage, role/cycle-step, the honor instruction, and the report contract. When the
-intent's code worktree is resolvable and exists on disk, it also appends the worktree's
-absolute path plus a verbatim instruction to `cd` there directly, for harnesses whose
-`EnterWorktree` cannot discover a nested repo from a non-repo launch directory. Output is
-byte-identical when no worktree resolves.

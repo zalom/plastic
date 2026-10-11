@@ -1,7 +1,7 @@
 # Technical reference
 
-The internals of the whole system are in [docs/internals.md](../internals.md). This page
-covers the tools around the `plastic` command.
+The system and its parts are in [ARCHITECTURE.md](ARCHITECTURE.md). This page covers the
+tools around the `plastic` command.
 
 ## The gates
 
@@ -26,7 +26,7 @@ The following table says when each step passes.
 | Tests | The tests for the changed files pass. |
 | Timing check | Every test file ran under 5 seconds and every Varar document under 10, on a re-run when the first run went over. |
 | Patch coverage | Every changed line and branch is covered. |
-| Mutation testing | Frozen since October 3, 2026, so the gate skips it. When it runs: every mutant on the changed code has a verdict, and killed mutants are at least 75 percent of the total. |
+| Mutation testing | Frozen, so the gate skips it. When it runs: every mutant on the changed code has a verdict, and killed mutants are at least 75 percent of the total. |
 | CRAP scores | No changed method scores above 30. |
 | Code smells | Reek finds no smell in the changed sources. |
 | RubyCritic score | The changed sources that no todo list names score 90 or more out of 100. |
@@ -61,12 +61,12 @@ as a total, so a rerun cannot prove an individual kill from that format. Such an
 id stays unresolved and fails the gate; missing or uncovered ids never count as kills.
 
 Lint reads `.rubocop_with_todo.yml`. It is `.rubocop.yml` plus `.rubocop_todo.yml`, the
-generated list of offenses in code written before 2026-09-30. So a lint run reports what the
-change did and nothing else. Reek reads `.reek.yml` the same way: its exclude lists hold only
-the smells of that older code. RubyCritic runs Reek, Flay and Flog, and scores the changed
-sources from their smells, duplication and complexity. It leaves out a file that
-`.rubocop_todo.yml` or `.reek.yml` lists, because that file is older code, and it prints the
-names it left out. When every changed source is older code, the step does not run.
+generated list of offenses in older code, which never gains an entry. So a lint run reports
+what the change did and nothing else. Reek reads `.reek.yml` the same way: its exclude lists
+hold the smells of that older code and never gain an entry. RubyCritic runs Reek, Flay and
+Flog, and scores the changed sources from their smells, duplication and complexity. It leaves
+out a file that `.rubocop_todo.yml` or `.reek.yml` lists, because that file is older code, and
+it prints the names it left out. When every changed source is older code, the step does not run.
 
 Every step runs under a new `HOME` and `PLASTIC_TMP`. A mutant can turn an injected runner
 into a live call, and the throwaway home keeps that call away from the real one. The timings
@@ -118,7 +118,28 @@ commands would.
 ## The byte budget
 
 `bin/plastic-bench` is the one script that measures every standing surface, the agent catalog
-included. `test/context_budget_bench_test.rb` fails when a surface crosses its ceiling.
+included. It builds a fixture home with the real installer and measures the session boot
+there. `test/context_budget_bench_test.rb` runs the same module in the suite, so a crossed
+ceiling turns the suite red.
+
+| Surface | What it measures | Ceiling in bytes |
+| ------- | ---------------- | ---------------- |
+| Core block | `PLASTIC.md` | under 8,192 |
+| Boot injection | The context the start hook gives the fixture session | under 15,000 |
+| Boot injection plus skill catalog | The two together | under 17,500, lowered and never raised |
+| Standing surface | The core block, the boot injection and both catalogs | under 5,000 |
+
+The bench also reports the agent catalog, the skill catalog, the median skill body and the
+working set, with the working set's gap to its 15,000 target. It enforces no ceiling on those.
+
+| Option | Does |
+| ------ | ---- |
+| `--repeat N` | Runs N boots, 5 by default, and fails when they disagree |
+| `--core-file PATH` | Measures PATH as the core block, to show that a ceiling can fail |
+| `--repo PATH` | Measures another Plastic checkout |
+
+It exits 0 when every ceiling holds, 1 when one is crossed, and 2 on bad usage. The bench is a
+maintainer tool: it reads this repository's own files, so it is never installed.
 
 ## Layout
 

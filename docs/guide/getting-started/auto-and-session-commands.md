@@ -1,8 +1,7 @@
 # Auto and session commands
 
-The auto commands serve a team of agents that delivers one intent. The session commands keep
-the day ledger, which is the record of what each session did. Both groups replace skills that
-an agent used to read as prose.
+The auto commands serve a team of agents that delivers one intent. The session command writes
+the one prose line of a session.
 
 ## Auto commands
 
@@ -19,17 +18,13 @@ another session exits 3, and so do an open decision and a missing done criterion
 `plastic intent lock status ID` to see who holds the lock. An expired lock is taken over by
 the next `plastic auto ID`, and `plastic intent end` releases the lock.
 
-## Session commands
-
-The following table shows each session command and what it does:
+## Session command
 
 | Command | What it does |
 | ------- | ------------ |
-| `plastic session summary` | Prints the day ledger's open items and recent activity. |
-| `plastic session handoff` | Writes this session's hand-off into the day ledger. |
-| `plastic session commit "SUMMARY"` | Commits one verified checklist item with `SUMMARY` as the message. |
+| `plastic session note TEXT...` | Writes the one prose line of this session. |
 
-Every command takes `--json`. `plastic session commit` with no summary exits 2.
+Every command takes `--json`.
 
 ## Where the longer text lives
 

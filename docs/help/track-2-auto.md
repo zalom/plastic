@@ -54,7 +54,7 @@ must already exist in the store the command resolves to.
 
 No new command at this station. Watch how the work splits.
 
-Auto owns How (`graph.md`, `nodes/`) and Exec (the code, the tests, the
+Auto owns How (the work graph, printed to `graph.json`) and Exec (the code, the tests, the
 mechanical close) from here on. Inside Exec it follows a few fixed habits: it syncs its
 working copy with the main line before touching anything, ticks each task the moment it
 lands rather than batching several into one later edit, and independently verifies its own
@@ -76,9 +76,8 @@ Checkpoint: name one thing auto will always stop and ask about, rather than deci
 
 No new command. Auto keeps one delivery in one place and writes down every move: the delivery
 lock (one owner at a time, a row in `local.db`), the worktree (code
-edits land on the intent's own branch), the savepoint ledger (one line per lifecycle file the
-team writes), and the day ledger (the request that started this run moves from pending to open
-when the first project file lands). Nothing blocks the team; the record is how you follow it.
+edits land on the intent's own branch), the savepoint lines (the steps of the intent, printed to
+`savepoint.md`), and the session rows (one row for each harness session, with its note). Nothing blocks the team; the record is how you follow it.
 
 Checkpoint: open the intent's `savepoint.md` and name the stage its last line records.
 
@@ -112,7 +111,7 @@ close needs every live node done, every criterion covered, an accepted verdict a
 newest node change, and the `Merged:` and `Architecture map:` bullets under Verification in
 outcome.md; with a required pull request it also needs the `Pull request:` and `Approved:`
 bullets. When something is missing, the command prints it and closes nothing. Plastic does not
-merge. On success it writes the completion row, moves the intent to `## Completed`, releases
+merge. On success it writes the completion row, sets the intent's status to `done`, releases
 the lock, and hands the agent the steps that stop the processes and agents the intent started.
 
 Checkpoint: open `outcome.md` and read its Summary.

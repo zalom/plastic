@@ -14,7 +14,7 @@ because: it needs no argument and names the rest
 ```
 
 The `next:` line names the command to run now. The `because:` line gives the rule that chose
-it. The order of steps that the skills used to carry in prose lives in these two lines.
+it. These two lines carry the order of steps.
 
 ## The same result as data
 

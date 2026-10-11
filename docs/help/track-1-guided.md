@@ -12,8 +12,8 @@ end to end: a piece of work moved through What, Why, How, and Exec, with a finis
 Run `plastic update` first, so the commands below match what is
 actually installed.
 
-This track walks a graph intent: the plan is a `graph.md` of nodes that the runner dispatches.
-For the simpler checklist path, a small Ruby example taken from a new intent to merged code and
+This track walks one intent: the plan is the work graph, printed to `graph.json`, whose nodes
+the main session dispatches. For a small Ruby example taken from a new intent to merged code and
 a delivered close, run `plastic help tutorial` instead.
 
 Work in a sandbox. Run `plastic intent new` outside any registered project and the intent lands
@@ -29,9 +29,8 @@ directory (see station 5). Either way, nothing in this track touches a real proj
 Run `plastic intent new` and describe the work in plain words, for example "add a
 short Usage section to this project's README."
 
-Artifact: a new intent directory, `{id}--slug/` holding `intent.md`, the placeholder
-files `spec.md` and `outcome.md`, `graph.json`, and empty `actions/` and `resources/`
-folders.
+Artifact: a new intent directory, `{id}--slug/` holding `intent.md`, `savepoint.md` with
+its first line, and `graph.json` with an empty work graph.
 
 Checkpoint: open the new file. It already has a real id and a one-line description; nothing
 was hand-typed into it directly. That is the point: intents are always scaffolded by the
@@ -64,14 +63,15 @@ is already sitting in `## Insights`, in writing.
 
 ### 4. How, write the graph
 
-In the same conversation, the agent turns the rulings into the graph. It writes `graph.md` from
-`templates/graph.md`. No command creates it; once it exists, `plastic node done` and `plastic node resolve` update it.
+In the same conversation, the agent turns the rulings into the graph. It writes `spec.md` with
+one key for each done criterion, then adds each node with
+`plastic node add ID TITLE --criterion KEY` and each dependency with `plastic edge add ID FROM TO`.
 
-Artifact: `graph.md` (nodes, edges, dispatch policy) and one `nodes/N.md` file per node this
-small delivery needs. A delivery this size is one node; many independent tasks instead get
+Artifact: `spec.md` and the nodes and edges, printed to `graph.json` from the rows. One node
+covers each piece of work this small delivery needs. A delivery this size is one node; many independent tasks instead get
 one node each, dispatched in parallel by the runner.
 
-Checkpoint: open `graph.md` and point at the one node this worked example needs.
+Checkpoint: open `graph.json` and point at the one node this worked example needs.
 
 ### 5. Exec, drive the graph loop
 
@@ -87,7 +87,7 @@ Call `plastic next` again after each node returns, until the graph is empty.
 
 Artifact: the actual change on disk (the new README Usage section, or, in the global-store
 fallback, a short written note saved as the intent's deliverable) and every node in
-`graph.md` at a terminal status.
+`graph.json` at a terminal status.
 
 Checkpoint: run `plastic graph show ID` and confirm no node is left running or blocked, before
 moving to station 6. When the graph is complete, `plastic next` names `plastic intent end ID`.
@@ -102,10 +102,9 @@ Verification in outcome.md. Use `plastic intent abandon ID` for an intent that w
 When the intent has a code branch or worktree, merge the branch yourself first. Plastic does
 not merge, and a delivered close needs the `Merged:` line under Verification in outcome.md; Plastic does not check the merge itself.
 
-Artifact: a real `outcome.md` (Summary, Delivered, Verification, Follow-ups) generated from
-`graph.md` and the ledger (the same model as the internal `scripts/outcome-report`), the
-intent moved from `## Active` to `## Completed` in `INDEX.md`, the terminal savepoint line,
-and the lock and worktree released.
+Artifact: a real `outcome.md` (Summary, Delivered, Verification, Follow-ups) that the agent
+writes from the done nodes and their findings, the intent's status set to `done`, and the lock
+released.
 
 Checkpoint: open `outcome.md` and read its Summary. It should describe, in a sentence or
 two, exactly the README section (or note) just delivered.
@@ -113,6 +112,6 @@ two, exactly the README section (or note) just delivered.
 ## Wrap and where to go next
 
 That is the full cycle once: create, graph, node done, end. Run `plastic help tutorial` for
-the checklist path with a merged code change. Read
+a worked example with a merged code change. Read
 [`reading-the-ledgers.md`](https://github.com/zalom/plastic/blob/main/docs/guides/reading-the-ledgers.md) for where each station wrote its
 work down.

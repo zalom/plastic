@@ -6,7 +6,7 @@ Choose useful search terms, search the relevant stores, and read the returned qu
 
 ```text
 $ plastic search stable releases --source-project plastic --limit 20
-$ plastic document get "plastic://plastic/144/plan.md?revision=SHA256" --json
+$ plastic document get "plastic://plastic/144/spec.md?revision=SHA256" --json
 ```
 
 The search ranking is lexical. It returns passages with provenance so a person or agent can evaluate them. Plastic does not call a model or decide whether any passage answers the question.

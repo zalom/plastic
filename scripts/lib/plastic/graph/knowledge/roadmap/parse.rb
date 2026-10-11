@@ -9,10 +9,8 @@ module Plastic
         # Reads a legacy roadmap file's text into the rows sync up
         # writes: a title and goal, the batches and items of its "## Batches" or
         # "## Waves" section, the "needs" edges of its "## Graph" section, and
-        # the dated lines of its "## Log" section. Ported from the line patterns
-        # of scripts/lib/roadmap_graph.rb and scripts/lib/graph_edges.rb
-        # (docs/internals.md names the row shapes a result fills). Never raises:
-        # a line it cannot read becomes a problem naming the file and the line.
+        # the dated lines of its "## Log" section. Never raises: a line it
+        # cannot read becomes a problem naming the file and the line.
         module Parse
           Batch = Data.define(:position, :title)
           Item = Data.define(:item, :batch, :title, :status)

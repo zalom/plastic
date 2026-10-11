@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1160 520" role="img" aria-labelledby="node-lifecycle-title node-lifecycle-desc" font-family="IBM Plex Sans, system-ui, -apple-system, Segoe UI, sans-serif">
+  <title id="node-lifecycle-title">How a node moves through its states</title>
+  <desc id="node-lifecycle-desc">node add writes an open node. The main session claims it with node claim as it dispatches the agent, and the claim keeps the delivery lock live. node done records the judged report. node fail, node ask and node impede stop the node, and node release or node resolve reopens it. node remove takes an open node out of the graph.</desc>
+  <defs><marker id="node-lifecycle-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--line, #6b7483)"/></marker></defs>
+  <style>svg { --ink: #1f2530; --muted: #3f4754; --line: #6b7483; --paper: #e9e5dc; --card: #f4f1ea; --rule: #c9c3b6; --code: #0b5e55; --agent: #7d4405; --owner: #4a2a99; --owner-bg: #e4dcf5; --end: #23406f; --end-bg: #d9e2f0; }
+@media (prefers-color-scheme: dark) { svg { --ink: #e8e6e1; --muted: #b4bac4; --line: #8a93a3; --paper: #1d2128; --card: #262b34; --rule: #3b424e; --code: #5fd0c0; --agent: #e0a24f; --owner: #b9a2ff; --owner-bg: #2f2750; --end: #8fb0e8; --end-bg: #1f2d45; } }
+.background { fill: var(--paper, #e9e5dc); }
+.box { fill: var(--card, #f4f1ea); stroke: var(--line, #6b7483); stroke-width: 1; }
+.zone { fill: none; stroke: var(--line, #6b7483); stroke-width: 1.2; stroke-dasharray: 6 4; }
+.t { fill: var(--ink, #1f2530); font-size: 14px; font-weight: 600; }
+.s { fill: var(--muted, #3f4754); font-size: 11.5px; }
+.al { fill: var(--ink, #1f2530); font-size: 11.5px; stroke: var(--paper, #e9e5dc); stroke-width: 4px; paint-order: stroke; }
+.m { fill: var(--ink, #1f2530); font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; font-size: 12px; font-weight: 600; }
+.r { fill: var(--ink, #1f2530); font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; font-size: 11px; }
+.flow { stroke: var(--line, #6b7483); stroke-width: 1.5; fill: none; }</style>
+  <rect class="background" width="100%" height="100%"/>
+<rect class="box" x="30" y="30" width="220" height="94" rx="8"/><rect x="30" y="30" width="6" height="94" rx="3" fill="var(--line, #6b7483)"/>
+<text class="t" x="46" y="54">removed</text><text class="s" x="46" y="71">[Gone]</text>
+<text class="s" x="46" y="91">Only an open node. It</text>
+<text class="s" x="46" y="106">leaves the graph.</text>
+<rect class="box" x="350" y="30" width="260" height="109" rx="8"/><rect x="350" y="30" width="6" height="109" rx="3" fill="var(--code, #0b5e55)"/>
+<text class="t" x="366" y="54">Delivery lock</text><text class="s" x="366" y="71">[row in local.db]</text>
+<text class="s" x="366" y="91">Live while renewed within 1800 s,</text>
+<text class="s" x="366" y="106">or while a node of its session</text>
+<text class="s" x="366" y="121">is claimed within 7200 s.</text>
+<rect class="box" x="30" y="200" width="220" height="109" rx="8"/><rect x="30" y="200" width="6" height="109" rx="3" fill="var(--line, #6b7483)"/>
+<text class="t" x="46" y="224">open</text><text class="s" x="46" y="241">[1  Added]</text>
+<text class="s" x="46" y="261">The main session writes it</text>
+<text class="s" x="46" y="276">with node add, keyed to the</text>
+<text class="s" x="46" y="291">done criterion it serves.</text>
+<rect class="box" x="350" y="200" width="260" height="109" rx="8"/><rect x="350" y="200" width="6" height="109" rx="3" fill="var(--agent, #7d4405)"/>
+<text class="t" x="366" y="224">claimed</text><text class="s" x="366" y="241">[2  Dispatched]</text>
+<text class="s" x="366" y="261">The main session claims it as</text>
+<text class="s" x="366" y="276">it dispatches the agent. The</text>
+<text class="s" x="366" y="291">claim keeps the lock live.</text>
+<rect class="box" x="900" y="200" width="230" height="109" rx="8"/><rect x="900" y="200" width="6" height="109" rx="3" fill="var(--end, #23406f)"/>
+<text class="t" x="916" y="224">done</text><text class="s" x="916" y="241">[3  Judged]</text>
+<text class="s" x="916" y="261">The main session judges the</text>
+<text class="s" x="916" y="276">report and records its</text>
+<text class="s" x="916" y="291">findings.</text>
+<rect class="box" x="30" y="400" width="220" height="79" rx="8"/><rect x="30" y="400" width="6" height="79" rx="3" fill="var(--agent, #7d4405)"/>
+<text class="t" x="46" y="424">failed</text><text class="s" x="46" y="441">[Stopped]</text>
+<text class="s" x="46" y="461">node release reopens it.</text>
+<rect class="box" x="350" y="400" width="260" height="94" rx="8"/><rect x="350" y="400" width="6" height="94" rx="3" fill="var(--owner, #4a2a99)"/>
+<text class="t" x="366" y="424">needs_info</text><text class="s" x="366" y="441">[Waiting on the owner]</text>
+<text class="s" x="366" y="461">node resolve reopens it</text>
+<text class="s" x="366" y="476">with the answer.</text>
+<rect class="box" x="690" y="400" width="260" height="94" rx="8"/><rect x="690" y="400" width="6" height="94" rx="3" fill="var(--owner, #4a2a99)"/>
+<text class="t" x="706" y="424">impeded</text><text class="s" x="706" y="441">[Blocked]</text>
+<text class="s" x="706" y="461">node resolve reopens it</text>
+<text class="s" x="706" y="476">once the impediment clears.</text>
+<path class="flow" d="M 140.0 200 L 140.0 124" marker-end="url(#node-lifecycle-arrow)"/>
+<text class="al" x="140" y="166" text-anchor="middle">node remove</text>
+<path class="flow" d="M 250 254.5 L 350 254.5" marker-end="url(#node-lifecycle-arrow)"/>
+<text class="al" x="300" y="248" text-anchor="middle">node claim</text>
+<path class="flow" d="M 610 254.5 L 900 254.5" marker-end="url(#node-lifecycle-arrow)"/>
+<text class="al" x="755" y="248" text-anchor="middle">node done</text>
+<path class="flow" d="M 480.0 200 L 480.0 139" stroke-dasharray="4 3" marker-end="url(#node-lifecycle-arrow)"/>
+<text class="al" x="480" y="174" text-anchor="middle">keeps live</text>
+<path class="flow" d="M 402.0 309 L 402.0 354 L 140.0 354 L 140.0 400" marker-end="url(#node-lifecycle-arrow)"/>
+<text class="al" x="271" y="347" text-anchor="middle">node fail</text>
+<path class="flow" d="M 480.0 309 L 480.0 400" marker-end="url(#node-lifecycle-arrow)"/>
+<text class="al" x="480" y="359" text-anchor="middle">node ask</text>
+<path class="flow" d="M 558.0 309 L 558.0 354 L 820.0 354 L 820.0 400" marker-end="url(#node-lifecycle-arrow)"/>
+<text class="al" x="689" y="347" text-anchor="middle">node impede</text>
+</svg>

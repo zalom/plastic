@@ -27,7 +27,7 @@ Zettelkasten on paper (the ID tree) AND a graph in code (the `sources` / `chain`
 | `sources` | formative in-edges | DAG (multi-parent, cross-branch), acyclic | "how it was formed", strong creational/foundational context (must-load) |
 | `chain` | forward out-edges | general directed graph, cycles allowed | "what it leads to / could contribute", lighter contributory context |
 | `## Links` | human-readable projection of the local graph | rendered section | all `sources` first (top), then all `chain`, each as `- [[id--slug\|<target's full intent: text>]]` (cross-store: `- [[store:id--slug\|...]]`); no tags, no sub-grouping |
-| tags + INDEX.md | register / entry points | inverted index, hubs | how you find a cluster without walking edges |
+| clusters in `store/index.json` | register / entry points | inverted index, hubs | how you find a cluster without walking edges |
 
 The ID and `sources` are both about lineage, but they answer different questions. The ID is
 the single paper parent (one structural address). `sources` is the full set of formative

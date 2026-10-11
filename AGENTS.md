@@ -10,8 +10,7 @@ around broken data. A legitimately absent value is not broken data.
 
 ## Stack
 - Language: Ruby (scripts, installer, the `plastic` command)
-- Framework: a GitHub release archive that `install.sh` installs, holding the installer and the `plastic` command (`bin/plastic`). The
-  former workflow skills no longer ship; `skills/` keeps only the shared `_decision-tables.md`.
+- Framework: a GitHub release archive that `install.sh` installs, holding the installer and the `plastic` command (`bin/plastic`).
 - Testing: Minitest and Varar. `CONTRIBUTING.md` holds the patterns every test follows.
 - Source: this repository. The source command line runs as `ruby bin/plastic`.
 - Remote: git@github.com:zalom/plastic.git
@@ -41,8 +40,8 @@ Rules for any agent (or human) contributing to this repository.
 ### Documentation
 - Know which doc owns what. `PLASTIC.md` owns how Plastic works; it is plugin-maintained and overwritten on `plastic update`, so do not edit it. `AGENTS.md` (this file) owns how to work on this repository. Release history lives in `CHANGELOG.md` at the repo root.
 - Keep docs in sync with the framework. When you change the architecture, the lifecycle,
-  conventions, skills, hooks, templates, or harnesses, update `docs/contributing/ARCHITECTURE.md` and
-  `docs/internals.md` in the same change, and rebuild the figures with `ruby bin/architecture-figures`.
+  conventions, hooks or harnesses, update `docs/contributing/ARCHITECTURE.md` and its figures in
+  the same change, and rebuild the figures with `ruby bin/architecture-figures`.
 - Keep the README light. It carries the pitch, install, and a pointer into `docs/`.
   Deeper material belongs in `docs/`.
 - Writing follows the `plain-writing` skill. It owns the wording rules for every document in this repository; this file does not restate them.
@@ -52,10 +51,10 @@ Rules for any agent (or human) contributing to this repository.
   straight to code.
 - Create intents through `plastic intent new`, which runs the kernel's own command
   (`scripts/lib/plastic/commands/intent_new.rb`), never by hand-authoring the files or its rows.
-- Plans, specs, checklists, and outcomes live in the intent directory under `~/.plastic/`,
-  never in the project tree.
+- Specs, work graphs, and outcomes live in the store's databases and the intent folder under
+  `~/.plastic/`, never in the project tree.
 - A step becomes a script only when its output is a pure function of already-committed
-  artifacts (spec.md, plan.md, checklist.md, outcome.md, test results, the diff). Everything
+  artifacts (spec.md, graph.json, outcome.md, test results, the diff). Everything
   else stays judgment and stays with the agent. Make no exceptions for convenience.
 
 ### Testing
@@ -70,7 +69,7 @@ suites on your machine: read the CI failures and fix those.
 
 #### Kernel style
 
-The Metrics cops are on for the whole repository in `.rubocop.yml`. `.rubocop_todo.yml` hides only the offenses of code written before 2026-09-30, and it never gains an entry. A new or changed method or class that trips a cop is split, and a disable comment never excuses it. Hash literals carry one space inside the braces, `{ key: value }`, and RuboCop corrects it. Reek and RubyCritic, which runs Reek, Flay and Flog, hold the same line: `.reek.yml` hides only the smells of code written before 2026-09-30 and never gains an entry, and the change gate fails a change that smells or scores under 90. Before a kernel section is called done, load it whole, lint it, and verify its chains with `verify`, which raises with every problem at once.
+The Metrics cops are on for the whole repository in `.rubocop.yml`. `.rubocop_todo.yml` lists the offenses of older code, and it never gains an entry. A new or changed method or class that trips a cop is split, and a disable comment never excuses it. Hash literals carry one space inside the braces, `{ key: value }`, and RuboCop corrects it. Reek and RubyCritic, which runs Reek, Flay and Flog, hold the same line: `.reek.yml` lists the smells of older code and never gains an entry, and the change gate fails a change that smells or scores under 90. Before a kernel section is called done, load it whole, lint it, and verify its chains with `verify`, which raises with every problem at once.
 
 #### Branches
 
