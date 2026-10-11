@@ -3,7 +3,6 @@
 require "yaml"
 require_relative "tree"
 require_relative "mapping"
-require_relative "agent_renames"
 
 module Plastic
   class Config
@@ -31,16 +30,9 @@ module Plastic
         true
       end
 
-      def upgrade
-        migrate
-        rename_agents
-      end
+      def root = document.root
 
-      def rename_agents
-        renamed = AgentRenames.new(document.root).apply
-        save unless renamed.empty?
-        renamed
-      end
+      def save = File.write(@path, tree.to_yaml)
 
       private
 
@@ -57,8 +49,6 @@ module Plastic
       def document = tree.children.first
 
       def whole = (@whole ||= document.to_ruby)
-
-      def save = File.write(@path, tree.to_yaml)
     end
   end
 end

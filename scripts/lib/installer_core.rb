@@ -11,6 +11,7 @@ require "tmpdir"
 require_relative "hook_registry"
 require_relative "plastic/clock"
 require_relative "plastic/config"
+require_relative "plastic/config/upgrade"
 require_relative "plastic/hooks/entries"
 require_relative "plastic/graph"
 require_relative "agent_models"
@@ -1174,7 +1175,7 @@ class InstallerCore
   end
 
   # A flat config.yml rewritten in the global and harness sections.
-  def migrate_config = Plastic::Config::Document.new(File.join(plastic_home, "config.yml")).upgrade
+  def migrate_config = Plastic::Config::Upgrade.new(File.join(plastic_home, "config.yml")).call
 
   # Renames retired advisor keys without discarding a current key. It accepts
   # malformed config sections and leaves unrelated values untouched.
