@@ -12,6 +12,14 @@ class DocsStaleWordsGuardTest < Minitest::Test
   OWNERS = %w[docs/contributing/ARCHITECTURE.md docs/reference/harness-adapters.md].freeze
   LINT_RULES = %w[AGENTS.md docs/contributing/CODING_PRACTICES.md docs/contributing/TECHNICAL.md .reek.yml].freeze
   STALE = /doctor --core|next: none|intent end \S+ --(?!project|json)|\bEvery command ends with/
+  PUBLISHED = PAGES + Dir["{INSTALL,SECURITY,CONTRIBUTING,AGENTS,PLASTIC}.md", "agents/*.md", base: ROOT]
+  SCRIPTS = %w[lib/ build-release install-release install.rb release-check select-update-target].freeze
+  REMOVED_NAMES = Regexp.union(
+    /spawn[- ]preamble|savepoint-note|read-config|delivery\.lock|INDEX\.md|\b(?:plan|checklist|graph)\.md\b|\btemplates\//,
+    /plastic (?:auto (?:report|brief)|intent step|session (?:commit|summary|handoff)|migrate|feedback)\b/,
+    /(?i:day ledger)/,
+    %r{\bscripts/(?!#{SCRIPTS.map { |name| Regexp.escape(name) }.join("|")})[a-z]}
+  )
 
   def stale_words(text, pattern = STALE) = text.scan(pattern)
 
@@ -31,6 +39,18 @@ class DocsStaleWordsGuardTest < Minitest::Test
 
   def test_no_page_or_acceptance_document_uses_a_removed_option_or_next_line
     assert_empty found(PAGES + VARAR)
+  end
+
+  def test_the_published_pages_include_the_agents_and_the_root_pages
+    assert_empty(%w[agents/plastic-executor.md INSTALL.md README.md] - PUBLISHED)
+  end
+
+  def test_no_published_page_names_a_removed_script_command_or_file
+    assert_empty found(PUBLISHED, REMOVED_NAMES)
+  end
+
+  def test_the_removed_names_detector_catches_an_old_command_and_leaves_its_successor_alone
+    assert_equal [["plastic auto brief"], []], [stale_words("run plastic auto brief 12", REMOVED_NAMES), stale_words("run plastic intent brief 12", REMOVED_NAMES)]
   end
 
   def test_the_owner_pages_name_no_intent_by_number
