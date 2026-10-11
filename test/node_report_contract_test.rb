@@ -46,7 +46,7 @@ class NodeReportContractTest < Minitest::Test
   def test_planner_is_a_dispatched_node
     body = body_of(PLANNER)
 
-    assert_includes body, "the main session dispatches you"
+    assert_includes body, "The main session dispatches you for one step"
     refute_includes body, "orchestrating session"
   end
 
