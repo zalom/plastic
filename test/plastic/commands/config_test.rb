@@ -48,12 +48,12 @@ class ConfigCommandTest < Plastic::TestCase
     assert_equal({ "codex" => { "runner" => { "stop_hook" => true }, "migrate" => { "remove_after_import" => true } } }, saved["harnesses"])
   end
 
-def test_an_answer_that_keeps_every_setting_writes_nothing
-  result = config(numbers.values_at("statusline", "screens", "advisor.enabled").join(","))
+  def test_an_answer_that_keeps_every_setting_writes_nothing
+    result = config(numbers.values_at("statusline", "screens", "advisor.enabled").join(","))
 
-  assert_equal [0, false], [result.code, File.exist?(path)]
-  assert_includes result.out, "because: nothing changed"
-end
+    assert_equal [0, false], [result.code, File.exist?(path)]
+    assert_includes result.out, "because: nothing changed"
+  end
 
   def test_leaving_changes_nothing
     result = config("q")

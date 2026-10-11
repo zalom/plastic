@@ -48,17 +48,17 @@ class ConfigSetTest < Plastic::TestCase
     assert_equal 2, set("review.pull_request", "[a, b]").code
   end
 
-def test_a_value_yaml_reads_as_nothing_is_written_as_its_text
-  set("review.pull_request", "~")
+  def test_a_value_yaml_reads_as_nothing_is_written_as_its_text
+    set("review.pull_request", "~")
 
-  assert_equal({ "review" => { "pull_request" => "~" } }, saved["global"])
-end
+    assert_equal({ "review" => { "pull_request" => "~" } }, saved["global"])
+  end
 
-def test_a_value_yaml_cannot_read_is_written_as_its_text
-  set("review.pull_request", "'open")
+  def test_a_value_yaml_cannot_read_is_written_as_its_text
+    set("review.pull_request", "'open")
 
-  assert_equal({ "review" => { "pull_request" => "'open" } }, saved["global"])
-end
+    assert_equal({ "review" => { "pull_request" => "'open" } }, saved["global"])
+  end
 
   def test_an_unregistered_harness_is_refused_and_writes_nothing
     result = set("statusline", "false", "--harness", "cursor")

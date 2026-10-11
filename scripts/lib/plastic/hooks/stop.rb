@@ -37,7 +37,7 @@ module Plastic
 
       def stop_hook? = Config.new(scope.plastic_home, harness: harness).flag(%w[runner stop_hook], default: false)
 
-      def harness = graphs.retrieval.session(session_id)&.harness.then { |name| name if Harnesses.registered?(name) }
+      def harness = graphs.retrieval.session(session_id).harness.then { |name| name if Harnesses.registered?(name) }
     end
   end
 end

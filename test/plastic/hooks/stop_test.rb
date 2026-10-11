@@ -52,15 +52,15 @@ class StopTest < Plastic::TestCase
     assert_call result, code: 0, out: %({"decision":"block","reason":"Plastic: intent 1 still has ready work. Run plastic next for it and dispatch what it prints before stopping."}\n)
   end
 
-def test_with_no_session_row_the_global_section_turns_the_stop_gate_on
-  File.write(File.join(@plastic_home, "config.yml"), "global:\n  runner:\n    stop_hook: true\n")
-  put(:local, :locks, { store: "global", intent_id: "1", session_id: "s-9", mode: "auto", taken_at: STAMP, renewed_at: STAMP })
-  put(:work, :nodes, { intent_id: "1", id: "a", state: "open" })
+  def test_with_no_session_row_the_global_section_turns_the_stop_gate_on
+    File.write(File.join(@plastic_home, "config.yml"), "global:\n  runner:\n    stop_hook: true\n")
+    put(:local, :locks, { store: "global", intent_id: "1", session_id: "s-9", mode: "auto", taken_at: STAMP, renewed_at: STAMP })
+    put(:work, :nodes, { intent_id: "1", id: "a", state: "open" })
 
-  result = call(env: { "PLASTIC_SESSION" => "s-9" }, input: JSON.generate(stop_hook_active: false))
+    result = call(env: { "PLASTIC_SESSION" => "s-9" }, input: JSON.generate(stop_hook_active: false))
 
-  assert_match(/"decision":"block"/, result.out)
-end
+    assert_match(/"decision":"block"/, result.out)
+  end
 
   def test_help_prints_the_usage_and_reads_no_input
     reader = Class.new { def read(*) = raise("the hook read its input") }.new
