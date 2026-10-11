@@ -5,7 +5,8 @@ require_relative "../routine"
 module Plastic
   module Commands
     # Prints the goal, the done criteria, the rulings with superseded ones
-    # marked, the ready nodes and the usage of the node and edge commands.
+    # marked, the ready nodes, the main session steps and the usage of the node
+    # and edge commands.
     class IntentBrief < Routine
       intent_subject
       reads :work, :knowledge

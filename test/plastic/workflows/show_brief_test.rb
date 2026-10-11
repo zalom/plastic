@@ -53,6 +53,12 @@ class ShowBriefTest < Plastic::TestCase
     assert_equal ["ruling: D1 Old (superseded)", "ruling: D2 New", "ready: n1 Build"], printed.grep(/\A(ruling|ready):/)
   end
 
+  def test_the_brief_names_the_main_session_steps
+    open_intent
+
+    assert_equal Plastic::Graph::Work::MainSession.lines("1"), brief.last.printed.grep(/\Amain session:/)
+  end
+
   def test_the_node_and_edge_usage_closes_the_brief
     open_intent
 

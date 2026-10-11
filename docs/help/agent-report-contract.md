@@ -1,18 +1,17 @@
 # Agent completion report contract
 
-Every agent dispatched by the auto-mode enforcer MUST end its turn with a structured
+Every agent the main session dispatches in auto mode MUST end its turn with a structured
 completion report. This doc defines that report: one common envelope plus a per-role payload.
-It is the format the `REPORT_CONTRACT` constant in `scripts/spawn-preamble` points at, the
-role prompts (`agents/plastic-*.md`) reproduce, and the deterministic fallback
-(`scripts/agent-report`) approximates. Keep all four in agreement; the constant in
-`scripts/spawn-preamble` is the single source of truth for the injected wording.
+The role prompts (`agents/plastic-*.md`) reproduce it. The report is the only thing a
+dispatched agent hands back: it writes no Plastic state, and the main session records the
+result from the report.
 
 ## Purpose
 
 The report is the agent's FINAL MESSAGE (its return value), not a side-channel file. Every
 harness hands a spawned agent's final text back to the dispatcher, so the final message is the
 one carrier that works everywhere. The report structures the FINISH notification
-only. In-flight observations still go in `## Insights`; the report does not add progress chatter.
+only. Observations go in its `insights:` field; the report does not add progress chatter.
 An agent that finishes correct artifacts but goes idle without a report has not
 completed its handoff: the agent that did the work is the cheapest, most accurate source of the
 account.
@@ -29,40 +28,43 @@ fields stay exactly as below); it does not remove any required field.
 
 Every role report, whatever the stage, carries these fields:
 
-- **Role**: which agent produced this (executor, plan reviewer, post-execution reviewer).
+- **Role**: which agent produced this (planner, executor, plan reviewer, post-execution reviewer).
 - **Intent id and stage**: the active intent id and the cycle stage just completed.
 - **Status**: `delivered` or `blocked`.
 - **Artifacts written**: the files produced or changed (store paths, and project paths for the
   executor).
 - **Verification / tests run**: the command run and its result, or `n/a` for stages that write
   no code.
-- **Checklist deltas**: which checklist items this turn checked off (executor), or `n/a`.
+- **Nodes**: the work nodes this turn finished, each with its commit (executor), or `n/a`.
 - **Deviations from spec**: anything done differently from the spec or plan, and why, or `none`.
 - **Blockers / handoff notes**: what the next stage must watch for, or `none`.
 - **Insights**: 0..N durable nuggets discovered this turn (the most interesting residue),
   each one a `## Insights`-worthy line; `none` if there were none. Background and dispatched
-  agents MUST populate this: they carry each nugget home in the report and the orchestrator
-  persists it (see Insights delivery below), so an insight never depends on the discovering
-  session having file-write access.
+  agents MUST populate this: they carry each nugget home in the report and the main session
+  records it (see Insights delivery below).
 
 ## Per-role payload
 
-Multi-item payload fields (ordered actions, insights, checklist deltas) default to tables;
+Multi-item payload fields (ordered actions, insights, nodes) default to tables;
 single fields stay prose.
 
 Each role appends a payload that fulfils its place in the What, Why, How, Exec cycle.
-The payload is what makes the report useful to the orchestrator beyond the envelope.
+The payload is what makes the report useful to the main session beyond the envelope.
 
-The orchestrator writes the Why and How artifacts itself and reports nothing to itself. The lead dispatches three roles: the plan reviewer, the executor, and the
+The main session dispatches four roles: the planner, the plan reviewer, the executor, and the
 post-execution reviewer. The plan reviewer returns the shape in `plastic help
-plan-reviewer-prompt`; the other two carry the payloads below.
+plan-reviewer-prompt`; the other three carry the payloads below.
+
+### planner (How)
+- The spec text, the action with its failure-mode matrix, and the proposed work nodes, each
+  with the done criterion key it proves and the nodes it needs.
+- Every ambiguity, impediment and newly found issue, each with what was tried.
 
 ### executor (Exec)
-- Actions implemented this turn, mapped to checklist items checked off (checked / total).
+- The nodes landed this turn, each with its commit and its findings.
 - A summary of the code changed (files and the shape of the change).
-- Test result: the full-suite command and its pass / fail counts.
-- Insights reported in the `insights:` field (each with the `(autonomous)` marker); the
-  executor or the orchestrator persists them to `## Insights` via the `insight-append` helper.
+- Test result: the red commit's failing count, then the gate command and its pass / fail counts.
+- Insights reported in the `insights:` field, each with the `(autonomous)` marker.
 
 ### post-execution reviewer
 - Verdict: `pass` or `blockers found`.
@@ -76,31 +78,14 @@ Decision-shaping (the preamble plus these prompts) makes the report mandatory, b
 honor is best-effort across harnesses (Tier B/C in [`harness-adapters.md`](https://github.com/zalom/plastic/blob/main/docs/reference/harness-adapters.md)), so the
 contract is never a hard block. When a dispatched agent returns no usable report
 (it went idle, emitted only a bare ping, or its message was lost to a mid-run interjection), the
-enforcer synthesizes one:
-
-```
-scripts/agent-report <intent_dir> --role <role>
-```
-
-`scripts/agent-report` is a pure function of the intent directory (no network, clock, or
-randomness, mirroring `scripts/spawn-preamble`): it reads the current stage from the savepoint
-ledger, the lifecycle artifacts present, the checklist checked / total, and the `## Outcome`
-line, and emits a filesystem-derived report labeled `synthesized`. So a handoff account always
-exists: authored by the agent when possible, reconstructed deterministically when not.
+main session reads the account from the disk instead: the commits on the intent branch, the
+diff, and the test result. It records the node with `plastic node done ID NODE TEXT` when that
+account proves the node, and with `plastic node fail ID NODE TEXT` when it does not.
 
 ## Insights delivery
 
 Insights ride home in the completion report. Every agent reports its durable nuggets in the
-`insights:` field; the orchestrator (or any agent that can write the intent file) then persists
-each one via the helper:
+`insights:` field, and the main session records each one on receipt with
+`plastic intent note ID TEXT`. A dispatched agent never writes the intent file, so an insight
+does not depend on the agent having write access to the store.
 
-```
-scripts/insight-append <intent_dir> <text> --stage S --author A
-```
-
-The helper formats the `{utc-iso8601} · {stage} · {author}` prefix (the same timestamp
-convention as the savepoint ledger), validates it, and appends the entry at the bottom of the
-`## Insights` section, newest last. This is the fix for dropped background and sub-agent
-insights: a session that cannot write the intent file still returns its report, so the insight
-survives and the orchestrator writes it on receipt. Hand-editing `## Insights` is an escape
-hatch; the helper is the default so the prefix format cannot drift.

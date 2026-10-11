@@ -34,9 +34,10 @@ questions to be hard.
 ## Auto
 
 You ask for auto on a registered intent with a clear prompt. The agent takes the intent with
-`plastic auto ID` and hands the whole cycle to a background team: a lead that writes the
-record and an executor that builds, under a lock and in its own git worktree. The lead chooses
-a review by risk; `plastic auto report ID` prints the rules it follows. It stops to ask you something
+`plastic auto ID`, writes the record, and dispatches a team one step at a time: a planner
+that drafts and reviews the plan and an executor that builds, under a lock and in its own git
+worktree. The agent chooses a review by risk; `plastic help agent-architecture` names the
+rules it follows. It stops to ask you something
 at a few designed moments: confirming a project path, or before an action with no safe undo.
 Choose it for well-scoped work you are comfortable delegating.
 

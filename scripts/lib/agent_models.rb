@@ -11,7 +11,7 @@ module AgentModels
   # Claude Code aliases only (never pinned ids, never Fable). Keys are the agent
   # file basenames without the `.md` extension.
   TIER_DEFAULTS = {
-    "plastic-enforcer" => "opus",
+    "plastic-planner" => "opus",
     "plastic-executor" => "sonnet"
   }.freeze
 

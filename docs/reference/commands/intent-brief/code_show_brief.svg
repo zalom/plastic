@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 451" width="760" height="451" role="img" xml:space="preserve">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 506" width="760" height="506" role="img" xml:space="preserve">
 <title>How ShowBrief runs in plastic intent brief</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
@@ -69,16 +69,16 @@
 }</style>
 <rect width="100%" height="100%" class="ground"/>
 <text x="16" y="22" class="tb" text-anchor="start">ShowBrief</text>
-<text x="436" y="22" class="tm tag-muted" text-anchor="end">show_brief.rb:22</text>
+<text x="436" y="22" class="tm tag-muted" text-anchor="end">show_brief.rb:24</text>
 <rect x="16" y="34" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="49" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="49" class="tm tag-muted" text-anchor="end">show_brief.rb:39</text>
+<text x="426" y="49" class="tm tag-muted" text-anchor="end">show_brief.rb:41</text>
 <text x="26" y="66" class="t" text-anchor="start">find the intent</text>
 <path d="M 226 79 L 226 89" class="wire"/>
 <path d="M 221 81 L 226 89 L 231 81 Z" class="head"/>
 <rect x="16" y="89" width="420" height="56" rx="6" class="card"/>
 <text x="26" y="104" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="104" class="tm tag-muted" text-anchor="end">show_brief.rb:43</text>
+<text x="426" y="104" class="tm tag-muted" text-anchor="end">show_brief.rb:45</text>
 <text x="26" y="121" class="tm" text-anchor="start">passes when !context.intent.nil?</text>
 <path d="M 436 107 L 464 107" class="wire-failure"/>
 <path d="M 456 102 L 464 107 L 456 112 Z" class="head"/>
@@ -90,34 +90,40 @@
 <path d="M 221 147 L 226 155 L 231 147 Z" class="head"/>
 <rect x="16" y="155" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="170" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="170" class="tm tag-muted" text-anchor="end">show_brief.rb:45</text>
+<text x="426" y="170" class="tm tag-muted" text-anchor="end">show_brief.rb:47</text>
 <text x="26" y="187" class="t" text-anchor="start">print the goal and its criteria</text>
 <path d="M 226 200 L 226 210" class="wire"/>
 <path d="M 221 202 L 226 210 L 231 202 Z" class="head"/>
 <rect x="16" y="210" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="225" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="225" class="tm tag-muted" text-anchor="end">show_brief.rb:52</text>
+<text x="426" y="225" class="tm tag-muted" text-anchor="end">show_brief.rb:54</text>
 <text x="26" y="242" class="t" text-anchor="start">print the rulings</text>
 <path d="M 226 255 L 226 265" class="wire"/>
 <path d="M 221 257 L 226 265 L 231 257 Z" class="head"/>
 <rect x="16" y="265" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="280" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="280" class="tm tag-muted" text-anchor="end">show_brief.rb:56</text>
+<text x="426" y="280" class="tm tag-muted" text-anchor="end">show_brief.rb:58</text>
 <text x="26" y="297" class="t" text-anchor="start">print the ready nodes</text>
 <path d="M 226 310 L 226 320" class="wire"/>
 <path d="M 221 312 L 226 320 L 231 312 Z" class="head"/>
 <rect x="16" y="320" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="335" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="335" class="tm tag-muted" text-anchor="end">show_brief.rb:60</text>
-<text x="26" y="352" class="t" text-anchor="start">print the usage of the node and edge commands</text>
+<text x="426" y="335" class="tm tag-muted" text-anchor="end">show_brief.rb:62</text>
+<text x="26" y="352" class="t" text-anchor="start">print the main session steps</text>
 <path d="M 226 365 L 226 375" class="wire"/>
 <path d="M 221 367 L 226 375 L 231 367 Z" class="head"/>
-<text x="16" y="387" class="tag tag-muted" text-anchor="start">ENDS ON</text>
-<rect x="16" y="395" width="300" height="42" rx="6" class="card"/>
-<text x="26" y="411" class="tm" text-anchor="start">:done</text>
-<text x="26" y="427" class="tm tag-muted" text-anchor="start">always</text>
-<path d="M 316 411 L 352 411" class="wire"/>
-<path d="M 344 406 L 352 411 L 344 416 Z" class="head"/>
-<rect x="352" y="395" width="392" height="42" rx="6" class="lane-code"/>
-<text x="362" y="412" class="t" text-anchor="start">next workflow: DeliveryNext</text>
+<rect x="16" y="375" width="420" height="45" rx="6" class="card"/>
+<text x="26" y="390" class="tag tag-muted" text-anchor="start">READ</text>
+<text x="426" y="390" class="tm tag-muted" text-anchor="end">show_brief.rb:66</text>
+<text x="26" y="407" class="t" text-anchor="start">print the usage of the node and edge commands</text>
+<path d="M 226 420 L 226 430" class="wire"/>
+<path d="M 221 422 L 226 430 L 231 422 Z" class="head"/>
+<text x="16" y="442" class="tag tag-muted" text-anchor="start">ENDS ON</text>
+<rect x="16" y="450" width="300" height="42" rx="6" class="card"/>
+<text x="26" y="466" class="tm" text-anchor="start">:done</text>
+<text x="26" y="482" class="tm tag-muted" text-anchor="start">always</text>
+<path d="M 316 466 L 352 466" class="wire"/>
+<path d="M 344 461 L 352 466 L 344 471 Z" class="head"/>
+<rect x="352" y="450" width="392" height="42" rx="6" class="lane-code"/>
+<text x="362" y="467" class="t" text-anchor="start">next workflow: DeliveryNext</text>
 </svg>

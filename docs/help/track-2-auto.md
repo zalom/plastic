@@ -43,7 +43,8 @@ unknown roadmap exits 1.
 An intent with an open decision or no done criterion, or one another session holds, is
 refused with exit 3. Exit 3 means stop and report; never retry with another flag on your own.
 
-`plastic intent brief ID` prints the preamble the spawned lead starts from, and
+`plastic intent brief ID` prints the brief the main session works from, with the steps only
+the main session takes, and
 `plastic intent lock status ID` shows who holds the lock.
 
 Checkpoint: name the one precondition auto needs before it will start: the intent you name
@@ -106,7 +107,7 @@ at and how that matched what was actually on disk.
 
 ### 6. The close
 
-The lead closes the intent with `plastic intent end ID`. The
+The main session closes the intent with `plastic intent end ID`. The
 close needs every live node done, every criterion covered, an accepted verdict at or after the
 newest node change, and the `Merged:` and `Architecture map:` bullets under Verification in
 outcome.md; with a required pull request it also needs the `Pull request:` and `Approved:`

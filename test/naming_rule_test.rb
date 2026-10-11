@@ -4,12 +4,12 @@
 require "minitest/autorun"
 
 # A thing is named after the concept family it lives under. The knowledge-graph
-# chapter carries the rule, and the enforcer and executor agent files each carry
+# chapter carries the rule, and the planner and executor agent files each carry
 # one sentence that agrees with it.
 class NamingRuleTest < Minitest::Test
   REPO = File.expand_path("..", __dir__)
   KNOWLEDGE_GRAPH_MD = File.join(REPO, "docs", "help", "knowledge-graph.md")
-  ENFORCER_MD = File.join(REPO, "agents", "plastic-enforcer.md")
+  PLANNER_MD = File.join(REPO, "agents", "plastic-planner.md")
   EXECUTOR_MD = File.join(REPO, "agents", "plastic-executor.md")
 
   def headings(body)
@@ -46,8 +46,8 @@ class NamingRuleTest < Minitest::Test
     assert_includes naming_paragraph, "A thing is named after the concept family it lives under."
   end
 
-  def test_enforcer_carries_the_naming_sentence
-    body = File.read(ENFORCER_MD).gsub(/\s+/, " ")
+  def test_planner_carries_the_naming_sentence
+    body = File.read(PLANNER_MD).gsub(/\s+/, " ")
     phrases = ["concept family it lives under", "graph engineering", "Plastic concepts coined on top of it",
       "software and AI engineering", "design finding to raise, not a word to coin"]
 
@@ -66,8 +66,8 @@ class NamingRuleTest < Minitest::Test
       headings(File.read(EXECUTOR_MD))
   end
 
-  def test_enforcer_contract_sections_are_unchanged
-    assert_equal ["## Your Responsibilities", "## How You Work", "## Human-facing reporting", "## Constraints", "## Planning directive"],
-      headings(File.read(ENFORCER_MD))
+  def test_planner_contract_sections_match_the_executor
+    assert_equal ["## Your Responsibilities", "## How You Work", "## Completion Report", "## Constraints", "## Planning directive"],
+      headings(File.read(PLANNER_MD))
   end
 end
