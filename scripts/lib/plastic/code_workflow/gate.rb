@@ -8,20 +8,20 @@ module Plastic
   class CodeWorkflow < Workflow
     # A check that stops the call unless its pass: lambda holds. It prints
     # its reason as a refusal, exit 3, or as a failure, exit 1.
-    Gate = Data.define(:reason, :stops, :pass, :offers) do
+    Gate = Data.define(:reason, :stops, :pass, :offers, :because) do
       def name = "gate"
 
-      def templates = [reason, offers].compact
+      def templates = [reason, offers, because].compact
 
       # Nil when the gate lets the call through; otherwise the value that ends it.
       def run(ctx, workflow)
         return if pass.call(ctx)
 
-        ending(workflow.key, ctx.fill(reason), offers && ctx.fill(offers))
+        ending(workflow.key, ctx.fill(reason), *[offers, because].map { |template| template && ctx.fill(template) })
       end
 
-      def ending(key, message, command)
-        (stops == :refusal) ? Refused.new(key, message, command) : Failed.new(key, name, message, command)
+      def ending(key, message, command, why)
+        (stops == :refusal) ? Refused.new(key, message, command, why) : Failed.new(key, name, message, command, why)
       end
     end
   end
