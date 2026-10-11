@@ -33,7 +33,7 @@ class LocalHistoryGuardTest < Minitest::Test
     paths = self.class.subjects
 
     refute_empty paths
-    assert(paths.any? { |path| path.end_with?("agents/plastic-enforcer.md") })
+    assert(paths.any? { |path| path.end_with?("agents/plastic-planner.md") })
     assert(paths.any? { |path| path.end_with?("scripts/lib/installer_core.rb") })
   end
 

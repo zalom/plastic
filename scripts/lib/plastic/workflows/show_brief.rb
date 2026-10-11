@@ -2,6 +2,7 @@
 
 require_relative "../code_workflow"
 require_relative "../graph/knowledge/spec"
+require_relative "../graph/work/main_session"
 require_relative "lines"
 require_relative "../commands/node_add"
 require_relative "../commands/node_remove"
@@ -18,7 +19,8 @@ require_relative "../commands/edge_remove"
 module Plastic
   module Workflows
     # Prints the goal, the done criteria, the rulings with superseded ones
-    # marked, the ready nodes and the usage of the node and edge commands.
+    # marked, the ready nodes, the main session steps and the usage of the node
+    # and edge commands.
     class ShowBrief < CodeWorkflow
       [facts, steps, outcomes].each(&:clear)
 
@@ -55,6 +57,10 @@ module Plastic
 
       read "print the ready nodes" do |context|
         context.retrieval.ready_nodes(context.intent_id).each { |node| context.print(Lines.ready_node(node)) }
+      end
+
+      read "print the main session steps" do |context|
+        Graph::Work::MainSession.lines(context.intent_id).each { |line| context.print(line) }
       end
 
       read "print the usage of the node and edge commands" do |context|

@@ -23,8 +23,8 @@ row the session holds at the end of each turn.
 | none of these | expired |
 
 A claim records the session that ran `plastic node claim` and the claim time, so the
-orchestrator that claims each node it dispatches keeps its lock while a subagent works on that
-node, even when the orchestrator has no turns. The TTL and the node limit stop a crashed session,
+main session that claims each node it dispatches keeps its lock while a dispatched agent works
+on that node, even when the main session has no turns. A dispatched agent claims nothing. The TTL and the node limit stop a crashed session,
 which never ends, from holding a lock for good.
 
 `plastic auto ID` takes the lock. Another session that finds a live lock gets exit 3 and backs
@@ -87,6 +87,6 @@ station. Nothing in the third column blocks; the fourth column is what gets writ
 | Why | `spec.md` | no lock yet; `plastic intent spec ID` names the open decisions | the spec and the rulings as rows |
 | Start (board) | none (a procedure, not a stage) | `plastic auto ID` takes the lock row and sets the intent active, then prints the code worktree path and branch | the lock row in `local.db` |
 | How | the work graph of the intent | the record hook renews the lock | node and edge rows |
-| Exec | code on the intent branch | renewal continues; code edits stay in the code worktree | node results |
+| Exec | code on the intent branch | the main session claims each node as it dispatches it, which keeps the lock live; code edits stay in the code worktree | node claims and results |
 | End (done) | `outcome.md` | `plastic intent end ID` closes the intent and releases the lock; the session that delivered it closes it after the code is merged, with no lock handover | the intent closed as done |
 | Maintenance | revisions | detects a live lock and defers; never takes one | the revision rows |

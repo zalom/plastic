@@ -184,7 +184,7 @@
       ]
     },
     "varar/intent-brief.md": {
-      "sourceHash": "fnv1a:549aff7f",
+      "sourceHash": "fnv1a:088c7f8b",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",

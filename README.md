@@ -352,8 +352,9 @@ each repair, such as `plastic install --codex --reinstall`.
 The `plastic` command itself needs no agent. It runs in any shell with Ruby. See
 [harness support](docs/reference/harness-adapters.md) for the detail on each agent.
 
-Seven agents ship with Plastic: an enforcer that leads an auto team, an executor, three node
-agents for work, verification and research, and two advisors for hard decisions.
+Four agents ship with Plastic: a planner that drafts or reviews a plan, an executor that
+builds it, and two advisors for hard decisions. Your main session dispatches each one for one
+step and records what it reports.
 
 ## Configuration
 

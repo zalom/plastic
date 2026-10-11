@@ -187,7 +187,7 @@ a deterministic block built purely from the intent directory on disk (no network
 randomness, no clock read), reporting the active intent id and intent line, the current stage
 (the last non-empty line of `savepoint.md` when present, else the stage derived from which
 lifecycle files exist), the cycle role or step, the verbatim honoring instruction, and the
-verbatim report contract (intent 74). The auto team lead prepends this preamble to every
+verbatim report contract (intent 74). The main session prepends this preamble to every
 dispatched agent's prompt.
 
 ### L3 the record
