@@ -17,12 +17,7 @@ module Plastic
         label = "hook #{event}:"
         return Check.finding(label, "no Plastic hook", REPAIR) if files.empty?
 
-        Check.new(label, files.map { |file| File.basename(file) }.uniq.join(", "), REPAIR).judged(broken(files))
-      end
-
-      def self.broken(files)
-        missing = files.reject { |file| File.file?(file) && File.executable?(file) }
-        "#{missing.join(", ")} is missing or not executable" unless missing.empty?
+        Check.new(label, files.map { |file| File.basename(file) }.uniq.join(", "), REPAIR).judged(Check.unrunnable(files))
       end
 
       def self.plastic_file?(path) = path.include?("/") && PLASTIC_FILE.match?(File.basename(path))
@@ -38,7 +33,7 @@ module Plastic
         hooks = read
         EVENTS.keys.map { |event| event_check(event, hooks[event]) }
       rescue JSON::ParserError
-        [Check.finding("hooks:", "#{path} is not valid JSON", "fix the JSON in #{path}, then run #{REPAIR}")]
+        [Check.invalid_json(path, REPAIR)]
       end
 
       private

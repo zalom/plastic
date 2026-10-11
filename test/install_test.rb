@@ -98,6 +98,19 @@ class InstallTest < Minitest::Test
     end
   end
 
+  class Runner < Install
+    def distribute(mode) = super(mode, tmp_dirs: [])
+  end
+
+  def test_a_run_moves_a_flat_config_into_the_sections
+    Dir.mktmpdir("plastic-installer-run") do |home|
+      File.write(File.join(home, "config.yml"), "version: 3\nagent:\n  type: claude-code\nscreens: false\n")
+      capture_io { Runner.new(package_root: File.expand_path("..", __dir__), plastic_home: home, version: "2.1.0").run(selected: [], argv: []) }
+
+      assert_equal({ "version" => 3, "global" => { "screens" => false } }, YAML.safe_load_file(File.join(home, "config.yml")))
+    end
+  end
+
   private
 
   def shipped_names(installer)

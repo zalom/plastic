@@ -1013,7 +1013,6 @@ class InstallerCore
     Plastic::Harnesses.fetch("codex").events.values.select { |words| added.any? { |command| command.include?("\" #{words} ") } }
   end
 
-
   # Returns [[event, command], ...] for every entry removed, mirroring
   # purge_stale_plastic_hooks. Ownership comes from HookRegistry.
   def purge_stale_codex_hooks(hooks)

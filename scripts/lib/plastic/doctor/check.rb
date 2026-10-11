@@ -7,6 +7,13 @@ module Plastic
 
       def self.finding(label, text, repair) = new(label, text, repair)
 
+      def self.invalid_json(path, repair) = finding("hooks:", "#{path} is not valid JSON", "fix the JSON in #{path}, then run #{repair}")
+
+      def self.unrunnable(files)
+        missing = files.reject { |file| File.file?(file) && File.executable?(file) }
+        "#{missing.join(", ")} is missing or not executable" unless missing.empty?
+      end
+
       def self.from(part)
         label, value, repair = part.to_h.values_at(:label, :value, :repair)
         repair ? finding(label, value, repair) : ok(label, value)
