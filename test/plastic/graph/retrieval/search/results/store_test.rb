@@ -11,8 +11,9 @@ class RetrievalSearchResultsStoreTest < Plastic::TestCase
     store_graphs.databases[:references].transaction { |batch| batch.put(:sqlar, row) }
   end
 
-  def test_a_store_with_every_graph_file_opens_its_retrieval_graph
+  def test_a_backfilled_store_opens_its_retrieval_graph
     keep_a_file
+    retrieval.backfill
 
     assert_equal "global", store("global").retrieval.store
   end

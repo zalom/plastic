@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "external_agent_workflow"
+require_relative "../graph/retrieval/maintained_store"
 require_relative "../graph/retrieval/source"
 require_relative "discovery_candidates"
 
@@ -31,15 +32,9 @@ module Plastic
       def rows(slug) = DiscoveryCandidates.new(slug, retrieval_for(slug)).rows(@context.terms)
 
       def retrieval_for(slug)
-        verify_store_files(slug)
-        Graph.open_retrieval(home: @context.scope.plastic_home, store: slug)
-      end
-
-      def verify_store_files(slug)
-        root = File.join(@context.scope.plastic_home, "stores", slug)
-        return if Graph::Schema.store.all? { |key| File.file?(File.join(root, Graph::Schema.file(key))) }
-
-        raise Graph::RetrievalGraph::MaintenanceRequired, "retrieval maintenance is required before source #{slug} can be read"
+        home = @context.scope.plastic_home
+        Graph::Retrieval::MaintainedStore.new(home, slug).verify
+        Graph.open_retrieval(home:, store: slug)
       end
 
       def handoff

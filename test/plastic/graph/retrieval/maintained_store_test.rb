@@ -23,7 +23,7 @@ class RetrievalMaintainedStoreTest < Plastic::TestCase
   end
 
   def test_a_backfilled_store_is_maintained
-    opened("ready").retrieval.backfill
+    Plastic::Graph.create(home: @plastic_home, store: "ready")
 
     assert_nil Plastic::Graph::Retrieval::MaintainedStore.new(@plastic_home, "ready").verify
   end
