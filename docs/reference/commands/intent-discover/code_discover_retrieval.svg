@@ -69,7 +69,7 @@
 }</style>
 <rect width="100%" height="100%" class="ground"/>
 <text x="16" y="22" class="tb" text-anchor="start">DiscoverRetrieval</text>
-<text x="436" y="22" class="tm tag-muted" text-anchor="end">discover_retrieval.rb:17</text>
+<text x="436" y="22" class="tm tag-muted" text-anchor="end">discover_retrieval.rb:15</text>
 <rect x="16" y="34" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="49" class="tag tag-muted" text-anchor="start">READ</text>
 <text x="426" y="49" class="tm tag-muted" text-anchor="end">code_workflow.rb:54</text>
@@ -78,25 +78,25 @@
 <path d="M 221 81 L 226 89 L 231 81 Z" class="head"/>
 <rect x="16" y="89" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="104" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="104" class="tm tag-muted" text-anchor="end">discover_retrieval.rb:24</text>
+<text x="426" y="104" class="tm tag-muted" text-anchor="end">discover_retrieval.rb:22</text>
 <text x="26" y="121" class="t" text-anchor="start">check the intent id</text>
 <path d="M 226 134 L 226 144" class="wire"/>
 <path d="M 221 136 L 226 144 L 231 136 Z" class="head"/>
 <rect x="16" y="144" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="159" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="159" class="tm tag-muted" text-anchor="end">discover_retrieval.rb:28</text>
+<text x="426" y="159" class="tm tag-muted" text-anchor="end">discover_retrieval.rb:26</text>
 <text x="26" y="176" class="t" text-anchor="start">find the owning intent</text>
 <path d="M 226 189 L 226 199" class="wire"/>
 <path d="M 221 191 L 226 199 L 231 191 Z" class="head"/>
 <rect x="16" y="199" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="214" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="214" class="tm tag-muted" text-anchor="end">discover_retrieval.rb:32</text>
+<text x="426" y="214" class="tm tag-muted" text-anchor="end">discover_retrieval.rb:30</text>
 <text x="26" y="231" class="t" text-anchor="start">find the saved retrieval context</text>
 <path d="M 226 244 L 226 254" class="wire"/>
 <path d="M 221 246 L 226 254 L 231 246 Z" class="head"/>
 <rect x="16" y="254" width="420" height="56" rx="6" class="card"/>
 <text x="26" y="269" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="269" class="tm tag-muted" text-anchor="end">discover_retrieval.rb:38</text>
+<text x="426" y="269" class="tm tag-muted" text-anchor="end">discover_retrieval.rb:34</text>
 <text x="26" y="286" class="tm" text-anchor="start">passes when !context.intent.nil?</text>
 <path d="M 436 272 L 464 272" class="wire-failure"/>
 <path d="M 456 267 L 464 272 L 456 277 Z" class="head"/>
@@ -108,13 +108,13 @@
 <path d="M 221 312 L 226 320 L 231 312 Z" class="head"/>
 <rect x="16" y="320" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="335" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="335" class="tm tag-muted" text-anchor="end">discover_retrieval.rb:40</text>
+<text x="426" y="335" class="tm tag-muted" text-anchor="end">discover_retrieval.rb:36</text>
 <text x="26" y="352" class="t" text-anchor="start">check the source stores</text>
 <path d="M 226 365 L 226 375" class="wire"/>
 <path d="M 221 367 L 226 375 L 231 367 Z" class="head"/>
 <rect x="16" y="375" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="390" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="390" class="tm tag-muted" text-anchor="end">discover_retrieval.rb:46</text>
+<text x="426" y="390" class="tm tag-muted" text-anchor="end">discover_retrieval.rb:40</text>
 <text x="26" y="407" class="tm" text-anchor="start">passes when context.problem.nil?</text>
 <path d="M 436 393 L 464 393" class="wire-failure"/>
 <path d="M 456 388 L 464 393 L 456 398 Z" class="head"/>
@@ -125,7 +125,7 @@
 <path d="M 221 422 L 226 430 L 231 422 Z" class="head"/>
 <rect x="16" y="430" width="420" height="59" rx="6" class="card"/>
 <text x="26" y="445" class="tag tag-muted" text-anchor="start">STEP</text>
-<text x="426" y="445" class="tm tag-muted" text-anchor="end">discover_retrieval.rb:48</text>
+<text x="426" y="445" class="tm tag-muted" text-anchor="end">discover_retrieval.rb:42</text>
 <text x="26" y="462" class="t" text-anchor="start">record retrieval discovery</text>
 <text x="26" y="477" class="tm" text-anchor="start">done when !context.discovery.nil?</text>
 <path d="M 436 448 L 464 448" class="wire-failure"/>
@@ -138,7 +138,7 @@
 <path d="M 221 491 L 226 499 L 231 491 Z" class="head"/>
 <rect x="16" y="499" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="514" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="514" class="tm tag-muted" text-anchor="end">discover_retrieval.rb:58</text>
+<text x="426" y="514" class="tm tag-muted" text-anchor="end">discover_retrieval.rb:52</text>
 <text x="26" y="531" class="t" text-anchor="start">report the discovery</text>
 <path d="M 226 544 L 226 554" class="wire"/>
 <path d="M 221 546 L 226 554 L 231 546 Z" class="head"/>

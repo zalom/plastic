@@ -98,7 +98,7 @@
 <rect x="336" y="272" width="196" height="28" rx="6" class="card"/>
 <text x="344" y="290" class="tm" text-anchor="start">Graph::Retrieval::Context::Freshness</text>
 <rect x="336" y="306" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="324" class="tm" text-anchor="start">MaintainedStore</text>
+<text x="344" y="324" class="tm" text-anchor="start">Graph::Retrieval::MaintainedStore</text>
 <rect x="336" y="340" width="196" height="28" rx="6" class="card"/>
 <text x="344" y="358" class="tm" text-anchor="start">Retrieval::Evidence</text>
 <rect x="336" y="374" width="196" height="28" rx="6" class="card"/>
