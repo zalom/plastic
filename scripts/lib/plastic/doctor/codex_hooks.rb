@@ -14,11 +14,6 @@ module Plastic
           .select { |hook| hook["type"] == "command" }.filter_map { |hook| hook["command"] }
       end
 
-      def self.broken(files)
-        missing = files.reject { |file| File.file?(file) && File.executable?(file) }
-        "#{missing.join(", ")} is missing or not executable" unless missing.empty?
-      end
-
       def self.read(path)
         data = JSON.parse(File.read(path))
         data["hooks"] if data.is_a?(Hash)
@@ -30,7 +25,7 @@ module Plastic
         label = "hook #{event}:"
         return Check.finding(label, "no current Plastic hook for Codex", REPAIR) if files.empty?
 
-        Check.new(label, files.uniq.join(", "), REPAIR).judged(broken(files))
+        Check.new(label, files.uniq.join(", "), REPAIR).judged(Check.unrunnable(files))
       end
 
       def initialize(path, home:)
@@ -43,7 +38,7 @@ module Plastic
 
         checks_for(CodexHooks.read(path))
       rescue JSON::ParserError
-        [Check.finding("hooks:", "#{path} is not valid JSON", "fix the JSON in #{path}, then run #{REPAIR}")]
+        [Check.invalid_json(path, REPAIR)]
       end
 
       private
@@ -53,7 +48,7 @@ module Plastic
       def checks_for(hooks)
         return [CodexHooks.finding("#{path} must hold a hooks map")] unless hooks.is_a?(Hash)
 
-        Hooks::Entries::EVENTS.keys.map { |event| CodexHooks.event_check(event, files(event, hooks[event])) }
+        Harnesses.fetch("codex").events.keys.map { |event| CodexHooks.event_check(event, files(event, hooks[event])) }
       end
 
       def files(event, groups)

@@ -15,14 +15,12 @@ module Plastic
           end
 
           # Upserts the session row, keeping `started_at` once it is set.
-          def open_session(session_id, harness:, directory:)
-            row = { session_id:, harness:, store: @store, directory: }
-            put(:sessions, started?(session_id) ? row : row.merge(started_at: Plastic.now))
-          end
+          def open_session(session_id, harness:, directory:) = opened({ session_id:, harness:, store: @store, directory: })
 
-          # Opens the session row, then sets its last turn to now.
-          def stamp_turn(session_id, harness:, directory:)
-            open_session(session_id, harness:, directory:)
+          # Opens the session row, keeping its harness, then sets its last
+          # turn to now.
+          def stamp_turn(session_id, directory:)
+            opened({ session_id:, store: @store, directory: })
             put(:sessions, { session_id:, last_turn_at: Plastic.now })
           end
 
@@ -50,6 +48,8 @@ module Plastic
           end
 
           private
+
+          def opened(row) = put(:sessions, started?(row[:session_id]) ? row : row.merge(started_at: Plastic.now))
 
           def started?(session_id)
             @home.rows("SELECT 1 FROM sessions WHERE session_id = :session_id AND started_at IS NOT NULL", session_id:).any?

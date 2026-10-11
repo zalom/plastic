@@ -11,10 +11,10 @@ require_relative "../../../scripts/lib/plastic/hooks/entries"
 # its own Dir.mktmpdir home, never the shared template other tests reuse, so
 # a corrupt database here cannot poison another test (review A20).
 class BrokenStoreTest < Minitest::Test
-  def test_hook_resume_on_an_unopenable_home_exits_zero_with_one_stderr_line
+  def test_hook_start_on_an_unopenable_home_exits_zero_with_one_stderr_line
     Dir.mktmpdir do |home|
       File.write(File.join(home, ".plastic"), "not a directory")
-      call = KernelCommand.new(home).run("hook", "resume", input: JSON.generate(source: "startup"),
+      call = KernelCommand.new(home).run("hook", "start", input: JSON.generate(source: "startup"),
         env: { "PLASTIC_SESSION" => "s-1" })
 
       assert_equal 0, call.code
@@ -23,10 +23,10 @@ class BrokenStoreTest < Minitest::Test
     end
   end
 
-  def test_hook_record_on_an_unopenable_home_exits_zero_with_one_stderr_line
+  def test_hook_stop_on_an_unopenable_home_exits_zero_with_one_stderr_line
     Dir.mktmpdir do |home|
       File.write(File.join(home, ".plastic"), "not a directory")
-      call = KernelCommand.new(home).run("hook", "record", input: "{}", env: { "PLASTIC_SESSION" => "s-1" })
+      call = KernelCommand.new(home).run("hook", "stop", input: "{}", env: { "PLASTIC_SESSION" => "s-1" })
 
       assert_equal 0, call.code
       assert_equal "", call.out
@@ -34,13 +34,13 @@ class BrokenStoreTest < Minitest::Test
     end
   end
 
-  def test_hook_resume_on_a_corrupt_database_exits_zero
+  def test_hook_start_on_a_corrupt_database_exits_zero
     Dir.mktmpdir do |home|
       kernel = KernelCommand.new(home)
       kernel.run!("intent", "new", "Alpha")
       File.binwrite(File.join(kernel.plastic_home, "local.db"), "not a sqlite file")
 
-      call = kernel.run("hook", "resume", input: JSON.generate(source: "startup"), env: { "PLASTIC_SESSION" => "s-1" })
+      call = kernel.run("hook", "start", input: JSON.generate(source: "startup"), env: { "PLASTIC_SESSION" => "s-1" })
 
       assert_equal 0, call.code
       assert_equal "", call.out
@@ -48,12 +48,12 @@ class BrokenStoreTest < Minitest::Test
     end
   end
 
-  def test_hook_resume_with_an_empty_event_body_exits_zero
+  def test_hook_start_with_an_empty_event_body_exits_zero
     Dir.mktmpdir do |home|
-      call = KernelCommand.new(home).run("hook", "resume", input: "", env: {})
+      call = KernelCommand.new(home).run("hook", "start", input: "", env: {})
 
       assert_equal 0, call.code
-      assert_equal "Plastic: a new session in store global. Run plastic next before anything else.\nPlastic: doctor found 5 failing checks; run plastic doctor.\n", call.out
+      assert_equal "Plastic: a new session in store global. Run plastic next before anything else.\n", call.out
       assert_equal "plastic hook: the event names no session; nothing recorded\n", call.err
     end
   end
@@ -74,7 +74,7 @@ class BrokenStoreTest < Minitest::Test
     Dir.mktmpdir do |home|
       lines = written_hook_lines(failing_command(home))
 
-      assert_equal Plastic::Hooks::Entries::EVENTS.size, lines.size
+      assert_equal Plastic::Harnesses::EVENTS.size, lines.size
       lines.each do |line|
         assert system(line, chdir: home), "#{line} did not exit zero"
       end

@@ -19,7 +19,7 @@ under test touches, open the example and keep its shape.
 | A kernel class or a command, called inside the test's own process | Kernel test | `Plastic::TestCase` | `test/plastic/commands/intent_new_test.rb` |
 | What a person gets from a command: the exit code and both output streams | Child process test | `Minitest::Test` with `KernelCommand` | `test/plastic/hooks/broken_store_test.rb` |
 | `install.sh` or an installer script | Installer test | `Minitest::Test` with `InstallShHelper` | `test/install_sh_dependency_test.rb` |
-| A behavior that reads best as a table of cases | Acceptance document | `varar/NAME.md` with `test/varar/NAME.steps.rb` | `varar/hook-resume.md` |
+| A behavior that reads best as a table of cases | Acceptance document | `varar/NAME.md` with `test/varar/NAME.steps.rb` | `varar/hook-start.md` |
 | A rule about the files of this repository | Guard test | `Minitest::Test` | `test/real_home_guard_test.rb` |
 
 A test file has the path of its source file: `scripts/lib/plastic/commands/intent_new.rb` is

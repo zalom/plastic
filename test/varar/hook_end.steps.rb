@@ -9,7 +9,7 @@ steps do
   sensor("the arguments, the end event, the session, the exit code, the message and the ended row") do |_state, row|
     Dir.mktmpdir("varar-hook-end") do |home|
       kernel = KernelCommand.new(home)
-      kernel.run!("hook", "resume", input: JSON.generate(source: "startup"), env: { "CLAUDE_CODE_SESSION_ID" => "s-1" })
+      kernel.run!("hook", "start", input: JSON.generate(source: "startup"), env: { "CLAUDE_CODE_SESSION_ID" => "s-1" })
       env = (row["session"] == "none") ? {} : { "CLAUDE_CODE_SESSION_ID" => row["session"] }
       arguments = (row["arguments"] == "(none)") ? [] : row["arguments"].split
       call = kernel.run("hook", "end", *arguments, input: row["event"], env:)

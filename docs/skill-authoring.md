@@ -31,7 +31,7 @@ Plastic stands on its own. Skills and agents use Plastic's own defaults, and an 
 
 ## Hooks
 
-The kernel's hooks are `plastic hook` commands. `Plastic::Hooks::Entries` (`scripts/lib/plastic/hooks/entries.rb`) names the event each one runs on, and the installer writes them into the agent's settings. `scripts/lib/hook_registry.rb` holds the update check and the names of retired hooks. Before you author a new hook, read `scripts/lib/plastic/hooks/resume.rb` for SessionStart, or `scripts/lib/plastic/hooks/record.rb` for Stop and SessionEnd.
+The kernel's hooks are `plastic hook` commands. The harness registry (`scripts/lib/plastic/harnesses.rb`) names the event each one runs on, and `Plastic::Hooks::Entries` (`scripts/lib/plastic/hooks/entries.rb`) writes them into the agent's settings. `scripts/lib/hook_registry.rb` holds the update check and the names of retired hooks. Before you author a new hook, read `scripts/lib/plastic/hooks/start.rb` for SessionStart, `scripts/lib/plastic/hooks/stop.rb` for Stop, or `scripts/lib/plastic/hooks/end.rb` for SessionEnd.
 
 ## Dashes
 

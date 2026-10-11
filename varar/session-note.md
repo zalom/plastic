@@ -1,8 +1,8 @@
 # plastic session note
 
-`plastic session note TEXT` keeps one line on the session row, so the next `hook resume` reply
-carries it. Session s-1 opens the store with `hook resume`, writes the notes in the row in
-order, then calls `hook resume` again with the source clear. A later note replaces the earlier
+`plastic session note TEXT` keeps one line on the session row, so the next `hook start` reply
+carries it. Session s-1 opens the store with `hook start`, writes the notes in the row in
+order, then calls `hook start` again with the source clear. A later note replaces the earlier
 one. A call with no text, or with no session, writes nothing and stops.
 
 Each row gives the notes, the session, the exit code, the result and the note line:

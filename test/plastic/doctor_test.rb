@@ -12,12 +12,32 @@ class DoctorTest < Plastic::TestCase
     def checks = [Plastic::Doctor::Check.ok("other:", @running)]
   end
 
-  def test_a_call_with_no_codex_variable_checks_claude_code
-    assert_equal "claude-code", Plastic::Doctor.harness(scope)
+  def seed(harness)
+    Plastic::Graph::Database::Local.new(@plastic_home).transaction do |batch|
+      batch.put(:sessions, { session_id: "s-1", harness:, started_at: STAMP })
+    end
   end
 
-  def test_a_codex_variable_picks_codex
-    assert_equal "codex", Plastic::Doctor.harness(scope("CODEX_THREAD_ID" => "t-1"))
+  def test_the_harness_on_the_session_row_is_checked
+    seed("codex")
+
+    assert_equal "codex", Plastic::Doctor.harness(scope("CLAUDE_CODE_SESSION_ID" => "s-1"), session: "s-1")
+  end
+
+  def test_a_session_variable_equal_to_the_session_names_its_harness
+    assert_equal "codex", Plastic::Doctor.harness(scope("CODEX_THREAD_ID" => "t-1"), session: "t-1")
+  end
+
+  def test_a_row_of_an_unregistered_harness_falls_back_to_the_variables
+    seed("unknown")
+
+    assert_equal "claude-code", Plastic::Doctor.harness(scope("CLAUDE_CODE_SESSION_ID" => "s-1"), session: "s-1")
+  end
+
+  def test_nothing_naming_a_harness_is_a_usage_error
+    error = assert_raises(Plastic::CLI::Command::Usage) { Plastic::Doctor.harness(scope, session: nil) }
+
+    assert_equal "no harness names this call; name one with --harness: claude-code, codex", error.message
   end
 
   def test_a_harness_with_no_module_is_a_usage_error_naming_the_ones_that_have_one

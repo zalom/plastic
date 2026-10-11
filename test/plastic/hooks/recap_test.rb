@@ -33,7 +33,7 @@ class RecapTest < Plastic::TestCase
   end
 
   def test_a_previous_session_still_running_prints_its_last_turn_and_nothing_touched
-    opened.work.stamp_turn("s-1", harness: "claude-code", directory: @home)
+    opened.work.stamp_turn("s-1", directory: @home)
 
     lines = recap(session: "s-2")
 

@@ -41,7 +41,7 @@ class CommandReferenceMarkdownPageTest < Minitest::Test
 
   def prose(page) = CommandReference::Markdown::Prose.lines(page.comment).first
 
-  NO_CHAIN = ["hook end", "hook record", "hook resume", "graph resume", "project links", "project list", "status", "project new"].freeze
+  NO_CHAIN = ["hook end", "hook stop", "hook start", "graph resume", "project links", "project list", "status", "project new"].freeze
 
   def test_a_no_chain_page_names_the_command_call_and_never_says_before_the_chain
     NO_CHAIN.each do |words|
@@ -54,8 +54,8 @@ class CommandReferenceMarkdownPageTest < Minitest::Test
 
   def test_a_command_page_names_its_call_and_a_hook_page_names_its_respond
     assert_match(/The command's `call`, at \[`status\.rb:\d+`\]/, text("status"))
-    assert_match(/The hook's `respond`, at \[`record\.rb:\d+`\]/, text("hook record"))
-    refute_includes text("hook record"), "own `call`"
+    assert_match(/The hook's `respond`, at \[`stop.rb:\d+`\]/, text("hook stop"))
+    refute_includes text("hook stop"), "own `call`"
   end
 
   def test_a_routine_with_its_own_call_keeps_the_section_before_the_chain
@@ -67,7 +67,7 @@ class CommandReferenceMarkdownPageTest < Minitest::Test
     sync = page("sync up")
 
     refute_includes text("status"), prose(status)
-    refute_includes text("hook record"), prose(page("hook record"))
+    refute_includes text("hook stop"), prose(page("hook stop"))
     assert_includes text("sync up"), prose(sync)
   end
 

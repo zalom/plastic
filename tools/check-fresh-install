@@ -21,6 +21,7 @@ class FreshInstallCheck
   CLEARED = %w[PLASTIC_HOME PLASTIC_SHARE PLASTIC_BIN PLASTIC_CHANNEL PLASTIC_PACKAGE_ROOT PLASTIC_LOCAL_RELEASE
     RUBYOPT RUBYLIB BUNDLE_GEMFILE BUNDLE_BIN_PATH BUNDLER_SETUP BUNDLER_VERSION].freeze
   AGENTS = %w[.claude .codex].freeze
+  HARNESSES = %w[claude-code codex].freeze
   TOOLS = %w[sh mktemp rm mkdir ln cat cp dirname basename uname sysctl ldd tar gzip grep wc tr cut sort chmod mv curl
     sha256sum shasum git sqlite3].freeze
 
@@ -49,15 +50,15 @@ class FreshInstallCheck
     step(first, "sh", File.join(ROOT, "install.sh"))
     agent_folders
     step(first, plastic, "install", "--all")
-    step(first, plastic, "doctor", active: first)
+    doctor(first, active: first)
     step(first, plastic, "status")
   end
 
   def upgrade
     step(second, plastic, "update")
-    step(second, plastic, "doctor", active: second)
+    doctor(second, active: second)
     step(second, plastic, "rollback")
-    step(second, plastic, "doctor", active: first)
+    doctor(second, active: first)
   end
 
   def remove
@@ -66,6 +67,8 @@ class FreshInstallCheck
     abort "the uninstall left #{stray.join(" and ")}" unless stray.empty?
     abort "the uninstall left hooks that run the removed launcher in #{stale_hooks.join(", ")}" unless stale_hooks.empty?
   end
+
+  def doctor(version, active:) = HARNESSES.each { |name| step(version, plastic, "doctor", "--harness", name, active:) }
 
   def agent_folders = AGENTS.each { |folder| FileUtils.mkdir_p(File.join(home, folder)) }
 

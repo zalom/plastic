@@ -2,7 +2,7 @@
 
 module Plastic
   module Hooks
-    # Whether `hook record` blocks the stop event. It blocks on the first
+    # Whether `hook stop` blocks the stop event. It blocks on the first
     # stop when `runner.stop_hook` is armed, this session holds a live
     # delivery lock of this store in auto mode, and that intent has a node
     # ready to run. Once the harness reports `stop_hook_active`, a stop this

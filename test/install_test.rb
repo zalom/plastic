@@ -82,6 +82,35 @@ class InstallTest < Minitest::Test
     end
   end
 
+  def test_a_codex_install_names_the_changed_hooks_to_trust_in_codex
+    with_probe do |installer|
+      out, = capture_io { installer.send(:print_results, [{ agent: "Codex CLI", success: true, changed_hooks: ["hook start", "hook stop"] }], :install) }
+
+      assert_includes out, "run /hooks, and trust the changed Plastic hooks: hook start, hook stop."
+    end
+  end
+
+  def test_a_codex_install_that_changed_no_hook_asks_for_no_trust
+    with_probe do |installer|
+      out, = capture_io { installer.send(:print_results, [{ agent: "Codex CLI", success: true, changed_hooks: [] }], :install) }
+
+      refute_includes out, "/hooks"
+    end
+  end
+
+  class Runner < Install
+    def distribute(mode) = super(mode, tmp_dirs: [])
+  end
+
+  def test_a_run_moves_a_flat_config_into_the_sections
+    Dir.mktmpdir("plastic-installer-run") do |home|
+      File.write(File.join(home, "config.yml"), "version: 3\nagent:\n  type: claude-code\nscreens: false\n")
+      capture_io { Runner.new(package_root: File.expand_path("..", __dir__), plastic_home: home, version: "2.1.0").run(selected: [], argv: []) }
+
+      assert_equal({ "version" => 3, "global" => { "screens" => false } }, YAML.safe_load_file(File.join(home, "config.yml")))
+    end
+  end
+
   private
 
   def shipped_names(installer)

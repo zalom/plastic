@@ -319,14 +319,21 @@ has nothing to suppress *yet*). A rule left with zero ids after pruning is dropp
 rather than rendered as a bare `rule_name` line, which the loader would reject. Like the add
 direction, `--prune` writes no `revisions.md` entries.
 
-Session resolution feeds the record hook and the lock. Claude Code does not
-export a session id env var into the hook environment; it passes `session_id` on the hook
-stdin JSON. A launcher such as `hooks/record` pipes stdin unchanged to its Ruby script
-(`scripts/hook-record`), and the Ruby script parses `session_id` out of the JSON. The session resolver takes the first non-empty of three
-sources, in precedence order: the explicit stdin `session_id`, the `CLAUDE_CODE_SESSION_ID`
-environment variable, and a derived `auto-<digest>` key (a short SHA256 of `store/intent_id`).
-The derived key is deterministic, so a session-less take and a later session-less check resolve
-to the same session key, and a null session is never written to a lock row.
+Session resolution feeds the hooks and the lock. A hook reads `session_id` from the event JSON
+on stdin, and falls back to `Environment#session`. `Environment#session` takes
+`PLASTIC_SESSION` when it is set. Otherwise it reads the session variable of each harness in the
+registry (`Harnesses::REGISTRY`), such as `CLAUDE_CODE_SESSION_ID` and `CODEX_THREAD_ID`. One id
+is used as it is. When two harnesses are nested, both variables are set, and
+`Harnesses::Innermost` picks the inner one: the session row that started last, then the harness
+of the nearest parent process, then the first id.
+
+The start hook names the harness once, through `Harnesses::Detection`, and records it on the
+session row. It takes the first of these that answers: a field only one harness writes in the
+event, a session variable equal to the event's `session_id`, a `transcript_path` that matches a
+registry pattern, the nearest parent process that a registry entry names, and `AI_AGENT` for a
+harness the registry lacks. Otherwise the row records `unknown`. Later hooks and the doctor read
+the harness from the row. No environment variable carries the harness, because a variable one
+harness sets reaches every harness started from its shell.
 
 Leftover cleanup happens at install and update, not at arm or disarm: `InstallerCore#distribute`
 deletes every `store/.tmp/*/current` file and every `plastic-<session>--<id>.json` file sitting
@@ -398,8 +405,9 @@ path, cap the encoded URL at 7500 bytes with a page-one-plus-marker overflow), a
 from standard input. The report is saved as a draft, and the user opens the printed URL
 to send it.
 
-`plastic hook resume` runs the whole doctor in-process (reusing the `Doctor` checks, no second
-process spawn) and names `plastic doctor` in one line only when a check fails.
+`plastic hook start` runs the whole doctor in-process (reusing the `Doctor` checks, no second
+process spawn) and names `plastic doctor` in one line only when a check fails. It runs the
+doctor only for a fresh session of a harness the registry holds.
 
 The hook surfaces that banner on two channels from a single `BootBanner` renderer:
 `hookSpecificOutput.additionalContext` (added to the model's context) and the top-level
@@ -928,7 +936,7 @@ is the only auto command, and lock commands live under `intent lock`.
   another session, and fails (exit 1) with a `next:` line for no done criterion and for a done
   or abandoned intent, and when the call names no session. Otherwise `work.take_lock` writes the row in `auto` mode and the
   intent goes active. An expired lock is taken over by the same call.
-- **Renew.** The Stop hook (`plastic hook record`, `Hooks::Record`) renews every lock row the
+- **Renew.** The Stop hook (`plastic hook stop`, `Hooks::Stop`) renews every lock row the
   session holds through `work.renew_locks`.
 - **Release.** `plastic intent end` releases the row (`Completion::Writer#release_lock`), delivered or abandoned (`Completion::Writer#abandon`).
 - **Read.** `plastic intent lock status ID` (`Commands::IntentLockStatus`, `Workflows::ShowLock`)
@@ -955,9 +963,9 @@ the worktree by hand after the merge.
 `plastic doctor` runs the `code_check_health` workflow
 (`scripts/lib/plastic/workflows/check_health.rb`). The workflow asks `Plastic::Doctor` for the
 checks: `Doctor::Core` for every harness, then the module that `Doctor::HARNESSES` names for
-the harness. `--harness NAME` picks the module. Without it, the doctor picks Codex when a Codex
-session variable is set, and Claude Code otherwise. A harness with no module exits 2 and names
-the harnesses that have one.
+the harness. `--harness NAME` picks the module. Without it, the doctor takes the harness the
+session row records, then the one the session variables name. When neither names a registered
+harness, the doctor exits 2 and asks for `--harness` with the registered names.
 
 `Doctor::Core` checks the version record, the parts of the installation, the sqlite3
 gem, the machine database, PLASTIC.md, and each registered project's store and AGENTS.md. The
@@ -1863,8 +1871,8 @@ installer's record directory, and reads its hooks and AGENTS.md from `~/.codex`.
 A different `CODEX_HOME` produces a finding because the installer uses `~/.codex`.
 
 `CodexHookCommand` parses shell words without running them. Each registered event
-must call the corresponding command in `Hooks::Entries::EVENTS` with
-`--harness codex` through an executable launcher named `plastic`. It accepts the
+must call the command the harness registry names for it, with no harness option, through an
+executable launcher named `plastic`. It accepts the
 installer's `env -u RUBYOPT` prefix and `|| true` suffix. Retired dispatchers,
 another harness, malformed JSON, and malformed hook groups produce findings.
 

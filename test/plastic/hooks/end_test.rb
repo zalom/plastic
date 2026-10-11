@@ -41,8 +41,8 @@ class EndTest < Plastic::TestCase
     assert_equal "plastic hook end", environment.out.string.lines.first.chomp
   end
 
-  def test_record_no_longer_takes_end
-    result = plastic("hook", "record", "--end", input: "{}", env: { "PLASTIC_SESSION" => "s-1" }, table: Plastic::CLI::TABLE)
+  def test_stop_takes_no_end_option
+    result = plastic("hook", "stop", "--end", input: "{}", env: { "PLASTIC_SESSION" => "s-1" }, table: Plastic::CLI::TABLE)
 
     assert_equal 0, result.code
     assert_nil store_graphs.retrieval.session("s-1")&.end_reason
