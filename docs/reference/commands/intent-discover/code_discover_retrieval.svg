@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 465" width="760" height="465" role="img" xml:space="preserve">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 630" width="760" height="630" role="img" xml:space="preserve">
 <title>How DiscoverRetrieval runs in plastic intent discover</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
@@ -69,62 +69,85 @@
 }</style>
 <rect width="100%" height="100%" class="ground"/>
 <text x="16" y="22" class="tb" text-anchor="start">DiscoverRetrieval</text>
-<text x="436" y="22" class="tm tag-muted" text-anchor="end">discover_retrieval.rb:15</text>
+<text x="436" y="22" class="tm tag-muted" text-anchor="end">discover_retrieval.rb:17</text>
 <rect x="16" y="34" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="49" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="49" class="tm tag-muted" text-anchor="end">discover_retrieval.rb:20</text>
-<text x="26" y="66" class="t" text-anchor="start">check the intent id</text>
+<text x="426" y="49" class="tm tag-muted" text-anchor="end">code_workflow.rb:54</text>
+<text x="26" y="66" class="t" text-anchor="start">forget a stop of an earlier call</text>
 <path d="M 226 79 L 226 89" class="wire"/>
 <path d="M 221 81 L 226 89 L 231 81 Z" class="head"/>
 <rect x="16" y="89" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="104" class="tag tag-muted" text-anchor="start">READ</text>
 <text x="426" y="104" class="tm tag-muted" text-anchor="end">discover_retrieval.rb:24</text>
-<text x="26" y="121" class="t" text-anchor="start">find the owning intent</text>
+<text x="26" y="121" class="t" text-anchor="start">check the intent id</text>
 <path d="M 226 134 L 226 144" class="wire"/>
 <path d="M 221 136 L 226 144 L 231 136 Z" class="head"/>
 <rect x="16" y="144" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="159" class="tag tag-muted" text-anchor="start">READ</text>
 <text x="426" y="159" class="tm tag-muted" text-anchor="end">discover_retrieval.rb:28</text>
-<text x="26" y="176" class="t" text-anchor="start">find the saved retrieval context</text>
+<text x="26" y="176" class="t" text-anchor="start">find the owning intent</text>
 <path d="M 226 189 L 226 199" class="wire"/>
 <path d="M 221 191 L 226 199 L 231 191 Z" class="head"/>
-<rect x="16" y="199" width="420" height="56" rx="6" class="card"/>
-<text x="26" y="214" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="214" class="tm tag-muted" text-anchor="end">discover_retrieval.rb:34</text>
-<text x="26" y="231" class="tm" text-anchor="start">passes when !context.intent.nil?</text>
-<path d="M 436 217 L 464 217" class="wire-failure"/>
-<path d="M 456 212 L 464 217 L 456 222 Z" class="head"/>
-<rect x="466" y="199" width="270" height="56" rx="6" class="stop-failure"/>
-<text x="476" y="214" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1, FAILED</text>
-<text x="476" y="230" class="tm" text-anchor="start">no intent %{intent_id} in</text>
-<text x="476" y="244" class="tm" text-anchor="start">owning store</text>
-<path d="M 226 255 L 226 265" class="wire"/>
-<path d="M 221 257 L 226 265 L 231 257 Z" class="head"/>
-<rect x="16" y="265" width="420" height="59" rx="6" class="card"/>
-<text x="26" y="280" class="tag tag-muted" text-anchor="start">STEP</text>
-<text x="426" y="280" class="tm tag-muted" text-anchor="end">discover_retrieval.rb:36</text>
-<text x="26" y="297" class="t" text-anchor="start">record retrieval discovery</text>
-<text x="26" y="312" class="tm" text-anchor="start">done when !context.discovery.nil?</text>
-<path d="M 436 283 L 464 283" class="wire-failure"/>
-<path d="M 456 278 L 464 283 L 456 288 Z" class="head"/>
-<rect x="466" y="265" width="270" height="56" rx="6" class="stop-failure"/>
-<text x="476" y="280" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1, FAILED</text>
-<text x="476" y="296" class="tm" text-anchor="start">the step ran and its done</text>
-<text x="476" y="310" class="tm" text-anchor="start">check still fails</text>
-<path d="M 226 324 L 226 334" class="wire"/>
-<path d="M 221 326 L 226 334 L 231 326 Z" class="head"/>
-<rect x="16" y="334" width="420" height="45" rx="6" class="card"/>
-<text x="26" y="349" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="349" class="tm tag-muted" text-anchor="end">discover_retrieval.rb:46</text>
-<text x="26" y="366" class="t" text-anchor="start">report the discovery</text>
-<path d="M 226 379 L 226 389" class="wire"/>
-<path d="M 221 381 L 226 389 L 231 381 Z" class="head"/>
-<text x="16" y="401" class="tag tag-muted" text-anchor="start">ENDS ON</text>
-<rect x="16" y="409" width="300" height="42" rx="6" class="card"/>
-<text x="26" y="425" class="tm" text-anchor="start">:done</text>
-<text x="26" y="441" class="tm tag-muted" text-anchor="start">always</text>
-<path d="M 316 425 L 352 425" class="wire"/>
-<path d="M 344 420 L 352 425 L 344 430 Z" class="head"/>
-<rect x="352" y="409" width="392" height="42" rx="6" class="lane-agent"/>
-<text x="362" y="426" class="t" text-anchor="start">next workflow: ExternalAgentWorkflow</text>
+<rect x="16" y="199" width="420" height="45" rx="6" class="card"/>
+<text x="26" y="214" class="tag tag-muted" text-anchor="start">READ</text>
+<text x="426" y="214" class="tm tag-muted" text-anchor="end">discover_retrieval.rb:32</text>
+<text x="26" y="231" class="t" text-anchor="start">find the saved retrieval context</text>
+<path d="M 226 244 L 226 254" class="wire"/>
+<path d="M 221 246 L 226 254 L 231 246 Z" class="head"/>
+<rect x="16" y="254" width="420" height="56" rx="6" class="card"/>
+<text x="26" y="269" class="tag tag-muted" text-anchor="start">GATE</text>
+<text x="426" y="269" class="tm tag-muted" text-anchor="end">discover_retrieval.rb:38</text>
+<text x="26" y="286" class="tm" text-anchor="start">passes when !context.intent.nil?</text>
+<path d="M 436 272 L 464 272" class="wire-failure"/>
+<path d="M 456 267 L 464 272 L 456 277 Z" class="head"/>
+<rect x="466" y="254" width="270" height="56" rx="6" class="stop-failure"/>
+<text x="476" y="269" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1, FAILED</text>
+<text x="476" y="285" class="tm" text-anchor="start">no intent %{intent_id} in</text>
+<text x="476" y="299" class="tm" text-anchor="start">owning store</text>
+<path d="M 226 310 L 226 320" class="wire"/>
+<path d="M 221 312 L 226 320 L 231 312 Z" class="head"/>
+<rect x="16" y="320" width="420" height="45" rx="6" class="card"/>
+<text x="26" y="335" class="tag tag-muted" text-anchor="start">READ</text>
+<text x="426" y="335" class="tm tag-muted" text-anchor="end">discover_retrieval.rb:40</text>
+<text x="26" y="352" class="t" text-anchor="start">check the source stores</text>
+<path d="M 226 365 L 226 375" class="wire"/>
+<path d="M 221 367 L 226 375 L 231 367 Z" class="head"/>
+<rect x="16" y="375" width="420" height="45" rx="6" class="card"/>
+<text x="26" y="390" class="tag tag-muted" text-anchor="start">GATE</text>
+<text x="426" y="390" class="tm tag-muted" text-anchor="end">discover_retrieval.rb:46</text>
+<text x="26" y="407" class="tm" text-anchor="start">passes when context.problem.nil?</text>
+<path d="M 436 393 L 464 393" class="wire-failure"/>
+<path d="M 456 388 L 464 393 L 456 398 Z" class="head"/>
+<rect x="466" y="375" width="270" height="42" rx="6" class="stop-failure"/>
+<text x="476" y="390" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1, FAILED</text>
+<text x="476" y="406" class="tm" text-anchor="start">%{problem}</text>
+<path d="M 226 420 L 226 430" class="wire"/>
+<path d="M 221 422 L 226 430 L 231 422 Z" class="head"/>
+<rect x="16" y="430" width="420" height="59" rx="6" class="card"/>
+<text x="26" y="445" class="tag tag-muted" text-anchor="start">STEP</text>
+<text x="426" y="445" class="tm tag-muted" text-anchor="end">discover_retrieval.rb:48</text>
+<text x="26" y="462" class="t" text-anchor="start">record retrieval discovery</text>
+<text x="26" y="477" class="tm" text-anchor="start">done when !context.discovery.nil?</text>
+<path d="M 436 448 L 464 448" class="wire-failure"/>
+<path d="M 456 443 L 464 448 L 456 453 Z" class="head"/>
+<rect x="466" y="430" width="270" height="56" rx="6" class="stop-failure"/>
+<text x="476" y="445" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1, FAILED</text>
+<text x="476" y="461" class="tm" text-anchor="start">the step ran and its done</text>
+<text x="476" y="475" class="tm" text-anchor="start">check still fails</text>
+<path d="M 226 489 L 226 499" class="wire"/>
+<path d="M 221 491 L 226 499 L 231 491 Z" class="head"/>
+<rect x="16" y="499" width="420" height="45" rx="6" class="card"/>
+<text x="26" y="514" class="tag tag-muted" text-anchor="start">READ</text>
+<text x="426" y="514" class="tm tag-muted" text-anchor="end">discover_retrieval.rb:58</text>
+<text x="26" y="531" class="t" text-anchor="start">report the discovery</text>
+<path d="M 226 544 L 226 554" class="wire"/>
+<path d="M 221 546 L 226 554 L 231 546 Z" class="head"/>
+<text x="16" y="566" class="tag tag-muted" text-anchor="start">ENDS ON</text>
+<rect x="16" y="574" width="300" height="42" rx="6" class="card"/>
+<text x="26" y="590" class="tm" text-anchor="start">:done</text>
+<text x="26" y="606" class="tm tag-muted" text-anchor="start">always</text>
+<path d="M 316 590 L 352 590" class="wire"/>
+<path d="M 344 585 L 352 590 L 344 595 Z" class="head"/>
+<rect x="352" y="574" width="392" height="42" rx="6" class="lane-agent"/>
+<text x="362" y="591" class="t" text-anchor="start">next workflow: ExternalAgentWorkflow</text>
 </svg>
