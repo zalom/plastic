@@ -8,7 +8,7 @@ module Crap
     Prism::WhenNode, Prism::InNode, Prism::RescueNode, Prism::AndNode, Prism::OrNode
   ].freeze
 
-  Score = Struct.new(:name, :file, :first_line, :last_line, :complexity, :coverage, keyword_init: true) do
+  Score = Struct.new(:name, :file, :first_line, :last_line, :complexity, :coverage) do
     def crap
       (complexity**2 * (1 - coverage)**3 + complexity).round(1)
     end
@@ -45,16 +45,18 @@ module Crap
 
   def collect(node, scope, file, found)
     case node
-    when Prism::ClassNode, Prism::ModuleNode
-      scope += [node.constant_path.slice]
-    when Prism::DefNode
-      separator = node.receiver ? "." : "#"
-      found << { name: "#{scope.join("::")}#{separator}#{node.name}", file: file,
-                 first_line: node.location.start_line, last_line: node.location.end_line,
-                 complexity: 1 + decisions(node.body) }
+    when Prism::ClassNode, Prism::ModuleNode then scope += [node.constant_path.slice]
+    when Prism::DefNode then found << method_entry(node, scope, file)
     end
     node.compact_child_nodes.each { |child| collect(child, scope, file, found) }
     found
+  end
+
+  def method_entry(node, scope, file)
+    separator = node.receiver ? "." : "#"
+    location = node.location
+    { name: "#{scope.join("::")}#{separator}#{node.name}", file: file,
+      first_line: location.start_line, last_line: location.end_line, complexity: 1 + decisions(node.body) }
   end
 
   def decisions(node)
@@ -81,17 +83,21 @@ module Crap
   end
 
   def merge(left, right)
-    left.zip(right).map { |a, b| a.nil? && b.nil? ? nil : [a.to_i, b.to_i].max }
+    left.zip(right).map { |a, b| (a.nil? && b.nil?) ? nil : [a.to_i, b.to_i].max }
   end
 
   def method_coverage(found, lines)
     return 0.0 unless lines
 
-    range = found[:first_line] == found[:last_line] ? [found[:first_line]] : ((found[:first_line] + 1)..(found[:last_line] - 1)).to_a
-    relevant = range.map { |number| lines[number - 1] }.compact
+    relevant = measured_lines(found).filter_map { |number| lines[number - 1] }
     return 1.0 if relevant.empty?
 
     relevant.count(&:positive?).fdiv(relevant.size)
+  end
+
+  def measured_lines(found)
+    first, last = found.values_at(:first_line, :last_line)
+    (first == last) ? [first] : ((first + 1)..(last - 1)).to_a
   end
 
   def changed_lines(diff)
@@ -131,16 +137,19 @@ module Crap
   class CLI
     USAGE = <<~TEXT
       Usage: bin/crap [--threshold N] [--since REF] [--coverage FILE] [PATH]...
-    
+
       Scores each method by CRAP = complexity² × (1 − coverage)³ + complexity,
       with line coverage from coverage/.resultset.json. Without PATH it scores
       lib/, app/, and tools/. With --since REF it scores only the methods whose
       lines changed since REF.
-    
+
       Exit codes: 0 no method above the threshold (default 30), 1 at least one above it, 2 an unknown
       option, or --threshold, --since, or --coverage with no value.
     TEXT
-    
+
+    HEADER = "CRAP    complexity coverage  method"
+    DEFAULT_PATHS = %w[lib/**/*.rb app/**/*.rb tools/**/*.rb].freeze
+
     def initialize(argv, root:, out: $stdout, git: ->(*args) { Open3.capture2("git", "-C", root, *args).first })
       @argv = argv.dup
       @root = root
@@ -155,14 +164,9 @@ module Crap
       threshold = option("--threshold", "30").to_f
       since = option("--since", nil)
       resultset = File.join(@root, option("--coverage", "coverage/.resultset.json"))
-      return usage(2) if @missing_value || @argv.any? { |argument| argument.start_with?("-") }
+      return usage(2) if invalid?
 
-      paths = @argv.empty? ? Dir.glob(%w[lib/**/*.rb app/**/*.rb tools/**/*.rb], base: @root) : @argv
-      coverage = File.exist?(resultset) ? Crap.line_coverage(File.read(resultset)) : {}
-      changed = since ? Crap.changed_lines(@git.call("diff", "--unified=0", since, "--", "*.rb")) : nil
-      scores = paths.flat_map { |path| scores_for(path, coverage) }
-      scores = scores.select { |score| Crap.touched?(score.to_h, changed) } if changed
-      report(scores.sort_by { |score| -score.crap }, threshold)
+      report(scores(coverage(resultset), since), threshold)
     end
 
     private
@@ -187,6 +191,23 @@ module Crap
       @argv.delete_at(index)
     end
 
+    def invalid? = @missing_value || @argv.any? { |argument| argument.start_with?("-") }
+
+    def paths = @argv.empty? ? Dir.glob(DEFAULT_PATHS, base: @root) : @argv
+
+    def coverage(resultset) = File.exist?(resultset) ? Crap.line_coverage(File.read(resultset)) : {}
+
+    def scores(coverage, since)
+      found = paths.flat_map { |path| scores_for(path, coverage) }
+      found = touched(found, since) if since
+      found.sort_by { |score| -score.crap }
+    end
+
+    def touched(found, since)
+      changed = Crap.changed_lines(@git.call("diff", "--unified=0", since, "--", "*.rb"))
+      found.select { |score| Crap.touched?(score.to_h, changed) }
+    end
+
     def scores_for(path, coverage)
       absolute = File.expand_path(path, @root)
       Crap.methods_in_source(File.read(absolute), path).map do |found|
@@ -195,14 +216,16 @@ module Crap
     end
 
     def report(scores, threshold)
-      @out.puts format("%-7s %-10s %-9s %s", "CRAP", "complexity", "coverage", "method")
-      scores.each do |score|
-        @out.puts format("%-7.1f %-10d %-9s %s  %s:%d", score.crap, score.complexity,
-                         "#{(score.coverage * 100).round}%", score.name, score.file, score.first_line)
-      end
+      @out.puts HEADER
+      scores.each { |score| @out.puts row(score) }
       over = scores.count { |score| score.crap > threshold }
       @out.puts "#{scores.size} methods, #{over} above CRAP #{threshold.to_i}"
       over.zero? ? 0 : 1
+    end
+
+    def row(score)
+      coverage = "#{(score.coverage * 100).round}%"
+      format("%-7.1f %-10d %-9s %s  %s:%d", score.crap, score.complexity, coverage, score.name, score.file, score.first_line)
     end
   end
 end
