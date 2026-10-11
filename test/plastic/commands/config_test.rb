@@ -16,24 +16,27 @@ class ConfigCommandTest < Plastic::TestCase
     assert_equal [0, ""], [result.code, result.err]
     assert_includes result.out, "[x] statusline"
     assert_includes result.out, "[ ] runner.stop_hook"
-    assert_includes result.out, "next: plastic config <answer>"
   end
+
+  def test_with_no_terminal_the_next_step_asks_the_person
+    assert_includes config.out, "next: plastic config <answer>"
+  end
+
+  def numbers = config.out.lines.grep(/\[[ x]\]/).to_h { |line| [line[/\] (\S+)/, 1], line[/(\d+)\s+\[/, 1]] }
 
   def test_the_listed_next_step_keeps_the_harness
     assert_includes config("--harness", "codex").out, "next: plastic config --harness codex <answer>"
   end
 
   def test_an_answer_turns_on_the_picked_settings_and_writes_only_the_changes
-    numbers = config.out.lines.grep(/\[[ x]\]/).to_h { |line| [line[/\] (\S+)/, 1], line[/(\d+)\s+\[/, 1]] }
-    result = config([numbers["statusline"], numbers["screens"], numbers["advisor.enabled"], numbers["runner.stop_hook"]].join(","))
+    result = config(numbers.values_at("statusline", "screens", "advisor.enabled", "runner.stop_hook").join(","))
 
     assert_equal 0, result.code
     assert_equal({ "runner" => { "stop_hook" => true } }, saved["global"])
   end
 
   def test_an_unpicked_setting_that_was_on_is_turned_off
-    numbers = config.out.lines.grep(/\[[ x]\]/).to_h { |line| [line[/\] (\S+)/, 1], line[/(\d+)\s+\[/, 1]] }
-    config([numbers["screens"], numbers["advisor.enabled"]].join(","))
+    config(numbers.values_at("screens", "advisor.enabled").join(","))
 
     assert_equal({ "statusline" => false }, saved["global"])
   end

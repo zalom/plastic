@@ -43,6 +43,8 @@ module Plastic
 
     def entries = Config.flattened(settings)
 
+    def set(key, value) = Document.new(@path).set(key.split("."), value, harness: @harness)
+
     def self.merged(base, over)
       base.merge(over) { |_key, old, new| (old.is_a?(Hash) && new.is_a?(Hash)) ? merged(old, new) : new }
     end

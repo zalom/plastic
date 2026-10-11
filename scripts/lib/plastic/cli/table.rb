@@ -9,6 +9,10 @@ module Plastic
     TABLE = {
       # Distribution
       "version" => ["Commands::Version", "Print the installed Plastic version and release channel"],
+      "config" => ["Commands::Config", "Pick which on/off settings are on, on the choice screen"],
+      "config list" => ["Commands::ConfigList", "List every setting with its value, globally or for one harness"],
+      "config get" => ["Commands::ConfigGet", "Print the value of one setting"],
+      "config set" => ["Commands::ConfigSet", "Write one setting to config.yml, globally or for one harness"],
       "doctor" => ["Commands::Doctor", "Check the installation, the databases and the hooks of this harness, and name each repair"],
       "install" => ["Commands::Install", "Install the core files and register Plastic with agents"],
       "update" => ["Commands::Update", "Sync a newer package into the home or name the installer command"],
