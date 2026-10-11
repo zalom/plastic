@@ -7,8 +7,11 @@ module CommandReference
     RAISE_LINE = /\braise (?:CLI::)?(?:Command::)?(Usage|Refusal|Failure)\b(?:, "(.*)")?/
     NEXT_LINE = /\bnext_step\((?:"([^"]+)"|[^,)]+)/
     OFFERS = "Offers the next command"
+    INTERPOLATION = /\#\{([^}]*)\}/
+    NAME = ->(code) { code[/[a-z_]\w*/] || "value" }
+    PLACEHOLDER = ->(literal) { literal.gsub(INTERPOLATION) { NAME.call(Regexp.last_match(1)).upcase } }
     MESSAGE = lambda do |kind, literal|
-      literal ? "#{kind}: #{literal.gsub(/\#\{([^}]*)\}/) { "%{#{Regexp.last_match(1)[/[a-z_]\w*/] || "value"}}" }}" : kind
+      literal ? "#{kind}: #{literal.gsub(INTERPOLATION) { "%{#{NAME.call(Regexp.last_match(1))}}" }}" : kind
     end
 
     def initialize(source, file, only: nil)
@@ -38,7 +41,7 @@ module CommandReference
     def next_steps
       found do |text, number|
         match = text.match(NEXT_LINE) or next
-        Ending.new(:next_step, 0, match[1] || Endings::RUNTIME, OFFERS, @file, number)
+        Ending.new(:next_step, 0, match[1] ? PLACEHOLDER.call(match[1]) : Endings::RUNTIME, OFFERS, @file, number)
       end
     end
 
