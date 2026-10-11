@@ -4,6 +4,7 @@ require "json"
 require "pathname"
 require "stringio"
 require_relative "../../../install"
+require_relative "../harnesses"
 
 module Plastic
   module Workflows
@@ -42,16 +43,6 @@ module Plastic
         chosen.empty? ? ["claude"] : chosen
       end
 
-      # A reinstall that names no agent syncs the agents already registered.
-      def self.to_install(context)
-        registered = sync_registered?(context) ? of(context).installed_agents : []
-        registered.empty? ? selected(context) : registered
-      end
-
-      def self.sync_registered?(context) = context.reinstall && !named?(context)
-
-      def self.named?(context) = context.all || AGENT_KEYS.any? { |key| context.public_send(key) }
-
       def self.fetch_command(setting) = "#{INSTALLER} #{setting} sh"
 
       def read_package_version(root)
@@ -77,14 +68,11 @@ module Plastic
           [emptied_instruction_file(config), record_dir_for(config)].compact
       end
 
-      def unregistered(keys) = keys.reject { |key| agent_installed?(key) }
+      def synced = installed_agents.select { |key| Harnesses.installed_by(key) }
 
-      def install(selected, reinstall:, force:)
-        fresh = (reinstall || !installed?) ? selected : unregistered(selected)
-        run(selected: fresh, force:, reinstall:, argv: [], input: StringIO.new, already_registered: selected - fresh)
-      end
+      def install(keys, reinstall:, force:) = run(selected: keys, force:, reinstall:, argv: [], input: StringIO.new)
 
-      def wire(keys) = run(selected: keys, force: false, reinstall: false, argv: [], input: StringIO.new)
+      def wire(keys) = install(keys, reinstall: false, force: false)
 
       def preflight
         report = StringIO.new

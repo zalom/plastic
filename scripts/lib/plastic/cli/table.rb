@@ -15,7 +15,7 @@ module Plastic
       "config set" => ["Commands::ConfigSet", "Write one setting to config.yml, globally or for one harness"],
       "doctor" => ["Commands::Doctor", "Check the installation, the databases and the hooks of this harness, and name each repair"],
       "init" => ["Commands::Init", "Find the installed harnesses and install Plastic into the ones the person picks"],
-      "install" => ["Commands::Install", "Install the core files and register Plastic with agents"],
+      "install" => ["Commands::Install", "Install the core files and make the global store"],
       "update" => ["Commands::Update", "Sync a newer package into the home or name the installer command"],
       "rollback" => ["Commands::Rollback", "Switch the active release back to the previous one or to a named installed one"],
       "uninstall" => ["Commands::Uninstall", "Remove Plastic from agents and keep the home"],
