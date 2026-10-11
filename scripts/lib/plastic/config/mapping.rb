@@ -29,7 +29,18 @@ module Plastic
         value
       end
 
+      def rename(key, name)
+        index = position(key)
+        index && replace(index, name)
+      end
+
       private
+
+      def replace(index, name)
+        children = @node.children
+        position(name) ? children.slice!(index, 2) : children[index].value = name
+        true
+      end
 
       def [](key) = position(key)&.then { |index| @node.children[index + 1] }
 

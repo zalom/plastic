@@ -81,7 +81,7 @@ class Install < InstallerCore
     distribute(mode)
     fresh ? bootstrap : ready_global_store
     migrate_advisor_config_file(File.join(plastic_home, "config.yml"))
-    migrate_config
+    report_agent_renames(migrate_config)
     apply_config_flags(argv)
 
     results = selected.map do |key|
@@ -204,6 +204,10 @@ class Install < InstallerCore
   # Codex runs a hook only after the person trusts its command line in /hooks,
   # and a changed line needs that trust again. The reminder names the hook
   # commands this run changed, and is left out when none changed.
+  def report_agent_renames(renamed)
+    renamed.each { |old, new| puts "   config.yml: the settings for #{old} now apply to #{new}." }
+  end
+
   def print_codex_hook_trust_reminder(installed)
     changed = installed.flat_map { |result| Array(result[:changed_hooks]) }.uniq
     return if changed.empty?

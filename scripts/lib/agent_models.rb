@@ -15,6 +15,9 @@ module AgentModels
     "plastic-executor" => "sonnet"
   }.freeze
 
+  # An agent file that no longer ships, and the agent that took its place.
+  RENAMED = { "plastic-enforcer" => "plastic-planner" }.freeze
+
   # The two consultation agents are Primary Advisor and Secondary Advisor.
   # Both ship Fable; Primary uses medium effort and Secondary uses high effort.
   # Both are shipped defaults in frontmatter, never a
