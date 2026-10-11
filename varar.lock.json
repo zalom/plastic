@@ -64,7 +64,7 @@
       ]
     },
     "varar/config-list.md": {
-      "sourceHash": "fnv1a:7c1281fa",
+      "sourceHash": "fnv1a:a09d320c",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the first line, the open lines and the next line:",
@@ -73,7 +73,7 @@
       ]
     },
     "varar/config-set.md": {
-      "sourceHash": "fnv1a:770f0daf",
+      "sourceHash": "fnv1a:e07e1721",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
