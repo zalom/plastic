@@ -10,6 +10,7 @@ class DocsStaleWordsGuardTest < Minitest::Test
   PAGES = ["README.md"] + Dir["docs/**/*.md", base: ROOT]
   VARAR = Dir["varar/*.md", base: ROOT] + Dir["test/varar/*.rb", base: ROOT]
   OWNERS = %w[docs/contributing/ARCHITECTURE.md docs/reference/harness-adapters.md].freeze
+  LINT_RULES = %w[AGENTS.md docs/contributing/CODING_PRACTICES.md docs/contributing/TECHNICAL.md .reek.yml].freeze
   STALE = /doctor --core|next: none|intent end \S+ --(?!project|json)|\bEvery command ends with/
 
   def stale_words(text, pattern = STALE) = text.scan(pattern)
@@ -24,6 +25,10 @@ class DocsStaleWordsGuardTest < Minitest::Test
     OWNERS.each { |page| assert_includes PAGES, page }
   end
 
+  def test_the_lint_rule_files_are_read_from_the_disk
+    assert_empty(LINT_RULES.reject { |path| File.file?(File.join(ROOT, path)) })
+  end
+
   def test_no_page_or_acceptance_document_uses_a_removed_option_or_next_line
     assert_empty found(PAGES + VARAR)
   end
@@ -34,6 +39,15 @@ class DocsStaleWordsGuardTest < Minitest::Test
 
   def test_the_owner_pages_name_no_date
     assert_empty found(OWNERS, DATE)
+  end
+
+  def test_the_lint_rules_name_no_date
+    assert_empty found(LINT_RULES, DATE)
+    assert_empty found(LINT_RULES, LONG_DATE)
+  end
+
+  def test_the_long_date_detector_catches_a_written_date_and_leaves_a_month_alone
+    assert_equal ["October 3, 2026"], stale_words("frozen since October 3, 2026, in May", LONG_DATE)
   end
 
   def test_the_date_detector_catches_a_date_and_leaves_a_version_alone
