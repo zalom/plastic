@@ -69,7 +69,7 @@ suites on your machine: read the CI failures and fix those.
 
 #### Kernel style
 
-The Metrics cops are on for the whole repository in `.rubocop.yml`. `.rubocop_todo.yml` hides only the offenses of code written before 2026-09-30, and it never gains an entry. A new or changed method or class that trips a cop is split, and a disable comment never excuses it. Hash literals carry one space inside the braces, `{ key: value }`, and RuboCop corrects it. Reek and RubyCritic, which runs Reek, Flay and Flog, hold the same line: `.reek.yml` hides only the smells of code written before 2026-09-30 and never gains an entry, and the change gate fails a change that smells or scores under 90. Before a kernel section is called done, load it whole, lint it, and verify its chains with `verify`, which raises with every problem at once.
+The Metrics cops are on for the whole repository in `.rubocop.yml`. `.rubocop_todo.yml` lists the offenses of older code, and it never gains an entry. A new or changed method or class that trips a cop is split, and a disable comment never excuses it. Hash literals carry one space inside the braces, `{ key: value }`, and RuboCop corrects it. Reek and RubyCritic, which runs Reek, Flay and Flog, hold the same line: `.reek.yml` lists the smells of older code and never gains an entry, and the change gate fails a change that smells or scores under 90. Before a kernel section is called done, load it whole, lint it, and verify its chains with `verify`, which raises with every problem at once.
 
 #### Branches
 

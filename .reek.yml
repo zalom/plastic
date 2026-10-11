@@ -1,8 +1,7 @@
 # Reek reads this file. The detectors run at Reek's own defaults on every Ruby
-# file outside test/. The exclude lists below were generated on 2026-09-30 with
-# `reek --todo` over the code written before that date, so those smells stay
-# hidden. The lists never gain an entry: a new or changed method that smells
-# is fixed, never listed. scripts/lib/plastic/ has no entry and stays clean.
+# file outside test/. The exclude lists below were generated with
+# `reek --todo` over older code, so those smells stay hidden. The lists never
+# gain an entry: a new or changed method that smells is fixed, never listed. scripts/lib/plastic/ has no entry and stays clean.
 ---
 exclude_paths:
   - test

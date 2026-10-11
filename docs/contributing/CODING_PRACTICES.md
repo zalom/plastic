@@ -26,7 +26,7 @@ The aim is simple code that is easy to change.
 
 RuboCop runs with the Standard configuration as its base, plus `rubocop-minitest`.
 `.rubocop.yml` is for the editor. `.rubocop_with_todo.yml` is for the gates. It adds
-`.rubocop_todo.yml`, which hides the offenses of code written before 2026-09-30.
+`.rubocop_todo.yml`, which lists the offenses of older code.
 
 - The Metrics cops are on for the whole repository. Standard turns them off, and
   `.rubocop.yml` turns them back on at RuboCop's default limits.
@@ -38,8 +38,8 @@ RuboCop runs with the Standard configuration as its base, plus `rubocop-minitest
 ## Smells and scores
 
 - Reek finds code smells, such as a long parameter list or a method that uses another
-  object's data more than its own. `.reek.yml` hides only the smells of code written before
-  2026-09-30, and it never gains an entry. A new or changed method that smells is fixed.
+  object's data more than its own. `.reek.yml` lists the smells of older code, and it never
+  gains an entry. A new or changed method that smells is fixed.
 - RubyCritic runs Reek, Flay and Flog, and scores the changed files out of 100. The gate fails
   a change that scores under 90.
 - The kernel under `scripts/lib/plastic/` has no entry in either list, and it stays clean.

@@ -7,7 +7,7 @@ require "tmpdir"
 
 load File.expand_path("../bin/verify-change", __dir__) unless defined?(VerifyChange)
 
-# RubyCritic scores only code written after the 2026-09-30 ruling. A file that
+# RubyCritic scores only code that neither lint list names. A file that
 # .rubocop_todo.yml or .reek.yml lists is older code whose offenses and smells
 # stay hidden, so the gate leaves it out of the score and says so.
 class VerifyChangeRubycriticTest < Minitest::Test
