@@ -7,10 +7,11 @@ require_relative "architecture_figures/components"
 require_relative "architecture_figures/graphs"
 require_relative "architecture_figures/delivery"
 require_relative "architecture_figures/command_call"
+require_relative "architecture_figures/node_lifecycle"
 
 # Draws the figures of docs/contributing/ARCHITECTURE.md.
 module ArchitectureFigures
-  FIGURES = [Context, Containers, Components, Graphs, Delivery, CommandCall].freeze
+  FIGURES = [Context, Containers, Components, Graphs, Delivery, NodeLifecycle, CommandCall].freeze
 
   def self.diagrams = FIGURES.flat_map(&:diagrams)
 

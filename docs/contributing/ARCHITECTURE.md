@@ -126,6 +126,8 @@ it reads every database and writes nothing. The commands below reach them throug
 | Knowledge graph | `knowledge_graph.db` | What is known: documents with their revisions, rulings and links. | `plastic intent new`, `plastic intent rule`, `plastic sync up` | `plastic search`, `plastic intent spec` |
 | Retrieval graph | `knowledge_graph.db` | What is found: the passages and the search index over the documents. | `plastic sync up` | `plastic search` |
 
+![How a node moves through its states. node add writes an open node. The main session claims it with node claim as it dispatches the agent, and the claim keeps the delivery lock live. node done records the judged report. node fail, node ask and node impede stop the node, and node release or node resolve reopens it. node remove takes an open node out of the graph.](figures/node-lifecycle.svg)
+
 A node is one unit of work. It moves through `open`, `claimed`, `done`, `failed`,
 `needs_info` and `impeded`, or leaves the graph as `removed`. `Graph::Work::Node::Writer` owns
 the moves, and each move is a guarded `UPDATE`, so two attempts on one node cannot both win.
