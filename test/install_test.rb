@@ -98,6 +98,14 @@ class InstallTest < Minitest::Test
     end
   end
 
+  def test_a_renamed_agent_is_named_in_the_install_output
+    with_probe do |installer|
+      out, = capture_io { installer.send(:report_agent_renames, [%w[plastic-enforcer plastic-planner]]) }
+
+      assert_equal "   config.yml: the settings for plastic-enforcer now apply to plastic-planner.\n", out
+    end
+  end
+
   class Runner < Install
     def distribute(mode) = super(mode, tmp_dirs: [])
   end

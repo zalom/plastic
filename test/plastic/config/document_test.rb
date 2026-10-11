@@ -70,6 +70,42 @@ class ConfigDocumentTest < Plastic::TestCase
     assert_equal({ "global" => { "statusline" => false } }, saved)
   end
 
+  def test_a_retired_agent_key_is_renamed_to_the_agent_that_replaced_it
+    text = "global:\n  agents:\n    models:\n      plastic-enforcer: haiku\n" \
+           "harnesses:\n  codex:\n    agents:\n      efforts:\n        plastic-enforcer: high\n"
+
+    assert_equal [%w[plastic-enforcer plastic-planner]], document(text).rename_agents
+    assert_equal [{ "plastic-planner" => "haiku" }, { "plastic-planner" => "high" }],
+      [saved.dig("global", "agents", "models"), saved.dig("harnesses", "codex", "agents", "efforts")]
+  end
+
+  def test_a_retired_agent_key_beside_its_replacement_is_dropped
+    text = "global:\n  agents:\n    models:\n      plastic-planner: opus\n      plastic-enforcer: haiku\n"
+
+    assert_equal [%w[plastic-enforcer plastic-planner]], document(text).rename_agents
+    assert_equal({ "plastic-planner" => "opus" }, saved.dig("global", "agents", "models"))
+  end
+
+  def test_a_rename_keeps_the_anchors_in_the_file
+    text = "global:\n  agents: &shared\n    models:\n      plastic-enforcer: haiku\n" \
+           "harnesses:\n  claude-code:\n    agents: *shared\n"
+    document(text).rename_agents
+
+    assert_includes File.read(path), "&shared"
+    assert_equal "haiku", saved.dig("harnesses", "claude-code", "agents", "models", "plastic-planner")
+  end
+
+  def test_a_file_with_no_retired_agent_is_left_unwritten
+    text = "global:\n  agents:\n    models:\n      plastic-executor: haiku\n"
+
+    assert_empty document(text).rename_agents
+    assert_equal text, File.read(path)
+  end
+
+  def test_a_file_that_holds_no_mapping_has_no_agent_to_rename
+    assert_empty document("- a\n").rename_agents
+  end
+
   def test_migrate_rewrites_a_flat_file_and_reports_it
     assert document("statusline: true\n").migrate
     assert_equal({ "global" => { "statusline" => true } }, saved)

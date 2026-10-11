@@ -339,6 +339,13 @@ class InstallerCoreConfigTest < Minitest::Test
     assert_equal({ "version" => 3 }, config)
   end
 
+  def test_the_config_migration_renames_a_retired_agent_and_names_it
+    config_with("agents:\n  models:\n    plastic-enforcer: haiku\n")
+
+    assert_equal [%w[plastic-enforcer plastic-planner]], installer.migrate_config
+    assert_equal({ "plastic-planner" => "haiku" }, config.dig("harnesses", "claude-code", "agents", "models"))
+  end
+
   def test_a_flat_config_moves_into_the_sections_and_loses_the_agent_type
     config_with("version: 3\nagent:\n  type: claude-code\nstatusline: false\n")
     installer.migrate_config
