@@ -843,9 +843,8 @@ class InstallerCore
     skills_source = File.join(package_root, "skills")
     skill_exclude = advisor_enabled? ? [] : ["agent-advisor"]
     installed += install_skills_flat(skills_source, File.join(config[:dir], "skills"), exclude: skill_exclude) if File.directory?(skills_source)
-    # Codex-scoped overrides only (agents.models.codex.*): a literal Claude
-    # model id set under agents.models.claude.* (or the legacy flat form,
-    # which resolves as claude) must never reach a Codex TOML.
+    # The codex section of config.yml only: a model set for Claude Code
+    # never reaches a Codex TOML.
     installed += generate_codex_agents(
       File.join(config[:home_dir], "agents"),
       models: agent_model_overrides(harness: "codex"),
@@ -861,7 +860,7 @@ class InstallerCore
     # Hooks: register into ~/.codex/hooks.json (user scope, defeats the
     # worktree bug). Partial-ownership file, so it is merged and NOT manifest-tracked
     # (stripped surgically on uninstall), same treatment as AGENTS.md.
-    merge_codex_hooks(File.join(config[:home_dir], "hooks.json"))
+    changed_hooks = merge_codex_hooks(File.join(config[:home_dir], "hooks.json"))
 
     # Uniform per-agent record: write VERSION alongside the manifest,
     # the same shape install_claude already writes.
@@ -870,7 +869,7 @@ class InstallerCore
     installed << version_file
 
     write_manifest(installed, manifest_path_for("codex", config))
-    { agent: config[:name], success: true, files: installed.size }
+    { agent: config[:name], success: true, files: installed.size, changed_hooks: changed_hooks }
   end
 
   # --- Codex agent TOML generation ---
@@ -974,8 +973,8 @@ class InstallerCore
     s.gsub(/[\x00-\x08\x0b\x0c\x0e-\x1f]/) { |c| format('\u%04X', c.ord) }
   end
 
-  # The kernel's own hook groups: hook resume on SessionStart, hook record on
-  # Stop, hook end on SessionEnd. Written before the registry's groups, because the
+  # The kernel's own hook groups, one per event the harness registry names.
+  # Written before the registry's groups, because the
   # entries treat the old check-update launcher as stale and the registry adds
   # it back.
   def kernel_hook_entries
@@ -1000,14 +999,20 @@ class InstallerCore
   # shape as Claude's settings.json hooks, so this mirrors merge_claude_hooks
   # against a different file. Entries an earlier install wrote through the
   # retired codex-hook dispatcher are purged first, then the kernel entries go in.
+  # Returns the hook commands whose line changed, because Codex asks the person
+  # to trust each changed line again.
   def merge_codex_hooks(hooks_json_path)
     data = read_json_safe(hooks_json_path) || {}
+    before = hook_pairs(Hash(data["hooks"]))
     hooks = data["hooks"] ||= {}
     removed = purge_stale_codex_hooks(hooks)
     report_removed_hook_entries(removed, "hooks.json")
     data = kernel_hook_entries.codex(data)
     write_json_atomic(hooks_json_path, data)
+    added = (hook_pairs(data["hooks"]) - before).map(&:last)
+    Plastic::Harnesses.fetch("codex").events.values.select { |words| added.any? { |command| command.include?("\" #{words} ") } }
   end
+
 
   # Returns [[event, command], ...] for every entry removed, mirroring
   # purge_stale_plastic_hooks. Ownership comes from HookRegistry.
@@ -1132,52 +1137,21 @@ class InstallerCore
     content.sub(/^(model:[^\n]*)$/) { "#{Regexp.last_match(1)}\neffort: #{effort}" }
   end
 
-  # Resolve per-agent model overrides for this install: project config (when a
-  # project dir is known) overlaid on global config, scoped to `harness`
-  # ("claude" or "codex"). Defaults are NOT included, so unconfigured agents
-  # keep their shipped frontmatter.
-  #
-  # Both advisor agents resolve through
-  # this SAME generic map, like any other agent: a config author sets
-  # agents.models.claude.<agent> (or the legacy flat form, read as Claude) to point either agent at a
-  # different literal model. There is no separate advisor-specific model key;
-  # which agent the advisor SKILL routes to by default is a routing decision
-  # (advisor.claude.default), never a model-selection one.
-  def agent_model_overrides(project_dir = nil, harness: "claude")
-    global_path = File.join(plastic_home, "config.yml")
-    migrate_advisor_config_file(global_path)
-    global_config = load_config_yaml(global_path)
-    project_config =
-      if project_dir
-        project_path = File.join(project_dir, ".plastic_store", "config.yml")
-        migrate_advisor_config_file(project_path)
-        load_config_yaml(project_path)
-      else
-        {}
-      end
-    AgentModels.override_map(project_config: project_config, global_config: global_config, harness: harness)
+  # The agent models and efforts a person set for one harness in config.yml:
+  # its section over the global one, with no shipped default. See
+  # docs/guide/getting-started/configuration.md.
+  CONFIG_HARNESSES = { "claude" => "claude-code" }.freeze
+
+  def agent_model_overrides(harness: "claude") = harness_overrides(harness, "models")
+
+  def agent_effort_overrides(harness: "claude") = harness_overrides(harness, "efforts")
+
+  def harness_overrides(harness, part)
+    config = Plastic::Config.new(plastic_home, harness: CONFIG_HARNESSES.fetch(harness, harness))
+    Plastic::Config::Layout.within(config.overrides, "agents", part).reject { |_agent, value| value.is_a?(Hash) }
   end
 
-  def agent_effort_overrides(project_dir = nil, harness: "claude")
-    global_path = File.join(plastic_home, "config.yml")
-    migrate_advisor_config_file(global_path)
-    global_config = load_config_yaml(global_path)
-    project_path = project_dir && File.join(project_dir, ".plastic_store", "config.yml")
-    migrate_advisor_config_file(project_path) if project_path
-    project_config = project_path ? load_config_yaml(project_path) : {}
-    AgentModels.effort_override_map(project_config: project_config, global_config: global_config, harness: harness)
-  end
-
-  # advisor.enabled: project overlays global, missing or malformed counts as
-  # enabled (fail-open). Harness-blind: false skips both advisor agents and the
-  # agent-advisor skill on every installed harness.
-  def advisor_enabled?(project_dir = nil)
-    global_config = load_config_yaml(File.join(plastic_home, "config.yml"))
-    project_config = project_dir ? load_config_yaml(File.join(project_dir, ".plastic_store", "config.yml")) : {}
-    value = project_config.dig("advisor", "enabled")
-    value = global_config.dig("advisor", "enabled") if value.nil?
-    value != false
-  end
+  def advisor_enabled? = Plastic::Config.new(plastic_home).flag(%w[advisor enabled], default: true)
 
   ADVISOR_NAME_MIGRATIONS = {
     "plastic-advisor" => "plastic-primary-advisor",
@@ -1188,52 +1162,20 @@ class InstallerCore
     "real" => "plastic-primary-advisor", "faux" => "plastic-secondary-advisor"
   }.freeze
 
-  # Write advisor.enabled / advisor.claude.default into the global config.yml
-  # from install-time flags. Absent flags change nothing: advisor.enabled
-  # defaults to enabled when missing, and advisor.claude.default is left unset
-  # (the skill's own fallback chain applies) when missing.
-  #   --no-advisor      -> advisor.enabled: false
-  #   --advisor VALUE   -> advisor.claude.default: VALUE (an agent name, or the
-  #                        shorthand "primary"/"secondary")
+  # Install-time flags written to config.yml. Absent flags change nothing.
+  #   --no-advisor      -> global advisor.enabled: false
+  #   --advisor VALUE   -> the claude-code section's advisor.default: VALUE (an
+  #                        agent name, or the shorthand "primary"/"secondary")
   def apply_config_flags(argv)
-    no_advisor = argv.include?("--no-advisor")
     advisor_idx = argv.index("--advisor")
     advisor_value = advisor_idx && argv[advisor_idx + 1]
-    return unless no_advisor || advisor_value
-
-    config_path = File.join(plastic_home, "config.yml")
-    config = if File.exist?(config_path)
-               parsed = YAML.safe_load(File.read(config_path))
-               return false unless parsed.nil? || parsed.is_a?(Hash)
-               migrate_advisor_config(parsed || {})
-             else
-               {}
-             end
-
-    if no_advisor
-      config["advisor"] ||= {}
-      config["advisor"]["enabled"] = false
-    end
-    if advisor_value
-      agent_name = ADVISOR_SHORTHANDS[advisor_value] || advisor_value
-      config["advisor"] ||= {}
-      config["advisor"]["claude"] ||= {}
-      config["advisor"]["claude"]["default"] = agent_name
-    end
-
     FileUtils.mkdir_p(plastic_home)
-    File.write(config_path, YAML.dump(config))
-    true
-  rescue StandardError
-    false
+    Plastic::Config.new(plastic_home).set("advisor.enabled", false) if argv.include?("--no-advisor")
+    Plastic::Config.new(plastic_home, harness: "claude-code").set("advisor.default", ADVISOR_SHORTHANDS.fetch(advisor_value, advisor_value)) if advisor_value
   end
 
-  def load_config_yaml(path)
-    return {} unless File.exist?(path)
-    YAML.safe_load(File.read(path)) || {}
-  rescue StandardError
-    {}
-  end
+  # A flat config.yml rewritten in the global and harness sections.
+  def migrate_config = Plastic::Config::Document.new(File.join(plastic_home, "config.yml")).migrate
 
   # Renames retired advisor keys without discarding a current key. It accepts
   # malformed config sections and leaves unrelated values untouched.

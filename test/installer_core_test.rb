@@ -322,7 +322,7 @@ class InstallerCoreConfigTest < Minitest::Test
   def test_the_advisor_is_off_when_the_global_section_turns_it_off
     config_with("global:\n  advisor:\n    enabled: false\n")
 
-    refute installer.advisor_enabled?
+    refute_predicate installer, :advisor_enabled?
   end
 
   def test_the_advisor_flags_write_the_global_and_the_claude_code_sections

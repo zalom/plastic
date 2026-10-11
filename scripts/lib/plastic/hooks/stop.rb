@@ -10,7 +10,7 @@ require_relative "stop_gate"
 module Plastic
   module Hooks
     # Stop: stamps the session's last turn, renews its live locks, then runs
-    # the stop gate with the settings of the harness the session row names.
+    # the stop gate.
     class Stop < Hook
       def respond(event)
         return no_session unless session_id
