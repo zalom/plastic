@@ -34,6 +34,6 @@ class ConfigListTest < Plastic::TestCase
     result = list("--harness", "cursor")
 
     assert_equal 2, result.code
-    assert_includes result.out + result.err, "no harness cursor; the registered harnesses are claude-code, codex"
+    assert_includes result.out + result.err, "no harness cursor; the registered harnesses are claude-code, codex, hermes"
   end
 end

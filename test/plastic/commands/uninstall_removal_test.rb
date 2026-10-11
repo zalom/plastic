@@ -30,6 +30,15 @@ class UninstallRemovalCommandTest < Plastic::TestCase
       JSON.parse(File.read(path)).values_at("hooks", "model", "permissions")
   end
 
+  def test_removes_a_hermes_install_by_its_record
+    FileUtils.mkdir_p(File.join(@home, ".hermes"))
+    call("init", "2")
+    result = call("uninstall", "2")
+
+    assert_equal 0, result.code, result.err
+    assert_equal [[], ["claude-code"]], [Dir.glob(File.join(@home, ".hermes", "**", "plastic*")), Plastic::Installations.recorded(@plastic_home)]
+  end
+
   def test_removes_the_hook_entries_that_run_plastic
     FileUtils.mkdir_p(File.join(@home, ".codex"))
     call("init", "2")

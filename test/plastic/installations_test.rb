@@ -27,7 +27,7 @@ class InstallationsTest < Plastic::TestCase
 
   def test_the_recorded_harnesses_are_the_registered_ones_with_a_record
     Plastic::Installations.write(@plastic_home, record)
-    File.write(File.join(@plastic_home, "installations", "hermes.json"), "{}")
+    File.write(File.join(@plastic_home, "installations", "cursor.json"), "{}")
 
     assert_equal ["codex"], Plastic::Installations.recorded(@plastic_home)
   end

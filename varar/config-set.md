@@ -14,4 +14,4 @@ Each row gives the setup, the call, the exit code, the result and the next line:
 | none | `config set agents.models.plastic-executor opus --harness codex` | 0 | agents.models.plastic-executor opus | plastic config get agents.models.plastic-executor --harness codex |
 | none | `config set agents.models.plastic-executor opus` | 2 | no setting agents.models.plastic-executor; plastic config list names them | none |
 | none | `config set screens maybe` | 2 | screens takes true or false | none |
-| none | `config set screens false --harness gemini` | 2 | no harness gemini; the registered harnesses are claude-code, codex | none |
+| none | `config set screens false --harness gemini` | 2 | no harness gemini; the registered harnesses are claude-code, codex, hermes | none |

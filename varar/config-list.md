@@ -10,4 +10,4 @@ Each row gives the setup, the call, the exit code, the first line, the open line
 | ----- | ---- | ---- | ---------- | ---------- | --------- |
 | none | `config list` | 0 | statusline true | none | plastic config set KEY VALUE |
 | none | `config list --harness codex` | 0 | statusline true | none | plastic config set KEY VALUE --harness codex |
-| none | `config list --harness gemini` | 2 | no harness gemini; the registered harnesses are claude-code, codex | none | none |
+| none | `config list --harness gemini` | 2 | no harness gemini; the registered harnesses are claude-code, codex, hermes | none | none |

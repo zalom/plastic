@@ -30,6 +30,10 @@ class HarnessDetectionTest < Plastic::TestCase
     assert_equal "claude-code", detect(event: { session_id: "c-1" }, env:)
   end
 
+  def test_a_transcript_path_no_harness_declares_names_no_harness
+    assert_equal "unknown", detect(event: { session_id: "h-1", transcript_path: "/u/.hermes/sessions/h-1.jsonl" }, env: {})
+  end
+
   def test_the_transcript_path_names_the_harness
     assert_equal "claude-code", detect(event: { session_id: "c-1", transcript_path: "/u/.claude/projects/-u/c-1.jsonl" }, env: { "CODEX_THREAD_ID" => "x-0" })
   end

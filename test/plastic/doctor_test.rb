@@ -46,6 +46,12 @@ class DoctorTest < Plastic::TestCase
     assert_equal "no doctor for the harness unknown; harnesses with one: claude-code, codex", error.message
   end
 
+  def test_a_registered_harness_that_declares_no_doctor_has_none
+    error = assert_raises(Plastic::CLI::Command::Usage) { Plastic::Doctor.kind("hermes") }
+
+    assert_equal "no doctor for the harness hermes; harnesses with one: claude-code, codex", error.message
+  end
+
   def test_a_module_passed_beside_claude_code_is_found_by_name
     kind = Plastic::Doctor.kind("other", Plastic::Doctor::HARNESSES.merge("other" => Other))
     checks = Plastic::Doctor.checks(scope, kind, running: RUNNING)

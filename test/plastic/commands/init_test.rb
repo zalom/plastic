@@ -38,6 +38,20 @@ class InitCommandTest < Plastic::TestCase
     assert_match(/2  \[x\] codex/, call("init", env: { "PATH" => bin }).out)
   end
 
+  def test_a_found_hermes_folder_is_listed_picked
+    FileUtils.mkdir_p(File.join(@home, ".hermes"))
+
+    assert_match(/3  \[x\] hermes/, call("init").out)
+  end
+
+  def test_answering_hermes_installs_into_it_and_writes_its_record
+    FileUtils.mkdir_p(File.join(@home, ".hermes"))
+    result = call("init", "3")
+
+    assert_equal 0, result.code, result.err
+    assert_equal [true, ["hermes"]], [File.exist?(File.join(@home, ".hermes", "plastic", "manifest.json")), Plastic::Installations.recorded(@plastic_home)]
+  end
+
   def test_answering_1_installs_into_claude_code_only
     result = call("init", "1")
 
