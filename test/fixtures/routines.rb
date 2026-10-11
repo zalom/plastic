@@ -58,6 +58,10 @@ module Fixtures
       gate "the check broke on %{mode}", stops: :failure, offers: "plastic kernel two %{mode}", pass: ->(c) { c.mode != "break" }
       gate "the owner holds %{mode}", stops: :refusal, offers: "plastic kernel two %{mode}", pass: ->(c) { c.mode != "hold" }
       gate "nothing follows %{mode}", stops: :failure, pass: ->(c) { c.mode != "plain" }
+      gate "the rule stops %{mode}", stops: :failure, offers: "plastic kernel two %{mode}", because: "the rule behind %{mode}",
+        pass: ->(c) { c.mode != "ruled" }
+      gate "the owner rules on %{mode}", stops: :refusal, offers: "plastic kernel two %{mode}", because: "the owner rule behind %{mode}",
+        pass: ->(c) { c.mode != "owned" }
 
       outcome :done, because: "passed %{mode}"
     end
@@ -134,7 +138,7 @@ module Fixtures
   end
 
   class Offering < Routine
-    argument :mode, label: "MODE", text: "pass, hold, break or plain"
+    argument :mode, label: "MODE", text: "pass, hold, break, plain, ruled or owned"
 
     workflow :code_offer, next: :noop
   end

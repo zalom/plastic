@@ -72,6 +72,12 @@ class CodeWorkflowTest < Plastic::TestCase
     assert_raises(Plastic::CLI::Command::Usage) { flow.call(context) }
   end
 
+  def test_a_gate_refuses_an_option_it_does_not_know
+    error = assert_raises(Plastic::Invalid) { code { gate "held", stops: :failure, pass: ->(_c) { true }, because_text: "x" } }
+
+    assert_includes error.message, "unknown gate option because_text"
+  end
+
   def test_a_failure_gate_returns_a_failed_value
     assert_equal Plastic::Failed.new(:code_hold, "gate", "the check broke on break"),
       Flows::Hold.call(context(facts: { mode: "break" }))
@@ -110,6 +116,20 @@ class CodeWorkflowGateOffersTest < Plastic::TestCase
     assert_equal 3, call.code
     assert_equal "next: plastic kernel two hold\nbecause: the owner holds hold\n", call.out
     assert_includes call.err, "plastic: refused, the owner holds hold"
+  end
+
+  def test_a_failing_gate_prints_its_own_because_line
+    call = plastic("kernel", "offer", "ruled")
+
+    assert_equal [1, "next: plastic kernel two ruled\nbecause: the rule behind ruled\n"], [call.code, call.out]
+    assert_includes call.err, "the rule stops ruled"
+  end
+
+  def test_a_refusal_gate_prints_its_own_because_line
+    call = plastic("kernel", "offer", "owned")
+
+    assert_equal [3, "next: plastic kernel two owned\nbecause: the owner rule behind owned\n"], [call.code, call.out]
+    assert_includes call.err, "plastic: refused, the owner rules on owned"
   end
 
   def test_a_gate_that_passes_still_ends_the_chain_normally

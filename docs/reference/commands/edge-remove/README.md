@@ -58,4 +58,4 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | --- | --- | --- | --- |
 | %{problem} | 1 | prints no next: line | [`remove_edge.rb:21`](../../../../scripts/lib/plastic/workflows/remove_edge.rb#L21) |
 | edge %{from} to %{to} is gone | 0 | plastic graph show %{intent_id} | [`remove_edge.rb:27`](../../../../scripts/lib/plastic/workflows/remove_edge.rb#L27) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:97`](../../../../scripts/lib/plastic/code_workflow.rb#L97) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../scripts/lib/plastic/code_workflow.rb#L102) |

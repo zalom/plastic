@@ -10,6 +10,7 @@ module Plastic
       intent_subject
       argument :text, label: "TEXT", text: "the ruling, in the owner's words"
       option :supersedes, switch: "--supersedes RULING_ID", text: "an older ruling this one replaces"
+      reads :work
       writes :knowledge
       prints :intent
 

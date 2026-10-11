@@ -80,4 +80,4 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | changed on both sides since the last print, nothing written: %{conflicts}; pass --overwrite PATH, --overwrite or --merge | 3 | prints no next: line | [`sync_steps.rb:69`](../../../../scripts/lib/plastic/workflows/sync_steps.rb#L69) |
 | changed on both sides since the last print, left as they are: %{conflicts}; pass --overwrite PATH or --overwrite | 3 | prints no next: line | [`sync_steps.rb:75`](../../../../scripts/lib/plastic/workflows/sync_steps.rb#L75) |
 | the files hold every row that changed | 0 | plastic next | [`sync_steps.rb:63`](../../../../scripts/lib/plastic/workflows/sync_steps.rb#L63) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:97`](../../../../scripts/lib/plastic/code_workflow.rb#L97) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../scripts/lib/plastic/code_workflow.rb#L102) |

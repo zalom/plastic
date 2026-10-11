@@ -59,7 +59,7 @@ Reads the saved retrieval context of one intent with its evidence freshness.
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
-| forget a stop of an earlier call | read |  | [`code_workflow.rb:49`](../../../../scripts/lib/plastic/code_workflow.rb#L49) |
+| forget a stop of an earlier call | read |  | [`code_workflow.rb:54`](../../../../scripts/lib/plastic/code_workflow.rb#L54) |
 | read the saved context | read |  | [`read_context.rb:18`](../../../../scripts/lib/plastic/workflows/read_context.rb#L18) |
 | %{problem} | gate, stops with exit 1 | `context.problem.nil?` | [`read_context.rb:26`](../../../../scripts/lib/plastic/workflows/read_context.rb#L26) |
 
@@ -79,7 +79,7 @@ Validates a submitted evidence selection and persists it in the owning store.
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
-| forget a stop of an earlier call | read |  | [`code_workflow.rb:49`](../../../../scripts/lib/plastic/code_workflow.rb#L49) |
+| forget a stop of an earlier call | read |  | [`code_workflow.rb:54`](../../../../scripts/lib/plastic/code_workflow.rb#L54) |
 | persist the submitted context | read |  | [`submit_context.rb:22`](../../../../scripts/lib/plastic/workflows/submit_context.rb#L22) |
 | %{problem} | gate, stops with exit 1 | `context.problem.nil?` | [`submit_context.rb:33`](../../../../scripts/lib/plastic/workflows/submit_context.rb#L33) |
 
@@ -100,4 +100,4 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | the retrieval context was read | 0 | prints no next: line | [`read_context.rb:28`](../../../../scripts/lib/plastic/workflows/read_context.rb#L28) |
 | %{problem} | 1 | prints no next: line | [`submit_context.rb:33`](../../../../scripts/lib/plastic/workflows/submit_context.rb#L33) |
 | the retrieval context was read | 0 | prints no next: line | [`submit_context.rb:35`](../../../../scripts/lib/plastic/workflows/submit_context.rb#L35) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:97`](../../../../scripts/lib/plastic/code_workflow.rb#L97) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../scripts/lib/plastic/code_workflow.rb#L102) |

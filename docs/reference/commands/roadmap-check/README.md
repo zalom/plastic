@@ -53,4 +53,4 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | no roadmap %{slug} | 1 | prints no next: line | [`check_roadmap.rb:14`](../../../../scripts/lib/plastic/workflows/check_roadmap.rb#L14) |
 | see the findings above | 1 | prints no next: line | [`check_roadmap.rb:28`](../../../../scripts/lib/plastic/workflows/check_roadmap.rb#L28) |
 | roadmap %{slug} has no findings | 0 | plastic roadmap show %{slug} | [`check_roadmap.rb:30`](../../../../scripts/lib/plastic/workflows/check_roadmap.rb#L30) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:97`](../../../../scripts/lib/plastic/code_workflow.rb#L97) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../scripts/lib/plastic/code_workflow.rb#L102) |

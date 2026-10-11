@@ -37,7 +37,7 @@ Takes a done, abandoned or future intent off the checkout. Its rows stay.
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
-| forget a stop of an earlier call | read |  | [`code_workflow.rb:49`](../../../../scripts/lib/plastic/code_workflow.rb#L49) |
+| forget a stop of an earlier call | read |  | [`code_workflow.rb:54`](../../../../scripts/lib/plastic/code_workflow.rb#L54) |
 | archive the intent | step | `!context.ok.nil? \|\| !context.problem.nil?` | [`archive_intent.rb:15`](../../../../scripts/lib/plastic/workflows/archive_intent.rb#L15) |
 | %{problem} | gate, stops with exit 1 | `context.kind != :unfinished` | [`archive_intent.rb:22`](../../../../scripts/lib/plastic/workflows/archive_intent.rb#L22) |
 | %{problem} | gate, stops with exit 1 | `context.kind != :failure` | [`archive_intent.rb:25`](../../../../scripts/lib/plastic/workflows/archive_intent.rb#L25) |
@@ -60,4 +60,4 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | %{problem} | 1 | prints no next: line | [`archive_intent.rb:25`](../../../../scripts/lib/plastic/workflows/archive_intent.rb#L25) |
 | %{problem} | 3 | prints no next: line | [`archive_intent.rb:26`](../../../../scripts/lib/plastic/workflows/archive_intent.rb#L26) |
 | intent %{intent_id} is off the checkout | 0 | plastic status | [`archive_intent.rb:32`](../../../../scripts/lib/plastic/workflows/archive_intent.rb#L32) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:97`](../../../../scripts/lib/plastic/code_workflow.rb#L97) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../scripts/lib/plastic/code_workflow.rb#L102) |

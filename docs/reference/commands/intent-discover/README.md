@@ -84,4 +84,4 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | no intent %{intent_id} in owning store | 1 | prints no next: line | [`discover_retrieval.rb:34`](../../../../scripts/lib/plastic/workflows/discover_retrieval.rb#L34) |
 | an external agent must select the evidence | 0 | %{context_command} | [`external_agent_workflow.rb:15`](../../../../scripts/lib/plastic/workflows/external_agent_workflow.rb#L15) |
 | the retrieval context was submitted | 0 | prints no next: line | [`external_agent_workflow.rb:16`](../../../../scripts/lib/plastic/workflows/external_agent_workflow.rb#L16) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:97`](../../../../scripts/lib/plastic/code_workflow.rb#L97) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../scripts/lib/plastic/code_workflow.rb#L102) |

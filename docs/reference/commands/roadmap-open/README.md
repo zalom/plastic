@@ -35,7 +35,7 @@ Opens a ready item's intent, its spec.md holding the batch and item's goal and d
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
-| forget a stop of an earlier call | read |  | [`code_workflow.rb:49`](../../../../scripts/lib/plastic/code_workflow.rb#L49) |
+| forget a stop of an earlier call | read |  | [`code_workflow.rb:54`](../../../../scripts/lib/plastic/code_workflow.rb#L54) |
 | open the item's intent | step | `!context.intent_id.nil? \|\| !context.problem.nil?` | [`open_roadmap_item.rb:16`](../../../../scripts/lib/plastic/workflows/open_roadmap_item.rb#L16) |
 | %{problem} | gate, stops with exit 1 | `context.kind != :failure` | [`open_roadmap_item.rb:23`](../../../../scripts/lib/plastic/workflows/open_roadmap_item.rb#L23) |
 | %{problem} | gate, stops with exit 3 | `context.kind != :refusal` | [`open_roadmap_item.rb:24`](../../../../scripts/lib/plastic/workflows/open_roadmap_item.rb#L24) |
@@ -56,4 +56,4 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | %{problem} | 1 | prints no next: line | [`open_roadmap_item.rb:23`](../../../../scripts/lib/plastic/workflows/open_roadmap_item.rb#L23) |
 | %{problem} | 3 | prints no next: line | [`open_roadmap_item.rb:24`](../../../../scripts/lib/plastic/workflows/open_roadmap_item.rb#L24) |
 | item %{item_id} opened as intent %{intent_id} | 0 | plastic intent brief %{intent_id} | [`open_roadmap_item.rb:30`](../../../../scripts/lib/plastic/workflows/open_roadmap_item.rb#L30) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:97`](../../../../scripts/lib/plastic/code_workflow.rb#L97) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../scripts/lib/plastic/code_workflow.rb#L102) |

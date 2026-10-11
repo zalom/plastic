@@ -73,4 +73,4 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | --- | --- | --- | --- |
 | the preview changed no file | 0 | %{original_command} | [`preview_uninstall.rb:26`](../../../../scripts/lib/plastic/workflows/preview_uninstall.rb#L26) |
 | Plastic is removed from the chosen agents; the home stays | 0 | plastic install | [`uninstall_plastic.rb:31`](../../../../scripts/lib/plastic/workflows/uninstall_plastic.rb#L31) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:97`](../../../../scripts/lib/plastic/code_workflow.rb#L97) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../scripts/lib/plastic/code_workflow.rb#L102) |

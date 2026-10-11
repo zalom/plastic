@@ -54,4 +54,4 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | no intent %{intent_id} in this store | 1 | prints no next: line | [`ready_graph.rb:17`](../../../../scripts/lib/plastic/workflows/ready_graph.rb#L17) |
 | no node is ready to claim | 0 | prints no next: line | [`ready_graph.rb:25`](../../../../scripts/lib/plastic/workflows/ready_graph.rb#L25) |
 | node %{first} is ready | 0 | plastic node claim %{intent_id} %{first} | [`ready_graph.rb:26`](../../../../scripts/lib/plastic/workflows/ready_graph.rb#L26) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:97`](../../../../scripts/lib/plastic/code_workflow.rb#L97) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../scripts/lib/plastic/code_workflow.rb#L102) |

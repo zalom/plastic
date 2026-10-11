@@ -7,6 +7,7 @@ module Plastic
     # Writes the owner's go-ahead for an intent. `plastic auto` refuses an intent without it.
     class IntentApprove < Routine
       intent_subject
+      reads :knowledge
       writes :work
       prints :intent
 

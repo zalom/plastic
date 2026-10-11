@@ -71,13 +71,13 @@ Before the first call, `verify` checks the wiring and raises every fault at once
 | Word | Shape | When it runs | Stops the call | Defined in |
 | --- | --- | --- | --- | --- |
 | `sets` | `sets :intent, :status` | when the class loads | never | [`workflow.rb:37`](../../../scripts/lib/plastic/workflow.rb#L37) |
-| `read` | `read "name" do` then `end` | on every call, a rerun included | only when it raises: exit 1 | [`code_workflow.rb:42`](../../../scripts/lib/plastic/code_workflow.rb#L42) |
-| `gate` | `gate "reason", stops: :failure, pass: ->(c) { ... }` | in its place | when `pass:` is false: exit 1, the agent can fix it | [`code_workflow.rb:33`](../../../scripts/lib/plastic/code_workflow.rb#L33) |
-| `gate` | `gate "reason", stops: :refusal, pass: ->(c) { ... }` | in its place | when `pass:` is false: exit 3, the owner's step | [`code_workflow.rb:33`](../../../scripts/lib/plastic/code_workflow.rb#L33) |
-| `step` | `step "name", done: ->(c) { ... } do` then `end` | while `done:` is false, and `done:` must hold after it | when it raises: exit 1 | [`code_workflow.rb:60`](../../../scripts/lib/plastic/code_workflow.rb#L60) |
-| `forget_stop` | `forget_stop :problem` | on every call | never | [`code_workflow.rb:49`](../../../scripts/lib/plastic/code_workflow.rb#L49) |
-| `outcome` | `outcome :name, if: ->(c) { ... }` | after the steps: the first whose `if:` holds wins | never | [`code_workflow.rb:69`](../../../scripts/lib/plastic/code_workflow.rb#L69) |
-| `outcome` | `outcome :name` | the fallback, with no `if:`; it comes last | never | [`code_workflow.rb:84`](../../../scripts/lib/plastic/code_workflow.rb#L84) |
+| `read` | `read "name" do` then `end` | on every call, a rerun included | only when it raises: exit 1 | [`code_workflow.rb:47`](../../../scripts/lib/plastic/code_workflow.rb#L47) |
+| `gate` | `gate "reason", stops: :failure, pass: ->(c) { ... }` | in its place | when `pass:` is false: exit 1, the agent can fix it | [`code_workflow.rb:35`](../../../scripts/lib/plastic/code_workflow.rb#L35) |
+| `gate` | `gate "reason", stops: :refusal, pass: ->(c) { ... }` | in its place | when `pass:` is false: exit 3, the owner's step | [`code_workflow.rb:35`](../../../scripts/lib/plastic/code_workflow.rb#L35) |
+| `step` | `step "name", done: ->(c) { ... } do` then `end` | while `done:` is false, and `done:` must hold after it | when it raises: exit 1 | [`code_workflow.rb:65`](../../../scripts/lib/plastic/code_workflow.rb#L65) |
+| `forget_stop` | `forget_stop :problem` | on every call | never | [`code_workflow.rb:54`](../../../scripts/lib/plastic/code_workflow.rb#L54) |
+| `outcome` | `outcome :name, if: ->(c) { ... }` | after the steps: the first whose `if:` holds wins | never | [`code_workflow.rb:74`](../../../scripts/lib/plastic/code_workflow.rb#L74) |
+| `outcome` | `outcome :name` | the fallback, with no `if:`; it comes last | never | [`code_workflow.rb:89`](../../../scripts/lib/plastic/code_workflow.rb#L89) |
 
 A block does the work. A keyword lambda, `done:`, `pass:` or `if:`, answers a question and changes nothing.
 
@@ -125,7 +125,7 @@ These endings hold for every command, so a command page lists only its own.
 | a missing store | 1 | the command that creates the store | [`command.rb:93`](../../../scripts/lib/plastic/cli/command.rb#L93) |
 | a broken projects file | 1 | prints no next: line | [`command.rb:107`](../../../scripts/lib/plastic/cli/command.rb#L107) |
 | a step whose done check still fails | 1 | prints no next: line | [`step.rb:14`](../../../scripts/lib/plastic/code_workflow/step.rb#L14) |
-| a step that raises, except a usage error, which keeps exit 2 | 1 | prints no next: line | [`code_workflow.rb:98`](../../../scripts/lib/plastic/code_workflow.rb#L98) |
+| a step that raises, except a usage error, which keeps exit 2 | 1 | prints no next: line | [`code_workflow.rb:103`](../../../scripts/lib/plastic/code_workflow.rb#L103) |
 | a print failure after the chain | 1 | prints no next: line | [`printing.rb:17`](../../../scripts/lib/plastic/routine/printing.rb#L17) |
 | a closing line that cannot fill | 1 | prints no next: line | [`finished.rb:29`](../../../scripts/lib/plastic/finished.rb#L29) |
 | an agent handoff that cannot print | 1 | prints no next: line | [`agent_workflow.rb:54`](../../../scripts/lib/plastic/agent_workflow.rb#L54) |

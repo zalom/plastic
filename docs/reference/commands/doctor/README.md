@@ -51,4 +51,4 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | --- | --- | --- | --- |
 | a check found a problem; run the repairs named above, then run plastic doctor again | 1 | prints no next: line | [`check_health.rb:24`](../../../../scripts/lib/plastic/workflows/check_health.rb#L24) |
 | every check passed, so read the work next | 0 | plastic status | [`check_health.rb:27`](../../../../scripts/lib/plastic/workflows/check_health.rb#L27) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:97`](../../../../scripts/lib/plastic/code_workflow.rb#L97) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../scripts/lib/plastic/code_workflow.rb#L102) |

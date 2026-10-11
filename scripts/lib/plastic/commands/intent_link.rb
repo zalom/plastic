@@ -12,6 +12,7 @@ module Plastic
       argument :intent_id, label: "ID", text: "the intent this link starts from"
       argument :kind, label: "KIND", text: "cites, supersedes, answers, source or chain"
       argument :target, label: "TARGET", text: "an intent, a ruling, or a ref with a store prefix"
+      reads :work
       writes :knowledge
       prints :intent
 

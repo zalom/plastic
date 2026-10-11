@@ -52,4 +52,4 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | --- | --- | --- | --- |
 | no intent %{intent_id} in this store | 1 | prints no next: line | [`show_intent.rb:20`](../../../../scripts/lib/plastic/workflows/show_intent.rb#L20) |
 | intent %{intent_id} is shown | 0 | plastic intent brief %{intent_id} | [`show_intent.rb:48`](../../../../scripts/lib/plastic/workflows/show_intent.rb#L48) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:97`](../../../../scripts/lib/plastic/code_workflow.rb#L97) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../scripts/lib/plastic/code_workflow.rb#L102) |

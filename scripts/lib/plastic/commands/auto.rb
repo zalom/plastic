@@ -9,7 +9,7 @@ module Plastic
     class Auto < Routine
       subject :id
       argument :id, label: "ID", text: "the intent id or the roadmap slug"
-      writes :work
+      writes :work, :knowledge
       prints :intent
 
       workflow :code_pick_delivery, next: :noop do

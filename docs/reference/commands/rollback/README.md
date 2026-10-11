@@ -78,4 +78,4 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | no previous release to go back to | 3 | prints no next: line | [`preview_rollback.rb:26`](../../../../scripts/lib/plastic/workflows/preview_rollback.rb#L26) |
 | the preview changed no file | 0 | %{original_command} | [`preview_rollback.rb:36`](../../../../scripts/lib/plastic/workflows/preview_rollback.rb#L36) |
 | Plastic %{switched} is active and the home holds its files | 0 | plastic version | [`rollback_release.rb:20`](../../../../scripts/lib/plastic/workflows/rollback_release.rb#L20) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:97`](../../../../scripts/lib/plastic/code_workflow.rb#L97) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../scripts/lib/plastic/code_workflow.rb#L102) |

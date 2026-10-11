@@ -72,4 +72,4 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | %{why} | 0 | %{next_command} | [`pick_next.rb:24`](../../../../scripts/lib/plastic/workflows/pick_next.rb#L24) |
 | %{why} | 0 | prints no next: line | [`advance_delivery.rb:10`](../../../../scripts/lib/plastic/workflows/advance_delivery.rb#L10) |
 | the delivery instruction has been handled | 0 | prints no next: line | [`advance_delivery.rb:11`](../../../../scripts/lib/plastic/workflows/advance_delivery.rb#L11) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:97`](../../../../scripts/lib/plastic/code_workflow.rb#L97) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../scripts/lib/plastic/code_workflow.rb#L102) |

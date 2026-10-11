@@ -86,4 +86,4 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 %{unreadable}
 fix or remove each folder named, then run plastic sync up again | 1 | prints no next: line | [`sync_steps.rb:62`](../../../../scripts/lib/plastic/workflows/sync_steps.rb#L62) |
 | the rows hold every file changed by hand | 0 | plastic next | [`sync_steps.rb:63`](../../../../scripts/lib/plastic/workflows/sync_steps.rb#L63) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:97`](../../../../scripts/lib/plastic/code_workflow.rb#L97) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../scripts/lib/plastic/code_workflow.rb#L102) |
