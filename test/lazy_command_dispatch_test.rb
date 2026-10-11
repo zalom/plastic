@@ -24,7 +24,7 @@ class LazyCommandDispatchTest < Minitest::Test
   def test_each_dependency_family_dispatches_in_a_fresh_process
     Dir.mktmpdir do |home|
       FileUtils.mkdir_p(File.join(home, "stores", "global"))
-      [run_cli(home, "status"), run_cli(home, "hook", "resume", stdin_data: '{"session_id":"s1"}')].each do |result|
+      [run_cli(home, "status"), run_cli(home, "hook", "start", stdin_data: '{"session_id":"s1"}')].each do |result|
         assert_equal [0, ""], [result.fetch(:status).exitstatus, result.fetch(:err)]
         refute_empty result.fetch(:out)
       end
