@@ -12,8 +12,8 @@ class InstallationsRecordingTest < Plastic::TestCase
 
   def installation = Plastic::Workflows::Installation.of(call_context(harness: scoped_harness))
 
-  def installed_into(key)
-    Plastic::Workflows::Installation.capture { installation.run(selected: [key], argv: [], input: StringIO.new) }
+  def installed_into(key, argv: [])
+    Plastic::Workflows::Installation.capture { installation.run(selected: [key], argv:, input: StringIO.new) }
   end
 
   def recorded(name) = Plastic::Installations::Recording.new(installation, Plastic::Harnesses.fetch(name)).call
@@ -53,7 +53,7 @@ class InstallationsRecordingTest < Plastic::TestCase
 
   def test_the_record_keeps_the_status_line_plastic_replaced
     own_settings("statusLine" => MINE)
-    installed_into("claude")
+    installed_into("claude", argv: %w[--statusline plastic])
     status_line = recorded("claude-code").status_line
 
     assert_equal MINE, status_line["replaced"]
