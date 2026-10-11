@@ -7,7 +7,7 @@ class DocsStaleWordsGuardTest < Minitest::Test
   include StaleWords
 
   ROOT = File.expand_path("..", __dir__)
-  PAGES = (["README.md"] + Dir["docs/**/*.md", base: ROOT]).reject { |path| path.start_with?("docs/reviews/") }
+  PAGES = ["README.md"] + Dir["docs/**/*.md", base: ROOT]
   VARAR = Dir["varar/*.md", base: ROOT] + Dir["test/varar/*.rb", base: ROOT]
   STALE = /doctor --core|next: none|intent end \S+ --(?!project|json)|\bEvery command ends with/
 
