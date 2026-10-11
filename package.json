@@ -15,7 +15,7 @@
   "homepage": "https://github.com/zalom/plastic",
   "files": [
     "assets/",
-    "bin/",
+    "bin/plastic",
     "scripts/",
     "skills/",
     "docs/help/",
