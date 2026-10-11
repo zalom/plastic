@@ -35,7 +35,7 @@ module Plastic
     def self.sessions(env) = REGISTRY.to_h { |harness| [harness.name, harness.session(env)] }.compact
 
     def self.nearest(processes, among: names)
-      candidates = REGISTRY.select { |harness| harness.process && among.include?(harness.name) }.to_h { |harness| [harness.process, harness] }
+      candidates = REGISTRY.select { |harness| among.include?(harness.name) }.to_h { |harness| [harness.process, harness] }.except(nil)
       candidates[processes.ancestors.find { |process| candidates.key?(process) }]
     end
 
