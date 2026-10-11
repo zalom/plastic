@@ -47,7 +47,7 @@ class DoctorCommandTest < Plastic::TestCase
     File.chmod(0o644, hook_file)
     document = JSON.parse(doctor("--json").out)
 
-    assert_equal ["plastic install --reinstall", "plastic install --claude --reinstall"], document.fetch("result").fetch("repair")
+    assert_equal ["plastic install --reinstall", "plastic install --reinstall"], document.fetch("result").fetch("repair")
   end
 
   def test_a_harness_with_no_module_exits_2_and_names_available_harnesses
@@ -121,7 +121,7 @@ class CodexDoctorCommandTest < Plastic::TestCase
     result = doctor("--harness", "codex", "--json")
     repairs = JSON.parse(result.out).fetch("result").fetch("repair")
 
-    assert_equal [1, ["plastic install --codex --reinstall"]], [result.code, repairs]
+    assert_equal [1, ["plastic install --reinstall"]], [result.code, repairs]
     assert_empty result.err
   end
 

@@ -42,7 +42,7 @@ class CheckHealthTest < Plastic::TestCase
     File.delete(machine_path)
     File.chmod(0o644, hook_file)
 
-    assert_equal ["plastic install --reinstall", "plastic install --claude --reinstall"], printed_row(check.last, "repair:")
+    assert_equal ["plastic install --reinstall", "plastic install --reinstall"], printed_row(check.last, "repair:")
   end
 
   def test_a_codex_session_with_no_install_reports_the_missing_record

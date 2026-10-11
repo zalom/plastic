@@ -28,10 +28,10 @@ class DoctorCodexHooksTest < Plastic::TestCase
     assert_empty checks.filter_map(&:repair)
   end
 
-  def test_missing_hooks_name_the_codex_reinstall
+  def test_missing_hooks_name_the_reinstall
     File.delete(codex_hooks_path)
 
-    assert_equal "plastic install --codex --reinstall", checks.first.repair
+    assert_equal "plastic install --reinstall", checks.first.repair
   end
 
   def test_invalid_json_names_the_file_edit_before_reinstall
@@ -55,19 +55,19 @@ class DoctorCodexHooksTest < Plastic::TestCase
   def test_a_hook_with_the_former_harness_option_does_not_pass
     change_codex_hook("Stop") { |hook| hook["command"].sub!("hook stop", "hook record --harness codex") }
 
-    assert_equal "plastic install --codex --reinstall", check("Stop").repair
+    assert_equal "plastic install --reinstall", check("Stop").repair
   end
 
   def test_a_retired_dispatcher_does_not_pass
     change_codex_hook("Stop") { |hook| hook["command"] = "#{codex_launcher} record" }
 
-    assert_equal "plastic install --codex --reinstall", check("Stop").repair
+    assert_equal "plastic install --reinstall", check("Stop").repair
   end
 
   def test_a_command_for_a_different_event_does_not_pass
     change_codex_hook("SessionEnd") { |hook| hook["command"].sub!("hook end", "hook stop") }
 
-    assert_equal "plastic install --codex --reinstall", check("SessionEnd").repair
+    assert_equal "plastic install --reinstall", check("SessionEnd").repair
   end
 
   def test_a_missing_launcher_is_a_finding

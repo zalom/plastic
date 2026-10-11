@@ -19,7 +19,7 @@ class InstallShLocalTest < Minitest::Test
     out, = install_local("2.0.3")
 
     assert_includes out, "claims no release trust"
-    assert_includes out, "next: plastic install"
+    assert_includes out, "next: plastic init"
   end
 
   def test_an_installed_home_names_the_version_check_as_the_next_command
@@ -28,7 +28,7 @@ class InstallShLocalTest < Minitest::Test
     out, = install_local("2.0.3")
 
     assert_includes out, "next: plastic version"
-    refute_includes out, "next: plastic install"
+    refute_includes out, "next: plastic init"
   end
 
   def test_a_second_install_of_the_same_release_succeeds

@@ -34,7 +34,7 @@ module DoctorWalk
     found = kernel.run("doctor", "--harness", harness, "--json")
     result = JSON.parse(found.out).fetch("result")
     repair = Array(result["repair"]).first
-    run_repair(kernel, repair)
+    run_repair(kernel, repair, harness)
     { "exit" => found.code.to_s, "check" => finding(result), "repair" => shown(repair, project), "after repair" => kernel.run("doctor", "--harness", harness).code.to_s }
   end
 
@@ -71,8 +71,9 @@ module DoctorWalk
     label.end_with?(".db") ? "machine database" : label
   end
 
-  def run_repair(kernel, repair)
+  def run_repair(kernel, repair, harness)
     return unless repair
+    return init(kernel, harness) if repair == "plastic init"
 
     edit = repair.delete_prefix("add the line @AGENTS.md to ")
     return File.write(edit, "@AGENTS.md\n", mode: "a") unless edit == repair
