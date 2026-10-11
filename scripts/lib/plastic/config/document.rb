@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require "yaml"
-require_relative "layout"
+require_relative "tree"
 require_relative "mapping"
 require_relative "agent_renames"
 
@@ -11,10 +11,9 @@ module Plastic
     # merge keys the file already holds. A flat file is rewritten in the
     # layout first.
     class Document
-      def self.stream(data) = Psych.parse_stream(YAML.dump(data))
-
       def initialize(path)
         @path = path
+        @file = Tree.new(path)
       end
 
       def set(keys, value, harness: nil)
@@ -24,9 +23,10 @@ module Plastic
       end
 
       def migrate
+        layout = @file.layout
         return false unless File.file?(@path) && !layout.sectioned?
 
-        @tree = Document.stream(layout.sections)
+        @tree = Tree.stream(layout.sections)
         save
         true
       end
@@ -52,17 +52,7 @@ module Plastic
 
       def inherited(path) = Mapping.node(Layout.within(whole, *path))
 
-      def layout = (@layout ||= Layout.new(resolved))
-
-      def resolved
-        YAML.safe_load_file(@path, aliases: true)
-      rescue
-        nil
-      end
-
-      def tree = (@tree ||= kept? ? Psych.parse_stream(File.read(@path)) : Document.stream(layout.sections))
-
-      def kept? = resolved.is_a?(Hash) && layout.sectioned?
+      def tree = (@tree ||= @file.stream)
 
       def document = tree.children.first
 
