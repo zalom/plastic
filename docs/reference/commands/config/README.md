@@ -41,5 +41,5 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| Offers the next command | 0 | plastic config list#{harness_words} | [`config.rb:26`](../../../../scripts/lib/plastic/commands/config.rb#L26) |
-| Offers the next command | 0 | plastic config list#{harness_words} | [`config.rb:45`](../../../../scripts/lib/plastic/commands/config.rb#L45) |
+| Offers the next command | 0 | plastic config list [HARNESS_WORDS] | [`config.rb:26`](../../../../scripts/lib/plastic/commands/config.rb#L26) |
+| Offers the next command | 0 | plastic config list [HARNESS_WORDS] | [`config.rb:45`](../../../../scripts/lib/plastic/commands/config.rb#L45) |

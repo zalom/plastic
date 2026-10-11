@@ -11,7 +11,13 @@ module CommandReference
 
     def self.name_of(code) = code[/[a-z_]\w*/] || "value"
 
-    def self.placeholder(literal) = literal.gsub(INTERPOLATION) { name_of(Regexp.last_match(1)).upcase }
+    def self.placeholder(literal)
+      literal.gsub(/((?<=\S))?#{INTERPOLATION}/o) do
+        glued, code = Regexp.last_match.captures
+        name = name_of(code).upcase
+        glued ? " [#{name}]" : name
+      end
+    end
 
     def self.message(kind, literal)
       literal ? "#{kind}: #{literal.gsub(INTERPOLATION) { "%{#{name_of(Regexp.last_match(1))}}" }}" : kind
