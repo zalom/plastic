@@ -38,12 +38,17 @@ class InitCommandTest < Plastic::TestCase
     assert_match(/2  \[x\] codex/, call("init", env: { "PATH" => bin }).out)
   end
 
-  def test_answering_1_installs_into_claude_code_only_and_writes_its_record
+  def test_answering_1_installs_into_claude_code_only
     result = call("init", "1")
 
     assert_equal 0, result.code, result.err
     assert_path_exists File.join(@home, ".claude", "plastic", "manifest.json")
     refute_path_exists File.join(@home, ".codex", "hooks.json")
+  end
+
+  def test_answering_1_writes_the_record_of_claude_code_only
+    call("init", "1")
+
     assert_equal ["claude-code"], Plastic::Installations.recorded(@plastic_home)
   end
 

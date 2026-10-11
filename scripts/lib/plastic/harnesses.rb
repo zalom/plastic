@@ -28,6 +28,8 @@ module Plastic
 
     def self.found(home:, path:) = REGISTRY.select { |harness| harness.found?(home:, path:) }
 
+    def self.found_in(scope) = found(home: scope.home, path: scope.setting("PATH", ""))
+
     def self.sessions(env) = REGISTRY.to_h { |harness| [harness.name, harness.session(env)] }.compact
 
     def self.nearest(processes, among: names)

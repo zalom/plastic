@@ -84,6 +84,8 @@ module Plastic
         run(selected: fresh, force:, reinstall:, argv: [], input: StringIO.new, already_registered: selected - fresh)
       end
 
+      def wire(keys) = run(selected: keys, force: false, reinstall: false, argv: [], input: StringIO.new)
+
       def preflight
         report = StringIO.new
         [preflight_gate(out: report).zero?, report.string.lines(chomp: true)]

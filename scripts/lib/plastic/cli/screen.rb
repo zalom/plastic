@@ -36,6 +36,13 @@ module Plastic
 
         TerminalList.new(@prompt.call(@input, @stream)).call(question, choices)
       end
+
+      # The answer text that picks what the person picked on the terminal; nil
+      # once the numbered list is printed for the next call to answer.
+      def answer(question, choices, command:)
+        result = ask(question, choices, command:)
+        Answer.of(result, choices) unless result.is_a?(Listed)
+      end
     end
   end
 end
