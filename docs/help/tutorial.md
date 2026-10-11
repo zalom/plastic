@@ -380,7 +380,8 @@ run. They do not run the team; your harness does that.
 
 2. `plastic intent brief ID` prints the preamble the dispatched agent reads first.
 3. `plastic intent lock status ID` shows who holds the lock and where the worktree is.
-4. `plastic next` prints the report contract and the review rules the lead follows.
+4. `plastic help agent-architecture` names the steps the main session takes and the review
+   rules it follows.
 5. The close is the same `plastic intent end` as in the close above, with the same merge check.
 
 `plastic intent end ID` refuses an intent that has no done criterion, no accepted verdict or

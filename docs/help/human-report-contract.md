@@ -26,21 +26,21 @@ written by eye:
 
 ## Binding table
 
-Every command or lead role that shows state names its own report verb, one row per binding
-and trigger. The commands run their verb themselves; the lead and the agent run theirs. Each
+Every command or session that shows state names its own report verb, one row per binding
+and trigger. The commands run their verb themselves; the main session runs its own. Each
 one carries the SAME rule next to its verb: print the screen as the first characters of the
 reply, nothing before it, no fence, or the hook cannot paint it.
 
-| Command or lead | Trigger | Verb |
+| Command or session | Trigger | Verb |
 |---|---|---|
 | `plastic intent show` | any invocation | `report-screen state` |
 | `plastic intent spec` | any invocation | `report-screen state`, then the speccing rules |
 | `plastic roadmap show` | any invocation | `report-screen roadmap ... state` |
 | `plastic status` | any invocation | in-process (`Scope#stores`) |
 | `plastic graph resume` | any invocation | in-process rows: store, in play, done, in progress, savepoint, then |
-| the auto team's lead | the How boundary, before the executor | `report-screen plan` |
-| the auto team's lead | each of the five triggers | `report-screen state` |
-| the auto team's lead | close | `report-screen delivered` |
+| the main session | the How boundary, before the executor | `report-screen plan` |
+| the main session | each of the five triggers | `report-screen state` |
+| the main session | close | `report-screen delivered` |
 | the agent | "where are we" (an unnamed status ask) | `report-screen session` |
 | the agent | "why so long" | `report-screen delay` |
 

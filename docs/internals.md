@@ -53,10 +53,10 @@ In 2.0 code owns the form of the executable layer: the `plastic` commands (their
 directory schema, and the templates under `templates/`. What stays free is the prose a
 brain writes inside those forms.
 
-Seven agent role files ship in `agents/`: `plastic-enforcer`, `plastic-executor`,
-`plastic-node-work`, `plastic-node-verify`, `plastic-node-research`,
+Four agent role files ship in `agents/`: `plastic-planner`, `plastic-executor`,
 `plastic-primary-advisor`, and `plastic-secondary-advisor`. They are handoff contracts,
-not free-prose producers: each names what it consumes and produces. The installer copies
+not free-prose producers: each names what it consumes and produces. Each is a node the
+main session dispatches for one step; it reports back and writes no Plastic state. The installer copies
 `agents/*.md` into the Claude and Hermes agent directories and renders each one as TOML for
 Codex. The manifest tracks the installed files, so they prune on update and uninstall. The team model is `plastic help agent-architecture`.
 
@@ -826,9 +826,8 @@ one shared definition of store creation that creation and repair both consult.
 ## per-agent model resolution and installer application
 
 Every agent in `agents/*.md` pins an explicit model and effort in its own frontmatter.
-The five lifecycle and node roles use a Claude Code alias and `effort: medium`, tiered by
-role: `plastic-enforcer` and `plastic-node-verify` are `opus`; `plastic-executor`,
-`plastic-node-work`, and `plastic-node-research` are `sonnet`. None is ever `inherit` and
+The two delivery roles use a Claude Code alias and `effort: medium`, tiered by
+role: `plastic-planner` is `opus` and `plastic-executor` is `sonnet`. None is ever `inherit` and
 none is ever Fable by default. Fable is named in three places, and only three: the
 auto-mode advisory notice below (about the human's main session, never a dispatched
 subagent), an explicit `agents.models.<name>` config override, which is honored as written
@@ -891,14 +890,14 @@ Claude Code and Astra on Codex; Primary uses medium effort, and Secondary uses h
   atomic write after validation.
 - **Dispatch-time contract (belt-and-braces)**: because Claude Code reading
   frontmatter at dispatch time is a harness implementation detail rather than a
-  contract Plastic controls, the enforcer's body tells it to resolve the target
-  agent's model at every dispatch through the same chain
-  (`read-config agents.models.<basename> --project <repo>`) and pass it
+  contract Plastic controls, `plastic help agent-architecture` tells the main session
+  to resolve the target agent's model at every dispatch through the same chain
+  (an `agents.models.<basename>` override, else the frontmatter) and pass it
   explicitly as the dispatch call's model parameter, never relying on the
   dispatched role's frontmatter alone. Graph nodes get the same guarantee from
   `RunnerPolicy`, above.
-- **Orchestrator advisory (not a gate)**: at auto-mode start, the enforcer
-  recommends once that the user run the orchestrating main
+- **Orchestrator advisory (not a gate)**: `plastic help agent-architecture`
+  recommends that the user run the main
   session on the best available thinking model (Fable, Opus, or whatever supersedes
   them). This changes no behavior and blocks
   nothing if ignored; it concerns only the human's main session, since dispatched
@@ -1793,9 +1792,9 @@ templates. The looseness sat in prose skills that asked a brain to write an arti
 output template. The mixed ones were template- or script-backed skills with free-prose pockets,
 plus two recorded `evals.json` files.
 
-**Stage agents.** 1.x shipped one agent per lifecycle stage beside the enforcer and the
-executor. The stage agents were removed in 2.0. The enforcer now writes the Why
-and How itself.
+**Stage agents.** 1.x shipped one agent per lifecycle stage beside a lead agent and the
+executor. The stage agents were removed in 2.0. The main session now writes the record,
+and the planner drafts the plan it records.
 
 **The harness inventory.** 1.x counted 23 harness entries: 7 hard-block, 10 soft-steer, and 6
 advisory. The advisory ones included two `evals.json` files that no runner ever replayed. The
