@@ -1756,8 +1756,8 @@ Plastic no longer runs.
 same outcome generation and backfill on that copy, then applies the
 hollow-report gate (exit 7). Exits 5 and 9 are both retired: each
 named a real git check (dirty-worktree status, merge ancestry) Plastic no
-longer runs, and `--discard-worktree-changes` is accepted but changes nothing
-now that there is nothing left to discard a check against. The dry run still
+longer runs. `plastic intent end` takes no options, so it refuses
+`--discard-worktree-changes` as an invalid option. The dry run still
 refuses exit 8 exactly as the real close does. `plastic intent end` names
 exits 7 and 8 in its failure message.
 
