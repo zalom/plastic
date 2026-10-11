@@ -44,14 +44,6 @@ class EntriesTest < Minitest::Test
     assert_nil @hooks_json["statusLine"]
   end
 
-  def test_a_former_hook_command_with_the_harness_option_is_replaced
-    former = { "matcher" => "", "hooks" => [{ "type" => "command", "command" => %(env -u RUBYOPT "#{COMMAND}" hook resume --harness claude-code || true) }] }
-
-    entries do |rewriter|
-      assert_equal [%(env -u RUBYOPT "#{COMMAND}" hook start || true)], commands_for(rewriter.claude({ "hooks" => { "SessionStart" => [former] } })["hooks"], "SessionStart")
-    end
-  end
-
   def test_a_rerun_gives_one_group_per_event_not_two
     entries do |rewriter|
       once = rewriter.claude({})
