@@ -7,7 +7,7 @@ require_relative "../../../scripts/lib/plastic/workflows/retrieval_repair"
 class RetrievalRepairTest < Plastic::TestCase
   Maintenance = Plastic::Graph::RetrievalGraph::MaintenanceRequired
 
-  def problem(error) = Plastic::Workflows::RetrievalRepair.new(scoped_harness(slug: "global").scope).problem(error)
+  def problem(error) = Plastic::Workflows::RetrievalRepair.new(scoped_harness(slug: "global").scope, error).problem
 
   def refusal(slug) = Maintenance.new("retrieval maintenance is required before source #{slug} can be read", slug:)
 
