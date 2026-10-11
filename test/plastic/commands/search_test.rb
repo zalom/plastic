@@ -3,6 +3,7 @@
 require_relative "../../test_helper"
 require_relative "../../../scripts/lib/plastic/commands/search"
 require_relative "../../../scripts/lib/plastic/graph/retrieval/evidence/writer"
+require_relative "old_store"
 
 module SearchTestSupport
   private
@@ -251,5 +252,27 @@ class SearchEvidenceTest < Plastic::TestCase
     result = plastic("search", "archived evidence", "--source-project", "global", "--json", table: Plastic::CLI::TABLE)
 
     assert_archived_result(result, before)
+  end
+end
+
+class SearchRepairTest < Plastic::TestCase
+  include OldStore
+
+  def search = plastic("search", "evidence", "--source-project", OLD, table: Plastic::CLI::TABLE)
+
+  def test_a_search_on_a_store_with_no_backfill_marker_names_its_repair
+    old_store
+    result = search
+
+    assert_equal 1, result.code
+    assert_includes result.out + result.err, "run plastic project new old #{checkout}"
+  end
+
+  def test_after_project_new_a_search_reads_a_store_made_before_the_marker
+    old_store
+    repair
+    result = search
+
+    assert_equal [0, true], [result.code, result.out.include?("plastic://old/1/notes.md")]
   end
 end

@@ -45,4 +45,13 @@ class SubmitContextTest < Plastic::TestCase
   def test_a_submission_without_a_discovery_is_a_usage_error
     assert_raises(Plastic::CLI::Command::Usage) { submit(EMPTY.merge("evidence" => [])) }
   end
+
+  def test_a_store_with_no_backfill_marker_names_its_repair
+    discovered
+    store_graphs.databases.fetch(:knowledge).transaction { |batch| batch.add("DELETE FROM retrieval_backfills") }
+
+    outcome, = submit(EMPTY.merge("evidence" => [@reference]))
+
+    assert_includes outcome.message, "run plastic install --reinstall, then try again"
+  end
 end
