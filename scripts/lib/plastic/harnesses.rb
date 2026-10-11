@@ -22,6 +22,13 @@ module Plastic
 
     def self.registered?(name) = names.include?(name)
 
+    def self.sessions(env) = REGISTRY.to_h { |harness| [harness.name, harness.session(env)] }.compact
+
+    def self.nearest(processes, among: names)
+      candidates = REGISTRY.select { |harness| among.include?(harness.name) }.to_h { |harness| [harness.process, harness] }
+      candidates[processes.ancestors.find { |process| candidates.key?(process) }]
+    end
+
     def self.fetch(name)
       REGISTRY.find { |harness| harness.name == name } or
         raise CLI::Command::Usage, "no harness #{name}; the registered harnesses are #{names.join(", ")}"

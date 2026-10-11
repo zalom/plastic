@@ -30,7 +30,9 @@ class HarnessSessionRowsTest < Plastic::TestCase
   end
 
   def test_with_no_rows_none_is_picked_and_no_database_is_made
-    assert_nil rows.latest(%w[c-1 x-1])
-    refute_path_exists File.join(@plastic_home, "local.db")
+    bare = Dir.mktmpdir
+
+    assert_nil Plastic::Harnesses::SessionRows.new(bare).latest(%w[c-1 x-1])
+    refute_path_exists File.join(bare, "local.db")
   end
 end
