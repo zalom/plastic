@@ -9,8 +9,9 @@ require_relative "recap"
 module Plastic
   module Hooks
     # SessionStart: names the harness, opens the session row with it, then
-    # prints the Recap the rows alone carry, and one line naming plastic
-    # doctor when a doctor check fails on a session that starts fresh.
+    # prints the Recap the rows alone carry, and, on a session that starts
+    # fresh, one line naming plastic doctor when a doctor check fails or when
+    # the harness it recorded is not registered.
     # Nothing here is call memory: a hook keeps no routine run.
     class Start < Hook
       FAILING_CHECKS = ->(scope, harness) { Doctor.failing(scope, harness:) }
@@ -43,9 +44,17 @@ module Plastic
       end
 
       def doctor_line(event)
-        return unless FRESH_SOURCES.include?(event[:source].to_s) && Harnesses.registered?(harness)
+        return unless FRESH_SOURCES.include?(event[:source].to_s)
 
-        failing_count.then { |count| DOCTOR_LINE.call(count) if count.positive? }
+        Harnesses.registered?(harness) ? failing_line : unregistered_line
+      end
+
+      def failing_line = failing_count.then { |count| DOCTOR_LINE.call(count) if count.positive? }
+
+      def unregistered_line
+        return unless session_id
+
+        "Plastic: #{Doctor.unregistered(session_id, harness)}; run plastic doctor --harness with one of #{Harnesses.names.join(", ")}."
       end
 
       def failing_count
