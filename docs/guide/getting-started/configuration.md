@@ -67,7 +67,9 @@ Read and change the keys with `plastic config`:
 
 Add `--harness NAME` to read or write one harness section. A name the harness registry does not hold is refused, and the
 command lists the registered ones. A file written in the older flat layout is moved into the two sections on the next
-install or `config set`.
+install or `config set`. The install also moves the model and effort of an agent that no longer ships to the agent that
+replaced it, such as `plastic-enforcer` to `plastic-planner`, and names each move it makes. When the section already
+names the new agent, its own value stays.
 
 ## Files
 

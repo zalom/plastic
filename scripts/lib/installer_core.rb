@@ -1174,7 +1174,11 @@ class InstallerCore
   end
 
   # A flat config.yml rewritten in the global and harness sections.
-  def migrate_config = Plastic::Config::Document.new(File.join(plastic_home, "config.yml")).migrate
+  def migrate_config
+    document = Plastic::Config::Document.new(File.join(plastic_home, "config.yml"))
+    document.migrate
+    document.rename_agents
+  end
 
   # Renames retired advisor keys without discarding a current key. It accepts
   # malformed config sections and leaves unrelated values untouched.

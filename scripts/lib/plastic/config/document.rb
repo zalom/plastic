@@ -3,6 +3,7 @@
 require "yaml"
 require_relative "layout"
 require_relative "mapping"
+require_relative "agent_renames"
 
 module Plastic
   class Config
@@ -28,6 +29,12 @@ module Plastic
         @tree = Document.stream(layout.sections)
         save
         true
+      end
+
+      def rename_agents
+        renamed = AgentRenames.new(document.root).apply
+        save unless renamed.empty?
+        renamed
       end
 
       private
