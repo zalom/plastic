@@ -31,6 +31,20 @@ module Plastic
       keys.filter_map { |key| Harnesses.installed_by(key) }.each { |harness| write(installer.plastic_home, Recording.new(installer, harness).call) }
     end
 
+    def self.listed(scope)
+      names = Harnesses.found_in(scope).map(&:name) | recorded(scope.plastic_home)
+      Harnesses.names & names
+    end
+
+    def self.remove(plastic_home, harness)
+      record = read(plastic_home, harness)
+      Removal.new(record, plastic_home:).call if record
+    end
+
+    def self.planned(plastic_home, harnesses)
+      harnesses.filter_map { |harness| read(plastic_home, harness) }.flat_map { |record| Removal.new(record, plastic_home:).planned }
+    end
+
     def self.delete(plastic_home, harness) = FileUtils.rm_f(path(plastic_home, harness))
   end
 end

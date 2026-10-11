@@ -5,6 +5,7 @@ require "pathname"
 require "stringio"
 require_relative "../../../install"
 require_relative "../harnesses"
+require_relative "../installations"
 
 module Plastic
   module Workflows
@@ -69,6 +70,8 @@ module Plastic
       end
 
       def synced = installed_agents.select { |key| Harnesses.installed_by(key) }
+
+      def kept(harnesses) = (Installations.recorded(plastic_home) | installed_agents.map { |key| Harnesses.installed_by(key)&.name || key }) - harnesses
 
       def install(keys, reinstall:, force:) = run(selected: keys, force:, reinstall:, argv: [], input: StringIO.new)
 
