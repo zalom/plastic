@@ -27,7 +27,7 @@ module Plastic
       private
 
       def parsed
-        JSON.parse(File.read(path)) if File.file?(path)
+        JSON.parse(File.read(path)) if path && File.file?(path)
       rescue JSON::ParserError
         nil
       end

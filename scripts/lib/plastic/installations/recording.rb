@@ -18,7 +18,8 @@ module Plastic
           "claude" => Layout.new(:dir, "settings.json", :claude_purge_command?, "CLAUDE.md",
             [core::CLAUDE_SECTION_BEGIN_PREFIX, core::CLAUDE_SECTION_END]),
           "codex" => Layout.new(:home_dir, "hooks.json", :codex_purge_command?, "AGENTS.md",
-            [core::CODEX_SECTION_BEGIN_PREFIX, core::CODEX_SECTION_END])
+            [core::CODEX_SECTION_BEGIN_PREFIX, core::CODEX_SECTION_END]),
+          "hermes" => Layout.new(:dir, nil, nil, nil, [])
         }
       end
 
@@ -48,7 +49,7 @@ module Plastic
 
       def settings_path = @layout.settings_path(@config)
 
-      def settings = (@settings ||= Hash(@installer.read_json_safe(settings_path)))
+      def settings = (@settings ||= settings_path ? Hash(@installer.read_json_safe(settings_path)) : {})
 
       def hooks = Hash(settings["hooks"]).flat_map { |event, groups| owned_entries(event, groups) }
 
@@ -78,8 +79,8 @@ module Plastic
 
       def sections
         opening, closing = @layout.markers
-        path = @installer.resolve_managed_path(@layout.instructions_path(@config))
-        return [] unless File.file?(path) && File.read(path).include?(opening)
+        path = @layout.instructions_path(@config)&.then { |file| @installer.resolve_managed_path(file) }
+        return [] unless path && File.file?(path) && File.read(path).include?(opening)
 
         [{ "file" => path, "begin" => opening, "end" => closing }]
       end

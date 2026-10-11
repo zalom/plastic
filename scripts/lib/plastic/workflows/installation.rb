@@ -56,7 +56,7 @@ module Plastic
 
       def synced = installed_agents.select { |key| Harnesses.installed_by(key) }
 
-      def kept(harnesses) = (Installations.recorded(plastic_home) | installed_agents.map { |key| Harnesses.installed_by(key)&.name || key }) - harnesses
+      def kept(harnesses) = (Installations.recorded(plastic_home) | installed_agents.map { |key| Harnesses.installed_by(key).name }) - harnesses
 
       def install(keys, reinstall:, force:) = run(selected: keys, force:, reinstall:, argv: [], input: StringIO.new)
 
