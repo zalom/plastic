@@ -64,4 +64,4 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | %{problem} | 1 | prints no next: line | [`revise_intent.rb:32`](../../../../scripts/lib/plastic/workflows/revise_intent.rb#L32) |
 | the dry run wrote nothing | 0 | %{original_command} | [`revise_intent.rb:50`](../../../../scripts/lib/plastic/workflows/revise_intent.rb#L50) |
 | the rows and the files hold the new What and Why | 0 | prints no next: line | [`revise_intent.rb:52`](../../../../scripts/lib/plastic/workflows/revise_intent.rb#L52) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:97`](../../../../scripts/lib/plastic/code_workflow.rb#L97) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../scripts/lib/plastic/code_workflow.rb#L102) |

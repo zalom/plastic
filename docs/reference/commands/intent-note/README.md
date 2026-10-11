@@ -20,7 +20,7 @@ The command is `IntentNote`, in [`intent_note.rb:10`](../../../../scripts/lib/pl
 
 ## Before the chain
 
-The command's own `call`, at [`intent_note.rb:17`](../../../../scripts/lib/plastic/commands/intent_note.rb#L17), runs first:
+The command's own `call`, at [`intent_note.rb:18`](../../../../scripts/lib/plastic/commands/intent_note.rb#L18), runs first:
 
 ```ruby
 def call
@@ -71,5 +71,5 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | no intent %{intent_id} in this store | 1 | prints no next: line | [`note_intent.rb:17`](../../../../scripts/lib/plastic/workflows/note_intent.rb#L17) |
 | %{problem} | 1 | prints no next: line | [`note_intent.rb:23`](../../../../scripts/lib/plastic/workflows/note_intent.rb#L23) |
 | the outcome holds the note | 0 | prints no next: line | [`note_intent.rb:33`](../../../../scripts/lib/plastic/workflows/note_intent.rb#L33) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:97`](../../../../scripts/lib/plastic/code_workflow.rb#L97) |
-| Usage error: KIND takes %{kinds} | 2 | prints no next: line | [`intent_note.rb:19`](../../../../scripts/lib/plastic/commands/intent_note.rb#L19) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../scripts/lib/plastic/code_workflow.rb#L102) |
+| Usage error: KIND takes %{kinds} | 2 | prints no next: line | [`intent_note.rb:20`](../../../../scripts/lib/plastic/commands/intent_note.rb#L20) |

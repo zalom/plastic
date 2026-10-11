@@ -35,7 +35,7 @@ Restores the archived directory snapshot, including bytes and metadata.
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
-| forget a stop of an earlier call | read |  | [`code_workflow.rb:49`](../../../../scripts/lib/plastic/code_workflow.rb#L49) |
+| forget a stop of an earlier call | read |  | [`code_workflow.rb:54`](../../../../scripts/lib/plastic/code_workflow.rb#L54) |
 | restore the intent | step | `!context.ok.nil? \|\| !context.problem.nil?` | [`unarchive_intent.rb:15`](../../../../scripts/lib/plastic/workflows/unarchive_intent.rb#L15) |
 | %{problem} | gate, stops with exit 1 | `context.problem.nil?` | [`unarchive_intent.rb:21`](../../../../scripts/lib/plastic/workflows/unarchive_intent.rb#L21) |
 | say it was restored | read |  | [`unarchive_intent.rb:23`](../../../../scripts/lib/plastic/workflows/unarchive_intent.rb#L23) |
@@ -54,4 +54,4 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | --- | --- | --- | --- |
 | %{problem} | 1 | prints no next: line | [`unarchive_intent.rb:21`](../../../../scripts/lib/plastic/workflows/unarchive_intent.rb#L21) |
 | intent %{intent_id} is back on the checkout | 0 | plastic intent show %{intent_id} | [`unarchive_intent.rb:27`](../../../../scripts/lib/plastic/workflows/unarchive_intent.rb#L27) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:97`](../../../../scripts/lib/plastic/code_workflow.rb#L97) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../scripts/lib/plastic/code_workflow.rb#L102) |

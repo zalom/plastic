@@ -22,8 +22,8 @@ class CliPackageBinTest < Minitest::Test
     assert File.executable?(File.join(ROOT, "bin", "plastic"))
   end
 
-  def test_the_package_still_ships_the_launcher_directory
-    assert_includes package.fetch("files"), "bin/"
+  def test_the_package_ships_the_launcher_and_no_development_script
+    assert_equal ["bin/plastic"], package.fetch("files").grep(%r{\Abin/})
   end
 
   def test_the_package_still_ships_the_scripts_the_launcher_calls

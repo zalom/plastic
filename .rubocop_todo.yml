@@ -25,7 +25,6 @@ Layout/ArgumentAlignment:
     - 'test/post_cut_vocabulary_test.rb'
     - 'test/preflight_test.rb'
     - 'test/roadmap_test.rb'
-    - 'tools/crap.rb'
 
 # Offense count: 100
 # This cop supports safe autocorrection (--autocorrect).
@@ -130,13 +129,6 @@ Layout/SpaceInsideHashLiteralBraces:
     - 'test/real_home_guard_test.rb'
     - 'test/release_channels_test.rb'
 
-# Offense count: 6
-# This cop supports safe autocorrection (--autocorrect).
-# Configuration parameters: AllowInHeredoc.
-Layout/TrailingWhitespace:
-  Exclude:
-    - 'tools/crap.rb'
-
 # Offense count: 1
 # This cop supports safe autocorrection (--autocorrect).
 Lint/SafeNavigationWithEmpty:
@@ -167,9 +159,7 @@ Metrics/AbcSize:
     - 'test/naming_rule_test.rb'
     - 'test/plastic_core_budget_test.rb'
     - 'test/post_cut_vocabulary_test.rb'
-    - 'test/tools/crap_test.rb'
     - 'test/vocabulary_scan_test.rb'
-    - 'tools/crap.rb'
 
 # Offense count: 208
 # Configuration parameters: CountComments, Max, CountAsOne.
@@ -188,7 +178,6 @@ Metrics/ClassLength:
     - 'test/real_home_guard_test.rb'
     - 'test/release_channels_test.rb'
     - 'test/release_check_test.rb'
-    - 'test/tools/crap_test.rb'
     - 'test/vocabulary_scan_test.rb'
 
 # Offense count: 316
@@ -203,7 +192,6 @@ Metrics/CyclomaticComplexity:
     - 'scripts/lib/release_channels.rb'
     - 'scripts/lib/release_guard.rb'
     - 'test/real_home_guard_test.rb'
-    - 'tools/crap.rb'
 
 # Offense count: 1525
 # Configuration parameters: CountComments, Max, CountAsOne, AllowedMethods, AllowedPatterns.
@@ -232,7 +220,6 @@ Metrics/MethodLength:
     - 'test/release_guard_test.rb'
     - 'test/tick_with_commit_contract_test.rb'
     - 'test/vocabulary_scan_test.rb'
-    - 'tools/crap.rb'
 
 # Offense count: 49
 # Configuration parameters: CountComments, Max, CountAsOne.
@@ -260,13 +247,6 @@ Metrics/PerceivedComplexity:
     - 'scripts/lib/hook_registry.rb'
     - 'scripts/lib/installer_core.rb'
     - 'scripts/lib/release_channels.rb'
-    - 'tools/crap.rb'
-
-# Offense count: 11
-# This cop supports safe autocorrection (--autocorrect).
-Minitest/AssertInDelta:
-  Exclude:
-    - 'test/tools/crap_test.rb'
 
 # Offense count: 44
 # This cop supports safe autocorrection (--autocorrect).
@@ -320,7 +300,6 @@ Minitest/EmptyLineBeforeAssertionMethods:
     - 'test/report_screen_skill_contract_test.rb'
     - 'test/roadmap_test.rb'
     - 'test/tick_with_commit_contract_test.rb'
-    - 'test/tools/crap_test.rb'
     - 'test/vocabulary_scan_test.rb'
 
 # Offense count: 741
@@ -412,7 +391,6 @@ Style/RedundantBegin:
 Style/RedundantFormat:
   Exclude:
     - 'bin/lib/context_budget.rb'
-    - 'tools/crap.rb'
 
 # Offense count: 97
 # This cop supports safe autocorrection (--autocorrect).
@@ -434,7 +412,6 @@ Style/RedundantStructKeywordInit:
   Exclude:
     - 'bin/lib/context_budget.rb'
     - 'scripts/lib/release_guard.rb'
-    - 'tools/crap.rb'
 
 # Offense count: 21
 # This cop supports safe autocorrection (--autocorrect).
@@ -493,7 +470,6 @@ Style/TernaryParentheses:
     - 'scripts/install.rb'
     - 'scripts/lib/hook_registry.rb'
     - 'scripts/lib/installer_core.rb'
-    - 'tools/crap.rb'
 
 # Offense count: 57
 # This cop supports safe autocorrection (--autocorrect).

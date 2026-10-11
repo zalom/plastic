@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 314" width="980" height="314" role="img" xml:space="preserve">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 416" width="980" height="416" role="img" xml:space="preserve">
 <title>What plastic search touches</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
@@ -84,15 +84,21 @@
 <rect x="336" y="102" width="196" height="28" rx="6" class="card"/>
 <text x="344" y="120" class="tm" text-anchor="start">Workflows::SearchQuery</text>
 <rect x="336" y="136" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="154" class="tm" text-anchor="start">Graph::Retrieval::Search::Results</text>
+<text x="344" y="154" class="tm" text-anchor="start">Workflows::RetrievalRepair</text>
 <rect x="336" y="170" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="188" class="tm" text-anchor="start">Retrieval::Evidence</text>
+<text x="344" y="188" class="tm" text-anchor="start">Graph::Retrieval::Search::Results</text>
 <rect x="336" y="204" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="222" class="tm" text-anchor="start">Search::Results::Fusion</text>
+<text x="344" y="222" class="tm" text-anchor="start">Graph::Retrieval::MaintainedStore</text>
 <rect x="336" y="238" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="256" class="tm" text-anchor="start">Search::Results::Store</text>
+<text x="344" y="256" class="tm" text-anchor="start">Retrieval::Evidence</text>
 <rect x="336" y="272" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="290" class="tm" text-anchor="start">Search::Results::Result</text>
+<text x="344" y="290" class="tm" text-anchor="start">Search::Results::Fusion</text>
+<rect x="336" y="306" width="196" height="28" rx="6" class="card"/>
+<text x="344" y="324" class="tm" text-anchor="start">Search::Results::Store</text>
+<rect x="336" y="340" width="196" height="28" rx="6" class="card"/>
+<text x="344" y="358" class="tm" text-anchor="start">Search::Results::Result</text>
+<rect x="336" y="374" width="196" height="28" rx="6" class="card"/>
+<text x="344" y="392" class="tm" text-anchor="start">Origin</text>
 <rect x="556" y="34" width="186" height="45" rx="14" class="db"/>
 <text x="568" y="52" class="tb" text-anchor="start">knowledge_graph.db</text>
 <text x="568" y="68" class="tm" text-anchor="start">declared  R</text>

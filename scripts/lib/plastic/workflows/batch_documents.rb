@@ -2,6 +2,7 @@
 
 require_relative "../code_workflow"
 require_relative "document_lookup"
+require_relative "retrieval_repair"
 
 module Plastic
   module Workflows
@@ -17,7 +18,7 @@ module Plastic
         lookup = DocumentLookup.new(context)
         context.row("documents", context.references.split.map { |reference| lookup.fetch(reference) })
       rescue *DocumentLookup::FAILURES => error
-        context[:problem] = error.message
+        context[:problem] = RetrievalRepair.new(context.scope, error).problem
       end
 
       gate "%{problem}", stops: :failure, pass: ->(context) { context.problem.nil? }

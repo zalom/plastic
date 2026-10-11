@@ -26,8 +26,8 @@ The command is `IntentContext`, in [`intent_context.rb:8`](../../../../scripts/l
 | Workflow | Kind | Code |
 | --- | --- | --- |
 | [CheckContextOwner](#checkcontextowner) | code | [`check_context_owner.rb:9`](../../../../scripts/lib/plastic/workflows/check_context_owner.rb#L9) |
-| [ReadContext](#readcontext) | code | [`read_context.rb:10`](../../../../scripts/lib/plastic/workflows/read_context.rb#L10) |
-| [SubmitContext](#submitcontext) | code | [`submit_context.rb:14`](../../../../scripts/lib/plastic/workflows/submit_context.rb#L14) |
+| [ReadContext](#readcontext) | code | [`read_context.rb:11`](../../../../scripts/lib/plastic/workflows/read_context.rb#L11) |
+| [SubmitContext](#submitcontext) | code | [`submit_context.rb:15`](../../../../scripts/lib/plastic/workflows/submit_context.rb#L15) |
 
 ### CheckContextOwner
 
@@ -51,7 +51,7 @@ It sets `intent`.
 
 ### ReadContext
 
-The code workflow `:code_read_context`, in [`read_context.rb:10`](../../../../scripts/lib/plastic/workflows/read_context.rb#L10).
+The code workflow `:code_read_context`, in [`read_context.rb:11`](../../../../scripts/lib/plastic/workflows/read_context.rb#L11).
 
 Reads the saved retrieval context of one intent with its evidence freshness.
 
@@ -59,19 +59,19 @@ Reads the saved retrieval context of one intent with its evidence freshness.
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
-| forget a stop of an earlier call | read |  | [`code_workflow.rb:49`](../../../../scripts/lib/plastic/code_workflow.rb#L49) |
-| read the saved context | read |  | [`read_context.rb:17`](../../../../scripts/lib/plastic/workflows/read_context.rb#L17) |
-| %{problem} | gate, stops with exit 1 | `context.problem.nil?` | [`read_context.rb:25`](../../../../scripts/lib/plastic/workflows/read_context.rb#L25) |
+| forget a stop of an earlier call | read |  | [`code_workflow.rb:54`](../../../../scripts/lib/plastic/code_workflow.rb#L54) |
+| read the saved context | read |  | [`read_context.rb:18`](../../../../scripts/lib/plastic/workflows/read_context.rb#L18) |
+| %{problem} | gate, stops with exit 1 | `context.problem.nil?` | [`read_context.rb:26`](../../../../scripts/lib/plastic/workflows/read_context.rb#L26) |
 
 | Outcome | When | Then | Code |
 | --- | --- | --- | --- |
-| `:done` | always | finishes, exit 0; prints no next: line | [`read_context.rb:27`](../../../../scripts/lib/plastic/workflows/read_context.rb#L27) |
+| `:done` | always | finishes, exit 0; prints no next: line | [`read_context.rb:28`](../../../../scripts/lib/plastic/workflows/read_context.rb#L28) |
 
 It sets `problem`.
 
 ### SubmitContext
 
-The code workflow `:code_submit_context`, in [`submit_context.rb:14`](../../../../scripts/lib/plastic/workflows/submit_context.rb#L14).
+The code workflow `:code_submit_context`, in [`submit_context.rb:15`](../../../../scripts/lib/plastic/workflows/submit_context.rb#L15).
 
 Validates a submitted evidence selection and persists it in the owning store.
 
@@ -79,13 +79,13 @@ Validates a submitted evidence selection and persists it in the owning store.
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
-| forget a stop of an earlier call | read |  | [`code_workflow.rb:49`](../../../../scripts/lib/plastic/code_workflow.rb#L49) |
-| persist the submitted context | read |  | [`submit_context.rb:21`](../../../../scripts/lib/plastic/workflows/submit_context.rb#L21) |
-| %{problem} | gate, stops with exit 1 | `context.problem.nil?` | [`submit_context.rb:32`](../../../../scripts/lib/plastic/workflows/submit_context.rb#L32) |
+| forget a stop of an earlier call | read |  | [`code_workflow.rb:54`](../../../../scripts/lib/plastic/code_workflow.rb#L54) |
+| persist the submitted context | read |  | [`submit_context.rb:22`](../../../../scripts/lib/plastic/workflows/submit_context.rb#L22) |
+| %{problem} | gate, stops with exit 1 | `context.problem.nil?` | [`submit_context.rb:33`](../../../../scripts/lib/plastic/workflows/submit_context.rb#L33) |
 
 | Outcome | When | Then | Code |
 | --- | --- | --- | --- |
-| `:done` | always | finishes, exit 0; prints no next: line | [`submit_context.rb:34`](../../../../scripts/lib/plastic/workflows/submit_context.rb#L34) |
+| `:done` | always | finishes, exit 0; prints no next: line | [`submit_context.rb:35`](../../../../scripts/lib/plastic/workflows/submit_context.rb#L35) |
 
 It sets `problem`.
 
@@ -96,8 +96,8 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
 | no intent %{intent_id} in owning store | 1 | prints no next: line | [`check_context_owner.rb:19`](../../../../scripts/lib/plastic/workflows/check_context_owner.rb#L19) |
-| %{problem} | 1 | prints no next: line | [`read_context.rb:25`](../../../../scripts/lib/plastic/workflows/read_context.rb#L25) |
-| the retrieval context was read | 0 | prints no next: line | [`read_context.rb:27`](../../../../scripts/lib/plastic/workflows/read_context.rb#L27) |
-| %{problem} | 1 | prints no next: line | [`submit_context.rb:32`](../../../../scripts/lib/plastic/workflows/submit_context.rb#L32) |
-| the retrieval context was read | 0 | prints no next: line | [`submit_context.rb:34`](../../../../scripts/lib/plastic/workflows/submit_context.rb#L34) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:97`](../../../../scripts/lib/plastic/code_workflow.rb#L97) |
+| %{problem} | 1 | prints no next: line | [`read_context.rb:26`](../../../../scripts/lib/plastic/workflows/read_context.rb#L26) |
+| the retrieval context was read | 0 | prints no next: line | [`read_context.rb:28`](../../../../scripts/lib/plastic/workflows/read_context.rb#L28) |
+| %{problem} | 1 | prints no next: line | [`submit_context.rb:33`](../../../../scripts/lib/plastic/workflows/submit_context.rb#L33) |
+| the retrieval context was read | 0 | prints no next: line | [`submit_context.rb:35`](../../../../scripts/lib/plastic/workflows/submit_context.rb#L35) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../scripts/lib/plastic/code_workflow.rb#L102) |

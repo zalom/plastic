@@ -97,7 +97,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | --- | --- | --- | --- |
 | the preview deleted nothing | 0 | %{original_command} | [`preview_backup_purge.rb:19`](../../../../scripts/lib/plastic/workflows/preview_backup_purge.rb#L19) |
 | the backups named above are gone | 0 | plastic backup list --store %{store} | [`backup_purge.rb:37`](../../../../scripts/lib/plastic/workflows/backup_purge.rb#L37) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:97`](../../../../scripts/lib/plastic/code_workflow.rb#L97) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../scripts/lib/plastic/code_workflow.rb#L102) |
 | Usage error: name the store with --store; --project does not apply | 2 | prints no next: line | [`backup_store.rb:27`](../../../../scripts/lib/plastic/commands/backup_store.rb#L27) |
 | Usage error: no registered project named %{slug}; the projects are %{projects} | 2 | prints no next: line | [`backup_store.rb:35`](../../../../scripts/lib/plastic/commands/backup_store.rb#L35) |
 | Usage error | 2 | prints no next: line | [`backup_store.rb:40`](../../../../scripts/lib/plastic/commands/backup_store.rb#L40) |

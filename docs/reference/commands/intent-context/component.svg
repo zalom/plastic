@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 382" width="980" height="382" role="img" xml:space="preserve">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 450" width="980" height="450" role="img" xml:space="preserve">
 <title>What plastic intent context touches</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
@@ -86,21 +86,25 @@
 <rect x="336" y="68" width="196" height="28" rx="6" class="card"/>
 <text x="344" y="86" class="tm" text-anchor="start">Workflows::ContextReadback</text>
 <rect x="336" y="102" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="120" class="tm" text-anchor="start">Workflows::ContextDocuments</text>
+<text x="344" y="120" class="tm" text-anchor="start">Workflows::RetrievalRepair</text>
 <rect x="336" y="136" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="154" class="tm" text-anchor="start">Retrieval::Context::Source</text>
+<text x="344" y="154" class="tm" text-anchor="start">Workflows::ContextDocuments</text>
 <rect x="336" y="170" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="188" class="tm" text-anchor="start">Workflows::ContextSubmission</text>
+<text x="344" y="188" class="tm" text-anchor="start">Retrieval::Context::Source</text>
 <rect x="336" y="204" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="222" class="tm" text-anchor="start">Workflows::ContextPersistence</text>
+<text x="344" y="222" class="tm" text-anchor="start">Workflows::ContextSubmission</text>
 <rect x="336" y="238" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="256" class="tm" text-anchor="start">Graph::Retrieval::Context::Freshness</text>
+<text x="344" y="256" class="tm" text-anchor="start">Workflows::ContextPersistence</text>
 <rect x="336" y="272" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="290" class="tm" text-anchor="start">Origin</text>
+<text x="344" y="290" class="tm" text-anchor="start">Graph::Retrieval::Context::Freshness</text>
 <rect x="336" y="306" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="324" class="tm" text-anchor="start">Retrieval::Evidence</text>
+<text x="344" y="324" class="tm" text-anchor="start">Graph::Retrieval::MaintainedStore</text>
 <rect x="336" y="340" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="358" class="tm" text-anchor="start">Retrieval::Context::Evidence</text>
+<text x="344" y="358" class="tm" text-anchor="start">Retrieval::Evidence</text>
+<rect x="336" y="374" width="196" height="28" rx="6" class="card"/>
+<text x="344" y="392" class="tm" text-anchor="start">Retrieval::Context::Evidence</text>
+<rect x="336" y="408" width="196" height="28" rx="6" class="card"/>
+<text x="344" y="426" class="tm" text-anchor="start">Origin</text>
 <rect x="556" y="34" width="186" height="75" rx="14" class="db"/>
 <text x="568" y="52" class="tb" text-anchor="start">knowledge_graph.db</text>
 <text x="568" y="68" class="tm" text-anchor="start">documents  R</text>

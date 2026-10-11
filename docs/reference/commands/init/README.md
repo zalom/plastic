@@ -90,4 +90,4 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | this machine cannot run Plastic; see above | 1 | prints no next: line | [`install_harnesses.rb:24`](../../../../scripts/lib/plastic/workflows/install_harnesses.rb#L24) |
 | %{broken} is not valid JSON; nothing was changed. Fix the file and run this again | 1 | prints no next: line | [`install_harnesses.rb:25`](../../../../scripts/lib/plastic/workflows/install_harnesses.rb#L25) |
 | Plastic %{installed} is installed into %{harnesses} | 0 | plastic doctor --harness %{checked} | [`install_harnesses.rb:36`](../../../../scripts/lib/plastic/workflows/install_harnesses.rb#L36) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:97`](../../../../scripts/lib/plastic/code_workflow.rb#L97) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../scripts/lib/plastic/code_workflow.rb#L102) |

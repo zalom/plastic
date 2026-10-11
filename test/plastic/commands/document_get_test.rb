@@ -2,10 +2,13 @@
 
 require_relative "../../test_helper"
 require_relative "../../../scripts/lib/plastic/commands/document_get"
+require_relative "old_store"
 require "open3"
 require "rbconfig"
 
 class DocumentGetTest < Plastic::TestCase
+  include OldStore
+
   def get(*args) = plastic("document", "get", *args, table: Plastic::CLI::TABLE)
 
   def test_routed_help_prints_the_get_usage
@@ -84,6 +87,14 @@ class DocumentGetTest < Plastic::TestCase
     reference = write_document("global", "1", "long.md", "evidence")
 
     assert_json_error(get(reference.sub("long.md", "missing.md"), "--passage", "1", "--json"), 1, "failed")
+  end
+
+  def test_after_project_new_document_get_reads_a_store_made_before_the_marker
+    old_store
+    refused = get("plastic://old/1/notes.md")
+    repair
+
+    assert_equal [1, 0], [refused.code, get("plastic://old/1/notes.md").code]
   end
 
   private

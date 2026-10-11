@@ -57,4 +57,4 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | no roadmap %{slug} | 1 | prints no next: line | [`drop_roadmap_item.rb:14`](../../../../scripts/lib/plastic/workflows/drop_roadmap_item.rb#L14) |
 | no item %{item_id} on roadmap %{slug} | 1 | prints no next: line | [`drop_roadmap_item.rb:20`](../../../../scripts/lib/plastic/workflows/drop_roadmap_item.rb#L20) |
 | item %{item_id} no longer blocks its successors | 0 | plastic roadmap next %{slug} | [`drop_roadmap_item.rb:30`](../../../../scripts/lib/plastic/workflows/drop_roadmap_item.rb#L30) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:97`](../../../../scripts/lib/plastic/code_workflow.rb#L97) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../scripts/lib/plastic/code_workflow.rb#L102) |

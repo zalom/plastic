@@ -21,6 +21,7 @@ module Plastic
   class CodeWorkflow < Workflow
     # How a gate stops the call: exit 3 or exit 1.
     STOPS = %i[refusal failure].freeze
+    GATE_OPTIONS = %i[stops pass offers because].freeze
 
     class << self
       def lane = "code"
@@ -30,11 +31,15 @@ module Plastic
       # A check that stops the call when pass: is false, and prints `reason`.
       # stops: :refusal ends in exit 3 and names an owner step. stops:
       # :failure ends in exit 1 and names something the agent can fix.
+      # because: is the line that says why; the reason serves when it is left out.
       def gate(reason, **rule)
+        unknown = rule.keys - GATE_OPTIONS
+        raise Invalid, "#{name}: unknown gate option #{unknown.join(", ")}" if unknown.any?
+
         stops = rule.fetch(:stops)
         raise Invalid, "#{name}: a gate stops as :refusal or :failure" unless STOPS.include?(stops)
 
-        steps << Gate.new(reason, stops, rule.fetch(:pass), rule[:offers])
+        steps << Gate.new(reason, stops, rule.fetch(:pass), *rule.values_at(:offers, :because))
       end
 
       # A step that changes nothing on disk. It runs on every call, rerun

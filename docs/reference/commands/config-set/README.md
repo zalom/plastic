@@ -44,4 +44,4 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | --- | --- | --- | --- |
 | Usage error: a setting takes one value, not %{text} | 2 | prints no next: line | [`config_set.rb:19`](../../../../scripts/lib/plastic/commands/config_set.rb#L19) |
 | Usage error: %{key} takes true or false | 2 | prints no next: line | [`config_set.rb:38`](../../../../scripts/lib/plastic/commands/config_set.rb#L38) |
-| Offers the next command | 0 | plastic config get #{key}#{harness_words} | [`config_set.rb:31`](../../../../scripts/lib/plastic/commands/config_set.rb#L31) |
+| Offers the next command | 0 | plastic config get KEY [HARNESS_WORDS] | [`config_set.rb:31`](../../../../scripts/lib/plastic/commands/config_set.rb#L31) |

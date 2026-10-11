@@ -22,7 +22,7 @@ The command is `IntentLink`, in [`intent_link.rb:10`](../../../../scripts/lib/pl
 
 ## Before the chain
 
-The command's own `call`, at [`intent_link.rb:18`](../../../../scripts/lib/plastic/commands/intent_link.rb#L18), runs first:
+The command's own `call`, at [`intent_link.rb:19`](../../../../scripts/lib/plastic/commands/intent_link.rb#L19), runs first:
 
 ```ruby
 def call
@@ -72,5 +72,5 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | %{problem} | 1 | prints no next: line | [`add_link.rb:18`](../../../../scripts/lib/plastic/workflows/add_link.rb#L18) |
 | %{refusal} | 3 | prints no next: line | [`add_link.rb:24`](../../../../scripts/lib/plastic/workflows/add_link.rb#L24) |
 | the link is on record | 0 | plastic sync down | [`add_link.rb:34`](../../../../scripts/lib/plastic/workflows/add_link.rb#L34) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:97`](../../../../scripts/lib/plastic/code_workflow.rb#L97) |
-| Usage error: KIND takes %{raph} | 2 | prints no next: line | [`intent_link.rb:19`](../../../../scripts/lib/plastic/commands/intent_link.rb#L19) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../scripts/lib/plastic/code_workflow.rb#L102) |
+| Usage error: KIND takes %{raph} | 2 | prints no next: line | [`intent_link.rb:20`](../../../../scripts/lib/plastic/commands/intent_link.rb#L20) |

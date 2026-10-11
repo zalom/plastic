@@ -36,7 +36,15 @@ module Plastic
       include Retrieval::StructureReads
 
       # Signals that a caller must build the derived retrieval rows first.
-      class MaintenanceRequired < StandardError; end
+      class MaintenanceRequired < StandardError
+        attr_reader :slug
+
+        def initialize(message = nil, slug: nil)
+          super(message)
+          @slug = slug
+        end
+      end
+
       # Signals an invalid or unavailable document or passage reference.
       class MissingReference < StandardError; end
       # Signals an FTS query that SQLite rejected.

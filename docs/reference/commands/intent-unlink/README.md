@@ -39,7 +39,7 @@ Removes one link; fails when no such link exists.
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
-| forget a stop of an earlier call | read |  | [`code_workflow.rb:49`](../../../../scripts/lib/plastic/code_workflow.rb#L49) |
+| forget a stop of an earlier call | read |  | [`code_workflow.rb:54`](../../../../scripts/lib/plastic/code_workflow.rb#L54) |
 | remove the link | step | `!context.removed.nil?` | [`remove_link.rb:15`](../../../../scripts/lib/plastic/workflows/remove_link.rb#L15) |
 | %{problem} | gate, stops with exit 1 | `context.problem.nil?` | [`remove_link.rb:21`](../../../../scripts/lib/plastic/workflows/remove_link.rb#L21) |
 | say what was removed | read |  | [`remove_link.rb:23`](../../../../scripts/lib/plastic/workflows/remove_link.rb#L23) |
@@ -58,4 +58,4 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | --- | --- | --- | --- |
 | %{problem} | 1 | prints no next: line | [`remove_link.rb:21`](../../../../scripts/lib/plastic/workflows/remove_link.rb#L21) |
 | the link is gone | 0 | plastic sync down | [`remove_link.rb:27`](../../../../scripts/lib/plastic/workflows/remove_link.rb#L27) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:97`](../../../../scripts/lib/plastic/code_workflow.rb#L97) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../scripts/lib/plastic/code_workflow.rb#L102) |
