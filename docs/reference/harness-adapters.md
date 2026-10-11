@@ -22,24 +22,27 @@ load Plastic's conventions, honor its decisions, and record its work.
 
 Plastic ships one entry for each harness it knows, in `scripts/lib/plastic/harnesses.rb`:
 
-| Field | Claude Code | Codex |
-| ----- | ----------- | ----- |
-| Name | `claude-code` | `codex` |
-| Session variables | `CLAUDE_CODE_SESSION_ID` | `CODEX_THREAD_ID`, `CODEX_SESSION_ID` |
-| Transcript path | under `.claude/projects/` | under `.codex/sessions/` |
-| Process name | `claude` | `codex` |
-| Event field only it writes | none | `turn_id` |
-| Hooks | `hook start`, `hook stop`, `hook end` | `hook start`, `hook stop`, `hook end` |
-| Settings file | `.claude/settings.json` | `.codex/hooks.json` |
-| Doctor checks | `Doctor::ClaudeCode` | `Doctor::Codex` |
+| Field | Claude Code | Codex | Hermes |
+| ----- | ----------- | ----- | ------ |
+| Name | `claude-code` | `codex` | `hermes` |
+| Session variables | `CLAUDE_CODE_SESSION_ID` | `CODEX_THREAD_ID`, `CODEX_SESSION_ID` | none |
+| Transcript path | under `.claude/projects/` | under `.codex/sessions/` | none |
+| Process name | `claude` | `codex` | none |
+| Event field only it writes | none | `turn_id` | none |
+| Hooks | `hook start`, `hook stop`, `hook end` | `hook start`, `hook stop`, `hook end` | none |
+| Folder | `.claude` | `.codex` | `.hermes` |
+| Settings file | `.claude/settings.json` | `.codex/hooks.json` | none |
+| Doctor checks | `Doctor::ClaudeCode` | `Doctor::Codex` | none |
 
 The installer writes each harness's hooks from its entry, and the doctor compares the installed
 hooks with it. `plastic config --harness NAME` takes only a name the registry holds. The start hook
 names the harness from these fields and records it on the session row. See
-[internals](../internals.md) for the order it tries them in.
+[internals](../internals.md) for the order it tries them in. A field an entry leaves empty is
+skipped: detection never names Hermes, and the doctor has no module for it.
 
-`plastic init` counts a harness as found when its settings folder, `.claude` or `.codex`, is in
-the home, or its program, `claude` or `codex`, is on the `PATH`. It writes only into a harness
+`plastic init` counts a harness as found when its folder, `.claude`, `.codex` or `.hermes`, is in
+the home, or its program, `claude` or `codex`, is on the `PATH`. Hermes names no program, so
+only its folder finds it. It writes only into a harness
 the registry holds.
 
 ## Install records
@@ -142,12 +145,12 @@ display-surface matrix. This split is what makes it possible to ask honestly abo
 |---|---|---|---|---|---|---|
 | Claude Code | `install.sh`, then `plastic init` | native `CLAUDE.md`, plus the compact-instructions marked section injected into `~/.claude/CLAUDE.md` | three kernel hooks and the update check through `settings.json` | post-write `record` (savepoint, lock heartbeat, day ledger) | yes | yes |
 | Codex CLI | `install.sh`, then `plastic init` | marked section injected into `~/.codex/AGENTS.md` | three kernel hooks through `~/.codex/hooks.json` | post-write `record` on `apply_patch` | no | no, a single agent walks the whole cycle |
-| Hermes | none: the registry holds no entry for it | none | none | none | no | no |
+| Hermes | `install.sh`, then `plastic init` | none | none: it copies Plastic's skills and agents into `~/.hermes` and wires no hooks | none | no | no |
 
 1. Plastic installs through `install.sh` for every harness above (owner ruling of 2026-10-03,
    which supersedes the npm-only ruling of 2026-08-08). See [INSTALL.md](../../INSTALL.md).
-2. Hermes is a packaging target, not a working adapter. The registry holds no entry for it,
-   so `plastic init` never installs into it.
+2. Hermes is a packaging target, not a working adapter. `plastic init` installs Plastic's skills
+   and agents into it with a record, and `plastic uninstall` removes them by that record.
 3. Codex receives its skill text with paths and command prefixes rewritten at install time
    (intent 239), so the instructions resolve on a Codex machine. Four lines still speak
    Claude Code afterward, all disclosed and none executable: four instruction lines that

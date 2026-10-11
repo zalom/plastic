@@ -4,7 +4,7 @@
 | ----- | -------- | ----- |
 | Claude Code | `~/.claude` or the `claude` program | Supported |
 | Codex CLI | `~/.codex` or the `codex` program | Supported |
-| Hermes | none | Not supported: `plastic init` never installs into it |
+| Hermes | `~/.hermes` | Skills and agents only, with no hooks |
 
 `plastic init` lists each supported agent it finds, already picked, and installs Plastic into
 the ones you keep.

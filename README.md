@@ -88,7 +88,7 @@ plastic init
 `install.sh` downloads Ruby 4.0.7 for your platform and checks it by its pinned size and SHA-256.
 It then downloads the newest stable release, checks it against its published checksum, and links
 `~/.local/bin/plastic`. The Bundler of that Ruby installs the sqlite3 and tty-prompt gems inside each release.
-`plastic init` lists the agent harnesses it finds, Claude Code and Codex CLI, each one picked,
+`plastic init` lists the agent harnesses it finds, Claude Code, Codex CLI and Hermes, each one picked,
 and installs Plastic into the ones you pick. [Enola](INSTALL.md#enola) is an optional tool that
 maps code architecture.
 
@@ -351,7 +351,7 @@ each repair, such as `plastic install --reinstall`.
 |------|---------|-------|
 | **Claude Code** | `plastic init` | Supported |
 | **Codex CLI** | `plastic init` | Supported |
-| **Hermes** | none | A packaging target only |
+| **Hermes** | `plastic init` | Skills and agents only, with no hooks |
 
 The `plastic` command itself needs no agent. It runs in any shell with Ruby. See
 [harness support](docs/reference/harness-adapters.md) for the detail on each agent.

@@ -7,7 +7,7 @@ plastic version
 ```
 
 The first line installs the newest stable release from GitHub and links `~/.local/bin/plastic`.
-The second line lists the agent harnesses found on the machine, such as Claude Code and Codex,
+The second line lists the agent harnesses found on the machine, such as Claude Code, Codex and Hermes,
 and installs Plastic into each one you pick. The third line confirms that the `plastic` command
 runs.
 

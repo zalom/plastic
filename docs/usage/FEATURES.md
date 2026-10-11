@@ -139,7 +139,7 @@ that reminder does not change the exit code. A row reads `ok` or names the findi
 The repair row lists each repair once: a
 command, or a line to add to a file. The doctor reads files and opens the databases read-only,
 so it changes nothing. `--harness NAME` checks a named harness instead of the one the session row
-records. When nothing names a registered harness, the doctor exits 2 and lists the registered ones.
+records. When nothing names a harness, the doctor exits 2 and lists the harnesses that have checks.
 
 ## Help that costs nothing
 
