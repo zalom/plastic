@@ -333,12 +333,17 @@ When a session stops or ends, a hook records it. Each hook
 calls the active release launcher under `~/.local/share/plastic`:
 
 ```bash
-plastic hook EVENT      # The agent calls this, not you
+plastic hook start      # SessionStart; the agent calls these, not you
+plastic hook stop       # Stop
+plastic hook end        # SessionEnd
 ```
 
+The start hook names the harness that runs the session and records it on the session row.
+The other hooks and commands read it from there.
+
 Run `plastic doctor` when hooks do not fire. Use `--harness codex` or
-`--harness claude-code` to choose the installation to check. Codex hook trust
-remains unverified; review the current definitions in `/hooks`. The doctor names
+`--harness claude-code` to choose the installation to check. Codex runs a hook only after
+you trust it in `/hooks`, and the installer names each hook that changed. The doctor names
 each repair, such as `plastic install --codex --reinstall`.
 
 ## Supported AI tools
@@ -357,18 +362,25 @@ agents for work, verification and research, and two advisors for hard decisions.
 
 ## Configuration
 
-`~/.plastic/config.yml`:
+`~/.plastic/config.yml` holds the settings you changed, in a `global` section and one
+section per harness:
 
 ```yaml
-stale_threshold_days: 3              # Age at which a future intent is shown for triage
-agent:
-  type: claude-code                  # The agent that runs Plastic
-  parallel_mode: agent-teams         # agent-teams or linear
+global:
+  runner:
+    stop_hook: true                  # Keep working while a node is ready
+harnesses:
+  codex:
+    agents:
+      models:
+        plastic-executor: gpt-5.5    # One agent's model under Codex
 ```
 
-The installer writes these keys and a few more. It does not write `project_roots`, the list of
-parent folders searched for this session's delivery locks. Without it, Plastic searches
-`~/.plastic/projects` and `~/.plastic/stores`.
+```bash
+plastic config list                         # Every key with its value
+plastic config set runner.stop_hook true    # Write a global key
+plastic config get agents.models.plastic-executor --harness codex
+```
 
 Install-time choices:
 

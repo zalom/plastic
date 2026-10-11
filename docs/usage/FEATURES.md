@@ -94,6 +94,14 @@ could not hold it safely.
 installer scripts as child processes. A script that exits 3 makes the command exit 3, and any
 other failure exits 1. See [INSTALL.md](../../INSTALL.md).
 
+## Settings
+
+`plastic config list` prints every setting with its value, `plastic config get KEY` prints one,
+and `plastic config set KEY VALUE` writes one into `~/.plastic/config.yml`. `plastic config` shows
+the on/off settings on a choice screen. Each takes `--harness NAME` to work on the settings of one
+harness, and refuses a name the harness registry does not hold. See the
+[configuration guide](../guide/getting-started/configuration.md).
+
 ## Check the installation
 
 | Command | Result |
@@ -112,8 +120,8 @@ installer location. Hook trust prints an unverified reminder to review `/hooks`;
 that reminder does not change the exit code. A row reads `ok` or names the finding.
 The repair row lists each repair once: a
 command, or a line to add to a file. The doctor reads files and opens the databases read-only,
-so it changes nothing. `--harness NAME` checks a named harness instead of the one the call runs
-in.
+so it changes nothing. `--harness NAME` checks a named harness instead of the one the session row
+records. When nothing names a registered harness, the doctor exits 2 and lists the registered ones.
 
 ## Help that costs nothing
 

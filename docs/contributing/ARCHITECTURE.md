@@ -80,7 +80,9 @@ loads on first use, so `plastic help` reads the table and loads no command.
 | `Context`, `Facts` | `scripts/lib/plastic/context.rb`, `scripts/lib/plastic/facts.rb` | The named values of one call. A name that no one declared raises at once. |
 | `RoutineRun` | `scripts/lib/plastic/routine_run.rb` | One call of one tool on one subject, kept as a row of `local.db`. |
 | `Hook` | `scripts/lib/plastic/hook.rb` | The base class of a hook command. It prints a plain text reply and always exits 0. |
-| `Hooks::Recap`, `Hooks::StopGate`, `Hooks::Entries` | `scripts/lib/plastic/hooks/` | The text `hook resume` prints, the decision whether `hook record` blocks a stop, and the hook entries the installer writes for Claude Code and Codex. |
+| `Hooks::Recap`, `Hooks::StopGate`, `Hooks::Entries` | `scripts/lib/plastic/hooks/` | The text `hook start` prints, the decision whether `hook stop` blocks a stop, and the hook entries the installer writes for Claude Code and Codex. |
+| `Harnesses`, `Harnesses::Detection`, `Harnesses::Innermost` | `scripts/lib/plastic/harnesses.rb`, `scripts/lib/plastic/harnesses/` | The harness registry: for each harness its session variable, transcript path, process name, hook events and doctor checks. Detection names the harness of a start hook, and `Innermost` picks the session of the inner harness when one runs inside another. |
+| `Config`, `Config::Document` | `scripts/lib/plastic/config.rb`, `scripts/lib/plastic/config/` | `config.yml` read in layers: the shipped defaults, the `global` section, then the section of the harness. `Document` writes one key and keeps the anchors the file holds. |
 | `Graph::Database` | `scripts/lib/plastic/graph/database.rb` | One SQLite file, read and written through the `sqlite3` gem. A write is one transaction and logs its `changes` row. |
 | `Graph::WorkGraph` | `scripts/lib/plastic/graph/work_graph.rb` | The writes of a command: routine runs, sessions, locks, intents, nodes and edges. |
 | `Graph::RetrievalGraph` | `scripts/lib/plastic/graph/retrieval_graph.rb` | The reads of a command, one table at a time. |
@@ -149,7 +151,7 @@ text that Plastic prints in the planning hand-off.
 `plastic auto ID` takes the delivery lock and sets the intent active. It refuses with exit 3 for
 an open decision, a missing go-ahead, and a live lock held by another session. The lock is one
 row of `local.db`, keyed by the store and the intent, and it names the session. A lock is live
-for 1800 seconds after its last renewal, and `hook record` renews it. Plastic computes the path
+for 1800 seconds after its last renewal, and `hook stop` renews it. Plastic computes the path
 and branch of the code worktree, `<repo>/.claude/worktrees/ID--slug` on `plastic/ID--slug`, and
 prints them. The agent makes the worktree.
 
@@ -222,12 +224,14 @@ never runs twice.
 A hook is a command that the harness calls on an event. It is not a routine: it prints no
 `next:` line and keeps no routine run. It reads the event as JSON on stdin, prints a plain text
 reply, and always exits 0. On an error it prints one line on stderr and still exits 0, so a
-broken hook never breaks the session.
+broken hook never breaks the session. A hook takes no harness option: the start hook names the
+harness from the event, the session variables, the transcript path and the process tree, in that
+order, and later hooks read it from the session row.
 
 | Event | Command | What it does |
 | ----- | ------- | ------------ |
-| Session start: a new session, a clear or a compaction | `plastic hook resume` | Prints the open intents, the previous session, the intent in progress with its last savepoint lines, and the note. |
-| End of a turn | `plastic hook record` | Stamps the session's last turn, renews its live locks, and runs the stop gate. |
+| Session start: a new session, a clear or a compaction | `plastic hook start` | Names the harness, records it on the session row, and prints the open intents, the previous session, the intent in progress with its last savepoint lines, and the note. |
+| End of a turn | `plastic hook stop` | Stamps the session's last turn, renews its live locks, and runs the stop gate with the settings of the harness the session row names. |
 | Session end | `plastic hook end` | Sets the end time and the reason. |
 | Every other event | Nothing | No hook runs. |
 | Message display (Claude Code) | The screens launcher | Paints the screens when `config.yml` turns them on. |
