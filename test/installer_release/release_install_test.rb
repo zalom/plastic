@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require "open3"
+require_relative "../support/child_process"
 require_relative "release_helper"
 
 class InstallerReleaseInstallTest < Minitest::Test
@@ -35,7 +35,7 @@ class InstallerReleaseInstallTest < Minitest::Test
 
   def test_the_launcher_runs_with_an_empty_path
     install(release_files)
-    out, err, status = Open3.capture3({ "HOME" => @root, "PATH" => "" }, File.join(release_path("2.0.3"), "bin", "plastic"))
+    out, err, status = ChildProcess.capture3({ "HOME" => @root, "PATH" => "" }, File.join(release_path("2.0.3"), "bin", "plastic"))
 
     assert_equal ["2.0.3\n", "", true], [out, err, status.success?]
   end

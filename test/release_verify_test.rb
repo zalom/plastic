@@ -2,7 +2,7 @@
 # frozen_string_literal: true
 
 require "minitest/autorun"
-require "open3"
+require_relative "support/child_process"
 
 # Guards the release-gate runner (bin/test) against the intent-30 bug:
 # `ruby -Itest test/*_test.rb` runs only the FIRST glob-expanded file, so the
@@ -21,7 +21,7 @@ class ReleaseVerifyTest < Minitest::Test
   SYSTEM_RUNNER = "test/varar_test.rb"
 
   def listing(*argv)
-    listed, status = Open3.capture2("ruby", "bin/test", *argv, "--list", chdir: ROOT)
+    listed, status = ChildProcess.capture2("ruby", "bin/test", *argv, "--list", chdir: ROOT)
 
     assert_predicate status, :success?, "bin/test #{argv.join(" ")} --list failed: #{listed}"
     listed.split("\n").sort

@@ -3,7 +3,7 @@
 require "minitest/autorun"
 require "fileutils"
 require "json"
-require "open3"
+require_relative "support/child_process"
 require "tmpdir"
 
 class LazyCommandDispatchTest < Minitest::Test
@@ -40,20 +40,15 @@ class LazyCommandDispatchTest < Minitest::Test
 
   private
 
-  SESSION_VARIABLES = %w[PLASTIC_SESSION CLAUDE_CODE_SESSION_ID CODEX_SESSION_ID CODEX_THREAD_ID].freeze
-
-  def environment(home)
-    SESSION_VARIABLES.to_h { |variable| [variable, nil] }
-      .merge("HOME" => home, "PLASTIC_HOME" => home, "PLASTIC_TMP" => File.join(home, "tmp"))
-  end
+  def environment(home) = { "HOME" => home, "PLASTIC_HOME" => home, "PLASTIC_TMP" => File.join(home, "tmp") }
 
   def run_cli(home, *argv, stdin_data: "")
-    out, err, status = Open3.capture3(environment(home), File.join(ROOT, "bin", "plastic"), *argv, stdin_data:)
+    out, err, status = ChildProcess.capture3(environment(home), File.join(ROOT, "bin", "plastic"), *argv, stdin_data:)
     { out:, err:, status: }
   end
 
   def seed_retrieval_context(home)
-    _out, err, status = Open3.capture3({ "RUBYOPT" => "" }, "ruby", "-I", File.join(ROOT, "scripts", "lib"), "-e", RETRIEVAL_CONTEXT_SCRIPT, home)
+    _out, err, status = ChildProcess.capture3("ruby", "-I", File.join(ROOT, "scripts", "lib"), "-e", RETRIEVAL_CONTEXT_SCRIPT, home)
 
     assert_predicate status, :success?, err
   end

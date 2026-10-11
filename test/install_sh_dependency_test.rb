@@ -9,7 +9,7 @@ class InstallShDependencyTest < Minitest::Test
 
   def test_each_missing_tool_is_named_with_both_platforms
     path = minimal_path(%w[tar])
-    out, err, status = Open3.capture3({ "HOME" => @home, "PATH" => path }, "/bin/sh", SCRIPT)
+    out, err, status = ChildProcess.capture3({ "HOME" => @home, "PATH" => path }, "/bin/sh", SCRIPT)
 
     assert_equal [1, ""], [status.exitstatus, out]
     assert_empty ["needs curl", "needs sha256sum or shasum", "macOS:", "Linux:"].reject { |text| err.include?(text) }, err
@@ -17,7 +17,7 @@ class InstallShDependencyTest < Minitest::Test
 
   def test_no_ruby_and_no_bundler_are_asked_for
     path = minimal_path(%w[tar])
-    _out, err, = Open3.capture3({ "HOME" => @home, "PATH" => path }, "/bin/sh", SCRIPT)
+    _out, err, = ChildProcess.capture3({ "HOME" => @home, "PATH" => path }, "/bin/sh", SCRIPT)
 
     refute_match(/Ruby|Bundler/, err)
   end

@@ -8,7 +8,7 @@ require "prism"
 class ChildProcessGuardTest < Minitest::Test
   ROOT = File.expand_path("..", __dir__)
   HELPER = File.join(ROOT, "test", "support", "child_process.rb")
-  STARTERS = { nil => %i[system spawn exec], Process: %i[spawn exec], IO: %i[popen], Kernel: %i[system spawn exec] }.freeze
+  STARTERS = { nil => %i[system spawn exec], :Process => %i[spawn exec], :IO => %i[popen], :Kernel => %i[system spawn exec] }.freeze
 
   # The lines of a Ruby source that start a process other than through ChildProcess.
   class Starts < Prism::Visitor

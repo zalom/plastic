@@ -2,7 +2,7 @@
 
 require "minitest/autorun"
 require "fileutils"
-require "open3"
+require_relative "../../support/child_process"
 require "rbconfig"
 require "tmpdir"
 require_relative "../../varar/support/kernel_command"
@@ -27,7 +27,7 @@ class UninstallRunningRubyTest < Minitest::Test
   end
 
   def test_removes_the_ruby_it_runs_on_and_still_prints_its_closing_lines
-    out, err, status = Open3.capture3(environment, launcher, "uninstall", "--claude", chdir: @home)
+    out, err, status = ChildProcess.capture3(environment, launcher, "uninstall", "--claude", chdir: @home)
 
     assert_equal [0, "", false], [status.exitstatus, err, File.exist?(share)]
     assert_match(/removed:\s+#{Regexp.escape(share)}\n/, out)
@@ -43,9 +43,7 @@ class UninstallRunningRubyTest < Minitest::Test
   def ruby_folder = File.join(share, "rubies", "4.0.7-jdx-2")
 
   def environment
-    { "HOME" => @home, "PLASTIC_HOME" => File.join(@home, ".plastic"), "PLASTIC_TMP" => File.join(@home, "tmp"),
-      "CLAUDE_CODE_SESSION_ID" => nil, "PLASTIC_SESSION" => nil, "CODEX_SESSION_ID" => nil, "CODEX_THREAD_ID" => nil,
-      "RUBYOPT" => nil, "BUNDLER_SETUP" => nil, "PLASTIC_PACKAGE_ROOT" => nil }
+    { "HOME" => @home, "PLASTIC_HOME" => File.join(@home, ".plastic"), "PLASTIC_TMP" => File.join(@home, "tmp") }
   end
 
   def release = File.join(share, "releases", "99.0.0")

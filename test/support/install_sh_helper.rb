@@ -2,7 +2,7 @@
 
 require "minitest/autorun"
 require "fileutils"
-require "open3"
+require_relative "child_process"
 require "tmpdir"
 require_relative "../../scripts/lib/release_build"
 
@@ -54,7 +54,7 @@ module InstallShHelper
 
     write_package(File.join(directory, "package"), version)
     yield File.join(directory, "package") if block_given?
-    system("tar", "-czf", File.join(directory, "plastic.tgz"), "-C", directory, "package", exception: true)
+    ChildProcess.system("tar", "-czf", File.join(directory, "plastic.tgz"), "-C", directory, "package", exception: true)
     publish(directory, version)
   end
 
@@ -79,20 +79,17 @@ module InstallShHelper
     puts(ARGV == %w[version --json] ? '{"result":{"version":"#{version}"}}' : "#{version}")
   RUBY
 
-  BUNDLER_ENVIRONMENT = %w[RUBYOPT RUBYLIB BUNDLE_GEMFILE BUNDLE_BIN_PATH BUNDLER_SETUP BUNDLER_VERSION].to_h { |name| [name, nil] }.freeze
-
   # PLASTIC_RUBY runs the installer with the test's Ruby, so only the tests
   # of the Ruby download make install.sh fetch one.
   def environment(extra = {})
-    BUNDLER_ENVIRONMENT.merge("HOME" => @home, "PLASTIC_RUBY" => RbConfig.ruby,
-      "PATH" => [@fakebin, ENV.fetch("PATH")].join(File::PATH_SEPARATOR)).merge(extra)
+    { "HOME" => @home, "PLASTIC_RUBY" => RbConfig.ruby, "PATH" => [@fakebin, ChildProcess::PATH].join(File::PATH_SEPARATOR) }.merge(extra)
   end
 
   def install(*arguments, **extra)
-    Open3.capture3(environment(extra.transform_keys(&:to_s)), "sh", SCRIPT, *arguments)
+    ChildProcess.capture3(environment(extra.transform_keys(&:to_s)), "sh", SCRIPT, *arguments)
   end
 
   def install_local(version, *arguments, **extra) = install(*arguments, PLASTIC_LOCAL_RELEASE: release(version), **extra)
 
-  def run_launcher = Open3.capture2(launcher).first
+  def run_launcher = ChildProcess.capture2(launcher).first
 end

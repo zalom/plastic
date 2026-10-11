@@ -3,7 +3,7 @@
 require_relative "../../test_helper"
 require_relative "../../../scripts/lib/plastic/commands/document_get"
 require_relative "old_store"
-require "open3"
+require_relative "../../support/child_process"
 require "rbconfig"
 
 class DocumentGetTest < Plastic::TestCase
@@ -12,7 +12,7 @@ class DocumentGetTest < Plastic::TestCase
   def get(*args) = plastic("document", "get", *args, table: Plastic::CLI::TABLE)
 
   def test_routed_help_prints_the_get_usage
-    output, errors, status = Open3.capture3({ "HOME" => @home }, RbConfig.ruby, "bin/plastic", "help", "document", "get",
+    output, errors, status = ChildProcess.capture3({ "HOME" => @home }, RbConfig.ruby, "bin/plastic", "help", "document", "get",
       chdir: File.expand_path("../../..", __dir__))
 
     assert_equal [0, ""], [status.exitstatus, errors]

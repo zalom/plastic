@@ -5,6 +5,7 @@ require "fileutils"
 require "json"
 require "stringio"
 require "tmpdir"
+require_relative "support/child_process"
 
 load File.expand_path("../bin/verify-change", __dir__) unless defined?(VerifyChange)
 
@@ -50,7 +51,7 @@ class VerifyChangeTimingTest < Minitest::Test
     write("bin/lib/test_timings.rb", "abort 'coverage started too late' unless Coverage.running?\n")
     step = plan(changed: [TEST_FILE]).steps.find { |candidate| candidate.title == "Tests with coverage" }
 
-    _, err, status = Open3.capture3(*step.command.drop(2), chdir: @root)
+    _, err, status = ChildProcess.capture3(*step.command.drop(2), chdir: @root)
 
     assert_equal [0, ""], [status.exitstatus, err]
   end
@@ -69,7 +70,7 @@ class VerifyChangeTimingTest < Minitest::Test
     step = plan(changed: [TEST_FILE]).steps.find { |candidate| candidate.title == "Timing check" }
     missing = File.join(@root, "absent.json")
 
-    out, err, status = Open3.capture3(step.env, *in_repository(step.command, "/nowhere/test_timings.json" => missing), chdir: REPO)
+    out, err, status = ChildProcess.capture3(step.env, *in_repository(step.command, "/nowhere/test_timings.json" => missing), chdir: REPO)
 
     assert_equal [1, "", "missing timings file: #{missing}\n"], [status.exitstatus, out, err]
   end

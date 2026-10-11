@@ -3,7 +3,7 @@
 require "minitest/autorun"
 require "fileutils"
 require "json"
-require "open3"
+require_relative "support/child_process"
 require "tmpdir"
 
 # The release archive carries a runtime Gemfile for the run-time gems, and the
@@ -61,7 +61,7 @@ class RuntimeBundleTest < Minitest::Test
       FileUtils.mkdir_p([File.join(package, "bin"), File.join(package, "runtime", "bundle", "bundler")])
       FileUtils.cp(File.join(REPO, "bin", "plastic"), File.join(package, "bin", "plastic"))
       File.write(File.join(package, "runtime", "bundle", "bundler", "setup.rb"), "puts \"bundle loaded\"\nexit 0\n")
-      out, err, status = Open3.capture3({ "HOME" => package }, RbConfig.ruby, "--disable-gems", File.join(package, "bin", "plastic"))
+      out, err, status = ChildProcess.capture3({ "HOME" => package }, RbConfig.ruby, "--disable-gems", File.join(package, "bin", "plastic"))
 
       assert_equal [0, "bundle loaded\n", ""], [status.exitstatus, out, err]
     end

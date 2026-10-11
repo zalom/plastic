@@ -5,7 +5,7 @@ require_relative "../../scripts/lib/plastic"
 require "fileutils"
 require "stringio"
 require "tmpdir"
-require "open3"
+require_relative "../support/child_process"
 require "json"
 require "rbconfig"
 
@@ -29,7 +29,7 @@ class CliReleaseContractTest < Minitest::Test
 
   def command(*args)
     env = { "HOME" => @dir, "PLASTIC_HOME" => File.join(@dir, ".plastic") }
-    stdout, stderr, status = Open3.capture3(env, RbConfig.ruby, @bin, *args, "--json", chdir: @dir)
+    stdout, stderr, status = ChildProcess.capture3(env, RbConfig.ruby, @bin, *args, "--json", chdir: @dir)
     [JSON.parse(stdout), stderr, status.exitstatus]
   end
 

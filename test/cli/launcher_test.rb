@@ -2,7 +2,7 @@
 
 require_relative "../test_helper"
 require "fileutils"
-require "open3"
+require_relative "../support/child_process"
 require "tmpdir"
 
 class CliLauncherTest < Minitest::Test
@@ -41,7 +41,7 @@ class CliLauncherTest < Minitest::Test
   end
 
   def test_running_the_launcher_prints_the_command_list
-    out, err, status = Open3.capture3(@env, LAUNCHER, "help")
+    out, err, status = ChildProcess.capture3(@env, LAUNCHER, "help")
 
     assert_predicate status, :success?
     assert_includes out, "intent new"
@@ -52,7 +52,7 @@ class CliLauncherTest < Minitest::Test
     Dir.mktmpdir("plastic-launcher") do |dir|
       link = File.join(dir, "plastic")
       File.symlink(LAUNCHER, link)
-      out, err, status = Open3.capture3(@env, link, "help")
+      out, err, status = ChildProcess.capture3(@env, link, "help")
 
       assert_predicate status, :success?
       assert_includes out, "intent new"
@@ -61,13 +61,13 @@ class CliLauncherTest < Minitest::Test
   end
 
   def test_an_unknown_command_exits_with_the_usage_code
-    out, err, status = Open3.capture3(@env, LAUNCHER, "stauts")
+    out, err, status = ChildProcess.capture3(@env, LAUNCHER, "stauts")
 
     assert_equal [2, "", "plastic stauts is not a command; run plastic help for the list\n"], [status.exitstatus, out, err]
   end
 
   def test_the_launcher_starts_without_rubygems
-    out, err, status = Open3.capture3(@env, LAUNCHER, "help")
+    out, err, status = ChildProcess.capture3(@env, LAUNCHER, "help")
 
     assert_predicate status, :success?
     refute_includes out, "rubygems"
@@ -75,7 +75,7 @@ class CliLauncherTest < Minitest::Test
   end
 
   def test_the_launcher_leaves_the_home_it_runs_under_untouched
-    Open3.capture3(@env, LAUNCHER, "help")
+    ChildProcess.capture3(@env, LAUNCHER, "help")
 
     assert_empty Dir.children(@home)
   end
@@ -85,7 +85,7 @@ class CliLauncherTest < Minitest::Test
              "name = Plastic::CLI.find(['intent', 'new'])\n" \
              "Plastic::CLI.tool(name)\n" \
              "puts $LOADED_FEATURES.grep(%r{/plastic/commands/}).map { |f| File.basename(f) }.sort.join(',')\n"
-    out, err, status = Open3.capture3(@env, "ruby", "--disable-gems", "-e", script)
+    out, err, status = ChildProcess.capture3(@env, "ruby", "--disable-gems", "-e", script)
 
     assert_predicate status, :success?, err
     assert_equal "intent_new.rb", out.strip
