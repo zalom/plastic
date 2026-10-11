@@ -43,4 +43,16 @@ class ScreenAnswerTest < Plastic::TestCase
   def test_an_empty_answer_is_refused_with_the_grammar
     assert_includes refusal(" "), Screen::Answer::GRAMMAR
   end
+
+  def test_a_terminal_pick_reads_back_as_the_numbers_of_its_items
+    assert_equal "1,3", Screen::Answer.of(Screen::Chosen.new(labels: %w[claude cursor]), choices)
+  end
+
+  def test_leaving_the_terminal_list_reads_back_as_q
+    assert_equal "q", Screen::Answer.of(Screen::Left.new, choices)
+  end
+
+  def test_a_terminal_pick_of_nothing_reads_back_as_q
+    assert_equal "q", Screen::Answer.of(Screen::Chosen.new(labels: []), choices)
+  end
 end

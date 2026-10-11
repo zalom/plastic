@@ -43,7 +43,7 @@ module DoctorWalk
   def whole(kernel, harness)
     project = FileUtils.mkdir_p(File.join(kernel.home, "alpha")).first
     FileUtils.mkdir_p(File.join(kernel.home, (harness == "codex") ? ".codex" : ".claude"))
-    kernel.run!("install", (harness == "codex") ? "--codex" : "--claude")
+    kernel.run!("init", kernel.run("init").out[/(\d+)  \[.\] #{harness}$/, 1])
     kernel.run!("next")
     kernel.run!("project", "new", "alpha", project)
     File.write(File.join(project, "AGENTS.md"), "# Alpha\n\nPlastic's instructions are in ~/.plastic/PLASTIC.md.\n")
