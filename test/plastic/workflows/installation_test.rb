@@ -54,4 +54,11 @@ class InstallationTest < Plastic::TestCase
   def test_capture_hands_back_the_printed_lines
     assert_equal %w[one two], Plastic::Workflows::Installation.capture { puts "one\ntwo" }
   end
+
+  def test_an_installed_agent_the_registry_does_not_name_is_kept_by_its_key
+    FileUtils.mkdir_p(File.join(@home, ".hermes", "plastic"))
+    File.write(File.join(@home, ".hermes", "plastic", "VERSION"), "2.0.0\n")
+
+    assert_equal ["hermes"], installation.kept([])
+  end
 end

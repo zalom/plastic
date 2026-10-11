@@ -82,4 +82,12 @@ class InstallationsRecordingTest < Plastic::TestCase
 
     assert_equal [File.join(@home, ".codex", "hooks.json"), nil, []], [record.settings, record.status_line, record.permissions]
   end
+
+  def test_the_record_lists_no_section_when_the_instruction_file_is_gone
+    FileUtils.mkdir_p(File.join(@home, ".codex"))
+    installed_into("codex")
+    File.delete(File.join(@home, ".codex", "AGENTS.md"))
+
+    assert_empty recorded("codex").sections
+  end
 end

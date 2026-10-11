@@ -45,4 +45,12 @@ class ScreenTest < Plastic::TestCase
 
     assert_instance_of Screen, scope.screen
   end
+
+  def test_a_terminal_pick_comes_back_as_the_answer_text
+    assert_equal "2", screen.answer("Which?", choices, command: "plastic init")
+  end
+
+  def test_a_listed_question_has_no_answer_yet
+    assert_nil screen(input: StringIO.new).answer("Which?", choices, command: "plastic init")
+  end
 end

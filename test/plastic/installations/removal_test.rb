@@ -117,4 +117,25 @@ class InstallationsRemovalTest < Plastic::TestCase
 
     assert_equal [nil, [file]], [Plastic::Installations.read(@plastic_home, "claude-code"), paths]
   end
+
+  def test_leaves_a_settings_file_that_is_not_json
+    write(settings_path, "not json")
+    removed(record(hooks: [{ "event" => "Stop", "command" => PLASTIC }]))
+
+    assert_equal "not json", File.read(settings_path)
+  end
+
+  def test_plans_no_change_to_a_settings_file_that_is_gone
+    file = write(File.join(folder, "plastic", "VERSION"), "2.0.5")
+    planned = Plastic::Installations::Removal.new(record(files: [file]), plastic_home: @plastic_home).planned
+
+    assert_equal [["remove:", file], ["remove:", Plastic::Installations.path(@plastic_home, "claude-code")]], planned
+  end
+
+  def test_keeps_a_hook_group_that_holds_no_hook_list
+    write(settings_path, JSON.generate("hooks" => { "Stop" => [{ "matcher" => "x" }, hook(PLASTIC)] }))
+    removed(record(hooks: [{ "event" => "Stop", "command" => PLASTIC }]))
+
+    assert_equal({ "Stop" => [{ "matcher" => "x" }] }, settings["hooks"])
+  end
 end

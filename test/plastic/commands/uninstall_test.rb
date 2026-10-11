@@ -96,4 +96,13 @@ class UninstallCommandTest < Plastic::TestCase
     assert_equal [0, true], [result.code, result.out.include?("codex: no record lists what Plastic wrote")]
     assert_equal before, tree_snapshot(@home)
   end
+
+  def test_with_no_harness_recorded_or_found_it_names_init
+    FileUtils.rm_rf(File.join(@home, ".claude"))
+    Plastic::Installations.delete(@plastic_home, "claude-code")
+    result = call("uninstall", "1")
+
+    assert_equal [0, ""], [result.code, result.err]
+    assert_includes result.out, "next: plastic init"
+  end
 end
