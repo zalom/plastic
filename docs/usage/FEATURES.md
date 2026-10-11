@@ -86,7 +86,25 @@ could not hold it safely.
 | `plastic roadmap edge remove SLUG FROM TO --dry-run` | The roadmap edge rows the removal would delete. |
 
 `plastic sync up`, `plastic sync down`, `plastic intent revise` and `plastic backup` keep their own previews. `plastic backup --live` prints each line of the backup's `backup.log` as it is written. `plastic backup purge` (with `--older-than`, `--all` or `--failed`) and `plastic backup restore` take `--dry-run` and list what they would delete or put back. A restore asks nothing and ends with `next: plastic sync down --project STORE`.
-`plastic uninstall --dry-run` lists every path the uninstall would remove.
+`plastic uninstall --dry-run` lists every path the uninstall would remove or change.
+
+## Install into a harness
+
+| Command | Result |
+| ------- | ------ |
+| `plastic init` | Lists the harnesses found on this machine, every one picked, and installs Plastic into each one the person picks. |
+| `plastic install` | Copies the core files into the home and makes the global store. `--reinstall` copies them again and syncs every harness Plastic is installed into. |
+| `plastic uninstall` | Lists the harnesses Plastic is installed into, picked, and removes from each picked one exactly what its record lists. |
+
+A harness counts as found when its settings folder is in the home or its program is on the
+`PATH`. Both lists use the [choice screen](../help/choice-screen.md): from inside an agent the
+call prints the numbered list and stops, and the agent runs `plastic init ANSWER` or
+`plastic uninstall ANSWER` with the person's answer. Plastic writes only into a harness the
+harness registry holds. Each install writes a record under `~/.plastic/installations/`, one
+file for each harness, that lists the files, hooks, settings entries and instruction sections
+it wrote. The uninstall reads that record, so the person's own settings entries stay. Only the
+main session runs Plastic's hooks. After an install into Codex, open `/hooks` in Codex and
+trust the changed hooks.
 
 ## Installer commands
 

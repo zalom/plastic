@@ -38,6 +38,32 @@ hooks with it. `plastic config --harness NAME` takes only a name the registry ho
 names the harness from these fields and records it on the session row. See
 [internals](../internals.md) for the order it tries them in.
 
+`plastic init` counts a harness as found when its settings folder, `.claude` or `.codex`, is in
+the home, or its program, `claude` or `codex`, is on the `PATH`. It writes only into a harness
+the registry holds.
+
+## Install records
+
+Each install into a harness writes one record, `~/.plastic/installations/NAME.json`, with the
+harness name as `NAME`. `plastic uninstall` reads it and removes exactly what it lists.
+
+| Field | What it lists |
+| ----- | ------------- |
+| `harness` | The registry name of the harness |
+| `version` | The Plastic version that wrote it |
+| `roots` | The folders the files must sit under; a file outside them is never removed |
+| `files` | Each file Plastic wrote |
+| `folders` | Each folder Plastic made, removed once it is empty |
+| `settings` | The settings file that holds the hooks |
+| `hooks` | Each hook entry Plastic wrote, as its event and its command |
+| `status_line` | The status line Plastic set, and the one it replaced |
+| `permissions` | Each permission entry Plastic added |
+| `sections` | Each instruction file that holds a Plastic section, with the section's begin and end markers |
+
+The uninstall removes only these entries from the settings file and these sections from the
+instruction files, so the person's own entries and text stay. Only the main session runs
+Plastic's hooks: no record lists a SubagentStart or a SubagentStop entry.
+
 ## The contract
 
 Plastic reaches an agent across three layers. An adapter is judged on how each layer arrives
@@ -114,14 +140,14 @@ display-surface matrix. This split is what makes it possible to ask honestly abo
 
 | Harness | Install | Standing conventions | Live state | Record | Statusline | Subagent teams |
 |---|---|---|---|---|---|---|
-| Claude Code | `install.sh`, then `plastic install --claude` | native `CLAUDE.md`, plus the compact-instructions marked section injected into `~/.claude/CLAUDE.md` | three kernel hooks and the update check through `settings.json` | post-write `record` (savepoint, lock heartbeat, day ledger) | yes | yes |
-| Codex CLI | `install.sh`, then `plastic install --codex` | marked section injected into `~/.codex/AGENTS.md` | three kernel hooks through `~/.codex/hooks.json` | post-write `record` on `apply_patch` | no | no, a single agent walks the whole cycle |
-| Hermes | `install.sh`, then `plastic install --hermes` | none | none | none | no | no |
+| Claude Code | `install.sh`, then `plastic init` | native `CLAUDE.md`, plus the compact-instructions marked section injected into `~/.claude/CLAUDE.md` | three kernel hooks and the update check through `settings.json` | post-write `record` (savepoint, lock heartbeat, day ledger) | yes | yes |
+| Codex CLI | `install.sh`, then `plastic init` | marked section injected into `~/.codex/AGENTS.md` | three kernel hooks through `~/.codex/hooks.json` | post-write `record` on `apply_patch` | no | no, a single agent walks the whole cycle |
+| Hermes | none: the registry holds no entry for it | none | none | none | no | no |
 
 1. Plastic installs through `install.sh` for every harness above (owner ruling of 2026-10-03,
    which supersedes the npm-only ruling of 2026-08-08). See [INSTALL.md](../../INSTALL.md).
-2. Hermes copies skills and agent files and wires nothing else. It is a packaging target,
-   not a working adapter.
+2. Hermes is a packaging target, not a working adapter. The registry holds no entry for it,
+   so `plastic init` never installs into it.
 3. Codex receives its skill text with paths and command prefixes rewritten at install time
    (intent 239), so the instructions resolve on a Codex machine. Four lines still speak
    Claude Code afterward, all disclosed and none executable: four instruction lines that

@@ -1,7 +1,7 @@
 # Install Plastic
 
 Plastic installs from a GitHub release with one shell script, `install.sh`. The `plastic`
-command then installs itself into your agent, and it updates, rolls back and uninstalls
+command then installs itself into your agent harnesses, and it updates, rolls back and uninstalls
 itself.
 
 ## What you need
@@ -24,11 +24,18 @@ uses the Ruby 2.6 that macOS ships.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/zalom/plastic/main/install.sh | sh
-plastic install --claude
+plastic init
 ```
 
-Replace `--claude` with `--codex` for Codex CLI. Pass both flags to install for both agents,
-or pass `--all` for every supported agent.
+`plastic init` lists the agent harnesses it finds, each one picked: Claude Code when
+`~/.claude` or the `claude` program is there, and Codex CLI when `~/.codex` or the `codex`
+program is there. It installs Plastic into each harness you pick. Answer with numbers separated
+by commas (`1,2`), `a` for all, or `q` to leave with no change. Run from inside an agent, it
+prints the list and stops, and the agent runs `plastic init ANSWER` with your answer. After an
+install into Codex, open `/hooks` in Codex and trust the changed Plastic hooks.
+
+Each install writes a record under `~/.plastic/installations/`, one file for each harness. The
+record lists the files, hooks, settings entries and instruction sections Plastic wrote there.
 
 `install.sh` does these things:
 
@@ -57,12 +64,12 @@ An update reuses the Ruby it already has, or adds the one a newer release pins b
 release keeps the Ruby it was installed with, so a rollback starts the Ruby the older release ran on.
 
 The last line of `install.sh` names the next command. On a first install it is
-`plastic install`. When Plastic is already installed, `install.sh` brings the agent files in
+`plastic init`. When Plastic is already installed, `install.sh` brings the agent files in
 line with the new release, and the next command is `plastic version`.
 
 ## Enola
 
-After a first `plastic install`, Plastic offers Enola. Enola maps the code architecture of a
+Enola maps the code architecture of a
 project. It is optional, and Plastic works without it. To install it, run its official
 installer:
 
@@ -70,8 +77,7 @@ installer:
 curl -fsSL https://raw.githubusercontent.com/enola-labs/enola/main/install.sh | sh
 ```
 
-Plastic prints this offer and nothing more. It runs no Enola installer, pins no Enola release
-and stores no Enola preference. A reinstall, an update and a rollback make no offer.
+Plastic runs no Enola installer, pins no Enola release and stores no Enola preference.
 
 ## Channels
 
@@ -153,14 +159,15 @@ until then.
 ## Uninstall
 
 ```bash
-plastic uninstall --all
+plastic uninstall
 ```
 
-`plastic uninstall` removes the hooks, agents and conventions that Plastic registered with
-your agents. Pass `--claude` or `--codex` to remove one agent only. `--dry-run` lists what
-the command would remove. Your stores under `~/.plastic` stay.
+`plastic uninstall` lists the harnesses Plastic is installed into, each one picked, and the
+other registered harnesses it finds. From each harness you pick, it removes exactly what that
+harness's record lists, so your own settings entries stay. `--dry-run` lists what the command
+would remove or change. Your stores under `~/.plastic` stay.
 
-Once no agent stays registered, the command also removes the releases under
+Once Plastic is installed into no harness, the command also removes the releases under
 `~/.local/share/plastic` and the `~/.local/bin/plastic` link. A `plastic` file there that
 Plastic did not link stays, and the command says so.
 

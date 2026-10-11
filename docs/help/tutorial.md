@@ -34,13 +34,13 @@ Each step says who does it:
   export PATH="$HOME/.local/bin:$PATH"
   mkdir -p "$HOME/.claude"
   curl -fsSL https://raw.githubusercontent.com/zalom/plastic/main/install.sh | sh
-  plastic install --claude
+  plastic init 1
   hash -r
   command -v plastic
   ```
 
-  The installer needs an existing `~/.claude` directory. It stops with `.claude not found`
-  otherwise. It places the `plastic` command at `$PLASTIC_HOME/bin/plastic`, and
+  `plastic init` lists Claude Code because `~/.claude` exists, and the answer `1` installs
+  Plastic into it. The installer links the `plastic` command at `$HOME/.local/bin/plastic`, and
   `command -v plastic` must print that path. If it prints another path, the commands below
   would run your normal installation.
 - In that shell, check that Ruby can load Minitest: `ruby -e 'require "minitest"'`. Some Ruby
@@ -95,7 +95,7 @@ git commit -m "chore: greeter"
 **Plastic.** From inside the repository, run:
 
 ```sh
-plastic install --claude
+plastic project new greeter --path "$PWD"
 ```
 
 `project new` creates the project store at `~/.plastic/stores/greeter/` and records the

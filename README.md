@@ -82,14 +82,15 @@ are not supported. On Windows, install Plastic inside WSL; there is no native Wi
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/zalom/plastic/main/install.sh | sh
-plastic install --claude
+plastic init
 ```
 
 `install.sh` downloads Ruby 4.0.7 for your platform and checks it by its pinned size and SHA-256.
 It then downloads the newest stable release, checks it against its published checksum, and links
 `~/.local/bin/plastic`. The Bundler of that Ruby installs the sqlite3 and tty-prompt gems inside each release.
-Replace `--claude` with `--codex` for Codex CLI, or pass both flags. After a first install,
-Plastic offers [Enola](INSTALL.md#enola), an optional tool that maps code architecture.
+`plastic init` lists the agent harnesses it finds, Claude Code and Codex CLI, each one picked,
+and installs Plastic into the ones you pick. [Enola](INSTALL.md#enola) is an optional tool that
+maps code architecture.
 
 `PLASTIC_CHANNEL` picks the beta or alpha channel:
 
@@ -130,9 +131,7 @@ at the new launcher and keeps your stores and settings. See
 ```bash
 # 1. Install for your agent
 curl -fsSL https://raw.githubusercontent.com/zalom/plastic/main/install.sh | sh
-plastic install --claude    # Claude Code
-plastic install --codex     # Codex CLI
-plastic install --all       # Every supported agent
+plastic init                # Pick the agents to install into
 
 # 2. See what is open
 plastic status
@@ -262,13 +261,13 @@ plastic backup restore --store alpha --latest   # Put the newest done backup bac
 
 ### Product
 ```bash
-plastic install --claude              # Install into Claude Code
-plastic install --reinstall          # Repair an install
+plastic init                          # Install into the agents you pick
+plastic install --reinstall           # Copy the files again and sync every agent
 plastic update                        # Next version on the current channel
 plastic update --channel alpha        # Move to the alpha channel
 plastic rollback                      # Switch back to the previous release
 plastic rollback --version 2.0.0-alpha.27
-plastic uninstall --all               # Remove Plastic from every agent. Your stores stay.
+plastic uninstall                     # Remove Plastic from the agents you pick. Your stores stay.
 plastic version                       # The installed version and its channel
 plastic doctor                        # The installation, the databases and the hooks of this agent
 ```
@@ -344,14 +343,14 @@ The other hooks and commands read it from there.
 Run `plastic doctor` when hooks do not fire. Use `--harness codex` or
 `--harness claude-code` to choose the installation to check. Codex runs a hook only after
 you trust it in `/hooks`, and the installer names each hook that changed. The doctor names
-each repair, such as `plastic install --codex --reinstall`.
+each repair, such as `plastic install --reinstall`.
 
 ## Supported AI tools
 
 | Tool | Install | State |
 |------|---------|-------|
-| **Claude Code** | `plastic install --claude` | Supported |
-| **Codex CLI** | `plastic install --codex` | Supported |
+| **Claude Code** | `plastic init` | Supported |
+| **Codex CLI** | `plastic init` | Supported |
 | **Hermes** | none | A packaging target only |
 
 The `plastic` command itself needs no agent. It runs in any shell with Ruby. See
@@ -383,23 +382,16 @@ plastic config set runner.stop_hook true    # Write a global key
 plastic config get agents.models.plastic-executor --harness codex
 ```
 
-Install-time choices:
-
-```bash
-plastic install --claude --advisor secondary   # Set the default advisor
-plastic install --claude --no-advisor          # Install no advisor agent
-plastic install --claude --statusline plastic  # Use the Plastic status line
-```
-
 See the [configuration guide](docs/guide/getting-started/configuration.md) for every key and file.
 
 ### Uninstall
 
 ```bash
-plastic uninstall --all     # Remove hooks, agents and conventions from every agent
+plastic uninstall     # Remove what Plastic wrote into the agents you pick
 ```
 
-Your stores under `~/.plastic` stay.
+The uninstall removes what the record of each agent lists, so your own settings stay. Your
+stores under `~/.plastic` stay.
 
 ## Documentation
 

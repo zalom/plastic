@@ -1012,9 +1012,8 @@ before the merge rewrote Plastic's own registrations. In version 1.11.0 the upda
 this to the owner's own SessionStart hook, `~/.claude/hooks/plastic-writing-style`, registered
 outside `HookRegistry`. The entry vanished from settings.json with no
 message, and the writing-style skill stopped loading in every session until `/plastic-doctor`
-found the orphaned launcher a day later. Three sibling functions carried the identical shape:
-`purge_stale_codex_hooks` (`cmd.include?("codex-hook")`), `remove_claude_hooks`, and
-`remove_codex_hooks`.
+found the orphaned launcher a day later. A sibling function carried the identical shape:
+`purge_stale_codex_hooks` (`cmd.include?("codex-hook")`).
 
 Ownership is now registry membership, never a substring. `HookRegistry.claude_purge_command?`
 tokenizes a settings.json command (splitting on whitespace, stripping quotes, dropping a
@@ -1047,13 +1046,14 @@ registry did not recognize, and prints it under its own header naming the reserv
 rule. Had that existed in 1.11.0, the update would have said "kept `plastic-writing-style`,
 the prefix is reserved" instead of deleting the hook without a word.
 
-The same reporting covers the two remove paths.
-`remove_claude_hooks` and `remove_codex_hooks` collect the entries they delete the same
-way the purges do and print them through `report_removed_hook_entries`, which took a
-`qualifier:` argument so an uninstall reads "Removed 3 Plastic hook entries" instead of
-the merge's "stale" wording. The statusline swap-back, which is a restored value rather
-than a deleted entry, reports on its own line. No Plastic edit to a user's hook
-configuration is silent now, on either harness, on either path.
+The uninstall decides ownership by the install record, not by the registry. Each install
+writes one record per harness under `~/.plastic/installations/`, listing the files, folders,
+hook entries, status line, permissions and instruction sections it wrote (see
+[Install records](reference/harness-adapters.md#install-records)). `plastic uninstall` takes
+out exactly those, prints one `removed:` row for each path it removed or changed, and leaves
+every entry the person added. A status line the install replaced goes back; one it added is
+removed. No Plastic edit to a user's hook configuration is silent, on either harness, on
+either path.
 
 ## doctor: unowned hook entries and stray skills
 

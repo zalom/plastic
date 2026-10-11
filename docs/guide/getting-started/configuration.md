@@ -10,13 +10,10 @@
 
 ## Choices at install time
 
-The installer asks no questions. It writes the defaults, and the following flags change them:
-
-| Flag | Effect |
-| ---- | ------ |
-| `--advisor NAME` | Sets the default advisor agent: `primary` or `secondary`. |
-| `--no-advisor` | Installs no advisor agent. |
-| `--statusline VALUE` | `keep` keeps a status line you already have. `plastic` replaces it with the Plastic one. Without the flag, your line stays. |
+`plastic init` asks which agent harnesses to install into, and writes the defaults. A Claude Code
+install writes the Plastic status line when the settings hold none. When they hold your own,
+the installer asks in a terminal whether to switch, and keeps yours otherwise. The keys below
+change the defaults.
 
 ## Keys in `config.yml`
 
@@ -46,7 +43,7 @@ Every hook reads the file again, so a change takes effect on the next hook.
 
 | Key | Default | Meaning |
 | --- | ------- | ------- |
-| `statusline` | `true` | Writes the Plastic status line when you install with `--statusline plastic`. |
+| `statusline` | `true` | Lets the installer write the Plastic status line into Claude Code's settings. |
 | `screens` | `true` | Registers the hook that shows Plastic's screens. |
 | `runner.stop_hook` | `false` | Lets the stop hook keep a session working while its work graph has a node ready. |
 | `review.pull_request` | `required` | `required` asks for a pull request before an intent ends. `off` skips it. |

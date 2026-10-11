@@ -24,11 +24,12 @@ Run this once:
 
 ```
 curl -fsSL https://raw.githubusercontent.com/zalom/plastic/main/install.sh | sh
-plastic install --claude
+plastic init
 ```
 
-This sets up a folder at `~/.plastic/` that holds your intents, an index of all
-of them, and the rules your agent will follow.
+`plastic init` lists the agent harnesses it finds. Pick yours, and it sets up a folder at
+`~/.plastic/` that holds your intents, an index of all of them, and the rules your agent will
+follow.
 
 ## Step 2: Create your first intent
 
