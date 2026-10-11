@@ -8,10 +8,13 @@ module CommandReference
     NEXT_LINE = /\bnext_step\((?:"([^"]+)"|[^,)]+)/
     OFFERS = "Offers the next command"
     INTERPOLATION = /\#\{([^}]*)\}/
-    NAME = ->(code) { code[/[a-z_]\w*/] || "value" }
-    PLACEHOLDER = ->(literal) { literal.gsub(INTERPOLATION) { NAME.call(Regexp.last_match(1)).upcase } }
-    MESSAGE = lambda do |kind, literal|
-      literal ? "#{kind}: #{literal.gsub(INTERPOLATION) { "%{#{NAME.call(Regexp.last_match(1))}}" }}" : kind
+
+    def self.name_of(code) = code[/[a-z_]\w*/] || "value"
+
+    def self.placeholder(literal) = literal.gsub(INTERPOLATION) { name_of(Regexp.last_match(1)).upcase }
+
+    def self.message(kind, literal)
+      literal ? "#{kind}: #{literal.gsub(INTERPOLATION) { "%{#{name_of(Regexp.last_match(1))}}" }}" : kind
     end
 
     def initialize(source, file, only: nil)
@@ -34,14 +37,15 @@ module CommandReference
         next if @only && !@only.include?(number)
 
         code, kind = RAISES.fetch(match[1])
-        Ending.new(:raise, code, Endings::NONE, MESSAGE.call(kind, match[2]), @file, number)
+        Ending.new(:raise, code, Endings::NONE, self.class.message(kind, match[2]), @file, number)
       end
     end
 
     def next_steps
       found do |text, number|
         match = text.match(NEXT_LINE) or next
-        Ending.new(:next_step, 0, match[1] ? PLACEHOLDER.call(match[1]) : Endings::RUNTIME, OFFERS, @file, number)
+        literal = match[1]
+        Ending.new(:next_step, 0, literal ? self.class.placeholder(literal) : Endings::RUNTIME, OFFERS, @file, number)
       end
     end
 

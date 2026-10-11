@@ -2,15 +2,24 @@ require "json"
 require "open3"
 require "prism"
 
+# Scores each Ruby method by CRAP: its complexity weighed against its line coverage.
 module Crap
   DECISIONS = [
     Prism::IfNode, Prism::UnlessNode, Prism::WhileNode, Prism::UntilNode, Prism::ForNode,
     Prism::WhenNode, Prism::InNode, Prism::RescueNode, Prism::AndNode, Prism::OrNode
   ].freeze
 
-  Score = Struct.new(:name, :file, :first_line, :last_line, :complexity, :coverage) do
+  # One method's place, complexity, coverage and CRAP score.
+  Score = Struct.new(:name, :file, :first_line, :last_line, :complexity, :coverage)
+
+  # How a score is computed and printed.
+  class Score
     def crap
       (complexity**2 * (1 - coverage)**3 + complexity).round(1)
+    end
+
+    def row
+      format("%-7.1f %-10d %-9s %s  %s:%d", crap, complexity, "#{(coverage * 100).round}%", name, file, first_line)
     end
   end
 
@@ -18,7 +27,10 @@ module Crap
   HUNK = /\A@@ -\S+ \+(\d+)(?:,(\d+))? @@/
 
   # One hunk of a zero-context diff: the file, its new-side span and its body lines.
-  Hunk = Struct.new(:file, :start, :count, :body) do
+  Hunk = Struct.new(:file, :start, :count, :body)
+
+  # How a hunk maps to the code lines it changed.
+  class Hunk
     def span = count.zero? ? [start] : (start...(start + count)).to_a
 
     def added = body.select { |line| line.start_with?("+") }
@@ -40,16 +52,15 @@ module Crap
   end
 
   def methods_in_source(source, file)
-    collect(Prism.parse(source).value, [], file, [])
+    collect(Prism.parse(source).value, [], file)
   end
 
-  def collect(node, scope, file, found)
+  def collect(node, scope, file)
     case node
     when Prism::ClassNode, Prism::ModuleNode then scope += [node.constant_path.slice]
-    when Prism::DefNode then found << method_entry(node, scope, file)
+    when Prism::DefNode then own = [method_entry(node, scope, file)]
     end
-    node.compact_child_nodes.each { |child| collect(child, scope, file, found) }
-    found
+    Array(own) + node.compact_child_nodes.flat_map { |child| collect(child, scope, file) }
   end
 
   def method_entry(node, scope, file)
@@ -74,16 +85,17 @@ module Crap
   end
 
   def line_coverage(resultset_json)
-    JSON.parse(resultset_json).values.each_with_object({}) do |run, files|
-      run.fetch("coverage").each do |path, entry|
-        lines = entry.is_a?(Hash) ? entry.fetch("lines") : entry
-        files[path] = files.key?(path) ? merge(files[path], lines) : lines
-      end
-    end
+    JSON.parse(resultset_json).values.map { |run| run_lines(run) }.reduce({}) { |files, lines| combine(files, lines) }
   end
 
+  def line_coverage_file(path) = File.exist?(path) ? line_coverage(File.read(path)) : {}
+
+  def run_lines(run) = run.fetch("coverage").transform_values { |entry| entry.is_a?(Hash) ? entry.fetch("lines") : entry }
+
+  def combine(files, lines) = files.merge(lines) { |_path, left, right| merge(left, right) }
+
   def merge(left, right)
-    left.zip(right).map { |a, b| (a.nil? && b.nil?) ? nil : [a.to_i, b.to_i].max }
+    left.zip(right).map { |hits| hits.compact.max }
   end
 
   def method_coverage(found, lines)
@@ -134,6 +146,54 @@ module Crap
     (changed[found[:file]] || []).any? { |number| number.between?(found[:first_line], found[:last_line]) }
   end
 
+  # The flags, paths and help request of one bin/crap call.
+  Arguments = Data.define(:values, :paths, :help)
+
+  # How a bin/crap call reads its flags and paths.
+  class Arguments
+    FLAGS = { "--threshold" => "30", "--since" => nil, "--coverage" => "coverage/.resultset.json" }.freeze
+    HELP = %w[--help -h].freeze
+    MISSING = Object.new.freeze
+
+    def self.parse(argv)
+      rest = argv.dup
+      values = FLAGS.to_h { |flag, default| [flag, take(rest, flag, default)] }
+      new(values:, paths: rest, help: argv.intersect?(HELP))
+    end
+
+    def self.take(rest, flag, default)
+      index = rest.index(flag) or return default
+      value = rest[index + 1]
+      return rest.slice!(index, 2).last if value && !value.start_with?("--")
+
+      rest.delete_at(index)
+      MISSING
+    end
+
+    def invalid? = values.value?(MISSING) || paths.any? { |argument| argument.start_with?("-") }
+
+    def threshold = values.fetch("--threshold").to_f
+
+    def since = values.fetch("--since")
+
+    def coverage = values.fetch("--coverage")
+  end
+
+  # The printed table of scores and the exit code it earns.
+  Report = Data.define(:scores, :threshold)
+
+  # How the report counts the methods above the threshold.
+  class Report
+    HEADER = "CRAP    complexity coverage  method"
+
+    def over = scores.count { |score| score.crap > threshold }
+
+    def lines = [HEADER, *scores.map(&:row), "#{scores.size} methods, #{over} above CRAP #{threshold.to_i}"]
+
+    def status = over.zero? ? 0 : 1
+  end
+
+  # The bin/crap command: it parses the call, scores the methods and prints the report.
   class CLI
     USAGE = <<~TEXT
       Usage: bin/crap [--threshold N] [--since REF] [--coverage FILE] [PATH]...
@@ -147,26 +207,20 @@ module Crap
       option, or --threshold, --since, or --coverage with no value.
     TEXT
 
-    HEADER = "CRAP    complexity coverage  method"
     DEFAULT_PATHS = %w[lib/**/*.rb app/**/*.rb tools/**/*.rb].freeze
 
     def initialize(argv, root:, out: $stdout, git: ->(*args) { Open3.capture2("git", "-C", root, *args).first })
-      @argv = argv.dup
+      @arguments = Arguments.parse(argv)
       @root = root
       @out = out
       @git = git
-      @missing_value = false
     end
 
     def run
-      return usage if @argv.include?("--help") || @argv.include?("-h")
+      return usage if @arguments.help
+      return usage(2) if @arguments.invalid?
 
-      threshold = option("--threshold", "30").to_f
-      since = option("--since", nil)
-      resultset = File.join(@root, option("--coverage", "coverage/.resultset.json"))
-      return usage(2) if invalid?
-
-      report(scores(coverage(resultset), since), threshold)
+      report(scores)
     end
 
     private
@@ -176,31 +230,21 @@ module Crap
       code
     end
 
-    def option(flag, default)
-      index = @argv.index(flag)
-      return default unless index
-
-      value = @argv[index + 1]
-      if value.nil? || value.start_with?("--")
-        @argv.delete_at(index)
-        @missing_value = true
-        return default
-      end
-
-      @argv.delete_at(index)
-      @argv.delete_at(index)
+    def paths
+      given = @arguments.paths
+      given.empty? ? Dir.glob(DEFAULT_PATHS, base: @root) : given
     end
 
-    def invalid? = @missing_value || @argv.any? { |argument| argument.start_with?("-") }
+    def line_coverage = Crap.line_coverage_file(File.join(@root, @arguments.coverage))
 
-    def paths = @argv.empty? ? Dir.glob(DEFAULT_PATHS, base: @root) : @argv
+    def scores
+      coverage = line_coverage
+      changed_only(paths.flat_map { |path| scores_for(path, coverage) }).sort_by { |score| -score.crap }
+    end
 
-    def coverage(resultset) = File.exist?(resultset) ? Crap.line_coverage(File.read(resultset)) : {}
-
-    def scores(coverage, since)
-      found = paths.flat_map { |path| scores_for(path, coverage) }
-      found = touched(found, since) if since
-      found.sort_by { |score| -score.crap }
+    def changed_only(found)
+      since = @arguments.since
+      since ? touched(found, since) : found
     end
 
     def touched(found, since)
@@ -215,17 +259,10 @@ module Crap
       end
     end
 
-    def report(scores, threshold)
-      @out.puts HEADER
-      scores.each { |score| @out.puts row(score) }
-      over = scores.count { |score| score.crap > threshold }
-      @out.puts "#{scores.size} methods, #{over} above CRAP #{threshold.to_i}"
-      over.zero? ? 0 : 1
-    end
-
-    def row(score)
-      coverage = "#{(score.coverage * 100).round}%"
-      format("%-7.1f %-10d %-9s %s  %s:%d", score.crap, score.complexity, coverage, score.name, score.file, score.first_line)
+    def report(scores)
+      report = Report.new(scores:, threshold: @arguments.threshold)
+      @out.puts report.lines
+      report.status
     end
   end
 end
