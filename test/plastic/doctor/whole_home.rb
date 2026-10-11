@@ -66,7 +66,7 @@ module WholeHome
 
   def whole_databases
     database(machine_path, machine_key)
-    schema.store.each { |key| database(store_path(key), key) }
+    [SLUG, "global"].each { |store| Plastic::Graph.create(home: @plastic_home, store:) }
   end
 
   def database(path, key)
@@ -81,6 +81,13 @@ module WholeHome
     write(File.join(@plastic_home, "projects.yml"), YAML.dump("projects" => { SLUG => { "path" => project_dir } }))
     write(File.join(project_dir, "AGENTS.md"), "# Alpha\n\nPlastic's instructions are in ~/.plastic/PLASTIC.md.\n")
     write(File.join(project_dir, "CLAUDE.md"), "# Alpha\n\n@AGENTS.md\n")
+  end
+
+  def forget_backfill(store)
+    connection = SQLite3::Database.new(File.join(@plastic_home, "stores", store, schema.file(:knowledge)))
+    connection.execute("DELETE FROM retrieval_backfills")
+  ensure
+    connection&.close
   end
 
   def drop_table(path, table)

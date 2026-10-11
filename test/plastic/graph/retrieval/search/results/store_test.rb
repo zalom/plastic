@@ -22,4 +22,11 @@ class RetrievalSearchResultsStoreTest < Plastic::TestCase
 
     assert_equal "retrieval maintenance is required before source other can be read", error.message
   end
+
+  def test_a_store_with_no_backfill_marker_is_refused
+    FileUtils.mkdir_p(File.join(@plastic_home, "stores", "old"))
+    Plastic::Graph.open(home: @plastic_home, store: "old").databases.each_value { |database| database.rows("SELECT 1") }
+
+    assert_equal "old", assert_raises(Plastic::Graph::RetrievalGraph::MaintenanceRequired) { store("old").retrieval }.slug
+  end
 end
