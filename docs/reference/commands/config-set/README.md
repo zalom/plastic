@@ -20,12 +20,12 @@ The command is `ConfigSet`, in [`config_set.rb:11`](../../../../scripts/lib/plas
 
 ## The command
 
-The command's `call`, at [`config_set.rb:17`](../../../../scripts/lib/plastic/commands/config_set.rb#L17):
+The command's `call`, at [`config_set.rb:26`](../../../../scripts/lib/plastic/commands/config_set.rb#L26):
 
 ```ruby
 def call
   key = parsed[:key]
-  value = checked(key, scalar(parsed[:value]))
+  value = checked(key, ConfigSet.scalar(parsed[:value]))
   config.set(key, value)
   output.row(key, value.to_s)
   output.next_step("plastic config get #{key}#{harness_words}", because: "the setting is written")
@@ -42,6 +42,6 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| Usage error: a setting takes one value, not %{text} | 2 | prints no next: line | [`config_set.rb:29`](../../../../scripts/lib/plastic/commands/config_set.rb#L29) |
+| Usage error: a setting takes one value, not %{text} | 2 | prints no next: line | [`config_set.rb:19`](../../../../scripts/lib/plastic/commands/config_set.rb#L19) |
 | Usage error: %{key} takes true or false | 2 | prints no next: line | [`config_set.rb:38`](../../../../scripts/lib/plastic/commands/config_set.rb#L38) |
-| Offers the next command | 0 | plastic config get #{key}#{harness_words} | [`config_set.rb:22`](../../../../scripts/lib/plastic/commands/config_set.rb#L22) |
+| Offers the next command | 0 | plastic config get #{key}#{harness_words} | [`config_set.rb:31`](../../../../scripts/lib/plastic/commands/config_set.rb#L31) |
