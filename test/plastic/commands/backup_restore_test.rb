@@ -138,4 +138,8 @@ class BackupRestoreTest < Plastic::TestCase
     assert_call result, code: 0, out: ["preview", "work_graph", "knowledge_graph", "references", FIRST]
     assert_equal before, [bytes(home, "work_graph", "knowledge_graph", "references"), folder_names(home)]
   end
+
+  def test_it_declares_that_it_writes_every_store_database_it_can_replace
+    assert_equal Plastic::Graph::Schema.store.sort, Plastic::Commands::BackupRestore.writes.uniq.sort
+  end
 end

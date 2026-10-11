@@ -3,7 +3,7 @@
 require_relative "../../test_helper"
 
 class CodeWorkflowGateTest < Plastic::TestCase
-  def gate(stops, pass) = Plastic::CodeWorkflow::Gate.new(reason: "%{name} is held", stops:, pass: ->(_c) { pass }, offers: nil)
+  def gate(stops, pass) = Plastic::CodeWorkflow::Gate.new(reason: "%{name} is held", stops:, pass: ->(_c) { pass }, offers: nil, because: nil)
 
   def test_a_gate_that_holds_lets_the_call_through
     assert_nil gate(:refusal, true).run(context, Flows::Hold)
@@ -15,5 +15,11 @@ class CodeWorkflowGateTest < Plastic::TestCase
 
   def test_a_failure_gate_ends_the_call_as_a_failed_gate
     assert_equal Plastic::Failed.new(:code_hold, "gate", "ada is held"), gate(:failure, false).run(context, Flows::Hold)
+  end
+
+  def test_a_gate_with_a_because_line_ends_the_call_with_it
+    held = Plastic::CodeWorkflow::Gate.new(reason: "%{name} is held", stops: :failure, pass: ->(_c) { false }, offers: nil, because: "%{name} waits")
+
+    assert_equal Plastic::Failed.new(:code_hold, "gate", "ada is held", nil, "ada waits"), held.run(context, Flows::Hold)
   end
 end
