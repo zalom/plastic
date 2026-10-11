@@ -16,22 +16,23 @@ module Plastic
 
       def self.value(node, key) = pairs(node).find { |name, _value| Mapping.named?(name, key) }&.last
 
+      def self.parts(node) = PARTS.map { |part| value(node, part) }
+
+      def self.renamed(mapping) = AgentModels::RENAMED.select { |old, new| mapping.rename(old, new) }.to_a
+
       def initialize(root)
         @root = root
       end
 
-      def apply = agent_maps.flat_map { |map| renamed(Mapping.new(map)) }.uniq
+      def apply = agent_maps.flat_map { |map| AgentRenames.renamed(Mapping.new(map)) }.uniq
 
       private
 
       def sections = [AgentRenames.value(@root, "global"), *AgentRenames.pairs(AgentRenames.value(@root, "harnesses")).map(&:last)]
 
-      def agent_maps
-        agents = sections.map { |section| AgentRenames.value(section, "agents") }
-        agents.flat_map { |node| PARTS.map { |part| AgentRenames.value(node, part) } }.grep(Psych::Nodes::Mapping).uniq(&:object_id)
-      end
+      def agent_maps = agent_nodes.flat_map { |node| AgentRenames.parts(node) }.grep(Psych::Nodes::Mapping).uniq(&:object_id)
 
-      def renamed(mapping) = AgentModels::RENAMED.select { |old, new| mapping.rename(old, new) }.to_a
+      def agent_nodes = sections.map { |section| AgentRenames.value(section, "agents") }
     end
   end
 end

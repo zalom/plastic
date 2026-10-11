@@ -31,6 +31,11 @@ module Plastic
         true
       end
 
+      def upgrade
+        migrate
+        rename_agents
+      end
+
       def rename_agents
         renamed = AgentRenames.new(document.root).apply
         save unless renamed.empty?
