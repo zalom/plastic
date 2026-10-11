@@ -56,4 +56,4 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | --- | --- | --- | --- |
 | %{problem} | 1 | prints no next: line | [`add_node.rb:19`](../../../../scripts/lib/plastic/workflows/add_node.rb#L19) |
 | node %{id} is open | 0 | plastic node claim %{intent_id} %{id} | [`add_node.rb:43`](../../../../scripts/lib/plastic/workflows/add_node.rb#L43) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:97`](../../../../scripts/lib/plastic/code_workflow.rb#L97) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../scripts/lib/plastic/code_workflow.rb#L102) |

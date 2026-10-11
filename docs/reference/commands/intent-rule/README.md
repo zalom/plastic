@@ -59,4 +59,4 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | no intent %{intent_id} in this store | 1 | prints no next: line | [`add_ruling.rb:18`](../../../../scripts/lib/plastic/workflows/add_ruling.rb#L18) |
 | %{problem} | 1 | prints no next: line | [`add_ruling.rb:26`](../../../../scripts/lib/plastic/workflows/add_ruling.rb#L26) |
 | ruling %{id} is on record | 0 | plastic intent brief %{intent_id} | [`add_ruling.rb:32`](../../../../scripts/lib/plastic/workflows/add_ruling.rb#L32) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:97`](../../../../scripts/lib/plastic/code_workflow.rb#L97) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../scripts/lib/plastic/code_workflow.rb#L102) |

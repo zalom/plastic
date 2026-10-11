@@ -55,4 +55,4 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | %{problem} | 1 | prints no next: line | [`approve_intent.rb:18`](../../../../scripts/lib/plastic/workflows/approve_intent.rb#L18) |
 | intent %{intent_id} names no done criterion | 1 | plastic intent spec %{intent_id} | [`approve_intent.rb:20`](../../../../scripts/lib/plastic/workflows/approve_intent.rb#L20) |
 | intent %{intent_id} has the owner's go-ahead | 0 | plastic auto %{intent_id} | [`approve_intent.rb:32`](../../../../scripts/lib/plastic/workflows/approve_intent.rb#L32) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:97`](../../../../scripts/lib/plastic/code_workflow.rb#L97) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../scripts/lib/plastic/code_workflow.rb#L102) |

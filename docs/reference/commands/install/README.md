@@ -104,4 +104,4 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | Plastic is already installed for every chosen agent; pass --reinstall to sync the files again | 3 | prints no next: line | [`install_plastic.rb:29`](../../../../scripts/lib/plastic/workflows/install_plastic.rb#L29) |
 | Enola is optional, so the installation is complete either way | 0 | plastic version | [`offer_enola.rb:14`](../../../../scripts/lib/plastic/workflows/offer_enola.rb#L14) |
 | a reinstall syncs the files and offers nothing more | 0 | plastic version | [`offer_enola.rb:15`](../../../../scripts/lib/plastic/workflows/offer_enola.rb#L15) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:97`](../../../../scripts/lib/plastic/code_workflow.rb#L97) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../scripts/lib/plastic/code_workflow.rb#L102) |

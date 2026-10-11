@@ -60,4 +60,4 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | no intent %{intent_id} in this store | 1 | prints no next: line | [`add_edge.rb:18`](../../../../scripts/lib/plastic/workflows/add_edge.rb#L18) |
 | %{problem} | 1 | prints no next: line | [`add_edge.rb:28`](../../../../scripts/lib/plastic/workflows/add_edge.rb#L28) |
 | edge %{from} to %{to} is written | 0 | plastic graph show %{intent_id} | [`add_edge.rb:34`](../../../../scripts/lib/plastic/workflows/add_edge.rb#L34) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:97`](../../../../scripts/lib/plastic/code_workflow.rb#L97) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../scripts/lib/plastic/code_workflow.rb#L102) |

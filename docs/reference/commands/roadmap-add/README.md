@@ -40,7 +40,7 @@ Adds one item to a roadmap batch, guarded against a missing batch, a predecessor
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
-| forget a stop of an earlier call | read |  | [`code_workflow.rb:49`](../../../../scripts/lib/plastic/code_workflow.rb#L49) |
+| forget a stop of an earlier call | read |  | [`code_workflow.rb:54`](../../../../scripts/lib/plastic/code_workflow.rb#L54) |
 | add the item | step | `!context.item.nil? \|\| !context.problem.nil?` | [`add_roadmap_item.rb:17`](../../../../scripts/lib/plastic/workflows/add_roadmap_item.rb#L17) |
 | %{problem} | gate, stops with exit 1 | `context.kind != :failure` | [`add_roadmap_item.rb:26`](../../../../scripts/lib/plastic/workflows/add_roadmap_item.rb#L26) |
 | %{problem} | gate, stops with exit 3 | `context.kind != :refusal` | [`add_roadmap_item.rb:27`](../../../../scripts/lib/plastic/workflows/add_roadmap_item.rb#L27) |
@@ -61,4 +61,4 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | %{problem} | 1 | prints no next: line | [`add_roadmap_item.rb:26`](../../../../scripts/lib/plastic/workflows/add_roadmap_item.rb#L26) |
 | %{problem} | 3 | prints no next: line | [`add_roadmap_item.rb:27`](../../../../scripts/lib/plastic/workflows/add_roadmap_item.rb#L27) |
 | item %{item_id} is on roadmap %{slug} | 0 | plastic roadmap show %{slug} | [`add_roadmap_item.rb:33`](../../../../scripts/lib/plastic/workflows/add_roadmap_item.rb#L33) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:97`](../../../../scripts/lib/plastic/code_workflow.rb#L97) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../scripts/lib/plastic/code_workflow.rb#L102) |

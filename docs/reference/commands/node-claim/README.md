@@ -59,4 +59,4 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | %{problem} | 3 | prints no next: line | [`claim_node.rb:43`](../../../../scripts/lib/plastic/workflows/claim_node.rb#L43) |
 | %{problem} | 1 | prints no next: line | [`claim_node.rb:44`](../../../../scripts/lib/plastic/workflows/claim_node.rb#L44) |
 | node %{id} is claimed | 0 | plastic node done %{intent_id} %{id} TEXT | [`claim_node.rb:54`](../../../../scripts/lib/plastic/workflows/claim_node.rb#L54) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:97`](../../../../scripts/lib/plastic/code_workflow.rb#L97) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../scripts/lib/plastic/code_workflow.rb#L102) |

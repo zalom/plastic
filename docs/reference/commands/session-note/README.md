@@ -53,4 +53,4 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | --- | --- | --- | --- |
 | the call names no session; set PLASTIC_SESSION | 1 | prints no next: line | [`write_note.rb:13`](../../../../scripts/lib/plastic/workflows/write_note.rb#L13) |
 | session %{session_id} has its note | 0 | plastic next | [`write_note.rb:28`](../../../../scripts/lib/plastic/workflows/write_note.rb#L28) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:97`](../../../../scripts/lib/plastic/code_workflow.rb#L97) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../scripts/lib/plastic/code_workflow.rb#L102) |
