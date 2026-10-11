@@ -50,8 +50,8 @@ class InstallerCoreHooksTest < Minitest::Test
   def test_the_install_writes_the_kernel_hooks
     settings = install({})
     kernel = %("#{File.join(@home, ".plastic", "bin", "plastic")}")
-    expected = { "SessionStart" => "#{kernel} hook resume --harness claude-code",
-                 "Stop" => "#{kernel} hook record --harness claude-code", "SessionEnd" => "#{kernel} hook end" }
+    expected = { "SessionStart" => "#{kernel} hook start",
+                 "Stop" => "#{kernel} hook stop", "SessionEnd" => "#{kernel} hook end" }
 
     assert_empty(expected.reject { |event, text| commands(settings, event).any? { |cmd| cmd.include?(text) } })
   end
@@ -65,9 +65,9 @@ class InstallerCoreHooksTest < Minitest::Test
     former = %(env -u RUBYOPT "#{File.join(@home, ".plastic", "bin", "plastic")}" hook resume --harness claude-code || true)
     settings = rebind(File.join(share, "releases", "2.0.3"), "SessionStart" => [{ "matcher" => "", "hooks" => [{ "type" => "command", "command" => former }] }])
 
-    resume = commands(settings, "SessionStart").grep(/hook resume/)
+    resume = commands(settings, "SessionStart").grep(/hook start/)
 
-    assert_equal [%(env -u RUBYOPT "#{File.join(share, "active", "bin", "plastic")}" hook resume --harness claude-code || true)], resume
+    assert_equal [%(env -u RUBYOPT "#{File.join(share, "active", "bin", "plastic")}" hook start || true)], resume
   end
 
   def test_a_second_install_keeps_one_group_per_event
@@ -279,5 +279,63 @@ class InstallerCoreCodexTest < Minitest::Test
 
     assert_equal [File.join(root, "plastic-demo", "refs", "a.md"), File.join(@home, ".plastic", "_shared.md")].sort,
       installed.sort
+  end
+
+  def test_a_codex_install_names_the_hooks_it_changed
+    result = nil
+    capture_io { result = installer.install_codex(codex, false) }
+
+    assert_equal ["hook end", "hook start", "hook stop"], result[:changed_hooks].sort
+  end
+
+  def test_a_second_codex_install_changes_no_hook
+    capture_io { installer.install_codex(codex, false) }
+    result = nil
+    capture_io { result = installer.install_codex(codex, false) }
+
+    assert_empty result[:changed_hooks]
+  end
+end
+
+class InstallerCoreConfigTest < Minitest::Test
+  include InstallerCoreHome
+
+  def config_with(text)
+    FileUtils.mkdir_p(File.join(@home, ".plastic"))
+    File.write(File.join(@home, ".plastic", "config.yml"), text)
+  end
+
+  def config = YAML.safe_load_file(File.join(@home, ".plastic", "config.yml"))
+
+  def test_the_agent_models_come_from_the_section_of_the_harness
+    config_with("global: {}\nharnesses:\n  codex:\n    agents:\n      models:\n        plastic-executor: gpt-x\n")
+
+    assert_equal [{ "plastic-executor" => "gpt-x" }, {}], [installer.agent_model_overrides(harness: "codex"), installer.agent_model_overrides]
+  end
+
+  def test_the_agent_efforts_come_from_the_section_of_the_harness
+    config_with("harnesses:\n  claude-code:\n    agents:\n      efforts:\n        plastic-executor: high\n")
+
+    assert_equal({ "plastic-executor" => "high" }, installer.agent_effort_overrides)
+  end
+
+  def test_the_advisor_is_off_when_the_global_section_turns_it_off
+    config_with("global:\n  advisor:\n    enabled: false\n")
+
+    refute installer.advisor_enabled?
+  end
+
+  def test_the_advisor_flags_write_the_global_and_the_claude_code_sections
+    config_with("version: 3\n")
+    installer.apply_config_flags(["--no-advisor", "--advisor", "secondary"])
+
+    assert_equal [false, "plastic-secondary-advisor"], [config.dig("global", "advisor", "enabled"), config.dig("harnesses", "claude-code", "advisor", "default")]
+  end
+
+  def test_a_flat_config_moves_into_the_sections_and_loses_the_agent_type
+    config_with("version: 3\nagent:\n  type: claude-code\nstatusline: false\n")
+    installer.migrate_config
+
+    assert_equal({ "version" => 3, "global" => { "statusline" => false } }, config)
   end
 end

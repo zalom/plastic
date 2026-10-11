@@ -82,6 +82,22 @@ class InstallTest < Minitest::Test
     end
   end
 
+  def test_a_codex_install_names_the_changed_hooks_to_trust_in_codex
+    with_probe do |installer|
+      out, = capture_io { installer.send(:print_results, [{ agent: "Codex CLI", success: true, changed_hooks: ["hook start", "hook stop"] }], :install) }
+
+      assert_includes out, "run /hooks, and trust the changed Plastic hooks: hook start, hook stop."
+    end
+  end
+
+  def test_a_codex_install_that_changed_no_hook_asks_for_no_trust
+    with_probe do |installer|
+      out, = capture_io { installer.send(:print_results, [{ agent: "Codex CLI", success: true, changed_hooks: [] }], :install) }
+
+      refute_includes out, "/hooks"
+    end
+  end
+
   private
 
   def shipped_names(installer)
