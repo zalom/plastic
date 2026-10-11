@@ -1,22 +1,11 @@
 # frozen_string_literal: true
 
-require "stringio"
-require_relative "../commands/installer_helper"
-require_relative "../../../scripts/lib/plastic/workflows/installation"
-require_relative "../../../scripts/lib/plastic/installations"
+require_relative "recording_helper"
 
 class InstallationsRecordingTest < Plastic::TestCase
-  include InstallerHelper
+  include RecordingHelper
 
   MINE = { "type" => "command", "command" => "mine" }.freeze
-
-  def installation = Plastic::Workflows::Installation.of(call_context(harness: scoped_harness))
-
-  def installed_into(key, argv: [])
-    Plastic::Workflows::Installation.capture { installation.run(selected: [key], argv:, input: StringIO.new) }
-  end
-
-  def recorded(name) = Plastic::Installations::Recording.new(installation, Plastic::Harnesses.fetch(name)).call
 
   def claude_settings = File.join(@home, ".claude", "settings.json")
 
@@ -65,29 +54,5 @@ class InstallationsRecordingTest < Plastic::TestCase
     installed_into("claude")
 
     assert_equal EnginePermissions::ENTRIES, recorded("claude-code").permissions
-  end
-
-  def test_the_record_lists_the_marked_section_of_the_instruction_file
-    FileUtils.mkdir_p(File.join(@home, ".codex"))
-    installed_into("codex")
-    section = recorded("codex").sections.first
-
-    assert_equal [File.join(@home, ".codex", "AGENTS.md"), "<!-- BEGIN PLASTIC INTEGRATION"], section.values_at("file", "begin")
-  end
-
-  def test_the_codex_record_names_the_hooks_file_and_no_status_line
-    FileUtils.mkdir_p(File.join(@home, ".codex"))
-    installed_into("codex")
-    record = recorded("codex")
-
-    assert_equal [File.join(@home, ".codex", "hooks.json"), nil, []], [record.settings, record.status_line, record.permissions]
-  end
-
-  def test_the_record_lists_no_section_when_the_instruction_file_is_gone
-    FileUtils.mkdir_p(File.join(@home, ".codex"))
-    installed_into("codex")
-    File.delete(File.join(@home, ".codex", "AGENTS.md"))
-
-    assert_empty recorded("codex").sections
   end
 end

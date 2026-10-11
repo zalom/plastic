@@ -4,6 +4,7 @@ require "digest"
 require "json"
 require_relative "../../../scripts/lib/installer_release"
 require_relative "../../test_helper"
+require_relative "../../../scripts/lib/plastic/installations"
 
 # A throwaway package, home and agent folder for the installer commands.
 module InstallerHelper
@@ -71,6 +72,16 @@ module InstallerHelper
     call("init", "1")
     Plastic::Graph::Database::ConnectionPool.release(@home)
     FileUtils.rm_rf(File.join(@plastic_home, "stores"))
+  end
+
+  # A record of one harness that lists only its VERSION file, written with no install.
+  def written_record(harness, folder)
+    root = File.join(@home, folder)
+    file = File.join(root, "plastic", "VERSION")
+    FileUtils.mkdir_p(File.dirname(file))
+    File.write(file, "2.0.5\n")
+    Plastic::Installations.write(@plastic_home, Plastic::Installations::Record.new(harness:, version: "2.0.5", roots: [root],
+      files: [file], folders: [], settings: File.join(root, "settings.json"), hooks: [], status_line: nil, permissions: [], sections: []))
   end
 
   def claude_folder = FileUtils.mkdir_p(File.join(@home, ".claude")).first
