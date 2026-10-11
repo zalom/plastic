@@ -2,23 +2,43 @@
 
 require_relative "installer_helper"
 require_relative "../../../scripts/lib/plastic/doctor"
+require_relative "../../../scripts/lib/plastic/installations"
 
 class InstallReinstallTest < Plastic::TestCase
   include InstallerHelper
 
-  def test_a_reinstall_without_agent_options_syncs_the_registered_agents
+  def test_a_reinstall_syncs_the_installed_harnesses
     %w[.claude .codex].each { |folder| FileUtils.mkdir_p(File.join(@home, folder)) }
-    call("install", "--codex")
+    call("init", "2")
+    FileUtils.rm_f(File.join(@home, ".codex", "agents", "plastic-executor.toml"))
     result = call("install", "--reinstall")
 
     assert_equal 0, result.code, result.err
-    assert_path_exists File.join(@home, ".agents", "plastic", "manifest.json")
-    refute_path_exists File.join(@home, ".claude", "plastic")
+    assert_equal [true, false], [File.exist?(File.join(@home, ".codex", "agents", "plastic-executor.toml")), File.exist?(File.join(@home, ".claude", "plastic"))]
+  end
+
+  def test_a_reinstall_writes_the_record_of_a_harness_installed_before_records
+    claude_folder
+    call("init", "1")
+    FileUtils.rm_rf(Plastic::Installations.folder(@plastic_home))
+    call("install", "--reinstall")
+
+    assert_equal ["claude-code"], Plastic::Installations.recorded(@plastic_home)
+  end
+
+  def test_a_reinstall_never_writes_into_an_unregistered_harness
+    claude_folder
+    call("init", "1")
+    FileUtils.mkdir_p(File.join(@home, ".hermes", "plastic"))
+    File.write(File.join(@home, ".hermes", "plastic", "VERSION"), "2.0.0\n")
+    call("install", "--reinstall")
+
+    refute_path_exists File.join(@home, ".hermes", "plastic", "manifest.json")
   end
 
   def test_a_reinstall_that_changes_nothing_reports_no_removed_hook_and_makes_no_offer
     %w[.claude .codex].each { |folder| FileUtils.mkdir_p(File.join(@home, folder)) }
-    call("install", "--claude", "--codex")
+    call("init", "a")
     result = call("install", "--reinstall")
 
     assert_equal 0, result.code, result.err

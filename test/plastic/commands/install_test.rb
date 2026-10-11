@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "installer_helper"
+require_relative "../../../scripts/lib/plastic/installations"
 
 class InstallCommandTest < Plastic::TestCase
   include InstallerHelper
@@ -33,65 +34,48 @@ class InstallCommandTest < Plastic::TestCase
     assert_equal before, tree_snapshot(@plastic_home)
   end
 
-  def test_installs_the_core_files_and_registers_the_agent
+  def test_installs_the_core_files_and_offers_init
     claude_folder
-    result = call("install", "--claude")
+    result = call("install")
 
     assert_equal 0, result.code, result.err
     assert_equal "#{package_version}\n", File.read(File.join(@plastic_home, "VERSION"))
-    assert_path_exists File.join(@home, ".claude", "plastic", "manifest.json")
+    assert_match(/next:\s+plastic init/, result.out)
   end
 
-  def test_all_registers_the_agents_not_yet_registered
-    %w[.claude .agents .codex .hermes].each { |folder| FileUtils.mkdir_p(File.join(@home, folder)) }
-    call("install", "--claude")
-    before = File.read(File.join(@home, ".claude", "plastic", "manifest.json"))
-    result = call("install", "--all")
-
-    assert_equal 0, result.code, result.err
-    assert_equal before, File.read(File.join(@home, ".claude", "plastic", "manifest.json"))
-    assert_path_exists File.join(@home, ".hermes", "plastic", "manifest.json")
-  end
-
-  def test_all_registers_an_agent_whose_manifest_lists_files_that_are_gone
-    %w[.claude .codex].each { |folder| FileUtils.mkdir_p(File.join(@home, folder)) }
-    call("install", "--claude")
-    write_stale_manifest
-    result = call("install", "--all")
-
-    assert_equal 0, result.code, result.err
-    refute_match(/Codex.*already registered/, result.out)
-    assert_path_exists File.join(@home, ".codex", "hooks.json")
-  end
-
-  def write_stale_manifest
-    stale = File.join(@home, ".agents", "plastic", "manifest.json")
-    FileUtils.mkdir_p(File.dirname(stale))
-    File.write(stale, JSON.generate("files" => { File.join(@home, ".agents", "gone.md") => "0" }))
-  end
-
-  def test_refuses_to_install_over_a_registered_agent_without_reinstall
+  def test_a_first_install_writes_into_no_harness
     claude_folder
-    call("install", "--claude")
+    call("install")
+
+    assert_equal [false, []], [File.exist?(File.join(@home, ".claude", "plastic")), Plastic::Installations.recorded(@plastic_home)]
+  end
+
+  def test_an_agent_switch_is_a_usage_error
+    claude_folder
     result = call("install", "--claude")
 
+    assert_equal [2, false], [result.code, File.exist?(File.join(@plastic_home, "VERSION"))]
+  end
+
+  def test_refuses_an_installed_home_without_reinstall_and_names_init
+    call("install")
+    result = call("install")
+
     assert_equal 3, result.code
-    assert_includes result.err, "--reinstall"
+    assert_match(/plastic init.*--reinstall/, result.err)
   end
 
   def test_a_first_install_offers_enola_as_an_optional_instruction
-    claude_folder
-    result = call("install", "--claude")
+    result = call("install")
 
     assert_equal 0, result.code, result.err
     assert_match(/Enola maps the code architecture of a project.*It is optional.*#{Regexp.escape(ENOLA_INSTALLER)}/m, result.out)
-    assert_match(/next:\s+plastic version/, result.out)
   end
 
   def test_a_settings_file_that_is_not_json_stops_the_install_and_changes_nothing
     settings = File.join(claude_folder, "settings.json")
     File.write(settings, "{ not json")
-    result = call("install", "--claude")
+    result = call("install")
 
     assert_equal 1, result.code
     assert_includes result.err, "#{settings} is not valid JSON; nothing was changed"

@@ -32,11 +32,13 @@ class InstallationTest < Plastic::TestCase
     assert_equal %w[claude codex hermes], Plastic::Workflows::Installation.selected(choice(all: true))
   end
 
-  def test_a_reinstall_with_no_agent_named_takes_the_registered_agents
+  def test_a_reinstall_syncs_the_installed_harnesses_the_registry_names
     FileUtils.mkdir_p(File.join(@home, ".codex"))
-    call("install", "--codex")
+    call("init", "1")
+    FileUtils.mkdir_p(File.join(@home, ".hermes", "plastic"))
+    File.write(File.join(@home, ".hermes", "plastic", "VERSION"), "2.0.0\n")
 
-    assert_equal ["codex"], Plastic::Workflows::Installation.to_install(choice(reinstall: true))
+    assert_equal ["codex"], installation.synced
   end
 
   def test_an_older_installed_version_makes_the_package_newer

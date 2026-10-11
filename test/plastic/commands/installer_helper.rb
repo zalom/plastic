@@ -68,7 +68,7 @@ module InstallerHelper
 
   def installed_home_without_stores
     FileUtils.mkdir_p(File.join(@home, ".claude"))
-    call("install", "--claude")
+    call("init", "1")
     Plastic::Graph::Database::ConnectionPool.release(@home)
     FileUtils.rm_rf(File.join(@plastic_home, "stores"))
   end

@@ -10,7 +10,7 @@ class OfferEnolaTest < Plastic::TestCase
     outcome = offer(false)
 
     assert_match(/It is optional: Plastic works without it/, sole(outcome.steps))
-    assert_equal "plastic version", outcome.next_command
+    assert_equal "plastic init", outcome.next_command
   end
 
   def test_a_reinstall_offers_nothing
