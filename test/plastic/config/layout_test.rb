@@ -24,9 +24,9 @@ class ConfigLayoutTest < Plastic::TestCase
   end
 
   def test_flat_and_claude_agent_models_move_to_the_claude_code_section
-    data = { "agents" => { "models" => { "plastic-executor" => "haiku", "claude" => { "plastic-enforcer" => "sonnet" } } } }
+    data = { "agents" => { "models" => { "plastic-executor" => "haiku", "claude" => { "plastic-planner" => "sonnet" } } } }
 
-    expected = { "plastic-executor" => "haiku", "plastic-enforcer" => "sonnet" }
+    expected = { "plastic-executor" => "haiku", "plastic-planner" => "sonnet" }
 
     assert_equal expected, layout(data).sections.dig("harnesses", "claude-code", "agents", "models")
   end

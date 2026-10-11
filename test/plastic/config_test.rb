@@ -107,7 +107,7 @@ class ConfigTest < Plastic::TestCase
 
   def test_the_entries_name_each_setting_by_its_dotted_key
     harness_config("global:\n  runner:\n    stop_hook: true\n", "claude-code") do |cfg|
-      assert_equal [true, "opus"], cfg.entries.values_at("runner.stop_hook", "agents.models.plastic-enforcer")
+      assert_equal [true, "opus"], cfg.entries.values_at("runner.stop_hook", "agents.models.plastic-planner")
     end
   end
 
