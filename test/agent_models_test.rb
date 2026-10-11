@@ -58,6 +58,16 @@ class AgentModelsTest < Plastic::TestCase
     assert_equal "fable", AgentModels.shipped_model_for("plastic-primary-advisor")
   end
 
+  def test_the_planner_tier_is_opus
+    assert_equal "opus", AgentModels.shipped_model_for("plastic-planner")
+  end
+
+  def test_every_tier_names_a_shipped_agent_file
+    agents = File.expand_path("../agents", __dir__)
+
+    assert_empty(AgentModels::TIER_DEFAULTS.keys.reject { |name| File.exist?(File.join(agents, "#{name}.md")) })
+  end
+
   def test_an_agent_with_no_shipped_effort_takes_the_default
     assert_equal ["high", "medium"], [AgentModels.shipped_effort_for("plastic-secondary-advisor"), AgentModels.shipped_effort_for("plastic-executor")]
   end
