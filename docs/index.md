@@ -20,7 +20,6 @@ Start here, then follow the area you need.
 - [guides/](guides/): task-oriented walkthroughs (your first intent, picking a mode, reading
   the ledgers and a delivered intent).
 - [reference/](reference/): the harness adapters.
-- [adr/](adr/): architecture decision records, numbered. It holds no record yet.
 
 These areas fill in over time. The README covers the pitch and install; this folder covers
 how Plastic works and how to work with it.

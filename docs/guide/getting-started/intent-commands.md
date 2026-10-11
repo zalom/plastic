@@ -10,7 +10,7 @@ The following table lists the commands in the order that an intent uses them:
 
 | Command | What it does |
 | ------- | ------------ |
-| `plastic intent new "LINE"` | Creates the intent and files it under Active in `INDEX.md`. |
+| `plastic intent new "LINE"` | Creates the intent: its rows and its folder. |
 | `plastic intent show ID` | Prints the status, criteria, decisions, rulings and nodes of the intent. |
 | `plastic intent spec ID` | Prints the rules for writing the specification, then the open decisions. |
 | `plastic intent rule ID "TEXT"` | Records an owner ruling in the Insights section of the intent. |
@@ -24,8 +24,7 @@ The following table lists the commands in the order that an intent uses them:
 The work of an intent runs through the `plastic node` commands: `node add ID TITLE --criterion KEY`,
 `node claim`, `node done ID NODE TEXT`, `node fail`, `node ask`, `node impede` and `node resolve`.
 
-Run `plastic intent` alone to print this list. Run `plastic help intent new` for the full
-usage line of one command.
+Run `plastic help intent new` for the full usage line of one command.
 
 ## Create an intent
 
