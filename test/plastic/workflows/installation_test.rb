@@ -1,7 +1,9 @@
 # frozen_string_literal: true
 
 require_relative "../commands/installer_helper"
+require "stringio"
 require_relative "../../../scripts/lib/plastic/workflows/installation"
+require_relative "../../../scripts/lib/plastic/installations"
 
 class InstallationTest < Plastic::TestCase
   include InstallerHelper
@@ -41,6 +43,24 @@ class InstallationTest < Plastic::TestCase
     installed("0.0.1")
 
     assert_predicate installation(env: { "PLASTIC_PACKAGE_ROOT" => fake_package("2.0.5") }), :newer?
+  end
+
+  def installed_into(key)
+    Plastic::Workflows::Installation.capture { installation.run(selected: [key], argv: [], input: StringIO.new) }
+  end
+  
+  def test_an_install_into_a_registered_harness_writes_its_record
+    claude_folder
+    installed_into("claude")
+  
+    assert_includes Plastic::Installations.read(@plastic_home, "claude-code").files, File.join(@home, ".claude", "plastic", "manifest.json")
+  end
+  
+  def test_an_install_into_an_unregistered_agent_writes_no_record
+    FileUtils.mkdir_p(File.join(@home, ".hermes"))
+    installed_into("hermes")
+  
+    assert_empty Dir.glob(File.join(Plastic::Installations.folder(@plastic_home), "*"))
   end
 
   def test_capture_hands_back_the_printed_lines
