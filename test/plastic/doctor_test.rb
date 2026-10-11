@@ -34,6 +34,24 @@ class DoctorTest < Plastic::TestCase
     assert_equal "claude-code", Plastic::Doctor.harness(scope("CLAUDE_CODE_SESSION_ID" => "s-1"), session: "s-1")
   end
 
+  def test_a_session_recorded_as_unknown_is_named_with_what_unknown_means
+    seed("unknown")
+
+    error = assert_raises(Plastic::CLI::Command::Usage) { Plastic::Doctor.harness(scope, session: "s-1") }
+
+    assert_equal "the session s-1 is recorded as unknown: its start hook found no sign of a registered harness; " \
+                 "name one with --harness: claude-code, codex", error.message
+  end
+
+  def test_a_session_recorded_under_an_unregistered_name_is_named_as_having_no_doctor
+    seed("cursor")
+
+    error = assert_raises(Plastic::CLI::Command::Usage) { Plastic::Doctor.harness(scope, session: "s-1") }
+
+    assert_equal "the session s-1 is recorded as cursor, a harness Plastic has no doctor for; " \
+                 "name one with --harness: claude-code, codex", error.message
+  end
+
   def test_nothing_naming_a_harness_is_a_usage_error
     error = assert_raises(Plastic::CLI::Command::Usage) { Plastic::Doctor.harness(scope, session: nil) }
 

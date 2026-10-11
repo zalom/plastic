@@ -15,10 +15,10 @@ class StartDoctorTest < Plastic::TestCase
 
   CLAUDE = "/u/.claude/projects/p/s-1.jsonl"
 
-  def resume(health, source: nil, transcript_path: CLAUDE)
+  def resume(health, source: nil, transcript_path: CLAUDE, env: {})
     out = StringIO.new
     err = StringIO.new
-    environment = Plastic::CLI::Command::Environment.new(env: { "PLASTIC_HOME" => @plastic_home, "PLASTIC_SESSION" => "s-1" },
+    environment = Plastic::CLI::Command::Environment.new(env: { "PLASTIC_HOME" => @plastic_home, "PLASTIC_SESSION" => "s-1" }.merge(env),
       input: StringIO.new(JSON.generate({ source:, transcript_path: }.compact)), out:, err:, home: @home, directory: @home)
     code = Plastic::Hooks::Start.call([], environment:, health:)
     [code, out.string, err.string]
@@ -57,11 +57,26 @@ class StartDoctorTest < Plastic::TestCase
     assert_equal ["codex"], asked
   end
 
-  def test_a_start_no_harness_names_runs_no_doctor
+  def test_a_fresh_start_recorded_as_unknown_names_the_session_and_plastic_doctor
     asked = []
-    resume(->(_scope, harness) { asked << harness && [] }, transcript_path: nil)
+    code, out, err = resume(->(_scope, harness) { asked << harness && [] }, transcript_path: nil)
 
-    assert_empty asked
+    assert_equal [0, "", []], [code, err, asked]
+    assert_equal ["Plastic: the session s-1 is recorded as unknown: its start hook found no sign of a registered harness; " \
+                  "run plastic doctor --harness with one of claude-code, codex."], out.lines(chomp: true).grep(/doctor/)
+  end
+
+  def test_a_fresh_start_named_by_ai_agent_says_plastic_has_no_doctor_for_it
+    _code, out, _err = resume(PASSING, transcript_path: nil, env: { "AI_AGENT" => "cursor" })
+
+    assert_equal ["Plastic: the session s-1 is recorded as cursor, a harness Plastic has no doctor for; " \
+                  "run plastic doctor --harness with one of claude-code, codex."], out.lines(chomp: true).grep(/doctor/)
+  end
+
+  def test_a_resumed_start_recorded_as_unknown_prints_no_explanation
+    _code, out, _err = resume(PASSING, source: "resume", transcript_path: nil)
+
+    assert_empty out.lines.grep(/recorded as/)
   end
 
   def test_every_check_passing_prints_nothing_about_doctor
