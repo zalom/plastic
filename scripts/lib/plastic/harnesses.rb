@@ -11,9 +11,11 @@ module Plastic
 
     REGISTRY = [
       Harness.new(name: "claude-code", session_variables: %w[CLAUDE_CODE_SESSION_ID], transcript: "/\\.claude/projects/",
-        process: "claude", event_field: nil, events: EVENTS, settings: ".claude/settings.json", doctor: :ClaudeCode),
+        process: "claude", event_field: nil, events: EVENTS, settings: ".claude/settings.json", doctor: :ClaudeCode,
+        installer: "claude"),
       Harness.new(name: "codex", session_variables: %w[CODEX_THREAD_ID CODEX_SESSION_ID], transcript: "/\\.codex/sessions/",
-        process: "codex", event_field: :turn_id, events: EVENTS, settings: ".codex/hooks.json", doctor: :Codex)
+        process: "codex", event_field: :turn_id, events: EVENTS, settings: ".codex/hooks.json", doctor: :Codex,
+        installer: "codex")
     ].freeze
 
     def self.all = REGISTRY
@@ -21,6 +23,8 @@ module Plastic
     def self.names = REGISTRY.map(&:name)
 
     def self.registered?(name) = names.include?(name)
+
+    def self.found(home:, path:) = REGISTRY.select { |harness| harness.found?(home:, path:) }
 
     def self.sessions(env) = REGISTRY.to_h { |harness| [harness.name, harness.session(env)] }.compact
 
