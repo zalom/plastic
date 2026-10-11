@@ -16,7 +16,11 @@ module Plastic
         "roadmaps" => %w[roadmap roadmaps], "batches" => %w[batch batches],
         "roadmap_items" => %w[item items], "roadmap_edges" => ["roadmap edge", "roadmap edges"],
         "roadmap_log" => ["roadmap log line", "roadmap log lines"], "archives" => %w[archive archives],
-        "archive_entries" => ["archive entry", "archive entries"], "backups" => %w[backup backups], "approvals" => ["go-ahead", "go-aheads"], "verdicts" => %w[verdict verdicts]
+        "archive_entries" => ["archive entry", "archive entries"], "backups" => %w[backup backups], "approvals" => ["go-ahead", "go-aheads"], "verdicts" => %w[verdict verdicts],
+        "changes" => %w[change changes], "document_revisions" => ["document revision", "document revisions"],
+        "document_heads" => ["document head", "document heads"], "document_passages" => ["passage", "passages"],
+        "document_fts" => ["search entry", "search entries"], "retrieval_schema" => ["retrieval version", "retrieval versions"],
+        "retrieval_backfills" => ["retrieval backfill", "retrieval backfills"]
       }.freeze
 
       MIGRATIONS = {
