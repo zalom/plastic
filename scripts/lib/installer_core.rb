@@ -749,8 +749,7 @@ class InstallerCore
   end
 
   # `install_skills_flat` relocates any top-level underscore-prefixed markdown
-  # fragment (today: `_decision-tables.md`) out of the
-  # per-agent skills tree and into `plastic_home` directly, then lists them in
+  # fragment out of the per-agent skills tree and into `plastic_home` directly, then lists them in
   # `installed`, so they are manifest-tracked and eligible for prune. But
   # `install_for_agent`'s prune roots are `[config[:dir], config[:home_dir]]`,
   # which do not cover `plastic_home`, so those two files could never actually be
@@ -1069,9 +1068,8 @@ class InstallerCore
 
   # Copy each skills/<name>/ to <skills_root>/plastic-<name>/ (flat, namespaced by
   # directory name -- the only personal-skill namespacing Claude Code supports).
-  # Any top-level underscore-prefixed markdown fragment (e.g. `_decision-tables.md`,
-  # `_decision-tables.md`) is a shared non-skill fragment and relocates to ~/.plastic/
-  # instead, so every skill can read it from one shared location. `exclude` skips
+  # Any top-level underscore-prefixed markdown fragment is a shared non-skill
+  # fragment and relocates to ~/.plastic/ instead, so every skill can read it from one shared location. `exclude` skips
   # named top-level skill directories entirely (the agent-advisor skill
   # when advisor.enabled is false).
   def install_skills_flat(skills_source, skills_root, exclude: [])

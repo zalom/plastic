@@ -10,8 +10,7 @@ around broken data. A legitimately absent value is not broken data.
 
 ## Stack
 - Language: Ruby (scripts, installer, the `plastic` command)
-- Framework: a GitHub release archive that `install.sh` installs, holding the installer and the `plastic` command (`bin/plastic`). The
-  former workflow skills no longer ship; `skills/` keeps only the shared `_decision-tables.md`.
+- Framework: a GitHub release archive that `install.sh` installs, holding the installer and the `plastic` command (`bin/plastic`).
 - Testing: Minitest and Varar. `CONTRIBUTING.md` holds the patterns every test follows.
 - Source: this repository. The source command line runs as `ruby bin/plastic`.
 - Remote: git@github.com:zalom/plastic.git

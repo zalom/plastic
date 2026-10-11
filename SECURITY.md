@@ -16,7 +16,7 @@ Bundler fetches the sqlite3 gem from RubyGems when a release installs. `plastic 
 | `~/.local/share/plastic/` | The releases, the read-only Rubies under `rubies/`, the `active` and `previous` links, the installer lock and the activation record. |
 | `~/.local/bin/plastic` | A link to the active release launcher. |
 | `~/.plastic/` | Scripts, hooks, templates, `PLASTIC.md`, the install ledger `versions.json`, and your stores. |
-| `~/.claude/agents/`, `~/.claude/hooks`, `~/.claude/plastic/` | The Plastic agents and hooks for Claude Code, and the install record (`manifest.json`, `VERSION`). No workflow skills ship: the package's `skills/` holds only the shared `_decision-tables.md`, which the installer places in `~/.plastic/`, and `~/.claude/skills` may be left empty. |
+| `~/.claude/agents/`, `~/.claude/hooks`, `~/.claude/plastic/` | The Plastic agents and hooks for Claude Code, and the install record (`manifest.json`, `VERSION`). |
 | `~/.claude/settings.json` | Hook entries, and the status line when you choose it. |
 | `~/.claude/CLAUDE.md` | One managed block between the `BEGIN PLASTIC` and `END PLASTIC` markers. |
 | `~/.codex/AGENTS.md`, `~/.codex/hooks.json`, `~/.codex/agents/` | The same, for Codex CLI. |
