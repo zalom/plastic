@@ -8,7 +8,7 @@ require_relative "codex_location"
 module Plastic
   module Doctor
     class Codex
-      REPAIR = "plastic install --codex --reinstall"
+      REPAIR = VersionRecord::REINSTALL
       PLASTIC_LINE = /PLASTIC\.md/
 
       def self.trust = Check.new("hook trust:", "not verified; open Codex /hooks and review the current Plastic definitions", nil)
@@ -28,8 +28,7 @@ module Plastic
 
       def record
         path = File.join(scope.home, ".agents", "plastic", "VERSION")
-        check = VersionRecord.new(path, running).check("codex record:", install: "plastic install --codex")
-        check.repair ? check.with(repair: REPAIR) : check
+        VersionRecord.new(path, running).check("codex record:", install: "plastic init")
       end
 
       def instructions

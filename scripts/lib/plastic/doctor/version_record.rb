@@ -5,6 +5,8 @@ require_relative "check"
 module Plastic
   module Doctor
     class VersionRecord
+      REINSTALL = "plastic install --reinstall"
+
       def initialize(path, running)
         @path = path
         @running = running
@@ -14,7 +16,7 @@ module Plastic
         return Check.finding(label, "no installation record at #{path}", install) unless recorded
         return Check.ok(label, "#{running} matches #{path}") if recorded == running
 
-        Check.finding(label, "#{running} runs, but #{path} records #{recorded}", "#{install} --reinstall")
+        Check.finding(label, "#{running} runs, but #{path} records #{recorded}", REINSTALL)
       end
 
       private

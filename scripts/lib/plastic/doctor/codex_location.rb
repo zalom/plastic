@@ -12,7 +12,7 @@ module Plastic
         folder = File.join(home, ".codex")
         configured = scope.setting("CODEX_HOME").to_s
         problem = "#{configured} differs from the installer's #{folder}" unless configured.empty? || File.expand_path(configured, home) == folder
-        Check.new("CODEX_HOME:", folder, "unset CODEX_HOME or set CODEX_HOME to #{folder}, then run plastic install --codex --reinstall").judged(problem)
+        Check.new("CODEX_HOME:", folder, "unset CODEX_HOME or set CODEX_HOME to #{folder}, then run plastic install --reinstall").judged(problem)
       end
 
       private

@@ -2,13 +2,14 @@
 
 require "json"
 require_relative "check"
+require_relative "version_record"
 require_relative "codex_hook_command"
 require_relative "../harnesses"
 
 module Plastic
   module Doctor
     class ClaudeHooks
-      REPAIR = "plastic install --claude --reinstall"
+      REPAIR = VersionRecord::REINSTALL
       PLASTIC_FILE = /\Aplastic(?:-|\z)/
       RETIRED = "hook record --end"
       EVENTS = Harnesses.fetch("claude-code").events
