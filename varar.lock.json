@@ -91,7 +91,7 @@
       ]
     },
     "varar/doctor.md": {
-      "sourceHash": "fnv1a:6b4246ca",
+      "sourceHash": "fnv1a:755a1bcd",
       "examples": [
         {
           "name": "Each row gives the harness, the damage, the exit code, the check, the repair and the exit code after repair:",
@@ -188,8 +188,12 @@
         }
       ]
     },
+    "varar/init.md": {
+      "sourceHash": "fnv1a:d96af5ec",
+      "examples": []
+    },
     "varar/install.md": {
-      "sourceHash": "fnv1a:82675385",
+      "sourceHash": "fnv1a:7ab49bbe",
       "examples": []
     },
     "varar/intent-abandon.md": {
@@ -632,7 +636,7 @@
       ]
     },
     "varar/uninstall.md": {
-      "sourceHash": "fnv1a:ff527bd7",
+      "sourceHash": "fnv1a:46d25d08",
       "examples": []
     },
     "varar/update.md": {
