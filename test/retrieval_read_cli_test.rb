@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require "json"
-require "open3"
+require_relative "support/child_process"
 require "tmpdir"
 
 class RetrievalReadCliTest < Minitest::Test
@@ -37,7 +37,7 @@ class RetrievalReadCliTest < Minitest::Test
   def in_home = Dir.mktmpdir { |home| yield home }
 
   def run_cli(home, *argv)
-    out, err, status = Open3.capture3(environment(home), File.join(ROOT, "bin", "plastic"), *argv)
+    out, err, status = ChildProcess.capture3(environment(home), File.join(ROOT, "bin", "plastic"), *argv)
     { out:, err:, status: }
   end
 

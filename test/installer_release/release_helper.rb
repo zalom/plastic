@@ -8,6 +8,7 @@ require "tmpdir"
 require "zlib"
 
 require_relative "../../scripts/lib/installer_release"
+require_relative "../support/child_process"
 
 # Builds release archives, staged candidates and installation homes inside
 # one throwaway directory per test.
@@ -71,7 +72,7 @@ module ReleaseHelper
     package = File.join(source, "package")
     write_package(package, version, ruby_launcher(version))
     archive = File.join(source, "plastic.tgz")
-    system("tar", "-czf", archive, "-C", source, "package", exception: true)
+    ChildProcess.system("tar", "-czf", archive, "-C", source, "package", exception: true)
     archive
   end
 

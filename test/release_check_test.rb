@@ -3,7 +3,7 @@
 require "fileutils"
 require "json"
 require "minitest/autorun"
-require "open3"
+require_relative "support/child_process"
 require "tmpdir"
 
 class ReleaseCheckTest < Minitest::Test
@@ -64,6 +64,6 @@ class ReleaseCheckTest < Minitest::Test
 
   def check(version, *arguments)
     File.write(File.join(@root, "package.json"), JSON.generate("version" => version))
-    Open3.capture3("ruby", SCRIPT, *arguments, "--github-output", @output, "--root", @root)
+    ChildProcess.capture3("ruby", SCRIPT, *arguments, "--github-output", @output, "--root", @root)
   end
 end

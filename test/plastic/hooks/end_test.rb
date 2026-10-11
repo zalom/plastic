@@ -25,6 +25,13 @@ class EndTest < Plastic::TestCase
     refute_nil store_graphs.retrieval.session("s-1").ended_at
   end
 
+  def test_a_codex_session_end_event_ends_the_row_it_names
+    event = { session_id: "x-1", transcript_path: "/u/.codex/sessions/r.jsonl", cwd: @home, hook_event_name: "SessionEnd", reason: "other" }
+    call(input: JSON.generate(event), env: {})
+
+    assert_equal "other", store_graphs.retrieval.session("x-1").end_reason
+  end
+
   def test_end_takes_no_harness_option
     assert_call call("--harness", "codex"), code: 0, err: "plastic: invalid option: --harness\nplastic hook end\n"
   end

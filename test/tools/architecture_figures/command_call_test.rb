@@ -3,26 +3,25 @@
 require_relative "../../test_helper"
 require_relative "../../support/architecture_figures_helper"
 require "architecture_figures"
-require "open3"
+require_relative "../../support/child_process"
 require "tmpdir"
 
 class ArchitectureFiguresCommandCallTest < Minitest::Test
   include ArchitectureFiguresHelper
 
-  SESSION_VARIABLES = %w[PLASTIC_SESSION CLAUDE_CODE_SESSION_ID CODEX_SESSION_ID CODEX_THREAD_ID].freeze
   CREATE_STORE = 'require "plastic"; require "plastic/graph"; Plastic::Graph.create(home: ARGV.fetch(0), store: "global")'
 
-  def environment(home) = SESSION_VARIABLES.to_h { |name| [name, nil] }.merge("HOME" => home, "PLASTIC_HOME" => home, "PLASTIC_TMP" => File.join(home, "tmp"))
+  def environment(home) = { "HOME" => home, "PLASTIC_HOME" => home, "PLASTIC_TMP" => File.join(home, "tmp") }
 
   def normalize(line) = line.gsub(/\bintent:? \d+/) { |match| match.sub(/\d+/, "ID") }.gsub(/\d+--sample-title/, "ID--slug").squeeze(" ").strip
 
   def real_report
     Dir.mktmpdir do |home|
-      _out, err, status = Open3.capture3({ "RUBYOPT" => "" }, "ruby", "-I", File.join(ROOT, "scripts", "lib"), "-e", CREATE_STORE, home)
+      _out, err, status = ChildProcess.capture3("ruby", "-I", File.join(ROOT, "scripts", "lib"), "-e", CREATE_STORE, home)
 
       assert_predicate status, :success?, err
 
-      out, err, status = Open3.capture3(environment(home), File.join(ROOT, "bin", "plastic"), "intent", "new", "Sample title")
+      out, err, status = ChildProcess.capture3(environment(home), File.join(ROOT, "bin", "plastic"), "intent", "new", "Sample title")
 
       assert_predicate status, :success?, err
       out.lines.map { |line| normalize(line) }.reject(&:empty?)

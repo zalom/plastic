@@ -2,7 +2,7 @@
 
 require "fileutils"
 require "json"
-require "open3"
+require_relative "../../support/child_process"
 require "rbconfig"
 require "sqlite3"
 require "tmpdir"
@@ -51,9 +51,7 @@ class KernelCommand
 
   def initialize(home)
     @home = home
-    @env = { "HOME" => home, "PLASTIC_HOME" => plastic_home, "PLASTIC_TMP" => File.join(home, "tmp"),
-             "CLAUDE_CODE_SESSION_ID" => nil, "PLASTIC_SESSION" => nil, "CODEX_SESSION_ID" => nil, "CODEX_THREAD_ID" => nil,
-             "RUBYOPT" => nil, "BUNDLER_SETUP" => nil }
+    @env = { "HOME" => home, "PLASTIC_HOME" => plastic_home, "PLASTIC_TMP" => File.join(home, "tmp") }
     create_store unless File.exist?(plastic_home)
   end
 
@@ -66,7 +64,7 @@ class KernelCommand
   def origin = File.read(File.join(plastic_home, "origin_id")).strip
 
   def run(*args, input: "", env: {})
-    out, err, status = Open3.capture3(@env.merge(env), RbConfig.ruby, "-e", PROGRAM, KERNEL, *args, chdir: home, stdin_data: input)
+    out, err, status = ChildProcess.capture3(@env.merge(env), RbConfig.ruby, "-e", PROGRAM, KERNEL, *args, chdir: home, stdin_data: input)
     Call.new(status.exitstatus, out, err)
   end
 
@@ -81,7 +79,7 @@ class KernelCommand
   def read(rel) = File.read(path(rel))
 
   def create_store
-    _, err, status = Open3.capture3(@env, RbConfig.ruby, "-e", CREATE, KERNEL, chdir: home)
+    _, err, status = ChildProcess.capture3(@env, RbConfig.ruby, "-e", CREATE, KERNEL, chdir: home)
     raise "the global store was not made: #{err}" unless status.success?
   end
 

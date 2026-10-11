@@ -5,21 +5,17 @@ require_relative "../graph"
 require_relative "../doctor"
 require_relative "../harnesses/detection"
 require_relative "recap"
+require_relative "doctor_line"
 
 module Plastic
   module Hooks
     # SessionStart: names the harness, opens the session row with it, then
-    # prints the Recap the rows alone carry, and one line naming plastic
-    # doctor when a doctor check fails on a session that starts fresh.
+    # prints the Recap the rows alone carry, and, on a session that starts
+    # fresh, one line naming plastic doctor when a doctor check fails or when
+    # the harness it recorded is not registered.
     # Nothing here is call memory: a hook keeps no routine run.
     class Start < Hook
       FAILING_CHECKS = ->(scope, harness) { Doctor.failing(scope, harness:) }
-
-      FRESH_SOURCES = ["", "startup"].freeze
-
-      DOCTOR_LINE = lambda do |count|
-        "Plastic: doctor found #{count} failing #{(count == 1) ? "check" : "checks"}; run plastic doctor."
-      end
 
       def initialize(argv, health: FAILING_CHECKS, **rest)
         super(argv, **rest)
@@ -27,7 +23,8 @@ module Plastic
       end
 
       def respond(event)
-        [*recap(event), doctor_line(event)].compact.join("\n")
+        doctor = DoctorLine.new(scope, harness, session_id:, health: @health, err: environment.err)
+        [*recap(event), doctor.line(event[:source])].compact.join("\n")
       end
 
       private
@@ -40,19 +37,6 @@ module Plastic
         graphs = Graph.open(home: scope.plastic_home, store: scope.slug, session: session_id)
         open_session_row(graphs.work)
         Recap.new(graphs.retrieval, session_id:, source: event[:source], directory:).lines
-      end
-
-      def doctor_line(event)
-        return unless FRESH_SOURCES.include?(event[:source].to_s) && Harnesses.registered?(harness)
-
-        failing_count.then { |count| DOCTOR_LINE.call(count) if count.positive? }
-      end
-
-      def failing_count
-        @health.call(scope, harness).size
-      rescue => error
-        environment.err.puts "plastic hook: #{error.message}"
-        0
       end
 
       # The store's databases stay out of its versioning before any read.

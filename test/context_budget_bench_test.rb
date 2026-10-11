@@ -5,7 +5,7 @@ require "minitest/autorun"
 require "tmpdir"
 require "fileutils"
 require "json"
-require "open3"
+require_relative "support/child_process"
 require "rbconfig"
 require "yaml"
 require "stringio"
@@ -369,7 +369,7 @@ class ContextBudgetCliTest < Minitest::Test
     @live_crossed_run ||= Dir.mktmpdir("plastic-bench-cli-red") do |dir|
       core = File.join(dir, "over_budget.md")
       File.write(core, "y" * 9_000)
-      Open3.capture3({ "RUBYOPT" => nil }, RbConfig.ruby, BENCH, "--repeat", "1", "--core-file", core)
+      ChildProcess.capture3(RbConfig.ruby, BENCH, "--repeat", "1", "--core-file", core)
     end
   end
 
