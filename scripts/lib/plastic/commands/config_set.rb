@@ -25,10 +25,11 @@ module Plastic
       private
 
       def scalar(text)
-        value = YAML.safe_load(text)
-        raise CLI::Command::Usage, "a setting takes one value, not #{text}" if value.is_a?(Enumerable)
-
-        value || text
+        case YAML.safe_load(text)
+        in Enumerable then raise CLI::Command::Usage, "a setting takes one value, not #{text}"
+        in nil then text
+        in value then value
+        end
       rescue Psych::Exception
         text
       end
