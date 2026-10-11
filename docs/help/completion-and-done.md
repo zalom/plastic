@@ -41,7 +41,7 @@ INDEX but the lock is still present or stale). Finishing the tail is FINISHING a
 a done intent is never moved back to `## Active`.
 
 One report per audience: a delivery produces `outcome.md` plus one EM-to-CTO owner report, and
-no other step restates either (see `plastic help human-report-contract`).
+no other step restates either.
 
 ## Session commit records the item, you land it
 

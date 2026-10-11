@@ -297,7 +297,6 @@ Minitest/EmptyLineBeforeAssertionMethods:
     - 'test/release_guard_test.rb'
     - 'test/release_verify_test.rb'
     - 'test/releasing_skill_publish_test.rb'
-    - 'test/report_screen_skill_contract_test.rb'
     - 'test/roadmap_test.rb'
     - 'test/tick_with_commit_contract_test.rb'
     - 'test/vocabulary_scan_test.rb'
@@ -319,7 +318,6 @@ Minitest/MultipleAssertions:
     - 'test/preflight_test.rb'
     - 'test/release_check_test.rb'
     - 'test/release_guard_test.rb'
-    - 'test/report_screen_skill_contract_test.rb'
     - 'test/vocabulary_scan_test.rb'
 
 # Offense count: 181

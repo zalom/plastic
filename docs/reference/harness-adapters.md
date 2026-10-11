@@ -90,7 +90,9 @@ names.
 | `Doctor::Codex` | The record `~/.agents/plastic/VERSION`, `CODEX_HOME`, each hook in `~/.codex/hooks.json`, `~/.codex/AGENTS.md` naming `PLASTIC.md`, and a hook trust row |
 
 Each check is a `Doctor::Check`: a label, a value that starts with `ok` or names the finding,
-and the repair. `Doctor::DatabaseCheck` opens a database read-only and compares its tables with
+and the repair. The doctor only detects: it reads files and opens the databases read-only. A
+repair is a command that owns that kind of change, such as `plastic install --reinstall`, or a
+line to add to a file, and the doctor never runs it. `Doctor::DatabaseCheck` opens a database read-only and compares its tables with
 the tables its schema creates. A hook passes when every file its command names exists and is
 executable. `CodexHookCommand` parses each Codex hook command as shell words without running
 it, and accepts the installer's `env -u RUBYOPT` prefix and `|| true` suffix. The doctor does
