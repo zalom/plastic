@@ -228,7 +228,7 @@
       ]
     },
     "varar/intent-lock-status.md": {
-      "sourceHash": "fnv1a:cef09f91",
+      "sourceHash": "fnv1a:3785aab7",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -247,15 +247,6 @@
     },
     "varar/intent-note.md": {
       "sourceHash": "fnv1a:499bc78f",
-      "examples": [
-        {
-          "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
-          "line": 5
-        }
-      ]
-    },
-    "varar/intent-restore.md": {
-      "sourceHash": "fnv1a:dc7830a7",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -544,15 +535,6 @@
     },
     "varar/roadmap-show.md": {
       "sourceHash": "fnv1a:57d140d8",
-      "examples": [
-        {
-          "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
-          "line": 5
-        }
-      ]
-    },
-    "varar/roadmap-start.md": {
-      "sourceHash": "fnv1a:f6c82fb0",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
