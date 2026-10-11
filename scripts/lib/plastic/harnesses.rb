@@ -24,6 +24,8 @@ module Plastic
 
     def self.registered?(name) = names.include?(name)
 
+    def self.installed_by(installer) = REGISTRY.find { |harness| harness.installer == installer }
+
     def self.found(home:, path:) = REGISTRY.select { |harness| harness.found?(home:, path:) }
 
     def self.sessions(env) = REGISTRY.to_h { |harness| [harness.name, harness.session(env)] }.compact

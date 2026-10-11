@@ -27,6 +27,10 @@ module Plastic
       File.write(path(plastic_home, record.harness), "#{JSON.pretty_generate(record.to_h)}\n")
     end
 
+    def self.record(installer, keys)
+      keys.filter_map { |key| Harnesses.installed_by(key) }.each { |harness| write(installer.plastic_home, Recording.new(installer, harness).call) }
+    end
+
     def self.delete(plastic_home, harness) = FileUtils.rm_f(path(plastic_home, harness))
   end
 end

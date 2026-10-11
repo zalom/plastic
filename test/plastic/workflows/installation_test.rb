@@ -48,18 +48,18 @@ class InstallationTest < Plastic::TestCase
   def installed_into(key)
     Plastic::Workflows::Installation.capture { installation.run(selected: [key], argv: [], input: StringIO.new) }
   end
-  
+
   def test_an_install_into_a_registered_harness_writes_its_record
     claude_folder
     installed_into("claude")
-  
+
     assert_includes Plastic::Installations.read(@plastic_home, "claude-code").files, File.join(@home, ".claude", "plastic", "manifest.json")
   end
-  
+
   def test_an_install_into_an_unregistered_agent_writes_no_record
     FileUtils.mkdir_p(File.join(@home, ".hermes"))
     installed_into("hermes")
-  
+
     assert_empty Dir.glob(File.join(Plastic::Installations.folder(@plastic_home), "*"))
   end
 
