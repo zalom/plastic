@@ -62,6 +62,10 @@ class ArchitectureFiguresDocumentTest < Minitest::Test
     assert_equal [[], ["c.svg"]], figure_problems("![x](figures/c.svg)", [])
   end
 
+  def test_the_readme_shows_the_delivery_phases_figure
+    assert_includes File.read(File.join(ROOT, "README.md")), "](docs/contributing/figures/delivery-phases.svg)"
+  end
+
   def test_every_section_opens_with_a_drawing
     assert_equal [NO_DRAWING], sections_without_a_drawing(document)
     assert_equal ["Two"], sections_without_a_drawing("## One\n\n![a](figures/a.svg)\n\n## Two\n\nProse first.\n")

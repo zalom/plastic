@@ -37,4 +37,4 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| Offers the next command | 0 | plastic config set KEY VALUE#{harness_words} | [`config_list.rb:15`](../../../../scripts/lib/plastic/commands/config_list.rb#L15) |
+| Offers the next command | 0 | plastic config set KEY VALUE [HARNESS_WORDS] | [`config_list.rb:15`](../../../../scripts/lib/plastic/commands/config_list.rb#L15) |

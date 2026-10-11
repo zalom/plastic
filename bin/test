@@ -61,5 +61,10 @@ kernel_passed = kernel.empty? || system(RbConfig.ruby, __FILE__, "--only", *kern
 $LOAD_PATH.unshift File.join(root, "test")
 require_relative "../test/lib/failures_reporter"
 require "minitest/autorun"
-Minitest.after_run { exit false unless kernel_passed }
+Minitest.after_run do
+  next if kernel_passed
+
+  puts "the kernel suite in test/plastic/ failed: its failures are above"
+  exit false
+end
 files.each { |f| require f }

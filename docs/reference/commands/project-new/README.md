@@ -45,4 +45,4 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | --- | --- | --- | --- |
 | Failed: %{path} is not a directory | 1 | prints no next: line | [`project_new.rb:32`](../../../../scripts/lib/plastic/commands/project_new.rb#L32) |
 | Refused: %{slug} is registered at %{known}, not at %{path}; edit projects.yml to move it | 3 | prints no next: line | [`project_new.rb:40`](../../../../scripts/lib/plastic/commands/project_new.rb#L40) |
-| Offers the next command | 0 | plastic intent new TITLE --project #{slug} | [`project_new.rb:51`](../../../../scripts/lib/plastic/commands/project_new.rb#L51) |
+| Offers the next command | 0 | plastic intent new TITLE --project SLUG | [`project_new.rb:51`](../../../../scripts/lib/plastic/commands/project_new.rb#L51) |
