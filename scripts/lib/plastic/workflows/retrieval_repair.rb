@@ -3,6 +3,7 @@
 require "shellwords"
 require_relative "../cli/scope"
 require_relative "../graph/retrieval_graph"
+require_relative "../graph/retrieval/maintained_store"
 
 module Plastic
   module Workflows
@@ -10,6 +11,15 @@ module Plastic
     # retrieval maintenance names the command that readies it, the installer
     # for the global store and project new for a project store.
     class RetrievalRepair
+      # Nil when every store in `slugs` is maintained; otherwise the problem
+      # of the first store that is not.
+      def self.check(scope, slugs)
+        slugs.each { |slug| Graph::Retrieval::MaintainedStore.new(scope.plastic_home, slug).verify }
+        nil
+      rescue Graph::RetrievalGraph::MaintenanceRequired => error
+        new(scope, error).problem
+      end
+
       def initialize(scope, error)
         @scope = scope
         @error = error

@@ -32,4 +32,20 @@ class RetrievalRepairTest < Plastic::TestCase
   def test_another_error_keeps_its_message
     assert_equal "no document", problem(Plastic::Graph::RetrievalGraph::MissingReference.new("no document"))
   end
+
+  def test_a_check_of_maintained_stores_finds_no_problem
+    Plastic::Graph.create(home: @plastic_home, store: "ready")
+
+    assert_nil check(["ready"])
+  end
+
+  def test_a_check_names_the_repair_of_a_store_with_no_backfill_marker
+    store_graphs.databases.fetch(:knowledge).transaction { |batch| batch.add("DELETE FROM retrieval_backfills") }
+
+    assert_equal "retrieval maintenance is required before source global can be read; run plastic install --reinstall, then try again", check(["global"])
+  end
+
+  private
+
+  def check(slugs) = Plastic::Workflows::RetrievalRepair.check(scoped_harness(slug: "global").scope, slugs)
 end

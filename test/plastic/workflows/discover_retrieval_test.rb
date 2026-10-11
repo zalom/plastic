@@ -49,4 +49,14 @@ class DiscoverRetrievalTest < Plastic::TestCase
     assert_equal "code_discover_retrieval, gate: no intent 9 in owning store", outcome.message
     assert_nil saved_discovery
   end
+
+  def test_a_store_with_no_backfill_marker_names_its_repair
+    open_intent
+    store_graphs.databases.fetch(:knowledge).transaction { |batch| batch.add("DELETE FROM retrieval_backfills") }
+
+    outcome, = discover
+
+    assert_includes outcome.message, "run plastic install --reinstall, then try again"
+    assert_nil saved_discovery
+  end
 end
