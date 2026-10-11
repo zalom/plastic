@@ -10,13 +10,20 @@ class RetrievalReferenceBackfillTest < Plastic::TestCase
     @writes = 0
   end
 
-  def knowledge = store_graphs.databases[:knowledge]
+  def graphs
+    @graphs ||= begin
+      FileUtils.mkdir_p(File.join(@plastic_home, "stores", "backfill"))
+      Plastic::Graph.open(home: @plastic_home, store: "backfill")
+    end
+  end
 
-  def backfill = Backfill.new(store_graphs.databases, origin, after_write: -> { @writes += 1 }).call
+  def knowledge = graphs.databases[:knowledge]
+
+  def backfill = Backfill.new(graphs.databases, origin, after_write: -> { @writes += 1 }).call
 
   def keep(name, bytes)
     row = { name:, mode: 0o100644, mtime: 0, sz: bytes.bytesize, data: Plastic::Graph::SQL::Bytes.new(bytes), intent_id: "1", sha256: "h" }
-    store_graphs.databases[:references].transaction { |batch| batch.put(:sqlar, row) }
+    graphs.databases[:references].transaction { |batch| batch.put(:sqlar, row) }
   end
 
   def heads = knowledge.rows("SELECT path FROM document_heads ORDER BY path").map { |row| row.fetch("path") }
@@ -32,8 +39,6 @@ class RetrievalReferenceBackfillTest < Plastic::TestCase
   end
 
   def test_a_store_is_not_complete_before_the_backfill
-    store_graphs
-
     refute Backfill.complete?(knowledge.path, origin)
   end
 
@@ -58,7 +63,8 @@ class RetrievalReferenceBackfillTest < Plastic::TestCase
   end
 
   def test_a_document_that_already_has_a_head_is_not_written_again
-    open_intent
+    work = graphs.work
+    work.print_intent(work.write_intent(title: "Alpha").intent_id)
     backfill
 
     assert_equal 0, @writes
