@@ -70,6 +70,14 @@ class WorkflowStartAutoTest < Plastic::TestCase
     assert_equal [nil, "open"], [retrieval.lock("1"), retrieval.intent("1").status]
   end
 
+  def test_an_active_intent_with_no_lock_takes_the_lock
+    specified_intent
+    approve
+    store_graphs.work.activate_intent("1")
+
+    assert_equal [:done, "s-1"], [start, retrieval.lock("1")&.session_id]
+  end
+
   def test_an_intent_with_a_go_ahead_starts
     specified_intent
     approve

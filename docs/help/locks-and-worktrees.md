@@ -12,15 +12,26 @@ exist only for auto teams: an interactive session working direct or thinking tak
 For an auto team, exactly one session develops an intent's delivery at a time. The lock is one
 row of the `locks` table in the machine's `local.db`, keyed by the store and the intent. The row
 holds the session id, the mode, and the times the lock was taken and last renewed. The session
-id is the only authorization identity. Liveness is a lease: the record hook (`plastic hook record`)
-renews every lock row the session holds, and a lock counts as expired when its renewal is older than the TTL of 1800
-seconds.
+id is the only authorization identity. The record hook (`plastic hook record`) renews every lock
+row the session holds at the end of each turn.
+
+| The lock's session | The lock is |
+| --- | --- |
+| has ended (`plastic hook end` wrote its end) | expired, whatever its renewal time |
+| renewed the lock within the last 30 minutes (the TTL of 1800 seconds) | live: renewed |
+| holds a node of the intent claimed within the last 2 hours (the node limit of 7200 seconds) | live: that node is open |
+| none of these | expired |
+
+A claim records the session that ran `plastic node claim` and the claim time, so the
+orchestrator that claims each node it dispatches keeps its lock while a subagent works on that
+node, even when the orchestrator has no turns. The TTL and the node limit stop a crashed session,
+which never ends, from holding a lock for good.
 
 `plastic auto ID` takes the lock. Another session that finds a live lock gets exit 3 and backs
 off. An expired lock is taken over by the next `plastic auto ID`. Ending the intent with
 `plastic intent end` releases the lock. To read a lock back, run `plastic intent lock status ID`.
 It prints the session, the mode, the taken and renewed times, whether the lock is live or
-expired, and the code worktree when the store's project names a repository.
+expired and why, and the code worktree when the store's project names a repository.
 
 The record hook resolves the current session in a fixed precedence: the stdin `session_id`
 first, then the `CLAUDE_CODE_SESSION_ID` environment variable, then a derived key when neither

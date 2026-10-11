@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require "time"
 require_relative "record"
 
 module Plastic
@@ -11,12 +10,13 @@ module Plastic
       include Record
     end
 
-    # A lock's liveness: renewed within the TTL of now.
     class Lock
       TTL = 1800
-
-      # True when `renewed_at` lies within the TTL of `now`.
-      def live?(now = Time.now) = (now - Time.parse(renewed_at)) <= TTL
+      NODE_LIMIT = 7200
+      WINDOW = "#{TTL / 60} minutes".freeze
     end
   end
 end
+
+require_relative "lock/claim"
+require_relative "lock/liveness"

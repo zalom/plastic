@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 484" width="980" height="484" role="img" xml:space="preserve">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 586" width="980" height="586" role="img" xml:space="preserve">
 <title>What plastic intent end touches</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
@@ -110,7 +110,13 @@
 <rect x="336" y="408" width="196" height="28" rx="6" class="card"/>
 <text x="344" y="426" class="tm" text-anchor="start">Knowledge::Spec</text>
 <rect x="336" y="442" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="460" class="tm" text-anchor="start">Work::Reader</text>
+<text x="344" y="460" class="tm" text-anchor="start">Lock::Liveness</text>
+<rect x="336" y="476" width="196" height="28" rx="6" class="card"/>
+<text x="344" y="494" class="tm" text-anchor="start">Claims</text>
+<rect x="336" y="510" width="196" height="28" rx="6" class="card"/>
+<text x="344" y="528" class="tm" text-anchor="start">Work::Reader</text>
+<rect x="336" y="544" width="196" height="28" rx="6" class="card"/>
+<text x="344" y="562" class="tm" text-anchor="start">Lock::Claim</text>
 <rect x="556" y="34" width="186" height="75" rx="14" class="db"/>
 <text x="568" y="52" class="tb" text-anchor="start">knowledge_graph.db</text>
 <text x="568" y="68" class="tm" text-anchor="start">documents  R</text>
@@ -118,26 +124,27 @@
 <text x="568" y="98" class="tm" text-anchor="start">rulings  R</text>
 <path d="M 556 53 L 536 53" class="wire-read"/>
 <path d="M 544 48 L 536 53 L 544 58 Z" class="head"/>
-<rect x="556" y="123" width="186" height="45" rx="14" class="db"/>
+<rect x="556" y="123" width="186" height="60" rx="14" class="db"/>
 <text x="568" y="141" class="tb" text-anchor="start">local.db</text>
 <text x="568" y="157" class="tm" text-anchor="start">locks  RW</text>
+<text x="568" y="172" class="tm" text-anchor="start">sessions  R</text>
 <path d="M 536 134 L 556 134" class="wire"/>
 <path d="M 548 129 L 556 134 L 548 139 Z" class="head"/>
 <path d="M 556 142 L 536 142" class="wire-read"/>
 <path d="M 544 137 L 536 142 L 544 147 Z" class="head"/>
-<rect x="556" y="182" width="186" height="90" rx="14" class="db"/>
-<text x="568" y="200" class="tb" text-anchor="start">work_graph.db</text>
-<text x="568" y="216" class="tm" text-anchor="start">completions  W</text>
-<text x="568" y="231" class="tm" text-anchor="start">intents  RW</text>
-<text x="568" y="246" class="tm" text-anchor="start">nodes  R</text>
-<text x="568" y="261" class="tm" text-anchor="start">verdicts  R</text>
-<path d="M 536 193 L 556 193" class="wire"/>
-<path d="M 548 188 L 556 193 L 548 198 Z" class="head"/>
-<path d="M 556 201 L 536 201" class="wire-read"/>
-<path d="M 544 196 L 536 201 L 544 206 Z" class="head"/>
-<text x="556" y="298" class="tm tag-muted" text-anchor="start">R read  W write</text>
-<text x="556" y="312" class="tm tag-muted" text-anchor="start">declared: named by the</text>
-<text x="556" y="326" class="tm tag-muted" text-anchor="start">command, tables not found</text>
+<rect x="556" y="197" width="186" height="90" rx="14" class="db"/>
+<text x="568" y="215" class="tb" text-anchor="start">work_graph.db</text>
+<text x="568" y="231" class="tm" text-anchor="start">completions  W</text>
+<text x="568" y="246" class="tm" text-anchor="start">intents  RW</text>
+<text x="568" y="261" class="tm" text-anchor="start">nodes  R</text>
+<text x="568" y="276" class="tm" text-anchor="start">verdicts  R</text>
+<path d="M 536 208 L 556 208" class="wire"/>
+<path d="M 548 203 L 556 208 L 548 213 Z" class="head"/>
+<path d="M 556 216 L 536 216" class="wire-read"/>
+<path d="M 544 211 L 536 216 L 544 221 Z" class="head"/>
+<text x="556" y="313" class="tm tag-muted" text-anchor="start">R read  W write</text>
+<text x="556" y="327" class="tm tag-muted" text-anchor="start">declared: named by the</text>
+<text x="556" y="341" class="tm tag-muted" text-anchor="start">command, tables not found</text>
 <rect x="766" y="34" width="200" height="28" rx="6" class="card"/>
 <text x="774" y="52" class="tm" text-anchor="start">store/index.json</text>
 <rect x="766" y="68" width="200" height="28" rx="6" class="card"/>

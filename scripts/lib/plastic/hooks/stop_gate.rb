@@ -29,7 +29,7 @@ module Plastic
 
       private
 
-      def lock = @retrieval.locks_of(@session_id).find { |held| held.store == @retrieval.store && held.mode == "auto" && held.live?(@now) }
+      def lock = @retrieval.locks_of(@session_id).find { |held| held.store == @retrieval.store && held.mode == "auto" && @retrieval.liveness(held).live?(@now) }
     end
   end
 end

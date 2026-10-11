@@ -4,6 +4,7 @@ require_relative "../../../routine_run"
 require_relative "../session"
 require_relative "../../lock"
 require_relative "touched"
+require_relative "claims"
 
 module Plastic
   module Graph
@@ -73,6 +74,9 @@ module Plastic
             row = local.row(LAST_RUN_SQL, store: @store, intent_id:)
             row && RoutineRun.from_row(row, row.fetch("subject"))
           end
+
+          # The Lock::Liveness of `lock`.
+          def liveness(lock) = Lock::Liveness.new(lock, session(lock.session_id)&.ended_at, Claims.new(@databases, store: @store).call(lock))
 
           # Intent ids this session touched, most recent first.
           def touched(session_id) = Touched.new(@databases, store: @store, origin: @origin).call(session_id)

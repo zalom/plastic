@@ -47,7 +47,7 @@ intent instead.
 | Command | Result |
 | ------- | ------ |
 | `plastic auto ID` | Takes the delivery lock of one intent for this session, sets it active, and prints its code worktree and branch. The agent makes the worktree at the printed path on the printed branch. Given a roadmap slug, it arms the first item in flight, or names `plastic roadmap open SLUG ITEM` for the first ready item. |
-| `plastic intent lock status ID` | The session that holds the intent's lock, its mode, when it was taken and renewed, whether it is live or expired, and the code worktree. |
+| `plastic intent lock status ID` | The session that holds the intent's lock, its mode, when it was taken and renewed, whether it is live or expired and why, and the code worktree. |
 
 `plastic auto` takes exactly one id and runs no version control command: it prints the
 worktree command, and the agent runs it. A live lock of another session refuses with exit 3,

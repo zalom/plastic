@@ -102,7 +102,7 @@ module Plastic
       # The backups of this store: write, preview, list, purge and restore.
       def backups
         store = @retrieval.store
-        Knowledge::Backup::StoreBackups.new(local_db, File.join(home_dir, "stores", store), store, session: @writers.session)
+        Knowledge::Backup::StoreBackups.new(local_db, File.join(home_dir, "stores", store), @retrieval, session: @writers.session)
       end
 
       private

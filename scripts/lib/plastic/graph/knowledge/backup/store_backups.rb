@@ -17,8 +17,9 @@ module Plastic
           # One line of the list: a folder, its row or both.
           Entry = Struct.new(:number, :folder, :started, :status, :goal, :flag)
 
-          def initialize(local_db, store_root, slug, session: nil, clock: Time)
-            @target = Target.new(local_db, store_root, slug, session)
+          def initialize(local_db, store_root, retrieval, session: nil, clock: Time)
+            @target = Target.new(local_db, store_root, retrieval.store, session)
+            @retrieval = retrieval
             @clock = clock
           end
 
@@ -43,7 +44,7 @@ module Plastic
 
           def purger = Purger.new(@target.local_db, @target.root, @target.slug)
 
-          def restorer = Restorer.new(@target.local_db, @target.root, @target.slug, now: @clock.now, session: @target.session)
+          def restorer = Restorer.new(@target.local_db, @target.root, @retrieval, now: @clock.now, session: @target.session)
 
           # The newest folder marked done, or nil.
           def latest_done = folders.names.reverse.find { |name| folders.status(name) == "done" }

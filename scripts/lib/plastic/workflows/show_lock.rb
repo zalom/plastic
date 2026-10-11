@@ -7,7 +7,7 @@ require_relative "go_ahead"
 module Plastic
   module Workflows
     # Prints an intent's lock row: the session, the mode, when it was taken
-    # and renewed, and whether it is still live; then the code worktree when
+    # and renewed, whether it is still live and why; then the code worktree when
     # the store's project names a repository. Refuses an unknown id.
     class ShowLock < CodeWorkflow
       extend GoAhead
@@ -25,22 +25,24 @@ module Plastic
 
       read "print the lock and the worktree" do |context|
         lock = context.retrieval.lock(context.intent_id)
-        context[:state] = state_of(lock)
-        context.print(lock ? described(lock, context.state) : "lock: none")
+        liveness = lock && context.retrieval.liveness(lock)
+        context[:state] = state_of(liveness)
+        context.print(liveness ? described(liveness, context.state) : "lock: none")
         worktree = Worktree.of(context.scope, context.intent)
         context.print("worktree: #{worktree.path}") if worktree
       end
 
       reads_go_ahead
 
-      def self.state_of(lock)
-        return "none" unless lock
+      def self.state_of(liveness)
+        return "none" unless liveness
 
-        lock.live? ? "live" : "expired"
+        liveness.live? ? "live" : "expired"
       end
 
-      def self.described(lock, state)
-        "lock: session #{lock.session_id}, mode #{lock.mode}, taken #{lock.taken_at}, renewed #{lock.renewed_at}, #{state}"
+      def self.described(liveness, state)
+        lock = liveness.lock
+        "lock: session #{lock.session_id}, mode #{lock.mode}, taken #{lock.taken_at}, renewed #{lock.renewed_at}, #{state}: #{liveness.why}"
       end
 
       outcome :closed, if: ->(context) { %w[done abandoned].include?(context.intent.status) }, offers: nil,

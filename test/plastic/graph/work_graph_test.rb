@@ -27,6 +27,12 @@ class WorkGraphTest < Plastic::TestCase
       [work.intent_problem(parent_id: "9"), work.ref_line("ENG-1")]
   end
 
+  def test_the_backups_refuse_a_restore_while_a_live_lock_holds_an_intent
+    work.take_lock("1", session_id: "s-2", mode: "auto")
+
+    assert_predicate work.backups.restorer, :locked?
+  end
+
   def test_a_sync_plan_applies_through_the_work_graph
     open_intent
     write("store/1--alpha/spec.md", "# Spec\n")
