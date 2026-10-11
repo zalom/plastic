@@ -8,6 +8,8 @@ require_relative "discovery_manifest"
 require_relative "passage_rows"
 require_relative "../graph/retrieval/search/excerpt"
 require_relative "discovery_persistence"
+require_relative "retrieval_repair"
+require_relative "../graph/retrieval/maintained_store"
 
 module Plastic
   module Workflows
@@ -15,7 +17,9 @@ module Plastic
     class DiscoverRetrieval < CodeWorkflow
       [facts, steps, outcomes].each(&:clear)
 
-      sets :intent, :source_scope, :discovery, :handoff_text, :context_command, :context_complete
+      sets :intent, :source_scope, :discovery, :handoff_text, :context_command, :context_complete, :problem
+
+      forget_stop :problem
 
       read "check the intent id" do |context|
         IntentIdFormat.validate(context.intent_id)
@@ -32,6 +36,14 @@ module Plastic
       end
 
       gate "no intent %{intent_id} in owning store", stops: :failure, pass: ->(context) { !context.intent.nil? }
+
+      read "check the source stores" do |context|
+        DiscoveryScope.resolve(context).each { |slug| Graph::Retrieval::MaintainedStore.new(context.scope.plastic_home, slug).verify }
+      rescue Graph::RetrievalGraph::MaintenanceRequired => error
+        context[:problem] = RetrievalRepair.new(context.scope, error).problem
+      end
+
+      gate "%{problem}", stops: :failure, pass: ->(context) { context.problem.nil? }
 
       step "record retrieval discovery", done: ->(context) { !context.discovery.nil? } do |context|
         source_scope = DiscoveryScope.resolve(context)
