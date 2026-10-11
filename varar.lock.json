@@ -54,6 +54,42 @@
         }
       ]
     },
+    "varar/config-get.md": {
+      "sourceHash": "fnv1a:31f93602",
+      "examples": [
+        {
+          "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
+          "line": 7
+        }
+      ]
+    },
+    "varar/config-list.md": {
+      "sourceHash": "fnv1a:7c1281fa",
+      "examples": [
+        {
+          "name": "Each row gives the setup, the call, the exit code, the first line, the open lines and the next line:",
+          "line": 7
+        }
+      ]
+    },
+    "varar/config-set.md": {
+      "sourceHash": "fnv1a:770f0daf",
+      "examples": [
+        {
+          "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
+          "line": 9
+        }
+      ]
+    },
+    "varar/config.md": {
+      "sourceHash": "fnv1a:70a574f8",
+      "examples": [
+        {
+          "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
+          "line": 8
+        }
+      ]
+    },
     "varar/doctor.md": {
       "sourceHash": "fnv1a:6b4246ca",
       "examples": [
@@ -126,7 +162,7 @@
       ]
     },
     "varar/hook-end.md": {
-      "sourceHash": "fnv1a:43a47ba1",
+      "sourceHash": "fnv1a:ce1823c4",
       "examples": [
         {
           "name": "Each row gives the arguments, the end event, the session, the exit code, the message and the ended row:",
@@ -134,20 +170,20 @@
         }
       ]
     },
-    "varar/hook-record.md": {
-      "sourceHash": "fnv1a:0c8dbf8c",
+    "varar/hook-start.md": {
+      "sourceHash": "fnv1a:009b455a",
       "examples": [
         {
-          "name": "Each row gives the arguments, the event, the session, the exit code, the message and the row:",
-          "line": 8
+          "name": "Each row gives the source, the session, the exit code, the first line, the names and the harness:",
+          "line": 10
         }
       ]
     },
-    "varar/hook-resume.md": {
-      "sourceHash": "fnv1a:e127a48e",
+    "varar/hook-stop.md": {
+      "sourceHash": "fnv1a:91878072",
       "examples": [
         {
-          "name": "Each row gives the source, the session, the exit code, the first line and the names:",
+          "name": "Each row gives the arguments, the event, the session, the exit code, the message and the row:",
           "line": 9
         }
       ]
@@ -551,7 +587,7 @@
       "examples": []
     },
     "varar/session-note.md": {
-      "sourceHash": "fnv1a:d6141d51",
+      "sourceHash": "fnv1a:91259c90",
       "examples": [
         {
           "name": "Each row gives the notes, the session, the exit code, the result and the note line:",
