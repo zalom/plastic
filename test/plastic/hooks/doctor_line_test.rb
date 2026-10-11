@@ -27,6 +27,11 @@ class DoctorLineTest < Minitest::Test
     assert_nil line("unknown", session_id: nil)
   end
 
+  def test_an_unknown_session_names_only_the_harnesses_the_doctor_has_checks_for
+    assert_equal "Plastic: the session s-1 is recorded as unknown: its start hook found no sign of a registered harness; " \
+                 "run plastic doctor --harness with one of claude-code, codex.", line("unknown")
+  end
+
   def test_the_doctor_is_asked_with_the_scope_and_the_harness
     asked = []
     line("claude-code", health: ->(scope, harness) { asked << [scope, harness] && [] })
