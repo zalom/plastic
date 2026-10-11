@@ -11,8 +11,9 @@ class RetrievalSearchResultsStoreTest < Plastic::TestCase
     store_graphs.databases[:references].transaction { |batch| batch.put(:sqlar, row) }
   end
 
-  def test_a_store_with_every_graph_file_opens_its_retrieval_graph
+  def test_a_backfilled_store_opens_its_retrieval_graph
     keep_a_file
+    retrieval.backfill
 
     assert_equal "global", store("global").retrieval.store
   end
@@ -21,5 +22,12 @@ class RetrievalSearchResultsStoreTest < Plastic::TestCase
     error = assert_raises(Plastic::Graph::RetrievalGraph::MaintenanceRequired) { store("other").retrieval }
 
     assert_equal "retrieval maintenance is required before source other can be read", error.message
+  end
+
+  def test_a_store_with_no_backfill_marker_is_refused
+    FileUtils.mkdir_p(File.join(@plastic_home, "stores", "old"))
+    Plastic::Graph.open(home: @plastic_home, store: "old").databases.each_value { |database| database.rows("SELECT 1") }
+
+    assert_equal "old", assert_raises(Plastic::Graph::RetrievalGraph::MaintenanceRequired) { store("old").retrieval }.slug
   end
 end

@@ -7,6 +7,7 @@ require_relative "../graph/retrieval_graph"
 require_relative "context_documents"
 require_relative "context_persistence"
 require_relative "context_submission"
+require_relative "retrieval_repair"
 
 module Plastic
   module Workflows
@@ -26,7 +27,7 @@ module Plastic
       rescue Errno::ENOENT, JSON::ParserError => error
         raise CLI::Command::Usage, error.message
       rescue Graph::RetrievalGraph::MaintenanceRequired, Graph::RetrievalGraph::MissingReference, KeyError, CLI::Command::Failure => error
-        context[:problem] = error.message
+        context[:problem] = RetrievalRepair.new(context.scope, error).problem
       end
 
       gate "%{problem}", stops: :failure, pass: ->(context) { context.problem.nil? }

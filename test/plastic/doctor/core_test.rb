@@ -69,6 +69,20 @@ class DoctorCoreTest < Plastic::TestCase
     assert_equal 3, check("store #{SLUG}:").value.scan("is missing").size
   end
 
+  def test_a_store_with_no_backfill_marker_names_project_new
+    forget_backfill(SLUG)
+    store = check("store #{SLUG}:")
+
+    assert_equal [Plastic::Doctor::RetrievalMarker::PROBLEM, "plastic project new #{SLUG} #{project_dir}"], [store.value, store.repair]
+  end
+
+  def test_a_global_store_with_no_backfill_marker_names_the_reinstall
+    forget_backfill("global")
+    global = check("global store:")
+
+    assert_equal [Plastic::Doctor::RetrievalMarker::PROBLEM, "plastic install --reinstall"], [global.value, global.repair]
+  end
+
   def test_a_missing_global_store_names_the_reinstall
     FileUtils.rm_rf(File.join(@plastic_home, "stores", "global"))
     global = check("global store:")
