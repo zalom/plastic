@@ -74,9 +74,8 @@ plan-reviewer-prompt`; the other three carry the payloads below.
 
 ## Fallback: always a report
 
-Decision-shaping (the preamble plus these prompts) makes the report mandatory, but child-agent
-honor is best-effort across harnesses (Tier B/C in [`harness-adapters.md`](https://github.com/zalom/plastic/blob/main/docs/reference/harness-adapters.md)), so the
-contract is never a hard block. When a dispatched agent returns no usable report
+These prompts make the report mandatory, but a dispatched agent honors them on a best effort,
+so the contract is never a hard block. When a dispatched agent returns no usable report
 (it went idle, emitted only a bare ping, or its message was lost to a mid-run interjection), the
 main session reads the account from the disk instead: the commits on the intent branch, the
 diff, and the test result. It records the node with `plastic node done ID NODE TEXT` when that

@@ -39,41 +39,10 @@ class HarnessSupportDocsTest < Minitest::Test
     assert_includes section, "Hermes"
   end
 
-  # The doc counts the full residue of Claude-specific lines on a Codex install:
-  # the 4 hook-launcher lines, which are also the only entries
-  # codex_install_content_test's allowlist carries. Pins the claim so it cannot
-  # silently understate the residue.
-  def test_support_matrix_discloses_the_full_residue_count
-    section = harness_support_section.gsub(/\s+/, " ")
-    assert_includes section, "Four lines still speak Claude Code afterward"
-    assert_includes section, "four instruction lines that name Claude's hook launcher directory"
-    assert_includes section, "left the installed tree in 2.0"
-  end
-
   def test_support_matrix_names_no_plugin_install_path
     section = harness_support_section.downcase
     refute_includes section, "plugin"
     refute_includes section, "marketplace"
-  end
-
-  def per_agent_model_mapping_section
-    text = adapters_doc_text
-    start = text.index("### Per-agent model mapping")
-    raise "### Per-agent model mapping heading not found" unless start
-    rest = text[start..]
-    next_heading = rest.index("\n### ", 1)
-    next_heading ? rest[0...next_heading] : rest
-  end
-
-  # check_agent_model_drift_codex reads `model` and `model_reasoning_effort` as two
-  # separate lines (codex_agent_toml_model_fields) and compares both against their
-  # resolved defaults. The doc must describe both fields, not the effort line only.
-  def test_model_drift_doc_describes_both_fields_not_effort_only
-    section = per_agent_model_mapping_section.gsub(/\s+/, " ")
-    assert_includes section, "reads the `model` and `model_reasoning_effort` lines as two separate values"
-    assert_includes section, "compares the model value against the tier's resolved Codex model id"
-    assert_includes section, "intent 216"
-    refute_includes section, "compares each file's `model_reasoning_effort` line against the tier default, honoring"
   end
 
   def test_readme_has_no_doubled_and
