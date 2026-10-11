@@ -1,7 +1,7 @@
 # Technical reference
 
-The internals of the whole system are in [docs/internals.md](../internals.md). This page
-covers the tools around the `plastic` command.
+The system and its parts are in [ARCHITECTURE.md](ARCHITECTURE.md). This page covers the
+tools around the `plastic` command.
 
 ## The gates
 
@@ -118,7 +118,28 @@ commands would.
 ## The byte budget
 
 `bin/plastic-bench` is the one script that measures every standing surface, the agent catalog
-included. `test/context_budget_bench_test.rb` fails when a surface crosses its ceiling.
+included. It builds a fixture home with the real installer and measures the session boot
+there. `test/context_budget_bench_test.rb` runs the same module in the suite, so a crossed
+ceiling turns the suite red.
+
+| Surface | What it measures | Ceiling in bytes |
+| ------- | ---------------- | ---------------- |
+| Core block | `PLASTIC.md` | under 8,192 |
+| Boot injection | The context the start hook gives the fixture session | under 15,000 |
+| Boot injection plus skill catalog | The two together | under 17,500, lowered and never raised |
+| Standing surface | The core block, the boot injection and both catalogs | under 5,000 |
+
+The bench also reports the agent catalog, the skill catalog, the median skill body and the
+working set, with the working set's gap to its 15,000 target. It enforces no ceiling on those.
+
+| Option | Does |
+| ------ | ---- |
+| `--repeat N` | Runs N boots, 5 by default, and fails when they disagree |
+| `--core-file PATH` | Measures PATH as the core block, to show that a ceiling can fail |
+| `--repo PATH` | Measures another Plastic checkout |
+
+It exits 0 when every ceiling holds, 1 when one is crossed, and 2 on bad usage. The bench is a
+maintainer tool: it reads this repository's own files, so it is never installed.
 
 ## Layout
 

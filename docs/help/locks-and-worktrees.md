@@ -35,7 +35,7 @@ expired and why, and the code worktree when the store's project names a reposito
 
 A hook resolves the current session in a fixed precedence: the stdin `session_id` first, then
 the session variable of the harness, such as `CLAUDE_CODE_SESSION_ID` or `CODEX_THREAD_ID`. When
-one harness runs inside another, the inner session wins. See [`docs/internals.md`](https://github.com/zalom/plastic/blob/main/docs/internals.md) for depth.
+one harness runs inside another, the inner session wins. See [`docs/reference/harness-adapters.md`](https://github.com/zalom/plastic/blob/main/docs/reference/harness-adapters.md) for the order.
 
 There is exactly one lock in Plastic. A second lock for maintenance would mislead: a resuming
 session could mistake a lock held by a maintenance session for an active delivery. Maintenance detects a live delivery lock and defers; it never

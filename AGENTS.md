@@ -41,8 +41,8 @@ Rules for any agent (or human) contributing to this repository.
 ### Documentation
 - Know which doc owns what. `PLASTIC.md` owns how Plastic works; it is plugin-maintained and overwritten on `plastic update`, so do not edit it. `AGENTS.md` (this file) owns how to work on this repository. Release history lives in `CHANGELOG.md` at the repo root.
 - Keep docs in sync with the framework. When you change the architecture, the lifecycle,
-  conventions, skills, hooks, templates, or harnesses, update `docs/contributing/ARCHITECTURE.md` and
-  `docs/internals.md` in the same change, and rebuild the figures with `ruby bin/architecture-figures`.
+  conventions, hooks or harnesses, update `docs/contributing/ARCHITECTURE.md` and its figures in
+  the same change, and rebuild the figures with `ruby bin/architecture-figures`.
 - Keep the README light. It carries the pitch, install, and a pointer into `docs/`.
   Deeper material belongs in `docs/`.
 - Writing follows the `plain-writing` skill. It owns the wording rules for every document in this repository; this file does not restate them.

@@ -9,7 +9,7 @@ module Plastic
   module Graph
     # The design of Plastic's databases, read from db/schema.rb the way Rails reads
     # db/schema.rb: every table once, every database as a list of tables, a version
-    # stamp, and a mark on the tables that hold legacy data. docs/internals.md says how.
+    # stamp, and a mark on the tables that hold legacy data. docs/contributing/ARCHITECTURE.md says how.
     class SchemaFile
       extend Forwardable
 

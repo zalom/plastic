@@ -12,8 +12,8 @@ Start here, then follow the area you need.
 ## Orientation
 - [contributing/ARCHITECTURE.md](contributing/ARCHITECTURE.md): the system and its parts in
   drawings, the store layout, and the component map.
-- [internals.md](internals.md): how Plastic stays deterministic, the determinism
-  breakdown, and the harness system.
+- [reference/harness-adapters.md](reference/harness-adapters.md): the harness registry, how a
+  hook names its session and its harness, and what Plastic installs into each harness.
 
 ## Areas (growing)
 - [concepts/](concepts/): the model behind Plastic (how intents are sourced and chained).
