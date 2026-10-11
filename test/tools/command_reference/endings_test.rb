@@ -32,6 +32,12 @@ class CommandReferenceEndingsTest < Minitest::Test
     assert_equal ["plastic project new SLUG PATH", "plastic status"], rows.select { |ending| ending.kind == :next_step }.map(&:next_text)
   end
 
+def test_an_interpolated_next_step_reads_its_value_as_a_placeholder
+  rows = exit_rows("project new", 0).select { |ending| ending.kind == :next_step }
+
+  assert_equal ["plastic intent new TITLE --project SLUG"], rows.map(&:next_text)
+end
+
   def test_a_hook_has_only_exit_0
     assert_equal [0], page("hook end").endings.map(&:exit_code).uniq
   end

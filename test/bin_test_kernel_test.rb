@@ -50,6 +50,14 @@ class BinTestKernelTest < Minitest::Test
     assert_includes out, "expected failure message"
   end
 
+def test_a_failed_kernel_suite_is_named_on_the_last_line
+  write_test("a_test", LIVE)
+  write_kernel_test("k_test", RED)
+  out, _err, _status = run_bin_test
+
+  assert_equal "the kernel suite in test/plastic/ failed: its failures are above", out.lines.last.chomp
+end
+
   def test_full_run_with_only_kernel_tests_runs_them
     write_kernel_test("k_test", KERNEL)
     out, err, status = run_bin_test
