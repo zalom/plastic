@@ -100,11 +100,10 @@ class PlasticCoreBudgetTest < Minitest::Test
   end
 end
 
-# The per-boot doctrine read is PLASTIC.md plus the installed decision tables,
-# under 11,000 bytes: the ruled core ceiling, the fragment and some headroom.
+# The per-boot doctrine read is PLASTIC.md, under 11,000 bytes.
 class PlasticPerBootReadTest < Minitest::Test
   REPO = File.expand_path("../../", __FILE__)
-  DOCTRINE_FILES = %w[PLASTIC.md skills/_decision-tables.md].freeze
+  DOCTRINE_FILES = %w[PLASTIC.md].freeze
   CEILING = 11_000
 
   def test_every_doctrine_file_exists

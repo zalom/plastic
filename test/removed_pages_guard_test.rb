@@ -11,7 +11,8 @@ class RemovedPagesGuardTest < Minitest::Test
     "docs/help/maintenance-and-revisions.md" => /maintenance-and-revisions/,
     "docs/guide/getting-started/migrate-command.md" => /migrate-command/,
     "docs/skill-authoring.md" => /skill-authoring/,
-    "docs/adr/index.md" => %r{\(adr/|docs/adr\b}
+    "docs/adr/index.md" => %r{\(adr/|docs/adr\b},
+    "skills/_decision-tables.md" => /decision-tables/
   }.freeze
 
   def subjects = Dir.glob(SUBJECTS, base: ROOT).select { |path| File.file?(File.join(ROOT, path)) }.sort
