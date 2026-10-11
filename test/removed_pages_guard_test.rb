@@ -5,11 +5,14 @@ require "minitest/autorun"
 class RemovedPagesGuardTest < Minitest::Test
   ROOT = File.expand_path("..", __dir__)
   SUBJECTS = %w[README.md AGENTS.md CONTRIBUTING.md INSTALL.md SECURITY.md PLASTIC.md docs/**/*.md agents/*.md scripts/**/*.rb bin/**/*.rb hooks/*].freeze
-REMOVED = {
-  "docs/internals.md" => /(?<![\w-])internals\.md/,
-  "docs/help/human-report-contract.md" => /human-report-contract/,
-  "docs/help/maintenance-and-revisions.md" => /maintenance-and-revisions/
-}.freeze
+  REMOVED = {
+    "docs/internals.md" => /(?<![\w-])internals\.md/,
+    "docs/help/human-report-contract.md" => /human-report-contract/,
+    "docs/help/maintenance-and-revisions.md" => /maintenance-and-revisions/,
+    "docs/guide/getting-started/migrate-command.md" => /migrate-command/,
+    "docs/skill-authoring.md" => /skill-authoring/,
+    "docs/adr/index.md" => %r{\(adr/|docs/adr\b}
+  }.freeze
 
   def subjects = Dir.glob(SUBJECTS, base: ROOT).select { |path| File.file?(File.join(ROOT, path)) }.sort
 
