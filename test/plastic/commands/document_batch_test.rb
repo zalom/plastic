@@ -2,12 +2,12 @@
 
 require_relative "../../test_helper"
 require_relative "../../../scripts/lib/plastic/commands/document_batch"
-require "open3"
+require_relative "../../support/child_process"
 require "rbconfig"
 
 class DocumentBatchTest < Plastic::TestCase
   def test_routed_help_prints_the_batch_usage
-    output, errors, status = Open3.capture3({ "HOME" => @home }, RbConfig.ruby, "bin/plastic", "help", "document", "batch",
+    output, errors, status = ChildProcess.capture3({ "HOME" => @home }, RbConfig.ruby, "bin/plastic", "help", "document", "batch",
       chdir: File.expand_path("../../..", __dir__))
 
     assert_equal [0, ""], [status.exitstatus, errors]

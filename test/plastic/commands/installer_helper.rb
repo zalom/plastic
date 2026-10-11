@@ -4,6 +4,7 @@ require "digest"
 require "json"
 require_relative "../../../scripts/lib/installer_release"
 require_relative "../../test_helper"
+require_relative "../../support/child_process"
 
 # A throwaway package, home and agent folder for the installer commands.
 module InstallerHelper
@@ -57,7 +58,7 @@ module InstallerHelper
     directory = File.join(@home, "release-#{version}")
     release_package(File.join(directory, "package"), version)
     archive = File.join(directory, "plastic.tgz")
-    system("tar", "-czf", archive, "-C", directory, "package", exception: true)
+    ChildProcess.system("tar", "-czf", archive, "-C", directory, "package", exception: true)
     identity = InstallerRelease::Manifest.identity(version).merge("platform" => "universal", "architecture" => "universal")
     InstallerRelease::Manifest.write(File.join(directory, "plastic.manifest.json"), archive: archive, release: identity)
     File.write(File.join(directory, "plastic.tgz.sha256"), "#{Digest::SHA256.file(archive).hexdigest}  plastic.tgz\n")

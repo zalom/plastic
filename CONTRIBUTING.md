@@ -32,6 +32,10 @@ tested by `test/plastic/commands/intent_new_test.rb`.
    process gets `HOME` and `PLASTIC_HOME` in the hash passed to it. No test reads or writes the
    real `~/.plastic` or `~/.claude`.
 1. Pass the environment as a value. A test never assigns to `ENV`.
+1. Start a child process through `ChildProcess` (`test/support/child_process.rb`), which takes
+   the same arguments as `Open3` and `system`. The child gets only the values the test passes, a
+   fixed `PATH` and `LANG`, and an empty throwaway `HOME` when the test passes none. Nothing of the
+   session that runs the suite reaches it. A guard test refuses every other way to start a process.
 1. Use real SQLite files in the throwaway home, and read the rows back to check them.
 1. Pass a collaborator in as an argument. Do not use a mocking library and do not replace a
    method on a live class.

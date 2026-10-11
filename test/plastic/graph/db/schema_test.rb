@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require "digest"
-require "open3"
+require_relative "../../../support/child_process"
 require "rbconfig"
 require_relative "../../../test_helper"
 
@@ -79,7 +79,7 @@ class DbSchemaTest < Plastic::TestCase
   end
 
   def test_the_schema_file_loads_in_a_fresh_ruby
-    out, err, status = Open3.capture3(RbConfig.ruby, "-r", SCHEMA_PATH, "-e", "print Plastic::Graph::SCHEMA_FILE.version")
+    out, err, status = ChildProcess.capture3(RbConfig.ruby, "-r", SCHEMA_PATH, "-e", "print Plastic::Graph::SCHEMA_FILE.version")
 
     assert_equal [true, "20261009000000", ""], [status.success?, out, err]
   end

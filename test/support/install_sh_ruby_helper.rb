@@ -32,7 +32,7 @@ module InstallShRubyHelper
     @pins = PLATFORMS.to_h { |platform| [platform, pin(platform, size, sha)] }
     serve(archive)
     extra = { "PLASTIC_RUBY" => nil, "PLASTIC_LOCAL_RELEASE" => release("2.0.3"), "PATH" => tool_path }
-    Open3.capture3(environment(extra), "/bin/sh", script, *arguments)
+    ChildProcess.capture3(environment(extra), "/bin/sh", script, *arguments)
   end
 
   def publish(directory, version)
@@ -66,7 +66,7 @@ module InstallShRubyHelper
     bin = FileUtils.mkdir_p(File.join(source, "ruby-test", "bin")).first
     yield bin
     archive = File.join(@dir, "#{name}.tar.gz")
-    system("tar", "-czf", archive, "-C", source, "ruby-test", exception: true)
+    ChildProcess.system("tar", "-czf", archive, "-C", source, "ruby-test", exception: true)
     archive
   end
 
@@ -100,5 +100,5 @@ module InstallShRubyHelper
 
   def ruby_folder = File.join(share, "rubies", "test-ruby")
 
-  def launch_with_empty_path = Open3.capture2({ "PATH" => "" }, launcher).first
+  def launch_with_empty_path = ChildProcess.capture2({ "PATH" => "" }, launcher).first
 end

@@ -335,6 +335,17 @@ harness the registry lacks. Otherwise the row records `unknown`. Later hooks and
 the harness from the row. No environment variable carries the harness, because a variable one
 harness sets reaches every harness started from its shell.
 
+`Harnesses::Processes` reads the parent processes from the `/proc` folder. Only Linux has that
+folder, so on macOS both parent-process steps find nothing: detection goes on to `AI_AGENT`, and
+`Harnesses::Innermost` goes on to the first id.
+
+A name on the row that the registry lacks has no doctor. That name is `unknown`, or the name
+`AI_AGENT` gave. When a session starts fresh, the start hook prints one line in place of the
+doctor count. The line names the session and the name on its row. For `unknown` it says that the
+start hook found no sign of a registered harness. It ends by naming `plastic doctor --harness` and
+the registered harnesses. `plastic doctor` with no `--harness` stops with a usage error that says
+the same, unless a session variable equal to the session names a registered harness.
+
 Leftover cleanup happens at install and update, not at arm or disarm: `InstallerCore#distribute`
 deletes every `store/.tmp/*/current` file and every `plastic-<session>--<id>.json` file sitting
 in an injected tmp directory, by name alone, never opening or parsing a candidate.

@@ -2,7 +2,7 @@
 
 require "tmpdir"
 require "fileutils"
-require "open3"
+require_relative "../support/child_process"
 
 # A tmpdir root that holds copies of the real bin/test and failures_reporter.rb,
 # so the script's own __dir__-relative paths resolve inside it.
@@ -46,6 +46,6 @@ module BinTestSupport
   end
 
   def run_bin_test(*args)
-    Open3.capture3("ruby", File.join(@dir, "bin", "test"), *args, chdir: @dir)
+    ChildProcess.capture3("ruby", File.join(@dir, "bin", "test"), *args, chdir: @dir)
   end
 end

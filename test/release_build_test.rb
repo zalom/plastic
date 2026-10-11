@@ -4,7 +4,7 @@ require "digest"
 require "fileutils"
 require "json"
 require "minitest/autorun"
-require "open3"
+require_relative "support/child_process"
 require "rubygems/package"
 require "tmpdir"
 require "zlib"
@@ -77,7 +77,7 @@ class ReleaseBuildTest < Minitest::Test
   end
 
   def test_the_command_builds_the_three_release_files
-    _out, err, status = Open3.capture3("ruby", File.join(REPO, "scripts", "build-release"), "--version", "2.0.4",
+    _out, err, status = ChildProcess.capture3("ruby", File.join(REPO, "scripts", "build-release"), "--version", "2.0.4",
       "--directory", @out, "--root", @root)
 
     assert_predicate status, :success?, err
@@ -85,7 +85,7 @@ class ReleaseBuildTest < Minitest::Test
   end
 
   def test_the_command_refuses_a_call_without_a_version
-    _out, err, status = Open3.capture3("ruby", File.join(REPO, "scripts", "build-release"), "--directory", @out)
+    _out, err, status = ChildProcess.capture3("ruby", File.join(REPO, "scripts", "build-release"), "--directory", @out)
 
     assert_equal 1, status.exitstatus
     assert_includes err, "--version"

@@ -76,7 +76,7 @@ class BrokenStoreTest < Minitest::Test
 
       assert_equal Plastic::Harnesses::EVENTS.size, lines.size
       lines.each do |line|
-        assert system(line, chdir: home), "#{line} did not exit zero"
+        assert ChildProcess.system(line, chdir: home), "#{line} did not exit zero"
       end
     end
   end

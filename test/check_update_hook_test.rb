@@ -1,6 +1,6 @@
 require "minitest/autorun"
 require "fileutils"
-require "open3"
+require_relative "support/child_process"
 require "rbconfig"
 require "tmpdir"
 
@@ -69,8 +69,8 @@ class CheckUpdateThrottleTest < Minitest::Test
   def cache = File.join(@home, ".cache", "update-check.json")
 
   def run_hook
-    env = { "HOME" => @dir, "PLASTIC_HOME" => @home, "PLASTIC_UPDATE_CHECK_WAIT" => "1", "PATH" => "#{File.join(@dir, "bin")}:#{ENV.fetch("PATH")}" }
-    out, err, status = Open3.capture3(env, HOOK)
+    env = { "HOME" => @dir, "PLASTIC_HOME" => @home, "PLASTIC_UPDATE_CHECK_WAIT" => "1", "PATH" => "#{File.join(@dir, "bin")}:#{ChildProcess::PATH}" }
+    out, err, status = ChildProcess.capture3(env, HOOK)
     [out, err, status.exitstatus]
   end
 end
@@ -94,7 +94,7 @@ class CheckUpdateRubyTest < Minitest::Test
   def teardown = FileUtils.rm_rf(@dir)
 
   def test_runs_the_selector_on_the_ruby_of_the_active_release
-    out, err, status = Open3.capture3({ "HOME" => @dir, "PLASTIC_HOME" => plastic_home, "PATH" => bin }, HOOK)
+    out, err, status = ChildProcess.capture3({ "HOME" => @dir, "PLASTIC_HOME" => plastic_home, "PATH" => bin }, HOOK)
 
     assert_equal [0, "", ""], [status.exitstatus, out, err]
     assert_includes written, '"latest":"2.0.4"'
