@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require "shellwords"
-require_relative "../hooks/entries"
+require_relative "../harnesses"
 
 module Plastic
   module Doctor
@@ -25,7 +25,7 @@ module Plastic
       def launcher(event)
         tokens = CodexHookCommand.words(command)
         path = tokens.first.to_s
-        expected = Hooks::Entries::EVENTS.fetch(event).then { |words| format(words, "codex") }.split
+        expected = Harnesses.fetch("codex").events.fetch(event).split
         expand(path) if CodexHookCommand.plastic?(path) && tokens.drop(1) == expected
       end
 

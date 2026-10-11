@@ -53,7 +53,7 @@ module Plastic
       def checks_for(hooks)
         return [CodexHooks.finding("#{path} must hold a hooks map")] unless hooks.is_a?(Hash)
 
-        Hooks::Entries::EVENTS.keys.map { |event| CodexHooks.event_check(event, files(event, hooks[event])) }
+        Harnesses.fetch("codex").events.keys.map { |event| CodexHooks.event_check(event, files(event, hooks[event])) }
       end
 
       def files(event, groups)

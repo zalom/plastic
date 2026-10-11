@@ -88,8 +88,8 @@ module Plastic
       "roadmap edge remove" => ["Commands::RoadmapEdgeRemove", "Remove one needs edge from a roadmap"],
 
       # Hooks: the harness calls these on an event; see docs/contributing/ARCHITECTURE.md.
-      "hook resume" => ["Hooks::Resume", "SessionStart: print the state the rows carry"],
-      "hook record" => ["Hooks::Record", "Stop: stamp the turn, renew locks, run the stop gate"],
+      "hook start" => ["Hooks::Start", "SessionStart: name the harness, open the session row, print the state the rows carry"],
+      "hook stop" => ["Hooks::Stop", "Stop: stamp the turn, renew locks, run the stop gate"],
       "hook end" => ["Hooks::End", "SessionEnd: set the session's end time and reason"]
     }.freeze
   end

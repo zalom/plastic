@@ -3,16 +3,16 @@
 require_relative "../hook"
 require_relative "../graph"
 require_relative "../doctor"
+require_relative "../harnesses/detection"
 require_relative "recap"
 
 module Plastic
   module Hooks
-    # SessionStart: opens the session row, then prints the Recap the rows
-    # alone carry, and one line naming plastic doctor when a doctor check
-    # fails on a session that starts fresh. Nothing here is call memory: a hook keeps no routine run.
-    class Resume < Hook
-      option :harness, switch: "--harness NAME", text: "the harness calling this hook", default: "claude-code"
-
+    # SessionStart: names the harness, opens the session row with it, then
+    # prints the Recap the rows alone carry, and one line naming plastic
+    # doctor when a doctor check fails on a session that starts fresh.
+    # Nothing here is call memory: a hook keeps no routine run.
+    class Start < Hook
       FAILING_CHECKS = ->(scope, harness) { Doctor.failing(scope, harness:) }
 
       FRESH_SOURCES = ["", "startup"].freeze
@@ -32,6 +32,10 @@ module Plastic
 
       private
 
+      def harness
+        @harness ||= Harnesses::Detection.new(event:, env: environment.env, processes: environment.processes, session_id:).harness
+      end
+
       def recap(event)
         graphs = Graph.open(home: scope.plastic_home, store: scope.slug, session: session_id)
         open_session_row(graphs.work)
@@ -39,13 +43,13 @@ module Plastic
       end
 
       def doctor_line(event)
-        return unless FRESH_SOURCES.include?(event[:source].to_s)
+        return unless FRESH_SOURCES.include?(event[:source].to_s) && Harnesses.registered?(harness)
 
         failing_count.then { |count| DOCTOR_LINE.call(count) if count.positive? }
       end
 
       def failing_count
-        @health.call(scope, parsed[:harness]).size
+        @health.call(scope, harness).size
       rescue => error
         environment.err.puts "plastic hook: #{error.message}"
         0
@@ -56,7 +60,7 @@ module Plastic
         work.ignore_databases
         return environment.err.puts("plastic hook: the event names no session; nothing recorded") unless session_id
 
-        work.open_session(session_id, harness: parsed[:harness], directory:)
+        work.open_session(session_id, harness:, directory:)
       end
     end
   end

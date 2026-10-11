@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "ownership"
+require_relative "../harnesses"
 
 module Plastic
   module Hooks
@@ -9,8 +10,6 @@ module Plastic
     # replaces this installation's own groups and keeps everyone else's,
     # so a user's own hook or status line is never touched.
     class Entries
-      EVENTS = { "SessionStart" => "hook resume --harness %s", "Stop" => "hook record --harness %s", "SessionEnd" => "hook end" }.freeze
-
       # Former names the launchers this installation wrote before it moved,
       # so their groups are replaced, not kept beside the new ones.
       def initialize(command:, config:, launchers:, former: [])
@@ -42,7 +41,7 @@ module Plastic
         settings.merge("hooks" => kept.merge(own) { |_event, theirs, ours| theirs + ours })
       end
 
-      def own_groups(harness) = EVENTS.transform_values { |words| [group(%("#{@command}" #{format(words, harness)}))] }
+      def own_groups(harness) = Harnesses.fetch(harness).events.transform_values { |words| [group(%("#{@command}" #{words}))] }
 
       def group(line) = { "matcher" => "", "hooks" => [{ "type" => "command", "command" => "env -u RUBYOPT #{line} || true" }] }
 

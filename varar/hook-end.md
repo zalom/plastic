@@ -2,7 +2,7 @@
 
 `plastic hook end` answers the SessionEnd event: it sets the end time and the reason on the
 session's row in local.db and nothing else, because only that event knows why a session ended.
-Session s-1 opens the store with `hook resume` before each row. A call that names no session, or an option
+Session s-1 opens the store with `hook start` before each row. A call that names no session, or an option
 the hook does not take, records nothing.
 
 Each row gives the arguments, the end event, the session, the exit code, the message and the ended row:
