@@ -36,8 +36,8 @@ class CommandReferenceEndingsTest < Minitest::Test
     assert_equal [0], page("hook end").endings.map(&:exit_code).uniq
   end
 
-  def test_the_record_hook_shows_the_stop_gate_decision
-    assert(page("hook record").endings.any? { |ending| ending.file.end_with?("hooks/stop_gate.rb") })
+  def test_the_stop_hook_shows_the_stop_gate_decision
+    assert(page("hook stop").endings.any? { |ending| ending.file.end_with?("hooks/stop_gate.rb") })
   end
 
   def test_a_computed_next_step_reads_decided_at_run_time_on_its_line

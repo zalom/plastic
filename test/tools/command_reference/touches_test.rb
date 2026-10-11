@@ -68,11 +68,11 @@ class CommandReferenceTouchesTest < Minitest::Test
 
   def test_an_escaped_update_statement_is_a_write
     assert_equal :write, CommandReference::Touches::Scan.mode_of('batch.add("UPDATE \"locks\" SET x = 1")', "locks")
-    assert touches("hook record").writes?("local.db", "locks")
+    assert touches("hook stop").writes?("local.db", "locks")
   end
 
   def test_the_sql_of_a_constant_a_method_uses_is_part_of_the_method
-    assert touches("hook record").reads?("work_graph.db", "nodes")
+    assert touches("hook stop").reads?("work_graph.db", "nodes")
   end
 
   def test_the_plastic_classes_a_workflow_names_are_components_and_are_scanned
@@ -116,13 +116,13 @@ class CommandReferenceTouchesTest < Minitest::Test
     assert_equal [:work], touches("session note").store_keys(:write)
   end
 
-  def test_a_hook_record_writes_locks_and_reads_nodes
-    assert touches("hook record").writes?("local.db", "locks")
-    assert touches("hook record").reads?("work_graph.db", "nodes")
+  def test_a_hook_stop_writes_locks_and_reads_nodes
+    assert touches("hook stop").writes?("local.db", "locks")
+    assert touches("hook stop").reads?("work_graph.db", "nodes")
   end
 
-  def test_the_hooks_end_and_resume_touch_what_their_code_names
+  def test_the_hooks_end_and_start_touch_what_their_code_names
     assert touches("hook end").writes?("local.db", "sessions")
-    assert_includes touches("hook resume").store_keys(:read), :work
+    assert_includes touches("hook start").store_keys(:read), :work
   end
 end

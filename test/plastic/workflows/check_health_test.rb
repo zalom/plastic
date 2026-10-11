@@ -15,8 +15,8 @@ class CheckHealthTest < Plastic::TestCase
     whole_home
   end
 
-  def check(env = {})
-    harness = scoped_harness(env: { "PLASTIC_PACKAGE_ROOT" => fake_package(RUNNING) }.merge(env))
+  def check(env = { "CLAUDE_CODE_SESSION_ID" => "s-1" }, session: "s-1")
+    harness = scoped_harness(session:, env: { "PLASTIC_PACKAGE_ROOT" => fake_package(RUNNING) }.merge(env))
     run_workflow(Plastic::Workflows::CheckHealth, harness:, harness_name: nil)
   end
 
@@ -46,7 +46,7 @@ class CheckHealthTest < Plastic::TestCase
   end
 
   def test_a_codex_session_with_no_install_reports_the_missing_record
-    outcome, context = check("CODEX_THREAD_ID" => "t-1")
+    outcome, context = check({ "CODEX_THREAD_ID" => "t-1" }, session: "t-1")
 
     assert_equal GATE, outcome.message
     assert_includes printed_row(context, "codex record:"), "no installation record"

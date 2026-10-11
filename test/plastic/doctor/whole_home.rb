@@ -56,7 +56,7 @@ module WholeHome
   def whole_hooks
     write(hook_file, "#!/bin/sh\n")
     File.chmod(0o755, hook_file)
-    write_hooks(Plastic::Hooks::Entries::EVENTS.keys.to_h { |event| [event, "\"#{hook_file}\" --harness claude-code || true"] })
+    write_hooks(Plastic::Harnesses::EVENTS.keys.to_h { |event| [event, "\"#{hook_file}\" || true"] })
   end
 
   def write_hooks(commands)

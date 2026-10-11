@@ -77,7 +77,7 @@ class MissingStoreTest < Plastic::TestCase
     with_home(global: false) do |home|
       event = JSON.generate(session_id: "s-1", cwd: home)
 
-      %w[record resume].each do |name|
+      %w[stop start].each do |name|
         call = plastic("hook", name, input: event, env: { "PLASTIC_HOME" => home }, table: Plastic::CLI::TABLE)
 
         assert_equal [0, "", ""], [call.code, call.out, call.err], name

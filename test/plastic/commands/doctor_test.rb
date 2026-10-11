@@ -17,7 +17,13 @@ class DoctorCommandTest < Plastic::TestCase
     @package = fake_package(RUNNING)
   end
 
-  def doctor(*argv, env: {}) = call("doctor", *argv, env: { "PLASTIC_PACKAGE_ROOT" => @package }.merge(env))
+  def doctor(*argv, env: {}) = call("doctor", *argv, env: { "PLASTIC_PACKAGE_ROOT" => @package, "CLAUDE_CODE_SESSION_ID" => "s-1" }.merge(env))
+
+  def test_a_call_no_harness_names_exits_2_and_names_the_option
+    result = call("doctor", env: { "PLASTIC_PACKAGE_ROOT" => @package })
+
+    assert_equal [2, true], [result.code, result.err.include?("name one with --harness: claude-code, codex")]
+  end
 
   def test_a_whole_home_prints_ok_rows_and_exits_0
     result = doctor
@@ -70,14 +76,14 @@ class DoctorProcessTest < Minitest::Test
       kernel.run!("project", "new", "alpha", project)
 
       assert_equal [1, true], [found.code, found.out.include?("plastic project new alpha #{project}")]
-      assert_match(/store alpha:\s+ok/, kernel.run("doctor").out)
+      assert_match(/store alpha:\s+ok/, kernel.run("doctor", "--harness", "claude-code").out)
     end
   end
 
   def damaged(kernel, project)
     kernel.run!("project", "new", "alpha", project)
     FileUtils.rm_f(File.join(kernel.plastic_home, "stores", "alpha", "references.db"))
-    kernel.run("doctor")
+    kernel.run("doctor", "--harness", "claude-code")
   end
 end
 

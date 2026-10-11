@@ -81,6 +81,7 @@ class Install < InstallerCore
     distribute(mode)
     fresh ? bootstrap : ready_global_store
     migrate_advisor_config_file(File.join(plastic_home, "config.yml"))
+    migrate_config
     apply_config_flags(argv)
 
     results = selected.map do |key|
@@ -200,18 +201,14 @@ class Install < InstallerCore
     end
   end
 
-  # Codex hooks are installed but INERT until a human reviews and trusts each
-  # hook definition via /hooks; Codex keys trust to
-  # the hook's current command hash, so a future release that changes a hook
-  # command re-arms the review. Printed only when a harness that declares its
-  # own home_dir (Codex today) actually installed successfully in this run.
-  # Data-driven from `agents`, never a hardcoded harness name, mirroring the
-  # same reasoning as the presence probe.
+  # Codex runs a hook only after the person trusts its command line in /hooks,
+  # and a changed line needs that trust again. The reminder names the hook
+  # commands this run changed, and is left out when none changed.
   def print_codex_hook_trust_reminder(installed)
-    codex_like = agents.select { |a| a.key?(:home_dir) }
-    return if codex_like.none? { |a| installed.any? { |r| r[:agent] == a[:name] } }
+    changed = installed.flat_map { |result| Array(result[:changed_hooks]) }.uniq
+    return if changed.empty?
 
-    puts "   Codex: open Codex, run /hooks, and trust the Plastic hook definitions."
+    puts "   Codex: open Codex, run /hooks, and trust the changed Plastic hooks: #{changed.join(", ")}."
     puts "   Plastic's hooks will not fire until you do.\n\n"
   end
 

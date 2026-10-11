@@ -9,6 +9,10 @@ module Plastic
     TABLE = {
       # Distribution
       "version" => ["Commands::Version", "Print the installed Plastic version and release channel"],
+      "config" => ["Commands::Config", "Pick which on/off settings are on, on the choice screen"],
+      "config list" => ["Commands::ConfigList", "List every setting with its value, globally or for one harness"],
+      "config get" => ["Commands::ConfigGet", "Print the value of one setting"],
+      "config set" => ["Commands::ConfigSet", "Write one setting to config.yml, globally or for one harness"],
       "doctor" => ["Commands::Doctor", "Check the installation, the databases and the hooks of this harness, and name each repair"],
       "install" => ["Commands::Install", "Install the core files and register Plastic with agents"],
       "update" => ["Commands::Update", "Sync a newer package into the home or name the installer command"],
@@ -84,8 +88,8 @@ module Plastic
       "roadmap edge remove" => ["Commands::RoadmapEdgeRemove", "Remove one needs edge from a roadmap"],
 
       # Hooks: the harness calls these on an event; see docs/contributing/ARCHITECTURE.md.
-      "hook resume" => ["Hooks::Resume", "SessionStart: print the state the rows carry"],
-      "hook record" => ["Hooks::Record", "Stop: stamp the turn, renew locks, run the stop gate"],
+      "hook start" => ["Hooks::Start", "SessionStart: name the harness, open the session row, print the state the rows carry"],
+      "hook stop" => ["Hooks::Stop", "Stop: stamp the turn, renew locks, run the stop gate"],
       "hook end" => ["Hooks::End", "SessionEnd: set the session's end time and reason"]
     }.freeze
   end

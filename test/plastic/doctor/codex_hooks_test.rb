@@ -52,8 +52,8 @@ class DoctorCodexHooksTest < Plastic::TestCase
     assert_includes checks.first.value, "map"
   end
 
-  def test_a_hook_for_the_other_harness_does_not_pass
-    change_codex_hook("Stop") { |hook| hook["command"].sub!("--harness codex", "--harness claude-code") }
+  def test_a_hook_with_the_former_harness_option_does_not_pass
+    change_codex_hook("Stop") { |hook| hook["command"].sub!("hook stop", "hook record --harness codex") }
 
     assert_equal "plastic install --codex --reinstall", check("Stop").repair
   end
@@ -65,7 +65,7 @@ class DoctorCodexHooksTest < Plastic::TestCase
   end
 
   def test_a_command_for_a_different_event_does_not_pass
-    change_codex_hook("SessionEnd") { |hook| hook["command"].sub!("hook end", "hook record") }
+    change_codex_hook("SessionEnd") { |hook| hook["command"].sub!("hook end", "hook stop") }
 
     assert_equal "plastic install --codex --reinstall", check("SessionEnd").repair
   end

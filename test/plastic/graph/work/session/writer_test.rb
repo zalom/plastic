@@ -16,10 +16,23 @@ class WorkSessionWriterTest < Plastic::TestCase
     assert_equal [first.started_at, "codex"], [second.started_at, second.harness]
   end
 
+  def test_stamp_turn_keeps_the_harness_the_session_opened_with
+    work.open_session("s-1", harness: "codex", directory: "/a")
+    work.stamp_turn("s-1", directory: "/a")
+
+    assert_equal "codex", reader.session("s-1").harness
+  end
+
+  def test_stamp_turn_on_a_session_with_no_row_opens_one_with_no_harness
+    work.stamp_turn("s-1", directory: "/a")
+
+    assert_equal [nil, false], [reader.session("s-1").harness, reader.session("s-1").started_at.nil?]
+  end
+
   def test_stamp_turn_sets_the_last_turn_at_and_keeps_started_at
     work.open_session("s-1", harness: "claude-code", directory: "/a")
     opened = reader.session("s-1")
-    work.stamp_turn("s-1", harness: "claude-code", directory: "/a")
+    work.stamp_turn("s-1", directory: "/a")
     stamped = reader.session("s-1")
 
     assert_equal opened.started_at, stamped.started_at

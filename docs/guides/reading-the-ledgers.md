@@ -132,7 +132,7 @@ lost or stale copy costs nothing.
 
 A lock is a row in the machine's `local.db`, taken when `plastic auto ID` arms an intent for
 an auto team. The intent directory no longer holds a `delivery.lock` file. The row names the
-owning session and stays live while that session's record hook renews it. To inspect a lock,
+owning session and stays live while that session's stop hook renews it. To inspect a lock,
 run `plastic intent lock status ID`. A live lock of another session is refused with exit 3;
 an expired one is taken over by the next `plastic auto ID`.
 

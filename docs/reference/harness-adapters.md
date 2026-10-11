@@ -18,6 +18,26 @@ It is not a library you call from ordinary application code, and it does not tar
 non-reasoning automation. A harness adapter is the glue that makes one specific agent harness
 load Plastic's conventions, honor its decisions, and record its work.
 
+## The harness registry
+
+Plastic ships one entry for each harness it knows, in `scripts/lib/plastic/harnesses.rb`:
+
+| Field | Claude Code | Codex |
+| ----- | ----------- | ----- |
+| Name | `claude-code` | `codex` |
+| Session variables | `CLAUDE_CODE_SESSION_ID` | `CODEX_THREAD_ID`, `CODEX_SESSION_ID` |
+| Transcript path | under `.claude/projects/` | under `.codex/sessions/` |
+| Process name | `claude` | `codex` |
+| Event field only it writes | none | `turn_id` |
+| Hooks | `hook start`, `hook stop`, `hook end` | `hook start`, `hook stop`, `hook end` |
+| Settings file | `.claude/settings.json` | `.codex/hooks.json` |
+| Doctor checks | `Doctor::ClaudeCode` | `Doctor::Codex` |
+
+The installer writes each harness's hooks from its entry, and the doctor compares the installed
+hooks with it. `plastic config --harness NAME` takes only a name the registry holds. The start hook
+names the harness from these fields and records it on the session row. See
+[internals](../internals.md) for the order it tries them in.
+
 ## The contract
 
 Plastic reaches an agent across three layers. An adapter is judged on how each layer arrives
@@ -369,7 +389,8 @@ shipped ahead of time; Plastic documents both paths and ships no trust artifact 
 
 Since intent 198, the installer itself prints the `/hooks` step after a successful Codex
 install (`scripts/install.rb`'s `print_results`), so a user is told to trust the hooks instead
-of discovering silently that no hook ever fires. `doctor`'s `check_codex_registration` adds a
+of discovering silently that no hook ever fires. It names each hook whose command line changed,
+and prints no reminder when none changed. `doctor`'s `check_codex_registration` adds a
 `codex_hooks_trust` advisory (`warn`, never `pass` or `fail`) once hooks are registered as
 expected: whether Codex persists a queryable trust record anywhere under `~/.codex` is
 undocumented and unverified, so this can never be a real pass or fail check, only a reminder.

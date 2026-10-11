@@ -5,15 +5,25 @@ require_relative "doctor/core"
 require_relative "doctor/claude_code"
 require_relative "doctor/codex"
 require_relative "workflows/installation"
+require_relative "harnesses/detection"
+require_relative "harnesses/session_rows"
 
 module Plastic
   module Doctor
-    HARNESSES = { "claude-code" => ClaudeCode, "codex" => Codex }.freeze
-    CODEX_VARIABLES = %w[CODEX_THREAD_ID CODEX_SESSION_ID].freeze
+    HARNESSES = Harnesses.all.to_h { |harness| [harness.name, const_get(harness.doctor)] }.freeze
 
-    def self.harness(scope) = codex?(scope) ? "codex" : "claude-code"
+    # The harness on the session's row, else the one whose session variable
+    # names the session. Nothing naming one is a usage error.
+    def self.harness(scope, session:)
+      [recorded(scope, session), detected(scope, session)].find { |name| Harnesses.registered?(name) } or
+        raise CLI::Command::Usage, "no harness names this call; name one with --harness: #{Harnesses.names.join(", ")}"
+    end
 
-    def self.codex?(scope) = CODEX_VARIABLES.any? { |name| !scope.setting(name).to_s.strip.empty? }
+    def self.recorded(scope, session) = session && Harnesses::SessionRows.new(scope.plastic_home).harness(session)
+
+    def self.detected(scope, session)
+      Harnesses::Detection.new(event: {}, env: scope.method(:setting), processes: Harnesses::Processes.none, session_id: session).harness
+    end
 
     def self.kind(name, harnesses = HARNESSES)
       harnesses.fetch(name) do
