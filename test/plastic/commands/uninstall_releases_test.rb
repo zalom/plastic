@@ -8,12 +8,12 @@ class UninstallReleasesCommandTest < Plastic::TestCase
   def setup
     super
     claude_folder
-    call("install", "--claude")
+    call("init", "1")
   end
 
   def test_removes_the_releases_and_the_launcher_plastic_owns
     installed_release
-    result = call("uninstall", "--claude")
+    result = call("uninstall", "1")
 
     assert_equal 0, result.code, result.err
     assert_equal [false, false], [File.exist?(share), File.symlink?(launcher)]
@@ -24,35 +24,35 @@ class UninstallReleasesCommandTest < Plastic::TestCase
     installed_release
     File.delete(launcher)
     File.write(launcher, "#!/bin/sh\necho mine\n")
-    result = call("uninstall", "--claude")
+    result = call("uninstall", "1")
 
     assert_equal ["#!/bin/sh\necho mine\n", false], [File.read(launcher), File.exist?(share)]
     assert_includes result.out, "#{launcher} is not Plastic's launcher; it stays"
   end
 
-  def test_keeps_the_releases_while_another_agent_stays_registered
+  def test_keeps_the_releases_while_another_harness_stays_recorded
     FileUtils.mkdir_p(File.join(@home, ".codex"))
-    call("install", "--codex")
+    call("init", "2")
     installed_release
-    call("uninstall", "--claude")
+    call("uninstall", "1")
 
     assert_equal [true, true], [File.directory?(share), File.symlink?(launcher)]
   end
 
   def test_a_dry_run_names_the_releases_and_the_launcher
     installed_release
-    result = call("uninstall", "--dry-run")
+    result = call("uninstall", "--dry-run", "1")
 
     assert_match(/remove:\s+#{Regexp.escape(share)}\n/, result.out)
     assert_match(/remove:\s+#{Regexp.escape(launcher)}\n/, result.out)
     assert_path_exists share
   end
 
-  def test_a_dry_run_keeps_the_releases_while_another_agent_stays_registered
+  def test_a_dry_run_keeps_the_releases_while_another_harness_stays_recorded
     FileUtils.mkdir_p(File.join(@home, ".codex"))
-    call("install", "--codex")
+    call("init", "2")
     installed_release
-    result = call("uninstall", "--claude", "--dry-run")
+    result = call("uninstall", "--dry-run", "1")
 
     assert_match(%r{remove:\s+.*\.claude/}, result.out)
     refute_match(/remove:\s+#{Regexp.escape(share)}\n/, result.out)
