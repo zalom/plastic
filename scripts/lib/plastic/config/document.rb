@@ -38,22 +38,19 @@ module Plastic
 
       def descend(mapping, path) = mapping.child(path.last) { inherited(path) }
 
-      def inherited(path)
-        value = whole.dig(*path) if whole.is_a?(Hash)
-        Mapping.node(value.is_a?(Hash) ? value : {})
-      end
+      def inherited(path) = Mapping.node(Layout.within(whole, *path))
 
       def layout = (@layout ||= Layout.new(resolved))
 
       def resolved
         YAML.safe_load_file(@path, aliases: true)
       rescue
-        {}
+        nil
       end
 
-      def tree = (@tree ||= (File.file?(@path) && layout.sectioned?) ? parsed : Document.stream(layout.sections))
+      def tree = (@tree ||= kept? ? Psych.parse_stream(File.read(@path)) : Document.stream(layout.sections))
 
-      def parsed = Psych.parse_stream(File.read(@path)).then { |stream| stream.children.empty? ? Document.stream({}) : stream }
+      def kept? = resolved.is_a?(Hash) && layout.sectioned?
 
       def document = tree.children.first
 
