@@ -21,6 +21,12 @@ class RetrievalReferenceBackfillTest < Plastic::TestCase
 
   def heads = knowledge.rows("SELECT path FROM document_heads ORDER BY path").map { |row| row.fetch("path") }
 
+  def test_a_complete_global_store_leaves_this_store_incomplete
+    Backfill.new(Plastic::Graph.open(home: @plastic_home, store: "global").databases, origin).call
+
+    refute Backfill.complete?(knowledge.path, origin)
+  end
+
   def test_a_missing_database_file_is_not_complete
     refute Backfill.complete?(File.join(@home, "none.db"), origin)
   end
