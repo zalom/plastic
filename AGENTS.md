@@ -51,10 +51,10 @@ Rules for any agent (or human) contributing to this repository.
   straight to code.
 - Create intents through `plastic intent new`, which runs the kernel's own command
   (`scripts/lib/plastic/commands/intent_new.rb`), never by hand-authoring the files or its rows.
-- Plans, specs, checklists, and outcomes live in the intent directory under `~/.plastic/`,
-  never in the project tree.
+- Specs, work graphs, and outcomes live in the store's databases and the intent folder under
+  `~/.plastic/`, never in the project tree.
 - A step becomes a script only when its output is a pure function of already-committed
-  artifacts (spec.md, plan.md, checklist.md, outcome.md, test results, the diff). Everything
+  artifacts (spec.md, graph.json, outcome.md, test results, the diff). Everything
   else stays judgment and stays with the agent. Make no exceptions for convenience.
 
 ### Testing

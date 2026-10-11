@@ -173,7 +173,7 @@ Plastic did not link stays, and the command says so.
 
 ## Move from npm
 
-Plastic retired npm on 2026-10-03. The stable release 2.0.3 stays on npm and still installs
+Plastic no longer publishes to npm. The stable release 2.0.3 stays on npm and still installs
 with `npx -y @zalom/plastic install --claude`. Nothing newer goes to npm. Every later release
 is a GitHub release that `install.sh` installs.
 

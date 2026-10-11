@@ -16,8 +16,8 @@ never asks you to pick one; it reads the answer off your prompt.
 
 You type what you want and it happens, in this session, right away. Direct is the default. If
 the prompt is not clear enough to run, Plastic asks one question, then runs. The work is
-recorded after it is done, in the day ledger (one per calendar day) or in the intent your
-session is pointed at. Choose it, or rather let it choose itself, for anything you could
+recorded in the intent your session works on, and the session writes its one prose line with
+`plastic session note`. Choose it, or rather let it choose itself, for anything you could
 describe as a named operation on a known target: rename this, add a check there, fix that
 line. The owner's rule of thumb is about five minutes of work.
 
@@ -25,9 +25,10 @@ line. The owner's rule of thumb is about five minutes of work.
 
 You are not sure yet what the right change is, or the change is too big to hold in one prompt.
 Thinking is a conversation first: the agent asks one question at a time, records each ruling you
-make as an insight in the intent with `plastic intent rule`, and then writes `spec.md`,
-`plan.md`, and `checklist.md`, which say how the work will be done. `plastic intent spec` prints
-the rules of that conversation. After that it works through the checklist. Choose it when the work is delicate, new,
+make as an insight in the intent with `plastic intent rule`, and then writes `spec.md`
+with the done criteria, and the nodes of the work graph with `plastic node add`, which say how
+the work will be done. `plastic intent spec` prints the rules of that conversation. After that it
+works through the ready nodes. Choose it when the work is delicate, new,
 or you want to reason it through before anything is built. Ask to be grilled if you want the
 questions to be hard.
 
@@ -43,9 +44,8 @@ Choose it for well-scoped work you are comfortable delegating.
 
 ## What stays the same
 
-All three modes write the same record: the intent's `## Insights`, `checklist.md`, and
-`savepoint.md` while the work happens, and `spec.md`, `plan.md`, `actions/`, and `outcome.md`
-backfilled when it ends. Nothing blocks a write in any mode. The only difference is who steers
+All three modes write the same record: the intent's `## Insights`, `spec.md`, the work graph
+and `savepoint.md` while the work happens, and `outcome.md` when it ends. Nothing blocks a write in any mode. The only difference is who steers
 and where the plan comes from: your prompt (direct), a conversation (thinking), or an agent
 team (auto).
 

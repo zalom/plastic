@@ -5,7 +5,7 @@
 This tutorial takes one small change to a Ruby project from a new intent to a delivered
 close. You create the intent, record a ruling, write the spec, plan the work graph, make the
 change on a branch with a failing test first, have the work judged, merge the branch, and close
-the intent as delivered. At the end, the intent sits under `## Completed` with the
+the intent as delivered. At the end, the intent's status is `done`, with the
 `outcome.md` you wrote and a verification that passed.
 
 The tutorial uses the guided path, which needs no hooks, no lock, and no agent team. Every
@@ -76,8 +76,7 @@ class GreeterTest < Minitest::Test
 end
 ```
 
-Add an `AGENTS.md` file at the repository root. `plastic install` registers only a
-repository that has one. A line or two describing the project is enough.
+Add an `AGENTS.md` file at the repository root. A line or two describing the project is enough.
 
 Commit everything on `main`. A scratch `HOME` has no Git identity, so set one for this
 repository first, with your own name and email:
@@ -95,7 +94,7 @@ git commit -m "chore: greeter"
 **Plastic.** From inside the repository, run:
 
 ```sh
-plastic project new greeter --path "$PWD"
+plastic project new greeter "$PWD"
 ```
 
 `project new` creates the project store at `~/.plastic/stores/greeter/` and records the
@@ -114,16 +113,18 @@ The output names the new intent directory and the next step:
 
 ```text
 intent: 1
-printed store/1--let-greeter-greet-take-an-optional/intent.md
-printed store/1--let-greeter-greet-take-an-optional/savepoint.md
-printed store/1--let-greeter-greet-take-an-optional/graph.json
-next: plastic intent spec 1 --project greeter
-because: a new intent has no specification yet
+files:  store/index.json
+        store/1--let-greeter-greet-take-an-optional/intent.md
+        store/1--let-greeter-greet-take-an-optional/savepoint.md
+        store/1--let-greeter-greet-take-an-optional/graph.json
+
+next: plastic next
+because: intent 1 has its rows and its files
 ```
 
-The directory holds the intent file `intent.md`, placeholder files `spec.md`
-and `outcome.md`, and empty `actions/` and `resources/` folders.
-The intent is listed under `## Active` in `~/.plastic/stores/greeter/INDEX.md`.
+The directory holds the intent file `intent.md`, the first savepoint line in `savepoint.md`,
+and the empty work graph in `graph.json`. The intent is listed in
+`~/.plastic/stores/greeter/store/index.json`.
 
 ## Record the rulings (Why)
 
@@ -146,9 +147,8 @@ file, write it yourself.
 
 ## Write the spec and plan the graph (How)
 
-**You or your agent** write `spec.md` in the intent directory. No command writes it. It
-replaces the placeholder that `intent new` created. Each done criterion carries a key in
-square brackets, and the work graph ties every node to one key:
+**You or your agent** write `spec.md` in the intent directory. No command writes it.
+Each done criterion carries a key in square brackets, and the work graph ties every node to one key:
 
 ```markdown
 # Spec: Optional greeting word
@@ -182,7 +182,7 @@ plastic node add 1 "Add the greeting keyword to Greeter.greet" --criterion greet
 plastic edge add 1 N2 N1 --project greeter
 ```
 
-`graph.json` in the intent directory is the checklist: the go-ahead, the verdicts, the nodes
+`graph.json` in the intent directory is the plan: the go-ahead, the verdicts, the nodes
 with their criterion keys, and the edges. Plastic reprints it from the rows. `plastic graph
 check 1` finds a done node with no findings, an isolated node, or a criterion no node covers.
 `plastic intent show 1` lists the nodes and points at execution.
@@ -282,13 +282,9 @@ is older than the newest change of a live node does not count.
 
 ## Write the outcome and merge the code (Git)
 
-**You or your agent** replace the `outcome.md` placeholder in the intent directory. The shape
-follows `templates/outcome.md`:
+**You or your agent** write `outcome.md` in the intent directory, in this shape:
 
 ```markdown
----
-disposition: delivered
----
 # Outcome: Let Greeter.greet take an optional greeting word
 
 ## Summary

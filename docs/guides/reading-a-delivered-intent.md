@@ -8,50 +8,42 @@ find what shipped, whether it worked, and what to do next.
 
 ## Start from the truth, not the plan
 
-An intent carries several files: `spec.md`, `plan.md`, `checklist.md`, and, once
-it is finished, `outcome.md`. The first two describe what was intended before
-the work started. Only `outcome.md` tells you what actually shipped. Read it
-first, not `spec.md`.
+An intent folder holds `intent.md`, `spec.md`, `graph.json`, `savepoint.md` and,
+once it is finished, `outcome.md`. The spec and the graph describe what was
+intended and how the work was split. Only `outcome.md` tells you what actually
+shipped. Read it first, not `spec.md`.
 
-Every finished intent has one, whether the work was delivered or abandoned.
-`outcome.md` starts with a header that says which:
-
-```
-disposition: delivered|abandoned
-```
-
-If the work landed, `disposition: delivered`. If it was called off partway
-through, `disposition: abandoned`, and the file explains why.
+Every finished intent has one, whether the work was delivered or abandoned:
+`plastic intent end` and `plastic intent abandon` refuse to close an intent
+without it.
 
 ## The reading order
 
-1. **The index status line.** Every project keeps an `INDEX.md` file listing
-   its intents. Find the one-line entry for your intent. It is the canonical
-   record of whether the intent is Active, Completed, or Abandoned. If
-   anything else disagrees with this line, the index wins.
-2. **`outcome.md`.** Read its four sections: Summary (what was delivered, in
-   a sentence or two), Delivered (the concrete list of changes), Verification
-   (how it was checked; a generated outcome shows the diffstat of the code
-   worktree, or says `Diffstat unavailable` when the intent had none), and
-   Follow-ups (what comes next, if anything).
-3. **The intent file's own `## Outcome` section.** A short, one or two line
-   recap living in the intent file itself, for a quick glance without opening
-   `outcome.md`.
-4. **`## Insights`.** The running log of things learned while doing the work.
-   This is where you find the reasoning behind decisions, and any new intents
-   that were spawned as follow-ups.
+1. **The status.** `plastic intent show ID` prints the intent's status, and
+   `store/index.json` lists it for every intent of the store. A finished intent
+   is `done`, with the disposition `delivered`, or `abandoned`, with the
+   disposition `cancelled` or `superseded`.
+2. **`outcome.md`.** Read what was delivered, then its `## Verification`
+   section. A delivered intent carries a `Merged:` line and an
+   `Architecture map:` line there, and often a `Pull request:` line. An
+   abandoned intent carries a `Reverted:` line that says what was undone.
+3. **`graph.json`.** Each node with its state and the findings it reported when
+   it was done.
+4. **`## Insights`** in `intent.md`. The rulings recorded while doing the work.
+   This is where you find the reasoning behind decisions, and the intents that
+   were opened as follow-ups.
 
-You rarely need to read `spec.md` or `plan.md` once an intent is done. They
-describe the intention. `outcome.md` and the checked-off checklist are what
-prove the intention became reality.
+You rarely need to read `spec.md` once an intent is done. It describes the
+intention. `outcome.md` and the done nodes are what prove the intention became
+reality.
 
 ## Why it works this way
 
-Plastic always closes an intent, delivered or abandoned, with a matching
-`outcome.md`: `plastic intent end` generates it from the record when it is
-missing or still a placeholder. This keeps the three signals of "done" in agreement:
-the index status, the outcome file, and a short automatic log entry. If any of
-these disagree, something is wrong, and the index status is the one to trust.
+`plastic intent end` closes an intent as delivered only once its verdict, its
+nodes and its outcome allow it, and prints what is missing otherwise. The
+status, the done nodes and the Verification lines of `outcome.md` agree by
+construction. If they ever disagree, run `plastic sync up` and read the intent
+again.
 
 ## What to read next
 

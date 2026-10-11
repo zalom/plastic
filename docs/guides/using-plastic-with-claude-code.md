@@ -12,14 +12,14 @@ You already met the three modes in [pick-your-mode.md](pick-your-mode.md).
 Here is what each one feels like in practice, day to day.
 
 Direct is most of a day. You ask for a change, the agent makes it in the same
-session, verifies it (the tests, the page, or you), and the request lands as a
-line in the day ledger with a commit behind it. There is nothing to approve
+session, verifies it (the tests, the page, or you), and the request lands in
+the intent the session works on, with a commit behind it. There is nothing to approve
 and nothing to type next; the next prompt is the next item.
 
 Thinking is a conversation before the work. The agent asks one question at a
 time and records each answer as an insight in the intent, then writes the
-action files that say how the work will be done, then works as in direct. You
-write the result into `spec.md`, `plan.md` and `checklist.md` (`plastic intent spec`
+nodes of the work graph that say how the work will be done, then works as in
+direct. You write the result into `spec.md` and the nodes (`plastic intent spec`
 prints the rules for that conversation; it does not write the files), and
 close the intent with `plastic intent end` once Exec is done. This is
 deliberately slower. It is the right choice when you want to watch each
@@ -38,43 +38,26 @@ the few moments built to need you.
 ## Roadmap-driven delivery
 
 Once you have more than one intent to ship, Plastic has a way to plan and
-track them together: a roadmap. A roadmap is one file (`roadmaps/{slug}.md`,
-next to your `INDEX.md`) with four parts:
+track them together: a roadmap. A roadmap is a set of rows in the store's
+databases, printed to `roadmaps/{slug}.md` in the store, with four parts:
 
 - A short title and one-line description of what the roadmap is for.
 - A **Goal**: a plain-language paragraph describing what "done" looks like for
   the whole batch.
 - **Batches**: an ordered list of groups of intents. Intents in the same
-  batch can run in parallel; batches run one after another. Each entry mirrors
-  the intent's real status, and the index is always the final word if the two
-  ever disagree.
-- A **Log**: a running, dated diary of what happened, written so a person
-  outside the work can follow along.
+  batch can run in parallel; batches run one after another. Each item opens
+  its own intent with `plastic roadmap open`.
+- A **Log**: a running diary of what happened, one `plastic roadmap log` line
+  at a time, written so a person outside the work can follow along.
 
-Nothing new needs to run this: no new lock, no new hook. It is just a file
-that gets read and edited as work moves forward.
-
-### A real example
-
-The roadmap that shipped this guide for Plastic 1.0 is a working example:
-`roadmaps/stable-1-0.md` in the maintainer's Plastic store (it is not part of
-this repository). Its Goal reads, in short: every intent in the plan
-delivered or clearly abandoned, the test suite green, and a 1.0 release cut
-together with the project's owner. It is organized into seven waves, from
-early foundations through trust fixes for new users, process simplifications,
-this batch of first-run guides, a pending human decision, longer engineering
-work, and a longer-term intelligence track. Its Log is a dated, plain-language
-account of each delivery as it happened, written the way a project lead would
-brief someone checking in on progress.
+Nothing new needs to run this: no new lock, no new hook. `plastic roadmap next
+SLUG` prints the first ready item, and `plastic auto SLUG` delivers it.
 
 ## A word on "loop" and "/goal"
 
-Two Claude Code harness commands, not Plastic skills, keep a session moving
+Two Claude Code harness commands, not Plastic commands, keep a session moving
 without you restarting it each time. `/loop` repeats a prompt or command on a
-fixed time interval, until you stop it or Claude decides the work is done. A
-delivery loop can run `/loop` over the internal script
-`ruby ~/.plastic/scripts/runner watch <intent_dir>`, which checks a graph
-delivery and dispatches it when it is ready. No public `plastic` command wraps it.
+fixed time interval, until you stop it or Claude decides the work is done.
 `/goal` works differently: you give it a condition instead of an interval, it
 sets that as the completion condition, and Claude keeps working, turn after
 turn, until a fast checker model confirms from what Claude has actually

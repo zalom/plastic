@@ -31,8 +31,9 @@ This chapter holds the linking rules for an intent's frontmatter and the branch-
   - **tags:** a loose theme grouping for search. NOT a link. A shared tag is a door INTO the
     store (filtered discovery), not a pathway BETWEEN two notes.
   Judging influence is an agent's call, made by reading the candidate's Intent and Context. A
-  script cannot grade it, so `scripts/link-suggest` only gathers candidates with that evidence,
-  records a confirmed edge with a rating and reason, and flags drift.
+  script cannot grade it, so `plastic intent discover ID TERMS...` only gathers candidates with
+  that evidence, and `plastic intent link ID source TARGET` or `plastic intent link ID chain TARGET`
+  records an edge the agent confirmed.
 
 **Branch vs root: the semantic decision.** The numbering is mechanics; choosing
 *whether* to branch is meaning:
