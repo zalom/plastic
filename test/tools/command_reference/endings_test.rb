@@ -38,6 +38,12 @@ class CommandReferenceEndingsTest < Minitest::Test
     assert_equal ["plastic intent new TITLE --project SLUG"], rows.map(&:next_text)
   end
 
+  def test_an_interpolation_joined_to_the_words_before_it_reads_as_an_optional_part
+    literal = "plastic config get \#{key}\#{harness_words}"
+
+    assert_equal "plastic config get KEY [HARNESS_WORDS]", CommandReference::FileEndings.placeholder(literal)
+  end
+
   def test_a_hook_has_only_exit_0
     assert_equal [0], page("hook end").endings.map(&:exit_code).uniq
   end
