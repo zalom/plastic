@@ -7,48 +7,48 @@ class UninstallCommandTest < Plastic::TestCase
 
   def setup
     super
-    claude_folder
-    call("install", "--claude")
+    written_record("claude-code", ".claude")
   end
 
-  def test_a_dry_run_lists_the_files_it_would_remove_and_changes_nothing
+  def test_with_no_terminal_the_recorded_harnesses_are_listed_picked
+    FileUtils.mkdir_p(File.join(@home, ".codex"))
+    result = call("uninstall")
+
+    assert_equal [0, ""], [result.code, result.err]
+    assert_match(/1  \[x\] claude-code\n.*2  \[ \] codex/m, result.out)
+  end
+
+  def test_with_no_terminal_the_next_step_asks_the_person_and_nothing_is_removed
     before = tree_snapshot(@home)
     result = call("uninstall", "--dry-run")
 
-    assert_match(%r{remove:\s+.*\.claude/}, result.out)
-    assert_match(/keep:\s+.*\.plastic/, result.out)
+    assert_includes result.out, "next: plastic uninstall --dry-run <answer>"
     assert_equal before, tree_snapshot(@home)
   end
 
-  def test_the_preview_lists_every_path_the_uninstall_removes
-    activated("2.0.0")
-    paths = home_paths
-    listed = call("uninstall", "--all", "--dry-run").out.scan(/^remove:\s+(\S+)/).flatten
+  def test_answering_q_removes_nothing
+    before = tree_snapshot(@home)
+    result = call("uninstall", "q")
 
-    call("uninstall", "--all")
-    gone = paths.reject { |entry| File.exist?(entry) || File.symlink?(entry) }
-
-    assert_empty gone.reject { |entry| listed.any? { |item| entry == item || entry.start_with?("#{item}/") } }
+    assert_equal [0, true], [result.code, result.out.include?("the person left with no change")]
+    assert_equal before, tree_snapshot(@home)
   end
 
-  def home_paths = Dir.glob(File.join(@home, "**", "*"), File::FNM_DOTMATCH).reject { |entry| entry.end_with?("/.", "/..") }
-
-  def test_removes_the_agent_files_and_keeps_the_home
-    result = call("uninstall", "--claude")
-
-    assert_equal 0, result.code, result.err
-    refute_path_exists File.join(@home, ".claude", "plastic", "manifest.json")
-    assert_path_exists File.join(@plastic_home, "VERSION")
-  end
-
-  def test_removes_the_hook_entries_that_run_plastic
+  def test_a_harness_with_no_record_is_named_and_left_alone
     FileUtils.mkdir_p(File.join(@home, ".codex"))
-    call("install", "--codex")
-    call("uninstall", "--all")
+    before = tree_snapshot(@home)
+    result = call("uninstall", "2")
 
-    left = [File.join(@home, ".claude", "settings.json"), File.join(@home, ".codex", "hooks.json")]
-      .select { |path| File.file?(path) && File.read(path).match?(/hook (resume|record)/) }
+    assert_equal [0, true], [result.code, result.out.include?("codex: no record lists what Plastic wrote")]
+    assert_equal before, tree_snapshot(@home)
+  end
 
-    assert_empty left
+  def test_with_no_harness_recorded_or_found_it_names_init
+    FileUtils.rm_rf(File.join(@home, ".claude"))
+    Plastic::Installations.delete(@plastic_home, "claude-code")
+    result = call("uninstall", "1")
+
+    assert_equal [0, ""], [result.code, result.err]
+    assert_includes result.out, "next: plastic init"
   end
 end

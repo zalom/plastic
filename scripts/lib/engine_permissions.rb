@@ -18,8 +18,8 @@
 # that point on - the merge appends Plastic's own alongside it, and removal leaves
 # the edited one in place untouched.
 #
-# Pure functions only: no file I/O here. InstallerCore#merge_engine_permissions and
-# #remove_engine_permissions own the read-modify-write against settings.json,
+# Pure functions only: no file I/O here. InstallerCore#merge_engine_permissions
+# owns the read-modify-write against settings.json,
 # mirroring the split HookRegistry keeps from merge_claude_hooks.
 module EnginePermissions
   module_function
@@ -48,40 +48,6 @@ module EnginePermissions
 
     permissions["deny"] = deny
     settings["permissions"] = permissions
-    settings
-  end
-
-  # Returns a new settings hash with exactly the ENTRIES strings removed from
-  # permissions.deny, leaving every other entry (the owner's own deny rules, and
-  # any Plastic entry the owner has since edited) untouched. Prunes the deny array
-  # once it is empty, and the whole permissions block once nothing else remains
-  # under it (row 3.10). A settings/permissions/deny shape that is not what is
-  # expected is left alone rather than raised on (row 3.12's uninstall side).
-  def remove_from(settings)
-    return settings unless settings.is_a?(Hash)
-
-    permissions = settings["permissions"]
-    return settings unless permissions.is_a?(Hash)
-
-    deny = permissions["deny"]
-    return settings unless deny.is_a?(Array)
-
-    settings = settings.dup
-    permissions = permissions.dup
-    deny = deny.reject { |entry| ENTRIES.include?(entry) }
-
-    if deny.empty?
-      permissions.delete("deny")
-    else
-      permissions["deny"] = deny
-    end
-
-    if permissions.empty?
-      settings.delete("permissions")
-    else
-      settings["permissions"] = permissions
-    end
-
     settings
   end
 end

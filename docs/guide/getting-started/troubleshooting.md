@@ -28,7 +28,7 @@ Hooks do not fire, agents are missing, or an old plugin layout is left over. Run
 again:
 
 ```bash
-plastic install --reinstall --claude
+plastic install --reinstall
 ```
 
 `plastic doctor` names each broken part and prints the command that repairs it.

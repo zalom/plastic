@@ -29,6 +29,7 @@ Everything it keeps lives under the Plastic home.
 | `PLASTIC.md` | The always-on instructions that the harness imports. |
 | `local.db` | What belongs to one machine: `routine_runs`, `sessions`, `locks` and `backups`. |
 | `config.yml`, `projects.yml` | The settings, and the list of projects from slug to repository. |
+| `installations/` | One install record for each harness Plastic is installed into: every file, folder, setting and section the install wrote, which `plastic uninstall` takes out. |
 | `stores/SLUG/` | One store for each project, plus the global store. |
 | `stores/SLUG/backups/` | Copies of the three databases, one folder for each backup. |
 | `store/index.json` | Every intent and cluster of the store in Luhmann order. It carries no print time. |
@@ -81,7 +82,8 @@ loads on first use, so `plastic help` reads the table and loads no command.
 | `RoutineRun` | `scripts/lib/plastic/routine_run.rb` | One call of one tool on one subject, kept as a row of `local.db`. |
 | `Hook` | `scripts/lib/plastic/hook.rb` | The base class of a hook command. It prints a plain text reply and always exits 0. |
 | `Hooks::Recap`, `Hooks::StopGate`, `Hooks::Entries` | `scripts/lib/plastic/hooks/` | The text `hook start` prints, the decision whether `hook stop` blocks a stop, and the hook entries the installer writes for Claude Code and Codex. |
-| `Harnesses`, `Harnesses::Detection`, `Harnesses::Innermost` | `scripts/lib/plastic/harnesses.rb`, `scripts/lib/plastic/harnesses/` | The harness registry: for each harness its session variable, transcript path, process name, hook events and doctor checks. Detection names the harness of a start hook, and `Innermost` picks the session of the inner harness when one runs inside another. |
+| `Harnesses`, `Harnesses::Detection`, `Harnesses::Innermost` | `scripts/lib/plastic/harnesses.rb`, `scripts/lib/plastic/harnesses/` | The harness registry: for each harness its settings folder, session variable, transcript path, process name, hook events and doctor checks. `plastic init` lists the harnesses whose folder or program it finds. Detection names the harness of a start hook, and `Innermost` picks the session of the inner harness when one runs inside another. |
+| `Installations` | `scripts/lib/plastic/installations.rb`, `scripts/lib/plastic/installations/` | The install records: `Recording` writes one when an install finishes, and `Removal` takes out exactly what one lists. |
 | `Config`, `Config::Document` | `scripts/lib/plastic/config.rb`, `scripts/lib/plastic/config/` | `config.yml` read in layers: the shipped defaults, the `global` section, then the section of the harness. `Document` writes one key and keeps the anchors the file holds. |
 | `Graph::Database` | `scripts/lib/plastic/graph/database.rb` | One SQLite file, read and written through the `sqlite3` gem. A write is one transaction and logs its `changes` row. |
 | `Graph::WorkGraph` | `scripts/lib/plastic/graph/work_graph.rb` | The writes of a command: routine runs, sessions, locks, intents, nodes and edges. |

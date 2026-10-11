@@ -49,7 +49,7 @@ class FreshInstallCheck
   def install
     step(first, "sh", File.join(ROOT, "install.sh"))
     agent_folders
-    step(first, plastic, "install", "--all")
+    step(first, plastic, "init", "a")
     doctor(first, active: first)
     step(first, plastic, "status")
   end
@@ -62,7 +62,7 @@ class FreshInstallCheck
   end
 
   def remove
-    step(second, plastic, "uninstall", "--all")
+    step(second, plastic, "uninstall", "a")
     puts "left under the home:", left.map { |name| "  #{name}" }
     abort "the uninstall left #{stray.join(" and ")}" unless stray.empty?
     abort "the uninstall left hooks that run the removed launcher in #{stale_hooks.join(", ")}" unless stale_hooks.empty?

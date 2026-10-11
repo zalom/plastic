@@ -34,7 +34,7 @@ module DoctorWalk
     found = kernel.run("doctor", "--harness", harness, "--json")
     result = JSON.parse(found.out).fetch("result")
     repair = Array(result["repair"]).first
-    run_repair(kernel, repair)
+    run_repair(kernel, repair, harness)
     { "exit" => found.code.to_s, "check" => finding(result), "repair" => shown(repair, project), "after repair" => kernel.run("doctor", "--harness", harness).code.to_s }
   end
 
@@ -42,13 +42,17 @@ module DoctorWalk
 
   def whole(kernel, harness)
     project = FileUtils.mkdir_p(File.join(kernel.home, "alpha")).first
-    FileUtils.mkdir_p(File.join(kernel.home, (harness == "codex") ? ".codex" : ".claude"))
-    kernel.run!("install", (harness == "codex") ? "--codex" : "--claude")
+    init(kernel, harness)
     kernel.run!("next")
     kernel.run!("project", "new", "alpha", project)
     File.write(File.join(project, "AGENTS.md"), "# Alpha\n\nPlastic's instructions are in ~/.plastic/PLASTIC.md.\n")
     File.write(File.join(project, "CLAUDE.md"), "@AGENTS.md\n")
     project
+  end
+
+  def init(kernel, harness)
+    FileUtils.mkdir_p(File.join(kernel.home, (harness == "codex") ? ".codex" : ".claude"))
+    kernel.run!("init", kernel.run("init").out[/(\d+)  \[.\] #{harness}$/, 1])
   end
 
   def store_file(kernel, name) = File.join(kernel.plastic_home, "stores", "alpha", name)
@@ -67,8 +71,9 @@ module DoctorWalk
     label.end_with?(".db") ? "machine database" : label
   end
 
-  def run_repair(kernel, repair)
+  def run_repair(kernel, repair, harness)
     return unless repair
+    return init(kernel, harness) if repair == "plastic init"
 
     edit = repair.delete_prefix("add the line @AGENTS.md to ")
     return File.write(edit, "@AGENTS.md\n", mode: "a") unless edit == repair

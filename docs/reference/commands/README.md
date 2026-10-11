@@ -12,7 +12,8 @@ Each page explains one plastic command: what it takes, what it touches, the work
 | [`plastic config get`](config-get/README.md) | Print the value of one setting |
 | [`plastic config set`](config-set/README.md) | Write one setting to config.yml, globally or for one harness |
 | [`plastic doctor`](doctor/README.md) | Check the installation, the databases and the hooks of this harness, and name each repair |
-| [`plastic install`](install/README.md) | Install the core files and register Plastic with agents |
+| [`plastic init`](init/README.md) | Find the installed harnesses and install Plastic into the ones the person picks |
+| [`plastic install`](install/README.md) | Install the core files and make the global store |
 | [`plastic update`](update/README.md) | Sync a newer package into the home or name the installer command |
 | [`plastic rollback`](rollback/README.md) | Switch the active release back to the previous one or to a named installed one |
 | [`plastic uninstall`](uninstall/README.md) | Remove Plastic from agents and keep the home |

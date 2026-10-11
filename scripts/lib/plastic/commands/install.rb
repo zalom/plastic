@@ -1,19 +1,18 @@
 # frozen_string_literal: true
 
 require_relative "../routine"
-require_relative "../cli/agent_options"
 
 module Plastic
   module Commands
-    # Copies the core files of the running package into the home and
-    # registers Plastic with the chosen agents.
+    # Copies the core files of the running package into the home and makes
+    # the global store. `plastic init` installs Plastic into the harnesses.
     class Install < Routine
       opens_no_store
 
-      extend CLI::AgentOptions
-
-      option :reinstall, switch: "--reinstall", default: false, text: "sync the files again and make the global store and local.db when they are missing or behind"
+      option :reinstall, switch: "--reinstall", default: false,
+        text: "sync the files again and make the global store and local.db when they are missing or behind"
       option :force, switch: "--force", default: false, text: "replace agent files Plastic did not write"
+      option :dry_run, switch: "--dry-run", default: false, text: "list what would change and change nothing"
 
       workflow :code_preview_install do
         on :done, next: :noop

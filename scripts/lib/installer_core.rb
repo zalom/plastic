@@ -984,6 +984,10 @@ class InstallerCore
                                 former: [home_launcher] - [hook_launcher])
   end
 
+  # A hook an uninstall removes: one the registry purges, or one that runs
+  # Plastic's own launcher.
+  def uninstalled_hook?(purge, command) = purge.call(command) || kernel_hook_entries.own?(command.to_s)
+
   # A package installed as a release runs from share/releases/<version>, and
   # its hooks run the active launcher, so the next activation needs no hook
   # rewrite. Any other package runs the launcher copied into the home.
@@ -1294,16 +1298,6 @@ class InstallerCore
     removed.each { |event, command| puts "     - #{event}: #{tilde(command.to_s)}" }
   end
 
-  # The statusline swap-back on uninstall is not an [event, command] pair: it is a
-  # value restored, not an entry deleted. It gets its own line rather than being
-  # forced into the entry list.
-  def report_removed_statusline(restored_command, file_label = "settings.json")
-    puts "  \u{1f9f9} Removed Plastic's statusLine from #{file_label}."
-    return if restored_command.nil? || restored_command.to_s.empty?
-
-    puts "     - restored your original statusLine: #{tilde(restored_command.to_s)}"
-  end
-
   # A hook the purge KEPT because the registry does not know it, but whose name
   # carries Plastic's prefix. Silence here would let an update delete the owner's
   # own plastic-* hook unnoticed; instead the update says the prefix is reserved
@@ -1416,8 +1410,8 @@ class InstallerCore
   # A second ownership mechanism from merge_claude_hooks above: a
   # permissions.deny entry is a bare string with no marker in it, so EnginePermissions
   # owns its four entries by exact-string membership, not by a plastic- launcher
-  # basename. This pair only does the read-modify-write; EnginePermissions.merge_into
-  # and .remove_from are the pure transforms.
+  # basename. This method only does the read-modify-write; EnginePermissions.merge_into
+  # is the pure transform.
 
   # Merges EnginePermissions::ENTRIES into settings.json. Unlike merge_claude_hooks,
   # this refuses rather than starting from {} when the existing file cannot be
@@ -1432,20 +1426,6 @@ class InstallerCore
     end
 
     write_json_atomic(settings_path, EnginePermissions.merge_into(settings))
-    true
-  end
-
-  # Removes exactly EnginePermissions::ENTRIES from settings.json, leaving every
-  # other deny entry (the owner's own, and any Plastic entry the owner has since
-  # edited) in place. Returns true when it wrote, false on a missing or
-  # unparseable file, or a permissions/deny shape it does not recognize.
-  def remove_engine_permissions(settings_path)
-    return false unless File.exist?(settings_path)
-
-    settings = read_json_safe(settings_path)
-    return false unless settings.is_a?(Hash)
-
-    write_json_atomic(settings_path, EnginePermissions.remove_from(settings))
     true
   end
 
@@ -1523,256 +1503,6 @@ class InstallerCore
     inject_marked_section(path, body: body, begin_prefix: CLAUDE_SECTION_BEGIN_PREFIX,
                           end_marker: CLAUDE_SECTION_END, section_re: CLAUDE_SECTION_RE)
   end
-
-  # Remove exactly Plastic's managed section from a user-owned AGENTS.md. Preserve all other
-  # content. Delete the file only if Plastic created it and nothing else remains. Returns the
-  # path when it acted, nil on no-op. Mirrors remove_claude_hooks: dedicated surgical strip,
-  # never the manifest whole-file-delete path.
-  def strip_marked_section(path, begin_prefix: CODEX_SECTION_BEGIN_PREFIX,
-                           section_re: CODEX_SECTION_RE)
-    path = resolve_managed_path(path)
-    return nil unless File.exist?(path)
-    content = File.read(path)
-    return nil unless content.include?(begin_prefix)
-
-    # Remove the section plus the single separator newline the append introduced, so a
-    # standard user file round-trips byte-identical.
-    stripped = content.sub(/\n?#{section_re}/, "")
-
-    if stripped.strip.empty?
-      File.delete(path)                 # Plastic-created file: nothing else left
-    else
-      stripped = stripped.rstrip + "\n" # normalize trailing whitespace we may have left
-      write_text_atomic(path, stripped)
-    end
-    path
-  end
-
-  INSTRUCTION_SECTIONS = {
-    "claude" => ["CLAUDE.md", CLAUDE_SECTION_BEGIN_PREFIX, CLAUDE_SECTION_RE],
-    "codex" => ["AGENTS.md", CODEX_SECTION_BEGIN_PREFIX, CODEX_SECTION_RE]
-  }.freeze
-
-  # The instruction file an uninstall deletes because Plastic's section is all it holds.
-  def emptied_instruction_file(config)
-    key, home_dir, dir = config.values_at(:key, :home_dir, :dir)
-    name, prefix, section = INSTRUCTION_SECTIONS.fetch(key, INSTRUCTION_SECTIONS["codex"])
-    only_section_path(File.join(home_dir || dir, name), prefix, section)
-  end
-
-  def only_section_path(path, prefix, section)
-    path = resolve_managed_path(path)
-    path if InstallerCore.section_alone?(path, prefix, section)
-  end
-
-  def self.section_alone?(path, prefix, section)
-    held = File.exist?(path) ? File.read(path) : ""
-    held.include?(prefix) && held.sub(/\n?#{section}/, "").strip.empty?
-  end
-
-  def strip_codex_section(path)
-    strip_marked_section(path)
-  end
-
-  def strip_claude_compact_section(path)
-    strip_marked_section(path, begin_prefix: CLAUDE_SECTION_BEGIN_PREFIX,
-                         section_re: CLAUDE_SECTION_RE)
-  end
-
-  # --- Uninstall ---
-
-  def handle_uninstall(uninstall_agents)
-    uninstall_agents.each do |key|
-      config = agent_config(key)
-      next unless config
-
-      result = uninstall_agent(key, config)
-      unless result[:success]
-        puts "  \u{26a0}\u{fe0f}  #{config[:name]}: #{result[:reason]}"
-        next
-      end
-
-      puts "  \u{2705} #{config[:name]}: uninstalled (#{result[:files]} files removed)"
-      result[:removed].each { |r| puts "     removed: #{tilde(r)}" }
-    end
-
-    # What was deliberately left behind
-    puts "\n  Left in place (not removed):"
-    puts "     - #{tilde(plastic_home)} (your intent store, history, and projects)"
-    puts "     - any non-Plastic entries in settings.json"
-
-    puts "\n  Verify removal:"
-    puts "     ls ~/.claude/skills | grep '^plastic-'      # → no output"
-    puts "     ls ~/.claude/hooks | grep '^plastic-'       # → no output"
-    puts "     grep -c plastic ~/.claude/settings.json     # → only hook refs gone"
-    puts "     grep 'PLASTIC COMPACT' ~/.claude/CLAUDE.md  # → no output"
-    puts "\n  To also delete your intent store: rm -rf #{tilde(plastic_home)}\n\n"
-  end
-
-  def uninstall_agent(key, config)
-    unless File.directory?(config[:dir])
-      return { success: false, reason: "#{config[:dir]} not found" }
-    end
-
-    removed = []
-    manifest_path = manifest_path_for(key, config)
-
-    if File.exist?(manifest_path)
-      manifest = JSON.parse(File.read(manifest_path)) rescue {}
-      (manifest["files"] || {}).each_key do |f|
-        if File.exist?(f)
-          File.delete(f)
-          removed << f
-        end
-      end
-      File.delete(manifest_path)
-      removed << manifest_path
-    end
-
-    # Remove flat plastic-<name>/ skill dirs (now-empty after manifest deletion,
-    # plus any the manifest missed) and the plastic state dir.
-    skills_root = File.join(config[:dir], "skills")
-    if File.directory?(skills_root)
-      Dir.children(skills_root).select { |e| e.start_with?("plastic-") }.each do |d|
-        full = File.join(skills_root, d)
-        FileUtils.rm_rf(full)
-        removed << full
-      end
-    end
-
-    [File.join(config[:dir], "plastic")].each do |d|
-      if File.directory?(d)
-        FileUtils.rm_rf(d)
-        removed << d
-      end
-    end
-
-    # Claude Code: clean hooks/statusline and any legacy plugin registration
-    if key == "claude"
-      settings_path = File.join(config[:dir], "settings.json")
-      remove_claude_hooks(settings_path) if File.exist?(settings_path)
-      remove_engine_permissions(settings_path) if File.exist?(settings_path)
-      removed.concat(migrate_legacy_plugin(config[:dir]))
-
-      # The compact-instructions block in the user-owned CLAUDE.md: a
-      # surgical strip, never the manifest whole-file-delete path above.
-      stripped = strip_claude_compact_section(File.join(config[:dir], "CLAUDE.md"))
-      removed << stripped if stripped
-    end
-
-    # Codex: surgically strip Plastic's marked section from the user-owned AGENTS.md
-    # (dedicated pair, never the manifest whole-file-delete path above), plus the
-    # Plastic entries from hooks.json.
-    if key == "codex"
-      agents_md = File.join(config[:home_dir], "AGENTS.md")
-      stripped = strip_codex_section(agents_md)
-      removed << stripped if stripped
-
-      hooks_json = File.join(config[:home_dir], "hooks.json")
-      hooks_removed = remove_codex_hooks(hooks_json)
-      removed << hooks_removed if hooks_removed
-    end
-
-    { success: true, files: removed.size, removed: removed }
-  end
-
-  def remove_claude_hooks(settings_path)
-    settings = read_json_safe(settings_path)
-    return unless settings && settings["hooks"]
-
-    removed = []
-
-    settings["hooks"].each do |event, groups|
-      next unless groups.is_a?(Array)
-
-      settings["hooks"][event] = groups.map do |group|
-        if group.is_a?(Hash) && group["hooks"].is_a?(Array)
-          group["hooks"].reject! do |h|
-            uninstalled_hook?(HookRegistry.method(:claude_purge_command?), h["command"]) && (removed << [event, h["command"]])
-          end
-          group unless group["hooks"].empty?
-        elsif group.is_a?(Hash) && group["command"]
-          if HookRegistry.claude_purge_command?(group["command"])
-            removed << [event, group["command"]]
-            nil
-          else
-            group
-          end
-        else
-          group
-        end
-      end.compact
-    end
-
-    settings["hooks"].delete_if { |_, v| v.is_a?(Array) && v.empty? }
-    settings.delete("hooks") if settings["hooks"]&.empty?
-
-    statusline_removed = HookRegistry.claude_purge_command?(settings.dig("statusLine", "command"))
-    restored_statusline = restore_claude_statusline(settings) if statusline_removed
-    self.class.drop_plastic_plugin(settings)
-
-    result = write_json_atomic(settings_path, settings)
-    report_removed_hook_entries(removed, "settings.json", qualifier: "Plastic")
-    report_removed_statusline(restored_statusline) if statusline_removed
-    result
-  end
-
-  def restore_claude_statusline(settings)
-    settings.delete("statusLine")
-    original = read_json_safe(File.join(plastic_home, ".cache", "original-statusline.json"))
-    return unless original.is_a?(Hash)
-
-    settings["statusLine"] = original
-    original["command"]
-  end
-
-  def self.drop_plastic_plugin(settings)
-    plugins = settings["enabledPlugins"]
-    return unless plugins
-
-    plugins.delete("plastic@plastic")
-    settings.delete("enabledPlugins") if plugins.empty?
-  end
-
-  # Remove exactly Plastic's entries from ~/.codex/hooks.json, mirrors
-  # remove_claude_hooks against the Codex file/purge predicate. Returns the path
-  # when it acted (rewritten or deleted), nil on no-op, mirroring strip_codex_section's
-  # convention so the caller only records an actual change.
-  def remove_codex_hooks(hooks_json_path)
-    data = read_json_safe(hooks_json_path)
-    return nil unless data && data["hooks"]
-
-    before = JSON.generate(data)
-    removed = []
-
-    data["hooks"].each do |event, groups|
-      next unless groups.is_a?(Array)
-
-      data["hooks"][event] = groups.map do |g|
-        next g unless g.is_a?(Hash) && Array(g["hooks"]).is_a?(Array)
-
-        g["hooks"] = Array(g["hooks"]).reject do |h|
-          uninstalled_hook?(HookRegistry.method(:codex_purge_command?), h["command"]) && (removed << [event, h["command"]])
-        end
-        g["hooks"].empty? ? nil : g
-      end.compact
-    end
-    data["hooks"].delete_if { |_, v| v.is_a?(Array) && v.empty? }
-
-    return nil if JSON.generate(data) == before # nothing to change: true no-op
-
-    if data["hooks"].empty? && data.keys == ["hooks"]
-      File.delete(hooks_json_path) # Plastic-created and now empty: remove
-    else
-      write_json_atomic(hooks_json_path, data)
-    end
-    report_removed_hook_entries(removed, "hooks.json", qualifier: "Plastic")
-    hooks_json_path
-  end
-
-  # A hook an uninstall removes: one the registry purges, or one that runs
-  # Plastic's own launcher.
-  def uninstalled_hook?(purge, command) = purge.call(command) || kernel_hook_entries.own?(command.to_s)
 
   # --- Utilities ---
 

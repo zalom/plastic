@@ -6,7 +6,7 @@ require_relative "../../../scripts/lib/plastic/doctor"
 class DoctorClaudeHooksTest < Plastic::TestCase
   include WholeHome
 
-  REPAIR = "plastic install --claude --reinstall"
+  REPAIR = "plastic install --reinstall"
 
   def setup
     super

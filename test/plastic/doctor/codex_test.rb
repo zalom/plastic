@@ -22,22 +22,22 @@ class DoctorCodexTest < Plastic::TestCase
     assert_empty checks.filter_map(&:repair)
   end
 
-  def test_a_missing_record_names_the_codex_reinstall
+  def test_a_missing_record_names_init
     File.delete(codex_record)
 
-    assert_equal "plastic install --codex --reinstall", check("codex record:").repair
+    assert_equal "plastic init", check("codex record:").repair
   end
 
-  def test_a_stale_record_names_the_codex_reinstall
+  def test_a_stale_record_names_the_reinstall
     write(codex_record, "0.0.1\n")
 
-    assert_equal "plastic install --codex --reinstall", check("codex record:").repair
+    assert_equal "plastic install --reinstall", check("codex record:").repair
   end
 
-  def test_missing_codex_instructions_name_the_codex_reinstall
+  def test_missing_codex_instructions_name_the_reinstall
     File.delete(File.join(codex_dir, "AGENTS.md"))
 
-    assert_equal "plastic install --codex --reinstall", check("Codex AGENTS.md:").repair
+    assert_equal "plastic install --reinstall", check("Codex AGENTS.md:").repair
   end
 
   def test_a_custom_codex_home_is_reported_because_the_installer_uses_dot_codex

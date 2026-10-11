@@ -195,7 +195,7 @@ fi
 
 check_entries "$tmp/plastic.tgz" plastic.tgz
 plastic_home="${PLASTIC_HOME:-$HOME/.plastic}"
-next_step="plastic install"
+next_step="plastic init"
 [ ! -f "$plastic_home/VERSION" ] || next_step="plastic version"
 mkdir "$tmp/boot"
 tar -xzf "$tmp/plastic.tgz" -C "$tmp/boot" package/scripts/install-release package/scripts/lib/installer_release.rb package/scripts/lib/installer_release

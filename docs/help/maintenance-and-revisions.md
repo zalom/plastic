@@ -81,10 +81,10 @@ relocation holds itself to the identical rule.
 registered project's store and its three databases, and the hooks and instruction files of the
 harness it runs in. It reads files and opens the databases read-only, and it has no write path
 of its own. Each finding names its repair: a command that owns that class of repair, such as
-`plastic next`, `plastic project new SLUG PATH` or `plastic install --claude --reinstall`, or a
+`plastic next`, `plastic project new SLUG PATH` or `plastic install --reinstall`, or a
 line to add to a file. Those commands make the change, never the doctor. A harness gets its
 checks from its own module beside the shared ones, so a second harness adds a module and
-changes no other. Claude Code and Codex have modules. The Codex module
+changes no other. Claude Code and Codex have modules; Hermes has none. The Codex module
 checks its record in `~/.agents/plastic/VERSION`, the current kernel hook commands
 and launchers in `~/.codex/hooks.json`, and its AGENTS.md line. Trust is unverified;
 review `/hooks` in Codex. This reminder does not fail the file checks.

@@ -10,7 +10,7 @@ require_relative "harnesses/session_rows"
 
 module Plastic
   module Doctor
-    HARNESSES = Harnesses.all.to_h { |harness| [harness.name, const_get(harness.doctor)] }.freeze
+    HARNESSES = Harnesses.all.select(&:doctor).to_h { |harness| [harness.name, const_get(harness.doctor)] }.freeze
 
     # The harness on the session's row, else the one whose session variable
     # names the session. Nothing naming one is a usage error that names the
@@ -19,7 +19,7 @@ module Plastic
       row = recorded(scope, session)
       [row, detected(scope, session)].find { |name| Harnesses.registered?(name) } or
         raise CLI::Command::Usage, "#{row ? unregistered(session, row) : "no harness names this call"}; " \
-                                   "name one with --harness: #{Harnesses.names.join(", ")}"
+                                   "name one with --harness: #{HARNESSES.keys.join(", ")}"
     end
 
     def self.unregistered(session, harness)

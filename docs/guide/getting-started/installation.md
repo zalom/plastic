@@ -2,13 +2,14 @@
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/zalom/plastic/main/install.sh | sh
-plastic install --claude
+plastic init
 plastic version
 ```
 
 The first line installs the newest stable release from GitHub and links `~/.local/bin/plastic`.
-The second line installs Plastic for Claude Code. The third line confirms that the `plastic`
-command runs.
+The second line lists the agent harnesses found on the machine, such as Claude Code, Codex and Hermes,
+and installs Plastic into each one you pick. The third line confirms that the `plastic` command
+runs.
 
 The first install also makes `~/.plastic` a Git repository, and registers each store with QMD
 when QMD is on the machine. QMD is an optional local search tool for Markdown files.

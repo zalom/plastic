@@ -1,7 +1,8 @@
 # Choice screen
 
 A command that needs the person to pick from a list asks through the choice screen. The person
-picks, never the agent, and no option lets an agent pick for the person.
+picks, never the agent, and no option lets an agent pick for the person. `plastic init`,
+`plastic uninstall` and `plastic config` ask through it.
 
 | Where the command runs | What the person sees | How the call ends |
 | --- | --- | --- |
@@ -23,9 +24,9 @@ picks, never the agent, and no option lets an agent pick for the person.
 The call prints the question, the numbered list and the answer rule, then stops:
 
 ```
-question:  Which harnesses?
-choices:   1  [x] claude
-           2  [ ] codex
+question:  Which harnesses should Plastic be installed into?
+choices:   1  [x] claude-code
+           2  [x] codex
 answer:    answer with numbers separated by commas (1,2), a for all, or q to leave with no change
 
 next: plastic init <answer>

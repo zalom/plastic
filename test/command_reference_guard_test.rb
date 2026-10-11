@@ -17,7 +17,7 @@ class CommandReferenceGuardTest < Minitest::Test
   def test_the_build_holds_every_command_page_the_index_and_the_dsl_page
     paths = CommandReferenceHelper.files.keys
 
-    assert_equal 75, paths.grep(%r{\Adocs/reference/commands/[^/]+/README\.md\z}).size
+    assert_equal 76, paths.grep(%r{\Adocs/reference/commands/[^/]+/README\.md\z}).size
     assert_includes paths, "docs/reference/commands/README.md"
     assert_includes paths, "docs/reference/dsl/README.md"
   end

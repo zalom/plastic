@@ -7,39 +7,39 @@ class InstallPlasticTest < Plastic::TestCase
   include InstallerHelper
 
   def install(**choices)
-    facts = { claude: false, codex: false, hermes: false, all: false, reinstall: false, force: false }.merge(choices)
+    facts = { reinstall: false, force: false }.merge(choices)
     run_workflow(Plastic::Workflows::InstallPlastic, **facts)
   end
 
   def manifest = File.join(@home, ".claude", "plastic", "manifest.json")
 
-  def test_installs_the_core_files_and_registers_claude
+  def test_installs_the_core_files_into_no_harness
     claude_folder
 
     outcome, context = install
 
     assert_equal [:done, package_version], [outcome, context.installed]
     assert_equal "#{package_version}\n", File.read(File.join(@plastic_home, "VERSION"))
-    assert_path_exists manifest
+    refute_path_exists manifest
   end
 
-  def test_an_agent_already_registered_is_refused_without_reinstall
-    claude_folder
+  def test_an_installed_home_is_refused_without_reinstall
     install
-    before = File.read(manifest)
+    before = tree_snapshot(@plastic_home)
 
     outcome, = install
 
-    assert_equal [Plastic::Refused, "Plastic is already installed for every chosen agent; pass --reinstall to sync the files again"],
+    assert_equal [Plastic::Refused, "Plastic is already installed; run plastic init to add a harness, or pass --reinstall to sync the files again"],
       [outcome.class, outcome.message]
-    assert_equal before, File.read(manifest)
+    assert_equal before, tree_snapshot(@plastic_home)
   end
 
-  def test_a_reinstall_syncs_the_registered_agent_again
+  def test_a_reinstall_syncs_the_installed_harness_again
     claude_folder
-    install
+    call("init", "1")
+    FileUtils.rm_f(manifest)
 
-    assert_equal :done, install(reinstall: true).first
+    assert_equal [:done, true], [install(reinstall: true).first, File.exist?(manifest)]
   end
 
   def test_settings_that_do_not_parse_fail_with_no_file_written

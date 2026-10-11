@@ -85,9 +85,9 @@
 <path d="M 344 134 L 352 139 L 344 144 Z" class="head"/>
 <rect x="352" y="123" width="392" height="70" rx="6" class="end"/>
 <text x="362" y="140" class="t" text-anchor="start">hands off: prints the steps left, exit 0</text>
-<text x="362" y="154" class="t" text-anchor="start">next: plastic version</text>
-<text x="362" y="168" class="t" text-anchor="start">because: Enola is optional, so the installation is</text>
-<text x="362" y="182" class="t" text-anchor="start">complete either way</text>
+<text x="362" y="154" class="t" text-anchor="start">next: plastic init</text>
+<text x="362" y="168" class="t" text-anchor="start">because: Enola is optional; plastic init installs</text>
+<text x="362" y="182" class="t" text-anchor="start">Plastic into the harnesses the person picks</text>
 <rect x="16" y="201" width="300" height="70" rx="6" class="card"/>
 <text x="26" y="217" class="tm" text-anchor="start">:done</text>
 <text x="26" y="233" class="tm tag-muted" text-anchor="start">when every done check holds</text>

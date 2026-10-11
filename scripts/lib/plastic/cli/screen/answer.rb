@@ -20,6 +20,9 @@ module Plastic
           answer.split(",").map(&:to_i)
         end
 
+        # A pick from the terminal list as the answer text that picks the same items; leaving, or picking nothing, is q.
+        def self.of(result, choices) = new(choices).text(result.is_a?(Chosen) ? result.labels : [])
+
         def initialize(choices)
           @labels = choices.map(&:label)
         end
@@ -31,6 +34,12 @@ module Plastic
           when LEAVE then Left.new
           else Chosen.new(labels: picked(self.class.numbers(answer)))
           end
+        end
+
+        def text(picked)
+          return LEAVE if (picked & @labels).empty?
+
+          @labels.each.with_index(1).filter_map { |label, number| number if picked.include?(label) }.join(",")
         end
 
         private

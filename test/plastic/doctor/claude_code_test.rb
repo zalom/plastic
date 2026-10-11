@@ -25,20 +25,20 @@ class DoctorClaudeCodeTest < Plastic::TestCase
     assert_equal labels, checks.map(&:label)
   end
 
-  def test_a_stale_claude_record_names_the_claude_reinstall
-    assert_equal "plastic install --claude --reinstall", check("claude record:", running: "9.2.0").repair
+  def test_a_stale_claude_record_names_the_reinstall
+    assert_equal "plastic install --reinstall", check("claude record:", running: "9.2.0").repair
   end
 
-  def test_a_missing_claude_record_names_the_claude_install
+  def test_a_missing_claude_record_names_init
     File.delete(File.join(claude_dir, "plastic", "VERSION"))
 
-    assert_equal "plastic install --claude", check("claude record:").repair
+    assert_equal "plastic init", check("claude record:").repair
   end
 
-  def test_a_claude_md_without_the_import_line_names_the_claude_reinstall
+  def test_a_claude_md_without_the_import_line_names_the_reinstall
     write(File.join(claude_dir, "CLAUDE.md"), "# Mine\n")
 
-    assert_equal "plastic install --claude --reinstall", check("CLAUDE.md:").repair
+    assert_equal "plastic install --reinstall", check("CLAUDE.md:").repair
   end
 
   def test_a_project_claude_md_without_the_agents_import_names_the_edit

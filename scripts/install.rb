@@ -18,6 +18,7 @@
 
 require_relative "lib/installer_core"
 require_relative "lib/preflight"
+require_relative "lib/plastic/installations"
 
 class Install < InstallerCore
   def cli(argv = ARGV)
@@ -89,6 +90,7 @@ class Install < InstallerCore
       result[:key] = key
       result
     end
+    Plastic::Installations.record(self, results.select { |r| r[:success] }.map { |r| r[:key] })
     results += already_registered.map { |key| already_registered_result(key) }
 
     action = ledger_action || (fresh ? "install" : "reinstall")

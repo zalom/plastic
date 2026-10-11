@@ -42,7 +42,7 @@ module Plastic
       def unregistered_line
         return unless @session_id
 
-        "Plastic: #{Doctor.unregistered(@session_id, @harness)}; run plastic doctor --harness with one of #{Harnesses.names.join(", ")}."
+        "Plastic: #{Doctor.unregistered(@session_id, @harness)}; run plastic doctor --harness with one of #{Doctor::HARNESSES.keys.join(", ")}."
       end
     end
   end

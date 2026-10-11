@@ -11,9 +11,13 @@ module Plastic
 
     REGISTRY = [
       Harness.new(name: "claude-code", session_variables: %w[CLAUDE_CODE_SESSION_ID], transcript: "/\\.claude/projects/",
-        process: "claude", event_field: nil, events: EVENTS, settings: ".claude/settings.json", doctor: :ClaudeCode),
+        process: "claude", event_field: nil, events: EVENTS, folder: ".claude", settings: ".claude/settings.json",
+        doctor: :ClaudeCode, installer: "claude"),
       Harness.new(name: "codex", session_variables: %w[CODEX_THREAD_ID CODEX_SESSION_ID], transcript: "/\\.codex/sessions/",
-        process: "codex", event_field: :turn_id, events: EVENTS, settings: ".codex/hooks.json", doctor: :Codex)
+        process: "codex", event_field: :turn_id, events: EVENTS, folder: ".codex", settings: ".codex/hooks.json",
+        doctor: :Codex, installer: "codex"),
+      Harness.new(name: "hermes", session_variables: [], transcript: nil, process: nil, event_field: nil, events: {},
+        folder: ".hermes", settings: nil, doctor: nil, installer: "hermes")
     ].freeze
 
     def self.all = REGISTRY
@@ -22,10 +26,16 @@ module Plastic
 
     def self.registered?(name) = names.include?(name)
 
+    def self.installed_by(installer) = REGISTRY.find { |harness| harness.installer == installer }
+
+    def self.found(home:, path:) = REGISTRY.select { |harness| harness.found?(home:, path:) }
+
+    def self.found_in(scope) = found(home: scope.home, path: scope.setting("PATH", ""))
+
     def self.sessions(env) = REGISTRY.to_h { |harness| [harness.name, harness.session(env)] }.compact
 
     def self.nearest(processes, among: names)
-      candidates = REGISTRY.select { |harness| among.include?(harness.name) }.to_h { |harness| [harness.process, harness] }
+      candidates = REGISTRY.select { |harness| among.include?(harness.name) }.to_h { |harness| [harness.process, harness] }.except(nil)
       candidates[processes.ancestors.find { |process| candidates.key?(process) }]
     end
 

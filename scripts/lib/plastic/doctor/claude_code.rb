@@ -32,7 +32,7 @@ module Plastic
 
       def folder = File.join(scope.home, ".claude")
 
-      def record = VersionRecord.new(File.join(folder, "plastic", "VERSION"), running).check("claude record:", install: "plastic install --claude")
+      def record = VersionRecord.new(File.join(folder, "plastic", "VERSION"), running).check("claude record:", install: "plastic init")
 
       def import
         file = File.join(folder, "CLAUDE.md")

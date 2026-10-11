@@ -12,10 +12,11 @@
 | `plastic status [--json]` | Shows active work in every store. |
 | `plastic graph resume [--stores a,b] [--json]` | Shows where each named project's work stopped and what runs next. |
 | `plastic next [--why] [--project SLUG] [--json]` | Prints the next action in one line. |
-| `plastic install [--claude] [--codex] [--hermes] [--all]` | Installs Plastic into this machine's agents. |
-| `plastic update [--claude] [--codex] [--hermes] [--all]` | Moves Plastic to the next version on its channel. |
+| `plastic init [ANSWER]` | Lists the agent harnesses found on this machine and installs Plastic into each one you pick. |
+| `plastic install [--reinstall] [--force] [--dry-run]` | Copies the core files into the home. `--reinstall` copies them again and syncs every harness Plastic is installed into. |
+| `plastic update [--channel NAME] [--dry-run]` | Moves Plastic to the next version on its channel. |
 | `plastic rollback [--version VERSION]` | Moves to a Plastic version this machine has run before. |
-| `plastic uninstall [--claude] [--codex] [--hermes] [--all]` | Removes Plastic from this machine's agents. |
+| `plastic uninstall [ANSWER] [--dry-run]` | Removes Plastic from each harness you pick, exactly as its install record lists. |
 | `plastic intent new`, `show`, `spec`, `rule`, `note`, `step`, `answer`, `verify`, `end` | Carries one intent from its first line to its close. See [Intent commands](intent-commands.md). |
 | `plastic auto`, `plastic intent lock status`, `plastic intent brief` and `plastic session summary`, `handoff`, `commit` | Serves an auto team and keeps the day ledger. See [Auto and session commands](auto-and-session-commands.md). |
 | `plastic project new`, `list`, `links` | Registers a project, lists the stores, and rebuilds the Links sections. See [Project and roadmap commands](project-and-roadmap-commands.md). |

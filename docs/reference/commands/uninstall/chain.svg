@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 252" width="480" height="252" role="img" xml:space="preserve">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 372" width="480" height="372" role="img" xml:space="preserve">
 <title>The chain of plastic uninstall</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
@@ -70,15 +70,22 @@
 <rect width="100%" height="100%" class="ground"/>
 <path d="M 240 72 L 240 104 L 240 104 L 240 136" class="wire"/>
 <path d="M 235 128 L 240 136 L 245 128 Z" class="head"/>
-<text x="246" y="126" class="tm tag-muted" text-anchor="start">:continue</text>
+<text x="246" y="126" class="tm tag-muted" text-anchor="start">:chosen</text>
+<path d="M 240 192 L 240 224 L 240 224 L 240 256" class="wire"/>
+<path d="M 235 248 L 240 256 L 245 248 Z" class="head"/>
+<text x="246" y="246" class="tm tag-muted" text-anchor="start">:continue</text>
 <rect x="150" y="16" width="180" height="56" rx="6" class="lane-code"/>
 <text x="160" y="32" class="tag tag-code" text-anchor="start">CODE WORKFLOW</text>
-<text x="160" y="51" class="tb" text-anchor="start">PreviewUninstall</text>
-<text x="160" y="66" class="tm" text-anchor="start">:code_preview_uninstall</text>
+<text x="160" y="51" class="tb" text-anchor="start">ChooseInstallations</text>
+<text x="160" y="66" class="tm" text-anchor="start">:code_choose_installations</text>
 <rect x="150" y="136" width="180" height="56" rx="6" class="lane-code"/>
 <text x="160" y="152" class="tag tag-code" text-anchor="start">CODE WORKFLOW</text>
-<text x="160" y="171" class="tb" text-anchor="start">UninstallPlastic</text>
-<text x="160" y="186" class="tm" text-anchor="start">:code_uninstall_plastic</text>
+<text x="160" y="171" class="tb" text-anchor="start">PreviewUninstall</text>
+<text x="160" y="186" class="tm" text-anchor="start">:code_preview_uninstall</text>
+<rect x="150" y="256" width="180" height="56" rx="6" class="lane-code"/>
+<text x="160" y="272" class="tag tag-code" text-anchor="start">CODE WORKFLOW</text>
+<text x="160" y="291" class="tb" text-anchor="start">UninstallPlastic</text>
+<text x="160" y="306" class="tm" text-anchor="start">:code_uninstall_plastic</text>
 <path d="M 240 72 L 240 94" class="wire"/>
 <path d="M 235 86 L 240 94 L 245 86 Z" class="head"/>
 <rect x="170" y="94" width="140" height="24" rx="12" class="end"/>
@@ -87,4 +94,8 @@
 <path d="M 235 206 L 240 214 L 245 206 Z" class="head"/>
 <rect x="170" y="214" width="140" height="24" rx="12" class="end"/>
 <text x="240" y="230" class="tag tag-end" text-anchor="middle">finishes, exit 0</text>
+<path d="M 240 312 L 240 334" class="wire"/>
+<path d="M 235 326 L 240 334 L 245 326 Z" class="head"/>
+<rect x="170" y="334" width="140" height="24" rx="12" class="end"/>
+<text x="240" y="350" class="tag tag-end" text-anchor="middle">finishes, exit 0</text>
 </svg>

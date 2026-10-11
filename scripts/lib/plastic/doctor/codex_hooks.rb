@@ -2,12 +2,13 @@
 
 require "json"
 require_relative "check"
+require_relative "version_record"
 require_relative "codex_hook_command"
 
 module Plastic
   module Doctor
     class CodexHooks
-      REPAIR = "plastic install --codex --reinstall"
+      REPAIR = VersionRecord::REINSTALL
 
       def self.commands(groups)
         Array(groups).grep(Hash).flat_map { |group| Array(group["hooks"]).grep(Hash) }

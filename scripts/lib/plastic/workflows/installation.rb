@@ -4,6 +4,8 @@ require "json"
 require "pathname"
 require "stringio"
 require_relative "../../../install"
+require_relative "../harnesses"
+require_relative "../installations"
 
 module Plastic
   module Workflows
@@ -14,7 +16,6 @@ module Plastic
     class Installation < ::Install
       PACKAGE_ROOT = File.expand_path("../../../..", __dir__)
       SOURCES = %w[VERSION package.json].freeze
-      AGENT_KEYS = %w[claude codex hermes].freeze
       FOLDERS = %i[dir home_dir].freeze
       INSTALLER = "curl -fsSL https://raw.githubusercontent.com/zalom/plastic/main/install.sh |"
 
@@ -35,23 +36,6 @@ module Plastic
         agent.to_h { |key, value| [key, FOLDERS.include?(key) ? File.join(home, Pathname(value).relative_path_from(Dir.home).to_s) : value] }
       end
 
-      def self.selected(context)
-        return AGENT_KEYS if context.all
-
-        chosen = AGENT_KEYS.select { |key| context.public_send(key) }
-        chosen.empty? ? ["claude"] : chosen
-      end
-
-      # A reinstall that names no agent syncs the agents already registered.
-      def self.to_install(context)
-        registered = sync_registered?(context) ? of(context).installed_agents : []
-        registered.empty? ? selected(context) : registered
-      end
-
-      def self.sync_registered?(context) = context.reinstall && !named?(context)
-
-      def self.named?(context) = context.all || AGENT_KEYS.any? { |key| context.public_send(key) }
-
       def self.fetch_command(setting) = "#{INSTALLER} #{setting} sh"
 
       def read_package_version(root)
@@ -70,19 +54,13 @@ module Plastic
         end
       end
 
-      def planned_removals(keys) = keys.filter_map { |key| agent_config(key) }.flat_map { |config| agent_files(config) }
+      def synced = installed_agents.select { |key| Harnesses.installed_by(key) }
 
-      def agent_files(config)
-        manifest_files(manifest_path_for(nil, config)).grep(->(file) { File.exist?(file) }) +
-          [emptied_instruction_file(config), record_dir_for(config)].compact
-      end
+      def kept(harnesses) = (Installations.recorded(plastic_home) | installed_agents.map { |key| Harnesses.installed_by(key).name }) - harnesses
 
-      def unregistered(keys) = keys.reject { |key| agent_installed?(key) }
+      def install(keys, reinstall:, force:) = run(selected: keys, force:, reinstall:, argv: [], input: StringIO.new)
 
-      def install(selected, reinstall:, force:)
-        fresh = (reinstall || !installed?) ? selected : unregistered(selected)
-        run(selected: fresh, force:, reinstall:, argv: [], input: StringIO.new, already_registered: selected - fresh)
-      end
+      def wire(keys) = install(keys, reinstall: false, force: false)
 
       def preflight
         report = StringIO.new

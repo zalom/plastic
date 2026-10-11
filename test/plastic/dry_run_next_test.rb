@@ -44,9 +44,8 @@ class DryRunNextTest < Plastic::TestCase
     assert_next_is_the_call argv, call(*argv, env: env_for(home))
   end
 
-  def test_install_keeps_its_agent_switch
-    claude_folder
-    argv = ["install", "--claude", "--dry-run"]
+  def test_install_keeps_its_reinstall_switch
+    argv = ["install", "--reinstall", "--dry-run"]
 
     assert_next_is_the_call argv, call(*argv)
   end
@@ -65,10 +64,10 @@ class DryRunNextTest < Plastic::TestCase
     assert_next_is_the_call argv, call(*argv)
   end
 
-  def test_uninstall_keeps_its_scope_switch
+  def test_uninstall_keeps_its_answer
     claude_folder
-    call("install", "--claude")
-    argv = ["uninstall", "--all", "--dry-run"]
+    call("init", "1")
+    argv = ["uninstall", "--dry-run", "1"]
 
     assert_next_is_the_call argv, call(*argv)
   end

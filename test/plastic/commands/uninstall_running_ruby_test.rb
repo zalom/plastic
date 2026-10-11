@@ -16,7 +16,7 @@ class UninstallRunningRubyTest < Minitest::Test
   def setup
     @home = Dir.mktmpdir("plastic-uninstall-ruby")
     FileUtils.mkdir_p(File.join(@home, ".claude"))
-    KernelCommand.new(@home).run!("install", "--claude")
+    KernelCommand.new(@home).run!("init", "1")
     copied_release
     FileUtils.chmod_R("a-w", ruby_folder)
   end
@@ -27,11 +27,11 @@ class UninstallRunningRubyTest < Minitest::Test
   end
 
   def test_removes_the_ruby_it_runs_on_and_still_prints_its_closing_lines
-    out, err, status = ChildProcess.capture3(environment, launcher, "uninstall", "--claude", chdir: @home)
+    out, err, status = ChildProcess.capture3(environment, launcher, "uninstall", "1", chdir: @home)
 
     assert_equal [0, "", false], [status.exitstatus, err, File.exist?(share)]
     assert_match(/removed:\s+#{Regexp.escape(share)}\n/, out)
-    assert_match(/^next: plastic install$/, out)
+    assert_match(/^next: plastic init$/, out)
   end
 
   private
