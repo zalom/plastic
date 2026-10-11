@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/hooks/resume"
+require_relative "../../../scripts/lib/plastic/hooks/start"
 require_relative "../../../scripts/lib/plastic/doctor/check"
 
-class ResumeDoctorTest < Plastic::TestCase
+class StartDoctorTest < Plastic::TestCase
   fixtures :empty
 
   Check = Plastic::Doctor::Check
@@ -13,12 +13,14 @@ class ResumeDoctorTest < Plastic::TestCase
   FAILING = ->(_scope, _harness) { [Check.new("launcher:", "missing", "run plastic install --reinstall"), Check.new("hooks:", "stale", "run plastic init")] }
   BROKEN = ->(_scope, _harness) { raise "the doctor broke" }
 
-  def resume(health, source: nil)
+  CLAUDE = "/u/.claude/projects/p/s-1.jsonl"
+
+  def resume(health, source: nil, transcript_path: CLAUDE)
     out = StringIO.new
     err = StringIO.new
     environment = Plastic::CLI::Command::Environment.new(env: { "PLASTIC_HOME" => @plastic_home, "PLASTIC_SESSION" => "s-1" },
-      input: StringIO.new(JSON.generate({ source: }.compact)), out:, err:, home: @home, directory: @home)
-    code = Plastic::Hooks::Resume.call([], environment:, health:)
+      input: StringIO.new(JSON.generate({ source:, transcript_path: }.compact)), out:, err:, home: @home, directory: @home)
+    code = Plastic::Hooks::Start.call([], environment:, health:)
     [code, out.string, err.string]
   end
 
@@ -42,6 +44,20 @@ class ResumeDoctorTest < Plastic::TestCase
     assert_empty lines
   end
 
+  def test_the_doctor_checks_the_harness_the_start_detected
+    asked = []
+    resume(->(_scope, harness) { asked << harness && [] }, transcript_path: "/u/.codex/sessions/r.jsonl")
+
+    assert_equal ["codex"], asked
+  end
+
+  def test_a_start_no_harness_names_runs_no_doctor
+    asked = []
+    resume(->(_scope, harness) { asked << harness && [] }, transcript_path: nil)
+
+    assert_empty asked
+  end
+
   def test_every_check_passing_prints_nothing_about_doctor
     code, out, err = resume(PASSING)
 
@@ -57,7 +73,7 @@ class ResumeDoctorTest < Plastic::TestCase
   end
 end
 
-class ResumeDoctorMissingStoreTest < Plastic::TestCase
+class StartDoctorMissingStoreTest < Plastic::TestCase
   def test_a_missing_store_stays_quiet_and_never_runs_the_doctor
     with_home(global: false) do |home|
       out = StringIO.new
@@ -66,7 +82,7 @@ class ResumeDoctorMissingStoreTest < Plastic::TestCase
       environment = Plastic::CLI::Command::Environment.new(env: { "PLASTIC_HOME" => home, "PLASTIC_SESSION" => "s-1" },
         input: StringIO.new("{}"), out:, err:, home: File.dirname(home), directory: File.dirname(home))
 
-      code = Plastic::Hooks::Resume.call([], environment:, health: ->(scope, _harness) { asked << scope && [] })
+      code = Plastic::Hooks::Start.call([], environment:, health: ->(scope, _harness) { asked << scope && [] })
 
       assert_equal [0, "", "", []], [code, out.string, err.string, asked]
     end
@@ -76,7 +92,7 @@ end
 require_relative "../commands/installer_helper"
 require_relative "../doctor/whole_home"
 
-class ResumeHealthyHomeTest < Plastic::TestCase
+class StartHealthyHomeTest < Plastic::TestCase
   include InstallerHelper
   include WholeHome
 
@@ -89,7 +105,7 @@ class ResumeHealthyHomeTest < Plastic::TestCase
   def test_an_installed_healthy_home_gives_no_doctor_line
     env = { "PLASTIC_PACKAGE_ROOT" => @package, "PLASTIC_SESSION" => "s-1" }
     doctor = call("doctor", env:)
-    resume = call("hook", "resume", "--harness", "claude-code", env:)
+    resume = call("hook", "start", env: env.merge("CLAUDE_CODE_SESSION_ID" => "s-1"))
 
     assert_equal [0, 0, ""], [doctor.code, resume.code, resume.err]
     assert_match(/\APlastic: a new session/, resume.out)

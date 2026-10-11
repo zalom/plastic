@@ -13,7 +13,7 @@ class OwnershipTest < Minitest::Test
   end
 
   def test_a_command_that_quotes_the_launcher_is_owned
-    assert ownership.own?(%(env -u RUBYOPT "#{COMMAND}" hook resume || true))
+    assert ownership.own?(%(env -u RUBYOPT "#{COMMAND}" hook start || true))
   end
 
   def test_a_command_that_names_an_earlier_launcher_file_is_owned

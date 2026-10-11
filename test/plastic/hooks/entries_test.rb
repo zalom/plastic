@@ -20,11 +20,11 @@ class EntriesTest < Minitest::Test
 
   def commands_for(hooks, event) = Array(hooks[event]).flat_map { |group| group["hooks"].map { |hook| hook["command"] } }
 
-  def test_claude_writes_one_group_per_event_with_the_harness_flag
+  def test_claude_writes_one_group_per_event_with_no_harness_option
     entries { |rewriter| @settings = rewriter.claude({}) }
 
-    assert_equal [%(env -u RUBYOPT "#{COMMAND}" hook resume --harness claude-code || true)], commands_for(@settings["hooks"], "SessionStart")
-    assert_equal [%(env -u RUBYOPT "#{COMMAND}" hook record --harness claude-code || true)], commands_for(@settings["hooks"], "Stop")
+    assert_equal [%(env -u RUBYOPT "#{COMMAND}" hook start || true)], commands_for(@settings["hooks"], "SessionStart")
+    assert_equal [%(env -u RUBYOPT "#{COMMAND}" hook stop || true)], commands_for(@settings["hooks"], "Stop")
     assert_equal [%(env -u RUBYOPT "#{COMMAND}" hook end || true)], commands_for(@settings["hooks"], "SessionEnd")
   end
 
@@ -37,11 +37,19 @@ class EntriesTest < Minitest::Test
     assert_equal [true, false, false], @owned
   end
 
-  def test_codex_writes_the_three_events_with_the_codex_flag_and_no_status_line
+  def test_codex_writes_the_three_events_and_no_status_line
     entries { |rewriter| @hooks_json = rewriter.codex({ "hooks" => {} }) }
 
-    assert_equal [%(env -u RUBYOPT "#{COMMAND}" hook resume --harness codex || true)], commands_for(@hooks_json["hooks"], "SessionStart")
+    assert_equal [%(env -u RUBYOPT "#{COMMAND}" hook start || true)], commands_for(@hooks_json["hooks"], "SessionStart")
     assert_nil @hooks_json["statusLine"]
+  end
+
+  def test_a_former_hook_command_with_the_harness_option_is_replaced
+    former = { "matcher" => "", "hooks" => [{ "type" => "command", "command" => %(env -u RUBYOPT "#{COMMAND}" hook resume --harness claude-code || true) }] }
+
+    entries do |rewriter|
+      assert_equal [%(env -u RUBYOPT "#{COMMAND}" hook start || true)], commands_for(rewriter.claude({ "hooks" => { "SessionStart" => [former] } })["hooks"], "SessionStart")
+    end
   end
 
   def test_a_rerun_gives_one_group_per_event_not_two
@@ -116,7 +124,7 @@ class EntriesTest < Minitest::Test
     entries do |rewriter|
       commands = commands_for(rewriter.claude({ "hooks" => { "SessionStart" => [old, user] } })["hooks"], "SessionStart")
 
-      assert_equal ["/u/.claude/hooks/plastic-writing-style", %(env -u RUBYOPT "#{COMMAND}" hook resume --harness claude-code || true)], commands
+      assert_equal ["/u/.claude/hooks/plastic-writing-style", %(env -u RUBYOPT "#{COMMAND}" hook start || true)], commands
     end
   end
 
