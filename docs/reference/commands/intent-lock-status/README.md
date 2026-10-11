@@ -29,7 +29,7 @@ The command is `IntentLockStatus`, in [`intent_lock_status.rb:8`](../../../../sc
 
 The code workflow `:code_show_lock`, in [`show_lock.rb:12`](../../../../scripts/lib/plastic/workflows/show_lock.rb#L12).
 
-Prints an intent's lock row: the session, the mode, when it was taken and renewed, and whether it is still live; then the code worktree when the store's project names a repository. Refuses an unknown id.
+Prints an intent's lock row: the session, the mode, when it was taken and renewed, whether it is still live and why; then the code worktree when the store's project names a repository. Refuses an unknown id.
 
 ![How ShowLock runs: its steps, where it stops, and its outcomes](code_show_lock.svg)
 
@@ -42,11 +42,11 @@ Prints an intent's lock row: the session, the mode, when it was taken and renewe
 
 | Outcome | When | Then | Code |
 | --- | --- | --- | --- |
-| `:closed` | when `%w[done abandoned].include?(context.intent.status)` | finishes, exit 0; prints no next: line | [`show_lock.rb:46`](../../../../scripts/lib/plastic/workflows/show_lock.rb#L46) |
-| `:agent_needed` | when `context.state != "live" && !context.handoff_text.nil?` | runs [AdvanceDelivery](#advancedelivery) | [`show_lock.rb:48`](../../../../scripts/lib/plastic/workflows/show_lock.rb#L48) |
-| `:none` | when `context.state == "none"` | finishes, exit 0; next: plastic auto %{intent_id} | [`show_lock.rb:49`](../../../../scripts/lib/plastic/workflows/show_lock.rb#L49) |
-| `:expired` | when `context.state == "expired"` | finishes, exit 0; next: plastic auto %{intent_id} | [`show_lock.rb:51`](../../../../scripts/lib/plastic/workflows/show_lock.rb#L51) |
-| `:live` | otherwise | finishes, exit 0; next: plastic intent brief %{intent_id} | [`show_lock.rb:53`](../../../../scripts/lib/plastic/workflows/show_lock.rb#L53) |
+| `:closed` | when `%w[done abandoned].include?(context.intent.status)` | finishes, exit 0; prints no next: line | [`show_lock.rb:48`](../../../../scripts/lib/plastic/workflows/show_lock.rb#L48) |
+| `:agent_needed` | when `context.state != "live" && !context.handoff_text.nil?` | runs [AdvanceDelivery](#advancedelivery) | [`show_lock.rb:50`](../../../../scripts/lib/plastic/workflows/show_lock.rb#L50) |
+| `:none` | when `context.state == "none"` | finishes, exit 0; next: plastic auto %{intent_id} | [`show_lock.rb:51`](../../../../scripts/lib/plastic/workflows/show_lock.rb#L51) |
+| `:expired` | when `context.state == "expired"` | finishes, exit 0; next: plastic auto %{intent_id} | [`show_lock.rb:53`](../../../../scripts/lib/plastic/workflows/show_lock.rb#L53) |
+| `:live` | otherwise | finishes, exit 0; next: plastic intent brief %{intent_id} | [`show_lock.rb:55`](../../../../scripts/lib/plastic/workflows/show_lock.rb#L55) |
 
 It sets `intent`, `state`, `status`, `why`, `handoff_text`.
 
@@ -78,10 +78,10 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
 | no intent %{intent_id} in this store | 1 | prints no next: line | [`show_lock.rb:24`](../../../../scripts/lib/plastic/workflows/show_lock.rb#L24) |
-| intent %{intent_id} is %{status} | 0 | prints no next: line | [`show_lock.rb:46`](../../../../scripts/lib/plastic/workflows/show_lock.rb#L46) |
-| intent %{intent_id} holds no lock | 0 | plastic auto %{intent_id} | [`show_lock.rb:49`](../../../../scripts/lib/plastic/workflows/show_lock.rb#L49) |
-| the lock of intent %{intent_id} expired, and plastic auto takes it over | 0 | plastic auto %{intent_id} | [`show_lock.rb:51`](../../../../scripts/lib/plastic/workflows/show_lock.rb#L51) |
-| a live session holds intent %{intent_id} | 0 | plastic intent brief %{intent_id} | [`show_lock.rb:53`](../../../../scripts/lib/plastic/workflows/show_lock.rb#L53) |
+| intent %{intent_id} is %{status} | 0 | prints no next: line | [`show_lock.rb:48`](../../../../scripts/lib/plastic/workflows/show_lock.rb#L48) |
+| intent %{intent_id} holds no lock | 0 | plastic auto %{intent_id} | [`show_lock.rb:51`](../../../../scripts/lib/plastic/workflows/show_lock.rb#L51) |
+| the lock of intent %{intent_id} expired, and plastic auto takes it over | 0 | plastic auto %{intent_id} | [`show_lock.rb:53`](../../../../scripts/lib/plastic/workflows/show_lock.rb#L53) |
+| a live session holds intent %{intent_id} | 0 | plastic intent brief %{intent_id} | [`show_lock.rb:55`](../../../../scripts/lib/plastic/workflows/show_lock.rb#L55) |
 | %{why} | 0 | prints no next: line | [`advance_delivery.rb:10`](../../../../scripts/lib/plastic/workflows/advance_delivery.rb#L10) |
 | the delivery instruction has been handled | 0 | prints no next: line | [`advance_delivery.rb:11`](../../../../scripts/lib/plastic/workflows/advance_delivery.rb#L11) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:97`](../../../../scripts/lib/plastic/code_workflow.rb#L97) |

@@ -64,6 +64,22 @@ class StopGateTest < Plastic::TestCase
     assert_nil gate.decision
   end
 
+  def test_a_lapsed_lock_held_by_an_open_node_still_blocks
+    take_lock("1", live: false)
+    make_ready_node("1")
+    put(:work, :nodes, { intent_id: "1", id: "b", state: "claimed", by: "s-1", updated_at: STAMP })
+
+    assert_equal "block", gate.decision["decision"]
+  end
+
+  def test_a_lock_of_an_ended_session_does_not_block
+    take_lock("1")
+    make_ready_node("1")
+    put(:local, :sessions, { session_id: "s-1", store: "global", ended_at: STAMP })
+
+    assert_nil gate.decision
+  end
+
   def test_an_error_while_reading_permits_the_stop
     broken = StopGate.new(event: {}, stop_hook: true, retrieval: nil, session_id: "s-1")
 

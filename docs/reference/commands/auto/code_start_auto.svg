@@ -78,7 +78,7 @@
 <path d="M 221 81 L 226 89 L 231 81 Z" class="head"/>
 <rect x="16" y="89" width="420" height="56" rx="6" class="card"/>
 <text x="26" y="104" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="104" class="tm tag-muted" text-anchor="end">start_auto.rb:59</text>
+<text x="426" y="104" class="tm tag-muted" text-anchor="end">start_auto.rb:60</text>
 <text x="26" y="121" class="tm" text-anchor="start">passes when !context.intent.nil?</text>
 <path d="M 436 107 L 464 107" class="wire-failure"/>
 <path d="M 456 102 L 464 107 L 456 112 Z" class="head"/>
@@ -90,7 +90,7 @@
 <path d="M 221 147 L 226 155 L 231 147 Z" class="head"/>
 <rect x="16" y="155" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="170" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="170" class="tm tag-muted" text-anchor="end">start_auto.rb:60</text>
+<text x="426" y="170" class="tm tag-muted" text-anchor="end">start_auto.rb:61</text>
 <text x="26" y="187" class="tm" text-anchor="start">passes when !context.session.nil?</text>
 <path d="M 436 173 L 464 173" class="wire-failure"/>
 <path d="M 456 168 L 464 173 L 456 178 Z" class="head"/>
@@ -101,7 +101,7 @@
 <path d="M 221 202 L 226 210 L 231 202 Z" class="head"/>
 <rect x="16" y="210" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="225" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="225" class="tm tag-muted" text-anchor="end">start_auto.rb:61</text>
+<text x="426" y="225" class="tm tag-muted" text-anchor="end">start_auto.rb:62</text>
 <text x="26" y="242" class="tm" text-anchor="start">passes when context.closed_problem.nil?</text>
 <path d="M 436 228 L 464 228" class="wire-failure"/>
 <path d="M 456 223 L 464 228 L 456 233 Z" class="head"/>
@@ -112,7 +112,7 @@
 <path d="M 221 257 L 226 265 L 231 257 Z" class="head"/>
 <rect x="16" y="265" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="280" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="280" class="tm tag-muted" text-anchor="end">start_auto.rb:63</text>
+<text x="426" y="280" class="tm tag-muted" text-anchor="end">start_auto.rb:64</text>
 <text x="26" y="297" class="tm" text-anchor="start">passes when context.spec_problem.nil?</text>
 <path d="M 436 283 L 464 283" class="wire-failure"/>
 <path d="M 456 278 L 464 283 L 456 288 Z" class="head"/>
@@ -123,7 +123,7 @@
 <path d="M 221 312 L 226 320 L 231 312 Z" class="head"/>
 <rect x="16" y="320" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="335" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="335" class="tm tag-muted" text-anchor="end">start_auto.rb:65</text>
+<text x="426" y="335" class="tm tag-muted" text-anchor="end">start_auto.rb:66</text>
 <text x="26" y="352" class="tm" text-anchor="start">passes when context.problem.nil?</text>
 <path d="M 436 338 L 464 338" class="wire-refusal"/>
 <path d="M 456 333 L 464 338 L 456 343 Z" class="head"/>
@@ -134,14 +134,14 @@
 <path d="M 221 367 L 226 375 L 231 367 Z" class="head"/>
 <rect x="16" y="375" width="420" height="129" rx="6" class="card"/>
 <text x="26" y="390" class="tag tag-muted" text-anchor="start">STEP</text>
-<text x="426" y="390" class="tm tag-muted" text-anchor="end">start_auto.rb:75</text>
+<text x="426" y="390" class="tm tag-muted" text-anchor="end">start_auto.rb:76</text>
 <text x="26" y="407" class="t" text-anchor="start">take the lock and go active</text>
 <text x="26" y="422" class="tm" text-anchor="start">done when def self.delivery_started?(context)</text>
 <text x="26" y="436" class="tm" text-anchor="start">retrieval = context.retrieval intent_id =</text>
 <text x="26" y="450" class="tm" text-anchor="start">context.intent_id lock = retrieval.lock(intent_id)</text>
 <text x="26" y="464" class="tm" text-anchor="start">retrieval.intent(intent_id).status == &quot;active&quot; &amp;&amp;</text>
 <text x="26" y="478" class="tm" text-anchor="start">lock&amp;.session_id == context.session &amp;&amp; lock.mode ==</text>
-<text x="26" y="492" class="tm" text-anchor="start">&quot;auto&quot; &amp;&amp; lock.live? end</text>
+<text x="26" y="492" class="tm" text-anchor="start">&quot;auto&quot; &amp;&amp; retrieval.liveness(lock).live? end</text>
 <path d="M 436 393 L 464 393" class="wire-failure"/>
 <path d="M 456 388 L 464 393 L 456 398 Z" class="head"/>
 <rect x="466" y="375" width="270" height="56" rx="6" class="stop-failure"/>
@@ -152,7 +152,7 @@
 <path d="M 221 506 L 226 514 L 231 506 Z" class="head"/>
 <rect x="16" y="514" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="529" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="529" class="tm tag-muted" text-anchor="end">start_auto.rb:80</text>
+<text x="426" y="529" class="tm tag-muted" text-anchor="end">start_auto.rb:81</text>
 <text x="26" y="546" class="t" text-anchor="start">name the code worktree</text>
 <path d="M 226 559 L 226 569" class="wire"/>
 <path d="M 221 561 L 226 569 L 231 561 Z" class="head"/>

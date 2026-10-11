@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 324" width="980" height="324" role="img" xml:space="preserve">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 382" width="980" height="382" role="img" xml:space="preserve">
 <title>What plastic intent lock status touches</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
@@ -86,32 +86,39 @@
 <rect x="336" y="102" width="196" height="28" rx="6" class="card"/>
 <text x="344" y="120" class="tm" text-anchor="start">Work::NextOffer</text>
 <rect x="336" y="136" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="154" class="tm" text-anchor="start">DeliveryAction</text>
+<text x="344" y="154" class="tm" text-anchor="start">Lock::Liveness</text>
 <rect x="336" y="170" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="188" class="tm" text-anchor="start">Knowledge::Spec</text>
+<text x="344" y="188" class="tm" text-anchor="start">Claims</text>
 <rect x="336" y="204" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="222" class="tm" text-anchor="start">Work::Reader</text>
+<text x="344" y="222" class="tm" text-anchor="start">DeliveryAction</text>
 <rect x="336" y="238" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="256" class="tm" text-anchor="start">Retrieval::Evidence</text>
+<text x="344" y="256" class="tm" text-anchor="start">Knowledge::Spec</text>
+<rect x="336" y="272" width="196" height="28" rx="6" class="card"/>
+<text x="344" y="290" class="tm" text-anchor="start">Lock::Claim</text>
+<rect x="336" y="306" width="196" height="28" rx="6" class="card"/>
+<text x="344" y="324" class="tm" text-anchor="start">Work::Reader</text>
+<rect x="336" y="340" width="196" height="28" rx="6" class="card"/>
+<text x="344" y="358" class="tm" text-anchor="start">Retrieval::Evidence</text>
 <rect x="556" y="34" width="186" height="45" rx="14" class="db"/>
 <text x="568" y="52" class="tb" text-anchor="start">knowledge_graph.db</text>
 <text x="568" y="68" class="tm" text-anchor="start">documents  R</text>
 <path d="M 556 53 L 536 53" class="wire-read"/>
 <path d="M 544 48 L 536 53 L 544 58 Z" class="head"/>
-<rect x="556" y="93" width="186" height="45" rx="14" class="db"/>
+<rect x="556" y="93" width="186" height="60" rx="14" class="db"/>
 <text x="568" y="111" class="tb" text-anchor="start">local.db</text>
 <text x="568" y="127" class="tm" text-anchor="start">locks  R</text>
+<text x="568" y="142" class="tm" text-anchor="start">sessions  R</text>
 <path d="M 556 112 L 536 112" class="wire-read"/>
 <path d="M 544 107 L 536 112 L 544 117 Z" class="head"/>
-<rect x="556" y="152" width="186" height="90" rx="14" class="db"/>
-<text x="568" y="170" class="tb" text-anchor="start">work_graph.db</text>
-<text x="568" y="186" class="tm" text-anchor="start">approvals  R</text>
-<text x="568" y="201" class="tm" text-anchor="start">edges  R</text>
-<text x="568" y="216" class="tm" text-anchor="start">intents  R</text>
-<text x="568" y="231" class="tm" text-anchor="start">nodes  R</text>
-<path d="M 556 171 L 536 171" class="wire-read"/>
-<path d="M 544 166 L 536 171 L 544 176 Z" class="head"/>
-<text x="556" y="268" class="tm tag-muted" text-anchor="start">R read  W write</text>
-<text x="556" y="282" class="tm tag-muted" text-anchor="start">declared: named by the</text>
-<text x="556" y="296" class="tm tag-muted" text-anchor="start">command, tables not found</text>
+<rect x="556" y="167" width="186" height="90" rx="14" class="db"/>
+<text x="568" y="185" class="tb" text-anchor="start">work_graph.db</text>
+<text x="568" y="201" class="tm" text-anchor="start">approvals  R</text>
+<text x="568" y="216" class="tm" text-anchor="start">edges  R</text>
+<text x="568" y="231" class="tm" text-anchor="start">intents  R</text>
+<text x="568" y="246" class="tm" text-anchor="start">nodes  R</text>
+<path d="M 556 186 L 536 186" class="wire-read"/>
+<path d="M 544 181 L 536 186 L 544 191 Z" class="head"/>
+<text x="556" y="283" class="tm tag-muted" text-anchor="start">R read  W write</text>
+<text x="556" y="297" class="tm tag-muted" text-anchor="start">declared: named by the</text>
+<text x="556" y="311" class="tm tag-muted" text-anchor="start">command, tables not found</text>
 </svg>

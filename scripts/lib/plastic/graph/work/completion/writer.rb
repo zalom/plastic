@@ -78,7 +78,7 @@ module Plastic
 
           def release_lock(intent_id)
             lock = @retrieval.lock(intent_id)
-            delete_lock(lock) if lock && !(lock.live? && lock.session_id != @session)
+            delete_lock(lock) if lock && !(lock.session_id != @session && @retrieval.liveness(lock).live?)
           end
 
           def delete_lock(lock)

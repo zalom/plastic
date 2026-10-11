@@ -43,9 +43,10 @@ module Plastic
       end
 
       def self.lock_problem(id, context)
-        lock = context.retrieval.lock(id)
+        retrieval = context.retrieval
+        lock = retrieval.lock(id)
         holder = lock&.session_id
-        return nil unless lock && holder != context.session && lock.live?
+        return nil unless lock && holder != context.session && retrieval.liveness(lock).live?
 
         "intent #{id} is locked by session #{holder}"
       end
@@ -69,7 +70,7 @@ module Plastic
         intent_id = context.intent_id
         lock = retrieval.lock(intent_id)
         retrieval.intent(intent_id).status == "active" &&
-          lock&.session_id == context.session && lock.mode == "auto" && lock.live?
+          lock&.session_id == context.session && lock.mode == "auto" && retrieval.liveness(lock).live?
       end
 
       step "take the lock and go active", done: method(:delivery_started?) do |context|

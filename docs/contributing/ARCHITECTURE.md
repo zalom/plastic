@@ -149,7 +149,8 @@ text that Plastic prints in the planning hand-off.
 `plastic auto ID` takes the delivery lock and sets the intent active. It refuses with exit 3 for
 an open decision, a missing go-ahead, and a live lock held by another session. The lock is one
 row of `local.db`, keyed by the store and the intent, and it names the session. A lock is live
-for 1800 seconds after its last renewal, and `hook record` renews it. Plastic computes the path
+until its session ends, while it was renewed within 1800 seconds, or while its session holds a
+node of the intent claimed within 7200 seconds. `hook record` renews it. Plastic computes the path
 and branch of the code worktree, `<repo>/.claude/worktrees/ID--slug` on `plastic/ID--slug`, and
 prints them. The agent makes the worktree.
 
