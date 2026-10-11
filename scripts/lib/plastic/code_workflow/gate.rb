@@ -17,11 +17,11 @@ module Plastic
       def run(ctx, workflow)
         return if pass.call(ctx)
 
-        ending(workflow.key, ctx.fill(reason), *[offers, because].map { |template| template && ctx.fill(template) })
+        ending(workflow.key, ctx.fill(reason), [offers, because].map { |template| template && ctx.fill(template) })
       end
 
-      def ending(key, message, command, why)
-        (stops == :refusal) ? Refused.new(key, message, command, why) : Failed.new(key, name, message, command, why)
+      def ending(key, message, lines)
+        (stops == :refusal) ? Refused.new(key, message, *lines) : Failed.new(key, name, message, *lines)
       end
     end
   end
