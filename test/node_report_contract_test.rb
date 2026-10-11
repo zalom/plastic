@@ -50,29 +50,37 @@ class NodeReportContractTest < Minitest::Test
     refute_includes body, "orchestrating session"
   end
 
-  def test_agent_frontmatter_descriptions
-    assert_equal <<~FRONT.strip, File.readlines(EXECUTOR, chomp: true)[0..7].join("\n")
-      ---
-      name: plastic-executor
-      description: |
-        Use for the Exec stage in auto mode: commit the plan's tests red, implement
-        the nodes with a commit each, drive the test suite green, and report back.
-      model: sonnet
-      effort: medium
-      ---
-    FRONT
+  EXECUTOR_FRONT = <<~FRONT.strip
+    ---
+    name: plastic-executor
+    description: |
+      Use for the Exec stage in auto mode: commit the plan's tests red, implement
+      the nodes with a commit each, drive the test suite green, and report back.
+    model: sonnet
+    effort: medium
+    ---
+  FRONT
 
-    assert_equal <<~FRONT.strip, File.readlines(PLANNER, chomp: true)[0..8].join("\n")
-      ---
-      name: plastic-planner
-      description: |
-        Use for one planning step in auto mode: draft the plan with its failure-mode
-        matrix and proposed work nodes, or review a plan or a diff, and report
-        back. The main session records the result.
-      model: opus
-      effort: medium
-      ---
-    FRONT
+  PLANNER_FRONT = <<~FRONT.strip
+    ---
+    name: plastic-planner
+    description: |
+      Use for one planning step in auto mode: draft the plan with its failure-mode
+      matrix and proposed work nodes, or review a plan or a diff, and report
+      back. The main session records the result.
+    model: opus
+    effort: medium
+    ---
+  FRONT
+
+  def front(path) = File.readlines(path, chomp: true).take_while.with_index { |line, index| index.zero? || line != "---" }.push("---").join("\n")
+
+  def test_executor_frontmatter_description
+    assert_equal EXECUTOR_FRONT, front(EXECUTOR)
+  end
+
+  def test_planner_frontmatter_description
+    assert_equal PLANNER_FRONT, front(PLANNER)
   end
 
   def test_internals_doc_names_the_tick_lag_warning
