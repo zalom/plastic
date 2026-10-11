@@ -7,6 +7,10 @@ Each page explains one plastic command: what it takes, what it touches, the work
 | Command | What it does |
 | --- | --- |
 | [`plastic version`](version/README.md) | Print the installed Plastic version and release channel |
+| [`plastic config`](config/README.md) | Pick which on/off settings are on, on the choice screen |
+| [`plastic config list`](config-list/README.md) | List every setting with its value, globally or for one harness |
+| [`plastic config get`](config-get/README.md) | Print the value of one setting |
+| [`plastic config set`](config-set/README.md) | Write one setting to config.yml, globally or for one harness |
 | [`plastic doctor`](doctor/README.md) | Check the installation, the databases and the hooks of this harness, and name each repair |
 | [`plastic install`](install/README.md) | Install the core files and register Plastic with agents |
 | [`plastic update`](update/README.md) | Sync a newer package into the home or name the installer command |
@@ -134,6 +138,6 @@ Each page explains one plastic command: what it takes, what it touches, the work
 
 | Command | What it does |
 | --- | --- |
-| [`plastic hook resume`](hook-resume/README.md) | SessionStart: print the state the rows carry |
-| [`plastic hook record`](hook-record/README.md) | Stop: stamp the turn, renew locks, run the stop gate |
+| [`plastic hook start`](hook-start/README.md) | SessionStart: name the harness, open the session row, print the state the rows carry |
+| [`plastic hook stop`](hook-stop/README.md) | Stop: stamp the turn, renew locks, run the stop gate |
 | [`plastic hook end`](hook-end/README.md) | SessionEnd: set the session's end time and reason |

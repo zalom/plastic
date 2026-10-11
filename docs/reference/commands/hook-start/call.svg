@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 86" width="360" height="86" role="img" xml:space="preserve">
-<title>The call of plastic hook record</title>
+<title>The call of plastic hook start</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
 .lane-code { fill: #d5e8e3; stroke: #0d6b61; stroke-width: 1.5; }
@@ -70,6 +70,6 @@
 <rect width="100%" height="100%" class="ground"/>
 <rect x="16" y="16" width="328" height="56" rx="6" class="card"/>
 <text x="28" y="36" class="tag tag-muted" text-anchor="start">HOOK, ALWAYS EXIT 0</text>
-<text x="28" y="56" class="tb" text-anchor="start">Record</text>
-<text x="332" y="56" class="tm" text-anchor="end">hook record</text>
+<text x="28" y="56" class="tb" text-anchor="start">Start</text>
+<text x="332" y="56" class="tm" text-anchor="end">hook start</text>
 </svg>

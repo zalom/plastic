@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 250" width="980" height="250" role="img" xml:space="preserve">
-<title>What plastic hook resume touches</title>
+<title>What plastic hook start touches</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
 .lane-code { fill: #d5e8e3; stroke: #0d6b61; stroke-width: 1.5; }
@@ -74,15 +74,17 @@
 <text x="556" y="20" class="tag tag-muted" text-anchor="start">DATABASES</text>
 <text x="766" y="20" class="tag tag-muted" text-anchor="start">FILES IT PRINTS</text>
 <rect x="16" y="34" width="140" height="40" rx="6" class="lane-code"/>
-<text x="26" y="58" class="tm" text-anchor="start">plastic hook resume</text>
+<text x="26" y="58" class="tm" text-anchor="start">plastic hook start</text>
 <rect x="336" y="34" width="196" height="28" rx="6" class="card"/>
 <text x="344" y="52" class="tm" text-anchor="start">Session::Writer</text>
 <rect x="336" y="68" width="196" height="28" rx="6" class="card"/>
 <text x="344" y="86" class="tm" text-anchor="start">Work::Session::Reader</text>
 <rect x="336" y="102" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="120" class="tm" text-anchor="start">Work::LastSavepoints</text>
+<text x="344" y="120" class="tm" text-anchor="start">Harnesses::Detection</text>
 <rect x="336" y="136" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="154" class="tm" text-anchor="start">Touched</text>
+<text x="344" y="154" class="tm" text-anchor="start">Work::LastSavepoints</text>
+<rect x="336" y="170" width="196" height="28" rx="6" class="card"/>
+<text x="344" y="188" class="tm" text-anchor="start">Touched</text>
 <rect x="556" y="34" width="186" height="60" rx="14" class="db"/>
 <text x="568" y="52" class="tb" text-anchor="start">local.db</text>
 <text x="568" y="68" class="tm" text-anchor="start">routine_runs  R</text>
