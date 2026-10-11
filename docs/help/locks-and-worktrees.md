@@ -12,7 +12,7 @@ exist only for auto teams: an interactive session working direct or thinking tak
 For an auto team, exactly one session develops an intent's delivery at a time. The lock is one
 row of the `locks` table in the machine's `local.db`, keyed by the store and the intent. The row
 holds the session id, the mode, and the times the lock was taken and last renewed. The session
-id is the only authorization identity. The record hook (`plastic hook record`) renews every lock
+id is the only authorization identity. The stop hook (`plastic hook stop`) renews every lock
 row the session holds at the end of each turn.
 
 | The lock's session | The lock is |
@@ -33,9 +33,9 @@ off. An expired lock is taken over by the next `plastic auto ID`. Ending the int
 It prints the session, the mode, the taken and renewed times, whether the lock is live or
 expired and why, and the code worktree when the store's project names a repository.
 
-The record hook resolves the current session in a fixed precedence: the stdin `session_id`
-first, then the `CLAUDE_CODE_SESSION_ID` environment variable, then a derived key when neither
-is present. See [`docs/internals.md`](https://github.com/zalom/plastic/blob/main/docs/internals.md) for depth.
+A hook resolves the current session in a fixed precedence: the stdin `session_id` first, then
+the session variable of the harness, such as `CLAUDE_CODE_SESSION_ID` or `CODEX_THREAD_ID`. When
+one harness runs inside another, the inner session wins. See [`docs/internals.md`](https://github.com/zalom/plastic/blob/main/docs/internals.md) for depth.
 
 There is exactly one lock in Plastic. A second lock for maintenance would mislead: a resuming
 session could mistake a lock held by a maintenance session for an active delivery. Maintenance detects a live delivery lock and defers; it never
@@ -86,7 +86,7 @@ station. Nothing in the third column blocks; the fourth column is what gets writ
 | What (create) | the intent's rows and its folder | no lock yet | the intent row |
 | Why | `spec.md` | no lock yet; `plastic intent spec ID` names the open decisions | the spec and the rulings as rows |
 | Start (board) | none (a procedure, not a stage) | `plastic auto ID` takes the lock row and sets the intent active, then prints the code worktree path and branch | the lock row in `local.db` |
-| How | the work graph of the intent | the record hook renews the lock | node and edge rows |
+| How | the work graph of the intent | the stop hook renews the lock | node and edge rows |
 | Exec | code on the intent branch | renewal continues; code edits stay in the code worktree | node results |
 | End (done) | `outcome.md` | `plastic intent end ID` closes the intent and releases the lock; the session that delivered it closes it after the code is merged, with no lock handover | the intent closed as done |
 | Maintenance | revisions | detects a live lock and defers; never takes one | the revision rows |
