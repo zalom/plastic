@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 574" width="760" height="574" role="img" xml:space="preserve">
-<title>How SyncDown runs in plastic sync down</title>
+<title>How Down runs in plastic sync down</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
 .lane-code { fill: #d5e8e3; stroke: #0d6b61; stroke-width: 1.5; }
@@ -68,8 +68,8 @@
 .big { font: 700 36px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
 }</style>
 <rect width="100%" height="100%" class="ground"/>
-<text x="16" y="22" class="tb" text-anchor="start">SyncDown</text>
-<text x="436" y="22" class="tm tag-muted" text-anchor="end">sync_down.rb:9</text>
+<text x="16" y="22" class="tb" text-anchor="start">Down</text>
+<text x="436" y="22" class="tm tag-muted" text-anchor="end">down.rb:11</text>
 <rect x="16" y="34" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="49" class="tag tag-muted" text-anchor="start">READ</text>
 <text x="426" y="49" class="tm tag-muted" text-anchor="end">sync_steps.rb:67</text>

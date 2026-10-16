@@ -4,10 +4,8 @@ require_relative "../../test_helper"
 require "yaml"
 require_relative "../../support/child_process"
 
-class KernelPathsTest < Minitest::Test
-  ROOT = File.expand_path("../../..", __dir__)
-  SELF = "test/plastic/layout/kernel_paths_test.rb"
-  OLD_KERNEL = File.join("scripts", "lib", "plastic")
+# The names that left the kernel: a tracked file naming one is a stale reference.
+module RetiredNames
   RETIRED_COMMANDS = [
     "Commands::ConfigList", "Commands::ConfigGet", "Commands::ConfigSet", "Commands::IntentAbandon",
     "Commands::IntentEnd", "Commands::IntentNew", "Commands::ProjectList", "Commands::ProjectNew",
@@ -46,8 +44,14 @@ class KernelPathsTest < Minitest::Test
     "Workflows::AskNode", "Workflows::ImpedeNode", "Workflows::ResolveNode", "Workflows::AddEdge", "Workflows::RemoveEdge",
     "ExternalAgentWorkflow", "PreviewSyncDown"
   ].freeze
-  RETIRED_NAMES = [OLD_KERNEL, *RETIRED_COMMANDS].freeze
-  WORKFLOW_NAME = Regexp.union(RETIRED_WORKFLOWS.map { |name| /#{Regexp.escape(name)}(?![A-Za-z0-9_])/ })
+end
+
+class KernelPathsTest < Minitest::Test
+  ROOT = File.expand_path("../../..", __dir__)
+  SELF = "test/plastic/layout/kernel_paths_test.rb"
+  OLD_KERNEL = File.join("scripts", "lib", "plastic")
+  RETIRED_NAMES = [OLD_KERNEL, *RetiredNames::RETIRED_COMMANDS].freeze
+  WORKFLOW_NAME = Regexp.union(RetiredNames::RETIRED_WORKFLOWS.map { |name| /#{Regexp.escape(name)}(?![A-Za-z0-9_])/ })
 
   def tracked
     @tracked ||= ChildProcess.capture2e("git", "ls-files", "-z", chdir: ROOT).first.split("\0").reject do |path|
@@ -89,11 +93,11 @@ class KernelPathsTest < Minitest::Test
   def test_the_dir_relative_constants_point_into_the_package
     require "plastic/cli"
     require "plastic/workflows/installation"
-    require "plastic/workflows/show_spec"
+    require "plastic/workflows/code/intent/spec"
 
     assert File.file?(File.join(Plastic::Workflows::Installation::PACKAGE_ROOT, "package.json"))
     assert_predicate Dir.glob(File.join(Plastic::CLI::TOPICS, "*.md")), :any?
-    assert File.file?(Plastic::Workflows::ShowSpec::GRILLING)
+    assert File.file?(Plastic::Workflows::Code::Intent::Spec::GRILLING)
   end
 
   def test_a_fresh_process_requires_every_kernel_file_and_the_installer

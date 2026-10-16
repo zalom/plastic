@@ -26,27 +26,27 @@ The command is `Intent::Rule`, in [`rule.rb:10`](../../../../lib/plastic/command
 
 | Workflow | Kind | Code |
 | --- | --- | --- |
-| [AddRuling](#addruling) | code | [`add_ruling.rb:9`](../../../../lib/plastic/workflows/add_ruling.rb#L9) |
+| [Code::Intent::Rule](#codeintentrule) | code | [`rule.rb:11`](../../../../lib/plastic/workflows/code/intent/rule.rb#L11) |
 
-### AddRuling
+### Code::Intent::Rule
 
-The code workflow `:code_add_ruling`, in [`add_ruling.rb:9`](../../../../lib/plastic/workflows/add_ruling.rb#L9).
+The code workflow `:code_add_ruling`, in [`rule.rb:11`](../../../../lib/plastic/workflows/code/intent/rule.rb#L11).
 
 Writes one ruling; fails on an unknown intent, or when --supersedes names no such ruling.
 
-![How AddRuling runs: its steps, where it stops, and its outcomes](code_add_ruling.svg)
+![How Code::Intent::Rule runs: its steps, where it stops, and its outcomes](code_add_ruling.svg)
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
-| find the intent | read |  | [`add_ruling.rb:14`](../../../../lib/plastic/workflows/add_ruling.rb#L14) |
-| no intent %{intent_id} in this store | gate, stops with exit 1 | `!context.intent.nil?` | [`add_ruling.rb:18`](../../../../lib/plastic/workflows/add_ruling.rb#L18) |
-| write the ruling | step | `!context.problem.nil? \|\| !context.id.nil?` | [`add_ruling.rb:20`](../../../../lib/plastic/workflows/add_ruling.rb#L20) |
-| %{problem} | gate, stops with exit 1 | `context.problem.nil?` | [`add_ruling.rb:26`](../../../../lib/plastic/workflows/add_ruling.rb#L26) |
-| say what was written | read |  | [`add_ruling.rb:28`](../../../../lib/plastic/workflows/add_ruling.rb#L28) |
+| find the intent | read |  | [`rule.rb:16`](../../../../lib/plastic/workflows/code/intent/rule.rb#L16) |
+| no intent %{intent_id} in this store | gate, stops with exit 1 | `!context.intent.nil?` | [`rule.rb:20`](../../../../lib/plastic/workflows/code/intent/rule.rb#L20) |
+| write the ruling | step | `!context.problem.nil? \|\| !context.id.nil?` | [`rule.rb:22`](../../../../lib/plastic/workflows/code/intent/rule.rb#L22) |
+| %{problem} | gate, stops with exit 1 | `context.problem.nil?` | [`rule.rb:28`](../../../../lib/plastic/workflows/code/intent/rule.rb#L28) |
+| say what was written | read |  | [`rule.rb:30`](../../../../lib/plastic/workflows/code/intent/rule.rb#L30) |
 
 | Outcome | When | Then | Code |
 | --- | --- | --- | --- |
-| `:done` | always | finishes, exit 0; next: plastic intent brief %{intent_id} | [`add_ruling.rb:32`](../../../../lib/plastic/workflows/add_ruling.rb#L32) |
+| `:done` | always | finishes, exit 0; next: plastic intent brief %{intent_id} | [`rule.rb:34`](../../../../lib/plastic/workflows/code/intent/rule.rb#L34) |
 
 It sets `intent`, `problem`, `id`.
 
@@ -56,7 +56,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| no intent %{intent_id} in this store | 1 | prints no next: line | [`add_ruling.rb:18`](../../../../lib/plastic/workflows/add_ruling.rb#L18) |
-| %{problem} | 1 | prints no next: line | [`add_ruling.rb:26`](../../../../lib/plastic/workflows/add_ruling.rb#L26) |
-| ruling %{id} is on record | 0 | plastic intent brief %{intent_id} | [`add_ruling.rb:32`](../../../../lib/plastic/workflows/add_ruling.rb#L32) |
+| no intent %{intent_id} in this store | 1 | prints no next: line | [`rule.rb:20`](../../../../lib/plastic/workflows/code/intent/rule.rb#L20) |
+| %{problem} | 1 | prints no next: line | [`rule.rb:28`](../../../../lib/plastic/workflows/code/intent/rule.rb#L28) |
+| ruling %{id} is on record | 0 | plastic intent brief %{intent_id} | [`rule.rb:34`](../../../../lib/plastic/workflows/code/intent/rule.rb#L34) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |

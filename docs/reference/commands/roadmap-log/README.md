@@ -23,25 +23,25 @@ The command is `Roadmap::Log`, in [`log.rb:9`](../../../../lib/plastic/commands/
 
 | Workflow | Kind | Code |
 | --- | --- | --- |
-| [LogRoadmap](#logroadmap) | code | [`log_roadmap.rb:8`](../../../../lib/plastic/workflows/log_roadmap.rb#L8) |
+| [Code::Roadmap::Log](#coderoadmaplog) | code | [`log.rb:10`](../../../../lib/plastic/workflows/code/roadmap/log.rb#L10) |
 
-### LogRoadmap
+### Code::Roadmap::Log
 
-The code workflow `:code_log_roadmap`, in [`log_roadmap.rb:8`](../../../../lib/plastic/workflows/log_roadmap.rb#L8).
+The code workflow `:code_log_roadmap`, in [`log.rb:10`](../../../../lib/plastic/workflows/code/roadmap/log.rb#L10).
 
 Appends one log line to a roadmap, stamped with the session id.
 
-![How LogRoadmap runs: its steps, where it stops, and its outcomes](code_log_roadmap.svg)
+![How Code::Roadmap::Log runs: its steps, where it stops, and its outcomes](code_log_roadmap.svg)
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
-| no roadmap %{slug} | gate, stops with exit 1 | `!context.retrieval.roadmap(context.slug).nil?` | [`log_roadmap.rb:13`](../../../../lib/plastic/workflows/log_roadmap.rb#L13) |
-| write the log line | step | `!context.line.nil?` | [`log_roadmap.rb:15`](../../../../lib/plastic/workflows/log_roadmap.rb#L15) |
-| say what was logged | read |  | [`log_roadmap.rb:19`](../../../../lib/plastic/workflows/log_roadmap.rb#L19) |
+| no roadmap %{slug} | gate, stops with exit 1 | `!context.retrieval.roadmap(context.slug).nil?` | [`log.rb:15`](../../../../lib/plastic/workflows/code/roadmap/log.rb#L15) |
+| write the log line | step | `!context.line.nil?` | [`log.rb:17`](../../../../lib/plastic/workflows/code/roadmap/log.rb#L17) |
+| say what was logged | read |  | [`log.rb:21`](../../../../lib/plastic/workflows/code/roadmap/log.rb#L21) |
 
 | Outcome | When | Then | Code |
 | --- | --- | --- | --- |
-| `:done` | always | finishes, exit 0; next: plastic roadmap show %{slug} | [`log_roadmap.rb:23`](../../../../lib/plastic/workflows/log_roadmap.rb#L23) |
+| `:done` | always | finishes, exit 0; next: plastic roadmap show %{slug} | [`log.rb:25`](../../../../lib/plastic/workflows/code/roadmap/log.rb#L25) |
 
 It sets `line`.
 
@@ -51,6 +51,6 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| no roadmap %{slug} | 1 | prints no next: line | [`log_roadmap.rb:13`](../../../../lib/plastic/workflows/log_roadmap.rb#L13) |
-| the log line is on roadmap %{slug} | 0 | plastic roadmap show %{slug} | [`log_roadmap.rb:23`](../../../../lib/plastic/workflows/log_roadmap.rb#L23) |
+| no roadmap %{slug} | 1 | prints no next: line | [`log.rb:15`](../../../../lib/plastic/workflows/code/roadmap/log.rb#L15) |
+| the log line is on roadmap %{slug} | 0 | plastic roadmap show %{slug} | [`log.rb:25`](../../../../lib/plastic/workflows/code/roadmap/log.rb#L25) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |

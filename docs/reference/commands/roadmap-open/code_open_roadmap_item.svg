@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 441" width="760" height="441" role="img" xml:space="preserve">
-<title>How OpenRoadmapItem runs in plastic roadmap open</title>
+<title>How Open runs in plastic roadmap open</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
 .lane-code { fill: #d5e8e3; stroke: #0d6b61; stroke-width: 1.5; }
@@ -68,8 +68,8 @@
 .big { font: 700 36px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
 }</style>
 <rect width="100%" height="100%" class="ground"/>
-<text x="16" y="22" class="tb" text-anchor="start">OpenRoadmapItem</text>
-<text x="436" y="22" class="tm tag-muted" text-anchor="end">open_roadmap_item.rb:9</text>
+<text x="16" y="22" class="tb" text-anchor="start">Open</text>
+<text x="436" y="22" class="tm tag-muted" text-anchor="end">open.rb:11</text>
 <rect x="16" y="34" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="49" class="tag tag-muted" text-anchor="start">READ</text>
 <text x="426" y="49" class="tm tag-muted" text-anchor="end">code_workflow.rb:54</text>
@@ -78,7 +78,7 @@
 <path d="M 221 81 L 226 89 L 231 81 Z" class="head"/>
 <rect x="16" y="89" width="420" height="73" rx="6" class="card"/>
 <text x="26" y="104" class="tag tag-muted" text-anchor="start">STEP</text>
-<text x="426" y="104" class="tm tag-muted" text-anchor="end">open_roadmap_item.rb:16</text>
+<text x="426" y="104" class="tm tag-muted" text-anchor="end">open.rb:18</text>
 <text x="26" y="121" class="t" text-anchor="start">open the item&#39;s intent</text>
 <text x="26" y="136" class="tm" text-anchor="start">done when !context.intent_id.nil? ||</text>
 <text x="26" y="150" class="tm" text-anchor="start">!context.problem.nil?</text>
@@ -92,7 +92,7 @@
 <path d="M 221 164 L 226 172 L 231 164 Z" class="head"/>
 <rect x="16" y="172" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="187" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="187" class="tm tag-muted" text-anchor="end">open_roadmap_item.rb:23</text>
+<text x="426" y="187" class="tm tag-muted" text-anchor="end">open.rb:25</text>
 <text x="26" y="204" class="tm" text-anchor="start">passes when context.kind != :failure</text>
 <path d="M 436 190 L 464 190" class="wire-failure"/>
 <path d="M 456 185 L 464 190 L 456 195 Z" class="head"/>
@@ -103,7 +103,7 @@
 <path d="M 221 219 L 226 227 L 231 219 Z" class="head"/>
 <rect x="16" y="227" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="242" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="242" class="tm tag-muted" text-anchor="end">open_roadmap_item.rb:24</text>
+<text x="426" y="242" class="tm tag-muted" text-anchor="end">open.rb:26</text>
 <text x="26" y="259" class="tm" text-anchor="start">passes when context.kind != :refusal</text>
 <path d="M 436 245 L 464 245" class="wire-refusal"/>
 <path d="M 456 240 L 464 245 L 456 250 Z" class="head"/>
@@ -114,7 +114,7 @@
 <path d="M 221 274 L 226 282 L 231 274 Z" class="head"/>
 <rect x="16" y="282" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="297" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="297" class="tm tag-muted" text-anchor="end">open_roadmap_item.rb:26</text>
+<text x="426" y="297" class="tm tag-muted" text-anchor="end">open.rb:28</text>
 <text x="26" y="314" class="t" text-anchor="start">say what was opened</text>
 <path d="M 226 327 L 226 337" class="wire"/>
 <path d="M 221 329 L 226 337 L 231 329 Z" class="head"/>

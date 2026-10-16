@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 468" width="760" height="468" role="img" xml:space="preserve">
-<title>How AddLink runs in plastic intent link</title>
+<title>How Link runs in plastic intent link</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
 .lane-code { fill: #d5e8e3; stroke: #0d6b61; stroke-width: 1.5; }
@@ -68,17 +68,17 @@
 .big { font: 700 36px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
 }</style>
 <rect width="100%" height="100%" class="ground"/>
-<text x="16" y="22" class="tb" text-anchor="start">AddLink</text>
-<text x="436" y="22" class="tm tag-muted" text-anchor="end">add_link.rb:9</text>
+<text x="16" y="22" class="tb" text-anchor="start">Link</text>
+<text x="436" y="22" class="tm tag-muted" text-anchor="end">link.rb:11</text>
 <rect x="16" y="34" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="49" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="49" class="tm tag-muted" text-anchor="end">add_link.rb:14</text>
+<text x="426" y="49" class="tm tag-muted" text-anchor="end">link.rb:16</text>
 <text x="26" y="66" class="t" text-anchor="start">check the ends</text>
 <path d="M 226 79 L 226 89" class="wire"/>
 <path d="M 221 81 L 226 89 L 231 81 Z" class="head"/>
 <rect x="16" y="89" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="104" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="104" class="tm tag-muted" text-anchor="end">add_link.rb:18</text>
+<text x="426" y="104" class="tm tag-muted" text-anchor="end">link.rb:20</text>
 <text x="26" y="121" class="tm" text-anchor="start">passes when context.problem.nil?</text>
 <path d="M 436 107 L 464 107" class="wire-failure"/>
 <path d="M 456 102 L 464 107 L 456 112 Z" class="head"/>
@@ -89,13 +89,13 @@
 <path d="M 221 136 L 226 144 L 231 136 Z" class="head"/>
 <rect x="16" y="144" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="159" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="159" class="tm tag-muted" text-anchor="end">add_link.rb:20</text>
+<text x="426" y="159" class="tm tag-muted" text-anchor="end">link.rb:22</text>
 <text x="26" y="176" class="t" text-anchor="start">check for a self link or a repeat</text>
 <path d="M 226 189 L 226 199" class="wire"/>
 <path d="M 221 191 L 226 199 L 231 191 Z" class="head"/>
 <rect x="16" y="199" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="214" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="214" class="tm tag-muted" text-anchor="end">add_link.rb:24</text>
+<text x="426" y="214" class="tm tag-muted" text-anchor="end">link.rb:26</text>
 <text x="26" y="231" class="tm" text-anchor="start">passes when context.refusal.nil?</text>
 <path d="M 436 217 L 464 217" class="wire-refusal"/>
 <path d="M 456 212 L 464 217 L 456 222 Z" class="head"/>
@@ -106,7 +106,7 @@
 <path d="M 221 246 L 226 254 L 231 246 Z" class="head"/>
 <rect x="16" y="254" width="420" height="59" rx="6" class="card"/>
 <text x="26" y="269" class="tag tag-muted" text-anchor="start">STEP</text>
-<text x="426" y="269" class="tm tag-muted" text-anchor="end">add_link.rb:26</text>
+<text x="426" y="269" class="tm tag-muted" text-anchor="end">link.rb:28</text>
 <text x="26" y="286" class="t" text-anchor="start">add the link</text>
 <text x="26" y="301" class="tm" text-anchor="start">done when !context.added.nil?</text>
 <path d="M 436 272 L 464 272" class="wire-failure"/>
@@ -119,7 +119,7 @@
 <path d="M 221 315 L 226 323 L 231 315 Z" class="head"/>
 <rect x="16" y="323" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="338" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="338" class="tm tag-muted" text-anchor="end">add_link.rb:30</text>
+<text x="426" y="338" class="tm tag-muted" text-anchor="end">link.rb:32</text>
 <text x="26" y="355" class="t" text-anchor="start">say what was written</text>
 <path d="M 226 368 L 226 378" class="wire"/>
 <path d="M 221 370 L 226 378 L 231 370 Z" class="head"/>

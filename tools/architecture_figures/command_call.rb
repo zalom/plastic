@@ -6,14 +6,14 @@ module ArchitectureFigures
   # Part of the figure builder; see docs/contributing/ARCHITECTURE.md.
   module CommandCall
     META = Diagram::Meta.new(file: "command-call.svg", width: 1160, height: 580, title: "One command from call to report",
-      desc: "The call plastic intent new runs through 10 steps. bin/plastic hands the words to CLI, which finds the row in CLI::TABLE. A Routine opens the Graph and runs the chain through Routine::Traversal. Workflows::WriteIntent writes the rows, Graph::Printer prints the files, and the report ends with exit code 0.")
+      desc: "The call plastic intent new runs through 10 steps. bin/plastic hands the words to CLI, which finds the row in CLI::TABLE. A Routine opens the Graph and runs the chain through Routine::Traversal. Workflows::Code::Intent::New writes the rows, Graph::Printer prints the files, and the report ends with exit code 0.")
     STEPS = [
       ["bin/plastic", "Runs CLI with the words", "of the call."],
       ["CLI", "Finds the row for intent new", "in CLI::TABLE."],
       ["Commands::Intent::New", "Loaded on demand; its", "options are read."],
       ["Routine", "Opens the Graph and", "starts a RoutineRun."],
       ["Routine::Traversal", "Runs the chain through", "Workflows::REGISTRY."],
-      ["Workflows::WriteIntent", "Checks the call, then", "writes the rows."],
+      ["Workflows::Code::Intent::New", "Checks the call, then", "writes the rows."],
       ["Graph::Printer", "Prints the files of", "the intent folder."],
       ["Routine", "Saves the RoutineRun", "and builds the report."],
       ["CLI", "Prints the report."],
@@ -21,7 +21,7 @@ module ArchitectureFigures
     ].freeze
     REPORT = ["intent: ID", "wrote: 1 routine run in local.db", "1 intent and 1 savepoint line in work_graph.db", "1 document and 1 document head in knowledge_graph.db",
       "files: store/index.json", "store/ID--slug/intent.md", "store/ID--slug/savepoint.md", "store/ID--slug/graph.json", "next: plastic next", "because: intent ID has its rows and its files"].freeze
-    NAMES = [["path", "bin/plastic", "bin/plastic"], ["command", "intent new", "intent new"], *%w[CLI CLI::TABLE Commands::Intent::New Routine RoutineRun Routine::Traversal Workflows::REGISTRY Workflows::WriteIntent Graph::Printer Finished].map { |name| ["class", name, name] }].freeze
+    NAMES = [["path", "bin/plastic", "bin/plastic"], ["command", "intent new", "intent new"], *%w[CLI CLI::TABLE Commands::Intent::New Routine RoutineRun Routine::Traversal Workflows::REGISTRY Workflows::Code::Intent::New Graph::Printer Finished].map { |name| ["class", name, name] }].freeze
 
     SPOTS = [[0, 20], [1, 20], [2, 20], [3, 20], [4, 20], [4, 170], [3, 170], [2, 170], [1, 170], [0, 170]].freeze
 

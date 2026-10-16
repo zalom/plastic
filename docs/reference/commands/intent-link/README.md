@@ -38,28 +38,28 @@ end
 
 | Workflow | Kind | Code |
 | --- | --- | --- |
-| [AddLink](#addlink) | code | [`add_link.rb:9`](../../../../lib/plastic/workflows/add_link.rb#L9) |
+| [Code::Intent::Link](#codeintentlink) | code | [`link.rb:11`](../../../../lib/plastic/workflows/code/intent/link.rb#L11) |
 
-### AddLink
+### Code::Intent::Link
 
-The code workflow `:code_add_link`, in [`add_link.rb:9`](../../../../lib/plastic/workflows/add_link.rb#L9).
+The code workflow `:code_add_link`, in [`link.rb:11`](../../../../lib/plastic/workflows/code/intent/link.rb#L11).
 
 Writes one guarded link: failed on a missing id or target, refused on a self link or a link already there.
 
-![How AddLink runs: its steps, where it stops, and its outcomes](code_add_link.svg)
+![How Code::Intent::Link runs: its steps, where it stops, and its outcomes](code_add_link.svg)
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
-| check the ends | read |  | [`add_link.rb:14`](../../../../lib/plastic/workflows/add_link.rb#L14) |
-| %{problem} | gate, stops with exit 1 | `context.problem.nil?` | [`add_link.rb:18`](../../../../lib/plastic/workflows/add_link.rb#L18) |
-| check for a self link or a repeat | read |  | [`add_link.rb:20`](../../../../lib/plastic/workflows/add_link.rb#L20) |
-| %{refusal} | gate, stops with exit 3 | `context.refusal.nil?` | [`add_link.rb:24`](../../../../lib/plastic/workflows/add_link.rb#L24) |
-| add the link | step | `!context.added.nil?` | [`add_link.rb:26`](../../../../lib/plastic/workflows/add_link.rb#L26) |
-| say what was written | read |  | [`add_link.rb:30`](../../../../lib/plastic/workflows/add_link.rb#L30) |
+| check the ends | read |  | [`link.rb:16`](../../../../lib/plastic/workflows/code/intent/link.rb#L16) |
+| %{problem} | gate, stops with exit 1 | `context.problem.nil?` | [`link.rb:20`](../../../../lib/plastic/workflows/code/intent/link.rb#L20) |
+| check for a self link or a repeat | read |  | [`link.rb:22`](../../../../lib/plastic/workflows/code/intent/link.rb#L22) |
+| %{refusal} | gate, stops with exit 3 | `context.refusal.nil?` | [`link.rb:26`](../../../../lib/plastic/workflows/code/intent/link.rb#L26) |
+| add the link | step | `!context.added.nil?` | [`link.rb:28`](../../../../lib/plastic/workflows/code/intent/link.rb#L28) |
+| say what was written | read |  | [`link.rb:32`](../../../../lib/plastic/workflows/code/intent/link.rb#L32) |
 
 | Outcome | When | Then | Code |
 | --- | --- | --- | --- |
-| `:done` | always | finishes, exit 0; next: plastic sync down | [`add_link.rb:34`](../../../../lib/plastic/workflows/add_link.rb#L34) |
+| `:done` | always | finishes, exit 0; next: plastic sync down | [`link.rb:36`](../../../../lib/plastic/workflows/code/intent/link.rb#L36) |
 
 It sets `problem`, `refusal`, `added`.
 
@@ -69,8 +69,8 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| %{problem} | 1 | prints no next: line | [`add_link.rb:18`](../../../../lib/plastic/workflows/add_link.rb#L18) |
-| %{refusal} | 3 | prints no next: line | [`add_link.rb:24`](../../../../lib/plastic/workflows/add_link.rb#L24) |
-| the link is on record | 0 | plastic sync down | [`add_link.rb:34`](../../../../lib/plastic/workflows/add_link.rb#L34) |
+| %{problem} | 1 | prints no next: line | [`link.rb:20`](../../../../lib/plastic/workflows/code/intent/link.rb#L20) |
+| %{refusal} | 3 | prints no next: line | [`link.rb:26`](../../../../lib/plastic/workflows/code/intent/link.rb#L26) |
+| the link is on record | 0 | plastic sync down | [`link.rb:36`](../../../../lib/plastic/workflows/code/intent/link.rb#L36) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
 | Usage error: KIND takes %{lastic} | 2 | prints no next: line | [`link.rb:21`](../../../../lib/plastic/commands/intent/link.rb#L21) |

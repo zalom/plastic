@@ -16,7 +16,7 @@ class CommandReferenceSourceTest < Minitest::Test
   end
 
   def test_a_lambda_body_is_read_on_one_line
-    gate = Plastic::Workflows::PrepareEnding.steps.grep(Plastic::CodeWorkflow::Gate).first
+    gate = Plastic::Workflows::Code::Intent::End::Prepare.steps.grep(Plastic::CodeWorkflow::Gate).first
 
     assert_equal "!context.intent.nil?", source.lambda_code(gate.pass)
   end

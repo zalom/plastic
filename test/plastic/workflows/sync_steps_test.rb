@@ -2,8 +2,8 @@
 
 require_relative "../../test_helper"
 require_relative "../../../lib/plastic/workflows/registry"
-require_relative "../../../lib/plastic/workflows/sync_up"
-require_relative "../../../lib/plastic/workflows/sync_down"
+require_relative "../../../lib/plastic/workflows/code/sync/up"
+require_relative "../../../lib/plastic/workflows/code/sync/down"
 
 class SyncStepsTest < Plastic::TestCase
   DECLARED = %i[overwrite merge failure conflicts merging unreadable lines].freeze
@@ -44,7 +44,7 @@ class SyncStepsTest < Plastic::TestCase
   end
 
   def test_a_clean_sync_applies_and_says_what_it_did
-    outcome, printed, calls = run_sync(Plastic::Workflows::SyncUp)
+    outcome, printed, calls = run_sync(Plastic::Workflows::Code::Sync::Up)
 
     assert_equal [:done, ["read a.md"]], [outcome, printed]
     assert_equal [:plan, :up, { overwrite: false, merge: false }], calls.first
@@ -52,51 +52,51 @@ class SyncStepsTest < Plastic::TestCase
   end
 
   def test_sync_down_plans_down_with_the_options_given
-    _outcome, _printed, calls = run_sync(Plastic::Workflows::SyncDown, overwrite: "a.md", merge: true)
+    _outcome, _printed, calls = run_sync(Plastic::Workflows::Code::Sync::Down, overwrite: "a.md", merge: true)
 
     assert_equal [:plan, :down, { overwrite: "a.md", merge: true }], calls.first
   end
 
   def test_a_level_store_applies_nothing
-    outcome, printed, calls = run_sync(Plastic::Workflows::SyncUp, plan: { pending: 0 })
+    outcome, printed, calls = run_sync(Plastic::Workflows::Code::Sync::Up, plan: { pending: 0 })
 
     assert_equal [:done, [], false], [outcome, printed, calls.include?([:apply])]
   end
 
   def test_a_failure_stops_before_the_apply
-    outcome, _printed, calls = run_sync(Plastic::Workflows::SyncUp, plan: { failure: "INDEX.md waits" })
+    outcome, _printed, calls = run_sync(Plastic::Workflows::Code::Sync::Up, plan: { failure: "INDEX.md waits" })
 
     assert_equal [Plastic::Failed, "code_sync_up, gate: INDEX.md waits", false], [outcome.class, outcome.message, calls.include?([:apply])]
   end
 
   def test_a_plain_call_with_conflicts_is_refused_before_it_writes
-    outcome, _printed, calls = run_sync(Plastic::Workflows::SyncDown, plan: { conflicts: %w[a.md b.md] })
+    outcome, _printed, calls = run_sync(Plastic::Workflows::Code::Sync::Down, plan: { conflicts: %w[a.md b.md] })
 
     assert_equal [Plastic::Refused, PLAIN, false], [outcome.class, outcome.message, calls.include?([:apply])]
   end
 
   def test_a_merge_applies_then_refuses_on_the_conflicts_left
-    outcome, printed, = run_sync(Plastic::Workflows::SyncUp, plan: { conflicts: %w[a.md], merging: true })
+    outcome, printed, = run_sync(Plastic::Workflows::Code::Sync::Up, plan: { conflicts: %w[a.md], merging: true })
 
     assert_equal [Plastic::Refused, LEFT, ["read a.md"]], [outcome.class, outcome.message, printed]
   end
 
   def test_each_direction_names_what_it_settles
     assert_equal [["plastic next", "the rows hold every file changed by hand"], ["plastic next", "the files hold every row that changed"]],
-      [Plastic::Workflows::SyncUp, Plastic::Workflows::SyncDown].map { |flow| [flow.outcomes.first.offers, flow.outcomes.first.because] }
+      [Plastic::Workflows::Code::Sync::Up, Plastic::Workflows::Code::Sync::Down].map { |flow| [flow.outcomes.first.offers, flow.outcomes.first.because] }
   end
 
   def test_the_registry_lists_the_storage_workflows
-    assert_equal %i[code_write_intent code_sync_up code_sync_down], Plastic::Workflows::REGISTRY.first(3)
-    assert_equal Plastic::Workflows::REGISTRY.size, Plastic::Workflows::REGISTRY.uniq.size
-    assert_includes Plastic::Workflows::REGISTRY, :code_preview_sync
+    assert_equal %i[code_write_intent code_sync_up code_sync_down], Plastic::Workflows::REGISTRY.keys.first(3)
+    assert_equal Plastic::Workflows::REGISTRY.size, Plastic::Workflows::REGISTRY.values.uniq.size
+    assert_includes Plastic::Workflows::REGISTRY.keys, :code_preview_sync
   end
 
   def test_a_second_load_of_a_sync_class_keeps_one_chain
-    before = [Plastic::Workflows::SyncUp.steps.size, Plastic::Workflows::SyncUp.facts.size]
-    load File.expand_path("../../../lib/plastic/workflows/sync_up.rb", __dir__)
+    before = [Plastic::Workflows::Code::Sync::Up.steps.size, Plastic::Workflows::Code::Sync::Up.facts.size]
+    load File.expand_path("../../../lib/plastic/workflows/code/sync/up.rb", __dir__)
 
-    assert_equal [before, [:done]], [[Plastic::Workflows::SyncUp.steps.size, Plastic::Workflows::SyncUp.facts.size], Plastic::Workflows::SyncUp.outcome_names]
+    assert_equal [before, [:done]], [[Plastic::Workflows::Code::Sync::Up.steps.size, Plastic::Workflows::Code::Sync::Up.facts.size], Plastic::Workflows::Code::Sync::Up.outcome_names]
   end
 
   def test_a_sync_declares_its_steps_and_gates_in_order

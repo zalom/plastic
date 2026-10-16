@@ -12,25 +12,40 @@ module Plastic
   #   CodeWorkflow   Ruby steps that read and write the graphs
   #   AgentWorkflow  plain-word steps the agent does, checked on the next call
   #
-  # A workflow's key is its lane plus its snake name: CloseIntent, a
-  # CodeWorkflow, is :code_close_intent in workflows/close_intent.rb.
-  # Workflows::REGISTRY lists every key, and `fetch` loads a file only when a
-  # routine asks for its key.
+  # A workflow's key is its lane plus the words of its job, and it never
+  # changes. Workflows::REGISTRY maps every key to the class path of its
+  # workflow: :code_close_intent is Workflows::Code::Intent::End, in
+  # workflows/code/intent/end.rb. `fetch` loads a file only when a routine
+  # asks for its key.
   #
   # The class body is the definition. Each call runs on a new instance, so
   # nothing one call finds outlives it.
   class Workflow
     class << self
-      def key = :"#{lane}_#{Plastic.snake(name.split("::").last)}"
+      # The key that the REGISTRY of this class's namespace maps to its class path.
+      def key
+        namespace, path = home
+        namespace::REGISTRY.key(path) || raise(Invalid, "#{name} is not in #{namespace}::REGISTRY")
+      end
+
+      # The namespace that holds this class's REGISTRY, and the class path under it.
+      def home
+        parts = name.split("::")
+        parts.each_index do |index|
+          namespace = Object.const_get(parts.first(index + 1).join("::"))
+          return [namespace, parts.drop(index + 1).join("::")] if namespace.const_defined?(:REGISTRY, false)
+        end
+        raise Invalid, "#{name} sits in no namespace that holds a REGISTRY"
+      end
 
       def lane = raise(NoMethodError, "#{name} must subclass CodeWorkflow or AgentWorkflow")
 
       # The workflow class for a key, from a namespace that holds a REGISTRY
       # and the classes.
       def fetch(key, from: Workflows)
-        raise Invalid, "no workflow #{key} in #{from}::REGISTRY" unless from::REGISTRY.include?(key)
+        path = from::REGISTRY.fetch(key) { raise Invalid, "no workflow #{key} in #{from}::REGISTRY" }
 
-        Key.parse(key).workflow_in(from)
+        Key.parse(key, path).workflow_in(from)
       end
 
       # The facts this workflow sets. The routine declares them on the context.

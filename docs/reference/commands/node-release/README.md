@@ -23,15 +23,15 @@ The command is `Node::Release`, in [`release.rb:9`](../../../../lib/plastic/comm
 
 | Workflow | Kind | Code |
 | --- | --- | --- |
-| [ReleaseNode](#releasenode) | code | [`release_node.rb:8`](../../../../lib/plastic/workflows/release_node.rb#L8) |
+| [Code::Node::Release](#codenoderelease) | code | [`release.rb:10`](../../../../lib/plastic/workflows/code/node/release.rb#L10) |
 
-### ReleaseNode
+### Code::Node::Release
 
-The code workflow `:code_release_node`, in [`release_node.rb:8`](../../../../lib/plastic/workflows/release_node.rb#L8).
+The code workflow `:code_release_node`, in [`release.rb:10`](../../../../lib/plastic/workflows/code/node/release.rb#L10).
 
 Releases a claimed or failed node back to open.
 
-![How ReleaseNode runs: its steps, where it stops, and its outcomes](code_release_node.svg)
+![How Code::Node::Release runs: its steps, where it stops, and its outcomes](code_release_node.svg)
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |

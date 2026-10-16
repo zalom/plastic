@@ -24,15 +24,15 @@ The command is `Node::Done`, in [`done.rb:9`](../../../../lib/plastic/commands/n
 
 | Workflow | Kind | Code |
 | --- | --- | --- |
-| [DoneNode](#donenode) | code | [`done_node.rb:8`](../../../../lib/plastic/workflows/done_node.rb#L8) |
+| [Code::Node::Done](#codenodedone) | code | [`done.rb:10`](../../../../lib/plastic/workflows/code/node/done.rb#L10) |
 
-### DoneNode
+### Code::Node::Done
 
-The code workflow `:code_done_node`, in [`done_node.rb:8`](../../../../lib/plastic/workflows/done_node.rb#L8).
+The code workflow `:code_done_node`, in [`done.rb:10`](../../../../lib/plastic/workflows/code/node/done.rb#L10).
 
 Moves a claimed node to done, with its findings. A done node takes new findings in place of the old.
 
-![How DoneNode runs: its steps, where it stops, and its outcomes](code_done_node.svg)
+![How Code::Node::Done runs: its steps, where it stops, and its outcomes](code_done_node.svg)
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |

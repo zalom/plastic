@@ -2,6 +2,7 @@
 
 require_relative "../../test_helper"
 require_relative "../../../lib/plastic/code_workflow"
+require_relative "../../../lib/plastic/workflows/move_node"
 
 class KeyTest < Minitest::Test
   ROOT = File.expand_path("../../..", __dir__)

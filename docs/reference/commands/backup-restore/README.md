@@ -48,44 +48,44 @@ end
 
 | Workflow | Kind | Code |
 | --- | --- | --- |
-| [PreviewBackupRestore](#previewbackuprestore) | code | [`preview_backup_restore.rb:9`](../../../../lib/plastic/workflows/preview_backup_restore.rb#L9) |
-| [BackupRestore](#backuprestore) | code | [`backup_restore.rb:11`](../../../../lib/plastic/workflows/backup_restore.rb#L11) |
+| [Code::Backup::Restore::Preview](#codebackuprestorepreview) | code | [`preview.rb:12`](../../../../lib/plastic/workflows/code/backup/restore/preview.rb#L12) |
+| [Code::Backup::Restore](#codebackuprestore) | code | [`restore.rb:14`](../../../../lib/plastic/workflows/code/backup/restore.rb#L14) |
 
-### PreviewBackupRestore
+### Code::Backup::Restore::Preview
 
-The code workflow `:code_preview_backup_restore`, in [`preview_backup_restore.rb:9`](../../../../lib/plastic/workflows/preview_backup_restore.rb#L9).
+The code workflow `:code_preview_backup_restore`, in [`preview.rb:12`](../../../../lib/plastic/workflows/code/backup/restore/preview.rb#L12).
 
 Lists the databases a restore would replace, and changes nothing.
 
-![How PreviewBackupRestore runs: its steps, where it stops, and its outcomes](code_preview_backup_restore.svg)
+![How Code::Backup::Restore::Preview runs: its steps, where it stops, and its outcomes](code_preview_backup_restore.svg)
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
-| preview the restore | read |  | [`preview_backup_restore.rb:12`](../../../../lib/plastic/workflows/preview_backup_restore.rb#L12) |
+| preview the restore | read |  | [`preview.rb:15`](../../../../lib/plastic/workflows/code/backup/restore/preview.rb#L15) |
 
 | Outcome | When | Then | Code |
 | --- | --- | --- | --- |
-| `:done` | when `context.dry_run` | finishes, exit 0; next: %{original_command} | [`preview_backup_restore.rb:20`](../../../../lib/plastic/workflows/preview_backup_restore.rb#L20) |
-| `:continue` | otherwise | runs [BackupRestore](#backuprestore) | [`preview_backup_restore.rb:22`](../../../../lib/plastic/workflows/preview_backup_restore.rb#L22) |
+| `:done` | when `context.dry_run` | finishes, exit 0; next: %{original_command} | [`preview.rb:23`](../../../../lib/plastic/workflows/code/backup/restore/preview.rb#L23) |
+| `:continue` | otherwise | runs [Code::Backup::Restore](#codebackuprestore) | [`preview.rb:25`](../../../../lib/plastic/workflows/code/backup/restore/preview.rb#L25) |
 
-### BackupRestore
+### Code::Backup::Restore
 
-The code workflow `:code_backup_restore`, in [`backup_restore.rb:11`](../../../../lib/plastic/workflows/backup_restore.rb#L11).
+The code workflow `:code_backup_restore`, in [`restore.rb:14`](../../../../lib/plastic/workflows/code/backup/restore.rb#L14).
 
 Replaces the databases of one store with those of a done backup, after a safety backup of the current ones.
 
-![How BackupRestore runs: its steps, where it stops, and its outcomes](code_backup_restore.svg)
+![How Code::Backup::Restore runs: its steps, where it stops, and its outcomes](code_backup_restore.svg)
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
-| choose the backup | read |  | [`backup_restore.rb:38`](../../../../lib/plastic/workflows/backup_restore.rb#L38) |
-| %{refusal} | gate, stops with exit 3 | `context.refusal.nil?` | [`backup_restore.rb:44`](../../../../lib/plastic/workflows/backup_restore.rb#L44) |
-| replace the databases | step | `!context.safety.nil?` | [`backup_restore.rb:46`](../../../../lib/plastic/workflows/backup_restore.rb#L46) |
-| say what was replaced | read |  | [`backup_restore.rb:52`](../../../../lib/plastic/workflows/backup_restore.rb#L52) |
+| choose the backup | read |  | [`restore.rb:41`](../../../../lib/plastic/workflows/code/backup/restore.rb#L41) |
+| %{refusal} | gate, stops with exit 3 | `context.refusal.nil?` | [`restore.rb:47`](../../../../lib/plastic/workflows/code/backup/restore.rb#L47) |
+| replace the databases | step | `!context.safety.nil?` | [`restore.rb:49`](../../../../lib/plastic/workflows/code/backup/restore.rb#L49) |
+| say what was replaced | read |  | [`restore.rb:55`](../../../../lib/plastic/workflows/code/backup/restore.rb#L55) |
 
 | Outcome | When | Then | Code |
 | --- | --- | --- | --- |
-| `:done` | always | finishes, exit 0; next: plastic sync down --project %{store} | [`backup_restore.rb:57`](../../../../lib/plastic/workflows/backup_restore.rb#L57) |
+| `:done` | always | finishes, exit 0; next: plastic sync down --project %{store} | [`restore.rb:60`](../../../../lib/plastic/workflows/code/backup/restore.rb#L60) |
 
 It sets `folder`, `refusal`, `safety`, `restored`.
 
@@ -95,9 +95,9 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| the preview replaced nothing | 0 | %{original_command} | [`preview_backup_restore.rb:20`](../../../../lib/plastic/workflows/preview_backup_restore.rb#L20) |
-| %{refusal} | 3 | prints no next: line | [`backup_restore.rb:44`](../../../../lib/plastic/workflows/backup_restore.rb#L44) |
-| the rows are restored and the files are not; sync down writes the files from the rows | 0 | plastic sync down --project %{store} | [`backup_restore.rb:57`](../../../../lib/plastic/workflows/backup_restore.rb#L57) |
+| the preview replaced nothing | 0 | %{original_command} | [`preview.rb:23`](../../../../lib/plastic/workflows/code/backup/restore/preview.rb#L23) |
+| %{refusal} | 3 | prints no next: line | [`restore.rb:47`](../../../../lib/plastic/workflows/code/backup/restore.rb#L47) |
+| the rows are restored and the files are not; sync down writes the files from the rows | 0 | plastic sync down --project %{store} | [`restore.rb:60`](../../../../lib/plastic/workflows/code/backup/restore.rb#L60) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
 | Usage error: name the store with --store; --project does not apply | 2 | prints no next: line | [`backup_store.rb:27`](../../../../lib/plastic/commands/backup_store.rb#L27) |
 | Usage error: no registered project named %{slug}; the projects are %{projects} | 2 | prints no next: line | [`backup_store.rb:35`](../../../../lib/plastic/commands/backup_store.rb#L35) |

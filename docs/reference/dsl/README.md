@@ -43,7 +43,7 @@ Each `workflow` line draws a box, and each `on` line draws a wire between two bo
 | `workflow :key do` then `end` | Runs `:key`. The `on` lines inside say where each outcome goes. | [`routine.rb:39`](../../../lib/plastic/routine.rb#L39) |
 | `on :outcome, next: :key` | That outcome runs `:key` next. | [`branches.rb:13`](../../../lib/plastic/routine/branches.rb#L13) |
 | `workflow :key, next: :other` | Every outcome of `:key` runs `:other` next. | [`chain.rb:25`](../../../lib/plastic/routine/chain.rb#L25) |
-| `next: :noop` | The chain ends after `:key`. Its outcome line gives the `next:` and `because:` lines the call prints. | [`workflow.rb:58`](../../../lib/plastic/workflow.rb#L58) |
+| `next: :noop` | The chain ends after `:key`. Its outcome line gives the `next:` and `because:` lines the call prints. | [`workflow.rb:73`](../../../lib/plastic/workflow.rb#L73) |
 
 The first `workflow` line is the entry. An `on` line wins over a plain `next:`.
 
@@ -64,13 +64,13 @@ Before the first call, `verify` checks the wiring and raises every fault at once
 
 ## Declare a code workflow
 
-![The ReviseIntent workflow beside what each line does when it runs](code-workflow.svg)
+![The Revise workflow beside what each line does when it runs](code-workflow.svg)
 
-`ReviseIntent`, the workflow `:code_revise_intent`, from [`revise_intent.rb:9`](../../../lib/plastic/workflows/revise_intent.rb#L9). The lines run from top to bottom. A block shows as `do ... end`, code that is not a DSL line shows as a gap, and long lines are wrapped and cut short.
+`Revise`, the workflow `:code_revise_intent`, from [`revise.rb:11`](../../../lib/plastic/workflows/code/intent/revise.rb#L11). The lines run from top to bottom. A block shows as `do ... end`, code that is not a DSL line shows as a gap, and long lines are wrapped and cut short.
 
 | Word | Shape | When it runs | Stops the call | Defined in |
 | --- | --- | --- | --- | --- |
-| `sets` | `sets :intent, :status` | when the class loads | never | [`workflow.rb:37`](../../../lib/plastic/workflow.rb#L37) |
+| `sets` | `sets :intent, :status` | when the class loads | never | [`workflow.rb:52`](../../../lib/plastic/workflow.rb#L52) |
 | `read` | `read "name" do` then `end` | on every call, a rerun included | only when it raises: exit 1 | [`code_workflow.rb:47`](../../../lib/plastic/code_workflow.rb#L47) |
 | `gate` | `gate "reason", stops: :failure, pass: ->(c) { ... }` | in its place | when `pass:` is false: exit 1, the agent can fix it | [`code_workflow.rb:35`](../../../lib/plastic/code_workflow.rb#L35) |
 | `gate` | `gate "reason", stops: :refusal, pass: ->(c) { ... }` | in its place | when `pass:` is false: exit 3, the owner's step | [`code_workflow.rb:35`](../../../lib/plastic/code_workflow.rb#L35) |
@@ -89,7 +89,7 @@ An outcome that ends the chain also takes `offers:`, the command that `next:` pr
 
 ![The CheckMerge workflow beside what a call prints for the agent](agent-workflow.svg)
 
-`CheckMerge`, the workflow `:agent_check_merge`, from [`check_merge.rb:10`](../../../lib/plastic/workflows/check_merge.rb#L10).
+`CheckMerge`, the workflow `:agent_check_merge`, from [`check_merge.rb:14`](../../../lib/plastic/workflows/agent/intent/end/check_merge.rb#L14).
 
 | Word | Shape | What it does | Defined in |
 | --- | --- | --- | --- |

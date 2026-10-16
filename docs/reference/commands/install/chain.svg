@@ -76,15 +76,15 @@
 <text x="246" y="246" class="tm tag-muted" text-anchor="start">every outcome</text>
 <rect x="150" y="16" width="180" height="56" rx="6" class="lane-code"/>
 <text x="160" y="32" class="tag tag-code" text-anchor="start">CODE WORKFLOW</text>
-<text x="160" y="51" class="tb" text-anchor="start">PreviewInstall</text>
+<text x="160" y="51" class="tb" text-anchor="start">Preview</text>
 <text x="160" y="66" class="tm" text-anchor="start">:code_preview_install</text>
 <rect x="150" y="136" width="180" height="56" rx="6" class="lane-code"/>
 <text x="160" y="152" class="tag tag-code" text-anchor="start">CODE WORKFLOW</text>
-<text x="160" y="171" class="tb" text-anchor="start">InstallPlastic</text>
+<text x="160" y="171" class="tb" text-anchor="start">Install</text>
 <text x="160" y="186" class="tm" text-anchor="start">:code_install_plastic</text>
 <rect x="150" y="256" width="180" height="56" rx="6" class="lane-agent"/>
 <text x="160" y="272" class="tag tag-agent" text-anchor="start">AGENT WORKFLOW</text>
-<text x="160" y="291" class="tb" text-anchor="start">OfferEnola</text>
+<text x="160" y="291" class="tb" text-anchor="start">Install</text>
 <text x="160" y="306" class="tm" text-anchor="start">:agent_offer_enola</text>
 <path d="M 240 72 L 240 94" class="wire"/>
 <path d="M 235 86 L 240 94 L 245 86 Z" class="head"/>
