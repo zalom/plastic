@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../../test_helper"
-require_relative "../../../../scripts/lib/plastic/graph/disposable_copy"
+require_relative "../../../../lib/plastic/graph/disposable_copy"
 
 module Plastic
   module Graph

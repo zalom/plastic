@@ -252,6 +252,24 @@ class InstallerCoreCodexTest < Minitest::Test
     assert_includes manifest["files"].keys, File.join(@home, ".plastic", "bin", "plastic")
   end
 
+  def test_the_kernel_files_come_from_lib_and_none_from_scripts_lib_plastic
+    files = installer.cli_files.keys
+
+    assert_includes files, "lib/plastic.rb"
+    assert files.all? { |path| path.start_with?("lib/plastic") }
+  end
+
+  def test_a_distribute_over_an_old_manifest_prunes_the_old_kernel_copies
+    plastic_home = File.join(@home, ".plastic")
+    old = File.join(plastic_home, "scripts", "lib", "plas" "tic", "cli.rb")
+    write(old, "# old\n")
+    write(File.join(plastic_home, "manifest.json"), JSON.generate("files" => { old => "x" }))
+    capture_io { installer.distribute(:update, tmp_dirs: []) }
+
+    refute_path_exists old
+    assert_path_exists File.join(plastic_home, "lib", "plastic.rb")
+  end
+
   def test_a_skill_folder_is_copied_whole_and_a_shared_fragment_lands_in_the_plastic_home
     source = File.join(@home, "skills")
     write(File.join(source, "demo", "refs", "a.md"), "a\n")

@@ -34,6 +34,6 @@ class CommandReferenceSourceTest < Minitest::Test
   end
 
   def test_a_path_is_relative_to_the_root
-    assert_equal "scripts/lib/plastic/routine.rb", source.relative(File.join(CommandReferenceHelper::ROOT, "scripts/lib/plastic/routine.rb"))
+    assert_equal "lib/plastic/routine.rb", source.relative(File.join(CommandReferenceHelper::ROOT, "lib/plastic/routine.rb"))
   end
 end

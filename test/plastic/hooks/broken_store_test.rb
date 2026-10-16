@@ -5,7 +5,7 @@ require "tmpdir"
 require "fileutils"
 require "json"
 require_relative "../../varar/support/kernel_command"
-require_relative "../../../scripts/lib/plastic/hooks/entries"
+require_relative "../../../lib/plastic/hooks/entries"
 
 # Hooks on a broken store: the harness never sees a crash. Each test builds
 # its own Dir.mktmpdir home, never the shared template other tests reuse, so

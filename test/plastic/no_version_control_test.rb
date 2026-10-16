@@ -5,7 +5,7 @@ require_relative "../test_helper"
 # Plastic code runs no version control command and no report prints one. The
 # kernel starts no process at all.
 class NoVersionControlTest < Plastic::TestCase
-  ROOT = File.expand_path("../../scripts/lib", __dir__)
+  ROOT = File.expand_path("../../lib", __dir__)
   SOURCES = [File.join(ROOT, "plastic.rb"), *Dir.glob(File.join(ROOT, "plastic", "**", "*.rb"))].freeze
   SPAWNS = /\b(?:system|spawn|exec|popen\w*|capture2e?|capture3|pipeline\w*)\b|`|%x/
 

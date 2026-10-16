@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../../../test_helper"
-require_relative "../../../../../scripts/lib/plastic/graph/retrieval/search/excerpt"
+require_relative "../../../../../lib/plastic/graph/retrieval/search/excerpt"
 
 class ExcerptTest < Minitest::Test
   EXCERPT = Plastic::Graph::Retrieval::Search::Excerpt

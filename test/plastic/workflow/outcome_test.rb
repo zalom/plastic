@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/workflow"
+require_relative "../../../lib/plastic/workflow"
 
 class OutcomeTest < Minitest::Test
   Facts = Data.define(:ready) do

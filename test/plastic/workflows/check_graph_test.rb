@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/workflows/check_graph"
+require_relative "../../../lib/plastic/workflows/check_graph"
 
 class CheckGraphTest < Plastic::TestCase
   def check(intent_id = "1") = run_workflow(Plastic::Workflows::CheckGraph, intent_id:)

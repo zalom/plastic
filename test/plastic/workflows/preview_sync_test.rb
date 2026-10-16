@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/workflows/preview_sync"
+require_relative "../../../lib/plastic/workflows/preview_sync"
 
 class PreviewSyncTest < Plastic::TestCase
   fixtures :alpha_synced

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/workflows/done_node"
+require_relative "../../../lib/plastic/workflows/done_node"
 
 class WorkflowDoneNodeTest < Plastic::TestCase
   def setup

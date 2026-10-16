@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 require "fileutils"
-require_relative "../../installer_release"
-require_relative "../../installer_release/share_entries"
+require_relative "../../../scripts/lib/installer_release"
+require_relative "../../../scripts/lib/installer_release/share_entries"
 
 module Plastic
   module Workflows

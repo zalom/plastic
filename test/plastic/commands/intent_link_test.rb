@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/commands/intent_link"
+require_relative "../../../lib/plastic/commands/intent_link"
 
 class IntentLinkTest < Plastic::TestCase
   def call(*args) = plastic("intent", "link", *args, table: Plastic::CLI::TABLE)

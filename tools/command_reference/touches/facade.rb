@@ -6,7 +6,7 @@ module CommandReference
     # delegation line, the class behind it, and the method there. From a
     # method it also finds what that method hands the work to.
     class Facade
-      GRAPH = "scripts/lib/plastic/graph"
+      GRAPH = "lib/plastic/graph"
       FILES = { work: "#{GRAPH}/work_graph.rb", retrieval: "#{GRAPH}/retrieval_graph.rb" }.freeze
       WRITERS = "#{GRAPH}/work/writers.rb"
       CONSTANT = Accessors::CONSTANT

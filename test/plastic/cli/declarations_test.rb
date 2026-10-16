@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/commands/intent_new"
+require_relative "../../../lib/plastic/commands/intent_new"
 
 class DeclarationsTest < Plastic::TestCase
   class Declared

@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/commands/graph_check"
-require_relative "../../../scripts/lib/plastic/commands/node_add"
-require_relative "../../../scripts/lib/plastic/commands/edge_add"
+require_relative "../../../lib/plastic/commands/graph_check"
+require_relative "../../../lib/plastic/commands/node_add"
+require_relative "../../../lib/plastic/commands/edge_add"
 
 class GraphCheckTest < Plastic::TestCase
   def call(*args) = plastic("graph", "check", *args, table: Plastic::CLI::TABLE)

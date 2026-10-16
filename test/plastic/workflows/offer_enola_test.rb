@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/workflows/offer_enola"
+require_relative "../../../lib/plastic/workflows/offer_enola"
 
 class OfferEnolaTest < Plastic::TestCase
   def offer(reinstall) = run_workflow(Plastic::Workflows::OfferEnola, reinstall:).first

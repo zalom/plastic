@@ -4,8 +4,8 @@ require_relative "../../test_helper"
 require_relative "../commands/installer_helper"
 require "json"
 require "shellwords"
-require_relative "../../../scripts/lib/plastic/cli/projects_file"
-require_relative "../../../scripts/lib/plastic/graph/retrieval/source"
+require_relative "../../../lib/plastic/cli/projects_file"
+require_relative "../../../lib/plastic/graph/retrieval/source"
 
 class MissingStoreTest < Plastic::TestCase
   include Plastic::TestCase::PreviewHelper

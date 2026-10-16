@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/workflows/abandon_intent"
+require_relative "../../../lib/plastic/workflows/abandon_intent"
 
 class AbandonIntentTest < Plastic::TestCase
   def abandon = run_workflow(Plastic::Workflows::AbandonIntent, graphs: session_graphs, intent_id: "1")

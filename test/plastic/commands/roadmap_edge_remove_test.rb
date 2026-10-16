@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/commands/roadmap_batch"
-require_relative "../../../scripts/lib/plastic/commands/roadmap_add"
-require_relative "../../../scripts/lib/plastic/commands/roadmap_edge_remove"
+require_relative "../../../lib/plastic/commands/roadmap_batch"
+require_relative "../../../lib/plastic/commands/roadmap_add"
+require_relative "../../../lib/plastic/commands/roadmap_edge_remove"
 
 class RoadmapEdgeRemoveTest < Plastic::TestCase
   def call(*args) = plastic("roadmap", "edge", "remove", *args, table: Plastic::CLI::TABLE)

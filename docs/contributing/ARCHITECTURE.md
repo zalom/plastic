@@ -62,41 +62,41 @@ open, active, parked, future, done or abandoned.
 
 ![The components of the plastic kernel. CLI finds the row in CLI::TABLE and builds the command, a Routine or a Hook. The Routine walks a chain of workflows with Routine::Traversal, which looks each workflow up in Workflows::REGISTRY, where a CodeWorkflow or an AgentWorkflow is held. The Routine opens the Graph: Graph::WorkGraph writes, Graph::RetrievalGraph reads, Graph::Printer prints. Graph::WorkGraph writes the four databases through Graph::Work::Writers and Graph::Database, and Graph::RetrievalGraph reads them.](figures/components.svg)
 
-The kernel lives under `scripts/lib/plastic/`, and `scripts/lib/plastic.rb` loads it. A class
+The kernel lives under `lib/plastic/`, and `lib/plastic.rb` loads it. A class
 loads on first use, so `plastic help` reads the table and loads no command.
 
 | Component | File | What it owns |
 | --------- | ---- | ------------ |
-| `CLI` | `scripts/lib/plastic/cli.rb` | Finds the longest entry in the table that starts the arguments, answers `--help`, and names an unknown command and points at `plastic help`. |
-| `CLI::TABLE` | `scripts/lib/plastic/cli/table.rb` | The whole command line in one frozen hash: the words, the class and the help line. |
-| `CLI::Command` | `scripts/lib/plastic/cli/command.rb` | The base class. It parses the arguments, runs the call, prints and maps errors to exit codes. |
-| `CLI::Scope` | `scripts/lib/plastic/cli/scope.rb` | Which project and store a command works on. |
-| `CLI::Output` | `scripts/lib/plastic/cli/output.rb` | Prints rows, the `next:` and `because:` lines, and the `--json` form. |
-| `Routine` | `scripts/lib/plastic/routine.rb` | A command whose work is a chain of workflows, written as data in the class body. |
-| `Routine::Chain` | `scripts/lib/plastic/routine/chain.rb` | The workflow keys in order and the edges between them. It lists every wiring fault at once. |
-| `Routine::Traversal` | `scripts/lib/plastic/routine/traversal.rb` | One pass along a chain. It runs each workflow and follows the edge its outcome takes. |
-| `CodeWorkflow` | `scripts/lib/plastic/code_workflow.rb` | Ruby steps that run in order: gates, reads and steps. It returns an outcome name. |
-| `AgentWorkflow` | `scripts/lib/plastic/agent_workflow.rb` | Steps in plain words for the agent. It hands off while any step is left undone. |
-| `Workflows::REGISTRY` | `scripts/lib/plastic/workflows/registry.rb` | Every workflow by name. |
-| `Context`, `Facts` | `scripts/lib/plastic/context.rb`, `scripts/lib/plastic/facts.rb` | The named values of one call. A name that no one declared raises at once. |
-| `RoutineRun` | `scripts/lib/plastic/routine_run.rb` | One call of one tool on one subject, kept as a row of `local.db`. |
-| `Hook` | `scripts/lib/plastic/hook.rb` | The base class of a hook command. It prints a plain text reply and always exits 0. |
-| `Hooks::Recap`, `Hooks::StopGate`, `Hooks::Entries` | `scripts/lib/plastic/hooks/` | The text `hook start` prints, the decision whether `hook stop` blocks a stop, and the hook entries the installer writes for Claude Code and Codex. |
-| `Harnesses`, `Harnesses::Detection`, `Harnesses::Innermost` | `scripts/lib/plastic/harnesses.rb`, `scripts/lib/plastic/harnesses/` | The harness registry: for each harness its settings folder, session variable, transcript path, process name, hook events and doctor checks. `plastic init` lists the harnesses whose folder or program it finds. Detection names the harness of a start hook, and `Innermost` picks the session of the inner harness when one runs inside another. |
-| `Installations` | `scripts/lib/plastic/installations.rb`, `scripts/lib/plastic/installations/` | The install records: `Recording` writes one when an install finishes, and `Removal` takes out exactly what one lists. |
-| `Config`, `Config::Document` | `scripts/lib/plastic/config.rb`, `scripts/lib/plastic/config/` | `config.yml` read in layers: the shipped defaults, the `global` section, then the section of the harness. `Document` writes one key and keeps the anchors the file holds. |
-| `Graph::Database` | `scripts/lib/plastic/graph/database.rb` | One SQLite file, read and written through the `sqlite3` gem. A write is one transaction and logs its `changes` row. |
-| `Graph::WorkGraph` | `scripts/lib/plastic/graph/work_graph.rb` | The writes of a command: routine runs, sessions, locks, intents, nodes and edges. |
-| `Graph::RetrievalGraph` | `scripts/lib/plastic/graph/retrieval_graph.rb` | The reads of a command, one table at a time. |
-| `Graph::Printer` | `scripts/lib/plastic/graph/printer.rb` | Prints files from their rows and records each hash in `printed`. |
-| `Graph::Knowledge::Sync` | `scripts/lib/plastic/graph/knowledge/sync.rb` | Compares each file, its rows and its last print, and plans and applies a sync. |
+| `CLI` | `lib/plastic/cli.rb` | Finds the longest entry in the table that starts the arguments, answers `--help`, and names an unknown command and points at `plastic help`. |
+| `CLI::TABLE` | `lib/plastic/cli/table.rb` | The whole command line in one frozen hash: the words, the class and the help line. |
+| `CLI::Command` | `lib/plastic/cli/command.rb` | The base class. It parses the arguments, runs the call, prints and maps errors to exit codes. |
+| `CLI::Scope` | `lib/plastic/cli/scope.rb` | Which project and store a command works on. |
+| `CLI::Output` | `lib/plastic/cli/output.rb` | Prints rows, the `next:` and `because:` lines, and the `--json` form. |
+| `Routine` | `lib/plastic/routine.rb` | A command whose work is a chain of workflows, written as data in the class body. |
+| `Routine::Chain` | `lib/plastic/routine/chain.rb` | The workflow keys in order and the edges between them. It lists every wiring fault at once. |
+| `Routine::Traversal` | `lib/plastic/routine/traversal.rb` | One pass along a chain. It runs each workflow and follows the edge its outcome takes. |
+| `CodeWorkflow` | `lib/plastic/code_workflow.rb` | Ruby steps that run in order: gates, reads and steps. It returns an outcome name. |
+| `AgentWorkflow` | `lib/plastic/agent_workflow.rb` | Steps in plain words for the agent. It hands off while any step is left undone. |
+| `Workflows::REGISTRY` | `lib/plastic/workflows/registry.rb` | Every workflow by name. |
+| `Context`, `Facts` | `lib/plastic/context.rb`, `lib/plastic/facts.rb` | The named values of one call. A name that no one declared raises at once. |
+| `RoutineRun` | `lib/plastic/routine_run.rb` | One call of one tool on one subject, kept as a row of `local.db`. |
+| `Hook` | `lib/plastic/hook.rb` | The base class of a hook command. It prints a plain text reply and always exits 0. |
+| `Hooks::Recap`, `Hooks::StopGate`, `Hooks::Entries` | `lib/plastic/hooks/` | The text `hook start` prints, the decision whether `hook stop` blocks a stop, and the hook entries the installer writes for Claude Code and Codex. |
+| `Harnesses`, `Harnesses::Detection`, `Harnesses::Innermost` | `lib/plastic/harnesses.rb`, `lib/plastic/harnesses/` | The harness registry: for each harness its settings folder, session variable, transcript path, process name, hook events and doctor checks. `plastic init` lists the harnesses whose folder or program it finds. Detection names the harness of a start hook, and `Innermost` picks the session of the inner harness when one runs inside another. |
+| `Installations` | `lib/plastic/installations.rb`, `lib/plastic/installations/` | The install records: `Recording` writes one when an install finishes, and `Removal` takes out exactly what one lists. |
+| `Config`, `Config::Document` | `lib/plastic/config.rb`, `lib/plastic/config/` | `config.yml` read in layers: the shipped defaults, the `global` section, then the section of the harness. `Document` writes one key and keeps the anchors the file holds. |
+| `Graph::Database` | `lib/plastic/graph/database.rb` | One SQLite file, read and written through the `sqlite3` gem. A write is one transaction and logs its `changes` row. |
+| `Graph::WorkGraph` | `lib/plastic/graph/work_graph.rb` | The writes of a command: routine runs, sessions, locks, intents, nodes and edges. |
+| `Graph::RetrievalGraph` | `lib/plastic/graph/retrieval_graph.rb` | The reads of a command, one table at a time. |
+| `Graph::Printer` | `lib/plastic/graph/printer.rb` | Prints files from their rows and records each hash in `printed`. |
+| `Graph::Knowledge::Sync` | `lib/plastic/graph/knowledge/sync.rb` | Compares each file, its rows and its last print, and plans and applies a sync. |
 
 `Plastic.now` is the one source of the time. A command receives its streams, environment, home
 directory and working directory as arguments. No command reads `ENV`, `Dir.home` or `$stdout`
 directly, so a test never touches the real store.
 
-Every table is declared once, in `scripts/lib/plastic/graph/db/schema.rb`. The class in
-`scripts/lib/plastic/graph/db/schema_file.rb` builds the table definitions from it, and `Graph::Schema` serves their DDL, so nothing else
+Every table is declared once, in `lib/plastic/graph/db/schema.rb`. The class in
+`lib/plastic/graph/db/schema_file.rb` builds the table definitions from it, and `Graph::Schema` serves their DDL, so nothing else
 declares a table. `test/plastic/graph/db/schema_test.rb` pins the DDL of each table by hash.
 Two marks sit on a table:
 

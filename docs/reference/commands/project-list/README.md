@@ -8,7 +8,7 @@ Lists the projects of projects.yml, each with its path, and marks the ones whose
 plastic project list
 ```
 
-The command is `ProjectList`, in [`project_list.rb:9`](../../../../scripts/lib/plastic/commands/project_list.rb#L9). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `ProjectList`, in [`project_list.rb:9`](../../../../lib/plastic/commands/project_list.rb#L9). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 ## What it touches
 
@@ -16,7 +16,7 @@ The command is `ProjectList`, in [`project_list.rb:9`](../../../../scripts/lib/p
 
 ## The command
 
-The command's `call`, at [`project_list.rb:12`](../../../../scripts/lib/plastic/commands/project_list.rb#L12):
+The command's `call`, at [`project_list.rb:12`](../../../../lib/plastic/commands/project_list.rb#L12):
 
 ```ruby
 def call
@@ -38,5 +38,5 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| Offers the next command | 0 | plastic project new SLUG PATH | [`project_list.rb:15`](../../../../scripts/lib/plastic/commands/project_list.rb#L15) |
-| Offers the next command | 0 | plastic status | [`project_list.rb:17`](../../../../scripts/lib/plastic/commands/project_list.rb#L17) |
+| Offers the next command | 0 | plastic project new SLUG PATH | [`project_list.rb:15`](../../../../lib/plastic/commands/project_list.rb#L15) |
+| Offers the next command | 0 | plastic status | [`project_list.rb:17`](../../../../lib/plastic/commands/project_list.rb#L17) |

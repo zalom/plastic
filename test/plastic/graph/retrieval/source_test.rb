@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../../test_helper"
-require_relative "../../../../scripts/lib/plastic/graph/retrieval/source"
+require_relative "../../../../lib/plastic/graph/retrieval/source"
 
 class RetrievalSourceTest < Plastic::TestCase
   def test_the_retrieval_source_reads_the_intents_of_its_store

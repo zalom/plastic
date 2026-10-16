@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
 require_relative "../test_helper"
-require_relative "../../scripts/lib/plastic/routine"
-require_relative "../../scripts/lib/plastic/cli/table"
+require_relative "../../lib/plastic/routine"
+require_relative "../../lib/plastic/cli/table"
 
-Dir[File.join(__dir__, "../../scripts/lib/plastic/commands/*.rb")].each { |file| require file }
+Dir[File.join(__dir__, "../../lib/plastic/commands/*.rb")].each { |file| require file }
 
 class PrintsDeclarationTest < Minitest::Test
   NO_FILE = {

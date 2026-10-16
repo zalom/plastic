@@ -3,7 +3,7 @@
 module CommandReference
   # The files a command prints from the rows it writes, read from the file list in the prints code.
   class Prints
-    FILE = "scripts/lib/plastic/graph/prints.rb"
+    FILE = "lib/plastic/graph/prints.rb"
     LISTED = /^\s*# - (store\/\S+)/
     ROADMAP = /Print\.text\("(roadmaps\/[^"]*)"/
     KINDS = { intent: %r{store/index\.json|ID--SLUG}, roadmap: %r{roadmaps}, index: %r{store/index\.json} }.freeze

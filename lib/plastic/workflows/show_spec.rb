@@ -14,7 +14,7 @@ module Plastic
 
       [facts, steps, outcomes].each(&:clear)
 
-      GRILLING = File.expand_path("../../../../docs/grilling.md", __dir__)
+      GRILLING = File.expand_path("../../../docs/grilling.md", __dir__)
 
       sets :intent, :decisions, :criteria, :why, :handoff_text
 

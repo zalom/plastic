@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "../../hook_registry"
+require_relative "../../../scripts/lib/hook_registry"
 
 module Plastic
   module Installations

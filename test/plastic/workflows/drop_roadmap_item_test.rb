@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/workflows/drop_roadmap_item"
+require_relative "../../../lib/plastic/workflows/drop_roadmap_item"
 
 class DropRoadmapItemTest < Plastic::TestCase
   Fields = Plastic::Graph::Knowledge::Roadmap::Writer::Fields

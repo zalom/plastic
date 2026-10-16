@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/installations"
+require_relative "../../../lib/plastic/installations"
 
 class InstallationsSectionTest < Plastic::TestCase
   def section(file) = Plastic::Installations::Section.new(file:, opening: "<!-- BEGIN", closing: "<!-- END -->")

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/workflows/check_merge"
+require_relative "../../../lib/plastic/workflows/check_merge"
 
 class CheckMergeTest < Plastic::TestCase
   def check(merge_recorded: false, map_recorded: false)

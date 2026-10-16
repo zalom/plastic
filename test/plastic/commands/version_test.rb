@@ -42,7 +42,7 @@ class VersionCommandTest < Plastic::TestCase
 
     %w[version install update rollback uninstall].each do |name|
       assert Plastic::CLI.find([name]), "plastic #{name} is missing from the command table"
-      assert_includes files, "scripts/lib/plastic/commands/#{name}.rb"
+      assert_includes files, "lib/plastic/commands/#{name}.rb"
     end
   end
 

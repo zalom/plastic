@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require "minitest/autorun"
-require_relative "../../../scripts/lib/plastic/hooks/ownership"
+require_relative "../../../lib/plastic/hooks/ownership"
 
 class OwnershipTest < Minitest::Test
   COMMAND = "/opt/plastic/bin/plastic"

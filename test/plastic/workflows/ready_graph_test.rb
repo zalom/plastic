@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/workflows/ready_graph"
+require_relative "../../../lib/plastic/workflows/ready_graph"
 
 class ReadyGraphTest < Plastic::TestCase
   def ready(intent_id = "1") = run_workflow(Plastic::Workflows::ReadyGraph, intent_id:)

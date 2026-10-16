@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/workflows/check_architecture"
+require_relative "../../../lib/plastic/workflows/check_architecture"
 
 class CheckArchitectureTest < Plastic::TestCase
   def test_the_check_is_always_handed_to_the_agent

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/workflows/context_persistence"
+require_relative "../../../lib/plastic/workflows/context_persistence"
 
 class ContextPersistenceTest < Plastic::TestCase
   DOCUMENT = { "intent_id" => "1", "evidence" => [] }.freeze

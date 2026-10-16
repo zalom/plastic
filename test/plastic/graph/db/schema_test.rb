@@ -8,7 +8,7 @@ require_relative "../../../test_helper"
 class DbSchemaTest < Plastic::TestCase
   Schema = Plastic::Graph::Schema
   SchemaFile = Plastic::Graph::SchemaFile
-  KERNEL = File.expand_path("../../../../scripts/lib", __dir__)
+  KERNEL = File.expand_path("../../../../lib", __dir__)
   SCHEMA_PATH = File.join(KERNEL, "plastic/graph/db/schema.rb")
   BUILDER_PATH = File.join(KERNEL, "plastic/graph/db/schema_file.rb")
 

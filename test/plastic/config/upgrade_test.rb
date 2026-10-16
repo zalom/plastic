@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/config"
-require_relative "../../../scripts/lib/plastic/config/upgrade"
+require_relative "../../../lib/plastic/config"
+require_relative "../../../lib/plastic/config/upgrade"
 
 class ConfigUpgradeTest < Plastic::TestCase
   def path = File.join(@plastic_home, "config.yml")

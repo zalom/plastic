@@ -18,7 +18,7 @@
 
 require_relative "lib/installer_core"
 require_relative "lib/preflight"
-require_relative "lib/plastic/installations"
+require_relative "../lib/plastic/installations"
 
 class Install < InstallerCore
   def cli(argv = ARGV)

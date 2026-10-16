@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/cli/projects_file"
+require_relative "../../../lib/plastic/cli/projects_file"
 
 class CLIProjectsFileTest < Plastic::TestCase
   def path = File.join(@plastic_home, "projects.yml")

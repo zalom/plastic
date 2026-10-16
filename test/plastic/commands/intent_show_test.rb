@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/commands/intent_show"
-require_relative "../../../scripts/lib/plastic/commands/intent_rule"
+require_relative "../../../lib/plastic/commands/intent_show"
+require_relative "../../../lib/plastic/commands/intent_rule"
 
 class IntentShowTest < Plastic::TestCase
   def call(*args) = plastic("intent", "show", *args, table: Plastic::CLI::TABLE)

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/workflows/delivery_ownership"
+require_relative "../../../lib/plastic/workflows/delivery_ownership"
 
 class WorkflowDeliveryOwnershipTest < Plastic::TestCase
   Context = Data.define(:retrieval, :intent_id, :session)
