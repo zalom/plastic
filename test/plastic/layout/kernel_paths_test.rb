@@ -25,7 +25,29 @@ class KernelPathsTest < Minitest::Test
     "Commands::RoadmapAdd", "Commands::RoadmapShow", "Commands::RoadmapNext", "Commands::RoadmapDrop",
     "Commands::RoadmapOpen", "Commands::RoadmapCheck", "Commands::RoadmapLog", "Commands::RoadmapEdgeRemove"
   ].freeze
+  RETIRED_WORKFLOWS = [
+    "Workflows::WriteIntent", "Workflows::SyncUp", "Workflows::PreviewSync", "Workflows::SyncDown", "Workflows::PreviewSyncDown",
+    "Workflows::AddRuling", "Workflows::ReviseIntent", "Workflows::NoteIntent", "Workflows::ShowSpec", "Workflows::ApproveIntent",
+    "Workflows::PrepareJudge", "Workflows::JudgeIntent", "Workflows::RecordVerdict", "Workflows::PrepareVerdict", "Workflows::StartAuto",
+    "Workflows::PickDelivery", "Workflows::ShowLock", "Workflows::CheckGraph", "Workflows::ReadyGraph", "Workflows::ShowGraph",
+    "Workflows::ShowIntent", "Workflows::ShowBrief", "Workflows::DeliveryNext", "Workflows::PickNext", "Workflows::AddLink",
+    "Workflows::RemoveLink", "Workflows::CreateRoadmap", "Workflows::WriteRoadmapBatch", "Workflows::AddRoadmapItem", "Workflows::ShowRoadmap",
+    "Workflows::NextRoadmap", "Workflows::DropRoadmapItem", "Workflows::OpenRoadmapItem", "Workflows::CheckRoadmap", "Workflows::LogRoadmap",
+    "Workflows::RemoveRoadmapEdge", "Workflows::AdvanceDelivery", "Workflows::CloseIntent", "Workflows::PrepareEnding", "Workflows::FinishIntent",
+    "Workflows::CheckMerge", "Workflows::WindDownIntent", "Workflows::DiscoverRetrieval", "Workflows::ExternalAgentWorkflow", "Workflows::Search",
+    "Workflows::GetDocument", "Workflows::BatchDocuments", "Workflows::SubmitContext", "Workflows::CheckContextOwner", "Workflows::ReadContext",
+    "Workflows::CheckArchitecture", "Workflows::RefreshArchitecture", "Workflows::AbandonIntent", "Workflows::PrepareAbandon", "Workflows::RevertIntent",
+    "Workflows::WriteNote", "Workflows::ArchiveIntent", "Workflows::UnarchiveIntent", "Workflows::Backup", "Workflows::PreviewBackup",
+    "Workflows::BackupList", "Workflows::BackupPurge", "Workflows::PreviewBackupPurge", "Workflows::BackupRestore", "Workflows::PreviewBackupRestore",
+    "Workflows::ShowVersion", "Workflows::CheckHealth", "Workflows::InstallPlastic", "Workflows::PreviewInstall", "Workflows::OfferEnola",
+    "Workflows::InstallHarnesses", "Workflows::ChooseHarnesses", "Workflows::UninstallPlastic", "Workflows::PreviewUninstall", "Workflows::ChooseInstallations",
+    "Workflows::UpdatePlastic", "Workflows::PreviewUpdate", "Workflows::RollbackRelease", "Workflows::PreviewRollback", "Workflows::AddNode",
+    "Workflows::RemoveNode", "Workflows::ClaimNode", "Workflows::ReleaseNode", "Workflows::DoneNode", "Workflows::FailNode",
+    "Workflows::AskNode", "Workflows::ImpedeNode", "Workflows::ResolveNode", "Workflows::AddEdge", "Workflows::RemoveEdge",
+    "ExternalAgentWorkflow", "PreviewSyncDown"
+  ].freeze
   RETIRED_NAMES = [OLD_KERNEL, *RETIRED_COMMANDS].freeze
+  WORKFLOW_NAME = Regexp.union(RETIRED_WORKFLOWS.map { |name| /#{Regexp.escape(name)}(?![A-Za-z0-9_])/ })
 
   def tracked
     @tracked ||= ChildProcess.capture2e("git", "ls-files", "-z", chdir: ROOT).first.split("\0").reject do |path|
@@ -41,7 +63,7 @@ class KernelPathsTest < Minitest::Test
   def test_no_tracked_file_names_the_old_kernel_path_or_a_retired_name
     hits = tracked.select do |path|
       text = text_of(path)
-      text && RETIRED_NAMES.any? { |name| text.include?(name) }
+      text && (RETIRED_NAMES.any? { |name| text.include?(name) } || text.match?(WORKFLOW_NAME))
     end
 
     assert_empty hits

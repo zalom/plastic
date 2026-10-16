@@ -29,7 +29,7 @@ class WorkflowTest < Plastic::TestCase
   end
 
   def test_fetch_loads_the_file_of_a_workflow_not_loaded_yet
-    error = assert_raises(LoadError) { Plastic::Workflow.fetch(:code_stamp, from: Module.new.tap { |m| m.const_set(:REGISTRY, [:code_stamp]) }) }
+    error = assert_raises(LoadError) { Plastic::Workflow.fetch(:code_stamp, from: Module.new.tap { |m| m.const_set(:REGISTRY, { code_stamp: "Stamp" }) }) }
 
     assert_includes error.message, "workflows/stamp"
   end
