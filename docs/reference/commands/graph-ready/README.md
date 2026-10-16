@@ -6,7 +6,7 @@ List the nodes ready to claim.
 plastic graph ready ID
 ```
 
-The command is `GraphReady`, in [`graph_ready.rb:8`](../../../../lib/plastic/commands/graph_ready.rb#L8). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Graph::Ready`, in [`ready.rb:9`](../../../../lib/plastic/commands/graph/ready.rb#L9). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |

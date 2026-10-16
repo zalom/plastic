@@ -1,0 +1,67 @@
+# frozen_string_literal: true
+
+require_relative "../../../test_helper"
+require_relative "../../../../lib/plastic/commands/roadmap/batch"
+require_relative "../../../../lib/plastic/commands/roadmap/add"
+
+class RoadmapAddTest < Plastic::TestCase
+  def call(*args) = plastic("roadmap", "add", *args, table: Plastic::CLI::TABLE)
+
+  def batch(n = "1")
+    plastic("roadmap", "new", "r1", table: Plastic::CLI::TABLE) unless store_graphs.retrieval.roadmap("r1")
+    plastic("roadmap", "batch", "r1", n, "--title", "T", "--goal", "G", "--done", "d", table: Plastic::CLI::TABLE)
+  end
+
+  def test_after_is_gone
+    batch
+
+    assert_equal 2, call("r1", "1", "a", "--title", "A", "--after", "ghost").code
+  end
+
+  def test_needs_naming_an_item_off_the_roadmap_exits_1_with_nothing_written
+    batch
+
+    result = call("r1", "1", "a", "--title", "A", "--needs", "ghost")
+
+    assert_equal 1, result.code
+    assert_empty store_graphs.retrieval.roadmap_items("r1")
+  end
+
+  def test_needs_naming_an_item_off_the_roadmap_writes_no_edge
+    batch
+    call("r1", "1", "a", "--title", "A", "--needs", "ghost")
+
+    assert_empty store_graphs.retrieval.roadmap_edges("r1")
+  end
+
+  def test_a_loop_exits_3_and_one_edge_row_exists
+    batch
+    call("r1", "1", "a", "--title", "A")
+    call("r1", "1", "b", "--title", "B", "--needs", "a")
+
+    result = call("r1", "1", "a", "--needs", "b")
+
+    assert_equal 3, result.code
+    assert_equal 1, store_graphs.retrieval.roadmap_edges("r1").size
+  end
+
+  def test_an_item_refused_for_a_missing_batch_is_added_once_the_batch_exists
+    call("r1", "1", "a", "--title", "A")
+    batch
+
+    result = call("r1", "1", "a", "--title", "A")
+
+    assert_equal 0, result.code
+    assert_equal ["a"], store_graphs.retrieval.roadmap_items("r1").map(&:item)
+  end
+
+  def test_an_existing_item_cannot_depend_on_itself
+    batch
+    call("r1", "1", "a", "--title", "A")
+
+    result = call("r1", "1", "a", "--needs", "a")
+
+    assert_equal 3, result.code
+    assert_empty store_graphs.retrieval.roadmap_edges("r1")
+  end
+end

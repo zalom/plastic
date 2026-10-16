@@ -6,7 +6,7 @@ Print the steps that start the judge of an intent.
 plastic intent judge ID
 ```
 
-The command is `IntentJudge`, in [`intent_judge.rb:8`](../../../../lib/plastic/commands/intent_judge.rb#L8). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Intent::Judge`, in [`judge.rb:9`](../../../../lib/plastic/commands/intent/judge.rb#L9). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |

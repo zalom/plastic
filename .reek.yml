@@ -106,9 +106,9 @@ detectors:
     - Plastic::CLI::Command#self.call
     - Plastic::CLI::Commands::Doctor#verdict
     - Plastic::CLI::Commands::Next#call
-    - Plastic::CLI::Commands::ProjectNew#call
-    - Plastic::CLI::Commands::ProjectNew#projects
-    - Plastic::CLI::Commands::ProjectNew#register
+    - Plastic::CLI::Commands::Project::New#call
+    - Plastic::CLI::Commands::Project::New#projects
+    - Plastic::CLI::Commands::Project::New#register
     - Plastic::CLI::Commands::Hook#self.call
     - Plastic::CLI::Commands::Version#read
     - Plastic::CLI::Commands::Index#call
@@ -134,34 +134,34 @@ detectors:
     - Plastic::CLI#match
     - VersionNumber#<=>
     - SkillCensus::Tally#resolve
-    - Plastic::CLI::Commands::RoadmapNext#entries
+    - Plastic::CLI::Commands::Roadmap::Next#entries
     - Plastic::CLI::Commands::Doctor#verdict
-    - Plastic::CLI::Commands::ProjectNew#projects
+    - Plastic::CLI::Commands::Project::New#projects
     - Plastic::CLI::Commands::Sync#refuse
   InstanceVariableAssumption:
     exclude:
     - Plastic::CLI::Scope
     - Plastic::CLI::Output
     - Plastic::CLI::Command
-    - Plastic::CLI::Commands::RoadmapNext
+    - Plastic::CLI::Commands::Roadmap::Next
     - Plastic::CLI::Commands::Doctor
     - Plastic::CLI::Commands::Next
     - Plastic::CLI::Commands::Status
     - Plastic::CLI::Commands::Help
-    - Plastic::CLI::Commands::IntentEnd
-    - Plastic::CLI::Commands::IntentShow
-    - Plastic::CLI::Commands::IntentSpec
-    - Plastic::CLI::Commands::ProjectLinks
+    - Plastic::CLI::Commands::Intent::End
+    - Plastic::CLI::Commands::Intent::Show
+    - Plastic::CLI::Commands::Intent::Spec
+    - Plastic::CLI::Commands::Project::Links
     - Plastic::CLI::Commands::Search
-    - Plastic::CLI::Commands::RoadmapLog
-    - Plastic::CLI::Commands::ProjectList
-    - Plastic::CLI::Commands::ProjectNew
+    - Plastic::CLI::Commands::Roadmap::Log
+    - Plastic::CLI::Commands::Project::List
+    - Plastic::CLI::Commands::Project::New
     - Plastic::CLI::Commands::Version
     - Plastic::CLI::Commands::Index
-    - Plastic::CLI::Commands::RoadmapCheck
+    - Plastic::CLI::Commands::Roadmap::Check
     - Plastic::CLI::Commands::Sync
-    - Plastic::CLI::Commands::IntentNew
-    - Plastic::CLI::Commands::RoadmapShow
+    - Plastic::CLI::Commands::Intent::New
+    - Plastic::CLI::Commands::Roadmap::Show
     - Plastic::CLI::Commands::Backup
   IrresponsibleModule:
     exclude:
@@ -197,27 +197,27 @@ detectors:
     - Plastic::CLI::Command::Failure
     - Plastic::CLI::Command::Refusal
     - Plastic::CLI::Command::Usage
-    - Plastic::CLI::Commands::RoadmapNext
+    - Plastic::CLI::Commands::Roadmap::Next
     - Plastic::CLI::Commands::Doctor
     - Plastic::CLI::Commands::Next
     - Plastic::CLI::Commands::Status
     - Plastic::CLI::Commands::Help
-    - Plastic::CLI::Commands::IntentEnd
-    - Plastic::CLI::Commands::IntentShow
-    - Plastic::CLI::Commands::IntentSpec
-    - Plastic::CLI::Commands::ProjectLinks
+    - Plastic::CLI::Commands::Intent::End
+    - Plastic::CLI::Commands::Intent::Show
+    - Plastic::CLI::Commands::Intent::Spec
+    - Plastic::CLI::Commands::Project::Links
     - Plastic::CLI::Commands::Search
-    - Plastic::CLI::Commands::RoadmapLog
-    - Plastic::CLI::Commands::ProjectList
-    - Plastic::CLI::Commands::ProjectNew
+    - Plastic::CLI::Commands::Roadmap::Log
+    - Plastic::CLI::Commands::Project::List
+    - Plastic::CLI::Commands::Project::New
     - Plastic::CLI::Commands::Hook
-    - Plastic::CLI::Commands::IntentRule
+    - Plastic::CLI::Commands::Intent::Rule
     - Plastic::CLI::Commands::Version
     - Plastic::CLI::Commands::Index
-    - Plastic::CLI::Commands::RoadmapCheck
+    - Plastic::CLI::Commands::Roadmap::Check
     - Plastic::CLI::Commands::Sync
-    - Plastic::CLI::Commands::IntentNew
-    - Plastic::CLI::Commands::RoadmapShow
+    - Plastic::CLI::Commands::Intent::New
+    - Plastic::CLI::Commands::Roadmap::Show
     - Plastic::CLI::Commands::Backup
   LongParameterList:
     exclude:
@@ -265,7 +265,7 @@ detectors:
     - HookRegistry#claude_settings_hooks
     - Plastic::Backup#self.call
     - Plastic::CLI::Output#print_rows
-    - Plastic::CLI::Commands::IntentNew#switches
+    - Plastic::CLI::Commands::Intent::New#switches
   NilCheck:
     exclude:
     - Doctor#cli
@@ -405,17 +405,17 @@ detectors:
     - Plastic::CLI::Command#self.call
     - Plastic::CLI::Commands::Doctor#call
     - Plastic::CLI::Commands::Next#call
-    - Plastic::CLI::Commands::IntentEnd#call
-    - Plastic::CLI::Commands::IntentEnd#switches
+    - Plastic::CLI::Commands::Intent::End#call
+    - Plastic::CLI::Commands::Intent::End#switches
     - Plastic::CLI::Commands::Search#call
     - Plastic::CLI::Commands::Search#switches
-    - Plastic::CLI::Commands::RoadmapLog#call
-    - Plastic::CLI::Commands::ProjectNew#call
-    - Plastic::CLI::Commands::ProjectNew#register
+    - Plastic::CLI::Commands::Roadmap::Log#call
+    - Plastic::CLI::Commands::Project::New#call
+    - Plastic::CLI::Commands::Project::New#register
     - Plastic::CLI::Commands::Index#call
-    - Plastic::CLI::Commands::RoadmapCheck#call
+    - Plastic::CLI::Commands::Roadmap::Check#call
     - Plastic::CLI::Commands::Sync#call
-    - Plastic::CLI::Commands::RoadmapShow#call
+    - Plastic::CLI::Commands::Roadmap::Show#call
     - Plastic::CLI::Commands::Backup#call
   UncommunicativeParameterName:
     exclude:
@@ -475,12 +475,12 @@ detectors:
     - SkillCensus::Tally#build
     - Plastic::CLI::Command#self.call
     - Plastic::CLI::Commands::Next#call
-    - Plastic::CLI::Commands::IntentEnd#switches
+    - Plastic::CLI::Commands::Intent::End#switches
     - Plastic::CLI::Commands::Search#call
-    - Plastic::CLI::Commands::ProjectNew#switches
+    - Plastic::CLI::Commands::Project::New#switches
     - Plastic::CLI::Commands::Index#call
     - Plastic::CLI::Commands::Sync#call
-    - Plastic::CLI::Commands::IntentNew#switches
+    - Plastic::CLI::Commands::Intent::New#switches
     - Plastic::CLI::Commands::Backup#call
   UnusedParameters:
     exclude:

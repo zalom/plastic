@@ -6,7 +6,7 @@ Tell the agent to check the architecture map with its own tool.
 plastic architecture status
 ```
 
-The command is `ArchitectureStatus`, in [`architecture_status.rb:8`](../../../../lib/plastic/commands/architecture_status.rb#L8). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Architecture::Status`, in [`status.rb:9`](../../../../lib/plastic/commands/architecture/status.rb#L9). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 ## What it touches
 

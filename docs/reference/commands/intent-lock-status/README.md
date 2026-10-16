@@ -6,7 +6,7 @@ Print the session that holds an intent's lock, and its worktree.
 plastic intent lock status ID
 ```
 
-The command is `IntentLockStatus`, in [`intent_lock_status.rb:8`](../../../../lib/plastic/commands/intent_lock_status.rb#L8). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Intent::Lock::Status`, in [`status.rb:10`](../../../../lib/plastic/commands/intent/lock/status.rb#L10). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |

@@ -6,7 +6,7 @@ List the links that name an intent or a ruling this store lacks.
 plastic project links
 ```
 
-The command is `ProjectLinks`, in [`project_links.rb:12`](../../../../lib/plastic/commands/project_links.rb#L12). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Project::Links`, in [`links.rb:13`](../../../../lib/plastic/commands/project/links.rb#L13). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 ## What it touches
 
@@ -14,13 +14,13 @@ The command is `ProjectLinks`, in [`project_links.rb:12`](../../../../lib/plasti
 
 ## The command
 
-The command's `call`, at [`project_links.rb:15`](../../../../lib/plastic/commands/project_links.rb#L15):
+The command's `call`, at [`links.rb:16`](../../../../lib/plastic/commands/project/links.rb#L16):
 
 ```ruby
 def call
   broken = broken_links
   broken.each { |link| output.raw("#{link.from_ref} #{link.kind} #{link.to_ref}") }
-  output.raw(Graph::Knowledge::Link::Check.summary(broken.size)) if broken.any?
+  output.raw(Plastic::Graph::Knowledge::Link::Check.summary(broken.size)) if broken.any?
   output.next_step("plastic status", because: "every link names an intent or a ruling this store holds")
 end
 ```
@@ -35,4 +35,4 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| Offers the next command | 0 | plastic status | [`project_links.rb:19`](../../../../lib/plastic/commands/project_links.rb#L19) |
+| Offers the next command | 0 | plastic status | [`links.rb:20`](../../../../lib/plastic/commands/project/links.rb#L20) |

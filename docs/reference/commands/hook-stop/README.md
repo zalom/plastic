@@ -6,7 +6,7 @@ Stop: stamp the turn, renew locks, run the stop gate.
 plastic hook stop
 ```
 
-The command is `Stop`, in [`stop.rb:14`](../../../../lib/plastic/hooks/stop.rb#L14). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Hooks::Stop`, in [`stop.rb:14`](../../../../lib/plastic/hooks/stop.rb#L14). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 ## What it touches
 

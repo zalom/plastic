@@ -2,7 +2,7 @@
 
 require_relative "../../test_helper"
 require_relative "../../../lib/plastic/workflows/close_intent"
-require "plastic/commands/intent_end"
+require "plastic/commands/intent/end"
 
 class CloseIntentTest < Plastic::TestCase
   include DeliveryHelper
@@ -27,7 +27,7 @@ class CloseIntentTest < Plastic::TestCase
     close
 
     assert_equal "verdict", retrieval.completion("1").fetch("judge")
-    assert_includes Plastic::Commands::IntentEnd.chain.keys, :agent_wind_down_intent
+    assert_includes Plastic::Commands::Intent::End.chain.keys, :agent_wind_down_intent
   end
 
   def test_an_intent_with_problems_fails_with_no_completion

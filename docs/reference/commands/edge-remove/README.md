@@ -8,7 +8,7 @@ Removes one edge. Fails when no such edge exists.
 plastic edge remove ID FROM TO [--dry-run]
 ```
 
-The command is `EdgeRemove`, in [`edge_remove.rb:8`](../../../../lib/plastic/commands/edge_remove.rb#L8). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Edge::Remove`, in [`remove.rb:9`](../../../../lib/plastic/commands/edge/remove.rb#L9). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |

@@ -6,7 +6,7 @@ Mark a roadmap item dropped; its edges stay as rows.
 plastic roadmap drop SLUG ITEM [--dry-run]
 ```
 
-The command is `RoadmapDrop`, in [`roadmap_drop.rb:8`](../../../../lib/plastic/commands/roadmap_drop.rb#L8). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Roadmap::Drop`, in [`drop.rb:9`](../../../../lib/plastic/commands/roadmap/drop.rb#L9). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |

@@ -6,7 +6,7 @@ Print one intent's status, criteria, decisions, rulings and nodes.
 plastic intent show ID
 ```
 
-The command is `IntentShow`, in [`intent_show.rb:9`](../../../../lib/plastic/commands/intent_show.rb#L9). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Intent::Show`, in [`show.rb:10`](../../../../lib/plastic/commands/intent/show.rb#L10). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |

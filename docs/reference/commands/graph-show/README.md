@@ -8,7 +8,7 @@ Prints one intent's nodes and edges from the rows. It reads and writes nothing.
 plastic graph show ID
 ```
 
-The command is `GraphShow`, in [`graph_show.rb:8`](../../../../lib/plastic/commands/graph_show.rb#L8). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Graph::Show`, in [`show.rb:9`](../../../../lib/plastic/commands/graph/show.rb#L9). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |

@@ -8,7 +8,7 @@ Persists the agent's selected evidence without judging its relevance.
 plastic intent context ID [--from FILE]
 ```
 
-The command is `IntentContext`, in [`intent_context.rb:8`](../../../../lib/plastic/commands/intent_context.rb#L8). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Intent::Context`, in [`context.rb:9`](../../../../lib/plastic/commands/intent/context.rb#L9). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |

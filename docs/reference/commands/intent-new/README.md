@@ -8,7 +8,7 @@ Opens an intent: writes its row and its first rows, and prints its folder and st
 plastic intent new TITLE... [--parent ID] [--ref REF] [--after ID] [--kind KIND] [--status STATUS]
 ```
 
-The command is `IntentNew`, in [`intent_new.rb:9`](../../../../lib/plastic/commands/intent_new.rb#L9). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Intent::New`, in [`new.rb:10`](../../../../lib/plastic/commands/intent/new.rb#L10). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |

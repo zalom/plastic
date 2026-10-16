@@ -23,7 +23,7 @@
 <text class="s" x="258" y="81">Finds the row for intent new</text>
 <text class="s" x="258" y="96">in CLI::TABLE.</text>
 <rect class="box" x="469" y="20" width="207" height="94" rx="8"/><rect x="469" y="20" width="6" height="94" rx="3" fill="var(--code, #0b5e55)"/>
-<text class="m" x="485" y="44">Commands::IntentNew</text><text class="s" x="485" y="61">[Step 3]</text>
+<text class="m" x="485" y="44">Commands::Intent::New</text><text class="s" x="485" y="61">[Step 3]</text>
 <text class="s" x="485" y="81">Loaded on demand; its</text>
 <text class="s" x="485" y="96">options are read.</text>
 <rect class="box" x="696" y="20" width="207" height="94" rx="8"/><rect x="696" y="20" width="6" height="94" rx="3" fill="var(--code, #0b5e55)"/>

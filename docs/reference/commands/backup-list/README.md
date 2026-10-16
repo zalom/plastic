@@ -6,7 +6,7 @@ List one store's backups with status and goal, flagging a missing or changed fil
 plastic backup list --store SLUG
 ```
 
-The command is `BackupList`, in [`backup_list.rb:9`](../../../../lib/plastic/commands/backup_list.rb#L9). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Backup::List`, in [`list.rb:11`](../../../../lib/plastic/commands/backup/list.rb#L11). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |

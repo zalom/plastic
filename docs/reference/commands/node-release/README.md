@@ -6,7 +6,7 @@ Release a claimed or failed node back to open.
 plastic node release ID NODE
 ```
 
-The command is `NodeRelease`, in [`node_release.rb:8`](../../../../lib/plastic/commands/node_release.rb#L8). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Node::Release`, in [`release.rb:9`](../../../../lib/plastic/commands/node/release.rb#L9). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |

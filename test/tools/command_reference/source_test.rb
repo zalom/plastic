@@ -10,7 +10,7 @@ class CommandReferenceSourceTest < Minitest::Test
   def source = CommandReference::Source.new(CommandReferenceHelper::ROOT)
 
   def test_the_comment_above_a_class_is_read_without_its_marker
-    comment = source.class_comment(Plastic::Commands::IntentEnd)
+    comment = source.class_comment(Plastic::Commands::Intent::End)
 
     assert_equal ["Closes a delivered intent once the rows, the verdict and outcome.md allow it, and hands over what is missing."], comment
   end

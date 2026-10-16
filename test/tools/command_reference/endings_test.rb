@@ -106,7 +106,7 @@ class CommandReferenceEndingsTest < Minitest::Test
   def test_the_own_check_call_of_a_backup_command_is_part_of_its_own_call
     check = page("backup restore").own_call.check
 
-    assert_equal "lib/plastic/commands/backup_restore.rb", check.file
+    assert_equal "lib/plastic/commands/backup/restore.rb", check.file
     assert_includes check.code.join("\n"), "one_of"
     assert_nil page("backup list").own_call.check
   end
