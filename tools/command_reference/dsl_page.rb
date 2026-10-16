@@ -9,7 +9,7 @@ module CommandReference
       link: "lib/plastic/routine/link.rb", branches: "lib/plastic/routine/branches.rb",
       workflow: "lib/plastic/workflow.rb", code: "lib/plastic/code_workflow.rb",
       agent: "lib/plastic/agent_workflow.rb", finished: "lib/plastic/finished.rb",
-      command: "lib/plastic/cli/command.rb"
+      command: "lib/plastic/cli/command.rb", pool: "lib/plastic/graph/database/connection_pool.rb"
     }.freeze
     EXAMPLE = "intent end"
     END_FILES = { "Finished" => "finished", "HandedOff" => "handed_off", "Failed" => "failed", "Refused" => "refused" }.freeze
@@ -51,7 +51,7 @@ module CommandReference
     def figures
       home = page
       { "declare-command.svg" => Dsl::DeclareCommand.new(home, class_rows(home.file, "End")), **workflow_figures,
-        "endings.svg" => Dsl::EndValues.new(ends), "chain.svg" => Figures::Chain.new(home) }
+        "endings.svg" => Dsl::EndValues.new(ends), "workflows.svg" => Figures::Workflows.new(home) }
     end
 
     def workflow_figures

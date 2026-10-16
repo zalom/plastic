@@ -15,7 +15,7 @@ module CommandReference
         ["# Command reference", "", INTRO, "", *groups.flat_map { |title, pages| Index.section(title, pages) }].join("\n")
       end
 
-      INTRO = "Each page explains one plastic command: what it takes, what it touches, the workflows it runs, where each workflow stops, and how it ends. " \
+      INTRO = "Each page explains one plastic command in five sections: Components, The events of one call, What one call reads, writes and prints, How a call ends, and What the page leaves out. " \
         "A script writes every page from the command classes, so a page always matches the code it links to. " \
         "Every command is declared in the same small DSL, shown in [the command DSL](../dsl/README.md)."
 

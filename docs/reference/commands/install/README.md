@@ -16,13 +16,15 @@ The command is `Install`, in [`install.rb:9`](../../../../lib/plastic/commands/i
 | `--force` | replace agent files Plastic did not write | `false` |
 | `--dry-run` | list what would change and change nothing | `false` |
 
-## What it touches
+## Components
 
-![What plastic install touches](component.svg)
+![The components on the path of plastic install](component.svg)
 
-## How the call flows
+The figure shows the command, the workflows it runs, the classes behind them, and the databases and files they reach.
 
-![The chain of workflows that plastic install runs](chain.svg)
+## The events of one call
+
+![The workflows of plastic install](workflows.svg)
 
 | Workflow | Kind | Code |
 | --- | --- | --- |
@@ -38,14 +40,11 @@ On a dry run, lists each core file the install would add or replace.
 
 ![How Code::Install::Preview runs: its steps, where it stops, and its outcomes](code_preview_install.svg)
 
-| Step | Kind | Check | Code |
-| --- | --- | --- | --- |
-| list the core files the install would write | read |  | [`preview.rb:15`](../../../../lib/plastic/workflows/code/install/preview.rb#L15) |
+Its rows run in this order:
 
-| Outcome | When | Then | Code |
-| --- | --- | --- | --- |
-| `:done` | when `context.dry_run` | finishes, exit 0; next: %{original_command} | [`preview.rb:23`](../../../../lib/plastic/workflows/code/install/preview.rb#L23) |
-| `:continue` | otherwise | runs [Code::Install](#codeinstall) | [`preview.rb:25`](../../../../lib/plastic/workflows/code/install/preview.rb#L25) |
+1. Read: list the core files the install would write. [`preview.rb:15`](../../../../lib/plastic/workflows/code/install/preview.rb#L15)
+2. Outcome `:done`, when `context.dry_run`: finishes with exit 0; next: ORIGINAL_COMMAND. [`preview.rb:23`](../../../../lib/plastic/workflows/code/install/preview.rb#L23)
+3. Outcome `:continue`, otherwise: starts the workflow [Code::Install](#codeinstall). [`preview.rb:25`](../../../../lib/plastic/workflows/code/install/preview.rb#L25)
 
 ### Code::Install
 
@@ -55,17 +54,14 @@ Checks the machine, then copies the core files into the home. A reinstall also s
 
 ![How Code::Install runs: its steps, where it stops, and its outcomes](code_install_plastic.svg)
 
-| Step | Kind | Check | Code |
-| --- | --- | --- | --- |
-| check this machine and the harness settings files | read |  | [`install.rb:17`](../../../../lib/plastic/workflows/code/install.rb#L17) |
-| this machine cannot run Plastic; see above | gate, stops with exit 1 | `context.usable` | [`install.rb:26`](../../../../lib/plastic/workflows/code/install.rb#L26) |
-| %{broken} is not valid JSON; nothing was changed. Fix the file and run this again | gate, stops with exit 1 | `context.broken.nil?` | [`install.rb:27`](../../../../lib/plastic/workflows/code/install.rb#L27) |
-| Plastic is already installed; run plastic init to add a harness, or pass --reinstall to sync the files again | gate, stops with exit 3 | `context.reinstall \|\| !context.present` | [`install.rb:29`](../../../../lib/plastic/workflows/code/install.rb#L29) |
-| install the core files | step | `!context.installed.nil?` | [`install.rb:32`](../../../../lib/plastic/workflows/code/install.rb#L32) |
+Its rows run in this order:
 
-| Outcome | When | Then | Code |
-| --- | --- | --- | --- |
-| `:done` | always | runs [Agent::Install](#agentinstall) | [`install.rb:40`](../../../../lib/plastic/workflows/code/install.rb#L40) |
+1. Read: check this machine and the harness settings files. [`install.rb:17`](../../../../lib/plastic/workflows/code/install.rb#L17)
+2. Gate: passes when `context.usable`; otherwise the call stops with exit 1 and prints this machine cannot run Plastic; see above. [`install.rb:26`](../../../../lib/plastic/workflows/code/install.rb#L26)
+3. Gate: passes when `context.broken.nil?`; otherwise the call stops with exit 1 and prints BROKEN is not valid JSON; nothing was changed. Fix the file and run this again. [`install.rb:27`](../../../../lib/plastic/workflows/code/install.rb#L27)
+4. Gate: passes when `context.reinstall || !context.present`; otherwise the call stops with exit 3 and prints Plastic is already installed; run plastic init to add a harness, or pass --reinstall to sync the files again. [`install.rb:29`](../../../../lib/plastic/workflows/code/install.rb#L29)
+5. Step: install the core files. Done when `!context.installed.nil?`, so a second call skips it. [`install.rb:32`](../../../../lib/plastic/workflows/code/install.rb#L32)
+6. Outcome `:done`, always: starts the workflow [Agent::Install](#agentinstall). [`install.rb:40`](../../../../lib/plastic/workflows/code/install.rb#L40)
 
 It sets `usable`, `broken`, `present`, `installed`.
 
@@ -77,29 +73,52 @@ After a first install, the agent may offer Enola to the person. Plastic runs no 
 
 ![How Agent::Install runs: its steps, where it stops, and its outcomes](agent_offer_enola.svg)
 
-| Step | Kind | Check | Code |
-| --- | --- | --- | --- |
-| offer Enola | agent step | `context.reinstall` | [`install.rb:11`](../../../../lib/plastic/workflows/agent/install.rb#L11) |
+Its rows run in this order:
 
-| Outcome | When | Then | Code |
-| --- | --- | --- | --- |
-| `:handoff` | when a step is left | hands off, exit 0; next: plastic init | [`install.rb:15`](../../../../lib/plastic/workflows/agent/install.rb#L15) |
-| `:done` | when every done check holds | finishes, exit 0; next: plastic version | [`install.rb:16`](../../../../lib/plastic/workflows/agent/install.rb#L16) |
+1. Agent step: offer Enola. Done when `context.reinstall`; while it fails, the call prints its `say:` text. [`install.rb:11`](../../../../lib/plastic/workflows/agent/install.rb#L11)
+2. Outcome `:handoff`, when a step is left: hands off with exit 0; next: plastic init. [`install.rb:15`](../../../../lib/plastic/workflows/agent/install.rb#L15)
+3. Outcome `:done`, when every done check holds: finishes with exit 0; next: plastic version. [`install.rb:16`](../../../../lib/plastic/workflows/agent/install.rb#L16)
 
 The agent step "offer Enola" prints:
 
 > Enola maps the code architecture of a project. It is optional: Plastic works without it. To install it, run its official installer: curl -fsSL https://raw.githubusercontent.com/enola-labs/enola/main/install.sh | sh
 
-## Outcomes
+While a step is left, the call hands off with exit 0 from `:handoff`: it prints the `say:` text of each failing step and offers next: plastic init. The command writes nothing, so the call keeps no routine run row. The next call starts fresh and checks the steps again.
+
+In the words of workflow engines, the rows are these four parts:
+
+- **Trigger**: the call starts the workflow `Code::Install::Preview`; each later workflow starts from an outcome of the one before it.
+- **Activities**: 2 reads, 1 step and 1 agent step.
+- **Transitions**: 3 gates stop the call when their checks fail; a step runs only while its done check fails; Preview goes to Install on `:continue`; Install goes to Install on every outcome.
+- **Outcomes**: `:done` of Preview, `:handoff` of Install, `:done` of Install end the call.
+
+## What one call reads, writes and prints
+
+![What one call of plastic install reads, writes and prints](touches.svg)
+
+It reads and writes no store database and prints no store file.
+
+A second call runs the same rows again. A step runs again only when its done check fails.
+
+| Step | Done when | The second call | Code |
+| --- | --- | --- | --- |
+| install the core files | `!context.installed.nil?` | skips it | [`install.rb:32`](../../../../lib/plastic/workflows/code/install.rb#L32) |
+| offer Enola | `context.reinstall` | skips it | [`install.rb:11`](../../../../lib/plastic/workflows/agent/install.rb#L11) |
+
+## How a call ends
 
 Every call can also end in [the ways any call can end](../../dsl/README.md#how-any-call-can-end).
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| the preview changed no file | 0 | %{original_command} | [`preview.rb:23`](../../../../lib/plastic/workflows/code/install/preview.rb#L23) |
+| the preview changed no file | 0 | ORIGINAL_COMMAND | [`preview.rb:23`](../../../../lib/plastic/workflows/code/install/preview.rb#L23) |
 | this machine cannot run Plastic; see above | 1 | prints no next: line | [`install.rb:26`](../../../../lib/plastic/workflows/code/install.rb#L26) |
-| %{broken} is not valid JSON; nothing was changed. Fix the file and run this again | 1 | prints no next: line | [`install.rb:27`](../../../../lib/plastic/workflows/code/install.rb#L27) |
+| BROKEN is not valid JSON; nothing was changed. Fix the file and run this again | 1 | prints no next: line | [`install.rb:27`](../../../../lib/plastic/workflows/code/install.rb#L27) |
 | Plastic is already installed; run plastic init to add a harness, or pass --reinstall to sync the files again | 3 | prints no next: line | [`install.rb:29`](../../../../lib/plastic/workflows/code/install.rb#L29) |
 | Enola is optional; plastic init installs Plastic into the harnesses the person picks | 0 | plastic init | [`install.rb:15`](../../../../lib/plastic/workflows/agent/install.rb#L15) |
 | a reinstall syncs the files and offers nothing more | 0 | plastic version | [`install.rb:16`](../../../../lib/plastic/workflows/agent/install.rb#L16) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
+
+## What the page leaves out
+
+Every call shares a few things that this page does not repeat; [the command DSL](../../dsl/README.md#what-every-call-shares) names them.

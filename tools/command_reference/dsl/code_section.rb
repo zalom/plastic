@@ -12,7 +12,7 @@ module CommandReference
           "The lines run from top to bottom. A block shows as `do ... end`, code that is not a DSL line shows as a gap, and long lines are wrapped and cut short.", "",
           "| Word | Shape | When it runs | Stops the call | Defined in |", "| --- | --- | --- | --- | --- |", *rows, "",
           "A block does the work. A keyword lambda, `done:`, `pass:` or `if:`, answers a question and changes nothing.", "",
-          "An outcome that ends the chain also takes `offers:`, the command that `next:` prints, and `because:`, the reason for it.", ""]
+          "An outcome that ends the call also takes `offers:`, the command that `next:` prints, and `because:`, the reason for it.", ""]
       end
 
       private

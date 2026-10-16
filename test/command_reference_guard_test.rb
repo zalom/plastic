@@ -40,6 +40,33 @@ class CommandReferenceGuardTest < Minitest::Test
     end
   end
 
+  CHAIN_EXCEPTION = "source or chain"
+
+  def prose_of(body) = body.gsub(/^```.*?^```$/m, "").gsub(/`[^`\n]*`/, "").gsub(/\]\([^)\n]*\)/, "]").gsub(CHAIN_EXCEPTION, "")
+
+  def test_no_built_file_says_chain_outside_code
+    CommandReferenceHelper.files.each { |path, body| refute_match(/chain/i, prose_of(body), path) }
+  end
+
+  def test_no_built_path_holds_chain
+    CommandReferenceHelper.files.each_key { |path| refute_match(/chain/i, path) }
+  end
+
+  def test_every_built_svg_is_linked_from_its_readme
+    CommandReferenceHelper.files.each_key do |path|
+      next unless path.end_with?(".svg")
+
+      readme = CommandReferenceHelper.files.fetch(File.join(File.dirname(path), "README.md"))
+
+      assert_includes readme, "(#{File.basename(path)})", path
+    end
+  end
+
+  def test_a_one_workflow_page_builds_no_workflows_figure
+    refute_includes CommandReferenceHelper.files.keys, "docs/reference/commands/intent-new/workflows.svg"
+    assert_includes CommandReferenceHelper.files.keys, "docs/reference/commands/auto/workflows.svg"
+  end
+
   def test_the_detector_reports_an_edited_text_and_a_missing_file_and_leaves_an_equal_one
     built = { "a" => "same", "b" => "new", "c" => "only built" }
 

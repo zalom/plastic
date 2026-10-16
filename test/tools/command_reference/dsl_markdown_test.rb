@@ -20,6 +20,19 @@ class CommandReferenceDslMarkdownTest < Minitest::Test
     ["--help", "missing store", "step that raises", "agent handoff"].each { |part| assert_includes table, part }
   end
 
+  def test_the_dsl_page_wires_the_workflows_and_names_what_every_call_shares
+    ["## Wire the workflows", "(#wire-the-workflows)", "workflows.svg"].each { |part| assert_includes text, part }
+    refute_includes text, "Wire the chain"
+
+    shared = text[/## What every call shares.*?(?=\n---|\z)/m]
+
+    ["lib/plastic/routine.rb#L", "lib/plastic/cli/command.rb#L", "lib/plastic/graph/database/connection_pool.rb#L"].each { |link| assert_includes shared, link }
+  end
+
+  def test_the_dsl_page_lists_the_shared_section_in_its_contents
+    assert_includes text, "(#what-every-call-shares)"
+  end
+
   def test_the_page_links_the_kernel_by_relative_path
     assert_includes text, "../../../lib/plastic/routine.rb"
   end

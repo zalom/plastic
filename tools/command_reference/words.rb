@@ -12,7 +12,18 @@ module CommandReference
       (last && last.size + word.size + 1 <= width) ? [*head, "#{last} #{word}"] : [*all, word]
     end
 
-    def self.cell(text) = text.to_s.gsub("|", "\\\\|")
+    # A text with its %{name} placeholders as uppercase NAME words and its line breaks as spaces.
+    def self.plain(text) = placeholders(text).gsub(/\s*\n\s*/, " ")
+
+    def self.placeholders(text) = text.to_s.gsub(/%\{(\w+)\}/) { Regexp.last_match(1).upcase }
+
+    def self.cell(text) = plain(text).gsub("|", "\\\\|")
+
+    # Text as an inline code span, long enough fences for a backtick inside.
+    def self.span(text)
+      one = text.to_s.gsub(/\s+/, " ").strip
+      one.include?("`") ? "`` #{one} ``" : "`#{one}`"
+    end
 
     def self.short(klass) = klass.name.split("::").last
 

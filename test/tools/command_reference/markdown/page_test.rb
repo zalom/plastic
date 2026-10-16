@@ -6,7 +6,15 @@ require_relative "../../../docs_stale_words_guard_test"
 class CommandReferenceMarkdownPageTest < Minitest::Test
   include CommandReferenceHelper
 
+  SECTIONS = ["## Components", "## The events of one call", "## What one call reads, writes and prints", "## How a call ends", "## What the page leaves out"].freeze
+  SHARED = "../../dsl/README.md#what-every-call-shares"
+  OWN_CALL_PAGES = ["hook end", "hook stop", "hook start", "graph resume", "project links", "project list", "status", "project new", "config", "config list", "config get", "config set"].freeze
+
   def text(words) = CommandReference::Markdown::Page.new(page(words)).to_s
+
+  def readmes = CommandReferenceHelper.files.select { |path, _| path.match?(%r{/commands/[^/]+/README\.md\z}) }
+
+  def prose_lines(body) = body.gsub(/^```.*?^```\n/m, "")
 
   def test_no_built_page_holds_a_stale_phrase
     CommandReferenceHelper.files.each do |path, body|
@@ -14,10 +22,26 @@ class CommandReferenceMarkdownPageTest < Minitest::Test
     end
   end
 
+  def test_every_command_page_has_the_six_sections_in_order
+    assert_equal 76, readmes.size
+    readmes.each do |path, body|
+      headings = prose_lines(body).lines.grep(/^(?:# |## )/).map(&:chomp)
+
+      assert_match(/\A# plastic /, headings.first, path)
+      assert_equal SECTIONS, headings.drop(1), path
+    end
+  end
+
+  def test_no_command_page_keeps_an_old_heading
+    readmes.each do |path, body|
+      ["What it touches", "How the call flows", "## Outcomes", "\n## The command", "Before the chain"].each { |old| refute_includes body, old, path }
+    end
+  end
+
   def test_a_page_has_the_sections_a_reader_expects
     body = text("intent end")
 
-    ["# plastic intent end", "## What it touches", "## How the call flows", "## Outcomes", "component.svg", "chain.svg"].each { |part| assert_includes body, part }
+    ["# plastic intent end", *SECTIONS, "component.svg", "workflows.svg", "touches.svg"].each { |part| assert_includes body, part }
   end
 
   def test_the_outcomes_table_links_the_kernel_wide_endings_once
@@ -28,10 +52,10 @@ class CommandReferenceMarkdownPageTest < Minitest::Test
     refute_match(/It reads .* graph and writes/, text("intent end"))
   end
 
-  def test_a_no_chain_page_has_no_chain_section_and_a_call_box
+  def test_a_page_with_no_workflow_has_no_workflows_figure_and_a_call_box
     body = text("project list")
 
-    refute_includes body, "chain.svg"
+    refute_includes body, "workflows.svg"
     assert_includes body, "call.svg"
   end
 
@@ -41,14 +65,12 @@ class CommandReferenceMarkdownPageTest < Minitest::Test
 
   def prose(page) = CommandReference::Markdown::Prose.lines(page.comment).first
 
-  NO_CHAIN = ["hook end", "hook stop", "hook start", "graph resume", "project links", "project list", "status", "project new"].freeze
-
-  def test_a_no_chain_page_names_the_command_call_and_never_says_before_the_chain
-    NO_CHAIN.each do |words|
+  def test_a_page_with_no_workflow_names_the_command_call_in_the_events_and_never_the_old_headings
+    OWN_CALL_PAGES.reject { |words| words.start_with?("hook") }.each do |words|
       body = text(words)
 
       refute_includes body, "Before the chain", words
-      assert_includes body, "## The command", words
+      assert_match(/The command's `call`, at \[`\w+\.rb:\d+`\]/, body, words)
     end
   end
 
@@ -58,8 +80,9 @@ class CommandReferenceMarkdownPageTest < Minitest::Test
     refute_includes text("hook stop"), "own `call`"
   end
 
-  def test_a_routine_with_its_own_call_keeps_the_section_before_the_chain
-    assert_includes text("update"), "## Before the chain"
+  def test_a_routine_with_its_own_call_tells_it_before_the_workflows
+    assert_includes text("update"), "### The command's own call"
+    assert_includes text("update"), "runs first, then starts the workflow"
   end
 
   def test_the_class_comment_is_skipped_when_it_repeats_the_summary_and_kept_when_it_adds_more
@@ -72,9 +95,10 @@ class CommandReferenceMarkdownPageTest < Minitest::Test
   end
 
   def test_the_ending_column_holds_words_and_never_raw_ruby
-    CommandReferenceHelper.files.select { |path, _| path.end_with?("README.md") && path.include?("/commands/") }.each do |path, body|
-      endings = body.split("## Outcomes").last.to_s
+    readmes.each do |path, body|
+      endings = body[/## How a call ends.*?(?=\n## What the page leaves out)/m].to_s
 
+      refute_empty endings, path
       refute_match(/\braise\b|next_step|CLI::|Command::|\bgate\b\(/, endings, path)
     end
   end

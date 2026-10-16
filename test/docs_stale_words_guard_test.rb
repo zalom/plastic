@@ -11,7 +11,7 @@ class DocsStaleWordsGuardTest < Minitest::Test
   VARAR = Dir["varar/*.md", base: ROOT] + Dir["test/varar/*.rb", base: ROOT]
   OWNERS = %w[docs/contributing/ARCHITECTURE.md docs/reference/harness-adapters.md].freeze
   LINT_RULES = %w[AGENTS.md docs/contributing/CODING_PRACTICES.md docs/contributing/TECHNICAL.md .reek.yml].freeze
-  STALE = /doctor --core|next: none|intent end \S+ --(?!project|json)|\bEvery command ends with/
+  STALE = /doctor --core|next: none|intent end \S+ --(?!project|json)|\bEvery command ends with|update --(?:beta|alpha|stable)|next --why|graph show \S+ --dry-run|project new \S+ --path/
   PUBLISHED = PAGES + Dir["{INSTALL,SECURITY,CONTRIBUTING,AGENTS,PLASTIC}.md", "agents/*.md", base: ROOT]
   SCRIPTS = %w[lib/ install-release install.rb select-update-target].freeze
   REMOVED_NAMES = Regexp.union(
@@ -76,6 +76,12 @@ class DocsStaleWordsGuardTest < Minitest::Test
 
   def test_the_detector_catches_each_stale_phrase
     assert_equal ["doctor --core", "next: none", "intent end 12 --"], stale_words("plastic doctor --core, next: none, plastic intent end 12 --abandoned")
+  end
+
+  def test_the_detector_catches_an_option_a_command_does_not_have
+    text = "plastic update --beta, plastic update --channel beta, plastic next --why, plastic graph show 12 --dry-run, plastic project new app --path /x"
+
+    assert_equal ["update --beta", "next --why", "graph show 12 --dry-run", "project new app --path"], stale_words(text)
   end
 
   def test_the_detector_leaves_current_text_alone

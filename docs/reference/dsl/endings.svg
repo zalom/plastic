@@ -73,7 +73,7 @@
 <text x="28" y="40" class="tag tag-muted" text-anchor="start">EXIT</text>
 <text x="28" y="76" class="big tag-end" text-anchor="start">0</text>
 <text x="66" y="74" class="tb" text-anchor="start">Finished</text>
-<text x="28" y="98" class="t" text-anchor="start">the chain reached its end</text>
+<text x="28" y="98" class="t" text-anchor="start">the workflows reached their end</text>
 <text x="28" y="134" class="tm tag-muted" text-anchor="start">the next: line names the command</text>
 <text x="28" y="148" class="tm tag-muted" text-anchor="start">to run</text>
 <rect x="242" y="16" width="214" height="176" rx="6" class="card"/>

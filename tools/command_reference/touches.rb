@@ -19,13 +19,27 @@ module CommandReference
       def store(file) = ((key = schema.key_of(file)) == :local) ? :work : key
     end
 
-    attr_reader :entries, :components, :files
+    attr_reader :entries, :components, :file_lines
 
-    def initialize(entries:, components:, files:, schema:, declared: {})
+    def initialize(entries:, components:, schema:, printed: {}, declared: {})
       @entries = entries.uniq
       @components = components.uniq
-      @files = files
+      @file_lines = printed
       @declared = Declared.new(schema, declared)
+      @declarations = {}
+    end
+
+    def files = file_lines.keys
+
+    def declared_at(declarations)
+      @declarations = declarations
+      self
+    end
+
+    # The Place of the line that declares the store of a database file for a mode; reading is covered by a writes line.
+    def declaration(file, mode)
+      key = schema.key_of(file)
+      @declarations.values_at([mode, key], [:write, key]).compact.first if key
     end
 
     def empty? = database_files.empty? && files.empty?
