@@ -12,7 +12,7 @@ module CommandReference
 
       def at(place) = code(*place.to_h.values_at(:file, :line))
 
-      def file(path) = "[`#{path.delete_prefix("scripts/lib/plastic/")}`](#{@base}#{path})"
+      def file(path) = "[`#{path.delete_prefix("lib/plastic/")}`](#{@base}#{path})"
     end
   end
 end

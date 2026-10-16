@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/workflows/delivery_next"
+require_relative "../../../lib/plastic/workflows/delivery_next"
 
 class DeliveryNextTest < Plastic::TestCase
   def setup

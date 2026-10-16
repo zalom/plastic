@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../../test_helper"
-require_relative "../../../../scripts/lib/plastic/graph/work/savepoint"
+require_relative "../../../../lib/plastic/graph/work/savepoint"
 
 class WorkSavepointTest < Plastic::TestCase
   Savepoint = Plastic::Graph::Work::Savepoint

@@ -6,7 +6,7 @@ Copy one store's databases into a new backup folder.
 plastic backup --store SLUG [--databases LIST] [--live] [--dry-run]
 ```
 
-The command is `Backup`, in [`backup.rb:10`](../../../../scripts/lib/plastic/commands/backup.rb#L10). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Backup`, in [`backup.rb:10`](../../../../lib/plastic/commands/backup.rb#L10). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |
@@ -21,7 +21,7 @@ The command is `Backup`, in [`backup.rb:10`](../../../../scripts/lib/plastic/com
 
 ## Before the chain
 
-The command's own `call`, at [`backup_store.rb:15`](../../../../scripts/lib/plastic/commands/backup_store.rb#L15), runs first:
+The command's own `call`, at [`backup_store.rb:15`](../../../../lib/plastic/commands/backup_store.rb#L15), runs first:
 
 ```ruby
 def call
@@ -32,7 +32,7 @@ def call
 end
 ```
 
-The command's own `check_call`, at [`backup.rb:27`](../../../../scripts/lib/plastic/commands/backup.rb#L27), runs inside it:
+The command's own `check_call`, at [`backup.rb:27`](../../../../lib/plastic/commands/backup.rb#L27), runs inside it:
 
 ```ruby
 def check_call = database_list
@@ -44,12 +44,12 @@ def check_call = database_list
 
 | Workflow | Kind | Code |
 | --- | --- | --- |
-| [PreviewBackup](#previewbackup) | code | [`preview_backup.rb:9`](../../../../scripts/lib/plastic/workflows/preview_backup.rb#L9) |
-| [Backup](#backup) | code | [`backup.rb:10`](../../../../scripts/lib/plastic/workflows/backup.rb#L10) |
+| [PreviewBackup](#previewbackup) | code | [`preview_backup.rb:9`](../../../../lib/plastic/workflows/preview_backup.rb#L9) |
+| [Backup](#backup) | code | [`backup.rb:10`](../../../../lib/plastic/workflows/backup.rb#L10) |
 
 ### PreviewBackup
 
-The code workflow `:code_preview_backup`, in [`preview_backup.rb:9`](../../../../scripts/lib/plastic/workflows/preview_backup.rb#L9).
+The code workflow `:code_preview_backup`, in [`preview_backup.rb:9`](../../../../lib/plastic/workflows/preview_backup.rb#L9).
 
 Says which folder and databases a backup would write, and writes nothing.
 
@@ -57,16 +57,16 @@ Says which folder and databases a backup would write, and writes nothing.
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
-| preview the backup | read |  | [`preview_backup.rb:12`](../../../../scripts/lib/plastic/workflows/preview_backup.rb#L12) |
+| preview the backup | read |  | [`preview_backup.rb:12`](../../../../lib/plastic/workflows/preview_backup.rb#L12) |
 
 | Outcome | When | Then | Code |
 | --- | --- | --- | --- |
-| `:done` | when `context.dry_run` | finishes, exit 0; next: %{original_command} | [`preview_backup.rb:19`](../../../../scripts/lib/plastic/workflows/preview_backup.rb#L19) |
-| `:continue` | otherwise | runs [Backup](#backup) | [`preview_backup.rb:21`](../../../../scripts/lib/plastic/workflows/preview_backup.rb#L21) |
+| `:done` | when `context.dry_run` | finishes, exit 0; next: %{original_command} | [`preview_backup.rb:19`](../../../../lib/plastic/workflows/preview_backup.rb#L19) |
+| `:continue` | otherwise | runs [Backup](#backup) | [`preview_backup.rb:21`](../../../../lib/plastic/workflows/preview_backup.rb#L21) |
 
 ### Backup
 
-The code workflow `:code_backup`, in [`backup.rb:10`](../../../../scripts/lib/plastic/workflows/backup.rb#L10).
+The code workflow `:code_backup`, in [`backup.rb:10`](../../../../lib/plastic/workflows/backup.rb#L10).
 
 Copies the databases of one store into a new backup folder, and writes the row that names it.
 
@@ -74,12 +74,12 @@ Copies the databases of one store into a new backup folder, and writes the row t
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
-| write the backup folder | step | `!context.name.nil?` | [`backup.rb:15`](../../../../scripts/lib/plastic/workflows/backup.rb#L15) |
-| say what was copied | read |  | [`backup.rb:22`](../../../../scripts/lib/plastic/workflows/backup.rb#L22) |
+| write the backup folder | step | `!context.name.nil?` | [`backup.rb:15`](../../../../lib/plastic/workflows/backup.rb#L15) |
+| say what was copied | read |  | [`backup.rb:22`](../../../../lib/plastic/workflows/backup.rb#L22) |
 
 | Outcome | When | Then | Code |
 | --- | --- | --- | --- |
-| `:done` | always | finishes, exit 0; next: plastic backup list --store %{store} | [`backup.rb:27`](../../../../scripts/lib/plastic/workflows/backup.rb#L27) |
+| `:done` | always | finishes, exit 0; next: plastic backup list --store %{store} | [`backup.rb:27`](../../../../lib/plastic/workflows/backup.rb#L27) |
 
 It sets `name`, `files`, `bytes`.
 
@@ -89,9 +89,9 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| the preview wrote no folder or row | 0 | %{original_command} | [`preview_backup.rb:19`](../../../../scripts/lib/plastic/workflows/preview_backup.rb#L19) |
-| backup %{name} is on disk | 0 | plastic backup list --store %{store} | [`backup.rb:27`](../../../../scripts/lib/plastic/workflows/backup.rb#L27) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../scripts/lib/plastic/code_workflow.rb#L102) |
-| Usage error: name the store with --store; --project does not apply | 2 | prints no next: line | [`backup_store.rb:27`](../../../../scripts/lib/plastic/commands/backup_store.rb#L27) |
-| Usage error: no registered project named %{slug}; the projects are %{projects} | 2 | prints no next: line | [`backup_store.rb:35`](../../../../scripts/lib/plastic/commands/backup_store.rb#L35) |
-| Usage error | 2 | prints no next: line | [`backup_store.rb:47`](../../../../scripts/lib/plastic/commands/backup_store.rb#L47) |
+| the preview wrote no folder or row | 0 | %{original_command} | [`preview_backup.rb:19`](../../../../lib/plastic/workflows/preview_backup.rb#L19) |
+| backup %{name} is on disk | 0 | plastic backup list --store %{store} | [`backup.rb:27`](../../../../lib/plastic/workflows/backup.rb#L27) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
+| Usage error: name the store with --store; --project does not apply | 2 | prints no next: line | [`backup_store.rb:27`](../../../../lib/plastic/commands/backup_store.rb#L27) |
+| Usage error: no registered project named %{slug}; the projects are %{projects} | 2 | prints no next: line | [`backup_store.rb:35`](../../../../lib/plastic/commands/backup_store.rb#L35) |
+| Usage error | 2 | prints no next: line | [`backup_store.rb:47`](../../../../lib/plastic/commands/backup_store.rb#L47) |

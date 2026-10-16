@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/commands/edge_remove"
-require_relative "../../../scripts/lib/plastic/commands/edge_add"
-require_relative "../../../scripts/lib/plastic/commands/node_add"
+require_relative "../../../lib/plastic/commands/edge_remove"
+require_relative "../../../lib/plastic/commands/edge_add"
+require_relative "../../../lib/plastic/commands/node_add"
 
 class EdgeRemoveTest < Plastic::TestCase
   def add_node(title) = plastic("node", "add", "1", title, "--criterion", "done", table: Plastic::CLI::TABLE)

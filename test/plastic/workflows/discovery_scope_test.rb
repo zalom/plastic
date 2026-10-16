@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/workflows/discovery_scope"
+require_relative "../../../lib/plastic/workflows/discovery_scope"
 
 class DiscoveryScopeTest < Plastic::TestCase
   def resolve(source_projects = [], env: {})

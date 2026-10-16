@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../../test_helper"
-require_relative "../../../../scripts/lib/plastic/graph/retrieval/evidence/writer"
+require_relative "../../../../lib/plastic/graph/retrieval/evidence/writer"
 
 class RetrievalReadTest < Plastic::TestCase
   def test_fetches_current_and_historical_qualified_references_without_ambiguous_paths

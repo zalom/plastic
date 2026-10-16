@@ -42,7 +42,7 @@ RuboCop runs with the Standard configuration as its base, plus `rubocop-minitest
   gains an entry. A new or changed method that smells is fixed.
 - RubyCritic runs Reek, Flay and Flog, and scores the changed files out of 100. The gate fails
   a change that scores under 90.
-- The kernel under `scripts/lib/plastic/` has no entry in either list, and it stays clean.
+- The kernel under `lib/plastic/` has no entry in either list, and it stays clean.
 - Before a kernel section is called done, load it whole, lint it, and check its chains with
   `Routine.verify`, which raises with every fault at once.
 

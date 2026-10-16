@@ -12,7 +12,7 @@ load File.expand_path("../bin/verify-change", __dir__)
 class VerifyChangeSandboxTest < Minitest::Test
   ROOT = File.expand_path("..", __dir__)
   REAL_HOME = Etc.getpwuid(Process.uid).dir
-  CHANGED_SOURCE = "scripts/lib/plastic/hooks/entries.rb"
+  CHANGED_SOURCE = "lib/plastic/hooks/entries.rb"
   SANDBOX = { "HOME" => "/nowhere/home", "PLASTIC_TMP" => "/nowhere/tmp" }.freeze
 
   def planned_steps(sandbox)

@@ -5,7 +5,7 @@ module InstallerRelease
   # the Plastic home, the agent files and blocks Plastic manages, and the
   # launcher. Stores and databases are never among them.
   class ManagedHome
-    CORE = "{bin,scripts,templates,hooks,docs,VERSION,*.md,*.yml,*.yaml,*.json}"
+    CORE = "{bin,lib,scripts,templates,hooks,docs,VERSION,*.md,*.yml,*.yaml,*.json}"
     AGENT = %w[.claude/settings.json .claude/CLAUDE.md .codex/hooks.json .codex/AGENTS.md
       .claude/plastic .agents/plastic .hermes/plastic .claude/{hooks,skills,agents}/plastic-*
       .agents/skills/plastic-* .codex/agents/plastic-* .hermes/{skills,agents}/plastic-*].freeze

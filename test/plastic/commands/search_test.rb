@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/commands/search"
-require_relative "../../../scripts/lib/plastic/graph/retrieval/evidence/writer"
+require_relative "../../../lib/plastic/commands/search"
+require_relative "../../../lib/plastic/graph/retrieval/evidence/writer"
 require_relative "old_store"
 
 module SearchTestSupport

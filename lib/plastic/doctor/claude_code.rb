@@ -4,7 +4,7 @@ require_relative "check"
 require_relative "version_record"
 require_relative "instruction_line"
 require_relative "claude_hooks"
-require_relative "../../compact_instructions"
+require_relative "../../../scripts/lib/compact_instructions"
 
 module Plastic
   module Doctor

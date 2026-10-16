@@ -4,12 +4,12 @@ module CommandReference
   # The page that explains the command DSL: real kernel code beside what it declares.
   class DslPage
     FILES = {
-      routine: "scripts/lib/plastic/routine.rb", declarations: "scripts/lib/plastic/cli/declarations.rb",
-      chain: "scripts/lib/plastic/routine/chain.rb", edge: "scripts/lib/plastic/routine/edge.rb",
-      link: "scripts/lib/plastic/routine/link.rb", branches: "scripts/lib/plastic/routine/branches.rb",
-      workflow: "scripts/lib/plastic/workflow.rb", code: "scripts/lib/plastic/code_workflow.rb",
-      agent: "scripts/lib/plastic/agent_workflow.rb", finished: "scripts/lib/plastic/finished.rb",
-      command: "scripts/lib/plastic/cli/command.rb"
+      routine: "lib/plastic/routine.rb", declarations: "lib/plastic/cli/declarations.rb",
+      chain: "lib/plastic/routine/chain.rb", edge: "lib/plastic/routine/edge.rb",
+      link: "lib/plastic/routine/link.rb", branches: "lib/plastic/routine/branches.rb",
+      workflow: "lib/plastic/workflow.rb", code: "lib/plastic/code_workflow.rb",
+      agent: "lib/plastic/agent_workflow.rb", finished: "lib/plastic/finished.rb",
+      command: "lib/plastic/cli/command.rb"
     }.freeze
     EXAMPLE = "intent end"
     END_FILES = { "Finished" => "finished", "HandedOff" => "handed_off", "Failed" => "failed", "Refused" => "refused" }.freeze
@@ -37,9 +37,9 @@ module CommandReference
     def flow_line(flow) = @source.find_line(flow_file(flow), /^\s*class #{Words.short(flow)}\b/)
 
     def ends
-      @ends ||= @source.lines("scripts/lib/plastic/finished.rb").filter_map { |text| text.match(/^\s*#\s+(\w+)\s+exit (\d)\s+(.*)$/) }.map do |found|
+      @ends ||= @source.lines("lib/plastic/finished.rb").filter_map { |text| text.match(/^\s*#\s+(\w+)\s+exit (\d)\s+(.*)$/) }.map do |found|
         name, code, words = found.captures
-        path = "scripts/lib/plastic/#{END_FILES.fetch(name)}.rb"
+        path = "lib/plastic/#{END_FILES.fetch(name)}.rb"
         { name:, exit_code: code, words:, file: path, line: @source.find_line(path, /^\s*#{name} = /) }
       end
     end

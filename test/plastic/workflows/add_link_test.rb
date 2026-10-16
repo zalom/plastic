@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/workflows/add_link"
+require_relative "../../../lib/plastic/workflows/add_link"
 
 class AddLinkTest < Plastic::TestCase
   def setup

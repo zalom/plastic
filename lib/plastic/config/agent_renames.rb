@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require "yaml"
-require_relative "../../agent_models"
+require_relative "../../../scripts/lib/agent_models"
 require_relative "mapping"
 
 module Plastic

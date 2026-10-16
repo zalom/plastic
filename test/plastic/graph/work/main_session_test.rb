@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../../test_helper"
-require_relative "../../../../scripts/lib/plastic/graph/work/main_session"
+require_relative "../../../../lib/plastic/graph/work/main_session"
 
 class WorkMainSessionTest < Plastic::TestCase
   def lines = Plastic::Graph::Work::MainSession.lines("7")

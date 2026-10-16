@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/workflows/discovery_candidates"
+require_relative "../../../lib/plastic/workflows/discovery_candidates"
 
 class DiscoveryCandidatesTest < Plastic::TestCase
   def rows(terms) = Plastic::Workflows::DiscoveryCandidates.new("global", retrieval).rows(terms)

@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/commands/sync_up"
-require_relative "../../../scripts/lib/plastic/commands/sync_down"
+require_relative "../../../lib/plastic/commands/sync_up"
+require_relative "../../../lib/plastic/commands/sync_down"
 
 class SyncOptionsTest < Plastic::TestCase
   OPTIONS = [{ name: :overwrite, switch: "--overwrite [PATH]", default: false,

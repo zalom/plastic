@@ -48,7 +48,7 @@ class LazyCommandDispatchTest < Minitest::Test
   end
 
   def seed_retrieval_context(home)
-    _out, err, status = ChildProcess.capture3("ruby", "-I", File.join(ROOT, "scripts", "lib"), "-e", RETRIEVAL_CONTEXT_SCRIPT, home)
+    _out, err, status = ChildProcess.capture3("ruby", "-I", File.join(ROOT, "lib"), "-e", RETRIEVAL_CONTEXT_SCRIPT, home)
 
     assert_predicate status, :success?, err
   end

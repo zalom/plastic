@@ -2,7 +2,7 @@
 
 require_relative "../../test_helper"
 %w[intent_archive intent_unlink node_remove edge_remove roadmap_drop roadmap_edge_remove].each do |name|
-  require_relative "../../../scripts/lib/plastic/commands/#{name}"
+  require_relative "../../../lib/plastic/commands/#{name}"
 end
 
 class RoutinePreviewTest < Plastic::TestCase

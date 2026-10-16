@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 require_relative "../commands/installer_helper"
-require_relative "../../../scripts/lib/plastic/workflows/uninstall_plastic"
-require_relative "../../../scripts/lib/plastic/installations"
+require_relative "../../../lib/plastic/workflows/uninstall_plastic"
+require_relative "../../../lib/plastic/installations"
 
 class UninstallPlasticTest < Plastic::TestCase
   include InstallerHelper

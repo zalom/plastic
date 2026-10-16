@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require "minitest/autorun"
-require_relative "../scripts/lib/plastic/cli/table"
+require_relative "../lib/plastic/cli/table"
 require_relative "../scripts/lib/installer_core"
 
 # The text that tells an agent which commands exist names only commands that

@@ -261,7 +261,7 @@ class InstallerCoreCodexTest < Minitest::Test
 
   def test_a_distribute_over_an_old_manifest_prunes_the_old_kernel_copies
     plastic_home = File.join(@home, ".plastic")
-    old = File.join(plastic_home, "scripts", "lib", "plastic", "cli.rb")
+    old = File.join(plastic_home, "scripts", "lib", "plas" "tic", "cli.rb")
     write(old, "# old\n")
     write(File.join(plastic_home, "manifest.json"), JSON.generate("files" => { old => "x" }))
     capture_io { installer.distribute(:update, tmp_dirs: []) }

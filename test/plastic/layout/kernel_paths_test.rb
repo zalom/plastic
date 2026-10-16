@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require "open3"
 require "yaml"
+require_relative "../../support/child_process"
 
 class KernelPathsTest < Minitest::Test
   ROOT = File.expand_path("../../..", __dir__)
@@ -11,7 +11,7 @@ class KernelPathsTest < Minitest::Test
   RETIRED_NAMES = [OLD_KERNEL].freeze
 
   def tracked
-    @tracked ||= Dir.chdir(ROOT) { `git ls-files -z`.split("\0") }.reject do |path|
+    @tracked ||= ChildProcess.capture2e("git", "ls-files", "-z", chdir: ROOT).first.split("\0").reject do |path|
       path == "CHANGELOG.md" || path == SELF || !File.file?(File.join(ROOT, path))
     end
   end
@@ -40,8 +40,11 @@ class KernelPathsTest < Minitest::Test
   def test_the_kernel_lives_under_lib
     assert File.file?(File.join(ROOT, "lib", "plastic.rb"))
     assert File.directory?(File.join(ROOT, "lib", "plastic", "commands"))
-    refute File.exist?(File.join(ROOT, "scripts", "lib", "plastic.rb"))
-    refute File.exist?(File.join(ROOT, "scripts", "lib", "plastic"))
+  end
+
+  def test_nothing_of_the_kernel_stays_under_scripts_lib
+    refute_path_exists File.join(ROOT, "scripts", "lib", "plastic.rb")
+    refute_path_exists File.join(ROOT, "scripts", "lib", "plastic")
   end
 
   def test_the_dir_relative_constants_point_into_the_package
@@ -50,12 +53,13 @@ class KernelPathsTest < Minitest::Test
     require "plastic/workflows/show_spec"
 
     assert File.file?(File.join(Plastic::Workflows::Installation::PACKAGE_ROOT, "package.json"))
-    assert Dir.glob(File.join(Plastic::CLI::TOPICS, "*.md")).any?
+    assert_predicate Dir.glob(File.join(Plastic::CLI::TOPICS, "*.md")), :any?
     assert File.file?(Plastic::Workflows::ShowSpec::GRILLING)
   end
 
   def test_a_fresh_process_requires_every_kernel_file_and_the_installer
     kernel = Dir.glob(File.join(ROOT, "lib", "plastic", "**", "*.rb"))
+
     refute_empty kernel
     files = kernel + [File.join(ROOT, "scripts", "lib", "installer_core.rb"), File.join(ROOT, "scripts", "install.rb")]
 
@@ -64,8 +68,8 @@ class KernelPathsTest < Minitest::Test
 
   def loads_alone?(file)
     code = %(require "plastic"; load ARGV.fetch(0) unless ARGV.fetch(0).end_with?("install.rb"))
-    _out, status = Open3.capture2e(RbConfig.ruby, "-I", File.join(ROOT, "lib"), "-I", File.join(ROOT, "scripts", "lib"),
-                                   "-e", code, file, chdir: ROOT)
+    _out, status = ChildProcess.capture2e(RbConfig.ruby, "-I", File.join(ROOT, "lib"), "-I", File.join(ROOT, "scripts", "lib"),
+      "-e", code, file, chdir: ROOT)
     status.success?
   end
 
@@ -75,11 +79,14 @@ class KernelPathsTest < Minitest::Test
     assert_match(/cover "\{[^}]*\blib\b[^}]*\}/, helper)
   end
 
-  def test_every_path_the_lint_debt_names_exists
+  def lint_debt_paths
     todo = YAML.load_file(File.join(ROOT, ".rubocop_todo.yml")).values.flat_map { |entry| entry.is_a?(Hash) ? Array(entry["Exclude"]) : [] }
-    reek = Array(YAML.load_file(File.join(ROOT, ".reek.yml"))["exclude_paths"])
-    missing = (todo + reek).select { |path| path.match?(%r{\A(lib|scripts|bin|tools)/.+\.rb\z}) }.reject { |path| File.exist?(File.join(ROOT, path)) }
+    todo + Array(YAML.load_file(File.join(ROOT, ".reek.yml"))["exclude_paths"])
+  end
 
-    assert_empty missing
+  def test_every_path_the_lint_debt_names_exists
+    named = lint_debt_paths.grep(%r{\A(lib|scripts|bin|tools)/.+\.rb\z})
+
+    assert_empty(named.reject { |path| File.exist?(File.join(ROOT, path)) })
   end
 end

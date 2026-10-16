@@ -7,7 +7,7 @@ module CommandReference
     DATABASE_LINE = /^\s*database :(\w+), "([^"]+)", %i\[([^\]]+)\]/m
 
     def initialize(root)
-      @text = File.read(File.join(root, "scripts/lib/plastic/graph/db/schema.rb"))
+      @text = File.read(File.join(root, "lib/plastic/graph/db/schema.rb"))
     end
 
     def files = databases.values.map(&:first)

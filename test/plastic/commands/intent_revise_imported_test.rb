@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/commands/intent_revise"
+require_relative "../../../lib/plastic/commands/intent_revise"
 
 class IntentReviseImportedTest < Plastic::TestCase
   def call(*args) = plastic("intent", "revise", *args, table: Plastic::CLI::TABLE)

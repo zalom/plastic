@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/workflows/intent_id_format"
+require_relative "../../../lib/plastic/workflows/intent_id_format"
 
 class IntentIdFormatTest < Minitest::Test
   def validate(id) = Plastic::Workflows::IntentIdFormat.validate(id)

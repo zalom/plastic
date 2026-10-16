@@ -17,7 +17,7 @@ class ArchitectureFiguresCommandCallTest < Minitest::Test
 
   def real_report
     Dir.mktmpdir do |home|
-      _out, err, status = ChildProcess.capture3("ruby", "-I", File.join(ROOT, "scripts", "lib"), "-e", CREATE_STORE, home)
+      _out, err, status = ChildProcess.capture3("ruby", "-I", File.join(ROOT, "lib"), "-e", CREATE_STORE, home)
 
       assert_predicate status, :success?, err
 

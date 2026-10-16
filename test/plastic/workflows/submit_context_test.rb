@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/workflows/submit_context"
-require_relative "../../../scripts/lib/plastic/workflows/discover_retrieval"
+require_relative "../../../lib/plastic/workflows/submit_context"
+require_relative "../../../lib/plastic/workflows/discover_retrieval"
 
 class SubmitContextTest < Plastic::TestCase
   EMPTY = { "facts" => [], "interpretations" => [], "gaps" => [], "rulings" => [] }.freeze

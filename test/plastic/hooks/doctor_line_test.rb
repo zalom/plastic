@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/hooks/doctor_line"
+require_relative "../../../lib/plastic/hooks/doctor_line"
 
 class DoctorLineTest < Minitest::Test
   TWO = ->(_scope, _harness) { %w[launcher hooks] }

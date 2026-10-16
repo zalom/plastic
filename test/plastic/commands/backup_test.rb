@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/commands/backup"
+require_relative "../../../lib/plastic/commands/backup"
 
 class BackupTest < Plastic::TestCase
   include BackupHomes

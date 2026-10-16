@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/workflows/archive_intent"
+require_relative "../../../lib/plastic/workflows/archive_intent"
 
 class ArchiveIntentTest < Plastic::TestCase
   def archive(intent_id = "1") = run_workflow(Plastic::Workflows::ArchiveIntent, intent_id:)

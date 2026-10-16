@@ -8,7 +8,7 @@ Registers a project in projects.yml and leaves its store ready, so an intent can
 plastic project new SLUG PATH
 ```
 
-The command is `ProjectNew`, in [`project_new.rb:13`](../../../../scripts/lib/plastic/commands/project_new.rb#L13). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `ProjectNew`, in [`project_new.rb:13`](../../../../lib/plastic/commands/project_new.rb#L13). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |
@@ -21,7 +21,7 @@ The command is `ProjectNew`, in [`project_new.rb:13`](../../../../scripts/lib/pl
 
 ## The command
 
-The command's `call`, at [`project_new.rb:18`](../../../../scripts/lib/plastic/commands/project_new.rb#L18):
+The command's `call`, at [`project_new.rb:18`](../../../../lib/plastic/commands/project_new.rb#L18):
 
 ```ruby
 def call
@@ -43,6 +43,6 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| Failed: %{path} is not a directory | 1 | prints no next: line | [`project_new.rb:32`](../../../../scripts/lib/plastic/commands/project_new.rb#L32) |
-| Refused: %{slug} is registered at %{known}, not at %{path}; edit projects.yml to move it | 3 | prints no next: line | [`project_new.rb:40`](../../../../scripts/lib/plastic/commands/project_new.rb#L40) |
-| Offers the next command | 0 | plastic intent new TITLE --project SLUG | [`project_new.rb:51`](../../../../scripts/lib/plastic/commands/project_new.rb#L51) |
+| Failed: %{path} is not a directory | 1 | prints no next: line | [`project_new.rb:32`](../../../../lib/plastic/commands/project_new.rb#L32) |
+| Refused: %{slug} is registered at %{known}, not at %{path}; edit projects.yml to move it | 3 | prints no next: line | [`project_new.rb:40`](../../../../lib/plastic/commands/project_new.rb#L40) |
+| Offers the next command | 0 | plastic intent new TITLE --project SLUG | [`project_new.rb:51`](../../../../lib/plastic/commands/project_new.rb#L51) |

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/workflows/worktree"
+require_relative "../../../lib/plastic/workflows/worktree"
 
 class WorkflowWorktreeTest < Plastic::TestCase
   Intent = Struct.new(:intent_id, :slug)

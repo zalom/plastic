@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-require_relative "../../scripts/lib/plastic/code_workflow"
-require_relative "../../scripts/lib/plastic/agent_workflow"
-require_relative "../../scripts/lib/plastic/routine"
-require_relative "../../scripts/lib/plastic/hook"
+require_relative "../../lib/plastic/code_workflow"
+require_relative "../../lib/plastic/agent_workflow"
+require_relative "../../lib/plastic/routine"
+require_relative "../../lib/plastic/hook"
 
 # Routines, workflows and hooks that exist only for the kernel tests. They
 # live in their own namespace, with their own registry and command table, so

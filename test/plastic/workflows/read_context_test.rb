@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/workflows/read_context"
-require_relative "../../../scripts/lib/plastic/workflows/context_persistence"
+require_relative "../../../lib/plastic/workflows/read_context"
+require_relative "../../../lib/plastic/workflows/context_persistence"
 
 class ReadContextTest < Plastic::TestCase
   def read_context(intent_id = "1") = run_workflow(Plastic::Workflows::ReadContext, intent_id:)

@@ -9,7 +9,7 @@ module Plastic
   # The command line of the kernel: finds the command that argv names in
   # TABLE, loads its class, and hands it the call.
   class CLI
-    TOPICS = File.expand_path("../../../docs/help", __dir__)
+    TOPICS = File.expand_path("../../docs/help", __dir__)
 
     # The command the words name: the longest table entry that starts argv,
     # so `intent lock status` wins over `intent lock`.

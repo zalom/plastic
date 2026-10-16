@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/workflows/lines"
+require_relative "../../../lib/plastic/workflows/lines"
 
 class LinesTest < Minitest::Test
   Node = Struct.new(:id, :state, :title)

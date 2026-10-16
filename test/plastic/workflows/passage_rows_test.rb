@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/workflows/passage_rows"
+require_relative "../../../lib/plastic/workflows/passage_rows"
 
 class PassageRowsTest < Minitest::Test
   ROW = { "body" => "text", "score" => -1.5, "uri" => "plastic://a/1/b.md", "store" => "a", "intent_id" => "1", "path" => "b.md" }.freeze

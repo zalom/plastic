@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/cli"
+require_relative "../../../lib/plastic/cli"
 
 class ResultTest < Minitest::Test
   def result(command = "plastic next")

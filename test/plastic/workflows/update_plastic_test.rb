@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../commands/installer_helper"
-require_relative "../../../scripts/lib/plastic/workflows/update_plastic"
+require_relative "../../../lib/plastic/workflows/update_plastic"
 
 class UpdatePlasticTest < Plastic::TestCase
   include InstallerHelper
