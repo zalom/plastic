@@ -260,6 +260,7 @@ class InstallerCore
     FileUtils.mkdir_p(plastic_home)
     FileUtils.mkdir_p(File.join(plastic_home, "scripts", "lib"))
     FileUtils.mkdir_p(File.join(plastic_home, "lib"))
+    FileUtils.mkdir_p(File.join(plastic_home, "exe"))
     FileUtils.mkdir_p(File.join(plastic_home, "hooks"))
 
     core_files.each do |src, dest|
@@ -278,7 +279,7 @@ class InstallerCore
     # FileUtils.cp onto an existing file keeps the DESTINATION's old mode, so a copy over a
     # non-executable predecessor would stay non-executable forever and capture3 would raise
     # EACCES, and the hook would fail open with no message.
-    FileUtils.chmod(0o755, Dir.glob(%w[hooks bin].map { |dir| File.join(plastic_home, dir, "*") }).select { |f| File.file?(f) })
+    FileUtils.chmod(0o755, Dir.glob(%w[hooks bin exe].map { |dir| File.join(plastic_home, dir, "*") }).select { |f| File.file?(f) })
 
     global_files = core_files.values.map { |d| File.join(plastic_home, d) }
     global_files << File.join(plastic_home, "VERSION")
@@ -309,7 +310,7 @@ class InstallerCore
   # The kernel command line. Glob-derived for the reason
   # hook_files is: a command is one file under lib/plastic/commands,
   # and a hand-written manifest would make it two files and a diff. The
-  # launcher bin/plastic requires lib/plastic.rb by a relative path,
+  # launcher exe/plastic requires lib/plastic.rb by a relative path,
   # so the whole subtree travels together or an installed copy LoadErrors on
   # the first call.
   def cli_files
@@ -349,7 +350,9 @@ class InstallerCore
     {
       "PLASTIC.md" => "PLASTIC.md",
       "deprecations.yml" => "deprecations.yml",
-      "bin/plastic" => "bin/plastic",
+      "exe/plastic" => "exe/plastic",
+      "scripts/select-update-target" => "scripts/select-update-target",
+      "scripts/lib/release_channels.rb" => "scripts/lib/release_channels.rb",
       "scripts/install.rb" => "scripts/install.rb",
       "scripts/lib/installer_core.rb" => "scripts/lib/installer_core.rb",
       "scripts/lib/preflight.rb" => "scripts/lib/preflight.rb",
@@ -993,7 +996,7 @@ class InstallerCore
   # rewrite. Any other package runs the launcher copied into the home.
   def hook_launcher
     releases = File.dirname(package_root)
-    return File.join(plastic_home, "bin", "plastic") unless File.basename(releases) == "releases"
+    return File.join(plastic_home, "exe", "plastic") unless File.basename(releases) == "releases"
 
     File.join(File.dirname(releases), "active", "bin", "plastic")
   end

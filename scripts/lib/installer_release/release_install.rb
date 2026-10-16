@@ -48,15 +48,15 @@ module InstallerRelease
     end
   end
 
-  # The launcher of a release: a shell script that starts the release's Ruby
-  # by its full path, so it runs the same Ruby whatever PATH holds. The Ruby
-  # entry point moves to libexec/plastic, and bin/ruby starts the same Ruby
-  # for the hooks.
+  # The launcher of a release: a shell script, bin/plastic, that starts the
+  # release's exe/plastic with the release's Ruby by its full path, so it runs
+  # the same Ruby whatever PATH holds. It replaces the bin/plastic the archive
+  # carries, and bin/ruby starts the same Ruby for the hooks.
   module ReleaseLauncher
     def self.write(candidate, ruby, release_path)
-      move_entry(candidate)
+      FileUtils.mkdir_p(File.join(candidate, "bin"))
       start = Shellwords.escape(ruby.path)
-      entry = Shellwords.escape(File.join(release_path, "libexec", "plastic"))
+      entry = Shellwords.escape(File.join(release_path, "exe", "plastic"))
       script(File.join(candidate, "bin", "plastic"), "#{start} --disable-gems -rrbconfig #{entry}")
       script(File.join(candidate, "bin", "ruby"), start)
     end
@@ -64,11 +64,6 @@ module InstallerRelease
     def self.script(path, command)
       File.write(path, "#!/bin/sh\nexec #{command} \"$@\"\n")
       File.chmod(0o755, path)
-    end
-
-    def self.move_entry(candidate)
-      FileUtils.mkdir_p(File.join(candidate, "libexec"))
-      File.rename(File.join(candidate, "bin", "plastic"), File.join(candidate, "libexec", "plastic"))
     end
   end
 end

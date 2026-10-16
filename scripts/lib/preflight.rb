@@ -9,7 +9,7 @@ require_relative "version_number"
 # plus branded messages.
 #
 # No I/O, no shelling out, no ENV reads here. Callers (scripts/install.rb,
-# bin/plastic.js) own the impure probing and the printing, so this module stays
+# exe/plastic.js) own the impure probing and the printing, so this module stays
 # hermetically testable. Voice matches boot_banner.rb (understated, "Plastic ..."
 # prefix); no em-dash, no en-dash in any message.
 module Preflight
@@ -64,7 +64,7 @@ module Preflight
   end
 
   # Warnings, never fatal: only the storage kernel needs its gems, and
-  # bin/plastic does not route to it yet.
+  # exe/plastic does not route to it yet.
   def gem_issues(missing_gems)
     missing_gems.map do |name|
       "Plastic reads its graph databases through the #{name} gem (the gem was not found).\n" \

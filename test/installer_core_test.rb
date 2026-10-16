@@ -49,7 +49,7 @@ class InstallerCoreHooksTest < Minitest::Test
 
   def test_the_install_writes_the_kernel_hooks
     settings = install({})
-    kernel = %("#{File.join(@home, ".plastic", "bin", "plastic")}")
+    kernel = %("#{File.join(@home, ".plastic", "exe", "plastic")}")
     expected = { "SessionStart" => "#{kernel} hook start",
                  "Stop" => "#{kernel} hook stop", "SessionEnd" => "#{kernel} hook end" }
 
@@ -279,7 +279,7 @@ class InstallerCoreCodexTest < Minitest::Test
 
   def test_a_distribute_over_an_old_manifest_prunes_the_old_kernel_copies
     plastic_home = File.join(@home, ".plastic")
-    old = File.join(plastic_home, "scripts", "lib", "plas" "tic", "cli.rb")
+    old = File.join(plastic_home, "scripts", "lib", %w[plas tic].join, "cli.rb")
     write(old, "# old\n")
     write(File.join(plastic_home, "manifest.json"), JSON.generate("files" => { old => "x" }))
     capture_io { installer.distribute(:update, tmp_dirs: []) }

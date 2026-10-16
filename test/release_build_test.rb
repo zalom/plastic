@@ -103,20 +103,28 @@ class ReleaseBuildTest < Minitest::Test
   end
 
   def test_the_entry_of_a_release_built_from_the_tree_starts_the_way_install_sh_runs_it
-    ReleaseBuild.call(version: "2.0.4", directory: @out, root: REPO)
-    share = File.join(@dir, "share")
-    FileUtils.mkdir_p(share)
-    _out, err, status = ChildProcess.capture3("tar", "-xzf", archive, "--strip-components=1", "-C", share)
-
-    assert_predicate status, :success?, err
-    assert_equal 0o755, File.stat(File.join(share, "bin", "plastic")).mode & 0o777
+    share = unpacked_share
     out, err, status = ChildProcess.capture3({ "HOME" => @dir }, RbConfig.ruby, File.join(share, "bin", "plastic"), "version", "--json")
 
     assert_equal 0, status.exitstatus, err
     assert_kind_of Hash, JSON.parse(out)
   end
 
+  def test_the_entry_of_a_release_built_from_the_tree_is_executable_after_unpacking
+    assert_equal 0o755, File.stat(File.join(unpacked_share, "bin", "plastic")).mode & 0o777
+  end
+
   private
+
+  def unpacked_share
+    ReleaseBuild.call(version: "2.0.4", directory: @out, root: REPO)
+    share = File.join(@dir, "share")
+    FileUtils.mkdir_p(share)
+    _out, err, status = ChildProcess.capture3("tar", "-xzf", archive, "--strip-components=1", "-C", share)
+
+    assert_predicate status, :success?, err
+    share
+  end
 
   def archive = File.join(@out, "plastic.tgz")
 

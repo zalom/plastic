@@ -123,7 +123,7 @@ Layout/ParameterAlignment:
 Layout/SpaceInsideHashLiteralBraces:
   Exclude:
     - 'scripts/lib/release_channels.rb'
-    - 'scripts/lib/release_guard.rb'
+    - 'bin/lib/release_guard.rb'
     - 'test/cli/launcher_test.rb'
     - 'test/cli/package_bin_test.rb'
     - 'test/real_home_guard_test.rb'
@@ -151,7 +151,7 @@ Metrics/AbcSize:
     - 'scripts/lib/hook_registry.rb'
     - 'scripts/lib/installer_core.rb'
     - 'scripts/lib/release_channels.rb'
-    - 'scripts/lib/release_guard.rb'
+    - 'bin/lib/release_guard.rb'
     - 'test/compact_instructions_test.rb'
     - 'test/context_budget_bench_test.rb'
     - 'test/hook_registry_test.rb'
@@ -190,7 +190,7 @@ Metrics/CyclomaticComplexity:
     - 'scripts/lib/hook_registry.rb'
     - 'scripts/lib/installer_core.rb'
     - 'scripts/lib/release_channels.rb'
-    - 'scripts/lib/release_guard.rb'
+    - 'bin/lib/release_guard.rb'
     - 'test/real_home_guard_test.rb'
 
 # Offense count: 1525
@@ -204,8 +204,8 @@ Metrics/MethodLength:
     - 'scripts/lib/hook_registry.rb'
     - 'scripts/lib/installer_core.rb'
     - 'scripts/lib/release_channels.rb'
-    - 'scripts/lib/release_guard.rb'
-    - 'scripts/release-check'
+    - 'bin/lib/release_guard.rb'
+    - 'bin/release-check'
     - 'test/compact_instructions_test.rb'
     - 'test/context_budget_bench_test.rb'
     - 'test/engine_permissions_test.rb'
@@ -407,7 +407,7 @@ Style/RedundantInterpolation:
 Style/RedundantStructKeywordInit:
   Exclude:
     - 'bin/lib/context_budget.rb'
-    - 'scripts/lib/release_guard.rb'
+    - 'bin/lib/release_guard.rb'
 
 # Offense count: 21
 # This cop supports safe autocorrection (--autocorrect).
@@ -498,7 +498,7 @@ Style/TrailingCommaInHashLiteral:
     - 'bin/lib/context_budget.rb'
     - 'scripts/lib/hook_registry.rb'
     - 'scripts/lib/installer_core.rb'
-    - 'scripts/lib/release_guard.rb'
+    - 'bin/lib/release_guard.rb'
     - 'scripts/select-update-target'
     - 'test/engine_permissions_test.rb'
     - 'test/installer_core_test.rb'
@@ -508,7 +508,7 @@ Style/TrailingCommaInHashLiteral:
 # SupportedStyles: forbid_mixed_logical_operators, forbid_logical_operators
 Style/UnlessLogicalOperators:
   Exclude:
-    - 'scripts/release-check'
+    - 'bin/release-check'
 
 # Offense count: 41
 # This cop supports safe autocorrection (--autocorrect).

@@ -8,7 +8,7 @@ module Plastic
     class Command
       # Where a call runs: the variables, the three streams, the home, the
       # working directory and the processes above it. A test passes its own;
-      # bin/plastic passes the process's.
+      # exe/plastic passes the process's.
       Environment = Data.define(:env, :input, :out, :err, :home, :directory, :processes)
 
       # How a call's environment names its session.

@@ -21,7 +21,7 @@
 require "json"
 
 require_relative "lib/release_guard"
-require_relative "lib/installer_release"
+require_relative "../scripts/lib/installer_release"
 
 KNOWN_FLAGS = %w[--tag --branch --github-output --root].freeze
 

@@ -51,7 +51,7 @@ class CliPackageBinTest < Minitest::Test
   end
 
   def test_the_package_ships_neither_a_release_tool_nor_a_development_script
-    refute(package.fetch("files").any? { |path| path.match?(%r{release|\Abin/}) })
+    refute(package.fetch("files").any? { |path| path.match?(%r{build-release|release-check|release_(build|guard|archive)|\Abin/}) })
   end
 
   def test_the_package_still_ships_the_instruction_file

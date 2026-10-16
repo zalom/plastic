@@ -4,10 +4,20 @@ require "json"
 require "rubygems/package"
 require "zlib"
 
-# Writes plastic.tgz: the files package.json lists, plus EXTRA and a VERSION
-# file, each under package/ with its mode.
+# Writes plastic.tgz: the files package.json lists, plus EXTRA, a VERSION file
+# and a generated bin/plastic, each under package/ with its mode.
+#
+# The generated bin/plastic is for the install.sh that is already published.
+# That script unpacks the whole archive into share/, links share/bin/plastic
+# and runs it with the system Ruby, so the archive has to carry a bin/plastic
+# that starts the launcher in exe/. The installer of this repository ignores
+# the entry and writes its own bin/plastic when it installs a release.
 class ReleaseArchive
   EXTRA = %w[package.json README.md LICENSE].freeze
+  ENTRY = <<~RUBY
+    #!/usr/bin/env -S ruby --disable-gems
+    load File.expand_path("../exe/plastic", __dir__)
+  RUBY
 
   # One file of the archive, written under package/ with its mode.
   Entry = Data.define(:name, :content, :mode) do
@@ -36,7 +46,7 @@ class ReleaseArchive
   end
 
   def entries
-    package_files.map { |name| file_entry(name) } << Entry.new("VERSION", "#{version}\n", 0o644)
+    package_files.map { |name| file_entry(name) } << Entry.new("VERSION", "#{version}\n", 0o644) << Entry.new("bin/plastic", ENTRY, 0o755)
   end
 
   def file_entry(name)

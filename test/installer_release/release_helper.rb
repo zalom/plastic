@@ -96,6 +96,7 @@ module ReleaseHelper
   def staged_candidate(version)
     stage = File.join(@root, "stage-#{version}")
     write_package(stage, version, fake_launcher(version))
+    write_package(stage, version, fake_launcher(version), entry: "exe")
     stage
   end
 

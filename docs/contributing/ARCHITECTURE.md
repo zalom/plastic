@@ -17,7 +17,7 @@ after a change to the system, and commit the files in `docs/contributing/figures
 
 ## What runs and where it keeps data
 
-![What runs and where Plastic keeps its data. The Plastic install holds the active program, active/bin/plastic, the releases and the rubies, and the shell finds it through ~/.local/bin/plastic. The Plastic home holds PLASTIC.md, a bin/plastic pointer to the active program, local.db, config.yml and projects.yml. A store holds work_graph.db, knowledge_graph.db and references.db, and prints store/index.json, roadmaps/ and an intent folder for each intent from the rows.](figures/containers.svg)
+![What runs and where Plastic keeps its data. The Plastic install holds the active program, active/bin/plastic, the releases and the rubies, and the shell finds it through ~/.local/bin/plastic. The Plastic home holds PLASTIC.md, an exe/plastic launcher, local.db, config.yml and projects.yml. A store holds work_graph.db, knowledge_graph.db and references.db, and prints store/index.json, roadmaps/ and an intent folder for each intent from the rows.](figures/containers.svg)
 
 One program, `active/bin/plastic` of the install, serves every command and the three hooks.
 Everything it keeps lives under the Plastic home.
@@ -25,7 +25,7 @@ Everything it keeps lives under the Plastic home.
 | Place | Holds |
 | ----- | ----- |
 | `~/.local/share/plastic/` | The install: `active/bin/plastic`, the program; `releases/VERSION/`, one folder for each release; and `rubies/`, the Ruby each release runs on. `~/.local/bin/plastic` links to the program. |
-| `bin/plastic` | In the home, a launcher that points to the active program. |
+| `exe/plastic` | In the home, the launcher the non-release hooks run. |
 | `PLASTIC.md` | The always-on instructions that the harness imports. |
 | `local.db` | What belongs to one machine: `routine_runs`, `sessions`, `locks` and `backups`. |
 | `config.yml`, `projects.yml` | The settings, and the list of projects from slug to repository. |
@@ -188,7 +188,7 @@ closes the intent as abandoned, with the disposition `superseded` when another i
 
 ![One command from call to report. The harness or a person runs plastic intent new. The CLI looks up the row and builds the command, the Routine walks its chain of workflows, and the call ends in one of four values. The terminal shows the report: the intent line, the wrote line, the files, and the next and because lines.](figures/command-call.svg)
 
-`bin/plastic` runs the dispatcher. It finds the command in the table, prints the usage line on
+`exe/plastic` runs the dispatcher. It finds the command in the table, prints the usage line on
 `--help` without running it, or builds the command and sends it `call` and then `flush`.
 The `call` method does the work, and `flush` prints the report or its `--json` form.
 
