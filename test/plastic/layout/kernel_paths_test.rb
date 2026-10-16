@@ -112,7 +112,7 @@ class KernelPathsTest < Minitest::Test
   end
 
   def loads_alone?(file)
-    code = %(require "plastic"; load ARGV.fetch(0) unless ARGV.fetch(0).end_with?("install.rb"))
+    code = %(require "plastic"; load ARGV.fetch(0))
     _out, status = ChildProcess.capture2e(RbConfig.ruby, "-I", File.join(ROOT, "lib"), "-I", File.join(ROOT, "scripts", "lib"),
       "-e", code, file, chdir: ROOT)
     status.success?

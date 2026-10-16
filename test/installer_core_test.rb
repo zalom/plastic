@@ -70,6 +70,22 @@ class InstallerCoreHooksTest < Minitest::Test
     assert_equal [%(env -u RUBYOPT "#{File.join(share, "active", "bin", "plastic")}" hook start || true)], resume
   end
 
+  def test_a_release_install_over_a_repository_install_keeps_one_group_per_event
+    path = settings_with({})
+    capture_io { installer.merge_claude_hooks(path) }
+    share = File.join(@home, ".local", "share", "plastic")
+    release = File.join(share, "releases", "2.0.3")
+    FileUtils.mkdir_p(release)
+    File.write(File.join(release, "VERSION"), "2.0.3\n")
+    capture_io { installer(release).merge_claude_hooks(path) }
+    settings = JSON.parse(File.read(path))
+    events = %w[SessionStart Stop SessionEnd]
+    kernel = events.map { |event| commands(settings, event).grep(/plastic"? hook (start|stop|end)/) }
+
+    assert_equal [1, 1, 1], kernel.map(&:size)
+    assert(kernel.flatten.all? { |cmd| cmd.include?(File.join(share, "active", "bin", "plastic")) })
+  end
+
   def test_a_second_install_keeps_one_group_per_event
     assert_equal 1, commands(install({}, times: 2), "Stop").size
   end

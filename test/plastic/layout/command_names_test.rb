@@ -43,10 +43,17 @@ class CommandNamesTest < Minitest::Test
     assert_empty wrong
   end
 
-  def test_a_class_name_is_walked_one_segment_at_a_time_without_inherit
-    source = File.read(File.join(ROOT, "lib", "plastic", "cli.rb"))
+  PROBE = :CommandNamesProbe
 
-    assert_includes source, "const_get(segment, false)"
+  def teardown
+    Object.send(:remove_const, PROBE) if Object.const_defined?(PROBE, false)
+    super
+  end
+
+  def test_a_class_name_is_walked_one_segment_at_a_time_without_inherit
+    Object.const_set(PROBE, Class.new)
+
+    assert_raises(LoadError) { Plastic::CLI.tool("probe", "probe" => ["Commands::#{PROBE}", "a probe"]) }
   end
 
   def top_level_names

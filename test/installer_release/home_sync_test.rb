@@ -68,6 +68,14 @@ class InstallerReleaseHomeSyncTest < Minitest::Test
     assert_equal expected, read_json(".codex/hooks.json")["hooks"]
   end
 
+  def test_removes_the_hook_of_a_repository_install
+    installed_home
+    write_json(".claude/settings.json", "hooks" => { "Stop" => [group(%(env -u RUBYOPT "#{File.join(plastic_home, "exe", "plastic")}" hook stop || true))] })
+    sync.call
+
+    assert_equal({}, read_json(".claude/settings.json")["hooks"])
+  end
+
   def test_leaves_a_settings_file_without_hooks_as_it_is
     installed_home
     write_json(".claude/settings.json", "statusLine" => { "command" => "/usr/local/bin/mine" })
