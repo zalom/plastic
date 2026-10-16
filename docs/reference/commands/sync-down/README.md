@@ -8,7 +8,7 @@ Writes the rows that changed into files. A record changed on both sides stops th
 plastic sync down [--overwrite [PATH]] [--merge] [--dry-run]
 ```
 
-The command is `SyncDown`, in [`sync_down.rb:11`](../../../../lib/plastic/commands/sync_down.rb#L11). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Sync::Down`, in [`down.rb:12`](../../../../lib/plastic/commands/sync/down.rb#L12). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |

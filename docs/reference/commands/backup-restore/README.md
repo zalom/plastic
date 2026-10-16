@@ -6,7 +6,7 @@ Replace one store's databases with those of a done backup.
 plastic backup restore --store SLUG [--timestamp TS] [--latest] [--databases LIST] [--dry-run]
 ```
 
-The command is `BackupRestore`, in [`backup_restore.rb:10`](../../../../lib/plastic/commands/backup_restore.rb#L10). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Backup::Restore`, in [`restore.rb:12`](../../../../lib/plastic/commands/backup/restore.rb#L12). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |
@@ -33,7 +33,7 @@ def call
 end
 ```
 
-The command's own `check_call`, at [`backup_restore.rb:28`](../../../../lib/plastic/commands/backup_restore.rb#L28), runs inside it:
+The command's own `check_call`, at [`restore.rb:30`](../../../../lib/plastic/commands/backup/restore.rb#L30), runs inside it:
 
 ```ruby
 def check_call

@@ -6,7 +6,7 @@ List every setting with its value, globally or for one harness.
 plastic config list [--harness NAME]
 ```
 
-The command is `ConfigList`, in [`config_list.rb:10`](../../../../lib/plastic/commands/config_list.rb#L10). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Config::List`, in [`list.rb:12`](../../../../lib/plastic/commands/config/list.rb#L12). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |
@@ -18,7 +18,7 @@ The command is `ConfigList`, in [`config_list.rb:10`](../../../../lib/plastic/co
 
 ## The command
 
-The command's `call`, at [`config_list.rb:13`](../../../../lib/plastic/commands/config_list.rb#L13):
+The command's `call`, at [`list.rb:15`](../../../../lib/plastic/commands/config/list.rb#L15):
 
 ```ruby
 def call
@@ -37,4 +37,4 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| Offers the next command | 0 | plastic config set KEY VALUE [HARNESS_WORDS] | [`config_list.rb:15`](../../../../lib/plastic/commands/config_list.rb#L15) |
+| Offers the next command | 0 | plastic config set KEY VALUE [HARNESS_WORDS] | [`list.rb:17`](../../../../lib/plastic/commands/config/list.rb#L17) |

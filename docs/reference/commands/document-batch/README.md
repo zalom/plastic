@@ -6,7 +6,7 @@ Fetch qualified documents in request order.
 plastic document batch REF...
 ```
 
-The command is `DocumentBatch`, in [`document_batch.rb:8`](../../../../lib/plastic/commands/document_batch.rb#L8). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Document::Batch`, in [`batch.rb:9`](../../../../lib/plastic/commands/document/batch.rb#L9). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |

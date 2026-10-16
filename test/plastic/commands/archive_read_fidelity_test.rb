@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../lib/plastic/commands/intent_archive"
+require_relative "../../../lib/plastic/commands/intent/archive"
 
 class ArchiveReadFidelityTest < Plastic::TestCase
   def test_archive_reads_return_snapshot_bytes_without_mutating_archive_state

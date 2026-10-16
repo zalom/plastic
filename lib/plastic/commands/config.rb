@@ -40,7 +40,7 @@ module Plastic
       end
 
       def save(picked)
-        changed = Config.changes(toggles, picked)
+        changed = self.class.changes(toggles, picked)
         changed.each { |key, on| write(key, on) }
         output.next_step("plastic config list#{harness_words}", because: changed.empty? ? "nothing changed" : "the changed settings are written")
       end

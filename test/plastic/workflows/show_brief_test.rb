@@ -62,7 +62,7 @@ class ShowBriefTest < Plastic::TestCase
   def test_the_node_and_edge_usage_closes_the_brief
     open_intent
 
-    assert_equal Plastic::Commands::EdgeRemove.usage_line, brief.last.printed.last
+    assert_equal Plastic::Commands::Edge::Remove.usage_line, brief.last.printed.last
   end
 
   def test_an_unknown_intent_fails_the_call

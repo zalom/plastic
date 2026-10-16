@@ -6,7 +6,7 @@ SessionEnd: set the session's end time and reason.
 plastic hook end
 ```
 
-The command is `End`, in [`end.rb:9`](../../../../lib/plastic/hooks/end.rb#L9). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Hooks::End`, in [`end.rb:9`](../../../../lib/plastic/hooks/end.rb#L9). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 ## What it touches
 

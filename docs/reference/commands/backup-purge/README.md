@@ -8,7 +8,7 @@ Deletes backups of one registered store: all of them, those before a date, or th
 plastic backup purge --store SLUG (--older-than DATE | --all | --failed) [--dry-run]
 ```
 
-The command is `BackupPurge`, in [`backup_purge.rb:10`](../../../../lib/plastic/commands/backup_purge.rb#L10). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Backup::Purge`, in [`purge.rb:12`](../../../../lib/plastic/commands/backup/purge.rb#L12). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |
@@ -35,7 +35,7 @@ def call
 end
 ```
 
-The command's own `check_call`, at [`backup_purge.rb:30`](../../../../lib/plastic/commands/backup_purge.rb#L30), runs inside it:
+The command's own `check_call`, at [`purge.rb:32`](../../../../lib/plastic/commands/backup/purge.rb#L32), runs inside it:
 
 ```ruby
 def check_call

@@ -6,7 +6,7 @@ Rewrite an intent's What and Why after grilling, keeping the old text as a revis
 plastic intent revise ID LINE [--why TEXT] [--dry-run]
 ```
 
-The command is `IntentRevise`, in [`intent_revise.rb:9`](../../../../lib/plastic/commands/intent_revise.rb#L9). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Intent::Revise`, in [`revise.rb:10`](../../../../lib/plastic/commands/intent/revise.rb#L10). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |

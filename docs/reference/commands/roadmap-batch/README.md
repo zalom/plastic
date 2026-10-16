@@ -6,7 +6,7 @@ Write one roadmap batch's goal and done criteria.
 plastic roadmap batch SLUG N [--title TITLE] [--goal GOAL] [--done TEXT]
 ```
 
-The command is `RoadmapBatch`, in [`roadmap_batch.rb:8`](../../../../lib/plastic/commands/roadmap_batch.rb#L8). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Roadmap::Batch`, in [`batch.rb:9`](../../../../lib/plastic/commands/roadmap/batch.rb#L9). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |

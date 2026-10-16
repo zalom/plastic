@@ -9,11 +9,9 @@ module CommandReference
     def klass
       return Object.const_get(full) if full.start_with?("Fixtures::")
 
-      require "plastic/#{directory}/#{Plastic.snake(full.split("::").last)}"
-      Plastic.const_get(full)
+      require "plastic/#{Plastic::CLI.file_of(full)}"
+      full.split("::").inject(Plastic) { |scope, segment| scope.const_get(segment, false) }
     end
-
-    def directory = full.start_with?("Hooks::") ? "hooks" : "commands"
   end
 
   # Reads one command from the kernel into a Page.

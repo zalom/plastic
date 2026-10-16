@@ -6,7 +6,7 @@ Write the one prose line of this session.
 plastic session note TEXT...
 ```
 
-The command is `SessionNote`, in [`session_note.rb:8`](../../../../lib/plastic/commands/session_note.rb#L8). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Session::Note`, in [`note.rb:9`](../../../../lib/plastic/commands/session/note.rb#L9). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |

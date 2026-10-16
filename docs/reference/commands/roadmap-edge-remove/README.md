@@ -8,7 +8,7 @@ Removes one needs edge. Fails when no such edge exists.
 plastic roadmap edge remove SLUG FROM TO [--dry-run]
 ```
 
-The command is `RoadmapEdgeRemove`, in [`roadmap_edge_remove.rb:8`](../../../../lib/plastic/commands/roadmap_edge_remove.rb#L8). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Roadmap::Edge::Remove`, in [`remove.rb:10`](../../../../lib/plastic/commands/roadmap/edge/remove.rb#L10). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |

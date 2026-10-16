@@ -6,7 +6,7 @@ Print the first ready item, or what is in the way.
 plastic roadmap next SLUG [--batch N]
 ```
 
-The command is `RoadmapNext`, in [`roadmap_next.rb:8`](../../../../lib/plastic/commands/roadmap_next.rb#L8). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Roadmap::Next`, in [`next.rb:9`](../../../../lib/plastic/commands/roadmap/next.rb#L9). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |

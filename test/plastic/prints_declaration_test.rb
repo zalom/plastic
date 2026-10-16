@@ -4,16 +4,16 @@ require_relative "../test_helper"
 require_relative "../../lib/plastic/routine"
 require_relative "../../lib/plastic/cli/table"
 
-Dir[File.join(__dir__, "../../lib/plastic/commands/*.rb")].each { |file| require file }
+Dir[File.join(__dir__, "../../lib/plastic/commands/**/*.rb")].each { |file| require file }
 
 class PrintsDeclarationTest < Minitest::Test
   NO_FILE = {
-    "SessionNote" => "its rows are the session ledger, which no file holds",
+    "Session::Note" => "its rows are the session ledger, which no file holds",
     "Backup" => "a backup copies the databases, which no printed file holds",
-    "BackupPurge" => "it removes backup records, which no printed file holds",
-    "BackupRestore" => "it restores databases and hands the files to sync down",
-    "SyncUp" => "sync prints through its own plan",
-    "SyncDown" => "sync prints through its own plan"
+    "Backup::Purge" => "it removes backup records, which no printed file holds",
+    "Backup::Restore" => "it restores databases and hands the files to sync down",
+    "Sync::Up" => "sync prints through its own plan",
+    "Sync::Down" => "sync prints through its own plan"
   }.freeze
 
   def routines
@@ -23,7 +23,7 @@ class PrintsDeclarationTest < Minitest::Test
 
   def writers = routines.select { |klass| klass.writes.any? }
 
-  def short(klass) = klass.name.split("::").last
+  def short(klass) = klass.name.delete_prefix("Plastic::Commands::")
 
   def test_there_are_routines_that_write
     refute_empty writers

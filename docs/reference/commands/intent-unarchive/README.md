@@ -6,7 +6,7 @@ Restore an archived intent's directory exactly as it was archived.
 plastic intent unarchive ID [--dry-run]
 ```
 
-The command is `IntentUnarchive`, in [`intent_unarchive.rb:8`](../../../../lib/plastic/commands/intent_unarchive.rb#L8). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Intent::Unarchive`, in [`unarchive.rb:9`](../../../../lib/plastic/commands/intent/unarchive.rb#L9). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |

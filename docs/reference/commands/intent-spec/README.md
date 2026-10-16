@@ -6,7 +6,7 @@ Print the grilling method, then the intent's open decisions.
 plastic intent spec ID
 ```
 
-The command is `IntentSpec`, in [`intent_spec.rb:8`](../../../../lib/plastic/commands/intent_spec.rb#L8). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Intent::Spec`, in [`spec.rb:9`](../../../../lib/plastic/commands/intent/spec.rb#L9). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |

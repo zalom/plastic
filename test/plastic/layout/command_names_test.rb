@@ -73,16 +73,12 @@ class CommandNamesTest < Minitest::Test
   end
 
   def test_the_scan_knows_the_reused_names
-    assert_includes layout_names, "Graph"
-    assert_includes layout_names, "Config"
-    assert_includes layout_names, "Doctor"
-    assert_includes layout_names, "Hooks"
-    assert_includes layout_names, "Context"
+    assert_empty %w[Graph Config Doctor Hooks Context] - layout_names
   end
 
   def parent_after(words)
     parent = words.split.first.capitalize
-    code = %(require "plastic/cli"; Plastic::CLI.tool(ARGV.fetch(0)); print Plastic::Commands.const_get(ARGV.fetch(1), false).class)
+    code = %(require "plastic"; Plastic::CLI.tool(ARGV.fetch(0)); print Plastic::Commands.const_get(ARGV.fetch(1), false).class)
     out, status = ChildProcess.capture2e(RbConfig.ruby, "-I", File.join(ROOT, "lib"), "-e", code, words, parent, chdir: ROOT)
     [status.success?, out]
   end

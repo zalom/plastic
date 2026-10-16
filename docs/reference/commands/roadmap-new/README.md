@@ -6,7 +6,7 @@ Create a roadmap; write its batches with roadmap batch.
 plastic roadmap new NAME [--title TITLE] [--goal GOAL]
 ```
 
-The command is `RoadmapNew`, in [`roadmap_new.rb:8`](../../../../lib/plastic/commands/roadmap_new.rb#L8). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Roadmap::New`, in [`new.rb:9`](../../../../lib/plastic/commands/roadmap/new.rb#L9). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |

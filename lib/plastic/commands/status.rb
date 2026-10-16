@@ -31,14 +31,14 @@ module Plastic
 
       def store_rows(slug, projects)
         [show_store(slug), nil]
-      rescue Graph::MissingStore => error
+      rescue Plastic::Graph::MissingStore => error
         command = error.next_command(projects[slug])
         [[["store:", "#{slug} has no store folder; run #{command}"]], (command if scope.requested?)]
       end
 
       def show_store(slug)
-        retrieval = Graph.open(home: scope.plastic_home, store: slug).retrieval
-        [["store:", slug], *retrieval.intents.select(&:open?).map { |intent| Graph::Work::IntentRow.new(retrieval, intent).to_a }]
+        retrieval = Plastic::Graph.open(home: scope.plastic_home, store: slug).retrieval
+        [["store:", slug], *retrieval.intents.select(&:open?).map { |intent| Plastic::Graph::Work::IntentRow.new(retrieval, intent).to_a }]
       end
     end
   end

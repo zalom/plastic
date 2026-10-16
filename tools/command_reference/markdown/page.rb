@@ -23,7 +23,7 @@ module CommandReference
       def head
         ["# plastic #{@page.words}", "", "#{@page.summary}.", "", *comment,
           "```sh", @page.usage, "```", "",
-          "The command is `#{Words.short(@page.klass)}`, in #{@links.code(@page.file, @page.line)}. " \
+          "The command is `#{@page.klass.name.delete_prefix("Plastic::").delete_prefix("Commands::")}`, in #{@links.code(@page.file, @page.line)}. " \
           "The words on this page, such as gate, step and outcome, are explained in [the command DSL](#{DSL}).", ""]
       end
 

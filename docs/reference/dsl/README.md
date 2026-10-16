@@ -17,7 +17,7 @@ Every plastic command is one Ruby class. The class declares what the command tak
 
 ![The plastic intent end class beside what each part of it declares](declare-command.svg)
 
-The class of [`plastic intent end`](../commands/intent-end/README.md), from [`intent_end.rb:8`](../../../lib/plastic/commands/intent_end.rb#L8). The numbers match each part of the class to what it declares. Long lines are wrapped.
+The class of [`plastic intent end`](../commands/intent-end/README.md), from [`end.rb:9`](../../../lib/plastic/commands/intent/end.rb#L9). The numbers match each part of the class to what it declares. Long lines are wrapped.
 
 | # | Word | What it declares | Defined in |
 | --- | --- | --- | --- |

@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../lib/plastic/commands/sync_up"
-require_relative "../../../lib/plastic/commands/roadmap_show"
+require_relative "../../../lib/plastic/commands/sync/up"
+require_relative "../../../lib/plastic/commands/roadmap/show"
 
 class SyncLegacyMetadataTest < Plastic::TestCase
   fixtures :legacy
