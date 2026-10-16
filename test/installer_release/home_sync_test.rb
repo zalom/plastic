@@ -68,14 +68,6 @@ class InstallerReleaseHomeSyncTest < Minitest::Test
     assert_equal expected, read_json(".codex/hooks.json")["hooks"]
   end
 
-  def test_removes_the_hook_of_a_repository_install
-    installed_home
-    write_json(".claude/settings.json", "hooks" => { "Stop" => [group(%(env -u RUBYOPT "#{File.join(plastic_home, "exe", "plastic")}" hook stop || true))] })
-    sync.call
-
-    assert_equal({}, read_json(".claude/settings.json")["hooks"])
-  end
-
   def test_leaves_a_settings_file_without_hooks_as_it_is
     installed_home
     write_json(".claude/settings.json", "statusLine" => { "command" => "/usr/local/bin/mine" })
@@ -142,7 +134,7 @@ class InstallerReleaseHomeSyncTest < Minitest::Test
 
   def hooks_with_ours
     { "SessionStart" => [group(%(env -u RUBYOPT "#{File.join(share, "active", "bin", "plastic")}" hook resume || true)), user_group],
-      "Stop" => [group(%(env -u RUBYOPT "#{File.join(plastic_home, "bin", "plastic")}" hook record || true))] }
+      "Stop" => %w[bin exe].map { |dir| group(%(env -u RUBYOPT "#{File.join(plastic_home, dir, "plastic")}" hook record || true)) } }
   end
 
   def write_json(relative, data)

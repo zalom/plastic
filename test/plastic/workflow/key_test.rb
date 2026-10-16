@@ -9,6 +9,11 @@ class KeyTest < Minitest::Test
 
   def key(text, path) = Plastic::Workflow::Key.parse(text, path)
 
+  def teardown
+    Object.send(:remove_const, PROBE) if Object.const_defined?(PROBE, false)
+    super
+  end
+
   def test_a_key_reads_apart_into_its_lane_and_the_segments_of_its_class_path
     parsed = key(:code_close_intent, "Code::Intent::End")
 
@@ -30,11 +35,6 @@ class KeyTest < Minitest::Test
   end
 
   PROBE = :KeyTestProbe
-
-  def teardown
-    Object.send(:remove_const, PROBE) if Object.const_defined?(PROBE, false)
-    super
-  end
 
   def test_a_segment_never_resolves_through_a_constant_of_an_ancestor
     Object.const_set(PROBE, Class.new(Plastic::CodeWorkflow))

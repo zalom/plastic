@@ -21,6 +21,11 @@ class CommandNamesTest < Minitest::Test
 
   def expected_file(words) = File.join(COMMANDS, *words.split[0..-2], "#{words.split.last}.rb")
 
+  def teardown
+    Object.send(:remove_const, PROBE) if Object.const_defined?(PROBE, false)
+    super
+  end
+
   def test_every_table_entry_names_the_nested_class_of_its_words
     wrong = command_entries.reject { |words, klass| klass == expected_class(words) }
 
@@ -44,11 +49,6 @@ class CommandNamesTest < Minitest::Test
   end
 
   PROBE = :CommandNamesProbe
-
-  def teardown
-    Object.send(:remove_const, PROBE) if Object.const_defined?(PROBE, false)
-    super
-  end
 
   def test_a_class_name_is_walked_one_segment_at_a_time_without_inherit
     Object.const_set(PROBE, Class.new)

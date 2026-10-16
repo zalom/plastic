@@ -982,10 +982,11 @@ class InstallerCore
   # entries treat the old check-update launcher as stale and the registry adds
   # it back.
   def kernel_hook_entries
-    home_launcher = File.join(plastic_home, "bin", "plastic")
     Plastic::Hooks::Entries.new(command: hook_launcher, config: Plastic::Config.new(plastic_home), launchers: {},
-                                former: [home_launcher] - [hook_launcher])
+                                former: former_launchers - [hook_launcher])
   end
+
+  def former_launchers = [File.join(plastic_home, "bin", "plastic"), File.join(plastic_home, "exe", "plastic")]
 
   # A hook an uninstall removes: one the registry purges, or one that runs
   # Plastic's own launcher.
