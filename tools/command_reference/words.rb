@@ -15,5 +15,11 @@ module CommandReference
     def self.cell(text) = text.to_s.gsub("|", "\\\\|")
 
     def self.short(klass) = klass.name.split("::").last
+
+    # A workflow by the path that names it under Workflows: Code::Intent::End::Prepare.
+    def self.path(klass) = klass.name.delete_prefix("Plastic::Workflows::")
+
+    # The anchor a markdown heading makes from its text.
+    def self.anchor(heading) = heading.downcase.gsub(/[^\w\s-]/, "").tr(" ", "-")
   end
 end

@@ -27,15 +27,15 @@ The command is `Node::Remove`, in [`remove.rb:10`](../../../../lib/plastic/comma
 
 | Workflow | Kind | Code |
 | --- | --- | --- |
-| [RemoveNode](#removenode) | code | [`remove_node.rb:8`](../../../../lib/plastic/workflows/remove_node.rb#L8) |
+| [Code::Node::Remove](#codenoderemove) | code | [`remove.rb:10`](../../../../lib/plastic/workflows/code/node/remove.rb#L10) |
 
-### RemoveNode
+### Code::Node::Remove
 
-The code workflow `:code_remove_node`, in [`remove_node.rb:8`](../../../../lib/plastic/workflows/remove_node.rb#L8).
+The code workflow `:code_remove_node`, in [`remove.rb:10`](../../../../lib/plastic/workflows/code/node/remove.rb#L10).
 
 Moves a node from open to removed.
 
-![How RemoveNode runs: its steps, where it stops, and its outcomes](code_remove_node.svg)
+![How Code::Node::Remove runs: its steps, where it stops, and its outcomes](code_remove_node.svg)
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |

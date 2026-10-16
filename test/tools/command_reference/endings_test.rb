@@ -9,7 +9,7 @@ class CommandReferenceEndingsTest < Minitest::Test
   ENDING_LINE = /\b(gate|outcome|next_step|raise|rescue|respond)\b|def settle|"decision"/
 
   def test_a_refusal_gate_ends_in_exit_3_on_the_line_of_its_gate
-    gate = exit_rows("intent end", 3).find { |ending| ending.file.end_with?("workflows/prepare_ending.rb") }
+    gate = exit_rows("intent end", 3).find { |ending| ending.file.end_with?("workflows/code/intent/end/prepare.rb") }
 
     assert_equal :gate, gate.kind
     assert_match(/\bgate\b/, source_line(gate.file, gate.line))

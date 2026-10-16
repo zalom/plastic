@@ -10,8 +10,11 @@ require_relative "../../lib/plastic/hook"
 # no test adds a key to Plastic::Workflows::REGISTRY or Plastic::CLI::TABLE.
 module Fixtures
   module Workflows
-    REGISTRY = %i[code_stamp code_greet code_find_draft agent_write_draft code_hold code_hole
-      code_break code_stuck agent_review code_who code_choose agent_greet code_offer].freeze
+    REGISTRY = {
+      code_stamp: "Stamp", code_greet: "Greet", code_find_draft: "FindDraft", agent_write_draft: "WriteDraft", code_hold: "Hold",
+      code_hole: "Hole", code_break: "Break", code_stuck: "Stuck", agent_review: "Review", code_who: "Who", code_choose: "Choose",
+      agent_greet: "Greet", code_offer: "Offer"
+    }.freeze
 
     class Stamp < Plastic::CodeWorkflow
       sets :stamp

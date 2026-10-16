@@ -24,15 +24,15 @@ The command is `Node::Ask`, in [`ask.rb:9`](../../../../lib/plastic/commands/nod
 
 | Workflow | Kind | Code |
 | --- | --- | --- |
-| [AskNode](#asknode) | code | [`ask_node.rb:8`](../../../../lib/plastic/workflows/ask_node.rb#L8) |
+| [Code::Node::Ask](#codenodeask) | code | [`ask.rb:10`](../../../../lib/plastic/workflows/code/node/ask.rb#L10) |
 
-### AskNode
+### Code::Node::Ask
 
-The code workflow `:code_ask_node`, in [`ask_node.rb:8`](../../../../lib/plastic/workflows/ask_node.rb#L8).
+The code workflow `:code_ask_node`, in [`ask.rb:10`](../../../../lib/plastic/workflows/code/node/ask.rb#L10).
 
 Moves a claimed node to needs_info, with the question for the owner.
 
-![How AskNode runs: its steps, where it stops, and its outcomes](code_ask_node.svg)
+![How Code::Node::Ask runs: its steps, where it stops, and its outcomes](code_ask_node.svg)
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |

@@ -25,9 +25,9 @@ module CommandReference
 
       private
 
-      def heading = ["### #{@flow.short}", "", "The #{@flow.lane} workflow `:#{@flow.key}`, in #{@owner.links.code(@flow.file, @flow.line)}.", ""]
+      def heading = ["### #{@flow.path}", "", "The #{@flow.lane} workflow `:#{@flow.key}`, in #{@owner.links.code(@flow.file, @flow.line)}.", ""]
 
-      def picture = ["![How #{@flow.short} runs: its steps, where it stops, and its outcomes](#{@flow.key}.svg)", ""]
+      def picture = ["![How #{@flow.path} runs: its steps, where it stops, and its outcomes](#{@flow.key}.svg)", ""]
 
       def steps
         ["| Step | Kind | Check | Code |", "| --- | --- | --- | --- |", *@flow.rows.map { |row| StepRow.new(row, @owner.links).to_s }, ""]

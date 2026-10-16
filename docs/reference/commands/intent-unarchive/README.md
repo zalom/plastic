@@ -23,26 +23,26 @@ The command is `Intent::Unarchive`, in [`unarchive.rb:9`](../../../../lib/plasti
 
 | Workflow | Kind | Code |
 | --- | --- | --- |
-| [UnarchiveIntent](#unarchiveintent) | code | [`unarchive_intent.rb:8`](../../../../lib/plastic/workflows/unarchive_intent.rb#L8) |
+| [Code::Intent::Unarchive](#codeintentunarchive) | code | [`unarchive.rb:10`](../../../../lib/plastic/workflows/code/intent/unarchive.rb#L10) |
 
-### UnarchiveIntent
+### Code::Intent::Unarchive
 
-The code workflow `:code_unarchive_intent`, in [`unarchive_intent.rb:8`](../../../../lib/plastic/workflows/unarchive_intent.rb#L8).
+The code workflow `:code_unarchive_intent`, in [`unarchive.rb:10`](../../../../lib/plastic/workflows/code/intent/unarchive.rb#L10).
 
 Restores the archived directory snapshot, including bytes and metadata.
 
-![How UnarchiveIntent runs: its steps, where it stops, and its outcomes](code_unarchive_intent.svg)
+![How Code::Intent::Unarchive runs: its steps, where it stops, and its outcomes](code_unarchive_intent.svg)
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
 | forget a stop of an earlier call | read |  | [`code_workflow.rb:54`](../../../../lib/plastic/code_workflow.rb#L54) |
-| restore the intent | step | `!context.ok.nil? \|\| !context.problem.nil?` | [`unarchive_intent.rb:15`](../../../../lib/plastic/workflows/unarchive_intent.rb#L15) |
-| %{problem} | gate, stops with exit 1 | `context.problem.nil?` | [`unarchive_intent.rb:21`](../../../../lib/plastic/workflows/unarchive_intent.rb#L21) |
-| say it was restored | read |  | [`unarchive_intent.rb:23`](../../../../lib/plastic/workflows/unarchive_intent.rb#L23) |
+| restore the intent | step | `!context.ok.nil? \|\| !context.problem.nil?` | [`unarchive.rb:17`](../../../../lib/plastic/workflows/code/intent/unarchive.rb#L17) |
+| %{problem} | gate, stops with exit 1 | `context.problem.nil?` | [`unarchive.rb:23`](../../../../lib/plastic/workflows/code/intent/unarchive.rb#L23) |
+| say it was restored | read |  | [`unarchive.rb:25`](../../../../lib/plastic/workflows/code/intent/unarchive.rb#L25) |
 
 | Outcome | When | Then | Code |
 | --- | --- | --- | --- |
-| `:done` | always | finishes, exit 0; next: plastic intent show %{intent_id} | [`unarchive_intent.rb:27`](../../../../lib/plastic/workflows/unarchive_intent.rb#L27) |
+| `:done` | always | finishes, exit 0; next: plastic intent show %{intent_id} | [`unarchive.rb:29`](../../../../lib/plastic/workflows/code/intent/unarchive.rb#L29) |
 
 It sets `problem`, `ok`.
 
@@ -52,6 +52,6 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| %{problem} | 1 | prints no next: line | [`unarchive_intent.rb:21`](../../../../lib/plastic/workflows/unarchive_intent.rb#L21) |
-| intent %{intent_id} is back on the checkout | 0 | plastic intent show %{intent_id} | [`unarchive_intent.rb:27`](../../../../lib/plastic/workflows/unarchive_intent.rb#L27) |
+| %{problem} | 1 | prints no next: line | [`unarchive.rb:23`](../../../../lib/plastic/workflows/code/intent/unarchive.rb#L23) |
+| intent %{intent_id} is back on the checkout | 0 | plastic intent show %{intent_id} | [`unarchive.rb:29`](../../../../lib/plastic/workflows/code/intent/unarchive.rb#L29) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |

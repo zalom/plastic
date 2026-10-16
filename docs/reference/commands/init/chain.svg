@@ -73,11 +73,11 @@
 <text x="246" y="126" class="tm tag-muted" text-anchor="start">:chosen</text>
 <rect x="150" y="16" width="180" height="56" rx="6" class="lane-code"/>
 <text x="160" y="32" class="tag tag-code" text-anchor="start">CODE WORKFLOW</text>
-<text x="160" y="51" class="tb" text-anchor="start">ChooseHarnesses</text>
+<text x="160" y="51" class="tb" text-anchor="start">Choose</text>
 <text x="160" y="66" class="tm" text-anchor="start">:code_choose_harnesses</text>
 <rect x="150" y="136" width="180" height="56" rx="6" class="lane-code"/>
 <text x="160" y="152" class="tag tag-code" text-anchor="start">CODE WORKFLOW</text>
-<text x="160" y="171" class="tb" text-anchor="start">InstallHarnesses</text>
+<text x="160" y="171" class="tb" text-anchor="start">Init</text>
 <text x="160" y="186" class="tm" text-anchor="start">:code_install_harnesses</text>
 <path d="M 240 72 L 240 94" class="wire"/>
 <path d="M 235 86 L 240 94 L 245 86 Z" class="head"/>

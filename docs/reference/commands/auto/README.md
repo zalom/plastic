@@ -22,54 +22,54 @@ The command is `Auto`, in [`auto.rb:9`](../../../../lib/plastic/commands/auto.rb
 
 | Workflow | Kind | Code |
 | --- | --- | --- |
-| [PickDelivery](#pickdelivery) | code | [`pick_delivery.rb:14`](../../../../lib/plastic/workflows/pick_delivery.rb#L14) |
-| [StartAuto](#startauto) | code | [`start_auto.rb:13`](../../../../lib/plastic/workflows/start_auto.rb#L13) |
+| [Code::Auto::Pick](#codeautopick) | code | [`pick.rb:17`](../../../../lib/plastic/workflows/code/auto/pick.rb#L17) |
+| [Code::Auto](#codeauto) | code | [`auto.rb:14`](../../../../lib/plastic/workflows/code/auto.rb#L14) |
 
-### PickDelivery
+### Code::Auto::Pick
 
-The code workflow `:code_pick_delivery`, in [`pick_delivery.rb:14`](../../../../lib/plastic/workflows/pick_delivery.rb#L14).
+The code workflow `:code_pick_delivery`, in [`pick.rb:17`](../../../../lib/plastic/workflows/code/auto/pick.rb#L17).
 
 Turns the word `plastic auto` was given into the intent to deliver. A word shaped like an intent id is that intent. Any other word is a roadmap slug: its first item in flight that is not parked and not held by another session's live lock, in batch then item order. With none, it offers a ready item to start, or says the roadmap is delivered or waits.
 
-![How PickDelivery runs: its steps, where it stops, and its outcomes](code_pick_delivery.svg)
+![How Code::Auto::Pick runs: its steps, where it stops, and its outcomes](code_pick_delivery.svg)
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
-| forget what an earlier call picked | read |  | [`pick_delivery.rb:19`](../../../../lib/plastic/workflows/pick_delivery.rb#L19) |
-| no roadmap %{id} | gate, stops with exit 1 | `intent_word?(context) \|\| !context.retrieval.roadmap(context.id).nil?` | [`pick_delivery.rb:25`](../../../../lib/plastic/workflows/pick_delivery.rb#L25) |
-| pick the intent to deliver | read |  | [`pick_delivery.rb:28`](../../../../lib/plastic/workflows/pick_delivery.rb#L28) |
+| forget what an earlier call picked | read |  | [`pick.rb:22`](../../../../lib/plastic/workflows/code/auto/pick.rb#L22) |
+| no roadmap %{id} | gate, stops with exit 1 | `intent_word?(context) \|\| !context.retrieval.roadmap(context.id).nil?` | [`pick.rb:28`](../../../../lib/plastic/workflows/code/auto/pick.rb#L28) |
+| pick the intent to deliver | read |  | [`pick.rb:31`](../../../../lib/plastic/workflows/code/auto/pick.rb#L31) |
 
 | Outcome | When | Then | Code |
 | --- | --- | --- | --- |
-| `:intent` | when `!context.intent_id.nil?` | runs [StartAuto](#startauto) | [`pick_delivery.rb:55`](../../../../lib/plastic/workflows/pick_delivery.rb#L55) |
-| `:ready` | when `!context.ready_id.nil?` | finishes, exit 0; next: plastic roadmap open %{id} %{ready_id} | [`pick_delivery.rb:56`](../../../../lib/plastic/workflows/pick_delivery.rb#L56) |
-| `:delivered` | when `context.open.empty?` | finishes, exit 0; next: plastic roadmap show %{id} | [`pick_delivery.rb:58`](../../../../lib/plastic/workflows/pick_delivery.rb#L58) |
-| `:waiting` | otherwise | finishes, exit 0; next: plastic roadmap show %{id} | [`pick_delivery.rb:60`](../../../../lib/plastic/workflows/pick_delivery.rb#L60) |
+| `:intent` | when `!context.intent_id.nil?` | runs [Code::Auto](#codeauto) | [`pick.rb:58`](../../../../lib/plastic/workflows/code/auto/pick.rb#L58) |
+| `:ready` | when `!context.ready_id.nil?` | finishes, exit 0; next: plastic roadmap open %{id} %{ready_id} | [`pick.rb:59`](../../../../lib/plastic/workflows/code/auto/pick.rb#L59) |
+| `:delivered` | when `context.open.empty?` | finishes, exit 0; next: plastic roadmap show %{id} | [`pick.rb:61`](../../../../lib/plastic/workflows/code/auto/pick.rb#L61) |
+| `:waiting` | otherwise | finishes, exit 0; next: plastic roadmap show %{id} | [`pick.rb:63`](../../../../lib/plastic/workflows/code/auto/pick.rb#L63) |
 
 It sets `intent_id`, `ready_id`, `open`.
 
-### StartAuto
+### Code::Auto
 
-The code workflow `:code_start_auto`, in [`start_auto.rb:13`](../../../../lib/plastic/workflows/start_auto.rb#L13).
+The code workflow `:code_start_auto`, in [`auto.rb:14`](../../../../lib/plastic/workflows/code/auto.rb#L14).
 
 Arms delivery on an intent: refuses an open decision, no done criteria, no go-ahead row, a done or abandoned intent, or another session's live lock; fails with no session named; otherwise takes the lock and goes active, then prints the code worktree when the store's project names a repository.
 
-![How StartAuto runs: its steps, where it stops, and its outcomes](code_start_auto.svg)
+![How Code::Auto runs: its steps, where it stops, and its outcomes](code_start_auto.svg)
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
-| read the intent and its spec | read |  | [`start_auto.rb:18`](../../../../lib/plastic/workflows/start_auto.rb#L18) |
-| no intent %{intent_id} in this store | gate, stops with exit 1 | `!context.intent.nil?` | [`start_auto.rb:60`](../../../../lib/plastic/workflows/start_auto.rb#L60) |
-| plastic auto names no session | gate, stops with exit 1 | `!context.session.nil?` | [`start_auto.rb:61`](../../../../lib/plastic/workflows/start_auto.rb#L61) |
-| %{closed_problem} | gate, stops with exit 1 | `context.closed_problem.nil?` | [`start_auto.rb:62`](../../../../lib/plastic/workflows/start_auto.rb#L62) |
-| %{spec_problem} | gate, stops with exit 1 | `context.spec_problem.nil?` | [`start_auto.rb:64`](../../../../lib/plastic/workflows/start_auto.rb#L64) |
-| %{problem} | gate, stops with exit 3 | `context.problem.nil?` | [`start_auto.rb:66`](../../../../lib/plastic/workflows/start_auto.rb#L66) |
-| take the lock and go active | step | `def self.delivery_started?(context) retrieval = context.retrieval intent_id = context.intent_id lock = retrieval.lock(intent_id) retrieval.intent(intent_id).status == "active" && lock&.session_id == context.session && lock.mode == "auto" && retrieval.liveness(lock).live? end` | [`start_auto.rb:76`](../../../../lib/plastic/workflows/start_auto.rb#L76) |
-| name the code worktree | read |  | [`start_auto.rb:81`](../../../../lib/plastic/workflows/start_auto.rb#L81) |
+| read the intent and its spec | read |  | [`auto.rb:19`](../../../../lib/plastic/workflows/code/auto.rb#L19) |
+| no intent %{intent_id} in this store | gate, stops with exit 1 | `!context.intent.nil?` | [`auto.rb:61`](../../../../lib/plastic/workflows/code/auto.rb#L61) |
+| plastic auto names no session | gate, stops with exit 1 | `!context.session.nil?` | [`auto.rb:62`](../../../../lib/plastic/workflows/code/auto.rb#L62) |
+| %{closed_problem} | gate, stops with exit 1 | `context.closed_problem.nil?` | [`auto.rb:63`](../../../../lib/plastic/workflows/code/auto.rb#L63) |
+| %{spec_problem} | gate, stops with exit 1 | `context.spec_problem.nil?` | [`auto.rb:65`](../../../../lib/plastic/workflows/code/auto.rb#L65) |
+| %{problem} | gate, stops with exit 3 | `context.problem.nil?` | [`auto.rb:67`](../../../../lib/plastic/workflows/code/auto.rb#L67) |
+| take the lock and go active | step | `def self.delivery_started?(context) retrieval = context.retrieval intent_id = context.intent_id lock = retrieval.lock(intent_id) retrieval.intent(intent_id).status == "active" && lock&.session_id == context.session && lock.mode == "auto" && retrieval.liveness(lock).live? end` | [`auto.rb:77`](../../../../lib/plastic/workflows/code/auto.rb#L77) |
+| name the code worktree | read |  | [`auto.rb:82`](../../../../lib/plastic/workflows/code/auto.rb#L82) |
 
 | Outcome | When | Then | Code |
 | --- | --- | --- | --- |
-| `:done` | always | finishes, exit 0; next: plastic intent brief %{intent_id} | [`start_auto.rb:92`](../../../../lib/plastic/workflows/start_auto.rb#L92) |
+| `:done` | always | finishes, exit 0; next: plastic intent brief %{intent_id} | [`auto.rb:93`](../../../../lib/plastic/workflows/code/auto.rb#L93) |
 
 It sets `problem`, `closed_problem`, `spec_problem`, `intent`.
 
@@ -79,14 +79,14 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| no roadmap %{id} | 1 | prints no next: line | [`pick_delivery.rb:25`](../../../../lib/plastic/workflows/pick_delivery.rb#L25) |
-| item %{ready_id} is ready | 0 | plastic roadmap open %{id} %{ready_id} | [`pick_delivery.rb:56`](../../../../lib/plastic/workflows/pick_delivery.rb#L56) |
-| every item of %{id} is done or dropped | 0 | plastic roadmap show %{id} | [`pick_delivery.rb:58`](../../../../lib/plastic/workflows/pick_delivery.rb#L58) |
-| no item of %{id} is free to deliver yet | 0 | plastic roadmap show %{id} | [`pick_delivery.rb:60`](../../../../lib/plastic/workflows/pick_delivery.rb#L60) |
-| no intent %{intent_id} in this store | 1 | prints no next: line | [`start_auto.rb:60`](../../../../lib/plastic/workflows/start_auto.rb#L60) |
-| plastic auto names no session | 1 | prints no next: line | [`start_auto.rb:61`](../../../../lib/plastic/workflows/start_auto.rb#L61) |
-| %{closed_problem} | 1 | plastic next | [`start_auto.rb:62`](../../../../lib/plastic/workflows/start_auto.rb#L62) |
-| %{spec_problem} | 1 | plastic intent spec %{intent_id} | [`start_auto.rb:64`](../../../../lib/plastic/workflows/start_auto.rb#L64) |
-| %{problem} | 3 | prints no next: line | [`start_auto.rb:66`](../../../../lib/plastic/workflows/start_auto.rb#L66) |
-| intent %{intent_id} is active | 0 | plastic intent brief %{intent_id} | [`start_auto.rb:92`](../../../../lib/plastic/workflows/start_auto.rb#L92) |
+| no roadmap %{id} | 1 | prints no next: line | [`pick.rb:28`](../../../../lib/plastic/workflows/code/auto/pick.rb#L28) |
+| item %{ready_id} is ready | 0 | plastic roadmap open %{id} %{ready_id} | [`pick.rb:59`](../../../../lib/plastic/workflows/code/auto/pick.rb#L59) |
+| every item of %{id} is done or dropped | 0 | plastic roadmap show %{id} | [`pick.rb:61`](../../../../lib/plastic/workflows/code/auto/pick.rb#L61) |
+| no item of %{id} is free to deliver yet | 0 | plastic roadmap show %{id} | [`pick.rb:63`](../../../../lib/plastic/workflows/code/auto/pick.rb#L63) |
+| no intent %{intent_id} in this store | 1 | prints no next: line | [`auto.rb:61`](../../../../lib/plastic/workflows/code/auto.rb#L61) |
+| plastic auto names no session | 1 | prints no next: line | [`auto.rb:62`](../../../../lib/plastic/workflows/code/auto.rb#L62) |
+| %{closed_problem} | 1 | plastic next | [`auto.rb:63`](../../../../lib/plastic/workflows/code/auto.rb#L63) |
+| %{spec_problem} | 1 | plastic intent spec %{intent_id} | [`auto.rb:65`](../../../../lib/plastic/workflows/code/auto.rb#L65) |
+| %{problem} | 3 | prints no next: line | [`auto.rb:67`](../../../../lib/plastic/workflows/code/auto.rb#L67) |
+| intent %{intent_id} is active | 0 | plastic intent brief %{intent_id} | [`auto.rb:93`](../../../../lib/plastic/workflows/code/auto.rb#L93) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |

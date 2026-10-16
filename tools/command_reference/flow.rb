@@ -7,6 +7,10 @@ module CommandReference
 
     def short = Words.short(klass)
 
+    def path = Words.path(klass)
+
+    def anchor = Words.anchor(path)
+
     def location = "#{File.basename(file)}:#{line}"
 
     def closing = outcomes.find(&:ends?)

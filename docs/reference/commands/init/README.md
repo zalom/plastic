@@ -35,47 +35,47 @@ end
 
 | Workflow | Kind | Code |
 | --- | --- | --- |
-| [ChooseHarnesses](#chooseharnesses) | code | [`choose_harnesses.rb:11`](../../../../lib/plastic/workflows/choose_harnesses.rb#L11) |
-| [InstallHarnesses](#installharnesses) | code | [`install_harnesses.rb:12`](../../../../lib/plastic/workflows/install_harnesses.rb#L12) |
+| [Code::Init::Choose](#codeinitchoose) | code | [`choose.rb:14`](../../../../lib/plastic/workflows/code/init/choose.rb#L14) |
+| [Code::Init](#codeinit) | code | [`init.rb:13`](../../../../lib/plastic/workflows/code/init.rb#L13) |
 
-### ChooseHarnesses
+### Code::Init::Choose
 
-The code workflow `:code_choose_harnesses`, in [`choose_harnesses.rb:11`](../../../../lib/plastic/workflows/choose_harnesses.rb#L11).
+The code workflow `:code_choose_harnesses`, in [`choose.rb:14`](../../../../lib/plastic/workflows/code/init/choose.rb#L14).
 
 Reads the person's answer against the installed harnesses, every one of them picked at the start.
 
-![How ChooseHarnesses runs: its steps, where it stops, and its outcomes](code_choose_harnesses.svg)
+![How Code::Init::Choose runs: its steps, where it stops, and its outcomes](code_choose_harnesses.svg)
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
-| find the installed harnesses and read the person's answer | read |  | [`choose_harnesses.rb:16`](../../../../lib/plastic/workflows/choose_harnesses.rb#L16) |
+| find the installed harnesses and read the person's answer | read |  | [`choose.rb:19`](../../../../lib/plastic/workflows/code/init/choose.rb#L19) |
 
 | Outcome | When | Then | Code |
 | --- | --- | --- | --- |
-| `:none` | when `context.found.empty?` | finishes, exit 0; next: plastic init | [`choose_harnesses.rb:25`](../../../../lib/plastic/workflows/choose_harnesses.rb#L25) |
-| `:left` | when `context.picked.empty?` | finishes, exit 0; next: plastic init | [`choose_harnesses.rb:27`](../../../../lib/plastic/workflows/choose_harnesses.rb#L27) |
-| `:chosen` | otherwise | runs [InstallHarnesses](#installharnesses) | [`choose_harnesses.rb:29`](../../../../lib/plastic/workflows/choose_harnesses.rb#L29) |
+| `:none` | when `context.found.empty?` | finishes, exit 0; next: plastic init | [`choose.rb:28`](../../../../lib/plastic/workflows/code/init/choose.rb#L28) |
+| `:left` | when `context.picked.empty?` | finishes, exit 0; next: plastic init | [`choose.rb:30`](../../../../lib/plastic/workflows/code/init/choose.rb#L30) |
+| `:chosen` | otherwise | runs [Code::Init](#codeinit) | [`choose.rb:32`](../../../../lib/plastic/workflows/code/init/choose.rb#L32) |
 
 It sets `found`, `picked`, `harnesses`.
 
-### InstallHarnesses
+### Code::Init
 
-The code workflow `:code_install_harnesses`, in [`install_harnesses.rb:12`](../../../../lib/plastic/workflows/install_harnesses.rb#L12).
+The code workflow `:code_install_harnesses`, in [`init.rb:13`](../../../../lib/plastic/workflows/code/init.rb#L13).
 
 Checks the machine, copies the core files on a home that has none, and installs Plastic into each picked harness.
 
-![How InstallHarnesses runs: its steps, where it stops, and its outcomes](code_install_harnesses.svg)
+![How Code::Init runs: its steps, where it stops, and its outcomes](code_install_harnesses.svg)
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
-| check this machine and the harness settings files | read |  | [`install_harnesses.rb:17`](../../../../lib/plastic/workflows/install_harnesses.rb#L17) |
-| this machine cannot run Plastic; see above | gate, stops with exit 1 | `context.usable` | [`install_harnesses.rb:24`](../../../../lib/plastic/workflows/install_harnesses.rb#L24) |
-| %{broken} is not valid JSON; nothing was changed. Fix the file and run this again | gate, stops with exit 1 | `context.broken.nil?` | [`install_harnesses.rb:25`](../../../../lib/plastic/workflows/install_harnesses.rb#L25) |
-| install Plastic into the picked harnesses | step | `!context.installed.nil?` | [`install_harnesses.rb:28`](../../../../lib/plastic/workflows/install_harnesses.rb#L28) |
+| check this machine and the harness settings files | read |  | [`init.rb:18`](../../../../lib/plastic/workflows/code/init.rb#L18) |
+| this machine cannot run Plastic; see above | gate, stops with exit 1 | `context.usable` | [`init.rb:25`](../../../../lib/plastic/workflows/code/init.rb#L25) |
+| %{broken} is not valid JSON; nothing was changed. Fix the file and run this again | gate, stops with exit 1 | `context.broken.nil?` | [`init.rb:26`](../../../../lib/plastic/workflows/code/init.rb#L26) |
+| install Plastic into the picked harnesses | step | `!context.installed.nil?` | [`init.rb:29`](../../../../lib/plastic/workflows/code/init.rb#L29) |
 
 | Outcome | When | Then | Code |
 | --- | --- | --- | --- |
-| `:done` | always | finishes, exit 0; next: plastic doctor --harness %{checked} | [`install_harnesses.rb:36`](../../../../lib/plastic/workflows/install_harnesses.rb#L36) |
+| `:done` | always | finishes, exit 0; next: plastic doctor --harness %{checked} | [`init.rb:37`](../../../../lib/plastic/workflows/code/init.rb#L37) |
 
 It sets `usable`, `broken`, `installed`, `checked`.
 
@@ -85,9 +85,9 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| no registered harness was found: no settings folder in the home and no program on the PATH; install one, then run this again | 0 | plastic init | [`choose_harnesses.rb:25`](../../../../lib/plastic/workflows/choose_harnesses.rb#L25) |
-| the person left with no change | 0 | plastic init | [`choose_harnesses.rb:27`](../../../../lib/plastic/workflows/choose_harnesses.rb#L27) |
-| this machine cannot run Plastic; see above | 1 | prints no next: line | [`install_harnesses.rb:24`](../../../../lib/plastic/workflows/install_harnesses.rb#L24) |
-| %{broken} is not valid JSON; nothing was changed. Fix the file and run this again | 1 | prints no next: line | [`install_harnesses.rb:25`](../../../../lib/plastic/workflows/install_harnesses.rb#L25) |
-| Plastic %{installed} is installed into %{harnesses} | 0 | plastic doctor --harness %{checked} | [`install_harnesses.rb:36`](../../../../lib/plastic/workflows/install_harnesses.rb#L36) |
+| no registered harness was found: no settings folder in the home and no program on the PATH; install one, then run this again | 0 | plastic init | [`choose.rb:28`](../../../../lib/plastic/workflows/code/init/choose.rb#L28) |
+| the person left with no change | 0 | plastic init | [`choose.rb:30`](../../../../lib/plastic/workflows/code/init/choose.rb#L30) |
+| this machine cannot run Plastic; see above | 1 | prints no next: line | [`init.rb:25`](../../../../lib/plastic/workflows/code/init.rb#L25) |
+| %{broken} is not valid JSON; nothing was changed. Fix the file and run this again | 1 | prints no next: line | [`init.rb:26`](../../../../lib/plastic/workflows/code/init.rb#L26) |
+| Plastic %{installed} is installed into %{harnesses} | 0 | plastic doctor --harness %{checked} | [`init.rb:37`](../../../../lib/plastic/workflows/code/init.rb#L37) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |

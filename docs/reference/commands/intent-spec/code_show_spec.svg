@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 602" width="760" height="602" role="img" xml:space="preserve">
-<title>How ShowSpec runs in plastic intent spec</title>
+<title>How Spec runs in plastic intent spec</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
 .lane-code { fill: #d5e8e3; stroke: #0d6b61; stroke-width: 1.5; }
@@ -68,17 +68,17 @@
 .big { font: 700 36px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
 }</style>
 <rect width="100%" height="100%" class="ground"/>
-<text x="16" y="22" class="tb" text-anchor="start">ShowSpec</text>
-<text x="436" y="22" class="tm tag-muted" text-anchor="end">show_spec.rb:12</text>
+<text x="16" y="22" class="tb" text-anchor="start">Spec</text>
+<text x="436" y="22" class="tm tag-muted" text-anchor="end">spec.rb:14</text>
 <rect x="16" y="34" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="49" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="49" class="tm tag-muted" text-anchor="end">show_spec.rb:21</text>
+<text x="426" y="49" class="tm tag-muted" text-anchor="end">spec.rb:23</text>
 <text x="26" y="66" class="t" text-anchor="start">find the intent</text>
 <path d="M 226 79 L 226 89" class="wire"/>
 <path d="M 221 81 L 226 89 L 231 81 Z" class="head"/>
 <rect x="16" y="89" width="420" height="56" rx="6" class="card"/>
 <text x="26" y="104" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="104" class="tm tag-muted" text-anchor="end">show_spec.rb:25</text>
+<text x="426" y="104" class="tm tag-muted" text-anchor="end">spec.rb:27</text>
 <text x="26" y="121" class="tm" text-anchor="start">passes when !context.intent.nil?</text>
 <path d="M 436 107 L 464 107" class="wire-failure"/>
 <path d="M 456 102 L 464 107 L 456 112 Z" class="head"/>
@@ -90,13 +90,13 @@
 <path d="M 221 147 L 226 155 L 231 147 Z" class="head"/>
 <rect x="16" y="155" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="170" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="170" class="tm tag-muted" text-anchor="end">show_spec.rb:27</text>
+<text x="426" y="170" class="tm tag-muted" text-anchor="end">spec.rb:29</text>
 <text x="26" y="187" class="t" text-anchor="start">print the grilling method</text>
 <path d="M 226 200 L 226 210" class="wire"/>
 <path d="M 221 202 L 226 210 L 231 202 Z" class="head"/>
 <rect x="16" y="210" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="225" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="225" class="tm tag-muted" text-anchor="end">show_spec.rb:32</text>
+<text x="426" y="225" class="tm tag-muted" text-anchor="end">spec.rb:34</text>
 <text x="26" y="242" class="t" text-anchor="start">read the open decisions</text>
 <path d="M 226 255 L 226 265" class="wire"/>
 <path d="M 221 257 L 226 265 L 231 257 Z" class="head"/>

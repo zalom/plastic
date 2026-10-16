@@ -76,6 +76,6 @@
 <rect x="16" y="34" width="140" height="40" rx="6" class="lane-code"/>
 <text x="26" y="58" class="tm" text-anchor="start">plastic architecture refresh</text>
 <rect x="176" y="34" width="140" height="28" rx="6" class="lane-agent"/>
-<text x="184" y="52" class="tm" text-anchor="start">RefreshArchitecture</text>
+<text x="184" y="52" class="tm" text-anchor="start">Refresh</text>
 <text x="556" y="58" class="tm tag-muted" text-anchor="start">no database found in the code</text>
 </svg>

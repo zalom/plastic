@@ -26,28 +26,28 @@ The command is `Edge::Add`, in [`add.rb:10`](../../../../lib/plastic/commands/ed
 
 | Workflow | Kind | Code |
 | --- | --- | --- |
-| [AddEdge](#addedge) | code | [`add_edge.rb:9`](../../../../lib/plastic/workflows/add_edge.rb#L9) |
+| [Code::Edge::Add](#codeedgeadd) | code | [`add.rb:11`](../../../../lib/plastic/workflows/code/edge/add.rb#L11) |
 
-### AddEdge
+### Code::Edge::Add
 
-The code workflow `:code_add_edge`, in [`add_edge.rb:9`](../../../../lib/plastic/workflows/add_edge.rb#L9).
+The code workflow `:code_add_edge`, in [`add.rb:11`](../../../../lib/plastic/workflows/code/edge/add.rb#L11).
 
 Writes one guarded edge: fails on a self edge, a missing or removed node, or a loop back to its own start.
 
-![How AddEdge runs: its steps, where it stops, and its outcomes](code_add_edge.svg)
+![How Code::Edge::Add runs: its steps, where it stops, and its outcomes](code_add_edge.svg)
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
-| find the intent | read |  | [`add_edge.rb:14`](../../../../lib/plastic/workflows/add_edge.rb#L14) |
-| no intent %{intent_id} in this store | gate, stops with exit 1 | `!context.intent.nil?` | [`add_edge.rb:18`](../../../../lib/plastic/workflows/add_edge.rb#L18) |
-| forget a refusal of an earlier call | read |  | [`add_edge.rb:20`](../../../../lib/plastic/workflows/add_edge.rb#L20) |
-| add the edge | step | `!context.added.nil?` | [`add_edge.rb:22`](../../../../lib/plastic/workflows/add_edge.rb#L22) |
-| %{problem} | gate, stops with exit 1 | `context.problem.nil?` | [`add_edge.rb:28`](../../../../lib/plastic/workflows/add_edge.rb#L28) |
-| say what was added | read |  | [`add_edge.rb:30`](../../../../lib/plastic/workflows/add_edge.rb#L30) |
+| find the intent | read |  | [`add.rb:16`](../../../../lib/plastic/workflows/code/edge/add.rb#L16) |
+| no intent %{intent_id} in this store | gate, stops with exit 1 | `!context.intent.nil?` | [`add.rb:20`](../../../../lib/plastic/workflows/code/edge/add.rb#L20) |
+| forget a refusal of an earlier call | read |  | [`add.rb:22`](../../../../lib/plastic/workflows/code/edge/add.rb#L22) |
+| add the edge | step | `!context.added.nil?` | [`add.rb:24`](../../../../lib/plastic/workflows/code/edge/add.rb#L24) |
+| %{problem} | gate, stops with exit 1 | `context.problem.nil?` | [`add.rb:30`](../../../../lib/plastic/workflows/code/edge/add.rb#L30) |
+| say what was added | read |  | [`add.rb:32`](../../../../lib/plastic/workflows/code/edge/add.rb#L32) |
 
 | Outcome | When | Then | Code |
 | --- | --- | --- | --- |
-| `:done` | always | finishes, exit 0; next: plastic graph show %{intent_id} | [`add_edge.rb:34`](../../../../lib/plastic/workflows/add_edge.rb#L34) |
+| `:done` | always | finishes, exit 0; next: plastic graph show %{intent_id} | [`add.rb:36`](../../../../lib/plastic/workflows/code/edge/add.rb#L36) |
 
 It sets `intent`, `problem`, `added`.
 
@@ -57,7 +57,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| no intent %{intent_id} in this store | 1 | prints no next: line | [`add_edge.rb:18`](../../../../lib/plastic/workflows/add_edge.rb#L18) |
-| %{problem} | 1 | prints no next: line | [`add_edge.rb:28`](../../../../lib/plastic/workflows/add_edge.rb#L28) |
-| edge %{from} to %{to} is written | 0 | plastic graph show %{intent_id} | [`add_edge.rb:34`](../../../../lib/plastic/workflows/add_edge.rb#L34) |
+| no intent %{intent_id} in this store | 1 | prints no next: line | [`add.rb:20`](../../../../lib/plastic/workflows/code/edge/add.rb#L20) |
+| %{problem} | 1 | prints no next: line | [`add.rb:30`](../../../../lib/plastic/workflows/code/edge/add.rb#L30) |
+| edge %{from} to %{to} is written | 0 | plastic graph show %{intent_id} | [`add.rb:36`](../../../../lib/plastic/workflows/code/edge/add.rb#L36) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |

@@ -50,42 +50,42 @@ end
 
 | Workflow | Kind | Code |
 | --- | --- | --- |
-| [PreviewBackupPurge](#previewbackuppurge) | code | [`preview_backup_purge.rb:9`](../../../../lib/plastic/workflows/preview_backup_purge.rb#L9) |
-| [BackupPurge](#backuppurge) | code | [`backup_purge.rb:10`](../../../../lib/plastic/workflows/backup_purge.rb#L10) |
+| [Code::Backup::Purge::Preview](#codebackuppurgepreview) | code | [`preview.rb:12`](../../../../lib/plastic/workflows/code/backup/purge/preview.rb#L12) |
+| [Code::Backup::Purge](#codebackuppurge) | code | [`purge.rb:13`](../../../../lib/plastic/workflows/code/backup/purge.rb#L13) |
 
-### PreviewBackupPurge
+### Code::Backup::Purge::Preview
 
-The code workflow `:code_preview_backup_purge`, in [`preview_backup_purge.rb:9`](../../../../lib/plastic/workflows/preview_backup_purge.rb#L9).
+The code workflow `:code_preview_backup_purge`, in [`preview.rb:12`](../../../../lib/plastic/workflows/code/backup/purge/preview.rb#L12).
 
 Lists the backups a purge would delete, and deletes nothing.
 
-![How PreviewBackupPurge runs: its steps, where it stops, and its outcomes](code_preview_backup_purge.svg)
+![How Code::Backup::Purge::Preview runs: its steps, where it stops, and its outcomes](code_preview_backup_purge.svg)
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
-| preview the purge | read |  | [`preview_backup_purge.rb:12`](../../../../lib/plastic/workflows/preview_backup_purge.rb#L12) |
+| preview the purge | read |  | [`preview.rb:15`](../../../../lib/plastic/workflows/code/backup/purge/preview.rb#L15) |
 
 | Outcome | When | Then | Code |
 | --- | --- | --- | --- |
-| `:done` | when `context.dry_run` | finishes, exit 0; next: %{original_command} | [`preview_backup_purge.rb:19`](../../../../lib/plastic/workflows/preview_backup_purge.rb#L19) |
-| `:continue` | otherwise | runs [BackupPurge](#backuppurge) | [`preview_backup_purge.rb:21`](../../../../lib/plastic/workflows/preview_backup_purge.rb#L21) |
+| `:done` | when `context.dry_run` | finishes, exit 0; next: %{original_command} | [`preview.rb:22`](../../../../lib/plastic/workflows/code/backup/purge/preview.rb#L22) |
+| `:continue` | otherwise | runs [Code::Backup::Purge](#codebackuppurge) | [`preview.rb:24`](../../../../lib/plastic/workflows/code/backup/purge/preview.rb#L24) |
 
-### BackupPurge
+### Code::Backup::Purge
 
-The code workflow `:code_backup_purge`, in [`backup_purge.rb:10`](../../../../lib/plastic/workflows/backup_purge.rb#L10).
+The code workflow `:code_backup_purge`, in [`purge.rb:13`](../../../../lib/plastic/workflows/code/backup/purge.rb#L13).
 
 Deletes the backup folders of one store with their rows: all of them, or those strictly before a time, or those that failed. A row with no folder goes with them.
 
-![How BackupPurge runs: its steps, where it stops, and its outcomes](code_backup_purge.svg)
+![How Code::Backup::Purge runs: its steps, where it stops, and its outcomes](code_backup_purge.svg)
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
-| delete the backups | step | `!context.purged.nil?` | [`backup_purge.rb:25`](../../../../lib/plastic/workflows/backup_purge.rb#L25) |
-| say what was deleted | read |  | [`backup_purge.rb:32`](../../../../lib/plastic/workflows/backup_purge.rb#L32) |
+| delete the backups | step | `!context.purged.nil?` | [`purge.rb:28`](../../../../lib/plastic/workflows/code/backup/purge.rb#L28) |
+| say what was deleted | read |  | [`purge.rb:35`](../../../../lib/plastic/workflows/code/backup/purge.rb#L35) |
 
 | Outcome | When | Then | Code |
 | --- | --- | --- | --- |
-| `:done` | always | finishes, exit 0; next: plastic backup list --store %{store} | [`backup_purge.rb:37`](../../../../lib/plastic/workflows/backup_purge.rb#L37) |
+| `:done` | always | finishes, exit 0; next: plastic backup list --store %{store} | [`purge.rb:40`](../../../../lib/plastic/workflows/code/backup/purge.rb#L40) |
 
 It sets `purged`.
 
@@ -95,8 +95,8 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| the preview deleted nothing | 0 | %{original_command} | [`preview_backup_purge.rb:19`](../../../../lib/plastic/workflows/preview_backup_purge.rb#L19) |
-| the backups named above are gone | 0 | plastic backup list --store %{store} | [`backup_purge.rb:37`](../../../../lib/plastic/workflows/backup_purge.rb#L37) |
+| the preview deleted nothing | 0 | %{original_command} | [`preview.rb:22`](../../../../lib/plastic/workflows/code/backup/purge/preview.rb#L22) |
+| the backups named above are gone | 0 | plastic backup list --store %{store} | [`purge.rb:40`](../../../../lib/plastic/workflows/code/backup/purge.rb#L40) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
 | Usage error: name the store with --store; --project does not apply | 2 | prints no next: line | [`backup_store.rb:27`](../../../../lib/plastic/commands/backup_store.rb#L27) |
 | Usage error: no registered project named %{slug}; the projects are %{projects} | 2 | prints no next: line | [`backup_store.rb:35`](../../../../lib/plastic/commands/backup_store.rb#L35) |
