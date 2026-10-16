@@ -37,7 +37,7 @@ fi
 # The three redirects are load-bearing. Without them this subshell inherits
 # the caller's stdout, stderr, and stdin. A caller that reads those pipes to EOF then
 # blocks for as long as the curl call takes, not for as long as this script takes:
-# scripts/codex-hook drives this launcher through Open3.capture3 under a 5 s timeout, and
+# a caller that drives this launcher through Open3.capture3 under a short timeout, and
 # a slow network made that timeout fire, close the pipes, and print Open3 reader-thread
 # backtraces into a hook's output channel. The body writes only to $CACHE_FILE, so
 # nothing is lost by sending its descriptors to /dev/null; what changes is that the

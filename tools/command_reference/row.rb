@@ -21,7 +21,7 @@ module CommandReference
                         ""
                       end
 
-    def saying = ["The agent step \"#{name}\" prints:", "", "> #{say.gsub("\n", "\n> ")}", ""]
+    def saying = ["The agent step \"#{Words.plain(name)}\" prints:", "", "> #{Words.placeholders(say).gsub("\n", "\n> ")}", ""]
 
     def check_cell = Array(check).map { |text| "`#{Words.cell(text)}`" }.join
 

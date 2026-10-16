@@ -69,7 +69,7 @@
 }</style>
 <rect width="100%" height="100%" class="ground"/>
 <rect x="16" y="16" width="328" height="56" rx="6" class="card"/>
-<text x="28" y="36" class="tag tag-muted" text-anchor="start">ONE CALL, NO CHAIN</text>
+<text x="28" y="36" class="tag tag-muted" text-anchor="start">ONE CALL, NO WORKFLOW</text>
 <text x="28" y="56" class="tb" text-anchor="start">Resume</text>
 <text x="332" y="56" class="tm" text-anchor="end">graph resume</text>
 </svg>

@@ -12,13 +12,15 @@ The command is `Intent::Lock::Status`, in [`status.rb:10`](../../../../lib/plast
 | --- | --- | --- |
 | `ID` | the intent | |
 
-## What it touches
+## Components
 
-![What plastic intent lock status touches](component.svg)
+![The components on the path of plastic intent lock status](component.svg)
 
-## How the call flows
+The figure shows the command, the workflows it runs, the classes behind them, and the databases and files they reach.
 
-![The chain of workflows that plastic intent lock status runs](chain.svg)
+## The events of one call
+
+![The workflows of plastic intent lock status](workflows.svg)
 
 | Workflow | Kind | Code |
 | --- | --- | --- |
@@ -33,20 +35,17 @@ Prints an intent's lock row: the session, the mode, when it was taken and renewe
 
 ![How Code::Intent::Lock::Status runs: its steps, where it stops, and its outcomes](code_show_lock.svg)
 
-| Step | Kind | Check | Code |
-| --- | --- | --- | --- |
-| find the intent | read |  | [`status.rb:22`](../../../../lib/plastic/workflows/code/intent/lock/status.rb#L22) |
-| no intent %{intent_id} in this store | gate, stops with exit 1 | `!context.intent.nil?` | [`status.rb:27`](../../../../lib/plastic/workflows/code/intent/lock/status.rb#L27) |
-| print the lock and the worktree | read |  | [`status.rb:29`](../../../../lib/plastic/workflows/code/intent/lock/status.rb#L29) |
-| read the go-ahead | read |  | [`go_ahead.rb:16`](../../../../lib/plastic/workflows/go_ahead.rb#L16) |
+Its rows run in this order:
 
-| Outcome | When | Then | Code |
-| --- | --- | --- | --- |
-| `:closed` | when `%w[done abandoned].include?(context.intent.status)` | finishes, exit 0; prints no next: line | [`status.rb:51`](../../../../lib/plastic/workflows/code/intent/lock/status.rb#L51) |
-| `:agent_needed` | when `context.state != "live" && !context.handoff_text.nil?` | runs [Agent::Shared::AdvanceDelivery](#agentsharedadvancedelivery) | [`status.rb:53`](../../../../lib/plastic/workflows/code/intent/lock/status.rb#L53) |
-| `:none` | when `context.state == "none"` | finishes, exit 0; next: plastic auto %{intent_id} | [`status.rb:54`](../../../../lib/plastic/workflows/code/intent/lock/status.rb#L54) |
-| `:expired` | when `context.state == "expired"` | finishes, exit 0; next: plastic auto %{intent_id} | [`status.rb:56`](../../../../lib/plastic/workflows/code/intent/lock/status.rb#L56) |
-| `:live` | otherwise | finishes, exit 0; next: plastic intent brief %{intent_id} | [`status.rb:58`](../../../../lib/plastic/workflows/code/intent/lock/status.rb#L58) |
+1. Read: find the intent. [`status.rb:22`](../../../../lib/plastic/workflows/code/intent/lock/status.rb#L22)
+2. Gate: passes when `!context.intent.nil?`; otherwise the call stops with exit 1 and prints no intent INTENT_ID in this store. [`status.rb:27`](../../../../lib/plastic/workflows/code/intent/lock/status.rb#L27)
+3. Read: print the lock and the worktree. [`status.rb:29`](../../../../lib/plastic/workflows/code/intent/lock/status.rb#L29)
+4. Read: read the go-ahead. [`go_ahead.rb:16`](../../../../lib/plastic/workflows/go_ahead.rb#L16)
+5. Outcome `:closed`, when `%w[done abandoned].include?(context.intent.status)`: finishes with exit 0; prints no next: line. [`status.rb:51`](../../../../lib/plastic/workflows/code/intent/lock/status.rb#L51)
+6. Outcome `:agent_needed`, when `context.state != "live" && !context.handoff_text.nil?`: starts the workflow [Agent::Shared::AdvanceDelivery](#agentsharedadvancedelivery). [`status.rb:53`](../../../../lib/plastic/workflows/code/intent/lock/status.rb#L53)
+7. Outcome `:none`, when `context.state == "none"`: finishes with exit 0; next: plastic auto INTENT_ID. [`status.rb:54`](../../../../lib/plastic/workflows/code/intent/lock/status.rb#L54)
+8. Outcome `:expired`, when `context.state == "expired"`: finishes with exit 0; next: plastic auto INTENT_ID. [`status.rb:56`](../../../../lib/plastic/workflows/code/intent/lock/status.rb#L56)
+9. Outcome `:live`, otherwise: finishes with exit 0; next: plastic intent brief INTENT_ID. [`status.rb:58`](../../../../lib/plastic/workflows/code/intent/lock/status.rb#L58)
 
 It sets `intent`, `state`, `status`, `why`, `handoff_text`.
 
@@ -58,30 +57,58 @@ The harness performs judgment and records the result through commands.
 
 ![How Agent::Shared::AdvanceDelivery runs: its steps, where it stops, and its outcomes](agent_advance_delivery.svg)
 
-| Step | Kind | Check | Code |
-| --- | --- | --- | --- |
-| advance the delivery | agent step | `context.handoff_text.nil?` | [`advance_delivery.rb:11`](../../../../lib/plastic/workflows/agent/shared/advance_delivery.rb#L11) |
+Its rows run in this order:
 
-| Outcome | When | Then | Code |
-| --- | --- | --- | --- |
-| `:handoff` | when a step is left | hands off, exit 0; prints no next: line | [`advance_delivery.rb:12`](../../../../lib/plastic/workflows/agent/shared/advance_delivery.rb#L12) |
-| `:done` | when every done check holds | finishes, exit 0; prints no next: line | [`advance_delivery.rb:13`](../../../../lib/plastic/workflows/agent/shared/advance_delivery.rb#L13) |
+1. Agent step: advance the delivery. Done when `context.handoff_text.nil?`, while it fails, the call prints its `say:` text. [`advance_delivery.rb:11`](../../../../lib/plastic/workflows/agent/shared/advance_delivery.rb#L11)
+2. Outcome `:handoff`, when a step is left: hands off with exit 0; prints no next: line. [`advance_delivery.rb:12`](../../../../lib/plastic/workflows/agent/shared/advance_delivery.rb#L12)
+3. Outcome `:done`, when every done check holds: finishes with exit 0; prints no next: line. [`advance_delivery.rb:13`](../../../../lib/plastic/workflows/agent/shared/advance_delivery.rb#L13)
 
 The agent step "advance the delivery" prints:
 
-> %{handoff_text}
+> HANDOFF_TEXT
 
-## Outcomes
+While a step is left, the call hands off with exit 0 from `:handoff`: it prints the `say:` text of each failing step and prints no next: line. The command writes nothing, so the call keeps no routine run row. The next call starts fresh and checks the steps again.
+
+In the words of workflow engines, the rows are these four parts:
+
+- **Trigger**: the call starts the workflow `Code::Intent::Lock::Status`; each later workflow starts from an outcome of the one before it.
+- **Activities**: 3 reads and 1 agent step.
+- **Transitions**: 1 gate stops the call when its check fails; a step runs only while its done check fails; Status goes to AdvanceDelivery on `:agent_needed`.
+- **Outcomes**: `:closed` of Status, `:none` of Status, `:expired` of Status, `:live` of Status, `:handoff` of AdvanceDelivery, `:done` of AdvanceDelivery end the call.
+
+## What one call reads, writes and prints
+
+![What one call of plastic intent lock status reads, writes and prints](touches.svg)
+
+| Place | Database or file | Tables | Reads or writes | Code |
+| --- | --- | --- | --- | --- |
+| the store folder | knowledge_graph.db | `documents` | reads | found in the code, not declared |
+| the home folder | local.db | `locks`, `sessions` | reads | found in the code, not declared |
+| the store folder | work_graph.db | `approvals`, `edges`, `intents`, `nodes` | reads | [`status.rb:12`](../../../../lib/plastic/commands/intent/lock/status.rb#L12) |
+
+A second call runs the same rows again. A step runs again only when its done check fails.
+
+| Step | Done when | The second call | Code |
+| --- | --- | --- | --- |
+| advance the delivery | `context.handoff_text.nil?` | skips it | [`advance_delivery.rb:11`](../../../../lib/plastic/workflows/agent/shared/advance_delivery.rb#L11) |
+
+## How a call ends
 
 Every call can also end in [the ways any call can end](../../dsl/README.md#how-any-call-can-end).
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| no intent %{intent_id} in this store | 1 | prints no next: line | [`status.rb:27`](../../../../lib/plastic/workflows/code/intent/lock/status.rb#L27) |
-| intent %{intent_id} is %{status} | 0 | prints no next: line | [`status.rb:51`](../../../../lib/plastic/workflows/code/intent/lock/status.rb#L51) |
-| intent %{intent_id} holds no lock | 0 | plastic auto %{intent_id} | [`status.rb:54`](../../../../lib/plastic/workflows/code/intent/lock/status.rb#L54) |
-| the lock of intent %{intent_id} expired, and plastic auto takes it over | 0 | plastic auto %{intent_id} | [`status.rb:56`](../../../../lib/plastic/workflows/code/intent/lock/status.rb#L56) |
-| a live session holds intent %{intent_id} | 0 | plastic intent brief %{intent_id} | [`status.rb:58`](../../../../lib/plastic/workflows/code/intent/lock/status.rb#L58) |
-| %{why} | 0 | prints no next: line | [`advance_delivery.rb:12`](../../../../lib/plastic/workflows/agent/shared/advance_delivery.rb#L12) |
+| no intent INTENT_ID in this store | 1 | prints no next: line | [`status.rb:27`](../../../../lib/plastic/workflows/code/intent/lock/status.rb#L27) |
+| intent INTENT_ID is STATUS | 0 | prints no next: line | [`status.rb:51`](../../../../lib/plastic/workflows/code/intent/lock/status.rb#L51) |
+| intent INTENT_ID holds no lock | 0 | plastic auto INTENT_ID | [`status.rb:54`](../../../../lib/plastic/workflows/code/intent/lock/status.rb#L54) |
+| the lock of intent INTENT_ID expired, and plastic auto takes it over | 0 | plastic auto INTENT_ID | [`status.rb:56`](../../../../lib/plastic/workflows/code/intent/lock/status.rb#L56) |
+| a live session holds intent INTENT_ID | 0 | plastic intent brief INTENT_ID | [`status.rb:58`](../../../../lib/plastic/workflows/code/intent/lock/status.rb#L58) |
+| WHY | 0 | prints no next: line | [`advance_delivery.rb:12`](../../../../lib/plastic/workflows/agent/shared/advance_delivery.rb#L12) |
 | the delivery instruction has been handled | 0 | prints no next: line | [`advance_delivery.rb:13`](../../../../lib/plastic/workflows/agent/shared/advance_delivery.rb#L13) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
+
+## What the page leaves out
+
+Every call shares a few things that this page does not repeat; [the command DSL](../../dsl/README.md#what-every-call-shares) names them.
+
+- No gate of this command refuses, so exit 3 never happens.

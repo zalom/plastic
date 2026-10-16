@@ -20,10 +20,8 @@ class CommandReferenceMarkdownTouchingTest < Minitest::Test
   def test_a_second_call_table_lists_each_step_and_is_absent_without_one
     body = touching("intent new")
 
-    assert_includes body, "| Step | Done when | The second call | Code |"
-    assert_includes body, "| write the intent |"
-    refute_includes touching("status"), "The second call"
-    refute_includes touching("graph show"), "The second call"
+    ["| Step | Done when | The second call | Code |", "| write the intent |"].each { |part| assert_includes body, part }
+    ["status", "graph show"].each { |words| refute_includes touching(words), "The second call" }
   end
 
   def test_the_second_call_table_says_an_always_run_step_runs_again

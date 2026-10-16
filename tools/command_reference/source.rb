@@ -3,6 +3,8 @@
 module CommandReference
   # Text taken from the kernel's own files: comments and lambda bodies.
   class Source
+    attr_reader :root
+
     def initialize(root)
       @root = root
       @files = {}

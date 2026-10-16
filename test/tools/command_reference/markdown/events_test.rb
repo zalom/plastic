@@ -109,9 +109,7 @@ class CommandReferenceMarkdownEventsTest < Minitest::Test
   def test_a_hook_tells_the_steps_of_its_respond_and_omits_the_four_parts
     body = events("hook stop")
 
-    assert_includes body, "Its steps run in this order:"
-    assert_includes body, "`return no_session unless session_id`"
-    assert_includes body, "`stop(event)`"
+    ["Its steps run in this order:", "`return no_session unless session_id`", "`stop(event)`"].each { |part| assert_includes body, part }
     refute_includes body, "**Trigger**"
   end
 
@@ -134,6 +132,7 @@ class CommandReferenceMarkdownEventsTest < Minitest::Test
         parts.each { |part| assert_includes body, part, words }
       end
     end
+
     assert_match(/\*\*Transitions\*\*.*`:intent`/, events("auto"))
   end
 

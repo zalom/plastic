@@ -10,7 +10,7 @@ module CommandReference
         [*opening("Declare an agent workflow", "agent-workflow.svg", "The #{name} workflow beside what a call prints for the agent"),
           "`#{name}`, the workflow `:#{flow.key}`, from #{links.code(dsl.flow_file(flow), dsl.flow_line(flow))}.", "",
           "| Word | Shape | What it does | Defined in |", "| --- | --- | --- | --- |", *rows, "",
-          "An agent workflow always ends the chain. The agent reports its work through a plastic command, and the next call checks the steps again.", ""]
+          "An agent workflow always ends the call. The agent reports its work through a plastic command, and the next call checks the steps again.", ""]
       end
 
       private

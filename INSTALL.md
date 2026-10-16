@@ -128,9 +128,9 @@ plastic update
 To move to another channel, name it:
 
 ```bash
-plastic update --beta
-plastic update --alpha
-plastic update --stable
+plastic update --channel beta
+plastic update --channel alpha
+plastic update --channel stable
 ```
 
 An update keeps the release it replaces, so a rollback can return to it. It brings the agent

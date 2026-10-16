@@ -10,11 +10,15 @@ plastic hook start
 
 The command is `Hooks::Start`, in [`start.rb:17`](../../../../lib/plastic/hooks/start.rb#L17). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
-## What it touches
+## Components
 
-![What plastic hook start touches](component.svg)
+![The components on the path of plastic hook start](component.svg)
 
-## The command
+The figure shows the command, the workflows it runs, the classes behind them, and the databases and files they reach.
+
+## The events of one call
+
+![The call of plastic hook start](call.svg)
 
 The hook's `respond`, at [`start.rb:25`](../../../../lib/plastic/hooks/start.rb#L25):
 
@@ -25,14 +29,30 @@ def respond(event)
 end
 ```
 
-## How the call flows
+Its steps run in this order:
 
-![The call of plastic hook start](call.svg)
+1. `doctor = DoctorLine.new(scope, harness, session_id:, health: @health, err: environment.err)` [`start.rb:26`](../../../../lib/plastic/hooks/start.rb#L26)
+2. `[*recap(event), doctor.line(event[:source])].compact.join("\n")` [`start.rb:27`](../../../../lib/plastic/hooks/start.rb#L27)
 
-## Outcomes
+## What one call reads, writes and prints
+
+![What one call of plastic hook start reads, writes and prints](touches.svg)
+
+| Place | Database or file | Tables | Reads or writes | Code |
+| --- | --- | --- | --- | --- |
+| the home folder | local.db | `routine_runs`, `sessions` | reads and writes | found in the code, not declared |
+| the store folder | work_graph.db | `intents`, `savepoints` | reads | found in the code, not declared |
+
+## How a call ends
 
 Every call can also end in [the ways any call can end](../../dsl/README.md#how-any-call-can-end).
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
 | answers the event | 0 | prints no next: line | [`start.rb:25`](../../../../lib/plastic/hooks/start.rb#L25) |
+
+## What the page leaves out
+
+Every call shares a few things that this page does not repeat; [the command DSL](../../dsl/README.md#what-every-call-shares) names them.
+
+- No gate of this command refuses, so exit 3 never happens.

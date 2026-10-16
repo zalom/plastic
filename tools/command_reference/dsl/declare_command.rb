@@ -8,8 +8,8 @@ module CommandReference
         [/^class /, "THE COMMAND", :command],
         [/^\s*(intent_subject|node_subject|subject|argument|option)\b/, "INPUTS", :inputs],
         [/^\s*(reads|writes)\b/, "GRAPHS", :graphs],
-        [/^\s*def call\b/, "BEFORE THE CHAIN", :before],
-        [/^\s*workflow\b/, "THE CHAIN", :chain]
+        [/^\s*def call\b/, "BEFORE THE WORKFLOWS", :before],
+        [/^\s*workflow\b/, "THE WORKFLOWS", :workflows]
       ].freeze
 
       def initialize(page, rows)
@@ -34,7 +34,7 @@ module CommandReference
         Note.new(row, tag, send(key), "card", "tag tag-end") if row
       end
 
-      def command = ["plastic #{@page.words}", "a Routine: it runs a chain"]
+      def command = ["plastic #{@page.words}", "a Routine: it runs workflows"]
 
       def inputs = ["what it takes", *@page.arguments.map { |arg| "#{arg.label}  #{arg.text}" }, *@page.options.map(&:switch)]
 
@@ -42,7 +42,7 @@ module CommandReference
 
       def before = ["a check of its own", "a usage error exits 2"]
 
-      def chain = ["#{@page.flows.size} workflows", "starts at :#{@page.entry}"]
+      def workflows = ["#{@page.flows.size} workflows", "starts at :#{@page.entry}"]
     end
   end
 end

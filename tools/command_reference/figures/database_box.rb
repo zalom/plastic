@@ -25,7 +25,7 @@ module CommandReference
 
       def labels = @labels ||= @touches.tables_of(@file).map { |table| "#{table}  #{marks(table)}" } + declared
 
-      def declared = Touches::MODES.select { |mode| @touches.declared?(@file, mode) }.map { |mode| "declared  #{MARKS.fetch(mode)}" }
+      def declared = CommandReference::Touches::MODES.select { |mode| @touches.declared?(@file, mode) }.map { |mode| "declared  #{MARKS.fetch(mode)}" }
 
       def caption(frame)
         @drawing.text(frame.at(12, 18), @file, "tb")

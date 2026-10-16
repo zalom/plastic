@@ -112,7 +112,7 @@
 <text x="626" y="38" class="badge-t" text-anchor="middle">1</text>
 <text x="642" y="37" class="tag tag-end" text-anchor="start">THE COMMAND</text>
 <text x="622" y="53" class="tb" text-anchor="start">plastic intent end</text>
-<text x="622" y="68" class="tm" text-anchor="start">a Routine: it runs a chain</text>
+<text x="622" y="68" class="tm" text-anchor="start">a Routine: it runs workflows</text>
 <rect x="612" y="84" width="296" height="56" rx="6" class="card"/>
 <circle cx="626" cy="96" r="8" class="badge"/>
 <text x="626" y="100" class="badge-t" text-anchor="middle">2</text>
@@ -129,7 +129,7 @@
 <rect x="612" y="223" width="296" height="56" rx="6" class="card"/>
 <circle cx="626" cy="235" r="8" class="badge"/>
 <text x="626" y="239" class="badge-t" text-anchor="middle">4</text>
-<text x="642" y="238" class="tag tag-end" text-anchor="start">THE CHAIN</text>
+<text x="642" y="238" class="tag tag-end" text-anchor="start">THE WORKFLOWS</text>
 <text x="622" y="254" class="tb" text-anchor="start">5 workflows</text>
 <text x="622" y="269" class="tm" text-anchor="start">starts at :code_prepare_ending</text>
 </svg>

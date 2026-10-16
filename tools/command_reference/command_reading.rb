@@ -64,7 +64,9 @@ module CommandReference
 
     def touches(reach)
       found = @kit.scan.call(reach.scanned_files)
-      Touches.new(entries: found.entries, components: found.components, files: @kit.prints.files(@klass.prints), schema: @kit.schema, declared: { read: @klass.reads, write: @klass.writes })
+      printed = @kit.prints.located(@klass.prints)
+      Touches.new(entries: found.entries, components: found.components, printed: printed, schema: @kit.schema, declared: { read: @klass.reads, write: @klass.writes })
+        .declared_at(Declarations.new(@kit.source, @klass).to_h)
     end
 
     def end_files

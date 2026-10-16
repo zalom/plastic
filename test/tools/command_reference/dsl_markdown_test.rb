@@ -21,9 +21,7 @@ class CommandReferenceDslMarkdownTest < Minitest::Test
   end
 
   def test_the_dsl_page_wires_the_workflows_and_names_what_every_call_shares
-    assert_includes text, "## Wire the workflows"
-    assert_includes text, "(#wire-the-workflows)"
-    assert_includes text, "workflows.svg"
+    ["## Wire the workflows", "(#wire-the-workflows)", "workflows.svg"].each { |part| assert_includes text, part }
     refute_includes text, "Wire the chain"
 
     shared = text[/## What every call shares.*?(?=\n---|\z)/m]

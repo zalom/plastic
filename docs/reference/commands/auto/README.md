@@ -12,13 +12,15 @@ The command is `Auto`, in [`auto.rb:9`](../../../../lib/plastic/commands/auto.rb
 | --- | --- | --- |
 | `ID` | the intent id or the roadmap slug | |
 
-## What it touches
+## Components
 
-![What plastic auto touches](component.svg)
+![The components on the path of plastic auto](component.svg)
 
-## How the call flows
+The figure shows the command, the workflows it runs, the classes behind them, and the databases and files they reach.
 
-![The chain of workflows that plastic auto runs](chain.svg)
+## The events of one call
+
+![The workflows of plastic auto](workflows.svg)
 
 | Workflow | Kind | Code |
 | --- | --- | --- |
@@ -33,18 +35,15 @@ Turns the word `plastic auto` was given into the intent to deliver. A word shape
 
 ![How Code::Auto::Pick runs: its steps, where it stops, and its outcomes](code_pick_delivery.svg)
 
-| Step | Kind | Check | Code |
-| --- | --- | --- | --- |
-| forget what an earlier call picked | read |  | [`pick.rb:22`](../../../../lib/plastic/workflows/code/auto/pick.rb#L22) |
-| no roadmap %{id} | gate, stops with exit 1 | `intent_word?(context) \|\| !context.retrieval.roadmap(context.id).nil?` | [`pick.rb:28`](../../../../lib/plastic/workflows/code/auto/pick.rb#L28) |
-| pick the intent to deliver | read |  | [`pick.rb:31`](../../../../lib/plastic/workflows/code/auto/pick.rb#L31) |
+Its rows run in this order:
 
-| Outcome | When | Then | Code |
-| --- | --- | --- | --- |
-| `:intent` | when `!context.intent_id.nil?` | runs [Code::Auto](#codeauto) | [`pick.rb:58`](../../../../lib/plastic/workflows/code/auto/pick.rb#L58) |
-| `:ready` | when `!context.ready_id.nil?` | finishes, exit 0; next: plastic roadmap open %{id} %{ready_id} | [`pick.rb:59`](../../../../lib/plastic/workflows/code/auto/pick.rb#L59) |
-| `:delivered` | when `context.open.empty?` | finishes, exit 0; next: plastic roadmap show %{id} | [`pick.rb:61`](../../../../lib/plastic/workflows/code/auto/pick.rb#L61) |
-| `:waiting` | otherwise | finishes, exit 0; next: plastic roadmap show %{id} | [`pick.rb:63`](../../../../lib/plastic/workflows/code/auto/pick.rb#L63) |
+1. Read: forget what an earlier call picked. [`pick.rb:22`](../../../../lib/plastic/workflows/code/auto/pick.rb#L22)
+2. Gate: passes when `intent_word?(context) || !context.retrieval.roadmap(context.id).nil?`; otherwise the call stops with exit 1 and prints no roadmap ID. [`pick.rb:28`](../../../../lib/plastic/workflows/code/auto/pick.rb#L28)
+3. Read: pick the intent to deliver. [`pick.rb:31`](../../../../lib/plastic/workflows/code/auto/pick.rb#L31)
+4. Outcome `:intent`, when `!context.intent_id.nil?`: starts the workflow [Code::Auto](#codeauto). [`pick.rb:58`](../../../../lib/plastic/workflows/code/auto/pick.rb#L58)
+5. Outcome `:ready`, when `!context.ready_id.nil?`: finishes with exit 0; next: plastic roadmap open ID READY_ID. [`pick.rb:59`](../../../../lib/plastic/workflows/code/auto/pick.rb#L59)
+6. Outcome `:delivered`, when `context.open.empty?`: finishes with exit 0; next: plastic roadmap show ID. [`pick.rb:61`](../../../../lib/plastic/workflows/code/auto/pick.rb#L61)
+7. Outcome `:waiting`, otherwise: finishes with exit 0; next: plastic roadmap show ID. [`pick.rb:63`](../../../../lib/plastic/workflows/code/auto/pick.rb#L63)
 
 It sets `intent_id`, `ready_id`, `open`.
 
@@ -56,37 +55,68 @@ Arms delivery on an intent: refuses an open decision, no done criteria, no go-ah
 
 ![How Code::Auto runs: its steps, where it stops, and its outcomes](code_start_auto.svg)
 
-| Step | Kind | Check | Code |
-| --- | --- | --- | --- |
-| read the intent and its spec | read |  | [`auto.rb:19`](../../../../lib/plastic/workflows/code/auto.rb#L19) |
-| no intent %{intent_id} in this store | gate, stops with exit 1 | `!context.intent.nil?` | [`auto.rb:61`](../../../../lib/plastic/workflows/code/auto.rb#L61) |
-| plastic auto names no session | gate, stops with exit 1 | `!context.session.nil?` | [`auto.rb:62`](../../../../lib/plastic/workflows/code/auto.rb#L62) |
-| %{closed_problem} | gate, stops with exit 1 | `context.closed_problem.nil?` | [`auto.rb:63`](../../../../lib/plastic/workflows/code/auto.rb#L63) |
-| %{spec_problem} | gate, stops with exit 1 | `context.spec_problem.nil?` | [`auto.rb:65`](../../../../lib/plastic/workflows/code/auto.rb#L65) |
-| %{problem} | gate, stops with exit 3 | `context.problem.nil?` | [`auto.rb:67`](../../../../lib/plastic/workflows/code/auto.rb#L67) |
-| take the lock and go active | step | `def self.delivery_started?(context) retrieval = context.retrieval intent_id = context.intent_id lock = retrieval.lock(intent_id) retrieval.intent(intent_id).status == "active" && lock&.session_id == context.session && lock.mode == "auto" && retrieval.liveness(lock).live? end` | [`auto.rb:77`](../../../../lib/plastic/workflows/code/auto.rb#L77) |
-| name the code worktree | read |  | [`auto.rb:82`](../../../../lib/plastic/workflows/code/auto.rb#L82) |
+Its rows run in this order:
 
-| Outcome | When | Then | Code |
-| --- | --- | --- | --- |
-| `:done` | always | finishes, exit 0; next: plastic intent brief %{intent_id} | [`auto.rb:93`](../../../../lib/plastic/workflows/code/auto.rb#L93) |
+1. Read: read the intent and its spec. [`auto.rb:19`](../../../../lib/plastic/workflows/code/auto.rb#L19)
+2. Gate: passes when `!context.intent.nil?`; otherwise the call stops with exit 1 and prints no intent INTENT_ID in this store. [`auto.rb:61`](../../../../lib/plastic/workflows/code/auto.rb#L61)
+3. Gate: passes when `!context.session.nil?`; otherwise the call stops with exit 1 and prints plastic auto names no session. [`auto.rb:62`](../../../../lib/plastic/workflows/code/auto.rb#L62)
+4. Gate: passes when `context.closed_problem.nil?`; otherwise the call stops with exit 1 and prints CLOSED_PROBLEM. [`auto.rb:63`](../../../../lib/plastic/workflows/code/auto.rb#L63)
+5. Gate: passes when `context.spec_problem.nil?`; otherwise the call stops with exit 1 and prints SPEC_PROBLEM. [`auto.rb:65`](../../../../lib/plastic/workflows/code/auto.rb#L65)
+6. Gate: passes when `context.problem.nil?`; otherwise the call stops with exit 3 and prints PROBLEM. [`auto.rb:67`](../../../../lib/plastic/workflows/code/auto.rb#L67)
+7. Step: take the lock and go active. Done when `def self.delivery_started?(context) retrieval = context.retrieval intent_id = context.intent_id lock = retrieval.lock(intent_id) retrieval.intent(intent_id).status == "active" && lock&.session_id == context.session && lock.mode == "auto" && retrieval.liveness(lock).live? end`, so a second call skips it. [`auto.rb:77`](../../../../lib/plastic/workflows/code/auto.rb#L77)
+8. Read: name the code worktree. [`auto.rb:82`](../../../../lib/plastic/workflows/code/auto.rb#L82)
+9. Outcome `:done`, always: finishes with exit 0; next: plastic intent brief INTENT_ID. [`auto.rb:93`](../../../../lib/plastic/workflows/code/auto.rb#L93)
 
 It sets `problem`, `closed_problem`, `spec_problem`, `intent`.
 
-## Outcomes
+In the words of workflow engines, the rows are these four parts:
+
+- **Trigger**: the call starts the workflow `Code::Auto::Pick`; each later workflow starts from an outcome of the one before it.
+- **Activities**: 4 reads and 1 step.
+- **Transitions**: 6 gates stop the call when their checks fail; a step runs only while its done check fails; Pick goes to Auto on `:intent`.
+- **Outcomes**: `:ready` of Pick, `:delivered` of Pick, `:waiting` of Pick, `:done` of Auto end the call.
+
+## What one call reads, writes and prints
+
+![What one call of plastic auto reads, writes and prints](touches.svg)
+
+| Place | Database or file | Tables | Reads or writes | Code |
+| --- | --- | --- | --- | --- |
+| the store folder | knowledge_graph.db | `document_fts`, `document_heads`, `document_passages`, `document_revisions`, `documents` | reads and writes | [`auto.rb:12`](../../../../lib/plastic/commands/auto.rb#L12) |
+| the home folder | local.db | `locks`, `sessions` | reads and writes | found in the code, not declared |
+| the store folder | work_graph.db | `approvals`, `batches`, `intents`, `nodes`, `roadmap_edges`, `roadmap_items`, `roadmap_log`, `roadmaps`, `savepoints` | reads and writes | [`auto.rb:12`](../../../../lib/plastic/commands/auto.rb#L12) |
+| the store folder | store/index.json | | writes | [`prints.rb:14`](../../../../lib/plastic/graph/prints.rb#L14) |
+| the store folder | store/ID--SLUG/PATH | | writes | [`prints.rb:15`](../../../../lib/plastic/graph/prints.rb#L15) |
+| the store folder | store/ID--SLUG/savepoint.md | | writes | [`prints.rb:16`](../../../../lib/plastic/graph/prints.rb#L16) |
+| the store folder | store/ID--SLUG/graph.json | | writes | [`prints.rb:17`](../../../../lib/plastic/graph/prints.rb#L17) |
+| the store folder | store/ID--SLUG/context.json | | writes | [`prints.rb:18`](../../../../lib/plastic/graph/prints.rb#L18) |
+
+A second call runs the same rows again. A step runs again only when its done check fails.
+
+| Step | Done when | The second call | Code |
+| --- | --- | --- | --- |
+| take the lock and go active | `def self.delivery_started?(context) retrieval = context.retrieval intent_id = context.intent_id lock = retrieval.lock(intent_id) retrieval.intent(intent_id).status == "active" && lock&.session_id == context.session && lock.mode == "auto" && retrieval.liveness(lock).live? end` | skips it | [`auto.rb:77`](../../../../lib/plastic/workflows/code/auto.rb#L77) |
+
+## How a call ends
 
 Every call can also end in [the ways any call can end](../../dsl/README.md#how-any-call-can-end).
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| no roadmap %{id} | 1 | prints no next: line | [`pick.rb:28`](../../../../lib/plastic/workflows/code/auto/pick.rb#L28) |
-| item %{ready_id} is ready | 0 | plastic roadmap open %{id} %{ready_id} | [`pick.rb:59`](../../../../lib/plastic/workflows/code/auto/pick.rb#L59) |
-| every item of %{id} is done or dropped | 0 | plastic roadmap show %{id} | [`pick.rb:61`](../../../../lib/plastic/workflows/code/auto/pick.rb#L61) |
-| no item of %{id} is free to deliver yet | 0 | plastic roadmap show %{id} | [`pick.rb:63`](../../../../lib/plastic/workflows/code/auto/pick.rb#L63) |
-| no intent %{intent_id} in this store | 1 | prints no next: line | [`auto.rb:61`](../../../../lib/plastic/workflows/code/auto.rb#L61) |
+| no roadmap ID | 1 | prints no next: line | [`pick.rb:28`](../../../../lib/plastic/workflows/code/auto/pick.rb#L28) |
+| item READY_ID is ready | 0 | plastic roadmap open ID READY_ID | [`pick.rb:59`](../../../../lib/plastic/workflows/code/auto/pick.rb#L59) |
+| every item of ID is done or dropped | 0 | plastic roadmap show ID | [`pick.rb:61`](../../../../lib/plastic/workflows/code/auto/pick.rb#L61) |
+| no item of ID is free to deliver yet | 0 | plastic roadmap show ID | [`pick.rb:63`](../../../../lib/plastic/workflows/code/auto/pick.rb#L63) |
+| no intent INTENT_ID in this store | 1 | prints no next: line | [`auto.rb:61`](../../../../lib/plastic/workflows/code/auto.rb#L61) |
 | plastic auto names no session | 1 | prints no next: line | [`auto.rb:62`](../../../../lib/plastic/workflows/code/auto.rb#L62) |
-| %{closed_problem} | 1 | plastic next | [`auto.rb:63`](../../../../lib/plastic/workflows/code/auto.rb#L63) |
-| %{spec_problem} | 1 | plastic intent spec %{intent_id} | [`auto.rb:65`](../../../../lib/plastic/workflows/code/auto.rb#L65) |
-| %{problem} | 3 | prints no next: line | [`auto.rb:67`](../../../../lib/plastic/workflows/code/auto.rb#L67) |
-| intent %{intent_id} is active | 0 | plastic intent brief %{intent_id} | [`auto.rb:93`](../../../../lib/plastic/workflows/code/auto.rb#L93) |
+| CLOSED_PROBLEM | 1 | plastic next | [`auto.rb:63`](../../../../lib/plastic/workflows/code/auto.rb#L63) |
+| SPEC_PROBLEM | 1 | plastic intent spec INTENT_ID | [`auto.rb:65`](../../../../lib/plastic/workflows/code/auto.rb#L65) |
+| PROBLEM | 3 | prints no next: line | [`auto.rb:67`](../../../../lib/plastic/workflows/code/auto.rb#L67) |
+| intent INTENT_ID is active | 0 | plastic intent brief INTENT_ID | [`auto.rb:93`](../../../../lib/plastic/workflows/code/auto.rb#L93) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
+
+## What the page leaves out
+
+Every call shares a few things that this page does not repeat; [the command DSL](../../dsl/README.md#what-every-call-shares) names them.
+
+- A call that writes saves a routine run row in local.db. A stop by a gate or a step saves the run, and the next call resumes from it. A dry run saves no row.
