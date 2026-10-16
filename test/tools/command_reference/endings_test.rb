@@ -26,7 +26,7 @@ class CommandReferenceEndingsTest < Minitest::Test
     assert_equal [0], model.page("kernel draft").endings.select { |ending| ending.kind == :handoff }.map(&:exit_code)
   end
 
-  def test_a_no_chain_command_ends_on_its_next_step_lines
+  def test_a_command_with_no_workflow_ends_on_its_next_step_lines
     rows = exit_rows("project list", 0)
 
     assert_equal ["plastic project new SLUG PATH", "plastic status"], rows.select { |ending| ending.kind == :next_step }.map(&:next_text)
