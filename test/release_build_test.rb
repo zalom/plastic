@@ -8,7 +8,7 @@ require_relative "support/child_process"
 require "rubygems/package"
 require "tmpdir"
 require "zlib"
-require_relative "../scripts/lib/release_build"
+require_relative "../bin/lib/release_build"
 
 class ReleaseBuildTest < Minitest::Test
   REPO = File.expand_path("..", __dir__)
@@ -27,7 +27,7 @@ class ReleaseBuildTest < Minitest::Test
   def test_the_archive_holds_the_listed_files_and_the_version_under_package
     ReleaseBuild.call(version: "2.0.4-alpha.1", directory: @out, root: @root)
 
-    assert_equal %w[package/LICENSE package/PLASTIC.md package/README.md package/VERSION package/bin/plastic package/package.json],
+    assert_equal %w[package/LICENSE package/PLASTIC.md package/README.md package/VERSION package/bin/plastic package/exe/plastic package/package.json],
       entries.keys.sort
     assert_equal "2.0.4-alpha.1\n", entries.fetch("package/VERSION").first
   end
@@ -36,6 +36,7 @@ class ReleaseBuildTest < Minitest::Test
     ReleaseBuild.call(version: "2.0.4", directory: @out, root: @root)
 
     assert_equal 0o755, entries.fetch("package/bin/plastic").last
+    assert_equal 0o755, entries.fetch("package/exe/plastic").last
   end
 
   def test_the_checksum_file_names_the_archive_by_its_sha256
@@ -77,7 +78,7 @@ class ReleaseBuildTest < Minitest::Test
   end
 
   def test_the_command_builds_the_three_release_files
-    _out, err, status = ChildProcess.capture3("ruby", File.join(REPO, "scripts", "build-release"), "--version", "2.0.4",
+    _out, err, status = ChildProcess.capture3("ruby", File.join(REPO, "bin", "build-release"), "--version", "2.0.4",
       "--directory", @out, "--root", @root)
 
     assert_predicate status, :success?, err
@@ -85,10 +86,34 @@ class ReleaseBuildTest < Minitest::Test
   end
 
   def test_the_command_refuses_a_call_without_a_version
-    _out, err, status = ChildProcess.capture3("ruby", File.join(REPO, "scripts", "build-release"), "--directory", @out)
+    _out, err, status = ChildProcess.capture3("ruby", File.join(REPO, "bin", "build-release"), "--directory", @out)
 
     assert_equal 1, status.exitstatus
     assert_includes err, "--version"
+  end
+
+  def test_the_archive_of_the_tree_ships_the_launcher_and_the_readers_files_and_no_release_tool
+    ReleaseBuild.call(version: "2.0.4", directory: @out, root: REPO)
+    names = entries.keys
+
+    assert_empty(%w[package/exe/plastic package/lib/plastic.rb package/scripts/install-release package/scripts/select-update-target
+      package/scripts/lib/release_channels.rb package/bin/plastic] - names)
+    assert_empty(names.grep(/build-release|release-check|release_build\.rb|release_archive\.rb|release_guard\.rb/))
+    assert_empty(names.grep(%r{\Apackage/bin/}) - ["package/bin/plastic"])
+  end
+
+  def test_the_entry_of_a_release_built_from_the_tree_starts_the_way_install_sh_runs_it
+    ReleaseBuild.call(version: "2.0.4", directory: @out, root: REPO)
+    share = File.join(@dir, "share")
+    FileUtils.mkdir_p(share)
+    _out, err, status = ChildProcess.capture3("tar", "-xzf", archive, "--strip-components=1", "-C", share)
+
+    assert_predicate status, :success?, err
+    assert_equal 0o755, File.stat(File.join(share, "bin", "plastic")).mode & 0o777
+    out, err, status = ChildProcess.capture3({ "HOME" => @dir }, RbConfig.ruby, File.join(share, "bin", "plastic"), "version", "--json")
+
+    assert_equal 0, status.exitstatus, err
+    assert_kind_of Hash, JSON.parse(out)
   end
 
   private
@@ -104,10 +129,10 @@ class ReleaseBuildTest < Minitest::Test
   end
 
   def write_checkout
-    FileUtils.mkdir_p(File.join(@root, "bin"))
-    File.write(File.join(@root, "package.json"), JSON.generate("version" => "2.0.4", "files" => %w[bin/ PLASTIC.md VERSION]))
+    FileUtils.mkdir_p(File.join(@root, "exe"))
+    File.write(File.join(@root, "package.json"), JSON.generate("version" => "2.0.4", "files" => %w[exe/ PLASTIC.md VERSION]))
     %w[README.md LICENSE PLASTIC.md].each { |name| File.write(File.join(@root, name), "#{name}\n") }
-    File.write(File.join(@root, "bin", "plastic"), "#!/bin/sh\n")
-    File.chmod(0o755, File.join(@root, "bin", "plastic"))
+    File.write(File.join(@root, "exe", "plastic"), "#!/bin/sh\n")
+    File.chmod(0o755, File.join(@root, "exe", "plastic"))
   end
 end

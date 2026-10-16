@@ -4,7 +4,7 @@ require "minitest/autorun"
 require "fileutils"
 require_relative "child_process"
 require "tmpdir"
-require_relative "../../scripts/lib/release_build"
+require_relative "../../bin/lib/release_build"
 
 # Runs install.sh against throwaway homes. Releases are built in a temp
 # directory with the repository's own installer code inside the archive. A
@@ -68,10 +68,10 @@ module InstallShHelper
       FileUtils.mkdir_p(File.dirname(File.join(package, path)))
       FileUtils.cp_r(File.join(REPO, path), File.join(package, path))
     end
-    FileUtils.mkdir_p(File.join(package, "bin"))
+    FileUtils.mkdir_p(File.join(package, "exe"))
     File.write(File.join(package, "VERSION"), "#{version}\n")
-    File.write(File.join(package, "bin", "plastic"), fake_launcher(version))
-    File.chmod(0o755, File.join(package, "bin", "plastic"))
+    File.write(File.join(package, "exe", "plastic"), fake_launcher(version))
+    File.chmod(0o755, File.join(package, "exe", "plastic"))
   end
 
   def fake_launcher(version) = <<~RUBY

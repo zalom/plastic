@@ -13,7 +13,7 @@ class InstallCommandTest < Plastic::TestCase
     result = call("install", "--dry-run", env: { "PLASTIC_HOME" => absent })
 
     assert_equal 0, result.code
-    assert_match(%r{add:\s+bin/plastic}, result.out)
+    assert_match(%r{add:\s+exe/plastic}, result.out)
     refute_path_exists absent
   end
 

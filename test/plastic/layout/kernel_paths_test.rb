@@ -50,7 +50,9 @@ class KernelPathsTest < Minitest::Test
   ROOT = File.expand_path("../../..", __dir__)
   SELF = "test/plastic/layout/kernel_paths_test.rb"
   OLD_KERNEL = File.join("scripts", "lib", "plastic")
-  RETIRED_NAMES = [OLD_KERNEL, *RetiredNames::RETIRED_COMMANDS].freeze
+  MOVED_TOOLS = %w[scripts/build-release scripts/release-check scripts/lib/release_archive scripts/lib/release_build
+    scripts/lib/release_guard].freeze
+  RETIRED_NAMES = [OLD_KERNEL, *MOVED_TOOLS, *RetiredNames::RETIRED_COMMANDS].freeze
   WORKFLOW_NAME = Regexp.union(RetiredNames::RETIRED_WORKFLOWS.map { |name| /#{Regexp.escape(name)}(?![A-Za-z0-9_])/ })
 
   def tracked

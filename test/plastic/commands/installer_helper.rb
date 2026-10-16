@@ -42,6 +42,8 @@ module InstallerHelper
     File.write(File.join(path, "VERSION"), "#{version}\n")
     File.write(File.join(path, "bin", "plastic"), recording_launcher(version))
     File.chmod(0o755, File.join(path, "bin", "plastic"))
+    FileUtils.mkdir_p(File.join(path, "exe"))
+    FileUtils.cp(File.join(path, "bin", "plastic"), File.join(path, "exe", "plastic"))
     path
   end
 

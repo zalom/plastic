@@ -24,7 +24,14 @@ class InstallerReleaseInstallTest < Minitest::Test
     install(release_files)
     launcher = File.read(File.join(release_path("2.0.3"), "bin", "plastic"))
 
-    assert_includes launcher, "exec #{RbConfig.ruby} --disable-gems -rrbconfig #{File.join(release_path("2.0.3"), "libexec", "plastic")} \"$@\""
+    assert_includes launcher, "exec #{RbConfig.ruby} --disable-gems -rrbconfig #{File.join(release_path("2.0.3"), "exe", "plastic")} \"$@\""
+  end
+
+  def test_the_release_moves_no_entry_into_libexec_and_keeps_exe_plastic
+    install(release_files)
+
+    assert_path_exists File.join(release_path("2.0.3"), "exe", "plastic")
+    refute_path_exists File.join(release_path("2.0.3"), "libexec")
   end
 
   def test_the_release_names_its_ruby_for_the_hooks

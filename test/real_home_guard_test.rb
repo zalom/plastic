@@ -16,8 +16,8 @@ class RealHomeGuardTest < Minitest::Test
   ROOT = File.expand_path("..", __dir__)
   SPAWN = /\bsystem\(|Open3\.|IO\.popen|Process\.spawn/
   VERB = %r{(?:"|'|/)(?:install|uninstall|update|rollback)\.rb(?:"|')|"scripts", "(?:install|uninstall|update|rollback)\.rb"}
-  LAUNCHER = %r{bin/plastic(?![-.\w])|"bin", "plastic"}
-  INSTALLER_PATH = %r{bin/plastic(?![-.\w])|"bin", "plastic"|(?:install|uninstall|update|rollback)\.rb}
+  LAUNCHER = %r{(?:bin|exe)/plastic(?![-.\w])|"(?:bin|exe)", "plastic"}
+  INSTALLER_PATH = %r{(?:bin|exe)/plastic(?![-.\w])|"(?:bin|exe)", "plastic"|(?:install|uninstall|update|rollback)\.rb}
   ASSIGNMENT = /^\s*(@{0,2}[A-Za-z_]\w*)\s*(?:\|\|)?=\s*(.+)$/
 
   # The passwd entry, not ENV["HOME"], so the guard still watches the machine's
@@ -74,6 +74,12 @@ class RealHomeGuardTest < Minitest::Test
 
   def test_the_detector_reads_a_spawn_through_an_instance_variable
     source = %(@launcher = File.join(ROOT, "bin", "plastic")\nOpen3.capture3(@launcher, "help")\n)
+
+    assert_equal [2], installer_spawns(source)
+  end
+
+  def test_the_detector_reads_a_spawn_of_the_exe_launcher
+    source = %(launcher = File.join(ROOT, "exe", "plastic")\nOpen3.capture3(launcher, "help")\n)
 
     assert_equal [2], installer_spawns(source)
   end

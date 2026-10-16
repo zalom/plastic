@@ -249,7 +249,25 @@ class InstallerCoreCodexTest < Minitest::Test
     capture_io { installer.distribute(:install, tmp_dirs: []) }
     manifest = read_json(@home, ".plastic", "manifest.json")
 
-    assert_includes manifest["files"].keys, File.join(@home, ".plastic", "bin", "plastic")
+    assert_includes manifest["files"].keys, File.join(@home, ".plastic", "exe", "plastic")
+    refute_includes manifest["files"].keys, File.join(@home, ".plastic", "bin", "plastic")
+  end
+
+  def test_the_core_files_hold_the_launcher_and_what_the_check_update_hook_runs
+    files = installer.core_files
+
+    assert_equal "exe/plastic", files["exe/plastic"]
+    assert_equal "scripts/select-update-target", files["scripts/select-update-target"]
+    assert_equal "scripts/lib/release_channels.rb", files["scripts/lib/release_channels.rb"]
+    refute_includes files.keys, "bin/plastic"
+  end
+
+  def test_a_distribute_makes_the_exe_launcher_executable
+    capture_io { installer.distribute(:install, tmp_dirs: []) }
+    launcher = File.join(@home, ".plastic", "exe", "plastic")
+
+    assert File.executable?(launcher)
+    assert File.executable?(File.join(@home, ".plastic", "scripts", "select-update-target"))
   end
 
   def test_the_kernel_files_come_from_lib_and_none_from_scripts_lib_plastic
