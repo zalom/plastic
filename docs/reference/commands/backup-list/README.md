@@ -54,7 +54,7 @@ In the words of workflow engines, the rows are these four parts:
 - **Trigger**: the call starts the workflow `Code::Backup::List`.
 - **Activities**: 1 read.
 - **Transitions**: 1 gate stops the call when its check fails.
-- **Outcomes**: `:done` end the call.
+- **Outcomes**: `:done` ends the call.
 
 ## What one call reads, writes and prints
 

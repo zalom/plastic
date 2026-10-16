@@ -55,7 +55,7 @@ The agent reads the spec and the findings of every node, decides, and records th
 
 Its rows run in this order:
 
-1. Agent step: judge the delivery. Done when `Plastic::Graph::Work::Completion::Review.of(context).counting?`, while it fails, the call prints its `say:` text. [`judge.rb:12`](../../../../lib/plastic/workflows/agent/intent/judge.rb#L12)
+1. Agent step: judge the delivery. Done when `Plastic::Graph::Work::Completion::Review.of(context).counting?`; while it fails, the call prints its `say:` text. [`judge.rb:12`](../../../../lib/plastic/workflows/agent/intent/judge.rb#L12)
 2. Outcome `:handoff`, when a step is left: hands off with exit 0; next: plastic intent verdict INTENT_ID accept|revise TEXT. [`judge.rb:19`](../../../../lib/plastic/workflows/agent/intent/judge.rb#L19)
 3. Outcome `:done`, when every done check holds: finishes with exit 0; prints no next: line. [`judge.rb:21`](../../../../lib/plastic/workflows/agent/intent/judge.rb#L21)
 

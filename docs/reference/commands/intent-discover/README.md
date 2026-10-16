@@ -64,7 +64,7 @@ Gives an external agent deterministic retrieval commands without selecting evide
 
 Its rows run in this order:
 
-1. Agent step: select retrieved evidence. Done when `context.context_complete`, while it fails, the call prints its `say:` text. [`discover.rb:16`](../../../../lib/plastic/workflows/agent/intent/discover.rb#L16)
+1. Agent step: select retrieved evidence. Done when `context.context_complete`; while it fails, the call prints its `say:` text. [`discover.rb:16`](../../../../lib/plastic/workflows/agent/intent/discover.rb#L16)
 2. Outcome `:handoff`, when a step is left: hands off with exit 0; next: CONTEXT_COMMAND. [`discover.rb:17`](../../../../lib/plastic/workflows/agent/intent/discover.rb#L17)
 3. Outcome `:done`, when every done check holds: finishes with exit 0; prints no next: line. [`discover.rb:18`](../../../../lib/plastic/workflows/agent/intent/discover.rb#L18)
 

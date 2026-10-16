@@ -75,7 +75,7 @@ After a first install, the agent may offer Enola to the person. Plastic runs no 
 
 Its rows run in this order:
 
-1. Agent step: offer Enola. Done when `context.reinstall`, while it fails, the call prints its `say:` text. [`install.rb:11`](../../../../lib/plastic/workflows/agent/install.rb#L11)
+1. Agent step: offer Enola. Done when `context.reinstall`; while it fails, the call prints its `say:` text. [`install.rb:11`](../../../../lib/plastic/workflows/agent/install.rb#L11)
 2. Outcome `:handoff`, when a step is left: hands off with exit 0; next: plastic init. [`install.rb:15`](../../../../lib/plastic/workflows/agent/install.rb#L15)
 3. Outcome `:done`, when every done check holds: finishes with exit 0; next: plastic version. [`install.rb:16`](../../../../lib/plastic/workflows/agent/install.rb#L16)
 

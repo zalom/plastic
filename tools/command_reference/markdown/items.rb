@@ -16,11 +16,11 @@ module CommandReference
 
       def gate = "Gate: passes when #{check}; otherwise the call stops with exit #{(@row.stops == :refusal) ? 3 : 1} and prints #{name}."
 
-      def step = "Step: #{name}. #{done("so a second call skips it")}"
+      def step = "Step: #{name}. #{done(", so a second call skips it")}"
 
-      def agent = "Agent step: #{name}. #{done("while it fails, the call prints its `say:` text")}"
+      def agent = "Agent step: #{name}. #{done("; while it fails, the call prints its `say:` text")}"
 
-      def done(then_words) = always? ? "Runs on every call; its done check is #{check}.#{agent_note}" : "Done when #{check}, #{then_words}."
+      def done(then_words) = always? ? "Runs on every call; its done check is #{check}.#{agent_note}" : "Done when #{check}#{then_words}."
 
       def agent_note = (@row.kind == :agent) ? " The call prints its `say:` text." : String.new
 

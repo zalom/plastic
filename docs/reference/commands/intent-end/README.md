@@ -65,8 +65,8 @@ The harness writes the records the close needs and has the work judged.
 
 Its rows run in this order:
 
-1. Agent step: finish the required records. Done when `context.requirements.empty?`, while it fails, the call prints its `say:` text. [`end.rb:11`](../../../../lib/plastic/workflows/agent/intent/end.rb#L11)
-2. Agent step: have the delivery judged. Done when `context.judged`, while it fails, the call prints its `say:` text. [`end.rb:13`](../../../../lib/plastic/workflows/agent/intent/end.rb#L13)
+1. Agent step: finish the required records. Done when `context.requirements.empty?`; while it fails, the call prints its `say:` text. [`end.rb:11`](../../../../lib/plastic/workflows/agent/intent/end.rb#L11)
+2. Agent step: have the delivery judged. Done when `context.judged`; while it fails, the call prints its `say:` text. [`end.rb:13`](../../../../lib/plastic/workflows/agent/intent/end.rb#L13)
 3. Outcome `:handoff`, when a step is left: hands off with exit 0; prints no next: line. [`end.rb:17`](../../../../lib/plastic/workflows/agent/intent/end.rb#L17)
 4. Outcome `:done`, when every done check holds: finishes with exit 0; prints no next: line. [`end.rb:18`](../../../../lib/plastic/workflows/agent/intent/end.rb#L18)
 
@@ -90,8 +90,8 @@ The agent checks that the code is merged and confirms the architecture map, then
 
 Its rows run in this order:
 
-1. Agent step: check the code is merged. Done when `context.merge_recorded`, while it fails, the call prints its `say:` text. [`check_merge.rb:15`](../../../../lib/plastic/workflows/agent/intent/end/check_merge.rb#L15)
-2. Agent step: confirm the architecture map. Done when `context.map_recorded`, while it fails, the call prints its `say:` text. [`check_merge.rb:19`](../../../../lib/plastic/workflows/agent/intent/end/check_merge.rb#L19)
+1. Agent step: check the code is merged. Done when `context.merge_recorded`; while it fails, the call prints its `say:` text. [`check_merge.rb:15`](../../../../lib/plastic/workflows/agent/intent/end/check_merge.rb#L15)
+2. Agent step: confirm the architecture map. Done when `context.map_recorded`; while it fails, the call prints its `say:` text. [`check_merge.rb:19`](../../../../lib/plastic/workflows/agent/intent/end/check_merge.rb#L19)
 3. Outcome `:handoff`, when a step is left: hands off with exit 0; prints no next: line. [`check_merge.rb:25`](../../../../lib/plastic/workflows/agent/intent/end/check_merge.rb#L25)
 4. Outcome `:done`, when every done check holds: finishes with exit 0; prints no next: line. [`check_merge.rb:26`](../../../../lib/plastic/workflows/agent/intent/end/check_merge.rb#L26)
 

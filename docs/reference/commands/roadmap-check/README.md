@@ -40,7 +40,7 @@ In the words of workflow engines, the rows are these four parts:
 - **Trigger**: the call starts the workflow `Code::Roadmap::Check`.
 - **Activities**: 1 read.
 - **Transitions**: 2 gates stop the call when their checks fail.
-- **Outcomes**: `:done` end the call.
+- **Outcomes**: `:done` ends the call.
 
 ## What one call reads, writes and prints
 

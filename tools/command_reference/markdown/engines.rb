@@ -46,7 +46,7 @@ module CommandReference
 
       def outcomes
         ending = @flows.flat_map { |flow| flow.outcomes.select(&:ends?).map { |outcome| ending(flow, outcome) } }
-        "#{ending.join(", ")} end the call."
+        "#{ending.join(", ")} #{(ending.size == 1) ? "ends" : "end"} the call."
       end
 
       def ending(flow, outcome) = (@flows.size == 1) ? "`:#{outcome.name}`" : "`:#{outcome.name}` of #{flow.short}"

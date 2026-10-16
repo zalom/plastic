@@ -59,8 +59,8 @@ The agent undoes what the intent changed and records that in outcome.md. Plastic
 
 Its rows run in this order:
 
-1. Agent step: revert what intent INTENT_ID changed. Done when `context.reverted`, while it fails, the call prints its `say:` text. [`abandon.rb:11`](../../../../lib/plastic/workflows/agent/intent/abandon.rb#L11)
-2. Agent step: record the revert. Done when `context.reverted`, while it fails, the call prints its `say:` text. [`abandon.rb:14`](../../../../lib/plastic/workflows/agent/intent/abandon.rb#L14)
+1. Agent step: revert what intent INTENT_ID changed. Done when `context.reverted`; while it fails, the call prints its `say:` text. [`abandon.rb:11`](../../../../lib/plastic/workflows/agent/intent/abandon.rb#L11)
+2. Agent step: record the revert. Done when `context.reverted`; while it fails, the call prints its `say:` text. [`abandon.rb:14`](../../../../lib/plastic/workflows/agent/intent/abandon.rb#L14)
 3. Outcome `:handoff`, when a step is left: hands off with exit 0; prints no next: line. [`abandon.rb:18`](../../../../lib/plastic/workflows/agent/intent/abandon.rb#L18)
 4. Outcome `:done`, when every done check holds: finishes with exit 0; prints no next: line. [`abandon.rb:19`](../../../../lib/plastic/workflows/agent/intent/abandon.rb#L19)
 

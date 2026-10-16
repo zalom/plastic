@@ -46,7 +46,7 @@ In the words of workflow engines, the rows are these four parts:
 - **Trigger**: the call starts the workflow `Code::Intent::Archive`.
 - **Activities**: 2 reads and 1 step.
 - **Transitions**: 3 gates stop the call when their checks fail; a step runs only while its done check fails.
-- **Outcomes**: `:done` end the call.
+- **Outcomes**: `:done` ends the call.
 
 ## What one call reads, writes and prints
 
