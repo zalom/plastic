@@ -6,7 +6,7 @@ require "json"
 require "open3"
 require "optparse"
 require "tmpdir"
-require_relative "../scripts/lib/release_build"
+require_relative "../bin/lib/release_build"
 
 ROOT = File.expand_path("..", __dir__)
 

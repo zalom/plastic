@@ -58,10 +58,10 @@ class RuntimeBundleTest < Minitest::Test
 
   def test_the_launcher_loads_the_standalone_bundle_when_it_exists
     Dir.mktmpdir("plastic-launcher") do |package|
-      FileUtils.mkdir_p([File.join(package, "bin"), File.join(package, "runtime", "bundle", "bundler")])
-      FileUtils.cp(File.join(REPO, "bin", "plastic"), File.join(package, "bin", "plastic"))
+      FileUtils.mkdir_p([File.join(package, "exe"), File.join(package, "runtime", "bundle", "bundler")])
+      FileUtils.cp(File.join(REPO, "exe", "plastic"), File.join(package, "exe", "plastic"))
       File.write(File.join(package, "runtime", "bundle", "bundler", "setup.rb"), "puts \"bundle loaded\"\nexit 0\n")
-      out, err, status = ChildProcess.capture3({ "HOME" => package }, RbConfig.ruby, "--disable-gems", File.join(package, "bin", "plastic"))
+      out, err, status = ChildProcess.capture3({ "HOME" => package }, RbConfig.ruby, "--disable-gems", File.join(package, "exe", "plastic"))
 
       assert_equal [0, "bundle loaded\n", ""], [status.exitstatus, out, err]
     end

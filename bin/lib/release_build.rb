@@ -2,7 +2,7 @@
 
 require "digest"
 require "fileutils"
-require_relative "installer_release"
+require_relative "../../scripts/lib/installer_release"
 require_relative "release_archive"
 
 # Builds the three files a GitHub release carries and install.sh downloads:

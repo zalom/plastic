@@ -13,6 +13,13 @@ class InstallerReleaseStagingTest < Minitest::Test
     assert_equal "2.0.3\n", File.read(File.join(candidate, "VERSION"))
   end
 
+  def test_a_candidate_with_exe_plastic_passes_and_needs_no_bin_entry
+    package = File.join(@root, "package")
+    write_package(package, "2.0.3", ruby_launcher("2.0.3"), entry: "exe")
+
+    assert InstallerRelease::Candidate.check(package, "2.0.3")
+  end
+
   def test_removes_the_stage_when_the_candidate_is_unusable
     archive = archive_with(version: "2.0.2")
 
@@ -27,6 +34,10 @@ class InstallerReleaseStagingTest < Minitest::Test
 
     assert_equal "candidate has no Plastic launcher", candidate_problem(package)
     write_package(package, "2.0.3", fake_launcher("2.0.3"))
+
+    assert_equal "candidate has no Plastic launcher", candidate_problem(package)
+    FileUtils.rm_rf(File.join(package, "bin"))
+    write_package(package, "2.0.3", ruby_launcher("2.0.3"), entry: "exe")
     File.delete(File.join(package, "VERSION"))
 
     assert_equal "candidate has no version", candidate_problem(package)

@@ -10,7 +10,7 @@ the tag and the GitHub release for a version that has no tag yet. `install.sh` a
 | `beta` | `beta` | `-beta.N` | Local testing. It is reset from `alpha` when a whole feature is merged there. |
 | `main` | `latest` | no suffix | Everyday use, and what an external user should run. |
 
-`scripts/release-check` enforces the branch-to-suffix pairing.
+`bin/release-check` enforces the branch-to-suffix pairing.
 
 ## The two lanes
 
@@ -38,7 +38,7 @@ What a user on the `latest` channel can rely on:
    half-landed.
 2. A stable release carries no pre-release suffix, releases on the `latest` channel, and the
    newest stable release always carries the GitHub "Latest" badge.
-3. The release tag always matches the version in `package.json`. `scripts/lib/release_guard.rb`
+3. The release tag always matches the version in `package.json`. `bin/lib/release_guard.rb`
    checks it.
 4. A stable release collects only intents that cleared their lane's bar: a default-lane intent
    by a green suite, a beta-lane intent by a green suite plus real-use verification and the

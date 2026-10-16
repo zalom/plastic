@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1160 770" role="img" aria-labelledby="containers-title containers-desc" font-family="IBM Plex Sans, system-ui, -apple-system, Segoe UI, sans-serif">
   <title id="containers-title">What runs and where Plastic keeps its data</title>
-  <desc id="containers-desc">The install folder holds the active release, which is the plastic program. The Plastic home holds a bin/plastic pointer to it, and local.db. The program reads and writes four SQLite databases: local.db in the home, and work_graph.db, knowledge_graph.db and references.db in each store. Files and roadmaps are printed from the rows into the store folder, and a sync up reads hand edits back. Backups are copies of a store&#39;s databases.</desc>
+  <desc id="containers-desc">The install folder holds the active release, which is the plastic program. The Plastic home holds an exe/plastic launcher, and local.db. The program reads and writes four SQLite databases: local.db in the home, and work_graph.db, knowledge_graph.db and references.db in each store. Files and roadmaps are printed from the rows into the store folder, and a sync up reads hand edits back. Backups are copies of a store&#39;s databases.</desc>
   <defs><marker id="containers-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--line, #6b7483)"/></marker></defs>
   <style>svg { --ink: #1f2530; --muted: #3f4754; --line: #6b7483; --paper: #e9e5dc; --card: #f4f1ea; --rule: #c9c3b6; --code: #0b5e55; --agent: #7d4405; --owner: #4a2a99; --owner-bg: #e4dcf5; --end: #23406f; --end-bg: #d9e2f0; }
 @media (prefers-color-scheme: dark) { svg { --ink: #e8e6e1; --muted: #b4bac4; --line: #8a93a3; --paper: #1d2128; --card: #262b34; --rule: #3b424e; --code: #5fd0c0; --agent: #e0a24f; --owner: #b9a2ff; --owner-bg: #2f2750; --end: #8fb0e8; --end-bg: #1f2d45; } }
@@ -38,7 +38,7 @@
 <text class="s" x="46" y="260">The always-on instructions</text>
 <text class="s" x="46" y="275">the harness imports.</text>
 <rect class="box" x="330" y="199" width="260" height="94" rx="8"/><rect x="330" y="199" width="6" height="94" rx="3" fill="var(--code, #0b5e55)"/>
-<text class="m" x="346" y="223">bin/plastic</text><text class="s" x="346" y="240">[pointer]</text>
+<text class="m" x="346" y="223">exe/plastic</text><text class="s" x="346" y="240">[pointer]</text>
 <text class="s" x="346" y="260">A launcher that points to</text>
 <text class="s" x="346" y="275">the active program.</text>
 <path class="box" d="M 640 214 L 640 278 A 105.0 9 0 0 0 850 278 L 850 214 Z"/>

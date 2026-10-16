@@ -134,7 +134,7 @@ class InstallerReleaseHomeSyncTest < Minitest::Test
 
   def hooks_with_ours
     { "SessionStart" => [group(%(env -u RUBYOPT "#{File.join(share, "active", "bin", "plastic")}" hook resume || true)), user_group],
-      "Stop" => [group(%(env -u RUBYOPT "#{File.join(plastic_home, "bin", "plastic")}" hook record || true))] }
+      "Stop" => %w[bin exe].map { |dir| group(%(env -u RUBYOPT "#{File.join(plastic_home, dir, "plastic")}" hook record || true)) } }
   end
 
   def write_json(relative, data)

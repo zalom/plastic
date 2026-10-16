@@ -70,7 +70,7 @@ module ReleaseHelper
   def archive_with(version: "2.0.3")
     source = File.join(@root, "source-#{version}")
     package = File.join(source, "package")
-    write_package(package, version, ruby_launcher(version))
+    write_package(package, version, ruby_launcher(version), entry: "exe")
     archive = File.join(source, "plastic.tgz")
     ChildProcess.system("tar", "-czf", archive, "-C", source, "package", exception: true)
     archive
@@ -96,6 +96,7 @@ module ReleaseHelper
   def staged_candidate(version)
     stage = File.join(@root, "stage-#{version}")
     write_package(stage, version, fake_launcher(version))
+    write_package(stage, version, fake_launcher(version), entry: "exe")
     stage
   end
 
@@ -114,17 +115,17 @@ module ReleaseHelper
     echo #{version}
   SH
 
-  # The Ruby launcher of a release package, which install moves to
-  # libexec/plastic and starts with the release's Ruby.
+  # The Ruby launcher of a release package, exe/plastic, which the installed
+  # bin/plastic starts with the release's Ruby.
   def ruby_launcher(version) = <<~RUBY
     #!/usr/bin/env ruby
     puts(ARGV == %w[version --json] ? '{"result":{"version":"#{version}"}}' : "#{version}")
   RUBY
 
-  def write_package(path, version, launcher)
-    FileUtils.mkdir_p(File.join(path, "bin"))
+  def write_package(path, version, launcher, entry: "bin")
+    FileUtils.mkdir_p(File.join(path, entry))
     File.write(File.join(path, "VERSION"), "#{version}\n")
-    File.write(File.join(path, "bin", "plastic"), launcher)
-    File.chmod(0o755, File.join(path, "bin", "plastic"))
+    File.write(File.join(path, entry, "plastic"), launcher)
+    File.chmod(0o755, File.join(path, entry, "plastic"))
   end
 end

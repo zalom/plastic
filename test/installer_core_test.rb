@@ -49,7 +49,7 @@ class InstallerCoreHooksTest < Minitest::Test
 
   def test_the_install_writes_the_kernel_hooks
     settings = install({})
-    kernel = %("#{File.join(@home, ".plastic", "bin", "plastic")}")
+    kernel = %("#{File.join(@home, ".plastic", "exe", "plastic")}")
     expected = { "SessionStart" => "#{kernel} hook start",
                  "Stop" => "#{kernel} hook stop", "SessionEnd" => "#{kernel} hook end" }
 
@@ -68,6 +68,22 @@ class InstallerCoreHooksTest < Minitest::Test
     resume = commands(settings, "SessionStart").grep(/hook start/)
 
     assert_equal [%(env -u RUBYOPT "#{File.join(share, "active", "bin", "plastic")}" hook start || true)], resume
+  end
+
+  def test_a_release_install_over_a_repository_install_keeps_one_group_per_event
+    path = settings_with({})
+    capture_io { installer.merge_claude_hooks(path) }
+    share = File.join(@home, ".local", "share", "plastic")
+    release = File.join(share, "releases", "2.0.3")
+    FileUtils.mkdir_p(release)
+    File.write(File.join(release, "VERSION"), "2.0.3\n")
+    capture_io { installer(release).merge_claude_hooks(path) }
+    settings = JSON.parse(File.read(path))
+    events = %w[SessionStart Stop SessionEnd]
+    kernel = events.map { |event| commands(settings, event).grep(/plastic"? hook (start|stop|end)/) }
+
+    assert_equal [1, 1, 1], kernel.map(&:size)
+    assert(kernel.flatten.all? { |cmd| cmd.include?(File.join(share, "active", "bin", "plastic")) })
   end
 
   def test_a_second_install_keeps_one_group_per_event
@@ -249,7 +265,25 @@ class InstallerCoreCodexTest < Minitest::Test
     capture_io { installer.distribute(:install, tmp_dirs: []) }
     manifest = read_json(@home, ".plastic", "manifest.json")
 
-    assert_includes manifest["files"].keys, File.join(@home, ".plastic", "bin", "plastic")
+    assert_includes manifest["files"].keys, File.join(@home, ".plastic", "exe", "plastic")
+    refute_includes manifest["files"].keys, File.join(@home, ".plastic", "bin", "plastic")
+  end
+
+  def test_the_core_files_hold_the_launcher_and_what_the_check_update_hook_runs
+    files = installer.core_files
+
+    assert_equal "exe/plastic", files["exe/plastic"]
+    assert_equal "scripts/select-update-target", files["scripts/select-update-target"]
+    assert_equal "scripts/lib/release_channels.rb", files["scripts/lib/release_channels.rb"]
+    refute_includes files.keys, "bin/plastic"
+  end
+
+  def test_a_distribute_makes_the_exe_launcher_executable
+    capture_io { installer.distribute(:install, tmp_dirs: []) }
+    launcher = File.join(@home, ".plastic", "exe", "plastic")
+
+    assert File.executable?(launcher)
+    assert File.executable?(File.join(@home, ".plastic", "scripts", "select-update-target"))
   end
 
   def test_the_kernel_files_come_from_lib_and_none_from_scripts_lib_plastic
@@ -261,7 +295,7 @@ class InstallerCoreCodexTest < Minitest::Test
 
   def test_a_distribute_over_an_old_manifest_prunes_the_old_kernel_copies
     plastic_home = File.join(@home, ".plastic")
-    old = File.join(plastic_home, "scripts", "lib", "plas" "tic", "cli.rb")
+    old = File.join(plastic_home, "scripts", "lib", %w[plas tic].join, "cli.rb")
     write(old, "# old\n")
     write(File.join(plastic_home, "manifest.json"), JSON.generate("files" => { old => "x" }))
     capture_io { installer.distribute(:update, tmp_dirs: []) }

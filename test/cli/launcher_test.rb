@@ -7,7 +7,7 @@ require "tmpdir"
 
 class CliLauncherTest < Minitest::Test
   ROOT = File.expand_path("../..", __dir__)
-  LAUNCHER = File.join(ROOT, "bin", "plastic")
+  LAUNCHER = File.join(ROOT, "exe", "plastic")
 
   # Every spawn below runs the real launcher, which resolves ~/.plastic and
   # ~/.claude from HOME. A throwaway HOME keeps a command that reads or writes
@@ -24,12 +24,12 @@ class CliLauncherTest < Minitest::Test
     FileUtils.remove_entry(@tmp, true)
   end
 
-  def test_the_launcher_file_exists_in_bin
+  def test_the_launcher_file_exists_in_exe
     assert_path_exists LAUNCHER
   end
 
   def test_the_launcher_is_executable
-    assert File.executable?(LAUNCHER), "bin/plastic must be executable"
+    assert File.executable?(LAUNCHER), "exe/plastic must be executable"
   end
 
   def test_the_shebang_turns_rubygems_off

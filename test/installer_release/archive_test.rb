@@ -6,7 +6,7 @@ class InstallerReleaseArchiveTest < Minitest::Test
   include ReleaseHelper
 
   def test_lists_the_entries_of_a_release_archive
-    assert_includes InstallerRelease::Archive.new(archive_with).entry_names, "package/bin/plastic"
+    assert_includes InstallerRelease::Archive.new(archive_with).entry_names, "package/exe/plastic"
   end
 
   def test_rejects_unsafe_paths_before_extraction

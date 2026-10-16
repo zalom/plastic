@@ -2,7 +2,7 @@
 
 `plastic intent new TITLE` opens an intent. It writes the intent's rows, then prints the
 intent's folder and `store/index.json`. A call that cannot write stops before any row changes.
-The rows below run the storage kernel's command line, which `bin/plastic` does not route to
+The rows below run the storage kernel's command line, which `exe/plastic` does not route to
 yet, in a fresh home each time. ORIGIN stands for the installation id of that home.
 
 Each row gives the store, the call, the exit code, the index, the files and what it says:
