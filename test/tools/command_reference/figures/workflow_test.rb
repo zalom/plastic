@@ -22,7 +22,7 @@ class CommandReferenceWorkflowFigureTest < Minitest::Test
     assert_equal "svg", REXML::Document.new(figure("intent end", 1).standalone).root.name
   end
 
-  def test_a_command_with_no_chain_draws_one_box_for_its_call
+  def test_a_command_with_no_workflow_draws_one_box_for_its_call
     command = page("project list")
 
     assert_equal "svg", REXML::Document.new(CommandReference::Figures::Call.new(command).canvas.standalone).root.name

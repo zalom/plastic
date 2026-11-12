@@ -17,14 +17,14 @@ module CommandReference
 
       def rows
         [
-          "| 1 | `class Name < Routine` | The class is the command, and it runs a chain of workflows. | #{link(:routine, /^\s*class Routine\b/)} |",
+          "| 1 | `class Name < Routine` | The class is the command, and it runs its workflows. | #{link(:routine, /^\s*class Routine\b/)} |",
           "| 2 | `intent_subject` | The intent id as the first argument, and the subject of the call. | #{link(:declarations, /def intent_subject\b/)} |",
           "| 2 | `node_subject` | An intent id and a node id, as the first two arguments. | #{link(:declarations, /def node_subject\b/)} |",
           "| 2 | `argument :name, label:, text:` | One word the command takes. `rest: true` takes every word left, and `optional: true` allows none. | #{link(:declarations, /def argument\b/)} |",
           "| 2 | `option :name, switch:, text:` | One switch. `default:` gives its value when the call leaves it out. | #{link(:declarations, /def option\b/)} |",
           "| 3 | `reads :graph`, `writes :graph` | The graphs the command reads and writes: #{Plastic::CLI::Declarations::GRAPHS.join(", ")}. | #{link(:declarations, /def reads\b/)} |",
-          "| 4 | `def call` then `super` | A check of its own before the chain. A usage error prints the usage line and exits 2. | #{link(:command, /USAGE = 2/)} |",
-          "| 5 | `workflow` | One link of the chain, explained in [Wire the chain](#wire-the-chain). | #{link(:routine, /def workflow\b/)} |"
+          "| 4 | `def call` then `super` | A check of its own before the workflows. A usage error prints the usage line and exits 2. | #{link(:command, /USAGE = 2/)} |",
+          "| 5 | `workflow` | One workflow of the command, explained in [Wire the workflows](#wire-the-workflows). | #{link(:routine, /def workflow\b/)} |"
         ]
       end
     end

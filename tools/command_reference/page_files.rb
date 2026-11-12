@@ -12,14 +12,14 @@ module CommandReference
 
     private
 
-    def drawings = { "component.svg" => Figures::Component.new(@page).canvas, **overview, **workflows }.transform_values(&:standalone)
+    def drawings = { "component.svg" => Figures::Component.new(@page).canvas, "touches.svg" => Figures::Touches.new(@page).canvas, **overview, **flows }.transform_values(&:standalone)
 
     def overview
-      return { "chain.svg" => Figures::Chain.new(@page).canvas } if @page.flows.any?
+      return { "call.svg" => Figures::Call.new(@page).canvas } if @page.flows.empty?
 
-      { "call.svg" => Figures::Call.new(@page).canvas }
+      (@page.flows.size > 1) ? { "workflows.svg" => Figures::Workflows.new(@page).canvas } : {}
     end
 
-    def workflows = @page.flows.to_h { |flow| ["#{flow.key}.svg", Figures::Workflow.new(@page, flow).canvas] }
+    def flows = @page.flows.to_h { |flow| ["#{flow.key}.svg", Figures::Workflow.new(@page, flow).canvas] }
   end
 end

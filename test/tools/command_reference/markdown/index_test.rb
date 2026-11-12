@@ -12,6 +12,11 @@ class CommandReferenceMarkdownIndexTest < Minitest::Test
     assert_includes text, "## Core"
   end
 
+  def test_the_intro_names_the_six_sections
+    ["Components", "The events of one call", "What one call reads, writes and prints", "How a call ends", "What the page leaves out"].each { |name| assert_includes text, name }
+    ["what it touches", "outcomes"].each { |old| refute_includes text.lines.first(4).join.downcase, old }
+  end
+
   def test_every_table_command_is_linked_once
     Plastic::CLI::TABLE.each_key do |words|
       assert_equal 1, text.scan("(#{words.tr(" ", "-")}/README.md)").size, words

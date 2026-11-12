@@ -1,15 +1,16 @@
 # The command DSL
 
-Every plastic command is one Ruby class. The class declares what the command takes and a chain of workflows, and each workflow declares its steps and the ways it ends. Each drawing below shows real code from the kernel, and each table links the line that defines a word.
+Every plastic command is one Ruby class. The class declares what the command takes and its workflows, and each workflow declares its steps and the ways it ends. Each drawing below shows real code from the kernel, and each table links the line that defines a word.
 
 | Section | The words it covers |
 | --- | --- |
 | [Declare a command](#declare-a-command) | `intent_subject`, `argument`, `option`, `reads`, `writes` |
-| [Wire the chain](#wire-the-chain) | `workflow`, `on`, `next:` |
+| [Wire the workflows](#wire-the-workflows) | `workflow`, `on`, `next:` |
 | [Declare a code workflow](#declare-a-code-workflow) | `sets`, `read`, `gate`, `step`, `outcome` |
 | [Declare an agent workflow](#declare-an-agent-workflow) | `step` with `say:`, `outcome` |
 | [How a call ends](#how-a-call-ends) | `Finished`, `HandedOff`, `Failed`, `Refused` |
 | [How any call can end](#how-any-call-can-end) | the endings every command shares |
+| [What every call shares](#what-every-call-shares) | `verify`, the usage error, the write lock |
 
 ---
 
@@ -21,20 +22,20 @@ The class of [`plastic intent end`](../commands/intent-end/README.md), from [`en
 
 | # | Word | What it declares | Defined in |
 | --- | --- | --- | --- |
-| 1 | `class Name < Routine` | The class is the command, and it runs a chain of workflows. | [`routine.rb:32`](../../../lib/plastic/routine.rb#L32) |
+| 1 | `class Name < Routine` | The class is the command, and it runs its workflows. | [`routine.rb:32`](../../../lib/plastic/routine.rb#L32) |
 | 2 | `intent_subject` | The intent id as the first argument, and the subject of the call. | [`declarations.rb:25`](../../../lib/plastic/cli/declarations.rb#L25) |
 | 2 | `node_subject` | An intent id and a node id, as the first two arguments. | [`declarations.rb:31`](../../../lib/plastic/cli/declarations.rb#L31) |
 | 2 | `argument :name, label:, text:` | One word the command takes. `rest: true` takes every word left, and `optional: true` allows none. | [`declarations.rb:39`](../../../lib/plastic/cli/declarations.rb#L39) |
 | 2 | `option :name, switch:, text:` | One switch. `default:` gives its value when the call leaves it out. | [`declarations.rb:43`](../../../lib/plastic/cli/declarations.rb#L43) |
 | 3 | `reads :graph`, `writes :graph` | The graphs the command reads and writes: work, knowledge, retrieval, references. | [`declarations.rb:49`](../../../lib/plastic/cli/declarations.rb#L49) |
-| 4 | `def call` then `super` | A check of its own before the chain. A usage error prints the usage line and exits 2. | [`command.rb:26`](../../../lib/plastic/cli/command.rb#L26) |
-| 5 | `workflow` | One link of the chain, explained in [Wire the chain](#wire-the-chain). | [`routine.rb:39`](../../../lib/plastic/routine.rb#L39) |
+| 4 | `def call` then `super` | A check of its own before the workflows. A usage error prints the usage line and exits 2. | [`command.rb:26`](../../../lib/plastic/cli/command.rb#L26) |
+| 5 | `workflow` | One workflow of the command, explained in [Wire the workflows](#wire-the-workflows). | [`routine.rb:39`](../../../lib/plastic/routine.rb#L39) |
 
 ---
 
-## Wire the chain
+## Wire the workflows
 
-![The chain of plastic intent end](chain.svg)
+![The workflows of plastic intent end](workflows.svg)
 
 Each `workflow` line draws a box, and each `on` line draws a wire between two boxes, labeled with the outcomes it carries.
 
@@ -43,21 +44,21 @@ Each `workflow` line draws a box, and each `on` line draws a wire between two bo
 | `workflow :key do` then `end` | Runs `:key`. The `on` lines inside say where each outcome goes. | [`routine.rb:39`](../../../lib/plastic/routine.rb#L39) |
 | `on :outcome, next: :key` | That outcome runs `:key` next. | [`branches.rb:13`](../../../lib/plastic/routine/branches.rb#L13) |
 | `workflow :key, next: :other` | Every outcome of `:key` runs `:other` next. | [`chain.rb:25`](../../../lib/plastic/routine/chain.rb#L25) |
-| `next: :noop` | The chain ends after `:key`. Its outcome line gives the `next:` and `because:` lines the call prints. | [`workflow.rb:73`](../../../lib/plastic/workflow.rb#L73) |
+| `next: :noop` | The call ends after `:key`. Its outcome line gives the `next:` and `because:` lines the call prints. | [`workflow.rb:73`](../../../lib/plastic/workflow.rb#L73) |
 
 The first `workflow` line is the entry. An `on` line wins over a plain `next:`.
 
-Before the first call, `verify` checks the wiring and raises every fault at once, from [`routine.rb:54`](../../../lib/plastic/routine.rb#L54). It refuses a chain when:
+Before the first call, `verify` checks the wiring and raises every fault at once, from [`routine.rb:54`](../../../lib/plastic/routine.rb#L54). It refuses the workflows when:
 
 | Fault | Checked in |
 | --- | --- |
-| An edge points to a key that is not in the chain. | [`edge.rb:22`](../../../lib/plastic/routine/edge.rb#L22) |
-| An edge points backward, so the chain could loop. | [`edge.rb:24`](../../../lib/plastic/routine/edge.rb#L24) |
+| An edge points to a key that is not among the workflows. | [`edge.rb:`](../../../lib/plastic/routine/edge.rb#L) |
+| An edge points backward, so the workflows could loop. | [`edge.rb:24`](../../../lib/plastic/routine/edge.rb#L24) |
 | The entry cannot reach a workflow. | [`chain.rb:69`](../../../lib/plastic/routine/chain.rb#L69) |
 | An outcome has no edge. | [`link.rb:27`](../../../lib/plastic/routine/link.rb#L27) |
 | An edge names an outcome its workflow never returns. | [`link.rb:32`](../../../lib/plastic/routine/link.rb#L32) |
-| Anything but `:noop` follows an agent workflow. | [`link.rb:40`](../../../lib/plastic/routine/link.rb#L40) |
-| An outcome that ends the chain has no `because:` line. | [`link.rb:45`](../../../lib/plastic/routine/link.rb#L45) |
+| Anything but `:noop` follows an agent workflow. | [`link.rb:`](../../../lib/plastic/routine/link.rb#L) |
+| An outcome that ends the call has no `because:` line. | [`link.rb:45`](../../../lib/plastic/routine/link.rb#L45) |
 | A workflow prints a `%{name}` that nothing declares. | [`link.rb:52`](../../../lib/plastic/routine/link.rb#L52) |
 
 ---
@@ -81,7 +82,7 @@ Before the first call, `verify` checks the wiring and raises every fault at once
 
 A block does the work. A keyword lambda, `done:`, `pass:` or `if:`, answers a question and changes nothing.
 
-An outcome that ends the chain also takes `offers:`, the command that `next:` prints, and `because:`, the reason for it.
+An outcome that ends the call also takes `offers:`, the command that `next:` prints, and `because:`, the reason for it.
 
 ---
 
@@ -97,7 +98,7 @@ An outcome that ends the chain also takes `offers:`, the command that `next:` pr
 | `outcome :handoff` | `outcome :handoff, offers:, because:` | Ends the call while a step is left: exit 0, or exit 1 with `stops: :failure`. | [`agent_workflow.rb:47`](../../../lib/plastic/agent_workflow.rb#L47) |
 | `outcome :done` | `outcome :done, offers:, because:` | Ends the call once every `done:` check holds. | [`agent_workflow.rb:50`](../../../lib/plastic/agent_workflow.rb#L50) |
 
-An agent workflow always ends the chain. The agent reports its work through a plastic command, and the next call checks the steps again.
+An agent workflow always ends the call. The agent reports its work through a plastic command, and the next call checks the steps again.
 
 ---
 
@@ -126,11 +127,23 @@ These endings hold for every command, so a command page lists only its own.
 | a broken projects file | 1 | prints no next: line | [`command.rb:107`](../../../lib/plastic/cli/command.rb#L107) |
 | a step whose done check still fails | 1 | prints no next: line | [`step.rb:14`](../../../lib/plastic/code_workflow/step.rb#L14) |
 | a step that raises, except a usage error, which keeps exit 2 | 1 | prints no next: line | [`code_workflow.rb:103`](../../../lib/plastic/code_workflow.rb#L103) |
-| a print failure after the chain | 1 | prints no next: line | [`printing.rb:17`](../../../lib/plastic/routine/printing.rb#L17) |
+| a print failure after the workflows | 1 | prints no next: line | [`printing.rb:17`](../../../lib/plastic/routine/printing.rb#L17) |
 | a closing line that cannot fill | 1 | prints no next: line | [`finished.rb:29`](../../../lib/plastic/finished.rb#L29) |
 | an agent handoff that cannot print | 1 | prints no next: line | [`agent_workflow.rb:54`](../../../lib/plastic/agent_workflow.rb#L54) |
 | a dry run that cannot open its database | 1 | prints no next: line | [`preview.rb:38`](../../../lib/plastic/routine/preview.rb#L38) |
 | a dry run that cannot copy the store | 3 | prints no next: line | [`preview.rb:46`](../../../lib/plastic/routine/preview.rb#L46) |
+
+---
+
+## What every call shares
+
+A command page names only what its own call does. These three things hold for every call, and no page repeats them.
+
+| What | When it happens | Defined in |
+| --- | --- | --- |
+| Verify the wiring | Once per process, on the first call of the command. A fault in the wiring stops the call before any step runs. | [`routine.rb:54`](../../../lib/plastic/routine.rb#L54) |
+| Usage error | A missing or wrong argument prints the usage line and exits 2, before any workflow runs. | [`command.rb:26`](../../../lib/plastic/cli/command.rb#L26) |
+| The write lock | Each write to a database runs in one immediate transaction, so two calls never write one database at once. A second writer waits for the busy timeout. | [`connection_pool.rb:48`](../../../lib/plastic/graph/database/connection_pool.rb#L48) |
 
 ---
 
@@ -141,7 +154,7 @@ These endings hold for every command, so a command page lists only its own.
 | [`routine.rb`](../../../lib/plastic/routine.rb) | the command class and `workflow` |
 | [`cli/declarations.rb`](../../../lib/plastic/cli/declarations.rb) | `intent_subject`, `argument`, `option`, `reads` and `writes` |
 | [`routine/branches.rb`](../../../lib/plastic/routine/branches.rb) | `on` |
-| [`routine/chain.rb`](../../../lib/plastic/routine/chain.rb) | the chain and its wiring checks |
+| [`routine/chain.rb`](../../../lib/plastic/routine/chain.rb) | the workflows and their wiring checks |
 | [`workflow.rb`](../../../lib/plastic/workflow.rb) | what both kinds of workflow share: `sets` and `outcome` |
 | [`code_workflow.rb`](../../../lib/plastic/code_workflow.rb) | `read`, `gate`, `step` and `forget_stop` |
 | [`agent_workflow.rb`](../../../lib/plastic/agent_workflow.rb) | the agent `step` and its handoff |

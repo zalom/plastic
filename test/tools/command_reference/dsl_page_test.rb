@@ -37,6 +37,11 @@ class CommandReferenceDslPageTest < Minitest::Test
     dsl.drawings.each { |name, svg| assert_equal "svg", REXML::Document.new(svg).root.name, name }
   end
 
+  def test_the_workflows_drawing_replaces_the_chain_drawing
+    assert_includes dsl.drawings.keys, "workflows.svg"
+    refute_includes dsl.drawings.keys, "chain.svg"
+  end
+
   def test_no_drawing_uses_a_bare_css_variable
     dsl.drawings.each { |name, svg| refute_includes svg, "var(", name }
   end

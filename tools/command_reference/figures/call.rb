@@ -2,7 +2,7 @@
 
 module CommandReference
   module Figures
-    # The drawing of a command that runs no chain: one box for its call.
+    # The drawing of a command that runs no workflow: one box for its call.
     class Call
       def initialize(page)
         @page = page
@@ -26,7 +26,7 @@ module CommandReference
         @drawing.text(frame.at(316, 40).ending, @page.words, "tm")
       end
 
-      def label = (@page.kind == :hook) ? "HOOK, ALWAYS EXIT 0" : "ONE CALL, NO CHAIN"
+      def label = (@page.kind == :hook) ? "HOOK, ALWAYS EXIT 0" : "ONE CALL, NO WORKFLOW"
     end
   end
 end

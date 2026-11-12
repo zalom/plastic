@@ -36,7 +36,7 @@ follow.
 Register the repository once, then create the intent from one line:
 
 ```
-plastic project new my-app --path "$PWD"
+plastic project new my-app "$PWD"
 plastic intent new "Add a --version flag that prints the current version"
 ```
 

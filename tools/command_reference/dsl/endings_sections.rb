@@ -13,7 +13,7 @@ module CommandReference
       OTHER = [
         ["a step whose done check still fails", 1, "prints no next: line", "lib/plastic/code_workflow/step.rb", /still fails/],
         ["a step that raises, except a usage error, which keeps exit 2", 1, "prints no next: line", "lib/plastic/code_workflow.rb", /Failed\.raised\(key, step\.name/],
-        ["a print failure after the chain", 1, "prints no next: line", "lib/plastic/routine/printing.rb", /Failed\.raised\(:print/],
+        ["a print failure after the workflows", 1, "prints no next: line", "lib/plastic/routine/printing.rb", /Failed\.raised\(:print/],
         ["a closing line that cannot fill", 1, "prints no next: line", "lib/plastic/finished.rb", /Failed\.raised\(workflow\.key, "closing"/],
         ["an agent handoff that cannot print", 1, "prints no next: line", "lib/plastic/agent_workflow.rb", /Failed\.raised\(key, "handoff"/],
         ["a dry run that cannot open its database", 1, "prints no next: line", "lib/plastic/routine/preview.rb", /rescue Graph::Database::Error/],
@@ -45,7 +45,7 @@ module CommandReference
     class FilesSection < Section
       ROWS = {
         routine: "the command class and `workflow`", declarations: "`intent_subject`, `argument`, `option`, `reads` and `writes`",
-        branches: "`on`", chain: "the chain and its wiring checks", workflow: "what both kinds of workflow share: `sets` and `outcome`",
+        branches: "`on`", chain: "the workflows and their wiring checks", workflow: "what both kinds of workflow share: `sets` and `outcome`",
         code: "`read`, `gate`, `step` and `forget_stop`", agent: "the agent `step` and its handoff", finished: "the four end values"
       }.freeze
 

@@ -17,48 +17,71 @@ The command is `Node::Remove`, in [`remove.rb:10`](../../../../lib/plastic/comma
 | `--reason TEXT` | why the node is removed |  |
 | `--dry-run` | preview the call in a disposable copy | `false` |
 
-## What it touches
+## Components
 
-![What plastic node remove touches](component.svg)
+![The components on the path of plastic node remove](component.svg)
 
-## How the call flows
+The figure shows the command, the workflows it runs, the classes behind them, and the databases and files they reach.
 
-![The chain of workflows that plastic node remove runs](chain.svg)
+## The events of one call
 
-| Workflow | Kind | Code |
-| --- | --- | --- |
-| [Code::Node::Remove](#codenoderemove) | code | [`remove.rb:10`](../../../../lib/plastic/workflows/code/node/remove.rb#L10) |
-
-### Code::Node::Remove
-
-The code workflow `:code_remove_node`, in [`remove.rb:10`](../../../../lib/plastic/workflows/code/node/remove.rb#L10).
+The call starts the workflow `Code::Node::Remove`, in [`remove.rb:10`](../../../../lib/plastic/workflows/code/node/remove.rb#L10).
 
 Moves a node from open to removed.
 
 ![How Code::Node::Remove runs: its steps, where it stops, and its outcomes](code_remove_node.svg)
 
-| Step | Kind | Check | Code |
-| --- | --- | --- | --- |
-| find the intent | read |  | [`move_node.rb:39`](../../../../lib/plastic/workflows/move_node.rb#L39) |
-| no intent %{intent_id} in this store | gate, stops with exit 1 | `context.intent` | [`move_node.rb:40`](../../../../lib/plastic/workflows/move_node.rb#L40) |
-| forget a refusal of an earlier call | read |  | [`move_node.rb:44`](../../../../lib/plastic/workflows/move_node.rb#L44) |
-| remove the node | step | `[true, false].include?(context.moved)` | [`move_node.rb:45`](../../../../lib/plastic/workflows/move_node.rb#L45) |
-| %{problem} | gate, stops with exit 1 | `context.moved == true` | [`move_node.rb:46`](../../../../lib/plastic/workflows/move_node.rb#L46) |
-| say what was removed | read |  | [`move_node.rb:59`](../../../../lib/plastic/workflows/move_node.rb#L59) |
+Its rows run in this order:
 
-| Outcome | When | Then | Code |
-| --- | --- | --- | --- |
-| `:done` | always | finishes, exit 0; next: plastic graph ready %{intent_id} | [`move_node.rb:60`](../../../../lib/plastic/workflows/move_node.rb#L60) |
+1. Read: find the intent. [`move_node.rb:39`](../../../../lib/plastic/workflows/move_node.rb#L39)
+2. Gate: passes when `context.intent`; otherwise the call stops with exit 1 and prints no intent INTENT_ID in this store. [`move_node.rb:40`](../../../../lib/plastic/workflows/move_node.rb#L40)
+3. Read: forget a refusal of an earlier call. [`move_node.rb:44`](../../../../lib/plastic/workflows/move_node.rb#L44)
+4. Step: remove the node. Done when `[true, false].include?(context.moved)`, so a second call skips it. [`move_node.rb:45`](../../../../lib/plastic/workflows/move_node.rb#L45)
+5. Gate: passes when `context.moved == true`; otherwise the call stops with exit 1 and prints PROBLEM. [`move_node.rb:46`](../../../../lib/plastic/workflows/move_node.rb#L46)
+6. Read: say what was removed. [`move_node.rb:59`](../../../../lib/plastic/workflows/move_node.rb#L59)
+7. Outcome `:done`, always: finishes with exit 0; next: plastic graph ready INTENT_ID. [`move_node.rb:60`](../../../../lib/plastic/workflows/move_node.rb#L60)
 
 It sets `intent`, `problem`, `moved`.
 
-## Outcomes
+In the words of workflow engines, the rows are these four parts:
+
+- **Trigger**: the call starts the workflow `Code::Node::Remove`.
+- **Activities**: 3 reads and 1 step.
+- **Transitions**: 2 gates stop the call when their checks fail; a step runs only while its done check fails.
+- **Outcomes**: `:done` ends the call.
+
+## What one call reads, writes and prints
+
+![What one call of plastic node remove reads, writes and prints](touches.svg)
+
+| Place | Database or file | Tables | Reads or writes | Code |
+| --- | --- | --- | --- | --- |
+| the store folder | work_graph.db | `intents`, `nodes` | reads and writes | [`remove.rb:13`](../../../../lib/plastic/commands/node/remove.rb#L13) |
+| the store folder | store/index.json | | writes | [`prints.rb:14`](../../../../lib/plastic/graph/prints.rb#L14) |
+| the store folder | store/ID--SLUG/PATH | | writes | [`prints.rb:15`](../../../../lib/plastic/graph/prints.rb#L15) |
+| the store folder | store/ID--SLUG/savepoint.md | | writes | [`prints.rb:16`](../../../../lib/plastic/graph/prints.rb#L16) |
+| the store folder | store/ID--SLUG/graph.json | | writes | [`prints.rb:17`](../../../../lib/plastic/graph/prints.rb#L17) |
+| the store folder | store/ID--SLUG/context.json | | writes | [`prints.rb:18`](../../../../lib/plastic/graph/prints.rb#L18) |
+
+A second call runs the same rows again. A step runs again only when its done check fails.
+
+| Step | Done when | The second call | Code |
+| --- | --- | --- | --- |
+| remove the node | `[true, false].include?(context.moved)` | skips it | [`move_node.rb:45`](../../../../lib/plastic/workflows/move_node.rb#L45) |
+
+## How a call ends
 
 Every call can also end in [the ways any call can end](../../dsl/README.md#how-any-call-can-end).
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| no intent %{intent_id} in this store | 1 | prints no next: line | [`move_node.rb:40`](../../../../lib/plastic/workflows/move_node.rb#L40) |
-| %{problem} | 1 | prints no next: line | [`move_node.rb:46`](../../../../lib/plastic/workflows/move_node.rb#L46) |
-| node %{id} is removed | 0 | plastic graph ready %{intent_id} | [`move_node.rb:60`](../../../../lib/plastic/workflows/move_node.rb#L60) |
+| no intent INTENT_ID in this store | 1 | prints no next: line | [`move_node.rb:40`](../../../../lib/plastic/workflows/move_node.rb#L40) |
+| PROBLEM | 1 | prints no next: line | [`move_node.rb:46`](../../../../lib/plastic/workflows/move_node.rb#L46) |
+| node ID is removed | 0 | plastic graph ready INTENT_ID | [`move_node.rb:60`](../../../../lib/plastic/workflows/move_node.rb#L60) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
+
+## What the page leaves out
+
+Every call shares a few things that this page does not repeat; [the command DSL](../../dsl/README.md#what-every-call-shares) names them.
+
+- A call that writes saves a routine run row in local.db. A stop by a gate or a step saves the run, and the next call resumes from it. A dry run saves no row.

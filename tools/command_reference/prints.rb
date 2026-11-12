@@ -12,14 +12,17 @@ module CommandReference
       @lines = source.lines(FILE)
     end
 
-    def files(kinds) = kinds.flat_map { |kind| of(kind) }.uniq
+    def files(kinds) = located(kinds).keys
+
+    # Each file the kinds print, with the line of the prints code that names it.
+    def located(kinds) = kinds.flat_map { |kind| of(kind) }.uniq(&:first).to_h
 
     private
 
-    def listed = @listed ||= @lines.filter_map { |text| text[LISTED, 1] }
+    def listed = @listed ||= @lines.each_with_index.filter_map { |text, at| [text[LISTED, 1], at + 1] if text.match?(LISTED) }
 
-    def roadmap = @roadmap ||= @lines.filter_map { |text| text[ROADMAP, 1]&.sub("\#{slug}", "SLUG") }
+    def roadmap = @roadmap ||= @lines.each_with_index.filter_map { |text, at| [text[ROADMAP, 1].sub("\#{slug}", "SLUG"), at + 1] if text.match?(ROADMAP) }
 
-    def of(kind) = (listed + roadmap).grep(KINDS.fetch(kind))
+    def of(kind) = (listed + roadmap).grep(->(pair) { KINDS.fetch(kind).match?(pair.first) })
   end
 end

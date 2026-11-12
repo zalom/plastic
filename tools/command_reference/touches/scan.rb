@@ -18,7 +18,7 @@ module CommandReference
 
       def call(files)
         targets = reached(files)
-        Touches.new(entries: targets.flat_map { |target| entries_of(target.text) }, components: targets.filter_map(&:part), files: [], schema: @schema)
+        Touches.new(entries: targets.flat_map { |target| entries_of(target.text) }, components: targets.filter_map(&:part), schema: @schema)
       end
 
       def self.mode_of(text, table) = Mode.of(text, table)

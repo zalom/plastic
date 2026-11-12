@@ -78,7 +78,6 @@ could not hold it safely.
 | ------- | ---------------------- |
 | `plastic edge remove ID FROM TO --dry-run` | The work graph rows the removed edge would change. |
 | `plastic node remove ID NODE --dry-run` | The node and edge rows the removal would delete. |
-| `plastic graph show ID --dry-run` | The files the render would write for the work graph. |
 | `plastic intent unlink ID KIND TARGET --dry-run` | The links the removal would delete. |
 | `plastic intent archive ID --dry-run` | The files the archive would remove, and the rows it keeps. |
 | `plastic intent unarchive ID [--dry-run]` | The archived directory restored exactly as archived. |

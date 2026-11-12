@@ -14,12 +14,12 @@ class CommandReferenceModelTest < Minitest::Test
     assert_equal Plastic::CLI::TABLE.keys.sort, CommandReferenceHelper.pages.values.map(&:words).sort
   end
 
-  def test_a_routine_chain_lists_its_workflows_in_order
+  def test_a_routine_lists_its_workflows_in_order
     assert_equal %i[code_prepare_ending agent_finish_intent agent_check_merge code_close_intent agent_wind_down_intent], page("intent end").flows.map(&:key)
     assert_equal :routine, page("intent end").kind
   end
 
-  def test_a_routine_with_its_own_call_keeps_the_code_before_the_chain
+  def test_a_routine_with_its_own_call_keeps_the_code_before_the_workflows
     own = page("update").own_call
 
     assert_equal "lib/plastic/commands/update.rb", own.file
@@ -34,7 +34,7 @@ class CommandReferenceModelTest < Minitest::Test
     assert_includes own.code.first, "def call"
   end
 
-  def test_a_command_with_no_chain_gets_one_box_for_its_call
+  def test_a_command_with_no_workflow_gets_one_box_for_its_call
     project = page("project list")
 
     assert_equal :command, project.kind

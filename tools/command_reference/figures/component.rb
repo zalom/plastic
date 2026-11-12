@@ -24,7 +24,7 @@ module CommandReference
         @page = page
         @flows = page.flows
         @touches = page.touches
-        @drawing = Canvas.new(980, "What plastic #{page.words} touches")
+        @drawing = Canvas.new(980, "The components on the path of plastic #{page.words}")
       end
 
       def canvas = @canvas ||= paint
