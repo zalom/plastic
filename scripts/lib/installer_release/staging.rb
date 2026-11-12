@@ -37,8 +37,8 @@ module InstallerRelease
     end
   end
 
-  # A release package is usable when it holds an executable launcher and a
-  # VERSION file naming the expected version.
+  # A release package is usable when it holds an executable launcher, exe/plastic,
+  # and a VERSION file naming the expected version.
   class Candidate
     def self.check(path, version) = new(path, version).check
 
@@ -59,7 +59,7 @@ module InstallerRelease
     attr_reader :path, :version
 
     def problems
-      launcher = File.join(path, "bin", "plastic")
+      launcher = File.join(path, "exe", "plastic")
       recorded = File.file?(version_file) ? File.read(version_file).strip : nil
       [["candidate has no Plastic launcher", !(File.file?(launcher) && File.executable?(launcher))],
         ["candidate has no version", !recorded],

@@ -7,7 +7,7 @@ require_relative "support/child_process"
 require "tmpdir"
 
 class ReleaseCheckTest < Minitest::Test
-  SCRIPT = File.expand_path("../scripts/release-check", __dir__)
+  SCRIPT = File.expand_path("../bin/release-check", __dir__)
 
   def setup
     @root = Dir.mktmpdir("plastic-release-check")

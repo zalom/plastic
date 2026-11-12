@@ -37,7 +37,7 @@ class RetrievalReadCliTest < Minitest::Test
   def in_home = Dir.mktmpdir { |home| yield home }
 
   def run_cli(home, *argv)
-    out, err, status = ChildProcess.capture3(environment(home), File.join(ROOT, "bin", "plastic"), *argv)
+    out, err, status = ChildProcess.capture3(environment(home), File.join(ROOT, "exe", "plastic"), *argv)
     { out:, err:, status: }
   end
 

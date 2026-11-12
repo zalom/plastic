@@ -47,7 +47,7 @@ jobs:
       - name: Verify the packaged executable
         run: |
           release=$(mktemp -d)
-          ruby scripts/build-release --version "$(ruby -rjson -e 'print JSON.parse(File.read("package.json")).fetch("version")')" --directory "$release"
+          ruby bin/build-release --version "$(ruby -rjson -e 'print JSON.parse(File.read("package.json")).fetch("version")')" --directory "$release"
           tar -xzf "$release/plastic.tgz" -C "$release"
           PLASTIC_ACCEPTANCE_BIN="$release/package/bin/plastic" ruby bin/test --only test/cli/release_contract_test.rb
 

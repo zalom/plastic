@@ -186,7 +186,7 @@ To move an npm installation, run `install.sh` once:
 curl -fsSL https://raw.githubusercontent.com/zalom/plastic/main/install.sh | sh
 ```
 
-The script removes the hooks that ran `~/.plastic/bin/plastic` and points them at the active
+The script removes the hooks that ran `~/.plastic/bin/plastic` or `~/.plastic/exe/plastic` and points them at the active
 release. Your stores, `config.yml` and your agent settings stay.
 
 If you linked `~/.local/bin/plastic` to `~/.plastic/bin/plastic` by hand, as the npm

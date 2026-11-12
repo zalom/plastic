@@ -57,12 +57,12 @@ jobs:
         id: guard
         env:
           BRANCH: ${{ github.ref_name }}
-        run: ruby scripts/release-check --branch "$BRANCH" --github-output "$GITHUB_OUTPUT"
+        run: ruby bin/release-check --branch "$BRANCH" --github-output "$GITHUB_OUTPUT"
 
       - name: Build the release files
         env:
           VERSION: ${{ steps.guard.outputs.version }}
-        run: ruby scripts/build-release --version "$VERSION" --directory release
+        run: ruby bin/build-release --version "$VERSION" --directory release
 
       - name: Install, update, roll back and uninstall the built files on an empty home
         run: ruby tools/check-fresh-install --release release

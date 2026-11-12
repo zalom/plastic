@@ -9,7 +9,7 @@ require_relative "../support/child_process"
 require "json"
 require "rbconfig"
 
-# An acceptance test of the packaged executable: bin/plastic, run as the
+# An acceptance test of the packaged executable: package/bin/plastic, run as the
 # installed binary would run it, with no RubyGems and no load path but its
 # own. One real process start proves the shebang, the load path and
 # PLASTIC_PACKAGE_ROOT all resolve; every other case here runs the kernel's
@@ -19,7 +19,7 @@ class CliReleaseContractTest < Minitest::Test
   def setup
     @dir = Dir.mktmpdir("plastic-release-contract")
     FileUtils.mkdir_p(File.join(@dir, ".plastic", "stores", "global"))
-    @bin = ENV.fetch("PLASTIC_ACCEPTANCE_BIN") { File.expand_path("../../bin/plastic", __dir__) }
+    @bin = ENV.fetch("PLASTIC_ACCEPTANCE_BIN") { File.expand_path("../../exe/plastic", __dir__) }
     @result, @error, @status = command("intent", "new", "A sample delivery")
   end
 

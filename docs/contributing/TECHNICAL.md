@@ -110,7 +110,7 @@ file comparison. Teardown also closes any database the test opened. The tests ru
 commands would.
 - **Acceptance documents** under `varar/` run each command of the storage kernel in a child
   Ruby process, against a fresh home. The steps read the rows back through the `sqlite3`
-  gem, on a connection of their own. `bin/plastic` routes to the kernel, so the
+  gem, on a connection of their own. `exe/plastic` routes to the kernel, so the
   steps call it either through the packaged executable or the kernel's own command line
   directly, by the case. `bin/test --system` runs them through `test/varar_test.rb`. The change
   gate never passes that file to the mutation run.
@@ -145,7 +145,7 @@ maintainer tool: it reads this repository's own files, so it is never installed.
 
 | Path | Holds |
 | ---- | ----- |
-| `bin/plastic` | The launcher; points at the kernel. |
+| `exe/plastic` | The launcher; points at the kernel. |
 | `lib/plastic.rb` | The entry of the tri-graph kernel. |
 | `lib/plastic/` | The kernel: its command line, routines, workflows, end values and graph layer. |
 | `lib/plastic/cli.rb` | The dispatcher. |
@@ -153,7 +153,7 @@ maintainer tool: it reads this repository's own files, so it is never installed.
 | `lib/plastic/commands/` | One file per command. |
 | `lib/plastic/graph/` | The kernel's graph layer: the store databases, the printed files and sync. Its `knowledge/`, `work/` and `retrieval/` folders hold the three graphs; the files at its root are shared by all three. |
 | `test/plastic/` | The kernel tests, which run in their own process. |
-| `test/cli/` | The acceptance test of the packaged executable, `bin/plastic`, run as installed. |
+| `test/cli/` | The acceptance test of the packaged executable, `exe/plastic`, run as installed. |
 | `test/test_helper.rb` | The boot of every test, and `Plastic::TestCase`, the base class of the kernel tests. |
 | `test/test_helpers/` | The helpers `Plastic::TestCase` includes, and the builder of the home fixtures. |
 | `test/fixtures/homes/` | The homes the kernel tests start from, one file each. |

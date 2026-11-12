@@ -55,18 +55,18 @@ class UninstallRunningRubyTest < Minitest::Test
   def copy(source, target = release) = FileUtils.cp_r(File.join(REPO, source), target)
 
   def copied_kernel
-    FileUtils.mkdir_p([File.join(release, "libexec"), File.dirname(launcher)])
+    FileUtils.mkdir_p([File.join(release, "exe"), File.dirname(launcher)])
     copy("scripts")
     copy("lib")
     copy("package.json")
-    copy(File.join("bin", "plastic"), File.join(release, "libexec", "plastic"))
+    copy(File.join("exe", "plastic"), File.join(release, "exe", "plastic"))
     File.write(File.join(release, "VERSION"), "99.0.0\n")
   end
 
   def copied_release
     copied_kernel
     script(ruby_program, "exec #{RbConfig.ruby} \"$@\"")
-    script(File.join(release, "bin", "plastic"), "exec #{ruby_program} #{release}/libexec/plastic \"$@\"")
+    script(File.join(release, "bin", "plastic"), "exec #{ruby_program} #{release}/exe/plastic \"$@\"")
     File.symlink(release, active)
     File.symlink(File.join(active, "bin", "plastic"), launcher)
   end

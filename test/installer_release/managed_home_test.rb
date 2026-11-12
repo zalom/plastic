@@ -24,6 +24,13 @@ class InstallerReleaseManagedHomeTest < Minitest::Test
     assert_includes managed.paths, version
   end
 
+  def test_the_exe_and_lib_folders_of_the_plastic_home_are_managed
+    launcher = touch(install_home, "exe", "plastic")
+    kernel = touch(install_home, "lib")
+
+    assert_equal [true, true], [managed.paths.include?(File.dirname(launcher)), managed.paths.include?(kernel)]
+  end
+
   def test_stores_are_never_managed
     store = touch(install_home, "stores", "alpha", "store", "index.json")
 

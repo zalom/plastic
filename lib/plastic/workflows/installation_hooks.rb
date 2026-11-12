@@ -7,7 +7,7 @@ module Plastic
     # Reads the hook commands in the agent settings and checks that every
     # Plastic hook runs the active release launcher.
     class InstallationHooks
-      LAUNCHER = %r{"([^"]+/bin/plastic)" hook }
+      LAUNCHER = %r{"([^"]+/(?:bin|exe)/plastic)" hook }
       REINSTALL = "run plastic install --reinstall to point the hooks at the active release"
 
       def self.strings(node)

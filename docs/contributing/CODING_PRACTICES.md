@@ -64,4 +64,4 @@ Each long-lived branch has one role.
   no suffix.
 
 A fix needed today goes to `main` in its own pull request. Then `main` is merged into `alpha`.
-`scripts/release-check` checks that each branch releases the right kind of version.
+`bin/release-check` checks that each branch releases the right kind of version.

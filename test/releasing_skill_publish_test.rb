@@ -51,8 +51,15 @@ class CiWorkflowTest < Minitest::Test
   def test_ci_checks_the_packaged_executable_from_the_release_builder
     run = steps.find { |s| s["name"] == "Verify the packaged executable" }["run"]
 
-    assert_includes run, "ruby scripts/build-release"
+    assert_includes run, "ruby bin/build-release"
     assert_includes run, "PLASTIC_ACCEPTANCE_BIN=\"$release/package/bin/plastic\" ruby bin/test --only test/cli/release_contract_test.rb"
+  end
+
+  def test_every_ruby_file_a_workflow_runs_is_tracked
+    runs = Dir.glob(File.join(REPO, ".github", "workflows", "*.yml")).flat_map { |path| File.read(path).scan(/\bruby\s+((?:bin|scripts|tools|exe)\/[\w.\/-]+)/).flatten }
+
+    refute_empty runs
+    assert_empty(runs.uniq.reject { |path| File.file?(File.join(REPO, path)) })
   end
 
   def test_ci_sets_up_no_node

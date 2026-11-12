@@ -35,7 +35,7 @@ module InstallerRelease
       link_launcher
       return unless File.file?(File.join(plastic_home, "VERSION"))
 
-      HookStrip.new(files: hook_files, launchers: [target, File.join(plastic_home, "bin", "plastic")]).call
+      HookStrip.new(files: hook_files, launchers: [target, File.join(plastic_home, "bin", "plastic"), File.join(plastic_home, "exe", "plastic")]).call
       reinstall
     end
 

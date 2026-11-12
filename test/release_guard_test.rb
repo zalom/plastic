@@ -3,7 +3,7 @@
 require "json"
 require "minitest/autorun"
 require "tmpdir"
-require_relative "../scripts/lib/release_guard"
+require_relative "../bin/lib/release_guard"
 
 class ReleaseGuardTest < Minitest::Test
   def setup

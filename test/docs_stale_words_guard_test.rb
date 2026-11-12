@@ -13,7 +13,7 @@ class DocsStaleWordsGuardTest < Minitest::Test
   LINT_RULES = %w[AGENTS.md docs/contributing/CODING_PRACTICES.md docs/contributing/TECHNICAL.md .reek.yml].freeze
   STALE = /doctor --core|next: none|intent end \S+ --(?!project|json)|\bEvery command ends with/
   PUBLISHED = PAGES + Dir["{INSTALL,SECURITY,CONTRIBUTING,AGENTS,PLASTIC}.md", "agents/*.md", base: ROOT]
-  SCRIPTS = %w[lib/ build-release install-release install.rb release-check select-update-target].freeze
+  SCRIPTS = %w[lib/ install-release install.rb select-update-target].freeze
   REMOVED_NAMES = Regexp.union(
     /spawn[- ]preamble|savepoint-note|read-config|delivery\.lock|INDEX\.md|\b(?:plan|checklist|graph)\.md\b|\btemplates\//,
     /plastic (?:auto (?:report|brief)|intent step|session (?:commit|summary|handoff)|migrate|feedback)\b/,

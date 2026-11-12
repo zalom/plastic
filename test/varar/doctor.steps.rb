@@ -13,7 +13,7 @@ module DoctorWalk
     "remove references.db from the store" => ->(kernel, _project) { File.delete(store_file(kernel, "references.db")) },
     "drop the intents table from work_graph.db" => ->(kernel, _project) { drop(store_file(kernel, "work_graph.db"), "intents") },
     "remove the machine database" => ->(kernel, _project) { File.delete(*Dir.glob(File.join(kernel.plastic_home, "*.db"))) },
-    "make the launcher not executable" => ->(kernel, _project) { File.chmod(0o644, File.join(kernel.plastic_home, "bin", "plastic")) },
+    "make the launcher not executable" => ->(kernel, _project) { File.chmod(0o644, File.join(kernel.plastic_home, "exe", "plastic")) },
     "clear the Plastic block from CLAUDE.md" => ->(kernel, _project) { File.write(File.join(kernel.home, ".claude", "CLAUDE.md"), "") },
     "clear the project CLAUDE.md" => ->(_kernel, project) { File.write(File.join(project, "CLAUDE.md"), "") }
   }.freeze

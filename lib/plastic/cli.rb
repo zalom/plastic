@@ -48,7 +48,7 @@ module Plastic
       def self.build(given) = new(environment: Command::Environment.current, table: TABLE, topics: TOPICS, **given)
     end
 
-    # The whole of bin/plastic: find the command, hand it the rest of argv and
+    # The whole of exe/plastic: find the command, hand it the rest of argv and
     # its own words. A hook reads its event from the environment's input;
     # other tools ignore it.
     def self.call(argv, **given)
@@ -58,7 +58,7 @@ module Plastic
       end
     end
 
-    # The whole of bin/plastic: run a shipped command, list the shipped
+    # The whole of exe/plastic: run a shipped command, list the shipped
     # commands for `plastic help`, and name a command that has no stage yet
     # instead of blaming the words the owner typed.
     def self.bin_call(argv, **given) = route(argv, Context.build(given))

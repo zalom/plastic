@@ -21,7 +21,7 @@ class ArchitectureFiguresCommandCallTest < Minitest::Test
 
       assert_predicate status, :success?, err
 
-      out, err, status = ChildProcess.capture3(environment(home), File.join(ROOT, "bin", "plastic"), "intent", "new", "Sample title")
+      out, err, status = ChildProcess.capture3(environment(home), File.join(ROOT, "exe", "plastic"), "intent", "new", "Sample title")
 
       assert_predicate status, :success?, err
       out.lines.map { |line| normalize(line) }.reject(&:empty?)

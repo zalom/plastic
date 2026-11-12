@@ -3,7 +3,7 @@
 require "json"
 require_relative "../../test_helper"
 
-# bin/plastic's own entry: runs a shipped command, lists the shipped table,
+# exe/plastic's own entry: runs a shipped command, lists the shipped table,
 # and names a command with no stage yet.
 class BinCallTest < Plastic::TestCase
   def test_bin_call_runs_a_command_the_table_has

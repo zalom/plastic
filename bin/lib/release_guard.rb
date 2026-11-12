@@ -30,7 +30,7 @@ module ReleaseGuard
     Result.new(ok: !version.nil? && !(stable && suffix), version: version, prerelease_suffix: suffix)
   end
 
-  # The channel each release branch makes. scripts/release-check compares it
+  # The channel each release branch makes. bin/release-check compares it
   # with the channel InstallerRelease::Manifest.identity reads from the version.
   CHANNELS = {"alpha" => "alpha", "beta" => "beta", "main" => "latest"}.freeze
 

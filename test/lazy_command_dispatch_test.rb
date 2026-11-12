@@ -43,7 +43,7 @@ class LazyCommandDispatchTest < Minitest::Test
   def environment(home) = { "HOME" => home, "PLASTIC_HOME" => home, "PLASTIC_TMP" => File.join(home, "tmp") }
 
   def run_cli(home, *argv, stdin_data: "")
-    out, err, status = ChildProcess.capture3(environment(home), File.join(ROOT, "bin", "plastic"), *argv, stdin_data:)
+    out, err, status = ChildProcess.capture3(environment(home), File.join(ROOT, "exe", "plastic"), *argv, stdin_data:)
     { out:, err:, status: }
   end
 
