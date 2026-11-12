@@ -8,7 +8,7 @@ Reads the files people changed into rows. A record changed on both sides stops t
 plastic sync up [--overwrite [PATH]] [--merge] [--dry-run]
 ```
 
-The command is `SyncUp`, in [`sync_up.rb:11`](../../../../lib/plastic/commands/sync_up.rb#L11). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Sync::Up`, in [`up.rb:12`](../../../../lib/plastic/commands/sync/up.rb#L12). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |

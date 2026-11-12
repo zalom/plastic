@@ -6,7 +6,7 @@ Record the verdict of the next review round of an intent.
 plastic intent verdict ID accept|revise TEXT
 ```
 
-The command is `IntentVerdict`, in [`intent_verdict.rb:8`](../../../../lib/plastic/commands/intent_verdict.rb#L8). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Intent::Verdict`, in [`verdict.rb:9`](../../../../lib/plastic/commands/intent/verdict.rb#L9). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |
@@ -20,7 +20,7 @@ The command is `IntentVerdict`, in [`intent_verdict.rb:8`](../../../../lib/plast
 
 ## Before the chain
 
-The command's own `call`, at [`intent_verdict.rb:22`](../../../../lib/plastic/commands/intent_verdict.rb#L22), runs first:
+The command's own `call`, at [`verdict.rb:23`](../../../../lib/plastic/commands/intent/verdict.rb#L23), runs first:
 
 ```ruby
 def call(*)
@@ -92,4 +92,4 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | the judge asked for a revision; add a node that fixes it | 0 | plastic node add %{intent_id} TITLE --criterion KEY | [`record_verdict.rb:29`](../../../../lib/plastic/workflows/record_verdict.rb#L29) |
 | intent %{intent_id} is accepted | 0 | plastic intent end %{intent_id} | [`record_verdict.rb:31`](../../../../lib/plastic/workflows/record_verdict.rb#L31) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
-| Usage error: the verdict takes accept or revise | 2 | prints no next: line | [`intent_verdict.rb:23`](../../../../lib/plastic/commands/intent_verdict.rb#L23) |
+| Usage error: the verdict takes accept or revise | 2 | prints no next: line | [`verdict.rb:24`](../../../../lib/plastic/commands/intent/verdict.rb#L24) |

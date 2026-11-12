@@ -47,7 +47,7 @@ module Plastic
         raise CLI::Command::Usage, error.message
       end
 
-      def database_list = as_usage(Graph::Knowledge::Backup::Databases::Unknown) { Graph::Knowledge::Backup::Databases.parse(parsed[:databases]) }
+      def database_list = as_usage(Plastic::Graph::Knowledge::Backup::Databases::Unknown) { Plastic::Graph::Knowledge::Backup::Databases.parse(parsed[:databases]) }
 
       def scope
         @scope ||= CLI::Scope.new(env: environment.env, home: environment.home, slug: parsed[:store], directory: environment.directory)

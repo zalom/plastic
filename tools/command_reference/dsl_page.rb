@@ -50,7 +50,7 @@ module CommandReference
 
     def figures
       home = page
-      { "declare-command.svg" => Dsl::DeclareCommand.new(home, class_rows(home.file, "IntentEnd")), **workflow_figures,
+      { "declare-command.svg" => Dsl::DeclareCommand.new(home, class_rows(home.file, "End")), **workflow_figures,
         "endings.svg" => Dsl::EndValues.new(ends), "chain.svg" => Figures::Chain.new(home) }
     end
 

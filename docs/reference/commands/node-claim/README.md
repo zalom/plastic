@@ -6,7 +6,7 @@ Claim an open node and print its brief.
 plastic node claim ID NODE
 ```
 
-The command is `NodeClaim`, in [`node_claim.rb:8`](../../../../lib/plastic/commands/node_claim.rb#L8). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Node::Claim`, in [`claim.rb:9`](../../../../lib/plastic/commands/node/claim.rb#L9). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |

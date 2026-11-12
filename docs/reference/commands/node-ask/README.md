@@ -6,7 +6,7 @@ Move a claimed node to needs_info with a question for the owner.
 plastic node ask ID NODE TEXT
 ```
 
-The command is `NodeAsk`, in [`node_ask.rb:8`](../../../../lib/plastic/commands/node_ask.rb#L8). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Node::Ask`, in [`ask.rb:9`](../../../../lib/plastic/commands/node/ask.rb#L9). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |

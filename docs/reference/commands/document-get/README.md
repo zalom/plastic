@@ -8,7 +8,7 @@ Fetches one current or immutable document by its qualified reference.
 plastic document get REF [--passage N]
 ```
 
-The command is `DocumentGet`, in [`document_get.rb:8`](../../../../lib/plastic/commands/document_get.rb#L8). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Document::Get`, in [`get.rb:9`](../../../../lib/plastic/commands/document/get.rb#L9). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |

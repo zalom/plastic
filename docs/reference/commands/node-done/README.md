@@ -6,7 +6,7 @@ Mark a claimed node done, with its findings as TEXT.
 plastic node done ID NODE TEXT
 ```
 
-The command is `NodeDone`, in [`node_done.rb:8`](../../../../lib/plastic/commands/node_done.rb#L8). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Node::Done`, in [`done.rb:9`](../../../../lib/plastic/commands/node/done.rb#L9). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |

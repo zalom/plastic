@@ -6,7 +6,7 @@ Append a log line to a roadmap, stamped with the session id.
 plastic roadmap log SLUG TEXT...
 ```
 
-The command is `RoadmapLog`, in [`roadmap_log.rb:8`](../../../../lib/plastic/commands/roadmap_log.rb#L8). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Roadmap::Log`, in [`log.rb:9`](../../../../lib/plastic/commands/roadmap/log.rb#L9). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |

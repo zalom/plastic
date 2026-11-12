@@ -8,7 +8,7 @@ Removes one `links` row from ID to TARGET of the given kind.
 plastic intent unlink ID KIND TARGET [--dry-run]
 ```
 
-The command is `IntentUnlink`, in [`intent_unlink.rb:8`](../../../../lib/plastic/commands/intent_unlink.rb#L8). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Intent::Unlink`, in [`unlink.rb:9`](../../../../lib/plastic/commands/intent/unlink.rb#L9). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |

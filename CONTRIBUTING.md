@@ -16,14 +16,14 @@ under test touches, open the example and keep its shape.
 
 | The code under test | Pattern | Built on | Example |
 | --- | --- | --- | --- |
-| A kernel class or a command, called inside the test's own process | Kernel test | `Plastic::TestCase` | `test/plastic/commands/intent_new_test.rb` |
+| A kernel class or a command, called inside the test's own process | Kernel test | `Plastic::TestCase` | `test/plastic/commands/intent/new_test.rb` |
 | What a person gets from a command: the exit code and both output streams | Child process test | `Minitest::Test` with `KernelCommand` | `test/plastic/hooks/broken_store_test.rb` |
 | `install.sh` or an installer script | Installer test | `Minitest::Test` with `InstallShHelper` | `test/install_sh_dependency_test.rb` |
 | A behavior that reads best as a table of cases | Acceptance document | `varar/NAME.md` with `test/varar/NAME.steps.rb` | `varar/hook-start.md` |
 | A rule about the files of this repository | Guard test | `Minitest::Test` | `test/real_home_guard_test.rb` |
 
-A test file has the path of its source file: `lib/plastic/commands/intent_new.rb` is
-tested by `test/plastic/commands/intent_new_test.rb`.
+A test file has the path of its source file: `lib/plastic/commands/intent/new.rb` is
+tested by `test/plastic/commands/intent/new_test.rb`.
 
 ### Rules for every test
 
@@ -60,7 +60,7 @@ tested by `test/plastic/commands/intent_new_test.rb`.
 ### Run the tests
 
 ```sh
-ruby bin/test --only test/plastic/commands/intent_new_test.rb
+ruby bin/test --only test/plastic/commands/intent/new_test.rb
 bundle exec ruby bin/verify-change <base commit>
 ```
 
@@ -74,8 +74,13 @@ on your machine.
 ## Add a command
 
 1. Add one row to `lib/plastic/cli/table.rb`: the command words, the class and the help line.
-2. Add the class in one file under `lib/plastic/commands/`, named after it: `Commands::IntentEnd`
-   lives in `intent_end.rb`. Follow `architecture_status.rb` for the smallest example.
+2. Add the class in one file under `lib/plastic/commands/`. Each word of the command is a name in
+   the class path and a folder in the file path: `intent end` is `Commands::Intent::End` in
+   `intent/end.rb`, and `intent lock status` is `Commands::Intent::Lock::Status` in
+   `intent/lock/status.rb`. A group with no command of its own is a module; `backup` and `config`
+   are classes that also hold their subcommands, and a subcommand file requires its parent first.
+   Inside `commands/`, write `Plastic::Graph`, never `Graph`, wherever a group name would shadow a
+   top-level class. Follow `architecture/status.rb` for the smallest example.
 3. Write the tests first and commit them red. Follow [Test a change](#test-a-change).
 4. Write the command's reference pages: run `ruby tools/command-reference` and commit the pages under `docs/reference/commands/`.
 5. Run the gates once: `bundle exec ruby bin/verify-change <base commit>`.

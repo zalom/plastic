@@ -1,0 +1,21 @@
+# frozen_string_literal: true
+
+require_relative "../../routine"
+
+module Plastic
+  module Commands
+    module Edge
+      # Adds a needs edge between two nodes of the same intent, guarded
+      # against a self edge, a missing or removed node, and a loop.
+      class Add < Routine
+        intent_subject
+        argument :from, label: "FROM", text: "the node that must be done first"
+        argument :to, label: "TO", text: "the node that waits on it"
+        writes :work
+        prints :intent
+
+        workflow :code_add_edge, next: :noop
+      end
+    end
+  end
+end

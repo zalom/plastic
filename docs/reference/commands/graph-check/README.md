@@ -8,7 +8,7 @@ Runs the five findings of one intent's work graph and its spec.
 plastic graph check ID
 ```
 
-The command is `GraphCheck`, in [`graph_check.rb:8`](../../../../lib/plastic/commands/graph_check.rb#L8). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Graph::Check`, in [`check.rb:9`](../../../../lib/plastic/commands/graph/check.rb#L9). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |

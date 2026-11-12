@@ -2,8 +2,8 @@
 
 require_relative "../../test_helper"
 require_relative "../../../lib/plastic/commands/status"
-require_relative "../../../lib/plastic/commands/node_add"
-require_relative "../../../lib/plastic/commands/node_claim"
+require_relative "../../../lib/plastic/commands/node/add"
+require_relative "../../../lib/plastic/commands/node/claim"
 
 class StatusTest < Plastic::TestCase
   def call(*args) = plastic("status", *args, table: Plastic::CLI::TABLE)

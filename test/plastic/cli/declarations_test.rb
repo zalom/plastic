@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../lib/plastic/commands/intent_new"
+require_relative "../../../lib/plastic/commands/intent/new"
 
 class DeclarationsTest < Plastic::TestCase
   class Declared
@@ -59,7 +59,7 @@ class DeclarationsTest < Plastic::TestCase
   end
 
   def test_the_tool_name_is_the_words_the_table_gives_the_class
-    assert_equal "intent new", Plastic::Commands::IntentNew.tool_name
+    assert_equal "intent new", Plastic::Commands::Intent::New.tool_name
   end
 
   def test_declared_names_list_arguments_then_options

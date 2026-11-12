@@ -6,7 +6,7 @@ Print an intent's goal, criteria, rulings, ready nodes and command usage.
 plastic intent brief ID
 ```
 
-The command is `IntentBrief`, in [`intent_brief.rb:10`](../../../../lib/plastic/commands/intent_brief.rb#L10). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Intent::Brief`, in [`brief.rb:11`](../../../../lib/plastic/commands/intent/brief.rb#L11). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |

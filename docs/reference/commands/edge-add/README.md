@@ -8,7 +8,7 @@ Adds a needs edge between two nodes of the same intent, guarded against a self e
 plastic edge add ID FROM TO
 ```
 
-The command is `EdgeAdd`, in [`edge_add.rb:9`](../../../../lib/plastic/commands/edge_add.rb#L9). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Edge::Add`, in [`add.rb:10`](../../../../lib/plastic/commands/edge/add.rb#L10). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |

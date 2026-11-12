@@ -8,7 +8,7 @@ Builds the retrieval handoff manifest; the harness chooses its evidence.
 plastic intent discover ID TERMS... [--source-project SLUG]
 ```
 
-The command is `IntentDiscover`, in [`intent_discover.rb:8`](../../../../lib/plastic/commands/intent_discover.rb#L8). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Intent::Discover`, in [`discover.rb:9`](../../../../lib/plastic/commands/intent/discover.rb#L9). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |

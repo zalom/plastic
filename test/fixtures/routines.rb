@@ -191,3 +191,6 @@ module Fixtures
     "hook quiet" => ["Fixtures::Quiet", "Say nothing"]
   }.freeze
 end
+
+# The command table names a class from Plastic, so the fixtures answer there too.
+Plastic::Fixtures = Fixtures

@@ -1,0 +1,22 @@
+# frozen_string_literal: true
+
+require_relative "../../routine"
+
+module Plastic
+  module Commands
+    module Intent
+      # Writes one owner ruling against an intent, numbered in order, one after the last.
+      # --supersedes names an older ruling and links the two.
+      class Rule < Routine
+        intent_subject
+        argument :text, label: "TEXT", text: "the ruling, in the owner's words"
+        option :supersedes, switch: "--supersedes RULING_ID", text: "an older ruling this one replaces"
+        reads :work
+        writes :knowledge
+        prints :intent
+
+        workflow :code_add_ruling, next: :noop
+      end
+    end
+  end
+end

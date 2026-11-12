@@ -14,7 +14,7 @@ class CliTest < Plastic::TestCase
   def test_the_table_has_one_auto_entry_and_intent_lock_status
     auto_words = Plastic::CLI::TABLE.keys.select { |name| name.split.first == "auto" }
 
-    assert_equal [["auto"], "Commands::IntentLockStatus"], [auto_words, Plastic::CLI::TABLE.dig("intent lock status", 0)]
+    assert_equal [["auto"], "Commands::Intent::Lock::Status"], [auto_words, Plastic::CLI::TABLE.dig("intent lock status", 0)]
   end
 
   def test_find_returns_nil_for_unknown_words
@@ -36,7 +36,7 @@ class CliTest < Plastic::TestCase
   end
 
   def test_the_class_names_its_file
-    assert_equal "commands/intent_end", Plastic::CLI.file_of("Commands::IntentEnd")
+    assert_equal "commands/intent/end", Plastic::CLI.file_of("Commands::Intent::End")
   end
 
   def test_unknown_words_exit_2_with_a_pointer_to_help

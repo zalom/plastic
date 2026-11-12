@@ -8,7 +8,7 @@ Moves a node from open to removed. Its edges stay, but a removed node never coun
 plastic node remove ID NODE [--reason TEXT] [--dry-run]
 ```
 
-The command is `NodeRemove`, in [`node_remove.rb:9`](../../../../lib/plastic/commands/node_remove.rb#L9). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Node::Remove`, in [`remove.rb:10`](../../../../lib/plastic/commands/node/remove.rb#L10). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |

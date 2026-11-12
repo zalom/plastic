@@ -6,7 +6,7 @@ Add one line under Notes in the outcome of an intent, keeping the earlier text a
 plastic intent note ID TEXT [--kind KIND]
 ```
 
-The command is `IntentNote`, in [`intent_note.rb:10`](../../../../lib/plastic/commands/intent_note.rb#L10). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Intent::Note`, in [`note.rb:11`](../../../../lib/plastic/commands/intent/note.rb#L11). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |
@@ -20,11 +20,11 @@ The command is `IntentNote`, in [`intent_note.rb:10`](../../../../lib/plastic/co
 
 ## Before the chain
 
-The command's own `call`, at [`intent_note.rb:18`](../../../../lib/plastic/commands/intent_note.rb#L18), runs first:
+The command's own `call`, at [`note.rb:19`](../../../../lib/plastic/commands/intent/note.rb#L19), runs first:
 
 ```ruby
 def call
-  kinds = Graph::Knowledge::Intent::Notes::KINDS
+  kinds = Plastic::Graph::Knowledge::Intent::Notes::KINDS
   raise CLI::Command::Usage, "KIND takes #{kinds.join(", ")}" unless kinds.include?(parsed[:kind])
 
   super
@@ -72,4 +72,4 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | %{problem} | 1 | prints no next: line | [`note_intent.rb:23`](../../../../lib/plastic/workflows/note_intent.rb#L23) |
 | the outcome holds the note | 0 | prints no next: line | [`note_intent.rb:33`](../../../../lib/plastic/workflows/note_intent.rb#L33) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
-| Usage error: KIND takes %{kinds} | 2 | prints no next: line | [`intent_note.rb:20`](../../../../lib/plastic/commands/intent_note.rb#L20) |
+| Usage error: KIND takes %{kinds} | 2 | prints no next: line | [`note.rb:21`](../../../../lib/plastic/commands/intent/note.rb#L21) |

@@ -6,7 +6,7 @@ Write the owner's go-ahead for an intent; auto refuses an intent without it.
 plastic intent approve ID
 ```
 
-The command is `IntentApprove`, in [`intent_approve.rb:8`](../../../../lib/plastic/commands/intent_approve.rb#L8). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Intent::Approve`, in [`approve.rb:9`](../../../../lib/plastic/commands/intent/approve.rb#L9). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |

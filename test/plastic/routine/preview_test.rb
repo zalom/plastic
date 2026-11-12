@@ -1,13 +1,13 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-%w[intent_archive intent_unlink node_remove edge_remove roadmap_drop roadmap_edge_remove].each do |name|
+%w[intent/archive intent/unlink node/remove edge/remove roadmap/drop roadmap/edge/remove].each do |name|
   require_relative "../../../lib/plastic/commands/#{name}"
 end
 
 class RoutinePreviewTest < Plastic::TestCase
-  COMMANDS = [Plastic::Commands::IntentArchive, Plastic::Commands::IntentUnlink, Plastic::Commands::NodeRemove,
-    Plastic::Commands::EdgeRemove, Plastic::Commands::RoadmapDrop, Plastic::Commands::RoadmapEdgeRemove].freeze
+  COMMANDS = [Plastic::Commands::Intent::Archive, Plastic::Commands::Intent::Unlink, Plastic::Commands::Node::Remove,
+    Plastic::Commands::Edge::Remove, Plastic::Commands::Roadmap::Drop, Plastic::Commands::Roadmap::Edge::Remove].freeze
 
   # A chain that holds an agent workflow, with the preview declared.
   class PreviewedDraft < Fixtures::Routine

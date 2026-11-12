@@ -8,7 +8,24 @@ class KernelPathsTest < Minitest::Test
   ROOT = File.expand_path("../../..", __dir__)
   SELF = "test/plastic/layout/kernel_paths_test.rb"
   OLD_KERNEL = File.join("scripts", "lib", "plastic")
-  RETIRED_NAMES = [OLD_KERNEL].freeze
+  RETIRED_COMMANDS = [
+    "Commands::ConfigList", "Commands::ConfigGet", "Commands::ConfigSet", "Commands::IntentAbandon",
+    "Commands::IntentEnd", "Commands::IntentNew", "Commands::ProjectList", "Commands::ProjectNew",
+    "Commands::ProjectLinks", "Commands::SyncUp", "Commands::SyncDown", "Commands::SessionNote",
+    "Commands::IntentRule", "Commands::IntentRevise", "Commands::IntentNote", "Commands::IntentApprove",
+    "Commands::IntentJudge", "Commands::IntentVerdict", "Commands::IntentSpec", "Commands::IntentDiscover",
+    "Commands::IntentContext", "Commands::ArchitectureStatus", "Commands::ArchitectureRefresh", "Commands::IntentLockStatus",
+    "Commands::IntentShow", "Commands::IntentBrief", "Commands::IntentLink", "Commands::IntentUnlink",
+    "Commands::IntentArchive", "Commands::IntentUnarchive", "Commands::BackupList", "Commands::BackupPurge",
+    "Commands::BackupRestore", "Commands::DocumentGet", "Commands::DocumentBatch", "Commands::NodeAdd",
+    "Commands::NodeRemove", "Commands::NodeClaim", "Commands::NodeRelease", "Commands::NodeDone",
+    "Commands::NodeFail", "Commands::NodeAsk", "Commands::NodeImpede", "Commands::NodeResolve",
+    "Commands::EdgeAdd", "Commands::EdgeRemove", "Commands::GraphCheck", "Commands::GraphReady",
+    "Commands::GraphResume", "Commands::GraphShow", "Commands::RoadmapNew", "Commands::RoadmapBatch",
+    "Commands::RoadmapAdd", "Commands::RoadmapShow", "Commands::RoadmapNext", "Commands::RoadmapDrop",
+    "Commands::RoadmapOpen", "Commands::RoadmapCheck", "Commands::RoadmapLog", "Commands::RoadmapEdgeRemove"
+  ].freeze
+  RETIRED_NAMES = [OLD_KERNEL, *RETIRED_COMMANDS].freeze
 
   def tracked
     @tracked ||= ChildProcess.capture2e("git", "ls-files", "-z", chdir: ROOT).first.split("\0").reject do |path|

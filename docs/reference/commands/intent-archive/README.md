@@ -8,7 +8,7 @@ Takes a done, abandoned or future intent off the checkout; its rows stay.
 plastic intent archive ID [--dry-run]
 ```
 
-The command is `IntentArchive`, in [`intent_archive.rb:8`](../../../../lib/plastic/commands/intent_archive.rb#L8). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Intent::Archive`, in [`archive.rb:9`](../../../../lib/plastic/commands/intent/archive.rb#L9). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |

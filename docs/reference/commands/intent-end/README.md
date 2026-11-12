@@ -6,7 +6,7 @@ Close a delivered intent once its verdict, nodes and outcome allow it, or print 
 plastic intent end ID
 ```
 
-The command is `IntentEnd`, in [`intent_end.rb:8`](../../../../lib/plastic/commands/intent_end.rb#L8). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Intent::End`, in [`end.rb:9`](../../../../lib/plastic/commands/intent/end.rb#L9). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |

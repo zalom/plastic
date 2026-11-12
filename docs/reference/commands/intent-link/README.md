@@ -8,7 +8,7 @@ Writes one `links` row from ID to TARGET: an intent id, a ruling ref such as `1/
 plastic intent link ID KIND TARGET
 ```
 
-The command is `IntentLink`, in [`intent_link.rb:10`](../../../../lib/plastic/commands/intent_link.rb#L10). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Intent::Link`, in [`link.rb:11`](../../../../lib/plastic/commands/intent/link.rb#L11). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |
@@ -22,11 +22,11 @@ The command is `IntentLink`, in [`intent_link.rb:10`](../../../../lib/plastic/co
 
 ## Before the chain
 
-The command's own `call`, at [`intent_link.rb:19`](../../../../lib/plastic/commands/intent_link.rb#L19), runs first:
+The command's own `call`, at [`link.rb:20`](../../../../lib/plastic/commands/intent/link.rb#L20), runs first:
 
 ```ruby
 def call
-  raise CLI::Command::Usage, "KIND takes #{Graph::Knowledge::Link::KINDS.join(", ")}" unless Graph::Knowledge::Link::KINDS.include?(parsed[:kind])
+  raise CLI::Command::Usage, "KIND takes #{Plastic::Graph::Knowledge::Link::KINDS.join(", ")}" unless Plastic::Graph::Knowledge::Link::KINDS.include?(parsed[:kind])
 
   super
 end
@@ -73,4 +73,4 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | %{refusal} | 3 | prints no next: line | [`add_link.rb:24`](../../../../lib/plastic/workflows/add_link.rb#L24) |
 | the link is on record | 0 | plastic sync down | [`add_link.rb:34`](../../../../lib/plastic/workflows/add_link.rb#L34) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
-| Usage error: KIND takes %{raph} | 2 | prints no next: line | [`intent_link.rb:20`](../../../../lib/plastic/commands/intent_link.rb#L20) |
+| Usage error: KIND takes %{lastic} | 2 | prints no next: line | [`link.rb:21`](../../../../lib/plastic/commands/intent/link.rb#L21) |

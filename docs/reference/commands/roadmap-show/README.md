@@ -8,7 +8,7 @@ Prints a roadmap's batches and items from the rows. It reads and writes nothing.
 plastic roadmap show SLUG [--batch N]
 ```
 
-The command is `RoadmapShow`, in [`roadmap_show.rb:8`](../../../../lib/plastic/commands/roadmap_show.rb#L8). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Roadmap::Show`, in [`show.rb:9`](../../../../lib/plastic/commands/roadmap/show.rb#L9). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |

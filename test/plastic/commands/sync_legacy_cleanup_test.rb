@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../lib/plastic/commands/sync_up"
+require_relative "../../../lib/plastic/commands/sync/up"
 
 # What the first sync of a legacy store removes, when the config asks it to.
 class SyncLegacyCleanupTest < Plastic::TestCase

@@ -6,7 +6,7 @@ Tell the agent to regenerate the architecture map with its own tool.
 plastic architecture refresh
 ```
 
-The command is `ArchitectureRefresh`, in [`architecture_refresh.rb:8`](../../../../lib/plastic/commands/architecture_refresh.rb#L8). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Architecture::Refresh`, in [`refresh.rb:9`](../../../../lib/plastic/commands/architecture/refresh.rb#L9). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 ## What it touches
 

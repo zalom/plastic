@@ -6,7 +6,7 @@ Move a claimed node to impeded with the impediment.
 plastic node impede ID NODE TEXT
 ```
 
-The command is `NodeImpede`, in [`node_impede.rb:8`](../../../../lib/plastic/commands/node_impede.rb#L8). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Node::Impede`, in [`impede.rb:9`](../../../../lib/plastic/commands/node/impede.rb#L9). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |

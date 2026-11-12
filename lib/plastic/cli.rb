@@ -20,12 +20,25 @@ module Plastic
     def self.starts?(argv, words) = argv.take(words.size) == words
 
     # The class that runs a command, loaded only when called. The class names
-    # its file: Commands::IntentEnd is commands/intent_end.rb.
+    # its file: Commands::Intent::End is commands/intent/end.rb. Each segment
+    # of the class path is looked up on its own scope alone, so a segment never
+    # resolves through an ancestor such as Routine or CLI::Command.
     def self.tool(name, table = TABLE)
       klass, _summary = table.fetch(name)
-      require_relative file_of(klass) unless Plastic.const_defined?(klass)
-      Plastic.const_get(klass)
+      segments = klass.split("::")
+      require_relative file_of(klass) unless loaded?(segments)
+      segments.inject(Plastic) { |scope, segment| scope.const_get(segment, false) }
     end
+
+    def self.loaded?(segments)
+      segments.inject(Plastic) do |scope, segment|
+        return false unless scope.const_defined?(segment, false)
+
+        scope.const_get(segment, false)
+      end
+      true
+    end
+    private_class_method :loaded?
 
     def self.file_of(klass) = klass.split("::").map { |part| Plastic.snake(part) }.join("/")
 

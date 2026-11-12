@@ -6,7 +6,7 @@ Close an intent that will not ship once outcome.md records the revert, or print 
 plastic intent abandon ID
 ```
 
-The command is `IntentAbandon`, in [`intent_abandon.rb:8`](../../../../lib/plastic/commands/intent_abandon.rb#L8). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Intent::Abandon`, in [`abandon.rb:9`](../../../../lib/plastic/commands/intent/abandon.rb#L9). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |

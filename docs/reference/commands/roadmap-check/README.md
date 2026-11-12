@@ -6,7 +6,7 @@ List a roadmap's loops, dangling edges and items with no intent.
 plastic roadmap check SLUG
 ```
 
-The command is `RoadmapCheck`, in [`roadmap_check.rb:8`](../../../../lib/plastic/commands/roadmap_check.rb#L8). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Roadmap::Check`, in [`check.rb:9`](../../../../lib/plastic/commands/roadmap/check.rb#L9). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |

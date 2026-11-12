@@ -6,7 +6,7 @@ Add a node to an intent's work graph.
 plastic node add ID TITLE --criterion KEY [--input PATH]
 ```
 
-The command is `NodeAdd`, in [`node_add.rb:8`](../../../../lib/plastic/commands/node_add.rb#L8). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Node::Add`, in [`add.rb:9`](../../../../lib/plastic/commands/node/add.rb#L9). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |

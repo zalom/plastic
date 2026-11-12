@@ -4,17 +4,17 @@ require_relative "../code_workflow"
 require_relative "../graph/knowledge/spec"
 require_relative "../graph/work/main_session"
 require_relative "lines"
-require_relative "../commands/node_add"
-require_relative "../commands/node_remove"
-require_relative "../commands/node_claim"
-require_relative "../commands/node_release"
-require_relative "../commands/node_done"
-require_relative "../commands/node_fail"
-require_relative "../commands/node_ask"
-require_relative "../commands/node_impede"
-require_relative "../commands/node_resolve"
-require_relative "../commands/edge_add"
-require_relative "../commands/edge_remove"
+require_relative "../commands/node/add"
+require_relative "../commands/node/remove"
+require_relative "../commands/node/claim"
+require_relative "../commands/node/release"
+require_relative "../commands/node/done"
+require_relative "../commands/node/fail"
+require_relative "../commands/node/ask"
+require_relative "../commands/node/impede"
+require_relative "../commands/node/resolve"
+require_relative "../commands/edge/add"
+require_relative "../commands/edge/remove"
 
 module Plastic
   module Workflows
@@ -34,8 +34,8 @@ module Plastic
       end
 
       NODE_AND_EDGE_COMMANDS = [
-        Commands::NodeAdd, Commands::NodeRemove, Commands::NodeClaim, Commands::NodeRelease, Commands::NodeDone,
-        Commands::NodeFail, Commands::NodeAsk, Commands::NodeImpede, Commands::NodeResolve, Commands::EdgeAdd, Commands::EdgeRemove
+        Commands::Node::Add, Commands::Node::Remove, Commands::Node::Claim, Commands::Node::Release, Commands::Node::Done,
+        Commands::Node::Fail, Commands::Node::Ask, Commands::Node::Impede, Commands::Node::Resolve, Commands::Edge::Add, Commands::Edge::Remove
       ].freeze
 
       read "find the intent" do |context|

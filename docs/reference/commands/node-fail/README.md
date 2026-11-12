@@ -6,7 +6,7 @@ Mark a claimed node failed, with the reason as TEXT.
 plastic node fail ID NODE TEXT
 ```
 
-The command is `NodeFail`, in [`node_fail.rb:8`](../../../../lib/plastic/commands/node_fail.rb#L8). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Node::Fail`, in [`fail.rb:9`](../../../../lib/plastic/commands/node/fail.rb#L9). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |

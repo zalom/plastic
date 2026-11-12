@@ -16,7 +16,7 @@ class CliLauncherTest < Minitest::Test
   def setup
     @home = Dir.mktmpdir("plastic-launcher-home")
     @tmp = Dir.mktmpdir("plastic-launcher-tmp")
-    @env = {"HOME" => @home, "PLASTIC_TMP" => @tmp}
+    @env = { "HOME" => @home, "PLASTIC_TMP" => @tmp }
   end
 
   def teardown
@@ -84,10 +84,10 @@ class CliLauncherTest < Minitest::Test
     script = "require_relative #{File.join(ROOT, "lib", "plastic").inspect}\n" \
              "name = Plastic::CLI.find(['intent', 'new'])\n" \
              "Plastic::CLI.tool(name)\n" \
-             "puts $LOADED_FEATURES.grep(%r{/plastic/commands/}).map { |f| File.basename(f) }.sort.join(',')\n"
+             "puts $LOADED_FEATURES.grep(%r{/plastic/commands/}).map { |f| f.split('/plastic/commands/').last }.sort.join(',')\n"
     out, err, status = ChildProcess.capture3(@env, "ruby", "--disable-gems", "-e", script)
 
     assert_predicate status, :success?, err
-    assert_equal "intent_new.rb", out.strip
+    assert_equal "intent/new.rb", out.strip
   end
 end

@@ -2,8 +2,8 @@
 
 require_relative "../../test_helper"
 require_relative "../../../lib/plastic/commands/backup"
-require_relative "../../../lib/plastic/commands/backup_restore"
-require_relative "../../../lib/plastic/commands/backup_list"
+require_relative "../../../lib/plastic/commands/backup/restore"
+require_relative "../../../lib/plastic/commands/backup/list"
 
 class BackupLogTest < Plastic::TestCase
   include BackupHomes
