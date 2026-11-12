@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 424" width="760" height="424" role="img" xml:space="preserve">
-<title>How AddRuling runs in plastic intent rule</title>
+<title>How Rule runs in plastic intent rule</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
 .lane-code { fill: #d5e8e3; stroke: #0d6b61; stroke-width: 1.5; }
@@ -68,17 +68,17 @@
 .big { font: 700 36px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
 }</style>
 <rect width="100%" height="100%" class="ground"/>
-<text x="16" y="22" class="tb" text-anchor="start">AddRuling</text>
-<text x="436" y="22" class="tm tag-muted" text-anchor="end">add_ruling.rb:9</text>
+<text x="16" y="22" class="tb" text-anchor="start">Rule</text>
+<text x="436" y="22" class="tm tag-muted" text-anchor="end">rule.rb:11</text>
 <rect x="16" y="34" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="49" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="49" class="tm tag-muted" text-anchor="end">add_ruling.rb:14</text>
+<text x="426" y="49" class="tm tag-muted" text-anchor="end">rule.rb:16</text>
 <text x="26" y="66" class="t" text-anchor="start">find the intent</text>
 <path d="M 226 79 L 226 89" class="wire"/>
 <path d="M 221 81 L 226 89 L 231 81 Z" class="head"/>
 <rect x="16" y="89" width="420" height="56" rx="6" class="card"/>
 <text x="26" y="104" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="104" class="tm tag-muted" text-anchor="end">add_ruling.rb:18</text>
+<text x="426" y="104" class="tm tag-muted" text-anchor="end">rule.rb:20</text>
 <text x="26" y="121" class="tm" text-anchor="start">passes when !context.intent.nil?</text>
 <path d="M 436 107 L 464 107" class="wire-failure"/>
 <path d="M 456 102 L 464 107 L 456 112 Z" class="head"/>
@@ -90,7 +90,7 @@
 <path d="M 221 147 L 226 155 L 231 147 Z" class="head"/>
 <rect x="16" y="155" width="420" height="59" rx="6" class="card"/>
 <text x="26" y="170" class="tag tag-muted" text-anchor="start">STEP</text>
-<text x="426" y="170" class="tm tag-muted" text-anchor="end">add_ruling.rb:20</text>
+<text x="426" y="170" class="tm tag-muted" text-anchor="end">rule.rb:22</text>
 <text x="26" y="187" class="t" text-anchor="start">write the ruling</text>
 <text x="26" y="202" class="tm" text-anchor="start">done when !context.problem.nil? || !context.id.nil?</text>
 <path d="M 436 173 L 464 173" class="wire-failure"/>
@@ -103,7 +103,7 @@
 <path d="M 221 216 L 226 224 L 231 216 Z" class="head"/>
 <rect x="16" y="224" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="239" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="239" class="tm tag-muted" text-anchor="end">add_ruling.rb:26</text>
+<text x="426" y="239" class="tm tag-muted" text-anchor="end">rule.rb:28</text>
 <text x="26" y="256" class="tm" text-anchor="start">passes when context.problem.nil?</text>
 <path d="M 436 242 L 464 242" class="wire-failure"/>
 <path d="M 456 237 L 464 242 L 456 247 Z" class="head"/>
@@ -114,7 +114,7 @@
 <path d="M 221 271 L 226 279 L 231 271 Z" class="head"/>
 <rect x="16" y="279" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="294" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="294" class="tm tag-muted" text-anchor="end">add_ruling.rb:28</text>
+<text x="426" y="294" class="tm tag-muted" text-anchor="end">rule.rb:30</text>
 <text x="26" y="311" class="t" text-anchor="start">say what was written</text>
 <path d="M 226 324 L 226 334" class="wire"/>
 <path d="M 221 326 L 226 334 L 231 326 Z" class="head"/>

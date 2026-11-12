@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 322" width="760" height="322" role="img" xml:space="preserve">
-<title>How ChooseInstallations runs in plastic uninstall</title>
+<title>How Choose runs in plastic uninstall</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
 .lane-code { fill: #d5e8e3; stroke: #0d6b61; stroke-width: 1.5; }
@@ -68,11 +68,11 @@
 .big { font: 700 36px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
 }</style>
 <rect width="100%" height="100%" class="ground"/>
-<text x="16" y="22" class="tb" text-anchor="start">ChooseInstallations</text>
-<text x="436" y="22" class="tm tag-muted" text-anchor="end">choose_installations.rb:11</text>
+<text x="16" y="22" class="tb" text-anchor="start">Choose</text>
+<text x="436" y="22" class="tm tag-muted" text-anchor="end">choose.rb:14</text>
 <rect x="16" y="34" width="420" height="60" rx="6" class="card"/>
 <text x="26" y="49" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="49" class="tm tag-muted" text-anchor="end">choose_installations.rb:16</text>
+<text x="426" y="49" class="tm tag-muted" text-anchor="end">choose.rb:19</text>
 <text x="26" y="66" class="t" text-anchor="start">list the recorded and the found harnesses and read the</text>
 <text x="26" y="81" class="t" text-anchor="start">person&#39;s answer</text>
 <path d="M 226 94 L 226 104" class="wire"/>
@@ -103,5 +103,5 @@
 <path d="M 316 282 L 352 282" class="wire"/>
 <path d="M 344 277 L 352 282 L 344 287 Z" class="head"/>
 <rect x="352" y="266" width="392" height="42" rx="6" class="lane-code"/>
-<text x="362" y="283" class="t" text-anchor="start">next workflow: PreviewUninstall</text>
+<text x="362" y="283" class="t" text-anchor="start">next workflow: Preview</text>
 </svg>

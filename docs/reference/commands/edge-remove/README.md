@@ -27,26 +27,26 @@ The command is `Edge::Remove`, in [`remove.rb:9`](../../../../lib/plastic/comman
 
 | Workflow | Kind | Code |
 | --- | --- | --- |
-| [RemoveEdge](#removeedge) | code | [`remove_edge.rb:8`](../../../../lib/plastic/workflows/remove_edge.rb#L8) |
+| [Code::Edge::Remove](#codeedgeremove) | code | [`remove.rb:10`](../../../../lib/plastic/workflows/code/edge/remove.rb#L10) |
 
-### RemoveEdge
+### Code::Edge::Remove
 
-The code workflow `:code_remove_edge`, in [`remove_edge.rb:8`](../../../../lib/plastic/workflows/remove_edge.rb#L8).
+The code workflow `:code_remove_edge`, in [`remove.rb:10`](../../../../lib/plastic/workflows/code/edge/remove.rb#L10).
 
 Removes one edge; fails when no such edge exists.
 
-![How RemoveEdge runs: its steps, where it stops, and its outcomes](code_remove_edge.svg)
+![How Code::Edge::Remove runs: its steps, where it stops, and its outcomes](code_remove_edge.svg)
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
-| forget a refusal of an earlier call | read |  | [`remove_edge.rb:13`](../../../../lib/plastic/workflows/remove_edge.rb#L13) |
-| remove the edge | step | `!context.removed.nil?` | [`remove_edge.rb:15`](../../../../lib/plastic/workflows/remove_edge.rb#L15) |
-| %{problem} | gate, stops with exit 1 | `context.problem.nil?` | [`remove_edge.rb:21`](../../../../lib/plastic/workflows/remove_edge.rb#L21) |
-| say what was removed | read |  | [`remove_edge.rb:23`](../../../../lib/plastic/workflows/remove_edge.rb#L23) |
+| forget a refusal of an earlier call | read |  | [`remove.rb:15`](../../../../lib/plastic/workflows/code/edge/remove.rb#L15) |
+| remove the edge | step | `!context.removed.nil?` | [`remove.rb:17`](../../../../lib/plastic/workflows/code/edge/remove.rb#L17) |
+| %{problem} | gate, stops with exit 1 | `context.problem.nil?` | [`remove.rb:23`](../../../../lib/plastic/workflows/code/edge/remove.rb#L23) |
+| say what was removed | read |  | [`remove.rb:25`](../../../../lib/plastic/workflows/code/edge/remove.rb#L25) |
 
 | Outcome | When | Then | Code |
 | --- | --- | --- | --- |
-| `:done` | always | finishes, exit 0; next: plastic graph show %{intent_id} | [`remove_edge.rb:27`](../../../../lib/plastic/workflows/remove_edge.rb#L27) |
+| `:done` | always | finishes, exit 0; next: plastic graph show %{intent_id} | [`remove.rb:29`](../../../../lib/plastic/workflows/code/edge/remove.rb#L29) |
 
 It sets `problem`, `removed`.
 
@@ -56,6 +56,6 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| %{problem} | 1 | prints no next: line | [`remove_edge.rb:21`](../../../../lib/plastic/workflows/remove_edge.rb#L21) |
-| edge %{from} to %{to} is gone | 0 | plastic graph show %{intent_id} | [`remove_edge.rb:27`](../../../../lib/plastic/workflows/remove_edge.rb#L27) |
+| %{problem} | 1 | prints no next: line | [`remove.rb:23`](../../../../lib/plastic/workflows/code/edge/remove.rb#L23) |
+| edge %{from} to %{to} is gone | 0 | plastic graph show %{intent_id} | [`remove.rb:29`](../../../../lib/plastic/workflows/code/edge/remove.rb#L29) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |

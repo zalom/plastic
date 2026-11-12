@@ -26,33 +26,33 @@ The command is `Sync::Up`, in [`up.rb:12`](../../../../lib/plastic/commands/sync
 
 | Workflow | Kind | Code |
 | --- | --- | --- |
-| [PreviewSync](#previewsync) | code | [`preview_sync.rb:8`](../../../../lib/plastic/workflows/preview_sync.rb#L8) |
-| [SyncUp](#syncup) | code | [`sync_up.rb:9`](../../../../lib/plastic/workflows/sync_up.rb#L9) |
+| [Code::Sync::Up::Preview](#codesyncuppreview) | code | [`preview.rb:12`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L12) |
+| [Code::Sync::Up](#codesyncup) | code | [`up.rb:11`](../../../../lib/plastic/workflows/code/sync/up.rb#L11) |
 
-### PreviewSync
+### Code::Sync::Up::Preview
 
-The code workflow `:code_preview_sync`, in [`preview_sync.rb:8`](../../../../lib/plastic/workflows/preview_sync.rb#L8).
+The code workflow `:code_preview_sync`, in [`preview.rb:12`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L12).
 
 Previews the same sync in a copy before the normal write workflow.
 
-![How PreviewSync runs: its steps, where it stops, and its outcomes](code_preview_sync.svg)
+![How Code::Sync::Up::Preview runs: its steps, where it stops, and its outcomes](code_preview_sync.svg)
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
-| preview the sync in an isolated copy | read |  | [`preview_sync.rb:11`](../../../../lib/plastic/workflows/preview_sync.rb#L11) |
+| preview the sync in an isolated copy | read |  | [`preview.rb:15`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L15) |
 
 | Outcome | When | Then | Code |
 | --- | --- | --- | --- |
-| `:done` | when `context.dry_run` | finishes, exit 0; next: %{original_command} | [`preview_sync.rb:18`](../../../../lib/plastic/workflows/preview_sync.rb#L18) |
-| `:continue` | otherwise | runs [SyncUp](#syncup) | [`preview_sync.rb:20`](../../../../lib/plastic/workflows/preview_sync.rb#L20) |
+| `:done` | when `context.dry_run` | finishes, exit 0; next: %{original_command} | [`preview.rb:22`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L22) |
+| `:continue` | otherwise | runs [Code::Sync::Up](#codesyncup) | [`preview.rb:24`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L24) |
 
-### SyncUp
+### Code::Sync::Up
 
-The code workflow `:code_sync_up`, in [`sync_up.rb:9`](../../../../lib/plastic/workflows/sync_up.rb#L9).
+The code workflow `:code_sync_up`, in [`up.rb:11`](../../../../lib/plastic/workflows/code/sync/up.rb#L11).
 
 Sync up: plans, applies, and refuses on the conflicts left.
 
-![How SyncUp runs: its steps, where it stops, and its outcomes](code_sync_up.svg)
+![How Code::Sync::Up runs: its steps, where it stops, and its outcomes](code_sync_up.svg)
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
@@ -78,7 +78,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| the preview wrote only to a disposable copy | 0 | %{original_command} | [`preview_sync.rb:18`](../../../../lib/plastic/workflows/preview_sync.rb#L18) |
+| the preview wrote only to a disposable copy | 0 | %{original_command} | [`preview.rb:22`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L22) |
 | %{failure} | 1 | prints no next: line | [`sync_steps.rb:68`](../../../../lib/plastic/workflows/sync_steps.rb#L68) |
 | changed on both sides since the last print, nothing written: %{conflicts}; pass --overwrite PATH, --overwrite or --merge | 3 | prints no next: line | [`sync_steps.rb:69`](../../../../lib/plastic/workflows/sync_steps.rb#L69) |
 | changed on both sides since the last print, left as they are: %{conflicts}; pass --overwrite PATH or --overwrite | 3 | prints no next: line | [`sync_steps.rb:75`](../../../../lib/plastic/workflows/sync_steps.rb#L75) |

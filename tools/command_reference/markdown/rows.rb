@@ -36,8 +36,8 @@ module CommandReference
       def then_words = @outcome.ends? ? "#{@outcome.exit_words}; #{@outcome.next_words}" : runs
 
       def runs
-        short = Words.short(@owner.page.flow(@outcome.to).klass)
-        "runs [#{short}](##{short.downcase})"
+        target = @owner.page.flow(@outcome.to)
+        "runs [#{target.path}](##{target.anchor})"
       end
     end
 
@@ -49,8 +49,7 @@ module CommandReference
       end
 
       def to_s
-        short = @flow.short
-        "| [#{short}](##{short.downcase}) | #{@flow.lane} | #{@links.code(@flow.file, @flow.line)} |"
+        "| [#{@flow.path}](##{@flow.anchor}) | #{@flow.lane} | #{@links.code(@flow.file, @flow.line)} |"
       end
     end
 

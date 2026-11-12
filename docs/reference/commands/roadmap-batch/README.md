@@ -26,25 +26,25 @@ The command is `Roadmap::Batch`, in [`batch.rb:9`](../../../../lib/plastic/comma
 
 | Workflow | Kind | Code |
 | --- | --- | --- |
-| [WriteRoadmapBatch](#writeroadmapbatch) | code | [`write_roadmap_batch.rb:9`](../../../../lib/plastic/workflows/write_roadmap_batch.rb#L9) |
+| [Code::Roadmap::Batch](#coderoadmapbatch) | code | [`batch.rb:11`](../../../../lib/plastic/workflows/code/roadmap/batch.rb#L11) |
 
-### WriteRoadmapBatch
+### Code::Roadmap::Batch
 
-The code workflow `:code_write_roadmap_batch`, in [`write_roadmap_batch.rb:9`](../../../../lib/plastic/workflows/write_roadmap_batch.rb#L9).
+The code workflow `:code_write_roadmap_batch`, in [`batch.rb:11`](../../../../lib/plastic/workflows/code/roadmap/batch.rb#L11).
 
 Writes a roadmap batch's goal and done criteria on a roadmap that exists.
 
-![How WriteRoadmapBatch runs: its steps, where it stops, and its outcomes](code_write_roadmap_batch.svg)
+![How Code::Roadmap::Batch runs: its steps, where it stops, and its outcomes](code_write_roadmap_batch.svg)
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
-| no roadmap %{slug} | gate, stops with exit 1 | `!context.retrieval.roadmap(context.slug).nil?` | [`write_roadmap_batch.rb:12`](../../../../lib/plastic/workflows/write_roadmap_batch.rb#L12) |
-| write the batch | step | `!context.batch.nil?` | [`write_roadmap_batch.rb:18`](../../../../lib/plastic/workflows/write_roadmap_batch.rb#L18) |
-| say what was written | read |  | [`write_roadmap_batch.rb:23`](../../../../lib/plastic/workflows/write_roadmap_batch.rb#L23) |
+| no roadmap %{slug} | gate, stops with exit 1 | `!context.retrieval.roadmap(context.slug).nil?` | [`batch.rb:14`](../../../../lib/plastic/workflows/code/roadmap/batch.rb#L14) |
+| write the batch | step | `!context.batch.nil?` | [`batch.rb:20`](../../../../lib/plastic/workflows/code/roadmap/batch.rb#L20) |
+| say what was written | read |  | [`batch.rb:25`](../../../../lib/plastic/workflows/code/roadmap/batch.rb#L25) |
 
 | Outcome | When | Then | Code |
 | --- | --- | --- | --- |
-| `:done` | always | finishes, exit 0; next: plastic roadmap show %{slug} | [`write_roadmap_batch.rb:27`](../../../../lib/plastic/workflows/write_roadmap_batch.rb#L27) |
+| `:done` | always | finishes, exit 0; next: plastic roadmap show %{slug} | [`batch.rb:29`](../../../../lib/plastic/workflows/code/roadmap/batch.rb#L29) |
 
 It sets `batch`.
 
@@ -54,6 +54,6 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| no roadmap %{slug} | 1 | plastic roadmap new %{slug} | [`write_roadmap_batch.rb:12`](../../../../lib/plastic/workflows/write_roadmap_batch.rb#L12) |
-| batch %{position} of %{slug} is written | 0 | plastic roadmap show %{slug} | [`write_roadmap_batch.rb:27`](../../../../lib/plastic/workflows/write_roadmap_batch.rb#L27) |
+| no roadmap %{slug} | 1 | plastic roadmap new %{slug} | [`batch.rb:14`](../../../../lib/plastic/workflows/code/roadmap/batch.rb#L14) |
+| batch %{position} of %{slug} is written | 0 | plastic roadmap show %{slug} | [`batch.rb:29`](../../../../lib/plastic/workflows/code/roadmap/batch.rb#L29) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |

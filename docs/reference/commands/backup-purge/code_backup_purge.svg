@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 248" width="760" height="248" role="img" xml:space="preserve">
-<title>How BackupPurge runs in plastic backup purge</title>
+<title>How Purge runs in plastic backup purge</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
 .lane-code { fill: #d5e8e3; stroke: #0d6b61; stroke-width: 1.5; }
@@ -68,11 +68,11 @@
 .big { font: 700 36px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
 }</style>
 <rect width="100%" height="100%" class="ground"/>
-<text x="16" y="22" class="tb" text-anchor="start">BackupPurge</text>
-<text x="436" y="22" class="tm tag-muted" text-anchor="end">backup_purge.rb:10</text>
+<text x="16" y="22" class="tb" text-anchor="start">Purge</text>
+<text x="436" y="22" class="tm tag-muted" text-anchor="end">purge.rb:13</text>
 <rect x="16" y="34" width="420" height="59" rx="6" class="card"/>
 <text x="26" y="49" class="tag tag-muted" text-anchor="start">STEP</text>
-<text x="426" y="49" class="tm tag-muted" text-anchor="end">backup_purge.rb:25</text>
+<text x="426" y="49" class="tm tag-muted" text-anchor="end">purge.rb:28</text>
 <text x="26" y="66" class="t" text-anchor="start">delete the backups</text>
 <text x="26" y="81" class="tm" text-anchor="start">done when !context.purged.nil?</text>
 <path d="M 436 52 L 464 52" class="wire-failure"/>
@@ -85,7 +85,7 @@
 <path d="M 221 95 L 226 103 L 231 95 Z" class="head"/>
 <rect x="16" y="103" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="118" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="118" class="tm tag-muted" text-anchor="end">backup_purge.rb:32</text>
+<text x="426" y="118" class="tm tag-muted" text-anchor="end">purge.rb:35</text>
 <text x="26" y="135" class="t" text-anchor="start">say what was deleted</text>
 <path d="M 226 148 L 226 158" class="wire"/>
 <path d="M 221 150 L 226 158 L 231 150 Z" class="head"/>

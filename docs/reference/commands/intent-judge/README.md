@@ -22,46 +22,46 @@ The command is `Intent::Judge`, in [`judge.rb:9`](../../../../lib/plastic/comman
 
 | Workflow | Kind | Code |
 | --- | --- | --- |
-| [PrepareJudge](#preparejudge) | code | [`prepare_judge.rb:10`](../../../../lib/plastic/workflows/prepare_judge.rb#L10) |
-| [JudgeIntent](#judgeintent) | agent | [`judge_intent.rb:9`](../../../../lib/plastic/workflows/judge_intent.rb#L9) |
+| [Code::Intent::Judge](#codeintentjudge) | code | [`judge.rb:12`](../../../../lib/plastic/workflows/code/intent/judge.rb#L12) |
+| [Agent::Intent::Judge](#agentintentjudge) | agent | [`judge.rb:11`](../../../../lib/plastic/workflows/agent/intent/judge.rb#L11) |
 
-### PrepareJudge
+### Code::Intent::Judge
 
-The code workflow `:code_prepare_judge`, in [`prepare_judge.rb:10`](../../../../lib/plastic/workflows/prepare_judge.rb#L10).
+The code workflow `:code_prepare_judge`, in [`judge.rb:12`](../../../../lib/plastic/workflows/code/intent/judge.rb#L12).
 
 Reads the intent and its judge rounds: a missing or closed intent fails, both rounds used is the owner's step.
 
-![How PrepareJudge runs: its steps, where it stops, and its outcomes](code_prepare_judge.svg)
+![How Code::Intent::Judge runs: its steps, where it stops, and its outcomes](code_prepare_judge.svg)
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
-| check the intent | read |  | [`prepare_judge.rb:15`](../../../../lib/plastic/workflows/prepare_judge.rb#L15) |
-| %{problem} | gate, stops with exit 1 | `context.problem.nil?` | [`prepare_judge.rb:19`](../../../../lib/plastic/workflows/prepare_judge.rb#L19) |
+| check the intent | read |  | [`judge.rb:17`](../../../../lib/plastic/workflows/code/intent/judge.rb#L17) |
+| %{problem} | gate, stops with exit 1 | `context.problem.nil?` | [`judge.rb:21`](../../../../lib/plastic/workflows/code/intent/judge.rb#L21) |
 | the judge's review round of intent %{intent_id} is used; the owner decides between abandoning the intent and a follow-up intent | gate, stops with exit 3 | `!Graph::Work::Completion::Review.of(context).used_up?` | [`review_round.rb:11`](../../../../lib/plastic/workflows/review_round.rb#L11) |
 
 | Outcome | When | Then | Code |
 | --- | --- | --- | --- |
-| `:accepted` | when `Graph::Work::Completion::Review.of(context).counting?` | finishes, exit 0; next: plastic intent end %{intent_id} | [`prepare_judge.rb:22`](../../../../lib/plastic/workflows/prepare_judge.rb#L22) |
-| `:judging` | otherwise | runs [JudgeIntent](#judgeintent) | [`prepare_judge.rb:24`](../../../../lib/plastic/workflows/prepare_judge.rb#L24) |
+| `:accepted` | when `Plastic::Graph::Work::Completion::Review.of(context).counting?` | finishes, exit 0; next: plastic intent end %{intent_id} | [`judge.rb:24`](../../../../lib/plastic/workflows/code/intent/judge.rb#L24) |
+| `:judging` | otherwise | runs [Agent::Intent::Judge](#agentintentjudge) | [`judge.rb:26`](../../../../lib/plastic/workflows/code/intent/judge.rb#L26) |
 
 It sets `problem`.
 
-### JudgeIntent
+### Agent::Intent::Judge
 
-The agent workflow `:agent_judge_intent`, in [`judge_intent.rb:9`](../../../../lib/plastic/workflows/judge_intent.rb#L9).
+The agent workflow `:agent_judge_intent`, in [`judge.rb:11`](../../../../lib/plastic/workflows/agent/intent/judge.rb#L11).
 
 The agent reads the spec and the findings of every node, decides, and records the verdict.
 
-![How JudgeIntent runs: its steps, where it stops, and its outcomes](agent_judge_intent.svg)
+![How Agent::Intent::Judge runs: its steps, where it stops, and its outcomes](agent_judge_intent.svg)
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
-| judge the delivery | agent step | `Graph::Work::Completion::Review.of(context).counting?` | [`judge_intent.rb:10`](../../../../lib/plastic/workflows/judge_intent.rb#L10) |
+| judge the delivery | agent step | `Plastic::Graph::Work::Completion::Review.of(context).counting?` | [`judge.rb:12`](../../../../lib/plastic/workflows/agent/intent/judge.rb#L12) |
 
 | Outcome | When | Then | Code |
 | --- | --- | --- | --- |
-| `:handoff` | when a step is left | hands off, exit 0; next: plastic intent verdict %{intent_id} accept\|revise TEXT | [`judge_intent.rb:17`](../../../../lib/plastic/workflows/judge_intent.rb#L17) |
-| `:done` | when every done check holds | finishes, exit 0; prints no next: line | [`judge_intent.rb:19`](../../../../lib/plastic/workflows/judge_intent.rb#L19) |
+| `:handoff` | when a step is left | hands off, exit 0; next: plastic intent verdict %{intent_id} accept\|revise TEXT | [`judge.rb:19`](../../../../lib/plastic/workflows/agent/intent/judge.rb#L19) |
+| `:done` | when every done check holds | finishes, exit 0; prints no next: line | [`judge.rb:21`](../../../../lib/plastic/workflows/agent/intent/judge.rb#L21) |
 
 The agent step "judge the delivery" prints:
 
@@ -73,9 +73,9 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| %{problem} | 1 | prints no next: line | [`prepare_judge.rb:19`](../../../../lib/plastic/workflows/prepare_judge.rb#L19) |
+| %{problem} | 1 | prints no next: line | [`judge.rb:21`](../../../../lib/plastic/workflows/code/intent/judge.rb#L21) |
 | the judge's review round of intent %{intent_id} is used; the owner decides between abandoning the intent and a follow-up intent | 3 | prints no next: line | [`review_round.rb:11`](../../../../lib/plastic/workflows/review_round.rb#L11) |
-| intent %{intent_id} is accepted | 0 | plastic intent end %{intent_id} | [`prepare_judge.rb:22`](../../../../lib/plastic/workflows/prepare_judge.rb#L22) |
-| the agent judges the delivery and records the verdict | 0 | plastic intent verdict %{intent_id} accept\|revise TEXT | [`judge_intent.rb:17`](../../../../lib/plastic/workflows/judge_intent.rb#L17) |
-| the delivery is judged | 0 | prints no next: line | [`judge_intent.rb:19`](../../../../lib/plastic/workflows/judge_intent.rb#L19) |
+| intent %{intent_id} is accepted | 0 | plastic intent end %{intent_id} | [`judge.rb:24`](../../../../lib/plastic/workflows/code/intent/judge.rb#L24) |
+| the agent judges the delivery and records the verdict | 0 | plastic intent verdict %{intent_id} accept\|revise TEXT | [`judge.rb:19`](../../../../lib/plastic/workflows/agent/intent/judge.rb#L19) |
+| the delivery is judged | 0 | prints no next: line | [`judge.rb:21`](../../../../lib/plastic/workflows/agent/intent/judge.rb#L21) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |

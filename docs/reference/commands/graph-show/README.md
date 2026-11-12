@@ -24,25 +24,25 @@ The command is `Graph::Show`, in [`show.rb:9`](../../../../lib/plastic/commands/
 
 | Workflow | Kind | Code |
 | --- | --- | --- |
-| [ShowGraph](#showgraph) | code | [`show_graph.rb:9`](../../../../lib/plastic/workflows/show_graph.rb#L9) |
+| [Code::Graph::Show](#codegraphshow) | code | [`show.rb:11`](../../../../lib/plastic/workflows/code/graph/show.rb#L11) |
 
-### ShowGraph
+### Code::Graph::Show
 
-The code workflow `:code_show_graph`, in [`show_graph.rb:9`](../../../../lib/plastic/workflows/show_graph.rb#L9).
+The code workflow `:code_show_graph`, in [`show.rb:11`](../../../../lib/plastic/workflows/code/graph/show.rb#L11).
 
 Prints each node and edge from the rows. It never reads or writes graph.json.
 
-![How ShowGraph runs: its steps, where it stops, and its outcomes](code_show_graph.svg)
+![How Code::Graph::Show runs: its steps, where it stops, and its outcomes](code_show_graph.svg)
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
-| find the intent | read |  | [`show_graph.rb:14`](../../../../lib/plastic/workflows/show_graph.rb#L14) |
-| no intent %{intent_id} in this store | gate, stops with exit 1 | `!context.intent.nil?` | [`show_graph.rb:18`](../../../../lib/plastic/workflows/show_graph.rb#L18) |
-| print each node and edge | read |  | [`show_graph.rb:20`](../../../../lib/plastic/workflows/show_graph.rb#L20) |
+| find the intent | read |  | [`show.rb:16`](../../../../lib/plastic/workflows/code/graph/show.rb#L16) |
+| no intent %{intent_id} in this store | gate, stops with exit 1 | `!context.intent.nil?` | [`show.rb:20`](../../../../lib/plastic/workflows/code/graph/show.rb#L20) |
+| print each node and edge | read |  | [`show.rb:22`](../../../../lib/plastic/workflows/code/graph/show.rb#L22) |
 
 | Outcome | When | Then | Code |
 | --- | --- | --- | --- |
-| `:done` | always | finishes, exit 0; next: plastic graph ready %{intent_id} | [`show_graph.rb:25`](../../../../lib/plastic/workflows/show_graph.rb#L25) |
+| `:done` | always | finishes, exit 0; next: plastic graph ready %{intent_id} | [`show.rb:27`](../../../../lib/plastic/workflows/code/graph/show.rb#L27) |
 
 It sets `intent`.
 
@@ -52,6 +52,6 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| no intent %{intent_id} in this store | 1 | prints no next: line | [`show_graph.rb:18`](../../../../lib/plastic/workflows/show_graph.rb#L18) |
-| the rows hold this graph | 0 | plastic graph ready %{intent_id} | [`show_graph.rb:25`](../../../../lib/plastic/workflows/show_graph.rb#L25) |
+| no intent %{intent_id} in this store | 1 | prints no next: line | [`show.rb:20`](../../../../lib/plastic/workflows/code/graph/show.rb#L20) |
+| the rows hold this graph | 0 | plastic graph ready %{intent_id} | [`show.rb:27`](../../../../lib/plastic/workflows/code/graph/show.rb#L27) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |

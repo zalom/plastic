@@ -76,7 +76,7 @@
 <rect x="16" y="34" width="140" height="40" rx="6" class="lane-code"/>
 <text x="26" y="58" class="tm" text-anchor="start">plastic graph show</text>
 <rect x="176" y="34" width="140" height="28" rx="6" class="lane-code"/>
-<text x="184" y="52" class="tm" text-anchor="start">ShowGraph</text>
+<text x="184" y="52" class="tm" text-anchor="start">Show</text>
 <rect x="556" y="34" width="186" height="75" rx="14" class="db"/>
 <text x="568" y="52" class="tb" text-anchor="start">work_graph.db</text>
 <text x="568" y="68" class="tm" text-anchor="start">edges  R</text>

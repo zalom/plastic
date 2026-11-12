@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 500" width="760" height="500" role="img" xml:space="preserve">
-<title>How PreviewRollback runs in plastic rollback</title>
+<title>How Preview runs in plastic rollback</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
 .lane-code { fill: #d5e8e3; stroke: #0d6b61; stroke-width: 1.5; }
@@ -68,17 +68,17 @@
 .big { font: 700 36px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
 }</style>
 <rect width="100%" height="100%" class="ground"/>
-<text x="16" y="22" class="tb" text-anchor="start">PreviewRollback</text>
-<text x="436" y="22" class="tm tag-muted" text-anchor="end">preview_rollback.rb:10</text>
+<text x="16" y="22" class="tb" text-anchor="start">Preview</text>
+<text x="436" y="22" class="tm tag-muted" text-anchor="end">preview.rb:13</text>
 <rect x="16" y="34" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="49" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="49" class="tm tag-muted" text-anchor="end">preview_rollback.rb:15</text>
+<text x="426" y="49" class="tm tag-muted" text-anchor="end">preview.rb:18</text>
 <text x="26" y="66" class="t" text-anchor="start">read the activated releases</text>
 <path d="M 226 79 L 226 89" class="wire"/>
 <path d="M 221 81 L 226 89 L 231 81 Z" class="head"/>
 <rect x="16" y="89" width="420" height="70" rx="6" class="card"/>
 <text x="26" y="104" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="104" class="tm tag-muted" text-anchor="end">preview_rollback.rb:22</text>
+<text x="426" y="104" class="tm tag-muted" text-anchor="end">preview.rb:25</text>
 <text x="26" y="121" class="tm" text-anchor="start">passes when context.active</text>
 <path d="M 436 107 L 464 107" class="wire-refusal"/>
 <path d="M 456 102 L 464 107 L 456 112 Z" class="head"/>
@@ -91,7 +91,7 @@
 <path d="M 221 161 L 226 169 L 231 161 Z" class="head"/>
 <rect x="16" y="169" width="420" height="60" rx="6" class="card"/>
 <text x="26" y="184" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="184" class="tm tag-muted" text-anchor="end">preview_rollback.rb:24</text>
+<text x="426" y="184" class="tm tag-muted" text-anchor="end">preview.rb:27</text>
 <text x="26" y="201" class="tm" text-anchor="start">passes when context.target.nil? ||</text>
 <text x="26" y="216" class="tm" text-anchor="start">context.releases.include?(context.target)</text>
 <path d="M 436 187 L 464 187" class="wire-refusal"/>
@@ -103,7 +103,7 @@
 <path d="M 221 231 L 226 239 L 231 231 Z" class="head"/>
 <rect x="16" y="239" width="420" height="56" rx="6" class="card"/>
 <text x="26" y="254" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="254" class="tm tag-muted" text-anchor="end">preview_rollback.rb:26</text>
+<text x="426" y="254" class="tm tag-muted" text-anchor="end">preview.rb:29</text>
 <text x="26" y="271" class="tm" text-anchor="start">passes when context.to</text>
 <path d="M 436 257 L 464 257" class="wire-refusal"/>
 <path d="M 456 252 L 464 257 L 456 262 Z" class="head"/>
@@ -115,7 +115,7 @@
 <path d="M 221 297 L 226 305 L 231 297 Z" class="head"/>
 <rect x="16" y="305" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="320" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="320" class="tm tag-muted" text-anchor="end">preview_rollback.rb:28</text>
+<text x="426" y="320" class="tm tag-muted" text-anchor="end">preview.rb:31</text>
 <text x="26" y="337" class="t" text-anchor="start">say what the rollback would do</text>
 <path d="M 226 350 L 226 360" class="wire"/>
 <path d="M 221 352 L 226 360 L 231 352 Z" class="head"/>
@@ -135,5 +135,5 @@
 <path d="M 316 460 L 352 460" class="wire"/>
 <path d="M 344 455 L 352 460 L 344 465 Z" class="head"/>
 <rect x="352" y="444" width="392" height="42" rx="6" class="lane-code"/>
-<text x="362" y="461" class="t" text-anchor="start">next workflow: RollbackRelease</text>
+<text x="362" y="461" class="t" text-anchor="start">next workflow: Rollback</text>
 </svg>

@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 281" width="760" height="281" role="img" xml:space="preserve">
-<title>How CheckContextOwner runs in plastic intent context</title>
+<title>How CheckOwner runs in plastic intent context</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
 .lane-code { fill: #d5e8e3; stroke: #0d6b61; stroke-width: 1.5; }
@@ -68,17 +68,17 @@
 .big { font: 700 36px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
 }</style>
 <rect width="100%" height="100%" class="ground"/>
-<text x="16" y="22" class="tb" text-anchor="start">CheckContextOwner</text>
-<text x="436" y="22" class="tm tag-muted" text-anchor="end">check_context_owner.rb:9</text>
+<text x="16" y="22" class="tb" text-anchor="start">CheckOwner</text>
+<text x="436" y="22" class="tm tag-muted" text-anchor="end">check_owner.rb:13</text>
 <rect x="16" y="34" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="49" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="49" class="tm tag-muted" text-anchor="end">check_context_owner.rb:14</text>
+<text x="426" y="49" class="tm tag-muted" text-anchor="end">check_owner.rb:18</text>
 <text x="26" y="66" class="t" text-anchor="start">find the owning intent</text>
 <path d="M 226 79 L 226 89" class="wire"/>
 <path d="M 221 81 L 226 89 L 231 81 Z" class="head"/>
 <rect x="16" y="89" width="420" height="56" rx="6" class="card"/>
 <text x="26" y="104" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="104" class="tm tag-muted" text-anchor="end">check_context_owner.rb:19</text>
+<text x="426" y="104" class="tm tag-muted" text-anchor="end">check_owner.rb:23</text>
 <text x="26" y="121" class="tm" text-anchor="start">passes when context.intent</text>
 <path d="M 436 107 L 464 107" class="wire-failure"/>
 <path d="M 456 102 L 464 107 L 456 112 Z" class="head"/>
@@ -95,12 +95,12 @@
 <path d="M 316 191 L 352 191" class="wire"/>
 <path d="M 344 186 L 352 191 L 344 196 Z" class="head"/>
 <rect x="352" y="175" width="392" height="42" rx="6" class="lane-code"/>
-<text x="362" y="192" class="t" text-anchor="start">next workflow: SubmitContext</text>
+<text x="362" y="192" class="t" text-anchor="start">next workflow: Context</text>
 <rect x="16" y="225" width="300" height="42" rx="6" class="card"/>
 <text x="26" y="241" class="tm" text-anchor="start">:read</text>
 <text x="26" y="257" class="tm tag-muted" text-anchor="start">otherwise</text>
 <path d="M 316 241 L 352 241" class="wire"/>
 <path d="M 344 236 L 352 241 L 344 246 Z" class="head"/>
 <rect x="352" y="225" width="392" height="42" rx="6" class="lane-code"/>
-<text x="362" y="242" class="t" text-anchor="start">next workflow: ReadContext</text>
+<text x="362" y="242" class="t" text-anchor="start">next workflow: Read</text>
 </svg>

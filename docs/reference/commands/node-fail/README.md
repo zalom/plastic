@@ -24,15 +24,15 @@ The command is `Node::Fail`, in [`fail.rb:9`](../../../../lib/plastic/commands/n
 
 | Workflow | Kind | Code |
 | --- | --- | --- |
-| [FailNode](#failnode) | code | [`fail_node.rb:8`](../../../../lib/plastic/workflows/fail_node.rb#L8) |
+| [Code::Node::Fail](#codenodefail) | code | [`fail.rb:10`](../../../../lib/plastic/workflows/code/node/fail.rb#L10) |
 
-### FailNode
+### Code::Node::Fail
 
-The code workflow `:code_fail_node`, in [`fail_node.rb:8`](../../../../lib/plastic/workflows/fail_node.rb#L8).
+The code workflow `:code_fail_node`, in [`fail.rb:10`](../../../../lib/plastic/workflows/code/node/fail.rb#L10).
 
 Moves a claimed node to failed, with a reason.
 
-![How FailNode runs: its steps, where it stops, and its outcomes](code_fail_node.svg)
+![How Code::Node::Fail runs: its steps, where it stops, and its outcomes](code_fail_node.svg)
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |

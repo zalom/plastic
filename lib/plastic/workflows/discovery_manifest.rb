@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "external_agent_workflow"
+require_relative "agent/intent/discover"
 require_relative "../graph/retrieval/maintained_store"
 require_relative "../graph/retrieval/source"
 require_relative "discovery_candidates"
@@ -38,8 +38,8 @@ module Plastic
       end
 
       def handoff
-        search = ExternalAgentWorkflow.search_command(@context.terms, @source_scope)
-        ExternalAgentWorkflow.retrieval_handoff(intent_id: @context.intent_id, project: @context.scope.slug, search:)
+        search = Agent::Intent::Discover.search_command(@context.terms, @source_scope)
+        Agent::Intent::Discover.retrieval_handoff(intent_id: @context.intent_id, project: @context.scope.slug, search:)
       end
     end
   end

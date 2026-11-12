@@ -76,7 +76,7 @@
 <rect x="16" y="34" width="140" height="40" rx="6" class="lane-code"/>
 <text x="26" y="58" class="tm" text-anchor="start">plastic session note</text>
 <rect x="176" y="34" width="140" height="28" rx="6" class="lane-code"/>
-<text x="184" y="52" class="tm" text-anchor="start">WriteNote</text>
+<text x="184" y="52" class="tm" text-anchor="start">Note</text>
 <rect x="336" y="34" width="196" height="28" rx="6" class="card"/>
 <text x="344" y="52" class="tm" text-anchor="start">Session::Writer</text>
 <rect x="556" y="34" width="186" height="45" rx="14" class="db"/>

@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 274" width="760" height="274" role="img" xml:space="preserve">
-<title>How CheckHealth runs in plastic doctor</title>
+<title>How Doctor runs in plastic doctor</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
 .lane-code { fill: #d5e8e3; stroke: #0d6b61; stroke-width: 1.5; }
@@ -68,18 +68,18 @@
 .big { font: 700 36px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
 }</style>
 <rect width="100%" height="100%" class="ground"/>
-<text x="16" y="22" class="tb" text-anchor="start">CheckHealth</text>
-<text x="436" y="22" class="tm tag-muted" text-anchor="end">check_health.rb:11</text>
+<text x="16" y="22" class="tb" text-anchor="start">Doctor</text>
+<text x="436" y="22" class="tm tag-muted" text-anchor="end">doctor.rb:12</text>
 <rect x="16" y="34" width="420" height="60" rx="6" class="card"/>
 <text x="26" y="49" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="49" class="tm tag-muted" text-anchor="end">check_health.rb:16</text>
+<text x="426" y="49" class="tm tag-muted" text-anchor="end">doctor.rb:17</text>
 <text x="26" y="66" class="t" text-anchor="start">check the installation, the databases, the hooks and the</text>
 <text x="26" y="81" class="t" text-anchor="start">instruction files of the harness</text>
 <path d="M 226 94 L 226 104" class="wire"/>
 <path d="M 221 96 L 226 104 L 231 96 Z" class="head"/>
 <rect x="16" y="104" width="420" height="70" rx="6" class="card"/>
 <text x="26" y="119" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="119" class="tm tag-muted" text-anchor="end">check_health.rb:24</text>
+<text x="426" y="119" class="tm tag-muted" text-anchor="end">doctor.rb:25</text>
 <text x="26" y="136" class="tm" text-anchor="start">passes when context.repairs.zero?</text>
 <path d="M 436 122 L 464 122" class="wire-failure"/>
 <path d="M 456 117 L 464 122 L 456 127 Z" class="head"/>

@@ -27,26 +27,26 @@ The command is `Roadmap::Edge::Remove`, in [`remove.rb:10`](../../../../lib/plas
 
 | Workflow | Kind | Code |
 | --- | --- | --- |
-| [RemoveRoadmapEdge](#removeroadmapedge) | code | [`remove_roadmap_edge.rb:8`](../../../../lib/plastic/workflows/remove_roadmap_edge.rb#L8) |
+| [Code::Roadmap::Edge::Remove](#coderoadmapedgeremove) | code | [`remove.rb:11`](../../../../lib/plastic/workflows/code/roadmap/edge/remove.rb#L11) |
 
-### RemoveRoadmapEdge
+### Code::Roadmap::Edge::Remove
 
-The code workflow `:code_remove_roadmap_edge`, in [`remove_roadmap_edge.rb:8`](../../../../lib/plastic/workflows/remove_roadmap_edge.rb#L8).
+The code workflow `:code_remove_roadmap_edge`, in [`remove.rb:11`](../../../../lib/plastic/workflows/code/roadmap/edge/remove.rb#L11).
 
 Removes one needs edge; fails when no such edge exists.
 
-![How RemoveRoadmapEdge runs: its steps, where it stops, and its outcomes](code_remove_roadmap_edge.svg)
+![How Code::Roadmap::Edge::Remove runs: its steps, where it stops, and its outcomes](code_remove_roadmap_edge.svg)
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
 | forget a stop of an earlier call | read |  | [`code_workflow.rb:54`](../../../../lib/plastic/code_workflow.rb#L54) |
-| remove the edge | step | `!context.removed.nil?` | [`remove_roadmap_edge.rb:15`](../../../../lib/plastic/workflows/remove_roadmap_edge.rb#L15) |
-| %{problem} | gate, stops with exit 1 | `context.problem.nil?` | [`remove_roadmap_edge.rb:21`](../../../../lib/plastic/workflows/remove_roadmap_edge.rb#L21) |
-| say what was removed | read |  | [`remove_roadmap_edge.rb:23`](../../../../lib/plastic/workflows/remove_roadmap_edge.rb#L23) |
+| remove the edge | step | `!context.removed.nil?` | [`remove.rb:18`](../../../../lib/plastic/workflows/code/roadmap/edge/remove.rb#L18) |
+| %{problem} | gate, stops with exit 1 | `context.problem.nil?` | [`remove.rb:24`](../../../../lib/plastic/workflows/code/roadmap/edge/remove.rb#L24) |
+| say what was removed | read |  | [`remove.rb:26`](../../../../lib/plastic/workflows/code/roadmap/edge/remove.rb#L26) |
 
 | Outcome | When | Then | Code |
 | --- | --- | --- | --- |
-| `:done` | always | finishes, exit 0; next: plastic roadmap show %{slug} | [`remove_roadmap_edge.rb:27`](../../../../lib/plastic/workflows/remove_roadmap_edge.rb#L27) |
+| `:done` | always | finishes, exit 0; next: plastic roadmap show %{slug} | [`remove.rb:30`](../../../../lib/plastic/workflows/code/roadmap/edge/remove.rb#L30) |
 
 It sets `problem`, `removed`.
 
@@ -56,6 +56,6 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| %{problem} | 1 | prints no next: line | [`remove_roadmap_edge.rb:21`](../../../../lib/plastic/workflows/remove_roadmap_edge.rb#L21) |
-| edge %{from} to %{to} is gone | 0 | plastic roadmap show %{slug} | [`remove_roadmap_edge.rb:27`](../../../../lib/plastic/workflows/remove_roadmap_edge.rb#L27) |
+| %{problem} | 1 | prints no next: line | [`remove.rb:24`](../../../../lib/plastic/workflows/code/roadmap/edge/remove.rb#L24) |
+| edge %{from} to %{to} is gone | 0 | plastic roadmap show %{slug} | [`remove.rb:30`](../../../../lib/plastic/workflows/code/roadmap/edge/remove.rb#L30) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |

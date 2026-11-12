@@ -79,15 +79,15 @@
 <text x="246" y="246" class="tm tag-muted" text-anchor="start">:done</text>
 <rect x="150" y="16" width="180" height="56" rx="6" class="lane-code"/>
 <text x="160" y="32" class="tag tag-code" text-anchor="start">CODE WORKFLOW</text>
-<text x="160" y="51" class="tb" text-anchor="start">PrepareAbandon</text>
+<text x="160" y="51" class="tb" text-anchor="start">Prepare</text>
 <text x="160" y="66" class="tm" text-anchor="start">:code_prepare_abandon</text>
 <rect x="48" y="136" width="180" height="56" rx="6" class="lane-agent"/>
 <text x="58" y="152" class="tag tag-agent" text-anchor="start">AGENT WORKFLOW</text>
-<text x="58" y="171" class="tb" text-anchor="start">RevertIntent</text>
+<text x="58" y="171" class="tb" text-anchor="start">Abandon</text>
 <text x="58" y="186" class="tm" text-anchor="start">:agent_revert_intent</text>
 <rect x="252" y="136" width="180" height="56" rx="6" class="lane-code"/>
 <text x="262" y="152" class="tag tag-code" text-anchor="start">CODE WORKFLOW</text>
-<text x="262" y="171" class="tb" text-anchor="start">AbandonIntent</text>
+<text x="262" y="171" class="tb" text-anchor="start">Abandon</text>
 <text x="262" y="186" class="tm" text-anchor="start">:code_abandon_intent</text>
 <rect x="150" y="256" width="180" height="56" rx="6" class="lane-agent"/>
 <text x="160" y="272" class="tag tag-agent" text-anchor="start">AGENT WORKFLOW</text>

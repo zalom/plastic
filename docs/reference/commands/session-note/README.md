@@ -22,26 +22,26 @@ The command is `Session::Note`, in [`note.rb:9`](../../../../lib/plastic/command
 
 | Workflow | Kind | Code |
 | --- | --- | --- |
-| [WriteNote](#writenote) | code | [`write_note.rb:8`](../../../../lib/plastic/workflows/write_note.rb#L8) |
+| [Code::Session::Note](#codesessionnote) | code | [`note.rb:10`](../../../../lib/plastic/workflows/code/session/note.rb#L10) |
 
-### WriteNote
+### Code::Session::Note
 
-The code workflow `:code_write_note`, in [`write_note.rb:8`](../../../../lib/plastic/workflows/write_note.rb#L8).
+The code workflow `:code_write_note`, in [`note.rb:10`](../../../../lib/plastic/workflows/code/session/note.rb#L10).
 
 Writes the one prose line of a session.
 
-![How WriteNote runs: its steps, where it stops, and its outcomes](code_write_note.svg)
+![How Code::Session::Note runs: its steps, where it stops, and its outcomes](code_write_note.svg)
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
-| the call names no session; set PLASTIC_SESSION | gate, stops with exit 1 | `!context.session.nil?` | [`write_note.rb:13`](../../../../lib/plastic/workflows/write_note.rb#L13) |
-| name the session | read |  | [`write_note.rb:15`](../../../../lib/plastic/workflows/write_note.rb#L15) |
-| write the note | step | `context.written` | [`write_note.rb:19`](../../../../lib/plastic/workflows/write_note.rb#L19) |
-| say what was written | read |  | [`write_note.rb:24`](../../../../lib/plastic/workflows/write_note.rb#L24) |
+| the call names no session; set PLASTIC_SESSION | gate, stops with exit 1 | `!context.session.nil?` | [`note.rb:15`](../../../../lib/plastic/workflows/code/session/note.rb#L15) |
+| name the session | read |  | [`note.rb:17`](../../../../lib/plastic/workflows/code/session/note.rb#L17) |
+| write the note | step | `context.written` | [`note.rb:21`](../../../../lib/plastic/workflows/code/session/note.rb#L21) |
+| say what was written | read |  | [`note.rb:26`](../../../../lib/plastic/workflows/code/session/note.rb#L26) |
 
 | Outcome | When | Then | Code |
 | --- | --- | --- | --- |
-| `:done` | always | finishes, exit 0; next: plastic next | [`write_note.rb:28`](../../../../lib/plastic/workflows/write_note.rb#L28) |
+| `:done` | always | finishes, exit 0; next: plastic next | [`note.rb:30`](../../../../lib/plastic/workflows/code/session/note.rb#L30) |
 
 It sets `session_id`, `written`.
 
@@ -51,6 +51,6 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| the call names no session; set PLASTIC_SESSION | 1 | prints no next: line | [`write_note.rb:13`](../../../../lib/plastic/workflows/write_note.rb#L13) |
-| session %{session_id} has its note | 0 | plastic next | [`write_note.rb:28`](../../../../lib/plastic/workflows/write_note.rb#L28) |
+| the call names no session; set PLASTIC_SESSION | 1 | prints no next: line | [`note.rb:15`](../../../../lib/plastic/workflows/code/session/note.rb#L15) |
+| session %{session_id} has its note | 0 | plastic next | [`note.rb:30`](../../../../lib/plastic/workflows/code/session/note.rb#L30) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |

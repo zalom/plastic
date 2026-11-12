@@ -29,27 +29,27 @@ The command is `Intent::New`, in [`new.rb:10`](../../../../lib/plastic/commands/
 
 | Workflow | Kind | Code |
 | --- | --- | --- |
-| [WriteIntent](#writeintent) | code | [`write_intent.rb:8`](../../../../lib/plastic/workflows/write_intent.rb#L8) |
+| [Code::Intent::New](#codeintentnew) | code | [`new.rb:10`](../../../../lib/plastic/workflows/code/intent/new.rb#L10) |
 
-### WriteIntent
+### Code::Intent::New
 
-The code workflow `:code_write_intent`, in [`write_intent.rb:8`](../../../../lib/plastic/workflows/write_intent.rb#L8).
+The code workflow `:code_write_intent`, in [`new.rb:10`](../../../../lib/plastic/workflows/code/intent/new.rb#L10).
 
 Writes a new intent's rows; the command prints its folder and store/index.json.
 
-![How WriteIntent runs: its steps, where it stops, and its outcomes](code_write_intent.svg)
+![How Code::Intent::New runs: its steps, where it stops, and its outcomes](code_write_intent.svg)
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
-| check the call | read |  | [`write_intent.rb:14`](../../../../lib/plastic/workflows/write_intent.rb#L14) |
-| %{problem} | gate, stops with exit 1 | `context.problem.nil?` | [`write_intent.rb:19`](../../../../lib/plastic/workflows/write_intent.rb#L19) |
-| write the intent | step | `!context.intent_id.nil?` | [`write_intent.rb:21`](../../../../lib/plastic/workflows/write_intent.rb#L21) |
-| link to what it grows out of | step | `context.after.nil? \|\| !context.linked.nil?` | [`write_intent.rb:27`](../../../../lib/plastic/workflows/write_intent.rb#L27) |
-| say what was written | read |  | [`write_intent.rb:32`](../../../../lib/plastic/workflows/write_intent.rb#L32) |
+| check the call | read |  | [`new.rb:16`](../../../../lib/plastic/workflows/code/intent/new.rb#L16) |
+| %{problem} | gate, stops with exit 1 | `context.problem.nil?` | [`new.rb:21`](../../../../lib/plastic/workflows/code/intent/new.rb#L21) |
+| write the intent | step | `!context.intent_id.nil?` | [`new.rb:23`](../../../../lib/plastic/workflows/code/intent/new.rb#L23) |
+| link to what it grows out of | step | `context.after.nil? \|\| !context.linked.nil?` | [`new.rb:29`](../../../../lib/plastic/workflows/code/intent/new.rb#L29) |
+| say what was written | read |  | [`new.rb:34`](../../../../lib/plastic/workflows/code/intent/new.rb#L34) |
 
 | Outcome | When | Then | Code |
 | --- | --- | --- | --- |
-| `:done` | always | finishes, exit 0; next: plastic next | [`write_intent.rb:37`](../../../../lib/plastic/workflows/write_intent.rb#L37) |
+| `:done` | always | finishes, exit 0; next: plastic next | [`new.rb:39`](../../../../lib/plastic/workflows/code/intent/new.rb#L39) |
 
 It sets `problem`, `intent_id`, `linked`.
 
@@ -59,6 +59,6 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| %{problem} | 1 | prints no next: line | [`write_intent.rb:19`](../../../../lib/plastic/workflows/write_intent.rb#L19) |
-| intent %{intent_id} has its rows and its files | 0 | plastic next | [`write_intent.rb:37`](../../../../lib/plastic/workflows/write_intent.rb#L37) |
+| %{problem} | 1 | prints no next: line | [`new.rb:21`](../../../../lib/plastic/workflows/code/intent/new.rb#L21) |
+| intent %{intent_id} has its rows and its files | 0 | plastic next | [`new.rb:39`](../../../../lib/plastic/workflows/code/intent/new.rb#L39) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |

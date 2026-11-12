@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 441" width="760" height="441" role="img" xml:space="preserve">
-<title>How WriteIntent runs in plastic intent new</title>
+<title>How New runs in plastic intent new</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
 .lane-code { fill: #d5e8e3; stroke: #0d6b61; stroke-width: 1.5; }
@@ -68,17 +68,17 @@
 .big { font: 700 36px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
 }</style>
 <rect width="100%" height="100%" class="ground"/>
-<text x="16" y="22" class="tb" text-anchor="start">WriteIntent</text>
-<text x="436" y="22" class="tm tag-muted" text-anchor="end">write_intent.rb:8</text>
+<text x="16" y="22" class="tb" text-anchor="start">New</text>
+<text x="436" y="22" class="tm tag-muted" text-anchor="end">new.rb:10</text>
 <rect x="16" y="34" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="49" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="49" class="tm tag-muted" text-anchor="end">write_intent.rb:14</text>
+<text x="426" y="49" class="tm tag-muted" text-anchor="end">new.rb:16</text>
 <text x="26" y="66" class="t" text-anchor="start">check the call</text>
 <path d="M 226 79 L 226 89" class="wire"/>
 <path d="M 221 81 L 226 89 L 231 81 Z" class="head"/>
 <rect x="16" y="89" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="104" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="104" class="tm tag-muted" text-anchor="end">write_intent.rb:19</text>
+<text x="426" y="104" class="tm tag-muted" text-anchor="end">new.rb:21</text>
 <text x="26" y="121" class="tm" text-anchor="start">passes when context.problem.nil?</text>
 <path d="M 436 107 L 464 107" class="wire-failure"/>
 <path d="M 456 102 L 464 107 L 456 112 Z" class="head"/>
@@ -89,7 +89,7 @@
 <path d="M 221 136 L 226 144 L 231 136 Z" class="head"/>
 <rect x="16" y="144" width="420" height="59" rx="6" class="card"/>
 <text x="26" y="159" class="tag tag-muted" text-anchor="start">STEP</text>
-<text x="426" y="159" class="tm tag-muted" text-anchor="end">write_intent.rb:21</text>
+<text x="426" y="159" class="tm tag-muted" text-anchor="end">new.rb:23</text>
 <text x="26" y="176" class="t" text-anchor="start">write the intent</text>
 <text x="26" y="191" class="tm" text-anchor="start">done when !context.intent_id.nil?</text>
 <path d="M 436 162 L 464 162" class="wire-failure"/>
@@ -102,7 +102,7 @@
 <path d="M 221 205 L 226 213 L 231 205 Z" class="head"/>
 <rect x="16" y="213" width="420" height="59" rx="6" class="card"/>
 <text x="26" y="228" class="tag tag-muted" text-anchor="start">STEP</text>
-<text x="426" y="228" class="tm tag-muted" text-anchor="end">write_intent.rb:27</text>
+<text x="426" y="228" class="tm tag-muted" text-anchor="end">new.rb:29</text>
 <text x="26" y="245" class="t" text-anchor="start">link to what it grows out of</text>
 <text x="26" y="260" class="tm" text-anchor="start">done when context.after.nil? || !context.linked.nil?</text>
 <path d="M 436 231 L 464 231" class="wire-failure"/>
@@ -115,7 +115,7 @@
 <path d="M 221 274 L 226 282 L 231 274 Z" class="head"/>
 <rect x="16" y="282" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="297" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="297" class="tm tag-muted" text-anchor="end">write_intent.rb:32</text>
+<text x="426" y="297" class="tm tag-muted" text-anchor="end">new.rb:34</text>
 <text x="26" y="314" class="t" text-anchor="start">say what was written</text>
 <path d="M 226 327 L 226 337" class="wire"/>
 <path d="M 221 329 L 226 337 L 231 329 Z" class="head"/>

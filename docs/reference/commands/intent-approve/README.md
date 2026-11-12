@@ -22,27 +22,27 @@ The command is `Intent::Approve`, in [`approve.rb:9`](../../../../lib/plastic/co
 
 | Workflow | Kind | Code |
 | --- | --- | --- |
-| [ApproveIntent](#approveintent) | code | [`approve_intent.rb:9`](../../../../lib/plastic/workflows/approve_intent.rb#L9) |
+| [Code::Intent::Approve](#codeintentapprove) | code | [`approve.rb:11`](../../../../lib/plastic/workflows/code/intent/approve.rb#L11) |
 
-### ApproveIntent
+### Code::Intent::Approve
 
-The code workflow `:code_approve_intent`, in [`approve_intent.rb:9`](../../../../lib/plastic/workflows/approve_intent.rb#L9).
+The code workflow `:code_approve_intent`, in [`approve.rb:11`](../../../../lib/plastic/workflows/code/intent/approve.rb#L11).
 
 Writes the go-ahead row of an open or active intent. A second call changes nothing.
 
-![How ApproveIntent runs: its steps, where it stops, and its outcomes](code_approve_intent.svg)
+![How Code::Intent::Approve runs: its steps, where it stops, and its outcomes](code_approve_intent.svg)
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
-| check the intent | read |  | [`approve_intent.rb:14`](../../../../lib/plastic/workflows/approve_intent.rb#L14) |
-| %{problem} | gate, stops with exit 1 | `context.problem.nil?` | [`approve_intent.rb:18`](../../../../lib/plastic/workflows/approve_intent.rb#L18) |
-| intent %{intent_id} names no done criterion | gate, stops with exit 1 | `!Graph::Knowledge::Spec.new(context.retrieval, context.intent_id).done_criteria.empty?` | [`approve_intent.rb:20`](../../../../lib/plastic/workflows/approve_intent.rb#L20) |
-| write the go-ahead | step | `!context.retrieval.approval(context.intent_id).nil?` | [`approve_intent.rb:24`](../../../../lib/plastic/workflows/approve_intent.rb#L24) |
-| say what was written | read |  | [`approve_intent.rb:28`](../../../../lib/plastic/workflows/approve_intent.rb#L28) |
+| check the intent | read |  | [`approve.rb:16`](../../../../lib/plastic/workflows/code/intent/approve.rb#L16) |
+| %{problem} | gate, stops with exit 1 | `context.problem.nil?` | [`approve.rb:20`](../../../../lib/plastic/workflows/code/intent/approve.rb#L20) |
+| intent %{intent_id} names no done criterion | gate, stops with exit 1 | `!Plastic::Graph::Knowledge::Spec.new(context.retrieval, context.intent_id).done_criteria.empty?` | [`approve.rb:22`](../../../../lib/plastic/workflows/code/intent/approve.rb#L22) |
+| write the go-ahead | step | `!context.retrieval.approval(context.intent_id).nil?` | [`approve.rb:26`](../../../../lib/plastic/workflows/code/intent/approve.rb#L26) |
+| say what was written | read |  | [`approve.rb:30`](../../../../lib/plastic/workflows/code/intent/approve.rb#L30) |
 
 | Outcome | When | Then | Code |
 | --- | --- | --- | --- |
-| `:done` | always | finishes, exit 0; next: plastic auto %{intent_id} | [`approve_intent.rb:32`](../../../../lib/plastic/workflows/approve_intent.rb#L32) |
+| `:done` | always | finishes, exit 0; next: plastic auto %{intent_id} | [`approve.rb:34`](../../../../lib/plastic/workflows/code/intent/approve.rb#L34) |
 
 It sets `problem`.
 
@@ -52,7 +52,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| %{problem} | 1 | prints no next: line | [`approve_intent.rb:18`](../../../../lib/plastic/workflows/approve_intent.rb#L18) |
-| intent %{intent_id} names no done criterion | 1 | plastic intent spec %{intent_id} | [`approve_intent.rb:20`](../../../../lib/plastic/workflows/approve_intent.rb#L20) |
-| intent %{intent_id} has the owner's go-ahead | 0 | plastic auto %{intent_id} | [`approve_intent.rb:32`](../../../../lib/plastic/workflows/approve_intent.rb#L32) |
+| %{problem} | 1 | prints no next: line | [`approve.rb:20`](../../../../lib/plastic/workflows/code/intent/approve.rb#L20) |
+| intent %{intent_id} names no done criterion | 1 | plastic intent spec %{intent_id} | [`approve.rb:22`](../../../../lib/plastic/workflows/code/intent/approve.rb#L22) |
+| intent %{intent_id} has the owner's go-ahead | 0 | plastic auto %{intent_id} | [`approve.rb:34`](../../../../lib/plastic/workflows/code/intent/approve.rb#L34) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |

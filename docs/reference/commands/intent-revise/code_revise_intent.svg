@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 706" width="760" height="706" role="img" xml:space="preserve">
-<title>How ReviseIntent runs in plastic intent revise</title>
+<title>How Revise runs in plastic intent revise</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
 .lane-code { fill: #d5e8e3; stroke: #0d6b61; stroke-width: 1.5; }
@@ -68,17 +68,17 @@
 .big { font: 700 36px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
 }</style>
 <rect width="100%" height="100%" class="ground"/>
-<text x="16" y="22" class="tb" text-anchor="start">ReviseIntent</text>
-<text x="436" y="22" class="tm tag-muted" text-anchor="end">revise_intent.rb:9</text>
+<text x="16" y="22" class="tb" text-anchor="start">Revise</text>
+<text x="436" y="22" class="tm tag-muted" text-anchor="end">revise.rb:11</text>
 <rect x="16" y="34" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="49" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="49" class="tm tag-muted" text-anchor="end">revise_intent.rb:16</text>
+<text x="426" y="49" class="tm tag-muted" text-anchor="end">revise.rb:18</text>
 <text x="26" y="66" class="t" text-anchor="start">find the intent</text>
 <path d="M 226 79 L 226 89" class="wire"/>
 <path d="M 221 81 L 226 89 L 231 81 Z" class="head"/>
 <rect x="16" y="89" width="420" height="56" rx="6" class="card"/>
 <text x="26" y="104" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="104" class="tm tag-muted" text-anchor="end">revise_intent.rb:21</text>
+<text x="426" y="104" class="tm tag-muted" text-anchor="end">revise.rb:23</text>
 <text x="26" y="121" class="tm" text-anchor="start">passes when !context.intent.nil?</text>
 <path d="M 436 107 L 464 107" class="wire-failure"/>
 <path d="M 456 102 L 464 107 L 456 112 Z" class="head"/>
@@ -90,7 +90,7 @@
 <path d="M 221 147 L 226 155 L 231 147 Z" class="head"/>
 <rect x="16" y="155" width="420" height="70" rx="6" class="card"/>
 <text x="26" y="170" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="170" class="tm tag-muted" text-anchor="end">revise_intent.rb:23</text>
+<text x="426" y="170" class="tm tag-muted" text-anchor="end">revise.rb:25</text>
 <text x="26" y="187" class="tm" text-anchor="start">passes when !CLOSED.include?(context.status)</text>
 <path d="M 436 173 L 464 173" class="wire-failure"/>
 <path d="M 456 168 L 464 173 L 456 178 Z" class="head"/>
@@ -103,13 +103,13 @@
 <path d="M 221 227 L 226 235 L 231 227 Z" class="head"/>
 <rect x="16" y="235" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="250" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="250" class="tm tag-muted" text-anchor="end">revise_intent.rb:27</text>
+<text x="426" y="250" class="tm tag-muted" text-anchor="end">revise.rb:29</text>
 <text x="26" y="267" class="t" text-anchor="start">check the change</text>
 <path d="M 226 280 L 226 290" class="wire"/>
 <path d="M 221 282 L 226 290 L 231 282 Z" class="head"/>
 <rect x="16" y="290" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="305" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="305" class="tm tag-muted" text-anchor="end">revise_intent.rb:32</text>
+<text x="426" y="305" class="tm tag-muted" text-anchor="end">revise.rb:34</text>
 <text x="26" y="322" class="tm" text-anchor="start">passes when context.problem.nil?</text>
 <path d="M 436 308 L 464 308" class="wire-failure"/>
 <path d="M 456 303 L 464 308 L 456 313 Z" class="head"/>
@@ -120,13 +120,13 @@
 <path d="M 221 337 L 226 345 L 231 337 Z" class="head"/>
 <rect x="16" y="345" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="360" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="360" class="tm tag-muted" text-anchor="end">revise_intent.rb:34</text>
+<text x="426" y="360" class="tm tag-muted" text-anchor="end">revise.rb:36</text>
 <text x="26" y="377" class="t" text-anchor="start">show the change</text>
 <path d="M 226 390 L 226 400" class="wire"/>
 <path d="M 221 392 L 226 400 L 231 392 Z" class="head"/>
 <rect x="16" y="400" width="420" height="73" rx="6" class="card"/>
 <text x="26" y="415" class="tag tag-muted" text-anchor="start">STEP</text>
-<text x="426" y="415" class="tm tag-muted" text-anchor="end">revise_intent.rb:41</text>
+<text x="426" y="415" class="tm tag-muted" text-anchor="end">revise.rb:43</text>
 <text x="26" y="432" class="t" text-anchor="start">write the revision</text>
 <text x="26" y="447" class="tm" text-anchor="start">done when context.dry_run ||</text>
 <text x="26" y="461" class="tm" text-anchor="start">!context.new_reference.nil?</text>
@@ -140,7 +140,7 @@
 <path d="M 221 475 L 226 483 L 231 475 Z" class="head"/>
 <rect x="16" y="483" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="498" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="498" class="tm tag-muted" text-anchor="end">revise_intent.rb:45</text>
+<text x="426" y="498" class="tm tag-muted" text-anchor="end">revise.rb:47</text>
 <text x="26" y="515" class="t" text-anchor="start">say what was written</text>
 <path d="M 226 528 L 226 538" class="wire"/>
 <path d="M 221 530 L 226 538 L 231 530 Z" class="head"/>

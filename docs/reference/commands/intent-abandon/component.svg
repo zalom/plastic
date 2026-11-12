@@ -76,11 +76,11 @@
 <rect x="16" y="34" width="140" height="40" rx="6" class="lane-code"/>
 <text x="26" y="58" class="tm" text-anchor="start">plastic intent abandon</text>
 <rect x="176" y="34" width="140" height="28" rx="6" class="lane-code"/>
-<text x="184" y="52" class="tm" text-anchor="start">PrepareAbandon</text>
+<text x="184" y="52" class="tm" text-anchor="start">Prepare</text>
 <rect x="176" y="68" width="140" height="28" rx="6" class="lane-code"/>
-<text x="184" y="86" class="tm" text-anchor="start">RevertIntent</text>
+<text x="184" y="86" class="tm" text-anchor="start">Abandon</text>
 <rect x="176" y="102" width="140" height="28" rx="6" class="lane-code"/>
-<text x="184" y="120" class="tm" text-anchor="start">AbandonIntent</text>
+<text x="184" y="120" class="tm" text-anchor="start">Abandon</text>
 <rect x="176" y="136" width="140" height="28" rx="6" class="lane-code"/>
 <text x="184" y="154" class="tm" text-anchor="start">WindDownIntent</text>
 <rect x="336" y="34" width="196" height="28" rx="6" class="card"/>

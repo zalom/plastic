@@ -22,26 +22,26 @@ The command is `Graph::Ready`, in [`ready.rb:9`](../../../../lib/plastic/command
 
 | Workflow | Kind | Code |
 | --- | --- | --- |
-| [ReadyGraph](#readygraph) | code | [`ready_graph.rb:8`](../../../../lib/plastic/workflows/ready_graph.rb#L8) |
+| [Code::Graph::Ready](#codegraphready) | code | [`ready.rb:10`](../../../../lib/plastic/workflows/code/graph/ready.rb#L10) |
 
-### ReadyGraph
+### Code::Graph::Ready
 
-The code workflow `:code_ready_graph`, in [`ready_graph.rb:8`](../../../../lib/plastic/workflows/ready_graph.rb#L8).
+The code workflow `:code_ready_graph`, in [`ready.rb:10`](../../../../lib/plastic/workflows/code/graph/ready.rb#L10).
 
 Lists the ready nodes of one intent's work graph.
 
-![How ReadyGraph runs: its steps, where it stops, and its outcomes](code_ready_graph.svg)
+![How Code::Graph::Ready runs: its steps, where it stops, and its outcomes](code_ready_graph.svg)
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
-| find the intent | read |  | [`ready_graph.rb:13`](../../../../lib/plastic/workflows/ready_graph.rb#L13) |
-| no intent %{intent_id} in this store | gate, stops with exit 1 | `!context.intent.nil?` | [`ready_graph.rb:17`](../../../../lib/plastic/workflows/ready_graph.rb#L17) |
-| list the ready nodes | read |  | [`ready_graph.rb:19`](../../../../lib/plastic/workflows/ready_graph.rb#L19) |
+| find the intent | read |  | [`ready.rb:15`](../../../../lib/plastic/workflows/code/graph/ready.rb#L15) |
+| no intent %{intent_id} in this store | gate, stops with exit 1 | `!context.intent.nil?` | [`ready.rb:19`](../../../../lib/plastic/workflows/code/graph/ready.rb#L19) |
+| list the ready nodes | read |  | [`ready.rb:21`](../../../../lib/plastic/workflows/code/graph/ready.rb#L21) |
 
 | Outcome | When | Then | Code |
 | --- | --- | --- | --- |
-| `:nothing` | when `context.first.nil?` | finishes, exit 0; prints no next: line | [`ready_graph.rb:25`](../../../../lib/plastic/workflows/ready_graph.rb#L25) |
-| `:done` | otherwise | finishes, exit 0; next: plastic node claim %{intent_id} %{first} | [`ready_graph.rb:26`](../../../../lib/plastic/workflows/ready_graph.rb#L26) |
+| `:nothing` | when `context.first.nil?` | finishes, exit 0; prints no next: line | [`ready.rb:27`](../../../../lib/plastic/workflows/code/graph/ready.rb#L27) |
+| `:done` | otherwise | finishes, exit 0; next: plastic node claim %{intent_id} %{first} | [`ready.rb:28`](../../../../lib/plastic/workflows/code/graph/ready.rb#L28) |
 
 It sets `intent`, `nodes`, `first`.
 
@@ -51,7 +51,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| no intent %{intent_id} in this store | 1 | prints no next: line | [`ready_graph.rb:17`](../../../../lib/plastic/workflows/ready_graph.rb#L17) |
-| no node is ready to claim | 0 | prints no next: line | [`ready_graph.rb:25`](../../../../lib/plastic/workflows/ready_graph.rb#L25) |
-| node %{first} is ready | 0 | plastic node claim %{intent_id} %{first} | [`ready_graph.rb:26`](../../../../lib/plastic/workflows/ready_graph.rb#L26) |
+| no intent %{intent_id} in this store | 1 | prints no next: line | [`ready.rb:19`](../../../../lib/plastic/workflows/code/graph/ready.rb#L19) |
+| no node is ready to claim | 0 | prints no next: line | [`ready.rb:27`](../../../../lib/plastic/workflows/code/graph/ready.rb#L27) |
+| node %{first} is ready | 0 | plastic node claim %{intent_id} %{first} | [`ready.rb:28`](../../../../lib/plastic/workflows/code/graph/ready.rb#L28) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |

@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 482" width="760" height="482" role="img" xml:space="preserve">
-<title>How PickDelivery runs in plastic auto</title>
+<title>How Pick runs in plastic auto</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
 .lane-code { fill: #d5e8e3; stroke: #0d6b61; stroke-width: 1.5; }
@@ -68,17 +68,17 @@
 .big { font: 700 36px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
 }</style>
 <rect width="100%" height="100%" class="ground"/>
-<text x="16" y="22" class="tb" text-anchor="start">PickDelivery</text>
-<text x="436" y="22" class="tm tag-muted" text-anchor="end">pick_delivery.rb:14</text>
+<text x="16" y="22" class="tb" text-anchor="start">Pick</text>
+<text x="436" y="22" class="tm tag-muted" text-anchor="end">pick.rb:17</text>
 <rect x="16" y="34" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="49" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="49" class="tm tag-muted" text-anchor="end">pick_delivery.rb:19</text>
+<text x="426" y="49" class="tm tag-muted" text-anchor="end">pick.rb:22</text>
 <text x="26" y="66" class="t" text-anchor="start">forget what an earlier call picked</text>
 <path d="M 226 79 L 226 89" class="wire"/>
 <path d="M 221 81 L 226 89 L 231 81 Z" class="head"/>
 <rect x="16" y="89" width="420" height="60" rx="6" class="card"/>
 <text x="26" y="104" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="104" class="tm tag-muted" text-anchor="end">pick_delivery.rb:25</text>
+<text x="426" y="104" class="tm tag-muted" text-anchor="end">pick.rb:28</text>
 <text x="26" y="121" class="tm" text-anchor="start">passes when intent_word?(context) ||</text>
 <text x="26" y="136" class="tm" text-anchor="start">!context.retrieval.roadmap(context.id).nil?</text>
 <path d="M 436 107 L 464 107" class="wire-failure"/>
@@ -90,7 +90,7 @@
 <path d="M 221 151 L 226 159 L 231 151 Z" class="head"/>
 <rect x="16" y="159" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="174" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="174" class="tm tag-muted" text-anchor="end">pick_delivery.rb:28</text>
+<text x="426" y="174" class="tm tag-muted" text-anchor="end">pick.rb:31</text>
 <text x="26" y="191" class="t" text-anchor="start">pick the intent to deliver</text>
 <path d="M 226 204 L 226 214" class="wire"/>
 <path d="M 221 206 L 226 214 L 231 206 Z" class="head"/>
@@ -101,7 +101,7 @@
 <path d="M 316 250 L 352 250" class="wire"/>
 <path d="M 344 245 L 352 250 L 344 255 Z" class="head"/>
 <rect x="352" y="234" width="392" height="42" rx="6" class="lane-code"/>
-<text x="362" y="251" class="t" text-anchor="start">next workflow: StartAuto</text>
+<text x="362" y="251" class="t" text-anchor="start">next workflow: Auto</text>
 <rect x="16" y="284" width="300" height="56" rx="6" class="card"/>
 <text x="26" y="300" class="tm" text-anchor="start">:ready</text>
 <text x="26" y="316" class="tm tag-muted" text-anchor="start">when !context.ready_id.nil?</text>

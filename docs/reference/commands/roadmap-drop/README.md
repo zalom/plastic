@@ -24,27 +24,27 @@ The command is `Roadmap::Drop`, in [`drop.rb:9`](../../../../lib/plastic/command
 
 | Workflow | Kind | Code |
 | --- | --- | --- |
-| [DropRoadmapItem](#droproadmapitem) | code | [`drop_roadmap_item.rb:9`](../../../../lib/plastic/workflows/drop_roadmap_item.rb#L9) |
+| [Code::Roadmap::Drop](#coderoadmapdrop) | code | [`drop.rb:11`](../../../../lib/plastic/workflows/code/roadmap/drop.rb#L11) |
 
-### DropRoadmapItem
+### Code::Roadmap::Drop
 
-The code workflow `:code_drop_roadmap_item`, in [`drop_roadmap_item.rb:9`](../../../../lib/plastic/workflows/drop_roadmap_item.rb#L9).
+The code workflow `:code_drop_roadmap_item`, in [`drop.rb:11`](../../../../lib/plastic/workflows/code/roadmap/drop.rb#L11).
 
 Marks a roadmap item dropped. Its edges stay; items after it stop waiting for it, since a dropped predecessor counts as resolved.
 
-![How DropRoadmapItem runs: its steps, where it stops, and its outcomes](code_drop_roadmap_item.svg)
+![How Code::Roadmap::Drop runs: its steps, where it stops, and its outcomes](code_drop_roadmap_item.svg)
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
-| no roadmap %{slug} | gate, stops with exit 1 | `!context.retrieval.roadmap(context.slug).nil?` | [`drop_roadmap_item.rb:14`](../../../../lib/plastic/workflows/drop_roadmap_item.rb#L14) |
-| find the item | read |  | [`drop_roadmap_item.rb:16`](../../../../lib/plastic/workflows/drop_roadmap_item.rb#L16) |
-| no item %{item_id} on roadmap %{slug} | gate, stops with exit 1 | `!context.item.nil?` | [`drop_roadmap_item.rb:20`](../../../../lib/plastic/workflows/drop_roadmap_item.rb#L20) |
-| drop the item | step | `context.dropped` | [`drop_roadmap_item.rb:22`](../../../../lib/plastic/workflows/drop_roadmap_item.rb#L22) |
-| say what was dropped | read |  | [`drop_roadmap_item.rb:26`](../../../../lib/plastic/workflows/drop_roadmap_item.rb#L26) |
+| no roadmap %{slug} | gate, stops with exit 1 | `!context.retrieval.roadmap(context.slug).nil?` | [`drop.rb:16`](../../../../lib/plastic/workflows/code/roadmap/drop.rb#L16) |
+| find the item | read |  | [`drop.rb:18`](../../../../lib/plastic/workflows/code/roadmap/drop.rb#L18) |
+| no item %{item_id} on roadmap %{slug} | gate, stops with exit 1 | `!context.item.nil?` | [`drop.rb:22`](../../../../lib/plastic/workflows/code/roadmap/drop.rb#L22) |
+| drop the item | step | `context.dropped` | [`drop.rb:24`](../../../../lib/plastic/workflows/code/roadmap/drop.rb#L24) |
+| say what was dropped | read |  | [`drop.rb:28`](../../../../lib/plastic/workflows/code/roadmap/drop.rb#L28) |
 
 | Outcome | When | Then | Code |
 | --- | --- | --- | --- |
-| `:done` | always | finishes, exit 0; next: plastic roadmap next %{slug} | [`drop_roadmap_item.rb:30`](../../../../lib/plastic/workflows/drop_roadmap_item.rb#L30) |
+| `:done` | always | finishes, exit 0; next: plastic roadmap next %{slug} | [`drop.rb:32`](../../../../lib/plastic/workflows/code/roadmap/drop.rb#L32) |
 
 It sets `item`, `dropped`.
 
@@ -54,7 +54,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| no roadmap %{slug} | 1 | prints no next: line | [`drop_roadmap_item.rb:14`](../../../../lib/plastic/workflows/drop_roadmap_item.rb#L14) |
-| no item %{item_id} on roadmap %{slug} | 1 | prints no next: line | [`drop_roadmap_item.rb:20`](../../../../lib/plastic/workflows/drop_roadmap_item.rb#L20) |
-| item %{item_id} no longer blocks its successors | 0 | plastic roadmap next %{slug} | [`drop_roadmap_item.rb:30`](../../../../lib/plastic/workflows/drop_roadmap_item.rb#L30) |
+| no roadmap %{slug} | 1 | prints no next: line | [`drop.rb:16`](../../../../lib/plastic/workflows/code/roadmap/drop.rb#L16) |
+| no item %{item_id} on roadmap %{slug} | 1 | prints no next: line | [`drop.rb:22`](../../../../lib/plastic/workflows/code/roadmap/drop.rb#L22) |
+| item %{item_id} no longer blocks its successors | 0 | plastic roadmap next %{slug} | [`drop.rb:32`](../../../../lib/plastic/workflows/code/roadmap/drop.rb#L32) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |

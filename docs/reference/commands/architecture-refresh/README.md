@@ -18,24 +18,24 @@ The command is `Architecture::Refresh`, in [`refresh.rb:9`](../../../../lib/plas
 
 | Workflow | Kind | Code |
 | --- | --- | --- |
-| [RefreshArchitecture](#refresharchitecture) | agent | [`refresh_architecture.rb:9`](../../../../lib/plastic/workflows/refresh_architecture.rb#L9) |
+| [Agent::Architecture::Refresh](#agentarchitecturerefresh) | agent | [`refresh.rb:11`](../../../../lib/plastic/workflows/agent/architecture/refresh.rb#L11) |
 
-### RefreshArchitecture
+### Agent::Architecture::Refresh
 
-The agent workflow `:agent_refresh_architecture`, in [`refresh_architecture.rb:9`](../../../../lib/plastic/workflows/refresh_architecture.rb#L9).
+The agent workflow `:agent_refresh_architecture`, in [`refresh.rb:11`](../../../../lib/plastic/workflows/agent/architecture/refresh.rb#L11).
 
 The agent regenerates the architecture map with the tool it chose. Plastic runs no tool and reads no result, so the step is never done on its own.
 
-![How RefreshArchitecture runs: its steps, where it stops, and its outcomes](agent_refresh_architecture.svg)
+![How Agent::Architecture::Refresh runs: its steps, where it stops, and its outcomes](agent_refresh_architecture.svg)
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
-| refresh the architecture map | agent step | `false` | [`refresh_architecture.rb:10`](../../../../lib/plastic/workflows/refresh_architecture.rb#L10) |
+| refresh the architecture map | agent step | `false` | [`refresh.rb:12`](../../../../lib/plastic/workflows/agent/architecture/refresh.rb#L12) |
 
 | Outcome | When | Then | Code |
 | --- | --- | --- | --- |
-| `:handoff` | when a step is left | hands off, exit 0; prints no next: line | [`refresh_architecture.rb:15`](../../../../lib/plastic/workflows/refresh_architecture.rb#L15) |
-| `:done` | when every done check holds | finishes, exit 0; prints no next: line | [`refresh_architecture.rb:16`](../../../../lib/plastic/workflows/refresh_architecture.rb#L16) |
+| `:handoff` | when a step is left | hands off, exit 0; prints no next: line | [`refresh.rb:17`](../../../../lib/plastic/workflows/agent/architecture/refresh.rb#L17) |
+| `:done` | when every done check holds | finishes, exit 0; prints no next: line | [`refresh.rb:18`](../../../../lib/plastic/workflows/agent/architecture/refresh.rb#L18) |
 
 The agent step "refresh the architecture map" prints:
 
@@ -47,5 +47,5 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| the agent refreshes the architecture map with its own tool | 0 | prints no next: line | [`refresh_architecture.rb:15`](../../../../lib/plastic/workflows/refresh_architecture.rb#L15) |
-| the architecture map was refreshed | 0 | prints no next: line | [`refresh_architecture.rb:16`](../../../../lib/plastic/workflows/refresh_architecture.rb#L16) |
+| the agent refreshes the architecture map with its own tool | 0 | prints no next: line | [`refresh.rb:17`](../../../../lib/plastic/workflows/agent/architecture/refresh.rb#L17) |
+| the architecture map was refreshed | 0 | prints no next: line | [`refresh.rb:18`](../../../../lib/plastic/workflows/agent/architecture/refresh.rb#L18) |

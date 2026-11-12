@@ -36,63 +36,63 @@ end
 
 | Workflow | Kind | Code |
 | --- | --- | --- |
-| [ChooseInstallations](#chooseinstallations) | code | [`choose_installations.rb:11`](../../../../lib/plastic/workflows/choose_installations.rb#L11) |
-| [PreviewUninstall](#previewuninstall) | code | [`preview_uninstall.rb:13`](../../../../lib/plastic/workflows/preview_uninstall.rb#L13) |
-| [UninstallPlastic](#uninstallplastic) | code | [`uninstall_plastic.rb:13`](../../../../lib/plastic/workflows/uninstall_plastic.rb#L13) |
+| [Code::Uninstall::Choose](#codeuninstallchoose) | code | [`choose.rb:14`](../../../../lib/plastic/workflows/code/uninstall/choose.rb#L14) |
+| [Code::Uninstall::Preview](#codeuninstallpreview) | code | [`preview.rb:16`](../../../../lib/plastic/workflows/code/uninstall/preview.rb#L16) |
+| [Code::Uninstall](#codeuninstall) | code | [`uninstall.rb:14`](../../../../lib/plastic/workflows/code/uninstall.rb#L14) |
 
-### ChooseInstallations
+### Code::Uninstall::Choose
 
-The code workflow `:code_choose_installations`, in [`choose_installations.rb:11`](../../../../lib/plastic/workflows/choose_installations.rb#L11).
+The code workflow `:code_choose_installations`, in [`choose.rb:14`](../../../../lib/plastic/workflows/code/uninstall/choose.rb#L14).
 
 Reads the person's answer against the harnesses Plastic is installed into or found in.
 
-![How ChooseInstallations runs: its steps, where it stops, and its outcomes](code_choose_installations.svg)
+![How Code::Uninstall::Choose runs: its steps, where it stops, and its outcomes](code_choose_installations.svg)
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
-| list the recorded and the found harnesses and read the person's answer | read |  | [`choose_installations.rb:16`](../../../../lib/plastic/workflows/choose_installations.rb#L16) |
+| list the recorded and the found harnesses and read the person's answer | read |  | [`choose.rb:19`](../../../../lib/plastic/workflows/code/uninstall/choose.rb#L19) |
 
 | Outcome | When | Then | Code |
 | --- | --- | --- | --- |
-| `:none` | when `context.found.empty?` | finishes, exit 0; next: plastic init | [`choose_installations.rb:25`](../../../../lib/plastic/workflows/choose_installations.rb#L25) |
-| `:left` | when `context.picked.empty?` | finishes, exit 0; next: plastic uninstall | [`choose_installations.rb:27`](../../../../lib/plastic/workflows/choose_installations.rb#L27) |
-| `:chosen` | otherwise | runs [PreviewUninstall](#previewuninstall) | [`choose_installations.rb:29`](../../../../lib/plastic/workflows/choose_installations.rb#L29) |
+| `:none` | when `context.found.empty?` | finishes, exit 0; next: plastic init | [`choose.rb:28`](../../../../lib/plastic/workflows/code/uninstall/choose.rb#L28) |
+| `:left` | when `context.picked.empty?` | finishes, exit 0; next: plastic uninstall | [`choose.rb:30`](../../../../lib/plastic/workflows/code/uninstall/choose.rb#L30) |
+| `:chosen` | otherwise | runs [Code::Uninstall::Preview](#codeuninstallpreview) | [`choose.rb:32`](../../../../lib/plastic/workflows/code/uninstall/choose.rb#L32) |
 
 It sets `found`, `picked`, `harnesses`.
 
-### PreviewUninstall
+### Code::Uninstall::Preview
 
-The code workflow `:code_preview_uninstall`, in [`preview_uninstall.rb:13`](../../../../lib/plastic/workflows/preview_uninstall.rb#L13).
+The code workflow `:code_preview_uninstall`, in [`preview.rb:16`](../../../../lib/plastic/workflows/code/uninstall/preview.rb#L16).
 
 On a dry run, lists what the record of each picked harness names, the releases and the launcher among them when no harness stays installed, and the home it keeps.
 
-![How PreviewUninstall runs: its steps, where it stops, and its outcomes](code_preview_uninstall.svg)
+![How Code::Uninstall::Preview runs: its steps, where it stops, and its outcomes](code_preview_uninstall.svg)
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
-| list what the uninstall would remove or change | read |  | [`preview_uninstall.rb:16`](../../../../lib/plastic/workflows/preview_uninstall.rb#L16) |
+| list what the uninstall would remove or change | read |  | [`preview.rb:19`](../../../../lib/plastic/workflows/code/uninstall/preview.rb#L19) |
 
 | Outcome | When | Then | Code |
 | --- | --- | --- | --- |
-| `:done` | when `context.dry_run` | finishes, exit 0; next: %{original_command} | [`preview_uninstall.rb:26`](../../../../lib/plastic/workflows/preview_uninstall.rb#L26) |
-| `:continue` | otherwise | runs [UninstallPlastic](#uninstallplastic) | [`preview_uninstall.rb:28`](../../../../lib/plastic/workflows/preview_uninstall.rb#L28) |
+| `:done` | when `context.dry_run` | finishes, exit 0; next: %{original_command} | [`preview.rb:29`](../../../../lib/plastic/workflows/code/uninstall/preview.rb#L29) |
+| `:continue` | otherwise | runs [Code::Uninstall](#codeuninstall) | [`preview.rb:31`](../../../../lib/plastic/workflows/code/uninstall/preview.rb#L31) |
 
-### UninstallPlastic
+### Code::Uninstall
 
-The code workflow `:code_uninstall_plastic`, in [`uninstall_plastic.rb:13`](../../../../lib/plastic/workflows/uninstall_plastic.rb#L13).
+The code workflow `:code_uninstall_plastic`, in [`uninstall.rb:14`](../../../../lib/plastic/workflows/code/uninstall.rb#L14).
 
 Removes what the record of each picked harness lists, then the releases and the launcher once no harness stays installed. The home with its stores stays.
 
-![How UninstallPlastic runs: its steps, where it stops, and its outcomes](code_uninstall_plastic.svg)
+![How Code::Uninstall runs: its steps, where it stops, and its outcomes](code_uninstall_plastic.svg)
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
-| remove what each record lists | step | `context.removed` | [`uninstall_plastic.rb:20`](../../../../lib/plastic/workflows/uninstall_plastic.rb#L20) |
-| remove the releases and the launcher | step | `context.releases_removed` | [`uninstall_plastic.rb:29`](../../../../lib/plastic/workflows/uninstall_plastic.rb#L29) |
+| remove what each record lists | step | `context.removed` | [`uninstall.rb:21`](../../../../lib/plastic/workflows/code/uninstall.rb#L21) |
+| remove the releases and the launcher | step | `context.releases_removed` | [`uninstall.rb:30`](../../../../lib/plastic/workflows/code/uninstall.rb#L30) |
 
 | Outcome | When | Then | Code |
 | --- | --- | --- | --- |
-| `:done` | always | finishes, exit 0; next: plastic init | [`uninstall_plastic.rb:36`](../../../../lib/plastic/workflows/uninstall_plastic.rb#L36) |
+| `:done` | always | finishes, exit 0; next: plastic init | [`uninstall.rb:37`](../../../../lib/plastic/workflows/code/uninstall.rb#L37) |
 
 It sets `removed`, `releases_removed`.
 
@@ -102,8 +102,8 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| Plastic is installed into no harness and no registered harness was found | 0 | plastic init | [`choose_installations.rb:25`](../../../../lib/plastic/workflows/choose_installations.rb#L25) |
-| the person left with no change | 0 | plastic uninstall | [`choose_installations.rb:27`](../../../../lib/plastic/workflows/choose_installations.rb#L27) |
-| the preview changed no file | 0 | %{original_command} | [`preview_uninstall.rb:26`](../../../../lib/plastic/workflows/preview_uninstall.rb#L26) |
-| Plastic is removed from %{harnesses}; the home stays | 0 | plastic init | [`uninstall_plastic.rb:36`](../../../../lib/plastic/workflows/uninstall_plastic.rb#L36) |
+| Plastic is installed into no harness and no registered harness was found | 0 | plastic init | [`choose.rb:28`](../../../../lib/plastic/workflows/code/uninstall/choose.rb#L28) |
+| the person left with no change | 0 | plastic uninstall | [`choose.rb:30`](../../../../lib/plastic/workflows/code/uninstall/choose.rb#L30) |
+| the preview changed no file | 0 | %{original_command} | [`preview.rb:29`](../../../../lib/plastic/workflows/code/uninstall/preview.rb#L29) |
+| Plastic is removed from %{harnesses}; the home stays | 0 | plastic init | [`uninstall.rb:37`](../../../../lib/plastic/workflows/code/uninstall.rb#L37) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |

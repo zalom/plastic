@@ -20,25 +20,25 @@ The command is `Version`, in [`version.rb:9`](../../../../lib/plastic/commands/v
 
 | Workflow | Kind | Code |
 | --- | --- | --- |
-| [ShowVersion](#showversion) | code | [`show_version.rb:10`](../../../../lib/plastic/workflows/show_version.rb#L10) |
+| [Code::Version](#codeversion) | code | [`version.rb:11`](../../../../lib/plastic/workflows/code/version.rb#L11) |
 
-### ShowVersion
+### Code::Version
 
-The code workflow `:code_show_version`, in [`show_version.rb:10`](../../../../lib/plastic/workflows/show_version.rb#L10).
+The code workflow `:code_show_version`, in [`version.rb:11`](../../../../lib/plastic/workflows/code/version.rb#L11).
 
 Reads the version of the running package: its VERSION file when it has one, as an installed copy does, otherwise its package.json.
 
-![How ShowVersion runs: its steps, where it stops, and its outcomes](code_show_version.svg)
+![How Code::Version runs: its steps, where it stops, and its outcomes](code_show_version.svg)
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
-| find the version file of the running package | read |  | [`show_version.rb:15`](../../../../lib/plastic/workflows/show_version.rb#L15) |
-| the running package has no VERSION file and no package.json | gate, stops with exit 1 | `!context.source.nil?` | [`show_version.rb:19`](../../../../lib/plastic/workflows/show_version.rb#L19) |
-| say the version and its channel | read |  | [`show_version.rb:22`](../../../../lib/plastic/workflows/show_version.rb#L22) |
+| find the version file of the running package | read |  | [`version.rb:16`](../../../../lib/plastic/workflows/code/version.rb#L16) |
+| the running package has no VERSION file and no package.json | gate, stops with exit 1 | `!context.source.nil?` | [`version.rb:20`](../../../../lib/plastic/workflows/code/version.rb#L20) |
+| say the version and its channel | read |  | [`version.rb:23`](../../../../lib/plastic/workflows/code/version.rb#L23) |
 
 | Outcome | When | Then | Code |
 | --- | --- | --- | --- |
-| `:done` | always | finishes, exit 0; next: plastic status | [`show_version.rb:29`](../../../../lib/plastic/workflows/show_version.rb#L29) |
+| `:done` | always | finishes, exit 0; next: plastic status | [`version.rb:30`](../../../../lib/plastic/workflows/code/version.rb#L30) |
 
 It sets `source`.
 
@@ -48,6 +48,6 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| the running package has no VERSION file and no package.json | 1 | prints no next: line | [`show_version.rb:19`](../../../../lib/plastic/workflows/show_version.rb#L19) |
-| the command line works, so read the work next | 0 | plastic status | [`show_version.rb:29`](../../../../lib/plastic/workflows/show_version.rb#L29) |
+| the running package has no VERSION file and no package.json | 1 | prints no next: line | [`version.rb:20`](../../../../lib/plastic/workflows/code/version.rb#L20) |
+| the command line works, so read the work next | 0 | plastic status | [`version.rb:30`](../../../../lib/plastic/workflows/code/version.rb#L30) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |

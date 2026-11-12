@@ -24,28 +24,28 @@ The command is `Graph::Check`, in [`check.rb:9`](../../../../lib/plastic/command
 
 | Workflow | Kind | Code |
 | --- | --- | --- |
-| [CheckGraph](#checkgraph) | code | [`check_graph.rb:9`](../../../../lib/plastic/workflows/check_graph.rb#L9) |
+| [Code::Graph::Check](#codegraphcheck) | code | [`check.rb:11`](../../../../lib/plastic/workflows/code/graph/check.rb#L11) |
 
-### CheckGraph
+### Code::Graph::Check
 
-The code workflow `:code_check_graph`, in [`check_graph.rb:9`](../../../../lib/plastic/workflows/check_graph.rb#L9).
+The code workflow `:code_check_graph`, in [`check.rb:11`](../../../../lib/plastic/workflows/code/graph/check.rb#L11).
 
 Prints each finding, or "no findings"; a finding fails the call.
 
-![How CheckGraph runs: its steps, where it stops, and its outcomes](code_check_graph.svg)
+![How Code::Graph::Check runs: its steps, where it stops, and its outcomes](code_check_graph.svg)
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
-| find the intent | read |  | [`check_graph.rb:14`](../../../../lib/plastic/workflows/check_graph.rb#L14) |
-| no intent %{intent_id} in this store | gate, stops with exit 1 | `!context.intent.nil?` | [`check_graph.rb:18`](../../../../lib/plastic/workflows/check_graph.rb#L18) |
-| find problems | read |  | [`check_graph.rb:20`](../../../../lib/plastic/workflows/check_graph.rb#L20) |
-| see the findings above | gate, stops with exit 1 | `context.findings.empty?` | [`check_graph.rb:32`](../../../../lib/plastic/workflows/check_graph.rb#L32) |
-| find the first ready node | read |  | [`check_graph.rb:34`](../../../../lib/plastic/workflows/check_graph.rb#L34) |
+| find the intent | read |  | [`check.rb:16`](../../../../lib/plastic/workflows/code/graph/check.rb#L16) |
+| no intent %{intent_id} in this store | gate, stops with exit 1 | `!context.intent.nil?` | [`check.rb:20`](../../../../lib/plastic/workflows/code/graph/check.rb#L20) |
+| find problems | read |  | [`check.rb:22`](../../../../lib/plastic/workflows/code/graph/check.rb#L22) |
+| see the findings above | gate, stops with exit 1 | `context.findings.empty?` | [`check.rb:34`](../../../../lib/plastic/workflows/code/graph/check.rb#L34) |
+| find the first ready node | read |  | [`check.rb:36`](../../../../lib/plastic/workflows/code/graph/check.rb#L36) |
 
 | Outcome | When | Then | Code |
 | --- | --- | --- | --- |
-| `:nothing` | when `context.first.nil?` | finishes, exit 0; prints no next: line | [`check_graph.rb:38`](../../../../lib/plastic/workflows/check_graph.rb#L38) |
-| `:done` | otherwise | finishes, exit 0; next: plastic node claim %{intent_id} %{first} | [`check_graph.rb:39`](../../../../lib/plastic/workflows/check_graph.rb#L39) |
+| `:nothing` | when `context.first.nil?` | finishes, exit 0; prints no next: line | [`check.rb:40`](../../../../lib/plastic/workflows/code/graph/check.rb#L40) |
+| `:done` | otherwise | finishes, exit 0; next: plastic node claim %{intent_id} %{first} | [`check.rb:41`](../../../../lib/plastic/workflows/code/graph/check.rb#L41) |
 
 It sets `intent`, `findings`, `first`.
 
@@ -55,8 +55,8 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| no intent %{intent_id} in this store | 1 | prints no next: line | [`check_graph.rb:18`](../../../../lib/plastic/workflows/check_graph.rb#L18) |
-| see the findings above | 1 | prints no next: line | [`check_graph.rb:32`](../../../../lib/plastic/workflows/check_graph.rb#L32) |
-| no node is ready to claim | 0 | prints no next: line | [`check_graph.rb:38`](../../../../lib/plastic/workflows/check_graph.rb#L38) |
-| node %{first} is ready | 0 | plastic node claim %{intent_id} %{first} | [`check_graph.rb:39`](../../../../lib/plastic/workflows/check_graph.rb#L39) |
+| no intent %{intent_id} in this store | 1 | prints no next: line | [`check.rb:20`](../../../../lib/plastic/workflows/code/graph/check.rb#L20) |
+| see the findings above | 1 | prints no next: line | [`check.rb:34`](../../../../lib/plastic/workflows/code/graph/check.rb#L34) |
+| no node is ready to claim | 0 | prints no next: line | [`check.rb:40`](../../../../lib/plastic/workflows/code/graph/check.rb#L40) |
+| node %{first} is ready | 0 | plastic node claim %{intent_id} %{first} | [`check.rb:41`](../../../../lib/plastic/workflows/code/graph/check.rb#L41) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |

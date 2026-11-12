@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 453" width="760" height="453" role="img" xml:space="preserve">
-<title>How DropRoadmapItem runs in plastic roadmap drop</title>
+<title>How Drop runs in plastic roadmap drop</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
 .lane-code { fill: #d5e8e3; stroke: #0d6b61; stroke-width: 1.5; }
@@ -68,11 +68,11 @@
 .big { font: 700 36px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
 }</style>
 <rect width="100%" height="100%" class="ground"/>
-<text x="16" y="22" class="tb" text-anchor="start">DropRoadmapItem</text>
-<text x="436" y="22" class="tm tag-muted" text-anchor="end">drop_roadmap_item.rb:9</text>
+<text x="16" y="22" class="tb" text-anchor="start">Drop</text>
+<text x="436" y="22" class="tm tag-muted" text-anchor="end">drop.rb:11</text>
 <rect x="16" y="34" width="420" height="60" rx="6" class="card"/>
 <text x="26" y="49" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="49" class="tm tag-muted" text-anchor="end">drop_roadmap_item.rb:14</text>
+<text x="426" y="49" class="tm tag-muted" text-anchor="end">drop.rb:16</text>
 <text x="26" y="66" class="tm" text-anchor="start">passes when</text>
 <text x="26" y="81" class="tm" text-anchor="start">!context.retrieval.roadmap(context.slug).nil?</text>
 <path d="M 436 52 L 464 52" class="wire-failure"/>
@@ -84,13 +84,13 @@
 <path d="M 221 96 L 226 104 L 231 96 Z" class="head"/>
 <rect x="16" y="104" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="119" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="119" class="tm tag-muted" text-anchor="end">drop_roadmap_item.rb:16</text>
+<text x="426" y="119" class="tm tag-muted" text-anchor="end">drop.rb:18</text>
 <text x="26" y="136" class="t" text-anchor="start">find the item</text>
 <path d="M 226 149 L 226 159" class="wire"/>
 <path d="M 221 151 L 226 159 L 231 151 Z" class="head"/>
 <rect x="16" y="159" width="420" height="56" rx="6" class="card"/>
 <text x="26" y="174" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="174" class="tm tag-muted" text-anchor="end">drop_roadmap_item.rb:20</text>
+<text x="426" y="174" class="tm tag-muted" text-anchor="end">drop.rb:22</text>
 <text x="26" y="191" class="tm" text-anchor="start">passes when !context.item.nil?</text>
 <path d="M 436 177 L 464 177" class="wire-failure"/>
 <path d="M 456 172 L 464 177 L 456 182 Z" class="head"/>
@@ -102,7 +102,7 @@
 <path d="M 221 217 L 226 225 L 231 217 Z" class="head"/>
 <rect x="16" y="225" width="420" height="59" rx="6" class="card"/>
 <text x="26" y="240" class="tag tag-muted" text-anchor="start">STEP</text>
-<text x="426" y="240" class="tm tag-muted" text-anchor="end">drop_roadmap_item.rb:22</text>
+<text x="426" y="240" class="tm tag-muted" text-anchor="end">drop.rb:24</text>
 <text x="26" y="257" class="t" text-anchor="start">drop the item</text>
 <text x="26" y="272" class="tm" text-anchor="start">done when context.dropped</text>
 <path d="M 436 243 L 464 243" class="wire-failure"/>
@@ -115,7 +115,7 @@
 <path d="M 221 286 L 226 294 L 231 286 Z" class="head"/>
 <rect x="16" y="294" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="309" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="309" class="tm tag-muted" text-anchor="end">drop_roadmap_item.rb:26</text>
+<text x="426" y="309" class="tm tag-muted" text-anchor="end">drop.rb:28</text>
 <text x="26" y="326" class="t" text-anchor="start">say what was dropped</text>
 <path d="M 226 339 L 226 349" class="wire"/>
 <path d="M 221 341 L 226 349 L 231 341 Z" class="head"/>

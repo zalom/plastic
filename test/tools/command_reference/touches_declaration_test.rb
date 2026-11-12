@@ -42,8 +42,8 @@ class CommandReferenceTouchesDeclarationTest < Minitest::Test
     spec = "lib/plastic/graph/knowledge/spec.rb"
     helpers = CommandReference::Touches::Helpers.new(source)
 
-    assert_includes helpers.call(["lib/plastic/workflows/show_spec.rb"]).map(&:file), spec
-    refute_includes helpers.call(["lib/plastic/workflows/show_spec.rb", spec]).map(&:file), spec
+    assert_includes helpers.call(["lib/plastic/workflows/code/intent/spec.rb"]).map(&:file), spec
+    refute_includes helpers.call(["lib/plastic/workflows/code/intent/spec.rb", spec]).map(&:file), spec
   end
 
   def declared_store_keys(page, mode)

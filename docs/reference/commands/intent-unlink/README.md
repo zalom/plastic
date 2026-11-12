@@ -27,26 +27,26 @@ The command is `Intent::Unlink`, in [`unlink.rb:9`](../../../../lib/plastic/comm
 
 | Workflow | Kind | Code |
 | --- | --- | --- |
-| [RemoveLink](#removelink) | code | [`remove_link.rb:8`](../../../../lib/plastic/workflows/remove_link.rb#L8) |
+| [Code::Intent::Unlink](#codeintentunlink) | code | [`unlink.rb:10`](../../../../lib/plastic/workflows/code/intent/unlink.rb#L10) |
 
-### RemoveLink
+### Code::Intent::Unlink
 
-The code workflow `:code_remove_link`, in [`remove_link.rb:8`](../../../../lib/plastic/workflows/remove_link.rb#L8).
+The code workflow `:code_remove_link`, in [`unlink.rb:10`](../../../../lib/plastic/workflows/code/intent/unlink.rb#L10).
 
 Removes one link; fails when no such link exists.
 
-![How RemoveLink runs: its steps, where it stops, and its outcomes](code_remove_link.svg)
+![How Code::Intent::Unlink runs: its steps, where it stops, and its outcomes](code_remove_link.svg)
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
 | forget a stop of an earlier call | read |  | [`code_workflow.rb:54`](../../../../lib/plastic/code_workflow.rb#L54) |
-| remove the link | step | `!context.removed.nil?` | [`remove_link.rb:15`](../../../../lib/plastic/workflows/remove_link.rb#L15) |
-| %{problem} | gate, stops with exit 1 | `context.problem.nil?` | [`remove_link.rb:21`](../../../../lib/plastic/workflows/remove_link.rb#L21) |
-| say what was removed | read |  | [`remove_link.rb:23`](../../../../lib/plastic/workflows/remove_link.rb#L23) |
+| remove the link | step | `!context.removed.nil?` | [`unlink.rb:17`](../../../../lib/plastic/workflows/code/intent/unlink.rb#L17) |
+| %{problem} | gate, stops with exit 1 | `context.problem.nil?` | [`unlink.rb:23`](../../../../lib/plastic/workflows/code/intent/unlink.rb#L23) |
+| say what was removed | read |  | [`unlink.rb:25`](../../../../lib/plastic/workflows/code/intent/unlink.rb#L25) |
 
 | Outcome | When | Then | Code |
 | --- | --- | --- | --- |
-| `:done` | always | finishes, exit 0; next: plastic sync down | [`remove_link.rb:27`](../../../../lib/plastic/workflows/remove_link.rb#L27) |
+| `:done` | always | finishes, exit 0; next: plastic sync down | [`unlink.rb:29`](../../../../lib/plastic/workflows/code/intent/unlink.rb#L29) |
 
 It sets `problem`, `removed`.
 
@@ -56,6 +56,6 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| %{problem} | 1 | prints no next: line | [`remove_link.rb:21`](../../../../lib/plastic/workflows/remove_link.rb#L21) |
-| the link is gone | 0 | plastic sync down | [`remove_link.rb:27`](../../../../lib/plastic/workflows/remove_link.rb#L27) |
+| %{problem} | 1 | prints no next: line | [`unlink.rb:23`](../../../../lib/plastic/workflows/code/intent/unlink.rb#L23) |
+| the link is gone | 0 | plastic sync down | [`unlink.rb:29`](../../../../lib/plastic/workflows/code/intent/unlink.rb#L29) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |

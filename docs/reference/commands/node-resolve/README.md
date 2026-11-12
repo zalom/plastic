@@ -24,15 +24,15 @@ The command is `Node::Resolve`, in [`resolve.rb:10`](../../../../lib/plastic/com
 
 | Workflow | Kind | Code |
 | --- | --- | --- |
-| [ResolveNode](#resolvenode) | code | [`resolve_node.rb:9`](../../../../lib/plastic/workflows/resolve_node.rb#L9) |
+| [Code::Node::Resolve](#codenoderesolve) | code | [`resolve.rb:11`](../../../../lib/plastic/workflows/code/node/resolve.rb#L11) |
 
-### ResolveNode
+### Code::Node::Resolve
 
-The code workflow `:code_resolve_node`, in [`resolve_node.rb:9`](../../../../lib/plastic/workflows/resolve_node.rb#L9).
+The code workflow `:code_resolve_node`, in [`resolve.rb:11`](../../../../lib/plastic/workflows/code/node/resolve.rb#L11).
 
 Reopens a needs_info or impeded node with its resolution and resets its retries.
 
-![How ResolveNode runs: its steps, where it stops, and its outcomes](code_resolve_node.svg)
+![How Code::Node::Resolve runs: its steps, where it stops, and its outcomes](code_resolve_node.svg)
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |

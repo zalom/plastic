@@ -25,26 +25,26 @@ The command is `Node::Add`, in [`add.rb:9`](../../../../lib/plastic/commands/nod
 
 | Workflow | Kind | Code |
 | --- | --- | --- |
-| [AddNode](#addnode) | code | [`add_node.rb:10`](../../../../lib/plastic/workflows/add_node.rb#L10) |
+| [Code::Node::Add](#codenodeadd) | code | [`add.rb:12`](../../../../lib/plastic/workflows/code/node/add.rb#L12) |
 
-### AddNode
+### Code::Node::Add
 
-The code workflow `:code_add_node`, in [`add_node.rb:10`](../../../../lib/plastic/workflows/add_node.rb#L10).
+The code workflow `:code_add_node`, in [`add.rb:12`](../../../../lib/plastic/workflows/code/node/add.rb#L12).
 
 Writes a new node, open and ready, unless the intent is done or abandoned.
 
-![How AddNode runs: its steps, where it stops, and its outcomes](code_add_node.svg)
+![How Code::Node::Add runs: its steps, where it stops, and its outcomes](code_add_node.svg)
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
-| check the intent | read |  | [`add_node.rb:15`](../../../../lib/plastic/workflows/add_node.rb#L15) |
-| %{problem} | gate, stops with exit 1 | `context.problem.nil?` | [`add_node.rb:19`](../../../../lib/plastic/workflows/add_node.rb#L19) |
-| add the node | step | `!context.id.nil?` | [`add_node.rb:21`](../../../../lib/plastic/workflows/add_node.rb#L21) |
-| say what was added | read |  | [`add_node.rb:27`](../../../../lib/plastic/workflows/add_node.rb#L27) |
+| check the intent | read |  | [`add.rb:17`](../../../../lib/plastic/workflows/code/node/add.rb#L17) |
+| %{problem} | gate, stops with exit 1 | `context.problem.nil?` | [`add.rb:21`](../../../../lib/plastic/workflows/code/node/add.rb#L21) |
+| add the node | step | `!context.id.nil?` | [`add.rb:23`](../../../../lib/plastic/workflows/code/node/add.rb#L23) |
+| say what was added | read |  | [`add.rb:29`](../../../../lib/plastic/workflows/code/node/add.rb#L29) |
 
 | Outcome | When | Then | Code |
 | --- | --- | --- | --- |
-| `:done` | always | finishes, exit 0; next: plastic node claim %{intent_id} %{id} | [`add_node.rb:43`](../../../../lib/plastic/workflows/add_node.rb#L43) |
+| `:done` | always | finishes, exit 0; next: plastic node claim %{intent_id} %{id} | [`add.rb:45`](../../../../lib/plastic/workflows/code/node/add.rb#L45) |
 
 It sets `problem`, `id`.
 
@@ -54,6 +54,6 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| %{problem} | 1 | prints no next: line | [`add_node.rb:19`](../../../../lib/plastic/workflows/add_node.rb#L19) |
-| node %{id} is open | 0 | plastic node claim %{intent_id} %{id} | [`add_node.rb:43`](../../../../lib/plastic/workflows/add_node.rb#L43) |
+| %{problem} | 1 | prints no next: line | [`add.rb:21`](../../../../lib/plastic/workflows/code/node/add.rb#L21) |
+| node %{id} is open | 0 | plastic node claim %{intent_id} %{id} | [`add.rb:45`](../../../../lib/plastic/workflows/code/node/add.rb#L45) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |

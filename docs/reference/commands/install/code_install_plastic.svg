@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 474" width="760" height="474" role="img" xml:space="preserve">
-<title>How InstallPlastic runs in plastic install</title>
+<title>How Install runs in plastic install</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
 .lane-code { fill: #d5e8e3; stroke: #0d6b61; stroke-width: 1.5; }
@@ -68,17 +68,17 @@
 .big { font: 700 36px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
 }</style>
 <rect width="100%" height="100%" class="ground"/>
-<text x="16" y="22" class="tb" text-anchor="start">InstallPlastic</text>
-<text x="436" y="22" class="tm tag-muted" text-anchor="end">install_plastic.rb:11</text>
+<text x="16" y="22" class="tb" text-anchor="start">Install</text>
+<text x="436" y="22" class="tm tag-muted" text-anchor="end">install.rb:12</text>
 <rect x="16" y="34" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="49" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="49" class="tm tag-muted" text-anchor="end">install_plastic.rb:16</text>
+<text x="426" y="49" class="tm tag-muted" text-anchor="end">install.rb:17</text>
 <text x="26" y="66" class="t" text-anchor="start">check this machine and the harness settings files</text>
 <path d="M 226 79 L 226 89" class="wire"/>
 <path d="M 221 81 L 226 89 L 231 81 Z" class="head"/>
 <rect x="16" y="89" width="420" height="56" rx="6" class="card"/>
 <text x="26" y="104" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="104" class="tm tag-muted" text-anchor="end">install_plastic.rb:25</text>
+<text x="426" y="104" class="tm tag-muted" text-anchor="end">install.rb:26</text>
 <text x="26" y="121" class="tm" text-anchor="start">passes when context.usable</text>
 <path d="M 436 107 L 464 107" class="wire-failure"/>
 <path d="M 456 102 L 464 107 L 456 112 Z" class="head"/>
@@ -90,7 +90,7 @@
 <path d="M 221 147 L 226 155 L 231 147 Z" class="head"/>
 <rect x="16" y="155" width="420" height="70" rx="6" class="card"/>
 <text x="26" y="170" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="170" class="tm tag-muted" text-anchor="end">install_plastic.rb:26</text>
+<text x="426" y="170" class="tm tag-muted" text-anchor="end">install.rb:27</text>
 <text x="26" y="187" class="tm" text-anchor="start">passes when context.broken.nil?</text>
 <path d="M 436 173 L 464 173" class="wire-failure"/>
 <path d="M 456 168 L 464 173 L 456 178 Z" class="head"/>
@@ -103,7 +103,7 @@
 <path d="M 221 227 L 226 235 L 231 227 Z" class="head"/>
 <rect x="16" y="235" width="420" height="84" rx="6" class="card"/>
 <text x="26" y="250" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="250" class="tm tag-muted" text-anchor="end">install_plastic.rb:28</text>
+<text x="426" y="250" class="tm tag-muted" text-anchor="end">install.rb:29</text>
 <text x="26" y="267" class="tm" text-anchor="start">passes when context.reinstall || !context.present</text>
 <path d="M 436 253 L 464 253" class="wire-refusal"/>
 <path d="M 456 248 L 464 253 L 456 258 Z" class="head"/>
@@ -117,7 +117,7 @@
 <path d="M 221 321 L 226 329 L 231 321 Z" class="head"/>
 <rect x="16" y="329" width="420" height="59" rx="6" class="card"/>
 <text x="26" y="344" class="tag tag-muted" text-anchor="start">STEP</text>
-<text x="426" y="344" class="tm tag-muted" text-anchor="end">install_plastic.rb:31</text>
+<text x="426" y="344" class="tm tag-muted" text-anchor="end">install.rb:32</text>
 <text x="26" y="361" class="t" text-anchor="start">install the core files</text>
 <text x="26" y="376" class="tm" text-anchor="start">done when !context.installed.nil?</text>
 <path d="M 436 347 L 464 347" class="wire-failure"/>
@@ -135,5 +135,5 @@
 <path d="M 316 434 L 352 434" class="wire"/>
 <path d="M 344 429 L 352 434 L 344 439 Z" class="head"/>
 <rect x="352" y="418" width="392" height="42" rx="6" class="lane-agent"/>
-<text x="362" y="435" class="t" text-anchor="start">next workflow: OfferEnola</text>
+<text x="362" y="435" class="t" text-anchor="start">next workflow: Install</text>
 </svg>

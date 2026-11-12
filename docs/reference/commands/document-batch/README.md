@@ -22,25 +22,25 @@ The command is `Document::Batch`, in [`batch.rb:9`](../../../../lib/plastic/comm
 
 | Workflow | Kind | Code |
 | --- | --- | --- |
-| [BatchDocuments](#batchdocuments) | code | [`batch_documents.rb:10`](../../../../lib/plastic/workflows/batch_documents.rb#L10) |
+| [Code::Document::Batch](#codedocumentbatch) | code | [`batch.rb:12`](../../../../lib/plastic/workflows/code/document/batch.rb#L12) |
 
-### BatchDocuments
+### Code::Document::Batch
 
-The code workflow `:code_batch_documents`, in [`batch_documents.rb:10`](../../../../lib/plastic/workflows/batch_documents.rb#L10).
+The code workflow `:code_batch_documents`, in [`batch.rb:12`](../../../../lib/plastic/workflows/code/document/batch.rb#L12).
 
 Fetches qualified documents in the exact request order.
 
-![How BatchDocuments runs: its steps, where it stops, and its outcomes](code_batch_documents.svg)
+![How Code::Document::Batch runs: its steps, where it stops, and its outcomes](code_batch_documents.svg)
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
 | forget a stop of an earlier call | read |  | [`code_workflow.rb:54`](../../../../lib/plastic/code_workflow.rb#L54) |
-| fetch the documents | read |  | [`batch_documents.rb:17`](../../../../lib/plastic/workflows/batch_documents.rb#L17) |
-| %{problem} | gate, stops with exit 1 | `context.problem.nil?` | [`batch_documents.rb:24`](../../../../lib/plastic/workflows/batch_documents.rb#L24) |
+| fetch the documents | read |  | [`batch.rb:19`](../../../../lib/plastic/workflows/code/document/batch.rb#L19) |
+| %{problem} | gate, stops with exit 1 | `context.problem.nil?` | [`batch.rb:26`](../../../../lib/plastic/workflows/code/document/batch.rb#L26) |
 
 | Outcome | When | Then | Code |
 | --- | --- | --- | --- |
-| `:done` | always | finishes, exit 0; prints no next: line | [`batch_documents.rb:26`](../../../../lib/plastic/workflows/batch_documents.rb#L26) |
+| `:done` | always | finishes, exit 0; prints no next: line | [`batch.rb:28`](../../../../lib/plastic/workflows/code/document/batch.rb#L28) |
 
 It sets `problem`.
 
@@ -50,6 +50,6 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| %{problem} | 1 | prints no next: line | [`batch_documents.rb:24`](../../../../lib/plastic/workflows/batch_documents.rb#L24) |
-| the documents were read | 0 | prints no next: line | [`batch_documents.rb:26`](../../../../lib/plastic/workflows/batch_documents.rb#L26) |
+| %{problem} | 1 | prints no next: line | [`batch.rb:26`](../../../../lib/plastic/workflows/code/document/batch.rb#L26) |
+| the documents were read | 0 | prints no next: line | [`batch.rb:28`](../../../../lib/plastic/workflows/code/document/batch.rb#L28) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |

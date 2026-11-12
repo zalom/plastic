@@ -24,15 +24,15 @@ The command is `Node::Impede`, in [`impede.rb:9`](../../../../lib/plastic/comman
 
 | Workflow | Kind | Code |
 | --- | --- | --- |
-| [ImpedeNode](#impedenode) | code | [`impede_node.rb:8`](../../../../lib/plastic/workflows/impede_node.rb#L8) |
+| [Code::Node::Impede](#codenodeimpede) | code | [`impede.rb:10`](../../../../lib/plastic/workflows/code/node/impede.rb#L10) |
 
-### ImpedeNode
+### Code::Node::Impede
 
-The code workflow `:code_impede_node`, in [`impede_node.rb:8`](../../../../lib/plastic/workflows/impede_node.rb#L8).
+The code workflow `:code_impede_node`, in [`impede.rb:10`](../../../../lib/plastic/workflows/code/node/impede.rb#L10).
 
 Moves a claimed node to impeded, with the impediment.
 
-![How ImpedeNode runs: its steps, where it stops, and its outcomes](code_impede_node.svg)
+![How Code::Node::Impede runs: its steps, where it stops, and its outcomes](code_impede_node.svg)
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |

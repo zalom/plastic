@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 888" width="760" height="888" role="img" xml:space="preserve">
-<title>How PrepareEnding runs in plastic intent end</title>
+<title>How Prepare runs in plastic intent end</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
 .lane-code { fill: #d5e8e3; stroke: #0d6b61; stroke-width: 1.5; }
@@ -68,17 +68,17 @@
 .big { font: 700 36px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
 }</style>
 <rect width="100%" height="100%" class="ground"/>
-<text x="16" y="22" class="tb" text-anchor="start">PrepareEnding</text>
-<text x="436" y="22" class="tm tag-muted" text-anchor="end">prepare_ending.rb:13</text>
+<text x="16" y="22" class="tb" text-anchor="start">Prepare</text>
+<text x="436" y="22" class="tm tag-muted" text-anchor="end">prepare.rb:17</text>
 <rect x="16" y="34" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="49" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="49" class="tm tag-muted" text-anchor="end">prepare_ending.rb:16</text>
+<text x="426" y="49" class="tm tag-muted" text-anchor="end">prepare.rb:20</text>
 <text x="26" y="66" class="t" text-anchor="start">read the intent</text>
 <path d="M 226 79 L 226 89" class="wire"/>
 <path d="M 221 81 L 226 89 L 231 81 Z" class="head"/>
 <rect x="16" y="89" width="420" height="56" rx="6" class="card"/>
 <text x="26" y="104" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="104" class="tm tag-muted" text-anchor="end">prepare_ending.rb:21</text>
+<text x="426" y="104" class="tm tag-muted" text-anchor="end">prepare.rb:25</text>
 <text x="26" y="121" class="tm" text-anchor="start">passes when !context.intent.nil?</text>
 <path d="M 436 107 L 464 107" class="wire-failure"/>
 <path d="M 456 102 L 464 107 L 456 112 Z" class="head"/>
@@ -90,7 +90,7 @@
 <path d="M 221 147 L 226 155 L 231 147 Z" class="head"/>
 <rect x="16" y="155" width="420" height="60" rx="6" class="card"/>
 <text x="26" y="170" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="170" class="tm tag-muted" text-anchor="end">prepare_ending.rb:22</text>
+<text x="426" y="170" class="tm tag-muted" text-anchor="end">prepare.rb:26</text>
 <text x="26" y="187" class="tm" text-anchor="start">passes when context.closed || %w[open</text>
 <text x="26" y="202" class="tm" text-anchor="start">active].include?(context.intent.status)</text>
 <path d="M 436 173 L 464 173" class="wire-failure"/>
@@ -103,13 +103,13 @@
 <path d="M 221 217 L 226 225 L 231 217 Z" class="head"/>
 <rect x="16" y="225" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="240" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="240" class="tm tag-muted" text-anchor="end">prepare_ending.rb:25</text>
+<text x="426" y="240" class="tm tag-muted" text-anchor="end">prepare.rb:29</text>
 <text x="26" y="257" class="t" text-anchor="start">check delivery ownership</text>
 <path d="M 226 270 L 226 280" class="wire"/>
 <path d="M 221 272 L 226 280 L 231 272 Z" class="head"/>
 <rect x="16" y="280" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="295" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="295" class="tm tag-muted" text-anchor="end">prepare_ending.rb:29</text>
+<text x="426" y="295" class="tm tag-muted" text-anchor="end">prepare.rb:33</text>
 <text x="26" y="312" class="tm" text-anchor="start">passes when context.problem.nil?</text>
 <path d="M 436 298 L 464 298" class="wire-refusal"/>
 <path d="M 456 293 L 464 298 L 456 303 Z" class="head"/>
@@ -120,13 +120,13 @@
 <path d="M 221 327 L 226 335 L 231 327 Z" class="head"/>
 <rect x="16" y="335" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="350" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="350" class="tm tag-muted" text-anchor="end">prepare_ending.rb:31</text>
+<text x="426" y="350" class="tm tag-muted" text-anchor="end">prepare.rb:35</text>
 <text x="26" y="367" class="t" text-anchor="start">check the completion records</text>
 <path d="M 226 380 L 226 390" class="wire"/>
 <path d="M 221 382 L 226 390 L 231 382 Z" class="head"/>
 <rect x="16" y="390" width="420" height="98" rx="6" class="card"/>
 <text x="26" y="405" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="405" class="tm tag-muted" text-anchor="end">prepare_ending.rb:73</text>
+<text x="426" y="405" class="tm tag-muted" text-anchor="end">prepare.rb:77</text>
 <text x="26" y="422" class="tm" text-anchor="start">passes when !context.used_up</text>
 <path d="M 436 408 L 464 408" class="wire-refusal"/>
 <path d="M 456 403 L 464 408 L 456 413 Z" class="head"/>
@@ -141,7 +141,7 @@
 <path d="M 221 490 L 226 498 L 231 490 Z" class="head"/>
 <rect x="16" y="498" width="420" height="126" rx="6" class="card"/>
 <text x="26" y="513" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="513" class="tm tag-muted" text-anchor="end">prepare_ending.rb:75</text>
+<text x="426" y="513" class="tm tag-muted" text-anchor="end">prepare.rb:79</text>
 <text x="26" y="530" class="tm" text-anchor="start">passes when !context.awaiting_approval</text>
 <path d="M 436 516 L 464 516" class="wire-refusal"/>
 <path d="M 456 511 L 464 516 L 456 521 Z" class="head"/>
@@ -173,7 +173,7 @@
 <path d="M 316 734 L 352 734" class="wire"/>
 <path d="M 344 729 L 352 734 L 344 739 Z" class="head"/>
 <rect x="352" y="718" width="392" height="56" rx="6" class="lane-agent"/>
-<text x="362" y="735" class="t" text-anchor="start">next workflow: FinishIntent</text>
+<text x="362" y="735" class="t" text-anchor="start">next workflow: End</text>
 <rect x="16" y="782" width="300" height="42" rx="6" class="card"/>
 <text x="26" y="798" class="tm" text-anchor="start">:unverified</text>
 <text x="26" y="814" class="tm tag-muted" text-anchor="start">when !verified?(context)</text>
@@ -187,5 +187,5 @@
 <path d="M 316 848 L 352 848" class="wire"/>
 <path d="M 344 843 L 352 848 L 344 853 Z" class="head"/>
 <rect x="352" y="832" width="392" height="42" rx="6" class="lane-code"/>
-<text x="362" y="849" class="t" text-anchor="start">next workflow: CloseIntent</text>
+<text x="362" y="849" class="t" text-anchor="start">next workflow: End</text>
 </svg>

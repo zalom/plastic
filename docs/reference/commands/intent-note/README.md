@@ -37,28 +37,28 @@ end
 
 | Workflow | Kind | Code |
 | --- | --- | --- |
-| [NoteIntent](#noteintent) | code | [`note_intent.rb:8`](../../../../lib/plastic/workflows/note_intent.rb#L8) |
+| [Code::Intent::Note](#codeintentnote) | code | [`note.rb:10`](../../../../lib/plastic/workflows/code/intent/note.rb#L10) |
 
-### NoteIntent
+### Code::Intent::Note
 
-The code workflow `:code_note_intent`, in [`note_intent.rb:8`](../../../../lib/plastic/workflows/note_intent.rb#L8).
+The code workflow `:code_note_intent`, in [`note.rb:10`](../../../../lib/plastic/workflows/code/intent/note.rb#L10).
 
 Adds a note line to the outcome of an intent.
 
-![How NoteIntent runs: its steps, where it stops, and its outcomes](code_note_intent.svg)
+![How Code::Intent::Note runs: its steps, where it stops, and its outcomes](code_note_intent.svg)
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
-| find the intent | read |  | [`note_intent.rb:13`](../../../../lib/plastic/workflows/note_intent.rb#L13) |
-| no intent %{intent_id} in this store | gate, stops with exit 1 | `!context.intent.nil?` | [`note_intent.rb:17`](../../../../lib/plastic/workflows/note_intent.rb#L17) |
-| check the note | read |  | [`note_intent.rb:19`](../../../../lib/plastic/workflows/note_intent.rb#L19) |
-| %{problem} | gate, stops with exit 1 | `context.problem.nil?` | [`note_intent.rb:23`](../../../../lib/plastic/workflows/note_intent.rb#L23) |
-| write the note | step | `!context.reference.nil?` | [`note_intent.rb:25`](../../../../lib/plastic/workflows/note_intent.rb#L25) |
-| say what was written | read |  | [`note_intent.rb:29`](../../../../lib/plastic/workflows/note_intent.rb#L29) |
+| find the intent | read |  | [`note.rb:15`](../../../../lib/plastic/workflows/code/intent/note.rb#L15) |
+| no intent %{intent_id} in this store | gate, stops with exit 1 | `!context.intent.nil?` | [`note.rb:19`](../../../../lib/plastic/workflows/code/intent/note.rb#L19) |
+| check the note | read |  | [`note.rb:21`](../../../../lib/plastic/workflows/code/intent/note.rb#L21) |
+| %{problem} | gate, stops with exit 1 | `context.problem.nil?` | [`note.rb:25`](../../../../lib/plastic/workflows/code/intent/note.rb#L25) |
+| write the note | step | `!context.reference.nil?` | [`note.rb:27`](../../../../lib/plastic/workflows/code/intent/note.rb#L27) |
+| say what was written | read |  | [`note.rb:31`](../../../../lib/plastic/workflows/code/intent/note.rb#L31) |
 
 | Outcome | When | Then | Code |
 | --- | --- | --- | --- |
-| `:done` | always | finishes, exit 0; prints no next: line | [`note_intent.rb:33`](../../../../lib/plastic/workflows/note_intent.rb#L33) |
+| `:done` | always | finishes, exit 0; prints no next: line | [`note.rb:35`](../../../../lib/plastic/workflows/code/intent/note.rb#L35) |
 
 It sets `intent`, `problem`, `reference`.
 
@@ -68,8 +68,8 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| no intent %{intent_id} in this store | 1 | prints no next: line | [`note_intent.rb:17`](../../../../lib/plastic/workflows/note_intent.rb#L17) |
-| %{problem} | 1 | prints no next: line | [`note_intent.rb:23`](../../../../lib/plastic/workflows/note_intent.rb#L23) |
-| the outcome holds the note | 0 | prints no next: line | [`note_intent.rb:33`](../../../../lib/plastic/workflows/note_intent.rb#L33) |
+| no intent %{intent_id} in this store | 1 | prints no next: line | [`note.rb:19`](../../../../lib/plastic/workflows/code/intent/note.rb#L19) |
+| %{problem} | 1 | prints no next: line | [`note.rb:25`](../../../../lib/plastic/workflows/code/intent/note.rb#L25) |
+| the outcome holds the note | 0 | prints no next: line | [`note.rb:35`](../../../../lib/plastic/workflows/code/intent/note.rb#L35) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
 | Usage error: KIND takes %{kinds} | 2 | prints no next: line | [`note.rb:21`](../../../../lib/plastic/commands/intent/note.rb#L21) |

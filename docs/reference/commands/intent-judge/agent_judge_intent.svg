@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 299" width="760" height="299" role="img" xml:space="preserve">
-<title>How JudgeIntent runs in plastic intent judge</title>
+<title>How Judge runs in plastic intent judge</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
 .lane-code { fill: #d5e8e3; stroke: #0d6b61; stroke-width: 1.5; }
@@ -68,14 +68,14 @@
 .big { font: 700 36px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
 }</style>
 <rect width="100%" height="100%" class="ground"/>
-<text x="16" y="22" class="tb" text-anchor="start">JudgeIntent</text>
-<text x="436" y="22" class="tm tag-muted" text-anchor="end">judge_intent.rb:9</text>
+<text x="16" y="22" class="tb" text-anchor="start">Judge</text>
+<text x="436" y="22" class="tm tag-muted" text-anchor="end">judge.rb:11</text>
 <rect x="16" y="34" width="420" height="73" rx="6" class="lane-agent"/>
 <text x="26" y="49" class="tag tag-agent" text-anchor="start">AGENT STEP</text>
-<text x="426" y="49" class="tm tag-muted" text-anchor="end">judge_intent.rb:10</text>
+<text x="426" y="49" class="tm tag-muted" text-anchor="end">judge.rb:12</text>
 <text x="26" y="66" class="t" text-anchor="start">judge the delivery</text>
 <text x="26" y="81" class="tm" text-anchor="start">done when</text>
-<text x="26" y="95" class="tm" text-anchor="start">Graph::Work::Completion::Review.of(context).counting?</text>
+<text x="26" y="95" class="tm" text-anchor="start">Plastic::Graph::Work::Completion::Review.of(context).counting?</text>
 <path d="M 226 107 L 226 117" class="wire"/>
 <path d="M 221 109 L 226 117 L 231 109 Z" class="head"/>
 <text x="16" y="129" class="tag tag-muted" text-anchor="start">ENDS ON</text>

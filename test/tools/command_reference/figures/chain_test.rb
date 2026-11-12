@@ -19,7 +19,7 @@ class CommandReferenceChainFigureTest < Minitest::Test
   end
 
   def test_the_chain_svg_names_each_workflow
-    assert_includes figure("intent end").standalone, "PrepareEnding"
+    assert_includes figure("intent end").standalone, "Prepare"
   end
 
   def test_the_chain_svg_holds_no_timestamp_or_absolute_path

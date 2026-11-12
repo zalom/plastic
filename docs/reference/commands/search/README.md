@@ -26,25 +26,25 @@ The command is `Search`, in [`search.rb:8`](../../../../lib/plastic/commands/sea
 
 | Workflow | Kind | Code |
 | --- | --- | --- |
-| [Search](#search) | code | [`search.rb:13`](../../../../lib/plastic/workflows/search.rb#L13) |
+| [Code::Search](#codesearch) | code | [`search.rb:14`](../../../../lib/plastic/workflows/code/search.rb#L14) |
 
-### Search
+### Code::Search
 
-The code workflow `:code_search`, in [`search.rb:13`](../../../../lib/plastic/workflows/search.rb#L13).
+The code workflow `:code_search`, in [`search.rb:14`](../../../../lib/plastic/workflows/code/search.rb#L14).
 
 Searches literal indexed passages in the selected local stores and reports them as one fused list.
 
-![How Search runs: its steps, where it stops, and its outcomes](code_search.svg)
+![How Code::Search runs: its steps, where it stops, and its outcomes](code_search.svg)
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
 | forget a stop of an earlier call | read |  | [`code_workflow.rb:54`](../../../../lib/plastic/code_workflow.rb#L54) |
-| search the indexed passages | read |  | [`search.rb:20`](../../../../lib/plastic/workflows/search.rb#L20) |
-| %{problem} | gate, stops with exit 1 | `context.problem.nil?` | [`search.rb:26`](../../../../lib/plastic/workflows/search.rb#L26) |
+| search the indexed passages | read |  | [`search.rb:21`](../../../../lib/plastic/workflows/code/search.rb#L21) |
+| %{problem} | gate, stops with exit 1 | `context.problem.nil?` | [`search.rb:27`](../../../../lib/plastic/workflows/code/search.rb#L27) |
 
 | Outcome | When | Then | Code |
 | --- | --- | --- | --- |
-| `:done` | always | finishes, exit 0; prints no next: line | [`search.rb:28`](../../../../lib/plastic/workflows/search.rb#L28) |
+| `:done` | always | finishes, exit 0; prints no next: line | [`search.rb:29`](../../../../lib/plastic/workflows/code/search.rb#L29) |
 
 It sets `problem`.
 
@@ -54,6 +54,6 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| %{problem} | 1 | prints no next: line | [`search.rb:26`](../../../../lib/plastic/workflows/search.rb#L26) |
-| the indexed passages were read | 0 | prints no next: line | [`search.rb:28`](../../../../lib/plastic/workflows/search.rb#L28) |
+| %{problem} | 1 | prints no next: line | [`search.rb:27`](../../../../lib/plastic/workflows/code/search.rb#L27) |
+| the indexed passages were read | 0 | prints no next: line | [`search.rb:29`](../../../../lib/plastic/workflows/code/search.rb#L29) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |

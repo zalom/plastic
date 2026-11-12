@@ -26,33 +26,33 @@ The command is `Sync::Down`, in [`down.rb:12`](../../../../lib/plastic/commands/
 
 | Workflow | Kind | Code |
 | --- | --- | --- |
-| [PreviewSyncDown](#previewsyncdown) | code | [`preview_sync_down.rb:8`](../../../../lib/plastic/workflows/preview_sync_down.rb#L8) |
-| [SyncDown](#syncdown) | code | [`sync_down.rb:9`](../../../../lib/plastic/workflows/sync_down.rb#L9) |
+| [Code::Sync::Down::Preview](#codesyncdownpreview) | code | [`preview.rb:12`](../../../../lib/plastic/workflows/code/sync/down/preview.rb#L12) |
+| [Code::Sync::Down](#codesyncdown) | code | [`down.rb:11`](../../../../lib/plastic/workflows/code/sync/down.rb#L11) |
 
-### PreviewSyncDown
+### Code::Sync::Down::Preview
 
-The code workflow `:code_preview_sync_down`, in [`preview_sync_down.rb:8`](../../../../lib/plastic/workflows/preview_sync_down.rb#L8).
+The code workflow `:code_preview_sync_down`, in [`preview.rb:12`](../../../../lib/plastic/workflows/code/sync/down/preview.rb#L12).
 
 Previews sync down in a copy before the normal write workflow.
 
-![How PreviewSyncDown runs: its steps, where it stops, and its outcomes](code_preview_sync_down.svg)
+![How Code::Sync::Down::Preview runs: its steps, where it stops, and its outcomes](code_preview_sync_down.svg)
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
-| preview the sync | read |  | [`preview_sync_down.rb:11`](../../../../lib/plastic/workflows/preview_sync_down.rb#L11) |
+| preview the sync | read |  | [`preview.rb:15`](../../../../lib/plastic/workflows/code/sync/down/preview.rb#L15) |
 
 | Outcome | When | Then | Code |
 | --- | --- | --- | --- |
-| `:done` | when `context.dry_run` | finishes, exit 0; next: %{original_command} | [`preview_sync_down.rb:19`](../../../../lib/plastic/workflows/preview_sync_down.rb#L19) |
-| `:continue` | otherwise | runs [SyncDown](#syncdown) | [`preview_sync_down.rb:21`](../../../../lib/plastic/workflows/preview_sync_down.rb#L21) |
+| `:done` | when `context.dry_run` | finishes, exit 0; next: %{original_command} | [`preview.rb:23`](../../../../lib/plastic/workflows/code/sync/down/preview.rb#L23) |
+| `:continue` | otherwise | runs [Code::Sync::Down](#codesyncdown) | [`preview.rb:25`](../../../../lib/plastic/workflows/code/sync/down/preview.rb#L25) |
 
-### SyncDown
+### Code::Sync::Down
 
-The code workflow `:code_sync_down`, in [`sync_down.rb:9`](../../../../lib/plastic/workflows/sync_down.rb#L9).
+The code workflow `:code_sync_down`, in [`down.rb:11`](../../../../lib/plastic/workflows/code/sync/down.rb#L11).
 
 Sync down: plans, applies, and refuses on the conflicts left.
 
-![How SyncDown runs: its steps, where it stops, and its outcomes](code_sync_down.svg)
+![How Code::Sync::Down runs: its steps, where it stops, and its outcomes](code_sync_down.svg)
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
@@ -75,7 +75,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| the preview wrote only to a disposable copy | 0 | %{original_command} | [`preview_sync_down.rb:19`](../../../../lib/plastic/workflows/preview_sync_down.rb#L19) |
+| the preview wrote only to a disposable copy | 0 | %{original_command} | [`preview.rb:23`](../../../../lib/plastic/workflows/code/sync/down/preview.rb#L23) |
 | %{failure} | 1 | prints no next: line | [`sync_steps.rb:68`](../../../../lib/plastic/workflows/sync_steps.rb#L68) |
 | changed on both sides since the last print, nothing written: %{conflicts}; pass --overwrite PATH, --overwrite or --merge | 3 | prints no next: line | [`sync_steps.rb:69`](../../../../lib/plastic/workflows/sync_steps.rb#L69) |
 | changed on both sides since the last print, left as they are: %{conflicts}; pass --overwrite PATH or --overwrite | 3 | prints no next: line | [`sync_steps.rb:75`](../../../../lib/plastic/workflows/sync_steps.rb#L75) |

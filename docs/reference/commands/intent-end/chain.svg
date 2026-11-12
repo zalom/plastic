@@ -82,11 +82,11 @@
 <text x="324" y="246" class="tm tag-muted" text-anchor="start">:done</text>
 <rect x="228" y="16" width="180" height="56" rx="6" class="lane-code"/>
 <text x="238" y="32" class="tag tag-code" text-anchor="start">CODE WORKFLOW</text>
-<text x="238" y="51" class="tb" text-anchor="start">PrepareEnding</text>
+<text x="238" y="51" class="tb" text-anchor="start">Prepare</text>
 <text x="238" y="66" class="tm" text-anchor="start">:code_prepare_ending</text>
 <rect x="24" y="136" width="180" height="56" rx="6" class="lane-agent"/>
 <text x="34" y="152" class="tag tag-agent" text-anchor="start">AGENT WORKFLOW</text>
-<text x="34" y="171" class="tb" text-anchor="start">FinishIntent</text>
+<text x="34" y="171" class="tb" text-anchor="start">End</text>
 <text x="34" y="186" class="tm" text-anchor="start">:agent_finish_intent</text>
 <rect x="228" y="136" width="180" height="56" rx="6" class="lane-agent"/>
 <text x="238" y="152" class="tag tag-agent" text-anchor="start">AGENT WORKFLOW</text>
@@ -94,7 +94,7 @@
 <text x="238" y="186" class="tm" text-anchor="start">:agent_check_merge</text>
 <rect x="432" y="136" width="180" height="56" rx="6" class="lane-code"/>
 <text x="442" y="152" class="tag tag-code" text-anchor="start">CODE WORKFLOW</text>
-<text x="442" y="171" class="tb" text-anchor="start">CloseIntent</text>
+<text x="442" y="171" class="tb" text-anchor="start">End</text>
 <text x="442" y="186" class="tm" text-anchor="start">:code_close_intent</text>
 <rect x="228" y="256" width="180" height="56" rx="6" class="lane-agent"/>
 <text x="238" y="272" class="tag tag-agent" text-anchor="start">AGENT WORKFLOW</text>
