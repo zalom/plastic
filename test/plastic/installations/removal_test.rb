@@ -2,7 +2,7 @@
 
 require "json"
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/installations"
+require_relative "../../../lib/plastic/installations"
 
 class InstallationsRemovalTest < Plastic::TestCase
   PLASTIC = "plastic hook start"

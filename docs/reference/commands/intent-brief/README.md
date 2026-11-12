@@ -6,7 +6,7 @@ Print an intent's goal, criteria, rulings, ready nodes and command usage.
 plastic intent brief ID
 ```
 
-The command is `IntentBrief`, in [`intent_brief.rb:10`](../../../../scripts/lib/plastic/commands/intent_brief.rb#L10). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `IntentBrief`, in [`intent_brief.rb:10`](../../../../lib/plastic/commands/intent_brief.rb#L10). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |
@@ -22,13 +22,13 @@ The command is `IntentBrief`, in [`intent_brief.rb:10`](../../../../scripts/lib/
 
 | Workflow | Kind | Code |
 | --- | --- | --- |
-| [ShowBrief](#showbrief) | code | [`show_brief.rb:24`](../../../../scripts/lib/plastic/workflows/show_brief.rb#L24) |
-| [DeliveryNext](#deliverynext) | code | [`delivery_next.rb:9`](../../../../scripts/lib/plastic/workflows/delivery_next.rb#L9) |
-| [AdvanceDelivery](#advancedelivery) | agent | [`advance_delivery.rb:8`](../../../../scripts/lib/plastic/workflows/advance_delivery.rb#L8) |
+| [ShowBrief](#showbrief) | code | [`show_brief.rb:24`](../../../../lib/plastic/workflows/show_brief.rb#L24) |
+| [DeliveryNext](#deliverynext) | code | [`delivery_next.rb:9`](../../../../lib/plastic/workflows/delivery_next.rb#L9) |
+| [AdvanceDelivery](#advancedelivery) | agent | [`advance_delivery.rb:8`](../../../../lib/plastic/workflows/advance_delivery.rb#L8) |
 
 ### ShowBrief
 
-The code workflow `:code_show_brief`, in [`show_brief.rb:24`](../../../../scripts/lib/plastic/workflows/show_brief.rb#L24).
+The code workflow `:code_show_brief`, in [`show_brief.rb:24`](../../../../lib/plastic/workflows/show_brief.rb#L24).
 
 Prints the goal, the done criteria, the rulings with superseded ones marked, the ready nodes, the main session steps and the usage of the node and edge commands.
 
@@ -36,23 +36,23 @@ Prints the goal, the done criteria, the rulings with superseded ones marked, the
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
-| find the intent | read |  | [`show_brief.rb:41`](../../../../scripts/lib/plastic/workflows/show_brief.rb#L41) |
-| no intent %{intent_id} in this store | gate, stops with exit 1 | `!context.intent.nil?` | [`show_brief.rb:45`](../../../../scripts/lib/plastic/workflows/show_brief.rb#L45) |
-| print the goal and its criteria | read |  | [`show_brief.rb:47`](../../../../scripts/lib/plastic/workflows/show_brief.rb#L47) |
-| print the rulings | read |  | [`show_brief.rb:54`](../../../../scripts/lib/plastic/workflows/show_brief.rb#L54) |
-| print the ready nodes | read |  | [`show_brief.rb:58`](../../../../scripts/lib/plastic/workflows/show_brief.rb#L58) |
-| print the main session steps | read |  | [`show_brief.rb:62`](../../../../scripts/lib/plastic/workflows/show_brief.rb#L62) |
-| print the usage of the node and edge commands | read |  | [`show_brief.rb:66`](../../../../scripts/lib/plastic/workflows/show_brief.rb#L66) |
+| find the intent | read |  | [`show_brief.rb:41`](../../../../lib/plastic/workflows/show_brief.rb#L41) |
+| no intent %{intent_id} in this store | gate, stops with exit 1 | `!context.intent.nil?` | [`show_brief.rb:45`](../../../../lib/plastic/workflows/show_brief.rb#L45) |
+| print the goal and its criteria | read |  | [`show_brief.rb:47`](../../../../lib/plastic/workflows/show_brief.rb#L47) |
+| print the rulings | read |  | [`show_brief.rb:54`](../../../../lib/plastic/workflows/show_brief.rb#L54) |
+| print the ready nodes | read |  | [`show_brief.rb:58`](../../../../lib/plastic/workflows/show_brief.rb#L58) |
+| print the main session steps | read |  | [`show_brief.rb:62`](../../../../lib/plastic/workflows/show_brief.rb#L62) |
+| print the usage of the node and edge commands | read |  | [`show_brief.rb:66`](../../../../lib/plastic/workflows/show_brief.rb#L66) |
 
 | Outcome | When | Then | Code |
 | --- | --- | --- | --- |
-| `:done` | always | runs [DeliveryNext](#deliverynext) | [`show_brief.rb:70`](../../../../scripts/lib/plastic/workflows/show_brief.rb#L70) |
+| `:done` | always | runs [DeliveryNext](#deliverynext) | [`show_brief.rb:70`](../../../../lib/plastic/workflows/show_brief.rb#L70) |
 
 It sets `intent`.
 
 ### DeliveryNext
 
-The code workflow `:code_delivery_next`, in [`delivery_next.rb:9`](../../../../scripts/lib/plastic/workflows/delivery_next.rb#L9).
+The code workflow `:code_delivery_next`, in [`delivery_next.rb:9`](../../../../lib/plastic/workflows/delivery_next.rb#L9).
 
 Resolves a graph read into an action or a checked harness handoff.
 
@@ -60,19 +60,19 @@ Resolves a graph read into an action or a checked harness handoff.
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
-| choose the delivery action | read |  | [`delivery_next.rb:12`](../../../../scripts/lib/plastic/workflows/delivery_next.rb#L12) |
+| choose the delivery action | read |  | [`delivery_next.rb:12`](../../../../lib/plastic/workflows/delivery_next.rb#L12) |
 
 | Outcome | When | Then | Code |
 | --- | --- | --- | --- |
-| `:agent_needed` | when `!context.handoff_text.nil?` | runs [AdvanceDelivery](#advancedelivery) | [`delivery_next.rb:16`](../../../../scripts/lib/plastic/workflows/delivery_next.rb#L16) |
-| `:nothing` | when `context.next_command.nil?` | finishes, exit 0; prints no next: line | [`delivery_next.rb:17`](../../../../scripts/lib/plastic/workflows/delivery_next.rb#L17) |
-| `:done` | otherwise | finishes, exit 0; next: %{next_command} | [`delivery_next.rb:18`](../../../../scripts/lib/plastic/workflows/delivery_next.rb#L18) |
+| `:agent_needed` | when `!context.handoff_text.nil?` | runs [AdvanceDelivery](#advancedelivery) | [`delivery_next.rb:16`](../../../../lib/plastic/workflows/delivery_next.rb#L16) |
+| `:nothing` | when `context.next_command.nil?` | finishes, exit 0; prints no next: line | [`delivery_next.rb:17`](../../../../lib/plastic/workflows/delivery_next.rb#L17) |
+| `:done` | otherwise | finishes, exit 0; next: %{next_command} | [`delivery_next.rb:18`](../../../../lib/plastic/workflows/delivery_next.rb#L18) |
 
 It sets `next_command`, `why`, `handoff_text`.
 
 ### AdvanceDelivery
 
-The agent workflow `:agent_advance_delivery`, in [`advance_delivery.rb:8`](../../../../scripts/lib/plastic/workflows/advance_delivery.rb#L8).
+The agent workflow `:agent_advance_delivery`, in [`advance_delivery.rb:8`](../../../../lib/plastic/workflows/advance_delivery.rb#L8).
 
 The harness performs judgment and records the result through commands.
 
@@ -80,12 +80,12 @@ The harness performs judgment and records the result through commands.
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
-| advance the delivery | agent step | `context.handoff_text.nil?` | [`advance_delivery.rb:9`](../../../../scripts/lib/plastic/workflows/advance_delivery.rb#L9) |
+| advance the delivery | agent step | `context.handoff_text.nil?` | [`advance_delivery.rb:9`](../../../../lib/plastic/workflows/advance_delivery.rb#L9) |
 
 | Outcome | When | Then | Code |
 | --- | --- | --- | --- |
-| `:handoff` | when a step is left | hands off, exit 0; prints no next: line | [`advance_delivery.rb:10`](../../../../scripts/lib/plastic/workflows/advance_delivery.rb#L10) |
-| `:done` | when every done check holds | finishes, exit 0; prints no next: line | [`advance_delivery.rb:11`](../../../../scripts/lib/plastic/workflows/advance_delivery.rb#L11) |
+| `:handoff` | when a step is left | hands off, exit 0; prints no next: line | [`advance_delivery.rb:10`](../../../../lib/plastic/workflows/advance_delivery.rb#L10) |
+| `:done` | when every done check holds | finishes, exit 0; prints no next: line | [`advance_delivery.rb:11`](../../../../lib/plastic/workflows/advance_delivery.rb#L11) |
 
 The agent step "advance the delivery" prints:
 
@@ -97,9 +97,9 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| no intent %{intent_id} in this store | 1 | prints no next: line | [`show_brief.rb:45`](../../../../scripts/lib/plastic/workflows/show_brief.rb#L45) |
-| %{why} | 0 | prints no next: line | [`delivery_next.rb:17`](../../../../scripts/lib/plastic/workflows/delivery_next.rb#L17) |
-| %{why} | 0 | %{next_command} | [`delivery_next.rb:18`](../../../../scripts/lib/plastic/workflows/delivery_next.rb#L18) |
-| %{why} | 0 | prints no next: line | [`advance_delivery.rb:10`](../../../../scripts/lib/plastic/workflows/advance_delivery.rb#L10) |
-| the delivery instruction has been handled | 0 | prints no next: line | [`advance_delivery.rb:11`](../../../../scripts/lib/plastic/workflows/advance_delivery.rb#L11) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../scripts/lib/plastic/code_workflow.rb#L102) |
+| no intent %{intent_id} in this store | 1 | prints no next: line | [`show_brief.rb:45`](../../../../lib/plastic/workflows/show_brief.rb#L45) |
+| %{why} | 0 | prints no next: line | [`delivery_next.rb:17`](../../../../lib/plastic/workflows/delivery_next.rb#L17) |
+| %{why} | 0 | %{next_command} | [`delivery_next.rb:18`](../../../../lib/plastic/workflows/delivery_next.rb#L18) |
+| %{why} | 0 | prints no next: line | [`advance_delivery.rb:10`](../../../../lib/plastic/workflows/advance_delivery.rb#L10) |
+| the delivery instruction has been handled | 0 | prints no next: line | [`advance_delivery.rb:11`](../../../../lib/plastic/workflows/advance_delivery.rb#L11) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |

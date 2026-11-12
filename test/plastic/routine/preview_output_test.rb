@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/routine"
+require_relative "../../../lib/plastic/routine"
 
 class RoutinePreviewOutputTest < Minitest::Test
   RecordedOutput = Struct.new(:rows, :steps) do

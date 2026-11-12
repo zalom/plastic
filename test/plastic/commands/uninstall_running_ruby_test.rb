@@ -57,6 +57,7 @@ class UninstallRunningRubyTest < Minitest::Test
   def copied_kernel
     FileUtils.mkdir_p([File.join(release, "libexec"), File.dirname(launcher)])
     copy("scripts")
+    copy("lib")
     copy("package.json")
     copy(File.join("bin", "plastic"), File.join(release, "libexec", "plastic"))
     File.write(File.join(release, "VERSION"), "99.0.0\n")

@@ -22,7 +22,7 @@ class CommandReferenceModelTest < Minitest::Test
   def test_a_routine_with_its_own_call_keeps_the_code_before_the_chain
     own = page("update").own_call
 
-    assert_equal "scripts/lib/plastic/commands/update.rb", own.file
+    assert_equal "lib/plastic/commands/update.rb", own.file
     assert_includes own.code.join("\n"), "raise CLI::Command::Usage"
     assert_nil page("intent end").own_call
   end
@@ -30,7 +30,7 @@ class CommandReferenceModelTest < Minitest::Test
   def test_a_command_from_an_included_module_shows_the_module_call
     own = page("backup list").own_call
 
-    assert_equal "scripts/lib/plastic/commands/backup_store.rb", own.file
+    assert_equal "lib/plastic/commands/backup_store.rb", own.file
     assert_includes own.code.first, "def call"
   end
 
@@ -46,7 +46,7 @@ class CommandReferenceModelTest < Minitest::Test
     hook = page("hook end")
 
     assert_equal :hook, hook.kind
-    assert_equal "scripts/lib/plastic/hooks/end.rb", hook.file
+    assert_equal "lib/plastic/hooks/end.rb", hook.file
     assert_includes hook.own_call.code.first, "def respond"
   end
 
@@ -81,7 +81,7 @@ class CommandReferenceModelTest < Minitest::Test
   end
 
   def test_shared_and_class_method_steps_link_the_file_that_holds_them
-    assert_equal ["scripts/lib/plastic/workflows/sync_steps.rb"], gate_rows("sync up").map(&:file).uniq
+    assert_equal ["lib/plastic/workflows/sync_steps.rb"], gate_rows("sync up").map(&:file).uniq
   end
 
   def test_every_row_of_node_claim_and_sync_up_has_a_file_and_a_line_that_match
@@ -105,7 +105,7 @@ class CommandReferenceModelTest < Minitest::Test
   def test_a_forgotten_stop_links_the_workflow_base_file
     row = CommandReferenceHelper.pages.values.flat_map { |page| rows_of(page) }.find { |found| found.name == "forget a stop of an earlier call" }
 
-    assert_equal "scripts/lib/plastic/code_workflow.rb", row.file
+    assert_equal "lib/plastic/code_workflow.rb", row.file
     assert_match(/def forget_stop/, source_line(row.file, row.line))
   end
 

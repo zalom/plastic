@@ -9,11 +9,11 @@ require "digest"
 require "time"
 require "tmpdir"
 require_relative "hook_registry"
-require_relative "plastic/clock"
-require_relative "plastic/config"
-require_relative "plastic/config/upgrade"
-require_relative "plastic/hooks/entries"
-require_relative "plastic/graph"
+require_relative "../../lib/plastic/clock"
+require_relative "../../lib/plastic/config"
+require_relative "../../lib/plastic/config/upgrade"
+require_relative "../../lib/plastic/hooks/entries"
+require_relative "../../lib/plastic/graph"
 require_relative "agent_models"
 require_relative "compact_instructions"
 require_relative "engine_permissions"
@@ -259,6 +259,7 @@ class InstallerCore
 
     FileUtils.mkdir_p(plastic_home)
     FileUtils.mkdir_p(File.join(plastic_home, "scripts", "lib"))
+    FileUtils.mkdir_p(File.join(plastic_home, "lib"))
     FileUtils.mkdir_p(File.join(plastic_home, "hooks"))
 
     core_files.each do |src, dest|
@@ -306,14 +307,14 @@ class InstallerCore
   end
 
   # The kernel command line. Glob-derived for the reason
-  # hook_files is: a command is one file under scripts/lib/plastic/commands,
+  # hook_files is: a command is one file under lib/plastic/commands,
   # and a hand-written manifest would make it two files and a diff. The
-  # launcher bin/plastic requires scripts/lib/plastic.rb by a relative path,
+  # launcher bin/plastic requires lib/plastic.rb by a relative path,
   # so the whole subtree travels together or an installed copy LoadErrors on
   # the first call.
   def cli_files
-    kernel = [File.join(package_root, "scripts", "lib", "plastic.rb")]
-    Dir.glob(File.join(package_root, "scripts", "lib", "plastic", "**", "*.rb")).concat(kernel).each_with_object({}) do |path, acc|
+    kernel = [File.join(package_root, "lib", "plastic.rb")]
+    Dir.glob(File.join(package_root, "lib", "plastic", "**", "*.rb")).concat(kernel).each_with_object({}) do |path, acc|
       rel = path.sub("#{package_root}/", "")
       acc[rel] = rel
     end

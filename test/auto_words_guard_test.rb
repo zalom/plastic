@@ -12,7 +12,7 @@ class AutoWordsGuardTest < Minitest::Test
   RETIRED = /\bauto start\b|\bauto lock\b|\bplastic-lock\b|\broadmap start\b/
 
   def subjects
-    documents = %w[README.md AGENTS.md agents/*.md docs/**/*.md scripts/lib/plastic/**/*.rb]
+    documents = %w[README.md AGENTS.md agents/*.md docs/**/*.md lib/plastic/**/*.rb]
     Dir.glob(documents, base: ROOT).sort
   end
 

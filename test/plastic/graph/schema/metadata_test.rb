@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../../test_helper"
-require_relative "../../../../scripts/lib/plastic/graph/schema"
+require_relative "../../../../lib/plastic/graph/schema"
 
 class SchemaMetadataTest < Minitest::Test
   def test_every_declared_table_has_a_singular_and_a_plural_noun

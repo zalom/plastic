@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../../../test_helper"
-require_relative "../../../../../scripts/lib/plastic/graph/retrieval/context/source"
+require_relative "../../../../../lib/plastic/graph/retrieval/context/source"
 
 class RetrievalContextSourceTest < Plastic::TestCase
   REFERENCE = "plastic://global/1/plan.md"

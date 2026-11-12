@@ -2,8 +2,8 @@
 
 require "digest"
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/commands/intent_archive"
-require_relative "../../../scripts/lib/plastic/commands/intent_unarchive"
+require_relative "../../../lib/plastic/commands/intent_archive"
+require_relative "../../../lib/plastic/commands/intent_unarchive"
 
 class IntentUnarchiveTest < Plastic::TestCase
   def archive_call(*args) = plastic("intent", "archive", *args, table: Plastic::CLI::TABLE)

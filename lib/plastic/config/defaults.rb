@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "../../agent_models"
+require_relative "../../../scripts/lib/agent_models"
 
 module Plastic
   class Config

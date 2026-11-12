@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../../../test_helper"
-require_relative "../../../../../scripts/lib/plastic/graph/retrieval/evidence/writer"
+require_relative "../../../../../lib/plastic/graph/retrieval/evidence/writer"
 
 class RetrievalEvidenceDocumentTest < Plastic::TestCase
   def document(body = "First line\nSecond line\n") = Plastic::Graph::Retrieval::Evidence::Document.new("1", "plan.md", body, now: STAMP)

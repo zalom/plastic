@@ -6,7 +6,7 @@ Write one roadmap batch's goal and done criteria.
 plastic roadmap batch SLUG N [--title TITLE] [--goal GOAL] [--done TEXT]
 ```
 
-The command is `RoadmapBatch`, in [`roadmap_batch.rb:8`](../../../../scripts/lib/plastic/commands/roadmap_batch.rb#L8). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `RoadmapBatch`, in [`roadmap_batch.rb:8`](../../../../lib/plastic/commands/roadmap_batch.rb#L8). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |
@@ -26,11 +26,11 @@ The command is `RoadmapBatch`, in [`roadmap_batch.rb:8`](../../../../scripts/lib
 
 | Workflow | Kind | Code |
 | --- | --- | --- |
-| [WriteRoadmapBatch](#writeroadmapbatch) | code | [`write_roadmap_batch.rb:9`](../../../../scripts/lib/plastic/workflows/write_roadmap_batch.rb#L9) |
+| [WriteRoadmapBatch](#writeroadmapbatch) | code | [`write_roadmap_batch.rb:9`](../../../../lib/plastic/workflows/write_roadmap_batch.rb#L9) |
 
 ### WriteRoadmapBatch
 
-The code workflow `:code_write_roadmap_batch`, in [`write_roadmap_batch.rb:9`](../../../../scripts/lib/plastic/workflows/write_roadmap_batch.rb#L9).
+The code workflow `:code_write_roadmap_batch`, in [`write_roadmap_batch.rb:9`](../../../../lib/plastic/workflows/write_roadmap_batch.rb#L9).
 
 Writes a roadmap batch's goal and done criteria on a roadmap that exists.
 
@@ -38,13 +38,13 @@ Writes a roadmap batch's goal and done criteria on a roadmap that exists.
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
-| no roadmap %{slug} | gate, stops with exit 1 | `!context.retrieval.roadmap(context.slug).nil?` | [`write_roadmap_batch.rb:12`](../../../../scripts/lib/plastic/workflows/write_roadmap_batch.rb#L12) |
-| write the batch | step | `!context.batch.nil?` | [`write_roadmap_batch.rb:18`](../../../../scripts/lib/plastic/workflows/write_roadmap_batch.rb#L18) |
-| say what was written | read |  | [`write_roadmap_batch.rb:23`](../../../../scripts/lib/plastic/workflows/write_roadmap_batch.rb#L23) |
+| no roadmap %{slug} | gate, stops with exit 1 | `!context.retrieval.roadmap(context.slug).nil?` | [`write_roadmap_batch.rb:12`](../../../../lib/plastic/workflows/write_roadmap_batch.rb#L12) |
+| write the batch | step | `!context.batch.nil?` | [`write_roadmap_batch.rb:18`](../../../../lib/plastic/workflows/write_roadmap_batch.rb#L18) |
+| say what was written | read |  | [`write_roadmap_batch.rb:23`](../../../../lib/plastic/workflows/write_roadmap_batch.rb#L23) |
 
 | Outcome | When | Then | Code |
 | --- | --- | --- | --- |
-| `:done` | always | finishes, exit 0; next: plastic roadmap show %{slug} | [`write_roadmap_batch.rb:27`](../../../../scripts/lib/plastic/workflows/write_roadmap_batch.rb#L27) |
+| `:done` | always | finishes, exit 0; next: plastic roadmap show %{slug} | [`write_roadmap_batch.rb:27`](../../../../lib/plastic/workflows/write_roadmap_batch.rb#L27) |
 
 It sets `batch`.
 
@@ -54,6 +54,6 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| no roadmap %{slug} | 1 | plastic roadmap new %{slug} | [`write_roadmap_batch.rb:12`](../../../../scripts/lib/plastic/workflows/write_roadmap_batch.rb#L12) |
-| batch %{position} of %{slug} is written | 0 | plastic roadmap show %{slug} | [`write_roadmap_batch.rb:27`](../../../../scripts/lib/plastic/workflows/write_roadmap_batch.rb#L27) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../scripts/lib/plastic/code_workflow.rb#L102) |
+| no roadmap %{slug} | 1 | plastic roadmap new %{slug} | [`write_roadmap_batch.rb:12`](../../../../lib/plastic/workflows/write_roadmap_batch.rb#L12) |
+| batch %{position} of %{slug} is written | 0 | plastic roadmap show %{slug} | [`write_roadmap_batch.rb:27`](../../../../lib/plastic/workflows/write_roadmap_batch.rb#L27) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |

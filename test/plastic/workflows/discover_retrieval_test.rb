@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/workflows/discover_retrieval"
+require_relative "../../../lib/plastic/workflows/discover_retrieval"
 
 class DiscoverRetrievalTest < Plastic::TestCase
   def discover(intent_id = "1") = run_workflow(Plastic::Workflows::DiscoverRetrieval, intent_id:, terms: "alpha", source_projects: [])

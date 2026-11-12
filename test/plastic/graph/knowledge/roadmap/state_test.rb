@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../../../test_helper"
-require_relative "../../../../../scripts/lib/plastic/graph/knowledge/roadmap/state"
+require_relative "../../../../../lib/plastic/graph/knowledge/roadmap/state"
 
 class StateTest < Minitest::Test
   Item = Data.define(:roadmap, :item, :intent_id, :mark, :dropped) do

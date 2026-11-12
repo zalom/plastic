@@ -2,7 +2,7 @@
 
 require "delegate"
 require_relative "../../../../test_helper"
-require_relative "../../../../../scripts/lib/plastic/graph/knowledge/archive/writer"
+require_relative "../../../../../lib/plastic/graph/knowledge/archive/writer"
 
 class KnowledgeArchiveWriterTest < Plastic::TestCase
   # A database whose transactions fail, as on a full disk.

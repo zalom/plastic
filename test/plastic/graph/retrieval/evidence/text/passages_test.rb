@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../../../../test_helper"
-require_relative "../../../../../../scripts/lib/plastic/graph/retrieval/evidence/text"
+require_relative "../../../../../../lib/plastic/graph/retrieval/evidence/text"
 
 class RetrievalEvidenceTextPassagesTest < Plastic::TestCase
   Text = Plastic::Graph::Retrieval::Evidence::Text

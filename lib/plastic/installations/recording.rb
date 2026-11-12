@@ -4,7 +4,7 @@ require "json"
 require_relative "layout"
 require_relative "record"
 require_relative "roots"
-require_relative "../../engine_permissions"
+require_relative "../../../scripts/lib/engine_permissions"
 
 module Plastic
   module Installations

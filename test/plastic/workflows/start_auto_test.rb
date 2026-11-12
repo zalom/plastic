@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/workflows/start_auto"
+require_relative "../../../lib/plastic/workflows/start_auto"
 
 class WorkflowStartAutoTest < Plastic::TestCase
   include DeliveryHelper

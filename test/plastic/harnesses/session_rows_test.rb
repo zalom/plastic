@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/harnesses/session_rows"
+require_relative "../../../lib/plastic/harnesses/session_rows"
 
 class HarnessSessionRowsTest < Plastic::TestCase
   def rows = Plastic::Harnesses::SessionRows.new(@plastic_home)

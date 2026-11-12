@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/hooks/stop_gate"
+require_relative "../../../lib/plastic/hooks/stop_gate"
 
 class StopGateTest < Plastic::TestCase
   StopGate = Plastic::Hooks::StopGate

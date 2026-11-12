@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/cli/screen"
-require_relative "../../../scripts/lib/plastic/commands/asking_scope"
+require_relative "../../../lib/plastic/cli/screen"
+require_relative "../../../lib/plastic/commands/asking_scope"
 
 class ScreenTest < Plastic::TestCase
   Screen = Plastic::CLI::Screen

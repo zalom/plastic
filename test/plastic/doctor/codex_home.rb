@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "whole_home"
-require_relative "../../../scripts/lib/plastic/hooks/entries"
+require_relative "../../../lib/plastic/hooks/entries"
 
 module CodexHome
   include WholeHome

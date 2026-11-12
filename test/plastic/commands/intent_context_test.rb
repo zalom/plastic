@@ -3,7 +3,7 @@
 require_relative "../../test_helper"
 require "json"
 require "tempfile"
-require_relative "../../../scripts/lib/plastic/commands/intent_context"
+require_relative "../../../lib/plastic/commands/intent_context"
 
 module IntentContextTestSupport
   private

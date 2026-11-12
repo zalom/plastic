@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/workflows/check_context_owner"
+require_relative "../../../lib/plastic/workflows/check_context_owner"
 
 class CheckContextOwnerTest < Plastic::TestCase
   def check(intent_id, from: nil) = run_workflow(Plastic::Workflows::CheckContextOwner, intent_id:, from:).first

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/workflows/advance_delivery"
+require_relative "../../../lib/plastic/workflows/advance_delivery"
 
 class AdvanceDeliveryTest < Plastic::TestCase
   def advance(handoff_text) = run_workflow(Plastic::Workflows::AdvanceDelivery, handoff_text:, why: "the harness must plan this intent").first

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/graph/disposable_copy"
+require_relative "../../../lib/plastic/graph/disposable_copy"
 
 # The seeded home and the links the tests of the copy build.
 module DisposableCopyFixtures

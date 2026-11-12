@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "codex_home"
-require_relative "../../../scripts/lib/plastic/doctor"
+require_relative "../../../lib/plastic/doctor"
 
 class DoctorCodexTest < Plastic::TestCase
   include CodexHome

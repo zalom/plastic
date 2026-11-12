@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/doctor/codex_hook_command"
+require_relative "../../../lib/plastic/doctor/codex_hook_command"
 
 class DoctorCodexHookCommandTest < Plastic::TestCase
   def launcher(command) = Plastic::Doctor::CodexHookCommand.new(command, home: @home).launcher("Stop")

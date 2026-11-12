@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../../test_helper"
-require_relative "../../../../scripts/lib/plastic/graph/knowledge/luhmann_id"
+require_relative "../../../../lib/plastic/graph/knowledge/luhmann_id"
 
 class LuhmannIdTest < Minitest::Test
   ID = Plastic::Graph::Knowledge::LuhmannId

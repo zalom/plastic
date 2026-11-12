@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/workflows/roadmap_print"
+require_relative "../../../lib/plastic/workflows/roadmap_print"
 
 class RoadmapPrintTest < Plastic::TestCase
   include RoadmapHelper

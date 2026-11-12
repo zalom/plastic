@@ -2,9 +2,9 @@
 
 require "json"
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/commands/status"
-require_relative "../../../scripts/lib/plastic/commands/search"
-require_relative "../../../scripts/lib/plastic/commands/node_claim"
+require_relative "../../../lib/plastic/commands/status"
+require_relative "../../../lib/plastic/commands/search"
+require_relative "../../../lib/plastic/commands/node_claim"
 
 class JsonShapeTest < Plastic::TestCase
   def call(*args) = plastic(*args, "--json", table: Plastic::CLI::TABLE)

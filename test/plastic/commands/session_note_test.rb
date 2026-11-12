@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/commands/session_note"
+require_relative "../../../lib/plastic/commands/session_note"
 
 class SessionNoteTest < Plastic::TestCase
   fixtures :empty

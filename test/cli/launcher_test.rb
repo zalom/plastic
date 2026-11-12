@@ -81,7 +81,7 @@ class CliLauncherTest < Minitest::Test
   end
 
   def test_the_launcher_loads_only_the_command_it_runs
-    script = "require_relative #{File.join(ROOT, "scripts", "lib", "plastic").inspect}\n" \
+    script = "require_relative #{File.join(ROOT, "lib", "plastic").inspect}\n" \
              "name = Plastic::CLI.find(['intent', 'new'])\n" \
              "Plastic::CLI.tool(name)\n" \
              "puts $LOADED_FEATURES.grep(%r{/plastic/commands/}).map { |f| File.basename(f) }.sort.join(',')\n"

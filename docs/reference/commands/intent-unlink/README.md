@@ -8,7 +8,7 @@ Removes one `links` row from ID to TARGET of the given kind.
 plastic intent unlink ID KIND TARGET [--dry-run]
 ```
 
-The command is `IntentUnlink`, in [`intent_unlink.rb:8`](../../../../scripts/lib/plastic/commands/intent_unlink.rb#L8). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `IntentUnlink`, in [`intent_unlink.rb:8`](../../../../lib/plastic/commands/intent_unlink.rb#L8). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |
@@ -27,11 +27,11 @@ The command is `IntentUnlink`, in [`intent_unlink.rb:8`](../../../../scripts/lib
 
 | Workflow | Kind | Code |
 | --- | --- | --- |
-| [RemoveLink](#removelink) | code | [`remove_link.rb:8`](../../../../scripts/lib/plastic/workflows/remove_link.rb#L8) |
+| [RemoveLink](#removelink) | code | [`remove_link.rb:8`](../../../../lib/plastic/workflows/remove_link.rb#L8) |
 
 ### RemoveLink
 
-The code workflow `:code_remove_link`, in [`remove_link.rb:8`](../../../../scripts/lib/plastic/workflows/remove_link.rb#L8).
+The code workflow `:code_remove_link`, in [`remove_link.rb:8`](../../../../lib/plastic/workflows/remove_link.rb#L8).
 
 Removes one link; fails when no such link exists.
 
@@ -39,14 +39,14 @@ Removes one link; fails when no such link exists.
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
-| forget a stop of an earlier call | read |  | [`code_workflow.rb:54`](../../../../scripts/lib/plastic/code_workflow.rb#L54) |
-| remove the link | step | `!context.removed.nil?` | [`remove_link.rb:15`](../../../../scripts/lib/plastic/workflows/remove_link.rb#L15) |
-| %{problem} | gate, stops with exit 1 | `context.problem.nil?` | [`remove_link.rb:21`](../../../../scripts/lib/plastic/workflows/remove_link.rb#L21) |
-| say what was removed | read |  | [`remove_link.rb:23`](../../../../scripts/lib/plastic/workflows/remove_link.rb#L23) |
+| forget a stop of an earlier call | read |  | [`code_workflow.rb:54`](../../../../lib/plastic/code_workflow.rb#L54) |
+| remove the link | step | `!context.removed.nil?` | [`remove_link.rb:15`](../../../../lib/plastic/workflows/remove_link.rb#L15) |
+| %{problem} | gate, stops with exit 1 | `context.problem.nil?` | [`remove_link.rb:21`](../../../../lib/plastic/workflows/remove_link.rb#L21) |
+| say what was removed | read |  | [`remove_link.rb:23`](../../../../lib/plastic/workflows/remove_link.rb#L23) |
 
 | Outcome | When | Then | Code |
 | --- | --- | --- | --- |
-| `:done` | always | finishes, exit 0; next: plastic sync down | [`remove_link.rb:27`](../../../../scripts/lib/plastic/workflows/remove_link.rb#L27) |
+| `:done` | always | finishes, exit 0; next: plastic sync down | [`remove_link.rb:27`](../../../../lib/plastic/workflows/remove_link.rb#L27) |
 
 It sets `problem`, `removed`.
 
@@ -56,6 +56,6 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| %{problem} | 1 | prints no next: line | [`remove_link.rb:21`](../../../../scripts/lib/plastic/workflows/remove_link.rb#L21) |
-| the link is gone | 0 | plastic sync down | [`remove_link.rb:27`](../../../../scripts/lib/plastic/workflows/remove_link.rb#L27) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../scripts/lib/plastic/code_workflow.rb#L102) |
+| %{problem} | 1 | prints no next: line | [`remove_link.rb:21`](../../../../lib/plastic/workflows/remove_link.rb#L21) |
+| the link is gone | 0 | plastic sync down | [`remove_link.rb:27`](../../../../lib/plastic/workflows/remove_link.rb#L27) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |

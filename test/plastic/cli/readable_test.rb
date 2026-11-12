@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/cli/readable"
+require_relative "../../../lib/plastic/cli/readable"
 
 class CLIReadableTest < Minitest::Test
   def test_a_hash_reads_as_key_value_lines

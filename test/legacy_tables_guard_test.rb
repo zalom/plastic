@@ -6,7 +6,7 @@ require "minitest/autorun"
 # writes, prints, counts and declares it may name it.
 class LegacyTablesGuardTest < Minitest::Test
   ROOT = File.expand_path("..", __dir__)
-  KERNEL = File.join(ROOT, "scripts/lib")
+  KERNEL = File.join(ROOT, "lib")
   SCHEMA = File.join(KERNEL, "plastic/graph/db/schema.rb")
   PLUMBING = %w[
     plastic/graph/db/schema.rb

@@ -3,7 +3,7 @@
 require "json"
 require "pathname"
 require "stringio"
-require_relative "../../../install"
+require_relative "../../../scripts/install"
 require_relative "../harnesses"
 require_relative "../installations"
 
@@ -14,7 +14,7 @@ module Plastic
     # The installer prints with puts, so `capture` hands its lines back to the
     # call that prints them.
     class Installation < ::Install
-      PACKAGE_ROOT = File.expand_path("../../../..", __dir__)
+      PACKAGE_ROOT = File.expand_path("../../..", __dir__)
       SOURCES = %w[VERSION package.json].freeze
       FOLDERS = %i[dir home_dir].freeze
       INSTALLER = "curl -fsSL https://raw.githubusercontent.com/zalom/plastic/main/install.sh |"

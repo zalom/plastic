@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../../../test_helper"
-require_relative "../../../../../scripts/lib/plastic/graph/knowledge/archive/entries"
+require_relative "../../../../../lib/plastic/graph/knowledge/archive/entries"
 
 class KnowledgeArchiveEntriesTest < Plastic::TestCase
   Entries = Plastic::Graph::Knowledge::Archive::Entries

@@ -7,12 +7,12 @@ require "rbconfig"
 require "sqlite3"
 require "tmpdir"
 
-# Runs the kernel command line of scripts/lib/plastic in a child process,
+# Runs the kernel command line of lib/plastic in a child process,
 # against a disposable home. The kernel defines the same constants as the
 # live command line, so it never loads into the process that runs Varar.
 # The rows are read back through the sqlite3 gem, on their own connection.
 class KernelCommand
-  KERNEL = File.expand_path("../../../scripts/lib/plastic", __dir__)
+  KERNEL = File.expand_path("../../../lib/plastic", __dir__)
   LEGACY_STORE = File.expand_path("../../fixtures/legacy_store", __dir__)
   PROGRAM = "require ARGV.shift; exit Plastic::CLI.call(ARGV)"
   CREATE = "kernel = ARGV.shift; require kernel; require File.join(kernel, %q(graph)); Plastic::Graph.create(home: ENV.fetch('PLASTIC_HOME'), store: 'global')"

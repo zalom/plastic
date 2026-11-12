@@ -4,7 +4,7 @@ require "minitest/autorun"
 
 class RemovedPagesGuardTest < Minitest::Test
   ROOT = File.expand_path("..", __dir__)
-  SUBJECTS = %w[README.md AGENTS.md CONTRIBUTING.md INSTALL.md SECURITY.md PLASTIC.md docs/**/*.md agents/*.md scripts/**/*.rb bin/**/*.rb hooks/*].freeze
+  SUBJECTS = %w[README.md AGENTS.md CONTRIBUTING.md INSTALL.md SECURITY.md PLASTIC.md docs/**/*.md agents/*.md lib/**/*.rb scripts/**/*.rb bin/**/*.rb hooks/*].freeze
   REMOVED = {
     "docs/internals.md" => /(?<![\w-])internals\.md/,
     "docs/help/human-report-contract.md" => /human-report-contract/,
@@ -25,7 +25,7 @@ class RemovedPagesGuardTest < Minitest::Test
 
   def test_the_subjects_are_read_from_the_disk
     assert_includes subjects, "docs/contributing/ARCHITECTURE.md"
-    assert_includes subjects, "scripts/lib/plastic.rb"
+    assert_includes subjects, "lib/plastic.rb"
   end
 
   def test_every_removed_page_is_gone

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/commands/backup_restore"
+require_relative "../../../lib/plastic/commands/backup_restore"
 
 # A stream the way a person's terminal is seen by the command: it answers tty?.
 class TerminalInput < StringIO

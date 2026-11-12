@@ -2,8 +2,8 @@
 
 require "stringio"
 require_relative "../commands/installer_helper"
-require_relative "../../../scripts/lib/plastic/workflows/installation"
-require_relative "../../../scripts/lib/plastic/installations"
+require_relative "../../../lib/plastic/workflows/installation"
+require_relative "../../../lib/plastic/installations"
 
 # An install into a throwaway home and the record it makes for one harness.
 module RecordingHelper

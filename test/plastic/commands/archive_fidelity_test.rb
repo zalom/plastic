@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/commands/intent_archive"
+require_relative "../../../lib/plastic/commands/intent_archive"
 
 module ArchiveFidelityFixtures
   def archive(intent, *options)

@@ -2,7 +2,7 @@
 
 # Builds the reference pages of every command from the kernel's own code.
 module CommandReference
-  KERNEL_LIB = File.expand_path("../scripts/lib", __dir__)
+  KERNEL_LIB = File.expand_path("../lib", __dir__)
   $LOAD_PATH.unshift(KERNEL_LIB).uniq!
 
   require "plastic"

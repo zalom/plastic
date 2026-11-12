@@ -16,6 +16,7 @@
   "files": [
     "assets/",
     "bin/plastic",
+    "lib/",
     "scripts/",
     "docs/help/",
     "docs/grilling.md",

@@ -6,7 +6,7 @@ Create a roadmap; write its batches with roadmap batch.
 plastic roadmap new NAME [--title TITLE] [--goal GOAL]
 ```
 
-The command is `RoadmapNew`, in [`roadmap_new.rb:8`](../../../../scripts/lib/plastic/commands/roadmap_new.rb#L8). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `RoadmapNew`, in [`roadmap_new.rb:8`](../../../../lib/plastic/commands/roadmap_new.rb#L8). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |
@@ -24,11 +24,11 @@ The command is `RoadmapNew`, in [`roadmap_new.rb:8`](../../../../scripts/lib/pla
 
 | Workflow | Kind | Code |
 | --- | --- | --- |
-| [CreateRoadmap](#createroadmap) | code | [`create_roadmap.rb:8`](../../../../scripts/lib/plastic/workflows/create_roadmap.rb#L8) |
+| [CreateRoadmap](#createroadmap) | code | [`create_roadmap.rb:8`](../../../../lib/plastic/workflows/create_roadmap.rb#L8) |
 
 ### CreateRoadmap
 
-The code workflow `:code_create_roadmap`, in [`create_roadmap.rb:8`](../../../../scripts/lib/plastic/workflows/create_roadmap.rb#L8).
+The code workflow `:code_create_roadmap`, in [`create_roadmap.rb:8`](../../../../lib/plastic/workflows/create_roadmap.rb#L8).
 
 Creates a roadmap row and offers its first batch.
 
@@ -36,13 +36,13 @@ Creates a roadmap row and offers its first batch.
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
-| roadmap %{slug} already exists | gate, stops with exit 1 | `context.retrieval.roadmap(context.slug).nil?` | [`create_roadmap.rb:11`](../../../../scripts/lib/plastic/workflows/create_roadmap.rb#L11) |
-| create the roadmap | step | `!context.roadmap.nil?` | [`create_roadmap.rb:17`](../../../../scripts/lib/plastic/workflows/create_roadmap.rb#L17) |
-| say what was created | read |  | [`create_roadmap.rb:21`](../../../../scripts/lib/plastic/workflows/create_roadmap.rb#L21) |
+| roadmap %{slug} already exists | gate, stops with exit 1 | `context.retrieval.roadmap(context.slug).nil?` | [`create_roadmap.rb:11`](../../../../lib/plastic/workflows/create_roadmap.rb#L11) |
+| create the roadmap | step | `!context.roadmap.nil?` | [`create_roadmap.rb:17`](../../../../lib/plastic/workflows/create_roadmap.rb#L17) |
+| say what was created | read |  | [`create_roadmap.rb:21`](../../../../lib/plastic/workflows/create_roadmap.rb#L21) |
 
 | Outcome | When | Then | Code |
 | --- | --- | --- | --- |
-| `:done` | always | finishes, exit 0; next: plastic roadmap batch %{slug} 1 | [`create_roadmap.rb:25`](../../../../scripts/lib/plastic/workflows/create_roadmap.rb#L25) |
+| `:done` | always | finishes, exit 0; next: plastic roadmap batch %{slug} 1 | [`create_roadmap.rb:25`](../../../../lib/plastic/workflows/create_roadmap.rb#L25) |
 
 It sets `roadmap`.
 
@@ -52,6 +52,6 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| roadmap %{slug} already exists | 1 | plastic roadmap show %{slug} | [`create_roadmap.rb:11`](../../../../scripts/lib/plastic/workflows/create_roadmap.rb#L11) |
-| roadmap %{slug} exists and has no batch yet | 0 | plastic roadmap batch %{slug} 1 | [`create_roadmap.rb:25`](../../../../scripts/lib/plastic/workflows/create_roadmap.rb#L25) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../scripts/lib/plastic/code_workflow.rb#L102) |
+| roadmap %{slug} already exists | 1 | plastic roadmap show %{slug} | [`create_roadmap.rb:11`](../../../../lib/plastic/workflows/create_roadmap.rb#L11) |
+| roadmap %{slug} exists and has no batch yet | 0 | plastic roadmap batch %{slug} 1 | [`create_roadmap.rb:25`](../../../../lib/plastic/workflows/create_roadmap.rb#L25) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |

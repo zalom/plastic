@@ -55,7 +55,7 @@ module ArchitectureFiguresHelper
   def workflow_check(ref) = load_kernel && Plastic::Workflows::REGISTRY.include?(ref.delete_prefix(":").to_sym)
   def table_check(ref) = (schema.tables.keys - schema.legacy).include?(ref.to_sym)
   def database_check(ref) = schema.databases.values.map(&:first).include?(ref)
-  def store_file_check(ref) = Dir[File.join(ROOT, "scripts", "lib", "plastic", "**", "*.rb")].any? { |file| File.read(file).include?(ref) }
+  def store_file_check(ref) = Dir[File.join(ROOT, "lib", "plastic", "**", "*.rb")].any? { |file| File.read(file).include?(ref) }
   def path_check(ref) = File.exist?(File.join(ROOT, ref))
 
   def missing_names(names) = names.reject { |type, _label, ref| name_exists?(type, ref) }

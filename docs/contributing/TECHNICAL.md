@@ -146,12 +146,12 @@ maintainer tool: it reads this repository's own files, so it is never installed.
 | Path | Holds |
 | ---- | ----- |
 | `bin/plastic` | The launcher; points at the kernel. |
-| `scripts/lib/plastic.rb` | The entry of the tri-graph kernel. |
-| `scripts/lib/plastic/` | The kernel: its command line, routines, workflows, end values and graph layer. |
-| `scripts/lib/plastic/cli.rb` | The dispatcher. |
-| `scripts/lib/plastic/cli/` | The shared classes. |
-| `scripts/lib/plastic/commands/` | One file per command. |
-| `scripts/lib/plastic/graph/` | The kernel's graph layer: the store databases, the printed files and sync. Its `knowledge/`, `work/` and `retrieval/` folders hold the three graphs; the files at its root are shared by all three. |
+| `lib/plastic.rb` | The entry of the tri-graph kernel. |
+| `lib/plastic/` | The kernel: its command line, routines, workflows, end values and graph layer. |
+| `lib/plastic/cli.rb` | The dispatcher. |
+| `lib/plastic/cli/` | The shared classes. |
+| `lib/plastic/commands/` | One file per command. |
+| `lib/plastic/graph/` | The kernel's graph layer: the store databases, the printed files and sync. Its `knowledge/`, `work/` and `retrieval/` folders hold the three graphs; the files at its root are shared by all three. |
 | `test/plastic/` | The kernel tests, which run in their own process. |
 | `test/cli/` | The acceptance test of the packaged executable, `bin/plastic`, run as installed. |
 | `test/test_helper.rb` | The boot of every test, and `Plastic::TestCase`, the base class of the kernel tests. |

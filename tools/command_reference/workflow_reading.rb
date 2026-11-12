@@ -31,7 +31,7 @@ module CommandReference
 
   # One workflow read from the kernel: where it lives and what it declares, in the order it runs.
   class WorkflowReading
-    CODE_WORKFLOW = "scripts/lib/plastic/code_workflow.rb"
+    CODE_WORKFLOW = "lib/plastic/code_workflow.rb"
     DEFAULT_OUTCOME = /A workflow with no outcome line has one outcome/
 
     def initialize(source, chain, key)

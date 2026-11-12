@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/hooks/start"
+require_relative "../../../lib/plastic/hooks/start"
 
 class StartTest < Plastic::TestCase
   fixtures :empty

@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/commands/project_new"
-require_relative "../../../scripts/lib/plastic/commands/intent_new"
+require_relative "../../../lib/plastic/commands/project_new"
+require_relative "../../../lib/plastic/commands/intent_new"
 
 class ProjectNewTest < Plastic::TestCase
   def make(*argv) = plastic("project", "new", *argv, table: Plastic::CLI::TABLE)

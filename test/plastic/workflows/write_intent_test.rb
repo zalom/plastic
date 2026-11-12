@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/workflows/write_intent"
+require_relative "../../../lib/plastic/workflows/write_intent"
 
 class WriteIntentTest < Plastic::TestCase
   WriteIntent = Plastic::Workflows::WriteIntent
@@ -79,7 +79,7 @@ class WriteIntentTest < Plastic::TestCase
 
   def test_a_second_load_keeps_one_chain
     before = [run_flow(ref: "ENG-1")[1], run_flow[1]]
-    load File.expand_path("../../../scripts/lib/plastic/workflows/write_intent.rb", __dir__)
+    load File.expand_path("../../../lib/plastic/workflows/write_intent.rb", __dir__)
 
     assert_equal [before, [:done]], [[run_flow(ref: "ENG-1")[1], run_flow[1]], WriteIntent.outcome_names]
   end

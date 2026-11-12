@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/commands/intent_archive"
+require_relative "../../../lib/plastic/commands/intent_archive"
 
 class IntentArchivePreviewTest < Plastic::TestCase
   def seed_folder(home)

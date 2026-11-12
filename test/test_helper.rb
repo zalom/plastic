@@ -3,13 +3,14 @@ if ENV["COVERAGE"]
   SimpleCov.start do
     enable_coverage :branch
     skip "/test/"
-    cover "{scripts,bin,tools}/**/*.rb"
+    cover "{lib,scripts,bin,tools}/**/*.rb"
   end
 end
 
 require "minitest/autorun"
 require "fileutils"
 require "tmpdir"
+$LOAD_PATH.unshift File.expand_path("../lib", __dir__)
 $LOAD_PATH.unshift File.expand_path("../scripts/lib", __dir__)
 $LOAD_PATH.unshift File.expand_path("../tools", __dir__)
 

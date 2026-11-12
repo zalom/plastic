@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/workflows/finish_intent"
+require_relative "../../../lib/plastic/workflows/finish_intent"
 
 class FinishIntentTest < Plastic::TestCase
   def finish(requirements: [], judged: false)

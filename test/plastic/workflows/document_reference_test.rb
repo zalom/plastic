@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/workflows/document_reference"
+require_relative "../../../lib/plastic/workflows/document_reference"
 
 class DocumentReferenceTest < Minitest::Test
   def slug(text) = Plastic::Workflows::DocumentReference.new(text).source_slug

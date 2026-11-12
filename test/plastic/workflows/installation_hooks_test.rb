@@ -2,8 +2,8 @@
 
 require "json"
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/workflows/installation_health"
-require_relative "../../../scripts/lib/plastic/workflows/installation_hooks"
+require_relative "../../../lib/plastic/workflows/installation_health"
+require_relative "../../../lib/plastic/workflows/installation_hooks"
 
 class InstallationHooksTest < Plastic::TestCase
   ACTIVE = "/share/active/bin/plastic"

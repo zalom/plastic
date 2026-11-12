@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/workflows/context_readback"
-require_relative "../../../scripts/lib/plastic/workflows/context_persistence"
+require_relative "../../../lib/plastic/workflows/context_readback"
+require_relative "../../../lib/plastic/workflows/context_persistence"
 
 class ContextReadbackTest < Plastic::TestCase
   def setup

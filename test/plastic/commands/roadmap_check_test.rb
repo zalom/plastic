@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/commands/roadmap_batch"
-require_relative "../../../scripts/lib/plastic/commands/roadmap_add"
-require_relative "../../../scripts/lib/plastic/commands/roadmap_check"
+require_relative "../../../lib/plastic/commands/roadmap_batch"
+require_relative "../../../lib/plastic/commands/roadmap_add"
+require_relative "../../../lib/plastic/commands/roadmap_check"
 
 class RoadmapCheckTest < Plastic::TestCase
   def call(*args) = plastic("roadmap", "check", *args, table: Plastic::CLI::TABLE)

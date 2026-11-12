@@ -8,7 +8,7 @@ SessionStart: names the harness, opens the session row with it, then prints the 
 plastic hook start
 ```
 
-The command is `Start`, in [`start.rb:17`](../../../../scripts/lib/plastic/hooks/start.rb#L17). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Start`, in [`start.rb:17`](../../../../lib/plastic/hooks/start.rb#L17). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 ## What it touches
 
@@ -16,7 +16,7 @@ The command is `Start`, in [`start.rb:17`](../../../../scripts/lib/plastic/hooks
 
 ## The command
 
-The hook's `respond`, at [`start.rb:25`](../../../../scripts/lib/plastic/hooks/start.rb#L25):
+The hook's `respond`, at [`start.rb:25`](../../../../lib/plastic/hooks/start.rb#L25):
 
 ```ruby
 def respond(event)
@@ -35,4 +35,4 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| answers the event | 0 | prints no next: line | [`start.rb:25`](../../../../scripts/lib/plastic/hooks/start.rb#L25) |
+| answers the event | 0 | prints no next: line | [`start.rb:25`](../../../../lib/plastic/hooks/start.rb#L25) |

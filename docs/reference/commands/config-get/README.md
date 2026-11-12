@@ -6,7 +6,7 @@ Print the value of one setting.
 plastic config get KEY [--harness NAME]
 ```
 
-The command is `ConfigGet`, in [`config_get.rb:9`](../../../../scripts/lib/plastic/commands/config_get.rb#L9). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `ConfigGet`, in [`config_get.rb:9`](../../../../lib/plastic/commands/config_get.rb#L9). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |
@@ -19,7 +19,7 @@ The command is `ConfigGet`, in [`config_get.rb:9`](../../../../scripts/lib/plast
 
 ## The command
 
-The command's `call`, at [`config_get.rb:14`](../../../../scripts/lib/plastic/commands/config_get.rb#L14):
+The command's `call`, at [`config_get.rb:14`](../../../../lib/plastic/commands/config_get.rb#L14):
 
 ```ruby
 def call
@@ -39,4 +39,4 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| Offers the next command | 0 | plastic config set KEY VALUE [HARNESS_WORDS] | [`config_get.rb:17`](../../../../scripts/lib/plastic/commands/config_get.rb#L17) |
+| Offers the next command | 0 | plastic config set KEY VALUE [HARNESS_WORDS] | [`config_get.rb:17`](../../../../lib/plastic/commands/config_get.rb#L17) |

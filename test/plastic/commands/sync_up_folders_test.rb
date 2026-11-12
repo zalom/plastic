@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/commands/sync_up"
+require_relative "../../../lib/plastic/commands/sync_up"
 
 # Sync up reads every intent folder, whatever store/index.json says.
 class SyncUpFoldersTest < Plastic::TestCase

@@ -2,8 +2,8 @@
 
 require "minitest/autorun"
 require "tmpdir"
-require_relative "../../../scripts/lib/plastic/hooks/entries"
-require_relative "../../../scripts/lib/plastic/config"
+require_relative "../../../lib/plastic/hooks/entries"
+require_relative "../../../lib/plastic/config"
 
 class EntriesTest < Minitest::Test
   COMMAND = "/opt/plastic/bin/plastic"

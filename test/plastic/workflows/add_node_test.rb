@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/workflows/add_node"
+require_relative "../../../lib/plastic/workflows/add_node"
 
 class AddNodeTest < Plastic::TestCase
   def add(intent_id: "1") = run_workflow(Plastic::Workflows::AddNode, intent_id:, title: "Build", criterion: "runs", input: nil)

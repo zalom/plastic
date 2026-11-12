@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/config"
+require_relative "../../../lib/plastic/config"
 
 class ConfigLayoutTest < Plastic::TestCase
   def layout(data) = Plastic::Config::Layout.new(data)

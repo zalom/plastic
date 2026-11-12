@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require "minitest/autorun"
-require_relative "../scripts/lib/plastic/graph/work/main_session"
+require_relative "../lib/plastic/graph/work/main_session"
 
 # The agent-architecture help topic and the brief name the same main session
 # steps with the same commands.

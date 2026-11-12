@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../test_helper"
-require_relative "../../scripts/lib/plastic/harnesses"
+require_relative "../../lib/plastic/harnesses"
 
 class HarnessesTest < Plastic::TestCase
   def test_the_registry_names_claude_code_codex_and_hermes

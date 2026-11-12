@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/workflows/document_lookup"
+require_relative "../../../lib/plastic/workflows/document_lookup"
 
 class DocumentLookupTest < Plastic::TestCase
   def setup

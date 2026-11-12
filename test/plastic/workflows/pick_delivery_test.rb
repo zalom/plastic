@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/workflows/pick_delivery"
+require_relative "../../../lib/plastic/workflows/pick_delivery"
 
 class WorkflowPickDeliveryTest < Plastic::TestCase
   include DeliveryHelper

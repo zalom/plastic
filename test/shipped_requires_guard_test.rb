@@ -45,6 +45,6 @@ class ShippedRequiresGuardTest < Minitest::Test
   end
 
   def test_a_require_of_a_shipped_file_is_left_alone
-    assert_empty missing("bin/plastic", %(require_relative "../scripts/lib/plastic"\n), shipped_paths)
+    assert_empty missing("bin/plastic", %(require_relative "../lib/plastic"\n), shipped_paths)
   end
 end

@@ -21,6 +21,6 @@ class CommandReferenceDslMarkdownTest < Minitest::Test
   end
 
   def test_the_page_links_the_kernel_by_relative_path
-    assert_includes text, "../../../scripts/lib/plastic/routine.rb"
+    assert_includes text, "../../../lib/plastic/routine.rb"
   end
 end

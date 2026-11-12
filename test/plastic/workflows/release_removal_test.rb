@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/workflows/release_removal"
+require_relative "../../../lib/plastic/workflows/release_removal"
 
 class ReleaseRemovalTest < Plastic::TestCase
   def teardown

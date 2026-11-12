@@ -2,7 +2,7 @@
 
 require "minitest/autorun"
 require "varar/minitest"
-require_relative "../scripts/lib/plastic/cli/table"
+require_relative "../lib/plastic/cli/table"
 
 # Turn every Markdown oath matched by varar.config.json into Minitest tests —
 # varar.config.json lives at the project root (the parent of test/).

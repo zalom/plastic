@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/config/tree"
+require_relative "../../../lib/plastic/config/tree"
 
 class ConfigTreeTest < Plastic::TestCase
   def tree(text)

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/workflows/discovery_persistence"
+require_relative "../../../lib/plastic/workflows/discovery_persistence"
 
 class DiscoveryPersistenceTest < Plastic::TestCase
   DOCUMENT = { "query" => "alpha", "candidates" => [] }.freeze

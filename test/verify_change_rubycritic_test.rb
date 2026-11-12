@@ -12,7 +12,7 @@ load File.expand_path("../bin/verify-change", __dir__) unless defined?(VerifyCha
 # stay hidden, so the gate leaves it out of the score and says so.
 class VerifyChangeRubycriticTest < Minitest::Test
   OLD = "scripts/lib/old_installer.rb"
-  NEW = "scripts/lib/plastic/new_routine.rb"
+  NEW = "lib/plastic/new_routine.rb"
 
   def setup
     @root = Dir.mktmpdir("verify-change-rubycritic")

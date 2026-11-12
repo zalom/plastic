@@ -22,7 +22,7 @@ under test touches, open the example and keep its shape.
 | A behavior that reads best as a table of cases | Acceptance document | `varar/NAME.md` with `test/varar/NAME.steps.rb` | `varar/hook-start.md` |
 | A rule about the files of this repository | Guard test | `Minitest::Test` | `test/real_home_guard_test.rb` |
 
-A test file has the path of its source file: `scripts/lib/plastic/commands/intent_new.rb` is
+A test file has the path of its source file: `lib/plastic/commands/intent_new.rb` is
 tested by `test/plastic/commands/intent_new_test.rb`.
 
 ### Rules for every test
@@ -73,8 +73,8 @@ on your machine.
 
 ## Add a command
 
-1. Add one row to `scripts/lib/plastic/cli/table.rb`: the command words, the class and the help line.
-2. Add the class in one file under `scripts/lib/plastic/commands/`, named after it: `Commands::IntentEnd`
+1. Add one row to `lib/plastic/cli/table.rb`: the command words, the class and the help line.
+2. Add the class in one file under `lib/plastic/commands/`, named after it: `Commands::IntentEnd`
    lives in `intent_end.rb`. Follow `architecture_status.rb` for the smallest example.
 3. Write the tests first and commit them red. Follow [Test a change](#test-a-change).
 4. Write the command's reference pages: run `ruby tools/command-reference` and commit the pages under `docs/reference/commands/`.

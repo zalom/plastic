@@ -4,7 +4,7 @@ require "digest"
 require "json"
 require_relative "../../../scripts/lib/installer_release"
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/installations"
+require_relative "../../../lib/plastic/installations"
 require_relative "../../support/child_process"
 
 # A throwaway package, home and agent folder for the installer commands.

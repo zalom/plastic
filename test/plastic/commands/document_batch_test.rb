@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/commands/document_batch"
+require_relative "../../../lib/plastic/commands/document_batch"
 require_relative "../../support/child_process"
 require "rbconfig"
 

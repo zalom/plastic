@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../../../test_helper"
-require_relative "../../../../../scripts/lib/plastic/graph/knowledge/backup/folder_name"
+require_relative "../../../../../lib/plastic/graph/knowledge/backup/folder_name"
 
 class KnowledgeBackupFolderNameTest < Plastic::TestCase
   FolderName = Plastic::Graph::Knowledge::Backup::FolderName

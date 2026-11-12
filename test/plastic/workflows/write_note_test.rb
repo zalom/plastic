@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/workflows/write_note"
+require_relative "../../../lib/plastic/workflows/write_note"
 
 class WriteNoteTest < Plastic::TestCase
   def note(session)

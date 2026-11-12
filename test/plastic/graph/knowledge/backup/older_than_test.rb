@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../../../test_helper"
-require_relative "../../../../../scripts/lib/plastic/graph/knowledge/backup/older_than"
+require_relative "../../../../../lib/plastic/graph/knowledge/backup/older_than"
 
 class KnowledgeBackupOlderThanTest < Plastic::TestCase
   OlderThan = Plastic::Graph::Knowledge::Backup::OlderThan

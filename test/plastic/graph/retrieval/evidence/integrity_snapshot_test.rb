@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../../../test_helper"
-require_relative "../../../../../scripts/lib/plastic/graph/retrieval/evidence/writer"
+require_relative "../../../../../lib/plastic/graph/retrieval/evidence/writer"
 
 class RetrievalEvidenceIntegritySnapshotTest < Plastic::TestCase
   # A digester that counts the bodies it digests.

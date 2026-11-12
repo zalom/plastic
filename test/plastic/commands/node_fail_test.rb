@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/commands/node_fail"
+require_relative "../../../lib/plastic/commands/node_fail"
 
 class NodeFailTest < Plastic::TestCase
   def cli(*args) = plastic(*args, table: Plastic::CLI::TABLE)

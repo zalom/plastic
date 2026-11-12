@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/commands/project_list"
+require_relative "../../../lib/plastic/commands/project_list"
 
 class ProjectListTest < Plastic::TestCase
   def list = plastic("project", "list", table: Plastic::CLI::TABLE)

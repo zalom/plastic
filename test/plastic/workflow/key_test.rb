@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/code_workflow"
+require_relative "../../../lib/plastic/code_workflow"
 
 class KeyTest < Minitest::Test
   def test_a_key_reads_apart_into_its_lane_and_its_class_name

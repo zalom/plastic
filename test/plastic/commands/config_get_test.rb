@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/commands/config_get"
+require_relative "../../../lib/plastic/commands/config_get"
 
 class ConfigGetTest < Plastic::TestCase
   def get(*words) = plastic("config", "get", *words, table: Plastic::CLI::TABLE)

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/routine"
+require_relative "../../../lib/plastic/routine"
 
 class EdgeTest < Minitest::Test
   KEYS = %i[code_a code_b code_c].freeze

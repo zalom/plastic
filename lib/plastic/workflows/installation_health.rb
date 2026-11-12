@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "../../installer_release"
+require_relative "../../../scripts/lib/installer_release"
 require_relative "installation_hooks"
 require_relative "installation_launcher"
 require_relative "installation_lock"

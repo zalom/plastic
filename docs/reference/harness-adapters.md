@@ -19,7 +19,7 @@ load Plastic's conventions, honor its decisions, and record its work.
 
 ## The harness registry
 
-Plastic ships one entry for each harness it knows, in `scripts/lib/plastic/harnesses.rb`:
+Plastic ships one entry for each harness it knows, in `lib/plastic/harnesses.rb`:
 
 | Field | Claude Code | Codex | Hermes |
 | ----- | ----------- | ----- | ------ |

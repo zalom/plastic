@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/workflows/add_ruling"
+require_relative "../../../lib/plastic/workflows/add_ruling"
 
 class AddRulingTest < Plastic::TestCase
   def rule(intent_id: "1", supersedes: nil) = run_workflow(Plastic::Workflows::AddRuling, intent_id:, text: "Keep it small", supersedes:)

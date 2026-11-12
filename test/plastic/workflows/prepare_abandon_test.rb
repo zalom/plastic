@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/workflows/prepare_abandon"
+require_relative "../../../lib/plastic/workflows/prepare_abandon"
 
 class PrepareAbandonTest < Plastic::TestCase
   include LifecycleHelper

@@ -70,7 +70,7 @@ class CommandReferenceEndingsTest < Minitest::Test
     rescued = page("intent end").endings.select { |ending| ending.kind == :rescue }
 
     assert_equal 1, rescued.size
-    assert_equal "scripts/lib/plastic/code_workflow.rb", rescued.first.file
+    assert_equal "lib/plastic/code_workflow.rb", rescued.first.file
   end
 
   def test_a_gate_row_never_prints_the_word_none_after_next
@@ -106,7 +106,7 @@ class CommandReferenceEndingsTest < Minitest::Test
   def test_the_own_check_call_of_a_backup_command_is_part_of_its_own_call
     check = page("backup restore").own_call.check
 
-    assert_equal "scripts/lib/plastic/commands/backup_restore.rb", check.file
+    assert_equal "lib/plastic/commands/backup_restore.rb", check.file
     assert_includes check.code.join("\n"), "one_of"
     assert_nil page("backup list").own_call.check
   end

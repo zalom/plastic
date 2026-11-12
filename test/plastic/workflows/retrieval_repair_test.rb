@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/cli/projects_file"
-require_relative "../../../scripts/lib/plastic/workflows/retrieval_repair"
+require_relative "../../../lib/plastic/cli/projects_file"
+require_relative "../../../lib/plastic/workflows/retrieval_repair"
 
 class RetrievalRepairTest < Plastic::TestCase
   Maintenance = Plastic::Graph::RetrievalGraph::MaintenanceRequired

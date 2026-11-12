@@ -1,15 +1,15 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/commands/graph_resume"
-require_relative "../../../scripts/lib/plastic/commands/next"
-require_relative "../../../scripts/lib/plastic/commands/auto"
-require_relative "../../../scripts/lib/plastic/commands/node_add"
-require_relative "../../../scripts/lib/plastic/commands/node_claim"
-require_relative "../../../scripts/lib/plastic/commands/node_done"
-require_relative "../../../scripts/lib/plastic/commands/node_fail"
-require_relative "../../../scripts/lib/plastic/commands/node_ask"
-require_relative "../../../scripts/lib/plastic/commands/sync_up"
+require_relative "../../../lib/plastic/commands/graph_resume"
+require_relative "../../../lib/plastic/commands/next"
+require_relative "../../../lib/plastic/commands/auto"
+require_relative "../../../lib/plastic/commands/node_add"
+require_relative "../../../lib/plastic/commands/node_claim"
+require_relative "../../../lib/plastic/commands/node_done"
+require_relative "../../../lib/plastic/commands/node_fail"
+require_relative "../../../lib/plastic/commands/node_ask"
+require_relative "../../../lib/plastic/commands/sync_up"
 
 # Calls and fixtures the graph resume tests share.
 module GraphResumeHelper

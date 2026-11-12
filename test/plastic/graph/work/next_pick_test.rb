@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../../test_helper"
-require_relative "../../../../scripts/lib/plastic/graph/work/next_pick"
+require_relative "../../../../lib/plastic/graph/work/next_pick"
 
 class WorkNextPickTest < Plastic::TestCase
   def test_two_open_intents_pick_none

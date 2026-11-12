@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/workflows/remove_edge"
+require_relative "../../../lib/plastic/workflows/remove_edge"
 
 class WorkflowRemoveEdgeTest < Plastic::TestCase
   def setup

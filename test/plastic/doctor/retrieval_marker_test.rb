@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/doctor/retrieval_marker"
+require_relative "../../../lib/plastic/doctor/retrieval_marker"
 
 class DoctorRetrievalMarkerTest < Plastic::TestCase
   def folder = File.join(@plastic_home, "stores", "old")

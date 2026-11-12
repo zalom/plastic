@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/commands/edge_add"
-require_relative "../../../scripts/lib/plastic/commands/node_add"
+require_relative "../../../lib/plastic/commands/edge_add"
+require_relative "../../../lib/plastic/commands/node_add"
 
 class EdgeAddTest < Plastic::TestCase
   def call(*args) = plastic("edge", "add", *args, table: Plastic::CLI::TABLE)

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/workflows/release_node"
+require_relative "../../../lib/plastic/workflows/release_node"
 
 class MoveNodeTest < Plastic::TestCase
   def setup

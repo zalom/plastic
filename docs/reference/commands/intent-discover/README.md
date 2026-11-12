@@ -8,7 +8,7 @@ Builds the retrieval handoff manifest; the harness chooses its evidence.
 plastic intent discover ID TERMS... [--source-project SLUG]
 ```
 
-The command is `IntentDiscover`, in [`intent_discover.rb:8`](../../../../scripts/lib/plastic/commands/intent_discover.rb#L8). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `IntentDiscover`, in [`intent_discover.rb:8`](../../../../lib/plastic/commands/intent_discover.rb#L8). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |
@@ -26,12 +26,12 @@ The command is `IntentDiscover`, in [`intent_discover.rb:8`](../../../../scripts
 
 | Workflow | Kind | Code |
 | --- | --- | --- |
-| [DiscoverRetrieval](#discoverretrieval) | code | [`discover_retrieval.rb:15`](../../../../scripts/lib/plastic/workflows/discover_retrieval.rb#L15) |
-| [ExternalAgentWorkflow](#externalagentworkflow) | agent | [`external_agent_workflow.rb:9`](../../../../scripts/lib/plastic/workflows/external_agent_workflow.rb#L9) |
+| [DiscoverRetrieval](#discoverretrieval) | code | [`discover_retrieval.rb:15`](../../../../lib/plastic/workflows/discover_retrieval.rb#L15) |
+| [ExternalAgentWorkflow](#externalagentworkflow) | agent | [`external_agent_workflow.rb:9`](../../../../lib/plastic/workflows/external_agent_workflow.rb#L9) |
 
 ### DiscoverRetrieval
 
-The code workflow `:code_discover_retrieval`, in [`discover_retrieval.rb:15`](../../../../scripts/lib/plastic/workflows/discover_retrieval.rb#L15).
+The code workflow `:code_discover_retrieval`, in [`discover_retrieval.rb:15`](../../../../lib/plastic/workflows/discover_retrieval.rb#L15).
 
 Records lexical retrieval candidates before an external agent selects them.
 
@@ -39,25 +39,25 @@ Records lexical retrieval candidates before an external agent selects them.
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
-| forget a stop of an earlier call | read |  | [`code_workflow.rb:54`](../../../../scripts/lib/plastic/code_workflow.rb#L54) |
-| check the intent id | read |  | [`discover_retrieval.rb:22`](../../../../scripts/lib/plastic/workflows/discover_retrieval.rb#L22) |
-| find the owning intent | read |  | [`discover_retrieval.rb:26`](../../../../scripts/lib/plastic/workflows/discover_retrieval.rb#L26) |
-| find the saved retrieval context | read |  | [`discover_retrieval.rb:30`](../../../../scripts/lib/plastic/workflows/discover_retrieval.rb#L30) |
-| no intent %{intent_id} in owning store | gate, stops with exit 1 | `!context.intent.nil?` | [`discover_retrieval.rb:34`](../../../../scripts/lib/plastic/workflows/discover_retrieval.rb#L34) |
-| check the source stores | read |  | [`discover_retrieval.rb:36`](../../../../scripts/lib/plastic/workflows/discover_retrieval.rb#L36) |
-| %{problem} | gate, stops with exit 1 | `context.problem.nil?` | [`discover_retrieval.rb:40`](../../../../scripts/lib/plastic/workflows/discover_retrieval.rb#L40) |
-| record retrieval discovery | step | `!context.discovery.nil?` | [`discover_retrieval.rb:42`](../../../../scripts/lib/plastic/workflows/discover_retrieval.rb#L42) |
-| report the discovery | read |  | [`discover_retrieval.rb:52`](../../../../scripts/lib/plastic/workflows/discover_retrieval.rb#L52) |
+| forget a stop of an earlier call | read |  | [`code_workflow.rb:54`](../../../../lib/plastic/code_workflow.rb#L54) |
+| check the intent id | read |  | [`discover_retrieval.rb:22`](../../../../lib/plastic/workflows/discover_retrieval.rb#L22) |
+| find the owning intent | read |  | [`discover_retrieval.rb:26`](../../../../lib/plastic/workflows/discover_retrieval.rb#L26) |
+| find the saved retrieval context | read |  | [`discover_retrieval.rb:30`](../../../../lib/plastic/workflows/discover_retrieval.rb#L30) |
+| no intent %{intent_id} in owning store | gate, stops with exit 1 | `!context.intent.nil?` | [`discover_retrieval.rb:34`](../../../../lib/plastic/workflows/discover_retrieval.rb#L34) |
+| check the source stores | read |  | [`discover_retrieval.rb:36`](../../../../lib/plastic/workflows/discover_retrieval.rb#L36) |
+| %{problem} | gate, stops with exit 1 | `context.problem.nil?` | [`discover_retrieval.rb:40`](../../../../lib/plastic/workflows/discover_retrieval.rb#L40) |
+| record retrieval discovery | step | `!context.discovery.nil?` | [`discover_retrieval.rb:42`](../../../../lib/plastic/workflows/discover_retrieval.rb#L42) |
+| report the discovery | read |  | [`discover_retrieval.rb:52`](../../../../lib/plastic/workflows/discover_retrieval.rb#L52) |
 
 | Outcome | When | Then | Code |
 | --- | --- | --- | --- |
-| `:done` | always | runs [ExternalAgentWorkflow](#externalagentworkflow) | [`discover_retrieval.rb:56`](../../../../scripts/lib/plastic/workflows/discover_retrieval.rb#L56) |
+| `:done` | always | runs [ExternalAgentWorkflow](#externalagentworkflow) | [`discover_retrieval.rb:56`](../../../../lib/plastic/workflows/discover_retrieval.rb#L56) |
 
 It sets `intent`, `source_scope`, `discovery`, `handoff_text`, `context_command`, `context_complete`, `problem`.
 
 ### ExternalAgentWorkflow
 
-The agent workflow `:agent_external_agent_workflow`, in [`external_agent_workflow.rb:9`](../../../../scripts/lib/plastic/workflows/external_agent_workflow.rb#L9).
+The agent workflow `:agent_external_agent_workflow`, in [`external_agent_workflow.rb:9`](../../../../lib/plastic/workflows/external_agent_workflow.rb#L9).
 
 Gives an external agent deterministic retrieval commands without selecting evidence.
 
@@ -65,12 +65,12 @@ Gives an external agent deterministic retrieval commands without selecting evide
 
 | Step | Kind | Check | Code |
 | --- | --- | --- | --- |
-| select retrieved evidence | agent step | `context.context_complete` | [`external_agent_workflow.rb:14`](../../../../scripts/lib/plastic/workflows/external_agent_workflow.rb#L14) |
+| select retrieved evidence | agent step | `context.context_complete` | [`external_agent_workflow.rb:14`](../../../../lib/plastic/workflows/external_agent_workflow.rb#L14) |
 
 | Outcome | When | Then | Code |
 | --- | --- | --- | --- |
-| `:handoff` | when a step is left | hands off, exit 0; next: %{context_command} | [`external_agent_workflow.rb:15`](../../../../scripts/lib/plastic/workflows/external_agent_workflow.rb#L15) |
-| `:done` | when every done check holds | finishes, exit 0; prints no next: line | [`external_agent_workflow.rb:16`](../../../../scripts/lib/plastic/workflows/external_agent_workflow.rb#L16) |
+| `:handoff` | when a step is left | hands off, exit 0; next: %{context_command} | [`external_agent_workflow.rb:15`](../../../../lib/plastic/workflows/external_agent_workflow.rb#L15) |
+| `:done` | when every done check holds | finishes, exit 0; prints no next: line | [`external_agent_workflow.rb:16`](../../../../lib/plastic/workflows/external_agent_workflow.rb#L16) |
 
 The agent step "select retrieved evidence" prints:
 
@@ -84,8 +84,8 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| no intent %{intent_id} in owning store | 1 | prints no next: line | [`discover_retrieval.rb:34`](../../../../scripts/lib/plastic/workflows/discover_retrieval.rb#L34) |
-| %{problem} | 1 | prints no next: line | [`discover_retrieval.rb:40`](../../../../scripts/lib/plastic/workflows/discover_retrieval.rb#L40) |
-| an external agent must select the evidence | 0 | %{context_command} | [`external_agent_workflow.rb:15`](../../../../scripts/lib/plastic/workflows/external_agent_workflow.rb#L15) |
-| the retrieval context was submitted | 0 | prints no next: line | [`external_agent_workflow.rb:16`](../../../../scripts/lib/plastic/workflows/external_agent_workflow.rb#L16) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../scripts/lib/plastic/code_workflow.rb#L102) |
+| no intent %{intent_id} in owning store | 1 | prints no next: line | [`discover_retrieval.rb:34`](../../../../lib/plastic/workflows/discover_retrieval.rb#L34) |
+| %{problem} | 1 | prints no next: line | [`discover_retrieval.rb:40`](../../../../lib/plastic/workflows/discover_retrieval.rb#L40) |
+| an external agent must select the evidence | 0 | %{context_command} | [`external_agent_workflow.rb:15`](../../../../lib/plastic/workflows/external_agent_workflow.rb#L15) |
+| the retrieval context was submitted | 0 | prints no next: line | [`external_agent_workflow.rb:16`](../../../../lib/plastic/workflows/external_agent_workflow.rb#L16) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |

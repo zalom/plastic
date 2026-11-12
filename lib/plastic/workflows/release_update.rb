@@ -2,7 +2,7 @@
 
 require "fileutils"
 require "tmpdir"
-require_relative "../../installer_release"
+require_relative "../../../scripts/lib/installer_release"
 
 module Plastic
   module Workflows

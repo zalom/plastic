@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/workflows/batch_documents"
+require_relative "../../../lib/plastic/workflows/batch_documents"
 
 class BatchDocumentsTest < Plastic::TestCase
   def write_document(path, body)

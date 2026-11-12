@@ -6,7 +6,7 @@ List the links that name an intent or a ruling this store lacks.
 plastic project links
 ```
 
-The command is `ProjectLinks`, in [`project_links.rb:12`](../../../../scripts/lib/plastic/commands/project_links.rb#L12). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `ProjectLinks`, in [`project_links.rb:12`](../../../../lib/plastic/commands/project_links.rb#L12). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 ## What it touches
 
@@ -14,7 +14,7 @@ The command is `ProjectLinks`, in [`project_links.rb:12`](../../../../scripts/li
 
 ## The command
 
-The command's `call`, at [`project_links.rb:15`](../../../../scripts/lib/plastic/commands/project_links.rb#L15):
+The command's `call`, at [`project_links.rb:15`](../../../../lib/plastic/commands/project_links.rb#L15):
 
 ```ruby
 def call
@@ -35,4 +35,4 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| Offers the next command | 0 | plastic status | [`project_links.rb:19`](../../../../scripts/lib/plastic/commands/project_links.rb#L19) |
+| Offers the next command | 0 | plastic status | [`project_links.rb:19`](../../../../lib/plastic/commands/project_links.rb#L19) |

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../../test_helper"
-require_relative "../../../../scripts/lib/plastic/graph/retrieval/maintained_store"
+require_relative "../../../../lib/plastic/graph/retrieval/maintained_store"
 
 class RetrievalMaintainedStoreTest < Plastic::TestCase
   def opened(slug)

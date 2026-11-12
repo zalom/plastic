@@ -8,7 +8,7 @@ Shows the on/off settings on the choice screen, the ones that are on already pic
 plastic config [ANSWER] [--harness NAME]
 ```
 
-The command is `Config`, in [`config.rb:12`](../../../../scripts/lib/plastic/commands/config.rb#L12). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Config`, in [`config.rb:12`](../../../../lib/plastic/commands/config.rb#L12). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |
@@ -21,7 +21,7 @@ The command is `Config`, in [`config.rb:12`](../../../../scripts/lib/plastic/com
 
 ## The command
 
-The command's `call`, at [`config.rb:23`](../../../../scripts/lib/plastic/commands/config.rb#L23):
+The command's `call`, at [`config.rb:23`](../../../../lib/plastic/commands/config.rb#L23):
 
 ```ruby
 def call
@@ -41,5 +41,5 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| Offers the next command | 0 | plastic config list [HARNESS_WORDS] | [`config.rb:26`](../../../../scripts/lib/plastic/commands/config.rb#L26) |
-| Offers the next command | 0 | plastic config list [HARNESS_WORDS] | [`config.rb:45`](../../../../scripts/lib/plastic/commands/config.rb#L45) |
+| Offers the next command | 0 | plastic config list [HARNESS_WORDS] | [`config.rb:26`](../../../../lib/plastic/commands/config.rb#L26) |
+| Offers the next command | 0 | plastic config list [HARNESS_WORDS] | [`config.rb:45`](../../../../lib/plastic/commands/config.rb#L45) |

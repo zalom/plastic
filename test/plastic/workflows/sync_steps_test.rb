@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/plastic/workflows/registry"
-require_relative "../../../scripts/lib/plastic/workflows/sync_up"
-require_relative "../../../scripts/lib/plastic/workflows/sync_down"
+require_relative "../../../lib/plastic/workflows/registry"
+require_relative "../../../lib/plastic/workflows/sync_up"
+require_relative "../../../lib/plastic/workflows/sync_down"
 
 class SyncStepsTest < Plastic::TestCase
   DECLARED = %i[overwrite merge failure conflicts merging unreadable lines].freeze
@@ -94,7 +94,7 @@ class SyncStepsTest < Plastic::TestCase
 
   def test_a_second_load_of_a_sync_class_keeps_one_chain
     before = [Plastic::Workflows::SyncUp.steps.size, Plastic::Workflows::SyncUp.facts.size]
-    load File.expand_path("../../../scripts/lib/plastic/workflows/sync_up.rb", __dir__)
+    load File.expand_path("../../../lib/plastic/workflows/sync_up.rb", __dir__)
 
     assert_equal [before, [:done]], [[Plastic::Workflows::SyncUp.steps.size, Plastic::Workflows::SyncUp.facts.size], Plastic::Workflows::SyncUp.outcome_names]
   end
