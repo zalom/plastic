@@ -187,13 +187,90 @@ class DatabaseBindingTest < Plastic::TestCase
     assert_empty stored
   end
 
-  def test_a_second_connection_writes_after_a_batch_ends
-    note("a")
-    other = SQLite3::Database.new(database.path)
-    other.execute("INSERT INTO notes(name) VALUES ('b')")
-    other.close
+  def test_rows_refuses_text_that_holds_two_statements
+    error = assert_raises(Plastic::Invalid) { database.rows("INSERT INTO notes(name) VALUES ('a'); INSERT INTO notes(name) VALUES ('b')") }
 
-    assert_equal %w[a b], stored.map(&:first)
+    assert_includes error.message, "one statement"
+    assert_empty stored
+  end
+
+  def test_rows_takes_one_statement_that_ends_with_a_semicolon
+    assert_equal [{ "a" => 1 }], database.rows("SELECT 1 AS a; \n")
+  end
+
+  def test_a_batch_refuses_text_that_holds_two_statements_and_writes_nothing
+    assert_raises(Plastic::Invalid) do
+      database.transaction { |batch| batch.add("INSERT INTO notes(name) VALUES ('a'); INSERT INTO notes(name) VALUES ('b')") }
+    end
+
+    assert_empty stored
+  end
+
+  def committed_file
+    Database.new(File.join(@home, "scratch", "commit.db"), "CREATE TABLE IF NOT EXISTS t(a);")
+  end
+
+  def second_connection_rows(file)
+    other = SQLite3::Database.new(file.path)
+    other.execute("SELECT a FROM t ORDER BY a").flatten
+  ensure
+    other&.close
+  end
+
+  def test_a_batch_whose_last_statement_fails_leaves_nothing_for_a_second_connection
+    file = committed_file
+    assert_raises(Database::Error) do
+      file.transaction do |batch|
+        batch.add("INSERT INTO t(a) VALUES (1)")
+        batch.add("INSERT INTO nowhere VALUES (1)")
+      end
+    end
+
+    assert_empty second_connection_rows(file)
+  end
+
+  def test_a_batch_that_succeeds_is_visible_to_a_second_connection
+    file = committed_file
+    file.transaction { |batch| batch.add("INSERT INTO t(a) VALUES (1)") }
+
+    assert_equal [1], second_connection_rows(file)
+  end
+
+  def test_an_interrupt_inside_a_batch_leaves_no_row_and_the_next_write_succeeds
+    file = committed_file
+    assert_raises(Interrupt) do
+      file.immediate_transaction { |_batch, connection| connection.read("INSERT INTO t(a) VALUES (1)") && raise(Interrupt) }
+    end
+    file.transaction { |batch| batch.add("INSERT INTO t(a) VALUES (2)") }
+
+    assert_equal [2], second_connection_rows(file)
+  end
+
+  def test_an_interrupt_inside_a_savepoint_leaves_no_row_and_the_next_write_succeeds
+    connection = Database::ConnectionPool.for(database.path)
+    database.rows("SELECT 1")
+    connection.execute("BEGIN")
+    assert_raises(Interrupt) do
+      database.immediate_transaction { |_batch, inner| inner.read("INSERT INTO notes(name) VALUES ('a')") && raise(Interrupt) }
+    end
+    note("after")
+    written = stored.map(&:first)
+    connection.rollback
+
+    assert_equal ["after"], written
+  end
+
+  def test_an_interrupt_inside_a_savepoint_keeps_the_rows_written_before_it
+    connection = Database::ConnectionPool.for(database.path)
+    database.rows("SELECT 1")
+    connection.execute("BEGIN")
+    note("before")
+    assert_raises(Interrupt) do
+      database.immediate_transaction { |_batch, inner| inner.read("INSERT INTO notes(name) VALUES ('a')") && raise(Interrupt) }
+    end
+
+    assert_equal ["before"], stored.map(&:first)
+    connection.rollback
   end
 
   def test_a_list_of_three_ids_finds_all_three_with_named_placeholders_only

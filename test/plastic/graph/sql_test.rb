@@ -66,6 +66,16 @@ class SQLTest < Plastic::TestCase
     assert_equal bound(%(("a", "b") VALUES (:v_a, :v_b)), { v_a: 1, v_b: "x" }), SQL.tuple({ a: 1, b: "x" }, "v")
   end
 
+  def test_a_tuple_refuses_raw_sql_as_a_value
+    assert_raises(Plastic::Invalid) { SQL.tuple({ a: SQL::Raw.new("1; DROP TABLE t") }, "v") }
+  end
+
+  def test_a_tuple_refuses_a_column_name_that_is_not_a_plain_lowercase_name
+    ["A", "a b", "a\"b", "1a", "a); DROP TABLE t; --"].each do |name|
+      assert_raises(Plastic::Invalid, name) { SQL.tuple({ name.to_sym => 1 }, "v") }
+    end
+  end
+
   def test_a_list_names_each_item_after_the_prefix
     assert_equal bound(":f_0, :f_1, :f_2", { f_0: "a", f_1: "b", f_2: "c" }), SQL.list(%w[a b c], "f")
   end

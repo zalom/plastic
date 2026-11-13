@@ -147,6 +147,13 @@ class KnowledgeReaderGraphViewInvalidTest < Plastic::TestCase
     assert_includes message, "flying"
   end
 
+  def test_an_approval_that_is_a_string_is_refused_and_writes_no_row
+    message = refused_message(graph_text(nodes: [node_hash("n1")], approval: "yes"))
+
+    assert_includes message, GRAPH
+    assert_includes message, "approval"
+  end
+
   def test_a_graph_file_that_names_another_intent_is_refused
     message = refused_message(graph_text(nodes: [node_hash("n1")]).sub('"intent": "1"', '"intent": "2"'))
 
