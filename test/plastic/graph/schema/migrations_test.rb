@@ -139,6 +139,14 @@ class SchemaIntentStatesMigrationTest < Minitest::Test
     assert_includes @database.execute("PRAGMA table_info(intents)").map { |column| column[1] }, "reason"
   end
 
+  def test_a_table_another_process_rebuilt_in_the_meantime_is_left_alone
+    @connection = RebuiltMeanwhileConnection.new(@database)
+    prepare
+
+    assert_equal 1, @connection.transactions
+    refute_includes @database.execute("PRAGMA table_info(intents)").map { |column| column[1] }, "reason"
+  end
+
   def test_a_second_prepare_rebuilds_nothing
     prepare
     before = @connection.transactions
@@ -153,6 +161,29 @@ class SchemaIntentStatesMigrationTest < Minitest::Test
     Plastic::Graph::Schema.prepare(current, Plastic::Graph::Schema.fetch(:work))
 
     assert_equal 0, current.transactions
+  end
+end
+
+class RebuiltMeanwhileConnection < SimpleDelegator
+  attr_reader :transactions
+
+  def initialize(connection)
+    super
+    @transactions = 0
+    @asked = 0
+  end
+
+  def get_first_value(query)
+    value = super
+    return value unless query.include?("name = 'intents'")
+
+    @asked += 1
+    (@asked == 1) ? value : '"reason"'
+  end
+
+  def transaction(*, &)
+    @transactions += 1
+    __getobj__.transaction(*, &)
   end
 end
 

@@ -3,8 +3,7 @@
 require_relative "entry_list"
 require_relative "resolution"
 require_relative "intent_folders"
-require_relative "archived_intents"
-require_relative "../store_folder"
+require_relative "plan_facts"
 
 module Plastic
   module Graph
@@ -20,24 +19,14 @@ module Plastic
         class Plan
           def self.build(folder, retrieval, resolution)
             folders = IntentFolders.new(folder, retrieval) unless folder.legacy?
-            new(resolution:, entries: entries(folder, retrieval, folders), legacy: importing?(folder, resolution),
-              problem: problem_of(folder, resolution), unreadable: folders ? folders.problems : [],
-              archived: archived_of(folder, retrieval, resolution))
-          end
-
-          def self.importing?(folder, resolution) = folder.legacy? && resolution.up?
-
-          def self.problem_of(folder, resolution) = (legacy_problem if folder.legacy? && !resolution.up?)
-
-          def self.archived_of(folder, retrieval, resolution)
-            (resolution.up? && !folder.legacy?) ? ArchivedIntents.new(folder, retrieval).missing.size : 0
+            facts = PlanFacts.new(folder, retrieval, resolution)
+            new(resolution:, entries: entries(folder, retrieval, folders), legacy: facts.importing?, problem: facts.problem,
+              unreadable: folders ? folders.problems : [], archived: facts.archived)
           end
 
           def self.entries(folder, retrieval, folders = nil) = EntryList.new(folder, retrieval, folders).entries
 
           def self.on_disk(folder, folders = nil) = EntryList.new(folder, nil, folders).on_disk
-
-          def self.legacy_problem = "this store still has #{StoreFolder::LEGACY_INDEX}; run plastic sync up to import it first"
 
           def direction = resolution.direction
 

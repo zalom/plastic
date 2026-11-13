@@ -13,41 +13,49 @@ module Plastic
           DONE_STATUSES = %w[done abandoned].freeze
           IN_FLIGHT_STATUSES = Intent::GROUPS.fetch("active")
 
-          module_function
+          # The state of one item, read from the retrieval it is asked of.
+          class Reading
+            def initialize(item, retrieval)
+              @item = item
+              @retrieval = retrieval
+            end
 
-          def of(item, retrieval)
-            return "done" if done?(item, retrieval)
-            return "dropped" if item.dropped?
-            return "in flight" if in_flight?(item, retrieval)
-            return "blocked" if blocked?(item, retrieval)
-            "ready"
+            def state
+              return "done" if done?
+              return "dropped" if @item.dropped?
+              return "in flight" if in_flight?
+              return "blocked" if blocked?
+
+              "ready"
+            end
+
+            def done?
+              return DONE_STATUSES.include?(intent.status) if intent
+
+              %w[delivered abandoned].include?(@item.mark)
+            end
+
+            def resolved? = done? || @item.dropped?
+
+            private
+
+            def in_flight? = IN_FLIGHT_STATUSES.include?(intent&.status)
+
+            def blocked? = predecessors.any? { |row| !Reading.new(row, @retrieval).resolved? }
+
+            def predecessors
+              roadmap = @item.roadmap
+              from_items = @retrieval.roadmap_edges(roadmap).select { |edge| edge.to == @item.item }.map(&:from)
+              @retrieval.roadmap_items(roadmap).select { |row| from_items.include?(row.item) }
+            end
+
+            def intent
+              intent_id = @item.intent_id
+              @intent ||= (@retrieval.intent(intent_id) if intent_id)
+            end
           end
 
-          def done?(item, retrieval)
-            intent = intent_of(item, retrieval)
-            return DONE_STATUSES.include?(intent.status) if intent
-            %w[delivered abandoned].include?(item.mark)
-          end
-
-          def in_flight?(item, retrieval)
-            intent = intent_of(item, retrieval)
-            !intent.nil? && IN_FLIGHT_STATUSES.include?(intent.status)
-          end
-
-          def blocked?(item, retrieval)
-            predecessors(item, retrieval).any? { |row| !resolved?(row, retrieval) }
-          end
-
-          def resolved?(item, retrieval)
-            done?(item, retrieval) || item.dropped?
-          end
-
-          def predecessors(item, retrieval)
-            from_items = retrieval.roadmap_edges(item.roadmap).select { |edge| edge.to == item.item }.map(&:from)
-            retrieval.roadmap_items(item.roadmap).select { |row| from_items.include?(row.item) }
-          end
-
-          def intent_of(item, retrieval) = item.intent_id && retrieval.intent(item.intent_id)
+          def self.of(item, retrieval) = Reading.new(item, retrieval).state
         end
       end
     end

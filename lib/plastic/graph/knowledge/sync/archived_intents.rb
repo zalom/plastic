@@ -4,6 +4,7 @@ require "json"
 require_relative "../intent"
 require_relative "../reader/index_file"
 require_relative "../store_folder"
+require_relative "archived_intents/mark"
 
 module Plastic
   module Graph
@@ -12,23 +13,6 @@ module Plastic
         # The archived intents that store/index.json lists and this installation has no row for: each gets
         # its intent, its archive mark and its completion, and a row already held is never replaced.
         class ArchivedIntents
-          # One archive entry of the index with the index entry of its intent: the rows they stand for.
-          Mark = Data.define(:fields, :entry) do
-            def intent_id = fields["intent_id"]
-
-            def intent_row = Intent.from_h(Reader::IndexFile.intent_row(entry)).new_row
-
-            def archive_row = { intent_id:, at: fields["at"], restored_at: nil, session_id: fields["session_id"] }
-
-            def completion_rows = [fields["completion"]].grep(Hash).map { |hash| Work::CompletionRow.stored(hash, intent_id) }
-
-            def put_all(batch)
-              batch.put(:intents, intent_row)
-              batch.put(:archives, archive_row)
-              completion_rows.each { |row| batch.put(:completions, row) }
-            end
-          end
-
           def initialize(folder, retrieval)
             @folder = folder
             @retrieval = retrieval
