@@ -1,10 +1,13 @@
 # frozen_string_literal: true
 
-require "digest"
-require "json"
 require_relative "knowledge/intent"
 require_relative "knowledge/store_folder"
 require_relative "roadmap_print"
+require_relative "prints/print"
+require_relative "prints/contents"
+require_relative "prints/index_print"
+require_relative "prints/graph_print"
+require_relative "prints/context_print"
 
 module Plastic
   module Graph
@@ -21,40 +24,11 @@ module Plastic
     # The same rows always print the same bytes, so a hash tells whether a
     # file or its rows changed since the last print.
     module Prints
-      # One file and how to make it. `source` gives the bytes only when the
-      # file must be written, so a kept file is compared by its hash alone.
-      Print = Data.define(:path, :database, :sha256, :source)
-
-      # How a print compares with its file and its record.
-      class Print
-        def self.text(path, database, text) = new(path, database, Digest::SHA256.hexdigest(text), -> { text })
-
-        def text = source.call
-
-        # The file holds these bytes already.
-        def level?(folder) = folder.digest(path) == sha256
-
-        def write_to(folder) = folder.write(path, text)
-
-        # The last print recorded these bytes.
-        def recorded?(recorded) = recorded[path] == sha256
-
-        def printed_row = { path:, sha256:, at: Plastic.now }
-      end
-
       module_function
 
-      def index(retrieval)
-        data = { "store" => retrieval.store, "origin_id" => retrieval.origin_id,
-                 "intents" => retrieval.unarchived_intents.map(&:index_h), "clusters" => clusters(retrieval.clusters) }
-        Print.text(Knowledge::StoreFolder::INDEX, :work, "#{JSON.pretty_generate(data)}\n")
-      end
+      def index(retrieval) = IndexPrint.call(retrieval)
 
-      def clusters(rows)
-        rows.group_by(&:name).map { |name, members| { "name" => name, "intents" => luhmann(members.map(&:intent_id)) } }
-      end
-
-      def luhmann(ids) = ids.sort_by { |id| Knowledge::LuhmannId.segments(id) }
+      def empty_graph_sha(path) = GraphPrint.empty_sha(path)
 
       # Every file of the store, read in eight queries whatever the number of intents.
       def of_store(retrieval)
@@ -69,7 +43,7 @@ module Plastic
         legacy = contents.legacy_intents_data(id)
         dir = intent.dir
         [*documents(dir, contents.documents(id), legacy), *text_files(dir, legacy), *savepoint(intent, contents.savepoints(id)),
-          graph(intent, contents), *context(intent, contents), *kept_files(retrieval, contents.kept_files(id))]
+          GraphPrint.call(intent, contents), *ContextPrint.call(intent, contents), *kept_files(retrieval, contents.kept_files(id))]
       end
 
       # A path held as a legacy row and as a document prints from the legacy row only.
@@ -94,61 +68,7 @@ module Plastic
         [Print.text("#{intent.dir}/savepoint.md", :work, lines.map { |line| "#{line.line}\n" }.join)]
       end
 
-      def graph(intent, rows)
-        id = intent.intent_id
-        approval = rows.approvals(id).first&.then { |row| plain(row) }
-        parts = { "approval" => approval, "verdicts" => plain_all(rows.verdicts(id)), "nodes" => plain_all(rows.nodes(id)),
-                  "edges" => plain_all(rows.edges(id)) }
-        Print.text("#{intent.dir}/graph.json", :work, graph_text(id, parts))
-      end
-
-      def graph_text(id, parts)
-        data = { "intent" => id, "approval" => nil, "verdicts" => [], "nodes" => [], "edges" => [] }.merge(parts)
-        "#{JSON.pretty_generate(data)}\n"
-      end
-
-      def empty_graph_sha(path)
-        id = File.basename(File.dirname(path)).split("--", 2).first
-        Digest::SHA256.hexdigest(graph_text(id, {}))
-      end
-
-      def context(intent, rows)
-        id = intent.intent_id
-        held = [rows.discoveries(id).first, rows.contexts(id).first]
-        return [] if held.compact.empty?
-
-        data = { "intent" => id, "discovery" => readable(held.first),
-                 "context" => readable(held.last) }
-        [Print.text("#{intent.dir}/context.json", :knowledge, "#{JSON.pretty_generate(data)}\n")]
-      end
-
-      def readable(row)
-        JSON.parse(row.data) if row
-      rescue JSON::ParserError
-        nil
-      end
-
-      def plain_all(records) = records.map { |record| plain(record) }
-
-      def plain(record) = record.to_h.except(:origin_id).transform_keys(&:to_s)
-
       def roadmap(retrieval, slug) = Print.text("roadmaps/#{slug}.md", :work, RoadmapPrint.new(retrieval, slug).text)
-
-      # The rows of one intent or of the whole store, grouped by intent.
-      Contents = Data.define(:groups)
-
-      # The rows of each table, by intent.
-      class Contents
-        TABLES = %i[documents legacy_intents_data savepoints nodes edges approvals verdicts contexts discoveries kept_files].freeze
-
-        def self.read(retrieval, intent_id = nil)
-          new(TABLES.to_h { |table| [table, retrieval.public_send(table, intent_id).group_by(&:intent_id)] })
-        end
-
-        TABLES.each do |table|
-          define_method(table) { |intent_id| groups.fetch(table).fetch(intent_id, []) }
-        end
-      end
     end
   end
 end
