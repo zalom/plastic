@@ -2,6 +2,7 @@
 
 require "sqlite3"
 require "delegate"
+require "tmpdir"
 require_relative "../../../test_helper"
 require_relative "../../../../lib/plastic/graph/schema"
 
@@ -145,6 +146,20 @@ class SchemaIntentStatesMigrationTest < Minitest::Test
 
     assert_equal 1, @connection.transactions
     refute_includes @database.execute("PRAGMA table_info(intents)").map { |column| column[1] }, "reason"
+  end
+
+  def test_a_database_file_keeps_its_sequence_above_the_highest_id_after_the_rebuild
+    Dir.mktmpdir("plastic-sequence-test") do |dir|
+      file = SQLite3::Database.new(File.join(dir, "work.db"))
+      file.execute_batch(OLD_INTENTS)
+      (1..3).each { |id| file.execute("INSERT INTO intents (id, intent_id, origin_id, slug, title, status) VALUES (?, ?, 'o', 's', 't', 'open')", [id, id.to_s]) }
+      file.execute("DELETE FROM intents WHERE id = 3")
+      Plastic::Graph::Schema.prepare(CountingConnection.new(file), Plastic::Graph::Schema.fetch(:work))
+      file.execute("INSERT INTO intents (intent_id, origin_id, slug, title, status) VALUES ('4', 'o', 's', 't', 'open')")
+
+      assert_equal [2, 4], [file.get_first_value("SELECT MAX(id) FROM intents WHERE intent_id != '4'"), file.get_first_value("SELECT id FROM intents WHERE intent_id = '4'")]
+      file.close
+    end
   end
 
   def test_a_second_prepare_rebuilds_nothing
