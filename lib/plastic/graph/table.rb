@@ -18,18 +18,10 @@ module Plastic
 
       def origin? = columns.key?(:origin_id)
 
-      def insert(row)
-        tuple = SQL.tuple(row, "v")
-        SQL::Bound.new("INSERT INTO #{SQL.name(name)} #{tuple.sql}", tuple.values)
-      end
+      def insert(row) = SQL.insert(name, row)
 
       # An insert that updates the row its key names, column by column.
-      def upsert(row)
-        rest = row.keys - key
-        action = rest.empty? ? "NOTHING" : "UPDATE SET #{rest.map { |column| SQL.assignment(column) }.join(", ")}"
-        base = insert(row)
-        SQL::Bound.new("#{base.sql} ON CONFLICT(#{SQL.names(key)}) DO #{action}", base.values)
-      end
+      def upsert(row) = SQL.insert(name, row, " ON CONFLICT(#{SQL.names(key)}) DO #{update_action(row)}")
 
       def key_of(row) = key.to_h { |column| [column, row[column]] }
 
@@ -45,6 +37,9 @@ module Plastic
       # Machine state that the report leaves out: the printed hashes.
       def counted? = name != :printed
 
+      # The name the report counts the writes under, or nil when the report leaves them out.
+      def counted_as = counted? ? name.to_s : nil
+
       # The `changes` row of a put or a remove of the rows `match` names.
       def change(operation, match, origin_id)
         row = { "put" => json_row }.fetch(operation, "NULL")
@@ -57,6 +52,11 @@ module Plastic
       end
 
       private
+
+      def update_action(row)
+        rest = row.keys - key
+        rest.empty? ? "NOTHING" : "UPDATE SET #{SQL.assignments(rest)}"
+      end
 
       def json_object(list) = "json_object(#{list.map { |column| "'#{column}', #{json_value(column)}" }.join(", ")})"
 

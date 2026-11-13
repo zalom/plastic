@@ -37,6 +37,14 @@ module Plastic
         Schema.store.to_h { |key| [key, new(File.join(root, Schema.file(key)), Schema.fetch(key), origin:)] }
       end
 
+      # The error to raise for one that came from the file `file`, with the file named.
+      def self.relabeled(file, error)
+        message = error.message
+        return Plastic::Invalid.new("#{file}: #{message}") if error.is_a?(Plastic::Invalid)
+
+        Error.new("#{file}: #{message.lines.first.chomp.delete_suffix(":")}")
+      end
+
       # A call saves its routine run at each step, and it is still one row.
       RUNS = "routine_runs"
 
@@ -93,13 +101,7 @@ module Plastic
 
       def commit(batch) = connected { |connection| connection.atomically { run(connection, batch) } }
 
-      def run(connection, batch)
-        batch.statements.filter_map do |entry|
-          rows = connection.read(entry.sql, entry.values)
-          count(entry.table, connection.changes) if entry.table && connection.changes.positive?
-          rows unless rows.empty?
-        end
-      end
+      def run(connection, batch) = batch.statements.filter_map { |entry| entry.run(connection, &method(:count)) }
 
       def count(table, rows)
         before = @written[table]
@@ -108,10 +110,8 @@ module Plastic
 
       def connected
         yield connection
-      rescue Plastic::Invalid => error
-        raise Plastic::Invalid, "#{file}: #{error.message}"
-      rescue SQLite3::Exception, SystemCallError => error
-        raise Error, "#{file}: #{error.message.lines.first.chomp.delete_suffix(":")}"
+      rescue Plastic::Invalid, SQLite3::Exception, SystemCallError => error
+        raise Database.relabeled(file, error)
       end
 
       # The connection, with the schema made on the first call, so a new

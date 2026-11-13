@@ -6,8 +6,20 @@ require_relative "../schema"
 module Plastic
   module Graph
     class Database
+      # The statements of one transaction, in the order they were added.
       class Batch
+        # One statement, the values it binds, and the table whose rows it counts, if any.
         Entry = Data.define(:sql, :values, :table)
+
+        # What one statement did on a connection: the rows it returned.
+        class Entry
+          def run(connection)
+            rows = connection.read(sql, values)
+            changed = connection.changes
+            yield table, changed if table && changed.positive?
+            rows unless rows.empty?
+          end
+        end
 
         attr_reader :statements
 
@@ -21,21 +33,14 @@ module Plastic
 
         # A statement kept off the report. Its RETURNING rows, such as a new
         # id, come back from the transaction.
-        def add(sql, **values)
-          @statements << Entry.new(sql, values, nil)
-          self
-        end
+        def add(sql, **values) = bind(nil, SQL::Bound.new(sql, values))
 
         # A write the report counts under `table`.
-        def write(table, sql, **values)
-          @statements << Entry.new(sql, values, table.to_s)
-          self
-        end
+        def write(table, sql, **values) = bind(table.to_s, SQL::Bound.new(sql, values))
 
         def insert(table, record, conflict: nil)
           clause = conflict ? " ON CONFLICT DO #{conflict}" : ""
-          tuple = SQL.tuple(record.to_h, "v")
-          write(table, "INSERT INTO #{SQL.name(table)} #{tuple.sql}#{clause}", **tuple.values)
+          bind(table.to_s, SQL.insert(table, record.to_h, clause))
         end
 
         # Writes the whole row its key names, and logs it. `statement: :insert`
@@ -43,7 +48,7 @@ module Plastic
         def put(name, row, statement: :upsert)
           table = Schema.table_named(name)
           row = stamped(table, row.to_h)
-          counted(table, table.public_send(statement, row))
+          bind(table.counted_as, table.public_send(statement, row))
           log(table, "put", table.key_of(row))
         end
 
@@ -82,18 +87,18 @@ module Plastic
 
         private
 
-        # Machine state, such as the printed hashes, stays off the report.
-        def counted(table, bound)
-          table.counted? ? write(table.name, bound.sql, **bound.values) : add(bound.sql, **bound.values)
-        end
-
         def stamped(table, row) = (table.origin? && @origin) ? { origin_id: @origin.id }.merge(row) : row
+
+        def bind(table, bound)
+          @statements << Entry.new(bound.sql, bound.values, table)
+          self
+        end
 
         def log(table, operation, match)
           return self unless @origin && table.logged?
 
           change = table.change(operation, match, @origin.id)
-          add(change.sql, **change.values)
+          bind(nil, change)
         end
       end
     end

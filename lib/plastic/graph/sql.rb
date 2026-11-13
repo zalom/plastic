@@ -5,10 +5,19 @@ require_relative "../invalid"
 
 module Plastic
   module Graph
+    # The statements of the graph, built with named placeholders and bound values.
     module SQL
+      # SQL text that goes into a statement as it is, never as a bound value.
       Raw = Data.define(:sql)
 
+      # A statement and the values its placeholders take.
       Bound = Data.define(:sql, :values)
+
+      # How a list of columns joins into a clause: the comparison and the separator.
+      Join = Data.define(:operator, :separator)
+
+      CONDITION = Join.new("IS", " AND ")
+      ASSIGNMENT = Join.new("=", ", ")
 
       NAME = /[a-z_][a-z0-9_]*/
       PLACEHOLDER = /(?<!:):(#{NAME})\b/
@@ -23,6 +32,8 @@ module Plastic
         quoted = name(column)
         "#{quoted} = excluded.#{quoted}"
       end
+
+      def self.assignments(columns) = columns.map { |column| assignment(column) }.join(", ")
 
       def self.placeholders(sql) = sql.scan(PLACEHOLDER).flatten.uniq.map(&:to_sym)
 
@@ -60,14 +71,18 @@ module Plastic
 
       def self.text(value) = (value.encoding == Encoding::BINARY) ? value.dup.force_encoding(Encoding::UTF_8) : value
 
-      def self.where(values, prefix) = pairs(values, "IS", " AND ", prefix)
+      def self.where(values, prefix) = pairs(values, CONDITION, prefix)
 
-      def self.set(values, prefix) = pairs(values, "=", ", ", prefix)
+      def self.set(values, prefix) = pairs(values, ASSIGNMENT, prefix)
 
-      def self.pairs(values, operator, joiner, prefix)
-        parts = values.map { |column, value| "#{name(column)} #{operator} #{value.is_a?(Raw) ? value.sql : ":#{prefix}_#{column}"}" }
-        Bound.new(parts.join(joiner), prefixed(values.reject { |_column, value| value.is_a?(Raw) }, prefix))
+      def self.pairs(values, join, prefix)
+        parts = values.map { |column, value| "#{name(column)} #{join.operator} #{operand(value, prefix, column)}" }
+        Bound.new(parts.join(join.separator), prefixed(values.reject { |_column, value| raw?(value) }, prefix))
       end
+
+      def self.operand(value, prefix, column) = raw?(value) ? value.sql : ":#{prefix}_#{column}"
+
+      def self.raw?(value) = value.is_a?(Raw)
 
       def self.list(values, prefix)
         keyed = values.each_with_index.to_h { |value, index| [index, value] }
@@ -76,21 +91,36 @@ module Plastic
 
       def self.tuple(columns, prefix)
         checked_columns(columns)
-        placeholders = columns.keys.map { |key| ":#{prefix}_#{key}" }
-        Bound.new("(#{names(columns.keys)}) VALUES (#{placeholders.join(", ")})", prefixed(columns, prefix))
+        keys = columns.keys
+        placeholders = keys.map { |key| ":#{prefix}_#{key}" }
+        Bound.new("(#{names(keys)}) VALUES (#{placeholders.join(", ")})", prefixed(columns, prefix))
+      end
+
+      # An INSERT of one row; `clause` is what follows the values, such as an upsert.
+      def self.insert(table, row, clause = "")
+        tuple = tuple(row, "v")
+        Bound.new("INSERT INTO #{name(table)} #{tuple.sql}#{clause}", tuple.values)
       end
 
       def self.checked_columns(columns)
         columns.each do |key, value|
-          raise Plastic::Invalid, "column #{key.inspect} is not a plain lowercase name" unless key.to_s.match?(/\A#{NAME}\z/)
-          raise Plastic::Invalid, "column #{key.inspect} holds SQL text, not a value" if value.is_a?(Raw)
+          reason = column_problem(key, value)
+          raise Plastic::Invalid, "column #{key.inspect} #{reason}" if reason
+        end
+      end
+
+      def self.column_problem(key, value)
+        if !key.to_s.match?(/\A#{NAME}\z/)
+          "is not a plain lowercase name"
+        elsif raw?(value)
+          "holds SQL text, not a value"
         end
       end
 
       def self.prefixed(values, prefix) = values.to_h { |key, value| [:"#{prefix}_#{key}", value] }
 
       # An UPDATE that moves a node between states: the row in `from` with
-      # `intent_id`/`id` moves to `to`, with `set` merged in, and returns its
+      # `intent_id`/`id` moves to `to`, with `set` merged in, and returns its id.
       def self.move(to:, from:, set: {})
         assignments = set({ state: to, updated_at: Plastic.now }.merge(set), "s")
         states = list(from, "f")
