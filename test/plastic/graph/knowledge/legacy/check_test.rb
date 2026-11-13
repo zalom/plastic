@@ -11,20 +11,27 @@ class KnowledgeLegacyCheckTest < Plastic::TestCase
     def read(rel) = rel.end_with?("graph.json") ? raise(Errno::ENOENT, rel) : super
   end
 
+  def teardown
+    File.chmod(0o644, folder.path("INDEX.md")) if File.exist?(folder.path("INDEX.md"))
+    super
+  end
+
   def test_a_store_with_no_index_and_no_files_has_no_problem
     assert_nil Check.new(folder).call
   end
 
-  def test_an_index_that_cannot_be_read_is_named_and_the_other_checks_wait
+  def unreadable_index
     skip "a file stays readable to its owner when the owner is root" if Process.uid.zero?
     write("INDEX.md", "# Index\n")
     File.chmod(0o000, folder.path("INDEX.md"))
+  end
+
+  def test_an_index_that_cannot_be_read_is_named_and_the_other_checks_wait
+    unreadable_index
 
     error = assert_raises(Check::Failed) { Check.new(folder).call }
 
     assert_equal "INDEX.md cannot be read", error.message
-  ensure
-    File.chmod(0o644, folder.path("INDEX.md")) if File.exist?(folder.path("INDEX.md"))
   end
 
   def test_an_index_with_a_link_under_no_section_is_refused_with_the_reason
