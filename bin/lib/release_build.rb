@@ -6,8 +6,8 @@ require_relative "../../scripts/lib/installer_release"
 require_relative "release_archive"
 
 # Builds the three files a GitHub release carries and install.sh downloads:
-# plastic.tgz, its checksum, and the manifest. The publish workflow, CI and
-# the fresh install check all build through this class.
+# plastic.tgz, its checksum, and the manifest. The publish workflow and CI
+# both build through this class.
 class ReleaseBuild
   ARCHIVE = "plastic.tgz"
 
