@@ -65,6 +65,35 @@ class WorkNodeWriterTest < Plastic::TestCase
     assert_equal "open", node("n1").state
   end
 
+  def test_the_third_claim_still_claims_and_leaves_no_question
+    add
+    2.times do
+      @work.claim_node(intent_id: "1", id: "n1", by: "a")
+      @work.release_node(intent_id: "1", id: "n1")
+    end
+    state, claimed = @work.claim_node(intent_id: "1", id: "n1", by: "a")
+
+    assert_equal [:claimed, 3, nil], [state, claimed.retries, claimed.question]
+  end
+
+  def test_the_question_of_a_capped_node_reads_back_from_the_rows
+    add
+    3.times do
+      @work.claim_node(intent_id: "1", id: "n1", by: "a")
+      @work.release_node(intent_id: "1", id: "n1")
+    end
+    @work.claim_node(intent_id: "1", id: "n1", by: "a")
+
+    assert_equal "claimed 3 times; the owner decides", node("n1").question
+  end
+
+  def test_a_release_of_a_node_that_is_not_claimed_returns_no_row_and_changes_nothing
+    add
+
+    assert_nil @work.release_node(intent_id: "1", id: "n1")
+    assert_equal ["open", 0], [node("n1").state, node("n1").retries]
+  end
+
   def test_done_records_the_judge_and_findings
     add
     @work.claim_node(intent_id: "1", id: "n1", by: "a")
