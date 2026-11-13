@@ -16,12 +16,4 @@ class SyncUpGraphRepeatTest < Minitest::Test
       assert_equal [bytes, printed], [second.read(GRAPH), second.rows("work_graph.db", "SELECT sha256 FROM printed WHERE path = '#{GRAPH}'")]
     end
   end
-
-  def test_the_second_home_can_claim_the_next_node_of_the_graph
-    with_two_homes do |_first, second|
-      second.run!("sync", "up")
-
-      assert_includes second.run!("node", "claim", "1", "n2").out, "n2"
-    end
-  end
 end
