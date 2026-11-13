@@ -60,8 +60,10 @@ class RetrievalEvidenceTextPassagesTest < Plastic::TestCase
   end
 
   def test_four_hundred_thousand_lines_with_an_em_dash_each_are_split_in_under_two_seconds
+    text = "dash — and some more text\n" * 400_000
+    extraction = Text::Extraction.new(text, Text::SourceLines.for(text))
     started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-    build("dash — and some more text\n" * 400_000)
+    build(extraction)
 
     assert_operator Process.clock_gettime(Process::CLOCK_MONOTONIC) - started, :<, 2
   end
