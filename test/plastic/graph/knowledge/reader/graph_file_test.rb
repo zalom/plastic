@@ -35,6 +35,32 @@ class KnowledgeReaderGraphFileTest < Plastic::TestCase
     assert_empty problems("nodes" => nodes, "edges" => [{ "from" => "n1", "to" => "n2" }])
   end
 
+  def test_a_file_that_names_no_intent_says_so_in_words
+    text = JSON.generate({})
+
+    assert_equal ["#{PATH} names no intent, not 1"], GraphFile.new(text, "1", nil, PATH).problems
+  end
+
+  def test_a_file_that_names_another_intent_quotes_it
+    text = JSON.generate({ "intent" => "2" })
+
+    assert_equal ["#{PATH} names intent \"2\", not 1"], GraphFile.new(text, "1", nil, PATH).problems
+  end
+
+  def test_a_node_with_no_state_says_so_in_words
+    assert_equal ["#{PATH} holds node \"n1\" with no state"], problems("nodes" => [{ "id" => "n1" }])
+  end
+
+  def test_a_node_in_an_unknown_state_names_the_state
+    assert_equal ["#{PATH} holds node \"n1\" in the unknown state \"stuck\""], problems("nodes" => [{ "id" => "n1", "state" => "stuck" }])
+  end
+
+  def test_an_edge_with_no_end_says_so_in_words
+    nodes = [{ "id" => "n1", "state" => "done" }]
+
+    assert_equal ["#{PATH} holds an edge with no end"], problems("nodes" => nodes, "edges" => [{ "from" => "n1" }])
+  end
+
   def test_a_verdict_that_is_not_an_object_is_refused
     assert_equal ["#{PATH} holds the verdict \"accept\""], problems("verdicts" => ["accept"])
   end
