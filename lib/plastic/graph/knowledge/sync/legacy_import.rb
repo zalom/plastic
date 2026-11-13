@@ -15,9 +15,6 @@ module Plastic
         # Its read_rows primitive reads intents, clusters and ordinary files, then
         # prints the store. graph.json remains a generated view and is never imported.
         class LegacyImport
-          FRONT_MATTER = /\A---\n(.*?)\n---/m
-          FIELD = /^(\w+):[ \t]*"?([^"\n]*?)"?[ \t]*$/
-
           def initialize(sync, folder, retrieval, databases)
             @sync = sync
             @folder = folder
@@ -29,7 +26,7 @@ module Plastic
 
           def read_rows
             parsed = write_index
-            read = @sync.read(@folder.intent_files.reject { |path| Graph::Knowledge::StoreFolder.graph_view?(path) })
+            read = intents_read
             finish
             ["imported #{Graph::Knowledge::StoreFolder::LEGACY_INDEX}: #{Schema.phrase(parsed.counts)}", *read]
           end
@@ -37,28 +34,37 @@ module Plastic
           private
 
           def write_index
-            Legacy::Index.parse(@folder.read(Graph::Knowledge::StoreFolder::LEGACY_INDEX).force_encoding(Encoding::UTF_8)).tap do |parsed|
-              write(parsed.check(@folder.intent_dirs))
+            listed = Legacy::Index.parse(@folder.read(Graph::Knowledge::StoreFolder::LEGACY_INDEX).force_encoding(Encoding::UTF_8))
+            Legacy::Index::Parsed.new(listed.entries + unlisted(listed), listed.clusters).tap { |parsed| write(parsed) }
+          end
+
+          # A folder INDEX.md does not list takes the status of its own front matter.
+          def unlisted(listed)
+            (@folder.intent_dirs - listed.entries.map(&:dir)).map do |dir|
+              front = @folder.front_matter(dir)
+              Legacy::Index::Entry.new(File.basename(dir).split("--", 2).first, front["intent"], dir, front["status"], nil, nil)
             end
           end
 
           def write(parsed)
             now = Plastic.now
-            rows = parsed.entries.map { |entry| entry.row(front_matter(entry.dir), now) }
+            rows = parsed.entries.map { |entry| entry.row(@folder.front_matter(entry.dir), now) }
             @databases.fetch(:work).transaction do |batch|
               batch.put_all(:intents, rows).put_all(:clusters, parsed.clusters.map(&:to_h))
             end
           end
 
-          def finish
-            @sync.printer.print(Prints.of_store(@retrieval))
+          # The files of one intent folder are read, then the line that names it.
+          def intents_read
+            dirs = @folder.intent_dirs
+            dirs.each_with_index.flat_map do |dir, index|
+              paths = @folder.files(dir).reject { |path| Graph::Knowledge::StoreFolder.graph_view?(path) }
+              [*@sync.read(paths), "imported intent #{index + 1} of #{dirs.size}: #{File.basename(dir).split("--", 2).first}"]
+            end
           end
 
-          # The fields at the head of the intent's own file.
-          def front_matter(dir)
-            file = @folder.own_file(dir)
-            text = @folder.exist?(file) ? @folder.read(file).force_encoding(Encoding::UTF_8) : ""
-            text[FRONT_MATTER, 1].to_s.scan(FIELD).to_h
+          def finish
+            @sync.printer.print(Prints.of_store(@retrieval))
           end
         end
       end

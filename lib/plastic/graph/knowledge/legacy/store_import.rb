@@ -2,6 +2,7 @@
 
 require "fileutils"
 require "tmpdir"
+require_relative "check"
 require_relative "decisions"
 require_relative "roadmaps"
 require_relative "originals"
@@ -22,7 +23,8 @@ module Plastic
           end
 
           def call
-            lines, counts = imported(parsed_roadmaps)
+            Check.new(@folder).call
+            lines, counts = imported(Roadmaps.new.parse(@folder.root))
             ImportCleanup.new(@folder, @retrieval, @home).call(counts)
             [*lines, "imported metadata: #{Schema.phrase(counts)}"]
           end
@@ -35,14 +37,6 @@ module Plastic
 
           def databases = graphs.databases
 
-          def parsed_roadmaps
-            parsed = Roadmaps.new.parse(@folder.root)
-            problems = parsed.values.flat_map(&:problems)
-            raise Invalid, problems.join("; ") if problems.any?
-
-            parsed
-          end
-
           # A store that fails halfway gets its folder back as it was, databases
           # gone, so the next run imports it again instead of skipping it.
           def imported(parsed)
@@ -52,6 +46,7 @@ module Plastic
           end
 
           def import(parsed)
+            @folder.ignore_databases
             originals = @folder.intent_files.to_h { |path| [path, @folder.read(path)] }
             decisions = Decisions.new.read_decisions(@folder.intent_dirs, originals)
             lines = @reader.read_rows

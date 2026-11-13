@@ -31,8 +31,9 @@ module Plastic
 
         # Applies every action of `plan` but the conflicts, and says what it did, one line per file.
         def apply(plan)
-          @folder.ignore_databases
           return LegacyImport.new(self, @folder, @retrieval, @databases).call if plan.legacy
+
+          @folder.ignore_databases
 
           printer.record(plan.taking(:record).map(&:print))
           (plan.direction == :up) ? read_up(plan) : print_down(plan)

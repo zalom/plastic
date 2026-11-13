@@ -30,10 +30,10 @@ module Plastic
           def original = File.join(@saved, File.basename(@root))
 
           def run
-            yield
-          rescue
-            restore
-            raise
+            finished = false
+            yield.tap { finished = true }
+          ensure
+            restore unless finished
           end
 
           def restore

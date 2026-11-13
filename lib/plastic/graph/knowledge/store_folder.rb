@@ -52,6 +52,16 @@ module Plastic
           exist?(fixed) ? fixed : "#{dir}/#{File.basename(dir)}.md"
         end
 
+        FRONT_MATTER = /\A---\n(.*?)\n---/m
+        FIELD = /^(\w+):[ \t]*"?([^"\n]*?)"?[ \t]*$/
+
+        # The fields at the head of the intent's own file, or none.
+        def front_matter(dir)
+          file = own_file(dir)
+          text = exist?(file) ? read(file).force_encoding(Encoding::UTF_8) : ""
+          text[FRONT_MATTER, 1].to_s.scan(FIELD).to_h
+        end
+
         def intent_dirs = Dir.glob("store/*--*/", base: root).map { |dir| dir.chomp("/") }.sort
 
         # The graph view is generated from node and edge rows.
