@@ -130,6 +130,12 @@ class KnowledgeLegacyIndexTest < Plastic::TestCase
     assert_equal "INDEX.md: 396 sits under ## Someday, which gives no status; 380 sits under ## Later, which gives no status", error.message
   end
 
+  def test_a_check_of_folders_that_match_the_entries_returns_the_parsed_file
+    parsed = LegacyIndex.parse(TEXT)
+
+    assert_same parsed, parsed.check(parsed.entries.map(&:dir))
+  end
+
   def test_a_check_names_every_missing_entry_and_folder
     error = assert_raises(Plastic::Invalid) { LegacyIndex.parse(TEXT).check(%w[store/9--stray]) }
 
