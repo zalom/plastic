@@ -9,7 +9,9 @@ class SyncUpGraphArchiveTest < Minitest::Test
   ARCHIVES = "SELECT intent_id, at, session_id, restored_at FROM archives"
 
   def archived(kernel)
-    deliver(kernel)
+    kernel.write("#{DIR}/outcome.md", DROPPED)
+    kernel.run!("sync", "up")
+    kernel.run!("intent", "abandon", "1", env: SESSION)
     kernel.run!("intent", "archive", "1")
   end
 
