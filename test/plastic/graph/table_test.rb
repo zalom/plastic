@@ -5,7 +5,10 @@ require_relative "../../test_helper"
 class TableTest < Plastic::TestCase
   Schema = Plastic::Graph::Schema
   CLUSTER = { name: "C", intent_id: "1", origin_id: "o" }.freeze
-  CLUSTER_SQL = %(INSERT INTO "clusters" ("name", "intent_id", "origin_id") VALUES ('C', '1', 'o'))
+  CLUSTER_SQL = %(INSERT INTO "clusters" ("name", "intent_id", "origin_id") VALUES (:v_name, :v_intent_id, :v_origin_id))
+  CLUSTER_VALUES = { v_name: "C", v_intent_id: "1", v_origin_id: "o" }.freeze
+
+  def bound(sql, values) = Plastic::Graph::SQL::Bound.new(sql, values)
 
   def table(name) = Schema.table_named(name)
 
@@ -19,16 +22,20 @@ class TableTest < Plastic::TestCase
   end
 
   def test_an_upsert_updates_the_columns_outside_the_key
-    assert_equal %(INSERT INTO "printed" ("path", "sha256") VALUES ('p', 'h') ON CONFLICT("path") DO UPDATE SET "sha256" = excluded."sha256"),
-      table(:printed).upsert({ path: "p", sha256: "h" })
+    expected = bound(%(INSERT INTO "printed" ("path", "sha256") VALUES (:v_path, :v_sha256) ON CONFLICT("path") DO UPDATE SET "sha256" = excluded."sha256"),
+      { v_path: "p", v_sha256: "h" })
+
+    assert_equal expected, table(:printed).upsert({ path: "p", sha256: "h" })
   end
 
   def test_an_upsert_of_a_row_that_is_all_key_does_nothing
-    assert_equal %(#{CLUSTER_SQL} ON CONFLICT("name", "intent_id", "origin_id") DO NOTHING), table(:clusters).upsert(CLUSTER)
+    expected = bound(%(#{CLUSTER_SQL} ON CONFLICT("name", "intent_id", "origin_id") DO NOTHING), CLUSTER_VALUES)
+
+    assert_equal expected, table(:clusters).upsert(CLUSTER)
   end
 
   def test_an_insert_takes_the_row_as_it_stands
-    assert_equal CLUSTER_SQL, table(:clusters).insert(CLUSTER)
+    assert_equal bound(CLUSTER_SQL, CLUSTER_VALUES), table(:clusters).insert(CLUSTER)
   end
 
   def test_the_key_of_a_row_is_its_key_columns
@@ -48,9 +55,11 @@ class TableTest < Plastic::TestCase
 
   def test_a_change_row_logs_a_put_with_the_row_and_a_remove_without
     put, remove = %w[put remove].map { |operation| table(:printed).change(operation, { path: "p" }, "o") }
-    at = /'\d{4}-\d\d-\d\dT[\d:]+[+-]\d\d:\d\d'/
 
-    assert_match(/\AINSERT INTO changes\("table", "key", operation, "row", at, origin_id\) SELECT 'printed', json_object\('path', "path"\), 'remove', NULL, #{at}, 'o' FROM "printed" WHERE "path" IS 'p'\z/o, remove)
-    assert_includes put, %('put', json_object('path', "path", 'sha256', "sha256", 'at', "at", 'origin_id', "origin_id"), )
+    assert_equal %(INSERT INTO changes("table", "key", operation, "row", at, origin_id) SELECT :c_table, json_object('path', "path"), :c_operation, NULL, :c_at, :c_origin FROM "printed" WHERE "path" IS :m_path), remove.sql
+    assert_equal({ c_table: "printed", c_operation: "remove", c_origin: "o", m_path: "p" }, remove.values.except(:c_at))
+    assert_match(/\A\d{4}-\d\d-\d\dT[\d:]+[+-]\d\d:\d\d\z/, remove.values.fetch(:c_at))
+    assert_includes put.sql, %(:c_operation, json_object('path', "path", 'sha256', "sha256", 'at', "at", 'origin_id', "origin_id"), )
+    assert_equal "put", put.values.fetch(:c_operation)
   end
 end

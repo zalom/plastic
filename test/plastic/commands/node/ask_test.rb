@@ -20,6 +20,13 @@ class NodeAskTest < Plastic::TestCase
       out: "node: n1 needs_info\nwrote:  1 routine run in local.db\n        1 node in work_graph.db\nfiles:  store/1--alpha/graph.json\n\nnext: plastic node resolve 1 n1 TEXT\nbecause: node n1 is needs_info\n"
   end
 
+  def test_a_question_that_holds_column_names_is_stored_unchanged
+    cli("node", "claim", "1", "n1")
+    cli("node", "ask", "1", "n1", "see :id and :intent_id")
+
+    assert_equal "see :id and :intent_id", retrieval.node("1", "n1").question
+  end
+
   def test_asking_about_an_open_node_is_refused
     result = cli("node", "ask", "1", "n1", "which way?")
 

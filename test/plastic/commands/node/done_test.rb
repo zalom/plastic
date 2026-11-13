@@ -21,6 +21,12 @@ class NodeDoneTest < Plastic::TestCase
     assert_call result, code: 0, out: "node: n1 done\nwrote:  1 routine run in local.db\n        1 node in work_graph.db\nfiles:  store/1--alpha/graph.json\n\nnext: plastic graph ready 1\nbecause: node n1 is done\n"
   end
 
+  def test_findings_that_hold_column_names_are_stored_unchanged
+    cli("node", "done", "1", "n1", "see :id and :intent_id")
+
+    assert_equal "see :id and :intent_id", retrieval.node("1", "n1").findings
+  end
+
   def test_the_usage_line_has_the_text_and_no_option
     assert_equal USAGE.chomp, Plastic::Commands::Node::Done.usage_line("node done")
   end

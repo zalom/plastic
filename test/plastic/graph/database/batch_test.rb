@@ -47,21 +47,27 @@ class DatabaseBatchTest < Plastic::TestCase
     assert_equal [%w[clusters put], %w[nodes put]], changes
   end
 
-  def test_a_counted_write_reports_its_rows_only_when_it_changed_some
-    batch = Batch.new.write(:clusters, "DELETE FROM clusters")
+  def test_a_counted_write_names_its_table_and_a_plain_add_names_none
+    batch = Batch.new.write(:clusters, "DELETE FROM clusters").add("SELECT 1")
 
-    assert_match(/WHERE changes\(\) > 0;\z/, batch.statements.last)
+    assert_equal ["clusters", nil], batch.statements.map(&:table)
+  end
+
+  def test_add_keeps_the_text_and_the_values_apart
+    batch = Batch.new.add("SELECT :a", a: "see :id")
+
+    assert_equal ["SELECT :a", { a: "see :id" }], [batch.statements.first.sql, batch.statements.first.values]
   end
 
   def test_the_local_database_keeps_no_change_log
     batch = Batch.new.put(:locks, { store: "s", intent_id: "1", session_id: "x", mode: "auto", taken_at: STAMP, renewed_at: STAMP })
 
-    assert_empty(batch.statements.grep(/INSERT INTO changes/))
+    assert_empty(batch.statements.map(&:sql).grep(/INSERT INTO changes/))
   end
 
   def test_apply_adds_the_statements_of_each_read_in_order
     batch = Batch.new.apply([->(b) { b.add("SELECT 1") }, ->(b) { b.add("SELECT 2") }])
 
-    assert_equal ["SELECT 1;", "SELECT 2;"], batch.statements
+    assert_equal ["SELECT 1", "SELECT 2"], batch.statements.map(&:sql)
   end
 end
