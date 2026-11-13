@@ -7,7 +7,7 @@ module Plastic
   module Workflows
     module Code
       module Intent
-        # Writes the go-ahead row of an open or active intent. A second call changes nothing.
+        # Writes the go-ahead row of an open or in progress intent. A second call changes nothing.
         class Approve < CodeWorkflow
           [facts, steps, outcomes].each(&:clear)
 

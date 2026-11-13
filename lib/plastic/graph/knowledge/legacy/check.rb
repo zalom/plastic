@@ -60,7 +60,7 @@ module Plastic
 
           def unlisted_problem(dir)
             status = FrontMatter.new(@folder).read(dir)["status"]
-            "#{dir} has no entry in INDEX.md" unless STATUSES.include?(status)
+            "#{dir} has no entry in INDEX.md" unless STATUSES.include?(Intent.stored_state(status))
           end
 
           def graph_problems

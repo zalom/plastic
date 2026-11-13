@@ -13,20 +13,20 @@ module Plastic
         # intent listed only there takes the status its marker gives. The
         # import reads it once and deletes it.
         module Index
-          SECTIONS = { "Open" => "open", "Active" => "active", "Parked" => "parked", "Future" => "future",
+          SECTIONS = { "Open" => "open", "Active" => "in_progress", "Parked" => "parked", "Future" => "future",
                        "Completed" => "done", "Done" => "done", "Abandoned" => "abandoned" }.freeze
           QUIET = %w[Clusters Relocated].freeze
           HEADING = /\A(?<level>###?) (?<name>.+)\z/
 
           # One intent of the file: its status and what its line adds.
-          Entry = Data.define(:intent_id, :title, :dir, :status, :disposition, :closed_at)
+          Entry = Data.define(:intent_id, :title, :dir, :status, :disposition, :reason, :closed_at)
 
           # The intent row an entry imports as.
           class Entry
             # `front` holds the fields at the head of the intent's own file.
             def row(front, now)
               { intent_id:, parent_id: LuhmannId.parent_of(intent_id), slug: File.basename(dir).split("--", 2).last,
-                title:, kind: front["kind"], status:, disposition:, opened_at: front["created"], closed_at:,
+                title:, kind: front["kind"], status:, disposition:, reason:, opened_at: front["created"], closed_at:,
                 updated_at: now }
             end
           end
@@ -83,7 +83,7 @@ module Plastic
 
             def entry = Entry.new(intent_id, found[:title], found[:dir], status, *closing)
 
-            def marked_entry = Entry.new(intent_id, found[:title], found[:dir], marked_status, nil, nil)
+            def marked_entry = Entry.new(intent_id, found[:title], found[:dir], marked_status, nil, nil, nil)
 
             private
 
@@ -94,10 +94,20 @@ module Plastic
             # The date that opens a closed intent's detail, with the text after it.
             def dated = CLOSED.include?(status) ? detail.match(DATED) : nil
 
-            # The disposition and the closing date of the line.
+            # The disposition, the reason and the closing date of the line.
             def closing
               date, text = dated&.captures || [nil, detail]
-              [(text unless text.empty?), date]
+              text = nil if text.empty?
+              [disposition_of(text), (text if reasoned?(text)), date]
+            end
+
+            def reasoned?(text) = %w[parked future abandoned done].include?(status) && text != "delivered"
+
+            def disposition_of(text)
+              case status
+              when "done" then "delivered"
+              when "abandoned" then text.to_s.match?(/superseded by/i) ? "superseded" : "cancelled"
+              end
             end
           end
 

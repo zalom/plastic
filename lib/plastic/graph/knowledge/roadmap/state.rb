@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../roadmap"
+require_relative "../intent"
 
 module Plastic
   module Graph
@@ -10,7 +11,7 @@ module Plastic
         # Never stored: the rows hold only what the state is computed from.
         module State
           DONE_STATUSES = %w[done abandoned].freeze
-          IN_FLIGHT_STATUSES = %w[open active parked].freeze
+          IN_FLIGHT_STATUSES = Intent::GROUPS.fetch("active")
 
           module_function
 

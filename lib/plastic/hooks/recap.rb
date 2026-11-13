@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative "../graph/knowledge/intent"
 require_relative "../graph/work/last_savepoints"
 
 module Plastic
@@ -12,7 +13,6 @@ module Plastic
         "compact" => "Plastic: the session was compacted. The rows below carry the state; run plastic graph resume.",
         "resume" => "Plastic: a resumed session. The rows below carry the state; run plastic graph resume."
       }.freeze
-      MAX_OPEN = 10
       SAVEPOINT_LINES = 5
 
       def initialize(retrieval, session_id:, source:, directory:)
@@ -32,9 +32,9 @@ module Plastic
       end
 
       def open_intent_lines
-        open = @retrieval.intents.select(&:open?)
-        rest = open.size - MAX_OPEN
-        [*open.first(MAX_OPEN).map { |intent| "open: #{intent.heading}#{last_run(intent.intent_id)}" }, *("and #{rest} more" if rest.positive?)]
+        Graph::Knowledge::Intent.listed(@retrieval.intents).flat_map do |name, shown, rest|
+          [*shown.map { |intent| "#{name}: #{intent.heading}#{last_run(intent.intent_id)}" }, *("and #{rest} more" if rest.positive?)]
+        end
       end
 
       def last_run(intent_id)

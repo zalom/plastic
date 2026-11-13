@@ -13,22 +13,24 @@ module Plastic
       # another intent as `{intent_id}-{origin_id}`, and is never a copy.
       # `parent_id` is the Luhmann id the last run was appended to.
       Intent = Data.define(:id, :intent_id, :parent_id, :ref, :origin_id, :slug, :title, :kind, :status, :disposition,
-        :opened_at, :closed_at, :updated_at)
+        :reason, :opened_at, :closed_at, :updated_at)
 
       # What an intent derives from its fields: its folder, its rows and its own file.
       class Intent
         include Record
 
         FILE = "intent.md"
-        OPEN = %w[open active].freeze
-        CLOSED = %w[done abandoned].freeze
+        OPEN = %w[open in_progress].freeze
         ARCHIVABLE = %w[done abandoned future].freeze
 
-        # Open or active: the work a resume lists.
+        # Open or in progress: the work a resume lists.
         def open? = OPEN.include?(status)
 
         # Done or abandoned: the work is over.
-        def closed? = CLOSED.include?(status)
+        def closed? = GROUPS.fetch("finished").include?(status)
+
+        # The group the status belongs to: active, future or finished.
+        def group = GROUPS.find { |_name, states| states.include?(status) }.first
 
         # Why the intent cannot archive, or nil when its status allows it.
         def archive_refusal
@@ -42,6 +44,17 @@ module Plastic
 
         # The label and the status.
         def heading = "#{label} (#{status})"
+
+        # The state a stored word means today: the old word for work under way reads in_progress.
+        def self.stored_state(word) = RENAMED.fetch(word, word)
+
+        # Each group with at most MAX_LISTED of its intents and how many more it holds; an empty group is left out.
+        def self.listed(intents)
+          GROUPS.keys.filter_map do |name|
+            members = intents.select { |intent| intent.group == name }
+            [name, members.first(MAX_LISTED), [members.size - MAX_LISTED, 0].max] if members.any?
+          end
+        end
 
         def self.slug_for(title) = title.downcase.scan(/[a-z0-9]+/).first(6).join("-")
 
@@ -75,9 +88,12 @@ module Plastic
         # The fields store/index.json lists, in order.
         def index_h = Intent::INDEX_FIELDS.to_h { |field| [field.to_s, public_send(field)] }
       end
-      Intent::STATUSES = %w[open active parked future done abandoned].freeze
-      Intent::NEW_STATUSES = %w[open active parked future].freeze
-      Intent::INDEX_FIELDS = %i[intent_id origin_id parent_id ref slug title kind status disposition opened_at closed_at].freeze
+      Intent::STATUSES = %w[open in_progress parked future done abandoned].freeze
+      Intent::NEW_STATUSES = %w[open parked future].freeze
+      Intent::GROUPS = { "active" => %w[open in_progress parked], "future" => %w[future], "finished" => %w[done abandoned] }.freeze
+      Intent::RENAMED = { "active" => "in_progress" }.freeze
+      Intent::MAX_LISTED = 10
+      Intent::INDEX_FIELDS = %i[intent_id origin_id parent_id ref slug title kind status disposition reason opened_at closed_at].freeze
     end
   end
 end

@@ -21,22 +21,23 @@ module Plastic
           end
 
           # Why the call cannot write the intent, or nil.
-          def problem(parent_id: nil, ref: nil, status: "open")
+          def problem(parent_id: nil, ref: nil, status: "open", reason: nil)
             return "this store still has #{StoreFolder::LEGACY_INDEX}; run plastic sync up to import it first" if @folder.legacy?
             return "#{StoreFolder::INDEX} changed by hand since the last print; run plastic sync up to read it first" if hand_edited?
-            return "a new intent takes the status open, active, parked or future, not #{status}" unless Intent::NEW_STATUSES.include?(status)
+            status_problem = status_problem(status, reason)
+            return status_problem if status_problem
             return "no intent #{parent_id} in this store to be the parent" if parent_id && !@retrieval.intent(parent_id)
 
             Ref.parse(ref)&.problem(@retrieval)
           end
 
-          # Why the intent cannot take `takes` (nodes, a verdict), or nil when it is open or active.
+          # Why the intent cannot take `takes` (nodes, a verdict), or nil when it is open or in progress.
           def open_problem(intent_id, takes)
             intent = @retrieval.intent(intent_id)
             intent ? intent.takes_problem(takes) : "no intent #{intent_id} in this store"
           end
 
-          # `fields` may name the ref, the kind and the status; a field left out or nil takes its default.
+          # `fields` may name the ref, the kind, the status and the reason; a field left out or nil takes its default.
           def write(title:, parent_id: nil, **fields)
             now = Plastic.now
             values = DEFAULTS.merge(fields.compact)
@@ -50,12 +51,12 @@ module Plastic
           def ref_line(ref) = Ref.parse(ref)&.line(@retrieval.origin_id) || "ref: #{ref}"
 
           ACTIVATE_SQL = <<~SQL
-            UPDATE intents SET status = 'active', updated_at = :now
+            UPDATE intents SET status = 'in_progress', updated_at = :now
             WHERE intent_id = :intent_id AND origin_id = :origin AND status NOT IN ('done', 'abandoned')
             RETURNING intent_id
           SQL
 
-          # Sets an open, parked or future intent active; a no-op guard against a
+          # Sets an open, parked or future intent in progress; a no-op guard against a
           # race with a status that moved to done or abandoned since the check.
           def activate(intent_id)
             @databases.fetch(:work).transaction do |batch|
@@ -68,6 +69,13 @@ module Plastic
           end
 
           private
+
+          def status_problem(status, reason)
+            return "a new intent takes the status open, parked or future, not #{status}" unless Intent::NEW_STATUSES.include?(status)
+            return "a parked intent needs a reason: pass --reason TEXT" if status == "parked" && reason.to_s.strip.empty?
+
+            "--reason belongs to a parked intent: pass --status parked" if reason && status != "parked"
+          end
 
           DEFAULTS = { kind: "work", status: "open" }.freeze
 

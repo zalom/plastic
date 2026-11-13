@@ -21,6 +21,7 @@ module Plastic
         connection.execute_batch(schema)
         migrate_revision_membership(connection)
         migrate_passage_identity(connection)
+        migrate_intent_states(connection)
       end
 
       def self.table_named(name) = tables.fetch(name.to_sym)

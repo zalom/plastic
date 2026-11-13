@@ -14,7 +14,8 @@ module Plastic
         option :ref, switch: "--ref REF", text: "a ticket, a link, or another intent as ID-ORIGIN"
         option :after, switch: "--after ID", text: "an intent this one grows out of, linked as source"
         option :kind, switch: "--kind KIND", text: "the kind of work", default: "work"
-        option :status, switch: "--status STATUS", text: "open, active, parked or future", default: "open"
+        option :status, switch: "--status STATUS", text: "open, parked or future", default: "open"
+        option :reason, switch: "--reason TEXT", text: "why a parked intent waits; required with --status parked"
         writes :work, :knowledge, :references
         prints :intent
 

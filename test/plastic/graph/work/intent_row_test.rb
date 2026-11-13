@@ -3,7 +3,7 @@
 require_relative "../../../test_helper"
 
 class WorkIntentRowTest < Plastic::TestCase
-  COLUMNS = %w[id intent_id parent_id ref origin_id slug title kind status disposition opened_at closed_at updated_at].freeze
+  COLUMNS = %w[id intent_id parent_id ref origin_id slug title kind status disposition reason opened_at closed_at updated_at].freeze
 
   def work = @work ||= store_graphs.databases[:work]
 
