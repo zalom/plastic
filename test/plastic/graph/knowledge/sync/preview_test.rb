@@ -110,7 +110,7 @@ class KnowledgeSyncPreviewTest < Plastic::TestCase
     lines = Plastic::Graph::Knowledge::Sync::Preview.new(missing, "global", {}).call
 
     assert_match(/\Apreview: paths that would change: \d+\z/, lines.last)
-    refute File.exist?(missing)
+    refute_path_exists missing
   end
 
   def test_a_symbolic_link_is_rejected_before_copying
