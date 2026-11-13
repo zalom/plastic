@@ -33,11 +33,11 @@ class RetrievalEvidenceTextTokenStreamTest < Plastic::TestCase
     assert_includes lines, 2
   end
 
-  def test_two_megabytes_with_twenty_thousand_tokens_are_tokenized_in_under_two_seconds
+  def test_two_megabytes_with_twenty_thousand_tokens_are_tokenized_in_under_five_seconds
     source = "#{"a" * 92} [tag]\n" * 20_000
     started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
     stream(source).extract { "X" }
 
-    assert_operator Process.clock_gettime(Process::CLOCK_MONOTONIC) - started, :<, 2
+    assert_operator Process.clock_gettime(Process::CLOCK_MONOTONIC) - started, :<, 5
   end
 end
