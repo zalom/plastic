@@ -78,7 +78,7 @@ In the words of workflow engines, the rows are these four parts:
 
 | Place | Database or file | Tables | Reads or writes | Code |
 | --- | --- | --- | --- | --- |
-| the store folder | knowledge_graph.db | `legacy_intents_data` | writes | [`sync_options.rb:12`](../../../../lib/plastic/cli/sync_options.rb#L12) |
+| the store folder | knowledge_graph.db | `document_heads`, `legacy_intents_data` | reads and writes | [`sync_options.rb:12`](../../../../lib/plastic/cli/sync_options.rb#L12) |
 | the store folder | references.db | `sqlar` | writes | [`sync_options.rb:12`](../../../../lib/plastic/cli/sync_options.rb#L12) |
 | the store folder | work_graph.db | `clusters`, `intents`, `savepoints` | reads and writes | [`sync_options.rb:12`](../../../../lib/plastic/cli/sync_options.rb#L12) |
 
