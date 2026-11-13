@@ -25,11 +25,12 @@ module Plastic
           KEPT_MODE = 0o100644
           KINDS = { "graph.json" => %i[work graph], "context.json" => %i[work context], "savepoint.md" => %i[work savepoint] }.freeze
 
-          def initialize(folder, intent, path, origin_id, retrieval: nil)
+          def initialize(folder, intent, path, origin_id, retrieval: nil, heads: nil)
             @file = FolderFile.new(folder, path, path.delete_prefix("#{intent.dir}/"))
             @intent_id = intent.intent_id
             @origin_id = origin_id
             @retrieval = retrieval
+            @heads = heads
           end
 
           def database = kind.first
@@ -71,7 +72,7 @@ module Plastic
           end
 
           def document(batch)
-            Retrieval::Evidence::Writer.new(nil, @origin_id).apply(batch, @intent_id, @file.rel, text)
+            Retrieval::Evidence::Writer.new(nil, @origin_id, heads: @heads).apply(batch, @intent_id, @file.rel, text)
           end
 
           # The row replaces the document, head and search rows the path held before it was legacy.

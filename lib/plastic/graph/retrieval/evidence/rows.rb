@@ -6,10 +6,11 @@ module Plastic
       class Evidence
         # Writes canonical, immutable, and current evidence rows in dependency order.
         class Rows
-          def initialize(batch, document, origin_id)
+          def initialize(batch, document, origin_id, known_head: true)
             @batch = batch
             @document = document
             @origin_id = origin_id
+            @known_head = known_head
           end
 
           def write
@@ -32,8 +33,12 @@ module Plastic
 
           def current_rows
             @batch.put(:document_heads, @document.head_row)
-            @batch.add("DELETE FROM document_fts WHERE intent_id = :intent_id AND path = :path AND origin_id = :origin_id", intent_id: @document.intent_id, path: @document.path, origin_id: @origin_id)
+            delete_search_rows if @known_head
             @document.passages.each { |passage| current_passage(passage) }
+          end
+
+          def delete_search_rows
+            @batch.add("DELETE FROM document_fts WHERE intent_id = :intent_id AND path = :path AND origin_id = :origin_id", intent_id: @document.intent_id, path: @document.path, origin_id: @origin_id)
           end
 
           def current_passage(passage)
