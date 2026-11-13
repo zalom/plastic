@@ -3,7 +3,7 @@
 require_relative "../../../../test_helper"
 
 module DryRunAssertions
-  DATABASE_FILE = /\.db(-wal|-shm)?\z/
+  DATABASE_FILE = /\.db(-wal|-shm|-journal)?\z/
 
   def preview(direction: :up, **options) = Plastic::Graph::Knowledge::Sync::Preview.new(@plastic_home, "global", options, direction:).call
 
@@ -66,15 +66,14 @@ class KnowledgeSyncPreviewTest < Plastic::TestCase
   end
 
   def test_a_dry_run_of_sync_up_names_the_files_the_real_run_touches_on_a_synced_store
+    write("store/2--beta/intent.md", "---\nid: 2\nintent: Beta\ncreated: #{STAMP}\nstatus: open\n---\n")
     write(SPEC, "file change")
 
     assert_dry_run_names_what_the_real_run_touches(:up)
   end
 
   def test_a_dry_run_of_sync_down_names_the_files_the_real_run_touches_on_a_synced_store
-    store_graphs.databases[:knowledge].transaction do |batch|
-      batch.put(:documents, {intent_id: "1", path: "spec.md", body: "row change", updated_at: STAMP})
-    end
+    File.delete(store_path(SPEC))
 
     assert_dry_run_names_what_the_real_run_touches(:down)
   end

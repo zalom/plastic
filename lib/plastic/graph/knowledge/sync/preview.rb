@@ -3,12 +3,14 @@
 require "fileutils"
 require "find"
 require "tmpdir"
+require_relative "preview/mirror"
+require_relative "preview/changes"
 
 module Plastic
   module Graph
     module Knowledge
       class Sync
-        # Runs the real sync against a disposable copy of one store.
+        # Runs the real sync against a disposable twin of one store, then names the files it would write.
         class Preview
           def initialize(home, store, options, direction: :up)
             @home, @store, @options, @direction = home, store, options, direction
@@ -16,7 +18,7 @@ module Plastic
 
           def self.conflict_lines(plan) = plan.conflicts.map { |path| "conflict: #{path}" }
 
-          def call = Dir.mktmpdir("plastic-sync-preview") { |copy| lines_in(copy) }.map { |line| "preview: #{line}" }
+          def call = Dir.mktmpdir("plastic-sync-preview", parent_dir) { |copy| lines_in(copy) }.map { |line| "preview: #{line}" }
 
           private
 
@@ -36,11 +38,15 @@ module Plastic
             end
           end
 
+          def parent_dir = File.directory?(@home) ? @home : Dir.tmpdir
+
           def lines_in(copy)
-            copy_source(copy)
+            twin = copy_source(copy)
             work = Graph.open(home: copy, store: @store).work
             plan = checked(work.sync_plan(@direction, options))
-            [*Preview.conflict_lines(plan), *work.sync_apply(plan)]
+            lines = [*Preview.conflict_lines(plan), *work.sync_apply(plan)]
+            changes = Changes.new(source, twin).call
+            [*lines, *changes, "paths that would change: #{changes.size}"]
           end
 
           def checked(plan)
@@ -53,7 +59,7 @@ module Plastic
           def copy_source(copy)
             check_source
             copy_home_files(copy)
-            copy_store(copy)
+            File.join(copy, "stores", @store).tap { |twin| Mirror.new(source, twin).call }
           end
 
           def copy_home_files(copy)
@@ -61,12 +67,6 @@ module Plastic
               path = File.join(@home, name)
               FileUtils.cp(path, copy) if File.file?(path)
             end
-          end
-
-          def copy_store(copy)
-            parent = File.join(copy, "stores")
-            FileUtils.mkdir_p(parent)
-            FileUtils.cp_r(source, File.join(parent, @store)) if File.directory?(source)
           end
         end
       end
