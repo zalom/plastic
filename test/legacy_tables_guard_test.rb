@@ -14,8 +14,10 @@ class LegacyTablesGuardTest < Minitest::Test
     plastic/graph/knowledge/reader/intent_file.rb
     plastic/graph/knowledge/archive/snapshot_index.rb
     plastic/graph/knowledge/legacy/store_import.rb
+    plastic/graph/knowledge/legacy/import_metadata.rb
     plastic/graph/knowledge/legacy_intents_data.rb
     plastic/graph/prints.rb
+    plastic/graph/prints/contents.rb
     plastic/graph/source.rb
     plastic/graph/retrieval/store_reads.rb
   ].map { |path| File.join(KERNEL, path) }.freeze

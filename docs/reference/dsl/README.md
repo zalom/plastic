@@ -143,7 +143,7 @@ A command page names only what its own call does. These three things hold for ev
 | --- | --- | --- |
 | Verify the wiring | Once per process, on the first call of the command. A fault in the wiring stops the call before any step runs. | [`routine.rb:54`](../../../lib/plastic/routine.rb#L54) |
 | Usage error | A missing or wrong argument prints the usage line and exits 2, before any workflow runs. | [`command.rb:26`](../../../lib/plastic/cli/command.rb#L26) |
-| The write lock | Each write to a database runs in one immediate transaction, so two calls never write one database at once. A second writer waits for the busy timeout. | [`connection_pool.rb:48`](../../../lib/plastic/graph/database/connection_pool.rb#L48) |
+| The write lock | Each write to a database runs in one immediate transaction, so two calls never write one database at once. A second writer waits for the busy timeout. | [`connection_pool.rb:38`](../../../lib/plastic/graph/database/connection_pool.rb#L38) |
 
 ---
 

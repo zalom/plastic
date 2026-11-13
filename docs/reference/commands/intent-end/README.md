@@ -154,14 +154,14 @@ In the words of workflow engines, the rows are these four parts:
 
 | Place | Database or file | Tables | Reads or writes | Code |
 | --- | --- | --- | --- | --- |
-| the store folder | knowledge_graph.db | `documents`, `links`, `rulings` | reads | [`end.rb:13`](../../../../lib/plastic/commands/intent/end.rb#L13) |
+| the store folder | knowledge_graph.db | `documents`, `links` | reads | [`end.rb:13`](../../../../lib/plastic/commands/intent/end.rb#L13) |
 | the home folder | local.db | `locks`, `sessions` | reads and writes | found in the code, not declared |
-| the store folder | work_graph.db | `completions`, `intents`, `nodes`, `verdicts` | reads and writes | [`end.rb:11`](../../../../lib/plastic/commands/intent/end.rb#L11) |
-| the store folder | store/index.json | | writes | [`prints.rb:14`](../../../../lib/plastic/graph/prints.rb#L14) |
-| the store folder | store/ID--SLUG/PATH | | writes | [`prints.rb:15`](../../../../lib/plastic/graph/prints.rb#L15) |
-| the store folder | store/ID--SLUG/savepoint.md | | writes | [`prints.rb:16`](../../../../lib/plastic/graph/prints.rb#L16) |
-| the store folder | store/ID--SLUG/graph.json | | writes | [`prints.rb:17`](../../../../lib/plastic/graph/prints.rb#L17) |
-| the store folder | store/ID--SLUG/context.json | | writes | [`prints.rb:18`](../../../../lib/plastic/graph/prints.rb#L18) |
+| the store folder | work_graph.db | `completions`, `edges`, `intents`, `nodes`, `roadmaps`, `verdicts` | reads and writes | [`end.rb:11`](../../../../lib/plastic/commands/intent/end.rb#L11) |
+| the store folder | store/index.json | | writes | [`prints.rb:17`](../../../../lib/plastic/graph/prints.rb#L17) |
+| the store folder | store/ID--SLUG/PATH | | writes | [`prints.rb:18`](../../../../lib/plastic/graph/prints.rb#L18) |
+| the store folder | store/ID--SLUG/savepoint.md | | writes | [`prints.rb:19`](../../../../lib/plastic/graph/prints.rb#L19) |
+| the store folder | store/ID--SLUG/graph.json | | writes | [`prints.rb:20`](../../../../lib/plastic/graph/prints.rb#L20) |
+| the store folder | store/ID--SLUG/context.json | | writes | [`prints.rb:21`](../../../../lib/plastic/graph/prints.rb#L21) |
 
 A second call runs the same rows again. A step runs again only when its done check fails.
 

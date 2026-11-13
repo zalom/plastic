@@ -97,11 +97,11 @@ In the words of workflow engines, the rows are these four parts:
 | --- | --- | --- | --- | --- |
 | the store folder | knowledge_graph.db | `documents`, `retrieval_contexts`, `retrieval_discoveries` | reads and writes | [`context.rb:12`](../../../../lib/plastic/commands/intent/context.rb#L12), [`context.rb:13`](../../../../lib/plastic/commands/intent/context.rb#L13) |
 | the store folder | work_graph.db | `intents` | reads and writes | [`context.rb:13`](../../../../lib/plastic/commands/intent/context.rb#L13) |
-| the store folder | store/index.json | | writes | [`prints.rb:14`](../../../../lib/plastic/graph/prints.rb#L14) |
-| the store folder | store/ID--SLUG/PATH | | writes | [`prints.rb:15`](../../../../lib/plastic/graph/prints.rb#L15) |
-| the store folder | store/ID--SLUG/savepoint.md | | writes | [`prints.rb:16`](../../../../lib/plastic/graph/prints.rb#L16) |
-| the store folder | store/ID--SLUG/graph.json | | writes | [`prints.rb:17`](../../../../lib/plastic/graph/prints.rb#L17) |
-| the store folder | store/ID--SLUG/context.json | | writes | [`prints.rb:18`](../../../../lib/plastic/graph/prints.rb#L18) |
+| the store folder | store/index.json | | writes | [`prints.rb:17`](../../../../lib/plastic/graph/prints.rb#L17) |
+| the store folder | store/ID--SLUG/PATH | | writes | [`prints.rb:18`](../../../../lib/plastic/graph/prints.rb#L18) |
+| the store folder | store/ID--SLUG/savepoint.md | | writes | [`prints.rb:19`](../../../../lib/plastic/graph/prints.rb#L19) |
+| the store folder | store/ID--SLUG/graph.json | | writes | [`prints.rb:20`](../../../../lib/plastic/graph/prints.rb#L20) |
+| the store folder | store/ID--SLUG/context.json | | writes | [`prints.rb:21`](../../../../lib/plastic/graph/prints.rb#L21) |
 
 ## How a call ends
 
