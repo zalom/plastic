@@ -17,8 +17,7 @@ module Plastic
           def initialize(folder, retrieval)
             @store = folder
             @rowed = retrieval.intents.to_h { |intent| [intent.intent_id, intent.dir] }
-            listed = listed_in(folder)
-            @folders = folder.intent_dirs.map { |dir| IntentFolder.new(dir, folder, listed[dir]) }
+            @folders = folders_in(folder)
           end
 
           # The intents of the folders that have no row and can be read.
@@ -41,10 +40,15 @@ module Plastic
 
           private
 
-          def listed_in(folder)
-            return {} unless folder.exist?(StoreFolder::INDEX)
+          def folders_in(folder)
+            listed = listed_in
+            folder.intent_dirs.map { |dir| IntentFolder.new(dir, folder, listed[dir]) }
+          end
 
-            entries = Array(JSON.parse(folder.read(StoreFolder::INDEX).force_encoding(Encoding::UTF_8))["intents"])
+          def listed_in
+            return {} unless @store.exist?(StoreFolder::INDEX)
+
+            entries = Array(JSON.parse(@store.read(StoreFolder::INDEX).force_encoding(Encoding::UTF_8))["intents"])
             entries.grep(Hash).to_h { |entry| ["store/#{entry["intent_id"]}--#{entry["slug"]}", entry] }
           rescue JSON::ParserError
             {}

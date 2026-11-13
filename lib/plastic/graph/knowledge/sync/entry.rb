@@ -29,7 +29,7 @@ module Plastic
 
           def rows_changed? = rows_sha && rows_sha != printed_sha && !bare_graph?
 
-          def bare_graph? = printed_sha.nil? && StoreFolder.graph_file?(path) && rows_sha == Prints.empty_graph_sha(path)
+          def bare_graph? = !printed_sha && StoreFolder.graph_file?(path) && rows_sha == Prints.empty_graph_sha(path)
 
           def conflict? = !level? && file_changed? && rows_changed?
 

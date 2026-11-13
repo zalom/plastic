@@ -33,6 +33,13 @@ class KnowledgeSyncPreviewChangesTest < Minitest::Test
     assert_equal ["would change store/a.md"], Changes.new(@source, @twin).call
   end
 
+  def test_a_folder_that_is_not_there_has_no_files_to_compare
+    put(@twin, "store/new.md", "new")
+    FileUtils.rm_rf(@source)
+
+    assert_equal ["would add store/new.md"], Changes.new(@source, @twin).call
+  end
+
   def test_a_hard_link_is_left_out_and_databases_are_never_listed
     put(@source, "store/a.md", "one")
     File.link(File.join(@source, "store/a.md"), File.join(@twin, "store/a.md"))

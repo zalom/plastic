@@ -105,6 +105,14 @@ class KnowledgeSyncPreviewTest < Plastic::TestCase
     assert_equal entries, Dir.children(@plastic_home).sort
   end
 
+  def test_a_home_that_is_not_a_folder_previews_an_empty_store_in_the_temporary_folder
+    missing = File.join(@plastic_home, "no-such-home")
+    lines = Plastic::Graph::Knowledge::Sync::Preview.new(missing, "global", {}).call
+
+    assert_match(/\Apreview: paths that would change: \d+\z/, lines.last)
+    refute File.exist?(missing)
+  end
+
   def test_a_symbolic_link_is_rejected_before_copying
     target = File.join(@plastic_home, "outside")
     File.write(target, "keep")

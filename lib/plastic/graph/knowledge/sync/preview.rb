@@ -12,6 +12,8 @@ module Plastic
   module Graph
     module Knowledge
       class Sync
+        # A dry run of a sync: the lines of what it would do, on a copy of the store.
+        # A dry run of a sync: the lines of what it would do, on a copy of the store.
         class Preview
           def initialize(home, store, options, direction: :up)
             @home, @store, @options, @direction = home, store, options, direction
@@ -43,11 +45,15 @@ module Plastic
 
           def lines_in(copy)
             twin = copy_source(copy)
+            applied = applied_in(copy)
+            changes = Changes.new(source, twin).call
+            [*applied, *changes, "paths that would change: #{changes.size}"]
+          end
+
+          def applied_in(copy)
             work = Graph.open(home: copy, store: @store).work
             plan = checked(work.sync_plan(@direction, options))
-            lines = [*Preview.conflict_lines(plan), *work.sync_apply(plan, rollback: Legacy::Unguarded)]
-            changes = Changes.new(source, twin).call
-            [*lines, *changes, "paths that would change: #{changes.size}"]
+            [*Preview.conflict_lines(plan), *work.sync_apply(plan, rollback: Legacy::Unguarded)]
           end
 
           def checked(plan)

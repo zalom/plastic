@@ -1,29 +1,23 @@
 # frozen_string_literal: true
 
-require "find"
 require "fileutils"
-require_relative "mirror"
+require_relative "tree"
 
 module Plastic
   module Graph
     module Knowledge
       class Sync
         class Preview
+          # The paths a preview would add, remove or change, by comparing the store with its twin.
           class Changes
             def initialize(source, twin)
               @source = source
               @twin = twin
             end
 
-            def call = (files(@source) | files(@twin)).sort.filter_map { |rel| line(rel) }
+            def call = (Tree.new(@source).files | Tree.new(@twin).files).sort.filter_map { |rel| line(rel) }
 
             private
-
-            def files(root)
-              return [] unless File.directory?(root)
-
-              Find.find(root).select { |path| File.file?(path) && !path.match?(Mirror::DATABASE) && !path.match?(Mirror::SIDECAR) }.map { |path| path.delete_prefix("#{root}/") }
-            end
 
             def line(rel)
               before = File.file?(File.join(@source, rel))

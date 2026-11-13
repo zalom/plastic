@@ -9,6 +9,7 @@ module Plastic
     module Knowledge
       class Sync
         class Preview
+          # Copies a store folder into a twin: hard links for files, vacuumed copies for databases.
           class Mirror
             DATABASE = /\.db\z/
             SIDECAR = /\.db-(?:wal|shm|journal)\z/
@@ -26,22 +27,21 @@ module Plastic
             private
 
             def place(path)
-              target = File.join(@target, path.delete_prefix("#{@source}/"))
-              return FileUtils.mkdir_p(target) if File.directory?(path)
+              return FileUtils.mkdir_p(mirrored(path)) if File.directory?(path)
 
-              if path.match?(DATABASE) then vacuum(path, target)
-              elsif !path.match?(SIDECAR) then link(path, target)
+              if path.match?(DATABASE) then vacuum(path)
+              elsif !path.match?(SIDECAR) then link(path)
               end
             end
 
-            def vacuum(path, target)
-              database = SQLite3::Database.new(path, readonly: true)
-              database.execute("VACUUM INTO ?", [target])
-            ensure
-              database&.close
+            def mirrored(path) = File.join(@target, path.delete_prefix("#{@source}/"))
+
+            def vacuum(path)
+              SQLite3::Database.new(path, readonly: true) { |database| database.execute("VACUUM INTO ?", [mirrored(path)]) }
             end
 
-            def link(path, target)
+            def link(path)
+              target = mirrored(path)
               File.link(path, target)
             rescue SystemCallError
               FileUtils.cp(path, target)
