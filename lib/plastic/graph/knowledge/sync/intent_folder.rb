@@ -36,7 +36,6 @@ module Plastic
             "#{dir}: its number #{number} is also the number of #{twins.map(&:dir).join(", ")}" if twins.any?
           end
 
-          # The row of the store/index.json entry that names this folder, else the row its own file gives.
           def intent
             return Intent.from_h(Reader::IndexFile.intent_row(@listed)) if @listed
 

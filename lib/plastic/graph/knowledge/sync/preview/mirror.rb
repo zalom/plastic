@@ -9,10 +9,6 @@ module Plastic
     module Knowledge
       class Sync
         class Preview
-          # A disposable twin of one store folder: each database is taken with
-          # VACUUM INTO, every other file is a hard link to the original, or a
-          # copy where a link is impossible. The sync code only ever replaces
-          # a file with a new one, so a link never changes the original.
           class Mirror
             DATABASE = /\.db\z/
             SIDECAR = /\.db-(?:wal|shm|journal)\z/

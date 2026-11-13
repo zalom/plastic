@@ -106,7 +106,6 @@ module Plastic
         "#{JSON.pretty_generate(data)}\n"
       end
 
-      # The hash of the graph file of an intent that holds no node, edge, approval or verdict.
       def empty_graph_sha(path)
         id = File.basename(File.dirname(path)).split("--", 2).first
         Digest::SHA256.hexdigest(graph_text(id, nil, [], [], []))

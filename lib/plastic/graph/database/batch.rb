@@ -6,12 +6,7 @@ require_relative "../schema"
 module Plastic
   module Graph
     class Database
-      # One statement list. Each statement keeps its text and its values apart;
-      # a counted write also names its table, so the count is read from the
-      # write itself. In a store database every put and remove also appends
-      # its `changes` row here, so the log commits with the write or not at all.
       class Batch
-        # `table` is nil for a statement kept off the report.
         Entry = Data.define(:sql, :values, :table)
 
         attr_reader :statements

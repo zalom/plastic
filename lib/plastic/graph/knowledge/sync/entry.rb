@@ -19,7 +19,6 @@ module Plastic
 
           def rows_sha = print.sha256
 
-          # A path a sync up never reads: the generated context view, and the
           # index, which the rows print again after a read.
           def generated? = StoreFolder.context_view?(path) || path == StoreFolder::INDEX
 
@@ -30,8 +29,6 @@ module Plastic
 
           def rows_changed? = rows_sha && rows_sha != printed_sha && !bare_graph?
 
-          # A graph file whose rows hold nothing and were never printed: the
-          # rows of a home that has not read the file yet, not a change.
           def bare_graph? = printed_sha.nil? && StoreFolder.graph_file?(path) && rows_sha == Prints.empty_graph_sha(path)
 
           def conflict? = !level? && file_changed? && rows_changed?

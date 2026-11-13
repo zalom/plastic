@@ -11,9 +11,6 @@ module Plastic
   module Graph
     module Knowledge
       class Reader
-        # The graph.json of one intent folder: the approval, the verdicts, the
-        # nodes and the edges. A read replaces the rows of the intent under the
-        # local origin; a file that holds a problem writes none.
         class GraphFile
           TABLES = {
             approvals: Work::Approval, verdicts: Work::Verdict, nodes: Work::Node, edges: Work::Edge
@@ -26,7 +23,6 @@ module Plastic
             @path = path
           end
 
-          # One sentence for each reason the file cannot be read.
           def problems
             reasons = data ? [*intent_problems, *approval_problems, *node_problems, *edge_problems, *verdict_problems, *field_problems] : ["is not valid JSON: #{@parse_error}"]
             reasons.map { |reason| "#{@path} #{reason}" }

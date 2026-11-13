@@ -12,7 +12,6 @@ module Plastic
   module Graph
     module Knowledge
       class Sync
-        # Runs the real sync against a disposable twin of one store, then names the files it would write.
         class Preview
           def initialize(home, store, options, direction: :up)
             @home, @store, @options, @direction = home, store, options, direction

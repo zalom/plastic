@@ -9,7 +9,6 @@ module Plastic
     module Knowledge
       class Sync
         class Preview
-          # The files a run left different in the twin of a store, path by path.
           class Changes
             def initialize(source, twin)
               @source = source

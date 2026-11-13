@@ -11,8 +11,6 @@ module Plastic
   module Graph
     module Knowledge
       module Legacy
-        # Finds every problem of a legacy store before anything is written, and
-        # raises one error that names them all.
         class Check
           Failed = Class.new(Invalid)
 

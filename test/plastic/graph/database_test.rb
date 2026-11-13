@@ -130,13 +130,17 @@ class DatabaseTest < Plastic::TestCase
   end
 end
 
-class DatabaseBindingTest < Plastic::TestCase
-  Database = Plastic::Graph::Database
-  SQL = Plastic::Graph::SQL
-
+module NoteHelpers
   def note(value) = database.transaction { |batch| batch.add("INSERT INTO notes(name) VALUES (:name)", name: value) }
 
   def stored = database.rows("SELECT name, typeof(name) AS kind FROM notes ORDER BY rowid").map(&:values)
+end
+
+class DatabaseBindingTest < Plastic::TestCase
+  include NoteHelpers
+
+  Database = Plastic::Graph::Database
+  SQL = Plastic::Graph::SQL
 
   def test_awkward_text_round_trips
     values = ["it's \"quoted\"", "a\0b", "one\ntwo", "see :id and :intent_id", "日本語 текст"]
@@ -186,6 +190,21 @@ class DatabaseBindingTest < Plastic::TestCase
 
     assert_empty stored
   end
+
+  def test_a_list_of_three_ids_finds_all_three_with_named_placeholders_only
+    %w[a b c d].each { |value| note(value) }
+    list = SQL.list(%w[a c d], "f")
+
+    found = database.rows("SELECT name FROM notes WHERE name IN (#{list.sql}) ORDER BY name", **list.values)
+
+    assert_equal %w[a c d], found.map { |row| row["name"] }
+  end
+end
+
+class DatabaseRollbackTest < Plastic::TestCase
+  include NoteHelpers
+
+  Database = Plastic::Graph::Database
 
   def test_rows_refuses_text_that_holds_two_statements
     error = assert_raises(Plastic::Invalid) { database.rows("INSERT INTO notes(name) VALUES ('a'); INSERT INTO notes(name) VALUES ('b')") }
@@ -271,15 +290,6 @@ class DatabaseBindingTest < Plastic::TestCase
 
     assert_equal ["before"], stored.map(&:first)
     connection.rollback
-  end
-
-  def test_a_list_of_three_ids_finds_all_three_with_named_placeholders_only
-    %w[a b c d].each { |value| note(value) }
-    list = SQL.list(%w[a c d], "f")
-
-    found = database.rows("SELECT name FROM notes WHERE name IN (#{list.sql}) ORDER BY name", **list.values)
-
-    assert_equal %w[a c d], found.map { |row| row["name"] }
   end
 end
 

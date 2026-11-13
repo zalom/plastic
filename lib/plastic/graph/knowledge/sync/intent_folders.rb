@@ -41,7 +41,6 @@ module Plastic
 
           private
 
-          # The entries of store/index.json by the folder each names, or none when the file is missing or unreadable.
           def listed_in(folder)
             return {} unless folder.exist?(StoreFolder::INDEX)
 

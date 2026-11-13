@@ -93,8 +93,6 @@ module Plastic
 
       def commit(batch) = connected { |connection| connection.atomically { run(connection, batch) } }
 
-      # Runs each entry with its own values bound. A counted write adds the
-      # rows it changed to the count; the rows a statement gives back are returned.
       def run(connection, batch)
         batch.statements.filter_map do |entry|
           rows = connection.read(entry.sql, entry.values)

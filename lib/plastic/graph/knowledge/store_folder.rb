@@ -55,7 +55,6 @@ module Plastic
         FRONT_MATTER = /\A---\n(.*?)\n---/m
         FIELD = /^(\w+):[ \t]*"?([^"\n]*?)"?[ \t]*$/
 
-        # The fields at the head of the intent's own file, or none.
         def front_matter(dir)
           file = own_file(dir)
           text = exist?(file) ? read(file).force_encoding(Encoding::UTF_8) : ""
@@ -64,7 +63,6 @@ module Plastic
 
         def intent_dirs = Dir.glob("store/*--*/", base: root).map { |dir| dir.chomp("/") }.sort
 
-        # The context view is generated from the saved discovery and context rows.
         def self.context_view?(path) = path.match?(%r{\Astore/[^/]+/context\.json\z})
 
         def self.graph_file?(path) = path.match?(%r{\Astore/[^/]+/graph\.json\z})
