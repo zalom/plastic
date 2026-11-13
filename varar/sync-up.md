@@ -1,7 +1,9 @@
 # plastic sync up
 
 `plastic sync up` reads the files of a store that changed by hand into rows. A file that did not
-change is left alone. The generated graph.json view is never imported, and a call that cannot read stops before any row changes. Each row starts
+change is left alone. A graph.json is read into rows when the rows hold no graph for its intent; a
+graph.json that does not check is refused with its problems, and a later difference between the file and
+the rows follows the conflict rule. A call that cannot read stops before any row changes. Each row starts
 from intent 1, Alpha, whose `spec.md` the rows already hold, makes one change by hand, then
 calls `plastic sync up` through the storage kernel's command line.
 
@@ -11,7 +13,8 @@ Each row gives the change, the exit code, the result and the rows:
 | ------------------------------- | ---: | ---------------------------------------------------------------------------------------------- | -------------------- |
 | none                            |    0 | none                                                                                           | # Spec               |
 | spec.md edited                  |    0 | read store/1--alpha/spec.md                                                                    | # Spec, edited       |
-| graph.json given a node | 0 | none | |
+| graph.json given a node | 0 | none | n1 needs n2 |
+| graph.json that does not check | 1 | store/1--alpha/graph.json names no intent, not 1; store/1--alpha/graph.json holds node "n1" with no state; store/1--alpha/graph.json holds an edge to "n2", which is no node it holds | |
 | title renamed in index.json | 0 | none | Alpha |
 | cluster added in index.json | 0 | none | |
 | savepoint.md emptied            |    0 | read store/1--alpha/savepoint.md                                                               | 0 savepoint lines    |

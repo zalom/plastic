@@ -16,14 +16,20 @@ module SyncUpAcceptance
     kernel.write("store/index.json", JSON.generate(data.merge("clusters" => clusters)))
   end
 
-  GRAPH = { "nodes" => [{ "id" => "n1", "kind" => "build" }], "edges" => [{ "from" => "n1", "to" => "n2", "kind" => "needs" }] }.freeze
+  GRAPH = {
+    "intent" => "1",
+    "nodes" => [{ "id" => "n1", "kind" => "build", "state" => "open" }, { "id" => "n2", "kind" => "build", "state" => "open" }],
+    "edges" => [{ "from" => "n1", "to" => "n2", "kind" => "needs" }]
+  }.freeze
+  BROKEN_GRAPH = { "nodes" => [{ "id" => "n1", "kind" => "build" }], "edges" => [{ "from" => "n1", "to" => "n2", "kind" => "needs" }] }.freeze
+  EDGES = "SELECT \"from\" || ' needs ' || \"to\" FROM edges"
 
   # Each change: what it does by hand, then the database and the query that show the rows after the call.
   CHANGES = {
     "none" => [->(_kernel) {}, "knowledge_graph.db", SPEC],
     "spec.md edited" => [->(kernel) { kernel.write("store/1--alpha/spec.md", "# Spec, edited\n") }, "knowledge_graph.db", SPEC],
-    "graph.json given a node" => [->(kernel) { kernel.write("store/1--alpha/graph.json", JSON.generate(GRAPH)) }, "work_graph.db",
-      "SELECT \"from\" || ' needs ' || \"to\" FROM edges"],
+    "graph.json given a node" => [->(kernel) { kernel.write("store/1--alpha/graph.json", JSON.generate(GRAPH)) }, "work_graph.db", EDGES],
+    "graph.json that does not check" => [->(kernel) { kernel.write("store/1--alpha/graph.json", JSON.generate(BROKEN_GRAPH)) }, "work_graph.db", EDGES],
     "title renamed in index.json" => [->(kernel) { edit_index(kernel) { |entry| entry.merge("title" => "Alpha, renamed") } },
       "work_graph.db", TITLE],
     "cluster added in index.json" => [->(kernel) { edit_index(kernel, clusters: [{ "name" => "Core", "intents" => ["1"] }], &:itself) },
