@@ -21,7 +21,7 @@ module Plastic
 
             def intent_problems
               named = @document["intent"]
-              (named == @intent_id) ? [] : ["names #{Wording.of(named, "no intent") { |intent| "intent #{intent.inspect}" }}, not #{@intent_id}"]
+              (named == @intent_id) ? [] : ["names #{Wording.intent(named)}, not #{@intent_id}"]
             end
 
             def approval_problems
@@ -35,12 +35,12 @@ module Plastic
 
             def state_problems(nodes)
               unknown = nodes.map { |node| node.values_at("id", "state") }.reject { |_id, state| Work::Node::STATES.include?(state) }
-              unknown.map { |id, state| "holds node #{id.inspect} #{Wording.of(state, "with no state") { |named| "in the unknown state #{named.inspect}" }}" }
+              unknown.map { |id, state| "holds node #{id.inspect} #{Wording.state(state)}" }
             end
 
             def edge_problems
               ends = @document.listed("edges").flat_map { |edge| edge.is_a?(Hash) ? edge.values_at("from", "to") : [edge] }
-              (ends - @document.node_ids).uniq.map { |name| "holds an edge #{Wording.of(name, "with no end") { |end_name| "to #{end_name.inspect}, which is no node it holds" }}" }
+              (ends - @document.node_ids).uniq.map { |name| "holds an edge #{Wording.edge(name)}" }
             end
 
             def verdict_problems
