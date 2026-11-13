@@ -10,14 +10,23 @@ module Plastic
         module Listing
           MAX = 10
 
-          module_function
-
-          def of(intents)
-            members = intents.group_by(&:group)
-            GROUPS.keys.filter_map { |name| window(name, members[name]) if members[name] }
+          # One group: its name, the intents shown and the count left out.
+          Group = Data.define(:name, :shown, :rest) do
+            def pairs(&) = [*shown.map(&), *("and #{rest} more" if rest.positive?)].map { |text| [name, text] }
           end
 
-          def window(name, members) = [name, members.first(MAX), [members.size - MAX, 0].max]
+          module_function
+
+          def group_of(status) = GROUPS.find { |_name, states| states.include?(status) }.first
+
+          def of(intents)
+            members = intents.group_by { |intent| group_of(intent.status) }
+            GROUPS.keys.filter_map { |name| window(name, members.fetch(name, [])) }
+          end
+
+          def lines(intents, &) = of(intents).flat_map { |group| group.pairs(&) }
+
+          def window(name, members) = (Group.new(name, members.first(MAX), [members.size - MAX, 0].max) if members.any?)
         end
       end
     end

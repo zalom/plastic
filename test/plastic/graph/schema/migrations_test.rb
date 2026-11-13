@@ -131,6 +131,14 @@ class SchemaIntentStatesMigrationTest < Minitest::Test
     assert_equal 9, @database.get_first_value("SELECT id FROM intents WHERE intent_id = '9'")
   end
 
+  def test_a_table_with_neither_the_old_word_nor_the_reason_is_rebuilt
+    @database.execute("DROP TABLE intents")
+    @database.execute(OLD_INTENTS.sub("'open', 'active',", "'open', 'in_progress',"))
+    prepare
+
+    assert_includes @database.execute("PRAGMA table_info(intents)").map { |column| column[1] }, "reason"
+  end
+
   def test_a_second_prepare_rebuilds_nothing
     prepare
     before = @connection.transactions

@@ -22,6 +22,16 @@ module Plastic
         INSERT INTO sqlite_sequence (name, seq) SELECT 'intents', seq FROM sqlite_sequence WHERE name = 'intents_legacy';
       SQL
 
+      # Whether the intents table still has the old word for work under way or no reason column.
+      module IntentsTable
+        SQL = "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'intents'"
+        OUTDATED = /'active'|\A(?!.*"reason")/m
+
+        module_function
+
+        def outdated?(connection) = connection.get_first_value(SQL)&.match?(OUTDATED)
+      end
+
       def migrate_revision_membership(connection)
         sql = connection.get_first_value("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'document_revisions'")
         return unless sql&.include?('UNIQUE("sha256", "origin_id")')
@@ -44,20 +54,11 @@ module Plastic
         SQL
       end
 
-      def migrate_intent_states(connection) = (connection.transaction(:immediate) { swap_outdated(connection) } if outdated_intents?(connection))
+      def migrate_intent_states(connection) = (connection.transaction(:immediate) { swap_outdated(connection) } if IntentsTable.outdated?(connection))
 
       private
 
-      def swap_outdated(connection) = (run_swap(connection, :intents, INTENT_STATES_COPY) if outdated_intents?(connection))
-
-      def outdated_intents?(connection)
-        sql = intents_sql(connection)
-        return false unless sql
-
-        sql.include?("'active'") || !sql.include?('"reason"')
-      end
-
-      def intents_sql(connection) = connection.get_first_value("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'intents'")
+      def swap_outdated(connection) = (run_swap(connection, :intents, INTENT_STATES_COPY) if IntentsTable.outdated?(connection))
 
       def replace_legacy_table(connection, table, copy_sql) = connection.transaction(:immediate) { run_swap(connection, table, copy_sql) }
 

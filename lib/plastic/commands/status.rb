@@ -38,17 +38,10 @@ module Plastic
         [[["store:", "#{slug} has no store folder; run #{command}"]], (command if scope.requested?)]
       end
 
-      def group_rows(retrieval) = Plastic::Graph::Knowledge::Intent::Listing.of(retrieval.intents).flat_map { |group| group_lines(retrieval, group) }
-
-      def group_lines(retrieval, group)
-        name, shown, rest = group
-        rows = shown.map { |intent| Plastic::Graph::Work::IntentRow.new(retrieval, intent).to_a.join(", ") }
-        [*rows, *("and #{rest} more" if rest.positive?)].map { |text| ["#{name}:", text] }
-      end
-
       def show_store(slug)
         retrieval = Plastic::Graph.open(home: scope.plastic_home, store: slug).retrieval
-        [["store:", slug], *group_rows(retrieval)]
+        rows = Plastic::Graph::Knowledge::Intent::Listing.lines(retrieval.intents) { |intent| Plastic::Graph::Work::IntentRow.new(retrieval, intent).to_a.join(", ") }
+        [["store:", slug], *rows.map { |name, text| ["#{name}:", text] }]
       end
     end
   end

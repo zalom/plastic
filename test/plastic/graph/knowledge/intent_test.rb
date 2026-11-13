@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../../test_helper"
+require_relative "../../../../lib/plastic/graph/knowledge/intent/listing"
 
 class KnowledgeIntentTest < Plastic::TestCase
   Intent = Plastic::Graph::Knowledge::Intent
@@ -79,7 +80,7 @@ class KnowledgeIntentTest < Plastic::TestCase
   end
 
   def test_each_state_belongs_to_exactly_one_group
-    groups = Intent::STATUSES.to_h { |status| [status, intent(status:).group] }
+    groups = Intent::STATUSES.to_h { |status| [status, Intent::Listing.group_of(status)] }
 
     assert_equal({ "open" => "active", "in_progress" => "active", "parked" => "active", "future" => "future",
                    "done" => "finished", "abandoned" => "finished" }, groups)

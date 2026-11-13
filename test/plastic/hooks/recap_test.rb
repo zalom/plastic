@@ -95,8 +95,8 @@ class RecapTest < Plastic::TestCase
 
     lines = recap
 
-    assert_equal 10, lines.grep(/\Aactive: /).size
-    assert_includes lines, "and 2 more"
+    assert_equal 10, lines.grep(/\Aactive: \d/).size
+    assert_includes lines, "active: and 2 more"
   end
 
   def test_a_resumed_session_says_so

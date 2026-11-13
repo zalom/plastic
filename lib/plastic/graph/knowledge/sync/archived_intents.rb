@@ -21,6 +21,12 @@ module Plastic
             def archive_row = { intent_id:, at: fields["at"], restored_at: nil, session_id: fields["session_id"] }
 
             def completion_rows = [fields["completion"]].grep(Hash).map { |hash| Work::CompletionRow.stored(hash, intent_id) }
+
+            def put_all(batch)
+              batch.put(:intents, intent_row)
+              batch.put(:archives, archive_row)
+              completion_rows.each { |row| batch.put(:completions, row) }
+            end
           end
 
           def initialize(folder, retrieval)
@@ -43,10 +49,7 @@ module Plastic
           def write_all(batch, marks) = marks.each { |mark| write(batch, mark) }
 
           def write(batch, mark)
-            found = Mark.new(mark, entries.fetch(mark["intent_id"]))
-            batch.put(:intents, found.intent_row)
-            batch.put(:archives, found.archive_row)
-            found.completion_rows.each { |row| batch.put(:completions, row) }
+            Mark.new(mark, entries.fetch(mark["intent_id"])).put_all(batch)
           end
 
           def archives = Array(data["archives"]).grep(Hash).select { |mark| entries.key?(mark["intent_id"]) }

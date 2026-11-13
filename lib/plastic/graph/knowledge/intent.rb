@@ -29,9 +29,6 @@ module Plastic
         # Done or abandoned: the work is over.
         def closed? = GROUPS.fetch("finished").include?(status)
 
-        # The group the status belongs to: active, future or finished.
-        def group = GROUPS.find { |_name, states| states.include?(status) }.first
-
         # Why the intent cannot archive, or nil when its status allows it.
         def archive_refusal
           return if ARCHIVABLE.include?(status)

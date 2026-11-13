@@ -32,11 +32,9 @@ module Plastic
         FIRST_LINES.fetch(@source) { "Plastic: a new session in store #{@retrieval.store}. Run plastic next before anything else." }
       end
 
-      def open_intent_lines = Graph::Knowledge::Intent::Listing.of(@retrieval.intents).flat_map { |group| group_lines(group) }
-
-      def group_lines(group)
-        name, shown, rest = group
-        [*shown.map { |intent| "#{name}: #{intent.heading}#{last_run(intent.intent_id)}" }, *("and #{rest} more" if rest.positive?)]
+      def open_intent_lines
+        Graph::Knowledge::Intent::Listing.lines(@retrieval.intents) { |intent| "#{intent.heading}#{last_run(intent.intent_id)}" }
+          .map { |name, text| "#{name}: #{text}" }
       end
 
       def last_run(intent_id)
