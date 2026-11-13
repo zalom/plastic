@@ -31,7 +31,7 @@ outer one. With neither, the global store answers.
 
 | Command | Result |
 | ------- | ------ |
-| `plastic status` | Active work in every store. |
+| `plastic status` | The work of every store, by group. |
 | `plastic graph resume [--stores a,b]` | Where each named project's work stopped, and what runs next. |
 | `plastic next` | The next action in one line. `--why` adds the rule behind it. |
 | `plastic project list` | The registered projects with their paths, and `(no store)` for one whose store folder is missing. |
@@ -46,7 +46,7 @@ intent instead.
 
 | Command | Result |
 | ------- | ------ |
-| `plastic auto ID` | Takes the delivery lock of one intent for this session, sets it active, and prints its code worktree and branch. The agent makes the worktree at the printed path on the printed branch. Given a roadmap slug, it arms the first item in flight, or names `plastic roadmap open SLUG ITEM` for the first ready item. |
+| `plastic auto ID` | Takes the delivery lock of one intent for this session, sets it in progress, and prints its code worktree and branch. The agent makes the worktree at the printed path on the printed branch. Given a roadmap slug, it arms the first item in flight, or names `plastic roadmap open SLUG ITEM` for the first ready item. |
 | `plastic intent lock status ID` | The session that holds the intent's lock, its mode, when it was taken and renewed, whether it is live or expired and why, and the code worktree. |
 
 `plastic auto` takes exactly one id and runs no version control command: it prints the

@@ -6,7 +6,7 @@
 | ------- | ------------ |
 | `plastic help [COMMAND\|TOPIC] [--json]` | Lists the commands and the help topics, shows one command's usage, or prints one topic. |
 | `plastic version` | Prints the installed Plastic version and its release channel. |
-| `plastic status` | Lists every store's open and active intents, with node counts by state. |
+| `plastic status` | Lists every store's intents in the groups active, future and finished, with node counts by state. |
 | `plastic next` | Picks the intent in play and offers its next command. |
 | `plastic doctor [--harness NAME]` | Checks the installation, the databases and the hooks of this harness, and names each repair. |
 | `plastic init [ANSWER]` | Lists the agent harnesses found on this machine and installs Plastic into each one you pick. |

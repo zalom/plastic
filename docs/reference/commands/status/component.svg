@@ -76,9 +76,11 @@
 <rect x="16" y="34" width="140" height="40" rx="6" class="lane-code"/>
 <text x="26" y="58" class="tm" text-anchor="start">plastic status</text>
 <rect x="336" y="34" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="52" class="tm" text-anchor="start">Work::IntentRow</text>
+<text x="344" y="52" class="tm" text-anchor="start">Knowledge::Intent</text>
 <rect x="336" y="68" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="86" class="tm" text-anchor="start">Node::Counts</text>
+<text x="344" y="86" class="tm" text-anchor="start">Work::IntentRow</text>
+<rect x="336" y="102" width="196" height="28" rx="6" class="card"/>
+<text x="344" y="120" class="tm" text-anchor="start">Node::Counts</text>
 <rect x="556" y="34" width="186" height="60" rx="14" class="db"/>
 <text x="568" y="52" class="tb" text-anchor="start">work_graph.db</text>
 <text x="568" y="68" class="tm" text-anchor="start">intents  R</text>

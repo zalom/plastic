@@ -18,7 +18,7 @@ Each page explains one plastic command in five sections: Components, The events 
 | [`plastic rollback`](rollback/README.md) | Switch the active release back to the previous one or to a named installed one |
 | [`plastic uninstall`](uninstall/README.md) | Remove Plastic from agents and keep the home |
 | [`plastic auto`](auto/README.md) | Deliver one intent or one roadmap in auto mode: take the lock and print the worktree |
-| [`plastic status`](status/README.md) | List every store's open and active intents, with node counts by state |
+| [`plastic status`](status/README.md) | List every store's intents by group, with node counts by state |
 | [`plastic next`](next/README.md) | Pick the intent in play and offer its next command |
 | [`plastic search`](search/README.md) | Search literal indexed passages across selected stores |
 

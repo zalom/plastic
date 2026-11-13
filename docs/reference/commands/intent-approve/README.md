@@ -22,7 +22,7 @@ The figure shows the command, the workflows it runs, the classes behind them, an
 
 The call starts the workflow `Code::Intent::Approve`, in [`approve.rb:11`](../../../../lib/plastic/workflows/code/intent/approve.rb#L11).
 
-Writes the go-ahead row of an open or active intent. A second call changes nothing.
+Writes the go-ahead row of an open or in progress intent. A second call changes nothing.
 
 ![How Code::Intent::Approve runs: its steps, where it stops, and its outcomes](code_approve_intent.svg)
 

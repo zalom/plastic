@@ -56,7 +56,9 @@ at the home and is made on first use. Every stored time is UTC.
 
 An intent row has its number in `id`, its Luhmann id in `intent_id`, the Luhmann id of its
 parent in `parent_id`, and an optional `ref` to an intent it follows. Its status is one of six:
-open, active, parked, future, done or abandoned.
+open, in_progress, parked, future, done or abandoned. The states fall in three groups: active
+(open, in_progress and parked), future, and finished (done and abandoned). A parked intent holds the
+`reason` it waits.
 
 ## The components of the kernel
 
@@ -167,7 +169,7 @@ text that Plastic prints in the planning hand-off.
 
 ![What each delivery step does to the three graphs. A matrix of the steps against the work, knowledge and retrieval graphs and the files, marking each as a write, a read or a print.](figures/delivery-graphs.svg)
 
-`plastic auto ID` takes the delivery lock and sets the intent active. It refuses with exit 3 for
+`plastic auto ID` takes the delivery lock and sets the intent in progress. It refuses with exit 3 for
 an open decision, a missing go-ahead, and a live lock held by another session. The lock is one
 row of `local.db`, keyed by the store and the intent, and it names the session. A lock is live
 until its session ends, while it was renewed within 1800 seconds, or while its session holds a

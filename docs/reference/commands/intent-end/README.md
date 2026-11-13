@@ -42,7 +42,7 @@ Its rows run in this order:
 
 1. Read: read the intent. [`prepare.rb:20`](../../../../lib/plastic/workflows/code/intent/end/prepare.rb#L20)
 2. Gate: passes when `!context.intent.nil?`; otherwise the call stops with exit 1 and prints no intent INTENT_ID in this store. [`prepare.rb:25`](../../../../lib/plastic/workflows/code/intent/end/prepare.rb#L25)
-3. Gate: passes when `context.closed || %w[open active].include?(context.intent.status)`; otherwise the call stops with exit 1 and prints intent INTENT_ID is not open or active. [`prepare.rb:26`](../../../../lib/plastic/workflows/code/intent/end/prepare.rb#L26)
+3. Gate: passes when `context.closed || Plastic::Graph::Knowledge::Intent::OPEN.include?(context.intent.status)`; otherwise the call stops with exit 1 and prints intent INTENT_ID is not open or in progress. [`prepare.rb:26`](../../../../lib/plastic/workflows/code/intent/end/prepare.rb#L26)
 4. Read: check delivery ownership. [`prepare.rb:29`](../../../../lib/plastic/workflows/code/intent/end/prepare.rb#L29)
 5. Gate: passes when `context.problem.nil?`; otherwise the call stops with exit 3 and prints PROBLEM. [`prepare.rb:33`](../../../../lib/plastic/workflows/code/intent/end/prepare.rb#L33)
 6. Read: check the completion records. [`prepare.rb:35`](../../../../lib/plastic/workflows/code/intent/end/prepare.rb#L35)
@@ -181,7 +181,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
 | no intent INTENT_ID in this store | 1 | prints no next: line | [`prepare.rb:25`](../../../../lib/plastic/workflows/code/intent/end/prepare.rb#L25) |
-| intent INTENT_ID is not open or active | 1 | prints no next: line | [`prepare.rb:26`](../../../../lib/plastic/workflows/code/intent/end/prepare.rb#L26) |
+| intent INTENT_ID is not open or in progress | 1 | prints no next: line | [`prepare.rb:26`](../../../../lib/plastic/workflows/code/intent/end/prepare.rb#L26) |
 | PROBLEM | 3 | prints no next: line | [`prepare.rb:33`](../../../../lib/plastic/workflows/code/intent/end/prepare.rb#L33) |
 | the judge's review round of intent INTENT_ID is used; the owner decides between abandoning the intent and a follow-up intent | 3 | prints no next: line | [`prepare.rb:77`](../../../../lib/plastic/workflows/code/intent/end/prepare.rb#L77) |
 | the pull request of intent INTENT_ID waits for the person's approval; add the line Approved: to the Verification section of outcome.md once they approve, then run plastic sync up | 3 | prints no next: line | [`prepare.rb:79`](../../../../lib/plastic/workflows/code/intent/end/prepare.rb#L79) |

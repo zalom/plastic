@@ -17,7 +17,7 @@
 **An unknown project.** `--project SLUG` takes a slug from `~/.plastic/projects.yml`. The
 command exits with code 2.
 
-**`plastic status` shows no work.** No store has an active intent. The result ends with
+**`plastic status` shows no work.** No store has an intent in the active group. The result ends with
 `next: plastic next`.
 
 **Ruby is too old.** See "A clean Mac" in [INSTALL.md](../../../INSTALL.md).

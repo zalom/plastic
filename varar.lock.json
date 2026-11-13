@@ -10,7 +10,7 @@
       "examples": []
     },
     "varar/auto.md": {
-      "sourceHash": "fnv1a:6b004671",
+      "sourceHash": "fnv1a:06de93ed",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -144,7 +144,7 @@
       ]
     },
     "varar/graph-resume.md": {
-      "sourceHash": "fnv1a:a35c198f",
+      "sourceHash": "fnv1a:f538dcfa",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -241,7 +241,7 @@
       "examples": []
     },
     "varar/intent-end.md": {
-      "sourceHash": "fnv1a:5dd41c02",
+      "sourceHash": "fnv1a:1d287f0c",
       "examples": [
         {
           "name": "The rows below use a disposable fixture with one verified node and outcome. Each row gives the closure case, the exit code, the status, the completion records and the next line:",
@@ -277,7 +277,7 @@
       ]
     },
     "varar/intent-new.md": {
-      "sourceHash": "fnv1a:8689a37f",
+      "sourceHash": "fnv1a:97aaca31",
       "examples": [
         {
           "name": "Each row gives the store, the call, the exit code, the index, the files and what it says:",
@@ -367,7 +367,7 @@
       ]
     },
     "varar/legacy-import.md": {
-      "sourceHash": "fnv1a:ec39994b",
+      "sourceHash": "fnv1a:fec59191",
       "examples": [
         {
           "name": "Each row gives the fixture, the call, the exit code, the result, the intents and the files of 1:",
@@ -600,7 +600,7 @@
       ]
     },
     "varar/status.md": {
-      "sourceHash": "fnv1a:89827b00",
+      "sourceHash": "fnv1a:c724eed8",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
