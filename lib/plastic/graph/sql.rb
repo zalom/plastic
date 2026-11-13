@@ -1,47 +1,23 @@
 # frozen_string_literal: true
 
 require "json"
+require_relative "../invalid"
 
 module Plastic
   module Graph
-    # SQL text built from Ruby values: literals, quoted names, bound
-    # parameters and the column list of an insert.
+    # SQL text with named placeholders, and the values that fill them. A value
+    # never enters the text: it is converted here and bound by the gem.
     module SQL
-      # Bytes that go in as a BLOB literal, such as a kept file.
-      Bytes = Data.define(:data) do
-        def literal = "X'#{data.unpack1("H*")}'"
-      end
+      # SQL text kept as it stands, such as `retries + 1`, never a value.
+      Raw = Data.define(:sql)
 
-      # SQL text kept as it stands, such as `retries + 1`, never quoted.
-      Raw = Data.define(:sql) do
-        def literal = sql
-      end
+      # SQL text with placeholders, and the values the placeholders name.
+      Bound = Data.define(:sql, :values)
 
-      # A value as an SQL literal. Hashes and arrays are stored as JSON text.
-      def self.literal(value)
-        case value
-        in nil then "NULL"
-        in true then "1"
-        in false then "0"
-        in Integer | Float => number then number.to_s
-        in Bytes | Raw => wrapped then wrapped.literal
-        in Hash | Array then literal(JSON.generate(value))
-        else "'#{value.to_s.gsub("'", "''")}'"
-        end
-      end
+      PLACEHOLDER = /(?<!:):([a-z_][a-z0-9_]*)\b/
+      LARGEST_INTEGER = 2**63 - 1
 
       def self.name(identifier) = %("#{identifier.to_s.gsub('"', '""')}")
-
-      # `:name` in the SQL takes the value of `name`; a name with no value,
-      # or a Postgres-style cast such as ::text, stays as it is.
-      def self.bind(sql, values)
-        return sql if values.empty?
-
-        sql.gsub(/(?<!:):([a-z_][a-z0-9_]*)\b/) do
-          key = Regexp.last_match(1).to_sym
-          values.key?(key) ? literal(values[key]) : Regexp.last_match(0)
-        end
-      end
 
       def self.names(list) = list.map { |column| name(column) }.join(", ")
 
@@ -51,37 +27,82 @@ module Plastic
         "#{quoted} = excluded.#{quoted}"
       end
 
-      # `a IS 1 AND b IS 'x'`: IS matches a NULL as well.
-      def self.where(values) = pairs(values, "IS", " AND ")
+      # The names a statement holds, in order of first appearance.
+      def self.placeholders(sql) = sql.scan(PLACEHOLDER).flatten.uniq.map(&:to_sym)
 
-      # `a = 1, b = 'x'`, for the SET clause of a guarded UPDATE.
-      def self.set(values) = pairs(values, "=", ", ")
+      # The converted value of each name of the text. An extra key is dropped.
+      def self.params(sql, values)
+        placeholders(sql).to_h do |key|
+          raise Plastic::Invalid, "no value for :#{key}" unless values.key?(key)
 
-      # `a <operator> 1<joiner>b <operator> 'x'`: the shape behind where and set.
-      def self.pairs(values, operator, joiner)
-        values.map { |column, value| "#{name(column)} #{operator} #{literal(value)}" }.join(joiner)
+          [key, bindable(values.fetch(key))]
+        end
       end
 
-      # `'a', 'b'`, for a SQL IN (...) list.
-      def self.list(values) = values.map { |value| literal(value) }.join(", ")
-
-      # The columns and values of an insert: `(a, b) VALUES (1, 2)`.
-      def self.tuple(columns)
-        names = columns.keys.map { |key| name(key) }
-        values = columns.values.map { |value| literal(value) }
-        "(#{names.join(", ")}) VALUES (#{values.join(", ")})"
+      def self.bindable(value)
+        convert(value)
+      rescue StandardError => error
+        raise Plastic::Invalid, "a #{value.class} cannot be bound: #{error.message}"
       end
+
+      # A value as the gem binds it. Hashes and arrays are stored as JSON text.
+      def self.convert(value)
+        case value
+        in nil | Float | SQLite3::Blob then value
+        in true then 1
+        in false then 0
+        in Integer then integer(value)
+        in Hash | Array then JSON.generate(value)
+        in String then text(value)
+        else value.to_s
+        end
+      end
+
+      def self.integer(value)
+        raise RangeError, "out of range" unless value.abs <= LARGEST_INTEGER
+
+        value
+      end
+
+      def self.text(value) = (value.encoding == Encoding::BINARY) ? value.dup.force_encoding(Encoding::UTF_8) : value
+
+      # `a IS :m_a AND b IS :m_b`: IS matches a NULL as well.
+      def self.where(values, prefix) = pairs(values, "IS", " AND ", prefix)
+
+      # `a = :s_a, b = :s_b`, for the SET clause of a guarded UPDATE.
+      def self.set(values, prefix) = pairs(values, "=", ", ", prefix)
+
+      def self.pairs(values, operator, joiner, prefix)
+        parts = values.map { |column, value| "#{name(column)} #{operator} #{value.is_a?(Raw) ? value.sql : ":#{prefix}_#{column}"}" }
+        Bound.new(parts.join(joiner), prefixed(values.reject { |_column, value| value.is_a?(Raw) }, prefix))
+      end
+
+      # `:f_0, :f_1`, for a SQL IN (...) list.
+      def self.list(values, prefix)
+        keyed = values.each_with_index.to_h { |value, index| [index, value] }
+        Bound.new(keyed.keys.map { |index| ":#{prefix}_#{index}" }.join(", "), prefixed(keyed, prefix))
+      end
+
+      # The columns and placeholders of an insert: `(a, b) VALUES (:v_a, :v_b)`.
+      def self.tuple(columns, prefix)
+        placeholders = columns.keys.map { |key| ":#{prefix}_#{key}" }
+        Bound.new("(#{names(columns.keys)}) VALUES (#{placeholders.join(", ")})", prefixed(columns, prefix))
+      end
+
+      def self.prefixed(values, prefix) = values.to_h { |key, value| [:"#{prefix}_#{key}", value] }
 
       # An UPDATE that moves a node between states: the row in `from` with
       # `intent_id`/`id` moves to `to`, with `set` merged in, and returns its
-      # id only when a row was found.
+      # id only when a row was found. The caller adds `intent_id`, `id` and `origin`.
       def self.move(to:, from:, set: {})
-        values = { state: to, updated_at: Plastic.now }.merge(set)
-        <<~SQL
-          UPDATE nodes SET #{set(values)}
-          WHERE intent_id = :intent_id AND id = :id AND origin_id = :origin AND state IN (#{list(from)})
+        assignments = set({ state: to, updated_at: Plastic.now }.merge(set), "s")
+        states = list(from, "f")
+        text = <<~SQL
+          UPDATE nodes SET #{assignments.sql}
+          WHERE intent_id = :intent_id AND id = :id AND origin_id = :origin AND state IN (#{states.sql})
           RETURNING id
         SQL
+        Bound.new(text, assignments.values.merge(states.values))
       end
     end
   end

@@ -49,7 +49,7 @@ class RetrievalGraphTest < Plastic::TestCase
   end
 
   def test_a_kept_file_reads_without_its_bytes_and_its_bytes_read_by_name
-    row = { name: "store/1--a/x.bin", mode: 0o100644, mtime: 0, sz: 2, data: Plastic::Graph::SQL::Bytes.new("\x00\xFF".b),
+    row = { name: "store/1--a/x.bin", mode: 0o100644, mtime: 0, sz: 2, data: SQLite3::Blob.new("\x00\xFF".b),
             intent_id: "1", sha256: "h" }
     put(:references, :sqlar, row)
 
@@ -78,7 +78,7 @@ class RetrievalGraphTest < Plastic::TestCase
 
   def test_backfills_a_text_reference_once_without_removing_its_attachment
     row = { name: "store/1--alpha/research.txt", mode: 0o100644, mtime: 0, sz: 18,
-            data: Plastic::Graph::SQL::Bytes.new("Archived evidence\n"), intent_id: "1", sha256: "source" }
+            data: SQLite3::Blob.new("Archived evidence\n"), intent_id: "1", sha256: "source" }
     put(:references, :sqlar, row)
 
     2.times { retrieval.backfill }
@@ -89,7 +89,7 @@ class RetrievalGraphTest < Plastic::TestCase
 
   def test_keeps_unsupported_textual_attachments_without_indexing_or_crashing
     row = { name: "store/1--alpha/report.pdf", mode: 0o100644, mtime: 0, sz: 12,
-            data: Plastic::Graph::SQL::Bytes.new("%PDF readable"), intent_id: "1", sha256: "source" }
+            data: SQLite3::Blob.new("%PDF readable"), intent_id: "1", sha256: "source" }
     put(:references, :sqlar, row)
 
     retrieval.backfill

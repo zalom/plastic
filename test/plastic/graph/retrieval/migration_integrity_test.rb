@@ -26,7 +26,7 @@ class RetrievalMigrationIntegrityTest < Plastic::TestCase
     end
     references.transaction do |batch|
       batch.add("INSERT OR REPLACE INTO sqlar (name, mode, mtime, sz, data, intent_id, sha256, origin_id) VALUES (:name, 33188, 0, :size, :data, '1', 'source', :origin)",
-        name: source_name, size: source_bytes.bytesize, data: Plastic::Graph::SQL::Bytes.new(source_bytes), origin: origin_id)
+        name: source_name, size: source_bytes.bytesize, data: SQLite3::Blob.new(source_bytes), origin: origin_id)
     end
   end
 

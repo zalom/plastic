@@ -129,9 +129,10 @@ class DatabaseTest < Plastic::TestCase
   end
 
   def test_each_kind_of_value_is_stored_as_the_literal_stored_it
-    [true, false, { "a" => 1 }, [1, 2], :sym, nil, 3, 1.5].each { |value| note(value) }
+    values = [true, false, { "a" => 1 }, [1, 2], :sym, nil, 3, 1.5]
+    kinds = values.map { |value| database.row("SELECT :v AS v, typeof(:v) AS kind", v: value).values }
 
-    assert_equal [[1, "integer"], [0, "integer"], ['{"a":1}', "text"], ["[1,2]", "text"], ["sym", "text"], [nil, "null"], [3, "integer"], [1.5, "real"]], stored
+    assert_equal [[1, "integer"], [0, "integer"], ['{"a":1}', "text"], ["[1,2]", "text"], ["sym", "text"], [nil, "null"], [3, "integer"], [1.5, "real"]], kinds
   end
 
   def test_a_statement_with_an_extra_key_runs

@@ -48,7 +48,7 @@ class ChangeLogTest < Plastic::TestCase
 
   def test_a_kept_file_logs_its_bytes_as_hex
     references = store_graphs.databases[:references]
-    row = { name: "store/1--a/resources/x.bin", mode: 0o100644, mtime: 0, sz: 2, data: Plastic::Graph::SQL::Bytes.new("ab"),
+    row = { name: "store/1--a/resources/x.bin", mode: 0o100644, mtime: 0, sz: 2, data: SQLite3::Blob.new("ab"),
             intent_id: "1", sha256: "x" }
     references.transaction { |batch| batch.put(:sqlar, row) }
 

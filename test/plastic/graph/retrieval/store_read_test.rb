@@ -10,7 +10,7 @@ class RetrievalStoreReadTest < Plastic::TestCase
   def backup(name, sha256: "x") = put(:local, :backups, { name:, files: 1, bytes: 1, sha256:, at: name })
 
   def test_a_kept_file_reads_its_bytes
-    put(:references, :sqlar, { name: "store/1--a/x.bin", mode: 0o100644, mtime: 0, sz: 2, data: Plastic::Graph::SQL::Bytes.new("\x00\xFF".b), intent_id: "1", sha256: "h" })
+    put(:references, :sqlar, { name: "store/1--a/x.bin", mode: 0o100644, mtime: 0, sz: 2, data: SQLite3::Blob.new("\x00\xFF".b), intent_id: "1", sha256: "h" })
 
     assert_equal "\x00\xFF".b, store_read.kept_file_data("store/1--a/x.bin")
   end

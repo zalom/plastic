@@ -22,7 +22,7 @@ class RetrievalReferenceBackfillTest < Plastic::TestCase
   def backfill = Backfill.new(graphs.databases, origin, after_write: -> { @writes += 1 }).call
 
   def keep(name, bytes)
-    row = { name:, mode: 0o100644, mtime: 0, sz: bytes.bytesize, data: Plastic::Graph::SQL::Bytes.new(bytes), intent_id: "1", sha256: "h" }
+    row = { name:, mode: 0o100644, mtime: 0, sz: bytes.bytesize, data: SQLite3::Blob.new(bytes), intent_id: "1", sha256: "h" }
     graphs.databases[:references].transaction { |batch| batch.put(:sqlar, row) }
   end
 

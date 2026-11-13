@@ -5,6 +5,7 @@ require "fileutils"
 # itself. The require does nothing when RubyGems is already loaded.
 require "rubygems"
 require "sqlite3"
+require_relative "../sql"
 
 module Plastic
   module Graph
@@ -14,19 +15,6 @@ module Plastic
       # hashes, foreign keys are on, and a busy file is waited on.
       class Connection < SQLite3::Database
         BUSY_TIMEOUT = 5000
-        SEPARATORS = /\A[\s;]+/
-
-        # The first statement of a script.
-        class Statement < SQLite3::Statement
-          # Runs, adds its rows to `found` when it gave any, closes, and returns the rest of the script.
-          def run(found)
-            rows = execute.to_a
-            found << rows unless rows.empty?
-            remainder
-          ensure
-            close
-          end
-        end
 
         def self.open(path)
           FileUtils.mkdir_p(File.dirname(path))
@@ -36,12 +24,8 @@ module Plastic
           end
         end
 
-        # The rows of each statement of `script` that gives any, in order.
-        def sets(script)
-          found = []
-          script = Statement.new(self, script).run(found) until (script = script.sub(SEPARATORS, "")).empty?
-          found
-        end
+        # The rows of one statement, with the values its placeholders name bound.
+        def read(sql, values = {}) = execute(sql, SQL.params(sql, values))
 
         # Runs the block in one transaction that takes the write lock first.
         # Inside an open transaction, such as a test's, it is a savepoint.
@@ -52,7 +36,7 @@ module Plastic
         def savepoint
           execute("SAVEPOINT batch")
           yield.tap { execute("RELEASE batch") }
-        rescue SQLite3::Exception
+        rescue StandardError
           execute_batch("ROLLBACK TO batch; RELEASE batch;")
           raise
         end

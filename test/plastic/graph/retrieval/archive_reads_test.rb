@@ -11,7 +11,7 @@ class RetrievalArchiveReadsTest < Plastic::TestCase
   def put(key, table, row) = store_graphs.databases[key].transaction { |batch| batch.put(table, row) }
 
   def keep(name, bytes)
-    put(:references, :sqlar, { name:, mode: 0o100644, mtime: 0, sz: bytes.bytesize, data: Plastic::Graph::SQL::Bytes.new(bytes), intent_id: "1", sha256: "h" })
+    put(:references, :sqlar, { name:, mode: 0o100644, mtime: 0, sz: bytes.bytesize, data: SQLite3::Blob.new(bytes), intent_id: "1", sha256: "h" })
   end
 
   def test_a_reference_into_an_archived_intent_is_archived

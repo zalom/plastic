@@ -52,7 +52,7 @@ module Plastic
       def file = File.basename(path)
 
       # Rows from one read. `:name` in the SQL takes the value of `name`.
-      def rows(sql, **values) = connected { |connection| connection.sets(SQL.bind(sql, values)) }.first || []
+      def rows(sql, **values) = connected { |connection| connection.read(sql, values) }
 
       def row(sql, **values) = rows(sql, **values).first
 
@@ -74,7 +74,7 @@ module Plastic
         connected do |connection|
           connection.atomically do
             yield batch, connection
-            tally(connection.sets(batch.statements.join)) unless batch.empty?
+            run(connection, batch) unless batch.empty?
           end
         end
       end
@@ -91,15 +91,16 @@ module Plastic
 
       private
 
-      def commit(batch)
-        script = batch.statements.join
-        tally(connected { |connection| connection.atomically { connection.sets(script) } })
-      end
+      def commit(batch) = connected { |connection| connection.atomically { run(connection, batch) } }
 
-      def tally(sets)
-        tallies, returned = sets.partition { |set| set.first.key?("written_table") }
-        tallies.flatten.each { |tally| count(*tally.values_at("written_table", "written_rows")) }
-        returned
+      # Runs each entry with its own values bound. A counted write adds the
+      # rows it changed to the count; the rows a statement gives back are returned.
+      def run(connection, batch)
+        batch.statements.filter_map do |entry|
+          rows = connection.read(entry.sql, entry.values)
+          count(entry.table, connection.changes) if entry.table && connection.changes.positive?
+          rows unless rows.empty?
+        end
       end
 
       def count(table, rows)
@@ -109,6 +110,8 @@ module Plastic
 
       def connected
         yield connection
+      rescue Plastic::Invalid => error
+        raise Plastic::Invalid, "#{file}: #{error.message}"
       rescue SQLite3::Exception, SystemCallError => error
         raise Error, "#{file}: #{error.message.lines.first.chomp.delete_suffix(":")}"
       end

@@ -20,7 +20,7 @@ module Plastic
 
           def keep_original(databases, path, bytes, intent_id, counts)
             row = { name: "originals/#{path}", mode: 0o644, mtime: Time.now.to_i, sz: bytes.bytesize,
-                    data: SQL::Bytes.new(bytes), intent_id:, sha256: Digest::SHA256.hexdigest(bytes) }
+                    data: SQLite3::Blob.new(bytes), intent_id:, sha256: Digest::SHA256.hexdigest(bytes) }
             databases.fetch(:references).transaction { |batch| batch.put(:sqlar, row, statement: :upsert) }
             counts[:kept] += 1
           end

@@ -32,8 +32,7 @@ module Plastic
           def revisions(reader) = select(reader, "document_revisions", "intent_id, path, body, sha256").map { |row| Evidence::IntegrityRevision.from_row(row) }
 
           def select(reader, table, columns)
-            sql = SQL.bind("SELECT #{columns} FROM #{table} WHERE origin_id = :origin", origin: @origin_id)
-            reader.rows(sql)
+            reader.rows("SELECT #{columns} FROM #{table} WHERE origin_id = :origin", origin: @origin_id)
           end
         end
       end

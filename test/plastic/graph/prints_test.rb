@@ -77,7 +77,7 @@ class PrintsTest < Plastic::TestCase
   end
 
   def test_a_kept_file_print_reads_its_bytes_only_to_write
-    row = { name: "store/1--one/x.bin", mode: 0o100644, mtime: 0, sz: 1, data: Plastic::Graph::SQL::Bytes.new("z"), intent_id: "1",
+    row = { name: "store/1--one/x.bin", mode: 0o100644, mtime: 0, sz: 1, data: SQLite3::Blob.new("z"), intent_id: "1",
             sha256: "h" }
     store_graphs.databases[:references].transaction { |batch| batch.put(:sqlar, row) }
     print = Plastic::Graph::Prints.kept_files(retrieval, retrieval.kept_files("1")).first

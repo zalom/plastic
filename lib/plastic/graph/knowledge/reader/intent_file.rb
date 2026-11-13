@@ -85,7 +85,7 @@ module Plastic
           def kept(batch)
             bytes = @file.bytes
             batch.put(:sqlar, { name: @file.path, mode: KEPT_MODE, mtime: @file.mtime,
-                                sz: bytes.bytesize, data: SQL::Bytes.new(bytes), intent_id: @intent_id,
+                                sz: bytes.bytesize, data: SQLite3::Blob.new(bytes), intent_id: @intent_id,
                                 sha256: Digest::SHA256.hexdigest(bytes) })
           end
         end
