@@ -42,6 +42,13 @@ class KnowledgeLegacyCheckTest < Plastic::TestCase
     assert_includes error.message, "INDEX.md: "
   end
 
+  def test_a_folder_missing_from_the_index_with_the_old_active_status_is_accepted
+    write("INDEX.md", "# Index\n")
+    write("store/2--two/intent.md", %(---\nid: "2"\nintent: "Two"\nstatus: "active"\n---\n))
+
+    assert_nil Check.new(folder).call
+  end
+
   def test_a_graph_file_that_vanishes_is_left_for_the_import_to_report
     write("store/1--design/graph.json", "{}")
 

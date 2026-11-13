@@ -10,7 +10,7 @@ class PrintTriggerTest < Plastic::TestCase
     cli("intent", "approve", "1")
     result = cli("auto", "1")
 
-    assert_equal [0, "active", true], [result.code, listed("1").fetch("status"), result.out.include?("files:")]
+    assert_equal [0, "in_progress", true], [result.code, listed("1").fetch("status"), result.out.include?("files:")]
   end
 
   def test_end_rewrites_the_index_to_show_the_intent_done

@@ -94,4 +94,43 @@ class StatusTest < Plastic::TestCase
     assert_equal 0, call.code
     assert_equal "", call.err
   end
+
+  def test_the_intents_are_listed_in_the_groups_active_future_and_finished_in_that_order
+    { "Moving" => "in_progress", "Later" => "future", "Shipped" => "done", "Waiting" => "open" }.each { |title, status| store_graphs.work.write_intent(title:, status:) }
+
+    lines = call.out.lines(chomp: true)
+    groups = %w[active: future: finished:].map { |word| lines.index { |line| line.start_with?(word) } }
+
+    assert_equal groups.sort, groups
+    refute_includes groups, nil
+  end
+
+  def test_each_intent_shows_its_state_beside_its_title_in_its_group
+    { "Moving" => "in_progress", "Later" => "future", "Shipped" => "done", "Quit" => "abandoned" }.each { |title, status| store_graphs.work.write_intent(title:, status:) }
+
+    out = call.out
+
+    assert_match(/1 Moving \(in_progress\)/, out)
+    assert_match(/2 Later \(future\)/, out)
+    assert_match(/3 Shipped \(done\)/, out)
+    assert_match(/4 Quit \(abandoned\)/, out)
+  end
+
+  def test_a_group_without_an_intent_prints_no_line
+    store_graphs.work.write_intent(title: "Waiting")
+
+    out = call.out
+
+    assert_match(/^active:/, out)
+    refute_match(/^future:|^finished:/, out)
+  end
+
+  def test_a_group_past_the_listing_cap_ends_with_how_many_more_there_are
+    (Plastic::Graph::Knowledge::Intent::MAX_LISTED + 2).times { |index| store_graphs.work.write_intent(title: "Item #{index}") }
+
+    out = call.out
+
+    assert_includes out, "and 2 more"
+    assert_equal Plastic::Graph::Knowledge::Intent::MAX_LISTED, out.scan(/\(open\)/).size
+  end
 end

@@ -12,7 +12,7 @@ class WorkIntentRowTest < Plastic::TestCase
   end
 
   def test_the_six_statuses_are_the_ruled_ones
-    assert_equal %w[open active parked future done abandoned], Plastic::Graph::Knowledge::Intent::STATUSES
+    assert_equal %w[open in_progress parked future done abandoned], Plastic::Graph::Knowledge::Intent::STATUSES
   end
 
   def test_a_status_outside_the_six_is_refused

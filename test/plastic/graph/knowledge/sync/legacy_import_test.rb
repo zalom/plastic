@@ -35,9 +35,16 @@ class KnowledgeSyncLegacyImportTest < Plastic::TestCase
     import
     first, child = retrieval.intents
 
-    assert_equal %w[1 active alpha-service], first.to_h.values_at(:intent_id, :status, :slug)
+    assert_equal %w[1 in_progress alpha-service], first.to_h.values_at(:intent_id, :status, :slug)
     assert_equal %w[1a 1 future], child.to_h.values_at(:intent_id, :parent_id, :status)
     refute_nil first.opened_at
+  end
+
+  def test_a_folder_missing_from_the_index_with_the_old_active_status_imports_in_progress
+    write("store/2--extra/intent.md", %(---\nid: "2"\nintent: "Extra"\nstatus: "active"\n---\n))
+    import
+
+    assert_equal "in_progress", retrieval.intent("2").status
   end
 
   def test_an_intent_with_no_own_file_imports_with_no_kind_or_date
