@@ -1,51 +1,9 @@
 # frozen_string_literal: true
 
-require "minitest/autorun"
-require "tmpdir"
-require_relative "../../../varar/support/kernel_command"
+require_relative "../../../varar/support/two_homes"
 
 class SyncUpGraphTest < Minitest::Test
-  DIR = "store/1--prove-the-resume"
-  GRAPH = "#{DIR}/graph.json"
-  DATABASE_FILE = /\.db(-wal|-shm|-journal)?\z/
-  SPEC = "# Spec\n\n## Goal\n\nProve the resume.\n\n## Done criteria\n\n- [ ] [proof] The graph continues on another machine.\n"
-
-  def first_home(kernel)
-    kernel.run!("intent", "new", "Prove the resume")
-    kernel.write("#{DIR}/spec.md", SPEC)
-    kernel.run!("sync", "up")
-    kernel.run!("node", "add", "1", "Write the test", "--criterion", "proof")
-    kernel.run!("node", "add", "1", "Write the code", "--criterion", "proof")
-    kernel.run!("edge", "add", "1", "n1", "n2")
-    kernel.run!("intent", "approve", "1")
-    kernel.run!("node", "claim", "1", "n1")
-    kernel.run!("node", "done", "1", "n1", "The test is red for the right reason; see :id and :intent_id")
-    kernel.run!("intent", "verdict", "1", "accept", "The findings hold :id and :intent_id")
-  end
-
-  def move_files(from, to)
-    FileUtils.rm_rf(to.store)
-    from.snapshot("").each do |rel, bytes|
-      next if rel.match?(DATABASE_FILE)
-
-      to.write(rel, bytes)
-    end
-  end
-
-  def nodes(kernel) = kernel.rows("work_graph.db", "SELECT id, state, by, retries, updated_at, findings FROM nodes ORDER BY id")
-
-  def with_two_homes
-    Dir.mktmpdir do |one|
-      Dir.mktmpdir do |two|
-        first, second = KernelCommand.new(one), KernelCommand.new(two)
-        first_home(first)
-        move_files(first, second)
-        yield first, second
-      end
-    end
-  end
-
-  def query(kernel, sql) = kernel.rows("work_graph.db", sql)
+  include TwoHomes
 
   def test_the_nodes_of_one_machine_continue_on_a_second_home_after_sync_up
     with_two_homes do |first, second|
@@ -62,96 +20,6 @@ class SyncUpGraphTest < Minitest::Test
       sql = ["SELECT count(*) FROM edges", "SELECT count(*) FROM approvals", "SELECT status FROM intents"]
 
       assert_equal sql.map { |text| query(first, text) }, sql.map { |text| query(second, text) }
-    end
-  end
-
-  def test_a_second_sync_up_leaves_graph_json_and_its_printed_hash_as_they_are
-    with_two_homes do |first, second|
-      second.run!("sync", "up")
-      bytes = second.read(GRAPH)
-      printed = second.rows("work_graph.db", "SELECT sha256 FROM printed WHERE path = '#{GRAPH}'")
-      second.run!("sync", "up")
-
-      assert_equal bytes, first.read(GRAPH)
-      assert_equal [bytes, printed], [second.read(GRAPH), second.rows("work_graph.db", "SELECT sha256 FROM printed WHERE path = '#{GRAPH}'")]
-    end
-  end
-
-  def unstamped(text) = JSON.parse(text).then { |data| JSON.generate(strip_origin(data)) }
-
-  def strip_origin(data)
-    case data
-    when Hash then data.except("origin_id").transform_values { |value| strip_origin(value) }
-    when Array then data.map { |value| strip_origin(value) }
-    else data
-    end
-  end
-
-  def test_graph_show_and_graph_resume_say_the_same_in_both_homes
-    with_two_homes do |first, second|
-      second.run!("sync", "up")
-
-      assert_equal first.run!("graph", "show", "1").out, second.run!("graph", "show", "1").out
-      assert_equal first.run!("graph", "resume").out, second.run!("graph", "resume").out
-    end
-  end
-
-  def test_sync_down_after_the_move_writes_nothing_and_exits_zero
-    with_two_homes do |first, second|
-      second.run!("sync", "up")
-      call = second.run("sync", "down")
-
-      assert_equal [0, "none"], [call.code, call.files]
-      assert_equal first.read(GRAPH), second.read(GRAPH)
-    end
-  end
-
-  def test_the_index_after_the_move_equals_the_copied_one_except_for_origin_ids
-    with_two_homes do |first, second|
-      copied = unstamped(second.read("store/index.json"))
-      second.run!("sync", "up")
-
-      assert_equal copied, unstamped(second.read("store/index.json"))
-      assert_equal unstamped(first.read("store/index.json")), unstamped(second.read("store/index.json"))
-    end
-  end
-
-  def test_a_verdict_survives_the_move
-    with_two_homes do |first, second|
-      second.run!("sync", "up")
-      sql = "SELECT round, verdict, findings FROM verdicts"
-
-      refute_empty query(first, sql)
-      assert_equal query(first, sql), query(second, sql)
-    end
-  end
-
-  def test_findings_that_hold_id_and_intent_id_survive_the_move_unchanged
-    with_two_homes do |_first, second|
-      second.run!("sync", "up")
-
-      assert_equal ["The test is red for the right reason; see :id and :intent_id"], query(second, "SELECT findings FROM nodes WHERE id = 'n1'").flatten
-    end
-  end
-
-  def test_a_graph_emptied_in_one_home_is_read_in_the_other_and_empties_the_rows_there
-    with_two_homes do |first, second|
-      second.run!("sync", "up")
-      emptied = JSON.pretty_generate(JSON.parse(second.read(GRAPH)).merge("approval" => nil, "verdicts" => [], "nodes" => [], "edges" => []))
-      second.write(GRAPH, "#{emptied}\n")
-      second.run!("sync", "up")
-      first.write(GRAPH, second.read(GRAPH))
-      first.run!("sync", "up")
-
-      assert_equal [[], []], [query(second, "SELECT id FROM nodes"), query(first, "SELECT id FROM nodes")]
-    end
-  end
-
-  def test_the_second_home_can_claim_the_next_node_of_the_graph
-    with_two_homes do |_first, second|
-      second.run!("sync", "up")
-
-      assert_includes second.run!("node", "claim", "1", "n2").out, "n2"
     end
   end
 end
