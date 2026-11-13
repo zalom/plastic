@@ -28,7 +28,7 @@ module Plastic
 
           # One sentence for each reason the file cannot be read.
           def problems
-            reasons = data ? [*intent_problems, *node_problems, *edge_problems, *verdict_problems, *field_problems] : ["is not valid JSON: #{@parse_error}"]
+            reasons = data ? [*intent_problems, *approval_problems, *node_problems, *edge_problems, *verdict_problems, *field_problems] : ["is not valid JSON: #{@parse_error}"]
             reasons.map { |reason| "#{@path} #{reason}" }
           end
 
@@ -64,6 +64,11 @@ module Plastic
 
           def intent_problems
             (data["intent"] == @intent_id) ? [] : ["names intent #{data["intent"].inspect}, not #{@intent_id}"]
+          end
+
+          def approval_problems
+            approval = data["approval"]
+            (approval.nil? || approval.is_a?(Hash)) ? [] : ["holds an approval that is not an object"]
           end
 
           def node_problems

@@ -14,7 +14,8 @@ module Plastic
       # SQL text with placeholders, and the values the placeholders name.
       Bound = Data.define(:sql, :values)
 
-      PLACEHOLDER = /(?<!:):([a-z_][a-z0-9_]*)\b/
+      NAME = /[a-z_][a-z0-9_]*/
+      PLACEHOLDER = /(?<!:):(#{NAME})\b/
       LARGEST_INTEGER = 2**63 - 1
 
       def self.name(identifier) = %("#{identifier.to_s.gsub('"', '""')}")
@@ -85,8 +86,16 @@ module Plastic
 
       # The columns and placeholders of an insert: `(a, b) VALUES (:v_a, :v_b)`.
       def self.tuple(columns, prefix)
+        checked_columns(columns)
         placeholders = columns.keys.map { |key| ":#{prefix}_#{key}" }
         Bound.new("(#{names(columns.keys)}) VALUES (#{placeholders.join(", ")})", prefixed(columns, prefix))
+      end
+
+      def self.checked_columns(columns)
+        columns.each do |key, value|
+          raise Plastic::Invalid, "column #{key.inspect} is not a plain lowercase name" unless key.to_s.match?(/\A#{NAME}\z/)
+          raise Plastic::Invalid, "column #{key.inspect} holds SQL text, not a value" if value.is_a?(Raw)
+        end
       end
 
       def self.prefixed(values, prefix) = values.to_h { |key, value| [:"#{prefix}_#{key}", value] }
