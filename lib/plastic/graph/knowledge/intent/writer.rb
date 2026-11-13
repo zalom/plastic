@@ -2,7 +2,6 @@
 
 require_relative "../intent"
 require_relative "ref"
-require_relative "status_check"
 require_relative "../store_folder"
 require_relative "../../retrieval/evidence/writer"
 
@@ -22,11 +21,14 @@ module Plastic
           end
 
           # Why the call cannot write the intent, or nil.
-          def problem(parent_id: nil, ref: nil, **state)
+          def problem(parent_id: nil, ref: nil, status: "open", reason: nil)
             return "this store still has #{StoreFolder::LEGACY_INDEX}; run plastic sync up to import it first" if @folder.legacy?
             return "#{StoreFolder::INDEX} changed by hand since the last print; run plastic sync up to read it first" if hand_edited?
+            refusal = status_problem(status, reason)
+            return refusal if refusal
+            return "no intent #{parent_id} in this store to be the parent" if parent_id && !@retrieval.intent(parent_id)
 
-            StatusCheck.problem(**state) || parent_problem(parent_id) || Ref.parse(ref)&.problem(@retrieval)
+            Ref.parse(ref)&.problem(@retrieval)
           end
 
           # Why the intent cannot take `takes` (nodes, a verdict), or nil when it is open or in progress.
@@ -68,7 +70,12 @@ module Plastic
 
           private
 
-          def parent_problem(parent_id) = ("no intent #{parent_id} in this store to be the parent" if parent_id && !@retrieval.intent(parent_id))
+          def status_problem(status, reason)
+            return "a new intent takes the status open, parked or future, not #{status}" unless Intent::NEW_STATUSES.include?(status)
+            return "a parked intent needs a reason: pass --reason TEXT" if status == "parked" && reason.to_s.strip.empty?
+
+            "--reason belongs to a parked intent: pass --status parked" if reason && status != "parked"
+          end
 
           DEFAULTS = { kind: "work", status: "open" }.freeze
 

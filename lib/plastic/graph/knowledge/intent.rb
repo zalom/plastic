@@ -78,6 +78,7 @@ module Plastic
         def index_h = Intent::INDEX_FIELDS.to_h { |field| [field.to_s, public_send(field)] }
       end
       Intent::STATUSES = %w[open in_progress parked future done abandoned].freeze
+      Intent::NEW_STATUSES = %w[open parked future].freeze
       Intent::GROUPS = { "active" => %w[open in_progress parked], "future" => %w[future], "finished" => %w[done abandoned] }.freeze
       Intent::INDEX_FIELDS = %i[intent_id origin_id parent_id ref slug title kind status disposition reason opened_at closed_at].freeze
     end
