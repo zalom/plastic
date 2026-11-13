@@ -42,7 +42,7 @@ class RetrievalEvidenceTextSourceLinesTest < Plastic::TestCase
       lines = SourceLines.for(text)
       (0..text.length + 1).each do |start|
         (0..text.length + 1).each do |length|
-          assert_equal [edges(old_lines(text).slice(start, length))], [edges(lines.slice(start, length))],[text, start, length].inspect
+          assert_equal [edges(old_lines(text).slice(start, length))], [edges(lines.slice(start, length))], [text, start, length].inspect
         end
       end
     end

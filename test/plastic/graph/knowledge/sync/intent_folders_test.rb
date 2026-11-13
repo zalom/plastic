@@ -13,7 +13,7 @@ class KnowledgeSyncIntentFoldersTest < Plastic::TestCase
     write("store/2--beta/2--beta.md", page("2", "Beta"))
     intent = folders.intents.first
 
-    assert_equal ["2", "beta", "Beta", "open", STAMP], [intent.intent_id, intent.slug, intent.title, intent.status, intent.opened_at]
+    assert_equal ["2", "beta", "Beta", "open", STAMP, nil], [intent.intent_id, intent.slug, intent.title, intent.status, intent.opened_at, intent.reason]
   end
 
   def index_entry(**fields)

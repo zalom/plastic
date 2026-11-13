@@ -12,6 +12,17 @@ module Plastic
         # The archived intents that store/index.json lists and this installation has no row for: each gets
         # its intent, its archive mark and its completion, and a row already held is never replaced.
         class ArchivedIntents
+          # One archive entry of the index with the index entry of its intent: the rows they stand for.
+          Mark = Data.define(:fields, :entry) do
+            def intent_id = fields["intent_id"]
+
+            def intent_row = Intent.from_h(Reader::IndexFile.intent_row(entry)).new_row
+
+            def archive_row = { intent_id:, at: fields["at"], restored_at: nil, session_id: fields["session_id"] }
+
+            def completion_rows = [fields["completion"]].grep(Hash).map { |hash| Work::CompletionRow.stored(hash, intent_id) }
+          end
+
           def initialize(folder, retrieval)
             @folder = folder
             @retrieval = retrieval
@@ -24,20 +35,19 @@ module Plastic
 
           def write_to(databases)
             marks = missing
-            databases.fetch(:work).transaction { |batch| marks.each { |mark| write(batch, mark) } } if marks.any?
+            databases.fetch(:work).transaction { |batch| write_all(batch, marks) } if marks.any?
           end
 
           private
 
-          def write(batch, mark)
-            intent_id = mark["intent_id"]
-            batch.put(:intents, Intent.from_h(Reader::IndexFile.intent_row(entries.fetch(intent_id))).new_row)
-            batch.put(:archives, { intent_id:, at: mark["at"], restored_at: nil, session_id: mark["session_id"] })
-            completion = mark["completion"]
-            batch.put(:completions, completion_row(completion, intent_id)) if completion.is_a?(Hash)
-          end
+          def write_all(batch, marks) = marks.each { |mark| write(batch, mark) }
 
-          def completion_row(completion, intent_id) = Work::CompletionRow.from_h(completion).to_h.except(:origin_id).merge(intent_id:)
+          def write(batch, mark)
+            found = Mark.new(mark, entries.fetch(mark["intent_id"]))
+            batch.put(:intents, found.intent_row)
+            batch.put(:archives, found.archive_row)
+            found.completion_rows.each { |row| batch.put(:completions, row) }
+          end
 
           def archives = Array(data["archives"]).grep(Hash).select { |mark| entries.key?(mark["intent_id"]) }
 

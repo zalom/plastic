@@ -18,17 +18,19 @@ module Plastic
 
         # Each entry's action, and what the sync writes.
         class Plan
-          def initialize(resolution:, entries:, legacy:, problem:, unreadable: [], archived: 0)
-            super
+          def self.build(folder, retrieval, resolution)
+            folders = IntentFolders.new(folder, retrieval) unless folder.legacy?
+            new(resolution:, entries: entries(folder, retrieval, folders), legacy: importing?(folder, resolution),
+              problem: problem_of(folder, resolution), unreadable: folders ? folders.problems : [],
+              archived: archived_of(folder, retrieval, resolution))
           end
 
-          def self.build(folder, retrieval, resolution)
-            legacy = folder.legacy?
-            up = resolution.up?
-            folders = legacy ? nil : IntentFolders.new(folder, retrieval)
-            new(resolution:, entries: entries(folder, retrieval, folders), legacy: up && legacy,
-              problem: (legacy_problem if legacy && !up), unreadable: folders&.problems || [],
-              archived: (up && !legacy) ? ArchivedIntents.new(folder, retrieval).missing.size : 0)
+          def self.importing?(folder, resolution) = folder.legacy? && resolution.up?
+
+          def self.problem_of(folder, resolution) = (legacy_problem if folder.legacy? && !resolution.up?)
+
+          def self.archived_of(folder, retrieval, resolution)
+            (resolution.up? && !folder.legacy?) ? ArchivedIntents.new(folder, retrieval).missing.size : 0
           end
 
           def self.entries(folder, retrieval, folders = nil) = EntryList.new(folder, retrieval, folders).entries

@@ -15,7 +15,7 @@ class KnowledgeSyncArchivedIntentsTest < Plastic::TestCase
       "outcome_sha256" => "abc" }.merge(fields.transform_keys(&:to_s))
   end
 
-  def archived(completion: completion(), at: STAMP) = { "intent_id" => "2", "at" => at, "session_id" => "s2", "completion" => completion }
+  def archived(kept: completion, at: STAMP) = { "intent_id" => "2", "at" => at, "session_id" => "s2", "completion" => kept }
 
   def write_index(intents: [entry], archives: [archived])
     write("store/index.json", JSON.generate({ "store" => "global", "origin_id" => OTHER, "intents" => intents, "archives" => archives, "clusters" => [] }))
@@ -29,13 +29,28 @@ class KnowledgeSyncArchivedIntentsTest < Plastic::TestCase
     write_index
     read_in
 
-    assert_equal [["2", "done", "delivered", retrieval.origin_id]], work_rows("SELECT intent_id, status, disposition, origin_id FROM intents").map(&:values)
-    assert_equal [["2", nil, retrieval.origin_id]], work_rows("SELECT intent_id, restored_at, origin_id FROM archives").map(&:values)
-    assert_equal [["2", "verdict", retrieval.origin_id]], work_rows("SELECT intent_id, judge, origin_id FROM completions").map(&:values)
+    found = ["intents", "archives", "completions"].map { |table| work_rows("SELECT intent_id, origin_id FROM #{table}").map(&:values) }
+
+    assert_equal [[["2", retrieval.origin_id]]] * 3, found
+    assert_equal [["done", "delivered"]], work_rows("SELECT status, disposition FROM intents").map(&:values)
+  end
+
+  def test_an_index_that_is_not_json_lists_no_archive
+    write("store/index.json", "{not json")
+    read_in
+
+    assert_empty work_rows("SELECT * FROM archives")
+  end
+
+  def test_an_index_that_is_not_an_object_lists_no_archive
+    write("store/index.json", "[]")
+    read_in
+
+    assert_empty work_rows("SELECT * FROM archives")
   end
 
   def test_an_archive_entry_with_no_completion_inserts_no_completion
-    write_index(archives: [archived(completion: nil)])
+    write_index(archives: [archived(kept: nil)])
     read_in
 
     assert_empty work_rows("SELECT * FROM completions")

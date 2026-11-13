@@ -9,7 +9,7 @@ module Plastic
       ArchiveRow = Data.define(:intent_id, :at, :origin_id, :restored_at, :session_id) do
         include Record
 
-        def restored? = !restored_at.nil?
+        def restored? = !restored_at.to_s.empty?
       end
     end
   end

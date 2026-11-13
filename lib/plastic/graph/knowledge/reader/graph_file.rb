@@ -24,9 +24,8 @@ module Plastic
 
           def apply(batch)
             refuse_problems
-            Document::TABLES.each_key { |table| batch.remove(table, intent_id: @intent_id, origin_id: @origin_id) }
+            clear(batch)
             rows.each { |table, list| batch.put_all(table, list) }
-            Document::PUT_ONLY.each { |table, record| batch.put_all(table, table_rows(table, record)) }
           end
 
           private
@@ -36,7 +35,9 @@ module Plastic
             raise Invalid, found.join("; ") if found.any?
           end
 
-          def rows = Document::TABLES.to_h { |table, record| [table, table_rows(table, record)] }
+          def clear(batch) = Document::TABLES.each_key { |table| batch.remove(table, intent_id: @intent_id, origin_id: @origin_id) }
+
+          def rows = Document::TABLES.merge(Document::PUT_ONLY).to_h { |table, record| [table, table_rows(table, record)] }
 
           def table_rows(table, record) = @document.records(table).map { |entry| row(record, entry) }
 

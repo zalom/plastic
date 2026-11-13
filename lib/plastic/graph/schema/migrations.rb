@@ -44,18 +44,20 @@ module Plastic
         SQL
       end
 
-      def migrate_intent_states(connection)
-        return unless outdated_intents?(connection)
-
-        connection.transaction(:immediate) { run_swap(connection, :intents, INTENT_STATES_COPY) if outdated_intents?(connection) }
-      end
+      def migrate_intent_states(connection) = (connection.transaction(:immediate) { swap_outdated(connection) } if outdated_intents?(connection))
 
       private
 
+      def swap_outdated(connection) = (run_swap(connection, :intents, INTENT_STATES_COPY) if outdated_intents?(connection))
+
       def outdated_intents?(connection)
-        sql = connection.get_first_value("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'intents'")
-        !sql.nil? && (sql.include?("'active'") || !sql.include?('"reason"'))
+        sql = intents_sql(connection)
+        return false unless sql
+
+        sql.include?("'active'") || !sql.include?('"reason"')
       end
+
+      def intents_sql(connection) = connection.get_first_value("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'intents'")
 
       def replace_legacy_table(connection, table, copy_sql) = connection.transaction(:immediate) { run_swap(connection, table, copy_sql) }
 

@@ -110,10 +110,7 @@ class StatusTest < Plastic::TestCase
 
     out = call.out
 
-    assert_match(/1 Moving \(in_progress\)/, out)
-    assert_match(/2 Later \(future\)/, out)
-    assert_match(/3 Shipped \(done\)/, out)
-    assert_match(/4 Quit \(abandoned\)/, out)
+    assert_equal ["1 Moving (in_progress)", "2 Later (future)", "3 Shipped (done)", "4 Quit (abandoned)"], out.scan(/\d \w+ \(\w+\)/)
   end
 
   def test_a_group_without_an_intent_prints_no_line
@@ -126,11 +123,11 @@ class StatusTest < Plastic::TestCase
   end
 
   def test_a_group_past_the_listing_cap_ends_with_how_many_more_there_are
-    (Plastic::Graph::Knowledge::Intent::MAX_LISTED + 2).times { |index| store_graphs.work.write_intent(title: "Item #{index}") }
+    (Plastic::Graph::Knowledge::Intent::Listing::MAX + 2).times { |index| store_graphs.work.write_intent(title: "Item #{index}") }
 
     out = call.out
 
     assert_includes out, "and 2 more"
-    assert_equal Plastic::Graph::Knowledge::Intent::MAX_LISTED, out.scan(/\(open\)/).size
+    assert_equal Plastic::Graph::Knowledge::Intent::Listing::MAX, out.scan("(open)").size
   end
 end

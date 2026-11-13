@@ -20,8 +20,14 @@ module Plastic
 
         def archives(retrieval)
           completions = retrieval.completions.to_h { |row| [row.intent_id, GraphPrint.plain(row)] }
-          marks = retrieval.archive_rows.reject(&:restored?).sort_by { |row| Knowledge::LuhmannId.segments(row.intent_id) }
-          marks.map { |row| { "intent_id" => row.intent_id, "at" => row.at, "session_id" => row.session_id, "completion" => completions[row.intent_id] } }
+          marks(retrieval).map { |row| mark(row, completions) }
+        end
+
+        def marks(retrieval) = retrieval.archive_rows.reject(&:restored?).sort_by { |row| Knowledge::LuhmannId.segments(row.intent_id) }
+
+        def mark(row, completions)
+          id = row.intent_id
+          { "intent_id" => id, "at" => row.at, "session_id" => row.session_id, "completion" => completions[id] }
         end
 
         def clusters(rows)

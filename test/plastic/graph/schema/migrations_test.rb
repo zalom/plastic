@@ -70,7 +70,7 @@ class SchemaIntentStatesMigrationTest < Minitest::Test
   SQL
 
   ROWS = [[1, "active", nil], [2, "done", "shipped on friday"], [3, "abandoned", "superseded by intent 9"],
-          [4, "abandoned", "dropped by the owner"], [5, "open", "left over"], [6, "parked", nil], [7, "future", nil]].freeze
+    [4, "abandoned", "dropped by the owner"], [5, "open", "left over"], [6, "parked", nil], [7, "future", nil]].freeze
 
   def setup
     @database = SQLite3::Database.new(":memory:")
@@ -92,7 +92,7 @@ class SchemaIntentStatesMigrationTest < Minitest::Test
     prepare
 
     assert_equal [[1, "in_progress"], [2, "done"], [3, "abandoned"], [4, "abandoned"], [5, "open"], [6, "parked"], [7, "future"]],
-      intents.map { |id, status,| [id, status] }
+      intents.map { |id, status| [id, status] }
   end
 
   def test_the_new_state_passes_the_status_check
@@ -106,8 +106,8 @@ class SchemaIntentStatesMigrationTest < Minitest::Test
     prepare
 
     assert_equal [[2, "delivered", "shipped on friday"], [3, "superseded", "superseded by intent 9"],
-                  [4, "cancelled", "dropped by the owner"], [5, nil, "left over"], [6, nil, nil]],
-      intents.select { |id,| id > 1 && id < 7 }.map { |id, _status, disposition, reason| [id, disposition, reason] }
+      [4, "cancelled", "dropped by the owner"], [5, nil, "left over"], [6, nil, nil]],
+      intents.select { |id, _status| id > 1 && id < 7 }.map { |id, _status, disposition, reason| [id, disposition, reason] }
   end
 
   def test_a_done_intent_without_text_is_delivered
@@ -115,6 +115,13 @@ class SchemaIntentStatesMigrationTest < Minitest::Test
     prepare
 
     assert_equal ["delivered", nil], @database.get_first_row("SELECT disposition, reason FROM intents WHERE id = 2")
+  end
+
+  def test_a_database_without_the_intents_table_gets_the_current_one
+    @database.execute("DROP TABLE intents")
+    prepare
+
+    assert_includes @database.execute("PRAGMA table_info(intents)").map { |column| column[1] }, "reason"
   end
 
   def test_the_sequence_of_the_ids_is_kept

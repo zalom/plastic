@@ -4,6 +4,7 @@ require_relative "../cli/command"
 require_relative "../graph"
 require_relative "../graph/work/node/counts"
 require_relative "../graph/knowledge/intent"
+require_relative "../graph/knowledge/intent/listing"
 require_relative "../graph/work/intent_row"
 
 module Plastic
@@ -37,11 +38,12 @@ module Plastic
         [[["store:", "#{slug} has no store folder; run #{command}"]], (command if scope.requested?)]
       end
 
-      def group_rows(retrieval)
-        Plastic::Graph::Knowledge::Intent.listed(retrieval.intents).flat_map do |name, shown, rest|
-          rows = shown.map { |intent| Plastic::Graph::Work::IntentRow.new(retrieval, intent).to_a.join(", ") }
-          [*rows, *("and #{rest} more" if rest.positive?)].map { |text| ["#{name}:", text] }
-        end
+      def group_rows(retrieval) = Plastic::Graph::Knowledge::Intent::Listing.of(retrieval.intents).flat_map { |group| group_lines(retrieval, group) }
+
+      def group_lines(retrieval, group)
+        name, shown, rest = group
+        rows = shown.map { |intent| Plastic::Graph::Work::IntentRow.new(retrieval, intent).to_a.join(", ") }
+        [*rows, *("and #{rest} more" if rest.positive?)].map { |text| ["#{name}:", text] }
       end
 
       def show_store(slug)

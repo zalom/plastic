@@ -55,6 +55,12 @@ class KnowledgeReaderGraphCompletionTest < Plastic::TestCase
     assert_equal ["#{GRAPH} holds a completion of intent \"2\", not 1"], GraphFile.new(text, "1", nil, GRAPH).problems
   end
 
+  def test_a_completion_that_is_not_an_object_is_refused
+    text = graph_text(completion: "done")
+
+    assert_equal ["#{GRAPH} holds a completion that is not an object"], GraphFile.new(text, "1", nil, GRAPH).problems
+  end
+
   def test_a_completion_with_an_unknown_field_is_refused
     text = graph_text(completion: completion_hash(colour: "red"))
 

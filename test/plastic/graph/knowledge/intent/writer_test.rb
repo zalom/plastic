@@ -32,7 +32,7 @@ class KnowledgeIntentWriterTest < Plastic::TestCase
 
   def test_only_the_new_statuses_are_taken
     assert_equal ["a new intent takes the status open, parked or future, not done", "a new intent takes the status open, parked or future, not in_progress",
-                  "a new intent takes the status open, parked or future, not active", nil, nil],
+      "a new intent takes the status open, parked or future, not active", nil, nil],
       [{ status: "done" }, { status: "in_progress" }, { status: "active" }, { status: "future" }, { status: "parked", reason: "later" }].map { |call| writer.problem(**call) }
   end
 

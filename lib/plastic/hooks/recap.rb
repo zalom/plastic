@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../graph/knowledge/intent"
+require_relative "../graph/knowledge/intent/listing"
 require_relative "../graph/work/last_savepoints"
 
 module Plastic
@@ -31,10 +32,11 @@ module Plastic
         FIRST_LINES.fetch(@source) { "Plastic: a new session in store #{@retrieval.store}. Run plastic next before anything else." }
       end
 
-      def open_intent_lines
-        Graph::Knowledge::Intent.listed(@retrieval.intents).flat_map do |name, shown, rest|
-          [*shown.map { |intent| "#{name}: #{intent.heading}#{last_run(intent.intent_id)}" }, *("and #{rest} more" if rest.positive?)]
-        end
+      def open_intent_lines = Graph::Knowledge::Intent::Listing.of(@retrieval.intents).flat_map { |group| group_lines(group) }
+
+      def group_lines(group)
+        name, shown, rest = group
+        [*shown.map { |intent| "#{name}: #{intent.heading}#{last_run(intent.intent_id)}" }, *("and #{rest} more" if rest.positive?)]
       end
 
       def last_run(intent_id)

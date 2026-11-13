@@ -8,6 +8,7 @@ module Plastic
           # The character offset where each source line of a text starts, and the
           # first and last line of any slice of that text.
           class SourceLines
+            # The first and last line a slice of the text touches.
             Slice = Data.define(:first, :last)
 
             EMPTY = Slice.new(nil, nil)
@@ -19,7 +20,7 @@ module Plastic
             def self.starts(source)
               return [] if source.empty?
 
-              [0, *source.each_char.with_index.filter_map { |character, index| index + 1 if character == "\n" && index + 1 < source.length }]
+              [0, *source.each_char.with_index(1).filter_map { |character, position| position if character == "\n" && position < source.length }]
             end
 
             def initialize(line_starts, length)

@@ -23,8 +23,9 @@ class PrintsArchiveTest < Plastic::TestCase
     intent = open_intent("Alpha", status: "done")
     store_graphs.databases.fetch(:work).transaction { |batch| batch.put(:completions, completion_row("1")) }
 
-    assert_equal ["1", "verdict", false], JSON.parse(graph_text(retrieval.intent(intent.intent_id))).fetch("completion").values_at("intent_id", "judge").push(false)
-    refute JSON.parse(graph_text(intent)).fetch("completion").key?("origin_id")
+    printed = JSON.parse(graph_text(retrieval.intent(intent.intent_id))).fetch("completion")
+
+    assert_equal ["1", "verdict", false], [*printed.values_at("intent_id", "judge"), printed.key?("origin_id")]
   end
 
   def test_the_graph_file_prints_a_null_completion_when_the_intent_has_none

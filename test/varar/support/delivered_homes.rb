@@ -5,7 +5,7 @@ require_relative "two_homes"
 module DeliveredHomes
   include TwoHomes
 
-  SESSION = {"PLASTIC_SESSION" => "delivery"}.freeze
+  SESSION = { "PLASTIC_SESSION" => "delivery" }.freeze
   RECORDS = "- Merged: plastic/1 into alpha at abc123\n- Architecture map: enola at abc123\n" \
             "- Pull request: https://example.test/pull/1\n- Approved: the owner on 2026-10-05\n"
   OUTCOME = "# Outcome\n\nDelivered and verified.\n\n## Verification\n#{RECORDS}"

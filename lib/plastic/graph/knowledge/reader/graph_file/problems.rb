@@ -30,12 +30,13 @@ module Plastic
 
             def completion_problems
               entry = @document["completion"]
-              return [] if entry.nil?
+              return [] unless entry
               return ["holds a completion that is not an object"] unless entry.is_a?(Hash)
 
-              named = entry["intent_id"]
-              (named == @intent_id) ? [] : ["holds a completion of #{Wording.intent(named)}, not #{@intent_id}"]
+              completion_named(entry["intent_id"])
             end
+
+            def completion_named(named) = (named == @intent_id) ? [] : ["holds a completion of #{Wording.intent(named)}, not #{@intent_id}"]
 
             def node_problems
               nodes = @document.listed("nodes")

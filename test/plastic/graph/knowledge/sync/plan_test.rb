@@ -13,7 +13,7 @@ class KnowledgeSyncPlanTest < Plastic::TestCase
   def entries = HASHES.map { |path, (file, printed, rows)| Sync::Entry.new(path, file, printed, Print.new(path, :work, rows, nil)) }
 
   def plan(direction = :up, legacy: false, problem: nil, **options)
-    Plan.new(resolution: Sync::Resolution.new(direction, "/root", options), entries:, legacy:, problem:)
+    Plan.new(resolution: Sync::Resolution.new(direction, "/root", options), entries:, legacy:, problem:, unreadable: [], archived: 0)
   end
 
   def paths(list) = list.map(&:path)
