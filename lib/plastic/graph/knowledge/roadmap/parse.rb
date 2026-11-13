@@ -49,7 +49,7 @@ module Plastic
           end
 
           def edge_targets(text, line:)
-            targets = text.to_s.strip.split(/\s+/)
+            targets = text.to_s.strip.split(/[,\s]+/)
             problem = edge_problem(targets, line)
             return [nil, problem] if problem
 

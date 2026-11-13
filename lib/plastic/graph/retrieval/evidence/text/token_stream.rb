@@ -39,6 +39,8 @@ module Plastic
               def initialize(source)
                 @source = source
                 @values = []
+                @counted = 0
+                @line = 1
               end
 
               def append_match(cursor, match)
@@ -59,7 +61,11 @@ module Plastic
                 end
               end
 
-              def line_at(offset) = @source[0...offset].count("\n") + 1
+              def line_at(offset)
+                @line += @source[@counted...offset].count("\n")
+                @counted = offset
+                @line
+              end
             end
           end
         end
