@@ -62,6 +62,30 @@ class KnowledgeReaderIntentFileTest < Plastic::TestCase
     assert_equal ["1"], retrieval.touched("owner")
   end
 
+  def sync_read(*names)
+    names.each { |name| write("#{DIR}/#{name}", "# #{name}\n") }
+    Plastic::Graph::Knowledge::Sync.new(folder:, retrieval:, databases: store_graphs.databases).read(names.map { |name| "#{DIR}/#{name}" })
+  end
+
+  def fts_bodies = store_graphs.databases.fetch(:knowledge).rows("SELECT body FROM document_fts WHERE path = 'notes.md'").map { |row| row.fetch("body") }
+
+  def test_a_first_sync_of_documents_makes_them_searchable
+    sync_read("notes.md", "other.md")
+
+    found = store_graphs.databases.fetch(:knowledge).rows("SELECT path FROM document_fts WHERE document_fts MATCH 'other'")
+
+    assert_equal [{ "path" => "other.md" }], found
+    assert_equal ["# notes.md\n"], fts_bodies
+  end
+
+  def test_a_second_sync_of_a_changed_document_replaces_its_search_rows
+    sync_read("notes.md")
+    write("#{DIR}/notes.md", "# changed words\n")
+    Plastic::Graph::Knowledge::Sync.new(folder:, retrieval:, databases: store_graphs.databases).read(["#{DIR}/notes.md"])
+
+    assert_equal ["# changed words\n"], fts_bodies
+  end
+
   def test_any_other_file_is_kept_whole
     assert_equal :references, read_in("x.bin", "\x00\xFF".b)
     file = kept("x.bin")
