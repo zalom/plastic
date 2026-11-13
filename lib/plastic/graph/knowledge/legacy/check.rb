@@ -2,9 +2,10 @@
 
 require "json"
 require_relative "../../../invalid"
+require_relative "../intent"
 require_relative "../store_folder"
 require_relative "../reader/graph_file"
-require_relative "index_problems"
+require_relative "index"
 require_relative "roadmaps"
 
 module Plastic
@@ -17,13 +18,14 @@ module Plastic
           Failed = Class.new(Invalid)
 
           GRAPH = %r{\Astore/[^/]+/graph\.json\z}
+          STATUSES = Index::SECTIONS.values.uniq.freeze
 
           def initialize(folder)
             @folder = folder
           end
 
           def call
-            problems = unreadable + roadmap_problems + IndexProblems.new(@folder).call + graph_problems
+            problems = unreadable + roadmap_problems + index_problems + graph_problems
             raise Failed, problems.join("; ") if problems.any?
           end
 
@@ -39,6 +41,27 @@ module Plastic
             return [] unless unreadable.empty?
 
             roadmaps.parse.values.flat_map(&:problems)
+          end
+
+          def index_problems
+            return [] unless @folder.exist?(StoreFolder::LEGACY_INDEX)
+
+            folder_problems(Index.parse(@folder.read(StoreFolder::LEGACY_INDEX).force_encoding(Encoding::UTF_8)))
+          rescue Invalid => error
+            [error.message]
+          rescue SystemCallError
+            []
+          end
+
+          def folder_problems(parsed)
+            listed = parsed.entries.map(&:dir)
+            dirs = @folder.intent_dirs
+            Index::Parsed.missing_folders(listed - dirs) + (dirs - listed).filter_map { |dir| unlisted_problem(dir) }
+          end
+
+          def unlisted_problem(dir)
+            status = FrontMatter.new(@folder).read(dir)["status"]
+            "#{dir} has no entry in INDEX.md" unless STATUSES.include?(Intent.stored_state(status))
           end
 
           def graph_problems
