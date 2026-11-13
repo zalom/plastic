@@ -28,6 +28,16 @@ module DryRunAssertions
     assert_includes lines, "preview: paths that would change: #{listed.size}"
   end
 
+  def copies_made_by
+    copied = []
+    original = FileUtils.method(:cp_r)
+    FileUtils.define_singleton_method(:cp_r) { |*args, **options| copied << args.tap { original.call(*args, **options) } }
+    yield
+    copied
+  ensure
+    FileUtils.define_singleton_method(:cp_r, original)
+  end
+
   def stat_of(path)
     stat = File.stat(path)
     [File.binread(path), stat.ino, stat.mtime, stat.nlink, stat.size]
@@ -87,16 +97,6 @@ class KnowledgeSyncPreviewTest < Plastic::TestCase
     assert_equal before, states
   end
 
-  def copies_made_by
-    copied = []
-    original = FileUtils.method(:cp_r)
-    FileUtils.define_singleton_method(:cp_r) { |*args, **options| copied << args.tap { original.call(*args, **options) } }
-    yield
-    copied
-  ensure
-    FileUtils.define_singleton_method(:cp_r, original)
-  end
-
   def test_a_dry_run_copies_no_file_of_the_store_and_leaves_no_folder_behind
     write(SPEC, "file change")
     entries = Dir.children(@plastic_home).sort
@@ -123,6 +123,23 @@ class KnowledgeSyncPreviewLegacyTest < Plastic::TestCase
 
   def test_a_dry_run_of_sync_up_names_the_files_the_real_run_touches_on_a_legacy_store
     assert_dry_run_names_what_the_real_run_touches(:up)
+  end
+
+  def test_a_dry_run_of_a_legacy_store_copies_no_file_of_the_store
+    entries = Dir.children(@plastic_home).sort
+
+    assert_empty copies_made_by { preview }
+    assert_equal entries, Dir.children(@plastic_home).sort
+  end
+
+  def test_a_dry_run_with_remove_after_import_on_leaves_every_source_file_and_lists_what_it_lists_with_the_flag_off
+    off = listed_paths(preview)
+    File.write(File.join(@plastic_home, "config.yml"), "migrate:\n  remove_after_import: true\n")
+    before = states
+    on = listed_paths(preview)
+
+    assert_equal [off, before], [on, states]
+    assert folder.exist?("INDEX.md")
   end
 
   def test_the_files_of_a_legacy_store_keep_their_bytes_and_inode_data_after_a_dry_run
