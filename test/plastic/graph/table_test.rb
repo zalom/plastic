@@ -53,12 +53,22 @@ class TableTest < Plastic::TestCase
     assert_equal [[true, true, true], [true, false, false], [false, true, true]], flags
   end
 
-  def test_a_change_row_logs_a_put_with_the_row_and_a_remove_without
-    put, remove = %w[put remove].map { |operation| table(:printed).change(operation, { path: "p" }, "o") }
+  def change_of(operation) = table(:printed).change(operation, { path: "p" }, "o")
+
+  def test_a_change_row_logs_a_remove_without_the_row
+    remove = change_of("remove")
 
     assert_equal %(INSERT INTO changes("table", "key", operation, "row", at, origin_id) SELECT :c_table, json_object('path', "path"), :c_operation, NULL, :c_at, :c_origin FROM "printed" WHERE "path" IS :m_path), remove.sql
     assert_equal({ c_table: "printed", c_operation: "remove", c_origin: "o", m_path: "p" }, remove.values.except(:c_at))
-    assert_match(/\A\d{4}-\d\d-\d\dT[\d:]+[+-]\d\d:\d\d\z/, remove.values.fetch(:c_at))
+  end
+
+  def test_a_change_row_stamps_the_time_with_an_offset
+    assert_match(/\A\d{4}-\d\d-\d\dT[\d:]+[+-]\d\d:\d\d\z/, change_of("remove").values.fetch(:c_at))
+  end
+
+  def test_a_change_row_logs_a_put_with_the_row
+    put = change_of("put")
+
     assert_includes put.sql, %(:c_operation, json_object('path', "path", 'sha256', "sha256", 'at', "at", 'origin_id', "origin_id"), )
     assert_equal "put", put.values.fetch(:c_operation)
   end

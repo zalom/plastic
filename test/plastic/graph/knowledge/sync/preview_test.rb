@@ -22,6 +22,7 @@ module DryRunAssertions
   def assert_dry_run_names_what_the_real_run_touches(direction)
     lines = preview(direction:)
     listed = listed_paths(lines).sort
+
     refute_empty listed
     assert_equal paths_the_real_run_touches(direction), listed
     assert_includes lines, "preview: paths that would change: #{listed.size}"
@@ -46,7 +47,7 @@ class KnowledgeSyncPreviewTest < Plastic::TestCase
 
   def conflicting_spec
     store_graphs.databases[:knowledge].transaction do |batch|
-      batch.put(:documents, {intent_id: "1", path: "spec.md", body: "row change", updated_at: STAMP})
+      batch.put(:documents, { intent_id: "1", path: "spec.md", body: "row change", updated_at: STAMP })
     end
     write(SPEC, "file change")
   end
@@ -86,20 +87,21 @@ class KnowledgeSyncPreviewTest < Plastic::TestCase
     assert_equal before, states
   end
 
+  def copies_made_by
+    copied = []
+    original = FileUtils.method(:cp_r)
+    FileUtils.define_singleton_method(:cp_r) { |*args, **options| copied << args.tap { original.call(*args, **options) } }
+    yield
+    copied
+  ensure
+    FileUtils.define_singleton_method(:cp_r, original)
+  end
+
   def test_a_dry_run_copies_no_file_of_the_store_and_leaves_no_folder_behind
     write(SPEC, "file change")
     entries = Dir.children(@plastic_home).sort
-    copied = []
 
-    original = FileUtils.method(:cp_r)
-    FileUtils.define_singleton_method(:cp_r) { |*args, **options| copied << args.tap { original.call(*args, **options) } }
-    begin
-      preview
-    ensure
-      FileUtils.define_singleton_method(:cp_r, original)
-    end
-
-    assert_empty copied
+    assert_empty copies_made_by { preview }
     assert_equal entries, Dir.children(@plastic_home).sort
   end
 

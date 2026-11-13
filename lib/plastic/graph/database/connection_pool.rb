@@ -36,7 +36,7 @@ module Plastic
         def savepoint
           execute("SAVEPOINT batch")
           yield.tap { execute("RELEASE batch") }
-        rescue StandardError
+        rescue
           execute_batch("ROLLBACK TO batch; RELEASE batch;")
           raise
         end

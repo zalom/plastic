@@ -17,13 +17,13 @@ class KnowledgeSyncIntentFoldersTest < Plastic::TestCase
   end
 
   def index_entry(**fields)
-    {"intent_id" => "2", "origin_id" => "other", "parent_id" => nil, "ref" => nil, "slug" => "beta", "title" => "Beta", "kind" => "build",
-     "status" => "parked", "disposition" => nil, "opened_at" => STAMP, "closed_at" => nil}.merge(fields.transform_keys(&:to_s))
+    { "intent_id" => "2", "origin_id" => "other", "parent_id" => nil, "ref" => nil, "slug" => "beta", "title" => "Beta", "kind" => "build",
+      "status" => "parked", "disposition" => nil, "opened_at" => STAMP, "closed_at" => nil }.merge(fields.transform_keys(&:to_s))
   end
 
   def test_a_folder_listed_in_the_index_takes_its_fields_from_the_index
     write("store/2--beta/2--beta.md", page("2", "Beta"))
-    write("store/index.json", JSON.generate({"intents" => [index_entry(status: "done", closed_at: STAMP, disposition: "delivered")], "clusters" => []}))
+    write("store/index.json", JSON.generate({ "intents" => [index_entry(status: "done", closed_at: STAMP, disposition: "delivered")], "clusters" => [] }))
     intent = folders.intents.first
 
     assert_equal ["done", "build", "delivered", STAMP], [intent.status, intent.kind, intent.disposition, intent.closed_at]
@@ -31,7 +31,7 @@ class KnowledgeSyncIntentFoldersTest < Plastic::TestCase
 
   def test_an_index_entry_for_another_folder_name_is_not_used
     write("store/2--beta/2--beta.md", page("2", "Beta"))
-    write("store/index.json", JSON.generate({"intents" => [index_entry(slug: "gamma")], "clusters" => []}))
+    write("store/index.json", JSON.generate({ "intents" => [index_entry(slug: "gamma")], "clusters" => [] }))
 
     assert_equal "open", folders.intents.first.status
   end

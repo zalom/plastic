@@ -41,7 +41,7 @@ module Plastic
 
       def self.bindable(value)
         convert(value)
-      rescue StandardError => error
+      rescue => error
         raise Plastic::Invalid, "a #{value.class} cannot be bound: #{error.message}"
       end
 

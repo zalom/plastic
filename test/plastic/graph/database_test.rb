@@ -117,6 +117,23 @@ class DatabaseTest < Plastic::TestCase
     assert_equal ["text", "café"], [row["kind"], row["data"].dup.force_encoding("UTF-8")]
   end
 
+  def test_a_new_database_makes_its_folder
+    scratch("local.db").rows("CREATE TABLE t(a)")
+
+    assert_path_exists File.join(@home, "scratch", "local.db")
+  end
+
+  def test_puts_and_applies_return_the_batch_so_writes_chain
+    batch = Plastic::Graph::Database::Batch.new
+
+    assert_same batch, batch.put(:clusters, { name: "C", intent_id: "1" }).apply([])
+  end
+end
+
+class DatabaseBindingTest < Plastic::TestCase
+  Database = Plastic::Graph::Database
+  SQL = Plastic::Graph::SQL
+
   def note(value) = database.transaction { |batch| batch.add("INSERT INTO notes(name) VALUES (:name)", name: value) }
 
   def stored = database.rows("SELECT name, typeof(name) AS kind FROM notes ORDER BY rowid").map(&:values)
@@ -187,6 +204,10 @@ class DatabaseTest < Plastic::TestCase
 
     assert_equal %w[a c d], found.map { |row| row["name"] }
   end
+end
+
+class DatabaseWriteLogTest < Plastic::TestCase
+  Database = Plastic::Graph::Database
 
   def test_an_upsert_twice_with_different_values_leaves_the_second
     work = store_graphs.databases.fetch(:work)
@@ -238,17 +259,5 @@ class DatabaseTest < Plastic::TestCase
 
     assert_operator elapsed, :<, 0.1
     assert_equal 8000, database.row("SELECT count(*) AS n FROM notes")["n"]
-  end
-
-  def test_a_new_database_makes_its_folder
-    scratch("local.db").rows("CREATE TABLE t(a)")
-
-    assert_path_exists File.join(@home, "scratch", "local.db")
-  end
-
-  def test_puts_and_applies_return_the_batch_so_writes_chain
-    batch = Plastic::Graph::Database::Batch.new
-
-    assert_same batch, batch.put(:clusters, { name: "C", intent_id: "1" }).apply([])
   end
 end
