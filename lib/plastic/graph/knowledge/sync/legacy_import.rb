@@ -16,14 +16,15 @@ module Plastic
         # graph.json included, then prints the store. context.json remains a
         # generated view and is never imported.
         class LegacyImport
-          def initialize(sync, folder, retrieval, databases)
+          def initialize(sync, folder, retrieval, databases, rollback: Legacy::ImportRollback)
+            @rollback = rollback
             @sync = sync
             @folder = folder
             @retrieval = retrieval
             @databases = databases
           end
 
-          def call = Legacy::StoreImport.new(self, @folder, @retrieval, @databases).call
+          def call = Legacy::StoreImport.new(self, @folder, @retrieval, @databases, rollback: @rollback).call
 
           def read_rows
             parsed = write_index

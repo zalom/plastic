@@ -15,7 +15,8 @@ module Plastic
       module Legacy
         # The complete first sync of one legacy store, with rollback and preserved originals.
         class StoreImport
-          def initialize(reader, folder, retrieval, databases)
+          def initialize(reader, folder, retrieval, databases, rollback: ImportRollback)
+            @rollback = rollback
             @reader = reader
             @folder = folder
             @retrieval = retrieval
@@ -23,8 +24,7 @@ module Plastic
           end
 
           def call
-            Check.new(@folder).call
-            lines, counts = imported(Roadmaps.new.parse(@folder.root))
+            lines, counts = imported
             ImportCleanup.new(@folder, @retrieval, @home).call(counts)
             [*lines, "imported metadata: #{Schema.phrase(counts)}"]
           end
@@ -37,12 +37,17 @@ module Plastic
 
           def databases = graphs.databases
 
-          # A store that fails halfway gets its folder back as it was, databases
-          # gone, so the next run imports it again instead of skipping it.
-          def imported(parsed)
-            ImportRollback.new(@folder.root).call { import(parsed) }
+          def imported
+            @rollback.new(@folder.root).call { checked_import }
+          rescue Check::Failed
+            raise
           rescue => error
             raise Invalid, "#{store}: the import failed: #{error.message}"
+          end
+
+          def checked_import
+            Check.new(@folder).call
+            import(Roadmaps.new.parse(@folder.root))
           end
 
           def import(parsed)

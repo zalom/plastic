@@ -8,7 +8,7 @@ module LegacyImportHelpers
 
   def import = Plastic::Graph::Knowledge::Sync::LegacyImport.new(sync, folder, retrieval, store_graphs.databases).call
 
-  def files_and_bytes = Dir.glob("**/*", File::FNM_DOTMATCH, base: folder.root).select { |rel| folder.exist?(rel) }.sort.to_h { |rel| [rel, folder.read(rel)] }
+  def files_and_bytes = Dir.glob("**/*", File::FNM_DOTMATCH, base: folder.root).select { |rel| folder.exist?(rel) && !rel.match?(/\.db(-wal|-shm|-journal)?\z/) }.sort.to_h { |rel| [rel, folder.read(rel)] }
 
   def break_the_store
     folder.write("roadmaps/r1.md", "# R1\n\n## Batches\n\n### Batch 1 — A\n- [ ] 7 No status here\n")

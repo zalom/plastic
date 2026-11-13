@@ -14,6 +14,8 @@ module Plastic
         # Finds every problem of a legacy store before anything is written, and
         # raises one error that names them all.
         class Check
+          Failed = Class.new(Invalid)
+
           GRAPH = %r{\Astore/[^/]+/graph\.json\z}
           STATUSES = Index::SECTIONS.values.uniq.freeze
 
@@ -23,7 +25,7 @@ module Plastic
 
           def call
             problems = unreadable + roadmap_problems + index_problems + graph_problems
-            raise Invalid, problems.join("; ") if problems.any?
+            raise Failed, problems.join("; ") if problems.any?
           end
 
           private
