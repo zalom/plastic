@@ -70,7 +70,7 @@ class KnowledgeSyncEntryTest < Plastic::TestCase
     assert_equal %i[conflict conflict], graph_actions("b", "a", empty_graph_sha)
   end
 
-  def test_an_emptied_graph_file_is_not_read_back_up
-    assert_equal %i[none none], graph_actions(empty_graph_sha, "a", "a")
+  def test_an_emptied_graph_file_is_read_up_like_any_hand_edit
+    assert_equal %i[read none], graph_actions(empty_graph_sha, "a", "a")
   end
 end

@@ -99,12 +99,12 @@ class KnowledgeReaderGraphViewTest < Plastic::TestCase
     assert_equal before, node_rows
   end
 
-  def test_an_emptied_graph_file_is_not_read_back_into_the_rows
-    node = printed_node("Kept")
+  def test_an_emptied_graph_file_is_read_back_and_empties_the_rows
+    printed_node("Emptied")
     write(GRAPH, graph_text)
     sync.apply(sync_up_plan)
 
-    assert_equal [node.id], node_rows.map { |row| row[:id] }
+    assert_empty node_rows
   end
 
   def reader = Plastic::Graph::Knowledge::Reader.new(folder, { "1" => retrieval.intent("1") }, retrieval.origin_id)
