@@ -13,10 +13,14 @@ class SyncUpGraphArchiveRepeatTest < Minitest::Test
     kernel.run!("intent", "archive", "1")
   end
 
-  def test_a_second_sync_up_changes_nothing
-    with_homes(method(:archived)) do |_first, second|
+  def test_a_delivered_archived_intent_arrives_with_its_completion_and_a_second_sync_up_changes_nothing
+    with_homes(method(:archived)) do |first, second|
       second.run!("sync", "up")
       before = [query(second, ARCHIVES), query(second, COMPLETION), second.read("store/index.json")]
+
+      refute_empty before[1]
+      assert_equal [query(first, ARCHIVES), query(first, COMPLETION)], before.first(2)
+
       second.run!("sync", "up")
 
       assert_equal before, [query(second, ARCHIVES), query(second, COMPLETION), second.read("store/index.json")]
