@@ -34,9 +34,6 @@ module Plastic
           # rows of a home that has not read the file yet, not a change.
           def bare_graph? = printed_sha.nil? && StoreFolder.graph_file?(path) && rows_sha == Prints.empty_graph_sha(path)
 
-          # A graph file emptied by hand is never read back over rows that hold a graph.
-          def emptied_graph? = rows_sha && StoreFolder.graph_file?(path) && file_sha == Prints.empty_graph_sha(path)
-
           def conflict? = !level? && file_changed? && rows_changed?
 
           # What a sync in `direction` does with this path: :record a level
@@ -52,7 +49,7 @@ module Plastic
 
           private
 
-          def up = (file_changed? && !emptied_graph?) ? :read : :none
+          def up = file_changed? ? :read : :none
 
           def down = (rows_changed? || (rows_sha && !file_sha)) ? :print : :none
         end
