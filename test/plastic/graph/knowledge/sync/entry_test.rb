@@ -39,4 +39,38 @@ class KnowledgeSyncEntryTest < Plastic::TestCase
   def test_a_new_file_with_no_rows_is_read_up
     assert_equal %i[read none], actions("b", nil, nil)
   end
+
+  GRAPH = "store/1--alpha/graph.json"
+
+  def graph_entry(file, printed, rows) = Entry.new(GRAPH, file, printed, Print.new(GRAPH, :work, rows, nil))
+
+  def graph_actions(*hashes) = %i[up down].map { |direction| graph_entry(*hashes).action(direction) }
+
+  def empty_graph_sha = Plastic::Graph::Prints.empty_graph_sha(GRAPH)
+
+  def test_graph_json_is_not_a_generated_path_but_context_json_and_the_index_are
+    generated = ->(path) { Entry.new(path, "a", "a", Entry::NO_PRINT).generated? }
+
+    assert_equal [false, true, true], [GRAPH, "store/1--alpha/context.json", "store/index.json"].map(&generated)
+  end
+
+  def test_a_hand_edited_graph_json_is_read_up
+    assert_equal %i[read none], graph_actions("b", "a", "a")
+  end
+
+  def test_a_graph_changed_on_both_sides_is_a_conflict
+    assert_equal %i[conflict conflict], graph_actions("b", "a", "c")
+  end
+
+  def test_a_graph_file_against_bare_rows_with_no_record_is_read_and_no_conflict
+    assert_equal %i[read none], graph_actions("b", nil, empty_graph_sha)
+  end
+
+  def test_bare_rows_count_as_changed_once_a_print_was_recorded
+    assert_equal %i[conflict conflict], graph_actions("b", "a", empty_graph_sha)
+  end
+
+  def test_an_emptied_graph_file_is_not_read_back_up
+    assert_equal %i[none none], graph_actions(empty_graph_sha, "a", "a")
+  end
 end

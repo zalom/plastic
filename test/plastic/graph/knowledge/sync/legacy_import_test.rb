@@ -60,6 +60,38 @@ class KnowledgeSyncLegacyImportTest < Plastic::TestCase
     end
   end
 
+  def graph_with(nodes:, edges: [])
+    JSON.pretty_generate({"intent" => "1", "approval" => nil, "verdicts" => [], "nodes" => nodes, "edges" => edges})
+  end
+
+  def graph_node(id, state = "open")
+    {"intent_id" => "1", "id" => id, "kind" => "work", "title" => "Node #{id}", "criterion" => nil, "state" => state,
+     "by" => nil, "findings" => nil, "retries" => 0, "updated_at" => STAMP}
+  end
+
+  def test_a_legacy_store_with_a_graph_file_keeps_the_nodes_of_that_file
+    folder.write("store/1--alpha-service/graph.json", graph_with(nodes: [graph_node("n1", "done")]))
+    lines = import
+
+    assert_includes lines, "read store/1--alpha-service/graph.json"
+    assert_equal [%w[n1 done]], retrieval.nodes("1").map { |node| [node.id, node.state] }
+  end
+
+  def test_a_graph_file_with_an_edge_to_a_missing_node_is_a_problem_of_the_check_pass_and_writes_no_row
+    folder.write("store/1--alpha-service/graph.json", graph_with(nodes: [graph_node("n1")], edges: [{"intent_id" => "1", "from" => "n1", "to" => "n4", "kind" => "needs"}]))
+    message = assert_raises(Plastic::Invalid) { import }.message
+
+    assert_includes message, "store/1--alpha-service/graph.json"
+    assert_includes message, "n4"
+    assert_empty retrieval.intents
+  end
+
+  def test_a_graph_file_with_an_unknown_state_is_a_problem_of_the_check_pass
+    folder.write("store/1--alpha-service/graph.json", graph_with(nodes: [graph_node("n1", "flying")]))
+
+    assert_includes assert_raises(Plastic::Invalid) { import }.message, "flying"
+  end
+
   def test_a_failed_check_leaves_no_database_no_index_and_every_file_as_it_was
     break_the_store
     retrieval.intents
