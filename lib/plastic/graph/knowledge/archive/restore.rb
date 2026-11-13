@@ -17,6 +17,7 @@ module Plastic
 
           def call(intent_id)
             return unavailable(intent_id) unless retrieval.archived?(intent_id)
+            return elsewhere(intent_id) unless snapshot.call(intent_id).entries.any?
 
             restore(intent_id)
             [true, nil, nil]
@@ -27,6 +28,8 @@ module Plastic
           attr_reader :database, :folder, :retrieval, :snapshot
 
           def unavailable(intent_id) = [false, "intent #{intent_id} is not archived", :failure]
+
+          def elsewhere(intent_id) = [false, "intent #{intent_id} is archived and its snapshot is on the first home; unarchive it there", :failure]
 
           def restore(intent_id)
             intent = retrieval.intent(intent_id)

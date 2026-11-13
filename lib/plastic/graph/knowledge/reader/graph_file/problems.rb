@@ -15,7 +15,7 @@ module Plastic
               @intent_id = intent_id
             end
 
-            def call = [*intent_problems, *approval_problems, *node_problems, *edge_problems, *verdict_problems, *field_problems]
+            def call = [*intent_problems, *approval_problems, *completion_problems, *node_problems, *edge_problems, *verdict_problems, *field_problems]
 
             private
 
@@ -26,6 +26,15 @@ module Plastic
 
             def approval_problems
               [@document["approval"]].compact.grep_v(Hash).map { "holds an approval that is not an object" }
+            end
+
+            def completion_problems
+              entry = @document["completion"]
+              return [] if entry.nil?
+              return ["holds a completion that is not an object"] unless entry.is_a?(Hash)
+
+              named = entry["intent_id"]
+              (named == @intent_id) ? [] : ["holds a completion of #{Wording.intent(named)}, not #{@intent_id}"]
             end
 
             def node_problems
@@ -49,7 +58,7 @@ module Plastic
             end
 
             def field_problems
-              Document::TABLES.flat_map { |table, record| unknown_fields(table, record) }
+              Document::TABLES.merge(Document::PUT_ONLY).flat_map { |table, record| unknown_fields(table, record) }
             end
 
             def unknown_fields(table, record)

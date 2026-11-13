@@ -11,6 +11,7 @@ require_relative "sync/file_reads"
 require_relative "sync/resolution"
 require_relative "sync/legacy_import"
 require_relative "sync/intent_folders"
+require_relative "sync/archived_intents"
 
 module Plastic
   module Graph
@@ -39,10 +40,11 @@ module Plastic
           (plan.direction == :up) ? read_up(plan) : print_down(plan)
         end
 
-        # Sync up: the rows of the folders that have none first, then every file
+        # Sync up: the rows of the folders that have none first, the archived intents the index lists, then every file
         # changed, then the index printed again from the rows.
         def read_up(plan)
           IntentFolders.new(@folder, @retrieval).write_to(@databases)
+          ArchivedIntents.new(@folder, @retrieval).write_to(@databases)
           lines = read(plan.taking(:read).map(&:path))
           printer.print([Prints.index(@retrieval)])
           lines

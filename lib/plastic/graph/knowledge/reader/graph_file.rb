@@ -26,6 +26,7 @@ module Plastic
             refuse_problems
             Document::TABLES.each_key { |table| batch.remove(table, intent_id: @intent_id, origin_id: @origin_id) }
             rows.each { |table, list| batch.put_all(table, list) }
+            Document::PUT_ONLY.each { |table, record| batch.put_all(table, table_rows(table, record)) }
           end
 
           private

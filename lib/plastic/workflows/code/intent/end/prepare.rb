@@ -24,7 +24,7 @@ module Plastic
 
             gate "no intent %{intent_id} in this store", stops: :failure, pass: ->(context) { !context.intent.nil? }
             gate "intent %{intent_id} is not open or in progress", stops: :failure,
-              pass: ->(context) { context.closed || Graph::Knowledge::Intent::OPEN.include?(context.intent.status) }
+              pass: ->(context) { context.closed || Plastic::Graph::Knowledge::Intent::OPEN.include?(context.intent.status) }
 
             read "check delivery ownership" do |context|
               context[:problem] = DeliveryOwnership.problem(context)

@@ -7,6 +7,7 @@ module Plastic
       module ArchiveReads
         def archived?(intent_id) = archives.archived?(intent_id)
         def archived_reference?(reference) = archived?(fetch_reference(reference).fetch(:intent_id))
+        def archive_rows(intent_id = nil) = read(:archives, intent_id)
         def kept_files(intent_id = nil) = read(:kept_files, intent_id)
         def kept_file_data(name) = stored.kept_file_data(name)
       end
