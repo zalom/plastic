@@ -14,6 +14,23 @@ class KnowledgeRoadmapParseTest < Plastic::TestCase
     assert_empty result.problems
   end
 
+  def graph(text) = parse("# R1\n\n## Graph\n#{text}\n")
+
+  def test_a_needs_line_splits_its_targets_on_commas
+    result = graph("- 1 needs 2, 3")
+
+    assert_equal({ "1" => %w[2 3] }, result.edges)
+    assert_empty result.problems
+  end
+
+  def test_a_needs_line_with_spaces_gives_the_same_edges
+    assert_equal({ "1" => %w[2 3] }, graph("- 1 needs 2 3").edges)
+  end
+
+  def test_a_needs_line_with_commas_and_no_spaces_gives_the_same_edges
+    assert_equal({ "1" => %w[2 3] }, graph("- 1 needs 2,3").edges)
+  end
+
   def test_an_indented_bullet_continues_the_log_line_above_it
     result = parse("# R1\n\n## Log\n- 2026-09-01 Opened the roadmap\n  - with a sub-point\n- 2026-09-02 Closed it\n")
 
