@@ -19,7 +19,15 @@ class KnowledgeLegacyStoreImportTest < Plastic::TestCase
     assert_includes error.message, "the import failed: No space left on device - disk full"
   end
 
-  def test_a_failed_import_leaves_the_source_untouched
+def test_a_store_that_fails_its_checks_is_refused_in_the_form_of_every_import_failure
+  folder.write("INDEX.md", "- [1 - Design](store/1--design/1--design.md)\n")
+
+  error = assert_raises(Plastic::Invalid) { import.call }
+
+  assert_match(/\A.+: the import failed: INDEX.md: /, error.message)
+end
+
+def test_a_failed_import_leaves_the_source_untouched
     assert_raises(Plastic::Invalid) { import.call }
 
     assert_equal "original", folder.read("INDEX.md")
