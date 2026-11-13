@@ -30,11 +30,11 @@ module Plastic
 
             def node_problems
               nodes = @document.listed("nodes")
-              [*nodes.grep_v(Hash).map { "holds a node that is not an object" }, *state_problems(nodes.grep(Hash))]
+              [*nodes.grep_v(Hash).map { "holds a node that is not an object" }, *state_problems]
             end
 
-            def state_problems(nodes)
-              unknown = nodes.map { |node| node.values_at("id", "state") }.reject { |_id, state| Work::Node::STATES.include?(state) }
+            def state_problems
+              unknown = @document.listed("nodes").grep(Hash).map { |node| node.values_at("id", "state") }.reject { |_id, state| Work::Node::STATES.include?(state) }
               unknown.map { |id, state| "holds node #{id.inspect} #{Wording.state(state)}" }
             end
 
