@@ -7,6 +7,7 @@ require_relative "../../retrieval/evidence/text"
 require_relative "../../retrieval/evidence/removal"
 require_relative "../legacy_path"
 require_relative "folder_file"
+require_relative "graph_file"
 require_relative "../../work/edge"
 require_relative "../../work/node"
 require_relative "../../work/savepoint"
@@ -51,9 +52,7 @@ module Plastic
           # identify binary data; invalid UTF-8 stays in the attachment archive.
           def document? = Retrieval::Evidence::Text.classify(@file.rel, @file.bytes) == :text
 
-          def graph(_batch)
-            raise Invalid, "graph.json is generated from rows; use node and edge commands to change the graph"
-          end
+          def graph(batch) = GraphFile.new(text, @intent_id, @origin_id, @file.path).apply(batch)
 
           def context(_batch)
             raise Invalid, "context.json is generated from rows; use intent context and intent discover to change it"

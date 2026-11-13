@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "json"
 require_relative "intent_folder"
 require_relative "../store_folder"
 
@@ -16,7 +17,8 @@ module Plastic
           def initialize(folder, retrieval)
             @store = folder
             @rowed = retrieval.intents.to_h { |intent| [intent.intent_id, intent.dir] }
-            @folders = folder.intent_dirs.map { |dir| IntentFolder.new(dir, folder) }
+            listed = listed_in(folder)
+            @folders = folder.intent_dirs.map { |dir| IntentFolder.new(dir, folder, listed[dir]) }
           end
 
           # The intents of the folders that have no row and can be read.
@@ -38,6 +40,16 @@ module Plastic
           def readable_files = @store.intent_files.reject { |path| unreadable?(path) }
 
           private
+
+          # The entries of store/index.json by the folder each names, or none when the file is missing or unreadable.
+          def listed_in(folder)
+            return {} unless folder.exist?(StoreFolder::INDEX)
+
+            entries = Array(JSON.parse(folder.read(StoreFolder::INDEX).force_encoding(Encoding::UTF_8))["intents"])
+            entries.grep(Hash).to_h { |entry| ["store/#{entry["intent_id"]}--#{entry["slug"]}", entry] }
+          rescue JSON::ParserError
+            {}
+          end
 
           def unreadable?(path) = unreadable.any? { |dir| path.start_with?("#{dir}/") }
 

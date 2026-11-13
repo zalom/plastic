@@ -12,8 +12,9 @@ module Plastic
     module Knowledge
       class Graph::Knowledge::Sync
         # The full first sync delegates preservation and metadata to Graph::Knowledge::Legacy::StoreImport.
-        # Its read_rows primitive reads intents, clusters and ordinary files, then
-        # prints the store. graph.json remains a generated view and is never imported.
+        # Its read_rows primitive reads intents, clusters and ordinary files,
+        # graph.json included, then prints the store. context.json remains a
+        # generated view and is never imported.
         class LegacyImport
           def initialize(sync, folder, retrieval, databases)
             @sync = sync
@@ -58,7 +59,7 @@ module Plastic
           def intents_read
             dirs = @folder.intent_dirs
             dirs.each_with_index.flat_map do |dir, index|
-              paths = @folder.files(dir).reject { |path| Graph::Knowledge::StoreFolder.graph_view?(path) }
+              paths = @folder.files(dir).reject { |path| Graph::Knowledge::StoreFolder.context_view?(path) }
               [*@sync.read(paths), "imported intent #{index + 1} of #{dirs.size}: #{File.basename(dir).split("--", 2).first}"]
             end
           end

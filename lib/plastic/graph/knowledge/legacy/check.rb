@@ -3,6 +3,7 @@
 require "json"
 require_relative "../../../invalid"
 require_relative "../store_folder"
+require_relative "../reader/graph_file"
 require_relative "index"
 require_relative "roadmaps"
 
@@ -60,14 +61,14 @@ module Plastic
           end
 
           def graph_problems
-            @folder.intent_files.grep(GRAPH).filter_map do |path|
-              JSON.parse(@folder.read(path))
-              nil
-            rescue JSON::ParserError => error
-              "#{path} is not valid JSON: #{error.message.lines.first.chomp}"
-            rescue SystemCallError
-              nil
-            end
+            @folder.intent_files.grep(GRAPH).flat_map { |path| graph_file_problems(path) }
+          end
+
+          def graph_file_problems(path)
+            intent_id = File.basename(File.dirname(path)).split("--", 2).first
+            Reader::GraphFile.new(@folder.read(path), intent_id, nil, path).problems
+          rescue SystemCallError
+            []
           end
         end
       end

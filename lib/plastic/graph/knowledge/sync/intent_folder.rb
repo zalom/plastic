@@ -3,6 +3,7 @@
 require_relative "intent_file"
 require_relative "../intent"
 require_relative "../legacy/index"
+require_relative "../reader/index_file"
 
 module Plastic
   module Graph
@@ -13,9 +14,10 @@ module Plastic
         class IntentFolder
           attr_reader :dir
 
-          def initialize(dir, folder)
+          def initialize(dir, folder, listed = nil)
             @dir = dir
             @folder = folder
+            @listed = listed
           end
 
           def number = File.basename(dir).split("--", 2).first
@@ -34,7 +36,10 @@ module Plastic
             "#{dir}: its number #{number} is also the number of #{twins.map(&:dir).join(", ")}" if twins.any?
           end
 
+          # The row of the store/index.json entry that names this folder, else the row its own file gives.
           def intent
+            return Intent.from_h(Reader::IndexFile.intent_row(@listed)) if @listed
+
             front = intent_file.front
             entry = Legacy::Index::Entry.new(front["id"], front["intent"], dir, "open", nil, nil)
             Intent.from_h(entry.row(front, Plastic.now))

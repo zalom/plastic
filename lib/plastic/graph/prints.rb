@@ -96,9 +96,20 @@ module Plastic
 
       def graph(intent, rows)
         id = intent.intent_id
-        data = { "intent" => id, "approval" => rows.approvals(id).first&.then { |approval| plain(approval) },
-                 "verdicts" => plain_all(rows.verdicts(id)), "nodes" => plain_all(rows.nodes(id)), "edges" => plain_all(rows.edges(id)) }
-        Print.text("#{intent.dir}/graph.json", :work, "#{JSON.pretty_generate(data)}\n")
+        approval = rows.approvals(id).first&.then { |row| plain(row) }
+        text = graph_text(id, approval, plain_all(rows.verdicts(id)), plain_all(rows.nodes(id)), plain_all(rows.edges(id)))
+        Print.text("#{intent.dir}/graph.json", :work, text)
+      end
+
+      def graph_text(id, approval, verdicts, nodes, edges)
+        data = { "intent" => id, "approval" => approval, "verdicts" => verdicts, "nodes" => nodes, "edges" => edges }
+        "#{JSON.pretty_generate(data)}\n"
+      end
+
+      # The hash of the graph file of an intent that holds no node, edge, approval or verdict.
+      def empty_graph_sha(path)
+        id = File.basename(File.dirname(path)).split("--", 2).first
+        Digest::SHA256.hexdigest(graph_text(id, nil, [], [], []))
       end
 
       def context(intent, rows)

@@ -23,6 +23,12 @@ module GraphFileHelpers
   def sync_up_plan = sync.plan(:up)
 
   def node_rows = retrieval.nodes("1").map(&:to_h)
+
+  def printed_node(title)
+    node = store_graphs.work.add_node(intent_id: "1", title:, criterion: "Done")
+    store_graphs.work.print_intent("1")
+    node
+  end
 end
 
 class KnowledgeReaderGraphViewTest < Plastic::TestCase
@@ -39,7 +45,7 @@ class KnowledgeReaderGraphViewTest < Plastic::TestCase
   end
 
   def test_the_rows_of_the_file_replace_the_node_rows_the_intent_held
-    kept = store_graphs.work.add_node(intent_id: "1", title: "Replaced", criterion: "Done")
+    kept = printed_node("Replaced")
     write(GRAPH, graph_text(nodes: [node_hash("n7")]))
     sync.apply(sync_up_plan)
 
@@ -82,9 +88,7 @@ class KnowledgeReaderGraphViewTest < Plastic::TestCase
   end
 
   def test_an_emptied_graph_file_is_not_read_back_into_the_rows
-    node = store_graphs.work.add_node(intent_id: "1", title: "Kept", criterion: "Done")
-    store_graphs.work.print_intent("1")
-    sync.apply(sync_up_plan)
+    node = printed_node("Kept")
     write(GRAPH, graph_text)
     sync.apply(sync_up_plan)
 
@@ -107,7 +111,7 @@ class KnowledgeReaderGraphViewInvalidTest < Plastic::TestCase
   fixtures :alpha_synced
 
   def refused_message(text)
-    node = store_graphs.work.add_node(intent_id: "1", title: "Trusted", criterion: "Done")
+    node = printed_node("Trusted")
     write(GRAPH, text)
     message = assert_raises(Plastic::Invalid) { sync.apply(sync_up_plan) }.message
     assert_equal [node.id], node_rows.map { |row| row[:id] }
