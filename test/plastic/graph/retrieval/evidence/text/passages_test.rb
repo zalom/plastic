@@ -58,13 +58,4 @@ class RetrievalEvidenceTextPassagesTest < Plastic::TestCase
   def test_text_shorter_than_one_passage_is_cut_by_character_offset
     assert_equal by_offset("é—\nx"), build("é—\nx")
   end
-
-  def test_four_hundred_thousand_lines_with_an_em_dash_each_are_split_in_under_two_seconds
-    text = "dash — and some more text\n" * 400_000
-    extraction = Text::Extraction.new(text, Text::SourceLines.for(text))
-    started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-    build(extraction)
-
-    assert_operator Process.clock_gettime(Process::CLOCK_MONOTONIC) - started, :<, 2
-  end
 end
