@@ -10,7 +10,9 @@ module Plastic
       class Evidence
         # Writes one immutable text revision and its current derived search rows.
         class Writer
-          def initialize(database, origin_id, after_passages: -> {}, heads: nil)
+          attr_reader :origin_id
+
+          def initialize(database, origin_id, after_passages: -> {}, heads: Heads::Unread.new)
             @database = database
             @origin_id = origin_id
             @after_passages = after_passages
@@ -34,11 +36,7 @@ module Plastic
           private
 
           def apply_document(batch, document)
-            Evidence::Rows.new(batch, document, @origin_id, known_head: known_head?(document)).write { @after_passages.call }
-          end
-
-          def known_head?(document)
-            @heads.nil? || @heads.add?([document.intent_id, document.path]).nil?
+            Evidence::Rows.new(batch, document, @origin_id, heads: @heads).write { @after_passages.call }
           end
         end
       end

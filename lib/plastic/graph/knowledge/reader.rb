@@ -26,16 +26,15 @@ module Plastic
 
         # `intents` maps each known intent id to its intent: from the rows and
         # from the store/index.json on disk.
-        def initialize(folder, intents, origin_id, retrieval: nil, heads: nil)
+        def initialize(folder, intents, origin_id, retrieval: nil, heads: Retrieval::Evidence::Heads::Unread.new)
           @folder = folder
           @intents = intents
-          @origin_id = origin_id
           @retrieval = retrieval
-          @heads = heads
+          @writer = Retrieval::Evidence::Writer.new(nil, origin_id, heads:)
         end
 
         def read(path)
-          file = (path == StoreFolder::INDEX) ? IndexFile.new(@folder.read(path), @origin_id) : intent_file(path)
+          file = (path == StoreFolder::INDEX) ? IndexFile.new(@folder.read(path), @writer.origin_id) : intent_file(path)
           Read.new(path, file.database, file.method(:apply))
         end
 
@@ -44,9 +43,14 @@ module Plastic
         def intent_file(path)
           dir = path.split("/").first(2).join("/")
           intent = @intents[File.basename(dir).split("--").first]
-          return IntentFile.new(@folder, intent, path, @origin_id, retrieval: @retrieval, heads: @heads) if intent&.dir == dir
+          return intent_file_of(intent, path) if intent&.dir == dir
 
           raise Invalid, "#{dir} has no intent row and no entry in #{StoreFolder::INDEX}; add one or remove the folder"
+        end
+
+        def intent_file_of(intent, path)
+          file = FolderFile.new(@folder, path, path.delete_prefix("#{intent.dir}/"))
+          IntentFile.new(file, intent.intent_id, retrieval: @retrieval, writer: @writer)
         end
       end
     end

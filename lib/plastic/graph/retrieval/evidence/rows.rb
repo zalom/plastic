@@ -1,16 +1,18 @@
 # frozen_string_literal: true
 
+require_relative "heads"
+
 module Plastic
   module Graph
     module Retrieval
       class Evidence
         # Writes canonical, immutable, and current evidence rows in dependency order.
         class Rows
-          def initialize(batch, document, origin_id, known_head: true)
+          def initialize(batch, document, origin_id, heads: Heads::Unread.new)
             @batch = batch
             @document = document
             @origin_id = origin_id
-            @known_head = known_head
+            @heads = heads
           end
 
           def write
@@ -33,7 +35,7 @@ module Plastic
 
           def current_rows
             @batch.put(:document_heads, @document.head_row)
-            delete_search_rows if @known_head
+            delete_search_rows if @heads.known?(@document.intent_id, @document.path)
             @document.passages.each { |passage| current_passage(passage) }
           end
 

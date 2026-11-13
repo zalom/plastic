@@ -24,7 +24,7 @@ class RetrievalEvidenceRowsTest < Plastic::TestCase
 
   def test_a_document_without_a_known_head_skips_the_search_row_delete
     batch = Recording.new([])
-    Plastic::Graph::Retrieval::Evidence::Rows.new(batch, document, origin, known_head: false).write { nil }
+    Plastic::Graph::Retrieval::Evidence::Rows.new(batch, document, origin, heads: Plastic::Graph::Retrieval::Evidence::Heads.new).write { nil }
 
     assert_equal [:documents, "INSERT OR IGNORE INTO document_revisions", "INSERT OR IGNORE INTO document_passages",
       :document_heads, "INSERT INTO document_fts"], batch.steps

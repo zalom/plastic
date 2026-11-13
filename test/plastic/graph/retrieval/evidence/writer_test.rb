@@ -39,8 +39,7 @@ class RetrievalEvidenceWriterTest < Plastic::TestCase
   end
 
   def test_a_known_heads_set_skips_the_search_row_delete_for_a_new_document_only
-    heads = Set[["1", "old.md"]]
-    writer = Plastic::Graph::Retrieval::Evidence::Writer.new(nil, origin, heads:)
+    writer = Plastic::Graph::Retrieval::Evidence::Writer.new(nil, origin, heads: heads(["1", "old.md"]))
     batch = Statements.new([])
     writer.apply(batch, "1", "new.md", "New\n")
     writer.apply(batch, "1", "old.md", "Old\n")
@@ -51,7 +50,7 @@ class RetrievalEvidenceWriterTest < Plastic::TestCase
 
   def test_a_changed_body_read_again_replaces_its_search_rows_with_heads_known
     write_evidence("first evidence")
-    writer = Plastic::Graph::Retrieval::Evidence::Writer.new(nil, origin, heads: Set[["1", "plan.md"]])
+    writer = Plastic::Graph::Retrieval::Evidence::Writer.new(nil, origin, heads: heads(["1", "plan.md"]))
     knowledge.transaction { |batch| writer.apply(batch, "1", "plan.md", "second evidence") }
 
     assert_equal ["second evidence"], rows("document_fts", "body")
@@ -61,13 +60,15 @@ class RetrievalEvidenceWriterTest < Plastic::TestCase
     writer = Plastic::Graph::Retrieval::Evidence::Writer.new(knowledge, origin)
     writer.write("1", "plan.md", "first evidence")
     writer.remove("1", "plan.md")
-    again = Plastic::Graph::Retrieval::Evidence::Writer.new(nil, origin, heads: Set.new)
+    again = Plastic::Graph::Retrieval::Evidence::Writer.new(nil, origin, heads: heads)
     knowledge.transaction { |batch| again.apply(batch, "1", "plan.md", "again evidence") }
 
     assert_equal ["again evidence"], rows("document_fts", "body")
   end
 
   private
+
+  def heads(*keys) = Plastic::Graph::Retrieval::Evidence::Heads.new(keys.to_set)
 
   def write_evidence(body) = Plastic::Graph::Retrieval::Evidence::Writer.new(knowledge, origin).write("1", "plan.md", body)
 

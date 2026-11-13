@@ -36,7 +36,7 @@ module Plastic
 
           def known_heads
             rows = @databases.fetch(:knowledge).rows("SELECT intent_id, path FROM document_heads WHERE origin_id = :origin", origin: @retrieval.origin_id)
-            rows.to_set { |row| [row.fetch("intent_id"), row.fetch("path")] }
+            Retrieval::Evidence::Heads.new(rows.to_set { |row| [row.fetch("intent_id"), row.fetch("path")] })
           end
 
           # The work graph first, so a new intent's row is in place before its files.
