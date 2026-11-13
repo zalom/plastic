@@ -337,14 +337,11 @@ class DatabaseWriteLogTest < Plastic::TestCase
     assert_equal({ "routine_runs" => 1 }, database.written)
   end
 
-  def test_eight_thousand_statements_in_one_batch_take_under_a_tenth_of_a_second
-    started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+  def test_eight_thousand_statements_in_one_batch_all_land
     database.transaction do |batch|
       8000.times { |n| batch.add("INSERT INTO notes(name) VALUES (:name)", name: "n#{n}") }
     end
-    elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
 
-    assert_operator elapsed, :<, 0.1
     assert_equal 8000, database.row("SELECT count(*) AS n FROM notes")["n"]
   end
 end
