@@ -32,8 +32,6 @@ module Plastic
 
           def failing
             yield
-          rescue Check::Failed
-            raise
           rescue => error
             raise Invalid, "#{@metadata.store}: the import failed: #{error.message}"
           end
