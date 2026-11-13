@@ -11,7 +11,7 @@ class GraphRoadmapPrintTest < Plastic::TestCase
   end
 
   def printed(**options)
-    Plastic::Graph::Knowledge::Legacy::Roadmaps.new.write_roadmap_rows(store_graphs, "plan", parsed(**options), folder.path("missing"))
+    Plastic::Graph::Knowledge::Legacy::RoadmapRows.new(store_graphs, "plan", parsed(**options)).call(folder.path("missing"))
     Plastic::Graph::RoadmapPrint.new(retrieval, "plan").text
   end
 

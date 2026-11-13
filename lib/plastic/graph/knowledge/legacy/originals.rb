@@ -8,29 +8,28 @@ module Plastic
       module Legacy
         # Keeps original bytes when an import rewrites a legacy file.
         class Originals
-          def keep_changed_originals(databases, folder, originals, counts)
-            originals.each do |path, before|
-              after = folder.exist?(path) ? folder.read(path) : nil
-              next if after == before
+          INTENT = %r{\Astore/(.*?)(?:--|/)}
 
-              intent_id = path.sub(%r{\Astore/}, "").split("/").first.split("--").first
-              keep_original(databases, path, before, intent_id, counts)
-            end
+          def initialize(databases, counts)
+            @databases = databases
+            @counts = counts
           end
 
-          def keep_original(databases, path, bytes, intent_id, counts)
+          def keep_changed_originals(folder, originals)
+            originals.each { |path, before| keep_original(path, before, path[INTENT, 1]) unless folder.holds?(path, before) }
+          end
+
+          def keep_original(path, bytes, intent_id)
             row = { name: "originals/#{path}", mode: 0o644, mtime: Time.now.to_i, sz: bytes.bytesize,
                     data: SQLite3::Blob.new(bytes), intent_id:, sha256: Digest::SHA256.hexdigest(bytes) }
-            databases.fetch(:references).transaction { |batch| batch.put(:sqlar, row, statement: :upsert) }
-            counts[:kept] += 1
+            @databases.fetch(:references).transaction { |batch| batch.put(:sqlar, row, statement: :upsert) }
+            @counts[:kept] += 1
           end
 
-          def keep_roadmap_original(databases, root, slug, original_bytes, counts)
+          def keep_roadmap_original(root, slug, original_bytes)
             canonical = File.join(root, "roadmaps", "#{slug}.md")
             after = File.exist?(canonical) ? File.binread(canonical) : nil
-            return if after == original_bytes
-
-            keep_original(databases, "roadmaps/#{slug}.md", original_bytes, nil, counts)
+            keep_original("roadmaps/#{slug}.md", original_bytes, nil) unless after == original_bytes
           end
         end
       end

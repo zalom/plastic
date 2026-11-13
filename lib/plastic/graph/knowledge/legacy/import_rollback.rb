@@ -37,12 +37,16 @@ module Plastic
           end
 
           def restore
-            set_aside
-            @files.rename(original, @root)
-            remove_databases
+            put_back
           rescue => error
             @retain = true
             raise Invalid, "rollback failed; original store preserved at #{original}: #{error.message}"
+          end
+
+          def put_back
+            set_aside
+            @files.rename(original, @root)
+            remove_databases
           end
 
           def remove_databases = Dir.glob(File.join(@root, "*.db{,-wal,-shm,-journal}")).each { |path| File.delete(path) }

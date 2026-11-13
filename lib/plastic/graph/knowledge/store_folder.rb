@@ -30,6 +30,8 @@ module Plastic
 
         def read(rel) = File.binread(path(rel))
 
+        def holds?(rel, bytes) = exist?(rel) && read(rel) == bytes
+
         # The SHA-256 of the file, or nil when it is gone.
         def digest(rel) = exist?(rel) ? Digest::SHA256.file(path(rel)).hexdigest : nil
 

@@ -11,7 +11,9 @@ module Plastic
   module Graph
     module Knowledge
       module Legacy
+        # The read-only checks that must pass before a legacy store is imported.
         class Check
+          # The error that names every problem the checks found.
           Failed = Class.new(Invalid)
 
           GRAPH = %r{\Astore/[^/]+/graph\.json\z}
@@ -30,29 +32,30 @@ module Plastic
 
           def unreadable = paths.reject { |path| File.readable?(@folder.path(path)) }.map { |path| "#{path} cannot be read" }
 
-          def paths = [StoreFolder::LEGACY_INDEX, *@folder.intent_files, *roadmap_paths.map { |path| roadmaps.relative(@folder.root, path) }].select { |path| @folder.exist?(path) }
+          def paths = [StoreFolder::LEGACY_INDEX, *@folder.intent_files, *roadmaps.files.map { |path| roadmaps.relative(path) }].select { |path| @folder.exist?(path) }
 
-          def roadmaps = (@roadmaps ||= Roadmaps.new)
-
-          def roadmap_paths = roadmaps.roadmap_files(@folder.root)
+          def roadmaps = (@roadmaps ||= Roadmaps.new(@folder.root))
 
           def roadmap_problems
             return [] unless unreadable.empty?
 
-            roadmaps.parse(@folder.root).values.flat_map(&:problems)
+            roadmaps.parse.values.flat_map(&:problems)
           end
 
           def index_problems
             return [] unless @folder.exist?(StoreFolder::LEGACY_INDEX)
 
-            parsed = Index.parse(@folder.read(StoreFolder::LEGACY_INDEX).force_encoding(Encoding::UTF_8))
-            listed = parsed.entries.map(&:dir)
-            dirs = @folder.intent_dirs
-            Index::Parsed.missing_folders(listed - dirs) + (dirs - listed).filter_map { |dir| unlisted_problem(dir) }
+            folder_problems(Index.parse(@folder.read(StoreFolder::LEGACY_INDEX).force_encoding(Encoding::UTF_8)))
           rescue Invalid => error
             [error.message]
           rescue SystemCallError
             []
+          end
+
+          def folder_problems(parsed)
+            listed = parsed.entries.map(&:dir)
+            dirs = @folder.intent_dirs
+            Index::Parsed.missing_folders(listed - dirs) + (dirs - listed).filter_map { |dir| unlisted_problem(dir) }
           end
 
           def unlisted_problem(dir)
