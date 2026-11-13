@@ -6,11 +6,21 @@ require_relative "../schema"
 module Plastic
   module Graph
     class Database
-      # One statement list with the row count after each counted write, so
-      # the counts are exact rather than one per statement. In a store
-      # database every put and remove also appends its `changes` row here, so
-      # the log commits with the write or not at all.
+      # The statements of one transaction, in the order they were added.
       class Batch
+        # One statement, the values it binds, and the table whose rows it counts, if any.
+        Entry = Data.define(:sql, :values, :table)
+
+        # What one statement did on a connection: the rows it returned.
+        class Entry
+          def run(connection)
+            rows = connection.read(sql, values)
+            changed = connection.changes
+            yield table, changed if table && changed.positive?
+            rows unless rows.empty?
+          end
+        end
+
         attr_reader :statements
 
         # `origin` names the installation that writes; the local database has none and keeps no log.
@@ -23,21 +33,14 @@ module Plastic
 
         # A statement kept off the report. Its RETURNING rows, such as a new
         # id, come back from the transaction.
-        def add(sql, **values)
-          @statements << "#{SQL.bind(sql, values)};"
-          self
-        end
+        def add(sql, **values) = bind(nil, SQL::Bound.new(sql, values))
 
         # A write the report counts under `table`.
-        def write(table, sql, **values)
-          add(sql, **values)
-          @statements << "SELECT #{SQL.literal(table.to_s)} AS written_table, changes() AS written_rows WHERE changes() > 0;"
-          self
-        end
+        def write(table, sql, **values) = bind(table.to_s, SQL::Bound.new(sql, values))
 
         def insert(table, record, conflict: nil)
           clause = conflict ? " ON CONFLICT DO #{conflict}" : ""
-          write(table, "INSERT INTO #{SQL.name(table)} #{SQL.tuple(record.to_h)}#{clause}")
+          bind(table.to_s, SQL.insert(table, record.to_h, clause))
         end
 
         # Writes the whole row its key names, and logs it. `statement: :insert`
@@ -45,7 +48,7 @@ module Plastic
         def put(name, row, statement: :upsert)
           table = Schema.table_named(name)
           row = stamped(table, row.to_h)
-          counted(table, table.public_send(statement, row))
+          bind(table.counted_as, table.public_send(statement, row))
           log(table, "put", table.key_of(row))
         end
 
@@ -78,19 +81,24 @@ module Plastic
           table = Schema.table_named(name)
           values = stamped(table, values)
           log(table, "remove", values)
-          write(name, "DELETE FROM #{SQL.name(name)} WHERE #{SQL.where(values)}")
+          where = SQL.where(values, "m")
+          write(name, "DELETE FROM #{SQL.name(name)} WHERE #{where.sql}", **where.values)
         end
 
         private
 
-        # Machine state, such as the printed hashes, stays off the report.
-        def counted(table, sql) = table.counted? ? write(table.name, sql) : add(sql)
-
         def stamped(table, row) = (table.origin? && @origin) ? { origin_id: @origin.id }.merge(row) : row
 
-        def log(table, operation, match)
-          @statements << "#{table.change(operation, match, @origin.id)};" if @origin && table.logged?
+        def bind(table, bound)
+          @statements << Entry.new(bound.sql, bound.values, table)
           self
+        end
+
+        def log(table, operation, match)
+          return self unless @origin && table.logged?
+
+          change = table.change(operation, match, @origin.id)
+          bind(nil, change)
         end
       end
     end

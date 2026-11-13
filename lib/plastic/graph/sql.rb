@@ -1,47 +1,28 @@
 # frozen_string_literal: true
 
-require "json"
+require_relative "../invalid"
+require_relative "sql/binding"
 
 module Plastic
   module Graph
-    # SQL text built from Ruby values: literals, quoted names, bound
-    # parameters and the column list of an insert.
+    # The statements of the graph, built with named placeholders and bound values.
     module SQL
-      # Bytes that go in as a BLOB literal, such as a kept file.
-      Bytes = Data.define(:data) do
-        def literal = "X'#{data.unpack1("H*")}'"
-      end
+      # SQL text that goes into a statement as it is, never as a bound value.
+      Raw = Data.define(:sql)
 
-      # SQL text kept as it stands, such as `retries + 1`, never quoted.
-      Raw = Data.define(:sql) do
-        def literal = sql
-      end
+      # A statement and the values its placeholders take.
+      Bound = Data.define(:sql, :values)
 
-      # A value as an SQL literal. Hashes and arrays are stored as JSON text.
-      def self.literal(value)
-        case value
-        in nil then "NULL"
-        in true then "1"
-        in false then "0"
-        in Integer | Float => number then number.to_s
-        in Bytes | Raw => wrapped then wrapped.literal
-        in Hash | Array then literal(JSON.generate(value))
-        else "'#{value.to_s.gsub("'", "''")}'"
-        end
-      end
+      # How a list of columns joins into a clause: the comparison and the separator.
+      Join = Data.define(:operator, :separator)
+
+      CONDITION = Join.new("IS", " AND ")
+      ASSIGNMENT = Join.new("=", ", ")
+
+      NAME = /[a-z_][a-z0-9_]*/
+      PLACEHOLDER = /(?<!:):(#{NAME})\b/
 
       def self.name(identifier) = %("#{identifier.to_s.gsub('"', '""')}")
-
-      # `:name` in the SQL takes the value of `name`; a name with no value,
-      # or a Postgres-style cast such as ::text, stays as it is.
-      def self.bind(sql, values)
-        return sql if values.empty?
-
-        sql.gsub(/(?<!:):([a-z_][a-z0-9_]*)\b/) do
-          key = Regexp.last_match(1).to_sym
-          values.key?(key) ? literal(values[key]) : Regexp.last_match(0)
-        end
-      end
 
       def self.names(list) = list.map { |column| name(column) }.join(", ")
 
@@ -51,37 +32,81 @@ module Plastic
         "#{quoted} = excluded.#{quoted}"
       end
 
-      # `a IS 1 AND b IS 'x'`: IS matches a NULL as well.
-      def self.where(values) = pairs(values, "IS", " AND ")
+      def self.assignments(columns) = columns.map { |column| assignment(column) }.join(", ")
 
-      # `a = 1, b = 'x'`, for the SET clause of a guarded UPDATE.
-      def self.set(values) = pairs(values, "=", ", ")
+      def self.placeholders(sql) = sql.scan(PLACEHOLDER).flatten.uniq.map(&:to_sym)
 
-      # `a <operator> 1<joiner>b <operator> 'x'`: the shape behind where and set.
-      def self.pairs(values, operator, joiner)
-        values.map { |column, value| "#{name(column)} #{operator} #{literal(value)}" }.join(joiner)
+      def self.params(sql, values)
+        placeholders(sql).to_h do |key|
+          raise Plastic::Invalid, "no value for :#{key}" unless values.key?(key)
+
+          [key, bindable(values.fetch(key))]
+        end
       end
 
-      # `'a', 'b'`, for a SQL IN (...) list.
-      def self.list(values) = values.map { |value| literal(value) }.join(", ")
+      def self.bindable(value) = Binding.bindable(value)
 
-      # The columns and values of an insert: `(a, b) VALUES (1, 2)`.
-      def self.tuple(columns)
-        names = columns.keys.map { |key| name(key) }
-        values = columns.values.map { |value| literal(value) }
-        "(#{names.join(", ")}) VALUES (#{values.join(", ")})"
+      def self.convert(value) = Binding.convert(value)
+
+      def self.where(values, prefix) = pairs(values, CONDITION, prefix)
+
+      def self.set(values, prefix) = pairs(values, ASSIGNMENT, prefix)
+
+      def self.pairs(values, join, prefix)
+        parts = values.map { |column, value| "#{name(column)} #{join.operator} #{operand(value, prefix, column)}" }
+        Bound.new(parts.join(join.separator), prefixed(values.reject { |_column, value| raw?(value) }, prefix))
       end
+
+      def self.operand(value, prefix, column) = raw?(value) ? value.sql : ":#{prefix}_#{column}"
+
+      def self.raw?(value) = value.is_a?(Raw)
+
+      def self.list(values, prefix)
+        keyed = values.each_with_index.to_h { |value, index| [index, value] }
+        Bound.new(keyed.keys.map { |index| ":#{prefix}_#{index}" }.join(", "), prefixed(keyed, prefix))
+      end
+
+      def self.tuple(columns, prefix)
+        checked_columns(columns)
+        keys = columns.keys
+        placeholders = keys.map { |key| ":#{prefix}_#{key}" }
+        Bound.new("(#{names(keys)}) VALUES (#{placeholders.join(", ")})", prefixed(columns, prefix))
+      end
+
+      # An INSERT of one row; `clause` is what follows the values, such as an upsert.
+      def self.insert(table, row, clause = "")
+        tuple = tuple(row, "v")
+        Bound.new("INSERT INTO #{name(table)} #{tuple.sql}#{clause}", tuple.values)
+      end
+
+      def self.checked_columns(columns)
+        columns.each do |key, value|
+          reason = column_problem(key, value)
+          raise Plastic::Invalid, "column #{key.inspect} #{reason}" if reason
+        end
+      end
+
+      def self.column_problem(key, value)
+        if !key.to_s.match?(/\A#{NAME}\z/)
+          "is not a plain lowercase name"
+        elsif raw?(value)
+          "holds SQL text, not a value"
+        end
+      end
+
+      def self.prefixed(values, prefix) = values.to_h { |key, value| [:"#{prefix}_#{key}", value] }
 
       # An UPDATE that moves a node between states: the row in `from` with
-      # `intent_id`/`id` moves to `to`, with `set` merged in, and returns its
-      # id only when a row was found.
+      # `intent_id`/`id` moves to `to`, with `set` merged in, and returns its id.
       def self.move(to:, from:, set: {})
-        values = { state: to, updated_at: Plastic.now }.merge(set)
-        <<~SQL
-          UPDATE nodes SET #{set(values)}
-          WHERE intent_id = :intent_id AND id = :id AND origin_id = :origin AND state IN (#{list(from)})
+        assignments = set({ state: to, updated_at: Plastic.now }.merge(set), "s")
+        states = list(from, "f")
+        text = <<~SQL
+          UPDATE nodes SET #{assignments.sql}
+          WHERE intent_id = :intent_id AND id = :id AND origin_id = :origin AND state IN (#{states.sql})
           RETURNING id
         SQL
+        Bound.new(text, assignments.values.merge(states.values))
       end
     end
   end

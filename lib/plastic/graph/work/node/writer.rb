@@ -73,8 +73,9 @@ module Plastic
           end
 
           def moved(key, move, set: {})
+            bound = SQL.move(to: move.fetch(:to), from: move.fetch(:from), set:)
             rows = @databases.fetch(:work).transaction do |batch|
-              batch.write(:nodes, SQL.move(to: move.fetch(:to), from: move.fetch(:from), set:), **key, origin: @retrieval.origin_id)
+              batch.write(:nodes, bound.sql, **bound.values, **key, origin: @retrieval.origin_id)
             end
             rows.any? ? fetched(key) : nil
           end

@@ -6,12 +6,12 @@ module Plastic
       class Evidence
         # Reads snapshot rows from the database outside an immediate transaction.
         IntegrityDatabaseSource = Data.define(:database) do
-          def rows(sql) = database.rows(sql)
+          def rows(sql, **values) = database.rows(sql, **values)
         end
 
         # Reads snapshot rows through the immediate transaction connection.
         IntegrityTransactionSource = Data.define(:connection) do
-          def rows(sql) = connection.sets(sql).first || []
+          def rows(sql, **values) = connection.read(sql, values)
         end
       end
     end

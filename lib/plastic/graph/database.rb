@@ -37,6 +37,14 @@ module Plastic
         Schema.store.to_h { |key| [key, new(File.join(root, Schema.file(key)), Schema.fetch(key), origin:)] }
       end
 
+      # The error to raise for one that came from the file `file`, with the file named.
+      def self.relabeled(file, error)
+        message = error.message
+        return Plastic::Invalid.new("#{file}: #{message}") if error.is_a?(Plastic::Invalid)
+
+        Error.new("#{file}: #{message.lines.first.chomp.delete_suffix(":")}")
+      end
+
       # A call saves its routine run at each step, and it is still one row.
       RUNS = "routine_runs"
 
@@ -52,7 +60,7 @@ module Plastic
       def file = File.basename(path)
 
       # Rows from one read. `:name` in the SQL takes the value of `name`.
-      def rows(sql, **values) = connected { |connection| connection.sets(SQL.bind(sql, values)) }.first || []
+      def rows(sql, **values) = connected { |connection| connection.read(sql, values) }
 
       def row(sql, **values) = rows(sql, **values).first
 
@@ -74,7 +82,7 @@ module Plastic
         connected do |connection|
           connection.atomically do
             yield batch, connection
-            tally(connection.sets(batch.statements.join)) unless batch.empty?
+            run(connection, batch) unless batch.empty?
           end
         end
       end
@@ -91,16 +99,9 @@ module Plastic
 
       private
 
-      def commit(batch)
-        script = batch.statements.join
-        tally(connected { |connection| connection.atomically { connection.sets(script) } })
-      end
+      def commit(batch) = connected { |connection| connection.atomically { run(connection, batch) } }
 
-      def tally(sets)
-        tallies, returned = sets.partition { |set| set.first.key?("written_table") }
-        tallies.flatten.each { |tally| count(*tally.values_at("written_table", "written_rows")) }
-        returned
-      end
+      def run(connection, batch) = batch.statements.filter_map { |entry| entry.run(connection, &method(:count)) }
 
       def count(table, rows)
         before = @written[table]
@@ -109,8 +110,8 @@ module Plastic
 
       def connected
         yield connection
-      rescue SQLite3::Exception, SystemCallError => error
-        raise Error, "#{file}: #{error.message.lines.first.chomp.delete_suffix(":")}"
+      rescue Plastic::Invalid, SQLite3::Exception, SystemCallError => error
+        raise Database.relabeled(file, error)
       end
 
       # The connection, with the schema made on the first call, so a new

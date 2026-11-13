@@ -22,6 +22,14 @@ class RetrievalEvidenceRowsTest < Plastic::TestCase
       :document_heads, "DELETE FROM document_fts", "INSERT INTO document_fts"], batch.steps
   end
 
+  def test_a_document_without_a_known_head_skips_the_search_row_delete
+    batch = Recording.new([])
+    Plastic::Graph::Retrieval::Evidence::Rows.new(batch, document, origin, heads: Plastic::Graph::Retrieval::Evidence::Heads.new).write { nil }
+
+    assert_equal [:documents, "INSERT OR IGNORE INTO document_revisions", "INSERT OR IGNORE INTO document_passages",
+      :document_heads, "INSERT INTO document_fts"], batch.steps
+  end
+
   def test_the_written_rows_read_back_from_every_evidence_table
     knowledge.transaction { |batch| Plastic::Graph::Retrieval::Evidence::Rows.new(batch, document, origin).write { nil } }
 

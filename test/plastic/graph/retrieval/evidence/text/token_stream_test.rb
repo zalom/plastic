@@ -24,4 +24,32 @@ class RetrievalEvidenceTextTokenStreamTest < Plastic::TestCase
   def test_a_replacement_carries_the_line_where_its_match_starts
     assert_equal 2, stream("a\n[tag]").extract { "X" }.lines.last
   end
+
+  def test_tokens_on_lines_one_two_and_forty_keep_those_lines
+    source = "[a] x\n[b] y\n#{"\n" * 37}[c]"
+    lines = stream(source).extract { "X" }.lines
+
+    assert_equal [1, 40], [lines.first, lines.last]
+    assert_includes lines, 2
+  end
+
+  def seconds_to_extract(source)
+    started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    stream(source).extract { "X" }
+    Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
+  end
+
+  def test_two_megabytes_with_twenty_thousand_tokens_are_tokenized_in_under_two_seconds
+    assert_operator seconds_to_extract("#{"a" * 92} [tag]\n" * 20_000), :<, 2
+  end
+
+  def test_twenty_thousand_lines_with_an_em_dash_each_are_tokenized_in_under_two_seconds
+    assert_operator seconds_to_extract("dash — [tag]\n" * 20_000), :<, 2
+  end
+
+  def test_tokens_after_non_ascii_text_keep_their_lines
+    lines = stream("— [a]\né\n[b]").extract { "X" }.lines
+
+    assert_equal [1, 3], [lines.first, lines.last]
+  end
 end

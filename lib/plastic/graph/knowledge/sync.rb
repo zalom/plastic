@@ -30,9 +30,10 @@ module Plastic
         def plan(direction, options = {}) = Plan.build(@folder, @retrieval, Resolution.new(direction, @folder.root, options))
 
         # Applies every action of `plan` but the conflicts, and says what it did, one line per file.
-        def apply(plan)
+        def apply(plan, rollback: Legacy::ImportRollback)
+          return LegacyImport.new(self, @folder, @retrieval, @databases, rollback:).call if plan.legacy
+
           @folder.ignore_databases
-          return LegacyImport.new(self, @folder, @retrieval, @databases).call if plan.legacy
 
           printer.record(plan.taking(:record).map(&:print))
           (plan.direction == :up) ? read_up(plan) : print_down(plan)

@@ -17,7 +17,7 @@ module Plastic
 
           def self.stored(entry, intent_id)
             data = entry[:data]
-            entry.merge(intent_id:, data: data && SQL::Bytes.new(data))
+            entry.merge(intent_id:, data: data && SQLite3::Blob.new(data))
           end
 
           def self.fields(entry) = (entry[:kind] == "directory") ? LOOSE : STRICT

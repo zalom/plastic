@@ -25,4 +25,46 @@ class RetrievalEvidenceTextPassagesTest < Plastic::TestCase
   def test_empty_text_has_no_passages
     assert_empty build("")
   end
+
+  def by_offset(text)
+    lines = Text::SourceLines.for(text)
+    (0...text.length).step(1400).each_with_index.map do |offset, index|
+      body = text[offset, 1600]
+      slice = lines.slice(offset, body.length)
+      { body:, position: index + 1, line_start: slice.first, line_end: slice.last }
+    end
+  end
+
+  def test_ascii_text_gives_the_passages_cut_by_character_offset
+    text = "line of ascii\n" * 700
+
+    assert_equal by_offset(text), build(text)
+  end
+
+  def test_non_ascii_text_gives_the_passages_cut_by_character_offset
+    text = "line — with é\n" * 700
+
+    assert_equal by_offset(text), build(text)
+  end
+
+  def test_text_of_exactly_one_step_is_one_passage
+    assert_equal by_offset("x" * 1400), build("x" * 1400)
+  end
+
+  def test_text_of_exactly_two_steps_gives_two_passages
+    assert_equal by_offset("é" * 2800), build("é" * 2800)
+  end
+
+  def test_text_shorter_than_one_passage_is_cut_by_character_offset
+    assert_equal by_offset("é—\nx"), build("é—\nx")
+  end
+
+  def test_four_hundred_thousand_lines_with_an_em_dash_each_are_split_in_under_two_seconds
+    text = "dash — and some more text\n" * 400_000
+    extraction = Text::Extraction.new(text, Text::SourceLines.for(text))
+    started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    build(extraction)
+
+    assert_operator Process.clock_gettime(Process::CLOCK_MONOTONIC) - started, :<, 2
+  end
 end

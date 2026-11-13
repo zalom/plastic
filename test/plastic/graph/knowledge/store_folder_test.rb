@@ -68,7 +68,8 @@ class KnowledgeStoreFolderTest < Plastic::TestCase
   end
 
   def test_the_context_file_of_an_intent_folder_is_a_generated_view
-    assert Plastic::Graph::Knowledge::StoreFolder.graph_view?("store/1--alpha/context.json")
-    refute Plastic::Graph::Knowledge::StoreFolder.graph_view?("store/1--alpha/notes.json")
+    assert Plastic::Graph::Knowledge::StoreFolder.context_view?("store/1--alpha/context.json")
+    refute Plastic::Graph::Knowledge::StoreFolder.context_view?("store/1--alpha/graph.json")
+    refute Plastic::Graph::Knowledge::StoreFolder.context_view?("store/1--alpha/notes.json")
   end
 end

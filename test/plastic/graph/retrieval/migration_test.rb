@@ -59,7 +59,7 @@ class RetrievalMigrationTest < Plastic::TestCase
   def seed_legacy_evidence
     put(:knowledge, :documents, { intent_id: "1", path: "legacy.md", body: "legacy document", updated_at: "then" })
     put(:references, :sqlar, { name: "store/1--legacy/reference.txt", mode: 0o100644, mtime: 0, sz: 16,
-                                data: Plastic::Graph::SQL::Bytes.new("legacy reference"), intent_id: "1", sha256: "legacy" })
+                                data: SQLite3::Blob.new("legacy reference"), intent_id: "1", sha256: "legacy" })
   end
 
   def create_old_schema

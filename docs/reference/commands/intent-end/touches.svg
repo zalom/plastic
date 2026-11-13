@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 478" width="800" height="478" role="img" xml:space="preserve">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 493" width="800" height="493" role="img" xml:space="preserve">
 <title>What one call of plastic intent end reads, writes and prints</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
@@ -71,26 +71,27 @@
 <text x="16" y="20" class="tag tag-muted" text-anchor="start">READS</text>
 <text x="290" y="20" class="tag tag-muted" text-anchor="start">COMMAND</text>
 <text x="564" y="20" class="tag tag-muted" text-anchor="start">WRITES</text>
-<rect x="16" y="34" width="220" height="75" rx="14" class="db"/>
+<rect x="16" y="34" width="220" height="60" rx="14" class="db"/>
 <text x="28" y="52" class="tb" text-anchor="start">knowledge_graph.db</text>
 <text x="28" y="68" class="tm" text-anchor="start">documents</text>
 <text x="28" y="83" class="tm" text-anchor="start">links</text>
-<text x="28" y="98" class="tm" text-anchor="start">rulings</text>
 <path d="M 238 49 L 288 49" class="wire-read"/>
 <path d="M 280 44 L 288 49 L 280 54 Z" class="head"/>
-<rect x="16" y="121" width="220" height="60" rx="14" class="db"/>
-<text x="28" y="139" class="tb" text-anchor="start">local.db</text>
-<text x="28" y="155" class="tm" text-anchor="start">locks</text>
-<text x="28" y="170" class="tm" text-anchor="start">sessions</text>
-<path d="M 238 136 L 288 136" class="wire-read"/>
-<path d="M 280 131 L 288 136 L 280 141 Z" class="head"/>
-<rect x="16" y="193" width="220" height="75" rx="14" class="db"/>
-<text x="28" y="211" class="tb" text-anchor="start">work_graph.db</text>
+<rect x="16" y="106" width="220" height="60" rx="14" class="db"/>
+<text x="28" y="124" class="tb" text-anchor="start">local.db</text>
+<text x="28" y="140" class="tm" text-anchor="start">locks</text>
+<text x="28" y="155" class="tm" text-anchor="start">sessions</text>
+<path d="M 238 121 L 288 121" class="wire-read"/>
+<path d="M 280 116 L 288 121 L 280 126 Z" class="head"/>
+<rect x="16" y="178" width="220" height="105" rx="14" class="db"/>
+<text x="28" y="196" class="tb" text-anchor="start">work_graph.db</text>
+<text x="28" y="212" class="tm" text-anchor="start">edges</text>
 <text x="28" y="227" class="tm" text-anchor="start">intents</text>
 <text x="28" y="242" class="tm" text-anchor="start">nodes</text>
-<text x="28" y="257" class="tm" text-anchor="start">verdicts</text>
-<path d="M 238 208 L 288 208" class="wire-read"/>
-<path d="M 280 203 L 288 208 L 280 213 Z" class="head"/>
+<text x="28" y="257" class="tm" text-anchor="start">roadmaps</text>
+<text x="28" y="272" class="tm" text-anchor="start">verdicts</text>
+<path d="M 238 193 L 288 193" class="wire-read"/>
+<path d="M 280 188 L 288 193 L 280 198 Z" class="head"/>
 <rect x="564" y="34" width="220" height="45" rx="14" class="db"/>
 <text x="576" y="52" class="tb" text-anchor="start">local.db</text>
 <text x="576" y="68" class="tm" text-anchor="start">locks</text>
@@ -102,17 +103,17 @@
 <text x="576" y="140" class="tm" text-anchor="start">intents</text>
 <path d="M 512 106 L 562 106" class="wire"/>
 <path d="M 554 101 L 562 106 L 554 111 Z" class="head"/>
-<rect x="290" y="34" width="220" height="234" rx="6" class="lane-code"/>
+<rect x="290" y="34" width="220" height="249" rx="6" class="lane-code"/>
 <text x="300" y="58" class="tm" text-anchor="start">plastic intent end</text>
-<text x="16" y="292" class="tag tag-muted" text-anchor="start">PRINTED FILES</text>
-<rect x="16" y="300" width="768" height="28" rx="6" class="card"/>
-<text x="24" y="318" class="tm" text-anchor="start">store/index.json</text>
-<rect x="16" y="334" width="768" height="28" rx="6" class="card"/>
-<text x="24" y="352" class="tm" text-anchor="start">store/ID--SLUG/PATH</text>
-<rect x="16" y="368" width="768" height="28" rx="6" class="card"/>
-<text x="24" y="386" class="tm" text-anchor="start">store/ID--SLUG/savepoint.md</text>
-<rect x="16" y="402" width="768" height="28" rx="6" class="card"/>
-<text x="24" y="420" class="tm" text-anchor="start">store/ID--SLUG/graph.json</text>
-<rect x="16" y="436" width="768" height="28" rx="6" class="card"/>
-<text x="24" y="454" class="tm" text-anchor="start">store/ID--SLUG/context.json</text>
+<text x="16" y="307" class="tag tag-muted" text-anchor="start">PRINTED FILES</text>
+<rect x="16" y="315" width="768" height="28" rx="6" class="card"/>
+<text x="24" y="333" class="tm" text-anchor="start">store/index.json</text>
+<rect x="16" y="349" width="768" height="28" rx="6" class="card"/>
+<text x="24" y="367" class="tm" text-anchor="start">store/ID--SLUG/PATH</text>
+<rect x="16" y="383" width="768" height="28" rx="6" class="card"/>
+<text x="24" y="401" class="tm" text-anchor="start">store/ID--SLUG/savepoint.md</text>
+<rect x="16" y="417" width="768" height="28" rx="6" class="card"/>
+<text x="24" y="435" class="tm" text-anchor="start">store/ID--SLUG/graph.json</text>
+<rect x="16" y="451" width="768" height="28" rx="6" class="card"/>
+<text x="24" y="469" class="tm" text-anchor="start">store/ID--SLUG/context.json</text>
 </svg>

@@ -26,8 +26,8 @@ module Plastic
 
             def matches(fragments)
               cursor = 0
-              while (match = @pattern.match(@source, cursor))
-                cursor = fragments.append_match(cursor, match) { |found| yield(found) }
+              while @source.byteindex(@pattern, cursor)
+                cursor = fragments.append_match(cursor, Regexp.last_match) { |found| yield(found) }
               end
               cursor
             end
@@ -39,16 +39,18 @@ module Plastic
               def initialize(source)
                 @source = source
                 @values = []
+                @counted = 0
+                @line = 1
               end
 
               def append_match(cursor, match)
-                start = match.begin(0)
-                append(@source[cursor...start], line_at(cursor))
+                start, finish = match.byteoffset(0)
+                append(@source.byteslice(cursor...start), line_at(cursor))
                 append(yield(match), line_at(start))
-                match.end(0)
+                finish
               end
 
-              def append_tail(cursor) = append(@source[cursor..], line_at(cursor))
+              def append_tail(cursor) = append(@source.byteslice(cursor..), line_at(cursor))
 
               private
 
@@ -59,7 +61,11 @@ module Plastic
                 end
               end
 
-              def line_at(offset) = @source[0...offset].count("\n") + 1
+              def line_at(offset)
+                @line += @source.byteslice(@counted...offset).count("\n")
+                @counted = offset
+                @line
+              end
             end
           end
         end

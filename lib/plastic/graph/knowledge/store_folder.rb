@@ -2,6 +2,7 @@
 
 require "digest"
 require "fileutils"
+require_relative "front_matter"
 require_relative "intent"
 
 module Plastic
@@ -30,6 +31,8 @@ module Plastic
 
         def read(rel) = File.binread(path(rel))
 
+        def holds?(rel, bytes) = exist?(rel) && read(rel) == bytes
+
         # The SHA-256 of the file, or nil when it is gone.
         def digest(rel) = exist?(rel) ? Digest::SHA256.file(path(rel)).hexdigest : nil
 
@@ -54,8 +57,9 @@ module Plastic
 
         def intent_dirs = Dir.glob("store/*--*/", base: root).map { |dir| dir.chomp("/") }.sort
 
-        # The graph view is generated from node and edge rows.
-        def self.graph_view?(path) = path.match?(%r{\Astore/[^/]+/(?:graph|context)\.json\z})
+        def self.context_view?(path) = path.match?(%r{\Astore/[^/]+/context\.json\z})
+
+        def self.graph_file?(path) = path.match?(%r{\Astore/[^/]+/graph\.json\z})
 
         # Every file of every intent folder, dot files included.
         def intent_files = intent_dirs.flat_map { |dir| files(dir) }

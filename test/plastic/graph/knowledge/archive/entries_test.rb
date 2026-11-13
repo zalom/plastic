@@ -44,6 +44,18 @@ class KnowledgeArchiveEntriesTest < Plastic::TestCase
     assert_equal 0o700, File.lstat(File.join(@stage, "note")).mode & 0o7777
   end
 
+  def test_a_stored_file_carries_its_intent_and_keeps_its_bytes_as_a_blob
+    stored = Entries.stored(row("note", "file", "bytes"), "4")
+
+    assert_equal "4", stored[:intent_id]
+    assert_instance_of SQLite3::Blob, stored[:data]
+    assert_equal "bytes", stored[:data].to_s
+  end
+
+  def test_a_stored_directory_keeps_no_data
+    assert_nil Entries.stored(row("", "directory", nil), "4")[:data]
+  end
+
   private
 
   def row(path, kind, data, mode = 0o644) = { path:, kind:, data:, mode:, mtime: "0/1" }

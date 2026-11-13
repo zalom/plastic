@@ -5,6 +5,7 @@ require "fileutils"
 # itself. The require does nothing when RubyGems is already loaded.
 require "rubygems"
 require "sqlite3"
+require_relative "../sql"
 
 module Plastic
   module Graph
@@ -14,19 +15,6 @@ module Plastic
       # hashes, foreign keys are on, and a busy file is waited on.
       class Connection < SQLite3::Database
         BUSY_TIMEOUT = 5000
-        SEPARATORS = /\A[\s;]+/
-
-        # The first statement of a script.
-        class Statement < SQLite3::Statement
-          # Runs, adds its rows to `found` when it gave any, closes, and returns the rest of the script.
-          def run(found)
-            rows = execute.to_a
-            found << rows unless rows.empty?
-            remainder
-          ensure
-            close
-          end
-        end
 
         def self.open(path)
           FileUtils.mkdir_p(File.dirname(path))
@@ -36,25 +24,38 @@ module Plastic
           end
         end
 
-        # The rows of each statement of `script` that gives any, in order.
-        def sets(script)
-          found = []
-          script = Statement.new(self, script).run(found) until (script = script.sub(SEPARATORS, "")).empty?
-          found
+        def read(sql, values = {})
+          prepare(sql) do |statement|
+            raise Plastic::Invalid, "the text must hold one statement" unless statement.remainder.strip.empty?
+
+            statement.bind_params(SQL.params(sql, values))
+            build_result_set(statement).to_a.freeze
+          end
         end
 
         # Runs the block in one transaction that takes the write lock first.
         # Inside an open transaction, such as a test's, it is a savepoint.
-        def atomically(&) = transaction_active? ? savepoint(&) : transaction(:immediate, &)
+        def atomically(&) = transaction_active? ? savepoint(&) : immediately(&)
 
         private
 
-        def savepoint
+        def immediately(&)
+          execute("BEGIN IMMEDIATE TRANSACTION")
+          undoing("ROLLBACK TRANSACTION") { yield.tap { execute("COMMIT TRANSACTION") } }
+        end
+
+        def savepoint(&)
           execute("SAVEPOINT batch")
-          yield.tap { execute("RELEASE batch") }
-        rescue SQLite3::Exception
-          execute_batch("ROLLBACK TO batch; RELEASE batch;")
-          raise
+          undoing("ROLLBACK TO batch; RELEASE batch;") { yield.tap { execute("RELEASE batch") } }
+        end
+
+        def undoing(statements)
+          finished = false
+          result = yield
+          finished = true
+          result
+        ensure
+          execute_batch(statements) unless finished || !transaction_active?
         end
       end
 

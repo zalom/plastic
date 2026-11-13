@@ -5,7 +5,11 @@ require_relative "../../../../test_helper"
 class KnowledgeLegacyRoadmapsTest < Plastic::TestCase
   Parse = Plastic::Graph::Knowledge::Roadmap::Parse
 
-  def roadmaps = Plastic::Graph::Knowledge::Legacy::Roadmaps.new
+  Legacy = Plastic::Graph::Knowledge::Legacy
+
+  def roadmaps = Legacy::Roadmaps.new(root)
+
+  def rows(parsed, savepoint = folder.path("missing")) = Legacy::RoadmapRows.new(store_graphs, "plan", parsed).call(savepoint)
 
   def root = folder.path(".")
 
@@ -17,10 +21,10 @@ class KnowledgeLegacyRoadmapsTest < Plastic::TestCase
   def test_the_roadmap_files_skip_the_savepoint_siblings_and_include_archived_ones
     %w[roadmaps/a.md roadmaps/a.savepoint.md roadmaps/archived/b.md].each { |path| write(path, "# R\n") }
 
-    assert_equal %w[roadmaps/a.md roadmaps/archived/b.md], roadmaps.roadmap_files(root).map { |path| roadmaps.relative(root, path) }
+    assert_equal %w[roadmaps/a.md roadmaps/archived/b.md], roadmaps.files.map { |path| roadmaps.relative(path) }
   end
 
-  def write_rows(parsed = result) = roadmaps.write_roadmap_rows(store_graphs, "plan", parsed, folder.path("missing"))
+  def write_rows(parsed = result) = rows(parsed)
 
   def test_a_roadmap_with_no_batch_headings_gets_one_batch_named_after_it
     write_rows
@@ -48,7 +52,7 @@ class KnowledgeLegacyRoadmapsTest < Plastic::TestCase
 
   def test_an_item_keyed_by_an_intent_in_the_store_names_that_intent
     store_graphs.work.write_intent(title: "Alpha")
-    roadmaps.write_roadmap_rows(store_graphs, "plan", result, folder.path("missing"))
+    rows(result)
 
     assert_equal ["1", nil], retrieval.roadmap_items("plan").map(&:intent_id)
   end
@@ -56,7 +60,7 @@ class KnowledgeLegacyRoadmapsTest < Plastic::TestCase
   def test_the_savepoint_sibling_lines_follow_the_roadmap_log
     write("roadmaps/plan.savepoint.md", "2026-10-02 Started   it\n\n")
     log = [Parse::LogLine.new(at: "2026-10-01", text: "Opened")]
-    roadmaps.write_roadmap_rows(store_graphs, "plan", result(log:), folder.path("roadmaps/plan.savepoint.md"))
+    rows(result(log:), folder.path("roadmaps/plan.savepoint.md"))
 
     assert_equal [%w[2026-10-01 Opened], ["2026-10-02", "Started it"]], retrieval.roadmap_log("plan").map { |line| [line.at, line.text] }
   end
@@ -64,7 +68,7 @@ class KnowledgeLegacyRoadmapsTest < Plastic::TestCase
   def test_migrating_counts_the_roadmaps_and_items_and_prints_the_file
     write("roadmaps/plan.md", "# Plan\n\n## Batches\n\n### Batch 1 — First\n- [ ] 7 Build it — queued\n")
     counts = Hash.new(0)
-    roadmaps.migrate_roadmaps(store_graphs, root, roadmaps.parse(root), counts)
+    Legacy::RoadmapMigration.new(store_graphs, root, counts).call(roadmaps.parse)
 
     assert_equal [1, 1], counts.values_at(:roadmaps, :roadmap_items)
     assert_equal ["Build it"], retrieval.roadmap_items("plan").map(&:title)

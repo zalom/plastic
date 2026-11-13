@@ -7,6 +7,7 @@ require_relative "../../retrieval/evidence/text"
 require_relative "../../retrieval/evidence/removal"
 require_relative "../legacy_path"
 require_relative "folder_file"
+require_relative "graph_file"
 require_relative "../../work/edge"
 require_relative "../../work/node"
 require_relative "../../work/savepoint"
@@ -24,10 +25,10 @@ module Plastic
           KEPT_MODE = 0o100644
           KINDS = { "graph.json" => %i[work graph], "context.json" => %i[work context], "savepoint.md" => %i[work savepoint] }.freeze
 
-          def initialize(folder, intent, path, origin_id, retrieval: nil)
-            @file = FolderFile.new(folder, path, path.delete_prefix("#{intent.dir}/"))
-            @intent_id = intent.intent_id
-            @origin_id = origin_id
+          def initialize(file, intent_id, writer:, retrieval: nil)
+            @file = file
+            @intent_id = intent_id
+            @writer = writer
             @retrieval = retrieval
           end
 
@@ -51,9 +52,9 @@ module Plastic
           # identify binary data; invalid UTF-8 stays in the attachment archive.
           def document? = Retrieval::Evidence::Text.classify(@file.rel, @file.bytes) == :text
 
-          def graph(_batch)
-            raise Invalid, "graph.json is generated from rows; use node and edge commands to change the graph"
-          end
+          def origin_id = @writer.origin_id
+
+          def graph(batch) = GraphFile.new(text, @intent_id, origin_id, @file.path).apply(batch)
 
           def context(_batch)
             raise Invalid, "context.json is generated from rows; use intent context and intent discover to change it"
@@ -72,20 +73,20 @@ module Plastic
           end
 
           def document(batch)
-            Retrieval::Evidence::Writer.new(nil, @origin_id).apply(batch, @intent_id, @file.rel, text)
+            @writer.apply(batch, @intent_id, @file.rel, text)
           end
 
           # The row replaces the document, head and search rows the path held before it was legacy.
           def legacy(batch)
             rel = @file.rel
             batch.put(:legacy_intents_data, { intent_id: @intent_id, path: rel, body: text, updated_at: Plastic.now })
-            Retrieval::Evidence::Removal.new(batch, @origin_id).remove(@intent_id, rel)
+            Retrieval::Evidence::Removal.new(batch, origin_id).remove(@intent_id, rel)
           end
 
           def kept(batch)
             bytes = @file.bytes
             batch.put(:sqlar, { name: @file.path, mode: KEPT_MODE, mtime: @file.mtime,
-                                sz: bytes.bytesize, data: SQL::Bytes.new(bytes), intent_id: @intent_id,
+                                sz: bytes.bytesize, data: SQLite3::Blob.new(bytes), intent_id: @intent_id,
                                 sha256: Digest::SHA256.hexdigest(bytes) })
           end
         end

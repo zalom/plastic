@@ -20,6 +20,13 @@ class NodeResolveTest < Plastic::TestCase
     assert_call result, code: 0, out: "node: n1 open\nwrote:  1 routine run in local.db\n        1 node in work_graph.db\nfiles:  store/1--alpha/graph.json\n\nnext: plastic node claim 1 n1\nbecause: node n1 is open\n"
   end
 
+  def test_an_answer_that_holds_column_names_is_stored_unchanged
+    cli("node", "ask", "1", "n1", "which way?")
+    cli("node", "resolve", "1", "n1", "see :id and :intent_id")
+
+    assert_equal "see :id and :intent_id", retrieval.node("1", "n1").answer
+  end
+
   def test_resolving_an_impeded_node_opens_it
     cli("node", "impede", "1", "n1", "no access")
 

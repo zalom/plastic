@@ -30,6 +30,17 @@ class KnowledgeLegacyImportRollbackTest < Plastic::TestCase
     assert_equal "original", folder.read("INDEX.md")
   end
 
+  def test_an_interrupt_puts_the_original_tree_back_and_is_raised_again
+    assert_raises(Interrupt) do
+      ImportRollback.new(folder.root).call do
+        folder.write("INDEX.md", "changed by interrupt")
+        raise Interrupt
+      end
+    end
+
+    assert_equal "original", folder.read("INDEX.md")
+  end
+
   def test_a_recovered_import_leaves_no_saved_copy_behind
     assert_raises(RuntimeError) { ImportRollback.new(folder.root).call { damage } }
 

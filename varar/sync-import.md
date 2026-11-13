@@ -8,4 +8,4 @@ Each row gives the setup, the call, the exit code, the result and the next line:
 
 | setup | call              | exit | result                                               | next line       |
 | ----- | ----------------- | ---- | ---------------------------------------------------- | --------------- |
-| none  | sync up --dry-run | 0    | preview complete; the original store was not changed | plastic sync up |
+| none  | sync up --dry-run | 0    | preview: would add .gitignore / preview: would add store/index.json / preview: paths that would change: 2 / preview complete; the original store was not changed | plastic sync up |

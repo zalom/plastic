@@ -30,19 +30,26 @@ module Plastic
           def original = File.join(@saved, File.basename(@root))
 
           def run
-            yield
-          rescue
-            restore
-            raise
+            finished = false
+            yield.tap { finished = true }
+          ensure
+            restore unless finished
           end
 
           def restore
-            set_aside
-            @files.rename(original, @root)
+            put_back
           rescue => error
             @retain = true
             raise Invalid, "rollback failed; original store preserved at #{original}: #{error.message}"
           end
+
+          def put_back
+            set_aside
+            @files.rename(original, @root)
+            remove_databases
+          end
+
+          def remove_databases = Dir.glob(File.join(@root, "*.db{,-wal,-shm,-journal}")).each { |path| File.delete(path) }
 
           def set_aside
             disconnect

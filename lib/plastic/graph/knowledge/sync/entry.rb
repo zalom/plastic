@@ -19,16 +19,17 @@ module Plastic
 
           def rows_sha = print.sha256
 
-          # A path a sync up never reads: the generated graph view, and the
           # index, which the rows print again after a read.
-          def generated? = StoreFolder.graph_view?(path) || path == StoreFolder::INDEX
+          def generated? = StoreFolder.context_view?(path) || path == StoreFolder::INDEX
 
           # The file already holds what the rows print.
           def level? = file_sha && file_sha == rows_sha
 
           def file_changed? = file_sha && file_sha != printed_sha
 
-          def rows_changed? = rows_sha && rows_sha != printed_sha
+          def rows_changed? = rows_sha && rows_sha != printed_sha && !bare_graph?
+
+          def bare_graph? = !printed_sha && StoreFolder.graph_file?(path) && rows_sha == Prints.empty_graph_sha(path)
 
           def conflict? = !level? && file_changed? && rows_changed?
 
