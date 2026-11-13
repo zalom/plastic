@@ -5,6 +5,8 @@ require "find"
 require "tmpdir"
 require_relative "preview/mirror"
 require_relative "preview/changes"
+require_relative "../legacy/unguarded"
+require_relative "../../../config"
 
 module Plastic
   module Graph
@@ -44,7 +46,7 @@ module Plastic
             twin = copy_source(copy)
             work = Graph.open(home: copy, store: @store).work
             plan = checked(work.sync_plan(@direction, options))
-            lines = [*Preview.conflict_lines(plan), *work.sync_apply(plan)]
+            lines = [*Preview.conflict_lines(plan), *work.sync_apply(plan, rollback: Legacy::Unguarded)]
             changes = Changes.new(source, twin).call
             [*lines, *changes, "paths that would change: #{changes.size}"]
           end
@@ -67,6 +69,7 @@ module Plastic
               path = File.join(@home, name)
               FileUtils.cp(path, copy) if File.file?(path)
             end
+            Config.new(copy).set("migrate.remove_after_import", false)
           end
         end
       end
