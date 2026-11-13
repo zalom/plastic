@@ -2,6 +2,7 @@
 
 require "digest"
 require "fileutils"
+require_relative "front_matter"
 require_relative "intent"
 
 module Plastic
@@ -52,15 +53,6 @@ module Plastic
         def own_file(dir)
           fixed = "#{dir}/#{Intent::FILE}"
           exist?(fixed) ? fixed : "#{dir}/#{File.basename(dir)}.md"
-        end
-
-        FRONT_MATTER = /\A---\n(.*?)\n---/m
-        FIELD = /^(\w+):[ \t]*"?([^"\n]*?)"?[ \t]*$/
-
-        def front_matter(dir)
-          file = own_file(dir)
-          text = exist?(file) ? read(file).force_encoding(Encoding::UTF_8) : ""
-          text[FRONT_MATTER, 1].to_s.scan(FIELD).to_h
         end
 
         def intent_dirs = Dir.glob("store/*--*/", base: root).map { |dir| dir.chomp("/") }.sort

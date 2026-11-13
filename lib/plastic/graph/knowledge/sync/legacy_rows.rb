@@ -35,14 +35,14 @@ module Plastic
 
           def unlisted(listed)
             (@folder.intent_dirs - listed.entries.map(&:dir)).map do |dir|
-              front = @folder.front_matter(dir)
+              front = FrontMatter.new(@folder).read(dir)
               Legacy::Index::Entry.new(File.basename(dir).split("--", 2).first, front["intent"], dir, front["status"], nil, nil)
             end
           end
 
           def write(parsed)
             now = Plastic.now
-            rows = parsed.entries.map { |entry| entry.row(@folder.front_matter(entry.dir), now) }
+            rows = parsed.entries.map { |entry| entry.row(FrontMatter.new(@folder).read(entry.dir), now) }
             @databases.fetch(:work).transaction do |batch|
               batch.put_all(:intents, rows).put_all(:clusters, parsed.clusters.map(&:to_h))
             end

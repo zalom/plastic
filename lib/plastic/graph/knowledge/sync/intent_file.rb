@@ -16,7 +16,7 @@ module Plastic
           def initialize(text, number)
             @number = number
             decoded = text.dup.force_encoding(Encoding::UTF_8)
-            @front = decoded.valid_encoding? ? decoded[StoreFolder::FRONT_MATTER, 1].to_s.scan(StoreFolder::FIELD).to_h : {}
+            @front = decoded.valid_encoding? ? FrontMatter.fields(decoded) : {}
           end
 
           # Why no row can be read from the file, or nil.

@@ -59,7 +59,7 @@ module Plastic
           end
 
           def unlisted_problem(dir)
-            status = @folder.front_matter(dir)["status"]
+            status = FrontMatter.new(@folder).read(dir)["status"]
             "#{dir} has no entry in INDEX.md" unless STATUSES.include?(status)
           end
 
