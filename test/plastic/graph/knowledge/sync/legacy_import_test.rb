@@ -116,6 +116,27 @@ class KnowledgeSyncLegacyImportCheckTest < Plastic::TestCase
     refute folder.exist?("store/index.json")
   end
 
+  def planned_import = sync.apply(sync.plan(:up))
+
+  def database_files = Dir.glob("**/*.db*", File::FNM_DOTMATCH, base: folder.root)
+
+  def gitignore = folder.exist?(".gitignore") ? folder.read(".gitignore") : nil
+
+  def test_a_failed_check_after_the_plan_leaves_no_database_file
+    break_the_store
+    assert_raises(Plastic::Invalid) { planned_import }
+
+    assert_empty database_files
+  end
+
+  def test_a_failed_check_after_the_plan_leaves_gitignore_as_it_was
+    break_the_store
+    before = gitignore
+    assert_raises(Plastic::Invalid) { planned_import }
+
+    assert_equal [before], [gitignore]
+  end
+
   class FailsOnSecondRead < SimpleDelegator
     def read(paths)
       @reads = @reads.to_i + 1
