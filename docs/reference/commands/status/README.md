@@ -6,7 +6,7 @@ List every store's intents by group, with node counts by state.
 plastic status
 ```
 
-The command is `Status`, in [`status.rb:13`](../../../../lib/plastic/commands/status.rb#L13). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Status`, in [`status.rb:14`](../../../../lib/plastic/commands/status.rb#L14). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 ## Components
 
@@ -18,7 +18,7 @@ The figure shows the command, the workflows it runs, the classes behind them, an
 
 ![The call of plastic status](call.svg)
 
-The command's `call`, at [`status.rb:16`](../../../../lib/plastic/commands/status.rb#L16):
+The command's `call`, at [`status.rb:17`](../../../../lib/plastic/commands/status.rb#L17):
 
 ```ruby
 def call
@@ -31,10 +31,10 @@ end
 
 Its steps run in this order:
 
-1. `projects = scope.projects` [`status.rb:17`](../../../../lib/plastic/commands/status.rb#L17)
-2. `shown = slugs.map { |slug| store_rows(slug, projects) }` [`status.rb:18`](../../../../lib/plastic/commands/status.rb#L18)
-3. `output.rows(shown.flat_map(&:first))` [`status.rb:19`](../../../../lib/plastic/commands/status.rb#L19)
-4. `offer_next(shown.filter_map(&:last).first)` [`status.rb:20`](../../../../lib/plastic/commands/status.rb#L20)
+1. `projects = scope.projects` [`status.rb:18`](../../../../lib/plastic/commands/status.rb#L18)
+2. `shown = slugs.map { |slug| store_rows(slug, projects) }` [`status.rb:19`](../../../../lib/plastic/commands/status.rb#L19)
+3. `output.rows(shown.flat_map(&:first))` [`status.rb:20`](../../../../lib/plastic/commands/status.rb#L20)
+4. `offer_next(shown.filter_map(&:last).first)` [`status.rb:21`](../../../../lib/plastic/commands/status.rb#L21)
 
 ## What one call reads, writes and prints
 
@@ -42,7 +42,7 @@ Its steps run in this order:
 
 | Place | Database or file | Tables | Reads or writes | Code |
 | --- | --- | --- | --- | --- |
-| the store folder | work_graph.db | `intents`, `nodes` | reads | [`status.rb:14`](../../../../lib/plastic/commands/status.rb#L14) |
+| the store folder | work_graph.db | `intents`, `nodes` | reads | [`status.rb:15`](../../../../lib/plastic/commands/status.rb#L15) |
 
 ## How a call ends
 
@@ -50,8 +50,8 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| Offers the next command | 0 | plastic next | [`status.rb:28`](../../../../lib/plastic/commands/status.rb#L28) |
-| Offers the next command | 0 | decided at run time | [`status.rb:30`](../../../../lib/plastic/commands/status.rb#L30) |
+| Offers the next command | 0 | plastic next | [`status.rb:29`](../../../../lib/plastic/commands/status.rb#L29) |
+| Offers the next command | 0 | decided at run time | [`status.rb:31`](../../../../lib/plastic/commands/status.rb#L31) |
 
 ## What the page leaves out
 

@@ -82,11 +82,9 @@
 <rect x="336" y="102" width="196" height="28" rx="6" class="card"/>
 <text x="344" y="120" class="tm" text-anchor="start">Harnesses::Detection</text>
 <rect x="336" y="136" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="154" class="tm" text-anchor="start">Knowledge::Intent</text>
+<text x="344" y="154" class="tm" text-anchor="start">Work::LastSavepoints</text>
 <rect x="336" y="170" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="188" class="tm" text-anchor="start">Work::LastSavepoints</text>
-<rect x="336" y="204" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="222" class="tm" text-anchor="start">Touched</text>
+<text x="344" y="188" class="tm" text-anchor="start">Touched</text>
 <rect x="556" y="34" width="186" height="60" rx="14" class="db"/>
 <text x="568" y="52" class="tb" text-anchor="start">local.db</text>
 <text x="568" y="68" class="tm" text-anchor="start">routine_runs  R</text>
