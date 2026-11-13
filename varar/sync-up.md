@@ -13,7 +13,7 @@ Each row gives the change, the exit code, the result and the rows:
 | ------------------------------- | ---: | ---------------------------------------------------------------------------------------------- | -------------------- |
 | none                            |    0 | none                                                                                           | # Spec               |
 | spec.md edited                  |    0 | read store/1--alpha/spec.md                                                                    | # Spec, edited       |
-| graph.json given a node | 0 | none | n1 needs n2 |
+| graph.json given a node | 0 | read store/1--alpha/graph.json | n1 needs n2 |
 | graph.json that does not check | 1 | store/1--alpha/graph.json names no intent, not 1; store/1--alpha/graph.json holds node "n1" with no state; store/1--alpha/graph.json holds an edge to "n2", which is no node it holds | |
 | title renamed in index.json | 0 | none | Alpha |
 | cluster added in index.json | 0 | none | |
