@@ -9,20 +9,20 @@ module Plastic
           class Passages
             SIZE = 1600
             OVERLAP = 200
+            STEP = SIZE - OVERLAP
 
             class << self
               def build(source)
                 extraction = source.is_a?(Extraction) ? source : Extraction.new(source, SourceLines.for(source))
-                offsets(extraction.body.length).each_with_index.map { |offset, index| passage(extraction, offset, index) }
+                steps = extraction.body.scan(/.{1,#{STEP}}/m)
+                steps.each_index.map { |index| passage(extraction, steps, index) }
               end
 
               private
 
-              def offsets(length) = (0...length).step(SIZE - OVERLAP)
-
-              def passage(extraction, offset, index)
-                body = extraction.body[offset, SIZE]
-                lines = extraction.lines.slice(offset, body.length)
+              def passage(extraction, steps, index)
+                body = steps[index] + steps.fetch(index + 1, "")[0, OVERLAP]
+                lines = extraction.lines.slice(index * STEP, body.length)
                 { body:, position: index + 1, line_start: lines.first, line_end: lines.last }
               end
             end
