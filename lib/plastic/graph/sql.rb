@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require "json"
 require_relative "../invalid"
+require_relative "sql/binding"
 
 module Plastic
   module Graph
@@ -21,7 +21,6 @@ module Plastic
 
       NAME = /[a-z_][a-z0-9_]*/
       PLACEHOLDER = /(?<!:):(#{NAME})\b/
-      LARGEST_INTEGER = 2**63 - 1
 
       def self.name(identifier) = %("#{identifier.to_s.gsub('"', '""')}")
 
@@ -45,31 +44,9 @@ module Plastic
         end
       end
 
-      def self.bindable(value)
-        convert(value)
-      rescue => error
-        raise Plastic::Invalid, "a #{value.class} cannot be bound: #{error.message}"
-      end
+      def self.bindable(value) = Binding.bindable(value)
 
-      def self.convert(value)
-        case value
-        in nil | Float | SQLite3::Blob then value
-        in true then 1
-        in false then 0
-        in Integer then integer(value)
-        in Hash | Array then JSON.generate(value)
-        in String then text(value)
-        else value.to_s
-        end
-      end
-
-      def self.integer(value)
-        raise RangeError, "out of range" unless value.abs <= LARGEST_INTEGER
-
-        value
-      end
-
-      def self.text(value) = (value.encoding == Encoding::BINARY) ? value.dup.force_encoding(Encoding::UTF_8) : value
+      def self.convert(value) = Binding.convert(value)
 
       def self.where(values, prefix) = pairs(values, CONDITION, prefix)
 

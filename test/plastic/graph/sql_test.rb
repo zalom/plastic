@@ -44,6 +44,12 @@ class SQLTest < Plastic::TestCase
     assert_includes error.message, ":b"
   end
 
+  def test_an_integer_beyond_the_sqlite_range_raises_invalid
+    error = assert_raises(Plastic::Invalid) { SQL.bindable(2**64) }
+
+    assert_includes error.message, "cannot be bound"
+  end
+
   def test_names_join_quoted_names
     assert_equal %("a", "b"), SQL.names(%i[a b])
   end
