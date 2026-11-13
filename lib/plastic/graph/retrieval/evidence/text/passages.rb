@@ -14,12 +14,15 @@ module Plastic
             class << self
               def build(source)
                 extraction = source.is_a?(Extraction) ? source : Extraction.new(source, SourceLines.for(source))
-                steps = extraction.body.scan(/.{1,#{STEP}}/m)
-                following = steps.drop(1)
-                steps.each_with_index.map { |step, index| passage(extraction, step + following.fetch(index, "")[0, OVERLAP], index) }
+                bodies(extraction.body).each_with_index.map { |body, index| passage(extraction, body, index) }
               end
 
               private
+
+              def bodies(text)
+                steps = text.scan(/.{1,#{STEP}}/m)
+                steps.zip(steps.drop(1)).map { |step, following| step + following.to_s[0, OVERLAP] }
+              end
 
               def passage(extraction, body, index)
                 lines = extraction.lines.slice(index * STEP, body.length)
