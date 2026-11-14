@@ -29,6 +29,11 @@ module Plastic
 
       def next_line(result) = result.out.lines(chomp: true).find { |line| line.start_with?("next: ") }
 
+      def held_lock(intent_id)
+        lock = retrieval.lock(intent_id)
+        [lock.session_id, retrieval.liveness(lock).live?]
+      end
+
       def lock_rows = store_graphs.databases.fetch(:local).rows("SELECT * FROM locks")
 
       def expire_lock

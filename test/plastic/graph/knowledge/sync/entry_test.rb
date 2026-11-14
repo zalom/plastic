@@ -90,11 +90,11 @@ class KnowledgeSyncEntryTest < Plastic::TestCase
   end
 
   def test_a_graph_file_against_bare_rows_with_no_record_is_not_hand_edited
-    refute graph_entry("b", nil, empty_graph_sha).hand_edited?
+    refute_predicate graph_entry("b", nil, empty_graph_sha), :hand_edited?
   end
 
   def test_a_graph_file_changed_since_its_print_is_hand_edited
-    assert graph_entry("b", "a", "a").hand_edited?
+    assert_predicate graph_entry("b", "a", "a"), :hand_edited?
   end
 
   def test_an_emptied_graph_file_is_read_up_like_any_hand_edit

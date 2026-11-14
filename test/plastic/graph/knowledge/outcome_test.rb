@@ -65,20 +65,22 @@ class KnowledgeOutcomeTest < Plastic::TestCase
     assert_equal [true, true, true], [read.pull_request?, read.approved?, read.reverted?]
   end
 
+  def merged_value?(value) = outcome("## Verification\n- Merged: #{value}\n").merged?
+
   def test_a_negative_value_of_merged_is_not_a_merge
-    ["no", "pending", "-", "None yet", "N/A", "TBD", "false", "Not merged"].each do |value|
-      refute outcome("## Verification\n- Merged: #{value}\n").merged?, value
-    end
+    values = ["no", "pending", "-", "None yet", "N/A", "TBD", "false", "Not merged"]
+
+    assert_equal values, values.reject { |value| merged_value?(value) }
   end
 
   def test_a_branch_named_like_a_negative_word_is_a_merge
-    ["branch into alpha at PR 9", "node-sort into alpha", "pending-ui into alpha", "notes-fix at abc1"].each do |value|
-      assert outcome("## Verification\n- Merged: #{value}\n").merged?, value
-    end
+    values = ["branch into alpha at PR 9", "node-sort into alpha", "pending-ui into alpha", "notes-fix at abc1"]
+
+    assert_equal values, values.select { |value| merged_value?(value) }
   end
 
   def test_a_negative_value_of_approved_is_not_an_approval
-    refute outcome("## Verification\n- Approved: none\n").approved?
+    refute_predicate outcome("## Verification\n- Approved: none\n"), :approved?
   end
 
   def test_a_negative_word_in_another_label_still_counts_as_recorded

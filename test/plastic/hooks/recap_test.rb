@@ -109,11 +109,15 @@ class RecapTest < Plastic::TestCase
     [intent_id, opened.retrieval.lock(intent_id)]
   end
 
+  def expired_lines(now)
+    Plastic::Hooks::Recap.new(opened.retrieval, session_id: "s-1", source: "resume", directory: @home).lines(now:).grep(/the lock of this session expired/)
+  end
+
   def test_an_own_lock_past_its_window_prints_the_expired_line_with_the_auto_command
     intent_id, lock = lock_intent
     later = Time.parse(lock.renewed_at) + Plastic::Graph::Lock::TTL + 1
 
-    lines = Plastic::Hooks::Recap.new(opened.retrieval, session_id: "s-1", source: "resume", directory: @home, now: later).lines
+    lines = Plastic::Hooks::Recap.new(opened.retrieval, session_id: "s-1", source: "resume", directory: @home).lines(now: later)
 
     assert_includes lines, "intent #{intent_id}: the lock of this session expired (last renewed #{lock.renewed_at}); plastic auto #{intent_id} locks it again"
   end
@@ -122,9 +126,7 @@ class RecapTest < Plastic::TestCase
     _intent_id, lock = lock_intent
     within = Time.parse(lock.renewed_at) + 1
 
-    lines = Plastic::Hooks::Recap.new(opened.retrieval, session_id: "s-1", source: "resume", directory: @home, now: within).lines
-
-    refute(lines.any? { |line| line.include?("the lock of this session expired") })
+    assert_empty expired_lines(within)
   end
 
   def test_a_lock_of_another_session_prints_no_expired_line
@@ -132,8 +134,6 @@ class RecapTest < Plastic::TestCase
     opened.work.take_lock(intent_id, session_id: "s-2", mode: "auto")
     later = Time.parse(opened.retrieval.lock(intent_id).renewed_at) + Plastic::Graph::Lock::TTL + 1
 
-    lines = Plastic::Hooks::Recap.new(opened.retrieval, session_id: "s-1", source: "resume", directory: @home, now: later).lines
-
-    refute(lines.any? { |line| line.include?("the lock of this session expired") })
+    assert_empty expired_lines(later)
   end
 end

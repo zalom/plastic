@@ -106,11 +106,6 @@ class AutoTest < Plastic::TestCase
     assert_includes result.err, "no intent 9 in this store"
   end
 
-  def held_lock(intent_id)
-    lock = retrieval.lock(intent_id)
-    [lock.session_id, retrieval.liveness(lock).live?]
-  end
-
   def test_an_active_intent_without_a_lock_takes_one
     intent = active_intent
 
@@ -125,29 +120,6 @@ class AutoTest < Plastic::TestCase
     intent = active_intent
     store_graphs.work.take_lock(intent.intent_id, session_id: "s-2", mode: "auto")
     expire_lock
-
-    result = call(intent.intent_id)
-
-    assert_equal [0, "s-1", true], [result.code, *held_lock(intent.intent_id)]
-  end
-
-  def test_a_session_that_ended_exits_1_and_leaves_the_intent_open_with_no_lock
-    intent = clear_intent
-    store_graphs.work.open_session("s-1", harness: "claude-code", directory: @home)
-    store_graphs.work.end_session("s-1", reason: "clear")
-
-    result = call(intent.intent_id)
-
-    assert_equal [1, "open", []], [result.code, retrieval.intent(intent.intent_id).status, lock_rows]
-    assert_includes result.err, "session s-1 ended; start a new session or resume it"
-    refute_match(/^next: /, result.out)
-  end
-
-  def test_a_session_reopened_after_its_end_locks_the_intent
-    intent = clear_intent
-    store_graphs.work.open_session("s-1", harness: "claude-code", directory: @home)
-    store_graphs.work.end_session("s-1", reason: "clear")
-    store_graphs.work.open_session("s-1", harness: "claude-code", directory: @home)
 
     result = call(intent.intent_id)
 

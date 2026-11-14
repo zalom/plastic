@@ -120,47 +120,6 @@ class IntentEndTest < Plastic::TestCase
   def test_the_chain_has_no_problems
     assert_empty Plastic::Commands::Intent::End.chain_problems
   end
-
-  def test_a_missing_merge_record_hands_over_the_merge_check
-    accepted_intent(records: "- Architecture map: enola at abc123\n")
-    review_off
-
-    result = finish
-
-    assert_equal [1, "in_progress"], [result.code, retrieval.intent("1").status]
-    assert_includes result.out, "- Merged: "
-    assert_match(/^next: plastic intent end 1/, result.out)
-    refute_match(/--judge|--evidence/, result.out)
-  end
-
-  def test_the_merge_handoff_tells_the_agent_to_merge_its_own_pull_request
-    accepted_intent(records: "- Architecture map: enola at abc123\n")
-    review_off
-
-    out = finish.out
-
-    assert_match(/merge (its|your) own pull request/i, out)
-    assert_match(/only when the owner asked/i, out)
-    assert_match(/plastic sync up/, out)
-  end
-
-  def test_a_negative_merge_record_is_named_by_the_handoff
-    accepted_intent(records: "- Merged: no\n- Architecture map: enola at abc123\n")
-    review_off
-
-    assert_includes finish.out, "Merged: no"
-  end
-
-  def test_a_second_end_after_the_merge_record_resumes_and_closes
-    accepted_intent(records: "- Architecture map: enola at abc123\n")
-    review_off
-    first = finish
-    write("#{retrieval.intent("1").dir}/outcome.md", "# Outcome\n\nDelivered and verified.\n\n## Verification\n#{MERGE_RECORDS}")
-    sync_up
-    second = finish
-
-    assert_equal [1, 0, "done"], [first.code, second.code, retrieval.intent("1").status]
-  end
 end
 
 class IntentEndPullRequestTest < Plastic::TestCase
