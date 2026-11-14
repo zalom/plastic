@@ -113,18 +113,18 @@ class KernelPathsTest < Minitest::Test
   FORKED_LOADS = <<~'CODE'
     require "plastic"
     ARGV.each do |file|
-      pid = fork { exit(begin; load(file); true; rescue Exception; false; end ? 0 : 1) }
+      pid = fork { GC.disable; exit!(begin; load(file); true; rescue Exception; false; end ? 0 : 1) }
       puts("FAILED #{file}") unless Process.wait2(pid).last.success?
     end
   CODE
 
   def failing_loads(files)
-    runs = files.each_slice((files.size / 10.0).ceil).map { |slice| Thread.new { forked_loads(slice) } }
+    runs = files.each_slice((files.size / 24.0).ceil).map { |slice| Thread.new { forked_loads(slice) } }
     runs.flat_map(&:value)
   end
 
   def forked_loads(files)
-    out, = ChildProcess.capture2e(RbConfig.ruby, "-I", File.join(ROOT, "lib"), "-e", FORKED_LOADS, *files, chdir: ROOT)
+    out, = ChildProcess.capture2e(RbConfig.ruby, "-W0", "-I", File.join(ROOT, "lib"), "-e", FORKED_LOADS, *files, chdir: ROOT)
     out.lines.grep(/\AFAILED /).map { |line| line.chomp.delete_prefix("FAILED ") }
   end
 
