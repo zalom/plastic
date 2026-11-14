@@ -28,8 +28,8 @@ end
 
 def install(options)
   files = InstallerRelease::ReleaseFiles.new(options[:directory]).verify
-  choice = InstallerRelease::RubyChoice.new(override: ENV.fetch("PLASTIC_RUBY", ""))
-  InstallerRelease::ReleaseInstall.new(home: options[:home], sync: managed(options), choice: choice)
+  ruby = InstallerRelease::Ruby.chosen(ENV.fetch("PLASTIC_RUBY", ""))
+  InstallerRelease::ReleaseInstall.new(home: options[:home], sync: managed(options), ruby: ruby)
     .call(archive: files.archive, manifest: files.manifest, expected: InstallerRelease::Manifest.identity(options[:version]))
 end
 

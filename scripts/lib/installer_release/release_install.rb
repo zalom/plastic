@@ -3,7 +3,6 @@
 require "fileutils"
 require "shellwords"
 require_relative "bundle"
-require_relative "ruby_choice"
 
 module InstallerRelease
   # Installs one verified release: checks its manifest against the requested
@@ -12,26 +11,26 @@ module InstallerRelease
   # is already installed is switched to without staging. The switch syncs the
   # home through the given home sync.
   class ReleaseInstall
-    def initialize(home:, bundle: Bundle.new, sync: NoSync, choice: RubyChoice.new)
+    def initialize(home:, bundle: Bundle.new, sync: NoSync, ruby: Ruby.chosen)
       @activation = Activation.new(home: home, sync: sync)
       @home = home
       @bundle = bundle
-      @choice = choice
+      @ruby = ruby
     end
 
     def call(archive:, manifest:, expected:)
       Manifest.check(manifest, archive: archive, expected_release: expected)
       version = expected.fetch("version")
-      return relaunch(version, choice.call(manifest)) if activation.releases.installed?(version)
+      return relaunch(version) if activation.releases.installed?(version)
 
-      stage(archive, version) { |candidate| activate(candidate, version, choice.call(manifest)) }
+      stage(archive, version) { |candidate| activate(candidate, version) }
     end
 
     private
 
-    attr_reader :activation, :home, :bundle, :choice
+    attr_reader :activation, :home, :bundle, :ruby
 
-    def relaunch(version, ruby)
+    def relaunch(version)
       ReleaseLauncher.write(activation.releases.path(version), ruby, activation.releases.path(version))
       activation.switch(version)
     end
@@ -46,7 +45,7 @@ module InstallerRelease
       end
     end
 
-    def activate(candidate, version, ruby)
+    def activate(candidate, version)
       path = activation.releases.path(version)
       ReleaseLauncher.write(candidate, ruby, path)
       activation.activate(candidate, version: version, before_switch: -> { bundle.call(path, ruby) })
