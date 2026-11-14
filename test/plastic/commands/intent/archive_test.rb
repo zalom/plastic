@@ -57,7 +57,7 @@ class IntentArchiveTest < Plastic::TestCase
 
     result = call(target.intent_id)
 
-    assert_call result, code: 3, out: RUN_ROW, err: "plastic: refused, intent 2 links to 1\nThis step belongs to the owner. Stop and ask; do not retry with a flag.\n"
+    assert_call result, code: 3, err: "plastic: refused, intent 2 links to 1\nThis step belongs to the owner. Stop and ask; do not retry with a flag.\n"
     assert folder.exist?("#{target.dir}/#{target.file}")
   end
 
@@ -116,7 +116,7 @@ class IntentArchiveTest < Plastic::TestCase
   def test_archiving_a_missing_intent_reports_a_failure
     result = call("99")
 
-    assert_call result, code: 1, out: RUN_ROW, err: ["no intent 99"]
+    assert_call result, code: 1, err: ["no intent 99"]
   end
 
   private

@@ -17,7 +17,7 @@ class NodeResolveTest < Plastic::TestCase
 
     result = cli("node", "resolve", "1", "n1", "go left")
 
-    assert_call result, code: 0, out: "node: n1 open\nwrote:  1 routine run in local.db\n        1 node in work_graph.db\nfiles:  store/1--alpha/graph.json\n\nnext: plastic node claim 1 n1\nbecause: node n1 is open\n"
+    assert_call result, code: 0, out: "node: n1 open\nwrote:  1 node in work_graph.db\nfiles:  store/1--alpha/graph.json\n\nnext: plastic node claim 1 n1\nbecause: node n1 is open\n"
   end
 
   def test_an_answer_that_holds_column_names_is_stored_unchanged
@@ -45,6 +45,6 @@ class NodeResolveTest < Plastic::TestCase
   def test_resolving_a_claimed_node_is_refused
     result = cli("node", "resolve", "1", "n1", "go left")
 
-    assert_call result, code: 1, out: RUN_ROW, err: "plastic: node n1 is claimed; it cannot move to open\n"
+    assert_call result, code: 1, err: "plastic: node n1 is claimed; it cannot move to open\n"
   end
 end

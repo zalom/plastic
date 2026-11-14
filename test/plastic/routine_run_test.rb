@@ -115,12 +115,12 @@ class RoutineRunTest < Plastic::TestCase
     refute_includes saved.to_s, "#<data"
   end
 
-  def test_a_node_add_wrote_row_names_the_routine_run
+  def test_a_node_add_wrote_row_leaves_out_the_routine_run
     specified
     cli("intent", "approve", "1")
     cli("auto", "1")
     call = cli("node", "add", "1", "Deliver it", "--criterion", KEY)
 
-    assert_includes call.out, "1 routine run in local.db"
+    refute_includes call.out, "routine run"
   end
 end

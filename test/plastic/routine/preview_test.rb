@@ -54,11 +54,12 @@ class RoutinePreviewTest < Plastic::TestCase
     assert_includes twin.previewed.out, "preview: would change #{twin.first}/stores/global/store/1--alpha/graph.json"
   end
 
-  def test_a_dry_run_names_the_routine_run_row_the_real_call_keeps
+  def test_a_dry_run_and_the_real_call_leave_the_routine_run_row_off_their_lines
     twin = twin_run("node", "remove", "1", "n1", "--reason", "r") { |home| seed_graph(home) }
 
-    assert_match(/would write:\s+1 routine run in local\.db\n\s+1 node in work_graph\.db/, twin.previewed.out)
-    assert_match(/wrote:\s+1 routine run in local\.db\n\s+1 node in work_graph\.db/, twin.applied.out)
+    assert_match(/would write:\s+1 node in work_graph\.db/, twin.previewed.out)
+    assert_match(/wrote:\s+1 node in work_graph\.db/, twin.applied.out)
+    refute_includes twin.previewed.out + twin.applied.out, "routine run"
   end
 
   def test_a_preview_prefixes_every_printed_line_and_ends_on_the_closing_line

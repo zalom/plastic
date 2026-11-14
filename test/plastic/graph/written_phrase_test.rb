@@ -15,18 +15,31 @@ class WrittenPhraseTest < Plastic::TestCase
   end
 
   def test_two_tables_join_with_and
-    insert("a")
-    insert("t", table: :tallies)
-
-    assert_equal "1 routine run and 1 tallies in work_graph.db", database.written_phrase
-  end
-
-  def test_three_tables_join_with_commas
-    insert("a")
     insert("t", table: :tallies)
     insert("n", table: :notes)
 
-    assert_equal "1 routine run, 1 tallies, and 1 notes in work_graph.db", database.written_phrase
+    assert_equal "1 tallies and 1 notes in work_graph.db", database.written_phrase
+  end
+
+  def test_the_routine_run_row_is_left_out_of_the_phrase
+    insert("a")
+    insert("t", table: :tallies)
+
+    assert_equal "1 tallies in work_graph.db", database.written_phrase
+  end
+
+  def test_only_the_routine_run_row_written_has_no_phrase
+    insert("a")
+
+    assert_nil database.written_phrase
+  end
+
+  def test_three_tables_join_with_commas
+    insert("a", table: :tallies)
+    insert("t", table: :notes)
+    insert("n", table: :intents)
+
+    assert_equal "1 tallies, 1 notes, and 1 intents in work_graph.db", database.written_phrase
   end
 
   def test_an_uncounted_write_is_kept_off_the_phrase

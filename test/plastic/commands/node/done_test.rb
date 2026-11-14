@@ -19,7 +19,7 @@ class NodeDoneTest < Plastic::TestCase
   def test_finishing_a_claimed_node_offers_the_ready_set
     result = cli("node", "done", "1", "n1", "ok")
 
-    assert_call result, code: 0, out: "node: n1 done\nwrote:  1 routine run in local.db\n        1 node in work_graph.db\nfiles:  store/1--alpha/graph.json\n\nnext: plastic graph ready 1\nbecause: node n1 is done\n"
+    assert_call result, code: 0, out: "node: n1 done\nwrote:  1 node in work_graph.db\nfiles:  store/1--alpha/graph.json\n\nnext: plastic graph ready 1\nbecause: node n1 is done\n"
   end
 
   def test_findings_that_hold_column_names_are_stored_unchanged

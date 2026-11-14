@@ -18,7 +18,7 @@ class NodeRemoveTest < Plastic::TestCase
     result = remove("1", "n1")
 
     assert_equal 1, result.code
-    assert_equal RUN_ROW, result.out
+    assert_empty result.out
     assert_equal "plastic: node n1 is claimed; it cannot move to removed\n", result.err
   end
 
