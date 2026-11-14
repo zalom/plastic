@@ -21,7 +21,8 @@ module Plastic
         return refusal unless @record.present?
 
         from = @record.version
-        result = settle(sync(&install), take_snapshot)
+        snapshot = take_snapshot
+        result = settle(sync(&install), snapshot)
         result.merge(from_version: from, to_version: @record.version)
       end
 
