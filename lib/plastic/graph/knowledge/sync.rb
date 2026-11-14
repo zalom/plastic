@@ -54,8 +54,7 @@ module Plastic
         # The index, and every file the plan prints, from the rows as the reads left them.
         def printed_up(plan)
           fresh = Prints.of_store(@retrieval).to_h { |print| [print.path, print] }
-          wanted = plan.taking(:print).map { |entry| fresh.fetch(entry.path, entry.print) }
-          [fresh[StoreFolder::INDEX], *wanted].compact.uniq(&:path)
+          [fresh[StoreFolder::INDEX], *plan.reprinted(fresh)].compact.uniq(&:path)
         end
 
         def read(paths) = FileReads.new(folder: @folder, retrieval: @retrieval, databases: @databases, printer: printer).call(paths)
