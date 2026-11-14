@@ -27,13 +27,12 @@ module Plastic
         context[:failure] = plan.failure
         context[:conflicts] = plan.conflicts.join(", ")
         context[:merging] = plan.merging?
-        note_unreadable(context, plan)
+        context[:unreadable] = plan.unreadable.join("\n")
+        note_files(context, plan.left_unreadable)
         context[:lines] = nil
       end
 
-      def self.note_unreadable(context, plan)
-        files = plan.left_unreadable
-        context[:unreadable] = plan.unreadable.join("\n")
+      def self.note_files(context, files)
         context[:unreadable_files] = files.map { |path, reason| "#{path}: #{reason}" }.join("\n")
         context[:unreadable_path] = files.keys.first
       end
@@ -46,7 +45,7 @@ module Plastic
       def self.readable?(context) = context.unreadable.empty?
 
       # No changed file is left that no reader can turn into rows.
-      def self.files_read?(context) = context.unreadable_files.empty?
+      def self.files_read?(context) = context.unreadable_path.nil?
 
       def self.say(context) = Array(context.lines).each { |line| context.print(line) }
 

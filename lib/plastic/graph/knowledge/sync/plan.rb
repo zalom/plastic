@@ -28,7 +28,7 @@ module Plastic
             entries = entries(folder, retrieval, folders)
             new(resolution:, entries:, unreadable: Array(folders&.problems),
               archived: archived(folder, retrieval, resolution),
-              unreadable_files: unreadable_files_of(Readability.new(folder, retrieval), entries, resolution.up? && !legacy),
+              unreadable_files: unreadable_files_of(Readability.new(folder, retrieval), entries, (resolution.up? && !legacy)),
               **legacy_facts(legacy, resolution))
           end
 
@@ -57,9 +57,6 @@ module Plastic
           def conflicts = actions.select { |_entry, action| action == :conflict }.keys.map(&:path)
 
           def taking(action) = actions.select { |_entry, found| found == action }.keys
-
-          # The prints of the entries this plan prints, taken from `fresh` where the rows have a newer one.
-          def reprinted(fresh) = taking(:print).map { |entry| fresh.fetch(entry.path, entry.print) }
 
           # The records this sync writes; zero when the folder and the rows are level.
           def pending = actions.values.count { |action| %i[record read print].include?(action) } + (legacy ? 1 : 0) + archived
