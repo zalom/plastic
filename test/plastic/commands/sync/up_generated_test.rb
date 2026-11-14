@@ -80,4 +80,30 @@ class SyncUpGeneratedTest < Plastic::TestCase
 
     assert_equal [0, true, "# by hand\n", 0], [dry.code, dry.out.include?("preview: printed again from rows: roadmaps/r1.md"), kept, real.code], dry.out + dry.err
   end
+
+  def conflicting_spec(home)
+    call_in(home, "intent", "new", "Beta")
+    spec = File.join(home, "stores", "global", "store/1--beta/spec.md")
+    File.write(spec, "# Spec\n\n## Done criteria\n- [ ] [done] it is done\n")
+    call_in(home, "sync", "up")
+    home_graphs(home).databases[:knowledge].transaction { |batch| batch.put(:documents, { intent_id: "1", path: "spec.md", body: "row change", updated_at: STAMP }) }
+    File.write(spec, "file change\n")
+  end
+
+  def test_a_preview_of_sync_up_refuses_a_conflict_as_the_real_run_does_also_with_merge
+    codes = [[], ["--merge"]].flat_map do |options|
+      with_home do |home|
+        conflicting_spec(home)
+        [call_in(home, "sync", "up", "--dry-run", *options).code, call_in(home, "sync", "up", *options).code]
+      end
+    end
+
+    assert_equal [3, 3, 3, 3], codes
+  end
+
+  def test_a_preview_of_sync_up_with_an_overwrite_that_names_no_file_prints_the_plain_reason
+    dry = with_home { |home| call_in(home, "sync", "up", "--dry-run", "--overwrite", "store/9--none/spec.md") }
+
+    assert_equal [1, "plastic: store/9--none/spec.md names no file and no rows of this store\n"], [dry.code, dry.err], dry.out
+  end
 end

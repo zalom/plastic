@@ -121,6 +121,18 @@ class KnowledgeOutcomeValuesTest < Plastic::TestCase
     assert_equal [[], false], [MARKED_NEGATIVE.select { |value| approved_value?(value) }, merged_value?("`pending` at PR #57")]
   end
 
+  WIDER_MARKED_NEGATIVE = ["<pending> on 2026-11-20", "<not yet> on 2026-11-20", "( pending ) on 2026-11-20", "— pending on 2026-11-20",
+    "> no, review on 2026-11-20", "\\[no\\] on 2026-11-20", "- pending on 2026-11-20"].freeze
+
+  def test_a_negative_first_word_behind_angle_brackets_a_backslash_a_dash_or_spaces_does_not_count
+    assert_equal [[], false, false], [WIDER_MARKED_NEGATIVE.select { |value| approved_value?(value) }, merged_value?("<pending> at PR #57"),
+      merged_value?("`` pending `` at PR #57")]
+  end
+
+  def test_a_first_word_with_a_hyphen_inside_counts_since_a_branch_or_a_person_can_be_named_so
+    assert_equal [true, true, true], [approved_value?("not-yet on 2026-11-20"), approved_value?("no-go on 2026-11-20"), merged_value?("not-yet at PR #57")]
+  end
+
   def test_angle_brackets_count_unless_they_hold_a_placeholder_of_the_printed_form
     values = ["Mira Testa <mira@example.com> on 2026-11-14", "<person> on 2026-11-14", "Mira on <YYYY-MM-DD>"]
 

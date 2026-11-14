@@ -52,6 +52,12 @@ class KnowledgeReaderIndexFileTest < Plastic::TestCase
       "store/index.json lists an entry under clusters that is not a JSON object"], reasons
   end
 
+  def test_a_cluster_whose_intents_is_no_list_is_refused_with_its_reason
+    reasons = [[{ "name" => "c" }], [{ "name" => "c", "intents" => "1" }]].map { |clusters| assert_raises(Plastic::Invalid) { apply(index([], clusters)) }.message }
+
+    assert_equal ["store/index.json lists the cluster c with no list of intents"] * 2, reasons
+  end
+
   def test_an_entry_with_no_intent_folder_gets_no_row
     apply_in(["store/1--alpha"], index([entry, entry(intent_id: "2", slug: "ghost")], []))
 
