@@ -37,9 +37,9 @@ class WrittenPhraseTest < Plastic::TestCase
   def test_three_tables_join_with_commas
     insert("a", table: :tallies)
     insert("t", table: :notes)
-    insert("n", table: :intents)
+    insert("n", table: :stored)
 
-    assert_equal "1 tallies, 1 notes, and 1 intents in work_graph.db", database.written_phrase
+    assert_equal "1 tallies, 1 notes, and 1 stored in work_graph.db", database.written_phrase
   end
 
   def test_an_uncounted_write_is_kept_off_the_phrase
