@@ -62,8 +62,8 @@ module Plastic
       def delete(path)
         File.delete(path)
         true
-      rescue SystemCallError => e
-        warn "   Could not remove retired session state #{path}: #{e.message}"
+      rescue SystemCallError => error
+        warn "   Could not remove retired session state #{path}: #{error.message}"
         false
       end
     end

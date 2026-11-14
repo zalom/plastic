@@ -43,18 +43,20 @@ module Plastic
 
       def copy_fragment(path, entry)
         FileUtils.mkdir_p(@plastic_home)
-        FileUtils.cp(path, File.join(@plastic_home, entry))
-        File.join(@plastic_home, entry)
+        copied = File.join(@plastic_home, entry)
+        FileUtils.cp(path, copied)
+        copied
       end
 
       def copy_folder(source, target)
         FileUtils.mkdir_p(target)
         visible(source).flat_map do |entry|
           path = File.join(source, entry)
-          next copy_folder(path, File.join(target, entry)) if File.directory?(path)
+          copied = File.join(target, entry)
+          next copy_folder(path, copied) if File.directory?(path)
 
-          FileUtils.cp(path, File.join(target, entry))
-          [File.join(target, entry)]
+          FileUtils.cp(path, copied)
+          [copied]
         end
       end
 

@@ -8,7 +8,7 @@ module InstallerRelease
     def bundle = File.join(File.dirname(path), "bundle")
 
     # The developer's PLASTIC_RUBY, else the Ruby that is running the installer.
-    def self.chosen(override = "") = new(override.to_s.empty? ? RbConfig.ruby : override.to_s)
+    def self.chosen(override = "") = new(override.to_s.then { |path| path.empty? ? RbConfig.ruby : path })
   end
 
   # Installs a release's runtime gems into the release itself as a

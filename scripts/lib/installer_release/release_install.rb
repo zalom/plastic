@@ -31,7 +31,8 @@ module InstallerRelease
     attr_reader :activation, :home, :bundle, :ruby
 
     def relaunch(version)
-      ReleaseLauncher.write(activation.releases.path(version), ruby, activation.releases.path(version))
+      release = activation.releases.path(version)
+      ReleaseLauncher.write(release, ruby, release)
       activation.switch(version)
     end
 
