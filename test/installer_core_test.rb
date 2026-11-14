@@ -339,6 +339,15 @@ class InstallerCoreCodexTest < Minitest::Test
     refute_includes files.keys, "bin/plastic"
   end
 
+  def test_a_distribute_counts_the_retired_session_files_it_removes
+    session = File.join(Plastic::StoreLayout.global_store(File.join(@home, ".plastic")), ".tmp", "s1")
+    FileUtils.mkdir_p(session)
+    File.write(File.join(session, "current"), "x")
+    out, = capture_io { installer.distribute(:update, tmp_dirs: []) }
+
+    assert_includes out, "  1 retired session state file(s) removed\n"
+  end
+
   def test_a_distribute_makes_the_exe_launcher_executable
     capture_io { installer.distribute(:install, tmp_dirs: []) }
     launcher = File.join(@home, ".plastic", "exe", "plastic")

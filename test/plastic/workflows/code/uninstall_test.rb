@@ -25,6 +25,13 @@ class UninstallPlasticTest < Plastic::TestCase
     assert_equal [["codex"], true], [Plastic::Installations.recorded(@plastic_home), File.exist?(File.join(@plastic_home, "VERSION"))]
   end
 
+  def test_a_harness_with_no_record_is_named_and_nothing_is_removed
+    uninstall("claude-code")
+    _, context = uninstall("claude-code")
+
+    assert_includes context.printed.join, "claude-code: no record lists what Plastic wrote"
+  end
+
   def test_the_releases_stay_while_another_harness_is_recorded
     uninstall("claude-code")
 

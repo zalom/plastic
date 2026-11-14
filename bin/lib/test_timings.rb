@@ -99,6 +99,11 @@ module TestTimings
     err.puts "Usage: bin/lib/test_timings.rb check PATH"
     2
   end
+
+  # Exits with the command line status only when the file itself is the program.
+  def self.main(argv, program: $PROGRAM_NAME, file: __FILE__, err: $stderr)
+    exit cli(argv, err:) if program == file
+  end
 end
 
-exit TestTimings.cli(ARGV) if $PROGRAM_NAME == __FILE__
+TestTimings.main(ARGV)
