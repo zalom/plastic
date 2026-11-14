@@ -29,9 +29,10 @@ module Plastic
             end
 
             def self.criterion_problem(context)
-              return unless Plastic::Graph::Knowledge::Spec.new(context.retrieval, context.intent_id).done_criteria.empty?
+              intent_id = context.intent_id
+              return unless Plastic::Graph::Knowledge::Spec.new(context.retrieval, intent_id).done_criteria.empty?
 
-              "intent #{context.intent_id} names no done criterion"
+              "intent #{intent_id} names no done criterion"
             end
 
             gate "%{criterion_problem}; an accept needs one", stops: :failure, offers: "plastic intent spec %{intent_id}",

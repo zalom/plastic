@@ -7,6 +7,7 @@ require_relative "../printer"
 require_relative "../prints"
 require_relative "store_folder"
 require_relative "sync/plan"
+require_relative "sync/hand_edits"
 require_relative "sync/file_reads"
 require_relative "sync/resolution"
 require_relative "sync/legacy_import"
@@ -56,6 +57,9 @@ module Plastic
           printer.print(plan.taking(:print).map(&:print))
           []
         end
+
+        # The printed files a person changed by hand, for the prints `kinds` name and the facts of the call.
+        def hand_edited(kinds, facts) = HandEdits.new(@retrieval, @folder, kinds, facts).call
 
         def printer = (@printer ||= Printer.new(@folder, @databases, @retrieval))
       end

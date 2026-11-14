@@ -27,8 +27,9 @@ module Plastic
         end
 
         def self.session_problem(context)
-          session = context.session && context.retrieval.session(context.session)
-          "session #{context.session} ended; start a new session or resume it" if session&.ended?
+          id = context.session
+          session = id && context.retrieval.session(id)
+          "session #{id} ended; start a new session or resume it" if session&.ended?
         end
 
         def self.state_problem(id, intent)
@@ -92,9 +93,11 @@ module Plastic
         end
 
         def self.name_worktree(context, worktree)
-          context[:worktree_missing] = !worktree.nil? && !File.directory?(worktree.path)
-          return unless worktree
+          context[:worktree_missing] = worktree ? !File.directory?(worktree.path) : false
+          announce(context, worktree) if worktree
+        end
 
+        def self.announce(context, worktree)
           context.print("worktree: #{worktree.path}")
           context.print("branch: #{worktree.branch}")
           context.print(instruction(context, worktree)) if context.worktree_missing

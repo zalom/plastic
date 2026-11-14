@@ -10,20 +10,24 @@ module Plastic
       class Outcome
         HEADING = /\A(#+)\s*(.*?)\s*\z/
         BULLET = /\A[-*]\s*(?:\[[ xX]\]\s*)?(.+)\z/
-        NEGATIVE = %w[no not none pending n/a tbd false].freeze
+        NEGATIVE = %r{\A(?:-\z|(?:no|not|none|pending|n/a|tbd|false)[[:punct:]]*(?:\s|\z))}i
+        MISSING = "Add a line starting %s: to the Verification section of outcome.md and run plastic sync up."
+        NOT_A_MERGE = "outcome.md records '%s', which is not a merge. Merge the pull request, then replace the line with " \
+          "'Merged: <branch> into <base> at <commit or pull request>' and run plastic sync up."
 
         def initialize(retrieval, intent_id)
-          document = retrieval.documents(intent_id).find { |candidate| candidate.path == "outcome.md" }
-          @lines = document ? document.body.lines.map(&:chomp) : []
+          @lines = retrieval.fetch(intent_id, "outcome.md")&.body.to_s.lines.map(&:chomp)
           @headings = @lines.map { |line| line.match(HEADING) }
         end
 
         # The messages that ask for the records this outcome lacks.
-        def missing_records = [merged_message, architecture_map_message].compact
+        def missing_records
+          [(merge_message unless merged?), (format(MISSING, "Architecture map") unless architecture_map?)].compact
+        end
 
         # The Merged line when it is there and says there is no merge, else nil.
         def negative_merge
-          found = found_value("Merged")
+          found = values("Merged").first
           "Merged: #{found}" if found && !merged?
         end
 
@@ -41,30 +45,13 @@ module Plastic
 
         private
 
-        def recorded?(label) = !found_value(label).nil?
+        def recorded?(label) = values(label).any?
 
-        def positive?(label) = values(label).any? { |value| !negative?(value) }
-
-        def found_value(label) = values(label).first
+        def positive?(label) = values(label).grep_v(NEGATIVE).any?
 
         def values(label) = verification.filter_map { |bullet| bullet[/\A#{Regexp.escape(label)}\s*:\s*(\S.*)\z/i, 1] }
 
-        def negative?(value) = value == "-" || NEGATIVE.include?(value.split.first.downcase.sub(/[[:punct:]]+\z/, ""))
-
-        def merged_message
-          return if merged?
-
-          if negative_merge
-            "outcome.md records '#{negative_merge}', which is not a merge. Merge the pull request, then replace the line with " \
-              "'Merged: <branch> into <base> at <commit or pull request>' and run plastic sync up."
-          else
-            "Add a line starting Merged: to the Verification section of outcome.md and run plastic sync up."
-          end
-        end
-
-        def architecture_map_message
-          "Add a line starting Architecture map: to the Verification section of outcome.md and run plastic sync up." unless architecture_map?
-        end
+        def merge_message = negative_merge ? format(NOT_A_MERGE, negative_merge) : format(MISSING, "Merged")
 
         def section
           start = @headings.index { |found| found && found[2].casecmp?("Verification") }

@@ -6,7 +6,6 @@ require_relative "knowledge/backup/store_backups"
 require_relative "printer"
 require_relative "prints"
 require_relative "knowledge/sync/preview"
-require_relative "knowledge/sync/hand_edits"
 require_relative "work/writers"
 require_relative "knowledge/intent/noter"
 
@@ -26,7 +25,7 @@ module Plastic
       def_delegator "@writers.intents", :ref_line
       def_delegator "@writers.revisions", :change, :revision
       def_delegator "@writers.revisions", :write, :revise_intent
-      def_delegator :noter, :problem, :note_problem
+      def_delegator "Plastic::Graph::Knowledge::Intent::Noter", :problem, :note_problem
       def_delegator :noter, :write, :note_intent
       def_delegator "@writers.completions", :close, :close_intent
       def_delegator "@writers.completions", :abandon, :abandon_intent
@@ -42,6 +41,7 @@ module Plastic
       def_delegators "@writers.roadmaps", :create_roadmap, :write_batch, :add_item, :open_item, :drop_item, :remove_roadmap_edge, :add_log
       def_delegator "@writers.sync", :plan, :sync_plan
       def_delegator "@writers.sync", :apply, :sync_apply
+      def_delegator "@writers.sync", :hand_edited
       # The snapshot restores exact bytes; printing live rows would replace them.
       # Returns [ok, problem, kind]; kind is :failure, nil on success. Restores the saved directory.
       def_delegator "@writers.archives", :restore, :unarchive_intent
@@ -87,9 +87,6 @@ module Plastic
 
       # The paths this call printed, relative to the store folder.
       def printed = @writers.sync.printer.written
-
-      # The printed files a person changed by hand, for the prints a command declares.
-      def hand_edited(kinds, intent_id: nil, slug: nil) = Knowledge::Sync::HandEdits.new(@retrieval, @folder).call(kinds, intent_id:, slug:)
 
       def noter = (@noter ||= Knowledge::Intent::Noter.new(@writers.databases, @writers.retrieval))
 

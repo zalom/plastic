@@ -13,13 +13,15 @@ module Plastic
       # Refuses a call that prints when a file it would print was changed by hand,
       # before any row is written.
       def hand_edit_failure(ctx)
-        return if self.class.prints.empty? || parsed[:dry_run]
+        kinds = self.class.prints
+        return if kinds.empty? || parsed[:dry_run]
 
-        facts = ctx.facts
-        path = graphs.work.hand_edited(self.class.prints, intent_id: facts[:intent_id] || facts[:id], slug: facts[:slug]).first
-        return unless path
+        path = graphs.work.hand_edited(kinds, ctx.facts).first
+        path && Failed.new(workflow: :print, step: "files", reason: Graph::Prints.hand_edit_line(path), next_command: "plastic sync up", because: "a file changed by hand is read into rows before a call prints it")
+      end
 
-        Failed.new(workflow: :print, step: "files", reason: Graph::Prints.hand_edit_line(path), next_command: "plastic sync up", because: "a file changed by hand is read into rows before a call prints it")
+      def walk(routine_run, ctx)
+        Traversal.new(chain, ctx, routine_run) { |run| save_routine_run(run) }.call { |value| printing(value, ctx) }
       end
 
       def printing(value, ctx)

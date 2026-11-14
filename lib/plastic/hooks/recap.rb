@@ -15,17 +15,17 @@ module Plastic
         "resume" => "Plastic: a resumed session. The rows below carry the state; run plastic graph resume."
       }.freeze
       SAVEPOINT_LINES = 5
+      EXPIRED = "intent %<id>s: the lock of this session expired (last renewed %<at>s); plastic auto %<id>s locks it again"
 
-      def initialize(retrieval, session_id:, source:, directory:, now: Time.now)
+      def initialize(retrieval, session_id:, source:, directory:)
         @retrieval = retrieval
-        @now = now
         @session_id = session_id
         @source = source.to_s
         @directory = directory
       end
 
       # The lines to print, first line first.
-      def lines = [first_line, *open_intent_lines, *expired_lock_lines, *previous_session_lines, *in_progress_lines, *note_line]
+      def lines(now: Time.now) = [first_line, *open_intent_lines, *expired_lock_lines(now), *previous_session_lines, *in_progress_lines, *note_line]
 
       private
 
@@ -38,13 +38,9 @@ module Plastic
           .map { |name, text| "#{name}: #{text}" }
       end
 
-      def expired_lock_lines
+      def expired_lock_lines(now)
         own = @retrieval.locks_of(@session_id).select { |lock| lock.store == @retrieval.store }
-        own.reject { |lock| @retrieval.liveness(lock).live?(@now) }.map { |lock| expired_line(lock) }
-      end
-
-      def expired_line(lock)
-        "intent #{lock.intent_id}: the lock of this session expired (last renewed #{lock.renewed_at}); plastic auto #{lock.intent_id} locks it again"
+        own.reject { |lock| @retrieval.liveness(lock).live?(now) }.map { |lock| format(EXPIRED, id: lock.intent_id, at: lock.renewed_at) }
       end
 
       def last_run(intent_id)

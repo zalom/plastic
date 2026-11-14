@@ -29,7 +29,7 @@ module Plastic
 
           # A person changed a printed file since its last print: the file holds
           # neither the rows' print nor the recorded one.
-          def hand_edited? = (printed_sha && !level? && file_changed?) ? true : false
+          def hand_edited? = [printed_sha, !level?, file_changed?].all?
 
           def rows_changed? = rows_sha && rows_sha != printed_sha && !bare_graph?
 

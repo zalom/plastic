@@ -8,30 +8,39 @@ module Plastic
       class Sync
         # The printed files a person edited, for the prints a command declares. A path with no row to print is left alone.
         class HandEdits
-          def initialize(retrieval, folder)
+          def initialize(retrieval, folder, kinds, facts)
             @retrieval = retrieval
             @folder = folder
+            @kinds = kinds
+            @facts = facts
           end
 
-          def call(kinds, intent_id:, slug:)
+          def call
             printed = @retrieval.printed
-            prints(kinds, intent_id, slug).select { |print| entry(print, printed).hand_edited? }.map(&:path)
+            prints.select { |print| hand_edited?(print, printed) }.map(&:path)
           end
 
           private
 
-          def entry(print, printed) = Entry.new(print.path, @folder.digest(print.path), printed[print.path], print)
-
-          def prints(kinds, intent_id, slug)
-            kinds.flat_map { |kind| (kind == :roadmap) ? roadmap(slug) : [Prints.index(@retrieval), *intent(kind, intent_id)] }.uniq(&:path)
+          def hand_edited?(print, printed)
+            path = print.path
+            Entry.new(path, @folder.digest(path), printed[path], print).hand_edited?
           end
 
-          def intent(kind, intent_id)
-            row = (kind == :intent && intent_id) ? @retrieval.intent(intent_id) : nil
+          def prints = [*index_prints, *intent_prints, *roadmap_prints].uniq(&:path)
+
+          def index_prints = @kinds.all?(:roadmap) ? [] : [Prints.index(@retrieval)]
+
+          def intent_prints
+            intent_id = @facts[:intent_id] || @facts[:id]
+            row = intent_id && @kinds.include?(:intent) && @retrieval.intent(intent_id)
             row ? Prints.of_intent(@retrieval, row) : []
           end
 
-          def roadmap(slug) = (slug && @retrieval.roadmap(slug)) ? [Prints.roadmap(@retrieval, slug)] : []
+          def roadmap_prints
+            slug = @facts[:slug]
+            (@kinds.include?(:roadmap) && slug && @retrieval.roadmap(slug)) ? [Prints.roadmap(@retrieval, slug)] : []
+          end
         end
       end
     end

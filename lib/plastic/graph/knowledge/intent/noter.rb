@@ -16,7 +16,7 @@ module Plastic
             @retrieval = retrieval
           end
 
-          def problem(text) = ("the note is one line; it holds a line break" if text.include?("\n"))
+          def self.problem(text) = ("the note is one line; it holds a line break" if text.include?("\n"))
 
           def write(intent, kind, text)
             id = intent.intent_id
