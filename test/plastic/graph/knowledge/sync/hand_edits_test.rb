@@ -9,20 +9,20 @@ class KnowledgeSyncHandEditsTest < Plastic::TestCase
     Plastic::Graph::Knowledge::Sync.new(folder:, retrieval:, databases: store_graphs.databases).hand_edited(kinds, facts)
   end
 
-  def test_a_hand_edited_roadmap_is_given_the_reason_the_reader_refuses_it
+  def test_a_hand_edited_roadmap_is_given_no_reason_since_sync_up_prints_it_again
     cli("roadmap", "new", "r1")
     write("roadmaps/r1.md", "# by hand\n")
 
-    assert_equal({ "roadmaps/r1.md" => "roadmaps/r1.md is generated from rows; use the roadmap commands to change it" }, hand_edited([:roadmap], { slug: "r1" }))
+    assert_equal({ "roadmaps/r1.md" => nil }, hand_edited([:roadmap], { slug: "r1" }))
   end
 
-  def test_a_hand_edited_context_json_is_given_the_reason_the_reader_refuses_it
+  def test_a_hand_edited_context_json_is_given_no_reason_since_sync_up_prints_it_again
     specified
     cli("intent", "discover", "1", "spec")
     path = "#{retrieval.intent("1").dir}/context.json"
     write(path, File.read(store_path(path)).sub("{", "{\n  \"my_note\": \"keep this\","))
 
-    assert_equal({ path => "context.json is generated from rows; use intent context and intent discover to change it" }, hand_edited([:intent], { intent_id: "1" }))
+    assert_equal({ path => nil }, hand_edited([:intent], { intent_id: "1" }))
   end
 
   def test_an_index_that_another_home_printed_is_not_a_hand_edit

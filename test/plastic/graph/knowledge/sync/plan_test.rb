@@ -57,11 +57,26 @@ class KnowledgeSyncPlanGeneratedTest < Plastic::TestCase
 
   def action_of(plan) = plan.actions.values.first
 
-  def test_a_generated_file_that_cannot_be_read_is_planned_for_nothing_up
-    paths = %w[store/index.json store/1--alpha/context.json roadmaps/r1.md]
-    plans = paths.map { |path| generated_plan(:up, path, "f", "p", "r", unreadable_files: { path => "refused" }) }
+  def test_an_index_that_cannot_be_read_is_planned_for_nothing_up
+    plan = generated_plan(:up, "store/index.json", "f", "p", "r", unreadable_files: { "store/index.json" => "refused" })
 
-    assert_equal [[:none] * 3, [0] * 3], [plans.map { |plan| action_of(plan) }, plans.map(&:pending)]
+    assert_equal [:none, 0], [action_of(plan), plan.pending]
+  end
+
+  def test_a_hand_edited_context_view_or_roadmap_is_planned_for_a_print_up
+    plans = %w[store/1--alpha/context.json roadmaps/r1.md].map { |path| generated_plan(:up, path, "f", "p", "r") }
+
+    assert_equal [[:print] * 2, [1] * 2], [plans.map { |plan| action_of(plan) }, plans.map(&:pending)]
+  end
+
+  def test_a_hand_edited_context_view_or_roadmap_is_named_as_printed_over_up
+    plans = %w[store/1--alpha/context.json roadmaps/r1.md].map { |path| generated_plan(:up, path, "f", "p", "r") }
+
+    assert_equal [["store/1--alpha/context.json"], ["roadmaps/r1.md"]], plans.map(&:printed_over)
+  end
+
+  def test_a_hand_edited_index_is_not_named_as_printed_over_up
+    assert_empty generated_plan(:up, "store/index.json", "f", "p", "r").printed_over
   end
 
   def built_up_with_a_hand_edited_roadmap
@@ -71,11 +86,10 @@ class KnowledgeSyncPlanGeneratedTest < Plastic::TestCase
     Plan.build(folder, retrieval, Sync::Resolution.new(:up, store_root, {}), store_graphs.databases)
   end
 
-  def test_build_lists_a_hand_edited_roadmap_among_the_files_sync_up_cannot_read
+  def test_build_prints_a_hand_edited_roadmap_again_and_lists_no_file_it_cannot_read
     built = built_up_with_a_hand_edited_roadmap
 
-    assert_equal ["roadmaps/r1.md"], built.unreadable_files.keys
-    assert_equal :none, built.actions.find { |entry, _action| entry.path == "roadmaps/r1.md" }.last
+    assert_equal [{}, :print, ["roadmaps/r1.md"]], [built.unreadable_files, built.actions.find { |entry, _action| entry.path == "roadmaps/r1.md" }.last, built.printed_over]
   end
 
   def test_a_generated_file_that_cannot_be_read_and_was_never_printed_here_prints_from_the_rows_up
