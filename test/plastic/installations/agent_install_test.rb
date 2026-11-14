@@ -21,11 +21,11 @@ class ClaudeInstallTest < Plastic::TestCase
 
   def claude(*parts) = File.join(fresh, ".claude", *parts)
 
-  def test_a_hook_is_copied_with_the_plastic_prefix_the_script_path_rewritten_and_the_mode_executable
+  def test_a_hook_is_copied_with_the_plastic_prefix_and_the_mode_executable
     install
     hook = claude("hooks", "plastic-session-start")
 
-    assert_equal [true, true], [File.read(hook).include?("$HOME/.plastic/scripts/lib/x"), File.executable?(hook)]
+    assert_equal ["#!/bin/sh\n", true], [File.read(hook), File.executable?(hook)]
   end
 
   def test_a_hook_that_already_carries_the_prefix_keeps_its_name

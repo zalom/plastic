@@ -15,9 +15,6 @@ module Plastic
     # of the person. A status line of the person stays unless Plastic wrote it
     # or the person chose Plastic's.
     class ClaudeInstall < AgentInstall
-      SCRIPTS = "$SCRIPT_DIR/../scripts/"
-      INSTALLED_SCRIPTS = "$HOME/.plastic/scripts/"
-
       def initialize(package, record, statusline: nil)
         super(package, record)
         @statusline = statusline
@@ -53,7 +50,7 @@ module Plastic
         target = File.join(hooks_dir, name.start_with?("plastic-") ? name : "plastic-#{name}")
         return drop_status_line(target) if name.end_with?("statusline") && !@package.choices.statusline?
 
-        File.write(target, File.read(source).gsub(SCRIPTS, INSTALLED_SCRIPTS))
+        FileUtils.cp(source, target)
         FileUtils.chmod(0o755, target)
         target
       end
