@@ -2,6 +2,7 @@
 
 require "minitest/autorun"
 require "fileutils"
+require "json"
 require_relative "child_process"
 require "tmpdir"
 require_relative "../../bin/lib/release_build"
@@ -93,4 +94,25 @@ module InstallShHelper
   def install_local(version, *arguments, **extra) = install(*arguments, PLASTIC_LOCAL_RELEASE: release(version), **extra)
 
   def run_launcher = ChildProcess.capture2(launcher).first
+
+  # A fake curl that answers the GitHub release list with these versions, each carrying the three
+  # release files, and serves a release file from the throwaway release folder.
+  def serve_releases(*versions)
+    feed = File.join(@dir, "releases.json")
+    assets = %w[plastic.tgz plastic.tgz.sha256 plastic.manifest.json].map { |name| { "name" => name } }
+    File.write(feed, JSON.generate(versions.map { |version| { "tag_name" => "v#{version}", "assets" => assets } }))
+    write_tool("curl", fake_curl(feed))
+  end
+
+  def fake_curl(feed) = <<~RUBY
+    #!#{RbConfig.ruby} --disable-gems
+    url = ARGV.find { |argument| argument.start_with?("https://") }
+    if url.include?("api.github.com")
+      print(File.read(#{feed.dump}))
+      exit
+    end
+    source = File.join(#{File.join(@dir, "releases").dump}, *url.split("/").last(2))
+    exit(22) unless File.file?(source)
+    File.binwrite(ARGV.fetch(ARGV.index("-o") + 1), File.binread(source))
+  RUBY
 end

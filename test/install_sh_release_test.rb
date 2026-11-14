@@ -50,6 +50,15 @@ class InstallShReleaseTest < Minitest::Test
     assert_includes File.read(launcher), "exec #{File.join(@fakebin, "ruby")}"
   end
 
+  def test_the_newest_release_it_picks_is_never_an_alpha_or_a_beta
+    release("9.9.9")
+    serve_releases("9.9.9", "9.9.10-beta.1", "9.9.10-alpha.1")
+    out, err, status = install("--dry-run")
+
+    assert_equal [0, ""], [status.exitstatus, err]
+    assert_includes out, "would install Plastic 9.9.9 under #{share}"
+  end
+
   def test_a_home_whose_harness_was_uninstalled_ends_with_next_plastic_init
     plastic_home("VERSION" => "9.9.8\n")
     out, _err, status = install_local("9.9.9")
