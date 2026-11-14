@@ -23,7 +23,7 @@ module Plastic
             release_lock(intent_id)
           end
 
-          # An open, active, parked or future intent ends as abandoned, with no completion row.
+          # An open, in progress, parked or future intent ends as abandoned, with no completion row.
           def abandon(intent_id)
             intent = @retrieval.intent(intent_id)
             write_abandon(intent_id) unless intent.status == "abandoned"
@@ -41,8 +41,8 @@ module Plastic
             raise Invalid, found.join(" ") if found.any?
 
             @databases.fetch(:work).transaction do |batch|
-              batch.write(:intents, "UPDATE intents SET status = 'abandoned', disposition = :disposition, closed_at = :now, updated_at = :now " \
-                "WHERE intent_id = :intent_id AND origin_id = :origin AND status IN ('open', 'active', 'parked', 'future')",
+              batch.write(:intents, "UPDATE intents SET status = 'abandoned', disposition = :disposition, reason = NULL, closed_at = :now, updated_at = :now " \
+                "WHERE intent_id = :intent_id AND origin_id = :origin AND status IN ('open', 'in_progress', 'parked', 'future')",
                 now: Plastic.now, intent_id:, origin: @retrieval.origin_id, disposition: disposition(intent_id))
             end
           end
@@ -71,7 +71,7 @@ module Plastic
             @databases.fetch(:work).transaction do |batch|
               batch.put(:completions, row, statement: :insert)
               batch.write(:intents, "UPDATE intents SET status = 'done', disposition = 'delivered', closed_at = :now, updated_at = :now " \
-                "WHERE intent_id = :intent_id AND origin_id = :origin AND status IN ('open', 'active')",
+                "WHERE intent_id = :intent_id AND origin_id = :origin AND status IN ('open', 'in_progress')",
                 now:, intent_id:, origin: @retrieval.origin_id)
             end
           end

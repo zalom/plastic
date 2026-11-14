@@ -31,8 +31,23 @@ class KnowledgeIntentWriterTest < Plastic::TestCase
   end
 
   def test_only_the_new_statuses_are_taken
-    assert_equal ["a new intent takes the status open, active, parked or future, not done", nil, nil, nil],
-      %w[done active parked future].map { |status| writer.problem(status:) }
+    assert_equal ["a new intent takes the status open, parked or future, not done", "a new intent takes the status open, parked or future, not in_progress",
+      "a new intent takes the status open, parked or future, not active", nil, nil],
+      [{ status: "done" }, { status: "in_progress" }, { status: "active" }, { status: "future" }, { status: "parked", reason: "later" }].map { |call| writer.problem(**call) }
+  end
+
+  def test_a_parked_intent_needs_a_reason
+    assert_equal "a parked intent needs a reason: pass --reason TEXT", writer.problem(status: "parked")
+  end
+
+  def test_a_reason_belongs_to_a_parked_intent_only
+    assert_equal "--reason belongs to a parked intent: pass --status parked", writer.problem(status: "open", reason: "later")
+  end
+
+  def test_write_stores_the_reason_of_a_parked_intent
+    parked = writer.write(title: "Wait", status: "parked", reason: "waiting for the vendor")
+
+    assert_equal ["parked", "waiting for the vendor"], parked.to_h.values_at(:status, :reason)
   end
 
   def test_the_parent_must_exist

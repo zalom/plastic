@@ -3,11 +3,13 @@
 require_relative "../cli/command"
 require_relative "../graph"
 require_relative "../graph/work/node/counts"
+require_relative "../graph/knowledge/intent"
+require_relative "../graph/knowledge/intent/listing"
 require_relative "../graph/work/intent_row"
 
 module Plastic
   module Commands
-    # Every store under the Plastic home, its open and active intents, and
+    # Every store under the Plastic home, its intents by group, and
     # their node counts by state.
     class Status < CLI::Command
       reads :work
@@ -38,7 +40,8 @@ module Plastic
 
       def show_store(slug)
         retrieval = Plastic::Graph.open(home: scope.plastic_home, store: slug).retrieval
-        [["store:", slug], *retrieval.intents.select(&:open?).map { |intent| Plastic::Graph::Work::IntentRow.new(retrieval, intent).to_a }]
+        rows = Plastic::Graph::Knowledge::Intent::Listing.lines(retrieval.intents) { |intent| Plastic::Graph::Work::IntentRow.new(retrieval, intent).to_a.join(", ") }
+        [["store:", slug], *rows.map { |name, text| ["#{name}:", text] }]
       end
     end
   end

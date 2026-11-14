@@ -135,13 +135,13 @@
 <rect x="16" y="375" width="420" height="129" rx="6" class="card"/>
 <text x="26" y="390" class="tag tag-muted" text-anchor="start">STEP</text>
 <text x="426" y="390" class="tm tag-muted" text-anchor="end">auto.rb:77</text>
-<text x="26" y="407" class="t" text-anchor="start">take the lock and go active</text>
+<text x="26" y="407" class="t" text-anchor="start">take the lock and go in progress</text>
 <text x="26" y="422" class="tm" text-anchor="start">done when def self.delivery_started?(context)</text>
 <text x="26" y="436" class="tm" text-anchor="start">retrieval = context.retrieval intent_id =</text>
 <text x="26" y="450" class="tm" text-anchor="start">context.intent_id lock = retrieval.lock(intent_id)</text>
-<text x="26" y="464" class="tm" text-anchor="start">retrieval.intent(intent_id).status == &quot;active&quot; &amp;&amp;</text>
-<text x="26" y="478" class="tm" text-anchor="start">lock&amp;.session_id == context.session &amp;&amp; lock.mode ==</text>
-<text x="26" y="492" class="tm" text-anchor="start">&quot;auto&quot; &amp;&amp; retrieval.liveness(lock).live? end</text>
+<text x="26" y="464" class="tm" text-anchor="start">retrieval.intent(intent_id).status == &quot;in_progress&quot;</text>
+<text x="26" y="478" class="tm" text-anchor="start">&amp;&amp; lock&amp;.session_id == context.session &amp;&amp; lock.mode</text>
+<text x="26" y="492" class="tm" text-anchor="start">== &quot;auto&quot; &amp;&amp; retrieval.liveness(lock).live? end</text>
 <path d="M 436 393 L 464 393" class="wire-failure"/>
 <path d="M 456 388 L 464 393 L 456 398 Z" class="head"/>
 <rect x="466" y="375" width="270" height="56" rx="6" class="stop-failure"/>
@@ -165,5 +165,5 @@
 <rect x="352" y="589" width="392" height="56" rx="6" class="end"/>
 <text x="362" y="606" class="t" text-anchor="start">the call finishes, exit 0</text>
 <text x="362" y="620" class="t" text-anchor="start">next: plastic intent brief %{intent_id}</text>
-<text x="362" y="634" class="t" text-anchor="start">because: intent %{intent_id} is active</text>
+<text x="362" y="634" class="t" text-anchor="start">because: intent %{intent_id} is in progress</text>
 </svg>

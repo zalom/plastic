@@ -36,7 +36,7 @@ module Plastic
           def unlisted(listed)
             (@folder.intent_dirs - listed.entries.map(&:dir)).map do |dir|
               front = FrontMatter.new(@folder).read(dir)
-              Legacy::Index::Entry.new(File.basename(dir).split("--", 2).first, front["intent"], dir, front["status"], nil, nil)
+              Legacy::Index::Entry.new(File.basename(dir).split("--", 2).first, front["intent"], dir, Intent.stored_state(front["status"]), nil, nil, nil)
             end
           end
 

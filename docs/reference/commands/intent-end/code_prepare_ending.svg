@@ -91,14 +91,14 @@
 <rect x="16" y="155" width="420" height="60" rx="6" class="card"/>
 <text x="26" y="170" class="tag tag-muted" text-anchor="start">GATE</text>
 <text x="426" y="170" class="tm tag-muted" text-anchor="end">prepare.rb:26</text>
-<text x="26" y="187" class="tm" text-anchor="start">passes when context.closed || %w[open</text>
-<text x="26" y="202" class="tm" text-anchor="start">active].include?(context.intent.status)</text>
+<text x="26" y="187" class="tm" text-anchor="start">passes when context.closed ||</text>
+<text x="26" y="202" class="tm" text-anchor="start">Plastic::Graph::Knowledge::Intent::OPEN.include?(context.intent.status)</text>
 <path d="M 436 173 L 464 173" class="wire-failure"/>
 <path d="M 456 168 L 464 173 L 456 178 Z" class="head"/>
 <rect x="466" y="155" width="270" height="56" rx="6" class="stop-failure"/>
 <text x="476" y="170" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1, FAILED</text>
 <text x="476" y="186" class="tm" text-anchor="start">intent %{intent_id} is not</text>
-<text x="476" y="200" class="tm" text-anchor="start">open or active</text>
+<text x="476" y="200" class="tm" text-anchor="start">open or in progress</text>
 <path d="M 226 215 L 226 225" class="wire"/>
 <path d="M 221 217 L 226 225 L 231 217 Z" class="head"/>
 <rect x="16" y="225" width="420" height="45" rx="6" class="card"/>

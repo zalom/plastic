@@ -36,7 +36,7 @@ Each row gives the closure case, the exit code, the status, the completion recor
 
 | closure case         | exit | status | completion records | next line    |
 | -------------------- | ---- | ------ | ------------------ | ------------ |
-| request verification | 0    | active | 0                  | no next line |
-| unverified close     | 0    | active | 0                  | no next line |
+| request verification | 0    | in_progress | 0                  | no next line |
+| unverified close     | 0    | in_progress | 0                  | no next line |
 | accept delivery      | 0    | done   | 1                  | no next line |
 | repeat closure       | 0    | done   | 1                  | plastic next |

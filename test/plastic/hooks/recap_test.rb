@@ -47,7 +47,7 @@ class RecapTest < Plastic::TestCase
     lines = recap(source: "clear")
 
     assert_equal "Plastic: the context was cleared. The rows below carry the state; run plastic graph resume.", lines.first
-    assert_includes lines, "open: #{intent_id} Alpha (open)"
+    assert_includes lines, "active: #{intent_id} Alpha (open)"
   end
 
   def test_clear_prints_the_intent_in_progress
@@ -67,11 +67,19 @@ class RecapTest < Plastic::TestCase
     assert_equal "note: note text", lines.last
   end
 
-  def test_only_open_intents_are_listed
+  def test_the_intents_are_listed_by_group_with_their_state
     work = opened.work
-    { "Alpha" => "done", "Side" => "parked", "Later" => "future", "Beta" => "open" }.each { |title, status| work.write_intent(title:, status:) }
+    { "Alpha" => "done", "Side" => "parked", "Later" => "future", "Beta" => "open", "Moving" => "in_progress" }.each { |title, status| work.write_intent(title:, status:) }
 
-    assert_equal ["open: 4 Beta (open)"], recap.grep(/\Aopen: /)
+    assert_equal ["active: 2 Side (parked)", "active: 4 Beta (open)", "active: 5 Moving (in_progress)", "future: 3 Later (future)", "finished: 1 Alpha (done)"],
+      recap.grep(/\A(active|future|finished): /)
+  end
+
+  def test_the_groups_come_in_the_order_active_future_finished
+    work = opened.work
+    { "Alpha" => "done", "Later" => "future", "Beta" => "open" }.each { |title, status| work.write_intent(title:, status:) }
+
+    assert_equal %w[active future finished], recap.grep(/\A(active|future|finished): /).map { |line| line[/\A\w+/] }
   end
 
   def test_an_open_intent_with_a_run_prints_the_last_run_and_its_next
@@ -79,16 +87,16 @@ class RecapTest < Plastic::TestCase
     run = Plastic::RoutineRun.fresh("intent show", intent_id).with(status: "finished", next_command: "plastic next")
     opened.work.save_routine_run(run)
 
-    assert_includes recap, "open: #{intent_id} Beta (open), last run intent show finished #{run.updated_at}, next: plastic next"
+    assert_includes recap, "active: #{intent_id} Beta (open), last run intent show finished #{run.updated_at}, next: plastic next"
   end
 
-  def test_open_intents_over_the_cap_print_ten_and_a_count_of_the_rest
+  def test_a_group_over_the_cap_prints_ten_and_a_count_of_the_rest
     12.times { |n| opened.work.write_intent(title: "I#{n}") }
 
     lines = recap
 
-    assert_equal 10, lines.grep(/\Aopen: /).size
-    assert_includes lines, "and 2 more"
+    assert_equal 10, lines.grep(/\Aactive: \d/).size
+    assert_includes lines, "active: and 2 more"
   end
 
   def test_a_resumed_session_says_so

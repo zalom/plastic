@@ -43,7 +43,7 @@ class WorkCompletionWriterTest < WorkCompletionWriterFixture
     error = assert_raises(Plastic::Invalid) { writer.close("1") }
 
     assert_includes error.message, "Merged:"
-    assert_equal ["active", nil], [retrieval.intent("1").status, retrieval.completion("1")]
+    assert_equal ["in_progress", nil], [retrieval.intent("1").status, retrieval.completion("1")]
   end
 
   def test_closing_an_intent_with_problems_raises_them_and_writes_nothing
@@ -103,6 +103,20 @@ class WorkCompletionAbandonTest < WorkCompletionWriterFixture
   def dropped(intent = @intent)
     write("#{intent.dir}/outcome.md", "# Outcome\n\nDropped: the need went away.\n")
     sync_up
+  end
+
+  def test_abandoning_an_in_progress_intent_closes_it
+    dropped(open_intent("Moving", status: "in_progress"))
+    writer.abandon("2")
+
+    assert_equal %w[abandoned cancelled], retrieval.intent("2").to_h.values_at(:status, :disposition)
+  end
+
+  def test_abandoning_a_parked_intent_clears_the_reason_it_was_parked_for
+    dropped(open_intent("Waiting", status: "parked", reason: "waiting for the vendor"))
+    writer.abandon("2")
+
+    assert_equal ["abandoned", "cancelled", nil], retrieval.intent("2").to_h.values_at(:status, :disposition, :reason)
   end
 
   def test_abandoning_marks_the_intent_abandoned_and_writes_no_completion

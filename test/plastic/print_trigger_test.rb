@@ -10,7 +10,7 @@ class PrintTriggerTest < Plastic::TestCase
     cli("intent", "approve", "1")
     result = cli("auto", "1")
 
-    assert_equal [0, "active", true], [result.code, listed("1").fetch("status"), result.out.include?("files:")]
+    assert_equal [0, "in_progress", true], [result.code, listed("1").fetch("status"), result.out.include?("files:")]
   end
 
   def test_end_rewrites_the_index_to_show_the_intent_done
@@ -30,12 +30,12 @@ class PrintTriggerTest < Plastic::TestCase
     assert_equal "abandoned", listed("1").fetch("status")
   end
 
-  def test_archive_rewrites_the_index_without_the_intent
+  def test_archive_rewrites_the_index_to_list_the_intent_among_the_archives
     open_intent
     store_graphs.databases.fetch(:work).transaction { |batch| batch.write(:intents, "UPDATE intents SET status = 'done'") }
     cli("intent", "archive", "1")
 
-    assert_nil listed("1")
+    assert_equal ["1"], JSON.parse(File.read(store_path("store/index.json"))).fetch("archives").map { |mark| mark.fetch("intent_id") }
   end
 
   def test_a_call_that_wrote_only_its_run_row_leaves_a_hand_edited_graph_json_alone

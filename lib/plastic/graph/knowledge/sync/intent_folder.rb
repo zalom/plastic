@@ -40,7 +40,7 @@ module Plastic
             return Intent.from_h(Reader::IndexFile.intent_row(@listed)) if @listed
 
             front = intent_file.front
-            entry = Legacy::Index::Entry.new(front["id"], front["intent"], dir, "open", nil, nil)
+            entry = Legacy::Index::Entry.new(front["id"], front["intent"], dir, "open", nil, nil, nil)
             Intent.from_h(entry.row(front, Plastic.now))
           end
 

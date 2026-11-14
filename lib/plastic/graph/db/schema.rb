@@ -36,7 +36,7 @@ Plastic::Graph::SCHEMA_FILE = Plastic::Graph::SchemaFile.define(version: 2026_10
     t.kept :origin_id, :slug, :title
     t.text :kind
     t.status :status
-    t.text :disposition, :opened_at, :closed_at, :updated_at
+    t.text :disposition, :reason, :opened_at, :closed_at, :updated_at
   end
 
   create_table :clusters, key: %i[name intent_id origin_id] do |t|

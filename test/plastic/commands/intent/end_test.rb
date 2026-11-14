@@ -22,14 +22,14 @@ class IntentEndTest < Plastic::TestCase
 
       result = cli("intent", "end", "1", option, "x")
 
-      assert_equal [2, "active"], [result.code, retrieval.intent("1").status]
+      assert_equal [2, "in_progress"], [result.code, retrieval.intent("1").status]
     end
   end
 
   def test_abandoned_is_a_usage_error
     accepted_intent
 
-    assert_equal [2, "active"], [cli("intent", "end", "1", "--abandoned").code, retrieval.intent("1").status]
+    assert_equal [2, "in_progress"], [cli("intent", "end", "1", "--abandoned").code, retrieval.intent("1").status]
   end
 
   def test_with_every_row_good_and_review_off_the_intent_closes_delivered_and_releases_the_lock
@@ -92,7 +92,7 @@ class IntentEndTest < Plastic::TestCase
 
     result = finish
 
-    assert_equal [3, "active"], [result.code, retrieval.intent("1").status]
+    assert_equal [3, "in_progress"], [result.code, retrieval.intent("1").status]
   end
 
   def test_with_no_verdict_the_handoff_names_the_judge_command
@@ -102,7 +102,7 @@ class IntentEndTest < Plastic::TestCase
 
     result = finish
 
-    assert_equal [0, "active"], [result.code, retrieval.intent("1").status]
+    assert_equal [0, "in_progress"], [result.code, retrieval.intent("1").status]
     assert_includes result.out, "plastic intent judge 1"
   end
 
@@ -126,7 +126,7 @@ class IntentEndTest < Plastic::TestCase
 
     result = finish
 
-    assert_equal [0, "active"], [result.code, retrieval.intent("1").status]
+    assert_equal [0, "in_progress"], [result.code, retrieval.intent("1").status]
     assert_includes result.out, "- Merged: "
     refute_match(/--judge|--evidence/, result.out)
   end
@@ -142,7 +142,7 @@ class IntentEndPullRequestTest < Plastic::TestCase
 
     result = finish
 
-    assert_equal [0, "active"], [result.code, retrieval.intent("1").status]
+    assert_equal [0, "in_progress"], [result.code, retrieval.intent("1").status]
     assert_includes result.out, "Pull request:"
   end
 
@@ -151,7 +151,7 @@ class IntentEndPullRequestTest < Plastic::TestCase
 
     result = finish
 
-    assert_equal [3, "active"], [result.code, retrieval.intent("1").status]
+    assert_equal [3, "in_progress"], [result.code, retrieval.intent("1").status]
     assert_match(/approval/i, result.err + result.out)
   end
 
@@ -161,7 +161,7 @@ class IntentEndPullRequestTest < Plastic::TestCase
 
     result = finish
 
-    assert_equal [0, "active"], [result.code, retrieval.intent("1").status]
+    assert_equal [0, "in_progress"], [result.code, retrieval.intent("1").status]
     assert_includes result.out, "plastic intent judge 1"
     assert_includes result.out, "Pull request:"
   end

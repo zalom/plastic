@@ -5,7 +5,7 @@ require_relative "../../../../../lib/plastic/workflows/code/intent/new"
 
 class WriteIntentTest < Plastic::TestCase
   WriteIntent = Plastic::Workflows::Code::Intent::New
-  DECLARED = %i[title parent_id ref after kind status problem intent_id linked].freeze
+  DECLARED = %i[title parent_id ref after kind status reason problem intent_id linked].freeze
 
   # The work graph as WriteIntent calls it, keeping each call.
   class Work
@@ -43,8 +43,8 @@ class WriteIntentTest < Plastic::TestCase
 
     assert_equal :done, outcome
     assert_equal ["intent: 1a", "ref: ENG-1, in words"], printed
-    assert_equal [[:problem, { parent_id: "1", ref: "ENG-1", status: "open" }],
-      [:write, { title: "Build", parent_id: "1", ref: "ENG-1", kind: "work", status: "open" }]], calls
+    assert_equal [[:problem, { parent_id: "1", ref: "ENG-1", status: "open", reason: nil }],
+      [:write, { title: "Build", parent_id: "1", ref: "ENG-1", kind: "work", status: "open", reason: nil }]], calls
   end
 
   def test_no_ref_prints_no_ref_line

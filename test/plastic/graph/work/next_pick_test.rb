@@ -12,6 +12,16 @@ class WorkNextPickTest < Plastic::TestCase
   end
 end
 
+class WorkInProgressPickTest < Plastic::TestCase
+  def test_an_in_progress_intent_is_picked_before_an_open_one
+    open_intent("Alpha")
+    open_intent("Beta", status: "in_progress")
+    open_intent("Gamma")
+
+    assert_equal "2", Plastic::Graph::Work::NextPick.new(retrieval, "s-1").intent.intent_id
+  end
+end
+
 class WorkClosedIntentPickTest < Plastic::TestCase
   def test_a_closed_intent_is_not_selected_through_a_leftover_lock
     intent = open_intent(status: "done")

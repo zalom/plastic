@@ -57,7 +57,7 @@ class AutoRoadmapTest < Plastic::TestCase
 
     result = call("r1")
 
-    assert_equal [0, "s-1", "active"], [result.code, retrieval.lock(intent_id)&.session_id, retrieval.intent(intent_id).status]
+    assert_equal [0, "s-1", "in_progress"], [result.code, retrieval.lock(intent_id)&.session_id, retrieval.intent(intent_id).status]
   end
 
   def test_a_roadmap_with_a_ready_item_offers_roadmap_open

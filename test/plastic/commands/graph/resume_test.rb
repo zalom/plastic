@@ -81,7 +81,7 @@ class GraphResumeTest < Plastic::TestCase
 
     assert_equal [0, ""], [result.code, result.err]
     assert_includes lines(result), "store: global"
-    assert_includes lines(result), "in play: 1 Alpha (active)"
+    assert_includes lines(result), "in play: 1 Alpha (in_progress)"
   end
 
   def test_a_done_node_prints_as_a_done_line

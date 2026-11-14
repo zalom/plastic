@@ -51,7 +51,7 @@ It sets `intent_id`, `ready_id`, `open`.
 
 The code workflow `:code_start_auto`, in [`auto.rb:14`](../../../../lib/plastic/workflows/code/auto.rb#L14).
 
-Arms delivery on an intent: refuses an open decision, no done criteria, no go-ahead row, a done or abandoned intent, or another session's live lock; fails with no session named; otherwise takes the lock and goes active, then prints the code worktree when the store's project names a repository.
+Arms delivery on an intent: refuses an open decision, no done criteria, no go-ahead row, a done or abandoned intent, or another session's live lock; fails with no session named; otherwise takes the lock and goes in progress, then prints the code worktree when the store's project names a repository.
 
 ![How Code::Auto runs: its steps, where it stops, and its outcomes](code_start_auto.svg)
 
@@ -63,7 +63,7 @@ Its rows run in this order:
 4. Gate: passes when `context.closed_problem.nil?`; otherwise the call stops with exit 1 and prints CLOSED_PROBLEM. [`auto.rb:63`](../../../../lib/plastic/workflows/code/auto.rb#L63)
 5. Gate: passes when `context.spec_problem.nil?`; otherwise the call stops with exit 1 and prints SPEC_PROBLEM. [`auto.rb:65`](../../../../lib/plastic/workflows/code/auto.rb#L65)
 6. Gate: passes when `context.problem.nil?`; otherwise the call stops with exit 3 and prints PROBLEM. [`auto.rb:67`](../../../../lib/plastic/workflows/code/auto.rb#L67)
-7. Step: take the lock and go active. Done when `def self.delivery_started?(context) retrieval = context.retrieval intent_id = context.intent_id lock = retrieval.lock(intent_id) retrieval.intent(intent_id).status == "active" && lock&.session_id == context.session && lock.mode == "auto" && retrieval.liveness(lock).live? end`, so a second call skips it. [`auto.rb:77`](../../../../lib/plastic/workflows/code/auto.rb#L77)
+7. Step: take the lock and go in progress. Done when `def self.delivery_started?(context) retrieval = context.retrieval intent_id = context.intent_id lock = retrieval.lock(intent_id) retrieval.intent(intent_id).status == "in_progress" && lock&.session_id == context.session && lock.mode == "auto" && retrieval.liveness(lock).live? end`, so a second call skips it. [`auto.rb:77`](../../../../lib/plastic/workflows/code/auto.rb#L77)
 8. Read: name the code worktree. [`auto.rb:82`](../../../../lib/plastic/workflows/code/auto.rb#L82)
 9. Outcome `:done`, always: finishes with exit 0; next: plastic intent brief INTENT_ID. [`auto.rb:93`](../../../../lib/plastic/workflows/code/auto.rb#L93)
 
@@ -84,7 +84,7 @@ In the words of workflow engines, the rows are these four parts:
 | --- | --- | --- | --- | --- |
 | the store folder | knowledge_graph.db | `document_fts`, `document_heads`, `document_passages`, `document_revisions`, `documents` | reads and writes | [`auto.rb:12`](../../../../lib/plastic/commands/auto.rb#L12) |
 | the home folder | local.db | `locks`, `sessions` | reads and writes | found in the code, not declared |
-| the store folder | work_graph.db | `approvals`, `batches`, `intents`, `nodes`, `roadmap_edges`, `roadmap_items`, `roadmap_log`, `roadmaps`, `savepoints` | reads and writes | [`auto.rb:12`](../../../../lib/plastic/commands/auto.rb#L12) |
+| the store folder | work_graph.db | `approvals`, `batches`, `edges`, `intents`, `nodes`, `roadmap_edges`, `roadmap_items`, `roadmap_log`, `roadmaps`, `savepoints` | reads and writes | [`auto.rb:12`](../../../../lib/plastic/commands/auto.rb#L12) |
 | the store folder | store/index.json | | writes | [`prints.rb:17`](../../../../lib/plastic/graph/prints.rb#L17) |
 | the store folder | store/ID--SLUG/PATH | | writes | [`prints.rb:18`](../../../../lib/plastic/graph/prints.rb#L18) |
 | the store folder | store/ID--SLUG/savepoint.md | | writes | [`prints.rb:19`](../../../../lib/plastic/graph/prints.rb#L19) |
@@ -95,7 +95,7 @@ A second call runs the same rows again. A step runs again only when its done che
 
 | Step | Done when | The second call | Code |
 | --- | --- | --- | --- |
-| take the lock and go active | `def self.delivery_started?(context) retrieval = context.retrieval intent_id = context.intent_id lock = retrieval.lock(intent_id) retrieval.intent(intent_id).status == "active" && lock&.session_id == context.session && lock.mode == "auto" && retrieval.liveness(lock).live? end` | skips it | [`auto.rb:77`](../../../../lib/plastic/workflows/code/auto.rb#L77) |
+| take the lock and go in progress | `def self.delivery_started?(context) retrieval = context.retrieval intent_id = context.intent_id lock = retrieval.lock(intent_id) retrieval.intent(intent_id).status == "in_progress" && lock&.session_id == context.session && lock.mode == "auto" && retrieval.liveness(lock).live? end` | skips it | [`auto.rb:77`](../../../../lib/plastic/workflows/code/auto.rb#L77) |
 
 ## How a call ends
 
@@ -112,7 +112,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | CLOSED_PROBLEM | 1 | plastic next | [`auto.rb:63`](../../../../lib/plastic/workflows/code/auto.rb#L63) |
 | SPEC_PROBLEM | 1 | plastic intent spec INTENT_ID | [`auto.rb:65`](../../../../lib/plastic/workflows/code/auto.rb#L65) |
 | PROBLEM | 3 | prints no next: line | [`auto.rb:67`](../../../../lib/plastic/workflows/code/auto.rb#L67) |
-| intent INTENT_ID is active | 0 | plastic intent brief INTENT_ID | [`auto.rb:93`](../../../../lib/plastic/workflows/code/auto.rb#L93) |
+| intent INTENT_ID is in progress | 0 | plastic intent brief INTENT_ID | [`auto.rb:93`](../../../../lib/plastic/workflows/code/auto.rb#L93) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
 
 ## What the page leaves out

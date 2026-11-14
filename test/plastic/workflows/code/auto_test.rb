@@ -18,7 +18,7 @@ class WorkflowStartAutoTest < Plastic::TestCase
 
     outcome = start
 
-    assert_equal [:done, "active"], [outcome, retrieval.intent("1").status]
+    assert_equal [:done, "in_progress"], [outcome, retrieval.intent("1").status]
     assert_equal %w[s-1 auto], retrieval.lock("1").to_h.values_at(:session_id, :mode)
   end
 

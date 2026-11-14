@@ -17,7 +17,7 @@ module Plastic
             @origin_id = origin_id
           end
 
-          def self.intent_row(entry) = Intent::INDEX_FIELDS.to_h { |field| [field, entry[field.to_s]] }.merge(updated_at: Plastic.now)
+          def self.intent_row(entry) = Intent::INDEX_FIELDS.to_h { |field| [field, entry[field.to_s]] }.merge(status: Intent.stored_state(entry["status"]), updated_at: Plastic.now)
 
           def database = :work
 

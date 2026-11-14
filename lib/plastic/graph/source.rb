@@ -9,6 +9,8 @@ require_relative "work/node"
 require_relative "work/edge"
 require_relative "work/approval"
 require_relative "work/verdict"
+require_relative "work/completion_row"
+require_relative "work/archive_row"
 require_relative "knowledge/ruling"
 require_relative "knowledge/retrieval_row"
 require_relative "knowledge/archive/kept_file"
@@ -38,6 +40,8 @@ module Plastic
       edges: Source.new(Work::Edge, :work, "edges", "*", 'intent_id, "from", "to", kind'),
       approvals: Source.new(Work::Approval, :work, "approvals", "*", "intent_id"),
       verdicts: Source.new(Work::Verdict, :work, "verdicts", "*", "intent_id, round"),
+      completions: Source.new(Work::CompletionRow, :work, "completions", "*", "intent_id"),
+      archives: Source.new(Work::ArchiveRow, :work, "archives", "*", "intent_id"),
       contexts: Source.new(Knowledge::RetrievalContext, :knowledge, "retrieval_contexts", "*", "intent_id"),
       discoveries: Source.new(Knowledge::RetrievalDiscovery, :knowledge, "retrieval_discoveries", "*", "intent_id"),
       rulings: Source.new(Knowledge::Ruling, :knowledge, "rulings", "*", "intent_id, id"),

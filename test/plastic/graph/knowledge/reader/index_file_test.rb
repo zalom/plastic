@@ -40,9 +40,27 @@ class KnowledgeReaderIndexFileTest < Plastic::TestCase
   def test_an_intent_row_takes_every_index_field_and_a_fresh_time
     row = IndexFile.intent_row({ "intent_id" => "2", "title" => "T", "extra" => "x" })
 
-    assert_equal %i[intent_id origin_id parent_id ref slug title kind status disposition opened_at closed_at updated_at], row.keys
+    assert_equal %i[intent_id origin_id parent_id ref slug title kind status disposition reason opened_at closed_at updated_at], row.keys
     assert_equal ["2", "T", nil], row.values_at(:intent_id, :title, :kind)
     assert_match(/\A\d{4}-\d\d-\d\dT/, row[:updated_at])
+  end
+
+  def test_a_status_printed_as_active_reads_as_in_progress
+    apply(index([entry(status: "active")], []))
+
+    assert_equal "in_progress", retrieval.intent("1").status
+  end
+
+  def test_the_disposition_and_the_reason_of_an_abandoned_intent_read_back
+    apply(index([entry(status: "abandoned", disposition: "cancelled", reason: "the need went away")], []))
+
+    assert_equal %w[abandoned cancelled the\ need\ went\ away], retrieval.intent("1").to_h.values_at(:status, :disposition, :reason)
+  end
+
+  def test_the_reason_of_a_parked_intent_reads_back
+    apply(index([entry(status: "parked", reason: "waiting for the vendor")], []))
+
+    assert_equal ["parked", "waiting for the vendor"], retrieval.intent("1").to_h.values_at(:status, :reason)
   end
 
   def test_a_field_the_rows_do_not_hold_is_ignored

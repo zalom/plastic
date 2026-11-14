@@ -9,24 +9,24 @@ module Plastic
       module Legacy
         # Reads the INDEX.md of a store written before store/index.json. Each
         # status section gives its intents a status; a line may add a closing
-        # date and a disposition. A Clusters section names clusters, and an
+        # date, a disposition and a reason. A Clusters section names clusters, and an
         # intent listed only there takes the status its marker gives. The
         # import reads it once and deletes it.
         module Index
-          SECTIONS = { "Open" => "open", "Active" => "active", "Parked" => "parked", "Future" => "future",
+          SECTIONS = { "Open" => "open", "Active" => "in_progress", "Parked" => "parked", "Future" => "future",
                        "Completed" => "done", "Done" => "done", "Abandoned" => "abandoned" }.freeze
           QUIET = %w[Clusters Relocated].freeze
           HEADING = /\A(?<level>###?) (?<name>.+)\z/
 
           # One intent of the file: its status and what its line adds.
-          Entry = Data.define(:intent_id, :title, :dir, :status, :disposition, :closed_at)
+          Entry = Data.define(:intent_id, :title, :dir, :status, :disposition, :reason, :closed_at)
 
           # The intent row an entry imports as.
           class Entry
             # `front` holds the fields at the head of the intent's own file.
             def row(front, now)
               { intent_id:, parent_id: LuhmannId.parent_of(intent_id), slug: File.basename(dir).split("--", 2).last,
-                title:, kind: front["kind"], status:, disposition:, opened_at: front["created"], closed_at:,
+                title:, kind: front["kind"], status:, disposition:, reason:, opened_at: front["created"], closed_at:,
                 updated_at: now }
             end
           end
@@ -65,6 +65,7 @@ module Plastic
             DATED = /\A(?<date>\d{4}-\d\d-\d\d)\b\s*(?<text>.*)\z/
             MARKER = /\A_\((?<word>[a-z]+)[^)]*\)_\z/
             CLOSED = %w[done abandoned].freeze
+            REASONED = %w[parked future abandoned done].freeze
 
             def intent_id = found[:id]
 
@@ -81,11 +82,13 @@ module Plastic
             # The status the marker after a cluster line gives, such as _(done)_.
             def marked_status = SECTIONS[rest[MARKER, :word].to_s.capitalize]
 
-            def entry = Entry.new(intent_id, found[:title], found[:dir], status, *closing)
+            def entry = entry_of(status, *closing)
 
-            def marked_entry = Entry.new(intent_id, found[:title], found[:dir], marked_status, nil, nil)
+            def marked_entry = entry_of(marked_status, nil, nil, nil)
 
             private
+
+            def entry_of(status, *closing) = Entry.new(intent_id, found[:title], found[:dir], status, *closing)
 
             def rest = found[:rest].strip
 
@@ -94,10 +97,18 @@ module Plastic
             # The date that opens a closed intent's detail, with the text after it.
             def dated = CLOSED.include?(status) ? detail.match(DATED) : nil
 
-            # The disposition and the closing date of the line.
+            # The disposition, the reason and the closing date of the line.
             def closing
               date, text = dated&.captures || [nil, detail]
-              [(text unless text.empty?), date]
+              text = nil if text.empty?
+              [disposition(text), (text if REASONED.include?(status) && text != "delivered"), date]
+            end
+
+            # A done line is delivered; an abandoned one is superseded when its text says so, else cancelled.
+            def disposition(text)
+              return "delivered" if status == "done"
+
+              (text.to_s.match?(/superseded by/i) ? "superseded" : "cancelled") if status == "abandoned"
             end
           end
 

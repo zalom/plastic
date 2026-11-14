@@ -2,6 +2,7 @@
 
 require "json"
 require_relative "../../../work/approval"
+require_relative "../../../work/completion_row"
 require_relative "../../../work/edge"
 require_relative "../../../work/node"
 require_relative "../../../work/verdict"
@@ -16,6 +17,8 @@ module Plastic
             TABLES = {
               approvals: Work::Approval, verdicts: Work::Verdict, nodes: Work::Node, edges: Work::Edge
             }.freeze
+
+            PUT_ONLY = { completions: Work::CompletionRow }.freeze
 
             attr_reader :error
 
@@ -32,7 +35,12 @@ module Plastic
 
             def node_ids = listed("nodes").grep(Hash).map { |node| node["id"] }
 
-            def records(table) = (table == :approvals) ? [@data["approval"]].compact : listed(table.to_s)
+            def records(table)
+              return [@data["approval"]].compact if table == :approvals
+              return [@data["completion"]].compact if table == :completions
+
+              listed(table.to_s)
+            end
 
             private
 

@@ -11,14 +11,14 @@ class IntentNewTest < Plastic::TestCase
 
   def test_the_command_reads_its_title_and_names_its_switches
     assert_equal ["intent new", "Open an intent: write its rows and its folder",
-      "plastic intent new TITLE... [--parent ID] [--ref REF] [--after ID] [--kind KIND] [--status STATUS]", [:title]],
+      "plastic intent new TITLE... [--parent ID] [--ref REF] [--after ID] [--kind KIND] [--status STATUS] [--reason TEXT]", [:title]],
       description.values_at(:name, :summary, :usage, :subject)
     assert_equal({ name: :title, label: "TITLE", text: "what the intent is for, in words", rest: true, optional: false },
       description[:arguments].first)
   end
 
   def test_the_options_take_their_defaults
-    assert_equal({ parent_id: nil, ref: nil, after: nil, kind: "work", status: "open" },
+    assert_equal({ parent_id: nil, ref: nil, after: nil, kind: "work", status: "open", reason: nil },
       description[:options].to_h { |option| [option[:name], option[:default]] })
   end
 
@@ -80,6 +80,33 @@ class IntentNewTest < Plastic::TestCase
     result = plastic("intent", "new", "Beta", "--after", "9", table: Plastic::CLI::TABLE)
 
     assert_call result, code: 1, out: RUN_ROW, err: "plastic: no intent 9 in this store to link after\n"
+    assert_empty store_graphs.retrieval.intents
+  end
+
+  def test_a_parked_intent_with_a_reason_keeps_both
+    result = plastic("intent", "new", "Wait", "--status", "parked", "--reason", "waiting for the vendor", table: Plastic::CLI::TABLE)
+
+    assert_equal [0, ["parked", "waiting for the vendor"]], [result.code, store_graphs.retrieval.intent("1").to_h.values_at(:status, :reason)]
+  end
+
+  def test_a_parked_intent_with_no_reason_is_refused_and_writes_nothing
+    result = plastic("intent", "new", "Wait", "--status", "parked", table: Plastic::CLI::TABLE)
+
+    assert_call result, code: 1, out: RUN_ROW, err: "plastic: a parked intent needs a reason: pass --reason TEXT\n"
+    assert_empty store_graphs.retrieval.intents
+  end
+
+  def test_a_reason_on_an_open_intent_is_refused_and_writes_nothing
+    result = plastic("intent", "new", "Wait", "--reason", "later", table: Plastic::CLI::TABLE)
+
+    assert_call result, code: 1, out: RUN_ROW, err: "plastic: --reason belongs to a parked intent: pass --status parked\n"
+    assert_empty store_graphs.retrieval.intents
+  end
+
+  def test_an_intent_does_not_start_in_progress
+    result = plastic("intent", "new", "Go", "--status", "in_progress", table: Plastic::CLI::TABLE)
+
+    assert_call result, code: 1, out: RUN_ROW, err: "plastic: a new intent takes the status open, parked or future, not in_progress\n"
     assert_empty store_graphs.retrieval.intents
   end
 end

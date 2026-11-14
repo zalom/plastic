@@ -2,6 +2,7 @@
 
 require "json"
 require_relative "../../../invalid"
+require_relative "../intent"
 require_relative "../store_folder"
 require_relative "../reader/graph_file"
 require_relative "index"
@@ -60,7 +61,7 @@ module Plastic
 
           def unlisted_problem(dir)
             status = FrontMatter.new(@folder).read(dir)["status"]
-            "#{dir} has no entry in INDEX.md" unless STATUSES.include?(status)
+            "#{dir} has no entry in INDEX.md" unless STATUSES.include?(Intent.stored_state(status))
           end
 
           def graph_problems

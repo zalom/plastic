@@ -14,7 +14,7 @@ class AutoTest < Plastic::TestCase
 
     result = call(id)
 
-    assert_equal [0, "active", %w[s-1 auto]], [result.code, retrieval.intent(id).status, retrieval.lock(id).to_h.values_at(:session_id, :mode)]
+    assert_equal [0, "in_progress", %w[s-1 auto]], [result.code, retrieval.intent(id).status, retrieval.lock(id).to_h.values_at(:session_id, :mode)]
     assert_includes result.out, "next: plastic intent brief #{id}"
     assert_empty result.err
   end

@@ -3,7 +3,7 @@
 require_relative "../../test_helper"
 
 class PrintsTest < Plastic::TestCase
-  FIELDS = %w[intent_id origin_id parent_id ref slug title kind status disposition opened_at closed_at].freeze
+  FIELDS = %w[intent_id origin_id parent_id ref slug title kind status disposition reason opened_at closed_at].freeze
 
   def index_text = Plastic::Graph::Prints.index(store_graphs.retrieval).text
 
@@ -73,7 +73,7 @@ class PrintsTest < Plastic::TestCase
     store_graphs.databases[:work].transaction { |batch| batch.put(:edges, { intent_id: "1", from: "a", to: "b", kind: "needs" }) }
     graph = JSON.parse(Plastic::Graph::Prints.of_intent(retrieval, retrieval.intent("1")).last.text)
 
-    assert_equal({ "intent" => "1", "approval" => nil, "verdicts" => [], "nodes" => [], "edges" => [{ "intent_id" => "1", "from" => "a", "to" => "b", "kind" => "needs" }] }, graph)
+    assert_equal({ "intent" => "1", "approval" => nil, "completion" => nil, "verdicts" => [], "nodes" => [], "edges" => [{ "intent_id" => "1", "from" => "a", "to" => "b", "kind" => "needs" }] }, graph)
   end
 
   def test_a_kept_file_print_reads_its_bytes_only_to_write
@@ -96,7 +96,7 @@ class PrintsTest < Plastic::TestCase
   def test_index_json_names_the_store_and_origin_and_ends_with_a_newline
     text = index_text
 
-    assert_equal [{ "store" => "global", "origin_id" => origin, "intents" => [], "clusters" => [] }, "\n"], [JSON.parse(text), text[-1]]
+    assert_equal [{ "store" => "global", "origin_id" => origin, "intents" => [], "archives" => [], "clusters" => [] }, "\n"], [JSON.parse(text), text[-1]]
   end
 
   def test_the_savepoint_file_holds_one_line_per_row

@@ -45,7 +45,7 @@ module Plastic
       "intent lock status" => ["Commands::Intent::Lock::Status", "Print the session that holds an intent's lock, and its worktree"],
       "intent show" => ["Commands::Intent::Show", "Print one intent's status, criteria, decisions, rulings and nodes"],
       "intent brief" => ["Commands::Intent::Brief", "Print an intent's goal, criteria, rulings, ready nodes and command usage"],
-      "status" => ["Commands::Status", "List every store's open and active intents, with node counts by state"],
+      "status" => ["Commands::Status", "List every store's intents by group, with node counts by state"],
       "next" => ["Commands::Next", "Pick the intent in play and offer its next command"],
       "intent link" => ["Commands::Intent::Link", "Write a typed link from an intent to a ref"],
       "intent unlink" => ["Commands::Intent::Unlink", "Remove a link"],

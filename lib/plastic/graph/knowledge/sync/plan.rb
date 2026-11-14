@@ -4,6 +4,7 @@ require_relative "entry_list"
 require_relative "resolution"
 require_relative "intent_folders"
 require_relative "../store_folder"
+require_relative "archived_intents"
 
 module Plastic
   module Graph
@@ -11,27 +12,26 @@ module Plastic
       class Sync
         # What one sync would do, before it does anything. `legacy` marks a
         # store whose INDEX.md waits to be imported, `problem` a call that
-        # cannot run, and `unreadable` the intent folders no row can be read
+        # cannot run, `archived` the archived intents the index lists that have no row, and `unreadable` the intent folders no row can be read
         # from, one line each. The files of those folders are no entries.
-        Plan = Data.define(:resolution, :entries, :legacy, :problem, :unreadable)
+        Plan = Data.define(:resolution, :entries, :legacy, :problem, :unreadable, :archived)
 
         # Each entry's action, and what the sync writes.
         class Plan
-          def initialize(resolution:, entries:, legacy:, problem:, unreadable: [])
-            super
-          end
-
           def self.build(folder, retrieval, resolution)
             legacy = folder.legacy?
             up = resolution.up?
             folders = legacy ? nil : IntentFolders.new(folder, retrieval)
             new(resolution:, entries: entries(folder, retrieval, folders), legacy: up && legacy,
-              problem: (legacy_problem if legacy && !up), unreadable: folders&.problems || [])
+              problem: (legacy_problem if legacy && !up), unreadable: folders&.problems || [],
+              archived: archived(folder, retrieval, resolution))
           end
 
           def self.entries(folder, retrieval, folders = nil) = EntryList.new(folder, retrieval, folders).entries
 
           def self.on_disk(folder, folders = nil) = EntryList.new(folder, nil, folders).on_disk
+
+          def self.archived(folder, retrieval, resolution) = (resolution.up? && !folder.legacy?) ? ArchivedIntents.new(folder, retrieval).missing.size : 0
 
           def self.legacy_problem = "this store still has #{StoreFolder::LEGACY_INDEX}; run plastic sync up to import it first"
 
@@ -45,7 +45,7 @@ module Plastic
           def taking(action) = actions.select { |_entry, found| found == action }.keys
 
           # The records this sync writes; zero when the folder and the rows are level.
-          def pending = actions.values.count { |action| %i[record read print].include?(action) } + (legacy ? 1 : 0)
+          def pending = actions.values.count { |action| %i[record read print].include?(action) } + (legacy ? 1 : 0) + archived
 
           def merging? = resolution.merging?
 

@@ -3,7 +3,7 @@
 require_relative "../../../test_helper"
 
 class WorkIntentRowTest < Plastic::TestCase
-  COLUMNS = %w[id intent_id parent_id ref origin_id slug title kind status disposition opened_at closed_at updated_at].freeze
+  COLUMNS = %w[id intent_id parent_id ref origin_id slug title kind status disposition reason opened_at closed_at updated_at].freeze
 
   def work = @work ||= store_graphs.databases[:work]
 
@@ -12,7 +12,7 @@ class WorkIntentRowTest < Plastic::TestCase
   end
 
   def test_the_six_statuses_are_the_ruled_ones
-    assert_equal %w[open active parked future done abandoned], Plastic::Graph::Knowledge::Intent::STATUSES
+    assert_equal %w[open in_progress parked future done abandoned], Plastic::Graph::Knowledge::Intent::STATUSES
   end
 
   def test_a_status_outside_the_six_is_refused

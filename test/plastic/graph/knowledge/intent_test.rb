@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../../test_helper"
+require_relative "../../../../lib/plastic/graph/knowledge/intent/listing"
 
 class KnowledgeIntentTest < Plastic::TestCase
   Intent = Plastic::Graph::Knowledge::Intent
@@ -56,7 +57,7 @@ class KnowledgeIntentTest < Plastic::TestCase
   end
 
   def test_a_new_row_leaves_the_id_and_origin_to_the_database
-    assert_equal %i[intent_id parent_id ref slug title kind status disposition opened_at closed_at updated_at], intent.new_row.keys
+    assert_equal %i[intent_id parent_id ref slug title kind status disposition reason opened_at closed_at updated_at], intent.new_row.keys
   end
 
   def test_the_first_savepoint_line_names_the_title
@@ -78,8 +79,29 @@ class KnowledgeIntentTest < Plastic::TestCase
     refute_match(/parent|ref/, intent(parent_id: nil, ref: nil).page("o"))
   end
 
+  def test_each_state_belongs_to_exactly_one_group
+    groups = Intent::STATUSES.to_h { |status| [status, Intent::Listing.group_of(status)] }
+
+    assert_equal({ "open" => "active", "in_progress" => "active", "parked" => "active", "future" => "future",
+                   "done" => "finished", "abandoned" => "finished" }, groups)
+  end
+
+  def test_the_states_are_the_six_with_in_progress_for_work_under_way
+    assert_equal %w[open in_progress parked future done abandoned], Intent::STATUSES
+    assert_equal %w[open parked future], Intent::NEW_STATUSES
+  end
+
+  def test_the_old_word_for_work_under_way_is_renamed
+    assert_equal %w[in_progress open], %w[active open].map { |word| Intent.stored_state(word) }
+  end
+
+  def test_open_means_open_or_in_progress_and_closed_means_finished
+    assert_equal [[true, false], [true, false], [false, false], [false, true]],
+      %w[open in_progress parked done].map { |status| [intent(status:).open?, intent(status:).closed?] }
+  end
+
   def test_the_index_entry_lists_the_index_fields_in_order
-    assert_equal %w[intent_id origin_id parent_id ref slug title kind status disposition opened_at closed_at], intent.index_h.keys
+    assert_equal %w[intent_id origin_id parent_id ref slug title kind status disposition reason opened_at closed_at], intent.index_h.keys
     assert_equal "1a", intent.index_h["intent_id"]
   end
 end

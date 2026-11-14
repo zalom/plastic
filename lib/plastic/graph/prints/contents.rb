@@ -8,7 +8,7 @@ module Plastic
 
       # The rows of each table, by intent.
       class Contents
-        TABLES = %i[documents legacy_intents_data savepoints nodes edges approvals verdicts contexts discoveries kept_files].freeze
+        TABLES = %i[documents legacy_intents_data savepoints nodes edges approvals verdicts completions contexts discoveries kept_files].freeze
 
         def self.read(retrieval, intent_id = nil)
           new(TABLES.to_h { |table| [table, retrieval.public_send(table, intent_id).group_by(&:intent_id)] })

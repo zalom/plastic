@@ -4,6 +4,34 @@ module Plastic
   module Graph
     # Upgrades retrieval tables while retaining each canonical document row.
     module SchemaMigrations
+      INTENT_STATES_COPY = <<~SQL
+        INSERT INTO intents (id, intent_id, parent_id, ref, origin_id, slug, title, kind, status, disposition, reason, opened_at, closed_at, updated_at)
+        SELECT id, intent_id, parent_id, ref, origin_id, slug, title, kind,
+          CASE status WHEN 'active' THEN 'in_progress' ELSE status END,
+          CASE status
+            WHEN 'done' THEN 'delivered'
+            WHEN 'abandoned' THEN CASE
+              WHEN disposition IN ('superseded', 'cancelled') THEN disposition
+              WHEN disposition LIKE '%superseded by%' THEN 'superseded'
+              ELSE 'cancelled' END
+            ELSE NULL END,
+          CASE WHEN disposition IS NOT NULL AND disposition NOT IN ('delivered', 'superseded', 'cancelled') THEN disposition END,
+          opened_at, closed_at, updated_at
+        FROM intents_legacy;
+        DELETE FROM sqlite_sequence WHERE name = 'intents';
+        INSERT INTO sqlite_sequence (name, seq) SELECT 'intents', seq FROM sqlite_sequence WHERE name = 'intents_legacy';
+      SQL
+
+      # Whether the intents table still has the old word for work under way or no reason column.
+      module IntentsTable
+        SQL = "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'intents'"
+        OUTDATED = /'active'|\A(?!.*"reason")/m
+
+        module_function
+
+        def outdated?(connection) = connection.get_first_value(SQL)&.match?(OUTDATED)
+      end
+
       def migrate_revision_membership(connection)
         sql = connection.get_first_value("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'document_revisions'")
         return unless sql&.include?('UNIQUE("sha256", "origin_id")')
@@ -26,7 +54,11 @@ module Plastic
         SQL
       end
 
+      def migrate_intent_states(connection) = (connection.transaction(:immediate) { swap_outdated(connection) } if IntentsTable.outdated?(connection))
+
       private
+
+      def swap_outdated(connection) = (run_swap(connection, :intents, INTENT_STATES_COPY) if IntentsTable.outdated?(connection))
 
       def replace_legacy_table(connection, table, copy_sql) = connection.transaction(:immediate) { run_swap(connection, table, copy_sql) }
 
