@@ -20,7 +20,7 @@ module Plastic
       private
 
       def line(result)
-        return "  ℹ  #{result[:agent]}: already registered, not re-synced (use --reinstall to re-sync)" if result[:skipped]
+        return "  #{result[:agent]}: already registered, not re-synced (use --reinstall to re-sync)" if result[:skipped]
         return "  #{result[:agent]}: #{result[:files]} files installed" if result[:success]
 
         "   #{result[:agent]}: #{result[:reason]}"
@@ -29,13 +29,13 @@ module Plastic
       def table(results)
         return if results.size <= 1
 
-        puts "\n  Agent          From → To            Result", "  -----          -----------      ------"
+        puts "\n  Agent          From -> To           Result", "  -----          ----------           ------"
         results.each { |result| puts row(result) }
       end
 
       def row(result)
-        move = "#{result[:from_version] || "-"} → #{result[:to_version] || "-"}"
-        format("  %-14s %-16s %s", result[:agent], move, status(result))
+        move = "#{result[:from_version] || "-"} -> #{result[:to_version] || "-"}"
+        format("  %-14s %-20s %s", result[:agent], move, status(result))
       end
 
       def status(result)
@@ -48,7 +48,7 @@ module Plastic
         puts "\nPlastic v#{@version} #{(mode == :install) ? "installed" : "re-synced"}."
         puts "   Registered for: #{done.map { |result| result[:agent] }.join(", ")}"
         puts "   Run /clear (or restart your agent) to pick up new conventions."
-        puts "   Next: run plastic help tutorial\n\n"
+        puts
         trust(done)
       end
 

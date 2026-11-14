@@ -31,7 +31,7 @@ module Plastic
         kept = kept_names(hooks)
         return if kept.empty?
 
-        puts "  \u{2139} Kept #{kept.size} hook(s) Plastic does not own, named with the reserved plastic- prefix:"
+        puts "  Kept #{kept.size} hook(s) Plastic does not own, named with the reserved plastic- prefix:"
         kept.each { |command| puts "     - #{tilde(command)}" }
         puts "     The plastic- prefix is reserved for Plastic's own hooks. Rename yours (for"
         puts "     example ~/.claude/hooks/plain-writing) so a future update never mistakes it."

@@ -44,7 +44,7 @@ class ResultsTest < Plastic::TestCase
     out = printed([ok, ok("Hermes", from_version: "2.0.2")])
 
     assert_includes out, "  Agent          From -> To           Result\n"
-    assert_includes out, "  Hermes         2.0.2 -> 2.0.3    ok" + "\n"
+    assert_includes out, "  Hermes         2.0.2 -> 2.0.3       ok" + "\n"
   end
 
   def test_the_codex_trust_reminder_names_the_changed_hooks_and_is_absent_when_none_changed
