@@ -58,24 +58,26 @@ class SyncUpGeneratedTest < Plastic::TestCase
     assert_equal [1, true], [result.code, result.out.include?("sync down --overwrite #{other.dir}/graph.json")], result.err
   end
 
-  def test_a_preview_of_sync_up_names_a_file_it_cannot_read_and_exits_as_the_real_run_does
-    specified
-    path = "#{open_intent("Beta").dir}/graph.json"
-    write(path, "{\"hand\":true}\n")
-    dry = cli("sync", "up", "--dry-run")
-    kept = File.read(store_path(path))
-    real = cli("sync", "up")
+  # A preview copies committed files, so it runs in a home of its own: the dry run, the file it left, then the real run.
+  def preview_then_apply(path, text)
+    with_home do |home|
+      yield home
+      file = File.join(home, "stores", "global", path)
+      File.write(file, text)
+      [call_in(home, "sync", "up", "--dry-run"), File.read(file), call_in(home, "sync", "up")]
+    end
+  end
 
-    assert_equal [1, true, "{\"hand\":true}\n", 1], [dry.code, (dry.out + dry.err).include?("sync down --overwrite #{path}"), kept, real.code], dry.err
+  def test_a_preview_of_sync_up_names_a_file_it_cannot_read_and_exits_as_the_real_run_does
+    path = "store/1--beta/graph.json"
+    dry, kept, real = preview_then_apply(path, "{\"hand\":true}\n") { |home| call_in(home, "intent", "new", "Beta") }
+
+    assert_equal [1, true, "{\"hand\":true}\n", 1], [dry.code, dry.err.include?("sync down --overwrite #{path}"), kept, real.code], dry.out + dry.err
   end
 
   def test_a_preview_of_sync_up_names_a_changed_roadmap_it_would_print_again_and_exits_as_the_real_run_does
-    cli("roadmap", "new", "r1")
-    write("roadmaps/r1.md", "# by hand\n")
-    dry = cli("sync", "up", "--dry-run")
-    kept = File.read(store_path("roadmaps/r1.md"))
-    real = cli("sync", "up")
+    dry, kept, real = preview_then_apply("roadmaps/r1.md", "# by hand\n") { |home| call_in(home, "roadmap", "new", "r1") }
 
-    assert_equal [0, true, "# by hand\n", 0], [dry.code, dry.out.include?("preview: printed again from rows: roadmaps/r1.md"), kept, real.code], dry.err
+    assert_equal [0, true, "# by hand\n", 0], [dry.code, dry.out.include?("preview: printed again from rows: roadmaps/r1.md"), kept, real.code], dry.out + dry.err
   end
 end
