@@ -99,7 +99,7 @@ module Plastic
       # ours", because it has to recognise an old entry in order to remove it. A
       # liveness check asks "is there something here that still runs", and the two
       # sets differ by exactly the entries that make the answers disagree: a
-      # SessionStart carrying only plastic-lock-gate satisfied doctor's
+      # SessionStart carrying only a retired launcher satisfied doctor's
       # hooks_registered while no such launcher ships anymore.
       #
       # Sourced from claude_launcher_names alone, so RETIRED_CLAUDE_LAUNCHERS is out
