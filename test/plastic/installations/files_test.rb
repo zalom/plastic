@@ -27,6 +27,18 @@ class FilesTest < Plastic::TestCase
     assert_equal ["{\n  \"a\": 1\n}\n", ["out.json"]], [File.read(path), Dir.children(@home).grep(/out/)]
   end
 
+  def test_a_linked_file_keeps_its_link_and_the_file_behind_it_is_written
+    behind = File.join(@home, "dotfiles", "settings.json")
+    FileUtils.mkdir_p(File.dirname(behind))
+    File.write(behind, "{}")
+    path = File.join(@home, "settings.json")
+    File.symlink(behind, path)
+    Files.write_json(path, "a" => 1)
+    Files.write_text(path, "text\n")
+
+    assert_equal [true, "text\n", ["settings.json"]], [File.symlink?(path), File.read(behind), Dir.children(File.dirname(behind))]
+  end
+
   def test_a_write_into_a_missing_folder_raises_and_leaves_no_temporary
     assert_raises(Errno::ENOENT) { Files.write_text(File.join(@home, "missing", "out.md"), "x") }
   end
