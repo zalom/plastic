@@ -107,6 +107,20 @@ class KnowledgeSyncEntryTest < Plastic::TestCase
     assert_equal [nil, false], [entry.file_sha, entry.level?]
   end
 
+  OURS = "{\n  \"origin_id\": \"ours\",\n  \"intents\": []\n}\n"
+
+  def test_an_index_that_another_home_printed_is_printed_from_the_rows_both_ways
+    entry = built(INDEX, JSON.generate({ "origin_id" => "theirs", "intents" => [] }), print_text: OURS)
+
+    assert_equal [false, false, %i[print print]], [entry.level?, entry.hand_edited?, %i[up down].map { |way| entry.action(way) }]
+  end
+
+  def test_an_index_that_is_a_json_array_is_a_hand_edit_and_raises_nothing
+    entry = built(INDEX, "[]", print_text: OURS)
+
+    assert_equal [true, false], [entry.hand_edited?, entry.printed_elsewhere]
+  end
+
   def hand_edited(file, printed, rows) = Entry.new("p", file, printed, rows ? Print.new("p", :work, rows, nil) : Entry::NO_PRINT).hand_edited?
 
   def test_a_changed_file_that_the_print_does_not_match_is_hand_edited
