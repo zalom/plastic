@@ -58,13 +58,16 @@ module Plastic
           "intent #{id} has no go-ahead; the owner approves it with plastic intent approve #{id}"
         end
 
+        def self.no_problem(field) = ->(context) { !context.public_send(field) }
+        private_class_method :no_problem
+
         gate "no intent %{intent_id} in this store", stops: :failure, pass: ->(context) { !context.intent.nil? }
         gate "plastic auto names no session", stops: :failure, pass: ->(context) { !context.session.nil? }
         gate "%{closed_problem}", stops: :failure, offers: "plastic next", because: "a closed intent cannot be armed; pick other work",
-          pass: ->(context) { context.closed_problem.nil? }
+          pass: no_problem(:closed_problem)
         gate "%{spec_problem}", stops: :failure, offers: "plastic intent spec %{intent_id}",
-          because: "the spec needs a done criterion", pass: ->(context) { context.spec_problem.nil? }
-        gate "%{problem}", stops: :refusal, pass: ->(context) { context.problem.nil? }
+          because: "the spec needs a done criterion", pass: no_problem(:spec_problem)
+        gate "%{problem}", stops: :refusal, pass: no_problem(:problem)
 
         def self.delivery_started?(context)
           retrieval = context.retrieval
