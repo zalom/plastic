@@ -37,6 +37,15 @@ class ClaudeHooksTest < Plastic::TestCase
     assert_empty(expected.reject { |event, text| commands(settings, event).any? { |cmd| cmd.include?(text) } })
   end
 
+  def test_the_retired_update_check_hook_is_removed_and_not_named_as_the_persons_own
+    old = { "hooks" => { "SessionStart" => [{ "matcher" => "", "hooks" => [{ "type" => "command", "command" => "~/.claude/hooks/plastic-check-update" }] }] } }
+    settings, out = merge(old)
+
+    assert_empty(commands(settings, "SessionStart").grep(/check-update/))
+    refute_includes out, "Kept"
+    assert_includes out, "plastic-check-update"
+  end
+
   def test_the_install_registers_no_check_update
     settings, = merge({})
 
