@@ -10,9 +10,7 @@ module Plastic
       private
 
       def copy
-        choices = @package.choices
-        skills(exclude: advisor_exclusions) +
-          RoleFiles.new(@package.root).call(File.join(@record.root, "agents"), models: choices.models, efforts: choices.efforts, advisor: choices.advisor?)
+        skills(exclude: advisor_exclusions) + role_files
       end
     end
   end

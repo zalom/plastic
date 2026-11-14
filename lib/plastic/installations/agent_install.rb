@@ -3,6 +3,7 @@
 require "fileutils"
 require_relative "agent_record"
 require_relative "package"
+require_relative "role_files"
 require_relative "skill_copy"
 
 module Plastic
@@ -30,6 +31,11 @@ module Plastic
       def integrate = {}
 
       def skills(exclude: []) = SkillCopy.new(@package.root, @package.home).call(File.join(@record.root, "skills"), exclude:)
+
+      def role_files
+        choices = @package.choices
+        RoleFiles.new(@package.root).call(File.join(@record.root, "agents"), models: choices.models, efforts: choices.efforts, advisor: choices.advisor?)
+      end
 
       def advisor_exclusions = @package.choices.advisor? ? [] : ["agent-advisor"]
     end

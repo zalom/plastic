@@ -23,17 +23,16 @@ module Plastic
       private
 
       def copy
-        choices = @package.choices
         FileUtils.mkdir_p(hooks_dir)
-        hooks + skills(exclude: advisor_exclusions) +
-          RoleFiles.new(@package.root).call(File.join(@record.root, "agents"), models: choices.models, efforts: choices.efforts, advisor: choices.advisor?)
+        hooks + skills(exclude: advisor_exclusions) + role_files
       end
 
       def integrate
-        LegacyPlugin.new(@record.root).call
-        ClaudeHooks.new(@package, @record.root).merge(settings_path, choice: choice)
+        root = @record.root
+        LegacyPlugin.new(root).call
+        ClaudeHooks.new(@package, root).merge(settings_path, choice: choice)
         EnginePermissions.merge_file(settings_path)
-        MarkedSection.new(MarkedSection::CLAUDE, CompactInstructions::BODY).inject(File.join(@record.root, "CLAUDE.md"))
+        MarkedSection.new(MarkedSection::CLAUDE, CompactInstructions::BODY).inject(File.join(root, "CLAUDE.md"))
         {}
       end
 
