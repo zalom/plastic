@@ -24,9 +24,9 @@ module Plastic
         nil
       end
 
-      def write_json(path, data) = Rewrite.replace(resolve(path), "#{JSON.pretty_generate(data)}\n")
+      def write_json(path, data) = Rewrite.replace(path, "#{JSON.pretty_generate(data)}\n")
 
-      def write_text(path, text) = Rewrite.replace(resolve(path), text)
+      def write_text(path, text) = Rewrite.replace(path, text)
 
       def write_if_missing(path, text)
         File.write(path, text) unless File.exist?(path)
@@ -39,11 +39,7 @@ module Plastic
         end
       end
 
-      def resolve(path)
-        File.symlink?(path) ? File.realpath(path) : path
-      rescue Errno::ENOENT
-        path
-      end
+      def resolve(path) = Rewrite.target(path)
     end
   end
 end
