@@ -12,9 +12,9 @@ module Plastic
         BULLET = /\A[-*]\s*(?:\[[ xX]\]\s*)?(.+)\z/
         NEGATIVE = %r{\A(?:\z|(?:no|not|none|pending|n/a|tbd|false|rejected|awaiting|waiting|requested|changes|declined|denied|never|unapproved)[[:punct:]]*(?:\s|\z))}i
         # The marks a person writes before a word in Markdown or plain text, and the spaces between them, read past before the first word is judged.
-        MARKS = /\A[\s`"'(\[{_~“‘«<>\\\-–—]+/
+        MARKS = /\A[\s\x60"'(\[{_~“‘«<>\\\-–—]+/
         FORMS = {
-          "Merged" => /\A(?:\S+ +into +)?\S+ +at +(?:\D*\d|`?\h{7,40}\b)/,
+          "Merged" => /\A(?:\S+ +into +)?\S+ +at +(?:\D*\d|\x60?\h{7,40}\b)/,
           "Approved" => /\A(?:by +)?\S.*? +on +\d{4}-\d{2}-\d{2}(?!\d)/
         }.freeze
         SHOWN = {

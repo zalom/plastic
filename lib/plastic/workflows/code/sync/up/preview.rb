@@ -13,6 +13,8 @@ module Plastic
           class Preview < CodeWorkflow
             [facts, steps, outcomes].each(&:clear)
 
+            DRY_RUN = ->(context) { context.dry_run }
+
             # Prints the lines of the dry run, and keeps what the real run would refuse as the facts its gates read.
             def self.show(context, direction)
               note(context, printed(context, context.work.preview_sync({ overwrite: context.overwrite, merge: context.merge }, direction:)))
@@ -33,9 +35,7 @@ module Plastic
             end
 
             # A gate that a real run passes untouched; a dry run passes it as the real run's own gate would.
-            def self.as_real(name) = ->(context) { !DRY_RUN.call(context) || SyncSteps.public_send(name, context) }
-
-            DRY_RUN = ->(context) { context.dry_run }
+            def self.as_real?(context, name) = !DRY_RUN.call(context) || SyncSteps.public_send(name, context)
 
             # The steps of a preview in `direction`: the dry run, then the gates of the real run in its order.
             def self.preview(direction)
@@ -51,16 +51,21 @@ module Plastic
             end
 
             def self.real_gates
-              gate "%{failure}", stops: :failure, pass: as_real(:runs?)
-              gate SyncSteps::REFUSED_BEFORE, stops: :refusal, pass: as_real(:writes?)
-              gate SyncSteps::REFUSED_AFTER, stops: :refusal, pass: as_real(:settled?)
+              gate "%{failure}", stops: :failure, pass: ->(context) { as_real?(context, :runs?) }
+              conflict_gates
               readable_gates
+            end
+
+            # The gates of the conflicts, before and after the real run writes.
+            def self.conflict_gates
+              gate SyncSteps::REFUSED_BEFORE, stops: :refusal, pass: ->(context) { as_real?(context, :writes?) }
+              gate SyncSteps::REFUSED_AFTER, stops: :refusal, pass: ->(context) { as_real?(context, :settled?) }
             end
 
             # The gates of the files that sync up reads.
             def self.readable_gates
-              gate SyncSteps::UNREADABLE, stops: :failure, pass: as_real(:readable?)
-              gate SyncSteps::UNREADABLE_FILES, stops: :failure, pass: as_real(:files_read?),
+              gate SyncSteps::UNREADABLE, stops: :failure, pass: ->(context) { as_real?(context, :readable?) }
+              gate SyncSteps::UNREADABLE_FILES, stops: :failure, pass: ->(context) { as_real?(context, :files_read?) },
                 offers: "plastic sync down --overwrite %{unreadable_path}", because: "sync up cannot read %{unreadable_path}, and its rows print it again"
             end
 
