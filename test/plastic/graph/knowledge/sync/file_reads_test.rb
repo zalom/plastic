@@ -33,10 +33,19 @@ class KnowledgeSyncFileReadsTest < Plastic::TestCase
   def test_a_read_the_database_refuses_is_returned_as_unreadable_and_writes_no_row
     write_null_id_graph
     write("#{DIR}/notes.md", "# notes\n")
-    reads = file_reads
 
-    assert_equal ["read #{DIR}/notes.md"], reads.call([GRAPH, "#{DIR}/notes.md"])
-    assert_equal({ GRAPH => "work_graph.db: NOT NULL constraint failed: nodes.id" }, reads.refused)
+    assert_equal ["read #{DIR}/notes.md"], file_reads.call([GRAPH, "#{DIR}/notes.md"])
+    assert_empty store_graphs.databases.fetch(:work).rows("SELECT id FROM nodes")
+  end
+
+  def test_in_one_group_the_read_the_database_refuses_leaves_the_good_read_written
+    write_null_id_graph
+    index = JSON.parse(folder.read("store/index.json"))
+    index.fetch("intents").each { |entry| entry["title"] = "Renamed by hand" }
+    write("store/index.json", JSON.pretty_generate(index))
+
+    assert_equal ["read store/index.json"], file_reads.call([GRAPH, "store/index.json"])
+    assert_equal "Renamed by hand", retrieval.intent("1").title
     assert_empty store_graphs.databases.fetch(:work).rows("SELECT id FROM nodes")
   end
 

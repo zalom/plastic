@@ -25,6 +25,15 @@ class KnowledgeSyncHandEditsTest < Plastic::TestCase
     assert_equal({ path => "context.json is generated from rows; use intent context and intent discover to change it" }, hand_edited([:intent], { intent_id: "1" }))
   end
 
+  def test_an_index_that_another_home_printed_is_not_a_hand_edit
+    specified
+    index = JSON.parse(folder.read("store/index.json"))
+    index.fetch("intents").each { |entry| entry["origin_id"] = "zzzz" }
+    write("store/index.json", JSON.pretty_generate(index.merge("origin_id" => "zzzz")))
+
+    assert_empty hand_edited([:intent], { intent_id: "1" })
+  end
+
   def test_a_hand_edited_intent_file_that_reads_has_no_reason
     intent = specified
     write("#{intent.dir}/intent.md", "# by hand\n")

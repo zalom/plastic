@@ -133,6 +133,21 @@ class KnowledgeSyncTest < Plastic::TestCase
     assert_equal [[], "Alpha", true], [run, retrieval.intent("1").title, folder.read("store/index.json").include?("Renamed by hand")]
   end
 
+  def foreign_index
+    index = JSON.parse(folder.read("store/index.json"))
+    index.fetch("intents").each { |entry| entry["origin_id"] = "zzzz" }
+    write("store/index.json", JSON.pretty_generate(index.merge("origin_id" => "zzzz")))
+  end
+
+  def test_sync_up_prints_an_index_that_another_home_printed_from_the_rows
+    foreign_index
+    plan = sync.plan(:up)
+    sync.apply(plan)
+
+    assert_empty plan.unreadable_files
+    assert_equal retrieval.origin_id, JSON.parse(folder.read("store/index.json")).fetch("origin_id")
+  end
+
   def test_a_broken_index_does_not_stop_the_read_of_another_file
     write("store/index.json", "{")
 

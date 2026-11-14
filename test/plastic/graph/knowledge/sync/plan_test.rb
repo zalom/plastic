@@ -61,13 +61,24 @@ class KnowledgeSyncPlanTest < Plastic::TestCase
     assert_equal [[:none] * 3, [0] * 3], [plans.map { |plan| action_of(plan) }, plans.map(&:pending)]
   end
 
-  def test_build_lists_a_hand_edited_roadmap_among_the_files_sync_up_cannot_read
+  def built_up_with_a_hand_edited_roadmap
     store_graphs.work.create_roadmap("r1", title: "R", goal: nil)
     store_graphs.work.print_roadmap("r1")
     write("roadmaps/r1.md", "# by hand\n")
-    built = Plan.build(folder, retrieval, Sync::Resolution.new(:up, store_root, {}), store_graphs.databases)
+    Plan.build(folder, retrieval, Sync::Resolution.new(:up, store_root, {}), store_graphs.databases)
+  end
 
-    assert_equal [["roadmaps/r1.md"], :none], [built.unreadable_files.keys, built.actions.find { |entry, _action| entry.path == "roadmaps/r1.md" }.last]
+  def test_build_lists_a_hand_edited_roadmap_among_the_files_sync_up_cannot_read
+    built = built_up_with_a_hand_edited_roadmap
+
+    assert_equal ["roadmaps/r1.md"], built.unreadable_files.keys
+    assert_equal :none, built.actions.find { |entry, _action| entry.path == "roadmaps/r1.md" }.last
+  end
+
+  def test_a_generated_file_that_cannot_be_read_and_was_never_printed_here_prints_from_the_rows_up
+    plan = generated_plan(:up, "store/index.json", "f", nil, "r", unreadable_files: { "store/index.json" => "refused" })
+
+    assert_equal :print, action_of(plan)
   end
 
   def test_a_generated_index_that_can_be_read_is_planned_for_a_read_up
@@ -114,7 +125,7 @@ class KnowledgeSyncPlanTest < Plastic::TestCase
 
   def test_build_marks_a_legacy_store_up_and_refuses_it_down
     write("INDEX.md", "# Index\n")
-    build = ->(direction) { Plan.build(folder, retrieval, Sync::Resolution.new(direction, store_root, {})) }
+    build = ->(direction) { Plan.build(folder, retrieval, Sync::Resolution.new(direction, store_root, {}), store_graphs.databases) }
 
     assert_equal [true, nil], build.call(:up).to_h.values_at(:legacy, :problem)
     assert_equal [false, "this store still has INDEX.md; run plastic sync up to import it first"],
