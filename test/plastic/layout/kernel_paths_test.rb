@@ -107,13 +107,20 @@ class KernelPathsTest < Minitest::Test
 
     refute_empty kernel
 
-    assert_empty kernel.reject { |file| loads_alone?(file) }
+    assert_empty failing_loads(kernel)
   end
 
-  def loads_alone?(file)
-    code = %(require "plastic"; load ARGV.fetch(0))
-    _out, status = ChildProcess.capture2e(RbConfig.ruby, "-I", File.join(ROOT, "lib"), "-e", code, file, chdir: ROOT)
-    status.success?
+  FORKED_LOADS = <<~'CODE'
+    require "plastic"
+    ARGV.each do |file|
+      pid = fork { exit(begin; load(file); true; rescue Exception; false; end ? 0 : 1) }
+      puts("FAILED #{file}") unless Process.wait2(pid).last.success?
+    end
+  CODE
+
+  def failing_loads(files)
+    out, = ChildProcess.capture2e(RbConfig.ruby, "-I", File.join(ROOT, "lib"), "-e", FORKED_LOADS, *files, chdir: ROOT)
+    out.lines.grep(/\AFAILED /).map { |line| line.chomp.delete_prefix("FAILED ") }
   end
 
   def test_the_test_helper_covers_lib
