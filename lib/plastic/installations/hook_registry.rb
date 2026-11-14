@@ -7,9 +7,9 @@ module Plastic
     # CodexHooks purges the hooks.json entries it names; nothing else may
     # hand-roll a matcher. Change registrations HERE and only here.
     #
-    # `events` registers only check-update, whose launcher (hooks/check-update)
-    # and target (scripts/select-update-target) both ship. RETIRED_HOOK_NAMES
-    # below lists the hooks that older installs registered, for the purge.
+    # `events` registers no launcher hook: the kernel hooks are written by the
+    # install itself. RETIRED_HOOK_NAMES below lists the hooks that older
+    # installs registered, for the purge.
     module HookRegistry
       module_function
 

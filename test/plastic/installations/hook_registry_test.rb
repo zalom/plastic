@@ -3,8 +3,7 @@
 require_relative "../../test_helper"
 require "plastic/installations/hook_registry"
 
-# Plastic::Installations::HookRegistry.events registers only check-update, the one launcher that still
-# ships. This file drives the public methods the installer calls, so a
+# Plastic::Installations::HookRegistry.events registers no launcher. This file drives the public methods the installer calls, so a
 # missing-events-key crash or a dropped retirement entry fails here instead of
 # in a live install.
 class HookRegistryTest < Minitest::Test

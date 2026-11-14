@@ -84,6 +84,15 @@ class ReleaseBuildTest < Minitest::Test
     assert_includes err, "--version"
   end
 
+  def test_every_path_install_sh_extracts_for_the_installer_is_in_the_archive
+    ReleaseBuild.call(version: "2.0.4", directory: @out, root: REPO)
+    boot = File.read(File.join(REPO, "install.sh"))[/^tar -xzf .*\/boot" (.*)$/, 1].to_s.split
+    names = entries.keys
+
+    refute_empty boot
+    assert_empty(boot.reject { |path| names.any? { |name| name == path || name.start_with?("#{path}/") } })
+  end
+
   def test_the_archive_of_the_tree_ships_the_launcher_and_the_readers_files_and_no_release_tool
     ReleaseBuild.call(version: "2.0.4", directory: @out, root: REPO)
     names = entries.keys
