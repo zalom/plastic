@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "entry"
+require_relative "entry_files"
 require_relative "readability"
 
 module Plastic
@@ -18,17 +18,21 @@ module Plastic
 
           # Each hand edited path with the reason sync up cannot read it, or nil when it can.
           def call
-            printed = @retrieval.printed
-            edited = prints.select { |print| hand_edited?(print, printed) }.map(&:path)
+            edited = edited_paths
             unreadable = Readability.new(@folder, @retrieval).call(edited.reject { |path| Entry.generated?(path) })
             edited.to_h { |path| [path, unreadable[path]] }
           end
 
           private
 
+          def edited_paths
+            printed = @retrieval.printed
+            prints.select { |print| hand_edited?(print, printed) }.map(&:path)
+          end
+
           def hand_edited?(print, printed)
             path = print.path
-            Entry.for(@folder, path, printed[path], print).hand_edited?
+            EntryFiles.new(@folder).entry(path, printed[path], print).hand_edited?
           end
 
           def prints = [*index_prints, *intent_prints, *roadmap_prints].uniq(&:path)
