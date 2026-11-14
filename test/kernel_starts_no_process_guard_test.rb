@@ -82,7 +82,9 @@ class KernelStartsNoProcessGuardTest < Minitest::Test
     "IO.read with a pipe" => [%(IO.read("|git status")), %(IO.read("notes.txt"))],
     "::Open3" => [%(::Open3.capture3("git")), %(::Opened.capture3("git"))],
     "include Open3" => [%(include Open3), %(include Comparable)],
-    "Kernel backtick" => [%(Kernel.`("git")), %(Kernel.format("%s", name))]
+    "Kernel backtick" => [%(Kernel.`("git")), %(Kernel.format("%s", name))],
+    "backtick" => ["`git status`", %("Run `plastic status` first.")],
+    "%x" => ["%x(git status)", %("%x is text")]
   }.freeze
 
   LOADING_FORMS = {

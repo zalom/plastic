@@ -3,11 +3,13 @@
 require_relative "../test_helper"
 
 # Plastic code runs no version control command and no report prints one. The
-# kernel starts no process at all.
+# kernel starts no process at all. A backtick or %x command is found by
+# KernelStartsNoProcessGuardTest, which parses the source and so tells a command
+# from a backtick inside instruction text.
 class NoVersionControlTest < Plastic::TestCase
   ROOT = File.expand_path("../../lib", __dir__)
   SOURCES = [File.join(ROOT, "plastic.rb"), *Dir.glob(File.join(ROOT, "plastic", "**", "*.rb"))].freeze
-  SPAWNS = /\b(?:system|spawn|exec|popen\w*|capture2e?|capture3|pipeline\w*)\b|`|%x/
+  SPAWNS = /\b(?:system|spawn|exec|popen\w*|capture2e?|capture3|pipeline\w*)\b/
 
   def test_the_kernel_has_sources
     assert_operator SOURCES.size, :>, 20
