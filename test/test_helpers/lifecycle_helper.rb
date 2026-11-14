@@ -59,6 +59,8 @@ module Plastic
       end
 
       def review_off = File.write(File.join(@plastic_home, "config.yml"), "review:\n  pull_request: off\n")
+
+      def review_on = File.write(File.join(@plastic_home, "config.yml"), "review:\n  pull_request: required\n")
     end
   end
 end

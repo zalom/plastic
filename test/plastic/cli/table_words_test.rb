@@ -11,6 +11,11 @@ class TableWordsTest < Plastic::TestCase
     assert_empty said
   end
 
+  def test_the_help_of_intent_spec_names_what_it_prints
+    assert_equal "Print the grilling method, how done criteria are written, and the open questions and decisions of spec.md",
+      Plastic::CLI::TABLE.fetch("intent spec").last
+  end
+
   def test_the_commands_that_write_files_say_write
     assert_equal "Write the rows that changed into files", Plastic::CLI::TABLE.fetch("sync down").last
     assert_equal "Open an intent: write its rows and its folder", Plastic::CLI::TABLE.fetch("intent new").last

@@ -154,6 +154,7 @@ class PrepareEndingRecordsTest < PrepareEndingFixture
   end
 
   def test_with_review_required_a_missing_pull_request_bullet_hands_over
+    review_on
     accepted_intent(records: MERGE_RECORDS)
 
     outcome, context = prepare
@@ -163,9 +164,16 @@ class PrepareEndingRecordsTest < PrepareEndingFixture
   end
 
   def test_with_review_required_a_pull_request_without_approval_is_a_refusal
+    review_on
     accepted_intent(records: MERGE_RECORDS + PULL_REQUEST)
 
     assert_kind_of Plastic::Refused, prepare.first
+  end
+
+  def test_with_no_config_no_pull_request_bullets_are_asked_and_no_approval_is_awaited
+    accepted_intent(records: MERGE_RECORDS)
+
+    assert_equal :ready, prepare.first
   end
 
   def test_with_review_off_no_pull_request_bullets_are_asked

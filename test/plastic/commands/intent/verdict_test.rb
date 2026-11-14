@@ -84,6 +84,64 @@ class IntentVerdictTest < Plastic::TestCase
   end
 end
 
+class IntentVerdictAcceptGateTest < Plastic::TestCase
+  include LifecycleHelper
+
+  def verdicts = work_rows("verdicts")
+
+  def verdict(kind) = cli("intent", "verdict", "1", kind, "Checked")
+
+  def claimed_node
+    specified
+    cli("intent", "approve", "1")
+    cli("auto", "1")
+    cli("node", "add", "1", "Deliver", "--criterion", KEY)
+    cli("node", "claim", "1", "n1")
+  end
+
+  def test_an_accept_with_a_claimed_node_exits_1_names_the_graph_show_command_and_writes_no_row
+    claimed_node
+
+    result = verdict("accept")
+
+    assert_equal [1, []], [result.code, verdicts]
+    assert_match(/^next: plastic graph show 1/, result.out)
+  end
+
+  def test_an_accept_with_no_done_criterion_exits_1_names_the_spec_command_and_writes_no_row
+    open_intent
+
+    result = verdict("accept")
+
+    assert_equal [1, []], [result.code, verdicts]
+    assert_match(/^next: plastic intent spec 1/, result.out)
+  end
+
+  def test_an_accept_with_no_node_exits_1_names_the_node_add_command_and_writes_no_row
+    specified
+
+    result = verdict("accept")
+
+    assert_equal [1, []], [result.code, verdicts]
+    assert_match(/^next: plastic node add 1/, result.out)
+  end
+
+  def test_a_revise_with_a_claimed_node_still_records_the_verdict
+    claimed_node
+
+    result = verdict("revise")
+
+    assert_equal [0, ["revise"]], [result.code, verdicts.map { |row| row.fetch("verdict") }]
+  end
+
+  def test_an_accept_with_every_node_done_records_the_verdict
+    specified
+    delivered_nodes
+
+    assert_equal [0, 1], [verdict("accept").code, verdicts.size]
+  end
+end
+
 class IntentVerdictRefusalTest < Plastic::TestCase
   include LifecycleHelper
 

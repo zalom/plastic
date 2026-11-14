@@ -65,6 +65,34 @@ class KnowledgeOutcomeTest < Plastic::TestCase
     assert_equal [true, true, true], [read.pull_request?, read.approved?, read.reverted?]
   end
 
+  def test_a_negative_value_of_merged_is_not_a_merge
+    ["no", "pending", "-", "None yet", "N/A", "TBD", "false", "Not merged"].each do |value|
+      refute outcome("## Verification\n- Merged: #{value}\n").merged?, value
+    end
+  end
+
+  def test_a_branch_named_like_a_negative_word_is_a_merge
+    ["branch into alpha at PR 9", "node-sort into alpha", "pending-ui into alpha", "notes-fix at abc1"].each do |value|
+      assert outcome("## Verification\n- Merged: #{value}\n").merged?, value
+    end
+  end
+
+  def test_a_negative_value_of_approved_is_not_an_approval
+    refute outcome("## Verification\n- Approved: none\n").approved?
+  end
+
+  def test_a_negative_word_in_another_label_still_counts_as_recorded
+    read = outcome("## Verification\n- Architecture map: none found by tool X\n- Pull request: no link yet\n")
+
+    assert_equal [true, true], [read.architecture_map?, read.pull_request?]
+  end
+
+  def test_the_missing_record_message_names_the_negative_value_it_found
+    message = outcome("## Verification\n- Merged: no\n").missing_records.first
+
+    assert_includes message, "Merged: no"
+  end
+
   def test_missing_pull_request_approval_and_revert_bullets_read_false
     read = outcome("# Outcome\n\n## Verification\n- Merged: into alpha\n")
 
