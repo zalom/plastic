@@ -132,7 +132,8 @@ next_step="plastic init"
 [ ! -f "$plastic_home/VERSION" ] || next_step="plastic version"
 mkdir "$tmp/boot"
 tar -xzf "$tmp/plastic.tgz" -C "$tmp/boot" package/scripts/install-release package/scripts/lib/installer_release.rb package/scripts/lib/installer_release package/lib/plastic/installations/launcher_link.rb package/lib/plastic/installations/release_files.rb
-PLASTIC_RUBY="$ruby" "$ruby" --disable-gems -rrbconfig "$tmp/boot/package/scripts/install-release" --directory "$tmp" --version "$version" --home "$share" \
+if [ -n "${PLASTIC_RUBY:-}" ]; then PLASTIC_RUBY=$ruby; export PLASTIC_RUBY; fi
+"$ruby" --disable-gems -rrbconfig "$tmp/boot/package/scripts/install-release" --directory "$tmp" --version "$version" --home "$share" \
   --bin "$bin" --plastic-home "$plastic_home" --user-home "$HOME" || exit 1
 
 say "Plastic $version is active."
