@@ -21,6 +21,13 @@ class AgentSetTest < Plastic::TestCase
     refute set.registered?("other")
   end
 
+  def test_an_agent_with_a_manifest_file_on_disk_is_registered
+    file = write(File.join(fresh, ".hermes", "skills", "a.md"), "x\n")
+    set.record("hermes").manifest.write([file])
+
+    assert set.registered?("hermes")
+  end
+
   def test_a_key_finds_its_agent_and_an_unknown_key_finds_none
     assert_equal ["Codex CLI", nil], [set.config("codex")[:name], set.config("other")]
   end
