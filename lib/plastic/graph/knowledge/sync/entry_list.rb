@@ -19,9 +19,8 @@ module Plastic
 
           def entries
             printed = @retrieval.printed
-            paths = printed.keys
-            prints = prints_of(paths)
-            (prints.keys | on_disk | paths).sort.map { |path| entry(path, printed[path], prints) }
+            prints = prints_of(printed.keys)
+            (prints.keys | on_disk | printed.keys).sort.map { |path| entry(path, printed[path], prints) }
           end
 
           def entry(path, printed_sha, prints) = Entry.for(@folder, path, printed_sha, prints.fetch(path, Entry::NO_PRINT))

@@ -24,8 +24,6 @@ class RoutinePrintingIndexTest < Plastic::TestCase
     assert_nil retrieval.intent("1")
   end
 
-  def index_data = JSON.parse(File.read(store_path("store/index.json")))
-
   def compact_index
     write("store/index.json", JSON.generate(JSON.parse(File.read(store_path("store/index.json")))))
   end
@@ -59,7 +57,8 @@ class RoutinePrintingIndexTest < Plastic::TestCase
 
   def test_an_index_with_other_content_than_the_rows_is_refused_though_printed_before_and_sync_up_clears_it
     open_intent
-    write("store/index.json", JSON.generate(index_data.merge("clusters" => [{ "name" => "imported", "intents" => ["1"] }])))
+    data = JSON.parse(File.read(store_path("store/index.json")))
+    write("store/index.json", JSON.generate(data.merge("clusters" => [{ "name" => "imported", "intents" => ["1"] }])))
     results = [cli("intent", "new", "Beta"), cli("sync", "up"), cli("intent", "new", "Beta")]
 
     assert_equal [1, 0, 0], results.map(&:code), results.last.err
