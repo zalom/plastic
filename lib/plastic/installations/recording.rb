@@ -4,11 +4,10 @@ require "json"
 require_relative "layout"
 require_relative "record"
 require_relative "roots"
-require_relative "engine_permissions"
 require_relative "agent_record"
 require_relative "files"
 require_relative "marked_section"
-require_relative "package"
+require_relative "settings_recording"
 
 module Plastic
   module Installations
@@ -37,8 +36,8 @@ module Plastic
       def call
         written = files
         Record.new(harness: @harness.name, version: @installer.version, roots:, files: written,
-          folders: Roots.new(roots).plastic_folders(written), settings: settings_path, hooks:, status_line:,
-          permissions:, sections:)
+          folders: Roots.new(roots).plastic_folders(written), settings: settings_path, hooks: settings.hooks,
+          status_line: settings.status_line, permissions: settings.permissions, sections:)
       end
 
       private
@@ -51,35 +50,7 @@ module Plastic
 
       def settings_path = @layout.settings_path(@config)
 
-      def settings = (@settings ||= settings_path ? Hash(Files.read_json(settings_path)) : {})
-
-      def hooks = Hash(settings["hooks"]).flat_map { |event, groups| owned_entries(event, groups) }
-
-      def owned_entries(event, groups)
-        commands(groups).select { |command| owned?(command) }.map { |command| { "event" => event, "command" => command } }
-      end
-
-      def commands(groups) = Array(groups).grep(Hash).flat_map { |group| Array(group["hooks"]) }.grep(Hash).map { |hook| hook["command"] }
-
-      def owned?(command) = @layout.plastic?(command) || package.entries.own?(command.to_s)
-
-      def package = Package.new(@installer.package_root, @installer.plastic_home, @installer.version)
-
-      def status_line
-        line = settings["statusLine"]
-        command = line["command"] if line.is_a?(Hash)
-        { "command" => command, "replaced" => replaced } if command && @layout.plastic?(command)
-      end
-
-      def replaced
-        original = Files.read_json(File.join(@installer.plastic_home, ".cache", "original-statusline.json"))
-        original if original.is_a?(Hash)
-      end
-
-      def permissions
-        rules = settings["permissions"]
-        (EnginePermissions::ENTRIES + EnginePermissions::RETIRED) & Array(rules.is_a?(Hash) && rules["deny"])
-      end
+      def settings = (@settings ||= SettingsRecording.new(@installer, @layout, settings_path))
 
       def sections
         opening, closing = @layout.markers
