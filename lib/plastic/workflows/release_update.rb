@@ -23,7 +23,7 @@ module Plastic
         scope = context.scope
         share = scope.setting("PLASTIC_SHARE", File.join(scope.home, ".local", "share", "plastic"))
         sync = home_sync(scope, share, Printed.new(context))
-        choice = InstallerRelease::RubyChoice.new(home: share, override: scope.setting("PLASTIC_RUBY", ""))
+        choice = InstallerRelease::RubyChoice.new(override: scope.setting("PLASTIC_RUBY", ""))
         new(share, InstallerRelease::ReleaseSource.for(scope.setting("PLASTIC_LOCAL_RELEASE")), sync,
           InstallerRelease::ReleaseInstall.new(home: share, bundle: bundle, sync: sync, choice: choice))
       end

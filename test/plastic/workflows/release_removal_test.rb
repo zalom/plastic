@@ -5,7 +5,8 @@ require_relative "../../../lib/plastic/workflows/release_removal"
 
 class ReleaseRemovalTest < Plastic::TestCase
   def teardown
-    InstallerRelease::Rubies.remove(share)
+    FileUtils.chmod_R("u+w", share, force: true)
+    FileUtils.rm_rf(share)
     super
   end
 

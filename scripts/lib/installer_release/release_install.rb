@@ -3,7 +3,7 @@
 require "fileutils"
 require "shellwords"
 require_relative "bundle"
-require_relative "rubies"
+require_relative "ruby_choice"
 
 module InstallerRelease
   # Installs one verified release: checks its manifest against the requested
@@ -12,7 +12,7 @@ module InstallerRelease
   # is already installed is switched to without staging. The switch syncs the
   # home through the given home sync.
   class ReleaseInstall
-    def initialize(home:, bundle: Bundle.new, sync: NoSync, choice: RubyChoice.new(home: home))
+    def initialize(home:, bundle: Bundle.new, sync: NoSync, choice: RubyChoice.new)
       @activation = Activation.new(home: home, sync: sync)
       @home = home
       @bundle = bundle
@@ -22,7 +22,7 @@ module InstallerRelease
     def call(archive:, manifest:, expected:)
       Manifest.check(manifest, archive: archive, expected_release: expected)
       version = expected.fetch("version")
-      return activation.switch(version) if activation.releases.installed?(version)
+      return relaunch(version, choice.call(manifest)) if activation.releases.installed?(version)
 
       stage(archive, version) { |candidate| activate(candidate, version, choice.call(manifest)) }
     end
@@ -30,6 +30,11 @@ module InstallerRelease
     private
 
     attr_reader :activation, :home, :bundle, :choice
+
+    def relaunch(version, ruby)
+      ReleaseLauncher.write(activation.releases.path(version), ruby, activation.releases.path(version))
+      activation.switch(version)
+    end
 
     def stage(archive, version)
       FileUtils.mkdir_p(home)
@@ -53,16 +58,22 @@ module InstallerRelease
   # the same Ruby whatever PATH holds. It replaces the bin/plastic the archive
   # carries, and bin/ruby starts the same Ruby for the hooks.
   module ReleaseLauncher
+    GONE = "plastic: %s is gone; run install.sh again: curl -fsSL https://raw.githubusercontent.com/zalom/plastic/main/install.sh | sh"
+
     def self.write(candidate, ruby, release_path)
       FileUtils.mkdir_p(File.join(candidate, "bin"))
       start = Shellwords.escape(ruby.path)
       entry = Shellwords.escape(File.join(release_path, "exe", "plastic"))
-      script(File.join(candidate, "bin", "plastic"), "#{start} --disable-gems -rrbconfig #{entry}")
-      script(File.join(candidate, "bin", "ruby"), start)
+      script(File.join(candidate, "bin", "plastic"), "#{start} --disable-gems -rrbconfig #{entry}", guard(ruby.path))
+      script(File.join(candidate, "bin", "ruby"), start, "")
     end
 
-    def self.script(path, command)
-      File.write(path, "#!/bin/sh\nexec #{command} \"$@\"\n")
+    def self.guard(ruby)
+      "[ -x #{Shellwords.escape(ruby)} ] || { echo #{Shellwords.escape(format(GONE, ruby))} >&2; exit 1; }\n"
+    end
+
+    def self.script(path, command, guard)
+      File.write(path, "#!/bin/sh\n#{guard}exec #{command} \"$@\"\n")
       File.chmod(0o755, path)
     end
   end

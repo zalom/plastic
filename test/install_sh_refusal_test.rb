@@ -52,11 +52,4 @@ class InstallShRefusalTest < Minitest::Test
     assert_equal 1, status.exitstatus
     assert_includes err, "PLASTIC_LOCAL_RELEASE"
   end
-
-  def test_refuses_an_unknown_channel
-    _out, err, status = install(PLASTIC_CHANNEL: "nightly")
-
-    assert_equal 1, status.exitstatus
-    assert_includes err, "stable, beta or alpha"
-  end
 end

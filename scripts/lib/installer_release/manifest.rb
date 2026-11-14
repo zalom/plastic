@@ -17,11 +17,11 @@ module InstallerRelease
     }.freeze
     RUBY_REQUIREMENT = ">= 4.0.0"
 
-    def self.build(archive:, release:, ruby_builds: {})
+    def self.build(archive:, release:)
       release_data = release.merge("repository" => official_url(release.fetch("tag")))
       { "schema" => 1, "release" => release_data,
         "archive" => { "name" => File.basename(archive), "sha256" => Digest::SHA256.file(archive).hexdigest },
-        "ruby" => { "requirement" => RUBY_REQUIREMENT, "builds" => ruby_builds }, "compatibility" => { "store_layout" => "current" } }
+        "ruby" => { "requirement" => RUBY_REQUIREMENT }, "compatibility" => { "store_layout" => "current" } }
     end
 
     def self.write(path, **arguments)

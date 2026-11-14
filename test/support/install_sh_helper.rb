@@ -22,6 +22,7 @@ module InstallShHelper
     @fakebin = File.join(@dir, "fakebin")
     FileUtils.mkdir_p([@home, @fakebin])
     write_tool("sha256sum", FAKE_SHA256SUM)
+    write_tool("git", "#!/bin/sh\necho git version 2.50.0\n")
   end
 
   def teardown
