@@ -76,7 +76,9 @@ class KernelStartsNoProcessGuardTest < Minitest::Test
     "File.popen" => [%(File.popen("git")), %(File.read("notes.txt"))],
     "open with a pipe" => [%(open("|git status")), %(open("notes.txt"))],
     "IO.read with a pipe" => [%(IO.read("|git status")), %(IO.read("notes.txt"))],
-    "::Open3" => [%(::Open3.capture3("git")), %(::Opened.capture3("git"))]
+    "::Open3" => [%(::Open3.capture3("git")), %(::Opened.capture3("git"))],
+    "include Open3" => [%(include Open3), %(include Comparable)],
+    "Kernel backtick" => [%(Kernel.`("git")), %(Kernel.format("%s", name))]
   }.freeze
 
   LOADING_FORMS = {
