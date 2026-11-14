@@ -38,18 +38,18 @@ module Plastic
             groups.flat_map { |key, group| apply_group(key, group) }
           end
 
-          # The group commits together; when the database refuses it, each read gets its own transaction.
+          # The group commits together; when the reader or the database refuses it, each read gets its own transaction.
           def apply_group(key, group)
             commit(key, group)
             group
-          rescue Database::Error
+          rescue Database::Error, Invalid
             group.select { |read| commit_alone(key, read) }
           end
 
           def commit_alone(key, read)
             commit(key, [read])
             true
-          rescue Database::Error
+          rescue Database::Error, Invalid
             false
           end
 

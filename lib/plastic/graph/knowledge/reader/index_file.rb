@@ -45,7 +45,12 @@ module Plastic
 
           def members = listed("clusters").flat_map { |cluster| Cluster.new(cluster).rows }
 
-          def listed(field) = Array(object[field])
+          def listed(field)
+            entries = Array(object[field])
+            return entries if entries.all?(Hash)
+
+            raise Invalid, "#{StoreFolder::INDEX} lists an entry under #{field} that is not a JSON object"
+          end
 
           def object
             return @data if @data.is_a?(Hash)

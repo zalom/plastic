@@ -46,7 +46,7 @@ class KnowledgeReaderIndexFileTest < Plastic::TestCase
   end
 
   def test_an_index_that_lists_a_value_that_is_not_a_json_object_is_refused_with_its_reason
-    reasons = [index([5], []), index([], [5])].map { |text| assert_raises(Plastic::Invalid) { IndexFile.new(text, "a1b2").apply(nil) }.message }
+    reasons = [index([5], []), index([], [5])].map { |text| assert_raises(Plastic::Invalid) { apply(text) }.message }
 
     assert_equal ["store/index.json lists an entry under intents that is not a JSON object",
       "store/index.json lists an entry under clusters that is not a JSON object"], reasons

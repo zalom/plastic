@@ -11,6 +11,8 @@ module Plastic
         HEADING = /\A(#+)\s*(.*?)\s*\z/
         BULLET = /\A[-*]\s*(?:\[[ xX]\]\s*)?(.+)\z/
         NEGATIVE = %r{\A(?:-\z|(?:no|not|none|pending|n/a|tbd|false|rejected|awaiting|waiting|requested|changes|declined|denied|never|unapproved)[[:punct:]]*(?:\s|\z))}i
+        # The marks a person writes around a word in Markdown, read past before the first word is judged.
+        MARKS = /\A[`"'(\[{_~“‘«]+/
         FORMS = {
           "Merged" => /\A(?:\S+ +into +)?\S+ +at +(?:\D*\d|`?\h{7,40}\b)/,
           "Approved" => /\A(?:by +)?\S.*? +on +\d{4}-\d{2}-\d{2}(?!\d)/
@@ -58,7 +60,7 @@ module Plastic
 
         def positive?(label) = values(label).any? { |value| in_form?(label, value) }
 
-        def in_form?(label, value) = !NEGATIVE.match?(value) && FORMS.fetch(label).match?(value) && !PLACEHOLDER.match?(value)
+        def in_form?(label, value) = !NEGATIVE.match?(value.sub(MARKS, "")) && FORMS.fetch(label).match?(value) && !PLACEHOLDER.match?(value)
 
         def values(label) = verification.filter_map { |bullet| bullet[/\A#{Regexp.escape(label)}\s*:\s*(\S.*)\z/i, 1] }
 
