@@ -75,6 +75,26 @@ class InstallerReleaseInstallTest < Minitest::Test
     assert_equal %w[2.0.3 2.0.2], [activation.active_version, activation.previous_version]
   end
 
+  def test_a_launcher_whose_ruby_is_gone_prints_one_line_naming_install_sh
+    candidate = File.join(@root, "candidate")
+    InstallerRelease::ReleaseLauncher.write(candidate, InstallerRelease::Ruby.new(File.join(@root, "gone", "ruby")), candidate)
+    out, err, status = ChildProcess.capture3({ "PATH" => ChildProcess::PATH }, File.join(candidate, "bin", "plastic"), "version")
+
+    assert_equal [1, ""], [status.exitstatus, out]
+    assert_equal 1, err.lines.size
+    assert_includes err, "install.sh"
+  end
+
+  def test_a_second_install_of_the_same_version_rewrites_the_launcher
+    directory = release_files
+    install(directory)
+    launcher = File.join(release_path("2.0.3"), "bin", "plastic")
+    File.write(launcher, "#!/bin/sh\nexit 9\n")
+    install(directory, ruby: RbConfig.ruby)
+
+    assert_includes File.read(launcher), "exec #{RbConfig.ruby}"
+  end
+
   def test_refuses_a_release_other_than_the_one_requested
     directory = release_files
     files = InstallerRelease::ReleaseFiles.new(directory)

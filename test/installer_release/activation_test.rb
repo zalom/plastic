@@ -72,6 +72,15 @@ class InstallerReleaseActivationTest < Minitest::Test
     assert_equal %w[2.0.1 2.0.3], versions(installer)
   end
 
+  def test_the_install_release_script_switches_to_an_installed_release_on_switch
+    activation_with("2.0.2", "2.0.3")
+    script = File.expand_path("../../scripts/install-release", __dir__)
+    _out, err, status = ChildProcess.capture3({ "HOME" => @root }, RbConfig.ruby, "--disable-gems", "-rrbconfig", script, "--switch", "2.0.2",
+      "--home", install_home, "--bin", File.join(@root, "bin"), "--plastic-home", File.join(@root, "plastic"), "--user-home", @root)
+
+    assert_equal [0, "", "2.0.2"], [status.exitstatus, err, InstallerRelease::Activation.new(home: install_home).active_version]
+  end
+
   def test_lists_the_installed_releases
     installer = activation_with("2.0.1", "2.0.2", "2.0.3")
 
