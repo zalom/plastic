@@ -127,7 +127,9 @@ class KnowledgeReaderGraphViewInvalidTest < Plastic::TestCase
   def refused_message(text)
     node = printed_node("Trusted")
     write(GRAPH, text)
-    message = assert_raises(Plastic::Invalid) { sync.apply(sync_up_plan) }.message
+    plan = sync_up_plan
+    message = plan.unreadable_files.fetch(GRAPH)
+    sync.apply(plan)
 
     assert_equal [node.id], node_rows.map { |row| row[:id] }
     message
