@@ -24,6 +24,16 @@ class EnginePermissionsTest < Plastic::TestCase
     assert_equal EnginePermissions::ENTRIES, deny(EnginePermissions.merge_into({ "permissions" => { "deny" => "all" } }))
   end
 
+  def test_merge_takes_out_the_entry_an_earlier_install_wrote_for_the_scripts_folder
+    settings = { "permissions" => { "deny" => [OWN, "Edit(~/.plastic/scripts/**)"] } }
+
+    assert_equal [OWN, *EnginePermissions::ENTRIES], deny(EnginePermissions.merge_into(settings))
+  end
+
+  def test_the_retired_entries_name_the_scripts_folder
+    assert_equal ["Edit(~/.plastic/scripts/**)"], EnginePermissions::RETIRED
+  end
+
   def test_merge_leaves_the_settings_it_was_given_unchanged
     settings = { "permissions" => { "deny" => [OWN] } }
     EnginePermissions.merge_into(settings)

@@ -302,6 +302,14 @@ class InstallerCoreCodexTest < Minitest::Test
     assert_path_exists File.join(plastic_home, "lib", "plastic.rb")
   end
 
+  def test_a_distribute_removes_the_update_check_cache_of_the_retired_hook
+    cache = File.join(@home, ".plastic", ".cache", "update-check.json")
+    write(cache, JSON.generate("latest" => "9.9.9"))
+    capture_io { installer.distribute(:update, tmp_dirs: []) }
+
+    refute_path_exists cache
+  end
+
   def test_a_skill_folder_is_copied_whole_and_a_shared_fragment_lands_in_the_plastic_home
     source = File.join(@home, "skills")
     write(File.join(source, "demo", "refs", "a.md"), "a\n")

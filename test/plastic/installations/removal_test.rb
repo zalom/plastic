@@ -115,7 +115,41 @@ class InstallationsRemovalTest < Plastic::TestCase
     file = write(File.join(folder, "plastic", "VERSION"), "2.0.5")
     paths = removed(record(files: [file]))
 
-    assert_equal [nil, [file]], [Plastic::Installations.read(@plastic_home, "claude-code"), paths]
+    assert_equal [nil, [["removed:", file]]], [Plastic::Installations.read(@plastic_home, "claude-code"), paths]
+  end
+
+  def test_names_a_rewritten_settings_file_as_stripped_and_a_deleted_one_as_removed
+    write(settings_path, JSON.generate("model" => "opus", "hooks" => { "Stop" => [hook(PLASTIC)] }))
+    stripped = removed(record(hooks: [{ "event" => "Stop", "command" => PLASTIC }]))
+    write(settings_path, JSON.generate("hooks" => { "Stop" => [hook(PLASTIC)] }))
+    deleted = removed(record(hooks: [{ "event" => "Stop", "command" => PLASTIC }]))
+
+    assert_equal [[["stripped:", settings_path]], [["removed:", settings_path]]], [stripped, deleted]
+  end
+
+  def test_names_an_instruction_file_with_the_section_taken_out_as_stripped
+    section = "<!-- BEGIN PLASTIC COMPACT hash:abc -->\nbody\n<!-- END PLASTIC COMPACT -->\n"
+    path = write(File.join(folder, "CLAUDE.md"), "# Mine\n\n#{section}")
+    rows = removed(record(sections: [{ "file" => path, "begin" => "<!-- BEGIN PLASTIC COMPACT", "end" => "<!-- END PLASTIC COMPACT -->" }]))
+
+    assert_equal [["stripped:", path]], rows
+  end
+
+  def test_removes_the_folder_that_the_removal_emptied_and_keeps_one_that_was_empty_before
+    file = write(File.join(folder, "skills", "plastic-x", "SKILL.md"), "x")
+    FileUtils.mkdir_p(File.join(folder, "commands"))
+    rows = removed(record(files: [file], folders: [File.dirname(file)]))
+
+    assert_equal [[false, true], true], [[File.exist?(File.join(folder, "skills")), File.directory?(File.join(folder, "commands"))],
+      rows.include?(["removed:", File.join(folder, "skills")])]
+  end
+
+  def test_keeps_a_folder_that_still_holds_a_file_of_the_person_after_the_removal
+    file = write(File.join(folder, "agents", "plastic-x.md"), "x")
+    write(File.join(folder, "agents", "mine.md"), "mine")
+    removed(record(files: [file]))
+
+    assert_path_exists File.join(folder, "agents", "mine.md")
   end
 
   def test_leaves_a_settings_file_that_is_not_json
