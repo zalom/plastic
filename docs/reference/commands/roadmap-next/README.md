@@ -50,7 +50,7 @@ In the words of workflow engines, the rows are these four parts:
 
 | Place | Database or file | Tables | Reads or writes | Code |
 | --- | --- | --- | --- | --- |
-| the store folder | work_graph.db | `batches`, `roadmap_edges`, `roadmap_items`, `roadmap_log`, `roadmaps` | reads | [`next.rb:13`](../../../../lib/plastic/commands/roadmap/next.rb#L13) |
+| the store folder | work_graph.db | `batches`, `edges`, `intents`, `roadmap_edges`, `roadmap_items`, `roadmap_log`, `roadmaps` | reads | [`next.rb:13`](../../../../lib/plastic/commands/roadmap/next.rb#L13) |
 
 ## How a call ends
 
