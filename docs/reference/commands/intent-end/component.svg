@@ -92,33 +92,33 @@
 <rect x="336" y="102" width="196" height="28" rx="6" class="card"/>
 <text x="344" y="120" class="tm" text-anchor="start">Work::Completion::Review</text>
 <rect x="336" y="136" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="154" class="tm" text-anchor="start">Config</text>
+<text x="344" y="154" class="tm" text-anchor="start">Work::Session::Reader</text>
 <rect x="336" y="170" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="188" class="tm" text-anchor="start">Work::Session::Reader</text>
+<text x="344" y="188" class="tm" text-anchor="start">Check</text>
 <rect x="336" y="204" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="222" class="tm" text-anchor="start">Check</text>
+<text x="344" y="222" class="tm" text-anchor="start">Review</text>
 <rect x="336" y="238" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="256" class="tm" text-anchor="start">Review</text>
+<text x="344" y="256" class="tm" text-anchor="start">Evidence</text>
 <rect x="336" y="272" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="290" class="tm" text-anchor="start">Evidence</text>
+<text x="344" y="290" class="tm" text-anchor="start">Retrieval::Evidence</text>
 <rect x="336" y="306" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="324" class="tm" text-anchor="start">Retrieval::Evidence</text>
+<text x="344" y="324" class="tm" text-anchor="start">WorkCheck</text>
 <rect x="336" y="340" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="358" class="tm" text-anchor="start">WorkCheck</text>
+<text x="344" y="358" class="tm" text-anchor="start">Knowledge::Outcome</text>
 <rect x="336" y="374" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="392" class="tm" text-anchor="start">Knowledge::Outcome</text>
+<text x="344" y="392" class="tm" text-anchor="start">Knowledge::Spec</text>
 <rect x="336" y="408" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="426" class="tm" text-anchor="start">Knowledge::Spec</text>
+<text x="344" y="426" class="tm" text-anchor="start">Lock::Liveness</text>
 <rect x="336" y="442" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="460" class="tm" text-anchor="start">Lock::Liveness</text>
+<text x="344" y="460" class="tm" text-anchor="start">Claims</text>
 <rect x="336" y="476" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="494" class="tm" text-anchor="start">Claims</text>
+<text x="344" y="494" class="tm" text-anchor="start">Roadmaps</text>
 <rect x="336" y="510" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="528" class="tm" text-anchor="start">Roadmaps</text>
+<text x="344" y="528" class="tm" text-anchor="start">FrontMatter</text>
 <rect x="336" y="544" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="562" class="tm" text-anchor="start">FrontMatter</text>
+<text x="344" y="562" class="tm" text-anchor="start">Reader::GraphFile</text>
 <rect x="336" y="578" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="596" class="tm" text-anchor="start">Reader::GraphFile</text>
+<text x="344" y="596" class="tm" text-anchor="start">VerificationSection</text>
 <rect x="336" y="612" width="196" height="28" rx="6" class="card"/>
 <text x="344" y="630" class="tm" text-anchor="start">Lock::Claim</text>
 <rect x="336" y="646" width="196" height="28" rx="6" class="card"/>

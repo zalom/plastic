@@ -127,7 +127,7 @@ These endings hold for every command, so a command page lists only its own.
 | a broken projects file | 1 | prints no next: line | [`command.rb:107`](../../../lib/plastic/cli/command.rb#L107) |
 | a step whose done check still fails | 1 | prints no next: line | [`step.rb:14`](../../../lib/plastic/code_workflow/step.rb#L14) |
 | a step that raises, except a usage error, which keeps exit 2 | 1 | prints no next: line | [`code_workflow.rb:103`](../../../lib/plastic/code_workflow.rb#L103) |
-| a print failure after the workflows | 1 | prints no next: line | [`printing.rb:45`](../../../lib/plastic/routine/printing.rb#L45) |
+| a print failure after the workflows | 1 | prints no next: line | [`printing.rb:35`](../../../lib/plastic/routine/printing.rb#L35) |
 | a closing line that cannot fill | 1 | prints no next: line | [`finished.rb:29`](../../../lib/plastic/finished.rb#L29) |
 | an agent handoff that cannot print | 1 | prints no next: line | [`agent_workflow.rb:54`](../../../lib/plastic/agent_workflow.rb#L54) |
 | a dry run that cannot open its database | 1 | prints no next: line | [`preview.rb:38`](../../../lib/plastic/routine/preview.rb#L38) |
