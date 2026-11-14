@@ -78,7 +78,7 @@ class ProjectNewTest < Plastic::TestCase
 
     assert_equal "# blog\n\nRules for agents working on this repository.\n", File.read(rule_file("AGENTS.md"))
     assert_equal "@AGENTS.md\n", File.read(rule_file("CLAUDE.md"))
-    assert_includes result.out, "created AGENTS.md and CLAUDE.md in #{checkout}"
+    assert_includes result.out, "created  AGENTS.md and CLAUDE.md in #{checkout}"
   end
 
   def test_a_present_agents_file_is_left_byte_for_byte
@@ -86,7 +86,7 @@ class ProjectNewTest < Plastic::TestCase
     result = make("blog", checkout)
 
     assert_equal "mine\n", File.read(rule_file("AGENTS.md"))
-    assert_includes result.out, "created CLAUDE.md in #{checkout}"
+    assert_includes result.out, "created  CLAUDE.md in #{checkout}"
   end
 
   def test_a_claude_file_without_the_import_is_left_byte_for_byte

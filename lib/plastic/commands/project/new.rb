@@ -3,6 +3,7 @@
 require_relative "../../cli/command"
 require_relative "../../cli/project_name"
 require_relative "../../cli/projects_file"
+require_relative "../../cli/rule_files"
 require_relative "../../graph"
 
 module Plastic
@@ -21,6 +22,7 @@ module Plastic
           path = checked_path
           register(slug, path)
           make_ready(slug)
+          name_written(CLI::RuleFiles.new(path, slug).write_absent, path)
           announce(slug, path)
         end
 
@@ -45,6 +47,10 @@ module Plastic
 
         def make_ready(slug)
           Plastic::Graph.create(home: scope.plastic_home, store: slug, session: environment.session)
+        end
+
+        def name_written(files, path)
+          output.row("created", "#{files.join(" and ")} in #{path}") unless files.empty?
         end
 
         def announce(slug, path)
