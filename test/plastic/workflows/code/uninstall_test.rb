@@ -32,6 +32,19 @@ class UninstallPlasticTest < Plastic::TestCase
     assert_includes context.printed.join, "claude-code: no record lists what Plastic wrote"
   end
 
+  def test_a_call_that_removes_nothing_ends_on_unrecorded
+    uninstall("claude-code")
+    outcome, = uninstall("claude-code")
+
+    assert_equal :unrecorded, outcome
+  end
+
+  def test_the_call_that_removes_the_releases_ends_on_released
+    outcome, = uninstall("claude-code", "codex")
+
+    assert_equal :released, outcome
+  end
+
   def test_the_releases_stay_while_another_harness_is_recorded
     uninstall("claude-code")
 
