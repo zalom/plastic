@@ -43,7 +43,16 @@ class ClaudeHooksTest < Plastic::TestCase
 
     assert_empty(commands(settings, "SessionStart").grep(/check-update/))
     refute_includes out, "Kept"
+    assert_predicate out, :ascii_only?
     assert_includes out, "plastic-check-update"
+  end
+
+  def test_a_kept_hook_with_the_reserved_prefix_is_named_in_plain_ascii
+    own = { "hooks" => { "Stop" => [{ "matcher" => "", "hooks" => [{ "type" => "command", "command" => "~/.claude/hooks/plastic-mine" }] }] } }
+    _settings, out = merge(own)
+
+    assert_includes out, "Kept 1 hook(s)"
+    assert_predicate out, :ascii_only?
   end
 
   def test_the_install_registers_no_check_update
