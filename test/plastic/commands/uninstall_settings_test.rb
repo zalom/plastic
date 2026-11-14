@@ -16,6 +16,7 @@ class UninstallSettingsCommandTest < Plastic::TestCase
     FileUtils.mkdir_p(File.join(@plastic_home, ".cache"))
     File.write(File.join(@plastic_home, ".cache", "original-statusline.json"), JSON.generate(original))
     edit_settings { |settings| settings.merge("statusLine" => { "type" => "command", "command" => plastic_statusline }) }
+    call("config", "set", "statusline", "true")
     call("install", "--reinstall")
     call("uninstall", "1")
 

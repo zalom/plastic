@@ -29,6 +29,12 @@ module EnginePermissions
     "Edit(~/.plastic/hooks/**)",
   ].freeze
 
+  # Entries an earlier install wrote and this one does not. A merge takes them
+  # out and the record lists them, so an uninstall takes them out too.
+  RETIRED = [
+    "Edit(~/.plastic/scripts/**)",
+  ].freeze
+
   # Returns a new settings hash with ENTRIES merged into permissions.deny, appended
   # (never duplicated) alongside whatever is already there. Survives a permissions
   # or deny value that is not the shape expected (row 3.12): a non-Hash permissions
@@ -43,6 +49,7 @@ module EnginePermissions
     deny = permissions["deny"]
     deny = deny.is_a?(Array) ? deny.dup : []
 
+    deny -= RETIRED
     ENTRIES.each { |entry| deny << entry unless deny.include?(entry) }
 
     permissions["deny"] = deny

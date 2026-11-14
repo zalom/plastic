@@ -74,7 +74,7 @@ module Plastic
 
       def permissions
         rules = settings["permissions"]
-        EnginePermissions::ENTRIES & Array(rules.is_a?(Hash) && rules["deny"])
+        (EnginePermissions::ENTRIES + EnginePermissions::RETIRED) & Array(rules.is_a?(Hash) && rules["deny"])
       end
 
       def sections

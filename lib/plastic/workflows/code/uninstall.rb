@@ -22,7 +22,7 @@ module Plastic
           plastic_home = context.scope.plastic_home
           context.picked.each do |name|
             removed = Installations.remove(plastic_home, name)
-            removed ? removed.each { |path| context.row("removed:", path) } : context.print(format(UNRECORDED, name))
+            removed ? removed.each { |label, path| context.row(label, path) } : context.print(format(UNRECORDED, name))
           end
           context[:removed] = true
         end

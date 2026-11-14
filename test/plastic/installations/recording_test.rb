@@ -50,6 +50,7 @@ end
 
   def test_the_record_keeps_the_status_line_plastic_replaced
     own_settings("statusLine" => MINE)
+    call("config", "set", "statusline", "true")
     installed_into("claude", argv: %w[--statusline plastic])
     status_line = recorded("claude-code").status_line
 

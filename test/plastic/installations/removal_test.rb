@@ -36,7 +36,7 @@ class InstallationsRemovalTest < Plastic::TestCase
     file = write(File.join(folder, "skills", "plastic-x", "SKILL.md"), "x")
     removed(record(files: [file], folders: [File.dirname(file)]))
 
-    assert_equal [false, true], [File.exist?(File.dirname(file)), File.directory?(File.join(folder, "skills"))]
+    assert_equal [false, false], [File.exist?(File.dirname(file)), File.directory?(File.join(folder, "skills"))]
   end
 
   def test_keeps_a_listed_folder_that_holds_a_file_of_the_person
@@ -115,7 +115,7 @@ class InstallationsRemovalTest < Plastic::TestCase
     file = write(File.join(folder, "plastic", "VERSION"), "2.0.5")
     paths = removed(record(files: [file]))
 
-    assert_equal [nil, [["removed:", file]]], [Plastic::Installations.read(@plastic_home, "claude-code"), paths]
+    assert_equal [nil, [["removed:", file], ["removed:", File.dirname(file)]]], [Plastic::Installations.read(@plastic_home, "claude-code"), paths]
   end
 
   def test_names_a_rewritten_settings_file_as_stripped_and_a_deleted_one_as_removed
@@ -144,6 +144,14 @@ class InstallationsRemovalTest < Plastic::TestCase
       rows.include?(["removed:", File.join(folder, "skills")])]
   end
 
+  def test_removes_the_empty_agents_skills_and_hooks_folders_an_install_made_and_keeps_other_empty_ones
+    %w[agents skills hooks commands].each { |name| FileUtils.mkdir_p(File.join(folder, name)) }
+    removed(record)
+
+    assert_equal [[false, false, false], true],
+      [%w[agents skills hooks].map { |name| File.exist?(File.join(folder, name)) }, File.directory?(File.join(folder, "commands"))]
+  end
+
   def test_keeps_a_folder_that_still_holds_a_file_of_the_person_after_the_removal
     file = write(File.join(folder, "agents", "plastic-x.md"), "x")
     write(File.join(folder, "agents", "mine.md"), "mine")
@@ -163,7 +171,7 @@ class InstallationsRemovalTest < Plastic::TestCase
     file = write(File.join(folder, "plastic", "VERSION"), "2.0.5")
     planned = Plastic::Installations::Removal.new(record(files: [file]), plastic_home: @plastic_home).planned
 
-    assert_equal [["remove:", file], ["remove:", Plastic::Installations.path(@plastic_home, "claude-code")]], planned
+    assert_equal [["remove:", file], ["remove:", File.dirname(file)], ["remove:", Plastic::Installations.path(@plastic_home, "claude-code")]], planned
   end
 
   def test_keeps_a_hook_group_that_holds_no_hook_list

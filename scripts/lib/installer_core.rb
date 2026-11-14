@@ -287,6 +287,7 @@ class InstallerCore
     pruned = prune_removed_files(old_files - global_files, root: plastic_home)
     removed = remove_retired_session_state(plastic_home: plastic_home, tmp_dirs: tmp_dirs)
     puts "  #{removed} retired session state file(s) removed" if removed.positive?
+    FileUtils.rm_f(File.join(plastic_home, ".cache", "update-check.json"))
 
     puts "  Core files synced (v#{version})#{pruned.positive? ? ", #{pruned} stale file(s) pruned" : ""}"
   end
