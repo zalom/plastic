@@ -1,9 +1,11 @@
 # frozen_string_literal: true
 
 require_relative "entry_list"
-require_relative "plan_builder"
 require_relative "resolution"
 require_relative "intent_folders"
+require_relative "../store_folder"
+require_relative "archived_intents"
+require_relative "readability"
 
 module Plastic
   module Graph
@@ -20,11 +22,32 @@ module Plastic
 
         # Each entry's action, and what the sync writes.
         class Plan
-          def self.build(folder, retrieval, resolution) = PlanBuilder.new(folder, retrieval, resolution).call
+          def self.build(folder, retrieval, resolution)
+            legacy = folder.legacy?
+            folders = legacy ? nil : IntentFolders.new(folder, retrieval)
+            entries = entries(folder, retrieval, folders)
+            new(resolution:, entries:, unreadable: Array(folders&.problems),
+              archived: archived(folder, retrieval, resolution),
+              unreadable_files: unreadable_files_of(Readability.new(folder, retrieval), entries, resolution.up? && !legacy),
+              **legacy_facts(legacy, resolution))
+          end
+
+          # The legacy flag and the problem of a store, by what the call does.
+          def self.legacy_facts(legacy, resolution)
+            up = resolution.up?
+            { legacy: up && legacy, problem: (legacy_problem if legacy && !up) }
+          end
+
+          # Only a sync up of a store that is not legacy reads files.
+          def self.unreadable_files_of(readability, entries, reading) = reading ? readability.unreadable(entries) : {}
 
           def self.entries(folder, retrieval, folders = nil) = EntryList.new(folder, retrieval, folders).entries
 
           def self.on_disk(folder, folders = nil) = EntryList.new(folder, nil, folders).on_disk
+
+          def self.archived(folder, retrieval, resolution) = (resolution.up? && !folder.legacy?) ? ArchivedIntents.new(folder, retrieval).missing.size : 0
+
+          def self.legacy_problem = "this store still has #{StoreFolder::LEGACY_INDEX}; run plastic sync up to import it first"
 
           def direction = resolution.direction
 
@@ -36,7 +59,7 @@ module Plastic
           def taking(action) = actions.select { |_entry, found| found == action }.keys
 
           # The prints of the entries this plan prints, taken from `fresh` where the rows have a newer one.
-          def reprinted(fresh) = taking(:print).map { |entry| entry.reprinted_from(fresh) }
+          def reprinted(fresh) = taking(:print).map { |entry| fresh.fetch(entry.path, entry.print) }
 
           # The records this sync writes; zero when the folder and the rows are level.
           def pending = actions.values.count { |action| %i[record read print].include?(action) } + (legacy ? 1 : 0) + archived

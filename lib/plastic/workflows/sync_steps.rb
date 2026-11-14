@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require_relative "sync_facts"
-
 module Plastic
   module Workflows
     # The steps of a sync, in either direction: plan, stop on what cannot
@@ -20,11 +18,37 @@ module Plastic
       UNREADABLE_FILES = "files that cannot be read into rows, the others were read:\n%{unreadable_files}\n" \
                          "each file prints again from its rows with the command below"
 
+      def self.plan(context, direction)
+        context.work.sync_plan(direction, { overwrite: context.overwrite, merge: context.merge })
+      end
+
+      # What the gates read, kept as facts.
+      def self.note(context, plan)
+        context[:failure] = plan.failure
+        context[:conflicts] = plan.conflicts.join(", ")
+        context[:merging] = plan.merging?
+        note_unreadable(context, plan)
+        context[:lines] = nil
+      end
+
+      def self.note_unreadable(context, plan)
+        files = plan.left_unreadable
+        context[:unreadable] = plan.unreadable.join("\n")
+        context[:unreadable_files] = files.map { |path, reason| "#{path}: #{reason}" }.join("\n")
+        context[:unreadable_path] = files.keys.first
+      end
+
+      def self.apply(context, direction) = context[:lines] = context.work.sync_apply(plan(context, direction))
+
+      def self.applied(direction) = ->(context) { plan(context, direction).pending.zero? }
+
       # No intent folder is left that could not be read.
       def self.readable?(context) = context.unreadable.empty?
 
       # No changed file is left that no reader can turn into rows.
       def self.files_read?(context) = context.unreadable_files.empty?
+
+      def self.say(context) = Array(context.lines).each { |line| context.print(line) }
 
       def self.runs?(context) = !context.failure
 
@@ -59,14 +83,14 @@ module Plastic
       end
 
       def plan_steps(direction)
-        read("plan the sync") { |context| SyncFacts.note(context, SyncFacts.plan(context, direction)) }
+        read("plan the sync") { |context| SyncSteps.note(context, SyncSteps.plan(context, direction)) }
         gate "%{failure}", stops: :failure, pass: SyncSteps.check(:runs?)
         gate REFUSED_BEFORE, stops: :refusal, pass: SyncSteps.check(:writes?)
       end
 
       def apply_steps(direction)
-        step("apply the changes", done: SyncFacts.applied(direction)) { |context| SyncFacts.apply(context, direction) }
-        read("say what changed") { |context| SyncFacts.say(context) }
+        step("apply the changes", done: SyncSteps.applied(direction)) { |context| SyncSteps.apply(context, direction) }
+        read("say what changed") { |context| SyncSteps.say(context) }
         gate REFUSED_AFTER, stops: :refusal, pass: SyncSteps.check(:settled?)
       end
     end

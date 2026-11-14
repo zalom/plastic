@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "json"
 require_relative "../../prints"
 require_relative "../store_folder"
 require_relative "settling"
@@ -28,10 +29,26 @@ module Plastic
           # No reader turns a roadmap file into rows, so sync up prints it again from its rows.
           def self.roadmap?(path) = path.to_s.start_with?("roadmaps/")
 
-          def rows_sha = print.sha256
+          # The entry of `path` in `folder`. A generated file that holds the content of its
+          # print in other bytes is level: the bytes are a formatter's, not a person's edit.
+          def self.for(folder, path, printed_sha, print)
+            new(path, level_sha(folder, path, print), printed_sha, print)
+          end
 
-          # The print from `fresh`, a hash of prints by path, when the rows have a newer one.
-          def reprinted_from(fresh) = fresh.fetch(path, print)
+          def self.level_sha(folder, path, print)
+            sha = folder.digest(path)
+            (sha && generated?(path) && same_print?(folder.read(path), print)) ? print.sha256 : sha
+          end
+
+          def self.same_print?(bytes, print) = print.sha256 && same_content?(bytes, print.text)
+
+          def self.same_content?(bytes, text)
+            JSON.parse(bytes.force_encoding(Encoding::UTF_8)) == JSON.parse(text)
+          rescue JSON::ParserError
+            false
+          end
+
+          def rows_sha = print.sha256
 
           # The index and the context views: the rows print them again after a read.
           def generated? = Entry.generated?(path)

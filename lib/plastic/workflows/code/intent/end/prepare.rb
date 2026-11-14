@@ -7,7 +7,6 @@ require_relative "../../../../graph/work/completion/check"
 require_relative "../../../../graph/work/completion/review"
 require_relative "../../../delivery_ownership"
 require_relative "../../../review_round"
-require_relative "record_facts"
 
 module Plastic
   module Workflows
@@ -49,9 +48,26 @@ module Plastic
 
             def self.record_facts(context)
               check = Plastic::Graph::Work::Completion::Check.new(context.retrieval, context.intent_id)
-              context[:requirements] = check.record_problems + (RecordFacts.review_required?(context) ? RecordFacts.pull_request_problems(check) : [])
+              context[:requirements] = check.record_problems + (review_required?(context) ? pull_request_problems(check) : [])
               review_facts(context)
-              RecordFacts.verification_facts(context, check.verification)
+              verification_facts(context, check.verification)
+            end
+
+            def self.verification_facts(context, verification)
+              context[:merge_recorded], context[:map_recorded] = [verification.merged?, verification.architecture_map?]
+              context[:merge_found] = merge_found(verification)
+              context[:approval_found] = approval_found(verification)
+              context[:awaiting_approval] = review_required?(context) && ready_for_approval?(context) && !verification.approved?
+            end
+
+            def self.merge_found(verification)
+              found = verification.rejected("Merged")
+              found ? "outcome.md says '#{found}', which is not a merge in the form 'Merged: <branch> into <base> at <commit or pull request>'. " : ""
+            end
+
+            def self.approval_found(verification)
+              found = verification.rejected("Approved")
+              found ? "outcome.md says '#{found}', which is not an approval in the form 'Approved: <person> on <YYYY-MM-DD>'; " : ""
             end
 
             def self.review_facts(context)
@@ -60,6 +76,16 @@ module Plastic
               context[:missing] = (context.requirements + (context.judged ? [] : [NOT_JUDGED])).join(" ")
               context[:used_up] = review.used_up?
             end
+
+            def self.review_required?(context)
+              Config.new(context.scope.plastic_home).choice(%w[review pull_request], default: "off", allowed: %w[required off]) == "required"
+            end
+
+            def self.pull_request_problems(check)
+              check.verification.pull_request? ? [] : ["Add a line starting Pull request: to the Verification section of outcome.md and run plastic sync up."]
+            end
+
+            def self.ready_for_approval?(context) = context.requirements.empty? && context.judged
 
             gate ReviewRound::MESSAGE, stops: :refusal,
               pass: ->(context) { !context.used_up }
