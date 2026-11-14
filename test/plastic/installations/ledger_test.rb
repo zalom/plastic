@@ -1,0 +1,27 @@
+# frozen_string_literal: true
+
+require_relative "../../test_helper"
+require "plastic/installations/ledger"
+
+class LedgerTest < Plastic::TestCase
+  def ledger = Plastic::Installations::Ledger.new(@plastic_home)
+
+  def test_a_row_carries_local_time_with_its_offset_and_no_harness_when_none_is_named
+    ledger.append("2.0.3", "install")
+    row = JSON.parse(File.read(File.join(@plastic_home, "versions.json")))
+
+    assert_equal [true, %w[version action at]], [row["at"].match?(/[+-]\d\d:\d\d\z/), row.keys]
+  end
+
+  def test_the_rows_read_back_in_order_and_a_broken_or_blank_line_is_skipped
+    ledger.append("2.0.2", "install")
+    File.write(File.join(@plastic_home, "versions.json"), "{ broken\n\n", mode: "a")
+    ledger.append("2.0.3", "update", harness: "claude")
+
+    assert_equal [%w[2.0.2 2.0.3], "claude"], [ledger.read.map { |row| row["version"] }, ledger.read.last["harness"]]
+  end
+
+  def test_a_ledger_that_does_not_exist_reads_as_no_rows
+    assert_empty Plastic::Installations::Ledger.new(File.join(@home, "nowhere")).read
+  end
+end

@@ -34,6 +34,28 @@ class EnginePermissionsTest < Plastic::TestCase
     assert_equal ["Edit(~/.plastic/scripts/**)"], Plastic::Installations::EnginePermissions::RETIRED
   end
 
+  def test_merge_file_writes_the_merged_settings_and_reports_true
+    path = File.join(@home, "settings.json")
+    File.write(path, JSON.generate("permissions" => { "deny" => [OWN] }))
+
+    assert_equal [true, [OWN, *Plastic::Installations::EnginePermissions::ENTRIES]],
+      [Plastic::Installations::EnginePermissions.merge_file(path), deny(JSON.parse(File.read(path)))]
+  end
+
+  def test_merge_file_creates_a_missing_file
+    path = File.join(@home, "new.json")
+
+    assert_equal [true, Plastic::Installations::EnginePermissions::ENTRIES],
+      [Plastic::Installations::EnginePermissions.merge_file(path), deny(JSON.parse(File.read(path)))]
+  end
+
+  def test_merge_file_leaves_a_file_that_is_not_json_untouched_and_reports_false
+    path = File.join(@home, "broken.json")
+    File.write(path, "{ nope")
+
+    assert_equal [false, "{ nope"], [Plastic::Installations::EnginePermissions.merge_file(path), File.read(path)]
+  end
+
   def test_merge_leaves_the_settings_it_was_given_unchanged
     settings = { "permissions" => { "deny" => [OWN] } }
     Plastic::Installations::EnginePermissions.merge_into(settings)
