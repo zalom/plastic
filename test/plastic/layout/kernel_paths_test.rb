@@ -119,6 +119,11 @@ class KernelPathsTest < Minitest::Test
   CODE
 
   def failing_loads(files)
+    runs = files.each_slice((files.size / 6.0).ceil).map { |slice| Thread.new { forked_loads(slice) } }
+    runs.flat_map(&:value)
+  end
+
+  def forked_loads(files)
     out, = ChildProcess.capture2e(RbConfig.ruby, "-I", File.join(ROOT, "lib"), "-e", FORKED_LOADS, *files, chdir: ROOT)
     out.lines.grep(/\AFAILED /).map { |line| line.chomp.delete_prefix("FAILED ") }
   end
