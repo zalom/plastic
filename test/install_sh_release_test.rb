@@ -50,7 +50,29 @@ class InstallShReleaseTest < Minitest::Test
     assert_includes File.read(launcher), "exec #{File.join(@fakebin, "ruby")}"
   end
 
+  def test_a_home_whose_harness_was_uninstalled_ends_with_next_plastic_init
+    plastic_home("VERSION" => "9.9.8\n")
+    out, _err, status = install_local("9.9.9")
+
+    assert_equal [0, "next: plastic init"], [status.exitstatus, out.lines.last.strip]
+  end
+
+  def test_a_home_with_a_harness_installed_ends_with_next_plastic_version
+    plastic_home("VERSION" => "9.9.8\n", "installations/claude-code.json" => "{}\n")
+    out, _err, status = install_local("9.9.9")
+
+    assert_equal [0, "next: plastic version"], [status.exitstatus, out.lines.last.strip]
+  end
+
   private
+
+  def plastic_home(files)
+    files.each do |path, text|
+      full = File.join(@home, ".plastic", path)
+      FileUtils.mkdir_p(File.dirname(full))
+      File.write(full, text)
+    end
+  end
 
   def assert_untouched
     assert_equal [false, false], [File.exist?(share), File.exist?(launcher)]
