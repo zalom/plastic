@@ -1,0 +1,107 @@
+# frozen_string_literal: true
+
+require_relative "../../test_helper"
+require_relative "package_fixture"
+require "plastic/installations/package"
+require "plastic/installations/claude_hooks"
+
+class ClaudeHooksTest < Plastic::TestCase
+  include PackageFixture
+
+  def package(root = REAL_PACKAGE) = Plastic::Installations::Package.new(root, @plastic_home, "2.0.3")
+
+  def settings_path = File.join(@home, ".claude", "settings.json")
+
+  def merge(settings, times: 1, root: REAL_PACKAGE, choice: :plastic)
+    write(settings_path, JSON.generate(settings))
+    out = ""
+    times.times { out, = capture_io { Plastic::Installations::ClaudeHooks.new(package(root), File.join(@home, ".claude")).merge(settings_path, choice:) } }
+    [JSON.parse(File.read(settings_path)), out]
+  end
+
+  def commands(settings, event) = Array(settings["hooks"][event]).flat_map { |group| group["hooks"].map { |hook| hook["command"] } }
+
+  def test_the_install_writes_the_kernel_hooks
+    settings, = merge({})
+    kernel = %("#{File.join(@plastic_home, "exe", "plastic")}")
+    expected = { "SessionStart" => "#{kernel} hook start", "Stop" => "#{kernel} hook stop", "SessionEnd" => "#{kernel} hook end" }
+
+    assert_empty(expected.reject { |event, text| commands(settings, event).any? { |cmd| cmd.include?(text) } })
+  end
+
+  def test_the_install_registers_no_check_update
+    settings, = merge({})
+
+    assert_empty(commands(settings, "SessionStart").grep(/check-update/))
+  end
+
+  def test_a_release_install_binds_the_hooks_to_the_active_launcher
+    share = File.join(@home, ".local", "share", "plastic")
+    root = File.join(share, "releases", "2.0.3")
+    former = %(env -u RUBYOPT "#{File.join(@plastic_home, "bin", "plastic")}" hook resume --harness claude-code || true)
+    settings, = merge({ "hooks" => { "SessionStart" => [{ "matcher" => "", "hooks" => [{ "type" => "command", "command" => former }] }] } }, root:)
+
+    assert_equal [%(env -u RUBYOPT "#{File.join(share, "active", "bin", "plastic")}" hook start || true)], commands(settings, "SessionStart").grep(/hook start/)
+  end
+
+  def test_a_release_install_over_a_repository_install_keeps_one_group_per_event
+    merge({})
+    share = File.join(@home, ".local", "share", "plastic")
+    settings, = merge(JSON.parse(File.read(settings_path)), root: File.join(share, "releases", "2.0.3"))
+    kernel = %w[SessionStart Stop SessionEnd].map { |event| commands(settings, event).grep(/plastic"? hook (start|stop|end)/) }
+
+    assert_equal [1, 1, 1], kernel.map(&:size)
+    assert(kernel.flatten.all? { |cmd| cmd.include?(File.join(share, "active", "bin", "plastic")) })
+  end
+
+  def test_a_second_install_keeps_one_group_per_event
+    settings, = merge({}, times: 2)
+
+    assert_equal 1, commands(settings, "Stop").size
+  end
+
+  def test_a_hook_of_the_person_stays_and_a_stale_plastic_hook_is_removed_and_named
+    mine = { "matcher" => "", "hooks" => [{ "type" => "command", "command" => "my-stop" }] }
+    stale = { "matcher" => "", "hooks" => [{ "type" => "command", "command" => "#{@home}/.claude/hooks/plastic-session-start" }] }
+    settings, out = merge({ "hooks" => { "Stop" => [mine], "SessionStart" => [stale] } })
+
+    assert_includes commands(settings, "Stop"), "my-stop"
+    assert_includes out, "  Removed 1 stale Plastic hook entry from settings.json:\n"
+  end
+
+  def test_a_hook_of_the_person_with_the_reserved_prefix_stays_and_is_named
+    reserved = { "matcher" => "", "hooks" => [{ "type" => "command", "command" => "~/.claude/hooks/plastic-mine" }] }
+    settings, out = merge({ "hooks" => { "Stop" => [reserved, { "command" => "plastic-bare" }, "text"] } })
+
+    assert_includes commands(settings, "Stop"), "~/.claude/hooks/plastic-mine"
+    assert_includes out, "Kept 2 hook(s) Plastic does not own, named with the reserved plastic- prefix"
+  end
+
+  def test_the_status_line_of_the_person_is_kept_in_the_cache_and_replaced_when_plastic_is_chosen_and_on
+    config_with("global:\n  statusline: true\n")
+    settings, = merge({ "statusLine" => { "type" => "command", "command" => "mine" } })
+
+    assert_equal "#{@home}/.claude/hooks/plastic-statusline", settings.dig("statusLine", "command")
+    assert_equal "mine", JSON.parse(File.read(File.join(@plastic_home, ".cache", "original-statusline.json")))["command"]
+  end
+
+  def test_the_status_line_of_the_person_stays_when_they_chose_to_keep_it
+    config_with("global:\n  statusline: true\n")
+    settings, = merge({ "statusLine" => { "type" => "command", "command" => "mine" } }, choice: :keep)
+
+    assert_equal "mine", settings.dig("statusLine", "command")
+  end
+
+  def test_a_status_line_stays_off_while_the_flag_is_off
+    settings, = merge({}, choice: :plastic)
+
+    refute settings.key?("statusLine")
+  end
+
+  def test_a_settings_file_that_does_not_exist_is_started_from_nothing
+    FileUtils.mkdir_p(File.dirname(settings_path))
+    Plastic::Installations::ClaudeHooks.new(package, File.join(@home, ".claude")).merge(settings_path)
+
+    assert_includes JSON.parse(File.read(settings_path)).keys, "hooks"
+  end
+end
