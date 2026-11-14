@@ -5,6 +5,8 @@ module Plastic
     # What an install run tells the person: a line for each agent, a table
     # when there is more than one, and the next step.
     class Results
+      VERBS = { install: "installed" }.freeze
+
       def initialize(version)
         @version = version
       end
@@ -14,7 +16,7 @@ module Plastic
         results.each { |result| puts Entry.new(result).line }
         table(results)
         done = results.select { |result| result[:success] }
-        finish(done, mode) unless done.empty?
+        finish(done, VERBS.fetch(mode, "re-synced")) unless done.empty?
       end
 
       # One agent's result as the lines and the table row an install prints.
@@ -48,8 +50,8 @@ module Plastic
         results.each { |result| puts Entry.new(result).row }
       end
 
-      def finish(done, mode)
-        puts "\nPlastic v#{@version} #{(mode == :install) ? "installed" : "re-synced"}."
+      def finish(done, verb)
+        puts "\nPlastic v#{@version} #{verb}."
         puts "   Registered for: #{done.map { |result| result[:agent] }.join(", ")}"
         puts "   Run /clear (or restart your agent) to pick up new conventions."
         puts
