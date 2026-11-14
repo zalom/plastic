@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "fileutils"
 require "json"
 
 module Plastic
@@ -21,6 +22,9 @@ module Plastic
         temporary = "#{path}.plastic-tmp.#{Process.pid}"
         File.write(temporary, text)
         File.rename(temporary, path)
+      rescue
+        FileUtils.rm_f(temporary)
+        raise
       end
     end
   end

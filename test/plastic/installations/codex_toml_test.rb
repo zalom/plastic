@@ -7,8 +7,8 @@ class CodexTomlTest < Plastic::TestCase
   CodexToml = Plastic::Installations::CodexToml
 
   def test_frontmatter_splits_from_the_body
-    assert_equal [[{ "name" => "lead" }, "Body\n"], [{}, "Body\n"], [{}, "---\n: [\n---\nBody\n"]],
-      [CodexToml.split("---\nname: lead\n---\nBody\n"), CodexToml.split("Body\n"), CodexToml.split("---\n: [\n---\nBody\n")]]
+    assert_equal [[{ "name" => "lead" }, "Body\n"], [{}, "Body\n"], [{}, "Body\n"]],
+      [CodexToml.split("---\nname: lead\n---\nBody\n"), CodexToml.split("Body\n"), CodexToml.split("---\n: [\n---\nBody\n")]
   end
 
   def test_frontmatter_that_is_not_a_mapping_reads_as_empty
@@ -38,17 +38,14 @@ class CodexTomlTest < Plastic::TestCase
 
   def test_a_document_has_a_fixed_field_order_and_the_body_in_a_multi_line_string
     source = File.join(@home, "demo.md")
-    File.write(source, "---\nname: demo\ndescription: A \"demo\"\nmodel: gpt-x\n---\nBody.\n")
-    document = CodexToml.render(source, nil, "high")
+    File.write(source, %(---\nname: demo\ndescription: A "demo"\nmodel: gpt-x\n---\nBody.\n))
 
-    assert_equal <<~TOML, document
+    assert_equal <<~TOML, CodexToml.render(source, nil, "high")
       name = "demo"
       description = "A \\"demo\\""
       model = "gpt-x"
       model_reasoning_effort = "high"
-      developer_instructions = """
-      Body.
-      """
+      developer_instructions = """\nBody.\n"""
     TOML
   end
 

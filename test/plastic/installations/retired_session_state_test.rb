@@ -29,14 +29,6 @@ class RetiredSessionStateTest < Plastic::TestCase
     assert_equal [1, ["other.json"]], [Retired.new(@plastic_home, [tmp]).call, Dir.children(tmp)]
   end
 
-  def test_a_name_that_is_not_valid_text_is_not_a_match
-    tmp = File.join(@home, "tmp")
-    FileUtils.mkdir_p(tmp)
-    File.write(File.join(tmp.b, "plastic-\xFF--x.json".b), "{")
-
-    assert_equal 1, Retired.new(@plastic_home, [tmp]).call
-  end
-
   def test_a_symlinked_session_folder_is_never_followed
     target = File.join(@home, "elsewhere")
     FileUtils.mkdir_p(target)

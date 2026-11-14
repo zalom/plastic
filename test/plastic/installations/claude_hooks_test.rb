@@ -19,7 +19,7 @@ class ClaudeHooksTest < Plastic::TestCase
     [JSON.parse(File.read(settings_path)), out]
   end
 
-  def commands(settings, event) = Array(settings["hooks"][event]).flat_map { |group| group["hooks"].map { |hook| hook["command"] } }
+  def commands(settings, event) = Array(settings["hooks"][event]).flat_map { |group| Array(group.is_a?(Hash) ? group["hooks"] : nil).map { |hook| hook["command"] } }
 
   def test_the_install_writes_the_kernel_hooks
     settings, = merge({})
@@ -50,8 +50,7 @@ class ClaudeHooksTest < Plastic::TestCase
     settings, = merge(JSON.parse(File.read(settings_path)), root: File.join(share, "releases", "2.0.3"))
     kernel = %w[SessionStart Stop SessionEnd].map { |event| commands(settings, event).grep(/plastic"? hook (start|stop|end)/) }
 
-    assert_equal [1, 1, 1], kernel.map(&:size)
-    assert(kernel.flatten.all? { |cmd| cmd.include?(File.join(share, "active", "bin", "plastic")) })
+    assert_equal [[1, 1, 1], true], [kernel.map(&:size), kernel.flatten.all? { |cmd| cmd.include?("#{share}/active/bin/plastic") }]
   end
 
   def test_a_second_install_keeps_one_group_per_event

@@ -24,7 +24,7 @@ class LegacyPluginTest < Plastic::TestCase
     migrate
 
     assert_equal [{ "extraKnownMarketplaces" => { "mine" => {} } }, { "mine" => {} }],
-      [JSON.parse(File.read(File.join(claude, "settings.json"))), JSON.parse(File.read(File.join(claude, "plugins", "known_marketplaces.json")))]
+      %w[settings.json plugins/known_marketplaces.json].map { |name| JSON.parse(File.read(File.join(claude, name))) }
   end
 
   def test_a_clean_claude_folder_prints_nothing
