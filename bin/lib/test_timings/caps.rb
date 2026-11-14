@@ -35,8 +35,8 @@ module TestTimings
 
     def timings
       JSON.parse(File.read(@path))
-    rescue JSON::ParserError => e
-      raise NotRun, "unreadable timings file: #{@path}: #{e.message}"
+    rescue JSON::ParserError => error
+      raise NotRun, "unreadable timings file: #{@path}: #{error.message}"
     end
 
     def check_one(file, seconds)

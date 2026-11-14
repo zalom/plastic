@@ -82,20 +82,20 @@ class VerifyChangeRubycriticTest < Minitest::Test
     assert_includes done.out, "Change verified"
   end
 
-def test_rubycritic_refusing_its_call_fails_the_gate
-  done = run_gate("RubyCritic score" => [1, "Error: invalid option: --no-such-option\n"])
+  def test_rubycritic_refusing_its_call_fails_the_gate
+    done = run_gate("RubyCritic score" => [1, "Error: invalid option: --no-such-option\n"])
 
-  assert_equal 1, done.code
-  assert_match(/Failed:.*RubyCritic score/, done.out)
-  refute_includes done.out, "Change verified"
-end
+    assert_equal 1, done.code
+    assert_match(/Failed:.*RubyCritic score/, done.out)
+    refute_includes done.out, "Change verified"
+  end
 
-def test_rubycritic_failing_on_a_file_it_cannot_parse_fails_the_gate
-  done = run_gate("RubyCritic score" => [2, "broken.rb:2: syntax error\n"])
+  def test_rubycritic_failing_on_a_file_it_cannot_parse_fails_the_gate
+    done = run_gate("RubyCritic score" => [2, "broken.rb:2: syntax error\n"])
 
-  assert_equal 1, done.code
-  refute_includes done.out, "Change verified"
-end
+    assert_equal 1, done.code
+    refute_includes done.out, "Change verified"
+  end
 
   def test_reek_refusing_its_config_fails_the_gate
     done = run_gate("Code smells" => 1)

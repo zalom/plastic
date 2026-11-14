@@ -83,12 +83,9 @@ module TestTimings
   def self.verdict(path, rerun: Rerun.new, err: $stderr)
     Caps.new(path, rerun:).check
     0
-  rescue Caps::NotRun => e
-    err.puts e.message
-    3
-  rescue Caps::Failure => e
-    err.puts e.message
-    1
+  rescue Caps::NotRun, Caps::Failure => error
+    err.puts error.message
+    error.is_a?(Caps::NotRun) ? 3 : 1
   end
 
   # The command line: `check PATH`; any other call prints the usage and exits 2.
@@ -99,11 +96,6 @@ module TestTimings
     err.puts "Usage: bin/lib/test_timings.rb check PATH"
     2
   end
-
-  # Exits with the command line status only when the file itself is the program.
-  def self.main(argv, program: $PROGRAM_NAME, file: __FILE__, err: $stderr)
-    exit cli(argv, err:) if program == file
-  end
 end
 
-TestTimings.main(ARGV)
+exit TestTimings.cli(ARGV) if $PROGRAM_NAME == __FILE__

@@ -115,8 +115,6 @@ class TestTimingsTest < Minitest::Test
     assert_equal "missing timings file: #{@path}", error.message
   end
 
-
-
   def test_a_timings_file_cut_off_in_the_middle_did_not_run
     File.write(@path, %({"test/a_test.rb": 0.2, "test/b_te))
 
@@ -176,16 +174,6 @@ class TestTimingsCliTest < Minitest::Test
 
     assert_equal 2, TestTimings.cli(["check"], err:)
     assert_equal "Usage: bin/lib/test_timings.rb check PATH\n", err.string
-  end
-
-  def test_the_file_run_as_the_program_exits_with_the_command_line_status
-    exited = assert_raises(SystemExit) { TestTimings.main([], program: "a", file: "a", err: StringIO.new) }
-
-    assert_equal 2, exited.status
-  end
-
-  def test_the_file_loaded_by_another_program_exits_nothing
-    assert_nil TestTimings.main([], program: "a", file: "b")
   end
 
   def test_a_check_call_gives_the_verdict_of_the_named_file

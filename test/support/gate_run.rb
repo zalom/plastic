@@ -40,18 +40,25 @@ module GateRun
     ran = []
     out = StringIO.new
     err = StringIO.new
-    runner = ->(_env, command) { answer(codes.fetch(step_of(command).tap { |title| ran << title }, 0), step_of(command)) }
-    Finished.new(gate_for(root, out, err, runner).call, out.string, err.string, ran)
+    Finished.new(gate_for(root, out, err, runner_for(codes, ran)).call, out.string, err.string, ran)
   ensure
     FileUtils.remove_entry(root) if root
   end
 
-# A code alone is a miss as the tool prints it; a pair names its own output.
-def answer(code, title)
-  return code if code.is_a?(Array) || code.zero?
+  # A code alone is a miss as the tool prints it; a pair names its own output.
+  def answer(code, title)
+    return code if code.is_a?(Array) || code.zero?
 
-  [code, MISS_TEXT.fetch(title, "")]
-end
+    [code, MISS_TEXT.fetch(title, "")]
+  end
+
+  def runner_for(codes, ran)
+    lambda do |_env, command|
+      title = step_of(command)
+      ran << title
+      answer(codes.fetch(title, 0), title)
+    end
+  end
 
   def gate_for(root, out, err, runner)
     git = ->(*args) { [args.include?("diff") ? "#{SOURCE}\n" : "abc123\n", Git.new] }
