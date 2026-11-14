@@ -61,6 +61,13 @@ class KnowledgeSyncFileReadsTest < Plastic::TestCase
     assert_empty store_graphs.databases.fetch(:work).rows("SELECT id FROM nodes")
   end
 
+  def test_a_read_the_reader_refuses_leaves_the_other_reads_written
+    write(GRAPH, "{\"hand\":true}")
+    write("#{DIR}/notes.md", "# notes\n")
+
+    assert_equal ["read #{DIR}/notes.md"], file_reads.call([GRAPH, "#{DIR}/notes.md"])
+  end
+
   def test_a_read_the_database_refuses_stays_hand_edited_and_is_listed_by_the_next_plan
     write_null_id_graph
     file_reads.call([GRAPH])

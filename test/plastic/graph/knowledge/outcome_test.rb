@@ -101,7 +101,7 @@ class KnowledgeOutcomeValuesTest < Plastic::TestCase
   end
 
   NEGATIVE_APPROVED = ["no, changes requested on 2026-11-14", "pending review on 2026-11-20", "not yet, review due on 2026-11-20", "none on 2026-11-14",
-    "rejected by Zlatko on 2026-11-14", "awaiting review on 2026-11-14", "changes requested on 2026-11-14", "declined on 2026-11-14",
+    "rejected by Mira on 2026-11-14", "awaiting review on 2026-11-14", "changes requested on 2026-11-14", "declined on 2026-11-14",
     "denied by the owner on 2026-11-14", "requested on 2026-11-14"].freeze
 
   NEGATIVE_MERGED = ["pending at PR #57", "TBD at 2026-11-20", "not into alpha at 1"].freeze
@@ -114,8 +114,15 @@ class KnowledgeOutcomeValuesTest < Plastic::TestCase
     assert_empty NEGATIVE_MERGED.select { |value| merged_value?(value) }
   end
 
+  MARKED_NEGATIVE = ["`no` on 2026-11-14", "\"no\", changes requested on 2026-11-14", "(pending) review on 2026-11-20", "[pending] on 2026-11-20",
+    "_not_ yet, review due on 2026-11-20", "~~rejected~~ on 2026-11-14", "'none' on 2026-11-14"].freeze
+
+  def test_a_negative_first_word_inside_marks_does_not_count
+    assert_equal [[], false], [MARKED_NEGATIVE.select { |value| approved_value?(value) }, merged_value?("`pending` at PR #57")]
+  end
+
   def test_angle_brackets_count_unless_they_hold_a_placeholder_of_the_printed_form
-    values = ["Zlatko <z@example.com> on 2026-11-14", "<person> on 2026-11-14", "Zlatko on <YYYY-MM-DD>"]
+    values = ["Mira Testa <mira@example.com> on 2026-11-14", "<person> on 2026-11-14", "Mira on <YYYY-MM-DD>"]
 
     assert_equal [true, false, false], values.map { |value| approved_value?(value) }
   end
