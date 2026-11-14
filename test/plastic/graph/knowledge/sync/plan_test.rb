@@ -54,11 +54,20 @@ class KnowledgeSyncPlanTest < Plastic::TestCase
 
   def action_of(plan) = plan.actions.values.first
 
-  def test_a_generated_file_that_is_not_level_is_planned_for_a_print_up_when_it_has_rows_and_cannot_be_read
-    index = generated_plan(:up, "store/index.json", "f", "p", "r", unreadable_files: { "store/index.json" => "not JSON" })
-    context = generated_plan(:up, "store/1--alpha/context.json", "f", "p", "r")
+  def test_a_generated_file_that_cannot_be_read_is_planned_for_nothing_up
+    paths = %w[store/index.json store/1--alpha/context.json roadmaps/r1.md]
+    plans = paths.map { |path| generated_plan(:up, path, "f", "p", "r", unreadable_files: { path => "refused" }) }
 
-    assert_equal [:print, :print], [action_of(index), action_of(context)]
+    assert_equal [[:none] * 3, [0] * 3], [plans.map { |plan| action_of(plan) }, plans.map(&:pending)]
+  end
+
+  def test_build_lists_a_hand_edited_roadmap_among_the_files_sync_up_cannot_read
+    store_graphs.work.create_roadmap("r1", title: "R", goal: nil)
+    store_graphs.work.print_roadmap("r1")
+    write("roadmaps/r1.md", "# by hand\n")
+    built = Plan.build(folder, retrieval, Sync::Resolution.new(:up, store_root, {}), store_graphs.databases)
+
+    assert_equal [["roadmaps/r1.md"], :none], [built.unreadable_files.keys, built.actions.find { |entry, _action| entry.path == "roadmaps/r1.md" }.last]
   end
 
   def test_a_generated_index_that_can_be_read_is_planned_for_a_read_up

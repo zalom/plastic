@@ -84,13 +84,32 @@ class RoutinePrintingWayOutTest < Plastic::TestCase
     end
   end
 
-  def test_a_hand_edited_roadmap_is_cleared_by_the_command_the_refusal_names
+  # The refused call names the overwrite of a generated file; sync up lists the file and keeps the edit; the overwrite clears the refusal.
+  def generated_round_trip(path, hand_text, call)
+    refused = call.call
+    up = cli("sync", "up")
+    kept = File.read(store_path(path)).include?(hand_text)
+    overwritten = cli(*named_command(refused))
+
+    [refused.out[/^next: .*$/], up.code, (up.out + up.err).include?(path), kept, overwritten.code, File.read(store_path(path)).include?(hand_text), call.call.code]
+  end
+
+  def test_a_hand_edited_roadmap_is_refused_with_the_overwrite_and_kept_by_sync_up_until_the_overwrite_clears_it
     cli("roadmap", "new", "r1")
     write("roadmaps/r1.md", "# by hand\n")
     batch = -> { cli("roadmap", "batch", "r1", "1", "--title", "T", "--goal", "G", "--done", "d") }
-    found = round_trip(batch)
 
-    assert_equal [[1, 0, 0], false], [found, File.read(store_path("roadmaps/r1.md")).include?("by hand")]
+    assert_equal ["next: plastic sync down --overwrite roadmaps/r1.md", 1, true, true, 0, false, 0], generated_round_trip("roadmaps/r1.md", "by hand", batch)
+  end
+
+  def test_a_hand_edited_context_json_is_refused_with_the_overwrite_and_kept_by_sync_up_until_the_overwrite_clears_it
+    intent = specified
+    cli("intent", "discover", "1", "spec")
+    path = "#{intent.dir}/context.json"
+    write(path, File.read(store_path(path)).sub("{", "{\n  \"my_note\": \"keep this\","))
+    add = -> { cli("node", "add", "1", "T", "--criterion", KEY) }
+
+    assert_equal ["next: plastic sync down --overwrite #{path}", 1, true, true, 0, false, 0], generated_round_trip(path, "my_note", add)
   end
 
   def test_a_bare_overwrite_of_sync_down_leaves_a_one_sided_hand_edit_alone

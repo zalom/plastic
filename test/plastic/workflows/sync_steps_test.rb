@@ -11,8 +11,8 @@ class SyncStepsTest < Plastic::TestCase
   LEFT = "changed on both sides since the last print, left as they are: a.md; pass --overwrite PATH or --overwrite"
 
   # A plan as the steps read it.
-  Plan = Data.define(:failure, :conflicts, :merging, :pending, :unreadable, :left_unreadable) do
-    def initialize(left_unreadable: {}, **fields) = super
+  Plan = Data.define(:failure, :conflicts, :merging, :pending, :unreadable, :unreadable_files) do
+    def initialize(unreadable_files: {}, **fields) = super
 
     def merging? = merging
   end
@@ -113,6 +113,24 @@ class SyncStepsTest < Plastic::TestCase
     assert_equal ["plan the sync", "gate", "gate", "apply the changes", "say what changed", "gate", "gate", "gate"], flow.steps.map(&:name)
     assert_equal ["%{failure}", steps::REFUSED_BEFORE, steps::REFUSED_AFTER, steps::UNREADABLE, steps::UNREADABLE_FILES], gates
     assert_equal ["plastic next"], flow.outcomes.map(&:offers)
+  end
+
+  def test_an_unreadable_generated_file_is_listed_and_stops_the_sync_with_the_overwrite
+    files = { "roadmaps/r1.md" => "roadmaps/r1.md is generated from rows; use the roadmap commands to change it" }
+    outcome, = run_sync(Plastic::Workflows::Code::Sync::Up, plan: { unreadable_files: files })
+
+    assert_instance_of Plastic::Failed, outcome
+    assert_includes outcome.message, "roadmaps/r1.md: roadmaps/r1.md is generated from rows; use the roadmap commands to change it; run plastic sync down --overwrite roadmaps/r1.md"
+    assert_equal "plastic sync down --overwrite roadmaps/r1.md", outcome.next_command
+  end
+
+  def test_each_unreadable_file_is_listed_with_its_own_overwrite
+    files = { "store/1--alpha/graph.json" => "junk", "store/2--beta/graph.json" => "junk too" }
+    outcome, = run_sync(Plastic::Workflows::Code::Sync::Up, plan: { unreadable_files: files })
+
+    assert_includes outcome.message, "store/1--alpha/graph.json: junk; run plastic sync down --overwrite store/1--alpha/graph.json\n"
+    assert_includes outcome.message, "store/2--beta/graph.json: junk too; run plastic sync down --overwrite store/2--beta/graph.json"
+    refute_includes outcome.message, "with the command below"
   end
 
   def test_a_plan_note_clears_the_lines_of_an_earlier_apply

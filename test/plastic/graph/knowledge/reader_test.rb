@@ -26,6 +26,12 @@ class KnowledgeReaderTest < Plastic::TestCase
     assert_equal "store/7--stray has no intent row and no entry in store/index.json; add one or remove the folder", error.message
   end
 
+  def test_a_roadmap_file_is_refused_as_generated_from_rows
+    error = assert_raises(Plastic::Invalid) { reader.read("roadmaps/r1.md") }
+
+    assert_equal "roadmaps/r1.md is generated from rows; use the roadmap commands to change it", error.message
+  end
+
   def test_a_folder_whose_slug_differs_from_the_row_is_refused
     assert_raises(Plastic::Invalid) { reader.read("store/1--other/spec.md") }
   end

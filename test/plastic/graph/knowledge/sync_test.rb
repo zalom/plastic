@@ -122,6 +122,17 @@ class KnowledgeSyncTest < Plastic::TestCase
     assert_equal Digest::SHA256.hexdigest("# Spec\n"), retrieval.printed[SPEC]
   end
 
+  def test_sync_up_leaves_an_index_it_cannot_read_as_it_is
+    index = JSON.parse(folder.read("store/index.json"))
+    index.fetch("intents").each { |entry| entry.merge!("origin_id" => "zzzz", "title" => "Renamed by hand") }
+    write("store/index.json", JSON.pretty_generate(index))
+    plan = sync.plan(:up)
+    run = sync.apply(plan)
+
+    assert_equal ["store/index.json"], plan.unreadable_files.keys
+    assert_equal [[], "Alpha", true], [run, retrieval.intent("1").title, folder.read("store/index.json").include?("Renamed by hand")]
+  end
+
   def test_a_broken_index_does_not_stop_the_read_of_another_file
     write("store/index.json", "{")
 

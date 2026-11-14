@@ -92,6 +92,48 @@ class KnowledgeOutcomeTest < Plastic::TestCase
     assert_equal [[], []], [NOT_APPROVED.select { |value| approved_value?(value) }, APPROVED.reject { |value| approved_value?(value) }]
   end
 
+  NEGATIVE_APPROVED = ["no, changes requested on 2026-11-14", "pending review on 2026-11-20", "not yet, review due on 2026-11-20", "none on 2026-11-14",
+    "rejected by Zlatko on 2026-11-14", "awaiting review on 2026-11-14", "changes requested on 2026-11-14", "declined on 2026-11-14",
+    "denied by the owner on 2026-11-14", "requested on 2026-11-14"].freeze
+
+  NEGATIVE_MERGED = ["pending at PR #57", "TBD at 2026-11-20", "not into alpha at 1"].freeze
+
+  def test_an_approved_line_whose_first_word_is_negative_does_not_count
+    assert_empty NEGATIVE_APPROVED.select { |value| approved_value?(value) }
+  end
+
+  def test_a_merged_line_whose_first_word_is_negative_does_not_count
+    assert_empty NEGATIVE_MERGED.select { |value| merged_value?(value) }
+  end
+
+  def test_angle_brackets_count_unless_they_hold_a_placeholder_of_the_printed_form
+    values = ["Zlatko <z@example.com> on 2026-11-14", "<person> on 2026-11-14", "Zlatko on <YYYY-MM-DD>"]
+
+    assert_equal [true, false, false], values.map { |value| approved_value?(value) }
+  end
+
+  def test_the_last_part_of_a_merged_line_holds_a_digit_or_is_seven_to_forty_hex_characters
+    counted = ["plastic/1 into alpha at deadbee", "plastic/1 into alpha at `deadbee`", "plastic/1 into alpha at https://github.com/example/repo/commit/abc1234"]
+    refused = ["plastic/1 into alpha at deadbe", "plastic/1 into alpha at deadbeefoo", "plastic/1 into alpha at <sha>"]
+
+    assert_equal [[true] * 3, [false] * 3], [counted, refused].map { |values| values.map { |value| merged_value?(value) } }
+  end
+
+  def test_more_than_one_space_between_the_parts_of_a_merged_line_counts
+    assert merged_value?("plastic/x  into alpha at 3f2a1b9")
+  end
+
+  def test_a_branch_of_more_than_one_word_is_refused_and_the_refusal_shows_the_form
+    refused = ["PR #57 into alpha at 3f2a1b9", "pull request #57 into alpha at 3f2a1b9", "plastic/x into alpha via PR #57 at 3f2a1b9"]
+    read = outcome("## Verification\n- Merged: #{refused.first}\n")
+
+    assert_equal [[false] * 3, true], [refused.map { |value| merged_value?(value) }, read.missing_records.first.include?("Merged: <branch> into <base> at <commit or pull request>")]
+  end
+
+  def test_an_approved_date_followed_by_a_time_counts
+    assert approved_value?("the owner on 2026-11-14T10:00Z")
+  end
+
   def test_the_label_of_approved_needs_its_colon_directly
     refute_predicate outcome("## Verification\n- Approved by: the owner on 2026-11-14\n"), :approved?
   end
