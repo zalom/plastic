@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require "digest"
-require "json"
 
 module Plastic
   module Graph
@@ -18,13 +17,6 @@ module Plastic
 
         # The file holds these bytes already.
         def level?(folder) = folder.digest(path) == sha256
-
-        # The file holds the JSON of this print in other bytes: a formatter's bytes, not a person's edit.
-        def same_json?(folder)
-          sha256 && JSON.parse(folder.read(path).force_encoding(Encoding::UTF_8)) == JSON.parse(text)
-        rescue JSON::ParserError
-          false
-        end
 
         def write_to(folder) = folder.write(path, text)
 

@@ -18,7 +18,8 @@ module Plastic
             @folder = folder
             @retrieval = retrieval
             @resolution = resolution
-            @folders = IntentFolders.new(folder, retrieval) unless folder.legacy?
+            @legacy = folder.legacy?
+            @folders = @legacy ? nil : IntentFolders.new(folder, retrieval)
           end
 
           def call
@@ -32,14 +33,13 @@ module Plastic
           # The legacy flag and the problem of a store, by what the call does.
           def legacy_facts
             up = @resolution.up?
-            legacy = @folder.legacy?
-            { legacy: up && legacy, problem: (LEGACY_PROBLEM if legacy && !up) }
+            { legacy: up && @legacy, problem: (LEGACY_PROBLEM if @legacy && !up) }
           end
 
           def archived = (reading? ? ArchivedIntents.new(@folder, @retrieval).missing.size : 0)
 
           # Only a sync up of a store that is not legacy reads files.
-          def reading? = @resolution.up? && !@folder.legacy?
+          def reading? = @resolution.up? && !@legacy
 
           def unreadable_files(entries) = reading? ? Readability.new(@folder, @retrieval).unreadable(entries) : {}
         end
