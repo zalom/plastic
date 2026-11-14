@@ -36,7 +36,7 @@ module Plastic
         agent.to_h { |key, value| [key, FOLDERS.include?(key) ? File.join(home, Pathname(value).relative_path_from(Dir.home).to_s) : value] }
       end
 
-      def self.fetch_command(setting) = "#{INSTALLER} #{setting} sh"
+      def self.fetch_command = "#{INSTALLER} sh"
 
       def read_package_version(root)
         path = self.class.source(root)

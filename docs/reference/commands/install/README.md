@@ -75,13 +75,13 @@ After a first install, the agent may offer Enola to the person. Plastic runs no 
 
 Its rows run in this order:
 
-1. Agent step: offer Enola. Done when `context.reinstall`; while it fails, the call prints its `say:` text. [`install.rb:11`](../../../../lib/plastic/workflows/agent/install.rb#L11)
-2. Outcome `:handoff`, when a step is left: hands off with exit 0; next: plastic init. [`install.rb:15`](../../../../lib/plastic/workflows/agent/install.rb#L15)
-3. Outcome `:done`, when every done check holds: finishes with exit 0; next: plastic version. [`install.rb:16`](../../../../lib/plastic/workflows/agent/install.rb#L16)
+1. Agent step: offer Enola. Done when `context.reinstall`; while it fails, the call prints its `say:` text. [`install.rb:13`](../../../../lib/plastic/workflows/agent/install.rb#L13)
+2. Outcome `:handoff`, when a step is left: hands off with exit 0; next: plastic init. [`install.rb:18`](../../../../lib/plastic/workflows/agent/install.rb#L18)
+3. Outcome `:done`, when every done check holds: finishes with exit 0; next: plastic version. [`install.rb:19`](../../../../lib/plastic/workflows/agent/install.rb#L19)
 
 The agent step "offer Enola" prints:
 
-> Enola maps the code architecture of a project. It is optional: Plastic works without it. To install it, run its official installer: curl -fsSL https://raw.githubusercontent.com/enola-labs/enola/main/install.sh | sh
+> Enola maps the code architecture of a project. It is optional: Plastic works without it. To install it, read the release notes and run its installer from https://github.com/enola-labs/enola/releases/tag/v0.4.39
 
 While a step is left, the call hands off with exit 0 from `:handoff`: it prints the `say:` text of each failing step and offers next: plastic init. The command writes nothing, so the call keeps no routine run row. The next call starts fresh and checks the steps again.
 
@@ -103,7 +103,7 @@ A second call runs the same rows again. A step runs again only when its done che
 | Step | Done when | The second call | Code |
 | --- | --- | --- | --- |
 | install the core files | `!context.installed.nil?` | skips it | [`install.rb:32`](../../../../lib/plastic/workflows/code/install.rb#L32) |
-| offer Enola | `context.reinstall` | skips it | [`install.rb:11`](../../../../lib/plastic/workflows/agent/install.rb#L11) |
+| offer Enola | `context.reinstall` | skips it | [`install.rb:13`](../../../../lib/plastic/workflows/agent/install.rb#L13) |
 
 ## How a call ends
 
@@ -115,8 +115,8 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | this machine cannot run Plastic; see above | 1 | prints no next: line | [`install.rb:26`](../../../../lib/plastic/workflows/code/install.rb#L26) |
 | BROKEN is not valid JSON; nothing was changed. Fix the file and run this again | 1 | prints no next: line | [`install.rb:27`](../../../../lib/plastic/workflows/code/install.rb#L27) |
 | Plastic is already installed; run plastic init to add a harness, or pass --reinstall to sync the files again | 3 | prints no next: line | [`install.rb:29`](../../../../lib/plastic/workflows/code/install.rb#L29) |
-| Enola is optional; plastic init installs Plastic into the harnesses the person picks | 0 | plastic init | [`install.rb:15`](../../../../lib/plastic/workflows/agent/install.rb#L15) |
-| a reinstall syncs the files and offers nothing more | 0 | plastic version | [`install.rb:16`](../../../../lib/plastic/workflows/agent/install.rb#L16) |
+| Enola is optional; plastic init installs Plastic into the harnesses the person picks | 0 | plastic init | [`install.rb:18`](../../../../lib/plastic/workflows/agent/install.rb#L18) |
+| a reinstall syncs the files and offers nothing more | 0 | plastic version | [`install.rb:19`](../../../../lib/plastic/workflows/agent/install.rb#L19) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
 
 ## What the page leaves out

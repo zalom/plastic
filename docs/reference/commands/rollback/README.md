@@ -26,7 +26,7 @@ The figure shows the command, the workflows it runs, the classes behind them, an
 | Workflow | Kind | Code |
 | --- | --- | --- |
 | [Code::Rollback::Preview](#coderollbackpreview) | code | [`preview.rb:13`](../../../../lib/plastic/workflows/code/rollback/preview.rb#L13) |
-| [Code::Rollback](#coderollback) | code | [`rollback.rb:11`](../../../../lib/plastic/workflows/code/rollback.rb#L11) |
+| [Code::Rollback](#coderollback) | code | [`rollback.rb:12`](../../../../lib/plastic/workflows/code/rollback.rb#L12) |
 
 ### Code::Rollback::Preview
 
@@ -50,24 +50,24 @@ It sets `active`, `to`, `releases`.
 
 ### Code::Rollback
 
-The code workflow `:code_rollback_release`, in [`rollback.rb:11`](../../../../lib/plastic/workflows/code/rollback.rb#L11).
+The code workflow `:code_rollback_release`, in [`rollback.rb:12`](../../../../lib/plastic/workflows/code/rollback.rb#L12).
 
-Switches the active pointer to the named release or the previous one, and syncs that release's files into the home in the same activation.
+Names the command that switches to the named release or the previous one. It changes nothing itself.
 
 ![How Code::Rollback runs: its steps, where it stops, and its outcomes](code_rollback_release.svg)
 
 Its rows run in this order:
 
-1. Step: switch the active release. Done when `context.switched`, so a second call skips it. [`rollback.rb:16`](../../../../lib/plastic/workflows/code/rollback.rb#L16)
-2. Outcome `:done`, always: finishes with exit 0; next: plastic version. [`rollback.rb:21`](../../../../lib/plastic/workflows/code/rollback.rb#L21)
+1. Read: name the switch command. [`rollback.rb:17`](../../../../lib/plastic/workflows/code/rollback.rb#L17)
+2. Outcome `:done`, always: finishes with exit 0; next: COMMAND. [`rollback.rb:22`](../../../../lib/plastic/workflows/code/rollback.rb#L22)
 
-It sets `switched`.
+It sets `command`.
 
 In the words of workflow engines, the rows are these four parts:
 
 - **Trigger**: the call starts the workflow `Code::Rollback::Preview`; each later workflow starts from an outcome of the one before it.
-- **Activities**: 2 reads and 1 step.
-- **Transitions**: 3 gates stop the call when their checks fail; a step runs only while its done check fails; Preview goes to Rollback on `:continue`.
+- **Activities**: 3 reads.
+- **Transitions**: 3 gates stop the call when their checks fail; Preview goes to Rollback on `:continue`.
 - **Outcomes**: `:done` of Preview, `:done` of Rollback end the call.
 
 ## What one call reads, writes and prints
@@ -75,12 +75,6 @@ In the words of workflow engines, the rows are these four parts:
 ![What one call of plastic rollback reads, writes and prints](touches.svg)
 
 It reads and writes no store database and prints no store file.
-
-A second call runs the same rows again. A step runs again only when its done check fails.
-
-| Step | Done when | The second call | Code |
-| --- | --- | --- | --- |
-| switch the active release | `context.switched` | skips it | [`rollback.rb:16`](../../../../lib/plastic/workflows/code/rollback.rb#L16) |
 
 ## How a call ends
 
@@ -92,7 +86,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | TARGET is not installed | 3 | prints no next: line | [`preview.rb:27`](../../../../lib/plastic/workflows/code/rollback/preview.rb#L27) |
 | no previous release to go back to | 3 | prints no next: line | [`preview.rb:29`](../../../../lib/plastic/workflows/code/rollback/preview.rb#L29) |
 | the preview changed no file | 0 | ORIGINAL_COMMAND | [`preview.rb:39`](../../../../lib/plastic/workflows/code/rollback/preview.rb#L39) |
-| Plastic SWITCHED is active and the home holds its files | 0 | plastic version | [`rollback.rb:21`](../../../../lib/plastic/workflows/code/rollback.rb#L21) |
+| this command switches the active release; rollback changed nothing | 0 | COMMAND | [`rollback.rb:22`](../../../../lib/plastic/workflows/code/rollback.rb#L22) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
 
 ## What the page leaves out

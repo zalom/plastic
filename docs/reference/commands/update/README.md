@@ -28,7 +28,7 @@ The figure shows the command, the workflows it runs, the classes behind them, an
 | Workflow | Kind | Code |
 | --- | --- | --- |
 | [Code::Update::Preview](#codeupdatepreview) | code | [`preview.rb:14`](../../../../lib/plastic/workflows/code/update/preview.rb#L14) |
-| [Code::Update](#codeupdate) | code | [`update.rb:15`](../../../../lib/plastic/workflows/code/update.rb#L15) |
+| [Code::Update](#codeupdate) | code | [`update.rb:16`](../../../../lib/plastic/workflows/code/update.rb#L16) |
 
 ### The command's own call
 
@@ -63,31 +63,31 @@ It sets `from`, `to`.
 
 ### Code::Update
 
-The code workflow `:code_update_plastic`, in [`update.rb:15`](../../../../lib/plastic/workflows/code/update.rb#L15).
+The code workflow `:code_update_plastic`, in [`update.rb:16`](../../../../lib/plastic/workflows/code/update.rb#L16).
 
-Syncs a newer running package into the home for the registered agents. When the running package is not newer, activates the newest release of the chosen channel, or of the active release's channel, and syncs its files into the home. With no release activated yet, names the installer command that installs one.
+Syncs a newer running package into the home for the registered agents. When the running package is not newer, downloads and checks the newest release of the chosen channel, or of the active release's channel, and names the command that installs it. With no release installed yet, names install.sh.
 
 ![How Code::Update runs: its steps, where it stops, and its outcomes](code_update_plastic.svg)
 
 Its rows run in this order:
 
-1. Read: check whether the running package is newer. [`update.rb:20`](../../../../lib/plastic/workflows/code/update.rb#L20)
-2. Step: sync the newer package into the home. Done when `!context.newer || context.synced`, so a second call skips it. [`update.rb:24`](../../../../lib/plastic/workflows/code/update.rb#L24)
-3. Read: find a newer release on the chosen channel. [`update.rb:32`](../../../../lib/plastic/workflows/code/update.rb#L32)
-4. Step: activate the newer release. Done when `context.release.nil? || context.activated`, so a second call skips it. [`update.rb:36`](../../../../lib/plastic/workflows/code/update.rb#L36)
-5. Outcome `:done`, when `context.synced`: finishes with exit 0; next: plastic version. [`update.rb:40`](../../../../lib/plastic/workflows/code/update.rb#L40)
-6. Outcome `:activated`, when `context.activated`: finishes with exit 0; next: plastic version. [`update.rb:41`](../../../../lib/plastic/workflows/code/update.rb#L41)
-7. Outcome `:current`, when `context.active`: finishes with exit 0; next: plastic version. [`update.rb:43`](../../../../lib/plastic/workflows/code/update.rb#L43)
-8. Outcome `:fetch`, otherwise: finishes with exit 0; next: plastic update. [`update.rb:45`](../../../../lib/plastic/workflows/code/update.rb#L45)
+1. Read: check whether the running package is newer. [`update.rb:21`](../../../../lib/plastic/workflows/code/update.rb#L21)
+2. Step: sync the newer package into the home. Done when `!context.newer || context.synced`, so a second call skips it. [`update.rb:25`](../../../../lib/plastic/workflows/code/update.rb#L25)
+3. Read: find a newer release on the chosen channel. [`update.rb:33`](../../../../lib/plastic/workflows/code/update.rb#L33)
+4. Step: download the newer release. Done when `context.release.nil? || context.downloaded`, so a second call skips it. [`update.rb:37`](../../../../lib/plastic/workflows/code/update.rb#L37)
+5. Outcome `:done`, when `context.synced`: finishes with exit 0; next: plastic version. [`update.rb:43`](../../../../lib/plastic/workflows/code/update.rb#L43)
+6. Outcome `:downloaded`, when `context.downloaded`: finishes with exit 0; next: COMMAND. [`update.rb:44`](../../../../lib/plastic/workflows/code/update.rb#L44)
+7. Outcome `:current`, when `context.active`: finishes with exit 0; next: plastic version. [`update.rb:46`](../../../../lib/plastic/workflows/code/update.rb#L46)
+8. Outcome `:fetch`, otherwise: finishes with exit 0; next: plastic update. [`update.rb:48`](../../../../lib/plastic/workflows/code/update.rb#L48)
 
-It sets `newer`, `synced`, `active`, `release`, `activated`.
+It sets `newer`, `synced`, `active`, `release`, `downloaded`, `command`.
 
 In the words of workflow engines, the rows are these four parts:
 
 - **Trigger**: the call starts the workflow `Code::Update::Preview`; each later workflow starts from an outcome of the one before it.
 - **Activities**: 4 reads and 2 steps.
 - **Transitions**: 1 gate stops the call when its check fails; a step runs only while its done check fails; Preview goes to Update on `:continue`.
-- **Outcomes**: `:done` of Preview, `:done` of Update, `:activated` of Update, `:current` of Update, `:fetch` of Update end the call.
+- **Outcomes**: `:done` of Preview, `:done` of Update, `:downloaded` of Update, `:current` of Update, `:fetch` of Update end the call.
 
 ## What one call reads, writes and prints
 
@@ -99,8 +99,8 @@ A second call runs the same rows again. A step runs again only when its done che
 
 | Step | Done when | The second call | Code |
 | --- | --- | --- | --- |
-| sync the newer package into the home | `!context.newer \|\| context.synced` | skips it | [`update.rb:24`](../../../../lib/plastic/workflows/code/update.rb#L24) |
-| activate the newer release | `context.release.nil? \|\| context.activated` | skips it | [`update.rb:36`](../../../../lib/plastic/workflows/code/update.rb#L36) |
+| sync the newer package into the home | `!context.newer \|\| context.synced` | skips it | [`update.rb:25`](../../../../lib/plastic/workflows/code/update.rb#L25) |
+| download the newer release | `context.release.nil? \|\| context.downloaded` | skips it | [`update.rb:37`](../../../../lib/plastic/workflows/code/update.rb#L37) |
 
 ## How a call ends
 
@@ -110,10 +110,10 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | --- | --- | --- | --- |
 | Plastic is not installed under this home; run plastic install first | 3 | prints no next: line | [`preview.rb:25`](../../../../lib/plastic/workflows/code/update/preview.rb#L25) |
 | the preview changed no file | 0 | ORIGINAL_COMMAND | [`preview.rb:35`](../../../../lib/plastic/workflows/code/update/preview.rb#L35) |
-| the home holds Plastic TO | 0 | plastic version | [`update.rb:40`](../../../../lib/plastic/workflows/code/update.rb#L40) |
-| Plastic ACTIVATED is active and the home holds its files | 0 | plastic version | [`update.rb:41`](../../../../lib/plastic/workflows/code/update.rb#L41) |
-| Plastic ACTIVE is the newest release on its channel | 0 | plastic version | [`update.rb:43`](../../../../lib/plastic/workflows/code/update.rb#L43) |
-| run the installer command above, then update again | 0 | plastic update | [`update.rb:45`](../../../../lib/plastic/workflows/code/update.rb#L45) |
+| the home holds Plastic TO | 0 | plastic version | [`update.rb:43`](../../../../lib/plastic/workflows/code/update.rb#L43) |
+| Plastic RELEASE is downloaded and checked; this command installs it | 0 | COMMAND | [`update.rb:44`](../../../../lib/plastic/workflows/code/update.rb#L44) |
+| Plastic ACTIVE is the newest release on its channel | 0 | plastic version | [`update.rb:46`](../../../../lib/plastic/workflows/code/update.rb#L46) |
+| run the installer command above, then update again | 0 | plastic update | [`update.rb:48`](../../../../lib/plastic/workflows/code/update.rb#L48) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
 | Usage error: --channel takes stable, beta or alpha | 2 | prints no next: line | [`update.rb:18`](../../../../lib/plastic/commands/update.rb#L18) |
 

@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "fileutils"
 require "json"
 require "rubygems/version"
 require_relative "https_fetch"
@@ -63,7 +64,12 @@ module InstallerRelease
 
     def newest(_channel) = files.manifest.dig("release", "version")
 
-    def files(_version = nil, _directory = nil) = @files
+    def files(_version = nil, directory = nil)
+      return @files unless directory
+
+      ReleaseFiles::NAMES.each { |name| FileUtils.cp(File.join(@directory, name), File.join(directory, name)) }
+      ReleaseFiles.new(directory)
+    end
 
     def notices = [format(DEVELOPMENT, @directory)]
   end
