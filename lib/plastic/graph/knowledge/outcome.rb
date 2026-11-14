@@ -51,7 +51,10 @@ module Plastic
 
         def values(label) = verification.filter_map { |bullet| bullet[/\A#{Regexp.escape(label)}\s*:\s*(\S.*)\z/i, 1] }
 
-        def merge_message = negative("Merged") ? format(NOT_A_MERGE, negative("Merged")) : format(MISSING, "Merged")
+        def merge_message
+          found = negative("Merged")
+          found ? format(NOT_A_MERGE, found) : format(MISSING, "Merged")
+        end
 
         def section
           start = @headings.index { |found| found && found[2].casecmp?("Verification") }
