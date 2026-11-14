@@ -108,10 +108,8 @@ module Plastic
       def skipped(key) = { agent: agent_config(key)[:name], success: false, skipped: true }
 
       def log(results, action)
-        ledger = Ledger.new(plastic_home)
         synced = results.filter_map { |result| result[:key] if result[:success] }
-        synced.each { |key| ledger.append(version, action, harness: key) }
-        ledger.append(version, action) if synced.empty?
+        Ledger.new(plastic_home).append_run(version, action, synced)
       end
     end
   end

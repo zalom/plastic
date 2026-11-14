@@ -21,6 +21,14 @@ class LedgerTest < Plastic::TestCase
     assert_equal [%w[2.0.2 2.0.3], "claude"], [ledger.read.map { |row| row["version"] }, ledger.read.last["harness"]]
   end
 
+  def test_a_run_appends_a_row_for_each_harness_and_one_row_when_no_harness_synced
+    ledger.append_run("2.0.3", "install", %w[claude codex])
+    ledger.append_run("2.0.3", "reinstall", [])
+
+    assert_equal [["claude", "codex", nil], %w[install install reinstall]],
+      [ledger.read.map { |row| row["harness"] }, ledger.read.map { |row| row["action"] }]
+  end
+
   def test_a_ledger_that_does_not_exist_reads_as_no_rows
     assert_empty Plastic::Installations::Ledger.new(File.join(@home, "nowhere")).read
   end

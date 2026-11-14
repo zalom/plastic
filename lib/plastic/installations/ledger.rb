@@ -20,6 +20,11 @@ module Plastic
         File.write(@path, "#{JSON.generate(row)}\n", mode: "a")
       end
 
+      def append_run(version, action, harnesses)
+        harnesses.each { |harness| append(version, action, harness:) }
+        append(version, action) if harnesses.empty?
+      end
+
       def read
         return [] unless File.exist?(@path)
 
