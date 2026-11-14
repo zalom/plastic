@@ -22,7 +22,7 @@ class KnowledgeOutcomeTest < Plastic::TestCase
   end
 
   def test_both_labels_under_verification_count
-    assert_equal [true, true], records("# Outcome\n\n## Verification\n- Merged: branch into alpha at abc\n- Architecture map: enola at abc\n")
+    assert_equal [true, true], records("# Outcome\n\n## Verification\n- Merged: branch into alpha at abc1\n- Architecture map: enola at abc\n")
   end
 
   def test_a_merge_line_outside_verification_does_not_count
@@ -34,7 +34,7 @@ class KnowledgeOutcomeTest < Plastic::TestCase
   end
 
   def test_labels_match_with_a_checkbox_and_any_case
-    assert_equal [true, true], records("## Verification\n- [x] merged: branch\n- [ ] ARCHITECTURE MAP: enola\n")
+    assert_equal [true, true], records("## Verification\n- [x] merged: branch into alpha at abc1\n- [ ] ARCHITECTURE MAP: enola\n")
   end
 
   def test_no_outcome_records_neither
@@ -85,11 +85,11 @@ class KnowledgeOutcomeTest < Plastic::TestCase
   APPROVED = ["by the owner on 2026-11-14", "the owner on 2026-10-05", "Zed on 2026-10-05 in the pull request"].freeze
 
   def test_only_a_value_in_the_printed_form_of_merged_is_a_merge
-    assert_equal [NOT_MERGED, []], [NOT_MERGED.select { |value| merged_value?(value) }, MERGED.reject { |value| merged_value?(value) }]
+    assert_equal [[], []], [NOT_MERGED.select { |value| merged_value?(value) }, MERGED.reject { |value| merged_value?(value) }]
   end
 
   def test_only_a_value_in_the_printed_form_of_approved_is_an_approval
-    assert_equal [NOT_APPROVED, []], [NOT_APPROVED.select { |value| approved_value?(value) }, APPROVED.reject { |value| approved_value?(value) }]
+    assert_equal [[], []], [NOT_APPROVED.select { |value| approved_value?(value) }, APPROVED.reject { |value| approved_value?(value) }]
   end
 
   def test_the_label_of_approved_needs_its_colon_directly

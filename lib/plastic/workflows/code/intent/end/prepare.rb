@@ -61,13 +61,13 @@ module Plastic
             end
 
             def self.merge_found(verification)
-              found = verification.negative("Merged")
-              found ? "outcome.md says '#{found}', which is not a merge. " : ""
+              found = verification.rejected("Merged")
+              found ? "outcome.md says '#{found}', which is not a merge in the form 'Merged: <branch> into <base> at <commit or pull request>'. " : ""
             end
 
             def self.approval_found(verification)
-              found = verification.negative("Approved")
-              found ? "outcome.md says '#{found}', which is not an approval; " : ""
+              found = verification.rejected("Approved")
+              found ? "outcome.md says '#{found}', which is not an approval in the form 'Approved: <person> on <YYYY-MM-DD>'; " : ""
             end
 
             def self.review_facts(context)
@@ -89,7 +89,7 @@ module Plastic
 
             gate ReviewRound::MESSAGE, stops: :refusal,
               pass: ->(context) { !context.used_up }
-            gate "the pull request of intent %{intent_id} waits for the person's approval; %{approval_found}add the line Approved: to the Verification section of outcome.md once they approve, then run plastic sync up",
+            gate "the pull request of intent %{intent_id} waits for the person's approval; %{approval_found}add the line 'Approved: <person> on <YYYY-MM-DD>' to the Verification section of outcome.md once they approve, then run plastic sync up",
               stops: :refusal, pass: ->(context) { !context.awaiting_approval }
 
             def self.verified?(context) = context.merge_recorded && context.map_recorded

@@ -58,23 +58,23 @@ class IntentEndMergeTest < Plastic::TestCase
     assert_includes result.err + result.out, "Approved: no"
   end
 
-def test_the_printed_template_of_the_merge_line_closes_nothing
-  accepted_intent(records: "- Merged: <branch> into <base> at <commit or pull request>\n- Architecture map: enola at abc123\n")
-  review_off
-  result = finish
+  def test_the_printed_template_of_the_merge_line_closes_nothing
+    accepted_intent(records: "- Merged: <branch> into <base> at <commit or pull request>\n- Architecture map: enola at abc123\n")
+    review_off
+    result = finish
 
-  assert_equal [1, "in_progress"], [result.code, retrieval.intent("1").status]
-  assert_includes result.out, "Merged: <branch> into <base> at <commit or pull request>"
-end
+    assert_equal [1, "in_progress"], [result.code, retrieval.intent("1").status]
+    assert_includes result.out, "Merged: <branch> into <base> at <commit or pull request>"
+  end
 
-def test_an_approval_that_is_only_requested_waits_for_the_person_and_shows_the_form
-  review_on
-  accepted_intent(records: MERGE_RECORDS + PULL_REQUEST + "- Approved: requested\n")
-  result = finish
+  def test_an_approval_that_is_only_requested_waits_for_the_person_and_shows_the_form
+    review_on
+    accepted_intent(records: MERGE_RECORDS + PULL_REQUEST + "- Approved: requested\n")
+    result = finish
 
-  assert_equal [3, "in_progress"], [result.code, retrieval.intent("1").status]
-  assert_includes result.err + result.out, "Approved: <person> on <YYYY-MM-DD>"
-end
+    assert_equal [3, "in_progress"], [result.code, retrieval.intent("1").status]
+    assert_includes result.err + result.out, "Approved: <person> on <YYYY-MM-DD>"
+  end
 
   def test_a_second_end_after_the_merge_record_resumes_and_closes
     lacking_merge_record

@@ -39,7 +39,7 @@ criterion with no key uses its full text as its key. A node names its key with
 
 ```
 - Pull request: <link or number>
-- Approved: <who approved it, and when>
+- Approved: <person> on <YYYY-MM-DD>
 - Merged: <branch> into <base> at <commit or pull request>
 - Architecture map: <tool> at <source revision>
 ```

@@ -10,10 +10,18 @@ module Plastic
       class Outcome
         HEADING = /\A(#+)\s*(.*?)\s*\z/
         BULLET = /\A[-*]\s*(?:\[[ xX]\]\s*)?(.+)\z/
-        NEGATIVE = %r{\A(?:-\z|(?:no|not|none|pending|n/a|tbd|false)[[:punct:]]*(?:\s|\z))}i
+        FORMS = {
+          "Merged" => /\A(?:\S+ into )?\S+ at \D*\d/,
+          "Approved" => /\A(?:by )?\S.*? on \d{4}-\d{2}-\d{2}\b/
+        }.freeze
+        SHOWN = {
+          "Merged" => "Merged: <branch> into <base> at <commit or pull request>",
+          "Approved" => "Approved: <person> on <YYYY-MM-DD>"
+        }.freeze
+        PLACEHOLDER = /[<>]/
         MISSING = "Add a line starting %s: to the Verification section of outcome.md and run plastic sync up."
-        NOT_A_MERGE = "outcome.md records '%s', which is not a merge. Merge the pull request, then replace the line with " \
-          "'Merged: <branch> into <base> at <commit or pull request>' and run plastic sync up."
+        NOT_IN_FORM = "outcome.md records '%s', which is not in the form that counts. " \
+          "Write the line as '%s' with every part filled, then run plastic sync up."
 
         def initialize(retrieval, intent_id)
           @lines = retrieval.fetch(intent_id, "outcome.md")&.body.to_s.lines.map(&:chomp)
@@ -25,8 +33,8 @@ module Plastic
           [(merge_message unless merged?), (format(MISSING, "Architecture map") unless architecture_map?)].compact
         end
 
-        # The line of `label` when it is there and holds a negative value, as 'Label: value', else nil.
-        def negative(label)
+        # The line of `label` when it is there but not in the form Plastic prints, as 'Label: value', else nil.
+        def rejected(label)
           found = values(label).first
           "#{label}: #{found}" if found && !positive?(label)
         end
@@ -47,13 +55,15 @@ module Plastic
 
         def recorded?(label) = values(label).any?
 
-        def positive?(label) = values(label).grep_v(NEGATIVE).any?
+        def positive?(label) = values(label).any? { |value| in_form?(label, value) }
+
+        def in_form?(label, value) = FORMS.fetch(label).match?(value) && !PLACEHOLDER.match?(value)
 
         def values(label) = verification.filter_map { |bullet| bullet[/\A#{Regexp.escape(label)}\s*:\s*(\S.*)\z/i, 1] }
 
         def merge_message
-          found = negative("Merged")
-          found ? format(NOT_A_MERGE, found) : format(MISSING, "Merged")
+          found = rejected("Merged")
+          found ? format(NOT_IN_FORM, found, SHOWN.fetch("Merged")) : format(MISSING, "Merged")
         end
 
         def section
