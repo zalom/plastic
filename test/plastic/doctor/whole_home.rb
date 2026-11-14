@@ -3,7 +3,7 @@
 require "json"
 require "yaml"
 require_relative "../../test_helper"
-require_relative "../../../scripts/lib/compact_instructions"
+require_relative "../../../lib/plastic/installations/compact_instructions"
 require_relative "../../../lib/plastic/hooks/entries"
 
 module WholeHome
@@ -47,7 +47,7 @@ module WholeHome
     write(File.join(@plastic_home, "VERSION"), "#{RUNNING}\n")
     write(File.join(@plastic_home, "PLASTIC.md"), "# Plastic\n")
     write(File.join(claude_dir, "plastic", "VERSION"), "#{RUNNING}\n")
-    write(File.join(claude_dir, "CLAUDE.md"), CompactInstructions::BODY)
+    write(File.join(claude_dir, "CLAUDE.md"), Plastic::Installations::CompactInstructions::BODY)
     whole_hooks
     whole_databases
     whole_project

@@ -16,9 +16,9 @@ Layout/ArgumentAlignment:
     - 'bin/verify-change'
     - 'scripts/install.rb'
     - 'scripts/lib/installer_core.rb'
-    - 'test/compact_instructions_test.rb'
+    - 'test/plastic/installations/compact_instructions_test.rb'
     - 'test/context_budget_bench_test.rb'
-    - 'test/hook_registry_test.rb'
+    - 'test/plastic/installations/hook_registry_test.rb'
     - 'test/installer_core_test.rb'
     - 'test/lib/failures_reporter.rb'
     - 'test/plastic_md_pointer_test.rb'
@@ -90,9 +90,9 @@ Layout/IndentationWidth:
 # SupportedStyles: aligned, indented, indented_relative_to_receiver
 Layout/MultilineMethodCallIndentation:
   Exclude:
-    - 'scripts/lib/hook_registry.rb'
+    - 'lib/plastic/installations/hook_registry.rb'
     - 'scripts/lib/installer_core.rb'
-    - 'test/hook_registry_test.rb'
+    - 'test/plastic/installations/hook_registry_test.rb'
 
 # Offense count: 56
 # This cop supports safe autocorrection (--autocorrect).
@@ -139,13 +139,13 @@ Metrics/AbcSize:
     - 'bin/lib/context_budget.rb'
     - 'bin/verify-change'
     - 'scripts/install.rb'
-    - 'scripts/lib/engine_permissions.rb'
-    - 'scripts/lib/hook_registry.rb'
+    - 'lib/plastic/installations/engine_permissions.rb'
+    - 'lib/plastic/installations/hook_registry.rb'
     - 'scripts/lib/installer_core.rb'
     - 'bin/lib/release_guard.rb'
-    - 'test/compact_instructions_test.rb'
+    - 'test/plastic/installations/compact_instructions_test.rb'
     - 'test/context_budget_bench_test.rb'
-    - 'test/hook_registry_test.rb'
+    - 'test/plastic/installations/hook_registry_test.rb'
     - 'test/installer_core_test.rb'
     - 'test/naming_rule_test.rb'
     - 'test/plastic_core_budget_test.rb'
@@ -160,10 +160,10 @@ Metrics/ClassLength:
     - 'scripts/install.rb'
     - 'scripts/lib/installer_core.rb'
     - 'test/cli/release_contract_test.rb'
-    - 'test/compact_instructions_test.rb'
+    - 'test/plastic/installations/compact_instructions_test.rb'
     - 'test/docs_model_test.rb'
-    - 'test/engine_permissions_test.rb'
-    - 'test/hook_registry_test.rb'
+    - 'test/plastic/installations/engine_permissions_test.rb'
+    - 'test/plastic/installations/hook_registry_test.rb'
     - 'test/installer_core_test.rb'
     - 'test/real_home_guard_test.rb'
     - 'test/release_check_test.rb'
@@ -176,7 +176,7 @@ Metrics/CyclomaticComplexity:
     - 'bin/lib/context_budget.rb'
     - 'bin/verify-change'
     - 'scripts/install.rb'
-    - 'scripts/lib/hook_registry.rb'
+    - 'lib/plastic/installations/hook_registry.rb'
     - 'scripts/lib/installer_core.rb'
     - 'bin/lib/release_guard.rb'
     - 'test/real_home_guard_test.rb'
@@ -188,15 +188,15 @@ Metrics/MethodLength:
     - 'bin/lib/context_budget.rb'
     - 'bin/verify-change'
     - 'scripts/install.rb'
-    - 'scripts/lib/engine_permissions.rb'
-    - 'scripts/lib/hook_registry.rb'
+    - 'lib/plastic/installations/engine_permissions.rb'
+    - 'lib/plastic/installations/hook_registry.rb'
     - 'scripts/lib/installer_core.rb'
     - 'bin/lib/release_guard.rb'
     - 'bin/release-check'
-    - 'test/compact_instructions_test.rb'
+    - 'test/plastic/installations/compact_instructions_test.rb'
     - 'test/context_budget_bench_test.rb'
-    - 'test/engine_permissions_test.rb'
-    - 'test/hook_registry_test.rb'
+    - 'test/plastic/installations/engine_permissions_test.rb'
+    - 'test/plastic/installations/hook_registry_test.rb'
     - 'test/installer_core_test.rb'
     - 'test/naming_rule_test.rb'
     - 'test/packaging_no_store_ids_test.rb'
@@ -211,7 +211,7 @@ Metrics/MethodLength:
 Metrics/ModuleLength:
   Exclude:
     - 'bin/lib/context_budget.rb'
-    - 'scripts/lib/hook_registry.rb'
+    - 'lib/plastic/installations/hook_registry.rb'
 
 # Offense count: 124
 # Configuration parameters: Max, CountKeywordArgs, MaxOptionalParameters.
@@ -228,8 +228,8 @@ Metrics/PerceivedComplexity:
     - 'bin/lib/context_budget.rb'
     - 'bin/verify-change'
     - 'scripts/install.rb'
-    - 'scripts/lib/engine_permissions.rb'
-    - 'scripts/lib/hook_registry.rb'
+    - 'lib/plastic/installations/engine_permissions.rb'
+    - 'lib/plastic/installations/hook_registry.rb'
     - 'scripts/lib/installer_core.rb'
 
 # Offense count: 44
@@ -242,8 +242,8 @@ Minitest/AssertOperator:
 # This cop supports safe autocorrection (--autocorrect).
 Minitest/AssertPathExists:
   Exclude:
-    - 'test/engine_permissions_test.rb'
-    - 'test/hook_registry_test.rb'
+    - 'test/plastic/installations/engine_permissions_test.rb'
+    - 'test/plastic/installations/hook_registry_test.rb'
     - 'test/installer_core_test.rb'
     - 'test/release_verify_test.rb'
 
@@ -263,12 +263,12 @@ Minitest/AssertPredicate:
 Minitest/EmptyLineBeforeAssertionMethods:
   Exclude:
     - 'test/bin_test_test.rb'
-    - 'test/compact_instructions_test.rb'
+    - 'test/plastic/installations/compact_instructions_test.rb'
     - 'test/context_budget_bench_test.rb'
     - 'test/docs_model_test.rb'
-    - 'test/engine_permissions_test.rb'
+    - 'test/plastic/installations/engine_permissions_test.rb'
     - 'test/harness_support_docs_test.rb'
-    - 'test/hook_registry_test.rb'
+    - 'test/plastic/installations/hook_registry_test.rb'
     - 'test/installer_core_test.rb'
     - 'test/naming_rule_test.rb'
     - 'test/packaging_no_store_ids_test.rb'
@@ -287,11 +287,11 @@ Minitest/EmptyLineBeforeAssertionMethods:
 Minitest/MultipleAssertions:
   Exclude:
     - 'test/bin_test_test.rb'
-    - 'test/compact_instructions_test.rb'
+    - 'test/plastic/installations/compact_instructions_test.rb'
     - 'test/context_budget_bench_test.rb'
     - 'test/docs_model_test.rb'
     - 'test/harness_support_docs_test.rb'
-    - 'test/hook_registry_test.rb'
+    - 'test/plastic/installations/hook_registry_test.rb'
     - 'test/installer_core_test.rb'
     - 'test/naming_rule_test.rb'
     - 'test/plastic_core_budget_test.rb'
@@ -304,9 +304,9 @@ Minitest/MultipleAssertions:
 # This cop supports safe autocorrection (--autocorrect).
 Minitest/RefutePathExists:
   Exclude:
-    - 'test/compact_instructions_test.rb'
+    - 'test/plastic/installations/compact_instructions_test.rb'
     - 'test/docs_model_test.rb'
-    - 'test/engine_permissions_test.rb'
+    - 'test/plastic/installations/engine_permissions_test.rb'
     - 'test/installer_core_test.rb'
 
 # Offense count: 57
@@ -374,7 +374,7 @@ Style/RedundantFormat:
 # This cop supports safe autocorrection (--autocorrect).
 Style/RedundantFreeze:
   Exclude:
-    - 'scripts/lib/compact_instructions.rb'
+    - 'lib/plastic/installations/compact_instructions.rb'
     - 'scripts/lib/installer_core.rb'
     - 'test/docs_model_test.rb'
 
@@ -431,10 +431,10 @@ Style/StringLiteralsInInterpolation:
   Exclude:
     - 'bin/lib/context_budget.rb'
     - 'bin/test'
-    - 'scripts/lib/hook_registry.rb'
+    - 'lib/plastic/installations/hook_registry.rb'
     - 'test/context_budget_bench_test.rb'
     - 'test/docs_model_test.rb'
-    - 'test/hook_registry_test.rb'
+    - 'test/plastic/installations/hook_registry_test.rb'
     - 'test/installer_core_test.rb'
     - 'test/packaging_no_store_ids_test.rb'
 
@@ -446,7 +446,7 @@ Style/TernaryParentheses:
   Exclude:
     - 'bin/verify-change'
     - 'scripts/install.rb'
-    - 'scripts/lib/hook_registry.rb'
+    - 'lib/plastic/installations/hook_registry.rb'
     - 'scripts/lib/installer_core.rb'
 
 # Offense count: 57
@@ -455,7 +455,7 @@ Style/TernaryParentheses:
 # SupportedStylesForMultiline: comma, consistent_comma, diff_comma, no_comma
 Style/TrailingCommaInArguments:
   Exclude:
-    - 'test/engine_permissions_test.rb'
+    - 'test/plastic/installations/engine_permissions_test.rb'
 
 # Offense count: 282
 # This cop supports safe autocorrection (--autocorrect).
@@ -464,8 +464,8 @@ Style/TrailingCommaInArguments:
 Style/TrailingCommaInArrayLiteral:
   Exclude:
     - 'bin/lib/context_budget.rb'
-    - 'scripts/lib/engine_permissions.rb'
-    - 'scripts/lib/hook_registry.rb'
+    - 'lib/plastic/installations/engine_permissions.rb'
+    - 'lib/plastic/installations/hook_registry.rb'
     - 'scripts/lib/installer_core.rb'
     - 'test/installer_core_test.rb'
     - 'test/post_cut_vocabulary_test.rb'
@@ -477,10 +477,10 @@ Style/TrailingCommaInArrayLiteral:
 Style/TrailingCommaInHashLiteral:
   Exclude:
     - 'bin/lib/context_budget.rb'
-    - 'scripts/lib/hook_registry.rb'
+    - 'lib/plastic/installations/hook_registry.rb'
     - 'scripts/lib/installer_core.rb'
     - 'bin/lib/release_guard.rb'
-    - 'test/engine_permissions_test.rb'
+    - 'test/plastic/installations/engine_permissions_test.rb'
     - 'test/installer_core_test.rb'
 
 # Offense count: 3
@@ -495,5 +495,5 @@ Style/UnlessLogicalOperators:
 Style/YAMLFileRead:
   Exclude:
     - 'scripts/lib/installer_core.rb'
-    - 'test/compact_instructions_test.rb'
+    - 'test/plastic/installations/compact_instructions_test.rb'
     - 'test/installer_core_test.rb'

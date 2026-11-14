@@ -62,6 +62,6 @@ class InstallationsRecordingTest < Plastic::TestCase
     own_settings("permissions" => { "deny" => ["Edit(~/mine/**)"] })
     installed_into("claude")
 
-    assert_equal EnginePermissions::ENTRIES, recorded("claude-code").permissions
+    assert_equal Plastic::Installations::EnginePermissions::ENTRIES, recorded("claude-code").permissions
   end
 end

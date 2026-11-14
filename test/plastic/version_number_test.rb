@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
-require_relative "test_helper"
-require "version_number"
+require_relative "../test_helper"
+require "plastic/version_number"
 
 class VersionNumberTest < Plastic::TestCase
   def version(text)
-    VersionNumber.parse(text)
+    Plastic::VersionNumber.parse(text)
   end
 
   def test_parse_drops_a_leading_v_and_any_suffix

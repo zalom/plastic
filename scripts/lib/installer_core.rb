@@ -1,22 +1,22 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 
-require_relative "store_layout"
+require_relative "../../lib/plastic/store_layout"
 require "json"
 require "yaml"
 require "fileutils"
 require "digest"
 require "time"
 require "tmpdir"
-require_relative "hook_registry"
+require_relative "../../lib/plastic/installations/hook_registry"
 require_relative "../../lib/plastic/clock"
 require_relative "../../lib/plastic/config"
 require_relative "../../lib/plastic/config/upgrade"
 require_relative "../../lib/plastic/hooks/entries"
 require_relative "../../lib/plastic/graph"
-require_relative "agent_models"
-require_relative "compact_instructions"
-require_relative "engine_permissions"
+require_relative "../../lib/plastic/config/agent_models"
+require_relative "../../lib/plastic/installations/compact_instructions"
+require_relative "../../lib/plastic/installations/engine_permissions"
 
 # Shared installer machinery, instantiable with injected package root / store / agent
 # map so the verb scripts (install/update/uninstall/rollback) and their tests can run
@@ -218,7 +218,7 @@ class InstallerCore
   def statusline_choice(settings_path, argv: [], input: $stdin, reinstall: false)
     existing_command = read_json_safe(settings_path)&.dig("statusLine", "command").to_s
     return :plastic if existing_command.empty?
-    return :plastic if HookRegistry.claude_purge_command?(existing_command)
+    return :plastic if Plastic::Installations::HookRegistry.claude_purge_command?(existing_command)
 
     idx = argv.index("--statusline")
     flag = idx && argv[idx + 1]
@@ -880,7 +880,7 @@ class InstallerCore
     FileUtils.mkdir_p(agents_root)
     sources.filter_map do |src|
       basename = File.basename(src, ".md")
-      next if !advisor_enabled && AgentModels::CONSULTATION_AGENTS.include?(basename)
+      next if !advisor_enabled && Plastic::Config::AgentModels::CONSULTATION_AGENTS.include?(basename)
 
       dest = File.join(agents_root, "#{basename}.toml")
       write_text_atomic(dest, render_codex_agent_toml(src, models[basename], efforts[basename]))
@@ -898,12 +898,12 @@ class InstallerCore
     effective = if override && !override.to_s.empty?
                   override
                 else
-                  AgentModels.shipped_model_for(name, harness: "codex") || front["model"]
+                  Plastic::Config::AgentModels.shipped_model_for(name, harness: "codex") || front["model"]
                 end
     effort = if effort_override && !effort_override.to_s.empty?
                effort_override
              else
-               front["effort"] || AgentModels.shipped_effort_for(name)
+               front["effort"] || Plastic::Config::AgentModels.shipped_effort_for(name)
              end
 
     parts = []
@@ -927,15 +927,15 @@ class InstallerCore
   end
 
   # The model-selection line(s). A known tier alias (opus/sonnet/haiku) emits BOTH a `model` line
-  # (from AgentModels.codex_model_for, the intent-186 per-role Codex identity) and a
+  # (from Plastic::Config::AgentModels.codex_model_for, the intent-186 per-role Codex identity) and a
   # model_reasoning_effort line, model first for deterministic byte-identical regenerate. Any other
   # non-empty value is a literal Codex model id. Every non-empty model also emits the resolved effort,
   # medium by default or the harness-scoped override. Empty emits no model fields.
-  def codex_model_fields(effective, effort: AgentModels::DEFAULT_EFFORT)
+  def codex_model_fields(effective, effort: Plastic::Config::AgentModels::DEFAULT_EFFORT)
     return "" if effective.nil? || effective.to_s.empty?
-    if AgentModels.effort_for(effective)
+    if Plastic::Config::AgentModels.effort_for(effective)
       lines = []
-      model = AgentModels.codex_model_for(effective)
+      model = Plastic::Config::AgentModels.codex_model_for(effective)
       lines << %(model = "#{toml_inline_escape(model)}") if model && !model.to_s.empty?
       lines << %(model_reasoning_effort = "#{toml_inline_escape(effort)}") unless effort.to_s.empty?
       lines.join("\n")
@@ -1021,7 +1021,7 @@ class InstallerCore
   end
 
   # Returns [[event, command], ...] for every entry removed, mirroring
-  # purge_stale_plastic_hooks. Ownership comes from HookRegistry.
+  # purge_stale_plastic_hooks. Ownership comes from Plastic::Installations::HookRegistry.
   def purge_stale_codex_hooks(hooks)
     removed = []
 
@@ -1031,11 +1031,11 @@ class InstallerCore
       hooks[event] = groups.map do |group|
         if group.is_a?(Hash) && group["hooks"].is_a?(Array)
           group["hooks"].reject! do |h|
-            HookRegistry.codex_purge_command?(h["command"]) && (removed << [event, h["command"]])
+            Plastic::Installations::HookRegistry.codex_purge_command?(h["command"]) && (removed << [event, h["command"]])
           end
           group unless group["hooks"].empty?
         elsif group.is_a?(Hash) && group["command"]
-          if HookRegistry.codex_purge_command?(group["command"])
+          if Plastic::Installations::HookRegistry.codex_purge_command?(group["command"])
             removed << [event, group["command"]]
             nil
           else
@@ -1102,14 +1102,14 @@ class InstallerCore
   # them to `installed` before write_manifest (manifest + prune are then automatic).
   # No-op safe: returns [] when the package has no agents dir or it is empty.
   # advisor_enabled: false (advisor.enabled config key) skips every
-  # AgentModels::CONSULTATION_AGENTS file entirely, so a user who declined the advisor never gets either
+  # Plastic::Config::AgentModels::CONSULTATION_AGENTS file entirely, so a user who declined the advisor never gets either
   # agent installed.
   def install_agents(agents_root, models: {}, efforts: {}, advisor_enabled: true)
     sources = Dir.glob(File.join(package_root, "agents", "*.md"))
     return [] if sources.empty?
 
     unless advisor_enabled
-      sources = sources.reject { |src| AgentModels::CONSULTATION_AGENTS.include?(File.basename(src, ".md")) }
+      sources = sources.reject { |src| Plastic::Config::AgentModels::CONSULTATION_AGENTS.include?(File.basename(src, ".md")) }
     end
 
     FileUtils.mkdir_p(agents_root)
@@ -1333,8 +1333,8 @@ class InstallerCore
     hooks = settings["hooks"]
 
     # Single source of truth: registrations live in
-    # HookRegistry; this merge only translates them into settings.json.
-    plastic_hooks = HookRegistry.claude_settings_hooks(hook_dir: hook_dir)
+    # Plastic::Installations::HookRegistry; this merge only translates them into settings.json.
+    plastic_hooks = Plastic::Installations::HookRegistry.claude_settings_hooks(hook_dir: hook_dir)
 
     plastic_hooks.each do |event, group|
       hooks[event] ||= []
@@ -1347,7 +1347,7 @@ class InstallerCore
       groups.each do |g|
         existing = hooks[event].find do |h|
           h.is_a?(Hash) && h["matcher"] == g["matcher"] &&
-            h["hooks"].is_a?(Array) && h["hooks"].any? { |x| HookRegistry.claude_purge_command?(x["command"]) }
+            h["hooks"].is_a?(Array) && h["hooks"].any? { |x| Plastic::Installations::HookRegistry.claude_purge_command?(x["command"]) }
         end
 
         if existing
@@ -1361,7 +1361,7 @@ class InstallerCore
     report_removed_hook_entries(removed - hook_pairs(hooks), "settings.json")
 
     existing_status = settings["statusLine"]
-    if existing_status && !HookRegistry.claude_purge_command?(existing_status["command"])
+    if existing_status && !Plastic::Installations::HookRegistry.claude_purge_command?(existing_status["command"])
       cache_dir = File.join(plastic_home, ".cache")
       FileUtils.mkdir_p(cache_dir)
       File.write(File.join(cache_dir, "original-statusline.json"), JSON.pretty_generate(existing_status))
@@ -1376,7 +1376,7 @@ class InstallerCore
   end
 
   # Returns [[event, command], ...] for every entry removed, so merge_claude_hooks
-  # can report it. Ownership comes from HookRegistry, never a substring.
+  # can report it. Ownership comes from Plastic::Installations::HookRegistry, never a substring.
   def purge_stale_plastic_hooks(hooks)
     removed = []
     hooks.delete("statusLine")
@@ -1387,11 +1387,11 @@ class InstallerCore
       hooks[event] = groups.map do |group|
         if group.is_a?(Hash) && group["hooks"].is_a?(Array)
           group["hooks"].reject! do |h|
-            HookRegistry.claude_purge_command?(h["command"]) && (removed << [event, h["command"]])
+            Plastic::Installations::HookRegistry.claude_purge_command?(h["command"]) && (removed << [event, h["command"]])
           end
           group unless group["hooks"].empty?
         elsif group.is_a?(Hash) && group["command"]
-          if HookRegistry.claude_purge_command?(group["command"])
+          if Plastic::Installations::HookRegistry.claude_purge_command?(group["command"])
             removed << [event, group["command"]]
             nil
           else
@@ -1409,12 +1409,12 @@ class InstallerCore
   # --- The engine deny rule ---
   #
   # A second ownership mechanism from merge_claude_hooks above: a
-  # permissions.deny entry is a bare string with no marker in it, so EnginePermissions
+  # permissions.deny entry is a bare string with no marker in it, so Plastic::Installations::EnginePermissions
   # owns its four entries by exact-string membership, not by a plastic- launcher
-  # basename. This method only does the read-modify-write; EnginePermissions.merge_into
+  # basename. This method only does the read-modify-write; Plastic::Installations::EnginePermissions.merge_into
   # is the pure transform.
 
-  # Merges EnginePermissions::ENTRIES into settings.json. Unlike merge_claude_hooks,
+  # Merges Plastic::Installations::EnginePermissions::ENTRIES into settings.json. Unlike merge_claude_hooks,
   # this refuses rather than starting from {} when the existing file cannot be
   # parsed (row 3.11): a hand-edited settings file is never silently replaced.
   # Returns true when it wrote, false when it refused.
@@ -1426,7 +1426,7 @@ class InstallerCore
       settings = {}
     end
 
-    write_json_atomic(settings_path, EnginePermissions.merge_into(settings))
+    write_json_atomic(settings_path, Plastic::Installations::EnginePermissions.merge_into(settings))
     true
   end
 
@@ -1500,7 +1500,7 @@ class InstallerCore
   end
 
   # The compact-instructions block for ~/.claude/CLAUDE.md.
-  def inject_claude_compact_md(path, body: CompactInstructions::BODY)
+  def inject_claude_compact_md(path, body: Plastic::Installations::CompactInstructions::BODY)
     inject_marked_section(path, body: body, begin_prefix: CLAUDE_SECTION_BEGIN_PREFIX,
                           end_marker: CLAUDE_SECTION_END, section_re: CLAUDE_SECTION_RE)
   end

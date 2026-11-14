@@ -102,7 +102,7 @@ delivery in one place.
 
 The post-execution reviewer runs when the executor's diff touches any of these paths:
 
-- `hooks/`, `lib/plastic/hooks/`, `scripts/lib/hook_registry.rb`
+- `hooks/`, `lib/plastic/hooks/`, `lib/plastic/installations/hook_registry.rb`
 - `lib/plastic/graph/lock.rb`, `lib/plastic/workflows/code/auto.rb`,
   `lib/plastic/graph/work/completion/writer.rb`
 - `scripts/lib/installer_core.rb`, `scripts/install.rb`, `scripts/install-release`

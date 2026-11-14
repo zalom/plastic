@@ -8,7 +8,7 @@ require "open3"
 require "rbconfig"
 require "tmpdir"
 require "yaml"
-require_relative "../../scripts/lib/store_layout"
+require_relative "../../lib/plastic/store_layout"
 
 # ContextBudget: the measurement behind Plastic's two context numbers. The core
 # block stays under 8,192 bytes and the whole per-boot doctrine read under

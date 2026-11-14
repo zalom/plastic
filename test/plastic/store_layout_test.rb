@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require_relative "test_helper"
-require "store_layout"
+require_relative "../test_helper"
+require "plastic/store_layout"
 
 class StoreLayoutTest < Plastic::TestCase
   def home
