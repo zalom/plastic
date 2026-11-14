@@ -14,7 +14,7 @@ module Plastic
             say: "No accepted review counts yet. Run plastic intent judge %{intent_id}; the judge records the verdict of the next review round with plastic intent verdict. " \
               "Then run plastic intent end %{intent_id} again."
 
-          outcome :handoff, offers: nil, because: "intent %{intent_id} cannot end yet. %{missing}"
+          outcome :handoff, stops: :failure, offers: "plastic intent end %{intent_id}", because: "intent %{intent_id} cannot end yet. %{missing}"
           outcome :done, offers: nil, because: "the completion records are ready"
         end
       end

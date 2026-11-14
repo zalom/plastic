@@ -6,6 +6,6 @@ Each row gives the setup, the call, the exit code, the result and the next line:
 
 | setup                                              | call                            | exit | result                    | next line            |
 | -------------------------------------------------- | ------------------------------- | ---- | ------------------------- | -------------------- |
-| intent new Alpha ; intent verdict 1 accept "Holds" | intent judge 1                  | 0    | none                      | plastic intent end 1 |
+| intent new Alpha ; write store/1--alpha/spec.md "# Spec\n\n## Done criteria\n\n- [tests-pass] tests pass\n" ; sync up ; intent approve 1 ; auto 1 ; node add 1 Build --criterion tests-pass ; node claim 1 n1 ; node done 1 n1 Built ; intent verdict 1 accept Holds | intent judge 1                  | 0    | none                      | plastic intent end 1 |
 | intent new Alpha                                   | intent judge 1 --verdict accept | 2    | invalid option: --verdict | none                 |
 | none                                               | intent judge 9                  | 1    | no intent 9 in this store | none                 |

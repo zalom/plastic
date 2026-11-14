@@ -9,8 +9,8 @@ module Plastic
   module Workflows
     module Code
       module Intent
-        # Prints the grilling method, then the intent's open decisions; refuses
-        # an unknown id.
+        # Prints the grilling method, how done criteria are written, and the open
+        # questions and decisions of spec.md; refuses an unknown id.
         class Spec < CodeWorkflow
           extend GoAhead
 

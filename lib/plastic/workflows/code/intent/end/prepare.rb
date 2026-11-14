@@ -15,7 +15,7 @@ module Plastic
         class End
           # Reads what closing an intent needs: the rows, the judge's verdict, outcome.md and, by the review setting, the pull request.
           class Prepare < CodeWorkflow
-            sets :intent, :closed, :problem, :requirements, :judged, :used_up, :awaiting_approval, :intent_folder, :merge_recorded, :map_recorded, :missing
+            sets :intent, :closed, :problem, :requirements, :judged, :used_up, :awaiting_approval, :intent_folder, :merge_recorded, :map_recorded, :merge_found, :missing
 
             read "read the intent" do |context|
               context[:intent] = context.retrieval.intent(context.intent_id)
@@ -40,6 +40,7 @@ module Plastic
               context[:awaiting_approval] = false
               context[:merge_recorded] = context[:map_recorded] = false
               context[:missing] = ""
+              context[:merge_found] = ""
               record_facts(context) unless context.closed
             end
 
@@ -54,7 +55,13 @@ module Plastic
 
             def self.verification_facts(context, verification)
               context[:merge_recorded], context[:map_recorded] = [verification.merged?, verification.architecture_map?]
+              context[:merge_found] = merge_found(verification)
               context[:awaiting_approval] = review_required?(context) && ready_for_approval?(context) && !verification.approved?
+            end
+
+            def self.merge_found(verification)
+              found = verification.negative_merge
+              found ? "outcome.md says '#{found}', which is not a merge. " : ""
             end
 
             def self.review_facts(context)
@@ -65,7 +72,7 @@ module Plastic
             end
 
             def self.review_required?(context)
-              Config.new(context.scope.plastic_home).choice(%w[review pull_request], default: "required", allowed: %w[required off]) == "required"
+              Config.new(context.scope.plastic_home).choice(%w[review pull_request], default: "off", allowed: %w[required off]) == "required"
             end
 
             def self.pull_request_problems(check)
