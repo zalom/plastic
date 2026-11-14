@@ -24,33 +24,22 @@ module Plastic
         class Plan
           def self.build(folder, retrieval, resolution)
             legacy = folder.legacy?
-            up = resolution.up?
             folders = legacy ? nil : IntentFolders.new(folder, retrieval)
             entries = entries(folder, retrieval, folders)
-            new(resolution:, entries:, legacy: up && legacy,
-              problem: (legacy_problem if legacy && !up), unreadable: Array(folders&.problems),
+            new(resolution:, entries:, unreadable: Array(folders&.problems),
               archived: archived(folder, retrieval, resolution),
-              unreadable_files: unreadable_files_of(folder, retrieval, entries, resolution, legacy))
+              unreadable_files: unreadable_files_of(Readability.new(folder, retrieval), entries, (resolution.up? && !legacy)),
+              **legacy_facts(legacy, resolution))
+          end
+
+          # The legacy flag and the problem of a store, by what the call does.
+          def self.legacy_facts(legacy, resolution)
+            up = resolution.up?
+            { legacy: up && legacy, problem: (legacy_problem if legacy && !up) }
           end
 
           # Only a sync up of a store that is not legacy reads files.
-          def self.unreadable_files_of(folder, retrieval, entries, resolution, legacy)
-            (resolution.up? && !legacy) ? unreadable_files(folder, retrieval, entries) : {}
-          end
-
-          # The changed files of `entries` that sync up would read and cannot.
-          def self.unreadable_files(folder, retrieval, entries)
-            rowed = retrieval.intents.map(&:dir)
-            paths = entries.select { |entry| readable?(entry, rowed) }.map(&:path)
-            Readability.new(folder, retrieval).call(paths)
-          end
-
-          # A changed file that is the index or belongs to an intent that has its rows; the files of a folder without rows read after its row is written.
-          def self.readable?(entry, rowed)
-            return false unless %i[read conflict].include?(entry.action(:up))
-
-            entry.path == StoreFolder::INDEX || (!entry.generated? && rowed.any? { |dir| entry.path.start_with?("#{dir}/") })
-          end
+          def self.unreadable_files_of(readability, entries, reading) = reading ? readability.unreadable(entries) : {}
 
           def self.entries(folder, retrieval, folders = nil) = EntryList.new(folder, retrieval, folders).entries
 
@@ -87,26 +76,7 @@ module Plastic
 
           private
 
-          def settled(entry)
-            return generated_up(entry) if direction == :up && entry.generated?
-            return :none if unreadable_files.key?(entry.path)
-
-            action = entry.action(direction)
-            return resolution.side if action == :conflict && resolution.overwrites?(entry.path)
-
-            named_print?(entry) ? :print : action
-          end
-
-          # A generated file a person changed: the index is read when it can be, else printed again from the rows.
-          def generated_up(entry)
-            return :none unless entry.hand_edited? && entry.rows_sha
-            return :print if StoreFolder.context_view?(entry.path) || Entry.roadmap?(entry.path) || unreadable_files.key?(entry.path)
-
-            :read
-          end
-
-          # An overwrite that names this path prints it from its rows when the file differs from them.
-          def named_print?(entry) = direction == :down && resolution.names?(entry.path) && entry.rows_sha && !entry.level?
+          def settled(entry) = entry.settle(resolution, unreadable_files)
         end
       end
     end

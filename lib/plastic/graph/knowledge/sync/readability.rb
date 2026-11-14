@@ -21,6 +21,12 @@ module Plastic
           # The reason for each of `paths` that cannot be read, by path.
           def call(paths) = paths.to_h { |path| [path, problem(path)] }.compact
 
+          # The changed files of `entries` that sync up would read and cannot.
+          def unreadable(entries)
+            rowed = @retrieval.intents.map(&:dir)
+            call(entries.select { |entry| entry.readable_in?(rowed) }.map(&:path))
+          end
+
           private
 
           def problem(path)

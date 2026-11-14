@@ -3,6 +3,7 @@
 require "json"
 require_relative "../../prints"
 require_relative "../store_folder"
+require_relative "settling"
 
 module Plastic
   module Graph
@@ -18,7 +19,12 @@ module Plastic
           # The print of a path with no rows.
           NO_PRINT = Prints::Print.new(nil, nil, nil, nil)
 
-          def self.generated?(path) = StoreFolder.context_view?(path) || path == StoreFolder::INDEX || roadmap?(path)
+          include Settling
+
+          def self.generated?(path) = path == StoreFolder::INDEX || reprinted?(path)
+
+          # The generated files no reader turns into rows: the context views and the roadmaps.
+          def self.reprinted?(path) = StoreFolder.context_view?(path) || roadmap?(path)
 
           # No reader turns a roadmap file into rows, so sync up prints it again from its rows.
           def self.roadmap?(path) = path.to_s.start_with?("roadmaps/")
@@ -31,8 +37,10 @@ module Plastic
 
           def self.level_sha(folder, path, print)
             sha = folder.digest(path)
-            (sha && generated?(path) && print.sha256 && same_content?(folder.read(path), print.text)) ? print.sha256 : sha
+            (sha && generated?(path) && same_print?(folder.read(path), print)) ? print.sha256 : sha
           end
+
+          def self.same_print?(bytes, print) = print.sha256 && same_content?(bytes, print.text)
 
           def self.same_content?(bytes, text)
             JSON.parse(bytes.force_encoding(Encoding::UTF_8)) == JSON.parse(text)
@@ -46,7 +54,7 @@ module Plastic
           def generated? = Entry.generated?(path)
 
           # The file already holds what the rows print.
-          def level? = !file_sha.nil? && file_sha == rows_sha
+          def level? = [file_sha].compact.include?(rows_sha)
 
           def file_changed? = file_sha && file_sha != printed_sha
 
