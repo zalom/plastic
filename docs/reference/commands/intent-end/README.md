@@ -46,14 +46,14 @@ Its rows run in this order:
 4. Read: check delivery ownership. [`prepare.rb:29`](../../../../lib/plastic/workflows/code/intent/end/prepare.rb#L29)
 5. Gate: passes when `context.problem.nil?`; otherwise the call stops with exit 3 and prints PROBLEM. [`prepare.rb:33`](../../../../lib/plastic/workflows/code/intent/end/prepare.rb#L33)
 6. Read: check the completion records. [`prepare.rb:35`](../../../../lib/plastic/workflows/code/intent/end/prepare.rb#L35)
-7. Gate: passes when `!context.used_up`; otherwise the call stops with exit 3 and prints the judge's review round of intent INTENT_ID is used; the owner decides between abandoning the intent and a follow-up intent. [`prepare.rb:77`](../../../../lib/plastic/workflows/code/intent/end/prepare.rb#L77)
-8. Gate: passes when `!context.awaiting_approval`; otherwise the call stops with exit 3 and prints the pull request of intent INTENT_ID waits for the person's approval; add the line Approved: to the Verification section of outcome.md once they approve, then run plastic sync up. [`prepare.rb:79`](../../../../lib/plastic/workflows/code/intent/end/prepare.rb#L79)
-9. Outcome `:closed`, when `context.closed`: finishes with exit 0; next: plastic next. [`prepare.rb:84`](../../../../lib/plastic/workflows/code/intent/end/prepare.rb#L84)
-10. Outcome `:agent_needed`, when `!context.requirements.empty? || !context.judged`: starts the workflow [Agent::Intent::End](#agentintentend). [`prepare.rb:86`](../../../../lib/plastic/workflows/code/intent/end/prepare.rb#L86)
-11. Outcome `:unverified`, when `!verified?(context)`: starts the workflow [Agent::Intent::End::CheckMerge](#agentintentendcheckmerge). [`prepare.rb:87`](../../../../lib/plastic/workflows/code/intent/end/prepare.rb#L87)
-12. Outcome `:ready`, otherwise: starts the workflow [Code::Intent::End](#codeintentend). [`prepare.rb:88`](../../../../lib/plastic/workflows/code/intent/end/prepare.rb#L88)
+7. Gate: passes when `!context.used_up`; otherwise the call stops with exit 3 and prints the judge's review round of intent INTENT_ID is used; the owner decides between abandoning the intent and a follow-up intent. [`prepare.rb:90`](../../../../lib/plastic/workflows/code/intent/end/prepare.rb#L90)
+8. Gate: passes when `!context.awaiting_approval`; otherwise the call stops with exit 3 and prints the pull request of intent INTENT_ID waits for the person's approval; APPROVAL_FOUNDadd the line 'Approved: <person> on <YYYY-MM-DD>' to the Verification section of outcome.md once they approve, then run plastic sync up. [`prepare.rb:92`](../../../../lib/plastic/workflows/code/intent/end/prepare.rb#L92)
+9. Outcome `:closed`, when `context.closed`: finishes with exit 0; next: plastic next. [`prepare.rb:97`](../../../../lib/plastic/workflows/code/intent/end/prepare.rb#L97)
+10. Outcome `:agent_needed`, when `!context.requirements.empty? || !context.judged`: starts the workflow [Agent::Intent::End](#agentintentend). [`prepare.rb:99`](../../../../lib/plastic/workflows/code/intent/end/prepare.rb#L99)
+11. Outcome `:unverified`, when `!verified?(context)`: starts the workflow [Agent::Intent::End::CheckMerge](#agentintentendcheckmerge). [`prepare.rb:100`](../../../../lib/plastic/workflows/code/intent/end/prepare.rb#L100)
+12. Outcome `:ready`, otherwise: starts the workflow [Code::Intent::End](#codeintentend). [`prepare.rb:101`](../../../../lib/plastic/workflows/code/intent/end/prepare.rb#L101)
 
-It sets `intent`, `closed`, `problem`, `requirements`, `judged`, `used_up`, `awaiting_approval`, `intent_folder`, `merge_recorded`, `map_recorded`, `missing`.
+It sets `intent`, `closed`, `problem`, `requirements`, `judged`, `used_up`, `awaiting_approval`, `intent_folder`, `merge_recorded`, `map_recorded`, `merge_found`, `approval_found`, `missing`.
 
 ### Agent::Intent::End
 
@@ -67,7 +67,7 @@ Its rows run in this order:
 
 1. Agent step: finish the required records. Done when `context.requirements.empty?`; while it fails, the call prints its `say:` text. [`end.rb:11`](../../../../lib/plastic/workflows/agent/intent/end.rb#L11)
 2. Agent step: have the delivery judged. Done when `context.judged`; while it fails, the call prints its `say:` text. [`end.rb:13`](../../../../lib/plastic/workflows/agent/intent/end.rb#L13)
-3. Outcome `:handoff`, when a step is left: hands off with exit 0; prints no next: line. [`end.rb:17`](../../../../lib/plastic/workflows/agent/intent/end.rb#L17)
+3. Outcome `:handoff`, when a step is left: hands off with exit 1; next: plastic intent end INTENT_ID. [`end.rb:17`](../../../../lib/plastic/workflows/agent/intent/end.rb#L17)
 4. Outcome `:done`, when every done check holds: finishes with exit 0; prints no next: line. [`end.rb:18`](../../../../lib/plastic/workflows/agent/intent/end.rb#L18)
 
 The agent step "finish the required records" prints:
@@ -78,32 +78,32 @@ The agent step "have the delivery judged" prints:
 
 > No accepted review counts yet. Run plastic intent judge INTENT_ID; the judge records the verdict of the next review round with plastic intent verdict. Then run plastic intent end INTENT_ID again.
 
-While a step is left, the call hands off with exit 0 from `:handoff`: it prints the `say:` text of each failing step and prints no next: line. The command writes, so the call keeps its routine run row in local.db. The next call loads its facts, restarts at the first workflow and skips each step whose `done:` check holds.
+While a step is left, the call hands off with exit 1 from `:handoff`: it prints the `say:` text of each failing step and offers next: plastic intent end INTENT_ID. The command writes, so the call keeps its routine run row in local.db. The next call loads its facts, restarts at the first workflow and skips each step whose `done:` check holds.
 
 ### Agent::Intent::End::CheckMerge
 
 The agent workflow `:agent_check_merge`, in [`check_merge.rb:14`](../../../../lib/plastic/workflows/agent/intent/end/check_merge.rb#L14).
 
-The agent checks that the code is merged and confirms the architecture map, then records both under Verification in outcome.md. Plastic runs no version control command and records what the agent writes.
+The agent merges its own pull request and confirms the architecture map, then records both under Verification in outcome.md. Plastic runs no version control command and records what the agent writes.
 
 ![How Agent::Intent::End::CheckMerge runs: its steps, where it stops, and its outcomes](agent_check_merge.svg)
 
 Its rows run in this order:
 
-1. Agent step: check the code is merged. Done when `context.merge_recorded`; while it fails, the call prints its `say:` text. [`check_merge.rb:15`](../../../../lib/plastic/workflows/agent/intent/end/check_merge.rb#L15)
+1. Agent step: merge the code. Done when `context.merge_recorded`; while it fails, the call prints its `say:` text. [`check_merge.rb:15`](../../../../lib/plastic/workflows/agent/intent/end/check_merge.rb#L15)
 2. Agent step: confirm the architecture map. Done when `context.map_recorded`; while it fails, the call prints its `say:` text. [`check_merge.rb:19`](../../../../lib/plastic/workflows/agent/intent/end/check_merge.rb#L19)
-3. Outcome `:handoff`, when a step is left: hands off with exit 0; prints no next: line. [`check_merge.rb:25`](../../../../lib/plastic/workflows/agent/intent/end/check_merge.rb#L25)
-4. Outcome `:done`, when every done check holds: finishes with exit 0; prints no next: line. [`check_merge.rb:26`](../../../../lib/plastic/workflows/agent/intent/end/check_merge.rb#L26)
+3. Outcome `:handoff`, when a step is left: hands off with exit 1; next: plastic intent end INTENT_ID. [`check_merge.rb:25`](../../../../lib/plastic/workflows/agent/intent/end/check_merge.rb#L25)
+4. Outcome `:done`, when every done check holds: finishes with exit 0; prints no next: line. [`check_merge.rb:27`](../../../../lib/plastic/workflows/agent/intent/end/check_merge.rb#L27)
 
-The agent step "check the code is merged" prints:
+The agent step "merge the code" prints:
 
-> Check with your own version control tool that the intent's branch is merged into its base. Then add the line '- Merged: <branch> into <base> at <commit or pull request>' under ## Verification in INTENT_FOLDER/outcome.md. Plastic runs no version control command; it records what you write.
+> MERGE_FOUNDMerge your own pull request into the intent's base with your own version control tool; leave it open only when the owner asked. Then add the line '- Merged: <branch> into <base> at <commit or pull request>' under ## Verification in INTENT_FOLDER/outcome.md, then run plastic sync up. Plastic runs no version control command; it records what you write.
 
 The agent step "confirm the architecture map" prints:
 
 > Now that the work is delivered, fetch the architecture map once more, with the tool you used before planning or by mapping the code yourself, and confirm that it describes the delivered code. Then add the line '- Architecture map: <tool> at <source revision>' under ## Verification in INTENT_FOLDER/outcome.md. Run plastic sync up and then plastic intent end INTENT_ID again.
 
-While a step is left, the call hands off with exit 0 from `:handoff`: it prints the `say:` text of each failing step and prints no next: line. The command writes, so the call keeps its routine run row in local.db. The next call loads its facts, restarts at the first workflow and skips each step whose `done:` check holds.
+While a step is left, the call hands off with exit 1 from `:handoff`: it prints the `say:` text of each failing step and offers next: plastic intent end INTENT_ID. The command writes, so the call keeps its routine run row in local.db. The next call loads its facts, restarts at the first workflow and skips each step whose `done:` check holds.
 
 ### Code::Intent::End
 
@@ -169,7 +169,7 @@ A second call runs the same rows again. A step runs again only when its done che
 | --- | --- | --- | --- |
 | finish the required records | `context.requirements.empty?` | skips it | [`end.rb:11`](../../../../lib/plastic/workflows/agent/intent/end.rb#L11) |
 | have the delivery judged | `context.judged` | skips it | [`end.rb:13`](../../../../lib/plastic/workflows/agent/intent/end.rb#L13) |
-| check the code is merged | `context.merge_recorded` | skips it | [`check_merge.rb:15`](../../../../lib/plastic/workflows/agent/intent/end/check_merge.rb#L15) |
+| merge the code | `context.merge_recorded` | skips it | [`check_merge.rb:15`](../../../../lib/plastic/workflows/agent/intent/end/check_merge.rb#L15) |
 | confirm the architecture map | `context.map_recorded` | skips it | [`check_merge.rb:19`](../../../../lib/plastic/workflows/agent/intent/end/check_merge.rb#L19) |
 | close the intent and finish cleanup | `context.ended == true` | skips it | [`end.rb:15`](../../../../lib/plastic/workflows/code/intent/end.rb#L15) |
 | stop what intent INTENT_ID started | `false` | runs it again | [`wind_down_intent.rb:11`](../../../../lib/plastic/workflows/agent/shared/wind_down_intent.rb#L11) |
@@ -183,13 +183,13 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | no intent INTENT_ID in this store | 1 | prints no next: line | [`prepare.rb:25`](../../../../lib/plastic/workflows/code/intent/end/prepare.rb#L25) |
 | intent INTENT_ID is not open or in progress | 1 | prints no next: line | [`prepare.rb:26`](../../../../lib/plastic/workflows/code/intent/end/prepare.rb#L26) |
 | PROBLEM | 3 | prints no next: line | [`prepare.rb:33`](../../../../lib/plastic/workflows/code/intent/end/prepare.rb#L33) |
-| the judge's review round of intent INTENT_ID is used; the owner decides between abandoning the intent and a follow-up intent | 3 | prints no next: line | [`prepare.rb:77`](../../../../lib/plastic/workflows/code/intent/end/prepare.rb#L77) |
-| the pull request of intent INTENT_ID waits for the person's approval; add the line Approved: to the Verification section of outcome.md once they approve, then run plastic sync up | 3 | prints no next: line | [`prepare.rb:79`](../../../../lib/plastic/workflows/code/intent/end/prepare.rb#L79) |
-| intent INTENT_ID is already done | 0 | plastic next | [`prepare.rb:84`](../../../../lib/plastic/workflows/code/intent/end/prepare.rb#L84) |
-| intent INTENT_ID cannot end yet. MISSING | 0 | prints no next: line | [`end.rb:17`](../../../../lib/plastic/workflows/agent/intent/end.rb#L17) |
+| the judge's review round of intent INTENT_ID is used; the owner decides between abandoning the intent and a follow-up intent | 3 | prints no next: line | [`prepare.rb:90`](../../../../lib/plastic/workflows/code/intent/end/prepare.rb#L90) |
+| the pull request of intent INTENT_ID waits for the person's approval; APPROVAL_FOUNDadd the line 'Approved: <person> on <YYYY-MM-DD>' to the Verification section of outcome.md once they approve, then run plastic sync up | 3 | prints no next: line | [`prepare.rb:92`](../../../../lib/plastic/workflows/code/intent/end/prepare.rb#L92) |
+| intent INTENT_ID is already done | 0 | plastic next | [`prepare.rb:97`](../../../../lib/plastic/workflows/code/intent/end/prepare.rb#L97) |
+| intent INTENT_ID cannot end yet. MISSING | 1 | plastic intent end INTENT_ID | [`end.rb:17`](../../../../lib/plastic/workflows/agent/intent/end.rb#L17) |
 | the completion records are ready | 0 | prints no next: line | [`end.rb:18`](../../../../lib/plastic/workflows/agent/intent/end.rb#L18) |
-| the agent checks the merge and the architecture map and records both in outcome.md | 0 | prints no next: line | [`check_merge.rb:25`](../../../../lib/plastic/workflows/agent/intent/end/check_merge.rb#L25) |
-| the merge and the architecture map are recorded | 0 | prints no next: line | [`check_merge.rb:26`](../../../../lib/plastic/workflows/agent/intent/end/check_merge.rb#L26) |
+| the agent merges the code and confirms the architecture map and records both in outcome.md | 1 | plastic intent end INTENT_ID | [`check_merge.rb:25`](../../../../lib/plastic/workflows/agent/intent/end/check_merge.rb#L25) |
+| the merge and the architecture map are recorded | 0 | prints no next: line | [`check_merge.rb:27`](../../../../lib/plastic/workflows/agent/intent/end/check_merge.rb#L27) |
 | the agent stops the processes and agents the intent started | 0 | prints no next: line | [`wind_down_intent.rb:15`](../../../../lib/plastic/workflows/agent/shared/wind_down_intent.rb#L15) |
 | nothing the intent started is left running | 0 | prints no next: line | [`wind_down_intent.rb:16`](../../../../lib/plastic/workflows/agent/shared/wind_down_intent.rb#L16) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |

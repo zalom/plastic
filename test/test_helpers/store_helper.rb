@@ -30,11 +30,12 @@ module Plastic
         intent
       end
 
-      # An open intent whose synced spec.md holds one done criterion, so a node can name its key.
+      # An open intent with the owner's go-ahead whose synced spec.md holds one done criterion, so a node can name its key and be claimed.
       def open_keyed_intent(title = "Alpha", key: "done", **fields)
         intent = open_intent(title, **fields)
         write("#{intent.dir}/spec.md", "# Spec\n\n## Done criteria\n- [ ] [#{key}] it is done\n")
         sync_up
+        store_graphs.work.approve_intent(intent.intent_id)
         intent
       end
 

@@ -36,7 +36,7 @@ module Plastic
       "intent approve" => ["Commands::Intent::Approve", "Write the owner's go-ahead for an intent; auto refuses an intent without it"],
       "intent judge" => ["Commands::Intent::Judge", "Print the steps that start the judge of an intent"],
       "intent verdict" => ["Commands::Intent::Verdict", "Record the verdict of the next review round of an intent"],
-      "intent spec" => ["Commands::Intent::Spec", "Print the grilling method, then the intent's open decisions"],
+      "intent spec" => ["Commands::Intent::Spec", "Print the grilling method, how done criteria are written, and the open questions and decisions of spec.md"],
       "intent discover" => ["Commands::Intent::Discover", "Record deterministic retrieval candidates for an intent"],
       "intent context" => ["Commands::Intent::Context", "Read or submit selected retrieval context for an intent"],
       "architecture status" => ["Commands::Architecture::Status", "Tell the agent to check the architecture map with its own tool"],

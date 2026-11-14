@@ -1,6 +1,8 @@
 # plastic intent spec
 
-Print the grilling method, then the intent's open decisions.
+Print the grilling method, how done criteria are written, and the open questions and decisions of spec.md.
+
+Prints the grilling method, then one intent's open decisions.
 
 ```sh
 plastic intent spec ID
@@ -31,7 +33,7 @@ The figure shows the command, the workflows it runs, the classes behind them, an
 
 The code workflow `:code_show_spec`, in [`spec.rb:14`](../../../../lib/plastic/workflows/code/intent/spec.rb#L14).
 
-Prints the grilling method, then the intent's open decisions; refuses an unknown id.
+Prints the grilling method, how done criteria are written, and the open questions and decisions of spec.md; refuses an unknown id.
 
 ![How Code::Intent::Spec runs: its steps, where it stops, and its outcomes](code_show_spec.svg)
 

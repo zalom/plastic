@@ -66,16 +66,10 @@ module Plastic
             end
           end
 
-          def hand_edited?
-            @folder.exist?(StoreFolder::INDEX) && @folder.digest(StoreFolder::INDEX) != @retrieval.printed[StoreFolder::INDEX]
-          end
-
           private
 
           def store_problem
-            return "this store still has #{StoreFolder::LEGACY_INDEX}; run plastic sync up to import it first" if @folder.legacy?
-
-            "#{StoreFolder::INDEX} changed by hand since the last print; run plastic sync up to read it first" if hand_edited?
+            "this store still has #{StoreFolder::LEGACY_INDEX}; run plastic sync up to import it first" if @folder.legacy?
           end
 
           def parent_problem(parent_id)

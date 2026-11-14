@@ -25,6 +25,26 @@ class PrintsTest < Plastic::TestCase
     assert_equal [{ "name" => "Core", "intents" => ["1"] }], JSON.parse(index_text)["clusters"]
   end
 
+  def test_the_hand_edit_line_names_the_path_and_the_command_to_run
+    assert_equal "store/index.json changed by hand since the last print; run plastic sync up first",
+      Plastic::Graph::Prints.hand_edit_line("store/index.json")
+  end
+
+  def test_the_hand_edit_line_is_written_in_prints_only
+    root = File.expand_path("../../../lib", __dir__)
+    holders = Dir.glob("**/*.rb", base: root).select { |rel| File.read(File.join(root, rel)).include?("changed by hand since the last print") }
+
+    refute_empty Dir.glob("**/*.rb", base: root)
+    assert_equal ["plastic/graph/prints.rb"], holders
+  end
+
+  def test_the_guard_finds_the_phrase_in_a_sample_and_leaves_another_alone
+    phrase = "changed by hand since the last print"
+
+    assert_includes "x #{phrase} y", phrase
+    refute_includes "x changed by hand y", phrase
+  end
+
   def test_the_same_rows_print_the_same_bytes
     store_graphs.work.write_intent(title: "One")
 

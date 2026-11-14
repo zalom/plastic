@@ -72,4 +72,24 @@ class WorkSessionWriterTest < Plastic::TestCase
   def test_renew_locks_of_a_session_with_no_lock_counts_none
     assert_equal 0, work.renew_locks("nobody")
   end
+
+  def test_reopening_an_ended_session_clears_its_end
+    work.open_session("s-1", harness: "claude-code", directory: "/a")
+    work.end_session("s-1", reason: "clear")
+    work.open_session("s-1", harness: "claude-code", directory: "/a")
+    session = reader.session("s-1")
+
+    assert_equal [nil, nil], [session.ended_at, session.end_reason]
+    refute_predicate session, :ended?
+  end
+
+  def test_stamping_a_turn_after_the_end_keeps_the_session_ended
+    work.open_session("s-1", harness: "claude-code", directory: "/a")
+    work.end_session("s-1", reason: "clear")
+    work.stamp_turn("s-1", directory: "/a")
+    session = reader.session("s-1")
+
+    assert_predicate session, :ended?
+    assert_equal "clear", session.end_reason
+  end
 end

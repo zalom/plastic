@@ -6,7 +6,7 @@ module ArchitectureFigures
   # Part of the figure builder; see docs/contributing/ARCHITECTURE.md.
   module Context
     META = Diagram::Meta.new(file: "context.svg", width: 1160, height: 372, title: "Plastic and what it talks to",
-      desc: "The owner gives goals to an agent harness. The harness runs plastic commands and fires hook events. Plastic reads where each project lives and keeps its work as rows. The harness edits the project repositories and pushes to GitHub, where the owner reviews and merges the pull request.")
+      desc: "The owner gives goals to an agent harness. The harness runs plastic commands and fires hook events. Plastic reads where each project lives and keeps its work as rows. The harness edits the project repositories and pushes to GitHub, where the agent merges its pull request and the owner reviews it when review is on.")
     BOXES = Diagram.parse(<<~TABLE).freeze
       owner | | 30 30 250 | Owner | person | owner | | Decides what to build and gives / the go-ahead to deliver it.
       harness | | 30 205 250 | Agent harness | software | agent | | Claude Code or Codex: runs the / agent and fires the hook events.
@@ -15,7 +15,7 @@ module ArchitectureFigures
       github | | 880 30 250 | GitHub | external system | end | | Holds the pull request and runs / the tests in CI.
     TABLE
     ARROWS = [
-      ["owner.right", "github.left", ["reviews and merges the pull request"]],
+      ["owner.right", "github.left", ["reviews the pull request when review is on"]],
       ["owner.bottom", "harness.top", ["goals, answers,", "go-ahead"]],
       ["harness.right", "plastic.left", ["plastic commands;", "hook events"]],
       ["plastic.right", "repos.left", ["reads where each", "project lives"], true],

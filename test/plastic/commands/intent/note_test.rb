@@ -104,6 +104,19 @@ class IntentNoteTest < Plastic::TestCase
     assert_includes JSON.parse(result.out).dig("result", "files"), "#{intent.dir}/#{FILE}"
   end
 
+  %w[done abandoned].each do |status|
+    define_method(:"test_a_#{status}_intent_fails_the_note_offers_next_and_writes_no_revision") do
+      open_intent(status:)
+      before = revisions
+
+      result = call("1", "late thought")
+
+      assert_equal [1, before], [result.code, revisions]
+      assert_includes result.err, "is #{status}"
+      assert_match(/^next: plastic next/, result.out)
+    end
+  end
+
   def test_an_unknown_intent_fails_and_writes_nothing
     result = call("9", "text")
 

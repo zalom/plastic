@@ -38,13 +38,14 @@ class PrintTriggerTest < Plastic::TestCase
     assert_equal ["1"], JSON.parse(File.read(store_path("store/index.json"))).fetch("archives").map { |mark| mark.fetch("intent_id") }
   end
 
-  def test_a_call_that_wrote_only_its_run_row_leaves_a_hand_edited_graph_json_alone
+  def test_a_hand_edited_graph_json_refuses_the_next_printing_call_and_stays_as_written
     intent = specified
     cli("intent", "approve", "1")
     File.write(store_path("#{intent.dir}/graph.json"), '{"hand":true}')
-    cli("intent", "approve", "1")
+    result = cli("intent", "approve", "1")
 
-    assert_equal '{"hand":true}', File.read(store_path("#{intent.dir}/graph.json"))
+    assert_equal [1, '{"hand":true}'], [result.code, File.read(store_path("#{intent.dir}/graph.json"))]
+    assert_includes result.err, "#{intent.dir}/graph.json changed by hand and cannot be read into rows"
   end
 
   def test_a_second_identical_call_prints_no_files_row

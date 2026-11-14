@@ -38,7 +38,7 @@ module Plastic
 
         def intents = built(:intents) { Knowledge::Intent::Writer.new(databases, retrieval, folder, session:) }
 
-        def revisions = built(:revisions) { Knowledge::Intent::Reviser.new(databases, retrieval, folder) }
+        def revisions = built(:revisions) { Knowledge::Intent::Reviser.new(databases, retrieval) }
 
         def nodes = built(:nodes) { Node::Writer.new(databases, retrieval) }
 

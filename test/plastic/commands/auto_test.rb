@@ -106,11 +106,6 @@ class AutoTest < Plastic::TestCase
     assert_includes result.err, "no intent 9 in this store"
   end
 
-  def held_lock(intent_id)
-    lock = retrieval.lock(intent_id)
-    [lock.session_id, retrieval.liveness(lock).live?]
-  end
-
   def test_an_active_intent_without_a_lock_takes_one
     intent = active_intent
 
@@ -118,7 +113,7 @@ class AutoTest < Plastic::TestCase
 
     lock = retrieval.lock(intent.intent_id)
 
-    assert_equal [0, "s-1", "auto", true], [result.code, lock&.session_id, lock&.mode, lock && retrieval.liveness(lock).live?]
+    assert_equal [0, "s-1", "auto", true], [result.code, lock&.session_id, lock&.mode, lock && live_when_renewed?(lock)]
   end
 
   def test_an_expired_foreign_lock_is_taken_over

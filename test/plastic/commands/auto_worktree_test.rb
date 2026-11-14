@@ -10,10 +10,10 @@ class AutoWorktreeTest < Plastic::TestCase
   def test_a_registered_repo_prints_the_path_and_branch_and_offers_the_brief
     repo = register_repo
     intent = clear_intent
+    worktree = File.join(repo, ".claude", "worktrees", "1--alpha")
+    FileUtils.mkdir_p(worktree)
 
     result = call(intent.intent_id)
-
-    worktree = File.join(repo, ".claude", "worktrees", "1--alpha")
 
     assert_equal [0, "next: plastic intent brief 1"], [result.code, next_line(result)]
     assert_includes result.out, "worktree: #{worktree}\n"
@@ -56,5 +56,28 @@ class AutoWorktreeTest < Plastic::TestCase
 
     assert_equal [0, "s-1"], [result.code, retrieval.lock(intent.intent_id).session_id]
     assert_includes result.out, "worktree: "
+  end
+
+  def test_a_missing_worktree_folder_prints_the_instruction_and_offers_auto_again
+    repo = register_repo
+    intent = clear_intent
+
+    result = call(intent.intent_id)
+
+    worktree = File.join(repo, ".claude", "worktrees", "1--alpha")
+
+    assert_equal [0, "next: plastic auto 1"], [result.code, next_line(result)]
+    assert_includes result.out, "Create the worktree at #{worktree} on branch plastic/1--alpha with your version control tool, then run plastic auto 1 again"
+  end
+
+  def test_a_worktree_folder_that_exists_offers_the_brief_and_prints_no_instruction
+    repo = register_repo
+    intent = clear_intent
+    FileUtils.mkdir_p(File.join(repo, ".claude", "worktrees", "1--alpha"))
+
+    result = call(intent.intent_id)
+
+    assert_equal [0, "next: plastic intent brief 1"], [result.code, next_line(result)]
+    refute_includes result.out, "Create the worktree"
   end
 end

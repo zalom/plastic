@@ -18,11 +18,20 @@ module Plastic
           end
 
           def entries
-            prints = Prints.of_store(@retrieval).to_h { |print| [print.path, print] }
             printed = @retrieval.printed
-            (prints.keys | on_disk | printed.keys).sort.map do |path|
-              Entry.new(path, @folder.digest(path), printed[path], prints.fetch(path, Entry::NO_PRINT))
-            end
+            paths = printed.keys
+            prints = prints_of(paths)
+            (prints.keys | on_disk | paths).sort.map { |path| entry(path, printed[path], prints) }
+          end
+
+          def entry(path, printed_sha, prints) = Entry.for(@folder, path, printed_sha, prints.fetch(path, Entry::NO_PRINT))
+
+          def prints_of(printed_paths) = Prints.of_store(@retrieval).to_h { |print| [print.path, print] }.merge(roadmap_prints(printed_paths))
+
+          # The roadmaps this home printed that still have rows, so a sync can print them again.
+          def roadmap_prints(paths)
+            slugs = paths.filter_map { |path| path[%r{\Aroadmaps/(.+)\.md\z}, 1] }.select { |slug| @retrieval.roadmap(slug) }
+            slugs.map { |slug| Prints.roadmap(@retrieval, slug) }.to_h { |print| [print.path, print] }
           end
 
           def on_disk

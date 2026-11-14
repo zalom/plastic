@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 358" width="760" height="358" role="img" xml:space="preserve">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 372" width="760" height="372" role="img" xml:space="preserve">
 <title>How Add runs in plastic node add</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
@@ -107,13 +107,14 @@
 <path d="M 226 258 L 226 268" class="wire"/>
 <path d="M 221 260 L 226 268 L 231 260 Z" class="head"/>
 <text x="16" y="280" class="tag tag-muted" text-anchor="start">ENDS ON</text>
-<rect x="16" y="288" width="300" height="56" rx="6" class="card"/>
+<rect x="16" y="288" width="300" height="70" rx="6" class="card"/>
 <text x="26" y="304" class="tm" text-anchor="start">:done</text>
 <text x="26" y="320" class="tm tag-muted" text-anchor="start">always</text>
 <path d="M 316 304 L 352 304" class="wire"/>
 <path d="M 344 299 L 352 304 L 344 309 Z" class="head"/>
-<rect x="352" y="288" width="392" height="56" rx="6" class="end"/>
+<rect x="352" y="288" width="392" height="70" rx="6" class="end"/>
 <text x="362" y="305" class="t" text-anchor="start">the call finishes, exit 0</text>
-<text x="362" y="319" class="t" text-anchor="start">next: plastic node claim %{intent_id} %{id}</text>
-<text x="362" y="333" class="t" text-anchor="start">because: node %{id} is open</text>
+<text x="362" y="319" class="t" text-anchor="start">next: plastic edge add %{intent_id} FROM TO</text>
+<text x="362" y="333" class="t" text-anchor="start">because: node %{id} is open; add the edges of the</text>
+<text x="362" y="347" class="t" text-anchor="start">plan, then run plastic graph ready %{intent_id}</text>
 </svg>

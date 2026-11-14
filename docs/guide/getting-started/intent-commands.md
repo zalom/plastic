@@ -52,7 +52,12 @@ newest node change. It also needs the `Merged:` and `Architecture map:` records 
 Verification in outcome.md, and with a required pull request the `Pull request:` and
 `Approved:` records. An intent needs at least one live node. Small work needs no intent.
 
-When something is missing, the command prints it and closes nothing. Exit code 3 means that the
+Plastic does not merge. The agent merges its own pull request unless the owner asked to keep it
+open, writes the `Merged:` bullet in outcome.md, runs `plastic sync up`, and then runs
+`plastic intent end ID`. Until the bullet is there, `intent end` exits 1, names what is missing and
+offers itself again.
+
+When something else is missing, the command prints it and closes nothing. Exit code 3 means that the
 step belongs to the owner: another session holds the intent, a second `revise` verdict was
 recorded, or the pull request is not approved. Report it to the owner and stop.
 

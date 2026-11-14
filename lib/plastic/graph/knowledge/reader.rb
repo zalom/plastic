@@ -24,6 +24,12 @@ module Plastic
           def kept_print(folder) = Prints::Print.new(path, database, folder.digest(path), nil)
         end
 
+        # The reader of the intents of the rows.
+        def self.of(folder, retrieval, **options)
+          known = retrieval.intents.to_h { |intent| [intent.intent_id, intent] }
+          new(folder, known, retrieval.origin_id, retrieval:, **options)
+        end
+
         # `intents` maps each known intent id to its intent: from the rows and
         # from the store/index.json on disk.
         def initialize(folder, intents, origin_id, retrieval: nil, heads: Retrieval::Evidence::Heads::Unread.new)
@@ -34,7 +40,7 @@ module Plastic
         end
 
         def read(path)
-          file = (path == StoreFolder::INDEX) ? IndexFile.new(@folder.read(path), @writer.origin_id) : intent_file(path)
+          file = (path == StoreFolder::INDEX) ? IndexFile.new(@folder.read(path), @writer.origin_id, @folder.intent_dirs) : intent_file(path)
           Read.new(path, file.database, file.method(:apply))
         end
 

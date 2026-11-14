@@ -15,21 +15,6 @@ class KnowledgeIntentWriterTest < Plastic::TestCase
     assert_equal "this store still has INDEX.md; run plastic sync up to import it first", writer.problem
   end
 
-  def test_a_hand_edited_index_must_be_read_first
-    open_intent
-    write("store/index.json", "{}\n")
-
-    assert_equal [true, "store/index.json changed by hand since the last print; run plastic sync up to read it first"],
-      [writer.hand_edited?, writer.problem]
-  end
-
-  def test_a_printed_index_is_not_hand_edited
-    refute_predicate writer, :hand_edited?
-    open_intent
-
-    refute_predicate writer, :hand_edited?
-  end
-
   def test_only_the_new_statuses_are_taken
     assert_equal ["a new intent takes the status open, parked or future, not done", "a new intent takes the status open, parked or future, not in_progress",
       "a new intent takes the status open, parked or future, not active", nil, nil],

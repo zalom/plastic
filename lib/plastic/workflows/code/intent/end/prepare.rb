@@ -15,7 +15,7 @@ module Plastic
         class End
           # Reads what closing an intent needs: the rows, the judge's verdict, outcome.md and, by the review setting, the pull request.
           class Prepare < CodeWorkflow
-            sets :intent, :closed, :problem, :requirements, :judged, :used_up, :awaiting_approval, :intent_folder, :merge_recorded, :map_recorded, :missing
+            sets :intent, :closed, :problem, :requirements, :judged, :used_up, :awaiting_approval, :intent_folder, :merge_recorded, :map_recorded, :merge_found, :approval_found, :missing
 
             read "read the intent" do |context|
               context[:intent] = context.retrieval.intent(context.intent_id)
@@ -40,6 +40,7 @@ module Plastic
               context[:awaiting_approval] = false
               context[:merge_recorded] = context[:map_recorded] = false
               context[:missing] = ""
+              context[:merge_found] = context[:approval_found] = ""
               record_facts(context) unless context.closed
             end
 
@@ -54,7 +55,19 @@ module Plastic
 
             def self.verification_facts(context, verification)
               context[:merge_recorded], context[:map_recorded] = [verification.merged?, verification.architecture_map?]
+              context[:merge_found] = merge_found(verification)
+              context[:approval_found] = approval_found(verification)
               context[:awaiting_approval] = review_required?(context) && ready_for_approval?(context) && !verification.approved?
+            end
+
+            def self.merge_found(verification)
+              found = verification.rejected("Merged")
+              found ? "outcome.md says '#{found}', which is not a merge in the form 'Merged: <branch> into <base> at <commit or pull request>'. " : ""
+            end
+
+            def self.approval_found(verification)
+              found = verification.rejected("Approved")
+              found ? "outcome.md says '#{found}', which is not an approval in the form 'Approved: <person> on <YYYY-MM-DD>'; " : ""
             end
 
             def self.review_facts(context)
@@ -65,7 +78,7 @@ module Plastic
             end
 
             def self.review_required?(context)
-              Config.new(context.scope.plastic_home).choice(%w[review pull_request], default: "required", allowed: %w[required off]) == "required"
+              Config.new(context.scope.plastic_home).choice(%w[review pull_request], default: "off", allowed: %w[required off]) == "required"
             end
 
             def self.pull_request_problems(check)
@@ -76,7 +89,7 @@ module Plastic
 
             gate ReviewRound::MESSAGE, stops: :refusal,
               pass: ->(context) { !context.used_up }
-            gate "the pull request of intent %{intent_id} waits for the person's approval; add the line Approved: to the Verification section of outcome.md once they approve, then run plastic sync up",
+            gate "the pull request of intent %{intent_id} waits for the person's approval; %{approval_found}add the line 'Approved: <person> on <YYYY-MM-DD>' to the Verification section of outcome.md once they approve, then run plastic sync up",
               stops: :refusal, pass: ->(context) { !context.awaiting_approval }
 
             def self.verified?(context) = context.merge_recorded && context.map_recorded

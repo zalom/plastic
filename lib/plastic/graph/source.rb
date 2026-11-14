@@ -17,6 +17,9 @@ require_relative "knowledge/archive/kept_file"
 
 module Plastic
   module Graph
+    # Node ids sort by their prefix, then by the number after it, then by their text.
+    NODE_ORDER = "rtrim(id, '0123456789'), length(id), id"
+
     # Where each kind of row lives: the record, the database, the table, the
     # columns and the order. A read with no intent id reads every intent.
     Source = Data.define(:record, :database, :table, :columns, :order)
@@ -36,7 +39,7 @@ module Plastic
       documents: Source.new(Knowledge::Document, :knowledge, "documents", "*", "intent_id, path"),
       legacy_intents_data: Source.new(Knowledge::LegacyIntentsData, :knowledge, "legacy_intents_data", "*", "intent_id, path"),
       savepoints: Source.new(Work::Savepoint, :work, "savepoints", "*", "intent_id, position"),
-      nodes: Source.new(Work::Node, :work, "nodes", "*", "intent_id, id"),
+      nodes: Source.new(Work::Node, :work, "nodes", "*", "intent_id, #{NODE_ORDER}"),
       edges: Source.new(Work::Edge, :work, "edges", "*", 'intent_id, "from", "to", kind'),
       approvals: Source.new(Work::Approval, :work, "approvals", "*", "intent_id"),
       verdicts: Source.new(Work::Verdict, :work, "verdicts", "*", "intent_id, round"),

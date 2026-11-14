@@ -41,19 +41,19 @@ class ConfigTest < Plastic::TestCase
   end
 
   def test_a_missing_choice_reads_as_the_default
-    config("runner:\n  stop_hook: true\n") { |cfg| assert_equal "required", cfg.choice(%w[review pull_request], default: "required", allowed: %w[required off]) }
+    config("runner:\n  stop_hook: true\n") { |cfg| assert_equal "off", cfg.choice(%w[review pull_request], default: "off", allowed: %w[required off]) }
   end
 
   def test_an_allowed_choice_is_read
-    config("review:\n  pull_request: off\n") { |cfg| assert_equal "off", cfg.choice(%w[review pull_request], default: "required", allowed: %w[required off]) }
+    config("review:\n  pull_request: required\n") { |cfg| assert_equal "required", cfg.choice(%w[review pull_request], default: "off", allowed: %w[required off]) }
   end
 
   def test_an_unknown_choice_reads_as_the_default
-    config("review:\n  pull_request: sometimes\n") { |cfg| assert_equal "required", cfg.choice(%w[review pull_request], default: "required", allowed: %w[required off]) }
+    config("review:\n  pull_request: sometimes\n") { |cfg| assert_equal "off", cfg.choice(%w[review pull_request], default: "off", allowed: %w[required off]) }
   end
 
   def test_a_missing_file_reads_the_choice_default
-    Dir.mktmpdir { |dir| assert_equal "required", Plastic::Config.new(dir).choice(%w[review pull_request], default: "required", allowed: %w[required off]) }
+    Dir.mktmpdir { |dir| assert_equal "off", Plastic::Config.new(dir).choice(%w[review pull_request], default: "off", allowed: %w[required off]) }
   end
 
   def harness_config(text, harness)

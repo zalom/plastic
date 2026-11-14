@@ -72,8 +72,7 @@ module Plastic
 
     def finish(routine_run)
       ctx = context(routine_run)
-      traversal = Traversal.new(chain, ctx, routine_run) { |run| save_routine_run(run) }
-      report(traversal.call { |value| printing(value, ctx) }, ctx)
+      report(hand_edit_failure(ctx) || walk(routine_run, ctx), ctx)
     end
 
     # A resumed routine run brings back what its workflows found; this call's

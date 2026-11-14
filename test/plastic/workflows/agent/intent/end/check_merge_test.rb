@@ -5,13 +5,13 @@ require_relative "../../../../../../lib/plastic/workflows/agent/intent/end/check
 
 class CheckMergeTest < Plastic::TestCase
   def check(merge_recorded: false, map_recorded: false)
-    run_workflow(Plastic::Workflows::Agent::Intent::End::CheckMerge, intent_id: "1", intent_folder: "store/1--alpha", merge_recorded:, map_recorded:).first
+    run_workflow(Plastic::Workflows::Agent::Intent::End::CheckMerge, intent_id: "1", intent_folder: "store/1--alpha", merge_found: "", merge_recorded:, map_recorded:).first
   end
 
   def test_each_missing_record_prints_its_step
     steps = check.steps
 
-    assert_equal ["merged", "architecture map"], steps.map { |text| text[/merged|architecture map/] }
+    assert_equal ["Merge", "architecture map"], steps.map { |text| text[/Merge|architecture map/] }
   end
 
   def test_a_recorded_merge_leaves_only_the_map_step

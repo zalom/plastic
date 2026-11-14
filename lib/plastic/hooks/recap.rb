@@ -15,6 +15,7 @@ module Plastic
         "resume" => "Plastic: a resumed session. The rows below carry the state; run plastic graph resume."
       }.freeze
       SAVEPOINT_LINES = 5
+      EXPIRED = "intent %<intent_id>s: the lock of this session expired (last renewed %<renewed_at>s); plastic auto %<intent_id>s locks it again"
 
       def initialize(retrieval, session_id:, source:, directory:)
         @retrieval = retrieval
@@ -24,7 +25,7 @@ module Plastic
       end
 
       # The lines to print, first line first.
-      def lines = [first_line, *open_intent_lines, *previous_session_lines, *in_progress_lines, *note_line]
+      def lines(now: Time.now) = [first_line, *open_intent_lines, *expired_lock_lines(now), *previous_session_lines, *in_progress_lines, *note_line]
 
       private
 
@@ -36,6 +37,14 @@ module Plastic
         Graph::Knowledge::Intent::Listing.lines(@retrieval.intents) { |intent| "#{intent.heading}#{last_run(intent.intent_id)}" }
           .map { |name, text| "#{name}: #{text}" }
       end
+
+      def expired_lock_lines(now)
+        own = @retrieval.locks_of(@session_id).select { |lock| lock.store == @retrieval.store && unfinished?(lock.intent_id) }
+        own.reject { |lock| @retrieval.liveness(lock).live?(now) }.map { |lock| format(EXPIRED, **lock.to_h) }
+      end
+
+      # The intent exists and its work is not over.
+      def unfinished?(intent_id) = @retrieval.intent(intent_id)&.closed? == false
 
       def last_run(intent_id)
         run = @retrieval.last_run(intent_id)

@@ -25,14 +25,19 @@ exists, the same way as track 1 station 1). Run `plastic auto ID`. It takes exac
 Artifact: the delivery lock is taken (a row in the machine's `local.db`) and the intent goes
 active. When the store's project names a repository, the command names the code worktree at
 `<repo>/.claude/worktrees/ID--slug` on branch `plastic/ID--slug`, and prints both as rows. The
-agent makes the worktree at that path on that branch:
+agent makes the worktree at that path on that branch. While the folder is missing, the command
+prints the instruction to make it and offers itself again as the next step:
 
 ```text
 worktree: /home/you/greeter/.claude/worktrees/2--shout
 branch: plastic/2--shout
+Create the worktree at /home/you/greeter/.claude/worktrees/2--shout on branch plastic/2--shout with your version control tool, then run plastic auto 2 again
 
-next: plastic intent brief 2
+next: plastic auto 2
 ```
+
+Once the folder exists, `plastic auto 2` prints the same two rows and offers
+`plastic intent brief 2`.
 
 To deliver a roadmap instead, pass its slug: `plastic auto SLUG` arms the first item in
 flight, in batch then item order, that is neither parked nor held by another session. When
@@ -111,7 +116,8 @@ close needs every live node done, every criterion covered, an accepted verdict a
 newest node change, and the `Merged:` and `Architecture map:` bullets under Verification in
 outcome.md; with a required pull request it also needs the `Pull request:` and `Approved:`
 bullets. When something is missing, the command prints it and closes nothing. Plastic does not
-merge. On success it writes the completion row, sets the intent's status to `done`, releases
+merge: the agent merges its own pull request unless the owner asked to keep it open, writes the
+`Merged:` bullet, and runs `plastic sync up`. On success it writes the completion row, sets the intent's status to `done`, releases
 the lock, and hands the agent the steps that stop the processes and agents the intent started.
 
 Checkpoint: open `outcome.md` and read its Summary.

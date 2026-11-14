@@ -14,6 +14,7 @@ class NodeClaimRefusalTest < Plastic::TestCase
   def add_node(title)
     write("store/1--alpha/spec.md", "# Spec\n\n## Done criteria\n- [done] Done\n")
     sync_up
+    store_graphs.work.approve_intent("1") unless store_graphs.retrieval.approval("1")
     plastic("node", "add", "1", title, "--criterion", "done", table: Plastic::CLI::TABLE)
   end
 

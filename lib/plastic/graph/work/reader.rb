@@ -20,7 +20,7 @@ module Plastic
               WHERE edges.intent_id = nodes.intent_id AND edges.kind = 'needs' AND edges."to" = nodes.id
                 AND from_node.state IS NOT 'done'
             )
-          ORDER BY id
+          ORDER BY #{NODE_ORDER}
         SQL
 
         LINKS_SQL = 'SELECT * FROM links WHERE origin_id = :origin AND (from_ref = :ref OR to_ref = :ref) ORDER BY "at"'

@@ -6,11 +6,11 @@ after a change to the system, and commit the files in `docs/contributing/figures
 
 ## The system and what it talks to
 
-![Plastic and what it talks to. The owner gives goals, answers and the go-ahead to Plastic through the agent harness. The harness runs plastic commands and fires hook events. Plastic reads where each project lives. The agent edits the project repositories in a worktree, and pushes a pull request to GitHub, where the owner reviews and merges it.](figures/context.svg)
+![Plastic and what it talks to. The owner gives goals, answers and the go-ahead to Plastic through the agent harness. The harness runs plastic commands and fires hook events. Plastic reads where each project lives. The agent edits the project repositories in a worktree, and pushes a pull request to GitHub, where the agent merges it and the owner reviews it when review is on.](figures/context.svg)
 
 | Actor | What it is | What passes between it and Plastic |
 | ----- | ---------- | ---------------------------------- |
-| Owner | The person who decides what to build. | Goals, answers to questions and the go-ahead to deliver. The owner reviews and merges the pull request. |
+| Owner | The person who decides what to build. | Goals, answers to questions and the go-ahead to deliver. The owner reviews the pull request when review is on. |
 | Agent harness | Claude Code or Codex. | The harness runs `plastic` commands and fires the hook events. |
 | Project repositories | The code of each project. | Plastic reads where each project lives from `projects.yml`. The agent edits the code in a worktree made for each intent. |
 | GitHub | The host of the pull request and of CI. | The agent pushes a branch and opens the pull request. Plastic runs no `git` command. |
@@ -164,7 +164,7 @@ text that Plastic prints in the planning hand-off.
 | Plan the graph | `plastic node add`, `plastic edge add` | Nodes and edges, and `graph.json`. |
 | Work the nodes | `plastic auto`, `plastic node claim`, `plastic node done` | The delivery lock, then each node's findings. |
 | Judge | `plastic intent judge`, `plastic intent verdict` | The verdict row. |
-| Review | The pull request | The `Pull request:` and `Approved:` lines of `outcome.md`, which `plastic sync up` reads into the rows. The owner approves and merges. |
+| Review | The pull request | The `Pull request:` and `Approved:` lines of `outcome.md`, which `plastic sync up` reads into the rows. The agent merges; the owner approves when review is on. |
 | Close | `plastic intent end` | The completion row. |
 
 ![What each delivery step does to the three graphs. A matrix of the steps against the work, knowledge and retrieval graphs and the files, marking each as a write, a read or a print.](figures/delivery-graphs.svg)
@@ -180,7 +180,7 @@ prints them. The agent makes the worktree.
 `plastic intent end ID` takes no options. It closes the intent when every live node is done,
 every criterion key of `spec.md` is covered by a done node, the latest verdict is `accept` and
 is newer than the last node change, and `outcome.md` has a `## Verification` section with a
-`Merged:` line and an `Architecture map:` line. When review by pull request is on, the section
+`Merged:` line and an `Architecture map:` line. When review by pull request is on (the default is off), the section
 also has a `Pull request:` line, and an `Approved:` line once the owner approves. Closing
 releases the lock and hands the agent the wind-down steps in `Workflows::Agent::Shared::WindDownIntent`.
 `plastic intent abandon ID` hands the agent the revert steps in `Workflows::Agent::Intent::Abandon`, then

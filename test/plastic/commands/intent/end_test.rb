@@ -102,8 +102,9 @@ class IntentEndTest < Plastic::TestCase
 
     result = finish
 
-    assert_equal [0, "in_progress"], [result.code, retrieval.intent("1").status]
+    assert_equal [1, "in_progress"], [result.code, retrieval.intent("1").status]
     assert_includes result.out, "plastic intent judge 1"
+    assert_match(/^next: plastic intent end 1/, result.out)
   end
 
   def test_the_handoff_because_names_the_missing_outcome_and_not_the_judge
@@ -119,17 +120,6 @@ class IntentEndTest < Plastic::TestCase
   def test_the_chain_has_no_problems
     assert_empty Plastic::Commands::Intent::End.chain_problems
   end
-
-  def test_a_missing_merge_record_hands_over_the_merge_check
-    accepted_intent(records: "- Architecture map: enola at abc123\n")
-    review_off
-
-    result = finish
-
-    assert_equal [0, "in_progress"], [result.code, retrieval.intent("1").status]
-    assert_includes result.out, "- Merged: "
-    refute_match(/--judge|--evidence/, result.out)
-  end
 end
 
 class IntentEndPullRequestTest < Plastic::TestCase
@@ -138,15 +128,17 @@ class IntentEndPullRequestTest < Plastic::TestCase
   def finish = cli("intent", "end", "1")
 
   def test_required_without_a_pull_request_bullet_hands_over_the_record_step
+    review_on
     accepted_intent(records: MERGE_RECORDS)
 
     result = finish
 
-    assert_equal [0, "in_progress"], [result.code, retrieval.intent("1").status]
+    assert_equal [1, "in_progress"], [result.code, retrieval.intent("1").status]
     assert_includes result.out, "Pull request:"
   end
 
   def test_required_with_a_pull_request_and_no_approval_waits_for_the_person
+    review_on
     accepted_intent(records: MERGE_RECORDS + PULL_REQUEST)
 
     result = finish
@@ -156,18 +148,26 @@ class IntentEndPullRequestTest < Plastic::TestCase
   end
 
   def test_required_with_no_verdict_and_no_pull_request_lists_both
+    review_on
     specified(records: MERGE_RECORDS)
     delivered_nodes
 
     result = finish
 
-    assert_equal [0, "in_progress"], [result.code, retrieval.intent("1").status]
+    assert_equal [1, "in_progress"], [result.code, retrieval.intent("1").status]
     assert_includes result.out, "plastic intent judge 1"
     assert_includes result.out, "Pull request:"
   end
 
   def test_required_with_the_approval_closes
+    review_on
     accepted_intent
+
+    assert_equal [0, "done"], [finish.code, retrieval.intent("1").status]
+  end
+
+  def test_with_no_config_the_intent_closes_with_no_pull_request_bullets
+    accepted_intent(records: MERGE_RECORDS)
 
     assert_equal [0, "done"], [finish.code, retrieval.intent("1").status]
   end

@@ -54,7 +54,7 @@ In the words of workflow engines, the rows are these four parts:
 | the store folder | knowledge_graph.db | `document_fts`, `document_heads`, `document_passages`, `document_revisions`, `documents`, `links` | reads and writes | [`open.rb:13`](../../../../lib/plastic/commands/roadmap/open.rb#L13) |
 | the store folder | references.db | not found in the code | writes | [`open.rb:13`](../../../../lib/plastic/commands/roadmap/open.rb#L13) |
 | the store folder | work_graph.db | `batches`, `intents`, `roadmap_edges`, `roadmap_items`, `roadmap_log`, `roadmaps`, `savepoints` | reads and writes | [`open.rb:13`](../../../../lib/plastic/commands/roadmap/open.rb#L13) |
-| the store folder | roadmaps/SLUG.md | | writes | [`prints.rb:71`](../../../../lib/plastic/graph/prints.rb#L71) |
+| the store folder | roadmaps/SLUG.md | | writes | [`prints.rb:75`](../../../../lib/plastic/graph/prints.rb#L75) |
 | the store folder | store/index.json | | writes | [`prints.rb:17`](../../../../lib/plastic/graph/prints.rb#L17) |
 | the store folder | store/ID--SLUG/PATH | | writes | [`prints.rb:18`](../../../../lib/plastic/graph/prints.rb#L18) |
 | the store folder | store/ID--SLUG/savepoint.md | | writes | [`prints.rb:19`](../../../../lib/plastic/graph/prints.rb#L19) |

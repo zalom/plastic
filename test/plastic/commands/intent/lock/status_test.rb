@@ -4,6 +4,8 @@ require_relative "../../../../test_helper"
 require_relative "../../../../../lib/plastic/commands/intent/lock/status"
 
 class IntentLockStatusTest < Plastic::TestCase
+  include AutoHelper
+
   def call(*args) = plastic("intent", "lock", "status", *args, table: Plastic::CLI::TABLE)
 
   def next_line(result) = result.out.lines(chomp: true).find { |line| line.start_with?("next: ") }
@@ -62,5 +64,38 @@ class IntentLockStatusTest < Plastic::TestCase
 
     assert_equal [2, ""], [result.code, result.out]
     assert_includes result.err, "missing ID"
+  end
+
+  def auto_again = plastic("auto", "1", env: { "PLASTIC_SESSION" => "s-1" }, table: Plastic::CLI::TABLE)
+
+  def approved_intent
+    open_intent
+    write("store/1--alpha/spec.md", "# Spec\n\n## Done criteria\n- It works\n")
+    plastic("sync", "up", table: Plastic::CLI::TABLE)
+    plastic("intent", "approve", "1", table: Plastic::CLI::TABLE)
+  end
+
+  def resumed_with_expired_lock
+    approved_intent
+    open_session
+    auto_again
+    store_graphs.work.end_session("s-1", reason: "clear")
+    open_session
+    store_graphs.databases.fetch(:local).transaction { |batch| batch.add("UPDATE locks SET renewed_at = '2000-01-01T00:00:00Z'") }
+  end
+
+  def open_session = store_graphs.work.open_session("s-1", harness: "claude-code", directory: @home)
+
+  def test_a_resumed_session_with_an_expired_lock_is_offered_auto
+    resumed_with_expired_lock
+
+    assert_equal "next: plastic auto 1", next_line(call("1"))
+  end
+
+  def test_the_offered_auto_locks_the_intent_again_after_the_session_resumes
+    resumed_with_expired_lock
+
+    assert_equal 0, auto_again.code
+    assert live_when_renewed?(store_graphs.retrieval.lock("1"))
   end
 end

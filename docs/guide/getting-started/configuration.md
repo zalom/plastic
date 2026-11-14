@@ -46,7 +46,7 @@ Every hook reads the file again, so a change takes effect on the next hook.
 | `statusline` | `true` | Lets the installer write the Plastic status line into Claude Code's settings. |
 | `screens` | `true` | Registers the hook that shows Plastic's screens. |
 | `runner.stop_hook` | `false` | Lets the stop hook keep a session working while its work graph has a node ready. |
-| `review.pull_request` | `required` | `required` asks for a pull request before an intent ends. `off` skips it. |
+| `review.pull_request` | `off` | `required` asks for a pull request and the owner's approval before an intent ends. `off` skips both. |
 | `migrate.remove_after_import` | `false` | Removes the old intent files after an import. |
 | `advisor.enabled` | `true` | Installs the advisor agents. |
 | `agents.models.AGENT` | the shipped model | The model of one agent, in a harness section. |

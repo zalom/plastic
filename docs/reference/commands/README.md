@@ -35,7 +35,7 @@ Each page explains one plastic command in five sections: Components, The events 
 | [`plastic intent approve`](intent-approve/README.md) | Write the owner's go-ahead for an intent; auto refuses an intent without it |
 | [`plastic intent judge`](intent-judge/README.md) | Print the steps that start the judge of an intent |
 | [`plastic intent verdict`](intent-verdict/README.md) | Record the verdict of the next review round of an intent |
-| [`plastic intent spec`](intent-spec/README.md) | Print the grilling method, then the intent's open decisions |
+| [`plastic intent spec`](intent-spec/README.md) | Print the grilling method, how done criteria are written, and the open questions and decisions of spec.md |
 | [`plastic intent discover`](intent-discover/README.md) | Record deterministic retrieval candidates for an intent |
 | [`plastic intent context`](intent-context/README.md) | Read or submit selected retrieval context for an intent |
 | [`plastic intent lock status`](intent-lock-status/README.md) | Print the session that holds an intent's lock, and its worktree |

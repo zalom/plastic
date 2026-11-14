@@ -7,6 +7,7 @@ require_relative "../printer"
 require_relative "../prints"
 require_relative "store_folder"
 require_relative "sync/plan"
+require_relative "sync/hand_edits"
 require_relative "sync/file_reads"
 require_relative "sync/resolution"
 require_relative "sync/legacy_import"
@@ -46,8 +47,15 @@ module Plastic
           IntentFolders.new(@folder, @retrieval).write_to(@databases)
           ArchivedIntents.new(@folder, @retrieval).write_to(@databases)
           lines = read(plan.taking(:read).map(&:path))
-          printer.print([Prints.index(@retrieval)])
+          printer.print(printed_up(plan))
           lines
+        end
+
+        # The index, and every file the plan prints, from the rows as the reads left them.
+        def printed_up(plan)
+          fresh = Prints.of_store(@retrieval).to_h { |print| [print.path, print] }
+          wanted = plan.taking(:print).map { |entry| fresh.fetch(entry.path, entry.print) }
+          [fresh[StoreFolder::INDEX], *wanted].compact.uniq(&:path)
         end
 
         def read(paths) = FileReads.new(folder: @folder, retrieval: @retrieval, databases: @databases, printer: printer).call(paths)
@@ -56,6 +64,9 @@ module Plastic
           printer.print(plan.taking(:print).map(&:print))
           []
         end
+
+        # The printed files a person changed by hand, for the prints `kinds` name and the facts of the call.
+        def hand_edited(kinds, facts) = HandEdits.new(@retrieval, @folder, kinds, facts).call
 
         def printer = (@printer ||= Printer.new(@folder, @databases, @retrieval))
       end

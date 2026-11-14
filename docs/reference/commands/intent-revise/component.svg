@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 416" width="980" height="416" role="img" xml:space="preserve">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 382" width="980" height="382" role="img" xml:space="preserve">
 <title>The components on the path of plastic intent revise</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
@@ -88,17 +88,15 @@
 <rect x="336" y="170" width="196" height="28" rx="6" class="card"/>
 <text x="344" y="188" class="tm" text-anchor="start">Retrieval::Evidence::Writer</text>
 <rect x="336" y="204" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="222" class="tm" text-anchor="start">Retrieval::StoreRead</text>
+<text x="344" y="222" class="tm" text-anchor="start">Revision</text>
 <rect x="336" y="238" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="256" class="tm" text-anchor="start">Revision</text>
+<text x="344" y="256" class="tm" text-anchor="start">Evidence::Document</text>
 <rect x="336" y="272" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="290" class="tm" text-anchor="start">Evidence::Document</text>
+<text x="344" y="290" class="tm" text-anchor="start">Evidence::Removal</text>
 <rect x="336" y="306" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="324" class="tm" text-anchor="start">Evidence::Removal</text>
+<text x="344" y="324" class="tm" text-anchor="start">Evidence::Rows</text>
 <rect x="336" y="340" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="358" class="tm" text-anchor="start">Evidence::Rows</text>
-<rect x="336" y="374" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="392" class="tm" text-anchor="start">Record</text>
+<text x="344" y="358" class="tm" text-anchor="start">Record</text>
 <rect x="556" y="34" width="186" height="105" rx="14" class="db"/>
 <text x="568" y="52" class="tb" text-anchor="start">knowledge_graph.db</text>
 <text x="568" y="68" class="tm" text-anchor="start">document_fts  W</text>

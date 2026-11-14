@@ -31,9 +31,10 @@ Creates a roadmap row and offers its first batch.
 Its rows run in this order:
 
 1. Gate: passes when `context.retrieval.roadmap(context.slug).nil?`; otherwise the call stops with exit 1 and prints roadmap SLUG already exists. [`new.rb:13`](../../../../lib/plastic/workflows/code/roadmap/new.rb#L13)
-2. Step: create the roadmap. Done when `!context.roadmap.nil?`, so a second call skips it. [`new.rb:19`](../../../../lib/plastic/workflows/code/roadmap/new.rb#L19)
-3. Read: say what was created. [`new.rb:23`](../../../../lib/plastic/workflows/code/roadmap/new.rb#L23)
-4. Outcome `:done`, always: finishes with exit 0; next: plastic roadmap batch SLUG 1. [`new.rb:27`](../../../../lib/plastic/workflows/code/roadmap/new.rb#L27)
+2. Gate: passes when `!context.work.roadmap_file?(context.slug)`; otherwise the call stops with exit 1 and prints roadmaps/SLUG.md exists and Plastic has no roadmap row for it. [`new.rb:17`](../../../../lib/plastic/workflows/code/roadmap/new.rb#L17)
+3. Step: create the roadmap. Done when `!context.roadmap.nil?`, so a second call skips it. [`new.rb:23`](../../../../lib/plastic/workflows/code/roadmap/new.rb#L23)
+4. Read: say what was created. [`new.rb:27`](../../../../lib/plastic/workflows/code/roadmap/new.rb#L27)
+5. Outcome `:done`, always: finishes with exit 0; next: plastic roadmap batch SLUG 1. [`new.rb:31`](../../../../lib/plastic/workflows/code/roadmap/new.rb#L31)
 
 It sets `roadmap`.
 
@@ -41,7 +42,7 @@ In the words of workflow engines, the rows are these four parts:
 
 - **Trigger**: the call starts the workflow `Code::Roadmap::New`.
 - **Activities**: 1 read and 1 step.
-- **Transitions**: 1 gate stops the call when its check fails; a step runs only while its done check fails.
+- **Transitions**: 2 gates stop the call when their checks fail; a step runs only while its done check fails.
 - **Outcomes**: `:done` ends the call.
 
 ## What one call reads, writes and prints
@@ -51,13 +52,13 @@ In the words of workflow engines, the rows are these four parts:
 | Place | Database or file | Tables | Reads or writes | Code |
 | --- | --- | --- | --- | --- |
 | the store folder | work_graph.db | `batches`, `roadmap_edges`, `roadmap_items`, `roadmap_log`, `roadmaps` | reads and writes | [`new.rb:14`](../../../../lib/plastic/commands/roadmap/new.rb#L14) |
-| the store folder | roadmaps/SLUG.md | | writes | [`prints.rb:71`](../../../../lib/plastic/graph/prints.rb#L71) |
+| the store folder | roadmaps/SLUG.md | | writes | [`prints.rb:75`](../../../../lib/plastic/graph/prints.rb#L75) |
 
 A second call runs the same rows again. A step runs again only when its done check fails.
 
 | Step | Done when | The second call | Code |
 | --- | --- | --- | --- |
-| create the roadmap | `!context.roadmap.nil?` | skips it | [`new.rb:19`](../../../../lib/plastic/workflows/code/roadmap/new.rb#L19) |
+| create the roadmap | `!context.roadmap.nil?` | skips it | [`new.rb:23`](../../../../lib/plastic/workflows/code/roadmap/new.rb#L23) |
 
 ## How a call ends
 
@@ -66,7 +67,8 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
 | roadmap SLUG already exists | 1 | plastic roadmap show SLUG | [`new.rb:13`](../../../../lib/plastic/workflows/code/roadmap/new.rb#L13) |
-| roadmap SLUG exists and has no batch yet | 0 | plastic roadmap batch SLUG 1 | [`new.rb:27`](../../../../lib/plastic/workflows/code/roadmap/new.rb#L27) |
+| roadmaps/SLUG.md exists and Plastic has no roadmap row for it | 1 | plastic roadmap new SLUG-2 | [`new.rb:17`](../../../../lib/plastic/workflows/code/roadmap/new.rb#L17) |
+| roadmap SLUG exists and has no batch yet | 0 | plastic roadmap batch SLUG 1 | [`new.rb:31`](../../../../lib/plastic/workflows/code/roadmap/new.rb#L31) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
 
 ## What the page leaves out

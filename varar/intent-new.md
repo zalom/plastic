@@ -17,4 +17,4 @@ Each row gives the store, the call, the exit code, the index, the files and what
 | one intent           | Second --ref 5-ORIGIN |    1 | 1     | none                                   | no intent 5 of this installation for the ref                                          |
 | empty                | Late --status done    |    1 | none  | none                                   | a new intent takes the status open, parked or future, not done                |
 | legacy               | Too soon              |    1 | none  | none                                   | this store still has INDEX.md; run plastic sync up to import it first                 |
-| index edited by hand | Second                |    1 | none  | none                                   | store/index.json changed by hand since the last print; run plastic sync up to read it first |
+| index edited by hand | Second                |    1 | none  | none                                   | store/index.json changed by hand since the last print; run plastic sync up first |

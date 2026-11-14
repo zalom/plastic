@@ -13,6 +13,8 @@ class KnowledgeReaderIndexFileTest < Plastic::TestCase
 
   def apply(text) = store_graphs.databases[:work].transaction { |batch| IndexFile.new(text.dup, origin).apply(batch) }
 
+  def apply_in(dirs, text) = store_graphs.databases[:work].transaction { |batch| IndexFile.new(text, origin, dirs).apply(batch) }
+
   def put_old_cluster = store_graphs.databases[:work].transaction { |batch| batch.put(:clusters, { name: "Old", intent_id: "1" }) }
 
   def test_a_hand_edit_renames_an_intent_and_replaces_the_clusters
@@ -35,6 +37,12 @@ class KnowledgeReaderIndexFileTest < Plastic::TestCase
     error = assert_raises(Plastic::Invalid) { file.apply(nil) }
 
     assert_equal "store/index.json lists 1 of origin beef; a store holds only its own intents", error.message
+  end
+
+  def test_an_entry_with_no_intent_folder_gets_no_row
+    apply_in(["store/1--alpha"], index([entry, entry(intent_id: "2", slug: "ghost")], []))
+
+    assert_equal ["1"], retrieval.intents.map(&:intent_id)
   end
 
   def test_an_intent_row_takes_every_index_field_and_a_fresh_time

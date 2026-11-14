@@ -12,9 +12,11 @@ module Plastic
         # A hand edit of store/index.json: the intent rows it lists, and the
         # clusters, which it replaces whole.
         class IndexFile
-          def initialize(text, origin_id)
+          # `dirs` are the intent folders on disk. An entry with no folder is broken data and gets no row; nil keeps every entry.
+          def initialize(text, origin_id, dirs = nil)
             @data = JSON.parse(text.force_encoding(Encoding::UTF_8))
             @origin_id = origin_id
+            @dirs = dirs
           end
 
           def self.intent_row(entry) = Intent::INDEX_FIELDS.to_h { |field| [field, entry[field.to_s]] }.merge(status: Intent.stored_state(entry["status"]), updated_at: Plastic.now)
@@ -27,7 +29,11 @@ module Plastic
 
           private
 
-          def intents = own(listed("intents")).map { |entry| IndexFile.intent_row(entry) }
+          def intents = own(housed(listed("intents"))).map { |entry| IndexFile.intent_row(entry) }
+
+          def housed(entries) = @dirs ? entries.select { |entry| housed?(entry["intent_id"]) } : entries
+
+          def housed?(intent_id) = @dirs.any? { |dir| dir.start_with?("store/#{intent_id}--") }
 
           def own(entries)
             foreign = entries.find { |entry| entry["origin_id"] != @origin_id }

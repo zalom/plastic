@@ -20,7 +20,7 @@ module TwoHomes
     kernel.run!("intent", "approve", "1")
     kernel.run!("node", "claim", "1", "n1")
     kernel.run!("node", "done", "1", "n1", "The test is red for the right reason; see :id and :intent_id")
-    kernel.run!("intent", "verdict", "1", "accept", "The findings hold :id and :intent_id")
+    kernel.run!("intent", "verdict", "1", "revise", "The findings hold :id and :intent_id")
   end
 
   def move_files(from, to)

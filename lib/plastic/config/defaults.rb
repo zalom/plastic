@@ -11,7 +11,7 @@ module Plastic
         "statusline" => true,
         "screens" => true,
         "runner" => { "stop_hook" => false },
-        "review" => { "pull_request" => "required" },
+        "review" => { "pull_request" => "off" },
         "migrate" => { "remove_after_import" => false },
         "advisor" => { "enabled" => true }
       }.freeze

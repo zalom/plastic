@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 319" width="800" height="319" role="img" xml:space="preserve">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 376" width="800" height="376" role="img" xml:space="preserve">
 <title>What one call of plastic intent verdict reads, writes and prints</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
@@ -71,29 +71,34 @@
 <text x="16" y="20" class="tag tag-muted" text-anchor="start">READS</text>
 <text x="290" y="20" class="tag tag-muted" text-anchor="start">COMMAND</text>
 <text x="564" y="20" class="tag tag-muted" text-anchor="start">WRITES</text>
-<rect x="16" y="34" width="220" height="75" rx="14" class="db"/>
-<text x="28" y="52" class="tb" text-anchor="start">work_graph.db</text>
-<text x="28" y="68" class="tm" text-anchor="start">intents</text>
-<text x="28" y="83" class="tm" text-anchor="start">nodes</text>
-<text x="28" y="98" class="tm" text-anchor="start">verdicts</text>
+<rect x="16" y="34" width="220" height="45" rx="14" class="db"/>
+<text x="28" y="52" class="tb" text-anchor="start">knowledge_graph.db</text>
+<text x="28" y="68" class="tm" text-anchor="start">documents</text>
 <path d="M 238 49 L 288 49" class="wire-read"/>
 <path d="M 280 44 L 288 49 L 280 54 Z" class="head"/>
+<rect x="16" y="91" width="220" height="75" rx="14" class="db"/>
+<text x="28" y="109" class="tb" text-anchor="start">work_graph.db</text>
+<text x="28" y="125" class="tm" text-anchor="start">intents</text>
+<text x="28" y="140" class="tm" text-anchor="start">nodes</text>
+<text x="28" y="155" class="tm" text-anchor="start">verdicts</text>
+<path d="M 238 106 L 288 106" class="wire-read"/>
+<path d="M 280 101 L 288 106 L 280 111 Z" class="head"/>
 <rect x="564" y="34" width="220" height="45" rx="14" class="db"/>
 <text x="576" y="52" class="tb" text-anchor="start">work_graph.db</text>
 <text x="576" y="68" class="tm" text-anchor="start">verdicts</text>
 <path d="M 512 49 L 562 49" class="wire"/>
 <path d="M 554 44 L 562 49 L 554 54 Z" class="head"/>
-<rect x="290" y="34" width="220" height="75" rx="6" class="lane-code"/>
+<rect x="290" y="34" width="220" height="132" rx="6" class="lane-code"/>
 <text x="300" y="58" class="tm" text-anchor="start">plastic intent verdict</text>
-<text x="16" y="133" class="tag tag-muted" text-anchor="start">PRINTED FILES</text>
-<rect x="16" y="141" width="768" height="28" rx="6" class="card"/>
-<text x="24" y="159" class="tm" text-anchor="start">store/index.json</text>
-<rect x="16" y="175" width="768" height="28" rx="6" class="card"/>
-<text x="24" y="193" class="tm" text-anchor="start">store/ID--SLUG/PATH</text>
-<rect x="16" y="209" width="768" height="28" rx="6" class="card"/>
-<text x="24" y="227" class="tm" text-anchor="start">store/ID--SLUG/savepoint.md</text>
-<rect x="16" y="243" width="768" height="28" rx="6" class="card"/>
-<text x="24" y="261" class="tm" text-anchor="start">store/ID--SLUG/graph.json</text>
-<rect x="16" y="277" width="768" height="28" rx="6" class="card"/>
-<text x="24" y="295" class="tm" text-anchor="start">store/ID--SLUG/context.json</text>
+<text x="16" y="190" class="tag tag-muted" text-anchor="start">PRINTED FILES</text>
+<rect x="16" y="198" width="768" height="28" rx="6" class="card"/>
+<text x="24" y="216" class="tm" text-anchor="start">store/index.json</text>
+<rect x="16" y="232" width="768" height="28" rx="6" class="card"/>
+<text x="24" y="250" class="tm" text-anchor="start">store/ID--SLUG/PATH</text>
+<rect x="16" y="266" width="768" height="28" rx="6" class="card"/>
+<text x="24" y="284" class="tm" text-anchor="start">store/ID--SLUG/savepoint.md</text>
+<rect x="16" y="300" width="768" height="28" rx="6" class="card"/>
+<text x="24" y="318" class="tm" text-anchor="start">store/ID--SLUG/graph.json</text>
+<rect x="16" y="334" width="768" height="28" rx="6" class="card"/>
+<text x="24" y="352" class="tm" text-anchor="start">store/ID--SLUG/context.json</text>
 </svg>

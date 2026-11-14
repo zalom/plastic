@@ -25,7 +25,7 @@ module Plastic
       def_delegator "@writers.intents", :ref_line
       def_delegator "@writers.revisions", :change, :revision
       def_delegator "@writers.revisions", :write, :revise_intent
-      def_delegator :noter, :problem, :note_problem
+      def_delegator "Plastic::Graph::Knowledge::Intent::Noter", :problem, :note_problem
       def_delegator :noter, :write, :note_intent
       def_delegator "@writers.completions", :close, :close_intent
       def_delegator "@writers.completions", :abandon, :abandon_intent
@@ -41,6 +41,7 @@ module Plastic
       def_delegators "@writers.roadmaps", :create_roadmap, :write_batch, :add_item, :open_item, :drop_item, :remove_roadmap_edge, :add_log
       def_delegator "@writers.sync", :plan, :sync_plan
       def_delegator "@writers.sync", :apply, :sync_apply
+      def_delegator "@writers.sync", :hand_edited
       # The snapshot restores exact bytes; printing live rows would replace them.
       # Returns [ok, problem, kind]; kind is :failure, nil on success. Restores the saved directory.
       def_delegator "@writers.archives", :restore, :unarchive_intent
@@ -82,12 +83,14 @@ module Plastic
       # [intent_id, problem, kind]; kind is :failure or :refusal, nil on success.
       def open_roadmap_item(slug, item_id) = Knowledge::Roadmap::ItemOpen.new(@writers).call(slug, item_id)
 
+      def roadmap_file?(slug) = @folder.exist?("roadmaps/#{slug}.md")
+
       def print_index = @writers.sync.printer.print([Prints.index(@retrieval)])
 
       # The paths this call printed, relative to the store folder.
       def printed = @writers.sync.printer.written
 
-      def noter = (@noter ||= Knowledge::Intent::Noter.new(@writers.databases, @writers.retrieval, @writers.folder))
+      def noter = (@noter ||= Knowledge::Intent::Noter.new(@writers.databases, @writers.retrieval))
 
       def preview_sync(options, direction: :up)
         Knowledge::Sync::Preview.new(home_dir, @retrieval.store, options, direction:).call

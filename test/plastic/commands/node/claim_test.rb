@@ -24,6 +24,7 @@ class NodeClaimTest < Plastic::TestCase
   def add_node(title)
     write("store/1--alpha/spec.md", "# Spec\n\n## Done criteria\n- [done] Done\n")
     sync_up
+    store_graphs.work.approve_intent("1") unless store_graphs.retrieval.approval("1")
     plastic("node", "add", "1", title, "--criterion", "done", table: Plastic::CLI::TABLE)
   end
 
@@ -93,7 +94,7 @@ class NodeClaimTest < Plastic::TestCase
   end
 
   def test_a_refused_claim_is_refused_again_on_the_next_call
-    open_intent
+    open_keyed_intent
     claim("n9")
 
     result = claim("n9")
@@ -106,11 +107,37 @@ class NodeClaimTest < Plastic::TestCase
     open_intent
     write("store/1--alpha/spec.md", "# Spec\n\n## Done criteria\n- [done] Done\n")
     sync_up
+    store_graphs.work.approve_intent("1") unless store_graphs.retrieval.approval("1")
     plastic("node", "add", "1", "a", "--criterion", "done", "--input", "docs/a.md", table: Plastic::CLI::TABLE)
 
     call = claim("n1")
 
     assert_equal [0, ""], [call.code, call.err]
     assert_includes call.out, "input: docs/a.md"
+  end
+
+  def unapproved_claim
+    open_intent
+    write("store/1--alpha/spec.md", "# Spec\n\n## Done criteria\n- [done] Done\n")
+    sync_up
+    plastic("node", "add", "1", "a", "--criterion", "done", table: Plastic::CLI::TABLE)
+    claim("n1")
+  end
+
+  def test_a_claim_before_the_go_ahead_exits_3_and_names_the_approval
+    result = unapproved_claim
+
+    assert_equal 3, result.code
+    assert_includes result.err, "intent 1 has no go-ahead; the owner approves it with plastic intent approve 1"
+  end
+
+  def test_a_claim_before_the_go_ahead_offers_no_next_command
+    refute_match(/^next: /, unapproved_claim.out)
+  end
+
+  def test_a_claim_before_the_go_ahead_leaves_the_node_open
+    unapproved_claim
+
+    assert_equal "open", store_graphs.retrieval.node("1", "n1").state
   end
 end

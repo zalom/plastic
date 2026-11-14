@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../lock"
+require_relative "../../source"
 
 module Plastic
   module Graph
@@ -9,7 +10,7 @@ module Plastic
         # The nodes of a lock's intent that the lock's session holds claimed,
         # as Lock::Claim values. A lock of another store reads no claims.
         class Claims
-          SQL = %(SELECT id, updated_at FROM nodes WHERE intent_id = :intent_id AND state = 'claimed' AND "by" = :session_id ORDER BY id)
+          SQL = %(SELECT id, updated_at FROM nodes WHERE intent_id = :intent_id AND state = 'claimed' AND "by" = :session_id ORDER BY #{NODE_ORDER})
 
           def initialize(databases, store:)
             @databases = databases

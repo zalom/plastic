@@ -42,7 +42,8 @@ module Plastic
             "criterion #{criterion.inspect} is not a done criterion key of spec.md; the keys are: #{keys.join(", ")}" unless keys.include?(criterion)
           end
 
-          outcome :done, offers: "plastic node claim %{intent_id} %{id}", because: "node %{id} is open"
+          outcome :done, offers: "plastic edge add %{intent_id} FROM TO",
+            because: "node %{id} is open; add the edges of the plan, then run plastic graph ready %{intent_id}"
         end
       end
     end

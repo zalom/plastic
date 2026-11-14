@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 888" width="760" height="888" role="img" xml:space="preserve">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 916" width="760" height="916" role="img" xml:space="preserve">
 <title>How Prepare runs in plastic intent end</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
@@ -126,7 +126,7 @@
 <path d="M 221 382 L 226 390 L 231 382 Z" class="head"/>
 <rect x="16" y="390" width="420" height="98" rx="6" class="card"/>
 <text x="26" y="405" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="405" class="tm tag-muted" text-anchor="end">prepare.rb:77</text>
+<text x="426" y="405" class="tm tag-muted" text-anchor="end">prepare.rb:90</text>
 <text x="26" y="422" class="tm" text-anchor="start">passes when !context.used_up</text>
 <path d="M 436 408 L 464 408" class="wire-refusal"/>
 <path d="M 456 403 L 464 408 L 456 413 Z" class="head"/>
@@ -139,53 +139,55 @@
 <text x="476" y="477" class="tm" text-anchor="start">follow-up intent</text>
 <path d="M 226 488 L 226 498" class="wire"/>
 <path d="M 221 490 L 226 498 L 231 490 Z" class="head"/>
-<rect x="16" y="498" width="420" height="126" rx="6" class="card"/>
+<rect x="16" y="498" width="420" height="154" rx="6" class="card"/>
 <text x="26" y="513" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="513" class="tm tag-muted" text-anchor="end">prepare.rb:79</text>
+<text x="426" y="513" class="tm tag-muted" text-anchor="end">prepare.rb:92</text>
 <text x="26" y="530" class="tm" text-anchor="start">passes when !context.awaiting_approval</text>
 <path d="M 436 516 L 464 516" class="wire-refusal"/>
 <path d="M 456 511 L 464 516 L 456 521 Z" class="head"/>
-<rect x="466" y="498" width="270" height="126" rx="6" class="stop-refusal"/>
+<rect x="466" y="498" width="270" height="154" rx="6" class="stop-refusal"/>
 <text x="476" y="513" class="tag tag-refusal" text-anchor="start">STOPS, EXIT 3, REFUSED</text>
 <text x="476" y="529" class="tm" text-anchor="start">the pull request of intent</text>
 <text x="476" y="543" class="tm" text-anchor="start">%{intent_id} waits for the</text>
-<text x="476" y="557" class="tm" text-anchor="start">person&#39;s approval; add the</text>
-<text x="476" y="571" class="tm" text-anchor="start">line Approved: to the</text>
-<text x="476" y="585" class="tm" text-anchor="start">Verification section of</text>
-<text x="476" y="599" class="tm" text-anchor="start">outcome.md once they approve,</text>
-<text x="476" y="613" class="tm" text-anchor="start">then run plastic sync up</text>
-<path d="M 226 624 L 226 634" class="wire"/>
-<path d="M 221 626 L 226 634 L 231 626 Z" class="head"/>
-<text x="16" y="646" class="tag tag-muted" text-anchor="start">ENDS ON</text>
-<rect x="16" y="654" width="300" height="56" rx="6" class="card"/>
-<text x="26" y="670" class="tm" text-anchor="start">:closed</text>
-<text x="26" y="686" class="tm tag-muted" text-anchor="start">when context.closed</text>
-<path d="M 316 670 L 352 670" class="wire"/>
-<path d="M 344 665 L 352 670 L 344 675 Z" class="head"/>
-<rect x="352" y="654" width="392" height="56" rx="6" class="end"/>
-<text x="362" y="671" class="t" text-anchor="start">the call finishes, exit 0</text>
-<text x="362" y="685" class="t" text-anchor="start">next: plastic next</text>
-<text x="362" y="699" class="t" text-anchor="start">because: intent %{intent_id} is already done</text>
-<rect x="16" y="718" width="300" height="56" rx="6" class="card"/>
-<text x="26" y="734" class="tm" text-anchor="start">:agent_needed</text>
-<text x="26" y="750" class="tm tag-muted" text-anchor="start">when !context.requirements.empty? ||</text>
-<text x="26" y="764" class="tm tag-muted" text-anchor="start">!context.judged</text>
-<path d="M 316 734 L 352 734" class="wire"/>
-<path d="M 344 729 L 352 734 L 344 739 Z" class="head"/>
-<rect x="352" y="718" width="392" height="56" rx="6" class="lane-agent"/>
-<text x="362" y="735" class="t" text-anchor="start">next workflow: End</text>
-<rect x="16" y="782" width="300" height="42" rx="6" class="card"/>
-<text x="26" y="798" class="tm" text-anchor="start">:unverified</text>
-<text x="26" y="814" class="tm tag-muted" text-anchor="start">when !verified?(context)</text>
-<path d="M 316 798 L 352 798" class="wire"/>
-<path d="M 344 793 L 352 798 L 344 803 Z" class="head"/>
-<rect x="352" y="782" width="392" height="42" rx="6" class="lane-agent"/>
-<text x="362" y="799" class="t" text-anchor="start">next workflow: CheckMerge</text>
-<rect x="16" y="832" width="300" height="42" rx="6" class="card"/>
-<text x="26" y="848" class="tm" text-anchor="start">:ready</text>
-<text x="26" y="864" class="tm tag-muted" text-anchor="start">otherwise</text>
-<path d="M 316 848 L 352 848" class="wire"/>
-<path d="M 344 843 L 352 848 L 344 853 Z" class="head"/>
-<rect x="352" y="832" width="392" height="42" rx="6" class="lane-code"/>
-<text x="362" y="849" class="t" text-anchor="start">next workflow: End</text>
+<text x="476" y="557" class="tm" text-anchor="start">person&#39;s approval;</text>
+<text x="476" y="571" class="tm" text-anchor="start">%{approval_found}add the line</text>
+<text x="476" y="585" class="tm" text-anchor="start">&#39;Approved: &lt;person&gt; on</text>
+<text x="476" y="599" class="tm" text-anchor="start">&lt;YYYY-MM-DD&gt;&#39; to the</text>
+<text x="476" y="613" class="tm" text-anchor="start">Verification section of</text>
+<text x="476" y="627" class="tm" text-anchor="start">outcome.md once they approve,</text>
+<text x="476" y="641" class="tm" text-anchor="start">then run plastic sync up</text>
+<path d="M 226 652 L 226 662" class="wire"/>
+<path d="M 221 654 L 226 662 L 231 654 Z" class="head"/>
+<text x="16" y="674" class="tag tag-muted" text-anchor="start">ENDS ON</text>
+<rect x="16" y="682" width="300" height="56" rx="6" class="card"/>
+<text x="26" y="698" class="tm" text-anchor="start">:closed</text>
+<text x="26" y="714" class="tm tag-muted" text-anchor="start">when context.closed</text>
+<path d="M 316 698 L 352 698" class="wire"/>
+<path d="M 344 693 L 352 698 L 344 703 Z" class="head"/>
+<rect x="352" y="682" width="392" height="56" rx="6" class="end"/>
+<text x="362" y="699" class="t" text-anchor="start">the call finishes, exit 0</text>
+<text x="362" y="713" class="t" text-anchor="start">next: plastic next</text>
+<text x="362" y="727" class="t" text-anchor="start">because: intent %{intent_id} is already done</text>
+<rect x="16" y="746" width="300" height="56" rx="6" class="card"/>
+<text x="26" y="762" class="tm" text-anchor="start">:agent_needed</text>
+<text x="26" y="778" class="tm tag-muted" text-anchor="start">when !context.requirements.empty? ||</text>
+<text x="26" y="792" class="tm tag-muted" text-anchor="start">!context.judged</text>
+<path d="M 316 762 L 352 762" class="wire"/>
+<path d="M 344 757 L 352 762 L 344 767 Z" class="head"/>
+<rect x="352" y="746" width="392" height="56" rx="6" class="lane-agent"/>
+<text x="362" y="763" class="t" text-anchor="start">next workflow: End</text>
+<rect x="16" y="810" width="300" height="42" rx="6" class="card"/>
+<text x="26" y="826" class="tm" text-anchor="start">:unverified</text>
+<text x="26" y="842" class="tm tag-muted" text-anchor="start">when !verified?(context)</text>
+<path d="M 316 826 L 352 826" class="wire"/>
+<path d="M 344 821 L 352 826 L 344 831 Z" class="head"/>
+<rect x="352" y="810" width="392" height="42" rx="6" class="lane-agent"/>
+<text x="362" y="827" class="t" text-anchor="start">next workflow: CheckMerge</text>
+<rect x="16" y="860" width="300" height="42" rx="6" class="card"/>
+<text x="26" y="876" class="tm" text-anchor="start">:ready</text>
+<text x="26" y="892" class="tm tag-muted" text-anchor="start">otherwise</text>
+<path d="M 316 876 L 352 876" class="wire"/>
+<path d="M 344 871 L 352 876 L 344 881 Z" class="head"/>
+<rect x="352" y="860" width="392" height="42" rx="6" class="lane-code"/>
+<text x="362" y="877" class="t" text-anchor="start">next workflow: End</text>
 </svg>

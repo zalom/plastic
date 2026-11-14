@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require_relative "reviser/change"
-require_relative "../store_folder"
 require_relative "../../retrieval/evidence/writer"
 
 module Plastic
@@ -17,17 +16,16 @@ module Plastic
             WHERE intent_id = :intent_id AND origin_id = :origin AND status NOT IN ('done', 'abandoned')
           SQL
 
-          def initialize(databases, retrieval, folder)
+          def initialize(databases, retrieval)
             @databases = databases
             @retrieval = retrieval
-            @folder = folder
           end
 
           # The change, or nil when the intent has no file row.
           def change(intent, line, why)
             key = key_of(intent)
             document = @retrieval.fetch(*key)
-            document && Change.new(intent:, document:, history: uri(key), edited: edited(intent), line:, why:)
+            document && Change.new(intent:, document:, history: uri(key), line:, why:)
           end
 
           # Writes the change and returns the qualified references of the old and the new revision.
@@ -45,11 +43,6 @@ module Plastic
           def paths_of(intent) = @retrieval.documents(intent.intent_id).map(&:path)
 
           def uri(key) = @retrieval.reference(*key).fetch(:uri)
-
-          def edited(intent)
-            printed = @retrieval.printed
-            ["#{intent.dir}/#{key_of(intent).last}", StoreFolder::INDEX].find { |path| @folder.exist?(path) && @folder.digest(path) != printed[path] }
-          end
 
           def write_title(intent_id, title)
             @databases.fetch(:work).transaction do |batch|

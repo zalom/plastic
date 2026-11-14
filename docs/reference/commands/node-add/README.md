@@ -35,7 +35,7 @@ Its rows run in this order:
 2. Gate: passes when `context.problem.nil?`; otherwise the call stops with exit 1 and prints PROBLEM. [`add.rb:21`](../../../../lib/plastic/workflows/code/node/add.rb#L21)
 3. Step: add the node. Done when `!context.id.nil?`, so a second call skips it. [`add.rb:23`](../../../../lib/plastic/workflows/code/node/add.rb#L23)
 4. Read: say what was added. [`add.rb:29`](../../../../lib/plastic/workflows/code/node/add.rb#L29)
-5. Outcome `:done`, always: finishes with exit 0; next: plastic node claim INTENT_ID ID. [`add.rb:45`](../../../../lib/plastic/workflows/code/node/add.rb#L45)
+5. Outcome `:done`, always: finishes with exit 0; next: plastic edge add INTENT_ID FROM TO. [`add.rb:45`](../../../../lib/plastic/workflows/code/node/add.rb#L45)
 
 It sets `problem`, `id`.
 
@@ -73,7 +73,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
 | PROBLEM | 1 | prints no next: line | [`add.rb:21`](../../../../lib/plastic/workflows/code/node/add.rb#L21) |
-| node ID is open | 0 | plastic node claim INTENT_ID ID | [`add.rb:45`](../../../../lib/plastic/workflows/code/node/add.rb#L45) |
+| node ID is open; add the edges of the plan, then run plastic graph ready INTENT_ID | 0 | plastic edge add INTENT_ID FROM TO | [`add.rb:45`](../../../../lib/plastic/workflows/code/node/add.rb#L45) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
 
 ## What the page leaves out
