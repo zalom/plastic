@@ -83,23 +83,19 @@ curl -fsSL https://raw.githubusercontent.com/zalom/plastic/main/install.sh | sh
 plastic init
 ```
 
-`install.sh` downloads Ruby 4.0.7 for your platform and checks it by its pinned size and SHA-256.
-It then downloads the newest stable release, checks it against its published checksum, and links
-`~/.local/bin/plastic`. The Bundler of that Ruby installs the sqlite3 and tty-prompt gems inside each release.
+`install.sh` needs Ruby 4.0 or later and git, and stops with the steps to install what is missing.
+It downloads the newest stable release, checks it against its published checksum, and links
+`~/.local/bin/plastic`.
 `plastic init` lists the agent harnesses it finds, Claude Code, Codex CLI and Hermes, each one picked,
 and installs Plastic into the ones you pick. [Enola](INSTALL.md#enola) is an optional tool that
 maps code architecture.
 
-`PLASTIC_CHANNEL` picks the beta or alpha channel:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/zalom/plastic/main/install.sh | PLASTIC_CHANNEL=alpha sh
-```
+`install.sh` installs the stable release only. Run `plastic update` to follow a beta or alpha release.
 
 ### A clean Mac
 
-A clean Mac needs nothing more. `install.sh` brings the Ruby Plastic runs on, so Plastic never
-uses the Ruby 2.6 that macOS ships.
+The Ruby 2.6 that macOS ships is too old. Run `brew install ruby` and put its `bin` folder on your
+`PATH` first; [INSTALL.md](INSTALL.md) has the lines.
 
 ### Check the installation
 

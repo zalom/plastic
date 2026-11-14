@@ -6,7 +6,7 @@ require_relative "../../../scripts/lib/installer_release/share_entries"
 
 module Plastic
   module Workflows
-    # The releases and Rubies under the share directory and the launcher
+    # The releases under the share directory and the launcher
     # linked to them, which an uninstall removes once no agent stays
     # registered. Only the entries Plastic makes go: other files in the
     # share, a share without releases, and a launcher Plastic does not own

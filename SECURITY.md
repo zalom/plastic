@@ -12,7 +12,7 @@ Bundler fetches the sqlite3 and tty-prompt gems from RubyGems when a release ins
 
 | Place | What is written |
 | ----- | --------------- |
-| `~/.local/share/plastic/` | The releases, the read-only Rubies under `rubies/`, the `active` and `previous` links, the installer lock and the activation record. |
+| `~/.local/share/plastic/` | The releases, the `download` folder `plastic update` fills, the `active` and `previous` links, the installer lock and the activation record. |
 | `~/.local/bin/plastic` | A link to the active release launcher. |
 | `~/.plastic/` | Scripts, hooks, the help chapters, `PLASTIC.md`, `deprecations.yml`, the install ledger `versions.json`, and your stores. |
 | `~/.claude/agents/`, `~/.claude/hooks`, `~/.claude/plastic/` | The Plastic agents and hooks for Claude Code, and the install record (`manifest.json`, `VERSION`). |

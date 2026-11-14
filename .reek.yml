@@ -33,8 +33,6 @@ detectors:
     exclude:
     - Install#print_results
     - Install#run
-    - Preflight#git_issue
-    - Preflight#sqlite3_issue
     - InstallerCore#distribute
     - InstallerCore#initialize
     - InstallerCore#install_agents
@@ -92,8 +90,6 @@ detectors:
     - ReleaseGuard#self.check
     - Plastic::WorkGraph#self.build
     - Plastic::WorkGraph#self.intents
-    - ReleaseChannels#channels
-    - ReleaseChannels#compare
     - AgentModels#shipped_model_for
     - Plastic::Backup#self.call
     - SkillCensus::Tally#build
@@ -172,10 +168,8 @@ detectors:
   LongParameterList:
     max_params: 5
     exclude:
-    - Install#preflight_gate
     - Install#run
     - Doctor#check
-    - Preflight#check
     - InstallerCore#copy_dir_recursive
     - InstallerCore#generate_codex_agents
     - InstallerCore#inject_marked_section
@@ -261,8 +255,6 @@ detectors:
     - Rollback#switch_to
     - Update#cli
     - Doctor#read_json_safe
-    - Preflight#check
-    - Preflight#ruby_issue
     - InstallerCore#advisor_enabled?
     - InstallerCore#agent_effort_overrides
     - InstallerCore#agent_keys_from
@@ -319,8 +311,6 @@ detectors:
     - Worktree#paths
     - Plastic::WorkGraph#self.build
     - Plastic::WorkGraph#self.intents
-    - ReleaseChannels#channels
-    - ReleaseChannels#compare
     - AgentModels#efforts_section
     - AgentModels#models_section
     - HookRegistry#claude_settings_hooks
@@ -357,7 +347,6 @@ detectors:
     exclude:
     - InstallerCore#semver_compare
     - InstallerCore#semver_gt?
-    - ReleaseChannels#compare
   UncommunicativeVariableName:
     exclude:
     - Doctor#cli
@@ -403,8 +392,6 @@ detectors:
     - Lock#fresh?
     - Lock#read
     - Lock#release
-    - ReleaseChannels#compare
-    - ReleaseChannels#parse
     - HookRegistry
     - HookRegistry#claude_launcher_names
     - HookRegistry#claude_settings_hooks

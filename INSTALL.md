@@ -6,19 +6,26 @@ itself.
 
 ## What you need
 
+- Ruby 4.0 or later
+- git
 - curl and tar
 - `sha256sum` or `shasum`
 
 When one is missing, `install.sh` stops before it writes anything and names the steps for
-macOS and Linux.
-
-You need no Ruby of your own: `install.sh` brings Ruby 4.0.7. It runs on macOS, and on Linux with glibc 2.29 or later. Alpine and other musl systems
-are not supported. On Windows, install Plastic inside WSL; there is no native Windows install.
+macOS and Linux. `install.sh` downloads no Ruby and installs no gem. On Windows, install Plastic
+inside WSL; there is no native Windows install.
 
 ## A clean Mac
 
-A clean Mac needs nothing more. `install.sh` brings the Ruby Plastic runs on, so Plastic never
-uses the Ruby 2.6 that macOS ships.
+The Ruby 2.6 that macOS ships is too old. Install a newer one first:
+
+```bash
+brew install ruby
+export PATH="$(brew --prefix ruby)/bin:$PATH"
+```
+
+`install.sh` runs the first `ruby` on your `PATH`, and the launcher it writes keeps that Ruby's full path.
+When the Ruby is later removed, the launcher prints one line that names `install.sh`; run it again.
 
 ## Install
 
@@ -39,29 +46,26 @@ record lists the files, hooks, settings entries and instruction sections Plastic
 
 `install.sh` does these things:
 
-1. Picks the Ruby build for your platform: a jdx/ruby build on Apple silicon and Linux, or the
-   Homebrew portable Ruby on an Intel Mac. A Rosetta shell on Apple silicon gets the Apple silicon
-   build. It checks the download against its pinned size and SHA-256, refuses an archive that holds
-   a link or a path outside it, starts the Ruby once, and moves it into a read-only directory under
-   `~/.local/share/plastic/rubies`. A Ruby already there is reused.
-2. Reads the release list from GitHub and picks the newest release on the channel.
+1. Checks for Ruby 4.0 or later, git, curl, tar and a checksum program, and stops with the steps
+   to install each one that is missing.
+2. Reads the release list from GitHub and picks the newest stable release.
 3. Downloads the release archive, its `.sha256` checksum file and its manifest over HTTPS.
 4. Checks the archive against the checksum, and refuses an archive that holds a link or a path
    outside it.
-5. Unpacks the release into its own directory under `~/.local/share/plastic/releases`, has the
-   Bundler of that Ruby install the sqlite3 and tty-prompt gems inside that directory, and writes a launcher that
-   starts that Ruby by its full path.
+5. Unpacks the release into its own directory under `~/.local/share/plastic/releases` and writes a
+   launcher that starts your Ruby by its full path.
 6. Points the `active` link at the new release, and links `~/.local/bin/plastic` to it.
 
 A failed download or checksum leaves the installed release as it was. The script edits no
 shell profile. When `~/.local/bin` is not on your `PATH`, it prints the line to add.
 
 `sh install.sh --dry-run` reads the release metadata and changes nothing. `PLASTIC_VERSION`
-installs one named release instead of the newest.
-For development, `PLASTIC_RUBY` names a Ruby to run instead, and `install.sh` downloads no Ruby.
+installs one named stable release instead of the newest. `PLASTIC_RUBY` names a Ruby to run
+instead of the first one on your `PATH`.
 
-An update reuses the Ruby it already has, or adds the one a newer release pins beside it. Each
-release keeps the Ruby it was installed with, so a rollback starts the Ruby the older release ran on.
+`plastic update` downloads the newest release into `~/.local/share/plastic/download`, checks it
+against its checksum, and prints the command that installs it. `plastic rollback` changes nothing
+and prints the command that switches back to the previous release.
 
 The last line of `install.sh` names the next command. On a first install it is
 `plastic init`. When Plastic is already installed, `install.sh` brings the agent files in
@@ -79,17 +83,11 @@ curl -fsSL https://raw.githubusercontent.com/enola-labs/enola/main/install.sh | 
 
 Plastic runs no Enola installer, pins no Enola release and stores no Enola preference.
 
-## Channels
+## Beta and alpha releases
 
-Plastic has three channels: stable, beta and alpha. `install.sh` reads stable unless
-`PLASTIC_CHANNEL` names another:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/zalom/plastic/main/install.sh | PLASTIC_CHANNEL=alpha sh
-```
-
-When no release on the channel carries the archive, the checksum and the manifest, the
-script says so and exits.
+`install.sh` installs the stable release only. To follow a beta or alpha release, install the
+stable release, then run `plastic update`. When no stable release carries the archive, the
+checksum and the manifest, the script says so and exits.
 
 ## Check the installation
 

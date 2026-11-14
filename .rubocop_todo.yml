@@ -23,7 +23,6 @@ Layout/ArgumentAlignment:
     - 'test/lib/failures_reporter.rb'
     - 'test/plastic_md_pointer_test.rb'
     - 'test/post_cut_vocabulary_test.rb'
-    - 'test/preflight_test.rb'
     - 'test/roadmap_test.rb'
 
 # Offense count: 100
@@ -65,7 +64,6 @@ Layout/EndAlignment:
 Layout/HashAlignment:
   Exclude:
     - 'scripts/lib/installer_core.rb'
-    - 'scripts/select-update-target'
 
 # Offense count: 29
 # This cop supports safe autocorrection (--autocorrect).
@@ -122,12 +120,10 @@ Layout/ParameterAlignment:
 # SupportedStylesForEmptyBraces: space, no_space
 Layout/SpaceInsideHashLiteralBraces:
   Exclude:
-    - 'scripts/lib/release_channels.rb'
     - 'bin/lib/release_guard.rb'
     - 'test/cli/launcher_test.rb'
     - 'test/cli/package_bin_test.rb'
     - 'test/real_home_guard_test.rb'
-    - 'test/release_channels_test.rb'
 
 # Offense count: 1
 # This cop supports safe autocorrection (--autocorrect).
@@ -135,10 +131,6 @@ Lint/SafeNavigationWithEmpty:
   Exclude:
     - 'scripts/lib/installer_core.rb'
 
-# Offense count: 6
-Lint/ShadowedException:
-  Exclude:
-    - 'scripts/select-update-target'
 
 # Offense count: 1200
 # Configuration parameters: AllowedMethods, AllowedPatterns, CountRepeatedAttributes, Max.
@@ -150,7 +142,6 @@ Metrics/AbcSize:
     - 'scripts/lib/engine_permissions.rb'
     - 'scripts/lib/hook_registry.rb'
     - 'scripts/lib/installer_core.rb'
-    - 'scripts/lib/release_channels.rb'
     - 'bin/lib/release_guard.rb'
     - 'test/compact_instructions_test.rb'
     - 'test/context_budget_bench_test.rb'
@@ -174,9 +165,7 @@ Metrics/ClassLength:
     - 'test/engine_permissions_test.rb'
     - 'test/hook_registry_test.rb'
     - 'test/installer_core_test.rb'
-    - 'test/preflight_test.rb'
     - 'test/real_home_guard_test.rb'
-    - 'test/release_channels_test.rb'
     - 'test/release_check_test.rb'
     - 'test/vocabulary_scan_test.rb'
 
@@ -189,7 +178,6 @@ Metrics/CyclomaticComplexity:
     - 'scripts/install.rb'
     - 'scripts/lib/hook_registry.rb'
     - 'scripts/lib/installer_core.rb'
-    - 'scripts/lib/release_channels.rb'
     - 'bin/lib/release_guard.rb'
     - 'test/real_home_guard_test.rb'
 
@@ -203,7 +191,6 @@ Metrics/MethodLength:
     - 'scripts/lib/engine_permissions.rb'
     - 'scripts/lib/hook_registry.rb'
     - 'scripts/lib/installer_core.rb'
-    - 'scripts/lib/release_channels.rb'
     - 'bin/lib/release_guard.rb'
     - 'bin/release-check'
     - 'test/compact_instructions_test.rb'
@@ -217,7 +204,6 @@ Metrics/MethodLength:
     - 'test/post_cut_vocabulary_test.rb'
     - 'test/release_check_test.rb'
     - 'test/release_guard_test.rb'
-    - 'test/tick_with_commit_contract_test.rb'
     - 'test/vocabulary_scan_test.rb'
 
 # Offense count: 49
@@ -245,7 +231,6 @@ Metrics/PerceivedComplexity:
     - 'scripts/lib/engine_permissions.rb'
     - 'scripts/lib/hook_registry.rb'
     - 'scripts/lib/installer_core.rb'
-    - 'scripts/lib/release_channels.rb'
 
 # Offense count: 44
 # This cop supports safe autocorrection (--autocorrect).
@@ -290,13 +275,11 @@ Minitest/EmptyLineBeforeAssertionMethods:
     - 'test/plastic_core_budget_test.rb'
     - 'test/plastic_md_pointer_test.rb'
     - 'test/post_cut_vocabulary_test.rb'
-    - 'test/preflight_test.rb'
     - 'test/release_check_test.rb'
     - 'test/release_guard_test.rb'
     - 'test/release_verify_test.rb'
     - 'test/releasing_skill_publish_test.rb'
     - 'test/roadmap_test.rb'
-    - 'test/tick_with_commit_contract_test.rb'
     - 'test/vocabulary_scan_test.rb'
 
 # Offense count: 741
@@ -313,7 +296,6 @@ Minitest/MultipleAssertions:
     - 'test/naming_rule_test.rb'
     - 'test/plastic_core_budget_test.rb'
     - 'test/post_cut_vocabulary_test.rb'
-    - 'test/preflight_test.rb'
     - 'test/release_check_test.rb'
     - 'test/release_guard_test.rb'
     - 'test/vocabulary_scan_test.rb'
@@ -487,7 +469,6 @@ Style/TrailingCommaInArrayLiteral:
     - 'scripts/lib/installer_core.rb'
     - 'test/installer_core_test.rb'
     - 'test/post_cut_vocabulary_test.rb'
-    - 'test/preflight_test.rb'
 
 # Offense count: 320
 # This cop supports safe autocorrection (--autocorrect).
@@ -499,7 +480,6 @@ Style/TrailingCommaInHashLiteral:
     - 'scripts/lib/hook_registry.rb'
     - 'scripts/lib/installer_core.rb'
     - 'bin/lib/release_guard.rb'
-    - 'scripts/select-update-target'
     - 'test/engine_permissions_test.rb'
     - 'test/installer_core_test.rb'
 
