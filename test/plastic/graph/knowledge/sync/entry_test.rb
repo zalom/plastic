@@ -71,41 +71,41 @@ class KnowledgeSyncEntryTest < Plastic::TestCase
     assert_equal %i[conflict conflict], graph_actions("b", "a", empty_graph_sha)
   end
 
-INDEX = "store/index.json"
-PRETTY = "{\n  \"a\": 1\n}\n"
+  INDEX = "store/index.json"
+  PRETTY = "{\n  \"a\": 1\n}\n"
 
-def built(path, bytes, printed: "p", print_text: PRETTY)
-  write(path, bytes)
-  Entry.for(folder, path, printed, Print.text(path, :work, print_text))
-end
+  def built(path, bytes, printed: "p", print_text: PRETTY)
+    write(path, bytes)
+    Entry.for(folder, path, printed, Print.text(path, :work, print_text))
+  end
 
-def test_a_generated_file_with_the_content_of_its_print_in_other_bytes_is_level
-  entry = built(INDEX, JSON.generate({ "a" => 1 }))
+  def test_a_generated_file_with_the_content_of_its_print_in_other_bytes_is_level
+    entry = built(INDEX, JSON.generate({ "a" => 1 }))
 
-  assert_equal [true, false], [entry.level?, entry.hand_edited?]
-end
+    assert_equal [true, false], [entry.level?, entry.hand_edited?]
+  end
 
-def test_a_generated_file_with_other_content_than_its_print_is_hand_edited
-  assert built(INDEX, JSON.generate({ "a" => 2 })).hand_edited?
-end
+  def test_a_generated_file_with_other_content_than_its_print_is_hand_edited
+    assert_predicate built(INDEX, JSON.generate({ "a" => 2 })), :hand_edited?
+  end
 
-def test_a_generated_file_that_is_not_json_is_hand_edited
-  assert built(INDEX, "{").hand_edited?
-end
+  def test_a_generated_file_that_is_not_json_is_hand_edited
+    assert_predicate built(INDEX, "{"), :hand_edited?
+  end
 
-def test_a_context_file_is_compared_by_content_as_the_index_is
-  assert built("store/1--alpha/context.json", JSON.generate({ "a" => 1 })).level?
-end
+  def test_a_context_file_is_compared_by_content_as_the_index_is
+    assert_predicate built("store/1--alpha/context.json", JSON.generate({ "a" => 1 })), :level?
+  end
 
-def test_a_kept_file_with_the_content_of_its_print_in_other_bytes_is_hand_edited
-  assert built("store/1--alpha/graph.json", JSON.generate({ "a" => 1 })).hand_edited?
-end
+  def test_a_kept_file_with_the_content_of_its_print_in_other_bytes_is_hand_edited
+    assert_predicate built("store/1--alpha/graph.json", JSON.generate({ "a" => 1 })), :hand_edited?
+  end
 
-def test_a_generated_file_missing_from_the_folder_is_not_level
-  entry = Entry.for(folder, INDEX, "p", Print.text(INDEX, :work, PRETTY))
+  def test_a_generated_file_missing_from_the_folder_is_not_level
+    entry = Entry.for(folder, INDEX, "p", Print.text(INDEX, :work, PRETTY))
 
-  assert_equal [nil, false], [entry.file_sha, entry.level?]
-end
+    assert_equal [nil, false], [entry.file_sha, entry.level?]
+  end
 
   def hand_edited(file, printed, rows) = Entry.new("p", file, printed, rows ? Print.new("p", :work, rows, nil) : Entry::NO_PRINT).hand_edited?
 

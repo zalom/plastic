@@ -39,6 +39,15 @@ module Plastic
             context[:ready_id] = items["ready"]&.first&.item
           end
 
+          # The intent `plastic auto` would deliver for the word of `context`, or nil. It writes no fact and
+          # raises for no missing roadmap, so a check can ask before the workflow runs.
+          def self.intent_for(context)
+            return context.id if intent_word?(context)
+            return unless context.retrieval.roadmap(context.id)
+
+            free_item(items_by_state(context)["in flight"], context)&.intent_id
+          end
+
           # The roadmap's items grouped by state, each group in batch then item order.
           def self.items_by_state(context)
             retrieval = context.retrieval

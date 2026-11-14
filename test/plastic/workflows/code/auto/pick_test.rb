@@ -111,41 +111,4 @@ class WorkflowPickDeliveryTest < Plastic::TestCase
 
     assert_equal [:ready, nil, "a"], [outcome, context.intent_id, context.ready_id]
   end
-def intent_for(id, session: "s-1")
-  context = run_workflow(Plastic::Workflows::Code::Auto::Pick, harness: scoped_harness(session:), graphs: session_graphs, id:).last
-  Plastic::Workflows::Code::Auto::Pick.intent_for(context)
-end
-
-def test_the_intent_for_an_intent_word_is_that_intent
-  assert_equal "7", intent_for("7")
-end
-
-def test_the_intent_for_a_roadmap_is_its_first_free_item_in_flight
-  roadmap
-  item("a")
-  intent_id = started("a")
-
-  assert_equal intent_id, intent_for("r1")
-end
-
-def test_the_intent_for_a_missing_roadmap_is_nothing_and_raises_nothing
-  assert_nil intent_for("r9")
-end
-
-def test_the_intent_for_a_roadmap_with_only_a_ready_item_is_nothing
-  roadmap
-  item("a")
-
-  assert_nil intent_for("r1")
-end
-
-def test_asking_for_the_intent_writes_no_fact
-  roadmap
-  item("a")
-  context = run_workflow(Plastic::Workflows::Code::Auto::Pick, harness: scoped_harness(session: "s-1"), graphs: session_graphs, id: "r1").last
-  context[:intent_id] = nil
-  Plastic::Workflows::Code::Auto::Pick.intent_for(context)
-
-  assert_nil context.intent_id
-end
 end

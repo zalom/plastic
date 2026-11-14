@@ -6,12 +6,14 @@ require_relative "../../../lib/plastic/workflows/code/sync/up"
 require_relative "../../../lib/plastic/workflows/code/sync/down"
 
 class SyncStepsTest < Plastic::TestCase
-  DECLARED = %i[overwrite merge failure conflicts merging unreadable lines].freeze
+  DECLARED = %i[overwrite merge failure conflicts merging unreadable unreadable_files unreadable_path lines].freeze
   PLAIN = "changed on both sides since the last print, nothing written: a.md, b.md; pass --overwrite PATH, --overwrite or --merge"
   LEFT = "changed on both sides since the last print, left as they are: a.md; pass --overwrite PATH or --overwrite"
 
   # A plan as the steps read it.
-  Plan = Data.define(:failure, :conflicts, :merging, :pending, :unreadable) do
+  Plan = Data.define(:failure, :conflicts, :merging, :pending, :unreadable, :left_unreadable) do
+    def initialize(left_unreadable: {}, **fields) = super
+
     def merging? = merging
   end
 
@@ -108,8 +110,8 @@ class SyncStepsTest < Plastic::TestCase
     steps = Plastic::Workflows::SyncSteps
     gates = flow.steps.grep(Plastic::CodeWorkflow::Gate).map(&:reason)
 
-    assert_equal ["plan the sync", "gate", "gate", "apply the changes", "say what changed", "gate", "gate"], flow.steps.map(&:name)
-    assert_equal ["%{failure}", steps::REFUSED_BEFORE, steps::REFUSED_AFTER, steps::UNREADABLE], gates
+    assert_equal ["plan the sync", "gate", "gate", "apply the changes", "say what changed", "gate", "gate", "gate"], flow.steps.map(&:name)
+    assert_equal ["%{failure}", steps::REFUSED_BEFORE, steps::REFUSED_AFTER, steps::UNREADABLE, steps::UNREADABLE_FILES], gates
     assert_equal ["plastic next"], flow.outcomes.map(&:offers)
   end
 

@@ -70,12 +70,18 @@ class RoutinePrintingWayOutTest < Plastic::TestCase
     other = open_intent("Beta")
     write("#{other.dir}/graph.json", "{\"hand\":true}\n")
     write("#{intent.dir}/spec.md", "#{keyed_spec}\nEdited.\n")
-    refused = note
-    failed = cli(*named_command(refused))
-    cleared = cli(*named_command(failed))
+    steps = followed(note, 2)
 
-    assert_equal [1, "sync up", 1, "sync down --overwrite #{other.dir}/graph.json", 0, 0],
-      [refused.code, named_command(refused).join(" "), failed.code, named_command(failed).join(" "), cleared.code, note.code], failed.err
+    assert_equal [%w[sync up], %w[sync down --overwrite] + ["#{other.dir}/graph.json"], 0], [steps[0], steps[1], note.code]
+  end
+
+  # The command each refusal names, run in turn `count` times.
+  def followed(result, count)
+    Array.new(count) do
+      named = named_command(result)
+      result = cli(*named)
+      named
+    end
   end
 
   def test_a_hand_edited_roadmap_is_cleared_by_the_command_the_refusal_names

@@ -47,6 +47,23 @@ This chapter holds the linking rules for an intent's frontmatter and the branch-
   `[[id--slug|<target's full intent: text>]]` wikilink in `## Links`).
 - **Rule of thumb:** if the intent could exist without its parent, it's a root.
 
+## Files changed by hand
+
+A command that prints a file first checks that nobody changed it by hand since the last
+print, and it refuses when somebody did. The refusal names the command that clears it:
+
+- `plastic sync up` clears it when sync up can read the file into rows. A generated file
+  (the index, a context view or a roadmap) holds no rows of its own, so sync up prints it
+  again from the rows. A generated file that holds the same content as its print, in other
+  bytes, is not a change.
+- `plastic sync down --overwrite PATH` clears it when sync up cannot read the file, such as
+  a graph that is not valid. The refusal says so and gives the reason. The path prints again
+  from its rows and the hand edit is lost. A bare `--overwrite` does not do this: it leaves a
+  file that only the file side changed alone.
+
+`plastic auto ROADMAP` checks the files of the intent it picks from the roadmap. A roadmap
+that does not exist, or one with no item in flight, has no such intent and is not refused.
+
 ## Naming
 
 A thing is named after the concept family it lives under. A node is a graph-engineering

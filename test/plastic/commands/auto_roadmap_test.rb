@@ -81,42 +81,43 @@ class AutoRoadmapTest < Plastic::TestCase
 
     assert_equal [1, 0, [], "next: plastic roadmap open r1 b"], [failed.code, result.code, lock_rows, next_line(result)]
   end
-def armed_item
-  roadmap
-  item("a")
-  intent_id, = store_graphs.work.open_roadmap_item("r1", "a")
-  plastic("intent", "approve", intent_id, table: Plastic::CLI::TABLE)
-  intent_id
-end
 
-def test_a_roadmap_whose_picked_intent_has_a_savepoint_changed_by_hand_is_refused_and_kept
-  intent_id = armed_item
-  path = "#{retrieval.intent(intent_id).dir}/savepoint.md"
-  write(path, "by hand\n")
+  def armed_item
+    roadmap
+    item("a")
+    intent_id, = store_graphs.work.open_roadmap_item("r1", "a")
+    plastic("intent", "approve", intent_id, table: Plastic::CLI::TABLE)
+    intent_id
+  end
 
-  result = call("r1")
+  def test_a_roadmap_whose_picked_intent_has_a_savepoint_changed_by_hand_is_refused_and_kept
+    intent_id = armed_item
+    path = "#{retrieval.intent(intent_id).dir}/savepoint.md"
+    write(path, "by hand\n")
 
-  assert_equal [1, [], "by hand\n", true, "next: plastic sync up"], [result.code, lock_rows, File.read(store_path(path)), result.err.include?("#{path} changed by hand"), next_line(result)], result.err
-end
+    result = call("r1")
 
-def test_a_roadmap_with_a_ready_item_is_not_refused_for_a_file_of_another_intent
-  roadmap
-  item("a")
-  other = open_intent("Other")
-  write("#{other.dir}/savepoint.md", "by hand\n")
+    assert_equal [1, [], "by hand\n", true, "next: plastic sync up"], [result.code, lock_rows, File.read(store_path(path)), result.err.include?("#{path} changed by hand"), next_line(result)], result.err
+  end
 
-  result = call("r1")
+  def test_a_roadmap_with_a_ready_item_is_not_refused_for_a_file_of_another_intent
+    roadmap
+    item("a")
+    other = open_intent("Other")
+    write("#{other.dir}/savepoint.md", "by hand\n")
 
-  assert_equal [0, "next: plastic roadmap open r1 a"], [result.code, next_line(result)], result.err
-end
+    result = call("r1")
 
-def test_a_delivered_roadmap_offers_roadmap_show_and_is_not_refused
-  roadmap
-  item("a")
-  store_graphs.work.drop_item("r1", "a")
+    assert_equal [0, "next: plastic roadmap open r1 a"], [result.code, next_line(result)], result.err
+  end
 
-  result = call("r1")
+  def test_a_delivered_roadmap_offers_roadmap_show_and_is_not_refused
+    roadmap
+    item("a")
+    store_graphs.work.drop_item("r1", "a")
 
-  assert_equal [0, "next: plastic roadmap show r1"], [result.code, next_line(result)], result.err
-end
+    result = call("r1")
+
+    assert_equal [0, "next: plastic roadmap show r1"], [result.code, next_line(result)], result.err
+  end
 end

@@ -29,10 +29,7 @@ module Plastic
           private
 
           # The intents of the rows. store/index.json is never read for them: the folders are.
-          def reader
-            known = @retrieval.intents.to_h { |intent| [intent.intent_id, intent] }
-            Reader.new(@folder, known, @retrieval.origin_id, retrieval: @retrieval, heads: known_heads)
-          end
+          def reader = Reader.of(@folder, @retrieval, heads: known_heads)
 
           def known_heads
             rows = @databases.fetch(:knowledge).rows("SELECT intent_id, path FROM document_heads WHERE origin_id = :origin", origin: @retrieval.origin_id)

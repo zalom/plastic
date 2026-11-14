@@ -30,6 +30,8 @@ module Plastic
 
       def hand_edit_line(path) = "#{path} changed by hand since the last print; run plastic sync up first"
 
+      def unreadable_line(path, reason) = "#{path} changed by hand and cannot be read into rows: #{reason}"
+
       def empty_graph_sha(path) = GraphPrint.empty_sha(path)
 
       # Every file of the store, read in eight queries whatever the number of intents.

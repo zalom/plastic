@@ -59,11 +59,9 @@ class RoutinePrintingIndexTest < Plastic::TestCase
     open_intent
     data = JSON.parse(File.read(store_path("store/index.json")))
     write("store/index.json", JSON.generate(data.merge("clusters" => [{ "name" => "imported", "intents" => ["1"] }])))
-    refused = cli("intent", "new", "Beta")
-    named = cli("sync", "up")
-    again = cli("intent", "new", "Beta")
+    results = [cli("intent", "new", "Beta"), cli("sync", "up"), cli("intent", "new", "Beta")]
 
-    assert_equal [1, 0, 0], [refused.code, named.code, again.code], again.err
+    assert_equal [1, 0, 0], results.map(&:code), results.last.err
     assert_includes File.read(store_path("store/index.json")), "imported"
   end
 

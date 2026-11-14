@@ -45,7 +45,7 @@ class PrintTriggerTest < Plastic::TestCase
     result = cli("intent", "approve", "1")
 
     assert_equal [1, '{"hand":true}'], [result.code, File.read(store_path("#{intent.dir}/graph.json"))]
-    assert_includes result.err, "#{intent.dir}/graph.json changed by hand since the last print; run plastic sync up first"
+    assert_includes result.err, "#{intent.dir}/graph.json changed by hand and cannot be read into rows"
   end
 
   def test_a_second_identical_call_prints_no_files_row

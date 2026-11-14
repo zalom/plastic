@@ -40,10 +40,10 @@ Its rows run in this order:
 1. Read: forget what an earlier call picked. [`pick.rb:22`](../../../../lib/plastic/workflows/code/auto/pick.rb#L22)
 2. Gate: passes when `intent_word?(context) || !context.retrieval.roadmap(context.id).nil?`; otherwise the call stops with exit 1 and prints no roadmap ID. [`pick.rb:28`](../../../../lib/plastic/workflows/code/auto/pick.rb#L28)
 3. Read: pick the intent to deliver. [`pick.rb:31`](../../../../lib/plastic/workflows/code/auto/pick.rb#L31)
-4. Outcome `:intent`, when `!context.intent_id.nil?`: starts the workflow [Code::Auto](#codeauto). [`pick.rb:58`](../../../../lib/plastic/workflows/code/auto/pick.rb#L58)
-5. Outcome `:ready`, when `!context.ready_id.nil?`: finishes with exit 0; next: plastic roadmap open ID READY_ID. [`pick.rb:59`](../../../../lib/plastic/workflows/code/auto/pick.rb#L59)
-6. Outcome `:delivered`, when `context.open.empty?`: finishes with exit 0; next: plastic roadmap show ID. [`pick.rb:61`](../../../../lib/plastic/workflows/code/auto/pick.rb#L61)
-7. Outcome `:waiting`, otherwise: finishes with exit 0; next: plastic roadmap show ID. [`pick.rb:63`](../../../../lib/plastic/workflows/code/auto/pick.rb#L63)
+4. Outcome `:intent`, when `!context.intent_id.nil?`: starts the workflow [Code::Auto](#codeauto). [`pick.rb:67`](../../../../lib/plastic/workflows/code/auto/pick.rb#L67)
+5. Outcome `:ready`, when `!context.ready_id.nil?`: finishes with exit 0; next: plastic roadmap open ID READY_ID. [`pick.rb:68`](../../../../lib/plastic/workflows/code/auto/pick.rb#L68)
+6. Outcome `:delivered`, when `context.open.empty?`: finishes with exit 0; next: plastic roadmap show ID. [`pick.rb:70`](../../../../lib/plastic/workflows/code/auto/pick.rb#L70)
+7. Outcome `:waiting`, otherwise: finishes with exit 0; next: plastic roadmap show ID. [`pick.rb:72`](../../../../lib/plastic/workflows/code/auto/pick.rb#L72)
 
 It sets `intent_id`, `ready_id`, `open`.
 
@@ -106,9 +106,9 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
 | no roadmap ID | 1 | prints no next: line | [`pick.rb:28`](../../../../lib/plastic/workflows/code/auto/pick.rb#L28) |
-| item READY_ID is ready | 0 | plastic roadmap open ID READY_ID | [`pick.rb:59`](../../../../lib/plastic/workflows/code/auto/pick.rb#L59) |
-| every item of ID is done or dropped | 0 | plastic roadmap show ID | [`pick.rb:61`](../../../../lib/plastic/workflows/code/auto/pick.rb#L61) |
-| no item of ID is free to deliver yet | 0 | plastic roadmap show ID | [`pick.rb:63`](../../../../lib/plastic/workflows/code/auto/pick.rb#L63) |
+| item READY_ID is ready | 0 | plastic roadmap open ID READY_ID | [`pick.rb:68`](../../../../lib/plastic/workflows/code/auto/pick.rb#L68) |
+| every item of ID is done or dropped | 0 | plastic roadmap show ID | [`pick.rb:70`](../../../../lib/plastic/workflows/code/auto/pick.rb#L70) |
+| no item of ID is free to deliver yet | 0 | plastic roadmap show ID | [`pick.rb:72`](../../../../lib/plastic/workflows/code/auto/pick.rb#L72) |
 | no intent INTENT_ID in this store | 1 | prints no next: line | [`auto.rb:69`](../../../../lib/plastic/workflows/code/auto.rb#L69) |
 | plastic auto names no session | 1 | prints no next: line | [`auto.rb:70`](../../../../lib/plastic/workflows/code/auto.rb#L70) |
 | SESSION_PROBLEM | 1 | prints no next: line | [`auto.rb:71`](../../../../lib/plastic/workflows/code/auto.rb#L71) |

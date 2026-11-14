@@ -26,6 +26,9 @@ module Plastic
 
           def overwrites?(path) = [nil, path].include?(@overwrite)
 
+          # The overwrite names this one path; a bare overwrite names none.
+          def names?(path) = path? && @overwrite == path
+
           # One-sided changes go through while conflicts wait: --merge, or --overwrite PATH.
           def merging? = @merge || path?
 

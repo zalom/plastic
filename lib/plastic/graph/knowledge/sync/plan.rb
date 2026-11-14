@@ -5,6 +5,7 @@ require_relative "resolution"
 require_relative "intent_folders"
 require_relative "../store_folder"
 require_relative "archived_intents"
+require_relative "readability"
 
 module Plastic
   module Graph
@@ -14,7 +15,10 @@ module Plastic
         # store whose INDEX.md waits to be imported, `problem` a call that
         # cannot run, `archived` the archived intents the index lists that have no row, and `unreadable` the intent folders no row can be read
         # from, one line each. The files of those folders are no entries.
-        Plan = Data.define(:resolution, :entries, :legacy, :problem, :unreadable, :archived)
+        # `unreadable_files` maps each changed file that a sync up cannot read into rows to the reason.
+        Plan = Data.define(:resolution, :entries, :legacy, :problem, :unreadable, :archived, :unreadable_files) do
+          def initialize(unreadable_files: {}, **fields) = super
+        end
 
         # Each entry's action, and what the sync writes.
         class Plan
@@ -22,9 +26,30 @@ module Plastic
             legacy = folder.legacy?
             up = resolution.up?
             folders = legacy ? nil : IntentFolders.new(folder, retrieval)
-            new(resolution:, entries: entries(folder, retrieval, folders), legacy: up && legacy,
-              problem: (legacy_problem if legacy && !up), unreadable: folders&.problems || [],
-              archived: archived(folder, retrieval, resolution))
+            entries = entries(folder, retrieval, folders)
+            new(resolution:, entries:, legacy: up && legacy,
+              problem: (legacy_problem if legacy && !up), unreadable: Array(folders&.problems),
+              archived: archived(folder, retrieval, resolution),
+              unreadable_files: unreadable_files_of(folder, retrieval, entries, resolution, legacy))
+          end
+
+          # Only a sync up of a store that is not legacy reads files.
+          def self.unreadable_files_of(folder, retrieval, entries, resolution, legacy)
+            (resolution.up? && !legacy) ? unreadable_files(folder, retrieval, entries) : {}
+          end
+
+          # The changed files of `entries` that sync up would read and cannot.
+          def self.unreadable_files(folder, retrieval, entries)
+            rowed = retrieval.intents.map(&:dir)
+            paths = entries.select { |entry| readable?(entry, rowed) }.map(&:path)
+            Readability.new(folder, retrieval).call(paths)
+          end
+
+          # A changed file that is the index or belongs to an intent that has its rows; the files of a folder without rows read after its row is written.
+          def self.readable?(entry, rowed)
+            return false unless %i[read conflict].include?(entry.action(:up))
+
+            entry.path == StoreFolder::INDEX || (!entry.generated? && rowed.any? { |dir| entry.path.start_with?("#{dir}/") })
           end
 
           def self.entries(folder, retrieval, folders = nil) = EntryList.new(folder, retrieval, folders).entries
@@ -49,6 +74,9 @@ module Plastic
 
           def merging? = resolution.merging?
 
+          # The unreadable files that sync up leaves as they are: a generated one prints again from its rows instead.
+          def left_unreadable = unreadable_files.reject { |path, _reason| Entry.generated?(path) }
+
           # A call that cannot run: a store not imported yet, or an overwrite path that names nothing.
           def failure
             return problem if problem
@@ -60,11 +88,25 @@ module Plastic
           private
 
           def settled(entry)
-            return :none if direction == :up && entry.generated?
+            return generated_up(entry) if direction == :up && entry.generated?
+            return :none if unreadable_files.key?(entry.path)
 
             action = entry.action(direction)
-            (action == :conflict && resolution.overwrites?(entry.path)) ? resolution.side : action
+            return resolution.side if action == :conflict && resolution.overwrites?(entry.path)
+
+            named_print?(entry) ? :print : action
           end
+
+          # A generated file a person changed: the index is read when it can be, else printed again from the rows.
+          def generated_up(entry)
+            return :none unless entry.hand_edited? && entry.rows_sha
+            return :print if StoreFolder.context_view?(entry.path) || Entry.roadmap?(entry.path) || unreadable_files.key?(entry.path)
+
+            :read
+          end
+
+          # An overwrite that names this path prints it from its rows when the file differs from them.
+          def named_print?(entry) = direction == :down && resolution.names?(entry.path) && entry.rows_sha && !entry.level?
         end
       end
     end

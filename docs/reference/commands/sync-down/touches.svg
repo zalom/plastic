@@ -76,22 +76,20 @@
 <text x="28" y="68" class="tm" text-anchor="start">document_heads</text>
 <path d="M 238 49 L 288 49" class="wire-read"/>
 <path d="M 280 44 L 288 49 L 280 54 Z" class="head"/>
-<rect x="16" y="91" width="220" height="90" rx="14" class="db"/>
+<rect x="16" y="91" width="220" height="60" rx="14" class="db"/>
 <text x="28" y="109" class="tb" text-anchor="start">work_graph.db</text>
 <text x="28" y="125" class="tm" text-anchor="start">archives</text>
-<text x="28" y="140" class="tm" text-anchor="start">clusters</text>
-<text x="28" y="155" class="tm" text-anchor="start">intents</text>
-<text x="28" y="170" class="tm" text-anchor="start">savepoints</text>
+<text x="28" y="140" class="tm" text-anchor="start">intents</text>
 <path d="M 238 106 L 288 106" class="wire-read"/>
 <path d="M 280 101 L 288 106 L 280 111 Z" class="head"/>
 <rect x="564" y="34" width="220" height="45" rx="14" class="db"/>
 <text x="576" y="52" class="tb" text-anchor="start">knowledge_graph.db</text>
-<text x="576" y="68" class="tm" text-anchor="start">legacy_intents_data</text>
+<text x="576" y="68" class="tm" text-anchor="start">tables not found</text>
 <path d="M 512 49 L 562 49" class="wire"/>
 <path d="M 554 44 L 562 49 L 554 54 Z" class="head"/>
 <rect x="564" y="91" width="220" height="45" rx="14" class="db"/>
 <text x="576" y="109" class="tb" text-anchor="start">references.db</text>
-<text x="576" y="125" class="tm" text-anchor="start">sqlar</text>
+<text x="576" y="125" class="tm" text-anchor="start">tables not found</text>
 <path d="M 512 106 L 562 106" class="wire"/>
 <path d="M 554 101 L 562 106 L 554 111 Z" class="head"/>
 <rect x="564" y="148" width="220" height="75" rx="14" class="db"/>

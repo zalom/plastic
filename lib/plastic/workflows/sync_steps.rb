@@ -15,6 +15,9 @@ module Plastic
       UNREADABLE = "intent folders that could not be read, the others were read:\n%{unreadable}\n" \
                    "fix or remove each folder named, then run plastic sync up again"
 
+      UNREADABLE_FILES = "files that cannot be read into rows, the others were read:\n%{unreadable_files}\n" \
+                         "each file prints again from its rows with the command below"
+
       def self.plan(context, direction)
         context.work.sync_plan(direction, { overwrite: context.overwrite, merge: context.merge })
       end
@@ -25,7 +28,13 @@ module Plastic
         context[:conflicts] = plan.conflicts.join(", ")
         context[:merging] = plan.merging?
         context[:unreadable] = plan.unreadable.join("\n")
+        note_files(context, plan.left_unreadable)
         context[:lines] = nil
+      end
+
+      def self.note_files(context, files)
+        context[:unreadable_files] = files.map { |path, reason| "#{path}: #{reason}" }.join("\n")
+        context[:unreadable_path] = files.keys.first
       end
 
       def self.apply(context, direction) = context[:lines] = context.work.sync_apply(plan(context, direction))
@@ -34,6 +43,9 @@ module Plastic
 
       # No intent folder is left that could not be read.
       def self.readable?(context) = context.unreadable.empty?
+
+      # No changed file is left that no reader can turn into rows.
+      def self.files_read?(context) = context.unreadable_path.nil?
 
       def self.say(context) = Array(context.lines).each { |line| context.print(line) }
 
@@ -50,7 +62,7 @@ module Plastic
       # Declares the whole chain, so a second load of the class replaces the first.
       def sync(direction)
         [facts, steps, outcomes].each(&:clear)
-        sets :failure, :conflicts, :merging, :unreadable, :lines
+        sets :failure, :conflicts, :merging, :unreadable, :unreadable_files, :unreadable_path, :lines
         plan_steps(direction)
         apply_steps(direction)
         end_steps(direction)
@@ -59,8 +71,14 @@ module Plastic
       private
 
       def end_steps(direction)
-        gate UNREADABLE, stops: :failure, pass: SyncSteps.check(:readable?) if direction == :up
+        up_gates if direction == :up
         outcome :done, offers: "plastic next", because: NAMES.fetch(direction)
+      end
+
+      def up_gates
+        gate UNREADABLE, stops: :failure, pass: SyncSteps.check(:readable?)
+        gate UNREADABLE_FILES, stops: :failure, pass: SyncSteps.check(:files_read?),
+          offers: "plastic sync down --overwrite %{unreadable_path}", because: "sync up cannot read %{unreadable_path}, and its rows print it again"
       end
 
       def plan_steps(direction)
