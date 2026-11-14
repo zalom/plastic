@@ -121,7 +121,7 @@ class InstallerReleaseInstallTest < Minitest::Test
   end
 
   def installer(bundle: ->(_path, _ruby) {}, ruby: RbConfig.ruby)
-    InstallerRelease::ReleaseInstall.new(home: install_home, bundle: bundle, choice: ->(_manifest) { InstallerRelease::Ruby.new(ruby) })
+    InstallerRelease::ReleaseInstall.new(home: install_home, bundle: bundle, ruby: InstallerRelease::Ruby.new(ruby))
   end
 
   def install(directory, bundle: ->(_path, _ruby) {}, ruby: RbConfig.ruby)
