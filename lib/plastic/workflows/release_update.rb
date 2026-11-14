@@ -44,7 +44,7 @@ module Plastic
         FileUtils.mkdir_p(directory)
         source.files(version, directory).verify
         directory
-      rescue Installations::VerificationError
+      rescue
         FileUtils.rm_rf(directory)
         raise
       end
