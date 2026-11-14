@@ -48,9 +48,9 @@ module Plastic
 
       def kept(harnesses) = (Installations.recorded(plastic_home) | installed_agents.map { |key| Harnesses.installed_by(key).name }) - harnesses
 
-      def install(keys, reinstall:) = run(selected: keys, reinstall:)
+      def install(keys) = install_agents(selected: keys)
 
-      def wire(keys) = install(keys, reinstall: false)
+      def wire(keys) = install(keys)
 
       def self.capture
         saved = $stdout

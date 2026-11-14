@@ -25,7 +25,7 @@ module Plastic
         step "sync the newer package into the home", done: ->(context) { !context.newer || context.synced } do |context|
           installation = Installation.of(context)
           agents = installation.installed_agents
-          lines = Installation.capture { installation.install(agents, reinstall: true) }
+          lines = Installation.capture { installation.install(agents) }
           lines.each { |line| context.print(line) }
           context[:synced] = true
         end

@@ -28,7 +28,7 @@ module Plastic
         step "install the core files", done: ->(context) { !context.installed.nil? } do |context|
           installation = Installation.of(context)
           keys = context.reinstall ? installation.synced : []
-          lines = Installation.capture { installation.install(keys, reinstall: context.reinstall) }
+          lines = Installation.capture { installation.install(keys) }
           lines.each { |line| context.print(line) }
           context[:installed] = installation.version
         end

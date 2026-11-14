@@ -57,7 +57,7 @@ module Plastic
 
       def core_files = CoreFiles.new(package_root).call
 
-      def run(selected:, reinstall: false, ledger_action: nil, statusline: nil, already_registered: [])
+      def install_agents(selected:, ledger_action: nil, statusline: nil, already_registered: [])
         fresh = !installed?
         prepare(fresh)
         results = sync(selected, statusline) + already_registered.map { |key| skipped(key) }

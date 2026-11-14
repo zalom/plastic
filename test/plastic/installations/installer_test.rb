@@ -13,7 +13,7 @@ class InstallerTest < Plastic::TestCase
 
   def run_install(selected = %w[claude], **options)
     results = nil
-    out, = capture_io { results = installer.run(selected:, **options) }
+    out, = capture_io { results = installer.install_agents(selected:, **options) }
     [results, out]
   end
 
