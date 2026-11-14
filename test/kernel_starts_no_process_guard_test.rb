@@ -36,6 +36,33 @@ class KernelStartsNoProcessGuardTest < Minitest::Test
     assert_empty script_requires(%(require_relative "../installations/share"\nrequire "plastic/scripts_table"\n))
   end
 
+  STARTING_FORMS = {
+    "fork" => ["fork { work }", "fork_report(1)"],
+    "Process.fork" => ["Process.fork", "Process.pid"],
+    "Process.daemon" => ["Process.daemon", "Process.clock_gettime(1)"],
+    "PTY.spawn" => [%(PTY.spawn("git")), "PTY.winsize(io)"],
+    "File.popen" => [%(File.popen("git")), %(File.read("notes.txt"))],
+    "open with a pipe" => [%(open("|git status")), %(open("notes.txt"))],
+    "IO.read with a pipe" => [%(IO.read("|git status")), %(IO.read("notes.txt"))],
+    "::Open3" => [%(::Open3.capture3("git")), %(::Opened.capture3("git"))]
+  }.freeze
+
+  LOADING_FORMS = {
+    "load" => [%(load "scripts/install-release"), %(load "plastic/scripts_table")],
+    "autoload" => [%(autoload :Release, "scripts/lib/release"), %(autoload :Table, "plastic/scripts_table")],
+    "require with a joined path" => [%(require File.join(root, "scripts", "lib", "release")), %(require File.join(root, "plastic", "table"))]
+  }.freeze
+
+  STARTING_FORMS.each do |form, (caught, left)|
+    define_method("test_the_detector_finds_#{form.gsub(/\W+/, "_")}") { assert_equal [1], starts(caught) }
+    define_method("test_the_detector_leaves_the_sample_beside_#{form.gsub(/\W+/, "_")}") { assert_empty starts(left) }
+  end
+
+  LOADING_FORMS.each do |form, (caught, left)|
+    define_method("test_the_detector_finds_a_script_through_#{form.gsub(/\W+/, "_")}") { assert_equal [1], script_requires(caught) }
+    define_method("test_the_detector_leaves_the_sample_beside_#{form.gsub(/\W+/, "_")}") { assert_empty script_requires(left) }
+  end
+
   def test_no_kernel_file_requires_a_script
     offenders = scanned_files.sort.flat_map do |path|
       script_requires(File.read(path)).map { |line| "#{path.delete_prefix("#{ROOT}/")}:#{line}" }
