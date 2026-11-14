@@ -6,20 +6,16 @@ require_relative "../installations"
 require_relative "../graph"
 require_relative "../store_layout"
 require_relative "advisor_migration"
+require_relative "agent_run"
 require_relative "agent_set"
 require_relative "bootstrap"
-require_relative "claude_install"
-require_relative "codex_install"
 require_relative "core_files"
 require_relative "distribution"
-require_relative "hermes_install"
 require_relative "ledger"
 require_relative "package"
 require_relative "package_version"
 require_relative "release_feed"
 require_relative "results"
-require_relative "skill_copy"
-require_relative "transaction"
 
 module Plastic
   module Installations
@@ -28,8 +24,6 @@ module Plastic
     # each agent, the record of what was installed, the ledger and the report.
     class Installer
       LEDGER_ACTIONS = { install: "install", update: "reinstall" }.freeze
-
-      INSTALLS = { "claude" => ClaudeInstall, "codex" => CodexInstall, "hermes" => HermesInstall }.freeze
 
       attr_reader :package_root, :plastic_home
 
@@ -73,7 +67,7 @@ module Plastic
       def package = Package.new(package_root, plastic_home, version)
 
       def sync(selected, statusline)
-        results = selected.map { |key| agent(key, statusline) }
+        results = selected.map { |key| AgentRun.new(@agents, package, statusline).call(key) }
         Installations.record(self, results.select { |result| result[:success] }.map { |result| result[:key] })
         results
       end
@@ -89,20 +83,6 @@ module Plastic
         Config::Upgrade.new(File.join(plastic_home, "config.yml")).call.each do |old, new|
           puts "   config.yml: the settings for #{old} now apply to #{new}."
         end
-      end
-
-      def agent(key, statusline)
-        record = @agents.record(key)
-        return { agent: key, success: false, reason: "Unknown agent", key: key } unless record
-
-        Transaction.new(plastic_home, record, roots_of(record)).call { install_for(key, record, statusline).call }.merge(key: key)
-      end
-
-      def roots_of(record) = record.roots(SkillCopy.new(package_root, plastic_home).fragments)
-
-      def install_for(key, record, statusline)
-        kind = INSTALLS.fetch(key)
-        (key == "claude") ? kind.new(package, record, statusline:) : kind.new(package, record)
       end
 
       def skipped(key) = { agent: agent_config(key)[:name], success: false, skipped: true }
