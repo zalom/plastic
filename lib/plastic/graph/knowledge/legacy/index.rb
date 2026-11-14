@@ -64,7 +64,6 @@ module Plastic
             PATTERN = %r{\A- \[(?<id>\d+[a-z0-9]*) (?:—|-) (?<title>.+?)\]\((?<dir>store/[^/)]+)/[^)]*\)(?<rest>.*)\z}
             DATED = /\A(?<date>\d{4}-\d\d-\d\d)\b\s*(?<text>.*)\z/
             MARKER = /\A_\((?<word>[a-z]+)[^)]*\)_\z/
-            SUPERSEDED = /superseded by/i
             CLOSED = %w[done abandoned].freeze
             REASONED = %w[parked future abandoned done].freeze
 
@@ -83,11 +82,13 @@ module Plastic
             # The status the marker after a cluster line gives, such as _(done)_.
             def marked_status = SECTIONS[rest[MARKER, :word].to_s.capitalize]
 
-            def entry = Entry.new(intent_id, found[:title], found[:dir], status, *closing)
+            def entry = entry_of(status, *closing)
 
-            def marked_entry = Entry.new(intent_id, found[:title], found[:dir], marked_status, nil, nil, nil)
+            def marked_entry = entry_of(marked_status, nil, nil, nil)
 
             private
+
+            def entry_of(status, *closing) = Entry.new(intent_id, found[:title], found[:dir], status, *closing)
 
             def rest = found[:rest].strip
 
@@ -107,7 +108,7 @@ module Plastic
             def disposition(text)
               return "delivered" if status == "done"
 
-              (text.to_s.match?(SUPERSEDED) ? "superseded" : "cancelled") if status == "abandoned"
+              (text.to_s.match?(/superseded by/i) ? "superseded" : "cancelled") if status == "abandoned"
             end
           end
 
