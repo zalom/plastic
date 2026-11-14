@@ -21,7 +21,7 @@ The figure shows the command, the workflows it runs, the classes behind them, an
 
 ## The events of one call
 
-The call starts the workflow `Code::Node::Claim`, in [`claim.rb:12`](../../../../lib/plastic/workflows/code/node/claim.rb#L12).
+The call starts the workflow `Code::Node::Claim`, in [`claim.rb:13`](../../../../lib/plastic/workflows/code/node/claim.rb#L13).
 
 Claims an open node whose needed nodes are done, once the owner gave the go-ahead. The fourth claim of a node moves to needs_info instead, with the owner's question, and refuses. A refused claim keeps its routine run open, so the next call claims again.
 
@@ -29,9 +29,9 @@ Claims an open node whose needed nodes are done, once the owner gave the go-ahea
 
 Its rows run in this order:
 
-1. Read: find the intent. [`claim.rb:19`](../../../../lib/plastic/workflows/code/node/claim.rb#L19)
-2. Gate: passes when `!context.intent.nil?`; otherwise the call stops with exit 1 and prints no intent INTENT_ID in this store. [`claim.rb:23`](../../../../lib/plastic/workflows/code/node/claim.rb#L23)
-3. Read: check the go-ahead. [`claim.rb:25`](../../../../lib/plastic/workflows/code/node/claim.rb#L25)
+1. Read: find the intent. [`claim.rb:20`](../../../../lib/plastic/workflows/code/node/claim.rb#L20)
+2. Gate: passes when `!context.intent.nil?`; otherwise the call stops with exit 1 and prints no intent INTENT_ID in this store. [`claim.rb:24`](../../../../lib/plastic/workflows/code/node/claim.rb#L24)
+3. Read: check the go-ahead. [`claim.rb:26`](../../../../lib/plastic/workflows/code/node/claim.rb#L26)
 4. Gate: passes when `context.approval_problem.nil?`; otherwise the call stops with exit 3 and prints APPROVAL_PROBLEM. [`claim.rb:30`](../../../../lib/plastic/workflows/code/node/claim.rb#L30)
 5. Read: forget a refusal of an earlier call. [`claim.rb:32`](../../../../lib/plastic/workflows/code/node/claim.rb#L32)
 6. Step: claim the node. Done when `!context.result.nil?`, so a second call skips it. [`claim.rb:36`](../../../../lib/plastic/workflows/code/node/claim.rb#L36)
@@ -55,7 +55,7 @@ In the words of workflow engines, the rows are these four parts:
 
 | Place | Database or file | Tables | Reads or writes | Code |
 | --- | --- | --- | --- | --- |
-| the store folder | work_graph.db | `approvals`, `edges`, `intents`, `nodes` | reads and writes | [`claim.rb:11`](../../../../lib/plastic/commands/node/claim.rb#L11) |
+| the store folder | work_graph.db | `edges`, `intents`, `nodes` | reads and writes | [`claim.rb:11`](../../../../lib/plastic/commands/node/claim.rb#L11) |
 | the store folder | store/index.json | | writes | [`prints.rb:17`](../../../../lib/plastic/graph/prints.rb#L17) |
 | the store folder | store/ID--SLUG/PATH | | writes | [`prints.rb:18`](../../../../lib/plastic/graph/prints.rb#L18) |
 | the store folder | store/ID--SLUG/savepoint.md | | writes | [`prints.rb:19`](../../../../lib/plastic/graph/prints.rb#L19) |
@@ -74,7 +74,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| no intent INTENT_ID in this store | 1 | prints no next: line | [`claim.rb:23`](../../../../lib/plastic/workflows/code/node/claim.rb#L23) |
+| no intent INTENT_ID in this store | 1 | prints no next: line | [`claim.rb:24`](../../../../lib/plastic/workflows/code/node/claim.rb#L24) |
 | APPROVAL_PROBLEM | 3 | prints no next: line | [`claim.rb:30`](../../../../lib/plastic/workflows/code/node/claim.rb#L30) |
 | PROBLEM | 3 | prints no next: line | [`claim.rb:52`](../../../../lib/plastic/workflows/code/node/claim.rb#L52) |
 | PROBLEM | 1 | prints no next: line | [`claim.rb:53`](../../../../lib/plastic/workflows/code/node/claim.rb#L53) |

@@ -146,7 +146,7 @@
 <rect x="16" y="430" width="420" height="129" rx="6" class="card"/>
 <text x="26" y="445" class="tag tag-muted" text-anchor="start">STEP</text>
 <text x="426" y="445" class="tm tag-muted" text-anchor="end">auto.rb:86</text>
-<text x="26" y="462" class="t" text-anchor="start">go in progress and take the lock</text>
+<text x="26" y="462" class="t" text-anchor="start">take the lock and go in progress</text>
 <text x="26" y="477" class="tm" text-anchor="start">done when def self.delivery_started?(context)</text>
 <text x="26" y="491" class="tm" text-anchor="start">retrieval = context.retrieval intent_id =</text>
 <text x="26" y="505" class="tm" text-anchor="start">context.intent_id lock = retrieval.lock(intent_id)</text>
