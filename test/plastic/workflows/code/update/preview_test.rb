@@ -9,7 +9,7 @@ class PreviewUpdateTest < Plastic::TestCase
   def preview(dry_run: true, **options)
     facts = { channel: nil }.merge(options)
     env = { "PLASTIC_PACKAGE_ROOT" => fake_package("2.0.5") }
-    run_workflow(Plastic::Workflows::Code::Update::Preview, harness: scoped_harness(env:), dry_run:, **facts)
+    run_workflow(Plastic::Workflows::Code::Update::Preview, harness: scoped_harness(env: env.merge("PLASTIC_SHARE" => share)), dry_run:, **facts)
   end
 
   def test_a_dry_run_names_both_versions
@@ -26,6 +26,14 @@ class PreviewUpdateTest < Plastic::TestCase
     assert_equal [Plastic::Refused, "Plastic is not installed under this home; run plastic install first"],
       [outcome.class, outcome.message]
   end
+
+def test_a_home_with_only_a_release_from_install_sh_continues_from_that_release
+  activated("2.0.3")
+
+  outcome, context = preview
+
+  assert_equal [:done, [["from:", "2.0.3"], ["to:", "2.0.5"]]], [outcome, printed_rows(context)]
+end
 
   def test_a_real_run_prints_nothing_and_continues
     installed("2.0.1")
