@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require "json"
 require_relative "entry"
 
 module Plastic
@@ -20,15 +19,7 @@ module Plastic
 
           def level_sha(path, print)
             sha = @folder.digest(path)
-            (sha && Entry.generated?(path) && same_print?(path, print)) ? print.sha256 : sha
-          end
-
-          def same_print?(path, print) = print.sha256 && same_content?(@folder.read(path), print.text)
-
-          def same_content?(bytes, text)
-            JSON.parse(bytes.force_encoding(Encoding::UTF_8)) == JSON.parse(text)
-          rescue JSON::ParserError
-            false
+            (sha && Entry.generated?(path) && print.same_json?(@folder)) ? print.sha256 : sha
           end
         end
       end

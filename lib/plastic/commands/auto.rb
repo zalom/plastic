@@ -17,10 +17,12 @@ module Plastic
       end
       workflow :code_start_auto, next: :noop
 
+      # The files to check are those of the intent the word picks, which no fact holds before the workflow runs.
+      def self.picked(ctx) = { intent_id: Workflows::Code::Auto::Pick.intent_for(ctx) }
+
       private
 
-      # The files to check are those of the intent the word picks, which no fact holds before the workflow runs.
-      def picked_facts(ctx) = { intent_id: Workflows::Code::Auto::Pick.intent_for(ctx) }
+      def picked_facts(ctx) = self.class.picked(ctx)
     end
   end
 end
