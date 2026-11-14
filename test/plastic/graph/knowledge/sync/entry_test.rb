@@ -70,6 +70,33 @@ class KnowledgeSyncEntryTest < Plastic::TestCase
     assert_equal %i[conflict conflict], graph_actions("b", "a", empty_graph_sha)
   end
 
+  def hand_edited(file, printed, rows) = Entry.new("p", file, printed, rows ? Print.new("p", :work, rows, nil) : Entry::NO_PRINT).hand_edited?
+
+  def test_a_changed_file_that_the_print_does_not_match_is_hand_edited
+    assert hand_edited("b", "a", "a")
+  end
+
+  def test_a_level_file_is_not_hand_edited
+    refute hand_edited("a", "a", "a")
+    refute hand_edited("a", nil, "a")
+  end
+
+  def test_a_file_with_no_record_of_a_print_is_not_hand_edited
+    refute hand_edited("b", nil, "a")
+  end
+
+  def test_a_missing_file_is_not_hand_edited
+    refute hand_edited(nil, "a", "a")
+  end
+
+  def test_a_graph_file_against_bare_rows_with_no_record_is_not_hand_edited
+    refute graph_entry("b", nil, empty_graph_sha).hand_edited?
+  end
+
+  def test_a_graph_file_changed_since_its_print_is_hand_edited
+    assert graph_entry("b", "a", "a").hand_edited?
+  end
+
   def test_an_emptied_graph_file_is_read_up_like_any_hand_edit
     assert_equal %i[read none], graph_actions(empty_graph_sha, "a", "a")
   end
