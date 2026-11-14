@@ -15,6 +15,14 @@ class RoutinePrintingIndexTest < Plastic::TestCase
     assert_nil retrieval.intent("2")
   end
 
+  def test_a_changed_index_that_was_never_printed_refuses_intent_new_with_no_intent_written
+    write("store/index.json", "{}\n")
+    result = cli("intent", "new", "First")
+
+    assert_refused(result, "store/index.json")
+    assert_nil retrieval.intent("1")
+  end
+
   def open_roadmap
     cli("roadmap", "new", "r1")
     cli("roadmap", "batch", "r1", "1", "--title", "T", "--goal", "Batch goal", "--done", "batch done")

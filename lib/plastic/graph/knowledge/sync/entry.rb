@@ -27,9 +27,9 @@ module Plastic
 
           def file_changed? = file_sha && file_sha != printed_sha
 
-          # A person changed a printed file since its last print: the file holds
-          # neither the rows' print nor the recorded one.
-          def hand_edited? = [printed_sha, !level?, file_changed?].all?
+          # A person changed a file since its last print, or one never printed: the file holds
+          # neither the rows' print nor the recorded one. A graph file against bare rows is not an edit.
+          def hand_edited? = !level? && file_changed? && !bare_graph?
 
           def rows_changed? = rows_sha && rows_sha != printed_sha && !bare_graph?
 

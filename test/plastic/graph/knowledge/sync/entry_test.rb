@@ -81,8 +81,8 @@ class KnowledgeSyncEntryTest < Plastic::TestCase
     refute hand_edited("a", nil, "a")
   end
 
-  def test_a_file_with_no_record_of_a_print_is_not_hand_edited
-    refute hand_edited("b", nil, "a")
+  def test_a_changed_file_with_no_record_of_a_print_is_hand_edited
+    assert hand_edited("b", nil, "a")
   end
 
   def test_a_missing_file_is_not_hand_edited
