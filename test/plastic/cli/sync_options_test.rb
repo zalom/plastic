@@ -29,13 +29,16 @@ class SyncOptionsTest < Plastic::TestCase
     assert_includes result.out, "preview"
   end
 
+  # A preview copies committed files, so it runs in a home of its own.
   def test_sync_down_preview_preserves_a_populated_store
-    assert_equal 0, plastic("intent", "new", "Preview target", table: Plastic::CLI::TABLE).code
-    before = snapshot(@plastic_home)
-    result = plastic("sync", "down", "--dry-run", table: Plastic::CLI::TABLE)
+    with_home do |home|
+      assert_equal 0, call_in(home, "intent", "new", "Preview target").code
+      before = snapshot(home)
+      result = call_in(home, "sync", "down", "--dry-run")
 
-    assert_equal 0, result.code, [result.out, result.err].inspect
-    assert_equal before, snapshot(@plastic_home)
+      assert_equal 0, result.code, [result.out, result.err].inspect
+      assert_equal before, snapshot(home)
+    end
   end
 
   def test_both_sync_chains_pass_verify
