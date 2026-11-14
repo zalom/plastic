@@ -49,6 +49,15 @@ class IntentEndMergeTest < Plastic::TestCase
     assert_includes finish.out, "Merged: no"
   end
 
+  def test_a_negative_approval_is_named_by_the_wait_for_the_person
+    review_on
+    accepted_intent(records: MERGE_RECORDS + PULL_REQUEST + "- Approved: no\n")
+    result = finish
+
+    assert_equal [3, "in_progress"], [result.code, retrieval.intent("1").status]
+    assert_includes result.err + result.out, "Approved: no"
+  end
+
   def test_a_second_end_after_the_merge_record_resumes_and_closes
     lacking_merge_record
     first = finish

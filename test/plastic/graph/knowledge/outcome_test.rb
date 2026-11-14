@@ -95,6 +95,12 @@ class KnowledgeOutcomeTest < Plastic::TestCase
     assert_includes message, "Merged: no"
   end
 
+  def test_a_negative_value_is_named_with_its_label_and_a_positive_or_absent_one_is_not
+    read = outcome("## Verification\n- Approved: none\n- Merged: plastic/1 into alpha at abc123\n")
+
+    assert_equal ["Approved: none", nil, nil], [read.negative("Approved"), read.negative("Merged"), read.negative("Pull request")]
+  end
+
   def test_the_missing_record_message_asks_for_a_merged_line_when_none_is_there
     message = outcome("## Verification\n- Architecture map: enola at abc123\n").missing_records.first
 

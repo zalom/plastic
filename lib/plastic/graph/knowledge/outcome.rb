@@ -25,10 +25,10 @@ module Plastic
           [(merge_message unless merged?), (format(MISSING, "Architecture map") unless architecture_map?)].compact
         end
 
-        # The Merged line when it is there and says there is no merge, else nil.
-        def negative_merge
-          found = values("Merged").first
-          "Merged: #{found}" if found && !merged?
+        # The line of `label` when it is there and holds a negative value, as 'Label: value', else nil.
+        def negative(label)
+          found = values(label).first
+          "#{label}: #{found}" if found && !positive?(label)
         end
 
         def merged? = positive?("Merged")
@@ -51,7 +51,7 @@ module Plastic
 
         def values(label) = verification.filter_map { |bullet| bullet[/\A#{Regexp.escape(label)}\s*:\s*(\S.*)\z/i, 1] }
 
-        def merge_message = negative_merge ? format(NOT_A_MERGE, negative_merge) : format(MISSING, "Merged")
+        def merge_message = negative("Merged") ? format(NOT_A_MERGE, negative("Merged")) : format(MISSING, "Merged")
 
         def section
           start = @headings.index { |found| found && found[2].casecmp?("Verification") }
