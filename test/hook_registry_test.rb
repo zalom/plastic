@@ -13,8 +13,8 @@ class HookRegistryTest < Minitest::Test
     hash.values.flatten.flat_map { |g| g["hooks"].map { |h| h["name"] } }
   end
 
-  def test_events_registers_only_the_still_shipped_launcher
-    assert_equal %w[check-update], hook_names(HookRegistry.events)
+  def test_events_registers_no_launcher
+    assert_empty hook_names(HookRegistry.events)
   end
 
   def test_retired_hook_names_carries_every_launcher_that_no_longer_ships
@@ -24,17 +24,14 @@ class HookRegistryTest < Minitest::Test
   end
 
   def test_claude_launcher_names_matches_events
-    assert_equal %w[plastic-check-update], HookRegistry.claude_launcher_names
+    assert_empty HookRegistry.claude_launcher_names
   end
 
   def test_claude_purgeable_launcher_names_still_recognises_a_retired_launcher
     assert_includes HookRegistry.claude_purgeable_launcher_names, "plastic-session-start"
   end
 
-  def test_claude_settings_hooks_shape_for_a_single_group_event
-    hooks = HookRegistry.claude_settings_hooks(hook_dir: "/tmp/hooks")
-    session_start = hooks["SessionStart"]
-    assert_equal "", session_start["matcher"]
-    assert_equal "/tmp/hooks/plastic-check-update", session_start["hooks"].first["command"]
+  def test_claude_settings_hooks_are_empty_while_no_launcher_is_registered
+    assert_empty HookRegistry.claude_settings_hooks(hook_dir: "/tmp/hooks")
   end
 end

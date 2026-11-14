@@ -2,8 +2,8 @@
 # encoding: UTF-8
 # frozen_string_literal: true
 
-# Plastic — `install` verb. Runs as `plastic install` from a release install.sh placed, or directly.
-# Usage: ruby scripts/install.rb [--claude|--codex|--hermes|--all] [--reinstall] [--force] [--help]
+# Plastic - `install` verb. Runs as `plastic install` from a release install.sh placed, or directly.
+# Usage: ruby scripts/install.rb [--claude|--codex|--hermes|--all] [--reinstall] [--help]
 #
 # install.sh selects the channel through PLASTIC_CHANNEL.
 #
@@ -17,7 +17,6 @@
 # so install.rb is the single file-syncer; the ledger action is contextual.
 
 require_relative "lib/installer_core"
-require_relative "lib/preflight"
 require_relative "../lib/plastic/installations"
 
 class Install < InstallerCore
@@ -27,10 +26,6 @@ class Install < InstallerCore
       return 0
     end
 
-    gate = preflight_gate
-    return gate unless gate.zero?
-
-    force = argv.include?("--force")
     reinstall = argv.include?("--reinstall")
     ledger_action = flag_value(argv, "--ledger-action")
 
@@ -41,7 +36,7 @@ class Install < InstallerCore
       return 0
     end
 
-    puts "\n\u{1f9e0} Plastic v#{version}\n\n"
+    puts "\nPlastic v#{version}\n\n"
 
     if installed? && !reinstall
       # `installed?` is a GLOBAL check (is Plastic core installed for ANY
@@ -61,12 +56,12 @@ class Install < InstallerCore
       end
 
       already_registered = selected - new_agents
-      run(selected: new_agents, force: force, reinstall: reinstall, ledger_action: ledger_action, argv: argv,
+      run(selected: new_agents, reinstall: reinstall, ledger_action: ledger_action, argv: argv,
           already_registered: already_registered)
       return 0
     end
 
-    run(selected: selected, force: force, reinstall: reinstall, ledger_action: ledger_action, argv: argv)
+    run(selected: selected, reinstall: reinstall, ledger_action: ledger_action, argv: argv)
     0
   end
 
@@ -74,7 +69,7 @@ class Install < InstallerCore
   # `already_registered` names agents the gate above found already registered:
   # they are reported, never re-installed, so the summary line and the Codex
   # trust reminder only ever count agents that actually changed this run.
-  def run(selected:, force: false, reinstall: false, ledger_action: nil, argv: ARGV, input: $stdin,
+  def run(selected:, reinstall: false, ledger_action: nil, argv: ARGV, input: $stdin,
           already_registered: [])
     fresh = !installed?
     mode = fresh ? :install : :update # :update here means "re-sync, skip bootstrap"
@@ -86,7 +81,7 @@ class Install < InstallerCore
     apply_config_flags(argv)
 
     results = selected.map do |key|
-      result = transactional_install_for_agent(key, force, argv: argv, input: input, reinstall: reinstall)
+      result = transactional_install_for_agent(key, false, argv: argv, input: input, reinstall: reinstall)
       result[:key] = key
       result
     end
@@ -118,38 +113,7 @@ class Install < InstallerCore
     File.exist?(path) ? File.read(path).strip : nil
   end
 
-  # Injectable pre-flight gate: real probes as default args, printing to an
-  # injectable `out:` IO so this is hermetically testable via StringIO. Returns
-  # 1 (stop the install) when Ruby is missing/too-old, else 0.
-  def preflight_gate(ruby_version: RUBY_VERSION, git_present: tool_present?("git"), sqlite3_present: tool_present?("sqlite3"),
-                     missing_gems: missing_gems(%w[sqlite3]),
-                      platform: platform_probe, out: $stderr)
-    result = Preflight.check(ruby_version: ruby_version, git_present: git_present,
-                              sqlite3_present: sqlite3_present, missing_gems: missing_gems,
-                              platform: platform)
-    result[:messages].each { |message| out.puts(message) }
-    result[:fatal] ? 1 : 0
-  end
-
-  # The gems of `names` that Ruby cannot load.
-  def missing_gems(names)
-    names.reject do |name|
-      require name
-      true
-    rescue LoadError
-      false
-    end
-  end
-
   private
-
-  def tool_present?(name)
-    system(name, "--version", out: File::NULL, err: File::NULL) == true
-  end
-
-  def platform_probe
-    RUBY_PLATFORM[/linux/] || "darwin"
-  end
 
   def flag_value(argv, name)
     i = argv.index(name)
@@ -163,14 +127,14 @@ class Install < InstallerCore
   end
 
   def print_results(results, mode)
-    puts "\n\u{2014} Results \u{2014}\n\n"
+    puts "\n- Results -\n\n"
     results.each do |r|
       if r[:already_registered]
         puts "  \u{2139}  #{r[:agent]}: already registered, not re-synced (use --reinstall to re-sync)"
       elsif r[:success]
-        puts "  \u{2705} #{r[:agent]}: #{r[:files]} files installed"
+        puts "  #{r[:agent]}: #{r[:files]} files installed"
       else
-        puts "  \u{26a0}\u{fe0f}  #{r[:agent]}: #{r[:reason]}"
+        puts "   #{r[:agent]}: #{r[:reason]}"
       end
     end
 
@@ -180,10 +144,9 @@ class Install < InstallerCore
     return unless installed.any?
 
     verb = mode == :reinstall ? "re-synced" : "installed"
-    puts "\n\u{2705} Plastic v#{version} #{verb}."
+    puts "\nPlastic v#{version} #{verb}."
     puts "   Registered for: #{installed.map { |r| r[:agent] }.join(", ")}"
     puts "   Run /clear (or restart your agent) to pick up new conventions."
-    puts "   Next: run plastic help tutorial\n\n"
 
     print_codex_hook_trust_reminder(installed)
   end
@@ -221,7 +184,7 @@ class Install < InstallerCore
   def show_help
     puts <<~HELP
 
-      plastic install — install or re-sync Plastic for an agent
+      plastic install - install or re-sync Plastic for an agent
 
       Usage:
         plastic install [options]
@@ -237,7 +200,6 @@ class Install < InstallerCore
 
       Other options:
         --reinstall          Re-sync core files for the installed version (repair). Store untouched.
-        --force              Overwrite existing files without prompting
         --statusline VALUE   keep or plastic. If an existing statusline is found, this
                              skips the interactive prompt. Interactive sessions ask by
                              default; non-interactive sessions default to keep.

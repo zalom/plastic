@@ -58,14 +58,9 @@ module Plastic
 
       def kept(harnesses) = (Installations.recorded(plastic_home) | installed_agents.map { |key| Harnesses.installed_by(key).name }) - harnesses
 
-      def install(keys, reinstall:, force:) = run(selected: keys, force:, reinstall:, argv: [], input: StringIO.new)
+      def install(keys, reinstall:) = run(selected: keys, reinstall:, argv: [], input: StringIO.new)
 
-      def wire(keys) = install(keys, reinstall: false, force: false)
-
-      def preflight
-        report = StringIO.new
-        [preflight_gate(out: report).zero?, report.string.lines(chomp: true)]
-      end
+      def wire(keys) = install(keys, reinstall: false)
 
       def self.capture
         saved = $stdout

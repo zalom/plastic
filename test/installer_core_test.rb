@@ -56,8 +56,8 @@ class InstallerCoreHooksTest < Minitest::Test
     assert_empty(expected.reject { |event, text| commands(settings, event).any? { |cmd| cmd.include?(text) } })
   end
 
-  def test_the_install_keeps_check_update
-    assert(commands(install({}), "SessionStart").any? { |cmd| cmd.end_with?("plastic-check-update") })
+  def test_the_install_registers_no_check_update
+    assert_empty(commands(install({}), "SessionStart").grep(/check-update/))
   end
 
   def test_a_release_install_binds_the_hooks_to_the_active_launcher
@@ -269,12 +269,11 @@ class InstallerCoreCodexTest < Minitest::Test
     refute_includes manifest["files"].keys, File.join(@home, ".plastic", "bin", "plastic")
   end
 
-  def test_the_core_files_hold_the_launcher_and_what_the_check_update_hook_runs
+  def test_the_core_files_hold_the_launcher_and_no_script
     files = installer.core_files
 
     assert_equal "exe/plastic", files["exe/plastic"]
-    assert_equal "scripts/select-update-target", files["scripts/select-update-target"]
-    assert_equal "scripts/lib/release_channels.rb", files["scripts/lib/release_channels.rb"]
+    assert_empty files.keys.grep(%r{\Ascripts/})
     refute_includes files.keys, "bin/plastic"
   end
 
@@ -283,7 +282,6 @@ class InstallerCoreCodexTest < Minitest::Test
     launcher = File.join(@home, ".plastic", "exe", "plastic")
 
     assert File.executable?(launcher)
-    assert File.executable?(File.join(@home, ".plastic", "scripts", "select-update-target"))
   end
 
   def test_the_kernel_files_come_from_lib_and_none_from_scripts_lib_plastic

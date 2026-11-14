@@ -25,7 +25,6 @@ module EnginePermissions
   module_function
 
   ENTRIES = [
-    "Edit(~/.plastic/scripts/**)",
     "Edit(~/.plastic/skills/**)",
     "Edit(~/.plastic/hooks/**)",
   ].freeze

@@ -19,11 +19,11 @@ class CliPackageBinTest < Minitest::Test
   end
 
   SHIPPED_SCRIPTS = %w[
-    scripts/install-release scripts/install.rb scripts/select-update-target
+    scripts/install-release scripts/install.rb
     scripts/lib/installer_release.rb scripts/lib/installer_release/ scripts/lib/installer_core.rb
     scripts/lib/agent_models.rb scripts/lib/hook_registry.rb scripts/lib/compact_instructions.rb
-    scripts/lib/engine_permissions.rb scripts/lib/preflight.rb scripts/lib/store_layout.rb
-    scripts/lib/version_number.rb scripts/lib/release_channels.rb
+    scripts/lib/engine_permissions.rb scripts/lib/store_layout.rb
+    scripts/lib/version_number.rb
   ].freeze
 
   def test_the_launcher_exists_and_is_executable

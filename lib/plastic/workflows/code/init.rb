@@ -8,21 +8,17 @@ require_relative "../installation_hooks"
 module Plastic
   module Workflows
     module Code
-      # Checks the machine, copies the core files on a home that has none,
-      # and installs Plastic into each picked harness.
+      # Copies the core files on a home that has none, and installs Plastic
+      # into each picked harness.
       class Init < CodeWorkflow
         [facts, steps, outcomes].each(&:clear)
 
-        sets :usable, :broken, :installed, :checked
+        sets :broken, :installed, :checked
 
-        read "check this machine and the harness settings files" do |context|
-          usable, messages = Installation.of(context).preflight
-          messages.each { |line| context.print(line) }
-          context[:usable] = usable
+        read "check the harness settings files" do |context|
           context[:broken] = InstallationHooks.new(home: context.scope.home).unreadable
         end
 
-        gate "this machine cannot run Plastic; see above", stops: :failure, pass: ->(context) { context.usable }
         gate "%{broken} is not valid JSON; nothing was changed. Fix the file and run this again", stops: :failure,
           pass: ->(context) { context.broken.nil? }
 

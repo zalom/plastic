@@ -8,7 +8,7 @@ module Plastic
     # holds the agent models and efforts and the default advisor.
     module Defaults
       GLOBAL = {
-        "statusline" => true,
+        "statusline" => false,
         "screens" => true,
         "runner" => { "stop_hook" => false },
         "review" => { "pull_request" => "off" },

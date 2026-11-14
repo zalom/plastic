@@ -7,23 +7,19 @@ require_relative "../installation_hooks"
 module Plastic
   module Workflows
     module Code
-      # Checks the machine, then copies the core files into the home. A
-      # reinstall also syncs the harnesses Plastic is installed into.
+      # Copies the core files into the home. A reinstall also syncs the
+      # harnesses Plastic is installed into.
       class Install < CodeWorkflow
         [facts, steps, outcomes].each(&:clear)
 
-        sets :usable, :broken, :present, :installed
+        sets :broken, :present, :installed
 
-        read "check this machine and the harness settings files" do |context|
+        read "check the harness settings files" do |context|
           installation = Installation.of(context)
-          usable, messages = installation.preflight
-          messages.each { |line| context.print(line) }
-          context[:usable] = usable
           context[:broken] = InstallationHooks.new(home: context.scope.home).unreadable
           context[:present] = installation.installed?
         end
 
-        gate "this machine cannot run Plastic; see above", stops: :failure, pass: ->(context) { context.usable }
         gate "%{broken} is not valid JSON; nothing was changed. Fix the file and run this again", stops: :failure,
           pass: ->(context) { context.broken.nil? }
         gate "Plastic is already installed; run plastic init to add a harness, or pass --reinstall to sync the files again",
@@ -32,7 +28,7 @@ module Plastic
         step "install the core files", done: ->(context) { !context.installed.nil? } do |context|
           installation = Installation.of(context)
           keys = context.reinstall ? installation.synced : []
-          lines = Installation.capture { installation.install(keys, reinstall: context.reinstall, force: context.force) }
+          lines = Installation.capture { installation.install(keys, reinstall: context.reinstall) }
           lines.each { |line| context.print(line) }
           context[:installed] = installation.version
         end

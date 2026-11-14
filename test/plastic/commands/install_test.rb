@@ -69,7 +69,7 @@ class InstallCommandTest < Plastic::TestCase
     result = call("install")
 
     assert_equal 0, result.code, result.err
-    assert_match(/Enola maps the code architecture of a project.*It is optional.*#{Regexp.escape(ENOLA_INSTALLER)}/m, result.out)
+    assert_match(/Enola maps the code architecture of a project.*It is optional.*releases\/tag\/v0\.4\.39/m, result.out)
   end
 
   def test_a_settings_file_that_is_not_json_stops_the_install_and_changes_nothing

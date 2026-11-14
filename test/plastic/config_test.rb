@@ -75,7 +75,7 @@ class ConfigTest < Plastic::TestCase
   end
 
   def test_a_harness_section_does_not_reach_the_global_reading
-    config("harnesses:\n  codex:\n    statusline: false\n") { |cfg| assert cfg.flag(%w[statusline], default: true) }
+    config("harnesses:\n  codex:\n    statusline: true\n") { |cfg| refute cfg.flag(%w[statusline], default: false) }
   end
 
   def test_each_harness_reads_its_own_shipped_agent_models

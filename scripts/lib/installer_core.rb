@@ -249,7 +249,7 @@ class InstallerCore
   # retired session-state leftover would sit); a test overrides it (often to
   # `[]`) so the removal never scans the real filesystem's tmp directories.
   def distribute(mode, tmp_dirs: [Dir.tmpdir, "/tmp"].uniq)
-    puts "  \u{1f4e6} #{mode == :update ? "Updating" : "Installing"} core files to #{plastic_home}"
+    puts "  #{mode == :update ? "Updating" : "Installing"} core files to #{plastic_home}"
 
     manifest_path = File.join(plastic_home, "manifest.json")
     # Capture the prior manifest before the copy loop touches anything, so a
@@ -258,7 +258,6 @@ class InstallerCore
     old_files = manifest_files(manifest_path)
 
     FileUtils.mkdir_p(plastic_home)
-    FileUtils.mkdir_p(File.join(plastic_home, "scripts", "lib"))
     FileUtils.mkdir_p(File.join(plastic_home, "lib"))
     FileUtils.mkdir_p(File.join(plastic_home, "exe"))
     FileUtils.mkdir_p(File.join(plastic_home, "hooks"))
@@ -274,7 +273,6 @@ class InstallerCore
 
     File.write(File.join(plastic_home, "VERSION"), "#{version}\n")
 
-    Dir.glob(File.join(plastic_home, "scripts", "*")).each { |f| FileUtils.chmod(0o755, f) if File.file?(f) }
     # Same treatment for the hook launchers, and UNCONDITIONAL on update as well as install:
     # FileUtils.cp onto an existing file keeps the DESTINATION's old mode, so a copy over a
     # non-executable predecessor would stay non-executable forever and capture3 would raise
@@ -288,9 +286,9 @@ class InstallerCore
 
     pruned = prune_removed_files(old_files - global_files, root: plastic_home)
     removed = remove_retired_session_state(plastic_home: plastic_home, tmp_dirs: tmp_dirs)
-    puts "  \u{1f9f9} #{removed} retired session state file(s) removed" if removed.positive?
+    puts "  #{removed} retired session state file(s) removed" if removed.positive?
 
-    puts "  \u{2705} Core files synced (v#{version})#{pruned.positive? ? ", #{pruned} stale file(s) pruned" : ""}"
+    puts "  Core files synced (v#{version})#{pruned.positive? ? ", #{pruned} stale file(s) pruned" : ""}"
   end
 
   # Hook launchers ship in full. Glob-derived, so a new hook registers itself.
@@ -350,23 +348,12 @@ class InstallerCore
     {
       "PLASTIC.md" => "PLASTIC.md",
       "deprecations.yml" => "deprecations.yml",
-      "exe/plastic" => "exe/plastic",
-      "scripts/select-update-target" => "scripts/select-update-target",
-      "scripts/lib/release_channels.rb" => "scripts/lib/release_channels.rb",
-      "scripts/install.rb" => "scripts/install.rb",
-      "scripts/lib/installer_core.rb" => "scripts/lib/installer_core.rb",
-      "scripts/lib/preflight.rb" => "scripts/lib/preflight.rb",
-      "scripts/lib/store_layout.rb" => "scripts/lib/store_layout.rb",
-      "scripts/lib/hook_registry.rb" => "scripts/lib/hook_registry.rb",
-      "scripts/lib/agent_models.rb" => "scripts/lib/agent_models.rb",
-      "scripts/lib/compact_instructions.rb" => "scripts/lib/compact_instructions.rb",
-      "scripts/lib/engine_permissions.rb" => "scripts/lib/engine_permissions.rb",
-      "scripts/lib/version_number.rb" => "scripts/lib/version_number.rb"
+      "exe/plastic" => "exe/plastic"
     }
   end
 
   def bootstrap
-    puts "  \u{1f331} First install \u{2014} bootstrapping store..."
+    puts "  First install - bootstrapping store..."
 
     legacy = %w[store projects INDEX.md roadmaps].any? { |entry| File.exist?(File.join(plastic_home, entry)) }
     FileUtils.mkdir_p(Plastic::StoreLayout.global_store(plastic_home))
@@ -391,7 +378,7 @@ class InstallerCore
       ---
     MD
 
-    puts "  \u{2705} Store bootstrapped"
+    puts "  Store bootstrapped"
   end
 
   # The state a sync up leaves a new store in: the three store databases, so
@@ -603,11 +590,11 @@ class InstallerCore
     dirs = []
     stale_files.each do |f|
       if path_contained?(f, store_roots)
-        warn "  \u{26a0}\u{fe0f}  Refused to prune #{f}: inside the intent store"
+        warn "   Refused to prune #{f}: inside the intent store"
         next
       end
       unless path_contained?(f, expanded_roots)
-        warn "  \u{26a0}\u{fe0f}  Skipped prune of #{f}: outside #{expanded_roots.join(", ")}"
+        warn "   Skipped prune of #{f}: outside #{expanded_roots.join(", ")}"
         next
       end
       if File.exist?(f)
@@ -661,7 +648,7 @@ class InstallerCore
         File.delete(candidate)
         removed += 1
       rescue SystemCallError => e
-        warn "  \u{26a0}\u{fe0f}  Could not remove retired session state #{candidate}: #{e.message}"
+        warn "   Could not remove retired session state #{candidate}: #{e.message}"
       end
     end
     removed
@@ -792,6 +779,7 @@ class InstallerCore
       basename = File.basename(f)
       dest_name = basename.start_with?("plastic-") ? basename : "plastic-#{basename}"
       dest = File.join(hooks_dir, dest_name)
+      next drop_status_line_file(dest) if basename.end_with?("statusline") && !statusline_on?
       content = File.read(f)
       content = content.gsub('$SCRIPT_DIR/../scripts/', '$HOME/.plastic/scripts/')
       File.write(dest, content)
@@ -1002,7 +990,16 @@ class InstallerCore
     File.join(File.dirname(releases), "active", "bin", "plastic")
   end
 
-  def statusline_on? = Plastic::Config.new(plastic_home).flag(["statusline"], default: true)
+  # The status line is off unless the person turned it on. A file an earlier
+  # install wrote is removed, with one line that says how to turn it on.
+  def drop_status_line_file(path)
+    return unless File.exist?(path)
+
+    File.delete(path)
+    puts "  Status line removed. To turn it on: plastic config set statusline true"
+  end
+
+  def statusline_on? = Plastic::Config.new(plastic_home).flag(["statusline"], default: false)
 
   # ~/.codex/hooks.json merge: top-level {"hooks": {<Event>: [...]}}, the same
   # shape as Claude's settings.json hooks, so this mirrors merge_claude_hooks
@@ -1275,7 +1272,7 @@ class InstallerCore
     end
 
     unless removed.empty?
-      puts "  \u{1f9f9} Migrated legacy plugin install:"
+      puts "  Migrated legacy plugin install:"
       removed.each { |r| puts "     - #{tilde(r)}" }
     end
 
@@ -1297,7 +1294,7 @@ class InstallerCore
   def report_removed_hook_entries(removed, file_label, qualifier: "stale Plastic")
     return if removed.nil? || removed.empty?
 
-    puts "  \u{1f9f9} Removed #{removed.size} #{qualifier} hook entr#{removed.size == 1 ? "y" : "ies"} from #{file_label}:"
+    puts "  Removed #{removed.size} #{qualifier} hook entr#{removed.size == 1 ? "y" : "ies"} from #{file_label}:"
     removed.each { |event, command| puts "     - #{event}: #{tilde(command.to_s)}" }
   end
 
@@ -1314,7 +1311,7 @@ class InstallerCore
 
     return if kept.empty?
 
-    puts "  \u{2139}\u{fe0f}  Kept #{kept.size} hook(s) Plastic does not own, named with the reserved plastic- prefix:"
+    puts "  \u{2139} Kept #{kept.size} hook(s) Plastic does not own, named with the reserved plastic- prefix:"
     kept.each { |cmd| puts "     - #{tilde(cmd.to_s)}" }
     puts "     The plastic- prefix is reserved for Plastic's own hooks. Rename yours (for"
     puts "     example ~/.claude/hooks/plain-writing) so a future update never mistakes it."

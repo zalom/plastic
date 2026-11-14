@@ -29,13 +29,7 @@ module HookRegistry
   # The name is the hooks/<name> launcher; the flat install ships it as
   # ~/.claude/hooks/plastic-<name>.
   def events
-    {
-      "SessionStart" => [
-        { "matcher" => "", "hooks" => [
-          { "name" => "check-update", "status" => "" },
-        ] },
-      ],
-    }
+    {}
   end
 
   # Flattened, deduplicated Claude launcher names for every hook `events`

@@ -88,8 +88,7 @@ class ReleaseBuildTest < Minitest::Test
     ReleaseBuild.call(version: "2.0.4", directory: @out, root: REPO)
     names = entries.keys
 
-    assert_empty(%w[package/exe/plastic package/lib/plastic.rb package/scripts/install-release package/scripts/select-update-target
-      package/scripts/lib/release_channels.rb package/bin/plastic] - names)
+    assert_empty(%w[package/exe/plastic package/lib/plastic.rb package/scripts/install-release package/bin/plastic] - names)
     assert_empty(names.grep(/build-release|release-check|release_build\.rb|release_archive\.rb|release_guard\.rb/))
     assert_empty(names.grep(%r{\Apackage/bin/}) - ["package/bin/plastic"])
   end
