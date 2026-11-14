@@ -10,15 +10,16 @@ module Plastic
       class Outcome
         HEADING = /\A(#+)\s*(.*?)\s*\z/
         BULLET = /\A[-*]\s*(?:\[[ xX]\]\s*)?(.+)\z/
+        NEGATIVE = %r{\A(?:-\z|(?:no|not|none|pending|n/a|tbd|false|rejected|awaiting|waiting|requested|changes|declined|denied|never|unapproved)[[:punct:]]*(?:\s|\z))}i
         FORMS = {
-          "Merged" => /\A(?:\S+ into )?\S+ at \D*\d/,
-          "Approved" => /\A(?:by )?\S.*? on \d{4}-\d{2}-\d{2}\b/
+          "Merged" => /\A(?:\S+ +into +)?\S+ +at +(?:\D*\d|`?\h{7,40}\b)/,
+          "Approved" => /\A(?:by +)?\S.*? +on +\d{4}-\d{2}-\d{2}(?!\d)/
         }.freeze
         SHOWN = {
           "Merged" => "Merged: <branch> into <base> at <commit or pull request>",
           "Approved" => "Approved: <person> on <YYYY-MM-DD>"
         }.freeze
-        PLACEHOLDER = /[<>]/
+        PLACEHOLDER = /<(?:branch|base|commit or pull request|person|YYYY-MM-DD)>/
         MISSING = "Add a line starting %s: to the Verification section of outcome.md and run plastic sync up."
         NOT_IN_FORM = "outcome.md records '%s', which is not in the form that counts. " \
           "Write the line as '%s' with every part filled, then run plastic sync up."
@@ -57,7 +58,7 @@ module Plastic
 
         def positive?(label) = values(label).any? { |value| in_form?(label, value) }
 
-        def in_form?(label, value) = FORMS.fetch(label).match?(value) && !PLACEHOLDER.match?(value)
+        def in_form?(label, value) = !NEGATIVE.match?(value) && FORMS.fetch(label).match?(value) && !PLACEHOLDER.match?(value)
 
         def values(label) = verification.filter_map { |bullet| bullet[/\A#{Regexp.escape(label)}\s*:\s*(\S.*)\z/i, 1] }
 
