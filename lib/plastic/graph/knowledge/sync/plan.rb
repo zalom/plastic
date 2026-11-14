@@ -96,8 +96,9 @@ module Plastic
           end
 
           # A generated file a person changed is read when it can be and kept as written when it cannot;
-          # one that arrived and was never printed here prints from the rows.
+          # one that arrived and was never printed here, or that another home printed, prints from the rows.
           def generated_up(entry)
+            return :print if entry.printed_elsewhere
             return :none unless entry.hand_edited? && entry.rows_sha
             return :read unless unreadable_files.key?(entry.path)
 

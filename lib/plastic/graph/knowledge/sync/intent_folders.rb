@@ -48,8 +48,8 @@ module Plastic
           def listed_in
             return {} unless @store.exist?(StoreFolder::INDEX)
 
-            entries = Array(JSON.parse(@store.read(StoreFolder::INDEX).force_encoding(Encoding::UTF_8))["intents"])
-            entries.grep(Hash).to_h { |entry| ["store/#{entry["intent_id"]}--#{entry["slug"]}", entry] }
+            index = JSON.parse(@store.read(StoreFolder::INDEX).force_encoding(Encoding::UTF_8))
+            Array(index.is_a?(Hash) ? index["intents"] : nil).grep(Hash).to_h { |entry| ["store/#{entry["intent_id"]}--#{entry["slug"]}", entry] }
           rescue JSON::ParserError
             {}
           end
