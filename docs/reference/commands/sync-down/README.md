@@ -41,9 +41,14 @@ Previews sync down in a copy before the normal write workflow.
 
 Its rows run in this order:
 
-1. Read: preview the sync. [`preview.rb:15`](../../../../lib/plastic/workflows/code/sync/down/preview.rb#L15)
-2. Outcome `:done`, when `context.dry_run`: finishes with exit 0; next: ORIGINAL_COMMAND. [`preview.rb:23`](../../../../lib/plastic/workflows/code/sync/down/preview.rb#L23)
-3. Outcome `:continue`, otherwise: starts the workflow [Code::Sync::Down](#codesyncdown). [`preview.rb:25`](../../../../lib/plastic/workflows/code/sync/down/preview.rb#L25)
+1. Read: preview the sync in an isolated copy. [`preview.rb:38`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L38)
+2. Gate: passes when `!context.dry_run || SyncSteps.public_send(name, context)`; otherwise the call stops with exit 1 and prints FAILURE. [`preview.rb:39`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L39)
+3. Gate: passes when `!context.dry_run || SyncSteps.public_send(name, context)`; otherwise the call stops with exit 3 and prints changed on both sides since the last print, nothing written: CONFLICTS; pass --overwrite PATH, --overwrite or --merge. [`preview.rb:39`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L39)
+4. Gate: passes when `!context.dry_run || SyncSteps.public_send(name, context)`; otherwise the call stops with exit 3 and prints changed on both sides since the last print, left as they are: CONFLICTS; pass --overwrite PATH or --overwrite. [`preview.rb:39`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L39)
+5. Outcome `:done`, when `context.dry_run`: finishes with exit 0; next: ORIGINAL_COMMAND. [`preview.rb:43`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L43)
+6. Outcome `:continue`, otherwise: starts the workflow [Code::Sync::Down](#codesyncdown). [`preview.rb:44`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L44)
+
+It sets `failure`, `conflicts`, `merging`, `unreadable`, `unreadable_files`, `unreadable_path`.
 
 ### Code::Sync::Down
 
@@ -69,7 +74,7 @@ In the words of workflow engines, the rows are these four parts:
 
 - **Trigger**: the call starts the workflow `Code::Sync::Down::Preview`; each later workflow starts from an outcome of the one before it.
 - **Activities**: 3 reads and 1 step.
-- **Transitions**: 3 gates stop the call when their checks fail; a step runs only while its done check fails; Preview goes to Down on `:continue`.
+- **Transitions**: 6 gates stop the call when their checks fail; a step runs only while its done check fails; Preview goes to Down on `:continue`.
 - **Outcomes**: `:done` of Preview, `:done` of Down end the call.
 
 ## What one call reads, writes and prints
@@ -94,7 +99,10 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| the preview wrote only to a disposable copy | 0 | ORIGINAL_COMMAND | [`preview.rb:23`](../../../../lib/plastic/workflows/code/sync/down/preview.rb#L23) |
+| FAILURE | 1 | prints no next: line | [`preview.rb:39`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L39) |
+| changed on both sides since the last print, nothing written: CONFLICTS; pass --overwrite PATH, --overwrite or --merge | 3 | prints no next: line | [`preview.rb:39`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L39) |
+| changed on both sides since the last print, left as they are: CONFLICTS; pass --overwrite PATH or --overwrite | 3 | prints no next: line | [`preview.rb:39`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L39) |
+| the preview wrote only to a disposable copy | 0 | ORIGINAL_COMMAND | [`preview.rb:43`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L43) |
 | FAILURE | 1 | prints no next: line | [`sync_steps.rb:97`](../../../../lib/plastic/workflows/sync_steps.rb#L97) |
 | changed on both sides since the last print, nothing written: CONFLICTS; pass --overwrite PATH, --overwrite or --merge | 3 | prints no next: line | [`sync_steps.rb:98`](../../../../lib/plastic/workflows/sync_steps.rb#L98) |
 | changed on both sides since the last print, left as they are: CONFLICTS; pass --overwrite PATH or --overwrite | 3 | prints no next: line | [`sync_steps.rb:104`](../../../../lib/plastic/workflows/sync_steps.rb#L104) |

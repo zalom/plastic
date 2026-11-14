@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 431" width="760" height="431" role="img" xml:space="preserve">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 717" width="760" height="717" role="img" xml:space="preserve">
 <title>How Preview runs in plastic sync up</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
@@ -72,56 +72,100 @@
 <text x="436" y="22" class="tm tag-muted" text-anchor="end">preview.rb:13</text>
 <rect x="16" y="34" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="49" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="49" class="tm tag-muted" text-anchor="end">preview.rb:32</text>
+<text x="426" y="49" class="tm tag-muted" text-anchor="end">preview.rb:38</text>
 <text x="26" y="66" class="t" text-anchor="start">preview the sync in an isolated copy</text>
 <path d="M 226 79 L 226 89" class="wire"/>
 <path d="M 221 81 L 226 89 L 231 81 Z" class="head"/>
-<rect x="16" y="89" width="420" height="98" rx="6" class="card"/>
+<rect x="16" y="89" width="420" height="60" rx="6" class="card"/>
 <text x="26" y="104" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="104" class="tm tag-muted" text-anchor="end">preview.rb:34</text>
+<text x="426" y="104" class="tm tag-muted" text-anchor="end">preview.rb:39</text>
 <text x="26" y="121" class="tm" text-anchor="start">passes when !context.dry_run ||</text>
 <text x="26" y="136" class="tm" text-anchor="start">SyncSteps.public_send(name, context)</text>
 <path d="M 436 107 L 464 107" class="wire-failure"/>
 <path d="M 456 102 L 464 107 L 456 112 Z" class="head"/>
-<rect x="466" y="89" width="270" height="98" rx="6" class="stop-failure"/>
+<rect x="466" y="89" width="270" height="42" rx="6" class="stop-failure"/>
 <text x="476" y="104" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1, FAILED</text>
-<text x="476" y="120" class="tm" text-anchor="start">intent folders that could not</text>
-<text x="476" y="134" class="tm" text-anchor="start">be read, the others were read:</text>
-<text x="476" y="148" class="tm" text-anchor="start">%{unreadable} fix or remove</text>
-<text x="476" y="162" class="tm" text-anchor="start">each folder named, then run</text>
-<text x="476" y="176" class="tm" text-anchor="start">plastic sync up again</text>
-<path d="M 226 187 L 226 197" class="wire"/>
-<path d="M 221 189 L 226 197 L 231 189 Z" class="head"/>
-<rect x="16" y="197" width="420" height="70" rx="6" class="card"/>
-<text x="26" y="212" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="212" class="tm tag-muted" text-anchor="end">preview.rb:34</text>
-<text x="26" y="229" class="tm" text-anchor="start">passes when !context.dry_run ||</text>
-<text x="26" y="244" class="tm" text-anchor="start">SyncSteps.public_send(name, context)</text>
-<path d="M 436 215 L 464 215" class="wire-failure"/>
-<path d="M 456 210 L 464 215 L 456 220 Z" class="head"/>
-<rect x="466" y="197" width="270" height="70" rx="6" class="stop-failure"/>
-<text x="476" y="212" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1, FAILED</text>
-<text x="476" y="228" class="tm" text-anchor="start">files that cannot be read into</text>
-<text x="476" y="242" class="tm" text-anchor="start">rows, the others were read:</text>
-<text x="476" y="256" class="tm" text-anchor="start">%{unreadable_files}</text>
-<path d="M 226 267 L 226 277" class="wire"/>
-<path d="M 221 269 L 226 277 L 231 269 Z" class="head"/>
-<text x="16" y="289" class="tag tag-muted" text-anchor="start">ENDS ON</text>
-<rect x="16" y="297" width="300" height="70" rx="6" class="card"/>
-<text x="26" y="313" class="tm" text-anchor="start">:done</text>
-<text x="26" y="329" class="tm tag-muted" text-anchor="start">when context.dry_run</text>
-<path d="M 316 313 L 352 313" class="wire"/>
-<path d="M 344 308 L 352 313 L 344 318 Z" class="head"/>
-<rect x="352" y="297" width="392" height="70" rx="6" class="end"/>
-<text x="362" y="314" class="t" text-anchor="start">the call finishes, exit 0</text>
-<text x="362" y="328" class="t" text-anchor="start">next: %{original_command}</text>
-<text x="362" y="342" class="t" text-anchor="start">because: the preview wrote only to a disposable</text>
-<text x="362" y="356" class="t" text-anchor="start">copy</text>
-<rect x="16" y="375" width="300" height="42" rx="6" class="card"/>
-<text x="26" y="391" class="tm" text-anchor="start">:continue</text>
-<text x="26" y="407" class="tm tag-muted" text-anchor="start">otherwise</text>
-<path d="M 316 391 L 352 391" class="wire"/>
-<path d="M 344 386 L 352 391 L 344 396 Z" class="head"/>
-<rect x="352" y="375" width="392" height="42" rx="6" class="lane-code"/>
-<text x="362" y="392" class="t" text-anchor="start">next workflow: Up</text>
+<text x="476" y="120" class="tm" text-anchor="start">%{failure}</text>
+<path d="M 226 149 L 226 159" class="wire"/>
+<path d="M 221 151 L 226 159 L 231 151 Z" class="head"/>
+<rect x="16" y="159" width="420" height="98" rx="6" class="card"/>
+<text x="26" y="174" class="tag tag-muted" text-anchor="start">GATE</text>
+<text x="426" y="174" class="tm tag-muted" text-anchor="end">preview.rb:39</text>
+<text x="26" y="191" class="tm" text-anchor="start">passes when !context.dry_run ||</text>
+<text x="26" y="206" class="tm" text-anchor="start">SyncSteps.public_send(name, context)</text>
+<path d="M 436 177 L 464 177" class="wire-refusal"/>
+<path d="M 456 172 L 464 177 L 456 182 Z" class="head"/>
+<rect x="466" y="159" width="270" height="98" rx="6" class="stop-refusal"/>
+<text x="476" y="174" class="tag tag-refusal" text-anchor="start">STOPS, EXIT 3, REFUSED</text>
+<text x="476" y="190" class="tm" text-anchor="start">changed on both sides since</text>
+<text x="476" y="204" class="tm" text-anchor="start">the last print, nothing</text>
+<text x="476" y="218" class="tm" text-anchor="start">written: %{conflicts}; pass</text>
+<text x="476" y="232" class="tm" text-anchor="start">--overwrite PATH, --overwrite</text>
+<text x="476" y="246" class="tm" text-anchor="start">or --merge</text>
+<path d="M 226 257 L 226 267" class="wire"/>
+<path d="M 221 259 L 226 267 L 231 259 Z" class="head"/>
+<rect x="16" y="267" width="420" height="98" rx="6" class="card"/>
+<text x="26" y="282" class="tag tag-muted" text-anchor="start">GATE</text>
+<text x="426" y="282" class="tm tag-muted" text-anchor="end">preview.rb:39</text>
+<text x="26" y="299" class="tm" text-anchor="start">passes when !context.dry_run ||</text>
+<text x="26" y="314" class="tm" text-anchor="start">SyncSteps.public_send(name, context)</text>
+<path d="M 436 285 L 464 285" class="wire-refusal"/>
+<path d="M 456 280 L 464 285 L 456 290 Z" class="head"/>
+<rect x="466" y="267" width="270" height="98" rx="6" class="stop-refusal"/>
+<text x="476" y="282" class="tag tag-refusal" text-anchor="start">STOPS, EXIT 3, REFUSED</text>
+<text x="476" y="298" class="tm" text-anchor="start">changed on both sides since</text>
+<text x="476" y="312" class="tm" text-anchor="start">the last print, left as they</text>
+<text x="476" y="326" class="tm" text-anchor="start">are: %{conflicts}; pass</text>
+<text x="476" y="340" class="tm" text-anchor="start">--overwrite PATH or</text>
+<text x="476" y="354" class="tm" text-anchor="start">--overwrite</text>
+<path d="M 226 365 L 226 375" class="wire"/>
+<path d="M 221 367 L 226 375 L 231 367 Z" class="head"/>
+<rect x="16" y="375" width="420" height="98" rx="6" class="card"/>
+<text x="26" y="390" class="tag tag-muted" text-anchor="start">GATE</text>
+<text x="426" y="390" class="tm tag-muted" text-anchor="end">preview.rb:39</text>
+<text x="26" y="407" class="tm" text-anchor="start">passes when !context.dry_run ||</text>
+<text x="26" y="422" class="tm" text-anchor="start">SyncSteps.public_send(name, context)</text>
+<path d="M 436 393 L 464 393" class="wire-failure"/>
+<path d="M 456 388 L 464 393 L 456 398 Z" class="head"/>
+<rect x="466" y="375" width="270" height="98" rx="6" class="stop-failure"/>
+<text x="476" y="390" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1, FAILED</text>
+<text x="476" y="406" class="tm" text-anchor="start">intent folders that could not</text>
+<text x="476" y="420" class="tm" text-anchor="start">be read, the others were read:</text>
+<text x="476" y="434" class="tm" text-anchor="start">%{unreadable} fix or remove</text>
+<text x="476" y="448" class="tm" text-anchor="start">each folder named, then run</text>
+<text x="476" y="462" class="tm" text-anchor="start">plastic sync up again</text>
+<path d="M 226 473 L 226 483" class="wire"/>
+<path d="M 221 475 L 226 483 L 231 475 Z" class="head"/>
+<rect x="16" y="483" width="420" height="70" rx="6" class="card"/>
+<text x="26" y="498" class="tag tag-muted" text-anchor="start">GATE</text>
+<text x="426" y="498" class="tm tag-muted" text-anchor="end">preview.rb:39</text>
+<text x="26" y="515" class="tm" text-anchor="start">passes when !context.dry_run ||</text>
+<text x="26" y="530" class="tm" text-anchor="start">SyncSteps.public_send(name, context)</text>
+<path d="M 436 501 L 464 501" class="wire-failure"/>
+<path d="M 456 496 L 464 501 L 456 506 Z" class="head"/>
+<rect x="466" y="483" width="270" height="70" rx="6" class="stop-failure"/>
+<text x="476" y="498" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1, FAILED</text>
+<text x="476" y="514" class="tm" text-anchor="start">files that cannot be read into</text>
+<text x="476" y="528" class="tm" text-anchor="start">rows, the others were read:</text>
+<text x="476" y="542" class="tm" text-anchor="start">%{unreadable_files}</text>
+<path d="M 226 553 L 226 563" class="wire"/>
+<path d="M 221 555 L 226 563 L 231 555 Z" class="head"/>
+<text x="16" y="575" class="tag tag-muted" text-anchor="start">ENDS ON</text>
+<rect x="16" y="583" width="300" height="70" rx="6" class="card"/>
+<text x="26" y="599" class="tm" text-anchor="start">:done</text>
+<text x="26" y="615" class="tm tag-muted" text-anchor="start">when context.dry_run</text>
+<path d="M 316 599 L 352 599" class="wire"/>
+<path d="M 344 594 L 352 599 L 344 604 Z" class="head"/>
+<rect x="352" y="583" width="392" height="70" rx="6" class="end"/>
+<text x="362" y="600" class="t" text-anchor="start">the call finishes, exit 0</text>
+<text x="362" y="614" class="t" text-anchor="start">next: %{original_command}</text>
+<text x="362" y="628" class="t" text-anchor="start">because: the preview wrote only to a disposable</text>
+<text x="362" y="642" class="t" text-anchor="start">copy</text>
+<rect x="16" y="661" width="300" height="42" rx="6" class="card"/>
+<text x="26" y="677" class="tm" text-anchor="start">:continue</text>
+<text x="26" y="693" class="tm tag-muted" text-anchor="start">otherwise</text>
+<path d="M 316 677 L 352 677" class="wire"/>
+<path d="M 344 672 L 352 677 L 344 682 Z" class="head"/>
+<rect x="352" y="661" width="392" height="42" rx="6" class="lane-code"/>
+<text x="362" y="678" class="t" text-anchor="start">next workflow: Up</text>
 </svg>
