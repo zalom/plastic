@@ -30,6 +30,12 @@ module Plastic
           new(folder, known, retrieval.origin_id, retrieval:, **options)
         end
 
+        # The reader of the intents of the rows, with the document heads the database holds.
+        def self.of_databases(folder, retrieval, databases)
+          rows = databases.fetch(:knowledge).rows("SELECT intent_id, path FROM document_heads WHERE origin_id = :origin", origin: retrieval.origin_id)
+          of(folder, retrieval, heads: Retrieval::Evidence::Heads.new(rows.to_set { |row| [row.fetch("intent_id"), row.fetch("path")] }))
+        end
+
         # `intents` maps each known intent id to its intent: from the rows and
         # from the store/index.json on disk.
         def initialize(folder, intents, origin_id, retrieval: nil, heads: Retrieval::Evidence::Heads::Unread.new)

@@ -22,7 +22,7 @@ module Plastic
 
         # Each entry's action, and what the sync writes.
         class Plan
-          def self.build(folder, retrieval, resolution)
+          def self.build(folder, retrieval, resolution, databases = nil)
             legacy = folder.legacy?
             up = resolution.up?
             folders = legacy ? nil : IntentFolders.new(folder, retrieval)
@@ -30,27 +30,27 @@ module Plastic
             new(resolution:, entries:, legacy: up && legacy,
               problem: (legacy_problem if legacy && !up), unreadable: Array(folders&.problems),
               archived: archived(folder, retrieval, resolution),
-              unreadable_files: unreadable_files_of(folder, retrieval, entries, resolution, legacy))
+              unreadable_files: unreadable_files_of(Readability.new(folder, retrieval, databases), entries, retrieval, up && !legacy))
           end
 
           # Only a sync up of a store that is not legacy reads files.
-          def self.unreadable_files_of(folder, retrieval, entries, resolution, legacy)
-            (resolution.up? && !legacy) ? unreadable_files(folder, retrieval, entries) : {}
+          def self.unreadable_files_of(readability, entries, retrieval, reads)
+            reads ? unreadable_files(readability, retrieval, entries) : {}
           end
 
           # The changed files of `entries` that sync up would read and cannot.
-          def self.unreadable_files(folder, retrieval, entries)
+          def self.unreadable_files(readability, retrieval, entries)
             rowed = retrieval.intents.map(&:dir)
-            paths = entries.select { |entry| readable?(entry, rowed) }.map(&:path)
-            Readability.new(folder, retrieval).call(paths)
+            readability.call(entries.select { |entry| readable?(entry, rowed) }.map(&:path))
           end
 
-          # A changed file that is the index or belongs to an intent that has its rows; the files of a folder without rows read after its row is written.
+          # A changed file that is the index, a hand edited generated file with rows, or belongs to an intent that has its rows; the files of a folder without rows read after its row is written.
           def self.readable?(entry, rowed)
-            return false unless %i[read conflict].include?(entry.action(:up))
-
             path = entry.path
-            path == StoreFolder::INDEX || (!entry.generated? && rowed.any? { |dir| path.start_with?("#{dir}/") })
+            return true if path == StoreFolder::INDEX && %i[read conflict].include?(entry.action(:up))
+            return entry.hand_edited? && !entry.rows_sha.nil? if entry.generated?
+
+            %i[read conflict].include?(entry.action(:up)) && rowed.any? { |dir| path.start_with?("#{dir}/") }
           end
 
           def self.entries(folder, retrieval, folders = nil) = EntryList.new(folder, retrieval, folders).entries
@@ -75,9 +75,6 @@ module Plastic
 
           def merging? = resolution.merging?
 
-          # The unreadable files that sync up leaves as they are: a generated one prints again from its rows instead.
-          def left_unreadable = unreadable_files.reject { |path, _reason| Entry.generated?(path) }
-
           # A call that cannot run: a store not imported yet, or an overwrite path that names nothing.
           def failure
             return problem if problem
@@ -99,13 +96,11 @@ module Plastic
             named_print?(entry) ? :print : action
           end
 
-          # A generated file a person changed: the index is read when it can be, else printed again from the rows.
+          # A generated file a person changed is read when it can be and kept as written when it cannot.
           def generated_up(entry)
             return :none unless entry.hand_edited? && entry.rows_sha
-            path = entry.path
-            return :print if StoreFolder.context_view?(path) || Entry.roadmap?(path) || unreadable_files.key?(path)
 
-            :read
+            unreadable_files.key?(entry.path) ? :none : :read
           end
 
           # An overwrite that names this path prints it from its rows when the file differs from them.

@@ -15,8 +15,7 @@ module Plastic
       UNREADABLE = "intent folders that could not be read, the others were read:\n%{unreadable}\n" \
                    "fix or remove each folder named, then run plastic sync up again"
 
-      UNREADABLE_FILES = "files that cannot be read into rows, the others were read:\n%{unreadable_files}\n" \
-                         "each file prints again from its rows with the command below"
+      UNREADABLE_FILES = "files that cannot be read into rows, the others were read:\n%{unreadable_files}\n"
 
       def self.plan(context, direction)
         context.work.sync_plan(direction, { overwrite: context.overwrite, merge: context.merge })
@@ -28,16 +27,20 @@ module Plastic
         context[:conflicts] = plan.conflicts.join(", ")
         context[:merging] = plan.merging?
         context[:unreadable] = plan.unreadable.join("\n")
-        note_files(context, plan.left_unreadable)
+        note_files(context, plan.unreadable_files)
         context[:lines] = nil
       end
 
       def self.note_files(context, files)
-        context[:unreadable_files] = files.map { |path, reason| "#{path}: #{reason}" }.join("\n")
+        context[:unreadable_files] = files.map { |path, reason| "#{path}: #{reason}; run plastic sync down --overwrite #{path}" }.join("\n")
         context[:unreadable_path] = files.keys.first
       end
 
-      def self.apply(context, direction) = context[:lines] = context.work.sync_apply(plan(context, direction))
+      # The lines of the apply, and the files it found no row would take: a new plan names them.
+      def self.apply(context, direction)
+        context[:lines] = context.work.sync_apply(plan(context, direction))
+        note_files(context, plan(context, direction).unreadable_files)
+      end
 
       def self.applied(direction) = ->(context) { plan(context, direction).pending.zero? }
 

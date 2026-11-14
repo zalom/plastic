@@ -29,7 +29,7 @@ module Plastic
         end
 
         # `options` may hold :overwrite and :merge, as Resolution reads them.
-        def plan(direction, options = {}) = Plan.build(@folder, @retrieval, Resolution.new(direction, @folder.root, options))
+        def plan(direction, options = {}) = Plan.build(@folder, @retrieval, Resolution.new(direction, @folder.root, options), @databases)
 
         # Applies every action of `plan` but the conflicts, and says what it did, one line per file.
         def apply(plan, rollback: Legacy::ImportRollback)
@@ -55,7 +55,8 @@ module Plastic
         def printed_up(plan)
           fresh = Prints.of_store(@retrieval).to_h { |print| [print.path, print] }
           wanted = plan.taking(:print).map { |entry| fresh.fetch(entry.path, entry.print) }
-          [fresh[StoreFolder::INDEX], *wanted].compact.uniq(&:path)
+          index = fresh[StoreFolder::INDEX] unless plan.unreadable_files.key?(StoreFolder::INDEX)
+          [index, *wanted].compact.uniq(&:path)
         end
 
         def read(paths) = FileReads.new(folder: @folder, retrieval: @retrieval, databases: @databases, printer: printer).call(paths)
@@ -66,7 +67,7 @@ module Plastic
         end
 
         # The printed files a person changed by hand, for the prints `kinds` name and the facts of the call.
-        def hand_edited(kinds, facts) = HandEdits.new(@retrieval, @folder, kinds, facts).call
+        def hand_edited(kinds, facts) = HandEdits.new(@retrieval, @folder, @databases, kinds, facts).call
 
         def printer = (@printer ||= Printer.new(@folder, @databases, @retrieval))
       end
