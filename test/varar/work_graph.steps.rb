@@ -41,6 +41,7 @@ module WorkGraphAcceptance
     [*RULINGS].each { |args| kernel.run!(*args) }
     kernel.write("store/1--alpha/spec.md", SPEC)
     kernel.run!("sync", "up")
+    kernel.run!("intent", "approve", "1")
     [*NODES_AND_EDGE, *NODE_LIFECYCLE].each { |args| kernel.run!(*args) }
   end
 end

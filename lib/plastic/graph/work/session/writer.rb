@@ -14,8 +14,10 @@ module Plastic
             @store = store
           end
 
-          # Upserts the session row, keeping `started_at` once it is set.
-          def open_session(session_id, harness:, directory:) = opened({ session_id:, harness:, store: @store, directory: })
+          # Upserts the session row, keeping `started_at` once it is set, and clears an end: a session that opens again is live.
+          def open_session(session_id, harness:, directory:)
+            opened({ session_id:, harness:, store: @store, directory:, ended_at: nil, end_reason: nil })
+          end
 
           # Opens the session row, keeping its harness, then sets its last
           # turn to now.

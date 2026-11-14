@@ -40,8 +40,8 @@ Its steps run in this order:
 
 | Place | Database or file | Tables | Reads or writes | Code |
 | --- | --- | --- | --- | --- |
-| the home folder | local.db | `routine_runs`, `sessions` | reads and writes | found in the code, not declared |
-| the store folder | work_graph.db | `intents`, `savepoints` | reads | found in the code, not declared |
+| the home folder | local.db | `locks`, `routine_runs`, `sessions` | reads and writes | found in the code, not declared |
+| the store folder | work_graph.db | `intents`, `nodes`, `savepoints` | reads | found in the code, not declared |
 
 ## How a call ends
 

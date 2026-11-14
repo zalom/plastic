@@ -9,19 +9,26 @@ module Plastic
     module Code
       # Arms delivery on an intent: refuses an open decision, no done
       # criteria, no go-ahead row, a done or abandoned intent, or another session's live lock;
-      # fails with no session named; otherwise takes the lock and goes in progress,
-      # then prints the code worktree when the store's project names a repository.
+      # fails with no session named or a session that ended; otherwise goes in progress and takes the lock,
+      # then prints the code worktree when the store's project names a repository, and names the
+      # worktree to create when its folder is missing.
       class Auto < CodeWorkflow
         [facts, steps, outcomes].each(&:clear)
 
-        sets :problem, :closed_problem, :spec_problem, :intent
+        sets :problem, :closed_problem, :spec_problem, :intent, :session_problem, :worktree_missing
 
         read "read the intent and its spec" do |context|
           context[:intent] = context.retrieval.intent(context.intent_id)
+          context[:session_problem] = session_problem(context)
           id = context.intent_id
           context[:closed_problem] = state_problem(id, context.intent)
           context[:spec_problem] = criterion_problem(id, context)
           context[:problem] = decision_problem(id, context) || lock_problem(id, context) || approval_problem(id, context)
+        end
+
+        def self.session_problem(context)
+          session = context.session && context.retrieval.session(context.session)
+          "session #{context.session} ended; start a new session or resume it" if session&.ended?
         end
 
         def self.state_problem(id, intent)
@@ -60,6 +67,7 @@ module Plastic
 
         gate "no intent %{intent_id} in this store", stops: :failure, pass: ->(context) { !context.intent.nil? }
         gate "plastic auto names no session", stops: :failure, pass: ->(context) { !context.session.nil? }
+        gate "%{session_problem}", stops: :failure, pass: ->(context) { context.session_problem.nil? }
         gate "%{closed_problem}", stops: :failure, offers: "plastic next", because: "a closed intent cannot be armed; pick other work",
           pass: ->(context) { context.closed_problem.nil? }
         gate "%{spec_problem}", stops: :failure, offers: "plastic intent spec %{intent_id}",
@@ -74,9 +82,9 @@ module Plastic
             lock&.session_id == context.session && lock.mode == "auto" && retrieval.liveness(lock).live?
         end
 
-        step "take the lock and go in progress", done: method(:delivery_started?) do |context|
-          context.work.take_lock(context.intent_id, session_id: context.session, mode: "auto")
+        step "go in progress and take the lock", done: method(:delivery_started?) do |context|
           context.work.activate_intent(context.intent_id)
+          context.work.take_lock(context.intent_id, session_id: context.session, mode: "auto")
         end
 
         read "name the code worktree" do |context|
@@ -84,12 +92,20 @@ module Plastic
         end
 
         def self.name_worktree(context, worktree)
+          context[:worktree_missing] = !worktree.nil? && !File.directory?(worktree.path)
           return unless worktree
 
           context.print("worktree: #{worktree.path}")
           context.print("branch: #{worktree.branch}")
+          context.print(instruction(context, worktree)) if context.worktree_missing
         end
 
+        def self.instruction(context, worktree)
+          "Create the worktree at #{worktree.path} on branch #{worktree.branch} with your version control tool, then run plastic auto #{context.intent_id} again"
+        end
+
+        outcome :worktree_missing, if: ->(context) { context.worktree_missing }, offers: "plastic auto %{intent_id}",
+          because: "the worktree of intent %{intent_id} is not made yet"
         outcome :done, offers: "plastic intent brief %{intent_id}", because: "intent %{intent_id} is in progress"
       end
     end

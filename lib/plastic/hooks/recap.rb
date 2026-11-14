@@ -16,15 +16,16 @@ module Plastic
       }.freeze
       SAVEPOINT_LINES = 5
 
-      def initialize(retrieval, session_id:, source:, directory:)
+      def initialize(retrieval, session_id:, source:, directory:, now: Time.now)
         @retrieval = retrieval
+        @now = now
         @session_id = session_id
         @source = source.to_s
         @directory = directory
       end
 
       # The lines to print, first line first.
-      def lines = [first_line, *open_intent_lines, *previous_session_lines, *in_progress_lines, *note_line]
+      def lines = [first_line, *open_intent_lines, *expired_lock_lines, *previous_session_lines, *in_progress_lines, *note_line]
 
       private
 
@@ -35,6 +36,15 @@ module Plastic
       def open_intent_lines
         Graph::Knowledge::Intent::Listing.lines(@retrieval.intents) { |intent| "#{intent.heading}#{last_run(intent.intent_id)}" }
           .map { |name, text| "#{name}: #{text}" }
+      end
+
+      def expired_lock_lines
+        own = @retrieval.locks_of(@session_id).select { |lock| lock.store == @retrieval.store }
+        own.reject { |lock| @retrieval.liveness(lock).live?(@now) }.map { |lock| expired_line(lock) }
+      end
+
+      def expired_line(lock)
+        "intent #{lock.intent_id}: the lock of this session expired (last renewed #{lock.renewed_at}); plastic auto #{lock.intent_id} locks it again"
       end
 
       def last_run(intent_id)

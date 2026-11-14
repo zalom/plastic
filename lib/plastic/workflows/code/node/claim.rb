@@ -6,7 +6,7 @@ module Plastic
   module Workflows
     module Code
       module Node
-        # Claims an open node whose needed nodes are done. The fourth claim of a
+        # Claims an open node whose needed nodes are done, once the owner gave the go-ahead. The fourth claim of a
         # node moves to needs_info instead, with the owner's question, and refuses. A refused
         # claim keeps its routine run open, so the next call claims again.
         class Claim < CodeWorkflow
@@ -14,13 +14,20 @@ module Plastic
 
           STOPPED = %w[refused capped blocked].freeze
 
-          sets :intent, :result, :node, :problem
+          sets :intent, :result, :node, :problem, :approval_problem
 
           read "find the intent" do |context|
             context[:intent] = context.retrieval.intent(context.intent_id)
           end
 
           gate "no intent %{intent_id} in this store", stops: :failure, pass: ->(context) { !context.intent.nil? }
+
+          read "check the go-ahead" do |context|
+            id = context.intent_id
+            context[:approval_problem] = ("intent #{id} has no go-ahead; the owner approves it with plastic intent approve #{id}" unless context.retrieval.approval(id))
+          end
+
+          gate "%{approval_problem}", stops: :refusal, pass: ->(context) { context.approval_problem.nil? }
 
           read "forget a refusal of an earlier call" do |context|
             context[:result] = nil if STOPPED.include?(context.result.to_s)

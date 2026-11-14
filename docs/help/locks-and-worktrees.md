@@ -17,7 +17,7 @@ row the session holds at the end of each turn.
 
 | The lock's session | The lock is |
 | --- | --- |
-| has ended (`plastic hook end` wrote its end) | expired, whatever its renewal time |
+| has ended (`plastic hook end` wrote its end) | expired, whatever its renewal time, until the session resumes under the same id and the lock reads by its renewal and its claims again |
 | renewed the lock within the last 30 minutes (the TTL of 1800 seconds) | live: renewed |
 | holds a node of the intent claimed within the last 2 hours (the node limit of 7200 seconds) | live: that node is open |
 | none of these | expired |
@@ -57,8 +57,11 @@ next: plastic intent brief 2
 because: intent 2 is active
 ```
 
-The agent makes the worktree at the printed path on the printed branch, then runs the `next:` line,
-`plastic intent brief ID`. There is one worktree per project intent, the code worktree at
+The agent makes the worktree at the printed path on the printed branch. While the folder is missing,
+`plastic auto ID` also prints the instruction to create it and offers `plastic auto ID` again. Once the folder
+exists, the `next:` line is `plastic intent brief ID`. A session that has ended cannot take the lock: the
+command fails and says to start a new session or resume it, and a resumed session reads at its start which
+of its locks expired and the `plastic auto ID` that locks it again. There is one worktree per project intent, the code worktree at
 `<repo>/.claude/worktrees/{id}--{slug}` on branch `plastic/{id}--{slug}`.
 
 Plastic does not provision a second worktree for lifecycle-doc writes. The harness's own native

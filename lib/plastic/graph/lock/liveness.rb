@@ -8,7 +8,8 @@ module Plastic
       # Whether a lock is live, and why. A lock of an ended session is never
       # live. Otherwise it is live while it was renewed within the TTL, or
       # while its session holds a node of the intent claimed for no longer
-      # than the node limit.
+      # than the node limit. A session that resumes under the same id is no longer
+      # ended, so its lock lives again while the renewal or the claim holds.
       Liveness = Data.define(:lock, :ended_at, :claims) do
         def live?(now = Time.now) = !ended? && (renewed?(now) || claims.any? { |claim| claim.open?(now) })
 

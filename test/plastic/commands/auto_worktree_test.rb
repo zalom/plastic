@@ -10,10 +10,10 @@ class AutoWorktreeTest < Plastic::TestCase
   def test_a_registered_repo_prints_the_path_and_branch_and_offers_the_brief
     repo = register_repo
     intent = clear_intent
+    worktree = File.join(repo, ".claude", "worktrees", "1--alpha")
+    FileUtils.mkdir_p(worktree)
 
     result = call(intent.intent_id)
-
-    worktree = File.join(repo, ".claude", "worktrees", "1--alpha")
 
     assert_equal [0, "next: plastic intent brief 1"], [result.code, next_line(result)]
     assert_includes result.out, "worktree: #{worktree}\n"

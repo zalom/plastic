@@ -7,6 +7,7 @@ class ClaimNodeTest < Plastic::TestCase
   def setup
     super
     open_intent
+    store_graphs.work.approve_intent("1")
     store_graphs.work.add_node(intent_id: "1", title: "Build", criterion: "it runs", input: "spec.md")
   end
 

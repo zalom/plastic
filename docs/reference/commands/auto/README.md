@@ -25,7 +25,7 @@ The figure shows the command, the workflows it runs, the classes behind them, an
 | Workflow | Kind | Code |
 | --- | --- | --- |
 | [Code::Auto::Pick](#codeautopick) | code | [`pick.rb:17`](../../../../lib/plastic/workflows/code/auto/pick.rb#L17) |
-| [Code::Auto](#codeauto) | code | [`auto.rb:14`](../../../../lib/plastic/workflows/code/auto.rb#L14) |
+| [Code::Auto](#codeauto) | code | [`auto.rb:15`](../../../../lib/plastic/workflows/code/auto.rb#L15) |
 
 ### Code::Auto::Pick
 
@@ -49,32 +49,34 @@ It sets `intent_id`, `ready_id`, `open`.
 
 ### Code::Auto
 
-The code workflow `:code_start_auto`, in [`auto.rb:14`](../../../../lib/plastic/workflows/code/auto.rb#L14).
+The code workflow `:code_start_auto`, in [`auto.rb:15`](../../../../lib/plastic/workflows/code/auto.rb#L15).
 
-Arms delivery on an intent: refuses an open decision, no done criteria, no go-ahead row, a done or abandoned intent, or another session's live lock; fails with no session named; otherwise takes the lock and goes in progress, then prints the code worktree when the store's project names a repository.
+Arms delivery on an intent: refuses an open decision, no done criteria, no go-ahead row, a done or abandoned intent, or another session's live lock; fails with no session named or a session that ended; otherwise goes in progress and takes the lock, then prints the code worktree when the store's project names a repository, and names the worktree to create when its folder is missing.
 
 ![How Code::Auto runs: its steps, where it stops, and its outcomes](code_start_auto.svg)
 
 Its rows run in this order:
 
-1. Read: read the intent and its spec. [`auto.rb:19`](../../../../lib/plastic/workflows/code/auto.rb#L19)
-2. Gate: passes when `!context.intent.nil?`; otherwise the call stops with exit 1 and prints no intent INTENT_ID in this store. [`auto.rb:61`](../../../../lib/plastic/workflows/code/auto.rb#L61)
-3. Gate: passes when `!context.session.nil?`; otherwise the call stops with exit 1 and prints plastic auto names no session. [`auto.rb:62`](../../../../lib/plastic/workflows/code/auto.rb#L62)
-4. Gate: passes when `context.closed_problem.nil?`; otherwise the call stops with exit 1 and prints CLOSED_PROBLEM. [`auto.rb:63`](../../../../lib/plastic/workflows/code/auto.rb#L63)
-5. Gate: passes when `context.spec_problem.nil?`; otherwise the call stops with exit 1 and prints SPEC_PROBLEM. [`auto.rb:65`](../../../../lib/plastic/workflows/code/auto.rb#L65)
-6. Gate: passes when `context.problem.nil?`; otherwise the call stops with exit 3 and prints PROBLEM. [`auto.rb:67`](../../../../lib/plastic/workflows/code/auto.rb#L67)
-7. Step: take the lock and go in progress. Done when `def self.delivery_started?(context) retrieval = context.retrieval intent_id = context.intent_id lock = retrieval.lock(intent_id) retrieval.intent(intent_id).status == "in_progress" && lock&.session_id == context.session && lock.mode == "auto" && retrieval.liveness(lock).live? end`, so a second call skips it. [`auto.rb:77`](../../../../lib/plastic/workflows/code/auto.rb#L77)
-8. Read: name the code worktree. [`auto.rb:82`](../../../../lib/plastic/workflows/code/auto.rb#L82)
-9. Outcome `:done`, always: finishes with exit 0; next: plastic intent brief INTENT_ID. [`auto.rb:93`](../../../../lib/plastic/workflows/code/auto.rb#L93)
+1. Read: read the intent and its spec. [`auto.rb:20`](../../../../lib/plastic/workflows/code/auto.rb#L20)
+2. Gate: passes when `!context.intent.nil?`; otherwise the call stops with exit 1 and prints no intent INTENT_ID in this store. [`auto.rb:68`](../../../../lib/plastic/workflows/code/auto.rb#L68)
+3. Gate: passes when `!context.session.nil?`; otherwise the call stops with exit 1 and prints plastic auto names no session. [`auto.rb:69`](../../../../lib/plastic/workflows/code/auto.rb#L69)
+4. Gate: passes when `context.session_problem.nil?`; otherwise the call stops with exit 1 and prints SESSION_PROBLEM. [`auto.rb:70`](../../../../lib/plastic/workflows/code/auto.rb#L70)
+5. Gate: passes when `context.closed_problem.nil?`; otherwise the call stops with exit 1 and prints CLOSED_PROBLEM. [`auto.rb:71`](../../../../lib/plastic/workflows/code/auto.rb#L71)
+6. Gate: passes when `context.spec_problem.nil?`; otherwise the call stops with exit 1 and prints SPEC_PROBLEM. [`auto.rb:73`](../../../../lib/plastic/workflows/code/auto.rb#L73)
+7. Gate: passes when `context.problem.nil?`; otherwise the call stops with exit 3 and prints PROBLEM. [`auto.rb:75`](../../../../lib/plastic/workflows/code/auto.rb#L75)
+8. Step: go in progress and take the lock. Done when `def self.delivery_started?(context) retrieval = context.retrieval intent_id = context.intent_id lock = retrieval.lock(intent_id) retrieval.intent(intent_id).status == "in_progress" && lock&.session_id == context.session && lock.mode == "auto" && retrieval.liveness(lock).live? end`, so a second call skips it. [`auto.rb:85`](../../../../lib/plastic/workflows/code/auto.rb#L85)
+9. Read: name the code worktree. [`auto.rb:90`](../../../../lib/plastic/workflows/code/auto.rb#L90)
+10. Outcome `:worktree_missing`, when `context.worktree_missing`: finishes with exit 0; next: plastic auto INTENT_ID. [`auto.rb:107`](../../../../lib/plastic/workflows/code/auto.rb#L107)
+11. Outcome `:done`, otherwise: finishes with exit 0; next: plastic intent brief INTENT_ID. [`auto.rb:109`](../../../../lib/plastic/workflows/code/auto.rb#L109)
 
-It sets `problem`, `closed_problem`, `spec_problem`, `intent`.
+It sets `problem`, `closed_problem`, `spec_problem`, `intent`, `session_problem`, `worktree_missing`.
 
 In the words of workflow engines, the rows are these four parts:
 
 - **Trigger**: the call starts the workflow `Code::Auto::Pick`; each later workflow starts from an outcome of the one before it.
 - **Activities**: 4 reads and 1 step.
-- **Transitions**: 6 gates stop the call when their checks fail; a step runs only while its done check fails; Pick goes to Auto on `:intent`.
-- **Outcomes**: `:ready` of Pick, `:delivered` of Pick, `:waiting` of Pick, `:done` of Auto end the call.
+- **Transitions**: 7 gates stop the call when their checks fail; a step runs only while its done check fails; Pick goes to Auto on `:intent`.
+- **Outcomes**: `:ready` of Pick, `:delivered` of Pick, `:waiting` of Pick, `:worktree_missing` of Auto, `:done` of Auto end the call.
 
 ## What one call reads, writes and prints
 
@@ -95,7 +97,7 @@ A second call runs the same rows again. A step runs again only when its done che
 
 | Step | Done when | The second call | Code |
 | --- | --- | --- | --- |
-| take the lock and go in progress | `def self.delivery_started?(context) retrieval = context.retrieval intent_id = context.intent_id lock = retrieval.lock(intent_id) retrieval.intent(intent_id).status == "in_progress" && lock&.session_id == context.session && lock.mode == "auto" && retrieval.liveness(lock).live? end` | skips it | [`auto.rb:77`](../../../../lib/plastic/workflows/code/auto.rb#L77) |
+| go in progress and take the lock | `def self.delivery_started?(context) retrieval = context.retrieval intent_id = context.intent_id lock = retrieval.lock(intent_id) retrieval.intent(intent_id).status == "in_progress" && lock&.session_id == context.session && lock.mode == "auto" && retrieval.liveness(lock).live? end` | skips it | [`auto.rb:85`](../../../../lib/plastic/workflows/code/auto.rb#L85) |
 
 ## How a call ends
 
@@ -107,12 +109,14 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | item READY_ID is ready | 0 | plastic roadmap open ID READY_ID | [`pick.rb:59`](../../../../lib/plastic/workflows/code/auto/pick.rb#L59) |
 | every item of ID is done or dropped | 0 | plastic roadmap show ID | [`pick.rb:61`](../../../../lib/plastic/workflows/code/auto/pick.rb#L61) |
 | no item of ID is free to deliver yet | 0 | plastic roadmap show ID | [`pick.rb:63`](../../../../lib/plastic/workflows/code/auto/pick.rb#L63) |
-| no intent INTENT_ID in this store | 1 | prints no next: line | [`auto.rb:61`](../../../../lib/plastic/workflows/code/auto.rb#L61) |
-| plastic auto names no session | 1 | prints no next: line | [`auto.rb:62`](../../../../lib/plastic/workflows/code/auto.rb#L62) |
-| CLOSED_PROBLEM | 1 | plastic next | [`auto.rb:63`](../../../../lib/plastic/workflows/code/auto.rb#L63) |
-| SPEC_PROBLEM | 1 | plastic intent spec INTENT_ID | [`auto.rb:65`](../../../../lib/plastic/workflows/code/auto.rb#L65) |
-| PROBLEM | 3 | prints no next: line | [`auto.rb:67`](../../../../lib/plastic/workflows/code/auto.rb#L67) |
-| intent INTENT_ID is in progress | 0 | plastic intent brief INTENT_ID | [`auto.rb:93`](../../../../lib/plastic/workflows/code/auto.rb#L93) |
+| no intent INTENT_ID in this store | 1 | prints no next: line | [`auto.rb:68`](../../../../lib/plastic/workflows/code/auto.rb#L68) |
+| plastic auto names no session | 1 | prints no next: line | [`auto.rb:69`](../../../../lib/plastic/workflows/code/auto.rb#L69) |
+| SESSION_PROBLEM | 1 | prints no next: line | [`auto.rb:70`](../../../../lib/plastic/workflows/code/auto.rb#L70) |
+| CLOSED_PROBLEM | 1 | plastic next | [`auto.rb:71`](../../../../lib/plastic/workflows/code/auto.rb#L71) |
+| SPEC_PROBLEM | 1 | plastic intent spec INTENT_ID | [`auto.rb:73`](../../../../lib/plastic/workflows/code/auto.rb#L73) |
+| PROBLEM | 3 | prints no next: line | [`auto.rb:75`](../../../../lib/plastic/workflows/code/auto.rb#L75) |
+| the worktree of intent INTENT_ID is not made yet | 0 | plastic auto INTENT_ID | [`auto.rb:107`](../../../../lib/plastic/workflows/code/auto.rb#L107) |
+| intent INTENT_ID is in progress | 0 | plastic intent brief INTENT_ID | [`auto.rb:109`](../../../../lib/plastic/workflows/code/auto.rb#L109) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
 
 ## What the page leaves out

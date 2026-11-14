@@ -24,6 +24,7 @@ class NodeClaimTest < Plastic::TestCase
   def add_node(title)
     write("store/1--alpha/spec.md", "# Spec\n\n## Done criteria\n- [done] Done\n")
     sync_up
+    store_graphs.work.approve_intent("1") unless store_graphs.retrieval.approval("1")
     plastic("node", "add", "1", title, "--criterion", "done", table: Plastic::CLI::TABLE)
   end
 
@@ -93,7 +94,7 @@ class NodeClaimTest < Plastic::TestCase
   end
 
   def test_a_refused_claim_is_refused_again_on_the_next_call
-    open_intent
+    open_keyed_intent
     claim("n9")
 
     result = claim("n9")
@@ -106,6 +107,7 @@ class NodeClaimTest < Plastic::TestCase
     open_intent
     write("store/1--alpha/spec.md", "# Spec\n\n## Done criteria\n- [done] Done\n")
     sync_up
+    store_graphs.work.approve_intent("1") unless store_graphs.retrieval.approval("1")
     plastic("node", "add", "1", "a", "--criterion", "done", "--input", "docs/a.md", table: Plastic::CLI::TABLE)
 
     call = claim("n1")
