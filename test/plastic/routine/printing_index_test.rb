@@ -55,10 +55,14 @@ class RoutinePrintingIndexTest < Plastic::TestCase
     assert_equal [1, "next: plastic sync up", 0, 0], [refused.code, refused.out[/^next: .*$/], named.code, again.code], again.err
   end
 
-  def test_an_index_with_other_content_than_the_rows_is_refused_though_printed_before_and_sync_up_clears_it
-    open_intent
+  def add_imported_cluster
     data = JSON.parse(File.read(store_path("store/index.json")))
     write("store/index.json", JSON.generate(data.merge("clusters" => [{ "name" => "imported", "intents" => ["1"] }])))
+  end
+
+  def test_an_index_with_other_content_than_the_rows_is_refused_though_printed_before_and_sync_up_clears_it
+    open_intent
+    add_imported_cluster
     results = [cli("intent", "new", "Beta"), cli("sync", "up"), cli("intent", "new", "Beta")]
 
     assert_equal [1, 0, 0], results.map(&:code), results.last.err

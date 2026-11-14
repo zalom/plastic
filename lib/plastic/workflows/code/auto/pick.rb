@@ -42,8 +42,9 @@ module Plastic
           # The intent `plastic auto` would deliver for the word of `context`, or nil. It writes no fact and
           # raises for no missing roadmap, so a check can ask before the workflow runs.
           def self.intent_for(context)
-            return context.id if intent_word?(context)
-            return unless context.retrieval.roadmap(context.id)
+            id = context.id
+            return id if intent_word?(context)
+            return unless context.retrieval.roadmap(id)
 
             free_item(items_by_state(context)["in flight"], context)&.intent_id
           end

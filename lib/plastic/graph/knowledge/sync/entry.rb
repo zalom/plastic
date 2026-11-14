@@ -31,7 +31,8 @@ module Plastic
 
           def self.level_sha(folder, path, print)
             sha = folder.digest(path)
-            (sha && generated?(path) && print.sha256 && same_content?(folder.read(path), print.text)) ? print.sha256 : sha
+            rows = print.sha256
+            (sha && generated?(path) && rows && same_content?(folder.read(path), print.text)) ? rows : sha
           end
 
           def self.same_content?(bytes, text)

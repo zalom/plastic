@@ -49,7 +49,8 @@ module Plastic
           def self.readable?(entry, rowed)
             return false unless %i[read conflict].include?(entry.action(:up))
 
-            entry.path == StoreFolder::INDEX || (!entry.generated? && rowed.any? { |dir| entry.path.start_with?("#{dir}/") })
+            path = entry.path
+            path == StoreFolder::INDEX || (!entry.generated? && rowed.any? { |dir| path.start_with?("#{dir}/") })
           end
 
           def self.entries(folder, retrieval, folders = nil) = EntryList.new(folder, retrieval, folders).entries
@@ -89,10 +90,11 @@ module Plastic
 
           def settled(entry)
             return generated_up(entry) if direction == :up && entry.generated?
-            return :none if unreadable_files.key?(entry.path)
+            path = entry.path
+            return :none if unreadable_files.key?(path)
 
             action = entry.action(direction)
-            return resolution.side if action == :conflict && resolution.overwrites?(entry.path)
+            return resolution.side if action == :conflict && resolution.overwrites?(path)
 
             named_print?(entry) ? :print : action
           end
@@ -100,7 +102,8 @@ module Plastic
           # A generated file a person changed: the index is read when it can be, else printed again from the rows.
           def generated_up(entry)
             return :none unless entry.hand_edited? && entry.rows_sha
-            return :print if StoreFolder.context_view?(entry.path) || Entry.roadmap?(entry.path) || unreadable_files.key?(entry.path)
+            path = entry.path
+            return :print if StoreFolder.context_view?(path) || Entry.roadmap?(path) || unreadable_files.key?(path)
 
             :read
           end
