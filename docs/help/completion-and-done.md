@@ -16,10 +16,10 @@ why the intent is dropped and a `Reverted:` line.
 `plastic intent end ID` takes no options. It closes the intent when the rows allow it:
 every live node done, every criterion covered, an accepted verdict at or after the newest live
 node change, and `Merged:` and `Architecture map:` bullets under `## Verification` in
-outcome.md. With `review.pull_request` set to `required`, the default, it also needs a
+outcome.md. With `review.pull_request` set to `required`, it also needs a
 `Pull request:` bullet and an `Approved:` bullet. An unapproved pull request is a refusal
 (exit 3), and a live lock of another session is a refusal (exit 3). Anything else that is
-missing comes back as a handoff with exit 0, and nothing closes. The close does not reindex
+missing comes back as a handoff with exit 1, and nothing closes. The close does not reindex
 QMD, and Plastic never merges or runs version control.
 
 The completion row holds the judge `verdict` and the evidence built from the rows: each

@@ -107,11 +107,11 @@
 <path d="M 114 192 L 114 214" class="wire"/>
 <path d="M 109 206 L 114 214 L 119 206 Z" class="head"/>
 <rect x="44" y="214" width="140" height="24" rx="12" class="end"/>
-<text x="114" y="230" class="tag tag-end" text-anchor="middle">hands off, exit 0</text>
+<text x="114" y="230" class="tag tag-end" text-anchor="middle">hands off, exit 1</text>
 <path d="M 318 192 L 318 214" class="wire"/>
 <path d="M 313 206 L 318 214 L 323 206 Z" class="head"/>
 <rect x="248" y="214" width="140" height="24" rx="12" class="end"/>
-<text x="318" y="230" class="tag tag-end" text-anchor="middle">hands off, exit 0</text>
+<text x="318" y="230" class="tag tag-end" text-anchor="middle">hands off, exit 1</text>
 <path d="M 318 312 L 318 334" class="wire"/>
 <path d="M 313 326 L 318 334 L 323 326 Z" class="head"/>
 <rect x="248" y="334" width="140" height="24" rx="12" class="end"/>

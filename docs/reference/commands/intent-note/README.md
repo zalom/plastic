@@ -45,21 +45,22 @@ Adds a note line to the outcome of an intent.
 
 Its rows run in this order:
 
-1. Read: find the intent. [`note.rb:15`](../../../../lib/plastic/workflows/code/intent/note.rb#L15)
-2. Gate: passes when `!context.intent.nil?`; otherwise the call stops with exit 1 and prints no intent INTENT_ID in this store. [`note.rb:19`](../../../../lib/plastic/workflows/code/intent/note.rb#L19)
-3. Read: check the note. [`note.rb:21`](../../../../lib/plastic/workflows/code/intent/note.rb#L21)
-4. Gate: passes when `context.problem.nil?`; otherwise the call stops with exit 1 and prints PROBLEM. [`note.rb:25`](../../../../lib/plastic/workflows/code/intent/note.rb#L25)
-5. Step: write the note. Done when `!context.reference.nil?`, so a second call skips it. [`note.rb:27`](../../../../lib/plastic/workflows/code/intent/note.rb#L27)
-6. Read: say what was written. [`note.rb:31`](../../../../lib/plastic/workflows/code/intent/note.rb#L31)
-7. Outcome `:done`, always: finishes with exit 0; prints no next: line. [`note.rb:35`](../../../../lib/plastic/workflows/code/intent/note.rb#L35)
+1. Read: find the intent. [`note.rb:17`](../../../../lib/plastic/workflows/code/intent/note.rb#L17)
+2. Gate: passes when `!context.intent.nil?`; otherwise the call stops with exit 1 and prints no intent INTENT_ID in this store. [`note.rb:22`](../../../../lib/plastic/workflows/code/intent/note.rb#L22)
+3. Gate: passes when `!CLOSED.include?(context.status)`; otherwise the call stops with exit 1 and prints intent INTENT_ID is STATUS; a closed intent keeps its outcome. [`note.rb:24`](../../../../lib/plastic/workflows/code/intent/note.rb#L24)
+4. Read: check the note. [`note.rb:28`](../../../../lib/plastic/workflows/code/intent/note.rb#L28)
+5. Gate: passes when `context.problem.nil?`; otherwise the call stops with exit 1 and prints PROBLEM. [`note.rb:32`](../../../../lib/plastic/workflows/code/intent/note.rb#L32)
+6. Step: write the note. Done when `!context.reference.nil?`, so a second call skips it. [`note.rb:34`](../../../../lib/plastic/workflows/code/intent/note.rb#L34)
+7. Read: say what was written. [`note.rb:38`](../../../../lib/plastic/workflows/code/intent/note.rb#L38)
+8. Outcome `:done`, always: finishes with exit 0; prints no next: line. [`note.rb:42`](../../../../lib/plastic/workflows/code/intent/note.rb#L42)
 
-It sets `intent`, `problem`, `reference`.
+It sets `intent`, `status`, `problem`, `reference`.
 
 In the words of workflow engines, the rows are these four parts:
 
 - **Trigger**: the call starts the workflow `Code::Intent::Note`.
 - **Activities**: 3 reads and 1 step.
-- **Transitions**: 2 gates stop the call when their checks fail; a step runs only while its done check fails.
+- **Transitions**: 3 gates stop the call when their checks fail; a step runs only while its done check fails.
 - **Outcomes**: `:done` ends the call.
 
 ## What one call reads, writes and prints
@@ -80,7 +81,7 @@ A second call runs the same rows again. A step runs again only when its done che
 
 | Step | Done when | The second call | Code |
 | --- | --- | --- | --- |
-| write the note | `!context.reference.nil?` | skips it | [`note.rb:27`](../../../../lib/plastic/workflows/code/intent/note.rb#L27) |
+| write the note | `!context.reference.nil?` | skips it | [`note.rb:34`](../../../../lib/plastic/workflows/code/intent/note.rb#L34) |
 
 ## How a call ends
 
@@ -88,9 +89,10 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| no intent INTENT_ID in this store | 1 | prints no next: line | [`note.rb:19`](../../../../lib/plastic/workflows/code/intent/note.rb#L19) |
-| PROBLEM | 1 | prints no next: line | [`note.rb:25`](../../../../lib/plastic/workflows/code/intent/note.rb#L25) |
-| the outcome holds the note | 0 | prints no next: line | [`note.rb:35`](../../../../lib/plastic/workflows/code/intent/note.rb#L35) |
+| no intent INTENT_ID in this store | 1 | prints no next: line | [`note.rb:22`](../../../../lib/plastic/workflows/code/intent/note.rb#L22) |
+| intent INTENT_ID is STATUS; a closed intent keeps its outcome | 1 | plastic next | [`note.rb:24`](../../../../lib/plastic/workflows/code/intent/note.rb#L24) |
+| PROBLEM | 1 | prints no next: line | [`note.rb:32`](../../../../lib/plastic/workflows/code/intent/note.rb#L32) |
+| the outcome holds the note | 0 | prints no next: line | [`note.rb:42`](../../../../lib/plastic/workflows/code/intent/note.rb#L42) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
 | Usage error: KIND takes KINDS | 2 | prints no next: line | [`note.rb:21`](../../../../lib/plastic/commands/intent/note.rb#L21) |
 

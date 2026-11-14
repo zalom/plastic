@@ -21,7 +21,7 @@ module ArchitectureFigures
         add | | 850 44 280 | node add | 6  Plan the graph | code | mono | Nodes, and edges for the order.
         claim | | 850 134 280 | node claim | 7  Work the nodes | code | mono | Each node, claimed and done.
         judge | | 850 224 280 | intent judge | 8  Judge | agent | mono | Reasons over the finished work.
-        pull | | 850 314 280 | Pull request | 9  Review | owner | | The owner approves and merges.
+        pull | | 850 314 280 | Pull request | 9  Review | owner | | The agent merges; the owner approves when review is on.
         finish | | 850 450 280 | intent end | 10  Close | end | mono | Records the completion.
         abandon | | 30 450 280 | intent abandon | Any time | line | mono | Closes an intent that stops.
       TABLE

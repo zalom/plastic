@@ -91,8 +91,8 @@
 <path d="M 316 208 L 352 208" class="wire"/>
 <path d="M 344 203 L 352 208 L 344 213 Z" class="head"/>
 <rect x="352" y="192" width="392" height="70" rx="6" class="end"/>
-<text x="362" y="209" class="t" text-anchor="start">hands off: prints the steps left, exit 0</text>
-<text x="362" y="223" class="t" text-anchor="start">prints no next: line</text>
+<text x="362" y="209" class="t" text-anchor="start">hands off: prints the steps left, exit 1</text>
+<text x="362" y="223" class="t" text-anchor="start">next: plastic intent end %{intent_id}</text>
 <text x="362" y="237" class="t" text-anchor="start">because: intent %{intent_id} cannot end yet.</text>
 <text x="362" y="251" class="t" text-anchor="start">%{missing}</text>
 <rect x="16" y="270" width="300" height="56" rx="6" class="card"/>

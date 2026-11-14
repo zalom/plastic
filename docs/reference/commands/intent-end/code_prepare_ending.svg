@@ -126,7 +126,7 @@
 <path d="M 221 382 L 226 390 L 231 382 Z" class="head"/>
 <rect x="16" y="390" width="420" height="98" rx="6" class="card"/>
 <text x="26" y="405" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="405" class="tm tag-muted" text-anchor="end">prepare.rb:77</text>
+<text x="426" y="405" class="tm tag-muted" text-anchor="end">prepare.rb:84</text>
 <text x="26" y="422" class="tm" text-anchor="start">passes when !context.used_up</text>
 <path d="M 436 408 L 464 408" class="wire-refusal"/>
 <path d="M 456 403 L 464 408 L 456 413 Z" class="head"/>
@@ -141,7 +141,7 @@
 <path d="M 221 490 L 226 498 L 231 490 Z" class="head"/>
 <rect x="16" y="498" width="420" height="126" rx="6" class="card"/>
 <text x="26" y="513" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="513" class="tm tag-muted" text-anchor="end">prepare.rb:79</text>
+<text x="426" y="513" class="tm tag-muted" text-anchor="end">prepare.rb:86</text>
 <text x="26" y="530" class="tm" text-anchor="start">passes when !context.awaiting_approval</text>
 <path d="M 436 516 L 464 516" class="wire-refusal"/>
 <path d="M 456 511 L 464 516 L 456 521 Z" class="head"/>

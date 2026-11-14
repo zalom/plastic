@@ -17,7 +17,7 @@ local.db record it. Work that must be recognized gets an intent with a small gra
 | Decisions | Every decision is resolved. |
 | Verdict | The latest judge verdict is `accept` and is not older than the newest change of a live node. |
 | Outcome | `outcome.md` is substantive and stored by sync up. |
-| Pull request | With `review.pull_request` set to `required` (the default), `outcome.md` has a `Pull request:` bullet and, before the close, an `Approved:` bullet. With `off`, neither is asked for. |
+| Pull request | With `review.pull_request` set to `required`, `outcome.md` has a `Pull request:` bullet and, before the close, an `Approved:` bullet. With `off`, neither is asked for. |
 | Merge and map | `outcome.md` has a `Merged:` and an `Architecture map:` bullet. |
 
 A done criterion in `spec.md` carries a key in square brackets, such as
@@ -27,14 +27,14 @@ criterion with no key uses its full text as its key. A node names its key with
 
 ## What happens when something is missing
 
-- Records the agent can write, and a missing verdict, come back as a handoff with exit 0.
+- Records the agent can write, and a missing verdict, come back as a handoff with exit 1.
   The command lists them and closes nothing. When no accepted verdict counts, it names
   `plastic intent judge ID`.
 - A second `revise` verdict, or a call after two verdicts, is the owner's step: exit 3.
 - With `required`, a pull request without its `Approved:` bullet is the owner's step:
   exit 3. Wait for the person's approval, record it, and run the command again.
 - When the records hold but `outcome.md` lacks the merge records, the command hands the
-  agent two steps and closes nothing. Add these bullets under `## Verification` in
+  agent two steps and closes nothing; the agent merges its own pull request into the base first, and leaves it open only when the owner asked. Add these bullets under `## Verification` in
   outcome.md, run `plastic sync up`, and call the command again:
 
 ```
