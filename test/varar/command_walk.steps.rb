@@ -10,7 +10,8 @@ require_relative "support/kernel_command"
 # A setup line `write PATH TEXT` writes TEXT, with \n as a line break, to
 # PATH in the store instead of calling the command line, `register SLUG`
 # makes a store directory and lists it in projects.yml, and `legacy`
-# copies the legacy store fixture in. A cell drops the usage lines a brief
+# copies the legacy store fixture in. A word HOME in a setup line or a call
+# names the fresh home, so a call never writes outside it. A cell drops the usage lines a brief
 # prints, reads each time as TIME, each backup folder name as STAMP, each byte
 # count as SIZE and the home folder as HOME, and squeezes the spaces that align columns. A cell written as a code span is compared by
 # the text inside it.
@@ -22,10 +23,12 @@ module CommandWalk
   def call(row)
     Dir.mktmpdir("varar-command-walk") do |home|
       kernel = KernelCommand.new(home)
-      plain(row["setup"]).split(" ; ").reject { |line| line == "none" }.each { |line| set_up(kernel, line.shellsplit) }
-      cells(at_home(kernel.run(*plain(row["call"]).shellsplit, env: SESSION), home))
+      plain(row["setup"]).split(" ; ").reject { |line| line == "none" }.each { |line| set_up(kernel, words(line, home)) }
+      cells(at_home(kernel.run(*words(plain(row["call"]), home), env: SESSION), home))
     end
   end
+
+  def words(line, home) = line.shellsplit.map { |word| (word == "HOME") ? home : word }
 
   def at_home(call, home) = call.with(out: call.out.gsub(home, "HOME"), err: call.err.gsub(home, "HOME"))
 

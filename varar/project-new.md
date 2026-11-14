@@ -8,6 +8,6 @@ Each row gives the setup, the call, the exit code, the result and the next line:
 | ----- | ---- | ---- | ------ | --------- |
 | none | project new blog HOME | 0 | created AGENTS.md and CLAUDE.md in HOME / project blog: HOME | plastic intent new TITLE --project blog |
 | project new blog HOME | project new blog HOME | 0 | project blog: HOME | plastic intent new TITLE --project blog |
-| none | project new Bad_Name /tmp | 2 | the name must be lowercase letters, digits and dashes | none |
-| none | project new global /tmp | 3 | global is the name of the global store, not of a project | none |
+| none | project new Bad_Name HOME | 2 | the name must be lowercase letters, digits and dashes | none |
+| none | project new global HOME | 3 | global is the name of the global store, not of a project | none |
 | none | project new blog /nowhere | 1 | /nowhere is not a directory | none |
