@@ -11,28 +11,28 @@ class RollbackReleaseTest < Plastic::TestCase
     run_workflow(Plastic::Workflows::Code::Rollback, harness: scoped_harness(env:), target:)
   end
 
-  def test_with_no_target_the_previous_release_goes_active
+  def test_with_no_target_the_command_switches_to_the_previous_release
     activated("2.0.2", "2.0.3")
 
     outcome, context = roll
 
-    assert_equal [:done, "2.0.2"], [outcome, context.switched]
-    assert_equal %w[2.0.2 2.0.3], [activation.active_version, activation.previous_version]
+    assert_equal :done, outcome
+    assert_match(/--switch 2\.0\.2 /, context.command)
   end
 
-  def test_a_named_release_goes_active
+  def test_a_named_release_is_the_one_the_command_switches_to
     activated("2.0.1", "2.0.2", "2.0.3")
 
-    roll(target: "2.0.1")
+    _, context = roll(target: "2.0.1")
 
-    assert_equal "2.0.1", activation.active_version
+    assert_match(/--switch 2\.0\.1 /, context.command)
   end
 
-  def test_the_switch_links_the_launcher_to_the_active_release
+  def test_the_workflow_changes_no_active_release
     activated("2.0.2", "2.0.3")
 
     roll
 
-    assert_equal File.join(share, "active", "bin", "plastic"), File.readlink(File.join(@home, ".local", "bin", "plastic"))
+    assert_equal %w[2.0.3 2.0.2], [activation.active_version, activation.previous_version]
   end
 end

@@ -5,15 +5,19 @@ require_relative "installer_helper"
 class RollbackCommandTest < Plastic::TestCase
   include InstallerHelper
 
-  def test_names_the_switch_to_the_previous_release_and_changes_nothing
+  def test_names_the_switch_to_the_previous_release
     activated("2.0.2", "2.0.3")
-    before = tree_snapshot(share)
     result = call("rollback")
 
-    assert_equal 0, result.code, result.err
-    assert_equal [before, %w[2.0.3 2.0.2]], [tree_snapshot(share), [activation.active_version, activation.previous_version]]
-    assert_equal [], launcher_calls
-    assert_equal switch_line("2.0.2"), result.out[/^next:\s+(.*)$/, 1]
+    assert_equal [0, switch_line("2.0.2")], [result.code, result.out[/^next:\s+(.*)$/, 1]], result.err
+  end
+
+  def test_changes_nothing_and_starts_no_launcher
+    activated("2.0.2", "2.0.3")
+    before = tree_snapshot(share)
+    call("rollback")
+
+    assert_equal [before, %w[2.0.3 2.0.2], []], [tree_snapshot(share), [activation.active_version, activation.previous_version], launcher_calls]
   end
 
   def test_names_the_switch_to_a_named_installed_release
@@ -35,7 +39,7 @@ class RollbackCommandTest < Plastic::TestCase
 
   def switch_line(version)
     [RbConfig.ruby, "--disable-gems", "-rrbconfig", File.join(share, "releases", "2.0.3", "scripts", "install-release"), "--switch", version,
-     "--home", share, "--bin", File.join(@home, ".local", "bin"), "--plastic-home", @plastic_home, "--user-home", @home].join(" ")
+      "--home", share, "--bin", File.join(@home, ".local", "bin"), "--plastic-home", @plastic_home, "--user-home", @home].join(" ")
   end
 
   def test_refuses_when_no_release_is_installed

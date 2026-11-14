@@ -95,12 +95,20 @@ class InstallShDependencyTest < Minitest::Test
   # A PATH folder holding the real tools named and the fakes: curl writes each call to a log, git and
   # sha256sum answer, and ruby prints the version asked for.
   def machine(tools: [], fakes: [], ruby: nil)
-    bin = File.join(@dir, "minbin")
-    FileUtils.mkdir_p(bin)
-    (BASE_TOOLS + %w[tar] + tools).uniq.each { |tool| File.symlink(which(tool), File.join(bin, tool)) unless File.exist?(File.join(bin, tool)) }
-    fakes.each { |tool| File.write(File.join(bin, tool), fake(tool)) && File.chmod(0o755, File.join(bin, tool)) }
+    bin = FileUtils.mkdir_p(File.join(@dir, "minbin")).first
+    link_tools(bin, BASE_TOOLS + %w[tar] + tools)
+    fakes.each { |tool| write_executable(File.join(bin, tool), fake(tool)) }
     write_fake(bin, "ruby", ruby) if ruby
     bin
+  end
+
+  def link_tools(bin, tools)
+    tools.uniq.each { |tool| File.symlink(which(tool), File.join(bin, tool)) unless File.exist?(File.join(bin, tool)) }
+  end
+
+  def write_executable(path, text)
+    File.write(path, text)
+    File.chmod(0o755, path)
   end
 
   def write_fake(folder, name, version)

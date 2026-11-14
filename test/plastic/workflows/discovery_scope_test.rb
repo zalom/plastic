@@ -23,17 +23,17 @@ class DiscoveryScopeTest < Plastic::TestCase
   def configure(value) = File.write(File.join(@plastic_home, "config.yml"), { "global" => { "search" => { "source_projects" => value } } }.to_yaml)
 
   def test_the_environment_variable_is_not_read
-  store("other")
+    store("other")
 
-  assert_equal ["global"], resolve(env: { "PLASTIC_SOURCE_PROJECTS" => "other" })
-end
+    assert_equal ["global"], resolve(env: { "PLASTIC_SOURCE_PROJECTS" => "other" })
+  end
 
-def test_the_config_key_is_used_when_none_is_named
-  store("other")
-  configure("other,")
+  def test_the_config_key_is_used_when_none_is_named
+    store("other")
+    configure("other,")
 
-  assert_equal ["other"], resolve
-end
+    assert_equal ["other"], resolve
+  end
 
   def test_an_unknown_source_fails_the_call
     error = assert_raises(Plastic::CLI::Command::Failure) { resolve(%w[missing]) }

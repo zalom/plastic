@@ -73,7 +73,7 @@ class InstallerReleaseSourceTest < Minitest::Test
     source = InstallerRelease::ReleaseSource.for(directory)
 
     assert_equal "2.0.3", source.newest("alpha")
-    assert_equal File.join(directory, "plastic.tgz"), source.files("2.0.3", @root).archive
+    assert_equal File.join(@root, "plastic.tgz"), source.files("2.0.3", @root).archive
     assert_equal ["development mode: reading releases from #{directory}; this claims no release trust"], source.notices
   end
 

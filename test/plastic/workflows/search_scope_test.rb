@@ -21,32 +21,32 @@ class WorkflowSearchScopeTest < Plastic::TestCase
   def configure(value) = File.write(File.join(@plastic_home, "config.yml"), { "global" => { "search" => { "source_projects" => value } } }.to_yaml)
 
   def test_the_environment_variable_is_not_read
-  assert_equal ["global"], sources([], env: { "PLASTIC_SOURCE_PROJECTS" => "other" })
-end
+    assert_equal ["global"], sources([], env: { "PLASTIC_SOURCE_PROJECTS" => "other" })
+  end
 
-def test_the_config_key_selects_projects_when_none_are_named
-  configure("other")
+  def test_the_config_key_selects_projects_when_none_are_named
+    configure("other")
 
-  assert_equal ["other"], sources([])
-end
+    assert_equal ["other"], sources([])
+  end
 
-def test_the_config_key_takes_a_comma_list
-  configure("other,global")
+  def test_the_config_key_takes_a_comma_list
+    configure("other,global")
 
-  assert_equal %w[global other], sources([])
-end
+    assert_equal %w[global other], sources([])
+  end
 
-def test_named_projects_replace_the_config_key
-  configure("other")
+  def test_named_projects_replace_the_config_key
+    configure("other")
 
-  assert_equal ["global"], sources(["global"])
-end
+    assert_equal ["global"], sources(["global"])
+  end
 
-def test_an_unknown_project_in_the_config_key_is_a_usage_error
-  configure("missing")
+  def test_an_unknown_project_in_the_config_key_is_a_usage_error
+    configure("missing")
 
-  assert_equal "unknown source projects: missing", assert_raises(Plastic::CLI::Command::Usage) { sources([]) }.message
-end
+    assert_equal "unknown source projects: missing", assert_raises(Plastic::CLI::Command::Usage) { sources([]) }.message
+  end
 
   def test_an_unknown_project_is_a_usage_error
     error = assert_raises(Plastic::CLI::Command::Usage) { sources(%w[missing]) }

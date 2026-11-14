@@ -55,10 +55,14 @@ class UpdateCommandTest < Plastic::TestCase
   def test_downloads_the_three_files_and_names_the_install_command
     result = update_with_release("99.0.0-alpha.2")
 
-    assert_equal 0, result.code, result.err
-    assert_equal %w[plastic.manifest.json plastic.tgz plastic.tgz.sha256], Dir.children(download).sort
+    assert_equal [0, %w[plastic.manifest.json plastic.tgz plastic.tgz.sha256], install_line("99.0.0-alpha.2")],
+      [result.code, Dir.children(download).sort, result.out[/^next:\s+(.*)$/, 1]], result.err
+  end
+
+  def test_downloading_leaves_the_active_release_alone
+    update_with_release("99.0.0-alpha.2")
+
     assert_equal ["99.0.0-alpha.1", nil], [activation.active_version, activation.previous_version]
-    assert_equal install_line("99.0.0-alpha.2"), result.out[/^next:\s+(.*)$/, 1]
   end
 
   def test_the_channel_the_documentation_names_is_accepted
@@ -97,8 +101,8 @@ class UpdateCommandTest < Plastic::TestCase
 
   def install_line(version)
     [RbConfig.ruby, "--disable-gems", "-rrbconfig", File.join(share, "releases", "99.0.0-alpha.1", "scripts", "install-release"),
-     "--directory", download, "--version", version, "--home", share, "--bin", File.join(@home, ".local", "bin"),
-     "--plastic-home", @plastic_home, "--user-home", @home].join(" ")
+      "--directory", download, "--version", version, "--home", share, "--bin", File.join(@home, ".local", "bin"),
+      "--plastic-home", @plastic_home, "--user-home", @home].join(" ")
   end
 
   def update_with_release(version, *options, directory: local_release(version))
@@ -106,5 +110,4 @@ class UpdateCommandTest < Plastic::TestCase
     activated("99.0.0-alpha.1")
     call("update", *options, env: { "PLASTIC_PACKAGE_ROOT" => fake_package("99.0.0-alpha.1"), "PLASTIC_LOCAL_RELEASE" => directory })
   end
-
 end

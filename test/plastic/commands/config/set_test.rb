@@ -44,11 +44,11 @@ class ConfigSetTest < Plastic::TestCase
     assert_includes result.out + result.err, "statusline takes true or false"
   end
 
-def test_the_search_scope_takes_a_comma_value
-  result = set("search.source_projects", "global,other")
+  def test_the_search_scope_takes_a_comma_value
+    result = set("search.source_projects", "global,other")
 
-  assert_equal [0, "global,other"], [result.code, saved.dig("global", "search", "source_projects")]
-end
+    assert_equal [0, "global,other"], [result.code, saved.dig("global", "search", "source_projects")]
+  end
 
   def test_a_list_value_is_refused
     assert_equal 2, set("review.pull_request", "[a, b]").code
