@@ -14,6 +14,9 @@ module TestTimings
     # its cap after being re-run alone.
     Failure = Class.new(StandardError)
 
+    # Raised when the check could not run: the timings file is missing or a re-run failed.
+    NotRun = Class.new(Failure)
+
     def self.cap_for(file) = file.start_with?("varar/") ? CAPS.fetch(:document) : CAPS.fetch(:file)
 
     def initialize(path, rerun:, out: $stdout)
@@ -23,7 +26,7 @@ module TestTimings
     end
 
     def check
-      raise Failure, "missing timings file: #{@path}" unless File.exist?(@path)
+      raise NotRun, "missing timings file: #{@path}" unless File.exist?(@path)
 
       JSON.parse(File.read(@path)).each { |file, seconds| check_one(file, seconds) }
     end

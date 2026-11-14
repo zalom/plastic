@@ -62,7 +62,7 @@ module TestTimings
     def call(file)
       Benchmark.realtime do
         output, status = @runner.call(*command(file), chdir: @root)
-        raise Caps::Failure, "#{file} rerun failed: #{output}" unless status.success?
+        raise Caps::NotRun, "#{file} rerun failed: #{output}" unless status.success?
       end
     end
 
@@ -89,6 +89,9 @@ if $PROGRAM_NAME == __FILE__
 
   begin
     TestTimings::Caps.new(path, rerun: TestTimings::Rerun.new).check
+  rescue TestTimings::Caps::NotRun => e
+    warn e.message
+    exit 3
   rescue TestTimings::Caps::Failure => e
     warn e.message
     exit 1

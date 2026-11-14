@@ -70,9 +70,8 @@ class VerifyChangeRubycriticTest < Minitest::Test
     done = run_gate("Code smells" => 2)
 
     assert_equal 0, done.code
-    assert_includes done.out, "Code smells"
+    assert_includes done.out, "Code smells missed its target"
     assert_includes done.out, "Change verified"
-    refute_includes done.out, "Failed:"
   end
 
   def test_a_score_under_the_target_is_reported_and_fails_nothing

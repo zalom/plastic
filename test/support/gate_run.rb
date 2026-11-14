@@ -35,18 +35,17 @@ module GateRun
   def run_gate(codes)
     root = gate_fixture
     ran = []
-    runner = lambda do |_env, command|
-      title = step_of(command)
-      ran << title
-      codes.fetch(title, 0)
-    end
-    git = ->(*args) { [args.include?("diff") ? "#{SOURCE}\n" : "abc123\n", Git.new] }
     out = StringIO.new
     err = StringIO.new
-    sandbox = { "HOME" => "/nowhere", "PLASTIC_TMP" => "/nowhere" }
-    code = VerifyChange.new(["main"], root:, out:, err:, git:, run: runner, sandbox:).call
-    Finished.new(code, out.string, err.string, ran)
+    runner = ->(_env, command) { codes.fetch(step_of(command).tap { |title| ran << title }, 0) }
+    Finished.new(gate_for(root, out, err, runner).call, out.string, err.string, ran)
   ensure
     FileUtils.remove_entry(root) if root
+  end
+
+  def gate_for(root, out, err, runner)
+    git = ->(*args) { [args.include?("diff") ? "#{SOURCE}\n" : "abc123\n", Git.new] }
+    sandbox = { "HOME" => "/nowhere", "PLASTIC_TMP" => "/nowhere" }
+    VerifyChange.new(["main"], root:, out:, err:, git:, run: runner, sandbox:)
   end
 end

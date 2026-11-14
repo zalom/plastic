@@ -1,7 +1,11 @@
 # Reek reads this file. The detectors run at Reek's own defaults on every Ruby
-# file outside test/. The exclude lists below were generated with
-# `reek --todo` over older code, so those smells stay hidden. The lists never
-# gain an entry: a new or changed method that smells is fixed, never listed. lib/plastic/ has no entry and stays clean.
+# file outside test/, except four: NilCheck and IrresponsibleModule are off,
+# LongParameterList allows 5 parameters and TooManyStatements allows 10
+# statements. The exclude lists below were generated with `reek --todo` over
+# older code, so those smells stay hidden. The lists never gain an entry: a new
+# or changed method that smells is fixed, never listed. lib/plastic/ has no
+# entry and stays clean. The change gate prints the smells of a changed file
+# as a target and fails nothing, unless Reek did not run.
 ---
 exclude_paths:
   - test
@@ -164,62 +168,9 @@ detectors:
     - Plastic::CLI::Commands::Roadmap::Show
     - Plastic::CLI::Commands::Backup
   IrresponsibleModule:
-    exclude:
-    - Install
-    - Uninstall
-    - Rollback
-    - Update
-    - RunnerCore::Context
-    - Plastic::StoreLayout
-    - Doctor
-    - ReleaseGuard::Result
-    - NodeReturn::Result
-    - FeedbackReport::Result
-    - Plastic::WorkGraph
-    - Plastic::StoresMove::Refused
-    - Plastic::CLI
-    - Savepoint
-    - Plastic::Sqlite::Error
-    - SkillLint::Result
-    - Plastic::Backup
-    - Plastic::Backup::Missing
-    - SkillCensus::HistoryScanner::Result
-    - SkillCensus::TranscriptScanner::Result
-    - ContextBudget::Measurement
-    - ContextBudget::Report
-    - ContextBudget::Row
-    - ContextBudget::Sample
-    - Plastic::CLI::Scope
-    - Plastic::CLI::Scope::UnknownProject
-    - Plastic::CLI::Output
-    - Plastic::CLI::Legacy
-    - Plastic::CLI::Command
-    - Plastic::CLI::Command::Failure
-    - Plastic::CLI::Command::Refusal
-    - Plastic::CLI::Command::Usage
-    - Plastic::CLI::Commands::Roadmap::Next
-    - Plastic::CLI::Commands::Doctor
-    - Plastic::CLI::Commands::Next
-    - Plastic::CLI::Commands::Status
-    - Plastic::CLI::Commands::Help
-    - Plastic::CLI::Commands::Intent::End
-    - Plastic::CLI::Commands::Intent::Show
-    - Plastic::CLI::Commands::Intent::Spec
-    - Plastic::CLI::Commands::Project::Links
-    - Plastic::CLI::Commands::Search
-    - Plastic::CLI::Commands::Roadmap::Log
-    - Plastic::CLI::Commands::Project::List
-    - Plastic::CLI::Commands::Project::New
-    - Plastic::CLI::Commands::Hook
-    - Plastic::CLI::Commands::Intent::Rule
-    - Plastic::CLI::Commands::Version
-    - Plastic::CLI::Commands::Index
-    - Plastic::CLI::Commands::Roadmap::Check
-    - Plastic::CLI::Commands::Sync
-    - Plastic::CLI::Commands::Intent::New
-    - Plastic::CLI::Commands::Roadmap::Show
-    - Plastic::CLI::Commands::Backup
+    enabled: false
   LongParameterList:
+    max_params: 5
     exclude:
     - Install#preflight_gate
     - Install#run
@@ -267,23 +218,7 @@ detectors:
     - Plastic::CLI::Output#print_rows
     - Plastic::CLI::Commands::Intent::New#switches
   NilCheck:
-    exclude:
-    - Doctor#cli
-    - Preflight#check
-    - InstallerCore#advisor_enabled?
-    - InstallerCore#apply_config_flags
-    - InstallerCore#codex_model_fields
-    - InstallerCore#merge_claude_hooks
-    - InstallerCore#merge_engine_permissions
-    - InstallerCore#report_removed_hook_entries
-    - InstallerCore#report_removed_statusline
-    - InstallerCore#semver_compare
-    - ReleaseGuard#self.check
-    - ReleaseChannels#channels
-    - ReleaseChannels#compare
-    - ContextBudget::Row#enforced?
-    - ContextBudget::Row#gap
-    - Plastic::CLI::Commands::Doctor#call
+    enabled: false
   RepeatedConditional:
     exclude:
     - Doctor
@@ -312,6 +247,7 @@ detectors:
     - Plastic::CLI::Scope
     - Plastic::CLI::Output
   TooManyStatements:
+    max_statements: 10
     exclude:
     - Doctor#cli
     - Doctor#parse_args

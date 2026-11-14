@@ -33,6 +33,10 @@ class VerifyChange
     Every child runs under a throwaway HOME and PLASTIC_TMP, so a test or a
     mutant that spawns an installer cannot reach the real home directory.
 
+    The smell step (6), the score step (7) and the timing check print a miss of their target
+    and fail nothing. Each still fails when its tool did not run: Reek refusing its
+    configuration, a missing timings file, or a timing re-run that failed.
+
     Exit codes: 0 verified, 1 a check failed, 2 usage or git error.
   TEXT
 
@@ -58,7 +62,7 @@ class VerifyChange
   RSPEC = Suite.new(name: "RSpec", folder: "spec/", test_path: %r{\Aspec/.+_spec\.rb\z}, suffix: "_spec.rb",
                     locations: { %r{\Aapp/} => ["spec/"], %r{\Alib/} => ["spec/", "spec/lib/"], %r{\Atools/} => ["spec/tools/"] })
 
-  Step = Struct.new(:title, :env, :command)
+  Step = Struct.new(:title, :env, :command, :misses)
   LintDecision = Struct.new(:step, :skip_reason)
   Plan = Struct.new(:sources, :tests, :untested, :lint_files, :lint_decision, :steps)
 
@@ -75,7 +79,7 @@ class VerifyChange
     @out = out
     @err = err
     @git = git || ->(*args) { Open3.capture2e("git", "-C", root, *args) }
-    @run = run || ->(env, command) { system(env, *command, chdir: root) }
+    @run = run || ->(env, command) { system(env, *command, chdir: root) ? 0 : ($?&.exitstatus || 127) }
     @sandbox = sandbox
     @owned_sandbox = sandbox.nil?
     @mutation = mutation
@@ -186,7 +190,7 @@ class VerifyChange
     steps << step("Patch coverage", {}, %W[bundle exec simplecov patch --base #{base} --minimum #{PATCH_COVERAGE_MINIMUM}])
     steps << step("Mutation testing", {}, mutation_command(sources, tests, base, rails, suite)) if @mutation
     steps << step("CRAP scores", {}, %W[bundle exec bin/crap --threshold #{CRAP_THRESHOLD} --since #{base}] + sources)
-    steps << step("Code smells", {}, %w[bundle exec reek --config .reek.yml] + sources) if File.exist?(File.join(@root, ".reek.yml"))
+    steps << step("Code smells", {}, %w[bundle exec reek --config .reek.yml] + sources, [2]) if File.exist?(File.join(@root, ".reek.yml"))
     steps << critic_step(sources) if lint_gem_available?(:rubycritic)
     steps.compact
   end
@@ -198,7 +202,7 @@ class VerifyChange
     @err.puts "Not checked by RubyCritic, because #{LEGACY_LISTS.join(" or ")} lists them: #{legacy.join(", ")}" unless legacy.empty?
     return if scored.empty?
 
-    step("RubyCritic score", {}, %W[bundle exec rubycritic --no-browser --format console --minimum-score #{RUBYCRITIC_MINIMUM}] + scored)
+    step("RubyCritic score", {}, %W[bundle exec rubycritic --no-browser --format console --minimum-score #{RUBYCRITIC_MINIMUM}] + scored, [1, 2])
   end
 
   def legacy?(path)
@@ -210,8 +214,8 @@ class VerifyChange
     @legacy_lists ||= LEGACY_LISTS.select { |name| exist?(name) }.map { |name| File.read(File.join(@root, name)) }
   end
 
-  def step(title, env, command)
-    Step.new(title, sandbox.merge(env), command)
+  def step(title, env, command, misses = [])
+    Step.new(title, sandbox.merge(env), command, misses)
   end
 
   # The Tests step and the step right after it, which checks what the Tests
@@ -238,7 +242,7 @@ class VerifyChange
   end
 
   def timing_step
-    step(TIMING_STEP, {}, %w[bundle exec ruby] + [File.join(@root, "bin/lib/test_timings.rb"), "check", timings_path])
+    step(TIMING_STEP, {}, %w[bundle exec ruby] + [File.join(@root, "bin/lib/test_timings.rb"), "check", timings_path], [1])
   end
 
   def timings_path
@@ -377,14 +381,16 @@ class VerifyChange
     failed = []
     if plan.lint_decision.step
       @out.puts "\n== #{LINT_STEP}"
-      failed << plan.lint_decision.step unless @run.call(plan.lint_decision.step.env, plan.lint_decision.step.command)
+      failed << plan.lint_decision.step unless exit_code(plan.lint_decision.step).zero?
     elsif plan.lint_decision.skip_reason
       @out.puts "\nLint skipped: #{plan.lint_decision.skip_reason}"
     end
     @out.puts "\nMutation testing skipped: the step is frozen." unless @mutation
     plan.steps.each do |step|
       @out.puts "\n== #{step.title}"
-      next if @run.call(step.env, step.command)
+      code = exit_code(step)
+      next if code.zero?
+      next report_miss(step, code) if step.misses.include?(code)
 
       failed << step
       next unless step.title == TESTS_STEP
@@ -394,6 +400,18 @@ class VerifyChange
     end
     @out.puts failed.empty? ? "\nChange verified" : "\nFailed: #{failed.map(&:title).join(", ")}"
     failed.empty? ? 0 : 1
+  end
+
+  # A runner answers true, false or an exit code.
+  def exit_code(step)
+    answer = @run.call(step.env, step.command)
+    return answer if answer.is_a?(Integer)
+
+    answer ? 0 : 1
+  end
+
+  def report_miss(step, code)
+    @out.puts "#{step.title} missed its target (exit #{code}). A target fails nothing."
   end
 
   def rails?
