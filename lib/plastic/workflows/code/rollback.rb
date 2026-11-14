@@ -15,8 +15,8 @@ module Plastic
         sets :command
 
         read "name the switch command" do |context|
-          activation = ReleaseUpdate.of(context).activation
-          context[:command] = ReleaseCommand.of(context.scope).switch(activation.active_version, context.target || activation.previous_version)
+          installed = ReleaseUpdate.of(context).installed
+          context[:command] = ReleaseCommand.of(context.scope).switch(installed.active_version, context.target || installed.previous_version)
         end
 
         outcome :done, offers: "%{command}", because: "this command switches the active release; rollback changed nothing"

@@ -1,8 +1,7 @@
 # frozen_string_literal: true
 
 require "fileutils"
-require_relative "../../../scripts/lib/installer_release"
-require_relative "../../../scripts/lib/installer_release/share_entries"
+require_relative "../installations/share"
 
 module Plastic
   module Workflows
@@ -16,6 +15,8 @@ module Plastic
     class ReleaseRemoval
       FOREIGN = "%s is not Plastic's launcher; it stays"
       UNKNOWN = "%s holds files Plastic did not make; they stay"
+      OWN = %w[releases rubies active previous download INSTALL.lock activation VERSION].freeze
+      STAGES = /\Aplastic-(?:stage|download)-/
 
       def self.of(context)
         scope = context.scope
@@ -26,23 +27,35 @@ module Plastic
 
       def initialize(share:, launcher:)
         @share = share
-        @link = InstallerRelease::LauncherLink.new(launcher, share)
-        @entries = InstallerRelease::ShareEntries.new(share)
+        @installed = Installations::Share.new(share)
+        @link = @installed.launcher_link(launcher)
       end
 
-      def planned = [(link.path if link.linked?), (share if releases?)].compact
+      def planned = [(link.path if link.linked?), (share if installed.release?)].compact
 
       def call
         removed = planned
         FileUtils.rm_f(removed - [share])
-        closing_lines(removed, (removed & [share]).reject { entries.remove })
+        closing_lines(removed, (removed & [share]).reject { remove_share })
       end
 
       private
 
-      attr_reader :share, :link, :entries
+      attr_reader :share, :installed, :link
 
-      def releases? = File.directory?(File.join(share, "releases")) || File.file?(File.join(share, "VERSION"))
+      def remove_share
+        empty = own_entries.size == Dir.children(share).size
+        own_entries.each { |name| remove_entry(File.join(share, name)) }
+        Dir.rmdir(share) if empty
+        empty
+      end
+
+      def own_entries = Dir.children(share).select { |name| OWN.include?(name) || name.match?(STAGES) }.partition { |name| name != "rubies" }.flatten
+
+      def remove_entry(path)
+        FileUtils.chmod_R("u+w", path, force: true)
+        FileUtils.rm_rf(path)
+      end
 
       def closing_lines(removed, stayed) = (removed - stayed).map { |path| ["removed:", path] } + kept(stayed)
 

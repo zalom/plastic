@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "../../../scripts/lib/installer_release"
+require_relative "../installations/share"
 require_relative "installation_hooks"
 require_relative "installation_launcher"
 require_relative "installation_lock"
@@ -31,17 +31,17 @@ module Plastic
 
       def checks = managed? ? parts.insert(-2, hooks) : parts
 
-      def parts = managed? ? release_checks(active, activation.previous_version || "none") : unmanaged_checks
+      def parts = managed? ? release_checks(active, installed.previous_version || "none") : unmanaged_checks
 
-      def managed? = File.file?(File.join(activation.active_path, "VERSION"))
+      def managed? = File.file?(File.join(installed.active_path, "VERSION"))
 
       private
 
       attr_reader :share, :launcher, :home, :ruby_version
 
-      def activation = (@activation ||= InstallerRelease::Activation.new(home: share))
+      def installed = (@installed ||= Installations::Share.new(share))
 
-      def active = activation.active_version
+      def active = installed.active_version
 
       def unmanaged_checks = [Check.new("active:", "none; no release is activated", nil), Check.new("installation:", UNMANAGED, nil), ruby]
 

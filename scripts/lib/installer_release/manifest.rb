@@ -5,8 +5,6 @@ require "json"
 require "openssl"
 
 module InstallerRelease
-  class VerificationError < StandardError; end
-
   # The JSON file published beside the archive. It binds the archive's name
   # and SHA-256 to one release of the official repository.
   class Manifest

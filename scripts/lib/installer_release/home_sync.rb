@@ -3,7 +3,6 @@
 require "fileutils"
 require "open3"
 require_relative "hook_strip"
-require_relative "launcher_link"
 require_relative "managed_home"
 require_relative "pointer"
 

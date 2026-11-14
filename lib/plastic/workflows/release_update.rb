@@ -1,7 +1,9 @@
 # frozen_string_literal: true
 
 require "fileutils"
-require_relative "../../../scripts/lib/installer_release"
+require_relative "../installations/release_feed"
+require_relative "../installations/release_source"
+require_relative "../installations/share"
 
 module Plastic
   module Workflows
@@ -16,7 +18,7 @@ module Plastic
       def self.of(context)
         scope = context.scope
         share = scope.setting("PLASTIC_SHARE", File.join(scope.home, ".local", "share", "plastic"))
-        new(share, InstallerRelease::ReleaseSource.for(scope.setting("PLASTIC_LOCAL_RELEASE")))
+        new(share, Installations::ReleaseSource.for(scope.setting("PLASTIC_LOCAL_RELEASE")))
       end
 
       def initialize(share, source)
@@ -24,36 +26,32 @@ module Plastic
         @source = source
       end
 
-      def activation = InstallerRelease::Activation.new(home: share)
+      def installed = Installations::Share.new(share)
 
-      def active_version = activation.active_version
+      def active_version = installed.active_version
 
       def notices = source.notices
 
       def newer_release(channel = nil)
         active = active_version
-        newest = source.newest(CHANNELS.fetch(channel) { InstallerRelease::Manifest.identity(active).fetch("channel") })
-        newest if newest && InstallerRelease::ReleaseFeed.newer?(newest, active)
+        newest = source.newest(CHANNELS.fetch(channel) { Installations::ReleaseFeed.channel_of(active) })
+        newest if newest && Installations::ReleaseFeed.newer?(newest, active)
       end
 
       def download(version)
         directory = File.join(share, "download")
-        empty(directory)
+        FileUtils.rm_rf(directory)
+        FileUtils.mkdir_p(directory)
         source.files(version, directory).verify
         directory
-      rescue InstallerRelease::VerificationError
-        empty(directory)
+      rescue Installations::VerificationError
+        FileUtils.rm_rf(directory)
         raise
       end
 
       private
 
       attr_reader :share, :source
-
-      def empty(directory)
-        FileUtils.rm_rf(directory)
-        FileUtils.mkdir_p(directory)
-      end
     end
   end
 end
