@@ -24,7 +24,9 @@ module Plastic
 
           # One line for each path read. A path the database refuses is left as it is and named in `refused`.
           def call(paths)
-            done = write(paths.map(&reader.method(:read)))
+            reads = paths.map(&reader.method(:read))
+            written = write(reads)
+            done = reads.select { |read| written.include?(read) }
             reprint(done)
             done.map(&:line)
           end

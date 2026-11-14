@@ -44,10 +44,9 @@ module Plastic
             readability.call(entries.select { |entry| readable?(entry, rowed) }.map(&:path))
           end
 
-          # A changed file that is the index, a hand edited generated file with rows, or belongs to an intent that has its rows; the files of a folder without rows read after its row is written.
+          # A changed file of an intent that has its rows, or a generated file a person changed after its print; the files of a folder without rows read after its row is written.
           def self.readable?(entry, rowed)
             path = entry.path
-            return true if path == StoreFolder::INDEX && %i[read conflict].include?(entry.action(:up))
             return entry.hand_edited? && !entry.rows_sha.nil? if entry.generated?
 
             %i[read conflict].include?(entry.action(:up)) && rowed.any? { |dir| path.start_with?("#{dir}/") }
@@ -96,11 +95,13 @@ module Plastic
             named_print?(entry) ? :print : action
           end
 
-          # A generated file a person changed is read when it can be and kept as written when it cannot.
+          # A generated file a person changed is read when it can be and kept as written when it cannot;
+          # one that arrived and was never printed here prints from the rows.
           def generated_up(entry)
             return :none unless entry.hand_edited? && entry.rows_sha
+            return :read unless unreadable_files.key?(entry.path)
 
-            unreadable_files.key?(entry.path) ? :none : :read
+            entry.printed_sha ? :none : :print
           end
 
           # An overwrite that names this path prints it from its rows when the file differs from them.

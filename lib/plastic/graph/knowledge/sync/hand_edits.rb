@@ -21,7 +21,7 @@ module Plastic
           def call
             printed = @retrieval.printed
             edited = prints.select { |print| hand_edited?(print, printed) }.map(&:path)
-            unreadable = Readability.new(@folder, @retrieval, @databases).call(edited)
+            unreadable = Readability.new(@folder, @retrieval, @databases).call(edited.reject { |path| Entry.generated?(path) && !printed[path] })
             edited.to_h { |path| [path, unreadable[path]] }
           end
 
