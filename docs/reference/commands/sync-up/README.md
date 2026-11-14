@@ -101,7 +101,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | changed on both sides since the last print, nothing written: CONFLICTS; pass --overwrite PATH, --overwrite or --merge | 3 | prints no next: line | [`sync_steps.rb:90`](../../../../lib/plastic/workflows/sync_steps.rb#L90) |
 | changed on both sides since the last print, left as they are: CONFLICTS; pass --overwrite PATH or --overwrite | 3 | prints no next: line | [`sync_steps.rb:96`](../../../../lib/plastic/workflows/sync_steps.rb#L96) |
 | intent folders that could not be read, the others were read: UNREADABLE fix or remove each folder named, then run plastic sync up again | 1 | prints no next: line | [`sync_steps.rb:82`](../../../../lib/plastic/workflows/sync_steps.rb#L82) |
-| files that cannot be read into rows, the others were read: UNREADABLE_FILES  | 1 | plastic sync down --overwrite UNREADABLE_PATH | [`sync_steps.rb:83`](../../../../lib/plastic/workflows/sync_steps.rb#L83) |
+| files that cannot be read into rows, the others were read: UNREADABLE_FILES | 1 | plastic sync down --overwrite UNREADABLE_PATH | [`sync_steps.rb:83`](../../../../lib/plastic/workflows/sync_steps.rb#L83) |
 | the rows hold every file changed by hand | 0 | plastic next | [`sync_steps.rb:78`](../../../../lib/plastic/workflows/sync_steps.rb#L78) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
 
