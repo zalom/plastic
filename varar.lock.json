@@ -627,7 +627,7 @@
       ]
     },
     "varar/sync-up.md": {
-      "sourceHash": "fnv1a:ad11c2ba",
+      "sourceHash": "fnv1a:45d56a9a",
       "examples": [
         {
           "name": "Each row gives the change, the exit code, the result and the rows:",
