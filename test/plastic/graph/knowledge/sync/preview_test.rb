@@ -113,6 +113,20 @@ class KnowledgeSyncPreviewTest < Plastic::TestCase
     refute_path_exists missing
   end
 
+  def test_a_dry_run_of_sync_up_keeps_each_file_the_real_run_cannot_read_with_its_reason
+    write("store/1--alpha/graph.json", "{\"hand\":true}\n")
+    run = Plastic::Graph::Knowledge::Sync::Preview.new(@plastic_home, "global", {}).run
+
+    assert_equal [["store/1--alpha/graph.json"], []], [run.unreadable_files.keys, run.unreadable]
+  end
+
+  def test_a_dry_run_of_sync_down_keeps_no_file_to_refuse
+    write("store/1--alpha/graph.json", "{\"hand\":true}\n")
+    run = Plastic::Graph::Knowledge::Sync::Preview.new(@plastic_home, "global", {}, direction: :down).run
+
+    assert_empty run.unreadable_files
+  end
+
   def test_a_symbolic_link_is_rejected_before_copying
     target = File.join(@plastic_home, "outside")
     File.write(target, "keep")

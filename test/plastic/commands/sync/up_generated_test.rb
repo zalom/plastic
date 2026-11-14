@@ -57,4 +57,25 @@ class SyncUpGeneratedTest < Plastic::TestCase
 
     assert_equal [1, true], [result.code, result.out.include?("sync down --overwrite #{other.dir}/graph.json")], result.err
   end
+
+  def test_a_preview_of_sync_up_names_a_file_it_cannot_read_and_exits_as_the_real_run_does
+    specified
+    path = "#{open_intent("Beta").dir}/graph.json"
+    write(path, "{\"hand\":true}\n")
+    dry = cli("sync", "up", "--dry-run")
+    kept = File.read(store_path(path))
+    real = cli("sync", "up")
+
+    assert_equal [1, true, "{\"hand\":true}\n", 1], [dry.code, (dry.out + dry.err).include?("sync down --overwrite #{path}"), kept, real.code], dry.err
+  end
+
+  def test_a_preview_of_sync_up_names_a_changed_roadmap_it_would_print_again_and_exits_as_the_real_run_does
+    cli("roadmap", "new", "r1")
+    write("roadmaps/r1.md", "# by hand\n")
+    dry = cli("sync", "up", "--dry-run")
+    kept = File.read(store_path("roadmaps/r1.md"))
+    real = cli("sync", "up")
+
+    assert_equal [0, true, "# by hand\n", 0], [dry.code, dry.out.include?("preview: printed again from rows: roadmaps/r1.md"), kept, real.code], dry.err
+  end
 end
