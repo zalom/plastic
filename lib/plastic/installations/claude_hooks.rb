@@ -22,8 +22,9 @@ module Plastic
         settings = Files.read_json(path) || {}
         removed = purge(settings["hooks"] ||= {})
         settings = @package.entries.claude(settings)
-        add_registered(settings["hooks"])
-        Report.removed_hooks(removed - Report.pairs(settings["hooks"]), "settings.json")
+        hooks = settings["hooks"]
+        add_registered(hooks)
+        Report.removed_hooks(removed - Report.pairs(hooks), "settings.json")
         status_line(settings, choice)
         Files.write_json(path, settings)
       end
