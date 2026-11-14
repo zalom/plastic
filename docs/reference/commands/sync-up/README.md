@@ -41,14 +41,14 @@ Previews the same sync in a copy before the normal write workflow, and refuses w
 
 Its rows run in this order:
 
-1. Read: preview the sync in an isolated copy. [`preview.rb:38`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L38)
-2. Gate: passes when `!context.dry_run || SyncSteps.public_send(name, context)`; otherwise the call stops with exit 1 and prints FAILURE. [`preview.rb:39`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L39)
-3. Gate: passes when `!context.dry_run || SyncSteps.public_send(name, context)`; otherwise the call stops with exit 3 and prints changed on both sides since the last print, nothing written: CONFLICTS; pass --overwrite PATH, --overwrite or --merge. [`preview.rb:39`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L39)
-4. Gate: passes when `!context.dry_run || SyncSteps.public_send(name, context)`; otherwise the call stops with exit 3 and prints changed on both sides since the last print, left as they are: CONFLICTS; pass --overwrite PATH or --overwrite. [`preview.rb:39`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L39)
-5. Gate: passes when `!context.dry_run || SyncSteps.public_send(name, context)`; otherwise the call stops with exit 1 and prints intent folders that could not be read, the others were read: UNREADABLE fix or remove each folder named, then run plastic sync up again. [`preview.rb:39`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L39)
-6. Gate: passes when `!context.dry_run || SyncSteps.public_send(name, context)`; otherwise the call stops with exit 1 and prints files that cannot be read into rows, the others were read: UNREADABLE_FILES. [`preview.rb:39`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L39)
-7. Outcome `:done`, when `context.dry_run`: finishes with exit 0; next: ORIGINAL_COMMAND. [`preview.rb:43`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L43)
-8. Outcome `:continue`, otherwise: starts the workflow [Code::Sync::Up](#codesyncup). [`preview.rb:44`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L44)
+1. Read: preview the sync in an isolated copy. [`preview.rb:43`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L43)
+2. Gate: passes when `!DRY_RUN.call(context) || SyncSteps.public_send(name, context)`; otherwise the call stops with exit 1 and prints FAILURE. [`preview.rb:54`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L54)
+3. Gate: passes when `!DRY_RUN.call(context) || SyncSteps.public_send(name, context)`; otherwise the call stops with exit 3 and prints changed on both sides since the last print, nothing written: CONFLICTS; pass --overwrite PATH, --overwrite or --merge. [`preview.rb:54`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L54)
+4. Gate: passes when `!DRY_RUN.call(context) || SyncSteps.public_send(name, context)`; otherwise the call stops with exit 3 and prints changed on both sides since the last print, left as they are: CONFLICTS; pass --overwrite PATH or --overwrite. [`preview.rb:54`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L54)
+5. Gate: passes when `!DRY_RUN.call(context) || SyncSteps.public_send(name, context)`; otherwise the call stops with exit 1 and prints intent folders that could not be read, the others were read: UNREADABLE fix or remove each folder named, then run plastic sync up again. [`preview.rb:54`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L54)
+6. Gate: passes when `!DRY_RUN.call(context) || SyncSteps.public_send(name, context)`; otherwise the call stops with exit 1 and prints files that cannot be read into rows, the others were read: UNREADABLE_FILES. [`preview.rb:54`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L54)
+7. Outcome `:done`, when `context.dry_run`: finishes with exit 0; next: ORIGINAL_COMMAND. [`preview.rb:49`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L49)
+8. Outcome `:continue`, otherwise: starts the workflow [Code::Sync::Up](#codesyncup). [`preview.rb:50`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L50)
 
 It sets `failure`, `conflicts`, `merging`, `unreadable`, `unreadable_files`, `unreadable_path`.
 
@@ -104,12 +104,12 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| FAILURE | 1 | prints no next: line | [`preview.rb:39`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L39) |
-| changed on both sides since the last print, nothing written: CONFLICTS; pass --overwrite PATH, --overwrite or --merge | 3 | prints no next: line | [`preview.rb:39`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L39) |
-| changed on both sides since the last print, left as they are: CONFLICTS; pass --overwrite PATH or --overwrite | 3 | prints no next: line | [`preview.rb:39`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L39) |
-| intent folders that could not be read, the others were read: UNREADABLE fix or remove each folder named, then run plastic sync up again | 1 | prints no next: line | [`preview.rb:39`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L39) |
-| files that cannot be read into rows, the others were read: UNREADABLE_FILES | 1 | plastic sync down --overwrite UNREADABLE_PATH | [`preview.rb:39`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L39) |
-| the preview wrote only to a disposable copy | 0 | ORIGINAL_COMMAND | [`preview.rb:43`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L43) |
+| FAILURE | 1 | prints no next: line | [`preview.rb:54`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L54) |
+| changed on both sides since the last print, nothing written: CONFLICTS; pass --overwrite PATH, --overwrite or --merge | 3 | prints no next: line | [`preview.rb:54`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L54) |
+| changed on both sides since the last print, left as they are: CONFLICTS; pass --overwrite PATH or --overwrite | 3 | prints no next: line | [`preview.rb:54`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L54) |
+| intent folders that could not be read, the others were read: UNREADABLE fix or remove each folder named, then run plastic sync up again | 1 | prints no next: line | [`preview.rb:54`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L54) |
+| files that cannot be read into rows, the others were read: UNREADABLE_FILES | 1 | plastic sync down --overwrite UNREADABLE_PATH | [`preview.rb:54`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L54) |
+| the preview wrote only to a disposable copy | 0 | ORIGINAL_COMMAND | [`preview.rb:49`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L49) |
 | FAILURE | 1 | prints no next: line | [`sync_steps.rb:97`](../../../../lib/plastic/workflows/sync_steps.rb#L97) |
 | changed on both sides since the last print, nothing written: CONFLICTS; pass --overwrite PATH, --overwrite or --merge | 3 | prints no next: line | [`sync_steps.rb:98`](../../../../lib/plastic/workflows/sync_steps.rb#L98) |
 | changed on both sides since the last print, left as they are: CONFLICTS; pass --overwrite PATH or --overwrite | 3 | prints no next: line | [`sync_steps.rb:104`](../../../../lib/plastic/workflows/sync_steps.rb#L104) |

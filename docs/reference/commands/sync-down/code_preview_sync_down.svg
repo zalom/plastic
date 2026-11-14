@@ -72,14 +72,14 @@
 <text x="436" y="22" class="tm tag-muted" text-anchor="end">preview.rb:12</text>
 <rect x="16" y="34" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="49" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="49" class="tm tag-muted" text-anchor="end">preview.rb:38</text>
+<text x="426" y="49" class="tm tag-muted" text-anchor="end">preview.rb:43</text>
 <text x="26" y="66" class="t" text-anchor="start">preview the sync in an isolated copy</text>
 <path d="M 226 79 L 226 89" class="wire"/>
 <path d="M 221 81 L 226 89 L 231 81 Z" class="head"/>
 <rect x="16" y="89" width="420" height="60" rx="6" class="card"/>
 <text x="26" y="104" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="104" class="tm tag-muted" text-anchor="end">preview.rb:39</text>
-<text x="26" y="121" class="tm" text-anchor="start">passes when !context.dry_run ||</text>
+<text x="426" y="104" class="tm tag-muted" text-anchor="end">preview.rb:54</text>
+<text x="26" y="121" class="tm" text-anchor="start">passes when !DRY_RUN.call(context) ||</text>
 <text x="26" y="136" class="tm" text-anchor="start">SyncSteps.public_send(name, context)</text>
 <path d="M 436 107 L 464 107" class="wire-failure"/>
 <path d="M 456 102 L 464 107 L 456 112 Z" class="head"/>
@@ -90,8 +90,8 @@
 <path d="M 221 151 L 226 159 L 231 151 Z" class="head"/>
 <rect x="16" y="159" width="420" height="98" rx="6" class="card"/>
 <text x="26" y="174" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="174" class="tm tag-muted" text-anchor="end">preview.rb:39</text>
-<text x="26" y="191" class="tm" text-anchor="start">passes when !context.dry_run ||</text>
+<text x="426" y="174" class="tm tag-muted" text-anchor="end">preview.rb:54</text>
+<text x="26" y="191" class="tm" text-anchor="start">passes when !DRY_RUN.call(context) ||</text>
 <text x="26" y="206" class="tm" text-anchor="start">SyncSteps.public_send(name, context)</text>
 <path d="M 436 177 L 464 177" class="wire-refusal"/>
 <path d="M 456 172 L 464 177 L 456 182 Z" class="head"/>
@@ -106,8 +106,8 @@
 <path d="M 221 259 L 226 267 L 231 259 Z" class="head"/>
 <rect x="16" y="267" width="420" height="98" rx="6" class="card"/>
 <text x="26" y="282" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="282" class="tm tag-muted" text-anchor="end">preview.rb:39</text>
-<text x="26" y="299" class="tm" text-anchor="start">passes when !context.dry_run ||</text>
+<text x="426" y="282" class="tm tag-muted" text-anchor="end">preview.rb:54</text>
+<text x="26" y="299" class="tm" text-anchor="start">passes when !DRY_RUN.call(context) ||</text>
 <text x="26" y="314" class="tm" text-anchor="start">SyncSteps.public_send(name, context)</text>
 <path d="M 436 285 L 464 285" class="wire-refusal"/>
 <path d="M 456 280 L 464 285 L 456 290 Z" class="head"/>
