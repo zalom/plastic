@@ -93,7 +93,7 @@ module Plastic
       def noter = (@noter ||= Knowledge::Intent::Noter.new(@writers.databases, @writers.retrieval))
 
       def preview_sync(options, direction: :up)
-        Knowledge::Sync::Preview.new(home_dir, @retrieval.store, options, direction:).call
+        Knowledge::Sync::Preview.new(home_dir, @retrieval.store, options, direction:).run
       end
 
       # Returns [ok, problem, kind]; kind is :failure or :refusal, nil on success.

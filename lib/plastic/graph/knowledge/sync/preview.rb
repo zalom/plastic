@@ -13,15 +13,25 @@ module Plastic
     module Knowledge
       class Sync
         # A dry run of a sync: the lines of what it would do, on a copy of the store.
-        # A dry run of a sync: the lines of what it would do, on a copy of the store.
         class Preview
+          # The lines of a dry run, and what the real sync up would refuse: the intent folders it cannot read,
+          # and each changed file no reader turns into rows, with the reason.
+          Run = Data.define(:lines, :unreadable, :unreadable_files)
+
           def initialize(home, store, options, direction: :up)
             @home, @store, @options, @direction = home, store, options, direction
           end
 
           def self.conflict_lines(plan) = plan.conflicts.map { |path| "conflict: #{path}" }
 
-          def call = Dir.mktmpdir("plastic-sync-preview", parent_dir) { |copy| lines_in(copy) }.map { |line| "preview: #{line}" }
+          def self.printed_over_lines(plan) = plan.printed_over.map { |path| Graph::Prints.printed_over_line(path) }
+
+          def call = run.lines
+
+          def run
+            found = Dir.mktmpdir("plastic-sync-preview", parent_dir) { |copy| run_in(copy) }
+            found.with(lines: found.lines.map { |line| "preview: #{line}" })
+          end
 
           private
 
@@ -43,17 +53,25 @@ module Plastic
 
           def parent_dir = File.directory?(@home) ? @home : Dir.tmpdir
 
-          def lines_in(copy)
+          def run_in(copy)
             twin = copy_source(copy)
             applied = applied_in(copy)
             changes = Changes.new(source, twin).call
-            [*applied, *changes, "paths that would change: #{changes.size}"]
+            applied.with(lines: [*applied.lines, *changes, "paths that would change: #{changes.size}"])
           end
 
           def applied_in(copy)
             work = Graph.open(home: copy, store: @store).work
             plan = checked(work.sync_plan(@direction, options))
-            [*Preview.conflict_lines(plan), *work.sync_apply(plan, rollback: Legacy::Unguarded)]
+            lines = [*Preview.conflict_lines(plan), *work.sync_apply(plan, rollback: Legacy::Unguarded), *Preview.printed_over_lines(plan)]
+            Run.new(lines:, **refused(work, plan))
+          end
+
+          # What the real sync up refuses after its apply; a sync down refuses none of it.
+          def refused(work, plan)
+            return { unreadable: [], unreadable_files: {} } unless @direction == :up
+
+            { unreadable: plan.unreadable, unreadable_files: work.sync_plan(@direction, options).unreadable_files }
           end
 
           def checked(plan)
