@@ -175,6 +175,68 @@ class InstallerCoreTest < Minitest::Test
   end
 end
 
+# The lines the installer prints and warns: plain ASCII, one fact each.
+class InstallerCoreNoticesTest < Minitest::Test
+  include InstallerCoreHome
+
+  def plastic_home = File.join(@home, ".plastic")
+
+  def test_a_prune_inside_the_intent_store_is_refused_with_a_plain_warning
+    _, err = capture_io { installer.prune_removed_files([File.join(plastic_home, "store", "x.md")], root: plastic_home) }
+
+    assert_equal "   Refused to prune #{File.join(plastic_home, "store", "x.md")}: inside the intent store\n", err
+  end
+
+  def test_a_prune_outside_the_root_is_skipped_with_a_plain_warning
+    outside = File.join(@home, "elsewhere.md")
+    _, err = capture_io { installer.prune_removed_files([outside], root: plastic_home) }
+
+    assert_equal "   Skipped prune of #{outside}: outside #{plastic_home}\n", err
+  end
+
+  def test_a_retired_session_file_that_cannot_be_deleted_is_named_in_a_warning
+    session = File.join(Plastic::StoreLayout.global_store(plastic_home), ".tmp", "s1")
+    FileUtils.mkdir_p(session)
+    File.write(File.join(session, "current"), "x")
+    File.chmod(0o555, session)
+    _, err = capture_io { installer.remove_retired_session_state(plastic_home: plastic_home, tmp_dirs: []) }
+
+    assert_includes err, "   Could not remove retired session state #{File.join(session, "current")}"
+  ensure
+    File.chmod(0o755, session)
+  end
+
+  def test_a_status_line_file_an_earlier_install_wrote_is_removed_with_one_line_on_turning_it_on
+    path = File.join(@home, "plastic-statusline")
+    File.write(path, "x")
+    out, = capture_io { installer.drop_status_line_file(path) }
+
+    assert_equal [false, "  Status line removed. To turn it on: plastic config set statusline true\n"], [File.exist?(path), out]
+  end
+
+  def test_a_status_line_file_that_is_not_there_prints_nothing
+    out, = capture_io { installer.drop_status_line_file(File.join(@home, "absent")) }
+
+    assert_equal "", out
+  end
+
+  def test_a_legacy_plugin_install_is_migrated_with_a_plain_line
+    legacy = File.join(@home, ".claude", "plugins", "marketplaces", "plastic")
+    FileUtils.mkdir_p(legacy)
+    out, = capture_io { installer.migrate_legacy_plugin(File.join(@home, ".claude")) }
+
+    assert_includes out, "  Migrated legacy plugin install:\n"
+  end
+
+  def test_the_removed_hook_entries_are_counted_in_the_singular_and_the_plural
+    one, = capture_io { installer.report_removed_hook_entries([%w[Stop plastic-old]], "settings.json") }
+    two, = capture_io { installer.report_removed_hook_entries([%w[Stop a], %w[Start b]], "settings.json") }
+
+    assert_equal ["  Removed 1 stale Plastic hook entry from settings.json:\n", "  Removed 2 stale Plastic hook entries from settings.json:\n"],
+      [one.lines.first, two.lines.first]
+  end
+end
+
 class InstallerCoreBootstrapTest < Minitest::Test
   include InstallerCoreHome
 

@@ -22,6 +22,24 @@ class InstallTest < Minitest::Test
     def run(**arguments) = runs << arguments
   end
 
+  def test_a_first_install_runs_the_selected_agents
+    with_probe do |installer|
+      installer.selected = ["claude"]
+
+      capture_io { assert_equal 0, installer.cli(["--claude"]) }
+
+      assert_equal [{ selected: ["claude"], reinstall: false, ledger_action: nil, argv: ["--claude"] }], installer.runs
+    end
+  end
+
+  def test_an_agent_that_failed_is_named_with_its_reason_and_no_symbol
+    with_probe do |installer|
+      out, = capture_io { installer.send(:print_results, [{ agent: "Claude Code", success: false, reason: "no folder" }], :install) }
+
+      assert_includes out, "   Claude Code: no folder\n"
+    end
+  end
+
   def test_returns_without_writing_when_no_agent_is_selected
     with_probe do |installer|
       output, = capture_io { assert_equal 0, installer.cli([]) }

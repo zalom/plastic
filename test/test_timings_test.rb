@@ -132,6 +132,52 @@ class TestTimingsTest < Minitest::Test
   end
 end
 
+class TestTimingsVerdictTest < Minitest::Test
+  def verdict(seconds, rerun)
+    Dir.mktmpdir do |dir|
+      path = File.join(dir, "timings.json")
+      File.write(path, JSON.generate(seconds))
+      err = StringIO.new
+      [TestTimings.verdict(path, rerun:, err:), err.string]
+    end
+  end
+
+  def test_a_file_under_its_cap_exits_0_in_silence
+    assert_equal [0, ""], verdict({ "test/plain_test.rb" => 1.0 }, ->(_file) { 1.0 })
+  end
+
+  def test_a_file_over_its_cap_exits_1_and_names_it
+    status, message = verdict({ "test/plain_test.rb" => 5.5 }, ->(_file) { 6.2 })
+
+    assert_equal 1, status
+    assert_includes message, "test/plain_test.rb"
+  end
+
+  def test_a_rerun_that_could_not_run_exits_3_and_says_why
+    rerun = ->(_file) { raise TestTimings::Caps::NotRun, "test/plain_test.rb rerun failed: load failed" }
+
+    assert_equal [3, "test/plain_test.rb rerun failed: load failed\n"], verdict({ "test/plain_test.rb" => 5.5 }, rerun)
+  end
+end
+
+class TestTimingsCliTest < Minitest::Test
+  def test_a_call_without_a_path_prints_the_usage_and_exits_2
+    err = StringIO.new
+
+    assert_equal 2, TestTimings.cli(["check"], err:)
+    assert_equal "Usage: bin/lib/test_timings.rb check PATH\n", err.string
+  end
+
+  def test_a_check_call_gives_the_verdict_of_the_named_file
+    Dir.mktmpdir do |dir|
+      path = File.join(dir, "timings.json")
+      File.write(path, JSON.generate({ "test/plain_test.rb" => 1.0 }))
+
+      assert_equal 0, TestTimings.cli(["check", path], rerun: ->(_file) { 1.0 }, err: StringIO.new)
+    end
+  end
+end
+
 class TestTimingsRerunTest < Minitest::Test
   def test_rerun_shells_to_bin_test_only_for_a_plain_file
     seen = nil

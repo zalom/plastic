@@ -4,6 +4,7 @@ require "json"
 require "fileutils"
 require "minitest"
 require "benchmark"
+require "open3"
 require_relative "test_timings/documents"
 require_relative "test_timings/caps"
 
@@ -76,24 +77,28 @@ module TestTimings
       ["bundle", "exec", "ruby", "bin/test", "--name", "/\\A#{name}#/", "--system"]
     end
   end
-end
 
-if $PROGRAM_NAME == __FILE__
-  require "open3"
-
-  command, path = ARGV
-  unless command == "check" && path
-    warn "Usage: bin/lib/test_timings.rb check PATH"
-    exit 2
+  # The exit status of the cap check: 0 when every file is under its cap, 1 when a cap is
+  # missed, 3 when the check could not run.
+  def self.verdict(path, rerun: Rerun.new, err: $stderr)
+    Caps.new(path, rerun:).check
+    0
+  rescue Caps::NotRun => e
+    err.puts e.message
+    3
+  rescue Caps::Failure => e
+    err.puts e.message
+    1
   end
 
-  begin
-    TestTimings::Caps.new(path, rerun: TestTimings::Rerun.new).check
-  rescue TestTimings::Caps::NotRun => e
-    warn e.message
-    exit 3
-  rescue TestTimings::Caps::Failure => e
-    warn e.message
-    exit 1
+  # The command line: `check PATH`; any other call prints the usage and exits 2.
+  def self.cli(argv, rerun: nil, err: $stderr)
+    command, path = argv
+    return verdict(path, **{ rerun:, err: }.compact) if command == "check" && path
+
+    err.puts "Usage: bin/lib/test_timings.rb check PATH"
+    2
   end
 end
+
+exit TestTimings.cli(ARGV) if $PROGRAM_NAME == __FILE__
