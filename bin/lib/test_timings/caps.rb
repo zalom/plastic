@@ -28,10 +28,16 @@ module TestTimings
     def check
       raise NotRun, "missing timings file: #{@path}" unless File.exist?(@path)
 
-      JSON.parse(File.read(@path)).each { |file, seconds| check_one(file, seconds) }
+      timings.each { |file, seconds| check_one(file, seconds) }
     end
 
     private
+
+    def timings
+      JSON.parse(File.read(@path))
+    rescue JSON::ParserError => e
+      raise NotRun, "unreadable timings file: #{@path}: #{e.message}"
+    end
 
     def check_one(file, seconds)
       cap = self.class.cap_for(file)

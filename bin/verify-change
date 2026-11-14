@@ -34,8 +34,10 @@ class VerifyChange
     mutant that spawns an installer cannot reach the real home directory.
 
     The smell step (6), the score step (7) and the timing check print a miss of their target
-    and fail nothing. Each still fails when its tool did not run: Reek refusing its
-    configuration, a missing timings file, or a timing re-run that failed.
+    and fail nothing. A miss is told from a tool that did not run by what the tool printed:
+    the RubyCritic score line, the timing line naming a file over its cap. Without it the
+    step fails: Reek refusing its configuration, RubyCritic refusing its call or a file,
+    a timings file that is missing or cut off, or a timing re-run that failed.
 
     Exit codes: 0 verified, 1 a check failed, 2 usage or git error.
   TEXT
@@ -45,6 +47,8 @@ class VerifyChange
   MUTATION_FROZEN = true
   CRAP_THRESHOLD = 30
   RUBYCRITIC_MINIMUM = 90
+  RUBYCRITIC_MISS = /Score \([\d.]+\) is below the minimum/
+  TIMING_MISS = /over its \d+s cap/
   LEGACY_LISTS = %w[.rubocop_todo.yml .reek.yml].freeze
   TESTS_STEP = "Tests with coverage"
   TIMING_STEP = "Timing check"
@@ -62,7 +66,7 @@ class VerifyChange
   RSPEC = Suite.new(name: "RSpec", folder: "spec/", test_path: %r{\Aspec/.+_spec\.rb\z}, suffix: "_spec.rb",
                     locations: { %r{\Aapp/} => ["spec/"], %r{\Alib/} => ["spec/", "spec/lib/"], %r{\Atools/} => ["spec/tools/"] })
 
-  Step = Struct.new(:title, :env, :command, :misses)
+  Step = Struct.new(:title, :env, :command, :misses, :proof)
   LintDecision = Struct.new(:step, :skip_reason)
   Plan = Struct.new(:sources, :tests, :untested, :lint_files, :lint_decision, :steps)
 
@@ -79,7 +83,7 @@ class VerifyChange
     @out = out
     @err = err
     @git = git || ->(*args) { Open3.capture2e("git", "-C", root, *args) }
-    @run = run || ->(env, command) { system(env, *command, chdir: root) ? 0 : ($?&.exitstatus || 127) }
+    @run = run || method(:stream)
     @sandbox = sandbox
     @owned_sandbox = sandbox.nil?
     @mutation = mutation
@@ -153,6 +157,20 @@ class VerifyChange
     [base || default_base, extra_tests]
   end
 
+# Runs a step, copies what it prints to the gate's output as it prints it, and
+# answers its exit code with that output, so a miss of a target can be told
+# from a tool that did not run.
+def stream(env, command)
+  text = +""
+  status = Open3.popen2e(env, *command, chdir: @root) do |_in, output, waiter|
+    output.each_line { |line| @out.print(line) && text << line }
+    waiter.value
+  end
+  [status.exitstatus || 127, text]
+rescue SystemCallError => e
+  [127, e.message]
+end
+
   def default_base
     DEFAULT_BASES.find { |ref| @git.call("rev-parse", "--verify", "--quiet", ref).last.success? } || DEFAULT_BASES.last
   end
@@ -202,7 +220,7 @@ class VerifyChange
     @err.puts "Not checked by RubyCritic, because #{LEGACY_LISTS.join(" or ")} lists them: #{legacy.join(", ")}" unless legacy.empty?
     return if scored.empty?
 
-    step("RubyCritic score", {}, %W[bundle exec rubycritic --no-browser --format console --minimum-score #{RUBYCRITIC_MINIMUM}] + scored, [1, 2])
+    step("RubyCritic score", {}, %W[bundle exec rubycritic --no-browser --format console --minimum-score #{RUBYCRITIC_MINIMUM}] + scored, [1, 2], RUBYCRITIC_MISS)
   end
 
   def legacy?(path)
@@ -214,8 +232,8 @@ class VerifyChange
     @legacy_lists ||= LEGACY_LISTS.select { |name| exist?(name) }.map { |name| File.read(File.join(@root, name)) }
   end
 
-  def step(title, env, command, misses = [])
-    Step.new(title, sandbox.merge(env), command, misses)
+  def step(title, env, command, misses = [], proof = nil)
+    Step.new(title, sandbox.merge(env), command, misses, proof)
   end
 
   # The Tests step and the step right after it, which checks what the Tests
@@ -242,7 +260,7 @@ class VerifyChange
   end
 
   def timing_step
-    step(TIMING_STEP, {}, %w[bundle exec ruby] + [File.join(@root, "bin/lib/test_timings.rb"), "check", timings_path], [1])
+    step(TIMING_STEP, {}, %w[bundle exec ruby] + [File.join(@root, "bin/lib/test_timings.rb"), "check", timings_path], [1], TIMING_MISS)
   end
 
   def timings_path
@@ -388,9 +406,9 @@ class VerifyChange
     @out.puts "\nMutation testing skipped: the step is frozen." unless @mutation
     plan.steps.each do |step|
       @out.puts "\n== #{step.title}"
-      code = exit_code(step)
+      code, text = answer(step)
       next if code.zero?
-      next report_miss(step, code) if step.misses.include?(code)
+      next report_miss(step, code) if missed?(step, code, text)
 
       failed << step
       next unless step.title == TESTS_STEP
@@ -402,12 +420,21 @@ class VerifyChange
     failed.empty? ? 0 : 1
   end
 
-  # A runner answers true, false or an exit code.
-  def exit_code(step)
-    answer = @run.call(step.env, step.command)
-    return answer if answer.is_a?(Integer)
+  # A runner answers true, false, an exit code, or an exit code with the output.
+  def exit_code(step) = answer(step).first
 
-    answer ? 0 : 1
+  def answer(step)
+    answer = @run.call(step.env, step.command)
+    return answer if answer.is_a?(Array)
+
+    [answer.is_a?(Integer) ? answer : (answer ? 0 : 1), ""]
+  end
+
+  # A target is missed only when the tool ran: its exit code is one it gives for a miss
+  # and, where the step has a proof, its output shows the miss. A tool that refused its
+  # call or stopped on an error gives the same code with no such output.
+  def missed?(step, code, text)
+    step.misses.include?(code) && (step.proof.nil? || step.proof.match?(text))
   end
 
   def report_miss(step, code)
