@@ -5,6 +5,10 @@ require_relative "layout"
 require_relative "record"
 require_relative "roots"
 require_relative "engine_permissions"
+require_relative "agent_record"
+require_relative "files"
+require_relative "marked_section"
+require_relative "package"
 
 module Plastic
   module Installations
@@ -12,16 +16,15 @@ module Plastic
     # the manifest, the Plastic entries in its settings file and the marked
     # section of its instruction file.
     class Recording
-      def self.layouts
-        core = ::InstallerCore
-        {
-          "claude" => Layout.new(:dir, "settings.json", :claude_purge_command?, "CLAUDE.md",
-            [core::CLAUDE_SECTION_BEGIN_PREFIX, core::CLAUDE_SECTION_END]),
-          "codex" => Layout.new(:home_dir, "hooks.json", :codex_purge_command?, "AGENTS.md",
-            [core::CODEX_SECTION_BEGIN_PREFIX, core::CODEX_SECTION_END]),
-          "hermes" => Layout.new(:dir, nil, nil, nil, [])
-        }
-      end
+def self.layouts
+  claude = MarkedSection::CLAUDE
+  codex = MarkedSection::CODEX
+  {
+    "claude" => Layout.new(:dir, "settings.json", :claude_purge_command?, "CLAUDE.md", [claude.begin_prefix, claude.end_marker]),
+    "codex" => Layout.new(:home_dir, "hooks.json", :codex_purge_command?, "AGENTS.md", [codex.begin_prefix, codex.end_marker]),
+    "hermes" => Layout.new(:dir, nil, nil, nil, [])
+  }
+end
 
       def initialize(installer, harness)
         key = harness.installer
@@ -42,14 +45,14 @@ module Plastic
 
       def roots = @config.values_at(:dir, :home_dir).compact
 
-      def files
-        manifest = @installer.manifest_path_for(@config[:key], @config)
-        @installer.manifest_files(manifest) + [manifest].select { |path| File.file?(path) }
-      end
+def files
+  manifest = AgentRecord.new(@config).manifest
+  manifest.files + [manifest.path].select { |path| File.file?(path) }
+end
 
       def settings_path = @layout.settings_path(@config)
 
-      def settings = (@settings ||= settings_path ? Hash(@installer.read_json_safe(settings_path)) : {})
+      def settings = (@settings ||= settings_path ? Hash(Files.read_json(settings_path)) : {})
 
       def hooks = Hash(settings["hooks"]).flat_map { |event, groups| owned_entries(event, groups) }
 
@@ -59,7 +62,9 @@ module Plastic
 
       def commands(groups) = Array(groups).grep(Hash).flat_map { |group| Array(group["hooks"]) }.grep(Hash).map { |hook| hook["command"] }
 
-      def owned?(command) = @installer.uninstalled_hook?(@layout.method(:plastic?), command)
+      def owned?(command) = @layout.plastic?(command) || package.entries.own?(command.to_s)
+
+      def package = Package.new(@installer.package_root, @installer.plastic_home, @installer.version)
 
       def status_line
         line = settings["statusLine"]
@@ -68,7 +73,7 @@ module Plastic
       end
 
       def replaced
-        original = @installer.read_json_safe(File.join(@installer.plastic_home, ".cache", "original-statusline.json"))
+        original = Files.read_json(File.join(@installer.plastic_home, ".cache", "original-statusline.json"))
         original if original.is_a?(Hash)
       end
 
@@ -79,7 +84,7 @@ module Plastic
 
       def sections
         opening, closing = @layout.markers
-        path = @layout.instructions_path(@config)&.then { |file| @installer.resolve_managed_path(file) }
+        path = @layout.instructions_path(@config)&.then { |file| Files.resolve(file) }
         return [] unless path && File.file?(path) && File.read(path).include?(opening)
 
         [{ "file" => path, "begin" => opening, "end" => closing }]

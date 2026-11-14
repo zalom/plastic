@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "digest"
+require "fileutils"
 require_relative "../clock"
 require_relative "files"
 
@@ -9,6 +10,8 @@ module Plastic
     # The record of the files one install wrote: each path with the hash of
     # its text. The record is what a prune, a restore and a removal read.
     class Manifest
+      attr_reader :path
+
       def initialize(path)
         @path = path
       end
@@ -18,6 +21,7 @@ module Plastic
       def empty? = entries.empty?
 
       def write(paths)
+        FileUtils.mkdir_p(File.dirname(@path))
         listed = paths.select { |path| File.exist?(path) }.to_h { |path| [path, Digest::SHA256.file(path).hexdigest] }
         Files.write_json(@path, { "version" => "1", "created" => Plastic.now, "files" => listed })
         self

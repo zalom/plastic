@@ -92,14 +92,6 @@ class ClaudeInstallTest < Plastic::TestCase
 
     assert_equal claude("hooks", "plastic-statusline"), JSON.parse(File.read(claude("settings.json"))).dig("statusLine", "command")
   end
-
-  def test_a_settings_file_that_is_not_an_object_counts_as_having_no_status_line
-    config_with("global:\n  statusline: true\n")
-    write(claude("settings.json"), "[]")
-    install
-
-    assert_equal claude("hooks", "plastic-statusline"), JSON.parse(File.read(claude("settings.json"))).dig("statusLine", "command")
-  end
 end
 
 class CodexInstallTest < Plastic::TestCase

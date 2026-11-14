@@ -3,8 +3,8 @@
 module Plastic
   module Installations
     # HookRegistry: THE single source of truth for Plastic's hook registration.
-    # InstallerCore#merge_claude_hooks builds settings.json entries from it, and
-    # #merge_codex_hooks purges the hooks.json entries it names; nothing else may
+    # ClaudeHooks builds settings.json entries from it, and
+    # CodexHooks purges the hooks.json entries it names; nothing else may
     # hand-roll a matcher. Change registrations HERE and only here.
     #
     # `events` registers only check-update, whose launcher (hooks/check-update)

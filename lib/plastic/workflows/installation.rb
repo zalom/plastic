@@ -3,9 +3,9 @@
 require "json"
 require "pathname"
 require "stringio"
-require_relative "../../../scripts/install"
 require_relative "../harnesses"
 require_relative "../installations"
+require_relative "../installations/installer"
 
 module Plastic
   module Workflows
@@ -13,7 +13,7 @@ module Plastic
     # home it installs into and the agent folders under the person's home.
     # The installer prints with puts, so `capture` hands its lines back to the
     # call that prints them.
-    class Installation < ::Install
+    class Installation < Installations::Installer
       PACKAGE_ROOT = File.expand_path("../../..", __dir__)
       SOURCES = %w[VERSION package.json].freeze
       FOLDERS = %i[dir home_dir].freeze
@@ -23,7 +23,7 @@ module Plastic
 
       def self.for_scope(scope)
         new(package_root: package_root(scope), plastic_home: scope.plastic_home,
-          agents: InstallerCore::DEFAULT_AGENTS.map { |agent| rehome(agent, scope.home) })
+          agents: Installations::AgentSet::DEFAULTS.map { |agent| rehome(agent, scope.home) })
       end
 
       def self.running(scope) = source(package_root(scope)) && for_scope(scope).version
@@ -38,16 +38,6 @@ module Plastic
 
       def self.fetch_command = "#{INSTALLER} sh"
 
-      def read_package_version(root)
-        path = self.class.source(root)
-        text = File.read(path)
-        path.end_with?(".json") ? JSON.parse(text).fetch("version") : text.strip
-      end
-
-      def channel = channel_for(version)
-
-      def newer? = semver_gt?(version, installed_version)
-
       def planned_files
         core_files.filter_map do |source, destination|
           [File.exist?(File.join(plastic_home, destination)) ? "replace" : "add", destination] if File.exist?(File.join(package_root, source))
@@ -58,7 +48,7 @@ module Plastic
 
       def kept(harnesses) = (Installations.recorded(plastic_home) | installed_agents.map { |key| Harnesses.installed_by(key).name }) - harnesses
 
-      def install(keys, reinstall:) = run(selected: keys, reinstall:, argv: [], input: StringIO.new)
+      def install(keys, reinstall:) = run(selected: keys, reinstall:)
 
       def wire(keys) = install(keys, reinstall: false)
 

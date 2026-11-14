@@ -34,7 +34,7 @@ class InstallationTest < Plastic::TestCase
   end
 
   def installed_into(key)
-    Plastic::Workflows::Installation.capture { installation.run(selected: [key], argv: [], input: StringIO.new) }
+    Plastic::Workflows::Installation.capture { installation.run(selected: [key]) }
   end
 
   def test_an_install_into_a_registered_harness_writes_its_record

@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "files"
+
 module Plastic
   module Installations
     # EnginePermissions: the engine deny rule. A permissions.deny
@@ -19,9 +21,8 @@ module Plastic
     # that point on - the merge appends Plastic's own alongside it, and removal leaves
     # the edited one in place untouched.
     #
-    # Pure functions only: no file I/O here. InstallerCore#merge_engine_permissions
-    # owns the read-modify-write against settings.json,
-    # mirroring the split HookRegistry keeps from merge_claude_hooks.
+    # merge_into is a pure function; merge_file owns the read-modify-write
+    # against settings.json.
     module EnginePermissions
       module_function
 
@@ -35,6 +36,16 @@ module Plastic
       RETIRED = [
         "Edit(~/.plastic/scripts/**)"
       ].freeze
+
+      # Merges ENTRIES into the settings file at path. A file that exists and
+      # is not JSON stays as it is, and the result is false.
+      def merge_file(path)
+        settings = Files.read_json(path)
+        return false if settings.nil? && File.exist?(path)
+
+        Files.write_json(path, merge_into(settings || {}))
+        true
+      end
 
       # Returns a new settings hash with ENTRIES merged into permissions.deny, appended
       # (never duplicated) alongside whatever is already there. Survives a permissions

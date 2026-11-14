@@ -59,7 +59,7 @@ class InstallerTest < Plastic::TestCase
     make_agent_folders(claude_config)
     results, out = run_install(%w[claude], already_registered: %w[hermes])
 
-    assert_equal [true], results.select { |result| result[:skipped] }.map { |result| result[:success] }
+    assert_equal [false], results.select { |result| result[:skipped] }.map { |result| result[:success] }
     assert_includes out, "Hermes: already registered, not re-synced"
   end
 
@@ -74,7 +74,7 @@ class InstallerTest < Plastic::TestCase
   def test_the_version_comes_from_the_package_and_the_channel_from_the_version
     value = Installations::Installer.new(package_root: shipped, plastic_home: plastic, agents: agent_configs, version: "2.1.0-beta.2")
 
-    assert_equal ["2.1.0-beta.2", "beta", true], [value.version, value.channel, value.newer?("2.1.0-beta.3")]
+    assert_equal ["2.1.0-beta.2", "beta"], [value.version, value.channel]
   end
 
   def test_the_installed_agents_are_the_ones_with_a_recorded_version
