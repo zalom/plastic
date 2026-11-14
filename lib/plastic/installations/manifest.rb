@@ -20,6 +20,8 @@ module Plastic
 
       def empty? = entries.empty?
 
+      def files_and_path = files + [path].select { |file| File.file?(file) }
+
       def write(paths)
         FileUtils.mkdir_p(File.dirname(@path))
         listed = paths.select { |path| File.exist?(path) }.to_h { |path| [path, Digest::SHA256.file(path).hexdigest] }

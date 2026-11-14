@@ -27,6 +27,8 @@ module Plastic
     # chose: the core files, the first-install store, then one transaction for
     # each agent, the record of what was installed, the ledger and the report.
     class Installer
+      LEDGER_ACTIONS = { install: "install", update: "reinstall" }.freeze
+
       INSTALLS = { "claude" => ClaudeInstall, "codex" => CodexInstall, "hermes" => HermesInstall }.freeze
 
       attr_reader :package_root, :plastic_home
@@ -58,11 +60,11 @@ module Plastic
       def core_files = CoreFiles.new(package_root).call
 
       def install_agents(selected:, ledger_action: nil, statusline: nil, already_registered: [])
-        fresh = !installed?
-        prepare(fresh)
+        kind = installed? ? :update : :install
+        prepare(kind)
         results = sync(selected, statusline) + already_registered.map { |key| skipped(key) }
-        log(results, ledger_action || (fresh ? "install" : "reinstall"))
-        Results.new(version).print(results, fresh ? :install : :update)
+        log(results, ledger_action || LEDGER_ACTIONS.fetch(kind))
+        Results.new(version).print(results, kind)
         results
       end
 
@@ -76,9 +78,9 @@ module Plastic
         results
       end
 
-      def prepare(fresh)
-        Distribution.new(package, tmp_dirs: @tmp_dirs).call(fresh ? :install : :update)
-        fresh ? Bootstrap.new(plastic_home).call : Graph.create(home: plastic_home, store: StoreLayout::GLOBAL)
+      def prepare(kind)
+        Distribution.new(package, tmp_dirs: @tmp_dirs).call(kind)
+        (kind == :install) ? Bootstrap.new(plastic_home).call : Graph.create(home: plastic_home, store: StoreLayout::GLOBAL)
         AdvisorMigration.file(File.join(plastic_home, "config.yml"))
         report_config_upgrade
       end
@@ -107,8 +109,8 @@ module Plastic
 
       def log(results, action)
         ledger = Ledger.new(plastic_home)
-        synced = results.select { |result| result[:success] && result[:key] }
-        synced.each { |result| ledger.append(version, action, harness: result[:key]) }
+        synced = results.filter_map { |result| result[:key] if result[:success] }
+        synced.each { |key| ledger.append(version, action, harness: key) }
         ledger.append(version, action) if synced.empty?
       end
     end

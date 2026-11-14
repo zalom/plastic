@@ -46,8 +46,7 @@ module Plastic
       def roots = @config.values_at(:dir, :home_dir).compact
 
       def files
-        manifest = AgentRecord.new(@config).manifest
-        manifest.files + [manifest.path].select { |path| File.file?(path) }
+        AgentRecord.new(@config).manifest.files_and_path
       end
 
       def settings_path = @layout.settings_path(@config)
