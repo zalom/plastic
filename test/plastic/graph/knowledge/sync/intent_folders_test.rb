@@ -36,6 +36,13 @@ class KnowledgeSyncIntentFoldersTest < Plastic::TestCase
     assert_equal "open", folders.intents.first.status
   end
 
+  def test_an_index_that_is_a_json_array_leaves_the_fields_of_the_intent_file
+    write("store/2--beta/2--beta.md", page("2", "Beta"))
+    write("store/index.json", "[]")
+
+    assert_equal "open", folders.intents.first.status
+  end
+
   def test_an_index_that_is_not_json_leaves_the_fields_of_the_intent_file
     write("store/2--beta/2--beta.md", page("2", "Beta"))
     write("store/index.json", "{not json")
