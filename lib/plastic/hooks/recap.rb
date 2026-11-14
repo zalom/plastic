@@ -15,7 +15,7 @@ module Plastic
         "resume" => "Plastic: a resumed session. The rows below carry the state; run plastic graph resume."
       }.freeze
       SAVEPOINT_LINES = 5
-      EXPIRED = "intent %<id>s: the lock of this session expired (last renewed %<at>s); plastic auto %<id>s locks it again"
+      EXPIRED = "intent %<intent_id>s: the lock of this session expired (last renewed %<renewed_at>s); plastic auto %<intent_id>s locks it again"
 
       def initialize(retrieval, session_id:, source:, directory:)
         @retrieval = retrieval
@@ -40,7 +40,7 @@ module Plastic
 
       def expired_lock_lines(now)
         own = @retrieval.locks_of(@session_id).select { |lock| lock.store == @retrieval.store && unfinished?(lock.intent_id) }
-        own.reject { |lock| @retrieval.liveness(lock).live?(now) }.map { |lock| format(EXPIRED, id: lock.intent_id, at: lock.renewed_at) }
+        own.reject { |lock| @retrieval.liveness(lock).live?(now) }.map { |lock| format(EXPIRED, **lock.to_h) }
       end
 
       # The intent exists and its work is not over.
