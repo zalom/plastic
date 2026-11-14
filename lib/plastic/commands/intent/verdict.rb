@@ -12,6 +12,7 @@ module Plastic
         intent_subject
         argument :verdict, label: "accept|revise", text: "the verdict of this review round"
         argument :findings, label: "TEXT", text: "what the review showed"
+        reads :knowledge
         writes :work
         prints :intent
 

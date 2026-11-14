@@ -10,7 +10,7 @@ class ConfigGetTest < Plastic::TestCase
     result = get("review.pull_request")
 
     assert_equal [0, ""], [result.code, result.err]
-    assert_match(/^review\.pull_request\s+required$/, result.out)
+    assert_match(/^review\.pull_request\s+off$/, result.out)
   end
 
   def test_a_harness_section_value_wins_for_that_harness

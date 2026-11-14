@@ -11,18 +11,12 @@ module Plastic
         class Noter
           FILE = "outcome.md"
 
-          def initialize(databases, retrieval, folder)
+          def initialize(databases, retrieval)
             @databases = databases
             @retrieval = retrieval
-            @folder = folder
           end
 
-          def problem(intent, text)
-            return "the note is one line; it holds a line break" if text.include?("\n")
-
-            path = "#{intent.dir}/#{FILE}"
-            "#{path} changed by hand since the last print; run plastic sync up first" if edited?(path)
-          end
+          def problem(text) = ("the note is one line; it holds a line break" if text.include?("\n"))
 
           def write(intent, kind, text)
             id = intent.intent_id
@@ -30,10 +24,6 @@ module Plastic
             Retrieval::Evidence::Writer.new(@databases.fetch(:knowledge), @retrieval.origin_id).write(id, FILE, body)
             @retrieval.reference(id, FILE).fetch(:uri)
           end
-
-          private
-
-          def edited?(path) = @folder.exist?(path) && @folder.digest(path) != @retrieval.printed[path]
         end
       end
     end

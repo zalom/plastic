@@ -113,6 +113,7 @@ class RoutinePrintingTest < Plastic::TestCase
   end
 
   def test_an_edited_index_refuses_roadmap_open
+    open_intent
     open_roadmap
     write("store/index.json", "{}\n")
 

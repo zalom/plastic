@@ -1,7 +1,9 @@
 # Sync commands
 
 Each store keeps its content as rows in three SQLite databases, and prints the files of its
-folder from those rows. A file you change by hand reaches its rows through `plastic sync up`.
+folder from those rows. A file you change by hand reaches its rows through `plastic sync up`. A command that prints files stops
+before it writes a row when a file it would print was changed by hand since the last print. It names the
+file and offers `plastic sync up`; a dry run does not check.
 A row that changed reaches its file through `plastic sync down`.
 
 ## The three databases

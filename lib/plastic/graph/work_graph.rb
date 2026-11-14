@@ -6,6 +6,7 @@ require_relative "knowledge/backup/store_backups"
 require_relative "printer"
 require_relative "prints"
 require_relative "knowledge/sync/preview"
+require_relative "knowledge/sync/hand_edits"
 require_relative "work/writers"
 require_relative "knowledge/intent/noter"
 
@@ -87,7 +88,10 @@ module Plastic
       # The paths this call printed, relative to the store folder.
       def printed = @writers.sync.printer.written
 
-      def noter = (@noter ||= Knowledge::Intent::Noter.new(@writers.databases, @writers.retrieval, @writers.folder))
+      # The printed files a person changed by hand, for the prints a command declares.
+      def hand_edited(kinds, intent_id: nil, slug: nil) = Knowledge::Sync::HandEdits.new(@retrieval, @folder).call(kinds, intent_id:, slug:)
+
+      def noter = (@noter ||= Knowledge::Intent::Noter.new(@writers.databases, @writers.retrieval))
 
       def preview_sync(options, direction: :up)
         Knowledge::Sync::Preview.new(home_dir, @retrieval.store, options, direction:).call

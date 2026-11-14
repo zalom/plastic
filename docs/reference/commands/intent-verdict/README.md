@@ -31,7 +31,7 @@ The figure shows the command, the workflows it runs, the classes behind them, an
 
 ### The command's own call
 
-The command's own `call`, at [`verdict.rb:23`](../../../../lib/plastic/commands/intent/verdict.rb#L23), runs first, then starts the workflow [Code::Intent::Verdict::Prepare](#codeintentverdictprepare).
+The command's own `call`, at [`verdict.rb:24`](../../../../lib/plastic/commands/intent/verdict.rb#L24), runs first, then starts the workflow [Code::Intent::Verdict::Prepare](#codeintentverdictprepare).
 
 ```ruby
 def call(*)
@@ -93,8 +93,8 @@ In the words of workflow engines, the rows are these four parts:
 
 | Place | Database or file | Tables | Reads or writes | Code |
 | --- | --- | --- | --- | --- |
-| the store folder | knowledge_graph.db | `documents` | reads | found in the code, not declared |
-| the store folder | work_graph.db | `intents`, `nodes`, `verdicts` | reads and writes | [`verdict.rb:15`](../../../../lib/plastic/commands/intent/verdict.rb#L15) |
+| the store folder | knowledge_graph.db | `documents` | reads | [`verdict.rb:15`](../../../../lib/plastic/commands/intent/verdict.rb#L15) |
+| the store folder | work_graph.db | `intents`, `nodes`, `verdicts` | reads and writes | [`verdict.rb:16`](../../../../lib/plastic/commands/intent/verdict.rb#L16) |
 | the store folder | store/index.json | | writes | [`prints.rb:17`](../../../../lib/plastic/graph/prints.rb#L17) |
 | the store folder | store/ID--SLUG/PATH | | writes | [`prints.rb:18`](../../../../lib/plastic/graph/prints.rb#L18) |
 | the store folder | store/ID--SLUG/savepoint.md | | writes | [`prints.rb:19`](../../../../lib/plastic/graph/prints.rb#L19) |
@@ -122,7 +122,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | the judge asked for a revision; add a node that fixes it | 0 | plastic node add INTENT_ID TITLE --criterion KEY | [`verdict.rb:31`](../../../../lib/plastic/workflows/code/intent/verdict.rb#L31) |
 | intent INTENT_ID is accepted | 0 | plastic intent end INTENT_ID | [`verdict.rb:33`](../../../../lib/plastic/workflows/code/intent/verdict.rb#L33) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
-| Usage error: the verdict takes accept or revise | 2 | prints no next: line | [`verdict.rb:24`](../../../../lib/plastic/commands/intent/verdict.rb#L24) |
+| Usage error: the verdict takes accept or revise | 2 | prints no next: line | [`verdict.rb:25`](../../../../lib/plastic/commands/intent/verdict.rb#L25) |
 
 ## What the page leaves out
 

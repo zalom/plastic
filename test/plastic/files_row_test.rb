@@ -63,6 +63,7 @@ class FilesRowTest < Plastic::TestCase
 
   def test_a_json_answer_with_no_graph_write_still_carries_files
     open_keyed_intent
+    run_cli("sync", "down")
 
     assert_equal [], files_of(run_cli("sync", "down", "--json"))
   end

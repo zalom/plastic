@@ -26,7 +26,7 @@ module Plastic
             pass: ->(context) { !CLOSED.include?(context.status) }
 
           read "check the note" do |context|
-            context[:problem] = context.work.note_problem(context.intent, context.text)
+            context[:problem] = context.work.note_problem(context.text)
           end
 
           gate "%{problem}", stops: :failure, pass: ->(context) { context.problem.nil? }

@@ -72,6 +72,9 @@ module Plastic
 
     def finish(routine_run)
       ctx = context(routine_run)
+      stale = hand_edit_failure(ctx)
+      return report(stale, ctx) if stale
+
       traversal = Traversal.new(chain, ctx, routine_run) { |run| save_routine_run(run) }
       report(traversal.call { |value| printing(value, ctx) }, ctx)
     end

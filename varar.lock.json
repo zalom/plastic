@@ -277,7 +277,7 @@
       ]
     },
     "varar/intent-new.md": {
-      "sourceHash": "fnv1a:97aaca31",
+      "sourceHash": "fnv1a:5b1d52db",
       "examples": [
         {
           "name": "Each row gives the store, the call, the exit code, the index, the files and what it says:",

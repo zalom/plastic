@@ -51,7 +51,7 @@ In the words of workflow engines, the rows are these four parts:
 | Place | Database or file | Tables | Reads or writes | Code |
 | --- | --- | --- | --- | --- |
 | the store folder | work_graph.db | `batches`, `roadmap_edges`, `roadmap_items`, `roadmap_log`, `roadmaps` | reads and writes | [`new.rb:14`](../../../../lib/plastic/commands/roadmap/new.rb#L14) |
-| the store folder | roadmaps/SLUG.md | | writes | [`prints.rb:71`](../../../../lib/plastic/graph/prints.rb#L71) |
+| the store folder | roadmaps/SLUG.md | | writes | [`prints.rb:73`](../../../../lib/plastic/graph/prints.rb#L73) |
 
 A second call runs the same rows again. A step runs again only when its done check fails.
 
