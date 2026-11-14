@@ -17,6 +17,9 @@ module GateRun
   STEP_WORDS = { "rubocop" => "Lint", "simplecov" => "Patch coverage", "bin/crap" => "CRAP scores", "reek" => "Code smells",
                  "rubycritic" => "RubyCritic score", "test_timings.rb" => "Timing check" }.freeze
 
+  MISS_TEXT = { "RubyCritic score" => "Score (85.2) is below the minimum 90.0\n",
+                "Timing check" => "test/a_test.rb took 9.0s, over its 5s cap (re-run 9.0s)\n" }.freeze
+
   def gate_fixture
     root = Dir.mktmpdir("gate-run")
     { "Gemfile.lock" => "GEM\n  specs:\n\nDEPENDENCIES\n  rubocop\n  rubycritic (~> 4.12)\n\n", ".rubocop.yml" => "AllCops:\n  NewCops: enable\n",
@@ -37,11 +40,18 @@ module GateRun
     ran = []
     out = StringIO.new
     err = StringIO.new
-    runner = ->(_env, command) { codes.fetch(step_of(command).tap { |title| ran << title }, 0) }
+    runner = ->(_env, command) { answer(codes.fetch(step_of(command).tap { |title| ran << title }, 0), step_of(command)) }
     Finished.new(gate_for(root, out, err, runner).call, out.string, err.string, ran)
   ensure
     FileUtils.remove_entry(root) if root
   end
+
+# A code alone is a miss as the tool prints it; a pair names its own output.
+def answer(code, title)
+  return code if code.is_a?(Array) || code.zero?
+
+  [code, MISS_TEXT.fetch(title, "")]
+end
 
   def gate_for(root, out, err, runner)
     git = ->(*args) { [args.include?("diff") ? "#{SOURCE}\n" : "abc123\n", Git.new] }

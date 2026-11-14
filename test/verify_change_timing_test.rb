@@ -118,6 +118,14 @@ class VerifyChangeTimingTest < Minitest::Test
     assert_includes done.out, "Change verified"
   end
 
+def test_a_timing_check_that_stopped_on_an_error_with_exit_one_fails_the_gate
+  done = run_gate("Timing check" => [1, "unexpected token at '{\"test/a_test.rb\"'\n"])
+
+  assert_equal 1, done.code
+  assert_match(/Failed:.*Timing check/, done.out)
+  refute_includes done.out, "Change verified"
+end
+
   def test_a_timing_check_that_did_not_run_fails_the_gate
     done = run_gate("Timing check" => 3)
 

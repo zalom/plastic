@@ -115,6 +115,16 @@ class TestTimingsTest < Minitest::Test
     assert_equal "missing timings file: #{@path}", error.message
   end
 
+
+
+  def test_a_timings_file_cut_off_in_the_middle_did_not_run
+    File.write(@path, %({"test/a_test.rb": 0.2, "test/b_te))
+
+    error = assert_raises(TestTimings::Caps::NotRun) { TestTimings::Caps.new(@path, rerun: nil).check }
+
+    assert_includes error.message, @path
+  end
+
   def test_without_a_varar_config_a_result_is_booked_to_its_source_file
     documents = TestTimings::Documents.new(root: File.dirname(SampleTest.marker_file))
 
