@@ -38,14 +38,26 @@ class KnowledgeSyncFileReadsTest < Plastic::TestCase
     assert_empty store_graphs.databases.fetch(:work).rows("SELECT id FROM nodes")
   end
 
-  def test_in_one_group_the_read_the_database_refuses_leaves_the_good_read_written
-    write_null_id_graph
+  def rename_by_hand_in_the_index
     index = JSON.parse(folder.read("store/index.json"))
     index.fetch("intents").each { |entry| entry["title"] = "Renamed by hand" }
     write("store/index.json", JSON.pretty_generate(index))
+  end
 
-    assert_equal ["read store/index.json"], file_reads.call([GRAPH, "store/index.json"])
+  def test_in_one_group_the_read_the_database_refuses_leaves_the_good_read_written
+    write_null_id_graph
+    rename_by_hand_in_the_index
+    lines = file_reads.call([GRAPH, "store/index.json"])
+
+    assert_equal ["read store/index.json"], lines
     assert_equal "Renamed by hand", retrieval.intent("1").title
+  end
+
+  def test_in_one_group_the_read_the_database_refuses_writes_no_row
+    write_null_id_graph
+    rename_by_hand_in_the_index
+    file_reads.call([GRAPH, "store/index.json"])
+
     assert_empty store_graphs.databases.fetch(:work).rows("SELECT id FROM nodes")
   end
 

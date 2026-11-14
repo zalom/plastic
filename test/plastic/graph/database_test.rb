@@ -46,61 +46,6 @@ class DatabaseTest < Plastic::TestCase
     connection.rollback
   end
 
-  def tally(batch, name = "a") = batch.write(:tallies, "INSERT INTO tallies(name) VALUES (:name)", name:)
-
-  def test_a_dry_run_writes_no_row_and_counts_none
-    database.dry_run { |batch| tally(batch) }
-
-    assert_equal [[], {}], [database.rows("SELECT name FROM tallies"), database.written]
-  end
-
-  def test_a_dry_run_raises_the_error_of_a_failed_statement
-    error = assert_raises(Database::Error) do
-      database.dry_run do |batch|
-        tally(batch)
-        batch.add("INSERT INTO nowhere VALUES (1)")
-      end
-    end
-
-    assert_equal ["work_graph.db: no such table: nowhere", [], {}], [error.message, database.rows("SELECT name FROM tallies"), database.written]
-  end
-
-  def test_a_dry_run_inside_an_open_transaction_undoes_only_itself
-    insert("a")
-    connection = Database::ConnectionPool.for(database.path)
-    connection.execute("BEGIN")
-    insert("b")
-    database.dry_run { |batch| tally(batch) }
-    found = [database.rows("SELECT name FROM routine_runs ORDER BY id").map { |row| row["name"] }, database.rows("SELECT name FROM tallies")]
-    connection.rollback
-
-    assert_equal [%w[a b], []], found
-  end
-
-  def test_a_failed_transaction_counts_no_rows
-    assert_raises(Database::Error) do
-      database.transaction do |batch|
-        tally(batch)
-        batch.add("INSERT INTO nowhere VALUES (1)")
-      end
-    end
-    assert_raises(Database::Error) do
-      database.immediate_transaction do |batch, _connection|
-        tally(batch)
-        batch.add("INSERT INTO nowhere VALUES (1)")
-      end
-    end
-
-    assert_empty database.written
-  end
-
-  def test_a_failed_transaction_keeps_the_counts_of_the_writes_before_it
-    database.transaction { |batch| tally(batch) }
-    assert_raises(Database::Error) { database.transaction { |batch| tally(batch, "b").add("INSERT INTO nowhere VALUES (1)") } }
-
-    assert_equal({ "tallies" => 1 }, database.written)
-  end
-
   def test_open_local_opens_the_local_database
     databases = Database.open_local("/home")
 
@@ -182,6 +127,68 @@ class DatabaseTest < Plastic::TestCase
     batch = Plastic::Graph::Database::Batch.new
 
     assert_same batch, batch.put(:clusters, { name: "C", intent_id: "1" }).apply([])
+  end
+end
+
+class DatabaseDryRunTest < Plastic::TestCase
+  Database = Plastic::Graph::Database
+  BROKEN = "INSERT INTO nowhere VALUES (1)"
+
+  def tally(batch, name = "a") = batch.write(:tallies, "INSERT INTO tallies(name) VALUES (:name)", name:)
+
+  def names(table) = database.rows("SELECT name FROM #{table} ORDER BY 1").map { |row| row["name"] }
+
+  def test_a_dry_run_writes_no_row_and_counts_none
+    database.dry_run { |batch| tally(batch) }
+
+    assert_equal [[], {}], [names("tallies"), database.written]
+  end
+
+  def test_a_dry_run_raises_the_error_of_a_failed_statement
+    error = assert_raises(Database::Error) do
+      database.dry_run do |batch|
+        tally(batch)
+        batch.add(BROKEN)
+      end
+    end
+
+    assert_equal "work_graph.db: no such table: nowhere", error.message
+    assert_equal [[], {}], [names("tallies"), database.written]
+  end
+
+  def test_a_dry_run_inside_an_open_transaction_undoes_only_itself
+    insert("a")
+    connection = Database::ConnectionPool.for(database.path)
+    connection.execute("BEGIN")
+    insert("b")
+    database.dry_run { |batch| tally(batch) }
+    found = [names("routine_runs"), names("tallies")]
+    connection.rollback
+
+    assert_equal [%w[a b], []], found
+  end
+
+  def refused(method)
+    assert_raises(Database::Error) do
+      database.public_send(method) do |batch, *|
+        tally(batch)
+        batch.add(BROKEN)
+      end
+    end
+  end
+
+  def test_a_failed_transaction_counts_no_rows
+    refused(:transaction)
+    refused(:immediate_transaction)
+
+    assert_empty database.written
+  end
+
+  def test_a_failed_transaction_keeps_the_counts_of_the_writes_before_it
+    database.transaction { |batch| tally(batch) }
+    assert_raises(Database::Error) { database.transaction { |batch| tally(batch, "b").add(BROKEN) } }
+
+    assert_equal({ "tallies" => 1 }, database.written)
   end
 end
 

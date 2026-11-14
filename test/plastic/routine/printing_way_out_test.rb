@@ -88,11 +88,13 @@ class RoutinePrintingWayOutTest < Plastic::TestCase
   def generated_round_trip(path, hand_text, call)
     refused = call.call
     up = cli("sync", "up")
-    kept = File.read(store_path(path)).include?(hand_text)
+    kept = holds?(path, hand_text)
     overwritten = cli(*named_command(refused))
 
-    [refused.out[/^next: .*$/], up.code, (up.out + up.err).include?(path), kept, overwritten.code, File.read(store_path(path)).include?(hand_text), call.call.code]
+    [refused.out[/^next: .*$/], up.code, (up.out + up.err).include?(path), kept, overwritten.code, holds?(path, hand_text), call.call.code]
   end
+
+  def holds?(path, text) = File.read(store_path(path)).include?(text)
 
   def test_a_hand_edited_roadmap_is_refused_with_the_overwrite_and_kept_by_sync_up_until_the_overwrite_clears_it
     cli("roadmap", "new", "r1")

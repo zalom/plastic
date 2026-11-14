@@ -2,24 +2,32 @@
 
 require_relative "../../../test_helper"
 
-class KnowledgeOutcomeTest < Plastic::TestCase
-  Outcome = Plastic::Graph::Knowledge::Outcome
-
+module OutcomeHelpers
   def setup
     super
     @intent = open_intent
   end
 
+  def read_outcome = Plastic::Graph::Knowledge::Outcome.new(retrieval, "1")
+
   def outcome(body)
     write("#{@intent.dir}/outcome.md", body)
     sync_up
-    Outcome.new(retrieval, "1")
+    read_outcome
   end
 
   def records(body)
     read = outcome(body)
     [read.merged?, read.architecture_map?]
   end
+
+  def merged_value?(value) = outcome("## Verification\n- Merged: #{value}\n").merged?
+
+  def approved_value?(value) = outcome("## Verification\n- Approved: #{value}\n").approved?
+end
+
+class KnowledgeOutcomeTest < Plastic::TestCase
+  include OutcomeHelpers
 
   def test_both_labels_under_verification_count
     assert_equal [true, true], records("# Outcome\n\n## Verification\n- Merged: branch into alpha at abc1\n- Architecture map: enola at abc\n")
@@ -38,7 +46,7 @@ class KnowledgeOutcomeTest < Plastic::TestCase
   end
 
   def test_no_outcome_records_neither
-    read = Outcome.new(retrieval, "1")
+    read = read_outcome
 
     assert_equal [false, false], [read.merged?, read.architecture_map?]
   end
@@ -64,10 +72,10 @@ class KnowledgeOutcomeTest < Plastic::TestCase
 
     assert_equal [true, true, true], [read.pull_request?, read.approved?, read.reverted?]
   end
+end
 
-  def merged_value?(value) = outcome("## Verification\n- Merged: #{value}\n").merged?
-
-  def approved_value?(value) = outcome("## Verification\n- Approved: #{value}\n").approved?
+class KnowledgeOutcomeValuesTest < Plastic::TestCase
+  include OutcomeHelpers
 
   NOT_MERGED = [
     "<branch> into <base> at <commit or pull request>", "not yet", "Not merged", "no", "No, the pull request is open", "awaiting review", "open",
@@ -118,6 +126,10 @@ class KnowledgeOutcomeTest < Plastic::TestCase
 
     assert_equal [[true] * 3, [false] * 3], [counted, refused].map { |values| values.map { |value| merged_value?(value) } }
   end
+end
+
+class KnowledgeOutcomeMessagesTest < Plastic::TestCase
+  include OutcomeHelpers
 
   def test_more_than_one_space_between_the_parts_of_a_merged_line_counts
     assert merged_value?("plastic/x  into alpha at 3f2a1b9")

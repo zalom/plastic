@@ -94,14 +94,6 @@ class KnowledgeSyncTest < Plastic::TestCase
     assert_equal [[], ""], [retrieval.savepoints("1"), folder.read("store/1--alpha/savepoint.md")]
   end
 
-  def test_read_takes_an_intent_a_hand_edit_of_the_index_adds
-    entry = retrieval.intent("1").index_h.merge("title" => "Renamed")
-    write("store/index.json", JSON.generate({ "intents" => [entry] }))
-
-    assert_equal ["read store/index.json"], sync.read(["store/index.json"])
-    assert_equal "Renamed", retrieval.intent("1").title
-  end
-
   def test_print_says_each_path_it_wrote
     print = Plastic::Graph::Prints::Print.text("store/1--alpha/notes.md", :knowledge, "n\n")
 
@@ -121,15 +113,39 @@ class KnowledgeSyncTest < Plastic::TestCase
     assert_equal [], run_sync(:up)
     assert_equal Digest::SHA256.hexdigest("# Spec\n"), retrieval.printed[SPEC]
   end
+end
 
-  def test_sync_up_leaves_an_index_it_cannot_read_as_it_is
+class KnowledgeSyncIndexTest < Plastic::TestCase
+  fixtures :alpha_synced
+
+  SPEC = "store/1--alpha/spec.md"
+
+  def sync = (@sync ||= Plastic::Graph::Knowledge::Sync.new(folder:, retrieval:, databases: store_graphs.databases))
+
+  def test_read_takes_an_intent_a_hand_edit_of_the_index_adds
+    entry = retrieval.intent("1").index_h.merge("title" => "Renamed")
+    write("store/index.json", JSON.generate({ "intents" => [entry] }))
+
+    assert_equal ["read store/index.json"], sync.read(["store/index.json"])
+    assert_equal "Renamed", retrieval.intent("1").title
+  end
+
+  def hand_edited_index_of_another_origin
     index = JSON.parse(folder.read("store/index.json"))
     index.fetch("intents").each { |entry| entry.merge!("origin_id" => "zzzz", "title" => "Renamed by hand") }
     write("store/index.json", JSON.pretty_generate(index))
-    plan = sync.plan(:up)
-    run = sync.apply(plan)
+  end
 
-    assert_equal ["store/index.json"], plan.unreadable_files.keys
+  def test_sync_up_names_an_index_it_cannot_read
+    hand_edited_index_of_another_origin
+
+    assert_equal ["store/index.json"], sync.plan(:up).unreadable_files.keys
+  end
+
+  def test_sync_up_leaves_an_index_it_cannot_read_as_it_is
+    hand_edited_index_of_another_origin
+    run = sync.apply(sync.plan(:up))
+
     assert_equal [[], "Alpha", true], [run, retrieval.intent("1").title, folder.read("store/index.json").include?("Renamed by hand")]
   end
 

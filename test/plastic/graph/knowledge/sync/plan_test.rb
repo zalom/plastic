@@ -18,9 +18,6 @@ class KnowledgeSyncPlanTest < Plastic::TestCase
 
   def paths(list) = list.map(&:path)
 
-  # Which of the three hashes the entry lacks.
-  def absent(entry) = [entry.file_sha, entry.printed_sha, entry.rows_sha].map(&:nil?)
-
   def test_each_entry_takes_the_action_of_its_direction
     assert_equal({ "c.md" => :conflict, "h.md" => :read, "r.md" => :none, "l.md" => :record },
       plan.actions.transform_keys(&:path))
@@ -44,6 +41,12 @@ class KnowledgeSyncPlanTest < Plastic::TestCase
     assert_equal ["held", "store/9.md names no file and no rows of this store", nil, nil],
       [plan(problem: "held").failure, plan(overwrite: "/root/store/9.md").failure, plan(overwrite: "c.md").failure, plan.failure]
   end
+end
+
+class KnowledgeSyncPlanGeneratedTest < Plastic::TestCase
+  Sync = Plastic::Graph::Knowledge::Sync
+  Plan = Sync::Plan
+  Print = Plastic::Graph::Prints::Print
 
   # `shas` are the file's hash, the recorded hash and the rows' hash.
   def generated_plan(direction, path, *shas, **plan_options)
@@ -122,14 +125,27 @@ class KnowledgeSyncPlanTest < Plastic::TestCase
 
     assert_equal :none, action_of(plan)
   end
+end
 
-  def test_build_marks_a_legacy_store_up_and_refuses_it_down
+class KnowledgeSyncPlanBuildTest < Plastic::TestCase
+  Sync = Plastic::Graph::Knowledge::Sync
+  Plan = Sync::Plan
+
+  # Which of the three hashes the entry lacks.
+  def absent(entry) = [entry.file_sha, entry.printed_sha, entry.rows_sha].map(&:nil?)
+
+  def built(direction) = Plan.build(folder, retrieval, Sync::Resolution.new(direction, store_root, {}), store_graphs.databases)
+
+  def test_build_marks_a_legacy_store_up
     write("INDEX.md", "# Index\n")
-    build = ->(direction) { Plan.build(folder, retrieval, Sync::Resolution.new(direction, store_root, {}), store_graphs.databases) }
 
-    assert_equal [true, nil], build.call(:up).to_h.values_at(:legacy, :problem)
-    assert_equal [false, "this store still has INDEX.md; run plastic sync up to import it first"],
-      build.call(:down).to_h.values_at(:legacy, :problem)
+    assert_equal [true, nil], built(:up).to_h.values_at(:legacy, :problem)
+  end
+
+  def test_build_refuses_a_legacy_store_down
+    write("INDEX.md", "# Index\n")
+
+    assert_equal [false, "this store still has INDEX.md; run plastic sync up to import it first"], built(:down).to_h.values_at(:legacy, :problem)
   end
 
   def test_entries_join_the_prints_the_files_and_the_recorded_hashes
