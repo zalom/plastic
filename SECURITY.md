@@ -2,11 +2,9 @@
 
 Plastic runs on your machine. It makes no model call and sends none of your files anywhere.
 
-These things use the network. `install.sh`, the update check hook and `plastic update` read
-the release list from the GitHub API and download a release archive from GitHub over HTTPS.
-`install.sh` and `plastic update` download Ruby from the jdx/ruby releases on GitHub, or from
-the Homebrew registry on an Intel Mac, and check it by its pinned size and SHA-256.
-Bundler fetches the sqlite3 and tty-prompt gems from RubyGems when a release installs.
+These things use the network. `install.sh` and `plastic update` read the release list from the
+GitHub API and download a release archive from GitHub over HTTPS. Both check the archive against
+its published SHA-256 sum. Bundler fetches the sqlite3 and tty-prompt gems from RubyGems when a release installs.
 
 ## Files the installer writes
 

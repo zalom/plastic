@@ -74,9 +74,9 @@ The printed files are plain Markdown and JSON in a folder that you own. See
 
 ## Installation
 
-Plastic needs curl, tar, and `sha256sum` or `shasum`. `install.sh` brings its own Ruby 4.0.7.
-It runs on macOS, and on Linux with glibc 2.29 or later. Alpine and other musl systems
-are not supported. On Windows, install Plastic inside WSL; there is no native Windows install.
+Plastic needs Ruby 4.0 or later, git, curl, tar, and `sha256sum` or `shasum`. `install.sh` checks
+for each and names what is missing. It runs on macOS and Linux. On Windows, install Plastic inside
+WSL; there is no native Windows install.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/zalom/plastic/main/install.sh | sh
@@ -397,10 +397,8 @@ stores under `~/.plastic` stay.
 ## Privacy
 
 Plastic runs on your machine. It makes no model call and sends none of your files anywhere.
-Three things use the network: `install.sh`, the update check hook and `plastic update`. They read
-the release list from GitHub and download a release from there. `install.sh` and `plastic update`
-also download Ruby: from the jdx/ruby releases on GitHub, or from the Homebrew registry on an Intel
-Mac. Bundler fetches the sqlite3 and tty-prompt gems
+Two things use the network: `install.sh` and `plastic update`. They read the release list from
+GitHub and download a release from there. Bundler fetches the sqlite3 and tty-prompt gems
 from RubyGems when a release installs. See [SECURITY.md](SECURITY.md) for every file the installer writes.
 
 ## Built with Plastic

@@ -201,16 +201,8 @@ active release.
 
 ## Supported platforms
 
-`install.sh` targets macOS and Linux, including WSL. CI installs, updates, rolls back and
-uninstalls Plastic with no Ruby on `PATH` on each platform in this table except WSL:
-
-| Platform | Ruby | Evidence |
-| -------- | ---- | -------- |
-| macOS on Apple silicon | jdx/ruby 4.0.7-2 | CI, and checked by hand |
-| macOS on Intel | Homebrew portable Ruby 4.0.7 | CI |
-| Linux on x86_64, glibc 2.29 or later | jdx/ruby 4.0.7-2 | CI |
-| Linux on ARM, glibc 2.29 or later | jdx/ruby 4.0.7-2 | CI |
-| WSL | jdx/ruby 4.0.7-2, as on Linux | Not verified |
+`install.sh` targets macOS and Linux, including WSL. It needs Ruby 4.0 or later and git on `PATH`.
+The hosted tests run on Linux. Other platforms are not verified by a hosted run.
 
 Report a problem on a platform that is not verified as an issue at
 <https://github.com/zalom/plastic/issues>.
