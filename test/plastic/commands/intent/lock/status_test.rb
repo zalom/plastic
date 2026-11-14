@@ -4,6 +4,8 @@ require_relative "../../../../test_helper"
 require_relative "../../../../../lib/plastic/commands/intent/lock/status"
 
 class IntentLockStatusTest < Plastic::TestCase
+  include AutoHelper
+
   def call(*args) = plastic("intent", "lock", "status", *args, table: Plastic::CLI::TABLE)
 
   def next_line(result) = result.out.lines(chomp: true).find { |line| line.start_with?("next: ") }
@@ -94,6 +96,6 @@ class IntentLockStatusTest < Plastic::TestCase
     resumed_with_expired_lock
 
     assert_equal 0, auto_again.code
-    assert_predicate store_graphs.retrieval.liveness(store_graphs.retrieval.lock("1")), :live?
+    assert live_when_renewed?(store_graphs.retrieval.lock("1"))
   end
 end

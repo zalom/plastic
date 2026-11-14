@@ -113,7 +113,7 @@ class AutoTest < Plastic::TestCase
 
     lock = retrieval.lock(intent.intent_id)
 
-    assert_equal [0, "s-1", "auto", true], [result.code, lock&.session_id, lock&.mode, lock && retrieval.liveness(lock).live?]
+    assert_equal [0, "s-1", "auto", true], [result.code, lock&.session_id, lock&.mode, lock && live_when_renewed?(lock)]
   end
 
   def test_an_expired_foreign_lock_is_taken_over

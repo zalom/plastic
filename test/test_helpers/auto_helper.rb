@@ -29,9 +29,12 @@ module Plastic
 
       def next_line(result) = result.out.lines(chomp: true).find { |line| line.start_with?("next: ") }
 
+      # Whether the lock is live at the moment it was renewed, so the clock never decides.
+      def live_when_renewed?(lock) = retrieval.liveness(lock).live?(Time.iso8601(lock.renewed_at))
+
       def held_lock(intent_id)
         lock = retrieval.lock(intent_id)
-        [lock.session_id, retrieval.liveness(lock).live?]
+        [lock.session_id, live_when_renewed?(lock)]
       end
 
       def lock_rows = store_graphs.databases.fetch(:local).rows("SELECT * FROM locks")
