@@ -107,20 +107,6 @@ class KnowledgeSyncEntryTest < Plastic::TestCase
     assert_equal [nil, false], [entry.file_sha, entry.level?]
   end
 
-  OURS = "{\n  \"origin_id\": \"ours\",\n  \"intents\": []\n}\n"
-
-  def test_an_index_that_another_home_printed_is_printed_from_the_rows_both_ways
-    entry = built(INDEX, JSON.generate({ "origin_id" => "theirs", "intents" => [] }), print_text: OURS)
-
-    assert_equal [false, false, %i[print print]], [entry.level?, entry.hand_edited?, %i[up down].map { |way| entry.action(way) }]
-  end
-
-  def test_an_index_that_is_a_json_array_is_a_hand_edit_and_raises_nothing
-    entry = built(INDEX, "[]", print_text: OURS)
-
-    assert_equal [true, false], [entry.hand_edited?, entry.printed_elsewhere]
-  end
-
   def hand_edited(file, printed, rows) = Entry.new("p", file, printed, rows ? Print.new("p", :work, rows, nil) : Entry::NO_PRINT).hand_edited?
 
   def test_a_changed_file_that_the_print_does_not_match_is_hand_edited
@@ -150,5 +136,29 @@ class KnowledgeSyncEntryTest < Plastic::TestCase
 
   def test_an_emptied_graph_file_is_read_up_like_any_hand_edit
     assert_equal %i[read none], graph_actions(empty_graph_sha, "a", "a")
+  end
+end
+
+class KnowledgeSyncEntryOriginTest < Plastic::TestCase
+  Entry = Plastic::Graph::Knowledge::Sync::Entry
+  Print = Plastic::Graph::Prints::Print
+  INDEX = "store/index.json"
+  OURS = "{\n  \"origin_id\": \"ours\",\n  \"intents\": []\n}\n"
+
+  def entry_of(bytes)
+    write(INDEX, bytes)
+    Entry.for(folder, INDEX, "p", Print.text(INDEX, :work, OURS))
+  end
+
+  def test_an_index_that_another_home_printed_is_printed_from_the_rows_both_ways
+    entry = entry_of(JSON.generate({ "origin_id" => "theirs", "intents" => [] }))
+
+    assert_equal [false, false, %i[print print]], [entry.level?, entry.hand_edited?, %i[up down].map { |way| entry.action(way) }]
+  end
+
+  def test_an_index_that_is_a_json_array_is_a_hand_edit_and_raises_nothing
+    entry = entry_of("[]")
+
+    assert_equal [true, false], [entry.hand_edited?, entry.printed_elsewhere]
   end
 end
