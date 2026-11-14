@@ -51,7 +51,7 @@ class InstallerTest < Plastic::TestCase
   def test_an_agent_with_no_folder_fails_and_gets_no_ledger_row_for_it
     results, = run_install(%w[hermes])
 
-    assert_equal false, results.first[:success]
+    refute results.first[:success]
     assert_equal [nil], rows.map { |row| row["harness"] }
   end
 

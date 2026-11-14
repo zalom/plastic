@@ -2,7 +2,7 @@
 
 require "minitest/autorun"
 require_relative "../lib/plastic/cli/table"
-require_relative "../scripts/lib/installer_core"
+require_relative "../lib/plastic/installations/codex_instructions"
 
 # The text that tells an agent which commands exist names only commands that
 # exist: PLASTIC.md, the block written to the Codex AGENTS.md, every help
@@ -68,7 +68,7 @@ class PlasticMdNamesRealCommandsTest < Minitest::Test
   end
 
   def test_the_codex_block_names_only_commands_that_exist
-    block = InstallerCore::CODEX_AGENTS_MD_BODY
+    block = Plastic::Installations::CodexInstructions::BODY
 
     assert_empty unknown_names(block) + bare_unknown_names(block)
   end

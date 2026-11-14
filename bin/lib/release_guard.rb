@@ -12,7 +12,7 @@ require "json"
 #
 # Deliberately does not check a repo VERSION file: none exists in this repo.
 # VERSION is an install-target artifact written fresh from package.json at
-# install/update time (scripts/lib/installer_core.rb); it cannot drift
+# install/update time (lib/plastic/installations/package_version.rb); it cannot drift
 # independently because it is never committed.
 module ReleaseGuard
   Result = Struct.new(:ok, :version, :prerelease_suffix, keyword_init: true) do

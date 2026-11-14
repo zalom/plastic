@@ -5,7 +5,6 @@ require "net/http"
 require "plastic/installations/https_fetch"
 
 class HttpsFetchTest < Plastic::TestCase
-
   # Answers each URL from a table, the way Net::HTTP.get_response would.
   class FakeHttp
     attr_reader :asked, :headers

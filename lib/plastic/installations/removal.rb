@@ -38,10 +38,10 @@ module Plastic
 
       def planned_folders(files)
         gone = files.to_set
-        candidate_folders(files).select { |folder| existing_folder?(folder) && emptied?(folder, gone) && gone.add(folder) }
+        candidate_folders(files).select { |folder| emptied?(folder, gone) && gone.add(folder) }
       end
 
-      def emptied?(folder, gone) = Dir.children(folder).all? { |name| gone.include?(File.join(folder, name)) }
+      def emptied?(folder, gone) = existing_folder?(folder) && Dir.children(folder).all? { |name| gone.include?(File.join(folder, name)) }
 
       def changes = [*(@settings.path if @settings.edited), *sections.map(&:file).select { |file| File.file?(file) }]
 

@@ -23,13 +23,13 @@ module Plastic
       end
 
       def call(mode)
-        puts "  #{mode == :update ? "Updating" : "Installing"} core files to #{@home}"
+        puts "  #{(mode == :update) ? "Updating" : "Installing"} core files to #{@home}"
         former = @manifest.files
         copy
         listed = record
         pruned = Prune.new(home: @home, roots: @home).call(former - listed)
         clean_up
-        puts "  Core files synced (v#{@package.version})#{pruned.positive? ? ", #{pruned} stale file(s) pruned" : ""}"
+        puts "  Core files synced (v#{@package.version})#{", #{pruned} stale file(s) pruned" if pruned.positive?}"
       end
 
       private

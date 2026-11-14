@@ -45,7 +45,7 @@ module Plastic
       end
 
       def finish(done, mode)
-        puts "\nPlastic v#{@version} #{mode == :install ? "installed" : "re-synced"}."
+        puts "\nPlastic v#{@version} #{(mode == :install) ? "installed" : "re-synced"}."
         puts "   Registered for: #{done.map { |result| result[:agent] }.join(", ")}"
         puts "   Run /clear (or restart your agent) to pick up new conventions."
         puts "   Next: run plastic help tutorial\n\n"

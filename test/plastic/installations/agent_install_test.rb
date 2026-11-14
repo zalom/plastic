@@ -43,13 +43,22 @@ class ClaudeInstallTest < Plastic::TestCase
     assert_path_exists claude("hooks", "plastic-statusline")
   end
 
-  def test_the_skills_the_roles_the_version_and_the_manifest_are_written
-    result, = install
-    manifest = JSON.parse(File.read(claude("plastic", "manifest.json")))["files"].keys
+  def manifest_files
+    JSON.parse(File.read(claude("plastic", "manifest.json")))["files"].keys
+  end
 
-    assert_equal [true, true, "2.0.3\n"], [manifest.include?(claude("skills", "plastic-demo", "SKILL.md")), manifest.include?(claude("agents", "demo-role.md")),
-      File.read(claude("plastic", "VERSION"))]
-    assert_equal({ agent: "Claude Code", success: true, files: manifest.size - 1 }, result.merge(files: result[:files] - 1))
+  def test_the_skills_and_the_roles_are_listed_in_the_manifest
+    install
+
+    assert_includes manifest_files, claude("skills", "plastic-demo", "SKILL.md")
+    assert_includes manifest_files, claude("agents", "demo-role.md")
+  end
+
+  def test_the_version_is_written_and_the_result_counts_the_files
+    result, = install
+
+    assert_equal "2.0.3\n", File.read(claude("plastic", "VERSION"))
+    assert_equal({ agent: "Claude Code", success: true, files: manifest_files.size - 1 }, result.merge(files: result[:files] - 1))
   end
 
   def test_a_declined_advisor_leaves_out_the_advisor_skill

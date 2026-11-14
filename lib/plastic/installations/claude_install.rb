@@ -69,7 +69,7 @@ module Plastic
         return @statusline if @statusline
 
         command = Hash(Files.read_json(settings_path))["statusLine"]&.fetch("command", nil)
-        command.nil? || HookRegistry.claude_purge_command?(command) ? :plastic : :keep
+        (command.nil? || HookRegistry.claude_purge_command?(command)) ? :plastic : :keep
       end
     end
   end

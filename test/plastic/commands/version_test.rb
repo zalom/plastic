@@ -37,8 +37,8 @@ class VersionCommandTest < Plastic::TestCase
   end
 
   def test_the_installer_commands_ship_with_the_core_files
-    require_relative "../../../scripts/lib/installer_core"
-    files = InstallerCore.new(package_root: PACKAGE_ROOT).send(:core_files)
+    require "plastic/installations/installer"
+    files = Plastic::Installations::Installer.new(package_root: PACKAGE_ROOT, plastic_home: @plastic_home).core_files
 
     %w[version install update rollback uninstall].each do |name|
       assert Plastic::CLI.find([name]), "plastic #{name} is missing from the command table"

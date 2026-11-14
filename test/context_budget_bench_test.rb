@@ -192,8 +192,10 @@ class ContextBudgetFixtureTest < Minitest::Test
   def test_build_runs_the_real_installer
     assert File.file?(File.join(fixture.plastic_home, "VERSION")),
       "the fixture must carry an installed VERSION"
-    refute_empty Dir.glob(File.join(fixture.home, ".claude", "hooks", "*")),
-      "the fixture must carry installed Claude hook launchers, or the boot measures a degraded install"
+    settings = JSON.parse(File.read(File.join(fixture.home, ".claude", "settings.json")))
+
+    refute_empty settings.fetch("hooks"),
+      "the fixture must carry installed Claude hook entries, or the boot measures a degraded install"
   end
 
   def test_build_copies_the_repos_own_core_block
@@ -334,7 +336,7 @@ class ContextBudgetCeilingTest < Minitest::Test
   # D10: the bench is a maintainer tool over repo fixtures and is never installed
   # into ~/.plastic. Kept deliberate rather than forgotten.
   def test_the_bench_is_not_registered_for_install
-    core_lib = File.read(File.join(REPO, "scripts", "lib", "installer_core.rb"))
+    core_lib = File.read(File.join(REPO, "lib", "plastic", "installations", "core_files.rb"))
 
     refute_includes core_lib, "context_budget",
       "the bench is a maintainer tool; registering it would install it into ~/.plastic"

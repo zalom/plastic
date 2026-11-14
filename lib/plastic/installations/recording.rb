@@ -16,15 +16,15 @@ module Plastic
     # the manifest, the Plastic entries in its settings file and the marked
     # section of its instruction file.
     class Recording
-def self.layouts
-  claude = MarkedSection::CLAUDE
-  codex = MarkedSection::CODEX
-  {
-    "claude" => Layout.new(:dir, "settings.json", :claude_purge_command?, "CLAUDE.md", [claude.begin_prefix, claude.end_marker]),
-    "codex" => Layout.new(:home_dir, "hooks.json", :codex_purge_command?, "AGENTS.md", [codex.begin_prefix, codex.end_marker]),
-    "hermes" => Layout.new(:dir, nil, nil, nil, [])
-  }
-end
+      def self.layouts
+        claude = MarkedSection::CLAUDE
+        codex = MarkedSection::CODEX
+        {
+          "claude" => Layout.new(:dir, "settings.json", :claude_purge_command?, "CLAUDE.md", [claude.begin_prefix, claude.end_marker]),
+          "codex" => Layout.new(:home_dir, "hooks.json", :codex_purge_command?, "AGENTS.md", [codex.begin_prefix, codex.end_marker]),
+          "hermes" => Layout.new(:dir, nil, nil, nil, [])
+        }
+      end
 
       def initialize(installer, harness)
         key = harness.installer
@@ -45,10 +45,10 @@ end
 
       def roots = @config.values_at(:dir, :home_dir).compact
 
-def files
-  manifest = AgentRecord.new(@config).manifest
-  manifest.files + [manifest.path].select { |path| File.file?(path) }
-end
+      def files
+        manifest = AgentRecord.new(@config).manifest
+        manifest.files + [manifest.path].select { |path| File.file?(path) }
+      end
 
       def settings_path = @layout.settings_path(@config)
 

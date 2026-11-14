@@ -106,15 +106,13 @@ class KernelPathsTest < Minitest::Test
     kernel = Dir.glob(File.join(ROOT, "lib", "plastic", "**", "*.rb"))
 
     refute_empty kernel
-    files = kernel + [File.join(ROOT, "scripts", "lib", "installer_core.rb"), File.join(ROOT, "scripts", "install.rb")]
 
-    assert_empty files.reject { |file| loads_alone?(file) }
+    assert_empty kernel.reject { |file| loads_alone?(file) }
   end
 
   def loads_alone?(file)
     code = %(require "plastic"; load ARGV.fetch(0))
-    _out, status = ChildProcess.capture2e(RbConfig.ruby, "-I", File.join(ROOT, "lib"), "-I", File.join(ROOT, "scripts", "lib"),
-      "-e", code, file, chdir: ROOT)
+    _out, status = ChildProcess.capture2e(RbConfig.ruby, "-I", File.join(ROOT, "lib"), "-e", code, file, chdir: ROOT)
     status.success?
   end
 

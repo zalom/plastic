@@ -29,7 +29,7 @@ class KernelStartsNoProcessGuardTest < Minitest::Test
   end
 
   def test_the_detector_finds_a_require_of_scripts
-    assert_equal [2], script_requires(%(require "json"\nrequire_relative "../../scripts/lib/installer_core"\n))
+    assert_equal [2], script_requires(%(require "json"\nrequire_relative "../../scripts/lib/installer_release"\n))
   end
 
   def test_the_detector_leaves_a_require_inside_the_kernel
