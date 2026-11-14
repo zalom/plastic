@@ -7,9 +7,41 @@ require_relative "child_process_guard_test"
 # needs one runs as a command the person is given in a `next:` line.
 class KernelStartsNoProcessGuardTest < Minitest::Test
   ROOT = File.expand_path("..", __dir__)
-  SCRIPT_REQUIRE = %r{\A\s*require(?:_relative)?\s+["'][^"']*\bscripts/}
+  SCRIPT_REQUIRE = %r{\A[^#\n]*\b(?:require|require_relative|load|autoload)\b[^#\n]*["'/]scripts["'/]}
+  KERNEL_STARTERS = ChildProcessGuardTest::STARTERS.merge(
+    nil => %i[system spawn exec fork], :Process => %i[spawn exec fork daemon], :Kernel => %i[system spawn exec fork],
+    :PTY => %i[spawn], :File => %i[popen]
+  ).freeze
 
-  def starts(source) = ChildProcessGuardTest::Starts.new.tap { |visitor| Prism.parse(source).value.accept(visitor) }.lines
+  # The starts of the launching guard, and the forms the kernel must not use besides:
+  # fork, daemon, PTY, File.popen, a piped open or read, and a rooted ::Open3.
+  class KernelStarts < ChildProcessGuardTest::Starts
+    private
+
+    def starts?(node)
+      name = constant_name(node.receiver)
+      name == :Open3 || KERNEL_STARTERS.fetch(node.receiver && name, []).include?(node.name) || piped?(node, name)
+    end
+
+    def constant_name(receiver)
+      case receiver
+      when Prism::ConstantReadNode then receiver.name
+      when Prism::ConstantPathNode then receiver.name if receiver.parent.nil?
+      end
+    end
+
+    def piped?(node, receiver_name)
+      reads = %i[open read].include?(node.name) && [nil, :IO].include?(receiver_name)
+      reads && pipe_literal?(node.arguments&.arguments&.first)
+    end
+
+    def pipe_literal?(argument)
+      literal = argument.is_a?(Prism::InterpolatedStringNode) ? argument.parts.first : argument
+      literal.is_a?(Prism::StringNode) && literal.unescaped.start_with?("|")
+    end
+  end
+
+  def starts(source) = KernelStarts.new.tap { |visitor| Prism.parse(source).value.accept(visitor) }.lines
 
   def script_requires(source) = source.lines.each_index.select { |index| source.lines[index].match?(SCRIPT_REQUIRE) }.map(&:succ)
 
