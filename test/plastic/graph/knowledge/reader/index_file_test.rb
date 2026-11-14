@@ -39,6 +39,12 @@ class KnowledgeReaderIndexFileTest < Plastic::TestCase
     assert_equal "store/index.json lists 1 of origin beef; a store holds only its own intents", error.message
   end
 
+  def test_an_index_that_is_not_a_json_object_is_refused_with_its_reason
+    error = assert_raises(Plastic::Invalid) { IndexFile.new(+"[]", "a1b2").apply(nil) }
+
+    assert_equal "store/index.json is not a JSON object", error.message
+  end
+
   def test_an_entry_with_no_intent_folder_gets_no_row
     apply_in(["store/1--alpha"], index([entry, entry(intent_id: "2", slug: "ghost")], []))
 
