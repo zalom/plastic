@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 221" width="980" height="221" role="img" xml:space="preserve">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 552" width="980" height="552" role="img" xml:space="preserve">
 <title>The components on the path of plastic roadmap new</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
@@ -78,23 +78,61 @@
 <rect x="176" y="34" width="140" height="28" rx="6" class="lane-code"/>
 <text x="184" y="52" class="tm" text-anchor="start">New</text>
 <rect x="336" y="34" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="52" class="tm" text-anchor="start">Knowledge::Roadmap::Writer</text>
+<text x="344" y="52" class="tm" text-anchor="start">Knowledge::Sync</text>
 <rect x="336" y="68" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="86" class="tm" text-anchor="start">Retrieval::RoadmapReader</text>
-<rect x="556" y="34" width="186" height="105" rx="14" class="db"/>
-<text x="568" y="52" class="tb" text-anchor="start">work_graph.db</text>
-<text x="568" y="68" class="tm" text-anchor="start">batches  R</text>
-<text x="568" y="83" class="tm" text-anchor="start">roadmap_edges  R</text>
-<text x="568" y="98" class="tm" text-anchor="start">roadmap_items  R</text>
-<text x="568" y="113" class="tm" text-anchor="start">roadmap_log  R</text>
-<text x="568" y="128" class="tm" text-anchor="start">roadmaps  RW</text>
+<text x="344" y="86" class="tm" text-anchor="start">Knowledge::Roadmap::Writer</text>
+<rect x="336" y="102" width="196" height="28" rx="6" class="card"/>
+<text x="344" y="120" class="tm" text-anchor="start">Retrieval::RoadmapReader</text>
+<rect x="336" y="136" width="196" height="28" rx="6" class="card"/>
+<text x="344" y="154" class="tm" text-anchor="start">Resolution</text>
+<rect x="336" y="170" width="196" height="28" rx="6" class="card"/>
+<text x="344" y="188" class="tm" text-anchor="start">LegacyImport</text>
+<rect x="336" y="204" width="196" height="28" rx="6" class="card"/>
+<text x="344" y="222" class="tm" text-anchor="start">IntentFolders</text>
+<rect x="336" y="238" width="196" height="28" rx="6" class="card"/>
+<text x="344" y="256" class="tm" text-anchor="start">ArchivedIntents</text>
+<rect x="336" y="272" width="196" height="28" rx="6" class="card"/>
+<text x="344" y="290" class="tm" text-anchor="start">FileReads</text>
+<rect x="336" y="306" width="196" height="28" rx="6" class="card"/>
+<text x="344" y="324" class="tm" text-anchor="start">HandEdits</text>
+<rect x="336" y="340" width="196" height="28" rx="6" class="card"/>
+<text x="344" y="358" class="tm" text-anchor="start">Printer</text>
+<rect x="336" y="374" width="196" height="28" rx="6" class="card"/>
+<text x="344" y="392" class="tm" text-anchor="start">Mark</text>
+<rect x="336" y="408" width="196" height="28" rx="6" class="card"/>
+<text x="344" y="426" class="tm" text-anchor="start">Retrieval::Evidence::Heads</text>
+<rect x="336" y="442" width="196" height="28" rx="6" class="card"/>
+<text x="344" y="460" class="tm" text-anchor="start">Readability</text>
+<rect x="336" y="476" width="196" height="28" rx="6" class="card"/>
+<text x="344" y="494" class="tm" text-anchor="start">Retrieval::StoreRead</text>
+<rect x="336" y="510" width="196" height="28" rx="6" class="card"/>
+<text x="344" y="528" class="tm" text-anchor="start">Database::Batch</text>
+<rect x="556" y="34" width="186" height="75" rx="14" class="db"/>
+<text x="568" y="52" class="tb" text-anchor="start">knowledge_graph.db</text>
+<text x="568" y="68" class="tm" text-anchor="start">document_heads  R</text>
+<text x="568" y="83" class="tm" text-anchor="start">links  W</text>
+<text x="568" y="98" class="tm" text-anchor="start">rulings  W</text>
 <path d="M 536 45 L 556 45" class="wire"/>
 <path d="M 548 40 L 556 45 L 548 50 Z" class="head"/>
 <path d="M 556 53 L 536 53" class="wire-read"/>
 <path d="M 544 48 L 536 53 L 544 58 Z" class="head"/>
-<text x="556" y="165" class="tm tag-muted" text-anchor="start">R read  W write</text>
-<text x="556" y="179" class="tm tag-muted" text-anchor="start">declared: named by the</text>
-<text x="556" y="193" class="tm tag-muted" text-anchor="start">command, tables not found</text>
+<rect x="556" y="123" width="186" height="150" rx="14" class="db"/>
+<text x="568" y="141" class="tb" text-anchor="start">work_graph.db</text>
+<text x="568" y="157" class="tm" text-anchor="start">archives  RW</text>
+<text x="568" y="172" class="tm" text-anchor="start">batches  R</text>
+<text x="568" y="187" class="tm" text-anchor="start">completions  W</text>
+<text x="568" y="202" class="tm" text-anchor="start">intents  RW</text>
+<text x="568" y="217" class="tm" text-anchor="start">roadmap_edges  R</text>
+<text x="568" y="232" class="tm" text-anchor="start">roadmap_items  R</text>
+<text x="568" y="247" class="tm" text-anchor="start">roadmap_log  R</text>
+<text x="568" y="262" class="tm" text-anchor="start">roadmaps  RW</text>
+<path d="M 536 134 L 556 134" class="wire"/>
+<path d="M 548 129 L 556 134 L 548 139 Z" class="head"/>
+<path d="M 556 142 L 536 142" class="wire-read"/>
+<path d="M 544 137 L 536 142 L 544 147 Z" class="head"/>
+<text x="556" y="299" class="tm tag-muted" text-anchor="start">R read  W write</text>
+<text x="556" y="313" class="tm tag-muted" text-anchor="start">declared: named by the</text>
+<text x="556" y="327" class="tm tag-muted" text-anchor="start">command, tables not found</text>
 <rect x="766" y="34" width="200" height="28" rx="6" class="card"/>
 <text x="774" y="52" class="tm" text-anchor="start">roadmaps/SLUG.md</text>
 </svg>
