@@ -157,11 +157,10 @@ class KnowledgeSyncIndexTest < Plastic::TestCase
 
   def test_sync_up_prints_an_index_that_another_home_printed_from_the_rows
     foreign_index
-    plan = sync.plan(:up)
-    sync.apply(plan)
+    result = plastic("sync", "up", table: Plastic::CLI::TABLE)
 
-    assert_empty plan.unreadable_files
-    assert_equal retrieval.origin_id, JSON.parse(folder.read("store/index.json")).fetch("origin_id")
+    assert_equal [0, "", true, retrieval.origin_id], [result.code, result.err, result.out.include?("next: plastic next"),
+      JSON.parse(folder.read("store/index.json")).fetch("origin_id")], result.out
   end
 
   def test_sync_up_plans_a_print_of_an_index_another_home_printed_when_the_rows_did_not_change
