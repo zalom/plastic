@@ -157,19 +157,22 @@ class VerifyChange
     [base || default_base, extra_tests]
   end
 
-# Runs a step, copies what it prints to the gate's output as it prints it, and
-# answers its exit code with that output, so a miss of a target can be told
-# from a tool that did not run.
-def stream(env, command)
-  text = +""
-  status = Open3.popen2e(env, *command, chdir: @root) do |_in, output, waiter|
-    output.each_line { |line| @out.print(line) && text << line }
-    waiter.value
+  # Runs a step, copies what it prints to the gate's output as it prints it, and
+  # answers its exit code with that output, so a miss of a target can be told
+  # from a tool that did not run.
+  def stream(env, command)
+    text = +""
+    status = Open3.popen2e(env, *command, chdir: @root) do |_in, output, waiter|
+      output.each_line do |line|
+        @out.print(line)
+        text << line
+      end
+      waiter.value
+    end
+    [status.exitstatus || 127, text]
+  rescue SystemCallError => e
+    [127, e.message]
   end
-  [status.exitstatus || 127, text]
-rescue SystemCallError => e
-  [127, e.message]
-end
 
   def default_base
     DEFAULT_BASES.find { |ref| @git.call("rev-parse", "--verify", "--quiet", ref).last.success? } || DEFAULT_BASES.last
