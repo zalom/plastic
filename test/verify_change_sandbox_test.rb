@@ -4,12 +4,15 @@
 require_relative "test_helper"
 require "etc"
 require "tmpdir"
+require_relative "support/gate_run"
 
 load File.expand_path("../bin/verify-change", __dir__)
 
 # Every step of the change gate runs under a throwaway home, so a test the gate
 # starts cannot reach the machine's own ~/.plastic or ~/.claude.
 class VerifyChangeSandboxTest < Minitest::Test
+  include GateRun
+
   ROOT = File.expand_path("..", __dir__)
   REAL_HOME = Etc.getpwuid(Process.uid).dir
   CHANGED_SOURCE = "lib/plastic/hooks/entries.rb"
@@ -56,6 +59,21 @@ class VerifyChangeSandboxTest < Minitest::Test
     assert_empty Dir.children(home)
   ensure
     subject&.discard_sandbox
+  end
+
+  def test_every_step_passing_is_verified
+    done = run_gate({})
+
+    assert_equal [0, true], [done.code, done.out.include?("Change verified")]
+  end
+
+  def test_lint_tests_coverage_and_crap_still_fail_the_gate
+    ["Lint", "Tests with coverage", "Patch coverage", "CRAP scores"].each do |title|
+      done = run_gate(title => 1)
+
+      assert_equal 1, done.code, title
+      assert_match(/Failed:.*#{Regexp.escape(title)}/, done.out)
+    end
   end
 
   def test_the_sandbox_is_discarded_after_the_run
