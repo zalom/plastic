@@ -12,7 +12,7 @@ module Plastic
         @paths = [*manifest.files, manifest.path].select { |path| File.file?(path) }
       end
 
-      def take
+      def capture
         FileUtils.rm_rf(@dir)
         @paths.each { |path| copy(path, kept(path)) }
         self

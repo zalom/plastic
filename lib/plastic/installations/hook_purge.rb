@@ -4,8 +4,8 @@ require_relative "hook_registry"
 
 module Plastic
   module Installations
-    # Takes the hook entries the registry owns out of a hooks mapping, in
-    # place, and returns [[event, command], ...] for each one it took out.
+    # Purges the hook entries the registry owns out of a hooks mapping, in
+    # place, and returns [[event, command], ...] for each one it purged.
     # The predicate names the registry's rule for one harness.
     class HookPurge
       def initialize(predicate)
@@ -20,26 +20,26 @@ module Plastic
 
       private
 
-      def keep(group, taken)
+      def keep(group, purged)
         return group unless group.is_a?(Hash)
 
         list = group["hooks"]
-        return nested(group, list, taken) if list.is_a?(Array)
+        return nested(group, list, purged) if list.is_a?(Array)
 
         command = group["command"]
-        command ? bare(group, command, taken) : group
+        command ? bare(group, command, purged) : group
       end
 
-      def nested(group, list, taken)
-        list.reject! { |hook| take(hook["command"], taken) }
+      def nested(group, list, purged)
+        list.reject! { |hook| purge(hook["command"], purged) }
         group unless list.empty?
       end
 
-      def bare(group, command, taken)
-        group unless take(command, taken)
+      def bare(group, command, purged)
+        group unless purge(command, purged)
       end
 
-      def take(command, (event, removed))
+      def purge(command, (event, removed))
         owned?(command) && removed << [event, command]
       end
 
