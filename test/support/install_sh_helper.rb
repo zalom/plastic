@@ -14,7 +14,7 @@ require_relative "../../bin/lib/release_build"
 module InstallShHelper
   REPO = File.expand_path("../..", __dir__)
   SCRIPT = File.join(REPO, "install.sh")
-  INSTALLER_FILES = ["scripts/install-release", "scripts/lib/installer_release.rb", "scripts/lib/installer_release"].freeze
+  INSTALLER_FILES = File.read(SCRIPT)[/^tar -xzf .*\/boot" (.*)$/, 1].to_s.split.map { |path| path.delete_prefix("package/") }.freeze
 
   def setup
     @dir = Dir.mktmpdir("plastic-install-sh")
