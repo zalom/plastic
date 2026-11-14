@@ -83,7 +83,7 @@ module Plastic
             lock&.session_id == context.session && lock.mode == "auto" && retrieval.liveness(lock).live?
         end
 
-        step "go in progress and take the lock", done: method(:delivery_started?) do |context|
+        step "take the lock and go in progress", done: method(:delivery_started?) do |context|
           context.work.activate_intent(context.intent_id)
           context.work.take_lock(context.intent_id, session_id: context.session, mode: "auto")
         end

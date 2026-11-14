@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../../code_workflow"
+require_relative "../auto"
 
 module Plastic
   module Workflows
@@ -23,8 +24,7 @@ module Plastic
           gate "no intent %{intent_id} in this store", stops: :failure, pass: ->(context) { !context.intent.nil? }
 
           read "check the go-ahead" do |context|
-            id = context.intent_id
-            context[:approval_problem] = ("intent #{id} has no go-ahead; the owner approves it with plastic intent approve #{id}" unless context.retrieval.approval(id))
+            context[:approval_problem] = Auto.approval_problem(context.intent_id, context)
           end
 
           gate "%{approval_problem}", stops: :refusal, pass: ->(context) { context.approval_problem.nil? }
