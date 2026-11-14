@@ -119,7 +119,7 @@ class KernelPathsTest < Minitest::Test
   CODE
 
   def failing_loads(files)
-    runs = files.each_slice((files.size / 6.0).ceil).map { |slice| Thread.new { forked_loads(slice) } }
+    runs = files.each_slice((files.size / 10.0).ceil).map { |slice| Thread.new { forked_loads(slice) } }
     runs.flat_map(&:value)
   end
 

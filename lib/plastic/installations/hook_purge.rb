@@ -13,30 +13,34 @@ module Plastic
       end
 
       def call(hooks)
-        hooks.each_with_object([]) do |(event, groups), removed|
-          hooks[event] = groups.filter_map { |group| keep(group, event, removed) } if groups.is_a?(Array)
-        end
+        removed = []
+        hooks.each { |event, groups| hooks[event] = groups.filter_map { |group| keep(group, [event, removed]) } if groups.is_a?(Array) }
+        removed
       end
 
       private
 
-      def keep(group, event, removed)
+      def keep(group, taken)
         return group unless group.is_a?(Hash)
-        return nested(group, event, removed) if group["hooks"].is_a?(Array)
 
-        group["command"] ? bare(group, event, removed) : group
+        list = group["hooks"]
+        return nested(group, list, taken) if list.is_a?(Array)
+
+        command = group["command"]
+        command ? bare(group, command, taken) : group
       end
 
-      def nested(group, event, removed)
-        group["hooks"].reject! { |hook| owned?(hook["command"]) && removed << [event, hook["command"]] }
-        group unless group["hooks"].empty?
+      def nested(group, list, taken)
+        list.reject! { |hook| take(hook["command"], taken) }
+        group unless list.empty?
       end
 
-      def bare(group, event, removed)
-        return group unless owned?(group["command"])
+      def bare(group, command, taken)
+        group unless take(command, taken)
+      end
 
-        removed << [event, group["command"]]
-        nil
+      def take(command, (event, removed))
+        owned?(command) && removed << [event, command]
       end
 
       def owned?(command) = HookRegistry.public_send(@predicate, command)
