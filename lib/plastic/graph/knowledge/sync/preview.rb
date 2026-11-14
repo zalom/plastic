@@ -14,9 +14,9 @@ module Plastic
       class Sync
         # A dry run of a sync: the lines of what it would do, on a copy of the store.
         class Preview
-          # The lines of a dry run, and what the real sync up would refuse: the intent folders it cannot read,
-          # and each changed file no reader turns into rows, with the reason.
-          Run = Data.define(:lines, :unreadable, :unreadable_files)
+          # The lines of a dry run, and what the real sync would refuse: the files changed on both sides, whether
+          # it merges, the intent folders it cannot read, and each changed file no reader turns into rows, with the reason.
+          Run = Data.define(:lines, :conflicts, :merging, :unreadable, :unreadable_files)
 
           def initialize(home, store, options, direction: :up)
             @home, @store, @options, @direction = home, store, options, direction
@@ -64,7 +64,7 @@ module Plastic
             work = Graph.open(home: copy, store: @store).work
             plan = checked(work.sync_plan(@direction, options))
             lines = [*Preview.conflict_lines(plan), *work.sync_apply(plan, rollback: Legacy::Unguarded), *Preview.printed_over_lines(plan)]
-            Run.new(lines:, **refused(work, plan))
+            Run.new(lines:, conflicts: plan.conflicts, merging: plan.merging?, **refused(work, plan))
           end
 
           # What the real sync up refuses after its apply; a sync down refuses none of it.

@@ -65,7 +65,15 @@ module Plastic
               @intent_ids = entry["intents"]
             end
 
-            def rows = @intent_ids.map { |intent_id| { name: @name, intent_id: } }
+            def rows = intent_ids.map { |intent_id| { name: @name, intent_id: } }
+
+            private
+
+            def intent_ids
+              return @intent_ids if @intent_ids.is_a?(Array)
+
+              raise Invalid, "#{StoreFolder::INDEX} lists the cluster #{@name} with no list of intents"
+            end
           end
         end
       end
