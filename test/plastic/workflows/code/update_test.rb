@@ -43,14 +43,14 @@ class UpdatePlasticTest < Plastic::TestCase
     assert_includes context.command, "--version 99.0.0-alpha.2"
   end
 
-def test_a_home_with_only_a_release_from_install_sh_syncs_nothing_and_checks_for_a_newer_release
-  activated("99.0.0-alpha.1")
-  env = current("99.0.0-alpha.1").merge("PLASTIC_LOCAL_RELEASE" => local_release("99.0.0-alpha.2"))
+  def test_a_home_with_only_a_release_from_install_sh_syncs_nothing_and_checks_for_a_newer_release
+    activated("99.0.0-alpha.1")
+    env = current("99.0.0-alpha.1").merge("PLASTIC_LOCAL_RELEASE" => local_release("99.0.0-alpha.2"))
 
-  outcome, = update(env:)
+    outcome, = update(env:)
 
-  assert_equal [:downloaded, false], [outcome, File.exist?(File.join(@plastic_home, "VERSION"))]
-end
+    assert_equal [:downloaded, false], [outcome, File.exist?(File.join(@plastic_home, "VERSION"))]
+  end
 
   def test_the_newest_active_release_stays_current
     installed("99.0.0-alpha.1")

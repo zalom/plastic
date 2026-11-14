@@ -27,13 +27,13 @@ class PreviewUpdateTest < Plastic::TestCase
       [outcome.class, outcome.message]
   end
 
-def test_a_home_with_only_a_release_from_install_sh_continues_from_that_release
-  activated("2.0.3")
+  def test_a_home_with_only_a_release_from_install_sh_continues_from_that_release
+    activated("2.0.3")
 
-  outcome, context = preview
+    outcome, context = preview
 
-  assert_equal [:done, [["from:", "2.0.3"], ["to:", "2.0.5"]]], [outcome, printed_rows(context)]
-end
+    assert_equal [:done, [["from:", "2.0.3"], ["to:", "2.0.5"]]], [outcome, printed_rows(context)]
+  end
 
   def test_a_real_run_prints_nothing_and_continues
     installed("2.0.1")

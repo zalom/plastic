@@ -9,7 +9,8 @@ module Plastic
   module Workflows
     module Code
       class Update
-        # Compares the installed version with the running package. A dry run
+        # Compares the installed version, or the release install.sh activated
+        # when no harness is set up yet, with the running package. A dry run
         # names both and what the update would do.
         class Preview < CodeWorkflow
           [facts, steps, outcomes].each(&:clear)
@@ -18,7 +19,7 @@ module Plastic
 
           read "compare the installed and the running versions" do |context|
             installation = Installation.of(context)
-            context[:from] = installation.installed_version
+            context[:from] = installation.installed_version || ReleaseUpdate.of(context).active_version
             context[:to] = installation.version
           end
 

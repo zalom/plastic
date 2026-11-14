@@ -19,7 +19,8 @@ module Plastic
         sets :newer, :synced, :active, :release, :downloaded, :command
 
         read "check whether the running package is newer" do |context|
-          context[:newer] = Installation.of(context).newer?
+          installation = Installation.of(context)
+          context[:newer] = installation.installed? && installation.newer?
         end
 
         step "sync the newer package into the home", done: ->(context) { !context.newer || context.synced } do |context|
