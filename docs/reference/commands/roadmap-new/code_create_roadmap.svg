@@ -84,8 +84,7 @@
 <rect x="16" y="89" width="420" height="70" rx="6" class="card"/>
 <text x="26" y="104" class="tag tag-muted" text-anchor="start">GATE</text>
 <text x="426" y="104" class="tm tag-muted" text-anchor="end">new.rb:17</text>
-<text x="26" y="121" class="tm" text-anchor="start">passes when</text>
-<text x="26" y="136" class="tm" text-anchor="start">!context.work.stored_file?(&quot;roadmaps/#{context.slug}.md&quot;)</text>
+<text x="26" y="121" class="tm" text-anchor="start">passes when !context.work.roadmap_file?(context.slug)</text>
 <path d="M 436 107 L 464 107" class="wire-failure"/>
 <path d="M 456 102 L 464 107 L 456 112 Z" class="head"/>
 <rect x="466" y="89" width="270" height="70" rx="6" class="stop-failure"/>

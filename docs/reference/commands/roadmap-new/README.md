@@ -31,7 +31,7 @@ Creates a roadmap row and offers its first batch.
 Its rows run in this order:
 
 1. Gate: passes when `context.retrieval.roadmap(context.slug).nil?`; otherwise the call stops with exit 1 and prints roadmap SLUG already exists. [`new.rb:13`](../../../../lib/plastic/workflows/code/roadmap/new.rb#L13)
-2. Gate: passes when `!context.work.stored_file?("roadmaps/#{context.slug}.md")`; otherwise the call stops with exit 1 and prints roadmaps/SLUG.md exists and Plastic has no roadmap row for it. [`new.rb:17`](../../../../lib/plastic/workflows/code/roadmap/new.rb#L17)
+2. Gate: passes when `!context.work.roadmap_file?(context.slug)`; otherwise the call stops with exit 1 and prints roadmaps/SLUG.md exists and Plastic has no roadmap row for it. [`new.rb:17`](../../../../lib/plastic/workflows/code/roadmap/new.rb#L17)
 3. Step: create the roadmap. Done when `!context.roadmap.nil?`, so a second call skips it. [`new.rb:23`](../../../../lib/plastic/workflows/code/roadmap/new.rb#L23)
 4. Read: say what was created. [`new.rb:27`](../../../../lib/plastic/workflows/code/roadmap/new.rb#L27)
 5. Outcome `:done`, always: finishes with exit 0; next: plastic roadmap batch SLUG 1. [`new.rb:31`](../../../../lib/plastic/workflows/code/roadmap/new.rb#L31)
@@ -51,8 +51,7 @@ In the words of workflow engines, the rows are these four parts:
 
 | Place | Database or file | Tables | Reads or writes | Code |
 | --- | --- | --- | --- | --- |
-| the store folder | knowledge_graph.db | `document_heads`, `links`, `rulings` | reads and writes | found in the code, not declared |
-| the store folder | work_graph.db | `archives`, `batches`, `completions`, `intents`, `roadmap_edges`, `roadmap_items`, `roadmap_log`, `roadmaps` | reads and writes | [`new.rb:14`](../../../../lib/plastic/commands/roadmap/new.rb#L14) |
+| the store folder | work_graph.db | `batches`, `roadmap_edges`, `roadmap_items`, `roadmap_log`, `roadmaps` | reads and writes | [`new.rb:14`](../../../../lib/plastic/commands/roadmap/new.rb#L14) |
 | the store folder | roadmaps/SLUG.md | | writes | [`prints.rb:75`](../../../../lib/plastic/graph/prints.rb#L75) |
 
 A second call runs the same rows again. A step runs again only when its done check fails.
