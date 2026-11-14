@@ -83,7 +83,9 @@ module Plastic
       # [intent_id, problem, kind]; kind is :failure or :refusal, nil on success.
       def open_roadmap_item(slug, item_id) = Knowledge::Roadmap::ItemOpen.new(@writers).call(slug, item_id)
 
-      def print_index = @writers.sync.printer.print([Prints.index(@retrieval)])
+      def roadmap_file?(slug) = @folder.exist?("roadmaps/#{slug}.md")
+
+      def print_index =@writers.sync.printer.print([Prints.index(@retrieval)])
 
       # The paths this call printed, relative to the store folder.
       def printed = @writers.sync.printer.written
