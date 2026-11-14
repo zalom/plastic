@@ -70,4 +70,38 @@ class ProjectNewTest < Plastic::TestCase
 
     assert_equal ["/tmp/api", File.realpath(checkout)], [projects["api"]["path"], File.realpath(projects["blog"]["path"])]
   end
+
+  def rule_file(name) = File.join(checkout, name)
+
+  def test_both_rule_files_absent_are_written_and_named
+    result = make("blog", checkout)
+
+    assert_equal "# blog\n\nRules for agents working on this repository.\n", File.read(rule_file("AGENTS.md"))
+    assert_equal "@AGENTS.md\n", File.read(rule_file("CLAUDE.md"))
+    assert_includes result.out, "created AGENTS.md and CLAUDE.md in #{checkout}"
+  end
+
+  def test_a_present_agents_file_is_left_byte_for_byte
+    File.write(rule_file("AGENTS.md"), "mine\n")
+    result = make("blog", checkout)
+
+    assert_equal "mine\n", File.read(rule_file("AGENTS.md"))
+    assert_includes result.out, "created CLAUDE.md in #{checkout}"
+  end
+
+  def test_a_claude_file_without_the_import_is_left_byte_for_byte
+    File.write(rule_file("CLAUDE.md"), "no import\n")
+    make("blog", checkout)
+
+    assert_equal "no import\n", File.read(rule_file("CLAUDE.md"))
+  end
+
+  def test_a_second_call_changes_no_file_and_names_none
+    make("blog", checkout)
+    before = %w[AGENTS.md CLAUDE.md].map { |name| File.binread(rule_file(name)) }
+    result = make("blog", checkout)
+
+    assert_equal before, %w[AGENTS.md CLAUDE.md].map { |name| File.binread(rule_file(name)) }
+    refute_includes result.out, "created"
+  end
 end
