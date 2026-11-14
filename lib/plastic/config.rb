@@ -37,6 +37,9 @@ module Plastic
 
     def value(key) = dig(key.split("."))
 
+    # The stores a search reads when none is named: the comma value of search.source_projects.
+    def source_projects = value("search.source_projects").to_s.split(",")
+
     def settings = (@settings ||= Config.merged(shipped, overrides))
 
     def overrides = Config.merged(section("global"), @harness ? section("harnesses", @harness) : {})

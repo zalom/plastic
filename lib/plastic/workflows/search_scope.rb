@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../cli/command/usage"
+require_relative "../config"
 
 module Plastic
   module Workflows
@@ -23,7 +24,7 @@ module Plastic
 
       def configured
         values = context.source_projects
-        values.empty? ? context.scope.setting("PLASTIC_SOURCE_PROJECTS", "").split(",") : values
+        values.empty? ? Plastic::Config.new(context.scope.plastic_home).source_projects : values
       end
 
       def validate(selected)

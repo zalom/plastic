@@ -12,6 +12,7 @@ module Plastic
         "screens" => true,
         "runner" => { "stop_hook" => false },
         "review" => { "pull_request" => "off" },
+        "search" => { "source_projects" => "" },
         "migrate" => { "remove_after_import" => false },
         "advisor" => { "enabled" => true }
       }.freeze
