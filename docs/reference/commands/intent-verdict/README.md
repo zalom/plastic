@@ -54,11 +54,11 @@ Its rows run in this order:
 1. Read: check the intent. [`prepare.rb:17`](../../../../lib/plastic/workflows/code/intent/verdict/prepare.rb#L17)
 2. Gate: passes when `context.problem.nil?`; otherwise the call stops with exit 1 and prints PROBLEM. [`prepare.rb:21`](../../../../lib/plastic/workflows/code/intent/verdict/prepare.rb#L21)
 3. Read: check the delivery behind an accept. [`prepare.rb:23`](../../../../lib/plastic/workflows/code/intent/verdict/prepare.rb#L23)
-4. Gate: passes when `context.criterion_problem.nil?`; otherwise the call stops with exit 1 and prints CRITERION_PROBLEM; an accept needs one. [`prepare.rb:38`](../../../../lib/plastic/workflows/code/intent/verdict/prepare.rb#L38)
-5. Gate: passes when `context.node_problem.nil?`; otherwise the call stops with exit 1 and prints NODE_PROBLEM; an accept needs the work done. [`prepare.rb:40`](../../../../lib/plastic/workflows/code/intent/verdict/prepare.rb#L40)
-6. Gate: passes when `context.open_nodes.to_s.empty?`; otherwise the call stops with exit 1 and prints intent INTENT_ID has nodes that are not done: OPEN_NODES. [`prepare.rb:42`](../../../../lib/plastic/workflows/code/intent/verdict/prepare.rb#L42)
-7. Gate: passes when `context.work.rounds_left?(context.intent_id)`; otherwise the call stops with exit 3 and prints the judge's review round of intent INTENT_ID is used; the owner decides between abandoning the intent and a follow-up intent. [`prepare.rb:44`](../../../../lib/plastic/workflows/code/intent/verdict/prepare.rb#L44)
-8. Outcome `:recording`, always: starts the workflow [Code::Intent::Verdict](#codeintentverdict). [`prepare.rb:47`](../../../../lib/plastic/workflows/code/intent/verdict/prepare.rb#L47)
+4. Gate: passes when `context.criterion_problem.nil?`; otherwise the call stops with exit 1 and prints CRITERION_PROBLEM; an accept needs one. [`prepare.rb:41`](../../../../lib/plastic/workflows/code/intent/verdict/prepare.rb#L41)
+5. Gate: passes when `context.node_problem.nil?`; otherwise the call stops with exit 1 and prints NODE_PROBLEM; an accept needs the work done. [`prepare.rb:43`](../../../../lib/plastic/workflows/code/intent/verdict/prepare.rb#L43)
+6. Gate: passes when `context.open_nodes.to_s.empty?`; otherwise the call stops with exit 1 and prints intent INTENT_ID has nodes that are not done: OPEN_NODES. [`prepare.rb:45`](../../../../lib/plastic/workflows/code/intent/verdict/prepare.rb#L45)
+7. Gate: passes when `context.work.rounds_left?(context.intent_id)`; otherwise the call stops with exit 3 and prints the judge's review round of intent INTENT_ID is used; the owner decides between abandoning the intent and a follow-up intent. [`prepare.rb:47`](../../../../lib/plastic/workflows/code/intent/verdict/prepare.rb#L47)
+8. Outcome `:recording`, always: starts the workflow [Code::Intent::Verdict](#codeintentverdict). [`prepare.rb:50`](../../../../lib/plastic/workflows/code/intent/verdict/prepare.rb#L50)
 
 It sets `problem`, `criterion_problem`, `node_problem`, `open_nodes`.
 
@@ -114,10 +114,10 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
 | PROBLEM | 1 | prints no next: line | [`prepare.rb:21`](../../../../lib/plastic/workflows/code/intent/verdict/prepare.rb#L21) |
-| CRITERION_PROBLEM; an accept needs one | 1 | plastic intent spec INTENT_ID | [`prepare.rb:38`](../../../../lib/plastic/workflows/code/intent/verdict/prepare.rb#L38) |
-| NODE_PROBLEM; an accept needs the work done | 1 | plastic node add INTENT_ID TITLE --criterion KEY | [`prepare.rb:40`](../../../../lib/plastic/workflows/code/intent/verdict/prepare.rb#L40) |
-| intent INTENT_ID has nodes that are not done: OPEN_NODES | 1 | plastic graph show INTENT_ID | [`prepare.rb:42`](../../../../lib/plastic/workflows/code/intent/verdict/prepare.rb#L42) |
-| the judge's review round of intent INTENT_ID is used; the owner decides between abandoning the intent and a follow-up intent | 3 | prints no next: line | [`prepare.rb:44`](../../../../lib/plastic/workflows/code/intent/verdict/prepare.rb#L44) |
+| CRITERION_PROBLEM; an accept needs one | 1 | plastic intent spec INTENT_ID | [`prepare.rb:41`](../../../../lib/plastic/workflows/code/intent/verdict/prepare.rb#L41) |
+| NODE_PROBLEM; an accept needs the work done | 1 | plastic node add INTENT_ID TITLE --criterion KEY | [`prepare.rb:43`](../../../../lib/plastic/workflows/code/intent/verdict/prepare.rb#L43) |
+| intent INTENT_ID has nodes that are not done: OPEN_NODES | 1 | plastic graph show INTENT_ID | [`prepare.rb:45`](../../../../lib/plastic/workflows/code/intent/verdict/prepare.rb#L45) |
+| the judge's review round of intent INTENT_ID is used; the owner decides between abandoning the intent and a follow-up intent | 3 | prints no next: line | [`prepare.rb:47`](../../../../lib/plastic/workflows/code/intent/verdict/prepare.rb#L47) |
 | the judge's review round of intent INTENT_ID is used; the owner decides between abandoning the intent and a follow-up intent | 3 | prints no next: line | [`review_round.rb:11`](../../../../lib/plastic/workflows/review_round.rb#L11) |
 | the judge asked for a revision; add a node that fixes it | 0 | plastic node add INTENT_ID TITLE --criterion KEY | [`verdict.rb:31`](../../../../lib/plastic/workflows/code/intent/verdict.rb#L31) |
 | intent INTENT_ID is accepted | 0 | plastic intent end INTENT_ID | [`verdict.rb:33`](../../../../lib/plastic/workflows/code/intent/verdict.rb#L33) |

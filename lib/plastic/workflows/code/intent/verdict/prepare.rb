@@ -21,11 +21,19 @@ module Plastic
             gate "%{problem}", stops: :failure, pass: ->(context) { context.problem.nil? }
 
             read "check the delivery behind an accept" do |context|
-              accepting = context.verdict == "accept"
-              nodes = accepting ? context.retrieval.nodes(context.intent_id).select(&:live?) : []
-              context[:criterion_problem] = ("intent #{context.intent_id} names no done criterion" if accepting && no_criterion?(context))
-              context[:node_problem] = ("intent #{context.intent_id} has no node" if accepting && nodes.empty?)
-              context[:open_nodes] = nodes.reject { |node| node.state == "done" }.map(&:id).join(", ")
+              delivery_problems(context).each { |key, value| context[key] = value }
+            end
+
+            def self.delivery_problems(context)
+              return { criterion_problem: nil, node_problem: nil, open_nodes: "" } unless context.verdict == "accept"
+
+              intent_id = context.intent_id
+              nodes = context.retrieval.nodes(intent_id).select(&:live?)
+              {
+                criterion_problem: ("intent #{intent_id} names no done criterion" if no_criterion?(context)),
+                node_problem: ("intent #{intent_id} has no node" if nodes.empty?),
+                open_nodes: nodes.reject { |node| node.state == "done" }.map(&:id).join(", ")
+              }
             end
 
             def self.no_criterion?(context) = Plastic::Graph::Knowledge::Spec.new(context.retrieval, context.intent_id).done_criteria.empty?
