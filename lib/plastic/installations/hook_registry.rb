@@ -65,7 +65,7 @@ module Plastic
         edit-gates bash-gate code-gate create-gate links-gate lock-gate savepoint-pre call-budget
         qmd-search retrieval-gate model-instructions opus-manual
         continue future-intent-check auto-arm gate-check
-        power-tools
+        power-tools check-update
         session-start savepoint record close capture message-display stop
       ].freeze
 

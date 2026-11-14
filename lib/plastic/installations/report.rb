@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "hook_registry"
+
 module Plastic
   module Installations
     # The plain lines an install prints about the settings it changed.
@@ -37,8 +39,10 @@ module Plastic
 
       def kept_names(hooks)
         groups = hooks.values.grep(Array).flat_map { |list| list.grep(Hash) }
-        groups.flat_map { |group| named(group) }.compact.select { |command| command.to_s.include?("plastic-") }.uniq
+        groups.flat_map { |group| named(group) }.compact.select { |command| own_name?(command) }.uniq
       end
+
+      def own_name?(command) = HookRegistry.command_basenames(command).any? { |name| name.start_with?("plastic-") }
 
       def named(group) = Array(group["hooks"]).map { |hook| hook["command"] } + [group["command"]]
     end
