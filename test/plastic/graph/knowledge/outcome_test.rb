@@ -95,6 +95,12 @@ class KnowledgeOutcomeTest < Plastic::TestCase
     assert_includes message, "Merged: no"
   end
 
+  def test_the_missing_record_message_asks_for_a_merged_line_when_none_is_there
+    message = outcome("## Verification\n- Architecture map: enola at abc123\n").missing_records.first
+
+    assert_equal "Add a line starting Merged: to the Verification section of outcome.md and run plastic sync up.", message
+  end
+
   def test_missing_pull_request_approval_and_revert_bullets_read_false
     read = outcome("# Outcome\n\n## Verification\n- Merged: into alpha\n")
 

@@ -23,17 +23,12 @@ module Plastic
             read "check the delivery behind an accept" do |context|
               accepting = context.verdict == "accept"
               nodes = accepting ? context.retrieval.nodes(context.intent_id).select(&:live?) : []
-              context[:criterion_problem] = (criterion_problem(context) if accepting)
+              context[:criterion_problem] = ("intent #{context.intent_id} names no done criterion" if accepting && no_criterion?(context))
               context[:node_problem] = ("intent #{context.intent_id} has no node" if accepting && nodes.empty?)
               context[:open_nodes] = nodes.reject { |node| node.state == "done" }.map(&:id).join(", ")
             end
 
-            def self.criterion_problem(context)
-              intent_id = context.intent_id
-              return unless Plastic::Graph::Knowledge::Spec.new(context.retrieval, intent_id).done_criteria.empty?
-
-              "intent #{intent_id} names no done criterion"
-            end
+            def self.no_criterion?(context) = Plastic::Graph::Knowledge::Spec.new(context.retrieval, context.intent_id).done_criteria.empty?
 
             gate "%{criterion_problem}; an accept needs one", stops: :failure, offers: "plastic intent spec %{intent_id}",
               because: "the spec needs a done criterion before an accept", pass: ->(context) { context.criterion_problem.nil? }
