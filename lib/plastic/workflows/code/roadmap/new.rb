@@ -16,7 +16,7 @@ module Plastic
 
           gate "roadmaps/%{slug}.md exists and Plastic has no roadmap row for it", stops: :failure, offers: "plastic roadmap new %{slug}-2",
             because: "the file was not printed by Plastic",
-            pass: ->(context) { !context.work.roadmap_file?(context.slug) }
+            pass: ->(context) { !context.work.stored_file?("roadmaps/#{context.slug}.md") }
 
           sets :roadmap
 

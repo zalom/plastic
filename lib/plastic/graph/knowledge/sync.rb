@@ -68,6 +68,8 @@ module Plastic
         # The printed files a person changed by hand, for the prints `kinds` name and the facts of the call.
         def hand_edited(kinds, facts) = HandEdits.new(@retrieval, @folder, kinds, facts).call
 
+        def file?(rel) = @folder.exist?(rel)
+
         def printer = (@printer ||= Printer.new(@folder, @databases, @retrieval))
       end
     end

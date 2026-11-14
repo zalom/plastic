@@ -42,6 +42,7 @@ module Plastic
       def_delegator "@writers.sync", :plan, :sync_plan
       def_delegator "@writers.sync", :apply, :sync_apply
       def_delegator "@writers.sync", :hand_edited
+      def_delegator "@writers.sync", :file?, :stored_file?
       # The snapshot restores exact bytes; printing live rows would replace them.
       # Returns [ok, problem, kind]; kind is :failure, nil on success. Restores the saved directory.
       def_delegator "@writers.archives", :restore, :unarchive_intent
@@ -82,8 +83,6 @@ module Plastic
       # Opens a ready item's intent, with its spec held in rows. Returns
       # [intent_id, problem, kind]; kind is :failure or :refusal, nil on success.
       def open_roadmap_item(slug, item_id) = Knowledge::Roadmap::ItemOpen.new(@writers).call(slug, item_id)
-
-      def roadmap_file?(slug) = @folder.exist?("roadmaps/#{slug}.md")
 
       def print_index =@writers.sync.printer.print([Prints.index(@retrieval)])
 
