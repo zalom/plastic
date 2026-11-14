@@ -39,9 +39,12 @@ module Plastic
       end
 
       def expired_lock_lines(now)
-        own = @retrieval.locks_of(@session_id).select { |lock| lock.store == @retrieval.store }
+        own = @retrieval.locks_of(@session_id).select { |lock| lock.store == @retrieval.store && unfinished?(lock.intent_id) }
         own.reject { |lock| @retrieval.liveness(lock).live?(now) }.map { |lock| format(EXPIRED, id: lock.intent_id, at: lock.renewed_at) }
       end
+
+      # The intent exists and its work is not over.
+      def unfinished?(intent_id) = @retrieval.intent(intent_id)&.closed? == false
 
       def last_run(intent_id)
         run = @retrieval.last_run(intent_id)

@@ -136,4 +136,40 @@ class RecapTest < Plastic::TestCase
 
     assert_empty expired_lines(later)
   end
+
+  def expired_long_after(lock) = Time.parse(lock.renewed_at) + Plastic::Graph::Lock::TTL + 1
+
+  def close_intent(intent_id, status)
+    opened.databases.fetch(:work).transaction { |batch| batch.write(:intents, "UPDATE intents SET status = '#{status}' WHERE intent_id = :intent_id", intent_id:) }
+  end
+
+  def test_a_lock_on_a_done_intent_prints_no_expired_line
+    intent_id, lock = lock_intent
+    close_intent(intent_id, "done")
+
+    assert_empty expired_lines(expired_long_after(lock))
+  end
+
+  def test_a_lock_on_an_abandoned_intent_prints_no_expired_line
+    intent_id, lock = lock_intent
+    close_intent(intent_id, "abandoned")
+
+    assert_empty expired_lines(expired_long_after(lock))
+  end
+
+  def test_a_lock_on_an_intent_that_no_longer_exists_prints_no_expired_line
+    intent_id, lock = lock_intent
+    opened.databases.fetch(:work).transaction { |batch| batch.write(:intents, "DELETE FROM intents WHERE intent_id = :intent_id", intent_id:) }
+
+    assert_empty expired_lines(expired_long_after(lock))
+  end
+
+  def test_a_lock_of_another_store_prints_no_expired_line
+    stamp = "2026-01-01T00:00:00Z"
+    opened.databases.fetch(:local).transaction do |batch|
+      batch.put(:locks, { store: "other", intent_id: "1", session_id: "s-1", mode: "auto", taken_at: stamp, renewed_at: stamp }, statement: :insert)
+    end
+
+    assert_empty expired_lines(Time.iso8601(stamp) + Plastic::Graph::Lock::TTL + 1)
+  end
 end
