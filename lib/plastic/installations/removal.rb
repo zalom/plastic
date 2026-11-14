@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative "removal_folders"
 require_relative "roots"
 require_relative "section"
 require_relative "settings_file"
@@ -22,7 +23,7 @@ module Plastic
 
       def call
         files = removed_files
-        rows = (files + removed_folders(files)).map { |path| ["removed:", path] } + rewritten
+        rows = (files + folders.removed(files)).map { |path| ["removed:", path] } + rewritten
         Installations.delete(@plastic_home, @record.harness)
         rows
       end
@@ -33,35 +34,20 @@ module Plastic
 
       def removals
         files = @record.files.select { |file| removable?(file) }
-        [*files, *planned_folders(files), Installations.path(@plastic_home, @record.harness)]
+        [*files, *folders.planned(files), Installations.path(@plastic_home, @record.harness)]
       end
-
-      def planned_folders(files)
-        gone = files.to_set
-        candidate_folders(files).select { |folder| emptied?(folder, gone) && gone.add(folder) }
-      end
-
-      def emptied?(folder, gone) = existing_folder?(folder) && Dir.children(folder).all? { |name| gone.include?(File.join(folder, name)) }
 
       def changes = [*(@settings.path if @settings.edited), *sections.map(&:file).select { |file| File.file?(file) }]
 
-      def existing_folder?(folder) = @roots.inside?(folder) && File.directory?(folder)
-
       def removed_files = @record.files.select { |file| removable?(file) }.each { |file| File.delete(file) }
+
+      def folders = RemovalFolders.new(@record, @roots)
 
       def removable?(file) = @roots.inside?(file) && File.file?(file)
 
       def rewritten
         [@settings.rewrite, *stripped_sections].compact.map { |path| [File.exist?(path) ? "stripped:" : "removed:", path] }
       end
-
-      def removed_folders(files) = candidate_folders(files).select { |folder| removed_folder?(folder) }
-
-      def candidate_folders(files)
-        (@record.folders + files.flat_map { |file| @roots.parents(file) } + @roots.install_folders).uniq.sort_by { |folder| -folder.length }
-      end
-
-      def removed_folder?(folder) = existing_folder?(folder) && Dir.empty?(folder) && Dir.rmdir(folder).zero?
 
       def sections = @record.sections.map { |section| Section.from_h(section) }
 

@@ -11,37 +11,41 @@ module Plastic
 
       def print(results, mode)
         puts "\n- Results -\n\n"
-        results.each { |result| puts line(result) }
+        results.each { |result| puts Entry.new(result).line }
         table(results)
         done = results.select { |result| result[:success] }
         finish(done, mode) unless done.empty?
       end
 
-      private
+      # One agent's result as the lines and the table row an install prints.
+      Entry = Struct.new(:result) do
+        def line
+          agent = result[:agent]
+          return "  #{agent}: already registered, not re-synced (use --reinstall to re-sync)" if result[:skipped]
+          return "  #{agent}: #{result[:files]} files installed" if result[:success]
 
-      def line(result)
-        return "  #{result[:agent]}: already registered, not re-synced (use --reinstall to re-sync)" if result[:skipped]
-        return "  #{result[:agent]}: #{result[:files]} files installed" if result[:success]
+          "   #{agent}: #{result[:reason]}"
+        end
 
-        "   #{result[:agent]}: #{result[:reason]}"
+        def row
+          move = "#{result[:from_version] || "-"} -> #{result[:to_version] || "-"}"
+          format("  %-14s %-20s %s", result[:agent], move, status)
+        end
+
+        def status
+          return "skipped" if result[:skipped]
+
+          result[:success] ? "ok" : "failed"
+        end
       end
+
+      private
 
       def table(results)
         return if results.size <= 1
 
         puts "\n  Agent          From -> To           Result", "  -----          ----------           ------"
-        results.each { |result| puts row(result) }
-      end
-
-      def row(result)
-        move = "#{result[:from_version] || "-"} -> #{result[:to_version] || "-"}"
-        format("  %-14s %-20s %s", result[:agent], move, status(result))
-      end
-
-      def status(result)
-        return "skipped" if result[:skipped]
-
-        result[:success] ? "ok" : "failed"
+        results.each { |result| puts Entry.new(result).row }
       end
 
       def finish(done, mode)

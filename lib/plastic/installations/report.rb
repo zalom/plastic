@@ -12,15 +12,18 @@ module Plastic
 
       # [[event, command], ...] for every hook command in a hooks mapping.
       def pairs(hooks)
-        hooks.flat_map { |event, groups| commands(groups).map { |command| [event, command] } }
+        hooks.flat_map { |event, groups| paired(event, groups) }
       end
+
+      def paired(event, groups) = commands(groups).map { |command| [event, command] }
 
       def commands(groups) = Array(groups).flat_map { |group| Array(group["hooks"]) }.map { |hook| hook["command"] }
 
       def removed_hooks(removed, label)
-        return if removed.empty?
+        count = removed.size
+        return if count.zero?
 
-        puts "  Removed #{removed.size} stale Plastic hook entr#{(removed.size == 1) ? "y" : "ies"} from #{label}:"
+        puts "  Removed #{count} stale Plastic hook entr#{(count == 1) ? "y" : "ies"} from #{label}:"
         removed.each { |event, command| puts "     - #{event}: #{tilde(command)}" }
       end
 
