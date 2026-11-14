@@ -25,8 +25,23 @@ module Plastic
 
           # The entry of `path` in `folder`. A generated file that holds the content of its
           # print in other bytes is level: the bytes are a formatter's, not a person's edit.
+          # The index that another home printed is no edit: its file counts as the print last recorded.
           def self.for(folder, path, printed_sha, print)
-            new(path, level_sha(folder, path, print), printed_sha, print)
+            elsewhere = printed_sha && printed_elsewhere?(folder, path, print)
+            new(path, elsewhere ? printed_sha : level_sha(folder, path, print), printed_sha, print)
+          end
+
+          def self.printed_elsewhere?(folder, path, print)
+            return false unless path == StoreFolder::INDEX && folder.exist?(path) && print.text
+
+            theirs = origin_of(folder.read(path))
+            !theirs.nil? && theirs != origin_of(print.text)
+          end
+
+          def self.origin_of(text)
+            JSON.parse(text.dup.force_encoding(Encoding::UTF_8))["origin_id"]
+          rescue JSON::ParserError
+            nil
           end
 
           def self.level_sha(folder, path, print)

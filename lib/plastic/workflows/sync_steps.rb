@@ -15,7 +15,7 @@ module Plastic
       UNREADABLE = "intent folders that could not be read, the others were read:\n%{unreadable}\n" \
                    "fix or remove each folder named, then run plastic sync up again"
 
-      UNREADABLE_FILES = "files that cannot be read into rows, the others were read:\n%{unreadable_files}\n"
+      UNREADABLE_FILES = "files that cannot be read into rows, the others were read:\n%{unreadable_files}"
 
       def self.plan(context, direction)
         context.work.sync_plan(direction, { overwrite: context.overwrite, merge: context.merge })

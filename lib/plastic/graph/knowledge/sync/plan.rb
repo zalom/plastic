@@ -22,7 +22,7 @@ module Plastic
 
         # Each entry's action, and what the sync writes.
         class Plan
-          def self.build(folder, retrieval, resolution, databases = nil)
+          def self.build(folder, retrieval, resolution, databases)
             legacy = folder.legacy?
             up = resolution.up?
             folders = legacy ? nil : IntentFolders.new(folder, retrieval)

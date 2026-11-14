@@ -11,18 +11,14 @@ module Plastic
         # Reads files into rows, one transaction per database, then prints
         # each back from its rows, so the file holds the form the rows print.
         class FileReads
-          # The reason for each path the database refused, by path.
-          attr_reader :refused
-
           def initialize(folder:, retrieval:, databases:, printer:)
             @folder = folder
             @retrieval = retrieval
             @databases = databases
             @printer = printer
-            @refused = {}
           end
 
-          # One line for each path read. A path the database refuses is left as it is and named in `refused`.
+          # One line for each path read. A path the database refuses is left as it is and gets no line.
           def call(paths)
             reads = paths.map(&reader.method(:read))
             written = write(reads)
@@ -53,8 +49,7 @@ module Plastic
           def commit_alone(key, read)
             commit(key, [read])
             true
-          rescue Database::Error => error
-            @refused[read.path] = error.message
+          rescue Database::Error
             false
           end
 
