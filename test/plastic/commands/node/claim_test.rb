@@ -113,4 +113,18 @@ class NodeClaimTest < Plastic::TestCase
     assert_equal [0, ""], [call.code, call.err]
     assert_includes call.out, "input: docs/a.md"
   end
+
+  def test_a_claim_before_the_go_ahead_exits_3_with_no_offer_and_leaves_the_node_open
+    open_intent
+    write("store/1--alpha/spec.md", "# Spec\n\n## Done criteria\n- [done] Done\n")
+    sync_up
+    plastic("node", "add", "1", "a", "--criterion", "done", table: Plastic::CLI::TABLE)
+
+    result = claim("n1")
+
+    assert_equal 3, result.code
+    assert_includes result.err, "intent 1 has no go-ahead; the owner approves it with plastic intent approve 1"
+    refute_match(/^next: /, result.out)
+    assert_equal "open", store_graphs.retrieval.node("1", "n1").state
+  end
 end
