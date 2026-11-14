@@ -13,6 +13,13 @@ class OfferEnolaTest < Plastic::TestCase
     assert_equal "plastic init", outcome.next_command
   end
 
+  def test_the_offer_names_the_pinned_enola_release_and_no_branch
+    said = sole(offer(false).steps)
+
+    assert_includes said, "https://github.com/enola-labs/enola/releases/tag/v#{Plastic::Workflows::Agent::Install::ENOLA_VERSION}"
+    refute_includes said, "/main/"
+  end
+
   def test_a_reinstall_offers_nothing
     assert_equal :done, offer(true)
   end
