@@ -59,6 +59,8 @@ module Plastic
 
         def self.context_view?(path) = path.match?(%r{\Astore/[^/]+/context\.json\z})
 
+        def self.roadmap?(path) = path.to_s.start_with?("roadmaps/")
+
         def self.graph_file?(path) = path.match?(%r{\Astore/[^/]+/graph\.json\z})
 
         # Every file of every intent folder, dot files included.

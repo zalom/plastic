@@ -40,6 +40,8 @@ module Plastic
         end
 
         def read(path)
+          raise Invalid, "#{path} is generated from rows; use the roadmap commands to change it" if StoreFolder.roadmap?(path)
+
           file = (path == StoreFolder::INDEX) ? IndexFile.new(@folder.read(path), @writer.origin_id, @folder.intent_dirs) : intent_file(path)
           Read.new(path, file.database, file.method(:apply))
         end

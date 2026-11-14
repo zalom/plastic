@@ -21,7 +21,7 @@ module Plastic
           def self.generated?(path) = StoreFolder.context_view?(path) || path == StoreFolder::INDEX || roadmap?(path)
 
           # No reader turns a roadmap file into rows, so sync up prints it again from its rows.
-          def self.roadmap?(path) = path.to_s.start_with?("roadmaps/")
+          def self.roadmap?(path) = StoreFolder.roadmap?(path)
 
           # The entry of `path` in `folder`. A generated file that holds the content of its
           # print in other bytes is level: the bytes are a formatter's, not a person's edit.
