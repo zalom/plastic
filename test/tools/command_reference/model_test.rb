@@ -81,7 +81,7 @@ class CommandReferenceModelTest < Minitest::Test
   end
 
   def test_shared_and_class_method_steps_link_the_file_that_holds_them
-    assert_equal ["lib/plastic/workflows/sync_steps.rb"], gate_rows("sync up").map(&:file).uniq
+    assert_equal ["lib/plastic/workflows/code/sync/up/preview.rb", "lib/plastic/workflows/sync_steps.rb"], gate_rows("sync up").map(&:file).uniq.sort
   end
 
   def test_every_row_of_node_claim_and_sync_up_has_a_file_and_a_line_that_match

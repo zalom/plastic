@@ -11,22 +11,41 @@ module Plastic
         # One path of a store folder, seen three ways: the hash of the file on
         # disk, the hash recorded when it was last printed, and the hash of the
         # print its rows give now. Each hash is nil when there is none.
-        Entry = Data.define(:path, :file_sha, :printed_sha, :print)
+        # `printed_elsewhere` marks an index that another home printed.
+        Entry = Data.define(:path, :file_sha, :printed_sha, :print, :printed_elsewhere) do
+          def initialize(printed_elsewhere: false, **hashes) = super
+        end
 
         # What a sync does with one path.
         class Entry
           # The print of a path with no rows.
           NO_PRINT = Prints::Print.new(nil, nil, nil, nil)
 
-          def self.generated?(path) = StoreFolder.context_view?(path) || path == StoreFolder::INDEX || roadmap?(path)
+          def self.generated?(path) = view?(path) || path == StoreFolder::INDEX
 
-          # No reader turns a roadmap file into rows, so sync up prints it again from its rows.
-          def self.roadmap?(path) = path.to_s.start_with?("roadmaps/")
+          # A context view or a roadmap: no reader turns it into rows, so sync up prints it again from its rows.
+          def self.view?(path) = StoreFolder.context_view?(path) || StoreFolder.roadmap?(path)
 
           # The entry of `path` in `folder`. A generated file that holds the content of its
           # print in other bytes is level: the bytes are a formatter's, not a person's edit.
+          # The index that another home printed is no edit: the rows print it again.
           def self.for(folder, path, printed_sha, print)
-            new(path, level_sha(folder, path, print), printed_sha, print)
+            new(path, level_sha(folder, path, print), printed_sha, print, printed_elsewhere?(folder, path, print))
+          end
+
+          def self.printed_elsewhere?(folder, path, print)
+            return false unless path == StoreFolder::INDEX && folder.exist?(path) && print.text
+
+            theirs = origin_of(folder.read(path))
+            !theirs.nil? && theirs != origin_of(print.text)
+          end
+
+          # The top-level origin of an index, nil when the text is no JSON object.
+          def self.origin_of(text)
+            index = JSON.parse(text.dup.force_encoding(Encoding::UTF_8))
+            index["origin_id"] if index.is_a?(Hash)
+          rescue JSON::ParserError
+            nil
           end
 
           def self.level_sha(folder, path, print)
@@ -53,7 +72,7 @@ module Plastic
 
           # A person changed a file since its last print, or one never printed: the file holds
           # neither the rows' print nor the recorded one. A graph file against bare rows is not an edit.
-          def hand_edited? = !level? && file_changed? && !bare_graph?
+          def hand_edited? = !printed_elsewhere && !level? && file_changed? && !bare_graph?
 
           def rows_changed? = rows_sha && rows_sha != printed_sha && !bare_graph?
 
@@ -64,8 +83,9 @@ module Plastic
           # What a sync in `direction` does with this path: :record a level
           # file's hash, :read the file into rows, :print the rows into the
           # file, stop on a :conflict, or :none. A missing file is never a
-          # change on the file side.
+          # change on the file side. An index another home printed prints from the rows.
           def action(direction)
+            return :print if printed_elsewhere
             return (printed_sha == file_sha) ? :none : :record if level?
             return :conflict if conflict?
 

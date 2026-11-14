@@ -45,7 +45,18 @@ module Plastic
 
           def members = listed("clusters").flat_map { |cluster| Cluster.new(cluster).rows }
 
-          def listed(field) = Array(@data[field])
+          def listed(field)
+            entries = Array(object[field])
+            return entries if entries.all?(Hash)
+
+            raise Invalid, "#{StoreFolder::INDEX} lists an entry under #{field} that is not a JSON object"
+          end
+
+          def object
+            return @data if @data.is_a?(Hash)
+
+            raise Invalid, "#{StoreFolder::INDEX} is not a JSON object"
+          end
 
           # One cluster of the file: a name and the intents it holds.
           class Cluster
@@ -54,7 +65,15 @@ module Plastic
               @intent_ids = entry["intents"]
             end
 
-            def rows = @intent_ids.map { |intent_id| { name: @name, intent_id: } }
+            def rows = intent_ids.map { |intent_id| { name: @name, intent_id: } }
+
+            private
+
+            def intent_ids
+              return @intent_ids if @intent_ids.is_a?(Array)
+
+              raise Invalid, "#{StoreFolder::INDEX} lists the cluster #{@name} with no list of intents"
+            end
           end
         end
       end

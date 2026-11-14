@@ -87,6 +87,6 @@ class RoutinePrintingIndexTest < Plastic::TestCase
     open_roadmap
     write("roadmaps/r1.md", "# by hand\n")
 
-    assert_refused(cli("roadmap", "open", "r1", "a"), "roadmaps/r1.md")
+    assert_view_refused(cli("roadmap", "open", "r1", "a"), "roadmaps/r1.md")
   end
 end

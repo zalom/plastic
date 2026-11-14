@@ -2,24 +2,32 @@
 
 require_relative "../../../test_helper"
 
-class KnowledgeOutcomeTest < Plastic::TestCase
-  Outcome = Plastic::Graph::Knowledge::Outcome
-
+module OutcomeHelpers
   def setup
     super
     @intent = open_intent
   end
 
+  def read_outcome = Plastic::Graph::Knowledge::Outcome.new(retrieval, "1")
+
   def outcome(body)
     write("#{@intent.dir}/outcome.md", body)
     sync_up
-    Outcome.new(retrieval, "1")
+    read_outcome
   end
 
   def records(body)
     read = outcome(body)
     [read.merged?, read.architecture_map?]
   end
+
+  def merged_value?(value) = outcome("## Verification\n- Merged: #{value}\n").merged?
+
+  def approved_value?(value) = outcome("## Verification\n- Approved: #{value}\n").approved?
+end
+
+class KnowledgeOutcomeTest < Plastic::TestCase
+  include OutcomeHelpers
 
   def test_both_labels_under_verification_count
     assert_equal [true, true], records("# Outcome\n\n## Verification\n- Merged: branch into alpha at abc1\n- Architecture map: enola at abc\n")
@@ -38,7 +46,7 @@ class KnowledgeOutcomeTest < Plastic::TestCase
   end
 
   def test_no_outcome_records_neither
-    read = Outcome.new(retrieval, "1")
+    read = read_outcome
 
     assert_equal [false, false], [read.merged?, read.architecture_map?]
   end
@@ -64,10 +72,10 @@ class KnowledgeOutcomeTest < Plastic::TestCase
 
     assert_equal [true, true, true], [read.pull_request?, read.approved?, read.reverted?]
   end
+end
 
-  def merged_value?(value) = outcome("## Verification\n- Merged: #{value}\n").merged?
-
-  def approved_value?(value) = outcome("## Verification\n- Approved: #{value}\n").approved?
+class KnowledgeOutcomeValuesTest < Plastic::TestCase
+  include OutcomeHelpers
 
   NOT_MERGED = [
     "<branch> into <base> at <commit or pull request>", "not yet", "Not merged", "no", "No, the pull request is open", "awaiting review", "open",
@@ -90,6 +98,71 @@ class KnowledgeOutcomeTest < Plastic::TestCase
 
   def test_only_a_value_in_the_printed_form_of_approved_is_an_approval
     assert_equal [[], []], [NOT_APPROVED.select { |value| approved_value?(value) }, APPROVED.reject { |value| approved_value?(value) }]
+  end
+
+  NEGATIVE_APPROVED = ["no, changes requested on 2026-11-14", "pending review on 2026-11-20", "not yet, review due on 2026-11-20", "none on 2026-11-14",
+    "rejected by Mira on 2026-11-14", "awaiting review on 2026-11-14", "changes requested on 2026-11-14", "declined on 2026-11-14",
+    "denied by the owner on 2026-11-14", "requested on 2026-11-14"].freeze
+
+  NEGATIVE_MERGED = ["pending at PR #57", "TBD at 2026-11-20", "not into alpha at 1"].freeze
+
+  def test_an_approved_line_whose_first_word_is_negative_does_not_count
+    assert_empty NEGATIVE_APPROVED.select { |value| approved_value?(value) }
+  end
+
+  def test_a_merged_line_whose_first_word_is_negative_does_not_count
+    assert_empty NEGATIVE_MERGED.select { |value| merged_value?(value) }
+  end
+
+  MARKED_NEGATIVE = ["`no` on 2026-11-14", "\"no\", changes requested on 2026-11-14", "(pending) review on 2026-11-20", "[pending] on 2026-11-20",
+    "_not_ yet, review due on 2026-11-20", "~~rejected~~ on 2026-11-14", "'none' on 2026-11-14"].freeze
+
+  def test_a_negative_first_word_inside_marks_does_not_count
+    assert_equal [[], false], [MARKED_NEGATIVE.select { |value| approved_value?(value) }, merged_value?("`pending` at PR #57")]
+  end
+
+  WIDER_MARKED_NEGATIVE = ["<pending> on 2026-11-20", "<not yet> on 2026-11-20", "( pending ) on 2026-11-20", "— pending on 2026-11-20",
+    "> no, review on 2026-11-20", "\\[no\\] on 2026-11-20", "- pending on 2026-11-20"].freeze
+
+  def test_a_negative_first_word_behind_angle_brackets_a_backslash_a_dash_or_spaces_does_not_count
+    assert_equal [[], false, false], [WIDER_MARKED_NEGATIVE.select { |value| approved_value?(value) }, merged_value?("<pending> at PR #57"),
+      merged_value?("`` pending `` at PR #57")]
+  end
+
+  def test_a_first_word_with_a_hyphen_inside_counts_since_a_branch_or_a_person_can_be_named_so
+    assert_equal [true, true, true], [approved_value?("not-yet on 2026-11-20"), approved_value?("no-go on 2026-11-20"), merged_value?("not-yet at PR #57")]
+  end
+
+  def test_angle_brackets_count_unless_they_hold_a_placeholder_of_the_printed_form
+    values = ["Mira Testa <mira@example.com> on 2026-11-14", "<person> on 2026-11-14", "Mira on <YYYY-MM-DD>"]
+
+    assert_equal [true, false, false], values.map { |value| approved_value?(value) }
+  end
+
+  def test_the_last_part_of_a_merged_line_holds_a_digit_or_is_seven_to_forty_hex_characters
+    counted = ["plastic/1 into alpha at deadbee", "plastic/1 into alpha at `deadbee`", "plastic/1 into alpha at https://github.com/example/repo/commit/abc1234"]
+    refused = ["plastic/1 into alpha at deadbe", "plastic/1 into alpha at deadbeefoo", "plastic/1 into alpha at <sha>"]
+
+    assert_equal [[true] * 3, [false] * 3], [counted, refused].map { |values| values.map { |value| merged_value?(value) } }
+  end
+end
+
+class KnowledgeOutcomeMessagesTest < Plastic::TestCase
+  include OutcomeHelpers
+
+  def test_more_than_one_space_between_the_parts_of_a_merged_line_counts
+    assert merged_value?("plastic/x  into alpha at 3f2a1b9")
+  end
+
+  def test_a_branch_of_more_than_one_word_is_refused_and_the_refusal_shows_the_form
+    refused = ["PR #57 into alpha at 3f2a1b9", "pull request #57 into alpha at 3f2a1b9", "plastic/x into alpha via PR #57 at 3f2a1b9"]
+    read = outcome("## Verification\n- Merged: #{refused.first}\n")
+
+    assert_equal [[false] * 3, true], [refused.map { |value| merged_value?(value) }, read.missing_records.first.include?("Merged: <branch> into <base> at <commit or pull request>")]
+  end
+
+  def test_an_approved_date_followed_by_a_time_counts
+    assert approved_value?("the owner on 2026-11-14T10:00Z")
   end
 
   def test_the_label_of_approved_needs_its_colon_directly

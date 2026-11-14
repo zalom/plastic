@@ -84,13 +84,33 @@ class RoutinePrintingWayOutTest < Plastic::TestCase
     end
   end
 
-  def test_a_hand_edited_roadmap_is_cleared_by_the_command_the_refusal_names
+  # The refused call names sync up and says the file is printed again from its rows;
+  # sync up names the file, prints it again and exits 0; the refused call then runs.
+  def generated_round_trip(path, hand_text, call)
+    refused = call.call
+    up = cli("sync", "up")
+
+    [refused.out[/^next: .*$/], refused.err.include?("generated from rows"), up.code, up.out.include?("printed again from rows: #{path}"), holds?(path, hand_text), call.call.code]
+  end
+
+  def holds?(path, text) = File.read(store_path(path)).include?(text)
+
+  def test_a_hand_edited_roadmap_is_refused_with_sync_up_which_prints_it_again_and_clears_the_refusal
     cli("roadmap", "new", "r1")
     write("roadmaps/r1.md", "# by hand\n")
     batch = -> { cli("roadmap", "batch", "r1", "1", "--title", "T", "--goal", "G", "--done", "d") }
-    found = round_trip(batch)
 
-    assert_equal [[1, 0, 0], false], [found, File.read(store_path("roadmaps/r1.md")).include?("by hand")]
+    assert_equal ["next: plastic sync up", true, 0, true, false, 0], generated_round_trip("roadmaps/r1.md", "by hand", batch)
+  end
+
+  def test_a_hand_edited_context_json_is_refused_with_sync_up_which_prints_it_again_and_clears_the_refusal
+    intent = specified
+    cli("intent", "discover", "1", "spec")
+    path = "#{intent.dir}/context.json"
+    write(path, File.read(store_path(path)).sub("{", "{\n  \"my_note\": \"keep this\","))
+    add = -> { cli("node", "add", "1", "T", "--criterion", KEY) }
+
+    assert_equal ["next: plastic sync up", true, 0, true, false, 0], generated_round_trip(path, "my_note", add)
   end
 
   def test_a_bare_overwrite_of_sync_down_leaves_a_one_sided_hand_edit_alone

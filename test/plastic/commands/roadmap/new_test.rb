@@ -36,7 +36,7 @@ class RoadmapNewTest < Plastic::TestCase
 
   def write_own_plan = write("roadmaps/r2.md", "# My own plan\n")
 
-  def test_a_roadmap_file_that_plastic_did_not_print_is_refused_and_left_as_it_is
+  def test_a_roadmap_file_with_no_row_in_this_home_is_refused_and_left_as_it_is
     write_own_plan
     result = call("r2")
 
@@ -44,12 +44,13 @@ class RoadmapNewTest < Plastic::TestCase
     assert_includes result.err, "roadmaps/r2.md"
   end
 
-  def test_the_refusal_of_a_roadmap_file_that_plastic_did_not_print_offers_another_name_that_passes
+  def test_the_refusal_of_a_roadmap_file_with_no_row_says_this_home_holds_no_row_and_names_no_way_out
     write_own_plan
-    lines = call("r2").out.lines.map(&:chomp)
+    result = call("r2")
+    lines = result.out.lines.map(&:chomp)
 
-    assert_equal ["next: plastic roadmap new r2-2", "because: the file was not printed by Plastic"], lines.grep(/\A(next|because):/)
-    assert_equal 0, call("r2-2").code
+    assert_includes result.err, "roadmaps/r2.md exists and this home holds no roadmap row for it; no command reads a roadmap file into rows"
+    assert_equal ["next: plastic next", "because: roadmaps/r2.md is kept as it is, and roadmap new writes no roadmap over a file it holds no row for"], lines.grep(/\A(next|because):/)
   end
 
   def test_the_name_must_be_given

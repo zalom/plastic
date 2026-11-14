@@ -19,5 +19,5 @@ Each row gives the change, the exit code, the result and the rows:
 | cluster added in index.json | 0 | read store/index.json | Core holds 1 |
 | savepoint.md emptied            |    0 | read store/1--alpha/savepoint.md                                                               | 0 savepoint lines    |
 | a folder with no intent file | 1 | intent folders that could not be read, the others were read: | # Spec |
-| index.json of another origin | 0 | none | Alpha |
-| index.json that does not parse | 0 | none | Alpha |
+| index.json of another origin | 1 | files that cannot be read into rows, the others were read: | Alpha |
+| index.json that does not parse | 1 | files that cannot be read into rows, the others were read: | Alpha |

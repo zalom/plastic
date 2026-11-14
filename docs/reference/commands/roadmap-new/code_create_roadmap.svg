@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 397" width="760" height="397" role="img" xml:space="preserve">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 411" width="760" height="411" role="img" xml:space="preserve">
 <title>How New runs in plastic roadmap new</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
@@ -81,47 +81,48 @@
 <text x="476" y="65" class="tm" text-anchor="start">roadmap %{slug} already exists</text>
 <path d="M 226 79 L 226 89" class="wire"/>
 <path d="M 221 81 L 226 89 L 231 81 Z" class="head"/>
-<rect x="16" y="89" width="420" height="70" rx="6" class="card"/>
+<rect x="16" y="89" width="420" height="84" rx="6" class="card"/>
 <text x="26" y="104" class="tag tag-muted" text-anchor="start">GATE</text>
 <text x="426" y="104" class="tm tag-muted" text-anchor="end">new.rb:17</text>
 <text x="26" y="121" class="tm" text-anchor="start">passes when !context.work.roadmap_file?(context.slug)</text>
 <path d="M 436 107 L 464 107" class="wire-failure"/>
 <path d="M 456 102 L 464 107 L 456 112 Z" class="head"/>
-<rect x="466" y="89" width="270" height="70" rx="6" class="stop-failure"/>
+<rect x="466" y="89" width="270" height="84" rx="6" class="stop-failure"/>
 <text x="476" y="104" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1, FAILED</text>
 <text x="476" y="120" class="tm" text-anchor="start">roadmaps/%{slug}.md exists and</text>
-<text x="476" y="134" class="tm" text-anchor="start">Plastic has no roadmap row for</text>
-<text x="476" y="148" class="tm" text-anchor="start">it</text>
-<path d="M 226 159 L 226 169" class="wire"/>
-<path d="M 221 161 L 226 169 L 231 161 Z" class="head"/>
-<rect x="16" y="169" width="420" height="59" rx="6" class="card"/>
-<text x="26" y="184" class="tag tag-muted" text-anchor="start">STEP</text>
-<text x="426" y="184" class="tm tag-muted" text-anchor="end">new.rb:23</text>
-<text x="26" y="201" class="t" text-anchor="start">create the roadmap</text>
-<text x="26" y="216" class="tm" text-anchor="start">done when !context.roadmap.nil?</text>
-<path d="M 436 187 L 464 187" class="wire-failure"/>
-<path d="M 456 182 L 464 187 L 456 192 Z" class="head"/>
-<rect x="466" y="169" width="270" height="56" rx="6" class="stop-failure"/>
-<text x="476" y="184" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1, FAILED</text>
-<text x="476" y="200" class="tm" text-anchor="start">the step ran and its done</text>
-<text x="476" y="214" class="tm" text-anchor="start">check still fails</text>
-<path d="M 226 228 L 226 238" class="wire"/>
-<path d="M 221 230 L 226 238 L 231 230 Z" class="head"/>
-<rect x="16" y="238" width="420" height="45" rx="6" class="card"/>
-<text x="26" y="253" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="253" class="tm tag-muted" text-anchor="end">new.rb:27</text>
-<text x="26" y="270" class="t" text-anchor="start">say what was created</text>
-<path d="M 226 283 L 226 293" class="wire"/>
-<path d="M 221 285 L 226 293 L 231 285 Z" class="head"/>
-<text x="16" y="305" class="tag tag-muted" text-anchor="start">ENDS ON</text>
-<rect x="16" y="313" width="300" height="70" rx="6" class="card"/>
-<text x="26" y="329" class="tm" text-anchor="start">:done</text>
-<text x="26" y="345" class="tm tag-muted" text-anchor="start">always</text>
-<path d="M 316 329 L 352 329" class="wire"/>
-<path d="M 344 324 L 352 329 L 344 334 Z" class="head"/>
-<rect x="352" y="313" width="392" height="70" rx="6" class="end"/>
-<text x="362" y="330" class="t" text-anchor="start">the call finishes, exit 0</text>
-<text x="362" y="344" class="t" text-anchor="start">next: plastic roadmap batch %{slug} 1</text>
-<text x="362" y="358" class="t" text-anchor="start">because: roadmap %{slug} exists and has no batch</text>
-<text x="362" y="372" class="t" text-anchor="start">yet</text>
+<text x="476" y="134" class="tm" text-anchor="start">this home holds no roadmap row</text>
+<text x="476" y="148" class="tm" text-anchor="start">for it; no command reads a</text>
+<text x="476" y="162" class="tm" text-anchor="start">roadmap file into rows</text>
+<path d="M 226 173 L 226 183" class="wire"/>
+<path d="M 221 175 L 226 183 L 231 175 Z" class="head"/>
+<rect x="16" y="183" width="420" height="59" rx="6" class="card"/>
+<text x="26" y="198" class="tag tag-muted" text-anchor="start">STEP</text>
+<text x="426" y="198" class="tm tag-muted" text-anchor="end">new.rb:23</text>
+<text x="26" y="215" class="t" text-anchor="start">create the roadmap</text>
+<text x="26" y="230" class="tm" text-anchor="start">done when !context.roadmap.nil?</text>
+<path d="M 436 201 L 464 201" class="wire-failure"/>
+<path d="M 456 196 L 464 201 L 456 206 Z" class="head"/>
+<rect x="466" y="183" width="270" height="56" rx="6" class="stop-failure"/>
+<text x="476" y="198" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1, FAILED</text>
+<text x="476" y="214" class="tm" text-anchor="start">the step ran and its done</text>
+<text x="476" y="228" class="tm" text-anchor="start">check still fails</text>
+<path d="M 226 242 L 226 252" class="wire"/>
+<path d="M 221 244 L 226 252 L 231 244 Z" class="head"/>
+<rect x="16" y="252" width="420" height="45" rx="6" class="card"/>
+<text x="26" y="267" class="tag tag-muted" text-anchor="start">READ</text>
+<text x="426" y="267" class="tm tag-muted" text-anchor="end">new.rb:27</text>
+<text x="26" y="284" class="t" text-anchor="start">say what was created</text>
+<path d="M 226 297 L 226 307" class="wire"/>
+<path d="M 221 299 L 226 307 L 231 299 Z" class="head"/>
+<text x="16" y="319" class="tag tag-muted" text-anchor="start">ENDS ON</text>
+<rect x="16" y="327" width="300" height="70" rx="6" class="card"/>
+<text x="26" y="343" class="tm" text-anchor="start">:done</text>
+<text x="26" y="359" class="tm tag-muted" text-anchor="start">always</text>
+<path d="M 316 343 L 352 343" class="wire"/>
+<path d="M 344 338 L 352 343 L 344 348 Z" class="head"/>
+<rect x="352" y="327" width="392" height="70" rx="6" class="end"/>
+<text x="362" y="344" class="t" text-anchor="start">the call finishes, exit 0</text>
+<text x="362" y="358" class="t" text-anchor="start">next: plastic roadmap batch %{slug} 1</text>
+<text x="362" y="372" class="t" text-anchor="start">because: roadmap %{slug} exists and has no batch</text>
+<text x="362" y="386" class="t" text-anchor="start">yet</text>
 </svg>

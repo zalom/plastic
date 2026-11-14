@@ -20,6 +20,9 @@ module Plastic
       # A statement failed, or the file cannot be opened.
       class Error < StandardError; end
 
+      # Ends a dry run, which takes its statements back.
+      class Undone < StandardError; end
+
       # The local database, for what belongs to one machine.
       def self.open_local(home) = { local: Local.new(home) }
 
@@ -74,6 +77,16 @@ module Plastic
         batch.empty? ? [] : commit(batch)
       end
 
+      # Runs the statements of the batch and always takes them back, so a
+      # statement the database refuses raises Error and no row is written or counted.
+      def dry_run
+        batch = Batch.new(origin: @origin)
+        yield batch
+        connected { |connection| connection.atomically { try(connection, batch) } }
+      rescue Undone
+        nil
+      end
+
       # Runs a read snapshot and its derived writes in one immediate
       # transaction. The reader uses the same connection as the eventual
       # commit, so no writer can change the source rows between them.
@@ -101,7 +114,18 @@ module Plastic
 
       def commit(batch) = connected { |connection| connection.atomically { run(connection, batch) } }
 
-      def run(connection, batch) = batch.statements.filter_map { |entry| entry.run(connection, &method(:count)) }
+      def run(connection, batch)
+        counted = @written.dup
+        batch.statements.filter_map { |entry| entry.run(connection, &method(:count)) }
+      rescue
+        @written.replace(counted)
+        raise
+      end
+
+      def try(connection, batch)
+        batch.statements.each { |entry| entry.run(connection) { nil } }
+        raise Undone
+      end
 
       def count(table, rows)
         before = @written[table]

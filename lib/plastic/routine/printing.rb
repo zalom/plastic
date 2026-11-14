@@ -23,11 +23,16 @@ module Plastic
       # The facts that name the files to check; a command whose files a workflow picks overrides this.
       def hand_edit_facts(ctx) = ctx.facts
 
-      # A file sync up reads is cleared by sync up; one it cannot read, by printing it again from its rows.
+      # A file sync up reads or prints again is cleared by sync up; one it cannot read, by printing it again from its rows.
       def refusal(path, reason)
         return unreadable_refusal(path, reason) if reason
+        return view_refusal(path) if Graph::Knowledge::Sync::Entry.view?(path)
 
         Failed.new(workflow: :print, step: "files", reason: Graph::Prints.hand_edit_line(path), next_command: "plastic sync up", because: "a file changed by hand is read into rows before a call prints it")
+      end
+
+      def view_refusal(path)
+        Failed.new(workflow: :print, step: "files", reason: Graph::Prints.view_line(path), next_command: "plastic sync up", because: "sync up prints a generated file again from its rows before a call prints it")
       end
 
       def unreadable_refusal(path, reason)

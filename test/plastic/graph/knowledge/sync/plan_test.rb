@@ -18,9 +18,6 @@ class KnowledgeSyncPlanTest < Plastic::TestCase
 
   def paths(list) = list.map(&:path)
 
-  # Which of the three hashes the entry lacks.
-  def absent(entry) = [entry.file_sha, entry.printed_sha, entry.rows_sha].map(&:nil?)
-
   def test_each_entry_takes_the_action_of_its_direction
     assert_equal({ "c.md" => :conflict, "h.md" => :read, "r.md" => :none, "l.md" => :record },
       plan.actions.transform_keys(&:path))
@@ -44,6 +41,12 @@ class KnowledgeSyncPlanTest < Plastic::TestCase
     assert_equal ["held", "store/9.md names no file and no rows of this store", nil, nil],
       [plan(problem: "held").failure, plan(overwrite: "/root/store/9.md").failure, plan(overwrite: "c.md").failure, plan.failure]
   end
+end
+
+class KnowledgeSyncPlanGeneratedTest < Plastic::TestCase
+  Sync = Plastic::Graph::Knowledge::Sync
+  Plan = Sync::Plan
+  Print = Plastic::Graph::Prints::Print
 
   # `shas` are the file's hash, the recorded hash and the rows' hash.
   def generated_plan(direction, path, *shas, **plan_options)
@@ -54,11 +57,45 @@ class KnowledgeSyncPlanTest < Plastic::TestCase
 
   def action_of(plan) = plan.actions.values.first
 
-  def test_a_generated_file_that_is_not_level_is_planned_for_a_print_up_when_it_has_rows_and_cannot_be_read
-    index = generated_plan(:up, "store/index.json", "f", "p", "r", unreadable_files: { "store/index.json" => "not JSON" })
-    context = generated_plan(:up, "store/1--alpha/context.json", "f", "p", "r")
+  def test_an_index_that_cannot_be_read_is_planned_for_nothing_up
+    plan = generated_plan(:up, "store/index.json", "f", "p", "r", unreadable_files: { "store/index.json" => "refused" })
 
-    assert_equal [:print, :print], [action_of(index), action_of(context)]
+    assert_equal [:none, 0], [action_of(plan), plan.pending]
+  end
+
+  def test_a_hand_edited_context_view_or_roadmap_is_planned_for_a_print_up
+    plans = %w[store/1--alpha/context.json roadmaps/r1.md].map { |path| generated_plan(:up, path, "f", "p", "r") }
+
+    assert_equal [[:print] * 2, [1] * 2], [plans.map { |plan| action_of(plan) }, plans.map(&:pending)]
+  end
+
+  def test_a_hand_edited_context_view_or_roadmap_is_named_as_printed_over_up
+    plans = %w[store/1--alpha/context.json roadmaps/r1.md].map { |path| generated_plan(:up, path, "f", "p", "r") }
+
+    assert_equal [["store/1--alpha/context.json"], ["roadmaps/r1.md"]], plans.map(&:printed_over)
+  end
+
+  def test_a_hand_edited_index_is_not_named_as_printed_over_up
+    assert_empty generated_plan(:up, "store/index.json", "f", "p", "r").printed_over
+  end
+
+  def built_up_with_a_hand_edited_roadmap
+    store_graphs.work.create_roadmap("r1", title: "R", goal: nil)
+    store_graphs.work.print_roadmap("r1")
+    write("roadmaps/r1.md", "# by hand\n")
+    Plan.build(folder, retrieval, Sync::Resolution.new(:up, store_root, {}), store_graphs.databases)
+  end
+
+  def test_build_prints_a_hand_edited_roadmap_again_and_lists_no_file_it_cannot_read
+    built = built_up_with_a_hand_edited_roadmap
+
+    assert_equal [{}, :print, ["roadmaps/r1.md"]], [built.unreadable_files, built.actions.find { |entry, _action| entry.path == "roadmaps/r1.md" }.last, built.printed_over]
+  end
+
+  def test_a_generated_file_that_cannot_be_read_and_was_never_printed_here_prints_from_the_rows_up
+    plan = generated_plan(:up, "store/index.json", "f", nil, "r", unreadable_files: { "store/index.json" => "refused" })
+
+    assert_equal :print, action_of(plan)
   end
 
   def test_a_generated_index_that_can_be_read_is_planned_for_a_read_up
@@ -102,14 +139,27 @@ class KnowledgeSyncPlanTest < Plastic::TestCase
 
     assert_equal :none, action_of(plan)
   end
+end
 
-  def test_build_marks_a_legacy_store_up_and_refuses_it_down
+class KnowledgeSyncPlanBuildTest < Plastic::TestCase
+  Sync = Plastic::Graph::Knowledge::Sync
+  Plan = Sync::Plan
+
+  # Which of the three hashes the entry lacks.
+  def absent(entry) = [entry.file_sha, entry.printed_sha, entry.rows_sha].map(&:nil?)
+
+  def built(direction) = Plan.build(folder, retrieval, Sync::Resolution.new(direction, store_root, {}), store_graphs.databases)
+
+  def test_build_marks_a_legacy_store_up
     write("INDEX.md", "# Index\n")
-    build = ->(direction) { Plan.build(folder, retrieval, Sync::Resolution.new(direction, store_root, {})) }
 
-    assert_equal [true, nil], build.call(:up).to_h.values_at(:legacy, :problem)
-    assert_equal [false, "this store still has INDEX.md; run plastic sync up to import it first"],
-      build.call(:down).to_h.values_at(:legacy, :problem)
+    assert_equal [true, nil], built(:up).to_h.values_at(:legacy, :problem)
+  end
+
+  def test_build_refuses_a_legacy_store_down
+    write("INDEX.md", "# Index\n")
+
+    assert_equal [false, "this store still has INDEX.md; run plastic sync up to import it first"], built(:down).to_h.values_at(:legacy, :problem)
   end
 
   def test_entries_join_the_prints_the_files_and_the_recorded_hashes

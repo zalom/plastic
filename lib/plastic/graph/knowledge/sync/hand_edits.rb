@@ -9,18 +9,19 @@ module Plastic
       class Sync
         # The printed files a person edited, for the prints a command declares. A path with no row to print is left alone.
         class HandEdits
-          def initialize(retrieval, folder, kinds, facts)
+          def initialize(retrieval, folder, databases, kinds, facts)
             @retrieval = retrieval
             @folder = folder
+            @databases = databases
             @kinds = kinds
             @facts = facts
           end
 
-          # Each hand edited path with the reason sync up cannot read it, or nil when it can.
+          # Each hand edited path with the reason sync up cannot read it, or nil when it can or when sync up prints it again.
           def call
             printed = @retrieval.printed
             edited = prints.select { |print| hand_edited?(print, printed) }.map(&:path)
-            unreadable = Readability.new(@folder, @retrieval).call(edited.reject { |path| Entry.generated?(path) })
+            unreadable = Readability.new(@folder, @retrieval, @databases).call(edited.reject { |path| Entry.view?(path) || (Entry.generated?(path) && !printed[path]) })
             edited.to_h { |path| [path, unreadable[path]] }
           end
 

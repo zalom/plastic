@@ -94,14 +94,6 @@ class KnowledgeSyncTest < Plastic::TestCase
     assert_equal [[], ""], [retrieval.savepoints("1"), folder.read("store/1--alpha/savepoint.md")]
   end
 
-  def test_read_takes_an_intent_a_hand_edit_of_the_index_adds
-    entry = retrieval.intent("1").index_h.merge("title" => "Renamed")
-    write("store/index.json", JSON.generate({ "intents" => [entry] }))
-
-    assert_equal ["read store/index.json"], sync.read(["store/index.json"])
-    assert_equal "Renamed", retrieval.intent("1").title
-  end
-
   def test_print_says_each_path_it_wrote
     print = Plastic::Graph::Prints::Print.text("store/1--alpha/notes.md", :knowledge, "n\n")
 
@@ -120,6 +112,68 @@ class KnowledgeSyncTest < Plastic::TestCase
 
     assert_equal [], run_sync(:up)
     assert_equal Digest::SHA256.hexdigest("# Spec\n"), retrieval.printed[SPEC]
+  end
+end
+
+class KnowledgeSyncIndexTest < Plastic::TestCase
+  fixtures :alpha_synced
+
+  SPEC = "store/1--alpha/spec.md"
+
+  def sync = (@sync ||= Plastic::Graph::Knowledge::Sync.new(folder:, retrieval:, databases: store_graphs.databases))
+
+  def test_read_takes_an_intent_a_hand_edit_of_the_index_adds
+    entry = retrieval.intent("1").index_h.merge("title" => "Renamed")
+    write("store/index.json", JSON.generate({ "intents" => [entry] }))
+
+    assert_equal ["read store/index.json"], sync.read(["store/index.json"])
+    assert_equal "Renamed", retrieval.intent("1").title
+  end
+
+  def hand_edited_index_of_another_origin
+    index = JSON.parse(folder.read("store/index.json"))
+    index.fetch("intents").each { |entry| entry.merge!("origin_id" => "zzzz", "title" => "Renamed by hand") }
+    write("store/index.json", JSON.pretty_generate(index))
+  end
+
+  def test_sync_up_names_an_index_it_cannot_read
+    hand_edited_index_of_another_origin
+
+    assert_equal ["store/index.json"], sync.plan(:up).unreadable_files.keys
+  end
+
+  def test_sync_up_leaves_an_index_it_cannot_read_as_it_is
+    hand_edited_index_of_another_origin
+    run = sync.apply(sync.plan(:up))
+
+    assert_equal [[], "Alpha", true], [run, retrieval.intent("1").title, folder.read("store/index.json").include?("Renamed by hand")]
+  end
+
+  def foreign_index
+    index = JSON.parse(folder.read("store/index.json"))
+    index.fetch("intents").each { |entry| entry["origin_id"] = "zzzz" }
+    write("store/index.json", JSON.pretty_generate(index.merge("origin_id" => "zzzz")))
+  end
+
+  def test_sync_up_prints_an_index_that_another_home_printed_from_the_rows
+    foreign_index
+    result = plastic("sync", "up", table: Plastic::CLI::TABLE)
+
+    assert_equal [0, "", true, retrieval.origin_id], [result.code, result.err, result.out.include?("next: plastic next"),
+      JSON.parse(folder.read("store/index.json")).fetch("origin_id")], result.out
+  end
+
+  def test_sync_up_plans_a_print_of_an_index_another_home_printed_when_the_rows_did_not_change
+    index = JSON.parse(folder.read("store/index.json"))
+    write("store/index.json", JSON.pretty_generate(index.merge("origin_id" => "zzzz")))
+
+    assert_equal [["store/index.json"], {}], [sync.plan(:up).taking(:print).map(&:path), sync.plan(:up).unreadable_files]
+  end
+
+  def test_sync_up_names_an_index_that_is_a_json_array_as_a_file_it_cannot_read
+    write("store/index.json", "[]")
+
+    assert_equal ["store/index.json"], sync.plan(:up).unreadable_files.keys
   end
 
   def test_a_broken_index_does_not_stop_the_read_of_another_file

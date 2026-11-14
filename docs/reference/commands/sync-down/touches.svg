@@ -71,17 +71,12 @@
 <text x="16" y="20" class="tag tag-muted" text-anchor="start">READS</text>
 <text x="290" y="20" class="tag tag-muted" text-anchor="start">COMMAND</text>
 <text x="564" y="20" class="tag tag-muted" text-anchor="start">WRITES</text>
-<rect x="16" y="34" width="220" height="45" rx="14" class="db"/>
-<text x="28" y="52" class="tb" text-anchor="start">knowledge_graph.db</text>
-<text x="28" y="68" class="tm" text-anchor="start">document_heads</text>
+<rect x="16" y="34" width="220" height="60" rx="14" class="db"/>
+<text x="28" y="52" class="tb" text-anchor="start">work_graph.db</text>
+<text x="28" y="68" class="tm" text-anchor="start">archives</text>
+<text x="28" y="83" class="tm" text-anchor="start">intents</text>
 <path d="M 238 49 L 288 49" class="wire-read"/>
 <path d="M 280 44 L 288 49 L 280 54 Z" class="head"/>
-<rect x="16" y="91" width="220" height="60" rx="14" class="db"/>
-<text x="28" y="109" class="tb" text-anchor="start">work_graph.db</text>
-<text x="28" y="125" class="tm" text-anchor="start">archives</text>
-<text x="28" y="140" class="tm" text-anchor="start">intents</text>
-<path d="M 238 106 L 288 106" class="wire-read"/>
-<path d="M 280 101 L 288 106 L 280 111 Z" class="head"/>
 <rect x="564" y="34" width="220" height="45" rx="14" class="db"/>
 <text x="576" y="52" class="tb" text-anchor="start">knowledge_graph.db</text>
 <text x="576" y="68" class="tm" text-anchor="start">tables not found</text>

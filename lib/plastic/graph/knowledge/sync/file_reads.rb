@@ -18,32 +18,42 @@ module Plastic
             @printer = printer
           end
 
-          # One line for each path read.
+          # One line for each path read. A path the database refuses is left as it is and gets no line.
           def call(paths)
             reads = paths.map(&reader.method(:read))
-            write(reads)
-            reprint(reads)
-            reads.map(&:line)
+            written = write(reads)
+            done = reads.select { |read| written.include?(read) }
+            reprint(done)
+            done.map(&:line)
           end
 
           private
 
           # The intents of the rows. store/index.json is never read for them: the folders are.
-          def reader = Reader.of(@folder, @retrieval, heads: known_heads)
-
-          def known_heads
-            rows = @databases.fetch(:knowledge).rows("SELECT intent_id, path FROM document_heads WHERE origin_id = :origin", origin: @retrieval.origin_id)
-            Retrieval::Evidence::Heads.new(rows.to_set { |row| [row.fetch("intent_id"), row.fetch("path")] })
-          end
+          def reader = Reader.of_databases(@folder, @retrieval, @databases)
 
           # The work graph first, so a new intent's row is in place before its files.
           def write(reads)
-            reads.group_by(&:database).sort_by { |key, _group| Schema.store.index(key) }.each do |key, group|
-              apply_group(key, group)
-            end
+            groups = reads.group_by(&:database).sort_by { |key, _group| Schema.store.index(key) }
+            groups.flat_map { |key, group| apply_group(key, group) }
           end
 
+          # The group commits together; when the reader or the database refuses it, each read gets its own transaction.
           def apply_group(key, group)
+            commit(key, group)
+            group
+          rescue Database::Error, Invalid
+            group.select { |read| commit_alone(key, read) }
+          end
+
+          def commit_alone(key, read)
+            commit(key, [read])
+            true
+          rescue Database::Error, Invalid
+            false
+          end
+
+          def commit(key, group)
             applies = group.map(&:apply)
             @databases.fetch(key).transaction { |batch| batch.apply(applies) }
           end
