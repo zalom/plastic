@@ -34,6 +34,16 @@ class RoadmapNewTest < Plastic::TestCase
     assert_includes result.err, "roadmap r1 already exists"
   end
 
+def test_a_roadmap_file_that_plastic_did_not_print_is_refused_and_another_name_passes
+  write("roadmaps/r2.md", "# My own plan\n")
+  result = call("r2")
+
+  assert_equal [1, "# My own plan\n", nil], [result.code, File.read(store_path("roadmaps/r2.md")), store_graphs.retrieval.roadmap("r2")]
+  assert_includes result.err, "roadmaps/r2.md"
+  assert_equal ["next: plastic roadmap new r2-2", "because: the file was not printed by Plastic"], result.out.lines.map(&:chomp).grep(/\A(next|because):/)
+  assert_equal 0, call("r2-2").code
+end
+
   def test_the_name_must_be_given
     assert_equal 2, call.code
   end
