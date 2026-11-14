@@ -21,10 +21,10 @@ module Plastic
           # The print of a path with no rows.
           NO_PRINT = Prints::Print.new(nil, nil, nil, nil)
 
-          def self.generated?(path) = StoreFolder.context_view?(path) || path == StoreFolder::INDEX || roadmap?(path)
+          def self.generated?(path) = view?(path) || path == StoreFolder::INDEX
 
-          # No reader turns a roadmap file into rows, so sync up prints it again from its rows.
-          def self.roadmap?(path) = StoreFolder.roadmap?(path)
+          # A context view or a roadmap: no reader turns it into rows, so sync up prints it again from its rows.
+          def self.view?(path) = StoreFolder.context_view?(path) || StoreFolder.roadmap?(path)
 
           # The entry of `path` in `folder`. A generated file that holds the content of its
           # print in other bytes is level: the bytes are a formatter's, not a person's edit.

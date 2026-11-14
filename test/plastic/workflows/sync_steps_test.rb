@@ -115,28 +115,28 @@ class SyncStepsTest < Plastic::TestCase
     assert_equal ["plastic next", "plastic next"], flow.outcomes.map(&:offers)
   end
 
-def test_an_unreadable_graph_file_is_listed_and_stops_the_sync_with_the_overwrite
-  files = { "store/1--alpha/graph.json" => "junk" }
-  outcome, = run_sync(Plastic::Workflows::Code::Sync::Up, plan: { unreadable_files: files })
+  def test_an_unreadable_graph_file_is_listed_and_stops_the_sync_with_the_overwrite
+    files = { "store/1--alpha/graph.json" => "junk" }
+    outcome, = run_sync(Plastic::Workflows::Code::Sync::Up, plan: { unreadable_files: files })
 
-  assert_instance_of Plastic::Failed, outcome
-  assert_includes outcome.message, "store/1--alpha/graph.json: junk; run plastic sync down --overwrite store/1--alpha/graph.json"
-  assert_equal "plastic sync down --overwrite store/1--alpha/graph.json", outcome.next_command
-end
+    assert_instance_of Plastic::Failed, outcome
+    assert_includes outcome.message, "store/1--alpha/graph.json: junk; run plastic sync down --overwrite store/1--alpha/graph.json"
+    assert_equal "plastic sync down --overwrite store/1--alpha/graph.json", outcome.next_command
+  end
 
-PRINTED_OVER = "printed again from rows: roadmaps/r1.md; it is generated from rows, and a change made outside Plastic is not kept"
+  PRINTED_OVER = "printed again from rows: roadmaps/r1.md; it is generated from rows, and a change made outside Plastic is not kept"
 
-def test_a_view_printed_over_is_named_with_what_happened_to_the_change
-  outcome, printed, = run_sync(Plastic::Workflows::Code::Sync::Up, plan: { printed_over: ["roadmaps/r1.md"] })
+  def test_a_view_printed_over_is_named_with_what_happened_to_the_change
+    outcome, printed, = run_sync(Plastic::Workflows::Code::Sync::Up, plan: { printed_over: ["roadmaps/r1.md"] })
 
-  assert_equal [:printed_again, ["read a.md", PRINTED_OVER]], [outcome, printed]
-end
+    assert_equal [:printed_again, ["read a.md", PRINTED_OVER]], [outcome, printed]
+  end
 
-def test_the_because_line_of_a_view_printed_over_claims_no_read
-  because = Plastic::Workflows::Code::Sync::Up.ending(:printed_again).because
+  def test_the_because_line_of_a_view_printed_over_claims_no_read
+    because = Plastic::Workflows::Code::Sync::Up.ending(:printed_again).because
 
-  assert_equal "the rows printed each generated file changed outside Plastic again, and hold every other file changed by hand", because
-end
+    assert_equal "the rows printed each generated file changed outside Plastic again, and hold every other file changed by hand", because
+  end
 
   def test_each_unreadable_file_is_listed_with_its_own_overwrite
     files = { "store/1--alpha/graph.json" => "junk", "store/2--beta/graph.json" => "junk too" }

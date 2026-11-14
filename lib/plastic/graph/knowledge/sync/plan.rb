@@ -44,10 +44,10 @@ module Plastic
             readability.call(entries.select { |entry| readable?(entry, rowed) }.map(&:path))
           end
 
-          # A changed file of an intent that has its rows, or a generated file a person changed after its print; the files of a folder without rows read after its row is written.
+          # A changed file of an intent that has its rows, or an index a person changed after its print; the files of a folder without rows read after its row is written.
           def self.readable?(entry, rowed)
             path = entry.path
-            return entry.hand_edited? && !entry.rows_sha.nil? if entry.generated?
+            return path == StoreFolder::INDEX && entry.hand_edited? && !entry.rows_sha.nil? if entry.generated?
 
             %i[read conflict].include?(entry.action(:up)) && rowed.any? { |dir| path.start_with?("#{dir}/") }
           end
@@ -68,6 +68,9 @@ module Plastic
           def conflicts = actions.select { |_entry, action| action == :conflict }.keys.map(&:path)
 
           def taking(action) = actions.select { |_entry, found| found == action }.keys
+
+          # The context views and roadmaps a person changed that this sync prints again from their rows.
+          def printed_over = taking(:print).select { |entry| Entry.view?(entry.path) && entry.hand_edited? }.map(&:path)
 
           # The records this sync writes; zero when the folder and the rows are level.
           def pending = actions.values.count { |action| %i[record read print].include?(action) } + (legacy ? 1 : 0) + archived
@@ -95,11 +98,13 @@ module Plastic
             named_print?(entry) ? :print : action
           end
 
-          # A generated file a person changed is read when it can be and kept as written when it cannot;
-          # one that arrived and was never printed here, or that another home printed, prints from the rows.
+          # A context view or a roadmap a person changed prints again from its rows. An index a person changed is
+          # read when it can be and kept as written when it cannot; one that arrived and was never printed here,
+          # or that another home printed, prints from the rows.
           def generated_up(entry)
             return :print if entry.printed_elsewhere
             return :none unless entry.hand_edited? && entry.rows_sha
+            return :print if Entry.view?(entry.path)
             return :read unless unreadable_files.key?(entry.path)
 
             entry.printed_sha ? :none : :print

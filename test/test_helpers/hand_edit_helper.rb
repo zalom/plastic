@@ -6,7 +6,8 @@ module Plastic
     module HandEditHelper
       LINE = "%s changed by hand since the last print; run plastic sync up first"
 
-      VIEW_LINE = "%s changed outside Plastic; it is generated from rows, and plastic sync up prints it again " "from its rows and keeps no change made outside Plastic; save the file first to keep the change"
+      VIEW_LINE = "%s changed outside Plastic; it is generated from rows, and plastic sync up prints it again " \
+                  "from its rows and keeps no change made outside Plastic; save the file first to keep the change"
 
       def refusal(path) = format(LINE, path)
 

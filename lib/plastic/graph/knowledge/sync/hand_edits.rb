@@ -17,11 +17,11 @@ module Plastic
             @facts = facts
           end
 
-          # Each hand edited path with the reason sync up cannot read it, or nil when it can.
+          # Each hand edited path with the reason sync up cannot read it, or nil when it can or when sync up prints it again.
           def call
             printed = @retrieval.printed
             edited = prints.select { |print| hand_edited?(print, printed) }.map(&:path)
-            unreadable = Readability.new(@folder, @retrieval, @databases).call(edited.reject { |path| Entry.generated?(path) && !printed[path] })
+            unreadable = Readability.new(@folder, @retrieval, @databases).call(edited.reject { |path| Entry.view?(path) || (Entry.generated?(path) && !printed[path]) })
             edited.to_h { |path| [path, unreadable[path]] }
           end
 

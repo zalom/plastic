@@ -30,6 +30,11 @@ module Plastic
 
       def hand_edit_line(path) = "#{path} changed by hand since the last print; run plastic sync up first"
 
+      def view_line(path) = "#{path} changed outside Plastic; it is generated from rows, and plastic sync up prints it again " \
+                            "from its rows and keeps no change made outside Plastic; save the file first to keep the change"
+
+      def printed_over_line(path) = "printed again from rows: #{path}; it is generated from rows, and a change made outside Plastic is not kept"
+
       def unreadable_line(path, reason) = "#{path} changed by hand and cannot be read into rows: #{reason}"
 
       def empty_graph_sha(path) = GraphPrint.empty_sha(path)

@@ -7,6 +7,7 @@ module Plastic
     # rest, then refuse on the conflicts left.
     module SyncSteps
       NAMES = { up: "the rows hold every file changed by hand", down: "the files hold every row that changed" }.freeze
+      PRINTED_AGAIN = "the rows printed each generated file changed outside Plastic again, and hold every other file changed by hand"
       REFUSED_BEFORE = "changed on both sides since the last print, nothing written: %{conflicts}; " \
                        "pass --overwrite PATH, --overwrite or --merge"
       REFUSED_AFTER = "changed on both sides since the last print, left as they are: %{conflicts}; " \
@@ -28,6 +29,7 @@ module Plastic
         context[:merging] = plan.merging?
         context[:unreadable] = plan.unreadable.join("\n")
         note_files(context, plan.unreadable_files)
+        context[:printed_over] = plan.printed_over
         context[:lines] = nil
       end
 
@@ -50,7 +52,10 @@ module Plastic
       # No changed file is left that no reader can turn into rows.
       def self.files_read?(context) = context.unreadable_path.nil?
 
-      def self.say(context) = Array(context.lines).each { |line| context.print(line) }
+      def self.say(context) = [*context.lines, *Array(context.printed_over).map { |path| Graph::Prints.printed_over_line(path) }].each { |line| context.print(line) }
+
+      # A sync up that printed a changed context view or roadmap again from its rows.
+      def self.printed_again?(context) = Array(context.printed_over).any?
 
       def self.runs?(context) = !context.failure
 
@@ -65,7 +70,7 @@ module Plastic
       # Declares the whole chain, so a second load of the class replaces the first.
       def sync(direction)
         [facts, steps, outcomes].each(&:clear)
-        sets :failure, :conflicts, :merging, :unreadable, :unreadable_files, :unreadable_path, :lines
+        sets :failure, :conflicts, :merging, :unreadable, :unreadable_files, :unreadable_path, :printed_over, :lines
         plan_steps(direction)
         apply_steps(direction)
         end_steps(direction)
@@ -74,7 +79,10 @@ module Plastic
       private
 
       def end_steps(direction)
-        up_gates if direction == :up
+        if direction == :up
+          up_gates
+          outcome :printed_again, if: SyncSteps.check(:printed_again?), offers: "plastic next", because: PRINTED_AGAIN
+        end
         outcome :done, offers: "plastic next", because: NAMES.fetch(direction)
       end
 
