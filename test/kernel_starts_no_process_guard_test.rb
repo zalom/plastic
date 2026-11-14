@@ -9,18 +9,22 @@ class KernelStartsNoProcessGuardTest < Minitest::Test
   ROOT = File.expand_path("..", __dir__)
   SCRIPT_REQUIRE = %r{\A[^#\n]*\b(?:require|require_relative|load|autoload)\b[^#\n]*["'/]scripts["'/]}
   KERNEL_STARTERS = ChildProcessGuardTest::STARTERS.merge(
-    nil => %i[system spawn exec fork], :Process => %i[spawn exec fork daemon], :Kernel => %i[system spawn exec fork],
+    nil => %i[system spawn exec fork], :Process => %i[spawn exec fork daemon], :Kernel => %i[system spawn exec fork `],
     :PTY => %i[spawn], :File => %i[popen]
   ).freeze
 
   # The starts of the launching guard, and the forms the kernel must not use besides:
-  # fork, daemon, PTY, File.popen, a piped open or read, and a rooted ::Open3.
+  # fork, daemon, PTY, File.popen, a piped open or read, a rooted ::Open3, and Open3 mixed in.
   class KernelStarts < ChildProcessGuardTest::Starts
     private
 
     def starts?(node)
       name = constant_name(node.receiver)
-      name == :Open3 || KERNEL_STARTERS.fetch(node.receiver && name, []).include?(node.name) || piped?(node, name)
+      name == :Open3 || KERNEL_STARTERS.fetch(node.receiver && name, []).include?(node.name) || piped?(node, name) || mixes_in_open3?(node)
+    end
+
+    def mixes_in_open3?(node)
+      %i[include extend].include?(node.name) && node.arguments&.arguments&.any? { |argument| constant_name(argument) == :Open3 }
     end
 
     def constant_name(receiver)

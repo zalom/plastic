@@ -163,15 +163,17 @@ class VerifyChange
   def stream(env, command)
     text = +""
     status = Open3.popen2e(env, *command, chdir: @root) do |_in, output, waiter|
-      output.each_line do |line|
-        @out.print(line)
-        text << line
-      end
+      output.each_line { |line| text << echo(line) }
       waiter.value
     end
     [status.exitstatus || 127, text]
   rescue SystemCallError => e
     [127, e.message]
+  end
+
+  def echo(line)
+    @out.print(line)
+    line
   end
 
   def default_base
