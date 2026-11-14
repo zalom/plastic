@@ -28,6 +28,14 @@ class ClaudeInstallTest < Plastic::TestCase
     assert_equal [true, true], [File.read(hook).include?("$HOME/.plastic/scripts/lib/x"), File.executable?(hook)]
   end
 
+  def test_a_hook_that_already_carries_the_prefix_keeps_its_name
+    write(File.join(@home, "shipped", "hooks", "plastic-extra"), "#!/bin/sh\n")
+    install
+
+    assert_path_exists claude("hooks", "plastic-extra")
+    refute_path_exists claude("hooks", "plastic-plastic-extra")
+  end
+
   def test_the_status_line_hook_is_left_out_while_the_flag_is_off_and_an_old_copy_is_removed
     write(claude("hooks", "plastic-statusline"), "old\n")
     _, out = install

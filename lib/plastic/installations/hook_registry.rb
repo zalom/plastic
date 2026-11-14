@@ -39,8 +39,8 @@ module Plastic
       # hooks_exist/hooks_executable/hooks_no_orphans checks read from, so a
       # hand-kept list of launchers can never drift out of step with `events`
       # again (the gap that once let 8 of 15 launchers go unchecked).
-      def claude_launcher_names
-        events.values.flatten.flat_map { |g| g["hooks"].map { |h| h["name"] } }
+      def claude_launcher_names(registered = events)
+        registered.values.flatten.flat_map { |g| g["hooks"].map { |h| h["name"] } }
           .uniq.sort.map { |name| "plastic-#{name}" }
       end
 
@@ -108,8 +108,8 @@ module Plastic
       # Plastic entry is the statusline command has no hook registered in it.
       # Tokenised through command_basenames like the purge predicate, so a quoted
       # path or the legacy `ruby <path>/plastic-<name>.rb` form still resolves.
-      def claude_current_command?(cmd)
-        known = claude_launcher_names
+      def claude_current_command?(cmd, registered = events)
+        known = claude_launcher_names(registered)
         command_basenames(cmd).any? { |name| known.include?(name) }
       end
 
@@ -141,8 +141,8 @@ module Plastic
 
       # The settings.json shape merge_claude_hooks expects: single-group events map
       # to a Hash, multi-group events to an Array (the merge loop handles both).
-      def claude_settings_hooks(hook_dir:)
-        events.transform_values do |groups|
+      def claude_settings_hooks(hook_dir:, registered: events)
+        registered.transform_values do |groups|
           mapped = groups.map { |group| settings_group(group, hook_dir) }
           (mapped.length == 1) ? mapped.first : mapped
         end

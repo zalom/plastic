@@ -77,6 +77,19 @@ class InstallerTest < Plastic::TestCase
     assert_equal ["2.1.0-beta.2", "beta"], [value.version, value.channel]
   end
 
+  def test_the_installed_version_is_nil_before_any_install
+    assert_nil installer.installed_version
+  end
+
+  def test_a_reinstall_names_the_agent_settings_the_config_file_moves
+    make_agent_folders(claude_config)
+    run_install
+    File.write(File.join(plastic, "config.yml"), "global:\n  agents:\n    models:\n      plastic-enforcer: haiku\n")
+    _, out = run_install
+
+    assert_includes out, "config.yml: the settings for plastic-enforcer now apply to plastic-planner."
+  end
+
   def test_the_installed_agents_are_the_ones_with_a_recorded_version
     make_agent_folders(claude_config)
     run_install

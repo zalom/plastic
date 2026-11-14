@@ -21,6 +21,14 @@ class ClaudeHooksTest < Plastic::TestCase
 
   def commands(settings, event) = Array(settings["hooks"][event]).flat_map { |group| Array(group.is_a?(Hash) ? group["hooks"] : nil).map { |hook| hook["command"] } }
 
+  def test_registered_events_are_added_as_groups_with_their_launcher_command
+    write(settings_path, "{}")
+    registered = { "PreCompact" => [{ "matcher" => "", "hooks" => [{ "name" => "check-update", "status" => "Checking" }] }] * 2 }
+    capture_io { Plastic::Installations::ClaudeHooks.new(package, File.join(@home, ".claude"), registered:).merge(settings_path) }
+
+    assert_equal [File.join(@home, ".claude", "hooks", "plastic-check-update")] * 2, commands(JSON.parse(File.read(settings_path)), "PreCompact")
+  end
+
   def test_the_install_writes_the_kernel_hooks
     settings, = merge({})
     kernel = %("#{File.join(@plastic_home, "exe", "plastic")}")
@@ -66,6 +74,13 @@ class ClaudeHooksTest < Plastic::TestCase
 
     assert_includes commands(settings, "Stop"), "my-stop"
     assert_includes out, "  Removed 1 stale Plastic hook entry from settings.json:\n"
+  end
+
+  def test_two_stale_plastic_hooks_are_removed_and_counted_in_the_plural
+    stale = ->(name) { { "matcher" => "", "hooks" => [{ "type" => "command", "command" => "#{@home}/.claude/hooks/plastic-#{name}" }] } }
+    _, out = merge({ "hooks" => { "SessionStart" => [stale.call("session-start")], "Stop" => [stale.call("stop")] } })
+
+    assert_includes out, "  Removed 2 stale Plastic hook entries from settings.json:\n"
   end
 
   def test_a_hook_of_the_person_with_the_reserved_prefix_stays_and_is_named

@@ -38,6 +38,12 @@ class AgentModelsTest < Plastic::TestCase
     assert_equal({ "plastic-executor" => "high" }, Plastic::Config::AgentModels.effort_override_map(global_config: efforts, harness: "codex"))
   end
 
+  def test_a_config_that_is_not_a_mapping_reads_as_empty
+    models = Plastic::Config::AgentModels
+
+    assert_equal [{}, {}, {}], [models.models_section("text"), models.models_section({ "agents" => "text" }), models.effort_override_map(project_config: "text")]
+  end
+
   def test_a_malformed_efforts_section_reads_as_empty
     assert_empty Plastic::Config::AgentModels.effort_override_map(project_config: { "agents" => { "efforts" => [] } })
   end

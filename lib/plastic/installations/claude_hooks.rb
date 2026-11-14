@@ -12,8 +12,9 @@ module Plastic
     # Code. It reads, changes and writes the file, and never replaces what the
     # person put there: only entries the registry owns are rewritten.
     class ClaudeHooks
-      def initialize(package, claude_dir)
+      def initialize(package, claude_dir, registered: HookRegistry.events)
         @package = package
+        @registered = registered
         @hook_dir = File.join(claude_dir, "hooks")
       end
 
@@ -37,22 +38,9 @@ module Plastic
       end
 
       def add_registered(hooks)
-        HookRegistry.claude_settings_hooks(hook_dir: @hook_dir).each do |event, group|
-          (group.is_a?(Array) ? group : [group]).each { |entry| place(hooks[event] ||= [], entry) }
+        HookRegistry.claude_settings_hooks(hook_dir: @hook_dir, registered: @registered).each do |event, group|
+          (hooks[event] ||= []).concat([group].flatten)
         end
-      end
-
-      def place(groups, entry)
-        existing = groups.find { |group| group.is_a?(Hash) && group["matcher"] == entry["matcher"] && owned?(group) }
-        if existing
-          existing["hooks"] = entry["hooks"]
-        else
-          groups << entry
-        end
-      end
-
-      def owned?(group)
-        group["hooks"].is_a?(Array) && group["hooks"].any? { |hook| HookRegistry.claude_purge_command?(hook["command"]) }
       end
 
       def status_line(settings, choice)

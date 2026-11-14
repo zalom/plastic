@@ -56,6 +56,10 @@ class EnginePermissionsTest < Plastic::TestCase
     assert_equal [false, "{ nope"], [Plastic::Installations::EnginePermissions.merge_file(path), File.read(path)]
   end
 
+  def test_merge_replaces_settings_that_are_not_a_mapping
+    assert_equal Plastic::Installations::EnginePermissions::ENTRIES, deny(Plastic::Installations::EnginePermissions.merge_into("text"))
+  end
+
   def test_merge_leaves_the_settings_it_was_given_unchanged
     settings = { "permissions" => { "deny" => [OWN] } }
     Plastic::Installations::EnginePermissions.merge_into(settings)

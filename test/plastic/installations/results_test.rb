@@ -18,6 +18,12 @@ class ResultsTest < Plastic::TestCase
     assert_includes out, "   Next: run plastic help tutorial\n"
   end
 
+  def test_a_failed_agent_has_a_failed_row_in_the_summary_table
+    out = printed([ok, { agent: "Codex CLI", success: false, reason: "no folder" }])
+
+    assert_match(/Codex CLI\s+- → -\s+failed/, out)
+  end
+
   def test_an_update_says_re_synced
     assert_includes printed([ok], mode: :update), "\nPlastic v2.0.3 re-synced.\n"
   end

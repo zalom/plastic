@@ -32,8 +32,6 @@ module Plastic
       end
 
       def real?(root)
-        return false unless File.directory?(root)
-
         File.realpath(root) == File.join(File.realpath(@home), root.delete_prefix("#{@home}/"))
       rescue SystemCallError
         false

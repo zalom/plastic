@@ -53,6 +53,19 @@ class RetiredSessionStateTest < Plastic::TestCase
     File.chmod(0o755, session)
   end
 
+  def test_a_session_folder_without_a_current_pointer_counts_nothing
+    FileUtils.mkdir_p(session)
+
+    assert_equal 0, Retired.new(@plastic_home, []).call
+  end
+
+  def test_a_tmp_entry_that_is_a_file_is_skipped
+    FileUtils.mkdir_p(Plastic::StoreLayout.global_store(@plastic_home))
+    File.write(File.join(Plastic::StoreLayout.global_store(@plastic_home), ".tmp"), "x")
+
+    assert_equal 0, Retired.new(@plastic_home, []).call
+  end
+
   def test_a_candidate_that_is_a_folder_is_skipped
     FileUtils.mkdir_p(File.join(session, "current"))
 

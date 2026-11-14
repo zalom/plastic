@@ -221,6 +221,18 @@ class ContextBudgetFixtureTest < Minitest::Test
     end
   end
 
+  def test_build_names_the_exit_status_when_the_launcher_fails
+    Dir.mktmpdir("plastic-bench-broken") do |dir|
+      Dir.mktmpdir("plastic-bench-failing-repo") do |repo|
+        FileUtils.mkdir_p(File.join(repo, "exe"))
+        File.write(File.join(repo, "exe", "plastic"), "exit 3\n")
+        error = assert_raises(RuntimeError) { ContextBudget::Fixture.build(dir: dir, repo: repo) }
+
+        assert_match(/install failed \(exit 3\)/, error.message)
+      end
+    end
+  end
+
   def test_build_raises_when_the_installer_fails
     Dir.mktmpdir("plastic-bench-broken") do |dir|
       Dir.mktmpdir("plastic-bench-norepo") do |fake_repo|

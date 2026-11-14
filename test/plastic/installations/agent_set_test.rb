@@ -17,6 +17,10 @@ class AgentSetTest < Plastic::TestCase
     assert_equal [%w[claude codex hermes], File.join(Dir.home, ".codex")], [defaults.map { |agent| agent[:key] }, defaults[1][:home_dir]]
   end
 
+  def test_an_unknown_key_is_not_registered
+    refute set.registered?("other")
+  end
+
   def test_a_key_finds_its_agent_and_an_unknown_key_finds_none
     assert_equal ["Codex CLI", nil], [set.config("codex")[:name], set.config("other")]
   end

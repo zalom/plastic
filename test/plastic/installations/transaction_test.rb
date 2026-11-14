@@ -51,6 +51,13 @@ class TransactionTest < Plastic::TestCase
     assert_equal 1, result[:pruned]
   end
 
+  def test_a_failed_install_prunes_nothing_and_names_no_pruned_count
+    make_agent_folders(hermes_config)
+    result = run_with { { agent: "Hermes", success: false, reason: "broke" } }
+
+    assert_equal [false, nil], [result[:success], result[:pruned]]
+  end
+
   def test_the_legacy_manifest_is_deleted_after_an_install
     make_agent_folders(hermes_config)
     legacy = write(hermes("plastic-manifest.json"), "{}")
