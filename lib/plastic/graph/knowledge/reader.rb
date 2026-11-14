@@ -40,7 +40,7 @@ module Plastic
         end
 
         def read(path)
-          file = (path == StoreFolder::INDEX) ? IndexFile.new(@folder.read(path), @writer.origin_id) : intent_file(path)
+          file = (path == StoreFolder::INDEX) ? IndexFile.new(@folder.read(path), @writer.origin_id, @folder.intent_dirs) : intent_file(path)
           Read.new(path, file.database, file.method(:apply))
         end
 

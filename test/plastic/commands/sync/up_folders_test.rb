@@ -55,12 +55,12 @@ class SyncUpFoldersTest < Plastic::TestCase
     assert_equal ["1"], intent_ids
   end
 
-  def test_an_index_entry_whose_folder_is_gone_is_read_as_a_hand_edit_of_the_index
+  def test_an_index_entry_whose_folder_is_gone_gets_no_row_and_the_index_is_printed_again
     copy_from_src("First")
     add_ghost_to_index
 
     assert_equal 0, sync.code
-    assert_equal [%w[1 2], %w[1 2]], [intent_ids, index_ids]
+    assert_equal [["1"], ["1"]], [intent_ids, index_ids]
   end
 
   def test_one_unreadable_folder_among_good_ones_fails_after_the_good_ones_are_read
