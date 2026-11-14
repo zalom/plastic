@@ -79,14 +79,14 @@ class UpdateCommandTest < Plastic::TestCase
     refute_path_exists File.join(download, "left-over")
   end
 
-  def test_a_release_that_fails_its_checksum_empties_the_download_folder_and_exits_1
+  def test_a_release_that_fails_its_checksum_removes_the_download_folder_and_exits_1
     directory = local_release("99.0.0-alpha.2")
     File.binwrite(File.join(directory, "plastic.tgz"), "corrupt")
     result = update_with_release("99.0.0-alpha.2", directory: directory)
 
     assert_equal 1, result.code
     assert_includes result.err, "archive checksum does not match"
-    assert_equal [[], ["99.0.0-alpha.1"]], [Dir.children(download), activation.releases.versions]
+    assert_equal [false, ["99.0.0-alpha.1"]], [File.exist?(download), activation.releases.versions]
   end
 
   def test_with_no_active_release_it_names_install_sh_and_no_channel_variable

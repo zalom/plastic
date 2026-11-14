@@ -1,16 +1,20 @@
 # frozen_string_literal: true
 
-require_relative "release_helper"
+require_relative "../../test_helper"
+require_relative "release_fixture"
+require "plastic/installations/release_files"
 
-class InstallerReleaseFilesTest < Minitest::Test
-  include ReleaseHelper
+class ReleaseFilesTest < Plastic::TestCase
+  include ReleaseFixture
+
+  def files(directory, **options) = Plastic::Installations::ReleaseFiles.new(directory, **options)
 
   def test_verifies_the_archive_against_its_checksum_file
-    files = InstallerRelease::ReleaseFiles.new(release_files)
+    release = files(release_files)
 
-    assert_same files, files.verify
-    assert_equal "2.0.3", files.manifest.dig("release", "version")
-    assert_equal "plastic.tgz", File.basename(files.archive)
+    assert_same release, release.verify
+    assert_equal "2.0.3", release.manifest.dig("release", "version")
+    assert_equal "plastic.tgz", File.basename(release.archive)
   end
 
   def test_accepts_the_binary_marker_of_the_checksum_line
@@ -18,7 +22,7 @@ class InstallerReleaseFilesTest < Minitest::Test
     checksum = File.join(directory, "plastic.tgz.sha256")
     File.write(checksum, File.read(checksum).sub("  plastic.tgz", " *plastic.tgz"))
 
-    assert InstallerRelease::ReleaseFiles.new(directory).verify
+    assert files(directory).verify
   end
 
   def test_rejects_an_archive_that_does_not_match_its_checksum
@@ -46,7 +50,7 @@ class InstallerReleaseFilesTest < Minitest::Test
     directory = release_files
     File.write(File.join(directory, "plastic.manifest.json"), "{")
 
-    error = assert_raises(InstallerRelease::VerificationError) { InstallerRelease::ReleaseFiles.new(directory).manifest }
+    error = assert_raises(Plastic::Installations::VerificationError) { files(directory).manifest }
     assert_equal "manifest does not parse", error.message
   end
 
@@ -55,13 +59,13 @@ class InstallerReleaseFilesTest < Minitest::Test
     directory = release_files
     File.write(File.join(directory, "plastic.tgz.sha256"), "#{"f" * 64}  plastic.tgz\n")
 
-    assert InstallerRelease::ReleaseFiles.new(directory, digest: digest).verify
+    assert files(directory, digest: digest).verify
   end
 
   private
 
   def problem(directory)
-    error = assert_raises(InstallerRelease::VerificationError) { InstallerRelease::ReleaseFiles.new(directory).verify }
+    error = assert_raises(Plastic::Installations::VerificationError) { files(directory).verify }
     error.message
   end
 end

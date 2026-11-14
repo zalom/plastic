@@ -35,14 +35,13 @@ class ReleaseRemovalTest < Plastic::TestCase
     refute_path_exists share
   end
 
-  def test_removes_a_share_from_before_the_releases_layout
+  def test_a_share_from_before_the_releases_layout_keeps_what_the_releases_layout_never_made
     FileUtils.mkdir_p(File.join(share, "lib"))
     File.write(File.join(share, "VERSION"), "1.9.0\n")
-    File.write(File.join(share, "lib", "plastic.rb"), "\n")
     rows = removal.call
 
-    assert_equal [["removed:", share]], rows
-    refute_path_exists share
+    assert_equal [["kept:", "#{share} holds files Plastic did not make; they stay"]], rows.last(1)
+    assert_equal ["lib"], Dir.children(share)
   end
 
   def test_removes_only_the_launcher_when_the_share_holds_no_release
