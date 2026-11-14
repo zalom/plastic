@@ -84,17 +84,19 @@ Removes what the record of each picked harness lists, then the releases and the 
 Its rows run in this order:
 
 1. Step: remove what each record lists. Done when `context.removed`, so a second call skips it. [`uninstall.rb:21`](../../../../lib/plastic/workflows/code/uninstall.rb#L21)
-2. Step: remove the releases and the launcher. Done when `context.releases_removed`, so a second call skips it. [`uninstall.rb:30`](../../../../lib/plastic/workflows/code/uninstall.rb#L30)
-3. Outcome `:done`, always: finishes with exit 0; next: plastic init. [`uninstall.rb:37`](../../../../lib/plastic/workflows/code/uninstall.rb#L37)
+2. Step: remove the releases and the launcher. Done when `context.releases_removed`, so a second call skips it. [`uninstall.rb:32`](../../../../lib/plastic/workflows/code/uninstall.rb#L32)
+3. Outcome `:released`, when `context.released`: finishes with exit 0; prints no next: line. [`uninstall.rb:39`](../../../../lib/plastic/workflows/code/uninstall.rb#L39)
+4. Outcome `:unrecorded`, when `!context.picked.empty? && context.unrecorded == context.picked`: finishes with exit 0; next: plastic install --reinstall. [`uninstall.rb:41`](../../../../lib/plastic/workflows/code/uninstall.rb#L41)
+5. Outcome `:done`, otherwise: finishes with exit 0; next: plastic init. [`uninstall.rb:43`](../../../../lib/plastic/workflows/code/uninstall.rb#L43)
 
-It sets `removed`, `releases_removed`.
+It sets `removed`, `releases_removed`, `unrecorded`, `released`.
 
 In the words of workflow engines, the rows are these four parts:
 
 - **Trigger**: the call starts the workflow `Code::Uninstall::Choose`; each later workflow starts from an outcome of the one before it.
 - **Activities**: 2 reads and 2 steps.
 - **Transitions**: a step runs only while its done check fails; Choose goes to Preview on `:chosen`; Preview goes to Uninstall on `:continue`.
-- **Outcomes**: `:none` of Choose, `:left` of Choose, `:done` of Preview, `:done` of Uninstall end the call.
+- **Outcomes**: `:none` of Choose, `:left` of Choose, `:done` of Preview, `:released` of Uninstall, `:unrecorded` of Uninstall, `:done` of Uninstall end the call.
 
 ## What one call reads, writes and prints
 
@@ -107,7 +109,7 @@ A second call runs the same rows again. A step runs again only when its done che
 | Step | Done when | The second call | Code |
 | --- | --- | --- | --- |
 | remove what each record lists | `context.removed` | skips it | [`uninstall.rb:21`](../../../../lib/plastic/workflows/code/uninstall.rb#L21) |
-| remove the releases and the launcher | `context.releases_removed` | skips it | [`uninstall.rb:30`](../../../../lib/plastic/workflows/code/uninstall.rb#L30) |
+| remove the releases and the launcher | `context.releases_removed` | skips it | [`uninstall.rb:32`](../../../../lib/plastic/workflows/code/uninstall.rb#L32) |
 
 ## How a call ends
 
@@ -118,7 +120,9 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | Plastic is installed into no harness and no registered harness was found | 0 | plastic init | [`choose.rb:28`](../../../../lib/plastic/workflows/code/uninstall/choose.rb#L28) |
 | the person left with no change | 0 | plastic uninstall | [`choose.rb:30`](../../../../lib/plastic/workflows/code/uninstall/choose.rb#L30) |
 | the preview changed no file | 0 | ORIGINAL_COMMAND | [`preview.rb:29`](../../../../lib/plastic/workflows/code/uninstall/preview.rb#L29) |
-| Plastic is removed from HARNESSES; the home stays | 0 | plastic init | [`uninstall.rb:37`](../../../../lib/plastic/workflows/code/uninstall.rb#L37) |
+| Plastic is removed from HARNESSES, launcher included; install.sh installs it again, and the home stays | 0 | prints no next: line | [`uninstall.rb:39`](../../../../lib/plastic/workflows/code/uninstall.rb#L39) |
+| no record lists what Plastic wrote for HARNESSES, so nothing was removed | 0 | plastic install --reinstall | [`uninstall.rb:41`](../../../../lib/plastic/workflows/code/uninstall.rb#L41) |
+| Plastic is removed from HARNESSES; the home stays | 0 | plastic init | [`uninstall.rb:43`](../../../../lib/plastic/workflows/code/uninstall.rb#L43) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
 
 ## What the page leaves out
