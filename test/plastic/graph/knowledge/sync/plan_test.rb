@@ -45,6 +45,62 @@ class KnowledgeSyncPlanTest < Plastic::TestCase
       [plan(problem: "held").failure, plan(overwrite: "/root/store/9.md").failure, plan(overwrite: "c.md").failure, plan.failure]
   end
 
+def generated_plan(direction, path, file, printed, rows, **plan_options)
+  entry = Sync::Entry.new(path, file, printed, rows ? Print.new(path, :work, rows, nil) : Sync::Entry::NO_PRINT)
+  Plan.new(resolution: Sync::Resolution.new(direction, "/root", plan_options.delete(:options) || {}), entries: [entry], legacy: false, problem: nil, unreadable: [], archived: 0, **plan_options)
+end
+
+def action_of(plan) = plan.actions.values.first
+
+def test_a_generated_file_that_is_not_level_is_planned_for_a_print_up_when_it_has_rows_and_cannot_be_read
+  index = generated_plan(:up, "store/index.json", "f", "p", "r", unreadable_files: { "store/index.json" => "not JSON" })
+  context = generated_plan(:up, "store/1--alpha/context.json", "f", "p", "r")
+
+  assert_equal [:print, :print], [action_of(index), action_of(context)]
+end
+
+def test_a_generated_index_that_can_be_read_is_planned_for_a_read_up
+  assert_equal :read, action_of(generated_plan(:up, "store/index.json", "f", "p", "r"))
+end
+
+def test_a_generated_file_with_no_rows_is_left_alone_up
+  assert_equal :none, action_of(generated_plan(:up, "store/1--alpha/context.json", "f", nil, nil))
+end
+
+def test_a_level_generated_file_is_left_alone_up
+  assert_equal :none, action_of(generated_plan(:up, "store/index.json", "r", "r", "r"))
+end
+
+def test_a_file_that_cannot_be_read_is_planned_for_nothing_up_and_counts_no_pending_write
+  plan = generated_plan(:up, "store/1--alpha/graph.json", "f", "p", "p", unreadable_files: { "store/1--alpha/graph.json" => "junk" })
+
+  assert_equal [:none, 0], [action_of(plan), plan.pending]
+end
+
+def test_an_overwrite_of_one_path_prints_it_down_when_only_the_file_changed
+  plan = generated_plan(:down, "h.md", "f", "p", "p", options: { overwrite: "h.md" })
+
+  assert_equal :print, action_of(plan)
+end
+
+def test_a_bare_overwrite_prints_nothing_down_for_a_file_only_the_file_changed
+  plan = generated_plan(:down, "h.md", "f", "p", "p", options: { overwrite: nil })
+
+  assert_equal :none, action_of(plan)
+end
+
+def test_an_overwrite_of_one_path_leaves_another_path_alone_down
+  plan = generated_plan(:down, "h.md", "f", "p", "p", options: { overwrite: "other.md" })
+
+  assert_equal :none, action_of(plan)
+end
+
+def test_an_overwrite_of_one_path_with_no_rows_prints_nothing_down
+  plan = generated_plan(:down, "h.md", "f", "p", nil, options: { overwrite: "h.md" })
+
+  assert_equal :none, action_of(plan)
+end
+
   def test_build_marks_a_legacy_store_up_and_refuses_it_down
     write("INDEX.md", "# Index\n")
     build = ->(direction) { Plan.build(folder, retrieval, Sync::Resolution.new(direction, store_root, {})) }
