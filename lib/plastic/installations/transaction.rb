@@ -21,21 +21,22 @@ module Plastic
         return refusal unless @record.present?
 
         from = @record.version
-        snapshot = take_snapshot
-        result = settle(sync(&install), snapshot)
+        result = settle(sync(&install), take_snapshot)
         result.merge(from_version: from, to_version: @record.version)
       end
 
       private
 
       def refusal
-        { agent: @record.name, success: false, reason: "#{@record.presence_dir} not found, #{@record.name} not installed?" }
+        name = @record.name
+        { agent: name, success: false, reason: "#{@record.presence_dir} not found, #{name} not installed?" }
       end
 
       def take_snapshot
-        return if @record.manifest.empty?
+        manifest = @record.manifest
+        return if manifest.empty?
 
-        Snapshot.new(File.join(@home, "backups", @record.key), @record.manifest).take
+        Snapshot.new(File.join(@home, "backups", @record.key), manifest).take
       end
 
       def sync
