@@ -68,6 +68,9 @@ module Plastic
 
           def direction = resolution.direction
 
+          # The unreadable files of a second home: this home holds no rows that could print them again.
+          def rowless_files = second_home.problems.keys
+
           # Each path with its action, a conflict the overwrite names resolved.
           def actions = entries.to_h { |entry| [entry, settled(entry)] }
 
