@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
+require_relative "../../support/second_load"
 
 class RegistryTest < Plastic::TestCase
   def test_every_offer_names_a_command_in_this_build
@@ -15,8 +16,7 @@ class RegistryTest < Plastic::TestCase
     changed = keys.reject do |key|
       flow = Plastic::Workflow.fetch(key)
       before = declarations(flow)
-      load workflow_path(key)
-      declarations(flow) == before
+      SecondLoad.keeps?(workflow_path(key)) { declarations(flow) == before }
     end
 
     assert_operator keys.size, :>, 60, "the workflow files that clear their declarations"

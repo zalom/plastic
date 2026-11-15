@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../test_helper"
+require_relative "../../support/second_load"
 require_relative "../../../lib/plastic/workflows/registry"
 require_relative "../../../lib/plastic/workflows/code/sync/up"
 require_relative "../../../lib/plastic/workflows/code/sync/down"
@@ -61,10 +62,13 @@ class SyncStepsTest < Plastic::TestCase
   end
 
   def test_a_second_load_of_a_sync_class_keeps_one_chain
-    before = [Plastic::Workflows::Code::Sync::Up.steps.size, Plastic::Workflows::Code::Sync::Up.facts.size]
-    load File.expand_path("../../../lib/plastic/workflows/code/sync/up.rb", __dir__)
+    up = Plastic::Workflows::Code::Sync::Up
+    shape = -> { [up.steps.size, up.facts.size, up.outcome_names] }
+    before = shape.call
+    path = File.expand_path("../../../lib/plastic/workflows/code/sync/up.rb", __dir__)
 
-    assert_equal [before, %i[done]], [[Plastic::Workflows::Code::Sync::Up.steps.size, Plastic::Workflows::Code::Sync::Up.facts.size], Plastic::Workflows::Code::Sync::Up.outcome_names]
+    assert_equal %i[done], up.outcome_names
+    assert SecondLoad.keeps?(path) { shape.call == before }
   end
 
   def test_a_sync_declares_its_steps_and_gates_in_order

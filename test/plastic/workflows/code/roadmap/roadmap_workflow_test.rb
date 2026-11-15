@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../../../test_helper"
+require_relative "../../../../support/second_load"
 require_relative "../../../../../lib/plastic/workflows/code/roadmap/roadmap_workflow"
 %w[check drop log next show].each { |name| require_relative "../../../../../lib/plastic/workflows/code/roadmap/#{name}" }
 
@@ -24,9 +25,9 @@ class RoadmapWorkflowTest < Plastic::TestCase
   end
 
   def test_a_second_load_of_a_roadmap_workflow_keeps_the_gate_first_and_once
-    load File.expand_path("../../../../../lib/plastic/workflows/code/roadmap/show.rb", __dir__)
+    path = File.expand_path("../../../../../lib/plastic/workflows/code/roadmap/show.rb", __dir__)
 
-    assert_equal STEPS.fetch(Roadmap::Show), listed(Roadmap::Show)
+    assert SecondLoad.keeps?(path) { listed(Roadmap::Show) == STEPS.fetch(Roadmap::Show) }
   end
 
   def test_the_roadmap_gate_declares_the_gate_of_a_roadmap_that_does_not_exist
