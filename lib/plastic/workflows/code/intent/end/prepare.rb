@@ -6,6 +6,7 @@ require_relative "../../../../config"
 require_relative "../../../../graph/work/completion/check"
 require_relative "../../../../graph/work/completion/review"
 require_relative "../../../delivery_ownership"
+require_relative "../../../pull_request_template"
 require_relative "../../../review_round"
 
 module Plastic
@@ -16,7 +17,7 @@ module Plastic
           # Reads what closing an intent needs: the rows, the judge's verdict, outcome.md and, by the review setting, the pull request.
           class Prepare < CodeWorkflow
             summary "Reads what closing the intent needs: the rows, the verdict, outcome.md and the review."
-            sets :intent, :closed, :problem, :requirements, :judged, :used_up, :awaiting_approval, :intent_folder, :merge_recorded, :map_recorded, :merge_found, :approval_found, :missing
+            sets :intent, :closed, :problem, :requirements, :judged, :used_up, :awaiting_approval, :intent_folder, :merge_recorded, :map_recorded, :merge_found, :approval_found, :template_found, :missing
 
             read "read the intent" do |context|
               context[:intent] = context.retrieval.intent(context.intent_id)
@@ -43,7 +44,7 @@ module Plastic
               context[:awaiting_approval] = false
               context[:merge_recorded] = context[:map_recorded] = false
               context[:missing] = ""
-              context[:merge_found] = context[:approval_found] = ""
+              context[:merge_found] = context[:approval_found] = context[:template_found] = ""
               record_facts(context) unless context.closed
             end
 
@@ -58,9 +59,14 @@ module Plastic
 
             def self.verification_facts(context, verification)
               context[:merge_recorded], context[:map_recorded] = [verification.merged?, verification.architecture_map?]
+              found_facts(context, verification)
+              context[:awaiting_approval] = review_required?(context) && ready_for_approval?(context) && !verification.approved?
+            end
+
+            def self.found_facts(context, verification)
               context[:merge_found] = merge_found(verification)
               context[:approval_found] = approval_found(verification)
-              context[:awaiting_approval] = review_required?(context) && ready_for_approval?(context) && !verification.approved?
+              context[:template_found] = PullRequestTemplate.fact(context.scope, context.intent)
             end
 
             def self.merge_found(verification)

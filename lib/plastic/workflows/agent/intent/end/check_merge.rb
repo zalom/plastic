@@ -16,7 +16,7 @@ module Plastic
             step "merge the code", done: ->(context) { context.merge_recorded },
               say: "%{merge_found}Use version control as the project's AGENTS.md or CLAUDE.md defines it, or as the project's history shows when neither does: " \
                 "merge the pull request of intent %{intent_id} into the intent's base, " \
-                "and leave it open only when the owner asked. " \
+                "and leave it open only when the owner asked. %{template_found}" \
                 "Then add the line '- Merged: <branch> into <base> at <commit or pull request>' under ## Verification " \
                 "in %{intent_folder}/outcome.md, then run plastic sync up. Plastic runs no version control command; it records what you write."
             step "confirm the architecture map", done: ->(context) { context.map_recorded },

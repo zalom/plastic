@@ -192,7 +192,9 @@ class PrepareTemplateFactTest < PrepareEndingFixture
   def register_repo = File.write(File.join(@plastic_home, "projects.yml"), "projects:\n  global:\n    path: #{repo}\n")
 
   def place(folder, relative)
-    write(File.join(folder, relative), "## What\n")
+    path = File.join(folder, relative)
+    FileUtils.mkdir_p(File.dirname(path))
+    File.write(path, "## What\n")
   end
 
   def template_found
