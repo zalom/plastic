@@ -56,7 +56,13 @@ module Plastic
       def guarded
         yield
       rescue Graph::Database::Error => error
-        raise unless error.message.match?(/locked|busy/i)
+        raise unless error.message.match?(/locked|busy|readonly/i)
+
+        unchecked_row(error)
+      end
+
+      def unchecked_row(error)
+        return row("not checked, the store cannot be written", "make #{folder} writable, then run plastic doctor again") if error.message.match?(/readonly/i)
 
         row("not checked, the database is held by another process", "stop the process that holds #{knowledge}, then run plastic doctor again")
       end
