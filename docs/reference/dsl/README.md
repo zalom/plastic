@@ -112,7 +112,7 @@ No workflow picks an exit code. A call ends in one of these four values, and the
 | --- | --- | --- |
 | `Finished` | 0 | [`finished.rb:20`](../../../lib/plastic/finished.rb#L20) |
 | `HandedOff` | 0 | [`handed_off.rb:8`](../../../lib/plastic/handed_off.rb#L8) |
-| `Failed` | 1 | [`failed.rb:10`](../../../lib/plastic/failed.rb#L10) |
+| `Failed` | 1 | [`failed.rb:11`](../../../lib/plastic/failed.rb#L11) |
 | `Refused` | 3 | [`refused.rb:9`](../../../lib/plastic/refused.rb#L9) |
 
 ## How any call can end

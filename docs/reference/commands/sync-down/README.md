@@ -48,7 +48,7 @@ Its rows run in this order:
 5. Outcome `:done`, when `context.dry_run`: finishes with exit 0; next: ORIGINAL_COMMAND. [`preview.rb:49`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L49)
 6. Outcome `:continue`, otherwise: starts the workflow [Code::Sync::Down](#codesyncdown). [`preview.rb:50`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L50)
 
-It sets `failure`, `conflicts`, `merging`, `unreadable`, `unreadable_files`, `unreadable_path`.
+It sets `failure`, `conflicts`, `merging`, `unreadable`, `unreadable_files`, `unreadable_path`, `unreadable_rowless`.
 
 ### Code::Sync::Down
 
@@ -60,15 +60,15 @@ Sync down: plans, applies, and refuses on the conflicts left.
 
 Its rows run in this order:
 
-1. Read: plan the sync. [`sync_steps.rb:96`](../../../../lib/plastic/workflows/sync_steps.rb#L96)
-2. Gate: passes when `public_send(name, context)`; otherwise the call stops with exit 1 and prints FAILURE. [`sync_steps.rb:97`](../../../../lib/plastic/workflows/sync_steps.rb#L97)
-3. Gate: passes when `public_send(name, context)`; otherwise the call stops with exit 3 and prints changed on both sides since the last print, nothing written: CONFLICTS; pass --overwrite PATH, --overwrite or --merge. [`sync_steps.rb:98`](../../../../lib/plastic/workflows/sync_steps.rb#L98)
-4. Step: apply the changes. Done when `plan(context, direction).pending.zero?`, so a second call skips it. [`sync_steps.rb:102`](../../../../lib/plastic/workflows/sync_steps.rb#L102)
-5. Read: say what changed. [`sync_steps.rb:103`](../../../../lib/plastic/workflows/sync_steps.rb#L103)
-6. Gate: passes when `public_send(name, context)`; otherwise the call stops with exit 3 and prints changed on both sides since the last print, left as they are: CONFLICTS; pass --overwrite PATH or --overwrite. [`sync_steps.rb:104`](../../../../lib/plastic/workflows/sync_steps.rb#L104)
-7. Outcome `:done`, always: finishes with exit 0; next: plastic next. [`sync_steps.rb:86`](../../../../lib/plastic/workflows/sync_steps.rb#L86)
+1. Read: plan the sync. [`sync_steps.rb:107`](../../../../lib/plastic/workflows/sync_steps.rb#L107)
+2. Gate: passes when `public_send(name, context)`; otherwise the call stops with exit 1 and prints FAILURE. [`sync_steps.rb:108`](../../../../lib/plastic/workflows/sync_steps.rb#L108)
+3. Gate: passes when `public_send(name, context)`; otherwise the call stops with exit 3 and prints changed on both sides since the last print, nothing written: CONFLICTS; pass --overwrite PATH, --overwrite or --merge. [`sync_steps.rb:109`](../../../../lib/plastic/workflows/sync_steps.rb#L109)
+4. Step: apply the changes. Done when `plan(context, direction).pending.zero?`, so a second call skips it. [`sync_steps.rb:113`](../../../../lib/plastic/workflows/sync_steps.rb#L113)
+5. Read: say what changed. [`sync_steps.rb:114`](../../../../lib/plastic/workflows/sync_steps.rb#L114)
+6. Gate: passes when `public_send(name, context)`; otherwise the call stops with exit 3 and prints changed on both sides since the last print, left as they are: CONFLICTS; pass --overwrite PATH or --overwrite. [`sync_steps.rb:115`](../../../../lib/plastic/workflows/sync_steps.rb#L115)
+7. Outcome `:done`, always: finishes with exit 0; next: plastic next. [`sync_steps.rb:95`](../../../../lib/plastic/workflows/sync_steps.rb#L95)
 
-It sets `failure`, `conflicts`, `merging`, `unreadable`, `unreadable_files`, `unreadable_path`, `printed_over`, `lines`.
+It sets `failure`, `conflicts`, `merging`, `unreadable`, `unreadable_files`, `unreadable_path`, `unreadable_rowless`, `printed_over`, `lines`.
 
 In the words of workflow engines, the rows are these four parts:
 
@@ -91,7 +91,7 @@ A second call runs the same rows again. A step runs again only when its done che
 
 | Step | Done when | The second call | Code |
 | --- | --- | --- | --- |
-| apply the changes | `plan(context, direction).pending.zero?` | skips it | [`sync_steps.rb:102`](../../../../lib/plastic/workflows/sync_steps.rb#L102) |
+| apply the changes | `plan(context, direction).pending.zero?` | skips it | [`sync_steps.rb:113`](../../../../lib/plastic/workflows/sync_steps.rb#L113) |
 
 ## How a call ends
 
@@ -103,10 +103,10 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | changed on both sides since the last print, nothing written: CONFLICTS; pass --overwrite PATH, --overwrite or --merge | 3 | prints no next: line | [`preview.rb:61`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L61) |
 | changed on both sides since the last print, left as they are: CONFLICTS; pass --overwrite PATH or --overwrite | 3 | prints no next: line | [`preview.rb:62`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L62) |
 | the preview wrote only to a disposable copy | 0 | ORIGINAL_COMMAND | [`preview.rb:49`](../../../../lib/plastic/workflows/code/sync/up/preview.rb#L49) |
-| FAILURE | 1 | prints no next: line | [`sync_steps.rb:97`](../../../../lib/plastic/workflows/sync_steps.rb#L97) |
-| changed on both sides since the last print, nothing written: CONFLICTS; pass --overwrite PATH, --overwrite or --merge | 3 | prints no next: line | [`sync_steps.rb:98`](../../../../lib/plastic/workflows/sync_steps.rb#L98) |
-| changed on both sides since the last print, left as they are: CONFLICTS; pass --overwrite PATH or --overwrite | 3 | prints no next: line | [`sync_steps.rb:104`](../../../../lib/plastic/workflows/sync_steps.rb#L104) |
-| the files hold every row that changed | 0 | plastic next | [`sync_steps.rb:86`](../../../../lib/plastic/workflows/sync_steps.rb#L86) |
+| FAILURE | 1 | prints no next: line | [`sync_steps.rb:108`](../../../../lib/plastic/workflows/sync_steps.rb#L108) |
+| changed on both sides since the last print, nothing written: CONFLICTS; pass --overwrite PATH, --overwrite or --merge | 3 | prints no next: line | [`sync_steps.rb:109`](../../../../lib/plastic/workflows/sync_steps.rb#L109) |
+| changed on both sides since the last print, left as they are: CONFLICTS; pass --overwrite PATH or --overwrite | 3 | prints no next: line | [`sync_steps.rb:115`](../../../../lib/plastic/workflows/sync_steps.rb#L115) |
+| the files hold every row that changed | 0 | plastic next | [`sync_steps.rb:95`](../../../../lib/plastic/workflows/sync_steps.rb#L95) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
 
 ## What the page leaves out
