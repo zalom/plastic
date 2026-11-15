@@ -17,7 +17,6 @@ module Plastic
         option :status, switch: "--status STATUS", text: "open, parked or future", default: "open"
         option :reason, switch: "--reason TEXT", text: "why a parked intent waits; required with --status parked"
         writes :work, :knowledge, :references
-        changes(references: "The hash of each file printed is recorded in the references database")
         prints :intent
 
         workflow :code_write_intent, next: :noop

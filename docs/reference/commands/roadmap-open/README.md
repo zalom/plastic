@@ -22,8 +22,6 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 | What changes | Where | Reach |
 | --- | --- | --- |
 | The item's intent is opened and the item points to it | the work graph database, in the store folder | goes with the store |
-| The hash of each file printed is recorded in the knowledge database | the knowledge graph database, in the store folder | goes with the store |
-| The hash of each file printed is recorded in the references database | the references database, in the store folder | goes with the store |
 | The files of the intent and the index of the store are rewritten | the store folder | goes with the store |
 | The files of the roadmap are rewritten | the store folder | goes with the store |
 

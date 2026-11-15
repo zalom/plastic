@@ -13,7 +13,6 @@ module Plastic
         option :source_projects, switch: "--source-project SLUG", text: "a source store", repeatable: true
         reads :knowledge
         writes :knowledge, :work
-        changes(work: "The hash of each file printed is recorded in the work database")
         prints :intent
 
         workflow :code_discover_retrieval, next: :agent_external_agent_workflow

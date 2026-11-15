@@ -10,7 +10,6 @@ module Plastic
         subject :intent_id
         argument :intent_id, label: "ID", text: "the archived intent to restore"
         writes :work, :knowledge, :references
-        changes(knowledge: "The hash of each file printed is recorded in the knowledge database")
         prints :index
         previews
 
