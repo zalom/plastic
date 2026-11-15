@@ -1,42 +1,15 @@
 # frozen_string_literal: true
 
-require "json"
-require_relative "../../test_helper"
-require_relative "../../../lib/plastic/installations"
+require_relative "../../support/removal_fixture"
 
 class InstallationsRemovalTest < Plastic::TestCase
-  PLASTIC = "plastic hook start"
-  MINE = "my-start"
-
-  def folder = File.join(@home, ".claude")
-
-  def settings_path = File.join(folder, "settings.json")
-
-  def write(path, text)
-    FileUtils.mkdir_p(File.dirname(path))
-    File.write(path, text)
-    path
-  end
-
-  def record(**parts)
-    Plastic::Installations::Record.new(harness: "claude-code", version: "2.0.5", roots: [folder], files: [], folders: [],
-      settings: settings_path, hooks: [], status_line: nil, permissions: [], sections: [], **parts)
-  end
-
-  def removed(record)
-    Plastic::Installations.write(@plastic_home, record)
-    Plastic::Installations::Removal.new(record, plastic_home: @plastic_home).call
-  end
-
-  def settings = JSON.parse(File.read(settings_path))
-
-  def hook(command) = { "hooks" => [{ "type" => "command", "command" => command }] }
+  include RemovalFixture
 
   def test_removes_the_listed_files_and_the_emptied_plastic_folders
     file = write(File.join(folder, "skills", "plastic-x", "SKILL.md"), "x")
     removed(record(files: [file], folders: [File.dirname(file)]))
 
-    assert_equal [false, true], [File.exist?(File.dirname(file)), File.directory?(File.join(folder, "skills"))]
+    assert_equal [false, false], [File.exist?(File.dirname(file)), File.directory?(File.join(folder, "skills"))]
   end
 
   def test_keeps_a_listed_folder_that_holds_a_file_of_the_person
@@ -97,25 +70,17 @@ class InstallationsRemovalTest < Plastic::TestCase
   end
 
   def test_strips_the_marked_section_and_keeps_the_persons_text
-    section = "<!-- BEGIN PLASTIC COMPACT hash:abc -->\nbody\n<!-- END PLASTIC COMPACT -->\n"
-    path = write(File.join(folder, "CLAUDE.md"), "# Mine\n\n#{section}")
-    removed(record(sections: [{ "file" => path, "begin" => "<!-- BEGIN PLASTIC COMPACT", "end" => "<!-- END PLASTIC COMPACT -->" }]))
+    path = write(File.join(folder, "CLAUDE.md"), "# Mine\n\n#{SECTION}")
+    removed(record(sections: [section_for(path)]))
 
     assert_equal "# Mine\n", File.read(path)
   end
 
   def test_deletes_an_instruction_file_that_held_only_the_section
-    path = write(File.join(folder, "CLAUDE.md"), "<!-- BEGIN PLASTIC COMPACT hash:abc -->\nbody\n<!-- END PLASTIC COMPACT -->\n")
-    removed(record(sections: [{ "file" => path, "begin" => "<!-- BEGIN PLASTIC COMPACT", "end" => "<!-- END PLASTIC COMPACT -->" }]))
+    path = write(File.join(folder, "CLAUDE.md"), SECTION)
+    removed(record(sections: [section_for(path)]))
 
     refute_path_exists path
-  end
-
-  def test_deletes_the_record_and_names_each_path_it_removed
-    file = write(File.join(folder, "plastic", "VERSION"), "2.0.5")
-    paths = removed(record(files: [file]))
-
-    assert_equal [nil, [file]], [Plastic::Installations.read(@plastic_home, "claude-code"), paths]
   end
 
   def test_leaves_a_settings_file_that_is_not_json
@@ -129,7 +94,7 @@ class InstallationsRemovalTest < Plastic::TestCase
     file = write(File.join(folder, "plastic", "VERSION"), "2.0.5")
     planned = Plastic::Installations::Removal.new(record(files: [file]), plastic_home: @plastic_home).planned
 
-    assert_equal [["remove:", file], ["remove:", Plastic::Installations.path(@plastic_home, "claude-code")]], planned
+    assert_equal [["remove:", file], ["remove:", File.dirname(file)], ["remove:", Plastic::Installations.path(@plastic_home, "claude-code")]], planned
   end
 
   def test_keeps_a_hook_group_that_holds_no_hook_list

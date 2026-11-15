@@ -43,6 +43,14 @@ class UninstallCommandTest < Plastic::TestCase
     assert_equal before, tree_snapshot(@home)
   end
 
+  def test_a_harness_with_no_record_is_not_reported_removed_and_names_the_reinstall
+    FileUtils.mkdir_p(File.join(@home, ".codex"))
+    result = call("uninstall", "2")
+
+    refute_includes result.out, "is removed from"
+    assert_includes result.out, "next: plastic install --reinstall"
+  end
+
   def test_with_no_harness_recorded_or_found_it_names_init
     FileUtils.rm_rf(File.join(@home, ".claude"))
     Plastic::Installations.delete(@plastic_home, "claude-code")

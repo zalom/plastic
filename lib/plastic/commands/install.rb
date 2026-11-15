@@ -11,7 +11,6 @@ module Plastic
 
       option :reinstall, switch: "--reinstall", default: false,
         text: "sync the files again and make the global store and local.db when they are missing or behind"
-      option :force, switch: "--force", default: false, text: "replace agent files Plastic did not write"
       option :dry_run, switch: "--dry-run", default: false, text: "list what would change and change nothing"
 
       workflow :code_preview_install do

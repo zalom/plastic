@@ -57,14 +57,14 @@ module Plastic
       end
 
       def own_status_line(settings)
-        return settings.except("statusLine") unless screen?(:statusline)
+        return settings.except("statusLine") unless screen?(:statusline, false)
 
         settings.merge("statusLine" => { "type" => "command", "command" => @launchers[:statusline] })
       end
 
       def screens_group = screen?(:screens) ? [group(%("#{@launchers[:screens]}"))] : []
 
-      def screen?(key) = @launchers.key?(key) && @config.flag([key.to_s], default: true)
+      def screen?(key, default = true) = @launchers.key?(key) && @config.flag([key.to_s], default: default)
     end
   end
 end

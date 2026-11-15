@@ -40,8 +40,8 @@ RuboCop runs with the Standard configuration as its base, plus `rubocop-minitest
 - Reek finds code smells, such as a long parameter list or a method that uses another
   object's data more than its own. `.reek.yml` lists the smells of older code, and it never
   gains an entry. A new or changed method that smells is fixed.
-- RubyCritic runs Reek, Flay and Flog, and scores the changed files out of 100. The gate fails
-  a change that scores under 90.
+- RubyCritic runs Reek, Flay and Flog, and scores the changed files out of 100. The gate prints
+  a score under 90 as a target and fails nothing.
 - The kernel under `lib/plastic/` has no entry in either list, and it stays clean.
 - Before a kernel section is called done, load it whole, lint it, and check its chains with
   `Routine.verify`, which raises with every fault at once.

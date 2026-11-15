@@ -6,6 +6,7 @@ require "json"
 require "stringio"
 require "tmpdir"
 require_relative "support/child_process"
+require_relative "support/gate_run"
 
 load File.expand_path("../bin/verify-change", __dir__) unless defined?(VerifyChange)
 
@@ -13,6 +14,8 @@ load File.expand_path("../bin/verify-change", __dir__) unless defined?(VerifyCha
 # own steps, through the same `step` method every other check uses, so the
 # sandbox HOME and PLASTIC_TMP apply to them too.
 class VerifyChangeTimingTest < Minitest::Test
+  include GateRun
+
   REPO = File.expand_path("..", __dir__)
   TEST_FILE = "test/plastic/new_routine_test.rb"
   SOURCE_FILE = "bin/lib/new_routine.rb"
@@ -72,7 +75,7 @@ class VerifyChangeTimingTest < Minitest::Test
 
     out, err, status = ChildProcess.capture3(step.env, *in_repository(step.command, "/nowhere/test_timings.json" => missing), chdir: REPO)
 
-    assert_equal [1, "", "missing timings file: #{missing}\n"], [status.exitstatus, out, err]
+    assert_equal [3, "", "missing timings file: #{missing}\n"], [status.exitstatus, out, err]
   end
 
   def in_repository(command, swaps)
@@ -105,6 +108,29 @@ class VerifyChangeTimingTest < Minitest::Test
 
     refute_nil output_index
     assert_equal "/nowhere/mutation_report.json", step.command[output_index + 1]
+  end
+
+  def test_a_file_over_its_cap_is_reported_and_fails_nothing
+    done = run_gate("Timing check" => 1)
+
+    assert_equal 0, done.code
+    assert_includes done.out, "Timing check"
+    assert_includes done.out, "Change verified"
+  end
+
+  def test_a_timing_check_that_stopped_on_an_error_with_exit_one_fails_the_gate
+    done = run_gate("Timing check" => [1, "unexpected token at '{\"test/a_test.rb\"'\n"])
+
+    assert_equal 1, done.code
+    assert_match(/Failed:.*Timing check/, done.out)
+    refute_includes done.out, "Change verified"
+  end
+
+  def test_a_timing_check_that_did_not_run_fails_the_gate
+    done = run_gate("Timing check" => 3)
+
+    assert_equal 1, done.code
+    assert_match(/Failed:.*Timing check/, done.out)
   end
 
   def test_the_frozen_mutation_step_is_left_out_of_the_plan

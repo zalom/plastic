@@ -14,16 +14,12 @@ Layout/ArgumentAlignment:
   Exclude:
     - 'bin/lib/context_budget.rb'
     - 'bin/verify-change'
-    - 'scripts/install.rb'
-    - 'scripts/lib/installer_core.rb'
-    - 'test/compact_instructions_test.rb'
+    - 'test/plastic/installations/compact_instructions_test.rb'
     - 'test/context_budget_bench_test.rb'
-    - 'test/hook_registry_test.rb'
-    - 'test/installer_core_test.rb'
+    - 'test/plastic/installations/hook_registry_test.rb'
     - 'test/lib/failures_reporter.rb'
     - 'test/plastic_md_pointer_test.rb'
     - 'test/post_cut_vocabulary_test.rb'
-    - 'test/preflight_test.rb'
     - 'test/roadmap_test.rb'
 
 # Offense count: 100
@@ -34,11 +30,6 @@ Layout/ArrayAlignment:
   Exclude:
     - 'bin/verify-change'
 
-# Offense count: 36
-# This cop supports safe autocorrection (--autocorrect).
-Layout/ElseAlignment:
-  Exclude:
-    - 'scripts/lib/installer_core.rb'
 
 # Offense count: 11
 # This cop supports safe autocorrection (--autocorrect).
@@ -48,24 +39,7 @@ Layout/EmptyLinesAroundClassBody:
   Exclude:
     - 'test/roadmap_test.rb'
 
-# Offense count: 35
-# This cop supports safe autocorrection (--autocorrect).
-# Configuration parameters: EnforcedStyleAlignWith.
-# SupportedStylesAlignWith: keyword, variable, start_of_line
-Layout/EndAlignment:
-  Exclude:
-    - 'scripts/lib/installer_core.rb'
 
-# Offense count: 24
-# This cop supports safe autocorrection (--autocorrect).
-# Configuration parameters: AllowMultipleStyles, EnforcedHashRocketStyle, EnforcedColonStyle, EnforcedLastArgumentHashStyle.
-# SupportedHashRocketStyles: key, separator, table
-# SupportedColonStyles: key, separator, table
-# SupportedLastArgumentHashStyles: always_inspect, always_ignore, ignore_implicit, ignore_explicit
-Layout/HashAlignment:
-  Exclude:
-    - 'scripts/lib/installer_core.rb'
-    - 'scripts/select-update-target'
 
 # Offense count: 29
 # This cop supports safe autocorrection (--autocorrect).
@@ -83,7 +57,6 @@ Layout/IndentationConsistency:
 Layout/IndentationWidth:
   Exclude:
     - 'bin/lib/context_budget.rb'
-    - 'scripts/lib/installer_core.rb'
     - 'test/post_cut_vocabulary_test.rb'
 
 # Offense count: 97
@@ -92,9 +65,8 @@ Layout/IndentationWidth:
 # SupportedStyles: aligned, indented, indented_relative_to_receiver
 Layout/MultilineMethodCallIndentation:
   Exclude:
-    - 'scripts/lib/hook_registry.rb'
-    - 'scripts/lib/installer_core.rb'
-    - 'test/hook_registry_test.rb'
+    - 'lib/plastic/installations/hook_registry.rb'
+    - 'test/plastic/installations/hook_registry_test.rb'
 
 # Offense count: 56
 # This cop supports safe autocorrection (--autocorrect).
@@ -102,18 +74,9 @@ Layout/MultilineMethodCallIndentation:
 # SupportedStyles: aligned, indented
 Layout/MultilineOperationIndentation:
   Exclude:
-    - 'scripts/lib/installer_core.rb'
     - 'test/docs_model_test.rb'
     - 'test/post_cut_vocabulary_test.rb'
 
-# Offense count: 91
-# This cop supports safe autocorrection (--autocorrect).
-# Configuration parameters: EnforcedStyle, IndentationWidth.
-# SupportedStyles: with_first_parameter, with_fixed_indentation
-Layout/ParameterAlignment:
-  Exclude:
-    - 'scripts/install.rb'
-    - 'scripts/lib/installer_core.rb'
 
 # Offense count: 346
 # This cop supports safe autocorrection (--autocorrect).
@@ -122,23 +85,12 @@ Layout/ParameterAlignment:
 # SupportedStylesForEmptyBraces: space, no_space
 Layout/SpaceInsideHashLiteralBraces:
   Exclude:
-    - 'scripts/lib/release_channels.rb'
     - 'bin/lib/release_guard.rb'
     - 'test/cli/launcher_test.rb'
     - 'test/cli/package_bin_test.rb'
     - 'test/real_home_guard_test.rb'
-    - 'test/release_channels_test.rb'
 
-# Offense count: 1
-# This cop supports safe autocorrection (--autocorrect).
-Lint/SafeNavigationWithEmpty:
-  Exclude:
-    - 'scripts/lib/installer_core.rb'
 
-# Offense count: 6
-Lint/ShadowedException:
-  Exclude:
-    - 'scripts/select-update-target'
 
 # Offense count: 1200
 # Configuration parameters: AllowedMethods, AllowedPatterns, CountRepeatedAttributes, Max.
@@ -146,16 +98,12 @@ Metrics/AbcSize:
   Exclude:
     - 'bin/lib/context_budget.rb'
     - 'bin/verify-change'
-    - 'scripts/install.rb'
-    - 'scripts/lib/engine_permissions.rb'
-    - 'scripts/lib/hook_registry.rb'
-    - 'scripts/lib/installer_core.rb'
-    - 'scripts/lib/release_channels.rb'
+    - 'lib/plastic/installations/engine_permissions.rb'
+    - 'lib/plastic/installations/hook_registry.rb'
     - 'bin/lib/release_guard.rb'
-    - 'test/compact_instructions_test.rb'
+    - 'test/plastic/installations/compact_instructions_test.rb'
     - 'test/context_budget_bench_test.rb'
-    - 'test/hook_registry_test.rb'
-    - 'test/installer_core_test.rb'
+    - 'test/plastic/installations/hook_registry_test.rb'
     - 'test/naming_rule_test.rb'
     - 'test/plastic_core_budget_test.rb'
     - 'test/post_cut_vocabulary_test.rb'
@@ -166,17 +114,12 @@ Metrics/AbcSize:
 Metrics/ClassLength:
   Exclude:
     - 'bin/verify-change'
-    - 'scripts/install.rb'
-    - 'scripts/lib/installer_core.rb'
     - 'test/cli/release_contract_test.rb'
-    - 'test/compact_instructions_test.rb'
+    - 'test/plastic/installations/compact_instructions_test.rb'
     - 'test/docs_model_test.rb'
-    - 'test/engine_permissions_test.rb'
-    - 'test/hook_registry_test.rb'
-    - 'test/installer_core_test.rb'
-    - 'test/preflight_test.rb'
+    - 'test/plastic/installations/engine_permissions_test.rb'
+    - 'test/plastic/installations/hook_registry_test.rb'
     - 'test/real_home_guard_test.rb'
-    - 'test/release_channels_test.rb'
     - 'test/release_check_test.rb'
     - 'test/vocabulary_scan_test.rb'
 
@@ -186,10 +129,7 @@ Metrics/CyclomaticComplexity:
   Exclude:
     - 'bin/lib/context_budget.rb'
     - 'bin/verify-change'
-    - 'scripts/install.rb'
-    - 'scripts/lib/hook_registry.rb'
-    - 'scripts/lib/installer_core.rb'
-    - 'scripts/lib/release_channels.rb'
+    - 'lib/plastic/installations/hook_registry.rb'
     - 'bin/lib/release_guard.rb'
     - 'test/real_home_guard_test.rb'
 
@@ -199,25 +139,20 @@ Metrics/MethodLength:
   Exclude:
     - 'bin/lib/context_budget.rb'
     - 'bin/verify-change'
-    - 'scripts/install.rb'
-    - 'scripts/lib/engine_permissions.rb'
-    - 'scripts/lib/hook_registry.rb'
-    - 'scripts/lib/installer_core.rb'
-    - 'scripts/lib/release_channels.rb'
+    - 'lib/plastic/installations/engine_permissions.rb'
+    - 'lib/plastic/installations/hook_registry.rb'
     - 'bin/lib/release_guard.rb'
     - 'bin/release-check'
-    - 'test/compact_instructions_test.rb'
+    - 'test/plastic/installations/compact_instructions_test.rb'
     - 'test/context_budget_bench_test.rb'
-    - 'test/engine_permissions_test.rb'
-    - 'test/hook_registry_test.rb'
-    - 'test/installer_core_test.rb'
+    - 'test/plastic/installations/engine_permissions_test.rb'
+    - 'test/plastic/installations/hook_registry_test.rb'
     - 'test/naming_rule_test.rb'
     - 'test/packaging_no_store_ids_test.rb'
     - 'test/plastic_core_budget_test.rb'
     - 'test/post_cut_vocabulary_test.rb'
     - 'test/release_check_test.rb'
     - 'test/release_guard_test.rb'
-    - 'test/tick_with_commit_contract_test.rb'
     - 'test/vocabulary_scan_test.rb'
 
 # Offense count: 49
@@ -225,7 +160,7 @@ Metrics/MethodLength:
 Metrics/ModuleLength:
   Exclude:
     - 'bin/lib/context_budget.rb'
-    - 'scripts/lib/hook_registry.rb'
+    - 'lib/plastic/installations/hook_registry.rb'
 
 # Offense count: 124
 # Configuration parameters: Max, CountKeywordArgs, MaxOptionalParameters.
@@ -233,7 +168,6 @@ Metrics/ParameterLists:
   Exclude:
     - 'bin/lib/context_budget.rb'
     - 'bin/verify-change'
-    - 'scripts/install.rb'
 
 # Offense count: 258
 # Configuration parameters: AllowedMethods, AllowedPatterns, Max.
@@ -241,25 +175,16 @@ Metrics/PerceivedComplexity:
   Exclude:
     - 'bin/lib/context_budget.rb'
     - 'bin/verify-change'
-    - 'scripts/install.rb'
-    - 'scripts/lib/engine_permissions.rb'
-    - 'scripts/lib/hook_registry.rb'
-    - 'scripts/lib/installer_core.rb'
-    - 'scripts/lib/release_channels.rb'
+    - 'lib/plastic/installations/engine_permissions.rb'
+    - 'lib/plastic/installations/hook_registry.rb'
 
-# Offense count: 44
-# This cop supports safe autocorrection (--autocorrect).
-Minitest/AssertOperator:
-  Exclude:
-    - 'test/installer_core_test.rb'
 
 # Offense count: 155
 # This cop supports safe autocorrection (--autocorrect).
 Minitest/AssertPathExists:
   Exclude:
-    - 'test/engine_permissions_test.rb'
-    - 'test/hook_registry_test.rb'
-    - 'test/installer_core_test.rb'
+    - 'test/plastic/installations/engine_permissions_test.rb'
+    - 'test/plastic/installations/hook_registry_test.rb'
     - 'test/release_verify_test.rb'
 
 # Offense count: 121
@@ -278,25 +203,22 @@ Minitest/AssertPredicate:
 Minitest/EmptyLineBeforeAssertionMethods:
   Exclude:
     - 'test/bin_test_test.rb'
-    - 'test/compact_instructions_test.rb'
+    - 'test/plastic/installations/compact_instructions_test.rb'
     - 'test/context_budget_bench_test.rb'
     - 'test/docs_model_test.rb'
-    - 'test/engine_permissions_test.rb'
+    - 'test/plastic/installations/engine_permissions_test.rb'
     - 'test/harness_support_docs_test.rb'
-    - 'test/hook_registry_test.rb'
-    - 'test/installer_core_test.rb'
+    - 'test/plastic/installations/hook_registry_test.rb'
     - 'test/naming_rule_test.rb'
     - 'test/packaging_no_store_ids_test.rb'
     - 'test/plastic_core_budget_test.rb'
     - 'test/plastic_md_pointer_test.rb'
     - 'test/post_cut_vocabulary_test.rb'
-    - 'test/preflight_test.rb'
     - 'test/release_check_test.rb'
     - 'test/release_guard_test.rb'
     - 'test/release_verify_test.rb'
     - 'test/releasing_skill_publish_test.rb'
     - 'test/roadmap_test.rb'
-    - 'test/tick_with_commit_contract_test.rb'
     - 'test/vocabulary_scan_test.rb'
 
 # Offense count: 741
@@ -304,16 +226,14 @@ Minitest/EmptyLineBeforeAssertionMethods:
 Minitest/MultipleAssertions:
   Exclude:
     - 'test/bin_test_test.rb'
-    - 'test/compact_instructions_test.rb'
+    - 'test/plastic/installations/compact_instructions_test.rb'
     - 'test/context_budget_bench_test.rb'
     - 'test/docs_model_test.rb'
     - 'test/harness_support_docs_test.rb'
-    - 'test/hook_registry_test.rb'
-    - 'test/installer_core_test.rb'
+    - 'test/plastic/installations/hook_registry_test.rb'
     - 'test/naming_rule_test.rb'
     - 'test/plastic_core_budget_test.rb'
     - 'test/post_cut_vocabulary_test.rb'
-    - 'test/preflight_test.rb'
     - 'test/release_check_test.rb'
     - 'test/release_guard_test.rb'
     - 'test/vocabulary_scan_test.rb'
@@ -322,10 +242,9 @@ Minitest/MultipleAssertions:
 # This cop supports safe autocorrection (--autocorrect).
 Minitest/RefutePathExists:
   Exclude:
-    - 'test/compact_instructions_test.rb'
+    - 'test/plastic/installations/compact_instructions_test.rb'
     - 'test/docs_model_test.rb'
-    - 'test/engine_permissions_test.rb'
-    - 'test/installer_core_test.rb'
+    - 'test/plastic/installations/engine_permissions_test.rb'
 
 # Offense count: 57
 # This cop supports safe autocorrection (--autocorrect).
@@ -337,50 +256,12 @@ Minitest/RefutePredicate:
     - 'test/release_check_test.rb'
     - 'test/release_guard_test.rb'
 
-# Offense count: 1
-# This cop supports safe autocorrection (--autocorrect).
-Minitest/ReturnInTestMethod:
-  Exclude:
-    - 'test/installer_core_test.rb'
 
-# Offense count: 3
-# This cop supports unsafe autocorrection (--autocorrect-all).
-Style/ComparableBetween:
-  Exclude:
-    - 'scripts/lib/installer_core.rb'
 
-# Offense count: 39
-# This cop supports safe autocorrection (--autocorrect).
-# Configuration parameters: EnforcedStyle.
-# SupportedStyles: trailing_conditional, ternary
-Style/EmptyStringInsideInterpolation:
-  Exclude:
-    - 'scripts/lib/installer_core.rb'
 
-# Offense count: 10
-# This cop supports unsafe autocorrection (--autocorrect-all).
-Style/IdenticalConditionalBranches:
-  Exclude:
-    - 'scripts/lib/installer_core.rb'
 
-# Offense count: 11
-# This cop supports safe autocorrection (--autocorrect).
-Style/MultilineIfModifier:
-  Exclude:
-    - 'scripts/install.rb'
-    - 'scripts/lib/installer_core.rb'
 
-# Offense count: 7
-# This cop supports safe autocorrection (--autocorrect).
-Style/NestedTernaryOperator:
-  Exclude:
-    - 'scripts/install.rb'
 
-# Offense count: 3
-# This cop supports safe autocorrection (--autocorrect).
-Style/RedundantBegin:
-  Exclude:
-    - 'scripts/lib/installer_core.rb'
 
 # Offense count: 3
 # This cop supports unsafe autocorrection (--autocorrect-all).
@@ -392,8 +273,7 @@ Style/RedundantFormat:
 # This cop supports safe autocorrection (--autocorrect).
 Style/RedundantFreeze:
   Exclude:
-    - 'scripts/lib/compact_instructions.rb'
-    - 'scripts/lib/installer_core.rb'
+    - 'lib/plastic/installations/compact_instructions.rb'
     - 'test/docs_model_test.rb'
 
 # Offense count: 1
@@ -409,11 +289,6 @@ Style/RedundantStructKeywordInit:
     - 'bin/lib/context_budget.rb'
     - 'bin/lib/release_guard.rb'
 
-# Offense count: 21
-# This cop supports safe autocorrection (--autocorrect).
-Style/RescueModifier:
-  Exclude:
-    - 'scripts/lib/installer_core.rb'
 
 # Offense count: 152
 # This cop supports safe autocorrection (--autocorrect).
@@ -422,24 +297,8 @@ Style/RescueModifier:
 Style/RescueStandardError:
   Exclude:
     - 'bin/plastic-bench'
-    - 'scripts/lib/installer_core.rb'
-    - 'test/installer_core_test.rb'
 
-# Offense count: 11
-# This cop supports unsafe autocorrection (--autocorrect-all).
-# Configuration parameters: ConvertCodeThatCanStartToReturnNil, AllowedMethods, MaxChainLength.
-# AllowedMethods: present?, blank?, presence, try, try!
-Style/SafeNavigation:
-  Exclude:
-    - 'scripts/lib/installer_core.rb'
 
-# Offense count: 14
-# This cop supports safe autocorrection (--autocorrect).
-# Configuration parameters: EnforcedStyle, ConsistentQuotesInMultiline.
-# SupportedStyles: single_quotes, double_quotes
-Style/StringLiterals:
-  Exclude:
-    - 'scripts/lib/installer_core.rb'
 
 # Offense count: 390
 # This cop supports safe autocorrection (--autocorrect).
@@ -449,11 +308,10 @@ Style/StringLiteralsInInterpolation:
   Exclude:
     - 'bin/lib/context_budget.rb'
     - 'bin/test'
-    - 'scripts/lib/hook_registry.rb'
+    - 'lib/plastic/installations/hook_registry.rb'
     - 'test/context_budget_bench_test.rb'
     - 'test/docs_model_test.rb'
-    - 'test/hook_registry_test.rb'
-    - 'test/installer_core_test.rb'
+    - 'test/plastic/installations/hook_registry_test.rb'
     - 'test/packaging_no_store_ids_test.rb'
 
 # Offense count: 169
@@ -463,9 +321,7 @@ Style/StringLiteralsInInterpolation:
 Style/TernaryParentheses:
   Exclude:
     - 'bin/verify-change'
-    - 'scripts/install.rb'
-    - 'scripts/lib/hook_registry.rb'
-    - 'scripts/lib/installer_core.rb'
+    - 'lib/plastic/installations/hook_registry.rb'
 
 # Offense count: 57
 # This cop supports safe autocorrection (--autocorrect).
@@ -473,7 +329,7 @@ Style/TernaryParentheses:
 # SupportedStylesForMultiline: comma, consistent_comma, diff_comma, no_comma
 Style/TrailingCommaInArguments:
   Exclude:
-    - 'test/engine_permissions_test.rb'
+    - 'test/plastic/installations/engine_permissions_test.rb'
 
 # Offense count: 282
 # This cop supports safe autocorrection (--autocorrect).
@@ -482,12 +338,9 @@ Style/TrailingCommaInArguments:
 Style/TrailingCommaInArrayLiteral:
   Exclude:
     - 'bin/lib/context_budget.rb'
-    - 'scripts/lib/engine_permissions.rb'
-    - 'scripts/lib/hook_registry.rb'
-    - 'scripts/lib/installer_core.rb'
-    - 'test/installer_core_test.rb'
+    - 'lib/plastic/installations/engine_permissions.rb'
+    - 'lib/plastic/installations/hook_registry.rb'
     - 'test/post_cut_vocabulary_test.rb'
-    - 'test/preflight_test.rb'
 
 # Offense count: 320
 # This cop supports safe autocorrection (--autocorrect).
@@ -496,12 +349,9 @@ Style/TrailingCommaInArrayLiteral:
 Style/TrailingCommaInHashLiteral:
   Exclude:
     - 'bin/lib/context_budget.rb'
-    - 'scripts/lib/hook_registry.rb'
-    - 'scripts/lib/installer_core.rb'
+    - 'lib/plastic/installations/hook_registry.rb'
     - 'bin/lib/release_guard.rb'
-    - 'scripts/select-update-target'
-    - 'test/engine_permissions_test.rb'
-    - 'test/installer_core_test.rb'
+    - 'test/plastic/installations/engine_permissions_test.rb'
 
 # Offense count: 3
 # Configuration parameters: EnforcedStyle.
@@ -514,6 +364,4 @@ Style/UnlessLogicalOperators:
 # This cop supports safe autocorrection (--autocorrect).
 Style/YAMLFileRead:
   Exclude:
-    - 'scripts/lib/installer_core.rb'
-    - 'test/compact_instructions_test.rb'
-    - 'test/installer_core_test.rb'
+    - 'test/plastic/installations/compact_instructions_test.rb'

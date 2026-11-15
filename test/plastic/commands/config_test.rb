@@ -14,8 +14,12 @@ class ConfigCommandTest < Plastic::TestCase
     result = config
 
     assert_equal [0, ""], [result.code, result.err]
-    assert_includes result.out, "[x] statusline"
+    assert_includes result.out, "[x] screens"
     assert_includes result.out, "[ ] runner.stop_hook"
+  end
+
+  def test_the_statusline_is_listed_off_by_default
+    assert_includes config.out, "[ ] statusline"
   end
 
   def test_with_no_terminal_the_next_step_asks_the_person
@@ -29,27 +33,27 @@ class ConfigCommandTest < Plastic::TestCase
   end
 
   def test_an_answer_turns_on_the_picked_settings_and_writes_only_the_changes
-    result = config(numbers.values_at("statusline", "screens", "advisor.enabled", "runner.stop_hook").join(","))
+    result = config(numbers.values_at("screens", "advisor.enabled", "runner.stop_hook").join(","))
 
     assert_equal 0, result.code
     assert_equal({ "runner" => { "stop_hook" => true } }, saved["global"])
   end
 
   def test_an_unpicked_setting_that_was_on_is_turned_off
-    config(numbers.values_at("screens", "advisor.enabled").join(","))
+    config(numbers.values_at("screens").join(","))
 
-    assert_equal({ "statusline" => false }, saved["global"])
+    assert_equal({ "advisor" => { "enabled" => false } }, saved["global"])
   end
 
   def test_an_answer_with_a_harness_writes_under_that_harness
     config("q")
     config("a", "--harness", "codex")
 
-    assert_equal({ "codex" => { "runner" => { "stop_hook" => true }, "migrate" => { "remove_after_import" => true } } }, saved["harnesses"])
+    assert_equal({ "codex" => { "statusline" => true, "runner" => { "stop_hook" => true }, "migrate" => { "remove_after_import" => true } } }, saved["harnesses"])
   end
 
   def test_an_answer_that_keeps_every_setting_writes_nothing
-    result = config(numbers.values_at("statusline", "screens", "advisor.enabled").join(","))
+    result = config(numbers.values_at("screens", "advisor.enabled").join(","))
 
     assert_equal [0, false], [result.code, File.exist?(path)]
     assert_includes result.out, "because: nothing changed"

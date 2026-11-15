@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "fileutils"
 require "json"
 
 module Plastic
@@ -17,10 +18,21 @@ module Plastic
         path
       end
 
+      # The file a link points to, so a write keeps the link; any other path stays.
+      def self.target(path)
+        File.symlink?(path) ? File.realpath(path) : path
+      rescue Errno::ENOENT
+        path
+      end
+
       def self.replace(path, text)
-        temporary = "#{path}.plastic-tmp.#{Process.pid}"
+        final = target(path)
+        temporary = "#{final}.plastic-tmp.#{Process.pid}"
         File.write(temporary, text)
-        File.rename(temporary, path)
+        File.rename(temporary, final)
+      rescue
+        FileUtils.rm_f(temporary)
+        raise
       end
     end
   end

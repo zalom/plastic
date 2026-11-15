@@ -16,6 +16,18 @@ class InstallerReleaseBundleTest < Minitest::Test
       env.slice("BUNDLE_GEMFILE", "BUNDLE_PATH", "BUNDLE_FROZEN"))
   end
 
+  def test_the_bundle_program_sits_beside_the_ruby
+    assert_equal "/r/bin/bundle", InstallerRelease::Ruby.new("/r/bin/ruby").bundle
+  end
+
+  def test_the_chosen_ruby_is_the_developer_ruby_first
+    assert_equal "/dev/ruby", InstallerRelease::Ruby.chosen("/dev/ruby").path
+  end
+
+  def test_the_chosen_ruby_is_the_running_ruby_when_no_developer_ruby_is_named
+    assert_equal RbConfig.ruby, InstallerRelease::Ruby.chosen("").path
+  end
+
   def test_runs_the_bundle_program_beside_the_chosen_ruby
     env, command = bundled.first
 

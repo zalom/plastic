@@ -54,18 +54,10 @@ class ReleaseBuildTest < Minitest::Test
     assert_equal Digest::SHA256.file(archive).hexdigest, manifest.dig("archive", "sha256")
   end
 
-  def test_the_manifest_carries_the_ruby_pins_of_install_sh
+  def test_the_manifest_carries_the_ruby_requirement_and_no_builds
     ReleaseBuild.call(version: "2.0.4", directory: @out, root: @root)
 
-    assert_equal InstallerRelease::RubyPins.read, manifest.dig("ruby", "builds")
-  end
-
-  def test_seal_writes_the_ruby_pins_it_is_given
-    FileUtils.mkdir_p(@out)
-    File.binwrite(archive, "archive bytes")
-    ReleaseBuild.seal("2.0.3", @out, pins: { "arm64-darwin" => { "key" => "k" } })
-
-    assert_equal({ "arm64-darwin" => { "key" => "k" } }, manifest.dig("ruby", "builds"))
+    assert_equal({ "requirement" => ">= 4.0.0" }, manifest.fetch("ruby"))
   end
 
   def test_seal_writes_the_checksum_and_manifest_for_an_archive_built_elsewhere
@@ -92,12 +84,20 @@ class ReleaseBuildTest < Minitest::Test
     assert_includes err, "--version"
   end
 
+  def test_every_path_install_sh_extracts_for_the_installer_is_in_the_archive
+    ReleaseBuild.call(version: "2.0.4", directory: @out, root: REPO)
+    boot = File.read(File.join(REPO, "install.sh"))[/^tar -xzf .*\/boot" (.*)$/, 1].to_s.split
+    names = entries.keys
+
+    refute_empty boot
+    assert_empty(boot.reject { |path| names.any? { |name| name == path || name.start_with?("#{path}/") } })
+  end
+
   def test_the_archive_of_the_tree_ships_the_launcher_and_the_readers_files_and_no_release_tool
     ReleaseBuild.call(version: "2.0.4", directory: @out, root: REPO)
     names = entries.keys
 
-    assert_empty(%w[package/exe/plastic package/lib/plastic.rb package/scripts/install-release package/scripts/select-update-target
-      package/scripts/lib/release_channels.rb package/bin/plastic] - names)
+    assert_empty(%w[package/exe/plastic package/lib/plastic.rb package/scripts/install-release package/bin/plastic] - names)
     assert_empty(names.grep(/build-release|release-check|release_build\.rb|release_archive\.rb|release_guard\.rb/))
     assert_empty(names.grep(%r{\Apackage/bin/}) - ["package/bin/plastic"])
   end

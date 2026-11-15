@@ -79,7 +79,7 @@ class IntentNewTest < Plastic::TestCase
   def test_after_naming_a_missing_intent_fails_with_no_intent_written
     result = plastic("intent", "new", "Beta", "--after", "9", table: Plastic::CLI::TABLE)
 
-    assert_call result, code: 1, out: RUN_ROW, err: "plastic: no intent 9 in this store to link after\n"
+    assert_call result, code: 1, err: "plastic: no intent 9 in this store to link after\n"
     assert_empty store_graphs.retrieval.intents
   end
 
@@ -92,21 +92,21 @@ class IntentNewTest < Plastic::TestCase
   def test_a_parked_intent_with_no_reason_is_refused_and_writes_nothing
     result = plastic("intent", "new", "Wait", "--status", "parked", table: Plastic::CLI::TABLE)
 
-    assert_call result, code: 1, out: RUN_ROW, err: "plastic: a parked intent needs a reason: pass --reason TEXT\n"
+    assert_call result, code: 1, err: "plastic: a parked intent needs a reason: pass --reason TEXT\n"
     assert_empty store_graphs.retrieval.intents
   end
 
   def test_a_reason_on_an_open_intent_is_refused_and_writes_nothing
     result = plastic("intent", "new", "Wait", "--reason", "later", table: Plastic::CLI::TABLE)
 
-    assert_call result, code: 1, out: RUN_ROW, err: "plastic: --reason belongs to a parked intent: pass --status parked\n"
+    assert_call result, code: 1, err: "plastic: --reason belongs to a parked intent: pass --status parked\n"
     assert_empty store_graphs.retrieval.intents
   end
 
   def test_an_intent_does_not_start_in_progress
     result = plastic("intent", "new", "Go", "--status", "in_progress", table: Plastic::CLI::TABLE)
 
-    assert_call result, code: 1, out: RUN_ROW, err: "plastic: a new intent takes the status open, parked or future, not in_progress\n"
+    assert_call result, code: 1, err: "plastic: a new intent takes the status open, parked or future, not in_progress\n"
     assert_empty store_graphs.retrieval.intents
   end
 end

@@ -8,7 +8,7 @@ Registers a project in projects.yml and leaves its store ready, so an intent can
 plastic project new SLUG PATH
 ```
 
-The command is `Project::New`, in [`new.rb:14`](../../../../lib/plastic/commands/project/new.rb#L14). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Project::New`, in [`new.rb:15`](../../../../lib/plastic/commands/project/new.rb#L15). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |
@@ -25,7 +25,7 @@ The figure shows the command, the workflows it runs, the classes behind them, an
 
 ![The call of plastic project new](call.svg)
 
-The command's `call`, at [`new.rb:19`](../../../../lib/plastic/commands/project/new.rb#L19):
+The command's `call`, at [`new.rb:20`](../../../../lib/plastic/commands/project/new.rb#L20):
 
 ```ruby
 def call
@@ -33,17 +33,19 @@ def call
   path = checked_path
   register(slug, path)
   make_ready(slug)
+  name_written(CLI::RuleFiles.new(path, slug).write_absent, path)
   announce(slug, path)
 end
 ```
 
 Its steps run in this order:
 
-1. `slug = checked_slug` [`new.rb:20`](../../../../lib/plastic/commands/project/new.rb#L20)
-2. `path = checked_path` [`new.rb:21`](../../../../lib/plastic/commands/project/new.rb#L21)
-3. `register(slug, path)` [`new.rb:22`](../../../../lib/plastic/commands/project/new.rb#L22)
-4. `make_ready(slug)` [`new.rb:23`](../../../../lib/plastic/commands/project/new.rb#L23)
-5. `announce(slug, path)` [`new.rb:24`](../../../../lib/plastic/commands/project/new.rb#L24)
+1. `slug = checked_slug` [`new.rb:21`](../../../../lib/plastic/commands/project/new.rb#L21)
+2. `path = checked_path` [`new.rb:22`](../../../../lib/plastic/commands/project/new.rb#L22)
+3. `register(slug, path)` [`new.rb:23`](../../../../lib/plastic/commands/project/new.rb#L23)
+4. `make_ready(slug)` [`new.rb:24`](../../../../lib/plastic/commands/project/new.rb#L24)
+5. `name_written(CLI::RuleFiles.new(path, slug).write_absent, path)` [`new.rb:25`](../../../../lib/plastic/commands/project/new.rb#L25)
+6. `announce(slug, path)` [`new.rb:26`](../../../../lib/plastic/commands/project/new.rb#L26)
 
 ## What one call reads, writes and prints
 
@@ -51,9 +53,9 @@ Its steps run in this order:
 
 | Place | Database or file | Tables | Reads or writes | Code |
 | --- | --- | --- | --- | --- |
-| the store folder | knowledge_graph.db | not found in the code | writes | [`new.rb:17`](../../../../lib/plastic/commands/project/new.rb#L17) |
-| the store folder | references.db | not found in the code | writes | [`new.rb:17`](../../../../lib/plastic/commands/project/new.rb#L17) |
-| the store folder | work_graph.db | not found in the code | writes | [`new.rb:17`](../../../../lib/plastic/commands/project/new.rb#L17) |
+| the store folder | knowledge_graph.db | not found in the code | writes | [`new.rb:18`](../../../../lib/plastic/commands/project/new.rb#L18) |
+| the store folder | references.db | not found in the code | writes | [`new.rb:18`](../../../../lib/plastic/commands/project/new.rb#L18) |
+| the store folder | work_graph.db | not found in the code | writes | [`new.rb:18`](../../../../lib/plastic/commands/project/new.rb#L18) |
 
 ## How a call ends
 
@@ -61,9 +63,9 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| Failed: PATH is not a directory | 1 | prints no next: line | [`new.rb:33`](../../../../lib/plastic/commands/project/new.rb#L33) |
-| Refused: SLUG is registered at KNOWN, not at PATH; edit projects.yml to move it | 3 | prints no next: line | [`new.rb:41`](../../../../lib/plastic/commands/project/new.rb#L41) |
-| Offers the next command | 0 | plastic intent new TITLE --project SLUG | [`new.rb:52`](../../../../lib/plastic/commands/project/new.rb#L52) |
+| Failed: PATH is not a directory | 1 | prints no next: line | [`new.rb:35`](../../../../lib/plastic/commands/project/new.rb#L35) |
+| Refused: SLUG is registered at KNOWN, not at PATH; edit projects.yml to move it | 3 | prints no next: line | [`new.rb:43`](../../../../lib/plastic/commands/project/new.rb#L43) |
+| Offers the next command | 0 | plastic intent new TITLE --project SLUG | [`new.rb:58`](../../../../lib/plastic/commands/project/new.rb#L58) |
 
 ## What the page leaves out
 

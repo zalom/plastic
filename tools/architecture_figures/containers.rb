@@ -12,7 +12,7 @@ module ArchitectureFigures
       launcher | | 30 44 230 | ~/.local/bin/plastic | link | line | | Found on the PATH, / where you run plastic.
       active | | 330 44 260 | active/bin/plastic | program | code | | Ruby. One command, plastic, / and the three hooks.
       releases | | 660 44 220 | releases/VERSION/ | folder | line | | One folder for each release; / active points to one.
-      rubies | | 940 44 190 | rubies/ | folder | line | | The Ruby each release / runs on.
+      download | | 940 44 190 | download/ | folder | line | | The files plastic update / fetched.
       home | zone | 10 165 1140 170 | Plastic home | | | |
       instructions | | 30 199 230 | PLASTIC.md | file | agent | | The always-on instructions / the harness imports.
       program | | 330 199 260 | exe/plastic | pointer | code | mono | A launcher that points to / the active program.

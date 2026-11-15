@@ -17,6 +17,10 @@ class InstallerReleaseManifestTest < Minitest::Test
     assert_equal Digest::SHA256.file(@archive).hexdigest, @manifest.dig("archive", "sha256")
   end
 
+  def test_the_ruby_requirement_is_kept_and_no_build_is_listed
+    assert_equal({ "requirement" => ">= 4.0.0" }, @manifest.fetch("ruby"))
+  end
+
   def test_the_manifest_is_written_as_json
     path = File.join(@root, "plastic.manifest.json")
     InstallerRelease::Manifest.write(path, archive: @archive, release: release)

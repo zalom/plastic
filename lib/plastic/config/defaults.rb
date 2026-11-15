@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "../../../scripts/lib/agent_models"
+require_relative "agent_models"
 
 module Plastic
   class Config
@@ -8,10 +8,11 @@ module Plastic
     # holds the agent models and efforts and the default advisor.
     module Defaults
       GLOBAL = {
-        "statusline" => true,
+        "statusline" => false,
         "screens" => true,
         "runner" => { "stop_hook" => false },
         "review" => { "pull_request" => "off" },
+        "search" => { "source_projects" => "" },
         "migrate" => { "remove_after_import" => false },
         "advisor" => { "enabled" => true }
       }.freeze

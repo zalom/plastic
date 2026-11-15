@@ -4,7 +4,10 @@ require "json"
 require_relative "layout"
 require_relative "record"
 require_relative "roots"
-require_relative "../../../scripts/lib/engine_permissions"
+require_relative "agent_record"
+require_relative "files"
+require_relative "marked_section"
+require_relative "settings_recording"
 
 module Plastic
   module Installations
@@ -13,12 +16,11 @@ module Plastic
     # section of its instruction file.
     class Recording
       def self.layouts
-        core = ::InstallerCore
+        claude = MarkedSection::CLAUDE
+        codex = MarkedSection::CODEX
         {
-          "claude" => Layout.new(:dir, "settings.json", :claude_purge_command?, "CLAUDE.md",
-            [core::CLAUDE_SECTION_BEGIN_PREFIX, core::CLAUDE_SECTION_END]),
-          "codex" => Layout.new(:home_dir, "hooks.json", :codex_purge_command?, "AGENTS.md",
-            [core::CODEX_SECTION_BEGIN_PREFIX, core::CODEX_SECTION_END]),
+          "claude" => Layout.new(:dir, "settings.json", :claude_purge_command?, "CLAUDE.md", [claude.begin_prefix, claude.end_marker]),
+          "codex" => Layout.new(:home_dir, "hooks.json", :codex_purge_command?, "AGENTS.md", [codex.begin_prefix, codex.end_marker]),
           "hermes" => Layout.new(:dir, nil, nil, nil, [])
         }
       end
@@ -34,8 +36,8 @@ module Plastic
       def call
         written = files
         Record.new(harness: @harness.name, version: @installer.version, roots:, files: written,
-          folders: Roots.new(roots).plastic_folders(written), settings: settings_path, hooks:, status_line:,
-          permissions:, sections:)
+          folders: Roots.new(roots).plastic_folders(written), settings: settings_path, hooks: settings.hooks,
+          status_line: settings.status_line, permissions: settings.permissions, sections:)
       end
 
       private
@@ -43,43 +45,16 @@ module Plastic
       def roots = @config.values_at(:dir, :home_dir).compact
 
       def files
-        manifest = @installer.manifest_path_for(@config[:key], @config)
-        @installer.manifest_files(manifest) + [manifest].select { |path| File.file?(path) }
+        AgentRecord.new(@config).manifest.files_and_path
       end
 
       def settings_path = @layout.settings_path(@config)
 
-      def settings = (@settings ||= settings_path ? Hash(@installer.read_json_safe(settings_path)) : {})
-
-      def hooks = Hash(settings["hooks"]).flat_map { |event, groups| owned_entries(event, groups) }
-
-      def owned_entries(event, groups)
-        commands(groups).select { |command| owned?(command) }.map { |command| { "event" => event, "command" => command } }
-      end
-
-      def commands(groups) = Array(groups).grep(Hash).flat_map { |group| Array(group["hooks"]) }.grep(Hash).map { |hook| hook["command"] }
-
-      def owned?(command) = @installer.uninstalled_hook?(@layout.method(:plastic?), command)
-
-      def status_line
-        line = settings["statusLine"]
-        command = line["command"] if line.is_a?(Hash)
-        { "command" => command, "replaced" => replaced } if command && @layout.plastic?(command)
-      end
-
-      def replaced
-        original = @installer.read_json_safe(File.join(@installer.plastic_home, ".cache", "original-statusline.json"))
-        original if original.is_a?(Hash)
-      end
-
-      def permissions
-        rules = settings["permissions"]
-        EnginePermissions::ENTRIES & Array(rules.is_a?(Hash) && rules["deny"])
-      end
+      def settings = (@settings ||= SettingsRecording.new(@installer, @layout, settings_path))
 
       def sections
         opening, closing = @layout.markers
-        path = @layout.instructions_path(@config)&.then { |file| @installer.resolve_managed_path(file) }
+        path = @layout.instructions_path(@config)&.then { |file| Files.resolve(file) }
         return [] unless path && File.file?(path) && File.read(path).include?(opening)
 
         [{ "file" => path, "begin" => opening, "end" => closing }]

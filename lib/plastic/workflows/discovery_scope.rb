@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "../config"
+
 module Plastic
   module Workflows
     # Resolves the selected stores for a retrieval discovery request.
@@ -23,7 +25,7 @@ module Plastic
 
       def source_values
         values = @context.source_projects
-        (values.empty? ? @context.scope.setting("PLASTIC_SOURCE_PROJECTS", "").split(",") : values).map(&:strip).reject(&:empty?).uniq.sort
+        (values.empty? ? Plastic::Config.new(@context.scope.plastic_home).source_projects : values).map(&:strip).reject(&:empty?).uniq.sort
       end
 
       def validate(selected)

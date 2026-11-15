@@ -31,7 +31,7 @@ class UninstallRunningRubyTest < Minitest::Test
 
     assert_equal [0, "", false], [status.exitstatus, err, File.exist?(share)]
     assert_match(/removed:\s+#{Regexp.escape(share)}\n/, out)
-    assert_match(/^next: plastic init$/, out)
+    refute_match(/^next:/, out)
   end
 
   private

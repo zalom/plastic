@@ -8,7 +8,7 @@ require "open3"
 require "rbconfig"
 require "tmpdir"
 require "yaml"
-require_relative "../../scripts/lib/store_layout"
+require_relative "../../lib/plastic/store_layout"
 
 # ContextBudget: the measurement behind Plastic's two context numbers. The core
 # block stays under 8,192 bytes and the whole per-boot doctrine read under
@@ -17,8 +17,8 @@ require_relative "../../scripts/lib/store_layout"
 # `scripts/hook-session-start` against it N times, and reports what a boot
 # actually costs.
 #
-# Maintainer tool. It lives under bin/ beside bin/test, is never registered in
-# installer_core.rb, and is never installed into ~/.plastic: it reads repo
+# Maintainer tool. It lives under bin/ beside bin/test, is never listed among
+# the core files, and is never installed into ~/.plastic: it reads repo
 # fixtures, so it has no meaning on an installed copy.
 #
 # Hermetic and DI throughout: every path is a keyword argument, the boot
@@ -171,16 +171,21 @@ module ContextBudget
                 index: File.join(Plastic::StoreLayout.global_root(plastic_home), "INDEX.md"), project_dir: project_dir)
   end
 
-  def self.install_into(home:, plastic_home:, repo:)
-    installer = File.join(repo, "scripts", "install.rb")
-    raise "install: #{installer} not found; #{repo} is not a Plastic checkout" unless File.file?(installer)
+def self.install_into(home:, plastic_home:, repo:)
+  launcher = File.join(repo, "exe", "plastic")
+  raise "install: #{launcher} not found; #{repo} is not a Plastic checkout" unless File.file?(launcher)
 
-    env = { "HOME" => home, "PLASTIC_HOME" => plastic_home, "RUBYOPT" => nil }
-    out, err, status = Open3.capture3(env, RbConfig.ruby, installer, "--claude", chdir: repo)
-    return if status.success?
+  FileUtils.mkdir_p(File.join(home, ".claude"))
+  env = { "HOME" => home, "PLASTIC_HOME" => plastic_home, "RUBYOPT" => nil }
+  [["install"], %w[init 1]].each { |words| run_plastic(env, launcher, words, repo) }
+end
 
-    raise "install failed (exit #{status.exitstatus}): #{err.strip}#{out.strip}"
-  end
+def self.run_plastic(env, launcher, words, repo)
+  out, err, status = Open3.capture3(env, RbConfig.ruby, launcher, *words, chdir: repo)
+  return if status.success?
+
+  raise "install failed (exit #{status.exitstatus}): #{err.strip}#{out.strip}"
+end
 
   # Intent ids are written one call per intent, never as one array literal:
   # packaging_no_store_ids_test.rb flags any shipped literal carrying five or
@@ -445,7 +450,7 @@ end
     lines << "  ruby      #{report.ruby_version}  (#{report.ruby_bin})"
     lines << "  repeats   #{report.repeat}  boot bytes min/median/max #{stat_line(byte_samples)}"
     lines << "  time      ms min/median/max #{stat_line(ms_samples)} - indicative only, never a pass/fail signal"
-    lines << "  fixture   a real `scripts/install.rb --claude` into a temporary HOME, then a fixed store"
+    lines << "  fixture   a real `plastic install` and `plastic init 1` into a temporary HOME, then a fixed store"
     lines << "            (1 active + 2 future global intents, 1 active + 1 future project intents)"
     lines << "  estimator words * 1.3 as tokens(w); bytes / 4 as tokens(b) - neither is a tokenizer"
     lines << ""

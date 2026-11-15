@@ -2,29 +2,31 @@
 
 require_relative "../../code_workflow"
 require_relative "../installation"
+require_relative "../release_command"
 require_relative "../release_update"
 
 module Plastic
   module Workflows
     module Code
       # Syncs a newer running package into the home for the registered agents.
-      # When the running package is not newer, activates the newest release of
-      # the chosen channel, or of the active release's channel, and syncs its
-      # files into the home. With no release activated yet, names the installer
-      # command that installs one.
+      # When the running package is not newer, downloads and checks the newest
+      # release of the chosen channel, or of the active release's channel, and
+      # names the command that installs it. With no release installed yet,
+      # names install.sh.
       class Update < CodeWorkflow
         [facts, steps, outcomes].each(&:clear)
 
-        sets :newer, :synced, :active, :release, :activated
+        sets :newer, :synced, :active, :release, :downloaded, :command
 
         read "check whether the running package is newer" do |context|
-          context[:newer] = Installation.of(context).newer?
+          installation = Installation.of(context)
+          context[:newer] = installation.installed? && installation.newer?
         end
 
         step "sync the newer package into the home", done: ->(context) { !context.newer || context.synced } do |context|
           installation = Installation.of(context)
           agents = installation.installed_agents
-          lines = Installation.capture { installation.install(agents, reinstall: true, force: false) }
+          lines = Installation.capture { installation.install(agents) }
           lines.each { |line| context.print(line) }
           context[:synced] = true
         end
@@ -33,13 +35,15 @@ module Plastic
           newest_release(context) unless context.newer
         end
 
-        step "activate the newer release", done: ->(context) { context.release.nil? || context.activated } do |context|
-          context[:activated] = ReleaseUpdate.of(context).activate(context.release)
+        step "download the newer release", done: ->(context) { context.release.nil? || context.downloaded } do |context|
+          ReleaseUpdate.of(context).download(context.release)
+          context[:command] = ReleaseCommand.of(context.scope).install(context.active, context.release)
+          context[:downloaded] = true
         end
 
         outcome :done, if: ->(context) { context.synced }, offers: "plastic version", because: "the home holds Plastic %{to}"
-        outcome :activated, if: ->(context) { context.activated }, offers: "plastic version",
-          because: "Plastic %{activated} is active and the home holds its files"
+        outcome :downloaded, if: ->(context) { context.downloaded }, offers: "%{command}",
+          because: "Plastic %{release} is downloaded and checked; this command installs it"
         outcome :current, if: ->(context) { context.active }, offers: "plastic version",
           because: "Plastic %{active} is the newest release on its channel"
         outcome :fetch, offers: "plastic update", because: "run the installer command above, then update again"
@@ -56,8 +60,7 @@ module Plastic
         end
 
         def self.fetch_hint(context)
-          channel = context.channel || ReleaseUpdate::CHANNELS.key(Installation.of(context).channel)
-          context.row("run:", Installation.fetch_command("PLASTIC_CHANNEL=#{channel}"))
+          context.row("run:", Installation.fetch_command)
         end
       end
     end

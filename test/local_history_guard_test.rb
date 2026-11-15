@@ -34,7 +34,7 @@ class LocalHistoryGuardTest < Minitest::Test
 
     refute_empty paths
     assert(paths.any? { |path| path.end_with?("agents/plastic-planner.md") })
-    assert(paths.any? { |path| path.end_with?("scripts/lib/installer_core.rb") })
+    assert(paths.any? { |path| path.end_with?("lib/plastic/installations/installer.rb") })
   end
 
   def test_no_shipped_file_carries_local_history

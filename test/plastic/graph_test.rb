@@ -41,19 +41,19 @@ class GraphTest < Plastic::TestCase
     assert_nil graphs("global").retrieval.routine_run("intent end", "7")
   end
 
-  def test_saving_a_routine_run_is_named_in_the_report
+  def test_saving_a_routine_run_is_left_out_of_the_report
     opened = graphs
     run = opened.work.save_routine_run(closed_run)
 
     assert_equal "7", run.subject
-    assert_equal ["1 routine run in local.db"], opened.wrote
+    assert_empty opened.wrote
   end
 
-  def test_wrote_has_one_phrase_per_database_written
+  def test_wrote_leaves_out_a_database_that_only_kept_a_routine_run
     opened = graphs
     opened.databases[:local].transaction { |batch| batch.insert(:routine_runs, { store: "plastic", tool: "x", subject: "" }) }
 
-    assert_equal ["1 routine run in local.db"], opened.wrote
+    assert_empty opened.wrote
   end
 
   def test_wrote_says_the_rename_first
@@ -63,7 +63,7 @@ class GraphTest < Plastic::TestCase
     opened = Plastic::Graph.create(home: machine, store: "plastic")
     opened.databases[:local].transaction { |batch| batch.insert(:routine_runs, { store: "plastic", tool: "x", subject: "" }) }
 
-    assert_equal ["home.db renamed to local.db", "1 routine run in local.db"], opened.wrote
+    assert_equal ["home.db renamed to local.db"], opened.wrote
   end
 
   def test_a_session_given_at_open_stamps_the_routine_run_row

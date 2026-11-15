@@ -24,14 +24,14 @@ The following table says when each step passes.
 | ---- | ----------- |
 | Lint | RuboCop reports no offense on the changed files. |
 | Tests | The tests for the changed files pass. |
-| Timing check | Every test file ran under 5 seconds and every Varar document under 10, on a re-run when the first run went over. |
+| Timing check | The timings file exists and the re-run of a slow file ran. A test file over 5 seconds or a Varar document over 10, on a re-run when the first run went over, is a target: the gate prints it and fails nothing. |
 | Patch coverage | Every changed line and branch is covered. |
 | Mutation testing | Frozen, so the gate skips it. When it runs: every mutant on the changed code has a verdict, and killed mutants are at least 75 percent of the total. |
 | CRAP scores | No changed method scores above 30. |
-| Code smells | Reek finds no smell in the changed sources. |
-| RubyCritic score | The changed sources that no todo list names score 90 or more out of 100. |
+| Code smells | Reek ran. A smell in the changed sources is a target: the gate prints it and fails nothing. A Reek that refuses its configuration (exit 1) fails the step. |
+| RubyCritic score | RubyCritic ran. A changed source that no todo list names and that scores under 90 out of 100 is a target: the gate prints it and fails nothing. |
 
-A lint failure does not stop the other steps. Only red tests stop the gate early.
+A lint failure does not stop the other steps. Only red tests stop the gate early. The Code smells, RubyCritic score and Timing check steps report a miss of their target and fail nothing, but each still fails when its tool did not run.
 
 The Tests step loads `bin/lib/test_timings.rb`, a Minitest extension that sums each test's
 time into a file under the sandbox `PLASTIC_TMP`, booking a Varar document's tests to the

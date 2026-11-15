@@ -115,6 +115,14 @@ class TestTimingsTest < Minitest::Test
     assert_equal "missing timings file: #{@path}", error.message
   end
 
+  def test_a_timings_file_cut_off_in_the_middle_did_not_run
+    File.write(@path, %({"test/a_test.rb": 0.2, "test/b_te))
+
+    error = assert_raises(TestTimings::Caps::NotRun) { TestTimings::Caps.new(@path, rerun: nil).check }
+
+    assert_includes error.message, @path
+  end
+
   def test_without_a_varar_config_a_result_is_booked_to_its_source_file
     documents = TestTimings::Documents.new(root: File.dirname(SampleTest.marker_file))
 
@@ -129,6 +137,62 @@ class TestTimingsTest < Minitest::Test
     [nil, out.string]
   rescue TestTimings::Caps::Failure => e
     [e, out.string]
+  end
+end
+
+class TestTimingsVerdictTest < Minitest::Test
+  def verdict(seconds, rerun)
+    Dir.mktmpdir do |dir|
+      path = File.join(dir, "timings.json")
+      File.write(path, JSON.generate(seconds))
+      err = StringIO.new
+      [TestTimings.verdict(path, rerun:, err:), err.string]
+    end
+  end
+
+  def test_a_file_under_its_cap_exits_0_in_silence
+    assert_equal [0, ""], verdict({ "test/plain_test.rb" => 1.0 }, ->(_file) { 1.0 })
+  end
+
+  def test_a_file_over_its_cap_exits_1_and_names_it
+    status, message = verdict({ "test/plain_test.rb" => 5.5 }, ->(_file) { 6.2 })
+
+    assert_equal 1, status
+    assert_includes message, "test/plain_test.rb"
+  end
+
+  def test_a_rerun_that_could_not_run_exits_3_and_says_why
+    rerun = ->(_file) { raise TestTimings::Caps::NotRun, "test/plain_test.rb rerun failed: load failed" }
+
+    assert_equal [3, "test/plain_test.rb rerun failed: load failed\n"], verdict({ "test/plain_test.rb" => 5.5 }, rerun)
+  end
+end
+
+class TestTimingsCliTest < Minitest::Test
+  def test_a_call_without_a_path_prints_the_usage_and_exits_2
+    err = StringIO.new
+
+    assert_equal 2, TestTimings.cli(["check"], err:)
+    assert_equal "Usage: bin/lib/test_timings.rb check PATH\n", err.string
+  end
+
+  def test_the_file_run_as_the_program_exits_with_the_command_line_status
+    exited = assert_raises(SystemExit) { TestTimings.main([], program: "a", file: "a", err: StringIO.new) }
+
+    assert_equal 2, exited.status
+  end
+
+  def test_the_file_loaded_by_another_program_exits_nothing
+    assert_nil TestTimings.main([], program: "a", file: "b")
+  end
+
+  def test_a_check_call_gives_the_verdict_of_the_named_file
+    Dir.mktmpdir do |dir|
+      path = File.join(dir, "timings.json")
+      File.write(path, JSON.generate({ "test/plain_test.rb" => 1.0 }))
+
+      assert_equal 0, TestTimings.cli(["check", path], rerun: ->(_file) { 1.0 }, err: StringIO.new)
+    end
   end
 end
 

@@ -40,9 +40,18 @@ class InstallationsRecordingTest < Plastic::TestCase
     refute_includes hooks.map { |entry| entry["command"] }, "my-stop"
   end
 
+  def test_the_record_lists_the_deny_entry_an_earlier_install_wrote_for_the_scripts_folder
+    own_settings({})
+    installed_into("claude")
+    File.write(claude_settings, JSON.generate("permissions" => { "deny" => ["Edit(~/.plastic/scripts/**)", "Edit(~/mine/**)"] }))
+
+    assert_equal ["Edit(~/.plastic/scripts/**)"], recorded("claude-code").permissions
+  end
+
   def test_the_record_keeps_the_status_line_plastic_replaced
     own_settings("statusLine" => MINE)
-    installed_into("claude", argv: %w[--statusline plastic])
+    call("config", "set", "statusline", "true")
+    installed_into("claude", statusline: :plastic)
     status_line = recorded("claude-code").status_line
 
     assert_equal MINE, status_line["replaced"]
@@ -53,6 +62,6 @@ class InstallationsRecordingTest < Plastic::TestCase
     own_settings("permissions" => { "deny" => ["Edit(~/mine/**)"] })
     installed_into("claude")
 
-    assert_equal EnginePermissions::ENTRIES, recorded("claude-code").permissions
+    assert_equal Plastic::Installations::EnginePermissions::ENTRIES, recorded("claude-code").permissions
   end
 end

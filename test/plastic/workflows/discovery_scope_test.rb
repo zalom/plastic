@@ -20,10 +20,19 @@ class DiscoveryScopeTest < Plastic::TestCase
     assert_equal %w[global other], resolve(["other", " global", "other"])
   end
 
-  def test_the_sources_of_the_injected_environment_are_used_when_none_is_named
+  def configure(value) = File.write(File.join(@plastic_home, "config.yml"), { "global" => { "search" => { "source_projects" => value } } }.to_yaml)
+
+  def test_the_environment_variable_is_not_read
     store("other")
 
-    assert_equal ["other"], resolve(env: { "PLASTIC_SOURCE_PROJECTS" => "other," })
+    assert_equal ["global"], resolve(env: { "PLASTIC_SOURCE_PROJECTS" => "other" })
+  end
+
+  def test_the_config_key_is_used_when_none_is_named
+    store("other")
+    configure("other,")
+
+    assert_equal ["other"], resolve
   end
 
   def test_an_unknown_source_fails_the_call

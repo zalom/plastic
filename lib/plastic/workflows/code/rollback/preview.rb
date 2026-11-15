@@ -16,10 +16,10 @@ module Plastic
           sets :active, :to, :releases
 
           read "read the activated releases" do |context|
-            activation = ReleaseUpdate.of(context).activation
-            context[:active] = activation.active_version
-            context[:to] = context.target || activation.previous_version
-            context[:releases] = activation.releases.versions
+            installed = ReleaseUpdate.of(context).installed
+            context[:active] = installed.active_version
+            context[:to] = context.target || installed.previous_version
+            context[:releases] = installed.versions
           end
 
           gate "no release is installed under this home; install one with install.sh first", stops: :refusal,

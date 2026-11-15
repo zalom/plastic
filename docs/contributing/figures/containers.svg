@@ -30,9 +30,9 @@
 <text class="s" x="676" y="105">One folder for each release;</text>
 <text class="s" x="676" y="120">active points to one.</text>
 <rect class="box" x="940" y="44" width="190" height="94" rx="8"/><rect x="940" y="44" width="6" height="94" rx="3" fill="var(--line, #6b7483)"/>
-<text class="t" x="956" y="68">rubies/</text><text class="s" x="956" y="85">[folder]</text>
-<text class="s" x="956" y="105">The Ruby each release</text>
-<text class="s" x="956" y="120">runs on.</text>
+<text class="t" x="956" y="68">download/</text><text class="s" x="956" y="85">[folder]</text>
+<text class="s" x="956" y="105">The files plastic update</text>
+<text class="s" x="956" y="120">fetched.</text>
 <rect class="box" x="30" y="199" width="230" height="94" rx="8"/><rect x="30" y="199" width="6" height="94" rx="3" fill="var(--agent, #7d4405)"/>
 <text class="t" x="46" y="223">PLASTIC.md</text><text class="s" x="46" y="240">[file]</text>
 <text class="s" x="46" y="260">The always-on instructions</text>

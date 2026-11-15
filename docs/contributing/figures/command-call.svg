@@ -63,15 +63,14 @@
 <path class="flow" d="M 469 217.0 L 459 217.0 L 459 209.5 L 449 209.5" marker-end="url(#command-call-arrow)"/>
 <path class="flow" d="M 242 209.5 L 232 209.5 L 232 217.0 L 222 217.0" marker-end="url(#command-call-arrow)"/>
 <text class="t" x="15" y="340">What the call prints</text>
-<rect class="box" x="15" y="352" width="1130" height="180" rx="8" stroke="var(--rule, #c9c3b6)"/>
+<rect class="box" x="15" y="352" width="1130" height="164" rx="8" stroke="var(--rule, #c9c3b6)"/>
 <text class="r" x="31" y="376">intent: ID</text>
-<text class="r" x="31" y="392">wrote: 1 routine run in local.db</text>
-<text class="r" x="31" y="408">1 intent and 1 savepoint line in work_graph.db</text>
-<text class="r" x="31" y="424">1 document and 1 document head in knowledge_graph.db</text>
-<text class="r" x="31" y="440">files: store/index.json</text>
-<text class="r" x="31" y="456">store/ID--slug/intent.md</text>
-<text class="r" x="31" y="472">store/ID--slug/savepoint.md</text>
-<text class="r" x="31" y="488">store/ID--slug/graph.json</text>
-<text class="r" x="31" y="504">next: plastic next</text>
-<text class="r" x="31" y="520">because: intent ID has its rows and its files</text>
+<text class="r" x="31" y="392">wrote: 1 intent and 1 savepoint line in work_graph.db</text>
+<text class="r" x="31" y="408">1 document and 1 document head in knowledge_graph.db</text>
+<text class="r" x="31" y="424">files: store/index.json</text>
+<text class="r" x="31" y="440">store/ID--slug/intent.md</text>
+<text class="r" x="31" y="456">store/ID--slug/savepoint.md</text>
+<text class="r" x="31" y="472">store/ID--slug/graph.json</text>
+<text class="r" x="31" y="488">next: plastic next</text>
+<text class="r" x="31" y="504">because: intent ID has its rows and its files</text>
 </svg>

@@ -2,17 +2,15 @@
 
 Plastic runs on your machine. It makes no model call and sends none of your files anywhere.
 
-These things use the network. `install.sh`, the update check hook and `plastic update` read
-the release list from the GitHub API and download a release archive from GitHub over HTTPS.
-`install.sh` and `plastic update` download Ruby from the jdx/ruby releases on GitHub, or from
-the Homebrew registry on an Intel Mac, and check it by its pinned size and SHA-256.
-Bundler fetches the sqlite3 and tty-prompt gems from RubyGems when a release installs.
+These things use the network. `install.sh` and `plastic update` read the release list from the
+GitHub API and download a release archive from GitHub over HTTPS. Both check the archive against
+its published SHA-256 sum. Bundler fetches the sqlite3 and tty-prompt gems from RubyGems when a release installs.
 
 ## Files the installer writes
 
 | Place | What is written |
 | ----- | --------------- |
-| `~/.local/share/plastic/` | The releases, the read-only Rubies under `rubies/`, the `active` and `previous` links, the installer lock and the activation record. |
+| `~/.local/share/plastic/` | The releases, the `download` folder `plastic update` fills, the `active` and `previous` links, the installer lock and the activation record. |
 | `~/.local/bin/plastic` | A link to the active release launcher. |
 | `~/.plastic/` | Scripts, hooks, the help chapters, `PLASTIC.md`, `deprecations.yml`, the install ledger `versions.json`, and your stores. |
 | `~/.claude/agents/`, `~/.claude/hooks`, `~/.claude/plastic/` | The Plastic agents and hooks for Claude Code, and the install record (`manifest.json`, `VERSION`). |

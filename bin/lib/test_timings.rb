@@ -4,6 +4,7 @@ require "json"
 require "fileutils"
 require "minitest"
 require "benchmark"
+require "open3"
 require_relative "test_timings/documents"
 require_relative "test_timings/caps"
 
@@ -62,7 +63,7 @@ module TestTimings
     def call(file)
       Benchmark.realtime do
         output, status = @runner.call(*command(file), chdir: @root)
-        raise Caps::Failure, "#{file} rerun failed: #{output}" unless status.success?
+        raise Caps::NotRun, "#{file} rerun failed: #{output}" unless status.success?
       end
     end
 
@@ -76,21 +77,33 @@ module TestTimings
       ["bundle", "exec", "ruby", "bin/test", "--name", "/\\A#{name}#/", "--system"]
     end
   end
-end
 
-if $PROGRAM_NAME == __FILE__
-  require "open3"
-
-  command, path = ARGV
-  unless command == "check" && path
-    warn "Usage: bin/lib/test_timings.rb check PATH"
-    exit 2
+  # The exit status of the cap check: 0 when every file is under its cap, 1 when a cap is
+  # missed, 3 when the check could not run.
+  def self.verdict(path, rerun: Rerun.new, err: $stderr)
+    Caps.new(path, rerun:).check
+    0
+  rescue Caps::NotRun, Caps::Failure => error
+    err.puts error.message
+    error.is_a?(Caps::NotRun) ? 3 : 1
   end
 
-  begin
-    TestTimings::Caps.new(path, rerun: TestTimings::Rerun.new).check
-  rescue TestTimings::Caps::Failure => e
-    warn e.message
-    exit 1
+  # The command line: `check PATH`; any other call prints the usage and exits 2.
+  def self.cli(argv, rerun: nil, err: $stderr)
+    command, path = argv
+    return verdict(path, **{ rerun:, err: }.compact) if command == "check" && path
+
+    err.puts "Usage: bin/lib/test_timings.rb check PATH"
+    2
+  end
+
+  # True when the file itself is the program.
+  def self.script?(program, file) = program == file
+
+  # Exits with the command line status only when the file itself is the program.
+  def self.main(argv, program: $PROGRAM_NAME, file: __FILE__, err: $stderr)
+    exit cli(argv, err:) if script?(program, file)
   end
 end
+
+TestTimings.main(ARGV)

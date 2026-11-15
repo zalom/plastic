@@ -61,25 +61,24 @@ It sets `found`, `picked`, `harnesses`.
 
 The code workflow `:code_install_harnesses`, in [`init.rb:13`](../../../../lib/plastic/workflows/code/init.rb#L13).
 
-Checks the machine, copies the core files on a home that has none, and installs Plastic into each picked harness.
+Copies the core files on a home that has none, and installs Plastic into each picked harness.
 
 ![How Code::Init runs: its steps, where it stops, and its outcomes](code_install_harnesses.svg)
 
 Its rows run in this order:
 
-1. Read: check this machine and the harness settings files. [`init.rb:18`](../../../../lib/plastic/workflows/code/init.rb#L18)
-2. Gate: passes when `context.usable`; otherwise the call stops with exit 1 and prints this machine cannot run Plastic; see above. [`init.rb:25`](../../../../lib/plastic/workflows/code/init.rb#L25)
-3. Gate: passes when `context.broken.nil?`; otherwise the call stops with exit 1 and prints BROKEN is not valid JSON; nothing was changed. Fix the file and run this again. [`init.rb:26`](../../../../lib/plastic/workflows/code/init.rb#L26)
-4. Step: install Plastic into the picked harnesses. Done when `!context.installed.nil?`, so a second call skips it. [`init.rb:29`](../../../../lib/plastic/workflows/code/init.rb#L29)
-5. Outcome `:done`, always: finishes with exit 0; next: plastic doctor --harness CHECKED. [`init.rb:37`](../../../../lib/plastic/workflows/code/init.rb#L37)
+1. Read: check the harness settings files. [`init.rb:18`](../../../../lib/plastic/workflows/code/init.rb#L18)
+2. Gate: passes when `context.broken.nil?`; otherwise the call stops with exit 1 and prints BROKEN is not valid JSON; nothing was changed. Fix the file and run this again. [`init.rb:22`](../../../../lib/plastic/workflows/code/init.rb#L22)
+3. Step: install Plastic into the picked harnesses. Done when `!context.installed.nil?`, so a second call skips it. [`init.rb:25`](../../../../lib/plastic/workflows/code/init.rb#L25)
+4. Outcome `:done`, always: finishes with exit 0; next: plastic doctor --harness CHECKED. [`init.rb:33`](../../../../lib/plastic/workflows/code/init.rb#L33)
 
-It sets `usable`, `broken`, `installed`, `checked`.
+It sets `broken`, `installed`, `checked`.
 
 In the words of workflow engines, the rows are these four parts:
 
 - **Trigger**: the call starts the workflow `Code::Init::Choose`; each later workflow starts from an outcome of the one before it.
 - **Activities**: 2 reads and 1 step.
-- **Transitions**: 2 gates stop the call when their checks fail; a step runs only while its done check fails; Choose goes to Init on `:chosen`.
+- **Transitions**: 1 gate stops the call when its check fails; a step runs only while its done check fails; Choose goes to Init on `:chosen`.
 - **Outcomes**: `:none` of Choose, `:left` of Choose, `:done` of Init end the call.
 
 ## What one call reads, writes and prints
@@ -92,7 +91,7 @@ A second call runs the same rows again. A step runs again only when its done che
 
 | Step | Done when | The second call | Code |
 | --- | --- | --- | --- |
-| install Plastic into the picked harnesses | `!context.installed.nil?` | skips it | [`init.rb:29`](../../../../lib/plastic/workflows/code/init.rb#L29) |
+| install Plastic into the picked harnesses | `!context.installed.nil?` | skips it | [`init.rb:25`](../../../../lib/plastic/workflows/code/init.rb#L25) |
 
 ## How a call ends
 
@@ -102,9 +101,8 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | --- | --- | --- | --- |
 | no registered harness was found: no settings folder in the home and no program on the PATH; install one, then run this again | 0 | plastic init | [`choose.rb:28`](../../../../lib/plastic/workflows/code/init/choose.rb#L28) |
 | the person left with no change | 0 | plastic init | [`choose.rb:30`](../../../../lib/plastic/workflows/code/init/choose.rb#L30) |
-| this machine cannot run Plastic; see above | 1 | prints no next: line | [`init.rb:25`](../../../../lib/plastic/workflows/code/init.rb#L25) |
-| BROKEN is not valid JSON; nothing was changed. Fix the file and run this again | 1 | prints no next: line | [`init.rb:26`](../../../../lib/plastic/workflows/code/init.rb#L26) |
-| Plastic INSTALLED is installed into HARNESSES | 0 | plastic doctor --harness CHECKED | [`init.rb:37`](../../../../lib/plastic/workflows/code/init.rb#L37) |
+| BROKEN is not valid JSON; nothing was changed. Fix the file and run this again | 1 | prints no next: line | [`init.rb:22`](../../../../lib/plastic/workflows/code/init.rb#L22) |
+| Plastic INSTALLED is installed into HARNESSES | 0 | plastic doctor --harness CHECKED | [`init.rb:33`](../../../../lib/plastic/workflows/code/init.rb#L33) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
 
 ## What the page leaves out

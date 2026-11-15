@@ -101,8 +101,9 @@ module Plastic
       end
 
       # What this call wrote here, as the report says it:
-      # "1 intent and 1 savepoint line in work_graph.db". Nil when nothing.
-      def written_phrase = written.empty? ? nil : "#{Schema.phrase(written)} in #{file}"
+      # "1 intent and 1 savepoint line in work_graph.db". The routine run row is left out,
+      # and the phrase is nil when nothing else was written.
+      def written_phrase = wrote_rows? ? "#{Schema.phrase(written.except(RUNS))} in #{file}" : nil
 
       # Whether this call wrote a row other than its routine run.
       def wrote_rows? = written.keys.any? { |table| table != RUNS }

@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 207" width="760" height="207" role="img" xml:space="preserve">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 193" width="760" height="193" role="img" xml:space="preserve">
 <title>How Rollback runs in plastic rollback</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
@@ -69,29 +69,22 @@
 }</style>
 <rect width="100%" height="100%" class="ground"/>
 <text x="16" y="22" class="tb" text-anchor="start">Rollback</text>
-<text x="436" y="22" class="tm tag-muted" text-anchor="end">rollback.rb:11</text>
-<rect x="16" y="34" width="420" height="59" rx="6" class="card"/>
-<text x="26" y="49" class="tag tag-muted" text-anchor="start">STEP</text>
-<text x="426" y="49" class="tm tag-muted" text-anchor="end">rollback.rb:16</text>
-<text x="26" y="66" class="t" text-anchor="start">switch the active release</text>
-<text x="26" y="81" class="tm" text-anchor="start">done when context.switched</text>
-<path d="M 436 52 L 464 52" class="wire-failure"/>
-<path d="M 456 47 L 464 52 L 456 57 Z" class="head"/>
-<rect x="466" y="34" width="270" height="56" rx="6" class="stop-failure"/>
-<text x="476" y="49" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1, FAILED</text>
-<text x="476" y="65" class="tm" text-anchor="start">the step ran and its done</text>
-<text x="476" y="79" class="tm" text-anchor="start">check still fails</text>
-<path d="M 226 93 L 226 103" class="wire"/>
-<path d="M 221 95 L 226 103 L 231 95 Z" class="head"/>
-<text x="16" y="115" class="tag tag-muted" text-anchor="start">ENDS ON</text>
-<rect x="16" y="123" width="300" height="70" rx="6" class="card"/>
-<text x="26" y="139" class="tm" text-anchor="start">:done</text>
-<text x="26" y="155" class="tm tag-muted" text-anchor="start">always</text>
-<path d="M 316 139 L 352 139" class="wire"/>
-<path d="M 344 134 L 352 139 L 344 144 Z" class="head"/>
-<rect x="352" y="123" width="392" height="70" rx="6" class="end"/>
-<text x="362" y="140" class="t" text-anchor="start">the call finishes, exit 0</text>
-<text x="362" y="154" class="t" text-anchor="start">next: plastic version</text>
-<text x="362" y="168" class="t" text-anchor="start">because: Plastic %{switched} is active and the</text>
-<text x="362" y="182" class="t" text-anchor="start">home holds its files</text>
+<text x="436" y="22" class="tm tag-muted" text-anchor="end">rollback.rb:12</text>
+<rect x="16" y="34" width="420" height="45" rx="6" class="card"/>
+<text x="26" y="49" class="tag tag-muted" text-anchor="start">READ</text>
+<text x="426" y="49" class="tm tag-muted" text-anchor="end">rollback.rb:17</text>
+<text x="26" y="66" class="t" text-anchor="start">name the switch command</text>
+<path d="M 226 79 L 226 89" class="wire"/>
+<path d="M 221 81 L 226 89 L 231 81 Z" class="head"/>
+<text x="16" y="101" class="tag tag-muted" text-anchor="start">ENDS ON</text>
+<rect x="16" y="109" width="300" height="70" rx="6" class="card"/>
+<text x="26" y="125" class="tm" text-anchor="start">:done</text>
+<text x="26" y="141" class="tm tag-muted" text-anchor="start">always</text>
+<path d="M 316 125 L 352 125" class="wire"/>
+<path d="M 344 120 L 352 125 L 344 130 Z" class="head"/>
+<rect x="352" y="109" width="392" height="70" rx="6" class="end"/>
+<text x="362" y="126" class="t" text-anchor="start">the call finishes, exit 0</text>
+<text x="362" y="140" class="t" text-anchor="start">next: %{command}</text>
+<text x="362" y="154" class="t" text-anchor="start">because: this command switches the active release;</text>
+<text x="362" y="168" class="t" text-anchor="start">rollback changed nothing</text>
 </svg>

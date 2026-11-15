@@ -69,16 +69,16 @@
 }</style>
 <rect width="100%" height="100%" class="ground"/>
 <text x="16" y="22" class="tb" text-anchor="start">Update</text>
-<text x="436" y="22" class="tm tag-muted" text-anchor="end">update.rb:15</text>
+<text x="436" y="22" class="tm tag-muted" text-anchor="end">update.rb:16</text>
 <rect x="16" y="34" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="49" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="49" class="tm tag-muted" text-anchor="end">update.rb:20</text>
+<text x="426" y="49" class="tm tag-muted" text-anchor="end">update.rb:21</text>
 <text x="26" y="66" class="t" text-anchor="start">check whether the running package is newer</text>
 <path d="M 226 79 L 226 89" class="wire"/>
 <path d="M 221 81 L 226 89 L 231 81 Z" class="head"/>
 <rect x="16" y="89" width="420" height="59" rx="6" class="card"/>
 <text x="26" y="104" class="tag tag-muted" text-anchor="start">STEP</text>
-<text x="426" y="104" class="tm tag-muted" text-anchor="end">update.rb:24</text>
+<text x="426" y="104" class="tm tag-muted" text-anchor="end">update.rb:26</text>
 <text x="26" y="121" class="t" text-anchor="start">sync the newer package into the home</text>
 <text x="26" y="136" class="tm" text-anchor="start">done when !context.newer || context.synced</text>
 <path d="M 436 107 L 464 107" class="wire-failure"/>
@@ -91,15 +91,15 @@
 <path d="M 221 150 L 226 158 L 231 150 Z" class="head"/>
 <rect x="16" y="158" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="173" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="173" class="tm tag-muted" text-anchor="end">update.rb:32</text>
+<text x="426" y="173" class="tm tag-muted" text-anchor="end">update.rb:34</text>
 <text x="26" y="190" class="t" text-anchor="start">find a newer release on the chosen channel</text>
 <path d="M 226 203 L 226 213" class="wire"/>
 <path d="M 221 205 L 226 213 L 231 205 Z" class="head"/>
 <rect x="16" y="213" width="420" height="59" rx="6" class="card"/>
 <text x="26" y="228" class="tag tag-muted" text-anchor="start">STEP</text>
-<text x="426" y="228" class="tm tag-muted" text-anchor="end">update.rb:36</text>
-<text x="26" y="245" class="t" text-anchor="start">activate the newer release</text>
-<text x="26" y="260" class="tm" text-anchor="start">done when context.release.nil? || context.activated</text>
+<text x="426" y="228" class="tm tag-muted" text-anchor="end">update.rb:38</text>
+<text x="26" y="245" class="t" text-anchor="start">download the newer release</text>
+<text x="26" y="260" class="tm" text-anchor="start">done when context.release.nil? || context.downloaded</text>
 <path d="M 436 231 L 464 231" class="wire-failure"/>
 <path d="M 456 226 L 464 231 L 456 236 Z" class="head"/>
 <rect x="466" y="213" width="270" height="56" rx="6" class="stop-failure"/>
@@ -119,15 +119,15 @@
 <text x="362" y="333" class="t" text-anchor="start">next: plastic version</text>
 <text x="362" y="347" class="t" text-anchor="start">because: the home holds Plastic %{to}</text>
 <rect x="16" y="366" width="300" height="70" rx="6" class="card"/>
-<text x="26" y="382" class="tm" text-anchor="start">:activated</text>
-<text x="26" y="398" class="tm tag-muted" text-anchor="start">when context.activated</text>
+<text x="26" y="382" class="tm" text-anchor="start">:downloaded</text>
+<text x="26" y="398" class="tm tag-muted" text-anchor="start">when context.downloaded</text>
 <path d="M 316 382 L 352 382" class="wire"/>
 <path d="M 344 377 L 352 382 L 344 387 Z" class="head"/>
 <rect x="352" y="366" width="392" height="70" rx="6" class="end"/>
 <text x="362" y="383" class="t" text-anchor="start">the call finishes, exit 0</text>
-<text x="362" y="397" class="t" text-anchor="start">next: plastic version</text>
-<text x="362" y="411" class="t" text-anchor="start">because: Plastic %{activated} is active and the</text>
-<text x="362" y="425" class="t" text-anchor="start">home holds its files</text>
+<text x="362" y="397" class="t" text-anchor="start">next: %{command}</text>
+<text x="362" y="411" class="t" text-anchor="start">because: Plastic %{release} is downloaded and</text>
+<text x="362" y="425" class="t" text-anchor="start">checked; this command installs it</text>
 <rect x="16" y="444" width="300" height="70" rx="6" class="card"/>
 <text x="26" y="460" class="tm" text-anchor="start">:current</text>
 <text x="26" y="476" class="tm tag-muted" text-anchor="start">when context.active</text>

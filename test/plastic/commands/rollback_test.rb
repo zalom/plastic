@@ -5,43 +5,26 @@ require_relative "installer_helper"
 class RollbackCommandTest < Plastic::TestCase
   include InstallerHelper
 
-  def test_switches_back_to_the_previous_release
+  def test_names_the_switch_to_the_previous_release
     activated("2.0.2", "2.0.3")
     result = call("rollback")
 
-    assert_equal 0, result.code, result.err
-    assert_equal %w[2.0.2 2.0.3], [activation.active_version, activation.previous_version]
-    assert_match(/next:\s+plastic version/, result.out)
+    assert_equal [0, switch_line("2.0.2")], [result.code, result.out[/^next:\s+(.*)$/, 1]], result.err
   end
 
-  def test_syncs_the_home_files_of_the_release_it_switches_to
+  def test_changes_nothing_and_starts_no_launcher
     activated("2.0.2", "2.0.3")
-    installed("2.0.3")
-    result = call("rollback")
+    before = tree_snapshot(share)
+    call("rollback")
 
-    assert_equal 0, result.code, result.err
-    assert_equal ["install --reinstall"], launcher_calls
-    assert_equal File.join(share, "active", "bin", "plastic"), File.readlink(File.join(@home, ".local", "bin", "plastic"))
+    assert_equal [before, %w[2.0.3 2.0.2], []], [tree_snapshot(share), [activation.active_version, activation.previous_version], launcher_calls]
   end
 
-  def test_refuses_while_another_installer_holds_the_lock
-    activated("2.0.2", "2.0.3")
-    result = File.open(File.join(share, "INSTALL.lock"), "a") do |lock|
-      lock.flock(File::LOCK_EX)
-      call("rollback")
-    end
-
-    assert_equal 1, result.code
-    assert_includes result.err, "another Plastic installer is running"
-    assert_equal "2.0.3", activation.active_version
-  end
-
-  def test_switches_to_a_named_installed_release
+  def test_names_the_switch_to_a_named_installed_release
     activated("2.0.1", "2.0.2", "2.0.3")
     result = call("rollback", "--version", "2.0.1")
 
-    assert_equal 0, result.code, result.err
-    assert_equal "2.0.1", activation.active_version
+    assert_equal [0, switch_line("2.0.1"), "2.0.3"], [result.code, result.out[/^next:\s+(.*)$/, 1], activation.active_version], result.err
   end
 
   def test_a_dry_run_names_the_switch_and_changes_nothing
@@ -52,6 +35,11 @@ class RollbackCommandTest < Plastic::TestCase
     assert_match(/active:\s+2\.0\.3\n.*to:\s+2\.0\.2\n.*releases:\s+2\.0\.2, 2\.0\.3/m, result.out)
     assert_equal [0, before], [result.code, tree_snapshot(share)]
     assert_equal %w[2.0.3 2.0.2], [activation.active_version, activation.previous_version]
+  end
+
+  def switch_line(version)
+    [RbConfig.ruby, "--disable-gems", "-rrbconfig", File.join(share, "releases", "2.0.3", "scripts", "install-release"), "--switch", version,
+      "--home", share, "--bin", File.join(@home, ".local", "bin"), "--plastic-home", @plastic_home, "--user-home", @home].join(" ")
   end
 
   def test_refuses_when_no_release_is_installed

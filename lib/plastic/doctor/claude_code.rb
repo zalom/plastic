@@ -4,12 +4,12 @@ require_relative "check"
 require_relative "version_record"
 require_relative "instruction_line"
 require_relative "claude_hooks"
-require_relative "../../../scripts/lib/compact_instructions"
+require_relative "../installations/compact_instructions"
 
 module Plastic
   module Doctor
     class ClaudeCode
-      IMPORT = CompactInstructions::BODY.lines.map(&:strip).find { |line| line.start_with?("@") }
+      IMPORT = Installations::CompactInstructions::BODY.lines.map(&:strip).find { |line| line.start_with?("@") }
       IMPORT_LINE = /\A#{Regexp.escape(IMPORT)}\s*\z/
       AGENTS_IMPORT = "@AGENTS.md"
       AGENTS_LINE = /\A#{Regexp.escape(AGENTS_IMPORT)}\s*\z/

@@ -19,8 +19,6 @@ module Plastic
 
       def raw(text) = tap { @copy.original(text).lines(chomp: true).each { |line| __getobj__.raw("preview: #{line}") } }
 
-      RUN_ROW = "1 routine run in local.db"
-
       def row(label, value) = tap { (label == "wrote:") ? would_write(value) : __getobj__.row(label, value) }
 
       def next_step(*, **) = tap { __getobj__.next_step(@command, because: BECAUSE) }
@@ -33,7 +31,7 @@ module Plastic
 
       private
 
-      def would_write(phrases) = __getobj__.row("would write:", [RUN_ROW, *Array(phrases)])
+      def would_write(phrases) = __getobj__.row("would write:", Array(phrases))
     end
   end
 end

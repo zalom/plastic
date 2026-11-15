@@ -119,8 +119,9 @@ class SearchScopeTest < Plastic::TestCase
     write_document("global", "global evidence")
     write_document("other", "other evidence")
 
-    loaded = plastic("search", "evidence", "--json", env: { "PLASTIC_SOURCE_PROJECTS" => "global, other" }, table: Plastic::CLI::TABLE)
-    explicit = plastic("search", "evidence", "--source-project", "other", "--json", env: { "PLASTIC_SOURCE_PROJECTS" => "global" }, table: Plastic::CLI::TABLE)
+    plastic("config", "set", "search.source_projects", "global,other", table: Plastic::CLI::TABLE)
+    loaded = plastic("search", "evidence", "--json", table: Plastic::CLI::TABLE)
+    explicit = plastic("search", "evidence", "--source-project", "other", "--json", table: Plastic::CLI::TABLE)
 
     assert_scoped_results(loaded, explicit)
   end

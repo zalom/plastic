@@ -4,6 +4,7 @@ require_relative "test_helper"
 require "fileutils"
 require "stringio"
 require "tmpdir"
+require_relative "support/gate_run"
 
 load File.expand_path("../bin/verify-change", __dir__) unless defined?(VerifyChange)
 
@@ -11,6 +12,8 @@ load File.expand_path("../bin/verify-change", __dir__) unless defined?(VerifyCha
 # .rubocop_todo.yml or .reek.yml lists is older code whose offenses and smells
 # stay hidden, so the gate leaves it out of the score and says so.
 class VerifyChangeRubycriticTest < Minitest::Test
+  include GateRun
+
   OLD = "scripts/lib/old_installer.rb"
   NEW = "lib/plastic/new_routine.rb"
 
@@ -61,5 +64,44 @@ class VerifyChangeRubycriticTest < Minitest::Test
   def test_a_file_named_only_in_a_comment_is_not_listed
     assert_includes critic_step([NEW]).command, NEW
     assert_empty @err.string
+  end
+
+  def test_a_smell_in_the_changed_code_is_reported_and_fails_nothing
+    done = run_gate("Code smells" => 2)
+
+    assert_equal 0, done.code
+    assert_includes done.out, "Code smells missed its target"
+    assert_includes done.out, "Change verified"
+  end
+
+  def test_a_score_under_the_target_is_reported_and_fails_nothing
+    done = run_gate("RubyCritic score" => 1)
+
+    assert_equal 0, done.code
+    assert_includes done.out, "RubyCritic score"
+    assert_includes done.out, "Change verified"
+  end
+
+  def test_rubycritic_refusing_its_call_fails_the_gate
+    done = run_gate("RubyCritic score" => [1, "Error: invalid option: --no-such-option\n"])
+
+    assert_equal 1, done.code
+    assert_match(/Failed:.*RubyCritic score/, done.out)
+    refute_includes done.out, "Change verified"
+  end
+
+  def test_rubycritic_failing_on_a_file_it_cannot_parse_fails_the_gate
+    done = run_gate("RubyCritic score" => [2, "broken.rb:2: syntax error\n"])
+
+    assert_equal 1, done.code
+    refute_includes done.out, "Change verified"
+  end
+
+  def test_reek_refusing_its_config_fails_the_gate
+    done = run_gate("Code smells" => 1)
+
+    assert_equal 1, done.code
+    assert_match(/Failed:.*Code smells/, done.out)
+    refute_includes done.out, "Change verified"
   end
 end

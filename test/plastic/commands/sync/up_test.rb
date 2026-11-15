@@ -34,6 +34,13 @@ class SyncUpTest < Plastic::TestCase
     assert_equal ["1"], retrieval.roadmap_items("ship").map(&:intent_id)
   end
 
+  def test_sync_up_wrote_line_names_the_rows_and_leaves_out_the_routine_run
+    result = import
+
+    assert_includes result.out, "wrote:  2 intents and 2 savepoint lines in work_graph.db"
+    refute_includes result.out, "routine run"
+  end
+
   def test_preview_does_not_import_the_original_store
     before = snapshot(store_root)
     result = plastic("sync", "up", "--dry-run", table: Plastic::CLI::TABLE)

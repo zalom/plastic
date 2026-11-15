@@ -16,24 +16,30 @@ module Plastic
 
         UNRECORDED = "%s: no record lists what Plastic wrote; run plastic install --reinstall to write it, then run this again"
 
-        sets :removed, :releases_removed
+        sets :removed, :releases_removed, :unrecorded, :released
 
         step "remove what each record lists", done: ->(context) { context.removed } do |context|
           plastic_home = context.scope.plastic_home
-          context.picked.each do |name|
+          unrecorded = context.picked.reject do |name|
             removed = Installations.remove(plastic_home, name)
-            removed ? removed.each { |path| context.row("removed:", path) } : context.print(format(UNRECORDED, name))
+            removed&.each { |label, path| context.row(label, path) }
           end
+          unrecorded.each { |name| context.print(format(UNRECORDED, name)) }
+          context[:unrecorded] = unrecorded
           context[:removed] = true
         end
 
         step "remove the releases and the launcher", done: ->(context) { context.releases_removed } do |context|
-          if Installation.of(context).kept([]).empty?
-            ReleaseRemoval.of(context).call.each { |label, value| context.row(label, value) }
-          end
+          rows = Installation.of(context).kept([]).empty? ? ReleaseRemoval.of(context).call.to_a : []
+          rows.each { |label, value| context.row(label, value) }
+          context[:released] = rows.any?
           context[:releases_removed] = true
         end
 
+        outcome :released, if: ->(context) { context.released }, offers: nil,
+          because: "Plastic is removed from %{harnesses}, launcher included; install.sh installs it again, and the home stays"
+        outcome :unrecorded, if: ->(context) { !context.picked.empty? && context.unrecorded == context.picked },
+          offers: "plastic install --reinstall", because: "no record lists what Plastic wrote for %{harnesses}, so nothing was removed"
         outcome :done, offers: "plastic init", because: "Plastic is removed from %{harnesses}; the home stays"
       end
     end

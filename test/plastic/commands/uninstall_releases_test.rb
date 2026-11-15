@@ -19,6 +19,14 @@ class UninstallReleasesCommandTest < Plastic::TestCase
     assert_match(/removed:\s+#{Regexp.escape(share)}/, result.out)
   end
 
+  def test_after_the_last_harness_the_next_line_names_no_command_the_run_removed
+    installed_release
+    result = call("uninstall", "1")
+
+    refute_match(/^next:/, result.out)
+    assert_match(/^because: .*install\.sh/, result.out)
+  end
+
   def test_keeps_a_launcher_plastic_does_not_own
     installed_release
     File.delete(launcher)

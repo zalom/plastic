@@ -34,6 +34,6 @@ class PostCutVocabularyTest < Minitest::Test
   private
 
   def codex_template
-    read("scripts/lib/installer_core.rb")[/CODEX_AGENTS_MD_BODY = <<~MD\.freeze\n(.*?)\n\s*MD\n/m, 1].to_s
+    read("lib/plastic/installations/codex_instructions.rb")[/BODY = <<~MD\n(.*?)\n\s*MD\n/m, 1].to_s
   end
 end

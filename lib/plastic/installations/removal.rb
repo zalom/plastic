@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative "removal_folders"
 require_relative "roots"
 require_relative "section"
 require_relative "settings_file"
@@ -8,8 +9,10 @@ module Plastic
   module Installations
     # Takes out exactly what one record lists, then the record. Files and
     # folders go only inside the record's roots, and a folder only when it is
-    # empty. Returns each path it removed or changed; `planned` names them
-    # first and changes nothing.
+    # empty, and so is a folder the removal emptied. Returns a row for each
+    # path: `removed:` for a path that is gone, `stripped:` for a settings or
+    # instruction file that stays with the Plastic part taken out. `planned`
+    # names them first and changes nothing.
     class Removal
       def initialize(record, plastic_home:)
         @record = record
@@ -19,9 +22,10 @@ module Plastic
       end
 
       def call
-        changed = removed_files + removed_folders + [@settings.rewrite, *stripped_sections].compact
+        files = removed_files
+        rows = (files + folders.removed(files)).map { |path| ["removed:", path] } + rewritten
         Installations.delete(@plastic_home, @record.harness)
-        changed
+        rows
       end
 
       def planned = removals.map { |path| ["remove:", path] } + changes.map { |path| ["change:", path] }
@@ -29,21 +33,21 @@ module Plastic
       private
 
       def removals
-        [*@record.files.select { |file| removable?(file) }, *@record.folders.select { |folder| existing_folder?(folder) },
-          Installations.path(@plastic_home, @record.harness)]
+        files = @record.files.select { |file| removable?(file) }
+        [*files, *folders.planned(files), Installations.path(@plastic_home, @record.harness)]
       end
 
       def changes = [*(@settings.path if @settings.edited), *sections.map(&:file).select { |file| File.file?(file) }]
 
-      def existing_folder?(folder) = @roots.inside?(folder) && File.directory?(folder)
-
       def removed_files = @record.files.select { |file| removable?(file) }.each { |file| File.delete(file) }
+
+      def folders = RemovalFolders.new(@record, @roots)
 
       def removable?(file) = @roots.inside?(file) && File.file?(file)
 
-      def removed_folders = @record.folders.sort_by { |folder| -folder.length }.select { |folder| removed_folder?(folder) }
-
-      def removed_folder?(folder) = existing_folder?(folder) && Dir.empty?(folder) && Dir.rmdir(folder).zero?
+      def rewritten
+        [@settings.rewrite, *stripped_sections].compact.map { |path| [File.exist?(path) ? "stripped:" : "removed:", path] }
+      end
 
       def sections = @record.sections.map { |section| Section.from_h(section) }
 

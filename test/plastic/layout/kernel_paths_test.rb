@@ -106,16 +106,26 @@ class KernelPathsTest < Minitest::Test
     kernel = Dir.glob(File.join(ROOT, "lib", "plastic", "**", "*.rb"))
 
     refute_empty kernel
-    files = kernel + [File.join(ROOT, "scripts", "lib", "installer_core.rb"), File.join(ROOT, "scripts", "install.rb")]
 
-    assert_empty files.reject { |file| loads_alone?(file) }
+    assert_empty failing_loads(kernel)
   end
 
-  def loads_alone?(file)
-    code = %(require "plastic"; load ARGV.fetch(0))
-    _out, status = ChildProcess.capture2e(RbConfig.ruby, "-I", File.join(ROOT, "lib"), "-I", File.join(ROOT, "scripts", "lib"),
-      "-e", code, file, chdir: ROOT)
-    status.success?
+  FORKED_LOADS = <<~'CODE'
+    require "plastic"
+    ARGV.each do |file|
+      pid = fork { GC.disable; exit!(begin; load(file); true; rescue Exception; false; end ? 0 : 1) }
+      puts("FAILED #{file}") unless Process.wait2(pid).last.success?
+    end
+  CODE
+
+  def failing_loads(files)
+    runs = files.each_slice((files.size / 24.0).ceil).map { |slice| Thread.new { forked_loads(slice) } }
+    runs.flat_map(&:value)
+  end
+
+  def forked_loads(files)
+    out, = ChildProcess.capture2e(RbConfig.ruby, "-W0", "-I", File.join(ROOT, "lib"), "-e", FORKED_LOADS, *files, chdir: ROOT)
+    out.lines.grep(/\AFAILED /).map { |line| line.chomp.delete_prefix("FAILED ") }
   end
 
   def test_the_test_helper_covers_lib

@@ -1,24 +1,25 @@
 # frozen_string_literal: true
 
 require_relative "../../code_workflow"
+require_relative "../release_command"
 require_relative "../release_update"
 
 module Plastic
   module Workflows
     module Code
-      # Switches the active pointer to the named release or the previous one,
-      # and syncs that release's files into the home in the same activation.
+      # Names the command that switches to the named release or the previous
+      # one. It changes nothing itself.
       class Rollback < CodeWorkflow
         [facts, steps, outcomes].each(&:clear)
 
-        sets :switched
+        sets :command
 
-        step "switch the active release", done: ->(context) { context.switched } do |context|
-          activation = ReleaseUpdate.of(context).activation
-          context[:switched] = activation.switch(context.target || activation.previous_version)
+        read "name the switch command" do |context|
+          installed = ReleaseUpdate.of(context).installed
+          context[:command] = ReleaseCommand.of(context.scope).switch(installed.active_version, context.target || installed.previous_version)
         end
 
-        outcome :done, offers: "plastic version", because: "Plastic %{switched} is active and the home holds its files"
+        outcome :done, offers: "%{command}", because: "this command switches the active release; rollback changed nothing"
       end
     end
   end

@@ -12,7 +12,7 @@ Plastic indexes readable intent documents as immutable revisions and searchable 
 | `plastic intent discover ID TERMS... [--source-project SLUG]` | Records deterministic candidates for an intent. |
 | `plastic intent context ID [--from FILE]` | Reads the latest saved context of an intent, or saves the selection in `FILE`. |
 
-Each command accepts `--json`, which returns every field as structured data. Search reads the selected stores and does not write to them. Pass repeated `--source-project` options to search across several stores. When an agent harness sets `PLASTIC_SOURCE_PROJECTS`, that is the default scope. Explicit options replace that scope.
+Each command accepts `--json`, which returns every field as structured data. Search reads the selected stores and does not write to them. Pass repeated `--source-project` options to search across several stores. The config key `search.source_projects` holds the default scope as a comma value, such as `plastic config set search.source_projects global,other`. Explicit options replace that scope.
 
 ## Search literal passages
 

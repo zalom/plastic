@@ -13,11 +13,12 @@ class DocsStaleWordsGuardTest < Minitest::Test
   LINT_RULES = %w[AGENTS.md docs/contributing/CODING_PRACTICES.md docs/contributing/TECHNICAL.md .reek.yml].freeze
   STALE = /doctor --core|next: none|intent end \S+ --(?!project|json)|\bEvery command ends with|update --(?:beta|alpha|stable)|next --why|graph show \S+ --dry-run|project new \S+ --path/
   PUBLISHED = PAGES + Dir["{INSTALL,SECURITY,CONTRIBUTING,AGENTS,PLASTIC}.md", "agents/*.md", base: ROOT]
-  SCRIPTS = %w[lib/ install-release install.rb select-update-target].freeze
+  SCRIPTS = %w[lib/ install-release].freeze
   REMOVED_NAMES = Regexp.union(
     /spawn[- ]preamble|savepoint-note|read-config|delivery\.lock|INDEX\.md|\b(?:plan|checklist|graph)\.md\b|\btemplates\//,
     /plastic (?:auto (?:report|brief)|intent step|session (?:commit|summary|handoff)|migrate|feedback)\b/,
     /(?i:day ledger)/,
+    /brings its own Ruby|jdx\/ruby|(?i:portable Ruby)|downloads? Ruby|with no Ruby on|update check hook|check-update|update-check\.json/,
     %r{\bscripts/(?!#{SCRIPTS.map { |name| Regexp.escape(name) }.join("|")})[a-z]}
   )
 
@@ -51,6 +52,13 @@ class DocsStaleWordsGuardTest < Minitest::Test
 
   def test_the_removed_names_detector_catches_an_old_command_and_leaves_its_successor_alone
     assert_equal [["plastic auto brief"], []], [stale_words("run plastic auto brief 12", REMOVED_NAMES), stale_words("run plastic intent brief 12", REMOVED_NAMES)]
+  end
+
+  def test_the_removed_names_detector_catches_the_ruby_download_and_the_update_check_hook_and_leaves_the_ruby_requirement_alone
+    caught = stale_words("install.sh brings its own Ruby; the update check hook reads check-update from jdx/ruby", REMOVED_NAMES)
+
+    assert_equal ["brings its own Ruby", "update check hook", "check-update", "jdx/ruby"], caught
+    assert_empty stale_words("Plastic needs Ruby 4.0 or later and git; plastic update reads the release list", REMOVED_NAMES)
   end
 
   def test_the_owner_pages_name_no_intent_by_number

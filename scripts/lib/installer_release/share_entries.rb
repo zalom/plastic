@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
+require "fileutils"
 require_relative "flat_share"
-require_relative "rubies"
 
 module InstallerRelease
   # The entries the installer makes in the share: the releases, the Rubies,
@@ -18,7 +18,7 @@ module InstallerRelease
 
     def remove
       emptied = prepare
-      order.each { |name| Rubies.remove(File.join(share, name)) }
+      order.each { |name| remove_entry(File.join(share, name)) }
       Dir.rmdir(share) if emptied
       emptied
     end
@@ -26,6 +26,11 @@ module InstallerRelease
     private
 
     attr_reader :share
+
+    def remove_entry(path)
+      FileUtils.chmod_R("u+w", path, force: true)
+      FileUtils.rm_rf(path)
+    end
 
     def prepare
       FlatShare.new(share, Releases.new(share)).migrate
