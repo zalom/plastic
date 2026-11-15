@@ -59,7 +59,7 @@ Its rows run in this order:
 
 1. Read: read the intent and its spec. [`auto.rb:20`](../../../../lib/plastic/workflows/code/auto.rb#L20)
 2. Gate: passes when `!context.intent.nil?`; otherwise the call stops with exit 1 and prints no intent INTENT_ID in this store. [`auto.rb:69`](../../../../lib/plastic/workflows/code/auto.rb#L69)
-3. Gate: passes when `!context.session.nil?`; otherwise the call stops with exit 1 and prints plastic auto names no session. [`auto.rb:70`](../../../../lib/plastic/workflows/code/auto.rb#L70)
+3. Gate: passes when `!context.session.nil?`; otherwise the call stops with exit 1 and prints auto names no session; set PLASTIC_SESSION. [`auto.rb:70`](../../../../lib/plastic/workflows/code/auto.rb#L70)
 4. Gate: passes when `context.session_problem.nil?`; otherwise the call stops with exit 1 and prints SESSION_PROBLEM. [`auto.rb:71`](../../../../lib/plastic/workflows/code/auto.rb#L71)
 5. Gate: passes when `context.closed_problem.nil?`; otherwise the call stops with exit 1 and prints CLOSED_PROBLEM. [`auto.rb:72`](../../../../lib/plastic/workflows/code/auto.rb#L72)
 6. Gate: passes when `context.spec_problem.nil?`; otherwise the call stops with exit 1 and prints SPEC_PROBLEM. [`auto.rb:74`](../../../../lib/plastic/workflows/code/auto.rb#L74)
@@ -110,7 +110,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | every item of ID is done or dropped | 0 | plastic roadmap show ID | [`pick.rb:71`](../../../../lib/plastic/workflows/code/auto/pick.rb#L71) |
 | no item of ID is free to deliver yet | 0 | plastic roadmap show ID | [`pick.rb:73`](../../../../lib/plastic/workflows/code/auto/pick.rb#L73) |
 | no intent INTENT_ID in this store | 1 | prints no next: line | [`auto.rb:69`](../../../../lib/plastic/workflows/code/auto.rb#L69) |
-| plastic auto names no session | 1 | prints no next: line | [`auto.rb:70`](../../../../lib/plastic/workflows/code/auto.rb#L70) |
+| auto names no session; set PLASTIC_SESSION | 1 | prints no next: line | [`auto.rb:70`](../../../../lib/plastic/workflows/code/auto.rb#L70) |
 | SESSION_PROBLEM | 1 | prints no next: line | [`auto.rb:71`](../../../../lib/plastic/workflows/code/auto.rb#L71) |
 | CLOSED_PROBLEM | 1 | plastic next | [`auto.rb:72`](../../../../lib/plastic/workflows/code/auto.rb#L72) |
 | SPEC_PROBLEM | 1 | plastic intent spec INTENT_ID | [`auto.rb:74`](../../../../lib/plastic/workflows/code/auto.rb#L74) |
