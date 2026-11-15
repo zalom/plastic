@@ -31,7 +31,7 @@ prints the instruction to make it and offers itself again as the next step:
 ```text
 worktree: /home/you/greeter/.claude/worktrees/2--shout
 branch: plastic/2--shout
-Create the worktree at /home/you/greeter/.claude/worktrees/2--shout on branch plastic/2--shout, using version control as you do in this project, then run plastic auto 2 again
+Create the worktree at /home/you/greeter/.claude/worktrees/2--shout on branch plastic/2--shout, then run plastic auto 2 again. Use version control as the project's AGENTS.md or CLAUDE.md defines it, or as the project's history shows when neither does.
 
 next: plastic auto 2
 ```
