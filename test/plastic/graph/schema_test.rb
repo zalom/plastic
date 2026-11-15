@@ -30,8 +30,8 @@ class SchemaTest < Plastic::TestCase
   end
 
   def test_the_knowledge_schema_has_the_pinned_ddl_and_sqlite_catalog
-    assert_equal "05ceced76cebfb0a415ea455267902a66c75fecadde1941898d62cfa88e7aae9", Digest::SHA256.hexdigest(Schema.fetch(:knowledge))
-    assert_equal "9480cf34c99dfffaf3c8f575e1cb7838e17dc9d7b2f760c9c6b9a9341c2861d4", Digest::SHA256.hexdigest(JSON.generate(schema_catalog))
+    assert_equal "bc834c3d8f79f244ea514d752db7bc1a1bdedd7b362e43f2401912963d20b290", Digest::SHA256.hexdigest(Schema.fetch(:knowledge))
+    assert_equal "829606114a518e27b8afa8a6eddf7ad503602c90f7be8f7473bb829be64669b8", Digest::SHA256.hexdigest(JSON.generate(schema_catalog))
   end
 
   def test_a_tally_names_one_and_many

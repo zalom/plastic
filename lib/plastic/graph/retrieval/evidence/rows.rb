@@ -1,18 +1,16 @@
 # frozen_string_literal: true
 
-require_relative "heads"
-
 module Plastic
   module Graph
     module Retrieval
       class Evidence
-        # Writes canonical, immutable, and current evidence rows in dependency order.
+        # Writes canonical, immutable, and current evidence rows in dependency order: the passages
+        # first, then the head, whose triggers write the search rows.
         class Rows
-          def initialize(batch, document, origin_id, heads: Heads::Unread.new)
+          def initialize(batch, document, origin_id)
             @batch = batch
             @document = document
             @origin_id = origin_id
-            @heads = heads
           end
 
           def write
@@ -33,19 +31,7 @@ module Plastic
             @batch.add("INSERT OR IGNORE INTO document_passages (sha256, intent_id, path, position, body, line_start, line_end, origin_id) VALUES (:sha256, :intent_id, :path, :position, :body, :line_start, :line_end, :origin_id)", sha256: @document.revision, intent_id: @document.intent_id, path: @document.path, origin_id: @origin_id, **passage)
           end
 
-          def current_rows
-            @batch.put(:document_heads, @document.head_row)
-            delete_search_rows if @heads.known?(@document.intent_id, @document.path)
-            @document.passages.each { |passage| current_passage(passage) }
-          end
-
-          def delete_search_rows
-            @batch.add("DELETE FROM document_fts WHERE intent_id = :intent_id AND path = :path AND origin_id = :origin_id", intent_id: @document.intent_id, path: @document.path, origin_id: @origin_id)
-          end
-
-          def current_passage(passage)
-            @batch.add("INSERT INTO document_fts (body, intent_id, path, sha256, position, origin_id) VALUES (:body, :intent_id, :path, :sha256, :position, :origin_id)", body: passage.fetch(:body), intent_id: @document.intent_id, path: @document.path, sha256: @document.revision, position: passage.fetch(:position), origin_id: @origin_id)
-          end
+          def current_rows = @batch.put(:document_heads, @document.head_row)
         end
       end
     end

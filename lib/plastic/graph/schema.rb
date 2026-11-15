@@ -15,7 +15,10 @@ module Plastic
 
       def self.file(key) = databases.fetch(key).first
 
-      def self.fetch(key) = [*databases.fetch(key).last.map { |name| ddl(name) }, migrations[key]].compact.join("\n")
+      def self.fetch(key)
+        names = databases.fetch(key).last
+        [*names.map { |name| ddl(name) }, migrations[key], *names.flat_map { |name| trigger_creates(name) }].compact.join("\n")
+      end
 
       def self.prepare(connection, schema)
         connection.execute_batch(schema)
@@ -44,6 +47,7 @@ module Plastic
       def self.databases = SchemaCatalog::DATABASES
       def self.store = SchemaCatalog::STORE
       def self.tables = SchemaCatalog::TABLES
+      def self.triggers = SchemaCatalog::TRIGGERS
       def self.legacy_tables = SchemaCatalog::MARKS.fetch(:legacy)
       def self.later_tables = SchemaCatalog::MARKS.fetch(:since)
 

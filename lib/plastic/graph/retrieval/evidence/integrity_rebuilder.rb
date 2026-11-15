@@ -19,7 +19,7 @@ module Plastic
           private
 
           def clear(batch)
-            %w[document_heads document_passages document_fts].each { |table| batch.add("DELETE FROM #{table} WHERE origin_id = :origin", origin: @origin_id) }
+            %w[document_fts document_heads document_passages].each { |table| batch.add("DELETE FROM #{table} WHERE origin_id = :origin", origin: @origin_id) }
           end
 
           def rebuild_passages(batch, revision)
@@ -30,9 +30,6 @@ module Plastic
 
           def rebuild_current(batch, document)
             batch.add("INSERT INTO document_heads (intent_id, path, sha256, updated_at, origin_id) VALUES (:intent_id, :path, :sha256, :updated_at, :origin_id)", **document.head_row(@origin_id))
-            document.fts_rows(@origin_id).each do |row|
-              batch.add("INSERT INTO document_fts (body, intent_id, path, sha256, position, origin_id) VALUES (:body, :intent_id, :path, :sha256, :position, :origin_id)", **row)
-            end
           end
         end
       end

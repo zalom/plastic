@@ -39,7 +39,13 @@ module CommandReference
 
       def from_text(text) = text.scan(CALL).flat_map { |side, method, hop| @facade.targets(side.to_sym, method, hop) }
 
-      def entries_of(text) = @schema.tables.filter_map { |table| entry(text, table) }
+      def entries_of(text)
+        entries = @schema.tables.filter_map { |table| entry(text, table) }
+        entries + entries.select { |found| found.mode == :write }.flat_map { |found| triggered(found) }
+      end
+
+      # The tables that the triggers of a written table write too.
+      def triggered(written) = @schema.triggered(written.table).map { |table| Entry.new(@schema.file_of(table), table, :write) }
 
       def entry(text, table)
         mode = Mode.of(text, table)

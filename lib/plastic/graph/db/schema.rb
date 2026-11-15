@@ -170,6 +170,29 @@ Plastic::Graph::SCHEMA_FILE = Plastic::Graph::SchemaFile.define(version: 2026_10
   create_virtual_table :document_fts,
     using: "fts5(body, intent_id UNINDEXED, path UNINDEXED, sha256 UNINDEXED, position UNINDEXED, origin_id UNINDEXED)"
 
+  create_trigger :document_heads_search_insert, on: :document_heads, sql: <<~SQL
+    AFTER INSERT ON "document_heads" BEGIN
+      INSERT INTO "document_fts" ("body", "intent_id", "path", "sha256", "position", "origin_id")
+      SELECT p."body", p."intent_id", p."path", p."sha256", p."position", p."origin_id" FROM "document_passages" p
+      WHERE p."sha256" = NEW."sha256" AND p."intent_id" = NEW."intent_id" AND p."path" = NEW."path" AND p."origin_id" = NEW."origin_id";
+    END;
+  SQL
+
+  create_trigger :document_heads_search_update, on: :document_heads, sql: <<~SQL
+    AFTER UPDATE ON "document_heads" BEGIN
+      DELETE FROM "document_fts" WHERE "intent_id" = OLD."intent_id" AND "path" = OLD."path" AND "origin_id" = OLD."origin_id";
+      INSERT INTO "document_fts" ("body", "intent_id", "path", "sha256", "position", "origin_id")
+      SELECT p."body", p."intent_id", p."path", p."sha256", p."position", p."origin_id" FROM "document_passages" p
+      WHERE p."sha256" = NEW."sha256" AND p."intent_id" = NEW."intent_id" AND p."path" = NEW."path" AND p."origin_id" = NEW."origin_id";
+    END;
+  SQL
+
+  create_trigger :document_heads_search_delete, on: :document_heads, sql: <<~SQL
+    AFTER DELETE ON "document_heads" BEGIN
+      DELETE FROM "document_fts" WHERE "intent_id" = OLD."intent_id" AND "path" = OLD."path" AND "origin_id" = OLD."origin_id";
+    END;
+  SQL
+
   create_table :retrieval_schema, key: %i[name] do |t|
     t.kept :name
     t.number :version

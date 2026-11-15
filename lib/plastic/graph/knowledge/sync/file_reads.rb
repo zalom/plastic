@@ -30,7 +30,7 @@ module Plastic
           private
 
           # The intents of the rows. store/index.json is never read for them: the folders are.
-          def reader = Reader.of_databases(@folder, @retrieval, @databases)
+          def reader = Reader.of(@folder, @retrieval)
 
           # The work graph first, so a new intent's row is in place before its files.
           def write(reads)
