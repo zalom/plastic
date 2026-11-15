@@ -29,10 +29,31 @@ module CommandReference
       def ends(box, stops)
         return box.bottom if stops.empty?
 
-        bottom = stops.reduce(box.top) { |at, stop| at + @plate.stack(box.left - GAP - WIDTH, at, WIDTH, stop) + 8 }
-        reach(box.at(0, box.height / 2), -GAP, "wire-end")
+        middles = []
+        bottom = stops.reduce(box.top) { |at, stop| at + stacked(box, at, stop, middles) + 8 }
+        bracket(box, middles)
         bottom
       end
+
+      def stacked(box, top, stop, middles)
+        height = @plate.stack(box.left - GAP - WIDTH, top, WIDTH, stop)
+        middles << top + height / 2
+        height
+      end
+
+      def bracket(box, middles)
+        spine = box.left - GAP / 2
+        start = box.at(0, box.height / 2)
+        rule(start, Point.new(spine, start.top))
+        spans(spine, [start.top, *middles])
+        middles.each { |middle| arrow(spine, box.left - GAP, middle) }
+      end
+
+      def spans(spine, reaches) = rule(Point.new(spine, reaches.min), Point.new(spine, reaches.max))
+
+      def arrow(from, to, at) = @canvas.wire([Point.new(from, at), Point.new(to, at)], "wire-end")
+
+      def rule(from, to) = @canvas.raw(%(<path d="M #{from} L #{to}" class="wire-end"/>), to.top)
 
       def gates(box, stops)
         return box.bottom if stops.empty?

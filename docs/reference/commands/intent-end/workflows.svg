@@ -93,7 +93,9 @@
 <text x="42" y="96" class="t" text-anchor="start">Intent &lt;intent id&gt; is</text>
 <text x="42" y="113" class="t" text-anchor="start">already done.</text>
 <text x="42" y="130" class="t" text-anchor="start">next: plastic next</text>
-<path d="M 296 97 L 252 97" class="wire-end"/>
+<path d="M 296 97 L 274 97" class="wire-end"/>
+<path d="M 274 97 L 274 97" class="wire-end"/>
+<path d="M 274 97 L 252 97" class="wire-end"/>
 <path d="M 260 92 L 252 97 L 260 102 Z" class="head"/>
 <rect x="594" y="56" width="222" height="100" rx="6" class="stop-refusal"/>
 <text x="606" y="76" class="tag tag-refusal" text-anchor="start">STOPS, EXIT 1 OR 3</text>

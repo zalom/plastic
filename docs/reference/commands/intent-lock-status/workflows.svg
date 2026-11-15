@@ -111,8 +111,16 @@
 <text x="36" y="420" class="t" text-anchor="start">&lt;intent id&gt;.</text>
 <text x="36" y="437" class="t" text-anchor="start">next: plastic intent brief</text>
 <text x="36" y="454" class="t" text-anchor="start">&lt;intent id&gt;</text>
-<path d="M 290 97 L 246 97" class="wire-end"/>
-<path d="M 254 92 L 246 97 L 254 102 Z" class="head"/>
+<path d="M 290 97 L 268 97" class="wire-end"/>
+<path d="M 268 89 L 268 413" class="wire-end"/>
+<path d="M 268 89 L 246 89" class="wire-end"/>
+<path d="M 254 84 L 246 89 L 254 94 Z" class="head"/>
+<path d="M 268 180 L 246 180" class="wire-end"/>
+<path d="M 254 175 L 246 180 L 254 185 Z" class="head"/>
+<path d="M 268 296 L 246 296" class="wire-end"/>
+<path d="M 254 291 L 246 296 L 254 301 Z" class="head"/>
+<path d="M 268 413 L 246 413" class="wire-end"/>
+<path d="M 254 408 L 246 413 L 254 418 Z" class="head"/>
 <rect x="588" y="56" width="222" height="66" rx="6" class="stop-failure"/>
 <text x="600" y="76" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1</text>
 <text x="600" y="96" class="t" text-anchor="start">A check fails. The events</text>

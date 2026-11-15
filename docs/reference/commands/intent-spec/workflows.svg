@@ -106,8 +106,14 @@
 <text x="36" y="329" class="t" text-anchor="start">decision.</text>
 <text x="36" y="346" class="t" text-anchor="start">next: plastic auto &lt;intent</text>
 <text x="36" y="363" class="t" text-anchor="start">id&gt;</text>
-<path d="M 290 97 L 246 97" class="wire-end"/>
-<path d="M 254 92 L 246 97 L 254 102 Z" class="head"/>
+<path d="M 290 97 L 268 97" class="wire-end"/>
+<path d="M 268 97 L 268 322" class="wire-end"/>
+<path d="M 268 106 L 246 106" class="wire-end"/>
+<path d="M 254 101 L 246 106 L 254 111 Z" class="head"/>
+<path d="M 268 214 L 246 214" class="wire-end"/>
+<path d="M 254 209 L 246 214 L 254 219 Z" class="head"/>
+<path d="M 268 322 L 246 322" class="wire-end"/>
+<path d="M 254 317 L 246 322 L 254 327 Z" class="head"/>
 <rect x="588" y="56" width="222" height="66" rx="6" class="stop-failure"/>
 <text x="600" y="76" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1</text>
 <text x="600" y="96" class="t" text-anchor="start">A check fails. The events</text>

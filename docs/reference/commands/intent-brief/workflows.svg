@@ -113,8 +113,12 @@
 <text x="36" y="338" class="t" text-anchor="start">command and the reason for</text>
 <text x="36" y="355" class="t" text-anchor="start">it.</text>
 <text x="36" y="372" class="t" text-anchor="start">next: &lt;next command&gt;</text>
-<path d="M 290 248 L 246 248" class="wire-end"/>
-<path d="M 254 243 L 246 248 L 254 253 Z" class="head"/>
+<path d="M 290 248 L 268 248" class="wire-end"/>
+<path d="M 268 240 L 268 331" class="wire-end"/>
+<path d="M 268 240 L 246 240" class="wire-end"/>
+<path d="M 254 235 L 246 240 L 254 245 Z" class="head"/>
+<path d="M 268 331 L 246 331" class="wire-end"/>
+<path d="M 254 326 L 246 331 L 254 336 Z" class="head"/>
 <path d="M 417 290 L 417 411 L 417 411 L 417 419" class="wire"/>
 <text x="417" y="433" class="k" text-anchor="middle">the agent takes the next step of</text>
 <text x="417" y="447" class="k" text-anchor="middle">the brief</text>

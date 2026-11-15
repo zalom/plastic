@@ -105,8 +105,14 @@
 <text x="36" y="312" class="t" text-anchor="start">deliver yet.</text>
 <text x="36" y="329" class="t" text-anchor="start">next: plastic roadmap show</text>
 <text x="36" y="346" class="t" text-anchor="start">&lt;id&gt;</text>
-<path d="M 290 97 L 246 97" class="wire-end"/>
+<path d="M 290 97 L 268 97" class="wire-end"/>
+<path d="M 268 97 L 268 305" class="wire-end"/>
+<path d="M 268 97 L 246 97" class="wire-end"/>
 <path d="M 254 92 L 246 97 L 254 102 Z" class="head"/>
+<path d="M 268 197 L 246 197" class="wire-end"/>
+<path d="M 254 192 L 246 197 L 254 202 Z" class="head"/>
+<path d="M 268 305 L 246 305" class="wire-end"/>
+<path d="M 254 300 L 246 305 L 254 310 Z" class="head"/>
 <rect x="588" y="56" width="222" height="66" rx="6" class="stop-failure"/>
 <text x="600" y="76" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1</text>
 <text x="600" y="96" class="t" text-anchor="start">A check fails. The events</text>

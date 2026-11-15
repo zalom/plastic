@@ -92,8 +92,10 @@
 <text x="36" y="96" class="t" text-anchor="start">The preview replaced</text>
 <text x="36" y="113" class="t" text-anchor="start">nothing.</text>
 <text x="36" y="130" class="t" text-anchor="start">next: &lt;original command&gt;</text>
-<path d="M 290 89 L 246 89" class="wire-end"/>
-<path d="M 254 84 L 246 89 L 254 94 Z" class="head"/>
+<path d="M 290 89 L 268 89" class="wire-end"/>
+<path d="M 268 89 L 268 97" class="wire-end"/>
+<path d="M 268 97 L 246 97" class="wire-end"/>
+<path d="M 254 92 L 246 97 L 254 102 Z" class="head"/>
 <path d="M 417 122 L 417 169 L 417 169 L 417 177" class="wire"/>
 <text x="417" y="191" class="k" text-anchor="middle">apply the requested restore</text>
 <path d="M 417 201 L 417 215" class="wire"/>

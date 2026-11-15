@@ -101,8 +101,12 @@
 <text x="36" y="238" class="t" text-anchor="start">The person left with no</text>
 <text x="36" y="255" class="t" text-anchor="start">change.</text>
 <text x="36" y="272" class="t" text-anchor="start">next: plastic init</text>
-<path d="M 290 97 L 246 97" class="wire-end"/>
-<path d="M 254 92 L 246 97 L 254 102 Z" class="head"/>
+<path d="M 290 97 L 268 97" class="wire-end"/>
+<path d="M 268 97 L 268 239" class="wire-end"/>
+<path d="M 268 123 L 246 123" class="wire-end"/>
+<path d="M 254 118 L 246 123 L 254 128 Z" class="head"/>
+<path d="M 268 239 L 246 239" class="wire-end"/>
+<path d="M 254 234 L 246 239 L 254 244 Z" class="head"/>
 <path d="M 417 139 L 417 311 L 417 311 L 417 319" class="wire"/>
 <text x="417" y="333" class="k" text-anchor="middle">install Plastic into &lt;harnesses&gt;</text>
 <path d="M 417 343 L 417 357" class="wire"/>

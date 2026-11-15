@@ -99,8 +99,12 @@
 <text x="36" y="221" class="t" text-anchor="start">The person left with no</text>
 <text x="36" y="238" class="t" text-anchor="start">change.</text>
 <text x="36" y="255" class="t" text-anchor="start">next: plastic uninstall</text>
-<path d="M 290 89 L 246 89" class="wire-end"/>
-<path d="M 254 84 L 246 89 L 254 94 Z" class="head"/>
+<path d="M 290 89 L 268 89" class="wire-end"/>
+<path d="M 268 89 L 268 222" class="wire-end"/>
+<path d="M 268 114 L 246 114" class="wire-end"/>
+<path d="M 254 109 L 246 114 L 254 119 Z" class="head"/>
+<path d="M 268 222 L 246 222" class="wire-end"/>
+<path d="M 254 217 L 246 222 L 254 227 Z" class="head"/>
 <path d="M 417 122 L 417 294 L 417 294 L 417 302" class="wire"/>
 <text x="417" y="316" class="k" text-anchor="middle">remove Plastic from &lt;harnesses&gt;</text>
 <path d="M 417 326 L 417 340" class="wire"/>
@@ -115,7 +119,9 @@
 <text x="36" y="380" class="t" text-anchor="start">The preview changed no</text>
 <text x="36" y="397" class="t" text-anchor="start">file.</text>
 <text x="36" y="414" class="t" text-anchor="start">next: &lt;original command&gt;</text>
-<path d="M 290 381 L 246 381" class="wire-end"/>
+<path d="M 290 381 L 268 381" class="wire-end"/>
+<path d="M 268 381 L 268 381" class="wire-end"/>
+<path d="M 268 381 L 246 381" class="wire-end"/>
 <path d="M 254 376 L 246 381 L 254 386 Z" class="head"/>
 <path d="M 417 423 L 417 453 L 417 453 L 417 461" class="wire"/>
 <text x="417" y="475" class="k" text-anchor="middle">remove Plastic from &lt;harnesses&gt;</text>

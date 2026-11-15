@@ -82,22 +82,23 @@ class CommandReferenceOverviewEarlyEndingsTest < Minitest::Test
 
   def svg(each) = REXML::Document.new(CommandReferenceHelper.files.fetch("docs/reference/commands/#{each.slug}/workflows.svg"))
 
-  def rects(doc, css) = doc.get_elements("//rect[@class='#{css}']").map { |each| %w[x y width height].map { |name| each.attributes[name].to_i } }
+  def rects(doc, css) = doc.get_elements("//rect[starts-with(@class, '#{css}')]").map { |each| %w[x y width height].map { |name| each.attributes[name].to_i } }
 
   def tips(doc) = doc.get_elements("//path[@class='wire-end']").map { |each| each.attributes["d"].scan(/-?\d+/).last(2).map(&:to_i) }
 
   def sided(doc)
-    edge = rects(doc, "lane-code").first.first
-    rects(doc, "stop-end").select { |left, *| left + 222 < edge }
+    edge = rects(doc, "lane-").min_by { |_left, top| top }.first
+    rects(doc, "stop-end").select { |left, _top, width| width == 222 && left + width < edge }
   end
 
   def test_every_early_ending_beside_a_workflow_has_its_own_arrow
     CommandReferenceHelper.pages.values.select { |each| each.flows.size > 1 }.each do |each|
-      doc = svg(each)
-      arrows = tips(doc)
-      missing = sided(doc).reject { |left, top, width, height| arrows.include?([left + width, top + height / 2]) }
-
-      assert_empty missing, each.words
+      assert_empty unreached(svg(each)), each.words
     end
+  end
+
+  def unreached(doc)
+    arrows = tips(doc)
+    sided(doc).reject { |left, top, width, height| arrows.include?([left + width, top + height / 2]) }
   end
 end

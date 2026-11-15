@@ -99,8 +99,12 @@
 <text x="36" y="204" class="t" text-anchor="start">next command, and the</text>
 <text x="36" y="221" class="t" text-anchor="start">reason says why that one.</text>
 <text x="36" y="238" class="t" text-anchor="start">next: &lt;next command&gt;</text>
-<path d="M 290 97 L 246 97" class="wire-end"/>
+<path d="M 290 97 L 268 97" class="wire-end"/>
+<path d="M 268 97 L 268 197" class="wire-end"/>
+<path d="M 268 97 L 246 97" class="wire-end"/>
 <path d="M 254 92 L 246 97 L 254 102 Z" class="head"/>
+<path d="M 268 197 L 246 197" class="wire-end"/>
+<path d="M 254 192 L 246 197 L 254 202 Z" class="head"/>
 <path d="M 417 139 L 417 277 L 417 277 L 417 285" class="wire"/>
 <text x="417" y="299" class="k" text-anchor="middle">the next step is the agent&#39;s to</text>
 <text x="417" y="313" class="k" text-anchor="middle">take</text>

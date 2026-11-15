@@ -92,8 +92,10 @@
 <text x="36" y="96" class="t" text-anchor="start">The preview wrote only to a</text>
 <text x="36" y="113" class="t" text-anchor="start">disposable copy.</text>
 <text x="36" y="130" class="t" text-anchor="start">next: &lt;original command&gt;</text>
-<path d="M 290 89 L 246 89" class="wire-end"/>
-<path d="M 254 84 L 246 89 L 254 94 Z" class="head"/>
+<path d="M 290 89 L 268 89" class="wire-end"/>
+<path d="M 268 89 L 268 97" class="wire-end"/>
+<path d="M 268 97 L 246 97" class="wire-end"/>
+<path d="M 254 92 L 246 97 L 254 102 Z" class="head"/>
 <rect x="588" y="56" width="222" height="100" rx="6" class="stop-refusal"/>
 <text x="600" y="76" class="tag tag-refusal" text-anchor="start">STOPS, EXIT 1 OR 3</text>
 <text x="600" y="96" class="t" text-anchor="start">A check fails or the step</text>
