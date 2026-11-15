@@ -8,6 +8,8 @@ class CommandReferencePageFilesTest < Minitest::Test
   FOLDER = "docs/reference/commands"
   SECTIONS = ["## The workflows of one call", "## The events of one call, step by step", "## What one call changes", "## What the agent workflow steps print"].freeze
 
+  GOES_WITH_THE_STORE = "Goes with the store: the files of the store carry the change, and `plastic sync up` rebuilds it on another machine. The database files themselves stay on this machine."
+
   def files_of(words) = CommandReference::PageFiles.new(page(words), "#{FOLDER}/#{page(words).slug}").to_a.to_h { |path, text| [File.basename(path), text] }
 
   def readme(words) = files_of(words).fetch("README.md")
@@ -26,7 +28,30 @@ class CommandReferencePageFilesTest < Minitest::Test
   def test_the_page_of_intent_end_ends_with_the_line_that_names_the_class_and_the_file
     last = readme("intent end").lines(chomp: true).reject(&:empty?).last
 
-    assert_match(/\AThe command is `Intent::End`, in .*lib\/plastic\/commands\/intent\/end\.rb/, last)
+    assert_match(/\AThe command is `Plastic::Commands::Intent::End`, in .*lib\/plastic\/commands\/intent\/end\.rb/, last)
+  end
+
+  def test_every_page_names_the_full_class_of_its_command_in_the_last_line
+    CommandReferenceHelper.pages.each_value do |each|
+      last = readme(each.words).lines(chomp: true).reject(&:empty?).last
+
+      assert_includes last, "`#{each.klass.name}`", each.words
+    end
+  end
+
+  def test_a_page_with_a_goes_with_the_store_row_defines_the_term_under_its_table
+    text = readme("intent end")
+
+    assert_includes text, GOES_WITH_THE_STORE
+    assert_operator text.index(GOES_WITH_THE_STORE), :>, text.index("| The intent is marked done")
+  end
+
+  def test_every_page_that_says_goes_with_the_store_holds_the_definition_and_no_other_page_does
+    CommandReferenceHelper.pages.each_value do |each|
+      text = readme(each.words)
+
+      assert_equal text.include?("| goes with the store |"), text.include?(GOES_WITH_THE_STORE), each.words
+    end
   end
 
   def test_a_page_with_several_workflows_has_both_drawings

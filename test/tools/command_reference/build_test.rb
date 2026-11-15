@@ -19,9 +19,21 @@ class CommandReferenceBuildTest < Minitest::Test
   def test_the_build_holds_a_page_per_command_the_index_and_the_dsl_page
     paths = CommandReferenceHelper.files.keys
 
-    assert_equal 76, paths.grep(%r{\Adocs/reference/commands/[^/]+/README\.md\z}).size
+    assert_equal Plastic::CLI::TABLE.size, paths.grep(%r{\Adocs/reference/commands/[^/]+/README\.md\z}).size
     assert_includes paths, "docs/reference/commands/README.md"
     assert_includes paths, "docs/reference/dsl/README.md"
+  end
+
+  def test_every_command_page_holds_the_new_parts_and_none_of_the_old_sections
+    CommandReferenceHelper.files.select { |path, _| path.match?(%r{\Adocs/reference/commands/[^/]+/README\.md\z}) }.each do |path, body|
+      assert_includes body, "## The events of one call, step by step", path
+      assert_includes body, "## What one call changes", path
+      ["## Components", "## What one call reads, writes and prints", "## How a call ends", "## What the page leaves out"].each { |old| refute_includes body, old, path }
+    end
+  end
+
+  def test_the_index_describes_the_six_parts
+    assert_includes CommandReferenceHelper.files.fetch("docs/reference/commands/README.md"), "six parts"
   end
 
   def test_every_built_path_is_under_the_two_reference_folders
