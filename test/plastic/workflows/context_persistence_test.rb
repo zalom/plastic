@@ -26,6 +26,16 @@ class ContextPersistenceTest < Plastic::TestCase
     refute_path_exists store_path("context/1.json")
   end
 
+  def test_a_document_is_saved_once_it_is_written_and_not_before
+    persistence = Plastic::Workflows::ContextPersistence.new(call_context(intent_id: "1"))
+
+    refute persistence.saved?(DOCUMENT)
+    persistence.persist(DOCUMENT)
+
+    assert persistence.saved?(DOCUMENT)
+    refute persistence.saved?(DOCUMENT.merge("evidence" => ["other"]))
+  end
+
   def test_the_document_comes_back_unchanged
     assert_equal DOCUMENT, persist
   end

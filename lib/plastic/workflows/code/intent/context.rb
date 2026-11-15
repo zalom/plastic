@@ -17,15 +17,14 @@ module Plastic
         class Context < CodeWorkflow
           clear_declarations
 
-          sets :problem
+          sets :problem, :submission
 
           forget_stop :problem
 
-          read "persist the submitted context" do |context|
+          read "validate the submitted context" do |context|
             discovery = ContextDocuments.new(context).read(:discovery)
             source = Plastic::Graph::Retrieval::Context::Source.new(context.scope.plastic_home)
-            submission = ContextSubmission.new(intent_id: context.intent_id, discovery:, source:).validate(context.from)
-            context.row("context", ContextPersistence.new(context).persist(submission))
+            context[:submission] = ContextSubmission.new(intent_id: context.intent_id, discovery:, source:).validate(context.from)
           rescue Errno::ENOENT, JSON::ParserError => error
             raise CLI::Command::Usage, error.message
           rescue Plastic::Graph::RetrievalGraph::MaintenanceRequired, Plastic::Graph::RetrievalGraph::MissingReference, KeyError, CLI::Command::Failure => error
@@ -33,6 +32,12 @@ module Plastic
           end
 
           gate "%{problem}", stops: :failure, pass: ->(context) { context.problem.nil? }
+
+          step "save the submitted context", done: ->(context) { ContextPersistence.new(context).saved?(context.submission) } do |context|
+            ContextPersistence.new(context).persist(context.submission)
+          end
+
+          read("print the saved context") { |context| context.row("context", context.submission) }
 
           outcome :done, offers: nil, because: "the retrieval context was read"
         end
