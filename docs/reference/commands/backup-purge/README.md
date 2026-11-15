@@ -33,4 +33,4 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 | The chosen backup folders are deleted | the backups folder, in the store folder | stays on this machine |
 | The run of the call is kept for a resume | the work graph database, in the store folder | stays on this machine |
 
-The command is `Plastic::Commands::Backup::Purge`, in [`purge.rb:12`](../../../../lib/plastic/commands/backup/purge.rb#L12).
+The command is `Plastic::Commands::Backup::Purge`, in [`commands/backup/purge.rb`](../../../../lib/plastic/commands/backup/purge.rb).

@@ -18,4 +18,4 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 | --- | --- | --- |
 | The end time and the reason are written to the session row | the local database, in the home folder | stays on this machine |
 
-The command is `Plastic::Hooks::End`, in [`end.rb:9`](../../../../lib/plastic/hooks/end.rb#L9).
+The command is `Plastic::Hooks::End`, in [`hooks/end.rb`](../../../../lib/plastic/hooks/end.rb).

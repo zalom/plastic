@@ -27,4 +27,4 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 
 Goes with the store: the files of the store carry the change, and `plastic sync up` rebuilds it on another machine. The database files themselves stay on this machine.
 
-The command is `Plastic::Commands::Node::Claim`, in [`claim.rb:9`](../../../../lib/plastic/commands/node/claim.rb#L9).
+The command is `Plastic::Commands::Node::Claim`, in [`commands/node/claim.rb`](../../../../lib/plastic/commands/node/claim.rb).

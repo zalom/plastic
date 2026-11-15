@@ -20,4 +20,4 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 
 This command changes nothing.
 
-The command is `Plastic::Commands::Document::Batch`, in [`batch.rb:9`](../../../../lib/plastic/commands/document/batch.rb#L9).
+The command is `Plastic::Commands::Document::Batch`, in [`commands/document/batch.rb`](../../../../lib/plastic/commands/document/batch.rb).

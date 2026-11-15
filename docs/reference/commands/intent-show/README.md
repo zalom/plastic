@@ -20,4 +20,4 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 
 This command changes nothing.
 
-The command is `Plastic::Commands::Intent::Show`, in [`show.rb:10`](../../../../lib/plastic/commands/intent/show.rb#L10).
+The command is `Plastic::Commands::Intent::Show`, in [`commands/intent/show.rb`](../../../../lib/plastic/commands/intent/show.rb).

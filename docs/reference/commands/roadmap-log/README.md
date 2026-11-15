@@ -26,4 +26,4 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 
 Goes with the store: the files of the store carry the change, and `plastic sync up` rebuilds it on another machine. The database files themselves stay on this machine.
 
-The command is `Plastic::Commands::Roadmap::Log`, in [`log.rb:9`](../../../../lib/plastic/commands/roadmap/log.rb#L9).
+The command is `Plastic::Commands::Roadmap::Log`, in [`commands/roadmap/log.rb`](../../../../lib/plastic/commands/roadmap/log.rb).

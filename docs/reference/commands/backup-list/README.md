@@ -20,4 +20,4 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 
 This command changes nothing.
 
-The command is `Plastic::Commands::Backup::List`, in [`list.rb:11`](../../../../lib/plastic/commands/backup/list.rb#L11).
+The command is `Plastic::Commands::Backup::List`, in [`commands/backup/list.rb`](../../../../lib/plastic/commands/backup/list.rb).

@@ -20,4 +20,4 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 
 This command changes nothing.
 
-The command is `Plastic::Commands::Graph::Show`, in [`show.rb:9`](../../../../lib/plastic/commands/graph/show.rb#L9).
+The command is `Plastic::Commands::Graph::Show`, in [`commands/graph/show.rb`](../../../../lib/plastic/commands/graph/show.rb).

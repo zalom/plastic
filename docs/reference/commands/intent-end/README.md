@@ -42,4 +42,4 @@ Goes with the store: the files of the store carry the change, and `plastic sync 
 | 7 | Now that the work is delivered, fetch the architecture map once more, with the tool you used before planning or by mapping the code yourself, and confirm that it describes the delivered code. Then add the line '- Architecture map: \<tool> at \<source revision>' under ## Verification in \<intent folder>/outcome.md. Run plastic sync up and then plastic intent end \<intent id> again. |
 | 10 | Stop the processes and the agents that intent \<intent id> started: servers, watchers, background jobs and subagents. Plastic runs none of them and stops none of them. |
 
-The command is `Plastic::Commands::Intent::End`, in [`end.rb:9`](../../../../lib/plastic/commands/intent/end.rb#L9).
+The command is `Plastic::Commands::Intent::End`, in [`commands/intent/end.rb`](../../../../lib/plastic/commands/intent/end.rb).

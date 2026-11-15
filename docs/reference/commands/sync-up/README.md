@@ -35,4 +35,4 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 
 Goes with the store: the files of the store carry the change, and `plastic sync up` rebuilds it on another machine. The database files themselves stay on this machine.
 
-The command is `Plastic::Commands::Sync::Up`, in [`up.rb:15`](../../../../lib/plastic/commands/sync/up.rb#L15).
+The command is `Plastic::Commands::Sync::Up`, in [`commands/sync/up.rb`](../../../../lib/plastic/commands/sync/up.rb).

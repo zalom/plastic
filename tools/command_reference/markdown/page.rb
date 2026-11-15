@@ -64,7 +64,7 @@ module CommandReference
       end
 
       def footer
-        ["The command is `#{@page.klass.name}`, in #{@links.code(@page.file, @page.line)}.", ""]
+        ["The command is `#{@page.klass.name}`, in #{@links.file(@page.file)}.", ""]
       end
     end
   end

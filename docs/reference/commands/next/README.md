@@ -28,4 +28,4 @@ This command changes nothing.
 | --- | --- |
 | 2 | The instruction for the next step of the delivery: the owner's go-ahead while none is recorded, then the step the state of the intent calls for |
 
-The command is `Plastic::Commands::Next`, in [`next.rb:8`](../../../../lib/plastic/commands/next.rb#L8).
+The command is `Plastic::Commands::Next`, in [`commands/next.rb`](../../../../lib/plastic/commands/next.rb).

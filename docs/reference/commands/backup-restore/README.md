@@ -33,4 +33,4 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 | The chosen databases of the store are replaced by the copies of the backup folder | the database files of the store, in the store folder | stays on this machine |
 | A safety backup of the replaced databases is written | the backups folder, in the store folder | stays on this machine |
 
-The command is `Plastic::Commands::Backup::Restore`, in [`restore.rb:12`](../../../../lib/plastic/commands/backup/restore.rb#L12).
+The command is `Plastic::Commands::Backup::Restore`, in [`commands/backup/restore.rb`](../../../../lib/plastic/commands/backup/restore.rb).

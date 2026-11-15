@@ -24,4 +24,4 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 | --- | --- | --- |
 | The setting is written to config.yml in the Plastic home | the Plastic home folder | stays on this machine |
 
-The command is `Plastic::Commands::Config::Set`, in [`set.rb:12`](../../../../lib/plastic/commands/config/set.rb#L12).
+The command is `Plastic::Commands::Config::Set`, in [`commands/config/set.rb`](../../../../lib/plastic/commands/config/set.rb).

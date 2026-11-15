@@ -29,4 +29,4 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 | Plastic is installed into the Plastic home | the Plastic home folder | stays on this machine |
 | The instructions and hooks of each picked harness are written | the settings of the agent harness, in the home folder | stays on this machine |
 
-The command is `Plastic::Commands::Init`, in [`init.rb:12`](../../../../lib/plastic/commands/init.rb#L12).
+The command is `Plastic::Commands::Init`, in [`commands/init.rb`](../../../../lib/plastic/commands/init.rb).

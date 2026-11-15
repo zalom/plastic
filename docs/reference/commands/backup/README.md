@@ -32,4 +32,4 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 | A backup folder with a copy of each chosen database is written | the backups folder, in the store folder | stays on this machine |
 | The run of the call is kept for a resume | the work graph database, in the store folder | stays on this machine |
 
-The command is `Plastic::Commands::Backup`, in [`backup.rb:10`](../../../../lib/plastic/commands/backup.rb#L10).
+The command is `Plastic::Commands::Backup`, in [`commands/backup.rb`](../../../../lib/plastic/commands/backup.rb).

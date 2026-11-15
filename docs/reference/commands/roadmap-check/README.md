@@ -20,4 +20,4 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 
 This command changes nothing.
 
-The command is `Plastic::Commands::Roadmap::Check`, in [`check.rb:9`](../../../../lib/plastic/commands/roadmap/check.rb#L9).
+The command is `Plastic::Commands::Roadmap::Check`, in [`commands/roadmap/check.rb`](../../../../lib/plastic/commands/roadmap/check.rb).

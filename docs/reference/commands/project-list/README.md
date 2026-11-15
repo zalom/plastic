@@ -16,4 +16,4 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 
 This command changes nothing.
 
-The command is `Plastic::Commands::Project::List`, in [`list.rb:10`](../../../../lib/plastic/commands/project/list.rb#L10).
+The command is `Plastic::Commands::Project::List`, in [`commands/project/list.rb`](../../../../lib/plastic/commands/project/list.rb).

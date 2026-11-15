@@ -16,4 +16,4 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 
 This command changes nothing.
 
-The command is `Plastic::Commands::Status`, in [`status.rb:14`](../../../../lib/plastic/commands/status.rb#L14).
+The command is `Plastic::Commands::Status`, in [`commands/status.rb`](../../../../lib/plastic/commands/status.rb).

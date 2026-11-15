@@ -16,4 +16,4 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 
 This command changes nothing.
 
-The command is `Plastic::Commands::Version`, in [`version.rb:9`](../../../../lib/plastic/commands/version.rb#L9).
+The command is `Plastic::Commands::Version`, in [`commands/version.rb`](../../../../lib/plastic/commands/version.rb).

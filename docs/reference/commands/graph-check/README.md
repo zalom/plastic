@@ -20,4 +20,4 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 
 This command changes nothing.
 
-The command is `Plastic::Commands::Graph::Check`, in [`check.rb:9`](../../../../lib/plastic/commands/graph/check.rb#L9).
+The command is `Plastic::Commands::Graph::Check`, in [`commands/graph/check.rb`](../../../../lib/plastic/commands/graph/check.rb).

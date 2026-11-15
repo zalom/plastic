@@ -35,4 +35,4 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 | --- | --- |
 | 4 | Enola maps the code architecture of a project. It is optional: Plastic works without it. To install it, read the release notes and run its installer from https://github.com/enola-labs/enola/releases/tag/v0.4.39, then set up Enola's hooks and its MCP server for this harness |
 
-The command is `Plastic::Commands::Install`, in [`install.rb:9`](../../../../lib/plastic/commands/install.rb#L9).
+The command is `Plastic::Commands::Install`, in [`commands/install.rb`](../../../../lib/plastic/commands/install.rb).

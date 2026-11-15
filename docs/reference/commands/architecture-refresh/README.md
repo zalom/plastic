@@ -22,4 +22,4 @@ This command changes nothing.
 | --- | --- |
 | 1 | Regenerate the project's architecture map with an architecture mapping tool such as Enola; the choice of tool is yours. Read the new map for context. When you deliver an intent, note the tool, the source revision the map describes, what it covers and what it leaves out as the Architecture map: line under Verification in outcome.md. |
 
-The command is `Plastic::Commands::Architecture::Refresh`, in [`refresh.rb:9`](../../../../lib/plastic/commands/architecture/refresh.rb#L9).
+The command is `Plastic::Commands::Architecture::Refresh`, in [`commands/architecture/refresh.rb`](../../../../lib/plastic/commands/architecture/refresh.rb).

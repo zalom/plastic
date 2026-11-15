@@ -21,4 +21,4 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 
 This command changes nothing.
 
-The command is `Plastic::Commands::Config::Get`, in [`get.rb:11`](../../../../lib/plastic/commands/config/get.rb#L11).
+The command is `Plastic::Commands::Config::Get`, in [`commands/config/get.rb`](../../../../lib/plastic/commands/config/get.rb).

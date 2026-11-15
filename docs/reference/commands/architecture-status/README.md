@@ -22,4 +22,4 @@ This command changes nothing.
 | --- | --- |
 | 1 | Check whether the project has an architecture map and whether it describes the source as it is now. Use an architecture mapping tool such as Enola; the choice of tool is yours. When the map is current, read it for context. When it is missing or older than the source, refresh it. |
 
-The command is `Plastic::Commands::Architecture::Status`, in [`status.rb:9`](../../../../lib/plastic/commands/architecture/status.rb#L9).
+The command is `Plastic::Commands::Architecture::Status`, in [`commands/architecture/status.rb`](../../../../lib/plastic/commands/architecture/status.rb).

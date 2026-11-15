@@ -21,4 +21,4 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 
 This command changes nothing.
 
-The command is `Plastic::Commands::Document::Get`, in [`get.rb:9`](../../../../lib/plastic/commands/document/get.rb#L9).
+The command is `Plastic::Commands::Document::Get`, in [`commands/document/get.rb`](../../../../lib/plastic/commands/document/get.rb).

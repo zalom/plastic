@@ -20,4 +20,4 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 
 This command changes nothing.
 
-The command is `Plastic::Commands::Config::List`, in [`list.rb:12`](../../../../lib/plastic/commands/config/list.rb#L12).
+The command is `Plastic::Commands::Config::List`, in [`commands/config/list.rb`](../../../../lib/plastic/commands/config/list.rb).

@@ -21,4 +21,4 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 
 This command changes nothing.
 
-The command is `Plastic::Commands::Roadmap::Show`, in [`show.rb:9`](../../../../lib/plastic/commands/roadmap/show.rb#L9).
+The command is `Plastic::Commands::Roadmap::Show`, in [`commands/roadmap/show.rb`](../../../../lib/plastic/commands/roadmap/show.rb).

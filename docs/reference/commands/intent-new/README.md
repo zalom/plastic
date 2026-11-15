@@ -33,4 +33,4 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 
 Goes with the store: the files of the store carry the change, and `plastic sync up` rebuilds it on another machine. The database files themselves stay on this machine.
 
-The command is `Plastic::Commands::Intent::New`, in [`new.rb:10`](../../../../lib/plastic/commands/intent/new.rb#L10).
+The command is `Plastic::Commands::Intent::New`, in [`commands/intent/new.rb`](../../../../lib/plastic/commands/intent/new.rb).

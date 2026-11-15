@@ -20,4 +20,4 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 
 This command changes nothing.
 
-The command is `Plastic::Commands::Doctor`, in [`doctor.rb:7`](../../../../lib/plastic/commands/doctor.rb#L7).
+The command is `Plastic::Commands::Doctor`, in [`commands/doctor.rb`](../../../../lib/plastic/commands/doctor.rb).

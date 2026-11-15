@@ -39,4 +39,4 @@ Goes with the store: the files of the store carry the change, and `plastic sync 
 | --- | --- |
 | 8 | The instruction to pick the retrieved evidence that bears on the intent and to submit it with plastic intent context |
 
-The command is `Plastic::Commands::Intent::Discover`, in [`discover.rb:9`](../../../../lib/plastic/commands/intent/discover.rb#L9).
+The command is `Plastic::Commands::Intent::Discover`, in [`commands/intent/discover.rb`](../../../../lib/plastic/commands/intent/discover.rb).

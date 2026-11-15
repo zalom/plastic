@@ -22,4 +22,4 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 
 This command changes nothing.
 
-The command is `Plastic::Commands::Search`, in [`search.rb:8`](../../../../lib/plastic/commands/search.rb#L8).
+The command is `Plastic::Commands::Search`, in [`commands/search.rb`](../../../../lib/plastic/commands/search.rb).

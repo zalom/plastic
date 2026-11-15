@@ -32,4 +32,4 @@ This command changes nothing.
 | --- | --- |
 | 5 | The instruction for the next step of the delivery: the owner's go-ahead while none is recorded, then the step the state of the intent calls for |
 
-The command is `Plastic::Commands::Intent::Spec`, in [`spec.rb:9`](../../../../lib/plastic/commands/intent/spec.rb#L9).
+The command is `Plastic::Commands::Intent::Spec`, in [`commands/intent/spec.rb`](../../../../lib/plastic/commands/intent/spec.rb).

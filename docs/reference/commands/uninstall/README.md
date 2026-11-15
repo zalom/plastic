@@ -31,4 +31,4 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 | The records of the removed installations are deleted | the Plastic home folder | stays on this machine |
 | The release folders and the launcher are removed from the Plastic home | the Plastic home folder | stays on this machine |
 
-The command is `Plastic::Commands::Uninstall`, in [`uninstall.rb:12`](../../../../lib/plastic/commands/uninstall.rb#L12).
+The command is `Plastic::Commands::Uninstall`, in [`commands/uninstall.rb`](../../../../lib/plastic/commands/uninstall.rb).

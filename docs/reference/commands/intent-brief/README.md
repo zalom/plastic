@@ -32,4 +32,4 @@ This command changes nothing.
 | --- | --- |
 | 8 | The instruction for the next step of the delivery: the owner's go-ahead while none is recorded, then the step the state of the intent calls for |
 
-The command is `Plastic::Commands::Intent::Brief`, in [`brief.rb:11`](../../../../lib/plastic/commands/intent/brief.rb#L11).
+The command is `Plastic::Commands::Intent::Brief`, in [`commands/intent/brief.rb`](../../../../lib/plastic/commands/intent/brief.rb).

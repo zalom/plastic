@@ -16,4 +16,4 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 
 This command changes nothing.
 
-The command is `Plastic::Commands::Project::Links`, in [`links.rb:13`](../../../../lib/plastic/commands/project/links.rb#L13).
+The command is `Plastic::Commands::Project::Links`, in [`commands/project/links.rb`](../../../../lib/plastic/commands/project/links.rb).

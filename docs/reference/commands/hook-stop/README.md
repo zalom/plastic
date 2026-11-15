@@ -18,4 +18,4 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 | --- | --- | --- |
 | The last turn of the session is stamped and its live locks are renewed | the local database, in the home folder | stays on this machine |
 
-The command is `Plastic::Hooks::Stop`, in [`stop.rb:14`](../../../../lib/plastic/hooks/stop.rb#L14).
+The command is `Plastic::Hooks::Stop`, in [`hooks/stop.rb`](../../../../lib/plastic/hooks/stop.rb).

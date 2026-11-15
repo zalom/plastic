@@ -20,4 +20,4 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 
 This command changes nothing.
 
-The command is `Plastic::Commands::Graph::Ready`, in [`ready.rb:9`](../../../../lib/plastic/commands/graph/ready.rb#L9).
+The command is `Plastic::Commands::Graph::Ready`, in [`commands/graph/ready.rb`](../../../../lib/plastic/commands/graph/ready.rb).

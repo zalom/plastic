@@ -27,4 +27,4 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 
 This command changes nothing.
 
-The command is `Plastic::Commands::Rollback`, in [`rollback.rb:9`](../../../../lib/plastic/commands/rollback.rb#L9).
+The command is `Plastic::Commands::Rollback`, in [`commands/rollback.rb`](../../../../lib/plastic/commands/rollback.rb).

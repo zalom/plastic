@@ -31,4 +31,4 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 | The installed agents are refreshed | the settings of the agent harness, in the home folder | stays on this machine |
 | The newer release is downloaded and made the active release | the Plastic home folder | stays on this machine |
 
-The command is `Plastic::Commands::Update`, in [`update.rb:10`](../../../../lib/plastic/commands/update.rb#L10).
+The command is `Plastic::Commands::Update`, in [`commands/update.rb`](../../../../lib/plastic/commands/update.rb).

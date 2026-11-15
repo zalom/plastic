@@ -20,4 +20,4 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 
 This command changes nothing.
 
-The command is `Plastic::Commands::Graph::Resume`, in [`resume.rb:10`](../../../../lib/plastic/commands/graph/resume.rb#L10).
+The command is `Plastic::Commands::Graph::Resume`, in [`commands/graph/resume.rb`](../../../../lib/plastic/commands/graph/resume.rb).

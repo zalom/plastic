@@ -21,4 +21,4 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 
 This command changes nothing.
 
-The command is `Plastic::Commands::Roadmap::Next`, in [`next.rb:9`](../../../../lib/plastic/commands/roadmap/next.rb#L9).
+The command is `Plastic::Commands::Roadmap::Next`, in [`commands/roadmap/next.rb`](../../../../lib/plastic/commands/roadmap/next.rb).
