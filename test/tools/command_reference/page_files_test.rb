@@ -28,7 +28,15 @@ class CommandReferencePageFilesTest < Minitest::Test
   def test_the_page_of_intent_end_ends_with_the_line_that_names_the_class_and_the_file
     last = readme("intent end").lines(chomp: true).reject(&:empty?).last
 
-    assert_match(/\AThe command is `Plastic::Commands::Intent::End`, in .*lib\/plastic\/commands\/intent\/end\.rb/, last)
+    assert_match(/\AThe command is `Plastic::Commands::Intent::End`, in \[`commands\/intent\/end\.rb`\]\(.*lib\/plastic\/commands\/intent\/end\.rb\)\.\z/, last)
+  end
+
+  def test_no_page_ends_with_a_link_to_a_line_of_the_source
+    CommandReferenceHelper.pages.each_value do |each|
+      last = readme(each.words).lines(chomp: true).reject(&:empty?).last
+
+      refute_includes last, "#L", each.words
+    end
   end
 
   def test_every_page_names_the_full_class_of_its_command_in_the_last_line
