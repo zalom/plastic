@@ -210,11 +210,18 @@ class IntentEndMergeTest < Plastic::TestCase
     refute_match(/--judge|--evidence/, finish.out)
   end
 
-  def test_the_merge_handoff_tells_the_agent_to_merge_its_own_pull_request
+  def test_the_merge_handoff_tells_the_agent_to_merge_the_pull_request_with_the_projects_version_control
     lacking_merge_record
     out = finish.out
 
-    assert_match(/merge (its|your) own pull request/i, out)
+    assert_match(/AGENTS\.md or CLAUDE\.md/, out)
+    assert_match(/merge the pull request of intent 1 into the intent's base/, out)
+  end
+
+  def test_the_merge_handoff_leaves_the_pull_request_open_only_when_the_owner_asked_and_names_sync_up
+    lacking_merge_record
+    out = finish.out
+
     assert_match(/only when the owner asked/i, out)
     assert_match(/plastic sync up/, out)
   end
