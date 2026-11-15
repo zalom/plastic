@@ -30,7 +30,7 @@ Marks a roadmap item dropped. Its edges stay; items after it stop waiting for it
 
 Its rows run in this order:
 
-1. Gate: passes when `!context.retrieval.roadmap(context.slug).nil?`; otherwise the call stops with exit 1 and prints no roadmap SLUG. [`drop.rb:16`](../../../../lib/plastic/workflows/code/roadmap/drop.rb#L16)
+1. Gate: passes when `!context.retrieval.roadmap(context.slug).nil?`; otherwise the call stops with exit 1 and prints no roadmap SLUG. [`roadmap_workflow.rb:14`](../../../../lib/plastic/workflows/code/roadmap/roadmap_workflow.rb#L14)
 2. Read: find the item. [`drop.rb:18`](../../../../lib/plastic/workflows/code/roadmap/drop.rb#L18)
 3. Gate: passes when `!context.item.nil?`; otherwise the call stops with exit 1 and prints no item ITEM_ID on roadmap SLUG. [`drop.rb:22`](../../../../lib/plastic/workflows/code/roadmap/drop.rb#L22)
 4. Step: drop the item. Done when `context.dropped`, so a second call skips it. [`drop.rb:24`](../../../../lib/plastic/workflows/code/roadmap/drop.rb#L24)
@@ -67,7 +67,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| no roadmap SLUG | 1 | prints no next: line | [`drop.rb:16`](../../../../lib/plastic/workflows/code/roadmap/drop.rb#L16) |
+| no roadmap SLUG | 1 | prints no next: line | [`roadmap_workflow.rb:14`](../../../../lib/plastic/workflows/code/roadmap/roadmap_workflow.rb#L14) |
 | no item ITEM_ID on roadmap SLUG | 1 | prints no next: line | [`drop.rb:22`](../../../../lib/plastic/workflows/code/roadmap/drop.rb#L22) |
 | item ITEM_ID no longer blocks its successors | 0 | plastic roadmap next SLUG | [`drop.rb:32`](../../../../lib/plastic/workflows/code/roadmap/drop.rb#L32) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |

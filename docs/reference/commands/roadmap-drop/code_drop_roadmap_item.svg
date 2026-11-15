@@ -72,7 +72,7 @@
 <text x="436" y="22" class="tm tag-muted" text-anchor="end">drop.rb:11</text>
 <rect x="16" y="34" width="420" height="60" rx="6" class="card"/>
 <text x="26" y="49" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="49" class="tm tag-muted" text-anchor="end">drop.rb:16</text>
+<text x="426" y="49" class="tm tag-muted" text-anchor="end">roadmap_workflow.rb:14</text>
 <text x="26" y="66" class="tm" text-anchor="start">passes when</text>
 <text x="26" y="81" class="tm" text-anchor="start">!context.retrieval.roadmap(context.slug).nil?</text>
 <path d="M 436 52 L 464 52" class="wire-failure"/>

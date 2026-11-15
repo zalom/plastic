@@ -28,7 +28,7 @@ Prints each finding, or "no findings"; a finding fails the call.
 
 Its rows run in this order:
 
-1. Gate: passes when `!context.retrieval.roadmap(context.slug).nil?`; otherwise the call stops with exit 1 and prints no roadmap SLUG. [`check.rb:16`](../../../../lib/plastic/workflows/code/roadmap/check.rb#L16)
+1. Gate: passes when `!context.retrieval.roadmap(context.slug).nil?`; otherwise the call stops with exit 1 and prints no roadmap SLUG. [`roadmap_workflow.rb:14`](../../../../lib/plastic/workflows/code/roadmap/roadmap_workflow.rb#L14)
 2. Read: find problems. [`check.rb:18`](../../../../lib/plastic/workflows/code/roadmap/check.rb#L18)
 3. Gate: passes when `context.findings.empty?`; otherwise the call stops with exit 1 and prints see the findings above. [`check.rb:30`](../../../../lib/plastic/workflows/code/roadmap/check.rb#L30)
 4. Outcome `:done`, always: finishes with exit 0; next: plastic roadmap show SLUG. [`check.rb:32`](../../../../lib/plastic/workflows/code/roadmap/check.rb#L32)
@@ -56,7 +56,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| no roadmap SLUG | 1 | prints no next: line | [`check.rb:16`](../../../../lib/plastic/workflows/code/roadmap/check.rb#L16) |
+| no roadmap SLUG | 1 | prints no next: line | [`roadmap_workflow.rb:14`](../../../../lib/plastic/workflows/code/roadmap/roadmap_workflow.rb#L14) |
 | see the findings above | 1 | prints no next: line | [`check.rb:30`](../../../../lib/plastic/workflows/code/roadmap/check.rb#L30) |
 | roadmap SLUG has no findings | 0 | plastic roadmap show SLUG | [`check.rb:32`](../../../../lib/plastic/workflows/code/roadmap/check.rb#L32) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |

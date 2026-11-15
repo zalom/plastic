@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "../../../code_workflow"
+require_relative "roadmap_workflow"
 require_relative "../../../graph/knowledge/roadmap/state"
 
 module Plastic
@@ -9,12 +9,12 @@ module Plastic
       module Roadmap
         # Finds the first ready item of a roadmap, ranked by batch then item
         # position. With nothing ready, it names what is in flight and blocked.
-        class Next < CodeWorkflow
+        class Next < RoadmapWorkflow
           clear_declarations
 
-          sets :ready, :ready_id, :open
+          roadmap_gate
 
-          gate "no roadmap %{slug}", stops: :failure, pass: ->(context) { !context.retrieval.roadmap(context.slug).nil? }
+          sets :ready, :ready_id, :open
 
           def self.items_of(context)
             all = context.retrieval.roadmap_items(context.slug)

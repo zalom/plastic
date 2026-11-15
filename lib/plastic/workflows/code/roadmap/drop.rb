@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "../../../code_workflow"
+require_relative "roadmap_workflow"
 
 module Plastic
   module Workflows
@@ -8,12 +8,12 @@ module Plastic
       module Roadmap
         # Marks a roadmap item dropped. Its edges stay; items after it stop
         # waiting for it, since a dropped predecessor counts as resolved.
-        class Drop < CodeWorkflow
+        class Drop < RoadmapWorkflow
           clear_declarations
 
-          sets :item, :dropped
+          roadmap_gate
 
-          gate "no roadmap %{slug}", stops: :failure, pass: ->(context) { !context.retrieval.roadmap(context.slug).nil? }
+          sets :item, :dropped
 
           read "find the item" do |context|
             context[:item] = context.retrieval.roadmap_items(context.slug).find { |item| item.item == context.item_id }

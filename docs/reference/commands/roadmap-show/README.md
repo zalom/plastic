@@ -31,7 +31,7 @@ Prints each batch with its goal and done criteria, then each item with its deriv
 
 Its rows run in this order:
 
-1. Gate: passes when `!context.retrieval.roadmap(context.slug).nil?`; otherwise the call stops with exit 1 and prints no roadmap SLUG. [`show.rb:15`](../../../../lib/plastic/workflows/code/roadmap/show.rb#L15)
+1. Gate: passes when `!context.retrieval.roadmap(context.slug).nil?`; otherwise the call stops with exit 1 and prints no roadmap SLUG. [`roadmap_workflow.rb:14`](../../../../lib/plastic/workflows/code/roadmap/roadmap_workflow.rb#L14)
 2. Read: print each batch and item. [`show.rb:17`](../../../../lib/plastic/workflows/code/roadmap/show.rb#L17)
 3. Outcome `:done`, always: finishes with exit 0; next: plastic roadmap next SLUG. [`show.rb:21`](../../../../lib/plastic/workflows/code/roadmap/show.rb#L21)
 
@@ -56,7 +56,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| no roadmap SLUG | 1 | prints no next: line | [`show.rb:15`](../../../../lib/plastic/workflows/code/roadmap/show.rb#L15) |
+| no roadmap SLUG | 1 | prints no next: line | [`roadmap_workflow.rb:14`](../../../../lib/plastic/workflows/code/roadmap/roadmap_workflow.rb#L14) |
 | the rows hold this roadmap | 0 | plastic roadmap next SLUG | [`show.rb:21`](../../../../lib/plastic/workflows/code/roadmap/show.rb#L21) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
 

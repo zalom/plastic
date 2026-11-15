@@ -29,7 +29,7 @@ Finds the first ready item of a roadmap, ranked by batch then item position. Wit
 
 Its rows run in this order:
 
-1. Gate: passes when `!context.retrieval.roadmap(context.slug).nil?`; otherwise the call stops with exit 1 and prints no roadmap SLUG. [`next.rb:17`](../../../../lib/plastic/workflows/code/roadmap/next.rb#L17)
+1. Gate: passes when `!context.retrieval.roadmap(context.slug).nil?`; otherwise the call stops with exit 1 and prints no roadmap SLUG. [`roadmap_workflow.rb:14`](../../../../lib/plastic/workflows/code/roadmap/roadmap_workflow.rb#L14)
 2. Read: find the first ready item, or say what is in the way. [`next.rb:28`](../../../../lib/plastic/workflows/code/roadmap/next.rb#L28)
 3. Outcome `:ready`, when `!context.ready.nil?`: finishes with exit 0; next: plastic roadmap open SLUG READY_ID. [`next.rb:45`](../../../../lib/plastic/workflows/code/roadmap/next.rb#L45)
 4. Outcome `:delivered`, when `context.open.empty?`: finishes with exit 0; next: plastic roadmap show SLUG. [`next.rb:47`](../../../../lib/plastic/workflows/code/roadmap/next.rb#L47)
@@ -58,7 +58,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| no roadmap SLUG | 1 | prints no next: line | [`next.rb:17`](../../../../lib/plastic/workflows/code/roadmap/next.rb#L17) |
+| no roadmap SLUG | 1 | prints no next: line | [`roadmap_workflow.rb:14`](../../../../lib/plastic/workflows/code/roadmap/roadmap_workflow.rb#L14) |
 | item READY_ID is ready | 0 | plastic roadmap open SLUG READY_ID | [`next.rb:45`](../../../../lib/plastic/workflows/code/roadmap/next.rb#L45) |
 | every item of SLUG is done or dropped | 0 | plastic roadmap show SLUG | [`next.rb:47`](../../../../lib/plastic/workflows/code/roadmap/next.rb#L47) |
 | no item of SLUG is ready yet | 0 | plastic roadmap show SLUG | [`next.rb:49`](../../../../lib/plastic/workflows/code/roadmap/next.rb#L49) |
