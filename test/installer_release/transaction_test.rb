@@ -19,18 +19,18 @@ class InstallerReleaseTransactionTest < Minitest::Test
   end
 
   def test_a_step_that_completes_returns_its_value_and_keeps_its_work
-    assert_equal [:added, %w[2.0.3]], [transaction.run { add_release("2.0.3") }, releases.versions]
+    assert_equal [:added, %w[2.0.3]], [transaction.call { add_release("2.0.3") }, releases.versions]
   end
 
   def test_a_completed_step_leaves_no_journal
-    transaction.run { add_release("2.0.3") }
+    transaction.call { add_release("2.0.3") }
 
     refute_path_exists File.join(share, "activation")
   end
 
   def test_a_failed_step_is_undone_and_raised_as_an_activation_error
     error = assert_raises(InstallerRelease::ActivationError) do
-      transaction.run { add_release("2.0.3") && raise("disk full") }
+      transaction.call { add_release("2.0.3") && raise("disk full") }
     end
 
     assert_equal ["disk full", []], [error.message, releases.versions]
@@ -40,14 +40,14 @@ class InstallerReleaseTransactionTest < Minitest::Test
     FileUtils.mkdir_p(share)
     File.write(File.join(share, "VERSION"), "2.0.2\n")
 
-    assert_equal %w[2.0.2], transaction.run { releases.versions }
+    assert_equal %w[2.0.2], transaction.call { releases.versions }
   end
 
   def test_a_step_while_another_installer_holds_the_lock_does_not_run
     ran = false
 
     InstallerRelease::InstallLock.hold(share) do
-      assert_raises(InstallerRelease::ActivationError) { transaction.run { ran = true } }
+      assert_raises(InstallerRelease::ActivationError) { transaction.call { ran = true } }
     end
 
     refute ran

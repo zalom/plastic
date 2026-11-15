@@ -115,14 +115,14 @@ class KnowledgeSyncPreviewTest < Plastic::TestCase
 
   def test_a_dry_run_of_sync_up_keeps_each_file_the_real_run_cannot_read_with_its_reason
     write("store/1--alpha/graph.json", "{\"hand\":true}\n")
-    run = Plastic::Graph::Knowledge::Sync::Preview.new(@plastic_home, "global", {}).run
+    run = Plastic::Graph::Knowledge::Sync::Preview.new(@plastic_home, "global", {}).preview
 
     assert_equal [["store/1--alpha/graph.json"], []], [run.unreadable_files.keys, run.unreadable]
   end
 
   def test_a_dry_run_of_sync_down_keeps_no_file_to_refuse
     write("store/1--alpha/graph.json", "{\"hand\":true}\n")
-    run = Plastic::Graph::Knowledge::Sync::Preview.new(@plastic_home, "global", {}, direction: :down).run
+    run = Plastic::Graph::Knowledge::Sync::Preview.new(@plastic_home, "global", {}, direction: :down).preview
 
     assert_empty run.unreadable_files
   end

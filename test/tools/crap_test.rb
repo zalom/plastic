@@ -158,7 +158,7 @@ class CrapCLITest < Minitest::Test
       FileUtils.mkdir_p(File.join(root, "lib/shop"))
       File.write(File.join(root, "lib/shop/order.rb"), SOURCE)
       out = StringIO.new
-      status = Crap::CLI.new(["--threshold", "30", "lib/shop/order.rb"], root: root, out: out).run
+      status = Crap::CLI.new(["--threshold", "30", "lib/shop/order.rb"], root: root, out: out).call
 
       assert_equal 1, status
       assert_includes out.string, "56.0    7          0%        Shop::Order#branchy"
@@ -172,7 +172,7 @@ class CrapCLITest < Minitest::Test
       File.write(File.join(root, "lib/shop/order.rb"), SOURCE)
       out = StringIO.new
       git = ->(*) { "+++ b/lib/shop/order.rb\n@@ -3 +3 @@\n" }
-      status = Crap::CLI.new(["--since", "main", "lib/shop/order.rb"], root: root, out: out, git: git).run
+      status = Crap::CLI.new(["--since", "main", "lib/shop/order.rb"], root: root, out: out, git: git).call
 
       assert_equal 0, status
       assert_includes out.string, "1 methods, 0 above CRAP 30"
@@ -182,28 +182,28 @@ class CrapCLITest < Minitest::Test
   def test_cli_prints_usage_with_help
     out = StringIO.new
 
-    assert_equal 0, Crap::CLI.new(["--help"], root: Dir.pwd, out: out).run
+    assert_equal 0, Crap::CLI.new(["--help"], root: Dir.pwd, out: out).call
     assert_includes out.string, "Exit codes: 0 no method above the threshold"
   end
 
   def test_cli_rejects_an_unknown_option_with_usage
     out = StringIO.new
 
-    assert_equal 2, Crap::CLI.new(["--bogus"], root: Dir.pwd, out: out).run
+    assert_equal 2, Crap::CLI.new(["--bogus"], root: Dir.pwd, out: out).call
     assert_includes out.string, "Usage: bin/crap"
   end
 
   def test_cli_rejects_an_option_missing_its_value_at_the_end_of_the_arguments
     out = StringIO.new
 
-    assert_equal 2, Crap::CLI.new(["--threshold"], root: Dir.pwd, out: out).run
+    assert_equal 2, Crap::CLI.new(["--threshold"], root: Dir.pwd, out: out).call
     assert_includes out.string, "Usage: bin/crap"
   end
 
   def test_cli_rejects_an_option_missing_its_value_before_another_option
     out = StringIO.new
 
-    assert_equal 2, Crap::CLI.new(["--since", "--coverage", "coverage/.resultset.json"], root: Dir.pwd, out: out).run
+    assert_equal 2, Crap::CLI.new(["--since", "--coverage", "coverage/.resultset.json"], root: Dir.pwd, out: out).call
     assert_includes out.string, "Usage: bin/crap"
   end
 
@@ -213,7 +213,7 @@ class CrapCLITest < Minitest::Test
       File.write(File.join(root, "lib", "a.rb"), "def a\n  1\nend\n")
       out = StringIO.new
 
-      assert_equal 0, Crap::CLI.new([], root: root, out: out).run
+      assert_equal 0, Crap::CLI.new([], root: root, out: out).call
       assert_includes out.string, "#a"
     end
   end
@@ -223,7 +223,7 @@ class CrapCLITest < Minitest::Test
       write_covered_source(root)
       out = StringIO.new
 
-      assert_equal 0, Crap::CLI.new(["lib/a.rb"], root: root, out: out).run
+      assert_equal 0, Crap::CLI.new(["lib/a.rb"], root: root, out: out).call
       assert_includes out.string, "0%"
     end
   end

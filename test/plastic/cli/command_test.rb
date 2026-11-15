@@ -23,7 +23,7 @@ class CommandTest < Plastic::TestCase
   def run_tool(*argv, tool: Title, env: {})
     out = StringIO.new
     err = StringIO.new
-    code = tool.new(argv, words: "title", environment: environment(out:, err:, env:)).run
+    code = tool.new(argv, words: "title", environment: environment(out:, err:, env:)).respond
     CommandHelper::Result.new(out.string, err.string, code)
   end
 

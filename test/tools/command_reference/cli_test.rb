@@ -8,7 +8,7 @@ class CommandReferenceCliTest < Minitest::Test
 
   def run_cli(root, files, *argv)
     out = StringIO.new
-    code = CommandReference::CLI.new(argv, root:, out:, build: Built.new(files)).run
+    code = CommandReference::CLI.new(argv, root:, out:, build: Built.new(files)).call
     [code, out.string]
   end
 

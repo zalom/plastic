@@ -7,7 +7,7 @@ class CodeWorkflowReadTest < Plastic::TestCase
     ctx = context
     read = Plastic::CodeWorkflow::Read.new(name: "say", body: ->(c) { c.print("hello #{c.name}") })
 
-    assert_nil read.run(ctx, Flows::Greet)
+    assert_nil read.call(ctx, Flows::Greet)
     assert_equal ["hello ada"], ctx.printed
   end
 end
