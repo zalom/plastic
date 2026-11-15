@@ -1,0 +1,48 @@
+# frozen_string_literal: true
+
+require "minitest/autorun"
+
+# A method name says what the method does. `run` says nothing, and `take` hides
+# whether it locks, captures or reads, so neither names a method. Names that
+# start with `test_` are left out.
+class MethodNamesGuardTest < Minitest::Test
+  ROOT = File.expand_path("..", __dir__)
+  FOLDERS = %w[lib bin tools scripts exe test].freeze
+  DEFINITION = /^\s*def\s+(?:self\.)?([A-Za-z_]\w*[!?=]?)/
+  RUN = /\Arun!?\z/
+  TAKE = /\A(?:\w*_)?take(?:_\w*)?[!?=]?\z/
+
+  def sources
+    FOLDERS.flat_map { |folder| Dir[File.join(ROOT, folder, "**", "*")] }.select { |path| ruby_file?(path) }
+  end
+
+  def ruby_file?(path)
+    File.file?(path) && (path.end_with?(".rb") || File.open(path, &:gets).to_s.match?(/\A#!.*ruby/))
+  end
+
+  def defined_names(text) = text.scan(DEFINITION).flatten.reject { |name| name.start_with?("test_") }
+
+  def vague_names(text) = defined_names(text).grep(Regexp.union(RUN, TAKE))
+
+  def test_the_sources_are_read_from_the_disk
+    refute_empty sources
+  end
+
+  def test_the_detector_catches_run_and_take_methods
+    sample = "class A\n  def run\n  end\n\n  def self.take_lock(id)\n  end\n  def run!(*args)\n  end\nend\n"
+
+    assert_equal %w[run take_lock run!], vague_names(sample)
+  end
+
+  def test_the_detector_leaves_clear_names_and_test_names_alone
+    sample = "class A\n  def run_report\n  end\n\n  def last_run\n  end\n  def test_take_the_lock\n  end\n  def retake\n  end\nend\n"
+
+    assert_empty vague_names(sample)
+  end
+
+  def test_no_method_is_named_run_or_take
+    offenders = sources.to_h { |path| [path.delete_prefix("#{ROOT}/"), vague_names(File.read(path))] }.reject { |_, names| names.empty? }
+
+    assert_empty offenders
+  end
+end

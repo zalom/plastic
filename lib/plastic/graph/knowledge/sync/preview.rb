@@ -26,9 +26,9 @@ module Plastic
 
           def self.printed_over_lines(plan) = plan.printed_over.map { |path| Graph::Prints.printed_over_line(path) }
 
-          def call = run.lines
+          def call = preview.lines
 
-          def run
+          def preview
             found = Dir.mktmpdir("plastic-sync-preview", parent_dir) { |copy| run_in(copy) }
             found.with(lines: found.lines.map { |line| "preview: #{line}" })
           end

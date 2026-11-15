@@ -12,7 +12,7 @@ module Plastic
 
       # Nil when the change is in place; a Failed when the body ran and the
       # done check still fails.
-      def run(ctx, workflow)
+      def call(ctx, workflow)
         return if done?(ctx)
 
         body.call(ctx)

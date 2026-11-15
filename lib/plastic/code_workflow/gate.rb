@@ -14,7 +14,7 @@ module Plastic
       def templates = [reason, offers, because].compact
 
       # Nil when the gate lets the call through; otherwise the value that ends it.
-      def run(ctx, workflow)
+      def call(ctx, workflow)
         return if pass.call(ctx)
 
         ending(workflow.key, ctx.fill(reason), [offers, because].map { |template| template && ctx.fill(template) })

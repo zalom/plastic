@@ -356,7 +356,7 @@ end
   # test suite, skip a second install and reuse it. It is never given a
   # `core_file`: the swap below is destructive, so a shared fixture only ever
   # reaches here with none.
-  def self.run(repo:, repeat: DEFAULT_REPEAT, core_file: nil, dir: nil, fixture: nil, today: Date.today)
+  def self.bench(repo:, repeat: DEFAULT_REPEAT, core_file: nil, dir: nil, fixture: nil, today: Date.today)
     unless repeat.is_a?(Integer) && repeat >= 1
       raise ArgumentError, "repeat must be an integer of at least 1 (got #{repeat.inspect})"
     end
@@ -523,7 +523,7 @@ end
     # Where the CLI prints to and which checkout it measures by default.
     IO = Struct.new(:out, :err, :default_repo, keyword_init: true)
 
-    def self.run(argv, io = IO.new(out: $stdout, err: $stderr, default_repo: File.expand_path("../..", __dir__)),
+    def self.call(argv, io = IO.new(out: $stdout, err: $stderr, default_repo: File.expand_path("../..", __dir__)),
       fixture: nil)
       new(argv, io, fixture:).call
     end
@@ -539,7 +539,7 @@ end
     end
 
     def call
-      run
+      report
     rescue UsageError => error
       usage_error(error)
     rescue => error
@@ -548,7 +548,7 @@ end
 
     private
 
-    def run
+    def report
       request = Args.parse(@argv, default_repo: @io.default_repo)
       return show_help if request.help
 
@@ -556,7 +556,7 @@ end
     end
 
     def run_report(request)
-      ContextBudget.run(**request.run_kwargs, fixture: @fixture).print_to(@io.out)
+      ContextBudget.bench(**request.run_kwargs, fixture: @fixture).print_to(@io.out)
     end
 
     def usage_error(error)

@@ -13,7 +13,7 @@ module Plastic
 
         # What one statement did on a connection: the rows it returned.
         class Entry
-          def run(connection)
+          def execute(connection)
             rows = connection.read(sql, values)
             changed = connection.changes
             yield table, changed if table && changed.positive?

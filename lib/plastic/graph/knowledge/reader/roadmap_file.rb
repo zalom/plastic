@@ -40,10 +40,10 @@ module Plastic
           def parse(lines)
             @section = :head
             @target = @head
-            lines.each { |line| take(line) }
+            lines.each { |line| read_line(line) }
           end
 
-          def take(line)
+          def read_line(line)
             return heading(line) if line.start_with?("## ")
             return start(:items) if @section == :batches && line.start_with?("- [")
             return start(@section) if RECORD_STARTS[line] == @section

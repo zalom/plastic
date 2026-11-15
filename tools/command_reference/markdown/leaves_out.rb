@@ -16,11 +16,11 @@ module CommandReference
 
       private
 
-      def notes = [*refusal, *run].map { |text| "- #{text}" }.then { |items| items.empty? ? [] : [*items, ""] }
+      def notes = [*refusal, *routine_run_line].map { |text| "- #{text}" }.then { |items| items.empty? ? [] : [*items, ""] }
 
       def refusal = (NO_REFUSAL if @page.endings.none? { |ending| ending.exit_code == 3 } && @page.options.none? { |option| option.switch.start_with?("--dry-run") })
 
-      def run = (ROUTINE_RUN if @page.kind == :routine && @page.klass.writes.any?)
+      def routine_run_line = (ROUTINE_RUN if @page.kind == :routine && @page.klass.writes.any?)
     end
   end
 end

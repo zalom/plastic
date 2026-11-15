@@ -25,4 +25,4 @@
 
 require_relative "lib/context_budget"
 
-exit ContextBudget::CLI.run(ARGV)
+exit ContextBudget::CLI.call(ARGV)

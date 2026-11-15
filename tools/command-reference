@@ -3,4 +3,4 @@
 
 require_relative "command_reference"
 
-exit CommandReference::CLI.new(ARGV, root: File.expand_path("..", __dir__)).run
+exit CommandReference::CLI.new(ARGV, root: File.expand_path("..", __dir__)).call

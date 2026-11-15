@@ -216,7 +216,7 @@ module Crap
       @git = git
     end
 
-    def run
+    def call
       return usage if @arguments.help
       return usage(2) if @arguments.invalid?
 

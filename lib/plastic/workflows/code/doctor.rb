@@ -17,7 +17,7 @@ module Plastic
         sets :repairs
 
         read "check the installation, the databases, the hooks and the instruction files of the harness" do |context|
-          checks = Plastic::Doctor.run(context.scope, harness: context.harness_name || Plastic::Doctor.harness(context.scope, session: context.session))
+          checks = Plastic::Doctor.check(context.scope, harness: context.harness_name || Plastic::Doctor.harness(context.scope, session: context.session))
           checks.each { |check| context.row(check.label, check.value) }
           repairs = checks.filter_map(&:repair).uniq
           context.row("repair:", repairs) unless repairs.empty?
