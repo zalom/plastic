@@ -95,6 +95,12 @@ class BackupPurgeTest < Plastic::TestCase
     assert_nothing_deleted home, purge_call(home, "--store", "alpha", "--older-than", "last week"), "last week"
   end
 
+  def test_a_day_that_does_not_exist_refuses_and_names_it
+    home = seeded_home
+
+    assert_nothing_deleted home, purge_call(home, "--store", "alpha", "--older-than", "2026-02-30"), "2026-02-30"
+  end
+
   def test_a_folder_with_no_row_is_deleted
     home = seeded_home
     Plastic::Graph.create(home:, store: "alpha").databases.fetch(:local).transaction { |batch| batch.remove(:backups, name: "alpha/#{stamps.first}") }

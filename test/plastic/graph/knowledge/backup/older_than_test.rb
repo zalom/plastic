@@ -28,6 +28,16 @@ class KnowledgeBackupOlderThanTest < Plastic::TestCase
     assert_raises(OlderThan::Unreadable) { OlderThan.parse("2026-13-45") }
   end
 
+  def test_a_day_that_the_month_does_not_have_is_unreadable_instead_of_rolling_over
+    error = assert_raises(OlderThan::Unreadable) { OlderThan.parse("2026-02-30") }
+
+    assert_includes error.message, "2026-02-30"
+  end
+
+  def test_the_last_day_of_a_leap_february_is_a_day
+    assert_equal Time.new(2028, 2, 29), OlderThan.parse("2028-02-29")
+  end
+
   def test_a_time_with_no_offset_is_unreadable
     assert_raises(OlderThan::Unreadable) { OlderThan.parse("2026-10-05 16:00:00") }
   end
