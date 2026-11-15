@@ -90,7 +90,7 @@ class CommandReferenceEventsFigureTest < Minitest::Test
 
   def test_the_key_entries_of_an_events_drawing_leave_room_for_each_label
     drawings("events").each do |path, svg|
-      key_pairs(svg).each { |now, after| assert_operator room(now, after), :>=, 6 * now.text.to_s.size, "#{path}: #{now.text}" }
+      key_pairs(svg).each { |now, after| assert_operator room(now, after), :>=, CommandReference::Figures::Glyphs.width(now.text.to_s).ceil, "#{path}: #{now.text}" }
     end
   end
 

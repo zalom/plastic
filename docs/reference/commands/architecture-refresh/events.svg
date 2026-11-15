@@ -101,6 +101,6 @@
 <text x="492" y="170" class="t" text-anchor="start">The architecture map was refreshed.</text>
 <rect x="24" y="210" width="14" height="14" rx="3" class="lane-agent"/>
 <text x="44" y="222" class="k" text-anchor="start">Agent Workflow</text>
-<rect x="146" y="210" width="14" height="14" rx="3" class="stop-end"/>
-<text x="166" y="222" class="k" text-anchor="start">Ends</text>
+<rect x="143" y="210" width="14" height="14" rx="3" class="stop-end"/>
+<text x="163" y="222" class="k" text-anchor="start">Ends</text>
 </svg>

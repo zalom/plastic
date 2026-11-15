@@ -95,6 +95,6 @@
 <text x="492" y="100" class="t" text-anchor="start">Answers the event.</text>
 <rect x="24" y="145" width="14" height="14" rx="3" class="card"/>
 <text x="44" y="157" class="k" text-anchor="start">Hook</text>
-<rect x="86" y="145" width="14" height="14" rx="3" class="stop-end"/>
-<text x="106" y="157" class="k" text-anchor="start">Ends</text>
+<rect x="89" y="145" width="14" height="14" rx="3" class="stop-end"/>
+<text x="109" y="157" class="k" text-anchor="start">Ends</text>
 </svg>

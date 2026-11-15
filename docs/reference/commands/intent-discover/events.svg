@@ -162,8 +162,8 @@
 <text x="44" y="761" class="k" text-anchor="start">Code Workflow</text>
 <rect x="140" y="749" width="14" height="14" rx="3" class="lane-agent"/>
 <text x="160" y="761" class="k" text-anchor="start">Agent Workflow</text>
-<rect x="262" y="749" width="14" height="14" rx="3" class="stop-failure"/>
-<text x="282" y="761" class="k" text-anchor="start">Stops with a failure</text>
-<rect x="420" y="749" width="14" height="14" rx="3" class="stop-end"/>
-<text x="440" y="761" class="k" text-anchor="start">Ends</text>
+<rect x="259" y="749" width="14" height="14" rx="3" class="stop-failure"/>
+<text x="279" y="761" class="k" text-anchor="start">Stops with a failure</text>
+<rect x="395" y="749" width="14" height="14" rx="3" class="stop-end"/>
+<text x="415" y="761" class="k" text-anchor="start">Ends</text>
 </svg>

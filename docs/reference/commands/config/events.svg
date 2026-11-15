@@ -97,6 +97,6 @@
 <text x="492" y="116" class="t" text-anchor="start">next: plastic config list [HARNESS_WORDS]</text>
 <rect x="24" y="162" width="14" height="14" rx="3" class="card"/>
 <text x="44" y="174" class="k" text-anchor="start">Command</text>
-<rect x="104" y="162" width="14" height="14" rx="3" class="stop-end"/>
-<text x="124" y="174" class="k" text-anchor="start">Ends</text>
+<rect x="116" y="162" width="14" height="14" rx="3" class="stop-end"/>
+<text x="136" y="174" class="k" text-anchor="start">Ends</text>
 </svg>

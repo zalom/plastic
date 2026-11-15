@@ -108,10 +108,10 @@
 <text x="492" y="240" class="t" text-anchor="start">next: plastic intent new TITLE --project SLUG</text>
 <rect x="24" y="280" width="14" height="14" rx="3" class="card"/>
 <text x="44" y="292" class="k" text-anchor="start">Command</text>
-<rect x="104" y="280" width="14" height="14" rx="3" class="stop-failure"/>
-<text x="124" y="292" class="k" text-anchor="start">Stops with a failure</text>
-<rect x="262" y="280" width="14" height="14" rx="3" class="stop-refusal"/>
-<text x="282" y="292" class="k" text-anchor="start">Stops for the owner</text>
-<rect x="414" y="280" width="14" height="14" rx="3" class="stop-end"/>
-<text x="434" y="292" class="k" text-anchor="start">Ends</text>
+<rect x="116" y="280" width="14" height="14" rx="3" class="stop-failure"/>
+<text x="136" y="292" class="k" text-anchor="start">Stops with a failure</text>
+<rect x="252" y="280" width="14" height="14" rx="3" class="stop-refusal"/>
+<text x="272" y="292" class="k" text-anchor="start">Stops for the owner</text>
+<rect x="390" y="280" width="14" height="14" rx="3" class="stop-end"/>
+<text x="410" y="292" class="k" text-anchor="start">Ends</text>
 </svg>

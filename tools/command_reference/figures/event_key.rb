@@ -9,7 +9,6 @@ module CommandReference
         failure: ["stop-failure", "Stops with a failure"], refusal: ["stop-refusal", "Stops for the owner"],
         handoff: ["stop-handoff", "Hands off, run again"], end: ["stop-end", "Ends"]
       }.freeze
-      LETTER = 6.0
       GAP = 18
 
       def initialize(events)
@@ -27,7 +26,7 @@ module CommandReference
       def swatch(canvas, box, css, words)
         canvas.rect(box, css, rx: 3)
         canvas.text(box.at(20, 12), words, "k")
-        20 + (words.size * LETTER).ceil + GAP
+        20 + Glyphs.width(words).ceil + GAP
       end
 
       def items = [*lane_items, *stop_items]

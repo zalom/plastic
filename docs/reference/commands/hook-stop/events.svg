@@ -101,6 +101,6 @@
 <text x="492" y="154" class="t" text-anchor="start">Blocks the stop.</text>
 <rect x="24" y="194" width="14" height="14" rx="3" class="card"/>
 <text x="44" y="206" class="k" text-anchor="start">Hook</text>
-<rect x="86" y="194" width="14" height="14" rx="3" class="stop-end"/>
-<text x="106" y="206" class="k" text-anchor="start">Ends</text>
+<rect x="89" y="194" width="14" height="14" rx="3" class="stop-end"/>
+<text x="109" y="206" class="k" text-anchor="start">Ends</text>
 </svg>
