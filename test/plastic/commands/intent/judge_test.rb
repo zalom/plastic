@@ -29,7 +29,10 @@ class IntentJudgeTest < Plastic::TestCase
   end
 
   def test_an_option_exits_2
-    assert_equal [2, []], [judge("--verdict", "accept").code, verdicts]
+    result = judge("--verdict", "accept")
+
+    assert_equal [2, []], [result.code, verdicts]
+    assert_includes result.err, "invalid option: --verdict"
   end
 
   def test_a_call_after_two_verdicts_exits_3
@@ -89,7 +92,10 @@ class IntentJudgeRefusalTest < Plastic::TestCase
   include LifecycleHelper
 
   def test_a_missing_intent_fails
-    assert_equal 1, cli("intent", "judge", "9").code
+    result = cli("intent", "judge", "9")
+
+    assert_equal [1, ""], [result.code, result.out]
+    assert_includes result.err, "no intent 9 in this store"
   end
 
   %w[done abandoned].each do |status|

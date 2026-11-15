@@ -24,7 +24,20 @@ class RoadmapCheckTest < Plastic::TestCase
   def test_a_clean_roadmap_exits_0
     result = call("r1")
 
-    assert_equal 0, result.code
+    assert_equal [0, ""], [result.code, result.err]
+    assert_includes result.out, "no findings"
+    assert_includes result.out, "next: plastic roadmap show r1"
+  end
+
+  def test_a_roadmap_with_a_batch_and_no_items_exits_0_and_offers_the_show
+    plastic("roadmap", "new", "r2", table: Plastic::CLI::TABLE)
+    plastic("roadmap", "batch", "r2", "1", "--title", "T", "--goal", "G", table: Plastic::CLI::TABLE)
+
+    result = call("r2")
+
+    assert_equal [0, ""], [result.code, result.err]
+    assert_includes result.out, "no findings"
+    assert_includes result.out, "next: plastic roadmap show r2"
   end
 
   def test_a_dangling_edge_exits_1_naming_it

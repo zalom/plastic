@@ -17,7 +17,7 @@ class IntentRuleTest < Plastic::TestCase
 
     result = call("1", "Flowbite styles every delivery")
 
-    assert_includes result.out, "ruling: D1"
+    assert_call result, code: 0, err: "", out: ["ruling: D1", "next: plastic intent brief 1"]
     knowledge = store_graphs.databases.fetch(:knowledge)
 
     assert_equal 1, knowledge.row("SELECT COUNT(*) AS n FROM changes WHERE \"table\" = 'rulings'").fetch("n")
@@ -51,7 +51,8 @@ class IntentRuleTest < Plastic::TestCase
 
     result = call("1", "Flowbite styles every delivery", "--supersedes", "D9")
 
-    assert_equal 1, result.code
+    assert_equal [1, ""], [result.code, result.out]
+    assert_includes result.err, "no ruling D9 in intent 1"
     assert_empty store_graphs.retrieval.rulings("1")
   end
 end

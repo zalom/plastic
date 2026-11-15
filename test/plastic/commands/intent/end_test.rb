@@ -115,7 +115,7 @@ class IntentEndTest < Plastic::TestCase
 
     result = finish
 
-    assert_equal [1, "in_progress"], [result.code, retrieval.intent("1").status]
+    assert_equal [1, "in_progress", 0], [result.code, retrieval.intent("1").status, work_rows("completions").size]
     assert_includes result.out, "plastic intent judge 1"
     assert_match(/^next: plastic intent end 1/, result.out)
   end
@@ -207,8 +207,9 @@ class IntentEndMergeTest < Plastic::TestCase
     lacking_merge_record
     result = finish
 
-    assert_equal [1, "in_progress"], [result.code, retrieval.intent("1").status]
+    assert_equal [1, "in_progress", 0], [result.code, retrieval.intent("1").status, work_rows("completions").size]
     assert_includes result.out, "- Merged: "
+    assert_match(/^next: plastic intent end 1/, result.out)
   end
 
   def test_a_missing_merge_record_offers_the_end_again

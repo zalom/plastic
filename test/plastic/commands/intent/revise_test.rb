@@ -48,8 +48,7 @@ class IntentReviseTest < Plastic::TestCase
 
     result = call("1", "Beta, after grilling", "--dry-run")
 
-    assert_equal 0, result.code, result.err
-    assert_includes result.out, "what was: Alpha\nwhat: Beta, after grilling\n"
+    assert_call result, code: 0, out: ["what was: Alpha\nwhat: Beta, after grilling\n", "next: plastic intent revise 1 Beta,\\ after\\ grilling\n"]
     assert_equal ["Alpha", 1], [retrieval.intent("1").title, revisions]
   end
 
@@ -60,7 +59,7 @@ class IntentReviseTest < Plastic::TestCase
     second = call("1", "Gamma", "--why", "The goal moved again", "--dry-run")
 
     assert_includes first.out, "why was: none\nwhy: The owner moved the goal\n"
-    assert_includes second.out, "why was: The owner moved the goal\nwhy: The goal moved again\n"
+    assert_call second, code: 0, out: ["why was: The owner moved the goal\nwhy: The goal moved again\n", "next: plastic intent revise 1 Gamma --why The\\ goal\\ moved\\ again\n"]
   end
 
   def test_a_done_intent_exits_1_with_no_row_written_and_offers_plastic_next

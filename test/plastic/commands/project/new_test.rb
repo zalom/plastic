@@ -42,15 +42,15 @@ class ProjectNewTest < Plastic::TestCase
   def test_global_is_refused
     result = make("global", checkout)
 
-    assert_equal 3, result.code
-    assert_match(/global/, result.err)
+    assert_equal [3, ""], [result.code, result.out]
+    assert_includes result.err, "global is the name of the global store, not of a project"
   end
 
   def test_a_path_that_is_not_a_directory_fails
     result = make("blog", File.join(checkout, "missing"))
 
-    assert_equal 1, result.code
-    assert_match(/not a directory/, result.err)
+    assert_equal [1, ""], [result.code, result.out]
+    assert_includes result.err, "#{File.join(checkout, "missing")} is not a directory"
   end
 
   def test_a_name_registered_at_another_path_is_refused_and_the_file_kept
@@ -95,7 +95,7 @@ class ProjectNewTest < Plastic::TestCase
     assert_equal "# blog\n\nRules for agents working on this repository.\n\n" \
                  "Plastic's instructions are in ~/.plastic/PLASTIC.md.\n", File.read(rule_file("AGENTS.md"))
     assert_equal "@AGENTS.md\n", File.read(rule_file("CLAUDE.md"))
-    assert_includes result.out, "created  AGENTS.md and CLAUDE.md in #{checkout}"
+    assert_call result, code: 0, err: "", out: ["created  AGENTS.md and CLAUDE.md in #{checkout}", "project  blog: #{checkout}", "next: plastic intent new TITLE --project blog"]
   end
 
   def test_a_present_agents_file_is_left_byte_for_byte

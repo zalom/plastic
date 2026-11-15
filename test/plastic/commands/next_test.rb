@@ -50,6 +50,7 @@ class NextTest < Plastic::TestCase
 
     result = call
 
+    assert_equal [0, ""], [result.code, result.err]
     assert_includes result.out, "next: plastic intent spec #{intent.intent_id}"
   end
 
@@ -69,6 +70,7 @@ class NextTest < Plastic::TestCase
 
     result = call
 
+    assert_equal [0, ""], [result.code, result.err]
     assert_includes result.out, "next: plastic auto #{intent.intent_id}"
   end
 
@@ -135,6 +137,7 @@ class NextTest < Plastic::TestCase
 
     result = call
 
+    assert_equal [0, ""], [result.code, result.err]
     assert_includes result.out, "next: plastic node claim #{intent.intent_id} n1"
   end
 

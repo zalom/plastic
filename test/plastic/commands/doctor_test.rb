@@ -122,6 +122,26 @@ class DoctorDamageCaseTest < Plastic::TestCase
 
     assert_damage "CLAUDE.md alpha", "add the line @AGENTS.md to #{project_dir}/CLAUDE.md"
   end
+
+  def test_a_project_claude_md_passes_once_the_agents_line_is_added
+    write(File.join(project_dir, "CLAUDE.md"), "")
+    found = doctor
+    write(File.join(project_dir, "CLAUDE.md"), "@AGENTS.md\n")
+    repaired = doctor
+
+    assert_equal [1, 0, ""], [found.code, repaired.code, repaired.err]
+    assert_match(/^CLAUDE\.md alpha:\s+ok/, repaired.out)
+  end
+
+  def test_a_claude_hook_launcher_passes_once_it_is_executable_again
+    File.chmod(0o644, hook_file)
+    found = doctor
+    File.chmod(0o755, hook_file)
+    repaired = doctor
+
+    assert_equal [1, 0, ""], [found.code, repaired.code, repaired.err]
+    assert_match(/^hook SessionStart:\s+ok/, repaired.out)
+  end
 end
 
 class CodexDoctorDamageCaseTest < Plastic::TestCase
@@ -186,6 +206,7 @@ class DoctorProcessTest < Plastic::TestCase
       repaired = command("project", "new", "alpha", project)
 
       assert_equal [1, true, 0], [found.code, found.out.include?("plastic project new alpha #{project}"), repaired.code]
+      assert_match(/^store alpha:\s+(?!ok)\S/, found.out)
       assert_match(/store alpha:\s+ok/, command("doctor", "--harness", "claude-code").out)
     end
   end
@@ -233,7 +254,19 @@ class CodexDoctorCommandTest < Plastic::TestCase
     repairs = JSON.parse(result.out).fetch("result").fetch("repair")
 
     assert_equal [1, ["plastic install --reinstall"]], [result.code, repairs]
+    assert_includes result.out, "hook SessionStart"
     assert_empty result.err
+  end
+
+  def test_a_codex_launcher_that_is_not_executable_names_the_hook_check_and_passes_once_it_is_executable
+    File.chmod(0o644, codex_launcher)
+    found = doctor("--harness", "codex")
+    File.chmod(0o755, codex_launcher)
+    repaired = doctor("--harness", "codex")
+
+    words = ["hook SessionStart", "plastic install --reinstall"].select { |word| (found.out + found.err).include?(word) }
+
+    assert_equal [1, 0, "", ["hook SessionStart", "plastic install --reinstall"]], [found.code, repaired.code, repaired.err, words]
   end
 
   def test_a_damaged_codex_home_is_unchanged_after_the_doctor

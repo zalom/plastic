@@ -38,7 +38,7 @@ class RoadmapBatchTest < Plastic::TestCase
     result = call("ghost", "1", "--title", "T")
 
     assert_equal [1, "next: plastic roadmap new ghost"], [result.code, result.out.lines.grep(/^next:/).first&.chomp]
-    assert_includes result.err, "no roadmap ghost"
+    assert_equal "plastic: no roadmap ghost\n", result.err
   end
 
   def test_a_batch_on_an_unknown_roadmap_writes_no_row

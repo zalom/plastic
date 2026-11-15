@@ -36,9 +36,10 @@ class StopTest < Plastic::TestCase
   def put(key, table, row) = store_graphs.databases[key].transaction { |batch| batch.put(table, row) }
 
   def test_stop_stamps_the_last_turn_at
-    call
+    result = call
 
-    refute_nil store_graphs.retrieval.session("s-1").last_turn_at
+    assert_call result, code: 0, out: "", err: ""
+    assert_equal [true, nil], [!store_graphs.retrieval.session("s-1").last_turn_at.nil?, store_graphs.retrieval.session("s-1").ended_at]
   end
 
   def test_stop_renews_only_this_sessions_locks

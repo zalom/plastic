@@ -54,7 +54,10 @@ class IntentAbandonTest < Plastic::TestCase
   def test_an_option_is_a_usage_error
     droppable
 
-    assert_equal [2, "open"], [abandon("--judge", "agent").code, retrieval.intent("1").status]
+    result = abandon("--judge", "agent")
+
+    assert_equal [2, "open"], [result.code, retrieval.intent("1").status]
+    assert_includes result.err, "invalid option: --judge"
   end
 
   def test_without_the_reverted_bullet_it_hands_over_the_revert_steps
@@ -69,8 +72,12 @@ class IntentAbandonTest < Plastic::TestCase
     droppable(reverted: false)
     result = abandon
 
-    assert_includes result.out, "Use version control as the project's AGENTS.md or CLAUDE.md defines it, or as the project's history shows when neither does: undo what intent 1 changed, close or delete its branch and worktree, and revert any commit that reached the base."
     refute_includes result.out, "your own"
+    assert_call result, code: 0, out: [
+      "Use version control as the project's AGENTS.md or CLAUDE.md defines it, or as the project's history shows when neither does: undo what intent 1 changed, close or delete its branch and worktree, and revert any commit that reached the base.",
+      "Plastic runs no version control command; it records what you write.",
+      "Write in store/1--alpha/outcome.md why the intent is dropped, and add the line '- Reverted: <what was undone, or nothing delivered>' under ## Verification. Run plastic sync up and then plastic intent abandon 1 again."
+    ]
   end
 
   def test_with_the_reverted_bullet_it_closes_cancelled_with_no_completion

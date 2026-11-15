@@ -25,9 +25,8 @@ class IntentLockStatusTest < Plastic::TestCase
 
     result = call("1")
 
-    assert_equal [0, nil], [result.code, next_line(result)]
-    assert_includes result.out, "because: the owner must give the go-ahead for intent 1"
-    assert_includes result.out, "Ask the owner for the go-ahead."
+    assert_equal [nil, ""], [next_line(result), result.err]
+    assert_call result, code: 0, out: ["lock: none\n", "because: the owner must give the go-ahead for intent 1", "Ask the owner for the go-ahead.", "record it with plastic intent approve 1."]
   end
 
   def test_an_approved_intent_with_no_lock_says_none_and_offers_auto

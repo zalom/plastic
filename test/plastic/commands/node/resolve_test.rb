@@ -38,7 +38,9 @@ class NodeResolveTest < Plastic::TestCase
   def test_resolving_an_impeded_node_opens_it
     cli("node", "impede", "1", "n1", "no access")
 
-    assert_equal 0, cli("node", "resolve", "1", "n1", "access granted").code
+    result = cli("node", "resolve", "1", "n1", "access granted")
+
+    assert_call result, code: 0, err: "", out: ["node: n1 open", "next: plastic node claim 1 n1"]
     assert_equal "open", retrieval.node("1", "n1").state
   end
 

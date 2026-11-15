@@ -66,8 +66,8 @@ class RoadmapOpenTest < Plastic::TestCase
   def test_an_unknown_item_exits_1_and_names_it
     result = call("r1", "zz")
 
-    assert_equal 1, result.code
-    assert_includes result.err, "no item zz on roadmap r1"
+    assert_equal [1, ""], [result.code, result.out]
+    assert_equal "plastic: no item zz on roadmap r1\n", result.err
   end
 
   def test_a_second_open_exits_3

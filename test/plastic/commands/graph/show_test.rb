@@ -38,7 +38,7 @@ class GraphShowTest < Plastic::TestCase
 
     result = call("1")
 
-    assert_call result, code: 0, out: ["node: n1 open a", "edge: n1 to n2"]
+    assert_call result, code: 0, out: ["node: n1 open a", "node: n2 open b", "edge: n1 to n2", "next: plastic graph ready 1"], err: ""
   end
 
   def test_a_hand_edited_graph_json_survives_the_call_and_no_row_is_added

@@ -11,10 +11,11 @@ class EndTest < Plastic::TestCase
   end
 
   def test_end_sets_the_reason_and_not_the_turn
-    call(input: JSON.generate(reason: "clear"))
+    result = call(input: JSON.generate(reason: "clear"))
 
     session = store_graphs.retrieval.session("s-1")
 
+    assert_call result, code: 0, out: "", err: ""
     assert_equal "clear", session.end_reason
     assert_nil session.last_turn_at
   end

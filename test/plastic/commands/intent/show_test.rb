@@ -32,9 +32,7 @@ class IntentShowTest < Plastic::TestCase
 
     result = call(intent.intent_id)
 
-    assert_equal 0, result.code
-    assert_includes result.out, "intent: #{intent.intent_id} Alpha (open)"
-    assert_includes result.out, "criteria: 0"
+    assert_call result, code: 0, err: "", out: ["intent: #{intent.intent_id} Alpha (open)", "criteria: 0", "Opened: Alpha"]
   end
 
   def test_shows_a_ruling_and_the_last_savepoint

@@ -30,7 +30,8 @@ class RoadmapEdgeRemoveTest < Plastic::TestCase
   def test_the_named_edge_goes_and_the_other_stays
     result = call("r1", "a", "c")
 
-    assert_equal 0, result.code
+    assert_equal [0, ""], [result.code, result.err]
+    assert_includes result.out, "edge: a to c removed"
     assert_equal [%w[b c]], edges.map { |edge| [edge.from, edge.to] }
   end
 

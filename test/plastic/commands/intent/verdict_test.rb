@@ -33,7 +33,10 @@ class IntentVerdictTest < Plastic::TestCase
   end
 
   def test_an_unknown_verdict_exits_2_with_no_row
-    assert_equal [2, []], [verdict("maybe", "x").code, verdicts]
+    result = verdict("maybe", "x")
+
+    assert_equal [2, []], [result.code, verdicts]
+    assert_includes result.err, "the verdict takes accept or revise"
   end
 
   def test_a_verdict_without_findings_exits_2_with_no_row
@@ -66,9 +69,9 @@ class IntentVerdictTest < Plastic::TestCase
     verdict("revise", "one")
     result = verdict("revise", "two")
 
-    assert_equal 3, result.code
     assert_equal [1, 2], verdicts.map { |row| row.fetch("round") }
-    assert_includes result.err + result.out, "review round"
+    assert_call result, code: 3, out: ["verdict: revise round 2"], err: ["the judge's review round of intent 1 is used; the owner decides between abandoning the intent and a follow-up intent"]
+    refute_match(/^next:/, result.out)
   end
 
   def test_a_third_verdict_is_refused_with_two_rows
@@ -131,6 +134,7 @@ class IntentVerdictAcceptGateTest < Plastic::TestCase
     result = verdict("accept")
 
     assert_equal [1, []], [result.code, verdicts]
+    assert_includes result.err, "intent 1 names no done criterion; an accept needs one"
     assert_match(/^next: plastic intent spec 1/, result.out)
   end
 
@@ -166,6 +170,8 @@ class IntentVerdictRefusalTest < Plastic::TestCase
     result = cli("intent", "verdict", "9", "accept", "x")
 
     assert_equal [1, []], [result.code, work_rows("verdicts")]
+    assert_includes result.err, "no intent 9 in this store"
+    refute_match(/^next:/, result.out)
   end
 
   %w[done abandoned].each do |status|

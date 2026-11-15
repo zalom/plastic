@@ -47,7 +47,7 @@ class RoadmapNextTest < Plastic::TestCase
     result = call("r1")
 
     refute_includes result.out, "a: "
-    assert_includes result.out, "b: blocked"
+    assert_call result, code: 0, err: "", out: ["b: blocked", "next: plastic roadmap open r1 a"]
   end
 
   def test_b_is_printed_once_a_is_done

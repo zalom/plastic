@@ -131,7 +131,7 @@ class NodeClaimTest < Plastic::TestCase
 
     result = claim("n9")
 
-    assert_equal 1, result.code
+    assert_equal [1, ""], [result.code, result.out]
     assert_includes result.err, "no node n9 in intent 1"
   end
 
@@ -229,6 +229,7 @@ class NodeClaimRefusalTest < Plastic::TestCase
 
     result = claim("n1")
 
-    assert_equal 1, result.code
+    assert_equal [1, ""], [result.code, result.out]
+    assert_includes result.err, "node n1 is claimed; it cannot move to claimed"
   end
 end
