@@ -24,7 +24,7 @@ module InstallFixture
   def shipped
     root = File.join(@home, "shipped")
     files = { "PLASTIC.md" => "plastic\n", "exe/plastic" => "#!/bin/sh\n", "lib/plastic.rb" => "# kernel\n", "lib/plastic/one.rb" => "# one\n",
-              "docs/help/tutorial.md" => "tutorial\n", "hooks/session-start" => "#!/bin/sh\n",
+              "docs/help/roadmaps.md" => "roadmaps\n", "hooks/session-start" => "#!/bin/sh\n",
               "hooks/statusline" => "#!/bin/sh\n", "skills/demo/SKILL.md" => "demo\n", "skills/_shared.md" => "shared\n",
               "skills/agent-advisor/SKILL.md" => "advisor\n", "agents/demo-role.md" => ROLE, "VERSION" => "2.0.3\n" }
     files.each { |path, text| write(File.join(root, path), text) }

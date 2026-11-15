@@ -14,7 +14,7 @@ class CoreFilesTest < Plastic::TestCase
   end
 
   def test_the_hooks_the_kernel_tree_and_the_help_chapters_come_from_the_disk
-    assert_equal %w[docs/help/tutorial.md hooks/session-start hooks/statusline lib/plastic.rb lib/plastic/one.rb],
+    assert_equal %w[docs/help/roadmaps.mdhooks/session-start hooks/statusline lib/plastic.rb lib/plastic/one.rb],
       files.keys.grep(%r{\A(?:docs|hooks|lib)/}).sort
   end
 
