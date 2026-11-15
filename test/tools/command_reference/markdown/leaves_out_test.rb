@@ -6,7 +6,7 @@ class CommandReferenceMarkdownLeavesOutTest < Minitest::Test
   include CommandReferenceHelper
 
   SHARED = "../../dsl/README.md#what-every-call-shares"
-  OWN_CALL_PAGES = ["hook end", "hook stop", "hook start", "graph resume", "project links", "project list", "status", "project new", "config", "config list", "config get", "config set"].freeze
+  OWN_CALL_PAGES = ["hook end", "hook stop", "hook start", "project links", "status", "project new", "config"].freeze
 
   def text(words) = CommandReference::Markdown::Page.new(page(words)).to_s
 
