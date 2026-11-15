@@ -119,7 +119,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | files that cannot be read into rows, the others were read: UNREADABLE_FILES | 1 | plastic sync down --overwrite UNREADABLE_PATH | [`sync_steps.rb:96`](../../../../lib/plastic/workflows/sync_steps.rb#L96) |
 | files that cannot be read into rows, the others were read: UNREADABLE_FILES | 1 | prints no next: line | [`sync_steps.rb:96`](../../../../lib/plastic/workflows/sync_steps.rb#L96) |
 | the rows hold every file changed by hand | 0 | plastic next | [`sync_steps.rb:91`](../../../../lib/plastic/workflows/sync_steps.rb#L91) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
 
 ## What the page leaves out
 

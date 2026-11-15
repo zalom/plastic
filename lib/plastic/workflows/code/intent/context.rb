@@ -15,7 +15,7 @@ module Plastic
       module Intent
         # Validates a submitted evidence selection and persists it in the owning store.
         class Context < CodeWorkflow
-          [facts, steps, outcomes].each(&:clear)
+          clear_declarations
 
           sets :problem
 

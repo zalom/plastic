@@ -10,7 +10,7 @@ module Plastic
         # Adds one item to a roadmap batch, guarded against a missing batch, a
         # predecessor not on the roadmap, and a loop over roadmap_edges.
         class Add < CodeWorkflow
-          [facts, steps, outcomes].each(&:clear)
+          clear_declarations
 
           sets :problem, :kind, :item
 

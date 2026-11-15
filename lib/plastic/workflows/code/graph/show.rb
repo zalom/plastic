@@ -9,7 +9,7 @@ module Plastic
       module Graph
         # Prints each node and edge from the rows. It never reads or writes graph.json.
         class Show < CodeWorkflow
-          [facts, steps, outcomes].each(&:clear)
+          clear_declarations
 
           sets :intent
 

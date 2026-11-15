@@ -117,7 +117,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | PROBLEM | 3 | prints no next: line | [`auto.rb:76`](../../../../lib/plastic/workflows/code/auto.rb#L76) |
 | the worktree of intent INTENT_ID is not made yet | 0 | plastic auto INTENT_ID | [`auto.rb:110`](../../../../lib/plastic/workflows/code/auto.rb#L110) |
 | intent INTENT_ID is in progress | 0 | plastic intent brief INTENT_ID | [`auto.rb:112`](../../../../lib/plastic/workflows/code/auto.rb#L112) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
 
 ## What the page leaves out
 

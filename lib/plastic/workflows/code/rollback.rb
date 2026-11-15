@@ -10,7 +10,7 @@ module Plastic
       # Names the command that switches to the named release or the previous
       # one. It changes nothing itself.
       class Rollback < CodeWorkflow
-        [facts, steps, outcomes].each(&:clear)
+        clear_declarations
 
         sets :command
 

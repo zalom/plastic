@@ -82,7 +82,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | PROBLEM | 1 | prints no next: line | [`revise.rb:34`](../../../../lib/plastic/workflows/code/intent/revise.rb#L34) |
 | the dry run wrote nothing | 0 | ORIGINAL_COMMAND | [`revise.rb:52`](../../../../lib/plastic/workflows/code/intent/revise.rb#L52) |
 | the rows and the files hold the new What and Why | 0 | prints no next: line | [`revise.rb:54`](../../../../lib/plastic/workflows/code/intent/revise.rb#L54) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
 
 ## What the page leaves out
 

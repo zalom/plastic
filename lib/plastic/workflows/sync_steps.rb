@@ -77,7 +77,7 @@ module Plastic
 
       # Declares the whole chain, so a second load of the class replaces the first.
       def sync(direction)
-        [facts, steps, outcomes].each(&:clear)
+        clear_declarations
         sets :failure, :conflicts, :merging, :unreadable, :unreadable_files, :unreadable_path, :unreadable_rowless, :lines
         plan_steps(direction)
         apply_steps(direction)

@@ -59,7 +59,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | no roadmap SLUG | 1 | prints no next: line | [`check.rb:16`](../../../../lib/plastic/workflows/code/roadmap/check.rb#L16) |
 | see the findings above | 1 | prints no next: line | [`check.rb:30`](../../../../lib/plastic/workflows/code/roadmap/check.rb#L30) |
 | roadmap SLUG has no findings | 0 | plastic roadmap show SLUG | [`check.rb:32`](../../../../lib/plastic/workflows/code/roadmap/check.rb#L32) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
 
 ## What the page leaves out
 

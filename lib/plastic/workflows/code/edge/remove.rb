@@ -8,7 +8,7 @@ module Plastic
       module Edge
         # Removes one edge; fails when no such edge exists.
         class Remove < CodeWorkflow
-          [facts, steps, outcomes].each(&:clear)
+          clear_declarations
 
           sets :problem, :removed
 

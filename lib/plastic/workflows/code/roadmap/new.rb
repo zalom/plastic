@@ -8,7 +8,7 @@ module Plastic
       module Roadmap
         # Creates a roadmap row and offers its first batch.
         class New < CodeWorkflow
-          [facts, steps, outcomes].each(&:clear)
+          clear_declarations
 
           gate "roadmap %{slug} already exists", stops: :failure, offers: "plastic roadmap show %{slug}",
             because: "roadmap new creates a roadmap once",

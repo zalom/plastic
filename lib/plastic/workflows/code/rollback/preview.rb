@@ -11,7 +11,7 @@ module Plastic
         # Reads the activated releases and picks the one to switch to: the named
         # version, or the previous release. A dry run names the switch.
         class Preview < CodeWorkflow
-          [facts, steps, outcomes].each(&:clear)
+          clear_declarations
 
           sets :active, :to, :releases
 

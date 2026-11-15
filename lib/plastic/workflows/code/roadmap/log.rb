@@ -8,7 +8,7 @@ module Plastic
       module Roadmap
         # Appends one log line to a roadmap, stamped with the session id.
         class Log < CodeWorkflow
-          [facts, steps, outcomes].each(&:clear)
+          clear_declarations
 
           sets :line
 

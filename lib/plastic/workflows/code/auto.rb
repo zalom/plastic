@@ -13,7 +13,7 @@ module Plastic
       # then prints the code worktree when the store's project names a repository, and names the
       # worktree to create when its folder is missing.
       class Auto < CodeWorkflow
-        [facts, steps, outcomes].each(&:clear)
+        clear_declarations
 
         sets :problem, :closed_problem, :spec_problem, :intent, :session_problem, :worktree_missing
 

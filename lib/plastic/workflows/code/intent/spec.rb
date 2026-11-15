@@ -14,7 +14,7 @@ module Plastic
         class Spec < CodeWorkflow
           extend GoAhead
 
-          [facts, steps, outcomes].each(&:clear)
+          clear_declarations
 
           GRILLING = File.expand_path("../../../../../docs/grilling.md", __dir__)
 

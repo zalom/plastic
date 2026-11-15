@@ -12,7 +12,7 @@ module Plastic
         # Reads the person's answer against the harnesses Plastic is installed
         # into or found in.
         class Choose < CodeWorkflow
-          [facts, steps, outcomes].each(&:clear)
+          clear_declarations
 
           sets :found, :picked, :harnesses
 

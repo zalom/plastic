@@ -9,7 +9,7 @@ module Plastic
       module Intent
         # Gives an external agent deterministic retrieval commands without selecting evidence.
         class Discover < ::Plastic::AgentWorkflow
-          [facts, steps, outcomes].each(&:clear)
+          clear_declarations
 
           sets :handoff_text, :context_command, :context_complete
 

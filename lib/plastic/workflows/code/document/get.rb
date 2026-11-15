@@ -10,7 +10,7 @@ module Plastic
       module Document
         # Fetches one current or immutable document, or one bounded passage of it.
         class Get < CodeWorkflow
-          [facts, steps, outcomes].each(&:clear)
+          clear_declarations
 
           sets :problem
 

@@ -10,7 +10,7 @@ module Plastic
         # Finds the first ready item of a roadmap, ranked by batch then item
         # position. With nothing ready, it names what is in flight and blocked.
         class Next < CodeWorkflow
-          [facts, steps, outcomes].each(&:clear)
+          clear_declarations
 
           sets :ready, :ready_id, :open
 

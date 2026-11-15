@@ -73,7 +73,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | PROBLEM | 1 | prints no next: line | [`approve.rb:20`](../../../../lib/plastic/workflows/code/intent/approve.rb#L20) |
 | intent INTENT_ID names no done criterion | 1 | plastic intent spec INTENT_ID | [`approve.rb:22`](../../../../lib/plastic/workflows/code/intent/approve.rb#L22) |
 | intent INTENT_ID has the owner's go-ahead | 0 | plastic auto INTENT_ID | [`approve.rb:34`](../../../../lib/plastic/workflows/code/intent/approve.rb#L34) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
 
 ## What the page leaves out
 

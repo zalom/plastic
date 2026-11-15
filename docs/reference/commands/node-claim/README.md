@@ -79,7 +79,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | PROBLEM | 3 | prints no next: line | [`claim.rb:52`](../../../../lib/plastic/workflows/code/node/claim.rb#L52) |
 | PROBLEM | 1 | prints no next: line | [`claim.rb:53`](../../../../lib/plastic/workflows/code/node/claim.rb#L53) |
 | node ID is claimed | 0 | plastic node done INTENT_ID ID TEXT | [`claim.rb:63`](../../../../lib/plastic/workflows/code/node/claim.rb#L63) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
 
 ## What the page leaves out
 

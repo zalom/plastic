@@ -11,7 +11,7 @@ module Plastic
         class Up
           # Previews the same sync in a copy before the normal write workflow, and refuses what the real run refuses.
           class Preview < CodeWorkflow
-            [facts, steps, outcomes].each(&:clear)
+            clear_declarations
 
             DRY_RUN = ->(context) { context.dry_run }
 

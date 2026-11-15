@@ -77,7 +77,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | no intent INTENT_ID in this store | 1 | prints no next: line | [`add.rb:20`](../../../../lib/plastic/workflows/code/edge/add.rb#L20) |
 | PROBLEM | 1 | prints no next: line | [`add.rb:30`](../../../../lib/plastic/workflows/code/edge/add.rb#L30) |
 | edge FROM to TO is written | 0 | plastic graph show INTENT_ID | [`add.rb:36`](../../../../lib/plastic/workflows/code/edge/add.rb#L36) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
 
 ## What the page leaves out
 

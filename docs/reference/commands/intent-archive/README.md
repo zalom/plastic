@@ -89,7 +89,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | PROBLEM | 1 | prints no next: line | [`archive.rb:38`](../../../../lib/plastic/workflows/code/intent/archive.rb#L38) |
 | PROBLEM | 3 | prints no next: line | [`archive.rb:39`](../../../../lib/plastic/workflows/code/intent/archive.rb#L39) |
 | the intents named above are off the checkout | 0 | plastic status | [`archive.rb:45`](../../../../lib/plastic/workflows/code/intent/archive.rb#L45) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
 | Usage error: give an intent ID or --older-than DATE | 2 | prints no next: line | [`archive.rb:31`](../../../../lib/plastic/commands/intent/archive.rb#L31) |
 | Usage error: an intent ID and --older-than exclude each other | 2 | prints no next: line | [`archive.rb:32`](../../../../lib/plastic/commands/intent/archive.rb#L32) |
 | Usage error | 2 | prints no next: line | [`archive.rb:40`](../../../../lib/plastic/commands/intent/archive.rb#L40) |

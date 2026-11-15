@@ -74,7 +74,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | --- | --- | --- | --- |
 | PROBLEM | 1 | prints no next: line | [`add.rb:21`](../../../../lib/plastic/workflows/code/node/add.rb#L21) |
 | node ID is open; add the edges of the plan, then run plastic graph ready INTENT_ID | 0 | plastic edge add INTENT_ID FROM TO | [`add.rb:45`](../../../../lib/plastic/workflows/code/node/add.rb#L45) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
 
 ## What the page leaves out
 

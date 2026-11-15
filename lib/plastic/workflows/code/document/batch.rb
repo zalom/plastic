@@ -10,7 +10,7 @@ module Plastic
       module Document
         # Fetches qualified documents in the exact request order.
         class Batch < CodeWorkflow
-          [facts, steps, outcomes].each(&:clear)
+          clear_declarations
 
           sets :problem
 

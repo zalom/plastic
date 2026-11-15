@@ -10,7 +10,7 @@ module Plastic
       class Install
         # On a dry run, lists each core file the install would add or replace.
         class Preview < CodeWorkflow
-          [facts, steps, outcomes].each(&:clear)
+          clear_declarations
 
           read "list the core files the install would write" do |context|
             if context.dry_run

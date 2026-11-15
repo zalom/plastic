@@ -74,7 +74,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | PROBLEM | 1 | prints no next: line | [`add.rb:28`](../../../../lib/plastic/workflows/code/roadmap/add.rb#L28) |
 | PROBLEM | 3 | prints no next: line | [`add.rb:29`](../../../../lib/plastic/workflows/code/roadmap/add.rb#L29) |
 | item ITEM_ID is on roadmap SLUG | 0 | plastic roadmap show SLUG | [`add.rb:35`](../../../../lib/plastic/workflows/code/roadmap/add.rb#L35) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
 
 ## What the page leaves out
 

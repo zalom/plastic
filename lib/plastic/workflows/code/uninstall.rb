@@ -12,7 +12,7 @@ module Plastic
       # releases and the launcher once no harness stays installed. The home
       # with its stores stays.
       class Uninstall < CodeWorkflow
-        [facts, steps, outcomes].each(&:clear)
+        clear_declarations
 
         UNRECORDED = "%s: no record lists what Plastic wrote; run plastic install --reinstall to write it, then run this again"
 

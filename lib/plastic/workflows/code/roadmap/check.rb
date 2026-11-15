@@ -9,7 +9,7 @@ module Plastic
       module Roadmap
         # Prints each finding, or "no findings"; a finding fails the call.
         class Check < CodeWorkflow
-          [facts, steps, outcomes].each(&:clear)
+          clear_declarations
 
           sets :findings
 

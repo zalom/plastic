@@ -11,7 +11,7 @@ module Plastic
         # Deletes the backup folders of one store with their rows: all of them, or
         # those strictly before a time, or those that failed. A row with no folder goes with them.
         class Purge < CodeWorkflow
-          [facts, steps, outcomes].each(&:clear)
+          clear_declarations
 
           sets :purged
 

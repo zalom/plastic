@@ -71,7 +71,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | roadmaps/SLUG.md holds a roadmap this home has no rows for; run plastic sync up to read it | 1 | plastic sync up | [`new.rb:17`](../../../../lib/plastic/workflows/code/roadmap/new.rb#L17) |
 | roadmaps/SLUG.md exists and this home holds no roadmap row for it; no command reads a roadmap file into rows | 1 | plastic next | [`new.rb:21`](../../../../lib/plastic/workflows/code/roadmap/new.rb#L21) |
 | roadmap SLUG exists and has no batch yet | 0 | plastic roadmap batch SLUG 1 | [`new.rb:35`](../../../../lib/plastic/workflows/code/roadmap/new.rb#L35) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
 
 ## What the page leaves out
 

@@ -9,7 +9,7 @@ module Plastic
       # Reads the version of the running package: its VERSION file when it has
       # one, as an installed copy does, otherwise its package.json.
       class Version < CodeWorkflow
-        [facts, steps, outcomes].each(&:clear)
+        clear_declarations
 
         sets :source
 

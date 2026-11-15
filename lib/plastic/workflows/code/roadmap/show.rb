@@ -10,7 +10,7 @@ module Plastic
         # Prints each batch with its goal and done criteria, then each item with
         # its derived state, from the rows.
         class Show < CodeWorkflow
-          [facts, steps, outcomes].each(&:clear)
+          clear_declarations
 
           gate "no roadmap %{slug}", stops: :failure, pass: ->(context) { !context.retrieval.roadmap(context.slug).nil? }
 

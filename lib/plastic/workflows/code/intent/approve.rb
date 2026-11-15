@@ -9,7 +9,7 @@ module Plastic
       module Intent
         # Writes the go-ahead row of an open or in progress intent. A second call changes nothing.
         class Approve < CodeWorkflow
-          [facts, steps, outcomes].each(&:clear)
+          clear_declarations
 
           sets :problem
 

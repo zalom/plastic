@@ -70,7 +70,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | no roadmap SLUG | 1 | prints no next: line | [`drop.rb:16`](../../../../lib/plastic/workflows/code/roadmap/drop.rb#L16) |
 | no item ITEM_ID on roadmap SLUG | 1 | prints no next: line | [`drop.rb:22`](../../../../lib/plastic/workflows/code/roadmap/drop.rb#L22) |
 | item ITEM_ID no longer blocks its successors | 0 | plastic roadmap next SLUG | [`drop.rb:32`](../../../../lib/plastic/workflows/code/roadmap/drop.rb#L32) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
 
 ## What the page leaves out
 

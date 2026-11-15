@@ -82,7 +82,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | --- | --- | --- | --- |
 | PROBLEM | 1 | prints no next: line | [`new.rb:22`](../../../../lib/plastic/workflows/code/intent/new.rb#L22) |
 | intent INTENT_ID has its rows and its files | 0 | plastic next | [`new.rb:41`](../../../../lib/plastic/workflows/code/intent/new.rb#L41) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
 
 ## What the page leaves out
 

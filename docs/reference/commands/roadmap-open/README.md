@@ -76,7 +76,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | PROBLEM | 1 | prints no next: line | [`open.rb:25`](../../../../lib/plastic/workflows/code/roadmap/open.rb#L25) |
 | PROBLEM | 3 | prints no next: line | [`open.rb:26`](../../../../lib/plastic/workflows/code/roadmap/open.rb#L26) |
 | item ITEM_ID opened as intent INTENT_ID | 0 | plastic intent brief INTENT_ID | [`open.rb:32`](../../../../lib/plastic/workflows/code/roadmap/open.rb#L32) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
 
 ## What the page leaves out
 

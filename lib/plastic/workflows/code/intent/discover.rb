@@ -15,7 +15,7 @@ module Plastic
       module Intent
         # Records lexical retrieval candidates before an external agent selects them.
         class Discover < CodeWorkflow
-          [facts, steps, outcomes].each(&:clear)
+          clear_declarations
 
           sets :intent, :source_scope, :discovery, :handoff_text, :context_command, :context_complete, :problem
 

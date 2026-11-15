@@ -11,7 +11,7 @@ module Plastic
       # Copies the core files on a home that has none, and installs Plastic
       # into each picked harness.
       class Init < CodeWorkflow
-        [facts, steps, outcomes].each(&:clear)
+        clear_declarations
 
         sets :broken, :installed, :checked
 

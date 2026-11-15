@@ -107,7 +107,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | changed on both sides since the last print, nothing written: CONFLICTS; pass --overwrite PATH, --overwrite or --merge | 3 | prints no next: line | [`sync_steps.rb:105`](../../../../lib/plastic/workflows/sync_steps.rb#L105) |
 | changed on both sides since the last print, left as they are: CONFLICTS; pass --overwrite PATH or --overwrite | 3 | prints no next: line | [`sync_steps.rb:111`](../../../../lib/plastic/workflows/sync_steps.rb#L111) |
 | the files hold every row that changed | 0 | plastic next | [`sync_steps.rb:91`](../../../../lib/plastic/workflows/sync_steps.rb#L91) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
 
 ## What the page leaves out
 

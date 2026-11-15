@@ -92,7 +92,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | PROBLEM | 1 | prints no next: line | [`link.rb:20`](../../../../lib/plastic/workflows/code/intent/link.rb#L20) |
 | REFUSAL | 3 | prints no next: line | [`link.rb:26`](../../../../lib/plastic/workflows/code/intent/link.rb#L26) |
 | the link is on record | 0 | plastic sync down | [`link.rb:36`](../../../../lib/plastic/workflows/code/intent/link.rb#L36) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
 | Usage error: KIND takes LASTIC | 2 | prints no next: line | [`link.rb:21`](../../../../lib/plastic/commands/intent/link.rb#L21) |
 
 ## What the page leaves out

@@ -103,7 +103,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | the person left with no change | 0 | plastic init | [`choose.rb:30`](../../../../lib/plastic/workflows/code/init/choose.rb#L30) |
 | BROKEN is not valid JSON; nothing was changed. Fix the file and run this again | 1 | prints no next: line | [`init.rb:22`](../../../../lib/plastic/workflows/code/init.rb#L22) |
 | Plastic INSTALLED is installed into HARNESSES | 0 | plastic doctor --harness CHECKED | [`init.rb:33`](../../../../lib/plastic/workflows/code/init.rb#L33) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
 
 ## What the page leaves out
 

@@ -10,7 +10,7 @@ module Plastic
         # Prints each backup folder of the store with its start time, status and
         # goal, flagging a missing or changed file. A flag fails the call.
         class List < CodeWorkflow
-          [facts, steps, outcomes].each(&:clear)
+          clear_declarations
 
           FAILING = %w[changed missing].freeze
 

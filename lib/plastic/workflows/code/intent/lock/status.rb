@@ -15,7 +15,7 @@ module Plastic
           class Status < CodeWorkflow
             extend GoAhead
 
-            [facts, steps, outcomes].each(&:clear)
+            clear_declarations
 
             sets :intent, :state, :status, :why, :handoff_text
 

@@ -123,7 +123,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | Plastic is removed from HARNESSES, launcher included; install.sh installs it again, and the home stays | 0 | prints no next: line | [`uninstall.rb:39`](../../../../lib/plastic/workflows/code/uninstall.rb#L39) |
 | no record lists what Plastic wrote for HARNESSES, so nothing was removed | 0 | plastic install --reinstall | [`uninstall.rb:41`](../../../../lib/plastic/workflows/code/uninstall.rb#L41) |
 | Plastic is removed from HARNESSES; the home stays | 0 | plastic init | [`uninstall.rb:43`](../../../../lib/plastic/workflows/code/uninstall.rb#L43) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
 
 ## What the page leaves out
 

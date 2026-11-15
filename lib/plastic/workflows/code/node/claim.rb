@@ -11,7 +11,7 @@ module Plastic
         # node moves to needs_info instead, with the owner's question, and refuses. A refused
         # claim keeps its routine run open, so the next call claims again.
         class Claim < CodeWorkflow
-          [facts, steps, outcomes].each(&:clear)
+          clear_declarations
 
           STOPPED = %w[refused capped blocked].freeze
 

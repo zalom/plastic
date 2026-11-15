@@ -65,7 +65,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | see the findings above | 1 | prints no next: line | [`check.rb:34`](../../../../lib/plastic/workflows/code/graph/check.rb#L34) |
 | no node is ready to claim | 0 | prints no next: line | [`check.rb:40`](../../../../lib/plastic/workflows/code/graph/check.rb#L40) |
 | node FIRST is ready | 0 | plastic node claim INTENT_ID FIRST | [`check.rb:41`](../../../../lib/plastic/workflows/code/graph/check.rb#L41) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
 
 ## What the page leaves out
 

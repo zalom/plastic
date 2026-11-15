@@ -9,7 +9,7 @@ module Plastic
         # Writes one guarded link: failed on a missing id or target, refused on a
         # self link or a link already there.
         class Link < CodeWorkflow
-          [facts, steps, outcomes].each(&:clear)
+          clear_declarations
 
           sets :problem, :refusal, :added
 

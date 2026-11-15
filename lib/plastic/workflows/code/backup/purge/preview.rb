@@ -10,7 +10,7 @@ module Plastic
         class Purge
           # Lists the backups a purge would delete, and deletes nothing.
           class Preview < CodeWorkflow
-            [facts, steps, outcomes].each(&:clear)
+            clear_declarations
 
             read "preview the purge" do |context|
               next unless context.dry_run

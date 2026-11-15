@@ -9,7 +9,7 @@ module Plastic
       # Copies the databases of one store into a new backup folder, and writes
       # the row that names it.
       class Backup < CodeWorkflow
-        [facts, steps, outcomes].each(&:clear)
+        clear_declarations
 
         sets :name, :files, :bytes
 

@@ -8,7 +8,7 @@ module Plastic
       module Intent
         # Adds a note line to the outcome of an intent.
         class Note < CodeWorkflow
-          [facts, steps, outcomes].each(&:clear)
+          clear_declarations
 
           CLOSED = %w[done abandoned].freeze
 

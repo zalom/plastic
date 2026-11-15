@@ -14,7 +14,7 @@ module Plastic
       # names the command that installs it. With no release installed yet,
       # names install.sh.
       class Update < CodeWorkflow
-        [facts, steps, outcomes].each(&:clear)
+        clear_declarations
 
         sets :newer, :synced, :active, :release, :downloaded, :command
 

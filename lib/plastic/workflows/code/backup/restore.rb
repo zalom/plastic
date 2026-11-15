@@ -12,7 +12,7 @@ module Plastic
         # Replaces the databases of one store with those of a done backup, after
         # a safety backup of the current ones.
         class Restore < CodeWorkflow
-          [facts, steps, outcomes].each(&:clear)
+          clear_declarations
 
           sets :folder, :refusal, :safety, :restored
 

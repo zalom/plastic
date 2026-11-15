@@ -15,7 +15,7 @@ module Plastic
         # by another session's live lock, in batch then item order. With none,
         # it offers a ready item to start, or says the roadmap is delivered or waits.
         class Pick < CodeWorkflow
-          [facts, steps, outcomes].each(&:clear)
+          clear_declarations
 
           sets :intent_id, :ready_id, :open
 

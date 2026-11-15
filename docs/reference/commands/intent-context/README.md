@@ -114,7 +114,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | the retrieval context was read | 0 | prints no next: line | [`read.rb:32`](../../../../lib/plastic/workflows/code/intent/context/read.rb#L32) |
 | PROBLEM | 1 | prints no next: line | [`context.rb:35`](../../../../lib/plastic/workflows/code/intent/context.rb#L35) |
 | the retrieval context was read | 0 | prints no next: line | [`context.rb:37`](../../../../lib/plastic/workflows/code/intent/context.rb#L37) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
 
 ## What the page leaves out
 

@@ -9,7 +9,7 @@ module Plastic
         # Marks a roadmap item dropped. Its edges stay; items after it stop
         # waiting for it, since a dropped predecessor counts as resolved.
         class Drop < CodeWorkflow
-          [facts, steps, outcomes].each(&:clear)
+          clear_declarations
 
           sets :item, :dropped
 

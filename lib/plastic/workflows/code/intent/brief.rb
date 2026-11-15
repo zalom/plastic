@@ -24,7 +24,7 @@ module Plastic
         # marked, the ready nodes, the main session steps and the usage of the node
         # and edge commands.
         class Brief < CodeWorkflow
-          [facts, steps, outcomes].each(&:clear)
+          clear_declarations
 
           sets :intent
 

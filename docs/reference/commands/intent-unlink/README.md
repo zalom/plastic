@@ -75,7 +75,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | --- | --- | --- | --- |
 | PROBLEM | 1 | prints no next: line | [`unlink.rb:23`](../../../../lib/plastic/workflows/code/intent/unlink.rb#L23) |
 | the link is gone | 0 | plastic sync down | [`unlink.rb:29`](../../../../lib/plastic/workflows/code/intent/unlink.rb#L29) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
 
 ## What the page leaves out
 

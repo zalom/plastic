@@ -75,7 +75,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | --- | --- | --- | --- |
 | PROBLEM | 1 | prints no next: line | [`remove.rb:23`](../../../../lib/plastic/workflows/code/edge/remove.rb#L23) |
 | edge FROM to TO is gone | 0 | plastic graph show INTENT_ID | [`remove.rb:29`](../../../../lib/plastic/workflows/code/edge/remove.rb#L29) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
 
 ## What the page leaves out
 

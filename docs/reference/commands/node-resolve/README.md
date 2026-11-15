@@ -75,7 +75,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | no intent INTENT_ID in this store | 1 | prints no next: line | [`move_node.rb:40`](../../../../lib/plastic/workflows/move_node.rb#L40) |
 | PROBLEM | 1 | prints no next: line | [`move_node.rb:46`](../../../../lib/plastic/workflows/move_node.rb#L46) |
 | node ID is open | 0 | plastic node claim INTENT_ID ID | [`move_node.rb:60`](../../../../lib/plastic/workflows/move_node.rb#L60) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
 
 ## What the page leaves out
 
