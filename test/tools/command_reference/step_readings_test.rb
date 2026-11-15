@@ -38,6 +38,10 @@ class CommandReferenceStepReadingsTest < Minitest::Test
     assert_equal "the call ended", reading(line("%{why}", "the call ended")).because
   end
 
+  def test_an_outcome_whose_because_is_only_a_placeholder_and_has_no_ends_when_keeps_the_placeholder
+    assert_equal "%{why}", reading(line("%{why}")).because
+  end
+
   def test_an_outcome_whose_because_is_a_sentence_keeps_it_even_with_ends_when
     assert_equal "it ended", reading(line("it ended", "other words")).because
   end
