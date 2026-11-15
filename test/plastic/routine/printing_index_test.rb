@@ -85,7 +85,7 @@ class RoutinePrintingIndexTest < Plastic::TestCase
 
   def test_an_edited_roadmap_file_refuses_roadmap_open
     open_roadmap
-    write("roadmaps/r1.md", "# by hand\n")
+    write("roadmaps/r1.md", folder.read("roadmaps/r1.md").sub(/^# .*/, "# By hand"))
 
     assert_refused(cli("roadmap", "open", "r1", "a"), "roadmaps/r1.md")
   end

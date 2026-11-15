@@ -83,14 +83,6 @@ class KnowledgeSyncPlanGeneratedTest < Plastic::TestCase
     assert_equal :conflict, action_of(generated_plan(:up, "roadmaps/r1.md", "f", "p", "r"))
   end
 
-  def test_a_context_view_is_not_named_as_printed_over_up
-    assert_empty generated_plan(:up, "store/1--alpha/context.json", "f", "p", "r").printed_over
-  end
-
-  def test_a_hand_edited_index_is_not_named_as_printed_over_up
-    assert_empty generated_plan(:up, "store/index.json", "f", "p", "r").printed_over
-  end
-
   def built_up_with_a_hand_edited_roadmap
     store_graphs.work.create_roadmap("r1", title: "R", goal: nil)
     store_graphs.work.print_roadmap("r1")
@@ -101,8 +93,8 @@ class KnowledgeSyncPlanGeneratedTest < Plastic::TestCase
   def test_build_lists_a_hand_edited_roadmap_it_cannot_read_and_prints_nothing_over_it
     built = built_up_with_a_hand_edited_roadmap
 
-    assert_equal [{ "roadmaps/r1.md" => "roadmaps/r1.md is in an older form that this release does not read" }, :none, []],
-      [built.unreadable_files, built.actions.find { |entry, _action| entry.path == "roadmaps/r1.md" }.last, built.printed_over]
+    assert_equal [{ "roadmaps/r1.md" => "roadmaps/r1.md is in an older form that this release does not read" }, :none],
+      [built.unreadable_files, built.actions.find { |entry, _action| entry.path == "roadmaps/r1.md" }.last]
   end
 
   def test_a_generated_file_that_cannot_be_read_and_was_never_printed_here_prints_from_the_rows_up

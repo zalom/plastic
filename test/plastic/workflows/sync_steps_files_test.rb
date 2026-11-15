@@ -10,7 +10,6 @@ class SyncStepsFilesTest < Plastic::TestCase
 
   ROWLESS = "roadmaps/old.md: roadmaps/old.md is in an older form that this release does not read; " \
             "the home that holds the rows prints the file again with plastic sync down, and the file is then copied here again"
-  PRINTED_OVER = "printed again from rows: roadmaps/r1.md; it is generated from rows, and a change made outside Plastic is not kept"
 
   def test_an_unreadable_graph_file_is_listed_and_stops_the_sync_with_the_overwrite
     files = { "store/1--alpha/graph.json" => "junk" }
@@ -43,12 +42,6 @@ class SyncStepsFilesTest < Plastic::TestCase
 
     assert_equal "plastic sync down --overwrite store/1--alpha/graph.json", outcome.next_command
     assert_includes outcome.message, "roadmaps/old.md: older; the home that holds the rows prints the file again"
-  end
-
-  def test_a_view_printed_over_is_named_with_what_happened_to_the_change
-    outcome, printed, = run_sync(Plastic::Workflows::Code::Sync::Up, plan: { printed_over: ["roadmaps/r1.md"] })
-
-    assert_equal [:printed_again, ["read a.md", PRINTED_OVER]], [outcome, printed]
   end
 
   def test_each_unreadable_file_is_listed_with_its_own_overwrite

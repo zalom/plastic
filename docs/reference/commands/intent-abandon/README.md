@@ -126,7 +126,7 @@ In the words of workflow engines, the rows are these four parts:
 | the store folder | knowledge_graph.db | `documents`, `links` | reads | [`abandon.rb:13`](../../../../lib/plastic/commands/intent/abandon.rb#L13) |
 | the home folder | local.db | `locks`, `sessions` | reads and writes | found in the code, not declared |
 | the store folder | work_graph.db | `edges`, `intents`, `nodes`, `roadmaps`, `verdicts` | reads and writes | [`abandon.rb:11`](../../../../lib/plastic/commands/intent/abandon.rb#L11) |
-| the store folder | store/index.json | | writes | [`prints.rb:17`](../../../../lib/plastic/graph/prints.rb#L17) |
+| the store folder | store/index.json | | writes | [`prints.rb:18`](../../../../lib/plastic/graph/prints.rb#L18) |
 
 A second call runs the same rows again. A step runs again only when its done check fails.
 

@@ -86,9 +86,6 @@ module Plastic
 
           def entries_for(action) = actions.select { |_entry, found| found == action }.keys
 
-          # The context views and roadmaps a person changed that this sync prints again from their rows.
-          def printed_over = entries_for(:print).select { |entry| Entry.view?(entry.path) && entry.hand_edited? }.map(&:path)
-
           # The records this sync writes; zero when the folder and the rows are level.
           def pending = actions.values.count { |action| %i[record read print].include?(action) } + (legacy ? 1 : 0) + archived + second_home_extra
 

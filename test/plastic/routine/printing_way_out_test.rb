@@ -90,7 +90,7 @@ class RoutinePrintingWayOutTest < Plastic::TestCase
     refused = call.call
     up = cli("sync", "up")
 
-    [refused.out[/^next: .*$/], refused.err.include?("generated from rows"), up.code, up.out.include?("read #{path}"), holds?(path, hand_text), call.call.code]
+    [refused.out[/^next: .*$/], refused.err.include?("read it into rows"), up.code, up.out.include?("read #{path}"), holds?(path, hand_text), call.call.code]
   end
 
   def holds?(path, text) = File.read(store_path(path)).include?(text)

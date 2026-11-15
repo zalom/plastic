@@ -64,7 +64,7 @@ class SyncStepsTest < Plastic::TestCase
     before = [Plastic::Workflows::Code::Sync::Up.steps.size, Plastic::Workflows::Code::Sync::Up.facts.size]
     load File.expand_path("../../../lib/plastic/workflows/code/sync/up.rb", __dir__)
 
-    assert_equal [before, %i[printed_again done]], [[Plastic::Workflows::Code::Sync::Up.steps.size, Plastic::Workflows::Code::Sync::Up.facts.size], Plastic::Workflows::Code::Sync::Up.outcome_names]
+    assert_equal [before, %i[done]], [[Plastic::Workflows::Code::Sync::Up.steps.size, Plastic::Workflows::Code::Sync::Up.facts.size], Plastic::Workflows::Code::Sync::Up.outcome_names]
   end
 
   def test_a_sync_declares_its_steps_and_gates_in_order
@@ -78,13 +78,7 @@ class SyncStepsTest < Plastic::TestCase
 
     assert_equal ["plan the sync", "gate", "gate", "apply the changes", "say what changed", "gate", "gate", "gate", "gate"], flow.steps.map(&:name)
     assert_equal ["%{failure}", steps::REFUSED_BEFORE, steps::REFUSED_AFTER, steps::UNREADABLE, steps::UNREADABLE_FILES, steps::UNREADABLE_FILES], gates
-    assert_equal ["plastic next", "plastic next"], flow.outcomes.map(&:offers)
-  end
-
-  def test_the_because_line_of_a_view_printed_over_claims_no_read
-    because = Plastic::Workflows::Code::Sync::Up.ending(:printed_again).because
-
-    assert_equal "the rows printed each generated file changed outside Plastic again, and hold every other file changed by hand", because
+    assert_equal ["plastic next"], flow.outcomes.map(&:offers)
   end
 
   def test_a_plan_note_clears_the_lines_of_an_earlier_apply

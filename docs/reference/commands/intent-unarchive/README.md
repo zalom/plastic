@@ -53,7 +53,7 @@ In the words of workflow engines, the rows are these four parts:
 | the store folder | knowledge_graph.db | not found in the code | writes | [`unarchive.rb:12`](../../../../lib/plastic/commands/intent/unarchive.rb#L12) |
 | the store folder | references.db | not found in the code | writes | [`unarchive.rb:12`](../../../../lib/plastic/commands/intent/unarchive.rb#L12) |
 | the store folder | work_graph.db | `archives`, `intents` | reads and writes | [`unarchive.rb:12`](../../../../lib/plastic/commands/intent/unarchive.rb#L12) |
-| the store folder | store/index.json | | writes | [`prints.rb:17`](../../../../lib/plastic/graph/prints.rb#L17) |
+| the store folder | store/index.json | | writes | [`prints.rb:18`](../../../../lib/plastic/graph/prints.rb#L18) |
 
 A second call runs the same rows again. A step runs again only when its done check fails.
 

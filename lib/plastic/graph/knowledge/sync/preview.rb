@@ -24,8 +24,6 @@ module Plastic
 
           def self.conflict_lines(plan) = plan.conflicts.map { |path| "conflict: #{path}" }
 
-          def self.printed_over_lines(plan) = plan.printed_over.map { |path| Graph::Prints.printed_over_line(path) }
-
           def call = preview.lines
 
           def preview
@@ -63,7 +61,7 @@ module Plastic
           def applied_in(copy)
             work = Graph.open(home: copy, store: @store).work
             plan = checked(work.sync_plan(@direction, options))
-            lines = [*Preview.conflict_lines(plan), *work.sync_apply(plan, rollback: Legacy::Unguarded), *Preview.printed_over_lines(plan)]
+            lines = [*Preview.conflict_lines(plan), *work.sync_apply(plan, rollback: Legacy::Unguarded)]
             Run.new(lines:, conflicts: plan.conflicts, merging: plan.merging?, **refused(work, plan))
           end
 

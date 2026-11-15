@@ -31,12 +31,7 @@ module Plastic
 
       def cluster_part(retrieval) = ClusterPart.call(retrieval)
 
-      def hand_edit_line(path) = "#{path} changed by hand since the last print; run plastic sync up first"
-
-      def view_line(path) = "#{path} changed outside Plastic; it is generated from rows, and plastic sync up prints it again " \
-                            "from its rows and keeps no change made outside Plastic; save the file first to keep the change"
-
-      def printed_over_line(path) = "printed again from rows: #{path}; it is generated from rows, and a change made outside Plastic is not kept"
+      def hand_edit_line(path) = "#{path} changed since its last print on this home, by hand or in a copy from another home; run plastic sync up first to read it into rows"
 
       def unreadable_line(path, reason) = "#{path} changed by hand and cannot be read into rows: #{reason}"
 
