@@ -31,4 +31,12 @@ class WorkflowShowStatusTest < Plastic::TestCase
     assert_equal [:create_store, ["plastic project new blog /tmp/blog", "the project has no store"], "blog has no store folder; run plastic project new blog /tmp/blog"],
       [outcome, Flow.closing(outcome, context), printed_row(context, "store:")]
   end
+
+  def test_a_store_folder_missing_among_all_stores_is_named_and_offers_no_creation
+    File.write(File.join(@plastic_home, "projects.yml"), "---\nprojects:\n  blog:\n    path: /tmp/blog\n")
+    FileUtils.mkdir_p(File.join(@plastic_home, "stores", "blog"))
+    _outcome, context = status
+
+    assert_includes printed_rows(context).map(&:last), "blog has no store folder; run plastic project new blog /tmp/blog"
+  end
 end
