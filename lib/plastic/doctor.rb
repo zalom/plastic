@@ -4,13 +4,14 @@ require_relative "cli/command/usage"
 require_relative "doctor/core"
 require_relative "doctor/claude_code"
 require_relative "doctor/codex"
+require_relative "doctor/core_only"
 require_relative "workflows/installation"
 require_relative "harnesses/detection"
 require_relative "harnesses/session_rows"
 
 module Plastic
   module Doctor
-    HARNESSES = Harnesses.all.select(&:doctor).to_h { |harness| [harness.name, const_get(harness.doctor)] }.freeze
+    HARNESSES = Harnesses.all.to_h { |harness| [harness.name, harness.doctor ? const_get(harness.doctor) : CoreOnly] }.freeze
 
     # The harness on the session's row, else the one whose session variable
     # names the session. Nothing naming one is a usage error that names the
