@@ -66,8 +66,8 @@ Its rows run in this order:
 7. Gate: passes when `context.problem.nil?`; otherwise the call stops with exit 3 and prints PROBLEM. [`auto.rb:76`](../../../../lib/plastic/workflows/code/auto.rb#L76)
 8. Step: lock the intent and go in progress. Done when `def self.delivery_started?(context) retrieval = context.retrieval intent_id = context.intent_id lock = retrieval.lock(intent_id) retrieval.intent(intent_id).status == "in_progress" && lock&.session_id == context.session && lock.mode == "auto" && retrieval.liveness(lock).live? end`, so a second call skips it. [`auto.rb:86`](../../../../lib/plastic/workflows/code/auto.rb#L86)
 9. Read: name the code worktree. [`auto.rb:91`](../../../../lib/plastic/workflows/code/auto.rb#L91)
-10. Outcome `:worktree_missing`, when `context.worktree_missing`: finishes with exit 0; next: plastic auto INTENT_ID. [`auto.rb:110`](../../../../lib/plastic/workflows/code/auto.rb#L110)
-11. Outcome `:done`, otherwise: finishes with exit 0; next: plastic intent brief INTENT_ID. [`auto.rb:112`](../../../../lib/plastic/workflows/code/auto.rb#L112)
+10. Outcome `:worktree_missing`, when `context.worktree_missing`: finishes with exit 0; next: plastic auto INTENT_ID. [`auto.rb:111`](../../../../lib/plastic/workflows/code/auto.rb#L111)
+11. Outcome `:done`, otherwise: finishes with exit 0; next: plastic intent brief INTENT_ID. [`auto.rb:113`](../../../../lib/plastic/workflows/code/auto.rb#L113)
 
 It sets `problem`, `closed_problem`, `spec_problem`, `intent`, `session_problem`, `worktree_missing`.
 
@@ -115,8 +115,8 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | CLOSED_PROBLEM | 1 | plastic next | [`auto.rb:72`](../../../../lib/plastic/workflows/code/auto.rb#L72) |
 | SPEC_PROBLEM | 1 | plastic intent spec INTENT_ID | [`auto.rb:74`](../../../../lib/plastic/workflows/code/auto.rb#L74) |
 | PROBLEM | 3 | prints no next: line | [`auto.rb:76`](../../../../lib/plastic/workflows/code/auto.rb#L76) |
-| the worktree of intent INTENT_ID is not made yet | 0 | plastic auto INTENT_ID | [`auto.rb:110`](../../../../lib/plastic/workflows/code/auto.rb#L110) |
-| intent INTENT_ID is in progress | 0 | plastic intent brief INTENT_ID | [`auto.rb:112`](../../../../lib/plastic/workflows/code/auto.rb#L112) |
+| the worktree of intent INTENT_ID is not made yet | 0 | plastic auto INTENT_ID | [`auto.rb:111`](../../../../lib/plastic/workflows/code/auto.rb#L111) |
+| intent INTENT_ID is in progress | 0 | plastic intent brief INTENT_ID | [`auto.rb:113`](../../../../lib/plastic/workflows/code/auto.rb#L113) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
 
 ## What the page leaves out

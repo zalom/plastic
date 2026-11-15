@@ -79,7 +79,7 @@
 <path d="M 221 95 L 226 103 L 231 95 Z" class="head"/>
 <rect x="16" y="103" width="420" height="59" rx="6" class="lane-agent"/>
 <text x="26" y="118" class="tag tag-agent" text-anchor="start">AGENT STEP</text>
-<text x="426" y="118" class="tm tag-muted" text-anchor="end">check_merge.rb:19</text>
+<text x="426" y="118" class="tm tag-muted" text-anchor="end">check_merge.rb:20</text>
 <text x="26" y="135" class="t" text-anchor="start">confirm the architecture map</text>
 <text x="26" y="150" class="tm" text-anchor="start">done when context.map_recorded</text>
 <path d="M 226 162 L 226 172" class="wire"/>

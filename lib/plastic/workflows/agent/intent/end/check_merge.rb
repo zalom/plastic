@@ -8,12 +8,13 @@ module Plastic
     module Agent
       module Intent
         class End
-          # The agent merges its own pull request and confirms the architecture map,
+          # The agent merges the pull request of the intent and confirms the architecture map,
           # then records both under Verification in outcome.md. Plastic runs no version
           # control command and records what the agent writes.
           class CheckMerge < AgentWorkflow
             step "merge the code", done: ->(context) { context.merge_recorded },
-              say: "%{merge_found}Merge your own pull request into the intent's base with your own version control tool; leave it open only when the owner asked. " \
+              say: "%{merge_found}Use version control as you do in this project: merge the pull request of intent %{intent_id} into the intent's base, " \
+                "and leave it open only when the owner asked. " \
                 "Then add the line '- Merged: <branch> into <base> at <commit or pull request>' under ## Verification " \
                 "in %{intent_folder}/outcome.md, then run plastic sync up. Plastic runs no version control command; it records what you write."
             step "confirm the architecture map", done: ->(context) { context.map_recorded },

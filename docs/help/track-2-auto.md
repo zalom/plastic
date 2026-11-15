@@ -31,7 +31,7 @@ prints the instruction to make it and offers itself again as the next step:
 ```text
 worktree: /home/you/greeter/.claude/worktrees/2--shout
 branch: plastic/2--shout
-Create the worktree at /home/you/greeter/.claude/worktrees/2--shout on branch plastic/2--shout with your version control tool, then run plastic auto 2 again
+Create the worktree at /home/you/greeter/.claude/worktrees/2--shout on branch plastic/2--shout, using version control as you do in this project, then run plastic auto 2 again
 
 next: plastic auto 2
 ```

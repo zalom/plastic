@@ -104,7 +104,8 @@ module Plastic
         end
 
         def self.instruction(context, worktree)
-          "Create the worktree at #{worktree.path} on branch #{worktree.branch} with your version control tool, then run plastic auto #{context.intent_id} again"
+          "Create the worktree at #{worktree.path} on branch #{worktree.branch}, using version control as you do in this project, " \
+            "then run plastic auto #{context.intent_id} again"
         end
 
         outcome :worktree_missing, if: ->(context) { context.worktree_missing }, offers: "plastic auto %{intent_id}",
