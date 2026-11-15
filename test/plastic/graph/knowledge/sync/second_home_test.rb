@@ -129,14 +129,53 @@ class KnowledgeSyncSecondHomeTest < Plastic::TestCase
     assert_equal({ "b" => 2 }, JSON.parse(retrieval.contexts("1").first.data))
   end
 
-  def test_a_context_json_that_is_not_json_is_a_broken_part_and_nothing_is_imported
+  def test_a_context_json_that_is_not_json_is_a_broken_part_left_as_it_is_and_the_roadmap_is_read
     write(CONTEXT, "{nope")
     second_home_roadmap
 
     assert_includes plan.unreadable_files.fetch(CONTEXT), "not JSON"
     run_up
 
-    assert_equal [nil, []], [retrieval.roadmap("plan"), retrieval.contexts("1")]
+    assert_equal [["Plan"], [], "{nope"], [[retrieval.roadmap("plan").title], retrieval.contexts("1"), folder.read(CONTEXT)]
+  end
+
+  def rows_of_the_second_home
+    { roadmap: retrieval.roadmap("plan")&.title, old: retrieval.roadmap("old"), batches: retrieval.batches("plan").map(&:position),
+      items: retrieval.roadmap_items("plan").map(&:item), intents: retrieval.intents.map(&:intent_id),
+      contexts: retrieval.contexts("1").size, discoveries: retrieval.discoveries("1").size }
+  end
+
+  def test_the_clusters_are_read_while_another_part_is_broken
+    write("roadmaps/old.md", "# Old\n")
+    write("store/index.json", JSON.generate(JSON.parse(folder.read("store/index.json")).merge("clusters" => [{ "name" => "Core", "intents" => ["1"] }])))
+
+    assert_equal "store/index.json", Plastic::Graph::Knowledge::Sync::SecondHome.new(folder, retrieval, nil).cluster_read.path
+  end
+
+  def test_a_context_json_is_read_while_a_roadmap_file_is_broken
+    write("roadmaps/old.md", "# Old\n")
+    write(CONTEXT, context_json)
+
+    assert_equal [CONTEXT], Plastic::Graph::Knowledge::Sync::SecondHome.new(folder, retrieval).paths
+  end
+
+  def test_a_broken_part_is_listed_and_every_good_part_is_read_into_every_table
+    write(CONTEXT, context_json)
+    write("roadmaps/old.md", "# Old\n")
+    second_home_roadmap
+
+    assert_equal %w[roadmaps/old.md], plan.unreadable_files.keys
+    run_up
+
+    assert_equal({ roadmap: "Plan", old: nil, batches: [1], items: %w[1], intents: ["1"], contexts: 1, discoveries: 1 }, rows_of_the_second_home)
+    assert_equal %w[roadmaps/old.md], plan.unreadable_files.keys
+  end
+
+  def test_a_broken_part_is_counted_as_pending_only_for_what_is_still_to_read
+    write("roadmaps/old.md", "# Old\n")
+    second_home_roadmap
+
+    assert_equal [1, 0], [plan.pending, run_up && plan.pending]
   end
 
   def test_a_context_json_that_names_another_intent_is_a_broken_part
