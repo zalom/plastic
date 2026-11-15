@@ -95,10 +95,8 @@ on your machine.
 ## Cut a release
 
 1. Bump the version in `package.json`.
-2. Add or update the entry in `deprecations.yml` for anything this release removes or
-   replaces.
-3. Push the branch: `alpha`, `beta`, or `main`. The push is the release:
+2. Push the branch: `alpha`, `beta`, or `main`. The push is the release:
    `.github/workflows/publish.yml` creates the tag and the GitHub release for a version with
    no tag yet. The release carries the three files `install.sh` downloads.
-4. Read [docs/release-lines.md](docs/release-lines.md) for the routing rule between the two
+3. Read [docs/release-lines.md](docs/release-lines.md) for the routing rule between the two
    lanes and the stable-line guarantees.

@@ -2,13 +2,13 @@
 
 module Plastic
   module Installations
-    # The files of the package that reach the Plastic home: three hand-named
+    # The files of the package that reach the Plastic home: two hand-named
     # files, the hook launchers, the kernel command tree and the help
     # chapters. The last three are found on disk, so a new file in them ships
     # with no change here. The result maps each package path to its path in
     # the home, which is the same path.
     class CoreFiles
-      HAND = %w[PLASTIC.md deprecations.yml exe/plastic].freeze
+      HAND = %w[PLASTIC.md exe/plastic].freeze
 
       def initialize(package_root)
         @root = package_root
