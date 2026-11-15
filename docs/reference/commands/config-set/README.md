@@ -6,7 +6,7 @@ Write one setting to config.yml, globally or for one harness.
 plastic config set KEY VALUE [--harness NAME]
 ```
 
-The command is `Config::Set`, in [`set.rb:13`](../../../../lib/plastic/commands/config/set.rb#L13). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Config::Set`, in [`set.rb:12`](../../../../lib/plastic/commands/config/set.rb#L12). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |
@@ -22,27 +22,25 @@ The figure shows the command, the workflows it runs, the classes behind them, an
 
 ## The events of one call
 
-![The call of plastic config set](call.svg)
+The call starts the workflow `Code::Config::Set`, in [`set.rb:13`](../../../../lib/plastic/workflows/code/config/set.rb#L13).
 
-The command's `call`, at [`set.rb:28`](../../../../lib/plastic/commands/config/set.rb#L28):
+Writes one setting to config.yml: under `global`, or under the harness's section with --harness.
 
-```ruby
-def call
-  key = parsed[:key]
-  value = checked(key, self.class.scalar(parsed[:value]))
-  config.set(key, value)
-  output.row(key, value.to_s)
-  output.next_step("plastic config get #{key}#{harness_words}", because: "the setting is written")
-end
-```
+![How Code::Config::Set runs: its steps, where it stops, and its outcomes](code_set_config.svg)
 
-Its steps run in this order:
+Its rows run in this order:
 
-1. `key = parsed[:key]` [`set.rb:29`](../../../../lib/plastic/commands/config/set.rb#L29)
-2. `value = checked(key, self.class.scalar(parsed[:value]))` [`set.rb:30`](../../../../lib/plastic/commands/config/set.rb#L30)
-3. `config.set(key, value)` [`set.rb:31`](../../../../lib/plastic/commands/config/set.rb#L31)
-4. `output.row(key, value.to_s)` [`set.rb:32`](../../../../lib/plastic/commands/config/set.rb#L32)
-5. `output.next_step("plastic config get #{key}#{harness_words}", because: "the setting is written")` [`set.rb:33`](../../../../lib/plastic/commands/config/set.rb#L33)
+1. Step: write the setting. Done when `context.saved`, so a second call skips it. [`set.rb:18`](../../../../lib/plastic/workflows/code/config/set.rb#L18)
+2. Outcome `:done`, always: finishes with exit 0; next: plastic config get KEYHARNESS_WORDS. [`set.rb:27`](../../../../lib/plastic/workflows/code/config/set.rb#L27)
+
+It sets `harness_words`, `saved`.
+
+In the words of workflow engines, the rows are these four parts:
+
+- **Trigger**: the call starts the workflow `Code::Config::Set`.
+- **Activities**: 1 step.
+- **Transitions**: a step runs only while its done check fails.
+- **Outcomes**: `:done` ends the call.
 
 ## What one call reads, writes and prints
 
@@ -50,15 +48,20 @@ Its steps run in this order:
 
 It reads and writes no store database and prints no store file.
 
+A second call runs the same rows again. A step runs again only when its done check fails.
+
+| Step | Done when | The second call | Code |
+| --- | --- | --- | --- |
+| write the setting | `context.saved` | skips it | [`set.rb:18`](../../../../lib/plastic/workflows/code/config/set.rb#L18) |
+
 ## How a call ends
 
 Every call can also end in [the ways any call can end](../../dsl/README.md#how-any-call-can-end).
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| Usage error: a setting takes one value, not TEXT | 2 | prints no next: line | [`set.rb:21`](../../../../lib/plastic/commands/config/set.rb#L21) |
-| Usage error: KEY takes true or false | 2 | prints no next: line | [`set.rb:40`](../../../../lib/plastic/commands/config/set.rb#L40) |
-| Offers the next command | 0 | plastic config get KEY [HARNESS_WORDS] | [`set.rb:33`](../../../../lib/plastic/commands/config/set.rb#L33) |
+| the setting is written | 0 | plastic config get KEYHARNESS_WORDS | [`set.rb:27`](../../../../lib/plastic/workflows/code/config/set.rb#L27) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
 
 ## What the page leaves out
 

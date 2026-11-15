@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 86" width="360" height="86" role="img" xml:space="preserve">
-<title>The call of plastic config set</title>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 193" width="760" height="193" role="img" xml:space="preserve">
+<title>How Set runs in plastic config set</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
 .lane-code { fill: #d5e8e3; stroke: #0d6b61; stroke-width: 1.5; }
@@ -68,8 +68,29 @@
 .big { font: 700 36px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
 }</style>
 <rect width="100%" height="100%" class="ground"/>
-<rect x="16" y="16" width="328" height="56" rx="6" class="card"/>
-<text x="28" y="36" class="tag tag-muted" text-anchor="start">ONE CALL, NO WORKFLOW</text>
-<text x="28" y="56" class="tb" text-anchor="start">Set</text>
-<text x="332" y="56" class="tm" text-anchor="end">config set</text>
+<text x="16" y="22" class="tb" text-anchor="start">Set</text>
+<text x="436" y="22" class="tm tag-muted" text-anchor="end">set.rb:13</text>
+<rect x="16" y="34" width="420" height="59" rx="6" class="card"/>
+<text x="26" y="49" class="tag tag-muted" text-anchor="start">STEP</text>
+<text x="426" y="49" class="tm tag-muted" text-anchor="end">set.rb:18</text>
+<text x="26" y="66" class="t" text-anchor="start">write the setting</text>
+<text x="26" y="81" class="tm" text-anchor="start">done when context.saved</text>
+<path d="M 436 52 L 464 52" class="wire-failure"/>
+<path d="M 456 47 L 464 52 L 456 57 Z" class="head"/>
+<rect x="466" y="34" width="270" height="56" rx="6" class="stop-failure"/>
+<text x="476" y="49" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1, FAILED</text>
+<text x="476" y="65" class="tm" text-anchor="start">the step ran and its done</text>
+<text x="476" y="79" class="tm" text-anchor="start">check still fails</text>
+<path d="M 226 93 L 226 103" class="wire"/>
+<path d="M 221 95 L 226 103 L 231 95 Z" class="head"/>
+<text x="16" y="115" class="tag tag-muted" text-anchor="start">ENDS ON</text>
+<rect x="16" y="123" width="300" height="56" rx="6" class="card"/>
+<text x="26" y="139" class="tm" text-anchor="start">:done</text>
+<text x="26" y="155" class="tm tag-muted" text-anchor="start">always</text>
+<path d="M 316 139 L 352 139" class="wire"/>
+<path d="M 344 134 L 352 139 L 344 144 Z" class="head"/>
+<rect x="352" y="123" width="392" height="56" rx="6" class="end"/>
+<text x="362" y="140" class="t" text-anchor="start">the call finishes, exit 0</text>
+<text x="362" y="154" class="t" text-anchor="start">next: plastic config get %{key}%{harness_words}</text>
+<text x="362" y="168" class="t" text-anchor="start">because: the setting is written</text>
 </svg>
