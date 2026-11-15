@@ -28,7 +28,7 @@ module CommandReference
 
     def events
       drafts = stepped
-      shown.each { |outcome| hang(drafts, end_stop(outcome), outcome.found_by) }
+      shown.each { |outcome| hang(drafts, end_stop(outcome), holder_of(drafts, outcome)) }
       drafts.map { |draft| Event.new(nil, *draft.values_at(:lane, :text, :say, :stops), nil, true) }
     end
 
@@ -46,10 +46,17 @@ module CommandReference
 
     def draft(row) = { lane: (row.kind == :agent) ? :agent : :code, text: Words.sentence(row.name), say: row.say, stops: [] }
 
-    def hang(drafts, stop, found_by = nil)
+    def hang(drafts, stop, holder = nil)
       drafts << { lane: :code, text: CHECK, say: nil, stops: [] } if drafts.empty?
-      holder = found_by && drafts.find { |draft| draft[:text] == Words.sentence(found_by) }
       (holder || drafts.last)[:stops] << stop
+    end
+
+    # The box of the step an outcome names with found_by:, nil when it names none.
+    def holder_of(drafts, outcome)
+      return unless outcome.found_by
+
+      drafts.find { |draft| draft[:text] == Words.sentence(outcome.found_by) } ||
+        raise(ArgumentError, "workflow #{@flow.key} outcome #{outcome.name} is found_by #{outcome.found_by}, which is no step of the workflow")
     end
 
     def gate_stop(gate)
