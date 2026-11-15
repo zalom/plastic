@@ -7,10 +7,18 @@ module Plastic
     # rest, then refuse on the conflicts left.
     module SyncSteps
       NAMES = { up: "the rows hold every file changed by hand", down: "the files hold every row that changed" }.freeze
-      REFUSED_BEFORE = "changed on both sides since the last print, nothing written: %{conflicts}; " \
-                       "pass --overwrite PATH, --overwrite or --merge"
-      REFUSED_AFTER = "changed on both sides since the last print, left as they are: %{conflicts}; " \
-                      "pass --overwrite PATH or --overwrite"
+      # What each option keeps, in the words of the direction. The paths come last, so the last word of a refusal is a path.
+      OVERWRITE_WORDS = {
+        up: "--overwrite PATH reads that file into rows, --overwrite reads every file",
+        down: "--overwrite PATH prints that record's rows over the file, --overwrite prints every record"
+      }.freeze
+      REFUSED_BEFORE = OVERWRITE_WORDS.transform_values do |words|
+        "changed on both sides since the last print, nothing written. #{words}, " \
+          "--merge applies the one-sided changes and lists the rest. The records: %{conflicts}"
+      end.freeze
+      REFUSED_AFTER = OVERWRITE_WORDS.transform_values do |words|
+        "changed on both sides since the last print, left as they are. #{words}. The records: %{conflicts}"
+      end.freeze
 
       UNREADABLE = "intent folders that could not be read, the others were read:\n%{unreadable}\n" \
                    "fix or remove each folder named, then run plastic sync up again"
@@ -31,7 +39,7 @@ module Plastic
 
       def self.note_refusals(context, plan)
         context[:failure] = plan.failure
-        context[:conflicts] = plan.conflicts.join(", ")
+        context[:conflicts] = plan.conflicts.join(" ")
         context[:merging] = plan.merging?
         context[:unreadable] = plan.unreadable.join("\n")
       end
@@ -102,13 +110,13 @@ module Plastic
       def plan_steps(direction)
         read("plan the sync") { |context| SyncSteps.note(context, SyncSteps.plan(context, direction)) }
         gate "%{failure}", stops: :failure, pass: SyncSteps.check(:runs?)
-        gate REFUSED_BEFORE, stops: :refusal, pass: SyncSteps.check(:writes?)
+        gate REFUSED_BEFORE.fetch(direction), stops: :refusal, pass: SyncSteps.check(:writes?)
       end
 
       def apply_steps(direction)
         step("apply the changes", done: SyncSteps.applied(direction)) { |context| SyncSteps.apply(context, direction) }
         read("say what changed") { |context| SyncSteps.say(context) }
-        gate REFUSED_AFTER, stops: :refusal, pass: SyncSteps.check(:settled?)
+        gate REFUSED_AFTER.fetch(direction), stops: :refusal, pass: SyncSteps.check(:settled?)
       end
     end
   end

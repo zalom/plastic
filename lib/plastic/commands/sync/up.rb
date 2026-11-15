@@ -13,7 +13,7 @@ module Plastic
       # An index that another home printed sets the title, the state, the disposition, the reason and the closed time of every intent it lists. So with a command on each home before the copy, it takes back a change of this home, also on an intent that the other home never changed.
       # A file deleted on one home is printed again from rows on the other.
       class Up < Routine
-        extend CLI::SyncOptions
+        CLI::SyncOptions.add(self, :up)
 
         option :dry_run, switch: "--dry-run", default: false, text: "preview the complete sync in a disposable copy"
 

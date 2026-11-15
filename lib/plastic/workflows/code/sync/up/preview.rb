@@ -28,7 +28,7 @@ module Plastic
             end
 
             def self.note(context, run)
-              context[:conflicts] = run.conflicts.join(", ")
+              context[:conflicts] = run.conflicts.join(" ")
               context[:merging] = run.merging
               context[:unreadable] = run.unreadable.join("\n")
               SyncSteps.note_files(context, run.unreadable_files, run.rowless_files)
@@ -41,7 +41,7 @@ module Plastic
             def self.preview(direction)
               sets :failure, :conflicts, :merging, :unreadable, :unreadable_files, :unreadable_path, :unreadable_rowless
               read("preview the sync in an isolated copy") { |context| show(context, direction) if DRY_RUN.call(context) }
-              real_gates
+              real_gates(direction)
               outcomes_of(direction)
             end
 
@@ -50,16 +50,16 @@ module Plastic
               outcome :continue, offers: "plastic sync #{direction}", because: "apply the requested sync"
             end
 
-            def self.real_gates
+            def self.real_gates(direction)
               gate "%{failure}", stops: :failure, pass: ->(context) { as_real?(context, :runs?) }
-              conflict_gates
+              conflict_gates(direction)
               readable_gates
             end
 
             # The gates of the conflicts, before and after the real run writes.
-            def self.conflict_gates
-              gate SyncSteps::REFUSED_BEFORE, stops: :refusal, pass: ->(context) { as_real?(context, :writes?) }
-              gate SyncSteps::REFUSED_AFTER, stops: :refusal, pass: ->(context) { as_real?(context, :settled?) }
+            def self.conflict_gates(direction)
+              gate SyncSteps::REFUSED_BEFORE.fetch(direction), stops: :refusal, pass: ->(context) { as_real?(context, :writes?) }
+              gate SyncSteps::REFUSED_AFTER.fetch(direction), stops: :refusal, pass: ->(context) { as_real?(context, :settled?) }
             end
 
             # The gates of the files that sync up reads.

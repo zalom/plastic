@@ -5,25 +5,25 @@ require_relative "../../../lib/plastic/commands/sync/up"
 require_relative "../../../lib/plastic/commands/sync/down"
 
 class SyncOptionsTest < Plastic::TestCase
-MERGE = { name: :merge, switch: "--merge", default: false, text: "apply the one-sided changes, then list the conflicts" }.freeze
-OVERWRITE = {
-  up: "read the file of the path into rows, or every file with no path",
-  down: "print the rows of the path over its file, or every record with no path"
-}.freeze
+  MERGE = { name: :merge, switch: "--merge", default: false, text: "apply the one-sided changes, then list the conflicts" }.freeze
+  OVERWRITE = {
+    up: "read the file of the path into rows, or every file with no path",
+    down: "print the rows of the path over its file, or every record with no path"
+  }.freeze
 
-def options_of(command) = command.options.map(&:to_h).reject { |option| option[:name] == :dry_run }.map { |option| option.slice(:name, :switch, :default, :text) }
+  def options_of(command) = command.options.map(&:to_h).reject { |option| option[:name] == :dry_run }.map { |option| option.slice(:name, :switch, :default, :text) }
 
-def expected(direction)
-  [{ name: :overwrite, switch: "--overwrite [PATH]", default: false, text: OVERWRITE.fetch(direction) }, MERGE]
-end
+  def expected(direction)
+    [{ name: :overwrite, switch: "--overwrite [PATH]", default: false, text: OVERWRITE.fetch(direction) }, MERGE]
+  end
 
-def test_sync_up_says_that_overwrite_reads_files_into_rows
-  assert_equal [expected(:up), %i[work knowledge references]], [options_of(Plastic::Commands::Sync::Up), Plastic::Commands::Sync::Up.writes]
-end
+  def test_sync_up_says_that_overwrite_reads_files_into_rows
+    assert_equal [expected(:up), %i[work knowledge references]], [options_of(Plastic::Commands::Sync::Up), Plastic::Commands::Sync::Up.writes]
+  end
 
-def test_sync_down_says_that_overwrite_prints_rows_over_files
-  assert_equal [expected(:down), %i[work knowledge references]], [options_of(Plastic::Commands::Sync::Down), Plastic::Commands::Sync::Down.writes]
-end
+  def test_sync_down_says_that_overwrite_prints_rows_over_files
+    assert_equal [expected(:down), %i[work knowledge references]], [options_of(Plastic::Commands::Sync::Down), Plastic::Commands::Sync::Down.writes]
+  end
 
   def test_each_direction_runs_its_own_workflow
     assert_equal [["sync up", "Read the files changed by hand into rows", %i[code_preview_sync code_sync_up]],

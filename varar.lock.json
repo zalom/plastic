@@ -609,7 +609,7 @@
       ]
     },
     "varar/sync-down.md": {
-      "sourceHash": "fnv1a:ea06976f",
+      "sourceHash": "fnv1a:ce5de7e3",
       "examples": [
         {
           "name": "Each row gives the change, the call, the exit code, the result, the files, the file and the row:",
