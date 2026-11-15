@@ -89,6 +89,7 @@ module Plastic
       code_list_projects: "Code::Project::List",
       # Settings: the config file read and written one key at a time.
       code_list_config: "Code::Config::List",
+      code_get_config: "Code::Config::Get",
       # Distribution: the installer commands over the running package and the home.
       code_show_version: "Code::Version",
       code_check_health: "Code::Doctor",

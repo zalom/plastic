@@ -78,6 +78,7 @@ module WorkflowNameTable
     code_backup_restore: "Code::Backup::Restore",
     code_list_projects: "Code::Project::List",
     code_list_config: "Code::Config::List",
+    code_get_config: "Code::Config::Get",
     code_show_version: "Code::Version",
     code_check_health: "Code::Doctor",
     code_preview_install: "Code::Install::Preview",
