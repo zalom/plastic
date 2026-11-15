@@ -80,6 +80,12 @@ class CommandReferenceChangesTest < Minitest::Test
     assert_includes texts, "The files of the intent and the index of the store are rewritten"
   end
 
+  def test_the_rows_of_sync_up_hold_the_files_and_the_index_it_prints_again
+    row = page("sync up").changes.find { |each| each.text == "The files of the intents and the index of the store are printed again from the rows" }
+
+    assert_equal "goes with the store", row.reach
+  end
+
   def test_roadmap_show_has_no_row
     assert_empty page("roadmap show").changes
   end
