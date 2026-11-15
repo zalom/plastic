@@ -59,6 +59,15 @@ class InstallShReleaseTest < Minitest::Test
     assert_includes out, "would install Plastic 9.9.9 under #{share}"
   end
 
+  def test_a_newer_release_without_its_files_is_skipped_for_the_newest_that_has_them
+    release("9.9.9")
+    serve_releases("9.9.9", bare: ["9.9.10"])
+    out, err, status = install("--dry-run")
+
+    assert_equal [0, ""], [status.exitstatus, err]
+    assert_includes out, "would install Plastic 9.9.9 under #{share}"
+  end
+
   def test_a_home_whose_harness_was_uninstalled_ends_with_next_plastic_init
     plastic_home("VERSION" => "9.9.8\n")
     out, _err, status = install_local("9.9.9")
