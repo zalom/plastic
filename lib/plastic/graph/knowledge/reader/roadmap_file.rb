@@ -82,10 +82,11 @@ module Plastic
 
           def rows(kind) = @records[kind].map { |record| send(:"#{kind}_row", record) }
 
-          def batches_row(record) = base(record, "title", "goal", "done").merge(position: number(record, "position"), updated_at: Plastic.now)
+          def batches_row(record) = base(record, "title", "goal").merge(done: record["done"].to_s, position: number(record, "position"), updated_at: Plastic.now)
 
           def items_row(record)
-            base(record, "item", "title", "goal", "done", "intent_id", "mark").merge(batch: number(record, "batch"), position: number(record, "position"), updated_at: Plastic.now)
+            base(record, "item", "title", "goal", "intent_id", "mark").merge(done: record["done"].to_s, batch: number(record, "batch"), position: number(record, "position"),
+              updated_at: Plastic.now)
           end
 
           def edges_row(record) = base(record, "from", "to", "kind")
