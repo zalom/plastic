@@ -15,6 +15,16 @@ module Plastic
           text: "apply the one-sided changes, then list the conflicts"
         command.writes :work, :knowledge, :references
       end
+
+      # The switches of sync up.
+      module Up
+        def self.extended(command) = SyncOptions.add(command, :up)
+      end
+
+      # The switches of sync down.
+      module Down
+        def self.extended(command) = SyncOptions.add(command, :down)
+      end
     end
   end
 end
