@@ -154,7 +154,7 @@
 <path d="M 472 660 L 480 665 L 472 670 Z" class="head"/>
 <rect x="480" y="642" width="330" height="46" rx="6" class="stop-end"/>
 <text x="492" y="660" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
-<text x="492" y="678" class="t" text-anchor="start">The retrieval context was read.</text>
+<text x="492" y="678" class="t" text-anchor="start">The submitted retrieval context is saved.</text>
 <rect x="24" y="723" width="14" height="14" rx="3" class="lane-code"/>
 <text x="44" y="735" class="k" text-anchor="start">Code Workflow</text>
 <rect x="140" y="723" width="14" height="14" rx="3" class="stop-failure"/>

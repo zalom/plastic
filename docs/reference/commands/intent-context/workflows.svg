@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1620 362" width="1620" height="362" role="img" xml:space="preserve">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1620 379" width="1620" height="379" role="img" xml:space="preserve">
 <title>The workflows of one call of plastic intent context, in words</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
@@ -129,7 +129,8 @@
 <path d="M 1366 226 L 1374 231 L 1366 236 Z" class="head"/>
 <path d="M 1203 273 L 1203 299" class="wire"/>
 <path d="M 1198 291 L 1203 299 L 1208 291 Z" class="head"/>
-<rect x="1076" y="299" width="254" height="49" rx="6" class="stop-end"/>
+<rect x="1076" y="299" width="254" height="66" rx="6" class="stop-end"/>
 <text x="1088" y="319" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
-<text x="1088" y="339" class="t" text-anchor="start">The retrieval context was read.</text>
+<text x="1088" y="339" class="t" text-anchor="start">The submitted retrieval context</text>
+<text x="1088" y="356" class="t" text-anchor="start">is saved.</text>
 </svg>

@@ -392,11 +392,7 @@ class IntentContextSavingTest < Plastic::TestCase
       batch.add("CREATE TRIGGER refuse_context BEFORE INSERT ON retrieval_contexts BEGIN SELECT RAISE(ABORT, 'the context table refuses a row'); END")
     end
 
-    result = Tempfile.create(["context", ".json"]) do |file|
-      file.write(JSON.generate(context_submission(reference)))
-      file.flush
-      plastic("intent", "context", "1", "--from", file.path, table: Plastic::CLI::TABLE)
-    end
+    result = submit_raw_context(JSON.generate(context_submission(reference)))
 
     assert_equal [1, ""], [result.code, result.out]
     assert_includes result.err, "the context table refuses a row"
