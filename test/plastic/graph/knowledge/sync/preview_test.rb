@@ -120,6 +120,14 @@ class KnowledgeSyncPreviewTest < Plastic::TestCase
     assert_equal [["store/1--alpha/graph.json"], []], [run.unreadable_files.keys, run.unreadable]
   end
 
+  def test_a_dry_run_of_sync_up_keeps_the_files_this_home_holds_no_rows_for
+    write("store/1--alpha/graph.json", "{\"hand\":true}\n")
+    write("roadmaps/old.md", "# Old\n")
+    run = Plastic::Graph::Knowledge::Sync::Preview.new(@plastic_home, "global", {}).preview
+
+    assert_equal [%w[roadmaps/old.md store/1--alpha/graph.json], %w[roadmaps/old.md]], [run.unreadable_files.keys.sort, run.rowless_files]
+  end
+
   def test_a_dry_run_of_sync_down_keeps_no_file_to_refuse
     write("store/1--alpha/graph.json", "{\"hand\":true}\n")
     run = Plastic::Graph::Knowledge::Sync::Preview.new(@plastic_home, "global", {}, direction: :down).preview

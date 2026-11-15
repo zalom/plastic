@@ -6,13 +6,13 @@ require_relative "../../../lib/plastic/workflows/code/sync/up"
 require_relative "../../../lib/plastic/workflows/code/sync/down"
 
 class SyncStepsTest < Plastic::TestCase
-  DECLARED = %i[overwrite merge failure conflicts merging unreadable unreadable_files unreadable_path printed_over lines].freeze
+  DECLARED = %i[overwrite merge failure conflicts merging unreadable unreadable_files unreadable_path unreadable_rowless printed_over lines].freeze
   PLAIN = "changed on both sides since the last print, nothing written: a.md, b.md; pass --overwrite PATH, --overwrite or --merge"
   LEFT = "changed on both sides since the last print, left as they are: a.md; pass --overwrite PATH or --overwrite"
 
   # A plan as the steps read it.
-  Plan = Data.define(:failure, :conflicts, :merging, :pending, :unreadable, :unreadable_files, :printed_over) do
-    def initialize(unreadable_files: {}, printed_over: [], **fields) = super
+  Plan = Data.define(:failure, :conflicts, :merging, :pending, :unreadable, :unreadable_files, :rowless_files, :printed_over) do
+    def initialize(unreadable_files: {}, rowless_files: [], printed_over: [], **fields) = super
 
     def merging? = merging
   end
@@ -110,8 +110,8 @@ class SyncStepsTest < Plastic::TestCase
     steps = Plastic::Workflows::SyncSteps
     gates = flow.steps.grep(Plastic::CodeWorkflow::Gate).map(&:reason)
 
-    assert_equal ["plan the sync", "gate", "gate", "apply the changes", "say what changed", "gate", "gate", "gate"], flow.steps.map(&:name)
-    assert_equal ["%{failure}", steps::REFUSED_BEFORE, steps::REFUSED_AFTER, steps::UNREADABLE, steps::UNREADABLE_FILES], gates
+    assert_equal ["plan the sync", "gate", "gate", "apply the changes", "say what changed", "gate", "gate", "gate", "gate"], flow.steps.map(&:name)
+    assert_equal ["%{failure}", steps::REFUSED_BEFORE, steps::REFUSED_AFTER, steps::UNREADABLE, steps::UNREADABLE_FILES, steps::UNREADABLE_FILES], gates
     assert_equal ["plastic next", "plastic next"], flow.outcomes.map(&:offers)
   end
 
@@ -124,7 +124,26 @@ class SyncStepsTest < Plastic::TestCase
     assert_equal "plastic sync down --overwrite store/1--alpha/graph.json", outcome.next_command
   end
 
-  PRINTED_OVER = "printed again from rows: roadmaps/r1.md; it is generated from rows, and a change made outside Plastic is not kept"
+  def test_a_file_this_home_holds_no_rows_for_is_listed_with_no_command_to_run_here
+    files = { "roadmaps/old.md" => "roadmaps/old.md is in an older form that this release does not read" }
+    outcome, = run_sync(Plastic::Workflows::Code::Sync::Up, plan: { unreadable_files: files, rowless_files: files.keys })
+
+    assert_instance_of Plastic::Failed, outcome
+    assert_includes outcome.message, "roadmaps/old.md: roadmaps/old.md is in an older form that this release does not read; " \
+                                     "the home that holds the rows prints the file again with plastic sync down, and the file is then copied here again"
+    refute_includes outcome.message, "--overwrite"
+    assert_nil outcome.next_command
+  end
+
+  def test_a_file_with_rows_here_keeps_its_command_when_another_file_has_none
+    files = { "roadmaps/old.md" => "older", "store/1--alpha/graph.json" => "junk" }
+    outcome, = run_sync(Plastic::Workflows::Code::Sync::Up, plan: { unreadable_files: files, rowless_files: %w[roadmaps/old.md] })
+
+    assert_equal "plastic sync down --overwrite store/1--alpha/graph.json", outcome.next_command
+    assert_includes outcome.message, "roadmaps/old.md: older; the home that holds the rows prints the file again"
+  end
+
+  PRINTED_OVER ="printed again from rows: roadmaps/r1.md; it is generated from rows, and a change made outside Plastic is not kept"
 
   def test_a_view_printed_over_is_named_with_what_happened_to_the_change
     outcome, printed, = run_sync(Plastic::Workflows::Code::Sync::Up, plan: { printed_over: ["roadmaps/r1.md"] })

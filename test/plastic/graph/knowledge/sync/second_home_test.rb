@@ -178,6 +178,23 @@ class KnowledgeSyncSecondHomeTest < Plastic::TestCase
     assert_equal [1, 0], [plan.pending, run_up && plan.pending]
   end
 
+  def test_only_the_files_of_a_second_home_are_files_this_home_holds_no_rows_for
+    write("store/1--alpha/graph.json", "junk")
+    write("roadmaps/old.md", "# Old\n")
+
+    assert_equal [%w[roadmaps/old.md store/1--alpha/graph.json], %w[roadmaps/old.md]], [plan.unreadable_files.keys.sort, plan.rowless_files]
+  end
+
+  def test_the_overwrite_offered_for_a_file_this_home_holds_rows_for_prints_it_and_the_next_sync_up_reads_clean
+    graph = "store/1--alpha/graph.json"
+    write(graph, "junk")
+
+    assert_equal [[graph], []], [plan.unreadable_files.keys, plan.rowless_files]
+    sync.apply(sync.plan(:down, overwrite: graph))
+
+    assert_empty sync.plan(:up).unreadable_files
+  end
+
   def test_a_context_json_that_names_another_intent_is_a_broken_part
     write(CONTEXT, context_json(intent: "2"))
 
