@@ -101,7 +101,7 @@ module Plastic
       family = words.reject { |word| %w[--json --help -h].include?(word) }
       return family_list(family.first, words, context) if family.one? && FAMILIES.key?(family.first)
 
-      dispatch([*words, "--help"], context) { "plastic: no command #{words.join(" ").inspect}; plastic help lists them" }
+      dispatch([*words, "--help"], context) { "plastic: no command #{family.join(" ").inspect}; plastic help lists them" }
     end
     private_class_method :topic_or_help
 
