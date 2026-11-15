@@ -14,6 +14,14 @@ class ReleasingSkillPublishTest < Minitest::Test
     assert_includes content, "publish.yml",
       "AGENTS.md's release doctrine line must name the publish workflow, not describe a release made by hand"
   end
+
+  def test_the_publish_workflow_runs_no_suite
+    steps = Psych.safe_load(File.read(File.join(REPO, ".github", "workflows", "publish.yml")), aliases: false)["jobs"].values.flat_map { |job| job["steps"] }
+    suite_runs = steps.map { |step| step["run"].to_s }.grep(/\bruby bin\/test\b/)
+
+    refute_empty steps
+    assert_empty suite_runs
+  end
 end
 
 # The CI workflow test.yml triggers on `alpha` and on manual dispatch, and runs
