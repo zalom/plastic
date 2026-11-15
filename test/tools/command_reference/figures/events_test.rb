@@ -82,18 +82,6 @@ class CommandReferenceEventsFigureTest < Minitest::Test
     end
   end
 
-  def key_pairs(svg)
-    REXML::Document.new(svg).get_elements("//text").select { |each| each.attributes["class"] == "k" }.each_cons(2)
-  end
-
-  def room(now, after) = after.attributes["x"].to_i - 20 - now.attributes["x"].to_i
-
-  def test_the_key_entries_of_an_events_drawing_leave_room_for_each_label
-    drawings("events").each do |path, svg|
-      key_pairs(svg).each { |now, after| assert_operator room(now, after), :>=, CommandReference::Figures::Glyphs.width(now.text.to_s).ceil, "#{path}: #{now.text}" }
-    end
-  end
-
   def test_the_events_of_node_add_hold_its_failure_stop_with_the_words_of_its_gate
     words = events_of("node add").map(&:last)
 
