@@ -22,7 +22,7 @@ class DoctorCommandTest < Plastic::TestCase
   def test_a_call_no_harness_names_exits_2_and_names_the_option
     result = call("doctor", env: { "PLASTIC_PACKAGE_ROOT" => @package })
 
-    assert_equal [2, true], [result.code, result.err.include?("name one with --harness: #{Plastic::Harnesses.all.map(&:name).join(", ")}")]
+    assert_equal [2, true], [result.code, result.err.include?("name one with --harness: claude-code, codex, hermes")]
   end
 
   def test_a_whole_home_prints_ok_rows_and_exits_0
@@ -50,11 +50,11 @@ class DoctorCommandTest < Plastic::TestCase
     assert_equal ["plastic init", "plastic install --reinstall"], document.fetch("result").fetch("repair")
   end
 
-  def test_a_harness_with_no_module_exits_2_and_names_available_harnesses
+  def test_an_unregistered_harness_exits_2_and_names_the_registered_harnesses
     result = doctor("--harness", "unknown")
 
     assert_equal 2, result.code
-    assert_includes result.err, "harnesses with one: #{Plastic::Harnesses.all.map(&:name).join(", ")}"
+    assert_includes result.err, "no harness unknown; the registered harnesses are claude-code, codex, hermes"
   end
 
   def test_the_doctor_changes_no_file_under_the_home

@@ -29,7 +29,7 @@ class DoctorLineTest < Minitest::Test
 
   def test_an_unknown_session_names_the_registered_harnesses
     assert_equal "Plastic: the session s-1 is recorded as unknown: its start hook found no sign of a registered harness; " \
-                 "run plastic doctor --harness with one of #{Plastic::Harnesses.all.map(&:name).join(", ")}.", line("unknown")
+                 "run plastic doctor --harness with one of claude-code, codex, hermes.", line("unknown")
   end
 
   def test_the_doctor_is_asked_with_the_scope_and_the_harness
