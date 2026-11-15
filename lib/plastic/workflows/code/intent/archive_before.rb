@@ -57,11 +57,7 @@ module Plastic
 
           def older?(stamp) = (time = moment(stamp)) && time < cutoff
 
-          def moment(stamp)
-            Time.iso8601(stamp) if stamp
-          rescue ArgumentError
-            nil
-          end
+          def moment(stamp) = (OlderThan.read(stamp) if stamp)
         end
       end
     end
