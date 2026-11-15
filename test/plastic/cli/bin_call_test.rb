@@ -55,6 +55,12 @@ class BinCallTest < Plastic::TestCase
     assert_equal [2, "plastic: no command \"not-a-command\"; plastic help lists them\n"], [unknown.code, unknown.err]
   end
 
+  def test_bin_call_help_for_an_unknown_word_with_json_names_the_word_and_no_flag
+    unknown = plastic_bin("help", "nosuch", "--json", table: Plastic::CLI::TABLE)
+
+    assert_equal [2, "plastic: no command \"nosuch\"; plastic help lists them\n"], [unknown.code, unknown.err]
+  end
+
   def test_bin_call_help_for_a_command_returns_its_exact_json_usage_without_a_home
     home, environment = absent_home_environment(env: {})
 
