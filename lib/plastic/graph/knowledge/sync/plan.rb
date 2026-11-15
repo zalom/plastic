@@ -115,10 +115,9 @@ module Plastic
             named_print?(entry) ? :print : action
           end
 
-          # The index prints from the rows when another home printed it and this home holds no print of it. Otherwise
-          # an index a person changed is read into rows when it can be read, and kept as written when it cannot be
-          # read and this home holds a print of it; an index nobody changed is left as it is. An index never printed
-          # on this home prints from the rows.
+          # The index prints from the rows when another home printed it and this home holds no print of it. An index
+          # that a person changed and that has rows is read into rows. When it cannot be read, it is kept as written
+          # if this home holds a print of it, and printed from the rows if not. Any other index is left as it is.
           def generated_up(entry)
             return :print if entry.reprinted?
             return :none unless entry.hand_edited? && entry.rows_sha
