@@ -76,17 +76,19 @@ Validates a submitted evidence selection and persists it in the owning store.
 Its rows run in this order:
 
 1. Read: forget a stop of an earlier call. [`code_workflow.rb:54`](../../../../lib/plastic/code_workflow.rb#L54)
-2. Read: persist the submitted context. [`context.rb:24`](../../../../lib/plastic/workflows/code/intent/context.rb#L24)
-3. Gate: passes when `context.problem.nil?`; otherwise the call stops with exit 1 and prints PROBLEM. [`context.rb:35`](../../../../lib/plastic/workflows/code/intent/context.rb#L35)
-4. Outcome `:done`, always: finishes with exit 0; prints no next: line. [`context.rb:37`](../../../../lib/plastic/workflows/code/intent/context.rb#L37)
+2. Read: validate the submitted context. [`context.rb:24`](../../../../lib/plastic/workflows/code/intent/context.rb#L24)
+3. Gate: passes when `context.problem.nil?`; otherwise the call stops with exit 1 and prints PROBLEM. [`context.rb:34`](../../../../lib/plastic/workflows/code/intent/context.rb#L34)
+4. Step: save the submitted context. Done when `ContextPersistence.new(context).saved?(context.submission)`, so a second call skips it. [`context.rb:36`](../../../../lib/plastic/workflows/code/intent/context.rb#L36)
+5. Read: print the saved context. [`context.rb:40`](../../../../lib/plastic/workflows/code/intent/context.rb#L40)
+6. Outcome `:done`, always: finishes with exit 0; prints no next: line. [`context.rb:42`](../../../../lib/plastic/workflows/code/intent/context.rb#L42)
 
-It sets `problem`.
+It sets `problem`, `submission`.
 
 In the words of workflow engines, the rows are these four parts:
 
 - **Trigger**: the call starts the workflow `Code::Intent::Context::CheckOwner`; each later workflow starts from an outcome of the one before it.
-- **Activities**: 5 reads.
-- **Transitions**: 3 gates stop the call when their checks fail; CheckOwner goes to Context on `:submit`; CheckOwner goes to Read on `:read`.
+- **Activities**: 6 reads and 1 step.
+- **Transitions**: 3 gates stop the call when their checks fail; a step runs only while its done check fails; CheckOwner goes to Context on `:submit`; CheckOwner goes to Read on `:read`.
 - **Outcomes**: `:done` of Read, `:done` of Context end the call.
 
 ## What one call reads, writes and prints
@@ -103,6 +105,12 @@ In the words of workflow engines, the rows are these four parts:
 | the store folder | store/ID--SLUG/graph.json | | writes | [`prints.rb:21`](../../../../lib/plastic/graph/prints.rb#L21) |
 | the store folder | store/ID--SLUG/context.json | | writes | [`prints.rb:22`](../../../../lib/plastic/graph/prints.rb#L22) |
 
+A second call runs the same rows again. A step runs again only when its done check fails.
+
+| Step | Done when | The second call | Code |
+| --- | --- | --- | --- |
+| save the submitted context | `ContextPersistence.new(context).saved?(context.submission)` | skips it | [`context.rb:36`](../../../../lib/plastic/workflows/code/intent/context.rb#L36) |
+
 ## How a call ends
 
 Every call can also end in [the ways any call can end](../../dsl/README.md#how-any-call-can-end).
@@ -112,8 +120,8 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | no intent INTENT_ID in owning store | 1 | prints no next: line | [`check_owner.rb:23`](../../../../lib/plastic/workflows/code/intent/context/check_owner.rb#L23) |
 | PROBLEM | 1 | prints no next: line | [`read.rb:30`](../../../../lib/plastic/workflows/code/intent/context/read.rb#L30) |
 | the retrieval context was read | 0 | prints no next: line | [`read.rb:32`](../../../../lib/plastic/workflows/code/intent/context/read.rb#L32) |
-| PROBLEM | 1 | prints no next: line | [`context.rb:35`](../../../../lib/plastic/workflows/code/intent/context.rb#L35) |
-| the retrieval context was read | 0 | prints no next: line | [`context.rb:37`](../../../../lib/plastic/workflows/code/intent/context.rb#L37) |
+| PROBLEM | 1 | prints no next: line | [`context.rb:34`](../../../../lib/plastic/workflows/code/intent/context.rb#L34) |
+| the retrieval context was read | 0 | prints no next: line | [`context.rb:42`](../../../../lib/plastic/workflows/code/intent/context.rb#L42) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
 
 ## What the page leaves out
