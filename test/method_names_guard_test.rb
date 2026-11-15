@@ -65,6 +65,31 @@ class MethodNamesGuardTest < Minitest::Test
     assert_equal %w[run take_lock run!], vague_names(sample)
   end
 
+  def test_the_detector_catches_a_vague_name_made_by_alias_define_method_a_class_method_or_an_attribute
+    samples = {
+      "class A\n  alias_method :run, :respond\nend\n" => %w[run],
+      "class A\n  alias run respond\nend\n" => %w[run],
+      "class A\n  define_method(:run) { 1 }\nend\n" => %w[run],
+      "class A\n  def A.run = 1\nend\n" => %w[run],
+      "class A\n  attr_reader :take\nend\n" => %w[take],
+      "class A\n  attr_accessor :lock, :take_lock\nend\n" => %w[take_lock]
+    }
+
+    assert_equal samples.values, samples.keys.map { |sample| vague_names(sample) }
+  end
+
+  def test_the_detector_leaves_clear_names_made_the_same_ways_alone
+    sample = "class A\n  alias_method :run_report, :respond\n  define_method(:last_run) { 1 }\n  def A.retake = 1\n  attr_reader :taken\nend\n"
+
+    assert_empty vague_names(sample)
+  end
+
+  def test_the_detector_catches_a_name_defined_twice_after_a_one_line_class
+    sample = "module M\n  class Error < StandardError; end\n\n  def read = 1\n\n  def read = 2\nend\n"
+
+    assert_equal %w[read], repeated_names(sample)
+  end
+
   def test_the_detector_leaves_clear_names_and_test_names_alone
     sample = "class A\n  def run_report\n  end\n\n  def last_run\n  end\n  def test_take_the_lock\n  end\n  def retake\n  end\nend\n"
 
