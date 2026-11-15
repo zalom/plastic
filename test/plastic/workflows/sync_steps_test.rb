@@ -9,8 +9,14 @@ require_relative "../../../lib/plastic/workflows/code/sync/down"
 class SyncStepsTest < Plastic::TestCase
   include SyncStepsHelper
 
-  PLAIN = "changed on both sides since the last print, nothing written: a.md, b.md; pass --overwrite PATH, --overwrite or --merge"
-  LEFT = "changed on both sides since the last print, left as they are: a.md; pass --overwrite PATH or --overwrite"
+UP_PLAIN = "changed on both sides since the last print, nothing written. --overwrite PATH reads that file into rows, " \
+           "--overwrite reads every file, --merge applies the one-sided changes and lists the rest. The records: a.md b.md"
+UP_LEFT = "changed on both sides since the last print, left as they are. --overwrite PATH reads that file into rows, " \
+          "--overwrite reads every file. The records: a.md"
+DOWN_PLAIN = "changed on both sides since the last print, nothing written. --overwrite PATH prints that record's rows over the file, " \
+             "--overwrite prints every record, --merge applies the one-sided changes and lists the rest. The records: a.md b.md"
+DOWN_LEFT = "changed on both sides since the last print, left as they are. --overwrite PATH prints that record's rows over the file, " \
+            "--overwrite prints every record. The records: a.md"
 
   def test_a_clean_sync_applies_and_says_what_it_did
     outcome, printed, calls = run_sync(Plastic::Workflows::Code::Sync::Up)
@@ -38,17 +44,31 @@ class SyncStepsTest < Plastic::TestCase
     assert_equal [Plastic::Failed, "code_sync_up, gate: INDEX.md waits", false], [outcome.class, outcome.message, calls.include?([:apply])]
   end
 
-  def test_a_plain_call_with_conflicts_is_refused_before_it_writes
-    outcome, _printed, calls = run_sync(Plastic::Workflows::Code::Sync::Down, plan: { conflicts: %w[a.md b.md] })
+def test_a_plain_sync_up_with_conflicts_is_refused_before_it_writes_and_ends_on_the_last_path
+  outcome, _printed, calls = run_sync(Plastic::Workflows::Code::Sync::Up, plan: { conflicts: %w[a.md b.md] })
 
-    assert_equal [Plastic::Refused, PLAIN, false], [outcome.class, outcome.message, calls.include?([:apply])]
-  end
+  assert_equal [Plastic::Refused, UP_PLAIN, false], [outcome.class, outcome.message, calls.include?([:apply])]
+  assert_equal "b.md", outcome.message.split.last
+end
 
-  def test_a_merge_applies_then_refuses_on_the_conflicts_left
-    outcome, printed, = run_sync(Plastic::Workflows::Code::Sync::Up, plan: { conflicts: %w[a.md], merging: true })
+def test_a_plain_sync_down_with_conflicts_is_refused_before_it_writes_and_ends_on_the_last_path
+  outcome, _printed, calls = run_sync(Plastic::Workflows::Code::Sync::Down, plan: { conflicts: %w[a.md b.md] })
 
-    assert_equal [Plastic::Refused, LEFT, ["read a.md"]], [outcome.class, outcome.message, printed]
-  end
+  assert_equal [Plastic::Refused, DOWN_PLAIN, false], [outcome.class, outcome.message, calls.include?([:apply])]
+  assert_equal "b.md", outcome.message.split.last
+end
+
+def test_a_sync_up_merge_applies_then_refuses_on_the_conflicts_left
+  outcome, printed, = run_sync(Plastic::Workflows::Code::Sync::Up, plan: { conflicts: %w[a.md], merging: true })
+
+  assert_equal [Plastic::Refused, UP_LEFT, ["read a.md"]], [outcome.class, outcome.message, printed]
+end
+
+def test_a_sync_down_merge_applies_then_refuses_on_the_conflicts_left
+  outcome, printed, = run_sync(Plastic::Workflows::Code::Sync::Down, plan: { conflicts: %w[a.md], merging: true })
+
+  assert_equal [Plastic::Refused, DOWN_LEFT, ["read a.md"]], [outcome.class, outcome.message, printed]
+end
 
   def test_each_direction_names_what_it_settles
     assert_equal [["plastic next", "the rows hold every file changed by hand"], ["plastic next", "the files hold every row that changed"]],
@@ -81,7 +101,7 @@ class SyncStepsTest < Plastic::TestCase
     gates = flow.steps.grep(Plastic::CodeWorkflow::Gate).map(&:reason)
 
     assert_equal ["plan the sync", "gate", "gate", "apply the changes", "say what changed", "gate", "gate", "gate", "gate"], flow.steps.map(&:name)
-    assert_equal ["%{failure}", steps::REFUSED_BEFORE, steps::REFUSED_AFTER, steps::UNREADABLE, steps::UNREADABLE_FILES, steps::UNREADABLE_FILES], gates
+    assert_equal ["%{failure}", steps::REFUSED_BEFORE.fetch(:up), steps::REFUSED_AFTER.fetch(:up), steps::UNREADABLE, steps::UNREADABLE_FILES, steps::UNREADABLE_FILES], gates
     assert_equal ["plastic next"], flow.outcomes.map(&:offers)
   end
 
