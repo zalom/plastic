@@ -1,19 +1,20 @@
 # frozen_string_literal: true
 
 require "minitest/autorun"
+require "prism"
 
 # A method name says what the method does. `run` says nothing, and `take` hides
 # whether it locks, captures or reads, so neither names a method. Names that
-# start with `test_` are left out.
+# start with `test_` are left out. The guard reads the syntax tree, so a name made by
+# `def`, `alias`, `alias_method`, `define_method`, a class method or an `attr_*` call counts.
 class MethodNamesGuardTest < Minitest::Test
   ROOT = File.expand_path("..", __dir__)
   FOLDERS = %w[lib bin tools scripts exe test].freeze
-  DEFINITION = /^\s*def\s+(?:self\.)?([A-Za-z_]\w*[!?=]?)/
   RUN = /\Arun!?\z/
   TAKE = /\A(?:\w*_)?take(?:_\w*)?[!?=]?\z/
-  SCOPE = /^(\s*)(?:class|module)\s/
-  SCOPE_END = /^(\s*)end\s*$/
-  METHOD = /^(\s*)def\s+(self\.)?([A-Za-z_]\w*[!?=]?)/
+  SCOPES = [Prism::ClassNode, Prism::ModuleNode, Prism::SingletonClassNode].freeze
+  READERS = %i[attr_reader attr_accessor attr].freeze
+  NAMING_CALLS = [:alias_method, :define_method, :attr_writer, *READERS].freeze
 
   def sources
     FOLDERS.flat_map { |folder| Dir[File.join(ROOT, folder, "**", "*")] }.select { |path| ruby_file?(path) }
@@ -23,36 +24,53 @@ class MethodNamesGuardTest < Minitest::Test
     File.file?(path) && (path.end_with?(".rb") || File.open(path, &:gets).to_s.match?(/\A#!.*ruby/))
   end
 
-  def defined_names(text) = text.scan(DEFINITION).flatten.reject { |name| name.start_with?("test_") }
+  def nodes(node) = [node, *node.compact_child_nodes.flat_map { |child| nodes(child) }]
+
+  def defined_names(text) = nodes(Prism.parse(text).value).flat_map { |node| names_of(node) }.reject { |name| name.start_with?("test_") }
 
   def vague_names(text) = defined_names(text).grep(Regexp.union(RUN, TAKE))
 
-  # Walks the lines with a stack of the bodies that are open; a definition belongs to the
-  # innermost body when it sits one step deeper than that body's own line.
-  def repeated_names(text)
-    bodies = []
-    text.each_line.filter_map { |line| track(bodies, line) }.uniq
-  end
-
-  def track(bodies, line)
-    indent = line[/\A\s*/].size
-    if line.match?(SCOPE)
-      bodies.push({ indent:, seen: [] })
-      nil
-    elsif line.match?(SCOPE_END)
-      bodies.pop if bodies.last && bodies.last[:indent] == indent
-      nil
-    else
-      record(bodies.last, line, indent)
+  # The names one node brings into being: a `def`, an `alias`, or a call that names a method.
+  def names_of(node)
+    case node
+    when Prism::DefNode then [node.name.to_s]
+    when Prism::AliasMethodNode then [node.new_name.unescaped]
+    when Prism::CallNode then call_names(node)
+    else []
     end
   end
 
-  def record(body, line, indent)
-    found = line.match(METHOD)
-    return unless body && found && indent == body[:indent] + 2
+  def call_names(call)
+    return [] unless call.receiver.nil? && NAMING_CALLS.include?(call.name)
 
-    key = "#{found[2]}#{found[3]}"
-    (found[3] if body[:seen].include?(key)).tap { body[:seen] << key }
+    suffix = (call.name == :attr_writer) ? "=" : ""
+    named_arguments(call).map { |argument| "#{argument.unescaped}#{suffix}" }
+  end
+
+  # The names a call hands over: every argument of an `attr_*` call, the first of the others.
+  def named_arguments(call)
+    arguments = call.arguments&.arguments.to_a
+    arguments = arguments.first(1) unless call.name.start_with?("attr")
+    arguments.select { |argument| argument.is_a?(Prism::SymbolNode) || argument.is_a?(Prism::StringNode) }
+  end
+
+  # A definition counts against the class, module or singleton class whose body holds it directly.
+  def repeated_names(text)
+    nodes(Prism.parse(text).value).select { |node| SCOPES.any? { |scope| node.is_a?(scope) } }.flat_map { |scope| repeats(defs_of(scope)) }.uniq
+  end
+
+  def defs_of(scope)
+    body = scope.body
+    body = body.statements if body.is_a?(Prism::BeginNode)
+    body ? body.body.grep(Prism::DefNode) : []
+  end
+
+  def repeats(definitions)
+    seen = []
+    definitions.filter_map do |definition|
+      key = "#{definition.receiver&.slice}.#{definition.name}"
+      (definition.name.to_s if seen.include?(key)).tap { seen << key }
+    end
   end
 
   def test_the_sources_are_read_from_the_disk
