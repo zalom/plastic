@@ -47,14 +47,14 @@ class BackupRestorePromptTest < Plastic::TestCase
     assert_equal [0, 0, before], [result.code, input.pos, File.read(intent_file(home))]
   end
 
-def test_the_restore_ends_by_asking_the_person_which_way_to_sync_and_offers_no_command
-  [TerminalInput.new(""), StringIO.new("")].each do |input|
-    result = restore_with(backed_up_home, input)
-    lines = result.out.lines(chomp: true)
+  def test_the_restore_ends_by_asking_the_person_which_way_to_sync_and_offers_no_command
+    [TerminalInput.new(""), StringIO.new("")].each do |input|
+      result = restore_with(backed_up_home, input)
+      lines = result.out.lines(chomp: true)
 
-    assert_equal [0, [], "because: #{BECAUSE}"], [result.code, lines.grep(/\Anext: /), lines.last]
+      assert_equal [0, [], "because: #{BECAUSE}"], [result.code, lines.grep(/\Anext: /), lines.last]
+    end
   end
-end
 
   def test_a_preview_reads_no_input_and_syncs_nothing
     home = backed_up_home

@@ -39,8 +39,13 @@ class CLIListingTest < Plastic::TestCase
 
     assert_equal [0, ""], [call.code, call.err]
     assert_includes call.out, "intent new"
-    refute_includes call.out, "node claim"
-    refute_includes call.out, "doctor"
+  end
+
+  def test_help_with_a_family_word_leaves_out_the_other_families
+    out = help("intent").out
+
+    refute_includes out, "node claim"
+    refute_includes out, "doctor"
   end
 
   def test_help_config_lists_the_config_family

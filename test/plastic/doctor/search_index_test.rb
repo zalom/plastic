@@ -45,6 +45,6 @@ class DoctorSearchIndexTest < Plastic::TestCase
   end
 
   def test_a_store_folder_that_does_not_exist_prints_no_row
-    assert_nil Plastic::Doctor::SearchIndex.new(@plastic_home, "beta", opener: ->(_home, _slug) { nil }).check
+    assert_nil Plastic::Doctor::SearchIndex.new(@plastic_home, "beta", opener: ->(_home, _slug) {}).check
   end
 end
