@@ -127,6 +127,21 @@ class KnowledgeReaderRoadmapFileTest < Plastic::TestCase
     assert_equal [nil, "Second"], retrieval.roadmap_items("plan").map(&:title)
   end
 
+  def test_spaces_at_the_end_of_a_value_read_back_as_the_rows_hold_them
+    seed(item_title: "Item one  ", goal: "  spaced  ")
+    text = printed
+    clear
+    read(text)
+
+    assert_equal [["Item one  ", "  spaced  "], "plan"], [retrieval.roadmap_items("plan").first.to_h.values_at(:title, :goal), retrieval.roadmap("plan").slug]
+  end
+
+  def test_a_value_left_out_prints_its_label_with_no_space_after_it
+    seed(item_title: nil)
+
+    assert_includes printed.lines(chomp: true), "  title:"
+  end
+
   def test_an_item_with_no_position_is_refused_naming_an_item
     seed
     error = assert_raises(Plastic::Invalid) { RoadmapFile.new("plan", printed.sub("  position: 1\n  title: Hello — world — ready", "  title: Hello")) }
