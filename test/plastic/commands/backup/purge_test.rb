@@ -21,6 +21,13 @@ class BackupPurgeTest < Plastic::TestCase
     assert_equal 4, folder_names(home).size
   end
 
+  def test_a_purge_keeps_the_run_of_the_call_for_a_resume
+    home = seeded_home
+    purge_call(home, "--store", "alpha", "--all")
+
+    assert_includes kept_run_tools(home), "backup purge"
+  end
+
   def test_purging_the_global_store_removes_its_own_folders_and_leaves_the_others
     home = fresh_home
     seed_store(home, "global")
