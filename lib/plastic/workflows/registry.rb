@@ -86,6 +86,7 @@ module Plastic
       code_preview_backup_restore: "Code::Backup::Restore::Preview",
       code_backup_restore: "Code::Backup::Restore",
       # Projects: the list of registered projects.
+      code_resume_graph: "Code::Graph::Resume",
       code_list_projects: "Code::Project::List",
       # Settings: the config file read and written one key at a time.
       code_list_config: "Code::Config::List",

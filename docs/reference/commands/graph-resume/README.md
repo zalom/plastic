@@ -6,7 +6,7 @@ Say where each named store's work stopped and what runs next.
 plastic graph resume [--stores LIST]
 ```
 
-The command is `Graph::Resume`, in [`resume.rb:14`](../../../../lib/plastic/commands/graph/resume.rb#L14). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Graph::Resume`, in [`resume.rb:10`](../../../../lib/plastic/commands/graph/resume.rb#L10). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |
@@ -20,30 +20,32 @@ The figure shows the command, the workflows it runs, the classes behind them, an
 
 ## The events of one call
 
-![The call of plastic graph resume](call.svg)
+The call starts the workflow `Code::Graph::Resume`, in [`resume.rb:15`](../../../../lib/plastic/workflows/code/graph/resume.rb#L15).
 
-The command's `call`, at [`resume.rb:20`](../../../../lib/plastic/commands/graph/resume.rb#L20):
+Says where each named store's work stopped and what runs next. It reads the rows and writes nothing.
 
-```ruby
-def call
-  refuse_project
-  offer_next(store_slugs.map { |slug| report(slug) }.each { |found| print_rows(found) })
-end
-```
+![How Code::Graph::Resume runs: its steps, where it stops, and its outcomes](code_resume_graph.svg)
 
-Its steps run in this order:
+Its rows run in this order:
 
-1. `refuse_project` [`resume.rb:21`](../../../../lib/plastic/commands/graph/resume.rb#L21)
-2. `offer_next(store_slugs.map { |slug| report(slug) }.each { |found| print_rows(found) })` [`resume.rb:22`](../../../../lib/plastic/commands/graph/resume.rb#L22)
+1. Read: refuse --stores with --project. [`resume.rb:22`](../../../../lib/plastic/workflows/code/graph/resume.rb#L22)
+2. Read: print where each store's work stopped. [`resume.rb:26`](../../../../lib/plastic/workflows/code/graph/resume.rb#L26)
+3. Outcome `:done`, always: finishes with exit 0; next: NEXT_COMMAND. [`resume.rb:32`](../../../../lib/plastic/workflows/code/graph/resume.rb#L32)
+
+It sets `next_command`, `why`.
+
+In the words of workflow engines, the rows are these four parts:
+
+- **Trigger**: the call starts the workflow `Code::Graph::Resume`.
+- **Activities**: 2 reads.
+- **Transitions**: .
+- **Outcomes**: `:done` ends the call.
 
 ## What one call reads, writes and prints
 
 ![What one call of plastic graph resume reads, writes and prints](touches.svg)
 
-| Place | Database or file | Tables | Reads or writes | Code |
-| --- | --- | --- | --- | --- |
-| the store folder | knowledge_graph.db | not found in the code | reads | [`resume.rb:17`](../../../../lib/plastic/commands/graph/resume.rb#L17) |
-| the store folder | work_graph.db | not found in the code | reads | [`resume.rb:17`](../../../../lib/plastic/commands/graph/resume.rb#L17) |
+It reads and writes no store database and prints no store file.
 
 ## How a call ends
 
@@ -51,11 +53,8 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| Usage error: --stores names the stores; --project does not apply | 2 | prints no next: line | [`resume.rb:32`](../../../../lib/plastic/commands/graph/resume.rb#L32) |
-| Usage error: name at least one store after --stores | 2 | prints no next: line | [`resume.rb:42`](../../../../lib/plastic/commands/graph/resume.rb#L42) |
-| Usage error: no registered project named NAME; the projects are PROJECTS | 2 | prints no next: line | [`resume.rb:51`](../../../../lib/plastic/commands/graph/resume.rb#L51) |
-| Offers the next command | 0 | plastic status | [`resume.rb:63`](../../../../lib/plastic/commands/graph/resume.rb#L63) |
-| Offers the next command | 0 | decided at run time | [`resume.rb:71`](../../../../lib/plastic/commands/graph/resume.rb#L71) |
+| WHY | 0 | NEXT_COMMAND | [`resume.rb:32`](../../../../lib/plastic/workflows/code/graph/resume.rb#L32) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
 
 ## What the page leaves out
 

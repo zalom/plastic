@@ -76,6 +76,7 @@ module WorkflowNameTable
     code_backup_purge: "Code::Backup::Purge",
     code_preview_backup_restore: "Code::Backup::Restore::Preview",
     code_backup_restore: "Code::Backup::Restore",
+    code_resume_graph: "Code::Graph::Resume",
     code_list_projects: "Code::Project::List",
     code_list_config: "Code::Config::List",
     code_get_config: "Code::Config::Get",

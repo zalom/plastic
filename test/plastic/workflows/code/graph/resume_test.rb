@@ -20,7 +20,7 @@ class WorkflowResumeGraphTest < Plastic::TestCase
     open_intent
     outcome, context = resume
 
-    assert_equal [:done, "global", "plastic auto 1"], [outcome, printed_row(context, "store:"), Flow.closing(outcome, context).first]
+    assert_equal [:done, "global", "plastic intent spec 1"], [outcome, printed_row(context, "store:"), Flow.closing(outcome, context).first]
   end
 
   def test_a_store_with_no_work_offers_the_status
@@ -37,7 +37,7 @@ class WorkflowResumeGraphTest < Plastic::TestCase
   end
 
   def test_no_store_name_after_stores_is_a_usage_error
-    error = assert_raises(Plastic::CLI::Command::Usage) { resume(stores: " , ") }
+    error = assert_raises(Plastic::CLI::Command::Usage) { resume(stores: ",") }
 
     assert_equal "name at least one store after --stores", error.message
   end
