@@ -7,6 +7,10 @@ module Plastic
     # rest, then refuse on the conflicts left.
     module SyncSteps
       NAMES = { up: "the rows hold every file changed by hand", down: "the files hold every row that changed" }.freeze
+      PLAN_FAILURES = {
+        up: "an overwrite path names no file and no rows",
+        down: "a sync down finds the old index file of the store and needs plastic sync up first, or an overwrite path names no file and no rows"
+      }.freeze
       # What each option keeps, in the words of the direction. The paths come last, so the last word of a refusal is a path.
       OVERWRITE_WORDS = {
         up: "--overwrite PATH reads that file into rows, --overwrite reads every file",
@@ -119,7 +123,7 @@ module Plastic
       def plan_steps(direction)
         read("plan the sync") { |context| SyncSteps.note(context, SyncSteps.plan(context, direction)) }
         gate "%{failure}", stops: :failure,
-          words: "a sync down finds the old index file of the store and needs plastic sync up first, or an overwrite path names no file and no rows",
+          words: PLAN_FAILURES.fetch(direction),
           pass: SyncSteps.check(:runs?)
         gate REFUSED_BEFORE.fetch(direction), stops: :refusal, pass: SyncSteps.check(:writes?)
       end
