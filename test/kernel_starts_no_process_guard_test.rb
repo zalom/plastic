@@ -84,7 +84,14 @@ class KernelStartsNoProcessGuardTest < Minitest::Test
     "include Open3" => [%(include Open3), %(include Comparable)],
     "Kernel backtick" => [%(Kernel.`("git")), %(Kernel.format("%s", name))],
     "backtick" => ["`git status`", %("Run `plastic status` first.")],
-    "%x" => ["%x(git status)", %("%x is text")]
+    "%x" => ["%x(git status)", %("%x is text")],
+    "capture3 on another receiver" => [%(ChildProcess.capture3("git")), %(Cache.capture("git"))],
+    "capture2e on a variable" => [%(runner.capture2e("git")), %(runner.capture("git"))],
+    "capture2 with no receiver" => [%(capture2("git")), %(capture_all("git"))],
+    "popen3 on a variable" => [%(shell.popen3("git")), %(shell.pop("git"))],
+    "pipeline on a variable" => [%(chain.pipeline_r("git")), %(chain.pipe("git"))],
+    "exec on a variable" => [%(db.exec("git")), %(db.execute("git"))],
+    "spawn on a variable" => [%(runner.spawn("git")), %(runner.spawned("git"))]
   }.freeze
 
   LOADING_FORMS = {
