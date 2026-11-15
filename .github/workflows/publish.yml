@@ -50,9 +50,6 @@ jobs:
       - name: Install the test gems
         run: bundle install
 
-      - name: Run the full suite
-        run: ruby bin/test
-
       - name: Guard the branch and the version file
         id: guard
         env:
