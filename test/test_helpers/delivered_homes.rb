@@ -29,15 +29,21 @@ module DeliveredHomes
     kernel.command!("intent", "abandon", number, env: SESSION)
   end
 
+  def moved(first, second, before_move)
+    first_home(first)
+    before_move.call(first)
+    first.command!("sync", "down")
+    move_files(first, second)
+  end
+
   def with_homes(before_move)
     Dir.mktmpdir do |one|
       Dir.mktmpdir do |two|
-        first, second = KernelCommand.new(one), KernelCommand.new(two)
-        first_home(first)
-        before_move.call(first)
-        first.command!("sync", "down")
-        move_files(first, second)
+        first, second = home_command(one), home_command(two)
+        moved(first, second, before_move)
         yield first, second
+      ensure
+        [first, second].each { |kernel| kernel&.release if kernel.respond_to?(:release) }
       end
     end
   end

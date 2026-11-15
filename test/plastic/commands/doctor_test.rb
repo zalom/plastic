@@ -3,7 +3,6 @@
 require_relative "installer_helper"
 require_relative "../doctor/whole_home"
 require_relative "../doctor/codex_home"
-require_relative "../../varar/support/kernel_command"
 
 class DoctorCommandTest < Plastic::TestCase
   include InstallerHelper
@@ -163,23 +162,39 @@ class CodexDoctorDamageCaseTest < Plastic::TestCase
   end
 end
 
-class DoctorProcessTest < Minitest::Test
-  def test_the_repair_the_doctor_names_makes_the_next_doctor_pass_that_check
-    Dir.mktmpdir("doctor-process") do |home|
-      kernel = KernelCommand.new(home)
-      project = FileUtils.mkdir_p(File.join(home, "alpha")).first
-      found = damaged(kernel, project)
-      kernel.command!("project", "new", "alpha", project)
+class DoctorProcessTest < Plastic::TestCase
+  Pool = Plastic::Graph::Database::ConnectionPool
 
-      assert_equal [1, true], [found.code, found.out.include?("plastic project new alpha #{project}")]
-      assert_match(/store alpha:\s+ok/, kernel.command("doctor", "--harness", "claude-code").out)
+  # The test runs on a home of its own, and its connections close before the damage step.
+  def in_own_home
+    Dir.mktmpdir("doctor-process") do |root|
+      @home = File.realpath(root)
+      @plastic_home = File.join(@home, ".plastic")
+      Plastic::Graph.create(home: @plastic_home, store: "global")
+      yield
+    ensure
+      Pool.release(@home)
     end
   end
 
-  def damaged(kernel, project)
-    kernel.command!("project", "new", "alpha", project)
-    FileUtils.rm_f(File.join(kernel.plastic_home, "stores", "alpha", "references.db"))
-    kernel.command("doctor", "--harness", "claude-code")
+  def command(*argv) = plastic(*argv, table: Plastic::CLI::TABLE)
+
+  def test_the_repair_the_doctor_names_makes_the_next_doctor_pass_that_check
+    in_own_home do
+      project = FileUtils.mkdir_p(File.join(@home, "alpha")).first
+      found = damaged(project)
+      repaired = command("project", "new", "alpha", project)
+
+      assert_equal [1, true, 0], [found.code, found.out.include?("plastic project new alpha #{project}"), repaired.code]
+      assert_match(/store alpha:\s+ok/, command("doctor", "--harness", "claude-code").out)
+    end
+  end
+
+  def damaged(project)
+    command("project", "new", "alpha", project)
+    Pool.release(@home)
+    FileUtils.rm_f(File.join(@plastic_home, "stores", "alpha", "references.db"))
+    command("doctor", "--harness", "claude-code")
   end
 end
 

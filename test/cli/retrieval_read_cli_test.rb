@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
 require "json"
-require_relative "support/child_process"
+require_relative "../support/child_process"
 require "tmpdir"
 
 class RetrievalReadCliTest < Minitest::Test
-  ROOT = File.expand_path("..", __dir__)
+  ROOT = File.expand_path("../..", __dir__)
 
   def test_backup_loads_its_writer_in_a_fresh_cli_process
     in_home do |home|

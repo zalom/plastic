@@ -3,11 +3,11 @@
 require "minitest/autorun"
 require "fileutils"
 require "json"
-require_relative "support/child_process"
+require_relative "../support/child_process"
 require "tmpdir"
 
 class LazyCommandDispatchTest < Minitest::Test
-  ROOT = File.expand_path("..", __dir__)
+  ROOT = File.expand_path("../..", __dir__)
   RETRIEVAL_CONTEXT_SCRIPT = <<~RUBY
     require "plastic"
     require "plastic/graph"

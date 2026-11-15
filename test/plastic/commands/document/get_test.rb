@@ -3,21 +3,20 @@
 require_relative "../../../test_helper"
 require_relative "../../../../lib/plastic/commands/document/get"
 require_relative "../old_store"
-require_relative "../../../support/child_process"
-require "rbconfig"
 
 class DocumentGetTest < Plastic::TestCase
   include OldStore
 
   def get(*args) = plastic("document", "get", *args, table: Plastic::CLI::TABLE)
 
-  def test_routed_help_prints_the_get_usage
-    output, errors, status = ChildProcess.capture3({ "HOME" => @home }, RbConfig.ruby, "exe/plastic", "help", "document", "get",
-      chdir: File.expand_path("../../../..", __dir__))
+  def get_help = plastic_bin("help", "document", "get", table: Plastic::CLI::TABLE)
 
-    assert_equal [0, ""], [status.exitstatus, errors]
-    assert_includes output, "plastic document get REF"
-    assert_includes output, "plastic://STORE/INTENT/PATH?revision=SHA256"
+  def test_routed_help_prints_the_get_usage
+    result = get_help
+
+    assert_equal [0, ""], [result.code, result.err]
+    assert_includes result.out, "plastic document get REF"
+    assert_includes result.out, "plastic://STORE/INTENT/PATH?revision=SHA256"
   end
 
   def test_prints_a_historical_qualified_document_as_structured_json

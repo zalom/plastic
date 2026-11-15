@@ -2,17 +2,14 @@
 
 require_relative "../../../test_helper"
 require_relative "../../../../lib/plastic/commands/document/batch"
-require_relative "../../../support/child_process"
-require "rbconfig"
 
 class DocumentBatchTest < Plastic::TestCase
   def test_routed_help_prints_the_batch_usage
-    output, errors, status = ChildProcess.capture3({ "HOME" => @home }, RbConfig.ruby, "exe/plastic", "help", "document", "batch",
-      chdir: File.expand_path("../../../..", __dir__))
+    result = plastic_bin("help", "document", "batch", table: Plastic::CLI::TABLE)
 
-    assert_equal [0, ""], [status.exitstatus, errors]
-    assert_includes output, "plastic document batch REF..."
-    assert_includes output, "plastic://STORE/INTENT/PATH?revision=SHA256"
+    assert_equal [0, ""], [result.code, result.err]
+    assert_includes result.out, "plastic document batch REF..."
+    assert_includes result.out, "plastic://STORE/INTENT/PATH?revision=SHA256"
   end
 
   def test_batch_routes_each_qualified_reference_to_its_selected_store_in_order

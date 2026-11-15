@@ -6,7 +6,8 @@ require_relative "../../../lib/plastic/hooks/entries"
 require_relative "../../../lib/plastic/config"
 require "fileutils"
 require "json"
-require_relative "../../varar/support/kernel_command"
+require_relative "../../test_helper"
+require_relative "../../support/child_process"
 
 class EntriesTest < Minitest::Test
   COMMAND = "/opt/plastic/bin/plastic"
@@ -146,53 +147,62 @@ class EntriesTest < Minitest::Test
 end
 
 # Hooks on a broken store: the harness never sees a crash. Each test builds
-# its own Dir.mktmpdir home, never the shared template other tests reuse, so
+# a home of its own, never the shared template other tests reuse, so
 # a corrupt database here cannot poison another test (review A20).
-class BrokenStoreTest < Minitest::Test
-  def test_hook_start_on_an_unopenable_home_exits_zero_with_one_stderr_line
-    Dir.mktmpdir do |home|
-      File.write(File.join(home, ".plastic"), "not a directory")
-      call = KernelCommand.new(home).command("hook", "start", input: JSON.generate(source: "startup"),
-        env: { "PLASTIC_SESSION" => "s-1" })
+class BrokenStoreTest < Plastic::TestCase
+  Pool = Plastic::Graph::Database::ConnectionPool
+  START = JSON.generate(source: "startup")
+  SESSION = { "PLASTIC_SESSION" => "s-1" }.freeze
 
-      assert_equal 0, call.code
-      assert_equal "", call.out
-      assert_equal 1, call.err.lines.size
+  def in_own_home
+    Dir.mktmpdir do |root|
+      @home = File.realpath(root)
+      @plastic_home = File.join(@home, ".plastic")
+      yield
+    ensure
+      Pool.release(@home)
+    end
+  end
+
+  def hook(event, input, env = SESSION) = plastic("hook", event, input:, env:, table: Plastic::CLI::TABLE)
+
+  def test_hook_start_on_an_unopenable_home_exits_zero_with_one_stderr_line
+    in_own_home do
+      File.write(@plastic_home, "not a directory")
+      call = hook("start", START)
+
+      assert_equal [0, "", 1], [call.code, call.out, call.err.lines.size]
     end
   end
 
   def test_hook_stop_on_an_unopenable_home_exits_zero_with_one_stderr_line
-    Dir.mktmpdir do |home|
-      File.write(File.join(home, ".plastic"), "not a directory")
-      call = KernelCommand.new(home).command("hook", "stop", input: "{}", env: { "PLASTIC_SESSION" => "s-1" })
+    in_own_home do
+      File.write(@plastic_home, "not a directory")
+      call = hook("stop", "{}")
 
-      assert_equal 0, call.code
-      assert_equal "", call.out
-      assert_equal 1, call.err.lines.size
+      assert_equal [0, "", 1], [call.code, call.out, call.err.lines.size]
     end
   end
 
   def test_hook_start_on_a_corrupt_database_exits_zero
-    Dir.mktmpdir do |home|
-      kernel = KernelCommand.new(home)
-      kernel.command!("intent", "new", "Alpha")
-      File.binwrite(File.join(kernel.plastic_home, "local.db"), "not a sqlite file")
+    in_own_home do
+      Plastic::Graph.create(home: @plastic_home, store: "global")
+      plastic("intent", "new", "Alpha", table: Plastic::CLI::TABLE)
+      Pool.release(@home)
+      File.binwrite(File.join(@plastic_home, "local.db"), "not a sqlite file")
+      call = hook("start", START)
 
-      call = kernel.command("hook", "start", input: JSON.generate(source: "startup"), env: { "PLASTIC_SESSION" => "s-1" })
-
-      assert_equal 0, call.code
-      assert_equal "", call.out
-      assert_equal "plastic hook: local.db: file is not a database\n", call.err
+      assert_equal [0, "", "plastic hook: local.db: file is not a database\n"], [call.code, call.out, call.err]
     end
   end
 
   def test_hook_start_with_an_empty_event_body_exits_zero
-    Dir.mktmpdir do |home|
-      call = KernelCommand.new(home).command("hook", "start", input: "", env: {})
+    in_own_home do
+      Plastic::Graph.create(home: @plastic_home, store: "global")
+      call = hook("start", "", {})
 
-      assert_equal 0, call.code
-      assert_equal "Plastic: a new session in store global. Run plastic next before anything else.\n", call.out
-      assert_equal "plastic hook: the event names no session; nothing recorded\n", call.err
+      assert_equal [0, "Plastic: a new session in store global. Run plastic next before anything else.\n",
+        "plastic hook: the event names no session; nothing recorded\n"], [call.code, call.out, call.err]
     end
   end
 

@@ -1,9 +1,13 @@
 # frozen_string_literal: true
 
 require "minitest/autorun"
+require "fileutils"
+require "json"
 require "tmpdir"
-require_relative "kernel_command"
+require_relative "home_command"
 
+# Two homes on one machine. A home runs its commands in the test's own process; an includer
+# that runs them another way redefines `home_command(directory)`.
 module TwoHomes
   DIR = "store/1--prove-the-resume"
   GRAPH = "#{DIR}/graph.json"
@@ -24,6 +28,7 @@ module TwoHomes
   end
 
   def move_files(from, to)
+    to.release if to.respond_to?(:release)
     FileUtils.rm_rf(to.store)
     from.snapshot("").each do |rel, bytes|
       next if rel.match?(DATABASE_FILE)
@@ -36,13 +41,17 @@ module TwoHomes
 
   def query(kernel, sql) = kernel.rows("work_graph.db", sql)
 
+  def home_command(directory) = HomeCommand.new(directory)
+
   def with_two_homes
     Dir.mktmpdir do |one|
       Dir.mktmpdir do |two|
-        first, second = KernelCommand.new(one), KernelCommand.new(two)
+        first, second = home_command(one), home_command(two)
         first_home(first)
         move_files(first, second)
         yield first, second
+      ensure
+        [first, second].each { |kernel| kernel&.release if kernel.respond_to?(:release) }
       end
     end
   end
