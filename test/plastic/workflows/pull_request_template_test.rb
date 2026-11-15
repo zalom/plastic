@@ -61,6 +61,13 @@ class PullRequestTemplateTest < Plastic::TestCase
     assert_equal "", fact
   end
 
+  def test_a_file_where_a_template_folder_belongs_is_no_template
+    FileUtils.mkdir_p(worktree)
+    File.write(File.join(worktree, ".github"), "not a folder\n")
+
+    assert_equal "", fact
+  end
+
   def test_an_empty_template_folder_is_not_a_template
     FileUtils.mkdir_p(File.join(worktree, ".gitlab", "merge_request_templates"))
 
