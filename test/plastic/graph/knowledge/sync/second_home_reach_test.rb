@@ -3,6 +3,8 @@
 require_relative "../../../../test_helper"
 
 class KnowledgeSyncSecondHomeReachTest < Plastic::TestCase
+  fixtures :alpha_synced
+
   SecondHome = Plastic::Graph::Knowledge::Sync::SecondHome
 
   def test_a_second_home_that_is_not_active_reads_nothing
@@ -18,5 +20,15 @@ class KnowledgeSyncSecondHomeReachTest < Plastic::TestCase
     write("store/2--beta/context.json", JSON.generate("intent" => "2", "discovery" => { "a" => 1 }, "context" => { "b" => 2 }))
 
     assert_includes SecondHome.new(folder, retrieval).paths, "store/2--beta/context.json"
+  end
+
+  def test_a_second_home_with_no_clusters_counts_only_its_paths
+    assert_equal 0, SecondHome.new(folder, retrieval).size
+  end
+
+  def test_a_second_home_with_clusters_counts_the_index_read_too
+    write("store/index.json", JSON.generate(JSON.parse(folder.read("store/index.json")).merge("clusters" => [{ "name" => "Core", "intents" => ["1"] }])))
+
+    assert_equal 1, SecondHome.new(folder, retrieval).size
   end
 end

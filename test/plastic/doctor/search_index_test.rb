@@ -37,6 +37,26 @@ class DoctorSearchIndexTest < Plastic::TestCase
     assert_equal ["ok, in step", nil], check(retrieval).then { |row| [row.value, row.repair] }
   end
 
+  def test_a_repair_that_fails_for_another_reason_is_raised
+    retrieval = Retrieval.new({ repairable: true, missing: [] }, Plastic::Graph::Database::Error.new("knowledge_graph.db: disk image is malformed"))
+
+    assert_raises(Plastic::Graph::Database::Error) { check(retrieval) }
+  end
+
+  def test_a_report_that_fails_for_another_reason_is_raised
+    broken = Class.new { def search_index_report = raise(Plastic::Graph::Database::Error, "knowledge_graph.db: disk image is malformed") }.new
+
+    assert_raises(Plastic::Graph::Database::Error) { check(broken) }
+  end
+
+  def test_one_lost_document_is_named_in_the_singular
+    assert_equal "the evidence of 1 document is lost; no rebuild brings it back", check(Retrieval.new({ repairable: false, missing: ["plan.md"] })).value
+  end
+
+  def test_two_lost_documents_are_named_in_the_plural
+    assert_equal "the evidence of 2 documents are lost; no rebuild brings it back", check(Retrieval.new({ repairable: false, missing: %w[a.md b.md] })).value
+  end
+
   def test_a_store_folder_with_files_and_no_database_says_so
     File.delete(File.join(@plastic_home, "stores", "alpha", "knowledge_graph.db"))
     FileUtils.touch(File.join(@plastic_home, "stores", "alpha", "plan.md"))

@@ -111,6 +111,13 @@ class KnowledgeReaderRoadmapFileTest < Plastic::TestCase
     assert_equal "roadmaps/plan.md holds a position that is not a number", error.message
   end
 
+  def test_a_head_with_no_title_is_refused_naming_the_missing_field
+    seed
+    error = assert_raises(Plastic::Invalid) { RoadmapFile.new("plan", printed.sub(/^title: .*\n/, "")) }
+
+    assert_equal "roadmaps/plan.md has a head record with no title", error.message
+  end
+
   def test_form_question_tells_the_two_apart
     assert_equal [true, false], [RoadmapFile.form?("#{FORM}\n"), RoadmapFile.form?("# Plan\n")]
   end

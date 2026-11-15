@@ -13,6 +13,10 @@ class KnowledgeIntentTest < Plastic::TestCase
                     kind: "work", status: "open", opened_at: AT, updated_at: AT, extra: "dropped" }.merge(fields))
   end
 
+  def test_a_closed_intent_takes_nothing_and_an_open_one_takes_all
+    assert_equal ["intent 1a is done; it takes no nodes", nil], [intent(status: "done").closed_problem("nodes"), intent.closed_problem("nodes")]
+  end
+
   def test_next_child_alternates_number_and_letter
     calls = [["307", []], ["307", %w[307a]], ["307a", []], ["307a", %w[307a1]]]
 

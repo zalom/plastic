@@ -48,6 +48,30 @@ class SchemaLockColumnMigrationTest < Minitest::Test
     assert_equal before, @file.get_first_value("SELECT sql FROM sqlite_master WHERE name = 'locks'")
   end
 
+  # A connection whose database is renamed by another process just before this one takes the write lock.
+  class Raced
+    def initialize(own, rival)
+      @own = own
+      @rival = rival
+    end
+
+    def get_first_value(sql) = @own.get_first_value(sql)
+
+    def execute(sql) = @own.execute(sql)
+
+    def transaction(mode, &)
+      @rival.execute("ALTER TABLE locks RENAME COLUMN taken_at TO locked_at")
+      @own.transaction(mode, &)
+    end
+  end
+
+  def test_a_column_that_another_process_renamed_meanwhile_is_left_alone
+    own = SQLite3::Database.new(@path)
+    Plastic::Graph::Schema.migrate_lock_column(Raced.new(own, @file))
+
+    assert_equal [["x", "T0"]], @file.execute("SELECT session_id, locked_at FROM locks")
+  end
+
   def test_a_database_made_with_the_current_schema_is_left_as_it_is
     current = SQLite3::Database.new(":memory:")
     prepare(current)
