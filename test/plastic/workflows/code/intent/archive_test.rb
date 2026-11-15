@@ -25,6 +25,93 @@ class ArchiveIntentTest < Plastic::TestCase
     refute retrieval.archived?("1")
   end
 
+  def before_date(older_than = "2026-02-01") = run_workflow(Plastic::Workflows::Code::Intent::Archive, older_than:)
+
+  def dated(title, status:, opened: "2026-01-01T00:00:00Z", closed: nil)
+    intent = open_intent(title:, status: "future")
+    store_graphs.databases.fetch(:work).transaction do |batch|
+      batch.write(:intents, "UPDATE intents SET status = :status, opened_at = :opened, closed_at = :closed WHERE intent_id = :id",
+        id: intent.intent_id, status:, opened:, closed:)
+    end
+    intent
+  end
+
+  def test_a_done_intent_closed_before_the_date_is_archived_with_one_line
+    intent = dated("Old", status: "done", closed: "2026-01-10T00:00:00Z")
+
+    outcome, context = before_date
+
+    assert_equal [:done, ["intent: #{intent.intent_id} archived"], true], [outcome, context.printed, retrieval.archived?(intent.intent_id)]
+  end
+
+  def test_a_done_intent_closed_at_the_date_or_after_it_is_passed_over_with_no_line
+    intent = dated("Recent", status: "done", closed: "2026-03-01T00:00:00Z")
+
+    _outcome, context = before_date
+
+    assert_equal [false, ["intent: nothing to archive"]], [retrieval.archived?(intent.intent_id), context.printed]
+  end
+
+  def test_a_future_intent_opened_before_the_date_is_archived
+    intent = dated("Idea", status: "future", opened: "2026-01-05T00:00:00Z")
+
+    before_date
+
+    assert retrieval.archived?(intent.intent_id)
+  end
+
+  def test_a_future_intent_opened_after_the_date_is_passed_over
+    intent = dated("New idea", status: "future", opened: "2026-04-05T00:00:00Z")
+
+    before_date
+
+    refute retrieval.archived?(intent.intent_id)
+  end
+
+  def test_a_closed_intent_with_no_close_date_is_skipped_and_named
+    intent = dated("Undated", status: "done")
+
+    _outcome, context = before_date
+
+    assert_equal [false, ["intent: #{intent.intent_id} skipped, it is done with no close date"]], [retrieval.archived?(intent.intent_id), context.printed]
+  end
+
+  def test_an_open_intent_opened_before_the_date_is_skipped_and_named
+    intent = dated("Still going", status: "open")
+
+    _outcome, context = before_date
+
+    assert_equal [false, ["intent: #{intent.intent_id} skipped, it is open; end it first"]], [retrieval.archived?(intent.intent_id), context.printed]
+  end
+
+  def test_an_open_intent_opened_after_the_date_is_passed_over_with_no_line
+    dated("Fresh", status: "open", opened: "2026-05-01T00:00:00Z")
+
+    _outcome, context = before_date
+
+    assert_equal ["intent: nothing to archive"], context.printed
+  end
+
+  def test_an_intent_archived_before_is_passed_over_with_no_line
+    intent = dated("Twice", status: "done", closed: "2026-01-10T00:00:00Z")
+    before_date
+
+    _outcome, context = before_date
+
+    assert_equal [true, ["intent: nothing to archive"]], [retrieval.archived?(intent.intent_id), context.printed]
+  end
+
+  def test_an_intent_that_a_live_intent_links_to_is_skipped_with_the_refusal
+    target = dated("Target", status: "done", closed: "2026-01-10T00:00:00Z")
+    linker = dated("Linker", status: "open", opened: "2026-05-01T00:00:00Z")
+    store_graphs.work.add_link(from_ref: linker.intent_id, to_ref: target.intent_id, kind: "cites")
+
+    _outcome, context = before_date
+
+    assert_equal [false, ["intent: #{target.intent_id} skipped, intent #{linker.intent_id} links to #{target.intent_id}"]],
+      [retrieval.archived?(target.intent_id), context.printed]
+  end
+
   def test_an_unknown_intent_is_not_archived
     outcome, = archive("9")
 

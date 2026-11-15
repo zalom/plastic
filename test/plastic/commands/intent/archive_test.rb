@@ -119,6 +119,36 @@ class IntentArchiveTest < Plastic::TestCase
     assert_call result, code: 1, err: ["no intent 99"]
   end
 
+  def test_naming_neither_an_intent_nor_a_date_is_a_usage_error
+    result = call
+
+    assert_equal [2, true], [result.code, result.err.include?("give an intent ID or --older-than DATE")]
+  end
+
+  def test_naming_both_an_intent_and_a_date_is_a_usage_error
+    result = call("1", "--older-than", "2026-02-01")
+
+    assert_equal [2, true], [result.code, result.err.include?("exclude each other")]
+  end
+
+  def test_a_date_that_is_not_a_date_is_a_usage_error
+    result = call("--older-than", "last week")
+
+    assert_equal [2, true], [result.code, result.err.include?("cannot read")]
+  end
+
+  def test_a_date_archives_the_done_intent_closed_before_it
+    intent = open_intent("Old")
+    store_graphs.databases.fetch(:work).transaction do |batch|
+      batch.write(:intents, "UPDATE intents SET status = 'done', closed_at = '2026-01-10T00:00:00Z' WHERE intent_id = :id", id: intent.intent_id)
+    end
+
+    result = call("--older-than", "2026-02-01")
+
+    assert_equal [0, true], [result.code, retrieval.archived?(intent.intent_id)]
+    assert_includes result.out, "intent: #{intent.intent_id} archived"
+  end
+
   private
 
   def archived_document(intent) = retrieval.documents(intent.intent_id).find { |candidate| candidate.path == intent.file }
