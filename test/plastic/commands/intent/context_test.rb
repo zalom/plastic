@@ -372,6 +372,59 @@ class IntentContextInputTest < Plastic::TestCase
   end
 end
 
+class IntentContextSavingTest < Plastic::TestCase
+  include IntentContextTestSupport
+
+  def global_graphs = Plastic::Graph.open(home: @plastic_home, store: "global")
+
+  def test_the_saved_run_of_a_submission_holds_no_document
+    submit_context(context_submission(discovered_reference))
+
+    facts = global_graphs.databases.fetch(:local).rows("SELECT facts FROM routine_runs WHERE tool = 'intent context'").map { |row| row.fetch("facts") }
+
+    refute_empty facts
+    refute(facts.any? { |text| text.include?("a source fact") })
+  end
+
+  def test_a_write_error_of_the_save_stops_the_call_with_exit_1_and_names_the_error
+    reference = discovered_reference
+    global_graphs.databases.fetch(:knowledge).transaction do |batch|
+      batch.add("CREATE TRIGGER refuse_context BEFORE INSERT ON retrieval_contexts BEGIN SELECT RAISE(ABORT, 'the context table refuses a row'); END")
+    end
+
+    result = Tempfile.create(["context", ".json"]) do |file|
+      file.write(JSON.generate(context_submission(reference)))
+      file.flush
+      plastic("intent", "context", "1", "--from", file.path, table: Plastic::CLI::TABLE)
+    end
+
+    assert_equal [1, ""], [result.code, result.out]
+    assert_includes result.err, "the context table refuses a row"
+  end
+
+  def test_a_second_identical_submission_skips_the_save
+    submission = context_submission(discovered_reference)
+    submit_context(submission)
+    knowledge = global_graphs.databases.fetch(:knowledge)
+    knowledge.transaction { |batch| batch.add("UPDATE retrieval_contexts SET updated_at = '2000-01-01T00:00:00Z'") }
+
+    submit_context(submission)
+
+    assert_equal "2000-01-01T00:00:00Z", knowledge.row("SELECT updated_at FROM retrieval_contexts WHERE intent_id = '1'").fetch("updated_at")
+  end
+
+  def test_the_ending_of_a_submission_says_the_context_is_saved
+    reference = discovered_reference
+    Tempfile.create(["context", ".json"]) do |file|
+      file.write(JSON.generate(context_submission(reference)))
+      file.flush
+      result = plastic("intent", "context", "1", "--from", file.path, "--json", table: Plastic::CLI::TABLE)
+
+      assert_includes result.out, "the submitted retrieval context is saved"
+    end
+  end
+end
+
 class IntentContextDeclarationTest < Minitest::Test
   def test_the_command_writes_the_work_graph_and_the_knowledge_graph
     assert_equal %i[knowledge work], Plastic::Commands::Intent::Context.writes.sort
