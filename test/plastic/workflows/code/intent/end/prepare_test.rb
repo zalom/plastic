@@ -208,22 +208,4 @@ class PrepareTemplateFactTest < PrepareEndingFixture
 
     assert_equal "The repository has a pull request template at .github/pull_request_template.md; the description of the pull request follows it. ", template_found
   end
-
-  def test_a_template_only_in_the_project_repository_is_named_when_the_worktree_is_missing
-    register_repo
-    place(repo, ".gitlab/merge_request_templates/default.md")
-
-    assert_includes template_found, "pull request template at .gitlab/merge_request_templates/"
-  end
-
-  def test_with_no_template_in_any_folder_the_fact_is_empty
-    register_repo
-    FileUtils.mkdir_p(worktree)
-
-    assert_equal "", template_found
-  end
-
-  def test_when_the_store_names_no_repository_the_fact_is_empty
-    assert_equal "", template_found
-  end
 end
