@@ -43,4 +43,20 @@ class CommandReferenceEventListTest < Minitest::Test
 
     assert_empty unreachable & words
   end
+
+  Flow = Struct.new(:klass, :rows, :outcomes, :key) do
+    def agent? = false
+  end
+
+  def flow_found_by(step_name)
+    outcome = CommandReference::Outcome.new(name: :done, check: nil, fallback: true, offers: nil, because: "the thing is done", to: :noop, exit_code: 0, file: "thing.rb", line: 1, found_by: step_name)
+    Flow.new(Struct.new(:steps).new([]), [], [outcome], "thing")
+  end
+
+  def test_an_ending_found_by_a_step_the_workflow_does_not_have_raises_with_both_names
+    error = assert_raises(ArgumentError) { CommandReference::FlowStops.new(flow_found_by("read the moon")).events }
+
+    assert_includes error.message, "read the moon"
+    assert_includes error.message, "thing"
+  end
 end
