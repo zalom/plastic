@@ -23,7 +23,7 @@ module Plastic
             value.gsub(/\\(.)?/m) { ESCAPES.fetch(Regexp.last_match(1)) { raise Invalid, "a value holds a backslash that is not \\n or \\\\" } }
           end
 
-          def labeled(key, value) = "#{key}: #{escape(value)}".rstrip
+          def labeled(key, value) = value.to_s.empty? ? "#{key}:" : "#{key}: #{escape(value)}"
         end
       end
     end
