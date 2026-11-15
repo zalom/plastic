@@ -94,7 +94,7 @@ class CheckHealthTest < Plastic::TestCase
     write_evidence(SLUG)
     knowledge(SLUG).transaction { |batch| batch.add("DELETE FROM document_fts") }
     harness = scoped_harness(session: "s-1", env: { "PLASTIC_PACKAGE_ROOT" => fake_package(RUNNING), "CLAUDE_CODE_SESSION_ID" => "s-1" })
-    Plastic::Doctor.failing(harness.scope, harness: "claude_code")
+    Plastic::Doctor.failing(harness.scope, harness: "claude-code")
 
     assert_equal 0, search_rows(SLUG)
   end

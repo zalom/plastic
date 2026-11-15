@@ -11,7 +11,7 @@ Each page explains one plastic command in five sections: Components, The events 
 | [`plastic config list`](config-list/README.md) | List every setting with its value, globally or for one harness |
 | [`plastic config get`](config-get/README.md) | Print the value of one setting |
 | [`plastic config set`](config-set/README.md) | Write one setting to config.yml, globally or for one harness |
-| [`plastic doctor`](doctor/README.md) | Check the installation, the databases and the hooks of this harness, and name each repair |
+| [`plastic doctor`](doctor/README.md) | Check the installation, the databases and the hooks of this harness, rebuild a search index that is out of step, and name each repair |
 | [`plastic init`](init/README.md) | Find the installed harnesses and install Plastic into the ones the person picks |
 | [`plastic install`](install/README.md) | Install the core files and make the global store |
 | [`plastic update`](update/README.md) | Sync a newer package into the home or name the installer command |

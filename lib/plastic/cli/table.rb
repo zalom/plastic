@@ -13,7 +13,7 @@ module Plastic
       "config list" => ["Commands::Config::List", "List every setting with its value, globally or for one harness"],
       "config get" => ["Commands::Config::Get", "Print the value of one setting"],
       "config set" => ["Commands::Config::Set", "Write one setting to config.yml, globally or for one harness"],
-      "doctor" => ["Commands::Doctor", "Check the installation, the databases and the hooks of this harness, and name each repair"],
+      "doctor" => ["Commands::Doctor", "Check the installation, the databases and the hooks of this harness, rebuild a search index that is out of step, and name each repair"],
       "init" => ["Commands::Init", "Find the installed harnesses and install Plastic into the ones the person picks"],
       "install" => ["Commands::Install", "Install the core files and make the global store"],
       "update" => ["Commands::Update", "Sync a newer package into the home or name the installer command"],

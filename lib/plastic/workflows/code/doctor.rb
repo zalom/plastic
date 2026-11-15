@@ -2,13 +2,15 @@
 
 require_relative "../../code_workflow"
 require_relative "../../doctor"
+require_relative "../../doctor/search_index"
 require_relative "../installation"
 
 module Plastic
   module Workflows
     module Code
       # Runs the checks of the shared parts and of one harness, prints a row for
-      # each, and names each repair once. It reads files and changes none.
+      # each, and names each repair once. It rebuilds the search rows of a store
+      # that are out of step, and changes nothing else.
       class Doctor < CodeWorkflow
         [facts, steps, outcomes].each(&:clear)
 
@@ -20,6 +22,14 @@ module Plastic
           repairs = checks.filter_map(&:repair).uniq
           context.row("repair:", repairs) unless repairs.empty?
           context[:repairs] = repairs.size
+        end
+
+        read "check the search index of each store and rebuild it when its rows are out of step" do |context|
+          checks = Plastic::Doctor::SearchIndex.checks(context.scope)
+          checks.each { |check| context.row(check.label, check.value) }
+          repairs = checks.filter_map(&:repair).uniq
+          context.row("repair:", [*repairs]) unless repairs.empty?
+          context[:repairs] = context.repairs + repairs.size
         end
 
         gate "a check found a problem; run the repairs named above, then run plastic doctor again", stops: :failure,
