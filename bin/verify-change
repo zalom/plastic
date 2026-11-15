@@ -57,7 +57,9 @@ class VerifyChange
   ALL_OPERATORS = %w[arithmetic comparison boolean_connector boolean_literal statement_removal return_nil
                       literal_mutation condition_negation string_literal regex collection_method].freeze
   SOURCE_PATH = %r{\A(app|lib|tools|scripts|bin/lib)/.+\.rb\z}
-  RSPEC_DEPENDENCY = /^  rspec(-core|-rails)?(\s|!|$)/
+  KERNEL_TEST = %r{\Atest/plastic/.+_test\.rb\z}
+  CHILD_PROCESS_TEXT = /\b(ChildProcess|KernelCommand|InstallShHelper|Open3)\b/
+  RSPEC_DEPENDENCY =/^  rspec(-core|-rails)?(\s|!|$)/
 
   Suite = Data.define(:name, :folder, :test_path, :locations, :suffix)
   MINITEST = Suite.new(name: "Minitest", folder: "test/", test_path: %r{\Atest/.+_test\.rb\z}, suffix: "_test.rb",
@@ -69,6 +71,11 @@ class VerifyChange
   Step = Struct.new(:title, :env, :command, :misses, :proof)
   LintDecision = Struct.new(:step, :skip_reason)
   Plan = Struct.new(:sources, :tests, :untested, :lint_files, :lint_decision, :steps)
+
+  # Unit and integration tests only: kernel tests that start no child process. The reader answers the text of a path.
+  def self.mutation_tests(tests, reader)
+    tests.select { |path| path.match?(KERNEL_TEST) && !reader.call(path).match?(CHILD_PROCESS_TEXT) }
+  end
 
   def self.test_candidates(source, suite = MINITEST)
     suite.locations.flat_map do |prefix, targets|
@@ -373,10 +380,14 @@ class VerifyChange
   # and again, with `--only` and `--jobs 1`, for each subject it re-runs.
   def mutation_command(sources, tests, base, rails, suite)
     %w[bundle exec ruby] + [File.join(@root, "bin/lib/mutation_verdicts.rb"), "run", "--output", mutation_report_path,
-                            "--threshold", MUTATION_THRESHOLD.to_s, "--"] + sources + tests.flat_map { |test| ["--test", test] } +
+                            "--threshold", MUTATION_THRESHOLD.to_s, "--"] + sources + mutation_tests(tests).flat_map { |test| ["--test", test] } +
       %W[--since #{base}] + (suite == RSPEC ? %w[--framework rspec] : []) +
       (rails ? %w[--rails] : %w[--strategy redefine]) +
       (exist?(".mutineer.yml") ? [] : ["--operators", ALL_OPERATORS.join(",")])
+  end
+
+  def mutation_tests(tests)
+    self.class.mutation_tests(tests, ->(path) { File.read(File.join(@root, path)) })
   end
 
   def mutation_report_path
