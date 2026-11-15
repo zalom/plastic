@@ -35,3 +35,9 @@ options settle it:
 | `--overwrite [PATH]` | Settles conflicts on the side the command reads from: `sync up` keeps the file, and `sync down` keeps the rows. With `PATH` it settles that one record, and without it every conflict. |
 | `--merge` | Applies the changes made on one side only, then lists the conflicts and exits 3. |
 | `--dry-run` | Runs the whole sync in a disposable copy and changes nothing. |
+
+## A limit of two homes
+
+An index that another home printed sets the title, the state, the disposition, the reason and the
+closed time of every intent it lists. So with a command on each home before the copy, it takes back
+a change of this home, also on an intent that the other home never changed.
