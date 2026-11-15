@@ -53,6 +53,29 @@ class KnowledgeSyncSecondHomeTest < Plastic::TestCase
     assert_equal [1, 0], [plan.pending, run_up && plan.pending]
   end
 
+  def bare_roadmap_text
+    writer = Plastic::Graph::Knowledge::Roadmap::Writer.new(store_graphs.databases, retrieval)
+    bare = Plastic::Graph::Knowledge::Roadmap::Fields.new(nil, nil, nil)
+    writer.create_roadmap("plan", title: "plan", goal: nil)
+    writer.write_batch("plan", 1, fields: bare)
+    writer.add_item("plan", "1", 1, fields: bare, needs: [])
+    writer.add_item("plan", "2", 1, fields: bare, needs: ["1"])
+    writer.add_log("plan", "a note")
+    Plastic::Graph::RoadmapPrint.new(retrieval, "plan").text
+  end
+
+  def test_a_roadmap_written_with_every_optional_field_left_out_is_read_on_a_second_home
+    text = bare_roadmap_text
+    forget_roadmap
+    write("roadmaps/plan.md", text)
+
+    assert_empty plan.unreadable_files
+    run_up
+
+    assert_equal [[nil, nil], [%w[1 2 after]], ["a note"]],
+      [retrieval.roadmap_items("plan").map(&:title), retrieval.roadmap_edges("plan").map { |edge| [edge.from, edge.to, edge.kind] }, retrieval.roadmap_log("plan").map(&:text)]
+  end
+
   def test_a_roadmap_file_with_rows_is_not_read_again
     text = roadmap_text
     write("roadmaps/plan.md", text)
