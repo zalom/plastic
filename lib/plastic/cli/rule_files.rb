@@ -9,6 +9,7 @@ module Plastic
     class RuleFiles
       AGENTS = "AGENTS.md"
       CLAUDE = "CLAUDE.md"
+      PLASTIC_LINE = "Plastic's instructions are in ~/.plastic/PLASTIC.md."
 
       def initialize(folder, name)
         @folder = folder
@@ -28,8 +29,10 @@ module Plastic
 
       private
 
-      def contents
-        { AGENTS => "# #{@name}\n\nRules for agents working on this repository.\n", CLAUDE => "@#{AGENTS}\n" }
+      def contents = { AGENTS => agents_text, CLAUDE => "@#{AGENTS}\n" }
+
+      def agents_text
+        "# #{@name}\n\nRules for agents working on this repository.\n\n#{PLASTIC_LINE}\n"
       end
     end
   end
