@@ -26,23 +26,23 @@ class PrintsTest < Plastic::TestCase
   end
 
   def test_the_hand_edit_line_names_the_path_and_the_command_to_run
-    assert_equal "store/index.json changed by hand since the last print; run plastic sync up first",
+    assert_equal "store/index.json changed since its last print on this home, by hand or in a copy from another home; run plastic sync up first to read it into rows",
       Plastic::Graph::Prints.hand_edit_line("store/index.json")
   end
 
   def test_the_hand_edit_line_is_written_in_prints_only
     root = File.expand_path("../../../lib", __dir__)
-    holders = Dir.glob("**/*.rb", base: root).select { |rel| File.read(File.join(root, rel)).include?("changed by hand since the last print") }
+    holders = Dir.glob("**/*.rb", base: root).select { |rel| File.read(File.join(root, rel)).include?("changed since its last print on this home") }
 
     refute_empty Dir.glob("**/*.rb", base: root)
     assert_equal ["plastic/graph/prints.rb"], holders
   end
 
   def test_the_guard_finds_the_phrase_in_a_sample_and_leaves_another_alone
-    phrase = "changed by hand since the last print"
+    phrase = "changed since its last print on this home"
 
     assert_includes "x #{phrase} y", phrase
-    refute_includes "x changed by hand y", phrase
+    refute_includes "x changed since y", phrase
   end
 
   def test_the_same_rows_print_the_same_bytes
