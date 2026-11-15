@@ -2,7 +2,7 @@
 
 require_relative "../routine"
 require_relative "../harnesses"
-require_relative "harness_pick"
+require_relative "../cli/harness_pick"
 
 module Plastic
   module Commands
@@ -10,7 +10,7 @@ module Plastic
     # every found one picked, and installs Plastic into each one the person
     # picks. See docs/help/choice-screen.md.
     class Init < Routine
-      include HarnessPick
+      include CLI::HarnessPick
 
       opens_no_store
 

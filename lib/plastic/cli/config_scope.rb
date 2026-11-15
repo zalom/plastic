@@ -3,7 +3,7 @@
 require_relative "../config"
 
 module Plastic
-  module Commands
+  class CLI
     # What the config commands share: the --harness option, the merged
     # settings it names, and the refusal of a key the settings do not hold.
     module ConfigScope

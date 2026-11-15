@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-require_relative "../cli/screen"
+require_relative "screen"
 
 module Plastic
-  module Commands
+  class CLI
     # The person's pick of harnesses for a command that takes the answer as
     # its argument. With no answer the command asks on the choice screen; with
     # no terminal the screen prints the numbered list and the call stops.

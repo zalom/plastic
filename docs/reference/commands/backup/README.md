@@ -32,7 +32,7 @@ The figure shows the command, the workflows it runs, the classes behind them, an
 
 ### The command's own call
 
-The command's own `call`, at [`backup_store.rb:15`](../../../../lib/plastic/commands/backup_store.rb#L15), runs first, then starts the workflow [Code::Backup::Preview](#codebackuppreview).
+The command's own `call`, at [`backup_store.rb:15`](../../../../lib/plastic/cli/backup_store.rb#L15), runs first, then starts the workflow [Code::Backup::Preview](#codebackuppreview).
 
 ```ruby
 def call
@@ -110,9 +110,9 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | the preview wrote no folder or row | 0 | ORIGINAL_COMMAND | [`preview.rb:22`](../../../../lib/plastic/workflows/code/backup/preview.rb#L22) |
 | backup NAME is on disk | 0 | plastic backup list --store STORE | [`backup.rb:28`](../../../../lib/plastic/workflows/code/backup.rb#L28) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
-| Usage error: name the store with --store; --project does not apply | 2 | prints no next: line | [`backup_store.rb:27`](../../../../lib/plastic/commands/backup_store.rb#L27) |
-| Usage error: no registered project named SLUG; the projects are PROJECTS | 2 | prints no next: line | [`backup_store.rb:35`](../../../../lib/plastic/commands/backup_store.rb#L35) |
-| Usage error | 2 | prints no next: line | [`backup_store.rb:47`](../../../../lib/plastic/commands/backup_store.rb#L47) |
+| Usage error: name the store with --store; --project does not apply | 2 | prints no next: line | [`backup_store.rb:27`](../../../../lib/plastic/cli/backup_store.rb#L27) |
+| Usage error: no registered project named SLUG; the projects are PROJECTS | 2 | prints no next: line | [`backup_store.rb:35`](../../../../lib/plastic/cli/backup_store.rb#L35) |
+| Usage error | 2 | prints no next: line | [`backup_store.rb:47`](../../../../lib/plastic/cli/backup_store.rb#L47) |
 
 ## What the page leaves out
 

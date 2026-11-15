@@ -82,11 +82,13 @@
 <rect x="336" y="34" width="196" height="28" rx="6" class="card"/>
 <text x="344" y="52" class="tm" text-anchor="start">Knowledge::Backup::StoreBackups</text>
 <rect x="336" y="68" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="86" class="tm" text-anchor="start">CLI::Scope</text>
+<text x="344" y="86" class="tm" text-anchor="start">CLI</text>
 <rect x="336" y="102" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="120" class="tm" text-anchor="start">Purger</text>
+<text x="344" y="120" class="tm" text-anchor="start">CLI::Scope</text>
 <rect x="336" y="136" width="196" height="28" rx="6" class="card"/>
-<text x="344" y="154" class="tm" text-anchor="start">Folders</text>
+<text x="344" y="154" class="tm" text-anchor="start">Purger</text>
+<rect x="336" y="170" width="196" height="28" rx="6" class="card"/>
+<text x="344" y="188" class="tm" text-anchor="start">Folders</text>
 <rect x="556" y="34" width="186" height="45" rx="14" class="db"/>
 <text x="568" y="52" class="tb" text-anchor="start">local.db</text>
 <text x="568" y="68" class="tm" text-anchor="start">backups  R</text>

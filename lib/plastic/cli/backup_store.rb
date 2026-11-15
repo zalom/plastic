@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
-require_relative "../cli/command"
+require_relative "command"
 require_relative "../graph/knowledge/backup/databases"
 
 module Plastic
-  module Commands
+  class CLI
     # What every backup command shares: it works on one registered store,
     # named by --store and never found from the working directory.
     module BackupStore

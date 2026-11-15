@@ -2,14 +2,14 @@
 
 require_relative "../config"
 require_relative "../../routine"
-require_relative "../config_scope"
+require_relative "../../cli/config_scope"
 
 module Plastic
   module Commands
     class Config
       # Prints the value of one setting. It writes nothing.
       class Get < Routine
-        include ConfigScope
+        include CLI::ConfigScope
 
         argument :key, label: "KEY", text: "the setting, as its dotted name"
 

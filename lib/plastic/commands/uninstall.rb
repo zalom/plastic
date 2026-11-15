@@ -2,7 +2,7 @@
 
 require_relative "../routine"
 require_relative "../installations"
-require_relative "harness_pick"
+require_relative "../cli/harness_pick"
 
 module Plastic
   module Commands
@@ -10,7 +10,7 @@ module Plastic
     # recorded one picked, and removes what the record of each picked one
     # lists. The home and its stores stay. See docs/help/choice-screen.md.
     class Uninstall < Routine
-      include HarnessPick
+      include CLI::HarnessPick
 
       opens_no_store
 

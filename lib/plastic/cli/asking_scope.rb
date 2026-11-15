@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
-require_relative "../cli/scope"
-require_relative "../cli/screen"
+require_relative "scope"
+require_relative "screen"
 
 module Plastic
-  module Commands
+  class CLI
     # The store scope of a call that may ask the person to pick. The scope
     # reaches every step through the context, so the screen goes with it.
     class AskingScope < CLI::Scope

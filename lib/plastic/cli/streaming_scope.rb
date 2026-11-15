@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-require_relative "../cli/scope"
+require_relative "scope"
 
 module Plastic
-  module Commands
+  class CLI
     # The store scope of a call that may print lines while it works. `live`
     # is the sink each line goes to, and does nothing when the call did not
     # ask for the lines.

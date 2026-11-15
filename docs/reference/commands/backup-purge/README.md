@@ -35,7 +35,7 @@ The figure shows the command, the workflows it runs, the classes behind them, an
 
 ### The command's own call
 
-The command's own `call`, at [`backup_store.rb:15`](../../../../lib/plastic/commands/backup_store.rb#L15), runs first, then starts the workflow [Code::Backup::Purge::Preview](#codebackuppurgepreview).
+The command's own `call`, at [`backup_store.rb:15`](../../../../lib/plastic/cli/backup_store.rb#L15), runs first, then starts the workflow [Code::Backup::Purge::Preview](#codebackuppurgepreview).
 
 ```ruby
 def call
@@ -116,11 +116,11 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | the preview deleted nothing | 0 | ORIGINAL_COMMAND | [`preview.rb:22`](../../../../lib/plastic/workflows/code/backup/purge/preview.rb#L22) |
 | the backups named above are gone | 0 | plastic backup list --store STORE | [`purge.rb:40`](../../../../lib/plastic/workflows/code/backup/purge.rb#L40) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
-| Usage error: name the store with --store; --project does not apply | 2 | prints no next: line | [`backup_store.rb:27`](../../../../lib/plastic/commands/backup_store.rb#L27) |
-| Usage error: no registered project named SLUG; the projects are PROJECTS | 2 | prints no next: line | [`backup_store.rb:35`](../../../../lib/plastic/commands/backup_store.rb#L35) |
-| Usage error | 2 | prints no next: line | [`backup_store.rb:40`](../../../../lib/plastic/commands/backup_store.rb#L40) |
-| Usage error | 2 | prints no next: line | [`backup_store.rb:41`](../../../../lib/plastic/commands/backup_store.rb#L41) |
-| Usage error | 2 | prints no next: line | [`backup_store.rb:47`](../../../../lib/plastic/commands/backup_store.rb#L47) |
+| Usage error: name the store with --store; --project does not apply | 2 | prints no next: line | [`backup_store.rb:27`](../../../../lib/plastic/cli/backup_store.rb#L27) |
+| Usage error: no registered project named SLUG; the projects are PROJECTS | 2 | prints no next: line | [`backup_store.rb:35`](../../../../lib/plastic/cli/backup_store.rb#L35) |
+| Usage error | 2 | prints no next: line | [`backup_store.rb:40`](../../../../lib/plastic/cli/backup_store.rb#L40) |
+| Usage error | 2 | prints no next: line | [`backup_store.rb:41`](../../../../lib/plastic/cli/backup_store.rb#L41) |
+| Usage error | 2 | prints no next: line | [`backup_store.rb:47`](../../../../lib/plastic/cli/backup_store.rb#L47) |
 
 ## What the page leaves out
 

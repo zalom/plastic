@@ -33,7 +33,7 @@ The figure shows the command, the workflows it runs, the classes behind them, an
 
 ### The command's own call
 
-The command's own `call`, at [`harness_pick.rb:12`](../../../../lib/plastic/commands/harness_pick.rb#L12), runs first, then starts the workflow [Code::Uninstall::Choose](#codeuninstallchoose).
+The command's own `call`, at [`harness_pick.rb:12`](../../../../lib/plastic/cli/harness_pick.rb#L12), runs first, then starts the workflow [Code::Uninstall::Choose](#codeuninstallchoose).
 
 ```ruby
 def call

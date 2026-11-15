@@ -2,7 +2,7 @@
 
 require_relative "../config"
 require_relative "../../routine"
-require_relative "../config_scope"
+require_relative "../../cli/config_scope"
 
 module Plastic
   module Commands
@@ -10,7 +10,7 @@ module Plastic
       # Writes one setting to config.yml: under `global`, or under the
       # harness's section with --harness.
       class Set < Routine
-        include ConfigScope
+        include CLI::ConfigScope
 
         argument :key, label: "KEY", text: "the setting, as its dotted name"
         argument :value, label: "VALUE", text: "the new value"

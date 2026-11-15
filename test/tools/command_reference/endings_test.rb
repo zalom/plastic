@@ -27,9 +27,9 @@ class CommandReferenceEndingsTest < Minitest::Test
   end
 
   def test_a_command_with_no_workflow_ends_on_its_next_step_lines
-    rows = exit_rows("project list", 0)
+    rows = exit_rows("status", 0)
 
-    assert_equal ["plastic project new SLUG PATH", "plastic status"], rows.select { |ending| ending.kind == :next_step }.map(&:next_text)
+    assert_equal ["decided at run time", "plastic next", "decided at run time"], rows.select { |ending| ending.kind == :next_step }.map(&:next_text)
   end
 
   def test_an_interpolated_next_step_reads_its_value_as_a_placeholder
@@ -60,7 +60,7 @@ class CommandReferenceEndingsTest < Minitest::Test
   end
 
   def test_a_module_call_raise_is_an_exit_2_row_on_the_module_file
-    usage = exit_rows("backup restore", 2).select { |ending| ending.file.end_with?("commands/backup_store.rb") }
+    usage = exit_rows("backup restore", 2).select { |ending| ending.file.end_with?("cli/backup_store.rb") }
 
     refute_empty usage
     assert(usage.all? { |ending| source_line(ending.file, ending.line).include?("raise") })

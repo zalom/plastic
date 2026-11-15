@@ -2,7 +2,7 @@
 
 require_relative "../../test_helper"
 require_relative "../../../lib/plastic/cli/screen"
-require_relative "../../../lib/plastic/commands/asking_scope"
+require_relative "../../../lib/plastic/cli/asking_scope"
 
 class ScreenTest < Plastic::TestCase
   Screen = Plastic::CLI::Screen
@@ -41,7 +41,7 @@ class ScreenTest < Plastic::TestCase
   def test_the_asking_scope_carries_the_screen
     environment = Plastic::CLI::Command::Environment.new(env: {}, input: StringIO.new, out: StringIO.new,
       err: StringIO.new, home: Dir.tmpdir, directory: Dir.tmpdir)
-    scope = Plastic::Commands::AskingScope.for(environment, slug: nil, output: Plastic::CLI::TextOutput.new(out: StringIO.new, err: StringIO.new))
+    scope = Plastic::CLI::AskingScope.for(environment, slug: nil, output: Plastic::CLI::TextOutput.new(out: StringIO.new, err: StringIO.new))
 
     assert_instance_of Screen, scope.screen
   end

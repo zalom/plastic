@@ -2,7 +2,7 @@
 
 require_relative "../backup"
 require_relative "../../routine"
-require_relative "../backup_store"
+require_relative "../../cli/backup_store"
 require_relative "../../graph/knowledge/backup/older_than"
 
 module Plastic
@@ -10,7 +10,7 @@ module Plastic
     class Backup
       # Deletes backups of one registered store: all of them, those before a date, or those that failed.
       class Purge < Routine
-        include BackupStore
+        include CLI::BackupStore
 
         writes :work
 

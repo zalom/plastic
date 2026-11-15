@@ -2,7 +2,7 @@
 
 require_relative "../config"
 require_relative "../../routine"
-require_relative "../config_scope"
+require_relative "../../cli/config_scope"
 
 module Plastic
   module Commands
@@ -10,7 +10,7 @@ module Plastic
       # Lists every setting with its value: the global settings, or those of
       # one harness with --harness. It writes nothing.
       class List < Routine
-        include ConfigScope
+        include CLI::ConfigScope
 
         workflow :code_list_config, next: :noop
       end
