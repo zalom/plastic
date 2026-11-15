@@ -86,10 +86,14 @@ class WriteIntentTest < Plastic::TestCase
       [outcome.name, outcome.offers, outcome.because]
   end
 
+  def printed_runs
+    [run_flow(ref: "ENG-1")[1], run_flow[1], run_flow(retrieval: Retrieval.new(store: "blog"))[1]]
+  end
+
   def test_a_second_load_keeps_one_chain
-    before = [run_flow(ref: "ENG-1")[1], run_flow[1]]
+    before = printed_runs
     load File.expand_path("../../../../../lib/plastic/workflows/code/intent/new.rb", __dir__)
 
-    assert_equal [before, [:done]], [[run_flow(ref: "ENG-1")[1], run_flow[1]], WriteIntent.outcome_names]
+    assert_equal [before, [:done]], [printed_runs, WriteIntent.outcome_names]
   end
 end
