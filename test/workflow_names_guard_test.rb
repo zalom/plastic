@@ -107,7 +107,10 @@ module WorkflowNameTable
     code_impede_node: "Code::Node::Impede",
     code_resolve_node: "Code::Node::Resolve"
   }.freeze
+end
 
+# The paths that hold other workflows, which the guard of the parent kinds reads.
+module WorkflowParentTable
   PARENTS = %w[
     Code::Sync::Up Code::Sync::Down Code::Intent::Verdict Code::Intent::Brief Code::Intent::End Code::Intent::Context
     Code::Intent::Abandon Agent::Intent::End Code::Auto Code::Install Code::Init Code::Uninstall Code::Update Code::Rollback
@@ -121,7 +124,7 @@ class WorkflowNamesTest < Minitest::Test
   POOL = 6
 
   MAPPING = WorkflowNameTable::MAPPING
-  PARENTS = WorkflowNameTable::PARENTS
+  PARENTS = WorkflowParentTable::PARENTS
 
   def camel(word) = word.split("_").map(&:capitalize).join
 

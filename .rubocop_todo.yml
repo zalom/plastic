@@ -40,15 +40,6 @@ Layout/IndentationWidth:
   Exclude:
     - 'bin/lib/context_budget.rb'
 
-# Offense count: 1
-# This cop supports safe autocorrection (--autocorrect).
-# Configuration parameters: AllowForAlignment, EnforcedStyleForExponentOperator, EnforcedStyleForRationalLiterals.
-# SupportedStylesForExponentOperator: space, no_space
-# SupportedStylesForRationalLiterals: space, no_space
-Layout/SpaceAroundOperators:
-  Exclude:
-    - 'bin/verify-change'
-
 # Offense count: 2
 # This cop supports safe autocorrection (--autocorrect).
 # Configuration parameters: EnforcedStyle, EnforcedStyleForEmptyBraces.
@@ -97,7 +88,6 @@ Metrics/MethodLength:
 Metrics/ModuleLength:
   Exclude:
     - 'bin/lib/context_budget.rb'
-    - 'test/workflow_names_guard_test.rb'
 
 # Offense count: 3
 # Configuration parameters: Max, CountKeywordArgs, MaxOptionalParameters.
@@ -142,12 +132,6 @@ Minitest/MultipleAssertions:
 Minitest/RefutePredicate:
   Exclude:
     - 'test/bin_test_test.rb'
-
-# Offense count: 1
-# This cop supports safe autocorrection (--autocorrect).
-Style/NestedTernaryOperator:
-  Exclude:
-    - 'bin/verify-change'
 
 # Offense count: 1
 # This cop supports unsafe autocorrection (--autocorrect-all).

@@ -59,7 +59,7 @@ class VerifyChange
   SOURCE_PATH = %r{\A(app|lib|tools|scripts|bin/lib)/.+\.rb\z}
   KERNEL_TEST = %r{\Atest/plastic/.+_test\.rb\z}
   CHILD_PROCESS_TEXT = /\b(ChildProcess|KernelCommand|InstallShHelper|Open3)\b/
-  RSPEC_DEPENDENCY =/^  rspec(-core|-rails)?(\s|!|$)/
+  RSPEC_DEPENDENCY = /^  rspec(-core|-rails)?(\s|!|$)/
 
   Suite = Data.define(:name, :folder, :test_path, :locations, :suffix)
   MINITEST = Suite.new(name: "Minitest", folder: "test/", test_path: %r{\Atest/.+_test\.rb\z}, suffix: "_test.rb",
@@ -443,7 +443,9 @@ class VerifyChange
     answer = @run.call(step.env, step.command)
     return answer if answer.is_a?(Array)
 
-    [answer.is_a?(Integer) ? answer : (answer ? 0 : 1), ""]
+    return [answer, ""] if answer.is_a?(Integer)
+
+    [answer ? 0 : 1, ""]
   end
 
   # A target is missed only when the tool ran: its exit code is one it gives for a miss
