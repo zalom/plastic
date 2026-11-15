@@ -76,6 +76,14 @@ class ArchiveIntentTest < Plastic::TestCase
     assert_equal [false, ["intent: #{intent.intent_id} skipped, it is done with no close date"]], [retrieval.archived?(intent.intent_id), context.printed]
   end
 
+  def test_a_closed_intent_whose_close_date_holds_a_day_and_no_time_is_read_as_local_midnight_of_that_day
+    intent = dated("Bare day", status: "done", closed: "2026-01-31")
+
+    before_date
+
+    assert retrieval.archived?(intent.intent_id)
+  end
+
   def test_a_closed_intent_whose_close_date_is_not_a_time_is_not_archived
     intent = dated("Garbled", status: "done", closed: "last week")
 
