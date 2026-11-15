@@ -2,7 +2,7 @@
 
 require "digest"
 require "json"
-require_relative "print"
+require_relative "part"
 require_relative "index_print"
 require_relative "../knowledge/store_folder"
 
@@ -13,13 +13,6 @@ module Plastic
       # digest is the same for the same clusters in any order. Its print records a row and writes no file.
       module ClusterPart
         PATH = "#{Knowledge::StoreFolder::INDEX}#clusters".freeze
-
-        # A print that holds the digest of the clusters in the rows: the index print writes the file.
-        class Part < Print
-          def level?(_folder) = true
-
-          def write_to(_folder) = nil
-        end
 
         module_function
 

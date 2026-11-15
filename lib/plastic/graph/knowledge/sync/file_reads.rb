@@ -65,7 +65,7 @@ module Plastic
           end
 
           def reprint(reads)
-            fresh = [*Prints.of_store(@retrieval), Prints.cluster_part(@retrieval)].to_h { |print| [print.path, print] }
+            fresh = [*Prints.of_store(@retrieval), *Prints.parts(@retrieval)].to_h { |print| [print.path, print] }
             @printer.print(reads.map { |found| fresh[found.path] || roadmap_print(found.path) || found.kept_print(@folder) })
           end
         end

@@ -51,8 +51,8 @@ module Plastic
             found.transform_keys { |path| owner(path) }
           end
 
-          # The file a path belongs to: the clusters are a part of the index.
-          def self.owner(path) = Prints::ClusterPart.path?(path) ? StoreFolder::INDEX : path
+          # The file a path belongs to: the clusters and the links are parts of the index.
+          def self.owner(path) = Prints::Parts.path?(path) ? StoreFolder::INDEX : path
 
           # A changed file of an intent that has its rows, or an index a person changed after its print; the files of a folder without rows read after its row is written.
           def self.readable?(entry, rowed)
@@ -63,7 +63,7 @@ module Plastic
           end
 
           def self.readable_path?(path, rowed)
-            StoreFolder.roadmap?(path) || Prints::ClusterPart.path?(path) || rowed.any? { |dir| path.start_with?("#{dir}/") }
+            StoreFolder.roadmap?(path) || Prints::Parts.path?(path) || rowed.any? { |dir| path.start_with?("#{dir}/") }
           end
 
           def self.entries(folder, retrieval, folders = nil) = EntryList.new(folder, retrieval, folders).entries

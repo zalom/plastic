@@ -116,7 +116,7 @@ class PrintsTest < Plastic::TestCase
   def test_index_json_names_the_store_and_origin_and_ends_with_a_newline
     text = index_text
 
-    assert_equal [{ "store" => "global", "origin_id" => origin, "intents" => [], "archives" => [], "clusters" => [] }, "\n"], [JSON.parse(text), text[-1]]
+    assert_equal [{ "store" => "global", "origin_id" => origin, "intents" => [], "archives" => [], "clusters" => [], "links" => [] }, "\n"], [JSON.parse(text), text[-1]]
   end
 
   def test_the_savepoint_file_holds_one_line_per_row

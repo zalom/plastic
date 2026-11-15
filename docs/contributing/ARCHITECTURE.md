@@ -32,7 +32,7 @@ Everything it keeps lives under the Plastic home.
 | `installations/` | One install record for each harness Plastic is installed into: every file, folder, setting and section the install wrote, which `plastic uninstall` takes out. |
 | `stores/SLUG/` | One store for each project, plus the global store. |
 | `stores/SLUG/backups/` | Copies of the three databases, one folder for each backup. |
-| `store/index.json` | Every intent and cluster of the store in Luhmann order. It carries no print time. |
+| `store/index.json` | Every intent, cluster and link of the store in Luhmann order. It carries no print time. |
 | `roadmaps/` | One markdown file for each roadmap, printed from the rows. |
 | `store/ID--slug/` | An intent folder: `intent.md`, `spec.md`, `graph.json`, `savepoint.md`, `outcome.md` and `context.json`, printed from the rows. |
 

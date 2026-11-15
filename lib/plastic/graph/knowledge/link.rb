@@ -18,6 +18,7 @@ module Plastic
         def self.supersedes(ruling, target) = { from_ref: ruling.ref, to_ref: target.ref, kind: "supersedes", at: ruling.at }
       end
       Link::KINDS = %w[cites supersedes answers source chain].freeze
+      Link::ALL_SQL = "SELECT * FROM links WHERE origin_id = :origin ORDER BY from_ref, to_ref, kind"
     end
   end
 end

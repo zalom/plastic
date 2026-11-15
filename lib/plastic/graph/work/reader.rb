@@ -44,6 +44,9 @@ module Plastic
         # Links naming `ref` at either end: a ruling's ref today, any ref later.
         def links(ref) = @databases.fetch(:knowledge).rows(LINKS_SQL, origin: origin_id, ref:).map { |row| Knowledge::Link.from_h(row) }
 
+        # Every link of this origin, ordered by its ends and its kind.
+        def every_link = @databases.fetch(:knowledge).rows(Knowledge::Link::ALL_SQL, origin: origin_id).map { |row| Knowledge::Link.from_h(row) }
+
         private
 
         def origin_id = @origin.id

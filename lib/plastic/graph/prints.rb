@@ -6,7 +6,7 @@ require_relative "roadmap_print"
 require_relative "prints/print"
 require_relative "prints/contents"
 require_relative "prints/index_print"
-require_relative "prints/cluster_part"
+require_relative "prints/parts"
 require_relative "prints/graph_print"
 require_relative "prints/context_print"
 
@@ -15,7 +15,7 @@ module Plastic
     # The files printed from a store's rows, each with the database that
     # owns its rows. Paths are relative to the store folder:
     #
-    # - store/index.json lists this installation's intents, the archives now in force and the clusters.
+    # - store/index.json lists this installation's intents, the archives now in force, the clusters and the links.
     # - store/ID--SLUG/PATH is a document, byte for byte.
     # - store/ID--SLUG/savepoint.md holds the savepoint lines.
     # - store/ID--SLUG/graph.json holds the go-ahead, the completion, the verdicts, the nodes with their criterion keys and the edges.
@@ -29,7 +29,7 @@ module Plastic
 
       def index(retrieval) = IndexPrint.call(retrieval)
 
-      def cluster_part(retrieval) = ClusterPart.call(retrieval)
+      def parts(retrieval) = Parts.call(retrieval)
 
       def hand_edit_line(path) = "#{path} changed since its last print on this home, by hand or in a copy from another home; run plastic sync up first to read it into rows"
 

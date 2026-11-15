@@ -163,11 +163,10 @@ class KnowledgeSyncIndexTest < Plastic::TestCase
       JSON.parse(folder.read("store/index.json")).fetch("origin_id")], result.out
   end
 
-  def test_sync_up_plans_a_print_of_an_index_another_home_printed_when_the_rows_did_not_change
-    index = JSON.parse(folder.read("store/index.json"))
-    write("store/index.json", JSON.pretty_generate(index.merge("origin_id" => "zzzz")))
+  def test_sync_up_plans_a_read_of_an_index_another_home_printed_when_this_home_holds_a_print_of_it
+    foreign_index
 
-    assert_equal [["store/index.json"], {}], [sync.plan(:up).entries_for(:print).map(&:path), sync.plan(:up).unreadable_files]
+    assert_equal [["store/index.json"], [], {}], [sync.plan(:up).entries_for(:read).map(&:path), sync.plan(:up).entries_for(:print).map(&:path), sync.plan(:up).unreadable_files]
   end
 
   def test_sync_up_names_an_index_that_is_a_json_array_as_a_file_it_cannot_read

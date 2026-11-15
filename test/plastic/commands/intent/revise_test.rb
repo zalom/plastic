@@ -124,7 +124,7 @@ class IntentReviseTest < Plastic::TestCase
     result = call("1", "Beta, after grilling")
 
     assert_equal 1, result.code
-    assert_includes result.err, "changed by hand"
+    assert_includes result.err, "changed since its last print on this home"
     assert_equal 1, revisions
   end
 

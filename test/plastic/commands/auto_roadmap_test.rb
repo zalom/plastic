@@ -97,7 +97,7 @@ class AutoRoadmapTest < Plastic::TestCase
 
     result = call("r1")
 
-    assert_equal [1, [], "by hand\n", true, "next: plastic sync up"], [result.code, lock_rows, File.read(store_path(path)), result.err.include?("#{path} changed by hand"), next_line(result)], result.err
+    assert_equal [1, [], "by hand\n", true, "next: plastic sync up"], [result.code, lock_rows, File.read(store_path(path)), result.err.include?("#{path} changed since its last print on this home"), next_line(result)], result.err
   end
 
   def test_a_roadmap_with_a_ready_item_is_not_refused_for_a_file_of_another_intent

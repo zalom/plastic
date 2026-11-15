@@ -32,9 +32,9 @@ module Plastic
             new(path, file_sha, printed_of(path, printed_sha, file_sha, print), print, printed_elsewhere?(folder, path, print))
           end
 
-          # The clusters, a part of the index, with no record of a print count as printed when the rows hold what the file does not.
+          # A part of the index, the clusters or the links, with no record of a print count as printed when the rows hold what the file does not.
           def self.printed_of(path, printed_sha, file_sha, print)
-            return printed_sha unless Prints::ClusterPart.path?(path) && printed_sha.nil? && file_sha != print.sha256
+            return printed_sha unless Prints::Parts.path?(path) && printed_sha.nil? && file_sha != print.sha256
 
             print.sha256
           end
@@ -55,12 +55,12 @@ module Plastic
           end
 
           def self.level_sha(folder, path, print)
-            sha = Prints::ClusterPart.path?(path) ? part_digest(folder) : folder.digest(path)
+            sha = Prints::Parts.path?(path) ? part_digest(folder, path) : folder.digest(path)
             rows = print.sha256
             (sha && generated?(path) && rows && same_content?(folder.read(path), print.text)) ? rows : sha
           end
 
-          def self.part_digest(folder) = folder.exist?(StoreFolder::INDEX) ? Prints::ClusterPart.file_digest(folder.read(StoreFolder::INDEX)) : nil
+          def self.part_digest(folder, path) = folder.exist?(StoreFolder::INDEX) ? Prints::Parts.file_digest(path, folder.read(StoreFolder::INDEX)) : nil
 
           def self.same_content?(bytes, text)
             JSON.parse(bytes.force_encoding(Encoding::UTF_8)) == JSON.parse(text)

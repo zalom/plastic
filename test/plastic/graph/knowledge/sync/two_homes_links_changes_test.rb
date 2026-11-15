@@ -25,7 +25,7 @@ class KnowledgeSyncTwoHomesLinksChangesTest < Plastic::TestCase
       before = files_snapshot(b)
       up = call_in(b, "sync", "up")
 
-      assert_equal [1, [%w[2 1 source]], before], [up.code, links(b), files_snapshot(b)], said(up)
+      assert_equal [3, [%w[2 1 source]], before], [up.code, links(b), files_snapshot(b)], said(up)
     end
   end
 

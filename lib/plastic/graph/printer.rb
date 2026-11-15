@@ -31,11 +31,11 @@ module Plastic
 
       private
 
-      # The clusters are a part of the index: its print records their row too.
+      # The clusters and the links are parts of the index: its print records their rows too.
       def with_part(prints)
         return prints unless prints.any? { |print| print.path == Knowledge::StoreFolder::INDEX }
 
-        [*prints, Prints.cluster_part(@retrieval)].uniq(&:path)
+        [*prints, *Prints.parts(@retrieval)].uniq(&:path)
       end
 
       def remember(paths)

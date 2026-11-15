@@ -42,7 +42,7 @@ Its steps run in this order:
 
 | Place | Database or file | Tables | Reads or writes | Code |
 | --- | --- | --- | --- | --- |
-| the store folder | knowledge_graph.db | `links`, `rulings` | reads | [`links.rb:14`](../../../../lib/plastic/commands/project/links.rb#L14) |
+| the store folder | knowledge_graph.db | `rulings` | reads | [`links.rb:14`](../../../../lib/plastic/commands/project/links.rb#L14) |
 | the store folder | work_graph.db | `intents` | reads | [`links.rb:14`](../../../../lib/plastic/commands/project/links.rb#L14) |
 
 ## How a call ends

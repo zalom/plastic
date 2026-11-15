@@ -173,7 +173,7 @@ class KnowledgeSyncPlanBuildTest < Plastic::TestCase
     found = Plan.entries(folder, retrieval).to_h { |entry| [entry.path, absent(entry)] }
 
     assert_equal %w[store/1--alpha/graph.json store/1--alpha/intent.md store/1--alpha/savepoint.md store/1--alpha/spec.md
-      store/index.json store/index.json#clusters], found.keys
+      store/index.json store/index.json#clusters store/index.json#links], found.keys
     assert_equal [[false, false, false], [false, true, true]], found.values_at("store/index.json", "store/1--alpha/spec.md")
   end
 
