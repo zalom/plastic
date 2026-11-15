@@ -22,7 +22,6 @@ module Plastic
 
           forget_stop :problem
 
-          # The submitted document, read from the file the call names. It is no fact, so a routine run never holds it.
           def self.submission(context)
             discovery = ContextDocuments.new(context).read(:discovery)
             source = Plastic::Graph::Retrieval::Context::Source.new(context.scope.plastic_home)

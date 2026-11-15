@@ -32,7 +32,6 @@ module Plastic
 
       def folder = (@worktree.path if @worktree&.then { |tree| File.directory?(tree.path) }) || @worktree&.repo
 
-      # The place as the disk spells it, nil when a name on the way is missing or the end is no template.
       def on_disk(place)
         names = spelled(place.chomp("/").split("/"), folder)
         return unless names
@@ -44,7 +43,6 @@ module Plastic
         folder_place ? "#{names.join("/")}/" : names.join("/")
       end
 
-      # The names on the disk that match `wanted` without regard to case, nil when one is missing.
       def spelled(wanted, at)
         return [] if wanted.empty?
 
