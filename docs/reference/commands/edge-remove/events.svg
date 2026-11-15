@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 834 369" width="834" height="369" role="img" xml:space="preserve">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 834 358" width="834" height="358" role="img" xml:space="preserve">
 <title>The events of one call of plastic edge remove, in words</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
@@ -95,29 +95,28 @@
 <text x="44" y="164" class="badge-t" text-anchor="middle">2</text>
 <text x="64" y="163" class="tag tag-code" text-anchor="start">Code Workflow</text>
 <text x="64" y="183" class="t" text-anchor="start">Remove the edge.</text>
-<path d="M 424 172 L 480 172" class="wire-failure"/>
-<path d="M 472 167 L 480 172 L 472 177 Z" class="head"/>
-<rect x="480" y="141" width="330" height="62" rx="6" class="stop-failure"/>
+<path d="M 424 164 L 480 164" class="wire-failure"/>
+<path d="M 472 159 L 480 164 L 472 169 Z" class="head"/>
+<rect x="480" y="141" width="330" height="46" rx="6" class="stop-failure"/>
 <text x="492" y="159" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1</text>
-<text x="492" y="177" class="t" text-anchor="start">The intent is missing, done or abandoned, or</text>
-<text x="492" y="193" class="t" text-anchor="start">there is no such edge.</text>
-<path d="M 64 192 L 64 229" class="wire"/>
-<path d="M 59 221 L 64 229 L 69 221 Z" class="head"/>
-<rect x="24" y="229" width="400" height="51" rx="6" class="lane-code"/>
-<circle cx="44" cy="248" r="8" class="badge"/>
-<text x="44" y="252" class="badge-t" text-anchor="middle">3</text>
-<text x="64" y="251" class="tag tag-code" text-anchor="start">Code Workflow</text>
-<text x="64" y="271" class="t" text-anchor="start">Say what was removed.</text>
-<path d="M 424 260 L 480 260" class="wire-end"/>
-<path d="M 472 255 L 480 260 L 472 265 Z" class="head"/>
-<rect x="480" y="229" width="330" height="62" rx="6" class="stop-end"/>
-<text x="492" y="247" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
-<text x="492" y="265" class="t" text-anchor="start">Edge &lt;from&gt; to &lt;to&gt; is gone.</text>
-<text x="492" y="281" class="t" text-anchor="start">next: plastic graph show &lt;intent id&gt;</text>
-<rect x="24" y="321" width="14" height="14" rx="3" class="lane-code"/>
-<text x="44" y="333" class="k" text-anchor="start">Code Workflow</text>
-<rect x="140" y="321" width="14" height="14" rx="3" class="stop-failure"/>
-<text x="160" y="333" class="k" text-anchor="start">Stops with a failure</text>
-<rect x="298" y="321" width="14" height="14" rx="3" class="stop-end"/>
-<text x="318" y="333" class="k" text-anchor="start">Ends</text>
+<text x="492" y="177" class="t" text-anchor="start">There is no such edge.</text>
+<path d="M 64 192 L 64 218" class="wire"/>
+<path d="M 59 210 L 64 218 L 69 210 Z" class="head"/>
+<rect x="24" y="218" width="400" height="51" rx="6" class="lane-code"/>
+<circle cx="44" cy="237" r="8" class="badge"/>
+<text x="44" y="241" class="badge-t" text-anchor="middle">3</text>
+<text x="64" y="240" class="tag tag-code" text-anchor="start">Code Workflow</text>
+<text x="64" y="260" class="t" text-anchor="start">Say what was removed.</text>
+<path d="M 424 249 L 480 249" class="wire-end"/>
+<path d="M 472 244 L 480 249 L 472 254 Z" class="head"/>
+<rect x="480" y="218" width="330" height="62" rx="6" class="stop-end"/>
+<text x="492" y="236" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
+<text x="492" y="254" class="t" text-anchor="start">Edge &lt;from&gt; to &lt;to&gt; is gone.</text>
+<text x="492" y="270" class="t" text-anchor="start">next: plastic graph show &lt;intent id&gt;</text>
+<rect x="24" y="310" width="14" height="14" rx="3" class="lane-code"/>
+<text x="44" y="322" class="k" text-anchor="start">Code Workflow</text>
+<rect x="140" y="310" width="14" height="14" rx="3" class="stop-failure"/>
+<text x="160" y="322" class="k" text-anchor="start">Stops with a failure</text>
+<rect x="298" y="310" width="14" height="14" rx="3" class="stop-end"/>
+<text x="318" y="322" class="k" text-anchor="start">Ends</text>
 </svg>

@@ -31,7 +31,7 @@ module Plastic
             end
 
             gate "%{problem}", stops: :refusal,
-              stops_when: "another session holds the delivery of the intent, or the intent is missing or closed",
+              stops_when: "another live session holds the lock of the intent",
               pass: ->(context) { context.problem.nil? }
 
             outcome :reverting, if: ->(context) { !context.reverted }, because: "the work of the intent is not reverted yet"

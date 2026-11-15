@@ -29,7 +29,7 @@ module Plastic
           end
 
           gate "%{problem}", stops: :failure,
-            stops_when: "the intent is missing, done or abandoned, the edge would make a loop, or an end of the edge is not a node",
+            stops_when: "the edge would make a loop or an end of the edge is not a node",
             pass: ->(context) { context.problem.nil? }
 
           read "say what was added" do |context|

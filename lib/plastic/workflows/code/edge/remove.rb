@@ -22,7 +22,7 @@ module Plastic
           end
 
           gate "%{problem}", stops: :failure,
-            stops_when: "the intent is missing, done or abandoned, or there is no such edge",
+            stops_when: "there is no such edge",
             pass: ->(context) { context.problem.nil? }
 
           read "say what was removed" do |context|

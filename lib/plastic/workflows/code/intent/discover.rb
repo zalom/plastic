@@ -41,7 +41,7 @@ module Plastic
           end
 
           gate "%{problem}", stops: :failure,
-            stops_when: "the intent is missing, done or abandoned, or a source store needs repair",
+            stops_when: "a source store needs repair",
             pass: ->(context) { context.problem.nil? }
 
           step "record retrieval discovery", done: ->(context) { !context.discovery.nil? },

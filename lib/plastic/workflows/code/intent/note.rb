@@ -30,7 +30,7 @@ module Plastic
           end
 
           gate "%{problem}", stops: :failure,
-            stops_when: "the intent is missing, done or abandoned, or the note is empty or not valid",
+            stops_when: "the note holds a line break",
             pass: ->(context) { context.problem.nil? }
 
           step "write the note", done: ->(context) { !context.reference.nil? },

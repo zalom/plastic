@@ -115,8 +115,8 @@
 <path d="M 472 286 L 480 291 L 472 296 Z" class="head"/>
 <rect x="480" y="260" width="330" height="62" rx="6" class="stop-refusal"/>
 <text x="492" y="278" class="tag tag-refusal" text-anchor="start">STOPS, EXIT 3</text>
-<text x="492" y="296" class="t" text-anchor="start">Another session holds the delivery of the</text>
-<text x="492" y="312" class="t" text-anchor="start">intent, or the intent is missing or closed.</text>
+<text x="492" y="296" class="t" text-anchor="start">Another live session holds the lock of the</text>
+<text x="492" y="312" class="t" text-anchor="start">intent.</text>
 <path d="M 64 311 L 64 348" class="wire"/>
 <path d="M 59 340 L 64 348 L 69 340 Z" class="head"/>
 <rect x="24" y="348" width="400" height="51" rx="6" class="lane-code"/>
