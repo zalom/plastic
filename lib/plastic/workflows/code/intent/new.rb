@@ -20,7 +20,7 @@ module Plastic
           end
 
           gate "%{problem}", stops: :failure,
-            stops_when: "the parent, the reference, the status or the source of the new intent is not valid",
+            stops_when: "the store is still in the old format and needs plastic sync up first, the status or the reason is not valid, the parent or the intent to link after is not in the store, or the reference is not valid",
             pass: ->(context) { context.problem.nil? }
 
           step "write the intent", done: ->(context) { !context.intent_id.nil? },

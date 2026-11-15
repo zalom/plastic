@@ -56,7 +56,7 @@ module Plastic
             stops_when: "the node was claimed three times and the owner decides",
             pass: ->(context) { context.result.to_s != "capped" }
           gate "%{problem}", stops: :failure,
-            stops_when: "the node is blocked or refused",
+            stops_when: "the node is not in the intent, is not open, or needs a node that is not done",
             pass: ->(context) { !STOPPED.include?(context.result.to_s) }
 
           read "print the brief" do |context|

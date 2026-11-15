@@ -24,10 +24,10 @@ module Plastic
           end
 
           gate "%{problem}", stops: :failure,
-            stops_when: "the item cannot be opened and the call failed",
+            stops_when: "the roadmap has no such item",
             pass: ->(context) { context.kind != :failure }
           gate "%{problem}", stops: :refusal,
-            stops_when: "the item is refused",
+            stops_when: "the item already has an intent, or a needed item is not done yet",
             pass: ->(context) { context.kind != :refusal }
 
           read "say what was opened" do |context|

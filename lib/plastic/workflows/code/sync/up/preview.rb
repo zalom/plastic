@@ -53,7 +53,7 @@ module Plastic
 
             def self.real_gates(direction)
               gate "%{failure}", stops: :failure,
-                stops_when: "the sync cannot run",
+                stops_when: "an overwrite path names no file and no rows",
                 pass: ->(context) { as_real?(context, :runs?) }
               conflict_gates(direction)
               readable_gates

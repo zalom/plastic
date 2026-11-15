@@ -46,7 +46,7 @@ module Plastic
           end
 
           gate "%{refusal}", stops: :refusal,
-            stops_when: "the restore is refused",
+            stops_when: "an intent of the store holds a fresh delivery lock, or the backup is not done",
             pass: ->(context) { context.refusal.nil? }
 
           step "replace the databases", done: ->(context) { !context.safety.nil? },

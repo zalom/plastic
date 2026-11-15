@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 834 967" width="834" height="967" role="img" xml:space="preserve">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 834 999" width="834" height="999" role="img" xml:space="preserve">
 <title>The events of one call of plastic sync down, in words</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
@@ -92,7 +92,7 @@
 <path d="M 472 82 L 480 87 L 472 92 Z" class="head"/>
 <rect x="480" y="64" width="330" height="46" rx="6" class="stop-failure"/>
 <text x="492" y="82" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1</text>
-<text x="492" y="100" class="t" text-anchor="start">The sync cannot run.</text>
+<text x="492" y="100" class="t" text-anchor="start">An overwrite path names no file and no rows.</text>
 <path d="M 424 85 L 444 85 L 444 181 L 480 181" class="wire-refusal"/>
 <path d="M 472 176 L 480 181 L 472 186 Z" class="head"/>
 <rect x="480" y="118" width="330" height="126" rx="6" class="stop-refusal"/>
@@ -124,55 +124,57 @@
 <text x="44" y="465" class="badge-t" text-anchor="middle">2</text>
 <text x="64" y="464" class="tag tag-code" text-anchor="start">Code Workflow</text>
 <text x="64" y="484" class="t" text-anchor="start">Plan the sync.</text>
-<path d="M 424 454 L 438 454 L 438 465 L 480 465" class="wire-failure"/>
-<path d="M 472 460 L 480 465 L 472 470 Z" class="head"/>
-<rect x="480" y="442" width="330" height="46" rx="6" class="stop-failure"/>
+<path d="M 424 454 L 438 454 L 438 481 L 480 481" class="wire-failure"/>
+<path d="M 472 476 L 480 481 L 472 486 Z" class="head"/>
+<rect x="480" y="442" width="330" height="78" rx="6" class="stop-failure"/>
 <text x="492" y="460" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1</text>
-<text x="492" y="478" class="t" text-anchor="start">The sync cannot run.</text>
-<path d="M 424 468 L 432 468 L 432 559 L 480 559" class="wire-refusal"/>
-<path d="M 472 554 L 480 559 L 472 564 Z" class="head"/>
-<rect x="480" y="496" width="330" height="126" rx="6" class="stop-refusal"/>
-<text x="492" y="514" class="tag tag-refusal" text-anchor="start">STOPS, EXIT 3</text>
-<text x="492" y="532" class="t" text-anchor="start">Changed on both sides since the last print,</text>
-<text x="492" y="548" class="t" text-anchor="start">nothing written. --overwrite PATH prints that</text>
-<text x="492" y="564" class="t" text-anchor="start">record&#39;s rows over the file, --overwrite</text>
-<text x="492" y="580" class="t" text-anchor="start">prints every record, --merge applies the</text>
-<text x="492" y="596" class="t" text-anchor="start">one-sided changes and lists the rest. The</text>
-<text x="492" y="612" class="t" text-anchor="start">records: &lt;conflicts&gt;.</text>
-<path d="M 64 493 L 64 648" class="wire"/>
-<path d="M 59 640 L 64 648 L 69 640 Z" class="head"/>
-<rect x="24" y="648" width="400" height="51" rx="6" class="lane-code"/>
-<circle cx="44" cy="667" r="8" class="badge"/>
-<text x="44" y="671" class="badge-t" text-anchor="middle">3</text>
-<text x="64" y="670" class="tag tag-code" text-anchor="start">Code Workflow</text>
-<text x="64" y="690" class="t" text-anchor="start">Apply the changes.</text>
-<path d="M 64 699 L 64 725" class="wire"/>
-<path d="M 59 717 L 64 725 L 69 717 Z" class="head"/>
-<rect x="24" y="725" width="400" height="51" rx="6" class="lane-code"/>
-<circle cx="44" cy="744" r="8" class="badge"/>
-<text x="44" y="748" class="badge-t" text-anchor="middle">4</text>
-<text x="64" y="747" class="tag tag-code" text-anchor="start">Code Workflow</text>
-<text x="64" y="767" class="t" text-anchor="start">Say what changed.</text>
-<path d="M 424 737 L 438 737 L 438 772 L 480 772" class="wire-refusal"/>
-<path d="M 472 767 L 480 772 L 472 777 Z" class="head"/>
-<rect x="480" y="725" width="330" height="94" rx="6" class="stop-refusal"/>
-<text x="492" y="743" class="tag tag-refusal" text-anchor="start">STOPS, EXIT 3</text>
-<text x="492" y="761" class="t" text-anchor="start">Changed on both sides since the last print,</text>
-<text x="492" y="777" class="t" text-anchor="start">left as they are. --overwrite PATH prints that</text>
-<text x="492" y="793" class="t" text-anchor="start">record&#39;s rows over the file, --overwrite</text>
-<text x="492" y="809" class="t" text-anchor="start">prints every record. The records: &lt;conflicts&gt;.</text>
-<path d="M 424 751 L 432 751 L 432 858 L 480 858" class="wire-end"/>
-<path d="M 472 853 L 480 858 L 472 863 Z" class="head"/>
-<rect x="480" y="827" width="330" height="62" rx="6" class="stop-end"/>
-<text x="492" y="845" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
-<text x="492" y="863" class="t" text-anchor="start">The files hold every row that changed.</text>
-<text x="492" y="879" class="t" text-anchor="start">next: plastic next</text>
-<rect x="24" y="919" width="14" height="14" rx="3" class="lane-code"/>
-<text x="44" y="931" class="k" text-anchor="start">Code Workflow</text>
-<rect x="140" y="919" width="14" height="14" rx="3" class="stop-failure"/>
-<text x="160" y="931" class="k" text-anchor="start">Stops with a failure</text>
-<rect x="276" y="919" width="14" height="14" rx="3" class="stop-refusal"/>
-<text x="296" y="931" class="k" text-anchor="start">Stops for the owner</text>
-<rect x="414" y="919" width="14" height="14" rx="3" class="stop-end"/>
-<text x="434" y="931" class="k" text-anchor="start">Ends</text>
+<text x="492" y="478" class="t" text-anchor="start">A sync down finds the old index file of the</text>
+<text x="492" y="494" class="t" text-anchor="start">store and needs plastic sync up first, or an</text>
+<text x="492" y="510" class="t" text-anchor="start">overwrite path names no file and no rows.</text>
+<path d="M 424 468 L 432 468 L 432 591 L 480 591" class="wire-refusal"/>
+<path d="M 472 586 L 480 591 L 472 596 Z" class="head"/>
+<rect x="480" y="528" width="330" height="126" rx="6" class="stop-refusal"/>
+<text x="492" y="546" class="tag tag-refusal" text-anchor="start">STOPS, EXIT 3</text>
+<text x="492" y="564" class="t" text-anchor="start">Changed on both sides since the last print,</text>
+<text x="492" y="580" class="t" text-anchor="start">nothing written. --overwrite PATH prints that</text>
+<text x="492" y="596" class="t" text-anchor="start">record&#39;s rows over the file, --overwrite</text>
+<text x="492" y="612" class="t" text-anchor="start">prints every record, --merge applies the</text>
+<text x="492" y="628" class="t" text-anchor="start">one-sided changes and lists the rest. The</text>
+<text x="492" y="644" class="t" text-anchor="start">records: &lt;conflicts&gt;.</text>
+<path d="M 64 493 L 64 680" class="wire"/>
+<path d="M 59 672 L 64 680 L 69 672 Z" class="head"/>
+<rect x="24" y="680" width="400" height="51" rx="6" class="lane-code"/>
+<circle cx="44" cy="699" r="8" class="badge"/>
+<text x="44" y="703" class="badge-t" text-anchor="middle">3</text>
+<text x="64" y="702" class="tag tag-code" text-anchor="start">Code Workflow</text>
+<text x="64" y="722" class="t" text-anchor="start">Apply the changes.</text>
+<path d="M 64 731 L 64 757" class="wire"/>
+<path d="M 59 749 L 64 757 L 69 749 Z" class="head"/>
+<rect x="24" y="757" width="400" height="51" rx="6" class="lane-code"/>
+<circle cx="44" cy="776" r="8" class="badge"/>
+<text x="44" y="780" class="badge-t" text-anchor="middle">4</text>
+<text x="64" y="779" class="tag tag-code" text-anchor="start">Code Workflow</text>
+<text x="64" y="799" class="t" text-anchor="start">Say what changed.</text>
+<path d="M 424 769 L 438 769 L 438 804 L 480 804" class="wire-refusal"/>
+<path d="M 472 799 L 480 804 L 472 809 Z" class="head"/>
+<rect x="480" y="757" width="330" height="94" rx="6" class="stop-refusal"/>
+<text x="492" y="775" class="tag tag-refusal" text-anchor="start">STOPS, EXIT 3</text>
+<text x="492" y="793" class="t" text-anchor="start">Changed on both sides since the last print,</text>
+<text x="492" y="809" class="t" text-anchor="start">left as they are. --overwrite PATH prints that</text>
+<text x="492" y="825" class="t" text-anchor="start">record&#39;s rows over the file, --overwrite</text>
+<text x="492" y="841" class="t" text-anchor="start">prints every record. The records: &lt;conflicts&gt;.</text>
+<path d="M 424 783 L 432 783 L 432 890 L 480 890" class="wire-end"/>
+<path d="M 472 885 L 480 890 L 472 895 Z" class="head"/>
+<rect x="480" y="859" width="330" height="62" rx="6" class="stop-end"/>
+<text x="492" y="877" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
+<text x="492" y="895" class="t" text-anchor="start">The files hold every row that changed.</text>
+<text x="492" y="911" class="t" text-anchor="start">next: plastic next</text>
+<rect x="24" y="951" width="14" height="14" rx="3" class="lane-code"/>
+<text x="44" y="963" class="k" text-anchor="start">Code Workflow</text>
+<rect x="140" y="951" width="14" height="14" rx="3" class="stop-failure"/>
+<text x="160" y="963" class="k" text-anchor="start">Stops with a failure</text>
+<rect x="276" y="951" width="14" height="14" rx="3" class="stop-refusal"/>
+<text x="296" y="963" class="k" text-anchor="start">Stops for the owner</text>
+<rect x="414" y="951" width="14" height="14" rx="3" class="stop-end"/>
+<text x="434" y="963" class="k" text-anchor="start">Ends</text>
 </svg>

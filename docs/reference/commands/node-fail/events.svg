@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 834 435" width="834" height="435" role="img" xml:space="preserve">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 834 446" width="834" height="446" role="img" xml:space="preserve">
 <title>The events of one call of plastic node fail, in words</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
@@ -107,28 +107,29 @@
 <text x="44" y="241" class="badge-t" text-anchor="middle">3</text>
 <text x="64" y="240" class="tag tag-code" text-anchor="start">Code Workflow</text>
 <text x="64" y="260" class="t" text-anchor="start">Fail the node.</text>
-<path d="M 424 241 L 480 241" class="wire-failure"/>
-<path d="M 472 236 L 480 241 L 472 246 Z" class="head"/>
-<rect x="480" y="218" width="330" height="46" rx="6" class="stop-failure"/>
+<path d="M 424 249 L 480 249" class="wire-failure"/>
+<path d="M 472 244 L 480 249 L 472 254 Z" class="head"/>
+<rect x="480" y="218" width="330" height="62" rx="6" class="stop-failure"/>
 <text x="492" y="236" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1</text>
-<text x="492" y="254" class="t" text-anchor="start">The node refuses the move.</text>
-<path d="M 64 269 L 64 295" class="wire"/>
-<path d="M 59 287 L 64 295 L 69 287 Z" class="head"/>
-<rect x="24" y="295" width="400" height="51" rx="6" class="lane-code"/>
-<circle cx="44" cy="314" r="8" class="badge"/>
-<text x="44" y="318" class="badge-t" text-anchor="middle">4</text>
-<text x="64" y="317" class="tag tag-code" text-anchor="start">Code Workflow</text>
-<text x="64" y="337" class="t" text-anchor="start">Say what failed.</text>
-<path d="M 424 326 L 480 326" class="wire-end"/>
-<path d="M 472 321 L 480 326 L 472 331 Z" class="head"/>
-<rect x="480" y="295" width="330" height="62" rx="6" class="stop-end"/>
-<text x="492" y="313" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
-<text x="492" y="331" class="t" text-anchor="start">Node &lt;id&gt; is failed.</text>
-<text x="492" y="347" class="t" text-anchor="start">next: plastic node release &lt;intent id&gt; &lt;id&gt;</text>
-<rect x="24" y="387" width="14" height="14" rx="3" class="lane-code"/>
-<text x="44" y="399" class="k" text-anchor="start">Code Workflow</text>
-<rect x="140" y="387" width="14" height="14" rx="3" class="stop-failure"/>
-<text x="160" y="399" class="k" text-anchor="start">Stops with a failure</text>
-<rect x="276" y="387" width="14" height="14" rx="3" class="stop-end"/>
-<text x="296" y="399" class="k" text-anchor="start">Ends</text>
+<text x="492" y="254" class="t" text-anchor="start">The node is not in the intent, or its state</text>
+<text x="492" y="270" class="t" text-anchor="start">does not allow this move.</text>
+<path d="M 64 269 L 64 306" class="wire"/>
+<path d="M 59 298 L 64 306 L 69 298 Z" class="head"/>
+<rect x="24" y="306" width="400" height="51" rx="6" class="lane-code"/>
+<circle cx="44" cy="325" r="8" class="badge"/>
+<text x="44" y="329" class="badge-t" text-anchor="middle">4</text>
+<text x="64" y="328" class="tag tag-code" text-anchor="start">Code Workflow</text>
+<text x="64" y="348" class="t" text-anchor="start">Say what failed.</text>
+<path d="M 424 337 L 480 337" class="wire-end"/>
+<path d="M 472 332 L 480 337 L 472 342 Z" class="head"/>
+<rect x="480" y="306" width="330" height="62" rx="6" class="stop-end"/>
+<text x="492" y="324" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
+<text x="492" y="342" class="t" text-anchor="start">Node &lt;id&gt; is failed.</text>
+<text x="492" y="358" class="t" text-anchor="start">next: plastic node release &lt;intent id&gt; &lt;id&gt;</text>
+<rect x="24" y="398" width="14" height="14" rx="3" class="lane-code"/>
+<text x="44" y="410" class="k" text-anchor="start">Code Workflow</text>
+<rect x="140" y="398" width="14" height="14" rx="3" class="stop-failure"/>
+<text x="160" y="410" class="k" text-anchor="start">Stops with a failure</text>
+<rect x="276" y="398" width="14" height="14" rx="3" class="stop-end"/>
+<text x="296" y="410" class="k" text-anchor="start">Ends</text>
 </svg>

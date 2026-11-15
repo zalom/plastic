@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 834 407" width="834" height="407" role="img" xml:space="preserve">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 834 439" width="834" height="439" role="img" xml:space="preserve">
 <title>The events of one call of plastic roadmap add, in words</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
@@ -95,35 +95,37 @@
 <text x="44" y="164" class="badge-t" text-anchor="middle">2</text>
 <text x="64" y="163" class="tag tag-code" text-anchor="start">Code Workflow</text>
 <text x="64" y="183" class="t" text-anchor="start">Add the item.</text>
-<path d="M 424 153 L 438 153 L 438 164 L 480 164" class="wire-failure"/>
-<path d="M 472 159 L 480 164 L 472 169 Z" class="head"/>
-<rect x="480" y="141" width="330" height="46" rx="6" class="stop-failure"/>
+<path d="M 424 153 L 438 153 L 438 172 L 480 172" class="wire-failure"/>
+<path d="M 472 167 L 480 172 L 472 177 Z" class="head"/>
+<rect x="480" y="141" width="330" height="62" rx="6" class="stop-failure"/>
 <text x="492" y="159" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1</text>
-<text x="492" y="177" class="t" text-anchor="start">The item cannot be added and the call failed.</text>
-<path d="M 424 167 L 432 167 L 432 218 L 480 218" class="wire-refusal"/>
-<path d="M 472 213 L 480 218 L 472 223 Z" class="head"/>
-<rect x="480" y="195" width="330" height="46" rx="6" class="stop-refusal"/>
-<text x="492" y="213" class="tag tag-refusal" text-anchor="start">STOPS, EXIT 3</text>
-<text x="492" y="231" class="t" text-anchor="start">The item is refused.</text>
-<path d="M 64 192 L 64 267" class="wire"/>
-<path d="M 59 259 L 64 267 L 69 259 Z" class="head"/>
-<rect x="24" y="267" width="400" height="51" rx="6" class="lane-code"/>
-<circle cx="44" cy="286" r="8" class="badge"/>
-<text x="44" y="290" class="badge-t" text-anchor="middle">3</text>
-<text x="64" y="289" class="tag tag-code" text-anchor="start">Code Workflow</text>
-<text x="64" y="309" class="t" text-anchor="start">Say what was added.</text>
-<path d="M 424 298 L 480 298" class="wire-end"/>
-<path d="M 472 293 L 480 298 L 472 303 Z" class="head"/>
-<rect x="480" y="267" width="330" height="62" rx="6" class="stop-end"/>
-<text x="492" y="285" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
-<text x="492" y="303" class="t" text-anchor="start">Item &lt;item id&gt; is on roadmap &lt;slug&gt;.</text>
-<text x="492" y="319" class="t" text-anchor="start">next: plastic roadmap show &lt;slug&gt;</text>
-<rect x="24" y="359" width="14" height="14" rx="3" class="lane-code"/>
-<text x="44" y="371" class="k" text-anchor="start">Code Workflow</text>
-<rect x="140" y="359" width="14" height="14" rx="3" class="stop-failure"/>
-<text x="160" y="371" class="k" text-anchor="start">Stops with a failure</text>
-<rect x="276" y="359" width="14" height="14" rx="3" class="stop-refusal"/>
-<text x="296" y="371" class="k" text-anchor="start">Stops for the owner</text>
-<rect x="414" y="359" width="14" height="14" rx="3" class="stop-end"/>
-<text x="434" y="371" class="k" text-anchor="start">Ends</text>
+<text x="492" y="177" class="t" text-anchor="start">The roadmap has no such batch, or an item</text>
+<text x="492" y="193" class="t" text-anchor="start">named in needs is not on the roadmap.</text>
+<path d="M 424 167 L 432 167 L 432 242 L 480 242" class="wire-refusal"/>
+<path d="M 472 237 L 480 242 L 472 247 Z" class="head"/>
+<rect x="480" y="211" width="330" height="62" rx="6" class="stop-refusal"/>
+<text x="492" y="229" class="tag tag-refusal" text-anchor="start">STOPS, EXIT 3</text>
+<text x="492" y="247" class="t" text-anchor="start">An edge from a needed item to the new item</text>
+<text x="492" y="263" class="t" text-anchor="start">would loop.</text>
+<path d="M 64 192 L 64 299" class="wire"/>
+<path d="M 59 291 L 64 299 L 69 291 Z" class="head"/>
+<rect x="24" y="299" width="400" height="51" rx="6" class="lane-code"/>
+<circle cx="44" cy="318" r="8" class="badge"/>
+<text x="44" y="322" class="badge-t" text-anchor="middle">3</text>
+<text x="64" y="321" class="tag tag-code" text-anchor="start">Code Workflow</text>
+<text x="64" y="341" class="t" text-anchor="start">Say what was added.</text>
+<path d="M 424 330 L 480 330" class="wire-end"/>
+<path d="M 472 325 L 480 330 L 472 335 Z" class="head"/>
+<rect x="480" y="299" width="330" height="62" rx="6" class="stop-end"/>
+<text x="492" y="317" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
+<text x="492" y="335" class="t" text-anchor="start">Item &lt;item id&gt; is on roadmap &lt;slug&gt;.</text>
+<text x="492" y="351" class="t" text-anchor="start">next: plastic roadmap show &lt;slug&gt;</text>
+<rect x="24" y="391" width="14" height="14" rx="3" class="lane-code"/>
+<text x="44" y="403" class="k" text-anchor="start">Code Workflow</text>
+<rect x="140" y="391" width="14" height="14" rx="3" class="stop-failure"/>
+<text x="160" y="403" class="k" text-anchor="start">Stops with a failure</text>
+<rect x="276" y="391" width="14" height="14" rx="3" class="stop-refusal"/>
+<text x="296" y="403" class="k" text-anchor="start">Stops for the owner</text>
+<rect x="414" y="391" width="14" height="14" rx="3" class="stop-end"/>
+<text x="434" y="403" class="k" text-anchor="start">Ends</text>
 </svg>
