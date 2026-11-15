@@ -36,6 +36,10 @@ class VerifyChangeSandboxTest < Minitest::Test
     assert_operator gate_steps.size, :>, 1
   end
 
+  def test_the_gate_has_no_step_named_timing_check
+    assert_empty gate_steps.map(&:title).grep(/timing/i)
+  end
+
   def test_every_gate_step_runs_under_the_sandbox_home
     gate_steps.each do |step|
       assert_equal SANDBOX, step.env.slice("HOME", "PLASTIC_TMP"), "#{step.title} runs under the ambient home or tmp dir"
