@@ -9,7 +9,7 @@ module Plastic
     module Code
       module Intent
         module Lock
-          # Prints an intent's lock row: the session, the mode, when it was taken
+          # Prints an intent's lock row: the session, the mode, when it was locked
           # and renewed, whether it is still live and why; then the code worktree when
           # the store's project names a repository. Refuses an unknown id.
           class Status < CodeWorkflow

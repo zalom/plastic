@@ -31,7 +31,7 @@ The figure shows the command, the workflows it runs, the classes behind them, an
 
 The code workflow `:code_show_lock`, in [`status.rb:15`](../../../../lib/plastic/workflows/code/intent/lock/status.rb#L15).
 
-Prints an intent's lock row: the session, the mode, when it was taken and renewed, whether it is still live and why; then the code worktree when the store's project names a repository. Refuses an unknown id.
+Prints an intent's lock row: the session, the mode, when it was locked and renewed, whether it is still live and why; then the code worktree when the store's project names a repository. Refuses an unknown id.
 
 ![How Code::Intent::Lock::Status runs: its steps, where it stops, and its outcomes](code_show_lock.svg)
 
