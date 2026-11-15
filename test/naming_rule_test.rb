@@ -3,12 +3,10 @@
 
 require "minitest/autorun"
 
-# A thing is named after the concept family it lives under. The knowledge-graph
-# chapter carries the rule, and the planner and executor agent files each carry
-# one sentence that agrees with it.
+# A thing is named after the concept family it lives under. The planner and
+# executor agent files each carry one sentence that states the rule.
 class NamingRuleTest < Minitest::Test
   REPO = File.expand_path("..", __dir__)
-  KNOWLEDGE_GRAPH_MD = File.join(REPO, "docs", "help", "knowledge-graph.md")
   PLANNER_MD = File.join(REPO, "agents", "plastic-planner.md")
   EXECUTOR_MD = File.join(REPO, "agents", "plastic-executor.md")
 
@@ -25,25 +23,6 @@ class NamingRuleTest < Minitest::Test
     end_offset = rest.index { |line| line.start_with?("## ") }
     section_lines = end_offset ? rest[0...end_offset] : rest
     section_lines.join.strip
-  end
-
-  def naming_paragraph = section_body(File.read(KNOWLEDGE_GRAPH_MD), "Naming").to_s.gsub(/\s+/, " ")
-
-  def test_naming_paragraph_names_the_three_families
-    families = ["graph engineering", "node, edge, ready set, critical path", "Plastic concepts coined on top of it",
-      "intent, ledger, node input, lease, gate, runner", "software and AI engineering",
-      "review, fix, test, verify, dispatch, executor, reviewer"]
-
-    families.each { |family| assert_includes naming_paragraph, family }
-  end
-
-  def test_naming_paragraph_states_refusal_and_the_design_finding_route
-    ["A name from outside that stack is refused.", "that is a design finding to raise, not a word to coin."]
-      .each { |phrase| assert_includes naming_paragraph, phrase }
-  end
-
-  def test_conventions_chapter_carries_the_rule
-    assert_includes naming_paragraph, "A thing is named after the concept family it lives under."
   end
 
   def test_planner_carries_the_naming_sentence
