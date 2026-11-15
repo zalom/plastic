@@ -16,7 +16,8 @@ module Plastic
 
           forget_stop :problem, :kind, :item
 
-          step "add the item", done: ->(context) { !context.item.nil? || !context.problem.nil? } do |context|
+          step "add the item", done: ->(context) { !context.item.nil? || !context.problem.nil? },
+            changes: { work: "The item is added to the roadmap" } do |context|
             fields = Plastic::Graph::Knowledge::Roadmap::Writer::Fields.new(title: context.title, goal: context.goal, done: context.done)
             item, problem, kind = context.work.add_item(context.slug, context.item_id, context.position.to_i,
               fields:, needs: context.needs)
@@ -25,8 +26,12 @@ module Plastic
             context[:kind] = kind
           end
 
-          gate "%{problem}", stops: :failure, pass: ->(context) { context.kind != :failure }
-          gate "%{problem}", stops: :refusal, pass: ->(context) { context.kind != :refusal }
+          gate "%{problem}", stops: :failure,
+            words: "the roadmap has no such batch, or an item named in needs is not on the roadmap",
+            pass: ->(context) { context.kind != :failure }
+          gate "%{problem}", stops: :refusal,
+            words: "an edge from a needed item to the new item would loop",
+            pass: ->(context) { context.kind != :refusal }
 
           read "say what was added" do |context|
             context.print("item: #{context.item.item} #{context.item.title}")

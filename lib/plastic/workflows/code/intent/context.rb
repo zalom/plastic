@@ -16,25 +16,38 @@ module Plastic
         # Validates a submitted evidence selection and persists it in the owning store.
         class Context < CodeWorkflow
           clear_declarations
+          summary "Validates the submitted evidence selection and saves it in the owning store."
 
           sets :problem
 
           forget_stop :problem
 
-          read "persist the submitted context" do |context|
+          def self.submission(context)
             discovery = ContextDocuments.new(context).read(:discovery)
             source = Plastic::Graph::Retrieval::Context::Source.new(context.scope.plastic_home)
-            submission = ContextSubmission.new(intent_id: context.intent_id, discovery:, source:).validate(context.from)
-            context.row("context", ContextPersistence.new(context).persist(submission))
+            ContextSubmission.new(intent_id: context.intent_id, discovery:, source:).validate(context.from)
+          end
+
+          read "validate the submitted context" do |context|
+            submission(context)
           rescue Errno::ENOENT, JSON::ParserError => error
             raise CLI::Command::Usage, error.message
           rescue Plastic::Graph::RetrievalGraph::MaintenanceRequired, Plastic::Graph::RetrievalGraph::MissingReference, KeyError, CLI::Command::Failure => error
             context[:problem] = RetrievalRepair.new(context.scope, error).problem
           end
 
-          gate "%{problem}", stops: :failure, pass: ->(context) { context.problem.nil? }
+          gate "%{problem}", stops: :failure,
+            words: "the submission is not valid, or a store needs repair",
+            pass: ->(context) { context.problem.nil? }
 
-          outcome :done, offers: nil, because: "the retrieval context was read"
+          step "save the submitted context", done: ->(context) { ContextPersistence.new(context).saved?(submission(context)) },
+            changes: { knowledge: "The submitted context is saved as a document of the intent, unless the same document is saved already" } do |context|
+            ContextPersistence.new(context).persist(submission(context))
+          end
+
+          read("print the saved context") { |context| context.row("context", submission(context)) }
+
+          outcome :done, offers: nil, because: "the submitted retrieval context is saved"
         end
       end
     end

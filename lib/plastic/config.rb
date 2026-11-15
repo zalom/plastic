@@ -11,7 +11,7 @@ module Plastic
   # file's `global` section, then the section of the harness, when one is
   # named. A missing file, or one that does not parse, reads every setting at
   # its default: a broken config never stops a hook or a command. See
-  # docs/guide/getting-started/configuration.md.
+  # docs/reference/commands/config/README.md.
   class Config
     TRUE_VALUES = [true, "true"].freeze
     FALSE_VALUES = [false, "false"].freeze

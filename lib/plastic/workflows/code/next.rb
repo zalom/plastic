@@ -12,6 +12,7 @@ module Plastic
       # the ready list. Several candidates offer status; none offers a new intent.
       class Next < CodeWorkflow
         clear_declarations
+        summary "Picks the intent this session works on and offers its next command."
 
         sets :next_command, :why, :handoff_text
 
@@ -20,9 +21,9 @@ module Plastic
           context[:next_command], context[:why], context[:handoff_text] = Plastic::Graph::Work::NextOffer.new(context.retrieval, pick).call
         end
 
-        outcome :agent_needed, if: ->(context) { !context.handoff_text.nil? }
-        outcome :nothing, if: ->(context) { context.next_command.nil? }, offers: "plastic status", because: "%{why}"
-        outcome :done, offers: "%{next_command}", because: "%{why}"
+        outcome :agent_needed, if: ->(context) { !context.handoff_text.nil? }, because: "the next step is the agent's to take"
+        outcome :nothing, if: ->(context) { context.next_command.nil? }, offers: "plastic status", because: "%{why}", words: "no intent is clearly the one in play"
+        outcome :done, offers: "%{next_command}", because: "%{why}", words: "the intent in play has a next command, and the reason says why that one"
       end
     end
   end

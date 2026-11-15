@@ -54,6 +54,8 @@ module BackupHomes
 
   def add_intent(home, slug = "alpha") = Plastic::Graph.open(home:, store: slug).work.write_intent(title: "More")
 
+  def kept_run_tools(home) = SQLite3::Database.new(File.join(home, "local.db")).execute("SELECT tool FROM routine_runs").flatten
+
   def backup_call(home, *argv) = plastic("backup", *argv, env: env_for(home), table: Plastic::CLI::TABLE)
 
   def list_call(home, *argv) = plastic("backup", "list", *argv, env: env_for(home), table: Plastic::CLI::TABLE)

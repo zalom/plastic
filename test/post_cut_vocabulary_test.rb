@@ -3,8 +3,7 @@
 
 require "minitest/autorun"
 
-# The shipped template and both tutorial tracks speak the runner vocabulary:
-# the direct, thinking and auto modes, graph.json, plastic next and an End station.
+# The shipped template speaks the runner vocabulary: the direct, thinking and auto modes and plastic next.
 class PostCutVocabularyTest < Minitest::Test
   REPO = File.expand_path("../../", __FILE__)
 
@@ -18,17 +17,6 @@ class PostCutVocabularyTest < Minitest::Test
 
   def test_the_codex_template_points_at_the_delivery_loop
     assert_match(/`plastic next`/, codex_template)
-  end
-
-  def test_both_tutorial_tracks_name_graph_json
-    %w[track-1-guided track-2-auto].each { |track| assert_includes read("docs/help/#{track}.md"), "graph.json" }
-  end
-
-  def test_tutorial_track_1_walks_the_delivery_loop_to_an_end_station
-    track = read("docs/help/track-1-guided.md")
-
-    assert_match(/`plastic next`/, track)
-    assert_match(/###\s*\d+\.\s*End\b/, track)
   end
 
   private

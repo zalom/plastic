@@ -21,6 +21,13 @@ class BackupPurgeTest < Plastic::TestCase
     assert_equal 4, folder_names(home).size
   end
 
+  def test_a_purge_keeps_the_run_of_the_call_for_a_resume
+    home = seeded_home
+    purge_call(home, "--store", "alpha", "--all")
+
+    assert_includes kept_run_tools(home), "backup purge"
+  end
+
   def test_purging_the_global_store_removes_its_own_folders_and_leaves_the_others
     home = fresh_home
     seed_store(home, "global")
@@ -35,23 +42,6 @@ class BackupPurgeTest < Plastic::TestCase
     result = purge_call(fresh_home, "--store", "alpha", "--all")
 
     assert_equal [0, true], [result.code, result.out.include?("purged: nothing")]
-  end
-
-  def help_lines
-    environment = Plastic::CLI::Command::Environment.new(env: { "PLASTIC_HOME" => @plastic_home }, input: StringIO.new,
-      out: StringIO.new, err: StringIO.new, home: @home, directory: @home)
-    Plastic::CLI.bin_call(%w[help backup purge], environment:, table: Plastic::CLI::TABLE)
-    environment.out.string.lines.map(&:chomp)
-  end
-
-  def test_the_usage_line_says_one_of_the_three_filters_is_required
-    assert_equal "plastic backup purge --store SLUG (--older-than DATE | --all | --failed) [--dry-run]", help_lines.first
-  end
-
-  def test_the_help_line_says_one_filter_is_required
-    summary = Plastic::CLI::TABLE.fetch("backup purge").last
-
-    assert_includes summary, "one of --all, --failed or --older-than"
   end
 
   def test_a_call_without_store_refuses_with_the_usage_line
@@ -139,6 +129,25 @@ class BackupPurgeTest < Plastic::TestCase
 
     assert_call result, code: 0, out: ["preview", stamps.first, stamps.last]
     assert_equal [4, 4], [folder_names(home).size, row_names(home).size]
+  end
+end
+
+class BackupPurgeHelpTest < Plastic::TestCase
+  def help_lines
+    environment = Plastic::CLI::Command::Environment.new(env: { "PLASTIC_HOME" => @plastic_home }, input: StringIO.new,
+      out: StringIO.new, err: StringIO.new, home: @home, directory: @home)
+    Plastic::CLI.bin_call(%w[help backup purge], environment:, table: Plastic::CLI::TABLE)
+    environment.out.string.lines.map(&:chomp)
+  end
+
+  def test_the_usage_line_says_one_of_the_three_filters_is_required
+    assert_equal "plastic backup purge --store SLUG (--older-than DATE | --all | --failed) [--dry-run]", help_lines.first
+  end
+
+  def test_the_help_line_says_one_filter_is_required
+    summary = Plastic::CLI::TABLE.fetch("backup purge").last
+
+    assert_includes summary, "one of --all, --failed or --older-than"
   end
 end
 

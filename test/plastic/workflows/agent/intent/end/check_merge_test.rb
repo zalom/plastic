@@ -4,8 +4,10 @@ require_relative "../../../../../test_helper"
 require_relative "../../../../../../lib/plastic/workflows/agent/intent/end/check_merge"
 
 class CheckMergeTest < Plastic::TestCase
-  def check(merge_recorded: false, map_recorded: false)
-    run_workflow(Plastic::Workflows::Agent::Intent::End::CheckMerge, intent_id: "1", intent_folder: "store/1--alpha", merge_found: "", merge_recorded:, map_recorded:).first
+  FOUND = "The repository has a pull request template at pull_request_template.md; the description of the pull request follows it. "
+
+  def check(merge_recorded: false, map_recorded: false, template_found: "")
+    run_workflow(Plastic::Workflows::Agent::Intent::End::CheckMerge, intent_id: "1", intent_folder: "store/1--alpha", merge_found: "", template_found:, merge_recorded:, map_recorded:).first
   end
 
   def test_each_missing_record_prints_its_step
@@ -33,6 +35,21 @@ class CheckMergeTest < Plastic::TestCase
 
   def test_the_steps_say_plastic_runs_no_version_control_command
     assert_includes check.steps.join("\n"), "Plastic runs no version control command"
+  end
+
+  def test_the_merge_step_tells_the_agent_to_use_version_control_as_the_project_defines_it
+    step = check.steps.first
+
+    assert_includes step, "Use version control as the project's AGENTS.md or CLAUDE.md defines it, or as the project's history shows when neither does: merge the pull request of intent 1 into the intent's base, and leave it open only when the owner asked."
+    refute_includes step, "your own"
+  end
+
+  def test_the_merge_step_prints_the_template_fact_after_the_owner_clause
+    assert_includes check(template_found: FOUND).steps.first, "leave it open only when the owner asked. #{FOUND}Then add"
+  end
+
+  def test_the_merge_step_without_a_template_says_nothing_of_one
+    refute_includes check.steps.first, "pull request template"
   end
 
   def test_the_steps_name_neither_removed_option

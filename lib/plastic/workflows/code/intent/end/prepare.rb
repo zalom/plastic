@@ -6,6 +6,7 @@ require_relative "../../../../config"
 require_relative "../../../../graph/work/completion/check"
 require_relative "../../../../graph/work/completion/review"
 require_relative "../../../delivery_ownership"
+require_relative "../../../pull_request_template"
 require_relative "../../../review_round"
 
 module Plastic
@@ -15,7 +16,8 @@ module Plastic
         class End
           # Reads what closing an intent needs: the rows, the judge's verdict, outcome.md and, by the review setting, the pull request.
           class Prepare < CodeWorkflow
-            sets :intent, :closed, :problem, :requirements, :judged, :used_up, :awaiting_approval, :intent_folder, :merge_recorded, :map_recorded, :merge_found, :approval_found, :missing
+            summary "Reads what closing the intent needs: the rows, the verdict, outcome.md and the review."
+            sets :intent, :closed, :problem, :requirements, :judged, :used_up, :awaiting_approval, :intent_folder, :merge_recorded, :map_recorded, :merge_found, :approval_found, :template_found, :missing
 
             read "read the intent" do |context|
               context[:intent] = context.retrieval.intent(context.intent_id)
@@ -30,7 +32,9 @@ module Plastic
               context[:problem] = DeliveryOwnership.problem(context)
             end
 
-            gate "%{problem}", stops: :refusal, pass: ->(context) { context.problem.nil? }
+            gate "%{problem}", stops: :refusal,
+              words: "another live session holds the lock of the intent",
+              pass: ->(context) { context.problem.nil? }
 
             read "check the completion records" do |context|
               context[:intent_folder] = context.intent.dir
@@ -40,7 +44,7 @@ module Plastic
               context[:awaiting_approval] = false
               context[:merge_recorded] = context[:map_recorded] = false
               context[:missing] = ""
-              context[:merge_found] = context[:approval_found] = ""
+              context[:merge_found] = context[:approval_found] = context[:template_found] = ""
               record_facts(context) unless context.closed
             end
 
@@ -55,9 +59,14 @@ module Plastic
 
             def self.verification_facts(context, verification)
               context[:merge_recorded], context[:map_recorded] = [verification.merged?, verification.architecture_map?]
+              found_facts(context, verification)
+              context[:awaiting_approval] = review_required?(context) && ready_for_approval?(context) && !verification.approved?
+            end
+
+            def self.found_facts(context, verification)
               context[:merge_found] = merge_found(verification)
               context[:approval_found] = approval_found(verification)
-              context[:awaiting_approval] = review_required?(context) && ready_for_approval?(context) && !verification.approved?
+              context[:template_found] = PullRequestTemplate.fact(context.scope, context.intent)
             end
 
             def self.merge_found(verification)
@@ -94,11 +103,11 @@ module Plastic
 
             def self.verified?(context) = context.merge_recorded && context.map_recorded
 
-            outcome :closed, if: ->(context) { context.closed },
+            outcome :closed, if: ->(context) { context.closed }, found_by: "read the intent",
               offers: "plastic next", because: "intent %{intent_id} is already done"
-            outcome :agent_needed, if: ->(context) { !context.requirements.empty? || !context.judged }
-            outcome :unverified, if: ->(context) { !verified?(context) }
-            outcome :ready
+            outcome :agent_needed, if: ->(context) { !context.requirements.empty? || !context.judged }, because: "the intent still needs records or a verdict before it can end"
+            outcome :unverified, if: ->(context) { !verified?(context) }, because: "the merge of the work is not verified yet"
+            outcome :ready, because: "the records, the verdict and the merge are in place"
           end
         end
       end

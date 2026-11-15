@@ -15,6 +15,8 @@ module Plastic
     # the harness it recorded is not registered.
     # Nothing here is call memory: a hook keeps no routine run.
     class Start < Hook
+      changes(store: "The databases of the store are kept out of its versioning", local: "The session row of the call is opened or kept")
+
       FAILING_CHECKS = ->(scope, harness) { Doctor.failing(scope, harness:) }
 
       def initialize(argv, health: FAILING_CHECKS, **rest)

@@ -13,6 +13,7 @@ module Plastic
         # of them picked at the start.
         class Choose < CodeWorkflow
           clear_declarations
+          summary "Finds the harnesses on this machine and chooses which ones to set up."
 
           sets :found, :picked, :harnesses
 

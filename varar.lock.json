@@ -10,7 +10,7 @@
       "examples": []
     },
     "varar/auto.md": {
-      "sourceHash": "fnv1a:98a3ad2a",
+      "sourceHash": "fnv1a:27ee589b",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -197,7 +197,7 @@
       "examples": []
     },
     "varar/intent-abandon.md": {
-      "sourceHash": "fnv1a:38d2ae27",
+      "sourceHash": "fnv1a:390a2272",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",

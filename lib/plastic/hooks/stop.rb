@@ -12,6 +12,8 @@ module Plastic
     # Stop: stamps the session's last turn, renews its live locks, then runs
     # the stop gate.
     class Stop < Hook
+      changes(local: "The last turn of the session is stamped and its live locks are renewed")
+
       def respond(event)
         return no_session unless session_id
 

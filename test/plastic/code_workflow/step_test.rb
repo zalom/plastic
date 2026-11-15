@@ -3,7 +3,7 @@
 require_relative "../../test_helper"
 
 class CodeWorkflowStepTest < Plastic::TestCase
-  def step(done:, &body) = Plastic::CodeWorkflow::Step.new(name: "mark", done:, body:)
+  def step(done:, &body) = Plastic::CodeWorkflow::Step.new(name: "mark", done:, changes: {}, body:)
 
   def ctx = (@ctx ||= context(declared: %i[name mark], facts: { name: "ada" }))
 

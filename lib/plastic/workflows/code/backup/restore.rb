@@ -13,6 +13,7 @@ module Plastic
         # a safety backup of the current ones.
         class Restore < CodeWorkflow
           clear_declarations
+          summary "Replaces the databases of one store with those of a done backup, after a safety backup."
 
           sets :folder, :refusal, :safety, :restored
 
@@ -44,9 +45,12 @@ module Plastic
             context[:refusal] = context.work.backups.restorer.refusal(context.folder)
           end
 
-          gate "%{refusal}", stops: :refusal, pass: ->(context) { context.refusal.nil? }
+          gate "%{refusal}", stops: :refusal,
+            words: "an intent of the store holds a fresh delivery lock, or the backup is not done",
+            pass: ->(context) { context.refusal.nil? }
 
-          step "replace the databases", done: ->(context) { !context.safety.nil? } do |context|
+          step "replace the databases", done: ->(context) { !context.safety.nil? },
+            changes: { databases: "The chosen databases of the store are replaced by the copies of the backup folder", backups: "A safety backup of the replaced databases is written" } do |context|
             names = Plastic::Graph::Knowledge::Backup::Databases.parse(context.databases)
             context[:safety] = context.work.backups.restore(context.folder, databases: names)
             context[:restored] = held(context, context.folder)

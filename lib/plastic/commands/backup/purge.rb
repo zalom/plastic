@@ -13,6 +13,7 @@ module Plastic
         include CLI::BackupStore
 
         writes :work
+        changes(work: KEPT_RUN_WORDS)
 
         def self.usage_line(tool = tool_name) = super.sub("[--older-than DATE] [--all] [--failed]", "(--older-than DATE | --all | --failed)")
 

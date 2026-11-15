@@ -10,10 +10,12 @@ module CommandReference
     end
 
     def outcome
-      Outcome.new(@name, @owner.source.lambda_code(@line&.check), fallback?, @line&.offers, @line&.because, target, exit_code, *place)
+      Outcome.new(@name, @owner.source.lambda_code(@line&.check), fallback?, @line&.offers, words, target, exit_code, *place, @line&.found_by, @line&.unreachable)
     end
 
     private
+
+    def words = (@line.words if @line&.because.to_s.match?(PageWords::PLACEHOLDER)) || @line&.because
 
     def handoff? = @owner.workflow.lane == "agent" && @name == :handoff
 

@@ -11,6 +11,7 @@ module Plastic
         # On a dry run, lists each core file the install would add or replace.
         class Preview < CodeWorkflow
           clear_declarations
+          summary "Shows what the install would change, in a copy, before anything is written."
 
           read "list the core files the install would write" do |context|
             if context.dry_run

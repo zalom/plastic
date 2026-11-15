@@ -27,6 +27,16 @@ module Plastic
                        offers: "plastic graph ready %{intent_id}" }
       }.freeze
 
+      CHANGES = {
+        release_node: "The node is released and open again",
+        done_node: "The node is marked done with its findings",
+        fail_node: "The node is marked failed with the reason",
+        ask_node: "The node waits for the owner's answer to the question",
+        impede_node: "The node is marked impeded with the reason",
+        resolve_node: "The node is resolved with the answer and open again",
+        remove_node: "The node is removed from the work graph with the reason"
+      }.freeze
+
       def self.move(verb)
         shape = MOVES.fetch(verb)
         sets :intent, :problem, :moved
@@ -42,8 +52,10 @@ module Plastic
 
       def self.move_steps(verb, shape)
         read("forget a refusal of an earlier call") { |context| forget_refusal(context) }
-        step(shape.fetch(:step), done: method(:tried?)) { |context| run_move(context, verb, shape) }
-        gate "%{problem}", stops: :failure, pass: method(:moved?)
+        step(shape.fetch(:step), done: method(:tried?), changes: { work: CHANGES.fetch(verb) }) { |context| run_move(context, verb, shape) }
+        gate "%{problem}", stops: :failure,
+          words: "the node is not in the intent, or its state does not allow this move",
+          pass: method(:moved?)
       end
 
       def self.forget_refusal(context)

@@ -8,6 +8,7 @@ module Plastic
       module Intent
         # The harness writes the records the close needs and has the work judged.
         class End < AgentWorkflow
+          summary "Has the agent write the records the close needs and have the work judged."
           step "finish the required records", done: ->(context) { context.requirements.empty? },
             say: "Complete these recorded prerequisites: %{requirements}"
           step "have the delivery judged", done: ->(context) { context.judged },
@@ -15,7 +16,7 @@ module Plastic
               "Then run plastic intent end %{intent_id} again."
 
           outcome :handoff, stops: :failure, offers: "plastic intent end %{intent_id}", because: "intent %{intent_id} cannot end yet. %{missing}"
-          outcome :done, offers: nil, because: "the completion records are ready"
+          outcome :done, unreachable: true, offers: nil, because: "the completion records are ready"
         end
       end
     end

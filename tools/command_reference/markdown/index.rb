@@ -12,9 +12,8 @@ module CommandReference
         ["# Command reference", "", INTRO, "", *groups.flat_map { |title, pages| Index.section(title, pages) }].join("\n")
       end
 
-      INTRO = "Each page explains one plastic command in five sections: Components, The events of one call, What one call reads, writes and prints, How a call ends, and What the page leaves out. " \
-        "A script writes every page from the command classes, so a page always matches the code it links to. " \
-        "Every command is declared in the same small DSL, shown in [the command DSL](../dsl/README.md)."
+      INTRO = "Each page explains one plastic command in six parts: what it does, how to call it, the workflows it runs, the events of one call, what one call changes, and the texts an agent gets. " \
+        "A script writes every page from the command classes, so a page always matches the code it links to."
 
       def self.group(words)
         family = Plastic::CLI.family_of(words)

@@ -183,3 +183,29 @@ class PrepareEndingRecordsTest < PrepareEndingFixture
     assert_equal :ready, prepare.first
   end
 end
+
+class PrepareTemplateFactTest < PrepareEndingFixture
+  def repo = File.join(@home, "repo")
+
+  def worktree = File.join(repo, ".claude", "worktrees", "1--alpha")
+
+  def register_repo = File.write(File.join(@plastic_home, "projects.yml"), "projects:\n  global:\n    path: #{repo}\n")
+
+  def place(folder, relative)
+    path = File.join(folder, relative)
+    FileUtils.mkdir_p(File.dirname(path))
+    File.write(path, "## What\n")
+  end
+
+  def template_found
+    accepted_intent
+    prepare.last.template_found
+  end
+
+  def test_a_template_in_the_worktree_of_the_intent_is_named
+    register_repo
+    place(worktree, ".github/pull_request_template.md")
+
+    assert_equal "The repository has a pull request template at .github/pull_request_template.md; the description of the pull request follows it. ", template_found
+  end
+end

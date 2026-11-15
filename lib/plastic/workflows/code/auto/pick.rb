@@ -16,6 +16,7 @@ module Plastic
         # it offers a ready item to start, or says the roadmap is delivered or waits.
         class Pick < CodeWorkflow
           clear_declarations
+          summary "Picks the intent to deliver, from an intent id or from the first item of a roadmap."
 
           sets :intent_id, :ready_id, :open
 
@@ -65,7 +66,7 @@ module Plastic
             retrieval.intent(intent_id).status != "parked" && !held
           end
 
-          outcome :intent, if: ->(context) { !context.intent_id.nil? }
+          outcome :intent, if: ->(context) { !context.intent_id.nil? }, because: "the intent to deliver is known"
           outcome :ready, if: ->(context) { !context.ready_id.nil? }, offers: "plastic roadmap open %{id} %{ready_id}",
             because: "item %{ready_id} is ready"
           outcome :delivered, if: ->(context) { context.open.empty? }, offers: "plastic roadmap show %{id}",

@@ -9,4 +9,20 @@ class NoteIntentTest < Plastic::TestCase
 
     assert_equal [:done, "plastic next", "the outcome holds the note"], [outcome.name, outcome.offers, outcome.because]
   end
+
+  def test_a_note_with_a_line_break_stops_the_call_naming_the_problem
+    open_intent
+
+    outcome, = run_workflow(Plastic::Workflows::Code::Intent::Note, intent_id: "1", kind: "note", text: "two\nlines")
+
+    assert_kind_of Plastic::Failed, outcome
+  end
+
+  def test_a_valid_note_passes_the_gate_and_is_written
+    open_intent
+
+    outcome, context = run_workflow(Plastic::Workflows::Code::Intent::Note, intent_id: "1", kind: "note", text: "A line")
+
+    assert_equal [:done, nil], [outcome, context.problem]
+  end
 end

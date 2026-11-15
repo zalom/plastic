@@ -16,6 +16,7 @@ module Plastic
         # Records lexical retrieval candidates before an external agent selects them.
         class Discover < CodeWorkflow
           clear_declarations
+          summary "Records the retrieval discovery of the intent."
 
           sets :intent, :source_scope, :discovery, :handoff_text, :context_command, :context_complete, :problem
 
@@ -39,9 +40,12 @@ module Plastic
             context[:problem] = RetrievalRepair.check(context.scope, DiscoveryScope.resolve(context))
           end
 
-          gate "%{problem}", stops: :failure, pass: ->(context) { context.problem.nil? }
+          gate "%{problem}", stops: :failure,
+            words: "a source store needs repair",
+            pass: ->(context) { context.problem.nil? }
 
-          step "record retrieval discovery", done: ->(context) { !context.discovery.nil? } do |context|
+          step "record retrieval discovery", done: ->(context) { !context.discovery.nil? },
+            changes: { knowledge: "The retrieval discovery is recorded for the intent" } do |context|
             source_scope = DiscoveryScope.resolve(context)
             document = DiscoveryManifest.build(context, source_scope)
             DiscoveryPersistence.persist(context, document)

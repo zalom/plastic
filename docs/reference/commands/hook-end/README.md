@@ -6,53 +6,16 @@ SessionEnd: set the session's end time and reason.
 plastic hook end
 ```
 
-The command is `Hooks::End`, in [`end.rb:9`](../../../../lib/plastic/hooks/end.rb#L9). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+## The events of one call, step by step
 
-## Components
+![The events of one call of plastic hook end](events.svg)
 
-![The components on the path of plastic hook end](component.svg)
+The boxes on the left run in order. The boxes on the right are the ways the call stops or ends at that step.
 
-The figure shows the command, the workflows it runs, the classes behind them, and the databases and files they reach.
+## What one call changes
 
-## The events of one call
+| What changes | Where | Reach |
+| --- | --- | --- |
+| The end time and the reason are written to the session row | the local database, in the home folder | stays on this machine |
 
-![The call of plastic hook end](call.svg)
-
-The hook's `respond`, at [`end.rb:10`](../../../../lib/plastic/hooks/end.rb#L10):
-
-```ruby
-def respond(event)
-  return no_session unless session_id
-
-  Graph.open(home: scope.plastic_home, store: scope.slug, session: session_id).work.end_session(session_id, reason: event[:reason])
-  nil
-end
-```
-
-Its steps run in this order:
-
-1. `return no_session unless session_id` [`end.rb:11`](../../../../lib/plastic/hooks/end.rb#L11)
-2. `Graph.open(home: scope.plastic_home, store: scope.slug, session: session_id).work.end_session(session_id, reason: event[:reason])` [`end.rb:13`](../../../../lib/plastic/hooks/end.rb#L13)
-3. `nil` [`end.rb:14`](../../../../lib/plastic/hooks/end.rb#L14)
-
-## What one call reads, writes and prints
-
-![What one call of plastic hook end reads, writes and prints](touches.svg)
-
-| Place | Database or file | Tables | Reads or writes | Code |
-| --- | --- | --- | --- | --- |
-| the home folder | local.db | `sessions` | writes | found in the code, not declared |
-
-## How a call ends
-
-Every call can also end in [the ways any call can end](../../dsl/README.md#how-any-call-can-end).
-
-| Ending | Exit | next: | Code |
-| --- | --- | --- | --- |
-| answers the event | 0 | prints no next: line | [`end.rb:10`](../../../../lib/plastic/hooks/end.rb#L10) |
-
-## What the page leaves out
-
-Every call shares a few things that this page does not repeat; [the command DSL](../../dsl/README.md#what-every-call-shares) names them.
-
-- No gate of this command refuses, so exit 3 never happens.
+The command is `Plastic::Hooks::End`, in [`hooks/end.rb`](../../../../lib/plastic/hooks/end.rb).

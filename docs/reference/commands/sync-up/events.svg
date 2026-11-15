@@ -1,0 +1,220 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 834 1483" width="834" height="1483" role="img" xml:space="preserve">
+<title>The events of one call of plastic sync up, in words</title>
+<style>.ground { fill: #e9e5dc; }
+.card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
+.lane-code { fill: #d5e8e3; stroke: #0d6b61; stroke-width: 1.5; }
+.lane-agent { fill: #f1e2c7; stroke: #9a5508; stroke-width: 1.5; }
+.stop-refusal { fill: #e4dcf5; stroke: #5b35b0; stroke-width: 1.2; }
+.stop-failure { fill: #f4d9d4; stroke: #a8261b; stroke-width: 1.2; }
+.end { fill: #d9e2f0; stroke: #2c4a7a; stroke-width: 1.2; }
+.stop-end { fill: #d9e2f0; stroke: #2c4a7a; stroke-width: 1.2; }
+.stop-handoff { fill: #f1e2c7; stroke: #9a5508; stroke-width: 1.2; stroke-dasharray: 5 3; }
+.wire-handoff { fill: none; stroke: #9a5508; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.wire-end { fill: none; stroke: #2c4a7a; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.tag-handoff { fill: #9a5508; }
+.k { fill: #4f5866; font: 11.5px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.way { fill: #1f2530; font: italic 12.5px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.wire { fill: none; stroke: #7c8594; stroke-width: 1.4; }
+.wire-read { fill: none; stroke: #7c8594; stroke-width: 1.4; stroke-dasharray: 5 3; }
+.wire-refusal { fill: none; stroke: #5b35b0; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.wire-failure { fill: none; stroke: #a8261b; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.head { fill: #7c8594; }
+.t { fill: #1f2530; font: 12px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.tb { fill: #1f2530; font: 600 13px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.tm { fill: #1f2530; font: 11.5px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.tag { font: 600 10px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; letter-spacing: .06em; }
+.tag-code { fill: #0d6b61; } .tag-agent { fill: #9a5508; } .tag-refusal { fill: #5b35b0; }
+.tag-failure { fill: #a8261b; } .tag-end { fill: #2c4a7a; } .tag-muted { fill: #4f5866; }
+.tm.tag-muted { font-size: 10.5px; }
+.db { fill: #d9e2f0; stroke: #2c4a7a; stroke-width: 1.2; }
+.codebox { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
+.cx { fill: #1f2530; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; white-space: pre; }
+.cx-n { fill: #4f5866; font: 11px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.cx-k { fill: #5b35b0; } .cx-s { fill: #9a5508; } .cx-y { fill: #0d6b61; }
+.cx-w { fill: #2c4a7a; font-weight: 600; } .cx-t { fill: #a8261b; } .cx-c { fill: #4f5866; font-style: italic; }
+.badge { fill: #2c4a7a; } .badge-t { fill: #e9e5dc; font: 600 11px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.bracket { fill: none; stroke: #2c4a7a; stroke-width: 1.4; }
+.term { fill: #16191e; stroke: #7c8594; stroke-width: 1; }
+.term-t { fill: #e6e2d8; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.term-p { fill: #8fd18f; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.term-m { fill: #a3abb6; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.big { font: 700 36px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+
+@media (prefers-color-scheme: dark) {
+.ground { fill: #171a1f; }
+.card { fill: #20242b; stroke: #8a93a2; stroke-width: 1; }
+.lane-code { fill: #173a36; stroke: #5cc4b4; stroke-width: 1.5; }
+.lane-agent { fill: #3d2e17; stroke: #e5a95a; stroke-width: 1.5; }
+.stop-refusal { fill: #2d2445; stroke: #b59cf2; stroke-width: 1.2; }
+.stop-failure { fill: #45211e; stroke: #f2958a; stroke-width: 1.2; }
+.end { fill: #1f2c42; stroke: #97b6e8; stroke-width: 1.2; }
+.stop-end { fill: #1f2c42; stroke: #97b6e8; stroke-width: 1.2; }
+.stop-handoff { fill: #3d2e17; stroke: #e5a95a; stroke-width: 1.2; stroke-dasharray: 5 3; }
+.wire-handoff { fill: none; stroke: #e5a95a; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.wire-end { fill: none; stroke: #97b6e8; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.tag-handoff { fill: #e5a95a; }
+.k { fill: #b3b9c3; font: 11.5px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.way { fill: #e8e4da; font: italic 12.5px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.wire { fill: none; stroke: #8a93a2; stroke-width: 1.4; }
+.wire-read { fill: none; stroke: #8a93a2; stroke-width: 1.4; stroke-dasharray: 5 3; }
+.wire-refusal { fill: none; stroke: #b59cf2; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.wire-failure { fill: none; stroke: #f2958a; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.head { fill: #8a93a2; }
+.t { fill: #e8e4da; font: 12px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.tb { fill: #e8e4da; font: 600 13px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.tm { fill: #e8e4da; font: 11.5px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.tag { font: 600 10px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; letter-spacing: .06em; }
+.tag-code { fill: #5cc4b4; } .tag-agent { fill: #e5a95a; } .tag-refusal { fill: #b59cf2; }
+.tag-failure { fill: #f2958a; } .tag-end { fill: #97b6e8; } .tag-muted { fill: #b3b9c3; }
+.tm.tag-muted { font-size: 10.5px; }
+.db { fill: #1f2c42; stroke: #97b6e8; stroke-width: 1.2; }
+.codebox { fill: #20242b; stroke: #8a93a2; stroke-width: 1; }
+.cx { fill: #e8e4da; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; white-space: pre; }
+.cx-n { fill: #b3b9c3; font: 11px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.cx-k { fill: #b59cf2; } .cx-s { fill: #e5a95a; } .cx-y { fill: #5cc4b4; }
+.cx-w { fill: #97b6e8; font-weight: 600; } .cx-t { fill: #f2958a; } .cx-c { fill: #b3b9c3; font-style: italic; }
+.badge { fill: #97b6e8; } .badge-t { fill: #171a1f; font: 600 11px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.bracket { fill: none; stroke: #97b6e8; stroke-width: 1.4; }
+.term { fill: #16191e; stroke: #8a93a2; stroke-width: 1; }
+.term-t { fill: #e6e2d8; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.term-p { fill: #8fd18f; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.term-m { fill: #a3abb6; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.big { font: 700 36px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+}</style>
+<rect width="100%" height="100%" class="ground"/>
+<text x="24" y="34" class="tb" text-anchor="start">One call of plastic sync up, from top to bottom</text>
+<rect x="24" y="64" width="400" height="51" rx="6" class="lane-code"/>
+<circle cx="44" cy="83" r="8" class="badge"/>
+<text x="44" y="87" class="badge-t" text-anchor="middle">1</text>
+<text x="64" y="86" class="tag tag-code" text-anchor="start">Code Workflow</text>
+<text x="64" y="106" class="t" text-anchor="start">Preview the sync in an isolated copy.</text>
+<path d="M 424 76 L 468 76 L 468 87 L 480 87" class="wire-failure"/>
+<path d="M 472 82 L 480 87 L 472 92 Z" class="head"/>
+<rect x="480" y="64" width="330" height="46" rx="6" class="stop-failure"/>
+<text x="492" y="82" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1</text>
+<text x="492" y="100" class="t" text-anchor="start">An overwrite path names no file and no rows.</text>
+<path d="M 424 80 L 462 80 L 462 173 L 480 173" class="wire-refusal"/>
+<path d="M 472 168 L 480 173 L 472 178 Z" class="head"/>
+<rect x="480" y="118" width="330" height="110" rx="6" class="stop-refusal"/>
+<text x="492" y="136" class="tag tag-refusal" text-anchor="start">STOPS, EXIT 3</text>
+<text x="492" y="154" class="t" text-anchor="start">Changed on both sides since the last print,</text>
+<text x="492" y="170" class="t" text-anchor="start">nothing written. --overwrite PATH reads that</text>
+<text x="492" y="186" class="t" text-anchor="start">file into rows, --overwrite reads every file,</text>
+<text x="492" y="202" class="t" text-anchor="start">--merge applies the one-sided changes and</text>
+<text x="492" y="218" class="t" text-anchor="start">lists the rest. The records: &lt;conflicts&gt;.</text>
+<path d="M 424 84 L 456 84 L 456 283 L 480 283" class="wire-refusal"/>
+<path d="M 472 278 L 480 283 L 472 288 Z" class="head"/>
+<rect x="480" y="236" width="330" height="94" rx="6" class="stop-refusal"/>
+<text x="492" y="254" class="tag tag-refusal" text-anchor="start">STOPS, EXIT 3</text>
+<text x="492" y="272" class="t" text-anchor="start">Changed on both sides since the last print,</text>
+<text x="492" y="288" class="t" text-anchor="start">left as they are. --overwrite PATH reads that</text>
+<text x="492" y="304" class="t" text-anchor="start">file into rows, --overwrite reads every file.</text>
+<text x="492" y="320" class="t" text-anchor="start">The records: &lt;conflicts&gt;.</text>
+<path d="M 424 88 L 450 88 L 450 385 L 480 385" class="wire-failure"/>
+<path d="M 472 380 L 480 385 L 472 390 Z" class="head"/>
+<rect x="480" y="338" width="330" height="94" rx="6" class="stop-failure"/>
+<text x="492" y="356" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1</text>
+<text x="492" y="374" class="t" text-anchor="start">Intent folders that could not be read, the</text>
+<text x="492" y="390" class="t" text-anchor="start">others were read: &lt;unreadable&gt; fix or remove</text>
+<text x="492" y="406" class="t" text-anchor="start">each folder named, then run plastic sync up</text>
+<text x="492" y="422" class="t" text-anchor="start">again.</text>
+<path d="M 424 92 L 444 92 L 444 487 L 480 487" class="wire-failure"/>
+<path d="M 472 482 L 480 487 L 472 492 Z" class="head"/>
+<rect x="480" y="440" width="330" height="94" rx="6" class="stop-failure"/>
+<text x="492" y="458" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1</text>
+<text x="492" y="476" class="t" text-anchor="start">Sync up cannot read &lt;unreadable path&gt;, and its</text>
+<text x="492" y="492" class="t" text-anchor="start">rows print it again.</text>
+<text x="492" y="508" class="t" text-anchor="start">next: plastic sync down --overwrite</text>
+<text x="492" y="524" class="t" text-anchor="start">&lt;unreadable path&gt;</text>
+<path d="M 424 96 L 438 96 L 438 573 L 480 573" class="wire-failure"/>
+<path d="M 472 568 L 480 573 L 472 578 Z" class="head"/>
+<rect x="480" y="542" width="330" height="62" rx="6" class="stop-failure"/>
+<text x="492" y="560" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1</text>
+<text x="492" y="578" class="t" text-anchor="start">Sync up cannot read &lt;unreadable rowless&gt;, and</text>
+<text x="492" y="594" class="t" text-anchor="start">this home holds no rows to print it again.</text>
+<path d="M 424 100 L 432 100 L 432 643 L 480 643" class="wire-end"/>
+<path d="M 472 638 L 480 643 L 472 648 Z" class="head"/>
+<rect x="480" y="612" width="330" height="62" rx="6" class="stop-end"/>
+<text x="492" y="630" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
+<text x="492" y="648" class="t" text-anchor="start">The preview wrote only to a disposable copy.</text>
+<text x="492" y="664" class="t" text-anchor="start">next: &lt;original command&gt;</text>
+<path d="M 64 115 L 64 700" class="wire"/>
+<path d="M 59 692 L 64 700 L 69 692 Z" class="head"/>
+<rect x="24" y="700" width="400" height="51" rx="6" class="lane-code"/>
+<circle cx="44" cy="719" r="8" class="badge"/>
+<text x="44" y="723" class="badge-t" text-anchor="middle">2</text>
+<text x="64" y="722" class="tag tag-code" text-anchor="start">Code Workflow</text>
+<text x="64" y="742" class="t" text-anchor="start">Plan the sync.</text>
+<path d="M 424 712 L 438 712 L 438 723 L 480 723" class="wire-failure"/>
+<path d="M 472 718 L 480 723 L 472 728 Z" class="head"/>
+<rect x="480" y="700" width="330" height="46" rx="6" class="stop-failure"/>
+<text x="492" y="718" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1</text>
+<text x="492" y="736" class="t" text-anchor="start">An overwrite path names no file and no rows.</text>
+<path d="M 424 726 L 432 726 L 432 809 L 480 809" class="wire-refusal"/>
+<path d="M 472 804 L 480 809 L 472 814 Z" class="head"/>
+<rect x="480" y="754" width="330" height="110" rx="6" class="stop-refusal"/>
+<text x="492" y="772" class="tag tag-refusal" text-anchor="start">STOPS, EXIT 3</text>
+<text x="492" y="790" class="t" text-anchor="start">Changed on both sides since the last print,</text>
+<text x="492" y="806" class="t" text-anchor="start">nothing written. --overwrite PATH reads that</text>
+<text x="492" y="822" class="t" text-anchor="start">file into rows, --overwrite reads every file,</text>
+<text x="492" y="838" class="t" text-anchor="start">--merge applies the one-sided changes and</text>
+<text x="492" y="854" class="t" text-anchor="start">lists the rest. The records: &lt;conflicts&gt;.</text>
+<path d="M 64 751 L 64 890" class="wire"/>
+<path d="M 59 882 L 64 890 L 69 882 Z" class="head"/>
+<rect x="24" y="890" width="400" height="51" rx="6" class="lane-code"/>
+<circle cx="44" cy="909" r="8" class="badge"/>
+<text x="44" y="913" class="badge-t" text-anchor="middle">3</text>
+<text x="64" y="912" class="tag tag-code" text-anchor="start">Code Workflow</text>
+<text x="64" y="932" class="t" text-anchor="start">Apply the changes.</text>
+<path d="M 64 941 L 64 967" class="wire"/>
+<path d="M 59 959 L 64 967 L 69 959 Z" class="head"/>
+<rect x="24" y="967" width="400" height="51" rx="6" class="lane-code"/>
+<circle cx="44" cy="986" r="8" class="badge"/>
+<text x="44" y="990" class="badge-t" text-anchor="middle">4</text>
+<text x="64" y="989" class="tag tag-code" text-anchor="start">Code Workflow</text>
+<text x="64" y="1009" class="t" text-anchor="start">Say what changed.</text>
+<path d="M 424 979 L 456 979 L 456 1014 L 480 1014" class="wire-refusal"/>
+<path d="M 472 1009 L 480 1014 L 472 1019 Z" class="head"/>
+<rect x="480" y="967" width="330" height="94" rx="6" class="stop-refusal"/>
+<text x="492" y="985" class="tag tag-refusal" text-anchor="start">STOPS, EXIT 3</text>
+<text x="492" y="1003" class="t" text-anchor="start">Changed on both sides since the last print,</text>
+<text x="492" y="1019" class="t" text-anchor="start">left as they are. --overwrite PATH reads that</text>
+<text x="492" y="1035" class="t" text-anchor="start">file into rows, --overwrite reads every file.</text>
+<text x="492" y="1051" class="t" text-anchor="start">The records: &lt;conflicts&gt;.</text>
+<path d="M 424 985 L 450 985 L 450 1116 L 480 1116" class="wire-failure"/>
+<path d="M 472 1111 L 480 1116 L 472 1121 Z" class="head"/>
+<rect x="480" y="1069" width="330" height="94" rx="6" class="stop-failure"/>
+<text x="492" y="1087" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1</text>
+<text x="492" y="1105" class="t" text-anchor="start">Intent folders that could not be read, the</text>
+<text x="492" y="1121" class="t" text-anchor="start">others were read: &lt;unreadable&gt; fix or remove</text>
+<text x="492" y="1137" class="t" text-anchor="start">each folder named, then run plastic sync up</text>
+<text x="492" y="1153" class="t" text-anchor="start">again.</text>
+<path d="M 424 991 L 444 991 L 444 1218 L 480 1218" class="wire-failure"/>
+<path d="M 472 1213 L 480 1218 L 472 1223 Z" class="head"/>
+<rect x="480" y="1171" width="330" height="94" rx="6" class="stop-failure"/>
+<text x="492" y="1189" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1</text>
+<text x="492" y="1207" class="t" text-anchor="start">Sync up cannot read &lt;unreadable path&gt;, and its</text>
+<text x="492" y="1223" class="t" text-anchor="start">rows print it again.</text>
+<text x="492" y="1239" class="t" text-anchor="start">next: plastic sync down --overwrite</text>
+<text x="492" y="1255" class="t" text-anchor="start">&lt;unreadable path&gt;</text>
+<path d="M 424 997 L 438 997 L 438 1304 L 480 1304" class="wire-failure"/>
+<path d="M 472 1299 L 480 1304 L 472 1309 Z" class="head"/>
+<rect x="480" y="1273" width="330" height="62" rx="6" class="stop-failure"/>
+<text x="492" y="1291" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1</text>
+<text x="492" y="1309" class="t" text-anchor="start">Sync up cannot read &lt;unreadable rowless&gt;, and</text>
+<text x="492" y="1325" class="t" text-anchor="start">this home holds no rows to print it again.</text>
+<path d="M 424 1003 L 432 1003 L 432 1374 L 480 1374" class="wire-end"/>
+<path d="M 472 1369 L 480 1374 L 472 1379 Z" class="head"/>
+<rect x="480" y="1343" width="330" height="62" rx="6" class="stop-end"/>
+<text x="492" y="1361" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
+<text x="492" y="1379" class="t" text-anchor="start">The rows hold every file changed by hand.</text>
+<text x="492" y="1395" class="t" text-anchor="start">next: plastic next</text>
+<rect x="24" y="1435" width="14" height="14" rx="3" class="lane-code"/>
+<text x="44" y="1447" class="k" text-anchor="start">Code Workflow</text>
+<rect x="140" y="1435" width="14" height="14" rx="3" class="stop-failure"/>
+<text x="160" y="1447" class="k" text-anchor="start">Stops with a failure</text>
+<rect x="276" y="1435" width="14" height="14" rx="3" class="stop-refusal"/>
+<text x="296" y="1447" class="k" text-anchor="start">Stops for the owner</text>
+<rect x="414" y="1435" width="14" height="14" rx="3" class="stop-end"/>
+<text x="434" y="1447" class="k" text-anchor="start">Ends</text>
+</svg>

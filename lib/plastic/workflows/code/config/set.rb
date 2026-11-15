@@ -15,7 +15,8 @@ module Plastic
 
           sets :harness_words, :saved
 
-          step "write the setting", done: ->(context) { context.saved } do |context|
+          step "write the setting", done: ->(context) { context.saved },
+            changes: { home: "The setting is written to config.yml in the Plastic home" } do |context|
             settings = ConfigSettings.new(context)
             value = checked(settings, context.key, scalar(context.value))
             settings.set(context.key, value)

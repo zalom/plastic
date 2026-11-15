@@ -11,13 +11,15 @@ module Plastic
       module Intent
         # Writes the verdict row of the next review round. A second revise ends the call as the owner's step.
         class Verdict < CodeWorkflow
+          summary "Writes the verdict row of the next review round."
           extend ReviewRound
 
           sets :rounds_before
 
           read("count the rounds written so far") { |context| context[:rounds_before] = context.retrieval.verdicts(context.intent_id).size }
 
-          step "write the verdict", done: ->(context) { rounds(context) > context.rounds_before } do |context|
+          step "write the verdict", done: ->(context) { rounds(context) > context.rounds_before },
+            changes: { work: "The verdict of the review round is recorded" } do |context|
             context.work.add_verdict(intent_id: context.intent_id, verdict: context.verdict, findings: context.findings)
             context.print("verdict: #{context.verdict} round #{rounds(context)}")
           end

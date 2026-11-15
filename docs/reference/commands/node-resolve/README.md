@@ -6,80 +6,25 @@ Reopen a needs_info or impeded node with its resolution.
 plastic node resolve ID NODE TEXT
 ```
 
-The command is `Node::Resolve`, in [`resolve.rb:10`](../../../../lib/plastic/commands/node/resolve.rb#L10). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
-
 | Argument or option | What it gives | Default |
 | --- | --- | --- |
 | `ID` | the intent | |
 | `NODE` | the node | |
 | `TEXT` | the resolution | |
 
-## Components
+## The events of one call, step by step
 
-![The components on the path of plastic node resolve](component.svg)
+![The events of one call of plastic node resolve](events.svg)
 
-The figure shows the command, the workflows it runs, the classes behind them, and the databases and files they reach.
+The boxes on the left run in order. The boxes on the right are the ways the call stops or ends at that step.
 
-## The events of one call
+## What one call changes
 
-The call starts the workflow `Code::Node::Resolve`, in [`resolve.rb:11`](../../../../lib/plastic/workflows/code/node/resolve.rb#L11).
+| What changes | Where | Reach |
+| --- | --- | --- |
+| The node is resolved with the answer and open again | the work graph database, in the store folder | goes with the store |
+| The files of the intent and the index of the store are rewritten | the store folder | goes with the store |
 
-Reopens a needs_info or impeded node with its resolution and resets its retries.
+Goes with the store: the files of the store carry the change, and `plastic sync up` rebuilds it on another machine. The database files themselves stay on this machine.
 
-![How Code::Node::Resolve runs: its steps, where it stops, and its outcomes](code_resolve_node.svg)
-
-Its rows run in this order:
-
-1. Read: find the intent. [`move_node.rb:39`](../../../../lib/plastic/workflows/move_node.rb#L39)
-2. Gate: passes when `context.intent`; otherwise the call stops with exit 1 and prints no intent INTENT_ID in this store. [`move_node.rb:40`](../../../../lib/plastic/workflows/move_node.rb#L40)
-3. Read: forget a refusal of an earlier call. [`move_node.rb:44`](../../../../lib/plastic/workflows/move_node.rb#L44)
-4. Step: resolve the node. Done when `[true, false].include?(context.moved)`, so a second call skips it. [`move_node.rb:45`](../../../../lib/plastic/workflows/move_node.rb#L45)
-5. Gate: passes when `context.moved == true`; otherwise the call stops with exit 1 and prints PROBLEM. [`move_node.rb:46`](../../../../lib/plastic/workflows/move_node.rb#L46)
-6. Read: say what was resolved. [`move_node.rb:59`](../../../../lib/plastic/workflows/move_node.rb#L59)
-7. Outcome `:done`, always: finishes with exit 0; next: plastic node claim INTENT_ID ID. [`move_node.rb:60`](../../../../lib/plastic/workflows/move_node.rb#L60)
-
-It sets `intent`, `problem`, `moved`.
-
-In the words of workflow engines, the rows are these four parts:
-
-- **Trigger**: the call starts the workflow `Code::Node::Resolve`.
-- **Activities**: 3 reads and 1 step.
-- **Transitions**: 2 gates stop the call when their checks fail; a step runs only while its done check fails.
-- **Outcomes**: `:done` ends the call.
-
-## What one call reads, writes and prints
-
-![What one call of plastic node resolve reads, writes and prints](touches.svg)
-
-| Place | Database or file | Tables | Reads or writes | Code |
-| --- | --- | --- | --- | --- |
-| the store folder | work_graph.db | `intents`, `nodes` | reads and writes | [`move.rb:16`](../../../../lib/plastic/commands/node/move.rb#L16) |
-| the store folder | store/index.json | | writes | [`prints.rb:18`](../../../../lib/plastic/graph/prints.rb#L18) |
-| the store folder | store/ID--SLUG/PATH | | writes | [`prints.rb:19`](../../../../lib/plastic/graph/prints.rb#L19) |
-| the store folder | store/ID--SLUG/savepoint.md | | writes | [`prints.rb:20`](../../../../lib/plastic/graph/prints.rb#L20) |
-| the store folder | store/ID--SLUG/graph.json | | writes | [`prints.rb:21`](../../../../lib/plastic/graph/prints.rb#L21) |
-| the store folder | store/ID--SLUG/context.json | | writes | [`prints.rb:22`](../../../../lib/plastic/graph/prints.rb#L22) |
-
-A second call runs the same rows again. A step runs again only when its done check fails.
-
-| Step | Done when | The second call | Code |
-| --- | --- | --- | --- |
-| resolve the node | `[true, false].include?(context.moved)` | skips it | [`move_node.rb:45`](../../../../lib/plastic/workflows/move_node.rb#L45) |
-
-## How a call ends
-
-Every call can also end in [the ways any call can end](../../dsl/README.md#how-any-call-can-end).
-
-| Ending | Exit | next: | Code |
-| --- | --- | --- | --- |
-| no intent INTENT_ID in this store | 1 | prints no next: line | [`move_node.rb:40`](../../../../lib/plastic/workflows/move_node.rb#L40) |
-| PROBLEM | 1 | prints no next: line | [`move_node.rb:46`](../../../../lib/plastic/workflows/move_node.rb#L46) |
-| node ID is open | 0 | plastic node claim INTENT_ID ID | [`move_node.rb:60`](../../../../lib/plastic/workflows/move_node.rb#L60) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
-
-## What the page leaves out
-
-Every call shares a few things that this page does not repeat; [the command DSL](../../dsl/README.md#what-every-call-shares) names them.
-
-- No gate of this command refuses, so exit 3 never happens.
-- A call that writes saves a routine run row in local.db. A stop by a gate or a step saves the run, and the next call resumes from it. A dry run saves no row.
+The command is `Plastic::Commands::Node::Resolve`, in [`commands/node/resolve.rb`](../../../../lib/plastic/commands/node/resolve.rb).

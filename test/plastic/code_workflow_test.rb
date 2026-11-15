@@ -46,7 +46,7 @@ class CodeWorkflowTest < Plastic::TestCase
   def test_a_done_step_is_skipped
     ran = []
     flow = code do
-      step("once", done: ->(_c) { true }) { |_c| ran << :body }
+      step("once", done: ->(_c) { true }, changes: {}) { |_c| ran << :body }
     end
 
     assert_equal :done, flow.call(context)
@@ -137,5 +137,56 @@ class CodeWorkflowGateOffersTest < Plastic::TestCase
 
     assert_equal 0, call.code
     assert_includes call.out, "because: passed fine"
+  end
+end
+
+class CodeWorkflowChangesTest < Plastic::TestCase
+  def test_a_step_without_changes_is_refused_at_load
+    error = assert_raises(Plastic::Invalid) { code { step("mark", done: ->(_c) { true }) { |_c| nil } } }
+
+    assert_includes error.message, "step \"mark\" needs changes:"
+  end
+
+  def test_a_step_carries_the_words_of_its_change
+    flow = code { step("mark", done: ->(_c) { true }, changes: { work: "The node is added" }) { |_c| nil } }
+
+    assert_equal({ work: "The node is added" }, flow.steps.first.changes)
+  end
+
+  def test_a_step_that_changes_nothing_declares_an_empty_hash
+    flow = code { step("mark", done: ->(_c) { true }, changes: {}) { |_c| nil } }
+
+    assert_equal({}, flow.steps.first.changes)
+  end
+
+  def test_a_step_with_changes_runs_its_body_once
+    ran = []
+    flow = code { step("mark", done: ->(_c) { ran.any? }, changes: { work: "x" }) { |_c| ran << :body } }
+
+    assert_equal :done, flow.call(context)
+    assert_equal [:body], ran
+  end
+end
+
+class CodeWorkflowStopsWhenTest < Plastic::TestCase
+  def held(**words) = code { gate "%{mode} is held", stops: :failure, pass: ->(_c) { false }, **words }
+
+  def test_a_gate_keeps_the_words_of_when_it_stops
+    assert_equal "the mode is hold", held(words: "the mode is hold").steps.first.words
+  end
+
+  def test_the_words_of_when_a_gate_stops_are_not_a_template
+    assert_equal ["%{mode} is held"], held(words: "the mode is %{other}").templates
+  end
+
+  def test_the_words_of_when_a_gate_stops_are_never_printed
+    gate = Plastic::CodeWorkflow::Gate.new(reason: "%{name} is held", stops: :failure, pass: ->(_c) { false }, offers: nil, because: nil,
+      words: "the name is held")
+
+    assert_equal Plastic::Failed.new(:code_hold, "gate", "ada is held"), gate.call(context, Flows::Hold)
+  end
+
+  def test_a_gate_with_no_words_answers_nil
+    assert_nil held.steps.first.words
   end
 end

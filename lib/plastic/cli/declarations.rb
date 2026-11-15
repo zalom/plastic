@@ -57,6 +57,12 @@ module Plastic
         (@prints ||= []).concat(kinds)
       end
 
+      def changes(places = nil, **named)
+        given = places || (named unless named.empty?)
+        @changes = given if given
+        @changes
+      end
+
       def opens_no_store = (@opens_no_store = true)
 
       def opens_no_store? = @opens_no_store == true

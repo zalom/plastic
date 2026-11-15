@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 636 372" width="636" height="372" role="img" xml:space="preserve">
-<title>The workflows of plastic intent end</title>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 846 544" width="846" height="544" role="img" xml:space="preserve">
+<title>The workflows of one call of plastic intent end, in words</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
 .lane-code { fill: #d5e8e3; stroke: #0d6b61; stroke-width: 1.5; }
@@ -7,6 +7,13 @@
 .stop-refusal { fill: #e4dcf5; stroke: #5b35b0; stroke-width: 1.2; }
 .stop-failure { fill: #f4d9d4; stroke: #a8261b; stroke-width: 1.2; }
 .end { fill: #d9e2f0; stroke: #2c4a7a; stroke-width: 1.2; }
+.stop-end { fill: #d9e2f0; stroke: #2c4a7a; stroke-width: 1.2; }
+.stop-handoff { fill: #f1e2c7; stroke: #9a5508; stroke-width: 1.2; stroke-dasharray: 5 3; }
+.wire-handoff { fill: none; stroke: #9a5508; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.wire-end { fill: none; stroke: #2c4a7a; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.tag-handoff { fill: #9a5508; }
+.k { fill: #4f5866; font: 11.5px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.way { fill: #1f2530; font: italic 12.5px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
 .wire { fill: none; stroke: #7c8594; stroke-width: 1.4; }
 .wire-read { fill: none; stroke: #7c8594; stroke-width: 1.4; stroke-dasharray: 5 3; }
 .wire-refusal { fill: none; stroke: #5b35b0; stroke-width: 1.2; stroke-dasharray: 4 3; }
@@ -41,6 +48,13 @@
 .stop-refusal { fill: #2d2445; stroke: #b59cf2; stroke-width: 1.2; }
 .stop-failure { fill: #45211e; stroke: #f2958a; stroke-width: 1.2; }
 .end { fill: #1f2c42; stroke: #97b6e8; stroke-width: 1.2; }
+.stop-end { fill: #1f2c42; stroke: #97b6e8; stroke-width: 1.2; }
+.stop-handoff { fill: #3d2e17; stroke: #e5a95a; stroke-width: 1.2; stroke-dasharray: 5 3; }
+.wire-handoff { fill: none; stroke: #e5a95a; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.wire-end { fill: none; stroke: #97b6e8; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.tag-handoff { fill: #e5a95a; }
+.k { fill: #b3b9c3; font: 11.5px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.way { fill: #e8e4da; font: italic 12.5px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
 .wire { fill: none; stroke: #8a93a2; stroke-width: 1.4; }
 .wire-read { fill: none; stroke: #8a93a2; stroke-width: 1.4; stroke-dasharray: 5 3; }
 .wire-refusal { fill: none; stroke: #b59cf2; stroke-width: 1.2; stroke-dasharray: 4 3; }
@@ -68,52 +82,86 @@
 .big { font: 700 36px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
 }</style>
 <rect width="100%" height="100%" class="ground"/>
-<path d="M 318 72 L 318 104 L 318 104 L 318 136" class="wire"/>
-<path d="M 313 128 L 318 136 L 323 128 Z" class="head"/>
-<text x="324" y="126" class="tm tag-muted" text-anchor="start">:unverified</text>
-<path d="M 318 72 L 318 104 L 522 104 L 522 136" class="wire"/>
-<path d="M 517 128 L 522 136 L 527 128 Z" class="head"/>
-<text x="528" y="126" class="tm tag-muted" text-anchor="start">:ready</text>
-<path d="M 318 72 L 318 104 L 114 104 L 114 136" class="wire"/>
-<path d="M 109 128 L 114 136 L 119 128 Z" class="head"/>
-<text x="120" y="126" class="tm tag-muted" text-anchor="start">:agent_needed</text>
-<path d="M 522 192 L 522 224 L 318 224 L 318 256" class="wire"/>
-<path d="M 313 248 L 318 256 L 323 248 Z" class="head"/>
-<text x="324" y="246" class="tm tag-muted" text-anchor="start">:done</text>
-<rect x="228" y="16" width="180" height="56" rx="6" class="lane-code"/>
-<text x="238" y="32" class="tag tag-code" text-anchor="start">CODE WORKFLOW</text>
-<text x="238" y="51" class="tb" text-anchor="start">Prepare</text>
-<text x="238" y="66" class="tm" text-anchor="start">:code_prepare_ending</text>
-<rect x="24" y="136" width="180" height="56" rx="6" class="lane-agent"/>
-<text x="34" y="152" class="tag tag-agent" text-anchor="start">AGENT WORKFLOW</text>
-<text x="34" y="171" class="tb" text-anchor="start">End</text>
-<text x="34" y="186" class="tm" text-anchor="start">:agent_finish_intent</text>
-<rect x="228" y="136" width="180" height="56" rx="6" class="lane-agent"/>
-<text x="238" y="152" class="tag tag-agent" text-anchor="start">AGENT WORKFLOW</text>
-<text x="238" y="171" class="tb" text-anchor="start">CheckMerge</text>
-<text x="238" y="186" class="tm" text-anchor="start">:agent_check_merge</text>
-<rect x="432" y="136" width="180" height="56" rx="6" class="lane-code"/>
-<text x="442" y="152" class="tag tag-code" text-anchor="start">CODE WORKFLOW</text>
-<text x="442" y="171" class="tb" text-anchor="start">End</text>
-<text x="442" y="186" class="tm" text-anchor="start">:code_close_intent</text>
-<rect x="228" y="256" width="180" height="56" rx="6" class="lane-agent"/>
-<text x="238" y="272" class="tag tag-agent" text-anchor="start">AGENT WORKFLOW</text>
-<text x="238" y="291" class="tb" text-anchor="start">WindDownIntent</text>
-<text x="238" y="306" class="tm" text-anchor="start">:agent_wind_down_intent</text>
-<path d="M 318 72 L 318 94" class="wire"/>
-<path d="M 313 86 L 318 94 L 323 86 Z" class="head"/>
-<rect x="248" y="94" width="140" height="24" rx="12" class="end"/>
-<text x="318" y="110" class="tag tag-end" text-anchor="middle">finishes, exit 0</text>
-<path d="M 114 192 L 114 214" class="wire"/>
-<path d="M 109 206 L 114 214 L 119 206 Z" class="head"/>
-<rect x="44" y="214" width="140" height="24" rx="12" class="end"/>
-<text x="114" y="230" class="tag tag-end" text-anchor="middle">hands off, exit 1</text>
-<path d="M 318 192 L 318 214" class="wire"/>
-<path d="M 313 206 L 318 214 L 323 206 Z" class="head"/>
-<rect x="248" y="214" width="140" height="24" rx="12" class="end"/>
-<text x="318" y="230" class="tag tag-end" text-anchor="middle">hands off, exit 1</text>
-<path d="M 318 312 L 318 334" class="wire"/>
-<path d="M 313 326 L 318 334 L 323 326 Z" class="head"/>
-<rect x="248" y="334" width="140" height="24" rx="12" class="end"/>
-<text x="318" y="350" class="tag tag-end" text-anchor="middle">hands off, exit 0</text>
+<text x="24" y="34" class="tb" text-anchor="start">One call of plastic intent end: its workflows and its endings</text>
+<rect x="296" y="56" width="254" height="83" rx="6" class="lane-code"/>
+<text x="308" y="76" class="tag tag-code" text-anchor="start">Code Workflow</text>
+<text x="308" y="96" class="t" text-anchor="start">Reads what closing the intent</text>
+<text x="308" y="113" class="t" text-anchor="start">needs: the rows, the verdict,</text>
+<text x="308" y="130" class="t" text-anchor="start">outcome.md and the review.</text>
+<rect x="30" y="56" width="222" height="83" rx="6" class="stop-end"/>
+<text x="42" y="76" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
+<text x="42" y="96" class="t" text-anchor="start">Intent &lt;intent id&gt; is</text>
+<text x="42" y="113" class="t" text-anchor="start">already done.</text>
+<text x="42" y="130" class="t" text-anchor="start">next: plastic next</text>
+<path d="M 296 97 L 274 97" class="wire-end"/>
+<path d="M 274 97 L 274 97" class="wire-end"/>
+<path d="M 274 97 L 252 97" class="wire-end"/>
+<path d="M 260 92 L 252 97 L 260 102 Z" class="head"/>
+<rect x="594" y="56" width="222" height="100" rx="6" class="stop-refusal"/>
+<text x="606" y="76" class="tag tag-refusal" text-anchor="start">STOPS, EXIT 1 OR 3</text>
+<text x="606" y="96" class="t" text-anchor="start">A check fails or the step</text>
+<text x="606" y="113" class="t" text-anchor="start">belongs to the owner. The</text>
+<text x="606" y="130" class="t" text-anchor="start">events below show each</text>
+<text x="606" y="147" class="t" text-anchor="start">check.</text>
+<path d="M 550 97 L 594 97" class="wire-refusal"/>
+<path d="M 586 92 L 594 97 L 586 102 Z" class="head"/>
+<path d="M 423 139 L 423 178 L 157 178 L 157 186" class="wire"/>
+<text x="157" y="200" class="k" text-anchor="middle">the intent still needs records or</text>
+<text x="157" y="214" class="k" text-anchor="middle">a verdict before it can end</text>
+<path d="M 157 224 L 157 238" class="wire"/>
+<path d="M 152 230 L 157 238 L 162 230 Z" class="head"/>
+<rect x="30" y="238" width="254" height="83" rx="6" class="lane-agent"/>
+<text x="42" y="258" class="tag tag-agent" text-anchor="start">Agent Workflow</text>
+<text x="42" y="278" class="t" text-anchor="start">Has the agent write the records</text>
+<text x="42" y="295" class="t" text-anchor="start">the close needs and have the</text>
+<text x="42" y="312" class="t" text-anchor="start">work judged.</text>
+<path d="M 157 321 L 157 347" class="wire"/>
+<path d="M 152 339 L 157 347 L 162 339 Z" class="head"/>
+<rect x="30" y="347" width="254" height="100" rx="6" class="stop-handoff"/>
+<text x="42" y="367" class="tag tag-handoff" text-anchor="start">HANDS OFF, EXIT 1</text>
+<text x="42" y="387" class="t" text-anchor="start">Intent &lt;intent id&gt; cannot end</text>
+<text x="42" y="404" class="t" text-anchor="start">yet. &lt;missing&gt;.</text>
+<text x="42" y="421" class="t" text-anchor="start">next: plastic intent end</text>
+<text x="42" y="438" class="t" text-anchor="start">&lt;intent id&gt;</text>
+<path d="M 423 139 L 423 178 L 423 178 L 423 186" class="wire"/>
+<text x="423" y="200" class="k" text-anchor="middle">the merge of the work is not</text>
+<text x="423" y="214" class="k" text-anchor="middle">verified yet</text>
+<path d="M 423 224 L 423 238" class="wire"/>
+<path d="M 418 230 L 423 238 L 428 230 Z" class="head"/>
+<rect x="296" y="238" width="254" height="66" rx="6" class="lane-agent"/>
+<text x="308" y="258" class="tag tag-agent" text-anchor="start">Agent Workflow</text>
+<text x="308" y="278" class="t" text-anchor="start">Has the agent check that the</text>
+<text x="308" y="295" class="t" text-anchor="start">work of the intent is merged.</text>
+<path d="M 423 304 L 423 330" class="wire"/>
+<path d="M 418 322 L 423 330 L 428 322 Z" class="head"/>
+<rect x="296" y="330" width="254" height="117" rx="6" class="stop-handoff"/>
+<text x="308" y="350" class="tag tag-handoff" text-anchor="start">HANDS OFF, EXIT 1</text>
+<text x="308" y="370" class="t" text-anchor="start">The agent merges the code and</text>
+<text x="308" y="387" class="t" text-anchor="start">confirms the architecture map</text>
+<text x="308" y="404" class="t" text-anchor="start">and records both in outcome.md.</text>
+<text x="308" y="421" class="t" text-anchor="start">next: plastic intent end</text>
+<text x="308" y="438" class="t" text-anchor="start">&lt;intent id&gt;</text>
+<path d="M 423 139 L 423 178 L 689 178 L 689 186" class="wire"/>
+<text x="689" y="200" class="k" text-anchor="middle">the records, the verdict and the</text>
+<text x="689" y="214" class="k" text-anchor="middle">merge are in place</text>
+<path d="M 689 224 L 689 238" class="wire"/>
+<path d="M 684 230 L 689 238 L 694 230 Z" class="head"/>
+<rect x="562" y="238" width="254" height="66" rx="6" class="lane-code"/>
+<text x="574" y="258" class="tag tag-code" text-anchor="start">Code Workflow</text>
+<text x="574" y="278" class="t" text-anchor="start">Closes the intent and releases</text>
+<text x="574" y="295" class="t" text-anchor="start">its lock.</text>
+<path d="M 689 304 L 689 326 L 689 326 L 689 334" class="wire"/>
+<text x="689" y="348" class="k" text-anchor="middle">intent &lt;intent id&gt; is closed</text>
+<path d="M 689 358 L 689 372" class="wire"/>
+<path d="M 684 364 L 689 372 L 694 364 Z" class="head"/>
+<rect x="562" y="372" width="254" height="66" rx="6" class="lane-agent"/>
+<text x="574" y="392" class="tag tag-agent" text-anchor="start">Agent Workflow</text>
+<text x="574" y="412" class="t" text-anchor="start">Has the agent stop what the</text>
+<text x="574" y="429" class="t" text-anchor="start">intent started.</text>
+<path d="M 689 438 L 689 464" class="wire"/>
+<path d="M 684 456 L 689 464 L 694 456 Z" class="head"/>
+<rect x="562" y="464" width="254" height="66" rx="6" class="stop-end"/>
+<text x="574" y="484" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
+<text x="574" y="504" class="t" text-anchor="start">The agent stops the processes</text>
+<text x="574" y="521" class="t" text-anchor="start">and agents the intent started.</text>
 </svg>

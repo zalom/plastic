@@ -5,7 +5,7 @@ require "fileutils"
 module CommandReference
   # The reference files as they sit in the repository.
   class Disk
-    FOLDERS = %w[docs/reference/commands docs/reference/dsl].freeze
+    FOLDERS = %w[docs/reference/commands].freeze
 
     def initialize(root)
       @root = root

@@ -3,9 +3,8 @@
 Start here, then follow the area you need.
 
 ## The `plastic` command
-- [guide/](guide/index.md): install, quick start, configuration, the command list, agents
-  and troubleshooting.
-- [usage/](usage/FEATURES.md): features, the audit guide and tracking.
+- [reference/commands/](reference/commands/README.md): one page for each command, written from the code.
+- [usage/](usage/FEATURES.md): features, the audit guide, tracking and the node lifecycle.
 - [contributing/](contributing/ARCHITECTURE.md): the system architecture in drawings, the command
   architecture, the coding practices, the branches, and the gates.
 
@@ -14,12 +13,7 @@ Start here, then follow the area you need.
   drawings, the store layout, and the component map.
 - [reference/harness-adapters.md](reference/harness-adapters.md): the harness registry, how a
   hook names its session and its harness, and what Plastic installs into each harness.
+- [usage/node-lifecycle.md](usage/node-lifecycle.md): how a node moves through its states.
 
-## Areas (growing)
-- [concepts/](concepts/): the model behind Plastic (how intents are sourced and chained).
-- [guides/](guides/): task-oriented walkthroughs (your first intent, picking a mode, reading
-  the ledgers and a delivered intent).
-- [reference/](reference/): the harness adapters.
-
-These areas fill in over time. The README covers the pitch and install; this folder covers
-how Plastic works and how to work with it.
+The README covers the pitch and install; this folder covers how Plastic works and how to work
+with it.

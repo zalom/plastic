@@ -29,6 +29,13 @@ class CommandReferenceCanvasTest < Minitest::Test
     assert_equal "svg", document.root.name
   end
 
+  def test_no_built_drawing_of_a_command_uses_a_bare_css_variable
+    drawings = CommandReferenceHelper.files.select { |path, _| path.end_with?(".svg") }
+
+    refute_empty drawings
+    drawings.each { |path, body| refute_includes body, "var(", path }
+  end
+
   def test_two_drawings_of_the_same_shapes_are_equal
     assert_equal canvas.standalone, canvas.standalone
   end

@@ -12,6 +12,7 @@ module Plastic
         # version, or the previous release. A dry run names the switch.
         class Preview < CodeWorkflow
           clear_declarations
+          summary "Picks the release to go back to and names the switch."
 
           sets :active, :to, :releases
 

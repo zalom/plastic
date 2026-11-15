@@ -7,6 +7,10 @@ module Plastic
     # rest, then refuse on the conflicts left.
     module SyncSteps
       NAMES = { up: "the rows hold every file changed by hand", down: "the files hold every row that changed" }.freeze
+      PLAN_FAILURES = {
+        up: "an overwrite path names no file and no rows",
+        down: "a sync down finds the old index file of the store and needs plastic sync up first, or an overwrite path names no file and no rows"
+      }.freeze
       # What each option keeps, in the words of the direction. The paths come last, so the last word of a refusal is a path.
       OVERWRITE_WORDS = {
         up: "--overwrite PATH reads that file into rows, --overwrite reads every file",
@@ -19,6 +23,15 @@ module Plastic
       REFUSED_AFTER = OVERWRITE_WORDS.transform_values do |words|
         "changed on both sides since the last print, left as they are. #{words}. The records: %{conflicts}"
       end.freeze
+
+      CHANGES = {
+        up: {
+          work: "The records of the intents whose files changed by hand are rewritten from the files",
+          knowledge: "The documents of those intents are rewritten from the files",
+          store: "The files of the intents and the index of the store are printed again from the rows"
+        },
+        down: { store: "The files of the intents whose records changed are rewritten in the store folder" }
+      }.freeze
 
       UNREADABLE = "intent folders that could not be read, the others were read:\n%{unreadable}\n" \
                    "fix or remove each folder named, then run plastic sync up again"
@@ -109,12 +122,14 @@ module Plastic
 
       def plan_steps(direction)
         read("plan the sync") { |context| SyncSteps.note(context, SyncSteps.plan(context, direction)) }
-        gate "%{failure}", stops: :failure, pass: SyncSteps.check(:runs?)
+        gate "%{failure}", stops: :failure,
+          words: PLAN_FAILURES.fetch(direction),
+          pass: SyncSteps.check(:runs?)
         gate REFUSED_BEFORE.fetch(direction), stops: :refusal, pass: SyncSteps.check(:writes?)
       end
 
       def apply_steps(direction)
-        step("apply the changes", done: SyncSteps.applied(direction)) { |context| SyncSteps.apply(context, direction) }
+        step("apply the changes", done: SyncSteps.applied(direction), changes: CHANGES.fetch(direction)) { |context| SyncSteps.apply(context, direction) }
         read("say what changed") { |context| SyncSteps.say(context) }
         gate REFUSED_AFTER.fetch(direction), stops: :refusal, pass: SyncSteps.check(:settled?)
       end

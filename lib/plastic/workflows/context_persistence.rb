@@ -18,6 +18,11 @@ module Plastic
         document
       end
 
+      def saved?(document)
+        row = context.database(:knowledge).row("SELECT data FROM retrieval_contexts WHERE intent_id = :intent_id", intent_id: context.intent_id)
+        !row.nil? && row.fetch("data") == JSON.pretty_generate(document)
+      end
+
       private
 
       attr_reader :context

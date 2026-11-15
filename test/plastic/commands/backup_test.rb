@@ -43,6 +43,13 @@ class BackupTest < Plastic::TestCase
     assert_equal DATABASES.map { |name| "#{name}-#{folder}.db" }, Dir.children(File.join(backups_dir(home), folder)).grep(/\.db\z/).sort
   end
 
+  def test_a_backup_keeps_the_run_of_the_call_for_a_resume
+    home = fresh_home
+    backup_call(home, "--store", "alpha")
+
+    assert_includes kept_run_tools(home), "backup"
+  end
+
   def test_a_backup_writes_one_row_named_for_the_store_and_the_folder
     home = fresh_home
     backup_call(home, "--store", "alpha")

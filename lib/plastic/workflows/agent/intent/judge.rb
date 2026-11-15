@@ -9,6 +9,7 @@ module Plastic
       module Intent
         # The agent reads the spec and the findings of every node, decides, and records the verdict.
         class Judge < AgentWorkflow
+          summary "Has the agent read the spec and the findings, decide and record the verdict."
           step "judge the delivery", done: ->(context) { Plastic::Graph::Work::Completion::Review.of(context).counting? },
             say: "Start a reasoning judge agent; the harness picks which kind. Tell it to read spec.md and the findings of every node, " \
               "check each done criterion against the delivered work and decide: accept when every criterion holds, " \

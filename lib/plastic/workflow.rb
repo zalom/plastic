@@ -53,14 +53,16 @@ module Plastic
 
       def facts = (@facts ||= [])
 
+      def summary(text = nil) = text ? (@summary = text) : @summary
+
       # One way the workflow ends. `offers:` is the command next: prints and
       # `because:` the line that says why; both matter only when the outcome
       # ends the chain. Each lane adds its own rules.
       def outcome(outcome_name, **options)
-        unknown = options.keys - %i[if offers because stops]
+        unknown = options.keys - %i[if offers because stops found_by unreachable words]
         raise Invalid, "#{name}: outcome #{outcome_name} does not take #{unknown.join(", ")}" if unknown.any?
 
-        outcomes << Outcome.new(outcome_name, *options.values_at(:if, :offers, :because, :stops))
+        outcomes << Outcome.new(outcome_name, *options.values_at(:if, :offers, :because, :stops, :found_by, :unreachable, :words))
       end
 
       def outcomes = (@outcomes ||= [])
@@ -89,6 +91,7 @@ module Plastic
       def clear_declarations
         facts.clear
         outcomes.clear
+        @summary = nil
       end
     end
 

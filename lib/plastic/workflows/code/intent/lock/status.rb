@@ -16,6 +16,7 @@ module Plastic
             extend GoAhead
 
             clear_declarations
+            summary "Prints the lock row of the intent and whether it is still live."
 
             sets :intent, :state, :status, :why, :handoff_text
 
@@ -50,7 +51,7 @@ module Plastic
 
             outcome :closed, if: ->(context) { %w[done abandoned].include?(context.intent.status) }, offers: nil,
               because: "intent %{intent_id} is %{status}"
-            outcome :agent_needed, if: ->(context) { context.state != "live" && !context.handoff_text.nil? }
+            outcome :agent_needed, if: ->(context) { context.state != "live" && !context.handoff_text.nil? }, because: "the agent takes the next step of the lock"
             outcome :none, if: ->(context) { context.state == "none" }, offers: "plastic auto %{intent_id}",
               because: "intent %{intent_id} holds no lock"
             outcome :expired, if: ->(context) { context.state == "expired" }, offers: "plastic auto %{intent_id}",

@@ -9,12 +9,6 @@ class CommandReferenceSourceTest < Minitest::Test
 
   def source = CommandReference::Source.new(CommandReferenceHelper::ROOT)
 
-  def test_the_comment_above_a_class_is_read_without_its_marker
-    comment = source.class_comment(Plastic::Commands::Intent::End)
-
-    assert_equal ["Closes a delivered intent once the rows, the verdict and outcome.md allow it, and hands over what is missing."], comment
-  end
-
   def test_a_lambda_body_is_read_on_one_line
     gate = Plastic::Workflows::Code::Intent::End::Prepare.steps.grep(Plastic::CodeWorkflow::Gate).first
 
@@ -25,12 +19,6 @@ class CommandReferenceSourceTest < Minitest::Test
     code = source.lambda_code(Plastic::Workflows::MoveNode.method(:moved?))
 
     assert_includes code, "context.moved == true"
-  end
-
-  def test_comment_lines_read_as_paragraphs_and_code_blocks
-    blocks = CommandReference::Snippet.blocks(["Text one", "more.", "", "  code line", "", "Text two."])
-
-    assert_equal [[:text, "Text one more."], [:code, "code line"], [:text, "Text two."]], blocks
   end
 
   def test_a_path_is_relative_to_the_root

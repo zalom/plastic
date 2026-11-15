@@ -11,6 +11,7 @@ module Plastic
       # one. It changes nothing itself.
       class Rollback < CodeWorkflow
         clear_declarations
+        summary "Names the command that switches to the chosen release."
 
         sets :command
 

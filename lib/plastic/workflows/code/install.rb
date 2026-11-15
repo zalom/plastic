@@ -11,6 +11,7 @@ module Plastic
       # harnesses Plastic is installed into.
       class Install < CodeWorkflow
         clear_declarations
+        summary "Copies the core files of Plastic into the home."
 
         sets :broken, :present, :installed
 
@@ -25,7 +26,8 @@ module Plastic
         gate "Plastic is already installed; run plastic init to add a harness, or pass --reinstall to sync the files again",
           stops: :refusal, pass: ->(context) { context.reinstall || !context.present }
 
-        step "install the core files", done: ->(context) { !context.installed.nil? } do |context|
+        step "install the core files", done: ->(context) { !context.installed.nil? },
+          changes: { home: "The core files are copied into the Plastic home" } do |context|
           installation = Installation.of(context)
           keys = context.reinstall ? installation.synced : []
           lines = Installation.capture { installation.install(keys) }

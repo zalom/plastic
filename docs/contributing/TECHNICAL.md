@@ -162,6 +162,9 @@ maintainer tool: it reads this repository's own files, so it is never installed.
 | `tools/architecture_figures*` | The plain Ruby that draws the architecture figures. |
 | `bin/architecture-figures` | Rebuilds the figures: `ruby bin/architecture-figures`. |
 | `docs/contributing/figures/` | The generated SVG figures of `ARCHITECTURE.md`. |
+| `tools/command_reference*` | The plain Ruby that reads the kernel and writes the command pages. |
+| `tools/command-reference` | Rebuilds the pages: `ruby tools/command-reference`. |
+| `docs/reference/commands/` | The generated command pages, six parts each: what it does, how to call it, the workflows it runs, the events of one call, what one call changes, and the texts an agent gets. |
 | `varar/` | The acceptance documents. |
 | `test/varar/` | The step files for the acceptance documents. |
 | `test/varar/support/kernel_command.rb` | Runs the kernel's command line in a child process for the storage documents. |

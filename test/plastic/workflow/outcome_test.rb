@@ -2,6 +2,7 @@
 
 require_relative "../../test_helper"
 require_relative "../../../lib/plastic/workflow"
+require_relative "../../../lib/plastic/workflows/code/intent/end/prepare"
 
 class OutcomeTest < Minitest::Test
   Facts = Data.define(:ready) do
@@ -30,6 +31,17 @@ class OutcomeTest < Minitest::Test
 
   def test_an_outcome_that_offers_nothing_closes_on_no_command
     assert_equal [nil, "n1 is ready"], outcome(offers: nil).closing(Facts.new("n1"))
+  end
+
+  def test_an_outcome_names_no_finding_step_unless_it_is_given_one
+    assert_nil outcome.found_by
+    assert_equal "read the intent", Plastic::Workflow::Outcome.new(name: :closed, check: nil, offers: nil, because: "x", stops: false, found_by: "read the intent").found_by
+  end
+
+  def test_the_prepare_step_of_intent_end_names_the_read_that_finds_a_closed_intent
+    closed = Plastic::Workflows::Code::Intent::End::Prepare.outcomes.find { |each| each.name == :closed }
+
+    assert_equal "read the intent", closed.found_by
   end
 
   def test_templates_leave_out_a_missing_offer

@@ -8,6 +8,7 @@ module Plastic
       # After a first install, the agent may offer Enola to the person. Plastic
       # runs no Enola installer and keeps no answer, so a reinstall offers nothing.
       class Install < AgentWorkflow
+        summary "Has the agent offer Enola to the person after a first install."
         ENOLA_VERSION = "0.4.39"
 
         step "offer Enola", done: ->(context) { context.reinstall },

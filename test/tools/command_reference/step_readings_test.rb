@@ -23,4 +23,26 @@ class CommandReferenceStepReadingsTest < Minitest::Test
 
     assert_equal [:done, nil, true, nil, :after, "flow.rb", 3], outcome.to_h.values_at(:name, :check, :fallback, :offers, :to, :file, :line)
   end
+
+  def reading(line) = CommandReference::OutcomeReading.new(:done, Owner.new(Workflow.new([line], "code", 0), Source.new)).outcome
+
+  def line(because, words = nil) = Plastic::Workflow::Outcome.new(name: :done, check: ->(_c) { true }, offers: "next", because:, stops: nil, words:)
+
+  def test_an_outcome_line_gives_its_offer_and_its_found_by_to_the_outcome
+    outcome = reading(line("it ended"))
+
+    assert_equal ["next", false, nil, nil], outcome.to_h.values_at(:offers, :fallback, :found_by, :unreachable)
+  end
+
+  def test_an_outcome_whose_because_is_only_a_placeholder_reads_the_words_of_words
+    assert_equal "the call ended", reading(line("%{why}", "the call ended")).because
+  end
+
+  def test_an_outcome_whose_because_is_only_a_placeholder_and_has_no_words_keeps_the_placeholder
+    assert_equal "%{why}", reading(line("%{why}")).because
+  end
+
+  def test_an_outcome_whose_because_is_a_sentence_keeps_it_even_with_words
+    assert_equal "it ended", reading(line("it ended", "other words")).because
+  end
 end

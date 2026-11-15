@@ -1,0 +1,177 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 834 894" width="834" height="894" role="img" xml:space="preserve">
+<title>The events of one call of plastic intent brief, in words</title>
+<style>.ground { fill: #e9e5dc; }
+.card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
+.lane-code { fill: #d5e8e3; stroke: #0d6b61; stroke-width: 1.5; }
+.lane-agent { fill: #f1e2c7; stroke: #9a5508; stroke-width: 1.5; }
+.stop-refusal { fill: #e4dcf5; stroke: #5b35b0; stroke-width: 1.2; }
+.stop-failure { fill: #f4d9d4; stroke: #a8261b; stroke-width: 1.2; }
+.end { fill: #d9e2f0; stroke: #2c4a7a; stroke-width: 1.2; }
+.stop-end { fill: #d9e2f0; stroke: #2c4a7a; stroke-width: 1.2; }
+.stop-handoff { fill: #f1e2c7; stroke: #9a5508; stroke-width: 1.2; stroke-dasharray: 5 3; }
+.wire-handoff { fill: none; stroke: #9a5508; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.wire-end { fill: none; stroke: #2c4a7a; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.tag-handoff { fill: #9a5508; }
+.k { fill: #4f5866; font: 11.5px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.way { fill: #1f2530; font: italic 12.5px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.wire { fill: none; stroke: #7c8594; stroke-width: 1.4; }
+.wire-read { fill: none; stroke: #7c8594; stroke-width: 1.4; stroke-dasharray: 5 3; }
+.wire-refusal { fill: none; stroke: #5b35b0; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.wire-failure { fill: none; stroke: #a8261b; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.head { fill: #7c8594; }
+.t { fill: #1f2530; font: 12px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.tb { fill: #1f2530; font: 600 13px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.tm { fill: #1f2530; font: 11.5px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.tag { font: 600 10px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; letter-spacing: .06em; }
+.tag-code { fill: #0d6b61; } .tag-agent { fill: #9a5508; } .tag-refusal { fill: #5b35b0; }
+.tag-failure { fill: #a8261b; } .tag-end { fill: #2c4a7a; } .tag-muted { fill: #4f5866; }
+.tm.tag-muted { font-size: 10.5px; }
+.db { fill: #d9e2f0; stroke: #2c4a7a; stroke-width: 1.2; }
+.codebox { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
+.cx { fill: #1f2530; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; white-space: pre; }
+.cx-n { fill: #4f5866; font: 11px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.cx-k { fill: #5b35b0; } .cx-s { fill: #9a5508; } .cx-y { fill: #0d6b61; }
+.cx-w { fill: #2c4a7a; font-weight: 600; } .cx-t { fill: #a8261b; } .cx-c { fill: #4f5866; font-style: italic; }
+.badge { fill: #2c4a7a; } .badge-t { fill: #e9e5dc; font: 600 11px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.bracket { fill: none; stroke: #2c4a7a; stroke-width: 1.4; }
+.term { fill: #16191e; stroke: #7c8594; stroke-width: 1; }
+.term-t { fill: #e6e2d8; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.term-p { fill: #8fd18f; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.term-m { fill: #a3abb6; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.big { font: 700 36px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+
+@media (prefers-color-scheme: dark) {
+.ground { fill: #171a1f; }
+.card { fill: #20242b; stroke: #8a93a2; stroke-width: 1; }
+.lane-code { fill: #173a36; stroke: #5cc4b4; stroke-width: 1.5; }
+.lane-agent { fill: #3d2e17; stroke: #e5a95a; stroke-width: 1.5; }
+.stop-refusal { fill: #2d2445; stroke: #b59cf2; stroke-width: 1.2; }
+.stop-failure { fill: #45211e; stroke: #f2958a; stroke-width: 1.2; }
+.end { fill: #1f2c42; stroke: #97b6e8; stroke-width: 1.2; }
+.stop-end { fill: #1f2c42; stroke: #97b6e8; stroke-width: 1.2; }
+.stop-handoff { fill: #3d2e17; stroke: #e5a95a; stroke-width: 1.2; stroke-dasharray: 5 3; }
+.wire-handoff { fill: none; stroke: #e5a95a; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.wire-end { fill: none; stroke: #97b6e8; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.tag-handoff { fill: #e5a95a; }
+.k { fill: #b3b9c3; font: 11.5px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.way { fill: #e8e4da; font: italic 12.5px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.wire { fill: none; stroke: #8a93a2; stroke-width: 1.4; }
+.wire-read { fill: none; stroke: #8a93a2; stroke-width: 1.4; stroke-dasharray: 5 3; }
+.wire-refusal { fill: none; stroke: #b59cf2; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.wire-failure { fill: none; stroke: #f2958a; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.head { fill: #8a93a2; }
+.t { fill: #e8e4da; font: 12px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.tb { fill: #e8e4da; font: 600 13px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.tm { fill: #e8e4da; font: 11.5px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.tag { font: 600 10px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; letter-spacing: .06em; }
+.tag-code { fill: #5cc4b4; } .tag-agent { fill: #e5a95a; } .tag-refusal { fill: #b59cf2; }
+.tag-failure { fill: #f2958a; } .tag-end { fill: #97b6e8; } .tag-muted { fill: #b3b9c3; }
+.tm.tag-muted { font-size: 10.5px; }
+.db { fill: #1f2c42; stroke: #97b6e8; stroke-width: 1.2; }
+.codebox { fill: #20242b; stroke: #8a93a2; stroke-width: 1; }
+.cx { fill: #e8e4da; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; white-space: pre; }
+.cx-n { fill: #b3b9c3; font: 11px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.cx-k { fill: #b59cf2; } .cx-s { fill: #e5a95a; } .cx-y { fill: #5cc4b4; }
+.cx-w { fill: #97b6e8; font-weight: 600; } .cx-t { fill: #f2958a; } .cx-c { fill: #b3b9c3; font-style: italic; }
+.badge { fill: #97b6e8; } .badge-t { fill: #171a1f; font: 600 11px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.bracket { fill: none; stroke: #97b6e8; stroke-width: 1.4; }
+.term { fill: #16191e; stroke: #8a93a2; stroke-width: 1; }
+.term-t { fill: #e6e2d8; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.term-p { fill: #8fd18f; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.term-m { fill: #a3abb6; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.big { font: 700 36px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+}</style>
+<rect width="100%" height="100%" class="ground"/>
+<text x="24" y="34" class="tb" text-anchor="start">One call of plastic intent brief, from top to bottom</text>
+<rect x="24" y="64" width="400" height="51" rx="6" class="lane-code"/>
+<circle cx="44" cy="83" r="8" class="badge"/>
+<text x="44" y="87" class="badge-t" text-anchor="middle">1</text>
+<text x="64" y="86" class="tag tag-code" text-anchor="start">Code Workflow</text>
+<text x="64" y="106" class="t" text-anchor="start">Find the intent.</text>
+<path d="M 424 87 L 480 87" class="wire-failure"/>
+<path d="M 472 82 L 480 87 L 472 92 Z" class="head"/>
+<rect x="480" y="64" width="330" height="46" rx="6" class="stop-failure"/>
+<text x="492" y="82" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1</text>
+<text x="492" y="100" class="t" text-anchor="start">No intent &lt;intent id&gt; in this store.</text>
+<path d="M 64 115 L 64 141" class="wire"/>
+<path d="M 59 133 L 64 141 L 69 133 Z" class="head"/>
+<rect x="24" y="141" width="400" height="51" rx="6" class="lane-code"/>
+<circle cx="44" cy="160" r="8" class="badge"/>
+<text x="44" y="164" class="badge-t" text-anchor="middle">2</text>
+<text x="64" y="163" class="tag tag-code" text-anchor="start">Code Workflow</text>
+<text x="64" y="183" class="t" text-anchor="start">Print the goal and its criteria.</text>
+<path d="M 64 192 L 64 218" class="wire"/>
+<path d="M 59 210 L 64 218 L 69 210 Z" class="head"/>
+<rect x="24" y="218" width="400" height="51" rx="6" class="lane-code"/>
+<circle cx="44" cy="237" r="8" class="badge"/>
+<text x="44" y="241" class="badge-t" text-anchor="middle">3</text>
+<text x="64" y="240" class="tag tag-code" text-anchor="start">Code Workflow</text>
+<text x="64" y="260" class="t" text-anchor="start">Print the rulings.</text>
+<path d="M 64 269 L 64 295" class="wire"/>
+<path d="M 59 287 L 64 295 L 69 287 Z" class="head"/>
+<rect x="24" y="295" width="400" height="51" rx="6" class="lane-code"/>
+<circle cx="44" cy="314" r="8" class="badge"/>
+<text x="44" y="318" class="badge-t" text-anchor="middle">4</text>
+<text x="64" y="317" class="tag tag-code" text-anchor="start">Code Workflow</text>
+<text x="64" y="337" class="t" text-anchor="start">Print the ready nodes.</text>
+<path d="M 64 346 L 64 372" class="wire"/>
+<path d="M 59 364 L 64 372 L 69 364 Z" class="head"/>
+<rect x="24" y="372" width="400" height="51" rx="6" class="lane-code"/>
+<circle cx="44" cy="391" r="8" class="badge"/>
+<text x="44" y="395" class="badge-t" text-anchor="middle">5</text>
+<text x="64" y="394" class="tag tag-code" text-anchor="start">Code Workflow</text>
+<text x="64" y="414" class="t" text-anchor="start">Print the main session steps.</text>
+<path d="M 64 423 L 64 449" class="wire"/>
+<path d="M 59 441 L 64 449 L 69 441 Z" class="head"/>
+<rect x="24" y="449" width="400" height="51" rx="6" class="lane-code"/>
+<circle cx="44" cy="468" r="8" class="badge"/>
+<text x="44" y="472" class="badge-t" text-anchor="middle">6</text>
+<text x="64" y="471" class="tag tag-code" text-anchor="start">Code Workflow</text>
+<text x="64" y="491" class="t" text-anchor="start">Print the usage of the node and edge commands.</text>
+<path d="M 64 500 L 64 526" class="wire"/>
+<path d="M 59 518 L 64 526 L 69 518 Z" class="head"/>
+<rect x="24" y="526" width="400" height="51" rx="6" class="lane-code"/>
+<circle cx="44" cy="545" r="8" class="badge"/>
+<text x="44" y="549" class="badge-t" text-anchor="middle">7</text>
+<text x="64" y="548" class="tag tag-code" text-anchor="start">Code Workflow</text>
+<text x="64" y="568" class="t" text-anchor="start">Choose the delivery action.</text>
+<path d="M 424 538 L 438 538 L 438 549 L 480 549" class="wire-end"/>
+<path d="M 472 544 L 480 549 L 472 554 Z" class="head"/>
+<rect x="480" y="526" width="330" height="46" rx="6" class="stop-end"/>
+<text x="492" y="544" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
+<text x="492" y="562" class="t" text-anchor="start">The brief has no next command.</text>
+<path d="M 424 552 L 432 552 L 432 619 L 480 619" class="wire-end"/>
+<path d="M 472 614 L 480 619 L 472 624 Z" class="head"/>
+<rect x="480" y="580" width="330" height="78" rx="6" class="stop-end"/>
+<text x="492" y="598" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
+<text x="492" y="616" class="t" text-anchor="start">The brief names the next command and the</text>
+<text x="492" y="632" class="t" text-anchor="start">reason for it.</text>
+<text x="492" y="648" class="t" text-anchor="start">next: &lt;next command&gt;</text>
+<path d="M 64 577 L 64 684" class="wire"/>
+<path d="M 59 676 L 64 684 L 69 676 Z" class="head"/>
+<rect x="24" y="684" width="400" height="51" rx="6" class="lane-agent"/>
+<circle cx="44" cy="703" r="8" class="badge"/>
+<text x="44" y="707" class="badge-t" text-anchor="middle">8</text>
+<text x="64" y="706" class="tag tag-agent" text-anchor="start">Agent Workflow</text>
+<text x="64" y="726" class="t" text-anchor="start">Advance the delivery.</text>
+<path d="M 424 696 L 438 696 L 438 723 L 480 723" class="wire-end"/>
+<path d="M 472 718 L 480 723 L 472 728 Z" class="head"/>
+<rect x="480" y="684" width="330" height="78" rx="6" class="stop-end"/>
+<text x="492" y="702" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
+<text x="492" y="720" class="t" text-anchor="start">The delivery has a next step for the agent,</text>
+<text x="492" y="736" class="t" text-anchor="start">and the reason names the state of the intent</text>
+<text x="492" y="752" class="t" text-anchor="start">that chose it.</text>
+<path d="M 424 710 L 432 710 L 432 793 L 480 793" class="wire-end"/>
+<path d="M 472 788 L 480 793 L 472 798 Z" class="head"/>
+<rect x="480" y="770" width="330" height="46" rx="6" class="stop-end"/>
+<text x="492" y="788" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
+<text x="492" y="806" class="t" text-anchor="start">The delivery instruction has been handled.</text>
+<rect x="24" y="846" width="14" height="14" rx="3" class="lane-code"/>
+<text x="44" y="858" class="k" text-anchor="start">Code Workflow</text>
+<rect x="140" y="846" width="14" height="14" rx="3" class="lane-agent"/>
+<text x="160" y="858" class="k" text-anchor="start">Agent Workflow</text>
+<rect x="259" y="846" width="14" height="14" rx="3" class="stop-failure"/>
+<text x="279" y="858" class="k" text-anchor="start">Stops with a failure</text>
+<rect x="395" y="846" width="14" height="14" rx="3" class="stop-end"/>
+<text x="415" y="858" class="k" text-anchor="start">Ends</text>
+</svg>

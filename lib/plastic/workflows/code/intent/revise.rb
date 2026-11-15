@@ -31,7 +31,9 @@ module Plastic
             context[:problem] = context.change ? context.change.problem : "intent #{context.intent_id} has no file row; run plastic sync up first"
           end
 
-          gate "%{problem}", stops: :failure, pass: ->(context) { context.problem.nil? }
+          gate "%{problem}", stops: :failure,
+            words: "the intent has no file row, the new What holds a line break, or the What and Why read as before",
+            pass: ->(context) { context.problem.nil? }
 
           read "show the change" do |context|
             change = context.change
@@ -40,7 +42,8 @@ module Plastic
             show_why(context, change) if change.why
           end
 
-          step "write the revision", done: ->(context) { context.dry_run || !context.new_reference.nil? } do |context|
+          step "write the revision", done: ->(context) { context.dry_run || !context.new_reference.nil? },
+            changes: { knowledge: "A new revision of the spec is written", work: "The title of the intent is updated" } do |context|
             context[:old_reference], context[:new_reference] = context.work.revise_intent(context.change)
           end
 

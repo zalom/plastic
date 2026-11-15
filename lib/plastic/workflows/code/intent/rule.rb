@@ -19,13 +19,16 @@ module Plastic
 
           gate "no intent %{intent_id} in this store", stops: :failure, pass: ->(context) { !context.intent.nil? }
 
-          step "write the ruling", done: ->(context) { !context.problem.nil? || !context.id.nil? } do |context|
+          step "write the ruling", done: ->(context) { !context.problem.nil? || !context.id.nil? },
+            changes: { knowledge: "The ruling is added to the rulings of the intent" } do |context|
             ruling = context.work.add_ruling(intent_id: context.intent_id, text: context.text, supersedes: context.supersedes)
             context[:id] = ruling&.id
             context[:problem] = ruling ? nil : "no ruling #{context.supersedes} in intent #{context.intent_id}"
           end
 
-          gate "%{problem}", stops: :failure, pass: ->(context) { context.problem.nil? }
+          gate "%{problem}", stops: :failure,
+            words: "the ruling to supersede does not exist in the intent",
+            pass: ->(context) { context.problem.nil? }
 
           read "say what was written" do |context|
             context.print("ruling: #{context.id}")

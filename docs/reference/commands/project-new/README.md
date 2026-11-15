@@ -2,71 +2,28 @@
 
 Register a project and leave its store ready for intent new.
 
-Registers a project in projects.yml and leaves its store ready, so an intent can be opened at once. The other lines of the file stay as they are. The same name at the same path again changes nothing.
-
 ```sh
 plastic project new SLUG PATH
 ```
-
-The command is `Project::New`, in [`new.rb:15`](../../../../lib/plastic/commands/project/new.rb#L15). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |
 | `SLUG` | the project's name: lowercase letters, digits and dashes | |
 | `PATH` | the project's repository folder | |
 
-## Components
+## The events of one call, step by step
 
-![The components on the path of plastic project new](component.svg)
+![The events of one call of plastic project new](events.svg)
 
-The figure shows the command, the workflows it runs, the classes behind them, and the databases and files they reach.
+The boxes on the left run in order. The boxes on the right are the ways the call stops or ends at that step.
 
-## The events of one call
+## What one call changes
 
-![The call of plastic project new](call.svg)
+| What changes | Where | Reach |
+| --- | --- | --- |
+| The work database of the store is created if it is missing | the work graph database, in the store folder | stays on this machine |
+| The knowledge database of the store is created if it is missing | the knowledge graph database, in the store folder | stays on this machine |
+| The references database of the store is created if it is missing | the references database, in the store folder | stays on this machine |
+| The project is registered in projects.yml in the Plastic home | the Plastic home folder | stays on this machine |
 
-The command's `call`, at [`new.rb:20`](../../../../lib/plastic/commands/project/new.rb#L20):
-
-```ruby
-def call
-  slug = checked_slug
-  path = checked_path
-  register(slug, path)
-  make_ready(slug)
-  name_written(CLI::RuleFiles.new(path, slug).write_absent, path)
-  announce(slug, path)
-end
-```
-
-Its steps run in this order:
-
-1. `slug = checked_slug` [`new.rb:21`](../../../../lib/plastic/commands/project/new.rb#L21)
-2. `path = checked_path` [`new.rb:22`](../../../../lib/plastic/commands/project/new.rb#L22)
-3. `register(slug, path)` [`new.rb:23`](../../../../lib/plastic/commands/project/new.rb#L23)
-4. `make_ready(slug)` [`new.rb:24`](../../../../lib/plastic/commands/project/new.rb#L24)
-5. `name_written(CLI::RuleFiles.new(path, slug).write_absent, path)` [`new.rb:25`](../../../../lib/plastic/commands/project/new.rb#L25)
-6. `announce(slug, path)` [`new.rb:26`](../../../../lib/plastic/commands/project/new.rb#L26)
-
-## What one call reads, writes and prints
-
-![What one call of plastic project new reads, writes and prints](touches.svg)
-
-| Place | Database or file | Tables | Reads or writes | Code |
-| --- | --- | --- | --- | --- |
-| the store folder | knowledge_graph.db | not found in the code | writes | [`new.rb:18`](../../../../lib/plastic/commands/project/new.rb#L18) |
-| the store folder | references.db | not found in the code | writes | [`new.rb:18`](../../../../lib/plastic/commands/project/new.rb#L18) |
-| the store folder | work_graph.db | not found in the code | writes | [`new.rb:18`](../../../../lib/plastic/commands/project/new.rb#L18) |
-
-## How a call ends
-
-Every call can also end in [the ways any call can end](../../dsl/README.md#how-any-call-can-end).
-
-| Ending | Exit | next: | Code |
-| --- | --- | --- | --- |
-| Failed: PATH is not a directory | 1 | prints no next: line | [`new.rb:35`](../../../../lib/plastic/commands/project/new.rb#L35) |
-| Refused: SLUG is registered at KNOWN, not at PATH; edit projects.yml to move it | 3 | prints no next: line | [`new.rb:43`](../../../../lib/plastic/commands/project/new.rb#L43) |
-| Offers the next command | 0 | plastic intent new TITLE --project SLUG | [`new.rb:58`](../../../../lib/plastic/commands/project/new.rb#L58) |
-
-## What the page leaves out
-
-Every call shares a few things that this page does not repeat; [the command DSL](../../dsl/README.md#what-every-call-shares) names them.
+The command is `Plastic::Commands::Project::New`, in [`commands/project/new.rb`](../../../../lib/plastic/commands/project/new.rb).

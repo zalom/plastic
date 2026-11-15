@@ -2,7 +2,9 @@
 
 module CommandReference
   # One outcome line of a workflow.
-  Outcome = Data.define(:name, :check, :fallback, :offers, :because, :to, :exit_code, :file, :line) do
+  Outcome = Data.define(:name, :check, :fallback, :offers, :because, :to, :exit_code, :file, :line, :found_by, :unreachable) do
+    def initialize(found_by: nil, unreachable: nil, **rest) = super
+
     def ends? = to == :noop
 
     def exit_words = (name == :handoff) ? "hands off, exit #{exit_code}" : "finishes, exit 0"

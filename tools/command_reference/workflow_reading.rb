@@ -63,7 +63,7 @@ module CommandReference
 
     def identity
       klass = workflow
-      { key: @key, klass:, lane: klass.lane, file: files.first, line: @homes.declared.last, comment: source.class_comment(klass), facts: klass.facts }
+      { key: @key, klass:, lane: klass.lane, file: files.first, line: @homes.declared.last, facts: klass.facts }
     end
 
     def files = @homes.files

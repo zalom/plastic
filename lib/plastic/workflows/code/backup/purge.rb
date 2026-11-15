@@ -12,6 +12,7 @@ module Plastic
         # those strictly before a time, or those that failed. A row with no folder goes with them.
         class Purge < CodeWorkflow
           clear_declarations
+          summary "Deletes the chosen backup folders of one store with their rows."
 
           sets :purged
 
@@ -25,7 +26,8 @@ module Plastic
             (purger.names(older_than: cutoff) | purger.orphans(older_than: cutoff)).sort
           end
 
-          step "delete the backups", done: ->(context) { !context.purged.nil? } do |context|
+          step "delete the backups", done: ->(context) { !context.purged.nil? },
+            changes: { backups: "The chosen backup folders are deleted" } do |context|
             purger = context.work.backups.purger
             names = targets(context)
             names.each { |name| purger.remove(name) }

@@ -12,6 +12,7 @@ module Plastic
       # count when any link is broken.
       class Links < CLI::Command
         reads :work, :knowledge
+        changes({})
 
         def call
           broken = broken_links

@@ -36,6 +36,14 @@ class IntentAbandonTest < Plastic::TestCase
     assert_includes result.out, "Reverted:"
   end
 
+  def test_the_revert_step_tells_the_agent_to_use_version_control_as_the_project_defines_it
+    droppable(reverted: false)
+    result = abandon
+
+    assert_includes result.out, "Use version control as the project's AGENTS.md or CLAUDE.md defines it, or as the project's history shows when neither does: undo what intent 1 changed, close or delete its branch and worktree, and revert any commit that reached the base."
+    refute_includes result.out, "your own"
+  end
+
   def test_with_the_reverted_bullet_it_closes_cancelled_with_no_completion
     droppable
     result = abandon

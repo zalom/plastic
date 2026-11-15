@@ -160,4 +160,19 @@ class SyncStepsFilesTest < Plastic::TestCase
     assert_includes outcome.message, "store/2--beta/graph.json: junk too; run plastic sync down --overwrite store/2--beta/graph.json"
     refute_includes outcome.message, "with the command below"
   end
+
+  def plan_gate_words(workflow) = workflow.steps.grep(Plastic::CodeWorkflow::Gate).find { |gate| gate.reason == "%{failure}" }.words
+
+  def test_the_plan_gate_words_of_sync_up_do_not_name_the_old_index_file
+    words = plan_gate_words(Plastic::Workflows::Code::Sync::Up)
+
+    assert_equal "an overwrite path names no file and no rows", words
+  end
+
+  def test_the_plan_gate_words_of_sync_down_name_both_stops
+    words = plan_gate_words(Plastic::Workflows::Code::Sync::Down)
+
+    assert_includes words, "finds the old index file of the store and needs plastic sync up first"
+    assert_includes words, "an overwrite path names no file and no rows"
+  end
 end

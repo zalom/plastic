@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module CommandReference
-  # Every file of one command page: its README and its drawings.
+  # Every file of one command page: its README and its two drawings.
   class PageFiles
     def initialize(page, folder)
       @page = page
@@ -12,14 +12,8 @@ module CommandReference
 
     private
 
-    def drawings = { "component.svg" => Figures::Component.new(@page).canvas, "touches.svg" => Figures::Touches.new(@page).canvas, **overview, **flows }.transform_values(&:standalone)
+    def drawings = { **overview, "events.svg" => Figures::Events.new(@page).canvas }.transform_values(&:standalone)
 
-    def overview
-      return { "call.svg" => Figures::Call.new(@page).canvas } if @page.flows.empty?
-
-      (@page.flows.size > 1) ? { "workflows.svg" => Figures::Workflows.new(@page).canvas } : {}
-    end
-
-    def flows = @page.flows.to_h { |flow| ["#{flow.key}.svg", Figures::Workflow.new(@page, flow).canvas] }
+    def overview = (@page.flows.size > 1) ? { "workflows.svg" => Figures::Overview.new(@page).canvas } : {}
   end
 end

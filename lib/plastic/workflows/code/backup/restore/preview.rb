@@ -11,6 +11,7 @@ module Plastic
           # Lists the databases a restore would replace, and changes nothing.
           class Preview < CodeWorkflow
             clear_declarations
+            summary "Previews which databases a restore would replace."
 
             read "preview the restore" do |context|
               next unless context.dry_run
