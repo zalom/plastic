@@ -31,4 +31,3 @@ intent file still returns its report, so the insight survives.
 The stages map to commands: What is `plastic intent new`, Why is `plastic intent spec` and
 `plastic intent rule`, How is the spec and the work graph the agent writes,
 and Exec is `plastic next`, `plastic node done` and `plastic intent end`.
-`plastic help tutorial` walks all of them once.

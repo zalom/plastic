@@ -17,7 +17,7 @@
   <a href="#installation">Install</a> &bull;
   <a href="#quick-start">Quick start</a> &bull;
   <a href="#commands">Commands</a> &bull;
-  <a href="docs/guide/getting-started/troubleshooting.md">Troubleshooting</a> &bull;
+  <a href="docs/reference/commands/README.md">Command reference</a> &bull;
   <a href="docs/contributing/ARCHITECTURE.md">Architecture</a> &bull;
   <a href="MANIFESTO.md">Manifesto</a>
 </p>
@@ -137,8 +137,8 @@ plastic intent new "Add a --version flag"
 plastic next
 ```
 
-Restart your agent after the install. For the full path, read
-[your first intent in 10 minutes](docs/guides/your-first-intent-in-10-minutes.md).
+Restart your agent after the install. For every command, read
+the [command reference](docs/reference/commands/README.md).
 
 ## How it works
 
@@ -376,7 +376,7 @@ plastic config set runner.stop_hook true    # Write a global key
 plastic config get agents.models.plastic-executor --harness codex
 ```
 
-See the [configuration guide](docs/guide/getting-started/configuration.md) for every key and file.
+See the [page of `config`](docs/reference/commands/config/README.md) for every key and file.
 
 ### Uninstall
 
@@ -390,8 +390,7 @@ stores under `~/.plastic` stay.
 ## Documentation
 
 - **[INSTALL.md](INSTALL.md)**: every install path.
-- **[docs/guide/](docs/guide/index.md)**: getting started with the `plastic` command.
-- **[docs/guides/](docs/guides/index.md)**: task guides, from your first intent to picking a mode.
+- **[docs/reference/commands/](docs/reference/commands/README.md)**: one page for each `plastic` command.
 - **[docs/usage/](docs/usage/FEATURES.md)**: features, the audit guide and tracking.
 - **[docs/contributing/](docs/contributing/ARCHITECTURE.md)**: the system architecture in drawings, the command architecture, the coding practices and the gates.
 - **[CHANGELOG.md](CHANGELOG.md)**: one entry for each release.

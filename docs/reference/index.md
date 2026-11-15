@@ -1,6 +1,6 @@
 # Reference
 
-Reference material. For the commands, run `plastic help` or read the [guide](../guide/index.md).
+Reference material. For the commands, run `plastic help` or read the [command pages](commands/README.md).
 
 ## Contents
 

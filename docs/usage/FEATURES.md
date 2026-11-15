@@ -117,7 +117,7 @@ other failure exits 1. See [INSTALL.md](../../INSTALL.md).
 and `plastic config set KEY VALUE` writes one into `~/.plastic/config.yml`. `plastic config` shows
 the on/off settings on a choice screen. Each takes `--harness NAME` to work on the settings of one
 harness, and refuses a name the harness registry does not hold. See the
-[configuration guide](../guide/getting-started/configuration.md).
+[page of `config`](../reference/commands/config/README.md).
 
 ## Check the installation
 

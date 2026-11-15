@@ -25,7 +25,7 @@ class AutoWordsGuardTest < Minitest::Test
   def retired?(text) = text.match?(RETIRED)
 
   def test_the_subjects_are_found
-    assert_includes subjects, "docs/help/track-2-auto.md"
+    assert_includes subjects, "docs/help/roadmaps.md"
   end
 
   def test_no_subject_names_a_retired_auto_word

@@ -13,14 +13,6 @@ class RetrievalDocumentationTest < Minitest::Test
     end
   end
 
-  def test_search_guide_has_the_current_scope_limit_and_read_contract
-    content = File.read(File.join(ROOT, "docs/guide/getting-started/search-commands.md"))
-
-    assert_includes content, "--source-project SLUG"
-    assert_includes content, "default limit is 20"
-    assert_includes content, "does not write"
-  end
-
   def test_tools_guide_says_the_architecture_commands_only_instruct_the_agent
     content = File.read(File.join(ROOT, "docs/help/tools.md"))
 
@@ -29,13 +21,10 @@ class RetrievalDocumentationTest < Minitest::Test
     assert_includes content, "does not run Enola"
   end
 
-  def test_examples_use_context_from_and_qualified_document_references
+  def test_examples_use_context_from
     readme = File.read(File.join(ROOT, "README.md"))
-    guide = File.read(File.join(ROOT, "docs/guide/getting-started/search-commands.md"))
 
     assert_includes readme, "intent context 12 --from selected-context.json"
-    assert_includes guide, "Fetches a qualified document."
-    refute_includes guide, "current or revision-qualified"
   end
 
   private
@@ -43,9 +32,6 @@ class RetrievalDocumentationTest < Minitest::Test
   def public_docs
     %w[
       README.md
-      docs/guide/getting-started/search-commands.md
-      docs/guide/getting-started/ask-a-question.md
-      docs/guide/getting-started/what-plastic-covers.md
     ]
   end
 end

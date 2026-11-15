@@ -4,8 +4,8 @@ require "minitest/autorun"
 
 class DocsNodeLifecycleTest < Minitest::Test
   ROOT = File.expand_path("..", __dir__)
-  PAGE = File.join(ROOT, "docs", "concepts", "node-lifecycle.md")
-  INDEX = File.join(ROOT, "docs", "concepts", "index.md")
+  PAGE = File.join(ROOT, "docs", "usage", "node-lifecycle.md")
+  INDEX = File.join(ROOT, "docs", "index.md")
   STATES = %w[open claimed done failed needs_info impeded removed].freeze
   FIGURE = %r{\A!\[[^\]]+\]\(\.\./contributing/figures/node-lifecycle\.svg\)}
 
@@ -38,7 +38,7 @@ class DocsNodeLifecycleTest < Minitest::Test
     ["1800 seconds", "7200 seconds", "plastic intent lock status"].each { |term| assert_includes body, term }
   end
 
-  def test_the_concepts_index_links_the_page
-    assert_includes File.read(INDEX), "(node-lifecycle.md)"
+  def test_the_docs_index_links_the_page
+    assert_includes File.read(INDEX), "(usage/node-lifecycle.md)"
   end
 end
