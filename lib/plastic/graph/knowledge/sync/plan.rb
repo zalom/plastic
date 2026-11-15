@@ -116,10 +116,10 @@ module Plastic
           end
 
           # A context view or a roadmap a person changed prints again from its rows. An index a person changed is
-          # read when it can be and kept as written when it cannot; one that arrived and was never printed here,
-          # or that another home printed, prints from the rows.
+          # read when it can be and kept as written when it cannot, also when another home printed it; one that
+          # arrived and was never printed here prints from the rows.
           def generated_up(entry)
-            return :print if entry.printed_elsewhere
+            return :print if entry.reprinted?
             return :none unless entry.hand_edited? && entry.rows_sha
             return :read unless unreadable_files.key?(entry.path)
 

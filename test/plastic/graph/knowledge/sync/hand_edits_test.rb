@@ -32,13 +32,13 @@ class KnowledgeSyncHandEditsTest < Plastic::TestCase
     assert_equal({ path => nil }, hand_edited([:intent], { intent_id: "1" }))
   end
 
-  def test_an_index_that_another_home_printed_is_not_a_hand_edit
+  def test_an_index_that_another_home_printed_is_a_hand_edit_that_reads_on_a_home_that_holds_a_print_of_it
     specified
     index = JSON.parse(folder.read("store/index.json"))
     index.fetch("intents").each { |entry| entry["origin_id"] = "zzzz" }
     write("store/index.json", JSON.pretty_generate(index.merge("origin_id" => "zzzz")))
 
-    assert_empty hand_edited([:intent], { intent_id: "1" })
+    assert_equal({ "store/index.json" => nil }, hand_edited([:intent], { intent_id: "1" }))
   end
 
   def test_a_hand_edited_intent_file_that_reads_has_no_reason

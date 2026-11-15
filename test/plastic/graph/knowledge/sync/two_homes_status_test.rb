@@ -51,9 +51,7 @@ class KnowledgeSyncTwoHomesStatusTest < Plastic::TestCase
     to_both_homes do |a, b|
       change_row(a, "1", title: "Retitled by A")
       pull(b, a)
-      data = index_of(b)
-      data["intents"].first["origin_id"] = "zzzz"
-      write_file(b, FILE, JSON.pretty_generate(data))
+      list_first_intent_of_a_third_origin(b)
       up = call_in(b, "sync", "up")
 
       assert_equal [1, "Alpha", true], [up.code, fields(b, "1")["title"], said(up).include?("sync down --overwrite #{FILE}")], said(up)

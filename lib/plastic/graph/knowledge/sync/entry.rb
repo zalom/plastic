@@ -26,7 +26,7 @@ module Plastic
 
           # The entry of `path` in `folder`. A generated file that holds the content of its
           # print in other bytes is level: the bytes are a formatter's, not a person's edit.
-          # The index that another home printed is no edit: the rows print it again.
+          # The index that another home printed, when this home holds no print of it, is no edit: the rows print it again.
           def self.for(folder, path, printed_sha, print)
             file_sha = level_sha(folder, path, print)
             new(path, file_sha, printed_of(path, printed_sha, file_sha, print), print, printed_elsewhere?(folder, path, print))
@@ -70,6 +70,9 @@ module Plastic
 
           def rows_sha = print.sha256
 
+          # An index another home printed, on a home that holds no print of the index: the rows print it again.
+          def reprinted? = printed_elsewhere && printed_sha.nil?
+
           # The index: the rows print it again after a read. A roadmap and a context view are read like any file.
           def generated? = path == StoreFolder::INDEX
 
@@ -80,7 +83,7 @@ module Plastic
 
           # A person changed a file since its last print, or one never printed: the file holds
           # neither the rows' print nor the recorded one. A graph file against bare rows is not an edit.
-          def hand_edited? = !printed_elsewhere && !level? && file_changed? && !bare_graph?
+          def hand_edited? = !reprinted? && !level? && file_changed? && !bare_graph?
 
           def rows_changed? = rows_sha && rows_sha != printed_sha && !bare_graph?
 
@@ -91,9 +94,10 @@ module Plastic
           # What a sync in `direction` does with this path: :record a level
           # file's hash, :read the file into rows, :print the rows into the
           # file, stop on a :conflict, or :none. A missing file is never a
-          # change on the file side. An index another home printed prints from the rows.
+          # change on the file side. An index another home printed prints from the rows
+          # when this home holds no print of the index, and is read when it does.
           def action(direction)
-            return :print if printed_elsewhere
+            return :print if reprinted?
             return (printed_sha == file_sha) ? :none : :record if level?
             return :conflict if conflict?
 

@@ -29,6 +29,12 @@ module TwoHomesStatusHelper
     call_in(home, "sync", "down")
   end
 
+  def list_first_intent_of_a_third_origin(home)
+    data = index_of(home)
+    data["intents"].first["origin_id"] = "zzzz"
+    write_file(home, FILE, JSON.pretty_generate(data))
+  end
+
   def index_of(home) = JSON.parse(read_file(home, FILE))
 
   def said(call) = call.out + call.err

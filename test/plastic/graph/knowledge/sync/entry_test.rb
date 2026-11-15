@@ -145,13 +145,19 @@ class KnowledgeSyncEntryOriginTest < Plastic::TestCase
   INDEX = "store/index.json"
   OURS = "{\n  \"origin_id\": \"ours\",\n  \"intents\": []\n}\n"
 
-  def entry_of(bytes)
+  def entry_of(bytes, printed_sha = "p")
     write(INDEX, bytes)
-    Entry.for(folder, INDEX, "p", Print.text(INDEX, :work, OURS))
+    Entry.for(folder, INDEX, printed_sha, Print.text(INDEX, :work, OURS))
   end
 
-  def test_an_index_that_another_home_printed_is_printed_from_the_rows_both_ways
+  def test_an_index_that_another_home_printed_is_a_hand_edit_on_a_home_that_holds_a_print_of_it
     entry = entry_of(JSON.generate({ "origin_id" => "theirs", "intents" => [] }))
+
+    assert_equal [false, true, true], [entry.level?, entry.hand_edited?, entry.printed_elsewhere]
+  end
+
+  def test_an_index_that_another_home_printed_is_printed_from_the_rows_both_ways_on_a_home_with_no_print_of_it
+    entry = entry_of(JSON.generate({ "origin_id" => "theirs", "intents" => [] }), nil)
 
     assert_equal [false, false, %i[print print]], [entry.level?, entry.hand_edited?, %i[up down].map { |way| entry.action(way) }]
   end
