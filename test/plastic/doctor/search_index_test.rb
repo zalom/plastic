@@ -37,6 +37,13 @@ class DoctorSearchIndexTest < Plastic::TestCase
     assert_equal ["ok, in step", nil], check(retrieval).then { |row| [row.value, row.repair] }
   end
 
+  def test_a_store_that_cannot_be_written_even_to_open_fails_as_not_checked_with_the_folder_to_make_writable
+    unwritable = Class.new { def search_index_report = raise(Plastic::Graph::Database::Error, "knowledge_graph.db: attempt to write a readonly database") }.new
+    row = check(unwritable)
+
+    assert_equal ["search index alpha:", "not checked, the store cannot be written", true], [*row.to_a.first(2), row.repair.include?("alpha")]
+  end
+
   def test_a_repair_that_fails_for_another_reason_is_raised
     retrieval = Retrieval.new({ repairable: true, missing: [] }, Plastic::Graph::Database::Error.new("knowledge_graph.db: disk image is malformed"))
 
