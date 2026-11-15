@@ -18,26 +18,24 @@ The figure shows the command, the workflows it runs, the classes behind them, an
 
 ## The events of one call
 
-![The call of plastic project list](call.svg)
+The call starts the workflow `Code::Project::List`, in [`list.rb:11`](../../../../lib/plastic/workflows/code/project/list.rb#L11).
 
-The command's `call`, at [`list.rb:13`](../../../../lib/plastic/commands/project/list.rb#L13):
+Lists the projects of projects.yml, each with its path, and marks the ones whose store folder is missing. It writes nothing.
 
-```ruby
-def call
-  projects = scope.projects
-  projects.sort.each { |slug, path| output.row("project", "#{slug}: #{path}#{NO_STORE unless store?(slug)}") }
-  return output.next_step("plastic project new SLUG PATH", because: "no project is registered yet") if projects.empty?
+![How Code::Project::List runs: its steps, where it stops, and its outcomes](code_list_projects.svg)
 
-  output.next_step("plastic status", because: "the projects are listed")
-end
-```
+Its rows run in this order:
 
-Its steps run in this order:
+1. Read: print each project with its path. [`list.rb:16`](../../../../lib/plastic/workflows/code/project/list.rb#L16)
+2. Outcome `:none`, when `context.scope.projects.empty?`: finishes with exit 0; next: plastic project new SLUG PATH. [`list.rb:23`](../../../../lib/plastic/workflows/code/project/list.rb#L23)
+3. Outcome `:done`, otherwise: finishes with exit 0; next: plastic status. [`list.rb:25`](../../../../lib/plastic/workflows/code/project/list.rb#L25)
 
-1. `projects = scope.projects` [`list.rb:14`](../../../../lib/plastic/commands/project/list.rb#L14)
-2. `projects.sort.each { |slug, path| output.row("project", "#{slug}: #{path}#{NO_STORE unless store?(slug)}") }` [`list.rb:15`](../../../../lib/plastic/commands/project/list.rb#L15)
-3. `return output.next_step("plastic project new SLUG PATH", because: "no project is registered yet") if projects.empty?` [`list.rb:16`](../../../../lib/plastic/commands/project/list.rb#L16)
-4. `output.next_step("plastic status", because: "the projects are listed")` [`list.rb:18`](../../../../lib/plastic/commands/project/list.rb#L18)
+In the words of workflow engines, the rows are these four parts:
+
+- **Trigger**: the call starts the workflow `Code::Project::List`.
+- **Activities**: 1 read.
+- **Transitions**: .
+- **Outcomes**: `:none`, `:done` end the call.
 
 ## What one call reads, writes and prints
 
@@ -51,8 +49,9 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| Offers the next command | 0 | plastic project new SLUG PATH | [`list.rb:16`](../../../../lib/plastic/commands/project/list.rb#L16) |
-| Offers the next command | 0 | plastic status | [`list.rb:18`](../../../../lib/plastic/commands/project/list.rb#L18) |
+| no project is registered yet | 0 | plastic project new SLUG PATH | [`list.rb:23`](../../../../lib/plastic/workflows/code/project/list.rb#L23) |
+| the projects are listed | 0 | plastic status | [`list.rb:25`](../../../../lib/plastic/workflows/code/project/list.rb#L25) |
+| a step raises | 1 | prints no next: line | [`code_workflow.rb:107`](../../../../lib/plastic/code_workflow.rb#L107) |
 
 ## What the page leaves out
 

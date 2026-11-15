@@ -85,6 +85,8 @@ module Plastic
       code_backup_purge: "Code::Backup::Purge",
       code_preview_backup_restore: "Code::Backup::Restore::Preview",
       code_backup_restore: "Code::Backup::Restore",
+      # Projects: the list of registered projects.
+      code_list_projects: "Code::Project::List",
       # Distribution: the installer commands over the running package and the home.
       code_show_version: "Code::Version",
       code_check_health: "Code::Doctor",

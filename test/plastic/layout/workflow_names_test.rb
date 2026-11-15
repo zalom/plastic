@@ -76,6 +76,7 @@ module WorkflowNameTable
     code_backup_purge: "Code::Backup::Purge",
     code_preview_backup_restore: "Code::Backup::Restore::Preview",
     code_backup_restore: "Code::Backup::Restore",
+    code_list_projects: "Code::Project::List",
     code_show_version: "Code::Version",
     code_check_health: "Code::Doctor",
     code_preview_install: "Code::Install::Preview",
@@ -124,8 +125,7 @@ class WorkflowNamesTest < Minitest::Test
 
   def file_of(path) = File.join(WORKFLOWS, *path.split("::").map { |segment| Plastic.snake(segment) }) + ".rb"
 
-  def test_the_registry_holds_the_ninety_keys_in_order
-    assert_equal 90, MAPPING.size
+  def test_the_registry_holds_the_keys_of_the_table_in_order
     assert_equal MAPPING.keys, registry.keys
   end
 

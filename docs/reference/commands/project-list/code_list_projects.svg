@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 86" width="360" height="86" role="img" xml:space="preserve">
-<title>The call of plastic project list</title>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 243" width="760" height="243" role="img" xml:space="preserve">
+<title>How List runs in plastic project list</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
 .lane-code { fill: #d5e8e3; stroke: #0d6b61; stroke-width: 1.5; }
@@ -68,8 +68,31 @@
 .big { font: 700 36px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
 }</style>
 <rect width="100%" height="100%" class="ground"/>
-<rect x="16" y="16" width="328" height="56" rx="6" class="card"/>
-<text x="28" y="36" class="tag tag-muted" text-anchor="start">ONE CALL, NO WORKFLOW</text>
-<text x="28" y="56" class="tb" text-anchor="start">List</text>
-<text x="332" y="56" class="tm" text-anchor="end">project list</text>
+<text x="16" y="22" class="tb" text-anchor="start">List</text>
+<text x="436" y="22" class="tm tag-muted" text-anchor="end">list.rb:11</text>
+<rect x="16" y="34" width="420" height="45" rx="6" class="card"/>
+<text x="26" y="49" class="tag tag-muted" text-anchor="start">READ</text>
+<text x="426" y="49" class="tm tag-muted" text-anchor="end">list.rb:16</text>
+<text x="26" y="66" class="t" text-anchor="start">print each project with its path</text>
+<path d="M 226 79 L 226 89" class="wire"/>
+<path d="M 221 81 L 226 89 L 231 81 Z" class="head"/>
+<text x="16" y="101" class="tag tag-muted" text-anchor="start">ENDS ON</text>
+<rect x="16" y="109" width="300" height="56" rx="6" class="card"/>
+<text x="26" y="125" class="tm" text-anchor="start">:none</text>
+<text x="26" y="141" class="tm tag-muted" text-anchor="start">when context.scope.projects.empty?</text>
+<path d="M 316 125 L 352 125" class="wire"/>
+<path d="M 344 120 L 352 125 L 344 130 Z" class="head"/>
+<rect x="352" y="109" width="392" height="56" rx="6" class="end"/>
+<text x="362" y="126" class="t" text-anchor="start">the call finishes, exit 0</text>
+<text x="362" y="140" class="t" text-anchor="start">next: plastic project new SLUG PATH</text>
+<text x="362" y="154" class="t" text-anchor="start">because: no project is registered yet</text>
+<rect x="16" y="173" width="300" height="56" rx="6" class="card"/>
+<text x="26" y="189" class="tm" text-anchor="start">:done</text>
+<text x="26" y="205" class="tm tag-muted" text-anchor="start">otherwise</text>
+<path d="M 316 189 L 352 189" class="wire"/>
+<path d="M 344 184 L 352 189 L 344 194 Z" class="head"/>
+<rect x="352" y="173" width="392" height="56" rx="6" class="end"/>
+<text x="362" y="190" class="t" text-anchor="start">the call finishes, exit 0</text>
+<text x="362" y="204" class="t" text-anchor="start">next: plastic status</text>
+<text x="362" y="218" class="t" text-anchor="start">because: the projects are listed</text>
 </svg>
