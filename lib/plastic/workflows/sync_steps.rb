@@ -21,7 +21,11 @@ module Plastic
       end.freeze
 
       CHANGES = {
-        up: { work: "The records of the intents whose files changed by hand are rewritten from the files", knowledge: "The documents of those intents are rewritten from the files" },
+        up: {
+          work: "The records of the intents whose files changed by hand are rewritten from the files",
+          knowledge: "The documents of those intents are rewritten from the files",
+          store: "The files of the intents and the index of the store are printed again from the rows"
+        },
         down: { store: "The files of the intents whose records changed are rewritten in the store folder" }
       }.freeze
 

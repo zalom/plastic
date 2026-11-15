@@ -30,6 +30,9 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 | --- | --- | --- |
 | The records of the intents whose files changed by hand are rewritten from the files | the work graph database, in the store folder | stays on this machine |
 | The documents of those intents are rewritten from the files | the knowledge graph database, in the store folder | stays on this machine |
+| The files of the intents and the index of the store are printed again from the rows | the store folder | goes with the store |
 | The files kept in the store folder are read into the references database | the references database, in the store folder | stays on this machine |
+
+Goes with the store: the files of the store carry the change, and `plastic sync up` rebuilds it on another machine. The database files themselves stay on this machine.
 
 The command is `Plastic::Commands::Sync::Up`, in [`up.rb:15`](../../../../lib/plastic/commands/sync/up.rb#L15).
