@@ -40,7 +40,7 @@ class DoctorTest < Plastic::TestCase
     error = assert_raises(Plastic::CLI::Command::Usage) { Plastic::Doctor.harness(scope, session: "s-1") }
 
     assert_equal "the session s-1 is recorded as unknown: its start hook found no sign of a registered harness; " \
-                 "name one with --harness: claude-code, codex", error.message
+                 "name one with --harness: #{Plastic::Harnesses.all.map(&:name).join(", ")}", error.message
   end
 
   def test_a_session_recorded_under_an_unregistered_name_is_named_as_having_no_doctor
@@ -49,25 +49,25 @@ class DoctorTest < Plastic::TestCase
     error = assert_raises(Plastic::CLI::Command::Usage) { Plastic::Doctor.harness(scope, session: "s-1") }
 
     assert_equal "the session s-1 is recorded as cursor, a harness Plastic has no doctor for; " \
-                 "name one with --harness: claude-code, codex", error.message
+                 "name one with --harness: #{Plastic::Harnesses.all.map(&:name).join(", ")}", error.message
   end
 
   def test_nothing_naming_a_harness_is_a_usage_error
     error = assert_raises(Plastic::CLI::Command::Usage) { Plastic::Doctor.harness(scope, session: nil) }
 
-    assert_equal "no harness names this call; name one with --harness: claude-code, codex", error.message
+    assert_equal "no harness names this call; name one with --harness: #{Plastic::Harnesses.all.map(&:name).join(", ")}", error.message
   end
 
   def test_a_harness_with_no_module_is_a_usage_error_naming_the_ones_that_have_one
     error = assert_raises(Plastic::CLI::Command::Usage) { Plastic::Doctor.kind("unknown") }
 
-    assert_equal "no doctor for the harness unknown; harnesses with one: claude-code, codex", error.message
+    assert_equal "no doctor for the harness unknown; harnesses with one: #{Plastic::Harnesses.all.map(&:name).join(", ")}", error.message
   end
 
-  def test_a_registered_harness_that_declares_no_doctor_has_none
-    error = assert_raises(Plastic::CLI::Command::Usage) { Plastic::Doctor.kind("hermes") }
+  def test_a_registered_harness_that_declares_no_doctor_gets_the_core_checks_alone
+    checks = Plastic::Doctor.check(scope, harness: "hermes")
 
-    assert_equal "no doctor for the harness hermes; harnesses with one: claude-code, codex", error.message
+    assert_equal Plastic::Doctor::Core.new(scope, running: RUNNING).checks.map(&:label), checks.map(&:label)
   end
 
   def test_a_module_passed_beside_claude_code_is_found_by_name
