@@ -28,14 +28,32 @@ module Plastic
 
       private
 
-      def found = (PLACES.find { |place| present?(place) } if folder)
+      def found = (PLACES.filter_map { |place| on_disk(place) }.first if folder)
 
       def folder = (@worktree.path if @worktree&.then { |tree| File.directory?(tree.path) }) || @worktree&.repo
 
-      def present?(place)
-        path = File.join(folder, place)
-        place.end_with?("/") ? File.directory?(path) && !Dir.empty?(path) : File.file?(path)
+      # The place as the disk spells it, nil when a name on the way is missing or the end is no template.
+      def on_disk(place)
+        names = spelled(place.chomp("/").split("/"), folder)
+        return unless names
+
+        folder_place = place.end_with?("/")
+        path = File.join(folder, *names)
+        return unless folder_place ? holds_markdown?(path) : File.file?(path)
+
+        folder_place ? "#{names.join("/")}/" : names.join("/")
       end
+
+      # The names on the disk that match `wanted` without regard to case, nil when one is missing.
+      def spelled(wanted, at)
+        return [] if wanted.empty?
+
+        name = Dir.children(at).find { |each| each.casecmp?(wanted.first) } if File.directory?(at)
+        rest = name && spelled(wanted.drop(1), File.join(at, name))
+        [name, *rest] if rest
+      end
+
+      def holds_markdown?(path) = File.directory?(path) && Dir.children(path).any? { |each| each.downcase.end_with?(".md") && File.file?(File.join(path, each)) }
     end
   end
 end
