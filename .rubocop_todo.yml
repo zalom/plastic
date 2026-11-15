@@ -12,7 +12,6 @@
 # SupportedStyles: with_first_argument, with_fixed_indentation
 Layout/ArgumentAlignment:
   Exclude:
-    - 'bin/lib/context_budget.rb'
     - 'bin/verify-change'
     - 'test/lib/failures_reporter.rb'
 
@@ -23,22 +22,6 @@ Layout/ArgumentAlignment:
 Layout/ArrayAlignment:
   Exclude:
     - 'bin/verify-change'
-
-# Offense count: 5
-# This cop supports safe autocorrection (--autocorrect).
-# Configuration parameters: EnforcedStyle.
-# SupportedStyles: normal, indented_internal_methods
-Layout/IndentationConsistency:
-  Exclude:
-    - 'bin/lib/context_budget.rb'
-
-# Offense count: 5
-# This cop supports safe autocorrection (--autocorrect).
-# Configuration parameters: Width, EnforcedStyleAlignWith, AllowedPatterns.
-# SupportedStylesAlignWith: start_of_line, relative_to_receiver
-Layout/IndentationWidth:
-  Exclude:
-    - 'bin/lib/context_budget.rb'
 
 # Offense count: 2
 # This cop supports safe autocorrection (--autocorrect).
@@ -53,9 +36,7 @@ Layout/SpaceInsideHashLiteralBraces:
 # Configuration parameters: AllowedMethods, AllowedPatterns, CountRepeatedAttributes, Max.
 Metrics/AbcSize:
   Exclude:
-    - 'bin/lib/context_budget.rb'
     - 'bin/verify-change'
-    - 'test/context_budget_bench_test.rb'
     - 'test/vocabulary_scan_test.rb'
 
 # Offense count: 2
@@ -69,38 +50,27 @@ Metrics/ClassLength:
 # Configuration parameters: AllowedMethods, AllowedPatterns, Max.
 Metrics/CyclomaticComplexity:
   Exclude:
-    - 'bin/lib/context_budget.rb'
     - 'bin/verify-change'
 
 # Offense count: 15
 # Configuration parameters: CountComments, Max, CountAsOne, AllowedMethods, AllowedPatterns.
 Metrics/MethodLength:
   Exclude:
-    - 'bin/lib/context_budget.rb'
     - 'bin/release-check'
     - 'bin/verify-change'
-    - 'test/context_budget_bench_test.rb'
     - 'test/packaging_no_store_ids_test.rb'
     - 'test/vocabulary_scan_test.rb'
-
-# Offense count: 2
-# Configuration parameters: CountComments, Max, CountAsOne.
-Metrics/ModuleLength:
-  Exclude:
-    - 'bin/lib/context_budget.rb'
 
 # Offense count: 3
 # Configuration parameters: Max, CountKeywordArgs, MaxOptionalParameters.
 Metrics/ParameterLists:
   Exclude:
-    - 'bin/lib/context_budget.rb'
     - 'bin/verify-change'
 
 # Offense count: 4
 # Configuration parameters: AllowedMethods, AllowedPatterns, Max.
 Metrics/PerceivedComplexity:
   Exclude:
-    - 'bin/lib/context_budget.rb'
     - 'bin/verify-change'
 
 # Offense count: 4
@@ -116,7 +86,6 @@ Minitest/EmptyLineBeforeAssertionMethods:
     - 'test/bin_test_test.rb'
     - 'test/harness_support_docs_test.rb'
     - 'test/packaging_no_store_ids_test.rb'
-    - 'test/plastic_core_budget_test.rb'
     - 'test/releasing_skill_publish_test.rb'
 
 # Offense count: 6
@@ -124,7 +93,6 @@ Minitest/EmptyLineBeforeAssertionMethods:
 Minitest/MultipleAssertions:
   Exclude:
     - 'test/bin_test_test.rb'
-    - 'test/context_budget_bench_test.rb'
     - 'test/harness_support_docs_test.rb'
 
 # Offense count: 1
@@ -133,17 +101,10 @@ Minitest/RefutePredicate:
   Exclude:
     - 'test/bin_test_test.rb'
 
-# Offense count: 1
-# This cop supports unsafe autocorrection (--autocorrect-all).
-Style/RedundantFormat:
-  Exclude:
-    - 'bin/lib/context_budget.rb'
-
 # Offense count: 7
 # This cop supports unsafe autocorrection (--autocorrect-all).
 Style/RedundantStructKeywordInit:
   Exclude:
-    - 'bin/lib/context_budget.rb'
     - 'bin/lib/release_guard.rb'
 
 # Offense count: 2
@@ -152,7 +113,6 @@ Style/RedundantStructKeywordInit:
 # SupportedStyles: single_quotes, double_quotes
 Style/StringLiteralsInInterpolation:
   Exclude:
-    - 'bin/lib/context_budget.rb'
     - 'test/packaging_no_store_ids_test.rb'
 
 # Offense count: 4
@@ -162,19 +122,3 @@ Style/StringLiteralsInInterpolation:
 Style/TernaryParentheses:
   Exclude:
     - 'bin/verify-change'
-
-# Offense count: 2
-# This cop supports safe autocorrection (--autocorrect).
-# Configuration parameters: EnforcedStyleForMultiline.
-# SupportedStylesForMultiline: comma, consistent_comma, diff_comma, no_comma
-Style/TrailingCommaInArrayLiteral:
-  Exclude:
-    - 'bin/lib/context_budget.rb'
-
-# Offense count: 1
-# This cop supports safe autocorrection (--autocorrect).
-# Configuration parameters: EnforcedStyleForMultiline.
-# SupportedStylesForMultiline: comma, consistent_comma, diff_comma, no_comma
-Style/TrailingCommaInHashLiteral:
-  Exclude:
-    - 'bin/lib/context_budget.rb'

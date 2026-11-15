@@ -10,6 +10,21 @@ class StandingSurfaceTest < Plastic::TestCase
   CAP = 5_000
   START = JSON.generate(source: "startup")
 
+  def within_cap?(bytes) = bytes <= CAP
+
+  # The name and description of one agent or skill, as the harness lists them.
+  def catalog_value(path)
+    data = YAML.safe_load(File.read(path).split(/^---\s*$/, 3).fetch(1), permitted_classes: [Date, Time], aliases: true)
+    "#{data.fetch("name")}#{data.fetch("description")}"
+  end
+
+  def catalog_bytes
+    paths = Dir[File.join(ROOT, "agents", "*.md")] + Dir[File.join(ROOT, "skills", "*", "SKILL.md")]
+    paths.sum { |path| catalog_value(path).bytesize }
+  end
+
+  def standing_bytes(boot_context) = File.binread(File.join(ROOT, "PLASTIC.md")).bytesize + catalog_bytes + boot_context.bytesize
+
   def test_the_sum_over_the_cap_is_refused
     refute within_cap?(CAP + 1)
   end

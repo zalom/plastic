@@ -16,6 +16,6 @@ session rows.
 
 ## Standing context
 
-Plastic measures the text it adds to every agent session. `bin/plastic-bench` measures each
-standing surface in bytes, and a test fails when a surface crosses its ceiling. A ceiling
-only moves down.
+Plastic measures the text it adds to every agent session. `test/standing_surface_test.rb`
+sums the standing surface in bytes, and the test fails when the sum crosses its 5,000-byte
+cap. The cap only moves down.
