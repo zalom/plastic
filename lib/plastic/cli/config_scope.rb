@@ -4,8 +4,8 @@ require_relative "../config"
 
 module Plastic
   class CLI
-    # What the config commands share: the --harness option, the merged
-    # settings it names, and the refusal of a key the settings do not hold.
+    # What the config commands share: the --harness option and the merged
+    # settings it names.
     module ConfigScope
       ON_OFF = [true, false].freeze
 
@@ -17,10 +17,6 @@ module Plastic
       private
 
       def config = (@config ||= Plastic::Config.new(scope.plastic_home, harness: parsed[:harness]))
-
-      def current(key)
-        config.entries.fetch(key) { raise CLI::Command::Usage, "no setting #{key}; plastic config list names them" }
-      end
 
       def harness_words = parsed[:harness].then { |name| name ? " --harness #{name}" : "" }
     end
