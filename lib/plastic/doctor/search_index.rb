@@ -27,7 +27,7 @@ module Plastic
 
       def check
         return unless File.directory?(folder)
-        return row("no database in this store") unless File.file?(knowledge)
+        return row("ok, no database in this store") unless File.file?(knowledge)
 
         guarded { judged(retrieval) }
       end
@@ -41,12 +41,12 @@ module Plastic
         lost = report.fetch(:missing)
         return lost_row(lost) unless lost.empty?
 
-        report.fetch(:repairable) ? mended(retrieval) : row("in step")
+        report.fetch(:repairable) ? mended(retrieval) : row("ok, in step")
       end
 
       def mended(retrieval)
         retrieval.repair
-        row("rebuilt")
+        row("ok, rebuilt")
       rescue Graph::Database::Error => error
         raise unless error.message.match?(/readonly/i)
 
