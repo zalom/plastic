@@ -349,7 +349,7 @@ class AutoWorktreeTest < Plastic::TestCase
     worktree = File.join(repo, ".claude", "worktrees", "1--alpha")
 
     assert_equal [0, "next: plastic auto 1"], [result.code, next_line(result)]
-    assert_includes result.out, "Create the worktree at #{worktree} on branch plastic/1--alpha, using version control as you do in this project, then run plastic auto 1 again"
+    assert_includes result.out, "Create the worktree at #{worktree} on branch plastic/1--alpha, then run plastic auto 1 again. Use version control as the project's AGENTS.md or CLAUDE.md defines it, or as the project's history shows when neither does."
   end
 
   def test_a_worktree_folder_that_exists_offers_the_brief_and_prints_no_instruction
