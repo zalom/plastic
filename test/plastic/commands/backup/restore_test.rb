@@ -145,3 +145,108 @@ class BackupRestoreDeclarationTest < Minitest::Test
     assert_equal Plastic::Graph::Schema.store.sort, Plastic::Commands::Backup::Restore.writes.uniq.sort
   end
 end
+
+class BackupRestoreGlobalTest < Plastic::TestCase
+  include BackupHomes
+
+  FIRST = "20260101100000"
+
+  def test_restoring_the_global_store_replaces_its_own_databases
+    home = fresh_home
+    seed_store(home, "global")
+    backup_at(home, at(2026, 1, 1, 10, 0, 0), slug: "global")
+    add_intent(home, "global")
+
+    assert_equal 0, restore_call(home, "--store", "global", "--timestamp", FIRST).code
+    assert_equal 1, intent_count(home, "global")
+  end
+end
+
+# A stream the way a person's terminal is seen by the command: it answers tty?.
+class TerminalInput < StringIO
+  def tty? = true
+end
+
+class BackupRestorePromptTest < Plastic::TestCase
+  include BackupHomes
+
+  BECAUSE = "the rows are restored and the files are not; ask the person whether to run plastic sync down, which writes the files from the rows, or plastic sync up, which reads the files into the rows"
+
+  def sync_down(home) = plastic("sync", "down", "--project", "alpha", env: env_for(home), table: Plastic::CLI::TABLE)
+
+  def intent_file(home) = File.join(home, "stores", "alpha", "store", "1--alpha", "intent.md")
+
+  def backed_up_home
+    home = fresh_home
+    sync_down(home)
+    backup_at(home, at(2026, 1, 1, 10, 0, 0))
+    File.write(intent_file(home), "\nWritten after the backup.\n", mode: "a")
+    home
+  end
+
+  def restore_with(home, input)
+    plastic("backup", "restore", "--store", "alpha", "--latest", env: env_for(home), table: Plastic::CLI::TABLE, input:)
+  end
+
+  def test_with_a_terminal_no_input_is_read_and_no_file_changes
+    home = backed_up_home
+    before = File.read(intent_file(home))
+    input = TerminalInput.new("up\n")
+    result = restore_with(home, input)
+
+    assert_equal [0, 0, before], [result.code, input.pos, File.read(intent_file(home))]
+  end
+
+  def test_with_no_terminal_no_input_is_read_and_no_file_changes
+    home = backed_up_home
+    before = File.read(intent_file(home))
+    input = StringIO.new("up\n")
+    result = restore_with(home, input)
+
+    assert_equal [0, 0, before], [result.code, input.pos, File.read(intent_file(home))]
+  end
+
+  def test_the_restore_ends_by_asking_the_person_which_way_to_sync_and_offers_no_command
+    [TerminalInput.new(""), StringIO.new("")].each do |input|
+      result = restore_with(backed_up_home, input)
+      lines = result.out.lines(chomp: true)
+
+      assert_equal [0, [], "because: #{BECAUSE}"], [result.code, lines.grep(/\Anext: /), lines.last]
+    end
+  end
+
+  def test_a_preview_reads_no_input_and_syncs_nothing
+    home = backed_up_home
+    before = File.read(intent_file(home))
+    input = TerminalInput.new("up\n")
+    result = plastic("backup", "restore", "--store", "alpha", "--latest", "--dry-run", env: env_for(home), table: Plastic::CLI::TABLE, input:)
+
+    assert_equal [0, 0, before], [result.code, input.pos, File.read(intent_file(home))]
+  end
+
+  def test_a_refused_restore_reads_no_input
+    input = TerminalInput.new("up\n")
+    result = plastic("backup", "restore", "--store", "alpha", "--latest", "--timestamp", "20200101000000", env: env_for(backed_up_home), table: Plastic::CLI::TABLE, input:)
+
+    assert_equal [2, 0], [result.code, input.pos]
+  end
+end
+
+class BackupRestoreSyncTest < Plastic::TestCase
+  include BackupHomes
+
+  def sync(home, direction) = plastic("sync", direction, "--project", "alpha", env: env_for(home), table: Plastic::CLI::TABLE)
+
+  def bodies(home) = Plastic::Graph.create(home:, store: "alpha").retrieval.documents("1").map(&:body)
+
+  def test_sync_up_after_restore_rereads_files_newer_than_the_backup
+    home = fresh_home
+    sync(home, "down")
+    backup_at(home, at(2026, 1, 1, 10, 0, 0))
+    File.write(File.join(home, "stores", "alpha", "store", "1--alpha", "1--alpha.md"), "\nWritten after the backup.\n", mode: "a")
+    restore_call(home, "--store", "alpha", "--latest")
+    sync(home, "up")
+
+    assert(bodies(home).any? { |body| body.include?("Written after the backup.") })
+  end
+end

@@ -2,6 +2,8 @@
 
 require_relative "../../test_helper"
 require_relative "../../../lib/plastic/cli/projects_file"
+require_relative "../../../lib/plastic/commands/intent/rule"
+require_relative "../../../lib/plastic/commands/status"
 
 class CLIProjectsFileTest < Plastic::TestCase
   def path = File.join(@plastic_home, "projects.yml")
@@ -50,5 +52,41 @@ class CLIProjectsFileTest < Plastic::TestCase
 
   def test_a_path_that_is_gone_is_not_the_same_folder
     refute Plastic::CLI::ProjectsFile.same_folder?(File.join(@plastic_home, "gone"), @plastic_home)
+  end
+end
+
+class ScopeBrokenProjectsTest < Plastic::TestCase
+  def call(*args) = plastic("intent", "rule", *args, table: Plastic::CLI::TABLE)
+
+  def projects(text) = File.write(File.join(@plastic_home, "projects.yml"), text)
+
+  def test_a_broken_projects_file_fails_the_call_naming_the_file
+    path = File.join(@plastic_home, "projects.yml")
+    projects("plastic: [\n")
+
+    result = call("1", "a ruling")
+
+    assert_equal 1, result.code
+    assert_includes result.err, path
+  end
+
+  def test_a_projects_file_with_no_projects_map_fails_the_call_naming_the_file
+    path = File.join(@plastic_home, "projects.yml")
+    projects("governing_docs: []\n")
+
+    result = call("1", "a ruling")
+
+    assert_equal 1, result.code
+    assert_includes result.err, path
+  end
+
+  def test_a_broken_projects_file_fails_a_command_that_is_not_a_routine
+    path = File.join(@plastic_home, "projects.yml")
+    projects("plastic: [\n")
+
+    result = plastic("status", table: Plastic::CLI::TABLE)
+
+    assert_equal 1, result.code
+    assert_includes result.err, path
   end
 end
