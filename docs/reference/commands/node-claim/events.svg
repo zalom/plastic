@@ -123,8 +123,8 @@
 <path d="M 472 321 L 480 326 L 472 331 Z" class="head"/>
 <rect x="480" y="295" width="330" height="62" rx="6" class="stop-refusal"/>
 <text x="492" y="313" class="tag tag-refusal" text-anchor="start">STOPS, EXIT 3</text>
-<text x="492" y="331" class="t" text-anchor="start">The claim is capped by the limit of nodes in</text>
-<text x="492" y="347" class="t" text-anchor="start">progress.</text>
+<text x="492" y="331" class="t" text-anchor="start">The node was claimed three times and the owner</text>
+<text x="492" y="347" class="t" text-anchor="start">decides.</text>
 <path d="M 424 321 L 432 321 L 432 388 L 480 388" class="wire-failure"/>
 <path d="M 472 383 L 480 388 L 472 393 Z" class="head"/>
 <rect x="480" y="365" width="330" height="46" rx="6" class="stop-failure"/>

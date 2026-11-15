@@ -36,7 +36,7 @@ module Plastic
           end
 
           step "claim the node", done: ->(context) { !context.result.nil? },
-            changes: { work: "The node is claimed by this session" } do |context|
+            changes: { work: ["The node is claimed by this session", "A node claimed three times before moves to needing information, with the question for the owner"] } do |context|
             result, node = context.work.claim_node(intent_id: context.intent_id, id: context.id, by: context.session)
             context[:result] = result
             context[:node] = node
@@ -53,7 +53,7 @@ module Plastic
           end
 
           gate "%{problem}", stops: :refusal,
-            stops_when: "the claim is capped by the limit of nodes in progress",
+            stops_when: "the node was claimed three times and the owner decides",
             pass: ->(context) { context.result.to_s != "capped" }
           gate "%{problem}", stops: :failure,
             stops_when: "the node is blocked or refused",

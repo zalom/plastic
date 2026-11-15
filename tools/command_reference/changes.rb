@@ -27,7 +27,7 @@ module CommandReference
 
     def change(text, place) = Change.new(text, place, Places.where(place), Places.reach(place, printing?))
 
-    def declared = [*steps, *(@klass.changes || {}).to_a].map { |place, text| change(text, place) }
+    def declared = [*steps, *(@klass.changes || {}).to_a].flat_map { |place, text| Array(text).map { |each| change(each, place) } }
 
     def steps = @flows.flat_map { |flow| flow.klass.steps.grep(Plastic::CodeWorkflow::Step).flat_map { |step| step.changes.to_a } }
 
