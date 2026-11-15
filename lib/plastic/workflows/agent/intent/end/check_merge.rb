@@ -27,7 +27,7 @@ module Plastic
 
             outcome :handoff, stops: :failure, offers: "plastic intent end %{intent_id}",
               because: "the agent merges the code and confirms the architecture map and records both in outcome.md"
-            outcome :done, offers: nil, because: "the merge and the architecture map are recorded"
+            outcome :done, unreachable: true, offers: nil, because: "the merge and the architecture map are recorded"
           end
         end
       end

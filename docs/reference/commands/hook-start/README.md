@@ -8,51 +8,19 @@ SessionStart: names the harness, opens the session row with it, then prints the 
 plastic hook start
 ```
 
-The command is `Hooks::Start`, in [`start.rb:17`](../../../../lib/plastic/hooks/start.rb#L17). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+## The events of one call, step by step
 
-## Components
+![The events of one call of plastic hook start](events.svg)
 
-![The components on the path of plastic hook start](component.svg)
+The boxes on the left run in order. The boxes on the right are the ways the call stops or ends at that step.
 
-The figure shows the command, the workflows it runs, the classes behind them, and the databases and files they reach.
+## What one call changes
 
-## The events of one call
+| What changes | Where | Reach |
+| --- | --- | --- |
+| The databases of the store are kept out of its versioning | the store folder | goes with the store |
+| The session row of the call is opened or kept | the local database, in the home folder | stays on this machine |
 
-![The call of plastic hook start](call.svg)
+Goes with the store: the files of the store carry the change, and `plastic sync up` rebuilds it on another machine. The database files themselves stay on this machine.
 
-The hook's `respond`, at [`start.rb:27`](../../../../lib/plastic/hooks/start.rb#L27):
-
-```ruby
-def respond(event)
-  doctor = DoctorLine.new(scope, harness, session_id:, health: @health, err: environment.err)
-  [*recap(event), doctor.line(event[:source])].compact.join("\n")
-end
-```
-
-Its steps run in this order:
-
-1. `doctor = DoctorLine.new(scope, harness, session_id:, health: @health, err: environment.err)` [`start.rb:28`](../../../../lib/plastic/hooks/start.rb#L28)
-2. `[*recap(event), doctor.line(event[:source])].compact.join("\n")` [`start.rb:29`](../../../../lib/plastic/hooks/start.rb#L29)
-
-## What one call reads, writes and prints
-
-![What one call of plastic hook start reads, writes and prints](touches.svg)
-
-| Place | Database or file | Tables | Reads or writes | Code |
-| --- | --- | --- | --- | --- |
-| the home folder | local.db | `locks`, `routine_runs`, `sessions` | reads and writes | found in the code, not declared |
-| the store folder | work_graph.db | `intents`, `nodes`, `savepoints` | reads | found in the code, not declared |
-
-## How a call ends
-
-Every call can also end in [the ways any call can end](../../dsl/README.md#how-any-call-can-end).
-
-| Ending | Exit | next: | Code |
-| --- | --- | --- | --- |
-| answers the event | 0 | prints no next: line | [`start.rb:27`](../../../../lib/plastic/hooks/start.rb#L27) |
-
-## What the page leaves out
-
-Every call shares a few things that this page does not repeat; [the command DSL](../../dsl/README.md#what-every-call-shares) names them.
-
-- No gate of this command refuses, so exit 3 never happens.
+The command is `Plastic::Hooks::Start`, in [`start.rb:17`](../../../../lib/plastic/hooks/start.rb#L17).

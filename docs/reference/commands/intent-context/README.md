@@ -8,125 +8,31 @@ Persists the agent's selected evidence without judging its relevance.
 plastic intent context ID [--from FILE]
 ```
 
-The command is `Intent::Context`, in [`context.rb:9`](../../../../lib/plastic/commands/intent/context.rb#L9). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
-
 | Argument or option | What it gives | Default |
 | --- | --- | --- |
 | `ID` | the owning intent | |
 | `--from FILE` | JSON file holding the arrays evidence, facts, interpretations, gaps and rulings |  |
 
-## Components
+## The workflows of one call
 
-![The components on the path of plastic intent context](component.svg)
+![The workflows of one call of plastic intent context](workflows.svg)
 
-The figure shows the command, the workflows it runs, the classes behind them, and the databases and files they reach.
+Each box is a workflow. The words between the boxes say when the call moves on, and the last boxes say how the call ends.
 
-## The events of one call
+## The events of one call, step by step
 
-![The workflows of plastic intent context](workflows.svg)
+![The events of one call of plastic intent context](events.svg)
 
-| Workflow | Kind | Code |
+The boxes on the left run in order. The boxes on the right are the ways the call stops or ends at that step.
+
+## What one call changes
+
+| What changes | Where | Reach |
 | --- | --- | --- |
-| [Code::Intent::Context::CheckOwner](#codeintentcontextcheckowner) | code | [`check_owner.rb:13`](../../../../lib/plastic/workflows/code/intent/context/check_owner.rb#L13) |
-| [Code::Intent::Context::Read](#codeintentcontextread) | code | [`read.rb:15`](../../../../lib/plastic/workflows/code/intent/context/read.rb#L15) |
-| [Code::Intent::Context](#codeintentcontext) | code | [`context.rb:17`](../../../../lib/plastic/workflows/code/intent/context.rb#L17) |
+| The submitted context is saved as a document of the intent | the knowledge graph database, in the store folder | goes with the store |
+| The hash of each file printed is recorded in the work database | the work graph database, in the store folder | goes with the store |
+| The files of the intent and the index of the store are rewritten | the store folder | goes with the store |
 
-### Code::Intent::Context::CheckOwner
+Goes with the store: the files of the store carry the change, and `plastic sync up` rebuilds it on another machine. The database files themselves stay on this machine.
 
-The code workflow `:code_check_context_owner`, in [`check_owner.rb:13`](../../../../lib/plastic/workflows/code/intent/context/check_owner.rb#L13).
-
-Confirms that a context request names an existing intent in its owning store.
-
-![How Code::Intent::Context::CheckOwner runs: its steps, where it stops, and its outcomes](code_check_context_owner.svg)
-
-Its rows run in this order:
-
-1. Read: find the owning intent. [`check_owner.rb:19`](../../../../lib/plastic/workflows/code/intent/context/check_owner.rb#L19)
-2. Gate: passes when `context.intent`; otherwise the call stops with exit 1 and prints no intent INTENT_ID in owning store. [`check_owner.rb:24`](../../../../lib/plastic/workflows/code/intent/context/check_owner.rb#L24)
-3. Outcome `:submit`, when `context.from`: starts the workflow [Code::Intent::Context](#codeintentcontext). [`check_owner.rb:26`](../../../../lib/plastic/workflows/code/intent/context/check_owner.rb#L26)
-4. Outcome `:read`, otherwise: starts the workflow [Code::Intent::Context::Read](#codeintentcontextread). [`check_owner.rb:27`](../../../../lib/plastic/workflows/code/intent/context/check_owner.rb#L27)
-
-It sets `intent`.
-
-### Code::Intent::Context::Read
-
-The code workflow `:code_read_context`, in [`read.rb:15`](../../../../lib/plastic/workflows/code/intent/context/read.rb#L15).
-
-Reads the saved retrieval context of one intent with its evidence freshness.
-
-![How Code::Intent::Context::Read runs: its steps, where it stops, and its outcomes](code_read_context.svg)
-
-Its rows run in this order:
-
-1. Read: forget a stop of an earlier call. [`code_workflow.rb:54`](../../../../lib/plastic/code_workflow.rb#L54)
-2. Read: read the saved context. [`read.rb:23`](../../../../lib/plastic/workflows/code/intent/context/read.rb#L23)
-3. Gate: passes when `context.problem.nil?`; otherwise the call stops with exit 1 and prints PROBLEM. [`read.rb:31`](../../../../lib/plastic/workflows/code/intent/context/read.rb#L31)
-4. Outcome `:done`, always: finishes with exit 0; prints no next: line. [`read.rb:35`](../../../../lib/plastic/workflows/code/intent/context/read.rb#L35)
-
-It sets `problem`.
-
-### Code::Intent::Context
-
-The code workflow `:code_submit_context`, in [`context.rb:17`](../../../../lib/plastic/workflows/code/intent/context.rb#L17).
-
-Validates a submitted evidence selection and persists it in the owning store.
-
-![How Code::Intent::Context runs: its steps, where it stops, and its outcomes](code_submit_context.svg)
-
-Its rows run in this order:
-
-1. Read: forget a stop of an earlier call. [`code_workflow.rb:54`](../../../../lib/plastic/code_workflow.rb#L54)
-2. Read: validate the submitted context. [`context.rb:25`](../../../../lib/plastic/workflows/code/intent/context.rb#L25)
-3. Gate: passes when `context.problem.nil?`; otherwise the call stops with exit 1 and prints PROBLEM. [`context.rb:35`](../../../../lib/plastic/workflows/code/intent/context.rb#L35)
-4. Step: save the submitted context. Done when `ContextPersistence.new(context).saved?(context.submission)`, so a second call skips it. [`context.rb:39`](../../../../lib/plastic/workflows/code/intent/context.rb#L39)
-5. Read: print the saved context. [`context.rb:44`](../../../../lib/plastic/workflows/code/intent/context.rb#L44)
-6. Outcome `:done`, always: finishes with exit 0; prints no next: line. [`context.rb:46`](../../../../lib/plastic/workflows/code/intent/context.rb#L46)
-
-It sets `problem`, `submission`.
-
-In the words of workflow engines, the rows are these four parts:
-
-- **Trigger**: the call starts the workflow `Code::Intent::Context::CheckOwner`; each later workflow starts from an outcome of the one before it.
-- **Activities**: 6 reads and 1 step.
-- **Transitions**: 3 gates stop the call when their checks fail; a step runs only while its done check fails; CheckOwner goes to Context on `:submit`; CheckOwner goes to Read on `:read`.
-- **Outcomes**: `:done` of Read, `:done` of Context end the call.
-
-## What one call reads, writes and prints
-
-![What one call of plastic intent context reads, writes and prints](touches.svg)
-
-| Place | Database or file | Tables | Reads or writes | Code |
-| --- | --- | --- | --- | --- |
-| the store folder | knowledge_graph.db | `documents`, `retrieval_contexts`, `retrieval_discoveries` | reads and writes | [`context.rb:12`](../../../../lib/plastic/commands/intent/context.rb#L12), [`context.rb:13`](../../../../lib/plastic/commands/intent/context.rb#L13) |
-| the store folder | work_graph.db | `intents` | reads and writes | [`context.rb:13`](../../../../lib/plastic/commands/intent/context.rb#L13) |
-| the store folder | store/index.json | | writes | [`prints.rb:18`](../../../../lib/plastic/graph/prints.rb#L18) |
-| the store folder | store/ID--SLUG/PATH | | writes | [`prints.rb:19`](../../../../lib/plastic/graph/prints.rb#L19) |
-| the store folder | store/ID--SLUG/savepoint.md | | writes | [`prints.rb:20`](../../../../lib/plastic/graph/prints.rb#L20) |
-| the store folder | store/ID--SLUG/graph.json | | writes | [`prints.rb:21`](../../../../lib/plastic/graph/prints.rb#L21) |
-| the store folder | store/ID--SLUG/context.json | | writes | [`prints.rb:22`](../../../../lib/plastic/graph/prints.rb#L22) |
-
-A second call runs the same rows again. A step runs again only when its done check fails.
-
-| Step | Done when | The second call | Code |
-| --- | --- | --- | --- |
-| save the submitted context | `ContextPersistence.new(context).saved?(context.submission)` | skips it | [`context.rb:39`](../../../../lib/plastic/workflows/code/intent/context.rb#L39) |
-
-## How a call ends
-
-Every call can also end in [the ways any call can end](../../dsl/README.md#how-any-call-can-end).
-
-| Ending | Exit | next: | Code |
-| --- | --- | --- | --- |
-| no intent INTENT_ID in owning store | 1 | prints no next: line | [`check_owner.rb:24`](../../../../lib/plastic/workflows/code/intent/context/check_owner.rb#L24) |
-| PROBLEM | 1 | prints no next: line | [`read.rb:31`](../../../../lib/plastic/workflows/code/intent/context/read.rb#L31) |
-| the retrieval context was read | 0 | prints no next: line | [`read.rb:35`](../../../../lib/plastic/workflows/code/intent/context/read.rb#L35) |
-| PROBLEM | 1 | prints no next: line | [`context.rb:35`](../../../../lib/plastic/workflows/code/intent/context.rb#L35) |
-| the retrieval context was read | 0 | prints no next: line | [`context.rb:46`](../../../../lib/plastic/workflows/code/intent/context.rb#L46) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:108`](../../../../lib/plastic/code_workflow.rb#L108) |
-
-## What the page leaves out
-
-Every call shares a few things that this page does not repeat; [the command DSL](../../dsl/README.md#what-every-call-shares) names them.
-
-- No gate of this command refuses, so exit 3 never happens.
-- A call that writes saves a routine run row in local.db. A stop by a gate or a step saves the run, and the next call resumes from it. A dry run saves no row.
+The command is `Plastic::Commands::Intent::Context`, in [`context.rb:9`](../../../../lib/plastic/commands/intent/context.rb#L9).

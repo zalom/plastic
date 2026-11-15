@@ -9,8 +9,6 @@ class CommandReferenceTouchesTest < Minitest::Test
 
   def touches(words) = page(words).touches
 
-  def svg(words) = CommandReference::Figures::Component.new(page(words)).canvas.standalone
-
   def test_a_delegated_writer_method_writes_the_table_of_its_writer
     assert touches("node add").writes?("work_graph.db", "nodes")
   end
@@ -92,24 +90,6 @@ class CommandReferenceTouchesTest < Minitest::Test
 
   def test_a_declared_store_is_not_drawn_when_the_scan_found_its_tables
     refute touches("node add").declared?("work_graph.db", :write)
-  end
-
-  def test_a_command_with_a_database_does_not_say_no_database_was_found_in_the_code
-    refute_includes svg("document get"), "no database found in the code"
-    refute_includes svg("next"), "no database found in the code"
-  end
-
-  def test_a_command_with_nothing_found_says_no_database_was_found_in_the_code
-    assert_includes svg("version"), "no database found in the code"
-    refute_includes svg("version"), "touches no database"
-  end
-
-  def test_the_drawing_marks_a_declared_store
-    assert_includes svg("node done"), "declared"
-  end
-
-  def test_the_drawing_explains_the_mark_in_its_legend
-    assert_includes svg("node done"), "R read"
   end
 
   def test_the_local_database_counts_as_the_work_store

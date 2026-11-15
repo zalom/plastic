@@ -8,56 +8,14 @@ The version of the package this command came from, its channel and the file it w
 plastic version
 ```
 
-The command is `Version`, in [`version.rb:9`](../../../../lib/plastic/commands/version.rb#L9). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+## The events of one call, step by step
 
-## Components
+![The events of one call of plastic version](events.svg)
 
-![The components on the path of plastic version](component.svg)
+The boxes on the left run in order. The boxes on the right are the ways the call stops or ends at that step.
 
-The figure shows the command, the workflows it runs, the classes behind them, and the databases and files they reach.
+## What one call changes
 
-## The events of one call
+This command changes nothing.
 
-The call starts the workflow `Code::Version`, in [`version.rb:11`](../../../../lib/plastic/workflows/code/version.rb#L11).
-
-Reads the version of the running package: its VERSION file when it has one, as an installed copy does, otherwise its package.json.
-
-![How Code::Version runs: its steps, where it stops, and its outcomes](code_show_version.svg)
-
-Its rows run in this order:
-
-1. Read: find the version file of the running package. [`version.rb:16`](../../../../lib/plastic/workflows/code/version.rb#L16)
-2. Gate: passes when `!context.source.nil?`; otherwise the call stops with exit 1 and prints the running package has no VERSION file and no package.json. [`version.rb:20`](../../../../lib/plastic/workflows/code/version.rb#L20)
-3. Read: say the version and its channel. [`version.rb:23`](../../../../lib/plastic/workflows/code/version.rb#L23)
-4. Outcome `:done`, always: finishes with exit 0; next: plastic status. [`version.rb:30`](../../../../lib/plastic/workflows/code/version.rb#L30)
-
-It sets `source`.
-
-In the words of workflow engines, the rows are these four parts:
-
-- **Trigger**: the call starts the workflow `Code::Version`.
-- **Activities**: 2 reads.
-- **Transitions**: 1 gate stops the call when its check fails.
-- **Outcomes**: `:done` ends the call.
-
-## What one call reads, writes and prints
-
-![What one call of plastic version reads, writes and prints](touches.svg)
-
-It reads and writes no store database and prints no store file.
-
-## How a call ends
-
-Every call can also end in [the ways any call can end](../../dsl/README.md#how-any-call-can-end).
-
-| Ending | Exit | next: | Code |
-| --- | --- | --- | --- |
-| the running package has no VERSION file and no package.json | 1 | prints no next: line | [`version.rb:20`](../../../../lib/plastic/workflows/code/version.rb#L20) |
-| the command line works, so read the work next | 0 | plastic status | [`version.rb:30`](../../../../lib/plastic/workflows/code/version.rb#L30) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:108`](../../../../lib/plastic/code_workflow.rb#L108) |
-
-## What the page leaves out
-
-Every call shares a few things that this page does not repeat; [the command DSL](../../dsl/README.md#what-every-call-shares) names them.
-
-- No gate of this command refuses, so exit 3 never happens.
+The command is `Plastic::Commands::Version`, in [`version.rb:9`](../../../../lib/plastic/commands/version.rb#L9).

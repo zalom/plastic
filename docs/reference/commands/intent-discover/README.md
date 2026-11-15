@@ -8,117 +8,38 @@ Builds the retrieval handoff manifest; the harness chooses its evidence.
 plastic intent discover ID TERMS... [--source-project SLUG]
 ```
 
-The command is `Intent::Discover`, in [`discover.rb:9`](../../../../lib/plastic/commands/intent/discover.rb#L9). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
-
 | Argument or option | What it gives | Default |
 | --- | --- | --- |
 | `ID` | the owning intent | |
 | `TERMS` | literal search terms | |
 | `--source-project SLUG` | a source store | `[]` |
 
-## Components
+## The workflows of one call
 
-![The components on the path of plastic intent discover](component.svg)
+![The workflows of one call of plastic intent discover](workflows.svg)
 
-The figure shows the command, the workflows it runs, the classes behind them, and the databases and files they reach.
+Each box is a workflow. The words between the boxes say when the call moves on, and the last boxes say how the call ends.
 
-## The events of one call
+## The events of one call, step by step
 
-![The workflows of plastic intent discover](workflows.svg)
+![The events of one call of plastic intent discover](events.svg)
 
-| Workflow | Kind | Code |
+The boxes on the left run in order. The boxes on the right are the ways the call stops or ends at that step.
+
+## What one call changes
+
+| What changes | Where | Reach |
 | --- | --- | --- |
-| [Code::Intent::Discover](#codeintentdiscover) | code | [`discover.rb:17`](../../../../lib/plastic/workflows/code/intent/discover.rb#L17) |
-| [Agent::Intent::Discover](#agentintentdiscover) | agent | [`discover.rb:11`](../../../../lib/plastic/workflows/agent/intent/discover.rb#L11) |
+| The retrieval discovery is recorded for the intent | the knowledge graph database, in the store folder | goes with the store |
+| The hash of each file printed is recorded in the work database | the work graph database, in the store folder | goes with the store |
+| The files of the intent and the index of the store are rewritten | the store folder | goes with the store |
 
-### Code::Intent::Discover
+Goes with the store: the files of the store carry the change, and `plastic sync up` rebuilds it on another machine. The database files themselves stay on this machine.
 
-The code workflow `:code_discover_retrieval`, in [`discover.rb:17`](../../../../lib/plastic/workflows/code/intent/discover.rb#L17).
+## What the agent workflow steps print
 
-Records lexical retrieval candidates before an external agent selects them.
+| Step | The text the agent gets |
+| --- | --- |
+| 8 | \<handoff text> |
 
-![How Code::Intent::Discover runs: its steps, where it stops, and its outcomes](code_discover_retrieval.svg)
-
-Its rows run in this order:
-
-1. Read: forget a stop of an earlier call. [`code_workflow.rb:54`](../../../../lib/plastic/code_workflow.rb#L54)
-2. Read: check the intent id. [`discover.rb:25`](../../../../lib/plastic/workflows/code/intent/discover.rb#L25)
-3. Read: find the owning intent. [`discover.rb:29`](../../../../lib/plastic/workflows/code/intent/discover.rb#L29)
-4. Read: find the saved retrieval context. [`discover.rb:33`](../../../../lib/plastic/workflows/code/intent/discover.rb#L33)
-5. Gate: passes when `!context.intent.nil?`; otherwise the call stops with exit 1 and prints no intent INTENT_ID in owning store. [`discover.rb:37`](../../../../lib/plastic/workflows/code/intent/discover.rb#L37)
-6. Read: check the source stores. [`discover.rb:39`](../../../../lib/plastic/workflows/code/intent/discover.rb#L39)
-7. Gate: passes when `context.problem.nil?`; otherwise the call stops with exit 1 and prints PROBLEM. [`discover.rb:43`](../../../../lib/plastic/workflows/code/intent/discover.rb#L43)
-8. Step: record retrieval discovery. Done when `!context.discovery.nil?`, so a second call skips it. [`discover.rb:47`](../../../../lib/plastic/workflows/code/intent/discover.rb#L47)
-9. Read: report the discovery. [`discover.rb:58`](../../../../lib/plastic/workflows/code/intent/discover.rb#L58)
-10. Outcome `:done`, always: starts the workflow [Agent::Intent::Discover](#agentintentdiscover). [`discover.rb:62`](../../../../lib/plastic/workflows/code/intent/discover.rb#L62)
-
-It sets `intent`, `source_scope`, `discovery`, `handoff_text`, `context_command`, `context_complete`, `problem`.
-
-### Agent::Intent::Discover
-
-The agent workflow `:agent_external_agent_workflow`, in [`discover.rb:11`](../../../../lib/plastic/workflows/agent/intent/discover.rb#L11).
-
-Gives an external agent deterministic retrieval commands without selecting evidence.
-
-![How Agent::Intent::Discover runs: its steps, where it stops, and its outcomes](agent_external_agent_workflow.svg)
-
-Its rows run in this order:
-
-1. Agent step: select retrieved evidence. Done when `context.context_complete`; while it fails, the call prints its `say:` text. [`discover.rb:17`](../../../../lib/plastic/workflows/agent/intent/discover.rb#L17)
-2. Outcome `:handoff`, when a step is left: hands off with exit 0; next: CONTEXT_COMMAND. [`discover.rb:18`](../../../../lib/plastic/workflows/agent/intent/discover.rb#L18)
-3. Outcome `:done`, when every done check holds: finishes with exit 0; prints no next: line. [`discover.rb:19`](../../../../lib/plastic/workflows/agent/intent/discover.rb#L19)
-
-The agent step "select retrieved evidence" prints:
-
-> HANDOFF_TEXT
-
-It sets `handoff_text`, `context_command`, `context_complete`.
-
-While a step is left, the call hands off with exit 0 from `:handoff`: it prints the `say:` text of each failing step and offers next: CONTEXT_COMMAND. The command writes, so the call keeps its routine run row in local.db. The next call loads its facts, restarts at the first workflow and skips each step whose `done:` check holds.
-
-In the words of workflow engines, the rows are these four parts:
-
-- **Trigger**: the call starts the workflow `Code::Intent::Discover`; each later workflow starts from an outcome of the one before it.
-- **Activities**: 6 reads, 1 step and 1 agent step.
-- **Transitions**: 2 gates stop the call when their checks fail; a step runs only while its done check fails; Discover goes to Discover on every outcome.
-- **Outcomes**: `:handoff` of Discover, `:done` of Discover end the call.
-
-## What one call reads, writes and prints
-
-![What one call of plastic intent discover reads, writes and prints](touches.svg)
-
-| Place | Database or file | Tables | Reads or writes | Code |
-| --- | --- | --- | --- | --- |
-| the store folder | knowledge_graph.db | `retrieval_contexts`, `retrieval_discoveries` | reads and writes | [`discover.rb:14`](../../../../lib/plastic/commands/intent/discover.rb#L14), [`discover.rb:15`](../../../../lib/plastic/commands/intent/discover.rb#L15) |
-| the store folder | work_graph.db | `intents` | reads and writes | [`discover.rb:15`](../../../../lib/plastic/commands/intent/discover.rb#L15) |
-| the store folder | store/index.json | | writes | [`prints.rb:18`](../../../../lib/plastic/graph/prints.rb#L18) |
-| the store folder | store/ID--SLUG/PATH | | writes | [`prints.rb:19`](../../../../lib/plastic/graph/prints.rb#L19) |
-| the store folder | store/ID--SLUG/savepoint.md | | writes | [`prints.rb:20`](../../../../lib/plastic/graph/prints.rb#L20) |
-| the store folder | store/ID--SLUG/graph.json | | writes | [`prints.rb:21`](../../../../lib/plastic/graph/prints.rb#L21) |
-| the store folder | store/ID--SLUG/context.json | | writes | [`prints.rb:22`](../../../../lib/plastic/graph/prints.rb#L22) |
-
-A second call runs the same rows again. A step runs again only when its done check fails.
-
-| Step | Done when | The second call | Code |
-| --- | --- | --- | --- |
-| record retrieval discovery | `!context.discovery.nil?` | skips it | [`discover.rb:47`](../../../../lib/plastic/workflows/code/intent/discover.rb#L47) |
-| select retrieved evidence | `context.context_complete` | skips it | [`discover.rb:17`](../../../../lib/plastic/workflows/agent/intent/discover.rb#L17) |
-
-## How a call ends
-
-Every call can also end in [the ways any call can end](../../dsl/README.md#how-any-call-can-end).
-
-| Ending | Exit | next: | Code |
-| --- | --- | --- | --- |
-| no intent INTENT_ID in owning store | 1 | prints no next: line | [`discover.rb:37`](../../../../lib/plastic/workflows/code/intent/discover.rb#L37) |
-| PROBLEM | 1 | prints no next: line | [`discover.rb:43`](../../../../lib/plastic/workflows/code/intent/discover.rb#L43) |
-| an external agent must select the evidence | 0 | CONTEXT_COMMAND | [`discover.rb:18`](../../../../lib/plastic/workflows/agent/intent/discover.rb#L18) |
-| the retrieval context was submitted | 0 | prints no next: line | [`discover.rb:19`](../../../../lib/plastic/workflows/agent/intent/discover.rb#L19) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:108`](../../../../lib/plastic/code_workflow.rb#L108) |
-
-## What the page leaves out
-
-Every call shares a few things that this page does not repeat; [the command DSL](../../dsl/README.md#what-every-call-shares) names them.
-
-- No gate of this command refuses, so exit 3 never happens.
-- A call that writes saves a routine run row in local.db. A stop by a gate or a step saves the run, and the next call resumes from it. A dry run saves no row.
+The command is `Plastic::Commands::Intent::Discover`, in [`discover.rb:9`](../../../../lib/plastic/commands/intent/discover.rb#L9).

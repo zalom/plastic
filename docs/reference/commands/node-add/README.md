@@ -6,8 +6,6 @@ Add a node to an intent's work graph.
 plastic node add ID TITLE --criterion KEY [--input PATH]
 ```
 
-The command is `Node::Add`, in [`add.rb:9`](../../../../lib/plastic/commands/node/add.rb#L9). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
-
 | Argument or option | What it gives | Default |
 | --- | --- | --- |
 | `ID` | the intent | |
@@ -15,70 +13,19 @@ The command is `Node::Add`, in [`add.rb:9`](../../../../lib/plastic/commands/nod
 | `--criterion KEY` | the key of the spec done criterion this node serves |  |
 | `--input PATH` | a file the node reads |  |
 
-## Components
+## The events of one call, step by step
 
-![The components on the path of plastic node add](component.svg)
+![The events of one call of plastic node add](events.svg)
 
-The figure shows the command, the workflows it runs, the classes behind them, and the databases and files they reach.
+The boxes on the left run in order. The boxes on the right are the ways the call stops or ends at that step.
 
-## The events of one call
+## What one call changes
 
-The call starts the workflow `Code::Node::Add`, in [`add.rb:12`](../../../../lib/plastic/workflows/code/node/add.rb#L12).
+| What changes | Where | Reach |
+| --- | --- | --- |
+| The node is added to the work graph of the intent | the work graph database, in the store folder | goes with the store |
+| The files of the intent and the index of the store are rewritten | the store folder | goes with the store |
 
-Writes a new node, open and ready, unless the intent is done or abandoned.
+Goes with the store: the files of the store carry the change, and `plastic sync up` rebuilds it on another machine. The database files themselves stay on this machine.
 
-![How Code::Node::Add runs: its steps, where it stops, and its outcomes](code_add_node.svg)
-
-Its rows run in this order:
-
-1. Read: check the intent. [`add.rb:17`](../../../../lib/plastic/workflows/code/node/add.rb#L17)
-2. Gate: passes when `context.problem.nil?`; otherwise the call stops with exit 1 and prints PROBLEM. [`add.rb:21`](../../../../lib/plastic/workflows/code/node/add.rb#L21)
-3. Step: add the node. Done when `!context.id.nil?`, so a second call skips it. [`add.rb:25`](../../../../lib/plastic/workflows/code/node/add.rb#L25)
-4. Read: say what was added. [`add.rb:32`](../../../../lib/plastic/workflows/code/node/add.rb#L32)
-5. Outcome `:done`, always: finishes with exit 0; next: plastic edge add INTENT_ID FROM TO. [`add.rb:48`](../../../../lib/plastic/workflows/code/node/add.rb#L48)
-
-It sets `problem`, `id`.
-
-In the words of workflow engines, the rows are these four parts:
-
-- **Trigger**: the call starts the workflow `Code::Node::Add`.
-- **Activities**: 2 reads and 1 step.
-- **Transitions**: 1 gate stops the call when its check fails; a step runs only while its done check fails.
-- **Outcomes**: `:done` ends the call.
-
-## What one call reads, writes and prints
-
-![What one call of plastic node add reads, writes and prints](touches.svg)
-
-| Place | Database or file | Tables | Reads or writes | Code |
-| --- | --- | --- | --- | --- |
-| the store folder | knowledge_graph.db | `documents` | reads | [`add.rb:14`](../../../../lib/plastic/commands/node/add.rb#L14) |
-| the store folder | work_graph.db | `intents`, `nodes` | reads and writes | [`add.rb:15`](../../../../lib/plastic/commands/node/add.rb#L15) |
-| the store folder | store/index.json | | writes | [`prints.rb:18`](../../../../lib/plastic/graph/prints.rb#L18) |
-| the store folder | store/ID--SLUG/PATH | | writes | [`prints.rb:19`](../../../../lib/plastic/graph/prints.rb#L19) |
-| the store folder | store/ID--SLUG/savepoint.md | | writes | [`prints.rb:20`](../../../../lib/plastic/graph/prints.rb#L20) |
-| the store folder | store/ID--SLUG/graph.json | | writes | [`prints.rb:21`](../../../../lib/plastic/graph/prints.rb#L21) |
-| the store folder | store/ID--SLUG/context.json | | writes | [`prints.rb:22`](../../../../lib/plastic/graph/prints.rb#L22) |
-
-A second call runs the same rows again. A step runs again only when its done check fails.
-
-| Step | Done when | The second call | Code |
-| --- | --- | --- | --- |
-| add the node | `!context.id.nil?` | skips it | [`add.rb:25`](../../../../lib/plastic/workflows/code/node/add.rb#L25) |
-
-## How a call ends
-
-Every call can also end in [the ways any call can end](../../dsl/README.md#how-any-call-can-end).
-
-| Ending | Exit | next: | Code |
-| --- | --- | --- | --- |
-| PROBLEM | 1 | prints no next: line | [`add.rb:21`](../../../../lib/plastic/workflows/code/node/add.rb#L21) |
-| node ID is open; add the edges of the plan, then run plastic graph ready INTENT_ID | 0 | plastic edge add INTENT_ID FROM TO | [`add.rb:48`](../../../../lib/plastic/workflows/code/node/add.rb#L48) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:108`](../../../../lib/plastic/code_workflow.rb#L108) |
-
-## What the page leaves out
-
-Every call shares a few things that this page does not repeat; [the command DSL](../../dsl/README.md#what-every-call-shares) names them.
-
-- No gate of this command refuses, so exit 3 never happens.
-- A call that writes saves a routine run row in local.db. A stop by a gate or a step saves the run, and the next call resumes from it. A dry run saves no row.
+The command is `Plastic::Commands::Node::Add`, in [`add.rb:9`](../../../../lib/plastic/commands/node/add.rb#L9).

@@ -24,6 +24,13 @@ module CommandReference
         .stop-refusal { fill: var(--refusal-bg); stroke: var(--refusal); stroke-width: 1.2; }
         .stop-failure { fill: var(--failure-bg); stroke: var(--failure); stroke-width: 1.2; }
         .end { fill: var(--end-bg); stroke: var(--end); stroke-width: 1.2; }
+        .stop-end { fill: var(--end-bg); stroke: var(--end); stroke-width: 1.2; }
+        .stop-handoff { fill: var(--agent-bg); stroke: var(--agent); stroke-width: 1.2; stroke-dasharray: 5 3; }
+        .wire-handoff { fill: none; stroke: var(--agent); stroke-width: 1.2; stroke-dasharray: 4 3; }
+        .wire-end { fill: none; stroke: var(--end); stroke-width: 1.2; stroke-dasharray: 4 3; }
+        .tag-handoff { fill: var(--agent); }
+        .k { fill: var(--muted); font: 11.5px #{Palette::SANS}; }
+        .way { fill: var(--ink); font: italic 12.5px #{Palette::SANS}; }
         .wire { fill: none; stroke: var(--line); stroke-width: 1.4; }
         .wire-read { fill: none; stroke: var(--line); stroke-width: 1.4; stroke-dasharray: 5 3; }
         .wire-refusal { fill: none; stroke: var(--refusal); stroke-width: 1.2; stroke-dasharray: 4 3; }

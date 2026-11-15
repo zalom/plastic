@@ -6,76 +6,25 @@ Create a roadmap; write its batches with roadmap batch.
 plastic roadmap new NAME [--title TITLE] [--goal GOAL]
 ```
 
-The command is `Roadmap::New`, in [`new.rb:9`](../../../../lib/plastic/commands/roadmap/new.rb#L9). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
-
 | Argument or option | What it gives | Default |
 | --- | --- | --- |
 | `NAME` | the roadmap's name | |
 | `--title TITLE` | the roadmap's title; the name when absent |  |
 | `--goal GOAL` | the roadmap's goal |  |
 
-## Components
+## The events of one call, step by step
 
-![The components on the path of plastic roadmap new](component.svg)
+![The events of one call of plastic roadmap new](events.svg)
 
-The figure shows the command, the workflows it runs, the classes behind them, and the databases and files they reach.
+The boxes on the left run in order. The boxes on the right are the ways the call stops or ends at that step.
 
-## The events of one call
+## What one call changes
 
-The call starts the workflow `Code::Roadmap::New`, in [`new.rb:10`](../../../../lib/plastic/workflows/code/roadmap/new.rb#L10).
+| What changes | Where | Reach |
+| --- | --- | --- |
+| The roadmap is created | the work graph database, in the store folder | goes with the store |
+| The files of the roadmap are rewritten | the store folder | goes with the store |
 
-Creates a roadmap row and offers its first batch.
+Goes with the store: the files of the store carry the change, and `plastic sync up` rebuilds it on another machine. The database files themselves stay on this machine.
 
-![How Code::Roadmap::New runs: its steps, where it stops, and its outcomes](code_create_roadmap.svg)
-
-Its rows run in this order:
-
-1. Gate: passes when `context.retrieval.roadmap(context.slug).nil?`; otherwise the call stops with exit 1 and prints roadmap SLUG already exists. [`new.rb:13`](../../../../lib/plastic/workflows/code/roadmap/new.rb#L13)
-2. Gate: passes when `!context.work.roadmap_file_readable?(context.slug)`; otherwise the call stops with exit 1 and prints roadmaps/SLUG.md holds a roadmap this home has no rows for; run plastic sync up to read it. [`new.rb:17`](../../../../lib/plastic/workflows/code/roadmap/new.rb#L17)
-3. Gate: passes when `!context.work.roadmap_file?(context.slug)`; otherwise the call stops with exit 1 and prints roadmaps/SLUG.md exists and this home holds no roadmap row for it; no command reads a roadmap file into rows. [`new.rb:21`](../../../../lib/plastic/workflows/code/roadmap/new.rb#L21)
-4. Step: create the roadmap. Done when `!context.roadmap.nil?`, so a second call skips it. [`new.rb:27`](../../../../lib/plastic/workflows/code/roadmap/new.rb#L27)
-5. Read: say what was created. [`new.rb:32`](../../../../lib/plastic/workflows/code/roadmap/new.rb#L32)
-6. Outcome `:done`, always: finishes with exit 0; next: plastic roadmap batch SLUG 1. [`new.rb:36`](../../../../lib/plastic/workflows/code/roadmap/new.rb#L36)
-
-It sets `roadmap`.
-
-In the words of workflow engines, the rows are these four parts:
-
-- **Trigger**: the call starts the workflow `Code::Roadmap::New`.
-- **Activities**: 1 read and 1 step.
-- **Transitions**: 3 gates stop the call when their checks fail; a step runs only while its done check fails.
-- **Outcomes**: `:done` ends the call.
-
-## What one call reads, writes and prints
-
-![What one call of plastic roadmap new reads, writes and prints](touches.svg)
-
-| Place | Database or file | Tables | Reads or writes | Code |
-| --- | --- | --- | --- | --- |
-| the store folder | work_graph.db | `batches`, `roadmap_edges`, `roadmap_items`, `roadmap_log`, `roadmaps` | reads and writes | [`new.rb:14`](../../../../lib/plastic/commands/roadmap/new.rb#L14) |
-| the store folder | roadmaps/SLUG.md | | writes | [`prints.rb:78`](../../../../lib/plastic/graph/prints.rb#L78) |
-
-A second call runs the same rows again. A step runs again only when its done check fails.
-
-| Step | Done when | The second call | Code |
-| --- | --- | --- | --- |
-| create the roadmap | `!context.roadmap.nil?` | skips it | [`new.rb:27`](../../../../lib/plastic/workflows/code/roadmap/new.rb#L27) |
-
-## How a call ends
-
-Every call can also end in [the ways any call can end](../../dsl/README.md#how-any-call-can-end).
-
-| Ending | Exit | next: | Code |
-| --- | --- | --- | --- |
-| roadmap SLUG already exists | 1 | plastic roadmap show SLUG | [`new.rb:13`](../../../../lib/plastic/workflows/code/roadmap/new.rb#L13) |
-| roadmaps/SLUG.md holds a roadmap this home has no rows for; run plastic sync up to read it | 1 | plastic sync up | [`new.rb:17`](../../../../lib/plastic/workflows/code/roadmap/new.rb#L17) |
-| roadmaps/SLUG.md exists and this home holds no roadmap row for it; no command reads a roadmap file into rows | 1 | plastic next | [`new.rb:21`](../../../../lib/plastic/workflows/code/roadmap/new.rb#L21) |
-| roadmap SLUG exists and has no batch yet | 0 | plastic roadmap batch SLUG 1 | [`new.rb:36`](../../../../lib/plastic/workflows/code/roadmap/new.rb#L36) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:108`](../../../../lib/plastic/code_workflow.rb#L108) |
-
-## What the page leaves out
-
-Every call shares a few things that this page does not repeat; [the command DSL](../../dsl/README.md#what-every-call-shares) names them.
-
-- No gate of this command refuses, so exit 3 never happens.
-- A call that writes saves a routine run row in local.db. A stop by a gate or a step saves the run, and the next call resumes from it. A dry run saves no row.
+The command is `Plastic::Commands::Roadmap::New`, in [`new.rb:9`](../../../../lib/plastic/commands/roadmap/new.rb#L9).

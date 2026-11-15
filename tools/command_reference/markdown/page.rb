@@ -2,16 +2,17 @@
 
 module CommandReference
   module Markdown
-    # The README of one command.
+    # The README of one command: what it is, its two drawings, what it changes and what its agent steps print.
     class Page
-      DSL = "../../dsl/README.md"
+      GOES_WITH_THE_STORE = "Goes with the store: the files of the store carry the change, and `plastic sync up` rebuilds it on another machine. " \
+        "The database files themselves stay on this machine."
 
       def initialize(page, base: "../../../../")
         @page = page
         @links = Links.new(base)
       end
 
-      def to_s = [*head, *inputs, *components, *Events.new(@page, @links).lines, *Touching.new(@page, @links).lines, *endings, *LeavesOut.new(@page).lines].join("\n")
+      def to_s = [*head, *inputs, *workflows, *events, *changes, *agent_texts, *footer].join("\n")
 
       def self.default(option)
         shown = option.default.inspect
@@ -21,10 +22,7 @@ module CommandReference
       private
 
       def head
-        ["# plastic #{@page.words}", "", "#{@page.summary}.", "", *comment,
-          "```sh", @page.usage, "```", "",
-          "The command is `#{@page.klass.name.delete_prefix("Plastic::").delete_prefix("Commands::")}`, in #{@links.code(@page.file, @page.line)}. " \
-          "The words on this page, such as gate, step and outcome, are explained in [the command DSL](#{DSL}).", ""]
+        ["# plastic #{@page.words}", "", "#{@page.summary}.", "", *comment, "```sh", @page.usage, "```", ""]
       end
 
       def comment
@@ -37,14 +35,41 @@ module CommandReference
         rows.empty? ? [] : ["| Argument or option | What it gives | Default |", "| --- | --- | --- |", *rows, ""]
       end
 
-      def components
-        ["## Components", "", "![The components on the path of plastic #{@page.words}](component.svg)", "",
-          "The figure shows the command, the workflows it runs, the classes behind them, and the databases and files they reach.", ""]
+      def workflows
+        return [] unless @page.flows.size > 1
+
+        ["## The workflows of one call", "", "![The workflows of one call of plastic #{@page.words}](workflows.svg)", "",
+          "Each box is a workflow. The words between the boxes say when the call moves on, and the last boxes say how the call ends.", ""]
       end
 
-      def endings
-        ["## How a call ends", "", "Every call can also end in [the ways any call can end](#{DSL}#how-any-call-can-end).", "",
-          "| Ending | Exit | next: | Code |", "| --- | --- | --- | --- |", *@page.endings.map { |ending| EndingRow.new(ending, @links).to_s }, ""]
+      def events
+        ["## The events of one call, step by step", "", "![The events of one call of plastic #{@page.words}](events.svg)", "",
+          "The boxes on the left run in order. The boxes on the right are the ways the call stops or ends at that step.", ""]
+      end
+
+      def changes
+        return ["## What one call changes", "", "This command changes nothing.", ""] if @page.changes.empty?
+
+        ["## What one call changes", "", "| What changes | Where | Reach |", "| --- | --- | --- |", *@page.changes.map { |each| change_row(each) }, "", *definition]
+      end
+
+      def definition
+        travels = @page.changes.any? { |each| each.reach == Places::TRAVELS }
+        travels ? [GOES_WITH_THE_STORE, ""] : []
+      end
+
+      def change_row(change) = "| #{Words.shown(change.text)} | #{change.where} | #{change.reach} |"
+
+      def agent_texts
+        said = EventList.new(@page).events.reject { |event| event.say.to_s.strip.empty? }
+        return [] if said.empty?
+
+        ["## What the agent workflow steps print", "", "| Step | The text the agent gets |", "| --- | --- |",
+          *said.map { |event| "| #{event.number} | #{Words.shown(event.say)} |" }, ""]
+      end
+
+      def footer
+        ["The command is `#{@page.klass.name}`, in #{@links.code(@page.file, @page.line)}.", ""]
       end
     end
   end

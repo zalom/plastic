@@ -6,83 +6,24 @@ Claim an open node and print its brief.
 plastic node claim ID NODE
 ```
 
-The command is `Node::Claim`, in [`claim.rb:9`](../../../../lib/plastic/commands/node/claim.rb#L9). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
-
 | Argument or option | What it gives | Default |
 | --- | --- | --- |
 | `ID` | the intent | |
 | `NODE` | the node | |
 
-## Components
+## The events of one call, step by step
 
-![The components on the path of plastic node claim](component.svg)
+![The events of one call of plastic node claim](events.svg)
 
-The figure shows the command, the workflows it runs, the classes behind them, and the databases and files they reach.
+The boxes on the left run in order. The boxes on the right are the ways the call stops or ends at that step.
 
-## The events of one call
+## What one call changes
 
-The call starts the workflow `Code::Node::Claim`, in [`claim.rb:13`](../../../../lib/plastic/workflows/code/node/claim.rb#L13).
+| What changes | Where | Reach |
+| --- | --- | --- |
+| The node is claimed by this session | the work graph database, in the store folder | goes with the store |
+| The files of the intent and the index of the store are rewritten | the store folder | goes with the store |
 
-Claims an open node whose needed nodes are done, once the owner gave the go-ahead. The fourth claim of a node moves to needs_info instead, with the owner's question, and refuses. A refused claim keeps its routine run open, so the next call claims again.
+Goes with the store: the files of the store carry the change, and `plastic sync up` rebuilds it on another machine. The database files themselves stay on this machine.
 
-![How Code::Node::Claim runs: its steps, where it stops, and its outcomes](code_claim_node.svg)
-
-Its rows run in this order:
-
-1. Read: find the intent. [`claim.rb:20`](../../../../lib/plastic/workflows/code/node/claim.rb#L20)
-2. Gate: passes when `!context.intent.nil?`; otherwise the call stops with exit 1 and prints no intent INTENT_ID in this store. [`claim.rb:24`](../../../../lib/plastic/workflows/code/node/claim.rb#L24)
-3. Read: check the go-ahead. [`claim.rb:26`](../../../../lib/plastic/workflows/code/node/claim.rb#L26)
-4. Gate: passes when `context.approval_problem.nil?`; otherwise the call stops with exit 3 and prints APPROVAL_PROBLEM. [`claim.rb:30`](../../../../lib/plastic/workflows/code/node/claim.rb#L30)
-5. Read: forget a refusal of an earlier call. [`claim.rb:34`](../../../../lib/plastic/workflows/code/node/claim.rb#L34)
-6. Step: claim the node. Done when `!context.result.nil?`, so a second call skips it. [`claim.rb:38`](../../../../lib/plastic/workflows/code/node/claim.rb#L38)
-7. Gate: passes when `context.result.to_s != "capped"`; otherwise the call stops with exit 3 and prints PROBLEM. [`claim.rb:55`](../../../../lib/plastic/workflows/code/node/claim.rb#L55)
-8. Gate: passes when `!STOPPED.include?(context.result.to_s)`; otherwise the call stops with exit 1 and prints PROBLEM. [`claim.rb:58`](../../../../lib/plastic/workflows/code/node/claim.rb#L58)
-9. Read: print the brief. [`claim.rb:62`](../../../../lib/plastic/workflows/code/node/claim.rb#L62)
-10. Outcome `:done`, always: finishes with exit 0; next: plastic node done INTENT_ID ID TEXT. [`claim.rb:70`](../../../../lib/plastic/workflows/code/node/claim.rb#L70)
-
-It sets `intent`, `result`, `node`, `problem`, `approval_problem`.
-
-In the words of workflow engines, the rows are these four parts:
-
-- **Trigger**: the call starts the workflow `Code::Node::Claim`.
-- **Activities**: 4 reads and 1 step.
-- **Transitions**: 4 gates stop the call when their checks fail; a step runs only while its done check fails.
-- **Outcomes**: `:done` ends the call.
-
-## What one call reads, writes and prints
-
-![What one call of plastic node claim reads, writes and prints](touches.svg)
-
-| Place | Database or file | Tables | Reads or writes | Code |
-| --- | --- | --- | --- | --- |
-| the store folder | work_graph.db | `edges`, `intents`, `nodes` | reads and writes | [`claim.rb:11`](../../../../lib/plastic/commands/node/claim.rb#L11) |
-| the store folder | store/index.json | | writes | [`prints.rb:18`](../../../../lib/plastic/graph/prints.rb#L18) |
-| the store folder | store/ID--SLUG/PATH | | writes | [`prints.rb:19`](../../../../lib/plastic/graph/prints.rb#L19) |
-| the store folder | store/ID--SLUG/savepoint.md | | writes | [`prints.rb:20`](../../../../lib/plastic/graph/prints.rb#L20) |
-| the store folder | store/ID--SLUG/graph.json | | writes | [`prints.rb:21`](../../../../lib/plastic/graph/prints.rb#L21) |
-| the store folder | store/ID--SLUG/context.json | | writes | [`prints.rb:22`](../../../../lib/plastic/graph/prints.rb#L22) |
-
-A second call runs the same rows again. A step runs again only when its done check fails.
-
-| Step | Done when | The second call | Code |
-| --- | --- | --- | --- |
-| claim the node | `!context.result.nil?` | skips it | [`claim.rb:38`](../../../../lib/plastic/workflows/code/node/claim.rb#L38) |
-
-## How a call ends
-
-Every call can also end in [the ways any call can end](../../dsl/README.md#how-any-call-can-end).
-
-| Ending | Exit | next: | Code |
-| --- | --- | --- | --- |
-| no intent INTENT_ID in this store | 1 | prints no next: line | [`claim.rb:24`](../../../../lib/plastic/workflows/code/node/claim.rb#L24) |
-| APPROVAL_PROBLEM | 3 | prints no next: line | [`claim.rb:30`](../../../../lib/plastic/workflows/code/node/claim.rb#L30) |
-| PROBLEM | 3 | prints no next: line | [`claim.rb:55`](../../../../lib/plastic/workflows/code/node/claim.rb#L55) |
-| PROBLEM | 1 | prints no next: line | [`claim.rb:58`](../../../../lib/plastic/workflows/code/node/claim.rb#L58) |
-| node ID is claimed | 0 | plastic node done INTENT_ID ID TEXT | [`claim.rb:70`](../../../../lib/plastic/workflows/code/node/claim.rb#L70) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:108`](../../../../lib/plastic/code_workflow.rb#L108) |
-
-## What the page leaves out
-
-Every call shares a few things that this page does not repeat; [the command DSL](../../dsl/README.md#what-every-call-shares) names them.
-
-- A call that writes saves a routine run row in local.db. A stop by a gate or a step saves the run, and the next call resumes from it. A dry run saves no row.
+The command is `Plastic::Commands::Node::Claim`, in [`claim.rb:9`](../../../../lib/plastic/commands/node/claim.rb#L9).

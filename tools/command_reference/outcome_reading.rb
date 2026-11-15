@@ -10,7 +10,7 @@ module CommandReference
     end
 
     def outcome
-      Outcome.new(@name, @owner.source.lambda_code(@line&.check), fallback?, @line&.offers, @line&.because, target, exit_code, *place)
+      Outcome.new(@name, @owner.source.lambda_code(@line&.check), fallback?, @line&.offers, @line&.because, target, exit_code, *place, @line&.found_by, @line&.unreachable)
     end
 
     private

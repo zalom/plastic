@@ -6,56 +6,14 @@ List every store's intents by group, with node counts by state.
 plastic status
 ```
 
-The command is `Status`, in [`status.rb:14`](../../../../lib/plastic/commands/status.rb#L14). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+## The events of one call, step by step
 
-## Components
+![The events of one call of plastic status](events.svg)
 
-![The components on the path of plastic status](component.svg)
+The boxes on the left run in order. The boxes on the right are the ways the call stops or ends at that step.
 
-The figure shows the command, the workflows it runs, the classes behind them, and the databases and files they reach.
+## What one call changes
 
-## The events of one call
+This command changes nothing.
 
-![The call of plastic status](call.svg)
-
-The command's `call`, at [`status.rb:18`](../../../../lib/plastic/commands/status.rb#L18):
-
-```ruby
-def call
-  projects = scope.projects
-  shown = slugs.map { |slug| store_rows(slug, projects) }
-  output.rows(shown.flat_map(&:first))
-  offer_next(shown.filter_map { |_rows, create, _open| create }.first, shown.any? { |_rows, _create, open| open })
-end
-```
-
-Its steps run in this order:
-
-1. `projects = scope.projects` [`status.rb:19`](../../../../lib/plastic/commands/status.rb#L19)
-2. `shown = slugs.map { |slug| store_rows(slug, projects) }` [`status.rb:20`](../../../../lib/plastic/commands/status.rb#L20)
-3. `output.rows(shown.flat_map(&:first))` [`status.rb:21`](../../../../lib/plastic/commands/status.rb#L21)
-4. `offer_next(shown.filter_map { |_rows, create, _open| create }.first, shown.any? { |_rows, _create, open| open })` [`status.rb:22`](../../../../lib/plastic/commands/status.rb#L22)
-
-## What one call reads, writes and prints
-
-![What one call of plastic status reads, writes and prints](touches.svg)
-
-| Place | Database or file | Tables | Reads or writes | Code |
-| --- | --- | --- | --- | --- |
-| the store folder | work_graph.db | `intents`, `nodes` | reads | [`status.rb:15`](../../../../lib/plastic/commands/status.rb#L15) |
-
-## How a call ends
-
-Every call can also end in [the ways any call can end](../../dsl/README.md#how-any-call-can-end).
-
-| Ending | Exit | next: | Code |
-| --- | --- | --- | --- |
-| Offers the next command | 0 | decided at run time | [`status.rb:30`](../../../../lib/plastic/commands/status.rb#L30) |
-| Offers the next command | 0 | plastic next | [`status.rb:31`](../../../../lib/plastic/commands/status.rb#L31) |
-| Offers the next command | 0 | decided at run time | [`status.rb:33`](../../../../lib/plastic/commands/status.rb#L33) |
-
-## What the page leaves out
-
-Every call shares a few things that this page does not repeat; [the command DSL](../../dsl/README.md#what-every-call-shares) names them.
-
-- No gate of this command refuses, so exit 3 never happens.
+The command is `Plastic::Commands::Status`, in [`status.rb:14`](../../../../lib/plastic/commands/status.rb#L14).

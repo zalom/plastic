@@ -14,7 +14,7 @@ module Plastic
               "Plastic runs none of them and stops none of them."
 
           outcome :handoff, offers: nil, because: "the agent stops the processes and agents the intent started"
-          outcome :done, offers: nil, because: "nothing the intent started is left running"
+          outcome :done, unreachable: true, offers: nil, because: "nothing the intent started is left running"
         end
       end
     end

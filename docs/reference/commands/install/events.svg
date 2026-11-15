@@ -1,0 +1,155 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 834 645" width="834" height="645" role="img" xml:space="preserve">
+<title>The events of one call of plastic install, in words</title>
+<style>.ground { fill: #e9e5dc; }
+.card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
+.lane-code { fill: #d5e8e3; stroke: #0d6b61; stroke-width: 1.5; }
+.lane-agent { fill: #f1e2c7; stroke: #9a5508; stroke-width: 1.5; }
+.stop-refusal { fill: #e4dcf5; stroke: #5b35b0; stroke-width: 1.2; }
+.stop-failure { fill: #f4d9d4; stroke: #a8261b; stroke-width: 1.2; }
+.end { fill: #d9e2f0; stroke: #2c4a7a; stroke-width: 1.2; }
+.stop-end { fill: #d9e2f0; stroke: #2c4a7a; stroke-width: 1.2; }
+.stop-handoff { fill: #f1e2c7; stroke: #9a5508; stroke-width: 1.2; stroke-dasharray: 5 3; }
+.wire-handoff { fill: none; stroke: #9a5508; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.wire-end { fill: none; stroke: #2c4a7a; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.tag-handoff { fill: #9a5508; }
+.k { fill: #4f5866; font: 11.5px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.way { fill: #1f2530; font: italic 12.5px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.wire { fill: none; stroke: #7c8594; stroke-width: 1.4; }
+.wire-read { fill: none; stroke: #7c8594; stroke-width: 1.4; stroke-dasharray: 5 3; }
+.wire-refusal { fill: none; stroke: #5b35b0; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.wire-failure { fill: none; stroke: #a8261b; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.head { fill: #7c8594; }
+.t { fill: #1f2530; font: 12px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.tb { fill: #1f2530; font: 600 13px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.tm { fill: #1f2530; font: 11.5px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.tag { font: 600 10px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; letter-spacing: .06em; }
+.tag-code { fill: #0d6b61; } .tag-agent { fill: #9a5508; } .tag-refusal { fill: #5b35b0; }
+.tag-failure { fill: #a8261b; } .tag-end { fill: #2c4a7a; } .tag-muted { fill: #4f5866; }
+.tm.tag-muted { font-size: 10.5px; }
+.db { fill: #d9e2f0; stroke: #2c4a7a; stroke-width: 1.2; }
+.codebox { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
+.cx { fill: #1f2530; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; white-space: pre; }
+.cx-n { fill: #4f5866; font: 11px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.cx-k { fill: #5b35b0; } .cx-s { fill: #9a5508; } .cx-y { fill: #0d6b61; }
+.cx-w { fill: #2c4a7a; font-weight: 600; } .cx-t { fill: #a8261b; } .cx-c { fill: #4f5866; font-style: italic; }
+.badge { fill: #2c4a7a; } .badge-t { fill: #e9e5dc; font: 600 11px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.bracket { fill: none; stroke: #2c4a7a; stroke-width: 1.4; }
+.term { fill: #16191e; stroke: #7c8594; stroke-width: 1; }
+.term-t { fill: #e6e2d8; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.term-p { fill: #8fd18f; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.term-m { fill: #a3abb6; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.big { font: 700 36px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+
+@media (prefers-color-scheme: dark) {
+.ground { fill: #171a1f; }
+.card { fill: #20242b; stroke: #8a93a2; stroke-width: 1; }
+.lane-code { fill: #173a36; stroke: #5cc4b4; stroke-width: 1.5; }
+.lane-agent { fill: #3d2e17; stroke: #e5a95a; stroke-width: 1.5; }
+.stop-refusal { fill: #2d2445; stroke: #b59cf2; stroke-width: 1.2; }
+.stop-failure { fill: #45211e; stroke: #f2958a; stroke-width: 1.2; }
+.end { fill: #1f2c42; stroke: #97b6e8; stroke-width: 1.2; }
+.stop-end { fill: #1f2c42; stroke: #97b6e8; stroke-width: 1.2; }
+.stop-handoff { fill: #3d2e17; stroke: #e5a95a; stroke-width: 1.2; stroke-dasharray: 5 3; }
+.wire-handoff { fill: none; stroke: #e5a95a; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.wire-end { fill: none; stroke: #97b6e8; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.tag-handoff { fill: #e5a95a; }
+.k { fill: #b3b9c3; font: 11.5px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.way { fill: #e8e4da; font: italic 12.5px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.wire { fill: none; stroke: #8a93a2; stroke-width: 1.4; }
+.wire-read { fill: none; stroke: #8a93a2; stroke-width: 1.4; stroke-dasharray: 5 3; }
+.wire-refusal { fill: none; stroke: #b59cf2; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.wire-failure { fill: none; stroke: #f2958a; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.head { fill: #8a93a2; }
+.t { fill: #e8e4da; font: 12px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.tb { fill: #e8e4da; font: 600 13px "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+.tm { fill: #e8e4da; font: 11.5px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.tag { font: 600 10px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; letter-spacing: .06em; }
+.tag-code { fill: #5cc4b4; } .tag-agent { fill: #e5a95a; } .tag-refusal { fill: #b59cf2; }
+.tag-failure { fill: #f2958a; } .tag-end { fill: #97b6e8; } .tag-muted { fill: #b3b9c3; }
+.tm.tag-muted { font-size: 10.5px; }
+.db { fill: #1f2c42; stroke: #97b6e8; stroke-width: 1.2; }
+.codebox { fill: #20242b; stroke: #8a93a2; stroke-width: 1; }
+.cx { fill: #e8e4da; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; white-space: pre; }
+.cx-n { fill: #b3b9c3; font: 11px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.cx-k { fill: #b59cf2; } .cx-s { fill: #e5a95a; } .cx-y { fill: #5cc4b4; }
+.cx-w { fill: #97b6e8; font-weight: 600; } .cx-t { fill: #f2958a; } .cx-c { fill: #b3b9c3; font-style: italic; }
+.badge { fill: #97b6e8; } .badge-t { fill: #171a1f; font: 600 11px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.bracket { fill: none; stroke: #97b6e8; stroke-width: 1.4; }
+.term { fill: #16191e; stroke: #8a93a2; stroke-width: 1; }
+.term-t { fill: #e6e2d8; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.term-p { fill: #8fd18f; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.term-m { fill: #a3abb6; font: 12px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+.big { font: 700 36px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; }
+}</style>
+<rect width="100%" height="100%" class="ground"/>
+<text x="24" y="34" class="tb" text-anchor="start">One call of plastic install, from top to bottom</text>
+<rect x="24" y="64" width="400" height="51" rx="6" class="lane-code"/>
+<circle cx="44" cy="83" r="8" class="badge"/>
+<text x="44" y="87" class="badge-t" text-anchor="middle">1</text>
+<text x="64" y="86" class="tag tag-code" text-anchor="start">Code Workflow</text>
+<text x="64" y="106" class="t" text-anchor="start">List the core files the install would write.</text>
+<path d="M 424 95 L 480 95" class="wire-end"/>
+<path d="M 472 90 L 480 95 L 472 100 Z" class="head"/>
+<rect x="480" y="64" width="330" height="62" rx="6" class="stop-end"/>
+<text x="492" y="82" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
+<text x="492" y="100" class="t" text-anchor="start">The preview changed no file.</text>
+<text x="492" y="116" class="t" text-anchor="start">next: &lt;original command&gt;</text>
+<path d="M 64 115 L 64 152" class="wire"/>
+<path d="M 59 144 L 64 152 L 69 144 Z" class="head"/>
+<rect x="24" y="152" width="400" height="51" rx="6" class="lane-code"/>
+<circle cx="44" cy="171" r="8" class="badge"/>
+<text x="44" y="175" class="badge-t" text-anchor="middle">2</text>
+<text x="64" y="174" class="tag tag-code" text-anchor="start">Code Workflow</text>
+<text x="64" y="194" class="t" text-anchor="start">Check the harness settings files.</text>
+<path d="M 424 164 L 438 164 L 438 183 L 480 183" class="wire-failure"/>
+<path d="M 472 178 L 480 183 L 472 188 Z" class="head"/>
+<rect x="480" y="152" width="330" height="62" rx="6" class="stop-failure"/>
+<text x="492" y="170" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1</text>
+<text x="492" y="188" class="t" text-anchor="start">&lt;broken&gt; is not valid JSON; nothing was</text>
+<text x="492" y="204" class="t" text-anchor="start">changed. Fix the file and run this again.</text>
+<path d="M 424 178 L 432 178 L 432 261 L 480 261" class="wire-refusal"/>
+<path d="M 472 256 L 480 261 L 472 266 Z" class="head"/>
+<rect x="480" y="222" width="330" height="78" rx="6" class="stop-refusal"/>
+<text x="492" y="240" class="tag tag-refusal" text-anchor="start">STOPS, EXIT 3</text>
+<text x="492" y="258" class="t" text-anchor="start">Plastic is already installed; run plastic init</text>
+<text x="492" y="274" class="t" text-anchor="start">to add a harness, or pass --reinstall to sync</text>
+<text x="492" y="290" class="t" text-anchor="start">the files again.</text>
+<path d="M 64 203 L 64 326" class="wire"/>
+<path d="M 59 318 L 64 326 L 69 318 Z" class="head"/>
+<rect x="24" y="326" width="400" height="51" rx="6" class="lane-code"/>
+<circle cx="44" cy="345" r="8" class="badge"/>
+<text x="44" y="349" class="badge-t" text-anchor="middle">3</text>
+<text x="64" y="348" class="tag tag-code" text-anchor="start">Code Workflow</text>
+<text x="64" y="368" class="t" text-anchor="start">Install the core files.</text>
+<path d="M 64 377 L 64 403" class="wire"/>
+<path d="M 59 395 L 64 403 L 69 395 Z" class="head"/>
+<rect x="24" y="403" width="400" height="51" rx="6" class="lane-agent"/>
+<circle cx="44" cy="422" r="8" class="badge"/>
+<text x="44" y="426" class="badge-t" text-anchor="middle">4</text>
+<text x="64" y="425" class="tag tag-agent" text-anchor="start">Agent Workflow</text>
+<text x="64" y="445" class="t" text-anchor="start">Offer Enola.</text>
+<path d="M 424 415 L 438 415 L 438 442 L 480 442" class="wire-end"/>
+<path d="M 472 437 L 480 442 L 472 447 Z" class="head"/>
+<rect x="480" y="403" width="330" height="78" rx="6" class="stop-end"/>
+<text x="492" y="421" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
+<text x="492" y="439" class="t" text-anchor="start">Enola is optional; plastic init installs</text>
+<text x="492" y="455" class="t" text-anchor="start">Plastic into the harnesses the person picks.</text>
+<text x="492" y="471" class="t" text-anchor="start">next: plastic init</text>
+<path d="M 424 429 L 432 429 L 432 528 L 480 528" class="wire-end"/>
+<path d="M 472 523 L 480 528 L 472 533 Z" class="head"/>
+<rect x="480" y="489" width="330" height="78" rx="6" class="stop-end"/>
+<text x="492" y="507" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
+<text x="492" y="525" class="t" text-anchor="start">A reinstall syncs the files and offers nothing</text>
+<text x="492" y="541" class="t" text-anchor="start">more.</text>
+<text x="492" y="557" class="t" text-anchor="start">next: plastic version</text>
+<rect x="24" y="597" width="14" height="14" rx="3" class="lane-code"/>
+<text x="44" y="609" class="k" text-anchor="start">Code Workflow</text>
+<rect x="140" y="597" width="14" height="14" rx="3" class="lane-agent"/>
+<text x="160" y="609" class="k" text-anchor="start">Agent Workflow</text>
+<rect x="262" y="597" width="14" height="14" rx="3" class="stop-failure"/>
+<text x="282" y="609" class="k" text-anchor="start">Stops with a failure</text>
+<rect x="420" y="597" width="14" height="14" rx="3" class="stop-refusal"/>
+<text x="440" y="609" class="k" text-anchor="start">Stops for the owner</text>
+<rect x="572" y="597" width="14" height="14" rx="3" class="stop-end"/>
+<text x="592" y="609" class="k" text-anchor="start">Ends</text>
+</svg>

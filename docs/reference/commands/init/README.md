@@ -8,105 +8,27 @@ Finds the installed harnesses, shows them on the choice screen with every found 
 plastic init [ANSWER]
 ```
 
-The command is `Init`, in [`init.rb:12`](../../../../lib/plastic/commands/init.rb#L12). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
-
 | Argument or option | What it gives | Default |
 | --- | --- | --- |
 | `ANSWER` | the person's answer to the numbered list | |
 
-## Components
+## The workflows of one call
 
-![The components on the path of plastic init](component.svg)
+![The workflows of one call of plastic init](workflows.svg)
 
-The figure shows the command, the workflows it runs, the classes behind them, and the databases and files they reach.
+Each box is a workflow. The words between the boxes say when the call moves on, and the last boxes say how the call ends.
 
-## The events of one call
+## The events of one call, step by step
 
-![The workflows of plastic init](workflows.svg)
+![The events of one call of plastic init](events.svg)
 
-| Workflow | Kind | Code |
+The boxes on the left run in order. The boxes on the right are the ways the call stops or ends at that step.
+
+## What one call changes
+
+| What changes | Where | Reach |
 | --- | --- | --- |
-| [Code::Init::Choose](#codeinitchoose) | code | [`choose.rb:14`](../../../../lib/plastic/workflows/code/init/choose.rb#L14) |
-| [Code::Init](#codeinit) | code | [`init.rb:13`](../../../../lib/plastic/workflows/code/init.rb#L13) |
+| Plastic is installed into the Plastic home | the Plastic home folder | stays on this machine |
+| The instructions and hooks of each picked harness are written | the settings of the agent harness, in the home folder | stays on this machine |
 
-### The command's own call
-
-The command's own `call`, at [`harness_pick.rb:12`](../../../../lib/plastic/cli/harness_pick.rb#L12), runs first, then starts the workflow [Code::Init::Choose](#codeinitchoose).
-
-```ruby
-def call
-  answer = parsed[:answer] ||= answered_on_screen
-  super if answer
-end
-```
-
-### Code::Init::Choose
-
-The code workflow `:code_choose_harnesses`, in [`choose.rb:14`](../../../../lib/plastic/workflows/code/init/choose.rb#L14).
-
-Reads the person's answer against the installed harnesses, every one of them picked at the start.
-
-![How Code::Init::Choose runs: its steps, where it stops, and its outcomes](code_choose_harnesses.svg)
-
-Its rows run in this order:
-
-1. Read: find the installed harnesses and read the person's answer. [`choose.rb:20`](../../../../lib/plastic/workflows/code/init/choose.rb#L20)
-2. Outcome `:none`, when `context.found.empty?`: finishes with exit 0; next: plastic init. [`choose.rb:29`](../../../../lib/plastic/workflows/code/init/choose.rb#L29)
-3. Outcome `:left`, when `context.picked.empty?`: finishes with exit 0; next: plastic init. [`choose.rb:31`](../../../../lib/plastic/workflows/code/init/choose.rb#L31)
-4. Outcome `:chosen`, otherwise: starts the workflow [Code::Init](#codeinit). [`choose.rb:33`](../../../../lib/plastic/workflows/code/init/choose.rb#L33)
-
-It sets `found`, `picked`, `harnesses`.
-
-### Code::Init
-
-The code workflow `:code_install_harnesses`, in [`init.rb:13`](../../../../lib/plastic/workflows/code/init.rb#L13).
-
-Copies the core files on a home that has none, and installs Plastic into each picked harness.
-
-![How Code::Init runs: its steps, where it stops, and its outcomes](code_install_harnesses.svg)
-
-Its rows run in this order:
-
-1. Read: check the harness settings files. [`init.rb:19`](../../../../lib/plastic/workflows/code/init.rb#L19)
-2. Gate: passes when `context.broken.nil?`; otherwise the call stops with exit 1 and prints BROKEN is not valid JSON; nothing was changed. Fix the file and run this again. [`init.rb:23`](../../../../lib/plastic/workflows/code/init.rb#L23)
-3. Step: install Plastic into the picked harnesses. Done when `!context.installed.nil?`, so a second call skips it. [`init.rb:26`](../../../../lib/plastic/workflows/code/init.rb#L26)
-4. Outcome `:done`, always: finishes with exit 0; next: plastic doctor --harness CHECKED. [`init.rb:35`](../../../../lib/plastic/workflows/code/init.rb#L35)
-
-It sets `broken`, `installed`, `checked`.
-
-In the words of workflow engines, the rows are these four parts:
-
-- **Trigger**: the call starts the workflow `Code::Init::Choose`; each later workflow starts from an outcome of the one before it.
-- **Activities**: 2 reads and 1 step.
-- **Transitions**: 1 gate stops the call when its check fails; a step runs only while its done check fails; Choose goes to Init on `:chosen`.
-- **Outcomes**: `:none` of Choose, `:left` of Choose, `:done` of Init end the call.
-
-## What one call reads, writes and prints
-
-![What one call of plastic init reads, writes and prints](touches.svg)
-
-It reads and writes no store database and prints no store file.
-
-A second call runs the same rows again. A step runs again only when its done check fails.
-
-| Step | Done when | The second call | Code |
-| --- | --- | --- | --- |
-| install Plastic into the picked harnesses | `!context.installed.nil?` | skips it | [`init.rb:26`](../../../../lib/plastic/workflows/code/init.rb#L26) |
-
-## How a call ends
-
-Every call can also end in [the ways any call can end](../../dsl/README.md#how-any-call-can-end).
-
-| Ending | Exit | next: | Code |
-| --- | --- | --- | --- |
-| no registered harness was found: no settings folder in the home and no program on the PATH; install one, then run this again | 0 | plastic init | [`choose.rb:29`](../../../../lib/plastic/workflows/code/init/choose.rb#L29) |
-| the person left with no change | 0 | plastic init | [`choose.rb:31`](../../../../lib/plastic/workflows/code/init/choose.rb#L31) |
-| BROKEN is not valid JSON; nothing was changed. Fix the file and run this again | 1 | prints no next: line | [`init.rb:23`](../../../../lib/plastic/workflows/code/init.rb#L23) |
-| Plastic INSTALLED is installed into HARNESSES | 0 | plastic doctor --harness CHECKED | [`init.rb:35`](../../../../lib/plastic/workflows/code/init.rb#L35) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:108`](../../../../lib/plastic/code_workflow.rb#L108) |
-
-## What the page leaves out
-
-Every call shares a few things that this page does not repeat; [the command DSL](../../dsl/README.md#what-every-call-shares) names them.
-
-- No gate of this command refuses, so exit 3 never happens.
+The command is `Plastic::Commands::Init`, in [`init.rb:12`](../../../../lib/plastic/commands/init.rb#L12).

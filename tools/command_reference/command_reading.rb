@@ -33,10 +33,15 @@ module CommandReference
 
     def page
       reach = Reach.new(kind:, files: end_files, flows:, own_call:)
-      Page.new(**identity, kind: reach.kind, own_call: reach.own_call, flows: reach.flows, edges:, touches: touches(reach), endings: @kit.endings.call(reach))
+      Page.new(**identity, **found(reach))
     end
 
     private
+
+    def found(reach)
+      { kind: reach.kind, own_call: reach.own_call, flows: reach.flows, edges:, touches: touches(reach), endings: @kit.endings.call(reach),
+        changes: Changes.new(@klass, reach.flows).rows }
+    end
 
     def identity
       { words: @words, klass: @klass, file:, line:, summary: @kit.table.dig(@words, 1), comment: @kit.source.class_comment(@klass),

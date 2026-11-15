@@ -16,7 +16,7 @@ module Plastic
               "Then run plastic intent end %{intent_id} again."
 
           outcome :handoff, stops: :failure, offers: "plastic intent end %{intent_id}", because: "intent %{intent_id} cannot end yet. %{missing}"
-          outcome :done, offers: nil, because: "the completion records are ready"
+          outcome :done, unreachable: true, offers: nil, because: "the completion records are ready"
         end
       end
     end

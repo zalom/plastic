@@ -8,8 +8,6 @@ Removes one needs edge. Fails when no such edge exists.
 plastic roadmap edge remove SLUG FROM TO [--dry-run]
 ```
 
-The command is `Roadmap::Edge::Remove`, in [`remove.rb:10`](../../../../lib/plastic/commands/roadmap/edge/remove.rb#L10). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
-
 | Argument or option | What it gives | Default |
 | --- | --- | --- |
 | `SLUG` | the roadmap | |
@@ -17,64 +15,19 @@ The command is `Roadmap::Edge::Remove`, in [`remove.rb:10`](../../../../lib/plas
 | `TO` | the edge's end | |
 | `--dry-run` | preview the call in a disposable copy | `false` |
 
-## Components
+## The events of one call, step by step
 
-![The components on the path of plastic roadmap edge remove](component.svg)
+![The events of one call of plastic roadmap edge remove](events.svg)
 
-The figure shows the command, the workflows it runs, the classes behind them, and the databases and files they reach.
+The boxes on the left run in order. The boxes on the right are the ways the call stops or ends at that step.
 
-## The events of one call
+## What one call changes
 
-The call starts the workflow `Code::Roadmap::Edge::Remove`, in [`remove.rb:11`](../../../../lib/plastic/workflows/code/roadmap/edge/remove.rb#L11).
+| What changes | Where | Reach |
+| --- | --- | --- |
+| The edge between two items of the roadmap is removed | the work graph database, in the store folder | goes with the store |
+| The files of the roadmap are rewritten | the store folder | goes with the store |
 
-Removes one needs edge; fails when no such edge exists.
+Goes with the store: the files of the store carry the change, and `plastic sync up` rebuilds it on another machine. The database files themselves stay on this machine.
 
-![How Code::Roadmap::Edge::Remove runs: its steps, where it stops, and its outcomes](code_remove_roadmap_edge.svg)
-
-Its rows run in this order:
-
-1. Read: forget a stop of an earlier call. [`code_workflow.rb:54`](../../../../lib/plastic/code_workflow.rb#L54)
-2. Step: remove the edge. Done when `!context.removed.nil?`, so a second call skips it. [`remove.rb:18`](../../../../lib/plastic/workflows/code/roadmap/edge/remove.rb#L18)
-3. Gate: passes when `context.problem.nil?`; otherwise the call stops with exit 1 and prints PROBLEM. [`remove.rb:25`](../../../../lib/plastic/workflows/code/roadmap/edge/remove.rb#L25)
-4. Read: say what was removed. [`remove.rb:29`](../../../../lib/plastic/workflows/code/roadmap/edge/remove.rb#L29)
-5. Outcome `:done`, always: finishes with exit 0; next: plastic roadmap show SLUG. [`remove.rb:33`](../../../../lib/plastic/workflows/code/roadmap/edge/remove.rb#L33)
-
-It sets `problem`, `removed`.
-
-In the words of workflow engines, the rows are these four parts:
-
-- **Trigger**: the call starts the workflow `Code::Roadmap::Edge::Remove`.
-- **Activities**: 2 reads and 1 step.
-- **Transitions**: 1 gate stops the call when its check fails; a step runs only while its done check fails.
-- **Outcomes**: `:done` ends the call.
-
-## What one call reads, writes and prints
-
-![What one call of plastic roadmap edge remove reads, writes and prints](touches.svg)
-
-| Place | Database or file | Tables | Reads or writes | Code |
-| --- | --- | --- | --- | --- |
-| the store folder | work_graph.db | `batches`, `roadmap_edges`, `roadmap_items`, `roadmap_log`, `roadmaps` | reads and writes | [`remove.rb:15`](../../../../lib/plastic/commands/roadmap/edge/remove.rb#L15) |
-| the store folder | roadmaps/SLUG.md | | writes | [`prints.rb:78`](../../../../lib/plastic/graph/prints.rb#L78) |
-
-A second call runs the same rows again. A step runs again only when its done check fails.
-
-| Step | Done when | The second call | Code |
-| --- | --- | --- | --- |
-| remove the edge | `!context.removed.nil?` | skips it | [`remove.rb:18`](../../../../lib/plastic/workflows/code/roadmap/edge/remove.rb#L18) |
-
-## How a call ends
-
-Every call can also end in [the ways any call can end](../../dsl/README.md#how-any-call-can-end).
-
-| Ending | Exit | next: | Code |
-| --- | --- | --- | --- |
-| PROBLEM | 1 | prints no next: line | [`remove.rb:25`](../../../../lib/plastic/workflows/code/roadmap/edge/remove.rb#L25) |
-| edge FROM to TO is gone | 0 | plastic roadmap show SLUG | [`remove.rb:33`](../../../../lib/plastic/workflows/code/roadmap/edge/remove.rb#L33) |
-| a step raises | 1 | prints no next: line | [`code_workflow.rb:108`](../../../../lib/plastic/code_workflow.rb#L108) |
-
-## What the page leaves out
-
-Every call shares a few things that this page does not repeat; [the command DSL](../../dsl/README.md#what-every-call-shares) names them.
-
-- A call that writes saves a routine run row in local.db. A stop by a gate or a step saves the run, and the next call resumes from it. A dry run saves no row.
+The command is `Plastic::Commands::Roadmap::Edge::Remove`, in [`remove.rb:10`](../../../../lib/plastic/commands/roadmap/edge/remove.rb#L10).
