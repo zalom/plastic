@@ -158,7 +158,7 @@ class CommandReferencePlacesTest < Minitest::Test
   end
 
   def test_a_change_at_an_unknown_place_is_named_by_the_check
-    flow = Struct.new(:key, :klass, :rows, :outcomes).new(:only, Struct.new(:steps, :summary).new([], nil), [], [])
+    flow = Struct.new(:key, :klass, :rows, :outcomes).new(:only, Struct.new(:steps, :summary, :outcomes).new([], nil, []), [], [])
     page = Struct.new(:words, :flows, :klass).new("odd", [flow], Struct.new(:writes, :changes).new([], { weather: "The weather changes" }))
 
     assert(CommandReference::Words.missing([page]).any? { |line| line.include?("weather") && line.include?("place") })

@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 834 515" width="834" height="515" role="img" xml:space="preserve">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 834 617" width="834" height="617" role="img" xml:space="preserve">
 <title>The workflows of one call of plastic next, in words</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
@@ -88,32 +88,38 @@
 <text x="302" y="96" class="t" text-anchor="start">Picks the intent this session</text>
 <text x="302" y="113" class="t" text-anchor="start">works on and offers its next</text>
 <text x="302" y="130" class="t" text-anchor="start">command.</text>
-<rect x="24" y="56" width="222" height="66" rx="6" class="stop-end"/>
+<rect x="24" y="56" width="222" height="83" rx="6" class="stop-end"/>
 <text x="36" y="76" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
-<text x="36" y="96" class="t" text-anchor="start">&lt;why&gt;.</text>
-<text x="36" y="113" class="t" text-anchor="start">next: plastic status</text>
-<rect x="24" y="130" width="222" height="66" rx="6" class="stop-end"/>
-<text x="36" y="150" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
-<text x="36" y="170" class="t" text-anchor="start">&lt;why&gt;.</text>
-<text x="36" y="187" class="t" text-anchor="start">next: &lt;next command&gt;</text>
+<text x="36" y="96" class="t" text-anchor="start">No intent is clearly the</text>
+<text x="36" y="113" class="t" text-anchor="start">one in play.</text>
+<text x="36" y="130" class="t" text-anchor="start">next: plastic status</text>
+<rect x="24" y="147" width="222" height="100" rx="6" class="stop-end"/>
+<text x="36" y="167" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
+<text x="36" y="187" class="t" text-anchor="start">The intent in play has a</text>
+<text x="36" y="204" class="t" text-anchor="start">next command, and the</text>
+<text x="36" y="221" class="t" text-anchor="start">reason says why that one.</text>
+<text x="36" y="238" class="t" text-anchor="start">next: &lt;next command&gt;</text>
 <path d="M 290 97 L 246 97" class="wire-end"/>
 <path d="M 254 92 L 246 97 L 254 102 Z" class="head"/>
-<path d="M 417 139 L 417 226 L 417 226 L 417 234" class="wire"/>
-<text x="417" y="248" class="k" text-anchor="middle">the next step is the agent&#39;s to</text>
-<text x="417" y="262" class="k" text-anchor="middle">take</text>
-<path d="M 417 272 L 417 286" class="wire"/>
-<path d="M 412 278 L 417 286 L 422 278 Z" class="head"/>
-<rect x="290" y="286" width="254" height="66" rx="6" class="lane-agent"/>
-<text x="302" y="306" class="tag tag-agent" text-anchor="start">Agent Workflow</text>
-<text x="302" y="326" class="t" text-anchor="start">Hands the agent the next step of</text>
-<text x="302" y="343" class="t" text-anchor="start">the delivery.</text>
-<path d="M 417 352 L 417 378" class="wire"/>
-<path d="M 412 370 L 417 378 L 422 370 Z" class="head"/>
-<rect x="290" y="378" width="254" height="49" rx="6" class="stop-end"/>
-<text x="302" y="398" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
-<text x="302" y="418" class="t" text-anchor="start">&lt;why&gt;.</text>
-<rect x="290" y="435" width="254" height="66" rx="6" class="stop-end"/>
-<text x="302" y="455" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
-<text x="302" y="475" class="t" text-anchor="start">The delivery instruction has</text>
-<text x="302" y="492" class="t" text-anchor="start">been handled.</text>
+<path d="M 417 139 L 417 277 L 417 277 L 417 285" class="wire"/>
+<text x="417" y="299" class="k" text-anchor="middle">the next step is the agent&#39;s to</text>
+<text x="417" y="313" class="k" text-anchor="middle">take</text>
+<path d="M 417 323 L 417 337" class="wire"/>
+<path d="M 412 329 L 417 337 L 422 329 Z" class="head"/>
+<rect x="290" y="337" width="254" height="66" rx="6" class="lane-agent"/>
+<text x="302" y="357" class="tag tag-agent" text-anchor="start">Agent Workflow</text>
+<text x="302" y="377" class="t" text-anchor="start">Hands the agent the next step of</text>
+<text x="302" y="394" class="t" text-anchor="start">the delivery.</text>
+<path d="M 417 403 L 417 429" class="wire"/>
+<path d="M 412 421 L 417 429 L 422 421 Z" class="head"/>
+<rect x="290" y="429" width="254" height="100" rx="6" class="stop-end"/>
+<text x="302" y="449" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
+<text x="302" y="469" class="t" text-anchor="start">The delivery has a next step</text>
+<text x="302" y="486" class="t" text-anchor="start">for the agent, and the reason</text>
+<text x="302" y="503" class="t" text-anchor="start">names the state of the intent</text>
+<text x="302" y="520" class="t" text-anchor="start">that chose it.</text>
+<rect x="290" y="537" width="254" height="66" rx="6" class="stop-end"/>
+<text x="302" y="557" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
+<text x="302" y="577" class="t" text-anchor="start">The delivery instruction has</text>
+<text x="302" y="594" class="t" text-anchor="start">been handled.</text>
 </svg>

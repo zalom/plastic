@@ -10,7 +10,7 @@ module CommandReference
       @flows = page.flows
     end
 
-    def lines = [*summary_lines, *outcome_lines, *gate_lines, *changes_lines].map { |line| "#{@page.words}: #{line}" }
+    def lines = [*summary_lines, *outcome_lines, *gate_lines, *placeholder_lines, *changes_lines].map { |line| "#{@page.words}: #{line}" }
 
     private
 
@@ -36,6 +36,22 @@ module CommandReference
       gates.select { |_flow, gate| gate.reason.match?(PLACEHOLDER) && blank?(gate.because) && blank?(gate.stops_when) }
         .map { |flow, gate| "workflow #{flow.key} gate #{gate.reason} needs a stops_when" }
     end
+
+    def placeholder_lines = [*say_lines, *ends_lines]
+
+    def say_lines
+      agent_steps.select { |_flow, step| step.say.match?(PLACEHOLDER) && blank?(step.gets) }
+        .map { |flow, step| "workflow #{flow.key} step #{step.name} needs a gets" }
+    end
+
+    def ends_lines
+      @flows.flat_map do |flow|
+        flow.klass.outcomes.select { |outcome| outcome.because.to_s.match?(PLACEHOLDER) && blank?(outcome.ends_when) }
+          .map { |outcome| "workflow #{flow.key} outcome #{outcome.name} needs an ends_when" }
+      end
+    end
+
+    def agent_steps = @flows.flat_map { |flow| flow.klass.steps.grep(Plastic::AgentWorkflow::Step).map { |step| [flow, step] } }
 
     def gates = @flows.flat_map { |flow| flow.klass.steps.grep(Plastic::CodeWorkflow::Gate).map { |gate| [flow, gate] } }
 

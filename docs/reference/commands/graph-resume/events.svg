@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 834 281" width="834" height="281" role="img" xml:space="preserve">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 834 313" width="834" height="313" role="img" xml:space="preserve">
 <title>The events of one call of plastic graph resume, in words</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
@@ -95,14 +95,16 @@
 <text x="44" y="164" class="badge-t" text-anchor="middle">2</text>
 <text x="64" y="163" class="tag tag-code" text-anchor="start">Code Workflow</text>
 <text x="64" y="183" class="t" text-anchor="start">Print where each store&#39;s work stopped.</text>
-<path d="M 424 172 L 480 172" class="wire-end"/>
-<path d="M 472 167 L 480 172 L 472 177 Z" class="head"/>
-<rect x="480" y="141" width="330" height="62" rx="6" class="stop-end"/>
+<path d="M 424 182 L 432 182 L 432 188 L 480 188" class="wire-end"/>
+<path d="M 472 183 L 480 188 L 472 193 Z" class="head"/>
+<rect x="480" y="141" width="330" height="94" rx="6" class="stop-end"/>
 <text x="492" y="159" class="tag tag-end" text-anchor="start">ENDS, EXIT 0</text>
-<text x="492" y="177" class="t" text-anchor="start">&lt;why&gt;.</text>
-<text x="492" y="193" class="t" text-anchor="start">next: &lt;next command&gt;</text>
-<rect x="24" y="233" width="14" height="14" rx="3" class="lane-code"/>
-<text x="44" y="245" class="k" text-anchor="start">Code Workflow</text>
-<rect x="140" y="233" width="14" height="14" rx="3" class="stop-end"/>
-<text x="160" y="245" class="k" text-anchor="start">Ends</text>
+<text x="492" y="177" class="t" text-anchor="start">Every named store has reported where its work</text>
+<text x="492" y="193" class="t" text-anchor="start">stopped, and the reason names the first store</text>
+<text x="492" y="209" class="t" text-anchor="start">with work.</text>
+<text x="492" y="225" class="t" text-anchor="start">next: &lt;next command&gt;</text>
+<rect x="24" y="265" width="14" height="14" rx="3" class="lane-code"/>
+<text x="44" y="277" class="k" text-anchor="start">Code Workflow</text>
+<rect x="140" y="265" width="14" height="14" rx="3" class="stop-end"/>
+<text x="160" y="277" class="k" text-anchor="start">Ends</text>
 </svg>

@@ -23,8 +23,8 @@ module Plastic
       # `say:` is a String with %{fact} names. `done:` reads the graphs: the
       # agent reports its work through a Plastic tool, and the next call sees
       # the record.
-      def step(step_name, done:, say:)
-        steps << Step.new(step_name, done, say)
+      def step(step_name, done:, say:, gets: nil)
+        steps << Step.new(step_name, done, say, gets)
       end
 
       # The kernel picks the outcome, so an agent's outcome line takes no if:.

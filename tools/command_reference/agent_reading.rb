@@ -11,7 +11,11 @@ module CommandReference
     def row
       name = @step.name
       file, line = @owner.named("step", name)
-      Row.new(:agent, name, @owner.source.lambda_code(@step.done), nil, @step.say, file, line)
+      Row.new(:agent, name, @owner.source.lambda_code(@step.done), nil, words, file, line)
     end
+
+    private
+
+    def words = (@step.gets if @step.say.match?(PageWords::PLACEHOLDER)) || @step.say
   end
 end

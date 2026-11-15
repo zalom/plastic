@@ -30,6 +30,6 @@ This command changes nothing.
 
 | Step | The text the agent gets |
 | --- | --- |
-| 4 | \<handoff text> |
+| 4 | The instruction for the next step of the delivery: the owner's go-ahead while none is recorded, then the step the state of the intent calls for |
 
 The command is `Plastic::Commands::Intent::Lock::Status`, in [`status.rb:10`](../../../../lib/plastic/commands/intent/lock/status.rb#L10).

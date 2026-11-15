@@ -26,6 +26,6 @@ This command changes nothing.
 
 | Step | The text the agent gets |
 | --- | --- |
-| 2 | \<handoff text> |
+| 2 | The instruction for the next step of the delivery: the owner's go-ahead while none is recorded, then the step the state of the intent calls for |
 
 The command is `Plastic::Commands::Next`, in [`next.rb:8`](../../../../lib/plastic/commands/next.rb#L8).

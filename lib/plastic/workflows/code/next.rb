@@ -22,8 +22,8 @@ module Plastic
         end
 
         outcome :agent_needed, if: ->(context) { !context.handoff_text.nil? }, because: "the next step is the agent's to take"
-        outcome :nothing, if: ->(context) { context.next_command.nil? }, offers: "plastic status", because: "%{why}"
-        outcome :done, offers: "%{next_command}", because: "%{why}"
+        outcome :nothing, if: ->(context) { context.next_command.nil? }, offers: "plastic status", because: "%{why}", ends_when: "no intent is clearly the one in play"
+        outcome :done, offers: "%{next_command}", because: "%{why}", ends_when: "the intent in play has a next command, and the reason says why that one"
       end
     end
   end

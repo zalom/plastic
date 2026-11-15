@@ -14,7 +14,8 @@ module Plastic
 
           sets :handoff_text, :context_command, :context_complete
 
-          step "select retrieved evidence", done: ->(context) { context.context_complete }, say: "%{handoff_text}"
+          step "select retrieved evidence", done: ->(context) { context.context_complete }, say: "%{handoff_text}",
+            gets: "The instruction to pick the retrieved evidence that bears on the intent and to submit it with plastic intent context"
           outcome :handoff, offers: "%{context_command}", because: "an external agent must select the evidence"
           outcome :done, offers: nil, because: "the retrieval context was submitted"
 

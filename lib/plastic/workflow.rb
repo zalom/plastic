@@ -59,10 +59,10 @@ module Plastic
       # `because:` the line that says why; both matter only when the outcome
       # ends the chain. Each lane adds its own rules.
       def outcome(outcome_name, **options)
-        unknown = options.keys - %i[if offers because stops found_by unreachable]
+        unknown = options.keys - %i[if offers because stops found_by unreachable ends_when]
         raise Invalid, "#{name}: outcome #{outcome_name} does not take #{unknown.join(", ")}" if unknown.any?
 
-        outcomes << Outcome.new(outcome_name, *options.values_at(:if, :offers, :because, :stops, :found_by, :unreachable))
+        outcomes << Outcome.new(outcome_name, *options.values_at(:if, :offers, :because, :stops, :found_by, :unreachable, :ends_when))
       end
 
       def outcomes = (@outcomes ||= [])
