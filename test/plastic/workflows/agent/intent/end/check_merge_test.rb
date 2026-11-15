@@ -35,6 +35,13 @@ class CheckMergeTest < Plastic::TestCase
     assert_includes check.steps.join("\n"), "Plastic runs no version control command"
   end
 
+  def test_the_merge_step_tells_the_agent_to_use_version_control_as_it_does_in_the_project
+    step = check.steps.first
+
+    assert_includes step, "Use version control as you do in this project: merge the pull request of intent 1 into the intent's base, and leave it open only when the owner asked."
+    refute_includes step, "your own"
+  end
+
   def test_the_steps_name_neither_removed_option
     text = check.steps.join("\n")
 
