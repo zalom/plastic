@@ -3,6 +3,7 @@
 require_relative "../../test_helper"
 require "yaml"
 require_relative "../../support/child_process"
+require_relative "../../support/repository_files"
 
 # The names that left the kernel: a tracked file naming one is a stale reference.
 module RetiredNames
@@ -56,14 +57,16 @@ class KernelPathsTest < Minitest::Test
   WORKFLOW_NAME = Regexp.union(RetiredNames::RETIRED_WORKFLOWS.map { |name| /#{Regexp.escape(name)}(?![A-Za-z0-9_])/ })
 
   def tracked
-    @tracked ||= ChildProcess.capture2e("git", "ls-files", "-z", chdir: ROOT).first.split("\0").reject do |path|
-      path == "CHANGELOG.md" || path == SELF || !File.file?(File.join(ROOT, path))
-    end
+    @tracked ||= RepositoryFiles.paths(ROOT).reject { |path| path == "CHANGELOG.md" || path == SELF }
   end
 
   def text_of(path)
     text = File.read(File.join(ROOT, path), encoding: "UTF-8")
     text.valid_encoding? ? text : nil
+  end
+
+  def test_the_subjects_are_read_from_the_disk
+    refute_empty tracked
   end
 
   def test_no_tracked_file_names_the_old_kernel_path_or_a_retired_name

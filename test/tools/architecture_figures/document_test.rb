@@ -3,7 +3,7 @@
 require_relative "../../test_helper"
 require_relative "../../support/architecture_figures_helper"
 require "architecture_figures"
-require_relative "../../support/child_process"
+require_relative "../../support/repository_files"
 
 class ArchitectureFiguresDocumentTest < Minitest::Test
   include ArchitectureFiguresHelper
@@ -47,8 +47,7 @@ class ArchitectureFiguresDocumentTest < Minitest::Test
   def text_of(path) = File.binread(File.join(ROOT, path)).force_encoding("UTF-8")
 
   def tracked_texts
-    out, _err, _status = ChildProcess.capture3("git", "-C", ROOT, "ls-files")
-    out.lines.map(&:strip).reject { |path| excluded?(path) }.to_h { |path| [path, text_of(path)] }.select { |_path, text| text.valid_encoding? && !text.include?("\0") }
+    RepositoryFiles.paths(ROOT).reject { |path| excluded?(path) }.to_h { |path| [path, text_of(path)] }.select { |_path, text| text.valid_encoding? && !text.include?("\0") }
   end
 
   def test_the_subjects_are_read_from_the_disk
