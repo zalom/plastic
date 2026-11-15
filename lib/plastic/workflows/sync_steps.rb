@@ -25,13 +25,17 @@ module Plastic
 
       # What the gates read, kept as facts.
       def self.note(context, plan)
+        note_refusals(context, plan)
+        note_files(context, plan.unreadable_files, plan.rowless_files)
+        context[:printed_over] = plan.printed_over
+        context[:lines] = nil
+      end
+
+      def self.note_refusals(context, plan)
         context[:failure] = plan.failure
         context[:conflicts] = plan.conflicts.join(", ")
         context[:merging] = plan.merging?
         context[:unreadable] = plan.unreadable.join("\n")
-        note_files(context, plan.unreadable_files, plan.rowless_files)
-        context[:printed_over] = plan.printed_over
-        context[:lines] = nil
       end
 
       # `rowless` names the files this home holds no rows for: a print from rows cannot work here, so no command is offered for them.

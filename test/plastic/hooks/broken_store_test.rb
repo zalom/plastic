@@ -44,7 +44,7 @@ class BrokenStoreTest < Minitest::Test
 
       assert_equal 0, call.code
       assert_equal "", call.out
-      assert_equal "plastic hook: Plastic::Graph::Database::Error: local.db: file is not a database\n", call.err
+      assert_equal "plastic hook: local.db: file is not a database\n", call.err
     end
   end
 

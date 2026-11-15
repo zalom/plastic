@@ -3,34 +3,7 @@
 require_relative "../../../../test_helper"
 
 class KnowledgeReaderRoadmapFileTest < Plastic::TestCase
-  RoadmapFile = Plastic::Graph::Knowledge::Reader::RoadmapFile
-  FORM = "<!-- plastic roadmap form 2 -->"
-  TRICKY = "# Not a title\n## Batch 9\n- [x] 3 Other \\ back — done\n  item: fake"
-
-  def work = store_graphs.databases.fetch(:work)
-
-  def seed(title: TRICKY, item_title: "Hello — world — ready", goal: "Line one\nLine two")
-    work.transaction do |batch|
-      batch.put(:roadmaps, { slug: "plan", title:, goal:, opened_at: STAMP, updated_at: STAMP })
-      batch.put(:batches, { roadmap: "plan", position: 1, title:, goal:, done: "first\nsecond", updated_at: STAMP })
-      batch.put(:roadmap_items, { roadmap: "plan", item: "1", batch: 1, position: 1, title: item_title, goal:, done: "d", mark: "dropped", updated_at: STAMP })
-      batch.put(:roadmap_items, { roadmap: "plan", item: "2", batch: 1, position: 2, title: "Second", updated_at: STAMP })
-      batch.put(:roadmap_edges, { roadmap: "plan", from: "1", to: "2", kind: "after" })
-      batch.put(:roadmap_log, { roadmap: "plan", position: 1, at: STAMP, text: TRICKY, session_id: "s1" })
-    end
-  end
-
-  def printed = Plastic::Graph::RoadmapPrint.new(retrieval, "plan").text
-
-  def clear
-    work.transaction do |batch|
-      %i[roadmaps batches roadmap_items roadmap_edges roadmap_log].each do |table|
-        batch.remove(table, **{ ((table == :roadmaps) ? :slug : :roadmap) => "plan" })
-      end
-    end
-  end
-
-  def read(text) = work.transaction { |batch| RoadmapFile.new("plan", text).apply(batch) }
+  include RoadmapFileHelper
 
   def test_the_print_starts_with_the_form_line
     seed
@@ -92,32 +65,6 @@ class KnowledgeReaderRoadmapFileTest < Plastic::TestCase
     assert_equal [origin, true], [retrieval.roadmap("plan").origin_id, !retrieval.roadmap("plan").updated_at.nil?]
   end
 
-  def test_a_file_in_another_form_is_refused_as_an_older_form
-    error = assert_raises(Plastic::Invalid) { RoadmapFile.new("plan", "# Plan\n\n## Goal\n\nShip\n") }
-
-    assert_includes error.message, "older form"
-  end
-
-  def test_a_file_with_an_unknown_form_line_is_refused_as_an_older_form
-    error = assert_raises(Plastic::Invalid) { RoadmapFile.new("plan", "<!-- plastic roadmap form 9 -->\n") }
-
-    assert_includes error.message, "older form"
-  end
-
-  def test_a_position_that_is_not_a_number_is_refused_naming_the_field
-    seed
-    error = assert_raises(Plastic::Invalid) { read(printed.sub("  position: 1", "  position: first")) }
-
-    assert_equal "roadmaps/plan.md holds a position that is not a number", error.message
-  end
-
-  def test_a_head_with_no_title_is_refused_naming_the_missing_field
-    seed
-    error = assert_raises(Plastic::Invalid) { RoadmapFile.new("plan", printed.sub(/^title: .*\n/, "")) }
-
-    assert_equal "roadmaps/plan.md has a head record with no title", error.message
-  end
-
   def test_an_item_with_no_title_reads_back_as_an_item_with_no_title
     seed(item_title: nil)
     text = printed
@@ -140,30 +87,5 @@ class KnowledgeReaderRoadmapFileTest < Plastic::TestCase
     seed(item_title: nil)
 
     assert_includes printed.lines(chomp: true), "  title:"
-  end
-
-  def test_an_item_with_no_position_is_refused_naming_an_item
-    seed
-    error = assert_raises(Plastic::Invalid) { RoadmapFile.new("plan", printed.sub("  position: 1\n  title: Hello — world — ready", "  title: Hello")) }
-
-    assert_equal "roadmaps/plan.md has an item record with no position", error.message
-  end
-
-  def test_an_edge_with_no_kind_is_refused_naming_an_edge
-    seed
-    error = assert_raises(Plastic::Invalid) { RoadmapFile.new("plan", printed.sub("  kind: after\n", "")) }
-
-    assert_equal "roadmaps/plan.md has an edge record with no kind", error.message
-  end
-
-  def test_a_log_line_with_no_text_is_refused_naming_a_log_line
-    seed
-    error = assert_raises(Plastic::Invalid) { RoadmapFile.new("plan", printed.sub(/^  text: .*\n?\z/, "")) }
-
-    assert_equal "roadmaps/plan.md has a log line record with no text", error.message
-  end
-
-  def test_form_question_tells_the_two_apart
-    assert_equal [true, false], [RoadmapFile.form?("#{FORM}\n"), RoadmapFile.form?("# Plan\n")]
   end
 end
