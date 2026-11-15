@@ -18,7 +18,7 @@ class PrintsLinkPartTest < Plastic::TestCase
   def test_the_time_a_link_was_made_changes_no_digest
     link = { "from_ref" => "1", "to_ref" => "2", "kind" => "chain" }
 
-    assert_equal digest("links" => [link]), digest("links" => [link.merge("created_at" => "2026-11-15T10:00:00Z")])
+    assert_equal digest("links" => [link]), digest("links" => [link.merge("at" => "2026-11-15T10:00:00Z")])
   end
 
   def test_links_listed_as_no_list_have_a_digest_of_their_own
