@@ -20,6 +20,12 @@ class OfferEnolaTest < Plastic::TestCase
     refute_includes said, "/main/"
   end
 
+  def test_the_offer_tells_the_agent_to_set_up_the_hooks_and_the_mcp_server_for_this_harness
+    said = sole(offer(false).steps)
+
+    assert_match(/set up Enola's hooks and its MCP server for this harness/, said)
+  end
+
   def test_a_reinstall_offers_nothing
     assert_equal :done, offer(true)
   end
