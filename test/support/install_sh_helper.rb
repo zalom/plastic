@@ -96,11 +96,13 @@ module InstallShHelper
   def run_launcher = ChildProcess.capture2(launcher).first
 
   # A fake curl that answers the GitHub release list with these versions, each carrying the three
-  # release files, and serves a release file from the throwaway release folder.
-  def serve_releases(*versions)
+  # release files, and the versions of partial: (a hash of version to file names) with only the files named,
+  # and serves a release file from the throwaway release folder.
+  def serve_releases(*versions, partial: {})
     feed = File.join(@dir, "releases.json")
     assets = %w[plastic.tgz plastic.tgz.sha256 plastic.manifest.json].map { |name| { "name" => name } }
-    File.write(feed, JSON.generate(versions.map { |version| { "tag_name" => "v#{version}", "assets" => assets } }))
+    listed = versions.map { |version| [version, assets] } + partial.map { |version, names| [version, names.map { |name| { "name" => name } }] }
+    File.write(feed, JSON.generate(listed.map { |version, files| { "tag_name" => "v#{version}", "assets" => files } }))
     write_tool("curl", fake_curl(feed))
   end
 

@@ -76,7 +76,8 @@ class ProjectNewTest < Plastic::TestCase
   def test_both_rule_files_absent_are_written_and_named
     result = make("blog", checkout)
 
-    assert_equal "# blog\n\nRules for agents working on this repository.\n", File.read(rule_file("AGENTS.md"))
+    assert_equal "# blog\n\nRules for agents working on this repository.\n\n" \
+                 "Plastic's instructions are in ~/.plastic/PLASTIC.md.\n", File.read(rule_file("AGENTS.md"))
     assert_equal "@AGENTS.md\n", File.read(rule_file("CLAUDE.md"))
     assert_includes result.out, "created  AGENTS.md and CLAUDE.md in #{checkout}"
   end

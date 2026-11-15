@@ -166,14 +166,14 @@ class StartDoctorTest < Plastic::TestCase
 
     assert_equal [0, "", []], [code, err, asked]
     assert_equal ["Plastic: the session s-1 is recorded as unknown: its start hook found no sign of a registered harness; " \
-                  "run plastic doctor --harness with one of claude-code, codex."], out.lines(chomp: true).grep(/doctor/)
+                  "run plastic doctor --harness with one of claude-code, codex, hermes."], out.lines(chomp: true).grep(/doctor/)
   end
 
   def test_a_fresh_start_named_by_ai_agent_says_plastic_has_no_doctor_for_it
     _code, out, _err = resume(PASSING, transcript_path: nil, env: { "AI_AGENT" => "cursor" })
 
     assert_equal ["Plastic: the session s-1 is recorded as cursor, a harness Plastic has no doctor for; " \
-                  "run plastic doctor --harness with one of claude-code, codex."], out.lines(chomp: true).grep(/doctor/)
+                  "run plastic doctor --harness with one of claude-code, codex, hermes."], out.lines(chomp: true).grep(/doctor/)
   end
 
   def test_a_resumed_start_recorded_as_unknown_prints_no_explanation

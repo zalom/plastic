@@ -10,7 +10,7 @@ require_relative "harnesses/session_rows"
 
 module Plastic
   module Doctor
-    HARNESSES = Harnesses.all.select(&:doctor).to_h { |harness| [harness.name, const_get(harness.doctor)] }.freeze
+    HARNESSES = Harnesses.all.to_h { |harness| [harness.name, harness.doctor && const_get(harness.doctor)] }.freeze
 
     # The harness on the session's row, else the one whose session variable
     # names the session. Nothing naming one is a usage error that names the
@@ -36,11 +36,15 @@ module Plastic
 
     def self.kind(name, harnesses = HARNESSES)
       harnesses.fetch(name) do
-        raise CLI::Command::Usage, "no doctor for the harness #{name}; harnesses with one: #{harnesses.keys.join(", ")}"
+        raise CLI::Command::Usage, "no harness #{name}; the registered harnesses are #{harnesses.keys.join(", ")}"
       end
     end
 
-    def self.checks(scope, kind, running:) = Core.new(scope, running:).checks + kind.new(scope, running:).checks
+    def self.checks(scope, kind, running:)
+      Core.new(scope, running:).checks + harness_checks(scope, kind, running:)
+    end
+
+    def self.harness_checks(scope, kind, running:) = kind ? kind.new(scope, running:).checks : []
 
     def self.check(scope, harness:)
       checks(scope, kind(harness), running: Workflows::Installation.running(scope))

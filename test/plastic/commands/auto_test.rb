@@ -79,7 +79,7 @@ class AutoTest < Plastic::TestCase
     result = call(intent.intent_id, env: { "PLASTIC_SESSION" => "" })
 
     assert_equal [1, []], [result.code, lock_rows]
-    assert_includes result.err, "plastic auto names no session"
+    assert_includes result.err, "plastic: auto names no session; set PLASTIC_SESSION"
   end
 
   def test_two_ids_exit_2_and_write_no_lock
