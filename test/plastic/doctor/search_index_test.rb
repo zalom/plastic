@@ -34,14 +34,14 @@ class DoctorSearchIndexTest < Plastic::TestCase
   def test_a_store_that_cannot_be_written_and_matches_says_in_step
     retrieval = Retrieval.new({ repairable: false, missing: [] }, Plastic::Graph::Database::Error.new("readonly"))
 
-    assert_equal ["in step", nil], check(retrieval).then { |row| [row.value, row.repair] }
+    assert_equal ["ok, in step", nil], check(retrieval).then { |row| [row.value, row.repair] }
   end
 
   def test_a_store_folder_with_files_and_no_database_says_so
     File.delete(File.join(@plastic_home, "stores", "alpha", "knowledge_graph.db"))
     FileUtils.touch(File.join(@plastic_home, "stores", "alpha", "plan.md"))
 
-    assert_equal "no database in this store", check(nil).value
+    assert_equal "ok, no database in this store", check(nil).value
   end
 
   def test_a_store_folder_that_does_not_exist_prints_no_row

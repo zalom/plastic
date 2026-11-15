@@ -56,7 +56,7 @@ class CheckHealthTest < Plastic::TestCase
   def test_a_store_whose_search_rows_match_the_passages_prints_in_step
     write_evidence(SLUG)
 
-    assert_equal "in step", printed_row(check.last, "search index #{SLUG}:")
+    assert_equal "ok, in step", printed_row(check.last, "search index #{SLUG}:")
   end
 
   def test_each_store_prints_its_own_search_index_row
@@ -70,7 +70,7 @@ class CheckHealthTest < Plastic::TestCase
     knowledge(SLUG).transaction { |batch| batch.add("DELETE FROM document_fts") }
     outcome, context = check
 
-    assert_equal [:done, "rebuilt", 1], [outcome, printed_row(context, "search index #{SLUG}:"), search_rows(SLUG)]
+    assert_equal [:done, "ok, rebuilt", 1], [outcome, printed_row(context, "search index #{SLUG}:"), search_rows(SLUG)]
   end
 
   def test_evidence_that_is_gone_fails_with_the_backup_list_to_read
@@ -87,7 +87,7 @@ class CheckHealthTest < Plastic::TestCase
     File.delete(store_path(:knowledge))
     _outcome, context = check
 
-    assert_equal ["no database in this store", false], [printed_row(context, "search index #{SLUG}:"), File.exist?(store_path(:knowledge))]
+    assert_equal ["ok, no database in this store", false], [printed_row(context, "search index #{SLUG}:"), File.exist?(store_path(:knowledge))]
   end
 
   def test_the_start_hook_check_leaves_the_search_rows_as_they_are
