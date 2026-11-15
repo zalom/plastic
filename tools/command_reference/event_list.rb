@@ -64,7 +64,7 @@ module CommandReference
       Stop.new(kind, (kind == :refusal) ? 3 : 1, Words.sentence(gate_words(gate)), next_line(gate.offers))
     end
 
-    def gate_words(gate) = gate.because || (gate.reason.match?(PageWords::PLACEHOLDER) ? gate.stops_when : gate.reason)
+    def gate_words(gate) = gate.because || (gate.reason.match?(PageWords::PLACEHOLDER) ? gate.words : gate.reason)
 
     def end_stop(outcome)
       kind = (@flow.agent? && outcome.name == :handoff && outcome.exit_code != 0) ? :handoff : :end

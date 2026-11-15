@@ -38,7 +38,7 @@ module Plastic
           end
 
           gate "%{problem}", stops: :failure,
-            stops_when: "the submission is not valid, or a store needs repair",
+            words: "the submission is not valid, or a store needs repair",
             pass: ->(context) { context.problem.nil? }
 
           step "save the submitted context", done: ->(context) { ContextPersistence.new(context).saved?(submission(context)) },

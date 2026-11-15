@@ -28,7 +28,7 @@ module Plastic
           end
 
           gate "%{approval_problem}", stops: :refusal,
-            stops_when: "the intent has no go-ahead",
+            words: "the intent has no go-ahead",
             pass: ->(context) { context.approval_problem.nil? }
 
           read "forget a refusal of an earlier call" do |context|
@@ -53,10 +53,10 @@ module Plastic
           end
 
           gate "%{problem}", stops: :refusal,
-            stops_when: "the node was claimed three times and the owner decides",
+            words: "the node was claimed three times and the owner decides",
             pass: ->(context) { context.result.to_s != "capped" }
           gate "%{problem}", stops: :failure,
-            stops_when: "the node is not in the intent, is not open, or needs a node that is not done",
+            words: "the node is not in the intent, is not open, or needs a node that is not done",
             pass: ->(context) { !STOPPED.include?(context.result.to_s) }
 
           read "print the brief" do |context|

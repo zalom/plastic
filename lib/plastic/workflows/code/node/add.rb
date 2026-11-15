@@ -19,7 +19,7 @@ module Plastic
           end
 
           gate "%{problem}", stops: :failure,
-            stops_when: "the intent is missing, done or abandoned, or the criterion key is not one of the spec",
+            words: "the intent is missing, done or abandoned, or the criterion key is not one of the spec",
             pass: ->(context) { context.problem.nil? }
 
           step "add the node", done: ->(context) { !context.id.nil? },

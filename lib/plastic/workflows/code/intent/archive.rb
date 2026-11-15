@@ -37,10 +37,10 @@ module Plastic
             because: "only a done, abandoned or future intent archives; end it first",
             pass: ->(context) { context.kind != :unfinished }
           gate "%{problem}", stops: :failure,
-            stops_when: "the intent is not in the store, or a file of the store cannot be read or written",
+            words: "the intent is not in the store, or a file of the store cannot be read or written",
             pass: ->(context) { context.kind != :failure }
           gate "%{problem}", stops: :refusal,
-            stops_when: "an intent that is still open links to the intent",
+            words: "an intent that is still open links to the intent",
             pass: ->(context) { context.kind != :refusal }
 
           read "say what was archived" do |context|

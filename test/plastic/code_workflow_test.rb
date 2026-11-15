@@ -172,21 +172,21 @@ class CodeWorkflowStopsWhenTest < Plastic::TestCase
   def held(**words) = code { gate "%{mode} is held", stops: :failure, pass: ->(_c) { false }, **words }
 
   def test_a_gate_keeps_the_words_of_when_it_stops
-    assert_equal "the mode is hold", held(stops_when: "the mode is hold").steps.first.stops_when
+    assert_equal "the mode is hold", held(words: "the mode is hold").steps.first.words
   end
 
   def test_the_words_of_when_a_gate_stops_are_not_a_template
-    assert_equal ["%{mode} is held"], held(stops_when: "the mode is %{other}").templates
+    assert_equal ["%{mode} is held"], held(words: "the mode is %{other}").templates
   end
 
   def test_the_words_of_when_a_gate_stops_are_never_printed
     gate = Plastic::CodeWorkflow::Gate.new(reason: "%{name} is held", stops: :failure, pass: ->(_c) { false }, offers: nil, because: nil,
-      stops_when: "the name is held")
+      words: "the name is held")
 
     assert_equal Plastic::Failed.new(:code_hold, "gate", "ada is held"), gate.call(context, Flows::Hold)
   end
 
-  def test_a_gate_with_no_stops_when_answers_nil
-    assert_nil held.steps.first.stops_when
+  def test_a_gate_with_no_words_answers_nil
+    assert_nil held.steps.first.words
   end
 end

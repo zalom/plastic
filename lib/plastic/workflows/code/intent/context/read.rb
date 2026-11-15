@@ -29,7 +29,7 @@ module Plastic
             end
 
             gate "%{problem}", stops: :failure,
-              stops_when: "no retrieval context is saved, or a store needs repair",
+              words: "no retrieval context is saved, or a store needs repair",
               pass: ->(context) { context.problem.nil? }
 
             outcome :done, offers: nil, because: "the retrieval context was read"

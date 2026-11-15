@@ -54,7 +54,7 @@ module Plastic
         read("forget a refusal of an earlier call") { |context| forget_refusal(context) }
         step(shape.fetch(:step), done: method(:tried?), changes: { work: CHANGES.fetch(verb) }) { |context| run_move(context, verb, shape) }
         gate "%{problem}", stops: :failure,
-          stops_when: "the node is not in the intent, or its state does not allow this move",
+          words: "the node is not in the intent, or its state does not allow this move",
           pass: method(:moved?)
       end
 

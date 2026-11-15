@@ -20,7 +20,7 @@ module Plastic
             end
 
             gate "%{problem}", stops: :failure,
-              stops_when: "the intent is missing, done or abandoned",
+              words: "the intent is missing, done or abandoned",
               pass: ->(context) { context.problem.nil? }
 
             read "check the delivery behind an accept" do |context|

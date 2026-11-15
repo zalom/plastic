@@ -27,7 +27,7 @@ module Plastic
           end
 
           gate "%{problem}", stops: :failure,
-            stops_when: "the ruling to supersede does not exist in the intent",
+            words: "the ruling to supersede does not exist in the intent",
             pass: ->(context) { context.problem.nil? }
 
           read "say what was written" do |context|

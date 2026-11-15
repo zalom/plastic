@@ -13,7 +13,7 @@ module Fixtures
       class FirstSaid < Plastic::CodeWorkflow
         summary "Opens the thing."
 
-        gate "%{problem}", stops: :failure, stops_when: "the thing is missing", pass: ->(_c) { true }
+        gate "%{problem}", stops: :failure, words: "the thing is missing", pass: ->(_c) { true }
         step "open the thing", done: ->(_c) { true }, changes: { work: "The thing is opened" } do |_c|
         end
 
@@ -29,8 +29,8 @@ module Fixtures
       class RelaySaid < Plastic::AgentWorkflow
         summary "Relays a text."
 
-        step "relay the text", done: ->(_c) { true }, say: "%{text}", gets: "The text of the next step of the delivery"
-        outcome :handoff, offers: nil, because: "%{why}", ends_when: "the next step is handed to the agent"
+        step "relay the text", done: ->(_c) { true }, say: "%{text}", words: "The text of the next step of the delivery"
+        outcome :handoff, offers: nil, because: "%{why}", words: "the next step is handed to the agent"
         outcome :done, offers: nil, because: "the text was relayed"
       end
     end

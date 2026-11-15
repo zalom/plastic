@@ -23,7 +23,7 @@ module Plastic
             end
 
             gate "%{problem}", stops: :failure,
-              stops_when: "there is no such edge on the roadmap",
+              words: "there is no such edge on the roadmap",
               pass: ->(context) { context.problem.nil? }
 
             read "say what was removed" do |context|

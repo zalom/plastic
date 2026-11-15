@@ -30,7 +30,7 @@ module Plastic
           end
 
           outcome :done, offers: "%{next_command}", because: "%{why}",
-            ends_when: "every named store has reported where its work stopped, and the reason names the first store with work"
+            words: "every named store has reported where its work stopped, and the reason names the first store with work"
 
           def self.store_slugs(context)
             stores = context.stores

@@ -18,7 +18,7 @@ module Plastic
           end
 
           gate "%{problem}", stops: :failure,
-            stops_when: "an end of the link is missing",
+            words: "an end of the link is missing",
             pass: ->(context) { context.problem.nil? }
 
           read "check for a self link or a repeat" do |context|
@@ -26,7 +26,7 @@ module Plastic
           end
 
           gate "%{refusal}", stops: :refusal,
-            stops_when: "the link joins an intent to itself or is already there",
+            words: "the link joins an intent to itself or is already there",
             pass: ->(context) { context.refusal.nil? }
 
           step "add the link", done: ->(context) { !context.added.nil? },

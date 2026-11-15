@@ -54,7 +54,7 @@ class CommandReferenceMissingWordsTest < Minitest::Test
 
     assert(lines.any? { |line| line.include?("code_unsaid") && line.include?("summary") })
     assert(lines.any? { |line| line.include?("code_askless") && line.include?("summary") })
-    assert(lines.any? { |line| line.include?("%{problem}") && line.include?("stops_when") })
+    assert(lines.any? { |line| line.include?("%{problem}") && line.include?("needs words") })
   end
 
   def test_a_workflow_of_a_chain_with_no_summary_is_named
@@ -86,15 +86,15 @@ class CommandReferenceMissingWordsTest < Minitest::Test
   end
 
   def test_an_agent_step_whose_text_is_only_a_placeholder_is_named
-    assert(missing("wordless relaying").any? { |line| line.include?("agent_relayed") && line.include?("step relay the text") && line.include?("gets") })
+    assert(missing("wordless relaying").any? { |line| line.include?("agent_relayed") && line.include?("step relay the text") && line.include?("needs words") })
   end
 
   def test_an_outcome_whose_because_is_only_a_placeholder_is_named
-    assert(missing("wordless relaying").any? { |line| line.include?("agent_relayed") && line.include?("outcome handoff") && line.include?("ends_when") })
+    assert(missing("wordless relaying").any? { |line| line.include?("agent_relayed") && line.include?("outcome handoff") && line.include?("needs words") })
   end
 
-  def test_an_outcome_with_a_full_because_is_not_named_for_ends_when
-    refute(missing("wordless relaying").any? { |line| line.include?("outcome done") && line.include?("ends_when") })
+  def test_an_outcome_with_a_full_because_is_not_named_for_words
+    refute(missing("wordless relaying").any? { |line| line.include?("outcome done") && line.include?("needs words") })
   end
 
   def test_the_words_of_every_page_are_collected_in_one_list
@@ -128,7 +128,7 @@ class CommandReferenceDeclaredTextsTest < Minitest::Test
   def worded = CommandReference::Model.new(CommandReferenceHelper::ROOT, table: Fixtures::Worded::TABLE).page("worded complete").flows.last
 
   def test_a_text_that_is_only_a_placeholder_gets_declared_words_on_the_pages_of_the_repository
-    lines = CommandReferenceHelper.pages.values.flat_map { |page| CommandReference::Words.missing([page]) }.grep(/gets|ends_when/)
+    lines = CommandReferenceHelper.pages.values.flat_map { |page| CommandReference::Words.missing([page]) }.grep(/needs words/)
 
     assert_empty lines
   end

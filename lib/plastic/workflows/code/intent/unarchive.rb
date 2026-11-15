@@ -22,7 +22,7 @@ module Plastic
           end
 
           gate "%{problem}", stops: :failure,
-            stops_when: "the intent is not archived or cannot be restored",
+            words: "the intent is not archived or cannot be restored",
             pass: ->(context) { context.problem.nil? }
 
           read "say it was restored" do |context|

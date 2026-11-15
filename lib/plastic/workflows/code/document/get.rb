@@ -23,7 +23,7 @@ module Plastic
           end
 
           gate "%{problem}", stops: :failure,
-            stops_when: "the retrieval index needs repair",
+            words: "the retrieval index needs repair",
             pass: ->(context) { context.problem.nil? }
 
           outcome :done, offers: nil, because: "the document was read"

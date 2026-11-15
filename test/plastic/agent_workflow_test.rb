@@ -29,25 +29,25 @@ class AgentWorkflowTest < Plastic::TestCase
   end
 
   def test_a_step_may_declare_in_words_what_the_agent_gets
-    flow = agent { step "relay", done: ->(_c) { true }, say: "%{text}", gets: "The next step" }
+    flow = agent { step "relay", done: ->(_c) { true }, say: "%{text}", words: "The next step" }
 
-    assert_equal "The next step", flow.steps.first.gets
+    assert_equal "The next step", flow.steps.first.words
   end
 
   def test_a_step_with_no_gets_has_none
-    assert_nil agent { step "relay", done: ->(_c) { true }, say: "Do it" }.steps.first.gets
+    assert_nil agent { step "relay", done: ->(_c) { true }, say: "Do it" }.steps.first.words
   end
 
   def test_an_outcome_may_declare_in_words_when_the_call_ends
-    flow = agent { outcome :handoff, because: "%{why}", ends_when: "a step is left" }
+    flow = agent { outcome :handoff, because: "%{why}", words: "a step is left" }
 
-    assert_equal "a step is left", flow.outcomes.first.ends_when
+    assert_equal "a step is left", flow.outcomes.first.words
   end
 
   def test_the_words_of_a_step_and_an_outcome_add_no_template
     flow = agent do
-      step "relay", done: ->(_c) { true }, say: "%{text}", gets: "The next step"
-      outcome :handoff, because: "%{why}", ends_when: "a step is left"
+      step "relay", done: ->(_c) { true }, say: "%{text}", words: "The next step"
+      outcome :handoff, because: "%{why}", words: "a step is left"
     end
 
     assert_equal ["%{why}", "%{text}"], flow.templates

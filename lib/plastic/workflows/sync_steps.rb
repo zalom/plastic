@@ -119,7 +119,7 @@ module Plastic
       def plan_steps(direction)
         read("plan the sync") { |context| SyncSteps.note(context, SyncSteps.plan(context, direction)) }
         gate "%{failure}", stops: :failure,
-          stops_when: "a sync down finds the old index file of the store and needs plastic sync up first, or an overwrite path names no file and no rows",
+          words: "a sync down finds the old index file of the store and needs plastic sync up first, or an overwrite path names no file and no rows",
           pass: SyncSteps.check(:runs?)
         gate REFUSED_BEFORE.fetch(direction), stops: :refusal, pass: SyncSteps.check(:writes?)
       end

@@ -8,8 +8,8 @@ module Plastic
   class CodeWorkflow < Workflow
     # A check that stops the call unless its pass: lambda holds. It prints
     # its reason as a refusal, exit 3, or as a failure, exit 1.
-    Gate = Data.define(:reason, :stops, :pass, :offers, :because, :stops_when) do
-      def initialize(stops_when: nil, **rest) = super
+    Gate = Data.define(:reason, :stops, :pass, :offers, :because, :words) do
+      def initialize(words: nil, **rest) = super
 
       def name = "gate"
 

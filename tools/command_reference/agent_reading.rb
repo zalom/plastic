@@ -16,6 +16,6 @@ module CommandReference
 
     private
 
-    def words = (@step.gets if @step.say.match?(PageWords::PLACEHOLDER)) || @step.say
+    def words = (@step.words if @step.say.match?(PageWords::PLACEHOLDER)) || @step.say
   end
 end

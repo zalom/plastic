@@ -27,10 +27,10 @@ module Plastic
           end
 
           gate "%{problem}", stops: :failure,
-            stops_when: "the roadmap has no such batch, or an item named in needs is not on the roadmap",
+            words: "the roadmap has no such batch, or an item named in needs is not on the roadmap",
             pass: ->(context) { context.kind != :failure }
           gate "%{problem}", stops: :refusal,
-            stops_when: "an edge from a needed item to the new item would loop",
+            words: "an edge from a needed item to the new item would loop",
             pass: ->(context) { context.kind != :refusal }
 
           read "say what was added" do |context|

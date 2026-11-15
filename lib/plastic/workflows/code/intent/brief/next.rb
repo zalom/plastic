@@ -19,8 +19,8 @@ module Plastic
             end
 
             outcome :agent_needed, if: ->(context) { !context.handoff_text.nil? }, because: "the agent takes the next step of the brief"
-            outcome :nothing, if: ->(context) { context.next_command.nil? }, offers: nil, because: "%{why}", ends_when: "the brief has no next command"
-            outcome :done, offers: "%{next_command}", because: "%{why}", ends_when: "the brief names the next command and the reason for it"
+            outcome :nothing, if: ->(context) { context.next_command.nil? }, offers: nil, because: "%{why}", words: "the brief has no next command"
+            outcome :done, offers: "%{next_command}", because: "%{why}", words: "the brief names the next command and the reason for it"
           end
         end
       end

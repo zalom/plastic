@@ -33,21 +33,21 @@ module CommandReference
     end
 
     def gate_lines
-      gates.select { |_flow, gate| gate.reason.match?(PLACEHOLDER) && blank?(gate.because) && blank?(gate.stops_when) }
-        .map { |flow, gate| "workflow #{flow.key} gate #{gate.reason} needs a stops_when" }
+      gates.select { |_flow, gate| gate.reason.match?(PLACEHOLDER) && blank?(gate.because) && blank?(gate.words) }
+        .map { |flow, gate| "workflow #{flow.key} gate #{gate.reason} needs words" }
     end
 
     def placeholder_lines = [*say_lines, *ends_lines]
 
     def say_lines
-      agent_steps.select { |_flow, step| step.say.match?(PLACEHOLDER) && blank?(step.gets) }
-        .map { |flow, step| "workflow #{flow.key} step #{step.name} needs a gets" }
+      agent_steps.select { |_flow, step| step.say.match?(PLACEHOLDER) && blank?(step.words) }
+        .map { |flow, step| "workflow #{flow.key} step #{step.name} needs words" }
     end
 
     def ends_lines
       @flows.flat_map do |flow|
-        flow.klass.outcomes.select { |outcome| outcome.because.to_s.match?(PLACEHOLDER) && blank?(outcome.ends_when) }
-          .map { |outcome| "workflow #{flow.key} outcome #{outcome.name} needs an ends_when" }
+        flow.klass.outcomes.select { |outcome| outcome.because.to_s.match?(PLACEHOLDER) && blank?(outcome.words) }
+          .map { |outcome| "workflow #{flow.key} outcome #{outcome.name} needs words" }
       end
     end
 

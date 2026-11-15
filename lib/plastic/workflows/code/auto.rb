@@ -70,14 +70,14 @@ module Plastic
         gate "no intent %{intent_id} in this store", stops: :failure, pass: ->(context) { !context.intent.nil? }
         gate "auto names no session; set PLASTIC_SESSION", stops: :failure, pass: ->(context) { !context.session.nil? }
         gate "%{session_problem}", stops: :failure,
-          stops_when: "the session of the call has ended",
+          words: "the session of the call has ended",
           pass: ->(context) { context.session_problem.nil? }
         gate "%{closed_problem}", stops: :failure, offers: "plastic next", because: "a closed intent cannot be armed; pick other work",
           pass: ->(context) { context.closed_problem.nil? }
         gate "%{spec_problem}", stops: :failure, offers: "plastic intent spec %{intent_id}",
           because: "the spec needs a done criterion", pass: ->(context) { context.spec_problem.nil? }
         gate "%{problem}", stops: :refusal,
-          stops_when: "a decision of the spec is open, another live session holds the lock of the intent, or the intent has no go-ahead",
+          words: "a decision of the spec is open, another live session holds the lock of the intent, or the intent has no go-ahead",
           pass: ->(context) { context.problem.nil? }
 
         def self.delivery_started?(context)

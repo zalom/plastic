@@ -32,7 +32,7 @@ module Plastic
           end
 
           gate "%{problem}", stops: :failure,
-            stops_when: "the intent has no file row, the new What holds a line break, or the What and Why read as before",
+            words: "the intent has no file row, the new What holds a line break, or the What and Why read as before",
             pass: ->(context) { context.problem.nil? }
 
           read "show the change" do |context|

@@ -18,7 +18,7 @@ module Plastic
           end
 
           gate "%{problem}", stops: :failure,
-            stops_when: "the intent is missing, done or abandoned",
+            words: "the intent is missing, done or abandoned",
             pass: ->(context) { context.problem.nil? }
 
           gate "intent %{intent_id} names no done criterion", stops: :failure, offers: "plastic intent spec %{intent_id}",

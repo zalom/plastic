@@ -22,7 +22,7 @@ module Plastic
           end
 
           gate "%{problem}", stops: :failure,
-            stops_when: "there is no such link",
+            words: "there is no such link",
             pass: ->(context) { context.problem.nil? }
 
           read "say what was removed" do |context|
