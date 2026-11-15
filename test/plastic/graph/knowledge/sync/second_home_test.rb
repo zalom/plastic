@@ -75,6 +75,21 @@ class KnowledgeSyncSecondHomeTest < Plastic::TestCase
     assert_includes plan.unreadable_files.fetch("roadmaps/odd.md"), "older form"
   end
 
+  def test_a_roadmap_file_that_names_another_slug_is_named_with_the_reason
+    text = roadmap_text
+    forget_roadmap
+    write("roadmaps/other.md", text)
+
+    assert_includes plan.unreadable_files.fetch("roadmaps/other.md"), "names the slug plan, not other"
+  end
+
+  def test_a_context_json_with_a_row_is_not_read_again_by_the_second_home
+    write(CONTEXT, context_json)
+    run_up
+
+    assert_empty Plastic::Graph::Knowledge::Sync::SecondHome.new(folder, retrieval).paths
+  end
+
   def test_a_context_json_with_no_row_is_read_into_the_context_and_discovery_rows
     write(CONTEXT, context_json)
 

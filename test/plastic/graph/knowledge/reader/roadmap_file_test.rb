@@ -104,6 +104,13 @@ class KnowledgeReaderRoadmapFileTest < Plastic::TestCase
     assert_includes error.message, "older form"
   end
 
+  def test_a_position_that_is_not_a_number_is_refused_naming_the_field
+    seed
+    error = assert_raises(Plastic::Invalid) { read(printed.sub("  position: 1", "  position: first")) }
+
+    assert_equal "roadmaps/plan.md holds a position that is not a number", error.message
+  end
+
   def test_form_question_tells_the_two_apart
     assert_equal [true, false], [RoadmapFile.form?("#{FORM}\n"), RoadmapFile.form?("# Plan\n")]
   end

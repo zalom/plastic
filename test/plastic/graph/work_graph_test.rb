@@ -42,6 +42,15 @@ class WorkGraphTest < Plastic::TestCase
     assert_equal ["read store/1--alpha/spec.md"], work.sync_apply(plan)
   end
 
+  def test_a_sync_preview_changes_no_row_and_says_it_is_a_preview
+    open_intent
+    write("store/1--alpha/spec.md", "# Spec\n")
+
+    run = work.preview_sync({})
+
+    assert_equal ["preview: read store/1--alpha/spec.md"], run.lines.grep(/spec\.md/)
+  end
+
   def test_print_intent_keeps_the_databases_out_of_versioning
     work.write_intent(title: "Alpha")
     folder.delete(".gitignore")
