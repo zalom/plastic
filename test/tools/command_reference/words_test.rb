@@ -13,6 +13,18 @@ class CommandReferenceWordsTest < Minitest::Test
     assert_equal ["aa bb", "cc"], CommandReference::Words.wrap("aa bb cc", 5)
   end
 
+  def test_a_placeholder_is_a_name_in_angle_brackets
+    assert_equal "<intent id> is closed", CommandReference::Words.angled("%{intent_id} is closed")
+  end
+
+  def test_a_placeholder_followed_by_a_letter_gets_a_space
+    assert_equal "<approval found> add the line", CommandReference::Words.angled("%{approval_found}add the line")
+  end
+
+  def test_a_placeholder_followed_by_a_mark_gets_no_space
+    assert_equal "node <id>.", CommandReference::Words.angled("node %{id}.")
+  end
+
   def test_a_pipe_in_a_cell_is_escaped
     assert_equal "a\\|b", CommandReference::Words.cell("a|b")
   end
