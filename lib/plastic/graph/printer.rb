@@ -25,11 +25,18 @@ module Plastic
       # Records the hash of each print, so the next sync knows the file is level.
       def record(prints)
         recorded = @retrieval.printed
-        fresh = prints.reject { |print| print.recorded?(recorded) }
+        fresh = with_part(prints).reject { |print| print.recorded?(recorded) }
         fresh.group_by(&:database).each { |key, group| record_in(key, group.map(&:printed_row)) }
       end
 
       private
+
+      # The clusters are a part of the index: its print records their row too.
+      def with_part(prints)
+        return prints unless prints.any? { |print| print.path == Knowledge::StoreFolder::INDEX }
+
+        [*prints, Prints.cluster_part(@retrieval)].uniq(&:path)
+      end
 
       def remember(paths)
         @written |= paths

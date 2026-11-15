@@ -30,7 +30,15 @@ module Plastic
           # print in other bytes is level: the bytes are a formatter's, not a person's edit.
           # The index that another home printed is no edit: the rows print it again.
           def self.for(folder, path, printed_sha, print)
-            new(path, level_sha(folder, path, print), printed_sha, print, printed_elsewhere?(folder, path, print))
+            file_sha = level_sha(folder, path, print)
+            new(path, file_sha, printed_of(path, printed_sha, file_sha, print), print, printed_elsewhere?(folder, path, print))
+          end
+
+          # The clusters, a part of the index, with no record of a print count as printed when the rows hold what the file does not.
+          def self.printed_of(path, printed_sha, file_sha, print)
+            return printed_sha unless Prints::ClusterPart.path?(path) && printed_sha.nil? && file_sha != print.sha256
+
+            print.sha256
           end
 
           def self.printed_elsewhere?(folder, path, print)
@@ -49,10 +57,12 @@ module Plastic
           end
 
           def self.level_sha(folder, path, print)
-            sha = folder.digest(path)
+            sha = Prints::ClusterPart.path?(path) ? part_digest(folder) : folder.digest(path)
             rows = print.sha256
             (sha && generated?(path) && rows && same_content?(folder.read(path), print.text)) ? rows : sha
           end
+
+          def self.part_digest(folder) = folder.exist?(StoreFolder::INDEX) ? Prints::ClusterPart.file_digest(folder.read(StoreFolder::INDEX)) : nil
 
           def self.same_content?(bytes, text)
             JSON.parse(bytes.force_encoding(Encoding::UTF_8)) == JSON.parse(text)

@@ -6,6 +6,7 @@ require_relative "roadmap_print"
 require_relative "prints/print"
 require_relative "prints/contents"
 require_relative "prints/index_print"
+require_relative "prints/cluster_part"
 require_relative "prints/graph_print"
 require_relative "prints/context_print"
 
@@ -27,6 +28,8 @@ module Plastic
       module_function
 
       def index(retrieval) = IndexPrint.call(retrieval)
+
+      def cluster_part(retrieval) = ClusterPart.call(retrieval)
 
       def hand_edit_line(path) = "#{path} changed by hand since the last print; run plastic sync up first"
 

@@ -47,15 +47,23 @@ module Plastic
           # The changed files of `entries` that sync up would read and cannot.
           def self.unreadable_files(readability, retrieval, entries)
             rowed = retrieval.intents.map(&:dir)
-            readability.call(entries.select { |entry| readable?(entry, rowed) }.map(&:path))
+            found = readability.call(entries.select { |entry| readable?(entry, rowed) }.map(&:path))
+            found.transform_keys { |path| owner(path) }
           end
+
+          # The file a path belongs to: the clusters are a part of the index.
+          def self.owner(path) = Prints::ClusterPart.path?(path) ? StoreFolder::INDEX : path
 
           # A changed file of an intent that has its rows, or an index a person changed after its print; the files of a folder without rows read after its row is written.
           def self.readable?(entry, rowed)
             path = entry.path
             return path == StoreFolder::INDEX && entry.hand_edited? && !entry.rows_sha.nil? if entry.generated?
 
-            %i[read conflict].include?(entry.action(:up)) && (StoreFolder.roadmap?(path) || rowed.any? { |dir| path.start_with?("#{dir}/") })
+            %i[read conflict].include?(entry.action(:up)) && readable_path?(path, rowed)
+          end
+
+          def self.readable_path?(path, rowed)
+            StoreFolder.roadmap?(path) || Prints::ClusterPart.path?(path) || rowed.any? { |dir| path.start_with?("#{dir}/") }
           end
 
           def self.entries(folder, retrieval, folders = nil) = EntryList.new(folder, retrieval, folders).entries
@@ -102,7 +110,7 @@ module Plastic
           def settled(entry)
             return generated_up(entry) if direction == :up && entry.generated?
             path = entry.path
-            return :none if unreadable_files.key?(path)
+            return :none if unreadable_files.key?(Plan.owner(path))
 
             action = entry.action(direction)
             return resolution.side if action == :conflict && resolution.overwrites?(path)

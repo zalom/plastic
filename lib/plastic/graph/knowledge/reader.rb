@@ -2,6 +2,7 @@
 
 require_relative "../../invalid"
 require_relative "reader/index_file"
+require_relative "reader/cluster_file"
 require_relative "reader/intent_file"
 require_relative "reader/roadmap_file"
 require_relative "../prints"
@@ -49,6 +50,7 @@ module Plastic
 
         def file_of(path)
           return IndexFile.new(@folder.read(path), @writer.origin_id, @folder.intent_dirs) if path == StoreFolder::INDEX
+          return ClusterFile.new(@folder.read(StoreFolder::INDEX), @writer.origin_id) if Prints::ClusterPart.path?(path)
           return RoadmapFile.new(File.basename(path, ".md"), @folder.read(path)) if StoreFolder.roadmap?(path)
 
           intent_file(path)

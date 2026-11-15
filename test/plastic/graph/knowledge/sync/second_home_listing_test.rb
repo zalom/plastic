@@ -14,13 +14,6 @@ class KnowledgeSyncSecondHomeListingTest < Plastic::TestCase
 
   def context_rows = { intents: retrieval.intents.map(&:intent_id), contexts: retrieval.contexts("1").size, discoveries: retrieval.discoveries("1").size }
 
-  def test_the_clusters_are_read_while_another_part_is_broken
-    write("roadmaps/old.md", "# Old\n")
-    write("store/index.json", JSON.generate(JSON.parse(folder.read("store/index.json")).merge("clusters" => [{ "name" => "Core", "intents" => ["1"] }])))
-
-    assert_equal "store/index.json", Plastic::Graph::Knowledge::Sync::SecondHome.new(folder, retrieval, nil).cluster_read.path
-  end
-
   def test_a_broken_part_is_listed_and_every_good_part_is_read_into_every_table
     write(CONTEXT, context_json)
     write("roadmaps/old.md", "# Old\n")
@@ -55,13 +48,6 @@ class KnowledgeSyncSecondHomeListingTest < Plastic::TestCase
     sync.apply(sync.plan(:down, overwrite: graph))
 
     assert_empty sync.plan(:up).unreadable_files
-  end
-
-  def test_the_clusters_of_the_index_are_read_when_this_home_holds_none
-    second_home = Plastic::Graph::Knowledge::Sync::SecondHome.new(folder, retrieval, nil)
-    write("store/index.json", JSON.generate(JSON.parse(folder.read("store/index.json")).merge("clusters" => [{ "name" => "Core", "intents" => ["1"] }])))
-
-    assert_equal "store/index.json", second_home.cluster_read.path
   end
 
   def test_a_cluster_that_names_an_intent_this_home_lacks_is_a_broken_part

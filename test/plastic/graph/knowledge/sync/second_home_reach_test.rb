@@ -10,7 +10,7 @@ class KnowledgeSyncSecondHomeReachTest < Plastic::TestCase
   def test_a_second_home_that_is_not_active_reads_nothing
     none = SecondHome::NONE
 
-    assert_equal [{}, [], nil], [none.problems, none.paths, none.cluster_read]
+    assert_equal [{}, [], 0], [none.problems, none.paths, none.size]
   end
 
   def test_a_context_json_of_an_archived_intent_listed_in_the_index_is_read
@@ -22,13 +22,9 @@ class KnowledgeSyncSecondHomeReachTest < Plastic::TestCase
     assert_includes SecondHome.new(folder, retrieval).paths, "store/2--beta/context.json"
   end
 
-  def test_a_second_home_with_no_clusters_counts_only_its_paths
-    assert_equal 0, SecondHome.new(folder, retrieval).size
-  end
-
-  def test_a_second_home_with_clusters_counts_the_index_read_too
+  def test_a_second_home_with_clusters_counts_only_its_paths_because_the_clusters_are_a_part_entry
     write("store/index.json", JSON.generate(JSON.parse(folder.read("store/index.json")).merge("clusters" => [{ "name" => "Core", "intents" => ["1"] }])))
 
-    assert_equal 1, SecondHome.new(folder, retrieval).size
+    assert_equal 0, SecondHome.new(folder, retrieval).size
   end
 end

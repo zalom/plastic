@@ -9,8 +9,7 @@ module Plastic
   module Graph
     module Knowledge
       class Reader
-        # A hand edit of store/index.json: the intent rows it lists, and the
-        # clusters, which it replaces whole.
+        # A hand edit of store/index.json: the intent rows it lists. Its clusters are read by ClusterFile.
         class IndexFile
           # `dirs` are the intent folders on disk. An entry with no folder is broken data and gets no row; nil keeps every entry.
           def initialize(text, origin_id, dirs = nil)
@@ -26,10 +25,8 @@ module Plastic
           # The cluster rows alone, for a home that holds none.
           def cluster_rows = members
 
-          def apply_clusters(batch) = batch.put_all(:clusters, members)
-
           def apply(batch)
-            batch.put_all(:intents, intents).remove(:clusters).put_all(:clusters, members)
+            batch.put_all(:intents, intents)
           end
 
           private
