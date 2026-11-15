@@ -62,8 +62,8 @@ module Plastic
 
           def rows_sha = print.sha256
 
-          # The index and the context views: the rows print them again after a read. A roadmap is read like any file.
-          def generated? = Entry.generated?(path) && !StoreFolder.roadmap?(path)
+          # The index: the rows print it again after a read. A roadmap and a context view are read like any file.
+          def generated? = path == StoreFolder::INDEX
 
           # The file already holds what the rows print.
           def level? = !file_sha.nil? && file_sha == rows_sha

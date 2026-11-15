@@ -116,7 +116,6 @@ module Plastic
           def generated_up(entry)
             return :print if entry.printed_elsewhere
             return :none unless entry.hand_edited? && entry.rows_sha
-            return :print if Entry.view?(entry.path)
             return :read unless unreadable_files.key?(entry.path)
 
             entry.printed_sha ? :none : :print

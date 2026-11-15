@@ -25,11 +25,11 @@ class KnowledgeReaderIntentFileContextTest < Plastic::TestCase
     assert_equal [{ "a" => 1 }, { "b" => 2 }], [JSON.parse(retrieval.discoveries("1").first.data), JSON.parse(retrieval.contexts("1").first.data)]
   end
 
-  def test_context_json_with_a_row_is_refused_and_keeps_the_row
-    read_in("context.json", JSON.generate("intent" => "1", "context" => { "b" => 2 }))
+  def test_context_json_with_a_row_replaces_the_row_and_the_rows_of_the_part_it_lacks
+    read_in("context.json", JSON.generate("intent" => "1", "discovery" => { "a" => 1 }, "context" => { "b" => 2 }))
+    read_in("context.json", JSON.generate("intent" => "1", "context" => { "b" => 3 }))
 
-    assert_raises(Plastic::Invalid) { read_in("context.json", JSON.generate("intent" => "1", "context" => { "b" => 3 })) }
-    assert_equal({ "b" => 2 }, JSON.parse(retrieval.contexts("1").first.data))
+    assert_equal [{ "b" => 3 }, []], [JSON.parse(retrieval.contexts("1").first.data), retrieval.discoveries("1")]
   end
 
   def test_context_json_that_names_another_intent_is_refused

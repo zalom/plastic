@@ -42,11 +42,12 @@ class RoutinePrintingContextTest < Plastic::TestCase
     assert_equal [1, "next: plastic sync up"], [refused.code, refused.out[/^next: .*$/]], refused.err
   end
 
-  def test_sync_up_prints_a_context_with_other_content_again_from_its_rows
+  def test_sync_up_reads_a_context_with_other_content_into_its_rows
     path = edited_context
     named = cli("sync", "up")
     again = cli("intent", "note", "1", "a line")
+    rows = JSON.parse(retrieval.contexts("1").first.data)
 
-    assert_equal [0, 0, true, false], [named.code, again.code, level_context?(path), File.read(store_path(path)).include?("hand")], again.err
+    assert_equal [0, 0, true, { "hand" => true }], [named.code, again.code, level_context?(path), rows], again.err
   end
 end

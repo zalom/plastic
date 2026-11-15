@@ -63,10 +63,14 @@ class KnowledgeSyncPlanGeneratedTest < Plastic::TestCase
     assert_equal [:none, 0], [action_of(plan), plan.pending]
   end
 
-  def test_a_hand_edited_context_view_is_planned_for_a_print_up
-    plan = generated_plan(:up, "store/1--alpha/context.json", "f", "p", "r")
+  def test_a_context_view_changed_since_its_print_is_planned_for_a_read_up
+    plan = generated_plan(:up, "store/1--alpha/context.json", "f", "p", "p")
 
-    assert_equal [:print, 1], [action_of(plan), plan.pending]
+    assert_equal [:read, 1], [action_of(plan), plan.pending]
+  end
+
+  def test_a_context_view_changed_on_both_sides_is_planned_as_a_conflict_up
+    assert_equal :conflict, action_of(generated_plan(:up, "store/1--alpha/context.json", "f", "p", "r"))
   end
 
   def test_a_roadmap_changed_since_its_print_is_planned_for_a_read_up
@@ -79,8 +83,8 @@ class KnowledgeSyncPlanGeneratedTest < Plastic::TestCase
     assert_equal :conflict, action_of(generated_plan(:up, "roadmaps/r1.md", "f", "p", "r"))
   end
 
-  def test_a_hand_edited_context_view_is_named_as_printed_over_up
-    assert_equal ["store/1--alpha/context.json"], generated_plan(:up, "store/1--alpha/context.json", "f", "p", "r").printed_over
+  def test_a_context_view_is_not_named_as_printed_over_up
+    assert_empty generated_plan(:up, "store/1--alpha/context.json", "f", "p", "r").printed_over
   end
 
   def test_a_hand_edited_index_is_not_named_as_printed_over_up
@@ -112,7 +116,7 @@ class KnowledgeSyncPlanGeneratedTest < Plastic::TestCase
   end
 
   def test_a_generated_file_with_no_rows_is_left_alone_up
-    assert_equal :none, action_of(generated_plan(:up, "store/1--alpha/context.json", "f", nil, nil))
+    assert_equal :none, action_of(generated_plan(:up, "store/index.json", "f", nil, nil))
   end
 
   def test_a_level_generated_file_is_left_alone_up

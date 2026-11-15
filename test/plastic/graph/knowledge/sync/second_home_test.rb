@@ -54,12 +54,12 @@ class KnowledgeSyncSecondHomeTest < Plastic::TestCase
     assert_equal [{ "a" => 1 }, { "b" => 2 }], [JSON.parse(retrieval.discoveries("1").first.data), JSON.parse(retrieval.contexts("1").first.data)]
   end
 
-  def test_a_context_json_with_a_row_is_not_read_again
+  def test_a_context_json_with_a_row_that_differs_from_its_print_replaces_the_row
     write(CONTEXT, context_json)
     run_up
     write(CONTEXT, context_json(context: { "b" => 3 }))
     run_up
 
-    assert_equal({ "b" => 2 }, JSON.parse(retrieval.contexts("1").first.data))
+    assert_equal({ "b" => 3 }, JSON.parse(retrieval.contexts("1").first.data))
   end
 end
