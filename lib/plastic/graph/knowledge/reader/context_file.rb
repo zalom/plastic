@@ -45,7 +45,7 @@ module Plastic
             raise Invalid, "#{@path} is not JSON"
           end
 
-          def row(part) = { intent_id: @intent_id, data: JSON.generate(part), updated_at: Plastic.now }
+          def row(part) = { intent_id: @intent_id, data: JSON.pretty_generate(part), updated_at: Plastic.now }
         end
       end
     end
