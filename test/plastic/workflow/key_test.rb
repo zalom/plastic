@@ -9,11 +9,6 @@ class KeyTest < Minitest::Test
 
   def key(text, path) = Plastic::Workflow::Key.parse(text, path)
 
-  def teardown
-    Object.send(:remove_const, PROBE) if Object.const_defined?(PROBE, false)
-    super
-  end
-
   def test_a_key_reads_apart_into_its_lane_and_the_segments_of_its_class_path
     parsed = key(:code_close_intent, "Code::Intent::End")
 
@@ -37,16 +32,19 @@ class KeyTest < Minitest::Test
   PROBE = :KeyTestProbe
 
   def test_a_segment_never_resolves_through_a_constant_of_an_ancestor
-    Object.const_set(PROBE, Class.new(Plastic::CodeWorkflow))
+    ancestor = Module.new
+    ancestor.const_set(PROBE, Class.new(Plastic::CodeWorkflow))
     namespace = Module.new
+    namespace.include(ancestor)
 
     assert_raises(LoadError) { key(:code_key_test_probe, PROBE.to_s).workflow_in(namespace) }
   end
 
   def test_a_segment_never_resolves_through_the_ancestors_of_its_parent
+    group_ancestor = Class.new(Plastic::CodeWorkflow)
+    group_ancestor.const_set(PROBE, Class.new(Plastic::CodeWorkflow))
     namespace = Module.new
-    namespace.const_set(:Group, Class.new(Plastic::CodeWorkflow))
-    Object.const_set(PROBE, Class.new(Plastic::CodeWorkflow))
+    namespace.const_set(:Group, Class.new(group_ancestor))
 
     assert_raises(LoadError) { key(:code_group_key_test_probe, "Group::#{PROBE}").workflow_in(namespace) }
   end
