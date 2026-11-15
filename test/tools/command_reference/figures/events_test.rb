@@ -202,7 +202,7 @@ class CommandReferenceEventsFigureTest < Minitest::Test
 
   def test_the_workflows_drawing_holds_every_ending_of_every_workflow
     several_flows.each do |each|
-      expected = each.flows.sum { |flow| CommandReference::FlowStops.new(flow, entry: flow.key == each.entry).closing.size }
+      expected = each.flows.sum { |flow| CommandReference::FlowStops.new(flow).closing.size }
       found = workflow_texts(each).count { |css, _| ["tag tag-end", "tag tag-handoff"].include?(css) }
 
       assert_equal expected, found, each.words
