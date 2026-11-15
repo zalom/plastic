@@ -1,46 +1,51 @@
 # frozen_string_literal: true
 
+require "minitest/autorun"
+require "tmpdir"
 require "sqlite3"
-require_relative "../test_helper"
+require_relative "../varar/support/kernel_command"
 
 # A command that meets a local.db held by another process prints the plain line, never the name of the error class.
-class DatabaseErrorLineTest < Plastic::TestCase
-  fixtures :alpha_synced
-
+# Each test builds its own throwaway home, so the shared test home never meets the rival connection.
+class DatabaseErrorLineTest < Minitest::Test
   HELD = "local.db is held by another process; run the command again when it is free"
 
-  def setup
-    super
-    @rival = SQLite3::Database.new(File.join(@plastic_home, "local.db"))
-    @rival.execute_batch(Plastic::Graph::Schema.fetch(:local))
-    @rival.execute("ALTER TABLE locks RENAME COLUMN locked_at TO taken_at") if older_column?
-    @rival.execute("BEGIN IMMEDIATE")
+  def held_home
+    Dir.mktmpdir do |home|
+      kernel = KernelCommand.new(home)
+      kernel.command!("intent", "new", "Alpha")
+      rival = SQLite3::Database.new(File.join(kernel.plastic_home, "local.db"))
+      rival.execute("ALTER TABLE locks RENAME COLUMN locked_at TO taken_at")
+      rival.execute("BEGIN IMMEDIATE")
+      begin
+        yield kernel
+      ensure
+        rival.close
+      end
+    end
   end
-
-  def teardown
-    @rival.close
-    super
-  end
-
-  def older_column? = @rival.execute("PRAGMA table_info(locks)").any? { |column| column[1] == "locked_at" }
-
-  def run_held(*words) = plastic(*words, input: '{"session_id":"s-1"}', env: { "PLASTIC_SESSION" => "s-1" }, table: Plastic::CLI::TABLE)
 
   def test_intent_lock_status_names_the_held_file_with_no_class_name
-    call = run_held("intent", "lock", "status", "1")
+    held_home do |kernel|
+      call = kernel.command("intent", "lock", "status", "1")
 
-    assert_equal [1, "", "plastic: #{HELD}\n"], [call.code, call.out, call.err]
+      assert_equal [1, "", "plastic: #{HELD}\n"], [call.code, call.out, call.err]
+    end
   end
 
   def test_next_names_the_held_file_with_no_class_name
-    call = run_held("next")
+    held_home do |kernel|
+      call = kernel.command("next")
 
-    assert_equal [1, "", "plastic: #{HELD}\n"], [call.code, call.out, call.err]
+      assert_equal [1, "", "plastic: #{HELD}\n"], [call.code, call.out, call.err]
+    end
   end
 
   def test_hook_stop_names_the_held_file_with_no_class_name_and_exits_0
-    call = run_held("hook", "stop")
+    held_home do |kernel|
+      call = kernel.command("hook", "stop", input: '{"session_id":"s-1"}', env: { "PLASTIC_SESSION" => "s-1" })
 
-    assert_equal [0, "", "plastic hook: #{HELD}\n"], [call.code, call.out, call.err]
+      assert_equal [0, "", "plastic hook: #{HELD}\n"], [call.code, call.out, call.err]
+    end
   end
 end
