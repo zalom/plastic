@@ -20,7 +20,7 @@ class CommandReferencePageFilesTest < Minitest::Test
     text = readme("intent end")
     positions = SECTIONS.map { |heading| text.index("\n#{heading}\n") }
 
-    assert(positions.all?, "a section is missing")
+    assert_predicate(positions, :all?, "a section is missing")
     assert_equal positions.sort, positions
     assert text.start_with?("# plastic intent end\n")
   end
@@ -81,7 +81,9 @@ class CommandReferencePageFilesTest < Minitest::Test
   def test_every_image_of_a_page_is_one_of_its_drawings
     CommandReferenceHelper.pages.each_value do |each|
       files = files_of(each.words)
-      files["README.md"].scan(/\]\(([\w.-]+\.svg)\)/).flatten.each { |image| assert_includes files.keys, image, each.words }
+      images = files["README.md"].scan(/\]\(([\w.-]+\.svg)\)/).flatten
+
+      images.each { |image| assert_includes files.keys, image, each.words }
     end
   end
 

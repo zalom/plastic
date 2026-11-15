@@ -7,7 +7,7 @@ require_relative "../../../lib/plastic/workflows/agent/intent/end/check_merge"
 require_relative "../../../lib/plastic/workflows/agent/shared/wind_down_intent"
 
 class UnreachableEndingsTest < Minitest::Test
-  Facts = Struct.new(:requirements, :judged, :merge_recorded, :map_recorded, keyword_init: true)
+  Facts = Struct.new(:requirements, :judged, :merge_recorded, :map_recorded)
 
   FINISH = Plastic::Workflows::Agent::Intent::End
   CHECK_MERGE = Plastic::Workflows::Agent::Intent::End::CheckMerge

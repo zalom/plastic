@@ -88,7 +88,9 @@ class WorkflowTest < Plastic::TestCase
 
     assert_includes error.message, "outcome late follows the fallback done"
   end
+end
 
+class WorkflowDeclarationsTest < Plastic::TestCase
   def test_clearing_the_declarations_of_a_workflow_empties_its_facts_and_outcomes
     flow = Class.new(Plastic::Workflow)
     flow.sets :name
