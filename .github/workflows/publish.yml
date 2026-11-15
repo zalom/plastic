@@ -31,9 +31,15 @@ jobs:
             echo "tag=$tag" >> "$GITHUB_OUTPUT"
           fi
 
+  test:
+    name: Run the suite on this commit
+    needs: unreleased
+    if: needs.unreleased.outputs.tag != ''
+    uses: ./.github/workflows/test.yml
+
   release:
     name: Make the tag and the GitHub release
-    needs: unreleased
+    needs: [unreleased, test]
     if: needs.unreleased.outputs.tag != ''
     runs-on: ubuntu-latest
     permissions:

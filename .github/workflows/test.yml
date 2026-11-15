@@ -6,6 +6,7 @@ on:
   pull_request:
     branches: [main, alpha, 'plastic/**']
   workflow_dispatch:
+  workflow_call:
 
 jobs:
   test:
