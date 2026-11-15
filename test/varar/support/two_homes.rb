@@ -11,16 +11,16 @@ module TwoHomes
   SPEC = "# Spec\n\n## Goal\n\nProve the resume.\n\n## Done criteria\n\n- [ ] [proof] The graph continues on another machine.\n"
 
   def first_home(kernel)
-    kernel.run!("intent", "new", "Prove the resume")
+    kernel.command!("intent", "new", "Prove the resume")
     kernel.write("#{DIR}/spec.md", SPEC)
-    kernel.run!("sync", "up")
-    kernel.run!("node", "add", "1", "Write the test", "--criterion", "proof")
-    kernel.run!("node", "add", "1", "Write the code", "--criterion", "proof")
-    kernel.run!("edge", "add", "1", "n1", "n2")
-    kernel.run!("intent", "approve", "1")
-    kernel.run!("node", "claim", "1", "n1")
-    kernel.run!("node", "done", "1", "n1", "The test is red for the right reason; see :id and :intent_id")
-    kernel.run!("intent", "verdict", "1", "revise", "The findings hold :id and :intent_id")
+    kernel.command!("sync", "up")
+    kernel.command!("node", "add", "1", "Write the test", "--criterion", "proof")
+    kernel.command!("node", "add", "1", "Write the code", "--criterion", "proof")
+    kernel.command!("edge", "add", "1", "n1", "n2")
+    kernel.command!("intent", "approve", "1")
+    kernel.command!("node", "claim", "1", "n1")
+    kernel.command!("node", "done", "1", "n1", "The test is red for the right reason; see :id and :intent_id")
+    kernel.command!("intent", "verdict", "1", "revise", "The findings hold :id and :intent_id")
   end
 
   def move_files(from, to)

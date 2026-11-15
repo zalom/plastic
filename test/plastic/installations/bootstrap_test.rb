@@ -12,7 +12,7 @@ class BootstrapTest < Plastic::TestCase
 
   def global(*parts) = File.join(Plastic::StoreLayout.global_store(plastic), *parts)
 
-  def command(*argv) = KernelCommand.new(fresh).run(*argv)
+  def command(*argv) = KernelCommand.new(fresh).command(*argv)
 
   def test_a_first_install_says_what_it_does
     out, = bootstrap

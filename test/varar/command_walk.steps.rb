@@ -24,7 +24,7 @@ module CommandWalk
     Dir.mktmpdir("varar-command-walk") do |home|
       kernel = KernelCommand.new(home)
       plain(row["setup"]).split(" ; ").reject { |line| line == "none" }.each { |line| set_up(kernel, words(line, home)) }
-      cells(at_home(kernel.run(*words(plain(row["call"]), home), env: SESSION), home))
+      cells(at_home(kernel.command(*words(plain(row["call"]), home), env: SESSION), home))
     end
   end
 
@@ -46,7 +46,7 @@ module CommandWalk
     return kernel.copy_legacy_store if words == ["legacy"]
     return register(kernel, words[1]) if words.first == "register"
 
-    kernel.run!(*words, env: SESSION)
+    kernel.command!(*words, env: SESSION)
   end
 
   TIME = /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}/

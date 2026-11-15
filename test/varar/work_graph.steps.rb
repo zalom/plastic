@@ -38,11 +38,11 @@ module WorkGraphAcceptance
   # rulings, the nodes and the edge, then the node's claim-fail-release-
   # claim-done cycle.
   def self.build(kernel)
-    [*RULINGS].each { |args| kernel.run!(*args) }
+    [*RULINGS].each { |args| kernel.command!(*args) }
     kernel.write("store/1--alpha/spec.md", SPEC)
-    kernel.run!("sync", "up")
-    kernel.run!("intent", "approve", "1")
-    [*NODES_AND_EDGE, *NODE_LIFECYCLE].each { |args| kernel.run!(*args) }
+    kernel.command!("sync", "up")
+    kernel.command!("intent", "approve", "1")
+    [*NODES_AND_EDGE, *NODE_LIFECYCLE].each { |args| kernel.command!(*args) }
   end
 end
 
@@ -51,7 +51,7 @@ steps do
     Dir.mktmpdir("varar-work-graph") do |home|
       kernel = KernelCommand.new(home)
       WorkGraphAcceptance.build(kernel)
-      call = kernel.run(*row["check"].split)
+      call = kernel.command(*row["check"].split)
       pattern = WorkGraphAcceptance::CHECKS.fetch(row["check"])
       row.merge("exit" => call.code.to_s, "shows" => call.said.grep(pattern).join(", "))
     end

@@ -16,7 +16,7 @@ module LegacyImportAcceptance
       FileUtils.rm(kernel.path("store/1a--beta-route/1a--beta-route.md"))
     end,
     "a folder with no entry" => ->(kernel) { kernel.write("store/9--stray/spec.md", "# Stray\n") },
-    "imported" => ->(kernel) { kernel.run!("sync", "up") }
+    "imported" => ->(kernel) { kernel.command!("sync", "up") }
   }.freeze
 
   # A copy of the legacy store with the fixture's change, built once per fixture.
@@ -48,7 +48,7 @@ steps do
       kernel = LegacyImportAcceptance.prepare(home, row["fixture"])
       before = kernel.snapshot(LegacyImportAcceptance::DIR)
       FileUtils.rm_rf(kernel.path(LegacyImportAcceptance::DIR)) if row["fixture"].end_with?("deleted")
-      call = kernel.run(*row["call"].split)
+      call = kernel.command(*row["call"].split)
       intents = kernel.rows("work_graph.db", LegacyImportAcceptance::INTENTS).flatten
       row.merge("exit" => call.code.to_s, "result" => LegacyImportAcceptance.result(call),
         "intents" => intents.empty? ? "none" : intents.join(", "),

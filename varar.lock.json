@@ -268,7 +268,7 @@
       ]
     },
     "varar/intent-lock-status.md": {
-      "sourceHash": "fnv1a:3785aab7",
+      "sourceHash": "fnv1a:332429f9",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",

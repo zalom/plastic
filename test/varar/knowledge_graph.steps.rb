@@ -43,14 +43,14 @@ module KnowledgeGraphAcceptance
     KernelCommand.copied(home, :knowledge_graph) do |kernel|
       kernel.copy_legacy_store
       kernel.write("roadmaps/make-it-useful.md", ROADMAP)
-      kernel.run!("sync", "up")
-      kernel.run!(*BATCH_GOAL)
+      kernel.command!("sync", "up")
+      kernel.command!(*BATCH_GOAL)
     end
   end
 
   def self.walk_to(kernel, check)
-    CHECKS.keys.take_while { |earlier| earlier != check }.each { |earlier| kernel.run!(*earlier.split) }
-    kernel.run(*check.split)
+    CHECKS.keys.take_while { |earlier| earlier != check }.each { |earlier| kernel.command!(*earlier.split) }
+    kernel.command(*check.split)
   end
 end
 
