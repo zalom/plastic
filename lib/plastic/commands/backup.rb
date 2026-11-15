@@ -10,7 +10,8 @@ module Plastic
     class Backup < Routine
       include CLI::BackupStore
 
-      changes(backups: "The databases of the store are copied into a new backup folder and a row names it")
+      writes :work
+      changes(work: KEPT_RUN_WORDS)
 
       option :databases, switch: "--databases LIST", text: "the databases to copy, comma separated; all of them when left out"
       option :live, switch: "--live", default: false, text: "print each line of the backup log as it is written"

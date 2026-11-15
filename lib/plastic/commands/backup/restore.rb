@@ -13,7 +13,6 @@ module Plastic
         include CLI::BackupStore
 
         writes :work, :knowledge, :references
-        changes(work: "The work database is replaced by the copy in the backup", knowledge: "The knowledge database is replaced by the copy in the backup", references: "The references database is replaced by the copy in the backup")
 
         option :timestamp, switch: "--timestamp TS", text: "the backup to restore, by its folder name"
         option :latest, switch: "--latest", default: false, text: "restore the newest backup that is done"

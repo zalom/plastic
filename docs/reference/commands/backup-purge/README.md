@@ -30,8 +30,7 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 
 | What changes | Where | Reach |
 | --- | --- | --- |
-| The chosen backup folders are deleted | the backups folder, in the store folder | goes with the store |
-
-Goes with the store: the files of the store carry the change, and `plastic sync up` rebuilds it on another machine. The database files themselves stay on this machine.
+| The chosen backup folders are deleted | the backups folder, in the store folder | stays on this machine |
+| The run of the call is kept for a resume | the work graph database, in the store folder | stays on this machine |
 
 The command is `Plastic::Commands::Backup::Purge`, in [`purge.rb:12`](../../../../lib/plastic/commands/backup/purge.rb#L12).

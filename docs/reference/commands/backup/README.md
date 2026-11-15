@@ -29,9 +29,7 @@ The boxes on the left run in order. The boxes on the right are the ways the call
 
 | What changes | Where | Reach |
 | --- | --- | --- |
-| A backup folder with a copy of each chosen database is written | the backups folder, in the store folder | goes with the store |
-| The databases of the store are copied into a new backup folder and a row names it | the backups folder, in the store folder | goes with the store |
-
-Goes with the store: the files of the store carry the change, and `plastic sync up` rebuilds it on another machine. The database files themselves stay on this machine.
+| A backup folder with a copy of each chosen database is written | the backups folder, in the store folder | stays on this machine |
+| The run of the call is kept for a resume | the work graph database, in the store folder | stays on this machine |
 
 The command is `Plastic::Commands::Backup`, in [`backup.rb:10`](../../../../lib/plastic/commands/backup.rb#L10).

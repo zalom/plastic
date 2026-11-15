@@ -50,7 +50,7 @@ module Plastic
             pass: ->(context) { context.refusal.nil? }
 
           step "replace the databases", done: ->(context) { !context.safety.nil? },
-            changes: { store: "The chosen databases of the store are replaced by the copies of the backup folder", backups: "A safety backup of the replaced databases is written" } do |context|
+            changes: { databases: "The chosen databases of the store are replaced by the copies of the backup folder", backups: "A safety backup of the replaced databases is written" } do |context|
             names = Plastic::Graph::Knowledge::Backup::Databases.parse(context.databases)
             context[:safety] = context.work.backups.restore(context.folder, databases: names)
             context[:restored] = held(context, context.folder)

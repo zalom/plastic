@@ -35,6 +35,8 @@ module Plastic
     include Printing
     include GraphReport
 
+    KEPT_RUN_WORDS = "The run of the call is kept for a resume"
+
     class << self
       def workflow(key, **edge, &branches)
         chain.add(key, edge[:next], &branches)

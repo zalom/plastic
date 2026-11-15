@@ -8,7 +8,8 @@ module Plastic
       # Writes the one prose line of a session: what the routine runs cannot say.
       class Note < Routine
         argument :text, label: "TEXT", text: "the note, in words", rest: true
-        changes(local: "The note is written on the row of the session on this machine")
+        writes :work
+        changes(work: KEPT_RUN_WORDS)
         workflow :code_write_note, next: :noop
       end
     end

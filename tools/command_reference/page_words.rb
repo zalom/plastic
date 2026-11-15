@@ -60,7 +60,9 @@ module CommandReference
     def empty_lines = (@flows.empty? && @page.klass.changes.nil?) ? ["needs changes, the words of what a call changes, or an empty hash"] : []
 
     def unwritten_lines
-      (@page.klass.writes - changed.keys).map { |graph| "writes #{graph} but has no change in words at #{graph}; add changes" }
+      return [] if @page.klass.writes.empty? || changed.any?
+
+      ["writes #{@page.klass.writes.join(", ")} but has no change in words; add changes"]
     end
 
     def place_lines = changed.keys.reject { |key| Places.known?(key) }.map { |key| "change at #{key} is no known place" }
