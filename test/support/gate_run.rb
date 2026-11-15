@@ -15,10 +15,9 @@ module GateRun
   end
   SOURCE = "lib/plastic/new_routine.rb"
   STEP_WORDS = { "rubocop" => "Lint", "simplecov" => "Patch coverage", "bin/crap" => "CRAP scores", "reek" => "Code smells",
-                 "rubycritic" => "RubyCritic score", "test_timings.rb" => "Timing check" }.freeze
+                 "rubycritic" => "RubyCritic score" }.freeze
 
-  MISS_TEXT = { "RubyCritic score" => "Score (85.2) is below the minimum 90.0\n",
-                "Timing check" => "test/a_test.rb took 9.0s, over its 5s cap (re-run 9.0s)\n" }.freeze
+  MISS_TEXT = { "RubyCritic score" => "Score (85.2) is below the minimum 90.0\n" }.freeze
 
   def gate_fixture
     root = Dir.mktmpdir("gate-run")

@@ -70,7 +70,7 @@ bundle exec ruby bin/verify-change <base commit>
 
 Run the test of each changed file once. When you change a command, workflow or graph class, run
 `ruby tools/command-reference` and commit the pages it rewrites. Then run the gate once before the commit: it runs the
-lint, the tests of the changed files with coverage, and the timing check. The smell, score and timing steps print their result against the target and fail nothing, unless their tool did not run. Just before the pull
+lint, the tests of the changed files with coverage, and the smell and score steps. The smell and score steps print their result against the target and fail nothing, unless their tool did not run. Just before the pull
 request is created, run the full suite one time with `ruby bin/test` and fix what it finds. After
 the pull request exists, CI takes over: read its failures and fix those, with no more full runs
 on your machine.

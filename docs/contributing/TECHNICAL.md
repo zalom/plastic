@@ -24,26 +24,13 @@ The following table says when each step passes.
 | ---- | ----------- |
 | Lint | RuboCop reports no offense on the changed files. |
 | Tests | The tests for the changed files pass. |
-| Timing check | The timings file exists and the re-run of a slow file ran. A test file over 5 seconds or a Varar document over 10, on a re-run when the first run went over, is a target: the gate prints it and fails nothing. |
 | Patch coverage | Every changed line and branch is covered. |
 | Mutation testing | Frozen, so the gate skips it. When it runs: every mutant on the changed code has a verdict, and killed mutants are at least 75 percent of the total. |
 | CRAP scores | No changed method scores above 30. |
 | Code smells | Reek ran. A smell in the changed sources is a target: the gate prints it and fails nothing. A Reek that refuses its configuration (exit 1) fails the step. |
 | RubyCritic score | RubyCritic ran. A changed source that no todo list names and that scores under 90 out of 100 is a target: the gate prints it and fails nothing. |
 
-A lint failure does not stop the other steps. Only red tests stop the gate early. The Code smells, RubyCritic score and Timing check steps report a miss of their target and fail nothing, but each still fails when its tool did not run.
-
-The Tests step loads `bin/lib/test_timings.rb`, a Minitest extension that sums each test's
-time into a file under the sandbox `PLASTIC_TMP`, booking a Varar document's tests to the
-document (read from `varar.config.json`) rather than to the gem file that defines them. The
-Timing check step then reads that file: a file or document over its cap is re-run alone
-before it is called red, and the gate prints both times either way. RSpec projects, and
-Minitest run through `bin/rails test`, have no step to load the extension into, so the gate
-skips the Timing check for them and says so.
-
-Coverage starts before the timing extension loads. A timing rerun must succeed;
-a fast failure cannot pass the cap. A Varar rerun selects the named document's
-generated test class, so other documents do not count toward its time.
+A lint failure does not stop the other steps. Only red tests stop the gate early. The Code smells and RubyCritic score steps report a miss of their target and fail nothing, but each still fails when its tool did not run.
 
 The Mutation testing step is frozen: `MUTATION_FROZEN` in `bin/verify-change` leaves it out of
 the run, and the gate prints that it skipped the step. The step itself stays in the code. When
@@ -69,9 +56,9 @@ out a file that `.rubocop_todo.yml` or `.reek.yml` lists, because that file is o
 it prints the names it left out. When every changed source is older code, the step does not run.
 
 Every step runs under a new `HOME` and `PLASTIC_TMP`. A mutant can turn an injected runner
-into a live call, and the throwaway home keeps that call away from the real one. The timings
-file the Tests step writes and the mutation report Mutineer writes both live under that same
-`PLASTIC_TMP`, so a mutant that reaches for either file finds only the throwaway copy.
+into a live call, and the throwaway home keeps that call away from the real one. The mutation
+report Mutineer writes lives under that same `PLASTIC_TMP`, so a mutant that reaches for it
+finds only the throwaway copy.
 
 Use the merge base with the target branch as the base commit. An older base makes the gate
 measure lines that the branch did not change. For a branch of `alpha`, the base is
