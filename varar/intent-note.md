@@ -6,7 +6,7 @@ Each row gives the setup, the call, the exit code, the result and the next line:
 
 | setup            | call                                         | exit | result                       | next line |
 | ---------------- | -------------------------------------------- | ---- | ---------------------------- | --------- |
-| intent new Alpha | `intent note 1 "all checks pass"`            | 0    | report: all checks pass      | none      |
-| intent new Alpha | `intent note 1 "abc123 proves it" --kind Commit` | 0    | commit: abc123 proves it     | none      |
+| intent new Alpha | `intent note 1 "all checks pass"`            | 0    | report: all checks pass      | plastic next      |
+| intent new Alpha | `intent note 1 "abc123 proves it" --kind Commit` | 0    | commit: abc123 proves it     | plastic next      |
 | intent new Alpha | `intent note 1 "text" --kind Typo`           | 2    | KIND takes Review, Commit, Report | none |
 | none             | `intent note 9 "text"`                       | 1    | no intent 9 in this store    | none      |

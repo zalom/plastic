@@ -37,7 +37,7 @@
       ]
     },
     "varar/backup-restore.md": {
-      "sourceHash": "fnv1a:8e3601c6",
+      "sourceHash": "fnv1a:1d54665c",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -286,7 +286,7 @@
       ]
     },
     "varar/intent-note.md": {
-      "sourceHash": "fnv1a:499bc78f",
+      "sourceHash": "fnv1a:678f915b",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -376,7 +376,7 @@
       ]
     },
     "varar/next.md": {
-      "sourceHash": "fnv1a:1caac5b6",
+      "sourceHash": "fnv1a:a7f72e12",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",
@@ -600,7 +600,7 @@
       ]
     },
     "varar/status.md": {
-      "sourceHash": "fnv1a:c724eed8",
+      "sourceHash": "fnv1a:f9727331",
       "examples": [
         {
           "name": "Each row gives the setup, the call, the exit code, the result and the next line:",

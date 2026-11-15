@@ -24,7 +24,7 @@ module Plastic
             written = write(reads)
             done = reads.select { |read| written.include?(read) }
             reprint(done)
-            done.map(&:line)
+            done.map(&:line).uniq
           end
 
           private
