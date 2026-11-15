@@ -6,6 +6,7 @@ require_relative "intent_folders"
 require_relative "../store_folder"
 require_relative "archived_intents"
 require_relative "readability"
+require_relative "second_home"
 
 module Plastic
   module Graph
@@ -16,8 +17,8 @@ module Plastic
         # cannot run, `archived` the archived intents the index lists that have no row, and `unreadable` the intent folders no row can be read
         # from, one line each. The files of those folders are no entries.
         # `unreadable_files` maps each changed file that a sync up cannot read into rows to the reason.
-        Plan = Data.define(:resolution, :entries, :legacy, :problem, :unreadable, :archived, :unreadable_files) do
-          def initialize(unreadable_files: {}, **fields) = super
+        Plan = Data.define(:resolution, :entries, :legacy, :problem, :unreadable, :archived, :unreadable_files, :second_home) do
+          def initialize(unreadable_files: {}, second_home: SecondHome::NONE, **fields) = super
         end
 
         # Each entry's action, and what the sync writes.
@@ -27,15 +28,20 @@ module Plastic
             up = resolution.up?
             folders = legacy ? nil : IntentFolders.new(folder, retrieval)
             entries = entries(folder, retrieval, folders)
+            second_home = second_home_of(folder, retrieval, folders, up && !legacy)
             new(resolution:, entries:, legacy: up && legacy,
-              problem: (legacy_problem if legacy && !up), unreadable: Array(folders&.problems),
-              archived: archived(folder, retrieval, resolution),
-              unreadable_files: unreadable_files_of(Readability.new(folder, retrieval, databases), entries, retrieval, up && !legacy))
+              problem: down_problem(legacy, up), unreadable: Array(folders&.problems),
+              archived: archived(folder, retrieval, resolution), second_home:,
+              unreadable_files: unreadable_files_of(Readability.new(folder, retrieval, databases), entries, retrieval, up && !legacy, second_home))
           end
 
+          def self.down_problem(legacy, up) = (legacy_problem if legacy && !up)
+
+          def self.second_home_of(folder, retrieval, folders, reads) = reads ? SecondHome.new(folder, retrieval, folders) : SecondHome::NONE
+
           # Only a sync up of a store that is not legacy reads files.
-          def self.unreadable_files_of(readability, entries, retrieval, reads)
-            reads ? unreadable_files(readability, retrieval, entries) : {}
+          def self.unreadable_files_of(readability, entries, retrieval, reads, second_home)
+            reads ? unreadable_files(readability, retrieval, entries).merge(second_home.problems) : {}
           end
 
           # The changed files of `entries` that sync up would read and cannot.
@@ -73,7 +79,7 @@ module Plastic
           def printed_over = taking(:print).select { |entry| Entry.view?(entry.path) && entry.hand_edited? }.map(&:path)
 
           # The records this sync writes; zero when the folder and the rows are level.
-          def pending = actions.values.count { |action| %i[record read print].include?(action) } + (legacy ? 1 : 0) + archived
+          def pending = actions.values.count { |action| %i[record read print].include?(action) } + (legacy ? 1 : 0) + archived + second_home.size
 
           def merging? = resolution.merging?
 

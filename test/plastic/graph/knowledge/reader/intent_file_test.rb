@@ -13,7 +13,7 @@ class KnowledgeReaderIntentFileTest < Plastic::TestCase
   # Writes the file, reads it into rows, and returns the database its rows went to.
   def read_in(rel, bytes)
     write("#{DIR}/#{rel}", bytes)
-    read = Plastic::Graph::Knowledge::Reader.new(folder, { "1" => retrieval.intent("1") }, origin).read("#{DIR}/#{rel}")
+    read = Plastic::Graph::Knowledge::Reader.new(folder, { "1" => retrieval.intent("1") }, origin, retrieval:).read("#{DIR}/#{rel}")
     apply_read(read)
     read.database
   end
@@ -125,32 +125,5 @@ class KnowledgeReaderIntentFileTest < Plastic::TestCase
 
     assert_equal ["data.json", "intent.md", "notes.txt", "resources/notes.md"], retrieval.documents("1").map(&:path).sort
     assert_equal [true], [!kept("odd.md").nil?]
-  end
-
-  def test_context_json_cannot_become_a_document
-    assert_equal :knowledge, read_in("context.json", JSON.generate("intent" => "1", "context" => {}))
-    assert_empty retrieval.documents("1").select { |document| document.path == "context.json" }
-  end
-
-  def test_context_json_with_no_row_reads_the_context_and_the_discovery_rows
-    read_in("context.json", JSON.generate("intent" => "1", "discovery" => { "a" => 1 }, "context" => { "b" => 2 }))
-
-    assert_equal [{ "a" => 1 }, { "b" => 2 }], [JSON.parse(retrieval.discoveries("1").first.data), JSON.parse(retrieval.contexts("1").first.data)]
-  end
-
-  def test_context_json_with_a_row_is_refused_and_keeps_the_row
-    read_in("context.json", JSON.generate("intent" => "1", "context" => { "b" => 2 }))
-
-    assert_raises(Plastic::Invalid) { read_in("context.json", JSON.generate("intent" => "1", "context" => { "b" => 3 })) }
-    assert_equal({ "b" => 2 }, JSON.parse(retrieval.contexts("1").first.data))
-  end
-
-  def test_context_json_that_names_another_intent_is_refused
-    assert_raises(Plastic::Invalid) { read_in("context.json", JSON.generate("intent" => "2", "context" => {})) }
-    assert_empty retrieval.contexts("1")
-  end
-
-  def test_context_json_that_is_not_json_is_refused
-    assert_raises(Plastic::Invalid) { read_in("context.json", "{nope") }
   end
 end

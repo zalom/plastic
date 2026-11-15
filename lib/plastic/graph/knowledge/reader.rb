@@ -3,6 +3,7 @@
 require_relative "../../invalid"
 require_relative "reader/index_file"
 require_relative "reader/intent_file"
+require_relative "reader/roadmap_file"
 require_relative "../prints"
 require_relative "store_folder"
 
@@ -40,11 +41,18 @@ module Plastic
         end
 
         def read(path)
-          file = (path == StoreFolder::INDEX) ? IndexFile.new(@folder.read(path), @writer.origin_id, @folder.intent_dirs) : intent_file(path)
+          file = file_of(path)
           Read.new(path, file.database, file.method(:apply))
         end
 
         private
+
+        def file_of(path)
+          return IndexFile.new(@folder.read(path), @writer.origin_id, @folder.intent_dirs) if path == StoreFolder::INDEX
+          return RoadmapFile.new(File.basename(path, ".md"), @folder.read(path)) if StoreFolder.roadmap?(path)
+
+          intent_file(path)
+        end
 
         def intent_file(path)
           dir = path.split("/").first(2).join("/")

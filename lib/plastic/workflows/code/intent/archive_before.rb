@@ -11,7 +11,7 @@ module Plastic
         # `intent archive ID` archives one, and says what it did for each. An
         # intent that is not older than the date is passed over with no line.
         class ArchiveBefore
-          OlderThan = Graph::Knowledge::Backup::OlderThan
+          OlderThan = Plastic::Graph::Knowledge::Backup::OlderThan
 
           def initialize(context)
             @work = context.work

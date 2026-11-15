@@ -46,7 +46,7 @@ module Plastic
         def read_up(plan)
           IntentFolders.new(@folder, @retrieval).write_to(@databases)
           ArchivedIntents.new(@folder, @retrieval).write_to(@databases)
-          lines = read(plan.taking(:read).map(&:path))
+          lines = read(plan.taking(:read).map(&:path) | plan.second_home.paths, [plan.second_home.cluster_read].compact)
           printer.print(printed_up(plan))
           lines
         end
@@ -59,7 +59,7 @@ module Plastic
           [index, *wanted].compact.uniq(&:path)
         end
 
-        def read(paths) = FileReads.new(folder: @folder, retrieval: @retrieval, databases: @databases, printer: printer).call(paths)
+        def read(paths, extra = []) = FileReads.new(folder: @folder, retrieval: @retrieval, databases: @databases, printer: printer).call(paths, extra)
 
         def print_down(plan)
           printer.print(plan.taking(:print).map(&:print))

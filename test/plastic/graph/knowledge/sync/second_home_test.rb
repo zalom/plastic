@@ -50,7 +50,7 @@ class KnowledgeSyncSecondHomeTest < Plastic::TestCase
   def test_a_read_roadmap_is_counted_as_pending_before_it_is_read_and_not_after
     second_home_roadmap
 
-    assert_equal [1, 0], [plan.pending, (run_up && plan.pending)]
+    assert_equal [1, 0], [plan.pending, run_up && plan.pending]
   end
 
   def test_a_roadmap_file_with_rows_is_not_read_again
@@ -65,6 +65,7 @@ class KnowledgeSyncSecondHomeTest < Plastic::TestCase
 
     assert_includes plan.unreadable_files.fetch("roadmaps/old.md"), "older form"
     run_up
+
     assert_equal ["# Old\n\n## Goal\n\nShip\n", nil], [folder.read("roadmaps/old.md"), retrieval.roadmap("old")]
   end
 
@@ -96,6 +97,7 @@ class KnowledgeSyncSecondHomeTest < Plastic::TestCase
 
     assert_includes plan.unreadable_files.fetch(CONTEXT), "not JSON"
     run_up
+
     assert_equal [nil, []], [retrieval.roadmap("plan"), retrieval.contexts("1")]
   end
 
@@ -109,14 +111,14 @@ class KnowledgeSyncSecondHomeTest < Plastic::TestCase
     write(CONTEXT, "{nope")
     write("roadmaps/old.md", "# Old\n")
 
-    assert_equal [CONTEXT, "roadmaps/old.md"], plan.unreadable_files.keys.sort
+    assert_equal ["roadmaps/old.md", CONTEXT], plan.unreadable_files.keys.sort
   end
 
   def test_the_clusters_of_the_index_are_read_when_this_home_holds_none
     second_home = Plastic::Graph::Knowledge::Sync::SecondHome.new(folder, retrieval, nil)
     write("store/index.json", JSON.generate(JSON.parse(folder.read("store/index.json")).merge("clusters" => [{ "name" => "Core", "intents" => ["1"] }])))
 
-    assert_equal ["store/index.json"], second_home.reads.map(&:path)
+    assert_equal "store/index.json", second_home.cluster_read.path
   end
 
   def test_a_cluster_that_names_an_intent_this_home_lacks_is_a_broken_part

@@ -31,10 +31,11 @@ Creates a roadmap row and offers its first batch.
 Its rows run in this order:
 
 1. Gate: passes when `context.retrieval.roadmap(context.slug).nil?`; otherwise the call stops with exit 1 and prints roadmap SLUG already exists. [`new.rb:13`](../../../../lib/plastic/workflows/code/roadmap/new.rb#L13)
-2. Gate: passes when `!context.work.roadmap_file?(context.slug)`; otherwise the call stops with exit 1 and prints roadmaps/SLUG.md exists and this home holds no roadmap row for it; no command reads a roadmap file into rows. [`new.rb:17`](../../../../lib/plastic/workflows/code/roadmap/new.rb#L17)
-3. Step: create the roadmap. Done when `!context.roadmap.nil?`, so a second call skips it. [`new.rb:23`](../../../../lib/plastic/workflows/code/roadmap/new.rb#L23)
-4. Read: say what was created. [`new.rb:27`](../../../../lib/plastic/workflows/code/roadmap/new.rb#L27)
-5. Outcome `:done`, always: finishes with exit 0; next: plastic roadmap batch SLUG 1. [`new.rb:31`](../../../../lib/plastic/workflows/code/roadmap/new.rb#L31)
+2. Gate: passes when `!context.work.roadmap_file_readable?(context.slug)`; otherwise the call stops with exit 1 and prints roadmaps/SLUG.md holds a roadmap this home has no rows for; run plastic sync up to read it. [`new.rb:17`](../../../../lib/plastic/workflows/code/roadmap/new.rb#L17)
+3. Gate: passes when `!context.work.roadmap_file?(context.slug)`; otherwise the call stops with exit 1 and prints roadmaps/SLUG.md exists and this home holds no roadmap row for it; no command reads a roadmap file into rows. [`new.rb:21`](../../../../lib/plastic/workflows/code/roadmap/new.rb#L21)
+4. Step: create the roadmap. Done when `!context.roadmap.nil?`, so a second call skips it. [`new.rb:27`](../../../../lib/plastic/workflows/code/roadmap/new.rb#L27)
+5. Read: say what was created. [`new.rb:31`](../../../../lib/plastic/workflows/code/roadmap/new.rb#L31)
+6. Outcome `:done`, always: finishes with exit 0; next: plastic roadmap batch SLUG 1. [`new.rb:35`](../../../../lib/plastic/workflows/code/roadmap/new.rb#L35)
 
 It sets `roadmap`.
 
@@ -42,7 +43,7 @@ In the words of workflow engines, the rows are these four parts:
 
 - **Trigger**: the call starts the workflow `Code::Roadmap::New`.
 - **Activities**: 1 read and 1 step.
-- **Transitions**: 2 gates stop the call when their checks fail; a step runs only while its done check fails.
+- **Transitions**: 3 gates stop the call when their checks fail; a step runs only while its done check fails.
 - **Outcomes**: `:done` ends the call.
 
 ## What one call reads, writes and prints
@@ -58,7 +59,7 @@ A second call runs the same rows again. A step runs again only when its done che
 
 | Step | Done when | The second call | Code |
 | --- | --- | --- | --- |
-| create the roadmap | `!context.roadmap.nil?` | skips it | [`new.rb:23`](../../../../lib/plastic/workflows/code/roadmap/new.rb#L23) |
+| create the roadmap | `!context.roadmap.nil?` | skips it | [`new.rb:27`](../../../../lib/plastic/workflows/code/roadmap/new.rb#L27) |
 
 ## How a call ends
 
@@ -67,8 +68,9 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
 | roadmap SLUG already exists | 1 | plastic roadmap show SLUG | [`new.rb:13`](../../../../lib/plastic/workflows/code/roadmap/new.rb#L13) |
-| roadmaps/SLUG.md exists and this home holds no roadmap row for it; no command reads a roadmap file into rows | 1 | plastic next | [`new.rb:17`](../../../../lib/plastic/workflows/code/roadmap/new.rb#L17) |
-| roadmap SLUG exists and has no batch yet | 0 | plastic roadmap batch SLUG 1 | [`new.rb:31`](../../../../lib/plastic/workflows/code/roadmap/new.rb#L31) |
+| roadmaps/SLUG.md holds a roadmap this home has no rows for; run plastic sync up to read it | 1 | plastic sync up | [`new.rb:17`](../../../../lib/plastic/workflows/code/roadmap/new.rb#L17) |
+| roadmaps/SLUG.md exists and this home holds no roadmap row for it; no command reads a roadmap file into rows | 1 | plastic next | [`new.rb:21`](../../../../lib/plastic/workflows/code/roadmap/new.rb#L21) |
+| roadmap SLUG exists and has no batch yet | 0 | plastic roadmap batch SLUG 1 | [`new.rb:35`](../../../../lib/plastic/workflows/code/roadmap/new.rb#L35) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
 
 ## What the page leaves out

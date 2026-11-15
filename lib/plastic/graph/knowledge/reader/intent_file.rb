@@ -8,6 +8,7 @@ require_relative "../../retrieval/evidence/removal"
 require_relative "../legacy_path"
 require_relative "folder_file"
 require_relative "graph_file"
+require_relative "context_file"
 require_relative "../../work/edge"
 require_relative "../../work/node"
 require_relative "../../work/savepoint"
@@ -23,7 +24,7 @@ module Plastic
         # and any other file kept whole as bytes.
         class IntentFile
           KEPT_MODE = 0o100644
-          KINDS = { "graph.json" => %i[work graph], "context.json" => %i[work context], "savepoint.md" => %i[work savepoint] }.freeze
+          KINDS = { "graph.json" => %i[work graph], "context.json" => %i[knowledge context], "savepoint.md" => %i[work savepoint] }.freeze
 
           def initialize(file, intent_id, writer:, retrieval: nil)
             @file = file
@@ -56,9 +57,13 @@ module Plastic
 
           def graph(batch) = GraphFile.new(text, @intent_id, origin_id, @file.path).apply(batch)
 
-          def context(_batch)
-            raise Invalid, "context.json is generated from rows; use intent context and intent discover to change it"
+          def context(batch)
+            raise Invalid, "context.json is generated from rows; use intent context and intent discover to change it" if context_rows?
+
+            ContextFile.new(text, @intent_id, @file.path).rows.each { |table, row| batch.put(table, row) }
           end
+
+          def context_rows? = @retrieval && [@retrieval.contexts(@intent_id), @retrieval.discoveries(@intent_id)].any?(&:any?)
 
           def savepoint(batch)
             previous = Array(@retrieval&.savepoints(@intent_id)).group_by(&:line)

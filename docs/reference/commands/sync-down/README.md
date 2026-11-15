@@ -85,7 +85,7 @@ In the words of workflow engines, the rows are these four parts:
 | --- | --- | --- | --- | --- |
 | the store folder | knowledge_graph.db | not found in the code | writes | [`sync_options.rb:12`](../../../../lib/plastic/cli/sync_options.rb#L12) |
 | the store folder | references.db | not found in the code | writes | [`sync_options.rb:12`](../../../../lib/plastic/cli/sync_options.rb#L12) |
-| the store folder | work_graph.db | `archives`, `completions`, `intents` | reads and writes | [`sync_options.rb:12`](../../../../lib/plastic/cli/sync_options.rb#L12) |
+| the store folder | work_graph.db | `archives`, `batches`, `completions`, `intents`, `roadmap_edges`, `roadmap_items`, `roadmap_log`, `roadmaps` | reads and writes | [`sync_options.rb:12`](../../../../lib/plastic/cli/sync_options.rb#L12) |
 
 A second call runs the same rows again. A step runs again only when its done check fails.
 

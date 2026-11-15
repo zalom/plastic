@@ -85,6 +85,14 @@ module Plastic
 
       def roadmap_file?(slug) = @folder.exist?("roadmaps/#{slug}.md")
 
+      # The file is in the form of this release and reads without a problem: `plastic sync up` turns it into rows.
+      def roadmap_file_readable?(slug)
+        path = "roadmaps/#{slug}.md"
+        @folder.exist?(path) && Knowledge::Reader::RoadmapFile.new(slug, @folder.read(path)) && true
+      rescue Invalid
+        false
+      end
+
       def print_index = @writers.sync.printer.print([Prints.index(@retrieval)])
 
       # The paths this call printed, relative to the store folder.
