@@ -140,7 +140,7 @@ command, or a line to add to a file. The doctor reads files and opens the databa
 except for one repair: it rebuilds the search rows of a store that are out of step with the
 passages, and prints `search index NAME: rebuilt`. A store whose evidence is gone fails with
 the `plastic backup list --store NAME` repair. The start hook never rebuilds. `--harness NAME` checks a named harness instead of the one the session row
-records. When nothing names a harness, the doctor exits 2 and lists the harnesses that have checks.
+records. When nothing names a harness, the doctor exits 2 and lists the registered harnesses.
 
 ## Help that costs nothing
 

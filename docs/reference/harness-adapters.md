@@ -36,7 +36,8 @@ Plastic ships one entry for each harness it knows, in `lib/plastic/harnesses.rb`
 The installer writes each harness's hooks from its entry, and the doctor compares the installed
 hooks with it. `plastic config --harness NAME` takes only a name the registry holds. The start hook
 names the harness from these fields and records it on the session row. A field an entry leaves
-empty is skipped: detection never names Hermes, and the doctor has no module for it.
+empty is skipped: detection never names Hermes, and its entry names no doctor module, so
+`plastic doctor --harness hermes` runs `Doctor::Core` alone.
 
 ## How a hook names its session and its harness
 
@@ -77,7 +78,7 @@ naming `plastic doctor --harness` with the registered harnesses.
 ## The doctor of each harness
 
 `plastic doctor` runs `Doctor::Core` for every harness, then the module that `Doctor::HARNESSES`
-names for the harness. `--harness NAME` picks the module. Without it, the doctor takes the
+names for the harness. Hermes has no module there, so its doctor is `Doctor::Core` alone. `--harness NAME` picks the module. Without it, the doctor takes the
 harness on the session row, then the one a session variable equal to the session names. When
 neither names a registered harness, it exits 2 and asks for `--harness` with the registered
 names.
@@ -97,7 +98,7 @@ executable. `CodexHookCommand` parses each Codex hook command as shell words wit
 it, and accepts the installer's `env -u RUBYOPT` prefix and `|| true` suffix. The doctor does
 not read Codex's trust records: its hook trust row says that trust is not verified and asks the
 person to review the hooks in Codex's `/hooks`. That row has no repair and does not change the
-exit code. A new harness adds one class with a public `checks` and one row in `HARNESSES`.
+exit code. A new harness adds a row in the registry and, when it has checks of its own, one class with a public `checks`.
 
 ## Instruction sections
 
