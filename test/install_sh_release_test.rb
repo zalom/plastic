@@ -59,9 +59,9 @@ class InstallShReleaseTest < Minitest::Test
     assert_includes out, "would install Plastic 9.9.9 under #{share}"
   end
 
-  def test_a_newer_release_without_its_files_is_skipped_for_the_newest_that_has_them
+  def test_a_newer_release_missing_one_of_its_files_is_skipped_for_the_newest_that_has_all_three
     release("9.9.9")
-    serve_releases("9.9.9", bare: ["9.9.10"])
+    serve_releases("9.9.9", partial: { "9.9.10" => %w[plastic.tgz plastic.tgz.sha256] })
     out, err, status = install("--dry-run")
 
     assert_equal [0, ""], [status.exitstatus, err]
