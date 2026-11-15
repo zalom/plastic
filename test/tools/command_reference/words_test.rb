@@ -28,6 +28,18 @@ class CommandReferenceWordsTest < Minitest::Test
   def test_a_pipe_in_a_cell_is_escaped
     assert_equal "a\\|b", CommandReference::Words.cell("a|b")
   end
+
+  def test_a_sentence_of_no_words_stays_empty
+    assert_equal "", CommandReference::Words.sentence("  ")
+  end
+
+  def test_a_sentence_that_ends_in_a_stop_keeps_it_and_gains_a_capital
+    assert_equal "The node is added?", CommandReference::Words.sentence("the node is added?")
+  end
+
+  def test_a_sentence_that_ends_in_no_stop_gains_a_full_stop
+    assert_equal "The node is added.", CommandReference::Words.sentence("the node is added")
+  end
 end
 
 class CommandReferenceMissingWordsTest < Minitest::Test
