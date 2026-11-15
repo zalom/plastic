@@ -2,6 +2,8 @@
 
 require "digest"
 require "json"
+require "rubygems/package"
+require "zlib"
 require_relative "../../../scripts/lib/installer_release"
 require_relative "../../test_helper"
 require_relative "../../../lib/plastic/installations"
@@ -61,14 +63,30 @@ module InstallerHelper
     directory = File.join(@home, "release-#{version}")
     release_package(File.join(directory, "package"), version)
     archive = File.join(directory, "plastic.tgz")
-    ChildProcess.system("tar", "-czf", archive, "-C", directory, "package", exception: true)
+    write_archive(archive, directory, "package")
     identity = InstallerRelease::Manifest.identity(version).merge("platform" => "universal", "architecture" => "universal")
     InstallerRelease::Manifest.write(File.join(directory, "plastic.manifest.json"), archive: archive, release: identity)
     File.write(File.join(directory, "plastic.tgz.sha256"), "#{Digest::SHA256.file(archive).hexdigest}  plastic.tgz\n")
     directory
   end
 
-  def launcher_calls = File.exist?(File.join(@home, "launcher-calls")) ? File.readlines(File.join(@home, "launcher-calls"), chomp: true) : []
+  # A gzip tar of one folder under its own name, with each file's mode kept.
+  def write_archive(archive, base, folder)
+    Zlib::GzipWriter.open(archive) do |gzip|
+      Gem::Package::TarWriter.new(gzip) do |tar|
+        Dir.glob("#{folder}/**/*", File::FNM_DOTMATCH, base: base).reject { |name| name.end_with?("/.") }.sort.each { |name| tar_entry(tar, name, File.join(base, name)) }
+      end
+    end
+  end
+
+  def tar_entry(tar, name, path)
+    mode = File.stat(path).mode
+    return tar.mkdir(name, mode) if File.directory?(path)
+
+    tar.add_file_simple(name, mode, File.size(path)) { |entry| entry.write(File.binread(path)) }
+  end
+
+  def launcher_calls =File.exist?(File.join(@home, "launcher-calls")) ? File.readlines(File.join(@home, "launcher-calls"), chomp: true) : []
 
   def installed_home_without_stores
     FileUtils.mkdir_p(File.join(@home, ".claude"))
