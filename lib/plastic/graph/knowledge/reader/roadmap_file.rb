@@ -13,7 +13,8 @@ module Plastic
         class RoadmapFile
           Form = Roadmap::Form
           RECORD_STARTS = { "- edge" => :edges, "- log" => :log }.freeze
-          REQUIRED = { head: %i[title], batches: %i[position title], items: %i[item position title], edges: %i[from to kind], log: %i[position text] }.freeze
+          NOUNS = { head: "a head", batches: "a batch", items: "an item", edges: "an edge", log: "a log line" }.freeze
+          REQUIRED = { head: %i[title], batches: %i[position title], items: %i[item position], edges: %i[from to kind], log: %i[position text] }.freeze
 
           def self.form?(text) = Form.form?(text.dup.force_encoding(Encoding::UTF_8))
 
@@ -75,7 +76,7 @@ module Plastic
 
           def missing(kind, record, names)
             gone = names.reject { |name| record[name.to_s] && !record[name.to_s].empty? }
-            raise Invalid, "roadmaps/#{@slug}.md has a #{kind} record with no #{gone.join(", ")}" if gone.any?
+            raise Invalid, "roadmaps/#{@slug}.md has #{NOUNS.fetch(kind)} record with no #{gone.join(", ")}" if gone.any?
           end
 
           def header = { slug: @slug, title: @head["title"], goal: blank(@head["goal"]), opened_at: blank(@head["opened_at"]), updated_at: Plastic.now }
