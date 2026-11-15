@@ -17,7 +17,7 @@ module Plastic
         "update" => ["Commands::Update", "Sync a newer package into the home or name the installer command"],
         "rollback" => ["Commands::Rollback", "Switch the active release back to the previous one or to a named installed one"],
         "uninstall" => ["Commands::Uninstall", "Remove Plastic from agents and keep the home"],
-        "auto" => ["Commands::Auto", "Deliver one intent or one roadmap in auto mode: take the lock and print the worktree"],
+        "auto" => ["Commands::Auto", "Deliver one intent or one roadmap in auto mode: lock the intent and print the worktree"],
         "status" => ["Commands::Status", "List every store's intents by group, with node counts by state"],
         "next" => ["Commands::Next", "Pick the intent in play and offer its next command"],
         "search" => ["Commands::Search", "Search literal indexed passages across selected stores"]

@@ -54,7 +54,7 @@ module Plastic
 
         def file = FILE
 
-        def takes_problem(takes) = ("intent #{intent_id} is #{status}; it takes no #{takes}" if closed?)
+        def closed_problem(takes) = ("intent #{intent_id} is #{status}; it takes no #{takes}" if closed?)
 
         def key_among(paths) = [intent_id, paths.include?(file) ? file : "#{intent_id}--#{slug}.md"]
 

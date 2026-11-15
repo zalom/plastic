@@ -18,7 +18,7 @@ module Plastic
     class WorkGraph
       extend Forwardable
 
-      def_delegators "@writers.sessions", :open_session, :stamp_turn, :end_session, :write_note, :take_lock, :renew_locks
+      def_delegators "@writers.sessions", :open_session, :stamp_turn, :end_session, :write_note, :lock_intent, :renew_locks
       def_delegator "@writers.intents", :activate, :activate_intent
       def_delegator "@writers.intents", :open_problem, :open_intent_problem
       def_delegator "@writers.intents", :problem, :intent_problem

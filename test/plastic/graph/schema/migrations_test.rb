@@ -39,7 +39,7 @@ class SchemaMigrationsTest < Minitest::Test
   private
 
   def migration_connection(revision_sql:, passage_sql:)
-    SchemaMigrationConnection.new("document_revisions" => revision_sql, "document_passages" => passage_sql, "intents" => nil)
+    SchemaMigrationConnection.new("document_revisions" => revision_sql, "document_passages" => passage_sql, "intents" => nil, "locks" => nil)
   end
 end
 

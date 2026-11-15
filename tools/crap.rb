@@ -157,11 +157,11 @@ module Crap
 
     def self.parse(argv)
       rest = argv.dup
-      values = FLAGS.to_h { |flag, default| [flag, take(rest, flag, default)] }
+      values = FLAGS.to_h { |flag, default| [flag, flag_value(rest, flag, default)] }
       new(values:, paths: rest, help: argv.intersect?(HELP))
     end
 
-    def self.take(rest, flag, default)
+    def self.flag_value(rest, flag, default)
       index = rest.index(flag) or return default
       value = rest[index + 1]
       return rest.slice!(index, 2).last if value && !value.start_with?("--")

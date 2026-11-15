@@ -34,6 +34,16 @@ module Plastic
         def outdated?(connection) = connection.get_first_value(SQL)&.match?(OUTDATED)
       end
 
+      # Whether the locks table still names its time column the way older releases do.
+      module LocksTable
+        SQL = "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'locks'"
+        HELD = "local.db is held by another process; run the command again when it is free"
+
+        module_function
+
+        def older?(connection) = connection.get_first_value(SQL)&.include?("taken_at") || false
+      end
+
       def migrate_revision_membership(connection)
         sql = connection.get_first_value("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'document_revisions'")
         return unless sql&.include?('UNIQUE("sha256", "origin_id")')
@@ -60,6 +70,18 @@ module Plastic
       def trigger_creates(table) = triggers_on(table).map(&:create)
 
       def trigger_drops(table) = triggers_on(table).map(&:drop)
+
+      # Renames the column of locks that older releases call taken_at. The check runs again inside the immediate
+      # transaction, so a second process finds the column renamed and does nothing.
+      def migrate_lock_column(connection)
+        return unless LocksTable.older?(connection)
+
+        connection.transaction(:immediate) do
+          connection.execute("ALTER TABLE locks RENAME COLUMN taken_at TO locked_at") if LocksTable.older?(connection)
+        end
+      rescue SQLite3::BusyException
+        raise Database::Error, LocksTable::HELD
+      end
 
       def migrate_intent_states(connection) = (connection.transaction(:immediate) { swap_outdated(connection) } if IntentsTable.outdated?(connection))
 

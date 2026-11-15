@@ -45,7 +45,7 @@ module Plastic
 
             def self.described(liveness, state)
               lock = liveness.lock
-              "lock: session #{lock.session_id}, mode #{lock.mode}, taken #{lock.taken_at}, renewed #{lock.renewed_at}, #{state}: #{liveness.why}"
+              "lock: session #{lock.session_id}, mode #{lock.mode}, locked #{lock.locked_at}, renewed #{lock.renewed_at}, #{state}: #{liveness.why}"
             end
 
             outcome :closed, if: ->(context) { %w[done abandoned].include?(context.intent.status) }, offers: nil,

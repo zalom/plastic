@@ -36,7 +36,7 @@ module Plastic
           # Why the intent cannot take `takes` (nodes, a verdict), or nil when it is open or in progress.
           def open_problem(intent_id, takes)
             intent = @retrieval.intent(intent_id)
-            intent ? intent.takes_problem(takes) : "no intent #{intent_id} in this store"
+            intent ? intent.closed_problem(takes) : "no intent #{intent_id} in this store"
           end
 
           # `fields` may name the ref, the kind, the status and the reason; a field left out or nil takes its default.

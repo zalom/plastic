@@ -54,7 +54,7 @@ class WorkSessionWriterTest < Plastic::TestCase
     assert_equal "picked up the review", reader.session("s-9").note
   end
 
-  def test_take_lock_writes_the_lock_of_this_store_taken_and_renewed_together
+  def test_lock_intent_writes_the_lock_of_this_store_locked_and_renewed_together
     work.lock_intent("1", session_id: "s-1", mode: "auto")
     lock = reader.lock("1")
 

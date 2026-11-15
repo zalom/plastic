@@ -52,7 +52,7 @@ starts from where the last one stopped.
 
 ## When you see a lock
 
-A lock is a row in the `locks` table of `local.db`, taken when `plastic auto ID` arms an intent.
+A lock is a row in the `locks` table of `local.db`, written when `plastic auto ID` arms an intent.
 The row names the owning session. It stays live while the session's stop hook renews it, or
 while the session holds a claimed node of the intent. Run `plastic intent lock status ID` to
 inspect a lock. A live lock of another session is refused with exit 3, and an expired one is

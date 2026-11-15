@@ -48,7 +48,7 @@ In the words of workflow engines, the rows are these four parts:
 
 | Place | Database or file | Tables | Reads or writes | Code |
 | --- | --- | --- | --- | --- |
-| the store folder | work_graph.db | `edges`, `nodes`, `roadmaps`, `verdicts` | reads | found in the code, not declared |
+| the store folder | work_graph.db | `edges`, `nodes`, `roadmaps`, `verdicts` | reads | [`doctor.rb:9`](../../../../lib/plastic/commands/doctor.rb#L9) |
 
 ## How a call ends
 
