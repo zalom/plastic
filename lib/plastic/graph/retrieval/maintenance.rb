@@ -34,6 +34,8 @@ module Plastic
         def backfill = ReferenceBackfill.new(@databases, origin_id).call
         # Rebuilds only derived retrieval rows from immutable evidence.
         def repair = Evidence::Integrity.new(knowledge, origin_id).repair
+        # Compares the derived rows with the immutable evidence and changes none.
+        def search_index_report = Evidence::Integrity.new(knowledge, origin_id).report
 
         private
 

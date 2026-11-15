@@ -31,7 +31,7 @@ module Plastic
               context[:conflicts] = run.conflicts.join(", ")
               context[:merging] = run.merging
               context[:unreadable] = run.unreadable.join("\n")
-              SyncSteps.note_files(context, run.unreadable_files)
+              SyncSteps.note_files(context, run.unreadable_files, run.rowless_files)
             end
 
             # A gate that a real run passes untouched; a dry run passes it as the real run's own gate would.
@@ -39,7 +39,7 @@ module Plastic
 
             # The steps of a preview in `direction`: the dry run, then the gates of the real run in its order.
             def self.preview(direction)
-              sets :failure, :conflicts, :merging, :unreadable, :unreadable_files, :unreadable_path
+              sets :failure, :conflicts, :merging, :unreadable, :unreadable_files, :unreadable_path, :unreadable_rowless
               read("preview the sync in an isolated copy") { |context| show(context, direction) if DRY_RUN.call(context) }
               real_gates
               outcomes_of(direction)
@@ -67,6 +67,8 @@ module Plastic
               gate SyncSteps::UNREADABLE, stops: :failure, pass: ->(context) { as_real?(context, :readable?) }
               gate SyncSteps::UNREADABLE_FILES, stops: :failure, pass: ->(context) { as_real?(context, :files_read?) },
                 offers: "plastic sync down --overwrite %{unreadable_path}", because: "sync up cannot read %{unreadable_path}, and its rows print it again"
+              gate SyncSteps::UNREADABLE_FILES, stops: :failure, pass: ->(context) { as_real?(context, :rowless_read?) },
+                because: "sync up cannot read %{unreadable_rowless}, and this home holds no rows to print it again"
             end
 
             preview :up

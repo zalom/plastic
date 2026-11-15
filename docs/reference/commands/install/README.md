@@ -79,7 +79,7 @@ Its rows run in this order:
 
 The agent step "offer Enola" prints:
 
-> Enola maps the code architecture of a project. It is optional: Plastic works without it. To install it, read the release notes and run its installer from https://github.com/enola-labs/enola/releases/tag/v0.4.39
+> Enola maps the code architecture of a project. It is optional: Plastic works without it. To install it, read the release notes and run its installer from https://github.com/enola-labs/enola/releases/tag/v0.4.39, then set up Enola's hooks and its MCP server for this harness
 
 While a step is left, the call hands off with exit 0 from `:handoff`: it prints the `say:` text of each failing step and offers next: plastic init. The command writes nothing, so the call keeps no routine run row. The next call starts fresh and checks the steps again.
 

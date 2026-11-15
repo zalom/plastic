@@ -23,6 +23,11 @@ module Plastic
 
           def database = :work
 
+          # The cluster rows alone, for a home that holds none.
+          def cluster_rows = members
+
+          def apply_clusters(batch) = batch.put_all(:clusters, members)
+
           def apply(batch)
             batch.put_all(:intents, intents).remove(:clusters).put_all(:clusters, members)
           end

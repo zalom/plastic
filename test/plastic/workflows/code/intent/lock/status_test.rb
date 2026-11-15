@@ -43,18 +43,18 @@ class WorkflowShowLockTest < Plastic::TestCase
 
   def test_a_live_lock_names_its_session
     open_intent
-    store_graphs.work.take_lock("1", session_id: "s-2", mode: "auto")
+    store_graphs.work.lock_intent("1", session_id: "s-2", mode: "auto")
 
     outcome, context = show
 
     assert_equal :live, outcome
-    assert_match(/\Alock: session s-2, mode auto, taken \S+, renewed \S+, live: renewed within 30 minutes\z/, lines(context).first)
+    assert_match(/\Alock: session s-2, mode auto, locked \S+, renewed \S+, live: renewed within 30 minutes\z/, lines(context).first)
   end
 
   def test_an_expired_lock_says_expired
     open_intent
     store_graphs.work.approve_intent("1")
-    store_graphs.work.take_lock("1", session_id: "s-2", mode: "auto")
+    store_graphs.work.lock_intent("1", session_id: "s-2", mode: "auto")
     expire_lock
 
     outcome, context = show
@@ -65,7 +65,7 @@ class WorkflowShowLockTest < Plastic::TestCase
 
   def test_a_lapsed_lock_held_by_an_open_node_says_which_node
     open_intent
-    store_graphs.work.take_lock("1", session_id: "s-2", mode: "auto")
+    store_graphs.work.lock_intent("1", session_id: "s-2", mode: "auto")
     expire_lock
     store_graphs.databases.fetch(:work).transaction do |batch|
       batch.put(:nodes, { intent_id: "1", id: "n1", state: "claimed", by: "s-2", updated_at: Plastic.now })
@@ -80,7 +80,7 @@ class WorkflowShowLockTest < Plastic::TestCase
   def test_a_lock_of_an_ended_session_says_the_session_ended
     open_intent
     store_graphs.work.approve_intent("1")
-    store_graphs.work.take_lock("1", session_id: "s-2", mode: "auto")
+    store_graphs.work.lock_intent("1", session_id: "s-2", mode: "auto")
     store_graphs.work.end_session("s-2", reason: "clear")
 
     outcome, context = show
@@ -92,7 +92,7 @@ class WorkflowShowLockTest < Plastic::TestCase
   def test_a_registered_repo_prints_the_worktree
     File.write(File.join(@plastic_home, "projects.yml"), "projects:\n  global:\n    path: /r/repo\n")
     open_intent
-    store_graphs.work.take_lock("1", session_id: "s-2", mode: "auto")
+    store_graphs.work.lock_intent("1", session_id: "s-2", mode: "auto")
 
     _, context = show
 

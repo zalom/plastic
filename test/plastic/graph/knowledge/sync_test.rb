@@ -167,7 +167,7 @@ class KnowledgeSyncIndexTest < Plastic::TestCase
     index = JSON.parse(folder.read("store/index.json"))
     write("store/index.json", JSON.pretty_generate(index.merge("origin_id" => "zzzz")))
 
-    assert_equal [["store/index.json"], {}], [sync.plan(:up).taking(:print).map(&:path), sync.plan(:up).unreadable_files]
+    assert_equal [["store/index.json"], {}], [sync.plan(:up).entries_for(:print).map(&:path), sync.plan(:up).unreadable_files]
   end
 
   def test_sync_up_names_an_index_that_is_a_json_array_as_a_file_it_cannot_read

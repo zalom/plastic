@@ -18,11 +18,11 @@ class InstallerReleaseHomeSnapshotTest < Minitest::Test
   end
 
   def test_take_saves_only_the_paths_that_exist
-    assert_equal [[kept, "0"]], snapshot.take
+    assert_equal [[kept, "0"]], snapshot.capture
   end
 
   def test_put_back_restores_a_changed_file
-    saved = snapshot.take
+    saved = snapshot.capture
     File.write(kept, "after\n")
     snapshot.put_back(saved)
 
@@ -30,7 +30,7 @@ class InstallerReleaseHomeSnapshotTest < Minitest::Test
   end
 
   def test_put_back_removes_a_path_the_activation_added
-    saved = snapshot.take
+    saved = snapshot.capture
     File.write(added, "new\n")
     snapshot.put_back(saved)
 
@@ -38,7 +38,7 @@ class InstallerReleaseHomeSnapshotTest < Minitest::Test
   end
 
   def test_put_back_restores_a_file_the_activation_removed
-    saved = snapshot.take
+    saved = snapshot.capture
     FileUtils.rm_rf(File.dirname(kept))
     snapshot.put_back(saved)
 

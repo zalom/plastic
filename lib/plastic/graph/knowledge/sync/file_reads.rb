@@ -19,18 +19,18 @@ module Plastic
           end
 
           # One line for each path read. A path the database refuses is left as it is and gets no line.
-          def call(paths)
-            reads = paths.map(&reader.method(:read))
+          def call(paths, extra = [])
+            reads = paths.map(&reader.method(:read)) + extra
             written = write(reads)
             done = reads.select { |read| written.include?(read) }
             reprint(done)
-            done.map(&:line)
+            done.map(&:line).uniq
           end
 
           private
 
           # The intents of the rows. store/index.json is never read for them: the folders are.
-          def reader = Reader.of_databases(@folder, @retrieval, @databases)
+          def reader = Reader.of(@folder, @retrieval)
 
           # The work graph first, so a new intent's row is in place before its files.
           def write(reads)
@@ -58,9 +58,15 @@ module Plastic
             @databases.fetch(key).transaction { |batch| batch.apply(applies) }
           end
 
+          # A roadmap file read into rows is printed again from them, so the file holds the form the rows print.
+          def roadmap_print(path)
+            slug = path[%r{\Aroadmaps/(.+)\.md\z}, 1]
+            Prints.roadmap(@retrieval, slug) if slug && @retrieval.roadmap(slug)
+          end
+
           def reprint(reads)
             fresh = Prints.of_store(@retrieval).to_h { |print| [print.path, print] }
-            @printer.print(reads.map { |found| fresh[found.path] || found.kept_print(@folder) })
+            @printer.print(reads.map { |found| fresh[found.path] || roadmap_print(found.path) || found.kept_print(@folder) })
           end
         end
       end

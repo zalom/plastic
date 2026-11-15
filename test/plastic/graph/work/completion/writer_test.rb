@@ -57,7 +57,7 @@ class WorkCompletionWriterTest < WorkCompletionWriterFixture
 
   def test_closing_releases_the_lock_of_the_closing_session
     ready
-    @graphs.work.take_lock("1", session_id: "s-1", mode: "auto")
+    @graphs.work.lock_intent("1", session_id: "s-1", mode: "auto")
     writer.close("1")
 
     assert_nil retrieval.lock("1")
@@ -65,7 +65,7 @@ class WorkCompletionWriterTest < WorkCompletionWriterFixture
 
   def test_closing_keeps_a_live_lock_another_session_holds
     ready
-    @graphs.work.take_lock("1", session_id: "s-2", mode: "auto")
+    @graphs.work.lock_intent("1", session_id: "s-2", mode: "auto")
     writer.close("1")
 
     assert_equal "s-2", retrieval.lock("1").session_id
@@ -82,7 +82,7 @@ class WorkCompletionWriterTest < WorkCompletionWriterFixture
   def test_closing_a_done_intent_again_releases_the_lock_it_still_holds
     ready
     writer.close("1")
-    @graphs.work.take_lock("1", session_id: "s-1", mode: "auto")
+    @graphs.work.lock_intent("1", session_id: "s-1", mode: "auto")
     writer.close("1")
 
     assert_nil retrieval.lock("1")
@@ -143,7 +143,7 @@ class WorkCompletionAbandonTest < WorkCompletionWriterFixture
 
   def test_abandoning_releases_the_lock_of_the_closing_session
     dropped
-    @graphs.work.take_lock("1", session_id: "s-1", mode: "auto")
+    @graphs.work.lock_intent("1", session_id: "s-1", mode: "auto")
     writer.abandon("1")
 
     assert_nil retrieval.lock("1")
@@ -151,7 +151,7 @@ class WorkCompletionAbandonTest < WorkCompletionWriterFixture
 
   def test_abandoning_keeps_a_live_lock_another_session_holds
     dropped
-    @graphs.work.take_lock("1", session_id: "s-2", mode: "auto")
+    @graphs.work.lock_intent("1", session_id: "s-2", mode: "auto")
     writer.abandon("1")
 
     assert_equal "s-2", retrieval.lock("1").session_id
@@ -160,7 +160,7 @@ class WorkCompletionAbandonTest < WorkCompletionWriterFixture
   def test_abandoning_an_abandoned_intent_again_releases_the_lock_it_still_holds
     dropped
     writer.abandon("1")
-    @graphs.work.take_lock("1", session_id: "s-1", mode: "auto")
+    @graphs.work.lock_intent("1", session_id: "s-1", mode: "auto")
     writer.abandon("1")
 
     assert_nil retrieval.lock("1")

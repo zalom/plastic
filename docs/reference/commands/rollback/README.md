@@ -59,14 +59,15 @@ Names the command that switches to the named release or the previous one. It cha
 Its rows run in this order:
 
 1. Read: name the switch command. [`rollback.rb:17`](../../../../lib/plastic/workflows/code/rollback.rb#L17)
-2. Outcome `:done`, always: finishes with exit 0; next: COMMAND. [`rollback.rb:22`](../../../../lib/plastic/workflows/code/rollback.rb#L22)
+2. Read: say what a rollback means for the stored data. [`rollback.rb:22`](../../../../lib/plastic/workflows/code/rollback.rb#L22)
+3. Outcome `:done`, always: finishes with exit 0; next: COMMAND. [`rollback.rb:26`](../../../../lib/plastic/workflows/code/rollback.rb#L26)
 
 It sets `command`.
 
 In the words of workflow engines, the rows are these four parts:
 
 - **Trigger**: the call starts the workflow `Code::Rollback::Preview`; each later workflow starts from an outcome of the one before it.
-- **Activities**: 3 reads.
+- **Activities**: 4 reads.
 - **Transitions**: 3 gates stop the call when their checks fail; Preview goes to Rollback on `:continue`.
 - **Outcomes**: `:done` of Preview, `:done` of Rollback end the call.
 
@@ -86,7 +87,7 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 | TARGET is not installed | 3 | prints no next: line | [`preview.rb:27`](../../../../lib/plastic/workflows/code/rollback/preview.rb#L27) |
 | no previous release to go back to | 3 | prints no next: line | [`preview.rb:29`](../../../../lib/plastic/workflows/code/rollback/preview.rb#L29) |
 | the preview changed no file | 0 | ORIGINAL_COMMAND | [`preview.rb:39`](../../../../lib/plastic/workflows/code/rollback/preview.rb#L39) |
-| this command switches the active release; rollback changed nothing | 0 | COMMAND | [`rollback.rb:22`](../../../../lib/plastic/workflows/code/rollback.rb#L22) |
+| this command switches the active release; rollback changed nothing | 0 | COMMAND | [`rollback.rb:26`](../../../../lib/plastic/workflows/code/rollback.rb#L26) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
 
 ## What the page leaves out

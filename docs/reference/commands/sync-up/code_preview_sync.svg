@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 702" width="760" height="702" role="img" xml:space="preserve">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 782" width="760" height="782" role="img" xml:space="preserve">
 <title>How Preview runs in plastic sync up</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
@@ -145,22 +145,35 @@
 <text x="476" y="527" class="tm" text-anchor="start">%{unreadable_files}</text>
 <path d="M 226 538 L 226 548" class="wire"/>
 <path d="M 221 540 L 226 548 L 231 540 Z" class="head"/>
-<text x="16" y="560" class="tag tag-muted" text-anchor="start">ENDS ON</text>
-<rect x="16" y="568" width="300" height="70" rx="6" class="card"/>
-<text x="26" y="584" class="tm" text-anchor="start">:done</text>
-<text x="26" y="600" class="tm tag-muted" text-anchor="start">when context.dry_run</text>
-<path d="M 316 584 L 352 584" class="wire"/>
-<path d="M 344 579 L 352 584 L 344 589 Z" class="head"/>
-<rect x="352" y="568" width="392" height="70" rx="6" class="end"/>
-<text x="362" y="585" class="t" text-anchor="start">the call finishes, exit 0</text>
-<text x="362" y="599" class="t" text-anchor="start">next: %{original_command}</text>
-<text x="362" y="613" class="t" text-anchor="start">because: the preview wrote only to a disposable</text>
-<text x="362" y="627" class="t" text-anchor="start">copy</text>
-<rect x="16" y="646" width="300" height="42" rx="6" class="card"/>
-<text x="26" y="662" class="tm" text-anchor="start">:continue</text>
-<text x="26" y="678" class="tm tag-muted" text-anchor="start">otherwise</text>
-<path d="M 316 662 L 352 662" class="wire"/>
-<path d="M 344 657 L 352 662 L 344 667 Z" class="head"/>
-<rect x="352" y="646" width="392" height="42" rx="6" class="lane-code"/>
-<text x="362" y="663" class="t" text-anchor="start">next workflow: Up</text>
+<rect x="16" y="548" width="420" height="70" rx="6" class="card"/>
+<text x="26" y="563" class="tag tag-muted" text-anchor="start">GATE</text>
+<text x="426" y="563" class="tm tag-muted" text-anchor="end">preview.rb:70</text>
+<text x="26" y="580" class="tm" text-anchor="start">passes when as_real?(context, :rowless_read?)</text>
+<path d="M 436 566 L 464 566" class="wire-failure"/>
+<path d="M 456 561 L 464 566 L 456 571 Z" class="head"/>
+<rect x="466" y="548" width="270" height="70" rx="6" class="stop-failure"/>
+<text x="476" y="563" class="tag tag-failure" text-anchor="start">STOPS, EXIT 1, FAILED</text>
+<text x="476" y="579" class="tm" text-anchor="start">files that cannot be read into</text>
+<text x="476" y="593" class="tm" text-anchor="start">rows, the others were read:</text>
+<text x="476" y="607" class="tm" text-anchor="start">%{unreadable_files}</text>
+<path d="M 226 618 L 226 628" class="wire"/>
+<path d="M 221 620 L 226 628 L 231 620 Z" class="head"/>
+<text x="16" y="640" class="tag tag-muted" text-anchor="start">ENDS ON</text>
+<rect x="16" y="648" width="300" height="70" rx="6" class="card"/>
+<text x="26" y="664" class="tm" text-anchor="start">:done</text>
+<text x="26" y="680" class="tm tag-muted" text-anchor="start">when context.dry_run</text>
+<path d="M 316 664 L 352 664" class="wire"/>
+<path d="M 344 659 L 352 664 L 344 669 Z" class="head"/>
+<rect x="352" y="648" width="392" height="70" rx="6" class="end"/>
+<text x="362" y="665" class="t" text-anchor="start">the call finishes, exit 0</text>
+<text x="362" y="679" class="t" text-anchor="start">next: %{original_command}</text>
+<text x="362" y="693" class="t" text-anchor="start">because: the preview wrote only to a disposable</text>
+<text x="362" y="707" class="t" text-anchor="start">copy</text>
+<rect x="16" y="726" width="300" height="42" rx="6" class="card"/>
+<text x="26" y="742" class="tm" text-anchor="start">:continue</text>
+<text x="26" y="758" class="tm tag-muted" text-anchor="start">otherwise</text>
+<path d="M 316 742 L 352 742" class="wire"/>
+<path d="M 344 737 L 352 742 L 344 747 Z" class="head"/>
+<rect x="352" y="726" width="392" height="42" rx="6" class="lane-code"/>
+<text x="362" y="743" class="t" text-anchor="start">next workflow: Up</text>
 </svg>

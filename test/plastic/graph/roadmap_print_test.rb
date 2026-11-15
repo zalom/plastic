@@ -15,12 +15,16 @@ class GraphRoadmapPrintTest < Plastic::TestCase
     Plastic::Graph::RoadmapPrint.new(retrieval, "plan").text
   end
 
-  def test_the_file_starts_with_the_title_and_the_goal
-    assert_equal ["# Plan", "", "## Goal", "", "Ship", ""], printed.lines.first(6).map(&:chomp)
+  def test_the_file_starts_with_the_form_line_and_the_title
+    assert_equal ["<!-- plastic roadmap form 2 -->", "# Plan"], printed.lines.first(2).map(&:chomp)
   end
 
-  def test_a_roadmap_without_a_goal_prints_no_goal_section
-    refute_includes printed(goal: nil), "## Goal"
+  def test_the_goal_sits_on_a_labeled_line
+    assert_includes printed, "\ngoal: Ship\n"
+  end
+
+  def test_a_roadmap_without_a_goal_prints_an_empty_goal_line
+    assert_includes printed(goal: nil), "\ngoal:\n"
   end
 
   def test_the_batch_lists_each_item_with_its_state
@@ -41,7 +45,7 @@ class GraphRoadmapPrintTest < Plastic::TestCase
   end
 
   def test_the_log_ends_the_file
-    assert_match(/## Log\n\n- .*Opened\n\z/, printed)
+    assert_match(/## Log\n\n- log\n  position: 1\n  at: .*\n  session_id:\n  text: Opened\n\z/, printed)
   end
 
   def test_the_prints_wrap_the_text_in_a_work_file

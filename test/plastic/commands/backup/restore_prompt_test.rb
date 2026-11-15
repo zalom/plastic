@@ -11,7 +11,7 @@ end
 class BackupRestorePromptTest < Plastic::TestCase
   include BackupHomes
 
-  NEXT = "plastic sync down --project alpha"
+  BECAUSE = "the rows are restored and the files are not; ask the person whether to run plastic sync down, which writes the files from the rows, or plastic sync up, which reads the files into the rows"
 
   def sync_down(home) = plastic("sync", "down", "--project", "alpha", env: env_for(home), table: Plastic::CLI::TABLE)
 
@@ -47,21 +47,13 @@ class BackupRestorePromptTest < Plastic::TestCase
     assert_equal [0, 0, before], [result.code, input.pos, File.read(intent_file(home))]
   end
 
-  def test_the_restore_ends_with_the_sync_down_line_with_a_terminal_and_without
+  def test_the_restore_ends_by_asking_the_person_which_way_to_sync_and_offers_no_command
     [TerminalInput.new(""), StringIO.new("")].each do |input|
       result = restore_with(backed_up_home, input)
+      lines = result.out.lines(chomp: true)
 
-      assert_call result, code: 0, out: ["next: #{NEXT}"]
-      refute_match(/sync the restored store|answer down, up or neither|ask the person/, result.out)
+      assert_equal [0, [], "because: #{BECAUSE}"], [result.code, lines.grep(/\Anext: /), lines.last]
     end
-  end
-
-  def test_the_line_it_ends_with_runs_as_written
-    home = backed_up_home
-    restore_with(home, StringIO.new(""))
-    result = plastic("sync", "down", "--project", "alpha", env: env_for(home), table: Plastic::CLI::TABLE)
-
-    assert_equal 0, result.code, result.err
   end
 
   def test_a_preview_reads_no_input_and_syncs_nothing

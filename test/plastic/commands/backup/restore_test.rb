@@ -119,11 +119,11 @@ class BackupRestoreTest < Plastic::TestCase
     assert_equal [1, knowledge], [intent_count(home), bytes(home, "knowledge_graph")]
   end
 
-  def test_restore_says_which_backup_holds_the_replaced_databases_and_what_to_run_next
+  def test_restore_says_which_backup_holds_the_replaced_databases_and_that_the_person_chooses_the_sync_direction
     home = seeded_home
     result = restore_call(home, "--store", "alpha", "--timestamp", FIRST)
 
-    assert_call result, code: 0, out: ["restore: backed up the current databases as", "next: plastic sync down --project"]
+    assert_call result, code: 0, out: ["restore: backed up the current databases as", "because: the rows are restored and the files are not; ask the person"]
   end
 
   def test_restoring_the_latest_with_no_done_backup_refuses_with_usage

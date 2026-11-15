@@ -28,11 +28,11 @@ module InstallerRelease
     end
 
     def initialize(run: RUN)
-      @run = run
+      @runner = run
     end
 
     def call(release_path, version)
-      out, err, = run.call(CLEAN, [File.join(release_path, "bin", "plastic"), "version", "--json"])
+      out, err, = runner.call(CLEAN, [File.join(release_path, "bin", "plastic"), "version", "--json"])
       problem = Report.new(version:, out:, err:).problem
       raise VerificationError, "the launcher of #{version} #{problem}" if problem
 
@@ -41,6 +41,6 @@ module InstallerRelease
 
     private
 
-    attr_reader :run
+    attr_reader :runner
   end
 end

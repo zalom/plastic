@@ -16,7 +16,7 @@ class UninstallRunningRubyTest < Minitest::Test
   def setup
     @home = Dir.mktmpdir("plastic-uninstall-ruby")
     FileUtils.mkdir_p(File.join(@home, ".claude"))
-    KernelCommand.new(@home).run!("init", "1")
+    KernelCommand.new(@home).command!("init", "1")
     copied_release
     FileUtils.chmod_R("a-w", ruby_folder)
   end

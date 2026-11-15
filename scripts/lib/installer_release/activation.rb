@@ -36,18 +36,18 @@ module InstallerRelease
 
     def activate(candidate, version:, before_switch: nil)
       placement = Placement.new(candidate, releases.path(version))
-      transaction.run { publish(placement, before_switch) }
+      transaction.call { publish(placement, before_switch) }
       version
     end
 
     def switch(version)
       raise ActivationError, "#{version} is not installed" unless releases.installed?(version)
 
-      transaction.run { switch_to(version) }
+      transaction.call { switch_to(version) }
       active_version
     end
 
-    def recover = transaction.run { nil }
+    def recover = transaction.call { nil }
 
     def active_path = File.join(home, "active")
 

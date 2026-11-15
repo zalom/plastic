@@ -4,9 +4,6 @@ module CommandReference
   module Markdown
     # The README that lists every command, in groups.
     class Index
-      CORE = %w[install update rollback uninstall version doctor status next search auto].freeze
-      FAMILIES = %w[intent project sync session backup document architecture node edge graph roadmap hook].freeze
-
       def initialize(pages)
         @pages = pages
       end
@@ -20,8 +17,8 @@ module CommandReference
         "Every command is declared in the same small DSL, shown in [the command DSL](../dsl/README.md)."
 
       def self.group(words)
-        first = words.split.first
-        (CORE.include?(words) || !FAMILIES.include?(first)) ? "Core" : first
+        family = Plastic::CLI.family_of(words)
+        (family == "core") ? "Core" : family
       end
 
       def self.section(title, pages)
@@ -32,7 +29,7 @@ module CommandReference
       private
 
       def groups
-        titles = ["Core", *FAMILIES]
+        titles = Plastic::CLI::FAMILIES.keys.map { |family| (family == "core") ? "Core" : family }
         @pages.group_by { |page| Index.group(page.words) }.sort_by { |title, _| titles.index(title) }
       end
     end

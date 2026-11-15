@@ -37,7 +37,7 @@ module Plastic
 
           @folder.ignore_databases
 
-          printer.record(plan.taking(:record).map(&:print))
+          printer.record(plan.entries_for(:record).map(&:print))
           (plan.direction == :up) ? read_up(plan) : print_down(plan)
         end
 
@@ -46,7 +46,7 @@ module Plastic
         def read_up(plan)
           IntentFolders.new(@folder, @retrieval).write_to(@databases)
           ArchivedIntents.new(@folder, @retrieval).write_to(@databases)
-          lines = read(plan.taking(:read).map(&:path))
+          lines = read(plan.entries_for(:read).map(&:path) | plan.second_home.paths, [plan.second_home.cluster_read].compact)
           printer.print(printed_up(plan))
           lines
         end
@@ -54,15 +54,15 @@ module Plastic
         # The index, and every file the plan prints, from the rows as the reads left them.
         def printed_up(plan)
           fresh = Prints.of_store(@retrieval).to_h { |print| [print.path, print] }
-          wanted = plan.taking(:print).map { |entry| fresh.fetch(entry.path, entry.print) }
+          wanted = plan.entries_for(:print).map { |entry| fresh.fetch(entry.path, entry.print) }
           index = fresh[StoreFolder::INDEX] unless plan.unreadable_files.key?(StoreFolder::INDEX)
           [index, *wanted].compact.uniq(&:path)
         end
 
-        def read(paths) = FileReads.new(folder: @folder, retrieval: @retrieval, databases: @databases, printer: printer).call(paths)
+        def read(paths, extra = []) = FileReads.new(folder: @folder, retrieval: @retrieval, databases: @databases, printer: printer).call(paths, extra)
 
         def print_down(plan)
-          printer.print(plan.taking(:print).map(&:print))
+          printer.print(plan.entries_for(:print).map(&:print))
           []
         end
 

@@ -88,7 +88,7 @@ class IntentEndTest < Plastic::TestCase
   def test_a_live_foreign_lock_refuses_the_close
     accepted_intent
     review_off
-    store_graphs.work.take_lock("1", session_id: "someone-else", mode: "auto")
+    store_graphs.work.lock_intent("1", session_id: "someone-else", mode: "auto")
 
     result = finish
 

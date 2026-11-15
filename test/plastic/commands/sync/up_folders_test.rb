@@ -114,12 +114,12 @@ class SyncUpFoldersTest < Plastic::TestCase
     assert_equal ["Delta"], retrieval.intents.map(&:title)
   end
 
-  def test_a_printed_context_json_with_no_row_is_not_imported_as_a_document
+  def test_a_printed_context_json_with_no_row_is_read_into_a_context_row_and_not_as_a_document
     hand_folder("2", "beta", "Beta")
     write("store/2--beta/context.json", JSON.generate("intent" => "2", "context" => { "forged" => true }))
     sync
 
-    assert_equal 0, store_graphs.databases[:knowledge].rows("SELECT * FROM documents WHERE path = 'context.json'").size
-    assert_empty store_graphs.databases[:knowledge].rows("SELECT * FROM retrieval_contexts")
+    assert_equal [0, 1], [store_graphs.databases[:knowledge].rows("SELECT * FROM documents WHERE path = 'context.json'").size,
+      store_graphs.databases[:knowledge].rows("SELECT * FROM retrieval_contexts").size]
   end
 end

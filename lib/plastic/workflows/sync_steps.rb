@@ -17,6 +17,7 @@ module Plastic
                    "fix or remove each folder named, then run plastic sync up again"
 
       UNREADABLE_FILES = "files that cannot be read into rows, the others were read:\n%{unreadable_files}"
+      REPRINTED_ELSEWHERE = "the home that holds the rows prints the file again with plastic sync down, and the file is then copied here again"
 
       def self.plan(context, direction)
         context.work.sync_plan(direction, { overwrite: context.overwrite, merge: context.merge })
@@ -24,24 +25,33 @@ module Plastic
 
       # What the gates read, kept as facts.
       def self.note(context, plan)
-        context[:failure] = plan.failure
-        context[:conflicts] = plan.conflicts.join(", ")
-        context[:merging] = plan.merging?
-        context[:unreadable] = plan.unreadable.join("\n")
-        note_files(context, plan.unreadable_files)
+        note_refusals(context, plan)
+        note_files(context, plan.unreadable_files, plan.rowless_files)
         context[:printed_over] = plan.printed_over
         context[:lines] = nil
       end
 
-      def self.note_files(context, files)
-        context[:unreadable_files] = files.map { |path, reason| "#{path}: #{reason}; run plastic sync down --overwrite #{path}" }.join("\n")
-        context[:unreadable_path] = files.keys.first
+      def self.note_refusals(context, plan)
+        context[:failure] = plan.failure
+        context[:conflicts] = plan.conflicts.join(", ")
+        context[:merging] = plan.merging?
+        context[:unreadable] = plan.unreadable.join("\n")
       end
+
+      # `rowless` names the files this home holds no rows for: a print from rows cannot work here, so no command is offered for them.
+      def self.note_files(context, files, rowless = [])
+        context[:unreadable_files] = files.map { |path, reason| "#{path}: #{reason}; #{fix_of(path, rowless)}" }.join("\n")
+        context[:unreadable_path] = (files.keys - rowless).first
+        context[:unreadable_rowless] = (files.keys & rowless).first
+      end
+
+      def self.fix_of(path, rowless) = rowless.include?(path) ? REPRINTED_ELSEWHERE : "run plastic sync down --overwrite #{path}"
 
       # The lines of the apply, and the files it found no row would take: a new plan names them.
       def self.apply(context, direction)
         context[:lines] = context.work.sync_apply(plan(context, direction))
-        note_files(context, plan(context, direction).unreadable_files)
+        after = plan(context, direction)
+        note_files(context, after.unreadable_files, after.rowless_files)
       end
 
       def self.applied(direction) = ->(context) { plan(context, direction).pending.zero? }
@@ -51,6 +61,9 @@ module Plastic
 
       # No changed file is left that no reader can turn into rows.
       def self.files_read?(context) = context.unreadable_path.nil?
+
+      # No changed file is left that this home holds no rows for.
+      def self.rowless_read?(context) = context.unreadable_rowless.nil?
 
       def self.say(context) = [*context.lines, *Array(context.printed_over).map { |path| Graph::Prints.printed_over_line(path) }].each { |line| context.print(line) }
 
@@ -70,7 +83,7 @@ module Plastic
       # Declares the whole chain, so a second load of the class replaces the first.
       def sync(direction)
         [facts, steps, outcomes].each(&:clear)
-        sets :failure, :conflicts, :merging, :unreadable, :unreadable_files, :unreadable_path, :printed_over, :lines
+        sets :failure, :conflicts, :merging, :unreadable, :unreadable_files, :unreadable_path, :unreadable_rowless, :printed_over, :lines
         plan_steps(direction)
         apply_steps(direction)
         end_steps(direction)
@@ -90,6 +103,8 @@ module Plastic
         gate UNREADABLE, stops: :failure, pass: SyncSteps.check(:readable?)
         gate UNREADABLE_FILES, stops: :failure, pass: SyncSteps.check(:files_read?),
           offers: "plastic sync down --overwrite %{unreadable_path}", because: "sync up cannot read %{unreadable_path}, and its rows print it again"
+        gate UNREADABLE_FILES, stops: :failure, pass: SyncSteps.check(:rowless_read?),
+          because: "sync up cannot read %{unreadable_rowless}, and this home holds no rows to print it again"
       end
 
       def plan_steps(direction)

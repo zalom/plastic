@@ -26,7 +26,7 @@ class BinCallTest < Plastic::TestCase
     call = plastic_bin(table: Plastic::CLI::TABLE)
 
     assert_equal 0, call.code
-    assert_equal Plastic::CLI::TABLE.size, call.out.lines.size
+    assert_equal Plastic::CLI::TABLE.keys.size, Plastic::CLI::TABLE.keys.count { |words| call.out.lines.any? { |line| line.strip.split(/\s{2,}/).first == words } }
     assert_equal "", call.err
   end
 
@@ -35,7 +35,7 @@ class BinCallTest < Plastic::TestCase
     document = JSON.parse(call.out)
 
     assert_equal [0, ""], [call.code, call.err]
-    assert_equal Plastic::CLI::TABLE.keys, document.fetch("result").keys
+    assert_equal Plastic::CLI::TABLE.keys, document.fetch("result").flat_map { |family| family.fetch("commands").map { |row| row.fetch("command") } }
     assert_nil document.fetch("next")
   end
 
@@ -51,8 +51,14 @@ class BinCallTest < Plastic::TestCase
     flagged = plastic_bin("help", "--help", table: Plastic::CLI::TABLE)
     unknown = plastic_bin("help", "not-a-command", table: Plastic::CLI::TABLE)
 
-    assert_equal [0, Plastic::CLI::TABLE.size], [flagged.code, flagged.out.lines.size]
+    assert_equal [0, flagged.out], [flagged.code, plastic_bin("help", table: Plastic::CLI::TABLE).out]
     assert_equal [2, "plastic: no command \"not-a-command\"; plastic help lists them\n"], [unknown.code, unknown.err]
+  end
+
+  def test_bin_call_help_for_an_unknown_word_with_json_names_the_word_and_no_flag
+    unknown = plastic_bin("help", "nosuch", "--json", table: Plastic::CLI::TABLE)
+
+    assert_equal [2, "plastic: no command \"nosuch\"; plastic help lists them\n"], [unknown.code, unknown.err]
   end
 
   def test_bin_call_help_for_a_command_returns_its_exact_json_usage_without_a_home

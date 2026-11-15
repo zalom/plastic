@@ -7,8 +7,9 @@ class CommandReferenceMarkdownIndexTest < Minitest::Test
 
   def text = CommandReference::Markdown::Index.new(CommandReferenceHelper.pages.values).to_s
 
-  def test_there_are_thirteen_groups
-    assert_equal 13, text.scan(/^## /).size
+  def test_there_is_one_group_for_each_family
+    assert_equal Plastic::CLI::FAMILIES.size, text.scan(/^## /).size
+    assert_equal Plastic::CLI::FAMILIES.keys.map { |family| (family == "core") ? "Core" : family }, text.scan(/^## (.+)$/).flatten
     assert_includes text, "## Core"
   end
 

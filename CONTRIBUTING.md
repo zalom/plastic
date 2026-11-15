@@ -73,7 +73,9 @@ on your machine.
 
 ## Add a command
 
-1. Add one row to `lib/plastic/cli/table.rb`: the command words, the class and the help line.
+1. Add one row to `lib/plastic/cli/table.rb`: the command words, the class and the help line. A
+   command of the `node`, `edge`, `graph`, `roadmap` or `hook` family goes in
+   `lib/plastic/cli/table/work_families.rb`, which `table.rb` adds to the other families.
 2. Add the class in one file under `lib/plastic/commands/`. Each word of the command is a name in
    the class path and a folder in the file path: `intent end` is `Commands::Intent::End` in
    `intent/end.rb`, and `intent lock status` is `Commands::Intent::Lock::Status` in

@@ -96,7 +96,7 @@ module Plastic
 
     # Nil when the step is done with; otherwise the value that ends the call.
     def perform(step)
-      step.run(ctx, self.class)
+      step.call(ctx, self.class)
     rescue CLI::Command::Usage
       raise
     rescue => error

@@ -57,8 +57,8 @@ module Plastic
             context.restored.each { |name| context.print("restore: #{name} from #{context.folder}") }
           end
 
-          outcome :done, offers: "plastic sync down --project %{store}",
-            because: "the rows are restored and the files are not; sync down writes the files from the rows"
+          outcome :done, offers: nil,
+            because: "the rows are restored and the files are not; ask the person whether to run plastic sync down, which writes the files from the rows, or plastic sync up, which reads the files into the rows"
         end
       end
     end

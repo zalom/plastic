@@ -11,7 +11,7 @@ exist only for auto teams: an interactive session working direct or thinking tak
 
 For an auto team, exactly one session develops an intent's delivery at a time. The lock is one
 row of the `locks` table in the machine's `local.db`, keyed by the store and the intent. The row
-holds the session id, the mode, and the times the lock was taken and last renewed. The session
+holds the session id, the mode, and the times the intent was locked and the lock last renewed. The session
 id is the only authorization identity. The stop hook (`plastic hook stop`) renews every lock
 row the session holds at the end of each turn.
 
@@ -30,7 +30,7 @@ which never ends, from holding a lock for good.
 `plastic auto ID` takes the lock. Another session that finds a live lock gets exit 3 and backs
 off. An expired lock is taken over by the next `plastic auto ID`. Ending the intent with
 `plastic intent end` releases the lock. To read a lock back, run `plastic intent lock status ID`.
-It prints the session, the mode, the taken and renewed times, whether the lock is live or
+It prints the session, the mode, the locked and renewed times, whether the lock is live or
 expired and why, and the code worktree when the store's project names a repository.
 
 A hook resolves the current session in a fixed precedence: the stdin `session_id` first, then
@@ -59,7 +59,7 @@ because: intent 2 is active
 
 The agent makes the worktree at the printed path on the printed branch. While the folder is missing,
 `plastic auto ID` also prints the instruction to create it and offers `plastic auto ID` again. Once the folder
-exists, the `next:` line is `plastic intent brief ID`. A session that has ended cannot take the lock: the
+exists, the `next:` line is `plastic intent brief ID`. A session that has ended cannot lock the intent: the
 command fails and says to start a new session or resume it, and a resumed session reads at its start which
 of its locks expired and the `plastic auto ID` that locks it again. There is one worktree per project intent, the code worktree at
 `<repo>/.claude/worktrees/{id}--{slug}` on branch `plastic/{id}--{slug}`.

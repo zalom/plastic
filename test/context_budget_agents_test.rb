@@ -14,12 +14,12 @@ require_relative "../bin/lib/context_budget"
 class ContextBudgetAgentsTest < Minitest::Test
   REPO = File.expand_path("..", __dir__)
 
-  # A plain `ContextBudget.run(repo: REPO, repeat: 1)` installs a real fixture
+  # A plain `ContextBudget.bench(repo: REPO, repeat: 1)` installs a real fixture
   # home and runs the session-start hook against it; nothing in this file
   # mutates REPO, so every test that asks for that one measurement shares it,
   # the way a Rails test suite boots its fixtures once per file.
   def self.report
-    @report ||= ContextBudget.run(repo: REPO, repeat: 1)
+    @report ||= ContextBudget.bench(repo: REPO, repeat: 1)
   end
 
   def report = self.class.report
@@ -32,7 +32,7 @@ class ContextBudgetAgentsTest < Minitest::Test
       oversized = Tempfile.create(["oversized-core", ".md"])
       oversized.write("x" * (ContextBudget::CEILINGS[:standing] + 1))
       oversized.close
-      ContextBudget.run(repo: REPO, repeat: 1, core_file: oversized.path)
+      ContextBudget.bench(repo: REPO, repeat: 1, core_file: oversized.path)
     end
   end
 

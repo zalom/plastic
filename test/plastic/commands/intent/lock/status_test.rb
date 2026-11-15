@@ -33,7 +33,7 @@ class IntentLockStatusTest < Plastic::TestCase
 
   def test_a_live_lock_offers_the_brief
     open_intent
-    store_graphs.work.take_lock("1", session_id: "s-2", mode: "auto")
+    store_graphs.work.lock_intent("1", session_id: "s-2", mode: "auto")
 
     result = call("1")
 

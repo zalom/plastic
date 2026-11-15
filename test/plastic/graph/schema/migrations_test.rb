@@ -39,7 +39,7 @@ class SchemaMigrationsTest < Minitest::Test
   private
 
   def migration_connection(revision_sql:, passage_sql:)
-    SchemaMigrationConnection.new("document_revisions" => revision_sql, "document_passages" => passage_sql, "intents" => nil)
+    SchemaMigrationConnection.new("document_revisions" => revision_sql, "document_passages" => passage_sql, "intents" => nil, "locks" => nil)
   end
 end
 
@@ -213,5 +213,41 @@ class CountingConnection < SimpleDelegator
   def transaction(*, &)
     @transactions += 1
     __getobj__.transaction(*, &)
+  end
+end
+
+class SchemaPassageSwapTriggersTest < Minitest::Test
+  OLD_PASSAGES = <<~SQL
+    CREATE TABLE "document_passages"("sha256" TEXT NOT NULL, "position" INTEGER NOT NULL, "body" TEXT NOT NULL,
+      "line_start" INTEGER NOT NULL, "line_end" INTEGER NOT NULL, "origin_id" TEXT NOT NULL, UNIQUE("sha256", "position", "origin_id"));
+  SQL
+
+  def setup
+    @database = SQLite3::Database.new(":memory:")
+    names = Plastic::Graph::Schema.databases.fetch(:knowledge).last - [:document_passages]
+    @database.execute_batch(names.map { |name| Plastic::Graph::Schema.ddl(name) }.join("\n") + OLD_PASSAGES)
+    @database.execute("INSERT INTO document_revisions VALUES ('aaa', '1', 'plan.md', 'old words', 't', 'o')")
+    @database.execute("INSERT INTO document_passages VALUES ('aaa', 0, 'old words', 1, 1, 'o')")
+    @database.execute("INSERT INTO document_heads VALUES ('1', 'plan.md', 'aaa', 't', 'o')")
+    @database.execute("INSERT INTO document_fts (body, intent_id, path, sha256, position, origin_id) VALUES ('old words', '1', 'plan.md', 'aaa', 0, 'o')")
+    Plastic::Graph::Schema.prepare(@database, Plastic::Graph::Schema.fetch(:knowledge))
+  end
+
+  def triggers = @database.execute("SELECT name FROM sqlite_master WHERE type = 'trigger' AND tbl_name = 'document_heads'").flatten
+
+  def test_a_store_with_the_older_passages_table_opens_and_keeps_its_triggers_after_the_swap
+    assert_equal 3, triggers.size
+    assert_includes @database.execute("PRAGMA table_info(document_passages)").map { |column| column[1] }, "intent_id"
+  end
+
+  def test_a_store_with_the_older_passages_table_still_finds_its_words
+    assert_equal [["old words"]], @database.execute("SELECT body FROM document_fts WHERE document_fts MATCH 'old'")
+  end
+
+  def test_the_triggers_work_on_the_table_that_the_swap_made
+    @database.execute("INSERT INTO document_passages VALUES ('bbb', '1', 'plan.md', 0, 'new words', 1, 1, 'o')")
+    @database.execute("UPDATE document_heads SET sha256 = 'bbb'")
+
+    assert_equal [[], [["new words"]]], [@database.execute("SELECT body FROM document_fts WHERE document_fts MATCH 'old'"), @database.execute("SELECT body FROM document_fts WHERE document_fts MATCH 'new'")]
   end
 end

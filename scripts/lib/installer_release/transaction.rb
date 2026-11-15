@@ -16,7 +16,7 @@ module InstallerRelease
       @journal = journal
     end
 
-    def run(&)
+    def call(&)
       as_activation_error do
         InstallLock.hold(home) do
           journal.recover

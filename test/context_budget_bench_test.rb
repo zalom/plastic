@@ -268,7 +268,7 @@ class ContextBudgetCeilingTest < Minitest::Test
       core = File.join(dir, "over_budget.md")
       File.write(core, "y" * 9_000)
 
-      report = ContextBudget.run(repo: REPO, repeat: 1, core_file: core,
+      report = ContextBudget.bench(repo: REPO, repeat: 1, core_file: core,
         fixture: ContextBudgetSharedFixture.clone("plastic-bench-overbudget-fixture"))
 
       refute_predicate report, :ok?, "a 9,000-byte core block must fail the 8,192 ceiling"
@@ -279,8 +279,8 @@ class ContextBudgetCeilingTest < Minitest::Test
   end
 
   def test_repeat_must_be_at_least_one
-    assert_raises(ArgumentError) { ContextBudget.run(repo: REPO, repeat: 0) }
-    assert_raises(ArgumentError) { ContextBudget.run(repo: REPO, repeat: -1) }
+    assert_raises(ArgumentError) { ContextBudget.bench(repo: REPO, repeat: 0) }
+    assert_raises(ArgumentError) { ContextBudget.bench(repo: REPO, repeat: -1) }
   end
 
   # PATH is exactly the running interpreter's directory: the hook backticks
@@ -397,7 +397,7 @@ class ContextBudgetCliTest < Minitest::Test
     out = StringIO.new
     err = StringIO.new
     io = ContextBudget::CLI::IO.new(out: out, err: err, default_repo: REPO)
-    status = ContextBudget::CLI.run(argv, io, fixture:)
+    status = ContextBudget::CLI.call(argv, io, fixture:)
     [out.string, err.string, status]
   end
 

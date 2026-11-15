@@ -10,16 +10,16 @@ class SyncUpGraphArchiveTest < Minitest::Test
 
   def archived(kernel)
     kernel.write("#{DIR}/outcome.md", DROPPED)
-    kernel.run!("sync", "up")
-    kernel.run!("intent", "abandon", "1", env: SESSION)
-    kernel.run!("intent", "archive", "1")
+    kernel.command!("sync", "up")
+    kernel.command!("intent", "abandon", "1", env: SESSION)
+    kernel.command!("intent", "archive", "1")
   end
 
   def seen_from(home) = [query(home, ARCHIVES), query(home, "SELECT status, disposition FROM intents"), query(home, COMPLETION), unstamped(home.read("store/index.json"))]
 
   def test_an_archived_intent_reads_archived_with_its_status_completion_and_index_on_a_second_home
     with_homes(method(:archived)) do |first, second|
-      second.run!("sync", "up")
+      second.command!("sync", "up")
 
       assert_equal seen_from(first), seen_from(second)
       assert_equal [["1", nil]], query(second, "SELECT intent_id, restored_at FROM archives")

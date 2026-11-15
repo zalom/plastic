@@ -53,6 +53,15 @@ class RoadmapNewTest < Plastic::TestCase
     assert_equal ["next: plastic next", "because: roadmaps/r2.md is kept as it is, and roadmap new writes no roadmap over a file it holds no row for"], lines.grep(/\A(next|because):/)
   end
 
+  def test_a_readable_roadmap_file_with_no_row_names_sync_up
+    write("roadmaps/r3.md", "<!-- plastic roadmap form 2 -->\n# R3\n\nslug: r3\ntitle: R3\ngoal:\nopened_at: 2026-10-01T10:00:00+02:00\n")
+    result = call("r3")
+
+    assert_equal [1, nil], [result.code, store_graphs.retrieval.roadmap("r3")]
+    assert_includes result.err, "run plastic sync up"
+    assert_includes result.out.lines.map(&:chomp), "next: plastic sync up"
+  end
+
   def test_the_name_must_be_given
     assert_equal 2, call.code
   end

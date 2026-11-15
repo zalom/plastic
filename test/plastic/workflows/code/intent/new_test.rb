@@ -26,7 +26,12 @@ class WriteIntentTest < Plastic::TestCase
   end
 
   class Retrieval
-    def initialize(*ids) = @ids = ids
+    def initialize(*ids, store: "global")
+      @ids = ids
+      @store = store
+    end
+
+    attr_reader :store
 
     def intent(id) = (id if @ids.include?(id))
   end
@@ -42,13 +47,17 @@ class WriteIntentTest < Plastic::TestCase
     outcome, printed, calls = run_flow(parent_id: "1", ref: "ENG-1")
 
     assert_equal :done, outcome
-    assert_equal ["intent: 1a", "ref: ENG-1, in words"], printed
+    assert_equal ["intent: 1a", "store: global, because no project names this folder", "ref: ENG-1, in words"], printed
     assert_equal [[:problem, { parent_id: "1", ref: "ENG-1", status: "open", reason: nil }],
       [:write, { title: "Build", parent_id: "1", ref: "ENG-1", kind: "work", status: "open", reason: nil }]], calls
   end
 
   def test_no_ref_prints_no_ref_line
-    assert_equal ["intent: 1a"], run_flow[1]
+    assert_equal ["intent: 1a", "store: global, because no project names this folder"], run_flow[1]
+  end
+
+  def test_an_intent_of_a_project_store_names_that_store
+    assert_equal ["intent: 1a", "store: blog"], run_flow(retrieval: Retrieval.new(store: "blog"))[1]
   end
 
   def test_a_problem_fails_the_call_before_any_write
@@ -77,10 +86,14 @@ class WriteIntentTest < Plastic::TestCase
       [outcome.name, outcome.offers, outcome.because]
   end
 
+  def printed_runs
+    [run_flow(ref: "ENG-1")[1], run_flow[1], run_flow(retrieval: Retrieval.new(store: "blog"))[1]]
+  end
+
   def test_a_second_load_keeps_one_chain
-    before = [run_flow(ref: "ENG-1")[1], run_flow[1]]
+    before = printed_runs
     load File.expand_path("../../../../../lib/plastic/workflows/code/intent/new.rb", __dir__)
 
-    assert_equal [before, [:done]], [[run_flow(ref: "ENG-1")[1], run_flow[1]], WriteIntent.outcome_names]
+    assert_equal [before, [:done]], [printed_runs, WriteIntent.outcome_names]
   end
 end

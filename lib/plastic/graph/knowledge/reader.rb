@@ -3,6 +3,7 @@
 require_relative "../../invalid"
 require_relative "reader/index_file"
 require_relative "reader/intent_file"
+require_relative "reader/roadmap_file"
 require_relative "../prints"
 require_relative "store_folder"
 
@@ -30,27 +31,28 @@ module Plastic
           new(folder, known, retrieval.origin_id, retrieval:, **options)
         end
 
-        # The reader of the intents of the rows, with the document heads the database holds.
-        def self.of_databases(folder, retrieval, databases)
-          rows = databases.fetch(:knowledge).rows("SELECT intent_id, path FROM document_heads WHERE origin_id = :origin", origin: retrieval.origin_id)
-          of(folder, retrieval, heads: Retrieval::Evidence::Heads.new(rows.to_set { |row| [row.fetch("intent_id"), row.fetch("path")] }))
-        end
-
         # `intents` maps each known intent id to its intent: from the rows and
         # from the store/index.json on disk.
-        def initialize(folder, intents, origin_id, retrieval: nil, heads: Retrieval::Evidence::Heads::Unread.new)
+        def initialize(folder, intents, origin_id, retrieval: nil)
           @folder = folder
           @intents = intents
           @retrieval = retrieval
-          @writer = Retrieval::Evidence::Writer.new(nil, origin_id, heads:)
+          @writer = Retrieval::Evidence::Writer.new(nil, origin_id)
         end
 
         def read(path)
-          file = (path == StoreFolder::INDEX) ? IndexFile.new(@folder.read(path), @writer.origin_id, @folder.intent_dirs) : intent_file(path)
+          file = file_of(path)
           Read.new(path, file.database, file.method(:apply))
         end
 
         private
+
+        def file_of(path)
+          return IndexFile.new(@folder.read(path), @writer.origin_id, @folder.intent_dirs) if path == StoreFolder::INDEX
+          return RoadmapFile.new(File.basename(path, ".md"), @folder.read(path)) if StoreFolder.roadmap?(path)
+
+          intent_file(path)
+        end
 
         def intent_file(path)
           dir = path.split("/").first(2).join("/")

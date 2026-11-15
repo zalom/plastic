@@ -47,7 +47,7 @@ intent instead.
 | Command | Result |
 | ------- | ------ |
 | `plastic auto ID` | Takes the delivery lock of one intent for this session, sets it in progress, and prints its code worktree and branch. The agent makes the worktree at the printed path on the printed branch. Given a roadmap slug, it arms the first item in flight, or names `plastic roadmap open SLUG ITEM` for the first ready item. |
-| `plastic intent lock status ID` | The session that holds the intent's lock, its mode, when it was taken and renewed, whether it is live or expired and why, and the code worktree. |
+| `plastic intent lock status ID` | The session that holds the intent's lock, its mode, when it was locked and renewed, whether it is live or expired and why, and the code worktree. |
 
 `plastic auto` takes exactly one id and runs no version control command: it prints the
 worktree command, and the agent runs it. A live lock of another session refuses with exit 3,
@@ -79,12 +79,12 @@ could not hold it safely.
 | `plastic edge remove ID FROM TO --dry-run` | The work graph rows the removed edge would change. |
 | `plastic node remove ID NODE --dry-run` | The node and edge rows the removal would delete. |
 | `plastic intent unlink ID KIND TARGET --dry-run` | The links the removal would delete. |
-| `plastic intent archive ID --dry-run` | The files the archive would remove, and the rows it keeps. |
+| `plastic intent archive (ID \| --older-than DATE) --dry-run` | The files the archive would remove, and the rows it keeps. |
 | `plastic intent unarchive ID [--dry-run]` | The archived directory restored exactly as archived. |
 | `plastic roadmap drop SLUG ITEM --dry-run` | The roadmap rows the dropped item would change. |
 | `plastic roadmap edge remove SLUG FROM TO --dry-run` | The roadmap edge rows the removal would delete. |
 
-`plastic sync up`, `plastic sync down`, `plastic intent revise` and `plastic backup` keep their own previews. `plastic backup --live` prints each line of the backup's `backup.log` as it is written. `plastic backup purge` (with `--older-than`, `--all` or `--failed`) and `plastic backup restore` take `--dry-run` and list what they would delete or put back. A restore asks nothing and ends with `next: plastic sync down --project STORE`.
+`plastic sync up`, `plastic sync down`, `plastic intent revise` and `plastic backup` keep their own previews. `plastic backup --live` prints each line of the backup's `backup.log` as it is written. `plastic backup purge` (with `--older-than`, `--all` or `--failed`) and `plastic backup restore` take `--dry-run` and list what they would delete or put back. A restore ends with a line that tells the agent to ask the person whether to run `plastic sync down` or `plastic sync up`, and it offers no command.
 `plastic uninstall --dry-run` lists every path the uninstall would remove or change.
 
 ## Install into a harness
@@ -137,12 +137,17 @@ installer location. Hook trust prints an unverified reminder to review `/hooks`;
 that reminder does not change the exit code. A row reads `ok` or names the finding.
 The repair row lists each repair once: a
 command, or a line to add to a file. The doctor reads files and opens the databases read-only,
-so it changes nothing. `--harness NAME` checks a named harness instead of the one the session row
+except for one repair: it rebuilds the search rows of a store that are out of step with the
+passages, and prints `search index NAME: rebuilt`. A store whose evidence is gone fails with
+the `plastic backup list --store NAME` repair. The start hook never rebuilds. `--harness NAME` checks a named harness instead of the one the session row
 records. When nothing names a harness, the doctor exits 2 and lists the harnesses that have checks.
 
 ## Help that costs nothing
 
-`plastic help` reads one table and loads no command file. `plastic <command> --help` prints
+`plastic help` reads one table and loads no command file. It prints the core commands first,
+then one heading for each family: intent, project, sync, session, config, backup, document,
+architecture, node, edge, graph, roadmap and hook. `plastic help FAMILY` lists one family, and
+`plastic help --json` prints a list of families, each with its commands. `plastic <command> --help` prints
 the usage line without building the command. An unknown command prints the closest name.
 
 ## Exit codes

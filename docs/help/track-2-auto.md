@@ -22,7 +22,7 @@ track touches a real project.
 Start from an active intent (create one first with `plastic intent new` if none
 exists, the same way as track 1 station 1). Run `plastic auto ID`. It takes exactly one id.
 
-Artifact: the delivery lock is taken (a row in the machine's `local.db`) and the intent goes
+Artifact: the intent is locked (a row in the machine's `local.db`) and the intent goes
 active. When the store's project names a repository, the command names the code worktree at
 `<repo>/.claude/worktrees/ID--slug` on branch `plastic/ID--slug`, and prints both as rows. The
 agent makes the worktree at that path on that branch. While the folder is missing, the command

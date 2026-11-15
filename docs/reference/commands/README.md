@@ -7,17 +7,13 @@ Each page explains one plastic command in five sections: Components, The events 
 | Command | What it does |
 | --- | --- |
 | [`plastic version`](version/README.md) | Print the installed Plastic version and release channel |
-| [`plastic config`](config/README.md) | Pick which on/off settings are on, on the choice screen |
-| [`plastic config list`](config-list/README.md) | List every setting with its value, globally or for one harness |
-| [`plastic config get`](config-get/README.md) | Print the value of one setting |
-| [`plastic config set`](config-set/README.md) | Write one setting to config.yml, globally or for one harness |
-| [`plastic doctor`](doctor/README.md) | Check the installation, the databases and the hooks of this harness, and name each repair |
+| [`plastic doctor`](doctor/README.md) | Check the installation, the databases and the hooks of this harness, rebuild a search index that is out of step, and name each repair |
 | [`plastic init`](init/README.md) | Find the installed harnesses and install Plastic into the ones the person picks |
 | [`plastic install`](install/README.md) | Install the core files and make the global store |
 | [`plastic update`](update/README.md) | Sync a newer package into the home or name the installer command |
 | [`plastic rollback`](rollback/README.md) | Switch the active release back to the previous one or to a named installed one |
 | [`plastic uninstall`](uninstall/README.md) | Remove Plastic from agents and keep the home |
-| [`plastic auto`](auto/README.md) | Deliver one intent or one roadmap in auto mode: take the lock and print the worktree |
+| [`plastic auto`](auto/README.md) | Deliver one intent or one roadmap in auto mode: lock the intent and print the worktree |
 | [`plastic status`](status/README.md) | List every store's intents by group, with node counts by state |
 | [`plastic next`](next/README.md) | Pick the intent in play and offer its next command |
 | [`plastic search`](search/README.md) | Search literal indexed passages across selected stores |
@@ -66,6 +62,15 @@ Each page explains one plastic command in five sections: Components, The events 
 | Command | What it does |
 | --- | --- |
 | [`plastic session note`](session-note/README.md) | Write the one prose line of this session |
+
+## config
+
+| Command | What it does |
+| --- | --- |
+| [`plastic config`](config/README.md) | Pick which on/off settings are on, on the choice screen |
+| [`plastic config list`](config-list/README.md) | List every setting with its value, globally or for one harness |
+| [`plastic config get`](config-get/README.md) | Print the value of one setting |
+| [`plastic config set`](config-set/README.md) | Write one setting to config.yml, globally or for one harness |
 
 ## backup
 

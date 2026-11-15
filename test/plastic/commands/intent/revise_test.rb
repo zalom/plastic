@@ -145,6 +145,6 @@ class IntentReviseTest < Plastic::TestCase
     plan = store_graphs.work.sync_plan(:down, {})
 
     assert_empty plan.conflicts
-    refute_includes plan.taking(:print).map(&:path), "store/1--alpha/#{FILE}"
+    refute_includes plan.entries_for(:print).map(&:path), "store/1--alpha/#{FILE}"
   end
 end

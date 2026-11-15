@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 468" width="760" height="468" role="img" xml:space="preserve">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 482" width="760" height="482" role="img" xml:space="preserve">
 <title>How Archive runs in plastic intent archive</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
@@ -69,7 +69,7 @@
 }</style>
 <rect width="100%" height="100%" class="ground"/>
 <text x="16" y="22" class="tb" text-anchor="start">Archive</text>
-<text x="436" y="22" class="tm tag-muted" text-anchor="end">archive.rb:10</text>
+<text x="436" y="22" class="tm tag-muted" text-anchor="end">archive.rb:11</text>
 <rect x="16" y="34" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="49" class="tag tag-muted" text-anchor="start">READ</text>
 <text x="426" y="49" class="tm tag-muted" text-anchor="end">code_workflow.rb:54</text>
@@ -78,7 +78,7 @@
 <path d="M 221 81 L 226 89 L 231 81 Z" class="head"/>
 <rect x="16" y="89" width="420" height="59" rx="6" class="card"/>
 <text x="26" y="104" class="tag tag-muted" text-anchor="start">STEP</text>
-<text x="426" y="104" class="tm tag-muted" text-anchor="end">archive.rb:17</text>
+<text x="426" y="104" class="tm tag-muted" text-anchor="end">archive.rb:26</text>
 <text x="26" y="121" class="t" text-anchor="start">archive the intent</text>
 <text x="26" y="136" class="tm" text-anchor="start">done when !context.ok.nil? || !context.problem.nil?</text>
 <path d="M 436 107 L 464 107" class="wire-failure"/>
@@ -91,7 +91,7 @@
 <path d="M 221 150 L 226 158 L 231 150 Z" class="head"/>
 <rect x="16" y="158" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="173" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="173" class="tm tag-muted" text-anchor="end">archive.rb:24</text>
+<text x="426" y="173" class="tm tag-muted" text-anchor="end">archive.rb:35</text>
 <text x="26" y="190" class="tm" text-anchor="start">passes when context.kind != :unfinished</text>
 <path d="M 436 176 L 464 176" class="wire-failure"/>
 <path d="M 456 171 L 464 176 L 456 181 Z" class="head"/>
@@ -102,7 +102,7 @@
 <path d="M 221 205 L 226 213 L 231 205 Z" class="head"/>
 <rect x="16" y="213" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="228" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="228" class="tm tag-muted" text-anchor="end">archive.rb:27</text>
+<text x="426" y="228" class="tm tag-muted" text-anchor="end">archive.rb:38</text>
 <text x="26" y="245" class="tm" text-anchor="start">passes when context.kind != :failure</text>
 <path d="M 436 231 L 464 231" class="wire-failure"/>
 <path d="M 456 226 L 464 231 L 456 236 Z" class="head"/>
@@ -113,7 +113,7 @@
 <path d="M 221 260 L 226 268 L 231 260 Z" class="head"/>
 <rect x="16" y="268" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="283" class="tag tag-muted" text-anchor="start">GATE</text>
-<text x="426" y="283" class="tm tag-muted" text-anchor="end">archive.rb:28</text>
+<text x="426" y="283" class="tm tag-muted" text-anchor="end">archive.rb:39</text>
 <text x="26" y="300" class="tm" text-anchor="start">passes when context.kind != :refusal</text>
 <path d="M 436 286 L 464 286" class="wire-refusal"/>
 <path d="M 456 281 L 464 286 L 456 291 Z" class="head"/>
@@ -124,18 +124,19 @@
 <path d="M 221 315 L 226 323 L 231 315 Z" class="head"/>
 <rect x="16" y="323" width="420" height="45" rx="6" class="card"/>
 <text x="26" y="338" class="tag tag-muted" text-anchor="start">READ</text>
-<text x="426" y="338" class="tm tag-muted" text-anchor="end">archive.rb:30</text>
-<text x="26" y="355" class="t" text-anchor="start">say it was archived</text>
+<text x="426" y="338" class="tm tag-muted" text-anchor="end">archive.rb:41</text>
+<text x="26" y="355" class="t" text-anchor="start">say what was archived</text>
 <path d="M 226 368 L 226 378" class="wire"/>
 <path d="M 221 370 L 226 378 L 231 370 Z" class="head"/>
 <text x="16" y="390" class="tag tag-muted" text-anchor="start">ENDS ON</text>
-<rect x="16" y="398" width="300" height="56" rx="6" class="card"/>
+<rect x="16" y="398" width="300" height="70" rx="6" class="card"/>
 <text x="26" y="414" class="tm" text-anchor="start">:done</text>
 <text x="26" y="430" class="tm tag-muted" text-anchor="start">always</text>
 <path d="M 316 414 L 352 414" class="wire"/>
 <path d="M 344 409 L 352 414 L 344 419 Z" class="head"/>
-<rect x="352" y="398" width="392" height="56" rx="6" class="end"/>
+<rect x="352" y="398" width="392" height="70" rx="6" class="end"/>
 <text x="362" y="415" class="t" text-anchor="start">the call finishes, exit 0</text>
 <text x="362" y="429" class="t" text-anchor="start">next: plastic status</text>
-<text x="362" y="443" class="t" text-anchor="start">because: intent %{intent_id} is off the checkout</text>
+<text x="362" y="443" class="t" text-anchor="start">because: the intents named above are off the</text>
+<text x="362" y="457" class="t" text-anchor="start">checkout</text>
 </svg>

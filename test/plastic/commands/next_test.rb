@@ -132,10 +132,10 @@ class NextTest < Plastic::TestCase
     assert_includes result.out, "Inspect plastic status"
   end
 
-  def test_nothing_open_has_no_next_action
+  def test_nothing_open_sends_the_agent_to_status
     result = call
 
-    refute_match(/^next: /, result.out)
+    assert_match(/^next: plastic status$/, result.out)
   end
 end
 

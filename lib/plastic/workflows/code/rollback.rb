@@ -19,6 +19,10 @@ module Plastic
           context[:command] = ReleaseCommand.of(context.scope).switch(installed.active_version, context.target || installed.previous_version)
         end
 
+        read "say what a rollback means for the stored data" do |context|
+          context.print("a release older than this one cannot run on a home that a newer release opened")
+        end
+
         outcome :done, offers: "%{command}", because: "this command switches the active release; rollback changed nothing"
       end
     end

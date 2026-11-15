@@ -4,7 +4,7 @@ require_relative "schema_file"
 
 # Every table and every database Plastic keeps. This file is the design: change a table
 # here and nowhere else. A table that nothing new reads is marked `legacy: true`.
-Plastic::Graph::SCHEMA_FILE = Plastic::Graph::SchemaFile.define(version: 2026_10_09_000000) do
+Plastic::Graph::SCHEMA_FILE = Plastic::Graph::SchemaFile.define(version: 2026_11_15_000000) do
   create_table :routine_runs, key: %i[store tool subject] do |t|
     t.kept :store, :tool
     t.blank :subject
@@ -20,7 +20,7 @@ Plastic::Graph::SCHEMA_FILE = Plastic::Graph::SchemaFile.define(version: 2026_10
 
   create_table :locks, key: %i[store intent_id] do |t|
     t.kept :store, :intent_id, :session_id
-    t.text :mode, :taken_at, :renewed_at
+    t.text :mode, :locked_at, :renewed_at
   end
 
   create_table :backups, key: %i[name] do |t|
@@ -169,6 +169,29 @@ Plastic::Graph::SCHEMA_FILE = Plastic::Graph::SchemaFile.define(version: 2026_10
 
   create_virtual_table :document_fts,
     using: "fts5(body, intent_id UNINDEXED, path UNINDEXED, sha256 UNINDEXED, position UNINDEXED, origin_id UNINDEXED)"
+
+  create_trigger :document_heads_search_insert, on: :document_heads, sql: <<~SQL
+    AFTER INSERT ON "document_heads" BEGIN
+      INSERT INTO "document_fts" ("body", "intent_id", "path", "sha256", "position", "origin_id")
+      SELECT p."body", p."intent_id", p."path", p."sha256", p."position", p."origin_id" FROM "document_passages" p
+      WHERE p."sha256" = NEW."sha256" AND p."intent_id" = NEW."intent_id" AND p."path" = NEW."path" AND p."origin_id" = NEW."origin_id";
+    END;
+  SQL
+
+  create_trigger :document_heads_search_update, on: :document_heads, sql: <<~SQL
+    AFTER UPDATE ON "document_heads" BEGIN
+      DELETE FROM "document_fts" WHERE "intent_id" = OLD."intent_id" AND "path" = OLD."path" AND "origin_id" = OLD."origin_id";
+      INSERT INTO "document_fts" ("body", "intent_id", "path", "sha256", "position", "origin_id")
+      SELECT p."body", p."intent_id", p."path", p."sha256", p."position", p."origin_id" FROM "document_passages" p
+      WHERE p."sha256" = NEW."sha256" AND p."intent_id" = NEW."intent_id" AND p."path" = NEW."path" AND p."origin_id" = NEW."origin_id";
+    END;
+  SQL
+
+  create_trigger :document_heads_search_delete, on: :document_heads, sql: <<~SQL
+    AFTER DELETE ON "document_heads" BEGIN
+      DELETE FROM "document_fts" WHERE "intent_id" = OLD."intent_id" AND "path" = OLD."path" AND "origin_id" = OLD."origin_id";
+    END;
+  SQL
 
   create_table :retrieval_schema, key: %i[name] do |t|
     t.kept :name

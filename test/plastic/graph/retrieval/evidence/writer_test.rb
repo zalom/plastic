@@ -6,12 +6,6 @@ require_relative "../../../../../lib/plastic/graph/retrieval/evidence/writer"
 class RetrievalEvidenceWriterTest < Plastic::TestCase
   PassageFailure = Class.new(StandardError)
 
-  Statements = Struct.new(:sqls) do
-    def put(_table, _row) = nil
-
-    def add(sql, **) = sqls << sql
-  end
-
   def test_keeps_revisions_immutable_and_updates_only_current_derived_rows
     write_evidence("first evidence")
     write_evidence("second evidence")
@@ -38,37 +32,38 @@ class RetrievalEvidenceWriterTest < Plastic::TestCase
       knowledge.rows("SELECT intent_id, path, body FROM document_revisions ORDER BY intent_id").map(&:values)
   end
 
-  def test_a_known_heads_set_skips_the_search_row_delete_for_a_new_document_only
-    writer = Plastic::Graph::Retrieval::Evidence::Writer.new(nil, origin, heads: heads(["1", "old.md"]))
-    batch = Statements.new([])
-    writer.apply(batch, "1", "new.md", "New\n")
-    writer.apply(batch, "1", "old.md", "Old\n")
-    writer.apply(batch, "1", "new.md", "Newer\n")
-
-    assert_equal 2, batch.sqls.count { |sql| sql.start_with?("DELETE FROM document_fts") }
-  end
-
-  def test_a_changed_body_read_again_replaces_its_search_rows_with_heads_known
-    write_evidence("first evidence")
-    writer = Plastic::Graph::Retrieval::Evidence::Writer.new(nil, origin, heads: heads(["1", "plan.md"]))
-    knowledge.transaction { |batch| writer.apply(batch, "1", "plan.md", "second evidence") }
-
-    assert_equal ["second evidence"], rows("document_fts", "body")
-  end
-
   def test_a_removed_and_added_document_has_exactly_its_new_search_rows
     writer = Plastic::Graph::Retrieval::Evidence::Writer.new(knowledge, origin)
     writer.write("1", "plan.md", "first evidence")
     writer.remove("1", "plan.md")
-    again = Plastic::Graph::Retrieval::Evidence::Writer.new(nil, origin, heads: heads)
-    knowledge.transaction { |batch| again.apply(batch, "1", "plan.md", "again evidence") }
+    writer.write("1", "plan.md", "again evidence")
 
     assert_equal ["again evidence"], rows("document_fts", "body")
   end
 
-  private
+  def test_a_document_written_again_with_the_same_body_keeps_one_search_row_for_each_passage
+    write_evidence("same evidence")
+    write_evidence("same evidence")
 
-  def heads(*keys) = Plastic::Graph::Retrieval::Evidence::Heads.new(keys.to_set)
+    assert_equal ["same evidence"], rows("document_fts", "body")
+  end
+
+  def test_a_document_written_is_found_by_search_and_an_old_body_is_not
+    write_evidence("first evidence")
+    write_evidence("second evidence")
+    found = ->(word) { knowledge.rows("SELECT body FROM document_fts WHERE document_fts MATCH :word", word:).size }
+
+    assert_equal [0, 1], [found.call("first"), found.call("second")]
+  end
+
+  def test_a_document_removed_leaves_no_search_row
+    write_evidence("first evidence")
+    Plastic::Graph::Retrieval::Evidence::Writer.new(knowledge, origin).remove("1", "plan.md")
+
+    assert_empty rows("document_fts", "body")
+  end
+
+  private
 
   def write_evidence(body) = Plastic::Graph::Retrieval::Evidence::Writer.new(knowledge, origin).write("1", "plan.md", body)
 

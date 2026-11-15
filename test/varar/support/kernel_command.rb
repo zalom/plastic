@@ -63,14 +63,14 @@ class KernelCommand
 
   def origin = File.read(File.join(plastic_home, "origin_id")).strip
 
-  def run(*args, input: "", env: {})
+  def command(*args, input: "", env: {})
     out, err, status = ChildProcess.capture3(@env.merge(env), RbConfig.ruby, "-e", PROGRAM, KERNEL, *args, chdir: home, stdin_data: input)
     Call.new(status.exitstatus, out, err)
   end
 
   # Runs the call and raises unless it exits 0, for the steps that set a store up.
-  def run!(*args, **options)
-    call = run(*args, **options)
+  def command!(*args, **options)
+    call = command(*args, **options)
     raise "plastic #{args.join(" ")}: #{call.code}\n#{call.out}#{call.err}" unless call.code.zero?
 
     call
@@ -91,9 +91,9 @@ class KernelCommand
   # Intent 1, Alpha, with a spec.md read into its rows: the store the sync documents start from.
   def self.alpha(home)
     copied(home, :alpha) do |kernel|
-      kernel.run!("intent", "new", "Alpha")
+      kernel.command!("intent", "new", "Alpha")
       kernel.write("store/1--alpha/spec.md", "# Spec\n")
-      kernel.run!("sync", "up")
+      kernel.command!("sync", "up")
     end
   end
 

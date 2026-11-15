@@ -13,7 +13,7 @@ module Plastic
         step "offer Enola", done: ->(context) { context.reinstall },
           say: "Enola maps the code architecture of a project. It is optional: Plastic works without it. To install it, " \
             "read the release notes and run its installer from " \
-            "https://github.com/enola-labs/enola/releases/tag/v#{ENOLA_VERSION}"
+            "https://github.com/enola-labs/enola/releases/tag/v#{ENOLA_VERSION}, then set up Enola's hooks and its MCP server for this harness"
 
         outcome :handoff, offers: "plastic init", because: "Enola is optional; plastic init installs Plastic into the harnesses the person picks"
         outcome :done, offers: "plastic version", because: "a reinstall syncs the files and offers nothing more"

@@ -6,6 +6,7 @@ module Plastic
   module Commands
     class Doctor < Routine
       opens_no_store
+      reads :work
 
       option :harness_name, switch: "--harness NAME", text: "the harness to check, such as claude-code; the one the call runs in when left out"
 

@@ -60,7 +60,7 @@ class DatabaseBatchTest < Plastic::TestCase
   end
 
   def test_the_local_database_keeps_no_change_log
-    batch = Batch.new.put(:locks, { store: "s", intent_id: "1", session_id: "x", mode: "auto", taken_at: STAMP, renewed_at: STAMP })
+    batch = Batch.new.put(:locks, { store: "s", intent_id: "1", session_id: "x", mode: "auto", locked_at: STAMP, renewed_at: STAMP })
 
     assert_empty(batch.statements.map(&:sql).grep(/INSERT INTO changes/))
   end

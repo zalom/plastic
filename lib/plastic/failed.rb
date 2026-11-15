@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "end_value"
+require_relative "graph/database"
 
 module Plastic
   # A step raised, its done check still fails after the body ran, or a gate
@@ -11,7 +12,10 @@ module Plastic
     include EndValue
 
     # The failure of a step that raised: the reason names the error.
-    def self.raised(workflow, step, error) = new(workflow, step, "#{error.class}: #{error.message}")
+    def self.raised(workflow, step, error) = new(workflow, step, describe(error))
+
+    # A database error already says what happened in words for a person; any other error also names its class.
+    def self.describe(error) = error.is_a?(Graph::Database::Error) ? error.message : "#{error.class}: #{error.message}"
 
     def initialize(workflow:, step:, reason:, next_command: nil, because: nil) = super
 

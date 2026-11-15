@@ -15,8 +15,8 @@ module Plastic
         # A dry run of a sync: the lines of what it would do, on a copy of the store.
         class Preview
           # The lines of a dry run, and what the real sync would refuse: the files changed on both sides, whether
-          # it merges, the intent folders it cannot read, and each changed file no reader turns into rows, with the reason.
-          Run = Data.define(:lines, :conflicts, :merging, :unreadable, :unreadable_files)
+          # it merges, the intent folders it cannot read, and each changed file no reader turns into rows, with the reason, and which of those files this home holds no rows for.
+          Run = Data.define(:lines, :conflicts, :merging, :unreadable, :unreadable_files, :rowless_files)
 
           def initialize(home, store, options, direction: :up)
             @home, @store, @options, @direction = home, store, options, direction
@@ -26,9 +26,9 @@ module Plastic
 
           def self.printed_over_lines(plan) = plan.printed_over.map { |path| Graph::Prints.printed_over_line(path) }
 
-          def call = run.lines
+          def call = preview.lines
 
-          def run
+          def preview
             found = Dir.mktmpdir("plastic-sync-preview", parent_dir) { |copy| run_in(copy) }
             found.with(lines: found.lines.map { |line| "preview: #{line}" })
           end
@@ -69,9 +69,10 @@ module Plastic
 
           # What the real sync up refuses after its apply; a sync down refuses none of it.
           def refused(work, plan)
-            return { unreadable: [], unreadable_files: {} } unless @direction == :up
+            return { unreadable: [], unreadable_files: {}, rowless_files: [] } unless @direction == :up
 
-            { unreadable: plan.unreadable, unreadable_files: work.sync_plan(@direction, options).unreadable_files }
+            after = work.sync_plan(@direction, options)
+            { unreadable: plan.unreadable, unreadable_files: after.unreadable_files, rowless_files: after.rowless_files }
           end
 
           def checked(plan)

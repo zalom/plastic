@@ -101,7 +101,7 @@ class IntentUnarchiveTest < Plastic::TestCase
     assert_includes result.err, "--revert"
   end
 
-  def test_the_snapshot_taken_at_archive_time_comes_back_exactly
+  def test_the_snapshot_made_at_archive_time_comes_back_exactly
     intent = open_intent("Unsynced", status: "future")
     path = "#{intent.dir}/#{intent.file}"
     write(path, "owner edit not in document rows")

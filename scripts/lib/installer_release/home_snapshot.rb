@@ -14,7 +14,7 @@ module InstallerRelease
       @paths = paths
     end
 
-    def take
+    def capture
       FileUtils.mkdir_p(directory)
       paths.call.select(&PRESENT).each_with_index.map do |path, index|
         name = index.to_s

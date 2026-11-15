@@ -20,7 +20,7 @@ module Plastic
           def call
             @saved = Dir.mktmpdir(".plastic-import-", File.dirname(@root))
             @files.copy_tree(@root, original)
-            run { yield }
+            restore_unless_finished { yield }
           ensure
             FileUtils.rm_rf(@saved) if @saved && !@retain
           end
@@ -29,7 +29,7 @@ module Plastic
 
           def original = File.join(@saved, File.basename(@root))
 
-          def run
+          def restore_unless_finished
             finished = false
             yield.tap { finished = true }
           ensure

@@ -9,15 +9,15 @@ class SyncUpGraphArchiveRestoredTest < Minitest::Test
 
   def archived(kernel)
     deliver(kernel)
-    kernel.run!("intent", "archive", "1")
+    kernel.command!("intent", "archive", "1")
   end
 
   def test_a_restored_archive_survives_a_sync_up
     with_homes(method(:archived)) do |first, second|
-      second.run!("sync", "up")
-      first.run!("intent", "unarchive", "1")
+      second.command!("sync", "up")
+      first.command!("intent", "unarchive", "1")
       before = query(first, ARCHIVES)
-      first.run!("sync", "up")
+      first.command!("sync", "up")
 
       assert_equal before, query(first, ARCHIVES)
       refute_nil before.first.last

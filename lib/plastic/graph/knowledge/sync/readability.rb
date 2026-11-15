@@ -29,7 +29,7 @@ module Plastic
             error.message
           end
 
-          def reader = (@reader ||= Reader.of_databases(@folder, @retrieval, @databases))
+          def reader = (@reader ||= Reader.of(@folder, @retrieval))
         end
       end
     end

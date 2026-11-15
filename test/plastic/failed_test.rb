@@ -14,6 +14,12 @@ class FailedTest < Plastic::TestCase
     assert_equal "ArgumentError: bad", failed.reason
   end
 
+  def test_a_raised_database_error_gives_its_message_with_no_class_name
+    failed = Plastic::Failed.raised(:code_a, "step", Plastic::Graph::Database::Error.new("local.db is held by another process"))
+
+    assert_equal "local.db is held by another process", failed.reason
+  end
+
   def test_a_failure_exits_one
     assert_equal 1, Plastic::Failed.new(:code_a, "step", "broke").exit_code
   end

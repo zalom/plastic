@@ -28,7 +28,7 @@ module Plastic
 
       extend Declarations
 
-      def self.call(...) = new(...).run
+      def self.call(...) = new(...).respond
 
       attr_reader :exit_code
 
@@ -48,7 +48,7 @@ module Plastic
       # The whole of one call: check the store, do the work, print. A usage
       # error prints the usage line; a refusal or a failure prints its line
       # after the rows.
-      def run
+      def respond
         return help if @argv.intersect?(%w[--help -h])
 
         answer

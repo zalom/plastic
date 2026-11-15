@@ -32,10 +32,10 @@ module Plastic
           # The one prose line of a session; a session with no row gets one.
           def write_note(session_id, text) = put(:sessions, { session_id:, note: text })
 
-          # Writes the lock row of this store, taken and renewed now.
-          def take_lock(intent_id, session_id:, mode:)
+          # Writes the lock row of this store, locked and renewed now.
+          def lock_intent(intent_id, session_id:, mode:)
             now = Plastic.now
-            put(:locks, { store: @store, intent_id:, session_id:, mode:, taken_at: now, renewed_at: now })
+            put(:locks, { store: @store, intent_id:, session_id:, mode:, locked_at: now, renewed_at: now })
           end
 
           # Renews every lock row this session names, live or lapsed, and

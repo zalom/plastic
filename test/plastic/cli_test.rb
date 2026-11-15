@@ -17,6 +17,10 @@ class CliTest < Plastic::TestCase
     assert_equal [["auto"], "Commands::Intent::Lock::Status"], [auto_words, Plastic::CLI::TABLE.dig("intent lock status", 0)]
   end
 
+  def test_family_of_names_the_family_of_a_command_and_core_for_words_no_family_holds
+    assert_equal ["intent", "core"], [Plastic::CLI.family_of("intent new"), Plastic::CLI.family_of("nothing here")]
+  end
+
   def test_find_returns_nil_for_unknown_words
     assert_nil Plastic::CLI.find(%w[nothing here], Fixtures::TABLE)
   end

@@ -8,38 +8,38 @@ module IntentEndAcceptance
   VERIFIED = "# Outcome\nVerified the delivery.\n\n## Verification\n- Merged: plastic/1 into alpha at abc123\n- Architecture map: enola at abc123\n- Pull request: https://example.test/pull/1\n- Approved: the owner on 2026-10-05\n"
 
   def self.build(kernel)
-    kernel.run!("intent", "new", "Alpha", env: SESSION)
+    kernel.command!("intent", "new", "Alpha", env: SESSION)
     kernel.write("store/1--alpha/spec.md", "# Spec\n## Done criteria\n- [ ] [ships] Ships\n")
     kernel.write("store/1--alpha/outcome.md", VERIFIED)
-    kernel.run!("sync", "up", env: SESSION)
-    kernel.run!("intent", "approve", "1", env: SESSION)
-    kernel.run!("auto", "1", env: SESSION)
-    kernel.run!("node", "add", "1", "Ship", "--criterion", "ships", env: SESSION)
-    kernel.run!("node", "claim", "1", "n1", env: SESSION)
-    kernel.run!("node", "done", "1", "n1", "Fixture verification passed", env: SESSION)
+    kernel.command!("sync", "up", env: SESSION)
+    kernel.command!("intent", "approve", "1", env: SESSION)
+    kernel.command!("auto", "1", env: SESSION)
+    kernel.command!("node", "add", "1", "Ship", "--criterion", "ships", env: SESSION)
+    kernel.command!("node", "claim", "1", "n1", env: SESSION)
+    kernel.command!("node", "done", "1", "n1", "Fixture verification passed", env: SESSION)
   end
 
   def self.call(kind)
     Dir.mktmpdir("varar-intent-end") do |home|
       kernel = KernelCommand.copied(home, :endable) { |built| build(built) }
-      cells(kernel, run(kernel, kind))
+      cells(kernel, end_intent(kernel, kind))
     end
   end
 
-  def self.run(kernel, kind)
+  def self.end_intent(kernel, kind)
     withhold_merge_record(kernel) if kind == "unverified close"
     judge(kernel, "accept") unless kind == "request verification"
-    kernel.run!("intent", "end", "1", env: SESSION) if kind == "repeat closure"
-    kernel.run("intent", "end", "1", env: SESSION)
+    kernel.command!("intent", "end", "1", env: SESSION) if kind == "repeat closure"
+    kernel.command("intent", "end", "1", env: SESSION)
   end
 
   def self.judge(kernel, verdict)
-    kernel.run!("intent", "verdict", "1", verdict, "Reviewed the delivery", env: SESSION)
+    kernel.command!("intent", "verdict", "1", verdict, "Reviewed the delivery", env: SESSION)
   end
 
   def self.withhold_merge_record(kernel)
     kernel.write("store/1--alpha/outcome.md", "# Outcome\nVerified the delivery.\n\n## Verification\n- Pull request: https://example.test/pull/1\n- Approved: the owner on 2026-10-05\n")
-    kernel.run!("sync", "up", env: SESSION)
+    kernel.command!("sync", "up", env: SESSION)
   end
 
   def self.cells(kernel, result)

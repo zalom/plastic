@@ -42,7 +42,7 @@ class AutoTest < Plastic::TestCase
 
   def test_another_sessions_live_lock_refuses_and_is_kept
     intent = clear_intent
-    store_graphs.work.take_lock(intent.intent_id, session_id: "s-2", mode: "auto")
+    store_graphs.work.lock_intent(intent.intent_id, session_id: "s-2", mode: "auto")
 
     result = call(intent.intent_id)
 
@@ -118,7 +118,7 @@ class AutoTest < Plastic::TestCase
 
   def test_an_expired_foreign_lock_is_taken_over
     intent = active_intent
-    store_graphs.work.take_lock(intent.intent_id, session_id: "s-2", mode: "auto")
+    store_graphs.work.lock_intent(intent.intent_id, session_id: "s-2", mode: "auto")
     expire_lock
 
     result = call(intent.intent_id)

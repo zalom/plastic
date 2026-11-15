@@ -25,7 +25,7 @@ def call
   projects = scope.projects
   shown = slugs.map { |slug| store_rows(slug, projects) }
   output.rows(shown.flat_map(&:first))
-  offer_next(shown.filter_map(&:last).first)
+  offer_next(shown.filter_map { |_rows, create, _open| create }.first, shown.any? { |_rows, _create, open| open })
 end
 ```
 
@@ -34,7 +34,7 @@ Its steps run in this order:
 1. `projects = scope.projects` [`status.rb:18`](../../../../lib/plastic/commands/status.rb#L18)
 2. `shown = slugs.map { |slug| store_rows(slug, projects) }` [`status.rb:19`](../../../../lib/plastic/commands/status.rb#L19)
 3. `output.rows(shown.flat_map(&:first))` [`status.rb:20`](../../../../lib/plastic/commands/status.rb#L20)
-4. `offer_next(shown.filter_map(&:last).first)` [`status.rb:21`](../../../../lib/plastic/commands/status.rb#L21)
+4. `offer_next(shown.filter_map { |_rows, create, _open| create }.first, shown.any? { |_rows, _create, open| open })` [`status.rb:21`](../../../../lib/plastic/commands/status.rb#L21)
 
 ## What one call reads, writes and prints
 
@@ -50,8 +50,9 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| Offers the next command | 0 | plastic next | [`status.rb:29`](../../../../lib/plastic/commands/status.rb#L29) |
-| Offers the next command | 0 | decided at run time | [`status.rb:31`](../../../../lib/plastic/commands/status.rb#L31) |
+| Offers the next command | 0 | decided at run time | [`status.rb:29`](../../../../lib/plastic/commands/status.rb#L29) |
+| Offers the next command | 0 | plastic next | [`status.rb:30`](../../../../lib/plastic/commands/status.rb#L30) |
+| Offers the next command | 0 | decided at run time | [`status.rb:32`](../../../../lib/plastic/commands/status.rb#L32) |
 
 ## What the page leaves out
 

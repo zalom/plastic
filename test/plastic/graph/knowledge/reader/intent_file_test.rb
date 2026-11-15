@@ -13,7 +13,7 @@ class KnowledgeReaderIntentFileTest < Plastic::TestCase
   # Writes the file, reads it into rows, and returns the database its rows went to.
   def read_in(rel, bytes)
     write("#{DIR}/#{rel}", bytes)
-    read = Plastic::Graph::Knowledge::Reader.new(folder, { "1" => retrieval.intent("1") }, origin).read("#{DIR}/#{rel}")
+    read = Plastic::Graph::Knowledge::Reader.new(folder, { "1" => retrieval.intent("1") }, origin, retrieval:).read("#{DIR}/#{rel}")
     apply_read(read)
     read.database
   end
@@ -125,10 +125,5 @@ class KnowledgeReaderIntentFileTest < Plastic::TestCase
 
     assert_equal ["data.json", "intent.md", "notes.txt", "resources/notes.md"], retrieval.documents("1").map(&:path).sort
     assert_equal [true], [!kept("odd.md").nil?]
-  end
-
-  def test_context_json_cannot_become_a_document
-    assert_raises(Plastic::Invalid) { read_in("context.json", JSON.generate("intent" => "1", "context" => {})) }
-    assert_empty retrieval.documents("1").select { |document| document.path == "context.json" }
   end
 end

@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 154" width="800" height="154" role="img" xml:space="preserve">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 198" width="800" height="198" role="img" xml:space="preserve">
 <title>What one call of plastic doctor reads, writes and prints</title>
 <style>.ground { fill: #e9e5dc; }
 .card { fill: #f4f1ea; stroke: #7c8594; stroke-width: 1; }
@@ -71,10 +71,17 @@
 <text x="16" y="20" class="tag tag-muted" text-anchor="start">READS</text>
 <text x="290" y="20" class="tag tag-muted" text-anchor="start">COMMAND</text>
 <text x="564" y="20" class="tag tag-muted" text-anchor="start">WRITES</text>
-<rect x="290" y="34" width="220" height="40" rx="6" class="lane-code"/>
+<rect x="16" y="34" width="220" height="90" rx="14" class="db"/>
+<text x="28" y="52" class="tb" text-anchor="start">work_graph.db</text>
+<text x="28" y="68" class="tm" text-anchor="start">edges</text>
+<text x="28" y="83" class="tm" text-anchor="start">nodes</text>
+<text x="28" y="98" class="tm" text-anchor="start">roadmaps</text>
+<text x="28" y="113" class="tm" text-anchor="start">verdicts</text>
+<path d="M 238 49 L 288 49" class="wire-read"/>
+<path d="M 280 44 L 288 49 L 280 54 Z" class="head"/>
+<rect x="290" y="34" width="220" height="90" rx="6" class="lane-code"/>
 <text x="300" y="58" class="tm" text-anchor="start">plastic doctor</text>
-<text x="300" y="78" class="tm tag-muted" text-anchor="start">no database found in the code</text>
-<text x="16" y="104" class="tag tag-muted" text-anchor="start">PRINTED FILES</text>
-<rect x="16" y="112" width="768" height="28" rx="6" class="card"/>
-<text x="24" y="130" class="tm" text-anchor="start">no store file</text>
+<text x="16" y="148" class="tag tag-muted" text-anchor="start">PRINTED FILES</text>
+<rect x="16" y="156" width="768" height="28" rx="6" class="card"/>
+<text x="24" y="174" class="tm" text-anchor="start">no store file</text>
 </svg>

@@ -14,6 +14,10 @@ module Plastic
             because: "roadmap new creates a roadmap once",
             pass: ->(context) { context.retrieval.roadmap(context.slug).nil? }
 
+          gate "roadmaps/%{slug}.md holds a roadmap this home has no rows for; run plastic sync up to read it", stops: :failure, offers: "plastic sync up",
+            because: "roadmaps/%{slug}.md is in the form of this release, and plastic sync up reads it into rows",
+            pass: ->(context) { !context.work.roadmap_file_readable?(context.slug) }
+
           gate "roadmaps/%{slug}.md exists and this home holds no roadmap row for it; no command reads a roadmap file into rows", stops: :failure, offers: "plastic next",
             because: "roadmaps/%{slug}.md is kept as it is, and roadmap new writes no roadmap over a file it holds no row for",
             pass: ->(context) { !context.work.roadmap_file?(context.slug) }

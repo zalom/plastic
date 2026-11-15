@@ -24,7 +24,7 @@ module InstallerRelease
     def initialize(share:, home:, run: RUN, out: $stdout)
       @share = share
       @home = home
-      @run = run
+      @runner = run
       @out = out
     end
 
@@ -40,7 +40,7 @@ module InstallerRelease
 
     private
 
-    attr_reader :share, :home, :run, :out
+    attr_reader :share, :home, :runner, :out
 
     def launcher = home.launcher
 
@@ -57,7 +57,7 @@ module InstallerRelease
     def environment = { "PLASTIC_HOME" => plastic_home, "HOME" => user_home, "RUBYOPT" => nil, "BUNDLE_GEMFILE" => nil }
 
     def reinstall
-      output, success = run.call(environment, [target, "install", "--reinstall"])
+      output, success = runner.call(environment, [target, "install", "--reinstall"])
       shown = output.lines.grep_v(TRAILER).join
       out.puts(shown) unless shown.empty?
       raise ActivationError, FAILED unless success

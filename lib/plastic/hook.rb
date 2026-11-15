@@ -2,6 +2,7 @@
 
 require "json"
 require_relative "cli/command"
+require_relative "failed"
 require_relative "graph/missing_store"
 
 module Plastic
@@ -22,7 +23,7 @@ module Plastic
     rescue Graph::MissingStore
       CLI::Command::OK
     rescue => error
-      environment.err.puts "plastic hook: #{error.class}: #{error.message}"
+      environment.err.puts "plastic hook: #{Failed.describe(error)}"
       CLI::Command::OK
     end
 

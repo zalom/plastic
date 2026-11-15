@@ -4,6 +4,7 @@ module CommandReference
   # The tables of each database file, read from the schema file.
   class Schema
     BOOKKEEPING = %w[changes printed].freeze
+    TRIGGER = /create_trigger :\w+, on: :(\w+), sql: <<~SQL\n(.*?)\n\s*SQL$/m
     DATABASE_LINE = /^\s*database :(\w+), "([^"]+)", %i\[([^\]]+)\]/m
 
     def initialize(root)
@@ -16,11 +17,20 @@ module CommandReference
 
     def file_of(table) = databases.values.filter_map { |file, held| file if held.include?(table) }.first
 
+    # The tables that the triggers of one table write.
+    def triggered(table) = triggers.fetch(table, [])
+
     def file_of_key(key) = databases.fetch(key, []).first
 
     def key_of(file) = databases.select { |_key, (name, _held)| name == file }.keys.first
 
     private
+
+    def triggers
+      @triggers ||= @text.scan(TRIGGER).group_by(&:first).transform_values { |found| written_by(found.map(&:last)) }
+    end
+
+    def written_by(sqls) = tables.select { |table| sqls.any? { |sql| Touches::Mode.of(sql, table) == :write } }
 
     def databases
       @databases ||= @text.scan(DATABASE_LINE).to_h { |key, file, held| [key.to_sym, [file, held.split]] }

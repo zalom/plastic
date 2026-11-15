@@ -23,7 +23,7 @@ module InstallerRelease
     def open
       discard
       state = { "pointers" => POINTERS.to_h { |name| [name, pointer(name).target] }, "releases" => releases.versions,
-                "home" => snapshot.take }
+                "home" => snapshot.capture }
       write_state(state)
     end
 

@@ -19,6 +19,9 @@ module Plastic
 
     def self.starts?(argv, words) = argv.take(words.size) == words
 
+    # The family a command belongs to: core when no family holds it.
+    def self.family_of(words) = FAMILIES.find { |_family, rows| rows.key?(words) }&.first || "core"
+
     # The class that runs a command, loaded only when called. The class names
     # its file: Commands::Intent::End is commands/intent/end.rb. Each segment
     # of the class path is looked up on its own scope alone, so a segment never
@@ -95,7 +98,10 @@ module Plastic
       text = Topics.new(context.topics, context.table).read(words)
       return print_topic(text, context) if text
 
-      dispatch([*words, "--help"], context) { "plastic: no command #{words.join(" ").inspect}; plastic help lists them" }
+      family = words.reject { |word| %w[--json --help -h].include?(word) }
+      return family_list(family.first, words, context) if family.one? && FAMILIES.key?(family.first)
+
+      dispatch([*words, "--help"], context) { "plastic: no command #{family.join(" ").inspect}; plastic help lists them" }
     end
     private_class_method :topic_or_help
 
@@ -104,6 +110,11 @@ module Plastic
       Command::OK
     end
     private_class_method :print_topic
+
+    def self.family_list(family, argv, context)
+      Listing.new(*context.environment_and_table).call(argv, only: family)
+    end
+    private_class_method :family_list
 
     def self.list(argv, context) = Listing.new(*context.environment_and_table).call(argv)
     private_class_method :list

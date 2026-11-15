@@ -82,7 +82,7 @@ class KnowledgeReaderGraphViewTest < Plastic::TestCase
     before = file_and_print
     again = sync_up_plan
 
-    assert_empty again.taking(:read)
+    assert_empty again.entries_for(:read)
     sync.apply(again)
 
     assert_equal before, file_and_print
@@ -95,7 +95,7 @@ class KnowledgeReaderGraphViewTest < Plastic::TestCase
     plan = sync_up_plan
 
     assert_equal [GRAPH], plan.conflicts
-    assert_empty plan.taking(:read)
+    assert_empty plan.entries_for(:read)
     assert_equal before, node_rows
   end
 

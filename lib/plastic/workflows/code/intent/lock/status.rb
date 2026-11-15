@@ -9,7 +9,7 @@ module Plastic
     module Code
       module Intent
         module Lock
-          # Prints an intent's lock row: the session, the mode, when it was taken
+          # Prints an intent's lock row: the session, the mode, when it was locked
           # and renewed, whether it is still live and why; then the code worktree when
           # the store's project names a repository. Refuses an unknown id.
           class Status < CodeWorkflow
@@ -45,7 +45,7 @@ module Plastic
 
             def self.described(liveness, state)
               lock = liveness.lock
-              "lock: session #{lock.session_id}, mode #{lock.mode}, taken #{lock.taken_at}, renewed #{lock.renewed_at}, #{state}: #{liveness.why}"
+              "lock: session #{lock.session_id}, mode #{lock.mode}, locked #{lock.locked_at}, renewed #{lock.renewed_at}, #{state}: #{liveness.why}"
             end
 
             outcome :closed, if: ->(context) { %w[done abandoned].include?(context.intent.status) }, offers: nil,

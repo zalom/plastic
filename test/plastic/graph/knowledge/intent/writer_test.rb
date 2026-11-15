@@ -9,6 +9,16 @@ class KnowledgeIntentWriterTest < Plastic::TestCase
     assert_nil writer.problem
   end
 
+  def test_an_intent_that_is_not_in_the_store_takes_nothing
+    assert_equal "no intent 9 in this store", writer.open_problem("9", "nodes")
+  end
+
+  def test_an_open_intent_takes_what_it_is_given
+    open_intent
+
+    assert_nil writer.open_problem("1", "nodes")
+  end
+
   def test_a_legacy_store_must_be_imported_first
     write("INDEX.md", "# Index\n")
 

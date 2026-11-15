@@ -83,9 +83,9 @@ module Plastic
             lock&.session_id == context.session && lock.mode == "auto" && retrieval.liveness(lock).live?
         end
 
-        step "take the lock and go in progress", done: method(:delivery_started?) do |context|
+        step "lock the intent and go in progress", done: method(:delivery_started?) do |context|
           context.work.activate_intent(context.intent_id)
-          context.work.take_lock(context.intent_id, session_id: context.session, mode: "auto")
+          context.work.lock_intent(context.intent_id, session_id: context.session, mode: "auto")
         end
 
         read "name the code worktree" do |context|

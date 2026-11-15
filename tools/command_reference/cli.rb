@@ -10,7 +10,7 @@ module CommandReference
       @build = build
     end
 
-    def run
+    def call
       @argv.include?("--check") ? check : write
     end
 

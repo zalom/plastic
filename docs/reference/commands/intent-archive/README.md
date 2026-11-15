@@ -2,17 +2,18 @@
 
 Archive an intent directory.
 
-Takes a done, abandoned or future intent off the checkout; its rows stay.
+Takes a done, abandoned or future intent off the checkout, or each one older than a date; its rows stay.
 
 ```sh
-plastic intent archive ID [--dry-run]
+plastic intent archive (ID | --older-than DATE) [--dry-run]
 ```
 
-The command is `Intent::Archive`, in [`archive.rb:9`](../../../../lib/plastic/commands/intent/archive.rb#L9). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
+The command is `Intent::Archive`, in [`archive.rb:10`](../../../../lib/plastic/commands/intent/archive.rb#L10). The words on this page, such as gate, step and outcome, are explained in [the command DSL](../../dsl/README.md).
 
 | Argument or option | What it gives | Default |
 | --- | --- | --- |
 | `ID` | the intent to archive | |
+| `--older-than DATE` | archive every intent older than this date or time instead of one |  |
 | `--dry-run` | preview the call in a disposable copy | `false` |
 
 ## Components
@@ -23,23 +24,36 @@ The figure shows the command, the workflows it runs, the classes behind them, an
 
 ## The events of one call
 
-The call starts the workflow `Code::Intent::Archive`, in [`archive.rb:10`](../../../../lib/plastic/workflows/code/intent/archive.rb#L10).
+### The command's own call
 
-Takes a done, abandoned or future intent off the checkout. Its rows stay.
+The command's own `call`, at [`archive.rb:22`](../../../../lib/plastic/commands/intent/archive.rb#L22), runs first, then starts the workflow [Code::Intent::Archive](#codeintentarchive).
+
+```ruby
+def call
+  check_choice
+  super
+end
+```
+
+### Code::Intent::Archive
+
+The code workflow `:code_archive_intent`, in [`archive.rb:11`](../../../../lib/plastic/workflows/code/intent/archive.rb#L11).
+
+Takes a done, abandoned or future intent off the checkout, or each one older than a date. Its rows stay.
 
 ![How Code::Intent::Archive runs: its steps, where it stops, and its outcomes](code_archive_intent.svg)
 
 Its rows run in this order:
 
 1. Read: forget a stop of an earlier call. [`code_workflow.rb:54`](../../../../lib/plastic/code_workflow.rb#L54)
-2. Step: archive the intent. Done when `!context.ok.nil? || !context.problem.nil?`, so a second call skips it. [`archive.rb:17`](../../../../lib/plastic/workflows/code/intent/archive.rb#L17)
-3. Gate: passes when `context.kind != :unfinished`; otherwise the call stops with exit 1 and prints PROBLEM. [`archive.rb:24`](../../../../lib/plastic/workflows/code/intent/archive.rb#L24)
-4. Gate: passes when `context.kind != :failure`; otherwise the call stops with exit 1 and prints PROBLEM. [`archive.rb:27`](../../../../lib/plastic/workflows/code/intent/archive.rb#L27)
-5. Gate: passes when `context.kind != :refusal`; otherwise the call stops with exit 3 and prints PROBLEM. [`archive.rb:28`](../../../../lib/plastic/workflows/code/intent/archive.rb#L28)
-6. Read: say it was archived. [`archive.rb:30`](../../../../lib/plastic/workflows/code/intent/archive.rb#L30)
-7. Outcome `:done`, always: finishes with exit 0; next: plastic status. [`archive.rb:34`](../../../../lib/plastic/workflows/code/intent/archive.rb#L34)
+2. Step: archive the intent. Done when `!context.ok.nil? || !context.problem.nil?`, so a second call skips it. [`archive.rb:26`](../../../../lib/plastic/workflows/code/intent/archive.rb#L26)
+3. Gate: passes when `context.kind != :unfinished`; otherwise the call stops with exit 1 and prints PROBLEM. [`archive.rb:35`](../../../../lib/plastic/workflows/code/intent/archive.rb#L35)
+4. Gate: passes when `context.kind != :failure`; otherwise the call stops with exit 1 and prints PROBLEM. [`archive.rb:38`](../../../../lib/plastic/workflows/code/intent/archive.rb#L38)
+5. Gate: passes when `context.kind != :refusal`; otherwise the call stops with exit 3 and prints PROBLEM. [`archive.rb:39`](../../../../lib/plastic/workflows/code/intent/archive.rb#L39)
+6. Read: say what was archived. [`archive.rb:41`](../../../../lib/plastic/workflows/code/intent/archive.rb#L41)
+7. Outcome `:done`, always: finishes with exit 0; next: plastic status. [`archive.rb:45`](../../../../lib/plastic/workflows/code/intent/archive.rb#L45)
 
-It sets `problem`, `kind`, `ok`.
+It sets `problem`, `kind`, `ok`, `lines`.
 
 In the words of workflow engines, the rows are these four parts:
 
@@ -54,16 +68,16 @@ In the words of workflow engines, the rows are these four parts:
 
 | Place | Database or file | Tables | Reads or writes | Code |
 | --- | --- | --- | --- | --- |
-| the store folder | knowledge_graph.db | `links` | reads and writes | [`archive.rb:12`](../../../../lib/plastic/commands/intent/archive.rb#L12) |
-| the store folder | references.db | not found in the code | writes | [`archive.rb:12`](../../../../lib/plastic/commands/intent/archive.rb#L12) |
-| the store folder | work_graph.db | `archives`, `intents` | reads and writes | [`archive.rb:12`](../../../../lib/plastic/commands/intent/archive.rb#L12) |
+| the store folder | knowledge_graph.db | `links` | reads and writes | [`archive.rb:16`](../../../../lib/plastic/commands/intent/archive.rb#L16) |
+| the store folder | references.db | not found in the code | writes | [`archive.rb:16`](../../../../lib/plastic/commands/intent/archive.rb#L16) |
+| the store folder | work_graph.db | `archives`, `intents` | reads and writes | [`archive.rb:16`](../../../../lib/plastic/commands/intent/archive.rb#L16) |
 | the store folder | store/index.json | | writes | [`prints.rb:17`](../../../../lib/plastic/graph/prints.rb#L17) |
 
 A second call runs the same rows again. A step runs again only when its done check fails.
 
 | Step | Done when | The second call | Code |
 | --- | --- | --- | --- |
-| archive the intent | `!context.ok.nil? \|\| !context.problem.nil?` | skips it | [`archive.rb:17`](../../../../lib/plastic/workflows/code/intent/archive.rb#L17) |
+| archive the intent | `!context.ok.nil? \|\| !context.problem.nil?` | skips it | [`archive.rb:26`](../../../../lib/plastic/workflows/code/intent/archive.rb#L26) |
 
 ## How a call ends
 
@@ -71,11 +85,14 @@ Every call can also end in [the ways any call can end](../../dsl/README.md#how-a
 
 | Ending | Exit | next: | Code |
 | --- | --- | --- | --- |
-| PROBLEM | 1 | plastic intent end INTENT_ID | [`archive.rb:24`](../../../../lib/plastic/workflows/code/intent/archive.rb#L24) |
-| PROBLEM | 1 | prints no next: line | [`archive.rb:27`](../../../../lib/plastic/workflows/code/intent/archive.rb#L27) |
-| PROBLEM | 3 | prints no next: line | [`archive.rb:28`](../../../../lib/plastic/workflows/code/intent/archive.rb#L28) |
-| intent INTENT_ID is off the checkout | 0 | plastic status | [`archive.rb:34`](../../../../lib/plastic/workflows/code/intent/archive.rb#L34) |
+| PROBLEM | 1 | plastic intent end INTENT_ID | [`archive.rb:35`](../../../../lib/plastic/workflows/code/intent/archive.rb#L35) |
+| PROBLEM | 1 | prints no next: line | [`archive.rb:38`](../../../../lib/plastic/workflows/code/intent/archive.rb#L38) |
+| PROBLEM | 3 | prints no next: line | [`archive.rb:39`](../../../../lib/plastic/workflows/code/intent/archive.rb#L39) |
+| the intents named above are off the checkout | 0 | plastic status | [`archive.rb:45`](../../../../lib/plastic/workflows/code/intent/archive.rb#L45) |
 | a step raises | 1 | prints no next: line | [`code_workflow.rb:102`](../../../../lib/plastic/code_workflow.rb#L102) |
+| Usage error: give an intent ID or --older-than DATE | 2 | prints no next: line | [`archive.rb:31`](../../../../lib/plastic/commands/intent/archive.rb#L31) |
+| Usage error: an intent ID and --older-than exclude each other | 2 | prints no next: line | [`archive.rb:32`](../../../../lib/plastic/commands/intent/archive.rb#L32) |
+| Usage error | 2 | prints no next: line | [`archive.rb:40`](../../../../lib/plastic/commands/intent/archive.rb#L40) |
 
 ## What the page leaves out
 

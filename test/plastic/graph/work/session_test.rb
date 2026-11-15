@@ -20,4 +20,8 @@ class WorkSessionTest < Plastic::TestCase
   def test_a_running_session_sums_up_as_its_last_turn
     assert_equal "session s-1 last turn #{STAMP}", session.summary
   end
+
+  def test_a_session_with_no_turn_sums_up_as_when_it_started
+    assert_equal "session s-1 started #{STAMP}, no turn recorded", session(started_at: STAMP, last_turn_at: "").summary
+  end
 end

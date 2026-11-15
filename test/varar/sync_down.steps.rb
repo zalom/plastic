@@ -46,7 +46,7 @@ steps do
     Dir.mktmpdir("varar-sync-down") do |home|
       kernel = KernelCommand.new(home)
       SyncDownAcceptance.prepare(kernel, row["change"])
-      call = kernel.run(*row["call"].split)
+      call = kernel.command(*row["call"].split)
       row.merge("exit" => call.code.to_s, "result" => call.result, "files" => call.files, "file" => SyncDownAcceptance.file(kernel),
         "row" => SyncDownAcceptance.row(kernel))
     end

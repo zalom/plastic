@@ -19,11 +19,18 @@ module Plastic
           def self.parse(text) = read(text) || raise(Unreadable, "cannot read #{text.inspect} as a date or a time with an offset")
 
           def self.read(text)
-            return Time.new(*text.split("-").map(&:to_i)) if DATE.match?(text)
+            return day(text) if DATE.match?(text)
 
             Time.iso8601(text.sub(" ", "T")) if FULL.match?(text)
           rescue ArgumentError
             nil
+          end
+
+          # Local midnight of the day; a day the month does not have is no day, and is not rolled into the next month.
+          def self.day(text)
+            year, month, date = text.split("-").map(&:to_i)
+            found = Time.new(year, month, date)
+            found if found.day == date
           end
         end
       end

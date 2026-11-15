@@ -18,14 +18,14 @@ module InstallerRelease
     RUN = ->(env, command) { system(env, *command, exception: true) }
 
     def initialize(run: RUN)
-      @run = run
+      @runner = run
     end
 
     def call(release_path, ruby)
       runtime = File.join(release_path, "runtime")
       return false unless File.file?(File.join(runtime, "Gemfile"))
 
-      run.call(self.class.environment(runtime, ruby), [ruby.bundle, "install", "--standalone", "--quiet"])
+      runner.call(self.class.environment(runtime, ruby), [ruby.bundle, "install", "--standalone", "--quiet"])
       true
     end
 
@@ -37,6 +37,6 @@ module InstallerRelease
 
     private
 
-    attr_reader :run
+    attr_reader :runner
   end
 end

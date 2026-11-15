@@ -91,7 +91,7 @@
 <path d="M 344 170 L 352 175 L 344 180 Z" class="head"/>
 <rect x="352" y="159" width="392" height="56" rx="6" class="end"/>
 <text x="362" y="176" class="t" text-anchor="start">the call finishes, exit 0</text>
-<text x="362" y="190" class="t" text-anchor="start">prints no next: line</text>
+<text x="362" y="190" class="t" text-anchor="start">next: plastic status</text>
 <text x="362" y="204" class="t" text-anchor="start">because: %{why}</text>
 <rect x="16" y="223" width="300" height="56" rx="6" class="card"/>
 <text x="26" y="239" class="tm" text-anchor="start">:done</text>

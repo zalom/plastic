@@ -73,17 +73,17 @@ class DoctorProcessTest < Minitest::Test
       kernel = KernelCommand.new(home)
       project = FileUtils.mkdir_p(File.join(home, "alpha")).first
       found = damaged(kernel, project)
-      kernel.run!("project", "new", "alpha", project)
+      kernel.command!("project", "new", "alpha", project)
 
       assert_equal [1, true], [found.code, found.out.include?("plastic project new alpha #{project}")]
-      assert_match(/store alpha:\s+ok/, kernel.run("doctor", "--harness", "claude-code").out)
+      assert_match(/store alpha:\s+ok/, kernel.command("doctor", "--harness", "claude-code").out)
     end
   end
 
   def damaged(kernel, project)
-    kernel.run!("project", "new", "alpha", project)
+    kernel.command!("project", "new", "alpha", project)
     FileUtils.rm_f(File.join(kernel.plastic_home, "stores", "alpha", "references.db"))
-    kernel.run("doctor", "--harness", "claude-code")
+    kernel.command("doctor", "--harness", "claude-code")
   end
 end
 

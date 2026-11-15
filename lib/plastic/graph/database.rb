@@ -95,7 +95,7 @@ module Plastic
         connected do |connection|
           connection.atomically do
             yield batch, connection
-            run(connection, batch) unless batch.empty?
+            write(connection, batch) unless batch.empty?
           end
         end
       end
@@ -113,18 +113,18 @@ module Plastic
 
       private
 
-      def commit(batch) = connected { |connection| connection.atomically { run(connection, batch) } }
+      def commit(batch) = connected { |connection| connection.atomically { write(connection, batch) } }
 
-      def run(connection, batch)
+      def write(connection, batch)
         counted = @written.dup
-        batch.statements.filter_map { |entry| entry.run(connection, &method(:count)) }
+        batch.statements.filter_map { |entry| entry.execute(connection, &method(:count)) }
       rescue
         @written.replace(counted)
         raise
       end
 
       def try(connection, batch)
-        batch.statements.each { |entry| entry.run(connection) { nil } }
+        batch.statements.each { |entry| entry.execute(connection) { nil } }
         raise Undone
       end
 

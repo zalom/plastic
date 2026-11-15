@@ -105,7 +105,7 @@ plastic doctor      # The installation, the databases and the hooks of this agen
 ```
 
 `plastic version` prints the version, the release channel and the file the version came from.
-It changes nothing and checks nothing else.
+It rebuilds a search index that is out of step and changes nothing else.
 
 `plastic doctor` checks the releases, the launcher on your `PATH`, the Ruby version, the sqlite3
 bundle, where the hooks point and the installer lock. It also opens each database and reads the hooks and instruction files of the
@@ -190,6 +190,7 @@ plastic session note "TEXT"           # Write the one prose line of this session
 plastic intent link 12 cites 7        # Link intent 12 to intent 7
 plastic intent unlink 12 cites 7 --dry-run   # Preview the removal of a link
 plastic intent archive 12 --dry-run   # Preview an archive
+plastic intent archive --older-than 2026-01-01   # Archive each intent older than the date
 plastic intent unarchive 12             # Restore an archived intent
 plastic intent end 12                   # Close as delivered, after the merge
 plastic intent abandon 12               # Close as abandoned
@@ -248,7 +249,7 @@ plastic backup --store alpha --live   # The same, printing each line of backup.l
 plastic backup list --store alpha     # Folder, start time, status and goal of each backup
 plastic backup purge --store alpha --older-than 2026-09-01   # Delete older backups
 plastic backup purge --store alpha --failed   # Delete the backups that failed
-plastic backup restore --store alpha --latest   # Put the newest done backup back; it ends with the sync down line
+plastic backup restore --store alpha --latest   # Put the newest done backup back; it ends by asking whether to sync up or down
 ```
 
 ### Product
@@ -266,7 +267,8 @@ plastic doctor                        # The installation, the databases and the 
 
 ### Help
 ```bash
-plastic help                          # All commands and help topics
+plastic help                          # All commands, grouped in families
+plastic help intent                   # The commands of one family
 plastic help intent end               # The usage line of one command
 plastic help roadmaps                 # One help topic
 ```

@@ -35,6 +35,8 @@ module Plastic
         def backfill = @maintenance.backfill
         # Rebuilds only derived retrieval rows from immutable evidence.
         def repair = @maintenance.repair
+        # Whether the derived rows match the evidence, and which evidence is gone.
+        def search_index_report = @maintenance.search_index_report
 
         attr_reader :references
 
